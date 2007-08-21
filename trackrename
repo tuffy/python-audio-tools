@@ -1,0 +1,77 @@
+#!/usr/bin/python
+
+#Audio Tools, a module and set of tools for manipulating audio data
+#Copyright (C) 2007  Brian Langenberger
+
+#This program is free software; you can redistribute it and/or modify
+#it under the terms of the GNU General Public License as published by
+#the Free Software Foundation; either version 2 of the License, or
+#(at your option) any later version.
+
+#This program is distributed in the hope that it will be useful,
+#but WITHOUT ANY WARRANTY; without even the implied warranty of
+#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#GNU General Public License for more details.
+
+#You should have received a copy of the GNU General Public License
+#along with this program; if not, write to the Free Software
+#Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+
+
+import sys
+import audiotools
+import os.path,optparse,subprocess
+
+if (__name__ == '__main__'):
+    parser = optparse.OptionParser(
+        "%prog [-x XMCD file] <track 1> [track 2] ...",
+        version="Python Audio Tools %s" % (audiotools.VERSION))
+    parser.add_option('-x','--xmcd',
+                      action='store',
+                      type='string',
+                      dest='xmcd')
+
+    (options,args) = parser.parse_args()
+    audiofiles = audiotools.open_files(args)
+
+    if (len(audiofiles) < 1):
+        print >>sys.stderr,"*** You must specify at least one audio file"
+        sys.exit(1)
+
+    if (options.xmcd != None):
+        #try to set the metadata and track name from the XMCD metadata
+        try:
+            metadata = audiotools.parse_xmcd_file(options.xmcd)
+        except audiotools.XMCDException:
+            print >>sys.stderr,"*** Error opening XMCD file \"%s\"" % \
+                  (options.xmcd)
+            sys.exit(1)
+
+        renamed_files = []
+        for (track_number,track) in [(audiofile.track_number(),
+                                      audiofile) for audiofile in audiofiles]:
+            track.set_metadata(metadata[track_number])
+            (path,filename) = os.path.split(track.filename)
+            preferred_filename = track.track_name(track_number,
+                                                  metadata[track_number])
+            if (filename != preferred_filename):
+                subprocess.call([audiotools.BIN['mv'],
+                                 "-iv",
+                                 track.filename,
+                                 os.path.join(path,preferred_filename)])
+            renamed_files.append(os.path.join(path,preferred_filename))
+        audiofiles[0].add_replay_gain(renamed_files)
+    else:
+        #try to set the track name from the track's metadata
+        for (track_number,track) in [(audiofile.track_number(),
+                                      audiofile) for audiofile in audiofiles]:
+            
+            (path,filename) = os.path.split(track.filename)
+            preferred_filename = track.track_name(track_number,
+                                                  track.get_metadata())
+            if (filename != preferred_filename):
+                subprocess.call([audiotools.BIN['mv'],
+                                 "-iv",
+                                 track.filename,
+                                 os.path.join(path,preferred_filename)])
+

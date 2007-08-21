@@ -1,0 +1,81 @@
+.TH "cd2track" 1 "June 15, 2007" "" "Compact Disc Extractor"
+.SH NAME
+cd2track \- extract audio files
+.SH SYNOPSIS
+cd2track [OPTIONS] [track 1] [track 2] ...
+.SH DESCRIPTION
+.PP
+cd2track extracts audio files from a compact disc and
+encodes them to tracks.
+If track numbers are given, extracts only those tracks.
+Otherwise, extracts the entire disc.
+.SH OPTIONS
+.TP
+\fB-h, --help\fR
+Show a list of options and exit
+.TP
+\fB--version\fR
+Show the program's version and exit
+.TP
+\fB-t \fItype\fB, --type=\fItype\fR
+The audio format to extract the given tracks to.
+For a list of available audio formats, try:
+.B \-t
+.B help
+.TP
+\fB-q \fIquality\fB, --quality=\fIquality\fR
+The desired quality of the extracted tracks.
+For a list of available quality modes for a given format, try:
+.B \-q
+.B help
+.TP
+\fB-x \fIfilename\fB, --xmcd=\fIfilename\fR
+The XMCD file to use for metadata for the extracted tracks.
+If no XMCD file is given, metadata will be taken from the source
+tracks, if present.
+XMCD files can be obtained from the
+.BR track2xmcd (1)
+,
+.BR cd2xmcd (1)
+and
+.BR editxmcd (1)
+programs.
+.TP
+\fB-d \fIdirectory\fB, --dir=\fIdirectory\fR
+The target directory for the converted tracks.
+If none is given, the current working directory is used
+(see
+.BR getcwd (3)
+).
+If the target directory does not exist, it will be created automatically.
+.TP
+\fB-c \fIcdrom\fB, --cdrom=\fIcdrom\fR
+The cdrom device to extract tracks from
+.TP
+\fB-s \fIspeed\fB, --speed=\fIspeed\fR
+The speed in which to read CD data at
+
+.SH EXAMPLE
+.LP
+Extract all of the tracks from \fI/dev/cdrom\fR as FLAC files
+at the default quality using metadata from \fIalbum.xmcd\fR
+.IP
+.B cd2track \-t
+.I flac \fB-x \fIalbum.xmcd\fB -c \fI/dev/cdrom
+
+.SH SEE ALSO
+.BR track2track (1) ,
+.BR track2cd (1) ,
+.BR track2xmcd (1) ,
+.BR trackinfo (1) ,
+.BR tracklength (1) ,
+.BR trackrename (1) ,
+.BR trackplay (1) ,
+.BR trackcmp (1) ,
+.BR trackcat (1) ,
+.BR cd2xmcd (1) ,
+.BR editxmcd (1)
+.SH AUTHOR
+.nf
+Brian Langenberger
+.f

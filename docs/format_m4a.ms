@@ -1,0 +1,387 @@
+.\"This work is licensed under the 
+.\"Creative Commons Attribution-Share Alike 3.0 United States License.
+.\"To view a copy of this license, visit
+.\"http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to 
+.\"Creative Commons, 
+.\"171 Second Street, Suite 300, 
+.\"San Francisco, California, 94105, USA.
+.SECTION "M4A"
+.PP
+M4A is typically AAC audio in a QuickTime container stream, though
+it may also contain other formats such as MPEG-1 audio.
+
+
+.SUBSECTION "the QuickTime file stream"
+.PP
+.begin dformat
+style bitwid 0.08
+style charwid 0
+style recspread 0.3
+noname
+       0--12 @roman Atom sub 1@
+  A1:   --12 @roman Atom sub 2@
+       --12 @roman Atom sub 3@
+       --12 @roman Atom sub 4@
+  A2:  --12 @roman Atom sub 5@
+       --12-dashed ...
+noname
+  B1:  --12 @roman Atom sub 2 sub 1@
+       --12 @roman Atom sub 2 sub 2@
+  B2:  --12-dashed ...
+       --8-invisible
+  B3:  --12 @roman Atom sub 5 sub 1@
+  B4:  --12 @roman Atom sub 5 sub 2@
+  B5:  --12-dashed ...
+noname
+       --16-invisible
+  C1:  --12 @roman Atom sub 5 sub 2 sub 1@
+       --12 @roman Atom sub 5 sub 2 sub 2@
+       --12 @roman Atom sub 5 sub 2 sub 3@
+       --12 @roman Atom sub 5 sub 2 sub 4@
+  C2:  --12-dashed ...
+pic line dotted from A1.sw to B1.nw
+pic line dotted from A1.se to B2.ne
+pic line dotted from A2.sw to B3.nw
+pic line dotted from A2.se to B5.ne
+pic line dotted from B4.sw to C1.nw
+pic line dotted from B4.se to C2.ne
+.end dformat
+Unlike other chunked formats such as RIFF WAVE, QuickTime's atom chunks
+may be containers for other atoms.  All of its fields are big-endian.
+
+.SUBSECTION "a QuickTime atom"
+.PP
+.begin dformat
+style bitwid 0.16
+style recspread 0
+noname
+    0-31-16 Atom Length
+    32-63-16 Atom Type
+noname
+    64--32-dashed Atom Data
+.end dformat
+Atom Type is an ASCII string.
+Atom Length is the length of the entire atom, including the header.
+If Atom Length is 0, the atom continues until the end of the file.
+If Atom Length is 1, the atom has an extended size.  This means 
+there is a 64-bit length field immediately after the header which is
+the atom's actual size.
+.begin dformat
+style bitwid 0.16
+style recspread 0
+noname
+    0-31-16 False Atom Length (0x01)
+    32-63-16 Atom Type
+noname
+    64-127-32 Atom Length
+noname
+    128--32-dashed Atom Data
+.end dformat
+
+.SUBSECTION "Container atoms"
+.PP
+There appears to be no flag or field to tell a QuickTime parser which
+of its atoms are containers and which ones are not.
+Instead, one must check against a table of known container atom types.
+If an atom is known to be a container, one can treat its Atom Data
+as a QuickTime stream and parse it in a recursive fashion.
+.TS
+tab(:);
+c s s s s s s s
+l l l l l l l l.
+_
+Known Container Atoms
+=
+dinf:edts:imag:imap:mdia:mdra:minf:moov
+rmra:stbl:trak:tref:udta:vnrp::
+_
+.TE
+
+.SUBSECTION "the mdhd atom"
+.PP
+The \fCmdhd\fR atom contains track information such as samples-per-second,
+track length and creation/modification times.
+
+.PS
+define atom {box ht 0.25}
+define con_atom {box ht 0.25 rad 0.125}
+lineht = 0.050;
+con_atom "moov";
+move to last box .s;
+line down then right->;
+con_atom "trak";
+move to last box .s;
+line down then right->;
+con_atom "mdia";
+move to last box .s;
+line down then right->;
+atom "mdhd";
+.PE
+
+.begin dformat
+style bitwid 0.16
+style recspread 0
+noname
+    0-31-16 mdhd Length
+    32-63-16 `mdhd' (0x6D646864)
+noname
+    64-71-8 Version (0x00)
+    72-95-24 Flags (0x000000)
+noname
+    96-127-32 Creation Date
+noname
+    128-159-32 Modification Date
+noname
+    160-191-32 Sample Rate
+noname
+    192-223-32 Track Length
+noname
+    224-224-4 Pad
+    225-239-12 Language
+    240-255-16 Quality
+.end dformat
+
+If version is 1, the date and length fields are 64-bit.
+
+.begin dformat
+style bitwid 0.16
+style recspread 0
+noname
+    0-31-16 mdhd Length
+    32-63-16 `mdhd' (0x6D646864)
+noname
+    64-71-8 Version (0x01)
+    72-95-24 Flags (0x000000)
+noname
+    96-159-32 Creation Date
+noname
+    160-223-32 Modification Date
+noname
+    224-255-32 Sample Rate
+noname
+    256-319-32 Track Length
+noname
+    320-320-4 Pad
+    321-335-12 Language
+    336-351-16 Quality
+.end dformat
+
+.bp
+
+.SUBSECTION "the mp4a atom"
+.PP
+The \fCmp4a\fR atom contains information such as the number of channels
+and bits-per-sample.
+It can be found in the \fCstsd\fR atom, offset 8 bytes.
+
+.PS
+define atom {box ht 0.25}
+lineht = 0.050;
+con_atom "moov";
+move to last box .s;
+line down then right->;
+con_atom "trak";
+move to last box .s;
+line down then right->;
+con_atom "mdia";
+move to last box .s;
+line down then right->;
+con_atom "minf";
+move to last box .s;
+line down then right->;
+con_atom "stbl";
+move to last box .s;
+line down then right->;
+atom "stsd";
+.PE
+
+.begin dformat
+style bitwid 0.16
+style recspread 0
+noname
+     0-31-8 stsd Length
+     32-63-8 `stsd' (0x73747364)
+     64-127-8 Flags
+ M1: 128--8-dashed mp4a Atom
+noname
+    --32-invisible
+noname
+ M2: 0-31-16 mp4a Length
+ M3: 32-63-16 `mp4a' (0x6D703461)
+noname
+    64-95-32 Reserved (0x00000000)
+noname
+    96-111-16 Reserved (0x0000)
+    112-127-16 Reference Index
+noname
+    128-143-16 Version (0x0000)
+    144-159-16 Revision Level
+noname
+    160-191-32 Audio Encoding Vendor
+noname
+    192-207-16 Channels
+    208-223-16 Bits Per Sample
+noname
+    224--32-dashed Additional Data
+pic line dotted from M1.sw to M2.nw
+pic line dotted from M1.se to M3.ne
+.end dformat
+
+.bp
+
+.SUBSECTION "the meta atom"
+.PP
+The \fCmeta\fR atom contains track metadata such as the track name,
+artist, album name, etc.
+\fCmeta\fR is like other QuickTime containers, except that it contains
+an additional 4 bytes prior to its QuickTime Atom Data payload.
+.PS
+define atom {box ht 0.25}
+lineht = 0.050;
+con_atom "moov";
+move to last box .s;
+line down then right->;
+con_atom "udta";
+move to last box .s;
+line down then right->;
+atom "meta";
+.PE
+.begin dformat
+style bitwid 0.08
+style charwid 0
+style recspread 0.2
+noname
+       0-31-16 Meta Length
+       32-63-16 `meta' (0x6D657461)
+       64-95-16 NULL (0x00000000)
+  P1:  96--16 Meta Data   
+noname       
+  I1:  --16 `hdlr' (0x68646c72)
+  I2:  --16 `ilst' (0x696c7374)
+  I3:  --16 `free' (0x66726565)
+noname
+  N1:  --16 ` nam' (0xA96E616D)
+  N2:  --16 ` ART' (0xA9415254)
+  N3:  --16 `trkn' (0x74726B6E)
+  N4:  --16-dashed ...
+noname
+  D1:  --16 `data' (0x64617461)
+       --4-invisible
+  D2:  --16 `data' (0x64617461)
+       --4-invisible
+  D3:  --16 `data' (0x64617461)
+pic line dotted from P1.sw to I1.nw
+pic line dotted from P1.se to I3.ne
+pic line dotted from I2.sw to N1.nw
+pic line dotted from I2.se to N4.ne
+pic line dotted from N1.sw to D1.nw
+pic line dotted from N1.se to D1.ne
+pic line dotted from N2.sw to D2.nw
+pic line dotted from N2.se to D2.ne
+pic line dotted from N3.sw to D3.nw
+pic line dotted from N3.se to D3.ne
+.end dformat
+The atoms within \fCilst\fR are all containers, each with a
+\fCdata\fR atom of its own.  Notice that \fCilst\fR's sub-atoms
+often have non-ASCII Atom Type values - many are preceded by the
+0xA9 byte.
+Such atoms are human-readable.
+.ps 8
+.TS
+tab(:);
+| c s s s s s |
+| r | c | l || r | c | l |.
+_
+Known \fCmeta\fR Sub-Atoms
+_
+Atom Type:Hex:Description:Atom Type:Hex:Description
+=
+aaid:\fC0x61616964\fR:Artist Name:alb:\fC0xA9616C62\fR:Album Name
+akid:\fC0x616B6964\fR:Alternative ID ?:apid:\fC0x61706964\fR:Apple ID
+ART:\fC0xA9415254\fR:Performer Name:cmt:\fC0xA9636D74\fR:Comment
+com:\fC0xA9636F6D\fR:Composer:covr:\fC0x636F7672\fR:Cover Image
+cpil:\fC0x6370696C\fR:Compilation:cprt:\fC0x63707274\fR:Copyright ?
+day:\fC0xA9646179\fR:Date:disk:\fC0x6469736B\fR:Disc X of Y
+geid:\fC0x67656964\fR:iTMS ID ?:gnre:\fC0x676E7265\fR:Genre
+grp:\fC0xA9677270\fR:Group ?:nam:\fC0xA96E616D\fR:Track Name
+plid:\fC0x706C6964\fR:Purchase ID ?:rtng:\fC0x72746E67\fR:Rating
+stik:\fC0x7374696B\fR:Movie Type:tmpo:\fC0x746D706F\fR:Tempo
+too:\fC0xA9746F6F\fR:Encoder:trkn:\fC0x74726B6E\fR:Track Number
+wrt:\fC0xA9777274\fR:Composer:----:\fC0x2D2D2D2D\fR:iTunes-specific
+_
+.TE
+.ps 10
+
+The \fCdata\fR sub-atoms contain the actual metadata, naturally,
+but that data is preceded by 8 bytes of additional information.
+
+.begin dformat
+style bitwid 0.16
+style recspread 0
+noname
+    0-31-16 Data Length
+    32-63-16 `data' (0x64617461)
+noname
+    64-127-32 Flags
+noname
+    128--32-dashed Data
+.end dformat
+
+.bp
+
+.SUBSUBSECTION "the trkn sub-atom"
+.PP
+\fCtrkn\fR is a binary sub-atom of \fCmeta\fR which contains
+the track number.
+
+.begin dformat
+style bitwid 0.16
+style recspread 0
+noname
+     0-31-8 trkn Length
+     32-63-8 `trkn' (0x74726B6E)
+ M1: 64--8-dashed Data Atom
+noname
+    --32-invisible
+noname
+ M2: 0-31-16 data Length
+ M3: 32-63-16 `data' (0x64617461)
+noname
+    64-127-32 Flags (0x00000000)
+noname
+    128-143-8 NULL (0x0000)
+    144-159-8 Track Number
+    160-175-8 Total Tracks
+    176-191-8 NULL (0x0000)
+pic line dotted from M1.sw to M2.nw
+pic line dotted from M1.se to M3.ne
+.end dformat
+
+.SUBSUBSECTION "the disk sub-atom"
+.PP
+\fCdisk\fR is a binary sub-atom of \fCmeta\fR which contains
+the disc number.
+For example, if the track belongs to the first disc in a set of
+two discs, the sub-atom will contain that information.
+
+.begin dformat
+style bitwid 0.16
+style recspread 0
+noname
+     0-31-8 trkn Length
+     32-63-8 `disk' (0x6469736B)
+ M1: 64--8-dashed Data Atom
+noname
+    --32-invisible
+noname
+ M2: 0-31-16 data Length
+ M3: 32-63-16 `data' (0x64617461)
+noname
+    64-127-32 Flags (0x00000000)
+noname
+    128-143-10 NULL (0x0000)
+    144-159-11 Disc Number
+    160-175-11 Total Discs
+pic line dotted from M1.sw to M2.nw
+pic line dotted from M1.se to M3.ne
+.end dformat

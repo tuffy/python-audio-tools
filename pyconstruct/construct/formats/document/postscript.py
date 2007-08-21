@@ -1,0 +1,3 @@
+"""
+Postscript document
+"""

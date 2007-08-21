@@ -1,0 +1,20 @@
+.CHAPTER "References"
+.PP
+.RS
+.REFERENCE "The Wave File Format" "http://www.borg.com/\(tijglatt/tech/wave.htm"
+.REFERENCE "Audio Interchange File Format" "http://www.borg.com/~jglatt/tech/aiff.htm"
+.REFERENCE "AU Audio File Format" "http://www.opengroup.org/public/pubs/external/auformat.html"
+.REFERENCE "FLAC Format Specification" "http://flac.sourceforge.net/format.html"
+.REFERENCE "APEv2 Specification" "http://wiki.hydrogenaudio.org/index.php?title=APEv2_specification"
+.REFERENCE "WavPack 4.0 File / Block Format" "http://www.wavpack.com/file_format.txt"
+.REFERENCE "MPEG Audio Compression Basics" "http://www.dv.co.yu/mpgscript/mpeghdr.htm"
+.REFERENCE "What is ID3v1" "http://www.id3.org/ID3v1"
+.REFERENCE "The ID3v2 Documents" "http://www.id3.org/Developer_Information"
+.REFERENCE "The Ogg File Format" "http://en.wikipedia.org/wiki/Ogg#File_format"
+.REFERENCE "Vorbis I Specification" "http://xiph.org/vorbis/doc/Vorbis_I_spec.html"
+.REFERENCE "Speex Documentation" "http://www.speex.org/docs/"
+.REFERENCE "Musepack Stream Version 7 Format Specification" "http://trac.musepack.net/trac/wiki/SV7Specification"
+.REFERENCE "Parsing and Writing QuickTime Files in Java" "http://www.onjava.com/pub/a/onjava/2003/02/19/qt_file_format.html"
+.REFERENCE "ISO 14496-1 Media Format" "http://www.geocities.com/xhelmboyx/quicktime/formats/mp4-layout.txt"
+.REFERENCE "FreeDB Information" "http://www.freedb.org/en/download__miscellaneous.11.html"
+.RE

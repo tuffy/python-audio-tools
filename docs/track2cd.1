@@ -1,0 +1,47 @@
+.TH "track2cd" 1 "June 15, 2007" "" "CD Writer"
+.SH NAME
+track2cd \- records audio compact disc from tracks
+.SH SYNOPSIS
+track2cd [OPTIONS] <track 1> [track 2] ...
+.SH DESCRIPTION
+.PP
+track2cd takes a list of audio tracks and writes 
+their contents to an audio compact disc.
+.SH OPTIONS
+.TP
+\fB-h, --help\fR
+Show a list of options and exit
+.TP
+\fB--version\fR
+Show the program's version and exit
+.TP
+\fB-c \fIcdrom\fB, --cdrom=\fIcdrom\fR
+The cdrom device to write the CD to
+.TP
+\fB-s \fIspeed\fB, --speed=\fIspeed\fR
+The speed in which to write the CD at
+
+.SH EXAMPLE
+.LP
+Write all of the WAVEs in the current directory to \fI/dev/cdrom\fR:
+.IP
+.B track2cd \-c
+.I /dev/cdrom *.wav
+
+.SH SEE ALSO
+.BR track2track (1) ,
+.BR track2xmcd (1) ,
+.BR trackinfo (1) ,
+.BR tracklength (1) ,
+.BR trackrename (1) ,
+.BR trackplay (1) ,
+.BR trackcmp (1) ,
+.BR trackcat (1) ,
+.BR cd2track (1) ,
+.BR cd2xmcd (1) ,
+.BR editxmcd (1) ,
+.BR cdrecord (1)
+.SH AUTHOR
+.nf
+Brian Langenberger
+.f

@@ -1,0 +1,3 @@
+[ /Title (Audio Formats Reference)
+  /Author (Brian Langenberger)
+  /DOCINFO pdfmark

@@ -1,0 +1,74 @@
+#!/usr/bin/python
+
+#Audio Tools, a module and set of tools for manipulating audio data
+#Copyright (C) 2007  Brian Langenberger
+
+#This program is free software; you can redistribute it and/or modify
+#it under the terms of the GNU General Public License as published by
+#the Free Software Foundation; either version 2 of the License, or
+#(at your option) any later version.
+
+#This program is distributed in the hope that it will be useful,
+#but WITHOUT ANY WARRANTY; without even the implied warranty of
+#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#GNU General Public License for more details.
+
+#You should have received a copy of the GNU General Public License
+#along with this program; if not, write to the Free Software
+#Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+
+
+import sys,os,os.path
+import audiotools
+import optparse
+
+if (__name__ == '__main__'):
+    parser = optparse.OptionParser(
+        '%prog [-x XMCD file] [options] <track 1> [track 2] ...',
+        version="Python Audio Tools %s" % (audiotools.VERSION))
+    parser.add_option('-x','--xmcd',action='store',
+                      type='string',dest='xmcd',default='-')
+    parser.add_option('-s','--freedb-server',action='store',
+                      type='string',dest='freedb_server',
+                      default=audiotools.FREEDB_SERVER)
+    parser.add_option('-p','--freedb-port',action='store',
+                      type='int',dest='freedb_port',
+                      default=audiotools.FREEDB_PORT)
+    parser.add_option('-m','--metadata',action='store_true',
+                      dest='metadata',default=False)
+    
+    parser.add_option('-i','--id',dest='discid',
+                      action='store_true',default=False,
+                      help='display disc ID rather than fetch XMCD data')
+
+    (options,args) = parser.parse_args()
+
+    audiofiles = audiotools.open_files(args)
+
+    if (len(audiofiles) < 1):
+        print >>sys.stderr,"*** You must specify at least one valid audio file"
+        sys.exit(1)
+
+    if (options.xmcd == '-'):
+        outfile = sys.stdout
+    else:
+        if (not os.path.isfile(options.xmcd)):
+            outfile = file(options.xmcd,"w")
+        else:
+            print >>sys.stderr,"*** Refusing to overwrite \"%s\"" % \
+                  (options.xmcd)
+            sys.exit(1)
+
+    if (options.discid):    #calculate the disc ID instead
+        discid = audiotools.DiscID([file.length()
+                                    for file in audiofiles])
+        print discid.freedb_id()
+    elif (options.metadata):  #pull XMCD data from AudioFile metadata
+        outfile.write(audiotools.build_xmcd_file(audiofiles))
+    else:                   #grab XMCD data from FreeDB
+        discid = audiotools.DiscID([file.length()
+                                    for file in audiofiles])
+        audiotools.get_xmcd(discid, outfile,
+                            options.freedb_server,
+                            options.freedb_port)
+    outfile.close()

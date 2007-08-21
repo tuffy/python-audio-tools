@@ -1,0 +1,69 @@
+.TH "track2xmcd" 1 "June 15, 2007" "" "Audio File Metadata Retriever"
+.SH NAME
+track2xmcd \- retrieves metadata from audio tracks
+.SH SYNOPSIS
+track2xmcd [OPTIONS] <track 1> [track 2] ...
+.SH DESCRIPTION
+.PP
+track2xmcd takes a list of audio tracks and retrieves an XMCD file 
+containing their metadata such as track name, album name and artist.
+If no data can be found, an empty XMCD file is written which can
+be edited by the user.
+.SH OPTIONS
+.TP
+\fB-h, --help\fR
+Show a list of options and exit
+.TP
+\fB--version\fR
+Show the program's version and exit
+.TP
+\fB-x \fIfilename\fB, --xmcd=\fIfilename\fR
+The file in which the XMCD data will be placed.
+.BR track2xmcd (1)
+will refuse to overwrite an existing file if present.
+If no filename is given, XMCD data will be written to
+standard output.
+.TP
+\fB-m, --metadata\fR
+Obtain XMCD data from the given tracks rather than obtaining it
+from a FreeDB server
+.TP
+\fB-s \fIserver\fB, --freedb-server=\fIserver\fR
+The FreeDB server name to query for XMCD data
+.TP
+\fB-p \fIport\fB, --freedb-port=\fIport\fR
+The FreeDB port number to query for XMCD data
+.TP
+\fB-i, --id\fR
+Calculate and display the disc ID rather than retrieve XMCD data
+
+.SH EXAMPLES
+.LP
+Obtain an XMCD file called \fIalbum.xmcd\fR from all the WAVE
+files in the current directory:
+.IP
+.B track2xmcd \-x
+.I album.xmcd *.wav
+
+.LP
+Build an XMCD file from FLAC metadata and write it to standard output:
+.IP
+.B track2xmcd \-m
+.I *.flac
+
+.SH SEE ALSO
+.BR track2track (1) ,
+.BR track2cd (1) ,
+.BR trackinfo (1) ,
+.BR tracklength (1) ,
+.BR trackrename (1) ,
+.BR trackplay (1) ,
+.BR trackcmp (1) ,
+.BR trackcat (1) ,
+.BR cd2track (1) ,
+.BR cd2xmcd (1) ,
+.BR editxmcd (1)
+.SH AUTHOR
+.nf
+Brian Langenberger
+.f

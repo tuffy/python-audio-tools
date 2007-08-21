@@ -1,0 +1,84 @@
+#!/usr/bin/python
+
+#Audio Tools, a module and set of tools for manipulating audio data
+#Copyright (C) 2007  Brian Langenberger
+
+#This program is free software; you can redistribute it and/or modify
+#it under the terms of the GNU General Public License as published by
+#the Free Software Foundation; either version 2 of the License, or
+#(at your option) any later version.
+
+#This program is distributed in the hope that it will be useful,
+#but WITHOUT ANY WARRANTY; without even the implied warranty of
+#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#GNU General Public License for more details.
+
+#You should have received a copy of the GNU General Public License
+#along with this program; if not, write to the Free Software
+#Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+
+
+import os,sys,audiotools
+import optparse,tempfile,subprocess
+
+if (__name__ == '__main__'):
+    if (not audiotools.BIN.can_execute(audiotools.BIN['cdrecord'])):
+        print >>sys.stderr,'*** Unable to find "cdrecord" executable'
+        print >>sys.stderr,'Please install "cdrecord" to burn CDs'
+        sys.exit(1)
+
+    parser = optparse.OptionParser(
+        usage="%prog [options] <track 1> [track 2] ...",
+        version="Python Audio Tools %s" % (audiotools.VERSION))
+
+    parser.add_option("-c","--cdrom",dest="dev",
+                      help="cdrom device to use")
+
+    parser.add_option("-s","--speed",dest="speed",
+                      help="the speed to burn the CD at",type="int")
+
+    (options,args) = parser.parse_args()
+
+    audiofiles = audiotools.open_files(args,sorted=False)
+
+    if (len(args) < 1):
+        print >>sys.stderr,"*** You must specify at least one audio file"
+        sys.exit(1)
+
+    exec_args = [audiotools.BIN['cdrecord']]
+
+    if (options.speed != None):
+        exec_args.append("-speed")
+        exec_args.append(str(options.speed))
+
+    if (options.dev != None):
+        exec_args.append("-dev")
+        exec_args.append(options.dev)
+
+    exec_args.append("-tao")
+    exec_args.append("-pad")
+    exec_args.append("-audio")
+
+    temp_pool = []
+    wave_files = []
+
+    print >>sys.stderr,"*** Converting audio files"
+    for audiofile in audiofiles:
+        if (isinstance(audiofile,audiotools.WaveAudio)):
+            wave_files.append(audiofile.filename)
+        else:
+            f = tempfile.NamedTemporaryFile(suffix='.wav')
+            temp_pool.append(f)
+            wave_files.append(f.name)
+            audiotools.WaveAudio.from_pcm(f.name,
+                                          audiofile.to_pcm())
+        print (u"* %s" % (audiofile.filename.decode(audiotools.FS_ENCODING))
+               ).encode(audiotools.IO_ENCODING,'replace')
+
+    exec_args += wave_files
+    subprocess.call(exec_args)
+
+    for f in temp_pool:
+        f.close()
+    del(temp_pool)
+

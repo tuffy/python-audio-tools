@@ -1,0 +1,44 @@
+.TH "trackcmp" 1 "June 15, 2007" "" "Compare Audio Tracks"
+.SH NAME
+trackcmp \- compares one or more audio tracks for equivalence
+.SH SYNOPSIS
+trackcmp [OPTIONS] <track 1> <track 2>
+.SH DESCRIPTION
+.PP
+trackcmp takes two audio tracks and compares their PCM data.
+If they are exactly the same, it prints no output and returns 0.
+If not, a message is displayed and 1 is returned.
+.PP
+trackcmp may also take two directories as arguments.
+In that case, any audio files in both directories are compared
+as per a single file.
+Track numbers are used to determine which file should be compared
+to which.
+.SH OPTIONS
+.TP
+\fB-h, --help\fR
+Show a list of options and exit
+.TP
+\fB--version\fR
+Show the program's version and exit
+.TP
+\fB-i, --inexact\fR
+Ignore binary silence at the start and end of files when
+determining whether they match
+
+.SH SEE ALSO
+.BR track2track (1) ,
+.BR track2xmcd (1) ,
+.BR track2cd (1) ,
+.BR trackinfo (1) ,
+.BR tracklength (1) ,
+.BR trackrename (1) ,
+.BR trackplay (1) ,
+.BR trackcat (1) ,
+.BR cd2track (1) ,
+.BR cd2xmcd (1) ,
+.BR editxmcd (1)
+.SH AUTHOR
+.nf
+Brian Langenberger
+.f

@@ -1,0 +1,166 @@
+#!/usr/bin/python
+
+#Audio Tools, a module and set of tools for manipulating audio data
+#Copyright (C) 2007  Brian Langenberger
+
+#This program is free software; you can redistribute it and/or modify
+#it under the terms of the GNU General Public License as published by
+#the Free Software Foundation; either version 2 of the License, or
+#(at your option) any later version.
+
+#This program is distributed in the hope that it will be useful,
+#but WITHOUT ANY WARRANTY; without even the implied warranty of
+#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#GNU General Public License for more details.
+
+#You should have received a copy of the GNU General Public License
+#along with this program; if not, write to the Free Software
+#Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+
+
+import sys
+import os
+from optparse import OptionParser,make_option
+import audiotools
+
+if (__name__ == '__main__'):
+    parser = OptionParser(usage="%prog [--cdrom CDROM device] [-p] [-s speed] [track] ...",
+                          version="Python Audio Tools %s" % (audiotools.VERSION))
+
+    parser.add_option('-c','--cdrom',action='store',
+                      type='string',dest='cdrom',
+                      default=audiotools.DEFAULT_CDROM)
+
+    parser.add_option('-s','--speed',action='store',
+                      type='int',dest='speed')
+
+    parser.add_option("-d","--dir",action='store',default='.',
+                      dest='dir')
+
+    parser.add_option('-q','--quality',
+                      action='store',
+                      type='string',
+                      dest='quality',
+                      help='the quality to store audio values at')
+
+    parser.add_option('-t','--type',
+                      action='store',
+                      dest='type',
+                      choices=audiotools.TYPE_MAP.keys(),
+                      default='wav',
+                      help='the type of audio value to convert to')
+
+    parser.add_option('-x','--xmcd',
+                      action='store',
+                      type='string',
+                      dest='xmcd',
+                      help='an XMCD file to get audio metadata from')
+
+    (options,args) = parser.parse_args()
+
+    #get the AudioFile class we are converted to
+    AudioType = audiotools.TYPE_MAP[options.type]
+
+    
+    #ensure the selected compression is compatible with that class
+    if (options.quality == 'help'):
+        if (len(AudioType.COMPRESSION_MODES) > 1):
+            print >>sys.stderr,"*** Available compression types for %s:" % \
+                  (AudioType.SUFFIX)
+            for mode in AudioType.COMPRESSION_MODES:
+                print >>sys.stderr,mode
+        else:
+            print >>sys.stderr,"*** Audio type %s has no compression modes" % \
+                  (AudioType.SUFFIX)
+        sys.exit(0)
+    elif (options.quality == None):
+        options.quality = AudioType.DEFAULT_COMPRESSION
+    elif (options.quality not in AudioType.COMPRESSION_MODES):
+        print >>sys.stderr,"*** \"%s\" is not a supported compression " % \
+              (options.quality) + "mode for type \"%s\"" % \
+              (AudioType.SUFFIX)
+        sys.exit(1)
+
+    
+    #if we're using an XMCD file, use that file for MetaData
+    if (options.xmcd != None):
+        try:
+            xmcd = audiotools.parse_xmcd_file(options.xmcd)
+        except audiotools.XMCDException:
+            print sys.stderr,"*** Invalid XMCD file"
+            sys.exit(1)
+    else: #if we're not using an XMCD file, no MetaData
+        xmcd = None
+
+    quality = options.quality
+    base_directory = options.dir
+
+    cdda = audiotools.CDDA(options.cdrom,options.speed)
+
+    if (len(cdda) == 0xFF):
+        print >>sys.stderr,"*** No CD in drive"
+        sys.exit(1)
+
+    encoded = []
+
+    if (len(args) == 0):
+        to_rip = [track for track in cdda]
+    else:
+        to_rip = []
+        for arg in args:
+            try:
+                to_rip.append(cdda[int(arg)])
+            except IndexError:
+                continue
+            except ValueError:
+                continue
+        to_rip.sort(lambda x,y: cmp(x.track_number,y.track_number))
+
+    for cd_track in to_rip:
+        try:
+            if (xmcd != None):  #we have metadata
+                metadata = xmcd[cd_track.track_number]
+
+                filename = os.path.join(
+                    base_directory,
+                    AudioType.track_name(cd_track.track_number,
+                                         metadata))
+
+                if (not os.path.isdir(os.path.dirname(filename))):
+                    os.makedirs(os.path.dirname(filename))
+
+                track = AudioType.from_pcm(
+                    filename,
+                    cd_track,
+                    quality)
+
+                track.set_metadata(metadata)
+                encoded.append(track)
+            else:               #no metadata
+                filename = os.path.join(
+                    base_directory,
+                    AudioType.track_name(cd_track.track_number,
+                                         None))
+
+                if (not os.path.isdir(os.path.dirname(filename))):
+                    os.makedirs(os.path.dirname(filename))
+                
+                track = AudioType.from_pcm(
+                    filename,
+                    cd_track,
+                    quality)
+                encoded.append(track)
+            print "track %2.2d: %s" % (cd_track.track_number,
+                                       str(cd_track.rip_log))
+            print (u"track %2.2d -> %s" % (cd_track.track_number,
+                                           track.filename.decode(
+                        audiotools.FS_ENCODING))).encode(
+            audiotools.IO_ENCODING)
+        except KeyError:
+            continue
+        except audiotools.InvalidFormat,msg:
+            print >>sys.stderr,"*** %2.2d: %s" % (cd_track.track_number,
+                                                  str(msg))
+            continue
+
+    AudioType.add_replay_gain([track.filename for track in encoded])

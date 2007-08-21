@@ -1,0 +1,3 @@
+[ /Title (Python Audio Tools Manual)
+  /Author (Brian Langenberger)
+  /DOCINFO pdfmark

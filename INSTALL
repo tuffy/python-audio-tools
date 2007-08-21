@@ -1,0 +1,65 @@
+			Installation Procedure
+
+To install Python Audio Tools, you simply need to run:
+
+make install
+
+as root from this source directory. This will use the Python interpreter 
+to install the audiotools Python module and the executable scripts.
+It will then install the man pages from the doc/ subdirectory.
+If you do not have the Construct Python module installed, you can run:
+
+make construct_install
+
+as root from the audiotools source directory to install it.
+To verify your Python Audio Tools installation, run:
+
+audiotools-config
+
+as a normal user. This will load the audiotools Python module, 
+if possible, and deliver a listing of available audio formats and 
+current system settings.
+
+
+		     Fixing Installation Problems
+
+* The audiotools.cdio module doesn't build correctly
+
+  Check that you have the CDIO library installed, commonly known as libcdio
+  If libcdio is installed the module still doesn't build, ensure that 
+  you've also installed any accompanying libcdio-devel package.
+
+
+* The Construct module isn't found
+
+  Run the "make construct_install" command from this source directory, 
+  as root, to install this module.
+
+
+* audiotools-config lists formats as unavailable
+
+  Certain audio formats require external programs. For instance,
+  to use FLAC files, Python Audio Tools requires the flac and metaflac 
+  programs. If these cannot be found in the regular executable search path 
+  or from the config file, you will not be able to use that format.
+  Check your system's package manager for programs which may be available
+  but not yet installed.
+
+
+* My Python interpreter isn't found, or I wish to use a different one
+
+  The first line of Makefile is which Python interpreter is being used for 
+  installation of both the Python Audio Tools and Construct module.
+  For instance, to use a Python interpreter located at
+  /opt/python/bin/python, you should change that line to read:
+
+  export PYTHON = /opt/python/bin/python
+
+  Running make will then invoke the new interpreter for installation of 
+  the audiotools module and scripts.
+
+
+
+For additional information, please see the complete manual in the "docs"
+subdirectory named "audiotools_letter.pdf" and "audiotools_a4.pdf".
+

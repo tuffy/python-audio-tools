@@ -1,0 +1,43 @@
+.TH "trackplay" 1 "June 15, 2007" "" "Play Audio Tracks"
+.SH NAME
+trackplay \- plays audio tracks to an OSS device
+.SH SYNOPSIS
+trackplay <track 1> [track 2] ...
+.SH DESCRIPTION
+.PP
+trackinfo takes a list of audio tracks and plays them to an
+Open Sound System-compatible device, such as \fI/dev/dsp\fR.
+.SH OPTIONS
+.TP
+\fB-h, --help\fR
+Show a list of options and exit
+.TP
+\fB--version\fR
+Show the program's version and exit
+
+.SH ENVIRONMENT
+.TP
+.B AUDIODEV
+If
+.B AUDIODEV
+is set,
+.BR trackplay (1)
+uses it as the device to play the given audio tracks.
+Otherwise, the default \fI/dev/dsp\fR is used.
+
+.SH SEE ALSO
+.BR track2track (1) ,
+.BR track2xmcd (1) ,
+.BR track2cd (1) ,
+.BR trackrename (1) ,
+.BR trackinfo (1) ,
+.BR tracklength (1) ,
+.BR trackcmp (1) ,
+.BR trackcat (1) ,
+.BR cd2track (1) ,
+.BR cd2xmcd (1) ,
+.BR editxmcd (1)
+.SH AUTHOR
+.nf
+Brian Langenberger
+.f

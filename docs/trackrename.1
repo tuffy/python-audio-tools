@@ -1,0 +1,56 @@
+.TH "trackrename" 1 "June 15, 2007" "" "Audio File Renamer"
+.SH NAME
+trackrename \- renames files based on metadata
+.SH SYNOPSIS
+trackrename [OPTIONS] <track 1> [track 2] ...
+.SH DESCRIPTION
+.PP
+trackrename takes a list of audio files and
+renames them based on external or internal metadata.
+.SH OPTIONS
+.TP
+\fB-h, --help\fR
+Show a list of options and exit
+.TP
+\fB--version\fR
+Show the program's version and exit
+.TP
+\fB-x \fIfilename\fB, --xmcd=\fIfilename\fR
+The filename to retrieve metadata from.
+If present, the tracks will not only be renamed based on the
+XMCD file's contents but their own metadata will be set from those
+contents.
+If omitted, the tracks will be renamed based on their own
+metadata contents but will not otherwise be modified.
+
+.SH EXAMPLES
+.LP
+Rename all of the FLAC files in the current directory based on
+their Vorbis Comment metadata:
+.IP
+.B track2rename
+.I *.flac
+
+.LP
+Rename and re-tag all of the MP3s in \fItargetdir\fR based on
+the contents of \fIalbum.xmcd\fR.
+.IP
+.B trackrename \-x
+.I album.xmcd targetdir/*.mp3
+
+.SH SEE ALSO
+.BR track2track (1) ,
+.BR track2xmcd (1) ,
+.BR track2cd (1) ,
+.BR trackinfo (1) ,
+.BR tracklength (1) ,
+.BR trackplay (1) ,
+.BR trackcmp (1) ,
+.BR trackcat (1) ,
+.BR cd2track (1) ,
+.BR cd2xmcd (1) ,
+.BR editxmcd (1)
+.SH AUTHOR
+.nf
+Brian Langenberger
+.f

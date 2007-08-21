@@ -1,0 +1,79 @@
+#!/usr/bin/python
+
+#Audio Tools, a module and set of tools for manipulating audio data
+#Copyright (C) 2007  Brian Langenberger
+
+#This program is free software; you can redistribute it and/or modify
+#it under the terms of the GNU General Public License as published by
+#the Free Software Foundation; either version 2 of the License, or
+#(at your option) any later version.
+
+#This program is distributed in the hope that it will be useful,
+#but WITHOUT ANY WARRANTY; without even the implied warranty of
+#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#GNU General Public License for more details.
+
+#You should have received a copy of the GNU General Public License
+#along with this program; if not, write to the Free Software
+#Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+
+
+import sys
+import audiotools
+import audiotools.cdio as cdio
+from optparse import OptionParser,make_option
+
+if (__name__ == '__main__'):
+    parser = OptionParser(usage=\
+     "%prog [-x XMCD file] [-s server] [-p port] [--cdrom CDROM device]",
+                          version="Python Audio Tools %s" % (audiotools.VERSION))
+    parser.add_option('-x','--xmcd',action='store',
+                      type='string',dest='xmcd',default='-')
+    parser.add_option('-c','--cdrom',action='store',
+                      type='string',dest='cdrom',
+                      default=audiotools.DEFAULT_CDROM)
+    parser.add_option('-s','--freedb-server',action='store',
+                      type='string',dest='freedb_server',
+                      default=audiotools.FREEDB_SERVER)
+    parser.add_option('-p','--freedb-port',action='store',
+                      type='int',dest='freedb_port',
+                      default=audiotools.FREEDB_PORT)
+    parser.add_option('-i','--id',dest='discid',
+                      action='store_true',default=False,
+                      help='display disc ID rather than fetch XMCD data')
+       
+    (options,args) = parser.parse_args()
+
+    try:
+      if (options.xmcd == '-'):
+         outfile = sys.stdout
+      else:
+         outfile = open(options.xmcd,"w")
+    except IOError,err:
+      print >>audiotools.STDERR,"%s: %s" % (err.filename,err[1])
+      sys.exit(1)
+
+    try:
+        cdda = audiotools.CDDA(options.cdrom)
+
+        if (len(cdda) == 255):
+             print >>sys.stderr,"*** No CD in drive"
+             sys.exit(1)
+        
+        tracks = list(cdda)
+
+        id = audiotools.DiscID([t.length() for t in tracks],
+                               [t.offset() for t in tracks],
+                               cdda.length(),
+                               tracks[0].offset())
+        print >>sys.stderr,"* Found CD information"
+
+        if (not options.discid):
+            audiotools.get_xmcd(id, outfile,
+                                options.freedb_server,options.freedb_port)
+        else:
+            print id.freedb_id()
+
+            
+    except IOError,msg:
+        print >>sys.stderr,"* Error: %s" % (msg)

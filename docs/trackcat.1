@@ -1,0 +1,58 @@
+.TH "trackcat" 1 "June 15, 2007" "" "Audio Concatenater"
+.SH NAME
+trackcat \- concatenate two or more audio tracks
+.SH SYNOPSIS
+trackcat [OPTIONS] <track 1> <track 2> [track 3] ...
+.SH DESCRIPTION
+.PP
+trackcat combines the audio data from two or more audio tracks
+into a single output track.
+.SH OPTIONS
+.TP
+\fB-h, --help\fR
+Show a list of options and exit
+.TP
+\fB--version\fR
+Show the program's version and exit
+.TP
+\fB-t \fItype\fB, --type=\fItype\fR
+The audio format of the output track.
+For a list of available audio formats, try:
+.B \-t
+.B help
+.TP
+\fB-q \fIquality\fB, --quality=\fIquality\fR
+The desired quality of the output track.
+For a list of available quality modes for a given format, try:
+.B \-q
+.B help
+.TP
+\fB-o \fIfilename\fB, --output=\fIfilename\fR
+The output filename of the converted track.
+
+.SH EXAMPLE
+.LP
+Convert all of the WAVE files in \fIsourcedir\fR to a single
+FLAC file, \fIalbum.flac\fR at the highest possible compression
+(quality 8):
+.IP
+.B trackcat \-t
+.I flac \fB-q\fI 8 \fB-o \fIalbum.flac\fR
+.I sourcedir/*.wav
+
+.SH SEE ALSO
+.BR track2track (1), 
+.BR track2cd (1) ,
+.BR track2xmcd (1) ,
+.BR trackinfo (1) ,
+.BR tracklength (1) ,
+.BR trackrename (1) ,
+.BR trackplay (1) ,
+.BR trackcmp (1) ,
+.BR cd2track (1) ,
+.BR cd2xmcd (1) ,
+.BR editxmcd (1)
+.SH AUTHOR
+.nf
+Brian Langenberger
+.f

@@ -1,0 +1,33 @@
+.TH "tracklength" 1 "June 15, 2007" "" "Track Length"
+.SH NAME
+tracklength \- prints the total length of all tracks
+.SH SYNOPSIS
+tracklength <track 1> [track 2] ...
+.SH DESCRIPTION
+.PP
+tracklength takes a list of audio tracks and writes their total
+length to standard output in hours:minutes:seconds format.
+If directories are given, tracklength searches them recursively
+and adds the length of any supported audio files found to the
+total.
+.SH OPTIONS
+.TP
+\fB-h, --help\fR
+Show a list of options and exit
+
+.SH SEE ALSO
+.BR track2track (1) ,
+.BR track2xmcd (1) ,
+.BR trackinfo (1) ,
+.BR track2cd (1) ,
+.BR trackrename (1) ,
+.BR trackplay (1) ,
+.BR trackcmp (1) ,
+.BR trackcat (1) ,
+.BR cd2track (1) ,
+.BR cd2xmcd (1) ,
+.BR editxmcd (1)
+.SH AUTHOR
+.nf
+Brian Langenberger
+.f

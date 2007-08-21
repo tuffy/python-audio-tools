@@ -1,0 +1,80 @@
+#!/usr/bin/python
+
+#Audio Tools, a module and set of tools for manipulating audio data
+#Copyright (C) 2007  Brian Langenberger
+
+#This program is free software; you can redistribute it and/or modify
+#it under the terms of the GNU General Public License as published by
+#the Free Software Foundation; either version 2 of the License, or
+#(at your option) any later version.
+
+#This program is distributed in the hope that it will be useful,
+#but WITHOUT ANY WARRANTY; without even the implied warranty of
+#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#GNU General Public License for more details.
+
+#You should have received a copy of the GNU General Public License
+#along with this program; if not, write to the Free Software
+#Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+
+
+import sys
+
+if (__name__ == '__main__'):
+    try:
+        import audiotools
+    except ImportError:
+        print "* audiotools Python module not found!"
+        print "Perhaps you should re-install the audiotools."
+
+    #print "* Available audio formats:"
+    #print
+    
+    suffix_len = max([len(audiotype.SUFFIX) for audiotype in
+                      audiotools.AVAILABLE_TYPES])
+
+    available = []
+    unavailable = []
+    available_binaries = set()
+    unavailable_binaries = set()
+    for audiotype in sorted(audiotools.AVAILABLE_TYPES,
+                            lambda x,y: cmp(x.SUFFIX,y.SUFFIX)):
+        if (audiotype.has_binaries(audiotools.BIN)):
+            available.append(audiotype.SUFFIX)
+        else:
+            unavailable.append(audiotype.SUFFIX)
+        for binary in audiotype.BINARIES:
+            if (audiotools.BIN.can_execute(binary)):
+                available_binaries.add(binary)
+            else:
+                unavailable_binaries.add(binary)
+
+    print "*   available formats : %s" % \
+        ", ".join(sorted(available))
+    print "* unavailable formats : %s" % \
+        ", ".join(sorted(unavailable))
+
+    binaries = sorted(list(available_binaries) + list(unavailable_binaries))
+    for binary in binaries:
+        if (audiotools.BIN.can_execute(audiotools.BIN[binary])):
+            print "+     found : %s" % (binary)
+        else:
+            print "- not found : %s" % (binary)
+    
+    
+    print "-" * 30
+
+    print "* System configuration:"
+    print
+
+    print "+ Default FreeDB server : %s" % (audiotools.FREEDB_SERVER)
+    print "+ Default FreeDB port   : %s" % (audiotools.FREEDB_PORT)
+
+    print
+
+    print "+ Default CD-ROM device : %s" % (audiotools.DEFAULT_CDROM)
+    print "+ Maximum processes     : %s" % (audiotools.MAX_JOBS)
+
+    print
+
+    print "+ File name format      : %s" % (audiotools.FILENAME_FORMAT)

@@ -1,0 +1,62 @@
+.TH "cd2xmcd" 1 "June 15, 2007" "" "Compact Disc Metadata Retriever"
+.SH NAME
+cd2xmcd \- retrieves metadata from a compact disc
+.SH SYNOPSIS
+cd2xmcd [OPTIONS]
+.SH DESCRIPTION
+.PP
+cd2xmcd takes a compact disc device and retrieves an XMCD file 
+containing its metadata such as track name, album name and artist.
+If no data can be found, an empty XMCD file is written which can
+be edited by the user.
+.SH OPTIONS
+.TP
+\fB-h, --help\fR
+Show a list of options and exit
+.TP
+\fB--version\fR
+Show the program's version and exit
+.TP
+\fB-x \fIfilename\fB, --xmcd=\fIfilename\fR
+The file in which the XMCD data will be placed.
+.BR cd2xmcd (1)
+will refuse to overwrite an existing file if present.
+If no filename is given, XMCD data will be written to
+standard output.
+.TP
+\fB-c \fIcdrom\fB, --cdrom=\fIcdrom\fR
+The cdrom device to read CD information from
+.TP
+\fB-s \fIserver\fB, --freedb-server=\fIserver\fR
+The FreeDB server name to query for XMCD data
+.TP
+\fB-p \fIport\fB, --freedb-port=\fIport\fR
+The FreeDB port number to query for XMCD data
+.TP
+\fB-i, --id\fR
+Calculate and display the disc ID rather than retrieve XMCD data
+
+.SH EXAMPLE
+.LP
+Obtain an XMCD file called \fIalbum.xmcd\fR from the contents
+of \fI/dev/cdrom\fR.
+.IP
+.B cd2xmcd \-x
+.I album.xmcd \fB-c\fI /dev/cdrom
+
+.SH SEE ALSO
+.BR track2track (1) ,
+.BR track2xmcd (1) ,
+.BR track2cd (1) ,
+.BR trackinfo (1) ,
+.BR tracklength (1) ,
+.BR trackrename (1) ,
+.BR trackplay (1) ,
+.BR trackcmp (1) ,
+.BR trackcat (1) ,
+.BR cd2track (1) ,
+.BR editxmcd (1)
+.SH AUTHOR
+.nf
+Brian Langenberger
+.f

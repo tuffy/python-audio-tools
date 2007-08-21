@@ -1,0 +1,121 @@
+#!/usr/bin/python
+
+#Audio Tools, a module and set of tools for manipulating audio data
+#Copyright (C) 2007  Brian Langenberger
+
+#This program is free software; you can redistribute it and/or modify
+#it under the terms of the GNU General Public License as published by
+#the Free Software Foundation; either version 2 of the License, or
+#(at your option) any later version.
+
+#This program is distributed in the hope that it will be useful,
+#but WITHOUT ANY WARRANTY; without even the implied warranty of
+#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#GNU General Public License for more details.
+
+#You should have received a copy of the GNU General Public License
+#along with this program; if not, write to the Free Software
+#Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+
+
+import audiotools
+import optparse,sys,os,os.path
+
+class PCMCat(audiotools.PCMReader):
+    #takes a list of PCMReader objects
+    #returns their data concatted together
+    def __init__(self, pcmreaders):
+        if (len(pcmreaders) < 1):
+            raise ValueError("You must have at least one PCMReader")
+
+        self.pcmreaders = pcmreaders
+        self.reader_queue = pcmreaders[:]
+
+        self.sample_rate = pcmreaders[0].sample_rate
+        self.channels = pcmreaders[0].channels
+        self.bits_per_sample = pcmreaders[0].bits_per_sample
+    
+    def read(self, bytes):
+        if (len(self.reader_queue) > 0):
+            s = self.reader_queue[0].read(bytes)
+            if (len(s) > 0):
+                return s
+            else:
+                self.reader_queue.pop(0)
+                return self.read(bytes)
+        else:
+            return ""
+
+    def close(self):
+        for p in self.pcmreaders:
+            p.close()
+
+if (__name__ == '__main__'):
+    parser = optparse.OptionParser(
+        '%prog [-t track type] ' + \
+        '[-o output] [-q quality] ' + \
+        '<track 1> [track 2] ...',
+        version="Python Audio Tools %s" % (audiotools.VERSION))
+
+    parser.add_option('-q','--quality',
+                      action='store',
+                      type='string',
+                      dest='quality',
+                      help='the quality to store audio values at')
+
+    parser.add_option('-t','--type',
+                      action='store',
+                      dest='type',
+                      choices=audiotools.TYPE_MAP.keys(),
+                      default='wav',
+                      help='the type of audio value to convert to')
+
+    parser.add_option('-o','--outfile',dest='filename',
+                      metavar='FILE',
+                      help='the output file')
+    
+    (options,args) = parser.parse_args()
+
+    if (options.filename == None):
+        print >>sys.stderr,'*** You must specify an output filename'
+        sys.exit(1)
+
+    #get the AudioFile class we are converted to
+    AudioType = audiotools.TYPE_MAP[options.type]
+
+    #ensure the selected compression is compatible with that class
+    if (options.quality == 'help'):
+        if (len(AudioType.COMPRESSION_MODES) > 1):
+            print >>sys.stderr,"*** Available compression types for %s:" % \
+                  (AudioType.SUFFIX)
+            for mode in AudioType.COMPRESSION_MODES:
+                print >>sys.stderr,mode
+        else:
+            print >>sys.stderr,"*** Audio type %s has no compression modes" % \
+                  (AudioType.SUFFIX)
+        sys.exit(0)
+    elif (options.quality == None):
+        options.quality = AudioType.DEFAULT_COMPRESSION
+    elif (options.quality not in AudioType.COMPRESSION_MODES):
+        print >>sys.stderr,"*** \"%s\" is not a supported compression " % \
+              (options.quality) + "mode for type \"%s\"" % \
+              (AudioType.SUFFIX)
+        sys.exit(1)
+
+    #grab the list of AudioFile objects we are converting from
+    audiofiles = audiotools.open_files(args)
+    if (len(audiofiles) < 1):
+        print >>sys.stderr,"*** You must specify at least 1 supported audio file"
+        sys.exit(1)
+
+    quality = options.quality
+    
+    pcmdata = PCMCat([af.to_pcm() for af in audiofiles])
+
+    try:
+        encoded = AudioType.from_pcm(options.filename,
+                                     pcmdata,
+                                     quality)
+    except audiotools.InvalidFormat,msg:
+        print >>sys.stderr,"*** %s: %s" % (options.filename,str(msg))
+    

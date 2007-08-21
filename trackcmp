@@ -1,0 +1,91 @@
+#!/usr/bin/python
+
+#Audio Tools, a module and set of tools for manipulating audio data
+#Copyright (C) 2007  Brian Langenberger
+
+#This program is free software; you can redistribute it and/or modify
+#it under the terms of the GNU General Public License as published by
+#the Free Software Foundation; either version 2 of the License, or
+#(at your option) any later version.
+
+#This program is distributed in the hope that it will be useful,
+#but WITHOUT ANY WARRANTY; without even the implied warranty of
+#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#GNU General Public License for more details.
+
+#You should have received a copy of the GNU General Public License
+#along with this program; if not, write to the Free Software
+#Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+
+
+import audiotools
+import optparse,sys,os,os.path,operator
+
+def near_equal(audiofile1, audiofile2):
+    p1 = audiofile1.to_pcm()
+    p2 = audiofile2.to_pcm()
+    try:
+        return audiotools.stripped_pcm_cmp(p1,p2)
+    finally:
+        p1.close()
+        p2.close()
+
+if (__name__ == '__main__'):
+    parser = optparse.OptionParser(
+        '%prog <file 1> <file 2>',
+        version="Python Audio Tools %s" % (audiotools.VERSION))
+
+    parser.add_option('-i','--inexact',
+                      action='store_true',
+                      dest='inexact',
+                      default=False)
+
+    (options,args) = parser.parse_args()
+    if (len(args) != 2):
+        print >>sys.stderr,"*** Usage: %s <file 1> <file 2>" % (sys.argv[0])
+        sys.exit(1)
+
+    if (not options.inexact):
+        check_function = operator.eq
+    else:
+        check_function = near_equal
+
+    if (os.path.isfile(args[0]) and os.path.isfile(args[1])):
+        audiofiles = audiotools.open_files(args)
+        if (len(audiofiles) == 2):
+            if (check_function(audiofiles[0],audiofiles[1])):
+                pass
+            else:
+                print (u"%s != %s" % \
+                           (audiofiles[0].filename.decode(audiotools.FS_ENCODING),
+                            audiofiles[1].filename.decode(audiotools.FS_ENCODING))).encode(audiotools.IO_ENCODING,'replace')
+                sys.exit(1)
+        else:
+            print "*** Both are not audio files"
+            sys.exit(1)
+    elif (os.path.isdir(args[0]) and os.path.isdir(args[0])):
+        files1 = audiotools.open_files(
+            [os.path.join(args[0],f) for f in os.listdir(args[0])
+             if os.path.isfile(os.path.join(args[0],f))])
+        files2 = audiotools.open_files(
+            [os.path.join(args[1],f) for f in os.listdir(args[1])
+             if os.path.isfile(os.path.join(args[1],f))])
+        files1_map = dict([(f.track_number(),f) for f in files1])
+        files2_map = dict([(f.track_number(),f) for f in files2])
+
+        for track_number in sorted(list(set(files1_map.keys()) & \
+                                        set(files2_map.keys()))):
+            sys.stdout.write(
+                (u"%s <> %s :" % \
+                     (files1_map[track_number].filename.decode(audiotools.FS_ENCODING),
+                      files2_map[track_number].filename.decode(audiotools.FS_ENCODING))).encode(audiotools.IO_ENCODING,'replace'))
+            sys.stdout.flush()
+            if (check_function(files1_map[track_number],
+                               files2_map[track_number])):
+                print "OK"
+            else:
+                print "differ"
+    else:
+        print (u"%s %s differ" % (args[0].decode(audiotools.FS_ENCODING),
+                                  args[1].decode(audiotools.FS_ENCODING))).encode(audiotools.IO_ENCODING,'replace')
+        sys.exit(1)
