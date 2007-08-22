@@ -31,50 +31,43 @@ if (__name__ == '__main__'):
                       action='store',
                       type='string',
                       dest='track_name',
-                      help="the name of the track",
-                      default="")
+                      help="the name of the track")
 
     parser.add_option('--number',
                       action='store',
                       type='int',
                       dest='track_number',
-                      help="the number of the track in the album",
-                      default=0)
+                      help="the number of the track in the album")
     
     parser.add_option('--album',
                       action='store',
                       type='string',
                       dest='album_name',
-                      help='the name of the album',
-                      default="")
+                      help='the name of the album')
 
     parser.add_option('--artist',
                       action='store',
                       type='string',
                       dest='artist_name',
-                      help='the name of the artist',
-                      default="")
+                      help='the name of the artist')
 
     parser.add_option('--performer',
                       action='store',
                       type='string',
                       dest='performer_name',
-                      help='the name of the performer',
-                      default="")
+                      help='the name of the performer')
 
     parser.add_option('--copyright',
                       action='store',
                       type='string',
                       dest='copyright',
-                      help='copyright information',
-                      default="")
+                      help='copyright information')
 
     parser.add_option('--year',
                       action='store',
                       type='string',
                       dest='year',
-                      help='the year of release',
-                      default="")
+                      help='the year of release')
 
     parser.add_option('-r','--replace',
                       action='store_true',
@@ -84,4 +77,35 @@ if (__name__ == '__main__'):
 
     (options,args) = parser.parse_args()
     audiofiles = audiotools.open_files(args)
-    print repr(options)
+
+    for file in audiofiles:
+        if (options.replace):
+            #this is a horrible way of handling default variables
+            #which will be replaced once Python2.5 is more widespread
+            metadata = audiotools.MetaData(
+                track_name={None:""}.get(options.track_name,
+                                         options.track_name),
+                track_number={None:0}.get(options.track_number,
+                                           options.track_number),
+                album_name={None:""}.get(options.album_name,
+                                         options.album_name),
+                artist_name={None:""}.get(options.artist_name,
+                                          options.artist_name),
+                performer_name={None:""}.get(options.performer_name,
+                                             options.performer_name),
+                copyright={None:""}.get(options.copyright,
+                                         options.copyright),
+                year={None:""}.get(options.year,
+                                   options.year))
+            
+            file.set_metadata(metadata)
+        else:
+            metadata = file.get_metadata()
+            if (metadata != None):
+                for field in ('track_name','track_number','album_name',
+                              'artist_name','performer_name','copyright',
+                              'year'):
+                    if (getattr(options,field) != None):
+                        setattr(metadata,field,getattr(options,field))
+                file.set_metadata(metadata)
+                
