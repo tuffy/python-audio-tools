@@ -375,16 +375,20 @@ class MetaData:
                  copyright=u"",     #the song's copyright information
                  year=u""           #the album's release year
                  ):
-        self.track_name = track_name
-        self.track_number = track_number
-        self.album_name = album_name
-        self.artist_name = artist_name
-        if (performer_name != u""):
-            self.performer_name = performer_name
+        #we're avoiding self.foo = foo because
+        #__setattr__ might need to be redefined
+        #which could lead to unwelcome side-effects
+        self.__dict__['track_name'] = track_name
+        self.__dict__['track_number'] = track_number
+        self.__dict__['album_name'] = album_name
+        self.__dict__['artist_name'] = artist_name
+        if (performer_name != u''):
+            self.__dict__['performer_name'] = performer_name
         else:
-            self.performer_name = artist_name
-        self.copyright = copyright
-        self.year = year
+            self.__dict__['performer_name'] = artist_name
+
+        self.__dict__['copyright'] = copyright
+        self.__dict__['year'] = year
 
     def __repr__(self):
         return "MetaData(%s,%s,%s,%s,%s,%s,%s)" % \
@@ -1488,6 +1492,16 @@ class VorbisComment(MetaData,dict):
                                        subcon=Con.PascalString("value",
                                                              length_field=Con.ULInt32("length"))))
 
+    ATTRIBUTE_MAP = {'track_name':'TITLE',
+                     'track_number':'TRACKNUMBER',
+                     'album_name':'ALBUM',
+                     'artist_name':'ARTIST',
+                     'performer_name':'PERFORMER',
+                     'copyright':'COPYRIGHT',
+                     'year':'YEAR'}
+
+    ITEM_MAP = dict(map(reversed,ATTRIBUTE_MAP.items()))
+
     #vorbis_data is a key->[value1,value2,...] dict of the original
     #Vorbis comment data.  keys should be upper case
     def __init__(self, vorbis_data):
@@ -1503,19 +1517,38 @@ class VorbisComment(MetaData,dict):
                           
         dict.__init__(self,vorbis_data)
 
+    def __setattr__(self, key, value):
+        self.__dict__[key] = value
+        
+        if (self.ATTRIBUTE_MAP.has_key(key)):
+            if (key != 'track_number'):
+                self[self.ATTRIBUTE_MAP[key]] = [value]
+            else:
+                self[self.ATTRIBUTE_MAP[key]] = [unicode(value)]
+
+    def __setitem__(self, key, value):
+        dict.__setitem__(self, key, value)
+        
+        if (self.ITEM_MAP.has_key(key)):
+            if (key != 'TRACKNUMBER'):
+                self.__dict__[self.ITEM_MAP[key]] = value[0]
+            else:
+                self.__dict__[self.ITEM_MAP[key]] = int(value[0])
+        
+
     @classmethod
     def converted(cls, metadata):
         if ((metadata is None) or (isinstance(metadata,VorbisComment))):
             return metadata
         else:
-            return VorbisComment(
-                {"TITLE":[metadata.track_name],
-                 "TRACKNUMBER":[unicode(metadata.track_number)],
-                 "ALBUM":[metadata.album_name],
-                 "ARTIST":[metadata.artist_name],
-                 "PERFORMER":[metadata.performer_name],
-                 "COPYRIGHT":[metadata.copyright],
-                 "YEAR":[metadata.year]})
+            values = {}
+            for key in cls.ATTRIBUTE_MAP.keys():
+                if (getattr(metadata,key) != u""):
+                    values[cls.ATTRIBUTE_MAP[key]] = \
+                        [unicode(getattr(metadata,key))]
+
+            #print >>sys.stderr,values
+            return VorbisComment(values)
 
     def __comment_name__(self):
         return u'Vorbis'

@@ -40,4 +40,4 @@ setup (name = 'Python Audio Tools',
        scripts = ["cd2track","cd2xmcd",
                   "track2track","track2xmcd","trackrename","trackinfo",
                   "tracklength","track2cd","trackcmp","trackcat","trackplay",
-                  "editxmcd", "audiotools-config"])
+                  "tracktag","editxmcd", "audiotools-config"])

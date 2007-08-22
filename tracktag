@@ -76,6 +76,12 @@ if (__name__ == '__main__'):
                       help='the year of release',
                       default="")
 
+    parser.add_option('-r','--replace',
+                      action='store_true',
+                      default=False,
+                      dest='replace',
+                      help='completely replace all metadata')
+
     (options,args) = parser.parse_args()
     audiofiles = audiotools.open_files(args)
     print repr(options)
