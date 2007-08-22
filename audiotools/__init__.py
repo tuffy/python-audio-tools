@@ -1517,6 +1517,8 @@ class VorbisComment(MetaData,dict):
                           
         dict.__init__(self,vorbis_data)
 
+    #if an attribute is updated (e.g. self.track_name)
+    #make sure to update the corresponding dict pair
     def __setattr__(self, key, value):
         self.__dict__[key] = value
         
@@ -1526,6 +1528,8 @@ class VorbisComment(MetaData,dict):
             else:
                 self[self.ATTRIBUTE_MAP[key]] = [unicode(value)]
 
+    #if a dict pair is updated (e.g. self['TITLE'])
+    #make sure to update the corresponding attribute
     def __setitem__(self, key, value):
         dict.__setitem__(self, key, value)
         
@@ -1547,7 +1551,6 @@ class VorbisComment(MetaData,dict):
                     values[cls.ATTRIBUTE_MAP[key]] = \
                         [unicode(getattr(metadata,key))]
 
-            #print >>sys.stderr,values
             return VorbisComment(values)
 
     def __comment_name__(self):
@@ -2088,6 +2091,16 @@ class ID3v2Comment(MetaData,dict):
                           Con.Flag("encryption"),
                           Con.Flag("unsynchronization"),
                           Con.Flag("data_length"))))
+
+    ATTRIBUTE_MAP = {'track_name':'TIT2',
+                     'track_number':'TRCK',
+                     'album_name':'TALB',
+                     'artist_name':'TPE1',
+                     'performer_name':'TPE2',
+                     'copyright':'WCOP',
+                     'year':'TDRC'}
+    
+    ITEM_MAP = dict(map(reversed,ATTRIBUTE_MAP.items()))
     
     #takes a filename
     #returns an ID3v2Comment-based object
@@ -2263,6 +2276,28 @@ class ID3v2Comment(MetaData,dict):
         
         dict.__init__(self,metadata)
 
+    #if an attribute is updated (e.g. self.track_name)
+    #make sure to update the corresponding dict pair
+    def __setattr__(self, key, value):
+        self.__dict__[key] = value
+
+        if (self.ATTRIBUTE_MAP.has_key(key)):
+            if (key != 'track_number'):
+                self[self.ATTRIBUTE_MAP[key]] = value
+            else:
+                self[self.ATTRIBUTE_MAP[key]] = unicode(value)
+
+    #if a dict pair is updated (e.g. self['TIT2'])
+    #make sure to update the corresponding attribute
+    def __setitem__(self, key, value):
+        dict.__setitem__(self, key, value)
+        
+        if (self.ITEM_MAP.has_key(key)):
+            if (key != 'TRCK'):
+                self.__dict__[self.ITEM_MAP[key]] = value
+            else:
+                self.__dict__[self.ITEM_MAP[key]] = int(value)
+
     @classmethod
     def converted(cls, metadata):
         if ((metadata is None) or (isinstance(metadata,ID3v2Comment))):
@@ -2270,14 +2305,10 @@ class ID3v2Comment(MetaData,dict):
 
         tags = {}
 
-        for (key,field) in zip(("TIT2","TALB","TRCK","TPE1",
-                                "TPE2","WCOP","TDRC"),
-                               ("track_name","album_name",
-                                "track_number","artist_name",
-                                "performer_name","copyright","year")):
+        for (key,field) in cls.ITEM_MAP.items():
             field = getattr(metadata,field)
             if (field != u""):
-                tags[key] = field
+                tags[key] = unicode(field)
                 
         if (tags["TPE1"] == tags["TPE2"]):
             del(tags["TPE2"])
@@ -2364,6 +2395,16 @@ class ID3v2_3Comment(ID3v2Comment):
                           Con.Flag("grouping"),
                           Con.Padding(5))))
 
+    ATTRIBUTE_MAP = {'track_name':'TIT2',
+                     'track_number':'TRCK',
+                     'album_name':'TALB',
+                     'artist_name':'TPE1',
+                     'performer_name':'TPE2',
+                     'copyright':'WCOP',
+                     'year':'TDRC'}
+    
+    ITEM_MAP = dict(map(reversed,ATTRIBUTE_MAP.items()))
+
     #takes a stream of ID3v2 data
     #returns a (frame id,frame data) tuple
     #raises EndOfID3v2Stream if we've reached the end of valid frames
@@ -2398,12 +2439,7 @@ class ID3v2_3Comment(ID3v2Comment):
 
         tags = {}
 
-        for (key,field) in zip(("TIT2","TALB","TRCK","TPE1",
-                                "TPE2","WCOP","TYER"),
-                               ("track_name","album_name",
-                                "track_number","artist_name",
-                                "performer_name","copyright",
-                                "year")):
+        for (key,field) in cls.ITEM_MAP.items():
             field = getattr(metadata,field)
             if (field != u""):
                 tags[key] = unicode(field)
@@ -2460,6 +2496,16 @@ class ID3v2_2Comment(ID3v2Comment):
                               Con.Embed(Con.BitStruct("size",
             Con.Bits("frame_size",24))))
 
+    ATTRIBUTE_MAP = {'track_name':'TT2',
+                     'track_number':'TRK',
+                     'album_name':'TAL',
+                     'artist_name':'TP1',
+                     'performer_name':'TP2',
+                     'copyright':'WCP',
+                     'year':'TYE'}
+    
+    ITEM_MAP = dict(map(reversed,ATTRIBUTE_MAP.items()))
+
     @classmethod
     def read_id3v2_frame(cls, stream):
         encode_map = {0:'ISO-8859-1',
@@ -2486,18 +2532,13 @@ class ID3v2_2Comment(ID3v2Comment):
 
         tags = {}
 
-        for (key,field) in zip(("TT2","TAL","TRK","TOA",
-                                "TP1","TP2","TYE"),
-                               ("track_name","album_name",
-                                "track_number","artist_name",
-                                "performer_name","copyright",
-                                "year")):
+        for (key,field) in cls.ITEM_MAP.items():
             field = getattr(metadata,field)
             if (field != u""):
-                tags[key] = field
+                tags[key] = unicode(field)
 
-            if (tags["TP1"] == tags["TP2"]):
-                del(tags["TP2"])
+        if (tags["TP1"] == tags["TP2"]):
+            del(tags["TP2"])
 
         return ID3v2_2Comment(tags)
 
@@ -2571,7 +2612,7 @@ class ID3v2_2Comment(ID3v2Comment):
         return cls.ID3v2_HEADER.build(header) + "".join(tags)
 
 
-class ID3v1Comment(MetaData,tuple):
+class ID3v1Comment(MetaData,list):
     ID3v1 = Con.Struct("id3v1",
       Con.String("identifier",3),
       Con.String("song_title",30),
@@ -2592,6 +2633,12 @@ class ID3v1Comment(MetaData,tuple):
       Con.String("comment",30),
       Con.Byte("genre"))
 
+    ATTRIBUTES = ['track_name',
+                  'artist_name',
+                  'album_name',
+                  'year',
+                  'comment',
+                  'track_number']
     
     #takes an open mp3 file object
     #returns a (song title, artist, album, year, comment, track number) tuple
@@ -2660,7 +2707,29 @@ class ID3v1Comment(MetaData,tuple):
                           performer_name=u"",
                           copyright=u"",
                           year=unicode(metadata[3]))
-        tuple.__init__(self, metadata)
+        list.__init__(self, metadata)
+
+    #if an attribute is updated (e.g. self.track_name)
+    #make sure to update the corresponding list item
+    def __setattr__(self, key, value):
+        self.__dict__[key] = value
+        
+        if (key in self.ATTRIBUTES):
+            if (key != 'track_number'):
+                self[self.ATTRIBUTES.index(key)] = value
+            else:
+                self[self.ATTRIBUTES.index(key)] = int(value)
+
+    #if a list item is updated (e.g. self[1])
+    #make sure to update the corresponding attribute
+    def __setitem__(self, key, value):
+        list.__setitem__(self, key, value)
+        
+        if (key < len(self.ATTRIBUTES)):
+            if (key != 5):
+                self.__dict__[self.ATTRIBUTES[key]] = value
+            else:
+                self.__dict__[self.ATTRIBUTES[key]] = int(value)
 
     @classmethod
     def converted(cls, metadata):
@@ -2672,7 +2741,7 @@ class ID3v1Comment(MetaData,tuple):
                              metadata.album_name,
                              metadata.year,
                              u"",
-                             unicode(metadata.track_number)))
+                             int(metadata.track_number)))
 
     def __comment_name__(self):
         return u'ID3v1'
@@ -2694,8 +2763,8 @@ class ID3CommentPair(MetaData):
     #id3v2 and id3v1 are ID3v2Comment and ID3v1Comment objects or None
     #values in ID3v2 take precendence over ID3v1, if present
     def __init__(self, id3v2_comment, id3v1_comment):
-        self.id3v2 = id3v2_comment
-        self.id3v1 = id3v1_comment
+        self.__dict__['id3v2'] = id3v2_comment
+        self.__dict__['id3v1'] = id3v1_comment
 
         if (self.id3v2 != None):
             base_comment = self.id3v2
@@ -2713,6 +2782,12 @@ class ID3CommentPair(MetaData):
             performer_name=base_comment.performer_name,
             copyright=base_comment.copyright,
             year=base_comment.year)
+
+    def __setattr__(self, key, value):
+        if (self.id3v2 != None):
+            setattr(self.id3v2,key,value)
+        if (self.id3v1 != None):
+            setattr(self.id3v1,key,value)
 
     @classmethod
     def converted(cls, metadata):
@@ -3159,6 +3234,16 @@ class ApeTag(MetaData,dict):
       Con.MetaField("value",
         lambda ctx: ctx["length"]))
 
+    ATTRIBUTE_MAP = {'track_name':'Title',
+                     'track_number':'Track',
+                     'album_name':'Album',
+                     'artist_name':'Composer',
+                     'performer_name':'Artist',
+                     'copyright':'Copyright',
+                     'year':'Year'}
+
+    ITEM_MAP = dict(map(reversed,ATTRIBUTE_MAP.items()))
+
     def __init__(self, tag_dict, tag_length=None):
         MetaData.__init__(self,
                           track_name=tag_dict.get('Title',u''),
@@ -3172,18 +3257,35 @@ class ApeTag(MetaData,dict):
         dict.__init__(self, tag_dict)
         self.tag_length = tag_length
 
+    #if an attribute is updated (e.g. self.track_name)
+    #make sure to update the corresponding dict pair
+    def __setattr__(self, key, value):
+        self.__dict__[key] = value
+        
+        if (self.ATTRIBUTE_MAP.has_key(key)):
+            if (key != 'track_number'):
+                self[self.ATTRIBUTE_MAP[key]] = value
+            else:
+                self[self.ATTRIBUTE_MAP[key]] = unicode(value)
+
+    #if a dict pair is updated (e.g. self['Title'])
+    #make sure to update the corresponding attribute
+    def __setitem__(self, key, value):
+        dict.__setitem__(self, key, value)
+        
+        if (self.ITEM_MAP.has_key(key)):
+            if (key != 'Track'):
+                self.__dict__[self.ITEM_MAP[key]] = value
+            else:
+                self.__dict__[self.ITEM_MAP[key]] = int(value)
+
     @classmethod
     def converted(cls, metadata):
         if ((metadata is None) or (isinstance(metadata,ApeTag))):
             return metadata
         else:
             tags = {}
-            for (key,field) in zip(('Title','Track','Album','Composer',
-                                    'Artist','Copyright',
-                                    'Year'),
-                                   ("track_name","track_number","album_name",
-                                    "artist_name","performer_name","copyright",
-                                    "year")):
+            for (key,field) in item_map.items():
                 field = unicode(getattr(metadata,field))
                 if (field != u''):
                     tags[key] = field
@@ -4486,6 +4588,43 @@ class M4AMetaData(MetaData,dict):
 
         dict.__init__(self, meta_data)
 
+    ATTRIBUTE_MAP = {'track_name':'\xa9nam',
+                     'track_number':'trkn',
+                     'album_name':'\xa9alb',
+                     'artist_name':'\xa9wrt',
+                     'performer_name':'\xa9ART',
+                     'copyright':'cprt',
+                     'year':'\xa9day'}
+
+    ITEM_MAP = dict(map(reversed,ATTRIBUTE_MAP.items()))
+
+    #if an attribute is updated (e.g. self.track_name)
+    #make sure to update the corresponding dict pair
+    def __setattr__(self, key, value):
+        self.__dict__[key] = value
+        
+        if (self.ATTRIBUTE_MAP.has_key(key)):
+            if (key != 'track_number'):
+                self[self.ATTRIBUTE_MAP[key]] = [value]
+            else:
+                trkn = [__Qt_Meta_Atom__.TRKN.build(Con.Container(
+                    track_number=int(value),
+                    total_tracks=0))]
+                
+                self[self.ATTRIBUTE_MAP[key]] = trkn
+
+    #if a dict pair is updated (e.g. self['\xa9nam'])
+    #make sure to update the corresponding attribute
+    def __setitem__(self, key, value):
+        dict.__setitem__(self, key, value)
+        
+        if (self.ITEM_MAP.has_key(key)):
+            if (key != 'trkn'):
+                self.__dict__[self.ITEM_MAP[key]] = value[0]
+            else:
+                trkn = __Qt_Meta_Atom__.TRKN.parse(value[0])
+                self.__dict__[self.ITEM_MAP[key]] = trkn.track_number
+
     @classmethod
     def converted(cls, metadata):
         if ((metadata is None) or (isinstance(metadata,M4AMetaData))):
@@ -4493,18 +4632,15 @@ class M4AMetaData(MetaData,dict):
         
         tags = {}
 
-        for (key,field) in zip(('\xa9nam','\xa9alb','\xa9ART','\xa9wrt',
-                                'cprt','\xa9day'),
-                               ('track_name','album_name',
-                                'performer_name','artist_name',
-                                'copyright','year')):
-            field = getattr(metadata,field)
-            if (field != u''):
-                tags[key] = [field]
-
-        tags['trkn'] = [__Qt_Meta_Atom__.TRKN.build(Con.Container(
-            track_number=metadata.track_number,
-            total_tracks=0))]
+        for (key,field) in cls.ITEM_MAP.items():
+            value = getattr(metadata,field)
+            if (field != 'track_number'):
+                if (value != u''):
+                    tags[key] = [value]
+            else:
+                tags['trkn'] = [__Qt_Meta_Atom__.TRKN.build(Con.Container(
+                    track_number=int(value),
+                    total_tracks=0))]
         
         return M4AMetaData(tags)
 
