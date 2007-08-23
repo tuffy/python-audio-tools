@@ -22,6 +22,36 @@ import sys
 import audiotools
 import os.path,optparse
 
+def blank_metadata(track, xmcd):
+    return audiotools.MetaData()
+
+def track_metadata(track, xmcd):
+    return track.get_metadata()
+
+def xmcd_metadata(track, xmcd):
+    metadata = xmcd[track.track_number()]
+    if (metadata != None):
+        return metadata
+    else:
+        return audiotools.MetaData()
+
+def xmcd_track_metadata(track, xmcd):
+    xmcd_metadata = xmcd[track.track_number()]
+    if (xmcd_metadata != None):
+        #xmcd data overwrites whatever comes from track
+        #(so longs as it's not blank)
+        track_metadata = track.get_metadata()
+
+        for field in ('track_name','track_number','album_name',
+                      'artist_name','performer_name','copyright',
+                      'year'):
+            if (getattr(xmcd_metadata,field) != u""):
+                setattr(track_metadata,field,
+                        getattr(xmcd_metadata,field))
+        return track_metadata
+    else:
+        return track.get_metadata()
+
 if (__name__ == '__main__'):
     parser = optparse.OptionParser(
         "%prog [-x XMCD file] <track 1> [track 2] ...",
@@ -75,37 +105,48 @@ if (__name__ == '__main__'):
                       dest='replace',
                       help='completely replace all metadata')
 
+    parser.add_option('-x','--xmcd',
+                      action='store',
+                      type='string',
+                      dest='xmcd')
+
     (options,args) = parser.parse_args()
     audiofiles = audiotools.open_files(args)
 
-    for file in audiofiles:
-        if (options.replace):
-            #this is a horrible way of handling default variables
-            #which will be replaced once Python2.5 is more widespread
-            metadata = audiotools.MetaData(
-                track_name={None:""}.get(options.track_name,
-                                         options.track_name),
-                track_number={None:0}.get(options.track_number,
-                                           options.track_number),
-                album_name={None:""}.get(options.album_name,
-                                         options.album_name),
-                artist_name={None:""}.get(options.artist_name,
-                                          options.artist_name),
-                performer_name={None:""}.get(options.performer_name,
-                                             options.performer_name),
-                copyright={None:""}.get(options.copyright,
-                                         options.copyright),
-                year={None:""}.get(options.year,
-                                   options.year))
-            
-            file.set_metadata(metadata)
+    if (options.xmcd != None):
+        try:
+            xmcd = audiotools.parse_xmcd_file(options.xmcd)
+        except audiotools.XMCDException:
+            print >>sys.stderr,"*** Error opening XMCD file \"%s\"" % \
+                  (options.xmcd)
+            sys.exit(1)
+    else:
+        xmcd = None
+
+    if (options.replace):
+        if (xmcd == None):
+            metadata_function = blank_metadata
         else:
-            metadata = file.get_metadata()
-            if (metadata != None):
-                for field in ('track_name','track_number','album_name',
-                              'artist_name','performer_name','copyright',
-                              'year'):
-                    if (getattr(options,field) != None):
-                        setattr(metadata,field,getattr(options,field))
-                file.set_metadata(metadata)
+            metadata_function = xmcd_metadata
+    else:
+        if (xmcd == None):
+            metadata_function = track_metadata
+        else:
+            metadata_function = xmcd_track_metadata
+            
+
+    for file in audiofiles:
+        metadata = metadata_function(file, xmcd)
+
+        for field in ('track_name','track_number','album_name',
+                      'artist_name','performer_name','copyright',
+                      'year'):
+            if (getattr(options,field) != None):
+                attr = getattr(options,field)
+                if (isinstance(attr,str)):
+                    attr = attr.decode(audiotools.IO_ENCODING)
+                setattr(metadata,field,attr)
+            
+        file.set_metadata(metadata)
+
                 
