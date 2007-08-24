@@ -106,6 +106,9 @@ are already tagged with information and so an XMCD file isn't required.
 .SECTION "editxmcd"
 .PSPIC -L editxmcd_man.eps 5.5i
 .bp
+.SECTION "tracktag"
+.PSPIC -L tracktag_man.eps 5.5i
+.bp
 .SECTION "trackrename"
 .PSPIC -L trackrename_man.eps 5.5i
 .bp

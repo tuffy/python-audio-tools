@@ -57,7 +57,7 @@ if (__name__ == '__main__'):
         "%prog [-x XMCD file] <track 1> [track 2] ...",
         version="Python Audio Tools %s" % (audiotools.VERSION))
 
-    parser.add_option('--track',
+    parser.add_option('--name',
                       action='store',
                       type='string',
                       dest='track_name',

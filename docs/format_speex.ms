@@ -66,8 +66,6 @@ noname
        --6-invisible
   S3:  0-31-18 Comment String Length
   S4:  32-?-18 Comment String
-pic line dotted from A1.sw to VS.nw
-pic line dotted from A1.se to EN.ne
 pic line dotted from VS.sw to S1.nw
 pic line dotted from VS.se to S2.ne
 pic line dotted from CS.sw to S3.nw

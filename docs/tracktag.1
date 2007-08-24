@@ -1,0 +1,76 @@
+.TH "tracktag" 1 "August 24, 2007" "" "Audio File Tagger"
+.SH NAME
+tracktag \- updates audio file metadata
+.SH SYNOPSIS
+tracktag [OPTIONS] <track 1> [track 2] ...
+.SH DESCRIPTION
+.PP
+tracktag takes new metadata values and a list of audio files
+and updates those files with the new values.
+.SH OPTIONS
+.TP
+\fB-h, --help\fR
+Show a list of options and exit
+.TP
+\fB--version\fR
+Show the program's version and exit
+.TP
+\fB-r, --replace\fR
+Completely replace all metadata with new values.
+By default, 
+.BR tracktag (1)
+will only update metadata values which have been specified 
+and will leave all others as-is.
+This option will erase
+.I all
+existing metadata and replace it with any specified values.
+.TP
+\fB--name=\fITRACK NAME\fR
+The file's track name
+.TP
+\fB--number=\fITRACK NUMBER\fR
+The file's track number
+.TP
+\fB--album=\fIALBUM NAME\fR
+The file's album name
+.TP
+\fB--artist=\fIARTIST NAME\fR
+The file's artist name
+.TP
+\fB--performer=\fIPERFORMER NAME\fR
+The file's performer name
+.TP
+\fB--copyright=\fICOPYRIGHT\fR
+The file's copyright information
+.TP
+\fB--year=\fIYEAR\fR
+The file's release year
+
+.SH EXAMPLES
+.LP
+Update \fItrack.flac\fR to be track number 5 and have a 
+track name of \fITest Track\fR.
+.IP
+.B tracktag
+\fB"\-\-name=\fITest Track\fB"\fR
+\fB\-\-number=\fI5\fR
+.I track.flac
+
+.SH SEE ALSO
+.BR track2track (1) ,
+.BR track2xmcd (1) ,
+.BR track2cd (1) ,
+.BR trackinfo (1) ,
+.BR tracklength (1) ,
+.BR trackrename (1) ,
+.BR trackplay (1) ,
+.BR trackcmp (1) ,
+.BR trackcat (1) ,
+.BR cd2track (1) ,
+.BR cd2xmcd (1) ,
+.BR editxmcd (1)
+.SH AUTHOR
+.nf
+Brian Langenberger
+.f
+

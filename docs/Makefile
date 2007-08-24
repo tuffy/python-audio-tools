@@ -41,6 +41,7 @@ trackcmp.1 \
 trackinfo.1 \
 trackplay.1 \
 trackrename.1 \
+tracktag.1 \
 tracklength.1 \
 editxmcd.1
 
@@ -55,6 +56,7 @@ trackcmp_man.eps \
 trackinfo_man.eps \
 trackplay_man.eps \
 trackrename_man.eps \
+tracktag_man.eps \
 tracklength_man.eps \
 editxmcd_man.eps
 
