@@ -2051,6 +2051,83 @@ class FlacAudio(AudioFile):
                             process=sub)
 
 
+#######################
+#Ogg FLAC
+#######################
+
+class OggFlacAudio(FlacAudio):
+    SUFFIX = "oga"
+    DEFAULT_COMPRESSION = "8"
+    COMPRESSION_MODES = tuple(map(str,range(0,9)))
+    BINARIES = ("flac",)
+
+    OGGFLAC_STREAMINFO = Con.Struct('oggflac_streaminfo',
+                                    Con.Byte('packet_byte'),
+                                    Con.String('signature',4),
+                                    Con.Byte('major_version'),
+                                    Con.Byte('minor_version'),
+                                    Con.ULInt16('header_packets'),
+                                    Con.String('flac_signature',4),
+                                    Con.Embed(
+        FlacAudio.FLAC_METADATA_BLOCK_HEADER),
+                                    Con.Embed(
+        FlacAudio.FLAC_STREAMINFO))
+    
+    @classmethod
+    def is_type(cls, file):
+        header = file.read(0x23)
+
+        return (header.startswith('OggS') and
+                header[0x1C:0x21] == '\x7FFLAC')
+
+    def get_metadata(self):
+        stream = OggStreamReader(file(self.filename))
+        try:
+            packets = stream.packets()
+            for packet in packets:
+                packet = cStringIO.StringIO(packet)
+                try:
+                    pass
+                finally:
+                    packet.close()
+        finally:
+            stream.close()
+
+    def set_metadata(self, metadata):
+        pass
+
+    def __read_streaminfo__(self):
+        stream = OggStreamReader(file(self.filename))
+        try:
+            packets = stream.packets()
+            header = self.OGGFLAC_STREAMINFO.parse(packets.next())
+
+            self.__samplerate__ = header.samplerate
+            self.__channels__ = header.channels + 1
+            self.__bitspersample__ = header.bits_per_sample + 1
+
+            #FIXME
+            #(might not be valid for PCM-generated OggFLAC
+            # we should probably bounce to the end of the file)
+            self.__total_samples__ = header.total_samples
+            
+            del(packets)
+        finally:
+            stream.close()
+        
+    @classmethod
+    def add_replay_gain(cls, filenames):
+        pass
+
+    def __eq__(self, audiofile):
+        return AudioFile.__eq__(self, audiofile)
+
+    def cuepoints(self):
+        raise ValueError("no cuesheet found")
+
+    def sub_pcm_tracks(self):
+        for i in ():
+            yield i
 
 
 #######################
@@ -5070,7 +5147,8 @@ class ExecQueue:
 #Monkey's Audio with my own code in order to make it available again.
 #Yet another reason to avoid that unpleasant file format...
 
-AVAILABLE_TYPES = (FlacAudio,MP3Audio,MP2Audio,WaveAudio,
+AVAILABLE_TYPES = (FlacAudio,OggFlacAudio,
+                   MP3Audio,MP2Audio,WaveAudio,
                    VorbisAudio,SpeexAudio,MusepackAudio,
                    AiffAudio,AuAudio,M4AAudio,WavPackAudio)
 
