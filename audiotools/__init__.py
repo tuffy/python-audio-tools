@@ -2066,7 +2066,7 @@ class OggFlacAudio(FlacAudio):
                                     Con.String('signature',4),
                                     Con.Byte('major_version'),
                                     Con.Byte('minor_version'),
-                                    Con.ULInt16('header_packets'),
+                                    Con.UBInt16('header_packets'),
                                     Con.String('flac_signature',4),
                                     Con.Embed(
         FlacAudio.FLAC_METADATA_BLOCK_HEADER),
@@ -2084,12 +2084,18 @@ class OggFlacAudio(FlacAudio):
         stream = OggStreamReader(file(self.filename))
         try:
             packets = stream.packets()
-            for packet in packets:
-                packet = cStringIO.StringIO(packet)
-                try:
-                    pass
-                finally:
-                    packet.close()
+            packets.next()           #skip the header packet
+            comment = packets.next() #comment packet must be next
+
+            #FIXME - check the rest of the headers for picture comments
+            del(packets)
+
+            vorbiscomment = VorbisComment(
+                FlacAudio.__read_vorbis_comment__(
+                  cStringIO.StringIO(
+                    comment[4:])))
+
+            return FlacComment(vorbiscomment,tuple())
         finally:
             stream.close()
 
@@ -2110,6 +2116,8 @@ class OggFlacAudio(FlacAudio):
             #(might not be valid for PCM-generated OggFLAC
             # we should probably bounce to the end of the file)
             self.__total_samples__ = header.total_samples
+
+            self.__header_packets__ = header.header_packets
             
             del(packets)
         finally:
