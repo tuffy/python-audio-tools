@@ -2118,17 +2118,66 @@ class OggFlacAudio(FlacAudio):
             self.__total_samples__ = header.total_samples
 
             self.__header_packets__ = header.header_packets
+
+            self.__md5__ = "".join([chr(c) for c in header.md5])
             
             del(packets)
         finally:
             stream.close()
+
+    def to_pcm(self):
+        sub = subprocess.Popen([BIN['flac'],"-s","--ogg","-d","-c",
+                                "--force-raw-format",
+                                "--endian=little",
+                                "--sign=signed",
+                                self.filename],
+                               stdout=subprocess.PIPE)
+        return PCMReader(sub.stdout,
+                         sample_rate=self.__samplerate__,
+                         channels=self.__channels__,
+                         bits_per_sample=self.__bitspersample__,
+                         process=sub)
+
+    @classmethod
+    def from_pcm(cls, filename, pcmreader,
+                 compression="8"):
+        SUBSTREAM_SAMPLE_RATES = frozenset([
+                8000, 16000,22050,24000,32000,
+                44100,48000,96000])
+        SUBSTREAM_BITS = frozenset([8,12,16,20,24])
+
+        if (compression not in cls.COMPRESSION_MODES):
+            compression = cls.DEFAULT_COMPRESSION
+
+        if ((pcmreader.sample_rate in SUBSTREAM_SAMPLE_RATES) and
+            (pcmreader.bits_per_sample in SUBSTREAM_BITS)):
+            lax = []
+        else:
+            lax = ["--lax"]
+
+        sub = subprocess.Popen([BIN['flac']] + lax + \
+                               ["-s","-f","-%s" % (compression),
+                                "-V","--ogg",
+                                "--endian=little",
+                                "--channels=%d" % (pcmreader.channels),
+                                "--bps=%d" % (pcmreader.bits_per_sample),
+                                "--sample-rate=%d" % (pcmreader.sample_rate),
+                                "--sign=signed",
+                                "--force-raw-format",
+                                "-o",filename,"-"],
+                               stdin=subprocess.PIPE)
+
+        transfer_data(pcmreader.read,sub.stdin.write)
+        pcmreader.close()
+        sub.stdin.close()
+        sub.wait()
+
+        return OggFlacAudio(filename)
+
         
     @classmethod
     def add_replay_gain(cls, filenames):
         pass
-
-    def __eq__(self, audiofile):
-        return AudioFile.__eq__(self, audiofile)
 
     def cuepoints(self):
         raise ValueError("no cuesheet found")
