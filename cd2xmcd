@@ -41,6 +41,9 @@ if (__name__ == '__main__'):
     parser.add_option('-i','--id',dest='discid',
                       action='store_true',default=False,
                       help='display disc ID rather than fetch XMCD data')
+    parser.add_option('-D','--default',
+                      action='store_const',const=1,default=None,
+                      help='when multiple choices are available, select the first one automatically')
        
     (options,args) = parser.parse_args()
 
@@ -70,7 +73,9 @@ if (__name__ == '__main__'):
 
         if (not options.discid):
             audiotools.get_xmcd(id, outfile,
-                                options.freedb_server,options.freedb_port)
+                                options.freedb_server,
+                                options.freedb_port,
+                                options.default)
         else:
             print id.freedb_id()
 

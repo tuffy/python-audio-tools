@@ -944,10 +944,20 @@ def __select_match__(matches):
 
         return matches[selected - 1]
 
+def __select_default_match__(matches, selection):
+    if (len(matches) < 1):
+        return None
+    else:
+        try:
+            return matches[selection]
+        except IndexError:
+            return matches[0]
+
 #takes a DiscID value and a file handle for output
 #and runs the entire FreeDB querying sequence
 #the file handle is closed at the conclusion of this function
-def get_xmcd(disc_id, output, freedb_server, freedb_server_port):
+def get_xmcd(disc_id, output, freedb_server, freedb_server_port,
+             default_selection=None):
     try:
         freedb = FreeDBWeb(freedb_server,freedb_server_port)
         freedb.connect()
@@ -963,7 +973,12 @@ def get_xmcd(disc_id, output, freedb_server, freedb_server_port):
         matches = freedb.query(disc_id)
         #HANDLE MULTIPLE MATCHES, or NO MATCHES
         if (len(matches) > 0):
-            (category,idstring,title) = __select_match__(matches)
+            if (default_selection is None):
+                (category,idstring,title) = __select_match__(matches)
+            else:
+                (category,idstring,title) = __select_default_match__(
+                    matches,default_selection)
+                
             freedb.read_data(category,idstring,output)
         else:
             disc_id.toxmcd(output)
