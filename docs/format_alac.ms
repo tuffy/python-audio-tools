@@ -96,7 +96,57 @@ noname
 pic line dotted from E1.sw to E2.nw
 pic line dotted from E1.se to E3.ne
 .end dformat
+.bp
+.SUBSECTION "the stsz atom"
+.PP
+The \fCstsz\fR atom contains information about the size of each
+Apple Lossless frame within the stream.
+Since each frame contains a set number of samples (typically 4096),
+this can be used as a seektable.
+It's also important for determining where the next frame is in general.
+Apple Lossless frames have no synchronization bits and there is
+an indeterminate number of bytes between the end of one frame
+and the beginning of the next.
+Therefore, it's important to know the frame sizes in order to know
+where one ends and the next begins.
+.PS
+define atom {box ht 0.25}
+lineht = 0.050;
+con_atom "moov";
+move to last box .s;
+line down then right->;
+con_atom "trak";
+move to last box .s;
+line down then right->;
+con_atom "mdia";
+move to last box .s;
+line down then right->;
+con_atom "minf";
+move to last box .s;
+line down then right->;
+con_atom "stbl";
+move to last box .s;
+line down then right->;
+atom "stsz";
+.PE
+.begin dformat
+style bitwid 0.16
+style recspread 0
+noname
+     0-31-8 stsd Length
+     32-63-8 `stsz' (0x7374737A)
+     64-71-4 Version
+     72-95-16 Flags (0x000000)
+noname
+     96-127-18 Default Sample Size
+     128-159-18 Total Entries
+noname
+     160-191-9 @roman Entry sub 1@
+     192-223-9 @roman Entry sub 2@
+     224-255-9 @roman Entry sub 3@
+     --9-dashed ...
+.end dformat
+Each Entry is the total size of a frame, in bytes.
 
 .bp
-
 .so codec_alac.ms
