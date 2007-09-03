@@ -1657,6 +1657,17 @@ class FlacPictureComment:
             (self.type_string(),
              self.width,self.height,self.mime_type)
 
+    def build(self):
+        return FlacAudio.PICTURE_COMMENT.build(
+            Con.Container(type=self.type,
+                          mime_type=self.mime_type,
+                          description=self.description,
+                          width=self.width,
+                          height=self.height,
+                          color_depth=self.color_depth,
+                          color_count=self.colors_used,
+                          data=self.data))
+
 class FlacComment(VorbisComment):
     def __init__(self, vorbis_comment, picture_comments=()):
         self.picture_comments = picture_comments
@@ -2101,21 +2112,36 @@ class OggFlacAudio(FlacAudio):
             packets = stream.packets()
             packets.next()           #skip the header packet
             comment = packets.next() #comment packet must be next
+            pictures = []
 
-            #FIXME - check the rest of the headers for picture comments
-            del(packets)
+            for p in packets:   
+                header = FlacAudio.FLAC_METADATA_BLOCK_HEADER.parse(p[0:4])
+                if (header.block_type == 6):
+                    image = FlacAudio.PICTURE_COMMENT.parse(
+                        p[4:])
+                    pictures.append(FlacPictureComment(
+                        type=image.type,
+                        mime_type=image.mime_type,
+                        description=image.description,
+                        width=image.width,
+                        height=image.height,
+                        color_depth=image.color_depth,
+                        colors_used=image.color_count,
+                        data=image.data))
+                    
+                if (header.last_block == 1):
+                    break
 
-            vorbiscomment = VorbisComment(
+            return FlacComment(
                 FlacAudio.__read_vorbis_comment__(
                   cStringIO.StringIO(
-                    comment[4:])))
-
-            return FlacComment(vorbiscomment,tuple())
+                    comment[4:])),
+                tuple(pictures))
         finally:
             stream.close()
 
     def set_metadata(self, metadata):
-        comment = VorbisComment.converted(metadata)
+        comment = FlacComment.converted(metadata)
         
         if (comment == None): return
 
@@ -2133,6 +2159,7 @@ class OggFlacAudio(FlacAudio):
         (page,data) = pages.next()
         while (page.segment_lengths[-1] == 255):
             (page,data) = pages.next()
+        
 
         #write the pages for our new comment packet
         comment_pages = OggStreamWriter.build_pages(
@@ -2148,10 +2175,52 @@ class OggFlacAudio(FlacAudio):
         for (page,data) in comment_pages:
             writer.write_page(page,data)
 
+        #write the pages for PICTURE comment packets (if any)
+        pagenum = comment_pages[-1][0].page_sequence_number + 1
+        for picture in comment.picture_comments:
+            picture_pages = OggStreamWriter.build_pages(
+                0,
+                header_page.bitstream_serial_number,
+                header_page.page_sequence_number + pagenum,
+                FlacAudio.FLAC_METADATA_BLOCK_HEADER.build(
+                  Con.Container(last_block=0,
+                                block_type=6,
+                                block_length=len(picture.build()))) + \
+                picture.build())
+            
+            for (page,data) in picture_pages:
+                writer.write_page(page,data)
+                pagenum += 1
+
+        #skip any old PICTURE comment packets (if any)
+        #until the end of the metadata blocks
+        metadata_packet = OggStreamReader.pages_to_packet(pages)
+        header = FlacAudio.FLAC_METADATA_BLOCK_HEADER.parse(
+            metadata_packet[0][1][0:4])
+        
+        while (header.last_block == 0):
+            if (header.block_type != 6):
+                for (page,data) in metadata_packet:
+                    page.page_sequence_number = pagenum
+                    page.checksum = \
+                         OggStreamReader.calculate_ogg_checksum(page,data)
+                    writer.write_page(page,data)
+                    pagenum += 1
+                    
+            metadata_packet = OggStreamReader.pages_to_packet(pages)
+            header = FlacAudio.FLAC_METADATA_BLOCK_HEADER.parse(
+                metadata_packet[0][1][0:4])
+
+        #write out that last metadata block (hopefully not a picture)
+        for (page,data) in metadata_packet:
+            page.page_sequence_number = pagenum
+            page.checksum = OggStreamReader.calculate_ogg_checksum(page,data)
+            writer.write_page(page,data)
+            pagenum += 1
+        
         #write the rest of the pages, re-sequenced and re-checksummed
-        sequence_number = comment_pages[-1][0].page_sequence_number + 1
         for (i,(page,data)) in enumerate(pages):
-            page.page_sequence_number = i + sequence_number
+            page.page_sequence_number = pagenum + i
             page.checksum = OggStreamReader.calculate_ogg_checksum(page,data)
             writer.write_page(page,data)
 
@@ -4176,6 +4245,17 @@ class OggStreamReader:
                 yield (page,self.stream.read(sum(page.segment_lengths)))
             except Con.core.FieldError:
                 break
+
+    #takes a page iterator (such as pages(), above)
+    #returns a list of (Container,data string) tuples
+    #which form a complete packet
+    @classmethod
+    def pages_to_packet(cls, pages_iter):
+        packet = [pages_iter.next()]
+        while (packet[-1][0].segment_lengths[-1] == 255):
+            packet.append(pages_iter.next())
+        return packet
+    
 
     CRC_LOOKUP = (0x00000000,0x04c11db7,0x09823b6e,0x0d4326d9,
                   0x130476dc,0x17c56b6b,0x1a864db2,0x1e475005,
