@@ -2115,7 +2115,54 @@ class OggFlacAudio(FlacAudio):
             stream.close()
 
     def set_metadata(self, metadata):
-        pass
+        comment = VorbisComment.converted(metadata)
+        
+        if (comment == None): return
+
+        reader = OggStreamReader(file(self.filename,'r'))
+        new_file = cStringIO.StringIO()
+        writer = OggStreamWriter(new_file)
+
+        pages = reader.pages()
+
+        #transfer our old header
+        (header_page,header_data) = pages.next()
+        writer.write_page(header_page,header_data)
+
+        #skip the old VORBIS_COMMENT packet (required to be next in the stream)
+        (page,data) = pages.next()
+        while (page.segment_lengths[-1] == 255):
+            (page,data) = pages.next()
+
+        #write the pages for our new comment packet
+        comment_pages = OggStreamWriter.build_pages(
+            0,
+            header_page.bitstream_serial_number,
+            header_page.page_sequence_number + 1,
+            FlacAudio.FLAC_METADATA_BLOCK_HEADER.build(
+              Con.Container(last_block=0,
+                            block_type=4,
+                            block_length=len(comment.build()))) + \
+            comment.build())
+
+        for (page,data) in comment_pages:
+            writer.write_page(page,data)
+
+        #write the rest of the pages, re-sequenced and re-checksummed
+        sequence_number = comment_pages[-1][0].page_sequence_number + 1
+        for (i,(page,data)) in enumerate(pages):
+            page.page_sequence_number = i + sequence_number
+            page.checksum = OggStreamReader.calculate_ogg_checksum(page,data)
+            writer.write_page(page,data)
+
+        reader.close()
+
+        #re-write the file with our new data in "new_file"
+        f = file(self.filename,"w")
+        f.write(new_file.getvalue())
+        f.close()
+        writer.close()
+        
 
     def __read_streaminfo__(self):
         stream = OggStreamReader(file(self.filename))
@@ -3434,7 +3481,7 @@ class ApeTag(MetaData,dict):
             return metadata
         else:
             tags = {}
-            for (key,field) in item_map.items():
+            for (key,field) in cls.ITEM_MAP.items():
                 field = unicode(getattr(metadata,field))
                 if (field != u''):
                     tags[key] = field

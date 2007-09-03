@@ -211,8 +211,9 @@ static PyObject *CDDA_read_sector(cdio_CDDAObject* self) {
   int16_t pair;
   int i;
 
-  raw_sector = cdio_paranoia_read(self->paranoia,
-				  &read_sector_callback);
+  raw_sector = cdio_paranoia_read_limited(self->paranoia,
+					  &read_sector_callback,
+					  10);
 
   /*shift all of the signed 16-bit samples into "sector"
     which we can turn into a Python string to return*/
@@ -245,8 +246,9 @@ static PyObject *CDDA_read_sectors(cdio_CDDAObject* self, PyObject *args) {
   sectors = (char *)malloc(sectors_to_read * SECTOR_LENGTH);
 
   for (sectors_read = 0; sectors_read < sectors_to_read; sectors_read++) {
-    raw_sector = cdio_paranoia_read(self->paranoia,
-				    &read_sector_callback);
+    raw_sector = cdio_paranoia_read_limited(self->paranoia,
+					    &read_sector_callback,
+					    10);
     for (i = 0; i < (SECTOR_LENGTH / 2); 
 	 i++) {
       pair = raw_sector[i];
