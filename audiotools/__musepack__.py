@@ -19,7 +19,7 @@
 
 
 from audiotools import AudioFile,InvalidFile,PCMReader,Con,transfer_data,subprocess,BIN,cStringIO,ApeTaggedAudio
-from audiotools_wav import *
+from __wav__ import *
 
 #######################
 #Musepack Audio

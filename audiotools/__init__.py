@@ -389,7 +389,7 @@ class AlbumMetaData(dict):
                       dict([(m.track_number,m) for m in
                             metadata_iter]))
 
-from audiotools_freedb import *
+from __freedb__ import *
 
 #######################
 #Generic Audio File
@@ -530,19 +530,19 @@ class DummyAudioFile(AudioFile):
         return self.__length__
 
 
-from audiotools_wav import *
-from audiotools_aiff import *
-from audiotools_au import *
-from audiotools_vorbiscomment import *
-from audiotools_flac import *
-from audiotools_id3 import *
-from audiotools_mp3 import *
-from audiotools_ape import *
-from audiotools_vorbis import *        
-from audiotools_m4a import *
-from audiotools_wavpack import *
-from audiotools_musepack import *
-from audiotools_speex import *
+from __wav__ import *
+from __aiff__ import *
+from __au__ import *
+from __vorbiscomment__ import *
+from __flac__ import *
+from __id3__ import *
+from __mp3__ import *
+from __ape__ import *
+from __vorbis__ import *        
+from __m4a__ import *
+from __wavpack__ import *
+from __musepack__ import *
+from __speex__ import *
     
 #######################
 #CD data

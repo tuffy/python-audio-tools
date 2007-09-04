@@ -19,9 +19,9 @@
 
 
 from audiotools import AudioFile,InvalidFile,PCMReader,Con,transfer_data,subprocess,BIN,cStringIO,open_files
-from audiotools_vorbiscomment import *
-from audiotools_id3 import ID3v2Comment
-from audiotools_vorbis import OggStreamReader,OggStreamWriter
+from __vorbiscomment__ import *
+from __id3__ import ID3v2Comment
+from __vorbis__ import OggStreamReader,OggStreamWriter
 
 
 #######################

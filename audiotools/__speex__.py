@@ -19,7 +19,7 @@
 
 
 from audiotools import AudioFile,InvalidFile,PCMReader,Con,transfer_data,subprocess,BIN,cStringIO,os
-from audiotools_vorbis import *
+from __vorbis__ import *
 
 #######################
 #Speex File

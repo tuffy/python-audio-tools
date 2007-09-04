@@ -17,8 +17,8 @@
 #along with this program; if not, write to the Free Software
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-from audiotools import AudioFile,InvalidFile,PCMReader,Con,transfer_data,subprocess,BIN,cStringIO,open_files
-from audiotools_vorbiscomment import *
+from audiotools import AudioFile,InvalidFile,PCMReader,Con,transfer_data,subprocess,BIN,cStringIO,open_files,os
+from __vorbiscomment__ import *
 
 class OggStreamReader:
     OGGS = Con.Struct(

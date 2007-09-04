@@ -19,7 +19,7 @@
 
 
 from audiotools import AudioFile,InvalidFile,PCMReader,Con,transfer_data,subprocess,BIN
-from audiotools_id3 import *
+from __id3__ import *
 
 #######################
 #MP3
