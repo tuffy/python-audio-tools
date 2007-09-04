@@ -68,7 +68,7 @@ places data files).
 If no command-line option is given and no config files are found
 Python Audio Tools will use some hard-coded default value, which may not
 be what you want.
-
+.bp
 .SUBSECTION "The Filename Format"
 .PP
 The default filename format is a template string which contains
@@ -87,6 +87,9 @@ Key:Value
 \fC%(track_name)s\fR:the track's name
 \fC%(album_name)s\fR:the album's name
 \fC%(artist_name)s\fR:the track's artist name
+\fC%(performer_name)s\fR:the track's performer name
+\fC%(copyright)s\fR:the track's copyright information
+\fC%(year)s\fR:the track's publication year
 \fC%(suffix)s\fR:the track's suffix, based on its file type
 \^:(e.g. MP3 files will have the suffix \fCmp3\fR)
 _

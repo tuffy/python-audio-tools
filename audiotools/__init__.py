@@ -1073,7 +1073,10 @@ class AudioFile:
                      "suffix":cls.SUFFIX,
                      "track_name":track_metadata.track_name.replace('/','-'),
                      "album_name":track_metadata.album_name.replace('/','-'),
-                     "artist_name":track_metadata.artist_name.replace('/','-')
+                     "artist_name":track_metadata.artist_name.replace('/','-'),
+                     "performer_name":track_metadata.performer_name.replace('/','-'),
+                     "copyright":track_metadata.copyright.replace('/','-'),
+                     "year":track_metadata.year.replace('/','-')
                      }).encode(FS_ENCODING)
         else:
             return "%(track_number)2.2d.%(suffix)s" % \
