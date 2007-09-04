@@ -111,8 +111,16 @@ def test_format(AudioFormat):
 
 if (__name__ == '__main__'):
     print "Testing Audio Tools"
-    max_suffix_length = max([len(s) for s in audiotools.TYPE_MAP.keys()])
-    for audiotype in audiotools.TYPE_MAP.values():
+
+    if (len(sys.argv) == 1):
+        type_dict = audiotools.TYPE_MAP
+    else:
+        type_dict = dict([(key,value) for (key,value) in
+                          audiotools.TYPE_MAP.items() if
+                          key in sys.argv[1:]])
+    
+    max_suffix_length = max([len(s) for s in type_dict.keys()])
+    for audiotype in type_dict.values():
         sys.stdout.write(
             "* Testing %%%d.%ds :" % (max_suffix_length,
                                       max_suffix_length) % (audiotype.SUFFIX))

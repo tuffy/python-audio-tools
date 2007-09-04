@@ -29,7 +29,7 @@ bitstreammodule = Extension('audiotools.bitstream',
                             sources = ['src/bitstream.c'])
 
 setup (name = 'Python Audio Tools',
-       version = '2.2',
+       version = '2.3',
        description = 'A collection of audio handling utilities',
        author = 'Brian Langenberger',
        author_email = 'tuffy@users.sourceforge.net',
