@@ -62,10 +62,12 @@ I don't want to print any more pages than I have to, after all.
 .bp
 .so format_speex.ms
 .bp
+.so format_oggflac.ms
+.bp
 .so format_m4a.ms
 .bp
-.so format_alac.ms
-.bp
+.\".so format_alac.ms
+.\".bp
 .so format_musepack.ms
 .bp
 .so freedb.ms

@@ -64,6 +64,7 @@ AIFF:.ape:Python:Python:N/A:N/A
 Sun AU:.au:Python:Python:N/A:N/A
 _
 FLAC:.flac:flac:flac:Python:metaflac
+Ogg FLAC:.oga:flac:flac:Python:Python
 WavPack:.wv:wvunpack:wavpack:Python:Python
 _
 MP3:.mp3:lame:lame:Python:Python

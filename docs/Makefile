@@ -11,6 +11,7 @@ format_wavpack.ms \
 format_xmcd.ms \
 format_musepack.ms \
 format_alac.ms \
+format_oggflac.ms \
 codec_alac.ms
 
 FORMAT_MP3 = format_mp3.ms \
