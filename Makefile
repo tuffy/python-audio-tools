@@ -8,10 +8,8 @@ install:
 	cd docs && $(MAKE) install
 
 clean:
-	rm -fv *~
-	rm -fv src/*~
 	rm -rfv build
-	rm -fv *.pyc
+	rm -fv audiotools/*.pyc
 	cd docs && $(MAKE) clean
 	cd pyconstruct && $(MAKE) clean
 
