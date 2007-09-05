@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,InvalidFile,PCMReader,Con,transfer_data,subprocess,BIN
+from audiotools import AudioFile,InvalidFile,InvalidFormat,PCMReader,Con,transfer_data,subprocess,BIN
 from __id3__ import *
 
 #######################

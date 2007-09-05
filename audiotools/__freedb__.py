@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import VERSION,Con,cStringIO,sys,re,MetaData,AlbumMetaData
+from audiotools import VERSION,Con,cStringIO,sys,re,MetaData,AlbumMetaData,__most_numerous__
         
 #######################
 #XMCD
@@ -205,16 +205,6 @@ def build_xmcd_file(audiofiles, discid=None):
     return xmcd.getvalue()
     
 
-#returns the value in item_list which occurs most often
-def __most_numerous__(item_list):
-    counts = {}
-
-    for item in item_list:
-        counts.setdefault(item,[]).append(item)
-
-    return sorted([(item,len(counts[item])) for item in counts.keys()],
-                  lambda x,y: cmp(x[1],y[1]))[-1][0]
-
 
 #######################
 #FREEDB
@@ -319,7 +309,7 @@ class FreeDB:
                 raise FreeDBException("Invalid Hello Message")
             
             self.write("cddb hello user %s %s %s" % \
-                       (socket.getfqdn(),"audiotools",VERSION))
+                       (socket.getfqdn(),"Python Audio Tools",VERSION))
 
             (code,msg) = self.read()  #the handshake successful message
             if (code != 200):
@@ -419,7 +409,9 @@ class FreeDBWeb(FreeDB):
         import urllib,socket
         
         u = urllib.urlencode({"hello":"user %s %s %s" % \
-                                      (socket.getfqdn(),"audiotools",VERSION),
+                                      (socket.getfqdn(),
+                                       "Python Audio Tools",
+                                       VERSION),
                               "proto":str(6),
                               "cmd":line})
 

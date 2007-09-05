@@ -35,7 +35,7 @@ def get_metadata(track_lengths, album_meta_data=None):
             [audiotools.MetaData(track_number=i + 1) for i in
              xrange(len(track_lengths))])
 
-    artist_name = audiotools.__freedb__.__most_numerous__(
+    artist_name = audiotools.__most_numerous__(
         [m.artist_name for m in album_meta_data.values()])
 
     total_tracks = len(track_lengths)
@@ -44,7 +44,7 @@ def get_metadata(track_lengths, album_meta_data=None):
 
     form += ['--backtitle','XMCD Data']
     form += ['--inputbox','Album Name',str(8),str(1024),
-             audiotools.__freedb__.__most_numerous__(
+             audiotools.__most_numerous__(
             [m.album_name for m in album_meta_data.values()])]
 
     form += ['--backtitle','XMCD Data']

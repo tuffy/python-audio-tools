@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import MetaData,Con,re,VERSION
+from audiotools import MetaData,Con,VERSION
 
 class VorbisComment(MetaData,dict):
     VORBIS_COMMENT = Con.Struct("vorbis_comment",

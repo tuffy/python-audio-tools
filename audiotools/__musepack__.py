@@ -18,8 +18,8 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,InvalidFile,PCMReader,Con,transfer_data,subprocess,BIN,cStringIO,ApeTaggedAudio
-from __wav__ import *
+from audiotools import AudioFile,InvalidFile,InvalidFormat,PCMReader,Con,subprocess,BIN,ApeTaggedAudio
+from __wav__ import WaveAudio
 
 #######################
 #Musepack Audio

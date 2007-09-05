@@ -389,7 +389,6 @@ class AlbumMetaData(dict):
                       dict([(m.track_number,m) for m in
                             metadata_iter]))
 
-from __freedb__ import *
 
 #######################
 #Generic Audio File
@@ -670,7 +669,17 @@ class CDTrackReader(PCMReader):
     def close(self):
         pass
 
+#returns the value in item_list which occurs most often
+def __most_numerous__(item_list):
+    counts = {}
 
+    for item in item_list:
+        counts.setdefault(item,[]).append(item)
+
+    return sorted([(item,len(counts[item])) for item in counts.keys()],
+                  lambda x,y: cmp(x[1],y[1]))[-1][0]
+
+from __freedb__ import *
 
 #######################
 #Multiple Jobs Handling
