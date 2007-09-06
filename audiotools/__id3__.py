@@ -67,7 +67,7 @@ class ID3v2Comment(MetaData,dict):
     #returns an ID3v2Comment-based object
     @classmethod
     def read_id3v2_comment(cls, filename):        
-        f = file(filename)
+        f = file(filename,"rb")
         
         try:
              if (f.read(3) != 'ID3'): return {}

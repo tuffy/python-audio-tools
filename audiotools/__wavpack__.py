@@ -189,7 +189,7 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
 
         if ((len(track_names) > 0) and
             BIN.can_execute(BIN['wvgain'])):
-            devnull = file(os.devnull,'a')
+            devnull = file(os.devnull,'ab')
 
             sub = subprocess.Popen([BIN['wvgain'],
                                     '-q','-a'] + track_names,

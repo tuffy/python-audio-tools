@@ -134,7 +134,7 @@ def open(filename):
     available_types = frozenset(TYPE_MAP.values())
 
     try:
-        f = file(filename)
+        f = file(filename,"rb")
     except IOError:
         raise UnsupportedFile(filename)
     try:

@@ -60,7 +60,7 @@ class SpeexAudio(VorbisAudio):
                 header[0x1C:0x23] == 'Speex  ')
 
     def __read_metadata__(self):
-        f = OggStreamReader(file(self.filename,"r"))
+        f = OggStreamReader(file(self.filename,"rb"))
         packets = f.packets()
         try:
             #first read the Header packet
@@ -78,7 +78,7 @@ class SpeexAudio(VorbisAudio):
             del(packets); f.close(); del(f)
 
     def to_pcm(self):
-        devnull = file(os.devnull,'a')
+        devnull = file(os.devnull,'ab')
         sub = subprocess.Popen([BIN['speexdec'],self.filename,'-'],
                                stdout=subprocess.PIPE,
                                stderr=devnull)
@@ -104,7 +104,7 @@ class SpeexAudio(VorbisAudio):
         else:
             CHANNELS = {1:[],2:['--stereo']}[pcmreader.channels]
 
-        devnull = file(os.devnull,"a")
+        devnull = file(os.devnull,"ab")
 
         sub = subprocess.Popen([BIN['speexenc'],
                                 '--quality',str(compression),
@@ -129,7 +129,7 @@ class SpeexAudio(VorbisAudio):
         
         if (comment == None): return
 
-        reader = OggStreamReader(file(self.filename,'r'))
+        reader = OggStreamReader(file(self.filename,'rb'))
         new_file = cStringIO.StringIO()
         writer = OggStreamWriter(new_file)
 
@@ -164,7 +164,7 @@ class SpeexAudio(VorbisAudio):
         reader.close()
 
         #re-write the file with our new data in "new_file"
-        f = file(self.filename,"w")
+        f = file(self.filename,"wb")
         f.write(new_file.getvalue())
         f.close()
         writer.close()

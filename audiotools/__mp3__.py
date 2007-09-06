@@ -164,7 +164,7 @@ class MP3Audio(AudioFile):
         return self.__samplerate__
 
     def get_metadata(self):
-        f = file(self.filename)
+        f = file(self.filename,"rb")
         try:
             if (f.read(3) != "ID3"):      #no ID3v2 tag, try ID3v1
                 id3v1 = ID3v1Comment.read_id3v1_comment(self.filename)

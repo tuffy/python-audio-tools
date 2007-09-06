@@ -205,7 +205,7 @@ class M4AAudio(AudioFile):
 
     def __init__(self, filename):
         self.filename = filename
-        self.qt_stream = __Qt_Atom_Stream__(file(self.filename,"r"))
+        self.qt_stream = __Qt_Atom_Stream__(file(self.filename,"rb"))
 
         try:
             mp4a = M4AAudio.MP4A_ATOM.parse(
@@ -265,16 +265,16 @@ class M4AAudio(AudioFile):
         
         new_file = __replace_qt_atom__(self.qt_stream,
                                        metadata.to_atom())
-        f = file(self.filename,"w")
+        f = file(self.filename,"wb")
         f.write(new_file)
         f.close()
 
-        f = file(self.filename,"r")
+        f = file(self.filename,"rb")
         self.qt_stream = __Qt_Atom_Stream__(f)
         
 
     def to_pcm(self):
-        devnull = file(os.devnull,"a")
+        devnull = file(os.devnull,"ab")
 
         sub = subprocess.Popen([BIN['faad'],"-f",str(2),"-w",
                                 self.filename],
@@ -292,7 +292,7 @@ class M4AAudio(AudioFile):
         if (compression not in cls.COMPRESSION_MODES):
             compression = cls.DEFAULT_COMPRESSION
 
-        devnull = file(os.devnull,"a")
+        devnull = file(os.devnull,"ab")
 
         sub = subprocess.Popen([BIN['faac'],
                                 "-q",compression,

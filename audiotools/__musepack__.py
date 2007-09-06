@@ -64,7 +64,7 @@ class MusepackAudio(ApeTaggedAudio,AudioFile):
 
     def __init__(self, filename):
         AudioFile.__init__(self, filename)
-        f = file(filename,'r')
+        f = file(filename,'rb')
         try:
             header = MusepackAudio.MUSEPACK_HEADER.parse_stream(f)
         finally:

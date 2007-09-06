@@ -296,7 +296,7 @@ class VorbisAudio(AudioFile):
                 header[0x1C:0x23] == '\x01vorbis')
 
     def __read_metadata__(self):
-        f = OggStreamReader(file(self.filename,"r"))
+        f = OggStreamReader(file(self.filename,"rb"))
         packets = f.packets()
 
         try:
@@ -339,7 +339,7 @@ class VorbisAudio(AudioFile):
 
     def total_samples(self):
         pcm_samples = 0
-        f = file(self.filename,"r")
+        f = file(self.filename,"rb")
         try:
             while (True):
                 try:
@@ -428,7 +428,7 @@ class VorbisAudio(AudioFile):
 
         if ((len(track_names) > 0) and
             BIN.can_execute(BIN['vorbisgain'])):
-            devnull = file(os.devnull,'a')
+            devnull = file(os.devnull,'ab')
 
             sub = subprocess.Popen([BIN['vorbisgain'],
                                     '-q','-a'] + track_names,

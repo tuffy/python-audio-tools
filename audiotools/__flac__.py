@@ -438,7 +438,7 @@ class FlacAudio(AudioFile):
     #for use by the --cue FLAC decoding option
     #track_number starts from 0, for consistency
     def cuepoints(self):
-        flacfile = file(self.filename)
+        flacfile = file(self.filename,"rb")
 
         if (flacfile.read(4) != 'fLaC'):
             flacfile.close()
@@ -525,7 +525,7 @@ class OggFlacAudio(FlacAudio):
                 header[0x1C:0x21] == '\x7FFLAC')
 
     def get_metadata(self):
-        stream = OggStreamReader(file(self.filename))
+        stream = OggStreamReader(file(self.filename,"rb"))
         try:
             packets = stream.packets()
             packets.next()           #skip the header packet
@@ -563,7 +563,7 @@ class OggFlacAudio(FlacAudio):
         
         if (comment == None): return
 
-        reader = OggStreamReader(file(self.filename,'r'))
+        reader = OggStreamReader(file(self.filename,'rb'))
         new_file = cStringIO.StringIO()
         writer = OggStreamWriter(new_file)
 
@@ -645,14 +645,14 @@ class OggFlacAudio(FlacAudio):
         reader.close()
 
         #re-write the file with our new data in "new_file"
-        f = file(self.filename,"w")
+        f = file(self.filename,"wb")
         f.write(new_file.getvalue())
         f.close()
         writer.close()
         
 
     def __read_streaminfo__(self):
-        stream = OggStreamReader(file(self.filename))
+        stream = OggStreamReader(file(self.filename,"rb"))
         try:
             packets = stream.packets()
             header = self.OGGFLAC_STREAMINFO.parse(packets.next())

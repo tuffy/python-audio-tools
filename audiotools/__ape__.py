@@ -221,7 +221,7 @@ class ApeTag(MetaData,dict):
 #can be opened and checked for tags, or written if necessary.
 class ApeTaggedAudio:
     def get_metadata(self):
-        f = file(self.filename,'r')
+        f = file(self.filename,'rb')
         try:
             (info,tag_length) = ApeTag.read_ape_tag(f)
             if (len(info) > 0):
@@ -238,15 +238,15 @@ class ApeTaggedAudio:
         
         current_metadata = self.get_metadata()
         if (current_metadata != None):  #there's existing tags to delete
-            f = file(self.filename,"r")
+            f = file(self.filename,"rb")
             untagged_data = f.read()[0:-current_metadata.tag_length]
             f.close()
-            f = file(self.filename,"w")
+            f = file(self.filename,"wb")
             f.write(untagged_data)
             f.write(apetag.ape_tag_data())
             f.close()
         else:                           #no existing tags
-            f = file(self.filename,"a")
+            f = file(self.filename,"ab")
             f.write(apetag.ape_tag_data())
             f.close()
 
@@ -324,7 +324,7 @@ class ApeAudio(ApeTaggedAudio,AudioFile):
 
     @classmethod
     def __ape_info__(cls, filename):
-        f = file(filename,'r')
+        f = file(filename,'rb')
         try:
             file_head = cls.FILE_HEAD.parse_stream(f)
 
