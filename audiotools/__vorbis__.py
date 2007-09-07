@@ -23,7 +23,7 @@ from __vorbiscomment__ import *
 class OggStreamReader:
     OGGS = Con.Struct(
         "oggs",
-        Con.String("magic_number",4),
+        Con.Const(Con.String("magic_number",4),"OggS"),
         Con.Byte("version"),
         Con.Byte("header_type"),
         Con.ULInt64("granule_position"),
@@ -60,6 +60,8 @@ class OggStreamReader:
 
             except Con.core.FieldError:
                 break
+            except Con.ConstError:
+                break
 
     #an iterator which yields (Container,data string) tuples per pass
     #Container is parsed from OGGS
@@ -72,6 +74,8 @@ class OggStreamReader:
                 page = OggStreamReader.OGGS.parse_stream(self.stream)
                 yield (page,self.stream.read(sum(page.segment_lengths)))
             except Con.core.FieldError:
+                break
+            except Con.ConstError:
                 break
 
     #takes a page iterator (such as pages(), above)
@@ -347,6 +351,8 @@ class VorbisAudio(AudioFile):
                     pcm_samples = page.granule_position
                     f.seek(sum(page.segment_lengths),1)
                 except Con.core.FieldError:
+                    break
+                except Con.ConstError:
                     break
 
             return pcm_samples

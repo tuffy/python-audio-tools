@@ -55,10 +55,10 @@ class WaveReader(PCMReader):
         self.process = process
 
         #build a capped reader for the data chunk
-        header = WaveAudio.WAVE_HEADER.parse_stream(self.file)
-        if ((header.wave_id != 'RIFF') or
-            (header.riff_type != 'WAVE')):
-            raise ValueError('invalid WAVE file')
+        try:
+            header = WaveAudio.WAVE_HEADER.parse_stream(self.file)
+        except Con.ConstError:
+            raise WavException('invalid WAVE file')
 
         #this won't be pretty for a WAVE file missing a 'data' chunk
         #but those are seriously invalid anyway
@@ -101,9 +101,9 @@ class WaveAudio(AudioFile):
     SUFFIX = "wav"
 
     WAVE_HEADER = Con.Struct("wave_header",
-                             Con.Bytes("wave_id",4),
+                             Con.Const(Con.Bytes("wave_id",4),'RIFF'),
                              Con.ULInt32("wave_size"),
-                             Con.Bytes("riff_type",4))
+                             Con.Const(Con.Bytes("riff_type",4),'WAVE'))
 
     CHUNK_HEADER = Con.Struct("chunk_header",
                               Con.Bytes("chunk_id",4),
@@ -261,14 +261,12 @@ class WaveAudio(AudioFile):
             totalsize -= (chunk_size + 8)
 
     def __read_wave_header__(self, wave_file):
-        header = WaveAudio.WAVE_HEADER.parse(wave_file.read(12))
+        try:
+            header = WaveAudio.WAVE_HEADER.parse(wave_file.read(12))
+        except Con.ConstError:
+            raise WavException("not a RIFF WAVE file")
         
-        if (header.wave_id != "RIFF"):
-            raise WavException("not a RIFF WAVE file")
-        elif (header.riff_type != "WAVE"):
-            raise WavException("not a RIFF WAVE file")
-        else:
-            return header.wave_size
+        return header.wave_size
 
     def __read_chunk_header__(self, wave_file):
         chunk = WaveAudio.CHUNK_HEADER.parse(wave_file.read(8))

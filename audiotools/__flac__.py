@@ -506,12 +506,15 @@ class OggFlacAudio(FlacAudio):
     BINARIES = ("flac",)
 
     OGGFLAC_STREAMINFO = Con.Struct('oggflac_streaminfo',
-                                    Con.Byte('packet_byte'),
-                                    Con.String('signature',4),
+                                    Con.Const(Con.Byte('packet_byte'),
+                                              0x7F),
+                                    Con.Const(Con.String('signature',4),
+                                              'FLAC'),
                                     Con.Byte('major_version'),
                                     Con.Byte('minor_version'),
                                     Con.UBInt16('header_packets'),
-                                    Con.String('flac_signature',4),
+                                    Con.Const(Con.String('flac_signature',4),
+                                              'fLaC'),
                                     Con.Embed(
         FlacAudio.FLAC_METADATA_BLOCK_HEADER),
                                     Con.Embed(
@@ -655,7 +658,10 @@ class OggFlacAudio(FlacAudio):
         stream = OggStreamReader(file(self.filename,"rb"))
         try:
             packets = stream.packets()
-            header = self.OGGFLAC_STREAMINFO.parse(packets.next())
+            try:
+                header = self.OGGFLAC_STREAMINFO.parse(packets.next())
+            except Con.ConstError:
+                raise FlacException('invalid Ogg FLAC streaminfo')
 
             self.__samplerate__ = header.samplerate
             self.__channels__ = header.channels + 1

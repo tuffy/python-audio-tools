@@ -35,7 +35,7 @@ class MusepackAudio(ApeTaggedAudio,AudioFile):
     #not sure about some of the flag locations
     #Musepack's header is very unusual
     MUSEPACK_HEADER = Con.Struct('musepack_header',
-                                 Con.String('signature',3),
+                                 Con.Const(Con.String('signature',3),'MP+'),
                                  Con.Byte('version'),
                                  Con.ULInt32('frame_count'),
                                  Con.ULInt16('max_level'),
@@ -66,12 +66,12 @@ class MusepackAudio(ApeTaggedAudio,AudioFile):
         AudioFile.__init__(self, filename)
         f = file(filename,'rb')
         try:
-            header = MusepackAudio.MUSEPACK_HEADER.parse_stream(f)
+            try:
+                header = MusepackAudio.MUSEPACK_HEADER.parse_stream(f)
+            except Con.ConstError:
+                raise InvalidFile('musepack signature incorrect')
         finally:
             f.close()
-
-        if (header.signature != 'MP+'):
-            raise InvalidFile('musepack signature incorrect')
 
         header.last_frame_length = (header.last_frame_length_high << 4) | \
                                    header.last_frame_length_low

@@ -34,7 +34,7 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
 
 
     HEADER = Con.Struct("wavpackheader",
-                        Con.String("id",4),
+                        Con.Const(Con.String("id",4),'wvpk'),
                         Con.ULInt32("block_size"),
                         Con.ULInt16("version"),
                         Con.ULInt8("track_number"),
@@ -97,10 +97,10 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
     def __read_info__(self):
         f = file(self.filename)
         try:
-            header = WavPackAudio.HEADER.parse(f.read(
+            try:
+                header = WavPackAudio.HEADER.parse(f.read(
                     WavPackAudio.HEADER.sizeof()))
-
-            if (header.id != 'wvpk'):
+            except Con.ConstError:
                 raise InvalidFile('wavpack header ID invalid')
         
             self.__samplerate__ = WavPackAudio.SAMPLING_RATE[

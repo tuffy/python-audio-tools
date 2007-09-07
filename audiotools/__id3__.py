@@ -27,7 +27,7 @@ class ID3v2Comment(MetaData,dict):
     FRAME_ID_LENGTH = 4
 
     ID3v2_HEADER = Con.Struct("id3v2_header",
-                              Con.Bytes("file_id",3),
+                              Con.Const(Con.Bytes("file_id",3),'ID3'),
                               Con.Byte("version_major"),
                               Con.Byte("version_minor"),
                               Con.Embed(Con.BitStruct("flags",
@@ -70,12 +70,13 @@ class ID3v2Comment(MetaData,dict):
         f = file(filename,"rb")
         
         try:
-             if (f.read(3) != 'ID3'): return {}
-
              frames = {}
 
              f.seek(0,0)
-             header = ID3v2Comment.ID3v2_HEADER.parse_stream(f)
+             try:
+                 header = ID3v2Comment.ID3v2_HEADER.parse_stream(f)
+             except Con.ConstError:
+                 return {}
              if (header.version_major == 0x04):
                  comment_class = ID3v2Comment
              elif (header.version_major == 0x03):
@@ -575,7 +576,7 @@ class ID3v2_2Comment(ID3v2Comment):
 
 class ID3v1Comment(MetaData,list):
     ID3v1 = Con.Struct("id3v1",
-      Con.String("identifier",3),
+      Con.Const(Con.String("identifier",3),'TAG'),
       Con.String("song_title",30),
       Con.String("artist",30),
       Con.String("album",30),
@@ -586,7 +587,7 @@ class ID3v1Comment(MetaData,list):
       Con.Byte("genre"))
   
     ID3v1_NO_TRACKNUMBER = Con.Struct("id3v1_notracknumber",
-      Con.String("identifier",3),
+      Con.Const(Con.String("identifier",3),'TAG'),
       Con.String("song_title",30),
       Con.String("artist",30),
       Con.String("album",30),
@@ -617,19 +618,18 @@ class ID3v1Comment(MetaData,list):
                 mp3file.seek(-128,2)
                 id3v1 = ID3v1Comment.ID3v1_NO_TRACKNUMBER.parse(mp3file.read())
                 id3v1.track_number = 0
-
-            if (id3v1.identifier == 'TAG'):
-                field_list = (id3v1.song_title,
-                              id3v1.artist,
-                              id3v1.album,
-                              id3v1.year,
-                              id3v1.comment)
-                
-                return tuple(map(lambda t:
-                                   t.rstrip('\x00').decode('ascii','replace'),
-                                 field_list) + [id3v1.track_number])
-            else:
+            except Con.ConstError:
                 return tuple([u""] * 5 + [-1])
+
+            field_list = (id3v1.song_title,
+                          id3v1.artist,
+                          id3v1.album,
+                          id3v1.year,
+                          id3v1.comment)
+            
+            return tuple(map(lambda t:
+                             t.rstrip('\x00').decode('ascii','replace'),
+                             field_list) + [id3v1.track_number])
         finally:
             mp3file.close()
 
