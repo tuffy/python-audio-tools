@@ -25,6 +25,15 @@ from __vorbis__ import *
 #Speex File
 #######################
 
+class UnframedVorbisComment(VorbisComment):
+    VORBIS_COMMENT = Con.Struct("vorbis_comment",
+                                Con.PascalString("vendor_string",
+                                                 length_field=Con.ULInt32("length")),
+                                Con.PrefixedArray(
+        length_field=Con.ULInt32("length"),
+        subcon=Con.PascalString("value",
+                                length_field=Con.ULInt32("length"))))
+
 class SpeexAudio(VorbisAudio):
     SUFFIX = "spx"
     DEFAULT_COMPRESSION = "8"
@@ -72,7 +81,7 @@ class SpeexAudio(VorbisAudio):
             #the read the Comment packet
             comment_packet = packets.next()
 
-            self.comment = VorbisComment.VORBIS_COMMENT.parse(
+            self.comment = UnframedVorbisComment.VORBIS_COMMENT.parse(
                 comment_packet)
         finally:
             del(packets); f.close(); del(f)

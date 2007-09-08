@@ -87,6 +87,14 @@ class FlacPictureComment:
                           data=self.data))
 
 class FlacComment(VorbisComment):
+    VORBIS_COMMENT = Con.Struct("vorbis_comment",
+                                Con.PascalString("vendor_string",
+                                                 length_field=Con.ULInt32("length")),
+                                Con.PrefixedArray(
+        length_field=Con.ULInt32("length"),
+        subcon=Con.PascalString("value",
+                                length_field=Con.ULInt32("length"))))
+    
     def __init__(self, vorbis_comment, picture_comments=()):
         self.picture_comments = picture_comments
         VorbisComment.__init__(self,
@@ -309,7 +317,7 @@ class FlacAudio(AudioFile):
 
         flacdata = flacfile.read()
 
-        for comment in VorbisComment.VORBIS_COMMENT.parse(flacdata).value:
+        for comment in FlacComment.VORBIS_COMMENT.parse(flacdata).value:
             key = comment[0:comment.index("=")].upper()
             comment = comment[comment.index("=") + 1:].decode('utf-8')
             

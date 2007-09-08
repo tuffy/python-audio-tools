@@ -421,8 +421,11 @@ class VorbisAudio(AudioFile):
     def get_metadata(self):
         data = {}
         for pair in self.comment.value:
-            (key,value) = pair.split('=',1)
-            data.setdefault(key,[]).append(value.decode('utf-8'))
+            try:
+                (key,value) = pair.split('=',1)
+                data.setdefault(key,[]).append(value.decode('utf-8'))
+            except ValueError:
+                continue
 
         return VorbisComment(data)
 

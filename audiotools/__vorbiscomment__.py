@@ -27,7 +27,8 @@ class VorbisComment(MetaData,dict):
                                 Con.PrefixedArray(
                                        length_field=Con.ULInt32("length"),
                                        subcon=Con.PascalString("value",
-                                                             length_field=Con.ULInt32("length"))))
+                                                             length_field=Con.ULInt32("length"))),
+                                Con.Const(Con.Byte("framing"),1))
 
     ATTRIBUTE_MAP = {'track_name':'TITLE',
                      'track_number':'TRACKNUMBER',
@@ -126,9 +127,10 @@ class VorbisComment(MetaData,dict):
     def build(self):
         comment = Con.Container()
         comment.vendor_string = "Python Audio Tools %s" % (VERSION)
+        comment.framing = 1
         comment.value = []
         for (key,values) in self.items():
             for value in values:
                 comment.value.append("%s=%s" % (key,
                                                 value.encode('utf-8')))
-        return VorbisComment.VORBIS_COMMENT.build(comment)
+        return self.VORBIS_COMMENT.build(comment)

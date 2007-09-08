@@ -195,7 +195,8 @@ style recspread 0.3
 noname
        0-7-9 Type (0x03)
        8-55-32 Header `vorbis' (0x766F72626973)
-  A1:  56--39 Comment Data
+  A1:  56--28 Comment Data
+       0-7-11 Framing (0x1)
 noname
   VS:  --16 Vendor String
        0-31-16 Total Comments
