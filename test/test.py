@@ -81,6 +81,11 @@ class TestWaveAudio(unittest.TestCase):
         try:
             new_file = self.audio_class.from_pcm(temp.name,
                                                  BLANK_PCM_Reader(TEST_LENGTH))
+
+            self.assertEqual(new_file.channels(),2)
+            self.assertEqual(new_file.bits_per_sample(),16),
+            self.assertEqual(new_file.sample_rate(),44100)
+            
             if (new_file.lossless()):
                 self.assertEqual(audiotools.pcm_cmp(
                     new_file.to_pcm(),
