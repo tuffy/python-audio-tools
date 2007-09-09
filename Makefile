@@ -7,6 +7,9 @@ install:
 	$(PYTHON) setup.py install
 	cd docs && $(MAKE) install
 
+check:
+	cd test && $(PYTHON) test.py
+
 clean:
 	rm -rfv build
 	rm -fv audiotools/*.pyc
