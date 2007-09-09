@@ -58,7 +58,6 @@ class ID3v2Comment(MetaData,dict):
                      'album_name':'TALB',
                      'artist_name':'TPE1',
                      'performer_name':'TPE2',
-                     'copyright':'WCOP',
                      'year':'TDRC'}
     
     ITEM_MAP = dict(map(reversed,ATTRIBUTE_MAP.items()))
@@ -229,8 +228,7 @@ class ID3v2Comment(MetaData,dict):
                                               metadata.get("TP3",
                                                metadata.get("TP4",u"")))))),
 
-                          copyright=metadata.get("WCOP",
-                                     metadata.get("WCP",u"")),
+                          copyright=u"",
 
                           year=metadata.get("TYER",
                                 metadata.get("TYE",u""))
@@ -271,9 +269,12 @@ class ID3v2Comment(MetaData,dict):
             field = getattr(metadata,field)
             if (field != u""):
                 tags[key] = unicode(field)
-                
-        if (tags["TPE1"] == tags["TPE2"]):
-            del(tags["TPE2"])
+
+        try:
+            if (tags["TPE1"] == tags["TPE2"]):
+                del(tags["TPE2"])
+        except KeyError:
+            pass
 
         return ID3v2Comment(tags)
 
@@ -362,7 +363,6 @@ class ID3v2_3Comment(ID3v2Comment):
                      'album_name':'TALB',
                      'artist_name':'TPE1',
                      'performer_name':'TPE2',
-                     'copyright':'WCOP',
                      'year':'TDRC'}
     
     ITEM_MAP = dict(map(reversed,ATTRIBUTE_MAP.items()))
@@ -406,8 +406,11 @@ class ID3v2_3Comment(ID3v2Comment):
             if (field != u""):
                 tags[key] = unicode(field)
 
-        if (tags["TPE1"] == tags["TPE2"]):
-            del(tags["TPE2"])
+        try:
+            if (tags["TPE1"] == tags["TPE2"]):
+                del(tags["TPE2"])
+        except KeyError:
+            pass
 
         return ID3v2_3Comment(tags)
 
@@ -463,7 +466,6 @@ class ID3v2_2Comment(ID3v2Comment):
                      'album_name':'TAL',
                      'artist_name':'TP1',
                      'performer_name':'TP2',
-                     'copyright':'WCP',
                      'year':'TYE'}
     
     ITEM_MAP = dict(map(reversed,ATTRIBUTE_MAP.items()))

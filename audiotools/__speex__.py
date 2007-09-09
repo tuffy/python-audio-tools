@@ -177,3 +177,5 @@ class SpeexAudio(VorbisAudio):
         f.write(new_file.getvalue())
         f.close()
         writer.close()
+
+        self.__read_metadata__()

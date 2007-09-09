@@ -325,8 +325,8 @@ class M4AMetaData(MetaData,dict):
                           track_name=meta_data.get('\xa9nam',[u''])[0],
                           track_number=trkn.track_number,
                           album_name=meta_data.get('\xa9alb',[u''])[0],
-                          artist_name=meta_data.get('\xa9ART',[u''])[0],
-                          performer_name=u'',
+                          artist_name=meta_data.get('\xa9wrt',[u''])[0],
+                          performer_name=meta_data.get('\xa9ART',[u''])[0],
                           copyright=meta_data.get('cprt',[u''])[0],
                           year=u'')
 

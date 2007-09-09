@@ -58,7 +58,8 @@ class DummyMetaData(audiotools.MetaData):
                                      track_name=u"Track Name",
                                      track_number=5,
                                      album_name=u"Album Name",
-                                     artist_name=u"Artist Name")
+                                     artist_name=u"Artist Name",
+                                     performer_name=u"Performer")
         
 class DummyMetaData2(audiotools.MetaData):
     def __init__(self):
@@ -105,25 +106,41 @@ class TestWaveAudio(unittest.TestCase):
             suffix="." + audio_class.SUFFIX),
             audio_class) for audio_class in audiotools.AVAILABLE_TYPES]
         
-        other_files = [
-            audio_class.from_pcm(temp_file.name,
-                                 BLANK_PCM_Reader(SHORT_LENGTH))
-            for (temp_file,audio_class) in tempfiles]
+        other_files = [audio_class.from_pcm(temp_file.name,
+                                            BLANK_PCM_Reader(SHORT_LENGTH))
+                       for (temp_file,audio_class) in tempfiles]
+        for audio_file in other_files:
+            audio_file.set_metadata(DummyMetaData())
+            
         try:
             for f in other_files:
                 new_file = self.audio_class.from_pcm(
                     temp.name,
                     f.to_pcm())
+
+                new_file.set_metadata(f.get_metadata())
                 
                 if (new_file.lossless() and f.lossless()):
                     self.assertEqual(audiotools.pcm_cmp(
                         new_file.to_pcm(),
-                        f.to_pcm()),True)
+                        f.to_pcm()),True,
+                                     "PCM mismatch converting %s to %s" % \
+                                     (repr(f),repr(new_file)))
                 else:
                     counter = PCM_Count()
                     pcm = new_file.to_pcm()
                     audiotools.transfer_data(pcm.read,counter.write)
                     self.assert_(len(counter) > 0)
+
+                if ((new_file.get_metadata() is not None) and
+                    (f.get_metadata() is not None)):
+                    self.assertEqual(
+                        new_file.get_metadata(),
+                        f.get_metadata(),
+                        "metadata mismatch converting %s to %s (%s != %s)" % \
+                        (repr(f),repr(new_file),
+                         repr(f.get_metadata()),
+                         repr(new_file.get_metadata())))
         finally:
             temp.close()
             for (temp_file,audio_class) in tempfiles:
