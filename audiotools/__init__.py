@@ -399,6 +399,75 @@ class AlbumMetaData(dict):
 
 
 #######################
+#Image MetaData
+#######################
+
+#A simple image data container
+class Image:
+    #data is a string of the actual image data file
+    #mime_type is a string of the image's MIME type
+    #width and height are integers of the images' dimensions
+    #color_depth is the full depth of the image in bits
+    #(24 for JPEG, 8 for GIF, etc.)
+    #color_count is the number of colors used for palette images, or 0
+    #description is a unicode string
+    #type is an int
+    #0 = front cover
+    #1 = back cover
+    #2 = leaflet page
+    #3 = media
+    #4 = other
+    def __init__(self, data, mime_type, width, height,
+                 color_depth, color_count, description, type):
+        self.data = data
+        self.mime_type = mime_type
+        self.width = width
+        self.height = height
+        self.color_depth = color_depth
+        self.color_count = color_count
+        self.description = description
+        self.type = type
+
+#A container for multiple Images
+class ImageMetaData:
+    def __init__(self, images):
+        self.__dict__['__images__'] = list(images)
+
+    def images(self):
+        return self.__images__
+
+    def front_covers(self):
+        return [i for i in self.images() if i.type == 0]
+
+    def back_covers(self):
+        return [i for i in self.images() if i.type == 1]
+
+    def leaflet_pages(self):
+        return [i for i in self.images() if i.type == 2]
+
+    def media(self):
+        return [i for i in self.images() if i.type == 3]
+
+    def other_images(self):
+        return [i for i in self.images() if i.type == 4]
+
+    #image should be an Image object
+    #this method should also affect the underlying metadata value
+    #(e.g. adding a new Image to FlacComment should add another
+    # METADATA_BLOCK_PICTURE block to the file)
+    def add_image(self, image):
+        self.__images__.append(image)
+
+    #image should be an existing Image object
+    #this method should also affect the underlying metadata value
+    #(e.g. removing an existing Image from FlacComment should
+    # remove that same METADATA_BLOCK_PICTURE block from the file)
+    def delete_image(self, image):
+        del(self.__images__[self.__images__.index(image)])
+    
+
+
+#######################
 #Generic Audio File
 #######################
 

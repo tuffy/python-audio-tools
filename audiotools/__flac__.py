@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,InvalidFile,PCMReader,Con,transfer_data,subprocess,BIN,cStringIO,open_files
+from audiotools import AudioFile,InvalidFile,PCMReader,Con,transfer_data,subprocess,BIN,cStringIO,open_files,Image,ImageMetaData
 from __vorbiscomment__ import *
 from __id3__ import ID3v2Comment
 from __vorbis__ import OggStreamReader,OggStreamWriter
@@ -31,17 +31,32 @@ from __vorbis__ import OggStreamReader,OggStreamWriter
 class FlacException(InvalidFile): pass
 
 #this is a container for FLAC's PICTURE metadata blocks
-class FlacPictureComment:
+class FlacPictureComment(Image):
     def __init__(self, type, mime_type, description,
-                 width, height, color_depth, colors_used, data):
-        self.type = type
-        self.mime_type = mime_type
-        self.description = description
-        self.width = width
-        self.height = height
-        self.color_depth = color_depth
-        self.colors_used = colors_used
-        self.data = data
+                 width, height, color_depth, color_count, data):
+        Image.__init__(self,
+                       data=data,
+                       mime_type=mime_type,
+                       width=width,
+                       height=height,
+                       color_depth=color_depth,
+                       color_count=color_count,
+                       description=description.decode('utf-8'),
+                       type={3:0,4:1,5:2,6:3}.get(type,4))
+        self.flac_type = type
+
+    #takes an Image object
+    #returns a FlacPictureComment
+    @classmethod
+    def converted(cls, image):
+        return FlacPictureComment(type={0:3,1:4,5:2,3:6}.get(image.type,0),
+                                  mime_type=image.mime_type,
+                                  description=image.description.encode('utf-8'),
+                                  width=image.width,
+                                  height=image.height,
+                                  color_depth=image.color_depth,
+                                  color_count=image.color_count,
+                                  data=image.data)
 
     def type_string(self):
         return {0:"Other",
@@ -64,11 +79,13 @@ class FlacPictureComment:
                 17:"A bright coloured fish",
                 18:"Illustration",
                 19:"Band/Artist logotype",
-                20:"Publisher/Studio logotype"}.get(self.type,"Other")
+                20:"Publisher/Studio logotype"}.get(self.flac_type,"Other")
 
 
     def __repr__(self):
-        return "FlacPictureComment(type=%s,mime_type=%s,width=%s,height=%s,...)" % (repr(self.type),repr(self.mime_type),repr(self.width),repr(self.height))
+        return "FlacPictureComment(type=%s,mime_type=%s,width=%s,height=%s,...)" % \
+               (repr(self.flac_type),repr(self.mime_type),
+                repr(self.width),repr(self.height))
 
     def __unicode__(self):
         return u"Picture : %s (%d\u00D7%d,'%s')" % \
@@ -77,16 +94,17 @@ class FlacPictureComment:
 
     def build(self):
         return FlacAudio.PICTURE_COMMENT.build(
-            Con.Container(type=self.type,
+            Con.Container(type=self.flac_type,
                           mime_type=self.mime_type,
                           description=self.description,
                           width=self.width,
                           height=self.height,
                           color_depth=self.color_depth,
-                          color_count=self.colors_used,
+                          color_count=self.color_count,
                           data=self.data))
 
-class FlacComment(VorbisComment):
+#FIXME - implement add_image,delete_image
+class FlacComment(ImageMetaData,VorbisComment):
     VORBIS_COMMENT = Con.Struct("vorbis_comment",
                                 Con.PascalString("vendor_string",
                                                  length_field=Con.ULInt32("length")),
@@ -94,28 +112,34 @@ class FlacComment(VorbisComment):
         length_field=Con.ULInt32("length"),
         subcon=Con.PascalString("value",
                                 length_field=Con.ULInt32("length"))))
-    
+
+    #picture_comments should be a list of FlacPictureComments
     def __init__(self, vorbis_comment, picture_comments=()):
-        self.picture_comments = picture_comments
-        VorbisComment.__init__(self,
-                               vorbis_comment)
+        #self.picture_comments = picture_comments
+        VorbisComment.__init__(self,vorbis_comment)
+        ImageMetaData.__init__(self,picture_comments)
 
     @classmethod
     def converted(cls, metadata):
         if ((metadata is None) or (isinstance(metadata,FlacComment))):
             return metadata
-        elif (isinstance(metadata,VorbisComment)):
-            return FlacComment(metadata,())
         else:
-            return FlacComment(VorbisComment.converted(metadata),())
+            if (isinstance(metadata,ImageMetaData)):
+                images = [FlacPictureComment.converted(i)
+                          for i in metadata.images()]
+                
+            if (isinstance(metadata,VorbisComment)):
+                return FlacComment(metadata,images)
+            else:
+                return FlacComment(VorbisComment.converted(metadata),images)
 
     def __unicode__(self):
-        if (len(self.picture_comments) == 0):
+        if (len(self.images()) == 0):
             return unicode(VorbisComment.__unicode__(self))
         else:
             return u"%s\n\n%s" % \
                 (unicode(VorbisComment.__unicode__(self)),
-                 "\n".join([unicode(p) for p in self.picture_comments]))
+                 "\n".join([unicode(p) for p in self.images()]))
 
 
 class FlacAudio(AudioFile):
@@ -240,7 +264,7 @@ class FlacAudio(AudioFile):
                         width=image.width,
                         height=image.height,
                         color_depth=image.color_depth,
-                        colors_used=image.color_count,
+                        color_count=image.color_count,
                         data=image.data))
                 else:
                     f.seek(length,1)
@@ -259,18 +283,20 @@ class FlacAudio(AudioFile):
         import tempfile
         
         self.__set_vorbis_comment__(metadata)
-        for picture in metadata.picture_comments:
+
+        #converted() must transform all ImageMetaData to FlacPictureComments
+        for picture in metadata.images():
             picturedata = tempfile.NamedTemporaryFile()
             picturedata.write(picture.data)
             picturedata.flush()
             self.set_picture(picture_filename=picturedata.name,
-                             type=picture.type,
+                             type=picture.flac_type,
                              mime_type=picture.mime_type,
                              description=picture.description,
                              width=picture.width,
                              height=picture.height,
                              depth=picture.color_depth,
-                             colors=picture.colors_used)
+                             colors=picture.color_count)
             picturedata.close()
 
 
@@ -555,7 +581,7 @@ class OggFlacAudio(FlacAudio):
                         width=image.width,
                         height=image.height,
                         color_depth=image.color_depth,
-                        colors_used=image.color_count,
+                        color_count=image.color_count,
                         data=image.data))
                     
                 if (header.last_block == 1):
@@ -606,6 +632,7 @@ class OggFlacAudio(FlacAudio):
 
         #write the pages for PICTURE comment packets (if any)
         pagenum = comment_pages[-1][0].page_sequence_number + 1
+
         for picture in comment.picture_comments:
             picture_pages = OggStreamWriter.build_pages(
                 0,
