@@ -138,15 +138,16 @@ if (__name__ == '__main__'):
     for file in audiofiles:
         metadata = metadata_function(file, xmcd)
 
-        for field in ('track_name','track_number','album_name',
-                      'artist_name','performer_name','copyright',
-                      'year'):
-            if (getattr(options,field) != None):
-                attr = getattr(options,field)
-                if (isinstance(attr,str)):
-                    attr = attr.decode(audiotools.IO_ENCODING)
-                setattr(metadata,field,attr)
-            
-        file.set_metadata(metadata)
+        if (metadata is not None):
+            for field in ('track_name','track_number','album_name',
+                          'artist_name','performer_name','copyright',
+                          'year'):
+                if (getattr(options,field) != None):
+                    attr = getattr(options,field)
+                    if (isinstance(attr,str)):
+                        attr = attr.decode(audiotools.IO_ENCODING)
+                    setattr(metadata,field,attr)
+
+            file.set_metadata(metadata)
 
                 
