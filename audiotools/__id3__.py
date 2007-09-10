@@ -17,12 +17,12 @@
 #along with this program; if not, write to the Free Software
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-from audiotools import MetaData,Con,re,os
+from audiotools import MetaData,Con,re,os,ImageMetaData,Image
 
 class EndOfID3v2Stream(Exception): pass
 class UnsupportedID3v2Version(Exception): pass
 
-class ID3v2Comment(MetaData,dict):
+class ID3v2Comment(ImageMetaData,MetaData,dict):
     VALID_FRAME_ID = re.compile(r'[A-Z0-9]{4}')
     FRAME_ID_LENGTH = 4
 
@@ -52,6 +52,14 @@ class ID3v2Comment(MetaData,dict):
                           Con.Flag("encryption"),
                           Con.Flag("unsynchronization"),
                           Con.Flag("data_length"))))
+
+    APIC_FRAME = Con.Struct('APIC',
+                            Con.Byte('text_encoding'),
+                            Con.CString('mime_type'),
+                            Con.Byte('picture_type'),
+                            Con.CString('description'),
+                            Con.GreedyRepeater(
+        Con.Byte('data')))
 
     ATTRIBUTE_MAP = {'track_name':'TIT2',
                      'track_number':'TRCK',
@@ -233,7 +241,19 @@ class ID3v2Comment(MetaData,dict):
                           year=metadata.get("TYER",
                                 metadata.get("TYE",u""))
                           )
-        
+
+        if (metadata.has_key('APIC')):
+            apic = self.APIC_FRAME.parse(metadata['APIC'])
+
+            images = [APICImage(data="".join(map(chr,apic.data)),
+                                mime_type=apic.mime_type,
+                                description=apic.description,
+                                apic_type=apic.picture_type)]
+                            
+        else:
+            images = []
+
+        ImageMetaData.__init__(self,images)
         dict.__init__(self,metadata)
 
     #if an attribute is updated (e.g. self.track_name)
@@ -319,6 +339,14 @@ class ID3v2Comment(MetaData,dict):
                                   unicode(value.encode('hex')[0:39].upper()) + u"\u2026"))
 
         return pairs
+
+    def __unicode__(self):
+        if (len(self.images()) == 0):
+            return unicode(MetaData.__unicode__(self))
+        else:
+            return u"%s\n\n%s" % \
+                (unicode(MetaData.__unicode__(self)),
+                 "\n".join([unicode(p) for p in self.images()]))
 
     #takes a file stream
     #checks that stream for an ID3v2 comment
@@ -574,6 +602,59 @@ class ID3v2_2Comment(ID3v2Comment):
         header.flag = [0,0,0,0,0,0,0,0]
 
         return cls.ID3v2_HEADER.build(header) + "".join(tags)
+
+
+class APICImage(Image):
+    def __init__(self, data, mime_type, description, apic_type):
+        #FIXME - replace this with a non-PIL image fetching solution
+        import Image as PILImage
+        import cStringIO
+        i = PILImage.open(cStringIO.StringIO(data))
+
+        self.apic_type = apic_type
+        Image.__init__(self,
+                       data=data,
+                       mime_type=mime_type,
+                       width=i.size[0],
+                       height=i.size[1],
+                       color_depth=24,
+                       color_count=0,
+                       description=description.decode('ascii','replace'),
+                       type={3:0,4:1,5:2,6:3}.get(apic_type,4))
+
+    def type_string(self):
+        return {0:"Other",
+                1:"32x32 pixels 'file icon' (PNG only)",
+                2:"Other file icon",
+                3:"Cover (front)",
+                4:"Cover (back)",
+                5:"Leaflet page",
+                6:"Media (e.g. label side of CD)",
+                7:"Lead artist/lead performer/soloist",
+                8:"Artist / Performer",
+                9:"Conductor",
+                10:"Band / Orchestra",
+                11:"Composer",
+                12:"Lyricist / Text writer",
+                13:"Recording Location",
+                14:"During recording",
+                15:"During performance",
+                16:"Movie/Video screen capture",
+                17:"A bright coloured fish",
+                18:"Illustration",
+                19:"Band/Artist logotype",
+                20:"Publisher/Studio logotype"}.get(self.apic_type,"Other")
+
+
+    def __repr__(self):
+        return "APICImage(mime_type=%s,description=%s,apic_type=%s,...)" % \
+               (repr(self.mime_type),repr(self.description),
+                repr(self.apic_type))
+
+    def __unicode__(self):
+        return u"Picture : %s (%d\u00D7%d,'%s')" % \
+            (self.type_string(),
+             self.width,self.height,self.mime_type)
 
 
 class ID3v1Comment(MetaData,list):

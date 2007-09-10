@@ -633,7 +633,7 @@ class OggFlacAudio(FlacAudio):
         #write the pages for PICTURE comment packets (if any)
         pagenum = comment_pages[-1][0].page_sequence_number + 1
 
-        for picture in comment.picture_comments:
+        for picture in comment.images():
             picture_pages = OggStreamWriter.build_pages(
                 0,
                 header_page.bitstream_serial_number,
