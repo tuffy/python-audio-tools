@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,InvalidFile,PCMReader,Con,transfer_data,subprocess,BIN,cStringIO,MetaData,os
+from audiotools import AudioFile,InvalidFile,PCMReader,Con,transfer_data,subprocess,BIN,cStringIO,MetaData,os,ImageMetaData,Image
 
 #######################
 #M4A File
@@ -313,7 +313,8 @@ class M4AAudio(AudioFile):
 
         return M4AAudio(filename)
 
-class M4AMetaData(MetaData,dict):
+#FIXME - implement add_image,delete_image
+class M4AMetaData(ImageMetaData,MetaData,dict):
     #meta_data is a key->[value1,value2,...] dict of the contents
     #of the 'meta' container atom
     #values are Unicode if the key starts with \xa9, binary strings otherwise
@@ -329,6 +330,13 @@ class M4AMetaData(MetaData,dict):
                           performer_name=meta_data.get('\xa9ART',[u''])[0],
                           copyright=meta_data.get('cprt',[u''])[0],
                           year=u'')
+
+        if (meta_data.has_key('covr')):
+            images = [M4ACovr(i) for i in meta_data['covr']]
+        else:
+            images = []
+
+        ImageMetaData.__init__(self,images)
 
         dict.__init__(self, meta_data)
 
@@ -460,3 +468,24 @@ class M4AMetaData(MetaData,dict):
         pairs.sort(M4AMetaData.__by_pair__)
         return pairs
 
+class M4ACovr(Image):
+    def __init__(self, image_data):
+        self.image_data = image_data
+        #FIXME - replace the Python Imaging Library
+        import Image as PILImage
+        import cStringIO
+        img = PILImage.open(cStringIO.StringIO(image_data))
+        Image.__init__(self,
+                       data=image_data,
+                       mime_type={'PNG':'image/png',
+                                  'JPEG':'image/jpeg'}.get(img.format),
+                       width=img.size[0],
+                       height=img.size[1],
+                       color_depth=24,
+                       color_count=0,
+                       description=u'',
+                       type=0)
+
+    @classmethod
+    def converted(cls, image):
+        return M4ACovr(image.data)

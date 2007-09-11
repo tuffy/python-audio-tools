@@ -22,6 +22,7 @@ from audiotools import MetaData,Con,re,os,ImageMetaData,Image
 class EndOfID3v2Stream(Exception): pass
 class UnsupportedID3v2Version(Exception): pass
 
+#FIXME - implement add_image,delete_image
 class ID3v2Comment(ImageMetaData,MetaData,dict):
     VALID_FRAME_ID = re.compile(r'[A-Z0-9]{4}')
     FRAME_ID_LENGTH = 4
@@ -161,11 +162,14 @@ class ID3v2Comment(ImageMetaData,MetaData,dict):
     def build_id3v2(cls, taglist):
         tags = []
         for (t_id,t_value) in taglist:
-            try:
-                t_s = chr(0x00) + t_value.encode('ISO-8859-1')
-            except UnicodeEncodeError:
-                #t_s = chr(0x02) + t_value.encode('UTF-16-BE') + (chr(0) * 2)
-                t_s = chr(0x03) + t_value.encode('UTF-8')
+            if (t_id.startswith('T')):
+                try:
+                    t_s = chr(0x00) + t_value.encode('ISO-8859-1')
+                except UnicodeEncodeError:
+                    #t_s = chr(0x02) + t_value.encode('UTF-16-BE') + (chr(0) * 2)
+                    t_s = chr(0x03) + t_value.encode('UTF-8')
+            else:
+                t_s = t_value
 
             tag = Con.Container()
             tag.compression = False
@@ -336,14 +340,6 @@ class ID3v2Comment(ImageMetaData,MetaData,dict):
                                   unicode(value.encode('hex')[0:39].upper()) + u"\u2026"))
 
         return pairs
-
-    def __unicode__(self):
-        if (len(self.images()) == 0):
-            return unicode(MetaData.__unicode__(self))
-        else:
-            return u"%s\n\n%s" % \
-                (unicode(MetaData.__unicode__(self)),
-                 "\n".join([unicode(p) for p in self.images()]))
 
     #takes a file stream
     #checks that stream for an ID3v2 comment
@@ -584,10 +580,13 @@ class ID3v2_2Comment(ID3v2Comment):
         tags = []
 
         for (t_id,t_value) in taglist:
-            try:
-                t_s = chr(0x00) + t_value.encode('ISO-8859-1')
-            except UnicodeEncodeError:
-                t_s = chr(0x01) + t_value.encode('UTF-16')
+            if (t_id.startswith('T')):
+                try:
+                    t_s = chr(0x00) + t_value.encode('ISO-8859-1')
+                except UnicodeEncodeError:
+                    t_s = chr(0x01) + t_value.encode('UTF-16')
+            else:
+                t_s = t_value
 
             tag = Con.Container()
             tag.frame_id = t_id
@@ -663,11 +662,6 @@ class APICImage(Image):
         return "APICImage(mime_type=%s,description=%s,apic_type=%s,...)" % \
                (repr(self.mime_type),repr(self.description),
                 repr(self.apic_type))
-
-    def __unicode__(self):
-        return u"Picture : %s (%d\u00D7%d,'%s')" % \
-            (self.type_string(),
-             self.width,self.height,self.mime_type)
 
     @classmethod
     def converted(cls, image):  

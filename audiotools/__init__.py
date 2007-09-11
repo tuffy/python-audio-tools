@@ -359,12 +359,19 @@ class MetaData:
             line_template = u"%%(key)%(length)d.%(length)ds : %%(value)s" % \
                             {"length":max_key_length}
 
-            return unicode(os.linesep.join(
+            base_comment = unicode(os.linesep.join(
                 [u"%s Comment:" % (self.__comment_name__())] + \
                 [line_template % {"key":key,"value":value} for
                  (key,value) in comment_pairs]))
         else:
-            return u""
+            base_comment = u""
+
+        if (isinstance(self,ImageMetaData) and (len(self.images()) > 0)):
+            return u"%s\n\n%s" % \
+                   (base_comment,
+                    "\n".join([unicode(p) for p in self.images()]))
+        else:
+            return base_comment
 
     def __eq__(self, metadata):
         import operator
@@ -427,6 +434,18 @@ class Image:
         self.color_count = color_count
         self.description = description
         self.type = type
+
+    def type_string(self):
+        return {0:"Front Cover",
+                1:"Back Cover",
+                2:"Leaflet Page",
+                3:"Media",
+                4:"Other"}.get(self.type,"Other")
+
+    def __unicode__(self):
+        return u"Picture : %s (%d\u00D7%d,'%s')" % \
+               (self.type_string(),
+                self.width,self.height,self.mime_type)
 
 #A container for multiple Images
 class ImageMetaData:

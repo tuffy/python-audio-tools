@@ -135,14 +135,6 @@ class FlacComment(ImageMetaData,VorbisComment):
             else:
                 return FlacComment(VorbisComment.converted(metadata),images)
 
-    def __unicode__(self):
-        if (len(self.images()) == 0):
-            return unicode(VorbisComment.__unicode__(self))
-        else:
-            return u"%s\n\n%s" % \
-                (unicode(VorbisComment.__unicode__(self)),
-                 "\n".join([unicode(p) for p in self.images()]))
-
 
 class FlacAudio(AudioFile):
     SUFFIX = "flac"
