@@ -88,9 +88,8 @@ class ID3v2Comment(ImageMetaData,MetaData,dict):
 
              while (True):
                  try:
-                     (frame_id,frame_data) = \
-                         comment_class.read_id3v2_frame(f)
-                     frames[frame_id] = frame_data
+                     (frame_id,frame_data) = comment_class.read_id3v2_frame(f)
+                     frames.setdefault(frame_id,[]).append(frame_data)
                  except EndOfID3v2Stream:
                      break
 
@@ -131,7 +130,6 @@ class ID3v2Comment(ImageMetaData,MetaData,dict):
     #takes a list of ID3v2 syncsafe bytes and returns a single syncsafe int
     @classmethod
     def __de_syncsafe__(cls, bytes):
-        #print bytes
         total = 0
         for byte in bytes:
             total = total << 7
@@ -166,7 +164,6 @@ class ID3v2Comment(ImageMetaData,MetaData,dict):
                 try:
                     t_s = chr(0x00) + t_value.encode('ISO-8859-1')
                 except UnicodeEncodeError:
-                    #t_s = chr(0x02) + t_value.encode('UTF-16-BE') + (chr(0) * 2)
                     t_s = chr(0x03) + t_value.encode('UTF-8')
             else:
                 t_s = t_value
@@ -203,18 +200,18 @@ class ID3v2Comment(ImageMetaData,MetaData,dict):
     def __init__(self, metadata):
         try:
             tracknum = int(metadata.get("TRCK",
-                                        metadata.get("TRK",u"0")))
+                                        metadata.get("TRK",[u"0"]))[0])
         except ValueError:
             tracknum = 0
         
         MetaData.__init__(self,
                           track_name=metadata.get("TIT2",
-                                                  metadata.get("TT2",u"")),
+                                                  metadata.get("TT2",[u""]))[0],
                           
                           track_number=tracknum,
                           
                           album_name=metadata.get("TALB",
-                                                  metadata.get("TAL",u"")),
+                                                  metadata.get("TAL",[u""]))[0],
                           
                           artist_name=metadata.get("TPE1",
                                        metadata.get("TP1",
@@ -223,31 +220,30 @@ class ID3v2Comment(ImageMetaData,MetaData,dict):
                                           metadata.get("TOLY",
                                            metadata.get("TEXT",               
                                             metadata.get("TOA",
-                                             metadata.get("TCM",u"")))))))),
+                                             metadata.get("TCM",[u""]))))))))[0],
                                                    
                           performer_name=metadata.get("TPE2",
                                            metadata.get("TPE3",
                                             metadata.get("TPE4",
                                              metadata.get("TP2",
                                               metadata.get("TP3",
-                                               metadata.get("TP4",u"")))))),
+                                               metadata.get("TP4",[u""]))))))[0],
 
                           copyright=u"",
 
                           year=metadata.get("TYER",
-                                metadata.get("TYE",u""))
+                                metadata.get("TYE",[u""]))[0]
                           )
 
+        images = []
         if (metadata.has_key('APIC')):
-            apic = APICImage.APIC_FRAME.parse(metadata['APIC'])
-
-            images = [APICImage(data="".join(map(chr,apic.data)),
-                                mime_type=apic.mime_type,
-                                description=apic.description,
-                                apic_type=apic.picture_type)]
+            for apic_frame in metadata['APIC']:
+                apic = APICImage.APIC_FRAME.parse(metadata['APIC'])
+                images.append(APICImage(data="".join(map(chr,apic.data)),
+                                        mime_type=apic.mime_type,
+                                        description=apic.description,
+                                        apic_type=apic.picture_type))
                             
-        else:
-            images = []
 
         ImageMetaData.__init__(self,images)
         dict.__init__(self,metadata)
@@ -259,9 +255,9 @@ class ID3v2Comment(ImageMetaData,MetaData,dict):
 
         if (self.ATTRIBUTE_MAP.has_key(key)):
             if (key != 'track_number'):
-                self[self.ATTRIBUTE_MAP[key]] = value
+                self[self.ATTRIBUTE_MAP[key]] = [value]
             else:
-                self[self.ATTRIBUTE_MAP[key]] = unicode(value)
+                self[self.ATTRIBUTE_MAP[key]] = [unicode(value)]
 
     #if a dict pair is updated (e.g. self['TIT2'])
     #make sure to update the corresponding attribute
@@ -270,9 +266,9 @@ class ID3v2Comment(ImageMetaData,MetaData,dict):
         
         if (self.ITEM_MAP.has_key(key)):
             if (key != 'TRCK'):
-                self.__dict__[self.ITEM_MAP[key]] = value
+                self.__dict__[self.ITEM_MAP[key]] = value[0]
             else:
-                self.__dict__[self.ITEM_MAP[key]] = int(value)
+                self.__dict__[self.ITEM_MAP[key]] = int(value[0])
 
     @classmethod
     def converted(cls, metadata):
@@ -284,7 +280,7 @@ class ID3v2Comment(ImageMetaData,MetaData,dict):
         for (key,field) in cls.ITEM_MAP.items():
             field = getattr(metadata,field)
             if (field != u""):
-                tags[key] = unicode(field)
+                tags[key] = [unicode(field)]
 
         try:
             if (tags["TPE1"] == tags["TPE2"]):
@@ -294,13 +290,17 @@ class ID3v2Comment(ImageMetaData,MetaData,dict):
 
         if (isinstance(metadata,ImageMetaData)):
             if (len(metadata.images()) > 0):
-                #FIXME - handle multiple images
-                tags["APIC"] = APICImage.converted(metadata.images()[0]).build()
+                tags["APIC"] = [APICImage.converted(i).build()
+                                for i in metadata.images()]
 
         return ID3v2Comment(tags)
 
     def build_tag(self):
-        return self.build_id3v2(self.items())
+        taglist = []
+        for (key,values) in self.items():
+            for value in values:
+                taglist.append((key,value))
+        return self.build_id3v2(taglist)
 
     def __comment_name__(self):
         return u'ID3v2.4'
@@ -328,16 +328,17 @@ class ID3v2Comment(ImageMetaData,MetaData,dict):
 
         pairs = []
 
-        for (key,value) in sorted(self.items(),__by_weight__):
-            if (isinstance(value,unicode)):
-                pairs.append(('    ' + key,value))
-            else:
-                if (len(value) <= 20):
-                    pairs.append(('    ' + key,
-                                  unicode(value.encode('hex'))))
+        for (key,values) in sorted(self.items(),__by_weight__):
+            for value in values:
+                if (isinstance(value,unicode)):
+                    pairs.append(('    ' + key,value))
                 else:
-                    pairs.append(('    ' + key,
-                                  unicode(value.encode('hex')[0:39].upper()) + u"\u2026"))
+                    if (len(value) <= 20):
+                        pairs.append(('    ' + key,
+                                      unicode(value.encode('hex'))))
+                    else:
+                        pairs.append(('    ' + key,
+                                      unicode(value.encode('hex')[0:39].upper()) + u"\u2026"))
 
         return pairs
 
@@ -425,7 +426,7 @@ class ID3v2_3Comment(ID3v2Comment):
         for (key,field) in cls.ITEM_MAP.items():
             field = getattr(metadata,field)
             if (field != u""):
-                tags[key] = unicode(field)
+                tags[key] = [unicode(field)]
 
         try:
             if (tags["TPE1"] == tags["TPE2"]):
@@ -435,8 +436,8 @@ class ID3v2_3Comment(ID3v2Comment):
 
         if (isinstance(metadata,ImageMetaData)):
             if (len(metadata.images()) > 0):
-                #FIXME - handle multiple images
-                tags["APIC"] = APICImage.converted(metadata.images()[0]).build()
+                tags["APIC"] = [APICImage.converted(i).build()
+                                for i in metadata.images()]
 
         return ID3v2_3Comment(tags)
 
@@ -528,7 +529,7 @@ class ID3v2_2Comment(ID3v2Comment):
         for (key,field) in cls.ITEM_MAP.items():
             field = getattr(metadata,field)
             if (field != u""):
-                tags[key] = unicode(field)
+                tags[key] = [unicode(field)]
 
         if (tags["TP1"] == tags["TP2"]):
             del(tags["TP2"])
@@ -561,16 +562,17 @@ class ID3v2_2Comment(ID3v2Comment):
 
         pairs = []
 
-        for (key,value) in sorted(self.items(),__by_weight__):
-            if (isinstance(value,unicode)):
-                pairs.append(('    ' + key,value))
-            else:
-                if (len(value) <= 20):
-                    pairs.append(('    ' + key,
-                                  unicode(value.encode('hex'))))
+        for (key,values) in sorted(self.items(),__by_weight__):
+            for value in values:
+                if (isinstance(value,unicode)):
+                    pairs.append(('    ' + key,value))
                 else:
-                    pairs.append(('    ' + key,
-                                  unicode(value.encode('hex')[0:39].upper()) + u"\u2026"))
+                    if (len(value) <= 20):
+                        pairs.append(('    ' + key,
+                                      unicode(value.encode('hex'))))
+                    else:
+                        pairs.append(('    ' + key,
+                                      unicode(value.encode('hex')[0:39].upper()) + u"\u2026"))
 
         return pairs
 
