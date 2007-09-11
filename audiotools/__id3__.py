@@ -840,16 +840,16 @@ class ID3v1Comment(MetaData,list):
                                 self.track_number)
 
 
-class ID3CommentPair(MetaData):
+class ID3CommentPair(ImageMetaData,MetaData):
     #id3v2 and id3v1 are ID3v2Comment and ID3v1Comment objects or None
     #values in ID3v2 take precendence over ID3v1, if present
     def __init__(self, id3v2_comment, id3v1_comment):
         self.__dict__['id3v2'] = id3v2_comment
         self.__dict__['id3v1'] = id3v1_comment
 
-        if (self.id3v2 != None):
+        if (self.id3v2 is not None):
             base_comment = self.id3v2
-        elif (self.id3v1 != None):
+        elif (self.id3v1 is not None):
             base_comment = self.id3v1
         else:
             raise ValueError("id3v2 and id3v1 cannot both be blank")
@@ -865,9 +865,9 @@ class ID3CommentPair(MetaData):
             year=base_comment.year)
 
     def __setattr__(self, key, value):
-        if (self.id3v2 != None):
+        if (self.id3v2 is not None):
             setattr(self.id3v2,key,value)
-        if (self.id3v1 != None):
+        if (self.id3v1 is not None):
             setattr(self.id3v1,key,value)
 
     @classmethod
@@ -886,11 +886,27 @@ class ID3CommentPair(MetaData):
             return unicode(self.id3v2) + \
                    (os.linesep * 2) + \
                    unicode(self.id3v1)
-        elif (self.id3v2 != None):
+        elif (self.id3v2 is not None):
             #only ID3v2
             return unicode(self.id3v2)
-        elif (self.id3v1 != None):
+        elif (self.id3v1 is not None):
             #only ID3v1
             return unicode(self.id3v1)
         else:
             return u''
+
+    #ImageMetaData passthroughs
+    def images(self):
+        if (self.id3v2 is not None):
+            return self.id3v2.images()
+        else:
+            return []
+    
+    def add_image(self, image):
+        if (self.id3v2 is not None):
+            self.id3v2.add_image(image)
+
+    def delete_image(self, image):
+        if (self.id3v2 is not None):
+            self.id3v2.delete_image(image)
+

@@ -376,7 +376,7 @@ class MetaData:
     def __eq__(self, metadata):
         import operator
         
-        if (metadata != None):
+        if (metadata is not None):
             return reduce(operator.and_,
                           [(getattr(self,attr) == getattr(metadata,attr))
                            for attr in
@@ -462,6 +462,19 @@ class Image:
                      color_count=0,
                      description=description,
                      type=type)
+
+    def __eq__(self, image):
+        import operator
+
+        if (image is not None):
+            return reduce(operator.and_,
+                          [(getattr(self,attr) == getattr(image,attr))
+                           for attr in
+                           ("data","mime_type","width","height",
+                            "color_depth","color_count","description",
+                            "type")],True)
+        else:
+            return False
 
 #A container for multiple Images
 class ImageMetaData:
