@@ -104,7 +104,7 @@ class TestWaveAudio(unittest.TestCase):
 
         tempfiles = [(tempfile.NamedTemporaryFile(
             suffix="." + audio_class.SUFFIX),
-            audio_class) for audio_class in audiotools.AVAILABLE_TYPES]
+            audio_class) for audio_class in audiotools.TYPE_MAP.values()]
         
         other_files = [audio_class.from_pcm(temp_file.name,
                                             BLANK_PCM_Reader(SHORT_LENGTH))

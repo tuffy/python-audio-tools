@@ -53,14 +53,6 @@ class ID3v2Comment(ImageMetaData,MetaData,dict):
                           Con.Flag("unsynchronization"),
                           Con.Flag("data_length"))))
 
-    APIC_FRAME = Con.Struct('APIC',
-                            Con.Byte('text_encoding'),
-                            Con.CString('mime_type'),
-                            Con.Byte('picture_type'),
-                            Con.CString('description'),
-                            Con.GreedyRepeater(
-        Con.Byte('data')))
-
     ATTRIBUTE_MAP = {'track_name':'TIT2',
                      'track_number':'TRCK',
                      'album_name':'TALB',
@@ -243,7 +235,7 @@ class ID3v2Comment(ImageMetaData,MetaData,dict):
                           )
 
         if (metadata.has_key('APIC')):
-            apic = self.APIC_FRAME.parse(metadata['APIC'])
+            apic = APICImage.APIC_FRAME.parse(metadata['APIC'])
 
             images = [APICImage(data="".join(map(chr,apic.data)),
                                 mime_type=apic.mime_type,
@@ -295,6 +287,11 @@ class ID3v2Comment(ImageMetaData,MetaData,dict):
                 del(tags["TPE2"])
         except KeyError:
             pass
+
+        if (isinstance(metadata,ImageMetaData)):
+            if (len(metadata.images()) > 0):
+                #FIXME - handle multiple images
+                tags["APIC"] = APICImage.converted(metadata.images()[0]).build()
 
         return ID3v2Comment(tags)
 
@@ -440,6 +437,11 @@ class ID3v2_3Comment(ID3v2Comment):
         except KeyError:
             pass
 
+        if (isinstance(metadata,ImageMetaData)):
+            if (len(metadata.images()) > 0):
+                #FIXME - handle multiple images
+                tags["APIC"] = APICImage.converted(metadata.images()[0]).build()
+
         return ID3v2_3Comment(tags)
 
     def __comment_name__(self):
@@ -450,10 +452,13 @@ class ID3v2_3Comment(ID3v2Comment):
         tags = []
 
         for (t_id,t_value) in taglist:
-            try:
-                t_s = chr(0x00) + t_value.encode('ISO-8859-1')
-            except UnicodeEncodeError:
-                t_s = chr(0x01) + t_value.encode('UTF-16')
+            if (t_id.startswith('T')):
+                try:
+                    t_s = chr(0x00) + t_value.encode('ISO-8859-1')
+                except UnicodeEncodeError:
+                    t_s = chr(0x01) + t_value.encode('UTF-16')
+            else:
+                t_s = t_value
 
             tag = Con.Container()
             tag.tag_alter = False
@@ -605,6 +610,14 @@ class ID3v2_2Comment(ID3v2Comment):
 
 
 class APICImage(Image):
+    APIC_FRAME = Con.Struct('APIC',
+                            Con.Byte('text_encoding'),
+                            Con.CString('mime_type'),
+                            Con.Byte('picture_type'),
+                            Con.CString('description'),
+                            Con.GreedyRepeater(
+        Con.Byte('data')))
+    
     def __init__(self, data, mime_type, description, apic_type):
         #FIXME - replace this with a non-PIL image fetching solution
         import Image as PILImage
@@ -655,6 +668,22 @@ class APICImage(Image):
         return u"Picture : %s (%d\u00D7%d,'%s')" % \
             (self.type_string(),
              self.width,self.height,self.mime_type)
+
+    @classmethod
+    def converted(cls, image):  
+        return APICImage(data=image.data,
+                         mime_type=image.mime_type,
+                         description=image.description,
+                         apic_type={0:3,4:1,2:5,3:6}.get(image.type,0))
+
+    def build(self):
+        return self.APIC_FRAME.build(
+            Con.Container(text_encoding=0,
+                          mime_type=self.mime_type,
+                          picture_type=self.apic_type,
+                          description=self.description.encode('ascii',
+                                                              'replace'),
+                          data=map(ord,self.data)))
 
 
 class ID3v1Comment(MetaData,list):
