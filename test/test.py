@@ -147,7 +147,7 @@ Q/8LeyX0e/ZK6M+w/z9h5ahFWOF6xsYTVuUy8O8BsbVytHx43PPKPwEw98Hh""".decode('base64')
 class DummyMetaData3(audiotools.ImageMetaData,audiotools.MetaData):
     def __init__(self):
         audiotools.MetaData.__init__(self,
-                                     track_name=u"Track Name",
+                                     track_name=u"Track Name Three",
                                      track_number=5,
                                      album_name=u"Album Name",
                                      artist_name=u"Artist Name",
@@ -344,6 +344,57 @@ class TestSpeexAudio(TestWaveAudio):
     def setUp(self):
         self.audio_class = audiotools.SpeexAudio
 
+class TestID3v2:
+    def setUp(self):
+        self.file = tempfile.NamedTemporaryFile(suffix=".mp3")
+        
+        self.mp3_file = audiotools.MP3Audio.from_pcm(
+            self.file.name,BLANK_PCM_Reader(TEST_LENGTH))
+
+    def __comment_test__(self,id3_class):
+        self.mp3_file.set_metadata(
+            id3_class.converted(DummyMetaData))
+        metadata = self.mp3_file.get_metadata()
+        self.assertEqual(isinstance(metadata,id3_class),True)
+        
+        metadata.track_name = u"New Track Name"
+        self.mp3_file.set_metadata(metadata)
+        metadata2 = self.mp3_file.get_metadata()
+        self.assertEqual(isinstance(metadata2,id3_class),True)
+        self.assertEqual(metadata,metadata2)
+
+        metadata = id3_class.converted(DummyMetaData3)
+        for new_class in (audiotools.ID3v2_2Comment,
+                          audiotools.ID3v2_3Comment,
+                          auditoools.ID3v2Comment):
+            self.assertEqual(metadata,new_class.converted(metadata))
+            self.assertEqual(metadata.images(),
+                             new_class.converted(metadata).images())
+
+    def testid3v2_2(self):
+        self.__comment_test__(audiotools.ID3v2_2Comment)
+
+    def testid3v2_3(self):
+        self.__comment_test__(audiotools.ID3v2_3Comment)
+
+    def testid3v2_4(self):
+        self.__comment_test__(audiotools.ID3v2Comment)
+    
+    def testladder(self):
+        self.mp3_file.set_metadata(DummyMetaData3)
+        for new_class in (audiotools.ID3v2_2Comment,
+                          audiotools.ID3v2_3Comment,
+                          auditoools.ID3v2Comment,
+                          audiotools.ID3v2_3Comment,
+                          audiotools.ID3v2_2Comment):
+            metadata = new_class.converted(self.mp3_file.get_metadata())
+            self.mp3_file.set_metadata(metadata)
+            metadata = self.mp3_file.get_metadata()
+            self.assertEqual(metadata,DummyMetaData3)
+            self.assertEqual(metadata.images(),DummyMetaData3.images())
+
+    def tearDown(self):
+        self.file.close()
 
 if (__name__ == '__main__'):
     unittest.main()

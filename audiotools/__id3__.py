@@ -243,6 +243,14 @@ class ID3v2Comment(ImageMetaData,MetaData,dict):
                                         mime_type=apic.mime_type,
                                         description=apic.description,
                                         apic_type=apic.picture_type))
+
+        if (metadata.has_key('PIC')):
+            for pic_frame in metadata['PIC']:
+                pic = PICImage.PIC_FRAME.parse(pic_frame)
+                images.append(PICImage(data="".join(map(chr,pic.data)),
+                                       format=pic.format,
+                                       description=pic.description,
+                                       pic_type=pic.picture_type))
                             
 
         ImageMetaData.__init__(self,images)
@@ -544,7 +552,10 @@ class ID3v2_2Comment(ID3v2Comment):
         if (tags["TP1"] == tags["TP2"]):
             del(tags["TP2"])
 
-        #FIXME - add support for PIC
+        if (isinstance(metadata,ImageMetaData)):
+            if (len(metadata.images()) > 0):
+                tags['PIC'] = [PICImage.converted(i).build()
+                               for i in metadata.images()]
 
         return ID3v2_2Comment(tags)
 
@@ -615,7 +626,7 @@ class ID3v2_2Comment(ID3v2Comment):
         header.footer = False
         header.length = ID3v2Comment.__syncsafe32__(sum(map(len, tags)))
         header.unsynchronization = False
-        header.version_major = 3
+        header.version_major = 2
         header.version_minor = 0
         header.flag = [0,0,0,0,0,0,0,0]
 
@@ -689,6 +700,80 @@ class APICImage(Image):
             Con.Container(text_encoding=0,
                           mime_type=self.mime_type,
                           picture_type=self.apic_type,
+                          description=self.description.encode('ascii',
+                                                              'replace'),
+                          data=map(ord,self.data)))
+
+class PICImage(Image):
+    PIC_FRAME = Con.Struct('pic_frame',
+                           Con.Byte('text_encoding'),
+                           Con.String('format',3),
+                           Con.Byte('picture_type'),
+                           Con.CString('description'),
+                           Con.GreedyRepeater(
+        Con.Byte('data')))
+    
+    def __init__(self, data, format, description, pic_type):
+        #FIXME - replace the Python Imaging Library
+        import Image as PILImage
+        import cStringIO
+        i = PILImage.open(cStringIO.StringIO(data))
+
+        self.pic_type = pic_type
+        self.format = format
+        Image.__init__(self,
+                       data=data,
+                       mime_type=Image.new(data,u'',0).mime_type,
+                       width=i.size[0],
+                       height=i.size[1],
+                       color_depth=24,
+                       color_count=0,
+                       description=description.decode('ascii','replace'),
+                       type={3:0,4:1,5:2,6:3}.get(pic_type,4))
+
+    def type_string(self):
+        return {0:"Other",
+                1:"32x32 pixels 'file icon' (PNG only)",
+                2:"Other file icon",
+                3:"Cover (front)",
+                4:"Cover (back)",
+                5:"Leaflet page",
+                6:"Media (e.g. label side of CD)",
+                7:"Lead artist/lead performer/soloist",
+                8:"Artist / Performer",
+                9:"Conductor",
+                10:"Band / Orchestra",
+                11:"Composer",
+                12:"Lyricist / Text writer",
+                13:"Recording Location",
+                14:"During recording",
+                15:"During performance",
+                16:"Movie/Video screen capture",
+                17:"A bright coloured fish",
+                18:"Illustration",
+                19:"Band/Artist logotype",
+                20:"Publisher/Studio logotype"}.get(self.pic_type,"Other")
+
+    def __repr__(self):
+        return "PICImage(format=%s,description=%s,pic_type=%s,...)" % \
+               (repr(self.format),repr(self.description),
+                repr(self.pic_type))
+
+    @classmethod
+    def converted(cls, image):  
+        return PICImage(data=image.data,
+                        format={"image/png":"PNG",
+                                "image/jpeg":"JPG",
+                                "image/jpg":"JPG"}.get(image.mime_type,
+                                                       "JPG"),
+                        description=image.description,
+                        pic_type={0:3,4:1,2:5,3:6}.get(image.type,0))
+
+    def build(self):
+        return self.PIC_FRAME.build(
+            Con.Container(text_encoding=0,
+                          format=self.format,
+                          picture_type=self.pic_type,
                           description=self.description.encode('ascii',
                                                               'replace'),
                           data=map(ord,self.data)))
@@ -875,9 +960,13 @@ class ID3CommentPair(ImageMetaData,MetaData):
         if ((metadata is None) or (isinstance(metadata,ID3CommentPair))):
             return metadata
 
-        return ID3CommentPair(
-            ID3v2_3Comment.converted(metadata),
-            ID3v1Comment.converted(metadata))
+        if (isinstance(metadata,ID3v2Comment)):
+            return ID3CommentPair(metadata,
+                                  ID3v1Comment.converted(metadata))
+        else:
+            return ID3CommentPair(
+                ID3v2_3Comment.converted(metadata),
+                ID3v1Comment.converted(metadata))
             
 
     def __unicode__(self):
