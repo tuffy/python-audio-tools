@@ -127,6 +127,8 @@ class FlacComment(ImageMetaData,VorbisComment):
             if (isinstance(metadata,ImageMetaData)):
                 images = [FlacPictureComment.converted(i)
                           for i in metadata.images()]
+            else:
+                images = []
                 
             if (isinstance(metadata,VorbisComment)):
                 return FlacComment(metadata,images)
