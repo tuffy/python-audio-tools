@@ -313,7 +313,6 @@ class M4AAudio(AudioFile):
 
         return M4AAudio(filename)
 
-#FIXME - implement add_image,delete_image
 class M4AMetaData(ImageMetaData,MetaData,dict):
     #meta_data is a key->[value1,value2,...] dict of the contents
     #of the 'meta' container atom
@@ -377,6 +376,18 @@ class M4AMetaData(ImageMetaData,MetaData,dict):
                 trkn = __Qt_Meta_Atom__.TRKN.parse(value[0])
                 self.__dict__[self.ITEM_MAP[key]] = trkn.track_number
 
+    def add_image(self, image):
+        if (image.type == 0):
+            if (self.has_key('covr')):
+                self['covr'].append(image.data)
+            else:
+                self['covr'] = [image.data]
+            ImageMetaData.add_image(self,M4ACovr.converted(image))
+
+    def delete_image(self, image):
+        del(self['covr'][self['covr'].index(image.data)])
+        ImageMetaData.delete_image(self,image)
+
     @classmethod
     def converted(cls, metadata):
         if ((metadata is None) or (isinstance(metadata,M4AMetaData))):
@@ -393,6 +404,10 @@ class M4AMetaData(ImageMetaData,MetaData,dict):
                 tags['trkn'] = [__Qt_Meta_Atom__.TRKN.build(Con.Container(
                     track_number=int(value),
                     total_tracks=0))]
+
+        if (isinstance(metadata,ImageMetaData) and
+            (len(metadata.front_covers()) > 0)):
+            tags['covr'] = [i.data for i in metadata.front_covers()]
         
         return M4AMetaData(tags)
 
