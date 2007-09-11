@@ -238,7 +238,7 @@ class ID3v2Comment(ImageMetaData,MetaData,dict):
         images = []
         if (metadata.has_key('APIC')):
             for apic_frame in metadata['APIC']:
-                apic = APICImage.APIC_FRAME.parse(metadata['APIC'])
+                apic = APICImage.APIC_FRAME.parse(apic_frame)
                 images.append(APICImage(data="".join(map(chr,apic.data)),
                                         mime_type=apic.mime_type,
                                         description=apic.description,
@@ -269,6 +269,16 @@ class ID3v2Comment(ImageMetaData,MetaData,dict):
                 self.__dict__[self.ITEM_MAP[key]] = value[0]
             else:
                 self.__dict__[self.ITEM_MAP[key]] = int(value[0])
+
+    def add_image(self, image):
+        image = APICImage.converted(image)
+
+        self.setdefault('APIC',[]).append(image.build())
+        ImageMetaData.add_image(self,image)
+
+    def delete_image(self, image):
+        del(self['APIC'][self['APIC'].index(image.build())])
+        ImageMetaData.delete_image(self,image)
 
     @classmethod
     def converted(cls, metadata):
@@ -533,6 +543,8 @@ class ID3v2_2Comment(ID3v2Comment):
 
         if (tags["TP1"] == tags["TP2"]):
             del(tags["TP2"])
+
+        #FIXME - add support for PIC
 
         return ID3v2_2Comment(tags)
 

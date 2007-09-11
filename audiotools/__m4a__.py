@@ -378,10 +378,7 @@ class M4AMetaData(ImageMetaData,MetaData,dict):
 
     def add_image(self, image):
         if (image.type == 0):
-            if (self.has_key('covr')):
-                self['covr'].append(image.data)
-            else:
-                self['covr'] = [image.data]
+            self.setdefault('covr',[]).append(image.data)
             ImageMetaData.add_image(self,M4ACovr.converted(image))
 
     def delete_image(self, image):
