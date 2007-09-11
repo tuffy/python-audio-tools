@@ -447,6 +447,22 @@ class Image:
                (self.type_string(),
                 self.width,self.height,self.mime_type)
 
+    @classmethod
+    def new(cls, image_data, description, type):
+        #FIXME - implement this without the Python Imaging Library
+        import Image as PILImage
+        import cStringIO
+        img = PILImage.open(cStringIO.StringIO(image_data))
+        return Image(data=image_data,
+                     mime_type={'PNG':'image/png',
+                                'JPEG':'image/jpeg'}.get(img.format),
+                     width=img.size[0],
+                     height=img.size[1],
+                     color_depth=24,
+                     color_count=0,
+                     description=description,
+                     type=type)
+
 #A container for multiple Images
 class ImageMetaData:
     def __init__(self, images):
@@ -473,17 +489,16 @@ class ImageMetaData:
     #image should be an Image object
     #this method should also affect the underlying metadata value
     #(e.g. adding a new Image to FlacComment should add another
-    # METADATA_BLOCK_PICTURE block to the file)
+    # METADATA_BLOCK_PICTURE block to the metadata)
     def add_image(self, image):
         self.__images__.append(image)
 
     #image should be an existing Image object
     #this method should also affect the underlying metadata value
     #(e.g. removing an existing Image from FlacComment should
-    # remove that same METADATA_BLOCK_PICTURE block from the file)
+    # remove that same METADATA_BLOCK_PICTURE block from the metadata)
     def delete_image(self, image):
         del(self.__images__[self.__images__.index(image)])
-    
 
 
 #######################

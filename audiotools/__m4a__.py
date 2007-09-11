@@ -471,20 +471,18 @@ class M4AMetaData(ImageMetaData,MetaData,dict):
 class M4ACovr(Image):
     def __init__(self, image_data):
         self.image_data = image_data
-        #FIXME - replace the Python Imaging Library
-        import Image as PILImage
-        import cStringIO
-        img = PILImage.open(cStringIO.StringIO(image_data))
+
+        img = Image.new(image_data,u'',0)
+ 
         Image.__init__(self,
                        data=image_data,
-                       mime_type={'PNG':'image/png',
-                                  'JPEG':'image/jpeg'}.get(img.format),
-                       width=img.size[0],
-                       height=img.size[1],
-                       color_depth=24,
-                       color_count=0,
-                       description=u'',
-                       type=0)
+                       mime_type=img.mime_type,
+                       width=img.width,
+                       height=img.height,
+                       color_depth=img.color_depth,
+                       color_count=img.color_count,
+                       description=img.description,
+                       type=img.type)
 
     @classmethod
     def converted(cls, image):

@@ -87,11 +87,6 @@ class FlacPictureComment(Image):
                (repr(self.flac_type),repr(self.mime_type),
                 repr(self.width),repr(self.height))
 
-    def __unicode__(self):
-        return u"Picture : %s (%d\u00D7%d,'%s')" % \
-            (self.type_string(),
-             self.width,self.height,self.mime_type)
-
     def build(self):
         return FlacAudio.PICTURE_COMMENT.build(
             Con.Container(type=self.flac_type,
@@ -103,7 +98,6 @@ class FlacPictureComment(Image):
                           color_count=self.color_count,
                           data=self.data))
 
-#FIXME - implement add_image,delete_image
 class FlacComment(ImageMetaData,VorbisComment):
     VORBIS_COMMENT = Con.Struct("vorbis_comment",
                                 Con.PascalString("vendor_string",
@@ -134,6 +128,9 @@ class FlacComment(ImageMetaData,VorbisComment):
                 return FlacComment(metadata,images)
             else:
                 return FlacComment(VorbisComment.converted(metadata),images)
+
+    def add_image(self, image):
+        ImageMetaData.add_image(self,FlacPictureComment.converted(image))
 
 
 class FlacAudio(AudioFile):
@@ -273,6 +270,7 @@ class FlacAudio(AudioFile):
         if (metadata == None): return
 
         subprocess.call([BIN['metaflac'],'--remove-all-tags',self.filename])
+        subprocess.call([BIN['metaflac'],'--remove','--block-type=PICTURE',self.filename])
 
         import tempfile
         
@@ -695,12 +693,7 @@ class OggFlacAudio(FlacAudio):
             self.__samplerate__ = header.samplerate
             self.__channels__ = header.channels + 1
             self.__bitspersample__ = header.bits_per_sample + 1
-
-            #FIXME
-            #(might not be valid for PCM-generated OggFLAC
-            # we should probably bounce to the end of the file)
             self.__total_samples__ = header.total_samples
-
             self.__header_packets__ = header.header_packets
 
             self.__md5__ = "".join([chr(c) for c in header.md5])
