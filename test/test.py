@@ -387,9 +387,10 @@ class TestID3v2:
                           auditoools.ID3v2Comment,
                           audiotools.ID3v2_3Comment,
                           audiotools.ID3v2_2Comment):
-            metadata = new_class.converted(self.mp3_file.get_metadata())
+            metadata = new_class.converted(self.mp3_file.get_metadata().id3v2)
             self.mp3_file.set_metadata(metadata)
-            metadata = self.mp3_file.get_metadata()
+            metadata = self.mp3_file.get_metadata().id3v2
+            self.assertEqual(isinstance(metadata,new_class),True)
             self.assertEqual(metadata,DummyMetaData3)
             self.assertEqual(metadata.images(),DummyMetaData3.images())
 

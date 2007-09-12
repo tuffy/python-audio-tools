@@ -170,3 +170,73 @@ ID:Description:ID:Description
 \fCWXXX\fR:User defined URL link frame
 .TE
 .ps 10
+.bp
+.SUBSUBSUBSECTION "the APIC Frame"
+.PP
+`APIC' frames are attached pictures.
+.begin dformat
+style bitwid 0.15
+style recspread 0
+noname
+    0-31-40 Frame ID `APIC' (0x41504943)
+noname
+    32-32-3 0x00
+    33-39-7 Size
+    40-40-3 0x00
+    41-47-7 Size
+    48-48-3 0x00
+    49-55-7 Size
+    56-56-3 0x00
+    57-63-7 Size
+noname
+    64-64-5 0x00
+    65-65-5 Tag Alter
+    66-66-5 File Alter
+    67-67-5 Read Only
+    68-71-20 0x00
+noname
+    72-72-5 0x00
+    73-73-5 Grouping
+    74-75-10 0x00
+    76-76-5 Compression
+    77-77-5 Encryption
+    78-78-5 Unsync
+    79-79-5 Data Length
+noname
+    80-87-10 Text Encoding
+    88-?-30-dashed MIME Type
+noname
+    0-7-10 Picture Type
+    -?-30-dashed Description
+noname
+    --40-dashed Picture Data
+.end dformat
+Text Encoding is the encoding of the Description field.
+Its value is either ISO-8859-1 or UCS-16 - the same as in
+text frames.
+MIME Type is a NULL-terminated, ASCII C-string which contains the
+image's MIME type, such as `image/jpeg' or 'image/png'.
+Description is a NULL-terminated C-style string which contains
+a text description of the image.
+.TS
+tab(:);
+| c s s s | 
+| r | l || r | l |.
+_
+Picture Types
+_
+value:type:value:type
+=
+0:Other:1:32x32 pixels `file icon' (PNG only)
+2:Other file icon:3:Cover (front)
+4:Cover (back):5:Leaflet page
+6:Media (e.g. label side of CD):7:Lead artist / Lead performer / Soloist
+8:Artist / Performer:9:Conductor
+10:Band / Orchestra:11:Composer
+12:Lyricist / Text writer:13:Recording location
+14:During recording:15:During performance
+16:Movie / Video screen capture:17:A bright coloured fish
+18:Illustration:19:Band / Artist logotype
+20:Publisher / Studio logotype
+_
+.TE

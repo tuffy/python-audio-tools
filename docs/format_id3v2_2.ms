@@ -115,3 +115,55 @@ ID:Description:ID:Description
 \fCWXX\fR:User defined URL link frame
 .TE
 .ps 10
+.bp
+.SUBSUBSUBSECTION "the PIC Frame"
+.PP
+`PIC' frames are attached pictures.
+This allows an ID3v2.2 tag to contain a JPEG or PNG image,
+typically of album artwork which can be displayed to the user
+when the track is played.
+.begin dformat
+style bitwid 0.15
+style recspread 0
+noname
+  0-23-30 Frame ID `PIC' (0x504943)
+noname
+  24-47-30 Size
+noname
+  48-55-10 Text Encoding
+  56-79-20 Image Format
+noname
+  80-87-10 Picture Type
+  88-?-20-dashed Description
+noname
+  --30-dashed Picture Data
+.end dformat
+Text Encoding is the encoding of the Description field.
+Its value is either ISO-8859-1 or UCS-16 - the same as in
+text frames.
+Image Format is a 3 byte string indicating the format of the image,
+typically `JPG' for JPEG images or 'PNG' for PNG images.
+Description is a NULL-terminated C-style string which contains
+a text description of the image.
+.TS
+tab(:);
+| c s s s | 
+| r | l || r | l |.
+_
+Picture Types
+_
+value:type:value:type
+=
+0:Other:1:32x32 pixels `file icon' (PNG only)
+2:Other file icon:3:Cover (front)
+4:Cover (back):5:Leaflet page
+6:Media (e.g. label side of CD):7:Lead artist / Lead performer / Soloist
+8:Artist / Performer:9:Conductor
+10:Band / Orchestra:11:Composer
+12:Lyricist / Text writer:13:Recording location
+14:During recording:15:During performance
+16:Movie / Video screen capture:17:A bright coloured fish
+18:Illustration:19:Band / Artist logotype
+20:Publisher / Studio logotype
+_
+.TE

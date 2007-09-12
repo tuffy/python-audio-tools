@@ -28,7 +28,7 @@ SUBSECTIONS = $(INSTALLATION) macros.ms programming.ms freedb.ms usage.ms \
 references.ms
 FIGURES = binary.eps freedb-sequence.eps pcm.eps rice1.eps
 TOC_ORDER_MANUAL = 1,_1-_1,2-_2
-TOC_ORDER_FORMATS = 1,_2-_1,2-_3
+TOC_ORDER_FORMATS = 1,_3-_1,2-_4
 
 MAN_PATH = /usr/share/man
 MAN_PAGES = \
