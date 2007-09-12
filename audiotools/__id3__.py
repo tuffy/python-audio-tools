@@ -22,7 +22,6 @@ from audiotools import MetaData,Con,re,os,ImageMetaData,Image
 class EndOfID3v2Stream(Exception): pass
 class UnsupportedID3v2Version(Exception): pass
 
-#FIXME - implement add_image,delete_image
 class ID3v2Comment(ImageMetaData,MetaData,dict):
     VALID_FRAME_ID = re.compile(r'[A-Z0-9]{4}')
     FRAME_ID_LENGTH = 4
@@ -643,19 +642,16 @@ class APICImage(Image):
         Con.Byte('data')))
     
     def __init__(self, data, mime_type, description, apic_type):
-        #FIXME - replace this with a non-PIL image fetching solution
-        import Image as PILImage
-        import cStringIO
-        i = PILImage.open(cStringIO.StringIO(data))
+        img = Image.new(data,u'',0)
 
         self.apic_type = apic_type
         Image.__init__(self,
                        data=data,
                        mime_type=mime_type,
-                       width=i.size[0],
-                       height=i.size[1],
-                       color_depth=24,
-                       color_count=0,
+                       width=img.width,
+                       height=img.height,
+                       color_depth=img.color_depth,
+                       color_count=img.color_count,
                        description=description.decode('ascii','replace'),
                        type={3:0,4:1,5:2,6:3}.get(apic_type,4))
 
@@ -714,20 +710,17 @@ class PICImage(Image):
         Con.Byte('data')))
     
     def __init__(self, data, format, description, pic_type):
-        #FIXME - replace the Python Imaging Library
-        import Image as PILImage
-        import cStringIO
-        i = PILImage.open(cStringIO.StringIO(data))
-
+        img = Image.new(data,u'',0)
+        
         self.pic_type = pic_type
         self.format = format
         Image.__init__(self,
                        data=data,
                        mime_type=Image.new(data,u'',0).mime_type,
-                       width=i.size[0],
-                       height=i.size[1],
-                       color_depth=24,
-                       color_count=0,
+                       width=img.width,
+                       height=img.height,
+                       color_depth=img.color_depth,
+                       color_count=img.color_count,
                        description=description.decode('ascii','replace'),
                        type={3:0,4:1,5:2,6:3}.get(pic_type,4))
 
