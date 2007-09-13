@@ -33,6 +33,8 @@ def image_metrics(file_data):
             return __JPEG__.parse(file)
         elif (header == 'png'):
             return __PNG__.parse(file)
+        elif (header == 'bmp'):
+            return __BMP__.parse(file)
         else:
             raise InvalidImage('unknown image type')
     finally:
@@ -181,7 +183,7 @@ class __PNG__(ImageMetrics):
                 bits_per_pixel = ihdr.bit_depth * 3
                 color_count = 0
             elif (ihdr.color_type == 3): #palette
-                bits_per_pixel = 24
+                bits_per_pixel = 8
                 if ((len(plte) % 3) != 0):
                     raise InvalidPNG('invalid PLTE chunk length')
                 else:
@@ -196,3 +198,47 @@ class __PNG__(ImageMetrics):
             return __PNG__(ihdr.width,ihdr.height,bits_per_pixel,color_count)
         except Con.ConstError:
             raise InvalidPNG('invalid PNG')
+        
+#######################
+#BMP
+#######################
+
+class InvalidBMP(InvalidImage): pass
+
+class __BMP__(ImageMetrics):
+    HEADER = Con.Struct('bmp_header',
+                        Con.Const(Con.String('magic_number',2),'BM'),
+                        Con.ULInt32('file_size'),
+                        Con.ULInt16('reserved1'),
+                        Con.ULInt16('reserved2'),
+                        Con.ULInt32('bitmap_data_offset'))
+
+    INFORMATION = Con.Struct('bmp_information',
+                             Con.ULInt32('header_size'),
+                             Con.ULInt32('width'),
+                             Con.ULInt32('height'),
+                             Con.ULInt16('color_planes'),
+                             Con.ULInt16('bits_per_pixel'),
+                             Con.ULInt32('compression_method'),
+                             Con.ULInt32('image_size'),
+                             Con.ULInt32('horizontal_resolution'),
+                             Con.ULInt32('vertical_resolution'),
+                             Con.ULInt32('colors_used'),
+                             Con.ULInt32('important_colors_used'))
+
+    def __init__(self, width, height, bits_per_pixel, color_count):
+        ImageMetrics.__init__(self, width, height, bits_per_pixel, color_count,
+                              'image/x-ms-bmp')
+        
+    @classmethod
+    def parse(cls, file):
+        try:
+            header = cls.HEADER.parse_stream(file)
+            information = cls.INFORMATION.parse_stream(file)
+
+            return __BMP__(information.width, information.height,
+                           information.bits_per_pixel,
+                           information.colors_used)
+        
+        except Con.ConstError:
+            raise InvalidBMP('invalid BMP')

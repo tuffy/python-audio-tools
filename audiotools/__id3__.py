@@ -757,8 +757,9 @@ class PICImage(Image):
         return PICImage(data=image.data,
                         format={"image/png":"PNG",
                                 "image/jpeg":"JPG",
-                                "image/jpg":"JPG"}.get(image.mime_type,
-                                                       "JPG"),
+                                "image/jpg":"JPG",
+                                "image/x-ms-bmp":"BMP"}.get(image.mime_type,
+                                                            "JPG"),
                         description=image.description,
                         pic_type={0:3,4:1,2:5,3:6}.get(image.type,0))
 
