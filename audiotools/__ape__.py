@@ -128,7 +128,18 @@ class ApeTag(MetaData,dict):
                    (KEY_MAP.get(pair2[0],8),pair2[0],pair2[1]))
 
     def __comment_pairs__(self):
-        return sorted(self.items(),ApeTag.__by_pair__)
+        items = []
+
+        for (key,value) in self.items():
+            if (isinstance(value,unicode)):
+                items.append((key,value))
+            else:
+                if (len(value) <= 20):
+                    items.append((key,value.encode('hex')))
+                else:
+                    items.append((key,value.encode('hex')[0:39].upper() + u"\u2026"))
+        
+        return sorted(items,ApeTag.__by_pair__)
         
 
     #Takes a file object of a Monkey's Audio file 
@@ -149,8 +160,11 @@ class ApeTag(MetaData,dict):
 
         for tag in Con.StrictRepeater(footer.item_count, 
                                       cls.APEv2_TAG).parse(apefile.read()):
-            apev2tag[tag.key] = tag.value.rstrip("\0").decode('utf-8',
-                                                              'replace')
+            if (tag.encoding == 0):
+                apev2tag[tag.key] = tag.value.rstrip("\0").decode('utf-8',
+                                                                  'replace')
+            else:
+                apev2tag[tag.key] = tag.value
 
         if (footer.contains_header):
             return (apev2tag,
@@ -192,15 +206,20 @@ class ApeTag(MetaData,dict):
 
         tags = []
         for (key,value) in self.items():
-            value = value.encode('utf-8')
             tag = Con.Container()
+            
+            if (isinstance(value,unicode)):
+                value = value.encode('utf-8')
+                tag.encoding = 0
+            else:
+                tag.encoding = 1
+                
             tag.length = len(value)
             tag.key = key
             tag.value = value
 
             tag.undefined1 = tag.undefined2 = tag.undefined3 = 0
             tag.read_only = False
-            tag.encoding = 0
             tag.contains_header = False
             tag.contains_no_footer = False
             tag.is_header = False
