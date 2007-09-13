@@ -33,6 +33,8 @@ def image_metrics(file_data):
             return __JPEG__.parse(file)
         elif (header == 'png'):
             return __PNG__.parse(file)
+        elif (header == 'gif'):
+            return __GIF__.parse(file)
         elif (header == 'bmp'):
             return __BMP__.parse(file)
         else:
@@ -242,3 +244,40 @@ class __BMP__(ImageMetrics):
         
         except Con.ConstError:
             raise InvalidBMP('invalid BMP')
+
+#######################
+#GIF
+#######################
+
+class InvalidGIF(InvalidImage): pass
+
+class __GIF__(ImageMetrics):
+    HEADER = Con.Struct('header',
+                        Con.Const(Con.String('gif',3),'GIF'),
+                        Con.String('version',3))
+
+    SCREEN_DESCRIPTOR = Con.Struct('logical_screen_descriptor',
+                                   Con.ULInt16('width'),
+                                   Con.ULInt16('height'),
+                                   Con.Embed(
+        Con.BitStruct('packed_fields',
+                      Con.Flag('global_color_table'),
+                      Con.Bits('color_resolution',3),
+                      Con.Flag('sort'),
+                      Con.Bits('global_color_table_size',3))),
+                                   Con.Byte('background_color_index'),
+                                   Con.Byte('pixel_aspect_ratio'))
+
+    def __init__(self, width, height, color_count):
+        ImageMetrics.__init__(self, width, height, 8, color_count, 'image/gif')
+
+    @classmethod
+    def parse(cls, file):
+        try:
+            header = cls.HEADER.parse_stream(file)
+            descriptor = cls.SCREEN_DESCRIPTOR.parse_stream(file)
+
+            return __GIF__(descriptor.width, descriptor.height,
+                           2 ** (descriptor.global_color_table_size + 1))
+        except Con.ConstError:
+            raise InvalidGIF('invalid GIF')
