@@ -804,6 +804,7 @@ def __most_numerous__(item_list):
                   lambda x,y: cmp(x[1],y[1]))[-1][0]
 
 from __freedb__ import *
+from __image__ import *
 
 #######################
 #Multiple Jobs Handling
