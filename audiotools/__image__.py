@@ -18,6 +18,25 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 from audiotools import Con
+import imghdr
+import cStringIO
+
+#takes a seekable file stream
+#returns an ImageMetrics class if the file can be identified
+#raises InvalidImage if there is an error or the file is unknown
+def image_metrics(file_data):
+    header = imghdr.what(None,file_data)
+
+    file = cStringIO.StringIO(file_data)
+    try:
+        if (header == 'jpeg'):
+            return __JPEG__.parse(file)
+        elif (header == 'png'):
+            return __PNG__.parse(file)
+        else:
+            raise InvalidImage('unknown image type')
+    finally:
+        file.close()
 
 #######################
 #JPEG
@@ -31,11 +50,19 @@ class ImageMetrics:
         self.color_count = color_count
         self.mime_type = mime_type
 
+    def __repr__(self):
+        return "ImageMetrics(%s,%s,%s,%s,%s)" % \
+               (repr(self.width),
+                repr(self.height),
+                repr(self.bits_per_pixel),
+                repr(self.color_count),
+                repr(self.mime_type))
+
 class InvalidImage(Exception): pass
 
 class InvalidJPEG(InvalidImage): pass
 
-class JPEG(ImageMetrics):
+class __JPEG__(ImageMetrics):
     SEGMENT_HEADER = Con.Struct('segment_header',
                                 Con.Const(Con.Byte('header'),0xFF),
                                 Con.Byte('type'),
@@ -92,16 +119,20 @@ class JPEG(ImageMetrics):
                 segment = cls.SEGMENT_HEADER.parse_stream(file)
 
             if (frame0 is not None):
-                return JPEG(width = frame0.image_width,
-                            height = frame0.image_height,
-                            bits_per_pixel = (frame0.data_precision * \
-                                              len(frame0.components)))
+                return __JPEG__(width = frame0.image_width,
+                                height = frame0.image_height,
+                                bits_per_pixel = (frame0.data_precision * \
+                                                  len(frame0.components)))
         except Con.ConstError:
             raise InvalidJPEG('invalid JPEG')
 
+#######################
+#PNG
+#######################
+
 class InvalidPNG(InvalidImage): pass
 
-class PNG(ImageMetrics):
+class __PNG__(ImageMetrics):
     HEADER = Con.Const(Con.String('header',8),'\x89PNG\r\n\x1a\n')
     CHUNK_HEADER = Con.Struct('chunk',
                               Con.UBInt32('length'),
@@ -162,6 +193,6 @@ class PNG(ImageMetrics):
                 bits_per_pixel = ihdr.bit_depth * 4
                 color_count = 0
 
-            return PNG(ihdr.width,ihdr.height,bits_per_pixel,color_count)
+            return __PNG__(ihdr.width,ihdr.height,bits_per_pixel,color_count)
         except Con.ConstError:
             raise InvalidPNG('invalid PNG')

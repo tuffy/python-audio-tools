@@ -447,19 +447,18 @@ class Image:
                (self.type_string(),
                 self.width,self.height,self.mime_type)
 
+    #returns a new Image object from the data, description and type
+    #raises InvalidImage if there is some error initializing
     @classmethod
     def new(cls, image_data, description, type):
-        #FIXME - implement this without the Python Imaging Library
-        import Image as PILImage
-        import cStringIO
-        img = PILImage.open(cStringIO.StringIO(image_data))
+        img = image_metrics(image_data)
+
         return Image(data=image_data,
-                     mime_type={'PNG':'image/png',
-                                'JPEG':'image/jpeg'}.get(img.format),
-                     width=img.size[0],
-                     height=img.size[1],
-                     color_depth=24,
-                     color_count=0,
+                     mime_type=img.mime_type,
+                     width=img.width,
+                     height=img.height,
+                     color_depth=img.bits_per_pixel,
+                     color_count=img.color_count,
                      description=description,
                      type=type)
 
