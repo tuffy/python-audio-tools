@@ -37,6 +37,8 @@ def image_metrics(file_data):
             return __GIF__.parse(file)
         elif (header == 'bmp'):
             return __BMP__.parse(file)
+        elif (header == 'tiff'):
+            return __TIFF__.parse(file)
         else:
             raise InvalidImage('unknown image type')
     finally:
@@ -281,3 +283,133 @@ class __GIF__(ImageMetrics):
                            2 ** (descriptor.global_color_table_size + 1))
         except Con.ConstError:
             raise InvalidGIF('invalid GIF')
+
+#######################
+#TIFF
+#######################
+
+class InvalidTIFF(InvalidImage): pass
+
+class __TIFF__(ImageMetrics):
+    HEADER = Con.Struct('header',
+                        Con.String('byte_order',2),
+                        Con.Switch('order',
+                                   lambda ctx: ctx['byte_order'],
+                                   {"II":Con.Embed(
+        Con.Struct('little_endian',
+                   Con.Const(Con.ULInt16('version'),42),
+                   Con.ULInt32('offset'))),
+                                    "MM":Con.Embed(
+        Con.Struct('big_endian',
+                   Con.Const(Con.UBInt16('version'),42),
+                   Con.UBInt32('offset')))}))
+
+    L_IFD = Con.Struct('ifd',
+                       Con.PrefixedArray(
+        length_field=Con.ULInt16('length'),
+        subcon=Con.Struct('tags',
+                          Con.ULInt16('id'),
+                          Con.ULInt16('type'),
+                          Con.ULInt32('count'),
+                          Con.ULInt32('offset'))),
+                       Con.ULInt32('next'))
+
+    B_IFD = Con.Struct('ifd',
+                       Con.PrefixedArray(
+        length_field=Con.UBInt16('length'),
+        subcon=Con.Struct('tags',
+                          Con.UBInt16('id'),
+                          Con.UBInt16('type'),
+                          Con.UBInt32('count'),
+                          Con.UBInt32('offset'))),
+                       Con.UBInt32('next'))
+
+    def __init__(self, width, height, bits_per_pixel, color_count):
+        ImageMetrics.__init__(self, width, height,
+                              bits_per_pixel, color_count,
+                              "image/tiff")
+
+    @classmethod
+    def b_tag_value(cls, file, tag):
+        data = Con.StrictRepeater("tag_data",
+                                  tag.count,
+                                  {1:Con.Byte("data"),
+                                   2:Con.CString("data"),
+                                   3:Con.UBInt16("data"),
+                                   4:Con.UBInt32("data"),
+                                   5:Con.Struct("data",
+                                                Con.UBInt32("high"),
+                                                Con.UBInt32("low"))}[tag.type])
+        if (data.sizeof() <= 4):
+            return tag.offset
+        else:
+            file.seek(tag.offset,0)
+            return data.parse_stream(file)
+
+    @classmethod
+    def l_tag_value(cls, file, tag):
+        subtype = {1:Con.Byte("data"),
+                   2:Con.CString("data"),
+                   3:Con.ULInt16("data"),
+                   4:Con.ULInt32("data"),
+                   5:Con.Struct("data",
+                                Con.ULInt32("high"),
+                                Con.ULInt32("low"))}[tag.type]
+
+        #print repr(subtype)
+        
+        data = Con.StrictRepeater(tag.count,
+                                  subtype)
+        if ((tag.type != 2) and (data.sizeof() <= 4)):
+            return tag.offset
+        else:
+            file.seek(tag.offset,0)
+            return data.parse_stream(file)
+
+    @classmethod
+    def parse(cls, file):
+        width = 0
+        height = 0
+        bits_per_sample = 0
+        color_count = 0
+        
+        try:
+            header = cls.HEADER.parse_stream(file)
+            if (header.byte_order == 'II'):
+                IFD = cls.L_IFD
+                tag_value = cls.l_tag_value
+            elif (header.byte_order == 'MM'):
+                IFD = cls.B_IFD
+                tag_value = cls.b_tag_value
+            else:
+                raise InvalidTIFF('invalid byte order')
+
+            file.seek(header.offset,0)
+
+            ifd = IFD.parse_stream(file)
+
+            while (True):
+                for tag in ifd.tags:
+                    if (tag.id == 0x0100):
+                        width = tag_value(file,tag)
+                    elif (tag.id == 0x0101):
+                        height = tag_value(file,tag)
+                    elif (tag.id == 0x0102):
+                        try:
+                            bits_per_sample = sum(tag_value(file,tag))
+                        except TypeError:
+                            bits_per_sample = tag_value(file,tag)
+                    elif (tag.id == 0x0140):
+                        color_count = tag.count / 3
+                    else:
+                        pass
+
+                if (ifd.next == 0x00):
+                    break
+                else:
+                    file.seek(ifd.next,0)
+                    ifd = IFD.parse_stream(file)
+
+            return __TIFF__(width,height,bits_per_sample,color_count)
+        except Con.ConstError:
+            raise InvalidTIFF('invalid TIFF')
