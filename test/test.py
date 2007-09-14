@@ -398,7 +398,7 @@ class TestID3v2(unittest.TestCase):
     def testsetpicture(self):
         m = DummyMetaData()
         m.add_image(audiotools.Image.new(TEST_COVER1,
-                                         u'Plain Old Text',
+                                         u'Unicode \u3057\u3066\u307f\u308b',
                                          1))
         self.mp3_file.set_metadata(m)
 
@@ -418,7 +418,7 @@ class TestID3v2(unittest.TestCase):
             m = DummyMetaData()
             m.add_image(audiotools.Image.new(
                 TEST_COVER1,
-                u'Plain Old Text',
+                u'Unicode \u3057\u3066\u307f\u308b',
                 1))
             flac_file.set_metadata(m)
 
@@ -464,7 +464,7 @@ class TestFlacComment(unittest.TestCase):
             m = DummyMetaData()
             m.add_image(audiotools.Image.new(
                 TEST_COVER1,
-                u'Plain Old Text',
+                u'Unicode \u3057\u3066\u307f\u308b',
                 1))
             mp3_file.set_metadata(m)
 

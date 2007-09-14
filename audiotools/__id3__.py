@@ -640,6 +640,12 @@ class ID3v2_2Comment(ID3v2Comment):
 
 
 class APICImage(Image):
+
+    #FIXME - UTF-16 description strings will break this
+    #        because of the embedded NULL bytes.
+    #        Construct's CString won't look two bytes ahead
+    #        to find a UTF-16 NULL, so we're hosed.
+    #        Just another example of ID3v2 unpleasantness.
     APIC_FRAME = Con.Struct('APIC',
                             Con.Byte('text_encoding'),
                             Con.CString('mime_type'),
@@ -708,8 +714,8 @@ class APICImage(Image):
             description = self.description.encode('ascii')
             text_encoding = 0
         except UnicodeEncodeError:
-            description = self.description.encode('utf-16')
-            text_encoding = 1
+            description = self.description.encode('utf-8')
+            text_encoding = 3
         
         return self.APIC_FRAME.build(
             Con.Container(text_encoding=text_encoding,
