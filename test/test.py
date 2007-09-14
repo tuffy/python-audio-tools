@@ -344,7 +344,7 @@ class TestSpeexAudio(TestWaveAudio):
     def setUp(self):
         self.audio_class = audiotools.SpeexAudio
 
-class TestID3v2:
+class TestID3v2(unittest.TestCase):
     def setUp(self):
         self.file = tempfile.NamedTemporaryFile(suffix=".mp3")
         
@@ -353,20 +353,21 @@ class TestID3v2:
 
     def __comment_test__(self,id3_class):
         self.mp3_file.set_metadata(
-            id3_class.converted(DummyMetaData))
+            id3_class.converted(DummyMetaData()))
         metadata = self.mp3_file.get_metadata()
-        self.assertEqual(isinstance(metadata,id3_class),True)
+        self.assertEqual(isinstance(metadata.id3v2,id3_class),True)
         
         metadata.track_name = u"New Track Name"
+        self.assertEqual(metadata.track_name,u"New Track Name")
         self.mp3_file.set_metadata(metadata)
         metadata2 = self.mp3_file.get_metadata()
-        self.assertEqual(isinstance(metadata2,id3_class),True)
+        self.assertEqual(isinstance(metadata2.id3v2,id3_class),True)
         self.assertEqual(metadata,metadata2)
 
-        metadata = id3_class.converted(DummyMetaData3)
+        metadata = id3_class.converted(DummyMetaData3())
         for new_class in (audiotools.ID3v2_2Comment,
                           audiotools.ID3v2_3Comment,
-                          auditoools.ID3v2Comment):
+                          audiotools.ID3v2Comment):
             self.assertEqual(metadata,new_class.converted(metadata))
             self.assertEqual(metadata.images(),
                              new_class.converted(metadata).images())
@@ -381,22 +382,107 @@ class TestID3v2:
         self.__comment_test__(audiotools.ID3v2Comment)
     
     def testladder(self):
-        self.mp3_file.set_metadata(DummyMetaData3)
+        self.mp3_file.set_metadata(DummyMetaData3())
         for new_class in (audiotools.ID3v2_2Comment,
                           audiotools.ID3v2_3Comment,
-                          auditoools.ID3v2Comment,
+                          audiotools.ID3v2Comment,
                           audiotools.ID3v2_3Comment,
                           audiotools.ID3v2_2Comment):
             metadata = new_class.converted(self.mp3_file.get_metadata().id3v2)
             self.mp3_file.set_metadata(metadata)
             metadata = self.mp3_file.get_metadata().id3v2
             self.assertEqual(isinstance(metadata,new_class),True)
-            self.assertEqual(metadata,DummyMetaData3)
-            self.assertEqual(metadata.images(),DummyMetaData3.images())
+            self.assertEqual(metadata,DummyMetaData3())
+            self.assertEqual(metadata.images(),DummyMetaData3().images())
+
+    def testsetpicture(self):
+        m = DummyMetaData()
+        m.add_image(audiotools.Image.new(TEST_COVER1,
+                                         u'Plain Old Text',
+                                         1))
+        self.mp3_file.set_metadata(m)
+
+        new_mp3_file = audiotools.open(self.file.name)
+        m2 = new_mp3_file.get_metadata()
+
+        self.assertEqual(m.images()[0].data,m2.images()[0].data)
+        self.assertEqual(m.images()[0],m2.images()[0])
+
+    def testconvertedpicture(self):
+        flac_tempfile = tempfile.NamedTemporaryFile(suffix=".flac")
+
+        try:
+            flac_file = audiotools.FlacAudio.from_pcm(
+                flac_tempfile.name,BLANK_PCM_Reader(TEST_LENGTH))
+
+            m = DummyMetaData()
+            m.add_image(audiotools.Image.new(
+                TEST_COVER1,
+                u'Plain Old Text',
+                1))
+            flac_file.set_metadata(m)
+
+            new_mp3 = audiotools.MP3Audio.from_pcm(
+                self.file.name,
+                flac_file.to_pcm())
+            new_mp3.set_metadata(flac_file.get_metadata())
+
+            self.assertEqual(flac_file.get_metadata().images(),
+                             new_mp3.get_metadata().images())
+        finally:
+            flac_tempfile.close()
 
     def tearDown(self):
         self.file.close()
 
+class TestFlacComment(unittest.TestCase):
+    def setUp(self):
+        self.file = tempfile.NamedTemporaryFile(suffix=".flac")
+        
+        self.flac_file = audiotools.FlacAudio.from_pcm(
+            self.file.name,BLANK_PCM_Reader(TEST_LENGTH))
+
+    def testsetpicture(self):
+        m = DummyMetaData()
+        m.add_image(audiotools.Image.new(TEST_COVER1,
+                                         u'Unicode \u3057\u3066\u307f\u308b',
+                                         1))
+        self.flac_file.set_metadata(m)
+
+        new_flac_file = audiotools.open(self.file.name)
+        m2 = new_flac_file.get_metadata()
+
+        self.assertEqual(m.images()[0],m2.images()[0])
+
+    def testconvertedpicture(self):
+        mp3_tempfile = tempfile.NamedTemporaryFile(suffix=".mp3")
+
+        try:
+            mp3_file = audiotools.MP3Audio.from_pcm(
+                mp3_tempfile.name,BLANK_PCM_Reader(TEST_LENGTH))
+
+            m = DummyMetaData()
+            m.add_image(audiotools.Image.new(
+                TEST_COVER1,
+                u'Plain Old Text',
+                1))
+            mp3_file.set_metadata(m)
+
+            new_flac = audiotools.FlacAudio.from_pcm(
+                self.file.name,
+                mp3_file.to_pcm())
+            new_flac.set_metadata(mp3_file.get_metadata())
+
+            self.assertEqual(mp3_file.get_metadata().images(),
+                             new_flac.get_metadata().images())
+        finally:
+            mp3_tempfile.close()
+
+    def tearDown(self):
+        self.file.close()
+
+
+        
 if (__name__ == '__main__'):
     unittest.main()
 

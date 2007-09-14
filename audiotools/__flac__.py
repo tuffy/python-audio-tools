@@ -31,6 +31,9 @@ from __vorbis__ import OggStreamReader,OggStreamWriter
 class FlacException(InvalidFile): pass
 
 #this is a container for FLAC's PICTURE metadata blocks
+#type, width, height, color_depth and color_count are ints
+#mime_type and description are unicode strings
+#data is a string
 class FlacPictureComment(Image):
     def __init__(self, type, mime_type, description,
                  width, height, color_depth, color_count, data):
@@ -41,7 +44,7 @@ class FlacPictureComment(Image):
                        height=height,
                        color_depth=color_depth,
                        color_count=color_count,
-                       description=description.decode('utf-8'),
+                       description=description,
                        type={3:0,4:1,5:2,6:3}.get(type,4))
         self.flac_type = type
 
@@ -49,14 +52,15 @@ class FlacPictureComment(Image):
     #returns a FlacPictureComment
     @classmethod
     def converted(cls, image):
-        return FlacPictureComment(type={0:3,1:4,5:2,3:6}.get(image.type,0),
-                                  mime_type=image.mime_type,
-                                  description=image.description.encode('utf-8'),
-                                  width=image.width,
-                                  height=image.height,
-                                  color_depth=image.color_depth,
-                                  color_count=image.color_count,
-                                  data=image.data)
+        return FlacPictureComment(
+            type={0:3,1:4,5:2,3:6}.get(image.type,0),
+            mime_type=image.mime_type,
+            description=image.description,
+            width=image.width,
+            height=image.height,
+            color_depth=image.color_depth,
+            color_count=image.color_count,
+            data=image.data)
 
     def type_string(self):
         return {0:"Other",
@@ -83,15 +87,16 @@ class FlacPictureComment(Image):
 
 
     def __repr__(self):
-        return "FlacPictureComment(type=%s,mime_type=%s,width=%s,height=%s,...)" % \
+        return "FlacPictureComment(type=%s,mime_type=%s,description=%s,width=%s,height=%s,...)" % \
                (repr(self.flac_type),repr(self.mime_type),
+                repr(self.description),
                 repr(self.width),repr(self.height))
 
     def build(self):
         return FlacAudio.PICTURE_COMMENT.build(
             Con.Container(type=self.flac_type,
-                          mime_type=self.mime_type,
-                          description=self.description,
+                          mime_type=self.mime_type.encode('ascii'),
+                          description=self.description.encode('utf-8'),
                           width=self.width,
                           height=self.height,
                           color_depth=self.color_depth,
@@ -250,8 +255,8 @@ class FlacAudio(AudioFile):
                         f.read(length))
                     image_blocks.append(FlacPictureComment(
                         type=image.type,
-                        mime_type=image.mime_type,
-                        description=image.description,
+                        mime_type=image.mime_type.decode('ascii','replace'),
+                        description=image.description.decode('utf-8','replace'),
                         width=image.width,
                         height=image.height,
                         color_depth=image.color_depth,
@@ -305,8 +310,9 @@ class FlacAudio(AudioFile):
                              for (key,value) in tags] + \
                             [self.filename])
 
+    #FIXME - this whole routine should be redone without spawning metaflac
     def set_picture(self, picture_filename, type=3,
-                    mime_type="",description="",
+                    mime_type=u"",description=u"",
                     width=None,height=None,depth=None,colors=None):
         if ((width != None) and (height != None) and
             (depth != None) and (colors != None)):
@@ -568,8 +574,8 @@ class OggFlacAudio(FlacAudio):
                         p[4:])
                     pictures.append(FlacPictureComment(
                         type=image.type,
-                        mime_type=image.mime_type,
-                        description=image.description,
+                        mime_type=image.mime_type.decode('ascii','replace'),
+                        description=image.description.decode('utf-8','replace'),
                         width=image.width,
                         height=image.height,
                         color_depth=image.color_depth,

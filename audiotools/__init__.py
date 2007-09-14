@@ -412,7 +412,7 @@ class AlbumMetaData(dict):
 #A simple image data container
 class Image:
     #data is a string of the actual image data file
-    #mime_type is a string of the image's MIME type
+    #mime_type is a unicode string of the image's MIME type
     #width and height are integers of the images' dimensions
     #color_depth is the full depth of the image in bits
     #(24 for JPEG, 8 for GIF, etc.)
@@ -441,6 +441,12 @@ class Image:
                 2:"Leaflet Page",
                 3:"Media",
                 4:"Other"}.get(self.type,"Other")
+
+    def __repr__(self):
+        return "Image(mime_type=%s,width=%s,height=%s,color_depth=%s,color_count=%s,description=%s,type=%s,...)" % \
+               (repr(self.mime_type),repr(self.width),repr(self.height),
+                repr(self.color_depth),repr(self.color_count),
+                repr(self.description),repr(self.type))
 
     def __unicode__(self):
         return u"Picture : %s (%d\u00D7%d,'%s')" % \
@@ -474,6 +480,9 @@ class Image:
                             "type")],True)
         else:
             return False
+
+    def __ne__(self, image):
+        return not self.__eq__(image)
 
 #A container for multiple Images
 class ImageMetaData:

@@ -238,17 +238,24 @@ class ID3v2Comment(ImageMetaData,MetaData,dict):
         if (metadata.has_key('APIC')):
             for apic_frame in metadata['APIC']:
                 apic = APICImage.APIC_FRAME.parse(apic_frame)
-                images.append(APICImage(data="".join(map(chr,apic.data)),
-                                        mime_type=apic.mime_type,
-                                        description=apic.description,
-                                        apic_type=apic.picture_type))
+
+                images.append(APICImage(
+                    data="".join(map(chr,apic.data)),
+                    mime_type=apic.mime_type.decode('ascii'),
+                    description=apic.description.decode(
+                      ('ascii',
+                       'utf-16',
+                       'utf-16be',
+                       'utf-8')[apic.text_encoding],'replace'),
+                    apic_type=apic.picture_type))
 
         if (metadata.has_key('PIC')):
             for pic_frame in metadata['PIC']:
                 pic = PICImage.PIC_FRAME.parse(pic_frame)
                 images.append(PICImage(data="".join(map(chr,pic.data)),
-                                       format=pic.format,
-                                       description=pic.description,
+                                       format=pic.format.decode('ascii'),
+                                       description=pic.description.decode(
+                    ('ascii','utf-16')[pic.text_encoding]),
                                        pic_type=pic.picture_type))
                             
 
@@ -640,7 +647,10 @@ class APICImage(Image):
                             Con.CString('description'),
                             Con.GreedyRepeater(
         Con.Byte('data')))
-    
+
+    #mime_type and description are unicode strings
+    #apic_type is an int
+    #data is a string
     def __init__(self, data, mime_type, description, apic_type):
         img = Image.new(data,u'',0)
 
@@ -652,7 +662,7 @@ class APICImage(Image):
                        height=img.height,
                        color_depth=img.color_depth,
                        color_count=img.color_count,
-                       description=description.decode('ascii','replace'),
+                       description=description,
                        type={3:0,4:1,5:2,6:3}.get(apic_type,4))
 
     def type_string(self):
@@ -680,24 +690,32 @@ class APICImage(Image):
 
 
     def __repr__(self):
-        return "APICImage(mime_type=%s,description=%s,apic_type=%s,...)" % \
-               (repr(self.mime_type),repr(self.description),
-                repr(self.apic_type))
+        return "APICImage(mime_type=%s,width=%s,height=%s,description=%s,type=%s,apic_type=%s,color_depth=%s,color_count=%s,...)" % \
+               (repr(self.mime_type),repr(self.width),repr(self.height),
+                repr(self.description),
+                repr(self.type),repr(self.apic_type),
+                repr(self.color_depth),repr(self.color_count))
 
     @classmethod
     def converted(cls, image):  
         return APICImage(data=image.data,
                          mime_type=image.mime_type,
                          description=image.description,
-                         apic_type={0:3,4:1,2:5,3:6}.get(image.type,0))
+                         apic_type={0:3,1:4,2:5,3:6}.get(image.type,0))
 
     def build(self):
+        try:
+            description = self.description.encode('ascii')
+            text_encoding = 0
+        except UnicodeEncodeError:
+            description = self.description.encode('utf-16')
+            text_encoding = 1
+        
         return self.APIC_FRAME.build(
-            Con.Container(text_encoding=0,
-                          mime_type=self.mime_type,
+            Con.Container(text_encoding=text_encoding,
+                          mime_type=self.mime_type.encode('ascii','replace'),
                           picture_type=self.apic_type,
-                          description=self.description.encode('ascii',
-                                                              'replace'),
+                          description=description,
                           data=map(ord,self.data)))
 
 class PICImage(Image):
@@ -708,7 +726,10 @@ class PICImage(Image):
                            Con.CString('description'),
                            Con.GreedyRepeater(
         Con.Byte('data')))
-    
+
+    #format and description are unicode strings
+    #pic_type is an int
+    #data is a string
     def __init__(self, data, format, description, pic_type):
         img = Image.new(data,u'',0)
         
@@ -755,23 +776,29 @@ class PICImage(Image):
     @classmethod
     def converted(cls, image):  
         return PICImage(data=image.data,
-                        format={"image/png":"PNG",
-                                "image/jpeg":"JPG",
-                                "image/jpg":"JPG",
-                                "image/x-ms-bmp":"BMP",
-                                "image/gif":"GIF",
-                                "image/tiff":"TIF"}.get(image.mime_type,
-                                                        "JPG"),
+                        format={u"image/png":u"PNG",
+                                u"image/jpeg":u"JPG",
+                                u"image/jpg":u"JPG",
+                                u"image/x-ms-bmp":u"BMP",
+                                u"image/gif":u"GIF",
+                                u"image/tiff":u"TIF"}.get(image.mime_type,
+                                                          u"JPG"),
                         description=image.description,
                         pic_type={0:3,4:1,2:5,3:6}.get(image.type,0))
 
     def build(self):
+        try:
+            description = self.description.encode('ascii')
+            text_encoding = 0
+        except UnicodeEncodeError:
+            description = self.description.encode('utf-16')
+            text_encoding = 1
+        
         return self.PIC_FRAME.build(
-            Con.Container(text_encoding=0,
-                          format=self.format,
+            Con.Container(text_encoding=text_encoding,
+                          format=self.format.encode('ascii'),
                           picture_type=self.pic_type,
-                          description=self.description.encode('ascii',
-                                                              'replace'),
+                          description=description,
                           data=map(ord,self.data)))
 
 
@@ -946,11 +973,13 @@ class ID3CommentPair(ImageMetaData,MetaData):
             year=base_comment.year)
 
     def __setattr__(self, key, value):
+        self.__dict__[key] = value
+        
         if (self.id3v2 is not None):
             setattr(self.id3v2,key,value)
         if (self.id3v1 is not None):
             setattr(self.id3v1,key,value)
-
+        
     @classmethod
     def converted(cls, metadata):
         if ((metadata is None) or (isinstance(metadata,ID3CommentPair))):

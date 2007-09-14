@@ -99,7 +99,7 @@ class __JPEG__(ImageMetrics):
 
     def __init__(self, width, height, bits_per_pixel):
         ImageMetrics.__init__(self, width, height, bits_per_pixel,
-                              0, 'image/jpeg')
+                              0, u'image/jpeg')
 
     @classmethod
     def parse(cls, file):
@@ -157,7 +157,7 @@ class __PNG__(ImageMetrics):
 
     def __init__(self, width, height, bits_per_pixel, color_count):
         ImageMetrics.__init__(self, width, height, bits_per_pixel, color_count,
-                              'image/png')
+                              u'image/png')
 
     @classmethod
     def parse(cls, file):
@@ -232,7 +232,7 @@ class __BMP__(ImageMetrics):
 
     def __init__(self, width, height, bits_per_pixel, color_count):
         ImageMetrics.__init__(self, width, height, bits_per_pixel, color_count,
-                              'image/x-ms-bmp')
+                              u'image/x-ms-bmp')
         
     @classmethod
     def parse(cls, file):
@@ -271,7 +271,7 @@ class __GIF__(ImageMetrics):
                                    Con.Byte('pixel_aspect_ratio'))
 
     def __init__(self, width, height, color_count):
-        ImageMetrics.__init__(self, width, height, 8, color_count, 'image/gif')
+        ImageMetrics.__init__(self, width, height, 8, color_count, u'image/gif')
 
     @classmethod
     def parse(cls, file):
@@ -327,7 +327,7 @@ class __TIFF__(ImageMetrics):
     def __init__(self, width, height, bits_per_pixel, color_count):
         ImageMetrics.__init__(self, width, height,
                               bits_per_pixel, color_count,
-                              "image/tiff")
+                              u'image/tiff')
 
     @classmethod
     def b_tag_value(cls, file, tag):
