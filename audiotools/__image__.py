@@ -88,8 +88,8 @@ class __JPEG__(ImageMetrics):
 
     SOF0 = Con.Struct('start_of_frame_0',
                       Con.Byte('data_precision'),
-                      Con.UBInt16('image_width'),
                       Con.UBInt16('image_height'),
+                      Con.UBInt16('image_width'),
                       Con.PrefixedArray(
         length_field=Con.Byte('total_components'),
         subcon=Con.Struct('components',
@@ -118,7 +118,7 @@ class __JPEG__(ImageMetrics):
                 if (segment.type == 0xE0):
                     jfif_segment_marker = cls.APP0.parse_stream(file)
                     file.seek(segment.length - cls.APP0.sizeof() - 2,1)
-                elif (segment.type == 0xC0):
+                elif (segment.type == 0xC0): #SOF0
                     frame0 = cls.SOF0.parse_stream(file)
                 else:
                     file.seek(segment.length - 2,1)
@@ -129,8 +129,11 @@ class __JPEG__(ImageMetrics):
                                 height = frame0.image_height,
                                 bits_per_pixel = (frame0.data_precision * \
                                                   len(frame0.components)))
+            else:
+                raise InvalidJPEG('frame 0 not found')
         except Con.ConstError:
             raise InvalidJPEG('invalid JPEG')
+
 
 #######################
 #PNG
@@ -331,16 +334,18 @@ class __TIFF__(ImageMetrics):
 
     @classmethod
     def b_tag_value(cls, file, tag):
-        data = Con.StrictRepeater("tag_data",
-                                  tag.count,
-                                  {1:Con.Byte("data"),
-                                   2:Con.CString("data"),
-                                   3:Con.UBInt16("data"),
-                                   4:Con.UBInt32("data"),
-                                   5:Con.Struct("data",
-                                                Con.UBInt32("high"),
-                                                Con.UBInt32("low"))}[tag.type])
-        if (data.sizeof() <= 4):
+        subtype = {1:Con.Byte("data"),
+                   2:Con.CString("data"),
+                   3:Con.UBInt16("data"),
+                   4:Con.UBInt32("data"),
+                   5:Con.Struct("data",
+                                Con.UBInt32("high"),
+                                Con.UBInt32("low"))}[tag.type]
+
+        
+        data = Con.StrictRepeater(tag.count,
+                                  subtype)
+        if ((tag.type != 2) and (data.sizeof() <= 4)):
             return tag.offset
         else:
             file.seek(tag.offset,0)
@@ -356,7 +361,6 @@ class __TIFF__(ImageMetrics):
                                 Con.ULInt32("high"),
                                 Con.ULInt32("low"))}[tag.type]
 
-        #print repr(subtype)
         
         data = Con.StrictRepeater(tag.count,
                                   subtype)
