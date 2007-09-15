@@ -45,6 +45,31 @@ The file's copyright information
 .TP
 \fB--year=\fIYEAR\fR
 The file's release year
+.TP
+\fB-x \fIfilename\fB, --xmcd=\fIfilename\fR
+An XMCD file to use for metadata for the tracks to be retagged.
+XMCD files can be obtained from the
+.BR track2xmcd (1)
+,
+.BR cd2xmcd (1)
+and
+.BR editxmcd (1)
+programs.
+.TP
+\fB--front-cover=\fIfilename\fR
+Adds the given image file to the track as a front cover.
+.TP
+\fB--back-cover=\fIfilename\fR
+Adds the given image file to the track as a back cover.
+.TP
+\fB--leaflet=\fIfilename\fR
+Adds the given image file to the track as a leaflet page.
+.TP
+\fB--media=\fIfilename\fR
+Adds the given image file to the track as a media image.
+.TP
+\fB--other-image=\fIfilename\fR
+Adds the given image file to the track as an image.
 
 .SH EXAMPLES
 .LP
@@ -54,6 +79,16 @@ track name of \fITest Track\fR.
 .B tracktag
 \fB"\-\-name=\fITest Track\fB"\fR
 \fB\-\-number=\fI5\fR
+.I track.flac
+.LP
+Add several JPEG images to \fItrack.flac\fR
+.IP
+.B tracktag
+\fB\-\-front\-cover=\fIfront.jpg\fR
+\fB\-\-back\-cover=\fIback.jpg\fR
+\fB\-\-leaflet=\fIpage1.jpg\fR
+\fB\-\-leaflet=\fIpage2.jpg\fR
+\fB\-\-leaflet=\fIpage3.jpg\fR
 .I track.flac
 
 .SH SEE ALSO

@@ -237,7 +237,10 @@ class ID3v2Comment(ImageMetaData,MetaData,dict):
         images = []
         if (metadata.has_key('APIC')):
             for apic_frame in metadata['APIC']:
-                apic = APICImage.APIC_FRAME.parse(apic_frame)
+                try:
+                    apic = APICImage.APIC_FRAME.parse(apic_frame)
+                except Con.RangeError:
+                    continue
 
                 images.append(APICImage(
                     data="".join(map(chr,apic.data)),
@@ -251,7 +254,11 @@ class ID3v2Comment(ImageMetaData,MetaData,dict):
 
         if (metadata.has_key('PIC')):
             for pic_frame in metadata['PIC']:
-                pic = PICImage.PIC_FRAME.parse(pic_frame)
+                try:
+                    pic = PICImage.PIC_FRAME.parse(pic_frame)
+                except Con.RangeError:
+                    continue
+                
                 images.append(PICImage(data="".join(map(chr,pic.data)),
                                        format=pic.format.decode('ascii'),
                                        description=pic.description.decode(

@@ -1,10 +1,18 @@
 #!/usr/bin/python
 
-import sys,os,os.path
-import gtk
-import gtk.gdk
-import gtk.glade
+import sys
+import os
+import os.path
+import optparse
+try:
+    import gtk
+    import gtk.gdk
+    import gtk.glade
+except ImportError:
+    print >>sys.stderr,"*** PyGTK is required"
+    sys.exit(1)
 import audiotools
+
 
 
 #returns the dimensions of image_surface scaled to match the
@@ -49,7 +57,7 @@ def get_raw_pixbuf(imagedata):
     return l.get_pixbuf()
 
 class ImageList:
-    #image_list is a list of (filepath,Image) tuples
+    #picture_list is a list of (filepath,Image) tuples
     def __init__(self, picture_list, xml):
         self.xml = xml
 
@@ -63,6 +71,10 @@ class ImageList:
         image_list.append_column(gtk.TreeViewColumn(
                 "Image",gtk.CellRendererPixbuf(),pixbuf=0))
 
+        self.set_images(picture_list)
+
+    #picture_list is a list of (filepath,Image) tuples
+    def set_images(self, picture_list):
         first_image = None
 
         for (path,image) in picture_list:
@@ -94,6 +106,28 @@ class ImageList:
         self.xml.get_widget("picture_type").set_text(
             liststore.get_value(treeiter,2))
 
+    def open_file(self, *args):
+        self.xml.get_widget('file_chooser').run()
+
+    def track_selected(self, *args):
+        chooser = self.xml.get_widget('file_chooser')
+        chooser.hide()
+        self.image_liststore.clear()
+        xml.get_widget("picture_image").clear()
+        xml.get_widget('file_path').set_text('')
+        xml.get_widget('picture_type').set_text('')
+
+        try:
+            metadata = audiotools.open(chooser.get_filename()).get_metadata()
+            if ((metadata is not None)
+                and isinstance(metadata,audiotools.ImageMetaData)):
+                self.set_images([(chooser.get_filename(),img)
+                                 for img in metadata.images()])
+            
+        except audiotools.UnsupportedFile:
+            pass
+        
+    
 
 if (__name__ == '__main__'):
     cover_list = []
@@ -110,15 +144,21 @@ if (__name__ == '__main__'):
             print >>sys.stderr,"*** coverview.glade not found"
             sys.exit(1)
 
-    for path in sys.argv[1:]:
+    parser = optparse.OptionParser(
+        "%prog [options] <track 1> [track 2] ...",
+        version="Python Audio Tools %s" % (audiotools.VERSION))
+
+    (options,args) = parser.parse_args()
+
+    for audiofile in audiotools.open_files(args):
         try:
-            metadata = audiotools.open(path).get_metadata()
+            metadata = audiofile.get_metadata()
             
             if ((metadata != None) and 
                 isinstance(metadata,audiotools.ImageMetaData) and
                 (len(metadata.images()) > 0)):
                 for image in metadata.images():
-                    cover_list.append((path,image))
+                    cover_list.append((audiofile.filename,image))
         except audiotools.UnsupportedFile:
             continue
 
@@ -126,4 +166,6 @@ if (__name__ == '__main__'):
 
     xml.signal_connect("gtk_main_quit",gtk.main_quit)
     xml.signal_connect("image_selected",imagelist.image_selected)
+    xml.signal_connect("open_file",imagelist.open_file)
+    xml.signal_connect("track_selected",imagelist.track_selected)
     gtk.main()

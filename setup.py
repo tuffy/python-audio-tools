@@ -36,8 +36,9 @@ setup (name = 'Python Audio Tools',
        url='http://audiotools.sourceforge.net',
        packages = ["audiotools"],
        ext_modules = [cdiomodule,bitstreammodule],
-       data_files = [("etc",["audiotools.cfg"])],
+       data_files = [("etc",["audiotools.cfg"]),
+                     ("share/audiotools",["glade/coverview.glade"])],
        scripts = ["cd2track","cd2xmcd",
                   "track2track","track2xmcd","trackrename","trackinfo",
                   "tracklength","track2cd","trackcmp","trackcat","trackplay",
-                  "tracktag","editxmcd", "audiotools-config"])
+                  "tracktag","editxmcd", "coverview", "audiotools-config"])

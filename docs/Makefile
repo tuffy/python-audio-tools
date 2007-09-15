@@ -146,7 +146,10 @@ audioformats_a4_unsorted.ps: audioformats.ms freedb.ms references.ms $(FORMATS) 
 %_man.ps: %.1 deman.py
 	./deman.py < $< | groff -man > $@
 
-%_man.eps: %_man.ps
+%_man1.ps: %_man.ps
+	psselect -p1 $< $@
+
+%_man.eps: %_man1.ps
 	ps2epsi $< $@
 
 freedb-sequence.eps: freedb-sequence.fig
