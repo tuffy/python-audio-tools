@@ -1,0 +1,79 @@
+#!/usr/bin/python
+
+#Audio Tools, a module and set of tools for manipulating audio data
+#Copyright (C) 2007  Brian Langenberger
+
+#This program is free software; you can redistribute it and/or modify
+#it under the terms of the GNU General Public License as published by
+#the Free Software Foundation; either version 2 of the License, or
+#(at your option) any later version.
+
+#This program is distributed in the hope that it will be useful,
+#but WITHOUT ANY WARRANTY; without even the implied warranty of
+#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#GNU General Public License for more details.
+
+#You should have received a copy of the GNU General Public License
+#along with this program; if not, write to the Free Software
+#Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+
+
+import audiotools
+import optparse,sys,os,os.path
+
+FILENAME_TYPES = ("front_cover","back_cover","leaflet","media","other")
+
+if (__name__ == '__main__'):
+    parser = optparse.OptionParser(
+        '%prog ' + \
+        '[-d directory] ' + \
+        '<track>',
+        version="Python Audio Tools %s" % (audiotools.VERSION))
+
+    parser.add_option('-d','--dir',
+                      action='store',
+                      type='string',
+                      dest='dir',
+                      default='.',
+                      help='the directory to store extracted images')
+
+    (options,args) = parser.parse_args()
+
+    if (len(args) != 1):
+        print >>sys.stderr,"*** You must specify exactly 1 audio file"
+        sys.exit(1)
+
+    try:
+        audiofile = audiotools.open(args[0])
+    except audiotools.UnsupportedFile:
+        print >>sys.stderr,"*** You must specify exactly 1 audio file"
+        sys.exit(1)
+
+    metadata = audiofile.get_metadata()
+    if ((metadata is not None) and
+        isinstance(metadata,audiotools.ImageMetaData)):
+        image_types = {}
+        for image in metadata.images():
+            image_types.setdefault(image.type,[]).append(image)
+
+        for (type,images) in image_types.items():
+            if (len(images) != 1):
+                FILE_TEMPLATE = "%(filename)s%(filenum)2.2d.%(suffix)s"
+            else:
+                FILE_TEMPLATE = "%(filename)s.%(suffix)s"
+
+            for (i,image) in enumerate(images):
+                output_filename = os.path.join(
+                    options.dir,
+                    FILE_TEMPLATE % {"filename":FILENAME_TYPES[image.type],
+                                     "filenum":i + 1,
+                                     "suffix":image.suffix()})
+                try:
+                    f = open(output_filename,"wb")
+                    f.write(image.data)
+                    f.close()
+                    print "* %s" % (output_filename)
+                except IOError,msg:
+                    print "*** %s" % (str(msg))
+                
+

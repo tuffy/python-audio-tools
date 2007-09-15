@@ -435,6 +435,14 @@ class Image:
         self.description = description
         self.type = type
 
+    def suffix(self):
+        return {"image/jpeg":"jpg",
+                "image/jpg":"jpg",
+                "image/gif":"gif",
+                "image/png":"png",
+                "image/x-ms-bmp":"bmp",
+                "image/tiff":"tiff"}.get(self.mime_type,"bin")
+
     def type_string(self):
         return {0:"Front Cover",
                 1:"Back Cover",

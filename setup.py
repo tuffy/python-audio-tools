@@ -41,4 +41,5 @@ setup (name = 'Python Audio Tools',
        scripts = ["cd2track","cd2xmcd",
                   "track2track","track2xmcd","trackrename","trackinfo",
                   "tracklength","track2cd","trackcmp","trackcat","trackplay",
-                  "tracktag","editxmcd", "coverview", "audiotools-config"])
+                  "tracktag","editxmcd","audiotools-config", 
+                  "coverdump","coverview"])
