@@ -1,0 +1,129 @@
+#!/usr/bin/python
+
+import sys,os,os.path
+import gtk
+import gtk.gdk
+import gtk.glade
+import audiotools
+
+
+#returns the dimensions of image_surface scaled to match the
+#display surface size, but without changing its aspect ratio
+def image_size(display_surface, image_surface):
+    display_ratio = float(display_surface[0]) / \
+                    float(display_surface[1])
+
+    image_ratio = float(image_surface.get_width()) / \
+                    float(image_surface.get_height())
+
+    if (image_ratio > display_ratio): #image wider than display, when scaled
+        new_width = display_surface[0]
+        new_height = image_surface.get_height() / \
+                     (float(image_surface.get_width()) / \
+                      float(display_surface[0]))
+    else:                             #image taller than display, when scaled
+        new_width = image_surface.get_width() / \
+                    (float(image_surface.get_height()) / \
+                     float(display_surface[1]))
+        new_height = display_surface[1]
+
+    (new_width,new_height) = map(int,(new_width,new_height))
+
+    return (new_width,new_height)
+
+def get_pixbuf(imagedata,width,height):
+    l = gtk.gdk.PixbufLoader()
+    l.write(imagedata)
+    l.close()
+    
+    pb = l.get_pixbuf()
+    (width,height) = image_size((width,height),pb)
+    pb = pb.scale_simple(width,height,gtk.gdk.INTERP_BILINEAR)
+    return pb
+
+def get_raw_pixbuf(imagedata):
+    l = gtk.gdk.PixbufLoader()
+    l.write(imagedata)
+    l.close()
+    
+    return l.get_pixbuf()
+
+class ImageList:
+    #image_list is a list of (filepath,Image) tuples
+    def __init__(self, picture_list, xml):
+        self.xml = xml
+
+        image_list = xml.get_widget("image_list")
+        image = xml.get_widget("picture_image")
+
+        self.image_liststore = gtk.ListStore(gtk.gdk.Pixbuf,
+                                             gtk.gdk.Pixbuf,
+                                             str,str)
+        image_list.set_model(self.image_liststore)
+        image_list.append_column(gtk.TreeViewColumn(
+                "Image",gtk.CellRendererPixbuf(),pixbuf=0))
+
+        first_image = None
+
+        for (path,image) in picture_list:
+            treeiter = self.image_liststore.append()
+            pb = get_pixbuf(image.data,120,120)
+            large_pb = get_pixbuf(image.data,500,500)
+            self.image_liststore.set(treeiter,0,pb)
+            self.image_liststore.set(treeiter,1,large_pb)
+            self.image_liststore.set(treeiter,2,image.type_string())
+            self.image_liststore.set(treeiter,3,path)
+
+            if (first_image is None):
+                first_image = treeiter
+
+        if (len(picture_list) > 0):
+            self.xml.get_widget("image_list").get_selection().select_iter(
+                first_image)
+            self.image_selected()
+
+    def image_selected(self, *args):
+        (liststore,treeiter) = \
+            self.xml.get_widget("image_list").get_selection().get_selected()
+
+        selected = liststore.get_value(treeiter,1)
+        image = xml.get_widget("picture_image")
+        image.set_from_pixbuf(selected)
+        self.xml.get_widget("file_path").set_text(
+            liststore.get_value(treeiter,3))
+        self.xml.get_widget("picture_type").set_text(
+            liststore.get_value(treeiter,2))
+
+
+if (__name__ == '__main__'):
+    cover_list = []
+
+    gladepath = os.path.join(".","coverview.glade")
+    if (os.path.isfile(gladepath)):
+        xml = gtk.glade.XML(gladepath)
+    else:
+        gladepath = os.path.join(sys.prefix,"share/audiotools",
+                                 "coverview.glade")
+        if (os.path.isfile(gladepath)):
+            xml = gtk.glade.XML(gladepath)
+        else:
+            print >>sys.stderr,"*** coverview.glade not found"
+            sys.exit(1)
+
+    for path in sys.argv[1:]:
+        try:
+            metadata = audiotools.open(path).get_metadata()
+            
+            if ((metadata != None) and 
+                isinstance(metadata,audiotools.ImageMetaData) and
+                (len(metadata.images()) > 0)):
+                for image in metadata.images():
+                    cover_list.append((path,image))
+        except audiotools.UnsupportedFile:
+            continue
+
+    imagelist = ImageList(cover_list, xml)
+
+    xml.signal_connect("gtk_main_quit",gtk.main_quit)
+    xml.signal_connect("image_selected",imagelist.image_selected)
+    gtk.main()
