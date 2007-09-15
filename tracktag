@@ -52,6 +52,19 @@ def xmcd_track_metadata(track, xmcd):
     else:
         return track.get_metadata()
 
+#tries to return a populated Image object of the appropriate type
+#raises InvalidImage if something goes wrong during opening or parsing
+def get_image(filename, type):
+    try:
+        f = open(filename,'rb')
+        data = f.read()
+        f.close()
+        
+        return audiotools.Image.new(data,u'',type)
+    except IOError:
+        raise audiotools.InvalidImage("error opening file: \"%s\"" % (filename))
+    
+
 if (__name__ == '__main__'):
     parser = optparse.OptionParser(
         "%prog [-x XMCD file] <track 1> [track 2] ...",
@@ -105,12 +118,58 @@ if (__name__ == '__main__'):
                       dest='replace',
                       help='completely replace all metadata')
 
+    parser.add_option('--remove-images',
+                      action='store_true',
+                      default=False,
+                      dest='remove_images',
+                      help='remove existing images prior to adding new ones')
+
     parser.add_option('-x','--xmcd',
                       action='store',
                       type='string',
-                      dest='xmcd')
+                      dest='xmcd',
+                      help='an XMCD file to get audio metadata from',
+                      metavar='FILENAME')
+
+    parser.add_option('--front-cover',
+                      action='append',
+                      type='string',
+                      dest='front_cover',
+                      help='an image file of the front cover',
+                      metavar='FILENAME')
+
+    parser.add_option('--back-cover',
+                      action='append',
+                      type='string',
+                      dest='back_cover',
+                      help='an image file of the back cover',
+                      metavar='FILENAME')
+
+    parser.add_option('--leaflet',
+                      action='append',
+                      type='string',
+                      dest='leaflet',
+                      help='an image file of a leaflet page',
+                      metavar='FILENAME')
+
+    parser.add_option('--media',
+                      action='append',
+                      type='string',
+                      dest='media',
+                      help='an image file of the media',
+                      metavar='FILENAME')
+
+    parser.add_option('--other-image',
+                      action='append',
+                      type='string',
+                      dest='other_image',
+                      help='an image file related to the track',
+                      metavar='FILENAME')
+
+    
 
     (options,args) = parser.parse_args()
+    
     audiofiles = audiotools.open_files(args)
 
     if (options.xmcd != None):
@@ -139,15 +198,42 @@ if (__name__ == '__main__'):
         metadata = metadata_function(file, xmcd)
 
         if (metadata is not None):
-            for field in ('track_name','track_number','album_name',
-                          'artist_name','performer_name','copyright',
-                          'year'):
-                if (getattr(options,field) != None):
-                    attr = getattr(options,field)
-                    if (isinstance(attr,str)):
-                        attr = attr.decode(audiotools.IO_ENCODING)
-                    setattr(metadata,field,attr)
+            try:
+                for field in ('track_name','track_number','album_name',
+                              'artist_name','performer_name','copyright',
+                              'year'):
+                    if (getattr(options,field) != None):
+                        attr = getattr(options,field)
+                        if (isinstance(attr,str)):
+                            attr = attr.decode(audiotools.IO_ENCODING)
+                        setattr(metadata,field,attr)
 
-            file.set_metadata(metadata)
+                if (isinstance(metadata,audiotools.ImageMetaData)):
+                    if (options.remove_images):
+                        for i in metadata.images():
+                            metadata.delete_image(i)
+                    
+                    if (options.front_cover is not None):
+                        for path in options.front_cover:
+                            metadata.add_image(get_image(path,0))
 
+                    if (options.leaflet is not None):
+                        for path in options.leaflet:
+                            metadata.add_image(get_image(path,2))
+
+                    if (options.back_cover is not None):
+                        for path in options.back_cover:
+                            metadata.add_image(get_image(path,1))
+
+                    if (options.media is not None):
+                        for path in options.media:
+                            metadata.add_image(get_image(path,3))
+
+                    if (options.other_image is not None):
+                        for path in options.other_image:
+                            metadata.add_image(get_image(path,4))
+
+                file.set_metadata(metadata)
+            except audiotools.InvalidImage,msg:
+                print >>sys.stderr,"* %s: %s" % (file.filename,msg)
                 
