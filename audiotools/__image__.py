@@ -21,6 +21,15 @@ from audiotools import Con
 import imghdr
 import cStringIO
 
+def __jpeg__(h, f):
+    if (h[0:3] == '\xFF\xD8\xFF'):
+        return 'jpeg'
+    else:
+        return None
+
+imghdr.tests.append(__jpeg__)
+
+
 #takes a seekable file stream
 #returns an ImageMetrics class if the file can be identified
 #raises InvalidImage if there is an error or the file is unknown
@@ -77,8 +86,8 @@ class __JPEG__(ImageMetrics):
         Con.UBInt16('length')))
 
     APP0 = Con.Struct('JFIF_segment_marker',
-                      Con.Const(Con.String('identifier',5),'JFIF\x00'),
-                      Con.Const(Con.Byte('major_version'),1),
+                      Con.String('identifier',5),
+                      Con.Byte('major_version'),
                       Con.Byte('minor_version'),
                       Con.Byte('density_units'),
                       Con.UBInt16('x_density'),
@@ -86,16 +95,11 @@ class __JPEG__(ImageMetrics):
                       Con.Byte('thumbnail_width'),
                       Con.Byte('thumbnail_height'))
 
-    SOF0 = Con.Struct('start_of_frame_0',
-                      Con.Byte('data_precision'),
-                      Con.UBInt16('image_height'),
-                      Con.UBInt16('image_width'),
-                      Con.PrefixedArray(
-        length_field=Con.Byte('total_components'),
-        subcon=Con.Struct('components',
-                          Con.Byte('id'),
-                          Con.Byte('sampling_factors'),
-                          Con.Byte('quantization_table_number'))))
+    SOF = Con.Struct('start_of_frame',
+                     Con.Byte('data_precision'),
+                     Con.UBInt16('image_height'),
+                     Con.UBInt16('image_width'),
+                     Con.Byte('components'))
 
     def __init__(self, width, height, bits_per_pixel):
         ImageMetrics.__init__(self, width, height, bits_per_pixel,
@@ -103,8 +107,6 @@ class __JPEG__(ImageMetrics):
 
     @classmethod
     def parse(cls, file):
-        frame0 = None
-
         try:
             header = cls.SEGMENT_HEADER.parse_stream(file)
             if (header.type != 0xD8):
@@ -115,24 +117,28 @@ class __JPEG__(ImageMetrics):
                 if (segment.type == 0xDA):
                     break
 
-                if (segment.type == 0xE0):
-                    jfif_segment_marker = cls.APP0.parse_stream(file)
-                    file.seek(segment.length - cls.APP0.sizeof() - 2,1)
-                elif (segment.type == 0xC0): #SOF0
-                    frame0 = cls.SOF0.parse_stream(file)
+                if (segment.type in (0xC0,0xC1,0xC2,0xC3,
+                                     0xC5,0XC5,0xC6,0xC7,
+                                     0xC9,0xCA,0xCB,0xCD,
+                                     0xCE,0xCF)): #start of frame
+                    segment_data = cStringIO.StringIO(
+                        file.read(segment.length - 2))
+                    frame0 = cls.SOF.parse_stream(segment_data)
+                    segment_data.close()
+                    
+                    return __JPEG__(width = frame0.image_width,
+                                    height = frame0.image_height,
+                                    bits_per_pixel = (frame0.data_precision * \
+                                                      frame0.components))
                 else:
                     file.seek(segment.length - 2,1)
+
                 segment = cls.SEGMENT_HEADER.parse_stream(file)
 
-            if (frame0 is not None):
-                return __JPEG__(width = frame0.image_width,
-                                height = frame0.image_height,
-                                bits_per_pixel = (frame0.data_precision * \
-                                                  len(frame0.components)))
-            else:
-                raise InvalidJPEG('frame 0 not found')
+
+            raise InvalidJPEG('start of frame not found')
         except Con.ConstError:
-            raise InvalidJPEG('invalid JPEG')
+            raise InvalidJPEG("invalid JPEG segment marker at 0x%X" % (file.tell()))
 
 
 #######################
