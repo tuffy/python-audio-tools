@@ -498,7 +498,9 @@ class ImageMetaData:
         self.__dict__['__images__'] = list(images)
 
     def images(self):
-        return self.__images__
+        #must return a copy of our internal array
+        #otherwise this will likely not act as expected when deleting
+        return self.__images__[:]
 
     def front_covers(self):
         return [i for i in self.images() if i.type == 0]
@@ -527,7 +529,8 @@ class ImageMetaData:
     #(e.g. removing an existing Image from FlacComment should
     # remove that same METADATA_BLOCK_PICTURE block from the metadata)
     def delete_image(self, image):
-        del(self.__images__[self.__images__.index(image)])
+        self.__images__.pop(self.__images__.index(image))
+
 
 
 #######################

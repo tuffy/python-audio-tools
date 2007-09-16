@@ -212,7 +212,7 @@ if (__name__ == '__main__'):
                     if (options.remove_images):
                         for i in metadata.images():
                             metadata.delete_image(i)
-                    
+                
                     if (options.front_cover is not None):
                         for path in options.front_cover:
                             metadata.add_image(get_image(path,0))
