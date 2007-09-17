@@ -257,6 +257,100 @@ only needs to know how to handle VorbisComment instances.
 
 .bp
 
+.SECTION "Image Metadata"
+.PP
+Certain types of metadata can contain embedded images in addition
+to textual information.
+These will be instances of ImageMetaData.
+
+.CLASS ImageMetaData "images"
+A container for Image-compatible classes.
+`images' must be a list of Images.
+
+.FUNCTION images
+Returns a list of our stored Images.
+
+.FUNCTION front_covers
+Returns a list of our Images which are front covers.
+
+.FUNCTION back_covers
+Returns a list of our Images which are back covers.
+
+.FUNCTION leaflet_pages
+Returns a list of our Images which are leaflet pages.
+
+.FUNCTION media
+Returns a list of our Images of the album media.
+
+.FUNCTION other_images
+Returns a list of our Images which aren't in the aforementioned categories.
+
+.FUNCTION add_image image
+Takes an Image-compatible object and adds it to our internal list.
+
+.FUNCTION delete_image image
+Takes an object, originally from our internal list, and deletes it
+from that list.
+
+.bp
+
+.CLASS Image "data, mime_type, width, height, color_depth, color_count, description, type"
+.PP
+A container for image data.
+This is often the base class for metadata-specific embedded images.
+.ATTRIBUTE data
+A string containing the binary data that comprises this image.
+
+.ATTRIBUTE mime_type
+A Unicode string storing the MIME type of this image, such as `image/jpeg'
+or `image/png'.
+
+.ATTRIBUTE width
+How wide this image is as an integer number of pixels.
+
+.ATTRIBUTE height
+How tall this image is as an integer number of pixels.
+
+.ATTRIBUTE color_depth
+The number of color this image contains as an integer number of
+bits-per-pixel.
+
+.ATTRIBUTE color_count
+For palette-based images (such as GIF), 
+the total number of colors the image contains.
+For images with no palette, this value is 0.
+
+.ATTRIBUTE description
+A description of the image as a Unicode string.
+
+.ATTRIBUTE type
+What portion of an album this image is of, as an integer.
+.TS
+tab(:);
+c | l.
+0:Front Cover
+1:Back Cover
+2:Leaflet Page
+3:Media
+4:Other
+.TE
+
+.FUNCTION type_string
+Returns what portion of an album this image is of, as a string.
+
+.FUNCTION suffix
+Returns a string of this image's file suffix, based on its MIME type.
+`image/jpeg' returns a suffix of `jpg', for example.
+
+.CLASSMETHOD new "image_data, description, type"
+Given a string of image data, a Unicode description string and
+integer type, returns an Image object with the remaining fields
+filled-in based upon that image data.
+This allows a user to add a JPEG to an audio track, for example,
+by having the rest of the image information retrieved automatically
+based on its contents rather than having to specify those metrics.
+.bp
+
 .SECTION PCMReader
 
 .CLASS PCMReader "file, sample_rate, channels, bits_per_sample, [process]"
