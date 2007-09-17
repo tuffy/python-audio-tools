@@ -53,6 +53,10 @@ class FlacMetaData(ImageMetaData,MetaData):
         #so set_metadata() must override this value with the current
         #FLAC's streaminfo before setting the metadata blocks.
         self.__dict__['streaminfo'] = None
+
+        #Don't use an external SEEKTABLE, either.
+        self.__dict__['seektable'] = None
+        
         self.__dict__['vorbis_comment'] = None
         self.__dict__['cuesheet'] = None
         image_blocks = []
@@ -77,7 +81,10 @@ class FlacMetaData(ImageMetaData,MetaData):
                 self.__dict__['vorbis_comment'] = FlacVorbisComment(comments)
             elif ((block.type == 5) and (self.cuesheet is None)):
                 #only one CUESHEET allowed
-                self.cuesheet = block
+                self__dict__['cuesheet'] = block
+            elif ((block.type == 3) and (self.seektable is None)):
+                #only one SEEKTABLE allowed
+                self.__dict__['seektable'] = block
             elif (block.type == 6):
                 #multiple PICTURE blocks are ok
                 image = FlacAudio.PICTURE_COMMENT.parse(block.data)
@@ -147,6 +154,10 @@ class FlacMetaData(ImageMetaData,MetaData):
     def metadata_blocks(self):
         yield self.streaminfo
         yield self.vorbis_comment
+        
+        if (self.seektable is not None):
+            yield self.seektable
+        
         if (self.cuesheet is not None):
             yield self.cuesheet
 
@@ -436,8 +447,14 @@ class FlacAudio(AudioFile):
         metadata = FlacMetaData.converted(metadata)
         
         if (metadata == None): return
-        old_streaminfo = self.get_metadata().streaminfo
+
+        #port over the old STREAMINFO and SEEKTABLE blocks
+        old_metadata = self.get_metadata()
+        old_streaminfo = old_metadata.streaminfo
+        old_seektable = old_metadata.seektable
         metadata.streaminfo = old_streaminfo
+        if (old_seektable is not None):
+            metadata.seektable = old_seektable
 
         stream = file(self.filename,'rb')
 
