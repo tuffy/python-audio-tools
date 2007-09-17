@@ -63,7 +63,7 @@ RIFF WAVE:.wav:Python:Python:N/A:N/A
 AIFF:.ape:Python:Python:N/A:N/A
 Sun AU:.au:Python:Python:N/A:N/A
 _
-FLAC:.flac:flac:flac:Python:metaflac
+FLAC:.flac:flac:flac:Python:Python
 Ogg FLAC:.oga:flac:flac:Python:Python
 WavPack:.wv:wvunpack:wavpack:Python:Python
 _

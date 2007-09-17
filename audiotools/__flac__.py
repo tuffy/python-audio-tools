@@ -292,46 +292,12 @@ class FlacPictureComment(Image):
                           block_type=6,
                           block_length=len(block))) + block
 
-class FlacComment(ImageMetaData,VorbisComment):
-    VORBIS_COMMENT = Con.Struct("vorbis_comment",
-                                Con.PascalString("vendor_string",
-                                                 length_field=Con.ULInt32("length")),
-                                Con.PrefixedArray(
-        length_field=Con.ULInt32("length"),
-        subcon=Con.PascalString("value",
-                                length_field=Con.ULInt32("length"))))
-
-    #picture_comments should be a list of FlacPictureComments
-    def __init__(self, vorbis_comment, picture_comments=()):
-        #self.picture_comments = picture_comments
-        VorbisComment.__init__(self,vorbis_comment)
-        ImageMetaData.__init__(self,picture_comments)
-
-    @classmethod
-    def converted(cls, metadata):
-        if ((metadata is None) or (isinstance(metadata,FlacComment))):
-            return metadata
-        else:
-            if (isinstance(metadata,ImageMetaData)):
-                images = [FlacPictureComment.converted(i)
-                          for i in metadata.images()]
-            else:
-                images = []
-                
-            if (isinstance(metadata,VorbisComment)):
-                return FlacComment(metadata,images)
-            else:
-                return FlacComment(VorbisComment.converted(metadata),images)
-
-    def add_image(self, image):
-        ImageMetaData.add_image(self,FlacPictureComment.converted(image))
-
 
 class FlacAudio(AudioFile):
     SUFFIX = "flac"
     DEFAULT_COMPRESSION = "8"
     COMPRESSION_MODES = tuple(map(str,range(0,9)))
-    BINARIES = ("flac","metaflac")
+    BINARIES = ("flac",)
     
     
     METADATA_BLOCK_HEADER = Con.BitStruct("metadata_block_header",
@@ -572,7 +538,7 @@ class FlacAudio(AudioFile):
                         ((track.sample_rate() == 44100) or
                          (track.sample_rate() == 48000)))]
         
-        if (len(track_names) > 0):
+        if ((len(track_names) > 0) and (BIN.can_execute(BIN['metaflac']))):
             subprocess.call([BIN['metaflac'],'--add-replay-gain'] + \
                             track_names)
 

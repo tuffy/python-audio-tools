@@ -519,14 +519,14 @@ class ImageMetaData:
 
     #image should be an Image object
     #this method should also affect the underlying metadata value
-    #(e.g. adding a new Image to FlacComment should add another
+    #(e.g. adding a new Image to FlacMetaData should add another
     # METADATA_BLOCK_PICTURE block to the metadata)
     def add_image(self, image):
         self.__images__.append(image)
 
     #image should be an existing Image object
     #this method should also affect the underlying metadata value
-    #(e.g. removing an existing Image from FlacComment should
+    #(e.g. removing an existing Image from FlacMetaData should
     # remove that same METADATA_BLOCK_PICTURE block from the metadata)
     def delete_image(self, image):
         self.__images__.pop(self.__images__.index(image))
