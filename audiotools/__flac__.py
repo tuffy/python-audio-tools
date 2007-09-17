@@ -681,8 +681,12 @@ class OggFlacAudio(FlacAudio):
         comment = FlacMetaData.converted(metadata)
         
         if (comment == None): return
-        old_streaminfo = self.get_metadata().streaminfo
+        old_metadata = self.get_metadata()
+        old_streaminfo = old_metadata.streaminfo
+        old_seektable = old_metadata.seektable
         comment.streaminfo = old_streaminfo
+        if (old_seektable is not None):
+            comment.seektable = old_seektable
 
         reader = OggStreamReader(file(self.filename,'rb'))
         new_file = cStringIO.StringIO()

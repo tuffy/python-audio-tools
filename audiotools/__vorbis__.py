@@ -26,7 +26,7 @@ class OggStreamReader:
         Con.Const(Con.String("magic_number",4),"OggS"),
         Con.Byte("version"),
         Con.Byte("header_type"),
-        Con.ULInt64("granule_position"),
+        Con.SLInt64("granule_position"),
         Con.ULInt32("bitstream_serial_number"),
         Con.ULInt32("page_sequence_number"),
         Con.ULInt32("checksum"),
