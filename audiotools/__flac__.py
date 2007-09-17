@@ -729,7 +729,8 @@ class OggFlacAudio(FlacAudio):
         sequence_number = 0
         for (page_header,page_data) in OggStreamWriter.build_pages(
             0,serial_number,sequence_number,
-            OggFlacAudio.OGGFLAC_STREAMINFO.build(oggflac_streaminfo)):
+            OggFlacAudio.OGGFLAC_STREAMINFO.build(oggflac_streaminfo),
+            header_type=0x2):
             writer.write_page(page_header,page_data)
             sequence_number += 1
 

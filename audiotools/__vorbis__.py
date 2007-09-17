@@ -233,7 +233,7 @@ class OggStreamWriter:
                                    serial_number,
                                    starting_sequence_number + 1,
                                    packet_data[255*255:],
-                                   0)
+                                   header_type)
         elif (len(packet_data) == (255 * 255)):
             #we need two Ogg pages, one of which is empty
 
@@ -246,7 +246,7 @@ class OggStreamWriter:
                                    serial_number,
                                    starting_sequence_number + 1,
                                    "",
-                                   0)
+                                   header_type)
         else:
             #we just need one Ogg page
 

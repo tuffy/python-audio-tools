@@ -68,7 +68,7 @@ bits:page type
 =
 000:Continuation
 010:Beginning of Stream
-100:End of Stream
+001:End of Stream
 _
 .TE
 Granule position is a time marker.
