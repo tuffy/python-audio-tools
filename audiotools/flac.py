@@ -229,14 +229,14 @@ class FlacReader:
             raise FlacStreamException('invalid stream marker')
 
     def read_metadata_blocks(self):
-        block = audiotools.FlacAudio.FLAC_METADATA_BLOCK_HEADER.parse_stream(self.stream)
+        block = audiotools.FlacAudio.METADATA_BLOCK_HEADER.parse_stream(self.stream)
         while (block.last_block == 0):
             if (block.block_type == 0):
-                self.streaminfo = audiotools.FlacAudio.FLAC_STREAMINFO.parse_stream(self.stream)
+                self.streaminfo = audiotools.FlacAudio.STREAMINFO.parse_stream(self.stream)
             else:
                 self.stream.seek(block.block_length,1)
                 
-            block = audiotools.FlacAudio.FLAC_METADATA_BLOCK_HEADER.parse_stream(self.stream)
+            block = audiotools.FlacAudio.METADATA_BLOCK_HEADER.parse_stream(self.stream)
         self.stream.seek(block.block_length,1)
 
     def begin_bitstream(self):

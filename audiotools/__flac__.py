@@ -30,6 +30,167 @@ from __vorbis__ import OggStreamReader,OggStreamWriter
 
 class FlacException(InvalidFile): pass
 
+class FlacMetaDataBlock:
+    #type is an int
+    #data is a string of metadata
+    def __init__(self, type, data):
+        self.type = type
+        self.data = data
+
+    #returns the entire metadata block as a string, including the header
+    def build_block(self, last=0):
+        return FlacAudio.METADATA_BLOCK_HEADER.build(
+            Con.Container(last_block=last,
+                          block_type=self.type,
+                          block_length=len(self.data))) + self.data
+
+class FlacMetaData(ImageMetaData,MetaData):
+    #blocks is a list of FlacMetaDataBlock objects
+    #these get converted internally into MetaData/ImageMetaData fields
+    def __init__(self, blocks):
+        #IMPORTANT!
+        #Externally converted FlacMetaData likely won't have a valid STREAMINFO
+        #so set_metadata() must override this value with the current
+        #FLAC's streaminfo before setting the metadata blocks.
+        self.__dict__['streaminfo'] = None
+        self.__dict__['vorbis_comment'] = None
+        self.__dict__['cuesheet'] = None
+        image_blocks = []
+        self.__dict__['extra_blocks'] = []
+        
+        for block in blocks:
+            if ((block.type == 0) and (self.streaminfo is None)):
+                #only one STREAMINFO allowed
+                self.__dict__['streaminfo'] = block
+            elif ((block.type == 4) and (self.vorbis_comment is None)):
+                #only one VORBIS_COMMENT allowed
+                comments = {}
+                
+                for comment in FlacVorbisComment.VORBIS_COMMENT.parse(block.data).value:
+                    try:
+                        key = comment[0:comment.index("=")].upper()
+                        value = comment[comment.index("=") + 1:].decode('utf-8')
+                        comments.setdefault(key,[]).append(value)
+                    except ValueError:
+                        pass
+                
+                self.__dict__['vorbis_comment'] = FlacVorbisComment(comments)
+            elif ((block.type == 5) and (self.cuesheet is None)):
+                #only one CUESHEET allowed
+                self.cuesheet = block
+            elif (block.type == 6):
+                #multiple PICTURE blocks are ok
+                image = FlacAudio.PICTURE_COMMENT.parse(block.data)
+                
+                image_blocks.append(FlacPictureComment(
+                    type=image.type,
+                    mime_type=image.mime_type.decode('ascii','replace'),
+                    description=image.description.decode('utf-8','replace'),
+                    width=image.width,
+                    height=image.height,
+                    color_depth=image.color_depth,
+                    color_count=image.color_count,
+                    data=image.data))
+            elif (block.type != 1):
+                #everything but the padding is stored as extra
+                self.__dict__['extra_blocks'].append(block)
+
+        if (self.vorbis_comment is None):
+            self.vorbis_comment = FlacVorbisComment({})
+
+        MetaData.__init__(self,
+                          track_name=self.vorbis_comment.track_name,
+                          track_number=self.vorbis_comment.track_number,
+                          album_name=self.vorbis_comment.album_name,
+                          artist_name=self.vorbis_comment.artist_name,
+                          performer_name=self.vorbis_comment.performer_name,
+                          copyright=self.vorbis_comment.copyright,
+                          year=self.vorbis_comment.year)
+        ImageMetaData.__init__(self,image_blocks)
+
+    def __setattr__(self, key, value):
+        self.__dict__[key] = value
+        setattr(self.vorbis_comment, key, value)
+
+    @classmethod
+    def converted(cls, metadata):
+        if ((metadata is None) or (isinstance(metadata,FlacMetaData))):
+            return metadata
+        else:
+            if (isinstance(metadata,ImageMetaData)):
+                return FlacMetaData([
+                    FlacMetaDataBlock(
+                    type=4,
+                    data=FlacVorbisComment.converted(metadata).build())] + \
+                                    [
+                    FlacMetaDataBlock(
+                      type=6,
+                      data=FlacPictureComment.converted(image).build())
+                      for image in metadata.images()])
+            else:
+                return FlacMetaData([
+                    FlacMetaDataBlock(
+                    type=4,
+                    data=FlacVorbisComment.converted(metadata).build())])
+
+    def add_image(self, image):
+        ImageMetaData.add_image(self,FlacPictureComment.converted(image))
+
+    def build(self):
+        blocks = [self.streaminfo.build_block(),
+                  self.vorbis_comment.build_block()]
+        if (self.cuesheet != None):
+            blocks.append(self.cuesheet.build_block())
+
+        for image in self.images():
+            blocks.append(image.build_block())
+
+        for extra in self.extra_blocks:
+            blocks.append(extra.build_block())
+
+        blocks.append(FlacMetaDataBlock(type=1,
+                                        data=chr(0) * 4096).build_block(last=1))
+
+        return "".join(blocks)
+            
+
+
+#a slight variation of VorbisComment without the framing bit
+#and with a build_block() method
+class FlacVorbisComment(VorbisComment):
+    VORBIS_COMMENT = Con.Struct("vorbis_comment",
+                                Con.PascalString("vendor_string",
+                                                 length_field=Con.ULInt32("length")),
+                                Con.PrefixedArray(
+        length_field=Con.ULInt32("length"),
+        subcon=Con.PascalString("value",
+                                length_field=Con.ULInt32("length"))))
+    
+    def build_block(self, last=0):
+        block = self.build()
+        return FlacAudio.METADATA_BLOCK_HEADER.build(
+            Con.Container(last_block=last,
+                          block_type=4,
+                          block_length=len(block))) + block
+
+    @classmethod
+    def converted(cls, metadata):
+        if ((metadata is None) or (isinstance(metadata,FlacVorbisComment))):
+            return metadata
+        elif (isinstance(metadata,FlacMetaData)):
+            return metadata.vorbis_comment
+        elif (isinstance(metadata,VorbisComment)):
+            return FlacVorbisComment(metadata)
+        else:
+            values = {}
+            for key in cls.ATTRIBUTE_MAP.keys():
+                if (getattr(metadata,key) != u""):
+                    values[cls.ATTRIBUTE_MAP[key]] = \
+                        [unicode(getattr(metadata,key))]
+
+            return FlacVorbisComment(values)
+  
+
 #this is a container for FLAC's PICTURE metadata blocks
 #type, width, height, color_depth and color_count are ints
 #mime_type and description are unicode strings
@@ -103,6 +264,13 @@ class FlacPictureComment(Image):
                           color_count=self.color_count,
                           data=self.data))
 
+    def build_block(self,last=0):
+        block = self.build()
+        return FlacAudio.METADATA_BLOCK_HEADER.build(
+            Con.Container(last_block=last,
+                          block_type=6,
+                          block_length=len(block))) + block
+
 class FlacComment(ImageMetaData,VorbisComment):
     VORBIS_COMMENT = Con.Struct("vorbis_comment",
                                 Con.PascalString("vendor_string",
@@ -145,12 +313,12 @@ class FlacAudio(AudioFile):
     BINARIES = ("flac","metaflac")
     
     
-    FLAC_METADATA_BLOCK_HEADER = Con.BitStruct("metadata_block_header",
-                                            Con.Bit("last_block"),
-                                            Con.Bits("block_type",7),
-                                            Con.Bits("block_length",24))
+    METADATA_BLOCK_HEADER = Con.BitStruct("metadata_block_header",
+                                          Con.Bit("last_block"),
+                                          Con.Bits("block_type",7),
+                                          Con.Bits("block_length",24))
     
-    FLAC_STREAMINFO = Con.Struct("flac_streaminfo",
+    STREAMINFO = Con.Struct("flac_streaminfo",
                                  Con.UBInt16("minimum_blocksize"),
                                  Con.UBInt16("maximum_blocksize"),
                                  Con.Embed(Con.BitStruct("flags",
@@ -235,67 +403,50 @@ class FlacAudio(AudioFile):
 
     #returns a MetaData-compatible VorbisComment for this FLAC files
     def get_metadata(self):
-        f = file(self.filename,"rb")
+        f = file(self.filename,'rb')
         try:
-            vorbiscomment = VorbisComment({})
-            image_blocks = []
-
             if (f.read(4) != 'fLaC'):
-                return vorbiscomment
+                raise FlacException('invalid FLAC file')
             
-            stop = 0
-            while (stop == 0):
-                (stop,header_type,length) = FlacAudio.__read_flac_header__(f)
-                if (header_type == 4):
-                    vorbiscomment = VorbisComment(
-                        FlacAudio.__read_vorbis_comment__(
-                            cStringIO.StringIO(f.read(length))))
-                elif (header_type == 6):
-                    image = FlacAudio.PICTURE_COMMENT.parse(
-                        f.read(length))
-                    image_blocks.append(FlacPictureComment(
-                        type=image.type,
-                        mime_type=image.mime_type.decode('ascii','replace'),
-                        description=image.description.decode('utf-8','replace'),
-                        width=image.width,
-                        height=image.height,
-                        color_depth=image.color_depth,
-                        color_count=image.color_count,
-                        data=image.data))
-                else:
-                    f.seek(length,1)
+            blocks = []
 
-            return FlacComment(vorbiscomment,tuple(image_blocks))
+            while (True):
+                header = FlacAudio.METADATA_BLOCK_HEADER.parse_stream(f)
+                blocks.append(FlacMetaDataBlock(
+                    type=header.block_type,
+                    data=f.read(header.block_length)))
+                if (header.last_block == 1):
+                    break
+
+            return FlacMetaData(blocks)
         finally:
             f.close()
 
     def set_metadata(self, metadata):
-        metadata = FlacComment.converted(metadata)
+        metadata = FlacMetaData.converted(metadata)
         
         if (metadata == None): return
+        old_streaminfo = self.get_metadata().streaminfo
+        metadata.streaminfo = old_streaminfo
 
-        subprocess.call([BIN['metaflac'],'--remove-all-tags',self.filename])
-        subprocess.call([BIN['metaflac'],'--remove','--block-type=PICTURE',self.filename])
+        stream = file(self.filename,'rb')
 
-        import tempfile
+        if (stream.read(4) != 'fLaC'):
+            raise FlacException('invalid FLAC file')
         
-        self.__set_vorbis_comment__(metadata)
+        block = FlacAudio.METADATA_BLOCK_HEADER.parse_stream(stream)
+        while (block.last_block == 0):
+            stream.seek(block.block_length,1)
+            block = FlacAudio.METADATA_BLOCK_HEADER.parse_stream(stream)
+        stream.seek(block.block_length,1)
 
-        #converted() must transform all ImageMetaData to FlacPictureComments
-        for picture in metadata.images():
-            picturedata = tempfile.NamedTemporaryFile()
-            picturedata.write(picture.data)
-            picturedata.flush()
-            self.set_picture(picture_filename=picturedata.name,
-                             type=picture.flac_type,
-                             mime_type=picture.mime_type,
-                             description=picture.description,
-                             width=picture.width,
-                             height=picture.height,
-                             depth=picture.color_depth,
-                             colors=picture.color_count)
-            picturedata.close()
+        file_data = stream.read()  #a BIG chunk of file data
 
+        stream = file(self.filename,'wb')
+        stream.write('fLaC')
+        stream.write(metadata.build())
+        stream.write(file_data)
+        stream.close()
 
 
     def __set_vorbis_comment__(self, metadata):
@@ -330,7 +481,7 @@ class FlacAudio(AudioFile):
 
     @classmethod
     def __read_flac_header__(cls, flacfile):
-        p = FlacAudio.FLAC_METADATA_BLOCK_HEADER.parse(flacfile.read(4))
+        p = FlacAudio.METADATA_BLOCK_HEADER.parse(flacfile.read(4))
         return (p.last_block, p.block_type, p.block_length)
 
     #takes the vorbis comment block of a flacfile file handle
@@ -420,7 +571,7 @@ class FlacAudio(AudioFile):
         if (header_type != 0):
             raise FlacException("STREAMINFO not first metadata block")
     
-        p = FlacAudio.FLAC_STREAMINFO.parse(f.read(length))
+        p = FlacAudio.STREAMINFO.parse(f.read(length))
 
         md5sum = "".join(["%.2X" % (x) for x in p.md5]).lower()
 
@@ -463,7 +614,7 @@ class FlacAudio(AudioFile):
             return False
     
     #def __read_flac_header__(self, flacfile):
-    #    p = FlacAudio.FLAC_METADATA_BLOCK_HEADER.parse(flacfile.read(4))
+    #    p = FlacAudio.METADATA_BLOCK_HEADER.parse(flacfile.read(4))
     #    return (p.last_block, p.block_type, p.block_length)
 
     #returns a list of (track_number,"start.x-stop.y") tuples
@@ -548,9 +699,9 @@ class OggFlacAudio(FlacAudio):
                                     Con.Const(Con.String('flac_signature',4),
                                               'fLaC'),
                                     Con.Embed(
-        FlacAudio.FLAC_METADATA_BLOCK_HEADER),
+        FlacAudio.METADATA_BLOCK_HEADER),
                                     Con.Embed(
-        FlacAudio.FLAC_STREAMINFO))
+        FlacAudio.STREAMINFO))
     
     @classmethod
     def is_type(cls, file):
@@ -568,7 +719,7 @@ class OggFlacAudio(FlacAudio):
             pictures = []
 
             for p in packets:   
-                header = FlacAudio.FLAC_METADATA_BLOCK_HEADER.parse(p[0:4])
+                header = FlacAudio.METADATA_BLOCK_HEADER.parse(p[0:4])
                 if (header.block_type == 6):
                     image = FlacAudio.PICTURE_COMMENT.parse(
                         p[4:])
@@ -619,7 +770,7 @@ class OggFlacAudio(FlacAudio):
             0,
             header_page.bitstream_serial_number,
             header_page.page_sequence_number + 1,
-            FlacAudio.FLAC_METADATA_BLOCK_HEADER.build(
+            FlacAudio.METADATA_BLOCK_HEADER.build(
               Con.Container(last_block=0,
                             block_type=4,
                             block_length=len(comment.build()))) + \
@@ -636,7 +787,7 @@ class OggFlacAudio(FlacAudio):
                 0,
                 header_page.bitstream_serial_number,
                 header_page.page_sequence_number + pagenum,
-                FlacAudio.FLAC_METADATA_BLOCK_HEADER.build(
+                FlacAudio.METADATA_BLOCK_HEADER.build(
                   Con.Container(last_block=0,
                                 block_type=6,
                                 block_length=len(picture.build()))) + \
@@ -649,7 +800,7 @@ class OggFlacAudio(FlacAudio):
         #skip any old PICTURE comment packets (if any)
         #until the end of the metadata blocks
         metadata_packet = OggStreamReader.pages_to_packet(pages)
-        header = FlacAudio.FLAC_METADATA_BLOCK_HEADER.parse(
+        header = FlacAudio.METADATA_BLOCK_HEADER.parse(
             metadata_packet[0][1][0:4])
         
         while (header.last_block == 0):
@@ -662,7 +813,7 @@ class OggFlacAudio(FlacAudio):
                     pagenum += 1
                     
             metadata_packet = OggStreamReader.pages_to_packet(pages)
-            header = FlacAudio.FLAC_METADATA_BLOCK_HEADER.parse(
+            header = FlacAudio.METADATA_BLOCK_HEADER.parse(
                 metadata_packet[0][1][0:4])
 
         #write out that last metadata block (hopefully not a picture)
