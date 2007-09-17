@@ -885,7 +885,7 @@ class ExecQueue:
 #Monkey's Audio with my own code in order to make it available again.
 #Yet another reason to avoid that unpleasant file format...
 
-AVAILABLE_TYPES = (FlacAudio,
+AVAILABLE_TYPES = (FlacAudio,OggFlacAudio,
                    MP3Audio,MP2Audio,WaveAudio,
                    VorbisAudio,SpeexAudio,MusepackAudio,
                    AiffAudio,AuAudio,M4AAudio,WavPackAudio)

@@ -42,8 +42,10 @@ class OggStreamReader:
         self.stream.close()
 
     #an iterator which yields one fully-reassembled Ogg packet per pass
-    def packets(self):
-        self.stream.seek(0,0)
+    def packets(self, from_beginning=True):
+        if (from_beginning):
+            self.stream.seek(0,0)
+            
         segment = cStringIO.StringIO()
 
         while (True):
@@ -67,8 +69,10 @@ class OggStreamReader:
     #Container is parsed from OGGS
     #data string is a collection of segments as a string
     #(it may not be a complete packet)
-    def pages(self):
-        self.stream.seek(0,0)
+    def pages(self, from_beginning=True):
+        if (from_beginning):
+            self.stream.seek(0,0)
+            
         while (True):
             try:
                 page = OggStreamReader.OGGS.parse_stream(self.stream)
@@ -77,6 +81,7 @@ class OggStreamReader:
                 break
             except Con.ConstError:
                 break
+        
 
     #takes a page iterator (such as pages(), above)
     #returns a list of (Container,data string) tuples

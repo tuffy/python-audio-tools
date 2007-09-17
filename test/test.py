@@ -316,9 +316,9 @@ class TestWavPackAudio(TestWaveAudio):
     def setUp(self):
         self.audio_class = audiotools.WavPackAudio
 
-#class TestOggFlacAudio(TestWaveAudio):
-#    def setUp(self):
-#        self.audio_class = audiotools.OggFlacAudio
+class TestOggFlacAudio(TestWaveAudio):
+    def setUp(self):
+        self.audio_class = audiotools.OggFlacAudio
 
 class TestMP3Audio(TestWaveAudio):
     def setUp(self):
