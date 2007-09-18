@@ -27,7 +27,7 @@ try:
     import gtk.gdk
     import gtk.glade
 except ImportError:
-    print >>sys.stderr,"*** PyGTK is required"
+    print >>sys.stderr,"*** PyGTK2 is required"
     sys.exit(1)
 import audiotools
 

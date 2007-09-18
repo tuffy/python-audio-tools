@@ -235,7 +235,7 @@ class FlacPictureComment(Image):
     @classmethod
     def converted(cls, image):
         return FlacPictureComment(
-            type={0:3,1:4,5:2,3:6}.get(image.type,0),
+            type={0:3,1:4,2:5,3:6}.get(image.type,0),
             mime_type=image.mime_type,
             description=image.description,
             width=image.width,
@@ -720,7 +720,7 @@ class OggFlacAudio(FlacAudio):
         oggflac_streaminfo.signature = 'FLAC'
         oggflac_streaminfo.major_version = 0x1
         oggflac_streaminfo.minor_version = 0x0
-        oggflac_streaminfo.header_packets = len(blocks)
+        oggflac_streaminfo.header_packets = len(blocks) + 1 #+1 for padding
         oggflac_streaminfo.flac_signature = 'fLaC'
         oggflac_streaminfo.last_block = 0
         oggflac_streaminfo.block_type = 0
@@ -734,7 +734,7 @@ class OggFlacAudio(FlacAudio):
             writer.write_page(page_header,page_data)
             sequence_number += 1
 
-        #the non-STREAMINFO blocks are the same, so write them out
+        #the non-STREAMINFO blocks are the same as FLAC, so write them out
         for block in blocks:
             for (page_header,page_data) in OggStreamWriter.build_pages(
                 0,serial_number,sequence_number,
@@ -742,7 +742,7 @@ class OggFlacAudio(FlacAudio):
                 writer.write_page(page_header,page_data)
                 sequence_number += 1
 
-        #finally, write out some padding
+        #finally, write out a padding block
         for (page_header,page_data) in OggStreamWriter.build_pages(
             0,serial_number,sequence_number,
             FlacMetaDataBlock(type=1,
