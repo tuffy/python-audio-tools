@@ -410,6 +410,8 @@ class FlacAudio(AudioFile):
             f.close()
 
     def set_metadata(self, metadata):
+        import tempfile
+        
         metadata = FlacMetaData.converted(metadata)
         
         if (metadata == None): return
@@ -433,12 +435,15 @@ class FlacAudio(AudioFile):
             block = FlacAudio.METADATA_BLOCK_HEADER.parse_stream(stream)
         stream.seek(block.block_length,1)
 
-        file_data = stream.read()  #a BIG chunk of file data
+        file_data = tempfile.TemporaryFile()
+        transfer_data(stream.read,file_data.write)
+        file_data.seek(0,0)
 
         stream = file(self.filename,'wb')
         stream.write('fLaC')
         stream.write(metadata.build())
-        stream.write(file_data)
+        transfer_data(file_data.read,stream.write)
+        file_data.close()
         stream.close()
 
 
@@ -683,6 +688,8 @@ class OggFlacAudio(FlacAudio):
             stream.close()
 
     def set_metadata(self, metadata):
+        import tempfile
+        
         comment = FlacMetaData.converted(metadata)
         
         if (comment == None): return
@@ -694,7 +701,7 @@ class OggFlacAudio(FlacAudio):
             comment.seektable = old_seektable
 
         reader = OggStreamReader(file(self.filename,'rb'))
-        new_file = cStringIO.StringIO()
+        new_file = tempfile.TemporaryFile()
         writer = OggStreamWriter(new_file)
 
         #grab the serial number from the old file's current header
@@ -768,7 +775,9 @@ class OggFlacAudio(FlacAudio):
 
         #re-write the file with our new data in "new_file"
         f = file(self.filename,"wb")
-        f.write(new_file.getvalue())
+        new_file.seek(0,0)
+        transfer_data(new_file.read,f.write)
+        new_file.close()
         f.close()
         writer.close()
         
