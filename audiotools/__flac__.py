@@ -497,6 +497,7 @@ class FlacAudio(AudioFile):
         sub = subprocess.Popen([BIN['metaflac'],
                                 "--add-seekpoint=10s",
                                 filename])
+        sub.wait()
 
         return FlacAudio(filename)
 
