@@ -116,7 +116,7 @@ class FlacMetaData(ImageMetaData,MetaData):
         ImageMetaData.__init__(self,image_blocks)
 
     def __comment_name__(self):
-        return u'FLAC Comment'
+        return u'FLAC'
 
     def __comment_pairs__(self):
         return self.vorbis_comment.__comment_pairs__()
@@ -297,7 +297,7 @@ class FlacAudio(AudioFile):
     SUFFIX = "flac"
     DEFAULT_COMPRESSION = "8"
     COMPRESSION_MODES = tuple(map(str,range(0,9)))
-    BINARIES = ("flac",)
+    BINARIES = ("flac","metaflac")
     
     
     METADATA_BLOCK_HEADER = Con.BitStruct("metadata_block_header",
@@ -493,6 +493,10 @@ class FlacAudio(AudioFile):
         pcmreader.close()
         sub.stdin.close()
         sub.wait()
+
+        sub = subprocess.Popen([BIN['metaflac'],
+                                "--add-seekpoint=10s",
+                                filename])
 
         return FlacAudio(filename)
 

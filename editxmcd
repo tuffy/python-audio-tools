@@ -55,23 +55,23 @@ def get_metadata(track_lengths, album_meta_data=None):
     form += ['--form','Track Names',
              str(18),str(60),str(total_tracks)]
 
-    for i in xrange(total_tracks):
-        form += ["Track %2.2d " % (i + 1), str(i + 1), str(1),
-                 album_meta_data[i + 1].track_name,str(i + 1), str(12),
+    for i in album_meta_data.keys():
+        form += ["Track %2.2d " % (i), str(i), str(1),
+                 album_meta_data[i].track_name,str(i), str(12),
                  str(50), str(1024)]
 
     form += ['--backtitle','XMCD Data']
     form += ['--visit-items',
              '--form','Artist Names (if different)',
              str(18),str(60),str(total_tracks)]
-    for i in xrange(total_tracks):
-        if (album_meta_data[i + 1].artist_name != artist_name):
-            form += ["Track %2.2d " % (i + 1), str(i + 1), str(1),
-                     album_meta_data[i + 1].artist_name,str(i + 1), str(12),
+    for i in album_meta_data.keys():
+        if (album_meta_data[i].artist_name != artist_name):
+            form += ["Track %2.2d " % (i), str(i), str(1),
+                     album_meta_data[i].artist_name,str(i), str(12),
                      str(50), str(1024)]
         else:
-            form += ["Track %2.2d " % (i + 1), str(i + 1), str(1),
-                     u"",str(i + 1), str(12),
+            form += ["Track %2.2d " % (i), str(i), str(1),
+                     u"",str(i), str(12),
                      str(50), str(255)]
 
     sub = subprocess.Popen([audiotools.BIN['dialog']] + form,
