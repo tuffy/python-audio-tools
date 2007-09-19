@@ -294,6 +294,13 @@ def stripped_pcm_cmp(pcmreader1, pcmreader2):
 
     return sum1.digest() == sum2.digest()
 
+#ensures all the directories leading to "destination_path" are created
+#if necessary
+def make_dirs(destination_path):
+    dirname = os.path.dirname(destination_path)
+    if ((dirname != '') and (not os.path.isdir(dirname))):
+        os.makedirs(dirname)
+
 #######################
 #Generic MetaData
 #######################

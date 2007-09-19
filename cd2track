@@ -126,8 +126,7 @@ if (__name__ == '__main__'):
                     AudioType.track_name(cd_track.track_number,
                                          metadata))
 
-                if (not os.path.isdir(os.path.dirname(filename))):
-                    os.makedirs(os.path.dirname(filename))
+                audiotools.make_dirs(filename)
 
                 track = AudioType.from_pcm(
                     filename,
@@ -142,8 +141,7 @@ if (__name__ == '__main__'):
                     AudioType.track_name(cd_track.track_number,
                                          None))
 
-                if (not os.path.isdir(os.path.dirname(filename))):
-                    os.makedirs(os.path.dirname(filename))
+                audiotools.make_dirs(filename)
                 
                 track = AudioType.from_pcm(
                     filename,
