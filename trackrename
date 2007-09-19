@@ -55,6 +55,9 @@ if (__name__ == '__main__'):
             preferred_filename = track.track_name(track_number,
                                                   metadata[track_number])
             if (filename != preferred_filename):
+                if (not os.path.isdir(os.path.dirname(preferred_filename))):
+                    os.makedirs(os.path.dirname(preferred_filename))
+                
                 subprocess.call([audiotools.BIN['mv'],
                                  "-iv",
                                  track.filename,
@@ -70,6 +73,9 @@ if (__name__ == '__main__'):
             preferred_filename = track.track_name(track_number,
                                                   track.get_metadata())
             if (filename != preferred_filename):
+                if (not os.path.isdir(os.path.dirname(preferred_filename))):
+                    os.makedirs(os.path.dirname(preferred_filename))
+                
                 subprocess.call([audiotools.BIN['mv'],
                                  "-iv",
                                  track.filename,
