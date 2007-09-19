@@ -309,7 +309,7 @@ class FreeDB:
                 raise FreeDBException("Invalid Hello Message")
             
             self.write("cddb hello user %s %s %s" % \
-                       (socket.getfqdn(),"Python Audio Tools",VERSION))
+                       (socket.getfqdn(),"audiotools",VERSION))
 
             (code,msg) = self.read()  #the handshake successful message
             if (code != 200):
@@ -410,7 +410,7 @@ class FreeDBWeb(FreeDB):
         
         u = urllib.urlencode({"hello":"user %s %s %s" % \
                                       (socket.getfqdn(),
-                                       "Python Audio Tools",
+                                       "audiotools",
                                        VERSION),
                               "proto":str(6),
                               "cmd":line})
