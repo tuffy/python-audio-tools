@@ -638,6 +638,12 @@ class AudioFile:
                        open_files(filenames) if
                        isinstance(track,cls)]
 
+    #returns True if we have the necessary binaries to add ReplayGain
+    #returns False if not
+    @classmethod
+    def can_add_replay_gain(cls):
+        return False
+
     def __eq__(self, audiofile):
         if (isinstance(audiofile, AudioFile)):
             p1 = self.to_pcm()

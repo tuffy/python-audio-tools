@@ -198,3 +198,6 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
             sub.wait()
             devnull.close()
 
+    @classmethod
+    def can_add_replay_gain(cls):
+        return BIN.can_execute(BIN['wvgain'])

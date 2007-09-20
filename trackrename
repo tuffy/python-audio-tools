@@ -64,7 +64,10 @@ if (__name__ == '__main__'):
                                  track.filename,
                                  os.path.join(path,preferred_filename)])
             renamed_files.append(os.path.join(path,preferred_filename))
-        audiofiles[0].add_replay_gain(renamed_files)
+
+        if (AudioType.can_add_replay_gain()):
+            print >>sys.stderr,"* Adding ReplayGain metadata.  This may take some time."
+            audiofiles[0].add_replay_gain(renamed_files)
     else:
         #try to set the track name from the track's metadata
         for (track_number,track) in [(audiofile.track_number(),

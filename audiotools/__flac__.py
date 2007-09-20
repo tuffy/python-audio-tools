@@ -552,6 +552,10 @@ class FlacAudio(AudioFile):
             subprocess.call([BIN['metaflac'],'--add-replay-gain'] + \
                             track_names)
 
+    @classmethod
+    def can_add_replay_gain(cls):
+        return BIN.can_execute(BIN['metaflac'])
+
     def __eq__(self, audiofile):
         if (isinstance(audiofile,FlacAudio)):
             return self.__md5__ == audiofile.__md5__

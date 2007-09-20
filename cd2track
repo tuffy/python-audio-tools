@@ -161,4 +161,6 @@ if (__name__ == '__main__'):
                                                   str(msg))
             continue
 
-    AudioType.add_replay_gain([track.filename for track in encoded])
+    if (AudioType.can_add_replay_gain()):
+            print >>sys.stderr,"* Adding ReplayGain metadata.  This may take some time."
+            AudioType.add_replay_gain([track.filename for track in encoded])

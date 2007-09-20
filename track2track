@@ -189,7 +189,9 @@ if (__name__ == '__main__'):
         
         queue.run(max_processes)
 
-        AudioType.add_replay_gain(encoded_filenames)
+        if (AudioType.can_add_replay_gain()):
+            print >>sys.stderr,"* Adding ReplayGain metadata.  This may take some time."
+            AudioType.add_replay_gain(encoded_filenames)
     else:
         #encoding only a single file
         audiofile = audiofiles[0]
