@@ -168,9 +168,12 @@ static int CDDA_init(cdio_CDDAObject *self, PyObject *args, PyObject *kwds) {
 static void
 CDDA_dealloc(cdio_CDDAObject* self)
 {
-  cdio_paranoia_free(self->paranoia);
-  cdio_cddap_close(self->cdrom_drive);
-  self->ob_type->tp_free((PyObject*)self);
+  if (self->paranoia != NULL)
+    cdio_paranoia_free(self->paranoia);
+  if (self->cdrom_drive != NULL)
+    cdio_cddap_close(self->cdrom_drive);
+  if (self != NULL)
+    self->ob_type->tp_free((PyObject*)self);
 }
 
 static PyObject *CDDA_total_tracks(cdio_CDDAObject* self) {
