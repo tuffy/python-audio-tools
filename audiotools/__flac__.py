@@ -81,7 +81,7 @@ class FlacMetaData(ImageMetaData,MetaData):
                 self.__dict__['vorbis_comment'] = FlacVorbisComment(comments)
             elif ((block.type == 5) and (self.cuesheet is None)):
                 #only one CUESHEET allowed
-                self__dict__['cuesheet'] = block
+                self.__dict__['cuesheet'] = block
             elif ((block.type == 3) and (self.seektable is None)):
                 #only one SEEKTABLE allowed
                 self.__dict__['seektable'] = block
