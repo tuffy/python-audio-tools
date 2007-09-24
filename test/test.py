@@ -300,6 +300,41 @@ class TestWaveAudio(unittest.TestCase):
         finally:
             temp.close()
 
+    def testsplit(self):
+        temp = tempfile.NamedTemporaryFile(suffix="." + self.audio_class.SUFFIX)
+        try:
+            new_file = self.audio_class.from_pcm(temp.name,
+                                                 BLANK_PCM_Reader(60))
+
+            if (new_file.lossless()):
+                PCM_LENGTHS = [s * 44100 for s in (5,10,15,4,16,10)]
+
+                self.assertEqual(sum(PCM_LENGTHS),
+                                 new_file.total_samples())
+                
+                for (sub_pcm,pcm_length) in zip(audiotools.pcm_split(
+                    new_file.to_pcm(),
+                    PCM_LENGTHS),
+                                                PCM_LENGTHS):
+                    sub_temp = tempfile.NamedTemporaryFile(suffix="." + self.audio_class.SUFFIX)
+                    try:
+                        sub_file = self.audio_class.from_pcm(sub_temp.name,
+                                                             sub_pcm)
+                        self.assertEqual(sub_file.total_samples(),
+                                         pcm_length)
+                        
+                    finally:
+                        sub_temp.close()
+
+                self.assertEqual(audiotools.pcm_cmp(
+                    new_file.to_pcm(),
+                    audiotools.PCMCat(
+                    audiotools.pcm_split(new_file.to_pcm(),PCM_LENGTHS))),
+                                 True)
+                
+        finally:
+            temp.close()
+
 class TestAiffAudio(TestWaveAudio):
     def setUp(self):
         self.audio_class = audiotools.AiffAudio

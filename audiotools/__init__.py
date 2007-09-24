@@ -190,9 +190,11 @@ class PCMReader:
         return self.file.read(bytes)
 
     def close(self):
+        self.file.close()
+        
         if (self.process != None):
             self.process.wait()
-        self.file.close()
+        
 
 
 #sends BUFFER_SIZE strings from from_function to to_function
@@ -293,6 +295,83 @@ def stripped_pcm_cmp(pcmreader1, pcmreader2):
     del(data)
 
     return sum1.digest() == sum2.digest()
+
+
+class PCMCat(PCMReader):
+    #takes an iterator of PCMReader objects
+    #returns their data concatted together
+    def __init__(self, pcmreaders):
+        self.reader_queue = pcmreaders
+        
+        try:
+            self.first = self.reader_queue.next()
+        except StopIteration:
+            raise ValueError("You must have at least one PCMReader")
+
+        self.sample_rate = self.first.sample_rate
+        self.channels = self.first.channels
+        self.bits_per_sample = self.first.bits_per_sample
+    
+    def read(self, bytes):
+        try:
+            s = self.first.read(bytes)
+            if (len(s) > 0):
+                return s
+            else:
+                self.first.close()
+                self.first = self.reader_queue.next()
+                return self.read(bytes)
+        except StopIteration:
+            return ""
+
+    def close(self):
+        pass
+
+
+#takes a PCMReader and a list of reader lengths (in PCM samples)
+#returns an iterator of PCMReader-compatible objects, each limited
+#to the given lengths.
+#The reader is closed upon completion
+def pcm_split(reader, pcm_lengths):
+    import tempfile
+
+    def chunk_sizes(total_size,chunk_size):
+        while (total_size > chunk_size):
+            total_size -= chunk_size
+            yield chunk_size
+        yield total_size
+
+    full_data = tempfile.TemporaryFile()
+    try:
+        #This dumps the whole contents of reader into a temp PCM file
+        #which we pull apart in the appropriate sizes to make PCMReaders.
+        #It is a very stupid approach, but it does work.
+        #Pulling only the data we need from reader into each PCMReader
+        #would be better, but the variable size of PCMReader.read()
+        #makes it difficult to get the exact amount of data into each sub-reader
+        transfer_data(reader.read,full_data.write)
+        reader.close()
+        full_data.seek(0,0)
+
+        for byte_length in [i * reader.channels * reader.bits_per_sample / 8
+                            for i in pcm_lengths]:
+            if (byte_length > (BUFFER_SIZE * 10)):
+                #if the sub-file length is somewhat large, use a temporary file
+                sub_file = tempfile.TemporaryFile()
+                for size in chunk_sizes(byte_length,BUFFER_SIZE):
+                    sub_file.write(full_data.read(size))
+                sub_file.seek(0,0)
+            else:
+                #if the sub-file length is very small, use StringIO
+                sub_file = cStringIO.StringIO(full_data.read(byte_length))
+            yield PCMReader(sub_file,
+                            reader.sample_rate,
+                            reader.channels,
+                            reader.bits_per_sample)
+    finally:
+        full_data.close()
+    
+            
 
 #ensures all the directories leading to "destination_path" are created
 #if necessary

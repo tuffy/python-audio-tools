@@ -19,36 +19,12 @@
 
 
 import audiotools
-import optparse,sys,os,os.path
+import optparse
+import sys
+import os
+import os.path
 
-class PCMCat(audiotools.PCMReader):
-    #takes a list of PCMReader objects
-    #returns their data concatted together
-    def __init__(self, pcmreaders):
-        if (len(pcmreaders) < 1):
-            raise ValueError("You must have at least one PCMReader")
 
-        self.pcmreaders = pcmreaders
-        self.reader_queue = pcmreaders[:]
-
-        self.sample_rate = pcmreaders[0].sample_rate
-        self.channels = pcmreaders[0].channels
-        self.bits_per_sample = pcmreaders[0].bits_per_sample
-    
-    def read(self, bytes):
-        if (len(self.reader_queue) > 0):
-            s = self.reader_queue[0].read(bytes)
-            if (len(s) > 0):
-                return s
-            else:
-                self.reader_queue.pop(0)
-                return self.read(bytes)
-        else:
-            return ""
-
-    def close(self):
-        for p in self.pcmreaders:
-            p.close()
 
 if (__name__ == '__main__'):
     parser = optparse.OptionParser(
@@ -110,7 +86,7 @@ if (__name__ == '__main__'):
 
     quality = options.quality
     
-    pcmdata = PCMCat([af.to_pcm() for af in audiofiles])
+    pcmdata = audiotools.PCMCat(iter([af.to_pcm() for af in audiofiles]))
 
     try:
         encoded = AudioType.from_pcm(options.filename,
