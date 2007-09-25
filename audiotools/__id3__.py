@@ -243,7 +243,7 @@ class ID3v2Comment(ImageMetaData,MetaData,dict):
                     continue
 
                 images.append(APICImage(
-                    data="".join(map(chr,apic.data)),
+                    data=apic.data,
                     mime_type=apic.mime_type.decode('ascii'),
                     description=apic.description.decode(
                       ('ascii',
@@ -259,7 +259,7 @@ class ID3v2Comment(ImageMetaData,MetaData,dict):
                 except Con.RangeError:
                     continue
                 
-                images.append(PICImage(data="".join(map(chr,pic.data)),
+                images.append(PICImage(data=pic.data,
                                        format=pic.format.decode('ascii'),
                                        description=pic.description.decode(
                     ('ascii','utf-16')[pic.text_encoding]),
@@ -658,8 +658,8 @@ class APICImage(Image):
                             Con.CString('mime_type'),
                             Con.Byte('picture_type'),
                             Con.CString('description'),
-                            Con.GreedyRepeater(
-        Con.Byte('data')))
+                            Con.StringAdapter(
+        Con.GreedyRepeater(Con.Field('data',1))))
 
     #mime_type and description are unicode strings
     #apic_type is an int
@@ -729,7 +729,7 @@ class APICImage(Image):
                           mime_type=self.mime_type.encode('ascii','replace'),
                           picture_type=self.apic_type,
                           description=description,
-                          data=map(ord,self.data)))
+                          data=self.data))
 
 class PICImage(Image):
     PIC_FRAME = Con.Struct('pic_frame',
@@ -737,8 +737,8 @@ class PICImage(Image):
                            Con.String('format',3),
                            Con.Byte('picture_type'),
                            Con.CString('description'),
-                           Con.GreedyRepeater(
-        Con.Byte('data')))
+                           Con.StringAdapter(
+        Con.GreedyRepeater(Con.Field('data',1))))
 
     #format and description are unicode strings
     #pic_type is an int
@@ -812,7 +812,7 @@ class PICImage(Image):
                           format=self.format.encode('ascii'),
                           picture_type=self.pic_type,
                           description=description,
-                          data=map(ord,self.data)))
+                          data=self.data))
 
 
 class ID3v1Comment(MetaData,list):
