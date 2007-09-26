@@ -122,6 +122,7 @@ _
 .SUBSECTION "Musepack SV8"
 .PP
 This is the latest version of the Musepack stream.
+All of its fields are big-endian.
 .SUBSUBSECTION "the Musepack SV8 file stream"
 .PP
 .begin dformat
@@ -130,8 +131,8 @@ style charwid 0
 style recspread 0.3
 noname
        0-31-24 `MPCK' (0x4D50434B)
- A1:   32--16 @roman Frame sub 1@
-       --16 @roman Frame sub 2@
+ A1:   32--16 @roman Packet sub 1@
+       --16 @roman Packet sub 2@
        --16-dashed ...
        --16 APEv2 tag
 noname
@@ -144,7 +145,7 @@ pic line dotted from A1.se to B2.ne
 .end dformat
 `Key' is a two character uppercase ASCII string 
 (i.e. each digit must be between the characters 0x41 and 0x5A, inclusive).
-`Length' is a variable length field indicating the size of the entire frame, 
+`Length' is a variable length field indicating the size of the entire packet, 
 including the header.
 This is a Nut-encoded field whose total size depends on whether 
 the eighth bit of each byte is 0 or 1.
@@ -256,3 +257,37 @@ _
 .ps
 .KE
 .1C
+.SUBSUBSECTION "the SE packet"
+.PP
+This is an empty packet that denotes the end of the Musepack stream.
+A decoder should ignore everything after this packet, which allows
+for metadata tags such as APEv2 to be placed at the end of the file.
+.SUBSUBSECTION "the RG packet"
+.PP
+This is ReplayGain information about the audio file.
+.begin dformat
+style bitwid 0.64
+style recspread 0
+noname
+    0-7-2 Version (0x1)
+noname
+    8-23-4 Title Gain
+    24-39-4 Title Peak
+noname
+    40-55-4 Album Gain
+    56-71-4 Album Peak
+.end dformat
+.SUBSUBSECTION "the EI packet"
+.PP
+This is information about the Musepack encoder.
+.begin dformat
+style bitwid 0.64
+style recspread 0
+noname
+    0-6-3 Profile
+    7-7-1 PNS
+    8-15-4 Major Version
+noname
+    16-23-4 Minor Version
+    24-31-4 Build
+.end dformat
