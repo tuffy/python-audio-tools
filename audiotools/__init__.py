@@ -133,20 +133,20 @@ class InvalidFormat(Exception): pass
 def open(filename):
     available_types = frozenset(TYPE_MAP.values())
 
-    try:    
+    try:
+        f = file(filename,"rb")
         try:
-            f = file(filename,"rb")
-        
             for audioclass in TYPE_MAP.values():
                 f.seek(0,0)
                 if (audioclass.is_type(f)):
                     return audioclass(filename)
             else:
                 raise UnsupportedFile(filename)
-        except IOError:
-            raise UnsupportedFile(filename)
-    finally:
-        f.close()
+        
+        finally:
+            f.close()
+    except IOError:
+        raise UnsupportedFile(filename)
 
 #takes a list of filenames
 #returns a list of AudioFile objects, sorted by track_number()

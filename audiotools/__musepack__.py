@@ -24,17 +24,85 @@ from __wav__ import WaveAudio
 #######################
 #Musepack Audio
 #######################
- 
+
+class NutValue(Con.Struct):
+    def __init__(self, name):
+        Con.Struct.__init__(
+            self,name,
+            Con.RepeatUntil(lambda obj,ctx: (obj & 0x80) == 0x00,
+                            Con.UBInt8('data')),
+            Con.Value("value",lambda ctx:NutValue.parse_data(ctx['data'])))
+
+    @classmethod
+    def parse_data(cls, data):
+        i = 0
+        for x in data:
+            i = (i << 7) | (x & 0x7F)
+        return i
+
+    @classmethod
+    def build_data(cls, value):
+        data = [value & 0x7F]
+        value = value >> 7
+
+        while (value != 0):
+            data.append(0x80 | (value & 0x7F))
+            value = value >> 7
+
+        data.reverse()
+        return data
+
+class NutStreamReader:
+    NUT_HEADER = Con.Struct('nut_header',
+                            Con.String('key',2),
+                            NutValue('length'))
+    
+    def __init__(self, stream):
+        self.stream = stream
+
+    #iterates over a bunch of (key,data) tuples
+    def packets(self):
+        import string
+        
+        UPPERCASE = frozenset(string.ascii_uppercase)
+        
+        while (True):
+            try:
+                frame_header = self.NUT_HEADER.parse_stream(self.stream)
+            except Con.core.FieldError:
+                break
+         
+            if (not frozenset(frame_header.key).issubset(UPPERCASE)):
+                break
+         
+            yield (frame_header.key,
+                   self.stream.read(frame_header.length.value - 2 - \
+                                    len(frame_header.length.data)))
+
+
 class MusepackAudio(ApeTaggedAudio,AudioFile):
     SUFFIX = "mpc"
     DEFAULT_COMPRESSION = "standard"
-    COMPRESSION_MODES = ("telephone","thumb","radio","standard",
-                         "extreme","insane","braindead")
+    COMPRESSION_MODES = ("thumb","radio","standard","extreme","insane")
     BINARIES = ('mppdec','mppenc')
+
+    MUSEPACK8_HEADER = Con.Struct('musepack8_header',
+                                  Con.UBInt32('crc32'),
+                                  Con.Byte('bitstream_version'),
+                                  NutValue('sample_count'),
+                                  NutValue('beginning_silence'),
+                                  Con.Embed(Con.BitStruct(
+        'flags',
+        Con.Bits('sample_frequency',3),
+        Con.Bits('max_used_bands',5),
+        Con.Bits('channel_count',4),
+        Con.Flag('mid_side_used'),
+        Con.Bits('audio_block_frames',3))))
+        
 
     #not sure about some of the flag locations
     #Musepack's header is very unusual
-    MUSEPACK_HEADER = Con.Struct('musepack_header',
+    MUSEPACK7_HEADER = Con.Struct('musepack7_header',
                                  Con.Const(Con.String('signature',3),'MP+'),
                                  Con.Byte('version'),
                                  Con.ULInt32('frame_count'),
@@ -67,7 +135,7 @@ class MusepackAudio(ApeTaggedAudio,AudioFile):
         f = file(filename,'rb')
         try:
             try:
-                header = MusepackAudio.MUSEPACK_HEADER.parse_stream(f)
+                header = MusepackAudio.MUSEPACK7_HEADER.parse_stream(f)
             except Con.ConstError:
                 raise InvalidFile('musepack signature incorrect')
         finally:
