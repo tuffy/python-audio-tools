@@ -50,7 +50,7 @@ class NutValue(Con.Adapter):
             i = (i << 7) | (x & 0x7F)
         return i
 
-class NutStreamReader:
+class Musepack8StreamReader:
     NUT_HEADER = Con.Struct('nut_header',
                             Con.String('key',2),
                             NutValue('length'))
@@ -133,7 +133,7 @@ class MusepackAudio(ApeTaggedAudio,AudioFile):
         f = file(filename,'rb')
         try:
             if (f.read(4) == 'MPCK'): #a Musepack 8 stream
-                for (key,packet) in NutStreamReader(f).packets():
+                for (key,packet) in Musepack8StreamReader(f).packets():
                     if (key == 'SH'):
                         header = MusepackAudio.MUSEPACK8_HEADER.parse(packet)
 

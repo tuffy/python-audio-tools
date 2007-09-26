@@ -9,8 +9,15 @@
 .PP
 Musepack is a lossy audio format based on MP2 and designed for
 transparency.
+It comes in two varieties: SV7 and SV8 where `SV' stands for
+Stream Version.
+These container versions differ so heavily that they must be
+considered separately from one another.
+.SUBSECTION "Musepack SV7"
+.PP
+This is the earliest version of Musepack with wide support.
 All of its fields are little-endian.
-.SUBSECTION "the Musepack file stream"
+.SUBSUBSECTION "the Musepack SV7 file stream"
 .PP
 .begin dformat
 style bitwid 0.06
@@ -23,8 +30,7 @@ noname
        --16-dashed ...
        --16 APEv2 tag
 .end dformat
-.bp
-.SUBSECTION "the Musepack header"
+.SUBSUBSECTION "the Musepack SV7 header"
 .PP
 .begin dformat
 style bitwid 0.32
@@ -88,33 +94,165 @@ bits:rate
 _
 .TE
 .KS
+.ps 8
 .TS
 tab(:);
-| c s |
-| c | c |
-| c | l |.
+| c s s s |
+| c | c || c | c |
+| c | l || c | l |.
 _
 Profile
 _
-bits:used profile
+bits:used profile:bits:used profile
 =
-0000:no profile
-0001:Unstable/Experimental
-0010:unused
-0011:unusued
-0100:unusued
-0101:below Telephone
-0110:below Telephone
-0111:Telephone
-1000:Thumb
-1001:Radio
-1010:Standard
-1011:Xtreme
-1100:Insane
-1101:Braindead
-1110:above Braindead
-1111:above Braindead
+0000:no profile:0001:Unstable/Experimental
+0010:unused:0011:unusued
+0100:unusued:0101:below Telephone
+0110:below Telephone:0111:Telephone
+1000:Thumb:1001:Radio
+1010:Standard:1011:Xtreme
+1100:Insane:1101:Braindead
+1110:above Braindead:1111:above Braindead
 _
 .TE
+.ps
+.KE
+.1C
+.bp
+.SUBSECTION "Musepack SV8"
+.PP
+This is the latest version of the Musepack stream.
+.SUBSUBSECTION "the Musepack SV8 file stream"
+.PP
+.begin dformat
+style bitwid 0.06
+style charwid 0
+style recspread 0.3
+noname
+       0-31-24 `MPCK' (0x4D50434B)
+ A1:   32--16 @roman Frame sub 1@
+       --16 @roman Frame sub 2@
+       --16-dashed ...
+       --16 APEv2 tag
+noname
+       --16-invis
+ B1:   0-15-12 Key
+       16-?-12 Length
+ B2:   --20 Value
+pic line dotted from A1.sw to B1.nw
+pic line dotted from A1.se to B2.ne
+.end dformat
+`Key' is a two character uppercase ASCII string 
+(i.e. each digit must be between the characters 0x41 and 0x5A, inclusive).
+`Length' is a variable length field indicating the size of the entire frame, 
+including the header.
+This is a Nut-encoded field whose total size depends on whether 
+the eighth bit of each byte is 0 or 1.
+The remaining seven bits of each byte combine to form the field's value, 
+which is big-endian.
+.SUBSUBSECTION "Nut-encoded values"
+.PP
+.begin dformat
+style bitwid 0.14
+style recspread 0.1
+1.
+     0-0-1 0
+     1-7-7 Value
+     --6-invisible 0 to @2 sup 7 - 2@
+2.
+     0-0-1 1
+     1-7-7 @roman Value sub 1@
+     --1-invisible
+     8-8-1 0
+     9-15-7 @roman Value sub 2@
+     --6-invisible 0 to @2 sup 14 - 2@
+3.
+     0-0-1 1
+     1-7-7 @roman Value sub 1@
+     --1-invisible
+     8-8-1 1
+     9-15-7 @roman Value sub 2@
+     --1-invisible
+     16-16-1 0
+     17-23-7 @roman Value sub 3@
+     --6-invisible 0 to @2 sup 21 - 2@
+4.
+     0-0-1 1
+ F1: 1-7-7 @roman Value sub 1@
+     --1-invisible
+     8-8-1 1
+ F2: 9-15-7 @roman Value sub 2@
+     --1-invisible
+     16-16-1 1
+ F3: 17-23-7 @roman Value sub 3@
+     --1-invisible
+     24-24-1 0
+ F4: 25-31-7 @roman Value sub 4@
+     --6-invisible 0 to @2 sup 28 - 2@
+noname
+     --4-invisible
+ V1: 0-6-7 @roman Value sub 1@
+ V2: 7-13-7 @roman Value sub 2@
+ V3: 14-20-7 @roman Value sub 3@
+ V4: 21-27-7 @roman Value sub 4@
+     --7-invisible \[<-] Actual Value
+pic line dotted from F1.sw to V1.nw
+pic line dotted from F1.se to V1.ne
+pic line dotted from F2.sw to V2.nw
+pic line dotted from F2.se to V2.ne
+pic line dotted from F3.sw to V3.nw
+pic line dotted from F3.se to V3.ne
+pic line dotted from F4.sw to V4.nw
+pic line dotted from F4.se to V4.ne
+.end dformat
+.SUBSUBSECTION "the SH packet"
+.PP
+This is the Stream Header, which must be found before the first
+audio packet in the Musepack file.
+.begin dformat
+style bitwid 0.64
+style recspread 0
+noname
+    0-31-8 CRC32
+noname
+    32-37-2 Version (0x8)
+    38-?-3 Sample Count
+    --3 Beginning Silence
+noname
+    0-2-3 Sample Rate
+    3-7-5 Max Used Bands
+noname
+    8-11-3 Channels
+    12-12-2 Mid Side Used
+    13-15-3 Frame Count
+.end dformat
+.2C
+`CRC32' is a checksum of everything in the header, not including the
+checksum itself.
+`Sample Count' is the total number of samples, as a Nut-encoded value.
+`Beginning Silence' is the number of silence samples at the start
+of the stream, also as a Nut-encoded value.
+`Channels' is the total number of channels in the stream, minus 1.
+`Mid Side Used' indicates the channels are stored using mid-side stereo.
+`Frame Count' is used to calculate the total number of frames per
+audio packet
+(@"Number of Frames" = 4 sup "Frame Count"@).
+.KS
+.ps 8
+.TS
+tab(:);
+| c s s s|
+| c | c || c | c |
+| c | r || c | r |.
+_
+Sampling Rate
+_
+bits:rate:bits:rate
+=
+000:44100:001:48000
+010:37800:011:32000
+_
+.TE
+.ps
 .KE
 .1C

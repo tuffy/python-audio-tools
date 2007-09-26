@@ -58,7 +58,7 @@ noname
     28-28-1 Copyright
     29-29-1 Original
     30-31-2 Emphasis
-.end
+.end dformat
 .PP
 .ps 8
 Layer I frames always contain 384 samples.
