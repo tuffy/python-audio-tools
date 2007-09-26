@@ -25,23 +25,15 @@ from __wav__ import WaveAudio
 #Musepack Audio
 #######################
 
-class NutValue(Con.Struct):
+
+class NutValue(Con.Adapter):
     def __init__(self, name):
-        Con.Struct.__init__(
-            self,name,
+        Con.Adapter.__init__(
+            self,
             Con.RepeatUntil(lambda obj,ctx: (obj & 0x80) == 0x00,
-                            Con.UBInt8('data')),
-            Con.Value("value",lambda ctx:NutValue.parse_data(ctx['data'])))
+                            Con.UBInt8(name)))
 
-    @classmethod
-    def parse_data(cls, data):
-        i = 0
-        for x in data:
-            i = (i << 7) | (x & 0x7F)
-        return i
-
-    @classmethod
-    def build_data(cls, value):
+    def _encode(self, value, context):
         data = [value & 0x7F]
         value = value >> 7
 
@@ -51,6 +43,12 @@ class NutValue(Con.Struct):
 
         data.reverse()
         return data
+
+    def _decode(self, obj, context):
+        i = 0
+        for x in obj:
+            i = (i << 7) | (x & 0x7F)
+        return i
 
 class NutStreamReader:
     NUT_HEADER = Con.Struct('nut_header',
@@ -76,8 +74,8 @@ class NutStreamReader:
                 break
          
             yield (frame_header.key,
-                   self.stream.read(frame_header.length.value - 2 - \
-                                    len(frame_header.length.data)))
+                   self.stream.read(frame_header.length -
+                                    len(self.NUT_HEADER.build(frame_header))))
 
 
 class MusepackAudio(ApeTaggedAudio,AudioFile):
@@ -142,7 +140,7 @@ class MusepackAudio(ApeTaggedAudio,AudioFile):
                         self.__sample_rate__ = (44100,48000,
                                                 37800,32000)[header.sample_frequency]
 
-                        self.__total_samples__ = header.sample_count.value
+                        self.__total_samples__ = header.sample_count
                         self.__channels__ = header.channel_count + 1
 
                         break
