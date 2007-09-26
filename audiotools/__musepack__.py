@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,InvalidFile,InvalidFormat,PCMReader,Con,subprocess,BIN,ApeTaggedAudio
+from audiotools import AudioFile,InvalidFile,InvalidFormat,PCMReader,Con,subprocess,BIN,ApeTaggedAudio,os,TempWaveReader
 from __wav__ import WaveAudio
 
 #######################
@@ -84,7 +84,7 @@ class MusepackAudio(ApeTaggedAudio,AudioFile):
     SUFFIX = "mpc"
     DEFAULT_COMPRESSION = "standard"
     COMPRESSION_MODES = ("thumb","radio","standard","extreme","insane")
-    BINARIES = ('mppdec','mppenc')
+    BINARIES = ('mpcdec','mpcenc')
 
     MUSEPACK8_HEADER = Con.Struct('musepack8_header',
                                   Con.UBInt32('crc32'),
@@ -101,7 +101,7 @@ class MusepackAudio(ApeTaggedAudio,AudioFile):
         
 
     #not sure about some of the flag locations
-    #Musepack's header is very unusual
+    #Musepack 7's header is very unusual
     MUSEPACK7_HEADER = Con.Struct('musepack7_header',
                                  Con.Const(Con.String('signature',3),'MP+'),
                                  Con.Byte('version'),
@@ -134,31 +134,66 @@ class MusepackAudio(ApeTaggedAudio,AudioFile):
         AudioFile.__init__(self, filename)
         f = file(filename,'rb')
         try:
-            try:
-                header = MusepackAudio.MUSEPACK7_HEADER.parse_stream(f)
-            except Con.ConstError:
-                raise InvalidFile('musepack signature incorrect')
+            if (f.read(4) == 'MPCK'): #a Musepack 8 stream
+                for (key,packet) in NutStreamReader(f).packets():
+                    if (key == 'SH'):
+                        header = MusepackAudio.MUSEPACK8_HEADER.parse(packet)
+
+                        self.__sample_rate__ = (44100,48000,
+                                                37800,32000)[header.sample_frequency]
+
+                        self.__total_samples__ = header.sample_count.value
+                        self.__channels__ = header.channel_count + 1
+
+                        break
+                    elif (key == 'SE'):
+                        raise InvalidFile('no Musepack header found')
+
+            else:                     #a Musepack 7 stream
+                f.seek(0,0)
+                
+                try:
+                    header = MusepackAudio.MUSEPACK7_HEADER.parse_stream(f)
+                except Con.ConstError:
+                    raise InvalidFile('Musepack signature incorrect')
+
+                header.last_frame_length = \
+                                   (header.last_frame_length_high << 4) | \
+                                   header.last_frame_length_low
+
+                self.__sample_rate__ = (44100,48000,
+                                        37800,32000)[header.sample_frequency]
+                self.__total_samples__ = ((header.frame_count - 1 ) * 1152) + \
+                                         header.last_frame_length
+
+                self.__channels__ = 2
         finally:
             f.close()
 
-        header.last_frame_length = (header.last_frame_length_high << 4) | \
-                                   header.last_frame_length_low
-
-        self.__sample_rate__ = (44100,48000,
-                                37800,32000)[header.sample_frequency]
-        self.__total_samples__ = ((header.frame_count - 1 ) * 1152) + \
-                                 header.last_frame_length
-
     def to_pcm(self):
-        sub = subprocess.Popen([BIN['mppdec'],'--silent',
-                                '--raw-le',
-                                self.filename,'-'],
-                               stdout=subprocess.PIPE)
-        return PCMReader(sub.stdout,
-                         sample_rate=self.sample_rate(),
-                         channels=self.channels(),
-                         bits_per_sample=self.bits_per_sample(),
-                         process=sub)
+        import tempfile
+
+        f = tempfile.NamedTemporaryFile(suffix=".wav")
+        devnull = file(os.devnull,"wb")
+        sub = subprocess.Popen([BIN['mpcdec'],
+                                self.filename,
+                                f.name],
+                               stdout=devnull,
+                               stderr=devnull)
+        sub.wait()
+        devnull.close()
+        f.seek(0,0)
+        return TempWaveReader(f)
+        
+#         sub = subprocess.Popen([BIN['mppdec'],'--silent',
+#                                 '--raw-le',
+#                                 self.filename,'-'],
+#                                stdout=subprocess.PIPE)
+#         return PCMReader(sub.stdout,
+#                          sample_rate=self.sample_rate(),
+#                          channels=self.channels(),
+#                          bits_per_sample=self.bits_per_sample(),
+#                          process=sub)
 
     @classmethod
     def from_pcm(cls, filename, pcmreader, compression=None):
@@ -173,7 +208,7 @@ class MusepackAudio(ApeTaggedAudio,AudioFile):
 
         f = tempfile.NamedTemporaryFile(suffix=".wav")
         w = WaveAudio.from_pcm(f.name, pcmreader)
-        sub = subprocess.Popen([BIN['mppenc'],
+        sub = subprocess.Popen([BIN['mpcenc'],
                                 "--silent",
                                 "--overwrite",
                                 "--%s" % (compression),
@@ -186,7 +221,8 @@ class MusepackAudio(ApeTaggedAudio,AudioFile):
 
     @classmethod
     def is_type(cls, file):
-        return file.read(4) == 'MP+\x07'
+        header = file.read(4)
+        return (header == 'MP+\x07') or (header == 'MPCK')
 
     def sample_rate(self):
         return self.__sample_rate__
@@ -195,7 +231,7 @@ class MusepackAudio(ApeTaggedAudio,AudioFile):
         return self.__total_samples__
 
     def channels(self):
-        return 2
+        return self.__channels__
 
     def bits_per_sample(self):
         return 16
