@@ -388,6 +388,15 @@ class FlacAudio(AudioFile):
     def lossless(self):
         return True
 
+    @classmethod
+    def __help_output__(cls):
+        help_data = cStringIO.StringIO()
+        sub = subprocess.Popen([BIN['flac'],'--help'],
+                               stdout=subprocess.PIPE)
+        transfer_data(sub.stdout.read,help_data.write)
+        sub.wait()
+        return help_data.getvalue()
+
     #returns a MetaData-compatible VorbisComment for this FLAC files
     def get_metadata(self):
         f = file(self.filename,'rb')
