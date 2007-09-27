@@ -179,8 +179,46 @@ class TestWaveAudio(unittest.TestCase):
                 pcm = new_file.to_pcm()
                 audiotools.transfer_data(pcm.read,counter.write)
                 self.assert_(len(counter) > 0)
+                pcm.close()
         finally:
             temp.close()
+
+    def testwaveconversion(self):
+        tempwav = tempfile.NamedTemporaryFile(suffix=".wav")
+        temp = tempfile.NamedTemporaryFile(suffix="." + self.audio_class.SUFFIX)
+        temp2 = tempfile.NamedTemporaryFile(suffix="." + self.audio_class.SUFFIX)
+        try:
+            new_file = self.audio_class.from_pcm(temp.name,
+                                                 BLANK_PCM_Reader(TEST_LENGTH))
+            new_file.to_wave(tempwav.name)
+            if (new_file.lossless()):
+                self.assertEqual(audiotools.pcm_cmp(
+                    new_file.to_pcm(),
+                    audiotools.WaveAudio(tempwav.name).to_pcm()),True)
+            else:
+                counter = PCM_Count()
+                pcm = new_file.to_pcm()
+                audiotools.transfer_data(pcm.read,counter.write)
+                self.assert_(len(counter) > 0)
+                pcm.close()
+
+            new_file2 = self.audio_class.from_wave(temp2.name,
+                                                   tempwav.name)
+            if (new_file2.lossless()):
+                self.assertEqual(audiotools.pcm_cmp(
+                    new_file2.to_pcm(),
+                    new_file.to_pcm()),True)
+            else:
+                counter = PCM_Count()
+                pcm = new_file2.to_pcm()
+                audiotools.transfer_data(pcm.read,counter.write)
+                self.assert_(len(counter) > 0)
+                pcm.close()
+        finally:
+            tempwav.close()
+            temp.close()
+            temp2.close()
+        
 
     def testmassencode(self):
         temp = tempfile.NamedTemporaryFile(suffix="." + self.audio_class.SUFFIX)

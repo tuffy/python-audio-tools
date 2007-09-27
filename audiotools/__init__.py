@@ -677,6 +677,17 @@ class AudioFile:
     def from_pcm(cls, filename, pcmreader, compression=None):
         raise NotYetImplemented()
 
+    #writes the contents of this AudioFile to the given RIFF WAVE filename
+    def to_wave(self, wave_filename):
+        WaveAudio.from_pcm(wave_filename, self.to_pcm())
+
+    #writes a new "filename" from the given RIFF WAVE filename
+    #and at the given compression
+    @classmethod
+    def from_wave(cls, filename, wave_filename, compression=None):
+        return cls.from_pcm(
+            filename, WaveAudio(wave_filename).to_pcm(),compression)
+
     #returns this track's number
     #first checking metadata
     #and then making our best-guess from the filename
