@@ -236,7 +236,7 @@ noname
   --72 Residual
 .end dformat
 The number of warm-up samples equals the `LPC Order'
-(which is encoded in the 'Subframe Type').
+(which is encoded in the `Subframe Type').
 The size of each Coefficient is equal to 
 `LPC Precision' number of bits, plus 1.
 The value of each Coefficient is a signed two's-complement integer.

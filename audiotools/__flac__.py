@@ -515,6 +515,24 @@ class FlacAudio(AudioFile):
 
         return FlacAudio(filename)
 
+    def to_wave(self, wave_filename):
+        sub = subprocess.Popen([BIN['flac'],"-s","-f","-d",
+                                "-o",wave_filename,
+                                self.filename])
+        sub.wait()
+
+    @classmethod
+    def from_wave(cls, filename, wave_filename, compression=None):
+        if (compression not in cls.COMPRESSION_MODES):
+            compression = cls.DEFAULT_COMPRESSION
+
+        sub = subprocess.Popen([BIN['flac']] + \
+                               ["-s","-f","-%s" % (compression),
+                                "-V","--lax",
+                                "-o",filename,wave_filename])
+        sub.wait()
+        return FlacAudio(filename)
+
     def bits_per_sample(self):
         return self.__bitspersample__
 
@@ -863,6 +881,24 @@ class OggFlacAudio(FlacAudio):
         sub.stdin.close()
         sub.wait()
 
+        return OggFlacAudio(filename)
+
+    def to_wave(self, wave_filename):
+        sub = subprocess.Popen([BIN['flac'],"-s","-f","-d","--ogg",
+                                "-o",wave_filename,
+                                self.filename])
+        sub.wait()
+
+    @classmethod
+    def from_wave(cls, filename, wave_filename, compression=None):
+        if (compression not in cls.COMPRESSION_MODES):
+            compression = cls.DEFAULT_COMPRESSION
+
+        sub = subprocess.Popen([BIN['flac']] + \
+                               ["-s","-f","--ogg","-%s" % (compression),
+                                "-V","--lax",
+                                "-o",filename,wave_filename])
+        sub.wait()
         return OggFlacAudio(filename)
 
         
