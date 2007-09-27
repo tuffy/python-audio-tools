@@ -172,14 +172,7 @@ class MusepackAudio(ApeTaggedAudio,AudioFile):
         import tempfile
 
         f = tempfile.NamedTemporaryFile(suffix=".wav")
-        devnull = file(os.devnull,"wb")
-        sub = subprocess.Popen([BIN['mpcdec'],
-                                self.filename,
-                                f.name],
-                               stdout=devnull,
-                               stderr=devnull)
-        sub.wait()
-        devnull.close()
+        self.to_wave(f.name)
         f.seek(0,0)
         return TempWaveReader(f)
         
@@ -197,24 +190,40 @@ class MusepackAudio(ApeTaggedAudio,AudioFile):
     def from_pcm(cls, filename, pcmreader, compression=None):
         import tempfile
 
-        if (str(compression) not in cls.COMPRESSION_MODES):
-            compression = cls.DEFAULT_COMPRESSION
-
         if (pcmreader.sample_rate not in (44100,48000,37800,32000)):
             raise InvalidFormat(
                 "Musepack only supports sample rates 44100, 48000, 37800 and 32000")
 
         f = tempfile.NamedTemporaryFile(suffix=".wav")
         w = WaveAudio.from_pcm(f.name, pcmreader)
+        try:
+            return cls.from_wave(filename,f.name,compression)
+        finally:
+            del(w)
+            f.close()
+
+    def to_wave(self, wave_filename):
+        devnull = file(os.devnull,"wb")
+        sub = subprocess.Popen([BIN['mpcdec'],
+                                self.filename,
+                                wave_filename],
+                               stdout=devnull,
+                               stderr=devnull)
+        sub.wait()
+        devnull.close()
+        
+    @classmethod
+    def from_wave(cls, filename, wave_filename, compression=None):
+        if (str(compression) not in cls.COMPRESSION_MODES):
+            compression = cls.DEFAULT_COMPRESSION
+                     
         sub = subprocess.Popen([BIN['mpcenc'],
                                 "--silent",
                                 "--overwrite",
                                 "--%s" % (compression),
-                                w.filename,
+                                wave_filename,
                                 filename])
         sub.wait()
-        del(w)
-        f.close()
         return MusepackAudio(filename)
 
     @classmethod

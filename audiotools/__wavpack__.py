@@ -146,31 +146,18 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
     def from_pcm(cls, filename, pcmreader, compression=None):
         import tempfile
 
-        if (str(compression) not in cls.COMPRESSION_MODES):
-            compression = cls.DEFAULT_COMPRESSION
-
-        compression_param = {"fast":["-f"],
-                             "standard":[],
-                             "high":["-h"],
-                             "veryhigh":["-hh"]}
-
         f = tempfile.NamedTemporaryFile(suffix=".wav")
         w = WaveAudio.from_pcm(f.name, pcmreader)
         
-        sub = subprocess.Popen([BIN['wavpack'],
-                                w.filename] + \
-                               compression_param[compression] + \
-                               ['-q','-y','-o',
-                                filename])
-        sub.wait()
-
-        del(w)
-        f.close()
-        return WavPackAudio(filename)
-
+        try:
+            return cls.from_wave(filename,w.filename,compression)
+        finally:
+            del(w)
+            f.close()
+        
     def to_pcm(self):
         sub = subprocess.Popen([BIN['wvunpack'],
-                                '-q',
+                                '-q','-y',
                                 self.filename,
                                 '-o','-'],
                                stdout=subprocess.PIPE)
@@ -180,6 +167,32 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
                           channels=self.channels(),
                           bits_per_sample=self.bits_per_sample(),
                           process=sub)
+
+    def to_wave(self, wave_filename):
+        sub = subprocess.Popen([BIN['wvunpack'],
+                                '-q','-y',
+                                self.filename,
+                                '-o',wave_filename])
+        sub.wait()
+        
+    @classmethod
+    def from_wave(cls, filename, wave_filename, compression=None):
+        if (str(compression) not in cls.COMPRESSION_MODES):
+            compression = cls.DEFAULT_COMPRESSION
+
+        compression_param = {"fast":["-f"],
+                             "standard":[],
+                             "high":["-h"],
+                             "veryhigh":["-hh"]}
+                     
+        sub = subprocess.Popen([BIN['wavpack'],
+                                wave_filename] + \
+                               compression_param[compression] + \
+                               ['-q','-y','-o',
+                                filename])
+
+        sub.wait()
+        return WavPackAudio(filename)
 
     @classmethod
     def add_replay_gain(cls, filenames):

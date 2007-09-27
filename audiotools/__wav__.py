@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,InvalidFile,PCMReader,Con,BUFFER_SIZE
+from audiotools import AudioFile,InvalidFile,PCMReader,Con,BUFFER_SIZE,transfer_data
 
 #######################
 #RIFF WAVE
@@ -215,6 +215,26 @@ class WaveAudio(AudioFile):
             f.close()
         
         return WaveAudio(filename)
+
+    def to_wave(self, wave_filename):
+        output = file(wave_filename,'wb')
+        input = file(self.filename,'rb')
+        try:
+            transfer_data(input.read,output.write)
+        finally:
+            input.close()
+            output.close()
+
+    @classmethod
+    def from_wave(cls, filename, wave_filename, compression=None):
+        output = file(filename,'wb')
+        input = file(wave_filename,'rb')
+        try:
+            transfer_data(input.read,output.write)
+            return WaveAudio(filename)
+        finally:
+            input.close()
+            output.close()
 
     def total_samples(self):
         return self.__data_size__ / (self.__bitspersample__ / 8) / \
