@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,InvalidFile,PCMReader,Con,transfer_data,subprocess,BIN,BUFFER_SIZE,cStringIO,open_files,Image,ImageMetaData,sys,WaveAudio
+from audiotools import AudioFile,InvalidFile,PCMReader,Con,transfer_data,subprocess,BIN,BUFFER_SIZE,cStringIO,os,open_files,Image,ImageMetaData,sys,WaveAudio
 from __vorbiscomment__ import *
 from __id3__ import ID3v2Comment
 from __vorbis__ import OggStreamReader,OggStreamWriter
@@ -515,16 +515,26 @@ class FlacAudio(AudioFile):
 
         return FlacAudio(filename)
 
+    def __has_foreign_metadata__(self):
+        return 'riff' in [block.data[0:4] for block in
+                          self.get_metadata().extra_blocks
+                          if block.type == 2]
+
     def to_wave(self, wave_filename):
-        if ('--keep-foreign-metadata' in FlacAudio.__help_output__()):
+        if (self.__has_foreign_metadata__() and
+            ('--keep-foreign-metadata' in FlacAudio.__help_output__())):
             foreign_metadata = ['--keep-foreign-metadata']
         else:
             foreign_metadata = []
-        
+
+        devnull = file(os.devnull,'ab')
         sub = subprocess.Popen([BIN['flac'],"-s","-f"] + \
                                foreign_metadata + \
                                ["-d","-o",wave_filename,
-                                self.filename])
+                                self.filename],
+                               stdout=devnull,
+                               stderr=devnull)
+        devnull.close()
         sub.wait()
 
     @classmethod
@@ -539,11 +549,15 @@ class FlacAudio(AudioFile):
         else:
             foreign_metadata = []
 
+        devnull = file(os.devnull,'ab')
         sub = subprocess.Popen([BIN['flac']] + \
                                ["-s","-f","-%s" % (compression),
                                 "-V","--lax"] + \
                                foreign_metadata + \
-                               ["-o",filename,wave_filename])
+                               ["-o",filename,wave_filename],
+                               stdout=devnull,
+                               stderr=devnull)
+        devnull.close()
         sub.wait()
         return FlacAudio(filename)
 
@@ -898,16 +912,21 @@ class OggFlacAudio(FlacAudio):
         return OggFlacAudio(filename)
 
     def to_wave(self, wave_filename):
-        if ('--keep-foreign-metadata' in FlacAudio.__help_output__()):
+        if (self.__has_foreign_metadata__() and
+            ('--keep-foreign-metadata' in FlacAudio.__help_output__())):
             foreign_metadata = ['--keep-foreign-metadata']
         else:
             foreign_metadata = []
-        
+
+        devnull = file(os.devnull,'ab')
         sub = subprocess.Popen([BIN['flac'],"-s","-f"] + \
                                foreign_metadata + \
                                ["-d","--ogg",
                                 "-o",wave_filename,
-                                self.filename])
+                                self.filename],
+                               stdout=devnull,
+                               stderr=devnull)
+        devnull.close()
         sub.wait()
 
     @classmethod
@@ -922,11 +941,15 @@ class OggFlacAudio(FlacAudio):
         else:
             foreign_metadata = []
 
+        devnull = file(os.devnull,'ab')
         sub = subprocess.Popen([BIN['flac']] + \
                                ["-s","-f","--ogg","-%s" % (compression),
                                 "-V","--lax"] + \
                                foreign_metadata + \
-                               ["-o",filename,wave_filename])
+                               ["-o",filename,wave_filename],
+                               stdout=devnull,
+                               stderr=devnull)
+        devnull.close()
         sub.wait()
         return OggFlacAudio(filename)
 

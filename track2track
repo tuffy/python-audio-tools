@@ -24,17 +24,28 @@ import optparse,sys,os,os.path
 MAX_CPUS = audiotools.MAX_JOBS
 
 def convert_file(destination_class, destination_filename,
-                 source_audiofile, metadata, compression):
-    print (u"%s -> %s" % \
-           (source_audiofile.filename.decode(audiotools.FS_ENCODING),
-            destination_filename.decode(audiotools.FS_ENCODING))).encode(
-        audiotools.IO_ENCODING)
+                 source_audiofile, metadata, compression,
+                 display_output=True):
+    if (display_output):
+        print (u"%s -> %s" % \
+               (source_audiofile.filename.decode(audiotools.FS_ENCODING),
+                destination_filename.decode(audiotools.FS_ENCODING))).encode(
+            audiotools.IO_ENCODING)
 
     try:
-        destination_audiofile = destination_class.from_pcm(
-            destination_filename,
-            source_audiofile.to_pcm(),
-            compression)
+        if (isinstance(source_audiofile,audiotools.WaveAudio)):
+            destination_audiofile = destination_class.from_wave(
+                destination_filename,
+                source_audiofile.filename,
+                compression)
+        elif (destination_class == audiotools.WaveAudio):
+            source_audiofile.to_wave(destination_filename)
+            destination_audiofile = audiotools.WaveAudio(destination_filename)
+        else:
+            destination_audiofile = destination_class.from_pcm(
+                destination_filename,
+                source_audiofile.to_pcm(),
+                compression)
 
         if (metadata != None):
             destination_audiofile.set_metadata(metadata)
@@ -201,18 +212,10 @@ if (__name__ == '__main__'):
         else:
             metadata = audiofile.get_metadata()
 
-        try:
-            encoded = AudioType.from_pcm(options.output,
-                                         audiofile.to_pcm(),
-                                         quality)
-            encoded.set_metadata(metadata)
-        except audiotools.InvalidFormat,msg:
-            print >>sys.stderr,(u"*** %s: %s" % \
-                                (audiofile.filename.decode(
-                                 audiotools.FS_ENCODING),
-                                 str(msg))).encode(audiotools.IO_ENCODING)
-
-
-
-    
+        convert_file(AudioType,
+                     options.output,
+                     audiofile,
+                     metadata,
+                     quality,
+                     False)
 
