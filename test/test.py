@@ -156,9 +156,9 @@ class DummyMetaData3(audiotools.ImageMetaData,audiotools.MetaData):
             self,
             [audiotools.Image.new(TEST_COVER1,u'',0)])
 
-class TestWaveAudio(unittest.TestCase):
+class TestAiffAudio(unittest.TestCase):
     def setUp(self):
-        self.audio_class = audiotools.WaveAudio
+        self.audio_class = audiotools.AiffAudio
 
     def testblankencode(self):
         temp = tempfile.NamedTemporaryFile(suffix="." + self.audio_class.SUFFIX)
@@ -373,47 +373,81 @@ class TestWaveAudio(unittest.TestCase):
         finally:
             temp.close()
 
-class TestAiffAudio(TestWaveAudio):
-    def setUp(self):
-        self.audio_class = audiotools.AiffAudio
+class TestForeignWaveChunks:
+    def testforeignwavechunks(self):
+        import filecmp
+        
+        tempwav1 = tempfile.NamedTemporaryFile(suffix=".wav")
+        tempwav2 = tempfile.NamedTemporaryFile(suffix=".wav")
+        audio = tempfile.NamedTemporaryFile(suffix='.'+self.audio_class.SUFFIX)
+        try:
+            #build a WAVE with some oddball chunks
+            audiotools.WaveAudio.wave_from_chunks(
+                tempwav1.name,
+                [('fmt ','\x01\x00\x02\x00D\xac\x00\x00\x10\xb1\x02\x00\x04\x00\x10\x00'),
+                 ('fooz','testtext'),
+                 ('barz','somemoretesttext'),
+                 ('bazz',chr(0) * 1024),
+                 ('data','BZh91AY&SY\xdc\xd5\xc2\x8d\x06\xba\xa7\xc0\x00`\x00 \x000\x80MF\xa9$\x84\x9a\xa4\x92\x12qw$S\x85\t\r\xcd\\(\xd0'.decode('bz2'))])
+            
+            #convert it to our audio type
+            wav = self.audio_class.from_wave(audio.name,
+                                             tempwav1.name)
 
-class TestAuAudio(TestWaveAudio):
+            #then convert it back to a WAVE
+            wav.to_wave(tempwav2.name)
+
+            #check that the two WAVEs are byte-for-byte identical
+            self.assertEqual(filecmp.cmp(tempwav1.name,
+                                         tempwav2.name,
+                                         False),True)
+        finally:
+            tempwav1.close()
+            tempwav2.close()
+            audio.close()
+
+
+class TestWaveAudio(TestForeignWaveChunks,TestAiffAudio):
+    def setUp(self):
+        self.audio_class = audiotools.WaveAudio
+
+class TestAuAudio(TestAiffAudio):
     def setUp(self):
         self.audio_class = audiotools.AuAudio
 
-class TestFlacAudio(TestWaveAudio):
+class TestFlacAudio(TestForeignWaveChunks,TestAiffAudio):
     def setUp(self):
         self.audio_class = audiotools.FlacAudio
 
-class TestWavPackAudio(TestWaveAudio):
+class TestWavPackAudio(TestForeignWaveChunks,TestAiffAudio):
     def setUp(self):
         self.audio_class = audiotools.WavPackAudio
 
-class TestOggFlacAudio(TestWaveAudio):
+class TestOggFlacAudio(TestAiffAudio):
     def setUp(self):
         self.audio_class = audiotools.OggFlacAudio
 
-class TestMP3Audio(TestWaveAudio):
+class TestMP3Audio(TestAiffAudio):
     def setUp(self):
         self.audio_class = audiotools.MP3Audio
 
-class TestMP2Audio(TestWaveAudio):
+class TestMP2Audio(TestAiffAudio):
     def setUp(self):
         self.audio_class = audiotools.MP2Audio
 
-class TestVorbisAudio(TestWaveAudio):
+class TestVorbisAudio(TestAiffAudio):
     def setUp(self):
         self.audio_class = audiotools.VorbisAudio
 
-class TestM4AAudio(TestWaveAudio):
+class TestM4AAudio(TestAiffAudio):
     def setUp(self):
         self.audio_class = audiotools.M4AAudio
 
-class TestMusepackAudio(TestWaveAudio):
+class TestMusepackAudio(TestAiffAudio):
     def setUp(self):
         self.audio_class = audiotools.MusepackAudio
 
-class TestSpeexAudio(TestWaveAudio):
+class TestSpeexAudio(TestAiffAudio):
     def setUp(self):
         self.audio_class = audiotools.SpeexAudio
 
