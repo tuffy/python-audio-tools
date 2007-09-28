@@ -128,7 +128,8 @@ class WaveAudio(AudioFile):
         self.__blockalign__ = 0
         self.__bitspersample__ = 0
         self.__data_size__ = 0
-        
+
+        self.__chunk_ids__ = []
         self.__read_chunks__()
 
     @classmethod
@@ -267,6 +268,7 @@ class WaveAudio(AudioFile):
         while (totalsize > 0):
             (chunk_format,chunk_size) = self.__read_chunk_header__(wave_file)
             #print chunk_format,chunk_size
+            self.__chunk_ids__.append(chunk_format)
             
             __chunklist__.append(chunk_format)
             #Fix odd-sized chunk sizes to be even
@@ -311,3 +313,6 @@ class WaveAudio(AudioFile):
     def __read_data_chunk__(self, wave_file, chunk_size):
         self.__data_size__ = chunk_size
         wave_file.seek(chunk_size,1)
+
+    def chunk_ids(self):
+        return self.__chunk_ids__[:]
