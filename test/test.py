@@ -451,6 +451,10 @@ class TestSpeexAudio(TestAiffAudio):
     def setUp(self):
         self.audio_class = audiotools.SpeexAudio
 
+#class TestApeAudio(TestForeignWaveChunks,TestAiffAudio):
+#    def setUp(self):
+#        self.audio_class = audiotools.ApeAudio
+
 class TestID3v2(unittest.TestCase):
     def setUp(self):
         self.file = tempfile.NamedTemporaryFile(suffix=".mp3")

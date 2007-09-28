@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,InvalidFile,PCMReader,Con,transfer_data,subprocess,BIN,MetaData
+from audiotools import AudioFile,WaveAudio,InvalidFile,PCMReader,Con,transfer_data,subprocess,BIN,MetaData,os,TempWaveReader
 
 #######################
 #MONKEY'S AUDIO
@@ -328,6 +328,10 @@ class ApeAudio(ApeTaggedAudio,AudioFile):
     def lossless(self):
         return True
 
+    @classmethod
+    def supports_foreign_riff_chunks(cls):
+        return True
+
     def bits_per_sample(self):
         return self.__bitspersample__
 
@@ -393,17 +397,20 @@ class ApeAudio(ApeTaggedAudio,AudioFile):
         import tempfile
 
         f = tempfile.NamedTemporaryFile(suffix=".wav")
+        self.to_wave(f.name)
+        f.seek(0,0)
+        return TempWaveReader(f)
+
+    def to_wave(self, wave_filename):
         devnull = file(os.devnull,"wb")
         sub = subprocess.Popen([BIN['mac'],
                                 self.filename,
-                                f.name,
+                                wave_filename,
                                 '-d'],
                                stdout=devnull,
                                stderr=devnull)
         sub.wait()
         devnull.close()
-        f.seek(0,0)
-        return TempWaveReader(f)
 
     @classmethod
     def from_pcm(cls, filename, pcmreader, compression=None):
@@ -414,15 +421,24 @@ class ApeAudio(ApeTaggedAudio,AudioFile):
 
         f = tempfile.NamedTemporaryFile(suffix=".wav")
         w = WaveAudio.from_pcm(f.name, pcmreader)
+        try:
+            return cls.from_wave(filename,f.name,compression)
+        finally:
+            del(w)
+            f.close()
+
+    @classmethod
+    def from_wave(cls, filename, wave_filename, compression=None):
+        if (str(compression) not in cls.COMPRESSION_MODES):
+            compression = cls.DEFAULT_COMPRESSION
+
         devnull = file(os.devnull,"wb")
         sub = subprocess.Popen([BIN['mac'],
-                                w.filename,
+                                wave_filename,
                                 filename,
                                 "-c%s" % (compression)],
                                stdout=devnull,
                                stderr=devnull)
         sub.wait()
         devnull.close()
-        del(w)
-        f.close()
         return ApeAudio(filename)
