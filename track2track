@@ -34,14 +34,34 @@ def convert_file(destination_class, destination_filename,
 
     try:
         if (isinstance(source_audiofile,audiotools.WaveAudio)):
+            #if we're converting from a WAVE file, use from_wave()
             destination_audiofile = destination_class.from_wave(
                 destination_filename,
                 source_audiofile.filename,
                 compression)
         elif (destination_class == audiotools.WaveAudio):
+            #if we're converting to a WAVE file, use to_wave()
             source_audiofile.to_wave(destination_filename)
             destination_audiofile = audiotools.WaveAudio(destination_filename)
+
+        elif ((source_audiofile.supports_foreign_riff_chunks()) and
+              (destination_class.supports_foreign_riff_chunks())):
+            #if both the source and target classes support foreign chunks
+            #route the data through a temporary WAVE file
+            import tempfile
+
+            temp_wave = tempfile.NamedTemporaryFile(suffix='.wav')
+            try:
+                source_audiofile.to_wave(temp_wave.name)
+                destination_audiofile = destination_class.from_wave(
+                    destination_filename,
+                    temp_wave.name,
+                    compression)
+            finally:
+                temp_wave.close()    
+                
         else:
+            #otherwise, route the data through PCM
             destination_audiofile = destination_class.from_pcm(
                 destination_filename,
                 source_audiofile.to_pcm(),

@@ -141,6 +141,10 @@ class WaveAudio(AudioFile):
     def lossless(self):
         return True
 
+    @classmethod
+    def supports_foreign_riff_chunks(cls):
+        return True
+
     #Returns the PCMReader object for this WAV's data
     def to_pcm(self):
         return WaveReader(file(self.filename,'rb'),

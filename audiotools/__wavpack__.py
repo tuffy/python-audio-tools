@@ -94,6 +94,10 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
     def lossless(self):
         return True
 
+    @classmethod
+    def supports_foreign_riff_chunks(cls):
+        return True
+
     def __read_info__(self):
         f = file(self.filename)
         try:

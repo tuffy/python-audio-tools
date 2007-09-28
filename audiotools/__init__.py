@@ -688,6 +688,15 @@ class AudioFile:
         return cls.from_pcm(
             filename, WaveAudio(wave_filename).to_pcm(),compression)
 
+    #This method should return True if the format supports storing
+    #non-audio RIFF chunks during compression/decompression.
+    #If this returns True on both ends of a track conversion,
+    #we should route our data though a WAVE file so that such
+    #foreign chunks are not lost in the process.
+    @classmethod
+    def supports_foreign_riff_chunks(cls):
+        return False
+
     #returns this track's number
     #first checking metadata
     #and then making our best-guess from the filename
