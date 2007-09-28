@@ -267,7 +267,6 @@ class WaveAudio(AudioFile):
 
         while (totalsize > 0):
             (chunk_format,chunk_size) = self.__read_chunk_header__(wave_file)
-            #print chunk_format,chunk_size
             self.__chunk_ids__.append(chunk_format)
             
             __chunklist__.append(chunk_format)
@@ -316,3 +315,57 @@ class WaveAudio(AudioFile):
 
     def chunk_ids(self):
         return self.__chunk_ids__[:]
+
+    #iterates over the file's RIFF chunks,
+    #returning a (chunk_id,chunk_data) tuple on each pass
+    def chunks(self):
+        wave_file = file(self.filename,'rb')
+        total_size = self.__read_wave_header__(wave_file) - 4
+
+        while (total_size > 0):
+            (chunk_id,chunk_size) = self.__read_chunk_header__(wave_file)
+
+            #Fix odd-sized chunks to have 16-bit boundaries
+            if ((chunk_size & 1) == 1): chunk_size += 1
+            
+            yield (chunk_id,wave_file.read(chunk_size))
+
+            total_size -= (chunk_size + 8)
+
+
+    #takes our new RIFF WAVE filename
+    #and an iterator of (chunk_id,chunk_data) tuples
+    #builds a RIFF WAVE file from those chunks
+    @classmethod
+    def wave_from_chunks(cls, filename, chunk_iter):
+        f = file(filename,'wb')
+
+        header = Con.Container()
+        header.wave_id = 'RIFF'
+        header.riff_type = 'WAVE'
+        header.wave_size = 4
+
+        #write an unfinished header with an invalid size (for now)
+        f.write(cls.WAVE_HEADER.build(header))
+        
+        for (chunk_id,chunk_data) in chunk_iter:
+
+            #fix odd-sized chunks to fall on 16-bit boundaries
+            if ((len(chunk_data) & 1) == 1): chunk_data += chr(0)
+
+            chunk_header = cls.CHUNK_HEADER.build(
+                Con.Container(chunk_id=chunk_id,
+                              chunk_length=len(chunk_data)))
+            f.write(chunk_header)
+            header.wave_size += len(chunk_header)
+
+            f.write(chunk_data)
+            header.wave_size += len(chunk_data)
+
+        #now that the chunks are done, go back and re-write the header
+        f.seek(0,0)
+        f.write(cls.WAVE_HEADER.build(header))
+        f.close()
+
+            
+            
