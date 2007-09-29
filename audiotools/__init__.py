@@ -205,7 +205,6 @@ def transfer_data(from_function, to_function):
         to_function(s)
         s = from_function(BUFFER_SIZE)
 
-
 #takes a wave-compatible object with a readframes() method
 #maps it to something PCMReader compatible
 class FrameReader(PCMReader):

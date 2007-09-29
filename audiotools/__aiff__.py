@@ -17,7 +17,7 @@
 #along with this program; if not, write to the Free Software
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-from audiotools import AudioFile,InvalidFile,FrameReader,Con,transfer_data
+from audiotools import AudioFile,InvalidFile,InvalidFormat,FrameReader,Con,transfer_data
 
 #######################
 #AIFF
@@ -78,6 +78,15 @@ class AiffAudio(AudioFile):
     @classmethod
     def from_pcm(cls, filename, pcmreader, compression=None):
         import aifc
+
+        #FIXME
+        #should re-write the AIFF routines to cover the full spec
+        #like I've done with RIFF WAVE
+        if (pcmreader.bits_per_sample != 16):
+            raise InvalidFormat('AIFF only supports 16 bits per sample')
+
+        if (pcmreader.channels not in (1,2,4)):
+            raise InvalidFormat('AIFF only supports 1, 2 or 4 channels')
 
         f = aifc.open(filename,"w")
 

@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,InvalidFile,PCMReader,Con,transfer_data,subprocess,BIN,cStringIO,MetaData,os,ImageMetaData,Image
+from audiotools import AudioFile,InvalidFile,InvalidFormat,PCMReader,Con,transfer_data,subprocess,BIN,cStringIO,MetaData,os,ImageMetaData,Image
 
 #######################
 #M4A File
@@ -244,6 +244,9 @@ class M4AAudio(AudioFile):
     def length(self):
         return (self.__length__ - 1024) / self.__sample_rate__ * 75
 
+    def total_samples(self):
+        return self.__length__ - 1024
+
     def get_metadata(self):
         meta_atom = self.qt_stream['moov']['udta']['meta']
         meta_atom = __Qt_Meta_Atom__(meta_atom.type,
@@ -291,6 +294,9 @@ class M4AAudio(AudioFile):
                  compression="100"):
         if (compression not in cls.COMPRESSION_MODES):
             compression = cls.DEFAULT_COMPRESSION
+
+        if (pcmreader.channels > 2):
+            raise InvalidFormat('M4A supports up to 2 channels')
 
         devnull = file(os.devnull,"ab")
 

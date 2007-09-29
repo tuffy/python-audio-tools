@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,InvalidFile,FrameReader,Con,transfer_data
+from audiotools import AudioFile,InvalidFile,FrameReader,Con,transfer_data,InvalidFormat
 
 #######################
 #Sun AU
@@ -76,6 +76,15 @@ class AuAudio(AudioFile):
     @classmethod
     def from_pcm(cls, filename, pcmreader, compression=None):
         import sunau
+
+        #FIXME
+        #should re-write the Sun AU routines to cover the full spec
+        #like I've done with RIFF WAVE
+        if (pcmreader.bits_per_sample != 16):
+            raise InvalidFormat('Sun AU only supports 16 bits per sample')
+
+        if (pcmreader.channels not in (1,2,4)):
+            raise InvalidFormat('Sun AU only supports 1, 2 or 4 channels')
 
         f = sunau.open(filename,"w")
 

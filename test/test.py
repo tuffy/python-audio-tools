@@ -23,6 +23,7 @@ import tempfile
 import sys
 import cStringIO
 import unittest
+import decimal as D
 
 class BLANK_PCM_Reader:
     #length is the total length of this PCM stream, in seconds
@@ -33,8 +34,14 @@ class BLANK_PCM_Reader:
         self.channels = channels
         self.bits_per_sample = bits_per_sample
 
-        byte_total = length * sample_rate * channels * bits_per_sample / 8
-        self.buffer = cStringIO.StringIO('\x01\x00' * (byte_total / 2))
+        self.total_size = length * sample_rate * channels * bits_per_sample / 8
+
+        if (bits_per_sample > 8):
+            self.buffer = cStringIO.StringIO(
+                ('\x01\x00' * (self.total_size / 2)) + \
+                '\x00' * (self.total_size % 2))
+        else:
+            self.buffer = cStringIO.StringIO(chr(0) * self.total_size)
 
     def read(self, bytes):
         return self.buffer.read(bytes)
@@ -144,6 +151,24 @@ LX2XGaVMFD/bpIUciHA6duwYTrDP+WF3Tw+oB3pIJEGxJElMTNyRpOVOHNQOLdAIua7h1E3e5wzq
 pVKBaLKBkckKuZiDiJeHLemVfitxzVa5OAq9TF+9fRpy1RQyBP21/9fU0LTmbz+vmv6GCYYroD86
 Q/8LeyX0e/ZK6M+w/z9h5ahFWOF6xsYTVuUy8O8BsbVytHx43PPKPwEw98Hh""".decode('base64').decode('zlib')
 
+PCM_COMBINATIONS = (
+    (11025, 1, 8), (22050, 1, 8), (32000, 1, 8),  (44100, 1, 8),
+    (48000, 1, 8), (96000, 1, 8), (192000, 1, 8), (11025, 2, 8),
+    (22050, 2, 8), (32000, 2, 8), (44100, 2, 8),  (48000, 2, 8),
+    (96000, 2, 8), (192000, 2, 8),(11025, 6, 8),  (22050, 6, 8),
+    (32000, 6, 8), (44100, 6, 8), (48000, 6, 8),  (96000, 6, 8),
+    (192000, 6, 8),(11025, 1, 16),(22050, 1, 16), (32000, 1, 16),
+    (44100, 1, 16),(48000, 1, 16),(96000, 1, 16), (192000, 1, 16),
+    (11025, 2, 16),(22050, 2, 16),(32000, 2, 16), (44100, 2, 16),
+    (48000, 2, 16),(96000, 2, 16),(192000, 2, 16),(11025, 6, 16),
+    (22050, 6, 16),(32000, 6, 16),(44100, 6, 16), (48000, 6, 16),
+    (96000, 6, 16),(192000, 6, 16),(11025, 1, 24),(22050, 1, 24),
+    (32000, 1, 24),(44100, 1, 24),(48000, 1, 24), (96000, 1, 24),
+    (192000, 1, 24),(11025, 2, 24),(22050, 2, 24),(32000, 2, 24),
+    (44100, 2, 24),(48000, 2, 24),(96000, 2, 24), (192000, 2, 24),
+    (11025, 6, 24),(22050, 6, 24),(32000, 6, 24), (44100, 6, 24),
+    (48000, 6, 24),(96000, 6, 24),(192000, 6, 24))
+
 class DummyMetaData3(audiotools.ImageMetaData,audiotools.MetaData):
     def __init__(self):
         audiotools.MetaData.__init__(self,
@@ -156,10 +181,22 @@ class DummyMetaData3(audiotools.ImageMetaData,audiotools.MetaData):
             self,
             [audiotools.Image.new(TEST_COVER1,u'',0)])
 
+
+class TestPCMCombinations(unittest.TestCase):
+    def testpcmcombinations(self):
+        for (sample_rate,channels,bits_per_sample) in PCM_COMBINATIONS:
+            reader = BLANK_PCM_Reader(SHORT_LENGTH,
+                                      sample_rate, channels,
+                                      bits_per_sample)
+            counter = PCM_Count()
+            audiotools.transfer_data(reader.read,counter.write)
+            self.assertEqual(len(counter),reader.total_size)
+            
 class TestAiffAudio(unittest.TestCase):
     def setUp(self):
         self.audio_class = audiotools.AiffAudio
 
+    #this is a basic test of CD-quality audio
     def testblankencode(self):
         temp = tempfile.NamedTemporaryFile(suffix="." + self.audio_class.SUFFIX)
         try:
@@ -167,7 +204,7 @@ class TestAiffAudio(unittest.TestCase):
                                                  BLANK_PCM_Reader(TEST_LENGTH))
 
             self.assertEqual(new_file.channels(),2)
-            self.assertEqual(new_file.bits_per_sample(),16),
+            self.assertEqual(new_file.bits_per_sample(),16)
             self.assertEqual(new_file.sample_rate(),44100)
             
             if (new_file.lossless()):
@@ -178,8 +215,58 @@ class TestAiffAudio(unittest.TestCase):
                 counter = PCM_Count()
                 pcm = new_file.to_pcm()
                 audiotools.transfer_data(pcm.read,counter.write)
-                self.assert_(len(counter) > 0)
+                self.assertEqual(
+                    (D.Decimal(len(counter) / 4) / 44100).to_integral(),
+                    TEST_LENGTH)
                 pcm.close()
+        finally:
+            temp.close()
+
+    def testunusualaudio(self):
+        temp = tempfile.NamedTemporaryFile(suffix="." + self.audio_class.SUFFIX)
+        try:
+            #not all of these combinations will be supported by all formats
+            for (sample_rate,channels,bits_per_sample) in PCM_COMBINATIONS:
+
+                try:
+                    new_file = self.audio_class.from_pcm(
+                        temp.name,
+                        BLANK_PCM_Reader(SHORT_LENGTH,
+                                         sample_rate, channels,
+                                         bits_per_sample))
+                except audiotools.InvalidFormat:
+                    continue
+
+                
+                self.assertEqual(new_file.sample_rate(),sample_rate)
+            
+                if (new_file.lossless()):
+                    self.assertEqual(audiotools.pcm_cmp(
+                        new_file.to_pcm(),
+                        BLANK_PCM_Reader(SHORT_LENGTH,
+                                         sample_rate, channels,
+                                         bits_per_sample)),
+                                     True)
+
+                    #lots of lossy formats convert BPS to 16 bits or float bits
+                    #(MP3, Vorbis, etc.)
+                    #only check an exact match on lossless
+                    self.assertEqual(new_file.bits_per_sample(),
+                                     bits_per_sample)
+                    self.assertEqual(new_file.channels(),
+                                     channels)
+                else:
+                    self.assert_(new_file.channels() >= channels)
+                    
+                    counter = PCM_Count()
+                    pcm = new_file.to_pcm()
+                    audiotools.transfer_data(pcm.read,counter.write)
+                    self.assertEqual(
+                        (D.Decimal(new_file.total_samples()) / \
+                         sample_rate).to_integral(),
+                        SHORT_LENGTH)
+                    pcm.close()
+
         finally:
             temp.close()
 
@@ -199,7 +286,9 @@ class TestAiffAudio(unittest.TestCase):
                 counter = PCM_Count()
                 pcm = new_file.to_pcm()
                 audiotools.transfer_data(pcm.read,counter.write)
-                self.assert_(len(counter) > 0)
+                self.assertEqual(
+                    (D.Decimal(len(counter) / 4) / 44100).to_integral(),
+                    TEST_LENGTH)
                 pcm.close()
 
             new_file2 = self.audio_class.from_wave(temp2.name,

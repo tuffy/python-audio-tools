@@ -135,6 +135,9 @@ class MP3Audio(AudioFile):
             mode = "j"
         else:
             mode = "m"
+
+        if (pcmreader.sample_rate not in (32000,48000,44100)):
+            raise InvalidFormat('mp3 only supports sample rates 44100, 48000 and 32000')
         
         sub = subprocess.Popen([BIN['lame'],"--quiet",
                                 "-r","-x",
@@ -357,7 +360,7 @@ class MP3Audio(AudioFile):
             mp3file.close()
 
     def total_samples(self):
-        return self.length() * self.sample_rate()
+        return self.length() * self.sample_rate() / 75
 
 #######################
 #MP2 AUDIO

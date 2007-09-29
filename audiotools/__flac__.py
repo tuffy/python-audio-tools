@@ -508,8 +508,8 @@ class FlacAudio(AudioFile):
                                stdin=subprocess.PIPE)
 
         transfer_data(pcmreader.read,sub.stdin.write)
-        pcmreader.close()
         sub.stdin.close()
+        pcmreader.close()
         sub.wait()
 
         sub = subprocess.Popen([BIN['metaflac'],
@@ -530,15 +530,12 @@ class FlacAudio(AudioFile):
             foreign_metadata = ['--keep-foreign-metadata']
         else:
             foreign_metadata = []
-
-        devnull = file(os.devnull,'ab')
+        
         sub = subprocess.Popen([BIN['flac'],"-s","-f"] + \
                                foreign_metadata + \
                                ["-d","-o",wave_filename,
-                                self.filename],
-                               stdout=devnull,
-                               stderr=devnull)
-        devnull.close()
+                                self.filename])
+
         sub.wait()
 
     @classmethod
@@ -553,15 +550,11 @@ class FlacAudio(AudioFile):
         else:
             foreign_metadata = []
 
-        devnull = file(os.devnull,'ab')
         sub = subprocess.Popen([BIN['flac']] + \
                                ["-s","-f","-%s" % (compression),
                                 "-V","--lax"] + \
                                foreign_metadata + \
-                               ["-o",filename,wave_filename],
-                               stdout=devnull,
-                               stderr=devnull)
-        devnull.close()
+                               ["-o",filename,wave_filename])
         sub.wait()
         return FlacAudio(filename)
 
@@ -922,15 +915,11 @@ class OggFlacAudio(FlacAudio):
         else:
             foreign_metadata = []
 
-        devnull = file(os.devnull,'ab')
         sub = subprocess.Popen([BIN['flac'],"-s","-f"] + \
                                foreign_metadata + \
                                ["-d","--ogg",
                                 "-o",wave_filename,
-                                self.filename],
-                               stdout=devnull,
-                               stderr=devnull)
-        devnull.close()
+                                self.filename])
         sub.wait()
 
     @classmethod
@@ -945,15 +934,11 @@ class OggFlacAudio(FlacAudio):
         else:
             foreign_metadata = []
 
-        devnull = file(os.devnull,'ab')
         sub = subprocess.Popen([BIN['flac']] + \
                                ["-s","-f","--ogg","-%s" % (compression),
                                 "-V","--lax"] + \
                                foreign_metadata + \
-                               ["-o",filename,wave_filename],
-                               stdout=devnull,
-                               stderr=devnull)
-        devnull.close()
+                               ["-o",filename,wave_filename])
         sub.wait()
         return OggFlacAudio(filename)
 

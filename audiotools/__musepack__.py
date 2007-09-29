@@ -194,6 +194,10 @@ class MusepackAudio(ApeTaggedAudio,AudioFile):
             raise InvalidFormat(
                 "Musepack only supports sample rates 44100, 48000, 37800 and 32000")
 
+        if (pcmreader.channels > 2):
+            raise InvalidFormat(
+                "Musepack supports up to 2 channels")
+
         f = tempfile.NamedTemporaryFile(suffix=".wav")
         w = WaveAudio.from_pcm(f.name, pcmreader)
         try:

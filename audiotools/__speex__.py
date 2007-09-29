@@ -104,6 +104,10 @@ class SpeexAudio(VorbisAudio):
 
         if (pcmreader.bits_per_sample not in (8,16)):
             raise InvalidFormat('speex only supports 8 or 16-bit samples')
+        elif (pcmreader.channels not in (1,2)):
+            raise InvalidFormat('speex only supports 1 or 2 channels')
+        elif (pcmreader.sample_rate not in (8000,16000,32000,44100)):
+            raise InvalidFormat('speex only supports sample rates 8000,16000,32000,44100')
         else:
             BITS_PER_SAMPLE = {8:['--8bit'],
                                16:['--16bit']}[pcmreader.bits_per_sample]
