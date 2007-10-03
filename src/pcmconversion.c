@@ -6,18 +6,29 @@ typedef int Py_ssize_t;
 #define PY_SSIZE_T_MIN INT_MIN
 #endif
 
+/*a convenience structure for PCM info*/
 typedef struct {
   int sample_rate;
   int channels;
   int bits_per_sample;
 } PCMInfo;
 
+/*a blob of PCM data, with information about its format*/
+typedef struct {
+  PCMInfo info;
+  int *data;       /*an array of PCM samples, as ints*/
+                   /*(assumes the system supports at least 32-bit ints)*/
+  int data_length; /*the total length of the array*/
+} PCMData;
+
+/*the PCMConverter Python object*/
 typedef struct {
   PyObject_HEAD
   PyObject *pcmreader;
   PCMInfo input_pcm;
   PCMInfo output_pcm;
 } pcmconversion_PCMConverter;
+
 
 static void PCMConverter_dealloc(pcmconversion_PCMConverter* self);
 
@@ -40,6 +51,30 @@ static PyObject *PCMConverter_get_channels(pcmconversion_PCMConverter *self,
 
 static PyObject *PCMConverter_get_bits_per_sample(pcmconversion_PCMConverter *self,
 						  void *closure);
+
+
+/*returns a newly allocated PCMData struct*/
+PCMData *new_pcm_data(int sample_rate, int channels, int bits_per_sample,
+		      int total_samples);
+
+/*frees the PCMData struct created by new_pcm_data()*/
+void free_pcm_data(PCMData *data);
+
+/*Copies as many PCM samples as possible from pcm_string
+  to a newly-created PCMData struct.
+  "final_offset" indicates our final location in the pcm_string*/
+PCMData *char_to_pcm_data(char *pcm_string, int pcm_string_length,
+			  int sample_rate, int channels, int bits_per_sample,
+			  int *final_offset);
+
+/*Takes PCMData and converts it to a chunk of PCM data as a blob of bytes.
+  The newly malloc()ed data is returned (which must be freed later)
+  and the length of the new data is stored in "length".*/
+char *pcm_data_to_char(PCMData *data, int *length);
+
+int char_to_16bit(char *s);
+void _16bit_to_char(int i, char *s);
+
 
 static PyMethodDef module_methods[] = {
   {NULL}
@@ -211,11 +246,45 @@ static PyObject *PCMConverter_close(pcmconversion_PCMConverter* self) {
 static PyObject *PCMConverter_read(pcmconversion_PCMConverter* self, 
 				   PyObject *args) {
   static long int read_amount;
+  PyObject *input_string;
+  char *input_pcm;
+  Py_ssize_t input_pcm_length;
+
+  PCMData *input_data;
+  int unread_pcm;
+  int i;
+
+  char *output_pcm;
+  int output_pcm_length;
+  PyObject *output_string;
 
   if (!PyArg_ParseTuple(args,"l",&read_amount))
     return NULL;
 
-  return PyObject_CallMethod(self->pcmreader,"read","l",read_amount);
+  input_string = PyObject_CallMethod(self->pcmreader,"read","l",read_amount);
+
+  if (PyString_AsStringAndSize(input_string, &input_pcm, &input_pcm_length) == -1) {
+    Py_DECREF(input_string);
+    return NULL;
+  }
+
+  input_data = char_to_pcm_data(input_pcm, input_pcm_length,
+				self->input_pcm.sample_rate,
+				self->input_pcm.channels,
+				self->input_pcm.bits_per_sample,
+				&unread_pcm);
+  
+
+  output_pcm = pcm_data_to_char(input_data, &output_pcm_length);
+
+  output_string = PyString_FromStringAndSize(output_pcm,
+					     (Py_ssize_t)output_pcm_length);
+  
+  free_pcm_data(input_data);
+  free(output_pcm);
+  Py_DECREF(input_string);
+
+  return output_string;
 }
 
 
@@ -238,4 +307,80 @@ static PyObject *PCMConverter_get_bits_per_sample(pcmconversion_PCMConverter *se
   PyObject *bits_per_sample;
   bits_per_sample = Py_BuildValue("i",self->output_pcm.bits_per_sample);
   return bits_per_sample;
+}
+
+
+PCMData *new_pcm_data(int sample_rate, int channels, int bits_per_sample,
+		      int total_samples) {
+  PCMData *data;
+
+  data = (PCMData *)malloc(sizeof(PCMData));
+  data->info.sample_rate = sample_rate;
+  data->info.channels = channels;
+  data->info.bits_per_sample = bits_per_sample;
+
+  data->data = (int *)malloc(sizeof(int) * total_samples);
+  data->data_length = total_samples;
+
+  return data;
+}
+
+void free_pcm_data(PCMData *data) {
+  free(data->data);
+  free(data);
+}
+
+PCMData *char_to_pcm_data(char *pcm_string, int pcm_string_length,
+			  int sample_rate, int channels, int bits_per_sample,
+			  int *final_offset) {
+  PCMData *data;
+  int input = 0;
+  int output = 0;
+
+  data = new_pcm_data(sample_rate, channels, bits_per_sample,
+		      pcm_string_length / (bits_per_sample / 8));
+
+  if (bits_per_sample == 16) {
+    for (input = 0,output=0; 
+	 (input < pcm_string_length) && (output < data->data_length);
+	 input += 2,output++) {
+      data->data[output] = char_to_16bit(pcm_string + input);
+    }
+  }
+
+  *final_offset = input;
+  return data;
+}
+
+char *pcm_data_to_char(PCMData *data, int *length) {
+  char *output_pcm;
+  int output_length = 0;
+  int input = 0;
+  int output = 0;
+
+  output_length = data->data_length * (data->info.bits_per_sample / 8);
+  output_pcm = (char *)calloc(output_length,sizeof(char));
+
+  if (data->info.bits_per_sample == 16) {
+    for (input = 0,output = 0;
+	 (input < data->data_length) && (output < output_length);
+	 input++,output += 2)
+      _16bit_to_char(data->data[input],output_pcm + output);
+  }
+  
+  *length = output_length;
+  return output_pcm;
+}
+
+int char_to_16bit(char *s) {
+  if ((s[1] & 0x80) != 0)
+    return -(0x10000 - ((s[1] << 8) | s[0])); /*negative*/
+  else
+    return (s[1] << 8) | s[0];                /*positive*/
+						
+}
+
+void _16bit_to_char(int i, char *s) {
+  s[0] = i & 0x00FF;
+  s[1] = (i & 0xFF00) >> 8;
 }
