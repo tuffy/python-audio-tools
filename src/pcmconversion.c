@@ -27,6 +27,9 @@ typedef struct {
   PyObject *pcmreader;
   PCMInfo input_pcm;
   PCMInfo output_pcm;
+
+  char unhandled_bytes[3];   /*to handle partial PCM samples*/
+  int unhandled_bytes_length;
 } pcmconversion_PCMConverter;
 
 
@@ -74,6 +77,8 @@ unsigned char *pcm_data_to_char(PCMData *data, int *length);
 
 int char_to_16bit(unsigned char *s);
 void _16bit_to_char(int i, unsigned char *s);
+int char_to_24bit(unsigned char *s);
+void _24bit_to_char(int i, unsigned char *s);
 
 
 static PyMethodDef module_methods[] = {
@@ -205,6 +210,8 @@ static int PCMConverter_init(pcmconversion_PCMConverter *self,
   self->output_pcm.channels = output_channels;
   self->output_pcm.bits_per_sample = output_bits_per_sample;
 
+  self->unhandled_bytes_length = 0;
+
   input_sample_rate = PyObject_GetAttrString(pcmreader,"sample_rate");
   if (input_sample_rate == NULL) return -1;
 
@@ -250,6 +257,9 @@ static PyObject *PCMConverter_read(pcmconversion_PCMConverter* self,
   char *input_pcm;
   Py_ssize_t input_pcm_length;
 
+  char *extended_input_pcm;
+  int extended_input_pcm_length;
+
   PCMData *input_data;
   int unread_pcm;
 
@@ -262,18 +272,61 @@ static PyObject *PCMConverter_read(pcmconversion_PCMConverter* self,
 
   input_string = PyObject_CallMethod(self->pcmreader,"read","l",read_amount);
 
-  if (PyString_AsStringAndSize(input_string, &input_pcm, 
+  if (PyString_AsStringAndSize(input_string, 
+			       &input_pcm, 
 			       &input_pcm_length) == -1) {
     Py_DECREF(input_string);
     return NULL;
   }
 
-  input_data = char_to_pcm_data((unsigned char *)input_pcm, input_pcm_length,
-				self->input_pcm.sample_rate,
-				self->input_pcm.channels,
-				self->input_pcm.bits_per_sample,
-				&unread_pcm);
-  
+  /*we have some unhandled bytes to prepend to input_pcm*/
+  if (self->unhandled_bytes_length > 0) {
+    extended_input_pcm_length = input_pcm_length + self->unhandled_bytes_length;
+    extended_input_pcm = (char *)malloc(extended_input_pcm_length);
+
+    memcpy(extended_input_pcm,self->unhandled_bytes,
+	   (size_t)self->unhandled_bytes_length);
+    memcpy(extended_input_pcm + self->unhandled_bytes_length,
+	   input_pcm,(size_t)input_pcm_length);
+
+    self->unhandled_bytes_length = 0;
+
+    input_data = char_to_pcm_data((unsigned char *)extended_input_pcm, 
+				  extended_input_pcm_length,
+				  self->input_pcm.sample_rate,
+				  self->input_pcm.channels,
+				  self->input_pcm.bits_per_sample,
+				  &unread_pcm);
+
+    /*if there's excess bytes in input_pcm we can't turn into PCM samples
+    (e.g. 9 bytes of input_pcm to 16-bit PCM samples)
+    keep track of whatever's left for conversion the next time around*/
+    if (unread_pcm < input_pcm_length + self->unhandled_bytes_length) {
+      self->unhandled_bytes_length = extended_input_pcm_length - 
+                                     unread_pcm;
+      memcpy(self->unhandled_bytes,extended_input_pcm + unread_pcm,
+	     (size_t)self->unhandled_bytes_length);
+    }
+    
+    free(extended_input_pcm);
+
+
+  } else {
+    /*no unhandled bytes to worry about*/
+    input_data = char_to_pcm_data((unsigned char *)input_pcm, input_pcm_length,
+				  self->input_pcm.sample_rate,
+				  self->input_pcm.channels,
+				  self->input_pcm.bits_per_sample,
+				  &unread_pcm);
+    /*if there's excess bytes in input_pcm we can't turn into PCM samples
+    (e.g. 9 bytes of input_pcm to 16-bit PCM samples)
+    keep track of whatever's left for conversion the next time around*/
+    if (unread_pcm < input_pcm_length) {
+      self->unhandled_bytes_length = input_pcm_length - unread_pcm;
+      memcpy(self->unhandled_bytes,input_pcm + unread_pcm,
+	     (size_t)self->unhandled_bytes_length);
+    }
+  }
 
   output_pcm = (char *)pcm_data_to_char(input_data, 
 					&output_pcm_length);
@@ -347,6 +400,13 @@ PCMData *char_to_pcm_data(unsigned char *pcm_string, int pcm_string_length,
 	 input += 2,output++) {
       data->data[output] = char_to_16bit(pcm_string + input);
     }
+
+  } else if (bits_per_sample == 24) {
+    for (input = 0,output=0; 
+	 (input < pcm_string_length) && (output < data->data_length);
+	 input += 3,output++) {
+      data->data[output] = char_to_24bit(pcm_string + input);
+    }
   }
 
   *final_offset = input;
@@ -367,6 +427,12 @@ unsigned char *pcm_data_to_char(PCMData *data, int *length) {
 	 (input < data->data_length) && (output < output_length);
 	 input++,output += 2)
       _16bit_to_char(data->data[input],output_pcm + output);
+
+  } else if (data->info.bits_per_sample == 24) {
+    for (input = 0,output = 0;
+	 (input < data->data_length) && (output < output_length);
+	 input++,output += 3)
+      _24bit_to_char(data->data[input],output_pcm + output);
   }
   
   *length = output_length;
@@ -384,4 +450,17 @@ int char_to_16bit(unsigned char *s) {
 void _16bit_to_char(int i, unsigned char *s) {
   s[0] = i & 0x00FF;
   s[1] = (i & 0xFF00) >> 8;
+}
+
+int char_to_24bit(unsigned char *s) {
+  if ((s[2] & 0x80) != 0)
+    return -(0x1000000 - ((s[2] << 16) | (s[1] << 8) | s[0])); /*negative*/
+  else
+    return (s[2] << 16) | (s[1] << 8) | s[0];                  /*positive*/
+}
+
+void _24bit_to_char(int i, unsigned char *s) {
+  s[0] = i & 0x0000FF;
+  s[1] = (i & 0x00FF00) >> 8;
+  s[2] = (i & 0xFF0000) >> 16;
 }
