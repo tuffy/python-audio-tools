@@ -55,6 +55,29 @@ class UTF8(Con.Struct):
             Con.Value('value',
                       lambda ctx: self.__calculate_utf8_value__(ctx)))
 
+class Unary(Con.Adapter):
+    def __init__(self, name):
+        Con.Adapter.__init__(
+            self,
+            Con.RepeatUntil(lambda obj,ctx: obj == 1,
+                            Con.Byte(name)))
+
+    def _encode(self, value, context):
+        if (value > 0):
+            return ([0] * (value)) + [1]
+        else:
+            return [1]
+
+    def _decode(self, obj, context):
+        return len(obj) - 1
+
+class PlusOne(Con.Adapter):
+    def _encode(self, value, context):
+        return value - 1
+
+    def _decode(self, obj, context):
+        return obj + 1
+
 class FlacStreamException(Exception): pass
 
 class FlacReader:
@@ -90,13 +113,6 @@ class FlacReader:
 
                               Con.Bits('crc8',8))
 
-    SUBFRAME_HEADER = Con.Struct('subframe_header',
-                                 Con.Padding(1),
-                                 Con.Bits('subframe_type',6),
-                                 #wasted_bits_per_sample may be muliple
-                                 #bits, but I can't find any examples
-                                 Con.Bit('wasted_bits_per_sample'))
-
     UNARY = Con.Struct('unary',
                        Con.RepeatUntil(
         lambda obj,ctx: obj == '\x01',
@@ -104,6 +120,17 @@ class FlacReader:
                        Con.Value('value',
                                  lambda ctx: len(ctx['bytes']) - 1)
                        )
+
+    SUBFRAME_HEADER = Con.Struct('subframe_header',
+                                 Con.Padding(1),
+                                 Con.Bits('subframe_type',6),
+                                 Con.Flag('has_wasted_bits_per_sample'),
+                                 Con.IfThenElse(
+        'wasted_bits_per_sample',
+        lambda ctx: ctx['has_wasted_bits_per_sample'],
+        PlusOne(Unary('value')),
+        Con.Value('value',lambda ctx2: 0)))
+
 
     GET_BLOCKSIZE_FROM_STREAMINFO = -1
     GET_8BIT_BLOCKSIZE_FROM_END_OF_HEADER = -2
@@ -365,29 +392,39 @@ class FlacReader:
             #otherwise, use the number from the frame header
             bits_per_sample = FlacReader.SAMPLE_SIZE[
                 frame_header.bits_per_sample]
-            
+
+
+        if (subframe_header.has_wasted_bits_per_sample):
+            bits_per_sample -= subframe_header.wasted_bits_per_sample
         
         if (subframe_header.subframe_type == 0):
-            return self.read_subframe_constant(block_size, bits_per_sample)
+            subframe = self.read_subframe_constant(block_size, bits_per_sample)
             
         elif (subframe_header.subframe_type == 1):
-            return self.read_subframe_verbatim(block_size, bits_per_sample)
+            subframe = self.read_subframe_verbatim(block_size, bits_per_sample)
             
         elif ((subframe_header.subframe_type & 0x38) == 0x08):
-            return self.read_subframe_fixed(
+            subframe = self.read_subframe_fixed(
                 subframe_header.subframe_type & 0x07,
                 block_size,
                 bits_per_sample)
             
         elif ((subframe_header.subframe_type & 0x20) == 0x20):
-            return self.read_subframe_lpc(
+            subframe = self.read_subframe_lpc(
                 (subframe_header.subframe_type & 0x1F) + 1,
                 block_size,
                 bits_per_sample)
             
         else:
             raise FlacStreamException('invalid subframe type')
-        
+
+        if (subframe_header.has_wasted_bits_per_sample):
+            return array.array(
+                'i',
+                [i << subframe_header.wasted_bits_per_sample
+                 for i in subframe])
+        else:
+            return subframe
 
     def read_subframe_constant(self, block_size, bits_per_sample):
         sample = Con.Bits('b',bits_per_sample).parse_stream(
@@ -495,34 +532,43 @@ class FlacReader:
         bin_to_int = Con.lib.binary.bin_to_int
         
         samples = array.array('i')
-                
+
         rice_parameter = Con.Bits('rice_parameter',4).parse_stream(
             self.bitstream)
 
-        #this should be fixed, once I can find an example
-        if (rice_parameter == 0xF):
-            raise FlacStreamException('unencoded residual not yet supported')
+        if (rice_parameter != 0xF):
+            #a Rice encoded residual
+            for x in xrange(total_samples):
 
-        for x in xrange(total_samples):
-            
-            #count the number of 0 bits before the next 1 bit
-            #(unary encoding)
-            #to find our most significant bits            
-            msb = 0
-            s = self.bitstream.read(1)
-            while (s != '\x01'):
-                msb += 1
+                #count the number of 0 bits before the next 1 bit
+                #(unary encoding)
+                #to find our most significant bits            
+                msb = 0
                 s = self.bitstream.read(1)
+                while (s != '\x01'):
+                    msb += 1
+                    s = self.bitstream.read(1)
 
-            #grab the proper number of least significant bits
-            lsb = bin_to_int(self.bitstream.read(rice_parameter))
+                #grab the proper number of least significant bits
+                lsb = bin_to_int(self.bitstream.read(rice_parameter))
 
-            #combine msb and lsb to get the Rice-encoded value
-            value = (msb << rice_parameter) | lsb
-            if ((value & 0x1) == 0x1): #negative
-                samples.append(-(value >> 1) - 1)
-            else:                      #positive
-                samples.append(value >> 1)
+                #combine msb and lsb to get the Rice-encoded value
+                value = (msb << rice_parameter) | lsb
+                if ((value & 0x1) == 0x1): #negative
+                    samples.append(-(value >> 1) - 1)
+                else:                      #positive
+                    samples.append(value >> 1)
+        else:
+            #unencoded residual
+
+            print >>sys.stderr,"Unencoded residual"
+            bits_per_sample = Con.Bits('escape_code',5).parse_stream(
+                self.bitstream)
+
+            sample = Con.Bits("sample",bits_per_sample,signed=True)
+
+            for x in xrange(total_samples):
+                samples.append(sample.parse_stream(self.bitstream))
 
         return samples
 
@@ -628,6 +674,9 @@ class BufferedStream:
 
     def seek(self, offset, whence=0):
         self.stream.seek(offset,whence)
+
+    def tell(self):
+        return self.stream.tell()
 
     def close(self):
         self.stream.close()
