@@ -26,7 +26,7 @@ INSTALLATION = install.ms prereqs.ms configfile.ms
 
 SUBSECTIONS = $(INSTALLATION) macros.ms programming.ms freedb.ms usage.ms \
 references.ms
-FIGURES = binary.eps freedb-sequence.eps pcm.eps rice1.eps
+FIGURES = binary.eps freedb-sequence.eps pcm.eps rice1.eps rice2.eps
 TOC_ORDER_MANUAL = 1,_1-_1,2-_2
 TOC_ORDER_FORMATS = 1,_3-_1,2-_4
 
@@ -165,6 +165,9 @@ binary.eps: binary.fig
 
 rice1.eps: rice1.fig
 	fig2dev -L eps rice1.fig rice1.eps
+
+rice2.eps: rice2.fig
+	fig2dev -L eps rice2.fig rice2.eps
 
 pcm.eps: pcm.plot
 	./pcm.plot > pcm.eps

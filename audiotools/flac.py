@@ -561,7 +561,6 @@ class FlacReader:
         else:
             #unencoded residual
 
-            print >>sys.stderr,"Unencoded residual"
             bits_per_sample = Con.Bits('escape_code',5).parse_stream(
                 self.bitstream)
 

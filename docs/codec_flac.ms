@@ -303,22 +303,31 @@ _
 .SUBSUBSECTION "the Residual"
 .PP
 Though the FLAC format allows for different forms of
-residual coding, partitioned Rice is the only one currently
-supported.
+residual coding, two forms of partitioned Rice are the only ones 
+currently supported.
+The difference between the two is that when `Coding Method' is 0,
+the Rice Parameter in each partition is 4 bits.
+When the `Coding Method' is 1, that parameter is 5 bits.
 .begin dformat
 style bitwid 0.08
 style charwid 0
-style recspread 0.3
+style recspread 0.2
 noname
-     0-1-17 Coding Method (0x0)
+     0-1-17 Coding Method
      2-5-17 Partition Order
  P1: 6--15 @roman Partition sub 1@
      --15 @roman Partition sub 2@
      --15-dashed ...
 noname
- P2: 0-3-19 Rice parameter
-     4-8-21-dashed Escape code
- P3: --28 Encoded residual
+     --11-invisible Method = 0
+ P2: 0-3-19 Rice Parameter
+     4-8-21-dashed Escape Code
+ P3: --26 Encoded Residual
+noname
+     --11-invisible Method = 1
+     0-4-21 Rice Parameter
+     5-9-22-dashed Escape Code
+     --23 Encoded Residual
 pic line dotted from P1.sw to P2.nw
 pic line dotted from P1.se to P3.ne
 .end dformat
@@ -342,8 +351,10 @@ In that case:
 .EN
 since there is only one partition which takes up the entire block.
 .PP
-If the Rice parameter is 0xF, the partition is unencoded binary
-using `Escape Code' number of bits per sample.
+If all of the bits in `Rice Parameter' are set, 
+the partition is unencoded binary using `Escape Code' number of bits per 
+sample.
+.bp
 .SUBSUBSUBSECTION "Rice Encoding"
 .PP
 The residual uses Rice coding to compress lots of mostly small values
@@ -368,6 +379,9 @@ multiplied by -1 and minus 1.
 This is less complicated than it sounds, so let's run through an example
 in which the Rice parameter is 1:
 .PSPIC -L "rice1.eps" 4.5i
+.sp 24pt
+Now, let's run through another example in which the Rice parameter is 4:
+.PSPIC -L "rice2.eps" 6i
 .bp
 .SUBSUBSECTION "Channels"
 .PP
@@ -381,21 +395,21 @@ style bitwid 0.08
 style charwid 0
 style recspread 0.3
 noname
- F1: --10 Subframe @roman 1 sub 1@
-     --10 Subframe @roman 1 sub 2@
- F2: --10 Subframe @roman 1 sub 3@
+ F1: --10 Subframe @roman 1 sub L@
+     --10 Subframe @roman 2 sub L@
+ F2: --10 Subframe @roman 3 sub L@
      --12-invis
- F3: --10 Subframe @roman 2 sub 1@
-     --10 Subframe @roman 2 sub 2@
- F4: --10 Subframe @roman 2 sub 3@
+ F3: --10 Subframe @roman 1 sub R@
+     --10 Subframe @roman 2 sub R@
+ F4: --10 Subframe @roman 3 sub R@
 noname
      --6-invis
- S1: --10 Subframe @roman 1 sub 1@
-     --10 Subframe @roman 2 sub 1@
- S2: --10 Subframe @roman 1 sub 2@
- S3: --10 Subframe @roman 2 sub 2@
-     --10 Subframe @roman 1 sub 3@
- S4: --10 Subframe @roman 2 sub 3@
+ S1: --10 Subframe @roman 1 sub L@
+     --10 Subframe @roman 1 sub R@
+ S2: --10 Subframe @roman 2 sub L@
+ S3: --10 Subframe @roman 2 sub R@
+     --10 Subframe @roman 3 sub L@
+ S4: --10 Subframe @roman 3 sub R@
 pic line dotted from F1.sw to S1.nw
 pic line dotted from F4.se to S4.ne
 pic line dotted from F2.se to S2.ne
@@ -442,3 +456,15 @@ We're prepending the mid channel with bit 0 from the
 side channel, performing the addition/subtraction and then
 discarding that bit before assigning the results to the left and
 right channels.
+.SUBSUBSECTION "Wasted bits per sample"
+.PP
+Though rare in practice, FLAC subframes support `wasted bits per sample'.
+Put simply, these wasted bits are removed during subframe calculation
+and restored to the subframe's least significant bits as zero value bits 
+when it is returned.
+For instance, a subframe with 1 wasted bit per sample in a 16-bit FLAC
+stream is treated as having only 15 bits per sample when reading
+warm-up samples and then all through the rest of the subframe
+calculation.
+That wasted zero bit is then prepended to each sample prior to returning
+the subframe.
