@@ -77,8 +77,12 @@ unsigned char *pcm_data_to_char(PCMData *data, int *length);
 
 int char_to_16bit(unsigned char *s);
 void _16bit_to_char(int i, unsigned char *s);
+
 int char_to_24bit(unsigned char *s);
 void _24bit_to_char(int i, unsigned char *s);
+
+int char_to_8bit(unsigned char *s);
+void _8bit_to_char(int i, unsigned char *s);
 
 
 static PyMethodDef module_methods[] = {
@@ -394,19 +398,28 @@ PCMData *char_to_pcm_data(unsigned char *pcm_string, int pcm_string_length,
   data = new_pcm_data(sample_rate, channels, bits_per_sample,
 		      pcm_string_length / (bits_per_sample / 8));
 
-  if (bits_per_sample == 16) {
+  switch (bits_per_sample) {
+  case 8:
+    for (input = 0,output=0; 
+	 (input < pcm_string_length) && (output < data->data_length);
+	 input++,output++) {
+      data->data[output] = char_to_8bit(pcm_string + input);
+    }
+    break;
+  case 16:
     for (input = 0,output=0; 
 	 (input < pcm_string_length) && (output < data->data_length);
 	 input += 2,output++) {
       data->data[output] = char_to_16bit(pcm_string + input);
     }
-
-  } else if (bits_per_sample == 24) {
+    break;
+  case 24:
     for (input = 0,output=0; 
 	 (input < pcm_string_length) && (output < data->data_length);
 	 input += 3,output++) {
       data->data[output] = char_to_24bit(pcm_string + input);
     }
+    break;
   }
 
   *final_offset = input;
@@ -422,17 +435,25 @@ unsigned char *pcm_data_to_char(PCMData *data, int *length) {
   output_length = data->data_length * (data->info.bits_per_sample / 8);
   output_pcm = (unsigned char *)calloc(output_length,sizeof(unsigned char));
 
-  if (data->info.bits_per_sample == 16) {
+  switch (data->info.bits_per_sample) {
+  case 8:
+    for (input = 0,output = 0;
+	 (input < data->data_length) && (output < output_length);
+	 input++,output++)
+      _8bit_to_char(data->data[input],output_pcm + output);
+    break;
+  case 16:
     for (input = 0,output = 0;
 	 (input < data->data_length) && (output < output_length);
 	 input++,output += 2)
       _16bit_to_char(data->data[input],output_pcm + output);
-
-  } else if (data->info.bits_per_sample == 24) {
+    break;
+  case 24:
     for (input = 0,output = 0;
 	 (input < data->data_length) && (output < output_length);
 	 input++,output += 3)
       _24bit_to_char(data->data[input],output_pcm + output);
+    break;
   }
   
   *length = output_length;
@@ -463,4 +484,12 @@ void _24bit_to_char(int i, unsigned char *s) {
   s[0] = i & 0x0000FF;
   s[1] = (i & 0x00FF00) >> 8;
   s[2] = (i & 0xFF0000) >> 16;
+}
+
+int char_to_8bit(unsigned char *s) {
+  return (int)s[0];
+}
+
+void _8bit_to_char(int i, unsigned char *s) {
+  s[0] = i & 0xFF;
 }
