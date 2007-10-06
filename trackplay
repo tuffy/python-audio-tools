@@ -18,8 +18,10 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-import audiotools,optparse
-import sys,ossaudiodev
+import audiotools
+import optparse
+import sys
+import ossaudiodev
 
 if (__name__ == '__main__'):
     parser = optparse.OptionParser(
@@ -38,17 +40,18 @@ if (__name__ == '__main__'):
             elif (pcm.bits_per_sample == 8):
                 fmt = ossaudiodev.AFMT_U8
             else:
-                print >>sys.stderr,"*** Unsupported bit depth %s" % \
-                    (pcm.bits_per_sample)
-                continue
+                import audiotools.pcmconversion
+
+                pcm = audiotools.pcmconversion.PCMConverter(
+                    pcm,pcm.sample_rate,pcm.channels,
+                    16)
+                fmt = ossaudiodev.AFMT_S16_LE
 
             dev.setparameters(fmt,
                               pcm.channels,
                               pcm.sample_rate)
-            bytes = pcm.read(audiotools.BUFFER_SIZE)
-            while (len(bytes) > 0):
-                dev.writeall(bytes)
-                bytes = pcm.read(audiotools.BUFFER_SIZE)
+
+            audiotools.transfer_data(pcm.read,dev.writeall)
 
             pcm.close()
     finally:

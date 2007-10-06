@@ -84,6 +84,8 @@ void _24bit_to_char(int i, unsigned char *s);
 int char_to_8bit(unsigned char *s);
 void _8bit_to_char(int i, unsigned char *s);
 
+void convert_bits_per_sample(PCMData *data, int output_bits_per_sample);
+
 
 static PyMethodDef module_methods[] = {
   {NULL}
@@ -332,6 +334,13 @@ static PyObject *PCMConverter_read(pcmconversion_PCMConverter* self,
     }
   }
 
+  /*perform conversions here*/
+
+  if (self->input_pcm.bits_per_sample != self->output_pcm.bits_per_sample) {
+    convert_bits_per_sample(input_data,self->output_pcm.bits_per_sample);
+    input_data->info.bits_per_sample = self->output_pcm.bits_per_sample;
+  }
+
   output_pcm = (char *)pcm_data_to_char(input_data, 
 					&output_pcm_length);
 
@@ -492,4 +501,27 @@ int char_to_8bit(unsigned char *s) {
 
 void _8bit_to_char(int i, unsigned char *s) {
   s[0] = i & 0xFF;
+}
+
+void convert_bits_per_sample(PCMData *data, int output_bits_per_sample) {
+  int i;
+  int difference;
+
+  /*FIXME - should add some random white noise at the LSB to improve quality*/
+
+  if (output_bits_per_sample < data->info.bits_per_sample) {
+    /*output is less bits per sample than input*/
+    difference = 1 << (data->info.bits_per_sample - output_bits_per_sample);
+
+    for (i = 0; i < data->data_length; i++) {
+      data->data[i] = data->data[i] / difference;
+    }
+  } else {
+    /*output is more bits per sample than input*/
+    difference = 1 << (output_bits_per_sample - data->info.bits_per_sample);
+    
+    for (i = 0; i < data->data_length; i++) {
+      data->data[i] = data->data[i] * difference;
+    }
+  }
 }
