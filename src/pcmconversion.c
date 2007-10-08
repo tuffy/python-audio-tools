@@ -30,6 +30,9 @@ typedef struct {
 
   char unhandled_bytes[3];   /*to handle partial PCM samples*/
   int unhandled_bytes_length;
+
+  int current_input_channel;
+  int current_output_channel;
 } pcmconversion_PCMConverter;
 
 
@@ -85,7 +88,9 @@ int char_to_8bit(unsigned char *s);
 void _8bit_to_char(int i, unsigned char *s);
 
 void convert_bits_per_sample(PCMData *data, int output_bits_per_sample);
-
+PCMData* convert_channels(PCMData *data, int output_channels,
+			  int *current_input_channel,
+			  int *current_output_channel);
 
 static PyMethodDef module_methods[] = {
   {NULL}
@@ -218,6 +223,9 @@ static int PCMConverter_init(pcmconversion_PCMConverter *self,
 
   self->unhandled_bytes_length = 0;
 
+  self->current_input_channel= 0;
+  self->current_output_channel = 0;
+
   input_sample_rate = PyObject_GetAttrString(pcmreader,"sample_rate");
   if (input_sample_rate == NULL) return -1;
 
@@ -339,6 +347,12 @@ static PyObject *PCMConverter_read(pcmconversion_PCMConverter* self,
   if (self->input_pcm.bits_per_sample != self->output_pcm.bits_per_sample) {
     convert_bits_per_sample(input_data,self->output_pcm.bits_per_sample);
     input_data->info.bits_per_sample = self->output_pcm.bits_per_sample;
+  }
+
+  if (self->input_pcm.channels != self->output_pcm.channels) {
+    convert_channels(input_data,self->output_pcm.channels,
+		     &(self->current_input_channel),
+		     &(self->current_output_channel));
   }
 
   output_pcm = (char *)pcm_data_to_char(input_data, 
@@ -523,5 +537,86 @@ void convert_bits_per_sample(PCMData *data, int output_bits_per_sample) {
     for (i = 0; i < data->data_length; i++) {
       data->data[i] = data->data[i] * difference;
     }
+  }
+}
+
+PCMData* convert_channels(PCMData *data, int output_channels,
+		      int *current_input_channel,
+		      int *current_output_channel) {
+  int input_pcm = 0;
+
+  int output_pcm = 0;
+
+  PCMData *output = NULL;
+
+  if (output_channels < data->info.channels) {
+    /*Reducing channels is simply a matter of chopping off the high ones.*/
+
+    output = new_pcm_data(
+        data->info.sample_rate,
+	output_channels,
+	data->info.bits_per_sample,
+	data->data_length / data->info.channels * output_channels);
+
+    for (input_pcm = 0,output_pcm = 0; 
+	 input_pcm < data->data_length;
+	 input_pcm++,(*current_input_channel)++) {
+
+      /*if we've gone over the last input channel, go back to channel 0*/
+      if (*current_input_channel >= data->info.channels)
+	*current_input_channel = 0;
+
+      /*So long as our input channel isn't outside the "output_channels"
+	keep copying PCM to the output.
+	Everything else gets ignored.*/
+      if (*current_input_channel < output_channels) {
+	new_data[output_pcm] = data->data[input_pcm];
+	output_pcm++;
+
+	/*bounce the output channel back to 0 also, if necessary*/
+	(*current_output_channel)++;
+	if (*current_output_channel > output_channels)
+	  *current_output_channel = 0;
+      }
+    }
+
+    return output;
+  } else {
+    /*Adding channels is a matter of copying the last available channel 
+      to all the new channel slots.
+      This is usually to turn mono into stereo.*/
+
+    output = new_pcm_data(
+	data->info.sample_rate,
+	output_channels,
+	data->info.bits_per_sample,
+	data->data_length / data->info.channels * output_channels);
+
+    for (input_pcm = 0,output_pcm = 0; 
+	 input_pcm < data->data_length;
+	 input_pcm++,(*current_input_channel)++) {
+
+      /*if we've gone over the last input channel,
+       add any remainders to the output channel
+       before going back to input/output channel 0*/
+      if (*current_input_channel >= data->info.channels) {
+	while (*current_output_channel < output_channels) {
+	  new_data[output_pcm] = data->data[input_pcm];
+	  output_pcm++;
+	  (*current_output_channel)++;
+	}
+
+      } else {
+	/*otherwise, just keep copying from channel to channel*/
+	new_data[output_pcm] = data->data[input_pcm];
+	output_pcm++;
+	(*current_output_channel)++;
+      }
+    }
+
+    free(data->data);
+    data->data = new_data;
+    data->data_length = new_length;
+    data->info.channels = output_channels;
   }
 }
