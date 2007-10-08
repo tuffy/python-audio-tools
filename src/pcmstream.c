@@ -290,6 +290,9 @@ static PyObject *PCMStreamReader_read(pcmstream_PCMStreamReader* self,
     self->unhandled_bytes_length = 0;
   }
 
+  /*remove the string we've read in*/
+  Py_DECREF(read_string);
+
   /*remove the old PCM stream*/
   free(pcm_data);
 

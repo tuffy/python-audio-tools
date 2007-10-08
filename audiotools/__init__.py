@@ -205,6 +205,24 @@ def transfer_data(from_function, to_function):
         to_function(s)
         s = from_function(BUFFER_SIZE)
 
+
+def threaded_transfer_data(from_function, to_function):
+    import thread,Queue
+
+    def send_data(from_function, queue):
+        s = from_function(BUFFER_SIZE)
+        while (len(s) > 0):
+            queue.put(s)
+            s = from_function(BUFFER_SIZE)
+        queue.put(None)
+
+    data_queue = Queue.Queue(10)
+    thread.start_new_thread(send_data,(from_function,data_queue))
+    s = data_queue.get()
+    while (s is not None):
+        to_function(s)
+        s = data_queue.get()
+
 #takes a wave-compatible object with a readframes() method
 #maps it to something PCMReader compatible
 class FrameReader(PCMReader):

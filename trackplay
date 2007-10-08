@@ -49,7 +49,7 @@ if (__name__ == '__main__'):
                               pcm.channels,
                               pcm.sample_rate)
 
-            audiotools.transfer_data(pcm.read,dev.writeall)
+            audiotools.threaded_transfer_data(pcm.read,dev.writeall)
 
             pcm.close()
     finally:
