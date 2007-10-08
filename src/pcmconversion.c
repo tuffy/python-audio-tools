@@ -28,7 +28,7 @@ typedef struct {
   PCMInfo input_pcm;
   PCMInfo output_pcm;
 
-  char unhandled_bytes[3];   /*to handle partial PCM samples*/
+  unsigned char unhandled_bytes[3];   /*to handle partial PCM samples*/
   int unhandled_bytes_length;
 
   int current_input_channel;

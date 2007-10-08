@@ -28,8 +28,8 @@ cdiomodule = Extension('audiotools.cdio',
 bitstreammodule = Extension('audiotools.bitstream',
                             sources = ['src/bitstream.c'])
 
-pcmconversionmodule = Extension('audiotools.pcmconversion',
-	                        sources = ['src/pcmconversion.c'])
+pcmstreammodule = Extension('audiotools.pcmstream',
+                            sources = ['src/pcmstream.c'])
 
 setup (name = 'Python Audio Tools',
        version = '2.4',
@@ -38,7 +38,7 @@ setup (name = 'Python Audio Tools',
        author_email = 'tuffy@users.sourceforge.net',
        url='http://audiotools.sourceforge.net',
        packages = ["audiotools"],
-       ext_modules = [cdiomodule,bitstreammodule,pcmconversionmodule],
+       ext_modules = [cdiomodule,bitstreammodule,pcmstreammodule],
        data_files = [("etc",["audiotools.cfg"]),
                      ("share/audiotools",["glade/coverview.glade"])],
        scripts = ["cd2track","cd2xmcd",
