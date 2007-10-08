@@ -369,8 +369,40 @@ def pcm_split(reader, pcm_lengths):
                             reader.bits_per_sample)
     finally:
         full_data.close()
-    
-            
+
+class PCMConverter(PCMReader):
+    def __init__(self, pcmreader,
+                 sample_rate, channels, bits_per_sample):
+        import pcmstream
+
+        self.input = pcmreader
+        self.reader = pcmstream.PCMStreamReader(pcmreader,
+                                                pcmreader.bits_per_sample / 8)
+        PCMReader.__init__(self,None, sample_rate, channels, bits_per_sample)
+
+        self.bytes_per_sample = self.bits_per_sample / 8
+        self.conversions = []
+
+        if (self.input.bits_per_sample != self.bits_per_sample):
+            self.conversions.append(self.convert_bits_per_sample)
+        
+    def read(self, bytes):
+        pcm_samples = self.reader.read(bytes)
+        for converter in self.conversions:
+            pcm_samples = converter(pcm_samples)
+        return pcmstream.pcm_to_string(pcm_samples,self.bytes_per_sample)
+
+    def close(self):
+        self.reader.close()
+
+    def convert_bits_per_sample(self, pcm_samples):
+        difference = self.bits_per_sample - self.input.bits_per_sample
+        if (difference < 0):  #removing bits per sample
+            bits_difference = 1 << (-difference)
+            return [i / bits_difference for i in pcm_samples]
+        else:                 #adding bits per sample
+            bits_difference = 1 << difference
+            return [i * bits_difference for i in pcm_samples]
 
 #ensures all the directories leading to "destination_path" are created
 #if necessary

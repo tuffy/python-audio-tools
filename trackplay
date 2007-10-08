@@ -40,14 +40,10 @@ if (__name__ == '__main__'):
             elif (pcm.bits_per_sample == 8):
                 fmt = ossaudiodev.AFMT_U8
             else:
-                print >>sys.stderr,"*** Only 16 and 8 bit audio is supported by OSS"
-                sys.exit(1)
-                #import audiotools.pcmconversion
-
-                #pcm = audiotools.pcmconversion.PCMConverter(
-                #    pcm,pcm.sample_rate,pcm.channels,
-                #    16)
-                #fmt = ossaudiodev.AFMT_S16_LE
+                pcm = audiotools.PCMConverter(
+                    pcm,pcm.sample_rate,pcm.channels,
+                    16)
+                fmt = ossaudiodev.AFMT_S16_LE
 
             dev.setparameters(fmt,
                               pcm.channels,
