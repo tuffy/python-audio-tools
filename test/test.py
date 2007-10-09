@@ -504,7 +504,7 @@ class TestAuAudio(TestAiffAudio):
     def setUp(self):
         self.audio_class = audiotools.AuAudio
 
-class TestFlacAudio(TestForeignWaveChunks,TestAiffAudio):
+class TestFlacAudio(TestAiffAudio):
     def setUp(self):
         self.audio_class = audiotools.FlacAudio
 
