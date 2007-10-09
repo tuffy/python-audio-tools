@@ -422,6 +422,75 @@ class PCMConverter(PCMReader):
             bits_difference = 1 << difference
             return [i * bits_difference for i in pcm_samples]
 
+class FrameList(list):
+    #l should be a list-compatible collection of PCM integers
+    #channels is how many channels there are per frame
+    #A "Frame" is a collection of PCM samples which covers all channels
+    #(2 channel audio has 2 PCM samples per frame, for example).
+    #There should not be any partial frames in l.
+    def __init__(self, l, total_channels):
+        if ((len(l) % total_channels) != 0):
+            raise ValueError("partial frames are invalid")
+        list.__init__(self,l)
+        self.total_channels = total_channels
+
+    def __repr__(self):
+        return "FrameList(%s,%s)" % (list.__repr__(self),
+                                     repr(self.total_channels))
+
+    #returns a list of all samples in channel "i"
+    def channel(self, i):
+        if (i < self.total_channels):
+            return self[i::self.total_channels]
+        else:
+            raise IndexError("invalid channel number")
+
+    def channels(self):
+        for i in xrange(self.total_channels):
+            yield self.channel(i)
+
+    #returns a list of all samples at frame "i"
+    def frame(self, i):
+        return self[self.total_channels * i:self.total_channels * (i + 1)]
+
+    def total_frames(self):
+        return len(self) / self.total_channels
+
+    def frames(self):
+        for i in xrange(self.total_frames()):
+            yield self.frame(i)
+
+    #takes a list of PCM sample integers and number of channels
+    #returns a (FrameList,remaining_samples) tuple
+    @classmethod
+    def from_samples(cls, samples, channels):
+        remainder_count = len(samples) % channels
+        if (remainder_count != 0):
+            return (FrameList(samples[0:-remainder_count],channels),
+                    samples[-remainder_count:])
+        else:
+            return (FrameList(samples,channels),list())
+
+    #takes a list of channel lists, each containing PCM sample integers
+    #returns a FrameList with the appropriate number of channels
+    #all channel lists must be the same length
+    @classmethod
+    def from_channels(cls, channels):
+        import operator
+        
+        return FrameList(reduce(operator.concat,zip(*channels)),
+                         len(channels))
+
+    #takes a list of frame lists,
+    #each containing one PCM sample per channel
+    #returns a FrameList with the appropriate number of channels
+    @classmethod
+    def from_frames(cls, frames):
+        import operator
+
+        return FrameList(reduce(operator.concat,frames),
+                         len(frames[0]))
+
 #ensures all the directories leading to "destination_path" are created
 #if necessary
 def make_dirs(destination_path):
