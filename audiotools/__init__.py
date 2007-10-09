@@ -388,6 +388,13 @@ def pcm_split(reader, pcm_lengths):
     finally:
         full_data.close()
 
+
+def __random_bits__(count):
+    bytes = map(ord, os.urandom((count / 8) + 1))
+
+    return [(bytes[i / 8] & (1 << (i % 8))) >> (i % 8)
+            for i in xrange(count)]
+
 class PCMConverter(PCMReader):
     def __init__(self, pcmreader,
                  sample_rate, channels, bits_per_sample):
@@ -435,8 +442,10 @@ class PCMConverter(PCMReader):
         if (difference < 0):  #removing bits per sample
             bits_difference = 1 << (-difference)
             #return [i / bits_difference for i in pcm_samples]
-            for i in xrange(len(frame_list)):
-                frame_list[i] /= bits_difference
+
+            white_noise = __random_bits__(len(frame_list))
+            for (i,bit) in enumerate(white_noise):
+                frame_list[i] = (frame_list[i] / bits_difference) ^ bit
         else:                 #adding bits per sample
             bits_difference = 1 << difference
             #return [i * bits_difference for i in pcm_samples]
