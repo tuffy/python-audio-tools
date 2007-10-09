@@ -399,29 +399,68 @@ class PCMConverter(PCMReader):
         PCMReader.__init__(self,None, sample_rate, channels, bits_per_sample)
 
         self.bytes_per_sample = self.bits_per_sample / 8
-        self.conversions = []
+        
+        self.leftover_samples = []
 
+
+        self.conversions = []
         if (self.input.bits_per_sample != self.bits_per_sample):
             self.conversions.append(self.convert_bits_per_sample)
+
+        if (self.input.channels != self.channels):
+            self.conversions.append(self.convert_channels)
         
     def read(self, bytes):
-        pcm_samples = self.reader.read(bytes)
+        (frame_list,self.leftover_samples) = FrameList.from_samples(
+            self.leftover_samples + self.reader.read(bytes),
+            self.input.channels)
+        
         for converter in self.conversions:
-            pcm_samples = converter(pcm_samples)
-        return pcmstream.pcm_to_string(pcm_samples,self.bytes_per_sample)
+            frame_list = converter(frame_list)
+            
+        return pcmstream.pcm_to_string(frame_list,self.bytes_per_sample)
 
     def close(self):
         self.reader.close()
 
-    def convert_bits_per_sample(self, pcm_samples):
+    def convert_bits_per_sample(self, frame_list):
+        #This modifies the bytes of "frame_list" in-place
+        #rather than build a whole new array and return it.
+        #Since our chained converters will overwrite the old frame_list
+        #anyway, this should speed up the conversion without
+        #damaging anything.
+        #Just be careful when using this routine elsewhere.
+        
         difference = self.bits_per_sample - self.input.bits_per_sample
         if (difference < 0):  #removing bits per sample
             bits_difference = 1 << (-difference)
-            return [i / bits_difference for i in pcm_samples]
+            #return [i / bits_difference for i in pcm_samples]
+            for i in xrange(len(frame_list)):
+                frame_list[i] /= bits_difference
         else:                 #adding bits per sample
             bits_difference = 1 << difference
-            return [i * bits_difference for i in pcm_samples]
+            #return [i * bits_difference for i in pcm_samples]
+            for i in xrange(len(frame_list)):
+                frame_list[i] *= bits_difference
 
+        return frame_list
+
+    def convert_channels(self, frame_list):
+        difference = self.channels - self.input.channels
+
+        if (difference < 0): #removing channels
+            channels = []
+            for i in xrange(self.channels):
+                channels.append(frame_list.channel(i))
+            
+            return FrameList.from_channels(channels)
+        else:                #adding new channels
+            channels = list(frame_list.channels())
+            for i in xrange(difference):
+                channels.append(channels[0])
+
+            return FrameList.from_channels(channels)
+        
 class FrameList(list):
     #l should be a list-compatible collection of PCM integers
     #channels is how many channels there are per frame
@@ -435,7 +474,11 @@ class FrameList(list):
         self.total_channels = total_channels
 
     def __repr__(self):
-        return "FrameList(%s,%s)" % (list.__repr__(self),
+        l_repr = list.__repr__(self)
+        if (len(l_repr) > 20):
+            l_repr = l_repr[0:17] + "..."
+        
+        return "FrameList(%s,%s)" % (l_repr,
                                      repr(self.total_channels))
 
     #returns a list of all samples in channel "i"
@@ -476,10 +519,13 @@ class FrameList(list):
     #all channel lists must be the same length
     @classmethod
     def from_channels(cls, channels):
-        import operator
+        import operator,array
+
+        a = array.array('i',[])
+        for frame in zip(*channels):
+            a.extend(frame)
         
-        return FrameList(reduce(operator.concat,zip(*channels)),
-                         len(channels))
+        return FrameList(a.tolist(),len(channels))
 
     #takes a list of frame lists,
     #each containing one PCM sample per channel
