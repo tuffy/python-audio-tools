@@ -65,7 +65,7 @@ if (__name__ == '__main__'):
                                  os.path.join(path,preferred_filename)])
             renamed_files.append(os.path.join(path,preferred_filename))
 
-        if (AudioType.can_add_replay_gain()):
+        if (audiofiles[0].can_add_replay_gain()):
             print >>sys.stderr,"* Adding ReplayGain metadata.  This may take some time."
             audiofiles[0].add_replay_gain(renamed_files)
     else:
