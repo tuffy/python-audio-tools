@@ -207,7 +207,7 @@ def transfer_data(from_function, to_function):
 
 
 def threaded_transfer_data(from_function, to_function):
-    import thread,Queue
+    import threading,Queue
 
     def send_data(from_function, queue):
         s = from_function(BUFFER_SIZE)
@@ -217,7 +217,11 @@ def threaded_transfer_data(from_function, to_function):
         queue.put(None)
 
     data_queue = Queue.Queue(10)
-    thread.start_new_thread(send_data,(from_function,data_queue))
+    #thread.start_new_thread(send_data,(from_function,data_queue))
+    thread = threading.Thread(target=send_data,
+                              args=(from_function,data_queue))
+    thread.setDaemon(True)
+    thread.start()
     s = data_queue.get()
     while (s is not None):
         to_function(s)
@@ -389,12 +393,6 @@ def pcm_split(reader, pcm_lengths):
         full_data.close()
 
 
-def __random_bits__(count):
-    bytes = map(ord, os.urandom((count / 8) + 1))
-
-    return [(bytes[i / 8] & (1 << (i % 8))) >> (i % 8)
-            for i in xrange(count)]
-
 class PCMConverter(PCMReader):
     def __init__(self, pcmreader,
                  sample_rate, channels, bits_per_sample):
@@ -443,7 +441,11 @@ class PCMConverter(PCMReader):
             bits_difference = 1 << (-difference)
             #return [i / bits_difference for i in pcm_samples]
 
-            white_noise = __random_bits__(len(frame_list))
+
+            random_bytes = map(ord, os.urandom((len(frame_list) / 8) + 1))
+            white_noise = [(random_bytes[i / 8] & (1 << (i % 8))) >> (i % 8)
+                           for i in xrange(len(frame_list))]
+
             for (i,bit) in enumerate(white_noise):
                 frame_list[i] = (frame_list[i] / bits_difference) ^ bit
         else:                 #adding bits per sample
