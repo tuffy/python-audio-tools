@@ -441,10 +441,11 @@ class PCMConverter(PCMReader):
             bits_difference = 1 << (-difference)
             #return [i / bits_difference for i in pcm_samples]
 
-
+            #add some white noise when dithering the signal
+            #to make it sound better
             random_bytes = map(ord, os.urandom((len(frame_list) / 8) + 1))
             white_noise = [(random_bytes[i / 8] & (1 << (i % 8))) >> (i % 8)
-                           for i in xrange(len(frame_list))]
+                           for i in xrange(len(frame_list))][0:len(frame_list)]
 
             for (i,bit) in enumerate(white_noise):
                 frame_list[i] = (frame_list[i] / bits_difference) ^ bit
