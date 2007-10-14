@@ -539,33 +539,99 @@ static int Resampler_init(pcmstream_Resampler *self,
   return 0;
 }
 
+
+#define OUTPUT_SAMPLES_LENGTH 0x100000
+
 static PyObject *Resampler_process(pcmstream_Resampler* self, 
 				   PyObject *args) {
+  PyObject *samples_object;
   PyObject *samples_list;
+  int samples_list_size;
   double ratio;
   int last;
 
+  SRC_DATA src_data;
+  int processing_error;
+
+  static float data_out[OUTPUT_SAMPLES_LENGTH];
+
+  Py_ssize_t i,j;
+
+  PyObject *processed_samples;
+  PyObject *unprocessed_samples;
+
   /*grab (samples[],ratio,last) passed in from the method call*/
-  if (!PyArg_ParseTuple(args,"Odi",&samples_list,&ratio,&last))
+  if (!PyArg_ParseTuple(args,"Odi",&samples_object,&ratio,&last))
     return NULL;
 
-  /*turn samples_list into an array of floats*/
+  /*turn samples_object into a fast sequence*/
+  samples_list = PySequence_Fast(samples_object,
+				 "samples list must be a sequence");
+  if (samples_list == NULL) {
+    Py_XDECREF(samples_object);
+    return NULL;
+  }
 
+  samples_list_size = PySequence_Fast_GET_SIZE(samples_list);
+
+  /*ensure that samples_list is all floats*/
+  for (i = 0; i < samples_list_size; i++) {
+    if (!PyFloat_Check(PySequence_Fast_GET_ITEM(samples_list,i))) {
+      Py_XDECREF(samples_object);
+      Py_XDECREF(samples_list);
+      PyErr_SetString(PyExc_ValueError,
+		    "samples must be floating point numbers");
+      return NULL;
+    }
+  }
 
   /*build SRC_DATA from our inputs*/
+  src_data.data_in = (float *)malloc(samples_list_size * sizeof(float));
+  src_data.data_out = data_out;
+  src_data.input_frames = samples_list_size / self->channels;
+  src_data.output_frames = OUTPUT_SAMPLES_LENGTH / self->channels;
+  src_data.end_of_input = last;
+  src_data.src_ratio = ratio;
+
+  for (i = 0; i < samples_list_size; i++)
+    src_data.data_in[i] = (float)PyFloat_AS_DOUBLE(PySequence_Fast_GET_ITEM(samples_list,i));
 
 
   /*run src_process() on our self->SRC_STATE and SRC_DATA*/
-
+  if ((processing_error = src_process(self->src_state,&src_data)) != 0) {
+    /*some sort of processing error raises ValueError*/
+    Py_XDECREF(samples_object);
+    Py_XDECREF(samples_list);
+    free(src_data.data_in);
+    
+    PyErr_SetString(PyExc_ValueError,
+		    src_strerror(processing_error));
+    return NULL;
+  }
 
   /*turn our processed and unprocessed data into two arrays*/
+  processed_samples = PyList_New((Py_ssize_t)src_data.output_frames_gen *
+				 self->channels);
+  unprocessed_samples = PyList_New((Py_ssize_t)((src_data.input_frames - src_data.input_frames_used) * self->channels));
+  
+  for (i = 0; i < src_data.output_frames_gen * self->channels; i++) {
+    PyList_SET_ITEM(processed_samples,i,
+		    PyFloat_FromDouble((double)src_data.data_out[i]));
+  }
 
-
+  for (i = src_data.input_frames_used * self->channels,j=0;
+       i < (src_data.input_frames * self->channels);
+       i++,j++) {
+    PyList_SET_ITEM(unprocessed_samples,j,
+		    PyFloat_FromDouble((double)src_data.data_in[i]));
+  }
+  
   /*cleanup anything allocated*/
+  Py_XDECREF(samples_object);
   Py_XDECREF(samples_list);
+  free(src_data.data_in);
 
   /*return those two arrays as a tuple*/
 
-  Py_INCREF(Py_None);
-  return Py_None;
+  return Py_BuildValue("(O,O)",processed_samples,unprocessed_samples);
 }
