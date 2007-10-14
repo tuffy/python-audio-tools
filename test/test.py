@@ -161,6 +161,7 @@ LX2XGaVMFD/bpIUciHA6duwYTrDP+WF3Tw+oB3pIJEGxJElMTNyRpOVOHNQOLdAIua7h1E3e5wzq
 pVKBaLKBkckKuZiDiJeHLemVfitxzVa5OAq9TF+9fRpy1RQyBP21/9fU0LTmbz+vmv6GCYYroD86
 Q/8LeyX0e/ZK6M+w/z9h5ahFWOF6xsYTVuUy8O8BsbVytHx43PPKPwEw98Hh""".decode('base64').decode('zlib')
 
+#this is an insane amount of different PCM combinations
 PCM_COMBINATIONS = (
     (11025, 1, 8), (22050, 1, 8), (32000, 1, 8),  (44100, 1, 8),
     (48000, 1, 8), (96000, 1, 8), (192000, 1, 8), (11025, 2, 8),
@@ -178,6 +179,11 @@ PCM_COMBINATIONS = (
     (44100, 2, 24),(48000, 2, 24),(96000, 2, 24), (192000, 2, 24),
     (11025, 6, 24),(22050, 6, 24),(32000, 6, 24), (44100, 6, 24),
     (48000, 6, 24),(96000, 6, 24),(192000, 6, 24))
+
+#these are combinations that tend to occur in nature
+SHORT_PCM_COMBINATIONS = ((22050, 1, 8),  (22050, 1, 16), 
+                          (44100, 1, 16), (44100, 2, 16), 
+                          (192000, 2, 24),(96000, 6, 24))
 
 class DummyMetaData3(audiotools.ImageMetaData,audiotools.MetaData):
     def __init__(self):
@@ -699,7 +705,7 @@ class TestPCMConversion(unittest.TestCase):
         self.tempwav.close()
 
     def testconversions(self):
-        for (input,output) in Combinations(PCM_COMBINATIONS,2):
+        for (input,output) in Combinations(SHORT_PCM_COMBINATIONS,2):
             #print >>sys.stderr,repr(input),repr(output)
             reader = BLANK_PCM_Reader(5,
                                       sample_rate=input[0],
