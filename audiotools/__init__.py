@@ -414,6 +414,11 @@ class PCMConverter(PCMReader):
 
         if (self.input.channels != self.channels):
             self.conversions.append(self.convert_channels)
+
+        if (self.input.sample_rate != self.sample_rate):
+            self.resampler = pcmstream.Resampler(self.channels)
+            self.unresampled = []
+            self.conversions.append(self.convert_sample_rate)
         
     def read(self, bytes):
         (frame_list,self.leftover_samples) = FrameList.from_samples(
@@ -472,7 +477,18 @@ class PCMConverter(PCMReader):
                 channels.append(channels[0])
 
             return FrameList.from_channels(channels)
-        
+
+    def convert_sample_rate(self, frame_list):
+        (output,self.unresampled) = self.resampler.process(
+            self.unresampled + [float(s) / (1 << (self.bits_per_sample - 1))
+                                for s in frame_list],
+            float(self.sample_rate) / float(self.input.sample_rate),
+            (len(frame_list) == 0) and (len(self.unresampled) == 0))
+
+        return [int(s * (1 << (self.bits_per_sample - 1)))
+                for s in output]
+
+
 class FrameList(list):
     #l should be a list-compatible collection of PCM integers
     #channels is how many channels there are per frame
