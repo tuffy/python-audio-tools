@@ -377,6 +377,7 @@ static PyObject *Resampler_process(pcmstream_Resampler* self,
 
   PyObject *processed_samples;
   PyObject *unprocessed_samples;
+  PyObject *toreturn;
 
   /*grab (samples[],ratio,last) passed in from the method call*/
   if (!PyArg_ParseTuple(args,"Odi",&samples_object,&ratio,&last))
@@ -451,5 +452,8 @@ static PyObject *Resampler_process(pcmstream_Resampler* self,
 
   /*return those two arrays as a tuple*/
 
-  return Py_BuildValue("(O,O)",processed_samples,unprocessed_samples);
+  toreturn = Py_BuildValue("(O,O)",processed_samples,unprocessed_samples);
+  Py_DECREF(processed_samples);
+  Py_DECREF(unprocessed_samples);
+  return toreturn;
 }

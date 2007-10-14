@@ -25,6 +25,16 @@ import cStringIO
 import unittest
 import decimal as D
 
+#probstat does this better, but I don't want to require that
+#for something used only rarely
+def Combinations(items, n):
+    if (n == 0):
+        yield []
+    else:
+        for i in xrange(len(items)):
+            for combos in Combinations(items[i + 1:], n - 1):
+                yield [items[i]] + combos
+
 class BLANK_PCM_Reader:
     #length is the total length of this PCM stream, in seconds
     def __init__(self, length,
@@ -681,7 +691,32 @@ class TestFlacComment(unittest.TestCase):
     def tearDown(self):
         self.file.close()
 
+class TestPCMConversion(unittest.TestCase):
+    def setUp(self):
+        self.tempwav = tempfile.NamedTemporaryFile(suffix=".wav")
 
+    def tearDown(self):
+        self.tempwav.close()
+
+    def testconversions(self):
+        for (input,output) in Combinations(PCM_COMBINATIONS,2):
+            #print >>sys.stderr,repr(input),repr(output)
+            reader = BLANK_PCM_Reader(5,
+                                      sample_rate=input[0],
+                                      channels=input[1],
+                                      bits_per_sample=input[2])
+            converter = audiotools.PCMConverter(reader,
+                                                sample_rate=output[0],
+                                                channels=output[1],
+                                                bits_per_sample=output[2])
+            wave = audiotools.WaveAudio.from_pcm(self.tempwav.name,converter)
+            converter.close()
+
+            self.assertEqual(wave.sample_rate(),output[0])
+            self.assertEqual(wave.channels(),output[1])
+            self.assertEqual(wave.bits_per_sample(),output[2])
+            self.assertEqual((D.Decimal(wave.length()) / 75).to_integral(),
+                             5)
         
 if (__name__ == '__main__'):
     unittest.main()
