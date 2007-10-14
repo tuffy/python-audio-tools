@@ -29,8 +29,7 @@ bitstreammodule = Extension('audiotools.bitstream',
                             sources = ['src/bitstream.c'])
 
 pcmstreammodule = Extension('audiotools.pcmstream',
-                            sources = ['src/pcmstream.c'],
-                            libraries = ['samplerate'])
+                            sources = ['src/pcmstream.c'])
 
 setup (name = 'Python Audio Tools',
        version = '2.4',

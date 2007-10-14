@@ -1,5 +1,5 @@
 #include <Python.h>
-#include "samplerate.h"
+#include "samplerate/samplerate.h"
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -21,6 +21,7 @@
  *******************************************************/
 
 #include "pcmstream.h"
+#include "samplerate/samplerate.c"
 
 PyMODINIT_FUNC initpcmstream(void) {
     PyObject* m;
