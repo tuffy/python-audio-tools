@@ -454,17 +454,6 @@ class PCMConverter(PCMReader):
         #Just be careful when using this routine elsewhere.
         
         difference = self.bits_per_sample - self.input.bits_per_sample
-
-        #8-bit samples are unsigned, all else are signed
-        if (self.input.bits_per_sample == 8):
-            input_offset = 1 << 7
-        else:
-            input_offset = 0
-
-        if (self.bits_per_sample == 8):
-            output_offset = 1 << 7
-        else:
-            output_offset = 0
         
         if (difference < 0):   #removing bits per sample
             bits_difference = 1 << (-difference)
@@ -479,12 +468,12 @@ class PCMConverter(PCMReader):
                 white_noise = [0] * len(frame_list)
                 
             for (i,bit) in enumerate(white_noise):
-                frame_list[i] = (((frame_list[i] - input_offset) / bits_difference) + output_offset) ^ bit
+                frame_list[i] = (frame_list[i] / bits_difference) ^ bit
         elif (difference > 0): #adding bits per sample
             bits_difference = 1 << difference
             
             for i in xrange(len(frame_list)):
-                frame_list[i] = ((frame_list[i] - input_offset) * bits_difference) + output_offset
+                frame_list[i] = (frame_list[i] * bits_difference)
 
         return frame_list
 
@@ -519,25 +508,13 @@ class PCMConverter(PCMReader):
 
     #though this method name is huge, it is also unambiguous
     def convert_sample_rate_and_bits_per_sample(self, frame_list):
-        #8 bits-per-sample are unsigned, all else are signed
-        if (self.input.bits_per_sample != 8):
-            input_offset = 0.0
-        else:
-            input_offset = 1.0
-
-        if (self.bits_per_sample != 8):
-            output_offset = 0.0
-        else:
-            output_offset = 1.0
-
         divider = 1 << (self.input.bits_per_sample - 1)
         multiplier = 1 << (self.bits_per_sample - 1)
 
         #turn our PCM samples into floats and resample them,
         #which removes bits-per-sample
         (output,self.unresampled) = self.resampler.process(
-            self.unresampled + [(float(s) / divider) - input_offset
-                                for s in frame_list],
+            self.unresampled + [(float(s) / divider) for s in frame_list],
             (len(frame_list) == 0) and (len(self.unresampled) == 0))
 
         frame_list = FrameList(output,frame_list.total_channels)
@@ -554,10 +531,10 @@ class PCMConverter(PCMReader):
                 white_noise = [0] * len(frame_list)
                 
             for (i,bit) in enumerate(white_noise):
-                frame_list[i] = int((frame_list[i] + output_offset) * multiplier) ^ bit
+                frame_list[i] = int(frame_list[i] * multiplier) ^ bit
         else:                 
             for i in xrange(len(frame_list)):
-                frame_list[i] = int((frame_list[i] + output_offset) * multiplier)
+                frame_list[i] = int(frame_list[i] * multiplier)
 
         return frame_list
 
