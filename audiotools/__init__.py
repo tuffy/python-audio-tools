@@ -454,25 +454,37 @@ class PCMConverter(PCMReader):
         #Just be careful when using this routine elsewhere.
         
         difference = self.bits_per_sample - self.input.bits_per_sample
+
+        #8-bit samples are unsigned, all else are signed
+        if (self.input.bits_per_sample == 8):
+            input_offset = 1 << 7
+        else:
+            input_offset = 0
+
+        if (self.bits_per_sample == 8):
+            output_offset = 1 << 7
+        else:
+            output_offset = 0
+        
         if (difference < 0):  #removing bits per sample
             bits_difference = 1 << (-difference)
-            #for (i,bit) in enumerate(frame_list):
-            #    frame_list[i] /= bits_difference
-            #return [i / bits_difference for i in frame_list]
 
             #add some white noise when dithering the signal
-            #to make it sound better
-            random_bytes = map(ord, os.urandom((len(frame_list) / 8) + 1))
-            white_noise = [(random_bytes[i / 8] & (1 << (i % 8))) >> (i % 8)
-                           for i in xrange(len(frame_list))][0:len(frame_list)]
-
+            #to make it sound better, assuming we have at least 16 bits
+            if (self.bits_per_sample >= 16):
+                random_bytes = map(ord, os.urandom((len(frame_list) / 8) + 1))
+                white_noise = [(random_bytes[i / 8] & (1 << (i % 8))) >> (i % 8)
+                               for i in xrange(len(frame_list))][0:len(frame_list)]
+            else:
+                white_noise = [0] * len(frame_list)
+                
             for (i,bit) in enumerate(white_noise):
-                frame_list[i] = (frame_list[i] / bits_difference) ^ bit
+                frame_list[i] = (((frame_list[i] - input_offset) / bits_difference) + output_offset) ^ bit
         else:                 #adding bits per sample
             bits_difference = 1 << difference
-            #return [i * bits_difference for i in pcm_samples]
+            
             for i in xrange(len(frame_list)):
-                frame_list[i] *= bits_difference
+                frame_list[i] = ((frame_list[i] - input_offset) * bits_difference) + output_offset
 
         return frame_list
 
@@ -507,13 +519,26 @@ class PCMConverter(PCMReader):
 
     #though this method name is huge, it is also unambiguous
     def convert_sample_rate_and_bits_per_sample(self, frame_list):
+        #8 bits-per-sample are unsigned, all else are signed
+        if (self.input.bits_per_sample != 8):
+            input_offset = 0.0
+        else:
+            input_offset = 1.0
+
+        if (self.bits_per_sample != 8):
+            output_offset = 0.0
+        else:
+            #multiplier = 1 << (self.bits_per_sample - 1)
+            output_offset = 1.0
+
         divider = 1 << (self.input.bits_per_sample - 1)
         multiplier = 1 << (self.bits_per_sample - 1)
 
-        #turn our PCM smaples into floats and resample them,
+        #turn our PCM samples into floats and resample them,
         #which removes bits-per-sample
         (output,self.unresampled) = self.resampler.process(
-            self.unresampled + [float(s) / divider for s in frame_list],
+            self.unresampled + [(float(s) / divider) - input_offset
+                                for s in frame_list],
             (len(frame_list) == 0) and (len(self.unresampled) == 0))
 
         frame_list = FrameList(output,frame_list.total_channels)
@@ -527,10 +552,10 @@ class PCMConverter(PCMReader):
                            for i in xrange(len(frame_list))][0:len(frame_list)]
 
             for (i,bit) in enumerate(white_noise):
-                frame_list[i] = int(frame_list[i] * multiplier) ^ bit
+                frame_list[i] = int((frame_list[i] + output_offset) * multiplier) ^ bit
         else:                 
             for i in xrange(len(frame_list)):
-                frame_list[i] = int(frame_list[i] * multiplier)
+                frame_list[i] = int((frame_list[i] + output_offset) * multiplier)
 
         return frame_list
 
