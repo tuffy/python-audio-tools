@@ -347,12 +347,14 @@ static int Resampler_init(pcmstream_Resampler *self,
 			  PyObject *args, PyObject *kwds) {
   int error;
   int channels;
+  double ratio;
 
-  if (!PyArg_ParseTuple(args, "i", &channels))
+  if (!PyArg_ParseTuple(args, "id", &channels, &ratio))
     return -1;
 
   self->src_state = src_new(0,channels,&error);
   self->channels = channels;
+  self->ratio = ratio;
 
   return 0;
 }
@@ -365,7 +367,6 @@ static PyObject *Resampler_process(pcmstream_Resampler* self,
   PyObject *samples_object;
   PyObject *samples_list;
   int samples_list_size;
-  double ratio;
   int last;
 
   SRC_DATA src_data;
@@ -379,8 +380,8 @@ static PyObject *Resampler_process(pcmstream_Resampler* self,
   PyObject *unprocessed_samples;
   PyObject *toreturn;
 
-  /*grab (samples[],ratio,last) passed in from the method call*/
-  if (!PyArg_ParseTuple(args,"Odi",&samples_object,&ratio,&last))
+  /*grab (samples[],last) passed in from the method call*/
+  if (!PyArg_ParseTuple(args,"Oi",&samples_object,&last))
     return NULL;
 
   /*turn samples_object into a fast sequence*/
@@ -410,7 +411,7 @@ static PyObject *Resampler_process(pcmstream_Resampler* self,
   src_data.input_frames = samples_list_size / self->channels;
   src_data.output_frames = OUTPUT_SAMPLES_LENGTH / self->channels;
   src_data.end_of_input = last;
-  src_data.src_ratio = ratio;
+  src_data.src_ratio = self->ratio;
 
   for (i = 0; i < samples_list_size; i++)
     src_data.data_in[i] = (float)PyFloat_AS_DOUBLE(PySequence_Fast_GET_ITEM(samples_list,i));

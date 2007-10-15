@@ -50,6 +50,7 @@ typedef struct {
   PyObject_HEAD
   SRC_STATE *src_state;
   int channels;
+  double ratio;
 } pcmstream_Resampler;
 
 static void Resampler_dealloc(pcmstream_Resampler* self);

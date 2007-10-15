@@ -416,7 +416,10 @@ class PCMConverter(PCMReader):
             self.conversions.append(self.convert_channels)
 
         if (self.input.sample_rate != self.sample_rate):
-            self.resampler = pcmstream.Resampler(self.channels)
+            self.resampler = pcmstream.Resampler(
+                self.channels,
+                float(self.sample_rate) / float(self.input.sample_rate))
+            
             self.unresampled = []
             self.conversions.append(self.convert_sample_rate)
         
@@ -444,7 +447,9 @@ class PCMConverter(PCMReader):
         difference = self.bits_per_sample - self.input.bits_per_sample
         if (difference < 0):  #removing bits per sample
             bits_difference = 1 << (-difference)
-            #return [i / bits_difference for i in pcm_samples]
+            #for (i,bit) in enumerate(frame_list):
+            #    frame_list[i] /= bits_difference
+            #return [i / bits_difference for i in frame_list]
 
             #add some white noise when dithering the signal
             #to make it sound better
@@ -482,12 +487,14 @@ class PCMConverter(PCMReader):
         (output,self.unresampled) = self.resampler.process(
             self.unresampled + [float(s) / (1 << (self.bits_per_sample - 1))
                                 for s in frame_list],
-            float(self.sample_rate) / float(self.input.sample_rate),
             (len(frame_list) == 0) and (len(self.unresampled) == 0))
 
-        return [int(s * (1 << (self.bits_per_sample - 1)))
-                for s in output]
+        multiplier = (1 << (self.bits_per_sample - 1))
+        
+        for (i,f) in enumerate(output):
+            output[i] = int(f * multiplier)
 
+        return output
 
 class FrameList(list):
     #l should be a list-compatible collection of PCM integers
