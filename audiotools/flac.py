@@ -308,12 +308,8 @@ class FlacReader:
         
             
         #try to byte-align the stream
-        if (callable(self.bitstream.buffer)):
-            if (len(self.bitstream.buffer()) > 0):
-                self.bitstream.read(len(self.bitstream.buffer()))
-        else:
-            if (len(self.bitstream.buffer) > 0):
-                self.bitstream.read(len(self.bitstream.buffer))
+        if (len(self.bitstream.buffer) > 0):
+            self.bitstream.read(len(self.bitstream.buffer))
 
 
         if (crc16sum != Con.Bits('crc16',16).parse_stream(self.bitstream)):

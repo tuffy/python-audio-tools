@@ -57,7 +57,8 @@ static PyObject *BitStreamReader_read(bitstream_BitStreamReader* self,
 static PyObject *BitStreamReader_ungetc(bitstream_BitStreamReader* self,
 					PyObject *args);
 
-static PyObject *BitStreamReader_buffer(bitstream_BitStreamReader* self);
+static PyObject *BitStreamReader_buffer(bitstream_BitStreamReader* self,
+					void *closure);
 
 char *remaining_bits(bitstream_BitStreamReader *reader);
 int remaining_bits_length(bitstream_BitStreamReader *reader);
@@ -77,13 +78,19 @@ static PyMethodDef BitStreamReader_methods[] = {
    METH_VARARGS | METH_KEYWORDS,"Seeks to a new position in the substream"},
   {"read", (PyCFunction)BitStreamReader_read,
    METH_VARARGS,"Reads the given number of bits from the substream"},
-  {"buffer", (PyCFunction)BitStreamReader_buffer,
-   METH_NOARGS, "Gets the current bit buffer as a string"},
   {"ungetc", (PyCFunction)BitStreamReader_ungetc,
    METH_VARARGS,"Pushes a single bit character back into the stream"},
   {NULL}
 };
 
+
+static PyGetSetDef BitStreamReader_getseters[] = {
+    {"buffer", 
+     (getter)BitStreamReader_buffer, 0,
+     "buffer string",
+     NULL},
+    {NULL}  /* Sentinel */
+};
 
 static PyTypeObject bitstream_BitStreamReaderType = {
     PyObject_HEAD_INIT(NULL)
@@ -116,7 +123,7 @@ static PyTypeObject bitstream_BitStreamReaderType = {
     0,		               /* tp_iternext */
     BitStreamReader_methods,   /* tp_methods */
     0,                         /* tp_members */
-    0,                         /* tp_getset */
+    BitStreamReader_getseters, /* tp_getset */
     0,                         /* tp_base */
     0,                         /* tp_dict */
     0,                         /* tp_descr_get */
@@ -205,7 +212,8 @@ static PyObject *BitStreamReader_seek(bitstream_BitStreamReader* self,
 			     position, whence);
 }
 
-static PyObject *BitStreamReader_buffer(bitstream_BitStreamReader* self) {
+static PyObject *BitStreamReader_buffer(bitstream_BitStreamReader* self,
+					void *closure) {
   return PyString_FromStringAndSize(remaining_bits(self),
 				    remaining_bits_length(self));
 }
