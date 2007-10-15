@@ -466,7 +466,7 @@ class PCMConverter(PCMReader):
         else:
             output_offset = 0
         
-        if (difference < 0):  #removing bits per sample
+        if (difference < 0):   #removing bits per sample
             bits_difference = 1 << (-difference)
 
             #add some white noise when dithering the signal
@@ -480,7 +480,7 @@ class PCMConverter(PCMReader):
                 
             for (i,bit) in enumerate(white_noise):
                 frame_list[i] = (((frame_list[i] - input_offset) / bits_difference) + output_offset) ^ bit
-        else:                 #adding bits per sample
+        elif (difference > 0): #adding bits per sample
             bits_difference = 1 << difference
             
             for i in xrange(len(frame_list)):
@@ -528,7 +528,6 @@ class PCMConverter(PCMReader):
         if (self.bits_per_sample != 8):
             output_offset = 0.0
         else:
-            #multiplier = 1 << (self.bits_per_sample - 1)
             output_offset = 1.0
 
         divider = 1 << (self.input.bits_per_sample - 1)
@@ -547,10 +546,13 @@ class PCMConverter(PCMReader):
         if (self.bits_per_sample - self.input.bits_per_sample < 0):
             #add some white noise when dithering the signal
             #to make it sound better
-            random_bytes = map(ord, os.urandom((len(frame_list) / 8) + 1))
-            white_noise = [(random_bytes[i / 8] & (1 << (i % 8))) >> (i % 8)
-                           for i in xrange(len(frame_list))][0:len(frame_list)]
-
+            if (self.bits_per_sample >= 16):
+                random_bytes = map(ord, os.urandom((len(frame_list) / 8) + 1))
+                white_noise = [(random_bytes[i / 8] & (1 << (i % 8))) >> (i % 8)
+                               for i in xrange(len(frame_list))][0:len(frame_list)]
+            else:
+                white_noise = [0] * len(frame_list)
+                
             for (i,bit) in enumerate(white_noise):
                 frame_list[i] = int((frame_list[i] + output_offset) * multiplier) ^ bit
         else:                 
