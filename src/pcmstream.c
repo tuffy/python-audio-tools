@@ -411,8 +411,7 @@ static PyObject *Resampler_process(pcmstream_Resampler* self,
 
 
   /*ensure samples_object is a sequence and turn it into a fast sequence*/
-  if (!PySequence_Check(samples_object)) {
-    fprintf(stderr,"not a sequence error\n");
+  if ((!PySequence_Check(samples_object)) || (PyString_Check(samples_object))) {
     PyErr_SetString(PyExc_TypeError,
 		    "samples must be a sequence");
     
@@ -453,8 +452,8 @@ static PyObject *Resampler_process(pcmstream_Resampler* self,
   for (i = 0; i < samples_list_size; i++) {
     sample = PySequence_Fast_GET_ITEM(samples_object,i);
 
-    if (PyFloat_CheckExact(sample)) {
-      src_data.data_in[i] = (float)PyFloat_AS_DOUBLE(sample);
+    if (PyFloat_Check(sample)) {
+      src_data.data_in[i] = (float)PyFloat_AsDouble(sample);
     } else {
       /*our sample isn't a float*/
       Py_XDECREF(samples_list);
