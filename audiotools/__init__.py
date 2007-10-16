@@ -30,6 +30,7 @@ import os
 import os.path
 import ConfigParser
 import struct
+from itertools import izip
 
 try:
     import construct as Con
@@ -456,24 +457,25 @@ class PCMConverter(PCMReader):
         difference = self.bits_per_sample - self.input.bits_per_sample
         
         if (difference < 0):   #removing bits per sample
-            bits_difference = 1 << (-difference)
+            bits_difference = -difference
 
             #add some white noise when dithering the signal
             #to make it sound better, assuming we have at least 16 bits
-            if (self.bits_per_sample >= 16):
+            if (self.bits_per_sample == 0):
                 random_bytes = map(ord, os.urandom((len(frame_list) / 8) + 1))
                 white_noise = [(random_bytes[i / 8] & (1 << (i % 8))) >> (i % 8)
-                               for i in xrange(len(frame_list))][0:len(frame_list)]
+                               for i in xrange(len(frame_list))]
             else:
                 white_noise = [0] * len(frame_list)
                 
-            for (i,bit) in enumerate(white_noise):
-                frame_list[i] = (frame_list[i] / bits_difference) ^ bit
+
+            return [(s >> bits_difference) ^ w for (s,w) in izip(frame_list,
+                                                                 white_noise)]
+
         elif (difference > 0): #adding bits per sample
-            bits_difference = 1 << difference
-            
-            for i in xrange(len(frame_list)):
-                frame_list[i] = (frame_list[i] * bits_difference)
+            bits_difference = difference
+
+            return [(s << bits_difference) for s in frame_list]
 
         return frame_list
 
@@ -526,15 +528,16 @@ class PCMConverter(PCMReader):
             if (self.bits_per_sample >= 16):
                 random_bytes = map(ord, os.urandom((len(frame_list) / 8) + 1))
                 white_noise = [(random_bytes[i / 8] & (1 << (i % 8))) >> (i % 8)
-                               for i in xrange(len(frame_list))][0:len(frame_list)]
+                               for i in xrange(len(frame_list))]
             else:
                 white_noise = [0] * len(frame_list)
-                
-            for (i,bit) in enumerate(white_noise):
-                frame_list[i] = int(frame_list[i] * multiplier) ^ bit
-        else:                 
-            for i in xrange(len(frame_list)):
-                frame_list[i] = int(frame_list[i] * multiplier)
+            
+            return [int(s * multiplier) ^ w for (s,w) in izip(frame_list,
+                                                              white_noise)]
+
+        else:
+            return [int(s * multiplier) for s in frame_list]
+
 
         return frame_list
 
