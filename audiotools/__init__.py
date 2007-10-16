@@ -428,9 +428,9 @@ class PCMConverter(PCMReader):
             else:
                 self.conversions.append(self.convert_sample_rate)
         
-        if ((self.input.sample_rate == self.sample_rate)
-            and (self.input.bits_per_sample != self.bits_per_sample)):
-            self.conversions.append(self.convert_bits_per_sample)
+        else:
+            if (self.input.bits_per_sample != self.bits_per_sample):
+                self.conversions.append(self.convert_bits_per_sample)
         
         
     def read(self, bytes):
@@ -602,7 +602,7 @@ class FrameList(list):
         import operator,array
 
         a = array.array('i',[])
-        for frame in zip(*channels):
+        for frame in izip(*channels):
             a.extend(frame)
         
         return FrameList(a.tolist(),len(channels))
