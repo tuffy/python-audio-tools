@@ -503,7 +503,7 @@ class PCMConverter(PCMReader):
             self.unresampled + [float(s) / divider for s in frame_list],
             (len(frame_list) == 0) and (len(self.unresampled) == 0))
         
-        return [int(s * multiplier) for s in output]
+        return [int(round(s * multiplier)) for s in output]
 
 
     #though this method name is huge, it is also unambiguous
@@ -530,11 +530,11 @@ class PCMConverter(PCMReader):
             else:
                 white_noise = [0] * len(frame_list)
             
-            return [int(s * multiplier) ^ w for (s,w) in izip(frame_list,
-                                                              white_noise)]
+            return [int(round(s * multiplier)) ^ w
+                    for (s,w) in izip(frame_list,white_noise)]
 
         else:
-            return [int(s * multiplier) for s in frame_list]
+            return [int(round(s * multiplier)) for s in frame_list]
 
 
         return frame_list
