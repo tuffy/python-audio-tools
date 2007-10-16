@@ -388,7 +388,7 @@ static int Resampler_init(pcmstream_Resampler *self,
 static PyObject *Resampler_process(pcmstream_Resampler* self, 
 				   PyObject *args) {
   PyObject *samples_object;
-  /*PyObject *samples_list;*/
+  PyObject *samples_list;
   int samples_list_size;
   int last;
 
@@ -410,23 +410,29 @@ static PyObject *Resampler_process(pcmstream_Resampler* self,
     return NULL;
 
 
-  /*ensure samples_object is a sequence*/
+  /*ensure samples_object is a sequence and turn it into a fast sequence*/
   if (!PySequence_Check(samples_object)) {
+    fprintf(stderr,"not a sequence error\n");
     PyErr_SetString(PyExc_TypeError,
 		    "samples must be a sequence");
+    
     Py_XDECREF(samples_object);
     return NULL;
   }
+  
+  samples_list = PySequence_Fast(samples_object,
+				 "samples must be a sequence");
+  if (samples_list == NULL) {
+    Py_XDECREF(samples_object);
+    return NULL;
+  }
+    
+
+  Py_DECREF(samples_object);
 
 
   /*grab the size of samples_object*/
-  samples_list_size = PySequence_Size(samples_object);
-  if (samples_list_size == -1) {
-    PyErr_SetString(PyExc_ValueError,
-		    "samples list must have a valid length");
-    Py_XDECREF(samples_object);
-    return NULL;
-  }
+  samples_list_size = PySequence_Fast_GET_SIZE(samples_list);
 
 
   /*build SRC_DATA from our inputs*/
@@ -434,7 +440,7 @@ static PyObject *Resampler_process(pcmstream_Resampler* self,
 
   if (src_data.data_in == NULL) {
     PyErr_SetString(PyExc_MemoryError,"out of memory");
-    Py_XDECREF(samples_object);
+    Py_XDECREF(samples_list);
     return NULL;
   }
 
@@ -445,31 +451,23 @@ static PyObject *Resampler_process(pcmstream_Resampler* self,
   src_data.src_ratio = self->ratio;
 
   for (i = 0; i < samples_list_size; i++) {
-    sample = PySequence_ITEM(samples_object,i);
+    sample = PySequence_Fast_GET_ITEM(samples_object,i);
 
-    if (sample == NULL) {
-      /*IndexError trying to get item "i"*/
-      Py_DECREF(samples_object);
-      return NULL;
+    if (PyFloat_CheckExact(sample)) {
+      src_data.data_in[i] = (float)PyFloat_AS_DOUBLE(sample);
     } else {
-      if (PyFloat_Check(sample)) {
-	src_data.data_in[i] = (float)PyFloat_AS_DOUBLE(sample);
-	Py_DECREF(sample);
-      } else {
-	/*our sample isn't a float*/
-	Py_DECREF(samples_object);
-	Py_DECREF(sample);
-	PyErr_SetString(PyExc_ValueError,
-			"samples must be floating point numbers");
-	return NULL;
-      }
+      /*our sample isn't a float*/
+      Py_XDECREF(samples_list);
+      PyErr_SetString(PyExc_ValueError,
+		      "samples must be floating point numbers");
+      return NULL;
     }
   }
 
 
-  /*now that we've transferred everything from samples_object to src_data,
-    we no longer need samples_object*/
-  Py_DECREF(samples_object);
+  /*now that we've transferred everything from samples_list to src_data,
+    we no longer need samples_list*/
+  Py_DECREF(samples_list);
 
 
   /*run src_process() on our self->SRC_STATE and SRC_DATA*/
