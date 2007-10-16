@@ -347,10 +347,22 @@ static int Resampler_init(pcmstream_Resampler *self,
 			  PyObject *args, PyObject *kwds) {
   int error;
   int channels;
+  int quality;
   double ratio;
 
-  if (!PyArg_ParseTuple(args, "id", &channels, &ratio))
+  if (!PyArg_ParseTuple(args, "idi", &channels, &ratio, &quality))
     return -1;
+
+  if (channels < 1) {
+    PyErr_SetString(PyExc_ValueError,
+		    "channel count must be greater than 1");
+    return -1;
+  }
+  if ((quality < 0) || (quality > 4)) {
+    PyErr_SetString(PyExc_ValueError,
+		    "quality must be between 0 and 4");
+    return -1;
+  }
 
   self->src_state = src_new(0,channels,&error);
   self->channels = channels;
