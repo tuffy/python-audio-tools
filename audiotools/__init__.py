@@ -496,17 +496,15 @@ class PCMConverter(PCMReader):
             return FrameList.from_channels(channels)
 
     def convert_sample_rate(self, frame_list):
-        (output,self.unresampled) = self.resampler.process(
-            self.unresampled + [float(s) / (1 << (self.bits_per_sample - 1))
-                                for s in frame_list],
-            (len(frame_list) == 0) and (len(self.unresampled) == 0))
-
-        multiplier = (1 << (self.bits_per_sample - 1))
+        divider = 1 << (self.input.bits_per_sample - 1)
+        multiplier = 1 << (self.bits_per_sample - 1)
         
-        for (i,f) in enumerate(output):
-            output[i] = int(f * multiplier)
+        (output,self.unresampled) = self.resampler.process(
+            self.unresampled + [float(s) / divider for s in frame_list],
+            (len(frame_list) == 0) and (len(self.unresampled) == 0))
+        
+        return [int(s * multiplier) for s in output]
 
-        return output
 
     #though this method name is huge, it is also unambiguous
     def convert_sample_rate_and_bits_per_sample(self, frame_list):
@@ -599,13 +597,18 @@ class FrameList(list):
     #all channel lists must be the same length
     @classmethod
     def from_channels(cls, channels):
-        import operator,array
+        import operator
 
-        a = array.array('i',[])
-        for frame in izip(*channels):
-            a.extend(frame)
+        if ((len(channels) > 1) and not reduce(operator.eq,map(len,channels))):
+            raise ValueError("all channels must be the same length")
+
+        data = [None] * len(channels) * len(channels[0])
+
+        for (i,c) in enumerate(channels):
+            data[i::len(channels)] = c
+            
+        return FrameList(data,len(channels))
         
-        return FrameList(a.tolist(),len(channels))
 
     #takes a list of frame lists,
     #each containing one PCM sample per channel

@@ -294,10 +294,7 @@ static PyObject *pcm_to_string(PyObject *dummy, PyObject *args) {
 
 
 long char_to_8bit(unsigned char *s) {
-  if ((s[0] & 0x80) != 0)
-    return -(long)s[0];
-  else
-    return (long)s[0];
+  return (long)(s[0] - 0x7F);
 }
 
 long char_to_16bit(unsigned char *s) {
@@ -327,7 +324,7 @@ void _24bit_to_char(long i, unsigned char *s) {
 
 
 void _8bit_to_char(long i, unsigned char *s) {
-  s[0] = i & 0xFF;
+  s[0] = (i + 0x7F) & 0xFF;
 }
 
 
