@@ -70,8 +70,17 @@ if (__name__ == '__main__'):
             f = tempfile.NamedTemporaryFile(suffix='.wav')
             temp_pool.append(f)
             wave_files.append(f.name)
-            audiotools.WaveAudio.from_pcm(f.name,
-                                          audiofile.to_pcm())
+
+            pcm = audiofile.to_pcm()
+            if ((pcm.sample_rate == 44100) and
+                (pcm.channels == 2) and
+                (pcm.bits_per_sample == 16)):  #already CD quality
+                audiotools.WaveAudio.from_pcm(f.name,pcm)
+            else:                              #convert to CD quality
+                pcm = audiotools.PCMConverter(pcm,44100,2,16)
+                audiotools.WaveAudio.from_pcm(f.name,pcm)
+            pcm.close()
+
         print (u"* %s" % (audiofile.filename.decode(audiotools.FS_ENCODING))
                ).encode(audiotools.IO_ENCODING,'replace')
 
