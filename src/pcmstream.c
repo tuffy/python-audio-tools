@@ -297,6 +297,13 @@ long char_to_8bit(unsigned char *s) {
   return (long)(s[0] - 0x7F);
 }
 
+void _8bit_to_char(long i, unsigned char *s) {
+  /*avoid overflow/underflow*/
+  if (i > 0x80) i = 0x80; else if (i < -0x7F) i = -0x7F;
+
+  s[0] = (i + 0x7F) & 0xFF;
+}
+
 long char_to_16bit(unsigned char *s) {
   if ((s[1] & 0x80) != 0)
     return -(long)(0x10000 - ((s[1] << 8) | s[0])); /*negative*/
@@ -305,6 +312,9 @@ long char_to_16bit(unsigned char *s) {
 }
 
 void _16bit_to_char(long i, unsigned char *s) {
+  /*avoid overflow/underflow*/
+  if (i < -0x8000) i = -0x8000; else if (i > 0x7FFF) i = 0x7FFF;
+
   s[0] = i & 0x00FF;
   s[1] = (i & 0xFF00) >> 8;
 }
@@ -317,15 +327,16 @@ long char_to_24bit(unsigned char *s) {
 }
 
 void _24bit_to_char(long i, unsigned char *s) {
+  /*avoid overflow/underflow*/
+  if (i < -0x800000) i = -0x800000; else if (i > 0x7FFFFF) i = 0x7FFFFF;
+
   s[0] = i & 0x0000FF;
   s[1] = (i & 0x00FF00) >> 8;
   s[2] = (i & 0xFF0000) >> 16;
 }
 
 
-void _8bit_to_char(long i, unsigned char *s) {
-  s[0] = (i + 0x7F) & 0xFF;
-}
+
 
 
 
@@ -377,7 +388,7 @@ static int Resampler_init(pcmstream_Resampler *self,
 static PyObject *Resampler_process(pcmstream_Resampler* self, 
 				   PyObject *args) {
   PyObject *samples_object;
-  PyObject *samples_list;
+  /*PyObject *samples_list;*/
   int samples_list_size;
   int last;
 
@@ -391,49 +402,79 @@ static PyObject *Resampler_process(pcmstream_Resampler* self,
   PyObject *processed_samples;
   PyObject *unprocessed_samples;
   PyObject *toreturn;
+  PyObject *sample;
+
 
   /*grab (samples[],last) passed in from the method call*/
   if (!PyArg_ParseTuple(args,"Oi",&samples_object,&last))
     return NULL;
 
-  /*turn samples_object into a fast sequence*/
-  samples_list = PySequence_Fast(samples_object,
-				 "samples list must be a sequence");
-  if (samples_list == NULL) {
+
+  /*ensure samples_object is a sequence*/
+  if (!PySequence_Check(samples_object)) {
+    PyErr_SetString(PyExc_TypeError,
+		    "samples must be a sequence");
     Py_XDECREF(samples_object);
     return NULL;
   }
 
-  samples_list_size = PySequence_Fast_GET_SIZE(samples_list);
 
-  /*ensure that samples_list is all floats*/
-  for (i = 0; i < samples_list_size; i++) {
-    if (!PyFloat_Check(PySequence_Fast_GET_ITEM(samples_list,i))) {
-      Py_XDECREF(samples_object);
-      Py_XDECREF(samples_list);
-      PyErr_SetString(PyExc_ValueError,
-		    "samples must be floating point numbers");
-      return NULL;
-    }
+  /*grab the size of samples_object*/
+  samples_list_size = PySequence_Size(samples_object);
+  if (samples_list_size == -1) {
+    PyErr_SetString(PyExc_ValueError,
+		    "samples list must have a valid length");
+    Py_XDECREF(samples_object);
+    return NULL;
   }
+
 
   /*build SRC_DATA from our inputs*/
   src_data.data_in = (float *)malloc(samples_list_size * sizeof(float));
+
+  if (src_data.data_in == NULL) {
+    PyErr_SetString(PyExc_MemoryError,"out of memory");
+    Py_XDECREF(samples_object);
+    return NULL;
+  }
+
   src_data.data_out = data_out;
   src_data.input_frames = samples_list_size / self->channels;
   src_data.output_frames = OUTPUT_SAMPLES_LENGTH / self->channels;
   src_data.end_of_input = last;
   src_data.src_ratio = self->ratio;
 
-  for (i = 0; i < samples_list_size; i++)
-    src_data.data_in[i] = (float)PyFloat_AS_DOUBLE(PySequence_Fast_GET_ITEM(samples_list,i));
+  for (i = 0; i < samples_list_size; i++) {
+    sample = PySequence_ITEM(samples_object,i);
+
+    if (sample == NULL) {
+      /*IndexError trying to get item "i"*/
+      Py_DECREF(samples_object);
+      return NULL;
+    } else {
+      if (PyFloat_Check(sample)) {
+	src_data.data_in[i] = (float)PyFloat_AS_DOUBLE(sample);
+	Py_DECREF(sample);
+      } else {
+	/*our sample isn't a float*/
+	Py_DECREF(samples_object);
+	Py_DECREF(sample);
+	PyErr_SetString(PyExc_ValueError,
+			"samples must be floating point numbers");
+	return NULL;
+      }
+    }
+  }
+
+
+  /*now that we've transferred everything from samples_object to src_data,
+    we no longer need samples_object*/
+  Py_DECREF(samples_object);
 
 
   /*run src_process() on our self->SRC_STATE and SRC_DATA*/
   if ((processing_error = src_process(self->src_state,&src_data)) != 0) {
     /*some sort of processing error raises ValueError*/
-    Py_XDECREF(samples_object);
-    Py_XDECREF(samples_list);
     free(src_data.data_in);
     
     PyErr_SetString(PyExc_ValueError,
@@ -441,16 +482,18 @@ static PyObject *Resampler_process(pcmstream_Resampler* self,
     return NULL;
   }
 
-  /*turn our processed and unprocessed data into two arrays*/
-  processed_samples = PyList_New((Py_ssize_t)src_data.output_frames_gen *
-				 self->channels);
+
+  /*turn our processed and unprocessed data into two new arrays*/
+  processed_samples = PyList_New((Py_ssize_t)src_data.output_frames_gen * self->channels);
   unprocessed_samples = PyList_New((Py_ssize_t)((src_data.input_frames - src_data.input_frames_used) * self->channels));
   
+  /*successfully processed samples*/
   for (i = 0; i < src_data.output_frames_gen * self->channels; i++) {
     PyList_SET_ITEM(processed_samples,i,
 		    PyFloat_FromDouble((double)src_data.data_out[i]));
   }
 
+  /*not-yet-successfully processed samples*/
   for (i = src_data.input_frames_used * self->channels,j=0;
        i < (src_data.input_frames * self->channels);
        i++,j++) {
@@ -458,15 +501,13 @@ static PyObject *Resampler_process(pcmstream_Resampler* self,
 		    PyFloat_FromDouble((double)src_data.data_in[i]));
   }
   
+
   /*cleanup anything allocated*/
-  Py_XDECREF(samples_object);
-  Py_XDECREF(samples_list);
   free(src_data.data_in);
 
-  /*return those two arrays as a tuple*/
 
-  toreturn = Py_BuildValue("(O,O)",processed_samples,unprocessed_samples);
-  Py_DECREF(processed_samples);
-  Py_DECREF(unprocessed_samples);
+  /*return those two arrays as a tuple*/
+  toreturn = PyTuple_Pack(2,processed_samples,unprocessed_samples);
+
   return toreturn;
 }

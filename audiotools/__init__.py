@@ -514,7 +514,6 @@ class PCMConverter(PCMReader):
 
         #turn our PCM samples into floats and resample them,
         #which removes bits-per-sample
-        
         (output,self.unresampled) = self.resampler.process(
             self.unresampled + [(float(s) / divider) for s in frame_list],
             (len(frame_list) == 0) and (len(self.unresampled) == 0))
