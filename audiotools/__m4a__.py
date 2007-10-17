@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,InvalidFile,InvalidFormat,PCMReader,Con,transfer_data,subprocess,BIN,cStringIO,MetaData,os,ImageMetaData,Image
+from audiotools import AudioFile,InvalidFile,PCMReader,PCMConverter,Con,transfer_data,subprocess,BIN,cStringIO,MetaData,os,ImageMetaData,Image
 
 #######################
 #M4A File
@@ -296,7 +296,10 @@ class M4AAudio(AudioFile):
             compression = cls.DEFAULT_COMPRESSION
 
         if (pcmreader.channels > 2):
-            raise InvalidFormat('M4A supports up to 2 channels')
+            pcmreader = PCMConverter(pcmreader,
+                                     sample_rate=pcmreader.sample_rate,
+                                     channels=2,
+                                     bits_per_sample=pcmreader.bits_per_sample)
 
         devnull = file(os.devnull,"ab")
 

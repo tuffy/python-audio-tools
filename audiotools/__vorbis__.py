@@ -17,7 +17,7 @@
 #along with this program; if not, write to the Free Software
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-from audiotools import AudioFile,InvalidFile,InvalidFormat,PCMReader,Con,transfer_data,subprocess,BIN,cStringIO,open_files,os
+from audiotools import AudioFile,InvalidFile,PCMReader,PCMConverter,Con,transfer_data,subprocess,BIN,cStringIO,open_files,os
 from __vorbiscomment__ import *
 
 class OggStreamReader:
@@ -389,7 +389,11 @@ class VorbisAudio(AudioFile):
             compression = cls.DEFAULT_COMPRESSION
 
         if (pcmreader.bits_per_sample not in (8,16)):
-            raise InvalidFormat('Ogg Vorbis only supports 8 or 16 bits per sample')
+            pcmreader = PCMConverter(
+                pcmreader,
+                sample_rate=pcmreader.sample_rate,
+                channels=pcmreader.channels,
+                bits_per_sample=min(pcmreader.bits_per_sample,16))
 
         sub = subprocess.Popen([BIN['oggenc'],'-Q',
                                 '-r',

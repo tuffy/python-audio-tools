@@ -45,19 +45,23 @@ class BLANK_PCM_Reader:
         self.bits_per_sample = bits_per_sample
 
         self.total_size = length * sample_rate * channels * bits_per_sample / 8
-
-        if (bits_per_sample > 8):
-            self.buffer = cStringIO.StringIO(
-                ('\x01\x00' * (self.total_size / 2)) + \
-                '\x00' * (self.total_size % 2))
-        else:
-            self.buffer = cStringIO.StringIO(chr(0) * self.total_size)
+        self.current_size = self.total_size
 
     def read(self, bytes):
-        return self.buffer.read(bytes)
+        if (self.current_size > 0):
+            if (self.bits_per_sample > 8):
+                buffer = ('\x01\x00' * (min(bytes,self.current_size) / 2)) + \
+                          '\x00' * (min(bytes,self.current_size) % 2)
+            else:
+                buffer = chr(0) * (min(bytes,self.current_size))
+
+            self.current_size -= len(buffer)
+            return buffer
+        else:
+            return ""
 
     def close(self):
-        self.buffer.close()
+        pass
 
 class PCM_Count:
     def __init__(self):
@@ -181,8 +185,11 @@ PCM_COMBINATIONS = (
     (48000, 6, 24),(96000, 6, 24),(192000, 6, 24))
 
 #these are combinations that tend to occur in nature
-SHORT_PCM_COMBINATIONS = ((22050, 1, 8),  (22050, 1, 16), 
-                          (44100, 1, 16), (44100, 2, 16), 
+SHORT_PCM_COMBINATIONS = ((11025, 1, 8),  (22050, 1, 8),
+                          (22050, 1, 16), (32000, 2, 16),
+                          (44100, 1, 16), (44100, 2, 16),
+                          (48000, 1, 16), (48000, 2, 16),
+                          (48000, 6, 16),
                           (192000, 2, 24),(96000, 6, 24))
 
 class DummyMetaData3(audiotools.ImageMetaData,audiotools.MetaData):
@@ -200,7 +207,7 @@ class DummyMetaData3(audiotools.ImageMetaData,audiotools.MetaData):
 
 class TestPCMCombinations(unittest.TestCase):
     def testpcmcombinations(self):
-        for (sample_rate,channels,bits_per_sample) in PCM_COMBINATIONS:
+        for (sample_rate,channels,bits_per_sample) in SHORT_PCM_COMBINATIONS:
             reader = BLANK_PCM_Reader(SHORT_LENGTH,
                                       sample_rate, channels,
                                       bits_per_sample)
@@ -242,7 +249,7 @@ class TestAiffAudio(unittest.TestCase):
         temp = tempfile.NamedTemporaryFile(suffix="." + self.audio_class.SUFFIX)
         try:
             #not all of these combinations will be supported by all formats
-            for (sample_rate,channels,bits_per_sample) in PCM_COMBINATIONS:
+            for (sample_rate,channels,bits_per_sample) in SHORT_PCM_COMBINATIONS:
 
                 try:
                     new_file = self.audio_class.from_pcm(

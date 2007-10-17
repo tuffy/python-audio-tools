@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,InvalidFile,InvalidFormat,PCMReader,PCMConverter,Con,transfer_data,subprocess,BIN,BIG_ENDIAN
+from audiotools import AudioFile,InvalidFile,PCMReader,PCMConverter,Con,transfer_data,subprocess,BIN,BIG_ENDIAN
 from __id3__ import *
 
 #######################
@@ -400,16 +400,21 @@ class MP2Audio(MP3Audio):
     @classmethod
     def from_pcm(cls, filename, pcmreader,
                  compression="192"):
-        import decimal
-        
+        import decimal,bisect
+
         if (compression not in cls.COMPRESSION_MODES):
             compression = cls.DEFAULT_COMPRESSION
+            
 
-        if (pcmreader.channels > 2):
-            raise InvalidFormat('mp2 only supports up to 2 channels')
-
-        if (pcmreader.sample_rate not in (44100,48000,32000)):
-            raise InvalidFormat('mp2 only supports sample rates 32000,48000 and 44100')
+        if ((pcmreader.channels > 2) or
+            (pcmreader.sample_rate not in (32000,48000,44100))):
+            pcmreader = PCMConverter(
+                pcmreader,
+                sample_rate=[32000,32000,44100,48000][bisect.bisect(
+                        [32000,44100,48000],pcmreader.sample_rate)],
+                channels=min(pcmreader.channels,2),
+                bits_per_sample=16)
+        
         
         sub = subprocess.Popen([BIN['twolame'],"--quiet",
                                 "-r",

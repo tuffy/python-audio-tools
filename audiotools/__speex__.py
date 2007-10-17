@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,InvalidFile,InvalidFormat,PCMReader,Con,transfer_data,subprocess,BIN,cStringIO,os
+from audiotools import AudioFile,InvalidFile,PCMReader,PCMConverter,Con,transfer_data,subprocess,BIN,cStringIO,os
 from __vorbis__ import *
 
 #######################
@@ -99,23 +99,26 @@ class SpeexAudio(VorbisAudio):
 
     @classmethod
     def from_pcm(cls, filename, pcmreader, compression=None):
+        import bisect
+        
         if (compression not in cls.COMPRESSION_MODES):
             compression = cls.DEFAULT_COMPRESSION
 
-        if (pcmreader.bits_per_sample not in (8,16)):
-            raise InvalidFormat('speex only supports 8 or 16-bit samples')
-        elif (pcmreader.channels not in (1,2)):
-            raise InvalidFormat('speex only supports 1 or 2 channels')
-        elif (pcmreader.sample_rate not in (8000,16000,32000,44100)):
-            raise InvalidFormat('speex only supports sample rates 8000,16000,32000,44100')
-        else:
-            BITS_PER_SAMPLE = {8:['--8bit'],
-                               16:['--16bit']}[pcmreader.bits_per_sample]
+        if ((pcmreader.bits_per_sample not in (8,16)) or
+            (pcmreader.channels > 2) or
+            (pcmreader.sample_rate not in (8000,16000,32000,44100))):
+            pcmreader = PCMConverter(
+                pcmreader,
+                sample_rate=[8000,8000,16000,32000,44100][bisect.bisect(
+                    [8000,16000,32000,44100],pcmreader.sample_rate)],
+                channels=min(pcmreader.channels,2),
+                bits_per_sample=min(pcmreader.bits_per_sample,16))
 
-        if (pcmreader.channels > 2):
-            raise InvalidFormat('speex only supports up to 2 channels')
-        else:
-            CHANNELS = {1:[],2:['--stereo']}[pcmreader.channels]
+
+        BITS_PER_SAMPLE = {8:['--8bit'],
+                           16:['--16bit']}[pcmreader.bits_per_sample]
+
+        CHANNELS = {1:[],2:['--stereo']}[pcmreader.channels]
 
         devnull = file(os.devnull,"ab")
 

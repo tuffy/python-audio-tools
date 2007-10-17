@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,InvalidFile,InvalidFormat,PCMReader,Con,subprocess,BIN,ApeTaggedAudio,os,TempWaveReader
+from audiotools import AudioFile,InvalidFile,PCMReader,PCMConverter,Con,subprocess,BIN,ApeTaggedAudio,os,TempWaveReader
 from __wav__ import WaveAudio
 
 #######################
@@ -188,15 +188,21 @@ class MusepackAudio(ApeTaggedAudio,AudioFile):
 
     @classmethod
     def from_pcm(cls, filename, pcmreader, compression=None):
-        import tempfile
+        import tempfile,bisect
 
-        if (pcmreader.sample_rate not in (44100,48000,37800,32000)):
-            raise InvalidFormat(
-                "Musepack only supports sample rates 44100, 48000, 37800 and 32000")
+        if (str(compression) not in cls.COMPRESSION_MODES):
+            compression = cls.DEFAULT_COMPRESSION
 
-        if (pcmreader.channels > 2):
-            raise InvalidFormat(
-                "Musepack supports up to 2 channels")
+        if ((pcmreader.channels > 2) or
+            (pcmreader.sample_rate not in (44100,48000,37800,32000)) or
+            (pcmreader.bits_per_sample != 16)):
+            pcmreader = PCMConverter(
+                pcmreader,
+                sample_rate=[32000,32000,37800,44100,48000][bisect.bisect(
+                        [32000,37800,44100,48000],pcmreader.sample_rate)],
+                channels=min(pcmreader.channels,2),
+                bits_per_sample=16)
+
 
         f = tempfile.NamedTemporaryFile(suffix=".wav")
         w = WaveAudio.from_pcm(f.name, pcmreader)
