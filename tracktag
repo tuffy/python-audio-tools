@@ -208,31 +208,31 @@ if (__name__ == '__main__'):
                             attr = attr.decode(audiotools.IO_ENCODING)
                         setattr(metadata,field,attr)
 
-                
-                if (options.remove_images):
-                    for i in metadata.images():
-                        metadata.delete_image(i)
+                    
+                if (metadata.supports_images()):
+                    if (options.remove_images):
+                        for i in metadata.images():
+                            metadata.delete_image(i)
 
-                if (options.front_cover is not None):
-                    for path in options.front_cover:
-                        metadata.add_image(get_image(path,0))
+                    if (options.front_cover is not None):
+                        for path in options.front_cover:
+                            metadata.add_image(get_image(path,0))
 
-                if (options.leaflet is not None):
-                    for path in options.leaflet:
-                        metadata.add_image(get_image(path,2))
+                    if (options.leaflet is not None):
+                        for path in options.leaflet:
+                            metadata.add_image(get_image(path,2))
 
-                if (options.back_cover is not None):
-                    for path in options.back_cover:
-                        metadata.add_image(get_image(path,1))
+                    if (options.back_cover is not None):
+                        for path in options.back_cover:
+                            metadata.add_image(get_image(path,1))
 
-                if (options.media is not None):
-                    for path in options.media:
-                        metadata.add_image(get_image(path,3))
+                    if (options.media is not None):
+                        for path in options.media:
+                            metadata.add_image(get_image(path,3))
 
-                if (options.other_image is not None):
-                    for path in options.other_image:
-                        metadata.add_image(get_image(path,4))
-
+                    if (options.other_image is not None):
+                        for path in options.other_image:
+                            metadata.add_image(get_image(path,4))
 
                 file.set_metadata(metadata)
             except audiotools.InvalidImage,msg:
