@@ -172,7 +172,7 @@ class MusepackAudio(ApeTaggedAudio,AudioFile):
         import tempfile
 
         f = tempfile.NamedTemporaryFile(suffix=".wav")
-        self.to_wave(f.name)
+        self.__to_wave__(f.name)
         f.seek(0,0)
         return TempWaveReader(f)
         
@@ -207,12 +207,15 @@ class MusepackAudio(ApeTaggedAudio,AudioFile):
         f = tempfile.NamedTemporaryFile(suffix=".wav")
         w = WaveAudio.from_pcm(f.name, pcmreader)
         try:
-            return cls.from_wave(filename,f.name,compression)
+            return cls.__from_wave__(filename,f.name,compression)
         finally:
             del(w)
             f.close()
 
-    def to_wave(self, wave_filename):
+    #Thile Musepack needs to pipe things through WAVE,
+    #not all WAVEs are acceptable.
+    #Use the *_pcm() methods first.
+    def __to_wave__(self, wave_filename):
         devnull = file(os.devnull,"wb")
         sub = subprocess.Popen([BIN['mpcdec'],
                                 self.filename,
@@ -223,7 +226,7 @@ class MusepackAudio(ApeTaggedAudio,AudioFile):
         devnull.close()
         
     @classmethod
-    def from_wave(cls, filename, wave_filename, compression=None):
+    def __from_wave__(cls, filename, wave_filename, compression=None):
         if (str(compression) not in cls.COMPRESSION_MODES):
             compression = cls.DEFAULT_COMPRESSION
                      
