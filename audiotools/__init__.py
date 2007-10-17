@@ -598,10 +598,9 @@ class FrameList(list):
     #all channel lists must be the same length
     @classmethod
     def from_channels(cls, channels):
-        import operator
-
-        if ((len(channels) > 1) and not reduce(operator.eq,map(len,channels))):
-            raise ValueError("all channels must be the same length")
+        if ((len(channels) > 1) and (len(set(map(len,channels))) != 1)):
+            raise ValueError("all channels must be the same length (%s)" % \
+                             (map(len,channels)))
 
         data = [None] * len(channels) * len(channels[0])
 
