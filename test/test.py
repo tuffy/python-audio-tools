@@ -252,9 +252,7 @@ class TestAiffAudio(unittest.TestCase):
                                          bits_per_sample))
                 except audiotools.InvalidFormat:
                     continue
-
                 
-                self.assertEqual(new_file.sample_rate(),sample_rate)
             
                 if (new_file.lossless()):
                     self.assertEqual(audiotools.pcm_cmp(
@@ -271,15 +269,18 @@ class TestAiffAudio(unittest.TestCase):
                                      bits_per_sample)
                     self.assertEqual(new_file.channels(),
                                      channels)
+                    self.assertEqual(new_file.sample_rate(),sample_rate)
                 else:
-                    self.assert_(new_file.channels() >= channels)
+                    #If files are lossy,
+                    #only be sure the lengths are the same.
+                    #Everything else is too variable.
                     
                     counter = PCM_Count()
                     pcm = new_file.to_pcm()
                     audiotools.transfer_data(pcm.read,counter.write)
                     self.assertEqual(
                         (D.Decimal(new_file.total_samples()) / \
-                         sample_rate).to_integral(),
+                         new_file.sample_rate()).to_integral(),
                         SHORT_LENGTH)
                     pcm.close()
 

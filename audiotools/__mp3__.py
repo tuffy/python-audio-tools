@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,InvalidFile,InvalidFormat,PCMReader,Con,transfer_data,subprocess,BIN
+from audiotools import AudioFile,InvalidFile,InvalidFormat,PCMReader,PCMConverter,Con,transfer_data,subprocess,BIN
 from __id3__ import *
 
 #######################
@@ -124,20 +124,25 @@ class MP3Audio(AudioFile):
     @classmethod
     def from_pcm(cls, filename, pcmreader,
                  compression="standard"):
-        import decimal
+        import decimal,bisect
         
         if (compression not in cls.COMPRESSION_MODES):
             compression = cls.DEFAULT_COMPRESSION
 
-        if (pcmreader.channels > 2):
-            raise InvalidFormat('mp3 only supports up to 2 channels')
-        elif (pcmreader.channels > 1):
+        if ((pcmreader.channels > 2) or
+            (pcmreader.sample_rate not in (32000,48000,44100))):
+            pcmreader = PCMConverter(
+                pcmreader,
+                sample_rate=[32000,32000,44100,48000][bisect.bisect(
+                        [32000,44100,48000],pcmreader.sample_rate)],
+                channels=min(pcmreader.channels,2),
+                bits_per_sample=16)
+                        
+
+        if (pcmreader.channels > 1):
             mode = "j"
         else:
             mode = "m"
-
-        if (pcmreader.sample_rate not in (32000,48000,44100)):
-            raise InvalidFormat('mp3 only supports sample rates 44100, 48000 and 32000')
         
         sub = subprocess.Popen([BIN['lame'],"--quiet",
                                 "-r","-x",
