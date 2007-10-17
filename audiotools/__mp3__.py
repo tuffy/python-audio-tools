@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,InvalidFile,InvalidFormat,PCMReader,PCMConverter,Con,transfer_data,subprocess,BIN
+from audiotools import AudioFile,InvalidFile,InvalidFormat,PCMReader,PCMConverter,Con,transfer_data,subprocess,BIN,BIG_ENDIAN
 from __id3__ import *
 
 #######################
@@ -112,7 +112,13 @@ class MP3Audio(AudioFile):
         return False
             
     def to_pcm(self):
-        sub = subprocess.Popen([BIN['lame'],"--decode","-t","--quiet",
+        if (BIG_ENDIAN):
+            endian = ['-x']
+        else:
+            endian = []
+
+        sub = subprocess.Popen([BIN['lame']] + endian + \
+                               ["--decode","-t","--quiet",
                                 self.filename,"-"],
                                stdout=subprocess.PIPE)
         return PCMReader(sub.stdout,
