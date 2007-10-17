@@ -642,8 +642,8 @@ class MetaData:
                  artist_name=u"",   #the song's original creator/composer
                  performer_name=u"",#the song's performing artist
                  copyright=u"",     #the song's copyright information
-                 year=u""           #the album's release year
-                 ):
+                 year=u"",          #the album's release year
+                 images=None):
         #we're avoiding self.foo = foo because
         #__setattr__ might need to be redefined
         #which could lead to unwelcome side-effects
@@ -658,6 +658,12 @@ class MetaData:
 
         self.__dict__['copyright'] = copyright
         self.__dict__['year'] = year
+
+        if (images is not None):
+            self.__dict__['__images__'] = list(images)
+        else:
+            self.__dict__['__images__'] = list()
+            
 
     def __repr__(self):
         return "MetaData(%s,%s,%s,%s,%s,%s,%s)" % \
@@ -699,7 +705,7 @@ class MetaData:
         else:
             base_comment = u""
 
-        if (isinstance(self,ImageMetaData) and (len(self.images()) > 0)):
+        if (len(self.images()) > 0):
             return u"%s\n\n%s" % \
                    (base_comment,
                     "\n".join([unicode(p) for p in self.images()]))
@@ -730,6 +736,54 @@ class MetaData:
     @classmethod
     def converted(cls, metadata):
         return metadata
+
+
+    #returns True if this particular sort of metadata support images
+    #returns False if not
+    @classmethod
+    def supports_images(cls):
+        return False
+
+    def images(self):
+        #must return a copy of our internal array
+        #otherwise this will likely not act as expected when deleting
+        return self.__images__[:]
+
+    def front_covers(self):
+        return [i for i in self.images() if i.type == 0]
+
+    def back_covers(self):
+        return [i for i in self.images() if i.type == 1]
+
+    def leaflet_pages(self):
+        return [i for i in self.images() if i.type == 2]
+
+    def media(self):
+        return [i for i in self.images() if i.type == 3]
+
+    def other_images(self):
+        return [i for i in self.images() if i.type == 4]
+
+    #image should be an Image object
+    #this method should also affect the underlying metadata value
+    #(e.g. adding a new Image to FlacMetaData should add another
+    # METADATA_BLOCK_PICTURE block to the metadata)
+    def add_image(self, image):
+        if (self.supports_images()):
+            self.__images__.append(image)
+        else:
+            raise ValueError("this MetaData type does not support images")
+
+    #image should be an existing Image object
+    #this method should also affect the underlying metadata value
+    #(e.g. removing an existing Image from FlacMetaData should
+    # remove that same METADATA_BLOCK_PICTURE block from the metadata)
+    def delete_image(self, image):
+        if (self.supports_images()):
+            self.__images__.pop(self.__images__.index(image))
+        else:
+            raise ValueError("this MetaData type does not support images")
+
 
 class AlbumMetaData(dict):
     def __init__(self, metadata_iter):
@@ -825,46 +879,7 @@ class Image:
     def __ne__(self, image):
         return not self.__eq__(image)
 
-#A container for multiple Images
-class ImageMetaData:
-    def __init__(self, images):
-        self.__dict__['__images__'] = list(images)
-
-    def images(self):
-        #must return a copy of our internal array
-        #otherwise this will likely not act as expected when deleting
-        return self.__images__[:]
-
-    def front_covers(self):
-        return [i for i in self.images() if i.type == 0]
-
-    def back_covers(self):
-        return [i for i in self.images() if i.type == 1]
-
-    def leaflet_pages(self):
-        return [i for i in self.images() if i.type == 2]
-
-    def media(self):
-        return [i for i in self.images() if i.type == 3]
-
-    def other_images(self):
-        return [i for i in self.images() if i.type == 4]
-
-    #image should be an Image object
-    #this method should also affect the underlying metadata value
-    #(e.g. adding a new Image to FlacMetaData should add another
-    # METADATA_BLOCK_PICTURE block to the metadata)
-    def add_image(self, image):
-        self.__images__.append(image)
-
-    #image should be an existing Image object
-    #this method should also affect the underlying metadata value
-    #(e.g. removing an existing Image from FlacMetaData should
-    # remove that same METADATA_BLOCK_PICTURE block from the metadata)
-    def delete_image(self, image):
-        self.__images__.pop(self.__images__.index(image))
-
-
+    
 
 #######################
 #Generic Audio File

@@ -17,12 +17,12 @@
 #along with this program; if not, write to the Free Software
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-from audiotools import MetaData,Con,re,os,ImageMetaData,Image
+from audiotools import MetaData,Con,re,os,Image
 
 class EndOfID3v2Stream(Exception): pass
 class UnsupportedID3v2Version(Exception): pass
 
-class ID3v2Comment(ImageMetaData,MetaData,dict):
+class ID3v2Comment(MetaData,dict):
     VALID_FRAME_ID = re.compile(r'[A-Z0-9]{4}')
     FRAME_ID_LENGTH = 4
 
@@ -203,36 +203,6 @@ class ID3v2Comment(ImageMetaData,MetaData,dict):
         except ValueError:
             tracknum = 0
         
-        MetaData.__init__(self,
-                          track_name=metadata.get("TIT2",
-                                                  metadata.get("TT2",[u""]))[0],
-                          
-                          track_number=tracknum,
-                          
-                          album_name=metadata.get("TALB",
-                                                  metadata.get("TAL",[u""]))[0],
-                          
-                          artist_name=metadata.get("TPE1",
-                                       metadata.get("TP1",
-                                        metadata.get("TOPE",
-                                         metadata.get("TCOM",
-                                          metadata.get("TOLY",
-                                           metadata.get("TEXT",               
-                                            metadata.get("TOA",
-                                             metadata.get("TCM",[u""]))))))))[0],
-                                                   
-                          performer_name=metadata.get("TPE2",
-                                           metadata.get("TPE3",
-                                            metadata.get("TPE4",
-                                             metadata.get("TP2",
-                                              metadata.get("TP3",
-                                               metadata.get("TP4",[u""]))))))[0],
-
-                          copyright=u"",
-
-                          year=metadata.get("TYER",
-                                metadata.get("TYE",[u""]))[0]
-                          )
 
         images = []
         if (metadata.has_key('APIC')):
@@ -265,8 +235,38 @@ class ID3v2Comment(ImageMetaData,MetaData,dict):
                     ('ascii','utf-16')[pic.text_encoding]),
                                        pic_type=pic.picture_type))
                             
+        MetaData.__init__(self,
+                          track_name=metadata.get("TIT2",
+                                                  metadata.get("TT2",[u""]))[0],
+                          
+                          track_number=tracknum,
+                          
+                          album_name=metadata.get("TALB",
+                                                  metadata.get("TAL",[u""]))[0],
+                          
+                          artist_name=metadata.get("TPE1",
+                                       metadata.get("TP1",
+                                        metadata.get("TOPE",
+                                         metadata.get("TCOM",
+                                          metadata.get("TOLY",
+                                           metadata.get("TEXT",               
+                                            metadata.get("TOA",
+                                             metadata.get("TCM",[u""]))))))))[0],
+                                                   
+                          performer_name=metadata.get("TPE2",
+                                           metadata.get("TPE3",
+                                            metadata.get("TPE4",
+                                             metadata.get("TP2",
+                                              metadata.get("TP3",
+                                               metadata.get("TP4",[u""]))))))[0],
 
-        ImageMetaData.__init__(self,images)
+                          copyright=u"",
+
+                          year=metadata.get("TYER",
+                                metadata.get("TYE",[u""]))[0],
+                          images=images)
+
+
         dict.__init__(self,metadata)
 
     #if an attribute is updated (e.g. self.track_name)
@@ -295,11 +295,11 @@ class ID3v2Comment(ImageMetaData,MetaData,dict):
         image = APICImage.converted(image)
 
         self.setdefault('APIC',[]).append(image.build())
-        ImageMetaData.add_image(self,image)
+        MetaData.add_image(image)
 
     def delete_image(self, image):
         del(self['APIC'][self['APIC'].index(image.build())])
-        ImageMetaData.delete_image(self,image)
+        MetaData.delete_image(image)
 
     @classmethod
     def converted(cls, metadata):
@@ -319,10 +319,10 @@ class ID3v2Comment(ImageMetaData,MetaData,dict):
         except KeyError:
             pass
 
-        if (isinstance(metadata,ImageMetaData)):
-            if (len(metadata.images()) > 0):
-                tags["APIC"] = [APICImage.converted(i).build()
-                                for i in metadata.images()]
+
+        if (len(metadata.images()) > 0):
+            tags["APIC"] = [APICImage.converted(i).build()
+                            for i in metadata.images()]
 
         return ID3v2Comment(tags)
 
@@ -372,6 +372,10 @@ class ID3v2Comment(ImageMetaData,MetaData,dict):
                                       unicode(value.encode('hex')[0:39].upper()) + u"\u2026"))
 
         return pairs
+
+    @classmethod
+    def supports_images(cls):
+        return True
 
     #takes a file stream
     #checks that stream for an ID3v2 comment
@@ -465,10 +469,9 @@ class ID3v2_3Comment(ID3v2Comment):
         except KeyError:
             pass
 
-        if (isinstance(metadata,ImageMetaData)):
-            if (len(metadata.images()) > 0):
-                tags["APIC"] = [APICImage.converted(i).build()
-                                for i in metadata.images()]
+        if (len(metadata.images()) > 0):
+            tags["APIC"] = [APICImage.converted(i).build()
+                            for i in metadata.images()]
 
         return ID3v2_3Comment(tags)
 
@@ -565,10 +568,9 @@ class ID3v2_2Comment(ID3v2Comment):
         if (tags["TP1"] == tags["TP2"]):
             del(tags["TP2"])
 
-        if (isinstance(metadata,ImageMetaData)):
-            if (len(metadata.images()) > 0):
-                tags['PIC'] = [PICImage.converted(i).build()
-                               for i in metadata.images()]
+        if (len(metadata.images()) > 0):
+            tags['PIC'] = [PICImage.converted(i).build()
+                           for i in metadata.images()]
 
         return ID3v2_2Comment(tags)
 
@@ -961,7 +963,7 @@ class ID3v1Comment(MetaData,list):
                                 self.track_number)
 
 
-class ID3CommentPair(ImageMetaData,MetaData):
+class ID3CommentPair(MetaData):
     #id3v2 and id3v1 are ID3v2Comment and ID3v1Comment objects or None
     #values in ID3v2 take precendence over ID3v1, if present
     def __init__(self, id3v2_comment, id3v1_comment):
