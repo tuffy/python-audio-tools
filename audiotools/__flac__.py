@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,InvalidFile,PCMReader,Con,transfer_data,subprocess,BIN,BUFFER_SIZE,cStringIO,os,open_files,Image,ImageMetaData,sys,WaveAudio
+from audiotools import AudioFile,InvalidFile,PCMReader,Con,transfer_data,subprocess,BIN,BUFFER_SIZE,cStringIO,os,open_files,Image,sys,WaveAudio
 from __vorbiscomment__ import *
 from __id3__ import ID3v2Comment
 from __vorbis__ import OggStreamReader,OggStreamWriter
@@ -44,7 +44,7 @@ class FlacMetaDataBlock:
                           block_type=self.type,
                           block_length=len(self.data))) + self.data
 
-class FlacMetaData(ImageMetaData,MetaData):
+class FlacMetaData(MetaData):
     #blocks is a list of FlacMetaDataBlock objects
     #these get converted internally into MetaData/ImageMetaData fields
     def __init__(self, blocks):
@@ -112,8 +112,8 @@ class FlacMetaData(ImageMetaData,MetaData):
                           artist_name=self.vorbis_comment.artist_name,
                           performer_name=self.vorbis_comment.performer_name,
                           copyright=self.vorbis_comment.copyright,
-                          year=self.vorbis_comment.year)
-        ImageMetaData.__init__(self,image_blocks)
+                          year=self.vorbis_comment.year,
+                          images=image_blocks)
 
     def __comment_name__(self):
         return u'FLAC'
@@ -130,24 +130,19 @@ class FlacMetaData(ImageMetaData,MetaData):
         if ((metadata is None) or (isinstance(metadata,FlacMetaData))):
             return metadata
         else:
-            if (isinstance(metadata,ImageMetaData)):
-                return FlacMetaData([
-                    FlacMetaDataBlock(
-                    type=4,
-                    data=FlacVorbisComment.converted(metadata).build())] + \
-                                    [
-                    FlacMetaDataBlock(
-                      type=6,
-                      data=FlacPictureComment.converted(image).build())
-                      for image in metadata.images()])
-            else:
-                return FlacMetaData([
-                    FlacMetaDataBlock(
-                    type=4,
-                    data=FlacVorbisComment.converted(metadata).build())])
+            return FlacMetaData([
+                FlacMetaDataBlock(
+                type=4,
+                data=FlacVorbisComment.converted(metadata).build())] + \
+                                [
+                FlacMetaDataBlock(
+                  type=6,
+                  data=FlacPictureComment.converted(image).build())
+                  for image in metadata.images()])
+
 
     def add_image(self, image):
-        ImageMetaData.add_image(self,FlacPictureComment.converted(image))
+        MetaData.add_image(self, FlacPictureComment.converted(image))
 
     #returns an iterator over all the current blocks as
     #FlacMetaDataBlock-compatible objects and without padding at the end
@@ -173,6 +168,10 @@ class FlacMetaData(ImageMetaData,MetaData):
             [block.build_block() for block in self.metadata_blocks()]) + \
             FlacMetaDataBlock(type=1,
                               data=chr(0) * 4096).build_block(last=1)
+
+    @classmethod
+    def supports_images(cls):
+        return True
             
 
 

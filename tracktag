@@ -208,11 +208,12 @@ if (__name__ == '__main__'):
                             attr = attr.decode(audiotools.IO_ENCODING)
                         setattr(metadata,field,attr)
 
-                if (isinstance(metadata,audiotools.ImageMetaData)):
+                    
+                if (metadata.supports_images()):
                     if (options.remove_images):
                         for i in metadata.images():
                             metadata.delete_image(i)
-                
+
                     if (options.front_cover is not None):
                         for path in options.front_cover:
                             metadata.add_image(get_image(path,0))

@@ -216,9 +216,11 @@ set_metadata methods support more information than these fields,
 it is required that they support at least these (assuming the
 AudioFile supports any metadata at all).
 
-.CLASS MetaData "track_name=u\[aq]\[aq], track_number=0, album_name=u\[aq]\[aq], artist_name=u\[aq]\[aq], performer_name=u\[aq]\[aq], copyright=u\[aq]\[aq], year=u\[aq]\[aq]"
+.CLASS MetaData "track_name=u\[aq]\[aq], track_number=0, album_name=u\[aq]\[aq], artist_name=u\[aq]\[aq], performer_name=u\[aq]\[aq], copyright=u\[aq]\[aq], year=u\[aq]\[aq], images=[]"
 track_number is stored as an integer.
+The images field, if present, should be a list of Image-compatible objects.
 The rest are stored as Unicode strings.
+
 
 .ATTRIBUTE "track_name"
 The name of this track.
@@ -257,15 +259,13 @@ only needs to know how to handle VorbisComment instances.
 
 .bp
 
-.SECTION "Image Metadata"
-.PP
-Certain types of metadata can contain embedded images in addition
-to textual information.
-These will be instances of ImageMetaData.
-
-.CLASS ImageMetaData "images"
-A container for Image-compatible classes.
-`images' must be a list of Images.
+.CLASSMETHOD supports_images
+Returns True if this particular subclass of MetaData supports
+embedded images.
+Returns False if not.
+Subclasses which do not support images will return empty lists
+when querying for images and raise exceptions if one attempts to
+add or delete images from them.
 
 .FUNCTION images
 Returns a list of our stored Images.

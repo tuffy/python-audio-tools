@@ -50,8 +50,7 @@ if (__name__ == '__main__'):
         sys.exit(1)
 
     metadata = audiofile.get_metadata()
-    if ((metadata is not None) and
-        isinstance(metadata,audiotools.ImageMetaData)):
+    if (metadata is not None):
         image_types = {}
         for image in metadata.images():
             image_types.setdefault(image.type,[]).append(image)

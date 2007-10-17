@@ -135,8 +135,7 @@ class ImageList:
 
         try:
             metadata = audiotools.open(chooser.get_filename()).get_metadata()
-            if ((metadata is not None)
-                and isinstance(metadata,audiotools.ImageMetaData)):
+            if (metadata is not None):
                 self.set_images([(chooser.get_filename(),img)
                                  for img in metadata.images()])
             
@@ -171,7 +170,6 @@ if (__name__ == '__main__'):
             metadata = audiofile.get_metadata()
             
             if ((metadata != None) and 
-                isinstance(metadata,audiotools.ImageMetaData) and
                 (len(metadata.images()) > 0)):
                 for image in metadata.images():
                     cover_list.append((audiofile.filename,image))

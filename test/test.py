@@ -73,7 +73,7 @@ class PCM_Count:
     def __len__(self):
         return self.count
 
-class DummyMetaData(audiotools.ImageMetaData,audiotools.MetaData):
+class DummyMetaData(audiotools.MetaData):
     def __init__(self):
         audiotools.MetaData.__init__(self,
                                      track_name=u"Track Name",
@@ -81,17 +81,22 @@ class DummyMetaData(audiotools.ImageMetaData,audiotools.MetaData):
                                      album_name=u"Album Name",
                                      artist_name=u"Artist Name",
                                      performer_name=u"Performer")
-        audiotools.ImageMetaData.__init__(self,[])
+
+    @classmethod
+    def supports_images(cls):
+        return True
         
-class DummyMetaData2(audiotools.ImageMetaData,audiotools.MetaData):
+class DummyMetaData2(audiotools.MetaData):
     def __init__(self):
         audiotools.MetaData.__init__(self,
                                      track_name=u"New Track Name",
                                      track_number=6,
                                      album_name=u"New Album Name",
                                      artist_name=u"New Artist Name")
-        audiotools.ImageMetaData.__init__(self,[])
 
+    @classmethod
+    def supports_images(cls):
+        return True
 
 TEST_LENGTH = 30
 SHORT_LENGTH = 5
@@ -192,17 +197,20 @@ SHORT_PCM_COMBINATIONS = ((11025, 1, 8),  (22050, 1, 8),
                           (48000, 6, 16),
                           (192000, 2, 24),(96000, 6, 24))
 
-class DummyMetaData3(audiotools.ImageMetaData,audiotools.MetaData):
+class DummyMetaData3(audiotools.MetaData):
     def __init__(self):
-        audiotools.MetaData.__init__(self,
-                                     track_name=u"Track Name Three",
-                                     track_number=5,
-                                     album_name=u"Album Name",
-                                     artist_name=u"Artist Name",
-                                     performer_name=u"Performer")
-        audiotools.ImageMetaData.__init__(
+        audiotools.MetaData.__init__(
             self,
-            [audiotools.Image.new(TEST_COVER1,u'',0)])
+            track_name=u"Track Name Three",
+            track_number=5,
+            album_name=u"Album Name",
+            artist_name=u"Artist Name",
+            performer_name=u"Performer",
+            images=[audiotools.Image.new(TEST_COVER1,u'',0)])
+
+    @classmethod
+    def supports_images(cls):
+        return True
 
 
 class TestPCMCombinations(unittest.TestCase):
@@ -379,9 +387,8 @@ class TestAiffAudio(unittest.TestCase):
                          repr(f_metadata),
                          repr(new_file_metadata)))
 
-                    if (isinstance(new_file_metadata,audiotools.ImageMetaData)
-                        and
-                        isinstance(f_metadata,audiotools.ImageMetaData)):
+                    if (new_file_metadata.supports_images() and
+                        f_metadata.supports_images()):
                         self.assertEqual(new_file_metadata.images(),
                                          f_metadata.images())
         finally:
@@ -420,8 +427,8 @@ class TestAiffAudio(unittest.TestCase):
             new_file = self.audio_class.from_pcm(temp.name,
                                                  BLANK_PCM_Reader(TEST_LENGTH))
 
-            if ((new_file.get_metadata() is not None) and
-                isinstance(new_file.get_metadata(),audiotools.ImageMetaData)):
+            if ((new_file.get_metadata() is not None)
+                and (new_file.get_metadata().supports_images())):
                 metadata = DummyMetaData()
                 new_file.set_metadata(metadata)
                 self.assertEqual(metadata,new_file.get_metadata())

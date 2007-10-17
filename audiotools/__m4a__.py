@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,InvalidFile,PCMReader,PCMConverter,Con,transfer_data,subprocess,BIN,cStringIO,MetaData,os,ImageMetaData,Image
+from audiotools import AudioFile,InvalidFile,PCMReader,PCMConverter,Con,transfer_data,subprocess,BIN,cStringIO,MetaData,os,Image
 
 #######################
 #M4A File
@@ -322,13 +322,18 @@ class M4AAudio(AudioFile):
 
         return M4AAudio(filename)
 
-class M4AMetaData(ImageMetaData,MetaData,dict):
+class M4AMetaData(MetaData,dict):
     #meta_data is a key->[value1,value2,...] dict of the contents
     #of the 'meta' container atom
     #values are Unicode if the key starts with \xa9, binary strings otherwise
     def __init__(self, meta_data):
         trkn = __Qt_Meta_Atom__.TRKN.parse(
             meta_data.get('trkn',[chr(0) * 8])[0])
+
+        if (meta_data.has_key('covr')):
+            images = [M4ACovr(i) for i in meta_data['covr']]
+        else:
+            images = []
 
         MetaData.__init__(self,
                           track_name=meta_data.get('\xa9nam',[u''])[0],
@@ -337,14 +342,8 @@ class M4AMetaData(ImageMetaData,MetaData,dict):
                           artist_name=meta_data.get('\xa9wrt',[u''])[0],
                           performer_name=meta_data.get('\xa9ART',[u''])[0],
                           copyright=meta_data.get('cprt',[u''])[0],
-                          year=u'')
-
-        if (meta_data.has_key('covr')):
-            images = [M4ACovr(i) for i in meta_data['covr']]
-        else:
-            images = []
-
-        ImageMetaData.__init__(self,images)
+                          year=u'',
+                          images=images)
 
         dict.__init__(self, meta_data)
 
@@ -388,11 +387,11 @@ class M4AMetaData(ImageMetaData,MetaData,dict):
     def add_image(self, image):
         if (image.type == 0):
             self.setdefault('covr',[]).append(image.data)
-            ImageMetaData.add_image(self,M4ACovr.converted(image))
+            MetaData.add_image(self,M4ACovr.converted(image))
 
     def delete_image(self, image):
         del(self['covr'][self['covr'].index(image.data)])
-        ImageMetaData.delete_image(self,image)
+        MetaData.delete_image(self,image)
 
     @classmethod
     def converted(cls, metadata):
@@ -411,8 +410,7 @@ class M4AMetaData(ImageMetaData,MetaData,dict):
                     track_number=int(value),
                     total_tracks=0))]
 
-        if (isinstance(metadata,ImageMetaData) and
-            (len(metadata.front_covers()) > 0)):
+        if (len(metadata.front_covers()) > 0):
             tags['covr'] = [i.data for i in metadata.front_covers()]
         
         return M4AMetaData(tags)
@@ -451,6 +449,10 @@ class M4AMetaData(ImageMetaData,MetaData,dict):
 
     def __comment_name__(self):
         return u'M4A'
+
+    @classmethod
+    def supports_images(self):
+        return True
 
     @classmethod
     def __by_pair__(cls, pair1, pair2):
