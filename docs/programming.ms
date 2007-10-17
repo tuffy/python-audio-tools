@@ -389,6 +389,21 @@ An optional subprocess-compatible object.
 If not None, its wait method will be called when the PCMReader
 is closed.
 
+.SECTION PCMConverter
+
+.CLASS PCMConverter "pcmreader, sample_rate, channels, bits_per_sample"
+This is a PCMReader-compatible class which takes a PCMReader
+and converts its PCM stream to a new format with the given attributes
+using resampling, dithering and channel modification, if necessary.
+For example, it is not possible to create a CD from a 
+PCMReader with a sample rate of 96000Hz, 6 channels and 24 bits-per-sample
+because CD audio must have a sample rate of 44100Hz, 2 channels and
+16 bits-per-sample.
+But by wrapping PCMConverter around that PCMReader, like:
+.LP
+\fCPCMConverter(pcmreader,44100,2,16)\fR
+.LP
+PCMConveter's read method will translate the stream to a CD-quality one.
 .bp
 
 .SECTION CDDA
