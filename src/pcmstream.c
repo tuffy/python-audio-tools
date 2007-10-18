@@ -67,12 +67,22 @@ static int PCMStreamReader_init(pcmstream_PCMStreamReader *self,
     PyErr_SetString(PyExc_ValueError,
 		    "sample size cannot be greater than 3 bytes");
     return -1;
+  } else if (sample_size < 1) {
+    PyErr_SetString(PyExc_ValueError,
+		    "sample size must be greater than 1 byte");
+    return -1;
   }
 
   Py_INCREF(substream);
   self->substream = substream;
   self->unhandled_bytes_length = 0;
   self->sample_size = sample_size;
+
+  switch (sample_size) {
+  case 1: self->char_converter = char_to_8bit; break;
+  case 2: self->char_converter = char_to_16bit; break;
+  case 3: self->char_converter = char_to_16bit; break;
+  }
 
   return 0;
 }
@@ -118,6 +128,9 @@ static PyObject *PCMStreamReader_read(pcmstream_PCMStreamReader* self,
   Py_ssize_t input = 0;
   Py_ssize_t output = 0;
 
+  long (*char_converter)(unsigned char *s);
+  int sample_size;
+
   /*get the number of bytes to read*/
   if (!PyArg_ParseTuple(args,"l",&read_count))
     return NULL;
@@ -135,6 +148,9 @@ static PyObject *PCMStreamReader_read(pcmstream_PCMStreamReader* self,
   pcm_data_length = read_data_length + self->unhandled_bytes_length;
   pcm_data = (unsigned char *)calloc(pcm_data_length,sizeof(unsigned char));
 
+  char_converter = self->char_converter;
+  sample_size = self->sample_size;
+
   /*copy any old bytes to the pcm_data string*/
   if (self->unhandled_bytes_length > 0)
     memcpy(pcm_data, self->unhandled_bytes, 
@@ -149,33 +165,15 @@ static PyObject *PCMStreamReader_read(pcmstream_PCMStreamReader* self,
   pcm_array_length = pcm_data_length / self->sample_size;
   list = PyList_New((Py_ssize_t)pcm_array_length);
 
+
   /*fill that array with values from the PCM stream*/
-  switch(self->sample_size) {
-  case 1:
-    for (input = 0,output=0; 
+  for (input = 0,output=0; 
 	 (input < pcm_data_length) && (output < pcm_array_length);
-	 input++,output++) {
+	 input += sample_size,output++) {
       PyList_SET_ITEM(list, output,
-		      PyInt_FromLong(char_to_8bit(pcm_data + input)));
-    }
-    break;
-  case 2:
-    for (input = 0,output=0; 
-	 (input < pcm_data_length) && (output < pcm_array_length);
-	 input += 2,output++) {
-      PyList_SET_ITEM(list, output, 
-		      PyInt_FromLong(char_to_16bit(pcm_data + input)));
-    }
-    break;
-  case 3:
-    for (input = 0,output=0; 
-	 (input < pcm_data_length) && (output < pcm_array_length);
-	 input += 3,output++) {
-      PyList_SET_ITEM(list, output, 
-		      PyInt_FromLong(char_to_24bit(pcm_data + input)));
-    }
-    break;
+		      PyInt_FromLong(char_converter(pcm_data + input)));
   }
+
   
   /*any leftover bytes are saved for next time*/
   if (input < pcm_data_length) {
@@ -186,6 +184,7 @@ static PyObject *PCMStreamReader_read(pcmstream_PCMStreamReader* self,
   } else {
     self->unhandled_bytes_length = 0;
   }
+
 
   /*remove the string we've read in*/
   Py_DECREF(read_string);

@@ -8,6 +8,7 @@ typedef int Py_ssize_t;
 typedef struct {
   PyObject_HEAD
   PyObject *substream;        /*the Python file object to get new samples from*/
+  long (*char_converter)(unsigned char *s);  /*our converter function*/
   int sample_size;            /*the size of each PCM sample, in bytes*/
   char unhandled_bytes[3];    /*any partial PCM samples*/
   int unhandled_bytes_length; /*how many partial PCM bytes we have*/
