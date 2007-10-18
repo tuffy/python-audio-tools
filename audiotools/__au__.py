@@ -18,31 +18,64 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,InvalidFile,FrameReader,Con,transfer_data,InvalidFormat
+from audiotools import AudioFile,InvalidFile,PCMReader,Con,transfer_data,InvalidFormat,__capped_stream_reader__,BUFFER_SIZE
+import audiotools.pcmstream
 
 #######################
 #Sun AU
 #######################
 
+class AuReader(PCMReader):
+    #takes an open, properly positioned file handle
+    #the total size of the data
+    #and the usual sample_rate,channels,bits_per_sample stuff
+    def __init__(self, au_file, data_size,
+                 sample_rate,channels,bits_per_sample):
+        self.stream = audiotools.pcmstream.PCMStreamReader(
+            __capped_stream_reader__(au_file,data_size),
+            bits_per_sample / 8,
+            True)
+        
+        PCMReader.__init__(self,self.stream,
+                           sample_rate,channels,bits_per_sample)
+
+    #handles all the proper byte swapping
+    def read(self, bytes):
+        return audiotools.pcmstream.pcm_to_string(
+            self.stream.read(bytes),self.bits_per_sample / 8,False)
+        
+
 class AuAudio(AudioFile):
     SUFFIX = "au"
 
-    def __init__(self, filename):
-        import sunau
+    AU_HEADER = Con.Struct('header',
+                           Con.Const(Con.String('magic_number',4),
+                                     '.snd'),
+                           Con.UBInt32('data_offset'),
+                           Con.UBInt32('data_size'),
+                           Con.UBInt32('encoding_format'),
+                           Con.UBInt32('sample_rate'),
+                           Con.UBInt32('channels'))
 
+    def __init__(self, filename):
         AudioFile.__init__(self, filename)
 
+        f = file(filename,'rb')
         try:
-            f = sunau.open(filename,"r")
-            (self.__channels__,
-             bytes_per_sample,
-             self.__sample_rate__,
-             self.__total_samples__,
-             self.comptype,
-             self.compname) = f.getparams()
-            self.__bits_per_sample__ = bytes_per_sample * 8
-            f.close()
-        except sunau.Error,msg:
+            header = AuAudio.AU_HEADER.parse_stream(f)
+
+            if (header.encoding_format not in (2,3,4)):
+                raise InvalidFile("unsupported Sun AU encoding format")
+
+            self.__bits_per_sample__ = {2:8,3:16,4:24}[header.encoding_format]
+            self.__channels__ = header.channels
+            self.__sample_rate__ = header.sample_rate
+            self.__total_samples__ = header.data_size / \
+                                     (self.__bits_per_sample__ / 8) / \
+                                     self.__channels__
+            self.__data_offset__ = header.data_offset
+            self.__data_size__ = header.data_size
+        except Con.ConstError:
             raise InvalidFile(str(msg))
 
     @classmethod
@@ -66,38 +99,57 @@ class AuAudio(AudioFile):
 
 
     def to_pcm(self):
-        import sunau
+        f = file(self.filename,'rb')
+        f.seek(self.__data_offset__,0)
 
-        return FrameReader(sunau.open(self.filename,"r"),
-                           self.sample_rate(),
-                           self.channels(),
-                           self.bits_per_sample())
+        return AuReader(f,self.__data_size__,
+                        self.sample_rate(),
+                        self.channels(),
+                        self.bits_per_sample())
 
     @classmethod
     def from_pcm(cls, filename, pcmreader, compression=None):
-        import sunau
+        if (pcmreader.bits_per_sample not in (8,16,24)):
+            raise InvalidFormat(
+                "unsupported bits per sample %s" % (pcmreader.bits_per_sample))
 
-        #FIXME
-        #should re-write the Sun AU routines to cover the full spec
-        #like I've done with RIFF WAVE
-        if (pcmreader.bits_per_sample != 16):
-            raise InvalidFormat('Sun AU only supports 16 bits per sample')
+        bytes_per_sample = pcmreader.bits_per_sample / 8
 
-        if (pcmreader.channels not in (1,2,4)):
-            raise InvalidFormat('Sun AU only supports 1, 2 or 4 channels')
+        converter = audiotools.pcmstream.PCMStreamReader(
+            pcmreader,bytes_per_sample,False)
 
-        f = sunau.open(filename,"w")
+        #converter = pcmreader
+        
+        header = Con.Container(magic_number='.snd',
+                               data_offset=0,
+                               data_size=0,
+                               encoding_format={8:2,16:3,24:4}[pcmreader.bits_per_sample],
+                               sample_rate=pcmreader.sample_rate,
+                               channels=pcmreader.channels)
 
-        f.setparams((pcmreader.channels,
-                     pcmreader.bits_per_sample / 8,
-                     pcmreader.sample_rate,
-                     0,
-                     'NONE',
-                     'ULAW'))
+        f = file(filename,'wb')
+        try:
+            #send out a dummy header
+            f.write(AuAudio.AU_HEADER.build(header))
+            header.data_offset = f.tell()
 
-        transfer_data(pcmreader.read,f.writeframes)
-        pcmreader.close()
-        f.close()
+            #send our big-endian PCM data
+            #d will be a list of ints, so we can't use transfer_data
+            d = converter.read(BUFFER_SIZE)
+            while (len(d) > 0):
+                s = audiotools.pcmstream.pcm_to_string(d,
+                                                       bytes_per_sample,
+                                                       True)
+                f.write(s)
+                
+                header.data_size += len(s)
+                d = converter.read(BUFFER_SIZE)
+
+            #send out a complete header
+            f.seek(0,0)
+            f.write(AuAudio.AU_HEADER.build(header))
+        finally:
+            f.close()
 
         return AuAudio(filename)
 

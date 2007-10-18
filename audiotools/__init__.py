@@ -249,7 +249,22 @@ class FrameReader(PCMReader):
 
     def close(self):
         self.framefile.close()
-        
+
+class __capped_stream_reader__:
+    #allows a maximum number of bytes "length" to
+    #be read from file-like object "stream"
+    #(used for reading IFF chunks, among others)
+    def __init__(self, stream, length):
+        self.stream = stream
+        self.remaining = length
+
+    def read(self, bytes):
+        data = self.stream.read(min(bytes,self.remaining))
+        self.remaining -= len(data)
+        return data
+
+    def close(self):
+        self.stream.close()
 
 #returns True if the PCM data in pcmreader1 equals pcmreader2
 #False if there is any data mismatch
@@ -401,7 +416,8 @@ class PCMConverter(PCMReader):
 
         self.input = pcmreader
         self.reader = pcmstream.PCMStreamReader(pcmreader,
-                                                pcmreader.bits_per_sample / 8)
+                                                pcmreader.bits_per_sample / 8,
+                                                False)
         PCMReader.__init__(self,None, sample_rate, channels, bits_per_sample)
 
         self.bytes_per_sample = self.bits_per_sample / 8
@@ -442,7 +458,7 @@ class PCMConverter(PCMReader):
         for converter in self.conversions:
             frame_list = converter(frame_list)
             
-        return pcmstream.pcm_to_string(frame_list,self.bytes_per_sample)
+        return pcmstream.pcm_to_string(frame_list,self.bytes_per_sample,False)
 
     def close(self):
         self.reader.close()

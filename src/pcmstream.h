@@ -35,14 +35,30 @@ static PyObject *PCMStreamReader_get_sample_size(
 
 static PyObject *pcm_to_string(PyObject *dummy, PyObject *args);
 
-long char_to_16bit(unsigned char *s);
-void _16bit_to_char(long i, unsigned char *s);
+/*signed, little-endian 16-bit long conversions*/
+long char_to_SL16long(unsigned char *s);
+void SL16long_to_char(long i, unsigned char *s);
 
-long char_to_24bit(unsigned char *s);
-void _24bit_to_char(long i, unsigned char *s);
+/*signed, little-endian 24-bit long conversions*/
+long char_to_SL24long(unsigned char *s);
+void SL24long_to_char(long i, unsigned char *s);
 
-long char_to_8bit(unsigned char *s);
-void _8bit_to_char(long i, unsigned char *s);
+/*unsigned, 8-bit long conversions
+  While 8-bit samples are stored unsigned on disk,
+  these functions transparently convert them to signed longs.
+  This simplification makes the logic further up the chain *much* easier.
+*/
+long char_to_U8long(unsigned char *s);
+void U8long_to_char(long i, unsigned char *s);
+
+/*signed, big-endian 16-bit long conversions*/
+long char_to_SB16long(unsigned char *s);
+void SB16long_to_char(long i, unsigned char *s);
+
+/*signed, big-endian 24-bit long conversions*/
+long char_to_SB24long(unsigned char *s);
+void SB24long_to_char(long i, unsigned char *s);
+
 
 
 /*Resampler definitions*/

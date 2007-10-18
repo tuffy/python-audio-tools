@@ -18,27 +18,11 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,InvalidFile,PCMReader,Con,BUFFER_SIZE,transfer_data
+from audiotools import AudioFile,InvalidFile,PCMReader,Con,BUFFER_SIZE,transfer_data,__capped_stream_reader__
 
 #######################
 #RIFF WAVE
 #######################
-
-class __capped_stream_reader__:
-    #allows a maximum number of bytes "length" to
-    #be read from file-like object "stream"
-    #(used for reading IFF chunks)
-    def __init__(self, stream, length):
-        self.stream = stream
-        self.remaining = length
-
-    def read(self, bytes):
-        data = self.stream.read(min(bytes,self.remaining))
-        self.remaining -= len(data)
-        return data
-
-    def close(self):
-        self.stream.close()
 
 
 class WaveReader(PCMReader):

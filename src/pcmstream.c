@@ -59,8 +59,9 @@ static int PCMStreamReader_init(pcmstream_PCMStreamReader *self,
 				PyObject *args, PyObject *kwds) {
   PyObject *substream = NULL;
   int sample_size;
+  int big_endian;
 
-  if (!PyArg_ParseTuple(args, "Oi", &substream,&sample_size))
+  if (!PyArg_ParseTuple(args, "Oii", &substream,&sample_size,&big_endian))
     return -1;
 
   if (sample_size > 3) {
@@ -78,10 +79,18 @@ static int PCMStreamReader_init(pcmstream_PCMStreamReader *self,
   self->unhandled_bytes_length = 0;
   self->sample_size = sample_size;
 
-  switch (sample_size) {
-  case 1: self->char_converter = char_to_8bit; break;
-  case 2: self->char_converter = char_to_16bit; break;
-  case 3: self->char_converter = char_to_16bit; break;
+  if (!big_endian) {
+    switch (sample_size) {
+    case 1: self->char_converter = char_to_U8long;   break;
+    case 2: self->char_converter = char_to_SL16long; break;
+    case 3: self->char_converter = char_to_SL24long; break;
+    }
+  } else {
+    switch (sample_size) {
+    case 1: self->char_converter = char_to_U8long;   break;
+    case 2: self->char_converter = char_to_SB16long; break;
+    case 3: self->char_converter = char_to_SB24long; break;
+    }
   }
 
   return 0;
@@ -116,6 +125,7 @@ static PyObject *PCMStreamReader_read(pcmstream_PCMStreamReader* self,
 
   PyObject *list;
   PyObject *read_string;
+  PyObject *long_obj;
 
   char *read_data;
   Py_ssize_t read_data_length;
@@ -146,7 +156,13 @@ static PyObject *PCMStreamReader_read(pcmstream_PCMStreamReader* self,
   }
 
   pcm_data_length = read_data_length + self->unhandled_bytes_length;
-  pcm_data = (unsigned char *)calloc(pcm_data_length,sizeof(unsigned char));
+  pcm_data = (unsigned char *)malloc(pcm_data_length);
+
+  if (pcm_data == NULL) {
+    PyErr_SetString(PyExc_MemoryError,"out of memory");
+    Py_XDECREF(read_string);
+    return NULL;
+  }
 
   char_converter = self->char_converter;
   sample_size = self->sample_size;
@@ -161,19 +177,27 @@ static PyObject *PCMStreamReader_read(pcmstream_PCMStreamReader* self,
     memcpy(pcm_data + self->unhandled_bytes_length,
 	   read_data, (size_t)read_data_length);
 
-  /*make a new array long enough to hold our PCM values*/
-  pcm_array_length = pcm_data_length / self->sample_size;
-  list = PyList_New((Py_ssize_t)pcm_array_length);
 
-
-  /*fill that array with values from the PCM stream*/
+   /*make a new array long enough to hold our PCM values*/
+   pcm_array_length = pcm_data_length / self->sample_size;
+   list = PyList_New((Py_ssize_t)pcm_array_length);
+   if (list == NULL) {
+     Py_DECREF(read_string);
+     free(pcm_data);
+     return NULL;
+   }
+ 
+   /*fill that array with values from the PCM stream*/
   for (input = 0,output=0; 
        (input < pcm_data_length) && (output < pcm_array_length);
        input += sample_size,output++) {
-    PyList_SET_ITEM(list, output,
-		    PyInt_FromLong(char_converter(pcm_data + input)));
+    long_obj = PyInt_FromLong(char_converter(pcm_data + input));
+    if (PyList_SetItem(list, output,long_obj) == -1) {
+      Py_DECREF(read_string);
+      free(pcm_data);
+      return NULL;
+    }
   }
-
   
   /*any leftover bytes are saved for next time*/
   if (input < pcm_data_length) {
@@ -185,13 +209,14 @@ static PyObject *PCMStreamReader_read(pcmstream_PCMStreamReader* self,
     self->unhandled_bytes_length = 0;
   }
 
-
   /*remove the string we've read in*/
   Py_DECREF(read_string);
 
   /*remove the old PCM stream*/
   free(pcm_data);
 
+  Py_INCREF(list);
+  
   /*return our new list*/
   return list;
 }
@@ -199,8 +224,9 @@ static PyObject *PCMStreamReader_read(pcmstream_PCMStreamReader* self,
 static PyObject *pcm_to_string(PyObject *dummy, PyObject *args) {
   PyObject *pcm_list = NULL;
   int sample_size;
-  void (*long_to_char)(long i, unsigned char *s) = _16bit_to_char;
-
+  void (*long_to_char)(long i, unsigned char *s) = SL16long_to_char;
+  int big_endian;
+ 
   PyObject *fast_list = NULL;
   int fast_list_size;
 
@@ -214,7 +240,7 @@ static PyObject *pcm_to_string(PyObject *dummy, PyObject *args) {
   long item;
 
   /*grab our input data as a fast Sequence*/
-  if (!PyArg_ParseTuple(args,"Oi",&pcm_list,&sample_size))
+  if (!PyArg_ParseTuple(args,"Oii",&pcm_list,&sample_size,&big_endian))
     return NULL;
 
   if (sample_size > 3) {
@@ -229,10 +255,18 @@ static PyObject *pcm_to_string(PyObject *dummy, PyObject *args) {
     return NULL;
   }
 
-  switch (sample_size) {
-  case 1: long_to_char = _8bit_to_char; break;
-  case 2: long_to_char = _16bit_to_char; break;
-  case 3: long_to_char = _24bit_to_char; break;
+  if (!big_endian) {
+    switch (sample_size) {
+    case 1: long_to_char = U8long_to_char;   break;
+    case 2: long_to_char = SL16long_to_char; break;
+    case 3: long_to_char = SL24long_to_char; break;
+    }
+  } else {
+    switch (sample_size) {
+    case 1: long_to_char = U8long_to_char;   break;
+    case 2: long_to_char = SB16long_to_char; break;
+    case 3: long_to_char = SB24long_to_char; break;
+    }
   }
 
   fast_list = PySequence_Fast(pcm_list,"samples are not a list");
@@ -240,7 +274,7 @@ static PyObject *pcm_to_string(PyObject *dummy, PyObject *args) {
     Py_DECREF(pcm_list);
     return NULL;
   }
-
+  
 
   /*build a character string to hold our data*/
   fast_list_size = PySequence_Fast_GET_SIZE(fast_list);
@@ -255,44 +289,43 @@ static PyObject *pcm_to_string(PyObject *dummy, PyObject *args) {
     item = PyInt_AsLong(PySequence_Fast_GET_ITEM(fast_list,input));
     if ((item == -1) && (PyErr_Occurred())) {
       Py_DECREF(fast_list);
-      Py_DECREF(pcm_list);
       free(pcm_data);
       return NULL;
     }
     long_to_char(item,pcm_data + output);
   }
 
-
+  
   /*build our output string and free all the junk we've allocated*/
   output_string = PyString_FromStringAndSize((char *)pcm_data,pcm_data_length);
-  
-  Py_DECREF(fast_list);
+
   Py_DECREF(pcm_list);
+  Py_DECREF(fast_list);
   free(pcm_data);
   
   return output_string;
 }
 
 
-long char_to_8bit(unsigned char *s) {
+long char_to_U8long(unsigned char *s) {
   return (long)(s[0] - 0x7F);
 }
 
-void _8bit_to_char(long i, unsigned char *s) {
+void U8long_to_char(long i, unsigned char *s) {
   /*avoid overflow/underflow*/
   if (i > 0x80) i = 0x80; else if (i < -0x7F) i = -0x7F;
 
   s[0] = (i + 0x7F) & 0xFF;
 }
 
-long char_to_16bit(unsigned char *s) {
+long char_to_SL16long(unsigned char *s) {
   if ((s[1] & 0x80) != 0)
     return -(long)(0x10000 - ((s[1] << 8) | s[0])); /*negative*/
   else
     return (long)(s[1] << 8) | s[0];                /*positive*/
 }
 
-void _16bit_to_char(long i, unsigned char *s) {
+void SL16long_to_char(long i, unsigned char *s) {
   /*avoid overflow/underflow*/
   if (i < -0x8000) i = -0x8000; else if (i > 0x7FFF) i = 0x7FFF;
 
@@ -300,14 +333,14 @@ void _16bit_to_char(long i, unsigned char *s) {
   s[1] = (i & 0xFF00) >> 8;
 }
 
-long char_to_24bit(unsigned char *s) {
+long char_to_SL24long(unsigned char *s) {
   if ((s[2] & 0x80) != 0)
     return -(long)(0x1000000 - ((s[2] << 16) | (s[1] << 8) | s[0]));/*negative*/
   else
     return (long)(s[2] << 16) | (s[1] << 8) | s[0];                 /*positive*/
 }
 
-void _24bit_to_char(long i, unsigned char *s) {
+void SL24long_to_char(long i, unsigned char *s) {
   /*avoid overflow/underflow*/
   if (i < -0x800000) i = -0x800000; else if (i > 0x7FFFFF) i = 0x7FFFFF;
 
@@ -316,9 +349,36 @@ void _24bit_to_char(long i, unsigned char *s) {
   s[2] = (i & 0xFF0000) >> 16;
 }
 
+long char_to_SB16long(unsigned char *s) {
+  if ((s[0] & 0x80) != 0)
+    return -(long)(0x10000 - ((s[0] << 8) | s[1])); /*negative*/
+  else
+    return (long)(s[0] << 8) | s[1];                /*positive*/
+}
 
+void SB16long_to_char(long i, unsigned char *s) {
+  /*avoid overflow/underflow*/
+  if (i < -0x8000) i = -0x8000; else if (i > 0x7FFF) i = 0x7FFF;
 
+  s[0] = (i & 0xFF00) >> 8;
+  s[1] = i & 0x00FF;
+}
 
+long char_to_SB24long(unsigned char *s) {
+  if ((s[0] & 0x80) != 0)
+    return -(long)(0x1000000 - ((s[0] << 16) | (s[1] << 8) | s[2]));/*negative*/
+  else
+    return (long)(s[0] << 16) | (s[1] << 8) | s[2];                 /*positive*/
+}
+
+void SB24long_to_char(long i, unsigned char *s) {
+  /*avoid overflow/underflow*/
+  if (i < -0x800000) i = -0x800000; else if (i > 0x7FFFFF) i = 0x7FFFFF;
+
+  s[0] = (i & 0xFF0000) >> 16;
+  s[1] = (i & 0x00FF00) >> 8;
+  s[2] = i & 0x0000FF;
+}
 
 
 static void Resampler_dealloc(pcmstream_Resampler* self) {
