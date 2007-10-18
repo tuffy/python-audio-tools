@@ -168,10 +168,10 @@ static PyObject *PCMStreamReader_read(pcmstream_PCMStreamReader* self,
 
   /*fill that array with values from the PCM stream*/
   for (input = 0,output=0; 
-	 (input < pcm_data_length) && (output < pcm_array_length);
-	 input += sample_size,output++) {
-      PyList_SET_ITEM(list, output,
-		      PyInt_FromLong(char_converter(pcm_data + input)));
+       (input < pcm_data_length) && (output < pcm_array_length);
+       input += sample_size,output++) {
+    PyList_SET_ITEM(list, output,
+		    PyInt_FromLong(char_converter(pcm_data + input)));
   }
 
   
@@ -199,6 +199,7 @@ static PyObject *PCMStreamReader_read(pcmstream_PCMStreamReader* self,
 static PyObject *pcm_to_string(PyObject *dummy, PyObject *args) {
   PyObject *pcm_list = NULL;
   int sample_size;
+  void (*long_to_char)(long i, unsigned char *s) = _16bit_to_char;
 
   PyObject *fast_list = NULL;
   int fast_list_size;
@@ -221,6 +222,17 @@ static PyObject *pcm_to_string(PyObject *dummy, PyObject *args) {
 		    "sample size cannot be greater than 3 bytes");
     Py_DECREF(pcm_list);
     return NULL;
+  } else if (sample_size < 1) {
+    PyErr_SetString(PyExc_ValueError,
+		    "sample size must be larger than 1 byte");
+    Py_DECREF(pcm_list);
+    return NULL;
+  }
+
+  switch (sample_size) {
+  case 1: long_to_char = _8bit_to_char; break;
+  case 2: long_to_char = _16bit_to_char; break;
+  case 3: long_to_char = _24bit_to_char; break;
   }
 
   fast_list = PySequence_Fast(pcm_list,"samples are not a list");
@@ -235,51 +247,21 @@ static PyObject *pcm_to_string(PyObject *dummy, PyObject *args) {
   pcm_data_length = fast_list_size * sample_size;
   pcm_data = (unsigned char *)calloc(pcm_data_length,sizeof(unsigned char));
 
+  
   /*perform the int->PCM data conversion*/
-  switch (sample_size) {
-  case 1:
-    for (input = 0,output = 0;
-	 (input < fast_list_size) && (output < pcm_data_length);
-	 input++,output++) {
-      item = PyInt_AsLong(PySequence_Fast_GET_ITEM(fast_list,input));
-      if ((item == -1) && (PyErr_Occurred())) {
-	Py_DECREF(fast_list);
-	Py_DECREF(pcm_list);
-	free(pcm_data);
-	return NULL;
-      }
-      _8bit_to_char(item,pcm_data + output);
+  for (input = 0,output = 0;
+       (input < fast_list_size) && (output < pcm_data_length);
+       input++,output += sample_size) {
+    item = PyInt_AsLong(PySequence_Fast_GET_ITEM(fast_list,input));
+    if ((item == -1) && (PyErr_Occurred())) {
+      Py_DECREF(fast_list);
+      Py_DECREF(pcm_list);
+      free(pcm_data);
+      return NULL;
     }
-    break;
-  case 2:
-    for (input = 0,output = 0;
-	 (input < fast_list_size) && (output < pcm_data_length);
-	 input++,output += 2) {
-      item = PyInt_AsLong(PySequence_Fast_GET_ITEM(fast_list,input));
-      if ((item == -1) && (PyErr_Occurred())) {
-	Py_DECREF(fast_list);
-	Py_DECREF(pcm_list);
-	free(pcm_data);
-	return NULL;
-      }
-      _16bit_to_char(item,pcm_data + output);
-    }
-    break;
-  case 3:
-    for (input = 0,output = 0;
-	 (input < fast_list_size) && (output < pcm_data_length);
-	 input++,output += 3) {
-      item = PyInt_AsLong(PySequence_Fast_GET_ITEM(fast_list,input));
-      if ((item == -1) && (PyErr_Occurred())) {
-	Py_DECREF(fast_list);
-	Py_DECREF(pcm_list);
-	free(pcm_data);
-	return NULL;
-      }
-      _24bit_to_char(item,pcm_data + output);
-    }
-    break;
+    long_to_char(item,pcm_data + output);
   }
+
 
   /*build our output string and free all the junk we've allocated*/
   output_string = PyString_FromStringAndSize((char *)pcm_data,pcm_data_length);
