@@ -502,8 +502,13 @@ class FlacReader:
         #that of the rest of the subframe
         for i in xrange(predictor_order):
             rice.append(0)
-        
-        if (self.bitstream.read(2) != '\x00\x00'):
+
+        coding_method = self.bitstream.read(2)
+        if (coding_method == '\x00\x00'):
+            rice2 = False
+        elif (coding_method == '\x00\x01'):
+            rice2 = True
+        else:
             raise FlacStreamException('invalid residual coding method')
         
         partition_order = Con.Bits('partition_order',4).parse_stream(
@@ -512,25 +517,30 @@ class FlacReader:
         if (partition_order > 0):
             total_samples = ((block_size / 2 ** partition_order) -
                              predictor_order)
-            rice.extend(self.read_encoded_rice(total_samples))
+            rice.extend(self.read_encoded_rice(total_samples,rice2))
             
             for i in xrange(1,2 ** partition_order):
                 total_samples = (block_size / 2 ** partition_order)
                 
-                rice.extend(self.read_encoded_rice(total_samples))
+                rice.extend(self.read_encoded_rice(total_samples,rice2))
         else:
-            rice.extend(self.read_encoded_rice(block_size - predictor_order))
+            rice.extend(self.read_encoded_rice(block_size - predictor_order,
+                                               rice2))
 
         return rice
 
 
-    def read_encoded_rice(self, total_samples):
+    def read_encoded_rice(self, total_samples, rice2=False):
         bin_to_int = Con.lib.binary.bin_to_int
         
         samples = array.array('i')
 
-        rice_parameter = Con.Bits('rice_parameter',4).parse_stream(
-            self.bitstream)
+        if (not rice2):
+            rice_parameter = Con.Bits('rice_parameter',4).parse_stream(
+                self.bitstream)
+        else:
+            rice_parameter = Con.Bits('rice_parameter',5).parse_stream(
+                self.bitstream)
 
         if (rice_parameter != 0xF):
             #a Rice encoded residual

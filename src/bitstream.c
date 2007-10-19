@@ -286,12 +286,8 @@ static PyObject *BitStreamReader_read(bitstream_BitStreamReader* self,
 
     /*If the request is larger than the number of bits we've received
       (which happens at the end of the stream)
-      reduce the request accordingly.
-      If the request is smaller than the number of bits we've received
-      (which happens if read() returns a larger string than requested)
-      increase the returned bytes accordingly.
-      This is less likely.*/
-    if (read_count != bit_length)
+      reduce the request accordingly.*/
+    if (read_count > bit_length)
       read_count = bit_length;
 
     /*grab up to the requested number of bits to a Python
@@ -302,6 +298,8 @@ static PyObject *BitStreamReader_read(bitstream_BitStreamReader* self,
     /*toss any remaining bits into our internal buffer*/
     leftover_bits = bit_buffer + read_count;
     leftover_bits_length = bit_length - read_count;
+    if (leftover_bits_length > 7)
+      leftover_bits_length = 7;
 
     memcpy(self->buffer,leftover_bits,(size_t)leftover_bits_length);
 
