@@ -19,11 +19,18 @@
 
 
 import audiotools
+import audiotools.pcmstream
+import audiotools.bitstream
 import tempfile
 import sys
+import md5
+import os
+import random
 import cStringIO
 import unittest
 import decimal as D
+
+Con = audiotools.Con
 
 #probstat does this better, but I don't want to require that
 #for something used only rarely
@@ -62,6 +69,41 @@ class BLANK_PCM_Reader:
 
     def close(self):
         pass
+
+#this sends out random samples instead of a bunch of identical ones
+class RANDOM_PCM_Reader(BLANK_PCM_Reader):
+    def __init__(self, length,
+                 sample_rate=44100,channels=2,bits_per_sample=16):
+        BLANK_PCM_Reader.__init__(self,length,
+                                  sample_rate,channels,bits_per_sample)
+        self.md5 = md5.new()
+    
+    def read(self, bytes):
+        if (self.current_size > 0):
+            buffer = os.urandom(min(bytes,self.current_size))
+            self.md5.update(buffer)
+            self.current_size -= len(buffer)
+            return buffer
+        else:
+            return ""
+
+    def hexdigest(self):
+        return self.md5.hexdigest()
+
+#this not only sends out random samples,
+#but the amount sent on each read() is also random
+#between 1 and audiotools.BUFFER_SIZE * 2
+class VARIABLE_PCM_Reader(RANDOM_PCM_Reader):
+    def read(self, bytes):
+        if (self.current_size > 0):
+            buffer = os.urandom(min(
+                random.randint(1,audiotools.BUFFER_SIZE * 2),
+                self.current_size))
+            self.md5.update(buffer)
+            self.current_size -= len(buffer)
+            return buffer
+        else:
+            return ""
 
 class PCM_Count:
     def __init__(self):
@@ -212,6 +254,9 @@ class DummyMetaData3(audiotools.MetaData):
     def supports_images(cls):
         return True
 
+############
+#BEGIN TESTS
+############
 
 class TestPCMCombinations(unittest.TestCase):
     def testpcmcombinations(self):
@@ -252,6 +297,36 @@ class TestAiffAudio(unittest.TestCase):
                 pcm.close()
         finally:
             temp.close()
+
+    def testrandomencode(self):
+        temp = tempfile.NamedTemporaryFile(suffix="." + self.audio_class.SUFFIX)
+        try:
+            reader = VARIABLE_PCM_Reader(TEST_LENGTH)
+            
+            new_file = self.audio_class.from_pcm(
+                temp.name,reader)
+
+            self.assertEqual(new_file.channels(),2)
+            self.assertEqual(new_file.bits_per_sample(),16)
+            self.assertEqual(new_file.sample_rate(),44100)
+            
+            if (new_file.lossless()):
+                md5sum = md5.new()
+                pcm = new_file.to_pcm()
+                audiotools.transfer_data(pcm.read,md5sum.update)
+                pcm.close()
+                self.assertEqual(md5sum.hexdigest(),reader.hexdigest())
+            else:
+                counter = PCM_Count()
+                pcm = new_file.to_pcm()
+                audiotools.transfer_data(pcm.read,counter.write)
+                self.assertEqual(
+                    (D.Decimal(len(counter) / 4) / 44100).to_integral(),
+                    TEST_LENGTH)
+                pcm.close()
+        finally:
+            temp.close()
+
 
     def testunusualaudio(self):
         temp = tempfile.NamedTemporaryFile(suffix="." + self.audio_class.SUFFIX)
@@ -738,6 +813,102 @@ class TestPCMConversion(unittest.TestCase):
             self.assertEqual(wave.bits_per_sample(),output[2])
             self.assertEqual((D.Decimal(wave.length()) / 75).to_integral(),
                              5)
+
+class TestPCMStreamReader(unittest.TestCase):
+    def testinvalidstreams(self):
+        self.assertRaises(ValueError,
+                          audiotools.pcmstream.PCMStreamReader,
+                          cStringIO.StringIO(chr(0) * 10),0,False)
+        
+        self.assertRaises(ValueError,
+                          audiotools.pcmstream.PCMStreamReader,
+                          cStringIO.StringIO(chr(0) * 10),5,False)
+
+        r = audiotools.pcmstream.PCMStreamReader(None,2,False)
+        self.assertRaises(AttributeError,r.read,10)
+    
+    def testroundtrip(self):
+        for (bytes_per_sample,big_endian) in ((1,False),(2,False),(3,False),
+                                              (1,True), (2,True), (3, True)):
+            #channels and sample_rate don't really matter here
+            data = VARIABLE_PCM_Reader(TEST_LENGTH,
+                                       bits_per_sample=bytes_per_sample * 8)
+            converter = audiotools.pcmstream.PCMStreamReader(data,
+                                                             bytes_per_sample,
+                                                             big_endian)
+            md5sum = md5.new()
+            d = converter.read(audiotools.BUFFER_SIZE)
+            while (len(d) > 0):
+                md5sum.update(audiotools.pcmstream.pcm_to_string(
+                    d,bytes_per_sample,big_endian))
+                d = converter.read(audiotools.BUFFER_SIZE)
+
+            self.assertEqual(data.hexdigest(),md5sum.hexdigest())
+
+    def testbyteswap(self):
+        for (bytes_per_sample,big_endian) in ((1,False),(2,False),(3,False),
+                                              (1,True), (2,True), (3, True)):
+            data = VARIABLE_PCM_Reader(SHORT_LENGTH,
+                                       bits_per_sample=bytes_per_sample * 8)
+            converter = audiotools.pcmstream.PCMStreamReader(data,
+                                                             bytes_per_sample,
+                                                             big_endian)
+            #our byteswapped data
+            dump = cStringIO.StringIO()
+            d = converter.read(audiotools.BUFFER_SIZE)
+            while (len(d) > 0):
+               dump.write(audiotools.pcmstream.pcm_to_string(
+                   d,bytes_per_sample,not big_endian))
+               d = converter.read(audiotools.BUFFER_SIZE)
+
+            dump.seek(0,0)
+
+            new_data = audiotools.PCMReader(
+                dump,
+                sample_rate=data.sample_rate,
+                bits_per_sample=data.bits_per_sample,
+                channels=data.channels)
+            
+            converter = audiotools.pcmstream.PCMStreamReader(new_data,
+                                                             bytes_per_sample,
+                                                             not big_endian)
+
+            md5sum = md5.new()
+            d = converter.read(audiotools.BUFFER_SIZE)
+            while (len(d) > 0):
+                md5sum.update(audiotools.pcmstream.pcm_to_string(
+                    d,bytes_per_sample,big_endian))
+                d = converter.read(audiotools.BUFFER_SIZE)
+
+            self.assertEqual(data.hexdigest(),md5sum.hexdigest())
+
+class testbitstream(unittest.TestCase):
+    def testinvalidstream(self):
+        b = audiotools.bitstream.BitStreamReader(None)
+        self.assertRaises(AttributeError,
+                          b.read,10)
+
+    def testcompliance(self):
+        allbits = "".join(map(chr,range(0,0x100)) + \
+                          map(chr,reversed(range(0,0x100)))) * 20
+        for i in xrange(1,65):
+            reader1 = Con.BitStreamReader(cStringIO.StringIO(allbits))
+            reader2 = audiotools.bitstream.BitStreamReader(cStringIO.StringIO(allbits))
+            sum1 = md5.new()
+            sum2 = md5.new()
+
+            for (reader,sum) in ((reader1,sum1),(reader2,sum2)):
+                bits = reader.read(i)
+                while (len(bits) > 0):
+                    sum.update(bits)
+                    bits = reader.read(i)
+                reader.close()
+
+            self.assertEqual(sum1.hexdigest(),sum2.hexdigest())
+
+############
+#END TESTS
+############
         
 if (__name__ == '__main__'):
     unittest.main()

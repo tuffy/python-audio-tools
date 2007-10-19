@@ -64,34 +64,32 @@ int PCMStreamReader_init(pcmstream_PCMStreamReader *self,
   if (!PyArg_ParseTuple(args, "Oii", &substream,&sample_size,&big_endian))
     return -1;
 
-  if (sample_size > 3) {
-    PyErr_SetString(PyExc_ValueError,
-		    "sample size cannot be greater than 3 bytes");
-    return -1;
-  } else if (sample_size < 1) {
-    PyErr_SetString(PyExc_ValueError,
-		    "sample size must be greater than 1 byte");
-    return -1;
-  }
-
-  Py_INCREF(substream);
-  self->substream = substream;
-  self->unhandled_bytes_length = 0;
-  self->sample_size = sample_size;
+  self->substream = NULL;
 
   if (!big_endian) {
     switch (sample_size) {
     case 1: self->char_converter = char_to_U8long;   break;
     case 2: self->char_converter = char_to_SL16long; break;
     case 3: self->char_converter = char_to_SL24long; break;
+    default: PyErr_SetString(PyExc_ValueError,
+			     "sample size must be between 1 and 3 bytes");
+      return -1;
     }
   } else {
     switch (sample_size) {
     case 1: self->char_converter = char_to_U8long;   break;
     case 2: self->char_converter = char_to_SB16long; break;
     case 3: self->char_converter = char_to_SB24long; break;
+    default: PyErr_SetString(PyExc_ValueError,
+			     "sample size must be between 1 and 3 bytes");
+      return -1;
     }
   }
+
+  Py_INCREF(substream);
+  self->substream = substream;
+  self->unhandled_bytes_length = 0;
+  self->sample_size = sample_size;
 
   return 0;
 }
@@ -239,27 +237,23 @@ PyObject *pcm_to_string(PyObject *dummy, PyObject *args) {
   if (!PyArg_ParseTuple(args,"Oii",&pcm_list,&sample_size,&big_endian))
     return NULL;
 
-  if (sample_size > 3) {
-    PyErr_SetString(PyExc_ValueError,
-		    "sample size cannot be greater than 3 bytes");
-    return NULL;
-  } else if (sample_size < 1) {
-    PyErr_SetString(PyExc_ValueError,
-		    "sample size must be larger than 1 byte");
-    return NULL;
-  }
-
   if (!big_endian) {
     switch (sample_size) {
     case 1: long_to_char = U8long_to_char;   break;
     case 2: long_to_char = SL16long_to_char; break;
     case 3: long_to_char = SL24long_to_char; break;
+    default: PyErr_SetString(PyExc_ValueError,
+			     "sample size must be between 1 and 3 bytes");
+      return NULL;
     }
   } else {
     switch (sample_size) {
     case 1: long_to_char = U8long_to_char;   break;
     case 2: long_to_char = SB16long_to_char; break;
     case 3: long_to_char = SB24long_to_char; break;
+    default: PyErr_SetString(PyExc_ValueError,
+			     "sample size must be between 1 and 3 bytes");
+      return NULL;
     }
   }
 
