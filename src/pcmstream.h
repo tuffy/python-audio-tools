@@ -14,26 +14,26 @@ typedef struct {
   int unhandled_bytes_length; /*how many partial PCM bytes we have*/
 } pcmstream_PCMStreamReader;
 
-static void PCMStreamReader_dealloc(pcmstream_PCMStreamReader* self);
+void PCMStreamReader_dealloc(pcmstream_PCMStreamReader* self);
 
-static PyObject *PCMStreamReader_new(PyTypeObject *type, 
+PyObject *PCMStreamReader_new(PyTypeObject *type, 
 				     PyObject *args, PyObject *kwds);
 
-static int PCMStreamReader_init(pcmstream_PCMStreamReader *self, 
+int PCMStreamReader_init(pcmstream_PCMStreamReader *self, 
 				PyObject *args, PyObject *kwds);
 
-static PyObject *PCMStreamReader_close(pcmstream_PCMStreamReader* self);
+PyObject *PCMStreamReader_close(pcmstream_PCMStreamReader* self);
 
-static PyObject *PCMStreamReader_tell(pcmstream_PCMStreamReader* self);
+PyObject *PCMStreamReader_tell(pcmstream_PCMStreamReader* self);
 
-static PyObject *PCMStreamReader_read(pcmstream_PCMStreamReader* self, 
+PyObject *PCMStreamReader_read(pcmstream_PCMStreamReader* self, 
 				      PyObject *args);
 
-static PyObject *PCMStreamReader_get_sample_size(
+PyObject *PCMStreamReader_get_sample_size(
     pcmstream_PCMStreamReader *self,
     void *closure);
 
-static PyObject *pcm_to_string(PyObject *dummy, PyObject *args);
+PyObject *pcm_to_string(PyObject *dummy, PyObject *args);
 
 /*signed, little-endian 16-bit long conversions*/
 long char_to_SL16long(unsigned char *s);
@@ -70,24 +70,24 @@ typedef struct {
   double ratio;
 } pcmstream_Resampler;
 
-static void Resampler_dealloc(pcmstream_Resampler* self);
+void Resampler_dealloc(pcmstream_Resampler* self);
 
-static PyObject *Resampler_new(PyTypeObject *type, 
+PyObject *Resampler_new(PyTypeObject *type, 
 			       PyObject *args, PyObject *kwds);
 
-static int Resampler_init(pcmstream_Resampler *self, 
+int Resampler_init(pcmstream_Resampler *self, 
 			  PyObject *args, PyObject *kwds);
 
-static PyObject *Resampler_process(pcmstream_Resampler* self, 
+PyObject *Resampler_process(pcmstream_Resampler* self, 
 				   PyObject *args);
 
-static PyMethodDef module_methods[] = {
+PyMethodDef module_methods[] = {
   {"pcm_to_string",(PyCFunction)pcm_to_string,
    METH_VARARGS,"Converts PCM integers to a string of PCM data."},
   {NULL}
 };
 
-static PyGetSetDef PCMStreamReader_getseters[] = {
+PyGetSetDef PCMStreamReader_getseters[] = {
     {"sample_size", 
      (getter)PCMStreamReader_get_sample_size, 0,
      "sample size",
@@ -95,7 +95,7 @@ static PyGetSetDef PCMStreamReader_getseters[] = {
     {NULL}  /* Sentinel */
 };
 
-static PyMethodDef PCMStreamReader_methods[] = {
+PyMethodDef PCMStreamReader_methods[] = {
   {"close", (PyCFunction)PCMStreamReader_close,
    METH_NOARGS,"Closes the PCMStreamReader and substream"},
   {"tell", (PyCFunction)PCMStreamReader_tell,
@@ -105,13 +105,13 @@ static PyMethodDef PCMStreamReader_methods[] = {
   {NULL}
 };
 
-static PyMethodDef Resampler_methods[] = {
+PyMethodDef Resampler_methods[] = {
   {"process", (PyCFunction)Resampler_process,
    METH_VARARGS,"Processes PCM samples into the new sample rate"},
   {NULL}
 };
 
-static PyTypeObject pcmstream_PCMStreamReaderType = {
+PyTypeObject pcmstream_PCMStreamReaderType = {
     PyObject_HEAD_INIT(NULL)
     0,                         /*ob_size*/
     "pcmstream.PCMStreamReader", /*tp_name*/
@@ -154,7 +154,7 @@ static PyTypeObject pcmstream_PCMStreamReaderType = {
 };
 
 
-static PyTypeObject pcmstream_ResamplerType = {
+PyTypeObject pcmstream_ResamplerType = {
     PyObject_HEAD_INIT(NULL)
     0,                         /*ob_size*/
     "pcmstream.Resampler", /*tp_name*/

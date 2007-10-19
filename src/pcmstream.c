@@ -46,7 +46,7 @@ PyMODINIT_FUNC initpcmstream(void) {
 }
 
 
-static PyObject *PCMStreamReader_new(PyTypeObject *type, 
+PyObject *PCMStreamReader_new(PyTypeObject *type, 
 				     PyObject *args, PyObject *kwds) {
   pcmstream_PCMStreamReader *self;
 
@@ -55,7 +55,7 @@ static PyObject *PCMStreamReader_new(PyTypeObject *type,
   return (PyObject *)self;
 }
 
-static int PCMStreamReader_init(pcmstream_PCMStreamReader *self, 
+int PCMStreamReader_init(pcmstream_PCMStreamReader *self, 
 				PyObject *args, PyObject *kwds) {
   PyObject *substream = NULL;
   int sample_size;
@@ -96,14 +96,14 @@ static int PCMStreamReader_init(pcmstream_PCMStreamReader *self,
   return 0;
 }
 
-static void
+void
 PCMStreamReader_dealloc(pcmstream_PCMStreamReader* self)
 {
   Py_XDECREF(self->substream);
   self->ob_type->tp_free((PyObject*)self);
 }
 
-static PyObject *PCMStreamReader_get_sample_size(
+PyObject *PCMStreamReader_get_sample_size(
     pcmstream_PCMStreamReader *self,
     void *closure) {
   PyObject *sample_size;
@@ -111,17 +111,17 @@ static PyObject *PCMStreamReader_get_sample_size(
   return sample_size;
 }
 
-static PyObject *PCMStreamReader_close(pcmstream_PCMStreamReader* self) {
+PyObject *PCMStreamReader_close(pcmstream_PCMStreamReader* self) {
   return PyObject_CallMethod(self->substream,"close",NULL);
 }
 
-static PyObject *PCMStreamReader_tell(pcmstream_PCMStreamReader* self) {
+PyObject *PCMStreamReader_tell(pcmstream_PCMStreamReader* self) {
   return PyObject_CallMethod(self->substream,"tell",NULL);
 }
 
-static PyObject *PCMStreamReader_read(pcmstream_PCMStreamReader* self, 
+PyObject *PCMStreamReader_read(pcmstream_PCMStreamReader* self, 
 				      PyObject *args) {
-  long int read_count;
+  long read_count;
 
   PyObject *list;
   PyObject *read_string;
@@ -177,12 +177,14 @@ static PyObject *PCMStreamReader_read(pcmstream_PCMStreamReader* self,
     memcpy(pcm_data + self->unhandled_bytes_length,
 	   read_data, (size_t)read_data_length);
 
+  /*remove the string we've read in*/
+  Py_DECREF(read_string);
+
 
    /*make a new array long enough to hold our PCM values*/
    pcm_array_length = pcm_data_length / self->sample_size;
    list = PyList_New((Py_ssize_t)pcm_array_length);
    if (list == NULL) {
-     Py_DECREF(read_string);
      free(pcm_data);
      return NULL;
    }
@@ -193,7 +195,6 @@ static PyObject *PCMStreamReader_read(pcmstream_PCMStreamReader* self,
        input += sample_size,output++) {
     long_obj = PyInt_FromLong(char_converter(pcm_data + input));
     if (PyList_SetItem(list, output,long_obj) == -1) {
-      Py_DECREF(read_string);
       free(pcm_data);
       return NULL;
     }
@@ -209,19 +210,14 @@ static PyObject *PCMStreamReader_read(pcmstream_PCMStreamReader* self,
     self->unhandled_bytes_length = 0;
   }
 
-  /*remove the string we've read in*/
-  Py_DECREF(read_string);
-
   /*remove the old PCM stream*/
   free(pcm_data);
-
-  Py_INCREF(list);
   
   /*return our new list*/
   return list;
 }
 
-static PyObject *pcm_to_string(PyObject *dummy, PyObject *args) {
+PyObject *pcm_to_string(PyObject *dummy, PyObject *args) {
   PyObject *pcm_list = NULL;
   int sample_size;
   void (*long_to_char)(long i, unsigned char *s) = SL16long_to_char;
@@ -246,12 +242,10 @@ static PyObject *pcm_to_string(PyObject *dummy, PyObject *args) {
   if (sample_size > 3) {
     PyErr_SetString(PyExc_ValueError,
 		    "sample size cannot be greater than 3 bytes");
-    Py_DECREF(pcm_list);
     return NULL;
   } else if (sample_size < 1) {
     PyErr_SetString(PyExc_ValueError,
 		    "sample size must be larger than 1 byte");
-    Py_DECREF(pcm_list);
     return NULL;
   }
 
@@ -271,7 +265,6 @@ static PyObject *pcm_to_string(PyObject *dummy, PyObject *args) {
 
   fast_list = PySequence_Fast(pcm_list,"samples are not a list");
   if (fast_list == NULL) {
-    Py_DECREF(pcm_list);
     return NULL;
   }
   
@@ -299,7 +292,6 @@ static PyObject *pcm_to_string(PyObject *dummy, PyObject *args) {
   /*build our output string and free all the junk we've allocated*/
   output_string = PyString_FromStringAndSize((char *)pcm_data,pcm_data_length);
 
-  Py_DECREF(pcm_list);
   Py_DECREF(fast_list);
   free(pcm_data);
   
@@ -381,12 +373,12 @@ void SB24long_to_char(long i, unsigned char *s) {
 }
 
 
-static void Resampler_dealloc(pcmstream_Resampler* self) {
+void Resampler_dealloc(pcmstream_Resampler* self) {
   src_delete(self->src_state);
   self->ob_type->tp_free((PyObject*)self);
 }
 
-static PyObject *Resampler_new(PyTypeObject *type, 
+PyObject *Resampler_new(PyTypeObject *type, 
 			       PyObject *args, PyObject *kwds) {
   pcmstream_Resampler *self;
 
@@ -395,7 +387,7 @@ static PyObject *Resampler_new(PyTypeObject *type,
   return (PyObject *)self;
 }
 
-static int Resampler_init(pcmstream_Resampler *self, 
+int Resampler_init(pcmstream_Resampler *self, 
 			  PyObject *args, PyObject *kwds) {
   int error;
   int channels;
@@ -426,7 +418,7 @@ static int Resampler_init(pcmstream_Resampler *self,
 
 #define OUTPUT_SAMPLES_LENGTH 0x100000
 
-static PyObject *Resampler_process(pcmstream_Resampler* self, 
+PyObject *Resampler_process(pcmstream_Resampler* self, 
 				   PyObject *args) {
   PyObject *samples_object;
   PyObject *samples_list;
@@ -455,21 +447,14 @@ static PyObject *Resampler_process(pcmstream_Resampler* self,
   if ((!PySequence_Check(samples_object)) || (PyString_Check(samples_object))) {
     PyErr_SetString(PyExc_TypeError,
 		    "samples must be a sequence");
-    
-    Py_XDECREF(samples_object);
     return NULL;
   }
   
   samples_list = PySequence_Fast(samples_object,
 				 "samples must be a sequence");
   if (samples_list == NULL) {
-    Py_XDECREF(samples_object);
     return NULL;
   }
-    
-
-  Py_DECREF(samples_object);
-
 
   /*grab the size of samples_object*/
   samples_list_size = PySequence_Fast_GET_SIZE(samples_list);
@@ -546,6 +531,9 @@ static PyObject *Resampler_process(pcmstream_Resampler* self,
 
   /*return those two arrays as a tuple*/
   toreturn = PyTuple_Pack(2,processed_samples,unprocessed_samples);
+
+  Py_DECREF(processed_samples);
+  Py_DECREF(unprocessed_samples);
 
   return toreturn;
 }
