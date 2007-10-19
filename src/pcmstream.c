@@ -512,16 +512,18 @@ PyObject *Resampler_process(pcmstream_Resampler* self,
   
   /*successfully processed samples*/
   for (i = 0; i < src_data.output_frames_gen * self->channels; i++) {
-    PyList_SET_ITEM(processed_samples,i,
-		    PyFloat_FromDouble((double)src_data.data_out[i]));
+    if (PyList_SetItem(processed_samples,i,
+		       PyFloat_FromDouble((double)src_data.data_out[i])) == -1)
+      goto error;
   }
 
   /*not-yet-successfully processed samples*/
   for (i = src_data.input_frames_used * self->channels,j=0;
        i < (src_data.input_frames * self->channels);
        i++,j++) {
-    PyList_SET_ITEM(unprocessed_samples,j,
-		    PyFloat_FromDouble((double)src_data.data_in[i]));
+    if (PyList_SetItem(unprocessed_samples,j,
+		       PyFloat_FromDouble((double)src_data.data_in[i])) == -1)
+      goto error;
   }
   
 
@@ -536,4 +538,11 @@ PyObject *Resampler_process(pcmstream_Resampler* self,
   Py_DECREF(unprocessed_samples);
 
   return toreturn;
+
+ error:
+  free(src_data.data_in);
+  Py_DECREF(processed_samples);
+  Py_DECREF(unprocessed_samples);
+
+  return NULL;
 }
