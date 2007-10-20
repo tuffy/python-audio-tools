@@ -69,8 +69,8 @@ void SL24long_to_char(long i, unsigned char *s);
   these functions transparently convert them to signed longs.
   This simplification makes the logic further up the chain *much* easier.
 */
-long char_to_U8long(unsigned char *s);
-void U8long_to_char(long i, unsigned char *s);
+long char_to_S8long(unsigned char *s);
+void S8long_to_char(long i, unsigned char *s);
 
 /*signed, big-endian 16-bit long conversions*/
 long char_to_SB16long(unsigned char *s);

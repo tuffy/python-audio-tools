@@ -68,7 +68,7 @@ int PCMStreamReader_init(pcmstream_PCMStreamReader *self,
 
   if (!big_endian) {
     switch (sample_size) {
-    case 1: self->char_converter = char_to_U8long;   break;
+    case 1: self->char_converter = char_to_S8long;   break;
     case 2: self->char_converter = char_to_SL16long; break;
     case 3: self->char_converter = char_to_SL24long; break;
     default: PyErr_SetString(PyExc_ValueError,
@@ -77,7 +77,7 @@ int PCMStreamReader_init(pcmstream_PCMStreamReader *self,
     }
   } else {
     switch (sample_size) {
-    case 1: self->char_converter = char_to_U8long;   break;
+    case 1: self->char_converter = char_to_S8long;   break;
     case 2: self->char_converter = char_to_SB16long; break;
     case 3: self->char_converter = char_to_SB24long; break;
     default: PyErr_SetString(PyExc_ValueError,
@@ -239,7 +239,7 @@ PyObject *pcm_to_string(PyObject *dummy, PyObject *args) {
 
   if (!big_endian) {
     switch (sample_size) {
-    case 1: long_to_char = U8long_to_char;   break;
+    case 1: long_to_char = S8long_to_char;   break;
     case 2: long_to_char = SL16long_to_char; break;
     case 3: long_to_char = SL24long_to_char; break;
     default: PyErr_SetString(PyExc_ValueError,
@@ -248,7 +248,7 @@ PyObject *pcm_to_string(PyObject *dummy, PyObject *args) {
     }
   } else {
     switch (sample_size) {
-    case 1: long_to_char = U8long_to_char;   break;
+    case 1: long_to_char = S8long_to_char;   break;
     case 2: long_to_char = SB16long_to_char; break;
     case 3: long_to_char = SB24long_to_char; break;
     default: PyErr_SetString(PyExc_ValueError,
@@ -293,11 +293,11 @@ PyObject *pcm_to_string(PyObject *dummy, PyObject *args) {
 }
 
 
-long char_to_U8long(unsigned char *s) {
+long char_to_S8long(unsigned char *s) {
   return (long)(s[0] - 0x7F);
 }
 
-void U8long_to_char(long i, unsigned char *s) {
+void S8long_to_char(long i, unsigned char *s) {
   /*avoid overflow/underflow*/
   if (i > 0x80) i = 0x80; else if (i < -0x7F) i = -0x7F;
 

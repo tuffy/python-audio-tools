@@ -882,6 +882,61 @@ class TestPCMStreamReader(unittest.TestCase):
 
             self.assertEqual(data.hexdigest(),md5sum.hexdigest())
 
+    def test8bitpcmtostring(self):
+        def _8bits():
+            for i in xrange(0x100):
+                yield chr(i)
+
+        le_parser = Con.ULInt8('s')
+        be_parser = Con.UBInt8('s')
+
+        for c in _8bits():
+            self.assertEqual(c,audiotools.pcmstream.pcm_to_string([
+                        le_parser.parse(c) - 0x7F],1,False))
+        
+            self.assertEqual(c,audiotools.pcmstream.pcm_to_string([
+                        be_parser.parse(c) - 0x7F],1,True))
+            
+    def test16bitpcmtostring(self):
+        def _16bits():
+            for i in xrange(0x100):
+                for j in xrange(0x100):
+                    yield chr(i) + chr(j)
+
+        le_parser = Con.SLInt16('s')
+        be_parser = Con.SBInt16('s')
+
+        for c in _16bits():
+            self.assertEqual(c,audiotools.pcmstream.pcm_to_string([
+                        le_parser.parse(c)],2,False))
+
+            self.assertEqual(c,audiotools.pcmstream.pcm_to_string([
+                        be_parser.parse(c)],2,True))
+
+    #this is extremely time-consuming
+    #and not a test you'll want to run all the time
+    #def test24bitpcmtostring(self):
+    #    def _24bits():
+    #        for i in xrange(0x100):
+    #            for j in xrange(0x100):
+    #                for k in xrange(0x100):
+    #                    yield chr(i) + chr(j) + chr(k)
+    #
+    #    le_parser = Con.BitStruct('bits',Con.Bits('value',24,
+    #                                              swapped=True,
+    #                                              signed=True))
+    #
+    #    be_parser = Con.BitStruct('bits',Con.Bits('value',24,
+    #                                              swapped=False,
+    #                                              signed=True))
+    #
+    #    for c in _24bits():
+    #        self.assertEqual(c,audiotools.pcmstream.pcm_to_string([
+    #                    le_parser.parse(c).value],3,False))
+    #
+    #        self.assertEqual(c,audiotools.pcmstream.pcm_to_string([
+    #                    be_parser.parse(c).value],3,True))
+
 class testbitstream(unittest.TestCase):
     def testinvalidstream(self):
         b = audiotools.bitstream.BitStreamReader(None)
