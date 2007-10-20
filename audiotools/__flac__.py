@@ -361,7 +361,7 @@ class FlacAudio(AudioFile):
         self.__samplerate__ = 0
         self.__channels__ = 0
         self.__bitspersample__ = 0
-        self.__total_samples__ = 0
+        self.__total_frames__ = 0
 
         self.__read_streaminfo__()
 
@@ -563,8 +563,8 @@ class FlacAudio(AudioFile):
     def channels(self):
         return self.__channels__
 
-    def total_samples(self):
-        return self.__total_samples__
+    def total_frames(self):
+        return self.__total_frames__
 
     def sample_rate(self):
         return self.__samplerate__
@@ -585,7 +585,7 @@ class FlacAudio(AudioFile):
         self.__samplerate__ = p.samplerate
         self.__channels__ = p.channels + 1
         self.__bitspersample__ = p.bits_per_sample + 1
-        self.__total_samples__ = p.total_samples
+        self.__total_frames__ = p.total_samples
         self.__md5__ = "".join([chr(c) for c in p.md5])
         f.close()
 
@@ -849,7 +849,7 @@ class OggFlacAudio(FlacAudio):
             self.__samplerate__ = header.samplerate
             self.__channels__ = header.channels + 1
             self.__bitspersample__ = header.bits_per_sample + 1
-            self.__total_samples__ = header.total_samples
+            self.__total_frames__ = header.total_samples
             self.__header_packets__ = header.header_packets
 
             self.__md5__ = "".join([chr(c) for c in header.md5])

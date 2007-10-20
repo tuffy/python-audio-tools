@@ -145,7 +145,7 @@ class MusepackAudio(ApeTaggedAudio,AudioFile):
                         self.__sample_rate__ = (44100,48000,
                                                 37800,32000)[header.sample_frequency]
 
-                        self.__total_samples__ = header.sample_count
+                        self.__total_frames__ = header.sample_count
                         self.__channels__ = header.channel_count + 1
 
                         break
@@ -166,8 +166,8 @@ class MusepackAudio(ApeTaggedAudio,AudioFile):
 
                 self.__sample_rate__ = (44100,48000,
                                         37800,32000)[header.sample_frequency]
-                self.__total_samples__ = ((header.frame_count - 1 ) * 1152) + \
-                                         header.last_frame_length
+                self.__total_frames__ = ((header.frame_count - 1 ) * 1152) + \
+                    header.last_frame_length
 
                 self.__channels__ = 2
         finally:
@@ -269,8 +269,8 @@ class MusepackAudio(ApeTaggedAudio,AudioFile):
     def sample_rate(self):
         return self.__sample_rate__
 
-    def total_samples(self):
-        return self.__total_samples__
+    def total_frames(self):
+        return self.__total_frames__
 
     def channels(self):
         return self.__channels__

@@ -83,7 +83,7 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
         self.__samplerate__ = 0
         self.__channels__ = 0
         self.__bitspersample__ = 0
-        self.__total_samples__ = 0
+        self.__total_frames__ = 0
 
         self.__read_info__()
 
@@ -112,7 +112,7 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
                 header.sampling_rate_low]
             self.__bitspersample__ = WavPackAudio.BITS_PER_SAMPLE[
                 header.bits_per_sample]
-            self.__total_samples__ = header.total_samples
+            self.__total_frames__ = header.total_samples
 
             self.__channels__ = 0
 
@@ -140,8 +140,8 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
     def channels(self):
         return self.__channels__
 
-    def total_samples(self):
-        return self.__total_samples__
+    def total_frames(self):
+        return self.__total_frames__
 
     def sample_rate(self):
         return self.__samplerate__

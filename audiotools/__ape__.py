@@ -338,8 +338,8 @@ class ApeAudio(ApeTaggedAudio,AudioFile):
     def channels(self):
         return self.__channels__
 
-    def total_samples(self):
-        return self.__totalsamples__
+    def total_frames(self):
+        return self.__totalframes__
 
     def sample_rate(self):
         return self.__samplespersec__

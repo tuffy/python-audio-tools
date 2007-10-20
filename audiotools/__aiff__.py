@@ -36,7 +36,7 @@ class AiffAudio(AudioFile):
             (self.__channels__,
              bytes_per_sample,
              self.__sample_rate__,
-             self.__total_samples__,
+             self.__total_frames__,
              self.comptype,
              self.compname) = f.getparams()
             self.__bits_per_sample__ = bytes_per_sample * 8
@@ -63,8 +63,8 @@ class AiffAudio(AudioFile):
     def sample_rate(self):
         return self.__sample_rate__
 
-    def total_samples(self):
-        return self.__total_samples__
+    def total_frames(self):
+        return self.__total_frames__
 
 
     def to_pcm(self):

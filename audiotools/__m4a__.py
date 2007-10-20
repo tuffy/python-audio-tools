@@ -241,10 +241,10 @@ class M4AAudio(AudioFile):
     def sample_rate(self):
         return self.__sample_rate__
 
-    def length(self):
+    def cd_frames(self):
         return (self.__length__ - 1024) / self.__sample_rate__ * 75
 
-    def total_samples(self):
+    def total_frames(self):
         return self.__length__ - 1024
 
     def get_metadata(self):

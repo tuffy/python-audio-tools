@@ -225,7 +225,7 @@ class WaveAudio(AudioFile):
             input.close()
             output.close()
 
-    def total_samples(self):
+    def total_frames(self):
         return self.__data_size__ / (self.__bitspersample__ / 8) / \
                self.__channels__
 

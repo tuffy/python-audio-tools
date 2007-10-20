@@ -148,13 +148,13 @@ def build_xmcd_file(audiofiles, discid=None):
         offset = 150
         for track in audiofiles:
             print >>xmcd,"#\t%d" % (offset)
-            offset += track.length()
+            offset += track.cd_frames()
         disc_length = offset / 75
 
         print >>xmcd,"#"
         print >>xmcd,"# Disc length: %d seconds" % (disc_length)
         print >>xmcd,"#"
-        build_key_pair(xmcd,"DISCID",str(DiscID([f.length() for f in
+        build_key_pair(xmcd,"DISCID",str(DiscID([f.cd_frames() for f in
                                                  audiofiles])))
     else:
         for offset in discid.offsets():

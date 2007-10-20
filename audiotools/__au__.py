@@ -70,9 +70,9 @@ class AuAudio(AudioFile):
             self.__bits_per_sample__ = {2:8,3:16,4:24}[header.encoding_format]
             self.__channels__ = header.channels
             self.__sample_rate__ = header.sample_rate
-            self.__total_samples__ = header.data_size / \
-                                     (self.__bits_per_sample__ / 8) / \
-                                     self.__channels__
+            self.__total_frames__ = header.data_size / \
+                (self.__bits_per_sample__ / 8) / \
+                self.__channels__
             self.__data_offset__ = header.data_offset
             self.__data_size__ = header.data_size
         except Con.ConstError:
@@ -94,8 +94,8 @@ class AuAudio(AudioFile):
     def sample_rate(self):
         return self.__sample_rate__
 
-    def total_samples(self):
-        return self.__total_samples__
+    def total_frames(self):
+        return self.__total_frames__
 
 
     def to_pcm(self):
@@ -117,8 +117,6 @@ class AuAudio(AudioFile):
 
         converter = audiotools.pcmstream.PCMStreamReader(
             pcmreader,bytes_per_sample,False)
-
-        #converter = pcmreader
         
         header = Con.Container(magic_number='.snd',
                                data_offset=0,

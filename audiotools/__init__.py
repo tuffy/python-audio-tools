@@ -934,13 +934,13 @@ class AudioFile:
     def get_metadata(self):
         return None
 
-    def total_samples(self):
+    def total_frames(elf):
         raise NotYetImplemented()
 
     #returns the length of the audio in CD frames (1/75 of a second)
-    def length(self):
+    def cd_frames(self):
         try:
-            return (self.total_samples() * 75) / self.sample_rate()
+            return (self.total_frames() * 75) / self.sample_rate()
         except ZeroDivisionError:
             return 0
 
@@ -1058,7 +1058,7 @@ class DummyAudioFile(AudioFile):
     def get_metadata(self):
         return self.__metadata__
 
-    def length(self):
+    def cd_frames(self):
         return self.__length__
 
 

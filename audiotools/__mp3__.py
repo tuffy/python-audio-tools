@@ -306,7 +306,7 @@ class MP3Audio(AudioFile):
         except IndexError:
             raise MP3Exception("invalid bit rate")
 
-    def length(self):
+    def cd_frames(self):
         #calculate length at create-time so that we can
         #throw MP3Exception as soon as possible
         return self.__framelength__
@@ -370,8 +370,8 @@ class MP3Audio(AudioFile):
         finally:
             mp3file.close()
 
-    def total_samples(self):
-        return self.length() * self.sample_rate() / 75
+    def total_frames(self):
+        return self.cd_frames() * self.sample_rate() / 75
 
 #######################
 #MP2 AUDIO

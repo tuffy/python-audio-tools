@@ -346,7 +346,7 @@ class VorbisAudio(AudioFile):
     def channels(self):
         return self.__channels__
 
-    def total_samples(self):
+    def total_frames(self):
         pcm_samples = 0
         f = file(self.filename,"rb")
         try:

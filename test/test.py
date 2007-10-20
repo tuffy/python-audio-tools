@@ -369,7 +369,7 @@ class TestAiffAudio(unittest.TestCase):
                     pcm = new_file.to_pcm()
                     audiotools.transfer_data(pcm.read,counter.write)
                     self.assertEqual(
-                        (D.Decimal(new_file.total_samples()) / \
+                        (D.Decimal(new_file.total_frames()) / \
                          new_file.sample_rate()).to_integral(),
                         SHORT_LENGTH)
                     pcm.close()
@@ -543,7 +543,7 @@ class TestAiffAudio(unittest.TestCase):
                 PCM_LENGTHS = [s * 44100 for s in (5,10,15,4,16,10)]
 
                 self.assertEqual(sum(PCM_LENGTHS),
-                                 new_file.total_samples())
+                                 new_file.total_frames())
                 
                 for (sub_pcm,pcm_length) in zip(audiotools.pcm_split(
                     new_file.to_pcm(),
@@ -553,7 +553,7 @@ class TestAiffAudio(unittest.TestCase):
                     try:
                         sub_file = self.audio_class.from_pcm(sub_temp.name,
                                                              sub_pcm)
-                        self.assertEqual(sub_file.total_samples(),
+                        self.assertEqual(sub_file.total_frames(),
                                          pcm_length)
                         
                     finally:
@@ -811,7 +811,7 @@ class TestPCMConversion(unittest.TestCase):
             self.assertEqual(wave.sample_rate(),output[0])
             self.assertEqual(wave.channels(),output[1])
             self.assertEqual(wave.bits_per_sample(),output[2])
-            self.assertEqual((D.Decimal(wave.length()) / 75).to_integral(),
+            self.assertEqual((D.Decimal(wave.cd_frames()) / 75).to_integral(),
                              5)
 
 class TestPCMStreamReader(unittest.TestCase):

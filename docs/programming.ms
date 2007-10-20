@@ -134,14 +134,17 @@ Returns the number of distinct audio channels.  2 for CD audio.
 .FUNCTION sample_rate
 Returns the number of samples per second.  44100 for CD audio.
 
-.FUNCTION total_samples
-Returns the total number of samples in the file.
+.FUNCTION total_frames
+Returns the total number of audio frames in the file.
+Each frame is a channel-independent block of individual samples.
+For example, 1 second of 44100Hz audio has 44100 frames, 
+regardless of the number of channels it has.
 
-.FUNCTION length
+.FUNCTION cd_frames
 Returns the length of the file in CD frames.
 Each CD frame is 1/75th of a second.
 Most formats do not need to define this method as it
-can be derived from the sample_rate and total_samples methods.
+can be derived from the sample_rate and total_frames methods.
 
 .FUNCTION lossless
 Returns True if this audio file is stored losslessly.
@@ -175,6 +178,8 @@ this audio file's PCM data.
 Builds and returns an AudioFile-compatible object with
 the given filename from the given pcmreader and, optionally,
 at the given compression setting.
+
+.bp
 
 .CLASSMETHOD track_name "track_number, track_metadata"
 Given a track number and MetaData-compatible object,

@@ -64,13 +64,13 @@ if (__name__ == '__main__'):
             sys.exit(1)
 
     if (options.discid):      #calculate the disc ID instead
-        discid = audiotools.DiscID([file.length()
+        discid = audiotools.DiscID([file.cd_frames()
                                     for file in audiofiles])
         print discid.freedb_id()
     elif (options.metadata):  #pull XMCD data from AudioFile metadata
         outfile.write(audiotools.build_xmcd_file(audiofiles))
     else:                     #grab XMCD data from FreeDB
-        discid = audiotools.DiscID([file.length()
+        discid = audiotools.DiscID([file.cd_frames()
                                     for file in audiofiles])
         audiotools.get_xmcd(discid, outfile,
                             options.freedb_server,
