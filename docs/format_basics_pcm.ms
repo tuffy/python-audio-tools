@@ -49,3 +49,11 @@ _
 44100 per second.
 Thus, our set of samples takes precisely 1/11025th of a second
 when replayed.
+.PP
+A channel-independent block of samples is commonly referred to
+as a `frame'.
+In this example, we have a total of 4 PCM frames.
+However, the term `frame' appears a lot in digital audio.
+It is important not to confuse a PCM frame with a CD frame
+(a block of audio 1/75th of a second long), an MP3 frame,
+a FLAC frame or any other sort of frame.
