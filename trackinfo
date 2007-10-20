@@ -37,7 +37,7 @@ if (__name__ == '__main__'):
     show_bitrate = options.show_bitrate
 
     for file in audiotools.open_files(args):
-        length = file.length() / 75
+        length = file.cd_frames() / 75
         if (not show_bitrate):
             print (u"%(minutes)2.2d:%(seconds)2.2d %(channels)dch %(rate)dHz %(bits)d-bit: %(filename)s" % \
                        {"minutes":length / 60,

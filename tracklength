@@ -33,12 +33,12 @@ if (__name__ == '__main__'):
     total_length = 0l
 
     audio_files = audiotools.open_files(filter(os.path.isfile,args))
-    total_length += sum([file.length() for file in audio_files])
+    total_length += sum([file.cd_frames() for file in audio_files])
 
     for parent_dir in filter(os.path.isdir,args):
         for (dir,dirs,files) in os.walk(parent_dir):
             total_length += sum(
-                [file.length() for file in
+                [file.cd_frames() for file in
                  audiotools.open_files([os.path.join(dir,f) for f in files])])
 
     if (total_length > 0):

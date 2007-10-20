@@ -164,7 +164,7 @@ if (__name__ == '__main__'):
             print "* Wrote: %s" % (options.xmcd)
     elif (len(args) > 0):               #we're building a file from tracks
         metadata = [t.get_metadata() for t in args]
-        track_lengths = [t.length() for t in args]
+        track_lengths = [t.cd_frames() for t in args]
 
         if (None not in metadata):      #all the tracks have metadata
             data = get_metadata(track_lengths,
