@@ -379,34 +379,33 @@ def pcm_split(reader, pcm_lengths):
         yield total_size
 
     full_data = tempfile.TemporaryFile()
-    try:
-        #This dumps the whole contents of reader into a temp PCM file
-        #which we pull apart in the appropriate sizes to make PCMReaders.
-        #It is a very stupid approach, but it does work.
-        #Pulling only the data we need from reader into each PCMReader
-        #would be better, but the variable size of PCMReader.read()
-        #makes it difficult to get the exact amount of data into each sub-reader
-        transfer_data(reader.read,full_data.write)
-        reader.close()
-        full_data.seek(0,0)
+    #This dumps the whole contents of reader into a temp PCM file
+    #which we pull apart in the appropriate sizes to make PCMReaders.
+    #It is a very stupid approach, but it does work.
+    #Pulling only the data we need from reader into each PCMReader
+    #would be better, but the variable size of PCMReader.read()
+    #makes it difficult to get the exact amount of data into each sub-reader
+    transfer_data(reader.read,full_data.write)
+    reader.close()
+    full_data.seek(0,0)
 
-        for byte_length in [i * reader.channels * reader.bits_per_sample / 8
-                            for i in pcm_lengths]:
-            if (byte_length > (BUFFER_SIZE * 10)):
-                #if the sub-file length is somewhat large, use a temporary file
-                sub_file = tempfile.TemporaryFile()
-                for size in chunk_sizes(byte_length,BUFFER_SIZE):
-                    sub_file.write(full_data.read(size))
-                sub_file.seek(0,0)
-            else:
-                #if the sub-file length is very small, use StringIO
-                sub_file = cStringIO.StringIO(full_data.read(byte_length))
-            yield PCMReader(sub_file,
-                            reader.sample_rate,
-                            reader.channels,
-                            reader.bits_per_sample)
-    finally:
-        full_data.close()
+    for byte_length in [i * reader.channels * reader.bits_per_sample / 8
+                        for i in pcm_lengths]:
+        if (byte_length > (BUFFER_SIZE * 10)):
+            #if the sub-file length is somewhat large, use a temporary file
+            sub_file = tempfile.TemporaryFile()
+            for size in chunk_sizes(byte_length,BUFFER_SIZE):
+                sub_file.write(full_data.read(size))
+            sub_file.seek(0,0)
+        else:
+            #if the sub-file length is very small, use StringIO
+            sub_file = cStringIO.StringIO(full_data.read(byte_length))
+        yield PCMReader(sub_file,
+                        reader.sample_rate,
+                        reader.channels,
+                        reader.bits_per_sample)
+
+    full_data.close()
 
 
 class PCMConverter(PCMReader):
@@ -516,6 +515,13 @@ class PCMConverter(PCMReader):
         divider = 1 << (self.input.bits_per_sample - 1)
         multiplier = 1 << (self.bits_per_sample - 1)
         
+        #FIXME - The floating-point output from resampler.process()
+        #should be normalized rather than just chopping off
+        #excessively high or low samples (above 1.0 or below -1.0)
+        #during conversion to PCM.
+        #Unfortunately, that'll require building a second pass
+        #into the conversion process which will complicate PCMConverter
+        #a lot.
         (output,self.unresampled) = self.resampler.process(
             self.unresampled + [float(s) / divider for s in frame_list],
             (len(frame_list) == 0) and (len(self.unresampled) == 0))
