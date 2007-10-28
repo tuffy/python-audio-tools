@@ -1291,7 +1291,7 @@ class ExecQueue:
                 continue
 
         #finally, wait for the running threads to finish
-        while (not self.todo.empty()):
+        while (len(thread_pool) > 0):
             #print repr(thread_pool)
             try:
                 thread_pool.remove(self.finished.get())
