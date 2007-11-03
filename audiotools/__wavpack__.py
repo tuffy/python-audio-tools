@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,InvalidFile,Con,subprocess,BIN,open_files,os
+from audiotools import AudioFile,InvalidFile,Con,subprocess,BIN,open_files,os,ReplayGain
 from __wav__ import WaveAudio,WaveReader
 from __ape__ import ApeTaggedAudio
 
@@ -218,3 +218,20 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
     @classmethod
     def can_add_replay_gain(cls):
         return BIN.can_execute(BIN['wvgain'])
+
+    def replay_gain(self):
+        metadata = self.get_metadata()
+        
+        if (set(['replaygain_track_gain', 'replaygain_track_peak', 
+                 'replaygain_album_gain', 'replaygain_album_peak']).issubset(
+                metadata.keys())):  #we have ReplayGain data
+            try:
+                return ReplayGain(
+                    metadata['replaygain_track_gain'][0:-len(" dB")],
+                    metadata['replaygain_track_peak'],
+                    metadata['replaygain_album_gain'][0:-len(" dB")],
+                    metadata['replaygain_album_peak'])
+            except ValueError:
+                return None
+        else:
+            return None
