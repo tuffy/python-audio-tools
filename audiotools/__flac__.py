@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,InvalidFile,PCMReader,Con,transfer_data,subprocess,BIN,BUFFER_SIZE,cStringIO,os,open_files,Image,sys,WaveAudio
+from audiotools import AudioFile,InvalidFile,PCMReader,Con,transfer_data,subprocess,BIN,BUFFER_SIZE,cStringIO,os,open_files,Image,sys,WaveAudio,ReplayGain
 from __vorbiscomment__ import *
 from __id3__ import ID3v2Comment
 from __vorbis__ import OggStreamReader,OggStreamWriter
@@ -606,6 +606,23 @@ class FlacAudio(AudioFile):
     @classmethod
     def can_add_replay_gain(cls):
         return BIN.can_execute(BIN['metaflac'])
+
+    def replay_gain(self):
+        vorbis_metadata = self.get_metadata().vorbis_comment
+
+        if (set(['REPLAYGAIN_TRACK_PEAK', 'REPLAYGAIN_TRACK_GAIN', 
+                 'REPLAYGAIN_ALBUM_PEAK', 'REPLAYGAIN_ALBUM_GAIN']).issubset(
+                vorbis_metadata.keys())):  #we have ReplayGain data
+            try:
+                return ReplayGain(
+                    vorbis_metadata['REPLAYGAIN_TRACK_GAIN'][0][0:-len(" dB")],
+                    vorbis_metadata['REPLAYGAIN_TRACK_PEAK'][0],
+                    vorbis_metadata['REPLAYGAIN_ALBUM_GAIN'][0][0:-len(" dB")],
+                    vorbis_metadata['REPLAYGAIN_ALBUM_PEAK'][0])
+            except ValueError:
+                return None
+        else:
+            return None
 
     def __eq__(self, audiofile):
         if (isinstance(audiofile,FlacAudio)):

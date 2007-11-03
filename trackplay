@@ -28,6 +28,18 @@ if (__name__ == '__main__'):
         "%prog <track 1> [track 2] ...",
         version="Python Audio Tools %s" % (audiotools.VERSION))
 
+    parser.add_option('-T','--track-replaygain',
+                      action='store_true',
+                      default=False,
+                      dest='track_replaygain',
+                      help='apply track ReplayGain during playback, if present')
+
+    parser.add_option('-A','--album-replaygain',
+                      action='store_true',
+                      default=False,
+                      dest='album_replaygain',
+                      help='apply album ReplayGain during playback, if present')
+
     (options,args) = parser.parse_args()
 
     dev = ossaudiodev.open("w")
@@ -44,6 +56,15 @@ if (__name__ == '__main__'):
                     pcm,pcm.sample_rate,pcm.channels,
                     16)
                 fmt = ossaudiodev.AFMT_S16_LE
+
+            if (options.track_replaygain or options.album_replaygain):
+                replaygain = audiofile.replay_gain()
+                if ((replaygain is not None) and options.album_replaygain):
+                    pcm = audiotools.ReplayGainReader(
+                        pcm,replaygain.album_gain,replaygain.album_peak)
+                elif ((replaygain is not None) and options.track_replaygain):
+                    pcm = audiotools.ReplayGainReader(
+                        pcm,replaygain.track_gain,replaygain.track_peak)
 
             dev.setparameters(fmt,
                               pcm.channels,

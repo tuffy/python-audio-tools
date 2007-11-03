@@ -478,7 +478,7 @@ class PCMConverter(PCMReader):
 
             #add some white noise when dithering the signal
             #to make it sound better, assuming we have at least 16 bits
-            if (self.bits_per_sample == 0):
+            if (self.bits_per_sample >= 16):
                 random_bytes = map(ord, os.urandom((len(frame_list) / 8) + 1))
                 white_noise = [(random_bytes[i / 8] & (1 << (i % 8))) >> (i % 8)
                                for i in xrange(len(frame_list))]
@@ -562,6 +562,51 @@ class PCMConverter(PCMReader):
 
 
         return frame_list
+
+#wraps around an existing PCMReader
+#and applies ReplayGain upon calling the read() method
+class ReplayGainReader(PCMReader):
+    #pcmreader is a PCMReader-compatible object
+    #replaygain is a floating point dB value
+    #peak is a floating point value
+    def __init__(self, pcmreader, replaygain, peak):
+        import pcmstream
+
+        self.reader = pcmstream.PCMStreamReader(pcmreader,
+                                                pcmreader.bits_per_sample / 8,
+                                                False)
+        
+        PCMReader.__init__(self, None,
+                           pcmreader.sample_rate,
+                           pcmreader.channels,
+                           pcmreader.bits_per_sample)
+
+        self.replaygain = replaygain
+        self.peak = peak
+        self.bytes_per_sample = self.bits_per_sample / 8
+        self.multiplier = 10 ** (replaygain / 20)
+
+    def read(self, bytes):
+        #FIXME - should apply clipping protection using peak
+
+        multiplier = self.multiplier
+        samples = self.reader.read(bytes)
+
+        if (self.bits_per_sample >= 16):
+            random_bytes = map(ord, os.urandom((len(samples) / 8) + 1))
+            white_noise = [(random_bytes[i / 8] & (1 << (i % 8))) >> (i % 8)
+                           for i in xrange(len(samples))]
+        else:
+            white_noise = [0] * len(samples)
+
+        return pcmstream.pcm_to_string(
+            [(int(round(s * multiplier)) ^ w) for (s,w) in 
+             izip(samples,white_noise)],
+            self.bytes_per_sample,
+            False)
+
+    def close(self):
+        self.reader.close()
 
 class FrameList(list):
     #l should be a list-compatible collection of PCM integers
@@ -902,7 +947,22 @@ class Image:
     def __ne__(self, image):
         return not self.__eq__(image)
 
-    
+#######################
+#ReplayGain Metadata
+#######################
+
+class ReplayGain:
+    def __init__(self, track_gain, track_peak, album_gain, album_peak):
+        self.track_gain = float(track_gain)
+        self.track_peak = float(track_peak)
+        self.album_gain = float(album_gain)
+        self.album_peak = float(album_peak)
+
+    def __repr__(self):
+        return "ReplayGain(%s,%s,%s,%s)" % \
+            (self.track_gain,self.track_peak,
+             self.album_gain,self.album_peak)
+
 
 #######################
 #Generic Audio File
@@ -1027,6 +1087,11 @@ class AudioFile:
     @classmethod
     def can_add_replay_gain(cls):
         return False
+
+    #returns a ReplayGain-compatible object of our ReplayGain values
+    #or None if we have no values
+    def replay_gain(self):
+        return None
 
     def __eq__(self, audiofile):
         if (isinstance(audiofile, AudioFile)):

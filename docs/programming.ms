@@ -185,10 +185,19 @@ at the given compression setting.
 Given a track number and MetaData-compatible object,
 returns a default filename for this track.
 
+.CLASSMETHOD can_add_replay_gain
+Returns True if all the necessary binaries are present to add
+ReplayGain metadata, and the format supports such metadata.
+
 .CLASSMETHOD add_replay_gain filenames
 Given a list of filenames of AudioFiles with of the same class
 as this AudioFile class, calculate and add ReplayGain metadata
 to those files.
+
+.FUNCTION replay_gain
+Returns a ReplayGain object of the track's ReplayGain values,
+if present.
+Returns None if no values or present or ReplayGain is not supported.
 
 .CLASSMETHOD has_binaries "system_binaries"
 Takes a __system_binaries__ class, typically this module's
@@ -354,6 +363,26 @@ filled-in based upon that image data.
 This allows a user to add a JPEG to an audio track, for example,
 by having the rest of the image information retrieved automatically
 based on its contents rather than having to specify those metrics.
+
+.bp
+
+.CLASS ReplayGain "track_gain, track_peak, album_gain, album_peak"
+A simple container class for ReplayGain metadata.
+All values are floats.
+
+.ATTRIBUTE "track_gain"
+This track's ReplayGain value, in dB.
+
+.ATTRIBUTE "track_peak"
+This track's peak value.
+This is used to prevent clipping.
+
+.ATTRIBUTE "album_gain"
+The entire album's ReplayGain value, in dB.
+
+.ATTRIBUTE "album_peak"
+The entire album's peak value.
+
 .bp
 
 .SECTION PCMReader
