@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,InvalidFile,PCMReader,PCMConverter,Con,transfer_data,subprocess,BIN,BIG_ENDIAN
+from audiotools import AudioFile,InvalidFile,PCMReader,PCMConverter,Con,transfer_data,subprocess,BIN,BIG_ENDIAN,ApeTag,ReplayGain
 from __id3__ import *
 
 #######################
@@ -239,6 +239,9 @@ class MP3Audio(AudioFile):
     
     #places mp3file at the position of the last MP3 frame's end
     #(either the last byte in the file or just before the ID3v1 tag)
+    #this may not be strictly accurate if ReplayGain data is present,
+    #since APEv2 tags came before the ID3v1 tag,
+    #but we're not planning to change that tag anyway
     @classmethod
     def __find_last_mp3_frame__(cls, mp3file):
         mp3file.seek(-128,2)
@@ -372,6 +375,40 @@ class MP3Audio(AudioFile):
 
     def total_frames(self):
         return self.cd_frames() * self.sample_rate() / 75
+
+    def replay_gain(self):
+        f = open(self.filename,'rb')
+        try:
+            MP3Audio.__find_last_mp3_frame__(f)
+            f.seek(-32,1)
+            footer = ApeTag.APEv2_FOOTER.parse(f.read(32))
+            if (footer.preamble != 'APETAGEX'):
+                return None
+            
+            f.seek(-(footer.tag_size),1)
+            
+            apev2tag = {}
+            for tag in Con.StrictRepeater(footer.item_count, 
+                                          ApeTag.APEv2_TAG).parse_stream(f):
+                if (tag.encoding == 0):
+                    apev2tag[tag.key] = tag.value.rstrip("\0").decode('utf-8',
+                                                                      'replace')
+                else:
+                    apev2tag[tag.key] = tag.value
+            
+            if (set([]).issubset(apev2tag.keys())):
+                try:
+                    return ReplayGain(
+                        apev2tag['REPLAYGAIN_TRACK_GAIN'][0:-len(" dB")],
+                        apev2tag['REPLAYGAIN_TRACK_PEAK'],
+                        apev2tag['REPLAYGAIN_ALBUM_GAIN'][0:-len(" dB")],
+                        apev2tag['REPLAYGAIN_ALBUM_PEAK'])
+                except ValueError:
+                    return None
+            else:
+                return None
+        finally:
+            f.close()
 
 #######################
 #MP2 AUDIO

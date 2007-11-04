@@ -1138,9 +1138,10 @@ from __aiff__ import *
 from __au__ import *
 from __vorbiscomment__ import *
 from __flac__ import *
+
+from __ape__ import *
 from __id3__ import *
 from __mp3__ import *
-from __ape__ import *
 from __vorbis__ import *        
 from __m4a__ import *
 from __wavpack__ import *
