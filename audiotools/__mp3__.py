@@ -376,6 +376,29 @@ class MP3Audio(AudioFile):
     def total_frames(self):
         return self.cd_frames() * self.sample_rate() / 75
 
+    @classmethod
+    def can_add_replay_gain(cls):
+        return BIN.can_execute(BIN['mp3gain'])
+
+    @classmethod
+    def add_replay_gain(cls, filenames):
+        from audiotools import open_files
+        import os
+
+        track_names = [track.filename for track in 
+                       open_files(filenames) if
+                       isinstance(track,cls)]
+
+        devnull = open(os.devnull,'ab')
+
+        try:
+            if ((len(track_names) > 0) and BIN.can_execute(BIN['mp3gain'])):
+                sub = subprocess.Popen([BIN['mp3gain'],'-a','-q'] + \
+                                       track_names,
+                                       stdout=devnull)
+        finally:
+            devnull.close()
+
     def replay_gain(self):
         f = open(self.filename,'rb')
         try:
@@ -396,7 +419,10 @@ class MP3Audio(AudioFile):
                 else:
                     apev2tag[tag.key] = tag.value
             
-            if (set([]).issubset(apev2tag.keys())):
+            if (set(['REPLAYGAIN_TRACK_GAIN',
+                     'REPLAYGAIN_TRACK_PEAK',
+                     'REPLAYGAIN_ALBUM_GAIN',
+                     'REPLAYGAIN_ALBUM_PEAK']).issubset(apev2tag.keys())):
                 try:
                     return ReplayGain(
                         apev2tag['REPLAYGAIN_TRACK_GAIN'][0:-len(" dB")],
