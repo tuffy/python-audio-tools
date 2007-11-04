@@ -30,7 +30,6 @@ import os
 import os.path
 import ConfigParser
 import struct
-import threading
 from itertools import izip
 
 try:
@@ -209,7 +208,7 @@ def transfer_data(from_function, to_function):
 
 
 def threaded_transfer_data(from_function, to_function):
-    import Queue
+    import threading,Queue
 
     def send_data(from_function, queue):
         s = from_function(BUFFER_SIZE)
@@ -1291,78 +1290,56 @@ from __image__ import *
 #Multiple Jobs Handling
 #######################
 
-class ExecQueueThread(threading.Thread):
-    def __init__(self, function, thread_id, args, kwargs, out_queue):
-        threading.Thread.__init__(self,
-                                  target=function,
-                                  name=str(thread_id),
-                                  args=args,
-                                  kwargs=kwargs)
-        self.out_queue = out_queue
-        self.setDaemon(True)
-
-    def run(self):
-        threading.Thread.run(self)
-        self.out_queue.put(self.getName())
-
 class ExecQueue:
     def __init__(self):
-        import Queue
-
-        self.todo = Queue.Queue()
-        self.finished = Queue.Queue()
+        self.todo = []
 
     #function is a Python function to apply
     #args is a tuple of arguments
     #kwargs, if not None, is a dict of additional keyword arguments
     def execute(self, function, args, kwargs=None):
-        self.todo.put((function,args,kwargs))
+        self.todo.append((function,args,kwargs))
 
-    #performs the queued actions in seperate threads
+    def __run__(self, function, args, kwargs):
+        pid = os.fork()
+        if (pid > 0):  #parent
+            return pid
+        else:          #child
+            if (kwargs != None):
+                function(*args,**kwargs)
+            else:
+                function(*args)
+            sys.exit(0)
+
+    #performs the queued actions in seperate subprocesses
     #"max_processes" number of times until the todo list is empty
     def run(self, max_processes=1):
-        thread_id = 0
-        thread_pool = set([])
+        process_pool = set([])
 
-        #fill the thread_pool to the limit
-        while ((not self.todo.empty()) and (len(thread_pool) < max_processes)):
-            #print repr(thread_pool)
-            (function,args,kwargs) = self.todo.get()
-            thread = ExecQueueThread(function=function,
-                                     thread_id=thread_id,
-                                     args=args,
-                                     kwargs=kwargs,
-                                     out_queue=self.finished)
-            thread_pool.add(thread.getName())
-            thread.start()
-            thread_id += 1
-
-        #as threads end, keep adding new ones to the pool
+        #fill the process_pool to the limit
+        while ((len(self.todo) > 0) and (len(process_pool) < max_processes)):
+            (function,args,kwargs) = self.todo.pop(0)
+            process_pool.add(self.__run__(function,args,kwargs))
+            #print "Filling %s" % (repr(process_pool))
+        
+        #as processes end, keep adding new ones to the pool
         #until we run out of queued jobs
-        while (not self.todo.empty()):
-            #print repr(thread_pool)
+        while (len(self.todo) > 0):
             try:
-                thread_pool.remove(self.finished.get())
-                (function,args,kwargs) = self.todo.get()
-                thread = ExecQueueThread(function=function,
-                                         thread_id=thread_id,
-                                         args=args,
-                                         kwargs=kwargs,
-                                         out_queue=self.finished)
-                thread_pool.add(thread.getName())
-                thread.start()
-                thread_id += 1
+                process_pool.remove(os.waitpid(0,0)[0])
+                (function,args,kwargs) = self.todo.pop(0)
+                process_pool.add(self.__run__(function,args,kwargs))
+                #print "Resuming %s" % (repr(process_pool))
             except KeyError:
                 continue
 
-        #finally, wait for the running threads to finish
-        while (len(thread_pool) > 0):
-            #print repr(thread_pool)
+        #finally, wait for the running jobs to finish
+        while (len(process_pool) > 0):
             try:
-                thread_pool.remove(self.finished.get())
+                process_pool.remove(os.waitpid(0,0)[0])
+                #print "Emptying %s" % (repr(process_pool))
             except KeyError:
                 continue
-
 
 #***ApeAudio temporarily removed***
 #Without a legal alternative to mac-port, I shall have to re-implement
