@@ -118,18 +118,18 @@ if (__name__ == '__main__'):
                       dest='replace',
                       help='completely replace all metadata')
 
-    parser.add_option('--remove-images',
-                      action='store_true',
-                      default=False,
-                      dest='remove_images',
-                      help='remove existing images prior to adding new ones')
-
     parser.add_option('-x','--xmcd',
                       action='store',
                       type='string',
                       dest='xmcd',
                       help='an XMCD file to get audio metadata from',
                       metavar='FILENAME')
+
+    parser.add_option('--remove-images',
+                      action='store_true',
+                      default=False,
+                      dest='remove_images',
+                      help='remove existing images prior to adding new ones')
 
     parser.add_option('--front-cover',
                       action='append',
@@ -166,7 +166,11 @@ if (__name__ == '__main__'):
                       help='an image file related to the track',
                       metavar='FILENAME')
 
-    
+    parser.add_option('--replay-gain',
+                      action='store_true',
+                      default=False,
+                      dest='add_replay_gain',
+                      help='add ReplayGain metadata to track(s)')
 
     (options,args) = parser.parse_args()
     
@@ -237,4 +241,10 @@ if (__name__ == '__main__'):
                 file.set_metadata(metadata)
             except audiotools.InvalidImage,msg:
                 print >>sys.stderr,"* %s: %s" % (file.filename,msg)
-                
+    
+    #we're assuming all tracks are the same type
+    if (options.add_replay_gain and
+        (len(audiofiles) > 0) and
+        (audiofiles[0].can_add_replay_gain())):
+        print >>sys.stderr,"* Adding ReplayGain metadata.  This may take some time."
+        audiofiles[0].add_replay_gain([f.filename for f in audiofiles])
