@@ -120,6 +120,12 @@ if (__name__ == '__main__'):
                       dest='output',
                       help='output filename to use, overriding default and -d')
     
+    parser.add_option('--no-replay-gain',
+                      action='store_false',
+                      dest='add_replay_gain',
+                      default=True,
+                      help='do not add ReplayGain metadata to newly created tracks')
+
     (options,args) = parser.parse_args()
 
     #get the AudioFile class we are converted to
@@ -220,7 +226,7 @@ if (__name__ == '__main__'):
         
         queue.run(max_processes)
 
-        if (AudioType.can_add_replay_gain()):
+        if (options.add_replay_gain and AudioType.can_add_replay_gain()):
             print >>sys.stderr,"* Adding ReplayGain metadata.  This may take some time."
             AudioType.add_replay_gain(encoded_filenames)
     else:

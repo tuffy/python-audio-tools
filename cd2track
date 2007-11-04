@@ -56,6 +56,12 @@ if (__name__ == '__main__'):
                       dest='xmcd',
                       help='an XMCD file to get audio metadata from')
 
+    parser.add_option('--no-replay-gain',
+                      action='store_false',
+                      dest='add_replay_gain',
+                      default=True,
+                      help='do not add ReplayGain metadata in newly created tracks')
+
     (options,args) = parser.parse_args()
 
     #get the AudioFile class we are converted to
@@ -165,6 +171,6 @@ if (__name__ == '__main__'):
                                                   str(msg))
             continue
 
-    if (AudioType.can_add_replay_gain()):
+    if (options.add_replay_gain and AudioType.can_add_replay_gain()):
             print >>sys.stderr,"* Adding ReplayGain metadata.  This may take some time."
             AudioType.add_replay_gain([track.filename for track in encoded])
