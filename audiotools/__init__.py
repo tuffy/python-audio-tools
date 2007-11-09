@@ -585,9 +585,13 @@ class ReplayGainReader(PCMReader):
         self.bytes_per_sample = self.bits_per_sample / 8
         self.multiplier = 10 ** (replaygain / 20)
 
-    def read(self, bytes):
-        #FIXME - should apply clipping protection using peak
+        #if we're increasing the volume (multipler is positive)
+        #and that increases the peak beyond 1.0 (which causes clipping)
+        #reduce the multiplier so that the peak doesn't go beyond 1.0
+        if ((self.multiplier * self.peak) > 1.0):
+            self.multiplier = 1.0 / self.peak
 
+    def read(self, bytes):
         multiplier = self.multiplier
         samples = self.reader.read(bytes)
 
