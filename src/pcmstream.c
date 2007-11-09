@@ -47,7 +47,7 @@ PyMODINIT_FUNC initpcmstream(void) {
 
 
 PyObject *PCMStreamReader_new(PyTypeObject *type, 
-				     PyObject *args, PyObject *kwds) {
+			      PyObject *args, PyObject *kwds) {
   pcmstream_PCMStreamReader *self;
 
   self = (pcmstream_PCMStreamReader *)type->tp_alloc(type, 0);
@@ -56,7 +56,7 @@ PyObject *PCMStreamReader_new(PyTypeObject *type,
 }
 
 int PCMStreamReader_init(pcmstream_PCMStreamReader *self, 
-				PyObject *args, PyObject *kwds) {
+			 PyObject *args, PyObject *kwds) {
   PyObject *substream = NULL;
   int sample_size;
   int big_endian;

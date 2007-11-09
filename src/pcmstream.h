@@ -48,7 +48,7 @@ PyObject *PCMStreamReader_close(pcmstream_PCMStreamReader* self);
 PyObject *PCMStreamReader_tell(pcmstream_PCMStreamReader* self);
 
 PyObject *PCMStreamReader_read(pcmstream_PCMStreamReader* self, 
-				      PyObject *args);
+			       PyObject *args);
 
 PyObject *PCMStreamReader_get_sample_size(
     pcmstream_PCMStreamReader *self,

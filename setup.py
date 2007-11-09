@@ -19,6 +19,16 @@
 
 
 from distutils.core import setup, Extension
+import subprocess,re
+
+def pkg_config(package, option):
+    sub = subprocess.Popen(["pkg-config",option,package],
+                           stdout=subprocess.PIPE)
+    spaces = re.compile('\s+',re.DOTALL)
+    args = spaces.split(sub.stdout.read().strip())
+    sub.stdout.close()
+    sub.wait()
+    return args
 
 cdiomodule = Extension('audiotools.cdio',
                     sources = ['src/cdiomodule.c'],
@@ -31,14 +41,38 @@ bitstreammodule = Extension('audiotools.bitstream',
 pcmstreammodule = Extension('audiotools.pcmstream',
                             sources = ['src/pcmstream.c'])
 
+extensions = [cdiomodule,
+              bitstreammodule,
+              pcmstreammodule]
+
+
+#This is an ALSA extension module, not quite ready for use.
+#It chokes on a large number of hi-def PCM combinations
+#which makes it not yet suitable for general use.
+# try:
+#     if (subprocess.call(["pkg-config","--exists","alsa"]) == 0):
+#         #ALSA available
+#         extensions.append(Extension(
+#             'audiotools.alsa',
+#             sources = ['src/alsa.c'],
+#             include_dirs = [f[2:] for f in pkg_config('alsa','--cflags') if
+#                             (f.startswith('-I'))],
+#             libraries = [f[2:] for f in pkg_config('alsa','--libs') if
+#                          (f.startswith('-l'))],
+#             library_dirs = [f[2:] for f in pkg_config('alsa','--libs') if
+#                             (f.startswith('-L'))]))
+                                    
+# except OSError:
+#     pass #pkg-config not available
+
 setup (name = 'Python Audio Tools',
-       version = '2.4',
+       version = '2.6',
        description = 'A collection of audio handling utilities',
        author = 'Brian Langenberger',
        author_email = 'tuffy@users.sourceforge.net',
        url='http://audiotools.sourceforge.net',
        packages = ["audiotools"],
-       ext_modules = [cdiomodule,bitstreammodule,pcmstreammodule],
+       ext_modules = extensions,
        data_files = [("etc",["audiotools.cfg"]),
                      ("share/audiotools",["glade/coverview.glade"])],
        scripts = ["cd2track","cd2xmcd",

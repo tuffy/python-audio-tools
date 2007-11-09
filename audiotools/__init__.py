@@ -95,7 +95,7 @@ DEFAULT_CDROM = config.get_default("System","cdrom","/dev/cdrom")
 FREEDB_SERVER = config.get_default("FreeDB","server","us.freedb.org")
 FREEDB_PORT = config.getint_default("FreeDB","port",80)
 
-VERSION = "2.4"
+VERSION = "2.6"
 
 FILENAME_FORMAT = config.get_default(
     "Filenames","format",
