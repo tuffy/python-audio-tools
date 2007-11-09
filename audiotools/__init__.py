@@ -413,11 +413,20 @@ class PCMConverter(PCMReader):
                  sample_rate, channels, bits_per_sample):
         import pcmstream
 
+        PCMReader.__init__(self, None, sample_rate, channels, bits_per_sample)
+
         self.input = pcmreader
-        self.reader = pcmstream.PCMStreamReader(pcmreader,
-                                                pcmreader.bits_per_sample / 8,
-                                                False, False)
-        PCMReader.__init__(self,None, sample_rate, channels, bits_per_sample)
+
+        #if we're converting sample rate,
+        #PCMStreamReader should return floats to
+        #convert_sample_rate() or convert_sample_rate_and_bits_per_sample()
+        #this hurts consistency since those two expect lists of floats
+        #instead of lists of ints, but it speeds conversion up a little
+        self.reader = pcmstream.PCMStreamReader(
+            pcmreader,
+            pcmreader.bits_per_sample / 8,
+            False,
+            self.input.sample_rate != self.sample_rate)
 
         self.bytes_per_sample = self.bits_per_sample / 8
         
@@ -512,7 +521,6 @@ class PCMConverter(PCMReader):
             return FrameList.from_channels(channels)
 
     def convert_sample_rate(self, frame_list):
-        divider = 1 << (self.input.bits_per_sample - 1)
         multiplier = 1 << (self.bits_per_sample - 1)
         
         #FIXME - The floating-point output from resampler.process()
@@ -523,7 +531,7 @@ class PCMConverter(PCMReader):
         #into the conversion process which will complicate PCMConverter
         #a lot.
         (output,self.unresampled) = self.resampler.process(
-            self.unresampled + [float(s) / divider for s in frame_list],
+            self.unresampled + frame_list,
             (len(frame_list) == 0) and (len(self.unresampled) == 0))
         
         return [int(round(s * multiplier)) for s in output]
@@ -531,13 +539,12 @@ class PCMConverter(PCMReader):
 
     #though this method name is huge, it is also unambiguous
     def convert_sample_rate_and_bits_per_sample(self, frame_list):
-        divider = 1 << (self.input.bits_per_sample - 1)
         multiplier = 1 << (self.bits_per_sample - 1)
 
         #turn our PCM samples into floats and resample them,
         #which removes bits-per-sample
         (output,self.unresampled) = self.resampler.process(
-            self.unresampled + [(float(s) / divider) for s in frame_list],
+            self.unresampled + frame_list,
             (len(frame_list) == 0) and (len(self.unresampled) == 0))
 
         frame_list = FrameList(output,frame_list.total_channels)
