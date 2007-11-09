@@ -21,7 +21,34 @@
 import audiotools
 import optparse
 import sys
-import ossaudiodev
+
+class OSSPlayer:
+    def __init__(self):
+        import ossaudiodev
+        self.dev = ossaudiodev.open("w")
+
+    def close(self):
+        self.dev.close()
+
+    def play(self, pcm):
+        if (pcm.bits_per_sample == 16):
+            fmt = ossaudiodev.AFMT_S16_LE
+        elif (pcm.bits_per_sample == 8):
+            fmt = ossaudiodev.AFMT_U8
+        else:
+            #if the bits-per-sample is not 8/16 (which usually means 24)
+            #have PCMConverter turn it into 16 for us
+            pcm = audiotools.PCMConverter(
+                pcm,pcm.sample_rate,pcm.channels,
+                16)
+            fmt = ossaudiodev.AFMT_S16_LE
+
+        self.dev.setparameters(fmt,
+                          pcm.channels,
+                          pcm.sample_rate)
+
+        audiotools.threaded_transfer_data(pcm.read,self.dev.writeall)
+
 
 if (__name__ == '__main__'):
     parser = optparse.OptionParser(
@@ -42,36 +69,26 @@ if (__name__ == '__main__'):
 
     (options,args) = parser.parse_args()
 
-    dev = ossaudiodev.open("w")
+    player = OSSPlayer()
 
     try:
         for audiofile in audiotools.open_files(args,sorted=False):
             pcm = audiofile.to_pcm()
-            if (pcm.bits_per_sample == 16):
-                fmt = ossaudiodev.AFMT_S16_LE
-            elif (pcm.bits_per_sample == 8):
-                fmt = ossaudiodev.AFMT_U8
-            else:
-                pcm = audiotools.PCMConverter(
-                    pcm,pcm.sample_rate,pcm.channels,
-                    16)
-                fmt = ossaudiodev.AFMT_S16_LE
 
-            if (options.track_replaygain or options.album_replaygain):
-                replaygain = audiofile.replay_gain()
-                if ((replaygain is not None) and options.album_replaygain):
-                    pcm = audiotools.ReplayGainReader(
-                        pcm,replaygain.album_gain,replaygain.album_peak)
-                elif ((replaygain is not None) and options.track_replaygain):
-                    pcm = audiotools.ReplayGainReader(
-                        pcm,replaygain.track_gain,replaygain.track_peak)
+            try:
+                #if ReplayGain specified, wrap ReplayGainReader
+                #around the given PCMReader
+                if (options.track_replaygain or options.album_replaygain):
+                    replaygain = audiofile.replay_gain()
+                    if ((replaygain is not None) and options.album_replaygain):
+                        pcm = audiotools.ReplayGainReader(
+                            pcm,replaygain.album_gain,replaygain.album_peak)
+                    elif ((replaygain is not None) and options.track_replaygain):
+                        pcm = audiotools.ReplayGainReader(
+                            pcm,replaygain.track_gain,replaygain.track_peak)
 
-            dev.setparameters(fmt,
-                              pcm.channels,
-                              pcm.sample_rate)
-
-            audiotools.threaded_transfer_data(pcm.read,dev.writeall)
-
-            pcm.close()
+                player.play(pcm)
+            finally:
+                pcm.close()
     finally:
-        dev.close()
+        player.close()
