@@ -68,18 +68,18 @@ int PCMStreamReader_init(pcmstream_PCMStreamReader *self,
 
   if (!big_endian) {
     switch (sample_size) {
-    case 1: self->char_converter = char_to_S8long;   break;
-    case 2: self->char_converter = char_to_SL16long; break;
-    case 3: self->char_converter = char_to_SL24long; break;
+    case 1: self->char_converter = char_to_python_S8long;   break;
+    case 2: self->char_converter = char_to_python_SL16long; break;
+    case 3: self->char_converter = char_to_python_SL24long; break;
     default: PyErr_SetString(PyExc_ValueError,
 			     "sample size must be between 1 and 3 bytes");
       return -1;
     }
   } else {
     switch (sample_size) {
-    case 1: self->char_converter = char_to_S8long;   break;
-    case 2: self->char_converter = char_to_SB16long; break;
-    case 3: self->char_converter = char_to_SB24long; break;
+    case 1: self->char_converter = char_to_python_S8long;   break;
+    case 2: self->char_converter = char_to_python_SB16long; break;
+    case 3: self->char_converter = char_to_python_SB24long; break;
     default: PyErr_SetString(PyExc_ValueError,
 			     "sample size must be between 1 and 3 bytes");
       return -1;
@@ -136,7 +136,7 @@ PyObject *PCMStreamReader_read(pcmstream_PCMStreamReader* self,
   Py_ssize_t input = 0;
   Py_ssize_t output = 0;
 
-  long (*char_converter)(unsigned char *s);
+  PyObject *(*char_converter)(unsigned char *s);
   int sample_size;
 
   /*get the number of bytes to read*/
@@ -191,7 +191,7 @@ PyObject *PCMStreamReader_read(pcmstream_PCMStreamReader* self,
   for (input = 0,output=0; 
        (input < pcm_data_length) && (output < pcm_array_length);
        input += sample_size,output++) {
-    long_obj = PyInt_FromLong(char_converter(pcm_data + input));
+    long_obj = char_converter(pcm_data + input);
     if (PyList_SetItem(list, output,long_obj) == -1) {
       free(pcm_data);
       return NULL;
@@ -297,6 +297,10 @@ long char_to_S8long(unsigned char *s) {
   return (long)(s[0] - 0x7F);
 }
 
+PyObject *char_to_python_S8long(unsigned char *s) {
+  return PyInt_FromLong(char_to_S8long(s));
+}
+
 void S8long_to_char(long i, unsigned char *s) {
   /*avoid overflow/underflow*/
   if (i > 0x80) i = 0x80; else if (i < -0x7F) i = -0x7F;
@@ -309,6 +313,10 @@ long char_to_SL16long(unsigned char *s) {
     return -(long)(0x10000 - ((s[1] << 8) | s[0])); /*negative*/
   else
     return (long)(s[1] << 8) | s[0];                /*positive*/
+}
+
+PyObject *char_to_python_SL16long(unsigned char *s) {
+  return PyInt_FromLong(char_to_SL16long(s));
 }
 
 void SL16long_to_char(long i, unsigned char *s) {
@@ -324,6 +332,10 @@ long char_to_SL24long(unsigned char *s) {
     return -(long)(0x1000000 - ((s[2] << 16) | (s[1] << 8) | s[0]));/*negative*/
   else
     return (long)(s[2] << 16) | (s[1] << 8) | s[0];                 /*positive*/
+}
+
+PyObject *char_to_python_SL24long(unsigned char *s) {
+  return PyInt_FromLong(char_to_SL24long(s));
 }
 
 void SL24long_to_char(long i, unsigned char *s) {
@@ -342,6 +354,10 @@ long char_to_SB16long(unsigned char *s) {
     return (long)(s[0] << 8) | s[1];                /*positive*/
 }
 
+PyObject *char_to_python_SB16long(unsigned char *s) {
+  return PyInt_FromLong(char_to_SB16long(s));
+}
+
 void SB16long_to_char(long i, unsigned char *s) {
   /*avoid overflow/underflow*/
   if (i < -0x8000) i = -0x8000; else if (i > 0x7FFF) i = 0x7FFF;
@@ -355,6 +371,10 @@ long char_to_SB24long(unsigned char *s) {
     return -(long)(0x1000000 - ((s[0] << 16) | (s[1] << 8) | s[2]));/*negative*/
   else
     return (long)(s[0] << 16) | (s[1] << 8) | s[2];                 /*positive*/
+}
+
+PyObject *char_to_python_SB24long(unsigned char *s) {
+  return PyInt_FromLong(char_to_SB24long(s));
 }
 
 void SB24long_to_char(long i, unsigned char *s) {

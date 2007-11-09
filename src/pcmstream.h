@@ -29,7 +29,7 @@ typedef int Py_ssize_t;
 typedef struct {
   PyObject_HEAD
   PyObject *substream;        /*the Python file object to get new samples from*/
-  long (*char_converter)(unsigned char *s);  /*our converter function*/
+  PyObject *(*char_converter)(unsigned char *s);  /*our converter function*/
   int sample_size;            /*the size of each PCM sample, in bytes*/
   char unhandled_bytes[3];    /*any partial PCM samples*/
   int unhandled_bytes_length; /*how many partial PCM bytes we have*/
@@ -80,7 +80,13 @@ void SB16long_to_char(long i, unsigned char *s);
 long char_to_SB24long(unsigned char *s);
 void SB24long_to_char(long i, unsigned char *s);
 
-
+/*these are wrappers around the char_to_*() functions, above,
+  which return Python objects instead of plain long ints*/
+PyObject *char_to_python_SL16long(unsigned char *s);
+PyObject *char_to_python_SL24long(unsigned char *s);
+PyObject *char_to_python_S8long(unsigned char *s);
+PyObject *char_to_python_SB16long(unsigned char *s);
+PyObject *char_to_python_SB24long(unsigned char *s);
 
 /*Resampler definitions*/
 
