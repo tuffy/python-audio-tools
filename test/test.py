@@ -846,6 +846,27 @@ class TestPCMStreamReader(unittest.TestCase):
 
             self.assertEqual(data.hexdigest(),md5sum.hexdigest())
 
+    def testfloatroundtrip(self):
+        for (bytes_per_sample,big_endian) in ((1,False),(2,False),(3,False),
+                                              (1,True), (2,True), (3, True)):
+            data = VARIABLE_PCM_Reader(TEST_LENGTH,
+                                       bits_per_sample=bytes_per_sample * 8)
+            multiplier = 1 << ((bytes_per_sample * 8) - 1)
+            converter = audiotools.pcmstream.PCMStreamReader(data,
+                                                             bytes_per_sample,
+                                                             big_endian,
+                                                             True)
+
+            md5sum = md5.new()
+            d = converter.read(audiotools.BUFFER_SIZE) #a list of floats
+            while (len(d) > 0):
+                md5sum.update(audiotools.pcmstream.pcm_to_string(
+                    [int(round(f * multiplier)) for f in d],
+                    bytes_per_sample,big_endian))
+                d = converter.read(audiotools.BUFFER_SIZE)
+
+            self.assertEqual(data.hexdigest(),md5sum.hexdigest())
+
     def testbyteswap(self):
         for (bytes_per_sample,big_endian) in ((1,False),(2,False),(3,False),
                                               (1,True), (2,True), (3, True)):
