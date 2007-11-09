@@ -416,7 +416,7 @@ class PCMConverter(PCMReader):
         self.input = pcmreader
         self.reader = pcmstream.PCMStreamReader(pcmreader,
                                                 pcmreader.bits_per_sample / 8,
-                                                False)
+                                                False, False)
         PCMReader.__init__(self,None, sample_rate, channels, bits_per_sample)
 
         self.bytes_per_sample = self.bits_per_sample / 8
@@ -573,7 +573,7 @@ class ReplayGainReader(PCMReader):
 
         self.reader = pcmstream.PCMStreamReader(pcmreader,
                                                 pcmreader.bits_per_sample / 8,
-                                                False)
+                                                False, False)
         
         PCMReader.__init__(self, None,
                            pcmreader.sample_rate,

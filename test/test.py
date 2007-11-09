@@ -818,13 +818,13 @@ class TestPCMStreamReader(unittest.TestCase):
     def testinvalidstreams(self):
         self.assertRaises(ValueError,
                           audiotools.pcmstream.PCMStreamReader,
-                          cStringIO.StringIO(chr(0) * 10),0,False)
+                          cStringIO.StringIO(chr(0) * 10),0,False,False)
         
         self.assertRaises(ValueError,
                           audiotools.pcmstream.PCMStreamReader,
-                          cStringIO.StringIO(chr(0) * 10),5,False)
+                          cStringIO.StringIO(chr(0) * 10),5,False,False)
 
-        r = audiotools.pcmstream.PCMStreamReader(None,2,False)
+        r = audiotools.pcmstream.PCMStreamReader(None,2,False,False)
         self.assertRaises(AttributeError,r.read,10)
     
     def testroundtrip(self):
@@ -835,7 +835,8 @@ class TestPCMStreamReader(unittest.TestCase):
                                        bits_per_sample=bytes_per_sample * 8)
             converter = audiotools.pcmstream.PCMStreamReader(data,
                                                              bytes_per_sample,
-                                                             big_endian)
+                                                             big_endian,
+                                                             False)
             md5sum = md5.new()
             d = converter.read(audiotools.BUFFER_SIZE)
             while (len(d) > 0):
@@ -852,7 +853,8 @@ class TestPCMStreamReader(unittest.TestCase):
                                        bits_per_sample=bytes_per_sample * 8)
             converter = audiotools.pcmstream.PCMStreamReader(data,
                                                              bytes_per_sample,
-                                                             big_endian)
+                                                             big_endian,
+                                                             False)
             #our byteswapped data
             dump = cStringIO.StringIO()
             d = converter.read(audiotools.BUFFER_SIZE)
@@ -871,7 +873,8 @@ class TestPCMStreamReader(unittest.TestCase):
             
             converter = audiotools.pcmstream.PCMStreamReader(new_data,
                                                              bytes_per_sample,
-                                                             not big_endian)
+                                                             not big_endian,
+                                                             False)
 
             md5sum = md5.new()
             d = converter.read(audiotools.BUFFER_SIZE)

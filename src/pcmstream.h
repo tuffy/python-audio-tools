@@ -80,13 +80,22 @@ void SB16long_to_char(long i, unsigned char *s);
 long char_to_SB24long(unsigned char *s);
 void SB24long_to_char(long i, unsigned char *s);
 
-/*these are wrappers around the char_to_*() functions, above,
+/*these are wrappers around the char_to_*long() functions, above,
   which return Python objects instead of plain long ints*/
 PyObject *char_to_python_SL16long(unsigned char *s);
 PyObject *char_to_python_SL24long(unsigned char *s);
 PyObject *char_to_python_S8long(unsigned char *s);
 PyObject *char_to_python_SB16long(unsigned char *s);
 PyObject *char_to_python_SB24long(unsigned char *s);
+
+/*these are wrappers around the char_to_*long() functions, above,
+  which convert plain long ints to Python floats*/
+PyObject *char_to_python_SL16float(unsigned char *s);
+PyObject *char_to_python_SL24float(unsigned char *s);
+PyObject *char_to_python_S8float(unsigned char *s);
+PyObject *char_to_python_SB16float(unsigned char *s);
+PyObject *char_to_python_SB24float(unsigned char *s);
+
 
 /*Resampler definitions*/
 

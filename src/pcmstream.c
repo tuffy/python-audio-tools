@@ -60,29 +60,53 @@ int PCMStreamReader_init(pcmstream_PCMStreamReader *self,
   PyObject *substream = NULL;
   int sample_size;
   int big_endian;
+  int float_output;
 
-  if (!PyArg_ParseTuple(args, "Oii", &substream,&sample_size,&big_endian))
+  if (!PyArg_ParseTuple(args, "Oiii", &substream,&sample_size,
+			&big_endian,&float_output))
     return -1;
 
   self->substream = NULL;
 
-  if (!big_endian) {
-    switch (sample_size) {
-    case 1: self->char_converter = char_to_python_S8long;   break;
-    case 2: self->char_converter = char_to_python_SL16long; break;
-    case 3: self->char_converter = char_to_python_SL24long; break;
-    default: PyErr_SetString(PyExc_ValueError,
-			     "sample size must be between 1 and 3 bytes");
-      return -1;
+  if (!float_output) {
+    if (!big_endian) {
+      switch (sample_size) {  /*little-endian input, int output*/
+      case 1: self->char_converter = char_to_python_S8long;   break;
+      case 2: self->char_converter = char_to_python_SL16long; break;
+      case 3: self->char_converter = char_to_python_SL24long; break;
+      default: PyErr_SetString(PyExc_ValueError,
+			       "sample size must be between 1 and 3 bytes");
+	return -1;
+      }
+    } else {
+      switch (sample_size) {  /*big-endian input, int output*/
+      case 1: self->char_converter = char_to_python_S8long;   break;
+      case 2: self->char_converter = char_to_python_SB16long; break;
+      case 3: self->char_converter = char_to_python_SB24long; break;
+      default: PyErr_SetString(PyExc_ValueError,
+			       "sample size must be between 1 and 3 bytes");
+	return -1;
+      }
     }
   } else {
-    switch (sample_size) {
-    case 1: self->char_converter = char_to_python_S8long;   break;
-    case 2: self->char_converter = char_to_python_SB16long; break;
-    case 3: self->char_converter = char_to_python_SB24long; break;
-    default: PyErr_SetString(PyExc_ValueError,
-			     "sample size must be between 1 and 3 bytes");
-      return -1;
+    if (!big_endian) {
+      switch (sample_size) {  /*little-endian input, float output*/
+      case 1: self->char_converter = char_to_python_S8float;   break;
+      case 2: self->char_converter = char_to_python_SL16float; break;
+      case 3: self->char_converter = char_to_python_SL24float; break;
+      default: PyErr_SetString(PyExc_ValueError,
+			       "sample size must be between 1 and 3 bytes");
+	return -1;
+      }
+    } else {
+      switch (sample_size) {  /*big-endian input, float output*/
+      case 1: self->char_converter = char_to_python_S8float;   break;
+      case 2: self->char_converter = char_to_python_SB16float; break;
+      case 3: self->char_converter = char_to_python_SB24float; break;
+      default: PyErr_SetString(PyExc_ValueError,
+			       "sample size must be between 1 and 3 bytes");
+	return -1;
+      }
     }
   }
 
@@ -301,6 +325,10 @@ PyObject *char_to_python_S8long(unsigned char *s) {
   return PyInt_FromLong(char_to_S8long(s));
 }
 
+PyObject *char_to_python_S8float(unsigned char *s) {
+  return PyFloat_FromDouble(((double)char_to_S8long(s)) / (double)128);
+}
+
 void S8long_to_char(long i, unsigned char *s) {
   /*avoid overflow/underflow*/
   if (i > 0x80) i = 0x80; else if (i < -0x7F) i = -0x7F;
@@ -317,6 +345,10 @@ long char_to_SL16long(unsigned char *s) {
 
 PyObject *char_to_python_SL16long(unsigned char *s) {
   return PyInt_FromLong(char_to_SL16long(s));
+}
+
+PyObject *char_to_python_SL16float(unsigned char *s) {
+  return PyFloat_FromDouble(((double)char_to_SL16long(s)) / (double)32768);
 }
 
 void SL16long_to_char(long i, unsigned char *s) {
@@ -336,6 +368,10 @@ long char_to_SL24long(unsigned char *s) {
 
 PyObject *char_to_python_SL24long(unsigned char *s) {
   return PyInt_FromLong(char_to_SL24long(s));
+}
+
+PyObject *char_to_python_SL24float(unsigned char *s) {
+  return PyFloat_FromDouble(((double)char_to_SL24long(s)) / (double)8388608);
 }
 
 void SL24long_to_char(long i, unsigned char *s) {
@@ -358,6 +394,10 @@ PyObject *char_to_python_SB16long(unsigned char *s) {
   return PyInt_FromLong(char_to_SB16long(s));
 }
 
+PyObject *char_to_python_SB16float(unsigned char *s) {
+  return PyFloat_FromDouble(((double)char_to_SB16long(s)) / (double)32768);
+}
+
 void SB16long_to_char(long i, unsigned char *s) {
   /*avoid overflow/underflow*/
   if (i < -0x8000) i = -0x8000; else if (i > 0x7FFF) i = 0x7FFF;
@@ -375,6 +415,10 @@ long char_to_SB24long(unsigned char *s) {
 
 PyObject *char_to_python_SB24long(unsigned char *s) {
   return PyInt_FromLong(char_to_SB24long(s));
+}
+
+PyObject *char_to_python_SB24float(unsigned char *s) {
+  return PyFloat_FromDouble(((double)char_to_SB24long(s)) / (double)8388608);
 }
 
 void SB24long_to_char(long i, unsigned char *s) {

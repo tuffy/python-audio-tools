@@ -34,7 +34,7 @@ class AuReader(PCMReader):
         self.stream = audiotools.pcmstream.PCMStreamReader(
             __capped_stream_reader__(au_file,data_size),
             bits_per_sample / 8,
-            True)
+            True, False)
         
         PCMReader.__init__(self,self.stream,
                            sample_rate,channels,bits_per_sample)
@@ -116,7 +116,7 @@ class AuAudio(AudioFile):
         bytes_per_sample = pcmreader.bits_per_sample / 8
 
         converter = audiotools.pcmstream.PCMStreamReader(
-            pcmreader,bytes_per_sample,False)
+            pcmreader,bytes_per_sample,False,False)
         
         header = Con.Container(magic_number='.snd',
                                data_offset=0,
