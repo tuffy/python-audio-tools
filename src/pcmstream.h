@@ -38,10 +38,10 @@ typedef struct {
 void PCMStreamReader_dealloc(pcmstream_PCMStreamReader* self);
 
 PyObject *PCMStreamReader_new(PyTypeObject *type, 
-				     PyObject *args, PyObject *kwds);
+			      PyObject *args, PyObject *kwds);
 
 int PCMStreamReader_init(pcmstream_PCMStreamReader *self, 
-				PyObject *args, PyObject *kwds);
+			 PyObject *args, PyObject *kwds);
 
 PyObject *PCMStreamReader_close(pcmstream_PCMStreamReader* self);
 
@@ -109,13 +109,13 @@ typedef struct {
 void Resampler_dealloc(pcmstream_Resampler* self);
 
 PyObject *Resampler_new(PyTypeObject *type, 
-			       PyObject *args, PyObject *kwds);
+			PyObject *args, PyObject *kwds);
 
 int Resampler_init(pcmstream_Resampler *self, 
-			  PyObject *args, PyObject *kwds);
+		   PyObject *args, PyObject *kwds);
 
 PyObject *Resampler_process(pcmstream_Resampler* self, 
-				   PyObject *args);
+			    PyObject *args);
 
 PyMethodDef module_methods[] = {
   {"pcm_to_string",(PyCFunction)pcm_to_string,

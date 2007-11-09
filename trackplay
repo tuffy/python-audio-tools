@@ -31,6 +31,8 @@ class OSSPlayer:
         self.dev.close()
 
     def play(self, pcm):
+        import ossaudiodev
+        
         if (pcm.bits_per_sample == 16):
             fmt = ossaudiodev.AFMT_S16_LE
         elif (pcm.bits_per_sample == 8):
