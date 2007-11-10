@@ -106,7 +106,7 @@ class PulsePlayer:
 
         
         dev = subprocess.Popen([audiotools.BIN["pacat"],
-                                "-p","-n","Python Audio Tools",
+                                "-p","-n","trackplay",
                                 "--stream-name=%s" % (stream_name),
                                 "--rate=%d" % (pcm.sample_rate),
                                 "--format=%s" % {8:"u8",16:"s16le"}.get(

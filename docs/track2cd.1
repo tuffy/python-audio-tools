@@ -20,6 +20,12 @@ The cdrom device to write the CD to
 .TP
 \fB-s \fIspeed\fB, --speed=\fIspeed\fR
 The speed in which to write the CD at
+.TP
+\fB-j \fIprocesses\fB, --joint=\fIprocesses\fR
+The maximum number of tracks to convert to temporary files at one time.
+If one has multiple CPUs or CPU cores, allowing
+.BR track2cd (1)
+to use all of them simultaneously can greatly increase transcoding speed.
 
 .SH EXAMPLE
 .LP

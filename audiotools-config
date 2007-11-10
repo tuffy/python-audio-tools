@@ -25,10 +25,7 @@ if (__name__ == '__main__'):
         import audiotools
     except ImportError:
         print "* audiotools Python module not found!"
-        print "Perhaps you should re-install the audiotools."
-
-    #print "* Available audio formats:"
-    #print
+        print "Perhaps you should re-install the Python Audio Tools"
     
     suffix_len = max([len(audiotype.SUFFIX) for audiotype in
                       audiotools.AVAILABLE_TYPES])

@@ -18,8 +18,29 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-import os,sys,audiotools
-import optparse,tempfile,subprocess
+import os
+import sys
+import audiotools
+import optparse
+import tempfile
+import subprocess
+
+MAX_CPUS = audiotools.MAX_JOBS
+
+def convert_to_wave(audiofile,wave_filename):
+    pcm = audiofile.to_pcm()
+
+    if ((pcm.sample_rate == 44100) and
+        (pcm.channels == 2) and
+        (pcm.bits_per_sample == 16)):  #already CD quality
+        audiotools.WaveAudio.from_pcm(wave_filename,pcm)
+    else:                              #convert to CD quality
+        pcm = audiotools.PCMConverter(pcm,44100,2,16)
+        audiotools.WaveAudio.from_pcm(wave_filename,pcm)
+        pcm.close()
+        
+    print (u"* %s" % (audiofile.filename.decode(audiotools.FS_ENCODING))
+           ).encode(audiotools.IO_ENCODING,'replace')
 
 if (__name__ == '__main__'):
     if (not audiotools.BIN.can_execute(audiotools.BIN['cdrecord'])):
@@ -37,7 +58,20 @@ if (__name__ == '__main__'):
     parser.add_option("-s","--speed",dest="speed",
                       help="the speed to burn the CD at",type="int")
 
+    parser.add_option('-j','--joint',
+                      action='store',
+                      type='int',
+                      default=MAX_CPUS,
+                      dest='max_processes',
+                      help='the maximum number of processes to run at a time')
+
     (options,args) = parser.parse_args()
+
+    if (options.max_processes < 1):
+        print >>sys.stderr,'*** You must run at least 1 process at a time'
+        sys.exit(1)
+    else:
+        max_processes = options.max_processes
 
     audiofiles = audiotools.open_files(args,sorted=False)
 
@@ -61,33 +95,26 @@ if (__name__ == '__main__'):
 
     temp_pool = []
     wave_files = []
+    queue = audiotools.ExecQueue()
 
     print >>sys.stderr,"*** Converting audio files"
     for audiofile in audiofiles:
         if (isinstance(audiofile,audiotools.WaveAudio)):
             wave_files.append(audiofile.filename)
         else:
-            f = tempfile.NamedTemporaryFile(suffix='.wav')
+            f = tempfile.mkstemp(suffix='.wav')
             temp_pool.append(f)
-            wave_files.append(f.name)
+            wave_files.append(f[1])
+            queue.execute(convert_to_wave,
+                          (audiofile,f[1]))
 
-            pcm = audiofile.to_pcm()
-            if ((pcm.sample_rate == 44100) and
-                (pcm.channels == 2) and
-                (pcm.bits_per_sample == 16)):  #already CD quality
-                audiotools.WaveAudio.from_pcm(f.name,pcm)
-            else:                              #convert to CD quality
-                pcm = audiotools.PCMConverter(pcm,44100,2,16)
-                audiotools.WaveAudio.from_pcm(f.name,pcm)
-            pcm.close()
-
-        print (u"* %s" % (audiofile.filename.decode(audiotools.FS_ENCODING))
-               ).encode(audiotools.IO_ENCODING,'replace')
-
+    queue.run(max_processes)
+    
     exec_args += wave_files
     subprocess.call(exec_args)
 
-    for f in temp_pool:
-        f.close()
+    for (fd,f) in temp_pool:
+        os.close(fd)
+        os.unlink(f)
     del(temp_pool)
 
