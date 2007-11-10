@@ -91,6 +91,10 @@ class PulsePlayer:
     def play(self, pcm, audiofile):
         import subprocess
 
+        #This is a race condition
+        #since the server might vanish between now and when we
+        #start piping audio to it.
+        #But that's unlikely enough to not worry too much about.
         if (not PulsePlayer.server_alive()):
             raise IOError("PulseAudio server not found")
 

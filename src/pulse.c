@@ -188,6 +188,18 @@ PyObject *PulseOutput_write(pulse_Output* self,
     return NULL;
   }
 
+  /******THIS SEGFAULTS - DO NOT USE*******/
+  /*Either I've made a stupid coding error, or there's some conflict
+    between PulseAudio and Python's threading mechanism.
+    Removing the BEGIN/END_ALLOW_THREADS macros makes this routine
+    "work" (in the sense that it stops segfaulting) but having
+    pulse.Output.write() block all threads and makes ReplayGain
+    calculation cause stuttering
+    (since it can't work in the background anymore).
+    There might be a fix for this in the more advance PulseAudio API,
+    but I'd rather punt to external programs in the short term.
+  */
+
   Py_BEGIN_ALLOW_THREADS
   write_result = pa_simple_write(self->stream, pcm_data, 
 				 (size_t)pcm_data_length, &error);
