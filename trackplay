@@ -72,15 +72,10 @@ class PulsePlayer:
     NAME = 'pulse'
 
     def __init__(self):
-        self.dev = None
-        self.last_pcm = (None,None,None)
         pass
 
     def close(self):
-        if (self.dev is not None):
-            self.dev.stdin.close()
-            self.dev.wait()
-            self.dev = None
+        pass
 
     @classmethod
     def server_alive(cls):
@@ -105,22 +100,15 @@ class PulsePlayer:
         else:
             stream_name = audiofile.filename
 
-        current_pcm = (pcm.sample_rate,
-                       pcm.channels,
-                       pcm.bits_per_sample)
-        if (self.last_pcm != current_pcm):
-            if (self.dev is not None):
-                self.dev.stdin.close()
-                self.dev.wait()
         
-            dev = subprocess.Popen([audiotools.BIN["pacat"],
-                                    "-p","-n","Python Audio Tools",
-                                    "--stream-name=%s" % (stream_name),
-                                    "--rate=%d" % (pcm.sample_rate),
-                                    "--format=%s" % {8:"u8",16:"s16le"}.get(
-                        pcm.bits_per_sample,"float32le"),
-                                    "--channels=%d" % (pcm.channels)],
-                                   stdin=subprocess.PIPE)
+        dev = subprocess.Popen([audiotools.BIN["pacat"],
+                                "-p","-n","Python Audio Tools",
+                                "--stream-name=%s" % (stream_name),
+                                "--rate=%d" % (pcm.sample_rate),
+                                "--format=%s" % {8:"u8",16:"s16le"}.get(
+                    pcm.bits_per_sample,"float32le"),
+                                "--channels=%d" % (pcm.channels)],
+                               stdin=subprocess.PIPE)
 
         if (pcm.bits_per_sample in (8,16)):
             #8 and 16 bit ints can be passed through directly
@@ -129,6 +117,9 @@ class PulsePlayer:
             #24 bit ints must be converted to floats
             converter = __FloatConverter__(pcm,pcm.bits_per_sample)
             audiotools.threaded_transfer_data(converter.read,dev.stdin.write)
+
+        dev.stdin.close()
+        dev.wait()
 
     @classmethod
     def available(cls):

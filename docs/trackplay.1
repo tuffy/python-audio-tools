@@ -20,6 +20,11 @@ apply track ReplayGain during playback, if present
 .TP
 \fB-A, --album-replaygain\fR
 apply album ReplayGain during playback, if present
+.TP
+\fB-o \fIOUTPUT\fB, --output=\fIOUTPUT\fR
+The output system to use.
+Open Sound System is always available.
+If PulseAudio is available and running, it will be the default.
 
 .SH ENVIRONMENT
 .TP
@@ -28,7 +33,8 @@ If
 .B AUDIODEV
 is set,
 .BR trackplay (1)
-uses it as the device to play the given audio tracks.
+uses it as the device to play the given audio tracks when
+using OSS for output.
 Otherwise, the default \fI/dev/dsp\fR is used.
 
 .SH SEE ALSO
