@@ -21,18 +21,19 @@
 import audiotools
 import optparse
 import sys
+import struct
+import ossaudiodev
+import audiotools.pcmstream
+import audiotools.pulse
 
 class OSSPlayer:
     def __init__(self):
-        import ossaudiodev
         self.dev = ossaudiodev.open("w")
 
     def close(self):
         self.dev.close()
 
     def play(self, pcm):
-        import ossaudiodev
-        
         if (pcm.bits_per_sample == 16):
             fmt = ossaudiodev.AFMT_S16_LE
         elif (pcm.bits_per_sample == 8):
@@ -51,6 +52,51 @@ class OSSPlayer:
 
         audiotools.threaded_transfer_data(pcm.read,self.dev.writeall)
 
+class __FloatConverter__:
+    def __init__(self, pcmstream, bits_per_sample):
+        self.floatstream = audiotools.pcmstream.PCMStreamReader(
+            pcmstream, bits_per_sample / 8, False, True)
+
+    def read(self, bytes):
+        data = self.floatstream.read(bytes)
+        return struct.pack("<%df" % (len(data)),*data)
+        
+
+class PulsePlayer:
+    def __init__(self):
+        self.dev = None
+        self.last_pcm = (None,None,None)
+
+    def close(self):
+        if (self.dev is not None):
+            self.dev.close()
+
+    def play(self, pcm):
+        current_pcm = (pcm.sample_rate,
+                       pcm.channels,
+                       pcm.bits_per_sample)
+        if (self.last_pcm != current_pcm):
+            if (self.dev is not None):
+                self.dev.close()
+
+            if (pcm.bits_per_sample in (8,16)):
+                self.dev = audiotools.pulse.Output(pcm.sample_rate,
+                                                   pcm.channels,
+                                                   pcm.bits_per_sample)
+            else:
+                self.dev = audiotools.pulse.Output(pcm.sample_rate,
+                                                   pcm.channels,
+                                                   32)
+
+        if (pcm.bits_per_sample in (8,16)):
+            #8 and 16 bit ints can be passed through directly
+            audiotools.threaded_transfer_data(pcm.read,self.dev.write)
+        else:
+            #24 bit ints must be converted to floats
+            converter = __FloatConverter__(pcm,pcm.bits_per_sample)
+            audiotools.threaded_transfer_data(converter.read,self.dev.write)
+
+            
 
 if (__name__ == '__main__'):
     parser = optparse.OptionParser(
@@ -71,7 +117,8 @@ if (__name__ == '__main__'):
 
     (options,args) = parser.parse_args()
 
-    player = OSSPlayer()
+    #player = OSSPlayer()
+    player = PulsePlayer()
 
     try:
         for audiofile in audiotools.open_files(args,sorted=False):
