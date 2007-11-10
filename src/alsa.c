@@ -286,8 +286,10 @@ PyObject *ALSAOutput_write(alsa_Output* self,
     return NULL;
   }
 
+  Py_BEGIN_ALLOW_THREADS
   snd_pcm_writei(self->playback, pcm_data, 
 		 (snd_pcm_uframes_t)pcm_data_length);
+  Py_END_ALLOW_THREADS
 
   Py_INCREF(Py_None);
   return Py_None;

@@ -65,25 +65,25 @@ extensions = [cdiomodule,
 # except OSError:
 #     pass #pkg-config not available
 
-try:
-    if (subprocess.call(["pkg-config","--exists","libpulse"]) == 0):
-        #libpulse available
-        extensions.append(Extension(
-            'audiotools.pulse',
-            sources = ['src/pulse.c'],
-            include_dirs = [f[2:] for f in 
-                            pkg_config('libpulse-simple','--cflags') if
-                            (f.startswith('-I'))],
-            libraries = [f[2:] for f in 
-                         pkg_config('libpulse-simple','--libs') if
-                         (f.startswith('-l'))],
-            library_dirs = [f[2:] for f in 
-                            pkg_config('libpulse-simple','--libs') if
-                            (f.startswith('-L'))]
-            ))
+# try:
+#     if (subprocess.call(["pkg-config","--exists","libpulse"]) == 0):
+#         #libpulse available
+#         extensions.append(Extension(
+#             'audiotools.pulse',
+#             sources = ['src/pulse.c'],
+#             include_dirs = [f[2:] for f in 
+#                             pkg_config('libpulse-simple','--cflags') if
+#                             (f.startswith('-I'))],
+#             libraries = [f[2:] for f in 
+#                          pkg_config('libpulse-simple','--libs') if
+#                          (f.startswith('-l'))],
+#             library_dirs = [f[2:] for f in 
+#                             pkg_config('libpulse-simple','--libs') if
+#                             (f.startswith('-L'))]
+#             ))
                                     
-except OSError:
-    pass #pkg-config not available
+# except OSError:
+#     pass #pkg-config not available
 
 setup (name = 'Python Audio Tools',
        version = '2.6',

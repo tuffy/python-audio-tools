@@ -24,16 +24,17 @@ import sys
 import struct
 import ossaudiodev
 import audiotools.pcmstream
-import audiotools.pulse
 
 class OSSPlayer:
+    NAME = 'oss'
+    
     def __init__(self):
         self.dev = ossaudiodev.open("w")
 
     def close(self):
         self.dev.close()
 
-    def play(self, pcm):
+    def play(self, pcm, audiofile):
         if (pcm.bits_per_sample == 16):
             fmt = ossaudiodev.AFMT_S16_LE
         elif (pcm.bits_per_sample == 8):
@@ -52,6 +53,11 @@ class OSSPlayer:
 
         audiotools.threaded_transfer_data(pcm.read,self.dev.writeall)
 
+    @classmethod
+    def available(cls):
+        return True
+
+
 class __FloatConverter__:
     def __init__(self, pcmstream, bits_per_sample):
         self.floatstream = audiotools.pcmstream.PCMStreamReader(
@@ -63,40 +69,72 @@ class __FloatConverter__:
         
 
 class PulsePlayer:
+    NAME = 'pulse'
+
     def __init__(self):
         self.dev = None
         self.last_pcm = (None,None,None)
+        pass
 
     def close(self):
         if (self.dev is not None):
-            self.dev.close()
+            self.dev.stdin.close()
+            self.dev.wait()
+            self.dev = None
 
-    def play(self, pcm):
+    @classmethod
+    def server_alive(cls):
+        import subprocess
+
+        dev = subprocess.Popen([audiotools.BIN["pactl"],"stat"],
+                               stdout=subprocess.PIPE,
+                               stderr=subprocess.PIPE)
+        dev.stdout.read()
+        dev.stderr.read()
+        return (dev.wait() == 0)
+
+    def play(self, pcm, audiofile):
+        import subprocess
+
+        if (not PulsePlayer.server_alive()):
+            raise IOError("PulseAudio server not found")
+
+        metadata = audiofile.get_metadata()
+        if (metadata is not None):
+            stream_name = metadata.track_name.encode('utf-8')
+        else:
+            stream_name = audiofile.filename
+
         current_pcm = (pcm.sample_rate,
                        pcm.channels,
                        pcm.bits_per_sample)
         if (self.last_pcm != current_pcm):
             if (self.dev is not None):
-                self.dev.close()
-
-            if (pcm.bits_per_sample in (8,16)):
-                self.dev = audiotools.pulse.Output(pcm.sample_rate,
-                                                   pcm.channels,
-                                                   pcm.bits_per_sample)
-            else:
-                self.dev = audiotools.pulse.Output(pcm.sample_rate,
-                                                   pcm.channels,
-                                                   32)
+                self.dev.stdin.close()
+                self.dev.wait()
+        
+            dev = subprocess.Popen([audiotools.BIN["pacat"],
+                                    "-p","-n","Python Audio Tools",
+                                    "--stream-name=%s" % (stream_name),
+                                    "--rate=%d" % (pcm.sample_rate),
+                                    "--format=%s" % {8:"u8",16:"s16le"}.get(
+                        pcm.bits_per_sample,"float32le"),
+                                    "--channels=%d" % (pcm.channels)],
+                                   stdin=subprocess.PIPE)
 
         if (pcm.bits_per_sample in (8,16)):
             #8 and 16 bit ints can be passed through directly
-            audiotools.threaded_transfer_data(pcm.read,self.dev.write)
+            audiotools.threaded_transfer_data(pcm.read,dev.stdin.write)
         else:
             #24 bit ints must be converted to floats
             converter = __FloatConverter__(pcm,pcm.bits_per_sample)
-            audiotools.threaded_transfer_data(converter.read,self.dev.write)
+            audiotools.threaded_transfer_data(converter.read,dev.stdin.write)
 
-            
+    @classmethod
+    def available(cls):
+        return (audiotools.BIN.can_execute(audiotools.BIN["pacat"]) and
+                audiotools.BIN.can_execute(audiotools.BIN["pactl"]) and
+                cls.server_alive())
 
 if (__name__ == '__main__'):
     parser = optparse.OptionParser(
@@ -115,29 +153,46 @@ if (__name__ == '__main__'):
                       dest='album_replaygain',
                       help='apply album ReplayGain during playback, if present')
 
+    
+    players = [p for p in [OSSPlayer,PulsePlayer] if p.available()]
+    players_map = dict([(p.NAME,p) for p in players])
+
+    parser.add_option('-o','--output',
+                      action='store',
+                      dest='output',
+                      choices=players_map.keys(),
+                      default=players[-1].NAME,
+                      help="the method to play audio (choose from: %s)" % \
+                          ", ".join(["\"%s\"" % (k) for k in 
+                                     players_map.keys()]))
+                                   
     (options,args) = parser.parse_args()
 
-    #player = OSSPlayer()
-    player = PulsePlayer()
+    player = players_map[options.output]()
 
     try:
-        for audiofile in audiotools.open_files(args,sorted=False):
-            pcm = audiofile.to_pcm()
+        try:
+            for audiofile in audiotools.open_files(args,sorted=False):
+                pcm = audiofile.to_pcm()
 
-            try:
-                #if ReplayGain specified, wrap ReplayGainReader
-                #around the given PCMReader
-                if (options.track_replaygain or options.album_replaygain):
-                    replaygain = audiofile.replay_gain()
-                    if ((replaygain is not None) and options.album_replaygain):
-                        pcm = audiotools.ReplayGainReader(
-                            pcm,replaygain.album_gain,replaygain.album_peak)
-                    elif ((replaygain is not None) and options.track_replaygain):
-                        pcm = audiotools.ReplayGainReader(
-                            pcm,replaygain.track_gain,replaygain.track_peak)
+                try:
+                    #if ReplayGain specified, wrap ReplayGainReader
+                    #around the given PCMReader
+                    if (options.track_replaygain or options.album_replaygain):
+                        replaygain = audiofile.replay_gain()
+                        if ((replaygain is not None) and 
+                            options.album_replaygain):
+                            pcm = audiotools.ReplayGainReader(
+                                pcm,replaygain.album_gain,replaygain.album_peak)
+                        elif ((replaygain is not None) and 
+                              options.track_replaygain):
+                            pcm = audiotools.ReplayGainReader(
+                                pcm,replaygain.track_gain,replaygain.track_peak)
 
-                player.play(pcm)
-            finally:
-                pcm.close()
+                    player.play(pcm, audiofile)
+                finally:
+                    pcm.close()
+        except IOError,msg:
+            print >>sys.stderr,"*** trackplay: %s" % (msg)
     finally:
         player.close()

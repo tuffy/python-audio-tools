@@ -174,7 +174,7 @@ PyObject *PulseOutput_close(pulse_Output* self) {
 }
 
 PyObject *PulseOutput_write(pulse_Output* self, 
-			   PyObject *args) {
+			    PyObject *args) {
   char *pcm_data;
   Py_ssize_t pcm_data_length;
   int error;
@@ -188,8 +188,11 @@ PyObject *PulseOutput_write(pulse_Output* self,
     return NULL;
   }
 
+  Py_BEGIN_ALLOW_THREADS
   write_result = pa_simple_write(self->stream, pcm_data, 
 				 (size_t)pcm_data_length, &error);
+  Py_END_ALLOW_THREADS
+
   if (write_result < 0) {
     PyErr_SetString(PyExc_IOError,
 		    pa_strerror(error));
@@ -206,5 +209,5 @@ void PulseOutput_dealloc(pulse_Output* self)
     pa_simple_free(self->stream);
   }
 
-  self->ob_type->tp_free((PyObject*)self);
+  PyObject_Del(self);
 }
