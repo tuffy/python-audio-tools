@@ -28,14 +28,12 @@ import subprocess
 MAX_CPUS = audiotools.MAX_JOBS
 
 def convert_to_wave(audiofile,wave_filename):
-    pcm = audiofile.to_pcm()
-
-    if ((pcm.sample_rate == 44100) and
-        (pcm.channels == 2) and
-        (pcm.bits_per_sample == 16)):  #already CD quality
-        audiotools.WaveAudio.from_pcm(wave_filename,pcm)
+    if ((audiofile.sample_rate() == 44100) and
+        (audiofile.channels() == 2) and
+        (audiofile.bits_per_sample() == 16)):  #already CD quality
+        audiofile.to_wave(wave_filename)
     else:                              #convert to CD quality
-        pcm = audiotools.PCMConverter(pcm,44100,2,16)
+        pcm = audiotools.PCMConverter(audiofile.to_pcm(),44100,2,16)
         audiotools.WaveAudio.from_pcm(wave_filename,pcm)
         pcm.close()
         
