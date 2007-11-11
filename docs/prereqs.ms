@@ -51,28 +51,29 @@ The rest are optional but recommended in order to get the most out of
 these tools.
 .TS
 tab(:);
-| c s s s s s |
-| r | l | l | l | l | l |.
+| c s s s s s s |
+| r | l | l | l | l | l | l |.
 _
 Python Audio Tools Prerequisites, by Format
 _
-Format:Suffix:Decoding:Encoding:Metadata:Metadata
-\^:\^:\^:\^:Reading:Writing
+Format:Suffix:Decoding:Encoding:Metadata:Metadata:ReplayGain
+\^:\^:\^:\^:Reading:Writing:\^
 =
-RIFF WAVE:.wav:Python:Python:N/A:N/A
-AIFF:.ape:Python:Python:N/A:N/A
-Sun AU:.au:Python:Python:N/A:N/A
+RIFF WAVE:.wav:Python:Python:N/A:N/A:N/A
+AIFF:.ape:Python:Python:N/A:N/A:N/A
+Sun AU:.au:Python:Python:N/A:N/A:N/A
 _
-FLAC:.flac:flac:flac:Python:Python
-Ogg FLAC:.oga:flac:flac:Python:Python
-WavPack:.wv:wvunpack:wavpack:Python:Python
+FLAC:.flac:flac:flac:Python:Python:metaflac
+Ogg FLAC:.oga:flac:flac:Python:Python:N/A
+WavPack:.wv:wvunpack:wavpack:Python:Python:wvgain
 _
-MP3:.mp3:lame:lame:Python:Python
-MP2:.mp2:lame:twolame:Python:Python
-Ogg Vorbis:.ogg:oggdec:oggenc:Python:vorbiscomment
-Ogg Speex:.spx:speexdec:speexenc:Python:Python
-M4A:.m4a:faad:faac:Python:Python
-Musepack:.mpc:mppdec:mppenc:Python:Python
+MP3:.mp3:lame:lame:Python:Python:N/A
+MP2:.mp2:lame:twolame:Python:Python:N/A
+Ogg Vorbis:.ogg:oggdec:oggenc:Python:vorbiscomment:vorbisgain
+Ogg Speex:.spx:speexdec:speexenc:Python:Python:N/A
+M4A:.m4a:faad:faac:Python:Python:N/A
+Musepack:.mpc:mppdec:mppenc:Python:Python:N/A
 _
 .TE
 .PP
+

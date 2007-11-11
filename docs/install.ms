@@ -47,7 +47,7 @@ system settings.
 Check that you have the CDIO library installed, commonly known
 as \fClibcdio\fR
 .br
-If \fClibcdio\fR is installed the module still doesn't build,
+If \fClibcdio\fR is installed and the module still doesn't build,
 ensure that you've also installed any accompanying \fClibcdio-devel\fR
 package.
 .PP
@@ -57,6 +57,14 @@ package.
 Run the \fCmake construct_install\fR command from the audiotools
 source directory, as root, to install this module.
 .PP
+.PP
+.IP \(bu
+.B "The installer complains about missing `python/config/Makefile' of some sort"
+.PP
+Your distribution probably has separate "python" and "python-devel" packages 
+and "python-devel" is not yet installed.
+Use your package manager to install "python-devel" and try installing 
+Python Audio Tools again.
 .IP \(bu
 .B "audiotools-config lists formats as unavailable"
 .PP
@@ -81,6 +89,22 @@ from the \fCaudiotools.cfg\fR configuration file, which will be covered
 in the next section.
 .PP
 .IP \(bu
+.B "PulseAudio playback isn't working"
+.PP
+Python Audio Tools requires the \fCpacat\fR and \fCpactl\fR executables
+for playback via the \fCtrackplay\fR executable.
+If you have the PulseAudio server installed but these aren't present,
+ensure you've also installed an accompanying "pulseaudio-utils" package.
+.PP
+If \fCpacat\fR and \fCpactl\fR are installed and PulseAudio playback
+still isn't working, make sure the PulseAudio server is up and running
+with the following command:
+.LP
+.ft C
+% pactl stat
+.ft
+.PP
+.IP \(bu
 .B "My Python interpreter isn't found, or I wish to use a different one"
 .PP
 The first line of \fCMakefile\fR is which Python interpreter is being
@@ -96,7 +120,5 @@ Running \fCmake\fR will then invoke the new interpreter for
 installation of the audiotools module and scripts.
 .PP
 .RE
-
-.bp
 
 .so configfile.ms

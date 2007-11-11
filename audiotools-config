@@ -64,14 +64,25 @@ if (__name__ == '__main__'):
     print "* System configuration:"
     print
 
-    print "+ Default FreeDB server : %s" % (audiotools.FREEDB_SERVER)
-    print "+ Default FreeDB port   : %s" % (audiotools.FREEDB_PORT)
+    print "+ Default FreeDB server      : %s" % (audiotools.FREEDB_SERVER)
+    print "+ Default FreeDB port        : %s" % (audiotools.FREEDB_PORT)
 
     print
 
-    print "+ Default CD-ROM device : %s" % (audiotools.DEFAULT_CDROM)
-    print "+ Maximum processes     : %s" % (audiotools.MAX_JOBS)
+    print "+ Default CD-ROM device      : %s" % (audiotools.DEFAULT_CDROM)
+    print "+ Default simultaneous jobs  : %s" % (audiotools.MAX_JOBS)
+
+    output_options = ["OSS"]
+    if (audiotools.BIN.can_execute(audiotools.BIN["pacat"]) and
+        audiotools.BIN.can_execute(audiotools.BIN["pactl"])):
+        output_options.append("PulseAudio")
+    print "+ Audio output via trackplay : %s" % (", ".join(output_options))
+
+    if (audiotools.BIN.can_execute(audiotools.BIN["cdrecord"])):
+        print "+ CD Burning via track2cd    : yes"
+    else:
+        print "+ CD Burning via track2cd    : no"
 
     print
 
-    print "+ File name format      : %s" % (audiotools.FILENAME_FORMAT)
+    print "+ File name format : %s" % (audiotools.FILENAME_FORMAT)
