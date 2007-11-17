@@ -22,6 +22,25 @@ from audiotools import MetaData,Con,re,os,Image
 class EndOfID3v2Stream(Exception): pass
 class UnsupportedID3v2Version(Exception): pass
 
+class Syncsafe32(Con.Adapter):
+    def __init__(self, name):
+        Con.Adapter.__init__(self,
+                             Con.StrictRepeater(4,Con.UBInt8(name)))
+
+    def _encode(self, value, context):
+        data = []
+        for i in xrange(4):
+            data.append(value & 0x7F)
+            value = value >> 7
+        data.reverse()
+        return data
+
+    def _decode(self, obj, context):
+        i = 0
+        for x in obj:
+            i = (i << 7) | (x & 0x7F)
+        return i
+
 class ID3v2Comment(MetaData,dict):
     VALID_FRAME_ID = re.compile(r'[A-Z0-9]{4}')
     FRAME_ID_LENGTH = 4
@@ -33,11 +52,11 @@ class ID3v2Comment(MetaData,dict):
                               Con.Embed(Con.BitStruct("flags",
                                 Con.StrictRepeater(8,
                                                    Con.Flag("flag")))),
-                              Con.UBInt32("length"))
+                              Syncsafe32("length"))
   
     FRAME_HEADER = Con.Struct("id3v24_frame",
                               Con.Bytes("frame_id",4),
-                              Con.UBInt32("frame_size"),
+                              Syncsafe32("frame_size"),
                               Con.Embed(
             Con.BitStruct("flags",
                           Con.Padding(1),
@@ -112,7 +131,7 @@ class ID3v2Comment(MetaData,dict):
         if (cls.VALID_FRAME_ID.match(frame.frame_id)):
             if (frame.frame_id.startswith('T')):
                 encoding = ord(stream.read(1))
-                value = stream.read(cls.__de_syncsafe32__(frame.frame_size) - 1)
+                value = stream.read(frame.frame_size - 1)
                 return (frame.frame_id,
                         value.decode(
                             encode_map.get(encoding,
@@ -121,35 +140,10 @@ class ID3v2Comment(MetaData,dict):
                         )
             else:
                 return (frame.frame_id,
-                        stream.read(cls.__de_syncsafe32__(frame.frame_size)))
+                        stream.read(frame.frame_size))
         else:
             raise EndOfID3v2Stream()
 
-
-    #takes a list of ID3v2 syncsafe bytes and returns a single syncsafe int
-    @classmethod
-    def __de_syncsafe__(cls, bytes):
-        total = 0
-        for byte in bytes:
-            total = total << 7
-            total += (byte & 0x7F)
-        return total
-
-    #takes a 28-bit syncsafed int and returns its 32-bit, de-syncsafed value
-    @classmethod
-    def __de_syncsafe32__(cls, i):
-        return (i & 0x7F) + \
-               ((i & 0x7F00) >> 1) + \
-               ((i & 0x7F0000) >> 2) + \
-               ((i & 0x7F000000) >> 3)
-
-    #takes a 32-bit int and returns a 28-bit syncsafed value
-    @classmethod
-    def __syncsafe32__(cls, i):
-        return (i & 0x7F) + \
-               ((i & 0x3F80) << 1) + \
-               ((i & 0x1FC000) << 2) + \
-               ((i & 0xFE00000) << 3)
 
     #takes a list of (tag_id,tag_value) tuples
     #returns a string of the whole ID3v2.4 tag
@@ -173,7 +167,7 @@ class ID3v2Comment(MetaData,dict):
             tag.encryption = False
             tag.file_alter = False
             tag.frame_id = t_id
-            tag.frame_size = ID3v2Comment.__syncsafe32__(len(t_s))
+            tag.frame_size = len(t_s)
             tag.grouping = False
             tag.read_only = False
             tag.tag_alter = True
@@ -187,7 +181,7 @@ class ID3v2Comment(MetaData,dict):
         header.extended_header = False
         header.file_id = 'ID3'
         header.footer = False
-        header.length = ID3v2Comment.__syncsafe32__(sum(map(len, tags)))
+        header.length = sum(map(len, tags))
         header.unsynchronization = False
         header.version_major = 4
         header.version_minor = 0
@@ -388,7 +382,7 @@ class ID3v2Comment(MetaData,dict):
             #parse the header
             h = ID3v2Comment.ID3v2_HEADER.parse_stream(file)
             #seek to the end of its length
-            file.seek(ID3v2Comment.__de_syncsafe32__(h.length),1)
+            file.seek(h.length,1)
             #skip any null bytes after the ID3v2 tag
             c = file.read(1)
             while (c == '\x00'):
@@ -508,7 +502,7 @@ class ID3v2_3Comment(ID3v2Comment):
         header.extended_header = False
         header.file_id = 'ID3'
         header.footer = False
-        header.length = ID3v2Comment.__syncsafe32__(sum(map(len, tags)))
+        header.length = sum(map(len, tags))
         header.unsynchronization = False
         header.version_major = 3
         header.version_minor = 0
@@ -639,7 +633,7 @@ class ID3v2_2Comment(ID3v2Comment):
         header.extended_header = False
         header.file_id = 'ID3'
         header.footer = False
-        header.length = ID3v2Comment.__syncsafe32__(sum(map(len, tags)))
+        header.length = sum(map(len, tags))
         header.unsynchronization = False
         header.version_major = 2
         header.version_minor = 0
