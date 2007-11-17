@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,WaveAudio,InvalidFile,PCMReader,Con,transfer_data,subprocess,BIN,MetaData,os,TempWaveReader
+from audiotools import AudioFile,WaveAudio,InvalidFile,PCMReader,Con,transfer_data,subprocess,BIN,MetaData,os,re,TempWaveReader
 
 #######################
 #MONKEY'S AUDIO
@@ -61,9 +61,14 @@ class ApeTag(MetaData,dict):
     ITEM_MAP = dict(map(reversed,ATTRIBUTE_MAP.items()))
 
     def __init__(self, tag_dict, tag_length=None):
+        try:
+            track_number = int(re.findall(r'\d+',tag_dict.get('Track',u'0'))[0])
+        except IndexError:
+            track_number = 0
+
         MetaData.__init__(self,
                           track_name=tag_dict.get('Title',u''),
-                          track_number=int(tag_dict.get('Track',u'0')),
+                          track_number=track_number,
                           album_name=tag_dict.get('Album',u''),
                           artist_name=tag_dict.get('Composer',u''),
                           performer_name=tag_dict.get('Artist',u''),
