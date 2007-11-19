@@ -22,6 +22,7 @@ import sys
 import os
 import os.path
 import optparse
+import cStringIO
 try:
     import gtk
     import gtk.gdk
@@ -56,8 +57,13 @@ def image_size(display_surface, image_surface):
     return (new_width,new_height)
 
 def get_pixbuf(imagedata,width,height):
+    imagedata = cStringIO.StringIO(imagedata)
     l = gtk.gdk.PixbufLoader()
-    l.write(imagedata)
+
+    s = imagedata.read(0x1000)
+    while (len(s) > 0):
+        l.write(s)
+        s = imagedata.read(0x1000)
     l.close()
     
     pb = l.get_pixbuf()
