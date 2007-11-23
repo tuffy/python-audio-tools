@@ -45,6 +45,10 @@ PyMODINIT_FUNC initpcmstream(void) {
 		       (PyObject *)&pcmstream_ResamplerType);
 }
 
+/********************************/
+/*PCMStreamReader implementation*/
+/********************************/
+
 
 PyObject *PCMStreamReader_new(PyTypeObject *type, 
 			      PyObject *args, PyObject *kwds) {
@@ -473,6 +477,9 @@ int Resampler_init(pcmstream_Resampler *self,
   return 0;
 }
 
+/**************************/
+/*Resampler implementation*/
+/**************************/
 
 #define OUTPUT_SAMPLES_LENGTH 0x100000
 

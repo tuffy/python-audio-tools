@@ -24,8 +24,10 @@ typedef int Py_ssize_t;
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  *******************************************************/
 
-
+/*****************************/
 /*PCMStreamReader definitions*/
+/*****************************/
+
 typedef struct {
   PyObject_HEAD
   PyObject *substream;        /*the Python file object to get new samples from*/
@@ -96,27 +98,6 @@ PyObject *char_to_python_S8float(unsigned char *s);
 PyObject *char_to_python_SB16float(unsigned char *s);
 PyObject *char_to_python_SB24float(unsigned char *s);
 
-
-/*Resampler definitions*/
-
-typedef struct {
-  PyObject_HEAD
-  SRC_STATE *src_state;
-  int channels;
-  double ratio;
-} pcmstream_Resampler;
-
-void Resampler_dealloc(pcmstream_Resampler* self);
-
-PyObject *Resampler_new(PyTypeObject *type, 
-			PyObject *args, PyObject *kwds);
-
-int Resampler_init(pcmstream_Resampler *self, 
-		   PyObject *args, PyObject *kwds);
-
-PyObject *Resampler_process(pcmstream_Resampler* self, 
-			    PyObject *args);
-
 PyMethodDef module_methods[] = {
   {"pcm_to_string",(PyCFunction)pcm_to_string,
    METH_VARARGS,"Converts PCM integers to a string of PCM data."},
@@ -138,12 +119,6 @@ PyMethodDef PCMStreamReader_methods[] = {
    METH_NOARGS,"Returns the current position in the substream"},
   {"read", (PyCFunction)PCMStreamReader_read,
    METH_VARARGS,"Reads the given number of bits from the substream"},
-  {NULL}
-};
-
-PyMethodDef Resampler_methods[] = {
-  {"process", (PyCFunction)Resampler_process,
-   METH_VARARGS,"Processes PCM samples into the new sample rate"},
   {NULL}
 };
 
@@ -187,6 +162,34 @@ PyTypeObject pcmstream_PCMStreamReaderType = {
     (initproc)PCMStreamReader_init, /* tp_init */
     0,                         /* tp_alloc */
     PCMStreamReader_new,       /* tp_new */
+};
+
+/***********************/
+/*Resampler definitions*/
+/***********************/
+
+typedef struct {
+  PyObject_HEAD
+  SRC_STATE *src_state;
+  int channels;
+  double ratio;
+} pcmstream_Resampler;
+
+void Resampler_dealloc(pcmstream_Resampler* self);
+
+PyObject *Resampler_new(PyTypeObject *type, 
+			PyObject *args, PyObject *kwds);
+
+int Resampler_init(pcmstream_Resampler *self, 
+		   PyObject *args, PyObject *kwds);
+
+PyObject *Resampler_process(pcmstream_Resampler* self, 
+			    PyObject *args);
+
+PyMethodDef Resampler_methods[] = {
+  {"process", (PyCFunction)Resampler_process,
+   METH_VARARGS,"Processes PCM samples into the new sample rate"},
+  {NULL}
 };
 
 
