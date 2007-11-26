@@ -17,4 +17,5 @@
 .REFERENCE "Parsing and Writing QuickTime Files in Java" "http://www.onjava.com/pub/a/onjava/2003/02/19/qt_file_format.html"
 .REFERENCE "ISO 14496-1 Media Format" "http://www.geocities.com/xhelmboyx/quicktime/formats/mp4-layout.txt"
 .REFERENCE "FreeDB Information" "http://www.freedb.org/en/download__miscellaneous.11.html"
+.REFERENCE "ReplayGain" "http://replaygain.hydrogenaudio.org"
 .RE

@@ -25,7 +25,7 @@ FORMAT_VORBIS = format_ogg.ms format_vorbiscomment.ms format_speex.ms
 INSTALLATION = install.ms prereqs.ms configfile.ms
 
 SUBSECTIONS = $(INSTALLATION) macros.ms programming.ms freedb.ms usage.ms \
-references.ms
+replaygain.ms references.ms
 FIGURES = binary.eps freedb-sequence.eps pcm.eps rice1.eps rice2.eps
 TOC_ORDER_MANUAL = 1,_1-_1,2-_2
 TOC_ORDER_FORMATS = 1,_3-_1,2-_4
