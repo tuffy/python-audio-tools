@@ -19,8 +19,8 @@ relation to a reference loudness value).
 This delta is then applied during playback, which has the same effect
 as turning the volume up or down so that the user doesn't have to.
 .PP
-ReplayGain requires four floating-point values which are stored in each
-audio track:
+ReplayGain requires four floating-point values which are typically
+stored as metadata in each audio track:
 `track gain', a positive or negative number of decibels representing
 the loudness delta of this particular track,
 `track peak', the highest sample value of this particular track 
@@ -46,7 +46,7 @@ Applying the gain value to each input PCM sample is quite simple:
 "Output" sub i = {"Input" sub i}~*~{10 sup {gain / 20}} 
 .EN
 For example, if the gain is -2.19, each sample should be multiplied by
-@10 sup {-2.19 / 20} = 0.777@.
+@10 sup {-2.19 / 20}@ or about @0.777@.
 .PP
 If the gain is negative, the PCM stream gets quieter than it was
 originally.
@@ -65,3 +65,35 @@ it's the highest PCM value in the stream and no multiplier should push
 that value beyond 1.0.
 Thus, if the peak value of a stream is 0.9765625, no ReplayGain value
 should generate a multiplier higher than 1.024 (@0.9765625 * 1.024 = 1.0@).
+.bp
+.SECTION "Calculating ReplayGain"
+.PP
+As explained earlier, ReplayGain requires a peak and gain value
+which are split into `track' and `album' varieties for a total of four.
+The `track' values require the PCM data for the particular track
+we're generating data for.
+The `album' values require the PCM data for the entire album,
+concatenated together into a single stream.
+.PP
+Determining the peak value is very straightforward.
+We simply convert each sample's value to the range of 0.0 to 1.0
+and find the highest value which occurs in the stream.
+For signed samples, the conversion process is also simple:
+.EQ
+"Output" sub i = {|~{"Input" sub i}~|} over {2 sup {"bits per sample"~-~1}}
+.EN
+.PP
+Determining the gain value is a more complicated process.
+It involves running the input stream through an equal loudness filter,
+breaking that stream into 50 millisecond long blocks, and then
+determining a final value based on the value of those blocks.
+.SUBSECTION "the Equal Loudness Filter"
+.PP
+Because people don't perceive all frequencies of sounds as having
+equal loudness, ReplayGain runs audio through a filter which
+emphasizes ones we hear as loud and deemphasizes ones we hear as quiet.
+This equal loudness filtering is actually comprised of two separate
+filters: Yule and Butter (these are Infinite Impulse Response filters
+named after their creators).
+Each works on a similar principle.
+
