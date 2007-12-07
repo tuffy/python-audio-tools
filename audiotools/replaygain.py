@@ -126,42 +126,6 @@ class Filter:
         return toreturn
 
 
-def filter_yule(input, output, kernel):
-    total_samples = len(input) - input.current_index
-    
-    input_kernel = tuple(reversed(kernel[0::2]))
-    output_kernel = tuple(reversed(kernel[1::2]))
-
-    while (total_samples > 0):
-        output.append(1e-10 + \
-            sum([i * k for (i,k) in izip(
-                        input.getslice(-10,1),
-                        input_kernel)]) - \
-            sum([i * k for (i,k) in izip(
-                        output[-10:],
-                        output_kernel)])
-                      )
-
-        input.current_index += 1
-        total_samples -= 1
-
-def filter_butter(input, output, kernel):
-    total_samples = len(input) - input.current_index
-    
-    input_kernel = tuple(reversed(kernel[0::2]))
-    output_kernel = tuple(reversed(kernel[1::2]))
-
-    while (total_samples > 0):
-        output.append(sum([i * k for (i,k) in izip(
-                        input.getslice(-2,1),
-                        input_kernel)]) - \
-                      sum([i * k for (i,k) in izip(
-                        output[-2:],
-                        output_kernel)]))
-        input.current_index += 1
-        total_samples -= 1
-
-
 MAX_ORDER = 10
 
 class EqualLoudnessFilter(audiotools.PCMReader):
