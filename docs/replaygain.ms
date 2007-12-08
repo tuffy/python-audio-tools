@@ -113,6 +113,8 @@ left ({sum from {k = i-order} to {i~-~1}
 .EN
 `Input Filter' and `Output Filter' are lists of predefined values.
 `Order' refers to the size of those lists.
+When filtering at the start of the stream, treat any samples
+before the beginning as 0.
 .PP
 Since this explanation is getting vague and theoretical, let's move on
 to the filter values themselves and an example of how to apply them.
@@ -128,8 +130,8 @@ tab(,);
 _
 Yule Input Filter
 _
-Sample,Sample Rate
-Multiplier,48000Hz,44100Hz,32000Hz
+Sample to,Sample Rate
+Multiply,48000Hz,44100Hz,32000Hz
 =
 @Input sub i@,@*@,0.038575994352000001,0.054186564064300002,0.15457299681924
 @Input sub {i~-~1}@,@*@,-0.021603671841850001,-0.029110078089480001,-0.093310490563149995
@@ -153,8 +155,8 @@ tab(,);
 _
 Yule Output Filter
 _
-Sample,Sample Rate
-Multiplier,48000Hz,44100Hz,32000Hz
+Sample to,Sample Rate
+Multiply,48000Hz,44100Hz,32000Hz
 =
 @Output sub {i~-~1}@,@*@,-3.8466461711806699,-3.4784594855007098,-2.3789883497308399
 @Output sub {i~-~2}@,@*@,7.81501653005538,6.3631777756614802,2.84868151156327
@@ -179,8 +181,8 @@ tab(,);
 _
 Butter Input Filter
 _
-Sample,Sample Rate
-Multiplier,48000Hz,44100Hz,32000Hz
+Sample to,Sample Rate
+Multiply,48000Hz,44100Hz,32000Hz
 =
 @Input sub i@,@*@,0.98621192462707996,0.98500175787241995,0.97938932735214002
 @Input sub {i~-~1}@,@*@,-1.9724238492541599,-1.9700035157448399,-1.95877865470428
@@ -196,8 +198,8 @@ tab(,);
 _
 Butter Output Filter
 _
-Sample,Sample Rate
-Multiplier,48000Hz,44100Hz,32000Hz
+Sample to,Sample Rate
+Multiply,48000Hz,44100Hz,32000Hz
 =
 @Output sub {i~-~1}@,@*@,-1.9722337291952701,-1.96977855582618,-1.9583538097539801
 @Output sub {i~-~2}@,@*@,0.97261396931305999,0.97022847566350001,0.95920349965458995
@@ -206,4 +208,164 @@ _
 .bp
 .SUBSUBSECTION "a Filtering Example"
 .PP
-Foo.
+When performing ReplayGain calculations, we'll start by converting
+all our samples to floating-point values between -1.0 and 1.0.
+This is a simple matter of dividing each sample by @2 sup {"bits-per-sample"~-~1}@.
+So for 16-bit samples, divide each one by 32768.
+.PP
+Next, let's assume we have a 44100Hz stream and 
+our previously filtered and unfiltered samples are as follows:
+.TS
+tab(,);
+| c | c | c |
+| r | r | r |.
+_
+Sample,Unfiltered,Filtered
+=
+89,-0.001007080078125,-0.00045495715387008651
+90,-0.0009765625,-0.00045569008938487577
+91,-0.001068115234375,-0.00044710087844377787
+92,-0.0009765625,-0.00044127330865733358
+93,-0.00091552734375,-0.00043189463254365861
+94,-0.0009765625,-0.00041441662610518335
+95,-0.001007080078125,-0.00040230590245440639
+96,-0.00091552734375,-0.0004015602553121536
+97,-0.00091552734375,-0.00040046613041640292
+98,-0.00091552734375,-0.00039336026519054979
+99,-0.0009765625,-0.00039087401794557448
+_
+.TE
+If the value of sample 100 from the input stream is 
+-0.00091552734375 (@-30 / {2 sup 15}@), here's how we calculate
+output sample 100:
+.ps 8
+.TS
+tab(,);
+| c | c s c s c |
+| r | r c r c r |
+| r | r c r c r |
+| r | r c r c r |
+| r | r c r c r |
+| r | r c r c r |
+| r | r c r c r |
+| r | r c r c r |
+| r | r c r c r |
+| r | r c r c r |
+| r | r c r c r |
+| r | r c r c r |
+| r   s s s c r |.
+_
+Sample,Input Value,Yule Input Filter,Result
+=
+90,-0.0009765625,*,-0.00187763777362,@=@,1.8336306383007813e-06
+91,-0.001068115234375,*,0.0067461368224699999,@=@,-7.2056515132583621e-06
+92,-0.0009765625,*,-0.0024087905158400001,@=@,2.3523344881250001e-06
+93,-0.00091552734375,*,0.016248649629749999,@=@,-1.4876083035049437e-05
+94,-0.0009765625,*,-0.025963385129149998,@=@,2.5354868290185545e-05
+95,-0.001007080078125,*,0.022452932533390001,@=@,-2.2611901049861755e-05
+96,-0.00091552734375,*,-0.0083499090493599996,@=@,7.6445700525146477e-06
+97,-0.00091552734375,*,-0.0085116564546900003,@=@,7.7926542248748791e-06
+98,-0.00091552734375,*,-0.0084870937985100006,@=@,7.770166441506958e-06
+99,-0.0009765625,*,-0.029110078089480001,@=@,2.8427810634257813e-05
+100,\fB-0.00091552734375\fR,*,0.054186564064300002,@=@,-4.9609281064727785e-05
+_
+Input Values Sum,@=@,-1.3126881893131719e-05
+_
+.TE
+.ps
+.ps 8
+.TS
+tab(,);
+| c | c s c s c |
+| r | r c r c r |
+| r | r c r c r |
+| r | r c r c r |
+| r | r c r c r |
+| r | r c r c r |
+| r | r c r c r |
+| r | r c r c r |
+| r | r c r c r |
+| r | r c r c r |
+| r | r c r c r |
+| r   s s s c r |.
+_
+Sample,Output Value,Yule Output Filter,Result
+=
+90,-0.00045569008938487577,*,0.13149317958807999,@=@,-5.9920138759993691e-05
+91,-0.00044710087844377787,*,-0.75104302451432003,@=@,0.00033579199600942429
+92,-0.00044127330865733358,*,2.1961168489077401,@=@,-0.00096908774811563594
+93,-0.00043189463254365861,*,-4.3947099607955904,@=@,0.0018980516436537679
+94,-0.00041441662610518335,*,6.8540154093699801,@=@,-0.002840417941224044
+95,-0.00040230590245440639,*,-8.8149868137015499,@=@,0.0035463212252098944
+96,-0.0004015602553121536,*,9.4769360780128,@=@,-0.0038055608710637796
+97,-0.00040046613041640292,*,-8.5475152747187408,@=@,0.0034229903667417111
+98,-0.00039336026519054979,*,6.3631777756614802,@=@,-0.0025030212972888127
+99,-0.00039087401794557448,*,-3.4784594855007098,@=@,0.0013596394353585582
+_
+Output Values Sum,@=@,0.00038478667052108985
+_
+.TE
+.ps 8
+-1.3126881893131719e-05 (input values sum) - 
+0.00038478667052108985 (output value sum) =
+.br
+\fB-0.00039791355241422158\fR (output sample 100).
+.PP
+We're not quite done yet.
+Remember, ReplayGain's equal loudness filter requires both
+a Yule \fIand\fR Butter filter, in that order.
+So the output values from the Yule filter become the input
+values to the Butter filter.
+.TS
+tab(,);
+| c | c | c |
+| r | r | r |.
+_
+Sample,Unfiltered,Filtered
+=
+97,-0.00040046613041640292,1.2422165031560971e-05
+98,-0.00039336026519054979,1.8657680223143899e-05
+99,-0.00039087401794557448,2.0148828330135515e-05
+_
+.TE
+Notice how Butter's unfiltered samples are Yule's filtered samples.
+Thus, our next input sample to the Butter filter is -0.00039791355241422158.
+Calculating sample 100 is now a similar process:
+.ps 8
+.TS
+tab(,);
+| c | c s c s c |
+| r | r c r c r |
+| r | r c r c r |
+| r | r c r c r |
+| r   s s s c r |.
+_
+Sample,Input Value,Butter Input Filter,Result
+=
+98,-0.00039336026519054979,*,0.98500175787241995,@=@,-0.00038746055268985282
+99,-0.00039087401794557448,*,-1.9700035157448399,@=@,0.0007700231895660934
+100,\fB-0.00039791355241422158\fR,*,0.98500175787241995,@=@,-0.0003919455486092676
+_
+Input Values Sum,@=@,-9.38291173302702e-06
+_
+.TE
+.ps
+.ps 8
+.TS
+tab(,);
+| c | c s c s c |
+| r | r c r c r |
+| r | r c r c r |
+| r   s s s c r |.
+_
+Sample,Output Value,Butter Output Filter,Result
+=
+98,1.8657680223143899e-05,*,0.97022847566350001,@=@,1.8102212642317936e-05
+99,2.0148828330135515e-05,*,-1.96977855582618,@=@,-3.968872996972396e-05
+_
+Output Values Sum,@=@,-2.1586517327406024e-05
+_
+.TE
+-9.38291173302702e-06 (input values sum) - -2.1586517327406024e-05 (output values sum) =
+.br
+\fB1.2203605594379004e-05\fR (output sample 100).
