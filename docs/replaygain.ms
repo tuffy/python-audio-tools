@@ -214,13 +214,13 @@ This is a simple matter of dividing each sample by @2 sup {"bits-per-sample"~-~1
 So for 16-bit samples, divide each one by 32768.
 .PP
 Next, let's assume we have a 44100Hz stream and 
-our previously filtered and unfiltered samples are as follows:
+our previous input and output samples are as follows:
 .TS
 tab(,);
 | c | c | c |
 | r | r | r |.
 _
-Sample,Unfiltered,Filtered
+Sample,Input,Output
 =
 89,-0.001007080078125,-0.00045495715387008651
 90,-0.0009765625,-0.00045569008938487577
@@ -314,21 +314,19 @@ _
 We're not quite done yet.
 Remember, ReplayGain's equal loudness filter requires both
 a Yule \fIand\fR Butter filter, in that order.
-So the output values from the Yule filter become the input
-values to the Butter filter.
 .TS
 tab(,);
 | c | c | c |
 | r | r | r |.
 _
-Sample,Unfiltered,Filtered
+Sample,Input,Output
 =
 97,-0.00040046613041640292,1.2422165031560971e-05
 98,-0.00039336026519054979,1.8657680223143899e-05
 99,-0.00039087401794557448,2.0148828330135515e-05
 _
 .TE
-Notice how Butter's unfiltered samples are Yule's filtered samples.
+Notice how Butter's input samples are Yule's output samples.
 Thus, our next input sample to the Butter filter is -0.00039791355241422158.
 Calculating sample 100 is now a similar process:
 .ps 8
