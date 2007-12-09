@@ -15,8 +15,8 @@ All lines must be less than 256 characters long,
 including delimiters.
 Blank lines are prohibited.
 Lines that begin with the `#' character are comments.
-Curiously, the comments themselves are expected to contain
-important information such as track offsets and disc length by FreeDB.
+Curiously, the comments themselves are expected by FreeDB to contain
+important information such as track offsets and disc length.
 Fortunately, FreeDB clients can safely ignore such information
 unless submitting a new disc entry.
 .PP

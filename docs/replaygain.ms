@@ -102,7 +102,8 @@ The basic premise is that each output sample is derived from multiplying
 depend on the filter) \fIand\fR `order' number of previous output
 samples by a different set of values (also depending on the filter)
 and then combining the results.
-In purely mathematical terms, the filter looks like this:
+This filter is applied independently to each channel.
+In purely mathematical terms, it looks like this:
 .EQ
 "Output" sub i = 
 left ({sum from {j = i-order} to i
@@ -307,13 +308,14 @@ _
 .TE
 .ps 8
 -1.3126881893131719e-05 (input values sum) - 
-0.00038478667052108985 (output value sum) =
+0.00038478667052108985 (output values sum) =
 .br
 \fB-0.00039791355241422158\fR (output sample 100).
 .PP
 We're not quite done yet.
 Remember, ReplayGain's equal loudness filter requires both
 a Yule \fIand\fR Butter filter, in that order.
+Here's our set of previous Butter filter input and output values:
 .TS
 tab(,);
 | c | c | c |
@@ -367,3 +369,27 @@ _
 -9.38291173302702e-06 (input values sum) - -2.1586517327406024e-05 (output values sum) =
 .br
 \fB1.2203605594379004e-05\fR (output sample 100).
+.ps 10
+.PP
+The output from the Butter filter is the final result of ReplayGain's
+equal loudness filter.
+.SUBSECTION "RMS Energy Blocks"
+.PP
+The next step is to take our stream of filtered samples and convert
+them to a list of blocks, each 1/20th of a second long.
+For example, a 44100Hz stream is sliced into blocks containing
+2205 PCM frames each.
+.PP
+We then figure out the total decibel value of each block.
+That's handled via the following formulas:
+.EQ
+"Block" sub i mark = {left ({{sum from {x = 0} to {"Block Length" - 1}
+{"Left Sample" sub x sup 2}} over "Block Length"} right ) +
+left ({{sum from {y = 0} to {"Block Length" - 1}
+{"Right Sample" sub y sup 2}} over "Block Length"} right )} over 2
+.EN
+.EQ
+"Block DB" sub i lineup = 10 * log sub 10 ("Block" sub i + 10 sup -10 )
+.EN
+For mono streams, use the same value for both the left and right samples
+(this will cause the addition and dividing by 2 to cancel each other out).
