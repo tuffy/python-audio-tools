@@ -189,5 +189,6 @@ if (__name__ == '__main__'):
                     pcm.close()
         except IOError,msg:
             print >>sys.stderr,"*** trackplay: %s" % (msg)
+            sys.exit(1)
     finally:
         player.close()

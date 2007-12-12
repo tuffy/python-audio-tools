@@ -415,11 +415,15 @@ class FreeDBWeb(FreeDB):
                               "proto":str(6),
                               "cmd":line})
 
-        self.connection.request("POST", 
-                                "/~cddb/cddb.cgi", 
-                                u, 
-                                {"Content-type":"application/x-www-form-urlencoded",
-                                 "Accept": "text/plain"})
+        try:
+            self.connection.request(
+                "POST", 
+                "/~cddb/cddb.cgi", 
+                u, 
+                {"Content-type":"application/x-www-form-urlencoded",
+                 "Accept": "text/plain"})
+        except socket.error,msg:
+            raise FreeDBException(str(msg))
 
     def read(self):
         response = self.connection.getresponse()

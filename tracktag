@@ -241,6 +241,7 @@ if (__name__ == '__main__'):
                 file.set_metadata(metadata)
             except audiotools.InvalidImage,msg:
                 print >>sys.stderr,"* %s: %s" % (file.filename,msg)
+                sys.exit(1)
     
     #we're assuming all tracks are the same type
     if (options.add_replay_gain and
