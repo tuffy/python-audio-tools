@@ -23,7 +23,7 @@ noname
   31-31-7 Padding
 noname
   32-39\[hy]87-20 Sample/Frame Number
-  0-7/15-20-dashed Bits Per Sample
+  0-7/15-20-dashed Block Size
   0-7/15-20-dashed Sample Rate
   0-7-12 CRC-8
 noname
