@@ -13,8 +13,9 @@ style bitwid 0.08
 style charwid 0
 style recspread 0
 noname
-  0-13-52 Sync Code (0x3FFE)
-  14-15-20 Reserved (0x0)
+  0-13-42 Sync Code (0x3FFE)
+  14-14-15 Reserved (0x0)
+  15-15-15 Blocking Strategy
 noname
   16-19-17 Block Size
   20-23-17 Sample Rate
@@ -96,8 +97,8 @@ _
 .TE
 .KE
 Sample/Frame Number is a UTF-8 coded value.
-If the block size is variable, it decodes to a 36-bit sample number.
-If the block size is not variable, it decodes to a 32-bit frame number.
+If the blocking strategy is 0, it decodes to a 32-bit frame number.
+If the blocking strategy is 1, it decodes to a 36-bit sample number.
 .br
 There is one Subframe per channel.
 .KS
