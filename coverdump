@@ -74,5 +74,5 @@ if (__name__ == '__main__'):
                     print "* %s" % (output_filename)
                 except IOError,msg:
                     print "*** %s" % (str(msg))
-                
+                    sys.exit(1)
 

@@ -94,4 +94,5 @@ if (__name__ == '__main__'):
                                      quality)
     except audiotools.InvalidFormat,msg:
         print >>sys.stderr,"*** %s: %s" % (options.filename,str(msg))
-    
+        sys.exit(1)
+

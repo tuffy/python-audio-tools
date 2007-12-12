@@ -72,8 +72,13 @@ if (__name__ == '__main__'):
     else:                     #grab XMCD data from FreeDB
         discid = audiotools.DiscID([file.cd_frames()
                                     for file in audiofiles])
-        audiotools.get_xmcd(discid, outfile,
-                            options.freedb_server,
-                            options.freedb_port,
-                            options.default)
+        try:
+            audiotools.get_xmcd(discid, outfile,
+                                options.freedb_server,
+                                options.freedb_port,
+                                options.default)
+        except IOError,msg:
+            print >>sys.stderr,"* Error: %s" % (msg)
+            sys.exit(1)
+
     outfile.close()

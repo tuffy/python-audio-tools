@@ -415,11 +415,15 @@ class FreeDBWeb(FreeDB):
                               "proto":str(6),
                               "cmd":line})
 
-        self.connection.request("POST", 
-                                "/~cddb/cddb.cgi", 
-                                u, 
-                                {"Content-type":"application/x-www-form-urlencoded",
-                                 "Accept": "text/plain"})
+        try:
+            self.connection.request(
+                "POST", 
+                "/~cddb/cddb.cgi", 
+                u, 
+                {"Content-type":"application/x-www-form-urlencoded",
+                 "Accept": "text/plain"})
+        except socket.error,msg:
+            raise FreeDBException(str(msg))
 
     def read(self):
         response = self.connection.getresponse()
@@ -515,10 +519,8 @@ def get_xmcd(disc_id, output, freedb_server, freedb_server_port,
     except FreeDBException,msg:
         #if an exception occurs during the opening,
         #freedb will auto-close its sockets
-        print >>sys.stderr,"* Error: %s" % (msg)
         output.close()
-        print >>sys.stderr,"* %s written" % (output.name)
-        return
+        raise IOError(str(msg))
         
     try:
         matches = freedb.query(disc_id)
@@ -537,8 +539,8 @@ def get_xmcd(disc_id, output, freedb_server, freedb_server_port,
         freedb.close()
     except FreeDBException,msg:
         #otherwise, close the sockets manually
-        print >>sys.stderr,"* Error: %s" % (msg)
         freedb.close()
+        raise IOError(str(msg))
         
     output.close()
     print >>sys.stderr,"* %s written" % (output.name)
