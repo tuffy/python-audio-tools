@@ -60,8 +60,8 @@ Bits:Block Size:Sample Rate:Channel Assignment:Bits
 0011:1152:reserved:4:left, right, back left, back right:0011
 0100:2304:8000:5:left, right, center, back left, back right:0100
 0101:4608:16000:6:left, right, center, LFE, back left, back right:0101
-0110:get 8 bit from end of header:22050:7:undefined:0110
-0111:get 16 bit from end of header:24000:8:undefined:0111
+0110:8 bit from end of header (+1):22050:7:undefined:0110
+0111:16 bit from end of header (+1):24000:8:undefined:0111
 1000:256:32000:2:0 left, 1 difference:1000
 1001:512:44100:2:0 difference, 1 right:1001
 1010:1024:48000:2:0 average, 1 difference:1010
@@ -300,6 +300,10 @@ _
 \^:\^:@(830571~/~2 sup 9 ) = 1622 - 72 = bold 1550@
 _
 .TE
+.LP
+In this instance, division should always round down and \fInot\fR towards zero.
+For example: @-5~/~2 sup 1 = -3@
+
 .bp
 .SUBSUBSECTION "the Residual"
 .PP
