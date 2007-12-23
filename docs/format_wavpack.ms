@@ -8,8 +8,10 @@
 .SECTION "WavPack"
 .PP
 WavPack is a lossless audio format.
-It is a sequence of WavPack audio blocks followed by
+It is a sequence of WavPack blocks followed by
 an optional APEv2 tag.
+Each block consists of one or more sub-blocks which
+contain the compressed audio data or metadata.
 All of its fields are little-endian.
 
 .SUBSECTION "the WavPack file stream"
@@ -19,16 +21,29 @@ style bitwid 0.06
 style charwid 0
 style recspread 0.3
 noname
-  0--16 WavPack @roman Block sub 1@
-  --16 WavPack @roman Block sub 2@
-  --16-dashed ...
-  --16 WavPack @roman Block sub n@
-  --16-dashed APEv2 Tag
+     0--20 WavPack @roman Block sub 1@
+ B1: --20 WavPack @roman Block sub 2@
+     --20-dashed ...
+     --20 WavPack @roman Block sub n@
+     --20-dashed APEv2 Tag
+noname
+ S1:  0-255-25 Block Header
+ S2:  256--20 Sub @roman Block sub 1@
+      --20 Sub @roman Block sub 2@
+ S3:  --20-dashed ...
+noname
+ U1:  0-7-20 Sub-Block Header
+      8-15/31-25 Sub-Block Length
+ U2:  --30 Sub-Block Data
+pic line dotted from B1.sw to S1.nw
+pic line dotted from B1.se to S3.ne
+pic line dotted from S2.sw to U1.nw
+pic line dotted from S2.se to U2.ne
 .end dformat
 
 .bp
 
-.SUBSECTION "a WavPack block"
+.SUBSECTION "a WavPack block header"
 .PP
 .begin dformat
 style bitwid 0.64
@@ -84,6 +99,9 @@ noname
 
 .PP
 .2C
+.ps 8
+`Block Size' is the length of everything past everything past the 
+block header, minus 24 bytes.
 .KS
 .TS
 tab(:);
@@ -161,3 +179,31 @@ _
 Total:6
 .TE
 .1C
+.bp
+.SUBSECTION "a WavPack sub-block header"
+.PP
+.begin dformat
+style bitwid 0.06
+style charwid 0
+style recspread 0
+noname
+  0-0-18 Large Block
+  1-1-18 Actual Size 1 Less
+  2-2-18 Nondecoder Data
+  3-7-25 Metadata Function
+noname
+  8-15/31-79 Block Size
+noname
+  --79 Block Data
+.end dformat
+.LP
+If the `Large Block' field is 0, the `Block Size' field is 8 bits long.
+If it is 1, the `Block Size' field is 24 bits long.
+The `Block Size' field is the length of `Block Data', in 16-bit
+words rather than bytes.
+If `Actual Size 1 Less' is set, that means `Block Data' doesn't contain
+an even number of bytes; it is padded with a single null byte at the
+end in order to fit.
+If `Nondecoder Data' is set, that means the decoder does not have
+to understand the contents of this particular sub-block in
+order to decode the audio.
