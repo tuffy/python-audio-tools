@@ -45,13 +45,13 @@ if (__name__ == '__main__'):
                         "channels":file.channels(),
                         "rate":file.sample_rate(),
                         "bits":file.bits_per_sample(),
-                        "filename":file.filename.decode(audiotools.FS_ENCODING)}).encode(audiotools.IO_ENCODING,'replace')
+                        "filename":file.filename.decode(audiotools.FS_ENCODING,'replace')}).encode(audiotools.IO_ENCODING,'replace')
         else:
             print (u"%(bitrate)4.4s kbps: %(filename)s" % \
                        {'bitrate':
                             ((os.path.getsize(file.filename) * 8) / 2 ** 10) / \
                             length,
-                        'filename':file.filename.decode(audiotools.FS_ENCODING)}).encode(audiotools.IO_ENCODING,'replace')
+                        'filename':file.filename.decode(audiotools.FS_ENCODING,'replace')}).encode(audiotools.IO_ENCODING,'replace')
         if (show_metadata):
             metadata = file.get_metadata()
             if (metadata != None):
