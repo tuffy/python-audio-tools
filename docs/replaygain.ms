@@ -373,6 +373,7 @@ _
 .PP
 The output from the Butter filter is the final result of ReplayGain's
 equal loudness filter.
+.bp
 .SUBSECTION "RMS Energy Blocks"
 .PP
 The next step is to take our stream of filtered samples and convert
@@ -380,8 +381,12 @@ them to a list of blocks, each 1/20th of a second long.
 For example, a 44100Hz stream is sliced into blocks containing
 2205 PCM frames each.
 .PP
-We then figure out the total decibel value of each block.
-That's handled via the following formulas:
+We then figure out the total energy value of each block by taking
+the Root Mean Square of the block's samples and converting to decibels, 
+hence the name RMS.
+First, convert our floating-point samples back into integer samples
+by multiplying each one by @2 sup {"bits-per-sample"~-~1}@.
+Next, run those samples through the following formulas:
 .EQ
 "Block" sub i mark = {left ({{sum from {x = 0} to {"Block Length" - 1}
 {"Left Sample" sub x sup 2}} over "Block Length"} right ) +
@@ -393,3 +398,49 @@ left ({{sum from {y = 0} to {"Block Length" - 1}
 .EN
 For mono streams, use the same value for both the left and right samples
 (this will cause the addition and dividing by 2 to cancel each other out).
+As a partial example involving 2205 PCM frames:
+.TS
+tab(,);
+| c | c | c | c | c |
+| r | r | r | r | r |
+| r | r | r | r | r |
+| r | r | r | r | r |
+| c | c   s | c   s |
+| r   s   s | r   s |.
+_
+Sample,@roman "Left Value"@,@roman "Left Value" sup 2@,@roman "Right Value"@,@roman "Right Value" sup 2@
+=
+998,115,13225,-43,1849
+999,111,12321,-38,1444
+1000,107,11449,-36,1296
+ ...,...,...
+_
+@roman Left sup 2@ Sum = 7106715,@roman Right sup 2@ Sum = 11642400
+_
+.TE
+.LP
+.EQ
+{(7106715~/~2205) + (11642400~/~2205)} over 2~~ mark =~~4251
+.EN
+.EQ
+10 * log sub 10 (4251 + {10 sup -10} )~~ lineup =~~36.28
+.EN
+.LP
+Thus, the decibel value of this block is 36.28.
+.SUBSECTION "Statistical Processing and Calibration"
+.PP
+At this point, we've converted our stream of input samples into a
+list of RMS energy blocks.
+We now pick the 95th percentile value as the audio stream's representative
+value.
+That means we first sort them from lowest to highest, then pick the one at the
+95% position.
+For example, if we have a total of 2400 decibel blocks (from a 2 minute song),
+the value of block 2280 is our representative.
+.PP
+Finally, we take the difference between a reference value of pink noise
+and our representative value for the final gain value.
+The reference pink noise value is typically 64.82 dB.
+Therefore, if our representative value is 67.01 dB, the resulting 
+gain value is -2.19 dB (@64.82 - 67.01 = -2.19@).
+
