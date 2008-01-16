@@ -123,6 +123,9 @@ are already tagged with information and so an XMCD file isn't required.
 .SECTION "trackplay"
 .PSPIC -L trackplay_man.eps 5.5i
 .bp
+.SECTION "record2track"
+.PSPIC -L record2track_man.eps 5.5i
+.bp
 .SECTION "trackcmp"
 .PSPIC -L trackcmp_man.eps 5.5i
 .bp

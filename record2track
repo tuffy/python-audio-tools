@@ -46,12 +46,6 @@ if (__name__ == '__main__'):
         "%prog <track 1> [track 2] ...",
         version="Python Audio Tools %s" % (audiotools.VERSION))
 
-    parser.add_option('-q','--quality',
-                      action='store',
-                      type='string',
-                      dest='quality',
-                      help='the quality to store audio values at')
-
     parser.add_option('-t','--type',
                       action='store',
                       dest='type',
@@ -59,13 +53,39 @@ if (__name__ == '__main__'):
                       default='wav',
                       help='the type of audio value to convert to')
 
+    parser.add_option('-q','--quality',
+                      action='store',
+                      type='string',
+                      dest='quality',
+                      help='the quality to store audio values at')
+
     parser.add_option('-o','--output',
                       action='store',
                       dest='output',
                       help='output filename to use')
 
-    (options,args) = parser.parse_args()
+    parser.add_option('--sample-rate',
+                      action='store',
+                      dest='sample_rate',
+                      type='int',
+                      default=44100,
+                      help='the sample rate to use when recording')
 
+    parser.add_option('--bits-per-sample',
+                      action='store',
+                      dest='bits_per_sample',
+                      type='int',
+                      default=16,
+                      help='the number of bits-per-sample to use when recording')
+
+    parser.add_option('--channels',
+                      action='store',
+                      dest='channels',
+                      type='int',
+                      default=2,
+                      help='the number of channels to use when recording')
+
+    (options,args) = parser.parse_args()
 
     #get the AudioFile class we are converting to
     AudioType = audiotools.TYPE_MAP[options.type]
@@ -95,7 +115,10 @@ if (__name__ == '__main__'):
         sys.exit(1)
     
 
-    input = audiotools.InterruptableReader(OSSReader(44100,2,16))
+    input = audiotools.InterruptableReader(OSSReader(
+        sample_rate=options.sample_rate,
+        channels=options.channels,
+        bits_per_sample=options.bits_per_sample))
 
     audiofile = AudioType.from_pcm(options.output,input,options.quality)
 
