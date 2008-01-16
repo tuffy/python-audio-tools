@@ -1,0 +1,102 @@
+#!/usr/bin/python
+
+#Audio Tools, a module and set of tools for manipulating audio data
+#Copyright (C) 2008  Brian Langenberger
+
+#This program is free software; you can redistribute it and/or modify
+#it under the terms of the GNU General Public License as published by
+#the Free Software Foundation; either version 2 of the License, or
+#(at your option) any later version.
+
+#This program is distributed in the hope that it will be useful,
+#but WITHOUT ANY WARRANTY; without even the implied warranty of
+#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#GNU General Public License for more details.
+
+#You should have received a copy of the GNU General Public License
+#along with this program; if not, write to the Free Software
+#Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+
+
+import audiotools
+import optparse
+import sys
+
+class OSSReader(audiotools.PCMReader):
+    def __init__(self, sample_rate, channels, bits_per_sample):
+        import ossaudiodev
+
+        audiotools.PCMReader.__init__(self,
+                                      ossaudiodev.open('r'),
+                                      sample_rate=sample_rate,
+                                      channels=channels,
+                                      bits_per_sample=bits_per_sample)
+        self.file.channels(channels)
+        self.file.speed(sample_rate)
+        if (bits_per_sample == 8):
+            self.file.setfmt(ossaudiodev.AFMT_U8)
+        elif (bits_per_sample == 16):
+            self.file.setfmt(ossaudiodev.AFMT_S16_LE)
+        else:
+            raise ValueError("unsupported number of bits per sample")
+        
+
+if (__name__ == '__main__'):
+    parser = optparse.OptionParser(
+        "%prog <track 1> [track 2] ...",
+        version="Python Audio Tools %s" % (audiotools.VERSION))
+
+    parser.add_option('-q','--quality',
+                      action='store',
+                      type='string',
+                      dest='quality',
+                      help='the quality to store audio values at')
+
+    parser.add_option('-t','--type',
+                      action='store',
+                      dest='type',
+                      choices=audiotools.TYPE_MAP.keys(),
+                      default='wav',
+                      help='the type of audio value to convert to')
+
+    parser.add_option('-o','--output',
+                      action='store',
+                      dest='output',
+                      help='output filename to use')
+
+    (options,args) = parser.parse_args()
+
+
+    #get the AudioFile class we are converting to
+    AudioType = audiotools.TYPE_MAP[options.type]
+
+    #ensure the selected compression is compatible with that class
+    if (options.quality == 'help'):
+        if (len(AudioType.COMPRESSION_MODES) > 1):
+            print >>sys.stderr,"*** Available compression types for %s:" % \
+                  (AudioType.SUFFIX)
+            for mode in AudioType.COMPRESSION_MODES:
+                print >>sys.stderr,mode
+        else:
+            print >>sys.stderr,"*** Audio type %s has no compression modes" % \
+                  (AudioType.SUFFIX)
+        sys.exit(0)
+    elif (options.quality == None):
+        options.quality = AudioType.DEFAULT_COMPRESSION
+    elif (options.quality not in AudioType.COMPRESSION_MODES):
+        print >>sys.stderr,"*** \"%s\" is not a supported compression " % \
+              (options.quality) + "mode for type \"%s\"" % \
+              (AudioType.SUFFIX)
+        sys.exit(1)
+
+    #ensure we have an output file to write to
+    if (options.output is None):
+        print >>sys.stderr,"*** You must select an output file"
+        sys.exit(1)
+    
+
+    input = audiotools.InterruptableReader(OSSReader(44100,2,16))
+
+    audiofile = AudioType.from_pcm(options.output,input,options.quality)
+
+    print "* Done"
