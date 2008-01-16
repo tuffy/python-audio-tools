@@ -17,7 +17,7 @@
 #along with this program; if not, write to the Free Software
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-from audiotools import AudioFile,InvalidFile,PCMReader,PCMConverter,Con,transfer_data,subprocess,BIN,cStringIO,open_files,os,ReplayGain
+from audiotools import AudioFile,InvalidFile,PCMReader,PCMConverter,Con,transfer_data,subprocess,BIN,cStringIO,open_files,os,ReplayGain,ignore_sigint
 from __vorbiscomment__ import *
 
 class OggStreamReader:
@@ -403,7 +403,8 @@ class VorbisAudio(AudioFile):
                                 '--raw-endianness',str(0),
                                 '-q',compression,
                                 '-o',filename,'-'],
-                               stdin=subprocess.PIPE)
+                               stdin=subprocess.PIPE,
+                               preexec_fn=ignore_sigint)
 
         transfer_data(pcmreader.read,sub.stdin.write)
         pcmreader.close()

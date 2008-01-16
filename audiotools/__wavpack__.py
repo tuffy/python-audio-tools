@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,InvalidFile,Con,subprocess,BIN,open_files,os,ReplayGain
+from audiotools import AudioFile,InvalidFile,Con,subprocess,BIN,open_files,os,ReplayGain,ignore_sigint
 from __wav__ import WaveAudio,WaveReader
 from __ape__ import ApeTaggedAudio
 
@@ -193,7 +193,8 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
                                 wave_filename] + \
                                compression_param[compression] + \
                                ['-q','-y','-o',
-                                filename])
+                                filename],
+                               preexec_fn=ignore_sigint)
 
         sub.wait()
         return WavPackAudio(filename)

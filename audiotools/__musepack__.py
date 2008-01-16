@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,InvalidFile,PCMReader,PCMConverter,Con,subprocess,BIN,ApeTaggedAudio,os,TempWaveReader
+from audiotools import AudioFile,InvalidFile,PCMReader,PCMConverter,Con,subprocess,BIN,ApeTaggedAudio,os,TempWaveReader,ignore_sigint
 from __wav__ import WaveAudio
 
 #######################
@@ -243,7 +243,8 @@ class MusepackAudio(ApeTaggedAudio,AudioFile):
                                 "--overwrite",
                                 "--%s" % (compression),
                                 wave_filename,
-                                filename])
+                                filename],
+                               preexec_fn=ignore_sigint)
 
         ###Musepack SV8###
         #sub = subprocess.Popen([BIN['mpcenc'],

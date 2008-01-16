@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 #Audio Tools, a module and set of tools for manipulating audio data
-#Copyright (C) 2007  Brian Langenberger
+#Copyright (C) 2007-2008  Brian Langenberger
 
 #This program is free software; you can redistribute it and/or modify
 #it under the terms of the GNU General Public License as published by
@@ -201,11 +201,15 @@ class PCMReader:
 #sends BUFFER_SIZE strings from from_function to to_function
 #until the string is empty
 def transfer_data(from_function, to_function):
-    s = from_function(BUFFER_SIZE)
-    while (len(s) > 0):
-        to_function(s)
+    try:
         s = from_function(BUFFER_SIZE)
-
+        while (len(s) > 0):
+            to_function(s)
+            s = from_function(BUFFER_SIZE)
+    except IOError:
+        #this usually means a broken pipe, so we can only hope
+        #the data reader is closing down correctly
+        pass
 
 def threaded_transfer_data(from_function, to_function):
     import threading,Queue
@@ -617,6 +621,57 @@ class ReplayGainReader(PCMReader):
 
     def close(self):
         self.reader.close()
+
+
+#this is a wrapper around another PCMReader meant for audio recording
+#it runs read() continually in a separate thread
+#it also traps SIGINT and stops reading when caught
+class InterruptableReader(PCMReader):
+    def __init__(self, pcmreader):
+        import threading,Queue,signal
+        
+        PCMReader.__init__(self, pcmreader,
+                           sample_rate=pcmreader.sample_rate,
+                           channels=pcmreader.channels,
+                           bits_per_sample=pcmreader.bits_per_sample)
+        
+        self.stop_reading = False
+        self.data_queue = Queue.Queue()
+
+        self.old_sigint = signal.signal(signal.SIGINT,self.stop)
+        
+        thread = threading.Thread(target=self.send_data)
+        thread.setDaemon(True)
+        thread.start()
+
+    def stop(self, *args):
+        import signal
+
+        self.stop_reading = True
+        signal.signal(signal.SIGINT,self.old_sigint)
+
+        print "Stopping..."
+
+    def send_data(self):
+        #try to use a half second long buffer
+        BUFFER_SIZE = self.sample_rate * (self.bits_per_sample / 8) * \
+                      self.channels / 2
+        
+        s = self.file.read(BUFFER_SIZE)
+        while ((len(s) > 0) and (not self.stop_reading)):
+            self.data_queue.put(s)
+            s = self.file.read(BUFFER_SIZE)
+
+        self.data_queue.put("")
+
+    def read(self, length):
+        return self.data_queue.get()
+
+def ignore_sigint():
+    import signal
+
+    signal.signal(signal.SIGINT,signal.SIG_IGN)
+
 
 class FrameList(list):
     #l should be a list-compatible collection of PCM integers

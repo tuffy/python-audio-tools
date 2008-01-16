@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,InvalidFile,PCMReader,PCMConverter,Con,transfer_data,subprocess,BIN,cStringIO,MetaData,os,Image
+from audiotools import AudioFile,InvalidFile,PCMReader,PCMConverter,Con,transfer_data,subprocess,BIN,cStringIO,MetaData,os,Image,ignore_sigint
 
 #######################
 #M4A File
@@ -313,8 +313,11 @@ class M4AAudio(AudioFile):
                                 "-o",filename,
                                 "-"],
                                stdin=subprocess.PIPE,
-                               stderr=devnull)
-
+                               stderr=devnull,
+                               preexec_fn=ignore_sigint)
+        #Note: faac handles SIGINT on its own,
+        #so trying to ignore it doesn't work like on most other encoders.
+        
         transfer_data(pcmreader.read,sub.stdin.write)
         pcmreader.close()
         sub.stdin.close()

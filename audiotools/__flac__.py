@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 #Audio Tools, a module and set of tools for manipulating audio data
-#Copyright (C) 2007  Brian Langenberger
+#Copyright (C) 2007-2008  Brian Langenberger
 
 #This program is free software; you can redistribute it and/or modify
 #it under the terms of the GNU General Public License as published by
@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,InvalidFile,PCMReader,Con,transfer_data,subprocess,BIN,BUFFER_SIZE,cStringIO,os,open_files,Image,sys,WaveAudio,ReplayGain
+from audiotools import AudioFile,InvalidFile,PCMReader,Con,transfer_data,subprocess,BIN,BUFFER_SIZE,cStringIO,os,open_files,Image,sys,WaveAudio,ReplayGain,ignore_sigint
 from __vorbiscomment__ import *
 from __id3__ import ID3v2Comment
 from __vorbis__ import OggStreamReader,OggStreamWriter
@@ -504,7 +504,8 @@ class FlacAudio(AudioFile):
                                 "--sign=signed",
                                 "--force-raw-format",
                                 "-o",filename,"-"],
-                               stdin=subprocess.PIPE)
+                               stdin=subprocess.PIPE,
+                               preexec_fn=ignore_sigint)
 
         transfer_data(pcmreader.read,sub.stdin.write)
         sub.stdin.close()
@@ -915,7 +916,8 @@ class OggFlacAudio(FlacAudio):
                                 "--sign=signed",
                                 "--force-raw-format",
                                 "-o",filename,"-"],
-                               stdin=subprocess.PIPE)
+                               stdin=subprocess.PIPE,
+                               preexec_fn=ignore_sigint)
 
         transfer_data(pcmreader.read,sub.stdin.write)
         pcmreader.close()

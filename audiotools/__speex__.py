@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,InvalidFile,PCMReader,PCMConverter,Con,transfer_data,subprocess,BIN,cStringIO,os
+from audiotools import AudioFile,InvalidFile,PCMReader,PCMConverter,Con,transfer_data,subprocess,BIN,cStringIO,os,ignore_sigint
 from __vorbis__ import *
 
 #######################
@@ -130,7 +130,8 @@ class SpeexAudio(VorbisAudio):
                                CHANNELS + \
                                ['-',filename],
                                stdin=subprocess.PIPE,
-                               stderr=devnull)
+                               stderr=devnull,
+                               preexec_fn=ignore_sigint)
 
         transfer_data(pcmreader.read,sub.stdin.write)
         pcmreader.close()

@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,InvalidFile,PCMReader,PCMConverter,Con,transfer_data,subprocess,BIN,BIG_ENDIAN,ApeTag,ReplayGain
+from audiotools import AudioFile,InvalidFile,PCMReader,PCMConverter,Con,transfer_data,subprocess,BIN,BIG_ENDIAN,ApeTag,ReplayGain,ignore_sigint
 from __id3__ import *
 
 #######################
@@ -159,7 +159,8 @@ class MP3Audio(AudioFile):
                                 "--preset",compression,
                                 "-",
                                 filename],
-                               stdin=subprocess.PIPE)
+                               stdin=subprocess.PIPE,
+                               preexec_fn=ignore_sigint)
 
         transfer_data(pcmreader.read,sub.stdin.write)
         pcmreader.close()
@@ -429,7 +430,8 @@ class MP2Audio(MP3Audio):
                                 "-b",compression,
                                 "-",
                                 filename],
-                               stdin=subprocess.PIPE)
+                               stdin=subprocess.PIPE,
+                               preexec_fn=ignore_sigint)
 
         transfer_data(pcmreader.read,sub.stdin.write)
         pcmreader.close()
