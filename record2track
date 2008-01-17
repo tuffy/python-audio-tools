@@ -168,8 +168,13 @@ if (__name__ == '__main__'):
         print >>sys.stderr,"*** You must select an output file"
         sys.exit(1)
 
-    sys.stdout.write("* Recording (Ctrl-C or \"kill -s SIGINT %d\" to stop) " % \
-                         os.getpid())
+    #I'd like to offer "kill -s SIGINT $MYPID" instructions at this point,
+    #but that method works inconsistently on different operating systems
+    #whereas Ctrl-C always seems to act as it should.
+    #It might be the SIGINT signal handler interacting poorly with
+    #InterruptableReader's background thread, but those are Python/OS
+    #issues beyond my control.
+    sys.stdout.write("* Recording (Ctrl-C to stop) ")
     sys.stdout.flush()
 
     input = audiotools.InterruptableReader(inputs_map[options.input](

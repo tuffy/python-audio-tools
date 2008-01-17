@@ -13,6 +13,33 @@ Show a list of options and exit
 .TP
 \fB--version\fR
 Show the program's version and exit
+.TP
+\fB-t \fItype\fB, --type=\fItype\fR
+The audio format to convert the recorded audio to.
+For a list of available audio formats, try:
+.B \-t
+.B help
+.TP
+\fB-q \fIquality\fB, --quality=\fIquality\fR
+The desired quality of the recorded audio.
+For a list of available quality modes for a given format, try:
+.B \-q
+.B help
+.TP
+\fB-o \fIfilename\fB, --output=\fIfilename\fR
+The output filename for the recorded track.
+.TP
+\fB--sample-rate=\fIrate\fR
+The sample rate to record audio at.
+Defaults to 44100Hz.
+.TP
+\fB--bits-per-sample=\fIbps\fR
+The bits-per-sample to record audio at.
+Defaults to 16.
+.TP
+\fB--channels=\fIchannels\fR
+The number of channels to record audio at.
+Defaults to 2.
 .SH AUTHOR
 .nf
 Brian Langenberger
