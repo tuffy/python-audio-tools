@@ -119,6 +119,10 @@ before the beginning as 0.
 .PP
 Since this explanation is getting vague and theoretical, let's move on
 to the filter values themselves and an example of how to apply them.
+There's a lot of numbers here, each with a lot of digits.
+Don't be too concerned about the results of the math;
+focus instead on which sample value gets multiplied by which
+filter value in order to yield the sums we need.
 .bp
 .SUBSUBSECTION "the Yule Filter"
 .PP
@@ -415,7 +419,7 @@ Sample,@roman "Left Value"@,@roman "Left Value" sup 2@,@roman "Right Value"@,@ro
 1000,107,11449,-36,1296
  ...,...,...
 _
-@roman Left sup 2@ Sum = 7106715,@roman Right sup 2@ Sum = 11642400
+Left @roman Value sup 2@ Sum = 7106715,Right @roman Value sup 2@ Sum = 11642400
 _
 .TE
 .LP
