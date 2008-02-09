@@ -102,6 +102,10 @@ class ImageList:
     #picture_list is a list of (filepath,Image) tuples
     def set_images(self, picture_list):
         first_image = None
+        xml.get_widget("picture_image").clear()
+        window = xml.get_widget("main_window").window
+        window.set_cursor(gtk.gdk.Cursor(gtk.gdk.WATCH))
+        window.show()
 
         for (path,image) in picture_list:
             treeiter = self.image_liststore.append()
@@ -119,6 +123,8 @@ class ImageList:
             self.xml.get_widget("image_list").get_selection().select_iter(
                 first_image)
             self.image_selected()
+
+        window.set_cursor(None)
 
     def image_selected(self, *args):
         (liststore,treeiter) = \
@@ -162,9 +168,11 @@ class ImageList:
                 pass
 
     def image_resized(self, image, rectangle):
-        self.image_width = rectangle.width
-        self.image_height = rectangle.height
-
+        if ((self.image_width,self.image_height) !=
+            (rectangle.width,rectangle.height)):
+            self.image_width = rectangle.width
+            self.image_height = rectangle.height
+            self.image_selected()
 
 if (__name__ == '__main__'):
     cover_list = []
