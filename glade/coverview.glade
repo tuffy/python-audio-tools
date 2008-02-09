@@ -139,7 +139,7 @@
 	</widget>
 	<packing>
 	  <property name="padding">0</property>
-	  <property name="expand">True</property>
+	  <property name="expand">False</property>
 	  <property name="fill">True</property>
 	</packing>
       </child>
@@ -150,7 +150,7 @@
 	</widget>
 	<packing>
 	  <property name="padding">0</property>
-	  <property name="expand">True</property>
+	  <property name="expand">False</property>
 	  <property name="fill">True</property>
 	</packing>
       </child>
@@ -235,6 +235,7 @@
 </widget>
 
 <widget class="GtkFileChooserDialog" id="file_chooser">
+  <property name="border_width">5</property>
   <property name="action">GTK_FILE_CHOOSER_ACTION_OPEN</property>
   <property name="local_only">True</property>
   <property name="select_multiple">False</property>
