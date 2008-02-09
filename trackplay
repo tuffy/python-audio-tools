@@ -25,6 +25,20 @@ import struct
 import ossaudiodev
 import audiotools.pcmstream
 
+#This takes a channel count and returns a tuple of PulseAudio
+#channel map strings (for sending to pacat(1)) in order to know
+#where to send them.
+#It assumes the FLAC channel mapping, which seems to be a standard.
+PULSEAUDIO_CHANNEL_MAP = \
+    {1:("mono",),
+     2:("front-left","front-right"),
+     3:("front-left","front-right","front-center"),
+     4:("front-left","front-right","rear-left","rear-right"),
+     5:("front-left","front-right","front-center",
+        "rear-left","rear-right"),
+     6:("front-left","front-right","front-center",
+        "lfe","rear-left","rear-right")}
+
 class OSSPlayer:
     NAME = 'oss'
     
@@ -104,6 +118,12 @@ class PulsePlayer:
         else:
             stream_name = audiofile.filename
 
+        if (pcm.channels in PULSEAUDIO_CHANNEL_MAP.keys()):
+            channel_map = ["--channel-map=%s" % \
+                               (",".join(PULSEAUDIO_CHANNEL_MAP[pcm.channels]))]
+        else:
+            channel_map = []
+
         
         dev = subprocess.Popen([audiotools.BIN["pacat"],
                                 "-p","-n","trackplay",
@@ -111,7 +131,8 @@ class PulsePlayer:
                                 "--rate=%d" % (pcm.sample_rate),
                                 "--format=%s" % {8:"u8",16:"s16le"}.get(
                     pcm.bits_per_sample,"float32le"),
-                                "--channels=%d" % (pcm.channels)],
+                                "--channels=%d" % (pcm.channels)] + \
+                                   channel_map,
                                stdin=subprocess.PIPE)
 
         if (pcm.bits_per_sample in (8,16)):
