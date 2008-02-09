@@ -82,6 +82,8 @@ class ImageList:
     #picture_list is a list of (filepath,Image) tuples
     def __init__(self, picture_list, xml):
         self.xml = xml
+        self.image_width = 500
+        self.image_height = 500
 
         image_list = xml.get_widget("image_list")
         image = xml.get_widget("picture_image")
@@ -95,6 +97,8 @@ class ImageList:
 
         self.set_images(picture_list)
 
+        
+
     #picture_list is a list of (filepath,Image) tuples
     def set_images(self, picture_list):
         first_image = None
@@ -102,7 +106,7 @@ class ImageList:
         for (path,image) in picture_list:
             treeiter = self.image_liststore.append()
             pb = get_pixbuf(image.data,120,120)
-            large_pb = get_pixbuf(image.data,500,500)
+            large_pb = get_raw_pixbuf(image.data)
             self.image_liststore.set(treeiter,0,pb)
             self.image_liststore.set(treeiter,1,large_pb)
             self.image_liststore.set(treeiter,2,image.type_string())
@@ -121,8 +125,15 @@ class ImageList:
             self.xml.get_widget("image_list").get_selection().get_selected()
 
         selected = liststore.get_value(treeiter,1)
+
+        (width,height) = image_size((self.image_width,
+                                     self.image_height),
+                                    selected)
+
         image = xml.get_widget("picture_image")
-        image.set_from_pixbuf(selected)
+        image.set_from_pixbuf(selected.scale_simple(width,
+                                                    height,
+                                                    gtk.gdk.INTERP_BILINEAR))
         self.xml.get_widget("file_path").set_text(
             liststore.get_value(treeiter,3))
         self.xml.get_widget("picture_type").set_text(
@@ -131,24 +142,29 @@ class ImageList:
     def open_file(self, *args):
         self.xml.get_widget('file_chooser').run()
 
-    def track_selected(self, *args):
+    def track_selected(self, dialog, signal):
         chooser = self.xml.get_widget('file_chooser')
         chooser.hide()
-        self.image_liststore.clear()
-        xml.get_widget("picture_image").clear()
-        xml.get_widget('file_path').set_text('')
-        xml.get_widget('picture_type').set_text('')
+        if (signal == -5):
+            self.image_liststore.clear()
+            xml.get_widget("picture_image").clear()
+            xml.get_widget('file_path').set_text('')
+            xml.get_widget('picture_type').set_text('')
 
-        try:
-            metadata = audiotools.open(chooser.get_filename()).get_metadata()
-            if (metadata is not None):
-                self.set_images([(chooser.get_filename(),img)
-                                 for img in metadata.images()])
-            
-        except audiotools.UnsupportedFile:
-            pass
-        
-    
+            try:
+                metadata = audiotools.open(
+                    chooser.get_filename()).get_metadata()
+                if (metadata is not None):
+                    self.set_images([(chooser.get_filename(),img)
+                                     for img in metadata.images()])
+
+            except audiotools.UnsupportedFile:
+                pass
+
+    def image_resized(self, image, rectangle):
+        self.image_width = rectangle.width
+        self.image_height = rectangle.height
+
 
 if (__name__ == '__main__'):
     cover_list = []
@@ -188,4 +204,5 @@ if (__name__ == '__main__'):
     xml.signal_connect("image_selected",imagelist.image_selected)
     xml.signal_connect("open_file",imagelist.open_file)
     xml.signal_connect("track_selected",imagelist.track_selected)
+    xml.signal_connect("image_resize",imagelist.image_resized)
     gtk.main()
