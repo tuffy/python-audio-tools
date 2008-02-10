@@ -171,7 +171,7 @@ if (__name__ == '__main__'):
         try:
             xmcd = audiotools.parse_xmcd_file(options.xmcd)
         except audiotools.XMCDException:
-            print sys.stderr,"*** Invalid XMCD file"
+            print >>sys.stderr,"*** Invalid XMCD file"
             sys.exit(1)
     else: #if we're not using an XMCD file, use the AudioFile objects' data
         xmcd = None
@@ -191,7 +191,7 @@ if (__name__ == '__main__'):
         for audiofile in audiofiles:
             try:
                 track_number = audiofile.track_number()
-                if (xmcd != None):
+                if (xmcd is not None):
                     filename = os.path.join(
                                 base_directory,
                                 AudioType.track_name(track_number,

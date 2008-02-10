@@ -114,6 +114,7 @@ if (__name__ == '__main__'):
         print >>sys.stderr,"*** You must specify a cuesheet to split audio file"
         sys.exit(1)
 
+    #grab the cuesheet we're using to split tracks
     cuefile = open(options.cuesheet,'r')
     try:
         try:
@@ -125,4 +126,60 @@ if (__name__ == '__main__'):
     finally:
         cuefile.close()
 
-    print list(cuesheet.pcm_lengths())
+    #if we're using an XMCD file, use that file for MetaData
+    if (options.xmcd != None):
+        try:
+            xmcd = audiotools.parse_xmcd_file(options.xmcd)
+        except audiotools.XMCDException:
+            print >>sys.stderr,"*** Invalid XMCD file"
+            sys.exit(1)
+    else: 
+        #if we're not using an XMCD file, no MetaData
+        #(I could theoretically pull some from the base track
+        # but there usually isn't any and it's not very practical)
+        xmcd = None
+
+    base_directory = options.dir
+    encoded_filenames = []
+
+    for (i,pcmreader) in enumerate(audiotools.pcm_split(audiofile.to_pcm(),
+                                                        cuesheet.pcm_lengths())):
+        track_number = i + 1
+
+        if (xmcd is not None):
+            filename = os.path.join(
+                base_directory,
+                AudioType.track_name(track_number,
+                                     xmcd[track_number]))
+
+            metadata = xmcd[track_number]
+
+            audiotools.make_dirs(filename)
+        else:
+            filename = os.path.join(
+                base_directory,
+                AudioType.track_name(track_number,
+                                     None))
+            
+            metadata = None
+
+            audiotools.make_dirs(filename)
+
+        print (u"%s -> %s" % \
+               (audiofile.filename.decode(audiotools.FS_ENCODING),
+                filename.decode(audiotools.FS_ENCODING))).encode(
+            audiotools.IO_ENCODING)
+        
+        destination_audiofile = AudioType.from_pcm(
+                filename,
+                pcmreader,
+                options.quality)
+
+        encoded_filenames.append(filename)
+
+        if (metadata != None):
+            destination_audiofile.set_metadata(metadata)
+
+    if (options.add_replay_gain and AudioType.can_add_replay_gain()):
+        print >>sys.stderr,"* Adding ReplayGain metadata.  This may take some time."
+        AudioType.add_replay_gain(encoded_filenames)

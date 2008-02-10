@@ -215,7 +215,7 @@ class Cuesheet:
                 previous = current
             else:
                 yield (current[max(current.keys())] - \
-                           previous[max(previous.keys())]) * (44100 / 75) * 2
+                           previous[max(previous.keys())]) * (44100 / 75)
                 previous = current
 
 class Track:
