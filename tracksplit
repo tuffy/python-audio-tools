@@ -1,0 +1,128 @@
+#!/usr/bin/python
+
+#Audio Tools, a module and set of tools for manipulating audio data
+#Copyright (C) 2007  Brian Langenberger
+
+#This program is free software; you can redistribute it and/or modify
+#it under the terms of the GNU General Public License as published by
+#the Free Software Foundation; either version 2 of the License, or
+#(at your option) any later version.
+
+#This program is distributed in the hope that it will be useful,
+#but WITHOUT ANY WARRANTY; without even the implied warranty of
+#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#GNU General Public License for more details.
+
+#You should have received a copy of the GNU General Public License
+#along with this program; if not, write to the Free Software
+#Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+
+
+import audiotools
+import audiotools.cue
+import optparse,sys,os,os.path
+
+MAX_CPUS = audiotools.MAX_JOBS
+
+if (__name__ == '__main__'):
+    parser = optparse.OptionParser(
+        '%prog [--cue cuesheet] [-t track type ] [-x XMCD file] ' + \
+        '[-d directory] [-q quality] ' + \
+        '<track>',
+        version="Python Audio Tools %s" % (audiotools.VERSION))
+
+    parser.add_option('--cue',
+                      action='store',
+                      type='string',
+                      dest='cuesheet',
+                      help='the cuesheet to use for splitting track')
+    
+    parser.add_option('-x','--xmcd',
+                      action='store',
+                      type='string',
+                      dest='xmcd',
+                      help='an XMCD file to get audio metadata from')
+
+    parser.add_option('-d','--dir',
+                      action='store',
+                      type='string',
+                      dest='dir',
+                      default='.',
+                      help='the directory to store extracted audio files')
+
+    parser.add_option('-q','--quality',
+                      action='store',
+                      type='string',
+                      dest='quality',
+                      help='the quality to store audio values at')
+
+    parser.add_option('-t','--type',
+                      action='store',
+                      dest='type',
+                      choices=audiotools.TYPE_MAP.keys(),
+                      default='wav',
+                      help='the type of audio value to convert to')
+
+    parser.add_option('-j','--joint',
+                      action='store',
+                      type='int',
+                      default=MAX_CPUS,
+                      dest='max_processes',
+                      help='the maximum number of processes to run at a time')
+
+    parser.add_option('--no-replay-gain',
+                      action='store_false',
+                      dest='add_replay_gain',
+                      default=True,
+                      help='do not add ReplayGain metadata to newly extracted tracks')
+
+    (options,args) = parser.parse_args()
+
+    #get the AudioFile class we are converted to
+    AudioType = audiotools.TYPE_MAP[options.type]
+
+    #ensure the selected compression is compatible with that class
+    if (options.quality == 'help'):
+        if (len(AudioType.COMPRESSION_MODES) > 1):
+            print >>sys.stderr,"*** Available compression types for %s:" % \
+                  (AudioType.SUFFIX)
+            for mode in AudioType.COMPRESSION_MODES:
+                print >>sys.stderr,mode
+        else:
+            print >>sys.stderr,"*** Audio type %s has no compression modes" % \
+                  (AudioType.SUFFIX)
+        sys.exit(0)
+    elif (options.quality == None):
+        options.quality = AudioType.DEFAULT_COMPRESSION
+    elif (options.quality not in AudioType.COMPRESSION_MODES):
+        print >>sys.stderr,"*** \"%s\" is not a supported compression " % \
+              (options.quality) + "mode for type \"%s\"" % \
+              (AudioType.SUFFIX)
+        sys.exit(1)
+
+    if (len(args) != 1):
+        print >>sys.stderr,"*** You must specify exactly 1 supported audio file"
+        sys.exit(1)
+
+    try:
+        audiofile = audiotools.open(args[0])
+    except audiotools.UnsupportedFile:
+        print >>sys.stderr,"*** You must specify exactly 1 supported audio file"
+        sys.exit(1)
+
+    if (options.cuesheet is None):
+        print >>sys.stderr,"*** You must specify a cuesheet to split audio file"
+        sys.exit(1)
+
+    cuefile = open(options.cuesheet,'r')
+    try:
+        try:
+            cuesheet = audiotools.cue.parse(
+                audiotools.cue.tokens(cuefile.read()))
+        except ValueError,msg:
+            print >>sys.stderr,"*** Cuesheet error: %s" % (msg)
+            sys.exit(1)
+    finally:
+        cuefile.close()
+
+    print list(cuesheet.pcm_lengths())
