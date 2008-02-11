@@ -47,7 +47,8 @@ tracklength.1 \
 editxmcd.1 \
 coverview.1 \
 coverdump.1 \
-record2track.1
+record2track.1 \
+tracksplit.1
 
 MAN_SECTIONS =  \
 cd2track_man.eps \
@@ -65,7 +66,9 @@ tracklength_man.eps \
 editxmcd_man.eps \
 coverview_man.eps \
 coverdump_man.eps \
-record2track_man.eps
+record2track_man.eps \
+tracksplit_man.eps
+
 
 
 ifndef PDFLICENSE

@@ -401,7 +401,7 @@ class BufferedPCMReader(PCMReader):
         self.reader_finished = False
 
     def close(self):
-        self.pcmreader.close()
+        self.file.close()
 
     def read(self, bytes):
         self.__fill__(bytes)
@@ -440,16 +440,7 @@ def pcm_split(reader, pcm_lengths):
             yield chunk_size
         yield total_size
 
-    full_data = tempfile.TemporaryFile()
-    #This dumps the whole contents of reader into a temp PCM file
-    #which we pull apart in the appropriate sizes to make PCMReaders.
-    #It is a very stupid approach, but it does work.
-    #Pulling only the data we need from reader into each PCMReader
-    #would be better, but the variable size of PCMReader.read()
-    #makes it difficult to get the exact amount of data into each sub-reader
-    transfer_data(reader.read,full_data.write)
-    reader.close()
-    full_data.seek(0,0)
+    full_data = BufferedPCMReader(reader)
 
     for byte_length in [i * reader.channels * reader.bits_per_sample / 8
                         for i in pcm_lengths]:
