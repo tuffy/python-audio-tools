@@ -24,6 +24,23 @@ import optparse,sys,os,os.path
 
 MAX_CPUS = audiotools.MAX_JOBS
 
+def extract_part(input_filename, input_pcm, output_filename, quality, metadata):
+    print (u"%s -> %s" % \
+               (input_filename.decode(audiotools.FS_ENCODING),
+                output_filename.decode(audiotools.FS_ENCODING))).encode(
+        audiotools.IO_ENCODING)
+        
+    destination_audiofile = AudioType.from_pcm(
+        output_filename,
+        input_pcm,
+        quality)
+    
+    encoded_filenames.append(filename)
+
+    if (metadata is not None):
+        destination_audiofile.set_metadata(metadata)
+
+
 if (__name__ == '__main__'):
     parser = optparse.OptionParser(
         '%prog [--cue cuesheet] [-t track type ] [-x XMCD file] ' + \
@@ -141,6 +158,7 @@ if (__name__ == '__main__'):
 
     base_directory = options.dir
     encoded_filenames = []
+    queue = audiotools.ExecQueue()
 
     for (i,pcmreader) in enumerate(audiotools.pcm_split(audiofile.to_pcm(),
                                                         cuesheet.pcm_lengths())):
@@ -151,10 +169,7 @@ if (__name__ == '__main__'):
                 base_directory,
                 AudioType.track_name(track_number,
                                      xmcd[track_number]))
-
             metadata = xmcd[track_number]
-
-            audiotools.make_dirs(filename)
         else:
             filename = os.path.join(
                 base_directory,
@@ -163,22 +178,17 @@ if (__name__ == '__main__'):
             
             metadata = None
 
-            audiotools.make_dirs(filename)
-
-        print (u"%s -> %s" % \
-               (audiofile.filename.decode(audiotools.FS_ENCODING),
-                filename.decode(audiotools.FS_ENCODING))).encode(
-            audiotools.IO_ENCODING)
-        
-        destination_audiofile = AudioType.from_pcm(
-                filename,
-                pcmreader,
-                options.quality)
-
+        audiotools.make_dirs(filename)
         encoded_filenames.append(filename)
+        
+        queue.execute(extract_part,
+                      (audiofile.filename, 
+                       pcmreader, 
+                       filename,
+                       options.quality, 
+                       metadata))
 
-        if (metadata != None):
-            destination_audiofile.set_metadata(metadata)
+    queue.run(options.max_processes)
 
     if (options.add_replay_gain and AudioType.can_add_replay_gain()):
         print >>sys.stderr,"* Adding ReplayGain metadata.  This may take some time."
