@@ -985,6 +985,36 @@ class testbitstream(unittest.TestCase):
 
             self.assertEqual(sum1.hexdigest(),sum2.hexdigest())
 
+class testbufferedstream(unittest.TestCase):
+    def testbuffer(self):
+        reader = VARIABLE_PCM_Reader(TEST_LENGTH)
+        bufferedreader = audiotools.BufferedPCMReader(reader)
+
+        output = md5.new()
+
+        s = bufferedreader.read(4096)
+        while (len(s) > 0):
+            output.update(s)
+            s = bufferedreader.read(4096)
+
+        self.assertEqual(output.hexdigest(),reader.hexdigest())
+
+    def testrandombuffer(self):
+        reader = VARIABLE_PCM_Reader(TEST_LENGTH)
+        bufferedreader = audiotools.BufferedPCMReader(reader)
+        size = reader.total_size
+
+        output = md5.new()
+
+        while (size > 0):
+            buffer_length = min(size,random.randint(1,10000))
+            s = bufferedreader.read(buffer_length)
+            self.assertEqual(len(s),buffer_length)
+            output.update(s)
+            size -= buffer_length
+        
+        self.assertEqual(output.hexdigest(),reader.hexdigest())
+
 ############
 #END TESTS
 ############

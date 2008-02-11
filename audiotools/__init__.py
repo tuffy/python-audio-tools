@@ -369,6 +369,64 @@ class PCMCat(PCMReader):
         pass
 
 
+class __buffer__:
+    def __init__(self):
+        self.buffer = []
+
+    def __len__(self):
+        if (len(self.buffer) > 0):
+            return sum(map(len,self.buffer))
+        else:
+            return 0
+
+    def __str__(self):
+        return "".join(self.buffer)
+
+    def push(self, s):
+        self.buffer.append(s)
+
+    def pop(self):
+        return self.buffer.pop(0)
+            
+    def unpop(self, s):
+        self.buffer.insert(0,s)
+
+class BufferedPCMReader(PCMReader):
+    def __init__(self, pcmreader):
+        PCMReader.__init__(self,pcmreader,
+                           pcmreader.sample_rate,
+                           pcmreader.channels,
+                           pcmreader.bits_per_sample)
+        self.buffer = __buffer__()
+        self.reader_finished = False
+
+    def close(self):
+        self.pcmreader.close()
+
+    def read(self, bytes):
+        self.__fill__(bytes)
+        output = __buffer__()
+        while ((len(self.buffer) > 0) and (len(output) < bytes)):
+            output.push(self.buffer.pop())
+        if (len(output) > bytes):
+            toreturn = str(output)[0:bytes]
+            self.buffer.unpop(str(output)[bytes:])
+            return toreturn
+        else:
+            return str(output)
+
+    #try to fill our internal buffer to at least "bytes"
+    def __fill__(self, bytes):
+        while ((len(self.buffer) < bytes) and
+               (not self.reader_finished)):
+            s = self.file.read(BUFFER_SIZE)
+            if (len(s) > 0):
+                self.buffer.push(s)
+            else:
+                self.reader_finished = True
+            
+            
+
 #takes a PCMReader and a list of reader lengths (in PCM samples)
 #returns an iterator of PCMReader-compatible objects, each limited
 #to the given lengths.
@@ -404,6 +462,7 @@ def pcm_split(reader, pcm_lengths):
         else:
             #if the sub-file length is very small, use StringIO
             sub_file = cStringIO.StringIO(full_data.read(byte_length))
+
         yield PCMReader(sub_file,
                         reader.sample_rate,
                         reader.channels,
