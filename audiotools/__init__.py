@@ -279,30 +279,20 @@ def pcm_cmp(pcmreader1, pcmreader2):
         (pcmreader1.bits_per_sample != pcmreader2.bits_per_sample)):
         return False
 
-    #rather than do byte-per-byte comparisons,
-    #we'll do a length/shasum comparison
-    #since pcmreader.read() doesn't necessarily
-    #return BUFFER_SIZE number of bytes per read
-    import sha
+    reader1 = BufferedPCMReader(pcmreader1)
+    reader2 = BufferedPCMReader(pcmreader2)
 
-    data1 = sha.new()
-    data2 = sha.new()
-    len1 = 0
-    len2 = 0
+    s1 = reader1.read(BUFFER_SIZE)
+    s2 = reader2.read(BUFFER_SIZE)
 
-    d = pcmreader1.read(BUFFER_SIZE)
-    while (len(d) > 0):
-        data1.update(d)
-        len1 += len(d)
-        d = pcmreader1.read(BUFFER_SIZE)
-
-    d = pcmreader2.read(BUFFER_SIZE)
-    while (len(d) > 0):
-        data2.update(d)
-        len2 += len(d)
-        d = pcmreader2.read(BUFFER_SIZE)
-
-    return ((len1 == len2) and (data1.digest() == data2.digest()))
+    while ((len(s1) > 0) and (len(s2) > 0)):
+        if (s1 != s2):
+            return False
+        else:
+            s1 = reader1.read(BUFFER_SIZE)
+            s2 = reader2.read(BUFFER_SIZE)
+    
+    return True
 
 #returns True if the PCM data in pcmreader1 equals pcmreader2
 #not counting any 0x00 bytes at the beginning and end
