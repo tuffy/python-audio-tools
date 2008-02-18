@@ -19,6 +19,10 @@
 
 import re
 
+###################
+#Cue Sheet Parsing
+###################
+
 SPACE = 0x0
 TAG = 0x1
 NUMBER = 0x2
@@ -26,6 +30,8 @@ EOL = 0x4
 STRING = 0x8
 ISRC = 0x10
 TIMESTAMP = 0x20
+
+class CueException(ValueError): pass
 
 def tokens(cuedata):
     full_length = len(cuedata)
@@ -73,8 +79,8 @@ def tokens(cuedata):
             break
                 
     if (len(cuedata) > 0):
-        raise ValueError("invalid token at char %d" % \
-                             (full_length - len(cuedata)))
+        raise CueException("invalid token at char %d" % \
+                               (full_length - len(cuedata)))
 
 #tokens is the token iterator
 #accept is an "or"ed list of all the tokens we'll accept
@@ -86,7 +92,7 @@ def get_value(tokens, accept, error):
     if ((element & accept) != 0):
         return token
     else:
-        raise ValueError("%s at line %d" % (error,line_number))
+        raise CueException("%s at line %d" % (error,line_number))
 
 #takes an iterator of tokens
 #parses the cuesheet lines (usually <TAG> <DATA> ... <EOL> formatted)
@@ -144,8 +150,8 @@ def parse(tokens):
                         get_value(tokens,EOL,"excess data")
 
                     else:
-                        raise ValueError("invalid tag %s at line %d" % \
-                                             (token,line_number))
+                        raise CueException("invalid tag %s at line %d" % \
+                                               (token,line_number))
                 #otherwise, we're adding data to the current track
                 else:
                     if (token in ('ISRC','PERFORMER',
@@ -185,11 +191,11 @@ def parse(tokens):
                         skip_to_eol(tokens)
 
                     else:
-                        raise ValueError("invalid tag %s at line %d" % \
-                                             (token,line_number))
+                        raise CueException("invalid tag %s at line %d" % \
+                                               (token,line_number))
                     
             else:
-                raise ValueError("missing tag at line %d" % (line_number))
+                raise CueException("missing tag at line %d" % (line_number))
     except StopIteration:
         if (track is not None):
             cuesheet.tracks[track.number] = track
@@ -204,6 +210,27 @@ class Cuesheet:
     def __repr__(self):
         return "Cuesheet(attribs=%s,tracks=%s)" % \
             (repr(self.attribs),repr(self.tracks))
+
+    #returns True if this cuesheet is for a single file
+    def single_file_type(self):
+        previous = -1
+        for t in self.indexes():
+            for index in t:
+                if (index <= previous):
+                    return False
+                else:
+                    previous = index
+        else:
+            return True
+        
+
+    #returns an iterator of index lists
+    def indexes(self):
+        for key in sorted(self.tracks.keys()):
+            yield tuple(
+                [self.tracks[key].indexes[k]
+                 for k in sorted(self.tracks[key].indexes.keys())])
+
 
     #returns a list of PCM lengths for all audio tracks within the cuesheet
     def pcm_lengths(self):
@@ -231,3 +258,12 @@ class Track:
              repr(self.attribs),repr(self.indexes))
 
 
+def read_cuesheet(filename):
+    try:
+        f = open(filename,'r')
+    except IOError,msg:
+        raise CueException(str(msg))
+    try:
+        return parse(tokens(f.read()))
+    finally:
+        f.close()

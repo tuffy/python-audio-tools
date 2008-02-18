@@ -132,16 +132,11 @@ if (__name__ == '__main__'):
         sys.exit(1)
 
     #grab the cuesheet we're using to split tracks
-    cuefile = open(options.cuesheet,'r')
     try:
-        try:
-            cuesheet = audiotools.cue.parse(
-                audiotools.cue.tokens(cuefile.read()))
-        except ValueError,msg:
-            print >>sys.stderr,"*** Cuesheet error: %s" % (msg)
-            sys.exit(1)
-    finally:
-        cuefile.close()
+        cuesheet = audiotools.cue.read_cuesheet(options.cuesheet)
+    except audiotools.cue.CueException,msg:
+        print >>sys.stderr,"*** Cuesheet error: %s" % (msg)
+        sys.exit(1)
 
     #if we're using an XMCD file, use that file for MetaData
     if (options.xmcd != None):
