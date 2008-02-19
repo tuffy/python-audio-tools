@@ -1397,6 +1397,34 @@ from __image__ import *
 #Multiple Jobs Handling
 #######################
 
+#reads (function,args,kwargs) tuples from in_queue
+#until "function" is None
+#as each function finishes, return our "in_queue" to "out_queue"
+#so it can be refilled by the central distributor
+def __job_handler__(in_queue, out_queue):
+    (function,args,kwargs) = in_queue.get()
+    while (function is not None):
+        if (kwargs is not None):
+            function(*args,**kwargs)
+        else:
+            function(*args)
+            
+        out_queue.put(in_queue)
+        
+        (function,args,kwargs) = in_queue.get()
+    else:
+        out_queue.put(None)
+
+#starts a new job_handler()
+#with in_queue and out_queue set
+#returns in_queue so it can be sent functions
+def __start_handler__(out_queue):
+    import thread,Queue
+    
+    in_queue = Queue.Queue()
+    thread.start_new_thread(__job_handler__,(in_queue,out_queue))
+    return in_queue
+
 class ExecQueue:
     def __init__(self):
         self.todo = []
@@ -1407,46 +1435,38 @@ class ExecQueue:
     def execute(self, function, args, kwargs=None):
         self.todo.append((function,args,kwargs))
 
-    def __run__(self, function, args, kwargs):
-        pid = os.fork()
-        if (pid > 0):  #parent
-            return pid
-        else:          #child
-            if (kwargs != None):
-                function(*args,**kwargs)
-            else:
-                function(*args)
-            sys.exit(0)
-
     #performs the queued actions in seperate subprocesses
     #"max_processes" number of times until the todo list is empty
     def run(self, max_processes=1):
-        process_pool = set([])
-
-        #fill the process_pool to the limit
-        while ((len(self.todo) > 0) and (len(process_pool) < max_processes)):
-            (function,args,kwargs) = self.todo.pop(0)
-            process_pool.add(self.__run__(function,args,kwargs))
-            #print "Filling %s" % (repr(process_pool))
+        import Queue
         
-        #as processes end, keep adding new ones to the pool
-        #until we run out of queued jobs
-        while (len(self.todo) > 0):
-            try:
-                process_pool.remove(os.waitpid(0,0)[0])
-                (function,args,kwargs) = self.todo.pop(0)
-                process_pool.add(self.__run__(function,args,kwargs))
-                #print "Resuming %s" % (repr(process_pool))
-            except KeyError:
-                continue
+        results = Queue.Queue()
 
-        #finally, wait for the running jobs to finish
-        while (len(process_pool) > 0):
-            try:
-                process_pool.remove(os.waitpid(0,0)[0])
-                #print "Emptying %s" % (repr(process_pool))
-            except KeyError:
-                continue
+        #start up one job handling thread per max_processes
+        queues = [__start_handler__(results) for i in xrange(
+            min(max_processes,len(self.todo)))]
+
+        #send a function to each thread
+        #(unless the number of remaining functions is exhausted)
+        for q in queues:
+            if (len(self.todo) > 0):
+                q.put(self.todo.pop(0))
+
+        #as each thread tells us it's finished,
+        #send it a new function
+        #until we run out of them
+        while (len(self.todo) > 0):
+            results.get().put(self.todo.pop(0))
+
+        #tell all the threads we're done sending them functions
+        for q in queues:
+            q.put((None,None,None))
+            
+        #finally, wait for all the threads acknowledge being finished
+        i = 0
+        while (i < len(queues)):
+            if (results.get() is None):
+                i += 1
 
 #***ApeAudio temporarily removed***
 #Without a legal alternative to mac-port, I shall have to re-implement
