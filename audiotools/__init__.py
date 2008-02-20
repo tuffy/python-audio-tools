@@ -1419,7 +1419,8 @@ def __job_handler__(in_queue, out_queue):
 #with in_queue and out_queue set
 #returns in_queue so it can be sent functions
 def __start_handler__(out_queue):
-    import thread,Queue
+    import thread
+    import Queue
     
     in_queue = Queue.Queue()
     thread.start_new_thread(__job_handler__,(in_queue,out_queue))

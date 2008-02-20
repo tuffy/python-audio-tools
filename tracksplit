@@ -40,6 +40,14 @@ def extract_part(input_filename, input_pcm, output_filename, quality, metadata):
     if (metadata is not None):
         destination_audiofile.set_metadata(metadata)
 
+def has_embedded_cuesheet(audiofile):
+    #FlacAudio is typically the only class to contain a
+    #sub_pcm_tracks() method and
+    #FlacMetaData with a cuesheet attribute signfifies
+    #the FLAC actually contains a cuesheet with the necessary sub-tracks
+    return (hasattr(audiofile,"sub_pcm_tracks") and
+            hasattr(audiofile.get_metadata(),"cuesheet"))
+        
 
 if (__name__ == '__main__'):
     parser = optparse.OptionParser(
@@ -127,15 +135,8 @@ if (__name__ == '__main__'):
         print >>sys.stderr,"*** You must specify exactly 1 supported audio file"
         sys.exit(1)
 
-    if (options.cuesheet is None):
+    if ((options.cuesheet is None) and (not has_embedded_cuesheet(audiofile))):
         print >>sys.stderr,"*** You must specify a cuesheet to split audio file"
-        sys.exit(1)
-
-    #grab the cuesheet we're using to split tracks
-    try:
-        cuesheet = audiotools.cue.read_cuesheet(options.cuesheet)
-    except audiotools.cue.CueException,msg:
-        print >>sys.stderr,"*** Cuesheet error: %s" % (msg)
         sys.exit(1)
 
     #if we're using an XMCD file, use that file for MetaData
@@ -155,8 +156,22 @@ if (__name__ == '__main__'):
     encoded_filenames = []
     queue = audiotools.ExecQueue()
 
-    for (i,pcmreader) in enumerate(audiotools.pcm_split(audiofile.to_pcm(),
-                                                        cuesheet.pcm_lengths())):
+    if (options.cuesheet is not None):
+        #grab the cuesheet we're using to split tracks
+        #(this overrides an embedded cuesheet)
+        try:
+            cuesheet = audiotools.cue.read_cuesheet(options.cuesheet)
+        except audiotools.cue.CueException,msg:
+            print >>sys.stderr,"*** Cuesheet error: %s" % (msg)
+            sys.exit(1)
+
+        split_pcm = audiotools.pcm_split(audiofile.to_pcm(),
+                                         cuesheet.pcm_lengths())
+    else:
+        split_pcm = audiofile.sub_pcm_tracks()
+        
+
+    for (i,pcmreader) in enumerate(split_pcm):
         track_number = i + 1
 
         if (xmcd is not None):
