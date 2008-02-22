@@ -168,7 +168,11 @@ if (__name__ == '__main__'):
         split_pcm = audiotools.pcm_split(audiofile.to_pcm(),
                                          cuesheet.pcm_lengths())
     else:
-        split_pcm = audiofile.sub_pcm_tracks()
+        split_pcm = list(audiofile.sub_pcm_tracks())
+        #this hackery is terrible form,
+        #but the only way we'll be able to wait() correctly
+        for p in split_pcm:
+            p.process = None
         
 
     for (i,pcmreader) in enumerate(split_pcm):
