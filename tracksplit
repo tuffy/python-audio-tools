@@ -166,7 +166,7 @@ if (__name__ == '__main__'):
             sys.exit(1)
 
         split_pcm = audiotools.pcm_split(audiofile.to_pcm(),
-                                         cuesheet.pcm_lengths())
+                                         cuesheet.pcm_lengths(audiofile.total_frames()))
     else:
         split_pcm = list(audiofile.sub_pcm_tracks())
         #this hackery is terrible form,

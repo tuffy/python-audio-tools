@@ -233,7 +233,7 @@ class Cuesheet:
 
 
     #returns a list of PCM lengths for all audio tracks within the cuesheet
-    def pcm_lengths(self):
+    def pcm_lengths(self, total_length):
         previous = None
 
         for key in sorted(self.tracks.keys()):
@@ -244,6 +244,8 @@ class Cuesheet:
                 yield (current[max(current.keys())] - \
                            previous[max(previous.keys())]) * (44100 / 75)
                 previous = current
+
+        yield (total_length - previous[max(previous.keys())]) * (44100 / 75)
 
 class Track:
     def __init__(self, number, type):
