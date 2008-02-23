@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,InvalidFile,PCMReader,PCMConverter,Con,subprocess,BIN,ApeTaggedAudio,os,TempWaveReader,ignore_sigint
+from audiotools import AudioFile,InvalidFile,PCMReader,PCMConverter,Con,subprocess,BIN,ApeTaggedAudio,os,TempWaveReader,ignore_sigint,transfer_data
 from __wav__ import WaveAudio
 
 #######################
@@ -237,6 +237,15 @@ class MusepackAudio(ApeTaggedAudio,AudioFile):
         if (str(compression) not in cls.COMPRESSION_MODES):
             compression = cls.DEFAULT_COMPRESSION
 
+        #mppenc requires files to end with .mpc for some reason
+        if (not filename.endswith(".mpc")):
+            import tempfile
+            actual_filename = filename
+            tempfile = tempfile.NamedTemporaryFile(suffix=".mpc")
+            filename = tempfile.name
+        else:
+            actual_filename = tempfile = None
+
         ###Musepack SV7###
         sub = subprocess.Popen([BIN['mppenc'],
                                 "--silent",
@@ -255,6 +264,15 @@ class MusepackAudio(ApeTaggedAudio,AudioFile):
         #                        filename])
         
         sub.wait()
+
+        if (tempfile is not None):
+            filename = actual_filename
+            f = file(filename,'wb')
+            tempfile.seek(0,0)
+            transfer_data(tempfile.read,f.write)
+            f.close()
+            tempfile.close()
+
         return MusepackAudio(filename)
 
     @classmethod

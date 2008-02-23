@@ -292,6 +292,8 @@ class M4AAudio(AudioFile):
     @classmethod
     def from_pcm(cls, filename, pcmreader,
                  compression="100"):
+        
+
         if (compression not in cls.COMPRESSION_MODES):
             compression = cls.DEFAULT_COMPRESSION
 
@@ -300,6 +302,15 @@ class M4AAudio(AudioFile):
                                      sample_rate=pcmreader.sample_rate,
                                      channels=2,
                                      bits_per_sample=pcmreader.bits_per_sample)
+
+        #faac requires files to end with .m4a for some reason
+        if (not filename.endswith(".m4a")):
+            import tempfile
+            actual_filename = filename
+            tempfile = tempfile.NamedTemporaryFile(suffix=".m4a")
+            filename = tempfile.name
+        else:
+            actual_filename = tempfile = None
 
         devnull = file(os.devnull,"ab")
 
@@ -322,6 +333,14 @@ class M4AAudio(AudioFile):
         pcmreader.close()
         sub.stdin.close()
         sub.wait()
+
+        if (tempfile is not None):
+            filename = actual_filename
+            f = file(filename,'wb')
+            tempfile.seek(0,0)
+            transfer_data(tempfile.read,f.write)
+            f.close()
+            tempfile.close()
 
         return M4AAudio(filename)
 

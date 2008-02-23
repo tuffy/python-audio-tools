@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,InvalidFile,Con,subprocess,BIN,open_files,os,ReplayGain,ignore_sigint
+from audiotools import AudioFile,InvalidFile,Con,subprocess,BIN,open_files,os,ReplayGain,ignore_sigint,transfer_data
 from __wav__ import WaveAudio,WaveReader
 from __ape__ import ApeTaggedAudio
 
@@ -158,26 +158,55 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
         finally:
             del(w)
             f.close()
-        
-    def to_pcm(self):
-        sub = subprocess.Popen([BIN['wvunpack'],
-                                '-q','-y',
-                                self.filename,
-                                '-o','-'],
-                               stdout=subprocess.PIPE)
-
-        return WaveReader(sub.stdout,
-                          sample_rate=self.sample_rate(),
-                          channels=self.channels(),
-                          bits_per_sample=self.bits_per_sample(),
-                          process=sub)
 
     def to_wave(self, wave_filename):
-        sub = subprocess.Popen([BIN['wvunpack'],
-                                '-q','-y',
-                                self.filename,
-                                '-o',wave_filename])
-        sub.wait()
+        #WavPack idiotically refuses to run if the filename doesn't end with .wv
+        #I'll use temp files to fake the suffix, which will make WavPack
+        #decode performance suck yet behave correctly.
+        if (self.filename.endswith(".wv")):
+            sub = subprocess.Popen([BIN['wvunpack'],
+                                    '-q','-y',
+                                    self.filename,
+                                    '-o',wave_filename])
+            sub.wait()
+        else:
+            import tempfile
+            wv = tempfile.NamedTemporaryFile(suffix='.wv')
+            f = file(self.filename,'rb')
+            transfer_data(f.read,wv.write)
+            f.close()
+            wv.flush()
+            sub = subprocess.Popen([BIN['wvunpack'],
+                                    '-q','-y',
+                                    wv.name,
+                                    '-o',wave_filename])
+            sub.wait()
+            wv.close()
+
+
+    def to_pcm(self):
+        if (self.filename.endswith(".wv")):
+            sub = subprocess.Popen([BIN['wvunpack'],
+                                    '-q','-y',
+                                    self.filename,
+                                    '-o','-'],
+                                   stdout=subprocess.PIPE)
+
+            return WaveReader(sub.stdout,
+                              sample_rate=self.sample_rate(),
+                              channels=self.channels(),
+                              bits_per_sample=self.bits_per_sample(),
+                              process=sub)
+        else:
+            #This is the crappiest performance possible,
+            #involving *two* temp files strung together.
+            #Thankfully, this case is probably quite rare in practice.
+            import tempfile
+            from audiotools import TempWaveReader
+            f = tempfile.NamedTemporaryFile(suffix=".wav")
+            self.to_wave(f.name)
+            f.seek(0,0)
+            return TempWaveReader(f)
         
     @classmethod
     def from_wave(cls, filename, wave_filename, compression=None):
@@ -188,7 +217,17 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
                              "standard":[],
                              "high":["-h"],
                              "veryhigh":["-hh"]}
-                     
+
+        #wavpack will add a .wv suffix if there isn't one
+        #this isn't desired behavior
+        if (not filename.endswith(".wv")):
+            import tempfile
+            actual_filename = filename
+            tempfile = tempfile.NamedTemporaryFile(suffix=".wv")
+            filename = tempfile.name
+        else:
+            actual_filename = tempfile = None
+    
         sub = subprocess.Popen([BIN['wavpack'],
                                 wave_filename] + \
                                compression_param[compression] + \
@@ -197,6 +236,15 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
                                preexec_fn=ignore_sigint)
 
         sub.wait()
+
+        if (tempfile is not None):
+            filename = actual_filename
+            f = file(filename,'wb')
+            tempfile.seek(0,0)
+            transfer_data(tempfile.read,f.write)
+            f.close()
+            tempfile.close()
+
         return WavPackAudio(filename)
 
     @classmethod
