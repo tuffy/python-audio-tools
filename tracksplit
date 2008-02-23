@@ -165,6 +165,11 @@ if (__name__ == '__main__'):
             print >>sys.stderr,"*** Cuesheet error: %s" % (msg)
             sys.exit(1)
 
+        if (list(cuesheet.pcm_lengths(audiofile.total_frames()))[-1] <= 0):
+            print >>sys.stderr,"*** Cuesheet error: %s" % \
+                "cuesheet too short for track being split"
+            sys.exit(1)
+
         split_pcm = audiotools.pcm_split(audiofile.to_pcm(),
                                          cuesheet.pcm_lengths(audiofile.total_frames()))
     else:
