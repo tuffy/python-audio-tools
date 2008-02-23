@@ -23,6 +23,11 @@ import re
 #Cue Sheet Parsing
 ###################
 
+#This method of cuesheet reading involves a tokenizer and parser,
+#analagous to lexx/yacc.
+#It might be easier to use a line-by-line ad-hoc method for parsing, 
+#but this brute-force approach should be a bit more thorough.
+
 SPACE = 0x0
 TAG = 0x1
 NUMBER = 0x2
@@ -96,7 +101,8 @@ def get_value(tokens, accept, error):
 
 #takes an iterator of tokens
 #parses the cuesheet lines (usually <TAG> <DATA> ... <EOL> formatted)
-#returns a Cuesheet object?
+#returns a Cuesheet object
+#or raises CueException if we hit a parsing error
 def parse(tokens):
     def skip_to_eol(tokens):
         (token,element,line_number) = tokens.next()

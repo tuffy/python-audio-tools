@@ -132,6 +132,9 @@ are already tagged with information and so an XMCD file isn't required.
 .SECTION "trackcat"
 .PSPIC -L trackcat_man.eps 5.5i
 .bp
+.SECTION "tracksplit"
+.PSPIC -L tracksplit_man.eps 5.5i
+.bp
 .SECTION "coverview"
 .PSPIC -L coverview_man.eps 5.5i
 .bp
