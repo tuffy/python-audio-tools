@@ -472,6 +472,62 @@ class TestAiffAudio(unittest.TestCase):
                 temp_file.close()
 
 
+    #just like testmassencode, but without file suffixes
+    def testmassencode_nonsuffix(self):
+        temp = tempfile.NamedTemporaryFile()
+
+        tempfiles = [(tempfile.NamedTemporaryFile(),
+                      audio_class) for audio_class in 
+                     audiotools.TYPE_MAP.values()]
+        
+        other_files = [audio_class.from_pcm(temp_file.name,
+                                            BLANK_PCM_Reader(SHORT_LENGTH))
+                       for (temp_file,audio_class) in tempfiles]
+        for audio_file in other_files:
+            audio_file.set_metadata(DummyMetaData3())
+            
+        try:
+            for f in other_files:
+                new_file = self.audio_class.from_pcm(
+                    temp.name,
+                    f.to_pcm())
+
+                new_file.set_metadata(f.get_metadata())
+                
+                if (new_file.lossless() and f.lossless()):
+                    self.assertEqual(audiotools.pcm_cmp(
+                        new_file.to_pcm(),
+                        f.to_pcm()),True,
+                                     "PCM mismatch converting %s to %s" % \
+                                     (repr(f),repr(new_file)))
+                else:
+                    counter = PCM_Count()
+                    pcm = new_file.to_pcm()
+                    audiotools.transfer_data(pcm.read,counter.write)
+                    self.assert_(len(counter) > 0)
+
+                new_file_metadata = new_file.get_metadata()
+                f_metadata = f.get_metadata()
+
+                if ((new_file_metadata is not None) and
+                    (f_metadata is not None)):
+                    self.assertEqual(
+                        new_file_metadata,
+                        f_metadata,
+                        "metadata mismatch converting %s to %s (%s != %s)" % \
+                        (repr(f),repr(new_file),
+                         repr(f_metadata),
+                         repr(new_file_metadata)))
+
+                    if (new_file_metadata.supports_images() and
+                        f_metadata.supports_images()):
+                        self.assertEqual(new_file_metadata.images(),
+                                         f_metadata.images())
+        finally:
+            temp.close()
+            for (temp_file,audio_class) in tempfiles:
+                temp_file.close()
+
     def testmetadata(self):
         temp = tempfile.NamedTemporaryFile(suffix="." + self.audio_class.SUFFIX)
         try:
