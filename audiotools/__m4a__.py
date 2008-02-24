@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,InvalidFile,PCMReader,PCMConverter,Con,transfer_data,subprocess,BIN,cStringIO,MetaData,os,Image,ignore_sigint
+from audiotools import AudioFile,InvalidFile,PCMReader,PCMConverter,Con,transfer_data,subprocess,BIN,cStringIO,MetaData,os,Image,InvalidImage,ignore_sigint
 
 #######################
 #M4A File
@@ -353,7 +353,10 @@ class M4AMetaData(MetaData,dict):
             meta_data.get('trkn',[chr(0) * 8])[0])
 
         if (meta_data.has_key('covr')):
-            images = [M4ACovr(i) for i in meta_data['covr']]
+            try:
+                images = [M4ACovr(i) for i in meta_data['covr']]
+            except InvalidImage:
+                images = []
         else:
             images = []
 

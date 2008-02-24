@@ -16,7 +16,7 @@ Show the program's version and exit
 .TP
 \fB--cue=\fIfilename\fR
 The cuesheet file to use for splitting.
-This contains a series of track length indices which indicate
+This file contains a series of track length indices which indicate
 the length of each sub-track.
 FLAC files with embedded cuesheets may omit this argument.
 .TP
@@ -73,6 +73,14 @@ Split \fIalbum.flac\fR into several FLAC files using the cuesheet
 .B tracksplit \-\-cue=\fIalbum.cue\fR
 \-x
 .I album.xmcd album.flac
+.LP
+Obtain \fICDImage.cue\fR using the
+.B cdrdao (1)
+utilities:
+.IP
+.B cdrdao read-toc \-\-device \fI/dev/cdrom\fR \fICDImage.toc\fR
+.br
+.B toc2cue \fICDImage.toc\fR \fICDImage.cue\fR
 .SH SEE ALSO
 .BR cd2track (1), 
 .BR cd2xmcd (1), 

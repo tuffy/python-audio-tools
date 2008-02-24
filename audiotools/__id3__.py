@@ -17,7 +17,7 @@
 #along with this program; if not, write to the Free Software
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-from audiotools import MetaData,Con,re,os,Image
+from audiotools import MetaData,Con,re,os,Image,InvalidImage
 
 class EndOfID3v2Stream(Exception): pass
 class UnsupportedID3v2Version(Exception): pass
@@ -206,15 +206,18 @@ class ID3v2Comment(MetaData,dict):
                 except Con.RangeError:
                     continue
 
-                images.append(APICImage(
-                    data=apic.data,
-                    mime_type=apic.mime_type.decode('ascii'),
-                    description=apic.description.decode(
-                      ('ascii',
-                       'utf-16',
-                       'utf-16be',
-                       'utf-8')[apic.text_encoding],'replace'),
-                    apic_type=apic.picture_type))
+                try:
+                    images.append(APICImage(
+                            data=apic.data,
+                            mime_type=apic.mime_type.decode('ascii'),
+                            description=apic.description.decode(
+                                ('ascii',
+                                 'utf-16',
+                                 'utf-16be',
+                                 'utf-8')[apic.text_encoding],'replace'),
+                            apic_type=apic.picture_type))
+                except InvalidImage:
+                    pass
 
         if (metadata.has_key('PIC')):
             for pic_frame in metadata['PIC']:
