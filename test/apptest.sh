@@ -24,8 +24,20 @@ tracklength testdisc2
 echo "Converting disc data to single file"
 trackcat testdisc1/*.wav -t flac -q 1 -o testdisc1.flac
 trackcat testdisc2/*.flac -t flac -q 1 -o testdisc2.flac
+
 echo "Comparing single files"
 trackcmp testdisc1.flac testdisc2.flac
+
+echo "Getting CUE file from cdrdao"
+cdrdao read-toc --device /dev/cdrom -v 0 test.toc
+toc2cue -v 0 test.toc test.cue
+
+echo "Splitting single file into tracks"
+mkdir -v testdisc3
+tracksplit --cue test.cue testdisc1.flac -d testdisc3 -t flac -q 1
+
+echo "Comparing split tracks to original files"
+trackcmp testdisc3 testdisc1
 rm -fv testdisc1.flac testdisc2.flac
 
 echo "Removing transcoded CD and trying again"
@@ -49,5 +61,6 @@ cmp testcover.png covers/front_cover.png
 
 echo "Removing test data"
 rm -fv testdisc1.xmcd testdisc2.xmcd
-rm -rfv testdisc1 testdisc2
+rm -rfv testdisc1 testdisc2 testdisc3
 rm -rfv covers
+rm -fv test.cue test.toc
