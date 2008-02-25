@@ -524,39 +524,49 @@ class FlacAudio(AudioFile):
                           self.get_metadata().extra_blocks
                           if block.type == 2]
 
-#     def to_wave(self, wave_filename):
-#         if (self.__has_foreign_metadata__() and
-#             ('--keep-foreign-metadata' in FlacAudio.__help_output__())):
-#             foreign_metadata = ['--keep-foreign-metadata']
-#         else:
-#             foreign_metadata = []
+    def to_wave(self, wave_filename):
+        if (self.__has_foreign_metadata__() and
+            ('--keep-foreign-metadata' in FlacAudio.__help_output__())):
+            foreign_metadata = ['--keep-foreign-metadata']
+        else:
+            foreign_metadata = []
+
+        devnull = file(os.devnull,'ab')
         
-#         sub = subprocess.Popen([BIN['flac'],"-s","-f"] + \
-#                                foreign_metadata + \
-#                                ["-d","-o",wave_filename,
-#                                 self.filename])
+        sub = subprocess.Popen([BIN['flac'],"-s","-f"] + \
+                               foreign_metadata + \
+                               ["-d","-o",wave_filename,
+                                self.filename],
+                               stdout=devnull,
+                               stderr=devnull)
 
-#         sub.wait()
+        sub.wait()
+        devnull.close()
 
-#     @classmethod
-#     def from_wave(cls, filename, wave_filename, compression=None):
-#         if (compression not in cls.COMPRESSION_MODES):
-#             compression = cls.DEFAULT_COMPRESSION
+    @classmethod
+    def from_wave(cls, filename, wave_filename, compression=None):
+        if (compression not in cls.COMPRESSION_MODES):
+            compression = cls.DEFAULT_COMPRESSION
 
-#         if (('--keep-foreign-metadata' in FlacAudio.__help_output__()) and
-#             (frozenset(WaveAudio(wave_filename).chunk_ids()) != \
-#              frozenset(['fmt ','data']))):
-#             foreign_metadata = ['--keep-foreign-metadata']
-#         else:
-#             foreign_metadata = []
+        if (('--keep-foreign-metadata' in FlacAudio.__help_output__()) and
+            (frozenset(WaveAudio(wave_filename).chunk_ids()) != \
+             frozenset(['fmt ','data']))):
+            foreign_metadata = ['--keep-foreign-metadata']
+        else:
+            foreign_metadata = []
 
-#         sub = subprocess.Popen([BIN['flac']] + \
-#                                ["-s","-f","-%s" % (compression),
-#                                 "-V","--lax"] + \
-#                                foreign_metadata + \
-#                                ["-o",filename,wave_filename])
-#         sub.wait()
-#         return FlacAudio(filename)
+        devnull = file(os.devnull,'ab')
+
+        sub = subprocess.Popen([BIN['flac']] + \
+                               ["-s","-f","-%s" % (compression),
+                                "-V","--lax"] + \
+                               foreign_metadata + \
+                               ["-o",filename,wave_filename],
+                               stdout=devnull,
+                               stderr=devnull)
+        sub.wait()
+        devnull.close()
+        return FlacAudio(filename)
 
     def bits_per_sample(self):
         return self.__bitspersample__
@@ -926,39 +936,50 @@ class OggFlacAudio(FlacAudio):
 
         return OggFlacAudio(filename)
 
-#     def to_wave(self, wave_filename):
-#         if (self.__has_foreign_metadata__() and
-#             ('--keep-foreign-metadata' in FlacAudio.__help_output__())):
-#             foreign_metadata = ['--keep-foreign-metadata']
-#         else:
-#             foreign_metadata = []
+    def to_wave(self, wave_filename):
+        if (self.__has_foreign_metadata__() and
+            ('--keep-foreign-metadata' in FlacAudio.__help_output__())):
+            foreign_metadata = ['--keep-foreign-metadata']
+        else:
+            foreign_metadata = []
 
-#         sub = subprocess.Popen([BIN['flac'],"-s","-f"] + \
-#                                foreign_metadata + \
-#                                ["-d","--ogg",
-#                                 "-o",wave_filename,
-#                                 self.filename])
-#         sub.wait()
+        devnull = file(os.devnull,'ab')
 
-#     @classmethod
-#     def from_wave(cls, filename, wave_filename, compression=None):
-#         if (compression not in cls.COMPRESSION_MODES):
-#             compression = cls.DEFAULT_COMPRESSION
+        sub = subprocess.Popen([BIN['flac'],"-s","-f"] + \
+                               foreign_metadata + \
+                               ["-d","--ogg",
+                                "-o",wave_filename,
+                                self.filename],
+                               stdout=devnull,
+                               stderr=devnull)
+        sub.wait()
+        devnull.close()
 
-#         if (('--keep-foreign-metadata' in FlacAudio.__help_output__()) and
-#             (frozenset(WaveAudio(wave_filename).chunk_ids()) != \
-#              frozenset(['fmt ','data']))):
-#             foreign_metadata = ['--keep-foreign-metadata']
-#         else:
-#             foreign_metadata = []
+    @classmethod
+    def from_wave(cls, filename, wave_filename, compression=None):
+        if (compression not in cls.COMPRESSION_MODES):
+            compression = cls.DEFAULT_COMPRESSION
 
-#         sub = subprocess.Popen([BIN['flac']] + \
-#                                ["-s","-f","--ogg","-%s" % (compression),
-#                                 "-V","--lax"] + \
-#                                foreign_metadata + \
-#                                ["-o",filename,wave_filename])
-#         sub.wait()
-#         return OggFlacAudio(filename)
+        if (('--keep-foreign-metadata' in FlacAudio.__help_output__()) and
+            (frozenset(WaveAudio(wave_filename).chunk_ids()) != \
+             frozenset(['fmt ','data']))):
+            foreign_metadata = ['--keep-foreign-metadata']
+        else:
+            foreign_metadata = []
+
+        devnull = file(os.devnull,'ab')
+
+        sub = subprocess.Popen([BIN['flac']] + \
+                               ["-s","-f","--ogg","-%s" % (compression),
+                                "-V","--lax"] + \
+                               foreign_metadata + \
+                               ["-o",filename,wave_filename],
+                               stdout=devnull,
+                               stderr=devnull)
+        sub.wait()
+        devnull.close()
+
+        return OggFlacAudio(filename)
 
         
     @classmethod

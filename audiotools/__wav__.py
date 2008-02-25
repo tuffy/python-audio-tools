@@ -99,7 +99,43 @@ class WaveAudio(AudioFile):
                            Con.ULInt32("sample_rate"),
                            Con.ULInt32("bytes_per_second"),
                            Con.ULInt16("block_align"),
-                           Con.ULInt16("bits_per_sample"))
+                           Con.ULInt16("bits_per_sample"),
+                           Con.If(lambda ctx: ctx['compression'] == 0xFFFE,
+                                  Con.Embed(
+                Con.Struct('extensible',
+                           Con.ULInt16('cb_size'),
+                           Con.ULInt16('valid_bits_per_sample'),
+                           Con.BitStruct('channel_mask',
+                                         #byte 1
+                                         Con.Flag('front_right_of_center'),
+                                         Con.Flag('front_left_of_center'),
+                                         Con.Flag('rear_right'),
+                                         Con.Flag('rear_left'),
+                                         Con.Flag('LFE'),
+                                         Con.Flag('front_center'),
+                                         Con.Flag('front_right'),
+                                         Con.Flag('front_left'),
+
+                                         #byte 2
+                                         Con.Flag('top_back_left'),
+                                         Con.Flag('top_front_right'),
+                                         Con.Flag('top_front_center'),
+                                         Con.Flag('top_front_left'),
+                                         Con.Flag('top_center'),
+                                         Con.Flag('side_right'),
+                                         Con.Flag('side_left'),
+                                         Con.Flag('rear_center'),
+                                         
+                                         #byte 3
+                                         Con.Bits('undefined',6),
+                                         Con.Flag('top_back_right'),
+                                         Con.Flag('top_back_center'),
+
+                                         Con.Bits('undefined2',8)
+                                         ),
+                           Con.String('sub_format',16)))
+                                  )
+                           )
 
     
     def __init__(self, filename):
@@ -149,7 +185,8 @@ class WaveAudio(AudioFile):
 
             fmt_header = Con.Container()
             fmt_header.chunk_id = 'fmt '
-            fmt_header.chunk_length = WaveAudio.FMT_CHUNK.sizeof()
+            #fmt_header.chunk_length = WaveAudio.FMT_CHUNK.sizeof()
+            fmt_header.chunk_length = 16
 
             fmt = Con.Container()
             fmt.compression = 1
@@ -191,7 +228,7 @@ class WaveAudio(AudioFile):
             f.seek(0,0)
             header.wave_size = 4 + \
                 WaveAudio.CHUNK_HEADER.sizeof() + \
-                WaveAudio.FMT_CHUNK.sizeof() + \
+                16 + \
                 WaveAudio.CHUNK_HEADER.sizeof() + \
                 data_header.chunk_length
             
@@ -294,7 +331,7 @@ class WaveAudio(AudioFile):
         self.__blockalign__ = fmt.block_align
         self.__bitspersample__ = fmt.bits_per_sample
 
-        if (self.__wavtype__ != 1):
+        if ((self.__wavtype__ != 1) and (self.__wavtype__ != 0xFFFE)):
             raise WavException("no support for compressed WAVE files")
 
     def __read_data_chunk__(self, wave_file, chunk_size):
