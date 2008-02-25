@@ -63,18 +63,27 @@ if (__name__ == '__main__'):
         else:
             print "*** Both are not audio files"
             sys.exit(1)
-    elif (os.path.isdir(args[0]) and os.path.isdir(args[0])):
+    elif (os.path.isdir(args[0]) and os.path.isdir(args[1])):
         files1 = audiotools.open_files(
             [os.path.join(args[0],f) for f in os.listdir(args[0])
              if os.path.isfile(os.path.join(args[0],f))])
         files2 = audiotools.open_files(
             [os.path.join(args[1],f) for f in os.listdir(args[1])
              if os.path.isfile(os.path.join(args[1],f))])
+             
         files1_map = dict([(f.track_number(),f) for f in files1])
         files2_map = dict([(f.track_number(),f) for f in files2])
 
-        for track_number in sorted(list(set(files1_map.keys()) & \
-                                        set(files2_map.keys()))):
+        files1_tracknumbers = set(files1_map.keys())
+        files2_tracknumbers = set(files2_map.keys())
+
+        for track_number in sorted(list(files1_tracknumbers - files2_tracknumbers)):
+            print "%s: missing" % (os.path.join(args[1],"track %2.2d" % (track_number)))
+
+        for track_number in sorted(list(files2_tracknumbers - files1_tracknumbers)):
+            print "%s: missing" % (os.path.join(args[0],"track %2.2d" % (track_number)))
+
+        for track_number in sorted(list(files1_tracknumbers & files2_tracknumbers)):
             sys.stdout.write(
                 (u"%s <> %s :" % \
                      (files1_map[track_number].filename.decode(audiotools.FS_ENCODING),
