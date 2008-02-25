@@ -81,6 +81,46 @@ class TempWaveReader(WaveReader):
 
 class WavException(InvalidFile): pass
 
+def __blank_channel_mask__():
+    c = Con.Container(undefined=0,undefined2=0)
+    
+    for attr in ('front_right_of_center',
+                 'front_left_of_center',
+                 'rear_right',
+                 'rear_left',
+                 'LFE',
+                 'front_center',
+                 'front_right',
+                 'front_left',
+                 'top_back_left',
+                 'top_front_right',
+                 'top_front_center',
+                 'top_front_left',
+                 'top_center',
+                 'side_right',
+                 'side_left',
+                 'rear_center',
+                 'top_back_right',
+                 'top_back_center'):
+        setattr(c,attr,False)
+        
+    return c
+
+def __channel_mask__(total_channels):
+    mask = {1:('front_center'),
+            2:('front_left','front_right'),
+            3:('front_left','front_right','front_center'),
+            4:('front_left','front_right','rear_left','rear_right'),
+            5:('front_left','front_right','side_left','side_right',
+               'front_center'),
+            6:('front_left','front_right','side_left','side_right',
+               'front_center','LFE')}
+
+    c = __blank_channel_mask__()
+    for channel in mask[total_channels]:
+        setattr(c,channel,True)
+    return c                      
+
 class WaveAudio(AudioFile):
     SUFFIX = "wav"
 
@@ -186,10 +226,19 @@ class WaveAudio(AudioFile):
             fmt_header = Con.Container()
             fmt_header.chunk_id = 'fmt '
             #fmt_header.chunk_length = WaveAudio.FMT_CHUNK.sizeof()
-            fmt_header.chunk_length = 16
+
+            if (pcmreader.channels <= 2):
+                fmt_header.chunk_length = 16
+            else:
+                fmt_header.chunk_length = 40
 
             fmt = Con.Container()
-            fmt.compression = 1
+
+            if (pcmreader.channels <= 2):
+                fmt.compression = 1
+            else:
+                fmt.compression = 0xFFFE
+                
             fmt.channels = pcmreader.channels
             fmt.sample_rate = pcmreader.sample_rate
             fmt.bytes_per_second = \
@@ -200,6 +249,13 @@ class WaveAudio(AudioFile):
                 pcmreader.channels * \
                 (pcmreader.bits_per_sample / 8)
             fmt.bits_per_sample = pcmreader.bits_per_sample
+
+            #these fields only apply to WAVEFORMATEXTENSIBLE Waves
+            fmt.cb_size = 22
+            fmt.valid_bits_per_sample = pcmreader.bits_per_sample
+            fmt.sub_format = "0100000000001000800000aa00389b71".decode('hex')
+            fmt.channel_mask = __channel_mask__(pcmreader.channels)
+            
 
             data_header = Con.Container()
             data_header.chunk_id = 'data'
@@ -228,7 +284,7 @@ class WaveAudio(AudioFile):
             f.seek(0,0)
             header.wave_size = 4 + \
                 WaveAudio.CHUNK_HEADER.sizeof() + \
-                16 + \
+                fmt_header.chunk_length + \
                 WaveAudio.CHUNK_HEADER.sizeof() + \
                 data_header.chunk_length
             
