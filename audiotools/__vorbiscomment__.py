@@ -42,7 +42,7 @@ class VorbisComment(MetaData,dict):
 
     #vorbis_data is a key->[value1,value2,...] dict of the original
     #Vorbis comment data.  keys should be upper case
-    def __init__(self, vorbis_data):
+    def __init__(self, vorbis_data, vendor_string=u""):
         MetaData.__init__(
             self,
             track_name = vorbis_data.get('TITLE',[u''])[0],
@@ -54,6 +54,7 @@ class VorbisComment(MetaData,dict):
             year = vorbis_data.get('YEAR',[u''])[0])
                           
         dict.__init__(self,vorbis_data)
+        self.vendor_string = vendor_string
 
     #if an attribute is updated (e.g. self.track_name)
     #make sure to update the corresponding dict pair
@@ -133,7 +134,7 @@ class VorbisComment(MetaData,dict):
     #returns this VorbisComment as a binary string
     def build(self):
         comment = Con.Container()
-        comment.vendor_string = "Python Audio Tools %s" % (VERSION)
+        comment.vendor_string = self.vendor_string
         comment.framing = 1
         comment.value = []
         for (key,values) in self.items():

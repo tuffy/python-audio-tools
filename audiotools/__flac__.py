@@ -69,8 +69,10 @@ class FlacMetaData(MetaData):
             elif ((block.type == 4) and (self.vorbis_comment is None)):
                 #only one VORBIS_COMMENT allowed
                 comments = {}
+
+                comment_container = FlacVorbisComment.VORBIS_COMMENT.parse(block.data)
                 
-                for comment in FlacVorbisComment.VORBIS_COMMENT.parse(block.data).value:
+                for comment in comment_container.value:
                     try:
                         key = comment[0:comment.index("=")].upper()
                         value = comment[comment.index("=") + 1:].decode('utf-8')
@@ -78,7 +80,9 @@ class FlacMetaData(MetaData):
                     except ValueError:
                         pass
                 
-                self.__dict__['vorbis_comment'] = FlacVorbisComment(comments)
+                self.__dict__['vorbis_comment'] = FlacVorbisComment(
+                    comments,comment_container.vendor_string)
+                
             elif ((block.type == 5) and (self.cuesheet is None)):
                 #only one CUESHEET allowed
                 self.__dict__['cuesheet'] = block
@@ -200,7 +204,7 @@ class FlacVorbisComment(VorbisComment):
         elif (isinstance(metadata,FlacMetaData)):
             return metadata.vorbis_comment
         elif (isinstance(metadata,VorbisComment)):
-            return FlacVorbisComment(metadata)
+            return FlacVorbisComment(metadata,metadata.vendor_string)
         else:
             values = {}
             for key in cls.ATTRIBUTE_MAP.keys():
@@ -435,6 +439,10 @@ class FlacAudio(AudioFile):
         metadata.streaminfo = old_streaminfo
         if (old_seektable is not None):
             metadata.seektable = old_seektable
+
+        #grab "vendor_string" from the existing file
+        vendor_string = old_metadata.vorbis_comment.vendor_string
+        metadata.vorbis_comment.vendor_string = vendor_string
 
         stream = file(self.filename,'rb')
 
@@ -774,7 +782,8 @@ class OggFlacAudio(FlacAudio):
         import tempfile
         
         comment = FlacMetaData.converted(metadata)
-        
+
+        #port over the old STREAMINFO and SEEKTABLE blocks
         if (comment == None): return
         old_metadata = self.get_metadata()
         old_streaminfo = old_metadata.streaminfo
@@ -782,6 +791,10 @@ class OggFlacAudio(FlacAudio):
         comment.streaminfo = old_streaminfo
         if (old_seektable is not None):
             comment.seektable = old_seektable
+
+        #grab "vendor_string" from the existing file
+        vendor_string = old_metadata.vorbis_comment.vendor_string
+        comment.vorbis_comment.vendor_string = vendor_string
 
         reader = OggStreamReader(file(self.filename,'rb'))
         new_file = tempfile.TemporaryFile()

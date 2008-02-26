@@ -670,6 +670,22 @@ class TestFlacAudio(TestForeignWaveChunks,TestAiffAudio):
     def setUp(self):
         self.audio_class = audiotools.FlacAudio
 
+    def testpreservevendortags(self):
+        tempflac1 = tempfile.NamedTemporaryFile(suffix=".flac")
+        tempflac2 = tempfile.NamedTemporaryFile(suffix=".flac")
+
+        f1 = audiotools.FlacAudio.from_pcm(tempflac1.name,
+                                           BLANK_PCM_Reader(3))
+        f1.set_metadata(DummyMetaData())
+
+        f2 = audiotools.FlacAudio.from_pcm(tempflac2.name,
+                                           f1.to_pcm())
+
+        f2.set_metadata(f1.get_metadata())
+
+        self.assertEqual(f1.get_metadata().vorbis_comment.vendor_string,
+                         f2.get_metadata().vorbis_comment.vendor_string)
+
 class TestWavPackAudio(TestForeignWaveChunks,TestAiffAudio):
     def setUp(self):
         self.audio_class = audiotools.WavPackAudio
