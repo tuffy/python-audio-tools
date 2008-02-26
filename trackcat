@@ -49,7 +49,7 @@ if (__name__ == '__main__'):
     parser.add_option('-o','--outfile',dest='filename',
                       metavar='FILE',
                       help='the output file')
-    
+
     (options,args) = parser.parse_args()
 
     if (options.filename == None):
@@ -85,7 +85,7 @@ if (__name__ == '__main__'):
         sys.exit(1)
 
     quality = options.quality
-    
+
     pcmdata = audiotools.PCMCat(iter([af.to_pcm() for af in audiofiles]))
 
     try:

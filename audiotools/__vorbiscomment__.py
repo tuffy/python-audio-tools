@@ -52,7 +52,7 @@ class VorbisComment(MetaData,dict):
             performer_name = vorbis_data.get('PERFORMER',[u''])[0],
             copyright = vorbis_data.get('COPYRIGHT',[u''])[0],
             year = vorbis_data.get('YEAR',[u''])[0])
-                          
+
         dict.__init__(self,vorbis_data)
         self.vendor_string = vendor_string
 
@@ -60,7 +60,7 @@ class VorbisComment(MetaData,dict):
     #make sure to update the corresponding dict pair
     def __setattr__(self, key, value):
         self.__dict__[key] = value
-        
+
         if (self.ATTRIBUTE_MAP.has_key(key)):
             if (key != 'track_number'):
                 self[self.ATTRIBUTE_MAP[key]] = [value]
@@ -71,13 +71,13 @@ class VorbisComment(MetaData,dict):
     #make sure to update the corresponding attribute
     def __setitem__(self, key, value):
         dict.__setitem__(self, key, value)
-        
+
         if (self.ITEM_MAP.has_key(key)):
             if (key != 'TRACKNUMBER'):
                 self.__dict__[self.ITEM_MAP[key]] = value[0]
             else:
                 self.__dict__[self.ITEM_MAP[key]] = int(value[0])
-        
+
 
     @classmethod
     def converted(cls, metadata):

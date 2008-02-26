@@ -25,7 +25,7 @@ import re
 
 #This method of cuesheet reading involves a tokenizer and parser,
 #analagous to lexx/yacc.
-#It might be easier to use a line-by-line ad-hoc method for parsing, 
+#It might be easier to use a line-by-line ad-hoc method for parsing,
 #but this brute-force approach should be a bit more thorough.
 
 SPACE = 0x0
@@ -82,7 +82,7 @@ def tokens(cuedata):
                 break
         else:
             break
-                
+
     if (len(cuedata) > 0):
         raise CueException("invalid token at char %d" % \
                                (full_length - len(cuedata)))
@@ -125,7 +125,7 @@ def parse(tokens):
                 elif (token == 'TRACK'):
                     if (track is not None):
                         cuesheet.tracks[track.number] = track
-                    
+
                     track = Track(get_value(tokens,NUMBER,
                                             "invalid track number"),
                                   get_value(tokens,TAG | STRING,
@@ -143,14 +143,14 @@ def parse(tokens):
                             tokens,
                             STRING | TAG | NUMBER | ISRC,
                             "missing value")
-                        
+
                         get_value(tokens,EOL,"excess data")
 
                     elif (token == 'FILE'):
                         filename = get_value(tokens,STRING,"missing filename")
                         filetype = get_value(tokens,STRING | TAG,
                                              "missing file type")
-                        
+
                         cuesheet.attribs[token] = (filename,filetype)
 
                         get_value(tokens,EOL,"excess data")
@@ -190,7 +190,7 @@ def parse(tokens):
                         index_timestamp = get_value(tokens,TIMESTAMP,
                                                     "invalid timestamp")
                         track.indexes[index_number] = index_timestamp
-                        
+
                         get_value(tokens,EOL,"excess data")
 
                     elif (token in ('FILE',)):
@@ -199,7 +199,7 @@ def parse(tokens):
                     else:
                         raise CueException("invalid tag %s at line %d" % \
                                                (token,line_number))
-                    
+
             else:
                 raise CueException("missing tag at line %d" % (line_number))
     except StopIteration:
@@ -228,7 +228,7 @@ class Cuesheet:
                     previous = index
         else:
             return True
-        
+
 
     #returns an iterator of index lists
     def indexes(self):

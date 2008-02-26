@@ -72,9 +72,9 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
                         Con.ULInt32("crc"))
 
     BITS_PER_SAMPLE = (8,16,24,32)
-    SAMPLING_RATE = (6000,  8000,  9600,   11025, 
+    SAMPLING_RATE = (6000,  8000,  9600,   11025,
                      12000, 16000, 22050,  24000,
-                     32000, 44100, 48000,  64000, 
+                     32000, 44100, 48000,  64000,
                      88200, 96000, 192000, 0)
 
 
@@ -106,7 +106,7 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
                     WavPackAudio.HEADER.sizeof()))
             except Con.ConstError:
                 raise InvalidFile('wavpack header ID invalid')
-        
+
             self.__samplerate__ = WavPackAudio.SAMPLING_RATE[
                 (header.sampling_rate_high << 1) |
                 header.sampling_rate_low]
@@ -145,14 +145,14 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
 
     def sample_rate(self):
         return self.__samplerate__
-    
+
     @classmethod
     def from_pcm(cls, filename, pcmreader, compression=None):
         import tempfile
 
         f = tempfile.NamedTemporaryFile(suffix=".wav")
         w = WaveAudio.from_pcm(f.name, pcmreader)
-        
+
         try:
             return cls.from_wave(filename,w.filename,compression)
         finally:
@@ -207,7 +207,7 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
             self.to_wave(f.name)
             f.seek(0,0)
             return TempWaveReader(f)
-        
+
     @classmethod
     def from_wave(cls, filename, wave_filename, compression=None):
         if (str(compression) not in cls.COMPRESSION_MODES):
@@ -227,7 +227,7 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
             filename = tempfile.name
         else:
             actual_filename = tempfile = None
-    
+
         sub = subprocess.Popen([BIN['wavpack'],
                                 wave_filename] + \
                                compression_param[compression] + \
@@ -251,7 +251,7 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
     def add_replay_gain(cls, filenames):
         track_names = [track.filename for track in
                        open_files(filenames) if
-                       isinstance(track,cls)]        
+                       isinstance(track,cls)]
 
         if ((len(track_names) > 0) and
             BIN.can_execute(BIN['wvgain'])):
@@ -270,8 +270,8 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
 
     def replay_gain(self):
         metadata = self.get_metadata()
-        
-        if (set(['replaygain_track_gain', 'replaygain_track_peak', 
+
+        if (set(['replaygain_track_gain', 'replaygain_track_peak',
                  'replaygain_album_gain', 'replaygain_album_peak']).issubset(
                 metadata.keys())):  #we have ReplayGain data
             try:

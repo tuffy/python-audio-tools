@@ -47,7 +47,7 @@ class AiffAudio(AudioFile):
     @classmethod
     def is_type(cls, file):
         header = file.read(12)
-        
+
         return ((header[0:4] == 'FORM') and
                 (header[8:12] == 'AIFF'))
 

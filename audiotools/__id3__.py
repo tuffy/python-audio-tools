@@ -53,7 +53,7 @@ class ID3v2Comment(MetaData,dict):
                                 Con.StrictRepeater(8,
                                                    Con.Flag("flag")))),
                               Syncsafe32("length"))
-  
+
     FRAME_HEADER = Con.Struct("id3v24_frame",
                               Con.Bytes("frame_id",4),
                               Syncsafe32("frame_size"),
@@ -78,15 +78,15 @@ class ID3v2Comment(MetaData,dict):
                      'artist_name':'TPE1',
                      'performer_name':'TPE2',
                      'year':'TDRC'}
-    
+
     ITEM_MAP = dict(map(reversed,ATTRIBUTE_MAP.items()))
-    
+
     #takes a filename
     #returns an ID3v2Comment-based object
     @classmethod
-    def read_id3v2_comment(cls, filename):        
+    def read_id3v2_comment(cls, filename):
         f = file(filename,"rb")
-        
+
         try:
              frames = {}
 
@@ -115,7 +115,7 @@ class ID3v2Comment(MetaData,dict):
 
         finally:
             f.close()
-    
+
     #takes a stream of ID3v2 data
     #returns a (frame id,frame data) tuple
     #raises EndOfID3v2Stream if we've reached the end of valid frames
@@ -196,7 +196,7 @@ class ID3v2Comment(MetaData,dict):
                                         metadata.get("TRK",[u"0"]))[0])
         except ValueError:
             tracknum = 0
-        
+
 
         images = []
         if (metadata.has_key('APIC')):
@@ -225,31 +225,31 @@ class ID3v2Comment(MetaData,dict):
                     pic = PICImage.PIC_FRAME.parse(pic_frame)
                 except Con.RangeError:
                     continue
-                
+
                 images.append(PICImage(data=pic.data,
                                        format=pic.format.decode('ascii'),
                                        description=pic.description.decode(
                     ('ascii','utf-16')[pic.text_encoding]),
                                        pic_type=pic.picture_type))
-                            
+
         MetaData.__init__(self,
                           track_name=metadata.get("TIT2",
                                                   metadata.get("TT2",[u""]))[0],
-                          
+
                           track_number=tracknum,
-                          
+
                           album_name=metadata.get("TALB",
                                                   metadata.get("TAL",[u""]))[0],
-                          
+
                           artist_name=metadata.get("TPE1",
                                        metadata.get("TP1",
                                         metadata.get("TOPE",
                                          metadata.get("TCOM",
                                           metadata.get("TOLY",
-                                           metadata.get("TEXT",               
+                                           metadata.get("TEXT",
                                             metadata.get("TOA",
                                              metadata.get("TCM",[u""]))))))))[0],
-                                                   
+
                           performer_name=metadata.get("TPE2",
                                            metadata.get("TPE3",
                                             metadata.get("TPE4",
@@ -281,7 +281,7 @@ class ID3v2Comment(MetaData,dict):
     #make sure to update the corresponding attribute
     def __setitem__(self, key, value):
         dict.__setitem__(self, key, value)
-        
+
         if (self.ITEM_MAP.has_key(key)):
             if (key != 'TRCK'):
                 self.__dict__[self.ITEM_MAP[key]] = value[0]
@@ -418,7 +418,7 @@ class ID3v2_3Comment(ID3v2Comment):
                      'artist_name':'TPE1',
                      'performer_name':'TPE2',
                      'year':'TDRC'}
-    
+
     ITEM_MAP = dict(map(reversed,ATTRIBUTE_MAP.items()))
 
     #takes a stream of ID3v2 data
@@ -499,7 +499,7 @@ class ID3v2_3Comment(ID3v2Comment):
             tag.frame_size = len(t_s)
 
             tags.append(cls.FRAME_HEADER.build(tag) + t_s)
-        
+
         header = Con.Container()
         header.experimental = False
         header.extended_header = False
@@ -528,7 +528,7 @@ class ID3v2_2Comment(ID3v2Comment):
                      'artist_name':'TP1',
                      'performer_name':'TP2',
                      'year':'TYE'}
-    
+
     ITEM_MAP = dict(map(reversed,ATTRIBUTE_MAP.items()))
 
     @classmethod
@@ -630,7 +630,7 @@ class ID3v2_2Comment(ID3v2Comment):
             tag.frame_size = len(t_s)
 
             tags.append(cls.FRAME_HEADER.build(tag) + t_s)
-        
+
         header = Con.Container()
         header.experimental = False
         header.extended_header = False
@@ -709,7 +709,7 @@ class APICImage(Image):
                 repr(self.color_depth),repr(self.color_count))
 
     @classmethod
-    def converted(cls, image):  
+    def converted(cls, image):
         return APICImage(data=image.data,
                          mime_type=image.mime_type,
                          description=image.description,
@@ -722,7 +722,7 @@ class APICImage(Image):
         except UnicodeEncodeError:
             description = self.description.encode('utf-8')
             text_encoding = 3
-        
+
         return self.APIC_FRAME.build(
             Con.Container(text_encoding=text_encoding,
                           mime_type=self.mime_type.encode('ascii','replace'),
@@ -744,7 +744,7 @@ class PICImage(Image):
     #data is a string
     def __init__(self, data, format, description, pic_type):
         img = Image.new(data,u'',0)
-        
+
         self.pic_type = pic_type
         self.format = format
         Image.__init__(self,
@@ -786,7 +786,7 @@ class PICImage(Image):
                 repr(self.pic_type))
 
     @classmethod
-    def converted(cls, image):  
+    def converted(cls, image):
         return PICImage(data=image.data,
                         format={u"image/png":u"PNG",
                                 u"image/jpeg":u"JPG",
@@ -805,7 +805,7 @@ class PICImage(Image):
         except UnicodeEncodeError:
             description = self.description.encode('utf-16')
             text_encoding = 1
-        
+
         return self.PIC_FRAME.build(
             Con.Container(text_encoding=text_encoding,
                           format=self.format.encode('ascii'),
@@ -825,7 +825,7 @@ class ID3v1Comment(MetaData,list):
       Con.Padding(1),
       Con.Byte("track_number"),
       Con.Byte("genre"))
-  
+
     ID3v1_NO_TRACKNUMBER = Con.Struct("id3v1_notracknumber",
       Con.Const(Con.String("identifier",3),'TAG'),
       Con.String("song_title",30),
@@ -841,7 +841,7 @@ class ID3v1Comment(MetaData,list):
                   'year',
                   'comment',
                   'track_number']
-    
+
     #takes an open mp3 file object
     #returns a (song title, artist, album, year, comment, track number) tuple
     #if no ID3v1 tag is present, returns a tuple with those fields blank
@@ -866,7 +866,7 @@ class ID3v1Comment(MetaData,list):
                           id3v1.album,
                           id3v1.year,
                           id3v1.comment)
-            
+
             return tuple(map(lambda t:
                              t.rstrip('\x00').decode('ascii','replace'),
                              field_list) + [id3v1.track_number])
@@ -914,7 +914,7 @@ class ID3v1Comment(MetaData,list):
     #make sure to update the corresponding list item
     def __setattr__(self, key, value):
         self.__dict__[key] = value
-        
+
         if (key in self.ATTRIBUTES):
             if (key != 'track_number'):
                 self[self.ATTRIBUTES.index(key)] = value
@@ -925,7 +925,7 @@ class ID3v1Comment(MetaData,list):
     #make sure to update the corresponding attribute
     def __setitem__(self, key, value):
         list.__setitem__(self, key, value)
-        
+
         if (key < len(self.ATTRIBUTES)):
             if (key != 5):
                 self.__dict__[self.ATTRIBUTES[key]] = value
@@ -986,12 +986,12 @@ class ID3CommentPair(MetaData):
 
     def __setattr__(self, key, value):
         self.__dict__[key] = value
-        
+
         if (self.id3v2 is not None):
             setattr(self.id3v2,key,value)
         if (self.id3v1 is not None):
             setattr(self.id3v1,key,value)
-        
+
     @classmethod
     def converted(cls, metadata):
         if ((metadata is None) or (isinstance(metadata,ID3CommentPair))):
@@ -1004,7 +1004,7 @@ class ID3CommentPair(MetaData):
             return ID3CommentPair(
                 ID3v2_3Comment.converted(metadata),
                 ID3v1Comment.converted(metadata))
-            
+
 
     def __unicode__(self):
         if ((self.id3v2 != None) and (self.id3v1 != None)):
@@ -1027,7 +1027,7 @@ class ID3CommentPair(MetaData):
             return self.id3v2.images()
         else:
             return []
-    
+
     def add_image(self, image):
         if (self.id3v2 is not None):
             self.id3v2.add_image(image)

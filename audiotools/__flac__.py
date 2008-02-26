@@ -56,12 +56,12 @@ class FlacMetaData(MetaData):
 
         #Don't use an external SEEKTABLE, either.
         self.__dict__['seektable'] = None
-        
+
         self.__dict__['vorbis_comment'] = None
         self.__dict__['cuesheet'] = None
         image_blocks = []
         self.__dict__['extra_blocks'] = []
-        
+
         for block in blocks:
             if ((block.type == 0) and (self.streaminfo is None)):
                 #only one STREAMINFO allowed
@@ -71,7 +71,7 @@ class FlacMetaData(MetaData):
                 comments = {}
 
                 comment_container = FlacVorbisComment.VORBIS_COMMENT.parse(block.data)
-                
+
                 for comment in comment_container.value:
                     try:
                         key = comment[0:comment.index("=")].upper()
@@ -79,10 +79,10 @@ class FlacMetaData(MetaData):
                         comments.setdefault(key,[]).append(value)
                     except ValueError:
                         pass
-                
+
                 self.__dict__['vorbis_comment'] = FlacVorbisComment(
                     comments,comment_container.vendor_string)
-                
+
             elif ((block.type == 5) and (self.cuesheet is None)):
                 #only one CUESHEET allowed
                 self.__dict__['cuesheet'] = block
@@ -92,7 +92,7 @@ class FlacMetaData(MetaData):
             elif (block.type == 6):
                 #multiple PICTURE blocks are ok
                 image = FlacAudio.PICTURE_COMMENT.parse(block.data)
-                
+
                 image_blocks.append(FlacPictureComment(
                     type=image.type,
                     mime_type=image.mime_type.decode('ascii','replace'),
@@ -153,10 +153,10 @@ class FlacMetaData(MetaData):
     def metadata_blocks(self):
         yield self.streaminfo
         yield self.vorbis_comment
-        
+
         if (self.seektable is not None):
             yield self.seektable
-        
+
         if (self.cuesheet is not None):
             yield self.cuesheet
 
@@ -176,7 +176,7 @@ class FlacMetaData(MetaData):
     @classmethod
     def supports_images(cls):
         return True
-            
+
 
 
 #a slight variation of VorbisComment without the framing bit
@@ -189,7 +189,7 @@ class FlacVorbisComment(VorbisComment):
         length_field=Con.ULInt32("length"),
         subcon=Con.PascalString("value",
                                 length_field=Con.ULInt32("length"))))
-    
+
     def build_block(self, last=0):
         block = self.build()
         return FlacAudio.METADATA_BLOCK_HEADER.build(
@@ -213,7 +213,7 @@ class FlacVorbisComment(VorbisComment):
                         [unicode(getattr(metadata,key))]
 
             return FlacVorbisComment(values)
-  
+
 
 #this is a container for FLAC's PICTURE metadata blocks
 #type, width, height, color_depth and color_count are ints
@@ -301,13 +301,13 @@ class FlacAudio(AudioFile):
     DEFAULT_COMPRESSION = "8"
     COMPRESSION_MODES = tuple(map(str,range(0,9)))
     BINARIES = ("flac","metaflac")
-    
-    
+
+
     METADATA_BLOCK_HEADER = Con.BitStruct("metadata_block_header",
                                           Con.Bit("last_block"),
                                           Con.Bits("block_type",7),
                                           Con.Bits("block_length",24))
-    
+
     STREAMINFO = Con.Struct("flac_streaminfo",
                                  Con.UBInt16("minimum_blocksize"),
                                  Con.UBInt16("maximum_blocksize"),
@@ -359,7 +359,7 @@ class FlacAudio(AudioFile):
           Con.StrictRepeater(3,Con.Byte("reserved")))
             ))
          ))
-    
+
     def __init__(self, filename):
         AudioFile.__init__(self, filename)
         self.__samplerate__ = 0
@@ -378,7 +378,7 @@ class FlacAudio(AudioFile):
             #Though the official flac binaries grudgingly accept these,
             #such tags are unnecessary and outside the specification
             #so I will encourage people to remove them.
-            
+
             file.seek(-4,1)
             ID3v2Comment.skip(file)
             if (file.read(4) == 'fLaC'):
@@ -410,7 +410,7 @@ class FlacAudio(AudioFile):
         try:
             if (f.read(4) != 'fLaC'):
                 raise FlacException('invalid FLAC file')
-            
+
             blocks = []
 
             while (True):
@@ -427,9 +427,9 @@ class FlacAudio(AudioFile):
 
     def set_metadata(self, metadata):
         import tempfile
-        
+
         metadata = FlacMetaData.converted(metadata)
-        
+
         if (metadata == None): return
 
         #port over the old STREAMINFO and SEEKTABLE blocks
@@ -448,7 +448,7 @@ class FlacAudio(AudioFile):
 
         if (stream.read(4) != 'fLaC'):
             raise FlacException('invalid FLAC file')
-        
+
         block = FlacAudio.METADATA_BLOCK_HEADER.parse_stream(stream)
         while (block.last_block == 0):
             stream.seek(block.block_length,1)
@@ -471,7 +471,7 @@ class FlacAudio(AudioFile):
     def __read_flac_header__(cls, flacfile):
         p = FlacAudio.METADATA_BLOCK_HEADER.parse(flacfile.read(4))
         return (p.last_block, p.block_type, p.block_length)
-    
+
     def to_pcm(self):
         sub = subprocess.Popen([BIN['flac'],"-s","-d","-c",
                                 "--force-raw-format",
@@ -540,7 +540,7 @@ class FlacAudio(AudioFile):
             foreign_metadata = []
 
         devnull = file(os.devnull,'ab')
-        
+
         sub = subprocess.Popen([BIN['flac'],"-s","-f"] + \
                                foreign_metadata + \
                                ["-d","-o",wave_filename,
@@ -596,7 +596,7 @@ class FlacAudio(AudioFile):
         (stop,header_type,length) = FlacAudio.__read_flac_header__(f)
         if (header_type != 0):
             raise FlacException("STREAMINFO not first metadata block")
-    
+
         p = FlacAudio.STREAMINFO.parse(f.read(length))
 
         md5sum = "".join(["%.2X" % (x) for x in p.md5]).lower()
@@ -617,7 +617,7 @@ class FlacAudio(AudioFile):
                         (track.bits_per_sample() == 16) and
                         ((track.sample_rate() == 44100) or
                          (track.sample_rate() == 48000)))]
-        
+
         if ((len(track_names) > 0) and (BIN.can_execute(BIN['metaflac']))):
             subprocess.call([BIN['metaflac'],'--add-replay-gain'] + \
                             track_names)
@@ -629,7 +629,7 @@ class FlacAudio(AudioFile):
     def replay_gain(self):
         vorbis_metadata = self.get_metadata().vorbis_comment
 
-        if (set(['REPLAYGAIN_TRACK_PEAK', 'REPLAYGAIN_TRACK_GAIN', 
+        if (set(['REPLAYGAIN_TRACK_PEAK', 'REPLAYGAIN_TRACK_GAIN',
                  'REPLAYGAIN_ALBUM_PEAK', 'REPLAYGAIN_ALBUM_GAIN']).issubset(
                 vorbis_metadata.keys())):  #we have ReplayGain data
             try:
@@ -648,7 +648,7 @@ class FlacAudio(AudioFile):
             return self.__md5__ == audiofile.__md5__
         elif (isinstance(audiofile,AudioFile)):
             import md5
-            
+
             p = audiofile.to_pcm()
             m = md5.new()
             s = p.read(BUFFER_SIZE)
@@ -659,7 +659,7 @@ class FlacAudio(AudioFile):
             return m.digest() == self.__md5__
         else:
             return False
-    
+
     #returns a list of (track_number,"start.x-stop.y") tuples
     #for use by the --cue FLAC decoding option
     #track_number starts from 0, for consistency
@@ -745,7 +745,7 @@ class OggFlacAudio(FlacAudio):
         FlacAudio.METADATA_BLOCK_HEADER),
                                     Con.Embed(
         FlacAudio.STREAMINFO))
-    
+
     @classmethod
     def is_type(cls, file):
         header = file.read(0x23)
@@ -757,7 +757,7 @@ class OggFlacAudio(FlacAudio):
         stream = OggStreamReader(file(self.filename,"rb"))
         try:
             packets = stream.packets()
-            
+
             blocks = [FlacMetaDataBlock(
                 type=0,
                 data=FlacAudio.STREAMINFO.build(
@@ -773,14 +773,14 @@ class OggFlacAudio(FlacAudio):
                       data=block[FlacAudio.METADATA_BLOCK_HEADER.sizeof():]))
                 if (header.last_block == 1):
                     break
-                
+
             return FlacMetaData(blocks)
         finally:
             stream.close()
 
     def set_metadata(self, metadata):
         import tempfile
-        
+
         comment = FlacMetaData.converted(metadata)
 
         #port over the old STREAMINFO and SEEKTABLE blocks
@@ -858,7 +858,7 @@ class OggFlacAudio(FlacAudio):
             writer.write_page(page_header,page_data)
             sequence_number += 1
 
-            
+
         #now write the rest of the old pages to the new file,
         #re-sequenced and re-checksummed
         for (page,data) in reader.pages(from_beginning=False):
@@ -876,7 +876,7 @@ class OggFlacAudio(FlacAudio):
         new_file.close()
         f.close()
         writer.close()
-        
+
 
     def __read_streaminfo__(self):
         stream = OggStreamReader(file(self.filename,"rb"))
@@ -894,7 +894,7 @@ class OggFlacAudio(FlacAudio):
             self.__header_packets__ = header.header_packets
 
             self.__md5__ = "".join([chr(c) for c in header.md5])
-            
+
             del(packets)
         finally:
             stream.close()
@@ -994,7 +994,7 @@ class OggFlacAudio(FlacAudio):
 
         return OggFlacAudio(filename)
 
-        
+
     @classmethod
     def add_replay_gain(cls, filenames):
         pass

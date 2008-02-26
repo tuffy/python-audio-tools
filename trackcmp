@@ -70,7 +70,7 @@ if (__name__ == '__main__'):
         files2 = audiotools.open_files(
             [os.path.join(args[1],f) for f in os.listdir(args[1])
              if os.path.isfile(os.path.join(args[1],f))])
-             
+
         files1_map = dict([(f.track_number(),f) for f in files1])
         files2_map = dict([(f.track_number(),f) for f in files2])
 

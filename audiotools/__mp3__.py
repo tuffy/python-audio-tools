@@ -32,7 +32,7 @@ class MP3Audio(AudioFile):
     DEFAULT_COMPRESSION = "standard"
     COMPRESSION_MODES = ("medium","standard","extreme","insane")
     BINARIES = ("lame",)
-    
+
     #MPEG1, Layer 1
     #MPEG1, Layer 2,
     #MPEG1, Layer 3,
@@ -74,7 +74,7 @@ class MP3Audio(AudioFile):
                                   Con.Bits("copyright",1),
                                   Con.Bits("original",1),
                                   Con.Bits("emphasis",2))
-  
+
     XING_HEADER = Con.Struct("xing_header",
                              Con.Bytes("header_id",4),
                              Con.Bytes("flags",4),
@@ -82,7 +82,7 @@ class MP3Audio(AudioFile):
                              Con.UBInt32("bytes"),
                              Con.StrictRepeater(100,Con.Byte("toc_entries")),
                              Con.UBInt32("quality"))
-    
+
     def __init__(self, filename):
         AudioFile.__init__(self, filename)
 
@@ -95,11 +95,11 @@ class MP3Audio(AudioFile):
             self.__framelength__ = self.__length__()
         finally:
             mp3file.close()
-            
+
     @classmethod
     def is_type(cls, file):
         ID3v2Comment.skip(file)
-        
+
         try:
             frame = cls.MP3_FRAME_HEADER.parse_stream(file)
             return ((frame.sync == 0x07FF) and
@@ -110,7 +110,7 @@ class MP3Audio(AudioFile):
 
     def lossless(self):
         return False
-            
+
     def to_pcm(self):
         if (BIG_ENDIAN):
             endian = ['-x']
@@ -131,7 +131,7 @@ class MP3Audio(AudioFile):
     def from_pcm(cls, filename, pcmreader,
                  compression="standard"):
         import decimal,bisect
-        
+
         if (compression not in cls.COMPRESSION_MODES):
             compression = cls.DEFAULT_COMPRESSION
 
@@ -143,13 +143,13 @@ class MP3Audio(AudioFile):
                         [32000,44100,48000],pcmreader.sample_rate)],
                 channels=min(pcmreader.channels,2),
                 bits_per_sample=16)
-                        
+
 
         if (pcmreader.channels > 1):
             mode = "j"
         else:
             mode = "m"
-        
+
         sub = subprocess.Popen([BIN['lame'],"--quiet",
                                 "-r","-x",
                                 "-s",str(
@@ -166,7 +166,7 @@ class MP3Audio(AudioFile):
         pcmreader.close()
         sub.stdin.close()
         sub.wait()
-        
+
         return MP3Audio(filename)
 
     def bits_per_sample(self):
@@ -202,7 +202,7 @@ class MP3Audio(AudioFile):
 
     def set_metadata(self, metadata):
         metadata = ID3CommentPair.converted(metadata)
-        
+
         if (metadata == None): return
 
         #get the original MP3 data
@@ -237,7 +237,7 @@ class MP3Audio(AudioFile):
                ((ord(b2) & 0xE0) != 0xE0)):
             (b1,b2) = mp3file.read(2)
         mp3file.seek(-2,1)
-    
+
     #places mp3file at the position of the last MP3 frame's end
     #(either the last byte in the file or just before the ID3v1 tag)
     #this may not be strictly accurate if ReplayGain data is present,
@@ -252,7 +252,7 @@ class MP3Audio(AudioFile):
         else:
             mp3file.seek(0,2)
         return
-            
+
     #header is a Construct parsed from 4 bytes sent to MP3_FRAME_HEADER
     #returns the total length of the frame, including the header
     #(subtract 4 when doing a seek or read to the next one)
@@ -262,7 +262,7 @@ class MP3Audio(AudioFile):
 
         bit_rate = MP3Audio.__get_mp3_frame_bitrate__(header)
         if (bit_rate == None): raise MP3Exception("invalid bit rate")
-        
+
         sample_rate = MP3Audio.__get_mp3_frame_sample_rate__(header)
 
         #print layer,sample_rate,bit_rate
@@ -319,7 +319,7 @@ class MP3Audio(AudioFile):
     #raises MP3Exception if any portion of the frame is invalid
     def __length__(self):
         mp3file = file(self.filename,"rb")
-    
+
         try:
             MP3Audio.__find_next_mp3_frame__(mp3file)
 
@@ -392,7 +392,7 @@ class MP2Audio(MP3Audio):
     @classmethod
     def is_type(cls, file):
         ID3v2Comment.skip(file)
-        
+
         try:
             frame = cls.MP3_FRAME_HEADER.parse_stream(file)
 
@@ -409,7 +409,7 @@ class MP2Audio(MP3Audio):
 
         if (compression not in cls.COMPRESSION_MODES):
             compression = cls.DEFAULT_COMPRESSION
-            
+
 
         if ((pcmreader.channels > 2) or
             (pcmreader.sample_rate not in (32000,48000,44100))):
@@ -419,8 +419,8 @@ class MP2Audio(MP3Audio):
                         [32000,44100,48000],pcmreader.sample_rate)],
                 channels=min(pcmreader.channels,2),
                 bits_per_sample=16)
-        
-        
+
+
         sub = subprocess.Popen([BIN['twolame'],"--quiet",
                                 "-r",
                                 "-s",str(pcmreader.sample_rate),
@@ -437,5 +437,5 @@ class MP2Audio(MP3Audio):
         pcmreader.close()
         sub.stdin.close()
         sub.wait()
-        
+
         return MP2Audio(filename)

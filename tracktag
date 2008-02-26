@@ -59,11 +59,11 @@ def get_image(filename, type):
         f = open(filename,'rb')
         data = f.read()
         f.close()
-        
+
         return audiotools.Image.new(data,u'',type)
     except IOError:
         raise audiotools.InvalidImage("error opening file: \"%s\"" % (filename))
-    
+
 
 if (__name__ == '__main__'):
     parser = optparse.OptionParser(
@@ -81,7 +81,7 @@ if (__name__ == '__main__'):
                       type='int',
                       dest='track_number',
                       help="the number of the track in the album")
-    
+
     parser.add_option('--album',
                       action='store',
                       type='string',
@@ -173,7 +173,7 @@ if (__name__ == '__main__'):
                       help='add ReplayGain metadata to track(s)')
 
     (options,args) = parser.parse_args()
-    
+
     audiofiles = audiotools.open_files(args)
 
     if (options.xmcd != None):
@@ -196,7 +196,7 @@ if (__name__ == '__main__'):
             metadata_function = track_metadata
         else:
             metadata_function = xmcd_track_metadata
-            
+
 
     for file in audiofiles:
         metadata = metadata_function(file, xmcd)
@@ -212,7 +212,7 @@ if (__name__ == '__main__'):
                             attr = attr.decode(audiotools.IO_ENCODING)
                         setattr(metadata,field,attr)
 
-                    
+
                 if (metadata.supports_images()):
                     if (options.remove_images):
                         for i in metadata.images():
@@ -242,7 +242,7 @@ if (__name__ == '__main__'):
             except audiotools.InvalidImage,msg:
                 print >>sys.stderr,"* %s: %s" % (file.filename,msg)
                 sys.exit(1)
-    
+
     #we're assuming all tracks are the same type
     if (options.add_replay_gain and
         (len(audiofiles) > 0) and

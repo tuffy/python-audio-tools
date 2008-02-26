@@ -82,7 +82,7 @@ class ApeTag(MetaData,dict):
     #make sure to update the corresponding dict pair
     def __setattr__(self, key, value):
         self.__dict__[key] = value
-        
+
         if (self.ATTRIBUTE_MAP.has_key(key)):
             if (key != 'track_number'):
                 self[self.ATTRIBUTE_MAP[key]] = value
@@ -93,7 +93,7 @@ class ApeTag(MetaData,dict):
     #make sure to update the corresponding attribute
     def __setitem__(self, key, value):
         dict.__setitem__(self, key, value)
-        
+
         if (self.ITEM_MAP.has_key(key)):
             if (key != 'Track'):
                 self.__dict__[self.ITEM_MAP[key]] = value
@@ -110,7 +110,7 @@ class ApeTag(MetaData,dict):
                 field = unicode(getattr(metadata,field))
                 if (field != u''):
                     tags[key] = field
-                
+
             return ApeTag(tags)
 
     def __comment_name__(self):
@@ -128,7 +128,7 @@ class ApeTag(MetaData,dict):
                    "Artist":5,
                    "Copyright":7,
                    "Year":6}
-        
+
         return cmp((KEY_MAP.get(pair1[0],8),pair1[0],pair1[1]),
                    (KEY_MAP.get(pair2[0],8),pair2[0],pair2[1]))
 
@@ -143,11 +143,11 @@ class ApeTag(MetaData,dict):
                     items.append((key,value.encode('hex')))
                 else:
                     items.append((key,value.encode('hex')[0:39].upper() + u"\u2026"))
-        
-        return sorted(items,ApeTag.__by_pair__)
-        
 
-    #Takes a file object of a Monkey's Audio file 
+        return sorted(items,ApeTag.__by_pair__)
+
+
+    #Takes a file object of a Monkey's Audio file
     #and returns a tuple.
     #That tuple contains the dict of its APE tag info
     #and the total tag size.
@@ -163,7 +163,7 @@ class ApeTag(MetaData,dict):
 
         apev2tag = {}
 
-        for tag in Con.StrictRepeater(footer.item_count, 
+        for tag in Con.StrictRepeater(footer.item_count,
                                       cls.APEv2_TAG).parse(apefile.read()):
             if (tag.encoding == 0):
                 apev2tag[tag.key] = tag.value.rstrip("\0").decode('utf-8',
@@ -184,7 +184,7 @@ class ApeTag(MetaData,dict):
         header.version_number = 0x07D0
         header.tag_size = 0
         header.item_count = len(self.keys())
-        
+
         header.undefined1 = header.undefined2 = header.undefined3 = 0
         header.read_only = False
         header.encoding = 0
@@ -212,13 +212,13 @@ class ApeTag(MetaData,dict):
         tags = []
         for (key,value) in self.items():
             tag = Con.Container()
-            
+
             if (isinstance(value,unicode)):
                 value = value.encode('utf-8')
                 tag.encoding = 0
             else:
                 tag.encoding = 1
-                
+
             tag.length = len(value)
             tag.key = key
             tag.value = value
@@ -257,9 +257,9 @@ class ApeTaggedAudio:
 
     def set_metadata(self, metadata):
         apetag = ApeTag.converted(metadata)
-        
+
         if (apetag is None): return
-        
+
         current_metadata = self.get_metadata()
         if (current_metadata != None):  #there's existing tags to delete
             f = file(self.filename,"rb")
@@ -320,7 +320,7 @@ class ApeAudio(ApeTaggedAudio,AudioFile):
 
     def __init__(self, filename):
         AudioFile.__init__(self, filename)
-        
+
         (self.__samplespersec__,
          self.__channels__,
          self.__bitspersample__,
@@ -348,7 +348,7 @@ class ApeAudio(ApeTaggedAudio,AudioFile):
 
     def sample_rate(self):
         return self.__samplespersec__
-    
+
 
     @classmethod
     def __ape_info__(cls, filename):
@@ -394,7 +394,7 @@ class ApeAudio(ApeTaggedAudio,AudioFile):
                         ((header.total_frames - 1) * \
                          blocks_per_frame) + \
                          header.final_frame_blocks)
-                
+
         finally:
             f.close()
 

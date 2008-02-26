@@ -19,7 +19,7 @@
 
 
 from audiotools import VERSION,Con,cStringIO,sys,re,MetaData,AlbumMetaData,__most_numerous__,DummyAudioFile
-        
+
 #######################
 #XMCD
 #######################
@@ -90,9 +90,9 @@ def parse_xmcd_file(filename):
                                  performer_name=u'',
                                  copyright=u'',
                                  year=entries.get('DYEAR',u'')))
-            
+
             return AlbumMetaData(metadata)
-            
+
     finally:
         file.close()
 
@@ -101,7 +101,7 @@ def parse_xmcd_file(filename):
 #returns an XMCD file as a string
 def build_xmcd_file(audiofiles, discid=None):
     import StringIO
-    
+
     #stream is a file-like object
     #key is a string
     #value is a unicode string
@@ -133,8 +133,8 @@ def build_xmcd_file(audiofiles, discid=None):
             finally:
                 line.close()
                 to_encode.close()
-                
-    
+
+
     audiofiles = sorted(audiofiles,
                         lambda x,y: cmp(x.track_number(),
                                         y.track_number()))
@@ -167,7 +167,7 @@ def build_xmcd_file(audiofiles, discid=None):
     album_list = [file.get_metadata().album_name
                   for file in audiofiles if
                   file.get_metadata() != None]
-    
+
     artist_list = [file.get_metadata().artist_name
                    for file in audiofiles if
                    file.get_metadata() != None]
@@ -184,7 +184,7 @@ def build_xmcd_file(audiofiles, discid=None):
 
     build_key_pair(xmcd,"DTITLE",u"%s / %s" % (artist,album))
     build_key_pair(xmcd,"DYEAR",u"")
-    
+
     for (i,track) in enumerate(audiofiles):
         metadata = track.get_metadata()
         if (metadata != None):
@@ -195,15 +195,15 @@ def build_xmcd_file(audiofiles, discid=None):
             else:
                 build_key_pair(xmcd,"TTITLE%d" % (i),
                                metadata.track_name)
-                
+
     build_key_pair(xmcd,"EXTDD",u"")
     for (i,track) in enumerate(audiofiles):
         build_key_pair(xmcd,"EXTT%d" % (i),u"")
 
     build_key_pair(xmcd,"PLAYORDER",u"")
-    
+
     return xmcd.getvalue()
-    
+
 
 
 #######################
@@ -233,10 +233,10 @@ class DiscID:
     def offsets(self):
         if (self.__offsets__ == None):
             offsets = [150]
-            
+
             for track in self.tracks[0:-1]:
                 offsets.append(track + offsets[-1])
-                
+
             return offsets
         else:
             return self.__offsets__
@@ -251,7 +251,7 @@ class DiscID:
         return str(len(self.tracks)) + " " + \
                " ".join([str(offset) for offset in self.offsets()]) + \
                " " + str((self.length() + self.__lead_in__) / 75)
-    
+
     def __str__(self):
         def __count_digits__(i):
             if (i == 0):
@@ -260,14 +260,14 @@ class DiscID:
                 return (i % 10) + __count_digits__(i / 10)
 
         disc_id = Con.Container()
-        
+
         disc_id.track_count = len(self.tracks)
         disc_id.length = self.length() / 75
-        disc_id.digit_sum = sum([__count_digits__(o / 75) 
+        disc_id.digit_sum = sum([__count_digits__(o / 75)
                                  for o in self.offsets()]) % 0xFF
 
         return DiscID.DISCID.build(disc_id).encode('hex')
-        
+
     def freedb_id(self):
         return str(self) + " " + self.idsuffix()
 
@@ -280,7 +280,7 @@ class FreeDBException(Exception): pass
 
 class FreeDB:
     LINE = re.compile(r'\d\d\d\s.+')
-    
+
     def __init__(self, server, port):
         self.server = server
         self.port = port
@@ -290,15 +290,15 @@ class FreeDB:
 
     def connect(self):
         import socket
-        
+
         try:
             print >>sys.stderr,"* Connecting to \"%s\"" % (self.server)
             self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.socket.connect((self.server,self.port))
-            
+
             self.r = self.socket.makefile("rb")
             self.w = self.socket.makefile("wb")
-            
+
             (code,msg) = self.read()  #the welcome message
             if (code == 201):
                 print >>sys.stderr,"* Connected ... attempting to login"
@@ -307,7 +307,7 @@ class FreeDB:
                 self.w.close()
                 self.socket.close()
                 raise FreeDBException("Invalid Hello Message")
-            
+
             self.write("cddb hello user %s %s %s" % \
                        (socket.getfqdn(),"audiotools",VERSION))
 
@@ -317,25 +317,25 @@ class FreeDB:
                 self.w.close()
                 self.socket.close()
                 raise FreeDBException("Handshake unsuccessful")
-            
+
             self.write("proto 6")
-            
+
             (code,msg) = self.read()  #the protocol successful message
             if ((code != 200) and (code != 201)):
                 self.r.close()
                 self.w.close()
                 self.socket.close()
                 raise FreeDBException("Protocol change unsuccessful")
-            
+
         except socket.error,err:
             raise FreeDBException(err[1])
 
     def close(self):
         print >>sys.stderr,"* Closing connection"
-        
+
         self.write("quit")
         (code,msg) = self.read()  #the quit successful message
-        
+
         self.r.close()
         self.w.close()
         self.socket.close()
@@ -357,7 +357,7 @@ class FreeDB:
         matches = []
 
         print >>sys.stderr,"* Sending ID to server"
-        
+
         self.write("cddb query " + disc_id.freedb_id())
         (code,msg) = self.read()
         if (code == 200):
@@ -398,16 +398,16 @@ class FreeDBWeb(FreeDB):
 
     def connect(self):
         import httplib
-        
+
         self.connection = httplib.HTTPConnection(self.server,self.port)
-        
+
     def close(self):
         if (self.connection != None):
             self.connection.close()
 
     def write(self, line):
         import urllib,socket
-        
+
         u = urllib.urlencode({"hello":"user %s %s %s" % \
                                       (socket.getfqdn(),
                                        "audiotools",
@@ -417,9 +417,9 @@ class FreeDBWeb(FreeDB):
 
         try:
             self.connection.request(
-                "POST", 
-                "/~cddb/cddb.cgi", 
-                u, 
+                "POST",
+                "/~cddb/cddb.cgi",
+                u,
                 {"Content-type":"application/x-www-form-urlencoded",
                  "Accept": "text/plain"})
         except socket.error,msg:
@@ -434,12 +434,12 @@ class FreeDBWeb(FreeDB):
             return (int(line[0:3]),line[4:].rstrip("\r\n"))
         else:
             return (None,line.rstrip("\r\n"))
-            
+
     def query(self, disc_id):
         matches = []
 
         print >>sys.stderr,"* Sending ID to server"
-        
+
         self.write("cddb query " + disc_id.freedb_id())
         data =  cStringIO.StringIO(self.read())
         (code,msg) = self.__parse_line__(data.readline())
@@ -457,7 +457,7 @@ class FreeDBWeb(FreeDB):
             print >>sys.stderr,"* %s matches found" % (len(matches))
 
         return map(lambda m: m.split(" ",2), matches)
-        
+
     #category and id are raw strings, as returned by query()
     #output is a file handle the output will be written to
     def read_data(self, category, id, output):
@@ -471,7 +471,7 @@ class FreeDBWeb(FreeDB):
                 line = data.readline()
         else:
             print >>sys.stderr,(code,msg)
-    
+
 
 #matches is a list of (category,disc_id,title) tuples returned from
 #FreeDB.query().  If the length of that list is 1, return the first
@@ -521,7 +521,7 @@ def get_xmcd(disc_id, output, freedb_server, freedb_server_port,
         #freedb will auto-close its sockets
         output.close()
         raise IOError(str(msg))
-        
+
     try:
         matches = freedb.query(disc_id)
         #HANDLE MULTIPLE MATCHES, or NO MATCHES
@@ -531,16 +531,16 @@ def get_xmcd(disc_id, output, freedb_server, freedb_server_port,
             else:
                 (category,idstring,title) = __select_default_match__(
                     matches,default_selection)
-                
+
             freedb.read_data(category,idstring,output)
         else:
             disc_id.toxmcd(output)
-        
+
         freedb.close()
     except FreeDBException,msg:
         #otherwise, close the sockets manually
         freedb.close()
         raise IOError(str(msg))
-        
+
     output.close()
     print >>sys.stderr,"* %s written" % (output.name)

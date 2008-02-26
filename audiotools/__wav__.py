@@ -83,7 +83,7 @@ class WavException(InvalidFile): pass
 
 def __blank_channel_mask__():
     c = Con.Container(undefined=0,undefined2=0)
-    
+
     for attr in ('front_right_of_center',
                  'front_left_of_center',
                  'rear_right',
@@ -103,7 +103,7 @@ def __blank_channel_mask__():
                  'top_back_right',
                  'top_back_center'):
         setattr(c,attr,False)
-        
+
     return c
 
 def __channel_mask__(total_channels):
@@ -119,7 +119,7 @@ def __channel_mask__(total_channels):
     c = __blank_channel_mask__()
     for channel in mask[total_channels]:
         setattr(c,channel,True)
-    return c                      
+    return c
 
 class WaveAudio(AudioFile):
     SUFFIX = "wav"
@@ -132,7 +132,7 @@ class WaveAudio(AudioFile):
     CHUNK_HEADER = Con.Struct("chunk_header",
                               Con.Bytes("chunk_id",4),
                               Con.ULInt32("chunk_length"))
- 
+
     FMT_CHUNK = Con.Struct("fmt_chunk",
                            Con.ULInt16("compression"),
                            Con.ULInt16("channels"),
@@ -165,7 +165,7 @@ class WaveAudio(AudioFile):
                                          Con.Flag('side_right'),
                                          Con.Flag('side_left'),
                                          Con.Flag('rear_center'),
-                                         
+
                                          #byte 3
                                          Con.Bits('undefined',6),
                                          Con.Flag('top_back_right'),
@@ -177,7 +177,7 @@ class WaveAudio(AudioFile):
                                   )
                            )
 
-    
+
     def __init__(self, filename):
         AudioFile.__init__(self, filename)
 
@@ -238,7 +238,7 @@ class WaveAudio(AudioFile):
                 fmt.compression = 1
             else:
                 fmt.compression = 0xFFFE
-                
+
             fmt.channels = pcmreader.channels
             fmt.sample_rate = pcmreader.sample_rate
             fmt.bytes_per_second = \
@@ -255,7 +255,7 @@ class WaveAudio(AudioFile):
             fmt.valid_bits_per_sample = pcmreader.bits_per_sample
             fmt.sub_format = "0100000000001000800000aa00389b71".decode('hex')
             fmt.channel_mask = __channel_mask__(pcmreader.channels)
-            
+
 
             data_header = Con.Container()
             data_header.chunk_id = 'data'
@@ -287,7 +287,7 @@ class WaveAudio(AudioFile):
                 fmt_header.chunk_length + \
                 WaveAudio.CHUNK_HEADER.sizeof() + \
                 data_header.chunk_length
-            
+
             f.write(WaveAudio.WAVE_HEADER.build(header))
             f.write(WaveAudio.CHUNK_HEADER.build(fmt_header))
             f.write(WaveAudio.FMT_CHUNK.build(fmt))
@@ -295,7 +295,7 @@ class WaveAudio(AudioFile):
 
         finally:
             f.close()
-        
+
         return WaveAudio(filename)
 
     def to_wave(self, wave_filename):
@@ -349,11 +349,11 @@ class WaveAudio(AudioFile):
         while (totalsize > 0):
             (chunk_format,chunk_size) = self.__read_chunk_header__(wave_file)
             self.__chunk_ids__.append(chunk_format)
-            
+
             __chunklist__.append(chunk_format)
             #Fix odd-sized chunk sizes to be even
             if ((chunk_size & 1) == 1): chunk_size += 1
-            
+
             if (chunk_format == "fmt "):
                 self.__read_format_chunk__(wave_file, chunk_size)
             elif (chunk_format == "data"):
@@ -367,7 +367,7 @@ class WaveAudio(AudioFile):
             header = WaveAudio.WAVE_HEADER.parse(wave_file.read(12))
         except Con.ConstError:
             raise WavException("not a RIFF WAVE file")
-        
+
         return header.wave_size
 
     def __read_chunk_header__(self, wave_file):
@@ -379,7 +379,7 @@ class WaveAudio(AudioFile):
             raise WavException("fmt chunk is too short")
 
         fmt = WaveAudio.FMT_CHUNK.parse(wave_file.read(chunk_size))
-        
+
         self.__wavtype__ = fmt.compression
         self.__channels__ = fmt.channels
         self.__samplespersec__ = fmt.sample_rate
@@ -408,7 +408,7 @@ class WaveAudio(AudioFile):
 
             #Fix odd-sized chunks to have 16-bit boundaries
             if ((chunk_size & 1) == 1): chunk_size += 1
-            
+
             yield (chunk_id,wave_file.read(chunk_size))
 
             total_size -= (chunk_size + 8)
@@ -428,7 +428,7 @@ class WaveAudio(AudioFile):
 
         #write an unfinished header with an invalid size (for now)
         f.write(cls.WAVE_HEADER.build(header))
-        
+
         for (chunk_id,chunk_data) in chunk_iter:
 
             #fix odd-sized chunks to fall on 16-bit boundaries
@@ -448,5 +448,5 @@ class WaveAudio(AudioFile):
         f.write(cls.WAVE_HEADER.build(header))
         f.close()
 
-            
-            
+
+

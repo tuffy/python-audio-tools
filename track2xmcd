@@ -36,7 +36,7 @@ if (__name__ == '__main__'):
                       default=audiotools.FREEDB_PORT)
     parser.add_option('-m','--metadata',action='store_true',
                       dest='metadata',default=False)
-    
+
     parser.add_option('-i','--id',dest='discid',
                       action='store_true',default=False,
                       help='display disc ID rather than fetch XMCD data')

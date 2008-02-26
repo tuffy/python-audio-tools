@@ -46,7 +46,7 @@ class OSSReader(audiotools.PCMReader):
     @classmethod
     def available(cls):
         return True
-        
+
 class PulseAudioReader(audiotools.PCMReader):
     NAME = "pulse"
 

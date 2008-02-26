@@ -58,8 +58,8 @@ def convert_file(destination_class, destination_filename,
                     temp_wave.name,
                     compression)
             finally:
-                temp_wave.close()    
-                
+                temp_wave.close()
+
         else:
             #otherwise, route the data through PCM
             destination_audiofile = destination_class.from_pcm(
@@ -81,7 +81,7 @@ if (__name__ == '__main__'):
         '[-d directory] [-q quality] ' + \
         '<track 1> [track 2] ...',
         version="Python Audio Tools %s" % (audiotools.VERSION))
-    
+
     parser.add_option('-x','--xmcd',
                       action='store',
                       type='string',
@@ -119,7 +119,7 @@ if (__name__ == '__main__'):
                       action='store',
                       dest='output',
                       help='output filename to use, overriding default and -d')
-    
+
     parser.add_option('--no-replay-gain',
                       action='store_false',
                       dest='add_replay_gain',
@@ -198,7 +198,7 @@ if (__name__ == '__main__'):
                                                      xmcd[track_number]))
 
                     audiotools.make_dirs(filename)
-                    
+
                     queue.execute(convert_file,
                                   (AudioType,
                                    filename,
@@ -213,7 +213,7 @@ if (__name__ == '__main__'):
                                                      audiofile.get_metadata()))
 
                     audiotools.make_dirs(filename)
-                    
+
                     queue.execute(convert_file,
                                   (AudioType,
                                    filename,
@@ -223,7 +223,7 @@ if (__name__ == '__main__'):
                 encoded_filenames.append(filename)
             except KeyError:
                 continue
-        
+
         queue.run(max_processes)
 
         if (options.add_replay_gain and AudioType.can_add_replay_gain()):

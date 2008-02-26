@@ -42,7 +42,7 @@ except ImportError:
         print >>sys.stderr,"""To remedy this: \"make construct_install\"
 from the audiotools source directory to install the Construct module."""
         sys.exit(1)
-    
+
 
 class RawConfigParser(ConfigParser.RawConfigParser):
     def get_default(self, section, option, default):
@@ -125,7 +125,7 @@ class UnsupportedFile(Exception): pass
 #raised if an audio file cannot be initialized correctly
 class InvalidFile(Exception): pass
 
-#raised if an audio file cannot be created correctly from from_pcm() 
+#raised if an audio file cannot be created correctly from from_pcm()
 class InvalidFormat(Exception): pass
 
 #takes a filename string
@@ -143,7 +143,7 @@ def open(filename):
                     return audioclass(filename)
             else:
                 raise UnsupportedFile(filename)
-        
+
         finally:
             f.close()
     except IOError:
@@ -192,10 +192,10 @@ class PCMReader:
 
     def close(self):
         self.file.close()
-        
+
         if (self.process != None):
             self.process.wait()
-        
+
 
 
 #sends BUFFER_SIZE strings from from_function to to_function
@@ -235,13 +235,13 @@ def threaded_transfer_data(from_function, to_function):
 #takes a wave-compatible object with a readframes() method
 #maps it to something PCMReader compatible
 class FrameReader(PCMReader):
-    def __init__(self, framefile, 
+    def __init__(self, framefile,
                  sample_rate, channels, bits_per_sample,
                  process=None):
         PCMReader.__init__(self,
                            file=framefile,
-                           sample_rate=sample_rate, 
-                           channels=channels, 
+                           sample_rate=sample_rate,
+                           channels=channels,
                            bits_per_sample=bits_per_sample,
                            process=process)
         self.framefile = framefile
@@ -291,7 +291,7 @@ def pcm_cmp(pcmreader1, pcmreader2):
         else:
             s1 = reader1.read(BUFFER_SIZE)
             s2 = reader2.read(BUFFER_SIZE)
-    
+
     return True
 
 #returns True if the PCM data in pcmreader1 equals pcmreader2
@@ -306,7 +306,7 @@ def stripped_pcm_cmp(pcmreader1, pcmreader2):
     import sha
 
     data = cStringIO.StringIO()
-    
+
     d = pcmreader1.read(BUFFER_SIZE)
     while (len(d) > 0):
         data.write(d)
@@ -315,12 +315,12 @@ def stripped_pcm_cmp(pcmreader1, pcmreader2):
     sum1 = sha.new(data.getvalue().strip(chr(0x00)))
 
     data = cStringIO.StringIO()
-    
+
     d = pcmreader2.read(BUFFER_SIZE)
     while (len(d) > 0):
         data.write(d)
         d = pcmreader2.read(BUFFER_SIZE)
-    
+
     sum2 = sha.new(data.getvalue().strip(chr(0x00)))
 
     del(data)
@@ -333,7 +333,7 @@ class PCMCat(PCMReader):
     #returns their data concatted together
     def __init__(self, pcmreaders):
         self.reader_queue = pcmreaders
-        
+
         try:
             self.first = self.reader_queue.next()
         except StopIteration:
@@ -342,7 +342,7 @@ class PCMCat(PCMReader):
         self.sample_rate = self.first.sample_rate
         self.channels = self.first.channels
         self.bits_per_sample = self.first.bits_per_sample
-    
+
     def read(self, bytes):
         try:
             s = self.first.read(bytes)
@@ -377,7 +377,7 @@ class __buffer__:
 
     def pop(self):
         return self.buffer.pop(0)
-            
+
     def unpop(self, s):
         self.buffer.insert(0,s)
 
@@ -414,8 +414,8 @@ class BufferedPCMReader(PCMReader):
                 self.buffer.push(s)
             else:
                 self.reader_finished = True
-            
-            
+
+
 
 #takes a PCMReader and a list of reader lengths (in PCM samples)
 #returns an iterator of PCMReader-compatible objects, each limited
@@ -473,20 +473,20 @@ class PCMConverter(PCMReader):
             self.input.sample_rate != self.sample_rate)
 
         self.bytes_per_sample = self.bits_per_sample / 8
-        
+
         self.leftover_samples = []
 
 
         self.conversions = []
         if (self.input.channels != self.channels):
             self.conversions.append(self.convert_channels)
-            
+
         if (self.input.sample_rate != self.sample_rate):
             self.resampler = pcmstream.Resampler(
                 self.channels,
                 float(self.sample_rate) / float(self.input.sample_rate),
                 0)
-            
+
             self.unresampled = []
 
             #if we're converting sample rate and bits-per-sample
@@ -496,20 +496,20 @@ class PCMConverter(PCMReader):
                 self.conversions.append(self.convert_sample_rate_and_bits_per_sample)
             else:
                 self.conversions.append(self.convert_sample_rate)
-        
+
         else:
             if (self.input.bits_per_sample != self.bits_per_sample):
                 self.conversions.append(self.convert_bits_per_sample)
-        
-        
+
+
     def read(self, bytes):
         (frame_list,self.leftover_samples) = FrameList.from_samples(
             self.leftover_samples + self.reader.read(bytes),
             self.input.channels)
-        
+
         for converter in self.conversions:
             frame_list = converter(frame_list)
-            
+
         return pcmstream.pcm_to_string(frame_list,self.bytes_per_sample,False)
 
     def close(self):
@@ -522,9 +522,9 @@ class PCMConverter(PCMReader):
         #anyway, this should speed up the conversion without
         #damaging anything.
         #Just be careful when using this routine elsewhere.
-        
+
         difference = self.bits_per_sample - self.input.bits_per_sample
-        
+
         if (difference < 0):   #removing bits per sample
             bits_difference = -difference
 
@@ -536,7 +536,7 @@ class PCMConverter(PCMReader):
                                for i in xrange(len(frame_list))]
             else:
                 white_noise = [0] * len(frame_list)
-                
+
 
             return [(s >> bits_difference) ^ w for (s,w) in izip(frame_list,
                                                                  white_noise)]
@@ -555,7 +555,7 @@ class PCMConverter(PCMReader):
             channels = []
             for i in xrange(self.channels):
                 channels.append(frame_list.channel(i))
-            
+
             return FrameList.from_channels(channels)
         else:                #adding new channels
             channels = list(frame_list.channels())
@@ -566,7 +566,7 @@ class PCMConverter(PCMReader):
 
     def convert_sample_rate(self, frame_list):
         multiplier = 1 << (self.bits_per_sample - 1)
-        
+
         #FIXME - The floating-point output from resampler.process()
         #should be normalized rather than just chopping off
         #excessively high or low samples (above 1.0 or below -1.0)
@@ -577,7 +577,7 @@ class PCMConverter(PCMReader):
         (output,self.unresampled) = self.resampler.process(
             self.unresampled + frame_list,
             (len(frame_list) == 0) and (len(self.unresampled) == 0))
-        
+
         return [int(round(s * multiplier)) for s in output]
 
 
@@ -603,7 +603,7 @@ class PCMConverter(PCMReader):
                                for i in xrange(len(frame_list))]
             else:
                 white_noise = [0] * len(frame_list)
-            
+
             return [int(round(s * multiplier)) ^ w
                     for (s,w) in izip(frame_list,white_noise)]
 
@@ -625,7 +625,7 @@ class ReplayGainReader(PCMReader):
         self.reader = pcmstream.PCMStreamReader(pcmreader,
                                                 pcmreader.bits_per_sample / 8,
                                                 False, False)
-        
+
         PCMReader.__init__(self, None,
                            pcmreader.sample_rate,
                            pcmreader.channels,
@@ -654,7 +654,7 @@ class ReplayGainReader(PCMReader):
             white_noise = [0] * len(samples)
 
         return pcmstream.pcm_to_string(
-            [(int(round(s * multiplier)) ^ w) for (s,w) in 
+            [(int(round(s * multiplier)) ^ w) for (s,w) in
              izip(samples,white_noise)],
             self.bytes_per_sample,
             False)
@@ -669,17 +669,17 @@ class ReplayGainReader(PCMReader):
 class InterruptableReader(PCMReader):
     def __init__(self, pcmreader):
         import threading,Queue,signal
-        
+
         PCMReader.__init__(self, pcmreader,
                            sample_rate=pcmreader.sample_rate,
                            channels=pcmreader.channels,
                            bits_per_sample=pcmreader.bits_per_sample)
-        
+
         self.stop_reading = False
         self.data_queue = Queue.Queue()
 
         self.old_sigint = signal.signal(signal.SIGINT,self.stop)
-        
+
         thread = threading.Thread(target=self.send_data)
         thread.setDaemon(True)
         thread.start()
@@ -696,7 +696,7 @@ class InterruptableReader(PCMReader):
         #try to use a half second long buffer
         BUFFER_SIZE = self.sample_rate * (self.bits_per_sample / 8) * \
                       self.channels / 2
-        
+
         s = self.file.read(BUFFER_SIZE)
         while ((len(s) > 0) and (not self.stop_reading)):
             self.data_queue.put(s)
@@ -729,7 +729,7 @@ class FrameList(list):
         l_repr = list.__repr__(self)
         if (len(l_repr) > 20):
             l_repr = l_repr[0:17] + "..."
-        
+
         return "FrameList(%s,%s)" % (l_repr,
                                      repr(self.total_channels))
 
@@ -779,9 +779,9 @@ class FrameList(list):
 
         for (i,c) in enumerate(channels):
             data[i::len(channels)] = c
-            
+
         return FrameList(data,len(channels))
-        
+
 
     #takes a list of frame lists,
     #each containing one PCM sample per channel
@@ -836,7 +836,7 @@ class MetaData:
             self.__dict__['__images__'] = list(images)
         else:
             self.__dict__['__images__'] = list()
-            
+
 
     def __repr__(self):
         return "MetaData(%s,%s,%s,%s,%s,%s,%s)" % \
@@ -887,7 +887,7 @@ class MetaData:
 
     def __eq__(self, metadata):
         import operator
-        
+
         if (metadata is not None):
             return reduce(operator.and_,
                           [(getattr(self,attr) == getattr(metadata,attr))
@@ -1229,7 +1229,7 @@ class DummyAudioFile(AudioFile):
     def __init__(self, length, metadata):
         self.__length__ = length
         self.__metadata__ = metadata
-        
+
         AudioFile.__init__(self,"")
 
     def get_metadata(self):
@@ -1249,12 +1249,12 @@ from __flac__ import *
 from __ape__ import *
 from __id3__ import *
 from __mp3__ import *
-from __vorbis__ import *        
+from __vorbis__ import *
 from __m4a__ import *
 from __wavpack__ import *
 from __musepack__ import *
 from __speex__ import *
-    
+
 #######################
 #CD data
 #######################
@@ -1308,7 +1308,7 @@ class CDTrackLog(dict):
     #log format is similar to cdda2wav's
     def __str__(self):
         return ", ".join(["%%(%s)d %s" % (field,field)
-                          for field in 
+                          for field in
                           ("rderr","skip","atom","edge",
                            "drop","dup","drift")]) % \
                            {"edge":self.get(2,0),
@@ -1376,7 +1376,7 @@ class CDTrackReader(PCMReader):
         #(divisible by 2352 bytes, basically)
         #or at least 1 sector's worth, if "bytes" is too small
         return self.__read_sectors__(max(bytes / 2352,1))
-            
+
 
     def close(self):
         pass
@@ -1403,7 +1403,7 @@ class ExecQueue:
 
     def execute(self, function, args, kwargs=None):
         self.todo.append((function,args,kwargs))
- 
+
     def __run__(self, function, args, kwargs):
         pid = os.fork()
         if (pid > 0):  #parent
@@ -1425,7 +1425,7 @@ class ExecQueue:
             (function,args,kwargs) = self.todo.pop(0)
             process_pool.add(self.__run__(function,args,kwargs))
             #print "Filling %s" % (repr(process_pool))
-         
+
         #as processes end, keep adding new ones to the pool
         #until we run out of queued jobs
 
@@ -1458,6 +1458,6 @@ AVAILABLE_TYPES = (FlacAudio,OggFlacAudio,
                    VorbisAudio,SpeexAudio,MusepackAudio,
                    AiffAudio,AuAudio,M4AAudio,WavPackAudio)
 
-TYPE_MAP = dict([(track_type.SUFFIX,track_type) 
+TYPE_MAP = dict([(track_type.SUFFIX,track_type)
                  for track_type in AVAILABLE_TYPES
                  if track_type.has_binaries(BIN)]); del(track_type)

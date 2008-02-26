@@ -125,7 +125,7 @@ class __JPEG__(ImageMetrics):
                         file.read(segment.length - 2))
                     frame0 = cls.SOF.parse_stream(segment_data)
                     segment_data.close()
-                    
+
                     return __JPEG__(width = frame0.image_width,
                                     height = frame0.image_height,
                                     bits_per_pixel = (frame0.data_precision * \
@@ -211,7 +211,7 @@ class __PNG__(ImageMetrics):
             return __PNG__(ihdr.width,ihdr.height,bits_per_pixel,color_count)
         except Con.ConstError:
             raise InvalidPNG('invalid PNG')
-        
+
 #######################
 #BMP
 #######################
@@ -242,7 +242,7 @@ class __BMP__(ImageMetrics):
     def __init__(self, width, height, bits_per_pixel, color_count):
         ImageMetrics.__init__(self, width, height, bits_per_pixel, color_count,
                               u'image/x-ms-bmp')
-        
+
     @classmethod
     def parse(cls, file):
         try:
@@ -252,7 +252,7 @@ class __BMP__(ImageMetrics):
             return __BMP__(information.width, information.height,
                            information.bits_per_pixel,
                            information.colors_used)
-        
+
         except Con.ConstError:
             raise InvalidBMP('invalid BMP')
 
@@ -348,7 +348,7 @@ class __TIFF__(ImageMetrics):
                                 Con.UBInt32("high"),
                                 Con.UBInt32("low"))}[tag.type]
 
-        
+
         data = Con.StrictRepeater(tag.count,
                                   subtype)
         if ((tag.type != 2) and (data.sizeof() <= 4)):
@@ -367,7 +367,7 @@ class __TIFF__(ImageMetrics):
                                 Con.ULInt32("high"),
                                 Con.ULInt32("low"))}[tag.type]
 
-        
+
         data = Con.StrictRepeater(tag.count,
                                   subtype)
         if ((tag.type != 2) and (data.sizeof() <= 4)):
@@ -382,7 +382,7 @@ class __TIFF__(ImageMetrics):
         height = 0
         bits_per_sample = 0
         color_count = 0
-        
+
         try:
             header = cls.HEADER.parse_stream(file)
             if (header.byte_order == 'II'):

@@ -65,7 +65,7 @@ def get_pixbuf(imagedata,width,height):
         l.write(s)
         s = imagedata.read(0x1000)
     l.close()
-    
+
     pb = l.get_pixbuf()
     (width,height) = image_size((width,height),pb)
     pb = pb.scale_simple(width,height,gtk.gdk.INTERP_BILINEAR)
@@ -75,7 +75,7 @@ def get_raw_pixbuf(imagedata):
     l = gtk.gdk.PixbufLoader()
     l.write(imagedata)
     l.close()
-    
+
     return l.get_pixbuf()
 
 class ImageList:
@@ -97,7 +97,7 @@ class ImageList:
 
         self.set_images(picture_list)
 
-        
+
 
     #picture_list is a list of (filepath,Image) tuples
     def set_images(self, picture_list):
@@ -198,8 +198,8 @@ if (__name__ == '__main__'):
     for audiofile in audiotools.open_files(args):
         try:
             metadata = audiofile.get_metadata()
-            
-            if ((metadata != None) and 
+
+            if ((metadata != None) and
                 (len(metadata.images()) > 0)):
                 for image in metadata.images():
                     cover_list.append((audiofile.filename,image))

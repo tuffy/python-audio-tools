@@ -54,25 +54,25 @@ class Musepack8StreamReader:
     NUT_HEADER = Con.Struct('nut_header',
                             Con.String('key',2),
                             NutValue('length'))
-    
+
     def __init__(self, stream):
         self.stream = stream
 
     #iterates over a bunch of (key,data) tuples
     def packets(self):
         import string
-        
+
         UPPERCASE = frozenset(string.ascii_uppercase)
-        
+
         while (True):
             try:
                 frame_header = self.NUT_HEADER.parse_stream(self.stream)
             except Con.core.FieldError:
                 break
-         
+
             if (not frozenset(frame_header.key).issubset(UPPERCASE)):
                 break
-         
+
             yield (frame_header.key,
                    self.stream.read(frame_header.length -
                                     len(self.NUT_HEADER.build(frame_header))))
@@ -85,7 +85,7 @@ class MusepackAudio(ApeTaggedAudio,AudioFile):
 
     ###Musepack SV7###
     BINARIES = ('mppdec','mppenc')
-    
+
     ###Musepack SV8###
     #BINARIES = ('mpcdec','mpcenc')
 
@@ -101,7 +101,7 @@ class MusepackAudio(ApeTaggedAudio,AudioFile):
         Con.Bits('channel_count',4),
         Con.Flag('mid_side_used'),
         Con.Bits('audio_block_frames',3))))
-        
+
 
     #not sure about some of the flag locations
     #Musepack 7's header is very unusual
@@ -154,7 +154,7 @@ class MusepackAudio(ApeTaggedAudio,AudioFile):
 
             else:                     #a Musepack 7 stream
                 f.seek(0,0)
-                
+
                 try:
                     header = MusepackAudio.MUSEPACK7_HEADER.parse_stream(f)
                 except Con.ConstError:
@@ -231,7 +231,7 @@ class MusepackAudio(ApeTaggedAudio,AudioFile):
                                stderr=devnull)
         sub.wait()
         devnull.close()
-        
+
     @classmethod
     def __from_wave__(cls, filename, wave_filename, compression=None):
         if (str(compression) not in cls.COMPRESSION_MODES):
@@ -262,7 +262,7 @@ class MusepackAudio(ApeTaggedAudio,AudioFile):
         #                        "--%s" % (compression),
         #                        wave_filename,
         #                        filename])
-        
+
         sub.wait()
 
         if (tempfile is not None):

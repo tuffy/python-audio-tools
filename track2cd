@@ -36,7 +36,7 @@ def convert_to_wave(audiofile,wave_filename):
         pcm = audiotools.PCMConverter(audiofile.to_pcm(),44100,2,16)
         audiotools.WaveAudio.from_pcm(wave_filename,pcm)
         pcm.close()
-        
+
     print (u"* %s" % (audiofile.filename.decode(audiotools.FS_ENCODING))
            ).encode(audiotools.IO_ENCODING,'replace')
 
@@ -107,7 +107,7 @@ if (__name__ == '__main__'):
                           (audiofile,f[1]))
 
     queue.run(max_processes)
-    
+
     exec_args += wave_files
     subprocess.call(exec_args)
 

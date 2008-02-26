@@ -28,7 +28,7 @@ from audiotools import AudioFile,InvalidFile,PCMReader,PCMConverter,Con,transfer
 #some of those Atoms are containers for sub-Atoms
 class __Qt_Atom__:
     CONTAINERS = frozenset(
-        ['dinf', 'edts', 'imag', 'imap', 'mdia', 'mdra', 'minf', 
+        ['dinf', 'edts', 'imag', 'imap', 'mdia', 'mdra', 'minf',
          'moov', 'rmra', 'stbl', 'trak', 'tref', 'udta', 'vnrp'])
 
     STRUCT = Con.Struct("qt_atom",
@@ -118,7 +118,7 @@ class __Qt_Atom_Stream__(__Qt_Atom__):
     def __init__(self, stream):
         self.stream = stream
         self.atom_class = __Qt_Atom__
-        
+
         __Qt_Atom__.__init__(self,None,None)
 
     def is_container(self):
@@ -150,7 +150,7 @@ def __build_qt_atom__(atom_type, atom_data):
     con.type = atom_type
     con.size = len(atom_data) + __Qt_Atom__.STRUCT.sizeof()
     return __Qt_Atom__.STRUCT.build(con) + atom_data
-    
+
 
 #takes an existing __Qt_Atom__ object (possibly a container)
 #and a __Qt_Atom__ to replace
@@ -225,7 +225,7 @@ class M4AAudio(AudioFile):
     @classmethod
     def is_type(cls, file):
         header = file.read(12)
-        
+
         return ((header[4:8] == 'ftyp') and
                 (header[8:12] in ('mp41','mp42','M4A ','M4B ')))
 
@@ -265,7 +265,7 @@ class M4AAudio(AudioFile):
     def set_metadata(self, metadata):
         metadata = M4AMetaData.converted(metadata)
         if (metadata is None): return
-        
+
         new_file = __replace_qt_atom__(self.qt_stream,
                                        metadata.to_atom())
         f = file(self.filename,"wb")
@@ -274,7 +274,7 @@ class M4AAudio(AudioFile):
 
         f = file(self.filename,"rb")
         self.qt_stream = __Qt_Atom_Stream__(f)
-        
+
 
     def to_pcm(self):
         devnull = file(os.devnull,"ab")
@@ -292,7 +292,7 @@ class M4AAudio(AudioFile):
     @classmethod
     def from_pcm(cls, filename, pcmreader,
                  compression="100"):
-        
+
 
         if (compression not in cls.COMPRESSION_MODES):
             compression = cls.DEFAULT_COMPRESSION
@@ -328,7 +328,7 @@ class M4AAudio(AudioFile):
                                preexec_fn=ignore_sigint)
         #Note: faac handles SIGINT on its own,
         #so trying to ignore it doesn't work like on most other encoders.
-        
+
         transfer_data(pcmreader.read,sub.stdin.write)
         pcmreader.close()
         sub.stdin.close()
@@ -386,7 +386,7 @@ class M4AMetaData(MetaData,dict):
     #make sure to update the corresponding dict pair
     def __setattr__(self, key, value):
         self.__dict__[key] = value
-        
+
         if (self.ATTRIBUTE_MAP.has_key(key)):
             if (key != 'track_number'):
                 self[self.ATTRIBUTE_MAP[key]] = [value]
@@ -394,14 +394,14 @@ class M4AMetaData(MetaData,dict):
                 trkn = [__Qt_Meta_Atom__.TRKN.build(Con.Container(
                     track_number=int(value),
                     total_tracks=0))]
-                
+
                 self[self.ATTRIBUTE_MAP[key]] = trkn
 
     #if a dict pair is updated (e.g. self['\xa9nam'])
     #make sure to update the corresponding attribute
     def __setitem__(self, key, value):
         dict.__setitem__(self, key, value)
-        
+
         if (self.ITEM_MAP.has_key(key)):
             if (key != 'trkn'):
                 self.__dict__[self.ITEM_MAP[key]] = value[0]
@@ -422,7 +422,7 @@ class M4AMetaData(MetaData,dict):
     def converted(cls, metadata):
         if ((metadata is None) or (isinstance(metadata,M4AMetaData))):
             return metadata
-        
+
         tags = {}
 
         for (key,field) in cls.ITEM_MAP.items():
@@ -437,7 +437,7 @@ class M4AMetaData(MetaData,dict):
 
         if (len(metadata.front_covers()) > 0):
             tags['covr'] = [i.data for i in metadata.front_covers()]
-        
+
         return M4AMetaData(tags)
 
     #returns the contents of this M4AMetaData as a 'meta' atom string
@@ -445,7 +445,7 @@ class M4AMetaData(MetaData,dict):
         hdlr = __build_qt_atom__(
             'hdlr',
             (chr(0) * 8) + 'mdirappl' + (chr(0) * 10))
-        
+
         ilst = []
         for (key,values) in self.items():
             for value in values:
@@ -469,7 +469,7 @@ class M4AMetaData(MetaData,dict):
                            hdlr + \
                            __build_qt_atom__('ilst',"".join(ilst)) + \
                            __build_qt_atom__('free',chr(0) * 2040))
-                           
+
 
 
     def __comment_name__(self):
@@ -499,7 +499,7 @@ class M4AMetaData(MetaData,dict):
                     pairs.append((key.replace('\xa9',' '),value))
                 elif (key == 'trkn'):
                     tracknumber = __Qt_Meta_Atom__.TRKN.parse(value)
-                    
+
                     pairs.append((key,"%s/%s" % (tracknumber.track_number,
                                                  tracknumber.total_tracks)))
                 else:
@@ -521,7 +521,7 @@ class M4ACovr(Image):
         self.image_data = image_data
 
         img = Image.new(image_data,u'',0)
- 
+
         Image.__init__(self,
                        data=image_data,
                        mime_type=img.mime_type,

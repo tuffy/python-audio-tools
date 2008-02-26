@@ -45,13 +45,13 @@ class OggStreamReader:
     def packets(self, from_beginning=True):
         if (from_beginning):
             self.stream.seek(0,0)
-            
+
         segment = cStringIO.StringIO()
 
         while (True):
             try:
                 page = OggStreamReader.OGGS.parse_stream(self.stream)
-            
+
                 for length in page.segment_lengths:
                     if (length == 255):
                         segment.write(self.stream.read(length))
@@ -72,7 +72,7 @@ class OggStreamReader:
     def pages(self, from_beginning=True):
         if (from_beginning):
             self.stream.seek(0,0)
-            
+
         while (True):
             try:
                 page = OggStreamReader.OGGS.parse_stream(self.stream)
@@ -81,7 +81,7 @@ class OggStreamReader:
                 break
             except Con.ConstError:
                 break
-        
+
 
     #takes a page iterator (such as pages(), above)
     #returns a list of (Container,data string) tuples
@@ -92,7 +92,7 @@ class OggStreamReader:
         while (packet[-1][0].segment_lengths[-1] == 255):
             packet.append(pages_iter.next())
         return packet
-    
+
 
     CRC_LOOKUP = (0x00000000,0x04c11db7,0x09823b6e,0x0d4326d9,
                   0x130476dc,0x17c56b6b,0x1a864db2,0x1e475005,
@@ -198,10 +198,10 @@ class OggStreamWriter:
     #returns a list of (page_header,page_data) tuples containing
     #all of the Ogg pages necessary to contain the packet
     @classmethod
-    def build_pages(cls, granule_position, serial_number, 
+    def build_pages(cls, granule_position, serial_number,
                     starting_sequence_number, packet_data,
                     header_type=0):
-        
+
         page = Con.Container()
         page.magic_number = 'OggS'
         page.version = 0
@@ -210,7 +210,7 @@ class OggStreamWriter:
         page.bitstream_serial_number = serial_number
         page.page_sequence_number = starting_sequence_number
         page.checksum = 0
-        
+
         if (len(packet_data) == 0):
             #an empty Ogg page, but possibly a continuation
 
@@ -257,7 +257,7 @@ class OggStreamWriter:
             page.segment_lengths = [255] * (len(packet_data) / 255)
             if ((len(packet_data) % 255) > 0):
                 page.segment_lengths += [len(packet_data) % 255]
-            
+
             page.checksum = OggStreamReader.calculate_ogg_checksum(
                 page,packet_data)
             return [(page,packet_data)]
@@ -272,7 +272,7 @@ class VorbisAudio(AudioFile):
     DEFAULT_COMPRESSION = "3"
     COMPRESSION_MODES = tuple([str(i) for i in range(0,11)])
     BINARIES = ("oggenc","oggdec","vorbiscomment")
-    
+
     OGG_IDENTIFICATION = Con.Struct(
         "ogg_id",
         Con.ULInt32("vorbis_version"),
@@ -300,7 +300,7 @@ class VorbisAudio(AudioFile):
     @classmethod
     def is_type(cls, file):
         header = file.read(0x23)
-        
+
         return (header.startswith('OggS') and
                 header[0x1C:0x23] == '\x01vorbis')
 
@@ -324,7 +324,7 @@ class VorbisAudio(AudioFile):
                 self.__channels__ = identification.channels
             else:
                 raise InvalidFile('first packet is not vorbis')
-            
+
             #the Comment packet comes next
             comment_packet = packets.next()
             header = VorbisAudio.COMMENT_HEADER.parse(
@@ -415,13 +415,13 @@ class VorbisAudio(AudioFile):
 
     def set_metadata(self, metadata):
         metadata = VorbisComment.converted(metadata)
-        
+
         if (metadata == None): return
 
         sub = subprocess.Popen([BIN['vorbiscomment'],
                                 "-R","-w",self.filename],
                                stdin=subprocess.PIPE)
-        
+
         for (tag,values) in metadata.items():
             for value in values:
                 print >>sub.stdin,"%(tag)s=%(value)s" % \
@@ -446,7 +446,7 @@ class VorbisAudio(AudioFile):
     def add_replay_gain(cls, filenames):
         track_names = [track.filename for track in
                        open_files(filenames) if
-                       isinstance(track,cls)]     
+                       isinstance(track,cls)]
 
         if ((len(track_names) > 0) and
             BIN.can_execute(BIN['vorbisgain'])):
@@ -466,7 +466,7 @@ class VorbisAudio(AudioFile):
     def replay_gain(self):
         vorbis_metadata = self.get_metadata()
 
-        if (set(['REPLAYGAIN_TRACK_PEAK', 'REPLAYGAIN_TRACK_GAIN', 
+        if (set(['REPLAYGAIN_TRACK_PEAK', 'REPLAYGAIN_TRACK_GAIN',
                  'REPLAYGAIN_ALBUM_PEAK', 'REPLAYGAIN_ALBUM_GAIN']).issubset(
                 vorbis_metadata.keys())):  #we have ReplayGain data
             try:

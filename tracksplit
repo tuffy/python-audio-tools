@@ -29,12 +29,12 @@ def extract_part(input_filename, input_pcm, output_filename, quality, metadata):
                (input_filename.decode(audiotools.FS_ENCODING),
                 output_filename.decode(audiotools.FS_ENCODING))).encode(
         audiotools.IO_ENCODING)
-        
+
     destination_audiofile = AudioType.from_pcm(
         output_filename,
         input_pcm,
         quality)
-    
+
     encoded_filenames.append(filename)
 
     if (metadata is not None):
@@ -47,7 +47,7 @@ def has_embedded_cuesheet(audiofile):
     #the FLAC actually contains a cuesheet with the necessary sub-tracks
     return (hasattr(audiofile,"sub_pcm_tracks") and
             hasattr(audiofile.get_metadata(),"cuesheet"))
-        
+
 
 if (__name__ == '__main__'):
     parser = optparse.OptionParser(
@@ -61,7 +61,7 @@ if (__name__ == '__main__'):
                       type='string',
                       dest='cuesheet',
                       help='the cuesheet to use for splitting track')
-    
+
     parser.add_option('-x','--xmcd',
                       action='store',
                       type='string',
@@ -146,7 +146,7 @@ if (__name__ == '__main__'):
         except audiotools.XMCDException:
             print >>sys.stderr,"*** Invalid XMCD file"
             sys.exit(1)
-    else: 
+    else:
         #if we're not using an XMCD file, no MetaData
         #(I could theoretically pull some from the base track
         # but there usually isn't any and it's not very practical)
@@ -183,7 +183,7 @@ if (__name__ == '__main__'):
         #but the only way we'll be able to wait() correctly
         for p in split_pcm:
             p.process = None
-        
+
 
     for (i,pcmreader) in enumerate(split_pcm):
         track_number = i + 1
@@ -199,17 +199,17 @@ if (__name__ == '__main__'):
                 base_directory,
                 AudioType.track_name(track_number,
                                      None))
-            
+
             metadata = None
 
         audiotools.make_dirs(filename)
         encoded_filenames.append(filename)
-        
+
         queue.execute(extract_part,
-                      (audiofile.filename, 
-                       pcmreader, 
+                      (audiofile.filename,
+                       pcmreader,
                        filename,
-                       options.quality, 
+                       options.quality,
                        metadata))
 
     queue.run(options.max_processes)

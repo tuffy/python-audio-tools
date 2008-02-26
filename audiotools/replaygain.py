@@ -90,7 +90,7 @@ class Filter:
         self.input_kernel = input_kernel
         self.output_kernel = output_kernel
 
-        self.unfiltered_samples = [0.0] * len(self.input_kernel)        
+        self.unfiltered_samples = [0.0] * len(self.input_kernel)
         self.filtered_samples = [0.0] * len(self.output_kernel)
 
     #takes a list of floating point samples
@@ -113,13 +113,13 @@ class Filter:
 
             self.filtered_samples.append(filtered)
             toreturn.append(filtered)
-                
+
 
         #if we have more filtered and unfiltered samples than we'll need,
         #chop off the excess at the beginning
         if (len(self.unfiltered_samples) > (len(self.input_kernel))):
             self.unfiltered_samples = self.unfiltered_samples[-len(self.input_kernel):]
-            
+
         if (len(self.filtered_samples) > (len(self.output_kernel))):
             self.filtered_samples = self.filtered_samples[-len(self.output_kernel):]
 
@@ -134,7 +134,7 @@ class EqualLoudnessFilter(audiotools.PCMReader):
             raise ValueError("channels must equal 2")
         if (pcmreader.sample_rate not in SAMPLE_RATE_MAP.keys()):
             raise ValueError("unsupported sample rate")
-        
+
         self.stream = audiotools.pcmstream.PCMStreamReader(
             pcmreader,
             pcmreader.bits_per_sample / 8,
@@ -156,7 +156,7 @@ class EqualLoudnessFilter(audiotools.PCMReader):
         self.yule_filter_r = Filter(
             BYule[SAMPLE_RATE_MAP[self.sample_rate]],
             AYule[SAMPLE_RATE_MAP[self.sample_rate]])
-        
+
         self.butter_filter_l = Filter(
             BButter[SAMPLE_RATE_MAP[self.sample_rate]],
             AButter[SAMPLE_RATE_MAP[self.sample_rate]])
@@ -178,7 +178,7 @@ class EqualLoudnessFilter(audiotools.PCMReader):
         #run our channel lists through the Yule and Butter filters
         l_channel = self.butter_filter_l.filter(
             self.yule_filter_l.filter(l_channel))
-        
+
         r_channel = self.butter_filter_r.filter(
             self.yule_filter_r.filter(r_channel))
 
@@ -199,11 +199,11 @@ class EqualLoudnessFilter(audiotools.PCMReader):
 def replay_gain_blocks(pcmreader):
     unhandled_samples = []        #partial PCM frames
     frame_pool = audiotools.FrameList([],pcmreader.channels)
-    
+
     reader = audiotools.pcmstream.PCMStreamReader(pcmreader,
                                                   pcmreader.bits_per_sample / 8,
                                                   False,False)
-    
+
     (framelist,unhandled_samples) = audiotools.FrameList.from_samples(
         unhandled_samples + reader.read(audiotools.BUFFER_SIZE),
         pcmreader.channels)
@@ -227,26 +227,26 @@ def replay_gain_blocks(pcmreader):
     reader.close()
     #this drops the last block that's not 50ms long
     #that's probably the right thing to do
-    
+
 
 #takes a PCMReader-compatible object with 2 channels and a
 #supported sample rate
 #returns the stream's ReplayGain value in dB
 def calculate_replay_gain(pcmstream):
     import math
-    
+
     def __mean__(l):
         return sum(l) / len(l)
 
     pcmstream = EqualLoudnessFilter(pcmstream)
-    
+
     db_blocks = []
-    
+
     for block in replay_gain_blocks(pcmstream):
         left = __mean__([s ** 2 for s in block.channel(0)])
         right = __mean__([s ** 2 for s in block.channel(1)])
         db_blocks.append((left + right) / 2)
- 
+
     db_blocks = [10 * math.log10(b + 10 ** -10) for b in db_blocks]
     db_blocks.sort()
     replay_gain = db_blocks[int(round(len(db_blocks) * 0.95))]

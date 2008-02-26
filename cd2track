@@ -67,7 +67,7 @@ if (__name__ == '__main__'):
     #get the AudioFile class we are converted to
     AudioType = audiotools.TYPE_MAP[options.type]
 
-    
+
     #ensure the selected compression is compatible with that class
     if (options.quality == 'help'):
         if (len(AudioType.COMPRESSION_MODES) > 1):
@@ -87,7 +87,7 @@ if (__name__ == '__main__'):
               (AudioType.SUFFIX)
         sys.exit(1)
 
-    
+
     #if we're using an XMCD file, use that file for MetaData
     if (options.xmcd != None):
         try:
@@ -152,7 +152,7 @@ if (__name__ == '__main__'):
                                          None))
 
                 audiotools.make_dirs(filename)
-                
+
                 track = AudioType.from_pcm(
                     filename,
                     cd_track,

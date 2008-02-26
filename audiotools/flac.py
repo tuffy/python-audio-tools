@@ -37,12 +37,12 @@ class UTF8(Con.Struct):
     @classmethod
     def __calculate_utf8_value__(cls, ctx):
         import operator
-    
+
         return Con.lib.bin_to_int(ctx.header[ctx.header.index('\x00') + 1:] + \
                                   reduce(operator.concat,
                                          [s[2:] for s in ctx['sub_byte']],
                                          ''))
-    
+
     def __init__(self, name):
         Con.Struct.__init__(
             self,name,
@@ -94,16 +94,16 @@ class FlacReader:
         lambda ctx1: ctx1['channel_assignment'] <= 7,
         Con.Value('c',lambda ctx2: ctx2['channel_assignment'] + 1),
         Con.Value('c',lambda ctx3: 2)),
-                              
+
                               UTF8('frame_number'),
-                              
+
                               Con.IfThenElse(
         'extended_block_size',
         lambda ctx1: ctx1['block_size'] == 6,
         Con.Bits('b',8),
         Con.If(lambda ctx2: ctx2['block_size'] == 7,
                Con.Bits('b',16))),
-                              
+
                               Con.IfThenElse(
         'extended_sample_rate',
         lambda ctx1: ctx1['sample_rate'] == 12,
@@ -249,7 +249,7 @@ class FlacReader:
             self.bitstream.close()
         else:
             self.stream.close()
-        
+
 
     def read_stream_marker(self):
         if (self.stream.read(4) != 'fLaC'):
@@ -262,19 +262,19 @@ class FlacReader:
                 self.streaminfo = audiotools.FlacAudio.STREAMINFO.parse_stream(self.stream)
             else:
                 self.stream.seek(block.block_length,1)
-                
+
             block = audiotools.FlacAudio.METADATA_BLOCK_HEADER.parse_stream(self.stream)
         self.stream.seek(block.block_length,1)
 
     def begin_bitstream(self):
         import bitstream
-        
+
         #self.bitstream = Con.BitStreamReader(self.stream)
         self.bitstream = bitstream.BitStreamReader(self.stream)
 
     def read_frame(self):
         self.stream.reset_buffer()
-        
+
         try:
             header = FlacReader.FRAME_HEADER.parse_stream(self.bitstream)
         except Con.core.FieldError:
@@ -291,7 +291,7 @@ class FlacReader:
         block_size = FlacReader.BLOCK_SIZE[header.block_size]
         if (block_size == self.GET_BLOCKSIZE_FROM_STREAMINFO):
             block_size = self.streaminfo.maximum_blocksize
-            
+
         elif ((block_size == self.GET_8BIT_BLOCKSIZE_FROM_END_OF_HEADER) or
               (block_size == self.GET_16BIT_BLOCKSIZE_FROM_END_OF_HEADER)):
             block_size = header.extended_block_size + 1
@@ -305,8 +305,8 @@ class FlacReader:
                 self.read_subframe(header, block_size, channel_number))
 
         crc16sum = crc16(self.stream.getvalue())
-        
-            
+
+
         #try to byte-align the stream
         if (len(self.bitstream.buffer) > 0):
             self.bitstream.read(len(self.bitstream.buffer))
@@ -314,8 +314,8 @@ class FlacReader:
 
         if (crc16sum != Con.Bits('crc16',16).parse_stream(self.bitstream)):
             raise FlacStreamException('crc16 checksum failed')
-        
-        
+
+
         #convert our list of subframe data arrays into
         #a string of sample data
         if (FlacReader.SAMPLE_SIZE[header.bits_per_sample] == 16):
@@ -327,22 +327,22 @@ class FlacReader:
                 merged_frames.byteswap()
 
             return merged_frames.tostring()
-        
+
         elif (FlacReader.SAMPLE_SIZE[header.bits_per_sample] == 8):
             merged_frames = array.array('b',
                                         FlacReader.CHANNEL_FUNCTIONS[
                 header.channel_assignment](subframe_data))
 
             return merged_frames.tostring()
-        
+
         else:
             if (FlacReader.SAMPLE_SIZE[header.bits_per_sample] == \
                 self.GET_SAMPLE_SIZE_FROM_STREAMINFO):
                 bits_per_sample = self.streaminfo.bits_per_sample + 1
-                
+
             elif (FlacReader.SAMPLE_SIZE[header.bits_per_sample] == None):
                 raise FlacStreamException('invalid bits per sample')
-            
+
             else:
                 bits_per_sample = FlacReader.SAMPLE_SIZE[header.bits_per_sample]
 
@@ -355,7 +355,7 @@ class FlacReader:
                 [Con.Container(value=v) for v in
                  FlacReader.CHANNEL_FUNCTIONS[header.channel_assignment](
                     subframe_data)])
-            
+
 
 
     def read_subframe(self, frame_header, block_size, channel_number):
@@ -369,21 +369,21 @@ class FlacReader:
             #and this is the difference, add 1 bit
             bits_per_sample = FlacReader.SAMPLE_SIZE[
                 frame_header.bits_per_sample] + 1
-            
+
         elif ((frame_header.channel_assignment == 9) and
               (channel_number == 0)):
             #if channel is stored as difference+right
             #and this is the difference, add 1 bit
             bits_per_sample = FlacReader.SAMPLE_SIZE[
                 frame_header.bits_per_sample] + 1
-            
+
         elif ((frame_header.channel_assignment == 10) and
               (channel_number == 1)):
             #if channel is stored as average+difference
             #and this is the difference, add 1 bit
             bits_per_sample = FlacReader.SAMPLE_SIZE[
                 frame_header.bits_per_sample] + 1
-            
+
         else:
             #otherwise, use the number from the frame header
             bits_per_sample = FlacReader.SAMPLE_SIZE[
@@ -392,25 +392,25 @@ class FlacReader:
 
         if (subframe_header.has_wasted_bits_per_sample):
             bits_per_sample -= subframe_header.wasted_bits_per_sample
-        
+
         if (subframe_header.subframe_type == 0):
             subframe = self.read_subframe_constant(block_size, bits_per_sample)
-            
+
         elif (subframe_header.subframe_type == 1):
             subframe = self.read_subframe_verbatim(block_size, bits_per_sample)
-            
+
         elif ((subframe_header.subframe_type & 0x38) == 0x08):
             subframe = self.read_subframe_fixed(
                 subframe_header.subframe_type & 0x07,
                 block_size,
                 bits_per_sample)
-            
+
         elif ((subframe_header.subframe_type & 0x20) == 0x20):
             subframe = self.read_subframe_lpc(
                 (subframe_header.subframe_type & 0x1F) + 1,
                 block_size,
                 bits_per_sample)
-            
+
         else:
             raise FlacStreamException('invalid subframe type')
 
@@ -425,11 +425,11 @@ class FlacReader:
     def read_subframe_constant(self, block_size, bits_per_sample):
         sample = Con.Bits('b',bits_per_sample).parse_stream(
             self.bitstream)
-        
+
         subframe = array.array('i',[sample] * block_size)
 
         return subframe
-    
+
 
     def read_subframe_verbatim(self, block_size, bits_per_sample):
         return array.array('i',
@@ -446,21 +446,21 @@ class FlacReader:
             Con.Bits("warm_up_samples",
                      bits_per_sample,
                      signed=True))
-        
+
         subframe = array.array('i',
                                samples.parse_stream(self.bitstream))
 
         residual = self.read_residual(block_size,order)
 
         fixed_func = self.FIXED_FUNCTIONS[order]
- 
+
         for i in xrange(len(subframe),block_size):
             fixed_func(subframe,residual,i)
-            
+
         return subframe
 
 
-    def read_subframe_lpc(self, order, block_size, bits_per_sample):       
+    def read_subframe_lpc(self, order, block_size, bits_per_sample):
         samples = Con.StrictRepeater(
             order,
             Con.Bits("warm_up_samples",
@@ -482,7 +482,7 @@ class FlacReader:
             Con.Bits('coefficients',
                      lpc_precision,
                      signed=True)).parse_stream(self.bitstream))
-        
+
         residual = self.read_residual(block_size, order)
 
         for i in xrange(len(subframe),block_size):
@@ -510,7 +510,7 @@ class FlacReader:
             rice2 = True
         else:
             raise FlacStreamException('invalid residual coding method')
-        
+
         partition_order = Con.Bits('partition_order',4).parse_stream(
             self.bitstream)
 
@@ -518,10 +518,10 @@ class FlacReader:
             total_samples = ((block_size / 2 ** partition_order) -
                              predictor_order)
             rice.extend(self.read_encoded_rice(total_samples,rice2))
-            
+
             for i in xrange(1,2 ** partition_order):
                 total_samples = (block_size / 2 ** partition_order)
-                
+
                 rice.extend(self.read_encoded_rice(total_samples,rice2))
         else:
             rice.extend(self.read_encoded_rice(block_size - predictor_order,
@@ -532,7 +532,7 @@ class FlacReader:
 
     def read_encoded_rice(self, total_samples, rice2=False):
         bin_to_int = Con.lib.binary.bin_to_int
-        
+
         samples = array.array('i')
 
         if (not rice2):
@@ -548,7 +548,7 @@ class FlacReader:
 
                 #count the number of 0 bits before the next 1 bit
                 #(unary encoding)
-                #to find our most significant bits            
+                #to find our most significant bits
                 msb = 0
                 s = self.bitstream.read(1)
                 while (s != '\x01'):
@@ -712,4 +712,4 @@ class FlacPCMReader(audiotools.PCMReader):
 
     def close(self):
         self.flacreader.close()
-        
+

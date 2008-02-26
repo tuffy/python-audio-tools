@@ -41,7 +41,7 @@ PULSEAUDIO_CHANNEL_MAP = \
 
 class OSSPlayer:
     NAME = 'oss'
-    
+
     def __init__(self):
         self.dev = ossaudiodev.open("w")
 
@@ -80,7 +80,7 @@ class __FloatConverter__:
     def read(self, bytes):
         data = self.floatstream.read(bytes)
         return struct.pack("<%df" % (len(data)),*data)
-        
+
 
 class PulsePlayer:
     NAME = 'pulse'
@@ -124,7 +124,7 @@ class PulsePlayer:
         else:
             channel_map = []
 
-        
+
         dev = subprocess.Popen([audiotools.BIN["pacat"],
                                 "-p","-n","trackplay",
                                 "--stream-name=%s" % (stream_name),
@@ -169,7 +169,7 @@ if (__name__ == '__main__'):
                       dest='album_replaygain',
                       help='apply album ReplayGain during playback, if present')
 
-    
+
     players = [p for p in [OSSPlayer,PulsePlayer] if p.available()]
     players_map = dict([(p.NAME,p) for p in players])
 
@@ -179,9 +179,9 @@ if (__name__ == '__main__'):
                       choices=players_map.keys(),
                       default=players[-1].NAME,
                       help="the method to play audio (choose from: %s)" % \
-                          ", ".join(["\"%s\"" % (k) for k in 
+                          ", ".join(["\"%s\"" % (k) for k in
                                      players_map.keys()]))
-                                   
+
     (options,args) = parser.parse_args()
 
     player = players_map[options.output]()
@@ -196,11 +196,11 @@ if (__name__ == '__main__'):
                     #around the given PCMReader
                     if (options.track_replaygain or options.album_replaygain):
                         replaygain = audiofile.replay_gain()
-                        if ((replaygain is not None) and 
+                        if ((replaygain is not None) and
                             options.album_replaygain):
                             pcm = audiotools.ReplayGainReader(
                                 pcm,replaygain.album_gain,replaygain.album_peak)
-                        elif ((replaygain is not None) and 
+                        elif ((replaygain is not None) and
                               options.track_replaygain):
                             pcm = audiotools.ReplayGainReader(
                                 pcm,replaygain.track_gain,replaygain.track_peak)

@@ -64,7 +64,7 @@ class SpeexAudio(VorbisAudio):
     @classmethod
     def is_type(cls, file):
         header = file.read(0x23)
-        
+
         return (header.startswith('OggS') and
                 header[0x1C:0x23] == 'Speex  ')
 
@@ -100,7 +100,7 @@ class SpeexAudio(VorbisAudio):
     @classmethod
     def from_pcm(cls, filename, pcmreader, compression=None):
         import bisect
-        
+
         if (compression not in cls.COMPRESSION_MODES):
             compression = cls.DEFAULT_COMPRESSION
 
@@ -143,7 +143,7 @@ class SpeexAudio(VorbisAudio):
 
     def set_metadata(self, metadata):
         comment = VorbisComment.converted(metadata)
-        
+
         if (comment == None): return
 
         reader = OggStreamReader(file(self.filename,'rb'))
