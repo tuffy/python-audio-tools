@@ -1211,7 +1211,8 @@ class AudioFile:
     #checks the __system_binaries__ class for which path to check on
     @classmethod
     def has_binaries(cls, system_binaries):
-        return set([system_binaries.can_execute(system_binaries[command])
+        return set([True] + \
+                   [system_binaries.can_execute(system_binaries[command])
                     for command in cls.BINARIES]) == set([True])
 
 
