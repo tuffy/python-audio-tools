@@ -28,15 +28,15 @@ typedef struct {
 } alsa_Output;
 
 PyMODINIT_FUNC initalsa(void);
-PyObject *ALSAOutput_new(PyTypeObject *type, 
+PyObject *ALSAOutput_new(PyTypeObject *type,
 			 PyObject *args, PyObject *kwds);
-int ALSAOutput_init(alsa_Output *self, 
+int ALSAOutput_init(alsa_Output *self,
 		    PyObject *args, PyObject *kwds);
 void ALSAOutput_dealloc(alsa_Output* self);
 PyObject *ALSAOutput_close(alsa_Output* self);
-PyObject *ALSAOutput_setparams(alsa_Output* self, 
+PyObject *ALSAOutput_setparams(alsa_Output* self,
 			       PyObject *args);
-PyObject *ALSAOutput_write(alsa_Output* self, 
+PyObject *ALSAOutput_write(alsa_Output* self,
 			   PyObject *args);
 
 PyMethodDef module_methods[] = {
@@ -107,22 +107,22 @@ PyMODINIT_FUNC initalsa(void) {
                        "An output-only ALSA interface module.");
 
     Py_INCREF(&alsa_OutputType);
-    PyModule_AddObject(m, "Output", 
+    PyModule_AddObject(m, "Output",
 		       (PyObject *)&alsa_OutputType);
 }
 
-PyObject *ALSAOutput_new(PyTypeObject *type, 
+PyObject *ALSAOutput_new(PyTypeObject *type,
 			 PyObject *args, PyObject *kwds) {
   alsa_Output *self;
 
   self = (alsa_Output *)type->tp_alloc(type, 0);
   self->playback = NULL;
   self->params = NULL;
-  
+
   return (PyObject *)self;
 }
 
-int ALSAOutput_init(alsa_Output *self, 
+int ALSAOutput_init(alsa_Output *self,
 		    PyObject *args, PyObject *kwds) {
 
   int err;
@@ -174,7 +174,7 @@ PyObject *ALSAOutput_close(alsa_Output* self) {
   return Py_None;
 }
 
-PyObject *ALSAOutput_setparams(alsa_Output* self, 
+PyObject *ALSAOutput_setparams(alsa_Output* self,
 			       PyObject *args) {
   unsigned int sample_rate;
   unsigned int channels;
@@ -192,7 +192,7 @@ PyObject *ALSAOutput_setparams(alsa_Output* self,
     return NULL;
   }
 
-  if ((bits_per_sample != 8) && 
+  if ((bits_per_sample != 8) &&
       (bits_per_sample != 16) &&
       (bits_per_sample != 24)) {
     PyErr_SetString(PyExc_ValueError,
@@ -231,7 +231,7 @@ PyObject *ALSAOutput_setparams(alsa_Output* self,
     return NULL;
   }
 
-  
+
   /*test/set bits-per-sample*/
   switch (bits_per_sample) {
   case 8: pcm_format = SND_PCM_FORMAT_U8; break;
@@ -252,13 +252,13 @@ PyObject *ALSAOutput_setparams(alsa_Output* self,
     PyErr_SetString(PyExc_ValueError, snd_strerror(err));
     return NULL;
   }
-  
+
 
   err = snd_pcm_hw_params(self->playback, self->params);
   if (err < 0) {
     PyErr_SetString(PyExc_ValueError, snd_strerror(err));
     return NULL;
-  }  
+  }
 
   err = snd_pcm_prepare(self->playback);
   if (err < 0) {
@@ -266,13 +266,13 @@ PyObject *ALSAOutput_setparams(alsa_Output* self,
     return NULL;
   }
 
-  
+
 
   Py_INCREF(Py_None);
   return Py_None;
 }
 
-PyObject *ALSAOutput_write(alsa_Output* self, 
+PyObject *ALSAOutput_write(alsa_Output* self,
 			   PyObject *args) {
   char *pcm_data;
   Py_ssize_t pcm_data_length;
@@ -287,7 +287,7 @@ PyObject *ALSAOutput_write(alsa_Output* self,
   }
 
   Py_BEGIN_ALLOW_THREADS
-  snd_pcm_writei(self->playback, pcm_data, 
+  snd_pcm_writei(self->playback, pcm_data,
 		 (snd_pcm_uframes_t)pcm_data_length);
   Py_END_ALLOW_THREADS
 

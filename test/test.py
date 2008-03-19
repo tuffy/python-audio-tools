@@ -23,12 +23,16 @@ import audiotools.pcmstream
 import audiotools.bitstream
 import tempfile
 import sys
-import md5
 import os
 import random
 import cStringIO
 import unittest
 import decimal as D
+
+try:
+    from hashlib import md5
+except ImportError:
+    from md5 import new as md5
 
 Con = audiotools.Con
 
@@ -76,8 +80,8 @@ class RANDOM_PCM_Reader(BLANK_PCM_Reader):
                  sample_rate=44100,channels=2,bits_per_sample=16):
         BLANK_PCM_Reader.__init__(self,length,
                                   sample_rate,channels,bits_per_sample)
-        self.md5 = md5.new()
-    
+        self.md5 = md5()
+
     def read(self, bytes):
         if (self.current_size > 0):
             buffer = os.urandom(min(bytes,self.current_size))
@@ -108,10 +112,10 @@ class VARIABLE_PCM_Reader(RANDOM_PCM_Reader):
 class PCM_Count:
     def __init__(self):
         self.count = 0
-    
+
     def write(self, bytes):
         self.count += len(bytes)
-    
+
     def __len__(self):
         return self.count
 
@@ -127,7 +131,7 @@ class DummyMetaData(audiotools.MetaData):
     @classmethod
     def supports_images(cls):
         return True
-        
+
 class DummyMetaData2(audiotools.MetaData):
     def __init__(self):
         audiotools.MetaData.__init__(self,
@@ -267,7 +271,7 @@ class TestPCMCombinations(unittest.TestCase):
             counter = PCM_Count()
             audiotools.transfer_data(reader.read,counter.write)
             self.assertEqual(len(counter),reader.total_size)
-            
+
 class TestAiffAudio(unittest.TestCase):
     def setUp(self):
         self.audio_class = audiotools.AiffAudio
@@ -282,7 +286,7 @@ class TestAiffAudio(unittest.TestCase):
             self.assertEqual(new_file.channels(),2)
             self.assertEqual(new_file.bits_per_sample(),16)
             self.assertEqual(new_file.sample_rate(),44100)
-            
+
             if (new_file.lossless()):
                 self.assertEqual(audiotools.pcm_cmp(
                     new_file.to_pcm(),
@@ -302,16 +306,16 @@ class TestAiffAudio(unittest.TestCase):
         temp = tempfile.NamedTemporaryFile(suffix="." + self.audio_class.SUFFIX)
         try:
             reader = VARIABLE_PCM_Reader(TEST_LENGTH)
-            
+
             new_file = self.audio_class.from_pcm(
                 temp.name,reader)
 
             self.assertEqual(new_file.channels(),2)
             self.assertEqual(new_file.bits_per_sample(),16)
             self.assertEqual(new_file.sample_rate(),44100)
-            
+
             if (new_file.lossless()):
-                md5sum = md5.new()
+                md5sum = md5()
                 pcm = new_file.to_pcm()
                 audiotools.transfer_data(pcm.read,md5sum.update)
                 pcm.close()
@@ -342,8 +346,8 @@ class TestAiffAudio(unittest.TestCase):
                                          bits_per_sample))
                 except audiotools.InvalidFormat:
                     continue
-                
-            
+
+
                 if (new_file.lossless()):
                     self.assertEqual(audiotools.pcm_cmp(
                         new_file.to_pcm(),
@@ -364,7 +368,7 @@ class TestAiffAudio(unittest.TestCase):
                     #If files are lossy,
                     #only be sure the lengths are the same.
                     #Everything else is too variable.
-                    
+
                     counter = PCM_Count()
                     pcm = new_file.to_pcm()
                     audiotools.transfer_data(pcm.read,counter.write)
@@ -414,7 +418,7 @@ class TestAiffAudio(unittest.TestCase):
             tempwav.close()
             temp.close()
             temp2.close()
-        
+
 
     def testmassencode(self):
         temp = tempfile.NamedTemporaryFile(suffix="." + self.audio_class.SUFFIX)
@@ -422,13 +426,13 @@ class TestAiffAudio(unittest.TestCase):
         tempfiles = [(tempfile.NamedTemporaryFile(
             suffix="." + audio_class.SUFFIX),
             audio_class) for audio_class in audiotools.TYPE_MAP.values()]
-        
+
         other_files = [audio_class.from_pcm(temp_file.name,
                                             BLANK_PCM_Reader(SHORT_LENGTH))
                        for (temp_file,audio_class) in tempfiles]
         for audio_file in other_files:
             audio_file.set_metadata(DummyMetaData3())
-            
+
         try:
             for f in other_files:
                 new_file = self.audio_class.from_pcm(
@@ -436,7 +440,7 @@ class TestAiffAudio(unittest.TestCase):
                     f.to_pcm())
 
                 new_file.set_metadata(f.get_metadata())
-                
+
                 if (new_file.lossless() and f.lossless()):
                     self.assertEqual(audiotools.pcm_cmp(
                         new_file.to_pcm(),
@@ -477,15 +481,15 @@ class TestAiffAudio(unittest.TestCase):
         temp = tempfile.NamedTemporaryFile()
 
         tempfiles = [(tempfile.NamedTemporaryFile(),
-                      audio_class) for audio_class in 
+                      audio_class) for audio_class in
                      audiotools.TYPE_MAP.values()]
-        
+
         other_files = [audio_class.from_pcm(temp_file.name,
                                             BLANK_PCM_Reader(SHORT_LENGTH))
                        for (temp_file,audio_class) in tempfiles]
         for audio_file in other_files:
             audio_file.set_metadata(DummyMetaData3())
-            
+
         try:
             for f in other_files:
                 new_file = self.audio_class.from_pcm(
@@ -493,7 +497,7 @@ class TestAiffAudio(unittest.TestCase):
                     f.to_pcm())
 
                 new_file.set_metadata(f.get_metadata())
-                
+
                 if (new_file.lossless() and f.lossless()):
                     self.assertEqual(audiotools.pcm_cmp(
                         new_file.to_pcm(),
@@ -566,11 +570,11 @@ class TestAiffAudio(unittest.TestCase):
 
                 image1 = audiotools.Image.new(TEST_COVER1,u'',0)
                 image2 = audiotools.Image.new(TEST_COVER2,u'',0)
-                
+
                 metadata.add_image(image1)
                 self.assertEqual(metadata.images()[0],image1)
                 self.assertEqual(metadata.front_covers()[0],image1)
-                
+
                 new_file.set_metadata(metadata)
                 metadata = new_file.get_metadata()
                 self.assertEqual(metadata.images()[0],image1)
@@ -600,7 +604,7 @@ class TestAiffAudio(unittest.TestCase):
 
                 self.assertEqual(sum(PCM_LENGTHS),
                                  new_file.total_frames())
-                
+
                 for (sub_pcm,pcm_length) in zip(audiotools.pcm_split(
                     new_file.to_pcm(),
                     PCM_LENGTHS),
@@ -611,7 +615,7 @@ class TestAiffAudio(unittest.TestCase):
                                                              sub_pcm)
                         self.assertEqual(sub_file.total_frames(),
                                          pcm_length)
-                        
+
                     finally:
                         sub_temp.close()
 
@@ -620,14 +624,14 @@ class TestAiffAudio(unittest.TestCase):
                     audiotools.PCMCat(
                     audiotools.pcm_split(new_file.to_pcm(),PCM_LENGTHS))),
                                  True)
-                
+
         finally:
             temp.close()
 
 class TestForeignWaveChunks:
     def testforeignwavechunks(self):
         import filecmp
-        
+
         tempwav1 = tempfile.NamedTemporaryFile(suffix=".wav")
         tempwav2 = tempfile.NamedTemporaryFile(suffix=".wav")
         audio = tempfile.NamedTemporaryFile(suffix='.'+self.audio_class.SUFFIX)
@@ -640,7 +644,7 @@ class TestForeignWaveChunks:
                  ('barz','somemoretesttext'),
                  ('bazz',chr(0) * 1024),
                  ('data','BZh91AY&SY\xdc\xd5\xc2\x8d\x06\xba\xa7\xc0\x00`\x00 \x000\x80MF\xa9$\x84\x9a\xa4\x92\x12qw$S\x85\t\r\xcd\\(\xd0'.decode('bz2'))])
-            
+
             #convert it to our audio type
             wav = self.audio_class.from_wave(audio.name,
                                              tempwav1.name)
@@ -725,7 +729,7 @@ class TestSpeexAudio(TestAiffAudio):
 class TestID3v2(unittest.TestCase):
     def setUp(self):
         self.file = tempfile.NamedTemporaryFile(suffix=".mp3")
-        
+
         self.mp3_file = audiotools.MP3Audio.from_pcm(
             self.file.name,BLANK_PCM_Reader(TEST_LENGTH))
 
@@ -734,7 +738,7 @@ class TestID3v2(unittest.TestCase):
             id3_class.converted(DummyMetaData()))
         metadata = self.mp3_file.get_metadata()
         self.assertEqual(isinstance(metadata.id3v2,id3_class),True)
-        
+
         metadata.track_name = u"New Track Name"
         self.assertEqual(metadata.track_name,u"New Track Name")
         self.mp3_file.set_metadata(metadata)
@@ -758,7 +762,7 @@ class TestID3v2(unittest.TestCase):
 
     def testid3v2_4(self):
         self.__comment_test__(audiotools.ID3v2Comment)
-    
+
     def testladder(self):
         self.mp3_file.set_metadata(DummyMetaData3())
         for new_class in (audiotools.ID3v2_2Comment,
@@ -816,7 +820,7 @@ class TestID3v2(unittest.TestCase):
 class TestFlacComment(unittest.TestCase):
     def setUp(self):
         self.file = tempfile.NamedTemporaryFile(suffix=".flac")
-        
+
         self.flac_file = audiotools.FlacAudio.from_pcm(
             self.file.name,BLANK_PCM_Reader(TEST_LENGTH))
 
@@ -891,14 +895,14 @@ class TestPCMStreamReader(unittest.TestCase):
         self.assertRaises(ValueError,
                           audiotools.pcmstream.PCMStreamReader,
                           cStringIO.StringIO(chr(0) * 10),0,False,False)
-        
+
         self.assertRaises(ValueError,
                           audiotools.pcmstream.PCMStreamReader,
                           cStringIO.StringIO(chr(0) * 10),5,False,False)
 
         r = audiotools.pcmstream.PCMStreamReader(None,2,False,False)
         self.assertRaises(AttributeError,r.read,10)
-    
+
     def testroundtrip(self):
         for (bytes_per_sample,big_endian) in ((1,False),(2,False),(3,False),
                                               (1,True), (2,True), (3, True)):
@@ -909,7 +913,7 @@ class TestPCMStreamReader(unittest.TestCase):
                                                              bytes_per_sample,
                                                              big_endian,
                                                              False)
-            md5sum = md5.new()
+            md5sum = md5()
             d = converter.read(audiotools.BUFFER_SIZE)
             while (len(d) > 0):
                 md5sum.update(audiotools.pcmstream.pcm_to_string(
@@ -929,7 +933,7 @@ class TestPCMStreamReader(unittest.TestCase):
                                                              big_endian,
                                                              True)
 
-            md5sum = md5.new()
+            md5sum = md5()
             d = converter.read(audiotools.BUFFER_SIZE) #a list of floats
             while (len(d) > 0):
                 md5sum.update(audiotools.pcmstream.pcm_to_string(
@@ -963,13 +967,13 @@ class TestPCMStreamReader(unittest.TestCase):
                 sample_rate=data.sample_rate,
                 bits_per_sample=data.bits_per_sample,
                 channels=data.channels)
-            
+
             converter = audiotools.pcmstream.PCMStreamReader(new_data,
                                                              bytes_per_sample,
                                                              not big_endian,
                                                              False)
 
-            md5sum = md5.new()
+            md5sum = md5()
             d = converter.read(audiotools.BUFFER_SIZE)
             while (len(d) > 0):
                 md5sum.update(audiotools.pcmstream.pcm_to_string(
@@ -989,10 +993,10 @@ class TestPCMStreamReader(unittest.TestCase):
         for c in _8bits():
             self.assertEqual(c,audiotools.pcmstream.pcm_to_string([
                         le_parser.parse(c) - 0x7F],1,False))
-        
+
             self.assertEqual(c,audiotools.pcmstream.pcm_to_string([
                         be_parser.parse(c) - 0x7F],1,True))
-            
+
     def test16bitpcmtostring(self):
         def _16bits():
             for i in xrange(0x100):
@@ -1045,8 +1049,8 @@ class testbitstream(unittest.TestCase):
         for i in xrange(1,65):
             reader1 = Con.BitStreamReader(cStringIO.StringIO(allbits))
             reader2 = audiotools.bitstream.BitStreamReader(cStringIO.StringIO(allbits))
-            sum1 = md5.new()
-            sum2 = md5.new()
+            sum1 = md5()
+            sum2 = md5()
 
             for (reader,sum) in ((reader1,sum1),(reader2,sum2)):
                 bits = reader.read(i)
@@ -1062,7 +1066,7 @@ class testbufferedstream(unittest.TestCase):
         reader = VARIABLE_PCM_Reader(TEST_LENGTH)
         bufferedreader = audiotools.BufferedPCMReader(reader)
 
-        output = md5.new()
+        output = md5()
 
         s = bufferedreader.read(4096)
         while (len(s) > 0):
@@ -1076,7 +1080,7 @@ class testbufferedstream(unittest.TestCase):
         bufferedreader = audiotools.BufferedPCMReader(reader)
         size = reader.total_size
 
-        output = md5.new()
+        output = md5()
 
         while (size > 0):
             buffer_length = min(size,random.randint(1,10000))
@@ -1084,13 +1088,13 @@ class testbufferedstream(unittest.TestCase):
             self.assertEqual(len(s),buffer_length)
             output.update(s)
             size -= buffer_length
-        
+
         self.assertEqual(output.hexdigest(),reader.hexdigest())
 
 ############
 #END TESTS
 ############
-        
+
 if (__name__ == '__main__'):
     unittest.main()
 

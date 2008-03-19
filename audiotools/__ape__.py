@@ -83,7 +83,7 @@ class ApeTag(MetaData,dict):
     def __setattr__(self, key, value):
         self.__dict__[key] = value
 
-        if (self.ATTRIBUTE_MAP.has_key(key)):
+        if (key in self.ATTRIBUTE_MAP):
             if (key != 'track_number'):
                 self[self.ATTRIBUTE_MAP[key]] = value
             else:

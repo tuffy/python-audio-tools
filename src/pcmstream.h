@@ -39,17 +39,17 @@ typedef struct {
 
 void PCMStreamReader_dealloc(pcmstream_PCMStreamReader* self);
 
-PyObject *PCMStreamReader_new(PyTypeObject *type, 
+PyObject *PCMStreamReader_new(PyTypeObject *type,
 			      PyObject *args, PyObject *kwds);
 
-int PCMStreamReader_init(pcmstream_PCMStreamReader *self, 
+int PCMStreamReader_init(pcmstream_PCMStreamReader *self,
 			 PyObject *args, PyObject *kwds);
 
 PyObject *PCMStreamReader_close(pcmstream_PCMStreamReader* self);
 
 PyObject *PCMStreamReader_tell(pcmstream_PCMStreamReader* self);
 
-PyObject *PCMStreamReader_read(pcmstream_PCMStreamReader* self, 
+PyObject *PCMStreamReader_read(pcmstream_PCMStreamReader* self,
 			       PyObject *args);
 
 PyObject *PCMStreamReader_get_sample_size(
@@ -105,7 +105,7 @@ PyMethodDef module_methods[] = {
 };
 
 PyGetSetDef PCMStreamReader_getseters[] = {
-    {"sample_size", 
+    {"sample_size",
      (getter)PCMStreamReader_get_sample_size, 0,
      "sample size",
      NULL},
@@ -177,13 +177,13 @@ typedef struct {
 
 void Resampler_dealloc(pcmstream_Resampler* self);
 
-PyObject *Resampler_new(PyTypeObject *type, 
+PyObject *Resampler_new(PyTypeObject *type,
 			PyObject *args, PyObject *kwds);
 
-int Resampler_init(pcmstream_Resampler *self, 
+int Resampler_init(pcmstream_Resampler *self,
 		   PyObject *args, PyObject *kwds);
 
-PyObject *Resampler_process(pcmstream_Resampler* self, 
+PyObject *Resampler_process(pcmstream_Resampler* self,
 			    PyObject *args);
 
 PyMethodDef Resampler_methods[] = {

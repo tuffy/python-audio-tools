@@ -886,15 +886,12 @@ class MetaData:
             return base_comment
 
     def __eq__(self, metadata):
-        import operator
-
         if (metadata is not None):
-            return reduce(operator.and_,
-                          [(getattr(self,attr) == getattr(metadata,attr))
-                           for attr in
-                           ("track_name","artist_name","performer_name",
-                            "album_name","track_number","year",
-                            "copyright")],True)
+            return set([(getattr(self,attr) == getattr(metadata,attr))
+                        for attr in
+                        ("track_name","artist_name","performer_name",
+                         "album_name","track_number","year",
+                         "copyright")]) == set([True])
         else:
             return False
 
@@ -1037,15 +1034,12 @@ class Image:
                      type=type)
 
     def __eq__(self, image):
-        import operator
-
         if (image is not None):
-            return reduce(operator.and_,
-                          [(getattr(self,attr) == getattr(image,attr))
-                           for attr in
-                           ("data","mime_type","width","height",
-                            "color_depth","color_count","description",
-                            "type")],True)
+            return set([(getattr(self,attr) == getattr(image,attr))
+                        for attr in
+                        ("data","mime_type","width","height",
+                         "color_depth","color_count","description",
+                         "type")]) == set([True])
         else:
             return False
 
@@ -1217,12 +1211,8 @@ class AudioFile:
     #checks the __system_binaries__ class for which path to check on
     @classmethod
     def has_binaries(cls, system_binaries):
-        import operator
-
-        return reduce(operator.and_,
-                      [system_binaries.can_execute(system_binaries[command])
-                       for command in cls.BINARIES],
-                      True)
+        return set([system_binaries.can_execute(system_binaries[command])
+                    for command in cls.BINARIES]) == set([True])
 
 
 class DummyAudioFile(AudioFile):

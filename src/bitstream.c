@@ -39,19 +39,19 @@ typedef struct {
 } bitstream_BitStreamReader;
 
 static void BitStreamReader_dealloc(bitstream_BitStreamReader* self);
-static PyObject *BitStreamReader_new(PyTypeObject *type, 
+static PyObject *BitStreamReader_new(PyTypeObject *type,
 				     PyObject *args, PyObject *kwds);
-static int BitStreamReader_init(bitstream_BitStreamReader *self, 
+static int BitStreamReader_init(bitstream_BitStreamReader *self,
 				PyObject *args, PyObject *kwds);
 
 static PyObject *BitStreamReader_close(bitstream_BitStreamReader* self);
 
 static PyObject *BitStreamReader_tell(bitstream_BitStreamReader* self);
 
-static PyObject *BitStreamReader_seek(bitstream_BitStreamReader* self, 
+static PyObject *BitStreamReader_seek(bitstream_BitStreamReader* self,
 				      PyObject *args, PyObject *kwds);
 
-static PyObject *BitStreamReader_read(bitstream_BitStreamReader* self, 
+static PyObject *BitStreamReader_read(bitstream_BitStreamReader* self,
 				      PyObject *args);
 
 static PyObject *BitStreamReader_ungetc(bitstream_BitStreamReader* self,
@@ -85,7 +85,7 @@ static PyMethodDef BitStreamReader_methods[] = {
 
 
 static PyGetSetDef BitStreamReader_getseters[] = {
-    {"buffer", 
+    {"buffer",
      (getter)BitStreamReader_buffer, 0,
      "buffer string",
      NULL},
@@ -151,20 +151,20 @@ PyMODINIT_FUNC initbitstream(void) {
                        "A bit stream reading module.");
 
     Py_INCREF(&bitstream_BitStreamReaderType);
-    PyModule_AddObject(m, "BitStreamReader", 
+    PyModule_AddObject(m, "BitStreamReader",
 		       (PyObject *)&bitstream_BitStreamReaderType);
 }
 
-static PyObject *BitStreamReader_new(PyTypeObject *type, 
+static PyObject *BitStreamReader_new(PyTypeObject *type,
 				     PyObject *args, PyObject *kwds) {
   bitstream_BitStreamReader *self;
 
   self = (bitstream_BitStreamReader *)type->tp_alloc(type, 0);
-  
+
   return (PyObject *)self;
 }
 
-static int BitStreamReader_init(bitstream_BitStreamReader *self, 
+static int BitStreamReader_init(bitstream_BitStreamReader *self,
 				PyObject *args, PyObject *kwds) {
   PyObject *substream = NULL;
 
@@ -194,7 +194,7 @@ static PyObject *BitStreamReader_tell(bitstream_BitStreamReader* self) {
   return PyObject_CallMethod(self->substream,"tell",NULL);
 }
 
-static PyObject *BitStreamReader_seek(bitstream_BitStreamReader* self, 
+static PyObject *BitStreamReader_seek(bitstream_BitStreamReader* self,
 				      PyObject *args,
 				      PyObject *kwds) {
   static long int position = 0;
@@ -218,7 +218,7 @@ static PyObject *BitStreamReader_buffer(bitstream_BitStreamReader* self,
 				    remaining_bits_length(self));
 }
 
-static PyObject *BitStreamReader_read(bitstream_BitStreamReader* self, 
+static PyObject *BitStreamReader_read(bitstream_BitStreamReader* self,
 				      PyObject *args) {
   static long int read_count = 0;
   Py_ssize_t bytes_to_read;
@@ -251,7 +251,7 @@ static PyObject *BitStreamReader_read(bitstream_BitStreamReader* self,
 
     if (bytes_to_read < 1) bytes_to_read = 1;
 
-    read_data = PyObject_CallMethod(self->substream,"read","l", 
+    read_data = PyObject_CallMethod(self->substream,"read","l",
 				    bytes_to_read);
 
     if (read_data == NULL)
@@ -277,7 +277,7 @@ static PyObject *BitStreamReader_read(bitstream_BitStreamReader* self,
     memcpy(bit_buffer,remaining_bits(self),(size_t)remaining_bits_length(self));
 
     /*add the new bits*/
-    bytes_to_bits(byte_buffer, byte_length, 
+    bytes_to_bits(byte_buffer, byte_length,
 		  bit_buffer + remaining_bits_length(self));
 
     /*mark old bits as consumed*/
@@ -324,7 +324,7 @@ static PyObject *BitStreamReader_ungetc(bitstream_BitStreamReader* self,
   int bit_length;
 
   int old_length;
-  
+
   if (!PyArg_ParseTuple(args,"s#",&bit,&bit_length))
     return NULL;
 
@@ -346,7 +346,7 @@ static PyObject *BitStreamReader_ungetc(bitstream_BitStreamReader* self,
     self->buffer[0] = (char)0;
   else
     self->buffer[0] = (char)1;
-  
+
   self->buffer_index = 0;
   self->buffer_length = old_length + 1;
 

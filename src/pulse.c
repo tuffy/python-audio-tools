@@ -29,15 +29,15 @@ typedef struct {
 } pulse_Output;
 
 PyMODINIT_FUNC initpulse(void);
-PyObject *PulseOutput_new(PyTypeObject *type, 
+PyObject *PulseOutput_new(PyTypeObject *type,
 			  PyObject *args, PyObject *kwds);
-int PulseOutput_init(pulse_Output *self, 
+int PulseOutput_init(pulse_Output *self,
 		     PyObject *args, PyObject *kwds);
 void PulseOutput_dealloc(pulse_Output* self);
 PyObject *PulseOutput_close(pulse_Output* self);
-PyObject *PulseOutput_setparams(pulse_Output* self, 
+PyObject *PulseOutput_setparams(pulse_Output* self,
 				PyObject *args);
-PyObject *PulseOutput_write(pulse_Output* self, 
+PyObject *PulseOutput_write(pulse_Output* self,
 			    PyObject *args);
 
 PyMethodDef module_methods[] = {
@@ -106,11 +106,11 @@ PyMODINIT_FUNC initpulse(void) {
                        "An output-only PulseAudio interface module.");
 
     Py_INCREF(&pulse_OutputType);
-    PyModule_AddObject(m, "Output", 
+    PyModule_AddObject(m, "Output",
 		       (PyObject *)&pulse_OutputType);
 }
 
-PyObject *PulseOutput_new(PyTypeObject *type, 
+PyObject *PulseOutput_new(PyTypeObject *type,
 			 PyObject *args, PyObject *kwds) {
   pulse_Output *self;
 
@@ -120,7 +120,7 @@ PyObject *PulseOutput_new(PyTypeObject *type,
   return (PyObject *)self;
 }
 
-int PulseOutput_init(pulse_Output *self, 
+int PulseOutput_init(pulse_Output *self,
 		    PyObject *args, PyObject *kwds) {
 
   unsigned int sample_rate;
@@ -135,7 +135,7 @@ int PulseOutput_init(pulse_Output *self,
   case 8: self->pcm_format.format = PA_SAMPLE_U8; break;
   case 16: self->pcm_format.format = PA_SAMPLE_S16LE; break;
   case 32: self->pcm_format.format = PA_SAMPLE_FLOAT32LE; break;
-  default: 
+  default:
     PyErr_SetString(PyExc_IOError,
 		    "8 and 16 bit ints or 32 bits floats are supported");
     return -1;
@@ -173,7 +173,7 @@ PyObject *PulseOutput_close(pulse_Output* self) {
   return Py_None;
 }
 
-PyObject *PulseOutput_write(pulse_Output* self, 
+PyObject *PulseOutput_write(pulse_Output* self,
 			    PyObject *args) {
   char *pcm_data;
   Py_ssize_t pcm_data_length;
@@ -201,7 +201,7 @@ PyObject *PulseOutput_write(pulse_Output* self,
   */
 
   Py_BEGIN_ALLOW_THREADS
-  write_result = pa_simple_write(self->stream, pcm_data, 
+  write_result = pa_simple_write(self->stream, pcm_data,
 				 (size_t)pcm_data_length, &error);
   Py_END_ALLOW_THREADS
 

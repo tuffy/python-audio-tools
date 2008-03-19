@@ -352,7 +352,7 @@ class M4AMetaData(MetaData,dict):
         trkn = __Qt_Meta_Atom__.TRKN.parse(
             meta_data.get('trkn',[chr(0) * 8])[0])
 
-        if (meta_data.has_key('covr')):
+        if ('covr' in meta_data):
             try:
                 images = [M4ACovr(i) for i in meta_data['covr']]
             except InvalidImage:

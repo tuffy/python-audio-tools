@@ -136,7 +136,7 @@ static PyObject *CDDA_new(PyTypeObject *type, PyObject *args, PyObject *kwds) {
   cdio_CDDAObject *self;
 
   self = (cdio_CDDAObject *)type->tp_alloc(type, 0);
-  
+
   return (PyObject *)self;
 }
 
@@ -145,7 +145,7 @@ static int CDDA_init(cdio_CDDAObject *self, PyObject *args, PyObject *kwds) {
 
   if (!PyArg_ParseTuple(args, "s", &drive))
     return -1;
- 
+
   self->cdrom_drive = cdio_cddap_identify(drive,0,NULL);
   if (self->cdrom_drive == NULL) {
     PyErr_SetString(PyExc_IOError,
@@ -252,7 +252,7 @@ static PyObject *CDDA_read_sectors(cdio_CDDAObject* self, PyObject *args) {
     raw_sector = cdio_paranoia_read_limited(self->paranoia,
 					    &read_sector_callback,
 					    10);
-    for (i = 0; i < (SECTOR_LENGTH / 2); 
+    for (i = 0; i < (SECTOR_LENGTH / 2);
 	 i++) {
       pair = raw_sector[i];
       sectors[current_sectors_position] = pair & 0x00FF;
@@ -305,9 +305,9 @@ static PyObject *CDDA_length_in_seconds(cdio_CDDAObject* self) {
   int length;
   static PyObject *result = NULL;
 
-  cdio_get_track_msf(self->cdrom_drive->p_cdio, 
+  cdio_get_track_msf(self->cdrom_drive->p_cdio,
 		     1, &first_track);
-  cdio_get_track_msf(self->cdrom_drive->p_cdio, 
+  cdio_get_track_msf(self->cdrom_drive->p_cdio,
 		     CDIO_CDROM_LEADOUT_TRACK, &leadout);
 
   length = cdio_audio_get_msf_seconds(&leadout) -

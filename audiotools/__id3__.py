@@ -199,7 +199,7 @@ class ID3v2Comment(MetaData,dict):
 
 
         images = []
-        if (metadata.has_key('APIC')):
+        if ('APIC' in metadata):
             for apic_frame in metadata['APIC']:
                 try:
                     apic = APICImage.APIC_FRAME.parse(apic_frame)
@@ -219,7 +219,7 @@ class ID3v2Comment(MetaData,dict):
                 except InvalidImage:
                     pass
 
-        if (metadata.has_key('PIC')):
+        if ('PIC' in metadata):
             for pic_frame in metadata['PIC']:
                 try:
                     pic = PICImage.PIC_FRAME.parse(pic_frame)
@@ -271,7 +271,7 @@ class ID3v2Comment(MetaData,dict):
     def __setattr__(self, key, value):
         self.__dict__[key] = value
 
-        if (self.ATTRIBUTE_MAP.has_key(key)):
+        if (key in self.ATTRIBUTE_MAP):
             if (key != 'track_number'):
                 self[self.ATTRIBUTE_MAP[key]] = [value]
             else:
@@ -282,7 +282,7 @@ class ID3v2Comment(MetaData,dict):
     def __setitem__(self, key, value):
         dict.__setitem__(self, key, value)
 
-        if (self.ITEM_MAP.has_key(key)):
+        if (key in self.ITEM_MAP):
             if (key != 'TRCK'):
                 self.__dict__[self.ITEM_MAP[key]] = value[0]
             else:

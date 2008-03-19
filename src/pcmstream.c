@@ -39,9 +39,9 @@ PyMODINIT_FUNC initpcmstream(void) {
 
     Py_INCREF(&pcmstream_PCMStreamReaderType);
     Py_INCREF(&pcmstream_ResamplerType);
-    PyModule_AddObject(m, "PCMStreamReader", 
+    PyModule_AddObject(m, "PCMStreamReader",
 		       (PyObject *)&pcmstream_PCMStreamReaderType);
-    PyModule_AddObject(m, "Resampler", 
+    PyModule_AddObject(m, "Resampler",
 		       (PyObject *)&pcmstream_ResamplerType);
 }
 
@@ -50,16 +50,16 @@ PyMODINIT_FUNC initpcmstream(void) {
 /********************************/
 
 
-PyObject *PCMStreamReader_new(PyTypeObject *type, 
+PyObject *PCMStreamReader_new(PyTypeObject *type,
 			      PyObject *args, PyObject *kwds) {
   pcmstream_PCMStreamReader *self;
 
   self = (pcmstream_PCMStreamReader *)type->tp_alloc(type, 0);
-  
+
   return (PyObject *)self;
 }
 
-int PCMStreamReader_init(pcmstream_PCMStreamReader *self, 
+int PCMStreamReader_init(pcmstream_PCMStreamReader *self,
 			 PyObject *args, PyObject *kwds) {
   PyObject *substream = NULL;
   int sample_size;
@@ -145,7 +145,7 @@ PyObject *PCMStreamReader_tell(pcmstream_PCMStreamReader* self) {
   return PyObject_CallMethod(self->substream,"tell",NULL);
 }
 
-PyObject *PCMStreamReader_read(pcmstream_PCMStreamReader* self, 
+PyObject *PCMStreamReader_read(pcmstream_PCMStreamReader* self,
 				      PyObject *args) {
   long read_count;
 
@@ -175,7 +175,7 @@ PyObject *PCMStreamReader_read(pcmstream_PCMStreamReader* self,
   if (read_string == NULL) return NULL;
 
   if (PyString_AsStringAndSize(read_string,
-			       &read_data, 
+			       &read_data,
 			       &read_data_length) == -1) {
     Py_DECREF(read_string);
     return NULL;
@@ -195,7 +195,7 @@ PyObject *PCMStreamReader_read(pcmstream_PCMStreamReader* self,
 
   /*copy any old bytes to the pcm_data string*/
   if (self->unhandled_bytes_length > 0)
-    memcpy(pcm_data, self->unhandled_bytes, 
+    memcpy(pcm_data, self->unhandled_bytes,
 	   (size_t)self->unhandled_bytes_length);
 
   /*add the new bytes to the pcm_data string, if any*/
@@ -214,9 +214,9 @@ PyObject *PCMStreamReader_read(pcmstream_PCMStreamReader* self,
      free(pcm_data);
      return NULL;
    }
- 
+
    /*fill that array with values from the PCM stream*/
-  for (input = 0,output=0; 
+  for (input = 0,output=0;
        (input < pcm_data_length) && (output < pcm_array_length);
        input += sample_size,output++) {
     long_obj = char_converter(pcm_data + input);
@@ -225,7 +225,7 @@ PyObject *PCMStreamReader_read(pcmstream_PCMStreamReader* self,
       return NULL;
     }
   }
-  
+
   /*any leftover bytes are saved for next time*/
   if (input < pcm_data_length) {
     self->unhandled_bytes_length = pcm_data_length - input;
@@ -238,7 +238,7 @@ PyObject *PCMStreamReader_read(pcmstream_PCMStreamReader* self,
 
   /*remove the old PCM stream*/
   free(pcm_data);
-  
+
   /*return our new list*/
   return list;
 }
@@ -248,7 +248,7 @@ PyObject *pcm_to_string(PyObject *dummy, PyObject *args) {
   int sample_size;
   void (*long_to_char)(long i, unsigned char *s) = SL16long_to_char;
   int big_endian;
- 
+
   PyObject *fast_list = NULL;
   int fast_list_size;
 
@@ -289,14 +289,14 @@ PyObject *pcm_to_string(PyObject *dummy, PyObject *args) {
   if (fast_list == NULL) {
     return NULL;
   }
-  
+
 
   /*build a character string to hold our data*/
   fast_list_size = PySequence_Fast_GET_SIZE(fast_list);
   pcm_data_length = fast_list_size * sample_size;
   pcm_data = (unsigned char *)calloc(pcm_data_length,sizeof(unsigned char));
 
-  
+
   /*perform the int->PCM data conversion*/
   for (input = 0,output = 0;
        (input < fast_list_size) && (output < pcm_data_length);
@@ -310,13 +310,13 @@ PyObject *pcm_to_string(PyObject *dummy, PyObject *args) {
     long_to_char(item,pcm_data + output);
   }
 
-  
+
   /*build our output string and free all the junk we've allocated*/
   output_string = PyString_FromStringAndSize((char *)pcm_data,pcm_data_length);
 
   Py_DECREF(fast_list);
   free(pcm_data);
-  
+
   return output_string;
 }
 
@@ -440,17 +440,17 @@ void Resampler_dealloc(pcmstream_Resampler* self) {
   self->ob_type->tp_free((PyObject*)self);
 }
 
-PyObject *Resampler_new(PyTypeObject *type, 
-			       PyObject *args, PyObject *kwds) {
+PyObject *Resampler_new(PyTypeObject *type,
+			PyObject *args, PyObject *kwds) {
   pcmstream_Resampler *self;
 
   self = (pcmstream_Resampler *)type->tp_alloc(type, 0);
-  
+
   return (PyObject *)self;
 }
 
-int Resampler_init(pcmstream_Resampler *self, 
-			  PyObject *args, PyObject *kwds) {
+int Resampler_init(pcmstream_Resampler *self,
+		   PyObject *args, PyObject *kwds) {
   int error;
   int channels;
   int quality;
@@ -483,7 +483,7 @@ int Resampler_init(pcmstream_Resampler *self,
 
 #define OUTPUT_SAMPLES_LENGTH 0x100000
 
-PyObject *Resampler_process(pcmstream_Resampler* self, 
+PyObject *Resampler_process(pcmstream_Resampler* self,
 				   PyObject *args) {
   PyObject *samples_object;
   PyObject *samples_list;
@@ -514,7 +514,7 @@ PyObject *Resampler_process(pcmstream_Resampler* self,
 		    "samples must be a sequence");
     return NULL;
   }
-  
+
   samples_list = PySequence_Fast(samples_object,
 				 "samples must be a sequence");
   if (samples_list == NULL) {
@@ -564,7 +564,7 @@ PyObject *Resampler_process(pcmstream_Resampler* self,
   if ((processing_error = src_process(self->src_state,&src_data)) != 0) {
     /*some sort of processing error raises ValueError*/
     free(src_data.data_in);
-    
+
     PyErr_SetString(PyExc_ValueError,
 		    src_strerror(processing_error));
     return NULL;
@@ -574,7 +574,7 @@ PyObject *Resampler_process(pcmstream_Resampler* self,
   /*turn our processed and unprocessed data into two new arrays*/
   processed_samples = PyList_New((Py_ssize_t)src_data.output_frames_gen * self->channels);
   unprocessed_samples = PyList_New((Py_ssize_t)((src_data.input_frames - src_data.input_frames_used) * self->channels));
-  
+
   /*successfully processed samples*/
   for (i = 0; i < src_data.output_frames_gen * self->channels; i++) {
     if (PyList_SetItem(processed_samples,i,
@@ -590,7 +590,7 @@ PyObject *Resampler_process(pcmstream_Resampler* self,
 		       PyFloat_FromDouble((double)src_data.data_in[i])) == -1)
       goto error;
   }
-  
+
 
   /*cleanup anything allocated*/
   free(src_data.data_in);
