@@ -1,5 +1,6 @@
 /*
-** Copyright (C) 2002-2004 Erik de Castro Lopo <erikd@mega-nerd.com>
+** Copyright (C) 2002-2008 Erik de Castro Lopo <erikd@mega-nerd.com>
+** Portions modified by Brian Langenberger for use in Python Audio Tools
 **
 ** This program is free software; you can redistribute it and/or modify
 ** it under the terms of the GNU General Public License as published by
@@ -17,6 +18,12 @@
 */
 
 /*
+** This code is part of Secret Rabibt Code aka libsamplerate. A commercial
+** use license for this code is available, please see:
+**		http://www.mega-nerd.com/SRC/procedure.html
+*/
+
+/*
 ** API documentation is available here:
 **     http://www.mega-nerd.com/SRC/api.html
 */
@@ -28,6 +35,9 @@
 extern "C" {
 #endif	/* __cplusplus */
 
+/*FIXME - shouldn't hard-code these*/
+#define CPU_CLIPS_NEGATIVE 0
+#define CPU_CLIPS_POSITIVE 0
 
 /* Opaque data type SRC_STATE. */
 typedef struct SRC_STATE_tag SRC_STATE ;
@@ -120,7 +130,6 @@ int src_simple (SRC_DATA *data, int converter_type, int channels) ;
 
 const char *src_get_name (int converter_type) ;
 const char *src_get_description (int converter_type) ;
-const char *src_get_version (void) ;
 
 /*
 **	Set a new SRC ratio. This allows step responses
@@ -168,7 +177,7 @@ enum
 	SRC_SINC_MEDIUM_QUALITY		= 1,
 	SRC_SINC_FASTEST			= 2,
 	SRC_ZERO_ORDER_HOLD			= 3,
-	SRC_LINEAR					= 4
+	SRC_LINEAR					= 4,
 } ;
 
 /*
@@ -179,18 +188,13 @@ enum
 void src_short_to_float_array (const short *in, float *out, int len) ;
 void src_float_to_short_array (const float *in, short *out, int len) ;
 
+void src_int_to_float_array (const int *in, float *out, int len) ;
+void src_float_to_int_array (const float *in, int *out, int len) ;
+
 
 #ifdef __cplusplus
 }		/* extern "C" */
 #endif	/* __cplusplus */
 
 #endif	/* SAMPLERATE_H */
-
-/*
-** Do not edit or modify anything in this comment block.
-** The arch-tag line is a file identity tag for the GNU Arch
-** revision control system.
-**
-** arch-tag: 5421ef3e-c898-4ec3-8671-ea03d943ee00
-*/
 
