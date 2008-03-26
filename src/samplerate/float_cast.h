@@ -54,10 +54,9 @@
 
 #define		HAVE_LRINT_REPLACEMENT	0
 
-/*FIXME - these might not be actually present either,
-  depending on if the compiler is C99-compliant*/
-#define HAVE_LRINT 1
-#define HAVE_LRINTF 1
+/*assuming no LRINT or LRINTF for maximum compatibility*/
+#define HAVE_LRINT 0
+#define HAVE_LRINTF 0
 
 #if (HAVE_LRINT && HAVE_LRINTF)
 
@@ -242,11 +241,6 @@
 	} /* lrint */
 
 #else
-	#ifndef __sgi
-	#warning "Don't have the functions lrint() and lrintf()."
-	#warning "Replacing these functions with a standard C cast."
-	#endif
-
 	#include	<math.h>
 
 	#define	lrint(dbl)		((long) (dbl))
