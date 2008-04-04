@@ -43,10 +43,15 @@ class VorbisComment(MetaData,dict):
     #vorbis_data is a key->[value1,value2,...] dict of the original
     #Vorbis comment data.  keys should be upper case
     def __init__(self, vorbis_data, vendor_string=u""):
+        try:
+            track_number = int(vorbis_data.get('TRACKNUMBER',['0'])[0])
+        except ValueError:
+            track_number = 0
+
         MetaData.__init__(
             self,
             track_name = vorbis_data.get('TITLE',[u''])[0],
-            track_number = int(vorbis_data.get('TRACKNUMBER',['0'])[0]),
+            track_number = track_number,
             album_name = vorbis_data.get('ALBUM',[u''])[0],
             artist_name = vorbis_data.get('ARTIST',[u''])[0],
             performer_name = vorbis_data.get('PERFORMER',[u''])[0],
