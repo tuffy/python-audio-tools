@@ -55,9 +55,9 @@ Bits:Block Size:Sample Rate:Channel Assignment:Bits
 \^:(in samples):\^:channels:assignment:\^
 =
 0000:get from STREAMINFO:get from STREAMINFO:1:mono:0000
-0001:192:reserved:2:left, right:0001
-0010:576:reserved:3:left, right, center:0010
-0011:1152:reserved:4:left, right, back left, back right:0011
+0001:192:88200:2:left, right:0001
+0010:576:176400:3:left, right, center:0010
+0011:1152:192000:4:left, right, back left, back right:0011
 0100:2304:8000:5:left, right, center, back left, back right:0100
 0101:4608:16000:6:left, right, center, LFE, back left, back right:0101
 0110:8 bit from end of header (+1):22050:7:undefined:0110
