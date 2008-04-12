@@ -451,6 +451,75 @@ def pcm_split(reader, pcm_lengths):
 
     full_data.close()
 
+#going from many channels to many
+class __channel_remover__:
+    def __init__(self, channel_numbers):
+        self.channel_numbers = channel_numbers
+
+    def convert(self, frame_list):
+        return FrameList.from_channels(
+            list([frame_list.channel(i) for i in self.channel_numbers]))
+
+#going from many channels to 2
+class __downmixer__:
+    def __init__(self):
+        pass
+
+    def convert(self, frame_list):
+        REAR_GAIN = 0.6
+        CENTER_GAIN = 0.7
+
+        if (frame_list.total_channels == 6):
+            Lf = frame_list.channel(0)
+            Rf = frame_list.channel(1)
+            C  = frame_list.channel(2)
+            Lr = frame_list.channel(4)
+            Rr = frame_list.channel(5)
+        elif (frame_list.total_channels == 5):
+            Lf = frame_list.channel(0)
+            Rf = frame_list.channel(1)
+            C  = frame_list.channel(2)
+            Lr = frame_list.channel(3)
+            Rr = frame_list.channel(4)
+        elif (frame_list.total_channels == 4):
+            Lf = frame_list.channel(0)
+            Rf = frame_list.channel(1)
+            C  = [0] * len(Lf)
+            Lr = frame_list.channel(2)
+            Rr = frame_list.channel(3)
+        elif (frame_list.total_channels == 3):
+            Lf = frame_list.channel(0)
+            Rf = frame_list.channel(1)
+            C  = frame_list.channel(2)
+            Lr = Rr = [0] * len(Lf)
+        else:
+            raise ValueError("invalid number of channels in frame_list")
+
+        if ((len(frame_list) > 0) and (isinstance(frame_list[0],int))):
+            converter = int
+        else:
+            converter = lambda(i): i
+
+        mono_rear = [0.7 * (Lr_i + Rr_i) for Lr_i,Rr_i in izip(Lr,Rr)]
+
+        return FrameList.from_channels([
+                [converter(Lf_i +
+                           (REAR_GAIN * mono_rear_i) +
+                           (CENTER_GAIN * C_i))
+                 for Lf_i,mono_rear_i,C_i in izip(Lf,mono_rear,C)],
+                [converter(Rf_i -
+                           (REAR_GAIN * mono_rear_i) +
+                           (CENTER_GAIN * C_i))
+                 for Rf_i,mono_rear_i,C_i in izip(Rf,mono_rear,C)]])
+
+#going from many channels to 1
+class __downmix_remover__:
+    def __init__(self):
+        self.downmix = __downmixer__()
+        self.mono = __channel_remover__([0])
+
+    def convert(self, frame_list):
+        return self.mono.convert(self.downmix.convert(frame_list))
 
 class PCMConverter(PCMReader):
     def __init__(self, pcmreader,
@@ -552,12 +621,36 @@ class PCMConverter(PCMReader):
         difference = self.channels - self.input.channels
 
         if (difference < 0): #removing channels
-            channels = []
-            for i in xrange(self.channels):
-                channels.append(frame_list.channel(i))
+            if ((self.input.channels > 6)):
+                frame_list = FrameList.from_channels(
+                    list([frame_list.channel(i) for i in
+                          range(max(6,self.channels) - 1)]))
 
-            return FrameList.from_channels(channels)
+            #return if we've removed all the channels necessary
+            if (self.channels > 6):
+                return frame_list
+
+            return {2:{1:__channel_remover__([0])},
+
+                    3:{2:__downmixer__(),1:__downmix_remover__()},
+
+                    4:{3:__channel_remover__([0,1,2]),
+                       2:__downmixer__(),1:__downmix_remover__()},
+
+                    5:{4:__channel_remover__([0,1,3,4]),
+                       3:__channel_remover__([0,1,2]),
+                       2:__downmixer__(),1:__downmix_remover__()},
+
+                    6:{5:__channel_remover__([0,1,2,4,5]),
+                       4:__channel_remover__([0,1,4,5]),
+                       3:__channel_remover__([0,1,2]),
+                       2:__downmixer__(),1:__downmix_remover__()}}[
+                           self.input.channels][
+                               self.channels].convert(frame_list)
+
         else:                #adding new channels
+            #we'll simply add more copies of the first channel
+            #since this is typically going from mono to stereo
             channels = list(frame_list.channels())
             for i in xrange(difference):
                 channels.append(channels[0])
