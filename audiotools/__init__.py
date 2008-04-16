@@ -451,7 +451,7 @@ def pcm_split(reader, pcm_lengths):
 
     full_data.close()
 
-#going from many channels to many
+#going from many channels to less channels
 class __channel_remover__:
     def __init__(self, channel_numbers):
         self.channel_numbers = channel_numbers
@@ -459,6 +459,15 @@ class __channel_remover__:
     def convert(self, frame_list):
         return FrameList.from_channels(
             list([frame_list.channel(i) for i in self.channel_numbers]))
+
+class __stereo_to_mono__:
+    def __init__(self):
+        pass
+
+    def convert(self, frame_list):
+        return FrameList.from_channels(
+            [[(l + r) / 2 for l,r in izip(frame_list.channel(0),
+                                          frame_list.channel(1))]])
 
 #going from many channels to 2
 class __downmixer__:
@@ -516,7 +525,7 @@ class __downmixer__:
 class __downmix_remover__:
     def __init__(self):
         self.downmix = __downmixer__()
-        self.mono = __channel_remover__([0])
+        self.mono = __stereo_to_mono__()
 
     def convert(self, frame_list):
         return self.mono.convert(self.downmix.convert(frame_list))
@@ -630,7 +639,7 @@ class PCMConverter(PCMReader):
             if (self.channels > 6):
                 return frame_list
 
-            return {2:{1:__channel_remover__([0])},
+            return {2:{1:__stereo_to_mono__()},
 
                     3:{2:__downmixer__(),1:__downmix_remover__()},
 
