@@ -344,7 +344,7 @@ class ApeAudio(ApeTaggedAudio,AudioFile):
         return self.__channels__
 
     def total_frames(self):
-        return self.__totalframes__
+        return self.__totalsamples__
 
     def sample_rate(self):
         return self.__samplespersec__
@@ -407,15 +407,34 @@ class ApeAudio(ApeTaggedAudio,AudioFile):
         return TempWaveReader(f)
 
     def to_wave(self, wave_filename):
-        devnull = file(os.devnull,"wb")
-        sub = subprocess.Popen([BIN['mac'],
-                                self.filename,
-                                wave_filename,
-                                '-d'],
-                               stdout=devnull,
-                               stderr=devnull)
-        sub.wait()
-        devnull.close()
+        if (self.filename.endswith(".ape")):
+            devnull = file(os.devnull,"wb")
+            sub = subprocess.Popen([BIN['mac'],
+                                    self.filename,
+                                    wave_filename,
+                                    '-d'],
+                                   stdout=devnull,
+                                   stderr=devnull)
+            sub.wait()
+            devnull.close()
+        else:
+            devnull = file(os.devnull,'ab')
+            import tempfile
+            ape = tempfile.NamedTemporaryFile(suffix='.ape')
+            f = file(self.filename,'rb')
+            transfer_data(f.read,ape.write)
+            f.close()
+            ape.flush()
+            sub = subprocess.Popen([BIN['mac'],
+                                    ape.name,
+                                    wave_filename,
+                                    '-d'],
+                                   stdout=devnull,
+                                   stderr=devnull)
+            sub.wait()
+            ape.close()
+            devnull.close()
+
 
     @classmethod
     def from_pcm(cls, filename, pcmreader, compression=None):
