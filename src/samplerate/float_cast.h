@@ -1,6 +1,7 @@
 /*
 ** Copyright (C) 2001-2008 Erik de Castro Lopo <erikd@mega-nerd.com>
-** Portions modified by Brian Langenberger for use in Python Audio Tools
+** Portions modified April 2008 by Brian Langenberger
+** for use in Python Audio Tools
 **
 ** This program is free software; you can redistribute it and/or modify
 ** it under the terms of the GNU Lesser General Public License as published by
