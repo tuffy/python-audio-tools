@@ -1036,3 +1036,6 @@ class ID3CommentPair(MetaData):
         if (self.id3v2 is not None):
             self.id3v2.delete_image(image)
 
+    @classmethod
+    def supports_images(cls):
+        return True
