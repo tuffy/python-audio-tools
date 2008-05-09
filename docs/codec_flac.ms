@@ -1,11 +1,11 @@
-.\"This work is licensed under the 
+.\"This work is licensed under the
 .\"Creative Commons Attribution-Share Alike 3.0 United States License.
 .\"To view a copy of this license, visit
-.\"http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to 
-.\"Creative Commons, 
-.\"171 Second Street, Suite 300, 
+.\"http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to
+.\"Creative Commons,
+.\"171 Second Street, Suite 300,
 .\"San Francisco, California, 94105, USA.
-.SUBSECTION "the FLAC codec"
+.SUBSECTION "FLAC decoding"
 .PP
 A FLAC stream is made up of individual FLAC frames, as follows:
 .begin dformat
@@ -125,7 +125,7 @@ _
 no wasted bits per sample.  Otherwise, it is a unary-encoded value
 indicating how many bits are wasted per sample.
 .br
-Padding is added as needed between the final subframe and CRC-16 
+Padding is added as needed between the final subframe and CRC-16
 in order to byte-align frames.
 .1C
 .bp
@@ -155,7 +155,7 @@ noname
 This subframe's length is equal to the `Bits Per Sample' multiplied
 by the frame's `Block Size'.
 Since it does no compression whatsoever and simply stores
-audio samples as-is, this subframe is only suitable for especially 
+audio samples as-is, this subframe is only suitable for especially
 noisy portions of a track where no predictor can be found.
 .SUBSUBSECTION "the FIXED subframe"
 .PP
@@ -232,20 +232,20 @@ noname
   4-8-16 LPC Shift Needed
   9-?-14 @roman Coefficient sub 1@
   --14 @roman Coefficient sub 2@
-  --14-dashed ... 
+  --14-dashed ...
 noname
   --72 Residual
 .end dformat
 The number of warm-up samples equals the `LPC Order'
 (which is encoded in the `Subframe Type').
-The size of each Coefficient is equal to 
+The size of each Coefficient is equal to
 `LPC Precision' number of bits, plus 1.
 The value of each Coefficient is a signed two's-complement integer.
 The number of Coefficients equals the `LPC Order'.
 .EQ
-"Sample" sub i = 
+"Sample" sub i =
 {
-{sum from {j = 0} to {Order~-~1} 
+{sum from {j = 0} to {Order~-~1}
 {"Coefficient" sub j} * "Sample" sub {i~-~j~-~1}}
 } over {2 sup "LPC Shift Needed"}
 ~~+~~"Residual" sub i
@@ -308,7 +308,7 @@ For example: @-5~/~2 sup 1 = -3@
 .SUBSUBSECTION "the Residual"
 .PP
 Though the FLAC format allows for different forms of
-residual coding, two forms of partitioned Rice are the only ones 
+residual coding, two forms of partitioned Rice are the only ones
 currently supported.
 The difference between the two is that when `Coding Method' is 0,
 the Rice Parameter in each partition is 4 bits.
@@ -356,8 +356,8 @@ In that case:
 .EN
 since there is only one partition which takes up the entire block.
 .PP
-If all of the bits in `Rice Parameter' are set, 
-the partition is unencoded binary using `Escape Code' number of bits per 
+If all of the bits in `Rice Parameter' are set,
+the partition is unencoded binary using `Escape Code' number of bits per
 sample.
 .bp
 .SUBSUBSUBSECTION "Rice Encoding"
@@ -368,17 +368,17 @@ To decode it, one first needs the Rice parameter.
 Take a unary-encoded value\(dg from the bit stream, which are our most
 significant bits (MSB).
 .FS
-\(dg In this instance, unary-encoding is a simple matter of 
+\(dg In this instance, unary-encoding is a simple matter of
 counting the number of 0 bits before the next 1 bit.
 The resulting sum is the value.
 .FE
 Then take `parameter' number of additional bits, which are our least
 significant bits (LSB).
-Combine the two sets into our new value, 
+Combine the two sets into our new value,
 making the MSB set as the high bits and the LSB set as the low bits.
 Bit 0 of this new value is the sign bit.
 If it is 0, the actual value is equal to the rest of the bits.
-If it is 1, the actual value is equal to the rest of the bits, 
+If it is 1, the actual value is equal to the rest of the bits,
 multiplied by -1 and minus 1.
 .PP
 This is less complicated than it sounds, so let's run through an example
@@ -418,7 +418,7 @@ noname
 pic line dotted from F1.sw to S1.nw
 pic line dotted from F4.se to S4.ne
 pic line dotted from F2.se to S2.ne
-pic line dotted from F3.sw to S3.nw 
+pic line dotted from F3.sw to S3.nw
 .end dformat
 This is the simplest case.
 However, in the case of difference channels, one subframe will
@@ -465,7 +465,7 @@ right channels.
 .PP
 Though rare in practice, FLAC subframes support `wasted bits per sample'.
 Put simply, these wasted bits are removed during subframe calculation
-and restored to the subframe's least significant bits as zero value bits 
+and restored to the subframe's least significant bits as zero value bits
 when it is returned.
 For instance, a subframe with 1 wasted bit per sample in a 16-bit FLAC
 stream is treated as having only 15 bits per sample when reading
@@ -473,3 +473,22 @@ warm-up samples and then all through the rest of the subframe
 calculation.
 That wasted zero bit is then prepended to each sample prior to returning
 the subframe.
+.bp
+.SUBSECTION "FLAC encoding"
+.PP
+Until this point, the discussion of FLAC has assumed one has a FLAC file
+and wishes to extracted decoded PCM data from it.
+This process requires a broad knowledge of the format, since
+a single FLAC file created by the reference encoder is likely to use a
+wide variety of frame types, predictor orders, partition orders, and so
+forth.
+Conversely, encoding a FLAC file from PCM data requires only as much
+of the format as you wish;
+so long as the headers are correct, one can generate a perfectly
+valid FLAC file containing nothing but verbatim subframes, for example.
+But in order to generate useful compression, a deeper analysis of one's
+input PCM is needed.
+.PP
+For the purposes of discussing FLAC encoding,
+we'll assume one has a stream of input PCM values along with the
+stream's sample rate, number of channels and bits per sample.
