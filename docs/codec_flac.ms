@@ -6,6 +6,7 @@
 .\"171 Second Street, Suite 300,
 .\"San Francisco, California, 94105, USA.
 .SUBSECTION "FLAC decoding"
+.nr ZF \n%
 .PP
 A FLAC stream is made up of individual FLAC frames, as follows:
 .begin dformat
@@ -476,19 +477,137 @@ the subframe.
 .bp
 .SUBSECTION "FLAC encoding"
 .PP
-Until this point, the discussion of FLAC has assumed one has a FLAC file
-and wishes to extracted decoded PCM data from it.
-This process requires a broad knowledge of the format, since
-a single FLAC file created by the reference encoder is likely to use a
-wide variety of frame types, predictor orders, partition orders, and so
-forth.
-Conversely, encoding a FLAC file from PCM data requires only as much
-of the format as you wish;
-so long as the headers are correct, one can generate a perfectly
-valid FLAC file containing nothing but verbatim subframes, for example.
-But in order to generate useful compression, a deeper analysis of one's
-input PCM is needed.
-.PP
 For the purposes of discussing FLAC encoding,
 we'll assume one has a stream of input PCM values along with the
 stream's sample rate, number of channels and bits per sample.
+Creating a valid FLAC file is then a matter of writing the proper
+file header, metadata blocks and FLAC frames.
+.begin dformat
+style bitwid 0.08
+style charwid 0
+style recspread 0.15
+noname
+       0-31-24 Header (`fLaC' 0x664C6143)
+  FD1: 32--8 @roman Metadata sub 1@
+       --8 @roman Metadata sub 2@
+       --8-dashed ...
+  FD2: --8 @roman Frame sub 1@
+       --8 @roman Frame sub 2@
+       --8-dashed ...
+noname
+  FD3: 0-31-16 Metadata Header
+  FD4: 32--16-dashed Block Data
+       --4-invis
+  FD5: 0-48/128-14 Frame Header
+  FD7: --8 @roman Subframe sub 1@
+       --8 @roman Subframe sub 2@
+       --4-dashed ...
+  FD6: --6 CRC-16
+noname
+        --38-invis
+  FD8:  0-7-16 Subframe Header
+  FD9:  8--21 Subframe data
+pic line dotted from FD1.sw to FD3.nw
+pic line dotted from FD1.se to FD4.ne
+pic line dotted from FD2.sw to FD5.nw
+pic line dotted from FD2.se to FD6.ne
+pic line dotted from FD7.sw to FD8.nw
+pic line dotted from FD7.se to FD9.ne
+.end dformat
+.SUBSUBSECTION "Metadata header"
+.PP
+.TS
+tab(:);
+| c | c |
+| r | l |.
+_
+bits:value
+=
+1:0 if addition metadata blocks follow, 1 if not
+7:0 for STREAMINFO, 1 for PADDING, 4 for VORBIS_COMMENT, etc.
+24:the length of the block data in bytes, not including the header
+_
+.TE
+.SUBSUBSECTION "the STREAMINFO metadata block"
+.PP
+.TS
+tab(:);
+| c | c |
+| r | l |.
+_
+bits:value
+=
+16:the minimum FLAC frame size, in PCM frames
+16:the maximum FLAC frame size, in PCM frames
+24:the minimum FLAC frame size, in bytes
+24:the maximum FLAC frame size, in bytes
+20:the stream's sample rate, in Hz
+3:the stream's channel count, minus one
+5:the stream's bit-per-sample, minus one
+36:the stream's total number of PCM frames
+128:an MD5 sum of the PCM stream's bytes
+_
+.TE
+.PP
+When encoding a FLAC file, many of these fields cannot be known in advance.
+Instead, one must keep track of those values during encoding and then
+rewrite the STREAMINFO block when finished.
+.SUBSUBSECTION "the VORBIS_COMMENT metadata block"
+.PP
+.TS
+tab(:);
+| c | c |
+| r | l |.
+_
+bits:value
+=
+32\[dd]:vendor string length, in bytes
+string length * 8:vendor string data, as UTF-8 encoded text
+32\[dd]:total number of comment strings
+32\[dd]:comment @roman string sub 1@ length, in bytes
+string length * 8:comment @roman string sub 1@, as UTF-8 encoded text
+ ...:...
+_
+.TE
+.PP
+Fields marked with \[dd] are little-endian integers.
+.SUBSUBSECTION "the PADDING metadata block"
+.PP
+This is simply an empty block full of \fC0x00\fR bytes.
+.bp
+.SUBSUBSECTION "Frame header"
+.PP
+.TS
+tab(:);
+| c | c |
+| r | l |.
+_
+bits:value
+=
+14:\fC0x3FFE\fR sync code
+1:\fC0\fR reserved
+1:\fC0\fR if the header encodes the frame number, \fC1\fR if it encodes the sample number
+4:this frame's block size, as encoded PCM frames\(dg
+4:this frame's sample rate, as encoded Hz\(dg
+4:this frame's channel assignment\(dg
+3:this frame's bits per sample\(dg
+1:\fC0\fR padding
+8-56:the frame number, or sample number, UTF-8 encoded and starting from 0
+0/8/16:the number of PCM frames (minus one) in this FLAC frame, if block size is \fC0x6\fR (8 bits) or \fC0x7\fR (16 bits)
+0/8/16:the sample rate of this FLAC frame, if sample rate is \fC0xC\fR (8 bits), \fC0xD\fR (16 bits) or \fC0xE\fR (16 bits)
+8:the CRC-8 of all data from the beginning of the frame header
+_
+.TE
+.FS
+\(dg See table on page \n(ZF
+.FE
+.PP
+The FLAC frame's block size in PCM frames
+(called ``channel independent samples'' in FLAC's documention)
+is typically encoded in the 4 bit `block size' field.
+But for odd-sized frames - which often occur at the end of the stream -
+that value is stored as an 8 or 16 bit integer following UTF-8 encoded
+frame number.
+Less commonly, odd sample rate values are stored as 8 bit (in kHz),
+16 bit (in Hz) or 16 bit (in 10s of Hz) prior to the CRC-8,
+should a predefined value not be available.

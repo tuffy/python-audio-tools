@@ -1,9 +1,9 @@
-.\"This work is licensed under the 
+.\"This work is licensed under the
 .\"Creative Commons Attribution-Share Alike 3.0 United States License.
 .\"To view a copy of this license, visit
-.\"http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to 
-.\"Creative Commons, 
-.\"171 Second Street, Suite 300, 
+.\"http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to
+.\"Creative Commons,
+.\"171 Second Street, Suite 300,
 .\"San Francisco, California, 94105, USA.
 .SECTION "FLAC"
 .PP
@@ -12,7 +12,7 @@ It compresses PCM audio data losslessly using predictors and a residual.
 FLACs are smaller than WAVEs, contain checksumming to verify their
 integrity, contain comment tags for metadata and are streamable.
 .PP
-Except for the contents of the VORBIS_COMMENT metadata block, 
+Except for the contents of the VORBIS_COMMENT metadata block,
 everything in FLAC is big-endian.
 
 .SUBSECTION "the FLAC file stream"
@@ -197,7 +197,7 @@ pic line dotted from D1.se to D3.ne
 .ps 8
 .TS
 tab(:);
-| c s s s | 
+| c s s s |
 | r | l || r | l |.
 _
 Picture Types
