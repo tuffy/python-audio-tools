@@ -588,9 +588,9 @@ bits:value
 1:\fC0\fR reserved
 1:\fC0\fR if the header encodes the frame number, \fC1\fR if it encodes the sample number
 4:this frame's block size, as encoded PCM frames\(dg
-4:this frame's sample rate, as encoded Hz\(dg
-4:this frame's channel assignment\(dg
-3:this frame's bits per sample\(dg
+4:this frame's encoded sample rate\(dg
+4:this frame's encoded channel assignment\(dg
+3:this frame's encoded bits per sample\(dg
 1:\fC0\fR padding
 8-56:the frame number, or sample number, UTF-8 encoded and starting from 0
 0/8/16:the number of PCM frames (minus one) in this FLAC frame, if block size is \fC0x6\fR (8 bits) or \fC0x7\fR (16 bits)
@@ -617,3 +617,19 @@ the PCM stream data.
 Unless you're writing a variable block size encoder (which no one has),
 one should encode the frame number starting from 0 in the frame header
 and choose a predefined block size for as many FLAC frames as possible.
+.SUBSUBSECTION "Subframe header"
+.PP
+.TS
+tab(:);
+| c | c |
+| r | l |.
+_
+bits:value
+=
+1:\fC0\fR padding
+6:subframe type, with optional predictor order
+1:\fC0\fR if no wasted bits per sample, \fC1\fR if a unary-encoded number follows
+0+:the number of wasted bits per sample (minus one) encoded as unary
+_
+.TE
+
