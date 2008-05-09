@@ -632,4 +632,35 @@ bits:value
 0+:the number of wasted bits per sample (minus one) encoded as unary
 _
 .TE
+.TS
+tab(:);
+| c s |
+| c | l |.
+_
+Subframe Type
+_
+bits:type
+=
+000000:SUBFRAME_CONSTANT
+000001:SUBFRAME_VERBATIM
+00001x:reserved
+0001xx:reserved
+001xxx:SUBFRAME_FIXED (xxx = Predictor Order)
+01xxxx:reserved
+1xxxxx:SUBFRAME_LPC (xxxxx = Predictor Order - 1)
+_
+.TE
+.bp
+.SUBSUBSECTION "the CONSTANT subframe"
+.PP
+If all the samples in a subframe are identical, one can encode them
+using a CONSTANT subframe, which is essentially a single sample value
+that gets duplicated `block size' number of times when decoded.
+.SUBSUBSECTION "the VERBATIM subframe"
+.PP
+This subframe simply stores all the samples as-is,
+with no compression whatsoever.
+It is a `fallback' encoding method for when no other subframe makes one's
+data any smaller.
+
 
