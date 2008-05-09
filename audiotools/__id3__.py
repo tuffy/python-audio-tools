@@ -292,11 +292,11 @@ class ID3v2Comment(MetaData,dict):
         image = APICImage.converted(image)
 
         self.setdefault('APIC',[]).append(image.build())
-        MetaData.add_image(image)
+        MetaData.add_image(self, image)
 
     def delete_image(self, image):
         del(self['APIC'][self['APIC'].index(image.build())])
-        MetaData.delete_image(image)
+        MetaData.delete_image(self, image)
 
     @classmethod
     def converted(cls, metadata):
