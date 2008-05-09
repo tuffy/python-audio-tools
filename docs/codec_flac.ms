@@ -611,3 +611,9 @@ frame number.
 Less commonly, odd sample rate values are stored as 8 bit (in kHz),
 16 bit (in Hz) or 16 bit (in 10s of Hz) prior to the CRC-8,
 should a predefined value not be available.
+.PP
+Up until this point, nearly all of these fields can be filled from
+the PCM stream data.
+Unless you're writing a variable block size encoder (which no one has),
+one should encode the frame number starting from 0 in the frame header
+and choose a predefined block size for as many FLAC frames as possible.
