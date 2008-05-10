@@ -307,6 +307,7 @@ For example: @-5~/~2 sup 1 = -3@
 
 .bp
 .SUBSUBSECTION "the Residual"
+.nr ZR \n%
 .PP
 Though the FLAC format allows for different forms of
 residual coding, two forms of partitioned Rice are the only ones
@@ -708,7 +709,7 @@ delta's absolute value sum, below.
 .PP
 In this example, @\[*D] sup 1@'s value of 26 is the smallest.
 Therefore, when compressing this set of samples in a FIXED subframe,
-it is best to use a predictor order of 1.
+it's best to use a predictor order of 1.
 .PP
 The predictor order indicates how many warm-up samples to take from
 the PCM stream.
@@ -731,3 +732,64 @@ Order:\^
 4:@"Residual" sub i = "Sample" sub i~~-~~((4 * "Sample" sub {i~-~1})~~-~~(6 * "Sample" sub {i~-~2})~~+~~(4 * "Sample" sub {i~-~3})~~-~~"Sample" sub {i~-~4})@
 _
 .TE
+.\"In this example, the residual values are: -1 1 1 1 0 3 0 -4 -1 0 1 1 1 4 -3 1 4 -1 -1
+.bp
+.SUBSUBSECTION "the Residual"
+.PP
+Given a stream of residual values, one must place them in one or more
+partitions, each with its own Rice parameter, and prepended with a
+small header.\(dg
+.FS
+\(dg See page \n(ZR for full details of how the residual is organized.
+.FE
+The residual's coding method is typically 0, unless one is encoding
+audio with more than 16 bits-per-sample and one of the partitions
+requests a Rice parameter higher than @2 sup 4@.
+The residual's partition order is chosen exhaustively, which means
+trying all of them within a certain range (e.g. 0 to 5) such that
+the residuals can be divided evenly between them and then the partiton
+order which uses the smallest estimated amount of space is chosen.
+.PP
+Choosing the best Rice parameter is a matter of selecting the smallest
+value of `x' such that:
+.EQ
+"sample count" * {2 sup x}~~>~~{sum from {i = 0} to {"residual count"~-~1}
+|{"residual" sub i}|}
+.EN
+.LP
+Again, this is easier to understand with a block of example residuals,
+19 in total:
+.TS
+tab(:);
+| c | c | c |
+| c | r | r |.
+_
+index:@residual sub i@:@|~{residual sub i}~|@
+=
+0:-1:1
+1:1:1
+2:1:1
+3:1:1
+4:0:0
+5:3:3
+6:0:0
+7:-4:4
+8:-1:1
+9:0:0
+10:1:1
+11:1:1
+12:1:1
+13:4:4
+14:-3:3
+15:1:1
+16:4:4
+17:-1:1
+18:-1:1
+_
+@|~{roman "sum"}~|@::29
+_
+.TE
+@19 * {2 sup 0}@ is not larger than 29.
+.br
+@19 * {2 sup 1}@ is larger than 29, so the best Rice parameter
+for this block of residuals is 1.
