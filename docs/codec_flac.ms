@@ -709,3 +709,25 @@ delta's absolute value sum, below.
 In this example, @\[*D] sup 1@'s value of 26 is the smallest.
 Therefore, when compressing this set of samples in a FIXED subframe,
 it is best to use a predictor order of 1.
+.PP
+The predictor order indicates how many warm-up samples to take from
+the PCM stream.
+Determining the residual values can then be done automatically
+based on the current @"Sample" sub i@ and previously encoded samples, or
+warm-up samples.
+.TS
+tab(:);
+| c | c |
+| c | c |
+| c | l |.
+_
+Predictor:Calculation
+Order:\^
+=
+0:@"Residual" sub i = "Sample" sub i@
+1:@"Residual" sub i = "Sample" sub i~~-~~"Sample" sub {i~-~1}@
+2:@"Residual" sub i = "Sample" sub i~~-~~((2 * "Sample" sub {i~-~1})~~-~~"Sample" sub {i~-~2})@
+3:@"Residual" sub i = "Sample" sub i~~-~~((3 * "Sample" sub {i~-~1})~~-~~(3 * "Sample" sub {i~-~2})~~+~~"Sample" sub {i~-~3})@
+4:@"Residual" sub i = "Sample" sub i~~-~~((4 * "Sample" sub {i~-~1})~~-~~(6 * "Sample" sub {i~-~2})~~+~~(4 * "Sample" sub {i~-~3})~~-~~"Sample" sub {i~-~4})@
+_
+.TE
