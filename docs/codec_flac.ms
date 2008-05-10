@@ -608,7 +608,8 @@ is typically encoded in the 4 bit `block size' field.
 But for odd-sized frames - which often occur at the end of the stream -
 that value is stored as an 8 or 16 bit integer following UTF-8 encoded
 frame number.
-Less commonly, odd sample rate values are stored as 8 bit (in kHz),
+.PP
+In addition, odd sample rate values are stored as 8 bit (in kHz),
 16 bit (in Hz) or 16 bit (in 10s of Hz) prior to the CRC-8,
 should a predefined value not be available.
 .PP
@@ -662,5 +663,49 @@ This subframe simply stores all the samples as-is,
 with no compression whatsoever.
 It is a `fallback' encoding method for when no other subframe makes one's
 data any smaller.
-
-
+.SUBSUBSECTION "the FIXED subframe"
+.PP
+This subframe consists of `predictor order' number of unencoded
+warm-up samples followed by a residual.
+Determing which predictor order to use on a given set of input samples
+depends on their minimum delta sum.
+This process is best explained by example:
+.TS
+tab(:);
+| c | c | c | c | c | c | c |
+| c | r | r | r | r | r | r |.
+_
+index:sample:@{\[*D] sup 0}@:@{\[*D] sup 1}@:@{\[*D] sup 2}@:@{\[*D] sup 3}@:@{\[*D] sup 4}@
+=
+0:-40:
+1:-41:\fI-41\fR
+2:-40:\fI-40\fR:\fI-1\fR
+3:-39:\fI-39\fR:\fI-1\fR:\fI0\fR
+4:-38:-38:\fI-1\fR:\fI0\fR:\fI0\fR
+5:-38:-38:0:-1:1:-1
+6:-35:-35:-3:3:-4:5
+7:-35:-35:0:-3:6:-10
+8:-39:-39:4:-4:1:5
+9:-40:-40:1:3:-7:8
+10:-40:-40:0:1:2:-9
+11:-39:-39:-1:1:0:2
+12:-38:-38:-1:0:1:-1
+13:-37:-37:-1:0:0:1
+14:-33:-33:-4:3:-3:3
+15:-36:-36:3:-7:10:-13
+16:-35:-35:-1:4:-11:21
+17:-31:-31:-4:3:1:-12
+18:-32:-32:1:-5:8:-7
+19:-33:-33:1:0:-5:13
+_
+@|~{roman "sum"}~|@::579:26:38:60:111
+_
+.TE
+.LP
+Note that the numbers in italics play a part in the delta
+calculation to their right, but do \fBnot\fR figure into the
+delta's absolute value sum, below.
+.PP
+In this example, @\[*D] sup 1@'s value of 26 is the smallest.
+Therefore, when compressing this set of samples in a FIXED subframe,
+it is best to use a predictor order of 1.
