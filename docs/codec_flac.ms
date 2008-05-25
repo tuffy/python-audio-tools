@@ -793,3 +793,6 @@ _
 .br
 @19 * {2 sup 1}@ is larger than 29, so the best Rice parameter
 for this block of residuals is 1.
+.PP
+Remember that the Rice parameter's maximum value is limited to
+@2 sup 4@ using coding method 0, or @2 sup 5@ using coding method 1.
