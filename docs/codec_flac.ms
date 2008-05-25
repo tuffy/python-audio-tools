@@ -734,6 +734,172 @@ _
 .TE
 .\"In this example, the residual values are: -1 1 1 1 0 3 0 -4 -1 0 1 1 1 4 -3 1 4 -1 -1
 .bp
+.SUBSUBSECTION "the LPC subframe"
+.PP
+Unlike the FIXED subframe which required only input samples and a
+predictor order, LPC subframes also require a list of coefficients,
+an LPC precision value of those coefficients, and an LPC shift needed
+value.
+.begin dformat
+style bitwid 0.08
+style charwid 0
+style recspread 0
+noname
+  0--18 Warm\[hy]Up @roman Sample sub 1@
+  --18 Warm\[hy]Up @roman Sample sub 2@
+  --18-dashed ...
+  --18 Warm\[hy]Up @roman Sample sub n@
+noname
+  0-3-14 LPC Precision
+  4-8-16 LPC Shift Needed
+  9-?-14 @roman Coefficient sub 1@
+  --14 @roman Coefficient sub 2@
+  --14-dashed ...
+noname
+  --72 Residual
+.end dformat
+.\"FIXME - need to figure out how to determine the best predictor order
+.SUBSUBSUBSECTION "Autocorrelation values"
+.2C
+.KS
+.TS
+tab(:);
+| r c r c r |
+| r c r c r |
+| r c r c r |
+| r c r c r |
+| r c r c r |
+| r c r c r |
+| r c r c r |
+| r c r c r |
+| r c r c r |
+| r c r c r |
+| r s s s r |.
+_
+sample::@roman lag sub 0@::value
+=
+-39:\[mu]:-39:\[eq]:1521
+-38:\[mu]:-38:\[eq]:1444
+-37:\[mu]:-37:\[eq]:1369
+-33:\[mu]:-33:\[eq]:1089
+-36:\[mu]:-36:\[eq]:1296
+-35:\[mu]:-35:\[eq]:1225
+-31:\[mu]:-31:\[eq]:961
+-32:\[mu]:-32:\[eq]:1024
+-33:\[mu]:-33:\[eq]:1089
+_
+@roman lag sub 0@ sum:11018
+_
+.TE
+.KE
+.KS
+.TS
+tab(:);
+| r c r c r |
+| r c r c r |
+| r c r c r |
+| r c r c r |
+| r c r c r |
+| r c r c r |
+| r c r c r |
+| r c r c r |
+| r c r c r |
+| r s s s r |.
+_
+sample::@roman lag sub 1@::value
+=
+-39:\[mu]:-38:\[eq]:1482
+-38:\[mu]:-37:\[eq]:1406
+-37:\[mu]:-33:\[eq]:1221
+-33:\[mu]:-36:\[eq]:1188
+-36:\[mu]:-35:\[eq]:1260
+-35:\[mu]:-31:\[eq]:1085
+-31:\[mu]:-32:\[eq]:992
+-32:\[mu]:-33:\[eq]:1056
+_
+@roman lag sub 1@ sum:9690
+_
+.TE
+.KE
+.KS
+.TS
+tab(:);
+| r c r c r |
+| r c r c r |
+| r c r c r |
+| r c r c r |
+| r c r c r |
+| r c r c r |
+| r c r c r |
+| r c r c r |
+| r s s s r |.
+_
+sample::@roman lag sub 2@::value
+=
+-39:\[mu]:-37:\[eq]:1443
+-38:\[mu]:-33:\[eq]:1254
+-37:\[mu]:-36:\[eq]:1332
+-33:\[mu]:-35:\[eq]:1155
+-36:\[mu]:-31:\[eq]:1116
+-35:\[mu]:-32:\[eq]:1120
+-31:\[mu]:-33:\[eq]:1023
+_
+@roman lag sub 2@ sum:8443
+_
+.TE
+.KE
+.KS
+.TS
+tab(:);
+| r c r c r |
+| r c r c r |
+| r c r c r |
+| r c r c r |
+| r c r c r |
+| r c r c r |
+| r c r c r |
+| r s s s r |.
+_
+sample::@roman lag sub 3@::value
+=
+-39:\[mu]:-33:\[eq]:1287
+-38:\[mu]:-36:\[eq]:1368
+-37:\[mu]:-35:\[eq]:1295
+-33:\[mu]:-31:\[eq]:1023
+-36:\[mu]:-32:\[eq]:1152
+-35:\[mu]:-33:\[eq]:1155
+_
+@roman lag sub 3@ sum:7280
+_
+.TE
+.KE
+.KS
+.TS
+tab(:);
+| r c r c r |
+| r c r c r |
+| r c r c r |
+| r c r c r |
+| r c r c r |
+| r c r c r |
+| r s s s r |.
+_
+sample::@roman lag sub 4@::value
+=
+-39:\[mu]:-36:\[eq]:1404
+-38:\[mu]:-35:\[eq]:1330
+-37:\[mu]:-31:\[eq]:1147
+-33:\[mu]:-32:\[eq]:1056
+-36:\[mu]:-33:\[eq]:1188
+_
+@roman lag sub 4@ sum:6125
+_
+.TE
+.KE
+.1C
+.SUBSUBSUBSECTION "LP coefficient calculation"
+.PP
+.bp
 .SUBSUBSECTION "the Residual"
 .PP
 Given a stream of residual values, one must place them in one or more
