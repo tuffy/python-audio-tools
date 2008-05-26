@@ -905,6 +905,12 @@ Calculating the LP coefficients uses the Levinson-Durbin recursive method.\(dg
 .FS
 \(dg This algorithm is taken from http://www.engineer.tamuk.edu/SPark/chap7.pdf
 .FE
+Our inputs are @M@, the maximum LPC order minus 1, and @r@ autocorrelation
+values, from @r(0)@ to @r(M - 1)@.
+Our ouputs are @a@, a list of LP coefficient lists from
+@a sub 11@ to @a sub {(M - 1)(M - 1)}@, and @E@, a list
+of error values from @E sub 0@ to @E sub {(M - 1)}@.
+@q sub m@ and @\[*k] sub m@ are temporary values.
 .LP
 Initial values:
 .TS
