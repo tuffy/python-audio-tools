@@ -760,6 +760,8 @@ noname
 .end dformat
 .\"FIXME - need to figure out how to determine the best predictor order
 .SUBSUBSUBSECTION "Autocorrelation values"
+.PP
+TODO: explain what these are used for.
 .2C
 .KS
 .TS
@@ -899,6 +901,31 @@ _
 .1C
 .SUBSUBSUBSECTION "LP coefficient calculation"
 .PP
+Calculating the LP coefficients uses the Levinson-Durbin recursive method.\(dg
+.FS
+\(dg This algorithm is taken from http://www.engineer.tamuk.edu/SPark/chap7.pdf
+.FE
+.LP
+Initial values:
+.TS
+tab(:);
+l.
+@E sub 0 mark = r(0)@
+@a sub 11 lineup = \[*k] sub 1 = {r(1) over {E sub 0}}@
+@E sub 1 lineup = E sub 0 {(1 - {{\[*k] sub 1} sup 2})}@
+.TE
+.LP
+With @m \[>=] 2@, the following recursive algorithm is performed:
+.TS
+tab(:);
+r l.
+step 1.:@q sub m mark = r(m) - sum from {i = 1} to {m - 1} a sub {i (m - 1)} r(m - i)@
+step 2.:@\[*k] sub m lineup = {q sub m} over {E sub {(m - 1)}}@
+step 3.:@a sub mm lineup = \[*k] sub m@
+step 4.:@a sub im lineup = a sub {i(m - 1)} - \[*k] sub m a sub {(m - i)(m - 1)}@ for @i = 1,...,i = m - 1@
+step 5.:@E sub m lineup = E sub {m - 1}[ 1 - {\[*k] sub m} sup 2 ]@
+step 6.:If @m < M@ then increment @m@ to @m + 1@ and return to step 1.  If @m = M@ then stop.
+.TE
 .bp
 .SUBSUBSECTION "the Residual"
 .PP
