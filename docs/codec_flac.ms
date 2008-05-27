@@ -939,31 +939,31 @@ Let's run through an example in which @r(0) = 11018@, @r(1) = 9690@,
 .ps 8
 @E sub 0 mark = 11018@
 .br
-@a sub 11 lineup = \[*k] sub 1 = {9690 over 11018} = 0.8795@
+@a sub 11 lineup = \[*k] sub 1 = {r(1) over E sub 0} = {9690 over 11018} = 0.8795@
 .br
-@E sub 1 lineup = 11018(1 - 0.8795 sup 2 ) = 2495@
+@E sub 1 lineup = E sub 0 {(1 - {{\[*k] sub 1} sup 2})} = 11018(1 - 0.8795 sup 2 ) = 2495@
 .br
-@q sub 2 lineup = 8443 - sum from {i = 1} to 1 a sub i1 {r(2 - i)} = 8443 - (0.8795)(9690) = -79.35@
+@q sub 2 lineup = r(2) - sum from {i = 1} to 1 a sub i1 {r(2 - i)} = 8443 - (0.8795)(9690) = -79.35@
 .br
-@\[*k] sub 2 lineup = {-79.35 over 2495} = -0.0318@
+@\[*k] sub 2 lineup = {{q sub 2} over {E sub 1}} = {-79.35 over 2495} = -0.0318@
 .br
-@a sub 22 lineup = -0.0318@
+@a sub 22 lineup = \[*k] sub 2 = -0.0318@
 .br
-@a sub 12 lineup = 0.8795 - (-0.0318)(0.8795) = 0.9074@
+@a sub 12 lineup = a sub 11 - \[*k] sub 2 a sub 11 = 0.8795 - (-0.0318)(0.8795) = 0.9074@
 .br
-@E sub 2 lineup = 2495(1 - {-0.0318 sup 2}) = 2492@
+@E sub 2 lineup = E sub 1 (1 - {\[*k] sub 2} sup 2 ) = 2495(1 - {-0.0318 sup 2}) = 2492@
 .br
-@q sub 3 lineup = 7280 - sum from {i = 1} to 2 a sub i2 {r(3 - i)} = 7280 - ((0.9074)(8443) + (-0.0318)(9690)) = -73.04@
+@q sub 3 lineup = r(3) - sum from {i = 1} to 2 a sub i2 {r(3 - i)} = 7280 - ((0.9074)(8443) + (-0.0318)(9690)) = -73.04@
 .br
-@\[*k] sub 3 lineup = {-73.04 over 2492} = -0.0293@
+@\[*k] sub 3 lineup = {q sub 3} over {E sub 2} = {-73.04 over 2492} = -0.0293@
 .br
-@a sub 33 lineup = -0.0293@
+@a sub 33 lineup = \[*k] sub 3 = -0.0293@
 .br
-@a sub 13 lineup = 0.9074 - (-0.0293)(-0.0318) = 0.9065@
+@a sub 13 lineup = a sub 12 - \[*k] sub 3 a sub 22 = 0.9074 - (-0.0293)(-0.0318) = 0.9065@
 .br
-@a sub 23 lineup = -0.0318 - (-0.0293)(0.9074) = -0.0052@
+@a sub 23 lineup = a sub 22 - \[*k] sub 3 a sub 12 = -0.0318 - (-0.0293)(0.9074) = -0.0052@
 .br
-@E sub 3 lineup = 2492(1 - {-0.0293 sup 2}) = 2490@
+@E sub 3 lineup = E sub 2 (1 - {\[*k] sub 3} sup 2 ) = 2492(1 - {-0.0293 sup 2}) = 2490@
 .ps 10
 .LP
 @roman "Our final values are:"~~a sub 11 mark = 0.8795@
