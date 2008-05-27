@@ -933,11 +933,11 @@ step 5.:@E sub m lineup = E sub {m - 1}( 1 - {\[*k] sub m} sup 2 )@
 step 6.:If @m < M@ then increment @m@ to @m + 1@ and return to step 1.  If @m = M@ then stop.
 .TE
 .LP
-Let's run through an example in which @r(0) = 11018@, @r(1) = 9690@,
+Let's run through an example in which @M = 4@, @r(0) = 11018@, @r(1) = 9690@,
 @r(2) = 8443@ and @r(3) = 7280@:
 .br
 .ps 8
-@E sub 0 mark = 11018@
+@E sub 0 mark = r(0) = 11018@
 .br
 @a sub 11 lineup = \[*k] sub 1 = {r(1) over E sub 0} = {9690 over 11018} = 0.8795@
 .br
