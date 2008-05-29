@@ -8,22 +8,25 @@ Brian Langenberger
 tuffy\[at]users.sourceforge.net
 .AB no
 .LP
-This work is licensed under the 
+This work is licensed under the
 Creative Commons Attribution-Share Alike 3.0 United States License.
 To view a copy of this license, visit
 .br
 .ft C
-http://creativecommons.org/licenses/by-sa/3.0/us/ 
+http://creativecommons.org/licenses/by-sa/3.0/us/
 .ft
 .br
 or send a letter to:
 .br
-Creative Commons, 
-171 Second Street, Suite 300, 
+Creative Commons,
+171 Second Street, Suite 300,
 San Francisco, California, 94105, USA.
+.LP
+.mk
 .PSPIC -L "button.eps" 1i
+.rt
+.PSPIC -R "cc.logo.eps" 1i
 .AE
-
 .CHAPTER "Installation"
 .so prereqs.ms
 .bp
