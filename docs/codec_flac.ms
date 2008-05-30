@@ -758,6 +758,22 @@ noname
 noname
   --72 Residual
 .end dformat
+.LP
+Determining these values for a given input PCM signal is a somewhat
+complicated process:
+.LP
+.mk
+.PSPIC -L "lpc_process.eps" 3i
+.rt
+.LP
+.in +3.25i
+`Input PCM' is the subframe input signal.
+.br
+`Max LPC Order' is a user-defined value from 1 to 33, typically in the
+6-12 range.
+.in -3.25i
+
+.bp
 .\"FIXME - need to figure out how to determine the best predictor order
 .SUBSUBSUBSECTION "Autocorrelation values"
 .PP

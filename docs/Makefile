@@ -26,7 +26,8 @@ INSTALLATION = install.ms prereqs.ms configfile.ms
 
 SUBSECTIONS = $(INSTALLATION) macros.ms programming.ms freedb.ms usage.ms \
 replaygain.ms references.ms
-FIGURES = binary.eps freedb-sequence.eps pcm.eps rice1.eps rice2.eps
+FIGURES = binary.eps freedb-sequence.eps pcm.eps rice1.eps rice2.eps \
+lpc_process.eps
 TOC_ORDER_MANUAL = 1,_1-_1,2-_2
 TOC_ORDER_FORMATS = 1,_3-_1,2-_4
 
@@ -179,3 +180,5 @@ pcm.eps: pcm.plot
 usage.eps: usage.fig
 	fig2dev -L eps usage.fig usage.eps
 
+lpc_process.eps: lpc_process.fig
+	fig2dev -L eps lpc_process.fig lpc_process.eps
