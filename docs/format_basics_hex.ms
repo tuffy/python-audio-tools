@@ -15,7 +15,7 @@ Because there are ten, we'll call it base-10.
 So the number 675 is made up of the digits 6, 7 and 5
 and can be calculated in the following way:
 
-@(6 * 10 sup 2 ) + (7 * 10 sup 1 ) + (5 * 10 sup 0 ) = 675@
+@(6~\[mu]~10 sup 2 ) + (7~\[mu]~10 sup 1 ) + (5~\[mu]~10 sup 0 ) = 675@
 
 .PP
 In hexadecimal, there are sixteen characters per digit:
@@ -26,7 +26,7 @@ Because there are sixteen, we'll call it base-16.
 So the number 2A3 is made up of the digits 2, A and 3
 and can be calculated in the following way:
 
-@(2 * 16 sup 2 ) + (10 * 16 sup 1 ) + (3 * 16 sup 0 ) = 675@
+@(2~\[mu]~16 sup 2 ) + (10~\[mu]~16 sup 1 ) + (3~\[mu]~16 sup 0 ) = 675@
 
 .PP
 Why use hexadecimal?

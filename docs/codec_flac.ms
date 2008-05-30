@@ -191,9 +191,9 @@ Order:\^
 =
 0:@"Sample" sub i = "Residual" sub i@
 1:@"Sample" sub i = "Sample" sub {i~-~1}~~+~~"Residual" sub i@
-2:@"Sample" sub i = (2 * "Sample" sub {i~-~1})~~-~~"Sample" sub {i~-~2}~~+~~"Residual" sub i@
-3:@"Sample" sub i = (3 * "Sample" sub {i~-~1})~~-~~(3 * "Sample" sub {i~-~2})~~+~~"Sample" sub {i~-~3}~~+~~"Residual" sub i@
-4:@"Sample" sub i = (4 * "Sample" sub {i~-~1})~~-~~(6 * "Sample" sub {i~-~2})~~+~~(4 * "Sample" sub {i~-~3})~~-~~"Sample" sub {i~-~4}~~+~~"Residual" sub i@
+2:@"Sample" sub i = (2~\[mu]~"Sample" sub {i~-~1})~~-~~"Sample" sub {i~-~2}~~+~~"Residual" sub i@
+3:@"Sample" sub i = (3~\[mu]~"Sample" sub {i~-~1})~~-~~(3~\[mu]~"Sample" sub {i~-~2})~~+~~"Sample" sub {i~-~3}~~+~~"Residual" sub i@
+4:@"Sample" sub i = (4~\[mu]~"Sample" sub {i~-~1})~~-~~(6~\[mu]~"Sample" sub {i~-~2})~~+~~(4~\[mu]~"Sample" sub {i~-~3})~~-~~"Sample" sub {i~-~4}~~+~~"Residual" sub i@
 _
 .TE
 .KE
@@ -247,7 +247,7 @@ The number of Coefficients equals the `LPC Order'.
 "Sample" sub i =
 {
 {sum from {j = 0} to {Order~-~1}
-{"Coefficient" sub j} * "Sample" sub {i~-~j~-~1}}
+{"Coefficient" sub j}~\[mu]~"Sample" sub {i~-~j~-~1}}
 } over {2 sup "LPC Shift Needed"}
 ~~+~~"Residual" sub i
 .EN
@@ -285,19 +285,19 @@ Index:Residual:Sample
 3::(warm-up) @bold 1423@
 4::(warm-up) @bold 1529@
 _
-5:11:@(1241 * 1529) + (-944 * 1423) + (14 * 1257) + (342 * 1116) + (-147 * 1053) = 798656@
+5:11:@(1241~\[mu]~1529) + (-944~\[mu]~1423) + (14~\[mu]~1257) + (342~\[mu]~1116) + (-147~\[mu]~1053) = 798656@
 \^:\^:@(798656~/~2 sup 9 ) = 1559 + 11 = bold 1570@
 _
-6:79:@(1241 * 1570) + (-944 * 1529) + (14 * 1423) + (342 * 1257) + (-147 * 1116) = 790758@
+6:79:@(1241~\[mu]~1570) + (-944~\[mu]~1529) + (14~\[mu]~1423) + (342~\[mu]~1257) + (-147~\[mu]~1116) = 790758@
 \^:\^:@(790758~/~2 sup 9 ) = 1544 + 79 = bold 1623@
 _
-7:24:@(1241 * 1623) + (-944 * 1570) + (14 * 1529) + (342 * 1423) + (-147 * 1257) = 855356@
+7:24:@(1241~\[mu]~1623) + (-944~\[mu]~1570) + (14~\[mu]~1529) + (342~\[mu]~1423) + (-147~\[mu]~1257) = 855356@
 \^:\^:@(855356~/~2 sup 9 ) = 1670 + 24 = bold 1694@
 _
-8:-81:@(1241 * 1694) + (-944 * 1623) + (14 * 1570) + (342 * 1529) + (-147 * 1423) = 905859@
+8:-81:@(1241~\[mu]~1694) + (-944~\[mu]~1623) + (14~\[mu]~1570) + (342~\[mu]~1529) + (-147~\[mu]~1423) = 905859@
 \^:\^:@(905859~/~2 sup 9 ) = 1769 - 81 = bold 1688@
 _
-9:-72:@(1241 * 1688) + (-944 * 1694) + (14 * 1623) + (342 * 1570) + (-147 * 1529) = 830571@
+9:-72:@(1241~\[mu]~1688) + (-944~\[mu]~1694) + (14~\[mu]~1623) + (342~\[mu]~1570) + (-147~\[mu]~1529) = 830571@
 \^:\^:@(830571~/~2 sup 9 ) = 1622 - 72 = bold 1550@
 _
 .TE
@@ -563,10 +563,10 @@ _
 bits:value
 =
 32\[dd]:vendor string length, in bytes
-string length * 8:vendor string data, as UTF-8 encoded text
+string length \[mu] 8:vendor string data, as UTF-8 encoded text
 32\[dd]:total number of comment strings
 32\[dd]:comment @roman string sub 1@ length, in bytes
-string length * 8:comment @roman string sub 1@, as UTF-8 encoded text
+string length \[mu] 8:comment @roman string sub 1@, as UTF-8 encoded text
  ...:...
 _
 .TE
@@ -727,9 +727,9 @@ Order:\^
 =
 0:@"Residual" sub i = "Sample" sub i@
 1:@"Residual" sub i = "Sample" sub i~~-~~"Sample" sub {i~-~1}@
-2:@"Residual" sub i = "Sample" sub i~~-~~((2 * "Sample" sub {i~-~1})~~-~~"Sample" sub {i~-~2})@
-3:@"Residual" sub i = "Sample" sub i~~-~~((3 * "Sample" sub {i~-~1})~~-~~(3 * "Sample" sub {i~-~2})~~+~~"Sample" sub {i~-~3})@
-4:@"Residual" sub i = "Sample" sub i~~-~~((4 * "Sample" sub {i~-~1})~~-~~(6 * "Sample" sub {i~-~2})~~+~~(4 * "Sample" sub {i~-~3})~~-~~"Sample" sub {i~-~4})@
+2:@"Residual" sub i = "Sample" sub i~~-~~((2~\[mu]~"Sample" sub {i~-~1})~~-~~"Sample" sub {i~-~2})@
+3:@"Residual" sub i = "Sample" sub i~~-~~((3~\[mu]~"Sample" sub {i~-~1})~~-~~(3~\[mu]~"Sample" sub {i~-~2})~~+~~"Sample" sub {i~-~3})@
+4:@"Residual" sub i = "Sample" sub i~~-~~((4~\[mu]~"Sample" sub {i~-~1})~~-~~(6~\[mu]~"Sample" sub {i~-~2})~~+~~(4~\[mu]~"Sample" sub {i~-~3})~~-~~"Sample" sub {i~-~4})@
 _
 .TE
 .\"In this example, the residual values are: -1 1 1 1 0 3 0 -4 -1 0 1 1 1 4 -3 1 4 -1 -1
@@ -996,7 +996,7 @@ order which uses the smallest estimated amount of space is chosen.
 Choosing the best Rice parameter is a matter of selecting the smallest
 value of `x' such that:
 .EQ
-"sample count" * {2 sup x}~~>~~{sum from {i = 0} to {"residual count"~-~1}
+"sample count"~\[mu]~{2 sup x}~~>~~{sum from {i = 0} to {"residual count"~-~1}
 |{"residual" sub i}|}
 .EN
 .LP
@@ -1032,9 +1032,9 @@ _
 @|~{roman "sum"}~|@::29
 _
 .TE
-@19 * {2 sup 0}@ is not larger than 29.
+@19~\[mu]~{2 sup 0}@ is not larger than 29.
 .br
-@19 * {2 sup 1}@ is larger than 29, so the best Rice parameter
+@19~\[mu]~{2 sup 1}@ is larger than 29, so the best Rice parameter
 for this block of residuals is 1.
 .PP
 Remember that the Rice parameter's maximum value is limited to

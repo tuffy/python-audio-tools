@@ -66,9 +66,9 @@ noname
 .end
 
 .ps 8
-@ "Average Bytes Per Second" = "Sample Rate" * "Number of Channels" * "Bits Per Sample"~/~8 @
+@ "Average Bytes Per Second" = "Sample Rate"~\[mu]~"Number of Channels"~\[mu]~"Bits Per Sample"~\[di]~8 @
 .br
-@ "Block Align" = "Number of Channels" * "Bits Per Sample"~/~8 @
+@ "Block Align" = "Number of Channels"~\[mu]~"Bits Per Sample"~\[di]~8 @
 .ps
 
 .SUBSECTION "the data chunk"
