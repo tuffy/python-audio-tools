@@ -772,9 +772,10 @@ complicated process:
 `Max LPC Order' is a user-defined value from 1 to 33, typically in the
 6-12 range.
 .in -3.25i
-
 .bp
-.\"FIXME - need to figure out how to determine the best predictor order
+.SUBSUBSUBSECTION "Windowing"
+.PP
+TODO
 .SUBSUBSUBSECTION "Autocorrelation values"
 .PP
 TODO: explain what these are used for.
