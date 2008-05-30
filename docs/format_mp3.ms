@@ -71,10 +71,10 @@ To find the total size of an MPEG frame, use one of the following
 formulas:
 .RS
 .IP \(bu
-Layer I	: @ Byte~Length = left ({12 * Bitrate} over {Sampling} + Pad right )~~*~~4 @
+Layer I	: @ Byte~Length = left ({12~\[mu]~Bitrate} over {Sampling} + Pad right )~~\[mu]~~4 @
 .IP
 .IP \(bu
-Layer II/III	: @ Byte~Length = {144 * Bitrate} over {Sampling} + Pad @
+Layer II/III	: @ Byte~Length = {144~\[mu]~Bitrate} over {Sampling} + Pad @
 .RE
 .PP
 .2C
@@ -83,7 +83,7 @@ For example, an MPEG-1 Layer III frame with a sampling rate of 44100,
 a bitrate of 128kbps and a set pad bit is 418 bytes long, including the header.
 .PP
 .ps 8
-@ 418 = {144 * 128000} over {44100} + 1 @
+@ 418 = {144~\[mu]~128000} over {44100} + 1 @
 .ps 8
 .KS
 .TS

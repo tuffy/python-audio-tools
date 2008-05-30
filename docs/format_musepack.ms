@@ -72,7 +72,7 @@ noname
 Each frame contains 1152 samples per channel.
 Therefore:
 .br
-@"Total Samples" = (("Frame Count" - 1) * 1152) + "Last Frame Samples"@
+@"Total Samples" = (("Frame Count" - 1)~\[mu]~1152) + "Last Frame Samples"@
 .br
 Musepack files always have exactly 2 channels and always have
 16 bits per sample.

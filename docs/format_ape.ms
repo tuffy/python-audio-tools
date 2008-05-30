@@ -85,7 +85,7 @@ Calculating the total length of the file is a matter of multiplying
 the number of frames by the number of blocks per frame and adding
 any remaining blocks in the final frame.
 .sp 1
-@ "Length in Seconds" = {(("Total Frames" - 1) * "Blocks Per Frame") + "Final Frame Blocks"} over "Sample Rate" @
+@ "Length in Seconds" = {(("Total Frames" - 1)~\[mu]~"Blocks Per Frame") + "Final Frame Blocks"} over "Sample Rate" @
 
 .bp
 
