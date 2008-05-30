@@ -35,7 +35,7 @@ noname
        --16 ID3v1 Metadata
 .end dformat
 .bp
-.SUBSECTION "an MPEG frame"
+.SUBSECTION "an MPEG frame header"
 .PP
 .begin dformat
 style bitwid 0.64
