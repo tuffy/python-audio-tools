@@ -776,6 +776,9 @@ complicated process:
 .SUBSUBSUBSECTION "Windowing"
 .PP
 TODO
+.LP
+.PSPIC -L "hann.eps" 1.5i
+.PSPIC -L "tukey.eps" 1.5i
 .SUBSUBSUBSECTION "Autocorrelation values"
 .PP
 TODO: explain what these are used for.
