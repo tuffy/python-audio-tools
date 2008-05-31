@@ -818,7 +818,7 @@ tab(:);
 | r | r c r c r |.
 _
 index:input::Tukey::windowed
-\^:sample::window::output
+\^:sample::window::signal
 =
 0:-40:@\[mu]@:0.0000:@=@:0.00
 1:-41:@\[mu]@:0.1464:@=@:-6.00
@@ -843,7 +843,7 @@ index:input::Tukey::windowed
 _
 .TE
 .bp
-.SUBSUBSUBSECTION "Autocorrelation values"
+.SUBSUBSUBSECTION "Computing autocorrelation"
 .PP
 Once our input samples have been converted to a windowed signal,
 we then compute the autocorrelation values from that signal.
