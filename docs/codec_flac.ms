@@ -852,10 +852,10 @@ samples by the samples of a lagged version of that same signal,
 and then taking the sum.
 The lagged signal is simply the orignal signal with `lag' number of
 samples removed from the beginning.
-.PSPIC -L "lag.eps" 5i
+.PSPIC -L "lag.eps" 6i
 .PP
 The lagged sums from 0 to the maximum LPC order are our autocorrelation
-values.  In this example, they are 11018, 9690 and 8443.
+values.  In this example, they are 11018.0, 9690.0 and 8443.0.
 .bp
 .SUBSUBSUBSECTION "LP coefficient calculation"
 .PP
