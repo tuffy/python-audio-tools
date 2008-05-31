@@ -604,7 +604,7 @@ _
 .FE
 .PP
 The FLAC frame's block size in PCM frames
-(called ``channel independent samples'' in FLAC's documention)
+(called ``channel independent samples'' in FLAC's documentation)
 is typically encoded in the 4 bit `block size' field.
 But for odd-sized frames - which often occur at the end of the stream -
 that value is stored as an 8 or 16 bit integer following UTF-8 encoded
@@ -668,7 +668,7 @@ data any smaller.
 .PP
 This subframe consists of `predictor order' number of unencoded
 warm-up samples followed by a residual.
-Determing which predictor order to use on a given set of input samples
+Determining which predictor order to use on a given set of input samples
 depends on their minimum delta sum.
 This process is best explained by example:
 .TS
@@ -775,10 +775,74 @@ complicated process:
 .bp
 .SUBSUBSUBSECTION "Windowing"
 .PP
-TODO
+The first step in LPC subframe encoding is `windowing' the input signal.
+Put simply, this is a process of multiplying each input sample by
+an equivalent value from the window, which are floats from 0.0 to 1.0.
+In this case, the default is a Tukey window with a ratio of 0.5.
+A Tukey window is a combination of the Hann and Rectangular windows.
+The ratio of 0.5 means there's 0.5 samples in the Hann window per
+sample in the Rectangular window.
 .LP
-.PSPIC -L "hann.eps" 1.5i
-.PSPIC -L "tukey.eps" 1.5i
+.mk
+.PSPIC -R "hann.eps" 2.5i
+.PSPIC -R "rectangular.eps" 2.5i
+.PSPIC -R "tukey.eps" 2.5i
+.rt
+.LP
+.ll 3.25in
+The Hann window is defined by the function:
+.br
+.sp
+@hann(n) = \[12]~-~ left ( \[12]~\[md]~cos left ( {2 pi n} over {"sample count" - 1} right ) right )@
+.br
+.sp
+.LP
+.ll 3.25in
+The Rectangular window is defined by the function:
+.br
+.sp
+@rectangle(n) = 1@
+.br
+.sp
+.LP
+.ll 3.25in
+The Tukey window is defined by taking a Hann window, splitting it at
+the halfway point, and inserting a Rectangular window between the
+two.
+.LP
+Let's run through a short example with 20 samples:
+.TS
+tab(:);
+| c | c c c c c |
+| c | c c c c c |
+| r | r c r c r |.
+_
+index:input::Tukey::windowed
+\^:sample::window::output
+=
+0:-40:@\[mu]@:0.0000:@=@:0.00
+1:-41:@\[mu]@:0.1464:@=@:-6.00
+2:-40:@\[mu]@:0.5000:@=@:-20.00
+3:-39:@\[mu]@:0.8536:@=@:-33.29
+4:-38:@\[mu]@:1.0000:@=@:-38.00
+5:-38:@\[mu]@:1.0000:@=@:-38.00
+6:-35:@\[mu]@:1.0000:@=@:-35.00
+7:-35:@\[mu]@:1.0000:@=@:-35.00
+8:-39:@\[mu]@:1.0000:@=@:-39.00
+9:-40:@\[mu]@:1.0000:@=@:-40.00
+10:-40:@\[mu]@:1.0000:@=@:-40.00
+11:-39:@\[mu]@:1.0000:@=@:-39.00
+12:-38:@\[mu]@:1.0000:@=@:-38.00
+13:-37:@\[mu]@:1.0000:@=@:-37.00
+14:-33:@\[mu]@:1.0000:@=@:-33.00
+15:-36:@\[mu]@:1.0000:@=@:-36.00
+16:-35:@\[mu]@:0.8536:@=@:-29.88
+17:-31:@\[mu]@:0.5000:@=@:-15.50
+18:-32:@\[mu]@:0.1464:@=@:-4.68
+19:-33:@\[mu]@:0.0000:@=@:0.00
+_
+.TE
+.bp
 .SUBSUBSUBSECTION "Autocorrelation values"
 .PP
 TODO: explain what these are used for.
@@ -927,7 +991,7 @@ Calculating the LP coefficients uses the Levinson-Durbin recursive method.\(dg
 .FE
 Our inputs are @M@, the maximum LPC order minus 1, and @r@ autocorrelation
 values, from @r(0)@ to @r(M - 1)@.
-Our ouputs are @a@, a list of LP coefficient lists from
+Our outputs are @a@, a list of LP coefficient lists from
 @a sub 11@ to @a sub {(M - 1)(M - 1)}@, and @E@, a list
 of error values from @E sub 0@ to @E sub {(M - 1)}@.
 @q sub m@ and @\[*k] sub m@ are temporary values.
@@ -1010,7 +1074,7 @@ audio with more than 16 bits-per-sample and one of the partitions
 requests a Rice parameter higher than @2 sup 4@.
 The residual's partition order is chosen exhaustively, which means
 trying all of them within a certain range (e.g. 0 to 5) such that
-the residuals can be divided evenly between them and then the partiton
+the residuals can be divided evenly between them and then the partition
 order which uses the smallest estimated amount of space is chosen.
 .PP
 Choosing the best Rice parameter is a matter of selecting the smallest

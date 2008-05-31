@@ -188,3 +188,6 @@ hann.eps: hann.plot
 
 tukey.eps: tukey.plot
 	./tukey.plot > tukey.eps
+
+rectangular.eps: rectangular.plot
+	./rectangular.plot > rectangular.eps
