@@ -845,144 +845,18 @@ _
 .bp
 .SUBSUBSUBSECTION "Autocorrelation values"
 .PP
-TODO: explain what these are used for.
-.2C
-.KS
-.TS
-tab(:);
-| r c r c r |
-| r c r c r |
-| r c r c r |
-| r c r c r |
-| r c r c r |
-| r c r c r |
-| r c r c r |
-| r c r c r |
-| r c r c r |
-| r c r c r |
-| r s s s r |.
-_
-sample::@roman lag sub 0@::value
-=
--39:\[mu]:-39:\[eq]:1521
--38:\[mu]:-38:\[eq]:1444
--37:\[mu]:-37:\[eq]:1369
--33:\[mu]:-33:\[eq]:1089
--36:\[mu]:-36:\[eq]:1296
--35:\[mu]:-35:\[eq]:1225
--31:\[mu]:-31:\[eq]:961
--32:\[mu]:-32:\[eq]:1024
--33:\[mu]:-33:\[eq]:1089
-_
-@roman lag sub 0@ sum:11018
-_
-.TE
-.KE
-.KS
-.TS
-tab(:);
-| r c r c r |
-| r c r c r |
-| r c r c r |
-| r c r c r |
-| r c r c r |
-| r c r c r |
-| r c r c r |
-| r c r c r |
-| r c r c r |
-| r s s s r |.
-_
-sample::@roman lag sub 1@::value
-=
--39:\[mu]:-38:\[eq]:1482
--38:\[mu]:-37:\[eq]:1406
--37:\[mu]:-33:\[eq]:1221
--33:\[mu]:-36:\[eq]:1188
--36:\[mu]:-35:\[eq]:1260
--35:\[mu]:-31:\[eq]:1085
--31:\[mu]:-32:\[eq]:992
--32:\[mu]:-33:\[eq]:1056
-_
-@roman lag sub 1@ sum:9690
-_
-.TE
-.KE
-.KS
-.TS
-tab(:);
-| r c r c r |
-| r c r c r |
-| r c r c r |
-| r c r c r |
-| r c r c r |
-| r c r c r |
-| r c r c r |
-| r c r c r |
-| r s s s r |.
-_
-sample::@roman lag sub 2@::value
-=
--39:\[mu]:-37:\[eq]:1443
--38:\[mu]:-33:\[eq]:1254
--37:\[mu]:-36:\[eq]:1332
--33:\[mu]:-35:\[eq]:1155
--36:\[mu]:-31:\[eq]:1116
--35:\[mu]:-32:\[eq]:1120
--31:\[mu]:-33:\[eq]:1023
-_
-@roman lag sub 2@ sum:8443
-_
-.TE
-.KE
-.KS
-.TS
-tab(:);
-| r c r c r |
-| r c r c r |
-| r c r c r |
-| r c r c r |
-| r c r c r |
-| r c r c r |
-| r c r c r |
-| r s s s r |.
-_
-sample::@roman lag sub 3@::value
-=
--39:\[mu]:-33:\[eq]:1287
--38:\[mu]:-36:\[eq]:1368
--37:\[mu]:-35:\[eq]:1295
--33:\[mu]:-31:\[eq]:1023
--36:\[mu]:-32:\[eq]:1152
--35:\[mu]:-33:\[eq]:1155
-_
-@roman lag sub 3@ sum:7280
-_
-.TE
-.KE
-.KS
-.TS
-tab(:);
-| r c r c r |
-| r c r c r |
-| r c r c r |
-| r c r c r |
-| r c r c r |
-| r c r c r |
-| r s s s r |.
-_
-sample::@roman lag sub 4@::value
-=
--39:\[mu]:-36:\[eq]:1404
--38:\[mu]:-35:\[eq]:1330
--37:\[mu]:-31:\[eq]:1147
--33:\[mu]:-32:\[eq]:1056
--36:\[mu]:-33:\[eq]:1188
-_
-@roman lag sub 4@ sum:6125
-_
-.TE
-.KE
-.1C
+Once our input samples have been converted to a windowed signal,
+we then compute the autocorrelation values from that signal.
+Each autocorrelation value is determined by multiplying the signal's
+samples by the samples of a lagged version of that same signal,
+and then taking the sum.
+The lagged signal is simply the orignal signal with `lag' number of
+samples removed from the beginning.
+.PSPIC -L "lag.eps" 5i
+.PP
+The lagged sums from 0 to the maximum LPC order are our autocorrelation
+values.  In this example, they are 11018, 9690 and 8443.
+.bp
 .SUBSUBSUBSECTION "LP coefficient calculation"
 .PP
 Calculating the LP coefficients uses the Levinson-Durbin recursive method.\(dg
