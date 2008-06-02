@@ -951,13 +951,19 @@ Once the error scale has been calculated, one can generate a
 `Bits per Residual' estimation function which, given an LPC Error value,
 returns what its name implies:
 .EQ
-"BR"("LPC Error") lineup = {ln("Error Scale"~\[mu]~"LPC Error")} over {2~\[mu]~ln(2)}
+"Bits per Residual"("LPC Error") lineup = {ln("Error Scale"~\[mu]~"LPC Error")} over {2~\[mu]~ln(2)}
 .EN
 With this function, we can estimate how many bits the entire LPC subframe
-will take for each LPC Error value:
+will take for each LPC Error value and its associated Order:
+.ps 8
 .EQ
-"Total Bits"("LPC Error") = left ( {"BR"("LPC Error")~\[mu]~("Total Samples" - "Order")} right ) + left ( "Order"~\[mu]~"Overhead Bits per Order" right )
+"Total Bits"("LPC Error","Order") = left ( {"Bits per Residual"("LPC Error")~\[mu]~("Total Samples" - "Order")} right ) + left ( "Order"~\[mu]~"Overhead Bits per Order" right )
 .EN
+.ps
+.LP
+Picking the best LPC Order is then done exhaustively by calculating the
+total estimated bits for each one and using the order which uses
+the fewest.
 .bp
 .SUBSUBSECTION "the Residual"
 .PP
