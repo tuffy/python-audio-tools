@@ -1,9 +1,9 @@
-.\"This work is licensed under the 
+.\"This work is licensed under the
 .\"Creative Commons Attribution-Share Alike 3.0 United States License.
 .\"To view a copy of this license, visit
-.\"http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to 
-.\"Creative Commons, 
-.\"171 Second Street, Suite 300, 
+.\"http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to
+.\"Creative Commons,
+.\"171 Second Street, Suite 300,
 .\"San Francisco, California, 94105, USA.
 .SUBSUBSECTION "ID3v2.3"
 
@@ -47,7 +47,7 @@ noname
 noname
     64-64-5 Tag Alter
     65-65-5 File Alter
-    66-66-5 Read Only 
+    66-66-5 Read Only
     67-71-25 0x00
 noname
     72-72-5 Compression
@@ -60,7 +60,7 @@ noname
 Frame ID's that begin with the letter `T' (0x54) are text frames.
 These have an additional text encoding byte before the actual
 text data.
-All text strings are terminated by a null character 
+All text strings are terminated by a null character
 (0x00 or 0x0000, depending on the encoding).
 .begin dformat
 style bitwid 0.15
@@ -72,7 +72,7 @@ noname
 noname
     64-64-5 Tag Alter
     65-65-5 File Alter
-    66-66-5 Read Only 
+    66-66-5 Read Only
     67-71-25 0x00
 noname
     72-72-5 Compression
@@ -155,7 +155,7 @@ noname
 noname
     64-64-5 Tag Alter
     65-65-5 File Alter
-    66-66-5 Read Only 
+    66-66-5 Read Only
     67-71-25 0x00
 noname
     72-72-5 Compression
@@ -180,7 +180,7 @@ Description is a NULL-terminated C-style string which contains
 a text description of the image.
 .TS
 tab(:);
-| c s s s | 
+| c s s s |
 | r | l || r | l |.
 _
 Picture Types

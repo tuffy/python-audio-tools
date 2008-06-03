@@ -1,9 +1,9 @@
-.\"This work is licensed under the 
+.\"This work is licensed under the
 .\"Creative Commons Attribution-Share Alike 3.0 United States License.
 .\"To view a copy of this license, visit
-.\"http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to 
-.\"Creative Commons, 
-.\"171 Second Street, Suite 300, 
+.\"http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to
+.\"Creative Commons,
+.\"171 Second Street, Suite 300,
 .\"San Francisco, California, 94105, USA.
 .SECTION "Ogg Speex"
 .PP
@@ -25,7 +25,7 @@ decoding and the total number of samples is pulled from the
 style bitwid 0.16
 style recspread 0
 noname
-    0-63-32 Speex String `Speex   ' (0x5370656578202020) 
+    0-63-32 Speex String `Speex   ' (0x5370656578202020)
 noname
     64-223-21 Speex Version
     224-255-11 Speex Version ID

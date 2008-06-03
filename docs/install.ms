@@ -1,9 +1,9 @@
-.\"This work is licensed under the 
+.\"This work is licensed under the
 .\"Creative Commons Attribution-Share Alike 3.0 United States License.
 .\"To view a copy of this license, visit
-.\"http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to 
-.\"Creative Commons, 
-.\"171 Second Street, Suite 300, 
+.\"http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to
+.\"Creative Commons,
+.\"171 Second Street, Suite 300,
 .\"San Francisco, California, 94105, USA.
 .SECTION "Installation Procedure"
 .PP
@@ -61,9 +61,9 @@ source directory, as root, to install this module.
 .IP \(bu
 .B "The installer complains about missing `python/config/Makefile' of some sort"
 .PP
-Your distribution probably has separate "python" and "python-devel" packages 
+Your distribution probably has separate "python" and "python-devel" packages
 and "python-devel" is not yet installed.
-Use your package manager to install "python-devel" and try installing 
+Use your package manager to install "python-devel" and try installing
 Python Audio Tools again.
 .IP \(bu
 .B "audiotools-config lists formats as unavailable"

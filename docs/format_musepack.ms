@@ -1,9 +1,9 @@
-.\"This work is licensed under the 
+.\"This work is licensed under the
 .\"Creative Commons Attribution-Share Alike 3.0 United States License.
 .\"To view a copy of this license, visit
-.\"http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to 
-.\"Creative Commons, 
-.\"171 Second Street, Suite 300, 
+.\"http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to
+.\"Creative Commons,
+.\"171 Second Street, Suite 300,
 .\"San Francisco, California, 94105, USA.
 .SECTION "Musepack"
 .PP
@@ -143,13 +143,13 @@ noname
 pic line dotted from A1.sw to B1.nw
 pic line dotted from A1.se to B2.ne
 .end dformat
-`Key' is a two character uppercase ASCII string 
+`Key' is a two character uppercase ASCII string
 (i.e. each digit must be between the characters 0x41 and 0x5A, inclusive).
-`Length' is a variable length field indicating the size of the entire packet, 
+`Length' is a variable length field indicating the size of the entire packet,
 including the header.
-This is a Nut-encoded field whose total size depends on whether 
+This is a Nut-encoded field whose total size depends on whether
 the eighth bit of each byte is 0 or 1.
-The remaining seven bits of each byte combine to form the field's value, 
+The remaining seven bits of each byte combine to form the field's value,
 which is big-endian.
 .SUBSUBSECTION "Nut-encoded values"
 .PP

@@ -1,9 +1,9 @@
-.\"This work is licensed under the 
+.\"This work is licensed under the
 .\"Creative Commons Attribution-Share Alike 3.0 United States License.
 .\"To view a copy of this license, visit
-.\"http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to 
-.\"Creative Commons, 
-.\"171 Second Street, Suite 300, 
+.\"http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to
+.\"Creative Commons,
+.\"171 Second Street, Suite 300,
 .\"San Francisco, California, 94105, USA.
 .SECTION "The Configuration File"
 .PP
@@ -72,7 +72,7 @@ be what you want.
 .SUBSECTION "The Filename Format"
 .PP
 The default filename format is a template string which contains
-Python-style \fC%(key)s\fR wildcards which are replaced by actual values when 
+Python-style \fC%(key)s\fR wildcards which are replaced by actual values when
 tracks are created or renamed.
 Actual values are pulled from the file's own metadata or an external
 XMCD file.

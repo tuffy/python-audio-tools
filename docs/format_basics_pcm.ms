@@ -1,9 +1,9 @@
-.\"This work is licensed under the 
+.\"This work is licensed under the
 .\"Creative Commons Attribution-Share Alike 3.0 United States License.
 .\"To view a copy of this license, visit
-.\"http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to 
-.\"Creative Commons, 
-.\"171 Second Street, Suite 300, 
+.\"http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to
+.\"Creative Commons,
+.\"171 Second Street, Suite 300,
 .\"San Francisco, California, 94105, USA.
 .SUBSECTION "PCM"
 .PP
@@ -32,7 +32,7 @@ supports.
 2 channels means the samples are sent to 2 different speakers.
 PCM interleaves its samples, sending one sample to
 each channel simultaneously before moving on to the next set.
-In the case of 2 channels, the first sample is sent to the 
+In the case of 2 channels, the first sample is sent to the
 left speaker and the second is sent to the right speaker.
 So, our stream of data now looks like:
 .TS

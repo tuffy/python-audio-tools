@@ -1,9 +1,9 @@
-.\"This work is licensed under the 
+.\"This work is licensed under the
 .\"Creative Commons Attribution-Share Alike 3.0 United States License.
 .\"To view a copy of this license, visit
-.\"http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to 
-.\"Creative Commons, 
-.\"171 Second Street, Suite 300, 
+.\"http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to
+.\"Creative Commons,
+.\"171 Second Street, Suite 300,
 .\"San Francisco, California, 94105, USA.
 .SECTION "WavPack"
 .PP
@@ -100,7 +100,7 @@ noname
 .PP
 .2C
 .ps 8
-`Block Size' is the length of everything past everything past the 
+`Block Size' is the length of everything past everything past the
 block header, minus 24 bytes.
 .KS
 .TS
@@ -154,7 +154,7 @@ ordered the way they appear in the file.
 .ps 8
 The `Mono Output' bit indicates the channel count.
 If 1, this block has 1 channel.
-If 0, this block has 2 channels. 
+If 0, this block has 2 channels.
 For an audio stream with more than 2 channels,
 check the `Initial Block' and `Final Block' bits to indicate
 the start and end of the channels.  As an example:

@@ -1,9 +1,9 @@
-.\"This work is licensed under the 
+.\"This work is licensed under the
 .\"Creative Commons Attribution-Share Alike 3.0 United States License.
 .\"To view a copy of this license, visit
-.\"http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to 
-.\"Creative Commons, 
-.\"171 Second Street, Suite 300, 
+.\"http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to
+.\"Creative Commons,
+.\"171 Second Street, Suite 300,
 .\"San Francisco, California, 94105, USA.
 .CHAPTER "FreeDB"
 .PP
@@ -67,7 +67,7 @@ and complete the transaction.
 
 .SUBSECTION "The Disc ID"
 .PP
-FreeDB uses a big-endian 32-bit disc ID to differentiate 
+FreeDB uses a big-endian 32-bit disc ID to differentiate
 one disc from another.
 .begin dformat
 style bitwid 0.10
@@ -109,7 +109,7 @@ In this example, `Track Count' is 4.
 .br
 There are 75 frames per second, but one must remember to count
 fractions of seconds when calculating the total disc length.
-The `Offset Seconds Digit Sum' is calculated by looking at the 
+The `Offset Seconds Digit Sum' is calculated by looking at the
 `Offset in Seconds' column.
 Those values are 2, 219, 423 and 641.
 One must take all of those digits and add them, which works out to
@@ -395,7 +395,7 @@ these are issued along with the primary server command or are
 implied.
 .TS
 tab(:);
-| c s | 
+| c s |
 | c | c |
 | r | l |.
 _

@@ -1,9 +1,9 @@
-.\"This work is licensed under the 
+.\"This work is licensed under the
 .\"Creative Commons Attribution-Share Alike 3.0 United States License.
 .\"To view a copy of this license, visit
-.\"http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to 
-.\"Creative Commons, 
-.\"171 Second Street, Suite 300, 
+.\"http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to
+.\"Creative Commons,
+.\"171 Second Street, Suite 300,
 .\"San Francisco, California, 94105, USA.
 .SECTION "Basics"
 .PP
@@ -12,7 +12,7 @@ This section covers the basics for parsing binary files.
 .bp
 .SUBSECTION "Endianness"
 .PP
-You will need to know about endianness anytime a single value spans 
+You will need to know about endianness anytime a single value spans
 multiple bytes.
 As an example, let's take the first 16 bytes of a small RIFF WAVE file:
 

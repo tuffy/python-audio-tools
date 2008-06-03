@@ -1,9 +1,9 @@
-.\"This work is licensed under the 
+.\"This work is licensed under the
 .\"Creative Commons Attribution-Share Alike 3.0 United States License.
 .\"To view a copy of this license, visit
-.\"http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to 
-.\"Creative Commons, 
-.\"171 Second Street, Suite 300, 
+.\"http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to
+.\"Creative Commons,
+.\"171 Second Street, Suite 300,
 .\"San Francisco, California, 94105, USA.
 .SUBSUBSECTION "the Xing header"
 .PP
@@ -12,12 +12,12 @@ bits-per-sample and number of channels.
 However, because MP3 files are little more than
 concatenated MPEG frames, there is no obvious place to
 store the track's total length.
-Since the length of each frame is a constant number of samples, 
+Since the length of each frame is a constant number of samples,
 one can calculate the track length by counting the number of frames.
 This method is the most accurate but is also quite slow.
 .PP
 For MP3 files in which all frames have the same bitrate
-- also known as constant bitrate, or CBR files - 
+- also known as constant bitrate, or CBR files -
 one can divide the total size of file (minus any ID3 headers/footers),
 by the bitrate to determine its length.
 If an MP3 file has no Xing header in its first frame,

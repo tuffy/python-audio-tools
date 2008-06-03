@@ -1,9 +1,9 @@
-.\"This work is licensed under the 
+.\"This work is licensed under the
 .\"Creative Commons Attribution-Share Alike 3.0 United States License.
 .\"To view a copy of this license, visit
-.\"http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to 
-.\"Creative Commons, 
-.\"171 Second Street, Suite 300, 
+.\"http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to
+.\"Creative Commons,
+.\"171 Second Street, Suite 300,
 .\"San Francisco, California, 94105, USA.
 .SECTION "MP3"
 .PP
@@ -79,7 +79,7 @@ Layer II/III	: @ Byte~Length = {144~\[mu]~Bitrate} over {Sampling} + Pad @
 .PP
 .2C
 .ps 8
-For example, an MPEG-1 Layer III frame with a sampling rate of 44100, 
+For example, an MPEG-1 Layer III frame with a sampling rate of 44100,
 a bitrate of 128kbps and a set pad bit is 418 bytes long, including the header.
 .PP
 .ps 8

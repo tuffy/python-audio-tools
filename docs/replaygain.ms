@@ -1,9 +1,9 @@
-.\"This work is licensed under the 
+.\"This work is licensed under the
 .\"Creative Commons Attribution-Share Alike 3.0 United States License.
 .\"To view a copy of this license, visit
-.\"http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to 
-.\"Creative Commons, 
-.\"171 Second Street, Suite 300, 
+.\"http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to
+.\"Creative Commons,
+.\"171 Second Street, Suite 300,
 .\"San Francisco, California, 94105, USA.
 .CHAPTER "ReplayGain"
 .PP
@@ -23,11 +23,11 @@ ReplayGain requires four floating-point values which are typically
 stored as metadata in each audio track:
 `track gain', a positive or negative number of decibels representing
 the loudness delta of this particular track,
-`track peak', the highest sample value of this particular track 
+`track peak', the highest sample value of this particular track
 from a range of 0.0 to 1.0,
 `album gain', a positive or negative number of decibels representing
 the loudness delta of the track's entire album
-and `album peak', the highest sample value of the track's entire album 
+and `album peak', the highest sample value of the track's entire album
 from a range of 0.0 to 1.0.
 .SECTION "Applying ReplayGain"
 .PP
@@ -36,14 +36,14 @@ or `track gain' during playback.
 When listening to audio on an album-by-album basis, album gain
 keeps quiet tracks quiet and loud tracks loud within the context of
 that album.
-When listening to audio on a track-by-track basis, perhaps as 
+When listening to audio on a track-by-track basis, perhaps as
 a randomly shuffled set, track gain keeps them all to roughly the same
 loudness.
 So from an implementation perspective, a program only needs to apply
 the given gain and peak value to the stream being played back.
 Applying the gain value to each input PCM sample is quite simple:
 .EQ
-"Output" sub i = {"Input" sub i}~\[mu]~{10 sup {gain / 20}} 
+"Output" sub i = {"Input" sub i}~\[mu]~{10 sup {gain / 20}}
 .EN
 For example, if the gain is -2.19, each sample should be multiplied by
 @10 sup {-2.19 / 20}@ or about @0.777@.
@@ -56,7 +56,7 @@ if doing so sends any samples beyond the maximum value the stream
 can hold.
 For example, if the gain indicates we should be multiplying each sample
 by 1.28 and we encounter a 16-bit input sample with a value of 32000,
-the resulting output sample of 34560 is outside of the stream's 
+the resulting output sample of 34560 is outside of the stream's
 16-bit signed range (-32678 to 32767).
 That will result in `clipping' the audio peaks, which doesn't sound good.
 .PP
@@ -105,7 +105,7 @@ and then combining the results.
 This filter is applied independently to each channel.
 In purely mathematical terms, it looks like this:
 .EQ
-"Output" sub i = 
+"Output" sub i =
 left ({sum from {j = i-order} to i
 {{"Input" sub j} ~\[mu]~ {"Input Filter" sub j}}} right )
 ~~-~~
@@ -218,7 +218,7 @@ all our samples to floating-point values between -1.0 and 1.0.
 This is a simple matter of dividing each sample by @2 sup {"bits-per-sample"~-~1}@.
 So for 16-bit samples, divide each one by 32768.
 .PP
-Next, let's assume we have a 44100Hz stream and 
+Next, let's assume we have a 44100Hz stream and
 our previous input and output samples are as follows:
 .TS
 tab(,);
@@ -240,7 +240,7 @@ Sample,Input,Output
 99,-0.0009765625,-0.00039087401794557448
 _
 .TE
-If the value of sample 100 from the input stream is 
+If the value of sample 100 from the input stream is
 -0.00091552734375 (@-30 / {2 sup 15}@), here's how we calculate
 output sample 100:
 .ps 8
@@ -311,7 +311,7 @@ Output Values Sum,@=@,0.00038478667052108985
 _
 .TE
 .ps 8
--1.3126881893131719e-05 (input values sum) - 
+-1.3126881893131719e-05 (input values sum) -
 0.00038478667052108985 (output values sum) =
 .br
 \fB-0.00039791355241422158\fR (output sample 100).
@@ -386,7 +386,7 @@ For example, a 44100Hz stream is sliced into blocks containing
 2205 PCM frames each.
 .PP
 We then figure out the total energy value of each block by taking
-the Root Mean Square of the block's samples and converting to decibels, 
+the Root Mean Square of the block's samples and converting to decibels,
 hence the name RMS.
 First, convert our floating-point samples back into integer samples
 by multiplying each one by @2 sup {"bits-per-sample"~-~1}@.
@@ -445,6 +445,6 @@ the value of block 2280 is our representative.
 Finally, we take the difference between a reference value of pink noise
 and our representative value for the final gain value.
 The reference pink noise value is typically 64.82 dB.
-Therefore, if our representative value is 67.01 dB, the resulting 
+Therefore, if our representative value is 67.01 dB, the resulting
 gain value is -2.19 dB (@64.82 - 67.01 = -2.19@).
 

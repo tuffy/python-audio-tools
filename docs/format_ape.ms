@@ -1,9 +1,9 @@
-.\"This work is licensed under the 
+.\"This work is licensed under the
 .\"Creative Commons Attribution-Share Alike 3.0 United States License.
 .\"To view a copy of this license, visit
-.\"http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to 
-.\"Creative Commons, 
-.\"171 Second Street, Suite 300, 
+.\"http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to
+.\"Creative Commons,
+.\"171 Second Street, Suite 300,
 .\"San Francisco, California, 94105, USA.
 .SECTION "Monkey's Audio"
 .PP
@@ -142,7 +142,7 @@ ISBN:ISBN number with check digit:ISRC:International Standard Recording Number
 Language:used Language(s) for music/spoken words:LC:Label Code
 Media:source media:Publicationright:publication right holder
 Publisher:record label or publisher:Record Date:record date
-Record Location:record location:Related:location of related information 	
+Record Location:record location:Related:location of related information
 Subtitle:track subtitle:Title:track title
 Track:track number:Year:release date
 _

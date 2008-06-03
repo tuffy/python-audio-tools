@@ -1,9 +1,9 @@
-.\"This work is licensed under the 
+.\"This work is licensed under the
 .\"Creative Commons Attribution-Share Alike 3.0 United States License.
 .\"To view a copy of this license, visit
-.\"http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to 
-.\"Creative Commons, 
-.\"171 Second Street, Suite 300, 
+.\"http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to
+.\"Creative Commons,
+.\"171 Second Street, Suite 300,
 .\"San Francisco, California, 94105, USA.
 .CHAPTER "Using the Tools"
 .PP
@@ -26,7 +26,7 @@ From a command-line prompt (indicated by `%'), run:
 .ft
 .LP
 This will access your CD and extract all the audio files on it
-into the default audio format, resulting in files named 
+into the default audio format, resulting in files named
 `\fCtrack01.cdda.wav\fR', `\fCtrack02.cdda.wav\fR' and so forth.
 But if you wanted MP3 files, there's more work to be done.
 .LP

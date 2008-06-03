@@ -1,9 +1,9 @@
-.\"This work is licensed under the 
+.\"This work is licensed under the
 .\"Creative Commons Attribution-Share Alike 3.0 United States License.
 .\"To view a copy of this license, visit
-.\"http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to 
-.\"Creative Commons, 
-.\"171 Second Street, Suite 300, 
+.\"http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to
+.\"Creative Commons,
+.\"171 Second Street, Suite 300,
 .\"San Francisco, California, 94105, USA.
 .SECTION "M4A"
 .PP
@@ -63,7 +63,7 @@ noname
 Atom Type is an ASCII string.
 Atom Length is the length of the entire atom, including the header.
 If Atom Length is 0, the atom continues until the end of the file.
-If Atom Length is 1, the atom has an extended size.  This means 
+If Atom Length is 1, the atom has an extended size.  This means
 there is a 64-bit length field immediately after the header which is
 the atom's actual size.
 .begin dformat
@@ -254,8 +254,8 @@ noname
        0-31-16 Meta Length
        32-63-16 `meta' (0x6D657461)
        64-95-16 NULL (0x00000000)
-  P1:  96--16 Meta Data   
-noname       
+  P1:  96--16 Meta Data
+noname
   I1:  --16 `hdlr' (0x68646c72)
   I2:  --16 `ilst' (0x696c7374)
   I3:  --16 `free' (0x66726565)
