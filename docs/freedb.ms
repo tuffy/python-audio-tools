@@ -26,38 +26,43 @@ numbers.
 .PP
 The actual metadata is stored as XMCD files.
 
-.2C
-
 .SECTION "Native Protocol"
 .PP
+.mk
+.PSPIC -R "freedb-sequence.eps" 2i
+.rt
+.PP
+.ll 4in
 FreeDB's native protocol runs as a service on TCP port 8880.
 After connecting, the client and server exchange a handshake using
 the `hello' command.
 The server will not do anything without this handshake.
 .PP
+.ll 4in
 Next the client changes to protocol level 6 with the `proto' command.
 This is necessary because only the highest protocol supports
 UTF-8 text encoding.
 Without this, any characters not in the latin-1 set will not be
 sent properly.
 .PP
+.ll 4in
 Once that is accomplished, the client should calculate the 32-bit
 disc ID from the track information.
 .PP
+.ll 4in
 One then sends the 32-bit disc ID and additional disc information
 to the server with the `query' command to retrieve a list of
 matching disc IDs, genres and titles.
 If there are multiple matches, the user must be prompted to
 choose one of the matches.
 .PP
+.ll 4in
 When our match is known, the client uses the `read' command
 to retrieve the actual XMCD data.
 .PP
+.ll 4in
 Finally, the `close' command is used to sever the connection
 and complete the transaction.
-
-.PSPIC -L "freedb-sequence.eps" 2i
-.1C
 .bp
 
 .SUBSECTION "The Disc ID"

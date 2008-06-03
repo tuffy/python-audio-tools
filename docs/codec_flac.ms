@@ -944,26 +944,54 @@ in the subframe, the number of overhead bits per order (by default,
 this is the number of bits per sample in the subframe, plus 5),
 and an error scale constant:
 .EQ
-"Error Scale" mark = {{ln(2) sup 2}} over {2~\[mu]~"Total Samples"}
+"Error Scale" mark = {{ln (2) sup 2}} over {2~\[mu]~"Total Samples"}
 .EN
 .LP
 Once the error scale has been calculated, one can generate a
 `Bits per Residual' estimation function which, given an LPC Error value,
 returns what its name implies:
 .EQ
-"Bits per Residual"("LPC Error") lineup = {ln("Error Scale"~\[mu]~"LPC Error")} over {2~\[mu]~ln(2)}
+{roman "Bits per Residual"} ("LPC Error") lineup = {ln ("Error Scale"~\[mu]~"LPC Error")} over {2~\[mu]~ln (2)}
 .EN
 With this function, we can estimate how many bits the entire LPC subframe
 will take for each LPC Error value and its associated Order:
 .ps 8
 .EQ
-"Total Bits"("LPC Error","Order") = left ( {"Bits per Residual"("LPC Error")~\[mu]~("Total Samples" - "Order")} right ) + left ( "Order"~\[mu]~"Overhead Bits per Order" right )
+{roman "Total Bits"} ("LPC Error","Order") = left ( {{roman "Bits per Residual"} ("LPC Error")~\[mu]~("Total Samples" - "Order")} right ) + left ( "Order"~\[mu]~"Overhead Bits per Order" right )
 .EN
 .ps
 .LP
 Picking the best LPC Order is then done exhaustively by calculating the
 total estimated bits for each one and using the order which uses
 the fewest.
+.bp
+.SUBSUBSUBSECTION "Quantizing coefficients"
+.PP
+Once we've determined the best LPC Order to use, the next step in
+building an LPC subframe is to determine the QLP Coefficients and
+QLP Shift Needed values.
+This requires the LP Coefficients and a QLP Coefficients Precision value.
+The first step is determining `qmax' and `qmin' values, which are the
+upper and lower limits of the QLP Coefficients, respectively.
+.EQ
+qmax mark = {2 sup "precision"} - 1
+.EN
+.EQ
+qmin lineup = - {2 sup "precision"}
+.EN
+The next step is determining the maximum shift limit and minimum
+shift limit constants, which are what their names imply:
+.EQ
+"max shift limit" mark = {2 sup {"QLP shift length" - 1}} - 1 = {2 sup {5 - 1}} - 1 = {2 sup 4} - 1 = 16 - 1 = 15
+.EN
+.EQ
+"min shift limit" lineup = -({"max shift limit" - 1}) = -14
+.EN
+Finally, we can determine the initial QLP Shift Needed value:
+.EQ
+"shift" lineup = "precision" - {left ceiling {log ({roman max} (~|~"LP Coefficients"~|~)) } over {log (2) } right ceiling}
+.EN
+Where `shift' must fall between `max shift limit' and `min shift limit'.
 .bp
 .SUBSUBSECTION "the Residual"
 .PP
