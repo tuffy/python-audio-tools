@@ -793,7 +793,7 @@ sample in the Rectangular window.
 The Hann window is defined by the function:
 .br
 .sp
-@{roman hann} (n) = \[12]~-~ left ( \[12]~\[md]~cos left ( {2 pi n} over {"sample count" - 1} right ) right )@
+@{roman hann} (n) = \[12] ~ left ( 1~-~cos left ( {2 pi n} over {"sample count" - 1} right ) right )@
 .br
 .sp
 .LP
@@ -971,13 +971,13 @@ Once we've determined the best LPC Order to use, the next step in
 building an LPC subframe is to determine the QLP Coefficients and
 QLP Shift Needed values.
 This requires the LP Coefficients and a QLP Coefficients Precision value.
-The first step is determining `qmax' and `qmin' values, which are the
-upper and lower limits of the QLP Coefficients, respectively.
+The first step is determining the upper and lower limits of the
+QLP Coefficients:
 .EQ
-qmax mark = {2 sup "precision"} - 1
+"QLP coefficient maximum" mark = {2 sup "precision"} - 1
 .EN
 .EQ
-qmin lineup = - {2 sup "precision"}
+"QLP coefficient mininum" lineup = - {2 sup "precision"}
 .EN
 The next step is determining the maximum shift limit and minimum
 shift limit constants, which are what their names imply:
@@ -987,11 +987,43 @@ shift limit constants, which are what their names imply:
 .EQ
 "min shift limit" lineup = -({"max shift limit" - 1}) = -14
 .EN
-Finally, we can determine the initial QLP Shift Needed value:
+Now we determine the initial QLP Shift Needed value:
 .EQ
-"shift" lineup = "precision" - {left ceiling {log ({roman max} (~|~"LP Coefficients"~|~)) } over {log (2) } right ceiling}
+"shift" = "precision" - {left ceiling {log ({roman max} (~|~"LP Coefficients"~|~)) } over {log (2) } right ceiling}
 .EN
-Where `shift' must fall between `max shift limit' and `min shift limit'.
+where `shift' is adjusted if necessary such that:
+@"min shift limit" <= "shift" <= "max shift limit"@
+.LP
+Finally, we determine the QLP Coefficient values themselves via a small
+recursive routine:
+.EQ
+X(i) mark = E(i - 1) + ({"LP Coefficient" sub i}~\[mu]~{2 sup "shift"})
+.EN
+.EQ
+{"QLP Coefficient" sub i} lineup = {roman "round"} (X(i))
+.EN
+.EQ
+E(i) lineup = X(i) - {"QLP Coefficient" sub i}
+.EN
+where @E(-1) = 0@ and each QLP Coefficient is adjusted
+prior to calculating the next @E(i)@ value such that:
+.br
+@"QLP coefficient minimum" <= {"QLP Coefficient" sub i} <= "QLP coefficient maximum"@
+.sp
+.LP
+The LPC Order, LPC Precision, LPC Shift Needed, and QLP Coefficients
+make up the LPC subframe.
+A number of warm-up samples equal to LPC Order are taken from the input PCM
+and the subframes residuals are calculated accordingly:
+.EQ
+"Residual" sub i
+=
+"Sample" sub i~~-~~
+{
+{sum from {j = 0} to {Order~-~1}
+{"Coefficient" sub j}~\[mu]~"Sample" sub {i~-~j~-~1}}
+} over {2 sup "LPC Shift Needed"}
+.EN
 .bp
 .SUBSUBSECTION "the Residual"
 .PP
