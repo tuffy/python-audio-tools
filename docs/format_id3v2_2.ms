@@ -143,7 +143,7 @@ Its value is either ISO-8859-1 or UCS-16 - the same as in
 text frames.
 Image Format is a 3 byte string indicating the format of the image,
 typically `JPG' for JPEG images or 'PNG' for PNG images.
-Description is a NULL-terminated C-style string which contains
+Description is a NULL-terminated C-string which contains
 a text description of the image.
 .TS
 tab(:);

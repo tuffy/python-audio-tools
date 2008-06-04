@@ -216,7 +216,7 @@ Its value is either ISO-8859-1, UTF-16 or UTF-8 - the same as in
 text frames.
 MIME Type is a NULL-terminated, ASCII C-string which contains the
 image's MIME type, such as `image/jpeg' or `image/png'.
-Description is a NULL-terminated C-style string which contains
+Description is a NULL-terminated C-string which contains
 a text description of the image.
 .TS
 tab(:);

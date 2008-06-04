@@ -1014,7 +1014,7 @@ prior to calculating the next @E(i)@ value such that:
 The LPC Order, LPC Precision, LPC Shift Needed, and QLP Coefficients
 make up the LPC subframe.
 A number of warm-up samples equal to LPC Order are taken from the input PCM
-and the subframes residuals are calculated accordingly:
+and the subframe's residuals are calculated accordingly:
 .EQ
 "Residual" sub i
 =
