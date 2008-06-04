@@ -793,7 +793,7 @@ sample in the Rectangular window.
 The Hann window is defined by the function:
 .br
 .sp
-@hann(n) = \[12]~-~ left ( \[12]~\[md]~cos left ( {2 pi n} over {"sample count" - 1} right ) right )@
+@{roman hann} (n) = \[12]~-~ left ( \[12]~\[md]~cos left ( {2 pi n} over {"sample count" - 1} right ) right )@
 .br
 .sp
 .LP
@@ -801,7 +801,7 @@ The Hann window is defined by the function:
 The Rectangular window is defined by the function:
 .br
 .sp
-@rectangle(n) = 1@
+@{roman rectangle} (n) = 1@
 .br
 .sp
 .LP
