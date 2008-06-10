@@ -607,7 +607,7 @@ The FLAC frame's block size in PCM frames
 (called ``channel independent samples'' in FLAC's documentation)
 is typically encoded in the 4 bit `block size' field.
 But for odd-sized frames - which often occur at the end of the stream -
-that value is stored as an 8 or 16 bit integer following UTF-8 encoded
+that value is stored as an 8 or 16 bit integer following the UTF-8 encoded
 frame number.
 .PP
 In addition, odd sample rate values are stored as 8 bit (in kHz),
@@ -765,13 +765,14 @@ complicated process:
 .mk
 .PSPIC -L "lpc_process.eps" 3i
 .rt
-.LP
-.in +3.25i
-`Input PCM' is the subframe input signal.
-.br
-`Max LPC Order' is a user-defined value from 1 to 33, typically in the
-6-12 range.
-.in -3.25i
+.PSPIC -R "lpc_process2.eps" 3i
+\" .LP
+\" .in +3.25i
+\" `Input PCM' is the subframe input signal.
+\" .br
+\" `Max LPC Order' is a user-defined value from 1 to 33, typically in the
+\" 6-12 range.
+\" .in -3.25i
 .bp
 .SUBSUBSUBSECTION "Windowing"
 .PP
