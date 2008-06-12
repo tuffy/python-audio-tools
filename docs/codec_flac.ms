@@ -231,15 +231,15 @@ noname
 noname
   0-3-14 LPC Precision
   4-8-16 LPC Shift Needed
-  9-?-14 @roman Coefficient sub 1@
-  --14 @roman Coefficient sub 2@
+  9-?-14 QLP @roman Coefficient sub 1@
+  --14 QLP @roman Coefficient sub 2@
   --14-dashed ...
 noname
   --72 Residual
 .end dformat
 The number of warm-up samples equals the `LPC Order'
 (which is encoded in the `Subframe Type').
-The size of each Coefficient is equal to
+The size of each QLP Coefficient is equal to
 `LPC Precision' number of bits, plus 1.
 The value of each Coefficient is a signed two's-complement integer.
 The number of Coefficients equals the `LPC Order'.
@@ -247,7 +247,7 @@ The number of Coefficients equals the `LPC Order'.
 "Sample" sub i =
 {
 {sum from {j = 0} to {Order~-~1}
-{"Coefficient" sub j}~\[mu]~"Sample" sub {i~-~j~-~1}}
+{"QLP Coefficient" sub j}~\[mu]~"Sample" sub {i~-~j~-~1}}
 } over {2 sup "LPC Shift Needed"}
 ~~+~~"Residual" sub i
 .EN
@@ -264,11 +264,11 @@ and the encoded Coefficients are as follows:
 .TS
 tab(:);
 c r.
-@roman Coefficient sub 0@:1241
-@roman Coefficient sub 1@:-944
-@roman Coefficient sub 2@:14
-@roman Coefficient sub 3@:342
-@roman Coefficient sub 4@:-147
+QLP @roman Coefficient sub 0@:1241
+QLP @roman Coefficient sub 1@:-944
+QLP @roman Coefficient sub 2@:14
+QLP @roman Coefficient sub 3@:342
+QLP @roman Coefficient sub 4@:-147
 .TE
 .KE
 
@@ -737,7 +737,7 @@ _
 .SUBSUBSECTION "the LPC subframe"
 .PP
 Unlike the FIXED subframe which required only input samples and a
-predictor order, LPC subframes also require a list of coefficients,
+predictor order, LPC subframes also require a list of QLP coefficients,
 an LPC precision value of those coefficients, and an LPC shift needed
 value.
 .begin dformat
@@ -752,8 +752,8 @@ noname
 noname
   0-3-14 LPC Precision
   4-8-16 LPC Shift Needed
-  9-?-14 @roman Coefficient sub 1@
-  --14 @roman Coefficient sub 2@
+  9-?-14 QLP @roman Coefficient sub 1@
+  --14 QLP @roman Coefficient sub 2@
   --14-dashed ...
 noname
   --72 Residual
@@ -1052,7 +1052,7 @@ and the subframe's residuals are calculated accordingly:
 "Sample" sub i~~-~~
 {
 {sum from {j = 0} to {Order~-~1}
-{"Coefficient" sub j}~\[mu]~"Sample" sub {i~-~j~-~1}}
+{"QLP Coefficient" sub j}~\[mu]~"Sample" sub {i~-~j~-~1}}
 } over {2 sup "LPC Shift Needed"}
 .EN
 .bp
