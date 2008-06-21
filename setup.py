@@ -61,7 +61,7 @@ extensions = [cdiomodule,
 #                          (f.startswith('-l'))],
 #             library_dirs = [f[2:] for f in pkg_config('alsa','--libs') if
 #                             (f.startswith('-L'))]))
-                                    
+
 # except OSError:
 #     pass #pkg-config not available
 
@@ -71,22 +71,22 @@ extensions = [cdiomodule,
 #         extensions.append(Extension(
 #             'audiotools.pulse',
 #             sources = ['src/pulse.c'],
-#             include_dirs = [f[2:] for f in 
+#             include_dirs = [f[2:] for f in
 #                             pkg_config('libpulse-simple','--cflags') if
 #                             (f.startswith('-I'))],
-#             libraries = [f[2:] for f in 
+#             libraries = [f[2:] for f in
 #                          pkg_config('libpulse-simple','--libs') if
 #                          (f.startswith('-l'))],
-#             library_dirs = [f[2:] for f in 
+#             library_dirs = [f[2:] for f in
 #                             pkg_config('libpulse-simple','--libs') if
 #                             (f.startswith('-L'))]
 #             ))
-                                    
+
 # except OSError:
 #     pass #pkg-config not available
 
 setup (name = 'Python Audio Tools',
-       version = '2.8',
+       version = '2.9',
        description = 'A collection of audio handling utilities',
        author = 'Brian Langenberger',
        author_email = 'tuffy@users.sourceforge.net',
