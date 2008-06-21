@@ -123,8 +123,8 @@ _
 .TE
 .KE
 `Wasted Bits Per Sample' is typically a single bit set to 0, indicating
-no wasted bits per sample.  Otherwise, it is a unary-encoded value
-indicating how many bits are wasted per sample.
+no wasted bits per sample.  If set to 1, a unary-encoded value
+follows which indicates how many bits are wasted per sample.
 .br
 Padding is added as needed between the final subframe and CRC-16
 in order to byte-align frames.
@@ -229,8 +229,8 @@ noname
   --18-dashed ...
   --18 Warm\[hy]Up @roman Sample sub n@
 noname
-  0-3-14 LPC Precision
-  4-8-16 LPC Shift Needed
+  0-3-14 QLP Precision
+  4-8-16 QLP Shift Needed
   9-?-14 QLP @roman Coefficient sub 1@
   --14 QLP @roman Coefficient sub 2@
   --14-dashed ...
@@ -240,7 +240,7 @@ noname
 The number of warm-up samples equals the `LPC Order'
 (which is encoded in the `Subframe Type').
 The size of each QLP Coefficient is equal to
-`LPC Precision' number of bits, plus 1.
+`QLP Precision' number of bits, plus 1.
 The value of each Coefficient is a signed two's-complement integer.
 The number of Coefficients equals the `LPC Order'.
 .EQ
@@ -248,7 +248,7 @@ The number of Coefficients equals the `LPC Order'.
 {
 {sum from {j = 0} to {Order~-~1}
 {"QLP Coefficient" sub j}~\[mu]~"Sample" sub {i~-~j~-~1}}
-} over {2 sup "LPC Shift Needed"}
+} over {2 sup "QLP Shift Needed"}
 ~~+~~"Residual" sub i
 .EN
 Don't be intimidated by the \[*S] if you're not math-inclined.
@@ -258,7 +258,7 @@ when determining the current sample.
 Much like the FIXED subframe, LPC subframes also contain warm-up
 samples which serve as our calculation's starting point.
 .PP
-In this example, the LPC Order is 5, the LPC Shift Needed is 9
+In this example, the LPC Order is 5, the QLP Shift Needed is 9
 and the encoded Coefficients are as follows:
 .KS
 .TS
@@ -619,6 +619,13 @@ the PCM stream data.
 Unless you're writing a variable block size encoder (which no one has),
 one should encode the frame number starting from 0 in the frame header
 and choose a predefined block size for as many FLAC frames as possible.
+.SUBSUBSECTION "Channel assignment"
+.PP
+If the input stream has a number of channels other than 2,
+one has no choice but to store them independently.
+If the number of channels equals 2, one can try all four possible
+assignments (left-difference, difference-right, mid-side and
+independent) and use the one which takes the least amount of space.
 .SUBSUBSECTION "Subframe header"
 .PP
 .TS
@@ -738,7 +745,7 @@ _
 .PP
 Unlike the FIXED subframe which required only input samples and a
 predictor order, LPC subframes also require a list of QLP coefficients,
-an LPC precision value of those coefficients, and an LPC shift needed
+a QLP precision value of those coefficients, and a QLP shift needed
 value.
 .begin dformat
 style bitwid 0.08
@@ -750,8 +757,8 @@ noname
   --18-dashed ...
   --18 Warm\[hy]Up @roman Sample sub n@
 noname
-  0-3-14 LPC Precision
-  4-8-16 LPC Shift Needed
+  0-3-14 QLP Precision
+  4-8-16 QLP Shift Needed
   9-?-14 QLP @roman Coefficient sub 1@
   --14 QLP @roman Coefficient sub 2@
   --14-dashed ...
@@ -760,11 +767,17 @@ noname
 .end dformat
 .LP
 Determining these values for a given input PCM signal is a somewhat
-complicated process:
+complicated process which depends on whether one is performing an
+exhaustive LP coefficient order search or not:
 .LP
 .mk
+Non-exhaustive search
+.br
 .PSPIC -L "lpc_process.eps" 3i
 .rt
+.in +3in
+Exhaustive search
+.br
 .PSPIC -R "lpc_process2.eps" 3i
 \" .LP
 \" .in +3.25i
@@ -802,7 +815,7 @@ The Hann window is defined by the function:
 The Rectangular window is defined by the function:
 .br
 .sp
-@{roman rectangle} (n) = 1@
+@{roman rectangle} (n) = 1.0@
 .br
 .sp
 .LP
@@ -1042,7 +1055,7 @@ prior to calculating the next @E(i)@ value such that:
 @"QLP coefficient minimum" <= {"QLP Coefficient" sub i} <= "QLP coefficient maximum"@
 .sp
 .LP
-The LPC Order, LPC Precision, LPC Shift Needed, and QLP Coefficients
+The LPC Order, QLP Precision, QLP Shift Needed, and QLP Coefficients
 make up the LPC subframe.
 A number of warm-up samples equal to LPC Order are taken from the input PCM
 and the subframe's residuals are calculated accordingly:
@@ -1053,7 +1066,7 @@ and the subframe's residuals are calculated accordingly:
 {
 {sum from {j = 0} to {Order~-~1}
 {"QLP Coefficient" sub j}~\[mu]~"Sample" sub {i~-~j~-~1}}
-} over {2 sup "LPC Shift Needed"}
+} over {2 sup "QLP Shift Needed"}
 .EN
 .bp
 .SUBSUBSECTION "the Residual"
