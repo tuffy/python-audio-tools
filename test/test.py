@@ -508,7 +508,9 @@ class TestAiffAudio(unittest.TestCase):
                     counter = PCM_Count()
                     pcm = new_file.to_pcm()
                     audiotools.transfer_data(pcm.read,counter.write)
-                    self.assert_(len(counter) > 0)
+                    self.assert_(len(counter) > 0,
+                                 "error converting %s to %s without suffix" % \
+                                     (repr(f),repr(new_file)))
 
                 new_file_metadata = new_file.get_metadata()
                 f_metadata = f.get_metadata()
@@ -722,7 +724,7 @@ class TestSpeexAudio(TestAiffAudio):
     def setUp(self):
         self.audio_class = audiotools.SpeexAudio
 
-#class TestApeAudio(TestForeignWaveChunks,TestAiffAudio):
+# class TestApeAudio(TestForeignWaveChunks,TestAiffAudio):
 #    def setUp(self):
 #        self.audio_class = audiotools.ApeAudio
 

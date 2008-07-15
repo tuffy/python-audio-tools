@@ -112,6 +112,13 @@ class MP3Audio(AudioFile):
         return False
 
     def to_pcm(self):
+        import tempfile
+        f1 = file(self.filename,'rb')
+        f2 = tempfile.NamedTemporaryFile(suffix='.mp3')
+        transfer_data(f1.read,f2.write)
+        f1.close()
+        f2.flush()
+
         if (BIG_ENDIAN):
             endian = ['-x']
         else:
@@ -401,6 +408,30 @@ class MP2Audio(MP3Audio):
                     (frame.layer == 0x02))
         except:
             return False
+
+    def to_pcm(self):
+        import tempfile
+        f1 = file(self.filename,'rb')
+        f2 = tempfile.NamedTemporaryFile(suffix='.mp2')
+        transfer_data(f1.read,f2.write)
+        f1.close()
+        f2.flush()
+
+        if (BIG_ENDIAN):
+            endian = ['-x']
+        else:
+            endian = []
+
+        sub = subprocess.Popen([BIN['lame']] + endian + \
+                               ["--decode","-t","--quiet",
+                                f2.name,"-"],
+                               stdout=subprocess.PIPE)
+
+        return PCMReader(sub.stdout,
+                         sample_rate=self.sample_rate(),
+                         channels=self.channels(),
+                         bits_per_sample=16,
+                         process=sub)
 
     @classmethod
     def from_pcm(cls, filename, pcmreader,
