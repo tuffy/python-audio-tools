@@ -148,6 +148,25 @@ class MP3Audio(AudioFile):
             return TempWaveReader(wave)
 
     @classmethod
+    def __help_output__(cls):
+        import cStringIO
+        help_data = cStringIO.StringIO()
+        sub = subprocess.Popen([BIN['lame'],'--help'],
+                               stdout=subprocess.PIPE)
+        transfer_data(sub.stdout.read,help_data.write)
+        sub.wait()
+        return help_data.getvalue()
+
+    @classmethod
+    def __lame_version__(cls):
+        try:
+            version = re.findall(r'version \d+\.\d+',
+                                 cls.__help_output__())[0]
+            return tuple(map(int,version[len('version '):].split(".")))
+        except IndexError:
+            return (0,0)
+
+    @classmethod
     def from_pcm(cls, filename, pcmreader,
                  compression="standard"):
         import decimal,bisect
@@ -170,10 +189,16 @@ class MP3Audio(AudioFile):
         else:
             mode = "m"
 
+        #LAME 3.98 (and up, presumably) handle the byteswap correctly
+        #LAME 3.97 always uses -x
+        if (BIG_ENDIAN or (cls.__lame_version__() < (3,98))):
+            endian = ['-x']
+        else:
+            endian = []
+
         sub = subprocess.Popen([BIN['lame'],"--quiet",
-                                "-r","-x",
-                                "-s",str(
-            decimal.Decimal(pcmreader.sample_rate) / 1000),
+                                "-r"] + endian + \
+                               ["-s",str(decimal.Decimal(pcmreader.sample_rate) / 1000),
                                 "--bitwidth",str(pcmreader.bits_per_sample),
                                 "-m",mode,
                                 "--preset",compression,
