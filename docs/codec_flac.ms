@@ -1088,7 +1088,7 @@ order which uses the smallest estimated amount of space is chosen.
 Choosing the best Rice parameter is a matter of selecting the smallest
 value of `x' such that:
 .EQ
-"sample count"~\[mu]~{2 sup x}~~>~~{sum from {i = 0} to {"residual count"~-~1}
+"sample count"~\[mu]~{2 sup x}~~<~~{sum from {i = 0} to {"residual count"~-~1}
 |{"residual" sub i}|}
 .EN
 .LP
