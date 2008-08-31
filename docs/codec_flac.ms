@@ -1088,7 +1088,7 @@ order which uses the smallest estimated amount of space is chosen.
 Choosing the best Rice parameter is a matter of selecting the smallest
 value of `x' such that:
 .EQ
-"sample count"~\[mu]~{2 sup x}~~<~~{sum from {i = 0} to {"residual count"~-~1}
+"sample count"~\[mu]~{2 sup x}~~>~~{sum from {i = 0} to {"residual count"~-~1}
 |{"residual" sub i}|}
 .EN
 .LP
@@ -1127,7 +1127,7 @@ _
 @19~\[mu]~{2 sup 0}@ is not larger than 29.
 .br
 @19~\[mu]~{2 sup 1}@ is larger than 29, so the best Rice parameter
-for this block of residuals is 0.
+for this block of residuals is 1.
 .PP
 Remember that the Rice parameter's maximum value is limited to
 @2 sup 4@ using coding method 0, or @2 sup 5@ using coding method 1.
