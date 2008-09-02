@@ -869,7 +869,7 @@ samples removed from the beginning.
 .PSPIC -L "lag.eps" 6i
 .PP
 The lagged sums from 0 to the maximum LPC order are our autocorrelation
-values.  In this example, they are 11018.0, 9690.0 and 8443.0.
+values.  In this example, they are 14979.0, 13651.0 and 12405.0.
 .bp
 .SUBSUBSUBSECTION "LP coefficient calculation"
 .PP
