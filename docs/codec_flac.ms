@@ -1057,8 +1057,11 @@ prior to calculating the next @E(i)@ value such that:
 .LP
 The LPC Order, QLP Precision, QLP Shift Needed, and QLP Coefficients
 make up the LPC subframe.
+.bp
+.SUBSUBSUBSECTION "Calculating Residual"
+.PP
 A number of warm-up samples equal to LPC Order are taken from the input PCM
-and the subframe's residuals are calculated accordingly:
+and the subframe's residuals are calculated according to the following formula:
 .EQ
 "Residual" sub i
 =
@@ -1068,6 +1071,45 @@ and the subframe's residuals are calculated accordingly:
 {"QLP Coefficient" sub j}~\[mu]~"Sample" sub {i~-~j~-~1}}
 } over {2 sup "QLP Shift Needed"}
 .EN
+For example, given the samples
+1053, 1116, 1257, 1423, 1529, 1570, 1623, 1694, 1688 and 1550,
+.br
+the coefficients:
+.TS
+tab(:);
+c r.
+QLP @roman Coefficient sub 0@:1241
+QLP @roman Coefficient sub 1@:-944
+QLP @roman Coefficient sub 2@:14
+QLP @roman Coefficient sub 3@:342
+QLP @roman Coefficient sub 4@:-147
+.TE
+and a QLP Shift Needed value of 9, our residuals are as follows:
+.ps 9
+.TS
+tab(:);
+| c || c | c |
+| c || r | r |.
+_
+Index:Sample:Residual
+=
+0:(warm-up) 1053:
+1:(warm-up) 1116:
+2:(warm-up) 1257:
+3:(warm-up) 1423:
+4:(warm-up) 1529:
+5:1570:@1570~-~{{(1241~\[mu]~1529) + (-944~\[mu]~1423) + (14~\[mu]~1257) + (342~\[mu]~1116) + (-147~\[mu]~1053)} over {2 sup 9}}~=~1570~-~{798656 over 512}~ mark =~bold 11~~@
+\^::
+6:1623:@1623~-~{{(1241~\[mu]~1570) + (-944~\[mu]~1529) + (14~\[mu]~1423) + (342~\[mu]~1257) + (-147~\[mu]~1116)} over {2 sup 9}}~=~1623-{790758 over 512}~ lineup =~bold 79@
+\^::
+7:1694:@1694~-~{{(1241~\[mu]~1623) + (-944~\[mu]~1570) + (14~\[mu]~1529) + (342~\[mu]~1423) + (-147~\[mu]~1257)} over {2 sup 9}}~=~1694-{855356 over 512}~ lineup =~bold 24@
+\^::
+8:1688:@1688~-~{{(1241~\[mu]~1694) + (-944~\[mu]~1623) + (14~\[mu]~1570) + (342~\[mu]~1529) + (-147~\[mu]~1423)} over {2 sup 9}}~=~1688-{905859 over 512}~ lineup =~bold -81@
+\^::
+9:1550:@1550~-~{{(1241~\[mu]~1688) + (-944~\[mu]~1694) + (14~\[mu]~1623) + (342~\[mu]~1570) + (-147~\[mu]~1529)} over {2 sup 9}}~=~1550-{830571 over 512}~ lineup =~bold -72@
+_
+.TE
+.ps
 .bp
 .SUBSUBSECTION "the Residual"
 .PP
