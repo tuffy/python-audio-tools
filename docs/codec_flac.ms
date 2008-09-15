@@ -307,7 +307,6 @@ For example: @-5~/~2 sup 1 = -3@
 
 .bp
 .SUBSUBSECTION "the Residual"
-.nr ZR \n%
 .PP
 Though the FLAC format allows for different forms of
 residual coding, two forms of partitioned Rice are the only ones
@@ -1115,10 +1114,31 @@ _
 .PP
 Given a stream of residual values, one must place them in one or more
 partitions, each with its own Rice parameter, and prepended with a
-small header.\(dg
-.FS
-\(dg See page \n(ZR for full details of how the residual is organized.
-.FE
+small header:
+.begin dformat
+style bitwid 0.08
+style charwid 0
+style recspread 0.2
+noname
+     0-1-17 Coding Method
+     2-5-17 Partition Order
+ P1: 6--15 @roman Partition sub 1@
+     --15 @roman Partition sub 2@
+     --15-dashed ...
+noname
+     --11-invisible Method = 0
+ P2: 0-3-19 Rice Parameter
+     4-8-21-dashed Escape Code
+ P3: --26 Encoded Residual
+noname
+     --11-invisible Method = 1
+     0-4-21 Rice Parameter
+     5-9-22-dashed Escape Code
+     --23 Encoded Residual
+pic line dotted from P1.sw to P2.nw
+pic line dotted from P1.se to P3.ne
+.end dformat
+
 The residual's coding method is typically 0, unless one is encoding
 audio with more than 16 bits-per-sample and one of the partitions
 requests a Rice parameter higher than @2 sup 4@.
