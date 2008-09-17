@@ -42,6 +42,10 @@ _
 \^:\fClame\fR:the \fClame\fR executable to use for encoding/decoding MP3 files
 \^:...:which executable to use other than the default
 _
+\fC[Thumbnail]\fR:\fCformat\fR:the image format to use for thumbnails, such as `jpeg' or 'png'
+\^:\fCsize\fR:the maximum size of each thumbnail in pixels
+\^:\^:(e.g. a value of 100 results in a maximum size of 100\[mu]100 pixel thumbnails)
+_
 .TE
 
 .SUBSECTION "Options precedence"

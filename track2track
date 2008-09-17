@@ -133,7 +133,7 @@ if (__name__ == '__main__'):
                       action='store_true',
                       default=False,
                       dest='thumbnail',
-                      help='convert images to smaller thumbnails during conversion')
+                      help='convert embedded images to smaller thumbnails during conversion')
 
     parser.add_option('--no-replay-gain',
                       action='store_false',

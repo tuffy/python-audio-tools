@@ -326,7 +326,7 @@ How wide this image is as an integer number of pixels.
 How tall this image is as an integer number of pixels.
 
 .ATTRIBUTE color_depth
-The number of color this image contains as an integer number of
+The number of colors this image contains as an integer number of
 bits-per-pixel.
 
 .ATTRIBUTE color_count
@@ -356,6 +356,8 @@ Returns what portion of an album this image is of, as a string.
 Returns a string of this image's file suffix, based on its MIME type.
 `image/jpeg' returns a suffix of `jpg', for example.
 
+.bp
+
 .CLASSMETHOD new "image_data, description, type"
 Given a string of image data, a Unicode description string and
 integer type, returns an Image object with the remaining fields
@@ -364,7 +366,10 @@ This allows a user to add a JPEG to an audio track, for example,
 by having the rest of the image information retrieved automatically
 based on its contents rather than having to specify those metrics.
 
-.bp
+.FUNCTION thumbnail "width, height, format"
+Given maximum size width and height integers and a format string
+(such as `jpeg'),
+returns a new Image object formatted to the given parameters.
 
 .CLASS ReplayGain "track_gain, track_peak, album_gain, album_peak"
 A simple container class for ReplayGain metadata.
