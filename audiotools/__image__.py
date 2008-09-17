@@ -423,3 +423,36 @@ class __TIFF__(ImageMetrics):
             return __TIFF__(width,height,bits_per_sample,color_count)
         except Con.ConstError:
             raise InvalidTIFF('invalid TIFF')
+
+
+#returns True if we have the capability to thumbnail images
+#False if not
+def can_thumbnail():
+    try:
+        import Image
+        return True
+    except ImportError:
+        return False
+
+#returns a list of available thumbnail image formats
+def thumbnail_formats():
+    import Image
+
+    return Image.SAVE.keys()
+
+#takes a string of raw image data
+#along with width and height integers
+#and an image format string
+#returns a new image data string in the given format
+#no larger than the given width and height
+def thumbnail_image(image_data, width, height, format):
+    import cStringIO
+    import Image
+
+    img = Image.open(cStringIO.StringIO(image_data))
+    img.thumbnail((width,height),Image.ANTIALIAS)
+    output = cStringIO.StringIO()
+    img.save(output,format)
+
+    return output.getvalue()
+

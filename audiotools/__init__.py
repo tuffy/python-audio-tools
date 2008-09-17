@@ -1135,6 +1135,11 @@ class Image:
                      description=description,
                      type=type)
 
+    #returns a new Image object in the given width, height and format
+    def thumbnail(self, width, height, format):
+        return Image.new(thumbnail_image(self.data, width, height, format),
+                         self.description,self.type)
+
     def __eq__(self, image):
         if (image is not None):
             return set([(getattr(self,attr) == getattr(image,attr))
