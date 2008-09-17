@@ -95,7 +95,10 @@ DEFAULT_CDROM = config.get_default("System","cdrom","/dev/cdrom")
 FREEDB_SERVER = config.get_default("FreeDB","server","us.freedb.org")
 FREEDB_PORT = config.getint_default("FreeDB","port",80)
 
-VERSION = "2.9.1"
+THUMBNAIL_FORMAT = config.get_default("Thumbnail","format","jpeg")
+THUMBNAIL_SIZE = config.getint_default("Thumbnail","size",150)
+
+VERSION = "2.10"
 
 FILENAME_FORMAT = config.get_default(
     "Filenames","format",

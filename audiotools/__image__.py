@@ -429,16 +429,20 @@ class __TIFF__(ImageMetrics):
 #False if not
 def can_thumbnail():
     try:
-        import Image
+        import Image as PIL_Image
         return True
     except ImportError:
         return False
 
 #returns a list of available thumbnail image formats
 def thumbnail_formats():
-    import Image
+    import Image as PIL_Image
+    import cStringIO
 
-    return Image.SAVE.keys()
+    #performing a dummy save seeds PIL_Image.SAVE with possible save types
+    PIL_Image.new("RGB",(1,1)).save(cStringIO.StringIO(),"bmp")
+
+    return PIL_Image.SAVE.keys()
 
 #takes a string of raw image data
 #along with width and height integers
@@ -447,12 +451,19 @@ def thumbnail_formats():
 #no larger than the given width and height
 def thumbnail_image(image_data, width, height, format):
     import cStringIO
-    import Image
+    import Image as PIL_Image
 
-    img = Image.open(cStringIO.StringIO(image_data))
-    img.thumbnail((width,height),Image.ANTIALIAS)
+    img = PIL_Image.open(cStringIO.StringIO(image_data))
+    img.thumbnail((width,height),PIL_Image.ANTIALIAS)
     output = cStringIO.StringIO()
-    img.save(output,format)
+
+    if (format.upper() == 'JPEG'):
+        #PIL's default JPEG save quality isn't too great
+        #so it's best to add a couple of optimizing parameters
+        #since this is a common case
+        img.save(output,'JPEG',quality=90,optimize=True)
+    else:
+        img.save(output,format)
 
     return output.getvalue()
 
