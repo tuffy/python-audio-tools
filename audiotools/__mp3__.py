@@ -29,8 +29,10 @@ class MP3Exception(InvalidFile): pass
 
 class MP3Audio(AudioFile):
     SUFFIX = "mp3"
-    DEFAULT_COMPRESSION = "standard"
-    COMPRESSION_MODES = ("medium","standard","extreme","insane")
+    DEFAULT_COMPRESSION = "2"
+    #0 is better quality/lower compression
+    #9 is worse quality/higher compression
+    COMPRESSION_MODES = ("0","1","2","3","4","5","6","7","8","9")
     BINARIES = ("lame",)
 
     #MPEG1, Layer 1
@@ -168,7 +170,7 @@ class MP3Audio(AudioFile):
 
     @classmethod
     def from_pcm(cls, filename, pcmreader,
-                 compression="standard"):
+                 compression="2"):
         import decimal,bisect
 
         if (compression not in cls.COMPRESSION_MODES):
@@ -201,7 +203,7 @@ class MP3Audio(AudioFile):
                                ["-s",str(decimal.Decimal(pcmreader.sample_rate) / 1000),
                                 "--bitwidth",str(pcmreader.bits_per_sample),
                                 "-m",mode,
-                                "--preset",compression,
+                                "-V" + str(compression),
                                 "-",
                                 filename],
                                stdin=subprocess.PIPE,
