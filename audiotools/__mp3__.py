@@ -18,8 +18,29 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,InvalidFile,PCMReader,PCMConverter,Con,transfer_data,subprocess,BIN,BIG_ENDIAN,ApeTag,ReplayGain,ignore_sigint
+from audiotools import AudioFile,InvalidFile,PCMReader,PCMConverter,Con,transfer_data,subprocess,BIN,BIG_ENDIAN,ApeTag,ReplayGain,ignore_sigint,pcmstream
 from __id3__ import *
+
+#this is a wrapper around another PCMReader
+#which swaps the samples from big-endian to little-endian
+class __BSSampleReader__(PCMReader):
+    def __init__(self, pcmreader):
+        PCMReader.__init__(self,
+                           pcmstream.PCMStreamReader(pcmreader,
+                                                     pcmreader.bits_per_sample / 8,
+                                                     True,
+                                                     False),
+                           sample_rate=pcmreader.sample_rate,
+                           channels=pcmreader.channels,
+                           bits_per_sample=pcmreader.bits_per_sample)
+
+    def read(self, bytes):
+        return pcmstream.pcm_to_string(self.file.read(bytes),
+                                       self.bits_per_sample / 8,
+                                       False)
+
+    def close(self):
+        self.file.close()
 
 #######################
 #MP3
@@ -114,40 +135,17 @@ class MP3Audio(AudioFile):
         return False
 
     def to_pcm(self):
-        if (self.filename.endswith("." + self.SUFFIX)):
-            if (BIG_ENDIAN):
-                endian = ['-x']
-            else:
-                endian = []
-
-            sub = subprocess.Popen([BIN['lame']] + endian + \
-                                       ["--decode","-t","--quiet",
-                                        self.filename,"-"],
-                                   stdout=subprocess.PIPE)
-            return PCMReader(sub.stdout,
-                             sample_rate=self.sample_rate(),
-                             channels=self.channels(),
-                             bits_per_sample=16,
-                             process=sub)
+        sub = subprocess.Popen([BIN["mpg123"],"-qs",self.filename],
+                               stdout=subprocess.PIPE)
+        reader = PCMReader(sub.stdout,
+                           sample_rate=self.sample_rate(),
+                           channels=self.channels(),
+                           bits_per_sample=16,
+                           process=sub)
+        if (BIG_ENDIAN):
+            return __BSSampleReader__(reader)
         else:
-            import tempfile
-            from audiotools import TempWaveReader
-            #copy our file to one that ends with .mp3
-            tempmp3 = tempfile.NamedTemporaryFile(suffix='.' + self.SUFFIX)
-            f = open(self.filename,'rb')
-            transfer_data(f.read,tempmp3.write)
-            f.close()
-            tempmp3.flush()
-
-            #decode the mp3 file to a WAVE file
-            wave = tempfile.NamedTemporaryFile(suffix='.wav')
-            subprocess.call([BIN['lame'],"--decode","--quiet",
-                             tempmp3.name,wave.name])
-            tempmp3.close()
-
-            #return WAVE file as a stream
-            wave.seek(0,0)
-            return TempWaveReader(wave)
+            return reader
 
     @classmethod
     def __help_output__(cls):
