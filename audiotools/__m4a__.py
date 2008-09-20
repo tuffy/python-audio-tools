@@ -640,3 +640,24 @@ class ALACAudio(M4AAudio):
 
         return ALACAudio(filename)
 
+    @classmethod
+    def has_binaries(cls, system_binaries):
+        if (set([True] + \
+                    [system_binaries.can_execute(system_binaries[command])
+                     for command in cls.BINARIES]) == set([True])):
+            #if we have the ffmpeg executable,
+            #ensure it has ALAC encode/decode capability
+
+            devnull = file(os.devnull,"ab")
+            ffmpeg_formats = subprocess.Popen([BIN["ffmpeg"],"-formats"],
+                                              stdout=subprocess.PIPE,
+                                              stderr=devnull)
+            alac_ok = False
+            for line in ffmpeg_formats.stdout.readlines():
+                if (("alac" in line) and ("DEA" in line)):
+                    alac_ok = True
+            ffmpeg_formats.stdout.close()
+            ffmpeg_formats.wait()
+
+            return alac_ok
+
