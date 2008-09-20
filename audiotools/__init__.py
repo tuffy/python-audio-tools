@@ -1557,7 +1557,8 @@ class ExecQueue:
 AVAILABLE_TYPES = (FlacAudio,OggFlacAudio,
                    MP3Audio,MP2Audio,WaveAudio,
                    VorbisAudio,SpeexAudio,MusepackAudio,
-                   AiffAudio,AuAudio,M4AAudio,WavPackAudio)
+                   AiffAudio,AuAudio,M4AAudio,ALACAudio,
+                   WavPackAudio)
 
 TYPE_MAP = dict([(track_type.SUFFIX,track_type)
                  for track_type in AVAILABLE_TYPES

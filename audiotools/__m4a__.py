@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,InvalidFile,PCMReader,PCMConverter,Con,transfer_data,subprocess,BIN,cStringIO,MetaData,os,Image,InvalidImage,ignore_sigint
+from audiotools import AudioFile,InvalidFile,PCMReader,PCMConverter,Con,transfer_data,subprocess,BIN,cStringIO,MetaData,os,Image,InvalidImage,ignore_sigint,InvalidFormat
 
 #######################
 #M4A File
@@ -226,8 +226,14 @@ class M4AAudio(AudioFile):
     def is_type(cls, file):
         header = file.read(12)
 
-        return ((header[4:8] == 'ftyp') and
-                (header[8:12] in ('mp41','mp42','M4A ','M4B ')))
+        if ((header[4:8] == 'ftyp') and
+            (header[8:12] in ('mp41','mp42','M4A ','M4B '))):
+            file.seek(0,0)
+            atoms = __Qt_Atom_Stream__(file)
+            try:
+                return atoms['moov']['trak']['mdia']['minf']['stbl']['stsd'].data[12:16] == 'mp4a'
+            except KeyError:
+                return False
 
     def lossless(self):
         return False
@@ -248,7 +254,11 @@ class M4AAudio(AudioFile):
         return self.__length__ - 1024
 
     def get_metadata(self):
-        meta_atom = self.qt_stream['moov']['udta']['meta']
+        try:
+            meta_atom = self.qt_stream['moov']['udta']['meta']
+        except KeyError:
+            return None
+
         meta_atom = __Qt_Meta_Atom__(meta_atom.type,
                                      meta_atom.data)
         data = {}
@@ -535,3 +545,98 @@ class M4ACovr(Image):
     @classmethod
     def converted(cls, image):
         return M4ACovr(image.data)
+
+
+class ALACAudio(M4AAudio):
+    SUFFIX = "alac"
+    DEFAULT_COMPRESSION = ""
+    COMPRESSION_MODES = ("",)
+    BINARIES = ("ffmpeg",)
+
+    BPS_MAP = {8:"u8",
+               16:"s16le",
+               24:"s24le"}
+
+    @classmethod
+    def is_type(cls, file):
+        header = file.read(12)
+
+        if ((header[4:8] == 'ftyp') and
+            (header[8:12] in ('mp41','mp42','M4A ','M4B '))):
+            file.seek(0,0)
+            atoms = __Qt_Atom_Stream__(file)
+            try:
+                return atoms['moov']['trak']['mdia']['minf']['stbl']['stsd'].data[12:16] == 'alac'
+            except KeyError:
+                return False
+
+    def lossless(self):
+        return True
+
+    def to_pcm(self):
+        devnull = file(os.devnull,"ab")
+
+        sub = subprocess.Popen([BIN['ffmpeg'],
+                                "-i",self.filename,
+                                "-f",self.BPS_MAP[self.__bits_per_sample__],
+                                "-"],
+                               stdout=subprocess.PIPE,
+                               stderr=devnull,
+                               stdin=devnull)
+        return PCMReader(sub.stdout,
+                         sample_rate=self.__sample_rate__,
+                         channels=self.__channels__,
+                         bits_per_sample=self.__bits_per_sample__,
+                         process=sub)
+
+    @classmethod
+    def from_pcm(cls, filename, pcmreader, compression=""):
+        if (compression not in cls.COMPRESSION_MODES):
+            compression = cls.DEFAULT_COMPRESSION
+
+        #in a remarkable piece of half-assery,
+        #ALAC only supports 16bps and 2 channels
+        #anything else wouldn't be lossless,
+        #and must be rejected
+
+        if ((pcmreader.bits_per_sample != 16) or
+            (pcmreader.channels != 2)):
+            raise InvalidFormat("ALAC requires input files to be 16 bits-per-sample and have 2 channels")
+
+        devnull = file(os.devnull,"ab")
+
+        if (not filename.endswith(".m4a")):
+            import tempfile
+            actual_filename = filename
+            tempfile = tempfile.NamedTemporaryFile(suffix=".m4a")
+            filename = tempfile.name
+        else:
+            actual_filename = tempfile = None
+
+        sub = subprocess.Popen([BIN['ffmpeg'],
+                                "-f",cls.BPS_MAP[pcmreader.bits_per_sample],
+                                "-ar",str(pcmreader.sample_rate),
+                                "-ac",str(pcmreader.channels),
+                                "-i","-",
+                                "-acodec","alac",
+                                "-title","placeholder",
+                                "-y",filename],
+                               stdin=subprocess.PIPE,
+                               stderr=devnull,
+                               stdout=devnull)
+
+        transfer_data(pcmreader.read,sub.stdin.write)
+        pcmreader.close()
+        sub.stdin.close()
+        sub.wait()
+
+        if (tempfile is not None):
+            filename = actual_filename
+            f = file(filename,'wb')
+            tempfile.seek(0,0)
+            transfer_data(tempfile.read,f.write)
+            f.close()
+            tempfile.close()
+
+        return ALACAudio(filename)
+
