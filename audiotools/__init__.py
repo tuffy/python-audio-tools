@@ -1181,6 +1181,7 @@ class NotYetImplemented(Exception): pass
 
 class AudioFile:
     SUFFIX = ""
+    NAME = ""
     DEFAULT_COMPRESSION = ""
     COMPRESSION_MODES = ("",)
     BINARIES = tuple()
@@ -1560,6 +1561,6 @@ AVAILABLE_TYPES = (FlacAudio,OggFlacAudio,
                    AiffAudio,AuAudio,M4AAudio,ALACAudio,
                    WavPackAudio)
 
-TYPE_MAP = dict([(track_type.SUFFIX,track_type)
+TYPE_MAP = dict([(track_type.NAME,track_type)
                  for track_type in AVAILABLE_TYPES
                  if track_type.has_binaries(BIN)]); del(track_type)

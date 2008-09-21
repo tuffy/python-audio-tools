@@ -269,6 +269,7 @@ class OggStreamWriter:
 
 class VorbisAudio(AudioFile):
     SUFFIX = "ogg"
+    NAME = SUFFIX
     DEFAULT_COMPRESSION = "3"
     COMPRESSION_MODES = tuple([str(i) for i in range(0,11)])
     BINARIES = ("oggenc","oggdec","vorbiscomment")

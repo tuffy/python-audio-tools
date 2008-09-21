@@ -47,6 +47,7 @@ class AuReader(PCMReader):
 
 class AuAudio(AudioFile):
     SUFFIX = "au"
+    NAME = SUFFIX
 
     AU_HEADER = Con.Struct('header',
                            Con.Const(Con.String('magic_number',4),

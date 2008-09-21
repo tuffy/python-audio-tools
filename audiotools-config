@@ -26,20 +26,20 @@ if (__name__ == '__main__'):
     except ImportError:
         print "* audiotools Python module not found!"
         print "Perhaps you should re-install the Python Audio Tools"
-    
-    suffix_len = max([len(audiotype.SUFFIX) for audiotype in
-                      audiotools.AVAILABLE_TYPES])
+
+    name_len = max([len(audiotype.NAME) for audiotype in
+                    audiotools.AVAILABLE_TYPES])
 
     available = []
     unavailable = []
     available_binaries = set()
     unavailable_binaries = set()
     for audiotype in sorted(audiotools.AVAILABLE_TYPES,
-                            lambda x,y: cmp(x.SUFFIX,y.SUFFIX)):
+                            lambda x,y: cmp(x.NAME,y.NAME)):
         if (audiotype.has_binaries(audiotools.BIN)):
-            available.append(audiotype.SUFFIX)
+            available.append(audiotype.NAME)
         else:
-            unavailable.append(audiotype.SUFFIX)
+            unavailable.append(audiotype.NAME)
         for binary in audiotype.BINARIES:
             if (audiotools.BIN.can_execute(binary)):
                 available_binaries.add(binary)
@@ -57,8 +57,8 @@ if (__name__ == '__main__'):
             print "+     found : %s" % (binary)
         else:
             print "- not found : %s" % (binary)
-    
-    
+
+
     print "-" * 30
 
     print "* System configuration:"

@@ -123,6 +123,7 @@ def __channel_mask__(total_channels):
 
 class WaveAudio(AudioFile):
     SUFFIX = "wav"
+    NAME = SUFFIX
 
     WAVE_HEADER = Con.Struct("wave_header",
                              Con.Const(Con.Bytes("wave_id",4),'RIFF'),

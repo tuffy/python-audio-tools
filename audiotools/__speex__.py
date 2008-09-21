@@ -36,6 +36,7 @@ class UnframedVorbisComment(VorbisComment):
 
 class SpeexAudio(VorbisAudio):
     SUFFIX = "spx"
+    NAME = SUFFIX
     DEFAULT_COMPRESSION = "8"
     COMPRESSION_MODES = tuple([str(i) for i in range(0,11)])
     BINARIES = ("speexenc","speexdec")

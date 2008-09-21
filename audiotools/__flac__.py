@@ -298,6 +298,7 @@ class FlacPictureComment(Image):
 
 class FlacAudio(AudioFile):
     SUFFIX = "flac"
+    NAME = SUFFIX
     DEFAULT_COMPRESSION = "8"
     COMPRESSION_MODES = tuple(map(str,range(0,9)))
     BINARIES = ("flac","metaflac")
@@ -727,6 +728,7 @@ class FlacAudio(AudioFile):
 
 class OggFlacAudio(FlacAudio):
     SUFFIX = "oga"
+    NAME = SUFFIX
     DEFAULT_COMPRESSION = "8"
     COMPRESSION_MODES = tuple(map(str,range(0,9)))
     BINARIES = ("flac",)

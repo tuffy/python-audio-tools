@@ -25,6 +25,7 @@ from audiotools import AudioFile,InvalidFile,InvalidFormat,FrameReader,Con,trans
 
 class AiffAudio(AudioFile):
     SUFFIX = "aiff"
+    NAME = SUFFIX
 
     def __init__(self, filename):
         import aifc

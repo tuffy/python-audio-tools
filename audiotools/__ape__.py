@@ -277,6 +277,7 @@ class ApeTaggedAudio:
 
 class ApeAudio(ApeTaggedAudio,AudioFile):
     SUFFIX = "ape"
+    NAME = SUFFIX
     DEFAULT_COMPRESSION = "5000"
     COMPRESSION_MODES = tuple([str(x * 1000) for x in range(1,6)]); del(x)
     BINARIES = ("mac",)

@@ -28,6 +28,7 @@ from __ape__ import ApeTaggedAudio
 
 class WavPackAudio(ApeTaggedAudio,AudioFile):
     SUFFIX = "wv"
+    NAME = SUFFIX
     DEFAULT_COMPRESSION = "veryhigh"
     COMPRESSION_MODES = ("fast","standard","high","veryhigh")
     BINARIES = ("wavpack","wvunpack")

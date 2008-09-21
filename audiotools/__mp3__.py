@@ -50,6 +50,7 @@ class MP3Exception(InvalidFile): pass
 
 class MP3Audio(AudioFile):
     SUFFIX = "mp3"
+    NAME = SUFFIX
     DEFAULT_COMPRESSION = "2"
     #0 is better quality/lower compression
     #9 is worse quality/higher compression
@@ -429,6 +430,7 @@ class MP3Audio(AudioFile):
 
 class MP2Audio(MP3Audio):
     SUFFIX = "mp2"
+    NAME = SUFFIX
     DEFAULT_COMPRESSION = str(192)
     COMPRESSION_MODES = map(str,(32, 48, 56, 64, 80, 96, 112,
                                  128,160,192,224,256,320,384))

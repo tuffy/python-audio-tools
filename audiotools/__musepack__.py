@@ -80,6 +80,7 @@ class Musepack8StreamReader:
 
 class MusepackAudio(ApeTaggedAudio,AudioFile):
     SUFFIX = "mpc"
+    NAME = SUFFIX
     DEFAULT_COMPRESSION = "standard"
     COMPRESSION_MODES = ("thumb","radio","standard","extreme","insane")
 

@@ -180,6 +180,7 @@ def __replace_qt_atom__(qt_atom, new_atom):
 
 class M4AAudio(AudioFile):
     SUFFIX = "m4a"
+    NAME = SUFFIX
     DEFAULT_COMPRESSION = "100"
     COMPRESSION_MODES = tuple(["10"] + map(str,range(50,500,25)) + ["500"])
     BINARIES = ("faac","faad")
@@ -548,7 +549,8 @@ class M4ACovr(Image):
 
 
 class ALACAudio(M4AAudio):
-    SUFFIX = "alac"
+    SUFFIX = "m4a"
+    NAME = "alac"
     DEFAULT_COMPRESSION = ""
     COMPRESSION_MODES = ("",)
     BINARIES = ("ffmpeg",)

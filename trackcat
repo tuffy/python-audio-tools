@@ -63,19 +63,19 @@ if (__name__ == '__main__'):
     if (options.quality == 'help'):
         if (len(AudioType.COMPRESSION_MODES) > 1):
             print >>sys.stderr,"*** Available compression types for %s:" % \
-                  (AudioType.SUFFIX)
+                  (AudioType.NAME)
             for mode in AudioType.COMPRESSION_MODES:
                 print >>sys.stderr,mode
         else:
             print >>sys.stderr,"*** Audio type %s has no compression modes" % \
-                  (AudioType.SUFFIX)
+                  (AudioType.NAME)
         sys.exit(0)
     elif (options.quality == None):
         options.quality = AudioType.DEFAULT_COMPRESSION
     elif (options.quality not in AudioType.COMPRESSION_MODES):
         print >>sys.stderr,"*** \"%s\" is not a supported compression " % \
               (options.quality) + "mode for type \"%s\"" % \
-              (AudioType.SUFFIX)
+              (AudioType.NAME)
         sys.exit(1)
 
     #grab the list of AudioFile objects we are converting from
