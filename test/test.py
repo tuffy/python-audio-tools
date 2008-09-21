@@ -696,6 +696,10 @@ class TestWavPackAudio(TestForeignWaveChunks,TestAiffAudio):
     def setUp(self):
         self.audio_class = audiotools.WavPackAudio
 
+class TestAlacAudio(TestAiffAudio):
+    def setUp(self):
+        self.audio_class = audiotools.ALACAudio
+
 class TestOggFlacAudio(TestAiffAudio):
     def setUp(self):
         self.audio_class = audiotools.OggFlacAudio
