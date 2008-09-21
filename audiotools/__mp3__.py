@@ -54,7 +54,7 @@ class MP3Audio(AudioFile):
     #0 is better quality/lower compression
     #9 is worse quality/higher compression
     COMPRESSION_MODES = ("0","1","2","3","4","5","6","7","8","9")
-    BINARIES = ("lame",)
+    BINARIES = ("lame","mpg123")
 
     #MPEG1, Layer 1
     #MPEG1, Layer 2,
