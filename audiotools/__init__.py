@@ -1487,6 +1487,9 @@ class CDTrackReader(PCMReader):
 def __most_numerous__(item_list):
     counts = {}
 
+    if (len(item_list) == 0):
+        return ""
+
     for item in item_list:
         counts.setdefault(item,[]).append(item)
 
