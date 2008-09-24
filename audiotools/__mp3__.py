@@ -55,7 +55,7 @@ class MP3Audio(AudioFile):
     #0 is better quality/lower compression
     #9 is worse quality/higher compression
     COMPRESSION_MODES = ("0","1","2","3","4","5","6","7","8","9")
-    BINARIES = ("lame","mpg123")
+    BINARIES = ("lame",)
 
     #MPEG1, Layer 1
     #MPEG1, Layer 2,
@@ -136,17 +136,56 @@ class MP3Audio(AudioFile):
         return False
 
     def to_pcm(self):
-        sub = subprocess.Popen([BIN["mpg123"],"-qs",self.filename],
-                               stdout=subprocess.PIPE)
-        reader = PCMReader(sub.stdout,
-                           sample_rate=self.sample_rate(),
-                           channels=self.channels(),
-                           bits_per_sample=16,
-                           process=sub)
-        if (BIG_ENDIAN):
-            return __BSSampleReader__(reader)
+        #if mpg123 is available, use that for decoding
+        if (BIN.can_execute(BIN["mpg123"])):
+            sub = subprocess.Popen([BIN["mpg123"],"-qs",self.filename],
+                                   stdout=subprocess.PIPE)
+            reader = PCMReader(sub.stdout,
+                               sample_rate=self.sample_rate(),
+                               channels=self.channels(),
+                               bits_per_sample=16,
+                               process=sub)
+            if (BIG_ENDIAN):
+                return __BSSampleReader__(reader)
+            else:
+                return reader
         else:
-            return reader
+            #if not, use LAME for decoding
+            if (self.filename.endswith("." + self.SUFFIX)):
+                if (BIG_ENDIAN):
+                    endian = ['-x']
+                else:
+                    endian = []
+
+                sub = subprocess.Popen([BIN['lame']] + endian + \
+                                           ["--decode","-t","--quiet",
+                                            self.filename,"-"],
+                                       stdout=subprocess.PIPE)
+                return PCMReader(sub.stdout,
+                                 sample_rate=self.sample_rate(),
+                                 channels=self.channels(),
+                                 bits_per_sample=16,
+                                 process=sub)
+            else:
+                import tempfile
+                from audiotools import TempWaveReader
+                #copy our file to one that ends with .mp3
+                tempmp3 = tempfile.NamedTemporaryFile(suffix='.' + self.SUFFIX)
+                f = open(self.filename,'rb')
+                transfer_data(f.read,tempmp3.write)
+                f.close()
+                tempmp3.flush()
+
+                #decode the mp3 file to a WAVE file
+                wave = tempfile.NamedTemporaryFile(suffix='.wav')
+                subprocess.call([BIN['lame'],"--decode","--quiet",
+                                 tempmp3.name,wave.name])
+                tempmp3.close()
+
+                #return WAVE file as a stream
+                wave.seek(0,0)
+                return TempWaveReader(wave)
+
 
     @classmethod
     def __help_output__(cls):

@@ -27,9 +27,6 @@ http://lame.sourceforge.net
 TwoLAME					
 http://www.twolame.org
 .IP \(bu
-mpg123					
-http://www.mpg123.de/
-.IP \(bu
 vorbis-tools					
 http://www.xiph.org
 .IP \(bu
@@ -70,8 +67,8 @@ FLAC:.flac:flac:flac:Python:Python:metaflac
 Ogg FLAC:.oga:flac:flac:Python:Python:N/A
 WavPack:.wv:wvunpack:wavpack:Python:Python:wvgain
 _
-MP3:.mp3:mpg123:lame:Python:Python:N/A
-MP2:.mp2:mpg123:twolame:Python:Python:N/A
+MP3:.mp3:lame:lame:Python:Python:N/A
+MP2:.mp2:lame:twolame:Python:Python:N/A
 Ogg Vorbis:.ogg:oggdec:oggenc:Python:vorbiscomment:vorbisgain
 Ogg Speex:.spx:speexdec:speexenc:Python:Python:N/A
 M4A:.m4a:faad:faac:Python:Python:N/A
