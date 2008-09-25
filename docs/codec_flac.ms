@@ -1241,29 +1241,32 @@ _
 _
 .TE
 .LP
-For example, given the header bytes: 0xFF, 0xF8, 0xCB, 0x5C and 0x00,
+For example, given the header bytes: 0xFF, 0xF8, 0xCC, 0x1C, 0x00 and 0xC0,
 the header's CRC-8 can be calculated as follows:
 .EQ
-{checksum sub 0}~mark =~{roman "CRC8"} ( {roman "0xFF"}~{roman "xor"}~0 )~=~{roman "CRC8"} ( 0 )~=~{roman "0xF3"}
+{checksum sub 0}~mark =~{roman "CRC8"} ( {roman "0xFF"}~{roman "xor"}~0 )~=~{roman "CRC8"} ( {roman "0xFF"} )~=~{roman "0xF3"}
 .EN
 .EQ
 {checksum sub 1}~lineup =~{roman "CRC8"} ( {roman "0xF8"}~{roman "xor"}~{roman "0xF3"} )~=~{roman "CRC8"} ( {roman "0x0B"} )~=~{roman "0x31"}
 .EN
 .EQ
-{checksum sub 2}~lineup =~{roman "CRC8"} ( {roman "0xCB"}~{roman "xor"}~{roman "0x31"} )~=~{roman "CRC8"} ( {roman "0xFA"} )~=~{roman "0xE8"}
+{checksum sub 2}~lineup =~{roman "CRC8"} ( {roman "0xCC"}~{roman "xor"}~{roman "0x31"} )~=~{roman "CRC8"} ( {roman "0xFD"} )~=~{roman "0xFD"}
 .EN
 .EQ
-{checksum sub 3}~lineup =~{roman "CRC8"} ( {roman "0x5C"}~{roman "xor"}~{roman "0xE8"} )~=~{roman "CRC8"} ( {roman "0xB4"} )~=~{roman "0x05"}
+{checksum sub 3}~lineup =~{roman "CRC8"} ( {roman "0x1C"}~{roman "xor"}~{roman "0xFD"} )~=~{roman "CRC8"} ( {roman "0xE1"} )~=~{roman "0xA9"}
 .EN
 .EQ
-{checksum sub 4}~lineup =~{roman "CRC8"} ( {roman "0x00"}~{roman "xor"}~{roman "0x05"} )~=~{roman "CRC8"} ( {roman "0x05"} )~=~{roman "0x1B"}
+{checksum sub 4}~lineup =~{roman "CRC8"} ( {roman "0x00"}~{roman "xor"}~{roman "0xA9"} )~=~{roman "CRC8"} ( {roman "0xA9"} )~=~{roman "0x56"}
+.EN
+.EQ
+{checksum sub 5}~lineup =~{roman "CRC8"} ( {roman "0xC0"}~{roman "xor"}~{roman "0x56"} )~=~{roman "CRC8"} ( {roman "0x96"} )~=~{roman "0xEB"}
 .EN
 .LP
-Thus, the next byte after the header should be 0x1B.
+Thus, the next byte after the header should be 0xEB.
 Furthermore, when the checksum byte itself is run through the
 checksumming procedure, as follows:
 .EQ
-{checksum sub 5}~lineup =~{roman "CRC8"} ( {roman "0x1B"}~{roman "xor"}~{roman "0x1B"} )~=~{roman "CRC8"} ( {roman "0x00"} )~=~{roman "0x00"}
+{checksum sub 6}~lineup =~{roman "CRC8"} ( {roman "0xEB"}~{roman "xor"}~{roman "0xEB"} )~=~{roman "CRC8"} ( {roman "0x00"} )~=~{roman "0x00"}
 .EN
 the result will always be 0.
 This is a handy way to verify a frame header's checksum since the
@@ -1273,6 +1276,14 @@ always result in 0.
 .ps
 .ft R
 .SUBSUBSECTION "CRC-16"
+.PP
+CRC-16 is used the checksum the entire FLAC frame, including the header.
+Given a byte input and the previous CRC-16 checksum,
+or 0 as an initial value, the current checksum can be calculated as follows:
+.EQ
+{checksum sub i}~=~{roman "CRC16"} ( byte~{roman "xor"}~({checksum sub {i - 1}} >> 8 ) )~{roman "xor"}~({checksum sub {i - 1}} << 8)
+.EN
+the checksum is then truncated to 16-bits.
 .ps 5
 .ft C
 .TS
@@ -1309,3 +1320,9 @@ _
 .TE
 .ps
 .ft R
+.LP
+For example, given the frame bytes:
+0xFF, 0xF8, 0xCC, 0x1C, 0x00, 0xC0, 0xEB, 0x00, 0x00, 0x00, 0x00,
+0x00, 0x00, 0x00 and 0x00, the frame's CRC-16 can be calculated as
+follows:
+
