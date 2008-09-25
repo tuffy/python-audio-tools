@@ -1318,6 +1318,7 @@ _
 0xF?:0x0220:0x8225:0x822f:0x022a:0x823b:0x023e:0x0234:0x8231:0x8213:0x0216:0x021c:0x8219:0x0208:0x820d:0x8207:0x0202
 _
 .TE
+.bp
 .ps
 .ft R
 .LP
@@ -1370,4 +1371,14 @@ follows:
 .EQ
 {checksum sub 14}~ lineup =~{roman "CRC16"} ( {roman "0x00"}~{roman "xor"}~({roman "0x3870"} >> 8 ) )~{roman "xor"}~({roman "0x3870"} << 8)~=~{roman "CRC16"} ( {roman "0x38"} )~{roman "xor"}~{roman "0x7000"}~=~{roman "0xF093"}
 .EN
+Thus, the next two bytes after the final subframe should be 0xF0 and 0x93.
+Again, when the checksum bytes are run through the checksumming procedure,
+as follows:
+.EQ
+{checksum sub 15}~ lineup =~{roman "CRC16"} ( {roman "0xF0"}~{roman "xor"}~({roman "0xF093"} >> 8 ) )~{roman "xor"}~({roman "0xF093"} << 8)~=~{roman "CRC16"} ( {roman "0x00"} )~{roman "xor"}~{roman "0x9300"}~=~{roman "0x9300"}
+.EN
+.EQ
+{checksum sub 16}~ lineup =~{roman "CRC16"} ( {roman "0x93"}~{roman "xor"}~({roman "0x9300"} >> 8 ) )~{roman "xor"}~({roman "0x9300"} << 8)~=~{roman "CRC16"} ( {roman "0x00"} )~{roman "xor"}~{roman "0x0000"}~=~{roman "0x0000"}
+.EN
+the result will also always be 0, just as in the CRC-8.
 
