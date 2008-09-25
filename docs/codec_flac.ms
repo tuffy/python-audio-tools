@@ -1325,4 +1325,49 @@ For example, given the frame bytes:
 0xFF, 0xF8, 0xCC, 0x1C, 0x00, 0xC0, 0xEB, 0x00, 0x00, 0x00, 0x00,
 0x00, 0x00, 0x00 and 0x00, the frame's CRC-16 can be calculated as
 follows:
+.EQ
+{checksum sub 0}~ mark =~{roman "CRC16"} ( {roman "0xFF"}~{roman "xor"}~(0 >> 8 ) )~{roman "xor"}~(0 << 8)~=~{roman "CRC16"} ( {roman "0xFF"} )~{roman "xor"}~0~=~{roman "0x0202"}
+.EN
+.EQ
+{checksum sub 1}~ lineup =~{roman "CRC16"} ( {roman "0xF8"}~{roman "xor"}~({roman "0x0202"} >> 8 ) )~{roman "xor"}~({roman "0x0202"} << 8)~=~{roman "CRC16"} ( {roman "0xFA"} )~{roman "xor"}~{roman "0x0200"}~=~{roman "0x001C"}
+.EN
+.EQ
+{checksum sub 2}~ lineup =~{roman "CRC16"} ( {roman "0xCC"}~{roman "xor"}~({roman "0x001C"} >> 8 ) )~{roman "xor"}~({roman "0x001C"} << 8)~=~{roman "CRC16"} ( {roman "0xCC"} )~{roman "xor"}~{roman "0x1C00"}~=~{roman "0x1EA8"}
+.EN
+.EQ
+{checksum sub 3}~ lineup =~{roman "CRC16"} ( {roman "0x1C"}~{roman "xor"}~({roman "0x1EA8"} >> 8 ) )~{roman "xor"}~({roman "0x1EA8"} << 8)~=~{roman "CRC16"} ( {roman "0x02"} )~{roman "xor"}~{roman "0xA800"}~=~{roman "0x280F"}
+.EN
+.EQ
+{checksum sub 4}~ lineup =~{roman "CRC16"} ( {roman "0x00"}~{roman "xor"}~({roman "0x280F"} >> 8 ) )~{roman "xor"}~({roman "0x280F"} << 8)~=~{roman "CRC16"} ( {roman "0x28"} )~{roman "xor"}~{roman "0x0F00"}~=~{roman "0x0FF0"}
+.EN
+.EQ
+{checksum sub 5}~ lineup =~{roman "CRC16"} ( {roman "0xC0"}~{roman "xor"}~({roman "0x0FF0"} >> 8 ) )~{roman "xor"}~({roman "0x0FF0"} << 8)~=~{roman "CRC16"} ( {roman "0xCF"} )~{roman "xor"}~{roman "0xF000"}~=~{roman "0xF2A2"}
+.EN
+.EQ
+{checksum sub 6}~ lineup =~{roman "CRC16"} ( {roman "0xEB"}~{roman "xor"}~({roman "0xF2A2"} >> 8 ) )~{roman "xor"}~({roman "0xF2A2"} << 8)~=~{roman "CRC16"} ( {roman "0x19"} )~{roman "xor"}~{roman "0xA200"}~=~{roman "0x2255"}
+.EN
+.EQ
+{checksum sub 7}~ lineup =~{roman "CRC16"} ( {roman "0x00"}~{roman "xor"}~({roman "0x2255"} >> 8 ) )~{roman "xor"}~({roman "0x2255"} << 8)~=~{roman "CRC16"} ( {roman "0x22"} )~{roman "xor"}~{roman "0x5500"}~=~{roman "0x55CC"}
+.EN
+.EQ
+{checksum sub 8}~ lineup =~{roman "CRC16"} ( {roman "0x00"}~{roman "xor"}~({roman "0x55CC"} >> 8 ) )~{roman "xor"}~({roman "0x55CC"} << 8)~=~{roman "CRC16"} ( {roman "0x55"} )~{roman "xor"}~{roman "0xCC00"}~=~{roman "0xCDFE"}
+.EN
+.EQ
+{checksum sub 9}~ lineup =~{roman "CRC16"} ( {roman "0x00"}~{roman "xor"}~({roman "0xCDFE"} >> 8 ) )~{roman "xor"}~({roman "0xCDFE"} << 8)~=~{roman "CRC16"} ( {roman "0xCD"} )~{roman "xor"}~{roman "0xFE00"}~=~{roman "0x7CAD"}
+.EN
+.EQ
+{checksum sub 10}~ lineup =~{roman "CRC16"} ( {roman "0x00"}~{roman "xor"}~({roman "0x7CAD"} >> 8 ) )~{roman "xor"}~({roman "0x7CAD"} << 8)~=~{roman "CRC16"} ( {roman "0x7C"} )~{roman "xor"}~{roman "0xAD00"}~=~{roman "0x2C0B"}
+.EN
+.EQ
+{checksum sub 11}~ lineup =~{roman "CRC16"} ( {roman "0x00"}~{roman "xor"}~({roman "0x2C0B"} >> 8 ) )~{roman "xor"}~({roman "0x2C0B"} << 8)~=~{roman "CRC16"} ( {roman "0x2C"} )~{roman "xor"}~{roman "0x0B00"}~=~{roman "0x8BEB"}
+.EN
+.EQ
+{checksum sub 12}~ lineup =~{roman "CRC16"} ( {roman "0x00"}~{roman "xor"}~({roman "0x8BEB"} >> 8 ) )~{roman "xor"}~({roman "0x8BEB"} << 8)~=~{roman "CRC16"} ( {roman "0x8B"} )~{roman "xor"}~{roman "0xEB00"}~=~{roman "0xE83A"}
+.EN
+.EQ
+{checksum sub 13}~ lineup =~{roman "CRC16"} ( {roman "0x00"}~{roman "xor"}~({roman "0xE83A"} >> 8 ) )~{roman "xor"}~({roman "0xE83A"} << 8)~=~{roman "CRC16"} ( {roman "0xE8"} )~{roman "xor"}~{roman "0x3A00"}~=~{roman "0x3870"}
+.EN
+.EQ
+{checksum sub 14}~ lineup =~{roman "CRC16"} ( {roman "0x00"}~{roman "xor"}~({roman "0x3870"} >> 8 ) )~{roman "xor"}~({roman "0x3870"} << 8)~=~{roman "CRC16"} ( {roman "0x38"} )~{roman "xor"}~{roman "0x7000"}~=~{roman "0xF093"}
+.EN
 
