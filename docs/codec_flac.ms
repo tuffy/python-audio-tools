@@ -1241,8 +1241,7 @@ _
 _
 .TE
 .LP
-For example, given the header bytes: 0xFF, 0xF8, 0xCC, 0x1C, 0x00 and 0xC0,
-the header's CRC-8 can be calculated as follows:
+For example, given the header bytes: 0xFF, 0xF8, 0xCC, 0x1C, 0x00 and 0xC0:
 .EQ
 {checksum sub 0}~mark =~{roman "CRC8"} ( {roman "0xFF"}~{roman "xor"}~0 )~=~{roman "CRC8"} ( {roman "0xFF"} )~=~{roman "0xF3"}
 .EN
@@ -1264,7 +1263,7 @@ the header's CRC-8 can be calculated as follows:
 .LP
 Thus, the next byte after the header should be 0xEB.
 Furthermore, when the checksum byte itself is run through the
-checksumming procedure, as follows:
+checksumming procedure:
 .EQ
 {checksum sub 6}~lineup =~{roman "CRC8"} ( {roman "0xEB"}~{roman "xor"}~{roman "0xEB"} )~=~{roman "CRC8"} ( {roman "0x00"} )~=~{roman "0x00"}
 .EN
@@ -1277,13 +1276,14 @@ always result in 0.
 .ft R
 .SUBSUBSECTION "CRC-16"
 .PP
-CRC-16 is used the checksum the entire FLAC frame, including the header.
+CRC-16 is used to checksum the entire FLAC frame, including the header
+and any padding bits after the final subframe.
 Given a byte input and the previous CRC-16 checksum,
 or 0 as an initial value, the current checksum can be calculated as follows:
 .EQ
 {checksum sub i}~=~{roman "CRC16"} ( byte~{roman "xor"}~({checksum sub {i - 1}} >> 8 ) )~{roman "xor"}~({checksum sub {i - 1}} << 8)
 .EN
-the checksum is then truncated to 16-bits.
+the checksum is always truncated to 16-bits.
 .ps 5
 .ft C
 .TS
@@ -1294,7 +1294,7 @@ tab(:);
 _
 .ps 8
 .ft R
-CRC-16
+CRC16
 .ps 5
 .ft C
 _
@@ -1372,8 +1372,7 @@ follows:
 {checksum sub 14}~ lineup =~{roman "CRC16"} ( {roman "0x00"}~{roman "xor"}~({roman "0x3870"} >> 8 ) )~{roman "xor"}~({roman "0x3870"} << 8)~=~{roman "CRC16"} ( {roman "0x38"} )~{roman "xor"}~{roman "0x7000"}~=~{roman "0xF093"}
 .EN
 Thus, the next two bytes after the final subframe should be 0xF0 and 0x93.
-Again, when the checksum bytes are run through the checksumming procedure,
-as follows:
+Again, when the checksum bytes are run through the checksumming procedure:
 .EQ
 {checksum sub 15}~ lineup =~{roman "CRC16"} ( {roman "0xF0"}~{roman "xor"}~({roman "0xF093"} >> 8 ) )~{roman "xor"}~({roman "0xF093"} << 8)~=~{roman "CRC16"} ( {roman "0x00"} )~{roman "xor"}~{roman "0x9300"}~=~{roman "0x9300"}
 .EN
@@ -1381,4 +1380,3 @@ as follows:
 {checksum sub 16}~ lineup =~{roman "CRC16"} ( {roman "0x93"}~{roman "xor"}~({roman "0x9300"} >> 8 ) )~{roman "xor"}~({roman "0x9300"} << 8)~=~{roman "CRC16"} ( {roman "0x00"} )~{roman "xor"}~{roman "0x0000"}~=~{roman "0x0000"}
 .EN
 the result will also always be 0, just as in the CRC-8.
-
