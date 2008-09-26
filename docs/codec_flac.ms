@@ -245,10 +245,10 @@ The value of each Coefficient is a signed two's-complement integer.
 The number of Coefficients equals the `LPC Order'.
 .EQ
 "Sample" sub i =
-{
+left floor {{
 {sum from {j = 0} to {Order~-~1}
 {"QLP Coefficient" sub j}~\[mu]~"Sample" sub {i~-~j~-~1}}
-} over {2 sup "QLP Shift Needed"}
+} over {2 sup "QLP Shift Needed"}} right floor
 ~~+~~"Residual" sub i
 .EN
 Don't be intimidated by the \[*S] if you're not math-inclined.
@@ -977,7 +977,7 @@ will take for each LPC Error value and its associated Order:
 .ps
 .LP
 Picking the best LPC Order is then done exhaustively by calculating the
-total estimated bits for each one and using the order which uses
+total estimated bits for each error value and using the order which uses
 the fewest.
 .SUBSUBSUBSECTION "Best order exhaustive search"
 .PP
@@ -1065,10 +1065,10 @@ and the subframe's residuals are calculated according to the following formula:
 "Residual" sub i
 =
 "Sample" sub i~~-~~
-{
+left floor {{
 {sum from {j = 0} to {Order~-~1}
 {"QLP Coefficient" sub j}~\[mu]~"Sample" sub {i~-~j~-~1}}
-} over {2 sup "QLP Shift Needed"}
+} over {2 sup "QLP Shift Needed"}} right floor
 .EN
 For example, given the samples
 1053, 1116, 1257, 1423, 1529, 1570, 1623, 1694, 1688 and 1550,
