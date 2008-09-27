@@ -195,6 +195,8 @@ def build_xmcd_file(audiofiles, discid=None):
             else:
                 build_key_pair(xmcd,"TTITLE%d" % (i),
                                metadata.track_name)
+        else:
+            build_key_pair(xmcd,"TTITLE%d" % (i),u"")
 
     build_key_pair(xmcd,"EXTDD",u"")
     for (i,track) in enumerate(audiofiles):
