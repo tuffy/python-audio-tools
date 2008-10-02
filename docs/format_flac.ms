@@ -7,7 +7,7 @@
 .\"San Francisco, California, 94105, USA.
 .SECTION "FLAC"
 .PP
-FLAC is the Fully Lossless Audio Codec.
+FLAC is the Free Lossless Audio Codec.
 It compresses PCM audio data losslessly using predictors and a residual.
 FLACs are smaller than WAVEs, contain checksumming to verify their
 integrity, contain comment tags for metadata and are streamable.

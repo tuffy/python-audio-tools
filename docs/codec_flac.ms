@@ -523,7 +523,7 @@ tab(:);
 _
 bits:value
 =
-1:0 if addition metadata blocks follow, 1 if not
+1:0 if additional metadata blocks follow, 1 if not
 7:0 for STREAMINFO, 1 for PADDING, 4 for VORBIS_COMMENT, etc.
 24:the length of the block data in bytes, not including the header
 _
@@ -1278,7 +1278,7 @@ always result in 0.
 .PP
 CRC-16 is used to checksum the entire FLAC frame, including the header
 and any padding bits after the final subframe.
-Given a byte input and the previous CRC-16 checksum,
+Given a byte of input and the previous CRC-16 checksum,
 or 0 as an initial value, the current checksum can be calculated as follows:
 .EQ
 {checksum sub i}~=~{roman "CRC16"} ( byte~{roman "xor"}~({checksum sub {i - 1}} >> 8 ) )~{roman "xor"}~({checksum sub {i - 1}} << 8)
