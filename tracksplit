@@ -95,16 +95,28 @@ if (__name__ == '__main__'):
                       dest='max_processes',
                       help='the maximum number of processes to run at a time')
 
+    #if adding ReplayGain is a lossless process
+    #(i.e. added as tags rather than modifying track data)
+    #add_replay_gain should default to True
+    #if not, add_replay_gain should default to False
+    #which is which depends on the track type
+    parser.add_option('--replay-gain',
+                      action='store_true',
+                      dest='add_replay_gain',
+                      help='add ReplayGain metadata to newly created tracks')
+
     parser.add_option('--no-replay-gain',
                       action='store_false',
                       dest='add_replay_gain',
-                      default=True,
                       help='do not add ReplayGain metadata to newly extracted tracks')
 
     (options,args) = parser.parse_args()
 
     #get the AudioFile class we are converted to
     AudioType = audiotools.TYPE_MAP[options.type]
+
+    if (options.add_replay_gain is None):
+        options.add_replay_gain = AudioType.lossless_replay_gain()
 
     #ensure the selected compression is compatible with that class
     if (options.quality == 'help'):
