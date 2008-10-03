@@ -1565,10 +1565,15 @@ class ExecQueue:
 #Monkey's Audio with my own code in order to make it available again.
 #Yet another reason to avoid that unpleasant file format...
 
+#***ALACAudio also temporarily removed***
+#Though it mostly works, it's not yet stable in ffmpeg yet
+#and doesn't pass all of the lossless unit tests.
+#It's best to leave it disabled until it works properly.
+
 AVAILABLE_TYPES = (FlacAudio,OggFlacAudio,
                    MP3Audio,MP2Audio,WaveAudio,
                    VorbisAudio,SpeexAudio,MusepackAudio,
-                   AiffAudio,AuAudio,M4AAudio,ALACAudio,
+                   AiffAudio,AuAudio,M4AAudio,
                    WavPackAudio)
 
 TYPE_MAP = dict([(track_type.NAME,track_type)
