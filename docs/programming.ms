@@ -189,6 +189,20 @@ returns a default filename for this track.
 Returns True if all the necessary binaries are present to add
 ReplayGain metadata, and the format supports such metadata.
 
+.CLASSMETHOD lossless_replay_gain
+Returns True if adding ReplayGain metadata is a lossless process.
+For example, adding ReplayGain to FLAC files simply adds a tag
+and doesn't modify the files themselves.
+Returns False if adding ReplayGain metadata modifies the
+original files.
+For example, adding ReplayGain to MP3s via the
+.ft C
+mp3gain
+.ft R
+program modifies the tracks' MPEG frames themselves.
+This `modify tag' versus `modify contents' behavior affects
+whether ReplayGain metadata is added automatically or not.
+
 .CLASSMETHOD add_replay_gain filenames
 Given a list of filenames of AudioFiles with of the same class
 as this AudioFile class, calculate and add ReplayGain metadata
