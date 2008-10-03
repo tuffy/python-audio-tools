@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,InvalidFile,PCMReader,PCMConverter,Con,transfer_data,subprocess,BIN,BIG_ENDIAN,ApeTag,ReplayGain,ignore_sigint,pcmstream
+from audiotools import AudioFile,InvalidFile,PCMReader,PCMConverter,Con,transfer_data,subprocess,BIN,BIG_ENDIAN,ApeTag,ReplayGain,ignore_sigint,pcmstream,open_files
 from __id3__ import *
 
 #this is a wrapper around another PCMReader
@@ -461,6 +461,30 @@ class MP3Audio(AudioFile):
 
     def total_frames(self):
         return self.cd_frames() * self.sample_rate() / 75
+
+    @classmethod
+    def can_add_replay_gain(cls):
+        return BIN.can_execute(BIN['mp3gain'])
+
+    @classmethod
+    def lossless_replay_gain(cls):
+        return False
+
+    @classmethod
+    def add_replay_gain(cls, filenames):
+        track_names = [track.filename for track in
+                       open_files(filenames) if
+                       isinstance(track,cls)]
+
+        if ((len(track_names) > 0) and (BIN.can_execute(BIN['mp3gain']))):
+            devnull = file(os.devnull,'ab')
+            sub = subprocess.Popen([BIN['mp3gain'],'-q','-r','-a'] + \
+                                       track_names,
+                                   stdout=devnull,
+                                   stderr=devnull)
+            sub.wait()
+
+            devnull.close()
 
 
 #######################

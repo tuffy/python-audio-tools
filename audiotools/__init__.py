@@ -1298,6 +1298,13 @@ class AudioFile:
     def can_add_replay_gain(cls):
         return False
 
+    #returns True if applying ReplayGain is a lossless process
+    #(i.e. the file itself is unmodified by the procedure)
+    #returns False if not
+    @classmethod
+    def lossless_replay_gain(cls):
+        return True
+
     #returns a ReplayGain-compatible object of our ReplayGain values
     #or None if we have no values
     def replay_gain(self):

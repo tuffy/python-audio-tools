@@ -269,6 +269,10 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
     def can_add_replay_gain(cls):
         return BIN.can_execute(BIN['wvgain'])
 
+    @classmethod
+    def lossless_replay_gain(cls):
+        return True
+
     def replay_gain(self):
         metadata = self.get_metadata()
 

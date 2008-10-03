@@ -627,6 +627,10 @@ class FlacAudio(AudioFile):
     def can_add_replay_gain(cls):
         return BIN.can_execute(BIN['metaflac'])
 
+    @classmethod
+    def lossless_replay_gain(cls):
+        return True
+
     def replay_gain(self):
         vorbis_metadata = self.get_metadata().vorbis_comment
 

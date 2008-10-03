@@ -464,6 +464,10 @@ class VorbisAudio(AudioFile):
     def can_add_replay_gain(cls):
         return BIN.can_execute(BIN['vorbisgain'])
 
+    @classmethod
+    def lossless_replay_gain(cls):
+        return True
+
     def replay_gain(self):
         vorbis_metadata = self.get_metadata()
 
