@@ -478,7 +478,7 @@ class MP3Audio(AudioFile):
 
         if ((len(track_names) > 0) and (BIN.can_execute(BIN['mp3gain']))):
             devnull = file(os.devnull,'ab')
-            sub = subprocess.Popen([BIN['mp3gain'],'-q','-r','-a'] + \
+            sub = subprocess.Popen([BIN['mp3gain'],'-f','-k','-q','-r'] + \
                                        track_names,
                                    stdout=devnull,
                                    stderr=devnull)
