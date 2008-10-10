@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,InvalidFile,PCMReader,PCMConverter,Con,transfer_data,subprocess,BIN,cStringIO,MetaData,os,Image,InvalidImage,ignore_sigint,InvalidFormat
+from audiotools import AudioFile,InvalidFile,PCMReader,PCMConverter,Con,transfer_data,subprocess,BIN,cStringIO,MetaData,os,Image,InvalidImage,ignore_sigint,InvalidFormat,open_files
 
 #######################
 #M4A File
@@ -354,6 +354,31 @@ class M4AAudio(AudioFile):
             tempfile.close()
 
         return M4AAudio(filename)
+
+    @classmethod
+    def can_add_replay_gain(cls):
+        return BIN.can_execute(BIN['aacgain'])
+
+    @classmethod
+    def lossless_replay_gain(cls):
+        return False
+
+    @classmethod
+    def add_replay_gain(cls, filenames):
+        track_names = [track.filename for track in
+                       open_files(filenames) if
+                       isinstance(track,cls)]
+
+        #helpfully, aacgain is flag-for-flag compatible with mp3gain
+        if ((len(track_names) > 0) and (BIN.can_execute(BIN['aacgain']))):
+            devnull = file(os.devnull,'ab')
+            sub = subprocess.Popen([BIN['aacgain'],'-k','-q','-r'] + \
+                                       track_names,
+                                   stdout=devnull,
+                                   stderr=devnull)
+            sub.wait()
+
+            devnull.close()
 
 class M4AMetaData(MetaData,dict):
     #meta_data is a key->[value1,value2,...] dict of the contents
