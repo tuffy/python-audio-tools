@@ -46,7 +46,7 @@ noname
     576-607-10 @roman Reserved sub 1@
     608-639-11 @roman Reserved sub 2@
 .end dformat
-
+.bp
 .SUBSECTION "the Comment packet"
 .PP
 The second packet within a Speex stream is the Comment packet.
