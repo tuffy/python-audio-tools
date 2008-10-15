@@ -77,7 +77,16 @@ class ID3v2Comment(MetaData,dict):
                      'album_name':'TALB',
                      'artist_name':'TPE1',
                      'performer_name':'TPE2',
-                     'year':'TDRC'}
+                     'composer_name':'TCOM',
+                     'conductor_name':'TPE3',
+                     'media':'TMED',
+                     'ISRC':'TSRC',
+                     'catalog':'MCDI',
+                     'copyright':'WCOP',
+                     'publisher':'TPUB',
+                     'year':'TYER',
+                     'date':'TRDA',
+                     'album_number':'TPOS'}
 
     ITEM_MAP = dict(map(reversed,ATTRIBUTE_MAP.items()))
 
@@ -191,11 +200,18 @@ class ID3v2Comment(MetaData,dict):
 
     #metadata is a key->value dict of ID3v2 data
     def __init__(self, metadata):
+        #FIXME - these should be able to handle x/y pairs such as "5/9"
         try:
             tracknum = int(metadata.get("TRCK",
                                         metadata.get("TRK",[u"0"]))[0])
         except ValueError:
             tracknum = 0
+
+        try:
+            albumnum = int(metadata.get("TPOS",
+                                        metadata.get("TPA",[u"0"]))[0])
+        except ValueError:
+            albumnum = 0
 
 
         images = []
@@ -256,11 +272,34 @@ class ID3v2Comment(MetaData,dict):
                                              metadata.get("TP2",
                                               metadata.get("TP3",
                                                metadata.get("TP4",[u""]))))))[0],
+                          composer_name=metadata.get("TCOM",
+                                          metadata.get("TCM",[u""]))[0],
 
-                          copyright=u"",
+                          conductor_name=metadata.get("TPE3",[u""])[0],
+
+                          media=metadata.get("TMED",
+                                  metadata.get("TMT",[u""]))[0],
+
+                          ISRC=metadata.get("TSRC",
+                                 metadata.get("TRC",[u""]))[0],
+
+                          catalog=metadata.get("MCDI",
+                                    metadata.get("MCI",[u""]))[0],
+
+                          copyright=metadata.get("WCOP",
+                                      metadata.get("WCP",[u""]))[0],
+
+                          publisher=metadata.get("TPUB",
+                                      metadata.get("TPB",[u""]))[0],
 
                           year=metadata.get("TYER",
                                 metadata.get("TYE",[u""]))[0],
+
+                          date=metadata.get("TRDA",
+                                 metadata.get("TRD",[u""]))[0],
+
+                          album_number = albumnum,
+
                           images=images)
 
 
@@ -417,7 +456,16 @@ class ID3v2_3Comment(ID3v2Comment):
                      'album_name':'TALB',
                      'artist_name':'TPE1',
                      'performer_name':'TPE2',
-                     'year':'TDRC'}
+                     'composer_name':'TCOM',
+                     'conductor_name':'TPE3',
+                     'media':'TMED',
+                     'ISRC':'TSRC',
+                     'catalog':'MCDI',
+                     'copyright':'WCOP',
+                     'publisher':'TPUB',
+                     'year':'TYER',
+                     'date':'TRDA',
+                     'album_number':'TPOS'}
 
     ITEM_MAP = dict(map(reversed,ATTRIBUTE_MAP.items()))
 
@@ -527,7 +575,15 @@ class ID3v2_2Comment(ID3v2Comment):
                      'album_name':'TAL',
                      'artist_name':'TP1',
                      'performer_name':'TP2',
-                     'year':'TYE'}
+                     'composer_name':'TCM',
+                     'media':'TMT',
+                     'ISRC':'TRC',
+                     'catalog':'MCI',
+                     'copyright':'WCP',
+                     'publisher':'TPB',
+                     'year':'TYE',
+                     'date':'TRD',
+                     'album_number':'TPA'}
 
     ITEM_MAP = dict(map(reversed,ATTRIBUTE_MAP.items()))
 
@@ -974,15 +1030,10 @@ class ID3CommentPair(MetaData):
         else:
             raise ValueError("id3v2 and id3v1 cannot both be blank")
 
-        MetaData.__init__(
-            self,
-            track_name=base_comment.track_name,
-            track_number=base_comment.track_number,
-            album_name=base_comment.album_name,
-            artist_name=base_comment.artist_name,
-            performer_name=base_comment.performer_name,
-            copyright=base_comment.copyright,
-            year=base_comment.year)
+        fields = dict([(field,getattr(base_comment,field))
+                       for field in self.__FIELDS__])
+
+        MetaData.__init__(self,**fields)
 
     def __setattr__(self, key, value):
         self.__dict__[key] = value
