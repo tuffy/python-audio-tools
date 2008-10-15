@@ -376,18 +376,38 @@ class ID3v2Comment(MetaData,dict):
         def __weight__(pair):
             if (pair[0] == 'TIT2'):
                 return (1,pair[0],pair[1])
-            elif (pair[0] in ('TPE1','TPE2','TPE3','TPE4')):
-                return (5,pair[0],pair[1])
             elif (pair[0] == 'TALB'):
                 return (2,pair[0],pair[1])
             elif (pair[0] == 'TRCK'):
                 return (3,pair[0],pair[1])
-            elif (pair[0] in ('TOPE','TCOM','TOLY','TEXT')):
+            elif (pair[0] == 'TPOS'):
                 return (4,pair[0],pair[1])
-            elif (pair[0].startswith('T')):
+            elif (pair[0] == 'TPE1'):
+                return (5,pair[0],pair[1])
+            elif (pair[0] == 'TPE2'):
                 return (6,pair[0],pair[1])
-            else:
+            elif (pair[0] == 'TCOM'):
                 return (7,pair[0],pair[1])
+            elif (pair[0] == 'TPE3'):
+                return (8,pair[0],pair[1])
+            elif (pair[0] == 'MCDI'):
+                return (9,pair[0],pair[1])
+            elif (pair[0] == 'TPUB'):
+                return (10,pair[0],pair[1])
+            elif (pair[0] == 'TSRC'):
+                return (11,pair[0],pair[1])
+            elif (pair[0] == 'TMED'):
+                return (12,pair[0],pair[1])
+            elif (pair[0] == 'TYER'):
+                return (13,pair[0],pair[1])
+            elif (pair[0] == 'TRDA'):
+                return (14,pair[0],pair[1])
+            elif (pair[0] == 'WCOP'):
+                return (15,pair[0],pair[1])
+            elif (pair[0].startswith('T')):
+                return (16,pair[0],pair[1])
+            else:
+                return (17,pair[0],pair[1])
 
         def __by_weight__(item1,item2):
             return cmp(__weight__(item1),
@@ -634,18 +654,35 @@ class ID3v2_2Comment(ID3v2Comment):
         def __weight__(pair):
             if (pair[0] == 'TT2'):
                 return (1,pair[0],pair[1])
-            elif (pair[0] in ('TP1','TP2','TP3','TP4')):
-                return (5,pair[0],pair[1])
             elif (pair[0] == 'TAL'):
                 return (2,pair[0],pair[1])
             elif (pair[0] == 'TRK'):
                 return (3,pair[0],pair[1])
-            elif (pair[0] in ('TOA','TCM')):
-                return (4,pair[0],pair[1])
-            elif (pair[0].startswith('T')):
+            elif (pair[0] == 'TPA'):
+                return (4,pair[1],pair[2])
+            elif (pair[0] == 'TP1'):
+                return (5,pair[0],pair[1])
+            elif (pair[0] == 'TCM'):
                 return (6,pair[0],pair[1])
+
+            elif (pair[0] == 'MCI'):
+                return (8,pair[0],pair[1])
+            elif (pair[0] == 'TPB'):
+                return (9,pair[0],pair[1])
+            elif (pair[0] == 'TRC'):
+                return (10,pair[0],pair[1])
+            elif (pair[0] == 'TMT'):
+                return (11,pair[0],pair[1])
+            elif (pair[0] == 'TOR'):
+                return (12,pair[0],pair[1])
+            elif (pair[0] == 'TRD'):
+                return (13,pair[0],pair[1])
+            elif (pair[0] == 'WCP'):
+                return (14,pair[0],pair[1])
+            elif (pair[0].startswith('T')):
+                return (15,pair[0],pair[1])
             else:
-                return (7,pair[0],pair[1])
+                return (16,pair[0],pair[1])
 
         def __by_weight__(item1,item2):
             return cmp(__weight__(item1),
