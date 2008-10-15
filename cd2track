@@ -183,5 +183,8 @@ if (__name__ == '__main__'):
             continue
 
     if (options.add_replay_gain and AudioType.can_add_replay_gain()):
+        if (AudioType.lossless_replay_gain()):
             print >>sys.stderr,"* Adding ReplayGain metadata.  This may take some time."
-            AudioType.add_replay_gain([track.filename for track in encoded])
+        else:
+            print >>sys.stderr,"* Applying ReplayGain.  This may take some time."
+        AudioType.add_replay_gain([track.filename for track in encoded])
