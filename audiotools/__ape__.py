@@ -53,10 +53,19 @@ class ApeTag(MetaData,dict):
     ATTRIBUTE_MAP = {'track_name':'Title',
                      'track_number':'Track',
                      'album_name':'Album',
-                     'artist_name':'Composer',
-                     'performer_name':'Artist',
+                     'artist_name':'Artist',
+                     #"Performer" is not a defined APEv2 key
+                     #it would be nice to have, yet would not be standard
+                     'performer_name':'Performer',
+                     'composer_name':'Composer',
+                     'conductor_name':'Conductor',
+                     'media':'Media',
+                     'ISRC':'ISRC',
+                     'catalog':'Catalog',
                      'copyright':'Copyright',
-                     'year':'Year'}
+                     'publisher':'Publisher',
+                     'year':'Year',
+                     'date':'Record Date'}
 
     ITEM_MAP = dict(map(reversed,ATTRIBUTE_MAP.items()))
 
@@ -70,10 +79,17 @@ class ApeTag(MetaData,dict):
                           track_name=tag_dict.get('Title',u''),
                           track_number=track_number,
                           album_name=tag_dict.get('Album',u''),
-                          artist_name=tag_dict.get('Composer',u''),
-                          performer_name=tag_dict.get('Artist',u''),
+                          artist_name=tag_dict.get('Artist',u''),
+                          performer_name=tag_dict.get('Performer',u''),
+                          composer_name=tag_dict.get('Composer',u''),
+                          conductor_name=tag_dict.get('Conductor',u''),
+                          media=tag_dict.get('Media',u''),
+                          ISRC=tag_dict.get('ISRC',u''),
+                          catalog=tag_dict.get('Catalog',u''),
                           copyright=tag_dict.get('Copyright',u''),
-                          year=tag_dict.get('Year',u'')
+                          publisher=tag_dict.get('Publisher',u''),
+                          year=tag_dict.get('Year',u''),
+                          date=tag_dict.get('Record Date',u'')
                           )
         dict.__init__(self, tag_dict)
         self.tag_length = tag_length
@@ -84,7 +100,7 @@ class ApeTag(MetaData,dict):
         self.__dict__[key] = value
 
         if (key in self.ATTRIBUTE_MAP):
-            if (key != 'track_number'):
+            if (key not in ('track_number','album_number')):
                 self[self.ATTRIBUTE_MAP[key]] = value
             else:
                 self[self.ATTRIBUTE_MAP[key]] = unicode(value)
@@ -124,13 +140,20 @@ class ApeTag(MetaData,dict):
         KEY_MAP = {"Title":1,
                    "Album":2,
                    "Track":3,
-                   "Composer":4,
                    "Artist":5,
-                   "Copyright":7,
-                   "Year":6}
+                   "Performer":6,
+                   "Composer":7,
+                   "Conductor":8,
+                   "Catalog":9,
+                   "Publisher":10,
+                   "ISRC":11,
+                   "Media":12,
+                   "Year":13,
+                   "Record Date":14,
+                   "Copyright":15}
 
-        return cmp((KEY_MAP.get(pair1[0],8),pair1[0],pair1[1]),
-                   (KEY_MAP.get(pair2[0],8),pair2[0],pair2[1]))
+        return cmp((KEY_MAP.get(pair1[0],16),pair1[0],pair1[1]),
+                   (KEY_MAP.get(pair2[0],16),pair2[0],pair2[1]))
 
     def __comment_pairs__(self):
         items = []
