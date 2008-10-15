@@ -12,6 +12,7 @@
 .REFERENCE "The ID3v2 Documents" "http://www.id3.org/Developer_Information"
 .REFERENCE "The Ogg File Format" "http://en.wikipedia.org/wiki/Ogg#File_format"
 .REFERENCE "Vorbis I Specification" "http://xiph.org/vorbis/doc/Vorbis_I_spec.html"
+.REFERENCE "Proposals for Extending Ogg Vorbis Comments" "http://www.reallylongword.org/articles/vorbiscomment/"
 .REFERENCE "Speex Documentation" "http://www.speex.org/docs/"
 .REFERENCE "Musepack Stream Version 7 Format Specification" "http://trac.musepack.net/trac/wiki/SV7Specification"
 .REFERENCE "Parsing and Writing QuickTime Files in Java" "http://www.onjava.com/pub/a/onjava/2003/02/19/qt_file_format.html"
