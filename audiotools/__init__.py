@@ -933,7 +933,7 @@ class MetaData:
                  publisher=u"",      #the song's publisher
                  year=u"",           #the album's release year
                  date=u"",           #the original recording date
-                 album_number=None,  #the disc's volume number, if any
+                 album_number=0,  #the disc's volume number, if any
                  images=None):
         #we're avoiding self.foo = foo because
         #__setattr__ might need to be redefined
@@ -976,11 +976,6 @@ class MetaData:
 
     #returns a list of (key,value) tuples
     def __comment_pairs__(self):
-        if (self.album_number is not None):
-            album_number = str(self.album_number)
-        else:
-            album_number = ""
-
         return zip(("Title","Artist","Performer","Composer","Conductor",
                     "Album","Catalog","Track Number","Volume Number",
                     "ISRC","Publisher","Media","Year","Date","Copyright"),
@@ -992,7 +987,7 @@ class MetaData:
                     self.album_name,
                     self.catalog,
                     str(self.track_number),
-                    album_number,
+                    str(self.album_number),
                     self.ISRC,
                     self.publisher,
                     self.media,
@@ -1298,11 +1293,8 @@ class AudioFile:
     def track_name(cls, track_number, track_metadata):
         if (track_metadata != None):
             format_dict = {"track_number":track_number,
+                           "album_number":album_number,
                            "suffix":cls.SUFFIX}
-            if (track_metadata.album_number is not None):
-                format_dict["album_number"] = track_metadata.album_number
-            else:
-                format_dict["album_number"] = 0
 
             for field in track_metadata.__FIELDS__:
                 if (field not in ("track_number","suffix","album_number")):
