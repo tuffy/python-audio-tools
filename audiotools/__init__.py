@@ -910,17 +910,30 @@ def make_dirs(destination_path):
 #######################
 
 class MetaData:
+    __FIELDS__ = ("track_name","track_number","album_name","artist_name",
+                  "performer_name","composer_name","conductor_name",
+                  "media","ISRC","catalog","copyright",
+                  "publisher","year","date","volume")
+
     #track_name, album_name, artist_name, performer_name, copyright and year
     #should be unicode strings
     #track_number should be an integer
     def __init__(self,
-                 track_name=u"",    #the name of this individual track
-                 track_number=0,    #the number of this track
-                 album_name=u"",    #the name of the album this track belongs to
-                 artist_name=u"",   #the song's original creator/composer
-                 performer_name=u"",#the song's performing artist
-                 copyright=u"",     #the song's copyright information
-                 year=u"",          #the album's release year
+                 track_name=u"",     #the name of this individual track
+                 track_number=0,     #the number of this track
+                 album_name=u"",     #the name of this track's album
+                 artist_name=u"",    #the song's original creator/composer
+                 performer_name=u"", #the song's performing artist
+                 composer_name=u"",  #the song's composer name
+                 conductor_name=u"", #the song's conductor's name
+                 media=u"",          #the album's media type (CD,tape,LP,etc.)
+                 ISRC=u"",           #the song's ISRC
+                 catalog=u"",        #the album's catalog number
+                 copyright=u"",      #the song's copyright information
+                 publisher=u"",      #the song's publisher
+                 year=u"",           #the album's release year
+                 date=u"",           #the original recording date
+                 volume=None,        #the disc's volume number, if any
                  images=None):
         #we're avoiding self.foo = foo because
         #__setattr__ might need to be redefined
@@ -929,13 +942,22 @@ class MetaData:
         self.__dict__['track_number'] = track_number
         self.__dict__['album_name'] = album_name
         self.__dict__['artist_name'] = artist_name
+
         if (performer_name != u''):
             self.__dict__['performer_name'] = performer_name
         else:
             self.__dict__['performer_name'] = artist_name
 
+        self.__dict__['composer_name'] = composer_name
+        self.__dict__['conductor_name'] = conductor_name
+        self.__dict__['media'] = media
+        self.__dict__['ISRC'] = ISRC
+        self.__dict__['catalog'] = catalog
         self.__dict__['copyright'] = copyright
+        self.__dict__['publisher'] = publisher
         self.__dict__['year'] = year
+        self.__dict__['date'] = date
+        self.__dict__['volume'] = volume
 
         if (images is not None):
             self.__dict__['__images__'] = list(images)
@@ -944,14 +966,9 @@ class MetaData:
 
 
     def __repr__(self):
-        return "MetaData(%s,%s,%s,%s,%s,%s,%s)" % \
-               (repr(self.track_name),
-                repr(self.track_number),
-                repr(self.album_name),
-                repr(self.artist_name),
-                repr(self.performer_name),
-                repr(self.copyright),
-                repr(self.year))
+        return ("MetaData(%s)" % (",".join(["%s"] * (len(self.__FIELDS__))))) %\
+            tuple(["%s=%s" % (field,repr(getattr(self,field)))
+                   for field in self.__FIELDS__])
 
     #returns the type of comment this is, as a unicode string
     def __comment_name__(self):
@@ -959,14 +976,28 @@ class MetaData:
 
     #returns a list of (key,value) tuples
     def __comment_pairs__(self):
-        return zip(("Title","Artist","Performer","Album",
-                    "Number","Year","Copyright"),
+        if (self.volume is not None):
+            volume = str(self.volume)
+        else:
+            volume = ""
+
+        return zip(("Title","Artist","Performer","Composer","Conductor",
+                    "Album","Catalog","Track Number","Volume Number",
+                    "ISRC","Publisher","Media","Year","Date","Copyright"),
                    (self.track_name,
                     self.artist_name,
                     self.performer_name,
+                    self.composer_name,
+                    self.conductor_name,
                     self.album_name,
+                    self.catalog,
                     str(self.track_number),
+                    volume,
+                    self.ISRC,
+                    self.publisher,
+                    self.media,
                     self.year,
+                    self.date,
                     self.copyright))
 
     def __unicode__(self):
@@ -993,10 +1024,7 @@ class MetaData:
     def __eq__(self, metadata):
         if (metadata is not None):
             return set([(getattr(self,attr) == getattr(metadata,attr))
-                        for attr in
-                        ("track_name","artist_name","performer_name",
-                         "album_name","track_number","year",
-                         "copyright")]) == set([True])
+                        for attr in self.__FIELDS__]) == set([True])
         else:
             return False
 
