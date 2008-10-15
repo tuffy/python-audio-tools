@@ -35,8 +35,16 @@ class VorbisComment(MetaData,dict):
                      'album_name':'ALBUM',
                      'artist_name':'ARTIST',
                      'performer_name':'PERFORMER',
+                     'composer_name':'COMPOSER',
+                     'conductor_name':'CONDUCTOR',
+                     'media':'SOURCE MEDIUM',
+                     'ISRC':'ISRC',
+                     'catalog':'CATALOG',
                      'copyright':'COPYRIGHT',
-                     'year':'YEAR'}
+                     'publisher':'PUBLISHER',
+                     'year':'YEAR',
+                     'date':'DATE',
+                     'album_number':'VOLUME'}
 
     ITEM_MAP = dict(map(reversed,ATTRIBUTE_MAP.items()))
 
@@ -48,6 +56,11 @@ class VorbisComment(MetaData,dict):
         except ValueError:
             track_number = 0
 
+        try:
+            album_number = int(vorbis_data.get('VOLUME',['0'])[0])
+        except ValueError:
+            album_number = 0
+
         MetaData.__init__(
             self,
             track_name = vorbis_data.get('TITLE',[u''])[0],
@@ -55,8 +68,16 @@ class VorbisComment(MetaData,dict):
             album_name = vorbis_data.get('ALBUM',[u''])[0],
             artist_name = vorbis_data.get('ARTIST',[u''])[0],
             performer_name = vorbis_data.get('PERFORMER',[u''])[0],
+            composer_name = vorbis_data.get('COMPOSER',[u''])[0],
+            conductor_name = vorbis_data.get('CONDUCTOR',[u''])[0],
+            media = vorbis_data.get('SOURCE MEDIUM',[u''])[0],
+            ISRC = vorbis_data.get('ISRC',[u''])[0],
+            catalog = vorbis_data.get('CATALOG',[u''])[0],
             copyright = vorbis_data.get('COPYRIGHT',[u''])[0],
-            year = vorbis_data.get('YEAR',[u''])[0])
+            publisher = vorbis_data.get('PUBLISHER',[u''])[0],
+            year = vorbis_data.get('YEAR',[u''])[0],
+            date = vorbis_data.get('DATE',[u''])[0],
+            album_number = album_number)
 
         dict.__init__(self,vorbis_data)
         self.vendor_string = vendor_string
@@ -114,18 +135,26 @@ class VorbisComment(MetaData,dict):
     def __by_pair__(cls, pair1, pair2):
         KEY_MAP = {"TITLE":1,
                    "ALBUM":2,
-                   "ARTIST":4,
-                   "PERFORMER":5,
                    "TRACKNUMBER":3,
-                   "COPYRIGHT":7,
-                   "YEAR":6,
-                   "REPLAYGAIN_ALBUM_GAIN":9,
-                   "REPLAYGAIN_ALBUM_PEAK":9,
-                   "REPLAYGAIN_TRACK_GAIN":9,
-                   "REPLAYGAIN_TRACK_PEAK":9,
-                   "REPLAYGAIN_REFERENCE_LOUDNESS":10}
-        return cmp((KEY_MAP.get(pair1[0].upper(),8),pair1[0].upper(),pair1[1]),
-                   (KEY_MAP.get(pair2[0].upper(),8),pair2[0].upper(),pair2[1]))
+                   "VOLUME":4,
+                   "ARTIST":5,
+                   "PERFORMER":6,
+                   "COMPOSER":7,
+                   "CONDUCTOR":8,
+                   "CATALOG":9,
+                   "PUBLISHER":10,
+                   "ISRC":11,
+                   "SOURCE MEDIUM":12,
+                   "YEAR":13,
+                   "DATE":14,
+                   "COPYRIGHT":15,
+                   "REPLAYGAIN_ALBUM_GAIN":17,
+                   "REPLAYGAIN_ALBUM_PEAK":17,
+                   "REPLAYGAIN_TRACK_GAIN":17,
+                   "REPLAYGAIN_TRACK_PEAK":17,
+                   "REPLAYGAIN_REFERENCE_LOUDNESS":18}
+        return cmp((KEY_MAP.get(pair1[0].upper(),16),pair1[0].upper(),pair1[1]),
+                   (KEY_MAP.get(pair2[0].upper(),16),pair2[0].upper(),pair2[1]))
 
     def __comment_pairs__(self):
         pairs = []

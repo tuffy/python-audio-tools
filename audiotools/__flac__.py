@@ -109,15 +109,11 @@ class FlacMetaData(MetaData):
         if (self.vorbis_comment is None):
             self.vorbis_comment = FlacVorbisComment({})
 
-        MetaData.__init__(self,
-                          track_name=self.vorbis_comment.track_name,
-                          track_number=self.vorbis_comment.track_number,
-                          album_name=self.vorbis_comment.album_name,
-                          artist_name=self.vorbis_comment.artist_name,
-                          performer_name=self.vorbis_comment.performer_name,
-                          copyright=self.vorbis_comment.copyright,
-                          year=self.vorbis_comment.year,
-                          images=image_blocks)
+        fields = dict([(field,getattr(self.vorbis_comment,field))
+                       for field in self.__FIELDS__])
+        fields["images"] = image_blocks
+
+        MetaData.__init__(self,**fields)
 
     def __comment_name__(self):
         return u'FLAC'
