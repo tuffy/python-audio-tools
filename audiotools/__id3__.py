@@ -81,8 +81,7 @@ class ID3v2Comment(MetaData,dict):
                      'conductor_name':'TPE3',
                      'media':'TMED',
                      'ISRC':'TSRC',
-                     'catalog':'MCDI',
-                     'copyright':'WCOP',
+                     'copyright':'TCOP',
                      'publisher':'TPUB',
                      'year':'TYER',
                      'date':'TRDA',
@@ -287,17 +286,10 @@ class ID3v2Comment(MetaData,dict):
                           ISRC=metadata.get("TSRC",
                                  metadata.get("TRC",[u""]))[0],
 
-                          #catalog number and copyright are odd cases
-                          #they're text data in non-text frames
-                          #and so read_id3v2_frame will not automatically
-                          #convert them to Unicode
-                          catalog=metadata.get("MCDI",
-                                    metadata.get("MCI",[u""]))[0].decode('ascii',
-                                                                         'replace'),
+                          catalog=u"",
 
-                          copyright=metadata.get("WCOP",
-                                      metadata.get("WCP",[u""]))[0].decode('ascii',
-                                                                           'replace'),
+                          copyright=metadata.get("TCOP",
+                                      metadata.get("TCR",[u""]))[0],
 
                           publisher=metadata.get("TPUB",
                                       metadata.get("TPB",[u""]))[0],
@@ -325,14 +317,6 @@ class ID3v2Comment(MetaData,dict):
                 #track_number and album_number integers
                 #are converted to Unicode objects
                 self[self.ATTRIBUTE_MAP[key]] = [unicode(value)]
-            elif ((key in ('catalog','copyright')) and
-                  isinstance(value,unicode)):
-                #catalog and copyright Unicode objects
-                #are converted to strings
-                #(e.g.  id3.catalog = u'12345'
-                # sets: id3['WCOP'] = '12345'
-                self[self.ATTRIBUTE_MAP[key]] = [value.encode('ascii',
-                                                              'replace')]
             else:
                 self[self.ATTRIBUTE_MAP[key]] = [value]
 
@@ -346,13 +330,6 @@ class ID3v2Comment(MetaData,dict):
                 #track_number and album_number are converted
                 #from Unicode objects to integers
                 self.__dict__[self.ITEM_MAP[key]] = int(value[0])
-            elif (key in ('MCDI','WCOP')):
-                #catalog and copyright strings
-                #are converted to Unicode objects
-                #(e.g.  id3['WCOP'] = '12345'
-                # sets: id3.catalog = u'12345'
-                self.__dict__[self.ITEM_MAP[key]] = value[0].decode('ascii',
-                                                                    'replace')
             else:
                 self.__dict__[self.ITEM_MAP[key]] = value[0]
 
@@ -376,10 +353,7 @@ class ID3v2Comment(MetaData,dict):
         for (key,field) in cls.ITEM_MAP.items():
             field = getattr(metadata,field)
             if (field != u""):
-                if (key in ('WCOP','MCDI')):
-                    tags[key] = [field.encode('ascii','replace')]
-                else:
-                    tags[key] = [unicode(field)]
+                tags[key] = [unicode(field)]
 
         try:
             if (tags["TPE1"] == tags["TPE2"]):
@@ -422,8 +396,7 @@ class ID3v2Comment(MetaData,dict):
                 return (7,pair[0],pair[1])
             elif (pair[0] == 'TPE3'):
                 return (8,pair[0],pair[1])
-            elif (pair[0] == 'MCDI'):
-                return (9,pair[0],pair[1])
+
             elif (pair[0] == 'TPUB'):
                 return (10,pair[0],pair[1])
             elif (pair[0] == 'TSRC'):
@@ -434,7 +407,7 @@ class ID3v2Comment(MetaData,dict):
                 return (13,pair[0],pair[1])
             elif (pair[0] == 'TRDA'):
                 return (14,pair[0],pair[1])
-            elif (pair[0] == 'WCOP'):
+            elif (pair[0] == 'TCOP'):
                 return (15,pair[0],pair[1])
             elif (pair[0].startswith('T')):
                 return (16,pair[0],pair[1])
@@ -512,8 +485,7 @@ class ID3v2_3Comment(ID3v2Comment):
                      'conductor_name':'TPE3',
                      'media':'TMED',
                      'ISRC':'TSRC',
-                     'catalog':'MCDI',
-                     'copyright':'WCOP',
+                     'copyright':'TCOP',
                      'publisher':'TPUB',
                      'year':'TYER',
                      'date':'TRDA',
@@ -558,10 +530,7 @@ class ID3v2_3Comment(ID3v2Comment):
         for (key,field) in cls.ITEM_MAP.items():
             field = getattr(metadata,field)
             if (field != u""):
-                if (key in ('WCOP','MCDI')):
-                    tags[key] = [field.encode('ascii','replace')]
-                else:
-                    tags[key] = [unicode(field)]
+                tags[key] = [unicode(field)]
 
         try:
             if (tags["TPE1"] == tags["TPE2"]):
@@ -633,8 +602,7 @@ class ID3v2_2Comment(ID3v2Comment):
                      'composer_name':'TCM',
                      'media':'TMT',
                      'ISRC':'TRC',
-                     'catalog':'MCI',
-                     'copyright':'WCP',
+                     'copyright':'TCR',
                      'publisher':'TPB',
                      'year':'TYE',
                      'date':'TRD',
@@ -671,10 +639,7 @@ class ID3v2_2Comment(ID3v2Comment):
         for (key,field) in cls.ITEM_MAP.items():
             field = getattr(metadata,field)
             if (field != u""):
-                if (key in ('WCOP','MCDI')):
-                    tags[key] = [field.encode('ascii','replace')]
-                else:
-                    tags[key] = [unicode(field)]
+                tags[key] = [unicode(field)]
 
         if (tags["TP1"] == tags["TP2"]):
             del(tags["TP2"])
@@ -703,8 +668,6 @@ class ID3v2_2Comment(ID3v2Comment):
             elif (pair[0] == 'TCM'):
                 return (6,pair[0],pair[1])
 
-            elif (pair[0] == 'MCI'):
-                return (8,pair[0],pair[1])
             elif (pair[0] == 'TPB'):
                 return (9,pair[0],pair[1])
             elif (pair[0] == 'TRC'):
@@ -715,7 +678,7 @@ class ID3v2_2Comment(ID3v2Comment):
                 return (12,pair[0],pair[1])
             elif (pair[0] == 'TRD'):
                 return (13,pair[0],pair[1])
-            elif (pair[0] == 'WCP'):
+            elif (pair[0] == 'TCR'):
                 return (14,pair[0],pair[1])
             elif (pair[0].startswith('T')):
                 return (15,pair[0],pair[1])
