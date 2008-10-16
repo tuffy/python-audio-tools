@@ -126,6 +126,29 @@ class DummyMetaData(audiotools.MetaData):
                                      track_number=5,
                                      album_name=u"Album Name",
                                      artist_name=u"Artist Name",
+                                     performer_name=u"Performer",
+                                     composer_name=u"Composer",
+                                     conductor_name=u"Conductor",
+                                     media=u"CD",
+                                     ISRC=u"US-PR3-08-12345",
+                                     catalog=u"Catalog Number",
+                                     copyright=u"Copyright Attribution",
+                                     year=u"2008",
+                                     date=u"2008-10-15",
+                                     publisher=u"Test Records Inc.",
+                                     album_number=1)
+
+    @classmethod
+    def supports_images(cls):
+        return True
+
+class SmallDummyMetaData(audiotools.MetaData):
+    def __init__(self):
+        audiotools.MetaData.__init__(self,
+                                     track_name=u"Track Name",
+                                     track_number=5,
+                                     album_name=u"Album Name",
+                                     artist_name=u"Artist Name",
                                      performer_name=u"Performer")
 
     @classmethod
@@ -138,7 +161,18 @@ class DummyMetaData2(audiotools.MetaData):
                                      track_name=u"New Track Name",
                                      track_number=6,
                                      album_name=u"New Album Name",
-                                     artist_name=u"New Artist Name")
+                                     artist_name=u"New Artist Name",
+                                     performer_name=u"New Performer",
+                                     composer_name=u"New Composer",
+                                     conductor_name=u"New Conductor",
+                                     media=u"CD-R",
+                                     ISRC=u"US-PR3-08-54321",
+                                     catalog=u"Catalog Number 2",
+                                     copyright=u"Copyright Attribution 2",
+                                     year=u"2007",
+                                     date=u"2007-10-15",
+                                     publisher=u"Testing Records Inc.",
+                                     album_number=2)
 
     @classmethod
     def supports_images(cls):
@@ -719,6 +753,77 @@ class TestVorbisAudio(TestAiffAudio):
 class TestM4AAudio(TestAiffAudio):
     def setUp(self):
         self.audio_class = audiotools.M4AAudio
+
+    #M4A supports only a subset of the MetaData of every other format
+    #so it must be handled separately
+    def testmetadata(self):
+        temp = tempfile.NamedTemporaryFile(suffix="." + self.audio_class.SUFFIX)
+        try:
+            new_file = self.audio_class.from_pcm(temp.name,
+                                                 BLANK_PCM_Reader(TEST_LENGTH))
+
+            if (new_file.get_metadata() is not None):
+                metadata = audiotools.MetaData(track_name=u"Track Name",
+                                               track_number=5,
+                                               album_name=u"Album Name",
+                                               artist_name=u"Artist Name",
+                                               performer_name=u"Performer")
+                new_file.set_metadata(metadata)
+                new_file = audiotools.open(temp.name)
+                self.assertEqual(metadata,new_file.get_metadata())
+
+                metadata2 = audiotools.MetaData(track_name=u"New Track Name",
+                                                track_number=6,
+                                                album_name=u"New Album Name",
+                                                artist_name=u"New Artist Name",
+                                                performer_name=u"New Performer")
+                new_file.set_metadata(metadata2)
+                new_file = audiotools.open(temp.name)
+                self.assertEqual(metadata2,new_file.get_metadata())
+
+                metadata2.track_name = u'Track Name 3'
+                new_file.set_metadata(metadata2)
+                new_file = audiotools.open(temp.name)
+                self.assertEqual(metadata2,new_file.get_metadata())
+        finally:
+            temp.close()
+
+    def testimages(self):
+        temp = tempfile.NamedTemporaryFile(suffix="." + self.audio_class.SUFFIX)
+        try:
+            new_file = self.audio_class.from_pcm(temp.name,
+                                                 BLANK_PCM_Reader(TEST_LENGTH))
+
+            if ((new_file.get_metadata() is not None)
+                and (new_file.get_metadata().supports_images())):
+                metadata = SmallDummyMetaData()
+                new_file.set_metadata(metadata)
+                self.assertEqual(metadata,new_file.get_metadata())
+
+                image1 = audiotools.Image.new(TEST_COVER1,u'',0)
+                image2 = audiotools.Image.new(TEST_COVER2,u'',0)
+
+                metadata.add_image(image1)
+                self.assertEqual(metadata.images()[0],image1)
+                self.assertEqual(metadata.front_covers()[0],image1)
+
+                new_file.set_metadata(metadata)
+                metadata = new_file.get_metadata()
+                self.assertEqual(metadata.images()[0],image1)
+                self.assertEqual(metadata.front_covers()[0],image1)
+                metadata.delete_image(metadata.images()[0])
+
+                new_file.set_metadata(metadata)
+                metadata = new_file.get_metadata()
+                self.assertEqual(len(metadata.images()),0)
+                metadata.add_image(image2)
+
+                new_file.set_metadata(metadata)
+                metadata = new_file.get_metadata()
+                self.assertEqual(metadata.images()[0],image2)
+                self.assertEqual(metadata.front_covers()[0],image2)
+        finally:
+            temp.close()
 
 class TestMusepackAudio(TestAiffAudio):
     def setUp(self):

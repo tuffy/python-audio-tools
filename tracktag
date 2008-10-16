@@ -39,7 +39,7 @@ def xmcd_track_metadata(track, xmcd):
     xmcd_metadata = xmcd[track.track_number()]
     if (xmcd_metadata != None):
         #xmcd data overwrites whatever comes from track
-        #(so longs as it's not blank)
+        #(so long as it's not blank)
         track_metadata = track.get_metadata()
 
         for field in ('track_name','track_number','album_name',

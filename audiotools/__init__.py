@@ -933,7 +933,7 @@ class MetaData:
                  publisher=u"",      #the song's publisher
                  year=u"",           #the album's release year
                  date=u"",           #the original recording date
-                 album_number=0,  #the disc's volume number, if any
+                 album_number=0,     #the disc's volume number, if any
                  images=None):
         #we're avoiding self.foo = foo because
         #__setattr__ might need to be redefined

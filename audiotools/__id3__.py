@@ -200,17 +200,21 @@ class ID3v2Comment(MetaData,dict):
 
     #metadata is a key->value dict of ID3v2 data
     def __init__(self, metadata):
-        #FIXME - these should be able to handle x/y pairs such as "5/9"
-        try:
-            tracknum = int(metadata.get("TRCK",
-                                        metadata.get("TRK",[u"0"]))[0])
-        except ValueError:
+        tracknum = re.match(
+            r'\d+',
+            metadata.get("TRCK",metadata.get("TRK",[u"0"]))[0])
+        if (tracknum is not None):
+            tracknum = int(tracknum.group(0))
+        else:
             tracknum = 0
 
-        try:
-            albumnum = int(metadata.get("TPOS",
-                                        metadata.get("TPA",[u"0"]))[0])
-        except ValueError:
+        albumnum = re.match(
+            r'\d+',
+            metadata.get("TPOS",
+                         metadata.get("TPA",[u"0"]))[0])
+        if (albumnum is not None):
+            albumnum = int(albumnum.group(0))
+        else:
             albumnum = 0
 
 
@@ -283,11 +287,17 @@ class ID3v2Comment(MetaData,dict):
                           ISRC=metadata.get("TSRC",
                                  metadata.get("TRC",[u""]))[0],
 
+                          #catalog number and copyright are odd cases
+                          #they're text data in non-text frames
+                          #and so read_id3v2_frame will not automatically
+                          #convert them to Unicode
                           catalog=metadata.get("MCDI",
-                                    metadata.get("MCI",[u""]))[0],
+                                    metadata.get("MCI",[u""]))[0].decode('ascii',
+                                                                         'replace'),
 
                           copyright=metadata.get("WCOP",
-                                      metadata.get("WCP",[u""]))[0],
+                                      metadata.get("WCP",[u""]))[0].decode('ascii',
+                                                                           'replace'),
 
                           publisher=metadata.get("TPUB",
                                       metadata.get("TPB",[u""]))[0],
@@ -311,10 +321,20 @@ class ID3v2Comment(MetaData,dict):
         self.__dict__[key] = value
 
         if (key in self.ATTRIBUTE_MAP):
-            if (key != 'track_number'):
-                self[self.ATTRIBUTE_MAP[key]] = [value]
-            else:
+            if (key in ('track_number','album_number')):
+                #track_number and album_number integers
+                #are converted to Unicode objects
                 self[self.ATTRIBUTE_MAP[key]] = [unicode(value)]
+            elif ((key in ('catalog','copyright')) and
+                  isinstance(value,unicode)):
+                #catalog and copyright Unicode objects
+                #are converted to strings
+                #(e.g.  id3.catalog = u'12345'
+                # sets: id3['WCOP'] = '12345'
+                self[self.ATTRIBUTE_MAP[key]] = [value.encode('ascii',
+                                                              'replace')]
+            else:
+                self[self.ATTRIBUTE_MAP[key]] = [value]
 
     #if a dict pair is updated (e.g. self['TIT2'])
     #make sure to update the corresponding attribute
@@ -322,10 +342,19 @@ class ID3v2Comment(MetaData,dict):
         dict.__setitem__(self, key, value)
 
         if (key in self.ITEM_MAP):
-            if (key != 'TRCK'):
-                self.__dict__[self.ITEM_MAP[key]] = value[0]
-            else:
+            if (key in ('TRCK','TPOS')):
+                #track_number and album_number are converted
+                #from Unicode objects to integers
                 self.__dict__[self.ITEM_MAP[key]] = int(value[0])
+            elif (key in ('MCDI','WCOP')):
+                #catalog and copyright strings
+                #are converted to Unicode objects
+                #(e.g.  id3['WCOP'] = '12345'
+                # sets: id3.catalog = u'12345'
+                self.__dict__[self.ITEM_MAP[key]] = value[0].decode('ascii',
+                                                                    'replace')
+            else:
+                self.__dict__[self.ITEM_MAP[key]] = value[0]
 
     def add_image(self, image):
         image = APICImage.converted(image)
@@ -347,7 +376,10 @@ class ID3v2Comment(MetaData,dict):
         for (key,field) in cls.ITEM_MAP.items():
             field = getattr(metadata,field)
             if (field != u""):
-                tags[key] = [unicode(field)]
+                if (key in ('WCOP','MCDI')):
+                    tags[key] = [field.encode('ascii','replace')]
+                else:
+                    tags[key] = [unicode(field)]
 
         try:
             if (tags["TPE1"] == tags["TPE2"]):
@@ -526,7 +558,10 @@ class ID3v2_3Comment(ID3v2Comment):
         for (key,field) in cls.ITEM_MAP.items():
             field = getattr(metadata,field)
             if (field != u""):
-                tags[key] = [unicode(field)]
+                if (key in ('WCOP','MCDI')):
+                    tags[key] = [field.encode('ascii','replace')]
+                else:
+                    tags[key] = [unicode(field)]
 
         try:
             if (tags["TPE1"] == tags["TPE2"]):
@@ -636,7 +671,10 @@ class ID3v2_2Comment(ID3v2Comment):
         for (key,field) in cls.ITEM_MAP.items():
             field = getattr(metadata,field)
             if (field != u""):
-                tags[key] = [unicode(field)]
+                if (key in ('WCOP','MCDI')):
+                    tags[key] = [field.encode('ascii','replace')]
+                else:
+                    tags[key] = [unicode(field)]
 
         if (tags["TP1"] == tags["TP2"]):
             del(tags["TP2"])
@@ -1009,7 +1047,7 @@ class ID3v1Comment(MetaData,list):
         self.__dict__[key] = value
 
         if (key in self.ATTRIBUTES):
-            if (key != 'track_number'):
+            if (key not in ('track_number','album_number')):
                 self[self.ATTRIBUTES.index(key)] = value
             else:
                 self[self.ATTRIBUTES.index(key)] = int(value)

@@ -388,6 +388,10 @@ class M4AMetaData(MetaData,dict):
         trkn = __Qt_Meta_Atom__.TRKN.parse(
             meta_data.get('trkn',[chr(0) * 8])[0])
 
+        #FIXME
+        #M4A has a "disk" atom which corresponds to "album_number"
+        #but I need to determine if it's formatted like "trkn" or not
+
         if ('covr' in meta_data):
             try:
                 images = [M4ACovr(i) for i in meta_data['covr']]
