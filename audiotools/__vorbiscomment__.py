@@ -82,6 +82,10 @@ class VorbisComment(MetaData,dict):
         dict.__init__(self,vorbis_data)
         self.vendor_string = vendor_string
 
+    @classmethod
+    def supports_images(cls):
+        return False
+
     #if an attribute is updated (e.g. self.track_name)
     #make sure to update the corresponding dict pair
     def __setattr__(self, key, value):

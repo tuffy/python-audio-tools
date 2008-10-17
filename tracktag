@@ -26,7 +26,11 @@ def blank_metadata(track, xmcd):
     return audiotools.MetaData()
 
 def track_metadata(track, xmcd):
-    return track.get_metadata()
+    metadata = track.get_metadata()
+    if (metadata is None):
+        return audiotools.MetaData()
+    else:
+        return metadata
 
 def xmcd_metadata(track, xmcd):
     metadata = xmcd[track.track_number()]

@@ -1040,7 +1040,7 @@ class MetaData:
     #returns False if not
     @classmethod
     def supports_images(cls):
-        return False
+        return True
 
     def images(self):
         #must return a copy of our internal array
@@ -1291,9 +1291,9 @@ class AudioFile:
 
     @classmethod
     def track_name(cls, track_number, track_metadata):
-        if (track_metadata != None):
+        if (track_metadata is not None):
             format_dict = {"track_number":track_number,
-                           "album_number":album_number,
+                           "album_number":track_metadata.album_number,
                            "suffix":cls.SUFFIX}
 
             for field in track_metadata.__FIELDS__:

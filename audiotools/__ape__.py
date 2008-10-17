@@ -123,6 +123,10 @@ class ApeTag(MetaData,dict):
         else:
             tags = {}
             for (key,field) in cls.ITEM_MAP.items():
+                if ((field == 'track_number') and
+                    (getattr(metadata,field) == 0)):
+                    continue
+
                 field = unicode(getattr(metadata,field))
                 if (field != u''):
                     tags[key] = field
@@ -131,6 +135,10 @@ class ApeTag(MetaData,dict):
 
     def __comment_name__(self):
         return u'APEv2'
+
+    @classmethod
+    def supports_images(cls):
+        return False
 
     #takes two (key,value) apetag pairs
     #returns cmp on the weighted set of them
