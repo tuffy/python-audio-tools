@@ -471,9 +471,10 @@ class M4AMetaData(MetaData,dict):
                 if (value != u''):
                     tags[key] = [value]
             else:
-                tags['trkn'] = [__Qt_Meta_Atom__.TRKN.build(Con.Container(
-                    track_number=int(value),
-                    total_tracks=0))]
+                if (value != 0):
+                    tags['trkn'] = [__Qt_Meta_Atom__.TRKN.build(Con.Container(
+                                track_number=int(value),
+                                total_tracks=0))]
 
         if (len(metadata.front_covers()) > 0):
             tags['covr'] = [i.data for i in metadata.front_covers()]
