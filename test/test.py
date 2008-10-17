@@ -131,12 +131,10 @@ class DummyMetaData(audiotools.MetaData):
                                      conductor_name=u"Conductor",
                                      media=u"CD",
                                      ISRC=u"US-PR3-08-12345",
-                                     catalog=u"Catalog Number",
                                      copyright=u"Copyright Attribution",
                                      year=u"2008",
                                      date=u"2008-10-15",
-                                     publisher=u"Test Records Inc.",
-                                     album_number=1)
+                                     publisher=u"Test Records Inc.")
 
     @classmethod
     def supports_images(cls):
@@ -167,12 +165,10 @@ class DummyMetaData2(audiotools.MetaData):
                                      conductor_name=u"New Conductor",
                                      media=u"CD-R",
                                      ISRC=u"US-PR3-08-54321",
-                                     catalog=u"Catalog Number 2",
                                      copyright=u"Copyright Attribution 2",
                                      year=u"2007",
                                      date=u"2007-10-15",
-                                     publisher=u"Testing Records Inc.",
-                                     album_number=2)
+                                     publisher=u"Testing Records Inc.")
 
     @classmethod
     def supports_images(cls):
@@ -574,9 +570,9 @@ class TestAiffAudio(unittest.TestCase):
             new_file = self.audio_class.from_pcm(temp.name,
                                                  BLANK_PCM_Reader(TEST_LENGTH))
 
+            metadata = DummyMetaData()
+            new_file.set_metadata(metadata)
             if (new_file.get_metadata() is not None):
-                metadata = DummyMetaData()
-                new_file.set_metadata(metadata)
                 new_file = audiotools.open(temp.name)
                 self.assertEqual(metadata,new_file.get_metadata())
 
