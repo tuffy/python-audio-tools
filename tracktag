@@ -76,18 +76,6 @@ if (__name__ == '__main__'):
                       dest='track_name',
                       help="the name of the track")
 
-    parser.add_option('--number',
-                      action='store',
-                      type='int',
-                      dest='track_number',
-                      help="the number of the track in the album")
-
-    parser.add_option('--album',
-                      action='store',
-                      type='string',
-                      dest='album_name',
-                      help='the name of the album')
-
     parser.add_option('--artist',
                       action='store',
                       type='string',
@@ -100,17 +88,77 @@ if (__name__ == '__main__'):
                       dest='performer_name',
                       help='the name of the performer')
 
-    parser.add_option('--copyright',
+    parser.add_option('--composer',
                       action='store',
                       type='string',
-                      dest='copyright',
-                      help='copyright information')
+                      dest='composer_name',
+                      help='the name of the composer')
+
+    parser.add_option('--conductor',
+                      action='store',
+                      type='string',
+                      dest='conductor_name',
+                      help='the name of the conductor')
+
+    parser.add_option('--album',
+                      action='store',
+                      type='string',
+                      dest='album_name',
+                      help='the name of the album')
+
+    parser.add_option('--catalog',
+                      action='store',
+                      type='string',
+                      dest='catalog',
+                      help='the catalog number of the album')
+
+    parser.add_option('--number',
+                      action='store',
+                      type='int',
+                      dest='track_number',
+                      help="the number of the track in the album")
+
+    parser.add_option('--album-number',
+                      action='store',
+                      type='int',
+                      dest='album_number',
+                      help='the number of the album in a set of albums')
+
+    parser.add_option('--ISRC',
+                      action='store',
+                      type='string',
+                      dest='ISRC',
+                      help='the ISRC of the track')
+
+    parser.add_option('--publisher',
+                      action='store',
+                      type='string',
+                      dest='publisher',
+                      help='the publisher of the album')
+
+    parser.add_option('--media-type',
+                      action='store',
+                      type='string',
+                      dest='media_type',
+                      help='the media type of the album, such as "CD"')
 
     parser.add_option('--year',
                       action='store',
                       type='string',
                       dest='year',
                       help='the year of release')
+
+    parser.add_option('--date',
+                      action='store',
+                      type='string',
+                      dest='date',
+                      help='the date of recording')
+
+    parser.add_option('--copyright',
+                      action='store',
+                      type='string',
+                      dest='copyright',
+                      help='copyright information')
 
     parser.add_option('-r','--replace',
                       action='store_true',
@@ -203,15 +251,22 @@ if (__name__ == '__main__'):
 
         if (metadata is not None):
             try:
-                for field in ('track_name','track_number','album_name',
-                              'artist_name','performer_name','copyright',
-                              'year'):
-                    if (getattr(options,field) != None):
+                for field in ('track_name','artist_name','performer_name',
+                              'composer_name','conductor_name',
+                              'album_name','catalog','track_number',
+                              'ISRC','publisher',
+                              'year','date','copyright'):
+                    if (getattr(options,field) is not None):
                         attr = getattr(options,field)
                         if (isinstance(attr,str)):
                             attr = attr.decode(audiotools.IO_ENCODING)
                         setattr(metadata,field,attr)
 
+                if (options.media_type is not None):
+                    metadata.media = options.media_type.decode(audiotools.IO_ENCODING)
+
+                if (options.album_number is not None):
+                    metadata.album_number = options.album_number
 
                 if (metadata.supports_images()):
                     if (options.remove_images):

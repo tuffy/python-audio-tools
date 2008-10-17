@@ -88,7 +88,7 @@ class VorbisComment(MetaData,dict):
         self.__dict__[key] = value
 
         if (key in self.ATTRIBUTE_MAP):
-            if (key != 'track_number'):
+            if (key not in ('track_number','album_number')):
                 self[self.ATTRIBUTE_MAP[key]] = [value]
             else:
                 self[self.ATTRIBUTE_MAP[key]] = [unicode(value)]
@@ -99,7 +99,7 @@ class VorbisComment(MetaData,dict):
         dict.__setitem__(self, key, value)
 
         if (self.ITEM_MAP.has_key(key)):
-            if (key != 'TRACKNUMBER'):
+            if (key not in ('TRACKNUMBER','VOLUME')):
                 self.__dict__[self.ITEM_MAP[key]] = value[0]
             else:
                 self.__dict__[self.ITEM_MAP[key]] = int(value[0])
@@ -119,7 +119,15 @@ class VorbisComment(MetaData,dict):
         else:
             values = {}
             for key in cls.ATTRIBUTE_MAP.keys():
-                if (getattr(metadata,key) != u""):
+                if (key == 'track_number'):
+                    if (metadata.track_number != 0):
+                        values[cls.ATTRIBUTE_MAP[key]] = \
+                            [unicode(getattr(metadata,key))]
+                elif (key == 'album_number'):
+                    if (metadata.album_number != 0):
+                        values[cls.ATTRIBUTE_MAP[key]] = \
+                            [unicode(getattr(metadata,key))]
+                elif (getattr(metadata,key) != u""):
                     values[cls.ATTRIBUTE_MAP[key]] = \
                         [unicode(getattr(metadata,key))]
 
