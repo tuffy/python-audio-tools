@@ -352,7 +352,7 @@ class ID3v2Comment(MetaData,dict):
 
         for (key,field) in cls.ITEM_MAP.items():
             field = getattr(metadata,field)
-            if (field != u""):
+            if ((field != u"") and (field != 0)):
                 tags[key] = [unicode(field)]
 
         try:
@@ -529,7 +529,7 @@ class ID3v2_3Comment(ID3v2Comment):
 
         for (key,field) in cls.ITEM_MAP.items():
             field = getattr(metadata,field)
-            if (field != u""):
+            if ((field != u"") and (field != 0)):
                 tags[key] = [unicode(field)]
 
         try:
@@ -638,7 +638,7 @@ class ID3v2_2Comment(ID3v2Comment):
 
         for (key,field) in cls.ITEM_MAP.items():
             field = getattr(metadata,field)
-            if (field != u""):
+            if ((field != u"") and (field != 0)):
                 tags[key] = [unicode(field)]
 
         if (tags["TP1"] == tags["TP2"]):
