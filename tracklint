@@ -155,10 +155,12 @@ if (__name__ == '__main__'):
                 temp_track_f.close()
             else:
                 #set metadata on the track to the new version
-                pass
+                track.set_metadata(metadata)
 
+        if (options.db is not None):
+            undo_db.close()
     elif (options.undo):
-        undo_db = anydbm.open(options.db,"r")
+        undo_db = anydbm.open(options.db,"w")
 
         for track in audiofiles(args):
             if (undo_db.has_key(track.filename)):
@@ -184,6 +186,16 @@ if (__name__ == '__main__'):
                 old_track.close()
                 xdelta_f.close()
 
+                #wipe the track's undo information from the undo db,
+                #so that it cannot be applied a second time
+                del(undo_db[track.filename])
                 print track.filename
-
+        undo_db.close()
+    else:
+        for track in audiofiles(args):
+            (metadata,messages) = fix_metadata(track.get_metadata())
+            for message in messages:
+                print u"* %s: %s" % \
+                    (track.filename.decode(audiotools.IO_ENCODING),
+                     message)
 
