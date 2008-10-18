@@ -185,6 +185,7 @@ class VorbisComment(MetaData,dict):
         comment.value = []
         for (key,values) in self.items():
             for value in values:
-                comment.value.append("%s=%s" % (key,
-                                                value.encode('utf-8')))
+                if (value != u""):
+                    comment.value.append("%s=%s" % (key,
+                                                    value.encode('utf-8')))
         return self.VORBIS_COMMENT.build(comment)
