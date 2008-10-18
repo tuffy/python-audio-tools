@@ -1,0 +1,189 @@
+#!/usr/bin/python
+
+#Audio Tools, a module and set of tools for manipulating audio data
+#Copyright (C) 2007-2008  Brian Langenberger
+
+#This program is free software; you can redistribute it and/or modify
+#it under the terms of the GNU General Public License as published by
+#the Free Software Foundation; either version 2 of the License, or
+#(at your option) any later version.
+
+#This program is distributed in the hope that it will be useful,
+#but WITHOUT ANY WARRANTY; without even the implied warranty of
+#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#GNU General Public License for more details.
+
+#You should have received a copy of the GNU General Public License
+#along with this program; if not, write to the Free Software
+#Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+
+import audiotools
+import optparse
+import sys
+import os
+import os.path
+import re
+import tempfile
+import subprocess
+import cStringIO
+import anydbm
+
+YEAR = re.compile(r'^\d{4}$')
+
+#metadata should be an existing MetaData object
+#returns a (MetaData,fix_list) tuple,
+#where MetaData is a fixed version (if necessary)
+#and fix_list is list of strings detailing all the fixes performed
+#if MetaData is None, returns (None,[]) since no fixes are performed
+def fix_metadata(metadata):
+    if (metadata is None):
+        return (None,[])
+
+    log = []
+
+    #if the "date" field is substituted for "year",
+    #assign the current value to "year" and clear "date"
+    if (YEAR.match(metadata.date) and (metadata.year == u"")):
+        metadata.year = metadata.date
+        metadata.date = u""
+        log.append(u"moved track date to track year")
+
+
+    return (metadata,log)
+
+def audiofiles(paths):
+    for path in paths:
+        if (os.path.isdir(path)):
+            for (dir,dirs,files) in os.walk(path):
+                for file in files:
+                    try:
+                        yield audiotools.open(os.path.join(dir,file))
+                    except audiotools.UnsupportedFile:
+                        pass
+                    except audiotools.InvalidFile:
+                        pass
+        else:
+            try:
+                yield audiotools.open(os.path.join(path))
+            except audiotools.UnsupportedFile:
+                pass
+            except audiotools.InvalidFile:
+                pass
+
+if (__name__ == '__main__'):
+    parser = optparse.OptionParser(
+        '%prog ...',
+        version="Python Audio Tools %s" % (audiotools.VERSION))
+
+    parser.add_option('-f','--fix',
+                      action='store_true',
+                      default=False,
+                      dest='fix',
+                      help='perform suggest fixes')
+
+    parser.add_option('--db',
+                      action='store',
+                      type='string',
+                      dest='db',
+                      help='undo database file')
+
+    parser.add_option('--undo',
+                      action='store_true',
+                      default=False,
+                      dest='undo',
+                      help='undo performed fixes')
+
+    (options,args) = parser.parse_args()
+
+    if (options.undo and (options.db is None)):
+        print >>sys.stderr,"*** cannot perform undo without undo db"
+        sys.exit(1)
+
+    if ((options.db is not None) and
+        (not audiotools.BIN.can_execute(audiotools.BIN["xdelta"]))):
+        print >>sys.stderr,"*** xdelta must be installed for undo support"
+        sys.exit(1)
+
+
+    if (options.fix):
+        if (options.db is not None):
+            undo_db = anydbm.open(options.db,"n")
+
+        for track in audiofiles(args):
+            (metadata,messages) = fix_metadata(track.get_metadata())
+            for message in messages:
+                print u"* %s: %s" % \
+                    (track.filename.decode(audiotools.IO_ENCODING),
+                     message)
+
+            if (options.db is not None):
+                #copy the track to a temporary location
+                temp_track_f = tempfile.NamedTemporaryFile(suffix="." + track.SUFFIX)
+                f = open(track.filename,'rb')
+                audiotools.transfer_data(f.read,temp_track_f.write)
+                f.close()
+                temp_track_f.flush()
+                temp_track = audiotools.open(temp_track_f.name)
+
+                #set metadata on the copied track to the fixed version
+                temp_track.set_metadata(metadata)
+
+                #perform xdelta between the old and new track
+                delta_f = tempfile.NamedTemporaryFile(suffix=".delta")
+                subprocess.call([audiotools.BIN["xdelta"],
+                                 "delta",
+                                 temp_track.filename,
+                                 track.filename,
+                                 delta_f.name])
+
+                #store the xdelta in our undo DB
+                f = open(delta_f.name,'rb')
+                data = cStringIO.StringIO()
+                audiotools.transfer_data(f.read,data.write)
+                f.close()
+                delta_f.close()
+
+                undo_db[track.filename] = data.getvalue()
+
+                #copy the temporary track over the original
+
+                f1 = open(temp_track_f.name,'rb')
+                f2 = open(track.filename,'wb')
+                audiotools.transfer_data(f1.read,f2.write)
+                f1.close()
+                f2.close()
+                temp_track_f.close()
+            else:
+                #set metadata on the track to the new version
+                pass
+
+    elif (options.undo):
+        undo_db = anydbm.open(options.db,"r")
+
+        for track in audiofiles(args):
+            if (undo_db.has_key(track.filename)):
+                #copy the xdelta to a temporary file
+                xdelta_f = tempfile.NamedTemporaryFile(suffix=".delta")
+                xdelta_f.write(undo_db[track.filename])
+                xdelta_f.flush()
+
+                #patch the existing track to a temporary track
+                old_track = tempfile.NamedTemporaryFile(suffix="." + track.SUFFIX)
+                subprocess.call([audiotools.BIN["xdelta"],
+                                 "patch",
+                                 xdelta_f.name,
+                                 track.filename,
+                                 old_track.name])
+
+                #copy the temporary track over the existing file
+                f1 = open(old_track.name,'rb')
+                f2 = open(track.filename,'wb')
+                audiotools.transfer_data(f1.read,f2.write)
+                f1.close()
+                f2.close()
+                old_track.close()
+                xdelta_f.close()
+
+                print track.filename
+
+

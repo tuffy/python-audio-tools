@@ -100,4 +100,5 @@ setup (name = 'Python Audio Tools',
                   "tracklength","track2cd","trackcmp","trackplay",
                   "tracktag","editxmcd","audiotools-config",
                   "trackcat","tracksplit",
+                  "tracklint",
                   "coverdump","coverview","record2track"])
