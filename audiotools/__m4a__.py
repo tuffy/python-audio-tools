@@ -98,6 +98,11 @@ class __Qt_Meta_Atom__(__Qt_Atom__):
                       Con.UBInt16('total_tracks'),
                       Con.Padding(2))
 
+    DISK = Con.Struct('disk',
+                      Con.Padding(2),
+                      Con.UBInt16('disk_number'),
+                      Con.UBInt16('total_disks'))
+
     def __init__(self, type, data):
         self.type = type
 
@@ -388,9 +393,8 @@ class M4AMetaData(MetaData,dict):
         trkn = __Qt_Meta_Atom__.TRKN.parse(
             meta_data.get('trkn',[chr(0) * 8])[0])
 
-        #FIXME
-        #M4A has a "disk" atom which corresponds to "album_number"
-        #but I need to determine if it's formatted like "trkn" or not
+        disk = __Qt_Meta_Atom__.DISK.parse(
+            meta_data.get('disk',[chr(0) * 6])[0])
 
         if ('covr' in meta_data):
             try:
@@ -403,6 +407,7 @@ class M4AMetaData(MetaData,dict):
         MetaData.__init__(self,
                           track_name=meta_data.get('\xa9nam',[u''])[0],
                           track_number=trkn.track_number,
+                          album_number=disk.disk_number,
                           album_name=meta_data.get('\xa9alb',[u''])[0],
                           artist_name=meta_data.get('\xa9wrt',[u''])[0],
                           performer_name=meta_data.get('\xa9ART',[u''])[0],
@@ -414,6 +419,7 @@ class M4AMetaData(MetaData,dict):
 
     ATTRIBUTE_MAP = {'track_name':'\xa9nam',
                      'track_number':'trkn',
+                     'album_number':'disk',
                      'album_name':'\xa9alb',
                      'artist_name':'\xa9wrt',
                      'performer_name':'\xa9ART',
@@ -428,14 +434,19 @@ class M4AMetaData(MetaData,dict):
         self.__dict__[key] = value
 
         if (self.ATTRIBUTE_MAP.has_key(key)):
-            if (key != 'track_number'):
+            if (key not in ('track_number','album_number')):
                 self[self.ATTRIBUTE_MAP[key]] = [value]
-            else:
+            elif (key == 'track_number'):
                 trkn = [__Qt_Meta_Atom__.TRKN.build(Con.Container(
                     track_number=int(value),
                     total_tracks=0))]
 
                 self[self.ATTRIBUTE_MAP[key]] = trkn
+            elif (key == 'album_number'):
+                disk = [__Qt_Meta_Atom__.DISK.build(Con.Container(
+                    disk_number=int(value),
+                    total_disks=0))]
+                self[self.ATTRIBUTE_MAP[key]] = disk
 
     #if a dict pair is updated (e.g. self['\xa9nam'])
     #make sure to update the corresponding attribute
@@ -443,11 +454,14 @@ class M4AMetaData(MetaData,dict):
         dict.__setitem__(self, key, value)
 
         if (self.ITEM_MAP.has_key(key)):
-            if (key != 'trkn'):
+            if (key not in ('trkn','disk')):
                 self.__dict__[self.ITEM_MAP[key]] = value[0]
-            else:
+            elif (key == 'trkn'):
                 trkn = __Qt_Meta_Atom__.TRKN.parse(value[0])
                 self.__dict__[self.ITEM_MAP[key]] = trkn.track_number
+            elif (key == 'disk'):
+                disk = __Qt_Meta_Atom__.DISK.parse(value[0])
+                self.__dict__[self.ITEM_MAP[key]] = disk.disk_number
 
     def add_image(self, image):
         if (image.type == 0):
@@ -467,14 +481,19 @@ class M4AMetaData(MetaData,dict):
 
         for (key,field) in cls.ITEM_MAP.items():
             value = getattr(metadata,field)
-            if (field != 'track_number'):
+            if (field not in ('track_number','album_number')):
                 if (value != u''):
                     tags[key] = [value]
-            else:
+            elif (field == 'track_number'):
                 if (value != 0):
                     tags['trkn'] = [__Qt_Meta_Atom__.TRKN.build(Con.Container(
                                 track_number=int(value),
                                 total_tracks=0))]
+            elif (field == 'album_number'):
+                if (value != 0):
+                    tags['disk'] = [__Qt_Meta_Atom__.DISK.build(Con.Container(
+                                disk_number=int(value),
+                                total_disks=0))]
 
         if (len(metadata.front_covers()) > 0):
             tags['covr'] = [i.data for i in metadata.front_covers()]
@@ -523,14 +542,15 @@ class M4AMetaData(MetaData,dict):
     @classmethod
     def __by_pair__(cls, pair1, pair2):
         KEY_MAP = {" nam":1,
-                   " ART":5,
-                   " com":4,
+                   " ART":6,
+                   " com":5,
                    " alb":2,
                    "trkn":3,
-                   "----":7}
+                   "disk":4,
+                   "----":8}
 
-        return cmp((KEY_MAP.get(pair1[0],6),pair1[0],pair1[1]),
-                   (KEY_MAP.get(pair2[0],6),pair2[0],pair2[1]))
+        return cmp((KEY_MAP.get(pair1[0],7),pair1[0],pair1[1]),
+                   (KEY_MAP.get(pair2[0],7),pair2[0],pair2[1]))
 
     def __comment_pairs__(self):
         pairs = []
@@ -543,6 +563,10 @@ class M4AMetaData(MetaData,dict):
 
                     pairs.append((key,"%s/%s" % (tracknumber.track_number,
                                                  tracknumber.total_tracks)))
+                elif (key == 'disk'):
+                    disknumber = __Qt_Meta_Atom__.DISK.parse(value)
+                    pairs.append((key,"%s/%s" % (disknumber.disk_number,
+                                                 disknumber.total_disks)))
                 else:
                     if (len(value) <= 20):
                         pairs.append(
