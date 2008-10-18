@@ -147,7 +147,8 @@ class SmallDummyMetaData(audiotools.MetaData):
                                      track_number=5,
                                      album_name=u"Album Name",
                                      artist_name=u"Artist Name",
-                                     performer_name=u"Performer")
+                                     performer_name=u"Performer",
+                                     album_number=6)
 
     @classmethod
     def supports_images(cls):

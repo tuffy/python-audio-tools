@@ -239,13 +239,9 @@ This is a human-readable collection of information about a single
 track on an album.
 It is designed as a lowest-common-demonimator for conversion between
 audio formats with vastly different ways of storing track metadata.
-So while it is recommended that an AudioFile's get_metadata and
-set_metadata methods support more information than these fields,
-it is required that they support at least these (assuming the
-AudioFile supports any metadata at all).
 
-.CLASS MetaData "track_name=u\[aq]\[aq], track_number=0, album_name=u\[aq]\[aq], artist_name=u\[aq]\[aq], performer_name=u\[aq]\[aq], copyright=u\[aq]\[aq], year=u\[aq]\[aq], images=[]"
-track_number is stored as an integer.
+.CLASS MetaData "track_name=u\[aq]\[aq], track_number=0, album_name=u\[aq]\[aq], artist_name=u\[aq]\[aq], performer_name=u\[aq]\[aq], composer_name=u\[aq]\[aq], conductor_name=u\[aq]\[aq], media=u\[aq]\[aq], ISRC=u\[aq]\[aq], catalog=u\[aq]\[aq], copyright=u\[aq]\[aq], publisher=u\[aq]\[aq], year=u\[aq]\[aq], date=u\[aq]\[aq], album_number=0, images=[]"
+track_number and album_number are stored as integers.
 The images field, if present, should be a list of Image-compatible objects.
 The rest are stored as Unicode strings.
 
@@ -265,11 +261,42 @@ The name of this track's original artist.
 .ATTRIBUTE "performer_name"
 The name of this track's performer.
 
+.ATTRIBUTE "composer_name"
+The name of this track's composer.
+
+.ATTRIBUTE "conductor_name"
+The name of this track's conductor.
+
+.ATTRIBUTE "media"
+The type of media this track comes from, such as
+.ft C
+u"CD"
+.ft R
+
+.ATTRIBUTE "ISRC"
+The ISRC of this track.
+
+.ATTRIBUTE "catalog"
+The catalog number of this track's album.
+
 .ATTRIBUTE "copyright"
 The copyright information for this track.
 
+.ATTRIBUTE "publisher"
+The name of this track's publisher.
+
+.bp
+
 .ATTRIBUTE "year"
 The release year for this track's album.
+
+.ATTRIBUTE "date"
+The recording date of this track.
+
+.ATTRIBUTE "album_number"
+
+If the track's album is part of a a series, this is the album's
+number in that series.
 
 .CLASSMETHOD converted "metadata"
 This method takes a MetaData-compatible object and returns a
