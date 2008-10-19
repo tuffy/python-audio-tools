@@ -30,10 +30,13 @@ import anydbm
 
 YEAR = re.compile(r'^\d{4}$')
 
+TEXT_FIELDS = tuple([field for field in audiotools.MetaData.__FIELDS__
+                     if (field not in ("track_number","album_number"))])
+
 #metadata should be an existing MetaData object
 #returns a (MetaData,fix_list) tuple,
 #where MetaData is a fixed version (if necessary)
-#and fix_list is list of strings detailing all the fixes performed
+#and fix_list is list of Unicode strings detailing all the fixes performed
 #if MetaData is None, returns (None,[]) since no fixes are performed
 def fix_metadata(metadata):
     if (metadata is None):
@@ -41,12 +44,31 @@ def fix_metadata(metadata):
 
     log = []
 
-    #if the "date" field is substituted for "year",
-    #assign the current value to "year" and clear "date"
-    if (YEAR.match(metadata.date) and (metadata.year == u"")):
-        metadata.year = metadata.date
-        metadata.date = u""
-        log.append(u"moved track date to track year")
+#     #remove any leading or trailing whitespace from text fields
+#     for field in TEXT_FIELDS:
+#         if (getattr(metadata,field).strip() !=
+#             getattr(metadata,field)):
+#             setattr(metadata,field,getattr(metadata,field).strip())
+#             log.append(u"stripped whitespace from %s field" % \
+#                            (field))
+
+    if ((metadata.track_number >= 100) and
+        (metadata.track_number <= 999) and
+        (metadata.album_number == 0)):
+        log.append(u"converted track number %d to album number %d and track_number %d" % \
+                       (metadata.track_number,
+                        metadata.track_number / 100,
+                        metadata.track_number % 100))
+        metadata.album_number = metadata.track_number / 100
+        metadata.track_number = metadata.track_number % 100
+
+
+#     #if the "date" field is substituted for "year",
+#     #assign the current value to "year" and clear "date"
+#     if (YEAR.match(metadata.date) and (metadata.year == u"")):
+#         metadata.year = metadata.date
+#         metadata.date = u""
+#         log.append(u"moved track date to track year")
 
 
     return (metadata,log)
