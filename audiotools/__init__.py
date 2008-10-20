@@ -1033,7 +1033,13 @@ class MetaData:
     #class.  This way, AudioFiles can offload metadata conversions.
     @classmethod
     def converted(cls, metadata):
-        return metadata
+        if (metadata is not None):
+            fields = dict([(field,getattr(metadata,field))
+                           for field in cls.__FIELDS__])
+            fields.images = metadata.images
+            return MetaData(**fields)
+        else:
+            return None
 
 
     #returns True if this particular sort of metadata support images
@@ -1589,7 +1595,7 @@ class ExecQueue:
 #Yet another reason to avoid that unpleasant file format...
 
 #***ALACAudio also temporarily removed***
-#Though it mostly works, it's not yet stable in ffmpeg yet
+#Though it mostly works, it's not yet stable in ffmpeg
 #and doesn't pass all of the lossless unit tests.
 #It's best to leave it disabled until it works properly.
 
