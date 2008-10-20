@@ -1036,7 +1036,7 @@ class MetaData:
         if (metadata is not None):
             fields = dict([(field,getattr(metadata,field))
                            for field in cls.__FIELDS__])
-            fields.images = metadata.images()
+            fields["images"] = metadata.images()
             return MetaData(**fields)
         else:
             return None
