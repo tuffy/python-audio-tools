@@ -619,7 +619,6 @@ class FlacAudio(AudioFile):
                        open_files(filenames) if
                        (isinstance(track,cls) and
                         (track.channels() == 2) and
-                        (track.bits_per_sample() == 16) and
                         ((track.sample_rate() == 44100) or
                          (track.sample_rate() == 48000)))]
 

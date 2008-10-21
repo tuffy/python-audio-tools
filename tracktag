@@ -306,7 +306,7 @@ if (__name__ == '__main__'):
     if (options.add_replay_gain and
         (len(audiofiles) > 0) and
         (audiofiles[0].can_add_replay_gain())):
-        if (AudioType.lossless_replay_gain()):
+        if (audiofiles[0].lossless_replay_gain()):
             print >>sys.stderr,"* Adding ReplayGain metadata.  This may take some time."
         else:
             print >>sys.stderr,"* Applying ReplayGain.  This may take some time."
