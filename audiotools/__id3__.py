@@ -329,7 +329,9 @@ class ID3v2Comment(MetaData,dict):
             if (key in ('TRCK','TPOS')):
                 #track_number and album_number are converted
                 #from Unicode objects to integers
-                self.__dict__[self.ITEM_MAP[key]] = int(value[0])
+                int_val = re.match(r'\d+',value[0])
+                if (int_val is not None):
+                    self.__dict__[self.ITEM_MAP[key]] = int(int_val.group(0))
             else:
                 self.__dict__[self.ITEM_MAP[key]] = value[0]
 
