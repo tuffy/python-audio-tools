@@ -44,14 +44,19 @@ def fix_metadata(metadata):
 
     log = []
 
-#     #remove any leading or trailing whitespace from text fields
-#     for field in TEXT_FIELDS:
-#         if (getattr(metadata,field).strip() !=
-#             getattr(metadata,field)):
-#             setattr(metadata,field,getattr(metadata,field).strip())
-#             log.append(u"stripped whitespace from %s field" % \
-#                            (field))
+    #remove any leading or trailing whitespace from text fields
+    #this is common in ID3v1 comments where NULL bytes should be
+    #used instead of spaces, but it often happens by accident also
+    for field in TEXT_FIELDS:
+        if (getattr(metadata,field).strip() !=
+            getattr(metadata,field)):
+            setattr(metadata,field,getattr(metadata,field).strip())
+            log.append(u"stripped whitespace from %s field" % \
+                           (field))
 
+    #if the track number is between 100 and 999,
+    #use the high digit for the album number and low digits for track number
+    #(a lot of multi-volume video game soundtracks are numbered this way)
     if ((metadata.track_number >= 100) and
         (metadata.track_number <= 999) and
         (metadata.album_number == 0)):
@@ -62,13 +67,19 @@ def fix_metadata(metadata):
         metadata.album_number = metadata.track_number / 100
         metadata.track_number = metadata.track_number % 100
 
+    #if performer name is the same as artist name,
+    #clear the performer name value
+    if (metadata.artist_name == metadata.performer_name):
+        metadata.performer_name = u""
+        log.append(u"removed redundant performer name field")
 
-#     #if the "date" field is substituted for "year",
-#     #assign the current value to "year" and clear "date"
-#     if (YEAR.match(metadata.date) and (metadata.year == u"")):
-#         metadata.year = metadata.date
-#         metadata.date = u""
-#         log.append(u"moved track date to track year")
+
+    #if the "date" field is substituted for "year",
+    #assign the current value to "year" and clear "date"
+    if (YEAR.match(metadata.date) and (metadata.year == u"")):
+        metadata.year = metadata.date
+        metadata.date = u""
+        log.append(u"moved track date to track year")
 
 
     return (metadata,log)
