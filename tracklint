@@ -46,7 +46,13 @@ def display_messages(track,messages):
 #where Track is a fixed version (if necessary)
 #and fix_list is list of Unicode strings detailing all the fixes performed
 def fix_track(track,dry_run=False):
-    return (track,[])
+    log = []
+
+    if (isinstance(track,BrokenFlacAudio)):
+        #FIXME - perform ID3 tag removal
+        log.append(u"removed unnecessary ID3 tags")
+
+    return (track,log)
 
 #metadata should be an existing MetaData object
 #returns a (MetaData,fix_list) tuple,
@@ -196,6 +202,88 @@ def undo_from_backup(track, undo_db):
         #so that it cannot be applied a second time
         del(undo_db[track.filename])
         print track.filename
+
+#a FlacAudio Track prepended with ID3v2 tags
+#or appended with ID3v1 tags
+class BrokenFlacAudio(audiotools.FlacAudio):
+    NAME = "brokenflac"
+
+    def __read_streaminfo__(self):
+        f = file(self.filename,"rb")
+        audiotools.ID3v2Comment.skip(f)
+        if (f.read(4) != "fLaC"):
+            raise audiotools.FlacException("Not a FLAC file")
+
+        (stop,header_type,length) = audiotools.FlacAudio.__read_flac_header__(f)
+        if (header_type != 0):
+            raise audiotools.FlacException("STREAMINFO not first metadata block")
+
+        p = audiotools.FlacAudio.STREAMINFO.parse(f.read(length))
+
+        md5sum = "".join(["%.2X" % (x) for x in p.md5]).lower()
+
+        self.__samplerate__ = p.samplerate
+        self.__channels__ = p.channels + 1
+        self.__bitspersample__ = p.bits_per_sample + 1
+        self.__total_frames__ = p.total_samples
+        self.__md5__ = "".join([chr(c) for c in p.md5])
+        f.close()
+
+    def get_metadata(self):
+        f = file(self.filename,'rb')
+        audiotools.ID3v2Comment.skip(f)
+        try:
+            if (f.read(4) != 'fLaC'):
+                raise audiotools.FlacException('invalid FLAC file')
+
+            blocks = []
+
+            while (True):
+                header = audiotools.FlacAudio.METADATA_BLOCK_HEADER.parse_stream(f)
+                blocks.append(audiotools.FlacMetaDataBlock(
+                    type=header.block_type,
+                    data=f.read(header.block_length)))
+                if (header.last_block == 1):
+                    break
+
+            return audiotools.FlacMetaData(blocks)
+        finally:
+            f.close()
+
+    def set_metadata(self,metadata):
+        pass
+
+    @classmethod
+    def is_type(cls, file):
+        if (file.read(3) == 'ID3'):
+            file.seek(-3,1)
+            audiotools.ID3v2Comment.skip(file)
+            if (file.read(4) == 'fLaC'):
+                print "found broken flac"
+                return True
+            else:
+                return False
+        else:
+            file.seek(-128,2)
+            if (file.read(3) == 'TAG'):
+                return True
+            else:
+                return False
+
+class PureFlacAudio(audiotools.FlacAudio):
+    NAME = "flac"
+
+    @classmethod
+    def is_type(cls,file):
+        return (file.read(4) == 'fLaC')
+
+audiotools.AVAILABLE_TYPES = tuple([t for t in audiotools.AVAILABLE_TYPES
+                                    if t != audiotools.FlacAudio] + \
+                                   [BrokenFlacAudio,PureFlacAudio])
+
+audiotools.TYPE_MAP = dict([(track_type.NAME,track_type)
+                            for track_type in audiotools.AVAILABLE_TYPES
+                            if track_type.has_binaries(audiotools.BIN)])
 
 if (__name__ == '__main__'):
     parser = optparse.OptionParser(
