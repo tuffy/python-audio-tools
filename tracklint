@@ -33,6 +33,21 @@ YEAR = re.compile(r'^\d{4}$')
 TEXT_FIELDS = tuple([field for field in audiotools.MetaData.__FIELDS__
                      if (field not in ("track_number","album_number"))])
 
+def display_messages(track,messages):
+    for message in messages:
+        print u"* %s: %s" % \
+            (track.filename.decode(audiotools.IO_ENCODING),
+             message)
+
+#track should be an existing Track object
+#if dry_run is True, a new Track object is written with the given fixes applied
+#if False, the fixes are not applied
+#returns a (Track,fix_list) tuple,
+#where Track is a fixed version (if necessary)
+#and fix_list is list of Unicode strings detailing all the fixes performed
+def fix_track(track,dry_run=False):
+    return (track,[])
+
 #metadata should be an existing MetaData object
 #returns a (MetaData,fix_list) tuple,
 #where MetaData is a fixed version (if necessary)
@@ -103,7 +118,9 @@ def audiofiles(paths):
             except audiotools.InvalidFile:
                 pass
 
-def update_metadata_and_backup(track, metadata, undo_db):
+def update_and_backup(track, undo_db):
+    changes_made = False
+
     #copy the track to a temporary location
     temp_track_f = tempfile.NamedTemporaryFile(suffix="." + track.SUFFIX)
     f = open(track.filename,'rb')
@@ -112,35 +129,46 @@ def update_metadata_and_backup(track, metadata, undo_db):
     temp_track_f.flush()
     temp_track = audiotools.open(temp_track_f.name)
 
-    #set metadata on the copied track to the fixed version
-    temp_track.set_metadata(metadata)
+    #perform any Track fixes on the temporary Track
+    (temp_track,messages) = fix_track(temp_track,dry_run=False)
+    changes_made = changes_made or (len(messages) > 0)
+    display_messages(track,messages)
 
-    #perform xdelta between the old and new track
-    delta_f = tempfile.NamedTemporaryFile(suffix=".delta")
-    subprocess.call([audiotools.BIN["xdelta"],
-                     "delta",
-                     temp_track.filename,
-                     track.filename,
-                     delta_f.name])
+    #perform any MetaData fixes on the temporary Track
+    (metadata,messages) = fix_metadata(temp_track.get_metadata())
+    changes_made = changes_made or (len(messages) > 0)
+    display_messages(track,messages)
+    if (len(messages) > 0):
+        temp_track.set_metadata(metadata)
 
-    #store the xdelta in our undo DB
-    f = open(delta_f.name,'rb')
-    data = cStringIO.StringIO()
-    audiotools.transfer_data(f.read,data.write)
-    f.close()
-    delta_f.close()
+    if (changes_made):
+        #perform xdelta between the old and new track
+        delta_f = tempfile.NamedTemporaryFile(suffix=".delta")
+        subprocess.call([audiotools.BIN["xdelta"],
+                         "delta",
+                         temp_track.filename,
+                         track.filename,
+                         delta_f.name])
 
-    undo_db[track.filename] = data.getvalue()
+        #store the xdelta in our undo DB
+        f = open(delta_f.name,'rb')
+        data = cStringIO.StringIO()
+        audiotools.transfer_data(f.read,data.write)
+        f.close()
+        delta_f.close()
 
-    #copy the temporary track over the original
-    f1 = open(temp_track_f.name,'rb')
-    f2 = open(track.filename,'wb')
-    audiotools.transfer_data(f1.read,f2.write)
-    f1.close()
-    f2.close()
+        undo_db[track.filename] = data.getvalue()
+
+        #copy the temporary track over the original
+        f1 = open(temp_track_f.name,'rb')
+        f2 = open(track.filename,'wb')
+        audiotools.transfer_data(f1.read,f2.write)
+        f1.close()
+        f2.close()
+
     temp_track_f.close()
 
-def undo_metadata_from_backup(track, undo_db):
+def undo_from_backup(track, undo_db):
     if (undo_db.has_key(track.filename)):
         #copy the xdelta to a temporary file
         xdelta_f = tempfile.NamedTemporaryFile(suffix=".delta")
@@ -211,38 +239,30 @@ if (__name__ == '__main__'):
             undo_db = anydbm.open(options.db,"n")
 
             for track in audiofiles(args):
-                (metadata,messages) = fix_metadata(track.get_metadata())
-                for message in messages:
-                    print u"* %s: %s" % \
-                        (track.filename.decode(audiotools.IO_ENCODING),
-                         message)
-
-                update_metadata_and_backup(track,metadata,undo_db)
+                update_and_backup(track,undo_db)
 
             undo_db.close()
         else:
             #if we're fixing tracks and have no undo DB,
-            #simply overwrite the track metadata directly
+            #simply overwrite the track and track metadata directly
             for track in audiofiles(args):
+                (track,messages) = fix_track(track,dry_run=False)
+                display_messages(track,messages)
                 (metadata,messages) = fix_metadata(track.get_metadata())
-                for message in messages:
-                    print u"* %s: %s" % \
-                        (track.filename.decode(audiotools.IO_ENCODING),
-                         message)
-
+                display_messages(track,messages)
                 track.set_metadata(metadata)
     elif (options.undo):
         undo_db = anydbm.open(options.db,"w")
 
         for track in audiofiles(args):
-            undo_metadata_from_backup(track,undo_db)
+            undo_from_backup(track,undo_db)
 
         undo_db.close()
-    else:
+    else: #a dry-run of the fixing procedure, with no changes made
         for track in audiofiles(args):
+            (track,messages) = fix_track(track,dry_run=True)
+            display_messages(track,messages)
             (metadata,messages) = fix_metadata(track.get_metadata())
-            for message in messages:
-                print u"* %s: %s" % \
-                    (track.filename.decode(audiotools.IO_ENCODING),
-                     message)
+            display_messages(track,messages)
+
 
