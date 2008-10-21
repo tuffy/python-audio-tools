@@ -345,6 +345,7 @@ class ID3v2Comment(MetaData,dict):
         del(self['APIC'][self['APIC'].index(image.build())])
         MetaData.delete_image(self, image)
 
+
     @classmethod
     def converted(cls, metadata):
         if ((metadata is None) or (isinstance(metadata,ID3v2Comment))):
@@ -739,6 +740,16 @@ class ID3v2_2Comment(ID3v2Comment):
         header.flag = [0,0,0,0,0,0,0,0]
 
         return cls.ID3v2_HEADER.build(header) + "".join(tags)
+
+    def add_image(self, image):
+        image = PICImage.converted(image)
+
+        self.setdefault('PIC',[]).append(image.build())
+        MetaData.add_image(self, image)
+
+    def delete_image(self, image):
+        del(self['PIC'][self['PIC'].index(image.build())])
+        MetaData.delete_image(self, image)
 
 
 class APICImage(Image):
