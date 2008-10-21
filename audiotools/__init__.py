@@ -942,12 +942,7 @@ class MetaData:
         self.__dict__['track_number'] = track_number
         self.__dict__['album_name'] = album_name
         self.__dict__['artist_name'] = artist_name
-
-        if (performer_name != u''):
-            self.__dict__['performer_name'] = performer_name
-        else:
-            self.__dict__['performer_name'] = artist_name
-
+        self.__dict__['performer_name'] = performer_name
         self.__dict__['composer_name'] = composer_name
         self.__dict__['conductor_name'] = conductor_name
         self.__dict__['media'] = media
