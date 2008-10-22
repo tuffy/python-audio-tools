@@ -50,6 +50,8 @@ def fix_track(track,dry_run=False):
 
     if (isinstance(track,BrokenFlacAudio)):
         #FIXME - perform ID3 tag removal
+        if (not dry_run):
+            track = track.fix_id3()
         log.append(u"removed unnecessary ID3 tags")
 
     return (track,log)
@@ -259,7 +261,6 @@ class BrokenFlacAudio(audiotools.FlacAudio):
             file.seek(-3,1)
             audiotools.ID3v2Comment.skip(file)
             if (file.read(4) == 'fLaC'):
-                print "found broken flac"
                 return True
             else:
                 return False
@@ -269,6 +270,37 @@ class BrokenFlacAudio(audiotools.FlacAudio):
                 return True
             else:
                 return False
+
+    #rewrites the FLAC track without any ID3v2/1 metadata attached
+    def fix_id3(self):
+        f = file(self.filename,'rb')
+
+        #figure out where the start and end points of the FLAC file are
+        audiotools.ID3v2Comment.skip(f)
+        flac_start = f.tell()
+        f.seek(-128,2)
+        if (f.read(3) == 'TAG'):
+            f.seek(-3,1)
+            flac_end = f.tell()
+        else:
+            f.seek(0,2)
+            flac_end = f.tell()
+
+        #copy the FLAC data to a temporary location
+        temp = tempfile.TemporaryFile()
+        f.seek(flac_start,0)
+        reader = audiotools.__capped_stream_reader__(f,flac_end - flac_start)
+        audiotools.transfer_data(reader.read,temp.write)
+
+        #rewrite the original FLAC with our temporary data
+        temp.seek(0,0)
+        f.close()
+        f = file(self.filename,'wb')
+        audiotools.transfer_data(temp.read,f.write)
+        temp.close()
+        f.close()
+
+        return audiotools.open(self.filename)
 
 class PureFlacAudio(audiotools.FlacAudio):
     NAME = "flac"
