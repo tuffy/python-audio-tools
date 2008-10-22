@@ -302,8 +302,15 @@ class MP3Audio(AudioFile):
         mp3_data = f.read(data_end - data_start)
         f.close()
 
-        id3v2 = metadata.id3v2.build_tag()
-        id3v1 = metadata.id3v1.build_tag()
+        if (isinstance(metadata,ID3CommentPair)):
+            id3v2 = metadata.id3v2.build_tag()
+            id3v1 = metadata.id3v1.build_tag()
+        elif (isinstance(metadata,ID3v2Comment)):
+            id3v2 = metadata.build_tag()
+            id3v1 = ""
+        elif (isinstance(metadata,ID3v1Comment)):
+            id3v2 = ""
+            id3v1 = metadata.build_tag()
 
         #write id3v2 + data + id3v1 to file
         f = file(self.filename,"wb")

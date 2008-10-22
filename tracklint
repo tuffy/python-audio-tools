@@ -49,7 +49,6 @@ def fix_track(track,dry_run=False):
     log = []
 
     if (isinstance(track,BrokenFlacAudio)):
-        #FIXME - perform ID3 tag removal
         if (not dry_run):
             track = track.fix_id3()
         log.append(u"removed unnecessary ID3 tags")
@@ -120,7 +119,7 @@ def audiofiles(paths):
                         pass
         else:
             try:
-                yield audiotools.open(os.path.join(path))
+                yield audiotools.open(path)
             except audiotools.UnsupportedFile:
                 pass
             except audiotools.InvalidFile:
@@ -265,11 +264,13 @@ class BrokenFlacAudio(audiotools.FlacAudio):
             else:
                 return False
         else:
-            file.seek(-128,2)
-            if (file.read(3) == 'TAG'):
-                return True
-            else:
-                return False
+            file.seek(0,0)
+            if (file.read(4) == 'fLaC'):
+                file.seek(-128,2)
+                if (file.read(3) == 'TAG'):
+                    return True
+                else:
+                    return False
 
     #rewrites the FLAC track without any ID3v2/1 metadata attached
     def fix_id3(self):
@@ -319,7 +320,7 @@ audiotools.TYPE_MAP = dict([(track_type.NAME,track_type)
 
 if (__name__ == '__main__'):
     parser = optparse.OptionParser(
-        '%prog ...',
+        '%prog [--fix] [--undo] [--db file] <track 1> [track 2] ...',
         version="Python Audio Tools %s" % (audiotools.VERSION))
 
     parser.add_option('-f','--fix',
