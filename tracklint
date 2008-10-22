@@ -323,7 +323,7 @@ if (__name__ == '__main__'):
         '%prog [--fix] [--undo] [--db file] <track 1> [track 2] ...',
         version="Python Audio Tools %s" % (audiotools.VERSION))
 
-    parser.add_option('-f','--fix',
+    parser.add_option('--fix',
                       action='store_true',
                       default=False,
                       dest='fix',

@@ -1,0 +1,47 @@
+.TH "tracklint" 1 "October 22, 2008" "" "Track Checker"
+.SH NAME
+tracklint \- checks and fixes minor track metadata errors automatically
+.SH SYNOPSIS
+tracklint [--fix] [--undo] [--db=filename] <track 1> [track 2] ...
+.SH DESCRIPTION
+.PP
+tracklint takes a list of audio tracks,
+examines their metadata for common problems and suggests fixes for them.
+If directories are given, tracklint searches them recursively
+and suggests fixes for any audio tracks found.
+tracklint can also perform any suggested metadata fixes if
+requested, and undo any performed fixes if an undo database was
+used.
+.SH OPTIONS
+.TP
+\fB-h, --help\fR
+Show a list of options and exit
+.TP
+\fB--version\fR
+Show the program's version and exit
+.TP
+\fB--fix\fR
+Perform tracklint's suggested fixes on the given audio tracks
+.TP
+\fB--db=\fIdatabase file\fR
+Store undo information in the given database file.
+.TP
+\fB--undo\fR
+Undo tracklint's fixes on the given audio tracks using information
+from the undo database.
+Tracks restored in this way will be byte-for-byte identical to
+their original condition prior to running tracklint.
+However, it is important that the tracks not be moved from
+their original locations, or modified further, prior to using this
+option.
+If tracks are moved, tracklint will be unable to determine which
+piece of undo information to apply.
+If tracks are modified further, tracklint's undo information will
+no longer be applicable.
+.SH SEE ALSO
+.BR tracktag (1)
+.SH AUTHOR
+.nf
+Brian Langenberger
+.f
+
