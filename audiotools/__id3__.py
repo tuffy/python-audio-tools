@@ -665,7 +665,7 @@ class ID3v2_2Comment(ID3v2Comment):
             elif (pair[0] == 'TRK'):
                 return (3,pair[0],pair[1])
             elif (pair[0] == 'TPA'):
-                return (4,pair[1],pair[2])
+                return (4,pair[0],pair[1])
             elif (pair[0] == 'TP1'):
                 return (5,pair[0],pair[1])
             elif (pair[0] == 'TCM'):
