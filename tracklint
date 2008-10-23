@@ -91,7 +91,8 @@ def fix_metadata(metadata):
 
     #if performer name is the same as artist name,
     #clear the performer name value
-    if (metadata.artist_name == metadata.performer_name):
+    if ((len(metadata.artist_name) > 0) and
+        (metadata.artist_name == metadata.performer_name)):
         metadata.performer_name = u""
         log.append(u"removed redundant performer name field")
 
