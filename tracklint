@@ -35,9 +35,9 @@ TEXT_FIELDS = tuple([field for field in audiotools.MetaData.__FIELDS__
 
 def display_messages(track,messages):
     for message in messages:
-        print u"* %s: %s" % \
-            (track.filename.decode(audiotools.IO_ENCODING),
-             message)
+        print (u"* %s: %s" % \
+                   (track.filename.decode(audiotools.IO_ENCODING,'replace'),
+                    message)).encode(audiotools.IO_ENCODING,'replace')
 
 #track should be an existing Track object
 #if dry_run is True, a new Track object is written with the given fixes applied
