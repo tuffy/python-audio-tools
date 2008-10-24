@@ -1063,7 +1063,7 @@ class ID3v1Comment(MetaData,list):
                                 self.artist_name,
                                 self.album_name,
                                 self.year,
-                                u"",
+                                self[4],
                                 self.track_number)
 
 
