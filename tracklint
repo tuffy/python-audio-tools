@@ -58,7 +58,7 @@ def fix_track(track,dry_run=False):
 def __strip_list_dict__(d,log):
     for key in list(d.keys())[:]:
         old_values = d[key]
-        new_values = [v for v in old_values if (v.strip() != u"")]
+        new_values = [v for v in old_values if (len(v.strip()) > 0)]
         if (old_values != new_values):
             if (len(new_values) > 0):
                 d[key] = new_values
@@ -99,7 +99,7 @@ def fix_metadata(metadata):
         __strip_list_dict__(metadata.id3v2,log)
     elif (isinstance(metadata,audiotools.ApeTag)):
         for key in list(metadata.keys())[:]:
-            if (metadata[key].strip() == u""):
+            if (len(metadata[key].strip()) == 0):
                 del(metadata[key])
                 log.append(u"stripped blank %s field" % (key))
 
