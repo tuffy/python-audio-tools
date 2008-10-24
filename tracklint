@@ -55,6 +55,17 @@ def fix_track(track,dry_run=False):
 
     return (track,log)
 
+def __strip_list_dict__(d,log):
+    for key in list(d.keys())[:]:
+        old_values = d[key]
+        new_values = [v for v in old_values if (v.strip() != u"")]
+        if (old_values != new_values):
+            if (len(new_values) > 0):
+                d[key] = new_values
+            else:
+                del(d[key])
+            log.append(u"stripped blank %s field" % (key))
+
 #metadata should be an existing MetaData object
 #returns a (MetaData,fix_list) tuple,
 #where MetaData is a fixed version (if necessary)
@@ -75,6 +86,22 @@ def fix_metadata(metadata):
             setattr(metadata,field,getattr(metadata,field).strip())
             log.append(u"stripped whitespace from %s field" % \
                            (field))
+
+    #remove any blank tag fields from
+    #VorbisComments, ID3v2Comments and ApeTags
+    if (isinstance(metadata,audiotools.VorbisComment)):
+        __strip_list_dict__(metadata,log)
+    elif (isinstance(metadata,audiotools.FlacMetaData)):
+        __strip_list_dict__(metadata.vorbis_comment,log)
+    elif (isinstance(metadata,audiotools.ID3v2Comment)):
+        __strip_list_dict__(metadata,log)
+    elif (isinstance(metadata,audiotools.ID3CommentPair)):
+        __strip_list_dict__(metadata.id3v2,log)
+    elif (isinstance(metadata,audiotools.ApeTag)):
+        for key in list(metadata.keys())[:]:
+            if (metadata[key].strip() == u""):
+                del(metadata[key])
+                log.append(u"stripped blank %s field" % (key))
 
     #if the track number is between 100 and 999,
     #use the high digit for the album number and low digits for track number
