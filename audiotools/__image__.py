@@ -452,6 +452,9 @@ def thumbnail_formats():
 def thumbnail_image(image_data, width, height, format):
     import cStringIO
     import Image as PIL_Image
+    import ImageFile as PIL_ImageFile
+
+    PIL_ImageFile.MAXBLOCK = 0x100000
 
     img = PIL_Image.open(cStringIO.StringIO(image_data))
     img.thumbnail((width,height),PIL_Image.ANTIALIAS)
