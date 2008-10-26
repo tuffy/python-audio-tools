@@ -340,9 +340,10 @@ class PureFlacAudio(audiotools.FlacAudio):
     def is_type(cls,file):
         return (file.read(4) == 'fLaC')
 
-audiotools.AVAILABLE_TYPES = tuple([t for t in audiotools.AVAILABLE_TYPES
-                                    if t != audiotools.FlacAudio] + \
-                                   [BrokenFlacAudio,PureFlacAudio])
+if (audiotools.FlacAudio in audiotools.AVAILABLE_TYPES):
+    audiotools.AVAILABLE_TYPES = tuple([t for t in audiotools.AVAILABLE_TYPES
+                                        if t != audiotools.FlacAudio] + \
+                                       [BrokenFlacAudio,PureFlacAudio])
 
 audiotools.TYPE_MAP = dict([(track_type.NAME,track_type)
                             for track_type in audiotools.AVAILABLE_TYPES
@@ -388,11 +389,11 @@ if (__name__ == '__main__'):
             #if we're fixing tracks and have an undo DB,
             #save undo information to it during the fixing process
             undo_db = anydbm.open(options.db,"c")
-
-            for track in audiofiles(args):
-                update_and_backup(track,undo_db)
-
-            undo_db.close()
+            try:
+                for track in audiofiles(args):
+                    update_and_backup(track,undo_db)
+            finally:
+                undo_db.close()
         else:
             #if we're fixing tracks and have no undo DB,
             #simply overwrite the track and track metadata directly
@@ -404,11 +405,11 @@ if (__name__ == '__main__'):
                 track.set_metadata(metadata)
     elif (options.undo):
         undo_db = anydbm.open(options.db,"w")
-
-        for track in audiofiles(args):
-            undo_from_backup(track,undo_db)
-
-        undo_db.close()
+        try:
+            for track in audiofiles(args):
+                undo_from_backup(track,undo_db)
+        finally:
+            undo_db.close()
     else: #a dry-run of the fixing procedure, with no changes made
         for track in audiofiles(args):
             (track,messages) = fix_track(track,dry_run=True)
