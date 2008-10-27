@@ -75,33 +75,12 @@ def fix_metadata(metadata):
     if (metadata is None):
         return (None,[])
 
-    log = []
-
-    #remove any leading or trailing whitespace from text fields
-    #this is common in ID3v1 comments where NULL bytes should be
-    #used instead of spaces, but it often happens by accident also
-    for field in TEXT_FIELDS:
-        if (getattr(metadata,field).strip() !=
-            getattr(metadata,field)):
-            setattr(metadata,field,getattr(metadata,field).strip())
-            log.append(u"stripped whitespace from %s field" % \
-                           (field))
-
-    #remove any blank tag fields from
-    #VorbisComments, ID3v2Comments and ApeTags
-    if (isinstance(metadata,audiotools.VorbisComment)):
-        __strip_list_dict__(metadata,log)
-    elif (isinstance(metadata,audiotools.FlacMetaData)):
-        __strip_list_dict__(metadata.vorbis_comment,log)
-    elif (isinstance(metadata,audiotools.ID3v2Comment)):
-        __strip_list_dict__(metadata,log)
-    elif (isinstance(metadata,audiotools.ID3CommentPair)):
-        __strip_list_dict__(metadata.id3v2,log)
-    elif (isinstance(metadata,audiotools.ApeTag)):
-        for key in list(metadata.keys())[:]:
-            if (len(metadata[key].strip()) == 0):
-                del(metadata[key])
-                log.append(u"stripped blank %s field" % (key))
+    if (isinstance(metadata,audiotools.ID3CommentPair)):
+        (id3v2,log1) = fix_metadata(metadata.id3v2)
+        (id3v1,log2) = fix_metadata(metadata.id3v1)
+        log = log1 + log2
+    else:
+        log = []
 
     #if the track number is between 100 and 999,
     #use the high digit for the album number and low digits for track number
@@ -131,6 +110,31 @@ def fix_metadata(metadata):
         metadata.date = u""
         log.append(u"moved track date to track year")
 
+    #remove any leading or trailing whitespace from text fields
+    #this is common in ID3v1 comments where NULL bytes should be
+    #used instead of spaces, but it often happens by accident also
+    for field in TEXT_FIELDS:
+        if (getattr(metadata,field).strip() !=
+            getattr(metadata,field)):
+            setattr(metadata,field,getattr(metadata,field).strip())
+            log.append(u"stripped whitespace from %s field" % \
+                           (field))
+
+    #remove any blank tag fields from
+    #VorbisComments, ID3v2Comments and ApeTags
+    if (isinstance(metadata,audiotools.VorbisComment)):
+        __strip_list_dict__(metadata,log)
+    elif (isinstance(metadata,audiotools.FlacMetaData)):
+        __strip_list_dict__(metadata.vorbis_comment,log)
+    elif (isinstance(metadata,audiotools.ID3v2Comment)):
+        __strip_list_dict__(metadata,log)
+    elif (isinstance(metadata,audiotools.ID3CommentPair)):
+        __strip_list_dict__(metadata.id3v2,log)
+    elif (isinstance(metadata,audiotools.ApeTag)):
+        for key in list(metadata.keys())[:]:
+            if (len(metadata[key].strip()) == 0):
+                del(metadata[key])
+                log.append(u"stripped blank %s field" % (key))
 
     return (metadata,log)
 
