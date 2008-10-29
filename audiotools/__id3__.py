@@ -990,7 +990,8 @@ class ID3v1Comment(MetaData,list):
             if (len(s) < length):
                 return s + chr(0) * (length - len(s))
             else:
-                return s[0:length]
+                s = s[0:length].rstrip()
+                return s + chr(0) * (length - len(s))
 
         c = Con.Container()
         c.identifier = 'TAG'
