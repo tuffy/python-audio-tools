@@ -845,13 +845,13 @@ class TestID3v2(unittest.TestCase):
         self.mp3_file.set_metadata(
             id3_class.converted(DummyMetaData()))
         metadata = self.mp3_file.get_metadata()
-        self.assertEqual(isinstance(metadata.id3v2,id3_class),True)
+        self.assertEqual(isinstance(metadata,id3_class),True)
 
         metadata.track_name = u"New Track Name"
         self.assertEqual(metadata.track_name,u"New Track Name")
         self.mp3_file.set_metadata(metadata)
         metadata2 = self.mp3_file.get_metadata()
-        self.assertEqual(isinstance(metadata2.id3v2,id3_class),True)
+        self.assertEqual(isinstance(metadata2,id3_class),True)
         self.assertEqual(metadata,metadata2)
 
         metadata = id3_class.converted(DummyMetaData3())
@@ -878,9 +878,9 @@ class TestID3v2(unittest.TestCase):
                           audiotools.ID3v2Comment,
                           audiotools.ID3v2_3Comment,
                           audiotools.ID3v2_2Comment):
-            metadata = new_class.converted(self.mp3_file.get_metadata().id3v2)
+            metadata = new_class.converted(self.mp3_file.get_metadata())
             self.mp3_file.set_metadata(metadata)
-            metadata = self.mp3_file.get_metadata().id3v2
+            metadata = self.mp3_file.get_metadata()
             self.assertEqual(isinstance(metadata,new_class),True)
             self.assertEqual(metadata,DummyMetaData3())
             self.assertEqual(metadata.images(),DummyMetaData3().images())

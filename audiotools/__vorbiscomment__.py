@@ -44,7 +44,7 @@ class VorbisComment(MetaData,dict):
                      'publisher':'PUBLISHER',
                      'year':'YEAR',
                      'date':'DATE',
-                     'album_number':'VOLUME'}
+                     'album_number':'DISCNUMBER'}
 
     ITEM_MAP = dict(map(reversed,ATTRIBUTE_MAP.items()))
 
@@ -57,7 +57,7 @@ class VorbisComment(MetaData,dict):
             track_number = 0
 
         try:
-            album_number = int(vorbis_data.get('VOLUME',['0'])[0])
+            album_number = int(vorbis_data.get('DISCNUMBER',['0'])[0])
         except ValueError:
             album_number = 0
 
@@ -103,7 +103,7 @@ class VorbisComment(MetaData,dict):
         dict.__setitem__(self, key, value)
 
         if (self.ITEM_MAP.has_key(key)):
-            if (key not in ('TRACKNUMBER','VOLUME')):
+            if (key not in ('TRACKNUMBER','DISCNUMBER')):
                 self.__dict__[self.ITEM_MAP[key]] = value[0]
             else:
                 self.__dict__[self.ITEM_MAP[key]] = int(value[0])
@@ -148,7 +148,7 @@ class VorbisComment(MetaData,dict):
         KEY_MAP = {"TITLE":1,
                    "ALBUM":2,
                    "TRACKNUMBER":3,
-                   "VOLUME":4,
+                   "DISCNUMBER":4,
                    "ARTIST":5,
                    "PERFORMER":6,
                    "COMPOSER":7,
