@@ -66,6 +66,15 @@ def __strip_list_dict__(d,log):
                 del(d[key])
             log.append(u"stripped blank %s field" % (key))
 
+def __strip_zeroes_list_dict__(d,numeric_keys,log):
+    for key in list(d.keys())[:]:
+        if (key in numeric_keys):
+            old_values = d[key]
+            new_values = [v.lstrip(u"0") for v in old_values]
+            if (old_values != new_values):
+                d[key] = new_values
+                log.append(u"stripped leading zeroes from %s field" % (key))
+
 #if the track number is between 100 and 999,
 #use the high digit for the album number and low digits for track number
 #(a lot of multi-volume video game soundtracks are numbered this way)
@@ -79,6 +88,27 @@ def fix_track_number(metadata, log):
                         metadata.track_number % 100))
         metadata.album_number = metadata.track_number / 100
         metadata.track_number = metadata.track_number % 100
+
+#remove any leading zeroes from the track number and album number fields
+def fix_leading_zeroes(metadata,log):
+    if (isinstance(metadata,audiotools.VorbisComment)):
+        __strip_zeroes_list_dict__(metadata,
+                                   ("TRACKNUMBER","DISCNUMBER"),
+                                   log)
+    elif (isinstance(metadata,audiotools.FlacMetaData)):
+        __strip_zeroes_list_dict__(metadata.vorbis_comment,
+                                   ("TRACKNUMBER","DISCNUMBER"),
+                                   log)
+    elif (isinstance(metadata,audiotools.ID3v2Comment)):
+        __strip_zeroes_list_dict__(metadata,
+                                   ("TRCK","TPOS"),
+                                   log)
+    elif (isinstance(metadata,audiotools.ApeTag)):
+        for key in list(metadata.keys())[:]:
+            if ((key == "Track") and
+                (metadata[key].lstrip(u"0") != metadata[key])):
+                metadata[key] = metadata[key].lstrip(u"0")
+                log.append(u"stripped whitespace from %s field" % (key))
 
 #if performer name is the same as artist name,
 #clear the performer name value
@@ -106,6 +136,7 @@ def fix_whitespace(metadata, log):
             setattr(metadata,field,getattr(metadata,field).strip())
             log.append(u"stripped whitespace from %s field" % \
                            (field))
+
 #remove any blank tag fields from
 #VorbisComments, ID3v2Comments and ApeTags
 def fix_blank_fields(metadata, log):
@@ -115,16 +146,14 @@ def fix_blank_fields(metadata, log):
         __strip_list_dict__(metadata.vorbis_comment,log)
     elif (isinstance(metadata,audiotools.ID3v2Comment)):
         __strip_list_dict__(metadata,log)
-    elif (isinstance(metadata,audiotools.ID3CommentPair)):
-        __strip_list_dict__(metadata.id3v2,log)
     elif (isinstance(metadata,audiotools.ApeTag)):
         for key in list(metadata.keys())[:]:
             if (len(metadata[key].strip()) == 0):
                 del(metadata[key])
                 log.append(u"stripped blank %s field" % (key))
 
-METADATA_FIXES = (fix_track_number,fix_performer_name,fix_date,fix_whitespace,
-                  fix_blank_fields)
+METADATA_FIXES = (fix_leading_zeroes,fix_track_number,fix_performer_name,
+                  fix_date,fix_whitespace,fix_blank_fields)
 
 #metadata should be an existing MetaData object
 #returns a (MetaData,fix_list) tuple,
