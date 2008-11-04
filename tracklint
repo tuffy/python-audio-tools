@@ -66,6 +66,66 @@ def __strip_list_dict__(d,log):
                 del(d[key])
             log.append(u"stripped blank %s field" % (key))
 
+#if the track number is between 100 and 999,
+#use the high digit for the album number and low digits for track number
+#(a lot of multi-volume video game soundtracks are numbered this way)
+def fix_track_number(metadata, log):
+    if ((metadata.track_number >= 100) and
+        (metadata.track_number <= 999) and
+        (metadata.album_number == 0)):
+        log.append(u"converted track number %d to album number %d and track_number %d" % \
+                       (metadata.track_number,
+                        metadata.track_number / 100,
+                        metadata.track_number % 100))
+        metadata.album_number = metadata.track_number / 100
+        metadata.track_number = metadata.track_number % 100
+
+#if performer name is the same as artist name,
+#clear the performer name value
+def fix_performer_name(metadata, log):
+    if ((len(metadata.artist_name) > 0) and
+        (metadata.artist_name == metadata.performer_name)):
+        metadata.performer_name = u""
+        log.append(u"removed redundant performer name field")
+
+#if the "date" field is substituted for "year",
+#assign the current value to "year" and clear "date"
+def fix_date(metadata, log):
+    if (YEAR.match(metadata.date) and (metadata.year == u"")):
+        metadata.year = metadata.date
+        metadata.date = u""
+        log.append(u"moved track date to track year")
+
+#remove any leading or trailing whitespace from text fields
+#this is common in ID3v1 comments where NULL bytes should be
+#used instead of spaces, but it often happens by accident also
+def fix_whitespace(metadata, log):
+    for field in TEXT_FIELDS:
+        if (getattr(metadata,field).strip() !=
+            getattr(metadata,field)):
+            setattr(metadata,field,getattr(metadata,field).strip())
+            log.append(u"stripped whitespace from %s field" % \
+                           (field))
+#remove any blank tag fields from
+#VorbisComments, ID3v2Comments and ApeTags
+def fix_blank_fields(metadata, log):
+    if (isinstance(metadata,audiotools.VorbisComment)):
+        __strip_list_dict__(metadata,log)
+    elif (isinstance(metadata,audiotools.FlacMetaData)):
+        __strip_list_dict__(metadata.vorbis_comment,log)
+    elif (isinstance(metadata,audiotools.ID3v2Comment)):
+        __strip_list_dict__(metadata,log)
+    elif (isinstance(metadata,audiotools.ID3CommentPair)):
+        __strip_list_dict__(metadata.id3v2,log)
+    elif (isinstance(metadata,audiotools.ApeTag)):
+        for key in list(metadata.keys())[:]:
+            if (len(metadata[key].strip()) == 0):
+                del(metadata[key])
+                log.append(u"stripped blank %s field" % (key))
+
+METADATA_FIXES = (fix_track_number,fix_performer_name,fix_date,fix_whitespace,
+                  fix_blank_fields)
+
 #metadata should be an existing MetaData object
 #returns a (MetaData,fix_list) tuple,
 #where MetaData is a fixed version (if necessary)
@@ -82,59 +142,8 @@ def fix_metadata(metadata):
     else:
         log = []
 
-    #if the track number is between 100 and 999,
-    #use the high digit for the album number and low digits for track number
-    #(a lot of multi-volume video game soundtracks are numbered this way)
-    if ((metadata.track_number >= 100) and
-        (metadata.track_number <= 999) and
-        (metadata.album_number == 0)):
-        log.append(u"converted track number %d to album number %d and track_number %d" % \
-                       (metadata.track_number,
-                        metadata.track_number / 100,
-                        metadata.track_number % 100))
-        metadata.album_number = metadata.track_number / 100
-        metadata.track_number = metadata.track_number % 100
-
-    #if performer name is the same as artist name,
-    #clear the performer name value
-    if ((len(metadata.artist_name) > 0) and
-        (metadata.artist_name == metadata.performer_name)):
-        metadata.performer_name = u""
-        log.append(u"removed redundant performer name field")
-
-
-    #if the "date" field is substituted for "year",
-    #assign the current value to "year" and clear "date"
-    if (YEAR.match(metadata.date) and (metadata.year == u"")):
-        metadata.year = metadata.date
-        metadata.date = u""
-        log.append(u"moved track date to track year")
-
-    #remove any leading or trailing whitespace from text fields
-    #this is common in ID3v1 comments where NULL bytes should be
-    #used instead of spaces, but it often happens by accident also
-    for field in TEXT_FIELDS:
-        if (getattr(metadata,field).strip() !=
-            getattr(metadata,field)):
-            setattr(metadata,field,getattr(metadata,field).strip())
-            log.append(u"stripped whitespace from %s field" % \
-                           (field))
-
-    #remove any blank tag fields from
-    #VorbisComments, ID3v2Comments and ApeTags
-    if (isinstance(metadata,audiotools.VorbisComment)):
-        __strip_list_dict__(metadata,log)
-    elif (isinstance(metadata,audiotools.FlacMetaData)):
-        __strip_list_dict__(metadata.vorbis_comment,log)
-    elif (isinstance(metadata,audiotools.ID3v2Comment)):
-        __strip_list_dict__(metadata,log)
-    elif (isinstance(metadata,audiotools.ID3CommentPair)):
-        __strip_list_dict__(metadata.id3v2,log)
-    elif (isinstance(metadata,audiotools.ApeTag)):
-        for key in list(metadata.keys())[:]:
-            if (len(metadata[key].strip()) == 0):
-                del(metadata[key])
-                log.append(u"stripped blank %s field" % (key))
+    for fix in METADATA_FIXES:
+        fix(metadata,log)
 
     return (metadata,log)
 
