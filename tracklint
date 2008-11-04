@@ -70,7 +70,8 @@ def __strip_zeroes_list_dict__(d,numeric_keys,log):
     for key in list(d.keys())[:]:
         if (key in numeric_keys):
             old_values = d[key]
-            new_values = [v.lstrip(u"0") for v in old_values]
+            new_values = [v.lstrip(u"0") for v in old_values
+                          if (len(v.lstrip(u"0")) > 0)]
             if (old_values != new_values):
                 d[key] = new_values
                 log.append(u"stripped leading zeroes from %s field" % (key))
@@ -106,7 +107,8 @@ def fix_leading_zeroes(metadata,log):
     elif (isinstance(metadata,audiotools.ApeTag)):
         for key in list(metadata.keys())[:]:
             if ((key == "Track") and
-                (metadata[key].lstrip(u"0") != metadata[key])):
+                (metadata[key].lstrip(u"0") != metadata[key]) and
+                (len(metadata[key].lstrip(u"0")) > 0)):
                 metadata[key] = metadata[key].lstrip(u"0")
                 log.append(u"stripped whitespace from %s field" % (key))
 
