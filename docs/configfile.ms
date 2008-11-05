@@ -88,12 +88,20 @@ _
 Key:Value
 =
 \fC%(track_number)2.2d\fR:the track's number on the CD, from 01-99
+\fC%(album_number)d\fR:the CD's album number, for multi-disc compilations
 \fC%(track_name)s\fR:the track's name
 \fC%(album_name)s\fR:the album's name
 \fC%(artist_name)s\fR:the track's artist name
 \fC%(performer_name)s\fR:the track's performer name
+\fC%(composer_name)s\fR:the track's composer name
+\fC%(conductor_name)s\fR:the track's conductor name
+\fC%(media)s\fR:the track's source media
+\fC%(ISRC)s\fR:the track's ISRC
+\fC%(catalog)s\fR:the track's catalog number
 \fC%(copyright)s\fR:the track's copyright information
+\fC%(publisher)s\fR:the track's publisher
 \fC%(year)s\fR:the track's publication year
+\fC%(date)s\fR:the track's original recording date
 \fC%(suffix)s\fR:the track's suffix, based on its file type
 \^:(e.g. MP3 files will have the suffix \fCmp3\fR)
 _
