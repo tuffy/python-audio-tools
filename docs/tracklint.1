@@ -23,9 +23,6 @@ Show the program's version and exit
 \fB--fix\fR
 Perform tracklint's suggested fixes on the given audio tracks
 .TP
-\fB--db=\fIdatabase file\fR
-Store undo information in the given database file.
-.TP
 \fB--undo\fR
 Undo tracklint's fixes on the given audio tracks using information
 from the undo database.
@@ -38,6 +35,13 @@ If tracks are moved, tracklint will be unable to determine which
 piece of undo information to apply.
 If tracks are modified further, tracklint's undo information will
 no longer be applicable.
+.TP
+\fB--db=\fIdatabase file\fR
+The undo database file.
+When used with the \fB--fix\fR option, undo information will be stored
+in the given file.
+When used with the \fB--undo\fR option, files will be restored to
+their original state using information from the given file.
 .SH SEE ALSO
 .BR cd2track (1),
 .BR cd2xmcd (1),
