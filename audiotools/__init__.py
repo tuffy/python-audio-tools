@@ -860,6 +860,10 @@ class FrameList(list):
         for i in xrange(self.total_frames()):
             yield self.frame(i)
 
+    def string(self,bits_per_sample,big_endian=False):
+        import pcmstream
+        return pcmstream.pcm_to_string(self,bits_per_sample / 8,big_endian)
+
     #takes a list of PCM sample integers and number of channels
     #returns a (FrameList,remaining_samples) tuple
     @classmethod
@@ -897,6 +901,31 @@ class FrameList(list):
 
         return FrameList(reduce(operator.concat,frames),
                          len(frames[0]))
+
+    #takes a PCMReader-compatible object
+    #and, optionally, a number of bytes per call
+    #yields one block of FrameLists per call
+    @classmethod
+    def decode(cls, pcmreader, bytes=None):
+        import pcmstream
+
+        if (bytes is None):
+            bytes = (pcmreader.bits_per_sample * pcmreader.sample_rate * \
+                         pcmreader.channels) / 8
+
+        reader = pcmstream.PCMStreamReader(pcmreader,
+                                           pcmreader.bits_per_sample / 8,
+                                           False,
+                                           False)
+
+        channels = pcmreader.channels
+        samples = reader.read(bytes)
+
+        while (len(samples) > 0):
+            (framelist,remaining_samples) = cls.from_samples(
+                samples,channels)
+            yield framelist
+            samples = remaining_samples + reader.read(bytes)
 
 #ensures all the directories leading to "destination_path" are created
 #if necessary
