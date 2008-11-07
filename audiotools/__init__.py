@@ -927,6 +927,45 @@ class FrameList(list):
             yield framelist
             samples = remaining_samples + reader.read(bytes)
 
+class PCMFrameFilter(PCMReader):
+    #input_reader is an existing PCMReader
+    #sample_rate, channels and bits_per_sample are values for the output
+    #if not given, values are taken from the input_reader
+    #filter_func is a function which takes a FrameList
+    #and returns a new FrameList
+    #this function generates the read() method's output
+    def __init__(self, input_reader,
+                 sample_rate=None, channels=None, bits_per_sample=None,
+                 filter_func=lambda x: x):
+
+        self.input_reader = input_reader
+
+        if (sample_rate is None):
+            sample_rate = input_reader.sample_rate
+        if (channels is None):
+            channels = input_reader.channels
+        if (bits_per_sample is None):
+            bits_per_sample = input_reader.bits_per_sample
+
+        PCMReader.__init__(self,
+                           file=input_reader,
+                           sample_rate=sample_rate,
+                           channels=channels,
+                           bits_per_sample=bits_per_sample)
+        self.filter = filter_func
+        self.remaining_samples = []
+        self.reader = pcmstream.PCMStreamReader(
+            input_reader,
+            input_reader.bits_per_sample / 8,
+            False,
+            False)
+
+    def read(self,bytes):
+        (framelist,self.remaining_samples) = FrameList.from_samples(
+            self.remaining_samples + self.reader.read(bytes),
+            self.input_reader.channels)
+        return self.filter(framelist).string(self.bits_per_sample)
+
 #ensures all the directories leading to "destination_path" are created
 #if necessary
 def make_dirs(destination_path):
