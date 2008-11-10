@@ -42,6 +42,30 @@ When used with the \fB--fix\fR option, undo information will be stored
 in the given file.
 When used with the \fB--undo\fR option, files will be restored to
 their original state using information from the given file.
+.SH FIXES
+tracklint performs the following fixes on each track:
+.PP
+\[bu] Leading zeroes are stripped from track number and album number fields.
+For example, a track number value of \[lq]\fC01\fR\[rq]
+is changed to \[lq]\fC1\fR\[rq].
+.PP
+\[bu] If the track number field is between 100 and 999, the leading digit
+becomes the album number and trailing two digits becomes the track number.
+For example, a track number value of \[lq]\fC213\fR\[rq]
+results in an album number of \[lq]\fC2\fR\[rq] and a track number of
+\[lq]\fC13\fR\[rq].
+.PP
+\[bu] If the performer name is the same as the artist name,
+the redundant performer name field is removed.
+.PP
+\[bu] If the recording date field looks like a release year value,
+the field is transformed from date to year.
+.PP
+\[bu] Leading or trailing whitespace is removed from fields.
+For example, a track name value of \[lq]\fCSome Title \fR\[rq] becomes
+\[lq]\fCSome Title\fR\[rq].
+.PP
+\[bu] Empty fields are removed.
 .SH SEE ALSO
 .BR cd2track (1),
 .BR cd2xmcd (1),
