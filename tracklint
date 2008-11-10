@@ -28,6 +28,20 @@ import subprocess
 import cStringIO
 import anydbm
 
+try:
+    from hashlib import sha1
+except ImportError:
+    from sha import sha as sha1
+
+def checksum(path):
+    f = open(path,"rb")
+    c = sha1("")
+    try:
+        audiotools.transfer_data(f.read,c.update)
+        return c.hexdigest()
+    finally:
+        f.close()
+
 YEAR = re.compile(r'^\d{4}$')
 
 TEXT_FIELDS = tuple([field for field in audiotools.MetaData.__FIELDS__
@@ -233,7 +247,7 @@ def update_and_backup(track, undo_db):
                              "delta",
                              temp_track.filename,
                              track.filename,
-                             delta_f.name]) == 0):
+                             delta_f.name]) != 2):
             #store the xdelta in our undo DB
             f = open(delta_f.name,'rb')
             data = cStringIO.StringIO()
@@ -241,7 +255,7 @@ def update_and_backup(track, undo_db):
             f.close()
             delta_f.close()
 
-            undo_db[os.path.abspath(track.filename)] = data.getvalue()
+            undo_db[checksum(temp_track_f.name)] = data.getvalue()
 
             #copy the temporary track over the original
             f1 = open(temp_track_f.name,'rb')
@@ -253,12 +267,12 @@ def update_and_backup(track, undo_db):
     temp_track_f.close()
 
 def undo_from_backup(track, undo_db):
-    undo_path = os.path.abspath(track.filename)
+    undo_checksum = checksum(track.filename)
 
-    if (undo_db.has_key(os.path.abspath(track.filename))):
+    if (undo_db.has_key(undo_checksum)):
         #copy the xdelta to a temporary file
         xdelta_f = tempfile.NamedTemporaryFile(suffix=".delta")
-        xdelta_f.write(undo_db[undo_path])
+        xdelta_f.write(undo_db[undo_checksum])
         xdelta_f.flush()
 
         #patch the existing track to a temporary track
@@ -279,7 +293,7 @@ def undo_from_backup(track, undo_db):
 
             #wipe the track's undo information from the undo db,
             #so that it cannot be applied a second time
-            del(undo_db[undo_path])
+            del(undo_db[undo_checksum])
             print track.filename
 
 #a FlacAudio Track prepended with ID3v2 tags

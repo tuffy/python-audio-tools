@@ -28,12 +28,8 @@ Undo tracklint's fixes on the given audio tracks using information
 from the undo database.
 Tracks restored in this way will be byte-for-byte identical to
 their original condition prior to running tracklint.
-However, it is important that the tracks not be moved from
-their original locations, or modified further, prior to using this
-option.
-If tracks are moved, tracklint will be unable to determine which
-piece of undo information to apply.
-If tracks are modified further, tracklint's undo information will
+However, it is important that the tracks not be modified further
+prior to using this option or else tracklint's undo information will
 no longer be applicable.
 .TP
 \fB--db=\fIdatabase file\fR
