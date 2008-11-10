@@ -229,27 +229,26 @@ def update_and_backup(track, undo_db):
     if (changes_made):
         #perform xdelta between the old and new track
         delta_f = tempfile.NamedTemporaryFile(suffix=".delta")
-        subprocess.call([audiotools.BIN["xdelta"],
-                         "delta",
-                         temp_track.filename,
-                         track.filename,
-                         delta_f.name])
+        if (subprocess.call([audiotools.BIN["xdelta"],
+                             "delta",
+                             temp_track.filename,
+                             track.filename,
+                             delta_f.name]) == 0):
+            #store the xdelta in our undo DB
+            f = open(delta_f.name,'rb')
+            data = cStringIO.StringIO()
+            audiotools.transfer_data(f.read,data.write)
+            f.close()
+            delta_f.close()
 
-        #store the xdelta in our undo DB
-        f = open(delta_f.name,'rb')
-        data = cStringIO.StringIO()
-        audiotools.transfer_data(f.read,data.write)
-        f.close()
-        delta_f.close()
+            undo_db[os.path.abspath(track.filename)] = data.getvalue()
 
-        undo_db[os.path.abspath(track.filename)] = data.getvalue()
-
-        #copy the temporary track over the original
-        f1 = open(temp_track_f.name,'rb')
-        f2 = open(track.filename,'wb')
-        audiotools.transfer_data(f1.read,f2.write)
-        f1.close()
-        f2.close()
+            #copy the temporary track over the original
+            f1 = open(temp_track_f.name,'rb')
+            f2 = open(track.filename,'wb')
+            audiotools.transfer_data(f1.read,f2.write)
+            f1.close()
+            f2.close()
 
     temp_track_f.close()
 
@@ -264,25 +263,24 @@ def undo_from_backup(track, undo_db):
 
         #patch the existing track to a temporary track
         old_track = tempfile.NamedTemporaryFile(suffix="." + track.SUFFIX)
-        subprocess.call([audiotools.BIN["xdelta"],
-                         "patch",
-                         xdelta_f.name,
-                         track.filename,
-                         old_track.name])
+        if (subprocess.call([audiotools.BIN["xdelta"],
+                             "patch",
+                             xdelta_f.name,
+                             track.filename,
+                             old_track.name]) == 0):
+            #copy the temporary track over the existing file
+            f1 = open(old_track.name,'rb')
+            f2 = open(track.filename,'wb')
+            audiotools.transfer_data(f1.read,f2.write)
+            f1.close()
+            f2.close()
+            old_track.close()
+            xdelta_f.close()
 
-        #copy the temporary track over the existing file
-        f1 = open(old_track.name,'rb')
-        f2 = open(track.filename,'wb')
-        audiotools.transfer_data(f1.read,f2.write)
-        f1.close()
-        f2.close()
-        old_track.close()
-        xdelta_f.close()
-
-        #wipe the track's undo information from the undo db,
-        #so that it cannot be applied a second time
-        del(undo_db[undo_path])
-        print track.filename
+            #wipe the track's undo information from the undo db,
+            #so that it cannot be applied a second time
+            del(undo_db[undo_path])
+            print track.filename
 
 #a FlacAudio Track prepended with ID3v2 tags
 #or appended with ID3v1 tags
