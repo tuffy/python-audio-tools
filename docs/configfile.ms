@@ -89,6 +89,9 @@ Key:Value
 =
 \fC%(track_number)2.2d\fR:the track's number on the CD, from 01-99
 \fC%(album_number)d\fR:the CD's album number, for multi-disc compilations
+\fC%(album_track_number)s\fR:a combination of album and track number as one field
+:(e.g. an album number of 2 and track number of 13 has the value \fC213\fR
+:but an empty album number and track number of 05 has the value \fC05\fR)
 \fC%(track_name)s\fR:the track's name
 \fC%(album_name)s\fR:the album's name
 \fC%(artist_name)s\fR:the track's artist name

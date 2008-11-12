@@ -1365,6 +1365,12 @@ class AudioFile:
                            "album_number":track_metadata.album_number,
                            "suffix":cls.SUFFIX}
 
+            if (track_metadata.album_number == 0):
+                format_dict["album_track_number"] = "%2.2d" % (track_number)
+            else:
+                format_dict["album_track_number"] = "%d%2.2d" % \
+                    (track_metadata.album_number,track_number)
+
             for field in track_metadata.__FIELDS__:
                 if (field not in ("track_number","suffix","album_number")):
                     format_dict[field] = getattr(track_metadata,
