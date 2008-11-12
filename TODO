@@ -1,0 +1,24 @@
+* TODO Fix WAVE/MP3 formats to support MP3 audio in a WAVE container
+  Instead of WaveAudio generating a nasty "compression not supported" error,
+  its is_type() classmethod should return False.
+  And, MP3Audio's is_type() classmethod should check for MP3 compressed
+  RIFF WAVE containers.
+  This isn't likely to mess up decoding, but may confuse ID3 tagging.
+* TODO Allow file template to be specified on the command line
+  When making new files with track2track, cd2track, etc.
+* TODO [#A] Update the website with the latest documentation
+* DONE Allow a unified %(album_track_number)s file template field
+  If there's no album number, it's simply 2 digits of track number.
+  Otherwise, it's a combination of the two fields.
+  For example, album_number = 2 and track_number = 13 results in
+  "213" for a value.
+* TODO Update trackcat to take a cuesheet argument when outputting FLACs
+  Thus, one can perform:
+  trackcat --cuesheet=file.cue file1.wav file2.wav file3.wav -t flac -o cd.flac
+  which will embed "file.cue" into "cd.flac" using metaflac.
+  Though no other format I'm aware of supports this kind of cuesheet handling,
+  being able to easily build solid disc images of a single FLAC file
+  is much of the reason for trackcat/tracksplit.
+* DONE Don't remove undone tracklint entries from its undo DB
+  Since its checksum will change anyway and no longer match,
+  explicitly removing the entry is no longer necessary
