@@ -291,10 +291,7 @@ def undo_from_backup(track, undo_db):
             old_track.close()
             xdelta_f.close()
 
-            #wipe the track's undo information from the undo db,
-            #so that it cannot be applied a second time
-            del(undo_db[undo_checksum])
-            print track.filename
+            print (u"* restored: %s" % (track.filename.decode(audiotools.FS_ENCODING))).encode(audiotools.IO_ENCODING)
 
 #a FlacAudio Track prepended with ID3v2 tags
 #or appended with ID3v1 tags
@@ -471,7 +468,7 @@ if (__name__ == '__main__'):
                 track.set_metadata(metadata)
     elif (options.undo):
         try:
-            undo_db = anydbm.open(options.db,"w")
+            undo_db = anydbm.open(options.db,"r")
         except anydbm.error:
             print >>sys.stderr,"*** Unable to open \"%s\"" % (options.db)
             sys.exit(1)
