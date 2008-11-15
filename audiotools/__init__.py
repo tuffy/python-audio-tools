@@ -170,6 +170,19 @@ def open_files(filename_list, sorted=True):
                                       y.track_number()))
     return toreturn
 
+#takes a root directory
+#iterates recursively over any and all audio files in it
+#optionally sorted by directory name and track_number()
+#any unsupported files are filtered out
+def open_directory(directory, sorted=True):
+    for (basedir,subdirs,filenames) in os.walk(directory):
+        if (sorted):
+            subdirs.sort()
+        for audiofile in open_files([os.path.join(basedir,filename)
+                                     for filename in filenames],
+                                    sorted=sorted):
+            yield audiofile
+
 #a class that generates PCM audio data
 #sample rate, channels and bits per sample are integers
 #the data is assumed to be signed, little-endian strings
