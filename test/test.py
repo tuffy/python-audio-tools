@@ -133,7 +133,6 @@ class DummyMetaData(audiotools.MetaData):
                                      ISRC=u"US-PR3-08-12345",
                                      copyright=u"Copyright Attribution",
                                      year=u"2008",
-                                     date=u"2008-10-15",
                                      publisher=u"Test Records Inc.")
 
     @classmethod
@@ -168,7 +167,6 @@ class DummyMetaData2(audiotools.MetaData):
                                      ISRC=u"US-PR3-08-54321",
                                      copyright=u"Copyright Attribution 2",
                                      year=u"2007",
-                                     date=u"2007-10-15",
                                      publisher=u"Testing Records Inc.")
 
     @classmethod

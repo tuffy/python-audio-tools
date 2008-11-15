@@ -175,7 +175,7 @@ def fix_blank_fields(metadata, log):
                 log.append(u"stripped blank %s field" % (key))
 
 METADATA_FIXES = (fix_leading_zeroes,fix_track_number,fix_performer_name,
-                  fix_date,fix_whitespace,fix_blank_fields)
+                  fix_whitespace,fix_blank_fields)
 
 #metadata should be an existing MetaData object
 #returns a (MetaData,fix_list) tuple,

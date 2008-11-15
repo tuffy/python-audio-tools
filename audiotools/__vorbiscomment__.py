@@ -42,8 +42,7 @@ class VorbisComment(MetaData,dict):
                      'catalog':'CATALOG',
                      'copyright':'COPYRIGHT',
                      'publisher':'PUBLISHER',
-                     'year':'YEAR',
-                     'date':'DATE',
+                     'year':'DATE',
                      'album_number':'DISCNUMBER'}
 
     ITEM_MAP = dict(map(reversed,ATTRIBUTE_MAP.items()))
@@ -75,8 +74,8 @@ class VorbisComment(MetaData,dict):
             catalog = vorbis_data.get('CATALOG',[u''])[0],
             copyright = vorbis_data.get('COPYRIGHT',[u''])[0],
             publisher = vorbis_data.get('PUBLISHER',[u''])[0],
-            year = vorbis_data.get('YEAR',[u''])[0],
-            date = vorbis_data.get('DATE',[u''])[0],
+            year = vorbis_data.get('DATE',[u''])[0],
+            date = u"",
             album_number = album_number)
 
         dict.__init__(self,vorbis_data)
@@ -157,7 +156,7 @@ class VorbisComment(MetaData,dict):
                    "PUBLISHER":10,
                    "ISRC":11,
                    "SOURCE MEDIUM":12,
-                   "YEAR":13,
+                   #"YEAR":13,
                    "DATE":14,
                    "COPYRIGHT":15,
                    "REPLAYGAIN_ALBUM_GAIN":17,
