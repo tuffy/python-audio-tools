@@ -725,30 +725,7 @@ class TestWavPackAudio(TestForeignWaveChunks,TestAiffAudio):
     def setUp(self):
         self.audio_class = audiotools.WavPackAudio
 
-#class TestAlacAudio(TestAiffAudio):
-#    def setUp(self):
-#        self.audio_class = audiotools.ALACAudio
-
-class TestOggFlacAudio(TestAiffAudio):
-    def setUp(self):
-        self.audio_class = audiotools.OggFlacAudio
-
-class TestMP3Audio(TestAiffAudio):
-    def setUp(self):
-        self.audio_class = audiotools.MP3Audio
-
-class TestMP2Audio(TestAiffAudio):
-    def setUp(self):
-        self.audio_class = audiotools.MP2Audio
-
-class TestVorbisAudio(TestAiffAudio):
-    def setUp(self):
-        self.audio_class = audiotools.VorbisAudio
-
-class TestM4AAudio(TestAiffAudio):
-    def setUp(self):
-        self.audio_class = audiotools.M4AAudio
-
+class M4AMetadata:
     #M4A supports only a subset of the MetaData of every other format
     #so it must be handled separately
     def testmetadata(self):
@@ -819,6 +796,30 @@ class TestM4AAudio(TestAiffAudio):
                 self.assertEqual(metadata.front_covers()[0],image2)
         finally:
             temp.close()
+
+# class TestAlacAudio(M4AMetadata,TestAiffAudio):
+#    def setUp(self):
+#        self.audio_class = audiotools.ALACAudio
+
+class TestOggFlacAudio(TestAiffAudio):
+    def setUp(self):
+        self.audio_class = audiotools.OggFlacAudio
+
+class TestMP3Audio(TestAiffAudio):
+    def setUp(self):
+        self.audio_class = audiotools.MP3Audio
+
+class TestMP2Audio(TestAiffAudio):
+    def setUp(self):
+        self.audio_class = audiotools.MP2Audio
+
+class TestVorbisAudio(TestAiffAudio):
+    def setUp(self):
+        self.audio_class = audiotools.VorbisAudio
+
+class TestM4AAudio(M4AMetadata,TestAiffAudio):
+    def setUp(self):
+        self.audio_class = audiotools.M4AAudio
 
 class TestMusepackAudio(TestAiffAudio):
     def setUp(self):
