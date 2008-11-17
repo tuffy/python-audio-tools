@@ -22,9 +22,13 @@
 * DONE Don't remove undone tracklint entries from its undo DB
   Since its checksum will change anyway and no longer match,
   explicitly removing the entry is no longer necessary
-* TODO Support interleved Ogg streams
+* TODO Support interleaved Ogg streams
   An Ogg file can, theoretically, contain multiple streams
   (e.g. Vorbis audio and some sort of video)
   The current implementation of the various Ogg handlers
   (Vorbis, Speex, Ogg FLAC) tends to assume files are audio-only.
+* TODO Support FLAC padding
+  If changes to FLAC metadata are small enough, write over the
+  padding (if present) rather than rewrite the whole file - like metaflac.
+  This approach should speed up tagging considerably.
 
