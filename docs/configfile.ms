@@ -42,7 +42,7 @@ _
 \^:\fClame\fR:the \fClame\fR executable to use for encoding/decoding MP3 files
 \^:...:which executable to use other than the default
 _
-\fC[Thumbnail]\fR:\fCformat\fR:the image format to use for thumbnails, such as `jpeg' or 'png'
+\fC[Thumbnail]\fR:\fCformat\fR:the image format to use for thumbnails, such as `jpeg' or `png'
 \^:\fCsize\fR:the maximum size of each thumbnail in pixels
 \^:\^:(e.g. a value of 100 results in a maximum size of 100\[mu]100 pixel thumbnails)
 _
@@ -91,7 +91,7 @@ Key:Value
 \fC%(album_number)d\fR:the CD's album number, for multi-disc compilations
 \fC%(album_track_number)s\fR:a combination of album and track number as one field
 :(e.g. an album number of 2 and track number of 13 has the value \fC213\fR
-:but an empty album number and track number of 05 has the value \fC05\fR)
+:but an empty album number and track number of 5 has the value \fC05\fR)
 \fC%(track_name)s\fR:the track's name
 \fC%(album_name)s\fR:the album's name
 \fC%(artist_name)s\fR:the track's artist name

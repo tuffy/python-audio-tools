@@ -6,7 +6,7 @@
   This isn't likely to mess up decoding, but may confuse ID3 tagging.
 * TODO Allow file template to be specified on the command line
   When making new files with track2track, cd2track, etc.
-* TODO [#A] Update the website with the latest documentation
+* DONE Update the website with the latest documentation
 * DONE Allow a unified %(album_track_number)s file template field
   If there's no album number, it's simply 2 digits of track number.
   Otherwise, it's a combination of the two fields.
