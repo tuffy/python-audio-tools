@@ -27,8 +27,13 @@
   (e.g. Vorbis audio and some sort of video)
   The current implementation of the various Ogg handlers
   (Vorbis, Speex, Ogg FLAC) tends to assume files are audio-only.
-* TODO Support FLAC padding
+* DONE Support FLAC padding
   If changes to FLAC metadata are small enough, write over the
   padding (if present) rather than rewrite the whole file - like metaflac.
   This approach should speed up tagging considerably.
-
+* TODO [#A] Fix FAAC's M4A support
+  If faac is built without working libmp4v2 support,
+  m4a winds up completely broken since the current implementation
+  only modifies an existing Quicktime container.
+  So, if faac builds no container, the resulting file is unsupportable.
+  

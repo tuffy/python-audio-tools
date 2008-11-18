@@ -1316,7 +1316,7 @@ class AudioFile:
     def get_metadata(self):
         return None
 
-    def total_frames(elf):
+    def total_frames(self):
         raise NotYetImplemented()
 
     #returns the length of the audio in CD frames (1/75 of a second)

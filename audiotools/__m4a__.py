@@ -717,3 +717,120 @@ class ALACAudio(M4AAudio):
 
             return alac_ok
 
+
+#######################
+#AAC File
+#######################
+
+class ADTSException(Exception): pass
+
+class AACFile(AudioFile):
+    SUFFIX = "aac"
+    NAME = SUFFIX
+    DEFAULT_COMPRESSION = "100"
+    COMPRESSION_MODES = tuple(["10"] + map(str,range(50,500,25)) + ["500"])
+    BINARIES = ("faac","faad")
+
+    AAC_FRAME_HEADER = Con.BitStruct("aac_header",
+                                 Con.Bits("sync",12),
+                                 Con.Bits("mpeg_id",1),
+                                 Con.Bits("mpeg_layer",2),
+                                 Con.Flag("protection_absent"),
+                                 Con.Bits("profile",2),
+                                 Con.Bits("sampling_frequency_index",4),
+                                 Con.Flag("private"),
+                                 Con.Bits("channel_configuration",3),
+                                 Con.Bits("original",1),
+                                 Con.Bits("home",1),
+                                 Con.Bits("copyright_identification_bit",1),
+                                 Con.Bits("copyright_identification_start",1),
+                                 Con.Bits("aac_frame_length",13),
+                                 Con.Bits("adts_buffer_fullness",11),
+                                 Con.Bits("no_raw_data_blocks_in_frame",2),
+                                 Con.If(
+        lambda ctx: ctx["protection_absent"] == False,
+        Con.Bits("crc_check",16)))
+
+    SAMPLE_RATES = [96000, 88200, 64000, 48000,
+                    44100, 32000, 24000, 22050,
+                    16000, 12000, 11025,  8000]
+
+    def __init__(self, filename):
+        self.filename = filename
+
+        f = file(self.filename,"rb")
+        try:
+            header = AACFile.AAC_FRAME_HEADER.parse_stream(f)
+            f.seek(0,0)
+            self.__channels__ = header.channel_configuration
+            self.__bits_per_sample__ = 16  #floating point samples
+            self.__sample_rate__ = AACFile.SAMPLE_RATES[
+                header.sampling_frequency_index]
+            self.__frame_count__ = AACFile.aac_frame_count(f)
+        finally:
+            f.close()
+
+    @classmethod
+    def is_type(cls, file):
+        return False  #FIXME
+
+    def bits_per_sample(self):
+        return self.__bits_per_sample__
+
+    def channels(self):
+        return self.__channels__
+
+    def lossless(self):
+        return False
+
+    def total_frames(self):
+        return self.__frame_count__ * 1024
+
+    def sample_rate(self):
+        return self.__sample_rate__
+
+    def to_pcm(self):
+        raise NotYetImplemented()  #FIXME
+
+    @classmethod
+    def from_pcm(cls, filename, pcmreader, compression=None):
+        raise NotYetImplemented()  #FIXME
+
+    @classmethod
+    def aac_frames(cls, stream):
+        while (True):
+            try:
+                header = AACFile.AAC_FRAME_HEADER.parse_stream(stream)
+            except Con.FieldError:
+                break
+
+            if (header.sync != 0xFFF):
+                raise ADTSException("invalid frame sync")
+
+            if (header.protection_absent):
+                yield (header,stream.read(header.aac_frame_length - 7))
+            else:
+                yield (header,stream.read(header.aac_frame_length - 9))
+
+    @classmethod
+    def aac_frame_count(cls, stream):
+        import sys
+        total = 0
+        while (True):
+            try:
+                header = AACFile.AAC_FRAME_HEADER.parse_stream(stream)
+            except Con.FieldError:
+                break
+
+            if (header.sync != 0xFFF):
+                break
+
+            total += 1
+
+            if (header.protection_absent):
+                stream.seek(header.aac_frame_length - 7,1)
+            else:
+                stream.seek(header.aac_frame_length - 9,1)
+
+        return total
+
