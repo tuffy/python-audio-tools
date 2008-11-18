@@ -306,10 +306,7 @@ class M4AAudio(AudioFile):
                          process=sub)
 
     @classmethod
-    def from_pcm(cls, filename, pcmreader,
-                 compression="100"):
-
-
+    def from_pcm(cls, filename, pcmreader,compression="100"):
         if (compression not in cls.COMPRESSION_MODES):
             compression = cls.DEFAULT_COMPRESSION
 
@@ -724,7 +721,7 @@ class ALACAudio(M4AAudio):
 
 class ADTSException(Exception): pass
 
-class AACFile(AudioFile):
+class AACAudio(AudioFile):
     SUFFIX = "aac"
     NAME = SUFFIX
     DEFAULT_COMPRESSION = "100"
@@ -760,19 +757,25 @@ class AACFile(AudioFile):
 
         f = file(self.filename,"rb")
         try:
-            header = AACFile.AAC_FRAME_HEADER.parse_stream(f)
+            header = AACAudio.AAC_FRAME_HEADER.parse_stream(f)
             f.seek(0,0)
             self.__channels__ = header.channel_configuration
             self.__bits_per_sample__ = 16  #floating point samples
-            self.__sample_rate__ = AACFile.SAMPLE_RATES[
+            self.__sample_rate__ = AACAudio.SAMPLE_RATES[
                 header.sampling_frequency_index]
-            self.__frame_count__ = AACFile.aac_frame_count(f)
+            self.__frame_count__ = AACAudio.aac_frame_count(f)
         finally:
             f.close()
 
     @classmethod
     def is_type(cls, file):
-        return False  #FIXME
+        try:
+            header = AACAudio.AAC_FRAME_HEADER.parse_stream(file)
+            return ((header.sync == 0xFFF) and
+                    (header.mpeg_id == 1) and
+                    (header.mpeg_layer == 0))
+        except:
+            return False
 
     def bits_per_sample(self):
         return self.__bits_per_sample__
@@ -790,17 +793,76 @@ class AACFile(AudioFile):
         return self.__sample_rate__
 
     def to_pcm(self):
-        raise NotYetImplemented()  #FIXME
+        devnull = file(os.devnull,"ab")
+
+        sub = subprocess.Popen([BIN['faad'],"-t","-f",str(2),"-w",
+                                self.filename],
+                               stdout=subprocess.PIPE,
+                               stderr=devnull)
+        return PCMReader(sub.stdout,
+                         sample_rate=self.__sample_rate__,
+                         channels=self.__channels__,
+                         bits_per_sample=self.__bits_per_sample__,
+                         process=sub)
 
     @classmethod
-    def from_pcm(cls, filename, pcmreader, compression=None):
-        raise NotYetImplemented()  #FIXME
+    def from_pcm(cls, filename, pcmreader, compression="100"):
+        if (compression not in cls.COMPRESSION_MODES):
+            compression = cls.DEFAULT_COMPRESSION
+
+        if (pcmreader.channels > 2):
+            pcmreader = PCMConverter(pcmreader,
+                                     sample_rate=pcmreader.sample_rate,
+                                     channels=2,
+                                     bits_per_sample=pcmreader.bits_per_sample)
+
+        #faac requires files to end with .aac for some reason
+        if (not filename.endswith(".aac")):
+            import tempfile
+            actual_filename = filename
+            tempfile = tempfile.NamedTemporaryFile(suffix=".aac")
+            filename = tempfile.name
+        else:
+            actual_filename = tempfile = None
+
+        devnull = file(os.devnull,"ab")
+
+        sub = subprocess.Popen([BIN['faac'],
+                                "-q",compression,
+                                "-P",
+                                "-R",str(pcmreader.sample_rate),
+                                "-B",str(pcmreader.bits_per_sample),
+                                "-C",str(pcmreader.channels),
+                                "-X",
+                                "-o",filename,
+                                "-"],
+                               stdin=subprocess.PIPE,
+                               stderr=devnull,
+                               preexec_fn=ignore_sigint)
+        #Note: faac handles SIGINT on its own,
+        #so trying to ignore it doesn't work like on most other encoders.
+
+        transfer_data(pcmreader.read,sub.stdin.write)
+        pcmreader.close()
+        sub.stdin.close()
+        sub.wait()
+
+        if (tempfile is not None):
+            filename = actual_filename
+            f = file(filename,'wb')
+            tempfile.seek(0,0)
+            transfer_data(tempfile.read,f.write)
+            f.close()
+            tempfile.close()
+
+        return AACAudio(filename)
+
 
     @classmethod
     def aac_frames(cls, stream):
         while (True):
             try:
-                header = AACFile.AAC_FRAME_HEADER.parse_stream(stream)
+                header = AACAudio.AAC_FRAME_HEADER.parse_stream(stream)
             except Con.FieldError:
                 break
 
@@ -818,7 +880,7 @@ class AACFile(AudioFile):
         total = 0
         while (True):
             try:
-                header = AACFile.AAC_FRAME_HEADER.parse_stream(stream)
+                header = AACAudio.AAC_FRAME_HEADER.parse_stream(stream)
             except Con.FieldError:
                 break
 
