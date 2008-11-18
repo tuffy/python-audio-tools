@@ -163,11 +163,11 @@ class FlacMetaData(MetaData):
             yield extra
 
 
-    def build(self):
+    def build(self,padding_size=4096):
         return "".join(
             [block.build_block() for block in self.metadata_blocks()]) + \
             FlacMetaDataBlock(type=1,
-                              data=chr(0) * 4096).build_block(last=1)
+                              data=chr(0) * padding_size).build_block(last=1)
 
     @classmethod
     def supports_images(cls):
@@ -431,8 +431,6 @@ class FlacAudio(AudioFile):
             f.close()
 
     def set_metadata(self, metadata):
-        import tempfile
-
         metadata = FlacMetaData.converted(metadata)
 
         if (metadata == None): return
@@ -449,27 +447,64 @@ class FlacAudio(AudioFile):
         vendor_string = old_metadata.vorbis_comment.vendor_string
         metadata.vorbis_comment.vendor_string = vendor_string
 
-        stream = file(self.filename,'rb')
+        minimum_metadata_length = len(metadata.build(padding_size=0)) + 4
+        current_metadata_length = self.metadata_length()
 
-        if (stream.read(4) != 'fLaC'):
-            raise FlacException('invalid FLAC file')
+        if (minimum_metadata_length <= current_metadata_length):
+            #if the FLAC file's metadata + padding is large enough
+            #to accomodate the new chunk of metadata,
+            #simply overwrite the beginning of the file
 
-        block = FlacAudio.METADATA_BLOCK_HEADER.parse_stream(stream)
-        while (block.last_block == 0):
-            stream.seek(block.block_length,1)
+            stream = file(self.filename,'r+b')
+            stream.write('fLaC')
+            stream.write(metadata.build(
+                    padding_size = current_metadata_length - \
+                                   minimum_metadata_length))
+            stream.close()
+        else:
+            #if the new metadata is too large to fit in the current file,
+            #rewrite the entire file using a temporary file for storage
+
+            import tempfile
+
+            stream = file(self.filename,'rb')
+
+            if (stream.read(4) != 'fLaC'):
+                raise FlacException('invalid FLAC file')
+
             block = FlacAudio.METADATA_BLOCK_HEADER.parse_stream(stream)
-        stream.seek(block.block_length,1)
+            while (block.last_block == 0):
+                stream.seek(block.block_length,1)
+                block = FlacAudio.METADATA_BLOCK_HEADER.parse_stream(stream)
+            stream.seek(block.block_length,1)
 
-        file_data = tempfile.TemporaryFile()
-        transfer_data(stream.read,file_data.write)
-        file_data.seek(0,0)
+            file_data = tempfile.TemporaryFile()
+            transfer_data(stream.read,file_data.write)
+            file_data.seek(0,0)
 
-        stream = file(self.filename,'wb')
-        stream.write('fLaC')
-        stream.write(metadata.build())
-        transfer_data(file_data.read,stream.write)
-        file_data.close()
-        stream.close()
+            stream = file(self.filename,'wb')
+            stream.write('fLaC')
+            stream.write(metadata.build())
+            transfer_data(file_data.read,stream.write)
+            file_data.close()
+            stream.close()
+
+    #returns the length of all the FLAC metadata blocks,
+    #including the 4 byte "fLaC" file header
+    def metadata_length(self):
+        f = file(self.filename,'rb')
+        try:
+            if (f.read(4) != 'fLaC'):
+                raise FlacException('invalid FLAC file')
+
+            header = FlacAudio.METADATA_BLOCK_HEADER.parse_stream(f)
+            f.seek(header.block_length,1)
+            while (header.last_block == 0):
+                header = FlacAudio.METADATA_BLOCK_HEADER.parse_stream(f)
+                f.seek(header.block_length,1)
+            return f.tell()
+        finally:
+            f.close()
 
 
     @classmethod
@@ -886,6 +921,8 @@ class OggFlacAudio(FlacAudio):
         f.close()
         writer.close()
 
+    def metadata_length(self):
+        return None
 
     def __read_streaminfo__(self):
         stream = OggStreamReader(file(self.filename,"rb"))
