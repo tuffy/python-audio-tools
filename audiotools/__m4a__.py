@@ -807,10 +807,26 @@ class AACAudio(AudioFile):
 
     @classmethod
     def from_pcm(cls, filename, pcmreader, compression="100"):
+        import bisect
+
         if (compression not in cls.COMPRESSION_MODES):
             compression = cls.DEFAULT_COMPRESSION
 
-        if (pcmreader.channels > 2):
+        if (pcmreader.sample_rate not in AACAudio.SAMPLE_RATES):
+            if (pcmreader.channels > 2):
+                channels = 2
+            else:
+                channels = pcmreader.channels
+
+            sample_rates = list(sorted(AACAudio.SAMPLE_RATES))
+
+            pcmreader = PCMConverter(
+                pcmreader,
+                sample_rate=([sample_rates[0]] + sample_rates)[
+                    bisect.bisect(sample_rates,pcmreader.sample_rate)],
+                channels=channels,
+                bits_per_sample=pcmreader.bits_per_sample)
+        elif (pcmreader.channels > 2):
             pcmreader = PCMConverter(pcmreader,
                                      sample_rate=pcmreader.sample_rate,
                                      channels=2,
