@@ -93,6 +93,8 @@ class ID3v2Comment(MetaData,dict):
     #returns an ID3v2Comment-based object
     @classmethod
     def read_id3v2_comment(cls, filename):
+        import cStringIO
+
         f = file(filename,"rb")
 
         try:
@@ -112,9 +114,10 @@ class ID3v2Comment(MetaData,dict):
              else:
                  raise UnsupportedID3v2Version()
 
+             stream = cStringIO.StringIO(f.read(header.length))
              while (True):
                  try:
-                     (frame_id,frame_data) = comment_class.read_id3v2_frame(f)
+                     (frame_id,frame_data) = comment_class.read_id3v2_frame(stream)
                      frames.setdefault(frame_id,[]).append(frame_data)
                  except EndOfID3v2Stream:
                      break
@@ -134,7 +137,10 @@ class ID3v2Comment(MetaData,dict):
                       2:'UTF-16BE',
                       3:'UTF-8'}
 
-        frame = cls.FRAME_HEADER.parse_stream(stream)
+        try:
+            frame = cls.FRAME_HEADER.parse_stream(stream)
+        except:
+            raise EndOfID3v2Stream()
 
         if (cls.VALID_FRAME_ID.match(frame.frame_id)):
             if (frame.frame_id.startswith('T')):
@@ -504,7 +510,10 @@ class ID3v2_3Comment(ID3v2Comment):
         encode_map = {0:'ISO-8859-1',
                       1:'UTF-16'}
 
-        frame = cls.FRAME_HEADER.parse_stream(stream)
+        try:
+            frame = cls.FRAME_HEADER.parse_stream(stream)
+        except:
+            raise EndOfID3v2Stream()
 
         if (cls.VALID_FRAME_ID.match(frame.frame_id)):
             if (frame.frame_id.startswith('T')):
@@ -617,8 +626,11 @@ class ID3v2_2Comment(ID3v2Comment):
     def read_id3v2_frame(cls, stream):
         encode_map = {0:'ISO-8859-1',
                       1:'UTF-16'}
+        try:
+            frame = cls.FRAME_HEADER.parse_stream(stream)
+        except:
+            raise EndOfID3v2Stream()
 
-        frame = cls.FRAME_HEADER.parse_stream(stream)
         if (cls.VALID_FRAME_ID.match(frame.frame_id)):
             if (frame.frame_id.startswith('T')):
                 encoding = ord(stream.read(1))

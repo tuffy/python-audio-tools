@@ -126,9 +126,20 @@ class MP3Audio(AudioFile):
 
         try:
             frame = cls.MP3_FRAME_HEADER.parse_stream(file)
-            return ((frame.sync == 0x07FF) and
-                    (frame.mpeg_version in (0x03,0x02,0x00)) and
-                    (frame.layer in (0x01,0x03)))
+            if ((frame.sync == 0x07FF) and
+                (frame.mpeg_version in (0x03,0x02,0x00)) and
+                (frame.layer in (0x01,0x03))):
+                return True
+            else:
+                #oddly, MP3s sometimes turn up in RIFF containers
+                #this isn't a good idea, but can be supported nonetheless
+                file.seek(-cls.MP3_FRAME_HEADER.sizeof(),1)
+                header = file.read(12)
+                if ((header[0:4] == 'RIFF') and
+                    (header[8:12] == 'RMP3')):
+                    return True
+                else:
+                    return False
         except:
             return False
 
@@ -294,7 +305,7 @@ class MP3Audio(AudioFile):
 
         #get the original MP3 data
         f = file(self.filename,"rb")
-        MP3Audio.__find_next_mp3_frame__(f)
+        MP3Audio.__find_mp3_start__(f)
         data_start = f.tell()
         MP3Audio.__find_last_mp3_frame__(f)
         data_end = f.tell()
@@ -322,15 +333,52 @@ class MP3Audio(AudioFile):
     #places mp3file at the position of the next MP3 frame's start
     @classmethod
     def __find_next_mp3_frame__(cls, mp3file):
-        #if we're starting at an ID3v2 header, skip it and save a bunch of time
+        #if we're starting at an ID3v2 header, skip it to save a bunch of time
         ID3v2Comment.skip(mp3file)
 
         #then find the next mp3 frame
         (b1,b2) = mp3file.read(2)
-        while ((b1 != '\xff') or
-               ((ord(b2) & 0xE0) != 0xE0)):
+        while ((b1 != '\xff') or ((ord(b2) & 0xE0) != 0xE0)):
+            mp3file.seek(-1,1)
             (b1,b2) = mp3file.read(2)
         mp3file.seek(-2,1)
+
+    #places mp3file at the position of the MP3 file's start
+    #either at the next frame (most commonly)
+    #or at the "RIFF????RMP3" header
+    @classmethod
+    def __find_mp3_start__(cls, mp3file):
+        #if we're starting at an ID3v2 header, skip it to save a bunch of time
+        ID3v2Comment.skip(mp3file)
+
+        while (True):
+            byte = mp3file.read(1)
+            while ((byte != '\xff') and (byte != 'R') and (len(byte) > 0)):
+                byte = mp3file.read(1)
+
+            if (byte == '\xff'):  #possibly a frame sync
+                mp3file.seek(-1,1)
+                try:
+                    header = cls.MP3_FRAME_HEADER.parse_stream(mp3file)
+                    if ((header.sync == 0x07FF) and
+                        (header.mpeg_version in (0x03,0x02,0x00)) and
+                        (header.layer in (0x01,0x02,0x03))):
+                        mp3file.seek(-4,1)
+                        return
+                    else:
+                        mp3file.seek(-3,1)
+                except:
+                    continue
+            elif (byte == 'R'):   #possibly a 'RIFF????RMP3' header
+                header = mp3file.read(11)
+                if ((header[0:3] == 'IFF') and
+                    (header[7:11] == 'RMP3')):
+                    mp3file.seek(-12,1)
+                    return
+                else:
+                    mp3file.seek(-11,1)
+            elif (len(byte) == 0): #we've run out of MP3 file
+                return
 
     #places mp3file at the position of the last MP3 frame's end
     #(either the last byte in the file or just before the ID3v1 tag)
