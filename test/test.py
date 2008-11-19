@@ -404,7 +404,9 @@ class TestAiffAudio(unittest.TestCase):
                     self.assertEqual(
                         (D.Decimal(new_file.total_frames()) / \
                          new_file.sample_rate()).to_integral(),
-                        SHORT_LENGTH)
+                        SHORT_LENGTH,
+                        "conversion mismatch on %sHz, %s channels, %s bps" % \
+                            (sample_rate,channels,bits_per_sample))
                     pcm.close()
 
         finally:
@@ -820,6 +822,10 @@ class TestVorbisAudio(TestAiffAudio):
 class TestM4AAudio(M4AMetadata,TestAiffAudio):
     def setUp(self):
         self.audio_class = audiotools.M4AAudio
+
+class TestAACAudio(TestAiffAudio):
+    def setUp(self):
+        self.audio_class = audiotools.AACAudio
 
 class TestMusepackAudio(TestAiffAudio):
     def setUp(self):
