@@ -1,4 +1,4 @@
-* TODO Fix WAVE/MP3 formats to support MP3 audio in a WAVE container
+* DONE Fix WAVE/MP3 formats to support MP3 audio in a WAVE container
   Instead of WaveAudio generating a nasty "compression not supported" error,
   its is_type() classmethod should return False.
   And, MP3Audio's is_type() classmethod should check for MP3 compressed
@@ -36,4 +36,6 @@
   m4a winds up completely broken since the current implementation
   only modifies an existing Quicktime container.
   So, if faac builds no container, the resulting file is unsupportable.
-  
+* TODO Fix image support in ID3v2
+  Very large images can take a very long time to load.
+
