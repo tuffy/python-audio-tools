@@ -1,4 +1,4 @@
-.TH "trackrename" 1 "June 15, 2007" "" "Audio File Renamer"
+.TH "trackrename" 1 "November 20, 2008" "" "Audio File Renamer"
 .SH NAME
 trackrename \- renames files based on metadata
 .SH SYNOPSIS
@@ -22,6 +22,40 @@ XMCD file's contents but their own metadata will be set from those
 contents.
 If omitted, the tracks will be renamed based on their own
 metadata contents but will not otherwise be modified.
+.TP
+\fB--format=\fIformat string\fR
+The format string to use for new filenames.
+Template fields are replaced with metadata values during renaming.
+All other text is left as-is.
+If this option is omitted, a default format string is used.
+.TS
+tab(:);
+| c   s |
+| c | c |
+| l | l |.
+_
+Template Fields
+Key:Value
+=
+\fC%(track_number)2.2d\fR:the track's number on the CD
+\fC%(album_number)d\fR:the CD's album number
+\fC%(album_track_number)s\fR:combination of album and track number
+\fC%(track_name)s\fR:the track's name
+\fC%(album_name)s\fR:the album's name
+\fC%(artist_name)s\fR:the track's artist name
+\fC%(performer_name)s\fR:the track's performer name
+\fC%(composer_name)s\fR:the track's composer name
+\fC%(conductor_name)s\fR:the track's conductor name
+\fC%(media)s\fR:the track's source media
+\fC%(ISRC)s\fR:the track's ISRC
+\fC%(catalog)s\fR:the track's catalog number
+\fC%(copyright)s\fR:the track's copyright information
+\fC%(publisher)s\fR:the track's publisher
+\fC%(year)s\fR:the track's publication year
+\fC%(date)s\fR:the track's original recording date
+\fC%(suffix)s\fR:the track's suffix
+_
+.TE
 
 .SH EXAMPLES
 .LP
@@ -32,11 +66,19 @@ their Vorbis Comment metadata:
 .I *.flac
 
 .LP
-Rename and re-tag all of the MP3s in \fItargetdir\fR based on
+Rename all of the MP3s in \fItargetdir\fR based on
 the contents of \fIalbum.xmcd\fR.
+
 .IP
 .B trackrename \-x
 .I album.xmcd targetdir/*.mp3
+
+.LP
+Rename \fIfile.flac\fR with a custom template.
+
+.IP
+.B trackrename "\-\-format=%(track_number)2.2d - %(album_name)s - %(track_name)s.%(suffix)s
+.I file.flac"
 
 .SH SEE ALSO
 .BR cd2track (1),

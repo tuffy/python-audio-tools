@@ -1284,6 +1284,26 @@ class ReplayGain:
 
 class NotYetImplemented(Exception): pass
 
+#raised by AudioFile.track_name()
+#if its format string contains unknown fields
+class UnsupportedTracknameField(Exception):
+    def __init__(self, field):
+        self.field = field
+
+    def __unicode__(self):
+        import StringIO
+        msg = StringIO.StringIO(u"")
+        print >>msg,u"*** Unknown field \"%s\" in file format" % \
+            (self.field)
+        print >>msg,u"*** Supported fields are:"
+        for field in sorted(audiotools.MetaData.__FIELDS__ + \
+                            ("album_track_number","suffix")):
+            if (field == 'track_number'):
+                print >>msg,u"%(track_number)2.2d"
+            else:
+                print >>msg,u"%%(%s)s" % (field)
+        return msg.getvalue()
+
 class AudioFile:
     SUFFIX = ""
     NAME = ""
@@ -1371,29 +1391,38 @@ class AudioFile:
             except IndexError:
                 return 0
 
+    #given a track number integer,
+    #MetaData-compatible object (or None)
+    #and, optionally, a format string
+    #returns a filename string with its fields filled-in
+    #raises an UnsupportedTracknameField if the format string
+    #contains invalid template fields
     @classmethod
-    def track_name(cls, track_number, track_metadata):
-        if (track_metadata is not None):
-            format_dict = {"track_number":track_number,
-                           "album_number":track_metadata.album_number,
-                           "suffix":cls.SUFFIX}
+    def track_name(cls, track_number, track_metadata, format=FILENAME_FORMAT):
+        try:
+            if (track_metadata is not None):
+                format_dict = {"track_number":track_number,
+                               "album_number":track_metadata.album_number,
+                               "suffix":cls.SUFFIX}
 
-            if (track_metadata.album_number == 0):
-                format_dict["album_track_number"] = "%2.2d" % (track_number)
+                if (track_metadata.album_number == 0):
+                    format_dict["album_track_number"] = "%2.2d" % (track_number)
+                else:
+                    format_dict["album_track_number"] = "%d%2.2d" % \
+                        (track_metadata.album_number,track_number)
+
+                for field in track_metadata.__FIELDS__:
+                    if (field not in ("track_number","suffix","album_number")):
+                        format_dict[field] = getattr(track_metadata,
+                                                     field).replace('/','-')
+
+                return (format % format_dict).encode(FS_ENCODING)
             else:
-                format_dict["album_track_number"] = "%d%2.2d" % \
-                    (track_metadata.album_number,track_number)
-
-            for field in track_metadata.__FIELDS__:
-                if (field not in ("track_number","suffix","album_number")):
-                    format_dict[field] = getattr(track_metadata,
-                                                 field).replace('/','-')
-
-            return (FILENAME_FORMAT % format_dict).encode(FS_ENCODING)
-        else:
-            return "%(track_number)2.2d.%(suffix)s" % \
-                   {"track_number":track_number,
-                    "suffix":cls.SUFFIX}
+                return "%(track_number)2.2d.%(suffix)s" % \
+                       {"track_number":track_number,
+                        "suffix":cls.SUFFIX}
+        except KeyError,error:
+            raise UnsupportedTracknameField(error.message)
 
     #takes a list of filenames matching this AudioFile type
     #and adds the proper ReplayGain values to them
