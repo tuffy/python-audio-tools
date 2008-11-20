@@ -175,6 +175,9 @@ if (__name__ == '__main__'):
                                            track.filename.decode(
                         audiotools.FS_ENCODING))).encode(
             audiotools.IO_ENCODING)
+        except audiotools.UnsupportedTracknameField,msg:
+            sys.stderr.write(unicode(msg).encode(audiotools.IO_ENCODING))
+            sys.exit(1)
         except KeyError:
             continue
         except audiotools.InvalidFormat,msg:

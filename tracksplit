@@ -196,33 +196,36 @@ if (__name__ == '__main__'):
         for p in split_pcm:
             p.process = None
 
+    try:
+        for (i,pcmreader) in enumerate(split_pcm):
+            track_number = i + 1
 
-    for (i,pcmreader) in enumerate(split_pcm):
-        track_number = i + 1
+            if (xmcd is not None):
+                filename = os.path.join(
+                    base_directory,
+                    AudioType.track_name(track_number,
+                                         xmcd[track_number]))
+                metadata = xmcd[track_number]
+            else:
+                filename = os.path.join(
+                    base_directory,
+                    AudioType.track_name(track_number,
+                                         None))
 
-        if (xmcd is not None):
-            filename = os.path.join(
-                base_directory,
-                AudioType.track_name(track_number,
-                                     xmcd[track_number]))
-            metadata = xmcd[track_number]
-        else:
-            filename = os.path.join(
-                base_directory,
-                AudioType.track_name(track_number,
-                                     None))
+                metadata = None
 
-            metadata = None
+            audiotools.make_dirs(filename)
+            encoded_filenames.append(filename)
 
-        audiotools.make_dirs(filename)
-        encoded_filenames.append(filename)
-
-        queue.execute(extract_part,
-                      (audiofile.filename,
-                       pcmreader,
-                       filename,
-                       options.quality,
-                       metadata))
+            queue.execute(extract_part,
+                          (audiofile.filename,
+                           pcmreader,
+                           filename,
+                           options.quality,
+                           metadata))
+    except audiotools.UnsupportedTracknameField,msg:
+        sys.stderr.write(unicode(msg).encode(audiotools.IO_ENCODING))
+        sys.exit(1)
 
     queue.run(options.max_processes)
 
