@@ -450,7 +450,8 @@ class FlacAudio(AudioFile):
         minimum_metadata_length = len(metadata.build(padding_size=0)) + 4
         current_metadata_length = self.metadata_length()
 
-        if (minimum_metadata_length <= current_metadata_length):
+        if ((minimum_metadata_length <= current_metadata_length) and
+            ((current_metadata_length - minimum_metadata_length) < (4096 * 2))):
             #if the FLAC file's metadata + padding is large enough
             #to accomodate the new chunk of metadata,
             #simply overwrite the beginning of the file
@@ -463,6 +464,7 @@ class FlacAudio(AudioFile):
             stream.close()
         else:
             #if the new metadata is too large to fit in the current file,
+            #or if the padding gets unnecessarily large,
             #rewrite the entire file using a temporary file for storage
 
             import tempfile
