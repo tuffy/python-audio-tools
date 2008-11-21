@@ -87,13 +87,13 @@ if (__name__ == '__main__'):
                                      for track in audiofiles]:
                 (path,filename) = os.path.split(track.filename)
 
-            if (filename != new_name):
-                audiotools.make_dirs(os.path.join(path,new_name))
+                if (filename != new_name):
+                    audiotools.make_dirs(os.path.join(path,new_name))
 
-                subprocess.call([audiotools.BIN['mv'],
-                                 "-iv",
-                                 track.filename,
-                                 os.path.join(path,new_name)])
+                    subprocess.call([audiotools.BIN['mv'],
+                                     "-iv",
+                                     track.filename,
+                                     os.path.join(path,new_name)])
         except audiotools.UnsupportedTracknameField,msg:
             sys.stderr.write(unicode(msg).encode(audiotools.IO_ENCODING))
             sys.exit(1)

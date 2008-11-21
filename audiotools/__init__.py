@@ -166,8 +166,8 @@ def open_files(filename_list, sorted=True):
             print >>sys.stderr,"*** %s: %s" % (filename,msg)
 
     if (sorted):
-        toreturn.sort(lambda x,y: cmp(x.track_number(),
-                                      y.track_number()))
+        toreturn.sort(lambda x,y: cmp((x.album_number(),x.track_number()),
+                                      (y.album_number(),y.track_number())))
     return toreturn
 
 #takes a root directory
