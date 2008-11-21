@@ -109,6 +109,13 @@ def fix_track_number(metadata, log):
                         metadata.track_number % 100))
         metadata.album_number = metadata.track_number / 100
         metadata.track_number = metadata.track_number % 100
+    elif ((metadata.track_number >= 100) and
+          (metadata.track_number <= 999) and
+          (metadata.album_number == (metadata.track_number / 100))):
+        log.append(u"converted track number %d to track number %d" % \
+                   (metadata.track_number,
+                    metadata.track_number % 100))
+        metadata.track_number = metadata.track_number % 100
 
 #remove any leading zeroes from the track number and album number fields
 def fix_leading_zeroes(metadata,log):
@@ -189,14 +196,15 @@ def fix_metadata(metadata):
     if (isinstance(metadata,audiotools.ID3CommentPair)):
         (id3v2,log1) = fix_metadata(metadata.id3v2)
         (id3v1,log2) = fix_metadata(metadata.id3v1)
-        log = log1 + log2
+
+        return (audiotools.ID3CommentPair(id3v2,id3v1),log1 + log2)
     else:
         log = []
 
-    for fix in METADATA_FIXES:
-        fix(metadata,log)
+        for fix in METADATA_FIXES:
+            fix(metadata,log)
 
-    return (metadata,log)
+        return (metadata,log)
 
 def audiofiles(paths):
     for path in paths:
