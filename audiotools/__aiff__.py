@@ -17,7 +17,7 @@
 #along with this program; if not, write to the Free Software
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-from audiotools import AudioFile,InvalidFile,InvalidFormat,FrameReader,Con,transfer_data
+from audiotools import AudioFile,InvalidFile,InvalidFormat,FrameReader,Con,transfer_data,FILENAME_FORMAT
 
 #######################
 #AIFF
@@ -104,7 +104,4 @@ class AiffAudio(AudioFile):
 
         return AiffAudio(filename)
 
-    @classmethod
-    def track_name(cls, track_number, track_metadata):
-        return "track%(track_number)2.2d.cdda.aiff" % \
-            {"track_number":track_number}
+

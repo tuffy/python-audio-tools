@@ -1387,7 +1387,22 @@ class AudioFile:
             return metadata.track_number
         else:
             try:
-                return int(re.findall(r'\d{2}',self.filename)[0])
+                return int(re.findall(r'\d{2,3}',self.filename)[0]) % 100
+            except IndexError:
+                return 0
+
+    #return this track's album number
+    #first checking metadata
+    #and then making our best-guess from the filename
+    #if we come up empty, returns 0
+    def album_number(self):
+        metadata = self.get_metadata()
+        if ((metadata != None) and (metadata.album_number > 0)):
+            return metadata.album_number
+        else:
+            try:
+                long_track_number = int(re.findall(r'\d{3}',self.filename)[0])
+                return long_track_number / 100
             except IndexError:
                 return 0
 
@@ -1398,18 +1413,21 @@ class AudioFile:
     #raises an UnsupportedTracknameField if the format string
     #contains invalid template fields
     @classmethod
-    def track_name(cls, track_number, track_metadata, format=FILENAME_FORMAT):
+    def track_name(cls, track_number, track_metadata,
+                   album_number = 0,
+                   format = FILENAME_FORMAT):
         try:
-            if (track_metadata is not None):
+            if ((track_metadata is not None) and
+                (cls not in (WaveAudio,AuAudio,AiffAudio))):
                 format_dict = {"track_number":track_number,
                                "album_number":track_metadata.album_number,
                                "suffix":cls.SUFFIX}
 
-                if (track_metadata.album_number == 0):
+                if (album_number == 0):
                     format_dict["album_track_number"] = "%2.2d" % (track_number)
                 else:
                     format_dict["album_track_number"] = "%d%2.2d" % \
-                        (track_metadata.album_number,track_number)
+                        (album_number,track_number)
 
                 for field in track_metadata.__FIELDS__:
                     if (field not in ("track_number","suffix","album_number")):
@@ -1418,9 +1436,15 @@ class AudioFile:
 
                 return (format % format_dict).encode(FS_ENCODING)
             else:
-                return "%(track_number)2.2d.%(suffix)s" % \
-                       {"track_number":track_number,
-                        "suffix":cls.SUFFIX}
+                if (album_number == 0):
+                    return "track%(track_number)2.2d.%(suffix)s" % \
+                        {"track_number":track_number,
+                         "suffix":cls.SUFFIX}
+                else:
+                    return "track%(album_number)d%(track_number)2.2d.%(suffix)s" % \
+                        {"track_number":track_number,
+                         "album_number":album_number,
+                         "suffix":cls.SUFFIX}
         except KeyError,error:
             raise UnsupportedTracknameField(error.message)
 

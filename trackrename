@@ -62,6 +62,7 @@ if (__name__ == '__main__'):
             for (track,new_name) in [(track,
                                        track.track_name(track.track_number(),
                                                         track.get_metadata(),
+                                                        track.album_number(),
                                                         options.format))
                                      for track in audiofiles]:
                 (path,filename) = os.path.split(track.filename)
@@ -81,6 +82,7 @@ if (__name__ == '__main__'):
             for (track,new_name) in [(track,
                                       track.track_name(track.track_number(),
                                                        track.get_metadata(),
+                                                       track.album_number(),
                                                        options.format))
                                      for track in audiofiles]:
                 (path,filename) = os.path.split(track.filename)

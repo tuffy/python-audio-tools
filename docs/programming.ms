@@ -181,8 +181,9 @@ at the given compression setting.
 
 .bp
 
-.CLASSMETHOD track_name "track_number, track_metadata"
-Given a track number and MetaData-compatible object,
+.CLASSMETHOD track_name "track_number, track_metadata, album_number = 0, format = None"
+Given a track number, a MetaData-compatible object and, optionally,
+an album number and format string,
 returns a default filename for this track.
 
 .CLASSMETHOD can_add_replay_gain

@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,InvalidFile,PCMReader,Con,BUFFER_SIZE,transfer_data,__capped_stream_reader__
+from audiotools import AudioFile,InvalidFile,PCMReader,Con,BUFFER_SIZE,transfer_data,__capped_stream_reader__,FILENAME_FORMAT
 
 #######################
 #RIFF WAVE
@@ -334,11 +334,6 @@ class WaveAudio(AudioFile):
     #returns the total bits per sample (16 for CD audio)
     def bits_per_sample(self):
         return self.__bitspersample__
-
-    @classmethod
-    def track_name(cls, track_number, track_metadata):
-        return "track%(track_number)2.2d.cdda.wav" % \
-               {"track_number":track_number}
 
     def __read_chunks__(self):
         wave_file = file(self.filename,"rb")

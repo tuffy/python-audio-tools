@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,InvalidFile,PCMReader,Con,transfer_data,InvalidFormat,__capped_stream_reader__,BUFFER_SIZE
+from audiotools import AudioFile,InvalidFile,PCMReader,Con,transfer_data,InvalidFormat,__capped_stream_reader__,BUFFER_SIZE,FILENAME_FORMAT
 import audiotools.pcmstream
 
 #######################
@@ -152,7 +152,3 @@ class AuAudio(AudioFile):
 
         return AuAudio(filename)
 
-    @classmethod
-    def track_name(cls, track_number, track_metadata):
-        return "track%(track_number)2.2d.cdda.au" % \
-               {"track_number":track_number}
