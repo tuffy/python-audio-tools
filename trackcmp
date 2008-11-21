@@ -61,7 +61,7 @@ if (__name__ == '__main__'):
                             audiofiles[1].filename.decode(audiotools.FS_ENCODING))).encode(audiotools.IO_ENCODING,'replace')
                 sys.exit(1)
         else:
-            print "*** Both are not audio files"
+            print "*** Exactly two audio files or two directories is required"
             sys.exit(1)
     elif (os.path.isdir(args[0]) and os.path.isdir(args[1])):
         files1 = audiotools.open_files(
@@ -71,26 +71,39 @@ if (__name__ == '__main__'):
             [os.path.join(args[1],f) for f in os.listdir(args[1])
              if os.path.isfile(os.path.join(args[1],f))])
 
-        files1_map = dict([(f.track_number(),f) for f in files1])
-        files2_map = dict([(f.track_number(),f) for f in files2])
+        files1_map = dict([((f.album_number(),f.track_number()),f)
+                           for f in files1])
+        files2_map = dict([((f.album_number(),f.track_number()),f)
+                           for f in files2])
 
         files1_tracknumbers = set(files1_map.keys())
         files2_tracknumbers = set(files2_map.keys())
 
-        for track_number in sorted(list(files1_tracknumbers - files2_tracknumbers)):
-            print "%s: missing" % (os.path.join(args[1],"track %2.2d" % (track_number)))
+        for (album_number,track_number) in sorted(
+            list(files1_tracknumbers - files2_tracknumbers)):
+            if (album_number == 0):
+                print "%s: missing" % (os.path.join(args[1],"track %2.2d" % (track_number)))
+            else:
+                print "%s: missing" % (os.path.join(args[1],"album %d track %2.2d" % (album_number,track_number)))
 
-        for track_number in sorted(list(files2_tracknumbers - files1_tracknumbers)):
-            print "%s: missing" % (os.path.join(args[0],"track %2.2d" % (track_number)))
+        for (album_number,track_number) in sorted(
+            list(files2_tracknumbers - files1_tracknumbers)):
+            if (album_number == 0):
+                print "%s: missing" % (os.path.join(args[0],"track %2.2d" % (track_number)))
+            else:
+                print "%s: missing" % (os.path.join(args[1],"album %d track %2.2d" % (album_number,track_number)))
 
-        for track_number in sorted(list(files1_tracknumbers & files2_tracknumbers)):
+        for (album_number,track_number) in sorted(
+            list(files1_tracknumbers & files2_tracknumbers)):
             sys.stdout.write(
                 (u"%s <> %s :" % \
-                     (files1_map[track_number].filename.decode(audiotools.FS_ENCODING),
-                      files2_map[track_number].filename.decode(audiotools.FS_ENCODING))).encode(audiotools.IO_ENCODING,'replace'))
+                     (files1_map[(album_number,track_number)].filename.decode(
+                                audiotools.FS_ENCODING),
+                      files2_map[(album_number,track_number)].filename.decode(
+                            audiotools.FS_ENCODING))).encode(audiotools.IO_ENCODING,'replace'))
             sys.stdout.flush()
-            if (check_function(files1_map[track_number],
-                               files2_map[track_number])):
+            if (check_function(files1_map[(album_number,track_number)],
+                               files2_map[(album_number,track_number)])):
                 print "OK"
             else:
                 print "differ"
