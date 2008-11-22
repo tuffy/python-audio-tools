@@ -1397,7 +1397,7 @@ class AudioFile:
     #if we come up empty, returns 0
     def album_number(self):
         metadata = self.get_metadata()
-        if ((metadata != None) and (metadata.album_number > 0)):
+        if (metadata != None):
             return metadata.album_number
         else:
             try:
