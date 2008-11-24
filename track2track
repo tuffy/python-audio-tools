@@ -77,6 +77,10 @@ def convert_file(destination_class, destination_filename,
                             audiotools.THUMBNAIL_FORMAT))
 
             destination_audiofile.set_metadata(metadata)
+        else:
+            destination_audiofile.set_metadata(audiotools.MetaData(
+                    track_number=source_audiofile.track_number(),
+                    album_number=source_audiofile.album_number()))
 
     except audiotools.InvalidFormat,msg:
         print >>sys.stderr,(u"*** %s: %s" % \
@@ -134,6 +138,13 @@ if (__name__ == '__main__'):
                       default=False,
                       dest='thumbnail',
                       help='convert embedded images to smaller thumbnails during conversion')
+
+    parser.add_option('--album-number',
+                      dest='album_number',
+                      action='store',
+                      type='int',
+                      default=None,
+                      help='the album number, if these tracks are one of a series of albums')
 
     #if adding ReplayGain is a lossless process
     #(i.e. added as tags rather than modifying track data)
@@ -233,7 +244,11 @@ if (__name__ == '__main__'):
         for audiofile in audiofiles:
             try:
                 track_number = audiofile.track_number()
-                album_number = audiofile.album_number()
+                if (options.album_number is None):
+                    album_number = audiofile.album_number()
+                else:
+                    album_number = options.album_number
+
                 if (xmcd is not None):
                     filename = os.path.join(
                                 base_directory,
@@ -243,11 +258,14 @@ if (__name__ == '__main__'):
 
                     audiotools.make_dirs(filename)
 
+                    metadata = xmcd[track_number]
+                    metadata.album_number = album_number
+
                     queue.execute(convert_file,
                                   (AudioType,
                                    filename,
                                    audiofile,
-                                   xmcd[track_number],
+                                   metadata,
                                    quality))
                     encoded_filenames.append(filename)
                 else:
@@ -259,11 +277,13 @@ if (__name__ == '__main__'):
 
                     audiotools.make_dirs(filename)
 
+                    metadata = audiofile.get_metadata()
+
                     queue.execute(convert_file,
                                   (AudioType,
                                    filename,
                                    audiofile,
-                                   audiofile.get_metadata(),
+                                   metadata,
                                    quality,
                                    True,
                                    options.thumbnail))
@@ -286,8 +306,8 @@ if (__name__ == '__main__'):
         #encoding only a single file
         audiofile = audiofiles[0]
 
-        if (xmcd != None):
-            metadata = audiofile.track_number()
+        if (xmcd is not None):
+            metadata = xmcd[audiofile.track_number()]
         else:
             metadata = audiofile.get_metadata()
 

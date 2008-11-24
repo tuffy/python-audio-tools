@@ -37,12 +37,6 @@ if (__name__ == '__main__'):
     parser.add_option("-d","--dir",action='store',default='.',
                       dest='dir')
 
-    parser.add_option('-q','--quality',
-                      action='store',
-                      type='string',
-                      dest='quality',
-                      help='the quality to store audio values at')
-
     parser.add_option('-t','--type',
                       action='store',
                       dest='type',
@@ -50,11 +44,24 @@ if (__name__ == '__main__'):
                       default='wav',
                       help='the type of audio value to convert to')
 
+    parser.add_option('-q','--quality',
+                      action='store',
+                      type='string',
+                      dest='quality',
+                      help='the quality to store audio values at')
+
     parser.add_option('-x','--xmcd',
                       action='store',
                       type='string',
                       dest='xmcd',
                       help='an XMCD file to get audio metadata from')
+
+    parser.add_option('--album-number',
+                      dest='album_number',
+                      action='store',
+                      type='int',
+                      default=0,
+                      help='the album number of this CD, if it is one of a series of albums')
 
     #if adding ReplayGain is a lossless process
     #(i.e. added as tags rather than modifying track data)
@@ -140,12 +147,18 @@ if (__name__ == '__main__'):
     for cd_track in to_rip:
         try:
             if (xmcd != None):  #we have metadata
-                metadata = xmcd[cd_track.track_number]
+                try:
+                    metadata = xmcd[cd_track.track_number]
+                    if (options.album_number != 0):
+                        metadata.album_number = options.album_number
+                except KeyError:
+                    metadata = None
 
                 filename = os.path.join(
                     base_directory,
                     AudioType.track_name(cd_track.track_number,
-                                         metadata))
+                                         track_metadata=metadata,
+                                         album_number=options.album_number))
 
                 audiotools.make_dirs(filename)
 
@@ -160,7 +173,8 @@ if (__name__ == '__main__'):
                 filename = os.path.join(
                     base_directory,
                     AudioType.track_name(cd_track.track_number,
-                                         None))
+                                         track_metadata=None,
+                                         album_number=options.album_number))
 
                 audiotools.make_dirs(filename)
 
@@ -168,6 +182,13 @@ if (__name__ == '__main__'):
                     filename,
                     cd_track,
                     quality)
+
+                #even if no MetaData is given,
+                #set track number and album number if possible
+                track.set_metadata(audiotools.MetaData(
+                        track_number=cd_track.track_number,
+                        album_number=options.album_number))
+
                 encoded.append(track)
             print "track %2.2d: %s" % (cd_track.track_number,
                                        str(cd_track.rip_log))
