@@ -17,6 +17,20 @@ Show a list of options and exit
 \fB--version\fR
 Show the program's version and exit
 .TP
+\fB-c \fIcdrom\fB, --cdrom=\fIcdrom\fR
+The cdrom device to extract tracks from
+.TP
+\fB-s \fIspeed\fB, --speed=\fIspeed\fR
+The speed in which to read CD data at
+.TP
+\fB-d \fIdirectory\fB, --dir=\fIdirectory\fR
+The target directory for the converted tracks.
+If none is given, the current working directory is used
+(see
+.BR getcwd (3)
+).
+If the target directory does not exist, it will be created automatically.
+.TP
 \fB-t \fItype\fB, --type=\fItype\fR
 The audio format to extract the given tracks to.
 For a list of available audio formats, try:
@@ -39,19 +53,8 @@ and
 .BR editxmcd (1)
 programs.
 .TP
-\fB-d \fIdirectory\fB, --dir=\fIdirectory\fR
-The target directory for the converted tracks.
-If none is given, the current working directory is used
-(see
-.BR getcwd (3)
-).
-If the target directory does not exist, it will be created automatically.
-.TP
-\fB-c \fIcdrom\fB, --cdrom=\fIcdrom\fR
-The cdrom device to extract tracks from
-.TP
-\fB-s \fIspeed\fB, --speed=\fIspeed\fR
-The speed in which to read CD data at
+\fB--album-number=\fInumber\fR
+The album number of this CD, if it is one of a series of albums.
 .TP
 \fB--replay-gain\fR
 Add ReplayGain metadata to newly created tracks

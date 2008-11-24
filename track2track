@@ -67,7 +67,7 @@ def convert_file(destination_class, destination_filename,
                 source_audiofile.to_pcm(),
                 compression)
 
-        if (metadata != None):
+        if (metadata is not None):
             if (thumbnail_images):
                 for img in metadata.images():
                     metadata.delete_image(img)
@@ -311,11 +311,14 @@ if (__name__ == '__main__'):
         else:
             metadata = audiofile.get_metadata()
 
+        if ((metadata is not None) and (options.album_number is not None)):
+            metadata.album_number = options.album_number
+
         convert_file(AudioType,
                      options.output,
                      audiofile,
                      metadata,
                      quality,
-                     False,
+                     True,
                      options.thumbnail)
 
