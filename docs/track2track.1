@@ -53,6 +53,13 @@ If none is given, the current working directory is used
 If the target directory does not exist, it will be created automatically.
 This option is not compatible with \fB-o\fR
 .TP
+.TP
+\fB--format=\fIformat string\fR
+The format string to use for new filenames.
+Template fields are replaced with metadata values during renaming.
+All other text is left as-is.
+If this option is omitted, a default format string is used.
+.TP
 \fB-o \fIfilename\fB, --output=\fIfilename\fR
 An explicit output filename for the converted track.
 With this option, only a single input track is allowed.
@@ -70,6 +77,12 @@ Add ReplayGain metadata to newly created tracks
 .TP
 \fB--no-replay-gain\fR
 Do not add ReplayGain metadata to newly created tracks
+.PP
+Depending on the audio format used,
+ReplayGain is added automatically by default
+when it is implemented by inserting a metadata tag.
+When ReplayGain is implemented by modifying audio data,
+it is not added automatically and must be explicitly enabled.
 
 .SH EXAMPLES
 .LP

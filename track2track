@@ -108,6 +108,13 @@ if (__name__ == '__main__'):
                       default='.',
                       help='the directory to store converted audio files')
 
+    parser.add_option('--format',
+                      action='store',
+                      type='string',
+                      default=audiotools.FILENAME_FORMAT,
+                      dest='format',
+                      help='the format string for new filenames')
+
     parser.add_option('-q','--quality',
                       action='store',
                       type='string',
@@ -127,11 +134,6 @@ if (__name__ == '__main__'):
                       dest='max_processes',
                       help='the maximum number of processes to run at a time')
 
-    parser.add_option('-o','--output',
-                      action='store',
-                      dest='output',
-                      help='output filename to use, overriding default and -d')
-
     parser.add_option('-T','--thumbnail',
                       action='store_true',
                       default=False,
@@ -144,6 +146,11 @@ if (__name__ == '__main__'):
                       type='int',
                       default=None,
                       help='the album number, if these tracks are one of a series of albums')
+
+    parser.add_option('-o','--output',
+                      action='store',
+                      dest='output',
+                      help='output filename to use, overriding default and -d')
 
     #if adding ReplayGain is a lossless process
     #(i.e. added as tags rather than modifying track data)
@@ -161,6 +168,19 @@ if (__name__ == '__main__'):
                       help='do not add ReplayGain metadata to newly created tracks')
 
     (options,args) = parser.parse_args()
+
+    #if one specifies incompatible output options,
+    #complain about it right away
+    if (options.output is not None):
+        if (options.dir != "."):
+            print >>sys.stderr,"*** -o and -d options are not compatible"
+            print >>sys.stderr,"*** please specify the full output file path with -o"
+            print >>sys.stderr,"*** or an output directory with -d"
+            print >>sys.stderr,"*** but not both"
+            sys.exit(1)
+
+        if (options.format is not None):
+            print >>sys.stderr,"* warning: --format has no effect when used with -o"
 
     #get the AudioFile class we are converted to
     if (options.output is None):
@@ -284,7 +304,8 @@ if (__name__ == '__main__'):
                                 base_directory,
                                 AudioType.track_name(track_number,
                                                      xmcd[track_number],
-                                                     album_number=album_number))
+                                                     album_number=album_number,
+                                                     format=options.format))
 
                     audiotools.make_dirs(filename)
 
@@ -303,7 +324,8 @@ if (__name__ == '__main__'):
                                 base_directory,
                                 AudioType.track_name(track_number,
                                                      audiofile.get_metadata(),
-                                                     album_number=album_number))
+                                                     album_number=album_number,
+                                                     format=options.format))
 
                     audiotools.make_dirs(filename)
 
@@ -349,6 +371,6 @@ if (__name__ == '__main__'):
                      audiofile,
                      metadata,
                      quality,
-                     True,
+                     False,
                      options.thumbnail)
 
