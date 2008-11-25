@@ -23,14 +23,6 @@ The cdrom device to extract tracks from
 \fB-s \fIspeed\fB, --speed=\fIspeed\fR
 The speed in which to read CD data at
 .TP
-\fB-d \fIdirectory\fB, --dir=\fIdirectory\fR
-The target directory for the converted tracks.
-If none is given, the current working directory is used
-(see
-.BR getcwd (3)
-).
-If the target directory does not exist, it will be created automatically.
-.TP
 \fB-t \fItype\fB, --type=\fItype\fR
 The audio format to extract the given tracks to.
 For a list of available audio formats, try:
@@ -53,6 +45,20 @@ and
 .BR editxmcd (1)
 programs.
 .TP
+\fB-d \fIdirectory\fB, --dir=\fIdirectory\fR
+The target directory for the converted tracks.
+If none is given, the current working directory is used
+(see
+.BR getcwd (3)
+).
+If the target directory does not exist, it will be created automatically.
+.TP
+\fB--format=\fIformat string\fR
+The format string to use for new filenames.
+Template fields are replaced with metadata values when new tracks are created.
+All other text is left as-is.
+If this option is omitted, a default format string is used.
+.TP
 \fB--album-number=\fInumber\fR
 The album number of this CD, if it is one of a series of albums.
 .TP
@@ -61,6 +67,12 @@ Add ReplayGain metadata to newly created tracks
 .TP
 \fB--no-replay-gain\fR
 Do not add ReplayGain metadata to newly created tracks
+.PP
+Depending on the audio format used,
+ReplayGain is added automatically by default
+when it is implemented by inserting a metadata tag.
+When ReplayGain is implemented by modifying audio data,
+it is not added automatically and must be explicitly enabled.
 
 .SH EXAMPLE
 .LP
@@ -69,6 +81,36 @@ at the default quality using metadata from \fIalbum.xmcd\fR
 .IP
 .B cd2track \-t
 .I flac \fB-x \fIalbum.xmcd\fB -c \fI/dev/cdrom
+
+.SH FORMAT STRING FIELDS
+.TS
+tab(:);
+| c   s |
+| c | c |
+| l | l |.
+_
+Template Fields
+Key:Value
+=
+\fC%(track_number)2.2d\fR:the track's number on the CD
+\fC%(album_number)d\fR:the CD's album number
+\fC%(album_track_number)s\fR:combination of album and track number
+\fC%(track_name)s\fR:the track's name
+\fC%(album_name)s\fR:the album's name
+\fC%(artist_name)s\fR:the track's artist name
+\fC%(performer_name)s\fR:the track's performer name
+\fC%(composer_name)s\fR:the track's composer name
+\fC%(conductor_name)s\fR:the track's conductor name
+\fC%(media)s\fR:the track's source media
+\fC%(ISRC)s\fR:the track's ISRC
+\fC%(catalog)s\fR:the track's catalog number
+\fC%(copyright)s\fR:the track's copyright information
+\fC%(publisher)s\fR:the track's publisher
+\fC%(year)s\fR:the track's publication year
+\fC%(date)s\fR:the track's original recording date
+\fC%(suffix)s\fR:the track's suffix
+_
+.TE
 
 .SH SEE ALSO
 .BR cd2xmcd (1),

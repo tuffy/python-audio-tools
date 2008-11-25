@@ -34,9 +34,6 @@ if (__name__ == '__main__'):
     parser.add_option('-s','--speed',action='store',
                       type='int',dest='speed')
 
-    parser.add_option("-d","--dir",action='store',default='.',
-                      dest='dir')
-
     parser.add_option('-t','--type',
                       action='store',
                       dest='type',
@@ -55,6 +52,16 @@ if (__name__ == '__main__'):
                       type='string',
                       dest='xmcd',
                       help='an XMCD file to get audio metadata from')
+
+    parser.add_option("-d","--dir",action='store',default='.',
+                      dest='dir')
+
+    parser.add_option('--format',
+                      action='store',
+                      type='string',
+                      default=audiotools.FILENAME_FORMAT,
+                      dest='format',
+                      help='the format string for new filenames')
 
     parser.add_option('--album-number',
                       dest='album_number',
@@ -158,7 +165,8 @@ if (__name__ == '__main__'):
                     base_directory,
                     AudioType.track_name(cd_track.track_number,
                                          track_metadata=metadata,
-                                         album_number=options.album_number))
+                                         album_number=options.album_number,
+                                         format=options.format))
 
                 audiotools.make_dirs(filename)
 
@@ -174,7 +182,8 @@ if (__name__ == '__main__'):
                     base_directory,
                     AudioType.track_name(cd_track.track_number,
                                          track_metadata=None,
-                                         album_number=options.album_number))
+                                         album_number=options.album_number,
+                                         format=options.format))
 
                 audiotools.make_dirs(filename)
 
