@@ -4,7 +4,7 @@
   And, MP3Audio's is_type() classmethod should check for MP3 compressed
   RIFF WAVE containers.
   This isn't likely to mess up decoding, but may confuse ID3 tagging.
-* TODO Allow file template to be specified on the command line
+* DONE Allow file template to be specified on the command line
   When making new files with track2track, cd2track, etc.
 * DONE Update the website with the latest documentation
 * DONE Allow a unified %(album_track_number)s file template field
@@ -38,7 +38,6 @@
   So, if faac builds no container, the resulting file is unsupportable.
 * TODO Fix image support in ID3v2
   Very large images can take a very long time to load.
-
 * DONE Fix programs to key on album number and track number
   Certain programs, such as trackcmp, work on tracks across two directories
   and key on track number to determine which to compare to which.
@@ -53,3 +52,10 @@
   are missing.
   In some cases, there's no fix to be had (track2xmcd)
   but in most instances it should be made to work correctly.
+* TODO Add more examples
+  A lot of handy new features aren't documented with examples and walkthroughs.
+  Examples to add include:
+- [ ] a full multi-CD example, detailing the use of --album-number
+- [ ] an image embedding walkthrough
+- [ ] examples of how -d,--format,-o work together for different results
+
