@@ -95,6 +95,18 @@ if (__name__ == '__main__'):
         '<track 1> [track 2] ...',
         version="Python Audio Tools %s" % (audiotools.VERSION))
 
+    parser.add_option('-t','--type',
+                      action='store',
+                      dest='type',
+                      choices=audiotools.TYPE_MAP.keys(),
+                      help='the type of audio value to convert to')
+
+    parser.add_option('-q','--quality',
+                      action='store',
+                      type='string',
+                      dest='quality',
+                      help='the quality to store audio values at')
+
     parser.add_option('-x','--xmcd',
                       action='store',
                       type='string',
@@ -115,17 +127,17 @@ if (__name__ == '__main__'):
                       dest='format',
                       help='the format string for new filenames')
 
-    parser.add_option('-q','--quality',
+    parser.add_option('-o','--output',
                       action='store',
-                      type='string',
-                      dest='quality',
-                      help='the quality to store audio values at')
+                      dest='output',
+                      help='output filename to use, overriding default and -d')
 
-    parser.add_option('-t','--type',
+    parser.add_option('--album-number',
+                      dest='album_number',
                       action='store',
-                      dest='type',
-                      choices=audiotools.TYPE_MAP.keys(),
-                      help='the type of audio value to convert to')
+                      type='int',
+                      default=None,
+                      help='the album number, if these tracks are one of a series of albums')
 
     parser.add_option('-j','--joint',
                       action='store',
@@ -140,17 +152,6 @@ if (__name__ == '__main__'):
                       dest='thumbnail',
                       help='convert embedded images to smaller thumbnails during conversion')
 
-    parser.add_option('--album-number',
-                      dest='album_number',
-                      action='store',
-                      type='int',
-                      default=None,
-                      help='the album number, if these tracks are one of a series of albums')
-
-    parser.add_option('-o','--output',
-                      action='store',
-                      dest='output',
-                      help='output filename to use, overriding default and -d')
 
     #if adding ReplayGain is a lossless process
     #(i.e. added as tags rather than modifying track data)

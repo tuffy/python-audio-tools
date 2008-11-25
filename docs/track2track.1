@@ -38,12 +38,6 @@ and
 .BR editxmcd (1)
 programs.
 .TP
-\fB-j \fIprocesses\fB, --joint=\fIprocesses\fR
-The maximum number of tracks to convert at one time.
-If one has multiple CPUs or CPU cores, allowing
-.BR track2track (1)
-to use all of them simultaneously can greatly increase encoding speed.
-.TP
 \fB-d \fIdirectory\fB, --dir=\fIdirectory\fR
 The target directory for the converted tracks.
 If none is given, the current working directory is used
@@ -52,7 +46,6 @@ If none is given, the current working directory is used
 ).
 If the target directory does not exist, it will be created automatically.
 This option is not compatible with \fB-o\fR
-.TP
 .TP
 \fB--format=\fIformat string\fR
 The format string to use for new filenames.
@@ -65,12 +58,18 @@ An explicit output filename for the converted track.
 With this option, only a single input track is allowed.
 It overrides the \fB-d\fR option and the default output filename.
 .TP
-\fB-T\fR,\fB--thumbnail\fR
-Convert embedded images to smaller thumbnails during conversion.
-.TP
 \fB--album-number=\fInumber\fR
 The album number of these tracks' CD,
 if they belong to one of a series of albums.
+.TP
+\fB-j \fIprocesses\fB, --joint=\fIprocesses\fR
+The maximum number of tracks to convert at one time.
+If one has multiple CPUs or CPU cores, allowing
+.BR track2track (1)
+to use all of them simultaneously can greatly increase encoding speed.
+.TP
+\fB-T\fR,\fB--thumbnail\fR
+Convert embedded images to smaller thumbnails during conversion.
 .TP
 \fB--replay-gain\fR
 Add ReplayGain metadata to newly created tracks
@@ -108,6 +107,36 @@ FLAC files, 2 at a time and at the highest possible compression
 .B track2track \-t
 .I flac \fB-j\fI 2 \fB-q\fI 8
 .I sourcedir/*.wav
+
+.SH FORMAT STRING FIELDS
+.TS
+tab(:);
+| c   s |
+| c | c |
+| l | l |.
+_
+Template Fields
+Key:Value
+=
+\fC%(track_number)2.2d\fR:the track's number on the CD
+\fC%(album_number)d\fR:the CD's album number
+\fC%(album_track_number)s\fR:combination of album and track number
+\fC%(track_name)s\fR:the track's name
+\fC%(album_name)s\fR:the album's name
+\fC%(artist_name)s\fR:the track's artist name
+\fC%(performer_name)s\fR:the track's performer name
+\fC%(composer_name)s\fR:the track's composer name
+\fC%(conductor_name)s\fR:the track's conductor name
+\fC%(media)s\fR:the track's source media
+\fC%(ISRC)s\fR:the track's ISRC
+\fC%(catalog)s\fR:the track's catalog number
+\fC%(copyright)s\fR:the track's copyright information
+\fC%(publisher)s\fR:the track's publisher
+\fC%(year)s\fR:the track's publication year
+\fC%(date)s\fR:the track's original recording date
+\fC%(suffix)s\fR:the track's suffix
+_
+.TE
 
 .SH SEE ALSO
 .BR cd2track (1),
