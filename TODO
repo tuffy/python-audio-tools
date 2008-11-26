@@ -12,7 +12,7 @@
   Otherwise, it's a combination of the two fields.
   For example, album_number = 2 and track_number = 13 results in
   "213" for a value.
-* TODO Update trackcat to take a cuesheet argument when outputting FLACs
+* DONE Update trackcat to take a cuesheet argument when outputting FLACs
   Thus, one can perform:
   trackcat --cuesheet=file.cue file1.wav file2.wav file3.wav -t flac -o cd.flac
   which will embed "file.cue" into "cd.flac" using metaflac.
@@ -63,3 +63,7 @@
   the rest of it is following the spec.  This is not always the case.
   There needs to be sanity checks such that if a file is wildly wrong,
   sensible errors result rather than throwing an ugly pyconstruct exception.
+* TODO Perform type inference wherever possible
+  Anything with a single output file (trackcat and record2track)
+  should be able to infer its output type from the track suffix, if possible.
+

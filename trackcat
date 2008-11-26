@@ -23,8 +23,7 @@ import optparse
 import sys
 import os
 import os.path
-
-
+import subprocess
 
 if (__name__ == '__main__'):
     parser = optparse.OptionParser(
@@ -49,6 +48,10 @@ if (__name__ == '__main__'):
     parser.add_option('-o','--outfile',dest='filename',
                       metavar='FILE',
                       help='the output file')
+
+    parser.add_option('--cuesheet',
+                      dest='cuesheet',
+                      help='a cuesheet to embed in the output file')
 
     (options,args) = parser.parse_args()
 
@@ -78,6 +81,11 @@ if (__name__ == '__main__'):
               (AudioType.NAME)
         sys.exit(1)
 
+    if ((options.cuesheet is not None) and
+        (AudioType.NAME != 'flac')):
+        print >>sys.stderr,"*** cuesheets may only be embedded in FLAC files"
+        sys.exit(1)
+
     #grab the list of AudioFile objects we are converting from
     audiofiles = audiotools.open_files(args)
     if (len(audiofiles) < 1):
@@ -92,6 +100,12 @@ if (__name__ == '__main__'):
         encoded = AudioType.from_pcm(options.filename,
                                      pcmdata,
                                      quality)
+
+        if (options.cuesheet is not None):
+            subprocess.call([audiotools.BIN["metaflac"],
+                             "--import-cuesheet-from=%s" % \
+                                 (options.cuesheet),
+                             encoded.filename])
     except audiotools.InvalidFormat,msg:
         print >>sys.stderr,"*** %s: %s" % (options.filename,str(msg))
         sys.exit(1)
