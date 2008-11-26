@@ -18,7 +18,8 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,InvalidFile,PCMReader,Con,BUFFER_SIZE,transfer_data,__capped_stream_reader__,FILENAME_FORMAT
+from audiotools import AudioFile,InvalidFile,PCMReader,Con,BUFFER_SIZE,transfer_data,__capped_stream_reader__,FILENAME_FORMAT,BIN,open_files,os,subprocess
+import os.path
 
 #######################
 #RIFF WAVE
@@ -191,7 +192,11 @@ class WaveAudio(AudioFile):
         self.__data_size__ = 0
 
         self.__chunk_ids__ = []
-        self.__read_chunks__()
+
+        try:
+            self.__read_chunks__()
+        except WavException,msg:
+            raise InvalidFile(str(msg))
 
     @classmethod
     def is_type(cls, file):
@@ -335,6 +340,40 @@ class WaveAudio(AudioFile):
     def bits_per_sample(self):
         return self.__bitspersample__
 
+    @classmethod
+    def can_add_replay_gain(cls):
+        return BIN.can_execute(BIN['wavegain'])
+
+    @classmethod
+    def lossless_replay_gain(cls):
+        return False
+
+    @classmethod
+    def add_replay_gain(cls, filenames):
+        if (not BIN.can_execute(BIN['wavegain'])):
+            return
+
+        devnull = file(os.devnull,'ab')
+        for track_name in [track.filename for track in
+                           open_files(filenames) if
+                           isinstance(track,cls)]:
+            #wavegain's -y option fails spectacularly
+            #if the wave file is on a different filesystem than
+            #its current working directory
+            #due to temp file usage
+            working_dir = os.getcwd()
+            try:
+                if (os.path.dirname(track_name) != ""):
+                    os.chdir(os.path.dirname(track_name))
+                sub = subprocess.Popen([BIN['wavegain'],"-y",track_name],
+                                       stdout=devnull,
+                                       stderr=devnull)
+                sub.wait()
+            finally:
+                os.chdir(working_dir)
+
+        devnull.close()
+
     def __read_chunks__(self):
         wave_file = file(self.filename,"rb")
 
@@ -361,14 +400,17 @@ class WaveAudio(AudioFile):
     def __read_wave_header__(self, wave_file):
         try:
             header = WaveAudio.WAVE_HEADER.parse(wave_file.read(12))
+            return header.wave_size
         except Con.ConstError:
             raise WavException("not a RIFF WAVE file")
-
-        return header.wave_size
-
+        except Con.core.FieldError:
+            raise WavException("invalid RIFF WAVE file")
     def __read_chunk_header__(self, wave_file):
-        chunk = WaveAudio.CHUNK_HEADER.parse(wave_file.read(8))
-        return (chunk.chunk_id,chunk.chunk_length)
+        try:
+            chunk = WaveAudio.CHUNK_HEADER.parse(wave_file.read(8))
+            return (chunk.chunk_id,chunk.chunk_length)
+        except Con.core.FieldError:
+            raise WavException("invalid RIFF WAVE file")
 
     def __read_format_chunk__(self, wave_file, chunk_size):
         if (chunk_size < 16):

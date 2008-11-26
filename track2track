@@ -180,7 +180,7 @@ if (__name__ == '__main__'):
             print >>sys.stderr,"*** but not both"
             sys.exit(1)
 
-        if (options.format is not None):
+        if (options.format != audiotools.FILENAME_FORMAT):
             print >>sys.stderr,"* warning: --format has no effect when used with -o"
 
     #get the AudioFile class we are converted to

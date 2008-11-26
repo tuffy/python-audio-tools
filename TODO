@@ -58,4 +58,8 @@
 - [ ] a full multi-CD example, detailing the use of --album-number
 - [ ] an image embedding walkthrough
 - [ ] examples of how -d,--format,-o work together for different results
-
+* TODO More graceful handling of broken files
+  A lot of the track handlers assume that once the start of the file is good,
+  the rest of it is following the spec.  This is not always the case.
+  There needs to be sanity checks such that if a file is wildly wrong,
+  sensible errors result rather than throwing an ugly pyconstruct exception.
