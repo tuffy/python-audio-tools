@@ -96,7 +96,6 @@ if (__name__ == '__main__'):
                       action='store',
                       dest='type',
                       choices=audiotools.TYPE_MAP.keys(),
-                      default='wav',
                       help='the type of audio value to convert to')
 
     parser.add_option('-q','--quality',
@@ -141,8 +140,15 @@ if (__name__ == '__main__'):
 
     (options,args) = parser.parse_args()
 
-    #get the AudioFile class we are converting to
-    AudioType = audiotools.TYPE_MAP[options.type]
+    #get the AudioFile class we are converted to
+    if (options.type is not None):
+        AudioType = audiotools.TYPE_MAP[options.type]
+    else:
+        try:
+            AudioType = audiotools.filename_to_type(options.output)
+        except audiotools.UnknownAudioType,exp:
+            print >>sys.stderr,exp.error_msg()
+            sys.exit(1)
 
     #ensure the selected compression is compatible with that class
     if (options.quality == 'help'):
