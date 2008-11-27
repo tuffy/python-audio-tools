@@ -193,29 +193,11 @@ if (__name__ == '__main__'):
         if (options.type is not None):
             AudioType = audiotools.TYPE_MAP[options.type]
         else:
-            (path,ext) = os.path.splitext(options.output)
-            if (len(ext) > 0):
-                ext = ext[1:]   #remove the "."
-                SUFFIX_MAP = {}
-                for audio_type in audiotools.TYPE_MAP.values():
-                    SUFFIX_MAP.setdefault(audio_type.SUFFIX,[]).append(
-                        audio_type)
-                if (ext in SUFFIX_MAP.keys()):
-                    if (len(SUFFIX_MAP[ext]) == 1):
-                        AudioType = SUFFIX_MAP[ext][0]
-                    else:
-                        print >>sys.stderr,"*** Ambiguious suffix type \"%s\"" % \
-                            (ext)
-                        print >>sys.stderr,"*** Please use the -t option to specify %s" % \
-                            (" or ".join(["\"%s\"" % (t.NAME)
-                                          for t in SUFFIX_MAP[ext]]))
-                        sys.exit(1)
-                else:
-                    print >>sys.stderr,"*** Unsupported audio type \"%s\"" % \
-                        (ext)
-                    sys.exit(1)
-            else:
-                AudioType = audiotools.TYPE_MAP['wav']
+            try:
+                AudioType = audiotools.filename_to_type(options.output)
+            except audiotools.UnknownAudioType,exp:
+                print >>sys.stderr,exp.error_msg()
+                sys.exit(1)
 
     if (options.add_replay_gain is None):
         options.add_replay_gain = AudioType.lossless_replay_gain()

@@ -45,7 +45,7 @@ if (__name__ == '__main__'):
                       default='wav',
                       help='the type of audio value to convert to')
 
-    parser.add_option('-o','--outfile',dest='filename',
+    parser.add_option('-o','--output',dest='filename',
                       metavar='FILE',
                       help='the output file')
 

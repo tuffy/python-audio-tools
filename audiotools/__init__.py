@@ -183,6 +183,47 @@ def open_directory(directory, sorted=True):
                                     sorted=sorted):
             yield audiofile
 
+
+class UnknownAudioType(Exception):
+    def __init__(self,suffix):
+        self.suffix = suffix
+
+    def error_msg(self):
+        return "*** Unsupported audio type \"%s\"" % (self.suffix)
+
+class AmbiguousAudioType(UnknownAudioType):
+    def __init__(self,suffix,type_list):
+        self.suffix = suffix
+        self.type_list = type_list
+
+    def error_msg(self):
+        return ("*** Ambiguious suffix type \"%s\"\n" % (self.suffix)) + \
+               ("*** Please use the -t option to specify %s" % \
+                    (" or ".join(["\"%s\"" % (t.NAME)
+                                  for t in self.type_list])))
+
+#given a path string to a file,
+#try to guess its type based on suffix
+#returns an available AudioFile
+#raises an UnknownAudioType exception if the type is unknown
+#raise AmbiguousAudioType exception if the type is ambiguous
+def filename_to_type(path):
+    (path,ext) = os.path.splitext(path)
+    if (len(ext) > 0):
+        ext = ext[1:]   #remove the "."
+        SUFFIX_MAP = {}
+        for audio_type in TYPE_MAP.values():
+            SUFFIX_MAP.setdefault(audio_type.SUFFIX,[]).append(audio_type)
+        if (ext in SUFFIX_MAP.keys()):
+            if (len(SUFFIX_MAP[ext]) == 1):
+                return SUFFIX_MAP[ext][0]
+            else:
+                raise AmbiguousAudioType(ext,SUFFIX_MAP[ext])
+        else:
+            raise UnknownAudioType(ext)
+    else:
+        return TYPE_MAP['wav']
+
 #a class that generates PCM audio data
 #sample rate, channels and bits per sample are integers
 #the data is assumed to be signed, little-endian strings
