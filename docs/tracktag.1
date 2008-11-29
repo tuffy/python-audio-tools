@@ -80,6 +80,12 @@ and
 .BR editxmcd (1)
 programs.
 .TP
+\fB--toc=\fIfilename\fR
+A
+.BR cdrdao (1)
+TOC file to use for ISRC metadata.
+Note that many, but not all, CDs contain ISRC metadata.
+.TP
 \fB--remove-images\fR
 Remove existing images prior to adding new ones.
 .TP
@@ -117,7 +123,14 @@ Add several JPEG images to \fItrack.flac\fR
 \fB\-\-leaflet=\fIpage2.jpg\fR
 \fB\-\-leaflet=\fIpage3.jpg\fR
 .I track.flac
-
+.LP
+Add ISRC metadata from the disc in \fI/dev/cdrom\fR to all MP3 files in
+the current directory
+.IP
+.B cdrdao read-toc \-\-device \fI/dev/cdrom\fR \fIalbum.toc\fR
+.br
+.B tracktag \-\-toc=\fIalbum.toc\fR
+.I *.mp3
 .SH SEE ALSO
 .BR cd2track (1),
 .BR cd2xmcd (1),

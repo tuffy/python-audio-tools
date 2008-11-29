@@ -68,6 +68,20 @@ def get_image(filename, type):
     except IOError:
         raise audiotools.InvalidImage("error opening file: \"%s\"" % (filename))
 
+#given a cdrdao TOC filename,
+#returns a dict of track_number->u"ISRC" entries
+#or an empty dict if no ISRCs found
+def toc_metadata(filename):
+    import re
+
+    TOCENTRY = re.compile(r'// Track (\d+).*?ISRC \"(.+?)\"',re.DOTALL)
+
+    f = open(filename,'r')
+    try:
+        return dict([(int(k),v.decode('ascii','replace'))
+                     for (k,v) in TOCENTRY.findall(f.read())])
+    finally:
+        f.close()
 
 if (__name__ == '__main__'):
     parser = optparse.OptionParser(
@@ -177,6 +191,13 @@ if (__name__ == '__main__'):
                       help='an XMCD file to get audio metadata from',
                       metavar='FILENAME')
 
+    parser.add_option('--toc',
+                      action='store',
+                      type='string',
+                      dest='toc',
+                      help='a TOC file to get audio metadata from',
+                      metavar='FILENAME')
+
     parser.add_option('--remove-images',
                       action='store_true',
                       default=False,
@@ -228,7 +249,7 @@ if (__name__ == '__main__'):
 
     audiofiles = audiotools.open_files(args)
 
-    if (options.xmcd != None):
+    if (options.xmcd is not None):
         try:
             xmcd = audiotools.parse_xmcd_file(options.xmcd)
         except audiotools.XMCDException:
@@ -238,13 +259,23 @@ if (__name__ == '__main__'):
     else:
         xmcd = None
 
+    if (options.toc is not None):
+        try:
+            toc = toc_metadata(options.toc)
+        except IOError:
+            print >>sys.stderr,"*** Error opening TOC file \"%s\"" % \
+                  (options.toc)
+            sys.exit(1)
+    else:
+        toc = {}
+
     if (options.replace):
-        if (xmcd == None):
+        if (xmcd is None):
             metadata_function = blank_metadata
         else:
             metadata_function = xmcd_metadata
     else:
-        if (xmcd == None):
+        if (xmcd is None):
             metadata_function = track_metadata
         else:
             metadata_function = xmcd_track_metadata
@@ -268,6 +299,9 @@ if (__name__ == '__main__'):
 
                 if (options.media_type is not None):
                     metadata.media = options.media_type.decode(audiotools.IO_ENCODING)
+
+                if (file.track_number() in toc.keys()):
+                    metadata.ISRC = toc[file.track_number()]
 
                 if (options.album_number is not None):
                     metadata.album_number = options.album_number
