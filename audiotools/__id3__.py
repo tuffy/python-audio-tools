@@ -173,15 +173,16 @@ class ID3v2Comment(MetaData,dict):
 
         if (cls.VALID_FRAME_ID.match(frame.frame_id)):
             if (frame.frame_id == 'COMM'):
-                #FIXME - return the whole comment chunk
-                #including language, short desc. and encoding
-                #not just the contents
                 try:
                     comment = cls.COMMENT_FRAME_CONTENTS.parse(
                         stream.read(frame.frame_size))
 
                     return (frame.frame_id,
-                            comment.content)
+                            ID3CommentFrame(
+                            content=comment.content,
+                            short_description=comment.short_description,
+                            encoding=comment.encoding,
+                            language=comment.language))
                 except Con.core.RangeError:
                     return (frame.frame_id,u"")
             if (frame.frame_id.startswith('T')):
@@ -474,6 +475,8 @@ class ID3v2Comment(MetaData,dict):
             for value in values:
                 if (isinstance(value,unicode)):
                     pairs.append(('    ' + key,value))
+                elif (isinstance(value,ID3CommentFrame)):
+                    pairs.append(('    ' + key,unicode(value)))
                 else:
                     if (len(value) <= 20):
                         pairs.append(('    ' + key,
@@ -577,15 +580,16 @@ class ID3v2_3Comment(ID3v2Comment):
 
         if (cls.VALID_FRAME_ID.match(frame.frame_id)):
             if (frame.frame_id == 'COMM'):
-                #FIXME - return the whole comment chunk
-                #including language, short desc. and encoding
-                #not just the contents
                 try:
                     comment = cls.COMMENT_FRAME_CONTENTS.parse(
                         stream.read(frame.frame_size))
 
                     return (frame.frame_id,
-                            comment.content)
+                            ID3CommentFrame(
+                            content=comment.content,
+                            short_description=comment.short_description,
+                            encoding=comment.encoding,
+                            language=comment.language))
                 except Con.core.RangeError:
                     return (frame.frame_id,u"")
             if (frame.frame_id.startswith('T')):
@@ -724,15 +728,16 @@ class ID3v2_2Comment(ID3v2Comment):
 
         if (cls.VALID_FRAME_ID.match(frame.frame_id)):
             if (frame.frame_id == 'COM'):
-                #FIXME - return the whole comment chunk
-                #including language, short desc. and encoding
-                #not just the contents
                 try:
                     comment = cls.COMMENT_FRAME_CONTENTS.parse(
                         stream.read(frame.frame_size))
 
                     return (frame.frame_id,
-                            comment.content)
+                            ID3CommentFrame(
+                            content=comment.content,
+                            short_description=comment.short_description,
+                            encoding=comment.encoding,
+                            language=comment.language))
                 except Con.core.RangeError:
                     return (frame.frame_id,u"")
             elif (frame.frame_id.startswith('T')):
@@ -813,6 +818,8 @@ class ID3v2_2Comment(ID3v2Comment):
             for value in values:
                 if (isinstance(value,unicode)):
                     pairs.append(('    ' + key,value))
+                elif (isinstance(value,ID3CommentFrame)):
+                    pairs.append(('    ' + key,unicode(value)))
                 else:
                     if (len(value) <= 20):
                         pairs.append(('    ' + key,
@@ -1035,6 +1042,19 @@ class PICImage(Image):
                           description=description,
                           data=self.data))
 
+class ID3CommentFrame:
+    #content and short_description must by unicode strings
+    #encoding should be an integer
+    #language should be a 3 character language field
+    def __init__(self,content=u"",short_description=u"",
+                 encoding=0,language="eng"):
+        self.content = content
+        self.short_description = short_description
+        self.encoding = encoding
+        self.language = language
+
+    def __unicode__(self):
+        return self.content
 
 class ID3v1Comment(MetaData,list):
     ID3v1 = Con.Struct("id3v1",
