@@ -640,7 +640,9 @@ class ID3v2_3Comment(ID3v2Comment):
         tags = []
 
         for (t_id,t_value) in taglist:
-            if (t_id.startswith('T')):
+            if (t_id == 'COMM'):
+                t_s = cls.COMMENT_FRAME_CONTENTS.build(t_value.container())
+            elif (t_id.startswith('T')):
                 try:
                     t_s = chr(0x00) + t_value.encode('ISO-8859-1')
                 except UnicodeEncodeError:
@@ -836,7 +838,9 @@ class ID3v2_2Comment(ID3v2Comment):
         tags = []
 
         for (t_id,t_value) in taglist:
-            if (t_id.startswith('T')):
+            if (t_id == 'COM'):
+                t_s = cls.COMMENT_FRAME_CONTENTS.build(t_value.container())
+            elif (t_id.startswith('T')):
                 try:
                     t_s = chr(0x00) + t_value.encode('ISO-8859-1')
                 except UnicodeEncodeError:
@@ -1055,6 +1059,13 @@ class ID3CommentFrame:
 
     def __unicode__(self):
         return self.content
+
+    #returns a Construct Container object from our contents
+    def container(self):
+        return Con.Container(content=self.content,
+                             short_description=self.short_description,
+                             encoding=self.encoding,
+                             language=self.language)
 
 class ID3v1Comment(MetaData,list):
     ID3v1 = Con.Struct("id3v1",
