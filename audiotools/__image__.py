@@ -30,7 +30,7 @@ def __jpeg__(h, f):
 imghdr.tests.append(__jpeg__)
 
 
-#takes a seekable file stream
+#takes a string of file data
 #returns an ImageMetrics class if the file can be identified
 #raises InvalidImage if there is an error or the file is unknown
 def image_metrics(file_data):

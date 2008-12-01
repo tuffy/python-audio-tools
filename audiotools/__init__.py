@@ -1605,19 +1605,19 @@ class CDDA:
 
 
 class CDTrackLog(dict):
-    #PARANOIA_CB_READ 	Read off adjust ???
-    #PARANOIA_CB_VERIFY 	Verifying jitter
-    #PARANOIA_CB_FIXUP_EDGE 	Fixed edge jitter
-    #PARANOIA_CB_FIXUP_ATOM 	Fixed atom jitter
-    #PARANOIA_CB_SCRATCH 	Unsupported
-    #PARANOIA_CB_REPAIR 	Unsupported
-    #PARANOIA_CB_SKIP 	Skip exhausted retry
-    #PARANOIA_CB_DRIFT 	Skip exhausted retry
-    #PARANOIA_CB_BACKOFF 	Unsupported
-    #PARANOIA_CB_OVERLAP 	Dynamic overlap adjust
-    #PARANOIA_CB_FIXUP_DROPPED 	Fixed dropped bytes
-    #PARANOIA_CB_FIXUP_DUPED 	Fixed duplicate bytes
-    #PARANOIA_CB_READERR 	Hard read error
+    #PARANOIA_CB_READ           Read off adjust ???
+    #PARANOIA_CB_VERIFY         Verifying jitter
+    #PARANOIA_CB_FIXUP_EDGE     Fixed edge jitter
+    #PARANOIA_CB_FIXUP_ATOM     Fixed atom jitter
+    #PARANOIA_CB_SCRATCH        Unsupported
+    #PARANOIA_CB_REPAIR         Unsupported
+    #PARANOIA_CB_SKIP           Skip exhausted retry
+    #PARANOIA_CB_DRIFT          Skip exhausted retry
+    #PARANOIA_CB_BACKOFF        Unsupported
+    #PARANOIA_CB_OVERLAP        Dynamic overlap adjust
+    #PARANOIA_CB_FIXUP_DROPPED  Fixed dropped bytes
+    #PARANOIA_CB_FIXUP_DUPED    Fixed duplicate bytes
+    #PARANOIA_CB_READERR        Hard read error
 
     #log format is similar to cdda2wav's
     def __str__(self):
