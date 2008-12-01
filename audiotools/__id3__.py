@@ -678,6 +678,25 @@ class ID3v2_2Comment(ID3v2Comment):
                               Con.Embed(Con.BitStruct("size",
             Con.Bits("frame_size",24))))
 
+    COMMENT_FRAME_CONTENTS = Con.Struct(
+        "com_frame",
+        Con.Byte("encoding"),
+        Con.String("language",3),
+        Con.Switch("short_description",
+                   lambda ctx: ctx.encoding,
+                   {0x00: Con.CString("s",encoding='latin-1'),
+                    0x01: Con.CString("s",terminators='\x00\x00',
+                                      encoding='utf-16',
+                                      char_field=Con.Field(None,2))}),
+        Con.Switch("content",
+                   lambda ctx: ctx.encoding,
+                   {0x00: Con.StringAdapter(Con.GreedyRepeater(
+                        Con.Field("s2",1)),
+                                            encoding='latin-1'),
+                    0x01: Con.StringAdapter(Con.GreedyRepeater(
+                        Con.Field("s2",2)),
+                                            encoding='utf-16')}))
+
     ATTRIBUTE_MAP = {'track_name':'TT2',
                      'track_number':'TRK',
                      'album_name':'TAL',
@@ -704,7 +723,19 @@ class ID3v2_2Comment(ID3v2Comment):
             raise EndOfID3v2Stream()
 
         if (cls.VALID_FRAME_ID.match(frame.frame_id)):
-            if (frame.frame_id.startswith('T')):
+            if (frame.frame_id == 'COM'):
+                #FIXME - return the whole comment chunk
+                #including language, short desc. and encoding
+                #not just the contents
+                try:
+                    comment = cls.COMMENT_FRAME_CONTENTS.parse(
+                        stream.read(frame.frame_size))
+
+                    return (frame.frame_id,
+                            comment.content)
+                except Con.core.RangeError:
+                    return (frame.frame_id,u"")
+            elif (frame.frame_id.startswith('T')):
                 encoding = ord(stream.read(1))
                 value = stream.read(frame.frame_size - 1)
                 return (frame.frame_id,
