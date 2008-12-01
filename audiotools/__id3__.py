@@ -172,6 +172,18 @@ class ID3v2Comment(MetaData,dict):
             raise EndOfID3v2Stream()
 
         if (cls.VALID_FRAME_ID.match(frame.frame_id)):
+            if (frame.frame_id == 'COMM'):
+                #FIXME - return the whole comment chunk
+                #including language, short desc. and encoding
+                #not just the contents
+                try:
+                    comment = cls.COMMENT_FRAME_CONTENTS.parse(
+                        stream.read(frame.frame_size))
+
+                    return (frame.frame_id,
+                            comment.content)
+                except Con.core.RangeError:
+                    return (frame.frame_id,u"")
             if (frame.frame_id.startswith('T')):
                 encoding = ord(stream.read(1))
                 value = stream.read(frame.frame_size - 1)
@@ -514,6 +526,25 @@ class ID3v2_3Comment(ID3v2Comment):
                           Con.Flag("grouping"),
                           Con.Padding(5))))
 
+    COMMENT_FRAME_CONTENTS = Con.Struct(
+        "comm_frame",
+        Con.Byte("encoding"),
+        Con.String("language",3),
+        Con.Switch("short_description",
+                   lambda ctx: ctx.encoding,
+                   {0x00: Con.CString("s",encoding='latin-1'),
+                    0x01: Con.CString("s",terminators='\x00\x00',
+                                      encoding='utf-16',
+                                      char_field=Con.Field(None,2))}),
+        Con.Switch("content",
+                   lambda ctx: ctx.encoding,
+                   {0x00: Con.StringAdapter(Con.GreedyRepeater(
+                        Con.Field("s2",1)),
+                                            encoding='latin-1'),
+                    0x01: Con.StringAdapter(Con.GreedyRepeater(
+                        Con.Field("s2",2)),
+                                            encoding='utf-16')}))
+
     ATTRIBUTE_MAP = {'track_name':'TIT2',
                      'track_number':'TRCK',
                      'album_name':'TALB',
@@ -545,6 +576,18 @@ class ID3v2_3Comment(ID3v2Comment):
             raise EndOfID3v2Stream()
 
         if (cls.VALID_FRAME_ID.match(frame.frame_id)):
+            if (frame.frame_id == 'COMM'):
+                #FIXME - return the whole comment chunk
+                #including language, short desc. and encoding
+                #not just the contents
+                try:
+                    comment = cls.COMMENT_FRAME_CONTENTS.parse(
+                        stream.read(frame.frame_size))
+
+                    return (frame.frame_id,
+                            comment.content)
+                except Con.core.RangeError:
+                    return (frame.frame_id,u"")
             if (frame.frame_id.startswith('T')):
                 encoding = ord(stream.read(1))
                 value = stream.read(frame.frame_size - 1)

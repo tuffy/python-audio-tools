@@ -67,3 +67,7 @@
   Anything with a single output file (trackcat and record2track)
   should be able to infer its output type from the track suffix, if possible.
 
+* TODO Fix ID3v2 image support to handle Unicode descriptions
+  The current implementation falls down on UTF-16 input,
+  but I should have a solution from the COMM frame handler.
+
