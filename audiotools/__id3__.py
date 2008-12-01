@@ -72,6 +72,35 @@ class ID3v2Comment(MetaData,dict):
                           Con.Flag("unsynchronization"),
                           Con.Flag("data_length"))))
 
+    COMMENT_FRAME_CONTENTS = Con.Struct(
+        "comm_frame",
+        Con.Byte("encoding"),
+        Con.String("language",3),
+        Con.Switch("short_description",
+                   lambda ctx: ctx.encoding,
+                   {0x00: Con.CString("s",encoding='latin-1'),
+                    0x01: Con.CString("s",terminators='\x00\x00',
+                                      encoding='utf-16',
+                                      char_field=Con.Field(None,2)),
+                    0x02: Con.CString("s",terminators='\x00\x00',
+                                      encoding='utf-16be',
+                                      char_field=Con.Field(None,2)),
+                    0x03: Con.CString("s",encoding='utf-8')}),
+        Con.Switch("content",
+                   lambda ctx: ctx.encoding,
+                   {0x00: Con.StringAdapter(Con.GreedyRepeater(
+                        Con.Field("s2",1)),
+                                            encoding='latin-1'),
+                    0x01: Con.StringAdapter(Con.GreedyRepeater(
+                        Con.Field("s2",2)),
+                                            encoding='utf-16'),
+                    0x02: Con.StringAdapter(Con.GreedyRepeater(
+                        Con.Field("s2",2)),
+                                            encoding='utf-16be'),
+                    0x03: Con.StringAdapter(Con.GreedyRepeater(
+                        Con.Field("s2",1)),
+                                            encoding='utf-8')}))
+
     ATTRIBUTE_MAP = {'track_name':'TIT2',
                      'track_number':'TRCK',
                      'album_name':'TALB',
