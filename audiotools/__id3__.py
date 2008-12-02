@@ -41,6 +41,15 @@ class Syncsafe32(Con.Adapter):
             i = (i << 7) | (x & 0x7F)
         return i
 
+#UTF16CString and UTF16BECString implement a null-terminated string
+#of UTF-16 characters by reading them as unsigned 16-bit integers,
+#looking for the null terminator (0x0000) and then converting the integers
+#back before decoding.  It's a little half-assed, but it seems to work.
+#Even large UTF-16 characters with surrogate pairs (those above U+FFFF)
+#shouldn't have embedded 0x0000 bytes in them,
+#which ID3v2.2/2.3 aren't supposed to use anyway since they're limited
+#to UCS-2 encoding.
+
 class WidecharCStringAdapter(Con.Adapter):
     def __init__(self,obj,encoding):
         Con.Adapter.__init__(self,obj)
@@ -58,14 +67,14 @@ class WidecharCStringAdapter(Con.Adapter):
 def UTF16CString(name):
     return WidecharCStringAdapter(Con.RepeatUntil(lambda obj, ctx: obj == 0x0,
                                                   Con.UBInt16(name)),
-                           encoding='utf-16')
+                                  encoding='utf-16')
 
 
 
 def UTF16BECString(name):
     return WidecharCStringAdapter(Con.RepeatUntil(lambda obj, ctx: obj == 0x0,
                                                   Con.UBInt16(name)),
-                           encoding='utf-16be')
+                                  encoding='utf-16be')
 
 
 class ID3v2Comment(MetaData,dict):
