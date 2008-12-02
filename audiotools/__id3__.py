@@ -146,7 +146,8 @@ class ID3v2Comment(MetaData,dict):
                      'publisher':'TPUB',
                      'year':'TYER',
                      'date':'TRDA',
-                     'album_number':'TPOS'}
+                     'album_number':'TPOS',
+                     'comment':'COMM'}
 
     ITEM_MAP = dict(map(reversed,ATTRIBUTE_MAP.items()))
 
@@ -241,7 +242,9 @@ class ID3v2Comment(MetaData,dict):
     def build_id3v2(cls, taglist):
         tags = []
         for (t_id,t_value) in taglist:
-            if (t_id.startswith('T')):
+            if (t_id == 'COMM'):
+                t_s = cls.COMMENT_FRAME_CONTENTS.build(t_value.container())
+            elif (t_id.startswith('T')):
                 try:
                     t_s = chr(0x00) + t_value.encode('ISO-8859-1')
                 except UnicodeEncodeError:
@@ -382,6 +385,10 @@ class ID3v2Comment(MetaData,dict):
 
                           album_number = albumnum,
 
+                          comment=metadata.get("COMM",
+                                   metadata.get("COM",
+                                      [ID3CommentFrame()]))[0].content,
+
                           images=images)
 
 
@@ -397,6 +404,8 @@ class ID3v2Comment(MetaData,dict):
                 #track_number and album_number integers
                 #are converted to Unicode objects
                 self[self.ATTRIBUTE_MAP[key]] = [unicode(value)]
+            elif (key == 'comment'):
+                self[self.ATTRIBUTE_MAP[key]] = [ID3CommentFrame(content=value)]
             else:
                 self[self.ATTRIBUTE_MAP[key]] = [value]
 
@@ -412,6 +421,8 @@ class ID3v2Comment(MetaData,dict):
                 int_val = re.match(r'\d+',value[0])
                 if (int_val is not None):
                     self.__dict__[self.ITEM_MAP[key]] = int(int_val.group(0))
+            elif (key in ('COMM','COM')):
+                self.__dict__[self.ITEM_MAP[key]] = value[0].content
             else:
                 self.__dict__[self.ITEM_MAP[key]] = value[0]
 
@@ -591,7 +602,8 @@ class ID3v2_3Comment(ID3v2Comment):
                      'publisher':'TPUB',
                      'year':'TYER',
                      'date':'TRDA',
-                     'album_number':'TPOS'}
+                     'album_number':'TPOS',
+                     'comment':'COMM'}
 
     ITEM_MAP = dict(map(reversed,ATTRIBUTE_MAP.items()))
 
@@ -745,7 +757,8 @@ class ID3v2_2Comment(ID3v2Comment):
                      'publisher':'TPB',
                      'year':'TYE',
                      'date':'TRD',
-                     'album_number':'TPA'}
+                     'album_number':'TPA',
+                     'comment':'COM'}
 
     ITEM_MAP = dict(map(reversed,ATTRIBUTE_MAP.items()))
 

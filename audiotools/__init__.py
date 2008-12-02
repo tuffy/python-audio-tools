@@ -1035,7 +1035,8 @@ class MetaData:
     __FIELDS__ = ("track_name","track_number","album_name","artist_name",
                   "performer_name","composer_name","conductor_name",
                   "media","ISRC","catalog","copyright",
-                  "publisher","year","date","album_number")
+                  "publisher","year","date","album_number",
+                  "comment")
 
     #track_name, album_name, artist_name, performer_name, copyright and year
     #should be unicode strings
@@ -1056,6 +1057,7 @@ class MetaData:
                  year=u"",           #the album's release year
                  date=u"",           #the original recording date
                  album_number=0,     #the disc's volume number, if any
+                 comment=u"",        #the track's comment string
                  images=None):
         #we're avoiding self.foo = foo because
         #__setattr__ might need to be redefined
@@ -1075,6 +1077,7 @@ class MetaData:
         self.__dict__['year'] = year
         self.__dict__['date'] = date
         self.__dict__['album_number'] = album_number
+        self.__dict__['comment'] = comment
 
         if (images is not None):
             self.__dict__['__images__'] = list(images)
@@ -1095,7 +1098,8 @@ class MetaData:
     def __comment_pairs__(self):
         return zip(("Title","Artist","Performer","Composer","Conductor",
                     "Album","Catalog","Track Number","Volume Number",
-                    "ISRC","Publisher","Media","Year","Date","Copyright"),
+                    "ISRC","Publisher","Media","Year","Date","Copyright",
+                    "Comment"),
                    (self.track_name,
                     self.artist_name,
                     self.performer_name,
@@ -1110,7 +1114,8 @@ class MetaData:
                     self.media,
                     self.year,
                     self.date,
-                    self.copyright))
+                    self.copyright,
+                    self.comment))
 
     def __unicode__(self):
         comment_pairs = self.__comment_pairs__()

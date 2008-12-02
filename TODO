@@ -67,6 +67,7 @@
   Anything with a single output file (trackcat and record2track)
   should be able to infer its output type from the track suffix, if possible.
 
+* TODO Add "comment" field support to all metadata types
 * TODO Fix ID3v2 image support to handle Unicode descriptions
   The current implementation falls down on UTF-16 input,
   but I should have a solution from the COMM frame handler.
@@ -76,4 +77,11 @@
   This needs to be fixed so that really high unicode characters
   (above U+FFFF) are replaced with something within spec.
 
+
+* TODO Unify ID3v2 frame handling
+  In the beginning, there were text frames and Everything Else.
+  Text frames were unicode strings,
+  and Everything Else was a binary string of whatever.
+  Now that ID3 is cluttered with APIC frames and COMM frames that need
+  special treatment, ID3v2 needs an overhaul to more resemble FlacMetaData.
 
