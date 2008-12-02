@@ -410,6 +410,7 @@ class M4AMetaData(MetaData,dict):
                           performer_name=meta_data.get('\xa9ART',[u''])[0],
                           copyright=meta_data.get('cprt',[u''])[0],
                           year=u'',
+                          comment=meta_data.get('\xacmt',[u''])[0],
                           images=images)
 
         dict.__init__(self, meta_data)
@@ -421,7 +422,8 @@ class M4AMetaData(MetaData,dict):
                      'artist_name':'\xa9wrt',
                      'performer_name':'\xa9ART',
                      'copyright':'cprt',
-                     'year':'\xa9day'}
+                     'year':'\xa9day',
+                     'comment':'\xa9cmt'}
 
     ITEM_MAP = dict(map(reversed,ATTRIBUTE_MAP.items()))
 

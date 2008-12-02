@@ -133,7 +133,8 @@ class DummyMetaData(audiotools.MetaData):
                                      ISRC=u"US-PR3-08-12345",
                                      copyright=u"Copyright Attribution",
                                      year=u"2008",
-                                     publisher=u"Test Records Inc.")
+                                     publisher=u"Test Records Inc.",
+                                     comment=u"C\xf3mment")
 
     @classmethod
     def supports_images(cls):
@@ -147,7 +148,8 @@ class SmallDummyMetaData(audiotools.MetaData):
                                      album_name=u"Album Name",
                                      artist_name=u"Artist Name",
                                      performer_name=u"Performer",
-                                     album_number=6)
+                                     album_number=6,
+                                     comment=u"Comment")
 
     @classmethod
     def supports_images(cls):

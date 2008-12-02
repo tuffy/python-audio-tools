@@ -65,7 +65,8 @@ class ApeTag(MetaData,dict):
                      'copyright':'Copyright',
                      'publisher':'Publisher',
                      'year':'Year',
-                     'date':'Record Date'}
+                     'date':'Record Date',
+                     'comment':'Comment'}
 
     ITEM_MAP = dict(map(reversed,ATTRIBUTE_MAP.items()))
 
@@ -89,7 +90,8 @@ class ApeTag(MetaData,dict):
                           copyright=tag_dict.get('Copyright',u''),
                           publisher=tag_dict.get('Publisher',u''),
                           year=tag_dict.get('Year',u''),
-                          date=tag_dict.get('Record Date',u'')
+                          date=tag_dict.get('Record Date',u''),
+                          comment=tag_dict.get('Comment',u'')
                           )
         dict.__init__(self, tag_dict)
         self.tag_length = tag_length

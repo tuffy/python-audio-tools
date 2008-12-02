@@ -43,7 +43,8 @@ class VorbisComment(MetaData,dict):
                      'copyright':'COPYRIGHT',
                      'publisher':'PUBLISHER',
                      'year':'DATE',
-                     'album_number':'DISCNUMBER'}
+                     'album_number':'DISCNUMBER',
+                     'comment':'COMMENT'}
 
     ITEM_MAP = dict(map(reversed,ATTRIBUTE_MAP.items()))
 
@@ -76,7 +77,8 @@ class VorbisComment(MetaData,dict):
             publisher = vorbis_data.get('PUBLISHER',[u''])[0],
             year = vorbis_data.get('DATE',[u''])[0],
             date = u"",
-            album_number = album_number)
+            album_number = album_number,
+            comment = vorbis_data.get('COMMENT',[u''])[0])
 
         dict.__init__(self,vorbis_data)
         self.vendor_string = vendor_string

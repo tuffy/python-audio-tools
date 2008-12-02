@@ -405,7 +405,10 @@ class ID3v2Comment(MetaData,dict):
                 #are converted to Unicode objects
                 self[self.ATTRIBUTE_MAP[key]] = [unicode(value)]
             elif (key == 'comment'):
-                self[self.ATTRIBUTE_MAP[key]] = [ID3CommentFrame(content=value)]
+                #FIXME - from_unicode should vary based on the ID3v2
+                #comment type (i.e. ID3v2.4 comments should use UTF-8)
+                self[self.ATTRIBUTE_MAP[key]] = \
+                    [ID3CommentFrame.from_unicode(value)]
             else:
                 self[self.ATTRIBUTE_MAP[key]] = [value]
 
@@ -446,7 +449,9 @@ class ID3v2Comment(MetaData,dict):
 
         for (key,field) in cls.ITEM_MAP.items():
             field = getattr(metadata,field)
-            if ((field != u"") and (field != 0)):
+            if (key == 'COMM'):
+                tags[key] = [ID3CommentFrame.from_unicode(field)]
+            elif ((field != u"") and (field != 0)):
                 tags[key] = [unicode(field)]
 
         try:
@@ -454,7 +459,6 @@ class ID3v2Comment(MetaData,dict):
                 del(tags["TPE2"])
         except KeyError:
             pass
-
 
         if (len(metadata.images()) > 0):
             tags["APIC"] = [APICImage.converted(i).build()
@@ -659,7 +663,9 @@ class ID3v2_3Comment(ID3v2Comment):
 
         for (key,field) in cls.ITEM_MAP.items():
             field = getattr(metadata,field)
-            if ((field != u"") and (field != 0)):
+            if (key == 'COMM'):
+                tags[key] = [ID3CommentFrame.from_unicode(field)]
+            elif ((field != u"") and (field != 0)):
                 tags[key] = [unicode(field)]
 
         try:
@@ -806,7 +812,9 @@ class ID3v2_2Comment(ID3v2Comment):
 
         for (key,field) in cls.ITEM_MAP.items():
             field = getattr(metadata,field)
-            if ((field != u"") and (field != 0)):
+            if (key == 'COM'):
+                tags[key] = [ID3CommentFrame.from_unicode(field)]
+            elif ((field != u"") and (field != 0)):
                 tags[key] = [unicode(field)]
 
         if (tags["TP1"] == tags["TP2"]):
@@ -1109,6 +1117,14 @@ class ID3CommentFrame:
                              short_description=self.short_description,
                              encoding=self.encoding,
                              language=self.language)
+
+    @classmethod
+    def from_unicode(cls,value,max_encoding=1):
+        try:
+            value.encode('latin-1')
+            return ID3CommentFrame(content=value)
+        except UnicodeEncodeError:
+            return ID3CommentFrame(content=value,encoding=1)
 
 class ID3v1Comment(MetaData,list):
     ID3v1 = Con.Struct("id3v1",

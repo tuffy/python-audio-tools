@@ -69,6 +69,8 @@
 
 * TODO Add "comment" field support to all metadata types
   Don't forget to add unit tests for comment field.
+** TODO Sort "comment" fields correctly across all metadata types
+** TODO Add --comment support to tracktag
 * TODO Fix ID3v2 image support to handle Unicode descriptions
   The current implementation falls down on UTF-16 input,
   but I should have a solution from the COMM frame handler.
