@@ -17,10 +17,7 @@
 #along with this program; if not, write to the Free Software
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-from audiotools import MetaData,Con,re,os,Image,InvalidImage
-
-class EndOfID3v2Stream(Exception): pass
-class UnsupportedID3v2Version(Exception): pass
+from audiotools import MetaData,Con,re,os,cStringIO,Image,InvalidImage
 
 class Syncsafe32(Con.Adapter):
     def __init__(self, name):
@@ -41,992 +38,93 @@ class Syncsafe32(Con.Adapter):
             i = (i << 7) | (x & 0x7F)
         return i
 
-#UTF16CString and UTF16BECString implement a null-terminated string
-#of UTF-16 characters by reading them as unsigned 16-bit integers,
-#looking for the null terminator (0x0000) and then converting the integers
-#back before decoding.  It's a little half-assed, but it seems to work.
-#Even large UTF-16 characters with surrogate pairs (those above U+FFFF)
-#shouldn't have embedded 0x0000 bytes in them,
-#which ID3v2.2/2.3 aren't supposed to use anyway since they're limited
-#to UCS-2 encoding.
+class __BitstructToInt__(Con.Adapter):
+    def _encode(self, value, context):
+        return Con.Container(size=value)
 
-class WidecharCStringAdapter(Con.Adapter):
-    def __init__(self,obj,encoding):
-        Con.Adapter.__init__(self,obj)
-        self.encoding = encoding
+    def _decode(self, obj, context):
+        return obj.size
 
-    def _encode(self,obj,context):
-        return Con.GreedyRepeater(Con.UBInt16("s")).parse(obj.encode(
-                self.encoding)) + [0]
-
-    def _decode(self,obj,context):
-        c = Con.UBInt16("s")
-
-        return "".join([c.build(s) for s in obj[0:-1]]).decode(self.encoding)
-
-def UTF16CString(name):
-    return WidecharCStringAdapter(Con.RepeatUntil(lambda obj, ctx: obj == 0x0,
-                                                  Con.UBInt16(name)),
-                                  encoding='utf-16')
-
-
-
-def UTF16BECString(name):
-    return WidecharCStringAdapter(Con.RepeatUntil(lambda obj, ctx: obj == 0x0,
-                                                  Con.UBInt16(name)),
-                                  encoding='utf-16be')
-
-
-class ID3v2Comment(MetaData,dict):
+class ID3v22Frame:
     VALID_FRAME_ID = re.compile(r'[A-Z0-9]{4}')
-    FRAME_ID_LENGTH = 4
 
-    ID3v2_HEADER = Con.Struct("id3v2_header",
-                              Con.Const(Con.Bytes("file_id",3),'ID3'),
-                              Con.Byte("version_major"),
-                              Con.Byte("version_minor"),
-                              Con.Embed(Con.BitStruct("flags",
-                                Con.StrictRepeater(8,
-                                                   Con.Flag("flag")))),
-                              Syncsafe32("length"))
-
-    FRAME_HEADER = Con.Struct("id3v24_frame",
-                              Con.Bytes("frame_id",4),
-                              Syncsafe32("frame_size"),
-                              Con.Embed(
-            Con.BitStruct("flags",
-                          Con.Padding(1),
-                          Con.Flag("tag_alter"),
-                          Con.Flag("file_alter"),
-                          Con.Flag("read_only"),
-                          Con.StrictRepeater(5,
-                                             Con.Flag("reserved")),
-                          Con.Flag("grouping"),
-                          Con.Padding(2),
-                          Con.Flag("compression"),
-                          Con.Flag("encryption"),
-                          Con.Flag("unsynchronization"),
-                          Con.Flag("data_length"))))
-
-    COMMENT_FRAME_CONTENTS = Con.Struct(
-        "comm_frame",
-        Con.Byte("encoding"),
-        Con.String("language",3),
-        Con.Switch("short_description",
-                   lambda ctx: ctx.encoding,
-                   {0x00: Con.CString("s",encoding='latin-1'),
-                    0x01: UTF16CString("s"),
-                    0x02: UTF16BECString("s"),
-                    0x03: Con.CString("s",encoding='utf-8')}),
-        Con.Switch("content",
-                   lambda ctx: ctx.encoding,
-                   {0x00: Con.StringAdapter(Con.GreedyRepeater(
-                        Con.Field("s2",1)),
-                                            encoding='latin-1'),
-                    0x01: Con.StringAdapter(Con.GreedyRepeater(
-                        Con.Field("s2",1)),
-                                            encoding='utf-16'),
-                    0x02: Con.StringAdapter(Con.GreedyRepeater(
-                        Con.Field("s2",1)),
-                                            encoding='utf-16be'),
-                    0x03: Con.StringAdapter(Con.GreedyRepeater(
-                        Con.Field("s2",1)),
-                                            encoding='utf-8')}))
-
-    ATTRIBUTE_MAP = {'track_name':'TIT2',
-                     'track_number':'TRCK',
-                     'album_name':'TALB',
-                     'artist_name':'TPE1',
-                     'performer_name':'TPE2',
-                     'composer_name':'TCOM',
-                     'conductor_name':'TPE3',
-                     'media':'TMED',
-                     'ISRC':'TSRC',
-                     'copyright':'TCOP',
-                     'publisher':'TPUB',
-                     'year':'TYER',
-                     'date':'TRDA',
-                     'album_number':'TPOS',
-                     'comment':'COMM'}
-
-    ITEM_MAP = dict(map(reversed,ATTRIBUTE_MAP.items()))
-
-    #takes a filename
-    #returns an ID3v2Comment-based object
-    @classmethod
-    def read_id3v2_comment(cls, filename):
-        import cStringIO
-
-        f = file(filename,"rb")
-
-        try:
-             frames = {}
-
-             f.seek(0,0)
-             try:
-                 header = ID3v2Comment.ID3v2_HEADER.parse_stream(f)
-             except Con.ConstError:
-                 return {}
-             if (header.version_major == 0x04):
-                 comment_class = ID3v2Comment
-             elif (header.version_major == 0x03):
-                 comment_class = ID3v2_3Comment
-             elif (header.version_major == 0x02):
-                 comment_class = ID3v2_2Comment
-             else:
-                 raise UnsupportedID3v2Version()
-
-             stream = cStringIO.StringIO(f.read(header.length))
-             while (True):
-                 try:
-                     (frame_id,frame_data) = comment_class.read_id3v2_frame(stream)
-                     frames.setdefault(frame_id,[]).append(frame_data)
-                 except EndOfID3v2Stream:
-                     break
-
-             return comment_class(frames)
-
-        finally:
-            f.close()
-
-    #takes a stream of ID3v2 data
-    #returns a (frame id,frame data) tuple
-    #raises EndOfID3v2Stream if we've reached the end of valid frames
-    @classmethod
-    def read_id3v2_frame(cls, stream):
-        encode_map = {0:'ISO-8859-1',
-                      1:'UTF-16',
-                      2:'UTF-16BE',
-                      3:'UTF-8'}
-
-        try:
-            frame = cls.FRAME_HEADER.parse_stream(stream)
-        except:
-            raise EndOfID3v2Stream()
-
-        if (cls.VALID_FRAME_ID.match(frame.frame_id)):
-            if (frame.frame_id == 'COMM'):
-                try:
-                    comment = cls.COMMENT_FRAME_CONTENTS.parse(
-                        stream.read(frame.frame_size))
-
-                    return (frame.frame_id,
-                            ID3CommentFrame(
-                            content=comment.content,
-                            short_description=comment.short_description,
-                            encoding=comment.encoding,
-                            language=comment.language))
-                except Con.core.RangeError:
-                    return (frame.frame_id,u"")
-            if (frame.frame_id.startswith('T')):
-                encoding = ord(stream.read(1))
-                value = stream.read(frame.frame_size - 1)
-                return (frame.frame_id,
-                        value.decode(
-                            encode_map.get(encoding,
-                                           'ISO-8859-1'),
-                            'replace').rstrip(unichr(0x00))
-                        )
-            else:
-                return (frame.frame_id,
-                        stream.read(frame.frame_size))
-        else:
-            raise EndOfID3v2Stream()
-
-
-    #takes a list of (tag_id,tag_value) tuples
-    #returns a string of the whole ID3v2.4 tag
-    #tag_id should be a raw, 4 character string
-    #value should be a unicode string
-    @classmethod
-    def build_id3v2(cls, taglist):
-        tags = []
-        for (t_id,t_value) in taglist:
-            if (t_id == 'COMM'):
-                t_s = cls.COMMENT_FRAME_CONTENTS.build(t_value.container())
-            elif (t_id.startswith('T')):
-                try:
-                    t_s = chr(0x00) + t_value.encode('ISO-8859-1')
-                except UnicodeEncodeError:
-                    t_s = chr(0x03) + t_value.encode('UTF-8')
-            else:
-                t_s = t_value
-
-            tag = Con.Container()
-            tag.compression = False
-            tag.data_length = False
-            tag.encryption = False
-            tag.file_alter = False
-            tag.frame_id = t_id
-            tag.frame_size = len(t_s)
-            tag.grouping = False
-            tag.read_only = False
-            tag.tag_alter = True
-            tag.unsynchronization = False
-            tag.reserved = [0] * 5
-
-            tags.append(cls.FRAME_HEADER.build(tag) + t_s)
-
-        header = Con.Container()
-        header.experimental = False
-        header.extended_header = False
-        header.file_id = 'ID3'
-        header.footer = False
-        header.length = sum(map(len, tags))
-        header.unsynchronization = False
-        header.version_major = 4
-        header.version_minor = 0
-        header.flag = [0,0,0,0,0,0,0,0]
-
-        return cls.ID3v2_HEADER.build(header) + "".join(tags)
-
-    #metadata is a key->value dict of ID3v2 data
-    def __init__(self, metadata):
-        tracknum = re.match(
-            r'\d+',
-            metadata.get("TRCK",metadata.get("TRK",[u"0"]))[0])
-        if (tracknum is not None):
-            tracknum = int(tracknum.group(0))
-        else:
-            tracknum = 0
-
-        albumnum = re.match(
-            r'\d+',
-            metadata.get("TPOS",
-                         metadata.get("TPA",[u"0"]))[0])
-        if (albumnum is not None):
-            albumnum = int(albumnum.group(0))
-        else:
-            albumnum = 0
-
-
-        images = []
-        if ('APIC' in metadata):
-            for apic_frame in metadata['APIC']:
-                try:
-                    apic = APICImage.APIC_FRAME.parse(apic_frame)
-                except Con.RangeError:
-                    continue
-
-                try:
-                    images.append(APICImage(
-                            data=apic.data,
-                            mime_type=apic.mime_type.decode('ascii'),
-                            description=apic.description.decode(
-                                ('ascii',
-                                 'utf-16',
-                                 'utf-16be',
-                                 'utf-8')[apic.text_encoding],'replace'),
-                            apic_type=apic.picture_type))
-                except InvalidImage:
-                    pass
-
-        if ('PIC' in metadata):
-            for pic_frame in metadata['PIC']:
-                try:
-                    pic = PICImage.PIC_FRAME.parse(pic_frame)
-                except Con.RangeError:
-                    continue
-
-                images.append(PICImage(data=pic.data,
-                                       format=pic.format.decode('ascii'),
-                                       description=pic.description.decode(
-                    ('ascii','utf-16')[pic.text_encoding]),
-                                       pic_type=pic.picture_type))
-
-        MetaData.__init__(self,
-                          track_name=metadata.get("TIT2",
-                                                  metadata.get("TT2",[u""]))[0],
-
-                          track_number=tracknum,
-
-                          album_name=metadata.get("TALB",
-                                                  metadata.get("TAL",[u""]))[0],
-
-                          artist_name=metadata.get("TPE1",
-                                       metadata.get("TP1",
-                                        metadata.get("TOPE",
-                                         metadata.get("TCOM",
-                                          metadata.get("TOLY",
-                                           metadata.get("TEXT",
-                                            metadata.get("TOA",
-                                             metadata.get("TCM",[u""]))))))))[0],
-
-                          performer_name=metadata.get("TPE2",
-                                           metadata.get("TPE3",
-                                            metadata.get("TPE4",
-                                             metadata.get("TP2",
-                                              metadata.get("TP3",
-                                               metadata.get("TP4",[u""]))))))[0],
-                          composer_name=metadata.get("TCOM",
-                                          metadata.get("TCM",[u""]))[0],
-
-                          conductor_name=metadata.get("TPE3",[u""])[0],
-
-                          media=metadata.get("TMED",
-                                  metadata.get("TMT",[u""]))[0],
-
-                          ISRC=metadata.get("TSRC",
-                                 metadata.get("TRC",[u""]))[0],
-
-                          catalog=u"",
-
-                          copyright=metadata.get("TCOP",
-                                      metadata.get("TCR",[u""]))[0],
-
-                          publisher=metadata.get("TPUB",
-                                      metadata.get("TPB",[u""]))[0],
-
-                          year=metadata.get("TYER",
-                                metadata.get("TYE",[u""]))[0],
-
-                          date=metadata.get("TRDA",
-                                 metadata.get("TRD",[u""]))[0],
-
-                          album_number = albumnum,
-
-                          comment=metadata.get("COMM",
-                                   metadata.get("COM",
-                                      [ID3CommentFrame()]))[0].content,
-
-                          images=images)
-
-
-        dict.__init__(self,metadata)
-
-    #if an attribute is updated (e.g. self.track_name)
-    #make sure to update the corresponding dict pair
-    def __setattr__(self, key, value):
-        self.__dict__[key] = value
-
-        if (key in self.ATTRIBUTE_MAP):
-            if (key in ('track_number','album_number')):
-                #track_number and album_number integers
-                #are converted to Unicode objects
-                self[self.ATTRIBUTE_MAP[key]] = [unicode(value)]
-            elif (key == 'comment'):
-                #FIXME - from_unicode should vary based on the ID3v2
-                #comment type (i.e. ID3v2.4 comments should use UTF-8)
-                self[self.ATTRIBUTE_MAP[key]] = \
-                    [ID3CommentFrame.from_unicode(value)]
-            else:
-                self[self.ATTRIBUTE_MAP[key]] = [value]
-
-    #if a dict pair is updated (e.g. self['TIT2'])
-    #make sure to update the corresponding attribute
-    def __setitem__(self, key, value):
-        dict.__setitem__(self, key, value)
-
-        if (key in self.ITEM_MAP):
-            if (key in ('TRCK','TPOS')):
-                #track_number and album_number are converted
-                #from Unicode objects to integers
-                int_val = re.match(r'\d+',value[0])
-                if (int_val is not None):
-                    self.__dict__[self.ITEM_MAP[key]] = int(int_val.group(0))
-            elif (key in ('COMM','COM')):
-                self.__dict__[self.ITEM_MAP[key]] = value[0].content
-            else:
-                self.__dict__[self.ITEM_MAP[key]] = value[0]
-
-    def add_image(self, image):
-        image = APICImage.converted(image)
-
-        self.setdefault('APIC',[]).append(image.build())
-        MetaData.add_image(self, image)
-
-    def delete_image(self, image):
-        del(self['APIC'][self['APIC'].index(image.build())])
-        MetaData.delete_image(self, image)
-
-
-    @classmethod
-    def converted(cls, metadata):
-        if ((metadata is None) or (isinstance(metadata,ID3v2Comment))):
-            return metadata
-
-        tags = {}
-
-        for (key,field) in cls.ITEM_MAP.items():
-            field = getattr(metadata,field)
-            if (key == 'COMM'):
-                tags[key] = [ID3CommentFrame.from_unicode(field)]
-            elif ((field != u"") and (field != 0)):
-                tags[key] = [unicode(field)]
-
-        try:
-            if (tags["TPE1"] == tags["TPE2"]):
-                del(tags["TPE2"])
-        except KeyError:
-            pass
-
-        if (len(metadata.images()) > 0):
-            tags["APIC"] = [APICImage.converted(i).build()
-                            for i in metadata.images()]
-
-        return ID3v2Comment(tags)
-
-    def build_tag(self):
-        taglist = []
-        for (key,values) in self.items():
-            for value in values:
-                taglist.append((key,value))
-        return self.build_id3v2(taglist)
-
-    def __comment_name__(self):
-        return u'ID3v2.4'
-
-    def __comment_pairs__(self):
-        def __weight__(pair):
-            if (pair[0] == 'TIT2'):
-                return (1,pair[0],pair[1])
-            elif (pair[0] == 'TALB'):
-                return (2,pair[0],pair[1])
-            elif (pair[0] == 'TRCK'):
-                return (3,pair[0],pair[1])
-            elif (pair[0] == 'TPOS'):
-                return (4,pair[0],pair[1])
-            elif (pair[0] == 'TPE1'):
-                return (5,pair[0],pair[1])
-            elif (pair[0] == 'TPE2'):
-                return (6,pair[0],pair[1])
-            elif (pair[0] == 'TCOM'):
-                return (7,pair[0],pair[1])
-            elif (pair[0] == 'TPE3'):
-                return (8,pair[0],pair[1])
-
-            elif (pair[0] == 'TPUB'):
-                return (10,pair[0],pair[1])
-            elif (pair[0] == 'TSRC'):
-                return (11,pair[0],pair[1])
-            elif (pair[0] == 'TMED'):
-                return (12,pair[0],pair[1])
-            elif (pair[0] == 'TYER'):
-                return (13,pair[0],pair[1])
-            elif (pair[0] == 'TRDA'):
-                return (14,pair[0],pair[1])
-            elif (pair[0] == 'TCOP'):
-                return (15,pair[0],pair[1])
-            elif (pair[0].startswith('T')):
-                return (16,pair[0],pair[1])
-            else:
-                return (17,pair[0],pair[1])
-
-        def __by_weight__(item1,item2):
-            return cmp(__weight__(item1),
-                       __weight__(item2))
-
-        pairs = []
-
-        for (key,values) in sorted(self.items(),__by_weight__):
-            for value in values:
-                if (isinstance(value,unicode)):
-                    pairs.append(('    ' + key,value))
-                elif (isinstance(value,ID3CommentFrame)):
-                    pairs.append(('    ' + key,unicode(value)))
-                else:
-                    if (len(value) <= 20):
-                        pairs.append(('    ' + key,
-                                      unicode(value.encode('hex'))))
-                    else:
-                        pairs.append(('    ' + key,
-                                      unicode(value.encode('hex')[0:39].upper()) + u"\u2026"))
-
-        return pairs
-
-    @classmethod
-    def supports_images(cls):
-        return True
-
-    #takes a file stream
-    #checks that stream for an ID3v2 comment
-    #if found, repositions the stream past it
-    #if not, leaves the stream in the current location
-    @classmethod
-    def skip(cls, file):
-        if (file.read(3) == 'ID3'):
-            file.seek(0,0)
-            #parse the header
-            h = ID3v2Comment.ID3v2_HEADER.parse_stream(file)
-            #seek to the end of its length
-            file.seek(h.length,1)
-            #skip any null bytes after the ID3v2 tag
-            c = file.read(1)
-            while (c == '\x00'):
-                c = file.read(1)
-            file.seek(-1,1)
-        else:
-            try:
-                file.seek(-3,1)
-            except IOError:
-                pass
-
-class ID3v2_3Comment(ID3v2Comment):
-    FRAME_HEADER = Con.Struct("id3v23_frame",
-                              Con.Bytes("frame_id",4),
-                              Con.UBInt32("frame_size"),
-                              Con.Embed(
-            Con.BitStruct("flags",
-                          Con.Flag("tag_alter"),
-                          Con.Flag("file_alter"),
-                          Con.Flag("read_only"),
-                          Con.Padding(5),
-                          Con.Flag("compression"),
-                          Con.Flag("encryption"),
-                          Con.Flag("grouping"),
-                          Con.Padding(5))))
-
-    COMMENT_FRAME_CONTENTS = Con.Struct(
-        "comm_frame",
-        Con.Byte("encoding"),
-        Con.String("language",3),
-        Con.Switch("short_description",
-                   lambda ctx: ctx.encoding,
-                   {0x00: Con.CString("s",encoding='latin-1'),
-                    0x01: UTF16CString("s")}),
-        Con.Switch("content",
-                   lambda ctx: ctx.encoding,
-                   {0x00: Con.StringAdapter(Con.GreedyRepeater(
-                        Con.Field("s2",1)),
-                                            encoding='latin-1'),
-                    0x01: Con.StringAdapter(Con.GreedyRepeater(
-                        Con.Field("s2",1)),
-                                            encoding='utf-16')}))
-
-    ATTRIBUTE_MAP = {'track_name':'TIT2',
-                     'track_number':'TRCK',
-                     'album_name':'TALB',
-                     'artist_name':'TPE1',
-                     'performer_name':'TPE2',
-                     'composer_name':'TCOM',
-                     'conductor_name':'TPE3',
-                     'media':'TMED',
-                     'ISRC':'TSRC',
-                     'copyright':'TCOP',
-                     'publisher':'TPUB',
-                     'year':'TYER',
-                     'date':'TRDA',
-                     'album_number':'TPOS',
-                     'comment':'COMM'}
-
-    ITEM_MAP = dict(map(reversed,ATTRIBUTE_MAP.items()))
-
-    #takes a stream of ID3v2 data
-    #returns a (frame id,frame data) tuple
-    #raises EndOfID3v2Stream if we've reached the end of valid frames
-    @classmethod
-    def read_id3v2_frame(cls, stream):
-        encode_map = {0:'ISO-8859-1',
-                      1:'UTF-16'}
-
-        try:
-            frame = cls.FRAME_HEADER.parse_stream(stream)
-        except:
-            raise EndOfID3v2Stream()
-
-        if (cls.VALID_FRAME_ID.match(frame.frame_id)):
-            if (frame.frame_id == 'COMM'):
-                try:
-                    comment = cls.COMMENT_FRAME_CONTENTS.parse(
-                        stream.read(frame.frame_size))
-
-                    return (frame.frame_id,
-                            ID3CommentFrame(
-                            content=comment.content,
-                            short_description=comment.short_description,
-                            encoding=comment.encoding,
-                            language=comment.language))
-                except Con.core.RangeError:
-                    return (frame.frame_id,u"")
-            if (frame.frame_id.startswith('T')):
-                encoding = ord(stream.read(1))
-                value = stream.read(frame.frame_size - 1)
-
-                return (frame.frame_id,
-                        value.decode(
-                        encode_map.get(encoding,
-                                       'ISO-8859-1'),
-                        'replace').rstrip(unichr(0x00))
-                        )
-            else:
-                return (frame.frame_id,
-                        stream.read(frame.frame_size))
-        else:
-            raise EndOfID3v2Stream()
-
-    @classmethod
-    def converted(cls, metadata):
-        if ((metadata is None) or (isinstance(metadata,ID3v2_3Comment))):
-            return metadata
-
-        tags = {}
-
-        for (key,field) in cls.ITEM_MAP.items():
-            field = getattr(metadata,field)
-            if (key == 'COMM'):
-                tags[key] = [ID3CommentFrame.from_unicode(field)]
-            elif ((field != u"") and (field != 0)):
-                tags[key] = [unicode(field)]
-
-        try:
-            if (tags["TPE1"] == tags["TPE2"]):
-                del(tags["TPE2"])
-        except KeyError:
-            pass
-
-        if (len(metadata.images()) > 0):
-            tags["APIC"] = [APICImage.converted(i).build()
-                            for i in metadata.images()]
-
-        return ID3v2_3Comment(tags)
-
-    def __comment_name__(self):
-        return u'ID3v2.3'
-
-    @classmethod
-    def build_id3v2(cls, taglist):
-        tags = []
-
-        for (t_id,t_value) in taglist:
-            if (t_id == 'COMM'):
-                t_s = cls.COMMENT_FRAME_CONTENTS.build(t_value.container())
-            elif (t_id.startswith('T')):
-                try:
-                    t_s = chr(0x00) + t_value.encode('ISO-8859-1')
-                except UnicodeEncodeError:
-                    t_s = chr(0x01) + t_value.encode('UTF-16')
-            else:
-                t_s = t_value
-
-            tag = Con.Container()
-            tag.tag_alter = False
-            tag.file_alter = False
-            tag.read_only = False
-            tag.compression = False
-            tag.encryption = False
-            tag.grouping = False
-            tag.frame_id = t_id
-            tag.frame_size = len(t_s)
-
-            tags.append(cls.FRAME_HEADER.build(tag) + t_s)
-
-        header = Con.Container()
-        header.experimental = False
-        header.extended_header = False
-        header.file_id = 'ID3'
-        header.footer = False
-        header.length = sum(map(len, tags))
-        header.unsynchronization = False
-        header.version_major = 3
-        header.version_minor = 0
-        header.flag = [0,0,0,0,0,0,0,0]
-
-        return cls.ID3v2_HEADER.build(header) + "".join(tags)
-
-class ID3v2_2Comment(ID3v2Comment):
-    VALID_FRAME_ID = re.compile(r'[A-Z0-9]{3}')
-    FRAME_ID_LENGTH = 3
-
-    FRAME_HEADER = Con.Struct("id3v22_frame",
-                              Con.Bytes("frame_id",3),
-                              Con.Embed(Con.BitStruct("size",
-            Con.Bits("frame_size",24))))
-
-    COMMENT_FRAME_CONTENTS = Con.Struct(
-        "com_frame",
-        Con.Byte("encoding"),
-        Con.String("language",3),
-        Con.Switch("short_description",
-                   lambda ctx: ctx.encoding,
-                   {0x00: Con.CString("s",encoding='latin-1'),
-                    0x01: Con.CString("s",terminators='\x00\x00',
-                                      encoding='utf-16',
-                                      char_field=Con.Field(None,2))}),
-        Con.Switch("content",
-                   lambda ctx: ctx.encoding,
-                   {0x00: Con.StringAdapter(Con.GreedyRepeater(
-                        Con.Field("s2",1)),
-                                            encoding='latin-1'),
-                    0x01: Con.StringAdapter(Con.GreedyRepeater(
-                        Con.Field("s2",2)),
-                                            encoding='utf-16')}))
-
-    ATTRIBUTE_MAP = {'track_name':'TT2',
-                     'track_number':'TRK',
-                     'album_name':'TAL',
-                     'artist_name':'TP1',
-                     'performer_name':'TP2',
-                     'composer_name':'TCM',
-                     'media':'TMT',
-                     'ISRC':'TRC',
-                     'copyright':'TCR',
-                     'publisher':'TPB',
-                     'year':'TYE',
-                     'date':'TRD',
-                     'album_number':'TPA',
-                     'comment':'COM'}
-
-    ITEM_MAP = dict(map(reversed,ATTRIBUTE_MAP.items()))
-
-    @classmethod
-    def read_id3v2_frame(cls, stream):
-        encode_map = {0:'ISO-8859-1',
-                      1:'UTF-16'}
-        try:
-            frame = cls.FRAME_HEADER.parse_stream(stream)
-        except:
-            raise EndOfID3v2Stream()
-
-        if (cls.VALID_FRAME_ID.match(frame.frame_id)):
-            if (frame.frame_id == 'COM'):
-                try:
-                    comment = cls.COMMENT_FRAME_CONTENTS.parse(
-                        stream.read(frame.frame_size))
-
-                    return (frame.frame_id,
-                            ID3CommentFrame(
-                            content=comment.content,
-                            short_description=comment.short_description,
-                            encoding=comment.encoding,
-                            language=comment.language))
-                except Con.core.RangeError:
-                    return (frame.frame_id,u"")
-            elif (frame.frame_id.startswith('T')):
-                encoding = ord(stream.read(1))
-                value = stream.read(frame.frame_size - 1)
-                return (frame.frame_id,
-                        value.decode(encode_map.get(encoding,'ISO-8859-1'),
-                                     'replace').rstrip(unichr(0x00)))
-            else:
-                return (frame.frame_id,
-                        stream.read(frame.frame_size))
-        else:
-            raise EndOfID3v2Stream()
-
-    @classmethod
-    def converted(cls, metadata):
-        if ((metadata is None) or (isinstance(metadata,ID3v2_2Comment))):
-            return metadata
-
-        tags = {}
-
-        for (key,field) in cls.ITEM_MAP.items():
-            field = getattr(metadata,field)
-            if (key == 'COM'):
-                tags[key] = [ID3CommentFrame.from_unicode(field)]
-            elif ((field != u"") and (field != 0)):
-                tags[key] = [unicode(field)]
-
-        if (tags["TP1"] == tags["TP2"]):
-            del(tags["TP2"])
-
-        if (len(metadata.images()) > 0):
-            tags['PIC'] = [PICImage.converted(i).build()
-                           for i in metadata.images()]
-
-        return ID3v2_2Comment(tags)
-
-    def __comment_name__(self):
-        return u'ID3v2.2'
-
-    def __comment_pairs__(self):
-        def __weight__(pair):
-            if (pair[0] == 'TT2'):
-                return (1,pair[0],pair[1])
-            elif (pair[0] == 'TAL'):
-                return (2,pair[0],pair[1])
-            elif (pair[0] == 'TRK'):
-                return (3,pair[0],pair[1])
-            elif (pair[0] == 'TPA'):
-                return (4,pair[0],pair[1])
-            elif (pair[0] == 'TP1'):
-                return (5,pair[0],pair[1])
-            elif (pair[0] == 'TCM'):
-                return (6,pair[0],pair[1])
-
-            elif (pair[0] == 'TPB'):
-                return (9,pair[0],pair[1])
-            elif (pair[0] == 'TRC'):
-                return (10,pair[0],pair[1])
-            elif (pair[0] == 'TMT'):
-                return (11,pair[0],pair[1])
-            elif (pair[0] == 'TOR'):
-                return (12,pair[0],pair[1])
-            elif (pair[0] == 'TRD'):
-                return (13,pair[0],pair[1])
-            elif (pair[0] == 'TCR'):
-                return (14,pair[0],pair[1])
-            elif (pair[0].startswith('T')):
-                return (15,pair[0],pair[1])
-            else:
-                return (16,pair[0],pair[1])
-
-        def __by_weight__(item1,item2):
-            return cmp(__weight__(item1),
-                       __weight__(item2))
-
-        pairs = []
-
-        for (key,values) in sorted(self.items(),__by_weight__):
-            for value in values:
-                if (isinstance(value,unicode)):
-                    pairs.append(('    ' + key,value))
-                elif (isinstance(value,ID3CommentFrame)):
-                    pairs.append(('    ' + key,unicode(value)))
-                else:
-                    if (len(value) <= 20):
-                        pairs.append(('    ' + key,
-                                      unicode(value.encode('hex'))))
-                    else:
-                        pairs.append(('    ' + key,
-                                      unicode(value.encode('hex')[0:39].upper()) + u"\u2026"))
-
-        return pairs
-
-
-    @classmethod
-    def build_id3v2(cls, taglist):
-        tags = []
-
-        for (t_id,t_value) in taglist:
-            if (t_id == 'COM'):
-                t_s = cls.COMMENT_FRAME_CONTENTS.build(t_value.container())
-            elif (t_id.startswith('T')):
-                try:
-                    t_s = chr(0x00) + t_value.encode('ISO-8859-1')
-                except UnicodeEncodeError:
-                    t_s = chr(0x01) + t_value.encode('UTF-16')
-            else:
-                t_s = t_value
-
-            tag = Con.Container()
-            tag.frame_id = t_id
-            tag.frame_size = len(t_s)
-
-            tags.append(cls.FRAME_HEADER.build(tag) + t_s)
-
-        header = Con.Container()
-        header.experimental = False
-        header.extended_header = False
-        header.file_id = 'ID3'
-        header.footer = False
-        header.length = sum(map(len, tags))
-        header.unsynchronization = False
-        header.version_major = 2
-        header.version_minor = 0
-        header.flag = [0,0,0,0,0,0,0,0]
-
-        return cls.ID3v2_HEADER.build(header) + "".join(tags)
-
-    def add_image(self, image):
-        image = PICImage.converted(image)
-
-        self.setdefault('PIC',[]).append(image.build())
-        MetaData.add_image(self, image)
-
-    def delete_image(self, image):
-        del(self['PIC'][self['PIC'].index(image.build())])
-        MetaData.delete_image(self, image)
-
-
-class APICImage(Image):
-
-    #FIXME - UTF-16 description strings will break this
-    #        because of the embedded NULL bytes.
-    #        Construct's CString won't look two bytes ahead
-    #        to find a UTF-16 NULL, so we're hosed.
-    #        Just another example of ID3v2 unpleasantness.
-    APIC_FRAME = Con.Struct('APIC',
-                            Con.Byte('text_encoding'),
-                            Con.CString('mime_type'),
-                            Con.Byte('picture_type'),
-                            Con.CString('description'),
-                            Con.StringAdapter(
-        Con.GreedyRepeater(Con.Field('data',1))))
-
-    #mime_type and description are unicode strings
-    #apic_type is an int
-    #data is a string
-    def __init__(self, data, mime_type, description, apic_type):
-        img = Image.new(data,u'',0)
-
-        self.apic_type = apic_type
-        Image.__init__(self,
-                       data=data,
-                       mime_type=mime_type,
-                       width=img.width,
-                       height=img.height,
-                       color_depth=img.color_depth,
-                       color_count=img.color_count,
-                       description=description,
-                       type={3:0,4:1,5:2,6:3}.get(apic_type,4))
-
-    def type_string(self):
-        return {0:"Other",
-                1:"32x32 pixels 'file icon' (PNG only)",
-                2:"Other file icon",
-                3:"Cover (front)",
-                4:"Cover (back)",
-                5:"Leaflet page",
-                6:"Media (e.g. label side of CD)",
-                7:"Lead artist/lead performer/soloist",
-                8:"Artist / Performer",
-                9:"Conductor",
-                10:"Band / Orchestra",
-                11:"Composer",
-                12:"Lyricist / Text writer",
-                13:"Recording Location",
-                14:"During recording",
-                15:"During performance",
-                16:"Movie/Video screen capture",
-                17:"A bright coloured fish",
-                18:"Illustration",
-                19:"Band/Artist logotype",
-                20:"Publisher/Studio logotype"}.get(self.apic_type,"Other")
-
-
-    def __repr__(self):
-        return "APICImage(mime_type=%s,width=%s,height=%s,description=%s,type=%s,apic_type=%s,color_depth=%s,color_count=%s,...)" % \
-               (repr(self.mime_type),repr(self.width),repr(self.height),
-                repr(self.description),
-                repr(self.type),repr(self.apic_type),
-                repr(self.color_depth),repr(self.color_count))
-
-    @classmethod
-    def converted(cls, image):
-        return APICImage(data=image.data,
-                         mime_type=image.mime_type,
-                         description=image.description,
-                         apic_type={0:3,1:4,2:5,3:6}.get(image.type,0))
+    FRAME = Con.Struct("id3v22_frame",
+                       Con.Bytes("frame_id",3),
+                       Con.PascalString("data",
+                                        length_field=__BitstructToInt__(
+                Con.BitStruct("size",Con.Bits("size",24)))))
+
+    def __init__(self,frame_id,data):
+        self.id = frame_id
+        self.data = data
 
     def build(self):
+        return self.FRAME.build(Con.Container(frame_id=self.id,
+                                              data=self.data))
+
+    @classmethod
+    def parse(cls,container):
+        if (container.frame_id.startswith('T')):
+            encoding_byte = ord(container.data[0])
+            return ID3v22TextFrame(container.frame_id,
+                                   encoding_byte,
+                                   container.data[1:].decode(
+                    ID3v22TextFrame.ENCODING[encoding_byte]))
+        else:
+            return cls(frame_id=container.frame_id,
+                       data=container.data)
+
+class ID3v22TextFrame(ID3v22Frame):
+    ENCODING = {0x00:"latin-1",
+                0x01:"utf-16"}
+
+    #encoding is an encoding byte
+    #s is a unicode string
+    def __init__(self,frame_id,encoding,s):
+        self.id = frame_id
+        self.encoding = encoding
+        self.string = s
+
+    def __unicode__(self):
+        return self.string
+
+    def __int__(self):
         try:
-            description = self.description.encode('ascii')
-            text_encoding = 0
-        except UnicodeEncodeError:
-            description = self.description.encode('utf-8')
-            text_encoding = 3
+            return int(re.findall(r'\d+',self.string)[0])
+        except IndexError:
+            return 0
 
-        return self.APIC_FRAME.build(
-            Con.Container(text_encoding=text_encoding,
-                          mime_type=self.mime_type.encode('ascii','replace'),
-                          picture_type=self.apic_type,
-                          description=description,
-                          data=self.data))
+    @classmethod
+    def from_unicode(cls,frame_id,s):
+        for encoding in 0x00,0x01:
+            try:
+                s.encode(cls.ENCODING[encoding])
+                return cls(frame_id,encoding,s)
+            except UnicodeEncodeError:
+                continue
 
-class PICImage(Image):
-    PIC_FRAME = Con.Struct('pic_frame',
-                           Con.Byte('text_encoding'),
-                           Con.String('format',3),
-                           Con.Byte('picture_type'),
-                           Con.CString('description'),
-                           Con.StringAdapter(
-        Con.GreedyRepeater(Con.Field('data',1))))
+    def build(self):
+        return self.FRAME.build(Con.Container(
+                frame_id=self.id,
+                data=chr(self.encoding) + \
+                    self.string.encode(self.ENCODING[self.encoding],
+                                       'replace')))
+
+class ID3v22PicFrame(ID3v22Frame,Image):
+    FRAME = Con.Struct('pic_frame',
+                       Con.Byte('text_encoding'),
+                       Con.String('format',3),
+                       Con.Byte('picture_type'),
+                       Con.CString('description'),
+                       Con.StringAdapter(
+            Con.GreedyRepeater(Con.Field('data',1))))
 
     #format and description are unicode strings
     #pic_type is an int
     #data is a string
     def __init__(self, data, format, description, pic_type):
+        ID3v22Frame.__init__(self,'PIC',None)
+
         img = Image.new(data,u'',0)
 
         self.pic_type = pic_type
@@ -1041,47 +139,6 @@ class PICImage(Image):
                        description=description.decode('ascii','replace'),
                        type={3:0,4:1,5:2,6:3}.get(pic_type,4))
 
-    def type_string(self):
-        return {0:"Other",
-                1:"32x32 pixels 'file icon' (PNG only)",
-                2:"Other file icon",
-                3:"Cover (front)",
-                4:"Cover (back)",
-                5:"Leaflet page",
-                6:"Media (e.g. label side of CD)",
-                7:"Lead artist/lead performer/soloist",
-                8:"Artist / Performer",
-                9:"Conductor",
-                10:"Band / Orchestra",
-                11:"Composer",
-                12:"Lyricist / Text writer",
-                13:"Recording Location",
-                14:"During recording",
-                15:"During performance",
-                16:"Movie/Video screen capture",
-                17:"A bright coloured fish",
-                18:"Illustration",
-                19:"Band/Artist logotype",
-                20:"Publisher/Studio logotype"}.get(self.pic_type,"Other")
-
-    def __repr__(self):
-        return "PICImage(format=%s,description=%s,pic_type=%s,...)" % \
-               (repr(self.format),repr(self.description),
-                repr(self.pic_type))
-
-    @classmethod
-    def converted(cls, image):
-        return PICImage(data=image.data,
-                        format={u"image/png":u"PNG",
-                                u"image/jpeg":u"JPG",
-                                u"image/jpg":u"JPG",
-                                u"image/x-ms-bmp":u"BMP",
-                                u"image/gif":u"GIF",
-                                u"image/tiff":u"TIF"}.get(image.mime_type,
-                                                          u"JPG"),
-                        description=image.description,
-                        pic_type={0:3,4:1,2:5,3:6}.get(image.type,0))
-
     def build(self):
         try:
             description = self.description.encode('ascii')
@@ -1090,261 +147,176 @@ class PICImage(Image):
             description = self.description.encode('utf-16')
             text_encoding = 1
 
-        return self.PIC_FRAME.build(
+        return self.FRAME.build(
             Con.Container(text_encoding=text_encoding,
                           format=self.format.encode('ascii'),
                           picture_type=self.pic_type,
                           description=description,
                           data=self.data))
 
-class ID3CommentFrame:
-    #content and short_description must by unicode strings
-    #encoding should be an integer
-    #language should be a 3 character language field
-    def __init__(self,content=u"",short_description=u"",
-                 encoding=0,language="eng"):
-        self.content = content
-        self.short_description = short_description
-        self.encoding = encoding
-        self.language = language
+    @classmethod
+    def converted(cls, image):
+        return cls(data=image.data,
+                   format={u"image/png":u"PNG",
+                           u"image/jpeg":u"JPG",
+                           u"image/jpg":u"JPG",
+                           u"image/x-ms-bmp":u"BMP",
+                           u"image/gif":u"GIF",
+                           u"image/tiff":u"TIF"}.get(image.mime_type,
+                                                     u"JPG"),
+                   description=image.description,
+                   pic_type={0:3,4:1,2:5,3:6}.get(image.type,0))
 
-    def __unicode__(self):
-        return self.content
+class ID3v22Comment(MetaData):
+    Frame = ID3v22Frame
+    TextFrame = ID3v22TextFrame
+    PictureFrame = ID3v22PicFrame
 
-    #returns a Construct Container object from our contents
-    def container(self):
-        return Con.Container(content=self.content,
-                             short_description=self.short_description,
-                             encoding=self.encoding,
-                             language=self.language)
+    TAG_HEADER = Con.Struct("id3v22_header",
+                            Con.Const(Con.Bytes("file_id",3),'ID3'),
+                            Con.Const(Con.Byte("version_major"),0x02),
+                            Con.Const(Con.Byte("version_minor"),0x00),
+                            Con.Embed(Con.BitStruct("flags",
+                                                    Con.Flag("unsync"),
+                                                    Con.Flag("compression"),
+                                                    Con.Padding(6))),
+                            Syncsafe32("length"))
+
+    TAG_FRAMES = Con.GreedyRepeater(Frame.FRAME)
+
+    ATTRIBUTE_MAP = {'track_name':'TT2',
+                     'track_number':'TRK',
+                     'album_name':'TAL',
+                     'artist_name':'TP1',
+                     'performer_name':'TP2',
+                     'composer_name':'TCM',
+                     'media':'TMT',
+                     'ISRC':'TRC',
+                     'copyright':'TCR',
+                     'publisher':'TPB',
+                     'year':'TYE',
+                     'date':'TRD',
+                     'album_number':'TPA'}
+                     #'comment':'COM'}
+
+    ITEM_MAP = dict(map(reversed,ATTRIBUTE_MAP.items()))
+
+    INTEGER_ITEMS = ('TRK','TPA')
+
+    #frames should be a list of ID3v22Frame-compatible objects
+    def __init__(self,frames):
+        self.frames = {}  #a frame_id->[frame list] mapping
+
+        for frame in frames:
+            self.frames.setdefault(frame.id,[]).append(frame)
+
+        attribs = {}
+        for key in self.frames.keys():
+            if (key in self.ITEM_MAP.keys()):
+                if (key not in self.INTEGER_ITEMS):
+                    attribs[self.ITEM_MAP[key]] = unicode(self.frames[key][0])
+                else:
+                    attribs[self.ITEM_MAP[key]] = int(self.frames[key][0])
+
+        MetaData.__init__(self,**attribs)
 
     @classmethod
-    def from_unicode(cls,value,max_encoding=1):
-        try:
-            value.encode('latin-1')
-            return ID3CommentFrame(content=value)
-        except UnicodeEncodeError:
-            return ID3CommentFrame(content=value,encoding=1)
+    def parse(cls, stream):
+        header = cls.TAG_HEADER.parse_stream(stream)
 
-class ID3v1Comment(MetaData,list):
-    ID3v1 = Con.Struct("id3v1",
-      Con.Const(Con.String("identifier",3),'TAG'),
-      Con.String("song_title",30),
-      Con.String("artist",30),
-      Con.String("album",30),
-      Con.String("year",4),
-      Con.String("comment",28),
-      Con.Padding(1),
-      Con.Byte("track_number"),
-      Con.Byte("genre"))
+        #read in the whole tag, and strip any padding
+        stream = cStringIO.StringIO(stream.read(header.length).rstrip(chr(0)))
 
-    ID3v1_NO_TRACKNUMBER = Con.Struct("id3v1_notracknumber",
-      Con.Const(Con.String("identifier",3),'TAG'),
-      Con.String("song_title",30),
-      Con.String("artist",30),
-      Con.String("album",30),
-      Con.String("year",4),
-      Con.String("comment",30),
-      Con.Byte("genre"))
+        #read in a collection of parsed Frame containers
+        return cls([cls.Frame.parse(container) for container in
+                    cls.TAG_FRAMES.parse_stream(stream)])
 
-    ATTRIBUTES = ['track_name',
-                  'artist_name',
-                  'album_name',
-                  'year',
-                  'comment',
-                  'track_number']
-
-    #takes an open mp3 file object
-    #returns a (song title, artist, album, year, comment, track number) tuple
-    #if no ID3v1 tag is present, returns a tuple with those fields blank
-    #all text is in unicode
-    #if track number is -1, the id3v1 comment could not be found
     @classmethod
-    def read_id3v1_comment(cls, mp3filename):
-        mp3file = file(mp3filename,"rb")
-        try:
-            mp3file.seek(-128,2)
+    def converted(cls, metadata):
+        if ((metadata is None) or (isinstance(metadata,cls))):
+            return metadata
+
+        frames = []
+
+        for (key,field) in cls.ITEM_MAP.items():
+            value = getattr(metadata,field)
+            if (key not in cls.INTEGER_ITEMS):
+                if (len(value.strip()) > 0):
+                    frames.append(cls.TextFrame.from_unicode(key,value))
+            else:
+                if (value != 0):
+                    frames.append(cls.TextFrame.from_unicode(key,unicode(value)))
+
+        for image in metadata.images():
+            frames.append(cls.PictureFrame.converted(image))
+
+        return cls(frames)
+
+    def build(self):
+        subframes = "".join(["".join([value.build() for value in values])
+                             for values in self.frames.values()])
+
+        return self.TAG_HEADER.build(
+            Con.Container(file_id='ID3',
+                          version_major=0x02,
+                          version_minor=0x00,
+                          unsync=False,
+                          compression=False,
+                          length=len(subframes))) + subframes
+
+    #takes a file stream
+    #checks that stream for an ID3v2 comment
+    #if found, repositions the stream past it
+    #if not, leaves the stream in the current location
+    @classmethod
+    def skip(cls, file):
+        if (file.read(3) == 'ID3'):
+            file.seek(0,0)
+            #parse the header
+            h = cls.TAG_HEADER.parse_stream(file)
+            #seek to the end of its length
+            file.seek(h.length,1)
+            #skip any null bytes after the ID3v2 tag
+            c = file.read(1)
+            while (c == '\x00'):
+                c = file.read(1)
+            file.seek(-1,1)
+        else:
             try:
-                id3v1 = ID3v1Comment.ID3v1.parse(mp3file.read())
-            except Con.adapters.PaddingError:
-                mp3file.seek(-128,2)
-                id3v1 = ID3v1Comment.ID3v1_NO_TRACKNUMBER.parse(mp3file.read())
-                id3v1.track_number = 0
-            except Con.ConstError:
-                return tuple([u""] * 5 + [-1])
+                file.seek(-3,1)
+            except IOError:
+                pass
 
-            field_list = (id3v1.song_title,
-                          id3v1.artist,
-                          id3v1.album,
-                          id3v1.year,
-                          id3v1.comment)
+    #takes a filename
+    #returns an ID3v2Comment-based object
+    @classmethod
+    def read_id3v2_comment(cls, filename):
+        import cStringIO
 
-            return tuple(map(lambda t:
-                             t.rstrip('\x00').decode('ascii','replace'),
-                             field_list) + [id3v1.track_number])
+        f = file(filename,"rb")
+
+        try:
+             f.seek(0,0)
+             try:
+                 header = ID3v2Comment.TAG_HEADER.parse_stream(f)
+             except Con.ConstError:
+                 raise UnsupportedID3v2Version()
+             #if (header.version_major == 0x04):
+             #    comment_class = ID3v2Comment
+             #elif (header.version_major == 0x03):
+             #    comment_class = ID3v2_3Comment
+             if (header.version_major == 0x02):
+                 comment_class = ID3v22Comment
+             else:
+                 raise UnsupportedID3v2Version()
+
+             f.seek(0,0)
+             return comment_class.parse(f)
         finally:
-            mp3file.close()
+            f.close()
 
 
-    #takes several unicode strings (except for track_number, an int)
-    #pads them with nulls and returns a complete ID3v1 tag
-    @classmethod
-    def build_id3v1(cls, song_title, artist, album, year, comment,
-                    track_number):
-        def __s_pad__(s,length):
-            if (len(s) < length):
-                return s + chr(0) * (length - len(s))
-            else:
-                s = s[0:length].rstrip()
-                return s + chr(0) * (length - len(s))
+ID3v2Comment = ID3v22Comment
 
-        c = Con.Container()
-        c.identifier = 'TAG'
-        c.song_title = __s_pad__(song_title.encode('ascii','replace'),30)
-        c.artist = __s_pad__(artist.encode('ascii','replace'),30)
-        c.album = __s_pad__(album.encode('ascii','replace'),30)
-        c.year = __s_pad__(year.encode('ascii','replace'),4)
-        c.comment = __s_pad__(comment.encode('ascii','replace'),28)
-        c.track_number = int(track_number)
-        c.genre = 0
+from __id3v1__ import *
 
-        return ID3v1Comment.ID3v1.build(c)
-
-    #metadata is the title,artist,album,year,comment,tracknum tuple returned by
-    #read_id3v1_comment
-    def __init__(self, metadata):
-        MetaData.__init__(self,
-                          track_name=metadata[0],
-                          track_number=metadata[5],
-                          album_name=metadata[2],
-                          artist_name=metadata[1],
-                          performer_name=u"",
-                          copyright=u"",
-                          year=unicode(metadata[3]),
-                          comment=metadata[4])
-        list.__init__(self, metadata)
-
-    #if an attribute is updated (e.g. self.track_name)
-    #make sure to update the corresponding list item
-    def __setattr__(self, key, value):
-        self.__dict__[key] = value
-
-        if (key in self.ATTRIBUTES):
-            if (key not in ('track_number','album_number')):
-                self[self.ATTRIBUTES.index(key)] = value
-            else:
-                self[self.ATTRIBUTES.index(key)] = int(value)
-
-    #if a list item is updated (e.g. self[1])
-    #make sure to update the corresponding attribute
-    def __setitem__(self, key, value):
-        list.__setitem__(self, key, value)
-
-        if (key < len(self.ATTRIBUTES)):
-            if (key != 5):
-                self.__dict__[self.ATTRIBUTES[key]] = value
-            else:
-                self.__dict__[self.ATTRIBUTES[key]] = int(value)
-
-    @classmethod
-    def converted(cls, metadata):
-        if ((metadata is None) or (isinstance(metadata,ID3v1Comment))):
-            return metadata
-
-        return ID3v1Comment((metadata.track_name,
-                             metadata.artist_name,
-                             metadata.album_name,
-                             metadata.year,
-                             metadata.comment,
-                             int(metadata.track_number)))
-
-    def __comment_name__(self):
-        return u'ID3v1'
-
-    def __comment_pairs__(self):
-        return zip(('Title','Artist','Album','Year','Comment','Tracknum'),
-                   self)
-
-    def build_tag(self):
-        return self.build_id3v1(self.track_name,
-                                self.artist_name,
-                                self.album_name,
-                                self.year,
-                                self.comment,
-                                self.track_number)
-
-
-class ID3CommentPair(MetaData):
-    #id3v2 and id3v1 are ID3v2Comment and ID3v1Comment objects or None
-    #values in ID3v2 take precendence over ID3v1, if present
-    def __init__(self, id3v2_comment, id3v1_comment):
-        self.__dict__['id3v2'] = id3v2_comment
-        self.__dict__['id3v1'] = id3v1_comment
-
-        if (self.id3v2 is not None):
-            base_comment = self.id3v2
-        elif (self.id3v1 is not None):
-            base_comment = self.id3v1
-        else:
-            raise ValueError("id3v2 and id3v1 cannot both be blank")
-
-        fields = dict([(field,getattr(base_comment,field))
-                       for field in self.__FIELDS__])
-
-        MetaData.__init__(self,**fields)
-
-    def __setattr__(self, key, value):
-        self.__dict__[key] = value
-
-        if (self.id3v2 is not None):
-            setattr(self.id3v2,key,value)
-        if (self.id3v1 is not None):
-            setattr(self.id3v1,key,value)
-
-    @classmethod
-    def converted(cls, metadata):
-        if ((metadata is None) or (isinstance(metadata,ID3CommentPair))):
-            return metadata
-
-        if (isinstance(metadata,ID3v2Comment)):
-            return ID3CommentPair(metadata,
-                                  ID3v1Comment.converted(metadata))
-        else:
-            return ID3CommentPair(
-                ID3v2_3Comment.converted(metadata),
-                ID3v1Comment.converted(metadata))
-
-
-    def __unicode__(self):
-        if ((self.id3v2 != None) and (self.id3v1 != None)):
-            #both comments present
-            return unicode(self.id3v2) + \
-                   (os.linesep * 2) + \
-                   unicode(self.id3v1)
-        elif (self.id3v2 is not None):
-            #only ID3v2
-            return unicode(self.id3v2)
-        elif (self.id3v1 is not None):
-            #only ID3v1
-            return unicode(self.id3v1)
-        else:
-            return u''
-
-    #ImageMetaData passthroughs
-    def images(self):
-        if (self.id3v2 is not None):
-            return self.id3v2.images()
-        else:
-            return []
-
-    def add_image(self, image):
-        if (self.id3v2 is not None):
-            self.id3v2.add_image(image)
-
-    def delete_image(self, image):
-        if (self.id3v2 is not None):
-            self.id3v2.delete_image(image)
-
-    @classmethod
-    def supports_images(cls):
-        return True
