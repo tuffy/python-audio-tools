@@ -220,6 +220,19 @@ class ID3v22Comment(MetaData):
 
         MetaData.__init__(self,**attribs)
 
+    #if an attribute is updated (e.g. self.track_name)
+    #make sure to update the corresponding dict pair
+    def __setattr__(self, key, value):
+        self.__dict__[key] = value
+
+        if (key in self.ATTRIBUTE_MAP):
+            self.frames[self.ATTRIBUTE_MAP[key]] = [
+                self.TextFrame.from_unicode(self.ATTRIBUTE_MAP[key],value)]
+
+    #FIXME - lots of stuff expects ID3v2 comments to act as dicts
+    #implement keys(),values(),items(),__getitem__(),__setitem__(),len()
+    #such that the assumption still holds
+
     @classmethod
     def parse(cls, stream):
         header = cls.TAG_HEADER.parse_stream(stream)
