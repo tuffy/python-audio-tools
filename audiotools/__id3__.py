@@ -41,6 +41,33 @@ class Syncsafe32(Con.Adapter):
             i = (i << 7) | (x & 0x7F)
         return i
 
+class WidecharCStringAdapter(Con.Adapter):
+    def __init__(self,obj,encoding):
+        Con.Adapter.__init__(self,obj)
+        self.encoding = encoding
+
+    def _encode(self,obj,context):
+        return Con.GreedyRepeater(Con.UBInt16("s")).parse(obj.encode(
+                self.encoding)) + [0]
+
+    def _decode(self,obj,context):
+        c = Con.UBInt16("s")
+
+        return "".join([c.build(s) for s in obj[0:-1]]).decode(self.encoding)
+
+def UTF16CString(name):
+    return WidecharCStringAdapter(Con.RepeatUntil(lambda obj, ctx: obj == 0x0,
+                                                  Con.UBInt16(name)),
+                           encoding='utf-16')
+
+
+
+def UTF16BECString(name):
+    return WidecharCStringAdapter(Con.RepeatUntil(lambda obj, ctx: obj == 0x0,
+                                                  Con.UBInt16(name)),
+                           encoding='utf-16be')
+
+
 class ID3v2Comment(MetaData,dict):
     VALID_FRAME_ID = re.compile(r'[A-Z0-9]{4}')
     FRAME_ID_LENGTH = 4
@@ -79,12 +106,8 @@ class ID3v2Comment(MetaData,dict):
         Con.Switch("short_description",
                    lambda ctx: ctx.encoding,
                    {0x00: Con.CString("s",encoding='latin-1'),
-                    0x01: Con.CString("s",terminators='\x00\x00',
-                                      encoding='utf-16',
-                                      char_field=Con.Field(None,2)),
-                    0x02: Con.CString("s",terminators='\x00\x00',
-                                      encoding='utf-16be',
-                                      char_field=Con.Field(None,2)),
+                    0x01: UTF16CString("s"),
+                    0x02: UTF16BECString("s"),
                     0x03: Con.CString("s",encoding='utf-8')}),
         Con.Switch("content",
                    lambda ctx: ctx.encoding,
@@ -92,10 +115,10 @@ class ID3v2Comment(MetaData,dict):
                         Con.Field("s2",1)),
                                             encoding='latin-1'),
                     0x01: Con.StringAdapter(Con.GreedyRepeater(
-                        Con.Field("s2",2)),
+                        Con.Field("s2",1)),
                                             encoding='utf-16'),
                     0x02: Con.StringAdapter(Con.GreedyRepeater(
-                        Con.Field("s2",2)),
+                        Con.Field("s2",1)),
                                             encoding='utf-16be'),
                     0x03: Con.StringAdapter(Con.GreedyRepeater(
                         Con.Field("s2",1)),
@@ -536,16 +559,14 @@ class ID3v2_3Comment(ID3v2Comment):
         Con.Switch("short_description",
                    lambda ctx: ctx.encoding,
                    {0x00: Con.CString("s",encoding='latin-1'),
-                    0x01: Con.CString("s",terminators='\x00\x00',
-                                      encoding='utf-16',
-                                      char_field=Con.Field(None,2))}),
+                    0x01: UTF16CString("s")}),
         Con.Switch("content",
                    lambda ctx: ctx.encoding,
                    {0x00: Con.StringAdapter(Con.GreedyRepeater(
                         Con.Field("s2",1)),
                                             encoding='latin-1'),
                     0x01: Con.StringAdapter(Con.GreedyRepeater(
-                        Con.Field("s2",2)),
+                        Con.Field("s2",1)),
                                             encoding='utf-16')}))
 
     ATTRIBUTE_MAP = {'track_name':'TIT2',
