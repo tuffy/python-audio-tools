@@ -1204,7 +1204,8 @@ class ID3v1Comment(MetaData,list):
                           artist_name=metadata[1],
                           performer_name=u"",
                           copyright=u"",
-                          year=unicode(metadata[3]))
+                          year=unicode(metadata[3]),
+                          comment=metadata[4])
         list.__init__(self, metadata)
 
     #if an attribute is updated (e.g. self.track_name)
@@ -1238,7 +1239,7 @@ class ID3v1Comment(MetaData,list):
                              metadata.artist_name,
                              metadata.album_name,
                              metadata.year,
-                             u"",
+                             metadata.comment,
                              int(metadata.track_number)))
 
     def __comment_name__(self):
@@ -1253,7 +1254,7 @@ class ID3v1Comment(MetaData,list):
                                 self.artist_name,
                                 self.album_name,
                                 self.year,
-                                self[4],
+                                self.comment,
                                 self.track_number)
 
 
