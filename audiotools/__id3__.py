@@ -19,6 +19,8 @@
 
 from audiotools import MetaData,Con,re,os,cStringIO,Image,InvalidImage
 
+class UnsupportedID3v2Version(Exception): pass
+
 class Syncsafe32(Con.Adapter):
     def __init__(self, name):
         Con.Adapter.__init__(self,
@@ -84,6 +86,10 @@ def UTF16BECString(name):
     return WidecharCStringAdapter(Con.RepeatUntil(lambda obj, ctx: obj == 0x0,
                                                   Con.UBInt16(name)),
                                   encoding='utf-16be')
+
+#######################
+#ID3v2.2
+#######################
 
 class ID3v22Frame:
     VALID_FRAME_ID = re.compile(r'[A-Z0-9]{4}')
@@ -305,8 +311,8 @@ class ID3v22Comment(MetaData):
 
     TAG_HEADER = Con.Struct("id3v22_header",
                             Con.Const(Con.Bytes("file_id",3),'ID3'),
-                            Con.Const(Con.Byte("version_major"),0x02),
-                            Con.Const(Con.Byte("version_minor"),0x00),
+                            Con.Byte("version_major"),
+                            Con.Byte("version_minor"),
                             Con.Embed(Con.BitStruct("flags",
                                                     Con.Flag("unsync"),
                                                     Con.Flag("compression"),
@@ -466,8 +472,6 @@ class ID3v22Comment(MetaData):
     def build(self):
         subframes = "".join(["".join([value.build() for value in values])
                              for values in self.frames.values()])
-
-        subframes += (chr(0) * 1024)
 
         return self.TAG_HEADER.build(
             Con.Container(file_id='ID3',
