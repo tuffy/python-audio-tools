@@ -84,4 +84,7 @@
   and Everything Else was a binary string of whatever.
   Now that ID3 is cluttered with APIC frames and COMM frames that need
   special treatment, ID3v2 needs an overhaul to more resemble FlacMetaData.
+** TODO Ensure unknown frames are displayed correctly
+   Anything that's not text, images or comments should get some sort
+   of proper display instead of a Python object string.
 

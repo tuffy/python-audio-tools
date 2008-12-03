@@ -551,15 +551,19 @@ class ID3v23Frame(ID3v22Frame):
                                                Con.Padding(5))),
                        Con.String("data",length=lambda ctx: ctx["size"]))
 
-    def build(self):
+    def build(self,data=None):
+        if (data is None):
+            data = self.data
+
         return self.FRAME.build(Con.Container(frame_id=self.id,
+                                              size=len(data),
                                               tag_alter=False,
                                               file_alter=False,
                                               read_only=False,
                                               compression=False,
                                               encryption=False,
                                               grouping=False,
-                                              data=self.data))
+                                              data=data))
 
     @classmethod
     def parse(cls,container):
@@ -623,22 +627,13 @@ class ID3v23TextFrame(ID3v23Frame):
                 continue
 
     def build(self):
-        data = chr(self.encoding) + \
-            self.string.encode(self.ENCODING[self.encoding],
-                               'replace')
+        return ID3v23Frame.build(
+            self,
+            chr(self.encoding) + \
+                self.string.encode(self.ENCODING[self.encoding],
+                                   'replace'))
 
-        return self.FRAME.build(Con.Container(
-                frame_id=self.id,
-                size=len(data),
-                tag_alter=False,
-                file_alter=False,
-                read_only=False,
-                compression=False,
-                encryption=False,
-                grouping=False,
-                data=data))
-
-class ID3v23PicFrame(ID3v22PicFrame,ID3v23Frame):
+class ID3v23PicFrame(ID3v23Frame,Image):
     FRAME_HEADER = Con.Struct('apic_frame',
                               Con.Byte('text_encoding'),
                               Con.CString('mime_type'),
@@ -672,22 +667,12 @@ class ID3v23PicFrame(ID3v22PicFrame,ID3v23Frame):
         except UnicodeEncodeError:
             text_encoding = 1
 
-        data = self.FRAME_HEADER.build(
-            Con.Container(text_encoding=text_encoding,
-                          picture_type=self.pic_type,
-                          mime_type=self.mime_type,
-                          description=self.description)) + self.data
-
-        return ID3v23Frame.FRAME.build(
-            Con.Container(frame_id='APIC',
-                          tag_alter=False,
-                          file_alter=False,
-                          read_only=False,
-                          compression=False,
-                          encryption=False,
-                          grouping=False,
-                          size=len(data),
-                          data=data))
+        return ID3v23Frame.build(self,
+                                 self.FRAME_HEADER.build(
+                Con.Container(text_encoding=text_encoding,
+                              picture_type=self.pic_type,
+                              mime_type=self.mime_type,
+                              description=self.description)) + self.data)
 
     @classmethod
     def converted(cls, image):
@@ -722,22 +707,13 @@ class ID3v23ComFrame(ID3v23TextFrame):
                 continue
 
     def build(self):
-        data = self.COMMENT_HEADER.build(Con.Container(
-                encoding=self.encoding,
-                language=self.language,
-                short_description=self.short_description)) + \
-              self.content.encode(self.ENCODING[self.encoding],'replace')
-
-        return self.FRAME.build(Con.Container(
-                frame_id=self.id,
-                size=len(data),
-                tag_alter=False,
-                file_alter=False,
-                read_only=False,
-                compression=False,
-                encryption=False,
-                grouping=False,
-                data=data))
+        return ID3v23Frame.build(
+            self,
+            self.COMMENT_HEADER.build(Con.Container(
+                    encoding=self.encoding,
+                    language=self.language,
+                    short_description=self.short_description)) + \
+                self.content.encode(self.ENCODING[self.encoding],'replace'))
 
 
 class ID3v23Comment(ID3v22Comment):
@@ -804,6 +780,80 @@ class ID3v23Comment(ID3v22Comment):
         return self.TAG_HEADER.build(
             Con.Container(file_id='ID3',
                           version_major=0x03,
+                          version_minor=0x00,
+                          unsync=False,
+                          extended=False,
+                          experimental=False,
+                          footer=False,
+                          length=len(subframes))) + subframes
+
+#######################
+#ID3v2.4
+#######################
+
+
+class ID3v24Frame(ID3v23Frame):
+    FRAME = Con.Struct("id3v24_frame",
+                       Con.Bytes("frame_id",4),
+                       Con.UBInt32("size"),
+                       Con.Embed(Con.BitStruct("flags",
+                                               Con.Padding(1),
+                                               Con.Flag('tag_alter'),
+                                               Con.Flag('file_alter'),
+                                               Con.Flag('read_only'),
+                                               Con.Padding(5),
+                                               Con.Flag('grouping'),
+                                               Con.Padding(2),
+                                               Con.Flag('compression'),
+                                               Con.Flag('encryption'),
+                                               Con.Flag('unsync'),
+                                               Con.Flag('data_length'))),
+                       Con.String("data",length=lambda ctx: ctx["size"]))
+
+    def build(self,data=None):
+        if (data is None):
+            data = self.data
+
+        return self.FRAME.build(Con.Container(frame_id=self.id,
+                                              tag_alter=False,
+                                              file_alter=False,
+                                              read_only=False,
+                                              grouping=False,
+                                              compression=False,
+                                              encryption=False,
+                                              grouping=False,
+                                              unsync=False,
+                                              data_length=False,
+                                              data=data))
+
+
+class ID3v24TextFrame(ID3v24Frame):
+    ENCODING = {0x00:"latin-1",
+                0x01:"utf-16",
+                0x02:"utf-16be",
+                0x03:"utf-8"}
+
+class ID3v24PicFrame(ID3v24Frame):
+    pass
+
+class ID3v24ComFrame(ID3v24TextFrame):
+    pass
+
+class ID3v24Comment(ID3v23Comment):
+    Frame = ID3v24Frame
+    TextFrame = ID3v24TextFrame
+    PictureFrame = ID3v24PicFrame
+
+    def __comment_name__(self):
+        return u'ID3v2.4'
+
+    def build(self):
+        subframes = "".join(["".join([value.build() for value in values])
+                             for values in self.frames.values()])
+
+        return self.TAG_HEADER.build(
+            Con.Container(file_id='ID3',
+                          version_major=0x04,
                           version_minor=0x00,
                           unsync=False,
                           extended=False,
