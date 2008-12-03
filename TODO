@@ -71,16 +71,13 @@
   Don't forget to add unit tests for comment field.
 ** TODO Sort "comment" fields correctly across all metadata types
 ** TODO Add --comment support to tracktag
-* TODO Fix ID3v2 image support to handle Unicode descriptions
+* DONE Fix ID3v2 image support to handle Unicode descriptions
   The current implementation falls down on UTF-16 input,
   but I should have a solution from the COMM frame handler.
-
 * TODO Limit ID3v2.2/2.3 to UCS-2 encoding
   The current implementation treats UCS-2 the same as UTF-16.
   This needs to be fixed so that really high unicode characters
   (above U+FFFF) are replaced with something within spec.
-
-
 * TODO Unify ID3v2 frame handling
   In the beginning, there were text frames and Everything Else.
   Text frames were unicode strings,

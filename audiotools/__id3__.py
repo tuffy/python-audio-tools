@@ -183,6 +183,34 @@ class ID3v22PicFrame(ID3v22Frame,Image):
                        description=description,
                        type={3:0,4:1,5:2,6:3}.get(pic_type,4))
 
+    def type_string(self):
+        return {0:"Other",
+                1:"32x32 pixels 'file icon' (PNG only)",
+                2:"Other file icon",
+                3:"Cover (front)",
+                4:"Cover (back)",
+                5:"Leaflet page",
+                6:"Media (e.g. label side of CD)",
+                7:"Lead artist/lead performer/soloist",
+                8:"Artist / Performer",
+                9:"Conductor",
+                10:"Band / Orchestra",
+                11:"Composer",
+                12:"Lyricist / Text writer",
+                13:"Recording Location",
+                14:"During recording",
+                15:"During performance",
+                16:"Movie/Video screen capture",
+                17:"A bright coloured fish",
+                18:"Illustration",
+                19:"Band/Artist logotype",
+                20:"Publisher/Studio logotype"}.get(self.pic_type,"Other")
+
+    def __unicode__(self):
+        return u"%s (%d\u00D7%d,'%s')" % \
+               (self.type_string(),
+                self.width,self.height,self.mime_type)
+
     def build(self):
         try:
             self.description.encode('latin-1')
@@ -248,6 +276,9 @@ class ID3v22Comment(MetaData):
 
     INTEGER_ITEMS = ('TRK','TPA')
 
+    KEY_ORDER = ('TT2','TAL','TRK','TPA','TP1','TP2','TCM','TP3',
+                 'TPB','TRC','TYE','TRD',None,'PIC')
+
     #frames should be a list of ID3v22Frame-compatible objects
     def __init__(self,frames):
         self.frames = {}  #a frame_id->[frame list] mapping
@@ -269,13 +300,44 @@ class ID3v22Comment(MetaData):
         return u'ID3v2.2'
 
     def __comment_pairs__(self):
+        key_order = list(self.KEY_ORDER)
+
+        def by_weight(keyval1,keyval2):
+            (key1,key2) = (keyval1[0],keyval2[0])
+
+            if (key1 in key_order):
+                order1 = key_order.index(key1)
+            else:
+                order1 = key_order.index(None)
+
+            if (key2 in key_order):
+                order2 = key_order.index(key2)
+            else:
+                order2 = key_order.index(None)
+
+            return cmp((order1,key1),(order2,key2))
+
         pairs = []
 
-        for (key,values) in self.frames.items():
+        for (key,values) in sorted(self.frames.items(),by_weight):
             for value in values:
                 pairs.append(('    ' + key,unicode(value)))
 
         return pairs
+
+    def __unicode__(self):
+        comment_pairs = self.__comment_pairs__()
+        if (len(comment_pairs) > 0):
+            max_key_length = max([len(pair[0]) for pair in comment_pairs])
+            line_template = u"%%(key)%(length)d.%(length)ds : %%(value)s" % \
+                            {"length":max_key_length}
+
+            return unicode(os.linesep.join(
+                [u"%s Comment:" % (self.__comment_name__())] + \
+                [line_template % {"key":key,"value":value} for
+                 (key,value) in comment_pairs]))
+        else:
+            return u""
 
     #if an attribute is updated (e.g. self.track_name)
     #make sure to update the corresponding dict pair
