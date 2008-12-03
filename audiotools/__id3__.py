@@ -45,6 +45,41 @@ class __BitstructToInt__(Con.Adapter):
     def _decode(self, obj, context):
         return obj.size
 
+#UTF16CString and UTF16BECString implement a null-terminated string
+#of UTF-16 characters by reading them as unsigned 16-bit integers,
+#looking for the null terminator (0x0000) and then converting the integers
+#back before decoding.  It's a little half-assed, but it seems to work.
+#Even large UTF-16 characters with surrogate pairs (those above U+FFFF)
+#shouldn't have embedded 0x0000 bytes in them,
+#which ID3v2.2/2.3 aren't supposed to use anyway since they're limited
+#to UCS-2 encoding.
+
+class WidecharCStringAdapter(Con.Adapter):
+    def __init__(self,obj,encoding):
+        Con.Adapter.__init__(self,obj)
+        self.encoding = encoding
+
+    def _encode(self,obj,context):
+        return Con.GreedyRepeater(Con.UBInt16("s")).parse(obj.encode(
+                self.encoding)) + [0]
+
+    def _decode(self,obj,context):
+        c = Con.UBInt16("s")
+
+        return "".join([c.build(s) for s in obj[0:-1]]).decode(self.encoding)
+
+def UTF16CString(name):
+    return WidecharCStringAdapter(Con.RepeatUntil(lambda obj, ctx: obj == 0x0,
+                                                  Con.UBInt16(name)),
+                                  encoding='utf-16')
+
+
+
+def UTF16BECString(name):
+    return WidecharCStringAdapter(Con.RepeatUntil(lambda obj, ctx: obj == 0x0,
+                                                  Con.UBInt16(name)),
+                                  encoding='utf-16be')
+
 class ID3v22Frame:
     VALID_FRAME_ID = re.compile(r'[A-Z0-9]{4}')
 
@@ -75,8 +110,7 @@ class ID3v22Frame:
             return ID3v22PicFrame(
                 pic.data,
                 pic.format.decode('ascii','replace'),
-                pic.description.decode(
-                    ID3v22TextFrame.ENCODING[pic.text_encoding],'replace'),
+                pic.description,
                 pic.picture_type)
         else:
             return cls(frame_id=container.frame_id,
@@ -123,7 +157,10 @@ class ID3v22PicFrame(ID3v22Frame,Image):
                        Con.Byte('text_encoding'),
                        Con.String('format',3),
                        Con.Byte('picture_type'),
-                       Con.CString('description'),
+                       Con.Switch("description",
+                                  lambda ctx: ctx.text_encoding,
+                                  {0x00: Con.CString("s",encoding='latin-1'),
+                                   0x01: UTF16CString("s")}),
                        Con.StringAdapter(
             Con.GreedyRepeater(Con.Field('data',1))))
 
@@ -149,10 +186,9 @@ class ID3v22PicFrame(ID3v22Frame,Image):
 
     def build(self):
         try:
-            description = self.description.encode('ascii')
+            self.description.encode('latin-1')
             text_encoding = 0
         except UnicodeEncodeError:
-            description = self.description.encode('utf-16')
             text_encoding = 1
 
         return ID3v22Frame.FRAME.build(
@@ -161,7 +197,7 @@ class ID3v22PicFrame(ID3v22Frame,Image):
                     Con.Container(text_encoding=text_encoding,
                                   format=self.format.encode('ascii'),
                                   picture_type=self.pic_type,
-                                  description=description,
+                                  description=self.description,
                                   data=self.data))))
 
     @classmethod
