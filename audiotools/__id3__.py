@@ -313,8 +313,6 @@ class ID3v22Comment(MetaData):
                                                     Con.Padding(6))),
                             Syncsafe32("length"))
 
-    TAG_FRAMES = Con.GreedyRepeater(Frame.FRAME)
-
     ATTRIBUTE_MAP = {'track_name':'TT2',
                      'track_number':'TRK',
                      'album_name':'TAL',
@@ -432,8 +430,17 @@ class ID3v22Comment(MetaData):
         stream = cStringIO.StringIO(stream.read(header.length))
 
         #read in a collection of parsed Frame containers
-        return cls([cls.Frame.parse(container) for container in
-                    cls.TAG_FRAMES.parse_stream(stream)])
+        frames = []
+
+        while (stream.tell() < header.length):
+            container = cls.Frame.FRAME.parse_stream(stream)
+            if (chr(0) in container.frame_id):
+                break
+            else:
+                frames.append(cls.Frame.parse(container))
+
+        return cls(frames)
+
 
     @classmethod
     def converted(cls, metadata):
@@ -459,6 +466,8 @@ class ID3v22Comment(MetaData):
     def build(self):
         subframes = "".join(["".join([value.build() for value in values])
                              for values in self.frames.values()])
+
+        subframes += (chr(0) * 1024)
 
         return self.TAG_HEADER.build(
             Con.Container(file_id='ID3',
