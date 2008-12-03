@@ -123,6 +123,7 @@ class DummyMetaData(audiotools.MetaData):
     def __init__(self):
         audiotools.MetaData.__init__(self,
                                      track_name=u"Track Name",
+                                     #track_name=u"T\u2604rack Name",
                                      track_number=5,
                                      album_name=u"Album Name",
                                      artist_name=u"Artist Name",
@@ -133,8 +134,9 @@ class DummyMetaData(audiotools.MetaData):
                                      ISRC=u"US-PR3-08-12345",
                                      copyright=u"Copyright Attribution",
                                      year=u"2008",
-                                     publisher=u"Test Records Inc.")
-                                     #comment=u"C\xf3mment")
+                                     publisher=u"Test Records Inc.",
+                                     #comment=u"Comment")
+                                     comment=u"C\u2604mment")
 
     @classmethod
     def supports_images(cls):

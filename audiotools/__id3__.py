@@ -38,12 +38,17 @@ class Syncsafe32(Con.Adapter):
             i = (i << 7) | (x & 0x7F)
         return i
 
-class __BitstructToInt__(Con.Adapter):
+class __24Bits__(Con.Adapter):
     def _encode(self, value, context):
-        return Con.Container(size=value)
+        return chr((value & 0xFF0000) >> 16) + \
+               chr((value & 0x00FF00) >> 8) + \
+               chr(value & 0x0000FF)
 
     def _decode(self, obj, context):
-        return obj.size
+        return (ord(obj[0]) << 16) | (ord(obj[1]) << 8) | ord(obj[2])
+
+def UBInt24(name):
+    return __24Bits__(Con.Bytes(name,3))
 
 #UTF16CString and UTF16BECString implement a null-terminated string
 #of UTF-16 characters by reading them as unsigned 16-bit integers,
@@ -85,9 +90,7 @@ class ID3v22Frame:
 
     FRAME = Con.Struct("id3v22_frame",
                        Con.Bytes("frame_id",3),
-                       Con.PascalString("data",
-                                        length_field=__BitstructToInt__(
-                Con.BitStruct("size",Con.Bits("size",24)))))
+                       Con.PascalString("data",length_field=UBInt24("size")))
 
     def __init__(self,frame_id,data):
         self.id = frame_id
@@ -113,6 +116,15 @@ class ID3v22Frame:
                 pic_header.format.decode('ascii','replace'),
                 pic_header.description,
                 pic_header.picture_type)
+        elif (container.frame_id == 'COM'):
+            com_data = cStringIO.StringIO(container.data)
+            com = ID3v22ComFrame.COMMENT_HEADER.parse_stream(com_data)
+            return ID3v22ComFrame(
+                com.encoding,
+                com.language,
+                com.short_description,
+                com_data.read().decode(ID3v22TextFrame.ENCODING[com.encoding],
+                                       'replace'))
         else:
             return cls(frame_id=container.frame_id,
                        data=container.data)
@@ -139,6 +151,9 @@ class ID3v22TextFrame(ID3v22Frame):
 
     @classmethod
     def from_unicode(cls,frame_id,s):
+        if (frame_id == 'COM'):
+            return ID3v22ComFrame.from_unicode(s)
+
         for encoding in 0x00,0x01:
             try:
                 s.encode(cls.ENCODING[encoding])
@@ -152,6 +167,50 @@ class ID3v22TextFrame(ID3v22Frame):
                 data=chr(self.encoding) + \
                     self.string.encode(self.ENCODING[self.encoding],
                                        'replace')))
+
+class ID3v22ComFrame(ID3v22TextFrame):
+    COMMENT_HEADER = Con.Struct(
+        "com_frame",
+        Con.Byte("encoding"),
+        Con.String("language",3),
+        Con.Switch("short_description",
+                   lambda ctx: ctx.encoding,
+                   {0x00: Con.CString("s",encoding='latin-1'),
+                    0x01: UTF16CString("s")}))
+
+    #encoding should be an integer
+    #language should be a standard string
+    #short_description and content should be unicode strings
+    def __init__(self,encoding,language,short_description,content):
+        self.encoding = encoding
+        self.language = language
+        self.short_description = short_description
+        self.content = content
+        self.id = 'COM'
+
+    def __unicode__(self):
+        return self.content
+
+    def __int__(self):
+        return 0
+
+    @classmethod
+    def from_unicode(cls,s):
+        for encoding in 0x00,0x01:
+            try:
+                s.encode(cls.ENCODING[encoding])
+                return cls(encoding,'eng',u'',s)
+            except UnicodeEncodeError:
+                continue
+
+    def build(self):
+        return self.FRAME.build(Con.Container(
+                frame_id=self.id,
+                data=self.COMMENT_HEADER.build(Con.Container(
+                        encoding=self.encoding,
+                        language=self.language,
+                        short_description=self.short_description)) +
+                  self.content.encode(self.ENCODING[self.encoding],'replace')))
 
 class ID3v22PicFrame(ID3v22Frame,Image):
     FRAME_HEADER = Con.Struct('pic_frame',
@@ -269,15 +328,15 @@ class ID3v22Comment(MetaData):
                      'publisher':'TPB',
                      'year':'TYE',
                      'date':'TRD',
-                     'album_number':'TPA'}
-                     #'comment':'COM'}
+                     'album_number':'TPA',
+                     'comment':'COM'}
 
     ITEM_MAP = dict(map(reversed,ATTRIBUTE_MAP.items()))
 
     INTEGER_ITEMS = ('TRK','TPA')
 
     KEY_ORDER = ('TT2','TAL','TRK','TPA','TP1','TP2','TCM','TP3',
-                 'TPB','TRC','TYE','TRD',None,'PIC')
+                 'TPB','TRC','TYE','TRD',None,'COM','PIC')
 
     #frames should be a list of ID3v22Frame-compatible objects
     def __init__(self,frames):
@@ -369,8 +428,8 @@ class ID3v22Comment(MetaData):
     def parse(cls, stream):
         header = cls.TAG_HEADER.parse_stream(stream)
 
-        #read in the whole tag, and strip any padding
-        stream = cStringIO.StringIO(stream.read(header.length).rstrip(chr(0)))
+        #read in the whole tag
+        stream = cStringIO.StringIO(stream.read(header.length))
 
         #read in a collection of parsed Frame containers
         return cls([cls.Frame.parse(container) for container in
