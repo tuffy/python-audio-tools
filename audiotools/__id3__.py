@@ -70,6 +70,14 @@ class ID3v22Frame:
                                    encoding_byte,
                                    container.data[1:].decode(
                     ID3v22TextFrame.ENCODING[encoding_byte]))
+        elif (container.frame_id == 'PIC'):
+            pic = ID3v22PicFrame.FRAME.parse(container.data)
+            return ID3v22PicFrame(
+                pic.data,
+                pic.format.decode('ascii','replace'),
+                pic.description.decode(
+                    ID3v22TextFrame.ENCODING[pic.text_encoding],'replace'),
+                pic.picture_type)
         else:
             return cls(frame_id=container.frame_id,
                        data=container.data)
@@ -136,7 +144,7 @@ class ID3v22PicFrame(ID3v22Frame,Image):
                        height=img.height,
                        color_depth=img.color_depth,
                        color_count=img.color_count,
-                       description=description.decode('ascii','replace'),
+                       description=description,
                        type={3:0,4:1,5:2,6:3}.get(pic_type,4))
 
     def build(self):
@@ -147,12 +155,14 @@ class ID3v22PicFrame(ID3v22Frame,Image):
             description = self.description.encode('utf-16')
             text_encoding = 1
 
-        return self.FRAME.build(
-            Con.Container(text_encoding=text_encoding,
-                          format=self.format.encode('ascii'),
-                          picture_type=self.pic_type,
-                          description=description,
-                          data=self.data))
+        return ID3v22Frame.FRAME.build(
+            Con.Container(frame_id='PIC',
+                          data=self.FRAME.build(
+                    Con.Container(text_encoding=text_encoding,
+                                  format=self.format.encode('ascii'),
+                                  picture_type=self.pic_type,
+                                  description=description,
+                                  data=self.data))))
 
     @classmethod
     def converted(cls, image):
@@ -165,7 +175,7 @@ class ID3v22PicFrame(ID3v22Frame,Image):
                            u"image/tiff":u"TIF"}.get(image.mime_type,
                                                      u"JPG"),
                    description=image.description,
-                   pic_type={0:3,4:1,2:5,3:6}.get(image.type,0))
+                   pic_type={0:3,1:4,2:5,3:6}.get(image.type,0))
 
 class ID3v22Comment(MetaData):
     Frame = ID3v22Frame
@@ -189,6 +199,7 @@ class ID3v22Comment(MetaData):
                      'album_name':'TAL',
                      'artist_name':'TP1',
                      'performer_name':'TP2',
+                     'conductor_name':'TP3',
                      'composer_name':'TCM',
                      'media':'TMT',
                      'ISRC':'TRC',
@@ -220,6 +231,18 @@ class ID3v22Comment(MetaData):
 
         MetaData.__init__(self,**attribs)
 
+    def __comment_name__(self):
+        return u'ID3v2.2'
+
+    def __comment_pairs__(self):
+        pairs = []
+
+        for (key,values) in self.frames.items():
+            for value in values:
+                pairs.append(('    ' + key,unicode(value)))
+
+        return pairs
+
     #if an attribute is updated (e.g. self.track_name)
     #make sure to update the corresponding dict pair
     def __setattr__(self, key, value):
@@ -228,6 +251,19 @@ class ID3v22Comment(MetaData):
         if (key in self.ATTRIBUTE_MAP):
             self.frames[self.ATTRIBUTE_MAP[key]] = [
                 self.TextFrame.from_unicode(self.ATTRIBUTE_MAP[key],value)]
+
+    def add_image(self, image):
+        image = self.picture_frame.converted(image)
+        self.frames.setdefault('PIC',[]).append(image)
+
+    def delete_image(self, image):
+        del(self.frames['PIC'][self['PIC'].index(image)])
+
+    def images(self):
+        if ('PIC' in self.frames.keys()):
+            return self.frames['PIC']
+        else:
+            return []
 
     #FIXME - lots of stuff expects ID3v2 comments to act as dicts
     #implement keys(),values(),items(),__getitem__(),__setitem__(),len()
