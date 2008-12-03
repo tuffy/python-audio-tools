@@ -106,12 +106,13 @@ class ID3v22Frame:
                                    container.data[1:].decode(
                     ID3v22TextFrame.ENCODING[encoding_byte]))
         elif (container.frame_id == 'PIC'):
-            pic = ID3v22PicFrame.FRAME.parse(container.data)
+            frame_data = cStringIO.StringIO(container.data)
+            pic_header = ID3v22PicFrame.FRAME_HEADER.parse_stream(frame_data)
             return ID3v22PicFrame(
-                pic.data,
-                pic.format.decode('ascii','replace'),
-                pic.description,
-                pic.picture_type)
+                frame_data.read(),
+                pic_header.format.decode('ascii','replace'),
+                pic_header.description,
+                pic_header.picture_type)
         else:
             return cls(frame_id=container.frame_id,
                        data=container.data)
@@ -153,16 +154,14 @@ class ID3v22TextFrame(ID3v22Frame):
                                        'replace')))
 
 class ID3v22PicFrame(ID3v22Frame,Image):
-    FRAME = Con.Struct('pic_frame',
+    FRAME_HEADER = Con.Struct('pic_frame',
                        Con.Byte('text_encoding'),
                        Con.String('format',3),
                        Con.Byte('picture_type'),
                        Con.Switch("description",
                                   lambda ctx: ctx.text_encoding,
                                   {0x00: Con.CString("s",encoding='latin-1'),
-                                   0x01: UTF16CString("s")}),
-                       Con.StringAdapter(
-            Con.GreedyRepeater(Con.Field('data',1))))
+                                   0x01: UTF16CString("s")}))
 
     #format and description are unicode strings
     #pic_type is an int
@@ -193,12 +192,11 @@ class ID3v22PicFrame(ID3v22Frame,Image):
 
         return ID3v22Frame.FRAME.build(
             Con.Container(frame_id='PIC',
-                          data=self.FRAME.build(
+                          data=self.FRAME_HEADER.build(
                     Con.Container(text_encoding=text_encoding,
                                   format=self.format.encode('ascii'),
                                   picture_type=self.pic_type,
-                                  description=self.description,
-                                  data=self.data))))
+                                  description=self.description))+ self.data))
 
     @classmethod
     def converted(cls, image):
