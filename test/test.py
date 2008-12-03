@@ -874,8 +874,8 @@ class TestID3v2(unittest.TestCase):
     def testid3v2_2(self):
         self.__comment_test__(audiotools.ID3v22Comment)
 
-#     def testid3v2_3(self):
-#         self.__comment_test__(audiotools.ID3v2_3Comment)
+    def testid3v2_3(self):
+        self.__comment_test__(audiotools.ID3v23Comment)
 
 #     def testid3v2_4(self):
 #         self.__comment_test__(audiotools.ID3v2Comment)

@@ -17,7 +17,7 @@
 #along with this program; if not, write to the Free Software
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-from audiotools import MetaData,Con
+from audiotools import MetaData,Con,os
 
 class ID3v1Comment(MetaData,list):
     ID3v1 = Con.Struct("id3v1",

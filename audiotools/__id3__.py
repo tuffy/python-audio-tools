@@ -92,8 +92,6 @@ def UTF16BECString(name):
 #######################
 
 class ID3v22Frame:
-    VALID_FRAME_ID = re.compile(r'[A-Z0-9]{4}')
-
     FRAME = Con.Struct("id3v22_frame",
                        Con.Bytes("frame_id",3),
                        Con.PascalString("data",length_field=UBInt24("size")))
@@ -220,13 +218,14 @@ class ID3v22ComFrame(ID3v22TextFrame):
 
 class ID3v22PicFrame(ID3v22Frame,Image):
     FRAME_HEADER = Con.Struct('pic_frame',
-                       Con.Byte('text_encoding'),
-                       Con.String('format',3),
-                       Con.Byte('picture_type'),
-                       Con.Switch("description",
-                                  lambda ctx: ctx.text_encoding,
-                                  {0x00: Con.CString("s",encoding='latin-1'),
-                                   0x01: UTF16CString("s")}))
+                              Con.Byte('text_encoding'),
+                              Con.String('format',3),
+                              Con.Byte('picture_type'),
+                              Con.Switch("description",
+                                         lambda ctx: ctx.text_encoding,
+                                         {0x00: Con.CString("s",
+                                                            encoding='latin-1'),
+                                          0x01: UTF16CString("s")}))
 
     #format and description are unicode strings
     #pic_type is an int
@@ -240,7 +239,7 @@ class ID3v22PicFrame(ID3v22Frame,Image):
         self.format = format
         Image.__init__(self,
                        data=data,
-                       mime_type=Image.new(data,u'',0).mime_type,
+                       mime_type=img.mime_type,
                        width=img.width,
                        height=img.height,
                        color_depth=img.color_depth,
@@ -308,6 +307,7 @@ class ID3v22Comment(MetaData):
     Frame = ID3v22Frame
     TextFrame = ID3v22TextFrame
     PictureFrame = ID3v22PicFrame
+    CommentFrame = ID3v22ComFrame
 
     TAG_HEADER = Con.Struct("id3v22_header",
                             Con.Const(Con.Bytes("file_id",3),'ID3'),
@@ -520,9 +520,9 @@ class ID3v22Comment(MetaData):
                  raise UnsupportedID3v2Version()
              #if (header.version_major == 0x04):
              #    comment_class = ID3v2Comment
-             #elif (header.version_major == 0x03):
-             #    comment_class = ID3v2_3Comment
-             if (header.version_major == 0x02):
+             if (header.version_major == 0x03):
+                 comment_class = ID3v23Comment
+             elif (header.version_major == 0x02):
                  comment_class = ID3v22Comment
              else:
                  raise UnsupportedID3v2Version()
@@ -532,8 +532,286 @@ class ID3v22Comment(MetaData):
         finally:
             f.close()
 
+#######################
+#ID3v2.3
+#######################
 
-ID3v2Comment = ID3v22Comment
+class ID3v23Frame(ID3v22Frame):
+    FRAME = Con.Struct("id3v23_frame",
+                       Con.Bytes("frame_id",4),
+                       Con.UBInt32("size"),
+                       Con.Embed(Con.BitStruct("flags",
+                                               Con.Flag('tag_alter'),
+                                               Con.Flag('file_alter'),
+                                               Con.Flag('read_only'),
+                                               Con.Padding(5),
+                                               Con.Flag('compression'),
+                                               Con.Flag('encryption'),
+                                               Con.Flag('grouping'),
+                                               Con.Padding(5))),
+                       Con.String("data",length=lambda ctx: ctx["size"]))
+
+    def build(self):
+        return self.FRAME.build(Con.Container(frame_id=self.id,
+                                              tag_alter=False,
+                                              file_alter=False,
+                                              read_only=False,
+                                              compression=False,
+                                              encryption=False,
+                                              grouping=False,
+                                              data=self.data))
+
+    @classmethod
+    def parse(cls,container):
+        if (container.frame_id.startswith('T')):
+            encoding_byte = ord(container.data[0])
+            return ID3v23TextFrame(container.frame_id,
+                                   encoding_byte,
+                                   container.data[1:].decode(
+                    ID3v23TextFrame.ENCODING[encoding_byte]))
+        elif (container.frame_id == 'APIC'):
+            frame_data = cStringIO.StringIO(container.data)
+            pic_header = ID3v23PicFrame.FRAME_HEADER.parse_stream(frame_data)
+            return ID3v23PicFrame(
+                frame_data.read(),
+                pic_header.mime_type,
+                pic_header.description,
+                pic_header.picture_type)
+        elif (container.frame_id == 'COMM'):
+            com_data = cStringIO.StringIO(container.data)
+            com = ID3v23ComFrame.COMMENT_HEADER.parse_stream(com_data)
+            return ID3v23ComFrame(
+                com.encoding,
+                com.language,
+                com.short_description,
+                com_data.read().decode(ID3v23TextFrame.ENCODING[com.encoding],
+                                       'replace'))
+        else:
+            return cls(frame_id=container.frame_id,
+                       data=container.data)
+
+class ID3v23TextFrame(ID3v23Frame):
+    ENCODING = {0x00:"latin-1",
+                0x01:"utf-16"}
+
+    #encoding is an encoding byte
+    #s is a unicode string
+    def __init__(self,frame_id,encoding,s):
+        self.id = frame_id
+        self.encoding = encoding
+        self.string = s
+
+    def __unicode__(self):
+        return self.string
+
+    def __int__(self):
+        try:
+            return int(re.findall(r'\d+',self.string)[0])
+        except IndexError:
+            return 0
+
+    @classmethod
+    def from_unicode(cls,frame_id,s):
+        if (frame_id == 'COMM'):
+            return ID3v23ComFrame.from_unicode(s)
+
+        for encoding in 0x00,0x01:
+            try:
+                s.encode(cls.ENCODING[encoding])
+                return ID3v23TextFrame(frame_id,encoding,s)
+            except UnicodeEncodeError:
+                continue
+
+    def build(self):
+        data = chr(self.encoding) + \
+            self.string.encode(self.ENCODING[self.encoding],
+                               'replace')
+
+        return self.FRAME.build(Con.Container(
+                frame_id=self.id,
+                size=len(data),
+                tag_alter=False,
+                file_alter=False,
+                read_only=False,
+                compression=False,
+                encryption=False,
+                grouping=False,
+                data=data))
+
+class ID3v23PicFrame(ID3v22PicFrame,ID3v23Frame):
+    FRAME_HEADER = Con.Struct('apic_frame',
+                              Con.Byte('text_encoding'),
+                              Con.CString('mime_type'),
+                              Con.Byte('picture_type'),
+                              Con.Switch("description",
+                                         lambda ctx: ctx.text_encoding,
+                                         {0x00: Con.CString("s",
+                                                            encoding='latin-1'),
+                                          0x01: UTF16CString("s")}))
+
+    def __init__(self, data, mime_type, description, pic_type):
+        ID3v23Frame.__init__(self,'APIC',None)
+
+        img = Image.new(data,u'',0)
+
+        self.pic_type = pic_type
+        Image.__init__(self,
+                       data=data,
+                       mime_type=mime_type,
+                       width=img.width,
+                       height=img.height,
+                       color_depth=img.color_depth,
+                       color_count=img.color_count,
+                       description=description,
+                       type={3:0,4:1,5:2,6:3}.get(pic_type,4))
+
+    def build(self):
+        try:
+            self.description.encode('latin-1')
+            text_encoding = 0
+        except UnicodeEncodeError:
+            text_encoding = 1
+
+        data = self.FRAME_HEADER.build(
+            Con.Container(text_encoding=text_encoding,
+                          picture_type=self.pic_type,
+                          mime_type=self.mime_type,
+                          description=self.description)) + self.data
+
+        return ID3v23Frame.FRAME.build(
+            Con.Container(frame_id='APIC',
+                          tag_alter=False,
+                          file_alter=False,
+                          read_only=False,
+                          compression=False,
+                          encryption=False,
+                          grouping=False,
+                          size=len(data),
+                          data=data))
+
+    @classmethod
+    def converted(cls, image):
+        return cls(data=image.data,
+                   mime_type=image.mime_type,
+                   description=image.description,
+                   pic_type={0:3,1:4,2:5,3:6}.get(image.type,0))
+
+class ID3v23ComFrame(ID3v23TextFrame):
+    COMMENT_HEADER = ID3v22ComFrame.COMMENT_HEADER
+
+    def __init__(self,encoding,language,short_description,content):
+        self.encoding = encoding
+        self.language = language
+        self.short_description = short_description
+        self.content = content
+        self.id = 'COMM'
+
+    def __unicode__(self):
+        return self.content
+
+    def __int__(self):
+        return 0
+
+    @classmethod
+    def from_unicode(cls,s):
+        for encoding in 0x00,0x01:
+            try:
+                s.encode(cls.ENCODING[encoding])
+                return cls(encoding,'eng',u'',s)
+            except UnicodeEncodeError:
+                continue
+
+    def build(self):
+        data = self.COMMENT_HEADER.build(Con.Container(
+                encoding=self.encoding,
+                language=self.language,
+                short_description=self.short_description)) + \
+              self.content.encode(self.ENCODING[self.encoding],'replace')
+
+        return self.FRAME.build(Con.Container(
+                frame_id=self.id,
+                size=len(data),
+                tag_alter=False,
+                file_alter=False,
+                read_only=False,
+                compression=False,
+                encryption=False,
+                grouping=False,
+                data=data))
+
+
+class ID3v23Comment(ID3v22Comment):
+    Frame = ID3v23Frame
+    TextFrame = ID3v23TextFrame
+    PictureFrame = ID3v23PicFrame
+
+    TAG_HEADER = Con.Struct("id3v23_header",
+                            Con.Const(Con.Bytes("file_id",3),'ID3'),
+                            Con.Byte("version_major"),
+                            Con.Byte("version_minor"),
+                            Con.Embed(Con.BitStruct("flags",
+                                                    Con.Flag("unsync"),
+                                                    Con.Flag("extended"),
+                                                    Con.Flag("experimental"),
+                                                    Con.Flag("footer"),
+                                                    Con.Padding(4))),
+                            Syncsafe32("length"))
+
+    ATTRIBUTE_MAP = {'track_name':'TIT2',
+                     'track_number':'TRCK',
+                     'album_name':'TALB',
+                     'artist_name':'TPE1',
+                     'performer_name':'TPE2',
+                     'composer_name':'TCOM',
+                     'conductor_name':'TPE3',
+                     'media':'TMED',
+                     'ISRC':'TSRC',
+                     'copyright':'TCOP',
+                     'publisher':'TPUB',
+                     'year':'TYER',
+                     'date':'TRDA',
+                     'album_number':'TPOS',
+                     'comment':'COMM'}
+
+    ITEM_MAP = dict(map(reversed,ATTRIBUTE_MAP.items()))
+
+    INTEGER_ITEMS = ('TRCK','TPOS')
+
+    KEY_ORDER = ('TIT2','TALB','TRCK','TPOS','TPE1','TPE2','TCOM',
+                 'TPE3','TPUB','TSRC','TMED','TYER','TRDA','TCOP',
+                 None,'COMM','APIC')
+
+    def __comment_name__(self):
+        return u'ID3v2.3'
+
+    def add_image(self, image):
+        image = self.picture_frame.converted(image)
+        self.frames.setdefault('APIC',[]).append(image)
+
+    def delete_image(self, image):
+        del(self.frames['APIC'][self['APIC'].index(image)])
+
+    def images(self):
+        if ('APIC' in self.frames.keys()):
+            return self.frames['APIC']
+        else:
+            return []
+
+    def build(self):
+        subframes = "".join(["".join([value.build() for value in values])
+                             for values in self.frames.values()])
+
+        return self.TAG_HEADER.build(
+            Con.Container(file_id='ID3',
+                          version_major=0x03,
+                          version_minor=0x00,
+                          unsync=False,
+                          extended=False,
+                          experimental=False,
+                          footer=False,
+                          length=len(subframes))) + subframes
+
+ID3v2Comment = ID3v23Comment
 
 from __id3v1__ import *
 

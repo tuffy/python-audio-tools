@@ -304,7 +304,7 @@ class MP3Audio(AudioFile):
         #    (not isinstance(metadata,ID3v1Comment))):
         #    metadata = ID3CommentPair.converted(metadata)
 
-        metadata = ID3v22Comment.converted(metadata)
+        metadata = ID3v23Comment.converted(metadata)
 
         #get the original MP3 data
         f = file(self.filename,"rb")
