@@ -672,6 +672,11 @@ class ID3v23PicFrame(ID3v23Frame,Image):
                        description=description,
                        type={3:0,4:1,5:2,6:3}.get(pic_type,4))
 
+    def __unicode__(self):
+        return u"%s (%d\u00D7%d,'%s')" % \
+               (self.type_string(),
+                self.width,self.height,self.mime_type)
+
     def build(self):
         try:
             self.description.encode('latin-1')
@@ -973,6 +978,11 @@ class ID3v24PicFrame(ID3v24Frame,Image):
                        color_count=img.color_count,
                        description=description,
                        type={3:0,4:1,5:2,6:3}.get(pic_type,4))
+
+    def __unicode__(self):
+        return u"%s (%d\u00D7%d,'%s')" % \
+               (self.type_string(),
+                self.width,self.height,self.mime_type)
 
     def build(self):
         try:
