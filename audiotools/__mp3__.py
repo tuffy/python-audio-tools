@@ -299,12 +299,11 @@ class MP3Audio(AudioFile):
     def set_metadata(self, metadata):
         if (metadata == None): return
 
-        #FIXME - switch this back to ID3CommentPair later
-        #if ((not isinstance(metadata,ID3v2Comment)) and
-        #    (not isinstance(metadata,ID3v1Comment))):
-        #    metadata = ID3CommentPair.converted(metadata)
+        if ((not isinstance(metadata,ID3v2Comment)) and
+            (not isinstance(metadata,ID3v1Comment))):
+            metadata = ID3CommentPair.converted(metadata)
 
-        metadata = ID3v23Comment.converted(metadata)
+        #metadata = ID3v24Comment.converted(metadata)
 
         #get the original MP3 data
         f = file(self.filename,"rb")

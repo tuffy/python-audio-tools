@@ -864,9 +864,9 @@ class TestID3v2(unittest.TestCase):
         self.assertEqual(metadata,metadata2)
 
         metadata = id3_class.converted(DummyMetaData3())
-        for new_class in (audiotools.ID3v22Comment,):
-                          #audiotools.ID3v2_3Comment,
-                          #audiotools.ID3v2Comment):
+        for new_class in (audiotools.ID3v22Comment,
+                          audiotools.ID3v23Comment,
+                          audiotools.ID3v24Comment):
             self.assertEqual(metadata,new_class.converted(metadata))
             self.assertEqual(metadata.images(),
                              new_class.converted(metadata).images())
@@ -877,22 +877,22 @@ class TestID3v2(unittest.TestCase):
     def testid3v2_3(self):
         self.__comment_test__(audiotools.ID3v23Comment)
 
-#     def testid3v2_4(self):
-#         self.__comment_test__(audiotools.ID3v2Comment)
+    def testid3v24(self):
+        self.__comment_test__(audiotools.ID3v24Comment)
 
-#     def testladder(self):
-#         self.mp3_file.set_metadata(DummyMetaData3())
-#         for new_class in (audiotools.ID3v2_2Comment,
-#                           audiotools.ID3v2_3Comment,
-#                           audiotools.ID3v2Comment,
-#                           audiotools.ID3v2_3Comment,
-#                           audiotools.ID3v2_2Comment):
-#             metadata = new_class.converted(self.mp3_file.get_metadata())
-#             self.mp3_file.set_metadata(metadata)
-#             metadata = self.mp3_file.get_metadata()
-#             self.assertEqual(isinstance(metadata,new_class),True)
-#             self.assertEqual(metadata,DummyMetaData3())
-#             self.assertEqual(metadata.images(),DummyMetaData3().images())
+    def testladder(self):
+        self.mp3_file.set_metadata(DummyMetaData3())
+        for new_class in (audiotools.ID3v22Comment,
+                          audiotools.ID3v23Comment,
+                          audiotools.ID3v24Comment,
+                          audiotools.ID3v23Comment,
+                          audiotools.ID3v22Comment):
+            metadata = new_class.converted(self.mp3_file.get_metadata())
+            self.mp3_file.set_metadata(metadata)
+            metadata = self.mp3_file.get_metadata()
+            self.assertEqual(isinstance(metadata,new_class),True)
+            self.assertEqual(metadata,DummyMetaData3())
+            self.assertEqual(metadata.images(),DummyMetaData3().images())
 
     def testsetpicture(self):
         m = DummyMetaData()

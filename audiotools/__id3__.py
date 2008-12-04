@@ -518,9 +518,9 @@ class ID3v22Comment(MetaData):
                  header = ID3v2Comment.TAG_HEADER.parse_stream(f)
              except Con.ConstError:
                  raise UnsupportedID3v2Version()
-             #if (header.version_major == 0x04):
-             #    comment_class = ID3v2Comment
-             if (header.version_major == 0x03):
+             if (header.version_major == 0x04):
+                 comment_class = ID3v24Comment
+             elif (header.version_major == 0x03):
                  comment_class = ID3v23Comment
              elif (header.version_major == 0x02):
                  comment_class = ID3v22Comment
@@ -815,16 +815,45 @@ class ID3v24Frame(ID3v23Frame):
             data = self.data
 
         return self.FRAME.build(Con.Container(frame_id=self.id,
+                                              size=len(data),
                                               tag_alter=False,
                                               file_alter=False,
                                               read_only=False,
-                                              grouping=False,
                                               compression=False,
                                               encryption=False,
                                               grouping=False,
                                               unsync=False,
                                               data_length=False,
                                               data=data))
+
+    @classmethod
+    def parse(cls,container):
+        if (container.frame_id.startswith('T')):
+            encoding_byte = ord(container.data[0])
+            return ID3v24TextFrame(container.frame_id,
+                                   encoding_byte,
+                                   container.data[1:].decode(
+                    ID3v24TextFrame.ENCODING[encoding_byte]))
+        elif (container.frame_id == 'APIC'):
+            frame_data = cStringIO.StringIO(container.data)
+            pic_header = ID3v24PicFrame.FRAME_HEADER.parse_stream(frame_data)
+            return ID3v24PicFrame(
+                frame_data.read(),
+                pic_header.mime_type,
+                pic_header.description,
+                pic_header.picture_type)
+        elif (container.frame_id == 'COMM'):
+            com_data = cStringIO.StringIO(container.data)
+            com = ID3v24ComFrame.COMMENT_HEADER.parse_stream(com_data)
+            return ID3v24ComFrame(
+                com.encoding,
+                com.language,
+                com.short_description,
+                com_data.read().decode(ID3v24TextFrame.ENCODING[com.encoding],
+                                       'replace'))
+        else:
+            return cls(frame_id=container.frame_id,
+                       data=container.data)
 
 
 class ID3v24TextFrame(ID3v24Frame):
@@ -833,11 +862,138 @@ class ID3v24TextFrame(ID3v24Frame):
                 0x02:"utf-16be",
                 0x03:"utf-8"}
 
-class ID3v24PicFrame(ID3v24Frame):
-    pass
+    #encoding is an encoding byte
+    #s is a unicode string
+    def __init__(self,frame_id,encoding,s):
+        self.id = frame_id
+        self.encoding = encoding
+        self.string = s
+
+    def __unicode__(self):
+        return self.string
+
+    def __int__(self):
+        try:
+            return int(re.findall(r'\d+',self.string)[0])
+        except IndexError:
+            return 0
+
+    @classmethod
+    def from_unicode(cls,frame_id,s):
+        if (frame_id == 'COMM'):
+            return ID3v24ComFrame.from_unicode(s)
+
+        for encoding in 0x00,0x03,0x01,0x02:
+            try:
+                s.encode(cls.ENCODING[encoding])
+                return ID3v24TextFrame(frame_id,encoding,s)
+            except UnicodeEncodeError:
+                continue
+
+    def build(self):
+        return ID3v24Frame.build(
+            self,
+            chr(self.encoding) + \
+                self.string.encode(self.ENCODING[self.encoding],
+                                   'replace'))
+
+
+class ID3v24PicFrame(ID3v24Frame,Image):
+    FRAME_HEADER = Con.Struct('apic_frame',
+                              Con.Byte('text_encoding'),
+                              Con.CString('mime_type'),
+                              Con.Byte('picture_type'),
+                              Con.Switch("description",
+                                         lambda ctx: ctx.text_encoding,
+                                         {0x00: Con.CString("s",
+                                                            encoding='latin-1'),
+                                          0x01: UTF16CString("s"),
+                                          0x02: UTF16BECString("s"),
+                                          0x03: Con.CString("s",
+                                                            encoding='utf-8')}))
+
+
+    def __init__(self, data, mime_type, description, pic_type):
+        ID3v24Frame.__init__(self,'APIC',None)
+
+        img = Image.new(data,u'',0)
+
+        self.pic_type = pic_type
+        Image.__init__(self,
+                       data=data,
+                       mime_type=mime_type,
+                       width=img.width,
+                       height=img.height,
+                       color_depth=img.color_depth,
+                       color_count=img.color_count,
+                       description=description,
+                       type={3:0,4:1,5:2,6:3}.get(pic_type,4))
+
+    def build(self):
+        try:
+            self.description.encode('latin-1')
+            text_encoding = 0
+        except UnicodeEncodeError:
+            text_encoding = 1
+
+        return ID3v24Frame.build(self,
+                                 self.FRAME_HEADER.build(
+                Con.Container(text_encoding=text_encoding,
+                              picture_type=self.pic_type,
+                              mime_type=self.mime_type,
+                              description=self.description)) + self.data)
+
+    @classmethod
+    def converted(cls, image):
+        return cls(data=image.data,
+                   mime_type=image.mime_type,
+                   description=image.description,
+                   pic_type={0:3,1:4,2:5,3:6}.get(image.type,0))
 
 class ID3v24ComFrame(ID3v24TextFrame):
-    pass
+    COMMENT_HEADER = Con.Struct(
+        "com_frame",
+        Con.Byte("encoding"),
+        Con.String("language",3),
+        Con.Switch("short_description",
+                   lambda ctx: ctx.encoding,
+                   {0x00: Con.CString("s",encoding='latin-1'),
+                    0x01: UTF16CString("s"),
+                    0x02: UTF16BECString("s"),
+                    0x03: Con.CString("s",encoding='utf-8')}))
+
+
+    def __init__(self,encoding,language,short_description,content):
+        self.encoding = encoding
+        self.language = language
+        self.short_description = short_description
+        self.content = content
+        self.id = 'COMM'
+
+    def __unicode__(self):
+        return self.content
+
+    def __int__(self):
+        return 0
+
+    @classmethod
+    def from_unicode(cls,s):
+        for encoding in 0x00,0x03,0x01,0x02:
+            try:
+                s.encode(cls.ENCODING[encoding])
+                return cls(encoding,'eng',u'',s)
+            except UnicodeEncodeError:
+                continue
+
+    def build(self):
+        return ID3v24Frame.build(
+            self,
+            self.COMMENT_HEADER.build(Con.Container(
+                    encoding=self.encoding,
+                    language=self.language,
+                    short_description=self.short_description)) + \
+                self.content.encode(self.ENCODING[self.encoding],'replace'))
+
 
 class ID3v24Comment(ID3v23Comment):
     Frame = ID3v24Frame
@@ -861,7 +1017,81 @@ class ID3v24Comment(ID3v23Comment):
                           footer=False,
                           length=len(subframes))) + subframes
 
-ID3v2Comment = ID3v23Comment
+ID3v2Comment = ID3v22Comment
 
 from __id3v1__ import *
 
+class ID3CommentPair(MetaData):
+    #id3v2 and id3v1 are ID3v2Comment and ID3v1Comment objects or None
+    #values in ID3v2 take precendence over ID3v1, if present
+    def __init__(self, id3v2_comment, id3v1_comment):
+        self.__dict__['id3v2'] = id3v2_comment
+        self.__dict__['id3v1'] = id3v1_comment
+
+        if (self.id3v2 is not None):
+            base_comment = self.id3v2
+        elif (self.id3v1 is not None):
+            base_comment = self.id3v1
+        else:
+            raise ValueError("id3v2 and id3v1 cannot both be blank")
+
+        fields = dict([(field,getattr(base_comment,field))
+                       for field in self.__FIELDS__])
+
+        MetaData.__init__(self,**fields)
+
+    def __setattr__(self, key, value):
+        self.__dict__[key] = value
+
+        if (self.id3v2 is not None):
+            setattr(self.id3v2,key,value)
+        if (self.id3v1 is not None):
+            setattr(self.id3v1,key,value)
+
+    @classmethod
+    def converted(cls, metadata):
+        if ((metadata is None) or (isinstance(metadata,ID3CommentPair))):
+            return metadata
+
+        if (isinstance(metadata,ID3v2Comment)):
+            return ID3CommentPair(metadata,
+                                  ID3v1Comment.converted(metadata))
+        else:
+            return ID3CommentPair(
+                ID3v23Comment.converted(metadata),
+                ID3v1Comment.converted(metadata))
+
+
+    def __unicode__(self):
+        if ((self.id3v2 != None) and (self.id3v1 != None)):
+            #both comments present
+            return unicode(self.id3v2) + \
+                   (os.linesep * 2) + \
+                   unicode(self.id3v1)
+        elif (self.id3v2 is not None):
+            #only ID3v2
+            return unicode(self.id3v2)
+        elif (self.id3v1 is not None):
+            #only ID3v1
+            return unicode(self.id3v1)
+        else:
+            return u''
+
+    #ImageMetaData passthroughs
+    def images(self):
+        if (self.id3v2 is not None):
+            return self.id3v2.images()
+        else:
+            return []
+
+    def add_image(self, image):
+        if (self.id3v2 is not None):
+            self.id3v2.add_image(image)
+
+    def delete_image(self, image):
+        if (self.id3v2 is not None):
+            self.id3v2.delete_image(image)
+
+    @classmethod
+    def supports_images(cls):
+        return True
