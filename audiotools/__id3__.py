@@ -104,6 +104,12 @@ class ID3v22Frame:
         return self.FRAME.build(Con.Container(frame_id=self.id,
                                               data=self.data))
 
+    def __unicode__(self):
+        if (len(self.data) <= 20):
+            return unicode(self.data.encode('hex').upper())
+        else:
+            return unicode(self.data[0:19].encode('hex').upper()) + u"\u2026"
+
     @classmethod
     def parse(cls,container):
         if (container.frame_id.startswith('T')):
@@ -384,7 +390,7 @@ class ID3v22Comment(MetaData):
 
         for (key,values) in sorted(self.frames.items(),by_weight):
             for value in values:
-                pairs.append(('    ' + key,unicode(value)))
+                pairs.append(('     ' + key,unicode(value)))
 
         return pairs
 
@@ -594,6 +600,12 @@ class ID3v23Frame(ID3v22Frame):
             return cls(frame_id=container.frame_id,
                        data=container.data)
 
+    def __unicode__(self):
+        if (len(self.data) <= 20):
+            return unicode(self.data.encode('hex').upper())
+        else:
+            return unicode(self.data[0:19].encode('hex').upper()) + u"\u2026"
+
 class ID3v23TextFrame(ID3v23Frame):
     ENCODING = {0x00:"latin-1",
                 0x01:"utf-16"}
@@ -760,6 +772,33 @@ class ID3v23Comment(ID3v22Comment):
     def __comment_name__(self):
         return u'ID3v2.3'
 
+    def __comment_pairs__(self):
+        key_order = list(self.KEY_ORDER)
+
+        def by_weight(keyval1,keyval2):
+            (key1,key2) = (keyval1[0],keyval2[0])
+
+            if (key1 in key_order):
+                order1 = key_order.index(key1)
+            else:
+                order1 = key_order.index(None)
+
+            if (key2 in key_order):
+                order2 = key_order.index(key2)
+            else:
+                order2 = key_order.index(None)
+
+            return cmp((order1,key1),(order2,key2))
+
+        pairs = []
+
+        for (key,values) in sorted(self.frames.items(),by_weight):
+            for value in values:
+                pairs.append(('    ' + key,unicode(value)))
+
+        return pairs
+
+
     def add_image(self, image):
         image = self.picture_frame.converted(image)
         self.frames.setdefault('APIC',[]).append(image)
@@ -795,7 +834,7 @@ class ID3v23Comment(ID3v22Comment):
 class ID3v24Frame(ID3v23Frame):
     FRAME = Con.Struct("id3v24_frame",
                        Con.Bytes("frame_id",4),
-                       Con.UBInt32("size"),
+                       Syncsafe32("size"),
                        Con.Embed(Con.BitStruct("flags",
                                                Con.Padding(1),
                                                Con.Flag('tag_alter'),
@@ -854,6 +893,12 @@ class ID3v24Frame(ID3v23Frame):
         else:
             return cls(frame_id=container.frame_id,
                        data=container.data)
+
+    def __unicode__(self):
+        if (len(self.data) <= 20):
+            return unicode(self.data.encode('hex').upper())
+        else:
+            return unicode(self.data[0:19].encode('hex').upper()) + u"\u2026"
 
 
 class ID3v24TextFrame(ID3v24Frame):
