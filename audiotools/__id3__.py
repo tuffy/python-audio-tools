@@ -95,6 +95,10 @@ class ID3v22Frame:
     FRAME = Con.Struct("id3v22_frame",
                        Con.Bytes("frame_id",3),
                        Con.PascalString("data",length_field=UBInt24("size")))
+    #we use TEXT_TYPE to differentiate frames which are
+    #supposed to return text unicode when __unicode__ is called
+    #from those that just return summary data
+    TEXT_TYPE = False
 
     def __init__(self,frame_id,data):
         self.id = frame_id
@@ -146,6 +150,8 @@ class ID3v22TextFrame(ID3v22Frame):
     ENCODING = {0x00:"latin-1",
                 0x01:"utf-16"}
 
+    TEXT_TYPE = True
+
     #encoding is an encoding byte
     #s is a unicode string
     def __init__(self,frame_id,encoding,s):
@@ -190,6 +196,8 @@ class ID3v22ComFrame(ID3v22TextFrame):
                    lambda ctx: ctx.encoding,
                    {0x00: Con.CString("s",encoding='latin-1'),
                     0x01: UTF16CString("s")}))
+
+    TEXT_TYPE = True
 
     #encoding should be an integer
     #language should be a standard string
@@ -365,7 +373,8 @@ class ID3v22Comment(MetaData):
 
         attribs = {}
         for key in self.frames.keys():
-            if (key in self.ITEM_MAP.keys()):
+            if ((key in self.ITEM_MAP.keys()) and
+                (self.frames[key][0].TEXT_TYPE)):
                 if (key not in self.INTEGER_ITEMS):
                     attribs[self.ITEM_MAP[key]] = unicode(self.frames[key][0])
                 else:
@@ -621,6 +630,8 @@ class ID3v23TextFrame(ID3v23Frame):
     ENCODING = {0x00:"latin-1",
                 0x01:"utf-16"}
 
+    TEXT_TYPE = True
+
     #encoding is an encoding byte
     #s is a unicode string
     def __init__(self,frame_id,encoding,s):
@@ -716,6 +727,8 @@ class ID3v23PicFrame(ID3v23Frame,Image):
 
 class ID3v23ComFrame(ID3v23TextFrame):
     COMMENT_HEADER = ID3v22ComFrame.COMMENT_HEADER
+
+    TEXT_TYPE = True
 
     def __init__(self,encoding,language,short_description,content):
         self.encoding = encoding
@@ -931,6 +944,8 @@ class ID3v24TextFrame(ID3v24Frame):
                 0x02:"utf-16be",
                 0x03:"utf-8"}
 
+    TEXT_TYPE = True
+
     #encoding is an encoding byte
     #s is a unicode string
     def __init__(self,frame_id,encoding,s):
@@ -1029,6 +1044,7 @@ class ID3v24PicFrame(ID3v24Frame,Image):
                    description=image.description,
                    pic_type={0:3,1:4,2:5,3:6}.get(image.type,0))
 
+
 class ID3v24ComFrame(ID3v24TextFrame):
     COMMENT_HEADER = Con.Struct(
         "com_frame",
@@ -1040,6 +1056,8 @@ class ID3v24ComFrame(ID3v24TextFrame):
                     0x01: UTF16CString("s"),
                     0x02: UTF16BECString("s"),
                     0x03: Con.CString("s",encoding='utf-8')}))
+
+    TEXT_TYPE = True
 
 
     def __init__(self,encoding,language,short_description,content):
