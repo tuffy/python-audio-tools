@@ -142,6 +142,8 @@ class ID3v22Frame:
                         ID3v22TextFrame.ENCODING[com.encoding],'replace'))
             except Con.core.ArrayError:
                 return cls(frame_id=container.frame_id,data=container.data)
+            except Con.core.FieldError:
+                return cls(frame_id=container.frame_id,data=container.data)
         else:
             return cls(frame_id=container.frame_id,
                        data=container.data)
@@ -616,6 +618,8 @@ class ID3v23Frame(ID3v22Frame):
                         ID3v23TextFrame.ENCODING[com.encoding],'replace'))
             except Con.core.ArrayError:
                 return cls(frame_id=container.frame_id,data=container.data)
+            except Con.core.FieldError:
+                return cls(frame_id=container.frame_id,data=container.data)
         else:
             return cls(frame_id=container.frame_id,
                        data=container.data)
@@ -926,6 +930,8 @@ class ID3v24Frame(ID3v23Frame):
                     com_data.read().decode(
                         ID3v24TextFrame.ENCODING[com.encoding],'replace'))
             except Con.core.ArrayError:
+                return cls(frame_id=container.frame_id,data=container.data)
+            except Con.core.FieldError:
                 return cls(frame_id=container.frame_id,data=container.data)
         else:
             return cls(frame_id=container.frame_id,
