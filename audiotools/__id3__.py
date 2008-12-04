@@ -239,7 +239,12 @@ class ID3v22PicFrame(ID3v22Frame,Image):
     def __init__(self, data, format, description, pic_type):
         ID3v22Frame.__init__(self,'PIC',None)
 
-        img = Image.new(data,u'',0)
+        try:
+            img = Image.new(data,u'',0)
+        except InvalidImage:
+            img = Image(data=data,mime_type=u'',
+                        width=0,height=0,color_depth=0,color_count=0,
+                        description=u'',type=0)
 
         self.pic_type = pic_type
         self.format = format
@@ -659,7 +664,12 @@ class ID3v23PicFrame(ID3v23Frame,Image):
     def __init__(self, data, mime_type, description, pic_type):
         ID3v23Frame.__init__(self,'APIC',None)
 
-        img = Image.new(data,u'',0)
+        try:
+            img = Image.new(data,u'',0)
+        except InvalidImage:
+            img = Image(data=data,mime_type=u'',
+                        width=0,height=0,color_depth=0,color_count=0,
+                        description=u'',type=0)
 
         self.pic_type = pic_type
         Image.__init__(self,
@@ -966,7 +976,12 @@ class ID3v24PicFrame(ID3v24Frame,Image):
     def __init__(self, data, mime_type, description, pic_type):
         ID3v24Frame.__init__(self,'APIC',None)
 
-        img = Image.new(data,u'',0)
+        try:
+            img = Image.new(data,u'',0)
+        except InvalidImage:
+            img = Image(data=data,mime_type=u'',
+                        width=0,height=0,color_depth=0,color_count=0,
+                        description=u'',type=0)
 
         self.pic_type = pic_type
         Image.__init__(self,
