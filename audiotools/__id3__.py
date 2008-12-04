@@ -128,13 +128,16 @@ class ID3v22Frame:
                 pic_header.picture_type)
         elif (container.frame_id == 'COM'):
             com_data = cStringIO.StringIO(container.data)
-            com = ID3v22ComFrame.COMMENT_HEADER.parse_stream(com_data)
-            return ID3v22ComFrame(
-                com.encoding,
-                com.language,
-                com.short_description,
-                com_data.read().decode(ID3v22TextFrame.ENCODING[com.encoding],
-                                       'replace'))
+            try:
+                com = ID3v22ComFrame.COMMENT_HEADER.parse_stream(com_data)
+                return ID3v22ComFrame(
+                    com.encoding,
+                    com.language,
+                    com.short_description,
+                    com_data.read().decode(
+                        ID3v22TextFrame.ENCODING[com.encoding],'replace'))
+            except Con.core.ArrayError:
+                return cls(frame_id=container.frame_id,data=container.data)
         else:
             return cls(frame_id=container.frame_id,
                        data=container.data)
@@ -594,13 +597,16 @@ class ID3v23Frame(ID3v22Frame):
                 pic_header.picture_type)
         elif (container.frame_id == 'COMM'):
             com_data = cStringIO.StringIO(container.data)
-            com = ID3v23ComFrame.COMMENT_HEADER.parse_stream(com_data)
-            return ID3v23ComFrame(
-                com.encoding,
-                com.language,
-                com.short_description,
-                com_data.read().decode(ID3v23TextFrame.ENCODING[com.encoding],
-                                       'replace'))
+            try:
+                com = ID3v23ComFrame.COMMENT_HEADER.parse_stream(com_data)
+                return ID3v23ComFrame(
+                    com.encoding,
+                    com.language,
+                    com.short_description,
+                    com_data.read().decode(
+                        ID3v23TextFrame.ENCODING[com.encoding],'replace'))
+            except Con.core.ArrayError:
+                return cls(frame_id=container.frame_id,data=container.data)
         else:
             return cls(frame_id=container.frame_id,
                        data=container.data)
@@ -898,13 +904,16 @@ class ID3v24Frame(ID3v23Frame):
                 pic_header.picture_type)
         elif (container.frame_id == 'COMM'):
             com_data = cStringIO.StringIO(container.data)
-            com = ID3v24ComFrame.COMMENT_HEADER.parse_stream(com_data)
-            return ID3v24ComFrame(
-                com.encoding,
-                com.language,
-                com.short_description,
-                com_data.read().decode(ID3v24TextFrame.ENCODING[com.encoding],
-                                       'replace'))
+            try:
+                com = ID3v24ComFrame.COMMENT_HEADER.parse_stream(com_data)
+                return ID3v24ComFrame(
+                    com.encoding,
+                    com.language,
+                    com.short_description,
+                    com_data.read().decode(
+                        ID3v24TextFrame.ENCODING[com.encoding],'replace'))
+            except Con.core.ArrayError:
+                return cls(frame_id=container.frame_id,data=container.data)
         else:
             return cls(frame_id=container.frame_id,
                        data=container.data)
