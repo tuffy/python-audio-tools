@@ -464,7 +464,11 @@ class ID3v22Comment(MetaData):
         frames = []
 
         while (stream.tell() < header.length):
-            container = cls.Frame.FRAME.parse_stream(stream)
+            try:
+                container = cls.Frame.FRAME.parse_stream(stream)
+            except Con.core.FieldError:
+                break
+
             if (chr(0) in container.frame_id):
                 break
             else:
@@ -475,7 +479,9 @@ class ID3v22Comment(MetaData):
 
     @classmethod
     def converted(cls, metadata):
-        if ((metadata is None) or (isinstance(metadata,cls))):
+        if ((metadata is None) or
+            (isinstance(metadata,cls) and
+             (cls.Frame is metadata.Frame))):
             return metadata
 
         frames = []

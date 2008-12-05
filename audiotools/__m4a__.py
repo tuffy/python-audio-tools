@@ -410,7 +410,7 @@ class M4AMetaData(MetaData,dict):
                           performer_name=meta_data.get('\xa9ART',[u''])[0],
                           copyright=meta_data.get('cprt',[u''])[0],
                           year=u'',
-                          comment=meta_data.get('\xacmt',[u''])[0],
+                          comment=meta_data.get('\xa9cmt',[u''])[0],
                           images=images)
 
         dict.__init__(self, meta_data)
