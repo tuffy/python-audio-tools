@@ -434,7 +434,8 @@ class ID3v22Comment(MetaData):
 
         if (key in self.ATTRIBUTE_MAP):
             self.frames[self.ATTRIBUTE_MAP[key]] = [
-                self.TextFrame.from_unicode(self.ATTRIBUTE_MAP[key],value)]
+                self.TextFrame.from_unicode(self.ATTRIBUTE_MAP[key],
+                                            unicode(value))]
 
     def add_image(self, image):
         image = self.picture_frame.converted(image)
@@ -449,9 +450,43 @@ class ID3v22Comment(MetaData):
         else:
             return []
 
-    #FIXME - lots of stuff expects ID3v2 comments to act as dicts
-    #implement keys(),values(),items(),__getitem__(),__setitem__(),len()
-    #such that the assumption still holds
+    def __getitem__(self,key):
+        return self.frames[key]
+
+    #this should always take a list of items,
+    #either unicode strings (for text fields)
+    #or something Frame-compatible (for everything else)
+    #or possibly both in one list
+    def __setitem__(self,key,values):
+        if (key in self.ITEM_MAP.keys()):
+            if (key not in self.INTEGER_ITEMS):
+                self.__dict__[self.ITEM_MAP[key]] = unicode(values[0])
+            else:
+                self.__dict__[self.ITEM_MAP[key]] = int(values[0])
+
+        frames = []
+        for value in values:
+            if (isinstance(value,unicode)):
+                frames.append(self.TextFrame.from_unicode(key,value))
+            elif (isinstance(value,self.Frame)):
+                frames.append(value)
+
+        self.frames[key] = frames
+
+    def __delitem__(self,key):
+        del(self.frames[key])
+
+    def len(self):
+        return len(self.frames)
+
+    def keys(self):
+        return self.frames.keys()
+
+    def values(self):
+        return self.frames.values()
+
+    def items(self):
+        return self.frames.items()
 
     @classmethod
     def parse(cls, stream):

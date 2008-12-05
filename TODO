@@ -36,7 +36,7 @@
   m4a winds up completely broken since the current implementation
   only modifies an existing Quicktime container.
   So, if faac builds no container, the resulting file is unsupportable.
-* TODO Fix image support in ID3v2
+* DONE Fix image support in ID3v2
   Very large images can take a very long time to load.
 * DONE Fix programs to key on album number and track number
   Certain programs, such as trackcmp, work on tracks across two directories
@@ -78,7 +78,7 @@
   The current implementation treats UCS-2 the same as UTF-16.
   This needs to be fixed so that really high unicode characters
   (above U+FFFF) are replaced with something within spec.
-* TODO Unify ID3v2 frame handling
+* DONE Unify ID3v2 frame handling
   In the beginning, there were text frames and Everything Else.
   Text frames were unicode strings,
   and Everything Else was a binary string of whatever.

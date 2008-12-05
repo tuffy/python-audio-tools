@@ -72,7 +72,7 @@ def fix_track(track,dry_run=False):
 def __strip_list_dict__(d,log):
     for key in list(d.keys())[:]:
         old_values = d[key]
-        new_values = [v for v in old_values if (len(v.strip()) > 0)]
+        new_values = [v for v in old_values if (len(unicode(v).strip()) > 0)]
         if (old_values != new_values):
             if (len(new_values) > 0):
                 d[key] = new_values
@@ -90,8 +90,8 @@ def __strip_zeroes_list_dict__(d,numeric_keys,log):
 
     for key in list(d.keys())[:]:
         if (key in numeric_keys):
-            old_values = d[key]
-            new_values = [__strip_zeroes__(v) for v in old_values]
+            old_values = [unicode(v) for v in d[key]]
+            new_values = [__strip_zeroes__(unicode(v)) for v in old_values]
             if (old_values != new_values):
                 d[key] = new_values
                 log.append(u"stripped leading zeroes from %s field" % (key))

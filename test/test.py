@@ -871,14 +871,91 @@ class TestID3v2(unittest.TestCase):
             self.assertEqual(metadata.images(),
                              new_class.converted(metadata).images())
 
+    def __dict_test__(self,id3_class):
+        attribs1 = {}  #a dict of attribute -> value pairs ("track_name":u"foo")
+        attribs2 = {}  #a dict of ID3v2 -> value pairs     ("TT2":u"foo")
+        for (i,(attribute,key)) in enumerate(id3_class.ATTRIBUTE_MAP.items()):
+            if (key not in id3_class.INTEGER_ITEMS):
+                attribs1[attribute] = attribs2[key] = u"value %d" % (i)
+            else:
+                attribs1[attribute] = attribs2[key] = i
+
+        id3 = id3_class.converted(audiotools.MetaData(**attribs1))
+
+        self.mp3_file.set_metadata(id3)
+        self.assertEqual(self.mp3_file.get_metadata(),id3)
+        id3 = self.mp3_file.get_metadata()
+
+        #ensure that all the attributes match up
+        for (attribute,value) in attribs1.items():
+            self.assertEqual(getattr(id3,attribute),value)
+
+        #ensure that all the keys match up
+        for (key,value) in attribs2.items():
+            if (key not in id3_class.INTEGER_ITEMS):
+                self.assertEqual(unicode(id3[key][0]),value)
+            else:
+                self.assertEqual(int(id3[key][0]),value)
+
+        #ensure that changing attributes changes the underlying frame
+        #>>> id3.track_name = u"bar"
+        #>>> id3['TT2'][0] == u"bar"
+        for (i,(attribute,key)) in enumerate(id3_class.ATTRIBUTE_MAP.items()):
+            if (key not in id3_class.INTEGER_ITEMS):
+                setattr(id3,attribute,u"new value %d" % (i))
+                self.assertEqual(unicode(id3[key][0]),u"new value %d" % (i))
+            else:
+                setattr(id3,attribute,i + 10)
+                self.assertEqual(int(id3[key][0]),i + 10)
+
+        #reset and re-check everything for the next round
+        id3 = id3_class.converted(audiotools.MetaData(**attribs1))
+        self.mp3_file.set_metadata(id3)
+        self.assertEqual(self.mp3_file.get_metadata(),id3)
+        id3 = self.mp3_file.get_metadata()
+
+        for (attribute,value) in attribs1.items():
+            self.assertEqual(getattr(id3,attribute),value)
+
+        for (key,value) in attribs2.items():
+            if (key not in id3_class.INTEGER_ITEMS):
+                self.assertEqual(unicode(id3[key][0]),value)
+            else:
+                self.assertEqual(int(id3[key][0]),value)
+
+        #ensure that changing the underlying frames changes attributes
+        #>>> id3['TT2'] = [u"bar"]
+        #>>> id3.track_name == u"bar"
+        for (i,(attribute,key)) in enumerate(id3_class.ATTRIBUTE_MAP.items()):
+            if (key not in id3_class.INTEGER_ITEMS):
+                id3[key] = [u"new value %d" % (i)]
+                self.assertEqual(getattr(id3,attribute),u"new value %d" % (i))
+            else:
+                id3[key] = [i + 10]
+                self.assertEqual(getattr(id3,attribute),i + 10)
+
+        #finally, just for kicks, ensure that explicitly setting
+        #frames also changes attributes
+        #>>> id3['TT2'] = [id3_class.TextFrame.from_unicode('TT2',u"foo")]
+        #>>> id3.track_name = u"foo"
+        for (i,(attribute,key)) in enumerate(id3_class.ATTRIBUTE_MAP.items()):
+            id3[key] = [id3_class.TextFrame.from_unicode(key,unicode(i))]
+            if (key not in id3_class.INTEGER_ITEMS):
+                self.assertEqual(getattr(id3,attribute),unicode(i))
+            else:
+                self.assertEqual(getattr(id3,attribute),i)
+
     def testid3v2_2(self):
         self.__comment_test__(audiotools.ID3v22Comment)
+        self.__dict_test__(audiotools.ID3v22Comment)
 
     def testid3v2_3(self):
         self.__comment_test__(audiotools.ID3v23Comment)
+        self.__dict_test__(audiotools.ID3v23Comment)
 
-    def testid3v24(self):
+    def testid3v2_4(self):
         self.__comment_test__(audiotools.ID3v24Comment)
+        self.__dict_test__(audiotools.ID3v24Comment)
 
     def testladder(self):
         self.mp3_file.set_metadata(DummyMetaData3())
