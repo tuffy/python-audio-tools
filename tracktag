@@ -178,6 +178,12 @@ if (__name__ == '__main__'):
                       dest='copyright',
                       help='copyright information')
 
+    parser.add_option('--comment',
+                      action='store',
+                      type='string',
+                      dest='comment',
+                      help='a text comment')
+
     parser.add_option('-r','--replace',
                       action='store_true',
                       default=False,
@@ -290,7 +296,7 @@ if (__name__ == '__main__'):
                               'composer_name','conductor_name',
                               'album_name','catalog','track_number',
                               'ISRC','publisher',
-                              'year','date','copyright'):
+                              'year','date','copyright','comment'):
                     if (getattr(options,field) is not None):
                         attr = getattr(options,field)
                         if (isinstance(attr,str)):
