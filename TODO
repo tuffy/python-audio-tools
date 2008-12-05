@@ -67,7 +67,7 @@
   Anything with a single output file (trackcat and record2track)
   should be able to infer its output type from the track suffix, if possible.
 
-* TODO Add "comment" field support to all metadata types
+* DONE Add "comment" field support to all metadata types
   Don't forget to add unit tests for comment field.
 ** TODO Sort "comment" fields correctly across all metadata types
 ** TODO Add --comment support to tracktag

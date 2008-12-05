@@ -1010,6 +1010,22 @@ class TestID3v2(unittest.TestCase):
         finally:
             flac_tempfile.close()
 
+    def testucs2codec(self):
+        #this should be 4 characters long in UCS-4 environments
+        #if not, we're in a UCS-2 environment
+        #which is limited to 16 bits anyway
+        test_string = u'f\U0001d55foo'
+
+        #u'\ufffd' is the "not found" character
+        #this string should result from escaping through UCS-2
+        test_string_out = u'f\ufffdoo'
+
+        if (len(test_string) == 4):
+            self.assertEqual(test_string,
+                             test_string.encode('utf-16').decode('utf-16'))
+            self.assertEqual(test_string.encode('ucs2').decode('ucs2'),
+                             test_string_out)
+
     def tearDown(self):
         self.file.close()
 

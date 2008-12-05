@@ -18,6 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 from audiotools import MetaData,Con,re,os,cStringIO,Image,InvalidImage
+import codecs
 
 class UnsupportedID3v2Version(Exception): pass
 
@@ -86,6 +87,39 @@ def UTF16BECString(name):
     return WidecharCStringAdapter(Con.RepeatUntil(lambda obj, ctx: obj == 0x0,
                                                   Con.UBInt16(name)),
                                   encoding='utf-16be')
+
+class UCS2Codec(codecs.Codec):
+    @classmethod
+    def fix_char(cls,c):
+        if (ord(c) <= 0xFFFF):
+            return c
+        else:
+            return u"\ufffd"
+
+    def encode(self, input, errors='strict'):
+        return codecs.utf_16_encode(u"".join(map(self.fix_char,input)),errors)
+
+    def decode(self, input, errors='strict'):
+        (chars,size) = codecs.utf_16_decode(input, errors, True)
+        return (u"".join(map(self.fix_char,chars)),size)
+
+class UCS2CodecStreamWriter(UCS2Codec,codecs.StreamWriter):
+    pass
+
+class UCS2CodecStreamReader(UCS2Codec,codecs.StreamReader):
+    pass
+
+def __reg_ucs2__(name):
+   if (name == 'ucs2'):
+       return (UCS2Codec().encode,
+               UCS2Codec().decode,
+               UCS2CodecStreamReader,
+	       UCS2CodecStreamWriter)
+   else:
+       return None
+
+codecs.register(__reg_ucs2__)
+
 
 #######################
 #ID3v2.2
