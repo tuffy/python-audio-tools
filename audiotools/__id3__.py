@@ -492,18 +492,18 @@ class ID3v22Comment(MetaData):
     #or something Frame-compatible (for everything else)
     #or possibly both in one list
     def __setitem__(self,key,values):
-        if (key in self.ITEM_MAP.keys()):
-            if (key not in self.INTEGER_ITEMS):
-                self.__dict__[self.ITEM_MAP[key]] = unicode(values[0])
-            else:
-                self.__dict__[self.ITEM_MAP[key]] = int(values[0])
-
         frames = []
         for value in values:
             if (isinstance(value,unicode)):
                 frames.append(self.TextFrame.from_unicode(key,value))
             elif (isinstance(value,self.Frame)):
                 frames.append(value)
+
+        if (key in self.ITEM_MAP.keys()):
+            if (key not in self.INTEGER_ITEMS):
+                self.__dict__[self.ITEM_MAP[key]] = unicode(frames[0])
+            else:
+                self.__dict__[self.ITEM_MAP[key]] = int(frames[0])
 
         self.frames[key] = frames
 
