@@ -496,10 +496,12 @@ class ID3v22Comment(MetaData):
         for value in values:
             if (isinstance(value,unicode)):
                 frames.append(self.TextFrame.from_unicode(key,value))
+            elif (isinstance(value,int)):
+                frames.append(self.TextFrame.from_unicode(key,unicode(value)))
             elif (isinstance(value,self.Frame)):
                 frames.append(value)
 
-        if (key in self.ITEM_MAP.keys()):
+        if ((key in self.ITEM_MAP.keys()) and (len(frames) > 0)):
             if (key not in self.INTEGER_ITEMS):
                 self.__dict__[self.ITEM_MAP[key]] = unicode(frames[0])
             else:

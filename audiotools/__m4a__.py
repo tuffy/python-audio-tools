@@ -383,6 +383,23 @@ class M4AAudio(AudioFile):
             devnull.close()
 
 class M4AMetaData(MetaData,dict):
+                                                 # iTunes ID:
+    ATTRIBUTE_MAP = {'track_name':'\xa9nam',     # Name
+                     'artist_name':'\xa9ART',    # Artist
+                     'year':'\xa9day',           # Year
+                     'performer_name':'aART' ,   # Album Artist
+                     'track_number':'trkn',      # Track Number
+                     'album_name':'\xa9alb',     # Album
+                     'album_number':'disk',      # Disc Number
+                     #?:'\xa9grp'                # Grouping
+                     #?:'tmpo'                   # BPM
+                     'composer_name':'\xa9wrt',  # Composer
+                     'comment':'\xa9cmt',        # Comments
+                     'copyright':'cprt'}         # (not listed)
+                     #'artist_name':'\xa9com'}
+
+    ITEM_MAP = dict(map(reversed,ATTRIBUTE_MAP.items()))
+
     #meta_data is a key->[value1,value2,...] dict of the contents
     #of the 'meta' container atom
     #values are Unicode if the key starts with \xa9, binary strings otherwise
@@ -401,31 +418,17 @@ class M4AMetaData(MetaData,dict):
         else:
             images = []
 
-        MetaData.__init__(self,
-                          track_name=meta_data.get('\xa9nam',[u''])[0],
-                          track_number=trkn.track_number,
-                          album_number=disk.disk_number,
-                          album_name=meta_data.get('\xa9alb',[u''])[0],
-                          artist_name=meta_data.get('\xa9wrt',[u''])[0],
-                          performer_name=meta_data.get('\xa9ART',[u''])[0],
-                          copyright=meta_data.get('cprt',[u''])[0],
-                          year=u'',
-                          comment=meta_data.get('\xa9cmt',[u''])[0],
-                          images=images)
+        attributes = {'track_number':trkn.track_number,
+                      'album_number':disk.disk_number,
+                      'images':images}
+
+        for (attribute,key) in self.ATTRIBUTE_MAP.items():
+            if (attribute not in ("track_number","album_number")):
+                attributes[attribute] = meta_data.get(key,[u''])[0]
+
+        MetaData.__init__(self,**attributes)
 
         dict.__init__(self, meta_data)
-
-    ATTRIBUTE_MAP = {'track_name':'\xa9nam',
-                     'track_number':'trkn',
-                     'album_number':'disk',
-                     'album_name':'\xa9alb',
-                     'artist_name':'\xa9wrt',
-                     'performer_name':'\xa9ART',
-                     'copyright':'cprt',
-                     'year':'\xa9day',
-                     'comment':'\xa9cmt'}
-
-    ITEM_MAP = dict(map(reversed,ATTRIBUTE_MAP.items()))
 
     #if an attribute is updated (e.g. self.track_name)
     #make sure to update the corresponding dict pair

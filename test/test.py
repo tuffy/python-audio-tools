@@ -146,10 +146,12 @@ class SmallDummyMetaData(audiotools.MetaData):
     def __init__(self):
         audiotools.MetaData.__init__(self,
                                      track_name=u"Track Name",
+                                     artist_name=u"Artist Name",
+                                     year=u'2008',
+                                     performer_name=u"Performer",
                                      track_number=5,
                                      album_name=u"Album Name",
-                                     artist_name=u"Artist Name",
-                                     performer_name=u"Performer",
+                                     composer_name=u"Composer",
                                      album_number=6,
                                      comment=u"Comment")
 
@@ -929,10 +931,38 @@ class TestID3v2(unittest.TestCase):
         for (i,(attribute,key)) in enumerate(id3_class.ATTRIBUTE_MAP.items()):
             if (key not in id3_class.INTEGER_ITEMS):
                 id3[key] = [u"new value %d" % (i)]
+                self.mp3_file.set_metadata(id3)
+                id3 = self.mp3_file.get_metadata()
                 self.assertEqual(getattr(id3,attribute),u"new value %d" % (i))
             else:
                 id3[key] = [i + 10]
+                self.mp3_file.set_metadata(id3)
+                id3 = self.mp3_file.get_metadata()
                 self.assertEqual(getattr(id3,attribute),i + 10)
+
+        #ensure that nutty track and album numbers are handled correctly
+        #in both directions
+        for attribute in ('track_number','album_number'):
+            id3 = self.mp3_file.get_metadata()
+            setattr(id3,attribute,u"5/10")
+            self.mp3_file.set_metadata(id3)
+            id3 = self.mp3_file.get_metadata()
+            self.assertEqual(getattr(id3,attribute),5)
+            self.assertEqual(
+                unicode(id3[id3_class.ATTRIBUTE_MAP[attribute]][0]),u"5/10")
+
+        id3.track_number = 1
+        id3.album_number = 2
+        self.mp3_file.set_metadata(id3)
+
+        for attribute in ('track_number','album_number'):
+            field = id3_class.ATTRIBUTE_MAP[attribute]
+            id3 = self.mp3_file.get_metadata()
+            id3[field] = [id3_class.TextFrame.from_unicode(field,u"5/10")]
+            self.mp3_file.set_metadata(id3)
+            id3 = self.mp3_file.get_metadata()
+            self.assertEqual(getattr(id3,attribute),5)
+            self.assertEqual(unicode(id3[field][0]),u"5/10")
 
         #finally, just for kicks, ensure that explicitly setting
         #frames also changes attributes
@@ -940,6 +970,8 @@ class TestID3v2(unittest.TestCase):
         #>>> id3.track_name = u"foo"
         for (i,(attribute,key)) in enumerate(id3_class.ATTRIBUTE_MAP.items()):
             id3[key] = [id3_class.TextFrame.from_unicode(key,unicode(i))]
+            self.mp3_file.set_metadata(id3)
+            id3 = self.mp3_file.get_metadata()
             if (key not in id3_class.INTEGER_ITEMS):
                 self.assertEqual(getattr(id3,attribute),unicode(i))
             else:
