@@ -83,6 +83,28 @@ def toc_metadata(filename):
     finally:
         f.close()
 
+#given a comment filename
+#returns the comment as a unicode string
+#or exits with an error if the file cannot be read
+#or is not UTF-8 text
+def read_comment(filename):
+    try:
+        f = open(filename,'rb')
+        data = f.read().decode('utf-8','replace')
+        f.close()
+
+        if (((data.count(u"\uFFFD") * 100) / len(data)) >= 10):
+            print >>sys.stderr,"*** comment file \"%s\" does not appear to be UTF-8 text" % \
+            (filename)
+            sys.exit(1)
+        else:
+            return data
+    except IOError:
+        print >>sys.stderr,"*** Error opening comment file \"%s\"" % \
+            (filename)
+        sys.exit(1)
+
+
 if (__name__ == '__main__'):
     parser = optparse.OptionParser(
         "%prog [-x XMCD file] <track 1> [track 2] ...",
@@ -183,6 +205,13 @@ if (__name__ == '__main__'):
                       type='string',
                       dest='comment',
                       help='a text comment')
+
+    parser.add_option('--comment-file',
+                      action='store',
+                      type='string',
+                      dest='comment_file',
+                      help='a file containing comment text',
+                      metavar='FILENAME')
 
     parser.add_option('-r','--replace',
                       action='store_true',
@@ -311,6 +340,9 @@ if (__name__ == '__main__'):
 
                 if (options.album_number is not None):
                     metadata.album_number = options.album_number
+
+                if (options.comment_file is not None):
+                    metadata.comment = read_comment(options.comment_file)
 
                 if (metadata.supports_images()):
                     if (options.remove_images):
