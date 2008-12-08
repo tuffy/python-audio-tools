@@ -93,7 +93,7 @@
   (such as the CD handling programs or anything X11)
   a lot of the batch programs are to some degree:
 - [ ] coverdump
-- [ ] track2track
+- [X] track2track
 - [ ] trackcat
 - [ ] trackcmp
 - [ ] tracklength

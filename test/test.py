@@ -28,6 +28,7 @@ import random
 import cStringIO
 import unittest
 import decimal as D
+import subprocess
 
 try:
     from hashlib import md5
@@ -666,6 +667,67 @@ class TestAiffAudio(unittest.TestCase):
 
         finally:
             temp.close()
+
+
+    #much like testmassencode, but using track2track
+    def test_track2track_massencode(self):
+        base_file = tempfile.NamedTemporaryFile(suffix="." + self.audio_class.SUFFIX)
+        try:
+            base = self.audio_class.from_pcm(base_file.name,
+                                             BLANK_PCM_Reader(SHORT_LENGTH))
+            metadata = DummyMetaData3()
+
+            base.set_metadata(metadata)
+            metadata = base.get_metadata()
+
+            for new_audio_class in audiotools.TYPE_MAP.values():
+                temp_file = tempfile.NamedTemporaryFile(
+                    suffix="." + new_audio_class.SUFFIX)
+                try:
+                    subprocess.call(["track2track",
+                                     '--no-replay-gain',
+                                     "-t",new_audio_class.NAME,
+                                     "-o",temp_file.name,
+                                     base_file.name])
+
+                    new_file = audiotools.open(temp_file.name)
+                    self.assertEqual(new_file.NAME,new_audio_class.NAME)
+
+                    if (base.lossless() and new_file.lossless()):
+                        self.assertEqual(audiotools.pcm_cmp(
+                                base.to_pcm(),
+                                new_file.to_pcm()),True,
+                                         "PCM mismatch converting %s to %s" % \
+                                             (repr(base.NAME),
+                                              repr(new_audio_class.NAME)))
+                    else:
+                        counter = PCM_Count()
+                        pcm = new_file.to_pcm()
+                        audiotools.transfer_data(pcm.read,counter.write)
+                        self.assert_(len(counter) > 0)
+
+                    new_metadata = new_file.get_metadata()
+
+                    if ((metadata is not None) and
+                        (new_metadata is not None)):
+                        self.assertEqual(
+                        new_metadata,
+                        metadata,
+                        "metadata mismatch converting %s to %s (%s != %s)" % \
+                        (repr(base.NAME),
+                         repr(new_audio_class.NAME),
+                         repr(metadata),
+                         repr(new_metadata)))
+
+                        if (new_metadata.supports_images() and
+                            metadata.supports_images()):
+                            self.assertEqual(new_metadata.images(),
+                                             metadata.images())
+
+                finally:
+                    temp_file.close()
+        finally:
+            base_file.close()
 
 class TestForeignWaveChunks:
     def testforeignwavechunks(self):
