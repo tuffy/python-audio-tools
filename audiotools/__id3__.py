@@ -20,6 +20,39 @@
 from audiotools import MetaData,Con,re,os,cStringIO,Image,InvalidImage
 import codecs
 
+class UCS2Codec(codecs.Codec):
+    @classmethod
+    def fix_char(cls,c):
+        if (ord(c) <= 0xFFFF):
+            return c
+        else:
+            return u"\ufffd"
+
+    def encode(self, input, errors='strict'):
+        return codecs.utf_16_encode(u"".join(map(self.fix_char,input)),errors)
+
+    def decode(self, input, errors='strict'):
+        (chars,size) = codecs.utf_16_decode(input, errors, True)
+        return (u"".join(map(self.fix_char,chars)),size)
+
+class UCS2CodecStreamWriter(UCS2Codec,codecs.StreamWriter):
+    pass
+
+class UCS2CodecStreamReader(UCS2Codec,codecs.StreamReader):
+    pass
+
+def __reg_ucs2__(name):
+   if (name == 'ucs2'):
+       return (UCS2Codec().encode,
+               UCS2Codec().decode,
+               UCS2CodecStreamReader,
+	       UCS2CodecStreamWriter)
+   else:
+       return None
+
+codecs.register(__reg_ucs2__)
+
+
 class UnsupportedID3v2Version(Exception): pass
 
 class Syncsafe32(Con.Adapter):
@@ -76,6 +109,12 @@ class WidecharCStringAdapter(Con.Adapter):
 
         return "".join([c.build(s) for s in obj[0:-1]]).decode(self.encoding)
 
+def UCS2CString(name):
+    return WidecharCStringAdapter(Con.RepeatUntil(lambda obj, ctx: obj == 0x0,
+                                                  Con.UBInt16(name)),
+                                  encoding='ucs2')
+
+
 def UTF16CString(name):
     return WidecharCStringAdapter(Con.RepeatUntil(lambda obj, ctx: obj == 0x0,
                                                   Con.UBInt16(name)),
@@ -87,38 +126,6 @@ def UTF16BECString(name):
     return WidecharCStringAdapter(Con.RepeatUntil(lambda obj, ctx: obj == 0x0,
                                                   Con.UBInt16(name)),
                                   encoding='utf-16be')
-
-class UCS2Codec(codecs.Codec):
-    @classmethod
-    def fix_char(cls,c):
-        if (ord(c) <= 0xFFFF):
-            return c
-        else:
-            return u"\ufffd"
-
-    def encode(self, input, errors='strict'):
-        return codecs.utf_16_encode(u"".join(map(self.fix_char,input)),errors)
-
-    def decode(self, input, errors='strict'):
-        (chars,size) = codecs.utf_16_decode(input, errors, True)
-        return (u"".join(map(self.fix_char,chars)),size)
-
-class UCS2CodecStreamWriter(UCS2Codec,codecs.StreamWriter):
-    pass
-
-class UCS2CodecStreamReader(UCS2Codec,codecs.StreamReader):
-    pass
-
-def __reg_ucs2__(name):
-   if (name == 'ucs2'):
-       return (UCS2Codec().encode,
-               UCS2Codec().decode,
-               UCS2CodecStreamReader,
-	       UCS2CodecStreamWriter)
-   else:
-       return None
-
-codecs.register(__reg_ucs2__)
 
 
 #######################
@@ -184,7 +191,7 @@ class ID3v22Frame:
 
 class ID3v22TextFrame(ID3v22Frame):
     ENCODING = {0x00:"latin-1",
-                0x01:"utf-16"}
+                0x01:"ucs2"}
 
     TEXT_TYPE = True
 
@@ -231,7 +238,7 @@ class ID3v22ComFrame(ID3v22TextFrame):
         Con.Switch("short_description",
                    lambda ctx: ctx.encoding,
                    {0x00: Con.CString("s",encoding='latin-1'),
-                    0x01: UTF16CString("s")}))
+                    0x01: UCS2CString("s")}))
 
     TEXT_TYPE = True
 
@@ -278,7 +285,7 @@ class ID3v22PicFrame(ID3v22Frame,Image):
                                          lambda ctx: ctx.text_encoding,
                                          {0x00: Con.CString("s",
                                                             encoding='latin-1'),
-                                          0x01: UTF16CString("s")}))
+                                          0x01: UCS2CString("s")}))
 
     #format and description are unicode strings
     #pic_type is an int
@@ -472,7 +479,7 @@ class ID3v22Comment(MetaData):
                                             unicode(value))]
 
     def add_image(self, image):
-        image = self.picture_frame.converted(image)
+        image = self.PictureFrame.converted(image)
         self.frames.setdefault('PIC',[]).append(image)
 
     def delete_image(self, image):
@@ -709,7 +716,7 @@ class ID3v23Frame(ID3v22Frame):
 
 class ID3v23TextFrame(ID3v23Frame):
     ENCODING = {0x00:"latin-1",
-                0x01:"utf-16"}
+                0x01:"ucs2"}
 
     TEXT_TYPE = True
 
@@ -757,7 +764,7 @@ class ID3v23PicFrame(ID3v23Frame,Image):
                                          lambda ctx: ctx.text_encoding,
                                          {0x00: Con.CString("s",
                                                             encoding='latin-1'),
-                                          0x01: UTF16CString("s")}))
+                                          0x01: UCS2CString("s")}))
 
     def __init__(self, data, mime_type, description, pic_type):
         ID3v23Frame.__init__(self,'APIC',None)
@@ -915,7 +922,7 @@ class ID3v23Comment(ID3v22Comment):
 
 
     def add_image(self, image):
-        image = self.picture_frame.converted(image)
+        image = self.PictureFrame.converted(image)
         self.frames.setdefault('APIC',[]).append(image)
 
     def delete_image(self, image):

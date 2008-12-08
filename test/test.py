@@ -1058,6 +1058,63 @@ class TestID3v2(unittest.TestCase):
             self.assertEqual(test_string.encode('ucs2').decode('ucs2'),
                              test_string_out)
 
+            #ID3v2.4 supports UTF-8/UTF-16
+            metadata = audiotools.ID3v24Comment.converted(DummyMetaData())
+            self.mp3_file.set_metadata(metadata)
+            id3 = self.mp3_file.get_metadata()
+            self.assertEqual(id3,metadata)
+
+            metadata.track_name = test_string
+
+            self.mp3_file.set_metadata(metadata)
+            id3 = self.mp3_file.get_metadata()
+            self.assertEqual(id3,metadata)
+
+            metadata.comment = test_string
+            self.mp3_file.set_metadata(metadata)
+            id3 = self.mp3_file.get_metadata()
+            self.assertEqual(id3,metadata)
+
+            metadata.add_image(audiotools.ID3v24Comment.PictureFrame.converted(
+                    audiotools.Image.new(TEST_COVER1,
+                                         test_string,
+                                         0)))
+            self.mp3_file.set_metadata(metadata)
+            id3 = self.mp3_file.get_metadata()
+            self.assertEqual(id3.images()[0].description,test_string)
+
+
+            #ID3v2.3 and ID3v2.2 only support UCS-2
+            for id3_class in (audiotools.ID3v23Comment,
+                              audiotools.ID3v22Comment):
+                metadata = audiotools.ID3v23Comment.converted(DummyMetaData())
+                self.mp3_file.set_metadata(metadata)
+                id3 = self.mp3_file.get_metadata()
+                self.assertEqual(id3,metadata)
+
+                #ensure that text fields round-trip correctly
+                #(i.e. the extra-wide char gets replaced)
+                metadata.track_name = test_string
+
+                self.mp3_file.set_metadata(metadata)
+                id3 = self.mp3_file.get_metadata()
+                self.assertEqual(id3.track_name,test_string_out)
+
+                #ensure that comment blocks round-trip correctly
+                metadata.comment = test_string
+                self.mp3_file.set_metadata(metadata)
+                id3 = self.mp3_file.get_metadata()
+                self.assertEqual(id3.track_name,test_string_out)
+
+                #ensure that image comment fields round-trip correctly
+                metadata.add_image(id3_class.PictureFrame.converted(
+                        audiotools.Image.new(TEST_COVER1,
+                                             test_string,
+                                             0)))
+                self.mp3_file.set_metadata(metadata)
+                id3 = self.mp3_file.get_metadata()
+                self.assertEqual(id3.images()[0].description,test_string_out)
+
     def tearDown(self):
         self.file.close()
 
