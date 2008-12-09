@@ -95,6 +95,20 @@ class RANDOM_PCM_Reader(BLANK_PCM_Reader):
     def hexdigest(self):
         return self.md5.hexdigest()
 
+class EXACT_RANDOM_PCM_Reader(RANDOM_PCM_Reader):
+    def __init__(self, pcm_frames,
+                 sample_rate=44100,channels=2,bits_per_sample=16):
+        self.length = pcm_frames * sample_rate
+        self.sample_rate = sample_rate
+        self.channels = channels
+        self.bits_per_sample = bits_per_sample
+
+        self.total_size = pcm_frames * channels * bits_per_sample / 8
+        self.current_size = self.total_size
+
+
+        self.md5 = md5()
+
 #this not only sends out random samples,
 #but the amount sent on each read() is also random
 #between 1 and audiotools.BUFFER_SIZE * 2
@@ -728,6 +742,63 @@ class TestAiffAudio(unittest.TestCase):
                     temp_file.close()
         finally:
             base_file.close()
+
+    #tests the splitting and concatenating programs
+    def test_tracksplit_trackcat(self):
+        TOTAL_FRAMES = 24725400
+        FILE_FRAMES = [8742384,7204176,8778840]
+        CUE_SHEET = 'FILE "data.wav" BINARY\n  TRACK 01 AUDIO\n    INDEX 01 00:00:00\n  TRACK 02 AUDIO\n    INDEX 00 03:16:55\n    INDEX 01 03:18:18\n  TRACK 03 AUDIO\n    INDEX 00 05:55:12\n    INDEX 01 06:01:45\n'
+
+        base_file = tempfile.NamedTemporaryFile(suffix="." + self.audio_class.SUFFIX)
+
+        cue_file = tempfile.NamedTemporaryFile(suffix=".cue")
+        cue_file.write(CUE_SHEET)
+        cue_file.flush()
+
+        joined_file = tempfile.NamedTemporaryFile(suffix="." + self.audio_class.SUFFIX)
+
+        try:
+            base = self.audio_class.from_pcm(
+                base_file.name,
+                EXACT_RANDOM_PCM_Reader(TOTAL_FRAMES))
+
+            if (not base.lossless()):
+                return
+
+            self.assertEqual(base.total_frames(),TOTAL_FRAMES)
+
+            tempdir = tempfile.mkdtemp()
+
+            subprocess.call(["tracksplit",
+                             "-V","quiet",
+                             "-t",self.audio_class.NAME,
+                             "--cue=%s" % (cue_file.name),
+                             "--no-replay-gain",
+                             "-d",tempdir,
+                             base.filename])
+
+            split_files = list(audiotools.open_directory(tempdir))
+
+            for (f,length) in zip(split_files,FILE_FRAMES):
+                self.assertEqual(f.total_frames(),length)
+
+            subprocess.call(["trackcat",
+                             "-t",self.audio_class.NAME,
+                             "-o",joined_file.name] + \
+                            [f.filename for f in split_files])
+
+            self.assertEqual(audiotools.pcm_cmp(
+                    base.to_pcm(),
+                    audiotools.open(joined_file.name).to_pcm()),
+                             True)
+
+            for f in split_files:
+                os.unlink(f.filename)
+            os.rmdir(tempdir)
+        finally:
+            base_file.close()
+            cue_file.close()
+            joined_file.close()
 
 class TestForeignWaveChunks:
     def testforeignwavechunks(self):

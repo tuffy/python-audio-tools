@@ -24,11 +24,13 @@ import optparse,sys,os,os.path
 
 MAX_CPUS = audiotools.MAX_JOBS
 
-def extract_part(input_filename, input_pcm, output_filename, quality, metadata):
-    print (u"%s -> %s" % \
-               (input_filename.decode(audiotools.FS_ENCODING),
-                output_filename.decode(audiotools.FS_ENCODING))).encode(
-        audiotools.IO_ENCODING)
+def extract_part(input_filename, input_pcm, output_filename, quality, metadata,
+                 display_output=True):
+    if (display_output):
+        print (u"%s -> %s" % \
+                   (input_filename.decode(audiotools.FS_ENCODING),
+                    output_filename.decode(audiotools.FS_ENCODING))).encode(
+            audiotools.IO_ENCODING)
 
     destination_audiofile = AudioType.from_pcm(
         output_filename,
@@ -109,6 +111,13 @@ if (__name__ == '__main__'):
                       action='store_false',
                       dest='add_replay_gain',
                       help='do not add ReplayGain metadata to newly extracted tracks')
+
+    parser.add_option('-V','--verbose',
+                      action='store',
+                      dest='verbosity',
+                      choices=["quiet","normal","debug"],
+                      default="normal",
+                      help='the verbosity level to execute at')
 
     (options,args) = parser.parse_args()
 
@@ -222,7 +231,8 @@ if (__name__ == '__main__'):
                            pcmreader,
                            filename,
                            options.quality,
-                           metadata))
+                           metadata,
+                           options.verbosity != "quiet"))
     except audiotools.UnsupportedTracknameField,msg:
         sys.stderr.write(unicode(msg).encode(audiotools.IO_ENCODING))
         sys.exit(1)
@@ -230,7 +240,8 @@ if (__name__ == '__main__'):
     queue.run(options.max_processes)
 
     if (options.add_replay_gain and AudioType.can_add_replay_gain()):
-        if (AudioType.lossless_replay_gain()):
+        if (AudioType.lossless_replay_gain() and
+            (options.verbosity != "quiet")):
             print >>sys.stderr,"* Adding ReplayGain metadata.  This may take some time."
         else:
             print >>sys.stderr,"* Applying ReplayGain.  This may take some time."

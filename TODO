@@ -94,12 +94,12 @@
   a lot of the batch programs are to some degree:
 - [ ] coverdump
 - [X] track2track
-- [ ] trackcat
+- [X] trackcat
 - [ ] trackcmp
 - [ ] tracklength
 - [ ] tracklint
 - [ ] trackrename
-- [ ] tracksplit
+- [X] tracksplit
 - [ ] tracktag
 * TODO Add support for genre tag?
   I'm not a big fan of the genre tag.
@@ -116,3 +116,24 @@
   That said, the genre field shows up in a lot of players.
   So, some grudging support for it would probably be appreciated.
 
+* TODO Add verbosity levels to programs
+  Every batch program should support a -V --verbose flag
+  with options for "silence","normal" (the default) and "debug".
+  Silence shuts off everything but error messages.
+  Normal is standard output behavior.
+  Debug for additional debugging output.
+- [ ] cd2track
+- [ ] cd2xmcd
+- [ ] coverdump
+- [ ] record2track
+- [ ] track2cd (this will need to forward verbosity to cdrecord)
+- [ ] track2track
+- [ ] track2xmcd
+- [ ] trackcat
+- [ ] trackcmp
+- [ ] trackinfo
+- [ ] tracklength
+- [ ] trackplay
+- [ ] trackrename
+- [X] tracksplit
+- [ ] tracktag
