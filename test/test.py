@@ -1525,6 +1525,35 @@ class testbufferedstream(unittest.TestCase):
 
         self.assertEqual(output.hexdigest(),reader.hexdigest())
 
+class testtracknumber(unittest.TestCase):
+    def testnumber(self):
+        dir01 = tempfile.mkdtemp(suffix="01")
+        dir02 = tempfile.mkdtemp(suffix="02")
+        dir03 = tempfile.mkdtemp(suffix="03")
+        try:
+            file01 = audiotools.WaveAudio.from_pcm(
+                os.path.join(dir03,"track01.wav"),
+                BLANK_PCM_Reader(10))
+            file02 = audiotools.WaveAudio.from_pcm(
+                os.path.join(dir01,"track02.wav"),
+                BLANK_PCM_Reader(10))
+            file03 = audiotools.WaveAudio.from_pcm(
+                os.path.join(dir02,"track03.wav"),
+                BLANK_PCM_Reader(10))
+
+            try:
+                self.assertEqual(file01.track_number(),1)
+                self.assertEqual(file02.track_number(),2)
+                self.assertEqual(file03.track_number(),3)
+            finally:
+                os.unlink(file01.filename)
+                os.unlink(file02.filename)
+                os.unlink(file03.filename)
+        finally:
+            os.rmdir(dir01)
+            os.rmdir(dir02)
+            os.rmdir(dir03)
+
 ############
 #END TESTS
 ############

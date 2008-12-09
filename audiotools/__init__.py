@@ -1433,7 +1433,8 @@ class AudioFile:
             return metadata.track_number
         else:
             try:
-                return int(re.findall(r'\d{2,3}',self.filename)[0]) % 100
+                return int(re.findall(r'\d{2,3}',
+                                      os.path.basename(self.filename))[0]) % 100
             except IndexError:
                 return 0
 
