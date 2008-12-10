@@ -95,7 +95,7 @@
 - [ ] coverdump
 - [X] track2track
 - [X] trackcat
-- [ ] trackcmp
+- [X] trackcmp
 - [ ] tracklength
 - [ ] tracklint
 - [ ] trackrename
@@ -130,7 +130,7 @@
 - [ ] track2track
 - [ ] track2xmcd
 - [ ] trackcat
-- [ ] trackcmp
+- [X] trackcmp
 - [ ] trackinfo
 - [ ] tracklength
 - [ ] trackplay

@@ -29,6 +29,7 @@ import cStringIO
 import unittest
 import decimal as D
 import subprocess
+import filecmp
 
 try:
     from hashlib import md5
@@ -325,6 +326,16 @@ class TestPCMCombinations(unittest.TestCase):
 class TestAiffAudio(unittest.TestCase):
     def setUp(self):
         self.audio_class = audiotools.AiffAudio
+
+    def __is_lossless__(self):
+        short_file = tempfile.NamedTemporaryFile(suffix="." + self.audio_class.SUFFIX)
+        try:
+            short = self.audio_class.from_pcm(
+                short_file.name,
+                BLANK_PCM_Reader(5))
+            return short.lossless()
+        finally:
+            short_file.close()
 
     #this is a basic test of CD-quality audio
     def testblankencode(self):
@@ -745,6 +756,9 @@ class TestAiffAudio(unittest.TestCase):
 
     #tests the splitting and concatenating programs
     def test_tracksplit_trackcat(self):
+        if (not self.__is_lossless__()):
+            return
+
         TOTAL_FRAMES = 24725400
         FILE_FRAMES = [8742384,7204176,8778840]
         CUE_SHEET = 'FILE "data.wav" BINARY\n  TRACK 01 AUDIO\n    INDEX 01 00:00:00\n  TRACK 02 AUDIO\n    INDEX 00 03:16:55\n    INDEX 01 03:18:18\n  TRACK 03 AUDIO\n    INDEX 00 05:55:12\n    INDEX 01 06:01:45\n'
@@ -792,6 +806,17 @@ class TestAiffAudio(unittest.TestCase):
                     audiotools.open(joined_file.name).to_pcm()),
                              True)
 
+
+            self.assertEqual(subprocess.call(["trackcmp",
+                                              "-V","quiet",
+                                              base.filename,
+                                              joined_file.name]),0)
+
+            self.assertEqual(subprocess.call(["trackcmp",
+                                              "-V","quiet",
+                                              base.filename,
+                                              split_files[0].filename]),1)
+
             for f in split_files:
                 os.unlink(f.filename)
             os.rmdir(tempdir)
@@ -799,6 +824,124 @@ class TestAiffAudio(unittest.TestCase):
             base_file.close()
             cue_file.close()
             joined_file.close()
+
+    def test_trackcmp(self):
+        basedir = tempfile.mkdtemp()
+        try:
+            subdir1 = os.path.join(basedir,"subdir1")
+            subdir2 = os.path.join(basedir,"subdir2")
+            os.mkdir(subdir1)
+            os.mkdir(subdir2)
+            try:
+                tempfile1 = self.audio_class.from_pcm(
+                    os.path.join(subdir1,"track01.%s" % \
+                                     (self.audio_class.SUFFIX)),
+                    RANDOM_PCM_Reader(10))
+                tempfile1.set_metadata(audiotools.MetaData(
+                        track_number=1))
+
+                tempfile2 = self.audio_class.from_pcm(
+                    os.path.join(subdir1,"track02.%s" % \
+                                     (self.audio_class.SUFFIX)),
+                    RANDOM_PCM_Reader(5))
+                tempfile2.set_metadata(audiotools.MetaData(
+                        track_number=2))
+
+                tempfile3 = self.audio_class.from_pcm(
+                    os.path.join(subdir1,"track03.%s" % \
+                                     (self.audio_class.SUFFIX)),
+                    RANDOM_PCM_Reader(15))
+                tempfile3.set_metadata(audiotools.MetaData(
+                        track_number=3))
+                try:
+                    self.assertEqual(subprocess.call(["trackcmp",
+                                                      "-V","quiet",
+                                                      subdir1,
+                                                      subdir2]),1)
+                    os.link(tempfile1.filename,
+                            os.path.join(subdir2,
+                                         "track01.%s" % \
+                                             (self.audio_class.SUFFIX)))
+                    tempfile4 = audiotools.open(
+                            os.path.join(subdir2,
+                                         "track01.%s" % \
+                                             (self.audio_class.SUFFIX)))
+
+                    self.assertEqual(filecmp.cmp(tempfile1.filename,
+                                                 tempfile4.filename),
+                                     True)
+
+                    self.assertEqual(subprocess.call(["trackcmp",
+                                                      "-V","quiet",
+                                                      subdir1,
+                                                      subdir2]),1)
+
+                    os.link(tempfile2.filename,
+                            os.path.join(subdir2,
+                                         "track02.%s" % \
+                                             (self.audio_class.SUFFIX)))
+                    tempfile5 = audiotools.open(
+                            os.path.join(subdir2,
+                                         "track02.%s" % \
+                                             (self.audio_class.SUFFIX)))
+
+                    self.assertEqual(filecmp.cmp(tempfile2.filename,
+                                                 tempfile5.filename),
+                                     True)
+
+                    self.assertEqual(subprocess.call(["trackcmp",
+                                                      "-V","quiet",
+                                                      subdir1,
+                                                      subdir2]),1)
+
+                    os.link(tempfile3.filename,
+                            os.path.join(subdir2,
+                                         "track03.%s" % \
+                                             (self.audio_class.SUFFIX)))
+                    tempfile6 = audiotools.open(
+                            os.path.join(subdir2,
+                                         "track03.%s" % \
+                                             (self.audio_class.SUFFIX)))
+
+                    self.assertEqual(filecmp.cmp(tempfile3.filename,
+                                                 tempfile6.filename),
+                                     True)
+
+                    self.assertEqual(subprocess.call(["trackcmp",
+                                                      "-V","quiet",
+                                                      subdir1,
+                                                      subdir2]),0)
+
+                    os.unlink(tempfile2.filename)
+
+                    self.assertEqual(subprocess.call(["trackcmp",
+                                                      "-V","quiet",
+                                                      subdir1,
+                                                      subdir2]),1)
+
+                    os.unlink(tempfile3.filename)
+
+                    self.assertEqual(subprocess.call(["trackcmp",
+                                                      "-V","quiet",
+                                                      subdir1,
+                                                      subdir2]),1)
+
+                    os.unlink(tempfile1.filename)
+
+                    self.assertEqual(subprocess.call(["trackcmp",
+                                                      "-V","quiet",
+                                                      subdir1,
+                                                      subdir2]),1)
+                finally:
+                    for temp in (tempfile1,tempfile2,tempfile3,
+                                 tempfile4,tempfile5,tempfile6):
+                        if (os.path.isfile(temp.filename)):
+                            os.unlink(temp.filename)
+            finally:
+                os.rmdir(subdir1)
+                os.rmdir(subdir2)
+        finally:
+            os.rmdir(basedir)
 
 class TestForeignWaveChunks:
     def testforeignwavechunks(self):
