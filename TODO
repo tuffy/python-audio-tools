@@ -96,7 +96,7 @@
 - [X] track2track
 - [X] trackcat
 - [X] trackcmp
-- [ ] tracklength
+- [X] tracklength
 - [ ] tracklint
 - [ ] trackrename
 - [X] tracksplit
@@ -131,8 +131,6 @@
 - [ ] track2xmcd
 - [ ] trackcat
 - [X] trackcmp
-- [ ] trackinfo
-- [ ] tracklength
 - [ ] trackplay
 - [ ] trackrename
 - [X] tracksplit

@@ -943,6 +943,47 @@ class TestAiffAudio(unittest.TestCase):
         finally:
             os.rmdir(basedir)
 
+    def test_tracklength(self):
+        basedir = tempfile.mkdtemp()
+        try:
+            tempfile1 = self.audio_class.from_pcm(
+                    os.path.join(basedir,"track01.%s" % \
+                                     (self.audio_class.SUFFIX)),
+                    RANDOM_PCM_Reader(10))
+
+            tempfile2 = self.audio_class.from_pcm(
+                    os.path.join(basedir,"track02.%s" % \
+                                     (self.audio_class.SUFFIX)),
+                    RANDOM_PCM_Reader(5))
+
+            try:
+                len1 = subprocess.Popen(["tracklength",
+                                         tempfile1.filename],
+                                        stdout=subprocess.PIPE)
+                len1_result = len1.stdout.read()
+                len1.wait()
+
+                len2 = subprocess.Popen(["tracklength",
+                                         tempfile2.filename],
+                                        stdout=subprocess.PIPE)
+                len2_result = len2.stdout.read()
+                len2.wait()
+
+                len3 = subprocess.Popen(["tracklength",
+                                         basedir],
+                                        stdout=subprocess.PIPE)
+                len3_result = len3.stdout.read()
+                len3.wait()
+
+                self.assertEqual(len1_result,'0:00:10\n')
+                self.assertEqual(len2_result,'0:00:05\n')
+                self.assertEqual(len3_result,'0:00:15\n')
+            finally:
+                os.unlink(tempfile1.filename)
+                os.unlink(tempfile2.filename)
+        finally:
+            os.rmdir(basedir)
+
 class TestForeignWaveChunks:
     def testforeignwavechunks(self):
         import filecmp
