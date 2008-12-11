@@ -984,6 +984,132 @@ class TestAiffAudio(unittest.TestCase):
         finally:
             os.rmdir(basedir)
 
+    def test_tracktag_trackrename(self):
+        basedir = tempfile.mkdtemp()
+        try:
+            track = self.audio_class.from_pcm(
+                os.path.join(basedir,"track01.%s" % (self.audio_class.SUFFIX)),
+                BLANK_PCM_Reader(5))
+            metadata = audiotools.MetaData(track_name="Name")
+            track.set_metadata(metadata)
+            metadata = track.get_metadata()
+            if (metadata is None):
+                return
+
+            jpeg = os.path.join(basedir,"image1.jpg")
+            png = os.path.join(basedir,"image2.png")
+
+            f = open(jpeg,"wb")
+            f.write(TEST_COVER1)
+            f.close()
+            f = open(png,"wb")
+            f.write(TEST_COVER2)
+            f.close()
+
+            self.assertEqual(metadata.track_name,"Name")
+
+            flag_field_values = zip(["--name",
+                                     "--artist",
+                                     "--performer",
+                                     "--composer",
+                                     "--conductor",
+                                     "--album",
+                                     "--number",
+                                     "--album-number",
+                                     "--ISRC",
+                                     "--publisher",
+                                     "--media-type",
+                                     "--year",
+                                     "--copyright",
+                                     "--comment"],
+                                    ["track_name",
+                                     "artist_name",
+                                     "performer_name",
+                                     "composer_name",
+                                     "conductor_name",
+                                     "album_name",
+                                     "track_number",
+                                     "album_number",
+                                     "ISRC",
+                                     "publisher",
+                                     "media",
+                                     "year",
+                                     "copyright",
+                                     "comment"],
+                                    ["Track Name",
+                                     "Artist Name",
+                                     "Performer Name",
+                                     "Composer Name",
+                                     "Conductor Name",
+                                     "Album Name",
+                                     2,
+                                     3,
+                                     "ISRC-NUM",
+                                     "Publisher Name",
+                                     "Media",
+                                     "2008",
+                                     "Copyright Text",
+                                     "Some Lengthy Text Comment"])
+
+            for (flag,field,value) in flag_field_values:
+                subprocess.call(["tracktag",
+                                 flag,str(value),
+                                 track.filename])
+                setattr(metadata,field,value)
+                self.assertEqual(metadata,track.get_metadata())
+
+            for (flag,field,value) in flag_field_values:
+                subprocess.call(["tracktag",
+                                 "--replace",
+                                 flag,str(value),
+                                 track.filename])
+                self.assertEqual(audiotools.MetaData(**{field:value}),
+                                 track.get_metadata())
+
+            if (metadata.supports_images()):
+                metadata = audiotools.MetaData(track_name='Images')
+                track.set_metadata(metadata)
+                self.assertEqual(metadata,track.get_metadata())
+
+                flag_type_images_data = zip(["--front-cover",
+                                             "--back-cover",
+                                             "--leaflet",
+                                             "--leaflet",
+                                             "--media",
+                                             "--other-image",],
+                                            [0,1,2,2,3,4],
+                                            [jpeg,jpeg,png,jpeg,png,jpeg],
+                                            [TEST_COVER1,
+                                             TEST_COVER1,
+                                             TEST_COVER2,
+                                             TEST_COVER1,
+                                             TEST_COVER2,
+                                             TEST_COVER1])
+
+                for (flag,img_type,value,data) in flag_type_images_data:
+                    subprocess.call(["tracktag",
+                                     flag,str(value),
+                                     track.filename])
+                    metadata.add_image(audiotools.Image.new(
+                            data,u"",img_type))
+                    self.assertEqual(metadata.images(),
+                                     track.get_metadata().images())
+
+                for (flag,img_type,value,data) in flag_type_images_data:
+                    subprocess.call(["tracktag",
+                                     "--remove-images",
+                                     flag,str(value),
+                                     track.filename])
+                    metadata = audiotools.MetaData(track_name='Images')
+                    metadata.add_image(audiotools.Image.new(
+                            data,u"",img_type))
+                    self.assertEqual(metadata.images(),
+                                     track.get_metadata().images())
+        finally:
+            for f in os.listdir(basedir):
+                os.unlink(os.path.join(basedir,f))
+            os.rmdir(basedir)
+
 class TestForeignWaveChunks:
     def testforeignwavechunks(self):
         import filecmp

@@ -487,7 +487,7 @@ class ID3v22Comment(MetaData):
 
     def images(self):
         if ('PIC' in self.frames.keys()):
-            return self.frames['PIC']
+            return self.frames['PIC'][:]
         else:
             return []
 
@@ -930,7 +930,7 @@ class ID3v23Comment(ID3v22Comment):
 
     def images(self):
         if ('APIC' in self.frames.keys()):
-            return self.frames['APIC']
+            return self.frames['APIC'][:]
         else:
             return []
 
