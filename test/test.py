@@ -985,10 +985,12 @@ class TestAiffAudio(unittest.TestCase):
             os.rmdir(basedir)
 
     def test_tracktag_trackrename(self):
+        template = "%(track_number)2.2d - %(album_number)d - %(album_track_number)s%(track_name)s%(album_name)s%(artist_name)s%(performer_name)s%(composer_name)s%(conductor_name)s%(media)s%(ISRC)s%(copyright)s%(publisher)s%(year)s%(suffix)s"
+
         basedir = tempfile.mkdtemp()
         try:
             track = self.audio_class.from_pcm(
-                os.path.join(basedir,"track01.%s" % (self.audio_class.SUFFIX)),
+                os.path.join(basedir,"track.%s" % (self.audio_class.SUFFIX)),
                 BLANK_PCM_Reader(5))
             metadata = audiotools.MetaData(track_name="Name")
             track.set_metadata(metadata)
@@ -1058,13 +1060,56 @@ class TestAiffAudio(unittest.TestCase):
                 setattr(metadata,field,value)
                 self.assertEqual(metadata,track.get_metadata())
 
+                new_path = os.path.join(basedir,
+                                        self.audio_class.track_name(
+                        metadata.track_number,
+                        metadata,
+                        metadata.album_number,
+                        template))
+
+                subprocess.call(["trackrename",
+                                 "-V","quiet",
+                                 "--format",template,
+                                 track.filename])
+
+                self.assertEqual(os.path.isfile(new_path),True)
+                track = audiotools.open(new_path)
+
+            os.rename(track.filename,
+                      os.path.join(basedir,"track.%s" % \
+                                       (self.audio_class.SUFFIX)))
+            track = audiotools.open(os.path.join(basedir,"track.%s" % \
+                                                     (self.audio_class.SUFFIX)))
+
             for (flag,field,value) in flag_field_values:
                 subprocess.call(["tracktag",
                                  "--replace",
                                  flag,str(value),
                                  track.filename])
-                self.assertEqual(audiotools.MetaData(**{field:value}),
-                                 track.get_metadata())
+                metadata = audiotools.MetaData(**{field:value})
+                self.assertEqual(metadata,track.get_metadata())
+
+                os.rename(track.filename,
+                          os.path.join(basedir,"track.%s" % \
+                                           (self.audio_class.SUFFIX)))
+                track = audiotools.open(os.path.join(basedir,"track.%s" % \
+                                                         (self.audio_class.SUFFIX)))
+
+                new_path = os.path.join(basedir,
+                                        self.audio_class.track_name(
+                        metadata.track_number,
+                        metadata,
+                        metadata.album_number,
+                        template))
+
+                subprocess.call(["trackrename",
+                                 "-V","quiet",
+                                 "--format",template,
+                                 track.filename])
+
+                self.assertEqual(os.path.isfile(new_path),True)
+                track = audiotools.open(new_path)
+
 
             if (metadata.supports_images()):
                 metadata = audiotools.MetaData(track_name='Images')

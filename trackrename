@@ -42,12 +42,24 @@ if (__name__ == '__main__'):
                       dest='format',
                       help='the format string for new filenames')
 
+    parser.add_option('-V','--verbose',
+                      action='store',
+                      dest='verbosity',
+                      choices=["quiet","normal","debug"],
+                      default="normal",
+                      help='the verbosity level to execute at')
+
     (options,args) = parser.parse_args()
     audiofiles = audiotools.open_files(args)
 
     if (len(audiofiles) < 1):
         print >>sys.stderr,"*** You must specify at least one audio file"
         sys.exit(1)
+
+    if (options.verbosity != 'quiet'):
+        mv_flags = '-iv'
+    else:
+        mv_flags = '-i'
 
     if (options.xmcd != None):
         #try to set the metadata and track name from the XMCD metadata
@@ -70,7 +82,7 @@ if (__name__ == '__main__'):
                     audiotools.make_dirs(os.path.join(path,new_name))
 
                     subprocess.call([audiotools.BIN['mv'],
-                                     "-iv",
+                                     mv_flags,
                                      track.filename,
                                      os.path.join(path,new_name)])
         except audiotools.UnsupportedTracknameField,msg:
@@ -91,7 +103,7 @@ if (__name__ == '__main__'):
                     audiotools.make_dirs(os.path.join(path,new_name))
 
                     subprocess.call([audiotools.BIN['mv'],
-                                     "-iv",
+                                     mv_flags,
                                      track.filename,
                                      os.path.join(path,new_name)])
         except audiotools.UnsupportedTracknameField,msg:

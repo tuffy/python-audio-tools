@@ -98,9 +98,9 @@
 - [X] trackcmp
 - [X] tracklength
 - [ ] tracklint
-- [ ] trackrename
+- [X] trackrename
 - [X] tracksplit
-- [ ] tracktag
+- [X] tracktag
 * TODO Add support for genre tag?
   I'm not a big fan of the genre tag.
   Unlike track number, album name, ISRC, etc. in which a value
@@ -132,6 +132,6 @@
 - [ ] trackcat
 - [X] trackcmp
 - [ ] trackplay
-- [ ] trackrename
+- [X] trackrename
 - [X] tracksplit
 - [ ] tracktag
