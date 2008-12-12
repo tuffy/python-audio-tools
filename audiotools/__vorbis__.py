@@ -433,6 +433,7 @@ class VorbisAudio(AudioFile):
         self.__read_metadata__()
 
     def get_metadata(self):
+        self.__read_metadata__()
         data = {}
         for pair in self.comment.value:
             try:

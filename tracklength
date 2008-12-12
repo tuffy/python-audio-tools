@@ -44,6 +44,6 @@ if (__name__ == '__main__'):
     if (total_length > 0):
         print OUTPUT % {"hours":total_length / (75 * 60 * 60),
                         "minutes":total_length / (75 * 60) % 60,
-                        "seconds":total_length / 75 % 60}
+                        "seconds":int(round(total_length / 75.0)) % 60}
     else:
         print OUTPUT % {"hours":0,"minutes":0,"seconds":0}
