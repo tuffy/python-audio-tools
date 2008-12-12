@@ -128,6 +128,16 @@ def UTF16BECString(name):
                                   encoding='utf-16be')
 
 
+def __attrib_equals__(attributes,o1,o2):
+    import operator
+
+    try:
+        return reduce(operator.and_,
+                      [getattr(o1,attrib) == getattr(o2,attrib)
+                       for attrib in attributes])
+    except AttributeError:
+        return False
+
 #######################
 #ID3v2.2
 #######################
@@ -144,6 +154,9 @@ class ID3v22Frame:
     def __init__(self,frame_id,data):
         self.id = frame_id
         self.data = data
+
+    def __eq__(self,o):
+        return __attrib_equals__(["frame_id","data"],self,o)
 
     def build(self):
         return self.FRAME.build(Con.Container(frame_id=self.id,
@@ -202,6 +215,9 @@ class ID3v22TextFrame(ID3v22Frame):
         self.encoding = encoding
         self.string = s
 
+    def __eq__(self,o):
+        return __attrib_equals__(["id","encoding","string"],self,o)
+
     def __unicode__(self):
         return self.string
 
@@ -251,6 +267,10 @@ class ID3v22ComFrame(ID3v22TextFrame):
         self.short_description = short_description
         self.content = content
         self.id = 'COM'
+
+    def __eq__(self,o):
+        return __attrib_equals__(["encoding","language",
+                                  "short_description","content"],self,o)
 
     def __unicode__(self):
         return self.content
@@ -339,6 +359,9 @@ class ID3v22PicFrame(ID3v22Frame,Image):
         return u"%s (%d\u00D7%d,'%s')" % \
                (self.type_string(),
                 self.width,self.height,self.mime_type)
+
+    def __eq__(self,i):
+        return Image.__eq__(self,i)
 
     def build(self):
         try:
@@ -727,6 +750,9 @@ class ID3v23TextFrame(ID3v23Frame):
         self.encoding = encoding
         self.string = s
 
+    def __eq__(self,o):
+        return __attrib_equals__(["id","encoding","string"],self,o)
+
     def __unicode__(self):
         return self.string
 
@@ -787,6 +813,9 @@ class ID3v23PicFrame(ID3v23Frame,Image):
                        description=description,
                        type={3:0,4:1,5:2,6:3}.get(pic_type,4))
 
+    def __eq__(self,i):
+        return Image.__eq__(self,i)
+
     def __unicode__(self):
         return u"%s (%d\u00D7%d,'%s')" % \
                (self.type_string(),
@@ -824,6 +853,10 @@ class ID3v23ComFrame(ID3v23TextFrame):
         self.short_description = short_description
         self.content = content
         self.id = 'COMM'
+
+    def __eq__(self,o):
+        return __attrib_equals__(["encoding","language",
+                                  "short_description","content"],self,o)
 
     def __unicode__(self):
         return self.content
@@ -1043,6 +1076,9 @@ class ID3v24TextFrame(ID3v24Frame):
         self.encoding = encoding
         self.string = s
 
+    def __eq__(self,o):
+        return __attrib_equals__(["id","encoding","string"],self,o)
+
     def __unicode__(self):
         return self.string
 
@@ -1108,6 +1144,9 @@ class ID3v24PicFrame(ID3v24Frame,Image):
                        description=description,
                        type={3:0,4:1,5:2,6:3}.get(pic_type,4))
 
+    def __eq__(self,i):
+        return Image.__eq__(self,i)
+
     def __unicode__(self):
         return u"%s (%d\u00D7%d,'%s')" % \
                (self.type_string(),
@@ -1156,6 +1195,10 @@ class ID3v24ComFrame(ID3v24TextFrame):
         self.short_description = short_description
         self.content = content
         self.id = 'COMM'
+
+    def __eq__(self,o):
+        return __attrib_equals__(["encoding","language",
+                                  "short_description","content"],self,o)
 
     def __unicode__(self):
         return self.content

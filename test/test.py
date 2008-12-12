@@ -1404,11 +1404,105 @@ class TestOggFlacAudio(TestAiffAudio):
     def setUp(self):
         self.audio_class = audiotools.OggFlacAudio
 
-class TestMP3Audio(TestAiffAudio):
+class ID3Lint:
+    #tracklint is tricky to test since set_metadata()
+    #usually won't write anything that needs fixing.
+    #For instance, it won't generate empty fields or leading zeroes in numbers.
+    #So, bogus ID3 tags must be generated at a lower level.
+    def __test_tracklint__(self, bad_id3v2):
+        fixed = audiotools.MetaData(
+            track_name=u"Track Name",
+            track_number=2,
+            album_number=3,
+            artist_name=u"Some Artist",
+            comment=u"Some Comment")
+
+        self.assertNotEqual(fixed,bad_id3v2)
+
+        tempdir = tempfile.mkdtemp()
+        tempmp = os.path.join(tempdir,"track.%s" % (self.audio_class.SUFFIX))
+        undo = os.path.join(tempdir,"undo.db")
+        try:
+            track = self.audio_class.from_pcm(
+                tempmp,
+                BLANK_PCM_Reader(10))
+
+            track.set_metadata(bad_id3v2)
+            metadata = track.get_metadata()
+            self.assertEqual(metadata,bad_id3v2)
+            for (key,value) in metadata.items():
+                self.assertEqual(value,bad_id3v2[key])
+
+            original_checksum = md5()
+            f = open(track.filename,'rb')
+            audiotools.transfer_data(f.read,original_checksum.update)
+            f.close()
+
+            subprocess.call(["tracklint",
+                             "-V","quiet",
+                             "--fix","--db=%s" % (undo),
+                             track.filename])
+
+            metadata = track.get_metadata()
+            self.assertNotEqual(metadata,bad_id3v2)
+            self.assertEqual(metadata,fixed)
+
+            subprocess.call(["tracklint",
+                             "-V","quiet",
+                             "--undo","--db=%s" % (undo),
+                             track.filename])
+
+            metadata = track.get_metadata()
+            self.assertEqual(metadata,bad_id3v2)
+            self.assertNotEqual(metadata,fixed)
+            for (key,value) in metadata.items():
+                self.assertEqual(value,bad_id3v2[key])
+        finally:
+            for f in os.listdir(tempdir):
+                os.unlink(os.path.join(tempdir,f))
+            os.rmdir(tempdir)
+
+    def test_tracklint_id3v22(self):
+        return self.__test_tracklint__(
+            audiotools.ID3v22Comment(
+                [audiotools.ID3v22TextFrame.from_unicode("TT2",u"Track Name  "),
+                 audiotools.ID3v22TextFrame.from_unicode("TRK",u"02"),
+                 audiotools.ID3v22TextFrame.from_unicode("TPA",u"003"),
+                 audiotools.ID3v22TextFrame.from_unicode("TP1",u"  Some Artist"),
+                 audiotools.ID3v22TextFrame.from_unicode("TP2",u"Some Artist"),
+                 audiotools.ID3v22TextFrame.from_unicode("TRC",u""),
+                 audiotools.ID3v22TextFrame.from_unicode("TYE",u""),
+                 audiotools.ID3v22TextFrame.from_unicode("COM",u"  Some Comment  ")]))
+
+    def test_tracklint_id3v23(self):
+        return self.__test_tracklint__(
+            audiotools.ID3v23Comment(
+                [audiotools.ID3v23TextFrame.from_unicode("TIT2",u"Track Name  "),
+                 audiotools.ID3v23TextFrame.from_unicode("TRCK",u"02"),
+                 audiotools.ID3v23TextFrame.from_unicode("TPOS",u"003"),
+                 audiotools.ID3v23TextFrame.from_unicode("TPE1",u"  Some Artist"),
+                 audiotools.ID3v23TextFrame.from_unicode("TPE2",u"Some Artist"),
+                 audiotools.ID3v23TextFrame.from_unicode("TYER",u""),
+                 audiotools.ID3v23TextFrame.from_unicode("TCOP",u""),
+                 audiotools.ID3v23TextFrame.from_unicode("COMM",u"  Some Comment  ")]))
+
+    def test_tracklint_id3v24(self):
+        return self.__test_tracklint__(
+            audiotools.ID3v24Comment(
+                [audiotools.ID3v24TextFrame.from_unicode("TIT2",u"Track Name  "),
+                 audiotools.ID3v24TextFrame.from_unicode("TRCK",u"02"),
+                 audiotools.ID3v24TextFrame.from_unicode("TPOS",u"003"),
+                 audiotools.ID3v24TextFrame.from_unicode("TPE1",u"  Some Artist"),
+                 audiotools.ID3v24TextFrame.from_unicode("TPE2",u"Some Artist"),
+                 audiotools.ID3v24TextFrame.from_unicode("TYER",u""),
+                 audiotools.ID3v24TextFrame.from_unicode("TCOP",u""),
+                 audiotools.ID3v24TextFrame.from_unicode("COMM",u"  Some Comment  ")]))
+
+class TestMP3Audio(ID3Lint,TestAiffAudio):
     def setUp(self):
         self.audio_class = audiotools.MP3Audio
 
-class TestMP2Audio(TestAiffAudio):
+class TestMP2Audio(ID3Lint,TestAiffAudio):
     def setUp(self):
         self.audio_class = audiotools.MP2Audio
 

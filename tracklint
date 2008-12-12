@@ -181,8 +181,8 @@ def fix_blank_fields(metadata, log):
                 del(metadata[key])
                 log.append(u"stripped blank %s field" % (key))
 
-METADATA_FIXES = (fix_leading_zeroes,fix_track_number,fix_performer_name,
-                  fix_whitespace,fix_blank_fields)
+METADATA_FIXES = (fix_leading_zeroes,fix_track_number,
+                  fix_whitespace,fix_performer_name,fix_blank_fields)
 
 #metadata should be an existing MetaData object
 #returns a (MetaData,fix_list) tuple,
@@ -225,7 +225,7 @@ def audiofiles(paths):
             except audiotools.InvalidFile:
                 pass
 
-def update_and_backup(track, undo_db):
+def update_and_backup(track, undo_db, verbose=True):
     changes_made = False
 
     #copy the track to a temporary location
@@ -239,12 +239,14 @@ def update_and_backup(track, undo_db):
     #perform any Track fixes on the temporary Track
     (temp_track,messages) = fix_track(temp_track,dry_run=False)
     changes_made = changes_made or (len(messages) > 0)
-    display_messages(track,messages)
+    if (verbose):
+        display_messages(track,messages)
 
     #perform any MetaData fixes on the temporary Track
     (metadata,messages) = fix_metadata(temp_track.get_metadata())
     changes_made = changes_made or (len(messages) > 0)
-    display_messages(track,messages)
+    if (verbose):
+        display_messages(track,messages)
     if (len(messages) > 0):
         temp_track.set_metadata(metadata)
 
@@ -274,7 +276,7 @@ def update_and_backup(track, undo_db):
 
     temp_track_f.close()
 
-def undo_from_backup(track, undo_db):
+def undo_from_backup(track, undo_db, verbose=True):
     undo_checksum = checksum(track.filename)
 
     if (undo_db.has_key(undo_checksum)):
@@ -299,7 +301,8 @@ def undo_from_backup(track, undo_db):
             old_track.close()
             xdelta_f.close()
 
-            print (u"* restored: %s" % (track.filename.decode(audiotools.FS_ENCODING))).encode(audiotools.IO_ENCODING)
+            if (verbose):
+                print (u"* restored: %s" % (track.filename.decode(audiotools.FS_ENCODING))).encode(audiotools.IO_ENCODING)
 
 #a FlacAudio Track prepended with ID3v2 tags
 #or appended with ID3v1 tags
@@ -439,6 +442,13 @@ if (__name__ == '__main__'):
                       dest='undo',
                       help='undo performed fixes')
 
+    parser.add_option('-V','--verbose',
+                      action='store',
+                      dest='verbosity',
+                      choices=["quiet","normal","debug"],
+                      default="normal",
+                      help='the verbosity level to execute at')
+
     (options,args) = parser.parse_args()
 
     if (options.undo and (options.db is None)):
@@ -462,7 +472,8 @@ if (__name__ == '__main__'):
                 sys.exit(1)
             try:
                 for track in audiofiles(args):
-                    update_and_backup(track,undo_db)
+                    update_and_backup(track,undo_db,
+                                      options.verbosity != 'quiet')
             finally:
                 undo_db.close()
         else:
@@ -470,9 +481,11 @@ if (__name__ == '__main__'):
             #simply overwrite the track and track metadata directly
             for track in audiofiles(args):
                 (track,messages) = fix_track(track,dry_run=False)
-                display_messages(track,messages)
+                if (options.verbosity != 'quiet'):
+                    display_messages(track,messages)
                 (metadata,messages) = fix_metadata(track.get_metadata())
-                display_messages(track,messages)
+                if (options.verbosity != 'quiet'):
+                    display_messages(track,messages)
                 track.set_metadata(metadata)
     elif (options.undo):
         try:
@@ -482,14 +495,17 @@ if (__name__ == '__main__'):
             sys.exit(1)
         try:
             for track in audiofiles(args):
-                undo_from_backup(track,undo_db)
+                undo_from_backup(track,undo_db,
+                                 options.verbosity != 'quiet')
         finally:
             undo_db.close()
     else: #a dry-run of the fixing procedure, with no changes made
         for track in audiofiles(args):
             (track,messages) = fix_track(track,dry_run=True)
-            display_messages(track,messages)
+            if (options.verbosity != 'quiet'):
+                display_messages(track,messages)
             (metadata,messages) = fix_metadata(track.get_metadata())
-            display_messages(track,messages)
+            if (options.verbosity != 'quiet'):
+                display_messages(track,messages)
 
 
