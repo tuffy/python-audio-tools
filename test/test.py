@@ -1194,7 +1194,80 @@ class TestAuAudio(TestAiffAudio):
     def setUp(self):
         self.audio_class = audiotools.AuAudio
 
-class TestFlacAudio(TestForeignWaveChunks,TestAiffAudio):
+class VorbisLint:
+    #tracklint is tricky to test since set_metadata()
+    #usually won't write anything that needs fixing.
+    #For instance, it won't generate empty fields or leading zeroes in numbers.
+    #So, bogus ID3 tags must be generated at a lower level.
+    def test_tracklint(self):
+        bad_vorbiscomment = audiotools.VorbisComment(
+            {"TITLE":[u"Track Name  "],
+             "TRACKNUMBER":[u"02"],
+             "DISCNUMBER":[u"003"],
+             "ARTIST":[u"  Some Artist"],
+             "PERFORMER":[u"Some Artist"],
+             "CATALOG":[u""],
+             "YEAR":[u"  "],
+             "COMMENT":[u"  Some Comment  "]})
+
+        fixed = audiotools.MetaData(
+            track_name=u"Track Name",
+            track_number=2,
+            album_number=3,
+            artist_name=u"Some Artist",
+            comment=u"Some Comment")
+
+        self.assertNotEqual(fixed,bad_vorbiscomment)
+
+        tempdir = tempfile.mkdtemp()
+        tempmp = os.path.join(tempdir,"track.%s" % (self.audio_class.SUFFIX))
+        undo = os.path.join(tempdir,"undo.db")
+        try:
+            track = self.audio_class.from_pcm(
+                tempmp,
+                BLANK_PCM_Reader(10))
+
+            track.set_metadata(bad_vorbiscomment)
+            metadata = track.get_metadata()
+            if (isinstance(metadata,audiotools.FlacMetaData)):
+                metadata = metadata.vorbis_comment
+            self.assertEqual(metadata,bad_vorbiscomment)
+            for (key,value) in metadata.items():
+                self.assertEqual(value,bad_vorbiscomment[key])
+
+            original_checksum = md5()
+            f = open(track.filename,'rb')
+            audiotools.transfer_data(f.read,original_checksum.update)
+            f.close()
+
+            subprocess.call(["tracklint",
+                             "-V","quiet",
+                             "--fix","--db=%s" % (undo),
+                             track.filename])
+
+            metadata = track.get_metadata()
+            self.assertNotEqual(metadata,bad_vorbiscomment)
+            self.assertEqual(metadata,fixed)
+
+            subprocess.call(["tracklint",
+                             "-V","quiet",
+                             "--undo","--db=%s" % (undo),
+                             track.filename])
+
+            metadata = track.get_metadata()
+            if (isinstance(metadata,audiotools.FlacMetaData)):
+                metadata = metadata.vorbis_comment
+            self.assertEqual(metadata,bad_vorbiscomment)
+            self.assertNotEqual(metadata,fixed)
+            for (key,value) in metadata.items():
+                self.assertEqual(value,bad_vorbiscomment[key])
+        finally:
+            for f in os.listdir(tempdir):
+                os.unlink(os.path.join(tempdir,f))
+            os.rmdir(tempdir)
+
+
+class TestFlacAudio(TestForeignWaveChunks,VorbisLint,TestAiffAudio):
     def setUp(self):
         self.audio_class = audiotools.FlacAudio
 
@@ -1400,7 +1473,7 @@ class M4AMetadata:
 #    def setUp(self):
 #        self.audio_class = audiotools.ALACAudio
 
-class TestOggFlacAudio(TestAiffAudio):
+class TestOggFlacAudio(VorbisLint,TestAiffAudio):
     def setUp(self):
         self.audio_class = audiotools.OggFlacAudio
 
@@ -1506,7 +1579,7 @@ class TestMP2Audio(ID3Lint,TestAiffAudio):
     def setUp(self):
         self.audio_class = audiotools.MP2Audio
 
-class TestVorbisAudio(TestAiffAudio):
+class TestVorbisAudio(VorbisLint,TestAiffAudio):
     def setUp(self):
         self.audio_class = audiotools.VorbisAudio
 
@@ -1522,7 +1595,7 @@ class TestMusepackAudio(TestAiffAudio):
     def setUp(self):
         self.audio_class = audiotools.MusepackAudio
 
-class TestSpeexAudio(TestAiffAudio):
+class TestSpeexAudio(VorbisLint,TestAiffAudio):
     def setUp(self):
         self.audio_class = audiotools.SpeexAudio
 
