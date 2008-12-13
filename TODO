@@ -97,7 +97,7 @@
 - [X] trackcat
 - [X] trackcmp
 - [X] tracklength
-- [ ] tracklint
+- [X] tracklint
 - [X] trackrename
 - [X] tracksplit
 - [X] tracktag
@@ -135,6 +135,7 @@
 - [X] trackrename
 - [X] tracksplit
 - [ ] tracktag
+- [X] tracklint
 * TODO Add compression percentage display to trackinfo
   Though not massively useful, it'd be neat to see just how
   compressed audio tracks are, as a percentage of their original size.

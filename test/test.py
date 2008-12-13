@@ -1287,7 +1287,74 @@ class TestFlacAudio(TestForeignWaveChunks,VorbisLint,TestAiffAudio):
         self.assertEqual(f1.get_metadata().vorbis_comment.vendor_string,
                          f2.get_metadata().vorbis_comment.vendor_string)
 
-class TestWavPackAudio(TestForeignWaveChunks,TestAiffAudio):
+
+class APEv2Lint:
+    #tracklint is tricky to test since set_metadata()
+    #usually won't write anything that needs fixing.
+    #For instance, it won't generate empty fields or leading zeroes in numbers.
+    #So, bogus ID3 tags must be generated at a lower level.
+    def test_tracklint(self):
+        bad_apev2 = audiotools.ApeTag(
+            {"Title":u"Track Name  ",
+             "Track":u"02",
+             "Artist":u"  Some Artist",
+             "Performer":u"Some Artist",
+             "Catalog":u"",
+             "Year":u"  ",
+             "Comment":u"  Some Comment  "})
+
+        fixed = audiotools.MetaData(
+            track_name=u"Track Name",
+            track_number=2,
+            artist_name=u"Some Artist",
+            comment=u"Some Comment")
+
+        self.assertNotEqual(fixed,bad_apev2)
+
+        tempdir = tempfile.mkdtemp()
+        tempmp = os.path.join(tempdir,"track.%s" % (self.audio_class.SUFFIX))
+        undo = os.path.join(tempdir,"undo.db")
+        try:
+            track = self.audio_class.from_pcm(
+                tempmp,
+                BLANK_PCM_Reader(10))
+
+            track.set_metadata(bad_apev2)
+            metadata = track.get_metadata()
+            self.assertEqual(metadata,bad_apev2)
+            for (key,value) in metadata.items():
+                self.assertEqual(value,bad_apev2[key])
+
+            original_checksum = md5()
+            f = open(track.filename,'rb')
+            audiotools.transfer_data(f.read,original_checksum.update)
+            f.close()
+
+            subprocess.call(["tracklint",
+                             "-V","quiet",
+                             "--fix","--db=%s" % (undo),
+                             track.filename])
+
+            metadata = track.get_metadata()
+            self.assertNotEqual(metadata,bad_apev2)
+            self.assertEqual(metadata,fixed)
+
+            subprocess.call(["tracklint",
+                             "-V","quiet",
+                             "--undo","--db=%s" % (undo),
+                             track.filename])
+
+            metadata = track.get_metadata()
+            self.assertEqual(metadata,bad_apev2)
+            self.assertNotEqual(metadata,fixed)
+            for (key,value) in metadata.items():
+                self.assertEqual(value,bad_apev2[key])
+        finally:
+            for f in os.listdir(tempdir):
+                os.unlink(os.path.join(tempdir,f))
+            os.rmdir(tempdir)
+
+class TestWavPackAudio(TestForeignWaveChunks,APEv2Lint,TestAiffAudio):
     def setUp(self):
         self.audio_class = audiotools.WavPackAudio
 
@@ -1587,11 +1654,74 @@ class TestM4AAudio(M4AMetadata,TestAiffAudio):
     def setUp(self):
         self.audio_class = audiotools.M4AAudio
 
+    def test_tracklint(self):
+        bad_m4a = audiotools.M4AMetaData(
+            {'\xa9nam':[u"Track Name  "],
+             'trkn':['\x00\x00\x00\x02\x00\x00\x00\x00'],
+             'disk':['\x00\x00\x00\x03\x00\x00'],
+             '\xa9ART':[u"  Some Artist"],
+             'aART':[u"Some Artist"],
+             'cprt':[u""],
+             '\xa9day':[u"  "],
+             '\xa9cmt':[u"  Some Comment  "]})
+
+        fixed = audiotools.MetaData(
+            track_name=u"Track Name",
+            track_number=2,
+            album_number=3,
+            artist_name=u"Some Artist",
+            comment=u"Some Comment")
+
+        self.assertNotEqual(fixed,bad_m4a)
+
+        tempdir = tempfile.mkdtemp()
+        tempmp = os.path.join(tempdir,"track.%s" % (self.audio_class.SUFFIX))
+        undo = os.path.join(tempdir,"undo.db")
+        try:
+            track = self.audio_class.from_pcm(
+                tempmp,
+                BLANK_PCM_Reader(10))
+
+            track.set_metadata(bad_m4a)
+            metadata = track.get_metadata()
+            self.assertEqual(metadata,bad_m4a)
+            for (key,value) in metadata.items():
+                self.assertEqual(value,bad_m4a[key])
+
+            original_checksum = md5()
+            f = open(track.filename,'rb')
+            audiotools.transfer_data(f.read,original_checksum.update)
+            f.close()
+
+            subprocess.call(["tracklint",
+                             "-V","quiet",
+                             "--fix","--db=%s" % (undo),
+                             track.filename])
+
+            metadata = track.get_metadata()
+            self.assertNotEqual(metadata,bad_m4a)
+            self.assertEqual(metadata,fixed)
+
+            subprocess.call(["tracklint",
+                             "-V","quiet",
+                             "--undo","--db=%s" % (undo),
+                             track.filename])
+
+            metadata = track.get_metadata()
+            self.assertEqual(metadata,bad_m4a)
+            self.assertNotEqual(metadata,fixed)
+            for (key,value) in metadata.items():
+                self.assertEqual(value,bad_m4a[key])
+        finally:
+            for f in os.listdir(tempdir):
+                os.unlink(os.path.join(tempdir,f))
+            os.rmdir(tempdir)
+
 class TestAACAudio(TestAiffAudio):
     def setUp(self):
         self.audio_class = audiotools.AACAudio
 
-class TestMusepackAudio(TestAiffAudio):
+class TestMusepackAudio(APEv2Lint,TestAiffAudio):
     def setUp(self):
         self.audio_class = audiotools.MusepackAudio
 
@@ -1599,7 +1729,7 @@ class TestSpeexAudio(VorbisLint,TestAiffAudio):
     def setUp(self):
         self.audio_class = audiotools.SpeexAudio
 
-# class TestApeAudio(TestForeignWaveChunks,TestAiffAudio):
+# class TestApeAudio(TestForeignWaveChunks,APEv2Lint,TestAiffAudio):
 #    def setUp(self):
 #        self.audio_class = audiotools.ApeAudio
 
