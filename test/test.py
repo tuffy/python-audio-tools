@@ -267,6 +267,9 @@ LX2XGaVMFD/bpIUciHA6duwYTrDP+WF3Tw+oB3pIJEGxJElMTNyRpOVOHNQOLdAIua7h1E3e5wzq
 pVKBaLKBkckKuZiDiJeHLemVfitxzVa5OAq9TF+9fRpy1RQyBP21/9fU0LTmbz+vmv6GCYYroD86
 Q/8LeyX0e/ZK6M+w/z9h5ahFWOF6xsYTVuUy8O8BsbVytHx43PPKPwEw98Hh""".decode('base64').decode('zlib')
 
+TEST_COVER3 = \
+"""eJz7f+P/AwYBLzdPNwZGRkYGDyBk+H+bwZmBl5OLm4uDl5uLm4+Pl19YQVRYSEhYXUZOXEFP09BA\nT1NXx9jKy87YzM1cR9ch3NHNxy8oOMjILioxKiDBKzDIH2QIIx8fn7CgsJqoqJq/qa6pP8ng/wEG\nQQ6GFIYUZkZBBiZBRmZBxv9HGMTATkUGLBzsQHEJAUZGNBlmJiNHoIwImnogAIkKYoreYuBhZgRa\nxSzIYM9wpviCpICZQknDjcaLzEnsLrwdsiCuwwSfmS+4O6QFrBRyHF40bmRexHaED8R18FDz+cJ6\nBKYMSZeKsFoV0yOgsgnIuk7wdQg/ULP5wuaCTwvEoga4RUKc/baME5HdA9KVwu7CyXJ8XsMJJPdA\nLVrC0pRy3iEGyXAFMwewp5gcDZ8vMELzBZirMOPzBUkFNCdB/F75gmcCpt8VPCAemQBW1nCTEewk\nsEfk/98EALdspDk=\n""".decode('base64').decode('zlib')
+
 #this is an insane amount of different PCM combinations
 PCM_COMBINATIONS = (
     (11025, 1, 8), (22050, 1, 8), (32000, 1, 8),  (44100, 1, 8),
@@ -1152,6 +1155,77 @@ class TestAiffAudio(unittest.TestCase):
                 os.unlink(os.path.join(basedir,f))
             os.rmdir(basedir)
 
+    def test_coverdump(self):
+        basefile = tempfile.NamedTemporaryFile(suffix="." + self.audio_class.SUFFIX)
+        imgdir = tempfile.mkdtemp()
+        try:
+            track = self.audio_class.from_pcm(basefile.name,
+                                              BLANK_PCM_Reader(10))
+            metadata = audiotools.MetaData(track_name=u"Name")
+            track.set_metadata(metadata)
+            metadata = track.get_metadata()
+            if ((metadata is None) or (not metadata.supports_images())):
+                return
+
+            metadata.add_image(audiotools.Image.new(
+                    TEST_COVER1,u"",0))
+            metadata.add_image(audiotools.Image.new(
+                    TEST_COVER2,u"",2))
+            metadata.add_image(audiotools.Image.new(
+                    TEST_COVER3,u"",1))
+
+            track.set_metadata(metadata)
+
+            subprocess.call(["coverdump",
+                             "-V","quiet",
+                             "-d",imgdir,
+                             track.filename])
+
+            f = open(os.path.join(imgdir,"front_cover.jpg"),"rb")
+            self.assertEqual(f.read(),TEST_COVER1)
+            f.close()
+            f = open(os.path.join(imgdir,"leaflet.png"),"rb")
+            self.assertEqual(f.read(),TEST_COVER2)
+            f.close()
+            f = open(os.path.join(imgdir,"back_cover.jpg"),"rb")
+            self.assertEqual(f.read(),TEST_COVER3)
+            f.close()
+
+            for f in os.listdir(imgdir):
+                os.unlink(os.path.join(imgdir,f))
+
+            metadata = audiotools.MetaData(track_name=u"Name")
+            track.set_metadata(metadata)
+            metadata = track.get_metadata()
+
+            metadata.add_image(audiotools.Image.new(
+                    TEST_COVER3,u"",2))
+            metadata.add_image(audiotools.Image.new(
+                    TEST_COVER2,u"",2))
+            metadata.add_image(audiotools.Image.new(
+                    TEST_COVER1,u"",2))
+
+            track.set_metadata(metadata)
+
+            subprocess.call(["coverdump",
+                             "-V","quiet",
+                             "-d",imgdir,
+                             track.filename])
+
+            f = open(os.path.join(imgdir,"leaflet01.jpg"),"rb")
+            self.assertEqual(f.read(),TEST_COVER3)
+            f.close()
+            f = open(os.path.join(imgdir,"leaflet02.png"),"rb")
+            self.assertEqual(f.read(),TEST_COVER2)
+            f.close()
+            f = open(os.path.join(imgdir,"leaflet03.jpg"),"rb")
+            self.assertEqual(f.read(),TEST_COVER1)
+            f.close()
+        finally:
+            basefile.close()
+            for f in os.listdir(imgdir):
+                os.unlink(os.path.join(imgdir,f))
+
 class TestForeignWaveChunks:
     def testforeignwavechunks(self):
         import filecmp
@@ -1535,6 +1609,9 @@ class M4AMetadata:
             for f in os.listdir(basedir):
                 os.unlink(os.path.join(basedir,f))
             os.rmdir(basedir)
+
+    def test_coverdump(self):
+        pass
 
 # class TestAlacAudio(M4AMetadata,TestAiffAudio):
 #    def setUp(self):

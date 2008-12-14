@@ -37,6 +37,13 @@ if (__name__ == '__main__'):
                       default='.',
                       help='the directory to store extracted images')
 
+    parser.add_option('-V','--verbose',
+                      action='store',
+                      dest='verbosity',
+                      choices=["quiet","normal","debug"],
+                      default="normal",
+                      help='the verbosity level to execute at')
+
     (options,args) = parser.parse_args()
 
     if (len(args) != 1):
@@ -71,7 +78,8 @@ if (__name__ == '__main__'):
                     f = open(output_filename,"wb")
                     f.write(image.data)
                     f.close()
-                    print "* %s" % (output_filename)
+                    if (options.verbosity != "quiet"):
+                        print "* %s" % (output_filename)
                 except IOError,msg:
                     print "*** %s" % (str(msg))
                     sys.exit(1)

@@ -88,11 +88,11 @@
    Anything that's not text, images or comments should get some sort
    of proper display instead of a Python object string.
 
-* TODO Add app testing to the unit test suite
+* DONE Add app testing to the unit test suite
   Though not everything is unit-testable
   (such as the CD handling programs or anything X11)
   a lot of the batch programs are to some degree:
-- [ ] coverdump
+- [X] coverdump
 - [X] track2track
 - [X] trackcat
 - [X] trackcmp
@@ -124,7 +124,7 @@
   Debug for additional debugging output.
 - [ ] cd2track
 - [ ] cd2xmcd
-- [ ] coverdump
+- [X] coverdump
 - [ ] record2track
 - [ ] track2cd (this will need to forward verbosity to cdrecord)
 - [ ] track2track
