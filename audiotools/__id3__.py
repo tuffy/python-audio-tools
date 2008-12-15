@@ -163,10 +163,13 @@ class ID3v22Frame:
                                               data=self.data))
 
     def __unicode__(self):
-        if (len(self.data) <= 20):
-            return unicode(self.data.encode('hex').upper())
+        if (self.id.startswith('W')):
+            return self.data.rstrip(chr(0)).decode('iso-8859-1','replace')
         else:
-            return unicode(self.data[0:19].encode('hex').upper()) + u"\u2026"
+            if (len(self.data) <= 20):
+                return unicode(self.data.encode('hex').upper())
+            else:
+                return unicode(self.data[0:19].encode('hex').upper()) + u"\u2026"
 
     @classmethod
     def parse(cls,container):
@@ -732,10 +735,13 @@ class ID3v23Frame(ID3v22Frame):
                        data=container.data)
 
     def __unicode__(self):
-        if (len(self.data) <= 20):
-            return unicode(self.data.encode('hex').upper())
+        if (self.id.startswith('W')):
+            return self.data.rstrip(chr(0)).decode('iso-8859-1','replace')
         else:
-            return unicode(self.data[0:19].encode('hex').upper()) + u"\u2026"
+            if (len(self.data) <= 20):
+                return unicode(self.data.encode('hex').upper())
+            else:
+                return unicode(self.data[0:19].encode('hex').upper()) + u"\u2026"
 
 class ID3v23TextFrame(ID3v23Frame):
     ENCODING = {0x00:"latin-1",
@@ -1055,10 +1061,13 @@ class ID3v24Frame(ID3v23Frame):
                        data=container.data)
 
     def __unicode__(self):
-        if (len(self.data) <= 20):
-            return unicode(self.data.encode('hex').upper())
+        if (self.id.startswith('W')):
+            return self.data.rstrip(chr(0)).decode('iso-8859-1','replace')
         else:
-            return unicode(self.data[0:19].encode('hex').upper()) + u"\u2026"
+            if (len(self.data) <= 20):
+                return unicode(self.data.encode('hex').upper())
+            else:
+                return unicode(self.data[0:19].encode('hex').upper()) + u"\u2026"
 
 
 class ID3v24TextFrame(ID3v24Frame):
