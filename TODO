@@ -136,10 +136,10 @@
 - [X] tracksplit
 - [ ] tracktag
 - [X] tracklint
-* TODO Add compression percentage display to trackinfo
+* DONE Add compression percentage display to trackinfo
   Though not massively useful, it'd be neat to see just how
   compressed audio tracks are, as a percentage of their original size.
-* TODO Add support for W??? frames to ID3v2
+* DONE Add support for W??? frames to ID3v2
   The various W??? frames are really just URLs and don't need to
   be displayed as hex-encoded blobs.
 
