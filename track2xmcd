@@ -45,6 +45,13 @@ if (__name__ == '__main__'):
                       action='store_const',const=1,default=None,
                       help='when multiple choices are available, select the first one automatically')
 
+    parser.add_option('-V','--verbose',
+                      action='store',
+                      dest='verbosity',
+                      choices=["quiet","normal","debug"],
+                      default="normal",
+                      help='the verbosity level to execute at')
+
     (options,args) = parser.parse_args()
 
     audiofiles = audiotools.open_files(args)
@@ -76,7 +83,8 @@ if (__name__ == '__main__'):
             audiotools.get_xmcd(discid, outfile,
                                 options.freedb_server,
                                 options.freedb_port,
-                                options.default)
+                                options.default,
+                                options.verbosity != 'quiet')
         except IOError,msg:
             print >>sys.stderr,"* Error: %s" % (msg)
             sys.exit(1)

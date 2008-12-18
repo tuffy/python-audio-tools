@@ -127,15 +127,14 @@
 - [X] coverdump
 - [ ] record2track
 - [ ] track2cd (this will need to forward verbosity to cdrecord)
-- [ ] track2track
-- [ ] track2xmcd
-- [ ] trackcat
+- [X] track2track
+- [X] track2xmcd
 - [X] trackcmp
-- [ ] trackplay
 - [X] trackrename
 - [X] tracksplit
-- [ ] tracktag
+- [X] tracktag
 - [X] tracklint
+** TODO Converted apptest.sh to quiet operation
 * DONE Add compression percentage display to trackinfo
   Though not massively useful, it'd be neat to see just how
   compressed audio tracks are, as a percentage of their original size.

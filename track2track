@@ -168,6 +168,13 @@ if (__name__ == '__main__'):
                       dest='add_replay_gain',
                       help='do not add ReplayGain metadata to newly created tracks')
 
+    parser.add_option('-V','--verbose',
+                      action='store',
+                      dest='verbosity',
+                      choices=["quiet","normal","debug"],
+                      default="normal",
+                      help='the verbosity level to execute at')
+
     (options,args) = parser.parse_args()
 
     #if one specifies incompatible output options,
@@ -300,7 +307,8 @@ if (__name__ == '__main__'):
                                    filename,
                                    audiofile,
                                    metadata,
-                                   quality))
+                                   quality,
+                                   options.verbosity != 'quiet'))
                     encoded_filenames.append(filename)
                 else:
                     filename = os.path.join(
@@ -320,7 +328,7 @@ if (__name__ == '__main__'):
                                    audiofile,
                                    metadata,
                                    quality,
-                                   True,
+                                   options.verbosity != 'quiet',
                                    options.thumbnail))
                 encoded_filenames.append(filename)
             except audiotools.UnsupportedTracknameField,msg:
@@ -332,7 +340,8 @@ if (__name__ == '__main__'):
         queue.run(max_processes)
 
         if (options.add_replay_gain and AudioType.can_add_replay_gain()):
-            if (AudioType.lossless_replay_gain()):
+            if (AudioType.lossless_replay_gain() and
+                (options.verbosity != 'quiet')):
                 print >>sys.stderr,"* Adding ReplayGain metadata.  This may take some time."
             else:
                 print >>sys.stderr,"* Applying ReplayGain.  This may take some time."

@@ -280,6 +280,13 @@ if (__name__ == '__main__'):
                       dest='add_replay_gain',
                       help='add ReplayGain metadata to track(s)')
 
+    parser.add_option('-V','--verbose',
+                      action='store',
+                      dest='verbosity',
+                      choices=["quiet","normal","debug"],
+                      default="normal",
+                      help='the verbosity level to execute at')
+
     (options,args) = parser.parse_args()
 
     audiofiles = audiotools.open_files(args)
@@ -378,8 +385,10 @@ if (__name__ == '__main__'):
     if (options.add_replay_gain and
         (len(audiofiles) > 0) and
         (audiofiles[0].can_add_replay_gain())):
-        if (audiofiles[0].lossless_replay_gain()):
-            print >>sys.stderr,"* Adding ReplayGain metadata.  This may take some time."
-        else:
-            print >>sys.stderr,"* Applying ReplayGain.  This may take some time."
+
+        if (options.verbosity != 'quiet'):
+            if (audiofiles[0].lossless_replay_gain()):
+                print >>sys.stderr,"* Adding ReplayGain metadata.  This may take some time."
+            else:
+                print >>sys.stderr,"* Applying ReplayGain.  This may take some time."
         audiofiles[0].add_replay_gain([f.filename for f in audiofiles])

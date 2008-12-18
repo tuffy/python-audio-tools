@@ -283,18 +283,20 @@ class FreeDBException(Exception): pass
 class FreeDB:
     LINE = re.compile(r'\d\d\d\s.+')
 
-    def __init__(self, server, port):
+    def __init__(self, server, port, display_output=True):
         self.server = server
         self.port = port
         self.socket = None
         self.r = None
         self.w = None
+        self.display_output = display_output
 
     def connect(self):
         import socket
 
         try:
-            print >>sys.stderr,"* Connecting to \"%s\"" % (self.server)
+            if (self.display_output):
+                print >>sys.stderr,"* Connecting to \"%s\"" % (self.server)
             self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.socket.connect((self.server,self.port))
 
@@ -303,7 +305,8 @@ class FreeDB:
 
             (code,msg) = self.read()  #the welcome message
             if (code == 201):
-                print >>sys.stderr,"* Connected ... attempting to login"
+                if (self.display_output):
+                    print >>sys.stderr,"* Connected ... attempting to login"
             else:
                 self.r.close()
                 self.w.close()
@@ -333,7 +336,8 @@ class FreeDB:
             raise FreeDBException(err[1])
 
     def close(self):
-        print >>sys.stderr,"* Closing connection"
+        if (self.display_output):
+            print >>sys.stderr,"* Closing connection"
 
         self.write("quit")
         (code,msg) = self.read()  #the quit successful message
@@ -358,7 +362,8 @@ class FreeDB:
     def query(self, disc_id):
         matches = []
 
-        print >>sys.stderr,"* Sending ID to server"
+        if (self.display_output):
+            print >>sys.stderr,"* Sending ID to server"
 
         self.write("cddb query " + disc_id.freedb_id())
         (code,msg) = self.read()
@@ -370,10 +375,11 @@ class FreeDB:
                 if (msg != "."):
                     matches.append(msg)
 
-        if (len(matches) == 1):
-            print >>sys.stderr,"* 1 match found"
-        else:
-            print >>sys.stderr,"* %s matches found" % (len(matches))
+        if (self.display_output):
+            if (len(matches) == 1):
+                print >>sys.stderr,"* 1 match found"
+            else:
+                print >>sys.stderr,"* %s matches found" % (len(matches))
 
         return map(lambda m: m.split(" ",2), matches)
 
@@ -393,10 +399,11 @@ class FreeDB:
 
 
 class FreeDBWeb(FreeDB):
-    def __init__(self, server, port):
+    def __init__(self, server, port, display_output=True):
         self.server = server
         self.port = port
         self.connection = None
+        self.display_output = display_output
 
     def connect(self):
         import httplib
@@ -440,7 +447,8 @@ class FreeDBWeb(FreeDB):
     def query(self, disc_id):
         matches = []
 
-        print >>sys.stderr,"* Sending ID to server"
+        if (self.display_output):
+            print >>sys.stderr,"* Sending ID to server"
 
         self.write("cddb query " + disc_id.freedb_id())
         data =  cStringIO.StringIO(self.read())
@@ -453,10 +461,11 @@ class FreeDBWeb(FreeDB):
                 if (msg != "."):
                     matches.append(msg)
 
-        if (len(matches) == 1):
-            print >>sys.stderr,"* 1 match found"
-        else:
-            print >>sys.stderr,"* %s matches found" % (len(matches))
+        if (self.display_output):
+            if (len(matches) == 1):
+                print >>sys.stderr,"* 1 match found"
+            else:
+                print >>sys.stderr,"* %s matches found" % (len(matches))
 
         return map(lambda m: m.split(" ",2), matches)
 
@@ -514,9 +523,9 @@ def __select_default_match__(matches, selection):
 #and runs the entire FreeDB querying sequence
 #the file handle is closed at the conclusion of this function
 def get_xmcd(disc_id, output, freedb_server, freedb_server_port,
-             default_selection=None):
+             default_selection=None, display_output=False):
     try:
-        freedb = FreeDBWeb(freedb_server,freedb_server_port)
+        freedb = FreeDBWeb(freedb_server,freedb_server_port,display_output)
         freedb.connect()
     except FreeDBException,msg:
         #if an exception occurs during the opening,
@@ -545,4 +554,5 @@ def get_xmcd(disc_id, output, freedb_server, freedb_server_port,
         raise IOError(str(msg))
 
     output.close()
-    print >>sys.stderr,"* %s written" % (output.name)
+    if (display_output):
+        print >>sys.stderr,"* %s written" % (output.name)
