@@ -693,7 +693,7 @@ class FlacAudio(AudioFile):
             return self.__md5__ == audiofile.__md5__
         elif (isinstance(audiofile,AudioFile)):
             try:
-                from haslib import md5
+                from hashlib import md5
             except ImportError:
                 from md5 import new as md5
 
