@@ -142,3 +142,5 @@
   The various W??? frames are really just URLs and don't need to
   be displayed as hex-encoded blobs.
 
+* TODO Add ISRC support to track2cd
+  cdrecord supports a number of per-track options that aren't yet passed in

@@ -692,7 +692,10 @@ class FlacAudio(AudioFile):
         if (isinstance(audiofile,FlacAudio)):
             return self.__md5__ == audiofile.__md5__
         elif (isinstance(audiofile,AudioFile)):
-            import md5
+            try:
+                from haslib import md5
+            except ImportError:
+                from md5 import new as md5
 
             p = audiofile.to_pcm()
             m = md5.new()
