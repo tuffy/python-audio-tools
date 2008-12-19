@@ -85,6 +85,13 @@ if (__name__ == '__main__'):
                       dest='add_replay_gain',
                       help='do not add ReplayGain metadata in newly created tracks')
 
+    parser.add_option('-V','--verbose',
+                      action='store',
+                      dest='verbosity',
+                      choices=["quiet","normal","debug"],
+                      default="normal",
+                      help='the verbosity level to execute at')
+
     (options,args) = parser.parse_args()
 
     #get the AudioFile class we are converted to
@@ -199,12 +206,14 @@ if (__name__ == '__main__'):
                         album_number=options.album_number))
 
                 encoded.append(track)
-            print "track %2.2d: %s" % (cd_track.track_number,
-                                       str(cd_track.rip_log))
-            print (u"track %2.2d -> %s" % (cd_track.track_number,
-                                           track.filename.decode(
-                        audiotools.FS_ENCODING))).encode(
-            audiotools.IO_ENCODING)
+
+            if (options.verbosity != 'quiet'):
+                print "track %2.2d: %s" % (cd_track.track_number,
+                                           str(cd_track.rip_log))
+                print (u"track %2.2d -> %s" % (cd_track.track_number,
+                                               track.filename.decode(
+                            audiotools.FS_ENCODING))).encode(
+                    audiotools.IO_ENCODING)
         except audiotools.UnsupportedTracknameField,msg:
             sys.stderr.write(unicode(msg).encode(audiotools.IO_ENCODING))
             sys.exit(1)
@@ -216,8 +225,9 @@ if (__name__ == '__main__'):
             continue
 
     if (options.add_replay_gain and AudioType.can_add_replay_gain()):
-        if (AudioType.lossless_replay_gain()):
-            print >>sys.stderr,"* Adding ReplayGain metadata.  This may take some time."
-        else:
-            print >>sys.stderr,"* Applying ReplayGain.  This may take some time."
+        if (options.verbosity != 'quiet'):
+            if (AudioType.lossless_replay_gain()):
+                print >>sys.stderr,"* Adding ReplayGain metadata.  This may take some time."
+            else:
+                print >>sys.stderr,"* Applying ReplayGain.  This may take some time."
         AudioType.add_replay_gain([track.filename for track in encoded])

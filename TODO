@@ -122,8 +122,8 @@
   Silence shuts off everything but error messages.
   Normal is standard output behavior.
   Debug for additional debugging output.
-- [ ] cd2track
-- [ ] cd2xmcd
+- [X] cd2track
+- [X] cd2xmcd
 - [X] coverdump
 - [ ] record2track
 - [ ] track2cd (this will need to forward verbosity to cdrecord)
