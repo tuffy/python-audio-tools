@@ -856,6 +856,17 @@ class OggFlacAudio(FlacAudio):
         vendor_string = old_metadata.vorbis_comment.vendor_string
         comment.vorbis_comment.vendor_string = vendor_string
 
+        #grab "WAVEFORMATEXTENSIBLE_CHANNEL_MASK" from existing file (if any)
+        if ("WAVEFORMATEXTENSIBLE_CHANNEL_MASK" in
+            old_metadata.vorbis_comment.keys()):
+            metadata.vorbis_comment["WAVEFORMATEXTENSIBLE_CHANNEL_MASK"] = \
+               old_metadata.vorbis_comment["WAVEFORMATEXTENSIBLE_CHANNEL_MASK"]
+        elif ("WAVEFORMATEXTENSIBLE_CHANNEL_MASK" in
+              metadata.vorbis_comment.keys()):
+            #if the existing file has no "WAVEFORMATEXTENSIBLE_CHANNEL_MASK"
+            #don't port one from another file
+            del(metadata.vorbis_comment["WAVEFORMATEXTENSIBLE_CHANNEL_MASK"])
+
         reader = OggStreamReader(file(self.filename,'rb'))
         new_file = tempfile.TemporaryFile()
         writer = OggStreamWriter(new_file)
