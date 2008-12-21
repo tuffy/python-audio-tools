@@ -202,14 +202,13 @@ class OggStreamWriter:
                     starting_sequence_number, packet_data,
                     header_type=0):
 
-        page = Con.Container()
-        page.magic_number = 'OggS'
-        page.version = 0
-        page.header_type = header_type
-        page.granule_position = granule_position
-        page.bitstream_serial_number = serial_number
-        page.page_sequence_number = starting_sequence_number
-        page.checksum = 0
+        page = Con.Container(magic_number = 'OggS',
+                             version = 0,
+                             header_type = header_type,
+                             granule_position = granule_position,
+                             bitstream_serial_number = serial_number,
+                             page_sequence_number = starting_sequence_number,
+                             checksum = 0)
 
         if (len(packet_data) == 0):
             #an empty Ogg page, but possibly a continuation

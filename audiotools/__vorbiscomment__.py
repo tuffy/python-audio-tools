@@ -180,10 +180,10 @@ class VorbisComment(MetaData,dict):
 
     #returns this VorbisComment as a binary string
     def build(self):
-        comment = Con.Container()
-        comment.vendor_string = self.vendor_string
-        comment.framing = 1
-        comment.value = []
+        comment = Con.Container(vendor_string = self.vendor_string,
+                                framing = 1,
+                                value = [])
+
         for (key,values) in self.items():
             for value in values:
                 if (value != u""):
