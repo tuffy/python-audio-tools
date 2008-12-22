@@ -208,6 +208,14 @@ def parse(tokens):
         return cuesheet
 
 
+def __attrib_str__(attrib):
+    if (isinstance(attrib,tuple)):
+        return " ".join([__attrib_str__(a) for a in attrib])
+    elif (re.match(r'^[A-Z]+$',attrib) is not None):
+        return attrib
+    else:
+        return "\"%s\"" % (attrib)
+
 class Cuesheet:
     def __init__(self):
         self.attribs = {}
@@ -216,6 +224,11 @@ class Cuesheet:
     def __repr__(self):
         return "Cuesheet(attribs=%s,tracks=%s)" % \
             (repr(self.attribs),repr(self.tracks))
+
+    def __str__(self):
+        return "\r\n".join(["%s %s" % (key,__attrib_str__(value))
+                            for key,value in self.attribs.items()] + \
+                           [str(track) for track in sorted(self.tracks.values())])
 
     #returns True if this cuesheet is for a single file
     def single_file_type(self):
@@ -263,10 +276,21 @@ class Track:
         self.attribs = {}
         self.indexes = {}
 
+    def __cmp__(self,t):
+        return cmp(self.number,t.number)
+
     def __repr__(self):
         return "Track(%s,%s,attribs=%s,indexes=%s)" % \
             (repr(self.number),repr(self.type),
              repr(self.attribs),repr(self.indexes))
+
+    def __str__(self):
+        return ("  TRACK %2.2d %s\r\n" % (self.number,self.type)) + \
+            "\r\n".join(["    %s %s" % (key,__attrib_str__(value))
+                         for key,value in self.attribs.items()] + \
+                        ["    INDEX %2.2d %2.2d:%2.2d:%2.2d" % \
+                             (k,v / 75 / 60,v / 75 % 60,v % 75)
+                         for (k,v) in sorted(self.indexes.items())])
 
 
 def read_cuesheet(filename):
