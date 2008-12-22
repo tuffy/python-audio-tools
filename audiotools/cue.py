@@ -18,6 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 import re
+from audiotools import SheetException
 
 ###################
 #Cue Sheet Parsing
@@ -36,7 +37,7 @@ STRING = 0x8
 ISRC = 0x10
 TIMESTAMP = 0x20
 
-class CueException(ValueError): pass
+class CueException(SheetException): pass
 
 def tokens(cuedata):
     full_length = len(cuedata)

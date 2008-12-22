@@ -1769,6 +1769,26 @@ class ExecQueue:
             except KeyError:
                 continue
 
+###########################
+#Cuesheet/TOC file handling
+###########################
+
+#Cuesheets and TOC files are bundled into a unified Sheet interface
+
+#a parent exception for CueException and TOCException
+class SheetException(ValueError): pass
+
+def read_sheet(filename):
+    import toc
+    import cue
+
+    try:
+        #try TOC first, since it's CD_DA header makes it easier to spot
+        return toc.read_tocfile(filename)
+    except SheetException:
+        return cue.read_cuesheet(filename)
+
+
 
 
 #***ApeAudio temporarily removed***

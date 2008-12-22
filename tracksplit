@@ -181,8 +181,8 @@ if (__name__ == '__main__'):
         #grab the cuesheet we're using to split tracks
         #(this overrides an embedded cuesheet)
         try:
-            cuesheet = audiotools.cue.read_cuesheet(options.cuesheet)
-        except audiotools.cue.CueException,msg:
+            cuesheet = audiotools.read_sheet(options.cuesheet)
+        except audiotools.SheetException,msg:
             print >>sys.stderr,"*** Cuesheet error: %s" % (msg)
             sys.exit(1)
 

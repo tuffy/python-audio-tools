@@ -18,12 +18,13 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 import re
+from audiotools import SheetException
 
 ###################
 #TOC Parsing
 ###################
 
-class TOCException(ValueError): pass
+class TOCException(SheetException): pass
 
 def parse_timestamp(s):
     if (":" in s):
@@ -112,6 +113,8 @@ class TOCFile:
 
         yield total_length
 
+    def single_file_type(self):
+        return True
 
 class Track:
     def __init__(self, number):
@@ -127,3 +130,13 @@ class Track:
         return "Track(%s,lines=%s,indexes=%s,start=%s)" % \
             (repr(self.number),repr(self.lines),
              repr(self.indexes),repr(self.start))
+
+def read_tocfile(filename):
+    try:
+        f = open(filename,'r')
+    except IOError,msg:
+        raise TOCException(str(msg))
+    try:
+        return parse(iter(f.readlines()))
+    finally:
+        f.close()

@@ -148,5 +148,9 @@
   Cuesheets and cdrdao TOC files are largely interchangeable.
   They both feature a listing of track offsets and, optionally,
   CD-TEXT data, ISRCs and so on.
-  These formats should be unified such that any program will be
+  These formats should be unified such that any program will
   handle them both automatically.
+- [X] tracksplit
+- [ ] trackcat
+- [ ] tracktag
+** TODO Update docs to mention CUE/TOC interchangeability
