@@ -152,5 +152,10 @@
   handle them both automatically.
 - [X] tracksplit
 - [ ] trackcat
-- [ ] tracktag
+- [X] tracktag
 ** TODO Update docs to mention CUE/TOC interchangeability
+** TODO Support cuesheet from FlacMetaData directly
+   Since we're parsing CUE/TOC files anyway, this data can be used
+   to build FLAC CUESHEET blocks directly instead of punting
+   this task to metaflac.
+
