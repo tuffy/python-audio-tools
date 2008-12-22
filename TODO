@@ -144,3 +144,9 @@
 
 * TODO Add ISRC support to track2cd
   cdrecord supports a number of per-track options that aren't yet passed in
+* TODO Unify CUE/TOC support
+  Cuesheets and cdrdao TOC files are largely interchangeable.
+  They both feature a listing of track offsets and, optionally,
+  CD-TEXT data, ISRCs and so on.
+  These formats should be unified such that any program will be
+  handle them both automatically.
