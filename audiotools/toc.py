@@ -116,6 +116,12 @@ class TOCFile:
     def single_file_type(self):
         return True
 
+    #returns a track_number->ISRC dict
+    #of all tracks whose ISRC is not empty
+    def ISRCs(self):
+        return dict([(track.number,track.ISRC()) for track in
+                     self.tracks.values() if track.ISRC() is not None])
+
 class Track:
     def __init__(self, number):
         self.number = number
@@ -130,6 +136,16 @@ class Track:
         return "Track(%s,lines=%s,indexes=%s,start=%s)" % \
             (repr(self.number),repr(self.lines),
              repr(self.indexes),repr(self.start))
+
+    #returns the ISRC value of this track, or None if it cannot be found
+    def ISRC(self):
+        for line in self.lines:
+            if (line.startswith('ISRC')):
+                match = re.search(r'"(.+)"',line)
+                if (match is not None):
+                    return match.group(1)
+        else:
+            return None
 
 def read_tocfile(filename):
     try:

@@ -270,6 +270,12 @@ class Cuesheet:
 
         yield total_length
 
+    #returns a track_number->ISRC dict
+    #of all tracks whose ISRC is not empty
+    def ISRCs(self):
+        return dict([(track.number,track.ISRC()) for track in
+                     self.tracks.values() if track.ISRC() is not None])
+
 class Track:
     def __init__(self, number, type):
         self.number = number
@@ -292,6 +298,12 @@ class Track:
                         ["    INDEX %2.2d %2.2d:%2.2d:%2.2d" % \
                              (k,v / 75 / 60,v / 75 % 60,v % 75)
                          for (k,v) in sorted(self.indexes.items())])
+
+    def ISRC(self):
+        if ('ISRC' in self.attribs.keys()):
+            return str(self.attribs['ISRC'])
+        else:
+            return None
 
 
 def read_cuesheet(filename):
