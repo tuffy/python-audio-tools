@@ -264,7 +264,7 @@ class Cuesheet:
                 track_length = (current[max(current.keys())] - \
                                     previous[max(previous.keys())]) * (44100 / 75)
                 total_length -= track_length
-                yield  track_length
+                yield track_length
                 previous = current
 
         yield total_length
