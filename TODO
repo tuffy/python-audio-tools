@@ -154,8 +154,14 @@
 - [ ] trackcat
 - [X] tracktag
 ** TODO Update docs to mention CUE/TOC interchangeability
+- [X] tracksplit
+- [ ] trackcat
+- [X] tracktag
 ** TODO Support cuesheet from FlacMetaData directly
    Since we're parsing CUE/TOC files anyway, this data can be used
    to build FLAC CUESHEET blocks directly instead of punting
    this task to metaflac.
+* TODO Add CD-TEXT support to CDDA/CDTrackReader objects
+  Being able to pull this data using libcdio eliminates the need
+  to punt data CUE/TOC fetching tasks to cdrdao.
 
