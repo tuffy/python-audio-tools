@@ -68,10 +68,10 @@ def get_image(filename, type):
     except IOError:
         raise audiotools.InvalidImage("error opening file: \"%s\"" % (filename))
 
-#given a cdrdao TOC filename,
+#given a cuesheet filename,
 #returns a dict of track_number->u"ISRC" entries
 #or an empty dict if no ISRCs found
-def toc_metadata(filename):
+def isrc_metadata(filename):
     try:
         return dict([(k,v.decode('ascii','replace'))
                      for (k,v) in
@@ -223,11 +223,11 @@ if (__name__ == '__main__'):
                       help='an XMCD file to get audio metadata from',
                       metavar='FILENAME')
 
-    parser.add_option('--toc',
+    parser.add_option('--cue',
                       action='store',
                       type='string',
-                      dest='toc',
-                      help='a TOC file to get audio metadata from',
+                      dest='cue',
+                      help='a cuesheet to get audio metadata from',
                       metavar='FILENAME')
 
     parser.add_option('--remove-images',
@@ -298,15 +298,10 @@ if (__name__ == '__main__'):
     else:
         xmcd = None
 
-    if (options.toc is not None):
-        try:
-            toc = toc_metadata(options.toc)
-        except IOError:
-            print >>sys.stderr,"*** Error opening TOC file \"%s\"" % \
-                  (options.toc)
-            sys.exit(1)
+    if (options.cue is not None):
+        isrcs = isrc_metadata(options.cue)
     else:
-        toc = {}
+        isrcs = {}
 
     if (options.replace):
         if (xmcd is None):
@@ -339,8 +334,8 @@ if (__name__ == '__main__'):
                 if (options.media_type is not None):
                     metadata.media = options.media_type.decode(audiotools.IO_ENCODING)
 
-                if (file.track_number() in toc.keys()):
-                    metadata.ISRC = toc[file.track_number()]
+                if (file.track_number() in isrcs.keys()):
+                    metadata.ISRC = isrcs[file.track_number()]
 
                 if (options.album_number is not None):
                     metadata.album_number = options.album_number
