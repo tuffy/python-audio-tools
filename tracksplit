@@ -62,6 +62,7 @@ if (__name__ == '__main__'):
                       action='store',
                       type='string',
                       dest='cuesheet',
+                      metavar='FILENAME',
                       help='the cuesheet to use for splitting track')
 
     parser.add_option('-x','--xmcd',
