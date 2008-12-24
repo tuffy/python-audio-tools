@@ -41,7 +41,6 @@ static PyObject *CDDA_read_sectors(cdio_CDDAObject* self, PyObject *args);
 static PyObject *CDDA_seek(cdio_CDDAObject* self, PyObject *args);
 static PyObject *CDDA_set_speed(cdio_CDDAObject* self, PyObject *args);
 static PyObject *CDDA_length_in_seconds(cdio_CDDAObject* self);
-static PyObject *CDDA_cdtext_field(cdio_CDDAObject* self, PyObject *args);
 
 static PyObject *set_read_callback(PyObject *dummy, PyObject *args);
 void read_sector_callback(long int i, paranoia_cb_mode_t mode);
@@ -61,8 +60,6 @@ static PyMethodDef CDDA_methods[] = {
    METH_VARARGS,"Sets the speed of the drive"},
   {"length_in_seconds", (PyCFunction)CDDA_length_in_seconds,
    METH_NOARGS,"Returns the total length of the disc in seconds"},
-  {"cdtext_field", (PyCFunction)CDDA_cdtext_field,
-   METH_VARARGS,"Returns the given CD-TEXT field as a string, or None"},
   {NULL}  /* Sentinel */
 };
 
@@ -323,37 +320,6 @@ static PyObject *CDDA_length_in_seconds(cdio_CDDAObject* self) {
   return result;
 }
 
-static PyObject *CDDA_cdtext_field(cdio_CDDAObject* self, PyObject *args) {
-  track_t tracknum;
-  cdtext_field_t key;
-  cdtext_t *text;
-  char *field;
-  static PyObject *result = NULL;
-
-  if (!PyArg_ParseTuple(args, "ii", &tracknum,&key))
-    return NULL;
-
-  text = cdio_get_cdtext(self->cdrom_drive->p_cdio,tracknum);
-  if (text == NULL) {
-    Py_INCREF(Py_None);
-    return Py_None;
-  }
-
-  field = cdtext_get(key,text);
-
-  if (field == NULL) {
-    /*libcdio's docs don't say whether cdio_get_cdtext's return value
-      needs to be destroyed or not, so I'll assume they do*/
-    cdtext_destroy(text);
-    Py_INCREF(Py_None);
-    return Py_None;
-  } else {
-    result = PyString_FromString(field);
-    free(field);
-    cdtext_destroy(text);
-    return result;
-  }
-}
 
 /*callback stuff*/
 
