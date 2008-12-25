@@ -85,7 +85,8 @@ class FlacMetaData(MetaData):
 
             elif ((block.type == 5) and (self.cuesheet is None)):
                 #only one CUESHEET allowed
-                self.__dict__['cuesheet'] = block
+                self.__dict__['cuesheet'] = FlacCueSheet(
+                    FlacCueSheet.CUESHEET.parse(block.data))
             elif ((block.type == 3) and (self.seektable is None)):
                 #only one SEEKTABLE allowed
                 self.__dict__['seektable'] = block
@@ -299,6 +300,101 @@ class FlacPictureComment(Image):
                           block_type=6,
                           block_length=len(block))) + block
 
+class FlacCueSheet:
+    CUESHEET = Con.Struct(
+        "flac_cuesheet",
+        Con.String("catalog_number",128),
+        Con.UBInt64("lead_in_samples"),
+        Con.Embed(Con.BitStruct("flags",
+                                Con.Flag("is_cd"),
+                                Con.Padding(7))), #reserved
+        Con.Padding(258), #reserved
+        Con.PrefixedArray(
+            length_field=Con.Byte("count"),
+            subcon=Con.Struct("cuesheet_tracks",
+                              Con.UBInt64("track_offset"),
+                              Con.Byte("track_number"),
+                              Con.String("ISRC",12),
+                              Con.Embed(Con.BitStruct("sub_flags",
+                                                      Con.Flag("non_audio"),
+                                                      Con.Flag("pre_emphasis"),
+                                                      Con.Padding(6))),
+                              Con.Padding(13),
+                              Con.PrefixedArray(
+                    length_field=Con.Byte("count"),
+                    subcon=Con.Struct("cuesheet_track_index",
+                                      Con.UBInt64("offset"),
+                                      Con.Byte("point_number"),
+                                      Con.Padding(3)))  #reserved
+                              )))
+
+    #container is a compliant Container object returned by CUESHEET.parse()
+    def __init__(self, container):
+        self.type = 5
+        self.container = container
+
+    def build_block(self,last=0):
+        block = self.CUESHEET.build(self.container)
+
+        return FlacAudio.METADATA_BLOCK_HEADER.build(
+            Con.Container(last_block=last,
+                          block_type=5,
+                          block_length=len(block))) + block
+
+    #takes a cuesheet-compatible object
+    #with a pcm_lengths() and ISRCs() method
+    #and a total_frames integer (in PCM frames)
+    #returns a new FlacCueSheet object
+    @classmethod
+    def from_sheet(cls,sheet,total_frames):
+        #number is the track number integer
+        #ISRC is a 12 byte string, or None
+        #indexes is a list of indexes()-compatible index points
+        #(i.e. given incrementally as CD frames)
+        #returns a Container
+        def track_container(number,ISRC,indexes):
+            if (ISRC is None):
+                ISRC = chr(0) * 12
+
+            if (len(indexes) == 1):
+                base_number = 1
+            else:
+                base_number = 0
+
+            return Con.Container(
+                track_offset=indexes[0] * 588,
+                track_number=number,
+                ISRC=ISRC,
+                non_audio=False,
+                pre_emphasis=False, #FIXME, check for this
+                cuesheet_track_index=[Con.Container(
+                        offset=((index - indexes[0]) * 588),
+                        point_number=point_number + base_number)
+                                      for (point_number,index) in
+                                      enumerate(indexes)])
+
+        catalog_number = sheet.catalog()
+        if (catalog_number is None):
+            catalog_number = ""
+
+        ISRCs = sheet.ISRCs()
+
+        return cls(Con.Container(
+                catalog_number=catalog_number + \
+                    (chr(0) * (128 - len(catalog_number))),
+                lead_in_samples=44100 * 2,
+                is_cd=True,
+                cuesheet_tracks=[track_container(i + 1,
+                                                 ISRCs.get(i + 1,None),
+                                                 indexes)
+                                 for (i,indexes) in
+                                 enumerate(sheet.indexes())] + \
+                                 [Con.Container(track_offset=total_frames,
+                                                track_number=170,
+                                                ISRC=chr(0) * 12,
+                                                non_audio=False,
+                                                pre_emphasis=False,
+                                                cuesheet_track_index=[])]))
 
 class FlacAudio(AudioFile):
     SUFFIX = "flac"
@@ -337,33 +433,6 @@ class FlacAudio(AudioFile):
                                  Con.UBInt32("color_count"),
                                  Con.PascalString("data",
                                                   length_field=Con.UBInt32("data_length")))
-
-    CUESHEET = Con.Struct("flac_cuesheet",
-  Con.StrictRepeater(128,Con.Byte("catalog_number")),
-  Con.UBInt64("lead_in_samples"),
-  Con.Embed(Con.BitStruct("flags",
-                          Con.Bits("is_cd",1),
-                          Con.Bits("reserved1",7))),
-  Con.StrictRepeater(258,Con.Byte("reserved2")),
-  Con.PrefixedArray(
-    length_field=Con.Byte("count"),
-    subcon=Con.Struct("cuesheet_tracks",
-      Con.UBInt64("track_offset"),
-      Con.Byte("track_number"),
-      Con.StrictRepeater(12,Con.Byte("ISRC")),
-      Con.Embed(Con.BitStruct("sub_flags",
-                              Con.Flag("track_type"),
-                              Con.Flag("pre_emphasis"),
-                              Con.Bits("reserved1",6))),
-      Con.StrictRepeater(13,Con.Byte("reserved2")),
-      Con.PrefixedArray(
-        length_field=Con.Byte("count"),
-        subcon=Con.Struct("cuesheet_track_index",
-          Con.UBInt64("offset"),
-          Con.Byte("point_number"),
-          Con.StrictRepeater(3,Con.Byte("reserved")))
-            ))
-         ))
 
     def __init__(self, filename):
         AudioFile.__init__(self, filename)
@@ -734,7 +803,7 @@ class FlacAudio(AudioFile):
                 FlacAudio.__read_flac_header__(flacfile)
 
             if (header_type == 5):
-                cuesheet = FlacAudio.CUESHEET.parse(flacfile.read(length))
+                cuesheet = FlacCueSheet.CUESHEET.parse(flacfile.read(length))
 
                 #print repr(cuesheet)
 

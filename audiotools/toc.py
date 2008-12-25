@@ -77,7 +77,7 @@ def parse(lines):
                     elif (line.startswith('START')):
                         track.start = parse_timestamp(line[len('START '):])
                 else:
-                    TOCFile.lines.append(line)
+                    toc.lines.append(line)
     except StopIteration:
         if (track is not None):
             toc.tracks[track.number] = track
@@ -91,6 +91,17 @@ class TOCFile:
     def __repr__(self):
         return "TOCFile(lines=%s,tracks=%s)" % (repr(self.lines),
                                                 repr(self.tracks))
+
+    def catalog(self):
+        for line in self.lines:
+            if (line.startswith('CATALOG')):
+                result = re.search(r'"(.+)"',line)
+                if (result is not None):
+                    return result.group(1)
+                else:
+                    continue
+        else:
+            return None
 
     def indexes(self):
         for track in sorted(self.tracks.values()):

@@ -168,7 +168,7 @@ def parse(tokens):
                             STRING | TAG | NUMBER | ISRC,
                             "missing value")
 
-                        get_value(tokens,EOL,"excess data")
+                        get_value(tokens,EOL,"invalid data")
 
                     elif (token == 'FLAGS'):
                         flags = []
@@ -230,6 +230,12 @@ class Cuesheet:
         return "\r\n".join(["%s %s" % (key,__attrib_str__(value))
                             for key,value in self.attribs.items()] + \
                            [str(track) for track in sorted(self.tracks.values())])
+
+    def catalog(self):
+        if ('CATALOG' in self.attribs):
+            return str(self.attribs['CATALOG'])
+        else:
+            return None
 
     #returns True if this cuesheet is for a single file
     def single_file_type(self):
