@@ -396,6 +396,38 @@ class FlacCueSheet:
                                                 pre_emphasis=False,
                                                 cuesheet_track_index=[])]))
 
+    def catalog(self):
+        return self.container.catalog_number.rstrip(chr(0))
+
+    def single_file_type(self):
+        return True
+
+    def ISRCs(self):
+        return dict([(track.track_number,track.ISRC) for track in
+                     self.container.cuesheet_tracks
+                     if (track.track_number != 170)])
+
+    def indexes(self):
+        return [tuple([(index.offset + track.track_offset) / 588
+                       for index in
+                       sorted(track.cuesheet_track_index,
+                              lambda i1,i2: cmp(i1.point_number,
+                                                i2.point_number))])
+                for track in
+                sorted(self.container.cuesheet_tracks,
+                       lambda t1,t2: cmp(t1.track_number,
+                                         t2.track_number))
+                if (track.track_number != 170)]
+
+    def pcm_lengths(self, total_lengths):
+        if (len(self.container.cuesheet_tracks) > 0):
+            return [(current.track_offset + max([i.offset for i in current.cuesheet_track_index] + [0])) - ((previous.track_offset + max([i.offset for i in previous.cuesheet_track_index] + [0])))
+                    for (previous,current) in
+                    zip(self.container.cuesheet_tracks,
+                        self.container.cuesheet_tracks[1:])]
+        else:
+            return []
+
 class FlacAudio(AudioFile):
     SUFFIX = "flac"
     NAME = SUFFIX
