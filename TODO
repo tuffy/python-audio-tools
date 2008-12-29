@@ -144,6 +144,10 @@
 
 * TODO Add ISRC support to track2cd
   cdrecord supports a number of per-track options that aren't yet passed in
+* TODO Add CUE/TOC support to track2cd
+  It should be possible to burn a selection of tracks, or a disc image,
+  from a cuesheet with all its indexes/ISRC/catalog data intact
+  by passing --cue to track2cd.
 * TODO Unify CUE/TOC support
   Cuesheets and cdrdao TOC files are largely interchangeable.
   They both feature a listing of track offsets and, optionally,
@@ -153,15 +157,18 @@
 - [X] tracksplit
 - [X] trackcat
 - [X] tracktag
-** TODO Update docs to mention CUE/TOC interchangeability
+** DONE Update docs to mention CUE/TOC interchangeability
 - [X] tracksplit
-- [ ] trackcat
+- [X] trackcat
 - [X] tracktag
 ** DONE Support cuesheet from FlacMetaData directly
    Since we're parsing CUE/TOC files anyway, this data can be used
    to build FLAC CUESHEET blocks directly instead of punting
    this task to metaflac.
 ** TODO Add unit tests for TOC/CUE files, as well as embedded FLAC cuesheets
+** TODO Support embedded cuesheets in Ogg FLAC files
+   Since --cue doesn't quite work with them, extracting Ogg FLAC's
+   contents to a temporary PCM file will be necessary.
 * TODO Add support for multiple covers in M4A files
 * TODO Replace magic numbers with named constants
   There's still a few instances of magic numbers in use,
@@ -178,4 +185,3 @@
   This behavior needs to be modified such that only source files
   which actually have foreign chunks, and a target format that supports them,
   results in a pass through RIFF WAVE.
-
