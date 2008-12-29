@@ -151,19 +151,23 @@
   These formats should be unified such that any program will
   handle them both automatically.
 - [X] tracksplit
-- [ ] trackcat
+- [X] trackcat
 - [X] tracktag
 ** TODO Update docs to mention CUE/TOC interchangeability
 - [X] tracksplit
 - [ ] trackcat
 - [X] tracktag
-** TODO Support cuesheet from FlacMetaData directly
+** DONE Support cuesheet from FlacMetaData directly
    Since we're parsing CUE/TOC files anyway, this data can be used
    to build FLAC CUESHEET blocks directly instead of punting
    this task to metaflac.
+** TODO Add unit tests for TOC/CUE files, as well as embedded FLAC cuesheets
 * TODO Add support for multiple covers in M4A files
 * TODO Replace magic numbers with named constants
   There's still a few instances of magic numbers in use,
   in the __flac__.py module, for instance.
 
+
+
+* TODO Update copyright text for 2009
 

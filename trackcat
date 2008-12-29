@@ -88,7 +88,7 @@ if (__name__ == '__main__'):
         sys.exit(1)
 
     if ((options.cuesheet is not None) and
-        (AudioType.NAME != 'flac')):
+        ((AudioType.NAME != 'flac') and (AudioType.NAME != 'oga'))):
         print >>sys.stderr,"*** cuesheets may only be embedded in FLAC files"
         sys.exit(1)
 
@@ -108,11 +108,18 @@ if (__name__ == '__main__'):
                                      quality)
 
         if (options.cuesheet is not None):
-            subprocess.call([audiotools.BIN["metaflac"],
-                             "--import-cuesheet-from=%s" % \
-                                 (options.cuesheet),
-                             encoded.filename])
+            metadata = encoded.get_metadata()
+            if (metadata is not None):
+                metadata.cuesheet = audiotools.FlacCueSheet.converted(
+                    audiotools.read_sheet(options.cuesheet),
+                    encoded.total_frames())
+                encoded.set_metadata(metadata)
+
     except audiotools.InvalidFormat,msg:
         print >>sys.stderr,"*** %s: %s" % (options.filename,str(msg))
         sys.exit(1)
+    except audiotools.SheetException,msg:
+        print >>sys.stderr,"*** %s: %s" % (options.cuesheet,str(msg))
+        sys.exit(1)
+
 

@@ -346,7 +346,7 @@ class FlacCueSheet:
     #and a total_frames integer (in PCM frames)
     #returns a new FlacCueSheet object
     @classmethod
-    def from_sheet(cls,sheet,total_frames):
+    def converted(cls,sheet,total_frames):
         #number is the track number integer
         #ISRC is a 12 byte string, or None
         #indexes is a list of indexes()-compatible index points
