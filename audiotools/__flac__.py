@@ -820,66 +820,44 @@ class FlacAudio(AudioFile):
         else:
             return False
 
-    #returns a list of (track_number,"start.x-stop.y") tuples
-    #for use by the --cue FLAC decoding option
-    #track_number starts from 0, for consistency
-    def cuepoints(self):
-        flacfile = file(self.filename,"rb")
 
-        if (flacfile.read(4) != 'fLaC'):
-            flacfile.close()
-            raise ValueError("not a FLAC file")
-
-        while (True):
-            (stop,header_type,length) = \
-                FlacAudio.__read_flac_header__(flacfile)
-
-            if (header_type == 5):
-                cuesheet = FlacCueSheet.CUESHEET.parse(flacfile.read(length))
-
-                #print repr(cuesheet)
-
-                tracklist = cuesheet.cuesheet_tracks
-
-                #print tracklist
-
-                for (cur_t,next_t) in zip(tracklist,tracklist[1:]):
-                    if (cur_t.track_type == 0):
-                        if (next_t.track_number != 170):
-                            yield (int(cur_t.track_number) - 1,
-                                   "%s.1-%s.1" %
-                                   (cur_t.track_number,
-                                    next_t.track_number))
-                        else:
-                            yield (int(cur_t.track_number) - 1,
-                                   "%s.1-" % (cur_t.track_number))
-                flacfile.close()
-                return
-            else:
-                flacfile.seek(length,1)
-
-            if (stop != 0): break
-
-        flacfile.close()
-        raise ValueError("no cuesheet found")
-
-    #generates a PCMReader object per cue point returned from cuepoints()
+    #generates a PCMReader object per cue point
     def sub_pcm_tracks(self):
-        for (track,points) in self.cuepoints():
-            sub = subprocess.Popen([BIN['flac'],"-s","-d","-c",
-                                    "--force-raw-format",
-                                    "--endian=little",
-                                    "--sign=signed",
-                                    "--cue=%s" % (points),
-                                    self.filename],
-                                   stdout=subprocess.PIPE)
+        metadata = self.get_metadata()
+        if ((metadata is not None) and (metadata.cuesheet is not None)):
+            indexes = [(track.track_number,
+                        [index.point_number for index in
+                         sorted(track.cuesheet_track_index,
+                                lambda i1,i2: cmp(i1.point_number,
+                                                  i2.point_number))])
+                       for track in metadata.cuesheet.container.cuesheet_tracks]
 
-            yield PCMReader(sub.stdout,
-                            sample_rate=self.__samplerate__,
-                            channels=self.__channels__,
-                            bits_per_sample=self.__bitspersample__,
-                            process=sub)
+            if (len(indexes) > 0):
+                for ((cur_tracknum,cur_indexes),
+                     (next_tracknum,next_indexes)) in zip(indexes,indexes[1:]):
+                    if (next_tracknum != 170):
+                        cuepoint = "%s.%s-%s.%s" % (cur_tracknum,
+                                                    max(cur_indexes),
+                                                    next_tracknum,
+                                                    max(next_indexes))
+                    else:
+                        cuepoint = "%s.%s-%s.0" % (cur_tracknum,
+                                                   max(cur_indexes),
+                                                   next_tracknum)
 
+                    sub = subprocess.Popen([BIN['flac'],"-s","-d","-c",
+                                            "--force-raw-format",
+                                            "--endian=little",
+                                            "--sign=signed",
+                                            "--cue=%s" % (cuepoint),
+                                            self.filename],
+                                           stdout=subprocess.PIPE)
+
+                    yield PCMReader(sub.stdout,
+                                    sample_rate=self.__samplerate__,
+                                    channels=self.__channels__,
+                                    bits_per_sample=self.__bitspersample__,
+                                    process=sub)
 
 #######################
 #Ogg FLAC
@@ -1173,9 +1151,7 @@ class OggFlacAudio(FlacAudio):
     def add_replay_gain(cls, filenames):
         pass
 
-    def cuepoints(self):
-        raise ValueError("no cuesheet found")
-
+    #FIXME - this needs to be adjusted to support
+    #Ogg FLACs with embedded cuesheets
     def sub_pcm_tracks(self):
-        for i in ():
-            yield i
+        return iter([])
