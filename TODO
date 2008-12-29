@@ -162,4 +162,8 @@
    to build FLAC CUESHEET blocks directly instead of punting
    this task to metaflac.
 * TODO Add support for multiple covers in M4A files
+* TODO Replace magic numbers with named constants
+  There's still a few instances of magic numbers in use,
+  in the __flac__.py module, for instance.
+
 
