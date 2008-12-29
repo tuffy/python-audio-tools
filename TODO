@@ -166,8 +166,8 @@
 * TODO Replace magic numbers with named constants
   There's still a few instances of magic numbers in use,
   in the __flac__.py module, for instance.
-
-
-
 * TODO Update copyright text for 2009
+* TODO Preserve metadata when using trackcat
+  Any fields shared by all tracks should be merged into metadata
+  for the newly combined track.
 

@@ -48,8 +48,11 @@ if (__name__ == '__main__'):
                       metavar='FILE',
                       help='the output file')
 
-    parser.add_option('--cuesheet',
+    parser.add_option('--cue',
+                      action='store',
+                      type='string',
                       dest='cuesheet',
+                      metavar='FILENAME',
                       help='a cuesheet to embed in the output file')
 
     (options,args) = parser.parse_args()
@@ -98,6 +101,18 @@ if (__name__ == '__main__'):
         print >>sys.stderr,"*** You must specify at least 1 supported audio file"
         sys.exit(1)
 
+    #if embedding a cuesheet, try to read it before doing any work
+    if (options.cuesheet is not None):
+        try:
+            cuesheet = audiotools.FlacCueSheet.converted(
+                audiotools.read_sheet(options.cuesheet),
+                sum([f.total_frames() for f in audiofiles]))
+        except audiotools.SheetException,msg:
+            print >>sys.stderr,"*** %s: %s" % (options.cuesheet,str(msg))
+            sys.exit(1)
+    else:
+        cuesheet = None
+
     quality = options.quality
 
     pcmdata = audiotools.PCMCat(iter([af.to_pcm() for af in audiofiles]))
@@ -107,19 +122,14 @@ if (__name__ == '__main__'):
                                      pcmdata,
                                      quality)
 
-        if (options.cuesheet is not None):
+        if (cuesheet is not None):
             metadata = encoded.get_metadata()
             if (metadata is not None):
-                metadata.cuesheet = audiotools.FlacCueSheet.converted(
-                    audiotools.read_sheet(options.cuesheet),
-                    encoded.total_frames())
+                metadata.cuesheet = cuesheet
                 encoded.set_metadata(metadata)
 
     except audiotools.InvalidFormat,msg:
         print >>sys.stderr,"*** %s: %s" % (options.filename,str(msg))
-        sys.exit(1)
-    except audiotools.SheetException,msg:
-        print >>sys.stderr,"*** %s: %s" % (options.cuesheet,str(msg))
         sys.exit(1)
 
 
