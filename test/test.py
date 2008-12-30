@@ -1230,6 +1230,8 @@ class TestForeignWaveChunks:
     def testforeignwavechunks(self):
         import filecmp
 
+        self.assertEqual(self.audio_class.supports_foreign_riff_chunks(),True)
+
         tempwav1 = tempfile.NamedTemporaryFile(suffix=".wav")
         tempwav2 = tempfile.NamedTemporaryFile(suffix=".wav")
         audio = tempfile.NamedTemporaryFile(suffix='.'+self.audio_class.SUFFIX)
@@ -1247,6 +1249,8 @@ class TestForeignWaveChunks:
             wav = self.audio_class.from_wave(audio.name,
                                              tempwav1.name)
 
+            self.assertEqual(wav.has_foreign_riff_chunks(),True)
+
             #then convert it back to a WAVE
             wav.to_wave(tempwav2.name)
 
@@ -1254,6 +1258,11 @@ class TestForeignWaveChunks:
             self.assertEqual(filecmp.cmp(tempwav1.name,
                                          tempwav2.name,
                                          False),True)
+
+            #finally, ensure that setting metadata doesn't erase the chunks
+            wav.set_metadata(DummyMetaData())
+            wav = audiotools.open(wav.filename)
+            self.assertEqual(wav.has_foreign_riff_chunks(),True)
         finally:
             tempwav1.close()
             tempwav2.close()
@@ -1620,6 +1629,22 @@ class M4AMetadata:
 class TestOggFlacAudio(VorbisLint,TestAiffAudio):
     def setUp(self):
         self.audio_class = audiotools.OggFlacAudio
+
+    def testpreservevendortags(self):
+        tempflac1 = tempfile.NamedTemporaryFile(suffix=".flac")
+        tempflac2 = tempfile.NamedTemporaryFile(suffix=".flac")
+
+        f1 = audiotools.FlacAudio.from_pcm(tempflac1.name,
+                                           BLANK_PCM_Reader(3))
+        f1.set_metadata(DummyMetaData())
+
+        f2 = audiotools.FlacAudio.from_pcm(tempflac2.name,
+                                           f1.to_pcm())
+
+        f2.set_metadata(f1.get_metadata())
+
+        self.assertEqual(f1.get_metadata().vorbis_comment.vendor_string,
+                         f2.get_metadata().vorbis_comment.vendor_string)
 
 class ID3Lint:
     #tracklint is tricky to test since set_metadata()

@@ -1423,6 +1423,10 @@ class AudioFile:
     def supports_foreign_riff_chunks(cls):
         return False
 
+    #returns True if our file contains any foreign RIFF chunks
+    def has_foreign_riff_chunks(self):
+        return False
+
     #returns this track's number
     #first checking metadata
     #and then making our best-guess from the filename

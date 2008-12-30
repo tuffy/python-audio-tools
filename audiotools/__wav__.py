@@ -211,6 +211,9 @@ class WaveAudio(AudioFile):
     def supports_foreign_riff_chunks(cls):
         return True
 
+    def has_foreign_riff_chunks(self):
+        return set(['fmt ','data']) != set(self.__chunk_ids__)
+
     #Returns the PCMReader object for this WAV's data
     def to_pcm(self):
         return WaveReader(file(self.filename,'rb'),
@@ -405,6 +408,7 @@ class WaveAudio(AudioFile):
             raise WavException("not a RIFF WAVE file")
         except Con.core.FieldError:
             raise WavException("invalid RIFF WAVE file")
+
     def __read_chunk_header__(self, wave_file):
         try:
             chunk = WaveAudio.CHUNK_HEADER.parse(wave_file.read(8))

@@ -22,6 +22,33 @@ from audiotools import AudioFile,InvalidFile,Con,subprocess,BIN,open_files,os,Re
 from __wav__ import WaveAudio,WaveReader
 from __ape__ import ApeTaggedAudio
 
+class __24BitsLE__(Con.Adapter):
+    def _encode(self, value, context):
+        return  chr(value & 0x0000FF) + \
+                chr((value & 0x00FF00) >> 8) + \
+                chr((value & 0xFF0000) >> 16)
+
+    def _decode(self, obj, context):
+        return (ord(obj[2]) << 16) | (ord(obj[1]) << 8) | ord(obj[0])
+
+def ULInt24(name):
+    return __24BitsLE__(Con.Bytes(name,3))
+
+def __riff_chunk_ids__(data):
+    import cStringIO
+
+    total_size = len(data)
+    data = cStringIO.StringIO(data)
+    header = WaveAudio.WAVE_HEADER.parse_stream(data)
+
+    while (data.tell() < total_size):
+        chunk_header = WaveAudio.CHUNK_HEADER.parse_stream(data)
+        chunk_size = chunk_header.chunk_length
+        if ((chunk_size & 1) == 1):
+            chunk_size += 1
+        data.seek(chunk_size,1)
+        yield chunk_header.chunk_id
+
 #######################
 #WavPack
 #######################
@@ -72,6 +99,18 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
                           )),
                         Con.ULInt32("crc"))
 
+    SUB_HEADER = Con.Struct("wavpacksubheader",
+                            Con.Embed(
+            Con.BitStruct("flags",
+                          Con.Flag("large_block"),
+                          Con.Flag("actual_size_1_less"),
+                          Con.Flag("nondecoder_data"),
+                          Con.Bits("metadata_function",5))),
+                            Con.IfThenElse('size',
+                                           lambda ctx: ctx['large_block'],
+                                           ULInt24('s'),
+                                           Con.Byte('s')))
+
     BITS_PER_SAMPLE = (8,16,24,32)
     SAMPLING_RATE = (6000,  8000,  9600,   11025,
                      12000, 16000, 22050,  24000,
@@ -98,6 +137,55 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
     @classmethod
     def supports_foreign_riff_chunks(cls):
         return True
+
+    def has_foreign_riff_chunks(self):
+        for (sub_header,nondecoder,data) in self.sub_frames():
+            if ((sub_header == 1) and nondecoder):
+                return set(__riff_chunk_ids__(data)) != set(['fmt ','data'])
+        else:
+            return False
+
+    def frames(self):
+        f = file(self.filename)
+        remaining_samples = None
+        try:
+            while ((remaining_samples is None) or
+                   (remaining_samples > 0)):
+                try:
+                    header = WavPackAudio.HEADER.parse(f.read(
+                            WavPackAudio.HEADER.sizeof()))
+                except Con.ConstError:
+                    raise InvalidFile('wavpack header ID invalid')
+
+                if (remaining_samples is None):
+                    remaining_samples = (header.total_samples - \
+                                         header.block_samples)
+                else:
+                    remaining_samples -= header.block_samples
+
+                data = f.read(header.block_size - 24)
+
+                yield (header,data)
+        finally:
+            f.close()
+
+    def sub_frames(self):
+        import cStringIO
+
+        for (header,data) in self.frames():
+            total_size = len(data)
+            data = cStringIO.StringIO(data)
+            while (data.tell() < total_size):
+                sub_header = WavPackAudio.SUB_HEADER.parse_stream(data)
+                if (sub_header.actual_size_1_less):
+                    yield (sub_header.metadata_function,
+                           sub_header.nondecoder_data,
+                           data.read((sub_header.size * 2) - 1))
+                    data.read(1)
+                else:
+                    yield (sub_header.metadata_function,
+                           sub_header.nondecoder_data,
+                           data.read(sub_header.size * 2))
 
     def __read_info__(self):
         f = file(self.filename)

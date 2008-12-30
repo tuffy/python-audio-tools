@@ -74,7 +74,7 @@ class Syncsafe32(Con.Adapter):
             i = (i << 7) | (x & 0x7F)
         return i
 
-class __24Bits__(Con.Adapter):
+class __24BitsBE__(Con.Adapter):
     def _encode(self, value, context):
         return chr((value & 0xFF0000) >> 16) + \
                chr((value & 0x00FF00) >> 8) + \
@@ -84,7 +84,7 @@ class __24Bits__(Con.Adapter):
         return (ord(obj[0]) << 16) | (ord(obj[1]) << 8) | ord(obj[2])
 
 def UBInt24(name):
-    return __24Bits__(Con.Bytes(name,3))
+    return __24BitsBE__(Con.Bytes(name,3))
 
 #UTF16CString and UTF16BECString implement a null-terminated string
 #of UTF-16 characters by reading them as unsigned 16-bit integers,

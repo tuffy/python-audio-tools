@@ -559,6 +559,14 @@ class FlacAudio(AudioFile):
             #don't port one from another file
             del(metadata.vorbis_comment["WAVEFORMATEXTENSIBLE_CHANNEL_MASK"])
 
+        #APPLICATION blocks should stay with the existing file (if any)
+        metadata.extra_blocks = [block for block in metadata.extra_blocks
+                                 if (block.type != 2)]
+
+        for block in old_metadata.extra_blocks:
+            if (block.type == 2):
+                metadata.extra_blocks.append(block)
+
         minimum_metadata_length = len(metadata.build(padding_size=0)) + 4
         current_metadata_length = self.metadata_length()
 
@@ -681,14 +689,15 @@ class FlacAudio(AudioFile):
 
         return FlacAudio(filename)
 
-    def __has_foreign_metadata__(self):
+
+    def has_foreign_riff_chunks(self):
         return 'riff' in [block.data[0:4] for block in
                           self.get_metadata().extra_blocks
                           if block.type == 2]
 
     def to_wave(self, wave_filename):
-        if (self.__has_foreign_metadata__() and
-            ('--keep-foreign-metadata' in FlacAudio.__help_output__())):
+        if (self.has_foreign_riff_chunks() and
+            self.supports_foreign_riff_chunks()):
             foreign_metadata = ['--keep-foreign-metadata']
         else:
             foreign_metadata = []
@@ -710,9 +719,8 @@ class FlacAudio(AudioFile):
         if (compression not in cls.COMPRESSION_MODES):
             compression = cls.DEFAULT_COMPRESSION
 
-        if (('--keep-foreign-metadata' in FlacAudio.__help_output__()) and
-            (frozenset(WaveAudio(wave_filename).chunk_ids()) != \
-             frozenset(['fmt ','data']))):
+        if (cls.supports_foreign_riff_chunks() and
+            WaveAudio(wave_filename).has_foreign_riff_chunks()):
             foreign_metadata = ['--keep-foreign-metadata']
         else:
             foreign_metadata = []
@@ -810,7 +818,7 @@ class FlacAudio(AudioFile):
                 from md5 import new as md5
 
             p = audiofile.to_pcm()
-            m = md5.new()
+            m = md5()
             s = p.read(BUFFER_SIZE)
             while (len(s) > 0):
                 m.update(s)
@@ -1102,8 +1110,8 @@ class OggFlacAudio(FlacAudio):
         return OggFlacAudio(filename)
 
     def to_wave(self, wave_filename):
-        if (self.__has_foreign_metadata__() and
-            ('--keep-foreign-metadata' in FlacAudio.__help_output__())):
+        if (self.has_foreign_riff_chunks() and
+            self.supports_foreign_riff_chunks()):
             foreign_metadata = ['--keep-foreign-metadata']
         else:
             foreign_metadata = []
@@ -1125,9 +1133,8 @@ class OggFlacAudio(FlacAudio):
         if (compression not in cls.COMPRESSION_MODES):
             compression = cls.DEFAULT_COMPRESSION
 
-        if (('--keep-foreign-metadata' in FlacAudio.__help_output__()) and
-            (frozenset(WaveAudio(wave_filename).chunk_ids()) != \
-             frozenset(['fmt ','data']))):
+        if (cls.supports_foreign_riff_chunks() and
+            WaveAudio(wave_filename).has_foreign_riff_chunks()):
             foreign_metadata = ['--keep-foreign-metadata']
         else:
             foreign_metadata = []
@@ -1155,3 +1162,9 @@ class OggFlacAudio(FlacAudio):
     #Ogg FLACs with embedded cuesheets
     def sub_pcm_tracks(self):
         return iter([])
+
+    @classmethod
+    def supports_foreign_riff_chunks(cls):
+        #the --keep-foreign-metadata flag fails
+        #when used with --ogg
+        return False
