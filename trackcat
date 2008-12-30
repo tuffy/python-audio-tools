@@ -101,6 +101,18 @@ if (__name__ == '__main__'):
         print >>sys.stderr,"*** You must specify at least 1 supported audio file"
         sys.exit(1)
 
+    if (len(set([f.sample_rate() for f in audiofiles])) != 1):
+        print >>sys.stderr,"*** All audio files must have the same sample rate"
+        sys.exit(1)
+
+    if (len(set([f.channels() for f in audiofiles])) != 1):
+        print >>sys.stderr,"*** All audio files must have the same channel count"
+        sys.exit(1)
+
+    if (len(set([f.bits_per_sample() for f in audiofiles])) != 1):
+        print >>sys.stderr,"*** All audio files must have the same bits per sample"
+        sys.exit(1)
+
     #if embedding a cuesheet, try to read it before doing any work
     if (options.cuesheet is not None):
         try:
@@ -113,6 +125,31 @@ if (__name__ == '__main__'):
     else:
         cuesheet = None
 
+    #constuct a MetaData object from our audiofiles
+    track_metadatas = [f.get_metadata() for f in
+                       audiofiles if (f.get_metadata() is not None)]
+
+    if (len(track_metadatas) > 0):
+        track_fields = dict([(field,
+                              set([getattr(m,field) for m in track_metadatas]))
+                             for field in audiotools.MetaData.__FIELDS__])
+
+        metadata = audiotools.MetaData(**dict([(field,list(values)[0])
+                                               for (field,values) in
+                                               track_fields.items()
+                                               if (len(values) == 1)]))
+
+        #port over non-duplicate images
+        images = []
+        for m in track_metadatas:
+            for i in m.images():
+                if (i not in images):
+                    images.append(i)
+        for i in images:
+            metadata.add_image(i)
+    else:
+        metadata = None
+
     quality = options.quality
 
     pcmdata = audiotools.PCMCat(iter([af.to_pcm() for af in audiofiles]))
@@ -121,6 +158,8 @@ if (__name__ == '__main__'):
         encoded = AudioType.from_pcm(options.filename,
                                      pcmdata,
                                      quality)
+
+        encoded.set_metadata(metadata)
 
         if (cuesheet is not None):
             metadata = encoded.get_metadata()
