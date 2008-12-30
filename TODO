@@ -177,7 +177,7 @@
 * DONE Preserve metadata when using trackcat
   Any fields shared by all tracks should be merged into metadata
   for the newly combined track.
-* TODO Don't route data though WAVE files unless necessary
+* DONE Don't route data though WAVE files unless necessary
   Currently, track2track routes through WAVE if both ends happen to
   support foreign RIFF chunks, whether the files have such chunks or not.
   This behavior needs to be modified such that only source files

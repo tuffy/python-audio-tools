@@ -44,9 +44,10 @@ def convert_file(destination_class, destination_filename,
             source_audiofile.to_wave(destination_filename)
             destination_audiofile = audiotools.WaveAudio(destination_filename)
 
-        elif ((source_audiofile.supports_foreign_riff_chunks()) and
+        elif ((source_audiofile.has_foreign_riff_chunks()) and
               (destination_class.supports_foreign_riff_chunks())):
-            #if both the source and target classes support foreign chunks
+            #if the source contains foreign chunks
+            #and the target format supports foreign chunks
             #route the data through a temporary WAVE file
             import tempfile
 

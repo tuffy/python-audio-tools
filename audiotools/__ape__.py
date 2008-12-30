@@ -371,6 +371,13 @@ class ApeAudio(ApeTaggedAudio,AudioFile):
     def supports_foreign_riff_chunks(cls):
         return True
 
+    def has_foreign_riff_chunks(self):
+        #FIXME - this isn't strictly true
+        #I'll need a way to detect foreign chunks in APE's stream
+        #without decoding it first,
+        #but since I'm not supporting APE anyway, I'll take the lazy way out
+        return True
+
     def bits_per_sample(self):
         return self.__bitspersample__
 
