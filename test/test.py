@@ -766,67 +766,73 @@ class TestAiffAudio(unittest.TestCase):
         FILE_FRAMES = [8742384,7204176,8778840]
         CUE_SHEET = 'FILE "data.wav" BINARY\n  TRACK 01 AUDIO\n    INDEX 01 00:00:00\n  TRACK 02 AUDIO\n    INDEX 00 03:16:55\n    INDEX 01 03:18:18\n  TRACK 03 AUDIO\n    INDEX 00 05:55:12\n    INDEX 01 06:01:45\n'
 
-        base_file = tempfile.NamedTemporaryFile(suffix="." + self.audio_class.SUFFIX)
+        TOC_SHEET = 'CD_DA\n\nTRACK AUDIO\n    AUDIOFILE "data.wav" 00:00:00 03:16:55\n\nTRACK AUDIO\n    AUDIOFILE "data.wav" 03:16:55 02:38:32\n    START 00:01:38\n\nTRACK AUDIO\n    AUDIOFILE "data.wav" 05:55:12\n    START 00:06:33\n'
 
-        cue_file = tempfile.NamedTemporaryFile(suffix=".cue")
-        cue_file.write(CUE_SHEET)
-        cue_file.flush()
+        TOC_SHEET2 = 'CD_DA\n\nCATALOG "0000000000000"\n\n// Track 1\nTRACK AUDIO\nNO COPY\nNO PRE_EMPHASIS\nTWO_CHANNEL_AUDIO\nISRC "JPVI00213050"\nFILE "data.wav" 0 03:16:55\n\n\n// Track 2\nTRACK AUDIO\nNO COPY\nNO PRE_EMPHASIS\nTWO_CHANNEL_AUDIO\nISRC "JPVI00213170"\nFILE "data.wav" 03:16:55 02:38:32\nSTART 00:01:38\n\n\n// Track 3\nTRACK AUDIO\nNO COPY\nNO PRE_EMPHASIS\nTWO_CHANNEL_AUDIO\nISRC "JPVI00213200"\nFILE "data.wav" 05:55:12 03:25:38\nSTART 00:06:33\n\n'
 
-        joined_file = tempfile.NamedTemporaryFile(suffix="." + self.audio_class.SUFFIX)
+        for (sheet,suffix) in zip([CUE_SHEET,TOC_SHEET,TOC_SHEET2],
+                                  ['.cue','.toc','.toc']):
+            base_file = tempfile.NamedTemporaryFile(suffix="." + self.audio_class.SUFFIX)
 
-        try:
-            base = self.audio_class.from_pcm(
-                base_file.name,
-                EXACT_RANDOM_PCM_Reader(TOTAL_FRAMES))
+            cue_file = tempfile.NamedTemporaryFile(suffix=suffix)
+            cue_file.write(sheet)
+            cue_file.flush()
 
-            if (not base.lossless()):
-                return
+            joined_file = tempfile.NamedTemporaryFile(suffix="." + self.audio_class.SUFFIX)
 
-            self.assertEqual(base.total_frames(),TOTAL_FRAMES)
+            try:
+                base = self.audio_class.from_pcm(
+                    base_file.name,
+                    EXACT_RANDOM_PCM_Reader(TOTAL_FRAMES))
 
-            tempdir = tempfile.mkdtemp()
+                if (not base.lossless()):
+                    return
 
-            subprocess.call(["tracksplit",
-                             "-V","quiet",
-                             "-t",self.audio_class.NAME,
-                             "--cue=%s" % (cue_file.name),
-                             "--no-replay-gain",
-                             "-d",tempdir,
-                             base.filename])
+                self.assertEqual(base.total_frames(),TOTAL_FRAMES)
 
-            split_files = list(audiotools.open_directory(tempdir))
+                tempdir = tempfile.mkdtemp()
 
-            for (f,length) in zip(split_files,FILE_FRAMES):
-                self.assertEqual(f.total_frames(),length)
+                subprocess.call(["tracksplit",
+                                 "-V","quiet",
+                                 "-t",self.audio_class.NAME,
+                                 "--cue=%s" % (cue_file.name),
+                                 "--no-replay-gain",
+                                 "-d",tempdir,
+                                 base.filename])
 
-            subprocess.call(["trackcat",
-                             "-t",self.audio_class.NAME,
-                             "-o",joined_file.name] + \
-                            [f.filename for f in split_files])
+                split_files = list(audiotools.open_directory(tempdir))
 
-            self.assertEqual(audiotools.pcm_cmp(
-                    base.to_pcm(),
-                    audiotools.open(joined_file.name).to_pcm()),
-                             True)
+                for (f,length) in zip(split_files,FILE_FRAMES):
+                    self.assertEqual(f.total_frames(),length)
+
+                subprocess.call(["trackcat",
+                                 "-t",self.audio_class.NAME,
+                                 "-o",joined_file.name] + \
+                                [f.filename for f in split_files])
+
+                self.assertEqual(audiotools.pcm_cmp(
+                        base.to_pcm(),
+                        audiotools.open(joined_file.name).to_pcm()),
+                                 True)
 
 
-            self.assertEqual(subprocess.call(["trackcmp",
-                                              "-V","quiet",
-                                              base.filename,
-                                              joined_file.name]),0)
+                self.assertEqual(subprocess.call(["trackcmp",
+                                                  "-V","quiet",
+                                                  base.filename,
+                                                  joined_file.name]),0)
 
-            self.assertEqual(subprocess.call(["trackcmp",
-                                              "-V","quiet",
-                                              base.filename,
-                                              split_files[0].filename]),1)
+                self.assertEqual(subprocess.call(["trackcmp",
+                                                  "-V","quiet",
+                                                  base.filename,
+                                                  split_files[0].filename]),1)
 
-            for f in split_files:
-                os.unlink(f.filename)
-            os.rmdir(tempdir)
-        finally:
-            base_file.close()
-            cue_file.close()
-            joined_file.close()
+                for f in split_files:
+                    os.unlink(f.filename)
+                os.rmdir(tempdir)
+            finally:
+                base_file.close()
+                cue_file.close()
+                joined_file.close()
 
     def test_trackcmp(self):
         basedir = tempfile.mkdtemp()
@@ -1225,6 +1231,7 @@ class TestAiffAudio(unittest.TestCase):
             basefile.close()
             for f in os.listdir(imgdir):
                 os.unlink(os.path.join(imgdir,f))
+            os.rmdir(imgdir)
 
 class TestForeignWaveChunks:
     def testforeignwavechunks(self):

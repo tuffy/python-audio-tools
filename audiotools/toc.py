@@ -38,7 +38,7 @@ def parse_timestamp(s):
 #returns a TOCFile object
 #or raises TOCException if we hit a parsing error
 def parse(lines):
-    TRACKLINE = re.compile(r'// Track \d+')
+    TRACKLINE = re.compile(r'TRACK AUDIO')
 
     line_number = 1
 
@@ -50,22 +50,25 @@ def parse(lines):
 
     toc = TOCFile()
     track = None
+    track_number = 0
 
     try:
         while (True):
             line_number += 1
-            line = lines.next().rstrip()
+            line = lines.next().strip()
 
             if (len(line) == 0):
                 pass
             elif (TRACKLINE.match(line)):
                 if (track is not None):
                     toc.tracks[track.number] = track
-                track = Track(int(line[len('// Track '):]))
+                track_number += 1
+                track = Track(track_number)
             else:
                 if (track is not None):
                     track.lines.append(line)
-                    if (line.startswith('FILE')):
+                    if (line.startswith('FILE') or
+                        line.startswith('AUDIOFILE')):
                         if ('"' in line):
                             track.indexes = map(parse_timestamp,
                                                 re.findall(r'\d+:\d+:\d+|\d+',
