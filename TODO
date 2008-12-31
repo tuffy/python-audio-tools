@@ -22,11 +22,6 @@
 * DONE Don't remove undone tracklint entries from its undo DB
   Since its checksum will change anyway and no longer match,
   explicitly removing the entry is no longer necessary
-* TODO Support interleaved Ogg streams
-  An Ogg file can, theoretically, contain multiple streams
-  (e.g. Vorbis audio and some sort of video)
-  The current implementation of the various Ogg handlers
-  (Vorbis, Speex, Ogg FLAC) tends to assume files are audio-only.
 * DONE Support FLAC padding
   If changes to FLAC metadata are small enough, write over the
   padding (if present) rather than rewrite the whole file - like metaflac.
@@ -116,7 +111,7 @@
   That said, the genre field shows up in a lot of players.
   So, some grudging support for it would probably be appreciated.
 
-* TODO Add verbosity levels to programs
+* DONE Add verbosity levels to programs
   Every batch program should support a -V --verbose flag
   with options for "silence","normal" (the default) and "debug".
   Silence shuts off everything but error messages.
@@ -125,8 +120,8 @@
 - [X] cd2track
 - [X] cd2xmcd
 - [X] coverdump
-- [ ] record2track
-- [ ] track2cd (this will need to forward verbosity to cdrecord)
+- [X] record2track
+- [X] track2cd (this will need to forward verbosity to cdrecord)
 - [X] track2track
 - [X] track2xmcd
 - [X] trackcmp
@@ -134,7 +129,6 @@
 - [X] tracksplit
 - [X] tracktag
 - [X] tracklint
-** TODO Converted apptest.sh to quiet operation
 * DONE Add compression percentage display to trackinfo
   Though not massively useful, it'd be neat to see just how
   compressed audio tracks are, as a percentage of their original size.
@@ -166,10 +160,6 @@
    to build FLAC CUESHEET blocks directly instead of punting
    this task to metaflac.
 ** TODO Add unit tests for TOC/CUE files, as well as embedded FLAC cuesheets
-** TODO Support embedded cuesheets in Ogg FLAC files
-   Since --cue doesn't quite work with them, extracting Ogg FLAC's
-   contents to a temporary PCM file will be necessary.
-* TODO Add support for multiple covers in M4A files
 * TODO Replace magic numbers with named constants
   There's still a few instances of magic numbers in use,
   in the __flac__.py module, for instance.
@@ -183,3 +173,9 @@
   This behavior needs to be modified such that only source files
   which actually have foreign chunks, and a target format that supports them,
   results in a pass through RIFF WAVE.
+* TODO Convert editxmcd to PyGTK
+  Although the dialog(1)-based version works in terminals and is curses-based,
+  it's extremely hokey, error-prone and doesn't support any cut & paste.
+  This needs to be reimplemented in PyGTK (since coverview already uses it)
+  and made into a stable app someone would want to use.
+

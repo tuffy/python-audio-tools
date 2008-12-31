@@ -138,7 +138,18 @@ if (__name__ == '__main__'):
                       default=2,
                       help='the number of channels to use when recording')
 
+    parser.add_option('-V','--verbose',
+                      action='store',
+                      dest='verbosity',
+                      choices=["quiet","normal","debug"],
+                      default="normal",
+                      help='the verbosity level to execute at')
+
     (options,args) = parser.parse_args()
+
+    if (options.output is None):
+        print >>sys.stderr,"*** You must specify an output file"
+        sys.exit(1)
 
     #get the AudioFile class we are converted to
     if (options.type is not None):
@@ -180,14 +191,17 @@ if (__name__ == '__main__'):
     #It might be the SIGINT signal handler interacting poorly with
     #InterruptableReader's background thread, but those are Python/OS
     #issues beyond my control.
-    sys.stdout.write("* Recording (Ctrl-C to stop) ")
-    sys.stdout.flush()
+    if (options.verbosity != 'quiet'):
+        sys.stdout.write("* Recording (Ctrl-C to stop) ")
+        sys.stdout.flush()
 
     input = audiotools.InterruptableReader(inputs_map[options.input](
         sample_rate=options.sample_rate,
         channels=options.channels,
-        bits_per_sample=options.bits_per_sample))
+        bits_per_sample=options.bits_per_sample),
+                                           options.verbosity != 'quiet')
 
     audiofile = AudioType.from_pcm(options.output,input,options.quality)
 
-    print "* Done"
+    if (options.verbosity != 'quiet'):
+        print "* Done"

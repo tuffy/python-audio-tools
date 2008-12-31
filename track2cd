@@ -27,7 +27,7 @@ import subprocess
 
 MAX_CPUS = audiotools.MAX_JOBS
 
-def convert_to_wave(audiofile,wave_filename):
+def convert_to_wave(audiofile,wave_filename,verbose=True):
     if ((audiofile.sample_rate() == 44100) and
         (audiofile.channels() == 2) and
         (audiofile.bits_per_sample() == 16)):  #already CD quality
@@ -37,8 +37,9 @@ def convert_to_wave(audiofile,wave_filename):
         audiotools.WaveAudio.from_pcm(wave_filename,pcm)
         pcm.close()
 
-    print (u"* %s" % (audiofile.filename.decode(audiotools.FS_ENCODING))
-           ).encode(audiotools.IO_ENCODING,'replace')
+    if (verbose):
+        print (u"* %s" % (audiofile.filename.decode(audiotools.FS_ENCODING))
+               ).encode(audiotools.IO_ENCODING,'replace')
 
 if (__name__ == '__main__'):
     if (not audiotools.BIN.can_execute(audiotools.BIN['cdrecord'])):
@@ -62,6 +63,13 @@ if (__name__ == '__main__'):
                       default=MAX_CPUS,
                       dest='max_processes',
                       help='the maximum number of processes to run at a time')
+
+    parser.add_option('-V','--verbose',
+                      action='store',
+                      dest='verbosity',
+                      choices=["quiet","normal","debug"],
+                      default="normal",
+                      help='the verbosity level to execute at')
 
     (options,args) = parser.parse_args()
 
@@ -95,7 +103,8 @@ if (__name__ == '__main__'):
     wave_files = []
     queue = audiotools.ExecQueue()
 
-    print >>sys.stderr,"*** Converting audio files"
+    if (options.verbosity != 'quiet'):
+        print >>sys.stderr,"*** Converting audio files"
     for audiofile in audiofiles:
         if (isinstance(audiofile,audiotools.WaveAudio)):
             wave_files.append(audiofile.filename)
@@ -104,12 +113,23 @@ if (__name__ == '__main__'):
             temp_pool.append(f)
             wave_files.append(f[1])
             queue.execute(convert_to_wave,
-                          (audiofile,f[1]))
+                          (audiofile,
+                           f[1],
+                           options.verbosity != 'quiet'))
 
     queue.run(max_processes)
 
     exec_args += wave_files
-    subprocess.call(exec_args)
+
+    if (options.verbosity != 'quiet'):
+        subprocess.call(exec_args)
+    else:
+        devnull = open(os.devnull,'wb')
+        sub = subprocess.Popen(exec_args,
+                               stdout=devnull,
+                               stderr=devnull)
+        sub.wait()
+        devnull.close()
 
     for (fd,f) in temp_pool:
         os.close(fd)

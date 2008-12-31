@@ -826,7 +826,7 @@ class ReplayGainReader(PCMReader):
 #it runs read() continually in a separate thread
 #it also traps SIGINT and stops reading when caught
 class InterruptableReader(PCMReader):
-    def __init__(self, pcmreader):
+    def __init__(self, pcmreader, verbose=True):
         import threading,Queue,signal
 
         PCMReader.__init__(self, pcmreader,
@@ -843,13 +843,16 @@ class InterruptableReader(PCMReader):
         thread.setDaemon(True)
         thread.start()
 
+        self.verbose = verbose
+
     def stop(self, *args):
         import signal
 
         self.stop_reading = True
         signal.signal(signal.SIGINT,self.old_sigint)
 
-        print "Stopping..."
+        if (self.verbose):
+            print "Stopping..."
 
     def send_data(self):
         #try to use a half second long buffer
