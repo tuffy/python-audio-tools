@@ -19,8 +19,10 @@
 
 
 import os
+import os.path
 import sys
 import audiotools
+import audiotools.toc
 import optparse
 import tempfile
 import subprocess
@@ -57,6 +59,13 @@ if (__name__ == '__main__'):
     parser.add_option("-s","--speed",dest="speed",
                       help="the speed to burn the CD at",type="int")
 
+    parser.add_option('--cue',
+                      action='store',
+                      type='string',
+                      dest='cuesheet',
+                      metavar='FILENAME',
+                      help='the cuesheet to use for writing tracks')
+
     parser.add_option('-j','--joint',
                       action='store',
                       type='int',
@@ -85,54 +94,107 @@ if (__name__ == '__main__'):
         print >>sys.stderr,"*** You must specify at least one audio file"
         sys.exit(1)
 
-    exec_args = [audiotools.BIN['cdrecord']]
+    if (options.cuesheet is None):
+        #writing tracks without a cuesheet,
+        #so extract them to waves and call cdrecord
 
-    if (options.speed != None):
-        exec_args.append("-speed")
-        exec_args.append(str(options.speed))
+        exec_args = [audiotools.BIN['cdrecord']]
 
-    if (options.dev != None):
-        exec_args.append("-dev")
-        exec_args.append(options.dev)
+        if (options.speed != None):
+            exec_args.append("-speed")
+            exec_args.append(str(options.speed))
 
-    exec_args.append("-tao")
-    exec_args.append("-pad")
-    exec_args.append("-audio")
+        if (options.dev != None):
+            exec_args.append("-dev")
+            exec_args.append(options.dev)
 
-    temp_pool = []
-    wave_files = []
-    queue = audiotools.ExecQueue()
+        exec_args.append("-tao")
+        exec_args.append("-pad")
+        exec_args.append("-audio")
 
-    if (options.verbosity != 'quiet'):
-        print >>sys.stderr,"*** Converting audio files"
-    for audiofile in audiofiles:
-        if (isinstance(audiofile,audiotools.WaveAudio)):
-            wave_files.append(audiofile.filename)
+        temp_pool = []
+        wave_files = []
+        queue = audiotools.ExecQueue()
+
+        if (options.verbosity != 'quiet'):
+            print >>sys.stderr,"*** Converting audio files"
+        for audiofile in audiofiles:
+            if (isinstance(audiofile,audiotools.WaveAudio)):
+                wave_files.append(audiofile.filename)
+            else:
+                f = tempfile.mkstemp(suffix='.wav')
+                temp_pool.append(f)
+                wave_files.append(f[1])
+                queue.execute(convert_to_wave,
+                              (audiofile,
+                               f[1],
+                               options.verbosity != 'quiet'))
+
+        queue.run(max_processes)
+
+        exec_args += wave_files
+
+        if (options.verbosity != 'quiet'):
+            subprocess.call(exec_args)
         else:
-            f = tempfile.mkstemp(suffix='.wav')
-            temp_pool.append(f)
-            wave_files.append(f[1])
-            queue.execute(convert_to_wave,
-                          (audiofile,
-                           f[1],
-                           options.verbosity != 'quiet'))
+            devnull = open(os.devnull,'wb')
+            sub = subprocess.Popen(exec_args,
+                                   stdout=devnull,
+                                   stderr=devnull)
+            sub.wait()
+            devnull.close()
 
-    queue.run(max_processes)
-
-    exec_args += wave_files
-
-    if (options.verbosity != 'quiet'):
-        subprocess.call(exec_args)
+        for (fd,f) in temp_pool:
+            os.close(fd)
+            os.unlink(f)
+        del(temp_pool)
     else:
-        devnull = open(os.devnull,'wb')
-        sub = subprocess.Popen(exec_args,
-                               stdout=devnull,
-                               stderr=devnull)
-        sub.wait()
-        devnull.close()
+        #writing tracks with a cuesheet,
+        #so combine them into a single wave/cue and call cdrdao
 
-    for (fd,f) in temp_pool:
-        os.close(fd)
-        os.unlink(f)
-    del(temp_pool)
+        if (len(set([f.sample_rate() for f in audiofiles])) != 1):
+            print >>sys.stderr,"*** All audio files must have the same sample rate"
+            sys.exit(1)
+
+        if (len(set([f.channels() for f in audiofiles])) != 1):
+            print >>sys.stderr,"*** All audio files must have the same channel count"
+            sys.exit(1)
+
+        if (len(set([f.bits_per_sample() for f in audiofiles])) != 1):
+            print >>sys.stderr,"*** All audio files must have the same bits per sample"
+            sys.exit(1)
+
+        try:
+            toc = audiotools.read_sheet(options.cuesheet)
+        except audiotools.SheetException,msg:
+            print >>sys.stderr,"*** Cuesheet error: %s" % (msg)
+            sys.exit(1)
+
+        temptoc = tempfile.NamedTemporaryFile(suffix='.toc')
+        tempwav = tempfile.NamedTemporaryFile(suffix='.wav')
+
+        temptoc.write(audiotools.toc.TOCFile.file(
+                toc,os.path.basename(tempwav.name)))
+        temptoc.flush()
+
+        if (options.verbosity != 'quiet'):
+            print >>sys.stderr,"*** Converting audio files"
+
+        temptrack = audiotools.WaveAudio.from_pcm(
+            tempwav.name,
+            audiotools.PCMCat(iter([af.to_pcm() for af in audiofiles])))
+
+        os.chdir(os.path.dirname(tempwav.name))
+        cdrdao_args = [audiotools.BIN["cdrdao"]]
+        if (options.dev is not None):
+            cdrdao_args.append("--device")
+            cdrdao_args.append(options.dev)
+        if (options.speed is not None):
+            cdrdao_args.append("--speed")
+            cdrdao_args.append(str(options.speed))
+        cdrdao_args.append(temptoc.name)
+        subprocess.call(cdrdao_args)
+
+        temptoc.close()
+        tempwav.close()
 

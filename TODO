@@ -136,8 +136,6 @@
   The various W??? frames are really just URLs and don't need to
   be displayed as hex-encoded blobs.
 
-* TODO Add ISRC support to track2cd
-  cdrecord supports a number of per-track options that aren't yet passed in
 * TODO Add CUE/TOC support to track2cd
   It should be possible to burn a selection of tracks, or a disc image,
   from a cuesheet with all its indexes/ISRC/catalog data intact
@@ -163,7 +161,7 @@
 * TODO Replace magic numbers with named constants
   There's still a few instances of magic numbers in use,
   in the __flac__.py module, for instance.
-* TODO Update copyright text for 2009
+* DONE Update copyright text for 2009
 * DONE Preserve metadata when using trackcat
   Any fields shared by all tracks should be merged into metadata
   for the newly combined track.

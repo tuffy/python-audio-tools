@@ -33,6 +33,9 @@ def parse_timestamp(s):
     else:
         return int(s)
 
+def build_timestamp(i):
+    return "%2.2d:%2.2d:%2.2d" % ((i / 75) / 60,(i / 75) % 60,i % 75)
+
 #takes an iterator of lines
 #parses the TOCFile lines
 #returns a TOCFile object
@@ -135,6 +138,50 @@ class TOCFile:
     def ISRCs(self):
         return dict([(track.number,track.ISRC()) for track in
                      self.tracks.values() if track.ISRC() is not None])
+
+    #takes a sheet-compatible object with
+    #catalog(), indexes() and ISRCs() methods
+    #along with a filename string
+    #returns a string of a newly-generated TOC file
+    @classmethod
+    def file(cls,sheet,filename):
+        import cStringIO
+
+        catalog = sheet.catalog()       #a catalog string, or None
+        indexes = list(sheet.indexes()) #a list of index tuples
+        ISRCs = sheet.ISRCs()           #a track_number->ISRC dict
+
+        data = cStringIO.StringIO()
+        data.write("CD_DA\n\n")
+
+        if (catalog is not None):
+            data.write("CATALOG \"%s\"\n\n" % (catalog))
+
+        for (i,(current,next)) in enumerate(zip(indexes,indexes[1:] + [None])):
+            tracknum = i + 1
+
+            data.write("TRACK AUDIO\n")
+
+            if (tracknum in ISRCs.keys()):
+                data.write("ISRC \"%s\"\n" % (ISRCs[tracknum]))
+
+            if (next is not None):
+                data.write("AUDIOFILE \"%s\" %s %s\n" % \
+                               (filename,
+                                build_timestamp(current[0]),
+                                build_timestamp(next[0] - current[0])))
+            else:
+                data.write("AUDIOFILE \"%s\" %s\n" % \
+                               (filename,
+                                build_timestamp(current[0])))
+            if (len(current) > 1):
+                data.write("START %s\n" % \
+                               (build_timestamp(current[-1] - current[0])))
+
+            if (next is not None):
+                data.write("\n")
+
+        return data.getvalue()
 
 class Track:
     def __init__(self, number):
