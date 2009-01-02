@@ -5,7 +5,7 @@ track2cd \- records audio compact disc from tracks
 track2cd [OPTIONS] <track 1> [track 2] ...
 .SH DESCRIPTION
 .PP
-track2cd takes a list of audio tracks and writes 
+track2cd takes a list of audio tracks and writes
 their contents to an audio compact disc.
 .SH OPTIONS
 .TP
@@ -20,6 +20,14 @@ The cdrom device to write the CD to
 .TP
 \fB-s \fIspeed\fB, --speed=\fIspeed\fR
 The speed in which to write the CD at
+.TP
+\fB--cue=\fIfilename\fR
+A cuesheet or
+.BR cdrdao (1)
+TOC file to use when writing.
+If given, the created CD will have the same track layout and metadata
+as the cuesheet.
+This makes the burned CD identical to the original.
 .TP
 \fB-j \fIprocesses\fB, --joint=\fIprocesses\fR
 The maximum number of tracks to convert to temporary files at one time.

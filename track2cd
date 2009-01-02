@@ -185,7 +185,7 @@ if (__name__ == '__main__'):
             audiotools.PCMCat(iter([af.to_pcm() for af in audiofiles])))
 
         os.chdir(os.path.dirname(tempwav.name))
-        cdrdao_args = [audiotools.BIN["cdrdao"]]
+        cdrdao_args = [audiotools.BIN["cdrdao"],"write"]
         if (options.dev is not None):
             cdrdao_args.append("--device")
             cdrdao_args.append(options.dev)
