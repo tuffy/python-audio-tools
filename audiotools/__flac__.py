@@ -410,7 +410,10 @@ class FlacCueSheet:
                                                 cuesheet_track_index=[])]))
 
     def catalog(self):
-        return self.container.catalog_number.rstrip(chr(0))
+        if (len(self.container.catalog_number.rstrip(chr(0))) > 0):
+            return self.container.catalog_number.rstrip(chr(0))
+        else:
+            return None
 
     def single_file_type(self):
         return True
@@ -422,8 +425,7 @@ class FlacCueSheet:
                          (len(track.ISRC.strip(chr(0))) > 0))])
 
     def indexes(self):
-        return [tuple([(index.offset + track.track_offset) * \
-                           self.sample_rate / 75
+        return [tuple([(index.offset + track.track_offset) *  75 / self.sample_rate
                        for index in
                        sorted(track.cuesheet_track_index,
                               lambda i1,i2: cmp(i1.point_number,

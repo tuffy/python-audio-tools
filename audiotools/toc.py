@@ -154,7 +154,7 @@ class TOCFile:
         data = cStringIO.StringIO()
         data.write("CD_DA\n\n")
 
-        if (catalog is not None):
+        if ((catalog is not None) and (len(catalog) > 0)):
             data.write("CATALOG \"%s\"\n\n" % (catalog))
 
         for (i,(current,next)) in enumerate(zip(indexes,indexes[1:] + [None])):
