@@ -122,6 +122,13 @@ class FlacMetaData(MetaData):
     def __comment_pairs__(self):
         return self.vorbis_comment.__comment_pairs__()
 
+    def __unicode__(self):
+        if (self.cuesheet is None):
+            return MetaData.__unicode__(self)
+        else:
+            return u"%s\n\nCuesheet:\n%s" % (MetaData.__unicode__(self),
+                                             unicode(self.cuesheet))
+
     def __setattr__(self, key, value):
         self.__dict__[key] = value
         setattr(self.vorbis_comment, key, value)
@@ -330,8 +337,12 @@ class FlacCueSheet:
 
     #container is a compliant Container object returned by CUESHEET.parse()
     def __init__(self, container):
+        #FIXME - this assumes CD-quality cuesheets (44100Hz)
+        #there should be a way of pulling sample rate from
+        #the file this cuesheet is attached to
         self.type = 5
         self.container = container
+        self.sample_rate = 44100
 
     def build_block(self,last=0):
         block = self.CUESHEET.build(self.container)
@@ -347,6 +358,8 @@ class FlacCueSheet:
     #returns a new FlacCueSheet object
     @classmethod
     def converted(cls,sheet,total_frames):
+        #FIXME - don't assume 44100 sample rate
+
         #number is the track number integer
         #ISRC is a 12 byte string, or None
         #indexes is a list of indexes()-compatible index points
@@ -405,10 +418,12 @@ class FlacCueSheet:
     def ISRCs(self):
         return dict([(track.track_number,track.ISRC) for track in
                      self.container.cuesheet_tracks
-                     if (track.track_number != 170)])
+                     if ((track.track_number != 170) and
+                         (len(track.ISRC.strip(chr(0))) > 0))])
 
     def indexes(self):
-        return [tuple([(index.offset + track.track_offset) / 588
+        return [tuple([(index.offset + track.track_offset) * \
+                           self.sample_rate / 75
                        for index in
                        sorted(track.cuesheet_track_index,
                               lambda i1,i2: cmp(i1.point_number,
@@ -427,6 +442,24 @@ class FlacCueSheet:
                         self.container.cuesheet_tracks[1:])]
         else:
             return []
+
+    def __unicode__(self):
+        ISRCs = self.ISRCs()
+
+        tracks = u"\n".join(
+            [" Track %2.2d - %2.2d:%2.2d%s" % \
+                 (i + 1,
+                  (length / self.sample_rate) / 60,
+                  (length / self.sample_rate) % 60,
+                  (" (ISRC %s)" % (ISRCs[i + 1].decode('ascii','replace'))) if ((i + 1) in ISRCs.keys()) else u"")
+             for (i,length) in enumerate(self.pcm_lengths(None))])
+
+
+        if (len(self.catalog()) > 0):
+            return u"  Catalog - %s\n%s" % \
+                (self.catalog().decode('ascii','replace'),tracks)
+        else:
+            return tracks
 
 class FlacAudio(AudioFile):
     SUFFIX = "flac"
