@@ -54,9 +54,11 @@ if (__name__ == '__main__'):
         version="Python Audio Tools %s" % (audiotools.VERSION))
 
     parser.add_option("-c","--cdrom",dest="dev",
+                      default=audiotools.DEFAULT_CDROM,
                       help="cdrom device to use")
 
     parser.add_option("-s","--speed",dest="speed",
+                      default=20,
                       help="the speed to burn the CD at",type="int")
 
     parser.add_option('--cue',
@@ -100,13 +102,11 @@ if (__name__ == '__main__'):
 
         exec_args = [audiotools.BIN['cdrecord']]
 
-        if (options.speed != None):
-            exec_args.append("-speed")
-            exec_args.append(str(options.speed))
+        exec_args.append("-speed")
+        exec_args.append(str(options.speed))
 
-        if (options.dev != None):
-            exec_args.append("-dev")
-            exec_args.append(options.dev)
+        exec_args.append("-dev")
+        exec_args.append(options.dev)
 
         exec_args.append("-tao")
         exec_args.append("-pad")
@@ -180,20 +180,42 @@ if (__name__ == '__main__'):
         if (options.verbosity != 'quiet'):
             print >>sys.stderr,"*** Converting audio files"
 
-        temptrack = audiotools.WaveAudio.from_pcm(
-            tempwav.name,
-            audiotools.PCMCat(iter([af.to_pcm() for af in audiofiles])))
+        if ((audiofiles[0].sample_rate() == 44100) and
+            (audiofiles[0].channels() == 2) and
+            (audiofiles[0].bits_per_sample() == 16)):
+            temptrack = audiotools.WaveAudio.from_pcm(
+                tempwav.name,
+                audiotools.PCMCat(iter([af.to_pcm() for af in audiofiles])))
+        else:
+            #this presumes a cuesheet and non-CD audio
+            #though theoretically possible, it's difficult to
+            #envision a case in which this happens
+            temptrack = audiotools.WaveAudio.from_pcm(
+                    tempwav.name,
+                    audiotools.PCMConverter(audiotools.PCMCat(
+                        iter([af.to_pcm() for af in audiofiles])),
+                                            44100,2,16))
 
         os.chdir(os.path.dirname(tempwav.name))
         cdrdao_args = [audiotools.BIN["cdrdao"],"write"]
-        if (options.dev is not None):
-            cdrdao_args.append("--device")
-            cdrdao_args.append(options.dev)
-        if (options.speed is not None):
-            cdrdao_args.append("--speed")
-            cdrdao_args.append(str(options.speed))
+
+        cdrdao_args.append("--device")
+        cdrdao_args.append(options.dev)
+
+        cdrdao_args.append("--speed")
+        cdrdao_args.append(str(options.speed))
+
         cdrdao_args.append(temptoc.name)
-        subprocess.call(cdrdao_args)
+
+        if (options.verbosity != 'quiet'):
+            subprocess.call(cdrdao_args)
+        else:
+            devnull = open(os.devnull,'wb')
+            sub = subprocess.Popen(cdrdao_args,
+                                   stdout=devnull,
+                                   stderr=devnull)
+            sub.wait()
+            devnull.close()
 
         temptoc.close()
         tempwav.close()
