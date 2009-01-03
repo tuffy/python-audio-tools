@@ -86,7 +86,8 @@ class FlacMetaData(MetaData):
             elif ((block.type == 5) and (self.cuesheet is None)):
                 #only one CUESHEET allowed
                 self.__dict__['cuesheet'] = FlacCueSheet(
-                    FlacCueSheet.CUESHEET.parse(block.data))
+                    FlacCueSheet.CUESHEET.parse(block.data),
+                    FlacAudio.STREAMINFO.parse(self.streaminfo.data).samplerate)
             elif ((block.type == 3) and (self.seektable is None)):
                 #only one SEEKTABLE allowed
                 self.__dict__['seektable'] = block
@@ -336,13 +337,10 @@ class FlacCueSheet:
                               )))
 
     #container is a compliant Container object returned by CUESHEET.parse()
-    def __init__(self, container):
-        #FIXME - this assumes CD-quality cuesheets (44100Hz)
-        #there should be a way of pulling sample rate from
-        #the file this cuesheet is attached to
+    def __init__(self, container, sample_rate=44100):
         self.type = 5
         self.container = container
-        self.sample_rate = 44100
+        self.sample_rate = sample_rate
 
     def build_block(self,last=0):
         block = self.CUESHEET.build(self.container)
@@ -357,9 +355,7 @@ class FlacCueSheet:
     #and a total_frames integer (in PCM frames)
     #returns a new FlacCueSheet object
     @classmethod
-    def converted(cls,sheet,total_frames):
-        #FIXME - don't assume 44100 sample rate
-
+    def converted(cls, sheet, total_frames, sample_rate=44100):
         #number is the track number integer
         #ISRC is a 12 byte string, or None
         #indexes is a list of indexes()-compatible index points
@@ -375,13 +371,13 @@ class FlacCueSheet:
                 base_number = 0
 
             return Con.Container(
-                track_offset=indexes[0] * 588,
+                track_offset=indexes[0] * sample_rate / 75,
                 track_number=number,
                 ISRC=ISRC,
                 non_audio=False,
                 pre_emphasis=False, #FIXME, check for this
                 cuesheet_track_index=[Con.Container(
-                        offset=((index - indexes[0]) * 588),
+                        offset=((index - indexes[0]) * sample_rate / 75),
                         point_number=point_number + base_number)
                                       for (point_number,index) in
                                       enumerate(indexes)])
@@ -395,7 +391,7 @@ class FlacCueSheet:
         return cls(Con.Container(
                 catalog_number=catalog_number + \
                     (chr(0) * (128 - len(catalog_number))),
-                lead_in_samples=44100 * 2,
+                lead_in_samples=sample_rate * 2,
                 is_cd=True,
                 cuesheet_tracks=[track_container(i + 1,
                                                  ISRCs.get(i + 1,None),
@@ -407,7 +403,8 @@ class FlacCueSheet:
                                                 ISRC=chr(0) * 12,
                                                 non_audio=False,
                                                 pre_emphasis=False,
-                                                cuesheet_track_index=[])]))
+                                                cuesheet_track_index=[])]),
+                   sample_rate)
 
     def catalog(self):
         if (len(self.container.catalog_number.rstrip(chr(0))) > 0):
@@ -457,7 +454,8 @@ class FlacCueSheet:
              for (i,length) in enumerate(self.pcm_lengths(None))])
 
 
-        if (len(self.catalog()) > 0):
+        if ((self.catalog() is not None) and
+            (len(self.catalog()) > 0)):
             return u"  Catalog - %s\n%s" % \
                 (self.catalog().decode('ascii','replace'),tracks)
         else:

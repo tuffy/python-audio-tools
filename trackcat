@@ -118,7 +118,8 @@ if (__name__ == '__main__'):
         try:
             cuesheet = audiotools.FlacCueSheet.converted(
                 audiotools.read_sheet(options.cuesheet),
-                sum([f.total_frames() for f in audiofiles]))
+                sum([f.total_frames() for f in audiofiles]),
+                audiofiles[0].sample_rate())
         except audiotools.SheetException,msg:
             print >>sys.stderr,"*** %s: %s" % (options.cuesheet,str(msg))
             sys.exit(1)
