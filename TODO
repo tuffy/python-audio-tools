@@ -136,7 +136,7 @@
   The various W??? frames are really just URLs and don't need to
   be displayed as hex-encoded blobs.
 
-* TODO Add CUE/TOC support to track2cd
+* DONE Add CUE/TOC support to track2cd
   It should be possible to burn a selection of tracks, or a disc image,
   from a cuesheet with all its indexes/ISRC/catalog data intact
   by passing --cue to track2cd.
@@ -176,4 +176,12 @@
   it's extremely hokey, error-prone and doesn't support any cut & paste.
   This needs to be reimplemented in PyGTK (since coverview already uses it)
   and made into a stable app someone would want to use.
+
+* TODO Require Python 2.5
+  Since Python 2.4 is in bugfix-only mode and barely supported,
+  it's best to move the minimum version to Python 2.5 or better
+  (which has already been superceded by Python 2.6).
+  This reduces the amount of Python versions to test on
+  and allows the use of more modern Python features which
+  makes the code less clunky.
 
