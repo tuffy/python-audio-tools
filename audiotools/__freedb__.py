@@ -234,7 +234,7 @@ class DiscID:
 
     def offsets(self):
         if (self.__offsets__ == None):
-            offsets = [150]
+            offsets = [self.__lead_in__]
 
             for track in self.tracks[0:-1]:
                 offsets.append(track + offsets[-1])
