@@ -75,7 +75,7 @@ if (__name__ == '__main__'):
                                     for file in audiofiles])
         print discid.freedb_id()
     elif (options.metadata):  #pull XMCD data from AudioFile metadata
-        outfile.write(audiotools.build_xmcd_file(audiofiles))
+        outfile.write(audiotools.XMCD.from_files(audiofiles).build())
     else:                     #grab XMCD data from FreeDB
         discid = audiotools.DiscID([file.cd_frames()
                                     for file in audiofiles])

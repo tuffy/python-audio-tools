@@ -1553,9 +1553,10 @@ class AudioFile:
 
 
 class DummyAudioFile(AudioFile):
-    def __init__(self, length, metadata):
+    def __init__(self, length, metadata, track_number=0):
         self.__length__ = length
         self.__metadata__ = metadata
+        self.__track_number__ = track_number
 
         AudioFile.__init__(self,"")
 
@@ -1564,6 +1565,9 @@ class DummyAudioFile(AudioFile):
 
     def cd_frames(self):
         return self.__length__
+
+    def track_number(self):
+        return self.__track_number__
 
 from __image__ import *
 

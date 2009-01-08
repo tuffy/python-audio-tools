@@ -248,7 +248,7 @@ if (__name__ == '__main__'):
     #if we're using an XMCD file, use that file for MetaData
     if (options.xmcd != None):
         try:
-            xmcd = audiotools.parse_xmcd_file(options.xmcd)
+            xmcd = audiotools.XMCD.read(options.xmcd).metadata()
         except audiotools.XMCDException:
             print >>sys.stderr,"*** Invalid XMCD file"
             sys.exit(1)

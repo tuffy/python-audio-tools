@@ -181,6 +181,7 @@
    AlbumMetaData implementations.  This must be updated into something
    round-trippable if editxmcd is to be modernized.
 *** TODO Add XMCD unit tests
+*** TODO Update XMCD API documentation
 * TODO Require Python 2.5
   Since Python 2.4 is in bugfix-only mode and barely supported,
   it's best to move the minimum version to Python 2.5 or better

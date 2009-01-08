@@ -290,7 +290,7 @@ if (__name__ == '__main__'):
 
     if (options.xmcd is not None):
         try:
-            xmcd = audiotools.parse_xmcd_file(options.xmcd)
+            xmcd = audiotools.XMCD.read(options.xmcd).metadata()
         except audiotools.XMCDException:
             print >>sys.stderr,"*** Error opening XMCD file \"%s\"" % \
                   (options.xmcd)

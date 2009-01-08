@@ -26,186 +26,216 @@ from audiotools import VERSION,Con,cStringIO,sys,re,MetaData,AlbumMetaData,__mos
 
 class XMCDException(Exception): pass
 
-#takes an XMCD file name
-#returns an AlbumMetaData-compatible object
-def parse_xmcd_file(filename):
-    import codecs,re,StringIO
+class XMCD:
+    #values is a list of key->value pairs
+    #such as "TTITLE0":u"Track Name"
+    #offsets is a list of track offset integers (in CD frames)
+    #length is a total album length integer (in seconds)
+    def __init__(self,values,offsets,length):
+        self.values = values
+        self.offsets = offsets
+        self.length = length
 
-    def split_line(line):
-        if ' / ' in line:
-            return line.split(' / ',1)
+    def __repr__(self):
+        return "XMCD(%s,%s,%s)" % (repr(self.values),
+                                   repr(self.offsets),
+                                   repr(self.length))
+
+    def __getitem__(self,key):
+        return self.values[key]
+
+    def get(self,key,default):
+        return self.values.get(key,default)
+
+    def __setitem__(self,key,value):
+        self.values[key] = value
+
+    def __len__(self):
+        return len(self.values)
+
+    def keys(self):
+        return self.values.keys()
+
+    def values(self):
+        return self.values.values()
+
+    def items(self):
+        return self.values.items()
+
+    @classmethod
+    def __key_digits__(cls,key):
+        import re
+
+        d = re.search(r'\d+',key)
+        if (d is not None):
+            return int(d.group(0))
         else:
-            return [None,line]
+            return -1
 
-    file = codecs.open(filename,"r","utf-8")
-    entries = {}
-    VALID_LINE = re.compile(r'^[A-Z0-9]+=.*')
-    TRACK_LINE = re.compile(r'^TTITLE[0-9]+$')
-    try:
-        try:
-            lines = file.readlines()
-        except UnicodeDecodeError:
-            try:
-                file.close()
-                file = codecs.open(filename,"r","ISO-8859-1")
-                lines = file.readlines()
-            except UnicodeDecodeError:
-                raise XMCDException(filename)
+    def build(self):
+        import string
 
-        if ((len(lines) < 1) or (not lines[0].startswith("# xmcd"))):
-            raise XMCDException(filename)
-        else:
-            for (prefix,suffix) in [line.split('=',1)
-                                    for line in lines if
-                                    VALID_LINE.match(line)]:
-                entries.setdefault(prefix,StringIO.StringIO()).write(
-                    suffix.rstrip('\n\r'))
-            entries = dict([(key,value.getvalue()) for key,value in
-                            entries.items()])
+        key_order = ['DISCID','DTITLE','DYEAR','TTITLE','EXTDD','EXTT',
+                     'PLAYORDER']
 
-            (artist_name,
-             album_name) = split_line(entries.get('DTITLE',u''))
-
-            metadata = []
-            for (track_number,track_artist,track_name) in \
-                [[int(key[len('TTITLE'):]) + 1,] +
-                 split_line(value) for (key,value) in entries.items()
-                 if TRACK_LINE.match(key)]:
-
-                if (track_artist == None):
-                    metadata.append(
-                        MetaData(track_name=track_name,
-                                 track_number=track_number,
-                                 album_name=album_name,
-                                 artist_name=artist_name,
-                                 performer_name=u'',
-                                 copyright=u'',
-                                 year=entries.get('DYEAR',u'')))
-                else:
-                    metadata.append(
-                        MetaData(track_name=track_name,
-                                 track_number=track_number,
-                                 album_name=album_name,
-                                 artist_name=track_artist,
-                                 performer_name=u'',
-                                 copyright=u'',
-                                 year=entries.get('DYEAR',u'')))
-
-            return AlbumMetaData(metadata)
-
-    finally:
-        file.close()
-
-#takes a list of AudioFile-compatible objects
-#and, optionally, a DiscID object
-#returns an XMCD file as a string
-def build_xmcd_file(audiofiles, discid=None):
-    import StringIO
-
-    #stream is a file-like object
-    #key is a string
-    #value is a unicode string
-    #writes as many UTF-8 encoded strings as necessary
-    #to "stream" to represent the key/pair
-    #while keeping below a certain number of characters per line
-    def build_key_pair(stream, key, value):
-        line = (u"%s=%s" % (key,value)).encode('utf-8')
-        if (len(line) <= 78):  #our encoded line is short enough to fit
-            print >>stream,line
-        else:                   #too long when encoded, so split value
-            line = cStringIO.StringIO()
-            to_encode = StringIO.StringIO(value)
-            try:
-                line.write("%s=" % (key))
-                while (len(line.getvalue()) <= 78):
-                    #encode all that will fit on a line
-                    #1 unicode character at a time
-                    #(so that we don't split a character when encoded)
-                    c = to_encode.read(1)
-                    if (len(c) == 1):
-                        line.write(c.encode('utf-8'))
-                    else:
-                        print >>stream,line.getvalue()
-                        break
-                else: #if there's still more to encode, do it recursively
-                    print >>stream,line.getvalue()
-                    build_key_pair(stream, key, to_encode.read())
-            finally:
-                line.close()
-                to_encode.close()
-
-
-    audiofiles = sorted(audiofiles,
-                        lambda x,y: cmp(x.track_number(),
-                                        y.track_number()))
-
-    xmcd = StringIO.StringIO()
-    print >>xmcd,"# xmcd"
-    print >>xmcd,"#"
-    print >>xmcd,"# Track frame offsets:"
-
-    if (discid == None):
-        offset = 150
-        for track in audiofiles:
-            print >>xmcd,"#\t%d" % (offset)
-            offset += track.cd_frames()
-        disc_length = offset / 75
-
-        print >>xmcd,"#"
-        print >>xmcd,"# Disc length: %d seconds" % (disc_length)
-        print >>xmcd,"#"
-        build_key_pair(xmcd,"DISCID",str(DiscID([f.cd_frames() for f in
-                                                 audiofiles])))
-    else:
-        for offset in discid.offsets():
-            print >>xmcd,"#\t%d" % (offset)
-        print >>xmcd,"#"
-        print >>xmcd,"# Disc length: %d seconds" % (discid.length() / 75)
-        print >>xmcd,"#"
-        build_key_pair(xmcd,"DISCID",str(discid))
-
-    album_list = [file.get_metadata().album_name
-                  for file in audiofiles if
-                  file.get_metadata() != None]
-
-    artist_list = [file.get_metadata().artist_name
-                   for file in audiofiles if
-                   file.get_metadata() != None]
-
-    if (len(album_list) > 0):
-        album = __most_numerous__(album_list)
-    else:
-        album = u""
-
-    if (len(artist_list) > 0):
-        artist =  __most_numerous__(artist_list)
-    else:
-        artist = u""
-
-    build_key_pair(xmcd,"DTITLE",u"%s / %s" % (artist,album))
-    build_key_pair(xmcd,"DYEAR",u"")
-
-    for (i,track) in enumerate(audiofiles):
-        metadata = track.get_metadata()
-        if (metadata != None):
-            if (metadata.artist_name != artist):
-                build_key_pair(xmcd,"TTITLE%d" % (i),
-                               u"%s / %s" % (metadata.artist_name,
-                                             metadata.track_name))
+        def by_pair(p1,p2):
+            if (p1[0].rstrip(string.digits) in key_order):
+                p1 = (key_order.index(p1[0].rstrip(string.digits)),
+                      self.__key_digits__(p1[0]),
+                      p1[0])
             else:
-                build_key_pair(xmcd,"TTITLE%d" % (i),
-                               metadata.track_name)
+                p1 = (len(key_order),
+                      self.__key_digits__(p1[0]),
+                      p1[0])
+
+            if (p2[0].rstrip(string.digits) in key_order):
+                p2 = (key_order.index(p2[0].rstrip(string.digits)),
+                      self.__key_digits__(p2[0]),
+                      p2[0])
+            else:
+                p2 = (len(key_order),
+                      self.__key_digits__(p2[0]),
+                      p2[0])
+
+            return cmp(p1,p2)
+
+        def encode(u):
+            try:
+                return u.encode('ISO-8859-1')
+            except UnicodeEncodeError:
+                return u.encode('utf-8')
+
+        return "# xmcd\n#\n# Track frame offsets:\n%(offsets)s\n#\n# Disc length: %(length)s seconds\n#\n%(fields)s\n" % \
+            {"offsets":"\n".join(["#\t%s" % (offset)
+                                  for offset in self.offsets]),
+             "length":self.length,
+             #FIXME - overlong fields should be split
+             "fields":"\n".join(["%s=%s" % (pair[0],encode(pair[1]))
+                                 for pair in sorted(self.items(),
+                                                    by_pair)])}
+
+    @classmethod
+    def read(cls, filename):
+        import StringIO,re
+
+        f = open(filename,'r')
+        try:
+            data = f.read()
+            try:
+                data = data.decode('utf-8')
+            except UnicodeDecodeError:
+                try:
+                    data = data.decode('ISO-8859-1')
+                except UnicodeDecodeError:
+                    raise XMCDException(filename)
+        finally:
+            f.close()
+
+        if (not data.startswith("# xmcd")):
+            raise XMCDException(filename)
+
+        disc_length = re.search(r'# Disc length: (\d+) seconds',data)
+        if (disc_length is not None):
+            disc_length = int(disc_length.group(1))
+
+        track_lengths = re.compile(r'# Track frame offsets:\s+[#\s\d]+',
+                                   re.DOTALL).search(data)
+        if (track_lengths is not None):
+            track_lengths = map(int,re.findall(r'\d+',track_lengths.group(0)))
+
+        fields = {}
+
+        for line in re.findall(r'.+=.*[\r\n]',data):
+            (field,value) = line.split(u'=',1)
+            field = field.encode('ascii')
+            value = value.rstrip('\r\n')
+            if (field in fields.keys()):
+                fields[field] += value
+            else:
+                fields[field] = value
+
+        return XMCD(values=fields,offsets=track_lengths,length=disc_length)
+
+    #audiofiles should be a list of AudioFile-compatible objects
+    #from the same album, possibly with valid MetaData
+    @classmethod
+    def from_files(cls, audiofiles):
+        def track_string(track,album_artist,metadata):
+            if (track.track_number() in metadata.keys()):
+                metadata = metadata[track.track_number()]
+                if (metadata.artist_name == album_artist):
+                    return metadata.track_name
+                else:
+                    return u"%s / %s" % (metadata.artist_name,
+                                         metadata.track_name)
+            else:
+                return u""
+
+        audiofiles = [f for f in audiofiles if f.track_number() != 0]
+        audiofiles.sort(lambda t1,t2: cmp(t1.track_number(),
+                                          t2.track_number()))
+
+        discid = DiscID([track.cd_frames() for track in audiofiles])
+
+        metadata = dict([(t.track_number(),t.get_metadata())
+                          for t in audiofiles
+                         if (t.get_metadata() is not None)])
+
+        album_artist = __most_numerous__([m.artist_name for m in
+                                          metadata.values()])
+
+        return XMCD(dict([("DISCID",str(discid).decode('ascii')),
+                          ("DTITLE",u"%s / %s" % \
+                               (album_artist,
+                                __most_numerous__([m.album_name for m in
+                                                   metadata.values()]))),
+                          ("DYEAR",__most_numerous__([m.year for m in
+                                                      metadata.values()])),
+                          ("EXTDD",u""),
+                          ("PLAYORDER",u"")] + \
+                         [("TTITLE%d" % (track.track_number() - 1),
+                           track_string(track,album_artist,metadata))
+                          for track in audiofiles] + \
+                         [("EXTT%d" % (track.track_number() - 1),
+                           u"")
+                           for track in audiofiles]),
+                    discid.offsets(),
+                    discid.length() / 75)
+
+    def metadata(self):
+        dtitle = self.get('DTITLE',u'')
+        if (u' / ' in dtitle):
+            (album_artist,album_name) = dtitle.split(u' / ',1)
         else:
-            build_key_pair(xmcd,"TTITLE%d" % (i),u"")
+            album_name = dtitle
+            artist_name = u''
 
-    build_key_pair(xmcd,"EXTDD",u"")
-    for (i,track) in enumerate(audiofiles):
-        build_key_pair(xmcd,"EXTT%d" % (i),u"")
+        dyear = self.get('DYEAR',u'')
 
-    build_key_pair(xmcd,"PLAYORDER",u"")
+        tracks = []
 
-    return xmcd.getvalue()
+        for key in self.keys():
+            if (key.startswith('TTITLE')):
+                tracknum = self.__key_digits__(key)
+                if (tracknum == -1):
+                    continue
 
+                ttitle = self[key]
+
+                if (u' / ' in ttitle):
+                    (track_artist,track_name) = ttitle.split(u' / ',1)
+                else:
+                    track_name = ttitle
+                    track_artist = album_artist
+
+                tracks.append(MetaData(track_name=track_name,
+                                       track_number=tracknum + 1,
+                                       album_name=album_name,
+                                       artist_name=track_artist,
+                                       year=dyear))
+
+        tracks.sort(lambda t1,t2: cmp(t1.track_number,t2.track_number))
+        return AlbumMetaData(tracks)
 
 
 #######################
@@ -274,9 +304,9 @@ class DiscID:
         return str(self) + " " + self.idsuffix()
 
     def toxmcd(self, output):
-        output.write(build_xmcd_file(
-            [DummyAudioFile(length,None) for length in self.tracks],
-            self))
+        output.write(XMCD.from_files(
+            [DummyAudioFile(length,None,i + 1)
+             for (i,length) in enumerate(self.tracks)]).build())
 
 class FreeDBException(Exception): pass
 
