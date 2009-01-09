@@ -2449,138 +2449,133 @@ IqWzFUixmyqeumDRdlhpO+C2s3Eocdn5wUixIZt3KdoOK20HindxcShxI3mX+IDg3b8MLEoQ6yTo
 
         self.suffix = '.cue'
 
-    def testreadsheet(self):
+    def sheets(self):
         for test_sheet in self.test_sheets:
-            sheet_file = tempfile.NamedTemporaryFile(suffix=self.suffix)
+            tempsheetfile = tempfile.NamedTemporaryFile(suffix=self.suffix)
             try:
-                sheet_file.write(test_sheet)
-                sheet_file.flush()
-                sheet = audiotools.read_sheet(sheet_file.name)
-
-                self.assertEqual(isinstance(sheet,self.sheet_class),True)
-                self.assertEqual(sheet.catalog(),'4580226563955')
-                self.assertEqual(sorted(sheet.ISRCs().items()),
-                                 [(1, 'JPG750800183'),
-                                  (2, 'JPG750800212'),
-                                  (3, 'JPG750800214'),
-                                  (4, 'JPG750800704'),
-                                  (5, 'JPG750800705'),
-                                  (6, 'JPG750800706'),
-                                  (7, 'JPG750800707'),
-                                  (8, 'JPG750800708'),
-                                  (9, 'JPG750800219'),
-                                  (10, 'JPG750800722'),
-                                  (11, 'JPG750800709'),
-                                  (12, 'JPG750800290'),
-                                  (13, 'JPG750800218'),
-                                  (14, 'JPG750800710'),
-                                  (15, 'JPG750800217'),
-                                  (16, 'JPG750800531'),
-                                  (17, 'JPG750800225'),
-                                  (18, 'JPG750800711'),
-                                  (19, 'JPG750800180'),
-                                  (20, 'JPG750800712'),
-                                  (21, 'JPG750800713'),
-                                  (22, 'JPG750800714')])
-                self.assertEqual(list(sheet.indexes()),
-                                 [(0,),(20885,),(42189, 42411),(49242, 49473),
-                                  (52754,),(69656,),(95428,),(118271, 118430),
-                                  (136968,),(138433, 138567),(156412,),
-                                  (168864,),(187716,),(192245, 192373),
-                                  (200347,),(204985,),(227336,),
-                                  (243382, 243549),(265893, 266032),
-                                  (292606, 292942),(302893, 303123),(321611,)])
-                self.assertEqual(list(sheet.pcm_lengths(191795016)),
-                                 [12280380, 12657288, 4152456, 1929228,
-                                  9938376, 15153936, 13525176, 10900344,
-                                  940212, 10492860, 7321776, 11084976,
-                                  2738316, 4688712, 2727144, 13142388,
-                                  9533244, 13220004, 15823080, 5986428,
-                                  10870944, 2687748])
-                self.assertEqual(sheet.single_file_type(),True)
-
+                tempsheetfile.write(test_sheet)
+                tempsheetfile.flush()
+                sheet = audiotools.read_sheet(tempsheetfile.name)
             finally:
-                sheet_file.close()
+                tempsheetfile.close()
+            yield sheet
+
+    def testreadsheet(self):
+        for sheet in self.sheets():
+            self.assertEqual(isinstance(sheet,self.sheet_class),True)
+            self.assertEqual(sheet.catalog(),'4580226563955')
+            self.assertEqual(sorted(sheet.ISRCs().items()),
+                             [(1, 'JPG750800183'),
+                              (2, 'JPG750800212'),
+                              (3, 'JPG750800214'),
+                              (4, 'JPG750800704'),
+                              (5, 'JPG750800705'),
+                              (6, 'JPG750800706'),
+                              (7, 'JPG750800707'),
+                              (8, 'JPG750800708'),
+                              (9, 'JPG750800219'),
+                              (10, 'JPG750800722'),
+                              (11, 'JPG750800709'),
+                              (12, 'JPG750800290'),
+                              (13, 'JPG750800218'),
+                              (14, 'JPG750800710'),
+                              (15, 'JPG750800217'),
+                              (16, 'JPG750800531'),
+                              (17, 'JPG750800225'),
+                              (18, 'JPG750800711'),
+                              (19, 'JPG750800180'),
+                              (20, 'JPG750800712'),
+                              (21, 'JPG750800713'),
+                              (22, 'JPG750800714')])
+            self.assertEqual(list(sheet.indexes()),
+                             [(0,),(20885,),(42189, 42411),(49242, 49473),
+                              (52754,),(69656,),(95428,),(118271, 118430),
+                              (136968,),(138433, 138567),(156412,),
+                              (168864,),(187716,),(192245, 192373),
+                              (200347,),(204985,),(227336,),
+                              (243382, 243549),(265893, 266032),
+                              (292606, 292942),(302893, 303123),(321611,)])
+            self.assertEqual(list(sheet.pcm_lengths(191795016)),
+                             [12280380, 12657288, 4152456, 1929228,
+                              9938376, 15153936, 13525176, 10900344,
+                              940212, 10492860, 7321776, 11084976,
+                              2738316, 4688712, 2727144, 13142388,
+                              9533244, 13220004, 15823080, 5986428,
+                              10870944, 2687748])
+            self.assertEqual(sheet.single_file_type(),True)
 
     def testconvertsheet(self):
         import audiotools.cue
         import audiotools.toc
 
-        for test_sheet in self.test_sheets:
-            sheet_file = tempfile.NamedTemporaryFile(suffix=self.suffix)
+        for sheet in self.sheets():
+            #convert to CUE and test for equality
+            temp_cue_file = tempfile.NamedTemporaryFile(suffix='.cue')
             try:
-                sheet_file.write(test_sheet)
-                sheet_file.flush()
-                sheet = audiotools.read_sheet(sheet_file.name)
+                temp_cue_file.write(audiotools.cue.Cuesheet.file(
+                        sheet,os.path.basename(temp_cue_file.name)))
+                temp_cue_file.flush()
 
-                #convert to CUE and test for equality
-                temp_cue_file = tempfile.NamedTemporaryFile(suffix='.cue')
-                try:
-                    temp_cue_file.write(audiotools.cue.Cuesheet.file(
-                            sheet,os.path.basename(temp_cue_file.name)))
-                    temp_cue_file.flush()
+                cue_sheet = audiotools.read_sheet(temp_cue_file.name)
 
-                    cue_sheet = audiotools.read_sheet(temp_cue_file.name)
-
-                    self.assertEqual(sheet.catalog(),cue_sheet.catalog())
-                    self.assertEqual(sheet.single_file_type(),
-                                     cue_sheet.single_file_type())
-                    self.assertEqual(list(sheet.indexes()),
-                                     list(cue_sheet.indexes()))
-                    self.assertEqual(list(sheet.pcm_lengths(191795016)),
-                                     list(cue_sheet.pcm_lengths(191795016)))
-                    self.assertEqual(sorted(sheet.ISRCs().items()),
-                                     sorted(cue_sheet.ISRCs().items()))
-                finally:
-                    temp_cue_file.close()
-
-                #convert to TOC and test for equality
-                temp_toc_file = tempfile.NamedTemporaryFile(suffix='.toc')
-                try:
-                    temp_toc_file.write(audiotools.toc.TOCFile.file(
-                            sheet,os.path.basename(temp_toc_file.name)))
-                    temp_toc_file.flush()
-
-                    toc_sheet = audiotools.read_sheet(temp_toc_file.name)
-
-                    self.assertEqual(sheet.catalog(),toc_sheet.catalog())
-                    self.assertEqual(sheet.single_file_type(),
-                                     toc_sheet.single_file_type())
-                    self.assertEqual(list(sheet.indexes()),
-                                     list(toc_sheet.indexes()))
-                    self.assertEqual(list(sheet.pcm_lengths(191795016)),
-                                     list(toc_sheet.pcm_lengths(191795016)))
-                    self.assertEqual(sorted(sheet.ISRCs().items()),
-                                     sorted(toc_sheet.ISRCs().items()))
-                finally:
-                    temp_toc_file.close()
-
-                #convert to embedded FLAC cuesheet and test for equality
-                temp_flac_file = tempfile.NamedTemporaryFile(suffix='.flac')
-                try:
-                    flac = audiotools.FlacAudio.from_pcm(
-                        temp_flac_file.name,
-                        EXACT_BLANK_PCM_Reader(191795016),
-                        "1")
-                    metadata = flac.get_metadata()
-                    metadata.cuesheet = audiotools.FlacCueSheet.converted(
-                        sheet,flac.total_frames(),flac.sample_rate())
-                    flac.set_metadata(metadata)
-                    flac_sheet = audiotools.open(temp_flac_file.name).get_metadata().cuesheet
-
-                    self.assertEqual(sheet.catalog(),flac_sheet.catalog())
-                    self.assertEqual(sheet.single_file_type(),
-                                     flac_sheet.single_file_type())
-                    self.assertEqual(list(sheet.indexes()),
-                                     list(flac_sheet.indexes()))
-                    self.assertEqual(list(sheet.pcm_lengths(191795016)),
-                                     list(flac_sheet.pcm_lengths(191795016)))
-                    self.assertEqual(sorted(sheet.ISRCs().items()),
-                                     sorted(flac_sheet.ISRCs().items()))
-                finally:
-                    temp_flac_file.close()
+                self.assertEqual(sheet.catalog(),cue_sheet.catalog())
+                self.assertEqual(sheet.single_file_type(),
+                                 cue_sheet.single_file_type())
+                self.assertEqual(list(sheet.indexes()),
+                                 list(cue_sheet.indexes()))
+                self.assertEqual(list(sheet.pcm_lengths(191795016)),
+                                 list(cue_sheet.pcm_lengths(191795016)))
+                self.assertEqual(sorted(sheet.ISRCs().items()),
+                                 sorted(cue_sheet.ISRCs().items()))
             finally:
-                sheet_file.close()
+                temp_cue_file.close()
+
+            #convert to TOC and test for equality
+            temp_toc_file = tempfile.NamedTemporaryFile(suffix='.toc')
+            try:
+                temp_toc_file.write(audiotools.toc.TOCFile.file(
+                        sheet,os.path.basename(temp_toc_file.name)))
+                temp_toc_file.flush()
+
+                toc_sheet = audiotools.read_sheet(temp_toc_file.name)
+
+                self.assertEqual(sheet.catalog(),toc_sheet.catalog())
+                self.assertEqual(sheet.single_file_type(),
+                                 toc_sheet.single_file_type())
+                self.assertEqual(list(sheet.indexes()),
+                                 list(toc_sheet.indexes()))
+                self.assertEqual(list(sheet.pcm_lengths(191795016)),
+                                 list(toc_sheet.pcm_lengths(191795016)))
+                self.assertEqual(sorted(sheet.ISRCs().items()),
+                                 sorted(toc_sheet.ISRCs().items()))
+            finally:
+                temp_toc_file.close()
+
+            #convert to embedded FLAC cuesheet and test for equality
+            temp_flac_file = tempfile.NamedTemporaryFile(suffix='.flac')
+            try:
+                flac = audiotools.FlacAudio.from_pcm(
+                    temp_flac_file.name,
+                    EXACT_BLANK_PCM_Reader(191795016),
+                    "1")
+                metadata = flac.get_metadata()
+                metadata.cuesheet = audiotools.FlacCueSheet.converted(
+                    sheet,flac.total_frames(),flac.sample_rate())
+                flac.set_metadata(metadata)
+                flac_sheet = audiotools.open(temp_flac_file.name).get_metadata().cuesheet
+
+                self.assertEqual(sheet.catalog(),flac_sheet.catalog())
+                self.assertEqual(sheet.single_file_type(),
+                                 flac_sheet.single_file_type())
+                self.assertEqual(list(sheet.indexes()),
+                                 list(flac_sheet.indexes()))
+                self.assertEqual(list(sheet.pcm_lengths(191795016)),
+                                 list(flac_sheet.pcm_lengths(191795016)))
+                self.assertEqual(sorted(sheet.ISRCs().items()),
+                                 sorted(flac_sheet.ISRCs().items()))
+            finally:
+                temp_flac_file.close()
+
 
 class testtocsheet(testcuesheet):
     def setUp(self):
@@ -2613,6 +2608,180 @@ c0X3z/cu+lUE0ySfNZ5QgQgq82S0R8+9OWBChth3PkyTfJaJC/a+3YCk97Xn+b7/NdBFv1thmjB0
 4IdmLve//kjXkg==""".decode('base64').decode('zlib')]
 
         self.suffix = '.toc'
+
+class testflaccuesheet(testcuesheet):
+    def setUp(self):
+        from construct import Container
+
+        self.sheet_class = audiotools.FlacCueSheet
+        self.suffix = '.flac'
+        self.test_sheets = [
+            Container(catalog_number = '4580226563955\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00',
+                      cuesheet_tracks = [
+                    Container(ISRC = 'JPG750800183',
+                              cuesheet_track_index = [Container(offset = 0, point_number = 1)],
+                              non_audio = False,
+                              pre_emphasis = False,
+                              track_number = 1,
+                              track_offset = 0),
+                    Container(ISRC = 'JPG750800212',
+                              cuesheet_track_index = [Container(offset = 0, point_number = 1)],
+                              non_audio = False,
+                              pre_emphasis = False,
+                              track_number = 2,
+                              track_offset = 12280380),
+                    Container(ISRC = 'JPG750800214',
+                              cuesheet_track_index = [Container(offset = 0, point_number = 0), Container(offset = 130536, point_number = 1)],
+                              non_audio = False,
+                              pre_emphasis = False,
+                              track_number = 3,
+                              track_offset = 24807132),
+                    Container(ISRC = 'JPG750800704',
+                              cuesheet_track_index = [Container(offset = 0, point_number = 0), Container(offset = 135828, point_number = 1)],
+                              non_audio = False,
+                              pre_emphasis = False,
+                              track_number = 4,
+                              track_offset = 28954296),
+                    Container(ISRC = 'JPG750800705',
+                              cuesheet_track_index = [Container(offset = 0, point_number = 1)],
+                              non_audio = False,
+                              pre_emphasis = False,
+                              track_number = 5,
+                              track_offset = 31019352),
+                    Container(ISRC = 'JPG750800706',
+                              cuesheet_track_index = [Container(offset = 0, point_number = 1)],
+                              non_audio = False,
+                              pre_emphasis = False,
+                              track_number = 6,
+                              track_offset = 40957728),
+                    Container(ISRC = 'JPG750800707',
+                              cuesheet_track_index = [Container(offset = 0, point_number = 1)],
+                              non_audio = False,
+                              pre_emphasis = False,
+                              track_number = 7,
+                              track_offset = 56111664),
+                    Container(ISRC = 'JPG750800708',
+                              cuesheet_track_index = [Container(offset = 0, point_number = 0),
+                                                      Container(offset = 93492, point_number = 1)],
+                              non_audio = False,
+                              pre_emphasis = False,
+                              track_number = 8,
+                              track_offset = 69543348),
+                    Container(ISRC = 'JPG750800219',
+                              cuesheet_track_index = [Container(offset = 0, point_number = 1)],
+                              non_audio = False,
+                              pre_emphasis = False,
+                              track_number = 9,
+                              track_offset = 80537184),
+                    Container(ISRC = 'JPG750800722',
+                              cuesheet_track_index = [Container(offset = 0, point_number = 0),
+                                                      Container(offset = 78792, point_number = 1)],
+                              non_audio = False,
+                              pre_emphasis = False,
+                              track_number = 10,
+                              track_offset = 81398604),
+                    Container(ISRC = 'JPG750800709',
+                              cuesheet_track_index = [Container(offset = 0, point_number = 1)],
+                              non_audio = False,
+                              pre_emphasis = False,
+                              track_number = 11,
+                              track_offset = 91970256),
+                    Container(ISRC = 'JPG750800290',
+                              cuesheet_track_index = [Container(offset = 0, point_number = 1)],
+                              non_audio = False,
+                              pre_emphasis = False,
+                              track_number = 12,
+                              track_offset = 99292032),
+                    Container(ISRC = 'JPG750800218',
+                              cuesheet_track_index = [Container(offset = 0, point_number = 1)],
+                              non_audio = False,
+                              pre_emphasis = False,
+                              track_number = 13,
+                              track_offset = 110377008),
+                    Container(ISRC = 'JPG750800710',
+                              cuesheet_track_index = [Container(offset = 0, point_number = 0),
+                                                      Container(offset = 75264, point_number = 1)],
+                              non_audio = False,
+                              pre_emphasis = False,
+                              track_number = 14,
+                              track_offset = 113040060),
+                    Container(ISRC = 'JPG750800217',
+                              cuesheet_track_index = [Container(offset = 0, point_number = 1)],
+                              non_audio = False,
+                              pre_emphasis = False,
+                              track_number = 15,
+                              track_offset = 117804036),
+                    Container(ISRC = 'JPG750800531',
+                              cuesheet_track_index = [Container(offset = 0, point_number = 1)],
+                              non_audio = False,
+                              pre_emphasis = False,
+                              track_number = 16,
+                              track_offset = 120531180),
+                    Container(ISRC = 'JPG750800225',
+                              cuesheet_track_index = [Container(offset = 0, point_number = 1)],
+                              non_audio = False,
+                              pre_emphasis = False,
+                              track_number = 17,
+                              track_offset = 133673568),
+                    Container(ISRC = 'JPG750800711',
+                              cuesheet_track_index = [Container(offset = 0, point_number = 0),
+                                                      Container(offset = 98196, point_number = 1)],
+                              non_audio = False,
+                              pre_emphasis = False,
+                              track_number = 18,
+                              track_offset = 143108616),
+                    Container(ISRC = 'JPG750800180',
+                              cuesheet_track_index = [Container(offset = 0, point_number = 0),
+                                                      Container(offset = 81732, point_number = 1)],
+                              non_audio = False,
+                              pre_emphasis = False,
+                              track_number = 19,
+                              track_offset = 156345084),
+                    Container(ISRC = 'JPG750800712',
+                              cuesheet_track_index = [Container(offset = 0, point_number = 0),
+                                                      Container(offset = 197568, point_number = 1)],
+                              non_audio = False,
+                              pre_emphasis = False,
+                              track_number = 20,
+                              track_offset = 172052328),
+                    Container(ISRC = 'JPG750800713',
+                              cuesheet_track_index = [Container(offset = 0, point_number = 0),
+                                                      Container(offset = 135240, point_number = 1)
+],
+                              non_audio = False,
+                              pre_emphasis = False,
+                              track_number = 21,
+                              track_offset = 178101084),
+                    Container(ISRC = 'JPG750800714',
+                              cuesheet_track_index = [Container(offset = 0, point_number = 1)],
+                              non_audio = False,
+                              pre_emphasis = False,
+                              track_number = 22,
+                              track_offset = 189107268),
+                    Container(ISRC = '\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00',
+                              cuesheet_track_index = [],
+                              non_audio = False,
+                              pre_emphasis = False,
+                              track_number = 170,
+                              track_offset = 191795016)],
+                      is_cd = True, lead_in_samples = 88200)]
+
+    def sheets(self):
+        for test_sheet in self.test_sheets:
+            tempflacfile = tempfile.NamedTemporaryFile(suffix=self.suffix)
+            try:
+                tempflac = audiotools.FlacAudio.from_pcm(
+                    tempflacfile.name,
+                    EXACT_BLANK_PCM_Reader(191795016),
+                    "1")
+                metadata = tempflac.get_metadata()
+                metadata.cuesheet = audiotools.FlacCueSheet(test_sheet)
+                tempflac.set_metadata(metadata)
+
+                sheet = audiotools.open(tempflacfile.name).get_metadata().cuesheet
+            finally:
+                tempflacfile.close()
+            yield sheet
 
 ############
 #END TESTS
