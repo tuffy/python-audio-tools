@@ -1794,7 +1794,7 @@ def read_sheet(filename):
     import cue
 
     try:
-        #try TOC first, since it's CD_DA header makes it easier to spot
+        #try TOC first, since its CD_DA header makes it easier to spot
         return toc.read_tocfile(filename)
     except SheetException:
         return cue.read_cuesheet(filename)

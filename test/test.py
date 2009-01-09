@@ -76,6 +76,17 @@ class BLANK_PCM_Reader:
     def close(self):
         pass
 
+class EXACT_BLANK_PCM_Reader(BLANK_PCM_Reader):
+    def __init__(self, pcm_frames,
+                 sample_rate=44100,channels=2,bits_per_sample=16):
+        self.length = pcm_frames * sample_rate
+        self.sample_rate = sample_rate
+        self.channels = channels
+        self.bits_per_sample = bits_per_sample
+
+        self.total_size = pcm_frames * channels * bits_per_sample / 8
+        self.current_size = self.total_size
+
 #this sends out random samples instead of a bunch of identical ones
 class RANDOM_PCM_Reader(BLANK_PCM_Reader):
     def __init__(self, length,
@@ -2417,6 +2428,191 @@ class testtracknumber(unittest.TestCase):
             os.rmdir(dir01)
             os.rmdir(dir02)
             os.rmdir(dir03)
+
+class testcuesheet(unittest.TestCase):
+    def setUp(self):
+        import audiotools.cue
+
+        self.sheet_class = audiotools.cue.Cuesheet
+        self.test_sheets = [
+"""eJydlt1q20AQRu8NfofFDxB2Zv/nTshyUBvHQVHa3rppKCbFDqmbtG/f3VqQzZjtxYKvPiOdz6Od
+Iw/dWiz727ZfCm1ArpZg57Mhhu1mve6uR7Hofm/vj82vb7tDe3j6I17kRQhPX/ViPmubsbnaXMYL
+vUS0xqpgzHx20w2rzbDuBrG42z/uD6970Twfdz+P8ZKxH6+6t3zcHX88xHjVp3TY7r8/XLxuXxbi
+c/Opm8+EGIem/SgkiOZu2W9SErPTPcbn7f2jhMUp/B80fd/fDq34cHPpjPRSgldTfL3svqT7S0n/
+PhkUi1CsgiIgh2pSnpTJoKoIVZVQ/Q4qhQyESCrwLjE2pGzWRRe76KouTvIuIMlY0nwuKQ6kfdbF
+FLuYyi6GQ4G0IgwZ1BahthJqOdQQ+jiDDOqKUFcJdQyKQICRm0F9EeoroZ49arQElhzwLjEOJPMV
+CMUuoXIF+FlXkhI3GwDIEhRk3QAQ2QAiVBsy/ryLdtMKTF2KtoM62zl5NgCduiiXQYu2g0rbBcmh
+jhRM4pmgRdtBre34eHXcaiSbLRgUtQaVWgPJHnUkJpXwAaRYk1NZl6LWoE5rCHzZIzFOHfPzVdQa
+1GnNKL7V6XApguxtCkWtQZ3WELnAjUy/FCCDFrUGlVoDYI/a6CgvOlNsih2hzroUtQZ1WgPPj51J
+IqWzFUixmyqeumDRdlhpO+C2s3Eocdn5wUixIZt3KdoOK20HindxcShxI3mX+IDg3b8MLEoQ6yTo
+2L8vEA7SCz8do7+XaqGL""".decode('base64').decode('zlib')]
+
+        self.suffix = '.cue'
+
+    def testreadsheet(self):
+        for test_sheet in self.test_sheets:
+            sheet_file = tempfile.NamedTemporaryFile(suffix=self.suffix)
+            try:
+                sheet_file.write(test_sheet)
+                sheet_file.flush()
+                sheet = audiotools.read_sheet(sheet_file.name)
+
+                self.assertEqual(isinstance(sheet,self.sheet_class),True)
+                self.assertEqual(sheet.catalog(),'4580226563955')
+                self.assertEqual(sorted(sheet.ISRCs().items()),
+                                 [(1, 'JPG750800183'),
+                                  (2, 'JPG750800212'),
+                                  (3, 'JPG750800214'),
+                                  (4, 'JPG750800704'),
+                                  (5, 'JPG750800705'),
+                                  (6, 'JPG750800706'),
+                                  (7, 'JPG750800707'),
+                                  (8, 'JPG750800708'),
+                                  (9, 'JPG750800219'),
+                                  (10, 'JPG750800722'),
+                                  (11, 'JPG750800709'),
+                                  (12, 'JPG750800290'),
+                                  (13, 'JPG750800218'),
+                                  (14, 'JPG750800710'),
+                                  (15, 'JPG750800217'),
+                                  (16, 'JPG750800531'),
+                                  (17, 'JPG750800225'),
+                                  (18, 'JPG750800711'),
+                                  (19, 'JPG750800180'),
+                                  (20, 'JPG750800712'),
+                                  (21, 'JPG750800713'),
+                                  (22, 'JPG750800714')])
+                self.assertEqual(list(sheet.indexes()),
+                                 [(0,),(20885,),(42189, 42411),(49242, 49473),
+                                  (52754,),(69656,),(95428,),(118271, 118430),
+                                  (136968,),(138433, 138567),(156412,),
+                                  (168864,),(187716,),(192245, 192373),
+                                  (200347,),(204985,),(227336,),
+                                  (243382, 243549),(265893, 266032),
+                                  (292606, 292942),(302893, 303123),(321611,)])
+                self.assertEqual(list(sheet.pcm_lengths(191795016)),
+                                 [12280380, 12657288, 4152456, 1929228,
+                                  9938376, 15153936, 13525176, 10900344,
+                                  940212, 10492860, 7321776, 11084976,
+                                  2738316, 4688712, 2727144, 13142388,
+                                  9533244, 13220004, 15823080, 5986428,
+                                  10870944, 2687748])
+                self.assertEqual(sheet.single_file_type(),True)
+
+            finally:
+                sheet_file.close()
+
+    def testconvertsheet(self):
+        import audiotools.cue
+        import audiotools.toc
+
+        for test_sheet in self.test_sheets:
+            sheet_file = tempfile.NamedTemporaryFile(suffix=self.suffix)
+            try:
+                sheet_file.write(test_sheet)
+                sheet_file.flush()
+                sheet = audiotools.read_sheet(sheet_file.name)
+
+                #convert to CUE and test for equality
+                temp_cue_file = tempfile.NamedTemporaryFile(suffix='.cue')
+                try:
+                    temp_cue_file.write(audiotools.cue.Cuesheet.file(
+                            sheet,os.path.basename(temp_cue_file.name)))
+                    temp_cue_file.flush()
+
+                    cue_sheet = audiotools.read_sheet(temp_cue_file.name)
+
+                    self.assertEqual(sheet.catalog(),cue_sheet.catalog())
+                    self.assertEqual(sheet.single_file_type(),
+                                     cue_sheet.single_file_type())
+                    self.assertEqual(list(sheet.indexes()),
+                                     list(cue_sheet.indexes()))
+                    self.assertEqual(list(sheet.pcm_lengths(191795016)),
+                                     list(cue_sheet.pcm_lengths(191795016)))
+                    self.assertEqual(sorted(sheet.ISRCs.items()),
+                                     sorted(cue_sheet.ISRCs.items()))
+                finally:
+                    temp_cue_file.close()
+
+                #convert to TOC and test for equality
+                temp_toc_file = tempfile.NamedTemporaryFile(suffix='.toc')
+                try:
+                    temp_toc_file.write(audiotools.toc.TOCFile.file(
+                            sheet,os.path.basename(temp_toc_file.name)))
+                    temp_toc_file.flush()
+
+                    toc_sheet = audiotools.read_sheet(temp_toc_file.name)
+
+                    self.assertEqual(sheet.catalog(),toc_sheet.catalog())
+                    self.assertEqual(sheet.single_file_type(),
+                                     toc_sheet.single_file_type())
+                    self.assertEqual(list(sheet.indexes()),
+                                     list(toc_sheet.indexes()))
+                    self.assertEqual(list(sheet.pcm_lengths(191795016)),
+                                     list(toc_sheet.pcm_lengths(191795016)))
+                    self.assertEqual(sorted(sheet.ISRCs().items()),
+                                     sorted(toc_sheet.ISRCs().items()))
+                finally:
+                    temp_toc_file.close()
+
+                #convert to embedded FLAC cuesheet and test for equality
+                temp_flac_file = tempfile.NamedTemporaryFile(suffix='.flac')
+                try:
+                    flac = audiotools.FlacAudio.from_pcm(
+                        temp_flac_file.name,
+                        EXACT_BLANK_PCM_Reader(191795016),
+                        "1")
+                    metadata = flac.get_metadata()
+                    metadata.cuesheet = audiotools.FlacCueSheet.converted(
+                        sheet,flac.total_frames(),flac.sample_rate())
+                    flac.set_metadata(metadata)
+                    flac_sheet = audiotools.open(temp_flac_file.name).get_metadata().cuesheet
+
+                    self.assertEqual(sheet.catalog(),flac_sheet.catalog())
+                    self.assertEqual(sheet.single_file_type(),
+                                     flac_sheet.single_file_type())
+                    self.assertEqual(list(sheet.indexes()),
+                                     list(flac_sheet.indexes()))
+                    self.assertEqual(list(sheet.pcm_lengths(191795016)),
+                                     list(flac_sheet.pcm_lengths(191795016)))
+                    self.assertEqual(sorted(sheet.ISRCs().items()),
+                                     sorted(flac_sheet.ISRCs().items()))
+                finally:
+                    temp_flac_file.close()
+            finally:
+                sheet_file.close()
+
+class testtocsheet(testcuesheet):
+    def setUp(self):
+        import audiotools.toc
+
+        self.sheet_class = audiotools.toc.TOCFile
+        self.test_sheets = [
+"""eJytlr1uG0EMhPt7isU9QExyf4/d4aTYShRJkM4IUglC0qULguT1Q15c7MJbspIhGPhmR8Mhl919
+Nw/DMq/z8fzsxhALEKWY/BTjOAxPT2799fj+0+GwXufls5tfd4fzcDq75Xz5pp+X6/6+/3J5mW+H
+27B+Pd+Xl/l02h/v///zcLsubvx0ec4RCgAWPw4fD8e9G388fj8+/H38GR04COwL+zhURLIhElKH
++MbTP0JgCDXYW4FDBzwxEfvJAbIXsB9u63xdHQADcaZaR7DRkaGjA4Fj4kAKDokTVTo8Q6p1RCsd
+saMDOXgm8cNziEy5BicrcOqABVbEAwdRFYQGnK3A+T2YkJGErWBNn6/BxQpcOuDEmDijZn6LYRM9
+mGodk9UITO91eGCVUhSMEweowQhGDlBn6oUsGYtFwxYnjqFyAOWbRohR4WXoWRBUiM9OjJfpg2bs
+0ar4JuiQM3vc+iewzF47b2jWfJ34BZl04pS0+cRwat226jrsvFmw2jGg5FDU7eZnbwYQjcqOsDP6
+smnEfKLNAuTUko3aLnrskCVtnnFbtFEswIZsVHdEnYKPoG9G1JkTCbklW/Uddt4cpeakYvNWtFI1
+2PQdtsk3KjwsnfxJ1YgE3Bpfli76Jn+puT3Iqv96V0+KCvTotvfLGqqESDSbpU9W/Yedgy8JvMhQ
+vq2i4Nvroz0Djeow986xjHoFaDq3UtJ0/gOiA7rW""".decode('base64').decode('zlib'),
+"""eJytl+tq20AQhX9bT7HoAeKd2Zs0lFLhOMZtbigK9F9wHJGGNHZxlKal+N07uzGkcaDSwhpjzK7Q
+fjrMnDMaj8WsXbWbRdfeiOvfYvnUYrdeCnmA2Xgs6vbHetOJ66fbR9GtxYebdvOw6B6X3z7dPvw6
+uGk/ZpOqqY7PZiLXppCI1lhVGpNnk8Orw8r/NtOvjfiTCf4cV6ezy2o2vTqpznlpJAWJ6WnY2r65
+QEi/3cyb46nIL1f3q/XzSjR33fc2z0bn0/rorD6Z1q9b1aa7e+zy3Z22WdbU1eSLqC4P52dhcX5R
+T0T++XzmjCykhEK9XPzKN3p7tt/cnd9sFst7CfnL4n9OH23/eZRw9tHc36BerG7bg+fFz1xISeEr
+pCZVkDK9qAgYi4ppUHeE/o/WJPUAVB2LqtKgloRIqhQSSDGqCtdeNFXdBMWRHPbSOxlNr5PQgyRj
+SaNH1ZYs7tErknYAvYmlN2nogbQiZO0VaUPoBqDaWFSbBpXxCtZaSOOZ9RBUF4vqkqAiECDTelTf
+f2oAahGLWqRBtQSWHHifCI34rvlkOcA6ylj6Mgm9kuQfoPCoUJKW/UJjrCGDTIXKDWYK32mmJKP3
+hAZeHVAmsUJDmuRjX2Z65QQXBLuc7DdkLGUsaprkU44UhDjRxPY2wNIQYpsP0iSfZvdFstYnH9cA
+DigAiFY1Tcwxpw8K6VF14QvgXfn2uxxCrCFDmpjjCYhrAjEIDWT7UY2CWNQ0MefbTBGEGdOw0NCv
+KsYOD5Am5oz0qgJ4S2Nm14/qIFrVNDFnON04i11IZM4KeBdz0O8TUEQ3X5qY47xgbgjzBA+bsD8h
+c0X3z/cu+lUE0ySfNZ5QgQgq82S0R8+9OWBChth3PkyTfJaJC/a+3YCk97Xn+b7/NdBFv1thmjB0
+4IdmLve//kjXkg==""".decode('base64').decode('zlib')]
+
+        self.suffix = '.toc'
 
 ############
 #END TESTS
