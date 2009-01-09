@@ -63,7 +63,7 @@ class XMCD:
         return self.values.items()
 
     @classmethod
-    def __key_digits__(cls,key):
+    def key_digits(cls,key):
         import re
 
         d = re.search(r'\d+',key)
@@ -81,20 +81,20 @@ class XMCD:
         def by_pair(p1,p2):
             if (p1[0].rstrip(string.digits) in key_order):
                 p1 = (key_order.index(p1[0].rstrip(string.digits)),
-                      self.__key_digits__(p1[0]),
+                      self.key_digits(p1[0]),
                       p1[0])
             else:
                 p1 = (len(key_order),
-                      self.__key_digits__(p1[0]),
+                      self.key_digits(p1[0]),
                       p1[0])
 
             if (p2[0].rstrip(string.digits) in key_order):
                 p2 = (key_order.index(p2[0].rstrip(string.digits)),
-                      self.__key_digits__(p2[0]),
+                      self.key_digits(p2[0]),
                       p2[0])
             else:
                 p2 = (len(key_order),
-                      self.__key_digits__(p2[0]),
+                      self.key_digits(p2[0]),
                       p2[0])
 
             return cmp(p1,p2)
@@ -216,7 +216,7 @@ class XMCD:
 
         for key in self.keys():
             if (key.startswith('TTITLE')):
-                tracknum = self.__key_digits__(key)
+                tracknum = self.key_digits(key)
                 if (tracknum == -1):
                     continue
 

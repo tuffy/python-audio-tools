@@ -17,168 +17,329 @@
 #along with this program; if not, write to the Free Software
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
+import sys
+import os.path
 
+try:
+    import gtk
+    import gtk.gdk
+    import gtk.glade
+    import gobject
+    import pango
+except ImportError:
+    print >>sys.stderr,"*** PyGTK2 is required"
+    sys.exit(1)
+
+#import xmcd
 import audiotools
-import sys,subprocess,optparse,os.path
+
+#   columns
+(
+  COLUMN_NUMBER,
+  COLUMN_NAME,
+  COLUMN_EDITABLE
+) = range(3)
+
+class EditXMCD:
+    #track_data is a track_id->(name,artist,extra) dict
+    def __init__(self,xml):
+        self.xml = xml
+
+        # create tree view
+        self.track_model = self.__create_model()
+        treeview = xml.get_widget("track_names")
+        treeview.set_model(self.track_model)
+        treeview.set_rules_hint(True)
+        treeview.get_selection().set_mode(gtk.SELECTION_SINGLE)
+        self.__add_columns(treeview,"Name",self.on_field_edited)
+
+        self.artist_model = self.__create_model()
+        treeview = xml.get_widget("track_artists")
+        treeview.set_model(self.artist_model)
+        treeview.set_rules_hint(True)
+        treeview.get_selection().set_mode(gtk.SELECTION_SINGLE)
+        self.__add_columns(treeview,"Artist",self.on_field_edited)
+
+        self.extra_model = self.__create_model()
+        treeview = xml.get_widget("track_extras")
+        treeview.set_model(self.extra_model)
+        treeview.set_rules_hint(True)
+        treeview.get_selection().set_mode(gtk.SELECTION_SINGLE)
+        self.__add_columns(treeview,"Extra",self.on_field_edited)
+
+        self.xmcd = None
+        self.filename = None
+        self.edited = False
+
+    def __create_model(self):
+        return gtk.ListStore(
+            gobject.TYPE_INT,
+            gobject.TYPE_STRING,
+            gobject.TYPE_BOOLEAN)
+
+    #album_name,artist_name,album_year,album_extra should be unicode strings
+    #tracks,artists,extras should be [track_number,unicode] pairs
+    def set_data(self,
+                 album_name,artist_name,album_year,album_extra,
+                 tracks,artists,extras):
+        self.xml.get_widget("album_name").set_text(album_name)
+        self.xml.get_widget("artist_name").set_text(artist_name)
+        self.xml.get_widget("album_year").set_text(album_year)
+        self.xml.get_widget("album_extra").set_text(album_extra)
+
+        for (model,data) in zip([self.track_model,
+                                 self.artist_model,
+                                 self.extra_model],
+                                [tracks,artists,extras]):
+            model.clear()
+            for item in data:
+                iter = model.append()
+
+                model.set(iter,
+                          COLUMN_NUMBER, item[COLUMN_NUMBER],
+                          COLUMN_NAME, item[COLUMN_NAME],
+                          COLUMN_EDITABLE, True)
+
+    def __add_columns(self, treeview, name_header, edited_method):
+        model = treeview.get_model()
+
+        # number column
+        renderer = gtk.CellRendererText()
+        renderer.set_property('xalign',1.0)
+        renderer.set_property('alignment',pango.ALIGN_RIGHT)
+        renderer.set_property('family','Monospace')
+        renderer.set_property('weight',800)
+        renderer.set_data("column", COLUMN_NUMBER)
+        column = gtk.TreeViewColumn("#", renderer, text=COLUMN_NUMBER)
+        treeview.append_column(column)
+
+        # name column
+        renderer = gtk.CellRendererText()
+        renderer.connect("edited", edited_method, model)
+        renderer.set_data("column", COLUMN_NAME)
+        column = gtk.TreeViewColumn(name_header, renderer, text=COLUMN_NAME,
+                                    editable=COLUMN_EDITABLE)
+        treeview.append_column(column)
 
 
+    def on_field_edited(self, cell, path_string, new_text, model):
 
-#asks for metadata from the user via the "dialog" program
-#requires a list of track lengths (in CD frames)
-#defaults are taken from an AlbumMetaData object, if present
+        iter = model.get_iter_from_string(path_string)
+        path = model.get_path(iter)[0]
+        column = cell.get_data("column")
 
-#returns a list of AudioFile-compatible objects with set metadata
-#or returns None if the user cancels
-def get_metadata(track_lengths, album_meta_data=None):
-    if (album_meta_data == None):
-        album_meta_data = audiotools.AlbumMetaData(
-            [audiotools.MetaData(track_number=i + 1) for i in
-             xrange(len(track_lengths))])
+        if column == COLUMN_NAME:
+            old_text = model.get(iter,column)[0]
+            model.set(iter, column, new_text)
 
-    artist_name = audiotools.__most_numerous__(
-        [m.artist_name for m in album_meta_data.values()])
+        if (old_text != new_text):
+            self.edited = True
+            self.set_title()
 
-    total_tracks = len(track_lengths)
+    def cut(self,caller):
+        widget = self.xml.get_widget("window").get_focus()
+        if (hasattr(widget,"cut_clipboard")):
+            widget.cut_clipboard()
 
-    form = []
+    def copy(self,caller):
+        widget = self.xml.get_widget("window").get_focus()
+        if (hasattr(widget,"copy_clipboard")):
+            widget.copy_clipboard()
 
-    form += ['--backtitle','XMCD Data']
-    form += ['--inputbox','Album Name',str(8),str(1024),
-             audiotools.__most_numerous__(
-            [m.album_name for m in album_meta_data.values()])]
+    def paste(self,caller):
+        widget = self.xml.get_widget("window").get_focus()
+        if (hasattr(widget,"paste_clipboard")):
+            widget.paste_clipboard()
 
-    form += ['--backtitle','XMCD Data']
-    form += ['--inputbox','Artist Name',str(8),str(1024),
-             artist_name]
+    def clear(self,caller):
+        widget = self.xml.get_widget("window").get_focus()
+        if (hasattr(widget,"delete_selection")):
+            widget.delete_selection()
 
-    form += ['--backtitle','XMCD Data']
-    form += ['--form','Track Names',
-             str(18),str(60),str(total_tracks)]
+    def xmcd_update(self):
+        if (self.xmcd is None):
+            return
 
-    for i in album_meta_data.keys():
-        form += ["Track %2.2d " % (i), str(i), str(1),
-                 album_meta_data[i].track_name,str(i), str(12),
-                 str(50), str(1024)]
+        self.xmcd['DTITLE'] = u"%s / %s" % \
+            (self.xml.get_widget("artist_name").get_text().decode('utf-8'),
+             self.xml.get_widget("album_name").get_text().decode('utf-8'))
+        self.xmcd['DYEAR'] = self.xml.get_widget("album_year").get_text().decode('utf-8')
+        self.xmcd['EXTDD'] = self.xml.get_widget("album_extra").get_text().decode('utf-8')
 
-    form += ['--backtitle','XMCD Data']
-    form += ['--visit-items',
-             '--form','Artist Names (if different)',
-             str(18),str(60),str(total_tracks)]
-    for i in album_meta_data.keys():
-        if (album_meta_data[i].artist_name != artist_name):
-            form += ["Track %2.2d " % (i), str(i), str(1),
-                     album_meta_data[i].artist_name,str(i), str(12),
-                     str(50), str(1024)]
+        for i in xrange(len(self.track_model)):
+            track_name = self.track_model[i][1].decode('utf-8')
+            artist_name = self.artist_model[i][1].decode('utf-8')
+            if (len(artist_name) > 0):
+                self.xmcd['TTITLE%s' % (i)] = u"%s / %s" % (artist_name,
+                                                            track_name)
+            else:
+                self.xmcd['TTITLE%s' % (i)] = track_name
+
+        for i in xrange(len(self.extra_model)):
+            self.xmcd['EXTT%s' % (i)] = self.extra_model[i][1].decode('utf-8')
+
+    def new(self,caller):
+        self.xml.get_widget("selecttracks").run()
+
+    def from_tracks(self,dialog,signal):
+        dialog.hide()
+        if (signal == -5):
+            self.read_xmcd(audiotools.XMCD.from_files(
+                    audiotools.open_files(dialog.get_filenames())))
+            self.edited = False
+            self.filename = None
+            self.set_title()
+
+    def save(self,caller):
+        if (self.xmcd is None):
+            return
+        elif (self.filename is None):
+            return self.saveas(caller)
+
+        self.xmcd_update()
+        f = open(self.filename,'wb')
+        f.write(self.xmcd.build())
+        f.close()
+        self.edited = False
+        self.set_title()
+
+    def saveas(self,caller):
+        self.xml.get_widget("filesaver").run()
+
+    def file_savedas(self,dialog,signal):
+        dialog.hide()
+        if (signal == -5):
+            self.filename = dialog.get_filename()
+            f = open(self.filename,'wb')
+            f.write(self.xmcd.build())
+            f.close()
+            self.edited = False
+            self.set_title()
+
+    def open(self,caller):
+        self.xml.get_widget("filechooser").run()
+
+    def opened(self,dialog,signal):
+        dialog.hide()
+        if (signal == -5):
+            self.read_file(dialog.get_filename())
+
+    def read_file(self,filename):
+        self.filename = filename
+        try:
+            self.read_xmcd(audiotools.XMCD.read(filename))
+        except audiotools.XMCDException:
+            #FIXME - throw an error dialog
+            print >>sys.stderr,"*** Error opening %s" % (filename)
+        except IOError:
+            print >>sys.stderr,"*** Error opening %s" % (filename)
+
+    def read_xmcd(self,xmcd):
+        self.xmcd = xmcd
+
+        ttitle = self.xmcd.get('DTITLE',u'')
+        if (u' / ' in ttitle):
+            (album_artist,album_name) = ttitle.split(u' / ',1)
         else:
-            form += ["Track %2.2d " % (i), str(i), str(1),
-                     u"",str(i), str(12),
-                     str(50), str(255)]
-
-    sub = subprocess.Popen([audiotools.BIN['dialog']] + form,
-                           stderr=subprocess.PIPE)
-
-    data = sub.stderr.read()
-    sub.wait()
-    
-    try:
-        (album,artist,track_names,track_artists) = data.split('\x09')
-        album = album.decode('utf-8')
-        artist = artist.decode('utf-8')
-        track_names = [s.decode('utf-8') for s in 
-                       track_names.split('\x0A')[0:-1]]
-        track_artists = [s.decode('utf-8') for s in
-                         track_artists.split('\x0A')[0:-1]]
+            album_name = ttitle
+            album_artist = u''
+        year = self.xmcd.get('DYEAR',u'')
+        extra = self.xmcd.get('EXTD',u'')
 
         tracks = []
+        artists = []
+        extras = []
 
-        for (tracknum, tracklength, trackname, trackartist) in zip(
-            range(len(track_lengths)), track_lengths, 
-            track_names, track_artists):
-            if (trackartist.strip() == ""):  #no artist, so take default
-                tracks.append(audiotools.DummyAudioFile(
-                        tracklength,
-                        audiotools.MetaData(track_name=trackname,
-                                            track_number=tracknum + 1,
-                                            album_name=album,
-                                            artist_name=artist)))
+        for key in self.xmcd.keys():
+            if (key.startswith('TTITLE')):
+                ttitle = self.xmcd[key]
+                tracknum = audiotools.XMCD.key_digits(key)
+                if (tracknum == -1):
+                    continue
+                else:
+                    tracknum += 1
+                if (u' / ' in ttitle):
+                    (artist_name,track_name) = ttitle.split(u' / ',1)
+                    tracks.append([tracknum,track_name])
+                    artists.append([tracknum,artist_name])
+                else:
+                    tracks.append([tracknum,ttitle])
+                    artists.append([tracknum,u''])
+            elif (key.startswith('EXTT')):
+                extt = self.xmcd[key]
+                tracknum = audiotools.XMCD.key_digits(key)
+                if (tracknum == -1):
+                    continue
+                else:
+                    tracknum += 1
+                extras.append([tracknum,extt])
+
+        tracks.sort()
+        artists.sort()
+        extras.sort()
+
+        self.set_data(album_name,album_artist,year,extra,
+                      tracks,artists,extras)
+
+        self.edited = False
+        self.set_title()
+
+    def set_title(self):
+        if (self.edited):
+            edited = "*"
+        else:
+            edited = ""
+
+        if (self.filename is None):
+            self.xml.get_widget("window").set_title(
+                "%s<unnamed> - editxmcd" % (edited))
+        else:
+            (directory,filename) = os.path.split(self.filename)
+            if (len(directory) > 0):
+                self.xml.get_widget("window").set_title(
+                    "%s%s (%s) - editxmcd" % (edited,filename,directory))
             else:
-                tracks.append(audiotools.DummyAudioFile(
-                        tracklength,
-                        audiotools.MetaData(track_name=trackname,
-                                            track_number=tracknum + 1,
-                                            album_name=album,
-                                            artist_name=trackartist)))
+                self.xml.get_widget("window").set_title(
+                    "%s%s - editxmcd" % (edited,filename))
 
-        return tracks
-
-    except ValueError:
-        return None
-
-def track_lengths_from_xmcd_file(filename):
-    import re,string
-
-    OFFSET = re.compile(r'#\s*\d+\s*')
-    DISC_LENGTH = re.compile(r'#.*\d+ seconds\s*')
-
-    f = open(filename,"r")
-    offsets = []
-    total_length = 0
-
-    for line in f.readlines():
-        if (OFFSET.match(line)):
-            offsets.append(int(line.strip('#' + string.whitespace)))
-        elif (DISC_LENGTH.match(line)):
-            total_length = int(re.findall(r'\d+',line)[0])
-
-    return [end - start for (start,end) in zip(
-            offsets,offsets[1:] + [total_length * 75])]
-
+    def field_changed(self,widget):
+        self.edited = True
+        self.set_title()
 
 if (__name__ == '__main__'):
-    if (not audiotools.BIN.can_execute(audiotools.BIN['dialog'])):
-        print >>sys.stderr,"*** 'dialog' executable required"
-        sys.exit(1)
-    
-    parser = optparse.OptionParser(
-        '%prog [-x XMCD file] [track 1] [track 2] ...',
-        version="Python Audio Tools %s" % (audiotools.VERSION))
-    parser.add_option('-x','--xmcd',action='store',
-                      type='string',dest='xmcd')
+    gladepath = os.path.join(".","editxmcd.glade")
+    if (os.path.isfile(gladepath)):
+        xml = gtk.glade.XML(gladepath)
+    else:
+        gladepath = os.path.join(sys.prefix,"share/audiotools",
+                                 "editxmcd.glade")
+        if (os.path.isfile(gladepath)):
+            xml = gtk.glade.XML(gladepath)
+        else:
+            print >>sys.stderr,"*** editxmcd.glade not found"
+            sys.exit(1)
+    #xml = gtk.glade.XML("editxmcd.glade")
+    editxmcd = EditXMCD(xml)
 
-    (options,args) = parser.parse_args()
+    xml.signal_connect("gtk_main_quit",gtk.main_quit)
+    xml.signal_connect("on_cut1_activate",editxmcd.cut)
+    xml.signal_connect("on_copy1_activate",editxmcd.copy)
+    xml.signal_connect("on_paste1_activate",editxmcd.paste)
+    xml.signal_connect("on_delete1_activate",editxmcd.clear)
 
-    args = audiotools.open_files(args)
+    xml.signal_connect("on_new1_activate",editxmcd.new)
+    xml.signal_connect("tracks_selected",editxmcd.from_tracks)
+    xml.signal_connect("on_save_as1_activate",editxmcd.saveas)
 
-    if (options.xmcd == None):
-        print >>sys.stderr,"*** An XMCD file is required"
-        sys.exit(1)
+    xml.signal_connect("save_file",editxmcd.save)
+    xml.signal_connect("open_file",editxmcd.open)
+    xml.signal_connect("file_opened",editxmcd.opened)
+    xml.signal_connect("file_saved_as",editxmcd.file_savedas)
+    xml.signal_connect("field_changed",editxmcd.field_changed)
 
-    if (os.path.isfile(options.xmcd)):  #we're editing an existing file
-        track_lengths = track_lengths_from_xmcd_file(options.xmcd)
-        data = get_metadata(track_lengths,
-                            audiotools.parse_xmcd_file(options.xmcd))
-        
-        if (data != None):
-            xmcd_file = open(options.xmcd,"w")
-            xmcd_file.write(audiotools.build_xmcd_file(data))
-            print "* Wrote: %s" % (options.xmcd)
-    elif (len(args) > 0):               #we're building a file from tracks
-        metadata = [t.get_metadata() for t in args]
-        track_lengths = [t.cd_frames() for t in args]
+    #FIXME - add proper optparse support
+    if (len(sys.argv) > 1):
+        editxmcd.read_file(sys.argv[1])
 
-        if (None not in metadata):      #all the tracks have metadata
-            data = get_metadata(track_lengths,
-                                dict([(t.track_number(),
-                                       t.get_metadata()) for t in args]))
-        else:                           #at least one track doesn't
-            data = get_metadata(track_lengths)
-            
-        if (data != None):
-            xmcd_file = open(options.xmcd,"w")
-            xmcd_file.write(audiotools.build_xmcd_file(data))
-            print "* Wrote: %s" % (options.xmcd)
-    else:                               #no tracks, no files, nowhere to go
-        print >>sys.stderr,"*** Please specify audio tracks to build XMCD file"
-        sys.exit(1)
-    
+    gtk.main()
 
