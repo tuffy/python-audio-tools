@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 import re
-from audiotools import SheetException
+from audiotools import SheetException,parse_timestamp,build_timestamp
 
 ###################
 #Cue Sheet Parsing
@@ -281,6 +281,38 @@ class Cuesheet:
     def ISRCs(self):
         return dict([(track.number,track.ISRC()) for track in
                      self.tracks.values() if track.ISRC() is not None])
+
+    #takes a sheet-compatible object with
+    #catalog(), indexes() and ISRCs() methods
+    #along with a filename string
+    #returns a string of a newly-generated CUE sheet
+    @classmethod
+    def file(cls,sheet,filename):
+        import cStringIO
+
+        catalog = sheet.catalog()       #a catalog string, or None
+        indexes = list(sheet.indexes()) #a list of index tuples
+        ISRCs = sheet.ISRCs()           #a track_number->ISRC dict
+
+        data = cStringIO.StringIO()
+
+        if (catalog is not None):
+            data.write("CATALOG %s\r\n" % (catalog))
+        data.write("FILE \"%s\" WAVE\r\n" % (filename))
+
+        for (i,current) in enumerate(indexes):
+            tracknum = i + 1
+
+            data.write("  TRACK %2.2d AUDIO\r\n" % (tracknum))
+
+            if (tracknum in ISRCs.keys()):
+                data.write("    ISRC %s\r\n" % (ISRCs[tracknum]))
+
+            for (j,index) in enumerate(current):
+                data.write("    INDEX %2.2d %s\r\n" % (j,
+                                                       build_timestamp(index)))
+
+        return data.getvalue()
 
 class Track:
     def __init__(self, number, type):

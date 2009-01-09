@@ -1799,7 +1799,15 @@ def read_sheet(filename):
     except SheetException:
         return cue.read_cuesheet(filename)
 
+def parse_timestamp(s):
+    if (":" in s):
+        (m,s,f) = map(int,s.split(":"))
+        return (m * 60 * 75) + (s * 75) + f
+    else:
+        return int(s)
 
+def build_timestamp(i):
+    return "%2.2d:%2.2d:%2.2d" % ((i / 75) / 60,(i / 75) % 60,i % 75)
 
 
 #***ApeAudio temporarily removed***

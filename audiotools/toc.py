@@ -18,23 +18,13 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 import re
-from audiotools import SheetException
+from audiotools import SheetException,parse_timestamp,build_timestamp
 
 ###################
 #TOC Parsing
 ###################
 
 class TOCException(SheetException): pass
-
-def parse_timestamp(s):
-    if (":" in s):
-        (m,s,f) = map(int,s.split(":"))
-        return (m * 60 * 75) + (s * 75) + f
-    else:
-        return int(s)
-
-def build_timestamp(i):
-    return "%2.2d:%2.2d:%2.2d" % ((i / 75) / 60,(i / 75) % 60,i % 75)
 
 #takes an iterator of lines
 #parses the TOCFile lines
@@ -43,17 +33,17 @@ def build_timestamp(i):
 def parse(lines):
     TRACKLINE = re.compile(r'TRACK AUDIO')
 
-    line_number = 1
+    lines = list(lines)
 
-    try:
-        if (lines.next().rstrip() != 'CD_DA'):
-            raise TOCException("invalid TOC file header at line 1")
-    except StopIteration:
-        raise TOCException("invalid TOC file header at line 1")
+    if ('CD_DA' not in [line.strip() for line in lines]):
+        raise TOCException("no CD_DA TOC header found")
+
+    lines = iter(lines)
 
     toc = TOCFile()
     track = None
     track_number = 0
+    line_number = 0
 
     try:
         while (True):

@@ -2529,8 +2529,8 @@ IqWzFUixmyqeumDRdlhpO+C2s3Eocdn5wUixIZt3KdoOK20HindxcShxI3mX+IDg3b8MLEoQ6yTo
                                      list(cue_sheet.indexes()))
                     self.assertEqual(list(sheet.pcm_lengths(191795016)),
                                      list(cue_sheet.pcm_lengths(191795016)))
-                    self.assertEqual(sorted(sheet.ISRCs.items()),
-                                     sorted(cue_sheet.ISRCs.items()))
+                    self.assertEqual(sorted(sheet.ISRCs().items()),
+                                     sorted(cue_sheet.ISRCs().items()))
                 finally:
                     temp_cue_file.close()
 
