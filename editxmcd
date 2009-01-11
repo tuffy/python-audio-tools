@@ -213,7 +213,8 @@ class EditXMCD:
                             "Write Error")
 
     def saveas(self,caller):
-        self.xml.get_widget("filesaver").run()
+        if (self.xmcd is not None):
+            self.xml.get_widget("filesaver").run()
 
     def file_savedas(self,dialog,signal):
         dialog.hide()
@@ -336,6 +337,9 @@ class EditXMCD:
         if (response == -5):
             gtk.main_quit()
 
+    def display_about(self,caller):
+        self.xml.get_widget("about").run()
+
 if (__name__ == '__main__'):
     gladepath = os.path.join(".","editxmcd.glade")
     if (os.path.isfile(gladepath)):
@@ -369,6 +373,7 @@ if (__name__ == '__main__'):
 
     xml.signal_connect("filerror_done",editxmcd.error_closed)
     xml.signal_connect("confirmquit",editxmcd.confirm_quit)
+    xml.signal_connect("display_about",editxmcd.display_about)
 
     #FIXME - add proper optparse support
     if (len(sys.argv) > 1):
