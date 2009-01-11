@@ -140,7 +140,7 @@
   It should be possible to burn a selection of tracks, or a disc image,
   from a cuesheet with all its indexes/ISRC/catalog data intact
   by passing --cue to track2cd.
-* TODO Unify CUE/TOC support
+* DONE Unify CUE/TOC support
   Cuesheets and cdrdao TOC files are largely interchangeable.
   They both feature a listing of track offsets and, optionally,
   CD-TEXT data, ISRCs and so on.
@@ -157,7 +157,7 @@
    Since we're parsing CUE/TOC files anyway, this data can be used
    to build FLAC CUESHEET blocks directly instead of punting
    this task to metaflac.
-** TODO Add unit tests for TOC/CUE files, as well as embedded FLAC cuesheets
+** DONE Add unit tests for TOC/CUE files, as well as embedded FLAC cuesheets
 * TODO Replace magic numbers with named constants
   There's still a few instances of magic numbers in use,
   in the __flac__.py module, for instance.

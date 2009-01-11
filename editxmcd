@@ -121,6 +121,11 @@ class EditXMCD:
                                     editable=COLUMN_EDITABLE)
         treeview.append_column(column)
 
+    def file_error(self,error_message,error_title):
+        self.xml.get_widget("fileerrormessage").set_text(error_message)
+        error_dialog = self.xml.get_widget("fileerror")
+        error_dialog.set_title(error_title)
+        error_dialog.run()
 
     def on_field_edited(self, cell, path_string, new_text, model):
 
@@ -197,11 +202,15 @@ class EditXMCD:
             return self.saveas(caller)
 
         self.xmcd_update()
-        f = open(self.filename,'wb')
-        f.write(self.xmcd.build())
-        f.close()
-        self.edited = False
-        self.set_title()
+        try:
+            f = open(self.filename,'wb')
+            f.write(self.xmcd.build())
+            f.close()
+            self.edited = False
+            self.set_title()
+        except IOError:
+            self.file_error("unable to write \"%s\"" % (self.filename),
+                            "Write Error")
 
     def saveas(self,caller):
         self.xml.get_widget("filesaver").run()
@@ -210,11 +219,17 @@ class EditXMCD:
         dialog.hide()
         if (signal == -5):
             self.filename = dialog.get_filename()
-            f = open(self.filename,'wb')
-            f.write(self.xmcd.build())
-            f.close()
-            self.edited = False
-            self.set_title()
+            try:
+                f = open(self.filename,'wb')
+                f.write(self.xmcd.build())
+                f.close()
+                self.edited = False
+                self.set_title()
+            except IOError:
+                self.file_error("unable to write \"%s\"" % (self.filename),
+                                "Write Error")
+                self.filename = None
+                self.set_title()
 
     def open(self,caller):
         self.xml.get_widget("filechooser").run()
@@ -229,10 +244,11 @@ class EditXMCD:
         try:
             self.read_xmcd(audiotools.XMCD.read(filename))
         except audiotools.XMCDException:
-            #FIXME - throw an error dialog
-            print >>sys.stderr,"*** Error opening %s" % (filename)
+            self.file_error("Error opening \"%s\"" % (filename),
+                            "Read Error")
         except IOError:
-            print >>sys.stderr,"*** Error opening %s" % (filename)
+            self.file_error("Error opening \"%s\"" % (filename),
+                            "Read Error")
 
     def read_xmcd(self,xmcd):
         self.xmcd = xmcd
@@ -306,6 +322,9 @@ class EditXMCD:
         self.edited = True
         self.set_title()
 
+    def error_closed(self,dialog,response):
+        dialog.hide()
+
 if (__name__ == '__main__'):
     gladepath = os.path.join(".","editxmcd.glade")
     if (os.path.isfile(gladepath)):
@@ -336,6 +355,8 @@ if (__name__ == '__main__'):
     xml.signal_connect("file_opened",editxmcd.opened)
     xml.signal_connect("file_saved_as",editxmcd.file_savedas)
     xml.signal_connect("field_changed",editxmcd.field_changed)
+
+    xml.signal_connect("filerror_done",editxmcd.error_closed)
 
     #FIXME - add proper optparse support
     if (len(sys.argv) > 1):
