@@ -325,6 +325,17 @@ class EditXMCD:
     def error_closed(self,dialog,response):
         dialog.hide()
 
+    def quit(self,caller):
+        if (self.edited):
+            self.xml.get_widget("confirmquit").run()
+        else:
+            gtk.main_quit()
+
+    def confirm_quit(self,dialog,response):
+        dialog.hide()
+        if (response == -5):
+            gtk.main_quit()
+
 if (__name__ == '__main__'):
     gladepath = os.path.join(".","editxmcd.glade")
     if (os.path.isfile(gladepath)):
@@ -340,7 +351,7 @@ if (__name__ == '__main__'):
     #xml = gtk.glade.XML("editxmcd.glade")
     editxmcd = EditXMCD(xml)
 
-    xml.signal_connect("gtk_main_quit",gtk.main_quit)
+    xml.signal_connect("gtk_main_quit",editxmcd.quit)
     xml.signal_connect("on_cut1_activate",editxmcd.cut)
     xml.signal_connect("on_copy1_activate",editxmcd.copy)
     xml.signal_connect("on_paste1_activate",editxmcd.paste)
@@ -357,6 +368,7 @@ if (__name__ == '__main__'):
     xml.signal_connect("field_changed",editxmcd.field_changed)
 
     xml.signal_connect("filerror_done",editxmcd.error_closed)
+    xml.signal_connect("confirmquit",editxmcd.confirm_quit)
 
     #FIXME - add proper optparse support
     if (len(sys.argv) > 1):
