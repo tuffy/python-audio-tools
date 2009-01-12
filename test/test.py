@@ -2984,9 +2984,28 @@ MiJhSMKYhEEJoxKGJYxLGJgwssjIYkJemrtxazGfzeVx/w8vFHIR""".decode('base64').decode(
             finally:
                 xmcdfile.close()
 
-            #ensure that excessively long XMCD lines are wrapped properly
+        #ensure that excessively long XMCD lines are wrapped properly
+        xmcd = audiotools.XMCD({"TTITLE0":u"l" + (u"o" * 512) + u"ng title",
+                                "TTITLE1":u"track two",
+                                "TTITLE2":u"track three",
+                                "TTITLE4":u"track four",
+                                "TTTIEL5":u"track five"},
+                               OFFSETS,LENGTH)
+        xmcd2 = audiotools.XMCD.read_data(xmcd.build().decode('ISO-8859-1'))
+        self.assertEqual(dict(xmcd.items()),dict(xmcd2.items()))
+        self.assert_(max(map(len,cStringIO.StringIO(xmcd.build()).readlines())) < 80)
 
-            #ensure that UTF-8 multi-byte characters aren't split
+        #ensure that UTF-8 multi-byte characters aren't split
+        xmcd = audiotools.XMCD({"TTITLE0":u'\u30de\u30af\u30ed\u30b9' * 100,
+                                "TTITLE1":u"a" + (u'\u30de\u30af\u30ed\u30b9' * 100),
+                                "TTITLE2":u"ab" + (u'\u30de\u30af\u30ed\u30b9' * 100),
+                                "TTITLE4":u"abc" + (u'\u30de\u30af\u30ed\u30b9' * 100),
+                                "TTTIEL5":u"track tw\xf3"},
+                               OFFSETS,LENGTH)
+
+        xmcd2 = audiotools.XMCD.read_data(xmcd.build().decode('UTF-8'))
+        self.assertEqual(dict(xmcd.items()),dict(xmcd2.items()))
+        self.assert_(max(map(len,cStringIO.StringIO(xmcd.build()))) < 80)
 
 
 ############

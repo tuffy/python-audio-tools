@@ -27,6 +27,8 @@ from audiotools import VERSION,Con,cStringIO,sys,re,MetaData,AlbumMetaData,__mos
 class XMCDException(Exception): pass
 
 class XMCD:
+    LINE_LIMIT = 78
+
     #values is a list of key->value pairs
     #such as "TTITLE0":u"Track Name"
     #offsets is a list of track offset integers (in CD frames)
@@ -105,13 +107,33 @@ class XMCD:
             except UnicodeEncodeError:
                 return u.encode('utf-8')
 
+        def split_fields(pairs):
+            #returns index i which is less than l bytes from unicode string u
+            def max_chars(u,l):
+                for i in xrange(len(u.encode('utf-8')) + 1):
+                    if (len(u[0:i].encode('utf-8')) > l):
+                        return i - 1
+                else:
+                    return i
+
+            for (key,value) in pairs:
+                #line = u"%s=%s" % (key.decode('ascii'),value)
+                keylen = len(key) + len("=")
+                while ((keylen + len(value.encode('utf-8'))) > XMCD.LINE_LIMIT):
+                    #latin-1 lines might be shorter, but shouldn't be longer
+                    #UTF-8 assumes the worst case
+                    cut = max_chars(value,XMCD.LINE_LIMIT - len(key) - len('='))
+                    partial = value[0:cut]
+                    value = value[cut:]
+                    yield u"%s=%s" % (key.decode('ascii'),partial)
+
+                yield u"%s=%s" % (key.decode('ascii'),value)
+
         return encode(u"# xmcd\n#\n# Track frame offsets:\n%(offsets)s\n#\n# Disc length: %(length)s seconds\n#\n%(fields)s\n" % \
             {"offsets":u"\n".join(["#\t%s" % (offset)
                                    for offset in self.offsets]),
              "length":self.length,
-             #FIXME - overlong fields should be split
-             "fields":"\n".join([u"%s=%s" % (pair[0].decode('ascii'),pair[1])
-                                 for pair in sorted(self.items(),by_pair)])})
+             "fields":"\n".join(split_fields(sorted(self.items(),by_pair)))})
 
     @classmethod
     def read(cls, filename):
