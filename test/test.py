@@ -2874,7 +2874,10 @@ MiJhSMKYhEEJoxKGJYxLGJgwssjIYkJemrtxazGfzeVx/w8vFHIR""".decode('base64').decode(
                 xmcd = audiotools.XMCD.read(f.name)
                 self.assertEqual(length,xmcd.length)
                 self.assertEqual(offsets,xmcd.offsets)
-                self.assertEqual(dict(items),dict(xmcd.items()))
+                for (pair1,pair2) in zip(sorted(items),
+                                         sorted(xmcd.items())):
+                    self.assertEqual(pair1,pair2)
+                #self.assertEqual(dict(items),dict(xmcd.items()))
 
                 #check that building an XMCD file from values
                 #and reading it back in results in the same values
@@ -2886,7 +2889,9 @@ MiJhSMKYhEEJoxKGJYxLGJgwssjIYkJemrtxazGfzeVx/w8vFHIR""".decode('base64').decode(
                     xmcd2 = audiotools.XMCD.read(f2.name)
                     self.assertEqual(length,xmcd2.length)
                     self.assertEqual(offsets,xmcd2.offsets)
-                    self.assertEqual(dict(items),dict(xmcd2.items()))
+                    for (pair1,pair2) in zip(sorted(items),
+                                             sorted(xmcd2.items())):
+                        self.assertEqual(pair1,pair2)
                     self.assertEqual(xmcd.length,xmcd2.length)
                     self.assertEqual(xmcd.offsets,xmcd2.offsets)
                     self.assertEqual(dict(xmcd.items()),dict(xmcd2.items()))
@@ -2943,6 +2948,46 @@ MiJhSMKYhEEJoxKGJYxLGJgwssjIYkJemrtxazGfzeVx/w8vFHIR""".decode('base64').decode(
                         t.close()
             finally:
                 f.close()
+
+    def test_formatting(self):
+        LENGTH = 1134
+        OFFSETS = [150, 18740, 40778, 44676, 63267]
+
+
+        #ensure that latin-1 and UTF-8 encodings are handled properly
+        for (encoding,data) in zip(["ISO-8859-1","ISO-8859-1","UTF-8"],
+                                   [{"TTITLE0":u"track one",
+                                     "TTITLE1":u"track two",
+                                     "TTITLE2":u"track three",
+                                     "TTITLE4":u"track four",
+                                     "TTTIEL5":u"track five"},
+                                    {"TTITLE0":u"track \xf3ne",
+                                     "TTITLE1":u"track two",
+                                     "TTITLE2":u"track three",
+                                     "TTITLE4":u"track four",
+                                     "TTTIEL5":u"track five"},
+                                    {"TTITLE0":u'\u30de\u30af\u30ed\u30b9',
+                                     "TTITLE1":u"track tw\xf3",
+                                     "TTITLE2":u"track three",
+                                     "TTITLE4":u"track four",
+                                     "TTTIEL5":u"track five"}]):
+            xmcd = audiotools.XMCD(data,OFFSETS,LENGTH)
+            xmcd2 = audiotools.XMCD.read_data(xmcd.build().decode(encoding))
+            self.assertEqual(dict(xmcd.items()),dict(xmcd2.items()))
+
+            xmcdfile = tempfile.NamedTemporaryFile(suffix='.xmcd')
+            try:
+                xmcdfile.write(xmcd.build())
+                xmcdfile.flush()
+                xmcd2 = audiotools.XMCD.read(xmcdfile.name)
+                self.assertEqual(dict(xmcd.items()),dict(xmcd2.items()))
+            finally:
+                xmcdfile.close()
+
+            #ensure that excessively long XMCD lines are wrapped properly
+
+            #ensure that UTF-8 multi-byte characters aren't split
+
 
 ############
 #END TESTS

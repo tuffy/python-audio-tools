@@ -105,14 +105,13 @@ class XMCD:
             except UnicodeEncodeError:
                 return u.encode('utf-8')
 
-        return "# xmcd\n#\n# Track frame offsets:\n%(offsets)s\n#\n# Disc length: %(length)s seconds\n#\n%(fields)s\n" % \
-            {"offsets":"\n".join(["#\t%s" % (offset)
-                                  for offset in self.offsets]),
+        return encode(u"# xmcd\n#\n# Track frame offsets:\n%(offsets)s\n#\n# Disc length: %(length)s seconds\n#\n%(fields)s\n" % \
+            {"offsets":u"\n".join(["#\t%s" % (offset)
+                                   for offset in self.offsets]),
              "length":self.length,
              #FIXME - overlong fields should be split
-             "fields":"\n".join(["%s=%s" % (pair[0],encode(pair[1]))
-                                 for pair in sorted(self.items(),
-                                                    by_pair)])}
+             "fields":"\n".join([u"%s=%s" % (pair[0].decode('ascii'),pair[1])
+                                 for pair in sorted(self.items(),by_pair)])})
 
     @classmethod
     def read(cls, filename):
@@ -131,8 +130,14 @@ class XMCD:
         finally:
             f.close()
 
-        if (not data.startswith("# xmcd")):
-            raise XMCDException(filename)
+        return cls.read_data(data)
+
+    #takes a unicode string of XMCD data
+    #returns an XMCD object
+    @classmethod
+    def read_data(cls,data):
+        if (not data.startswith(u"# xmcd")):
+            raise XMCDException("")
 
         disc_length = re.search(r'# Disc length: (\d+)',data)
         if (disc_length is not None):
