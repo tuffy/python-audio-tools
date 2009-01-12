@@ -32,35 +32,35 @@ class XMCD:
     #offsets is a list of track offset integers (in CD frames)
     #length is a total album length integer (in seconds)
     def __init__(self,values,offsets,length):
-        self.values = values
+        self.__values__ = values
         self.offsets = offsets
         self.length = length
 
     def __repr__(self):
-        return "XMCD(%s,%s,%s)" % (repr(self.values),
+        return "XMCD(%s,%s,%s)" % (repr(self.__values__),
                                    repr(self.offsets),
                                    repr(self.length))
 
     def __getitem__(self,key):
-        return self.values[key]
+        return self.__values__[key]
 
     def get(self,key,default):
-        return self.values.get(key,default)
+        return self.__values__.get(key,default)
 
     def __setitem__(self,key,value):
-        self.values[key] = value
+        self.__values__[key] = value
 
     def __len__(self):
-        return len(self.values)
+        return len(self.__values__)
 
     def keys(self):
-        return self.values.keys()
+        return self.__values__.keys()
 
     def values(self):
-        return self.values.values()
+        return self.__values__.values()
 
     def items(self):
-        return self.values.items()
+        return self.__values__.items()
 
     @classmethod
     def key_digits(cls,key):
@@ -134,7 +134,7 @@ class XMCD:
         if (not data.startswith("# xmcd")):
             raise XMCDException(filename)
 
-        disc_length = re.search(r'# Disc length: (\d+) seconds',data)
+        disc_length = re.search(r'# Disc length: (\d+)',data)
         if (disc_length is not None):
             disc_length = int(disc_length.group(1))
 
@@ -200,7 +200,7 @@ class XMCD:
                            u"")
                            for track in audiofiles]),
                     discid.offsets(),
-                    discid.length() / 75)
+                    (discid.length() / 75) + 2)
 
     def metadata(self):
         dtitle = self.get('DTITLE',u'')

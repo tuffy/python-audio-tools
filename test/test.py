@@ -2783,6 +2783,167 @@ class testflaccuesheet(testcuesheet):
                 tempflacfile.close()
             yield sheet
 
+class TestXMCD(unittest.TestCase):
+    XMCD_FILES = [(
+"""eJyFk0tv20YQgO8B8h+m8MHJReXyTQFEm0pyYcAvSELTHCmKigRLYiHSanUTSdt1agd9BGnsOo3R
+uGmcNn60AYrakfNjsqVinfwXOpS0KwRtEQKL2Zmd/WZ2ZjgFXzTs8tUrU5CsYsuyl6HSshoOuJWK
+5/heOrEnH1EEthWJIClMkUVFJVwxVFFiiiIagswU1dAFlSmGomg6BxNd0TmbSBoaJpquEW2Sgqqo
+ItdUQyCcT3RNV3kAYojKJBFREGRDm2gKmaQvipqs83uiLKmGwTVVJTqPJxqSYHBNEiRR4xEkkWij
+KiQrW/NsqDvN2341DbKk8IO80655NbeJ1kRdarm243lOGUqdNNjlcqkMbZJSUuLSnAAZ97NOq3a7
+6sM1+zoUfKftQMGuOq0KOD5Y9VSCKKyUGjXfR0S7ZqXhI7e5nGvaCUVIqaOw2dlCZjZrygoRKmWC
+xmxxtjiXM2n0iIbHNDqk4elMfnGhOJvLw/vwlhkWafSygKuIS4L4YJsGezR49Xqne9l7ie9cJpe9
+c0Teyt3Im1hn7Fz249xCPmcW3JVm2U8G6uqV4jCigCE3aPSMhj/T8DGNXtDwJFGjHvMg5s2q5cN0
+yV3xodEBz7daH8CHM26r4TIf0UwuIyJ6zEwSgruMOgRHd2D4iOc0+gbfcXn+KP79fv/hbrz2PH74
+HQ1+o8Ev7LZs3nTqtosjX3RhvgMzVjNTXylNe7CQVP895qeY8clq/85mfPb09fZ6fHcjfrX19+mP
+/Z0w6zanfSg5ULd8h7mr//UWdqiZwxdgovdpuE+jTRqt4wamNOahm7S7dfHnGuLfPDsb7B/HZw+G
+9e+u0e5dyMzT8HxUQriWt5rLFnzitJLZus4Ihtnf3ht8f2+wv3vx0xYvsWC+eRrQ4Cg+79EAS/Tt
+MJNDGkXYHe5FTBoc0uBe/8GTi4NtbsbiJ7li2L+wbbiBObfteNBxV6DjWFVeLCKZ8dGX8dFOvLYa
+9/YuNk75iWwW5gvxydeDH77CNPqHW9gdGoRJSsl4HdPwYJjSr6Mh4feUSeNhMZVJ8QN1coCowYsn
+iKLBHzQ44C6a2V/dxRGmAcbEd29g/2mwipNMgx0abHJH/V2jxD2Nt6JiqYY8DLyOvwha+LwK/9tr
++LzmV5PxaLu2Vff4DfKuKv/rYu7TYtaE5CdMw+gvREtRMEeSjKU4ltJYymOpjKU6ltpY6mNpMA4H
+MiJhSMKYhEEJoxKGJYxLGJgwssjIYkJemrtxazGfzeVx/w8vFHIR""".decode('base64').decode('zlib'),
+                   4351,[150, 21035, 42561, 49623, 52904, 69806, 95578,
+                         118580, 137118, 138717, 156562, 169014, 187866,
+                         192523, 200497, 205135, 227486, 243699, 266182,
+                         293092, 303273, 321761],
+                   [('EXTT0', u''),
+                    ('EXTT1', u''),
+                    ('EXTT2', u''),
+                    ('EXTT3', u''),
+                    ('EXTT4', u''),
+                    ('EXTT5', u''),
+                    ('EXTT6', u''),
+                    ('EXTT7', u''),
+                    ('EXTT8', u''),
+                    ('EXTT9', u''),
+                    ('DTITLE', u'\u30de\u30af\u30ed\u30b9FRONTIER / \u30de\u30af\u30ed\u30b9F O\u30fbS\u30fbT\u30fb3 \u5a18\u305f\u307e\u2640\uff3bDisk1\uff3d'),
+                    ('EXTT19', u''),
+                    ('DYEAR', u'2008'),
+                    ('DISCID', u'4510fd16'),
+                    ('TTITLE20', u'\u30a4\u30f3\u30d5\u30a3\u30cb\u30c6\u30a3 #7 without vocals'),
+                    ('TTITLE21', u'\u30cb\u30f3\u30b8\u30fc\u30f3 Loves you yeah! without vocals'),
+                    ('EXTT18', u''),
+                    ('EXTD', u' YEAR: 2008'),
+                    ('EXTT12', u''),
+                    ('EXTT13', u''),
+                    ('EXTT10', u''),
+                    ('DGENRE', u'Soundtrack'),
+                    ('EXTT16', u''),
+                    ('EXTT17', u''),
+                    ('EXTT14', u''),
+                    ('EXTT15', u''),
+                    ('EXTT20', u''),
+                    ('TTITLE9', u'\u661f\u9593\u98db\u884c'),
+                    ('TTITLE8', u'\u300c\u8d85\u6642\u7a7a\u98ef\u5e97 \u5a18\u3005\u300d CM\u30bd\u30f3\u30b0 (Ranka Version)'),
+                    ('TTITLE5', u"\u5c04\u624b\u5ea7\u2606\u5348\u5f8c\u4e5d\u6642Don't be late"),
+                    ('TTITLE4', u"Welcome To My FanClub's Night!"),
+                    ('TTITLE7', u'\u30a4\u30f3\u30d5\u30a3\u30cb\u30c6\u30a3 #7'),
+                    ('TTITLE6', u"What 'bout my star?"),
+                    ('TTITLE1', u"What 'bout my star? @Formo"),
+                    ('TTITLE0', u'\u30c8\u30e9\u30a4\u30a2\u30f3\u30b0\u30e9\u30fc'),
+                    ('TTITLE3', u'\u30c0\u30a4\u30a2\u30e2\u30f3\u30c9 \u30af\u30ec\u30d0\u30b9\uff5e\u5c55\u671b\u516c\u5712\u306b\u3066'),
+                    ('TTITLE2', u'\u30a2\u30a4\u30e2'),
+                    ('TTITLE19', u'\u30a2\u30a4\u30e2\uff5e\u3053\u3044\u306e\u3046\u305f\uff5e'),
+                    ('TTITLE18', u'\u30c0\u30a4\u30a2\u30e2\u30f3\u30c9 \u30af\u30ec\u30d0\u30b9'),
+                    ('EXTT21', u''),
+                    ('EXTT11', u''),
+                    ('TTITLE11', u'\u306d\u3053\u65e5\u8a18'),
+                    ('TTITLE10', u'\u79c1\u306e\u5f7c\u306f\u30d1\u30a4\u30ed\u30c3\u30c8'),
+                    ('TTITLE13', u'\u5b87\u5b99\u5144\u5f1f\u8239'),
+                    ('TTITLE12', u'\u30cb\u30f3\u30b8\u30fc\u30f3 Loves you yeah!'),
+                    ('TTITLE15', u'\u30a2\u30a4\u30e2 O.C.'),
+                    ('TTITLE14', u'SMS\u5c0f\u968a\u306e\u6b4c\uff5e\u3042\u306e\u5a18\u306f\u30a8\u30a4\u30ea\u30a2\u30f3'),
+                    ('TTITLE17', u'\u611b\u30fb\u304a\u307c\u3048\u3066\u3044\u307e\u3059\u304b'),
+                    ('TTITLE16', u'\u30a2\u30a4\u30e2\uff5e\u9ce5\u306e\u3072\u3068'),
+                    ('PLAYORDER', u'')],
+                    [12280380, 12657288, 4152456, 1929228, 9938376, 15153936,
+                     13525176, 10900344, 940212, 10492860, 7321776, 11084976,
+                     2738316, 4688712, 2727144, 13142388, 9533244, 13220004,
+                     15823080, 5986428, 10870944, 2687748]),
+                  ]
+
+    def testroundtrip(self):
+        for (data,length,offsets,items,track_lengths) in self.XMCD_FILES:
+            f = tempfile.NamedTemporaryFile(suffix=".xmcd")
+            try:
+                f.write(data)
+                f.flush()
+
+                #check that reading in an XMCD file matches
+                #its expected values
+                xmcd = audiotools.XMCD.read(f.name)
+                self.assertEqual(length,xmcd.length)
+                self.assertEqual(offsets,xmcd.offsets)
+                self.assertEqual(dict(items),dict(xmcd.items()))
+
+                #check that building an XMCD file from values
+                #and reading it back in results in the same values
+                f2 = tempfile.NamedTemporaryFile(suffix=".xmcd")
+                try:
+                    f2.write(xmcd.build())
+                    f2.flush()
+
+                    xmcd2 = audiotools.XMCD.read(f2.name)
+                    self.assertEqual(length,xmcd2.length)
+                    self.assertEqual(offsets,xmcd2.offsets)
+                    self.assertEqual(dict(items),dict(xmcd2.items()))
+                    self.assertEqual(xmcd.length,xmcd2.length)
+                    self.assertEqual(xmcd.offsets,xmcd2.offsets)
+                    self.assertEqual(dict(xmcd.items()),dict(xmcd2.items()))
+                finally:
+                    f2.close()
+            finally:
+                f.close()
+
+    def testtracktagging(self):
+        for (data,length,offsets,items,track_lengths) in self.XMCD_FILES:
+            f = tempfile.NamedTemporaryFile(suffix=".xmcd")
+            try:
+                f.write(data)
+                f.flush()
+
+                xmcd = audiotools.XMCD.read(f.name)
+
+                #build a bunch of temporary FLAC files from the track_lengths
+                temp_files = [tempfile.NamedTemporaryFile(suffix=".flac")
+                              for track_length in track_lengths]
+                try:
+                    temp_tracks = [audiotools.FlacAudio.from_pcm(
+                            temp_file.name,
+                            EXACT_BLANK_PCM_Reader(track_length),
+                            "1")
+                                   for (track_length,temp_file) in
+                                   zip(track_lengths,temp_files)]
+
+                    for i in xrange(len(track_lengths)):
+                        temp_tracks[i].set_metadata(
+                            audiotools.MetaData(track_number=i + 1))
+
+                    #tag them with metadata from XMCD
+                    metadata = xmcd.metadata()
+
+                    for track in temp_tracks:
+                        track.set_metadata(metadata[track.track_number()])
+
+                    #build a new XMCD file from track metadata
+                    xmcd2 = audiotools.XMCD.from_files(temp_tracks)
+
+                    #check that the original XMCD values match the track ones
+                    self.assertEqual(xmcd.length,xmcd2.length)
+                    self.assertEqual(xmcd.offsets,xmcd2.offsets)
+                    self.assertEqual(xmcd['DISCID'],xmcd2['DISCID'])
+                    self.assertEqual(xmcd['DTITLE'],xmcd2['DTITLE'])
+                    self.assertEqual(xmcd['DYEAR'],xmcd2['DYEAR'])
+                    self.assertEqual(sorted([pair for pair in xmcd.items()
+                                             if (pair[0].startswith('TTITLE'))]),
+                                     sorted([pair for pair in xmcd2.items()
+                                             if (pair[0].startswith('TTITLE'))]))
+                finally:
+                    for t in temp_files:
+                        t.close()
+            finally:
+                f.close()
+
 ############
 #END TESTS
 ############
