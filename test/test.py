@@ -2860,6 +2860,101 @@ MiJhSMKYhEEJoxKGJYxLGJgwssjIYkJemrtxazGfzeVx/w8vFHIR""".decode('base64').decode(
                      13525176, 10900344, 940212, 10492860, 7321776, 11084976,
                      2738316, 4688712, 2727144, 13142388, 9533244, 13220004,
                      15823080, 5986428, 10870944, 2687748]),
+                  (
+"""eJxNU9uOo0gMfZ6W+h8szcuM1OqhuBOpHpImnYnUlyhh5/JYASeUGqhMQbKTv19XcclKSDb28bF9
+MJ/hb50X8JRCITqxFy3CQVZ4f/eZHsi0yD/goEWNoA6HFrt2RvFPLHCs8SOPGcdjLIqM48euHxgn
+dJwkMU4Uu7F1Et/pMYw5SdjXu4Hj9DEv9qKwpw69yLde5Dpxn018P7RZl7HYtbWuG/mxbeX6bhTb
+CjcMWRhbL46ixOI8h7k9s+fSTGzYLJVtDhU2x66cge8HAbSYq6Zoh/wWL7KVqpmBYYGNVjm2LRaw
+v84gL4p9ARf2GDy6mxcHntTpquWx7OBL/hV2HV4QdnmJ+gDYgageDcXuvK9l1xHFRYoZKY5/gRj6
+gdL17mmdcpf2CwNGy6TZOntZ8vcG/zkR47mQqoVv8AsbdUShW3gx/Qj3eznfctqMpEhXy7ftkq/o
+a93fZZbA4RuNtWpkR7uMQcZXWpSHB5q7+XNGrTR9XEiF/mhoxxHl8sw2olRX0j4dvTzAd4p1U3CD
+6lRNzTz+LDTM/xVXo1ct2ynj89cr/JBVJY4I6xbezvUeNdB2IyLguxIvonuwvD9lU4Bs4UlUlWyO
+IyjkO3qjZ+y/wqareviIiYhIkMzawAxmebTwVKOop+Vioyz8LBUshMYWnkVzbGHewUpNTAlfmIMw
+xTsUIGikZ6mniZlDneTJpivEkwVsSWx925sxvtDqAxt4lZp0nuIu7+e5qavVbU/m8YyCi+qM5he8
+YIW3Up+/550y8r2iroWc5mWBrcqIuD1rs53MS5KwaVQHC9ND0cFP6JD/IHXxSjgk9P9lXyh9w0V0
+UJS0etojANlY9Ju9+N3HdYLGdoB5dSp7ud5rPIopm/B10ylY0rdpRNWLdn+3/JWlHMwVz6A/Y4pk
+Du8tG6w7WG+w/mCDwYaDjQYbDzYZeSbCkZGNlGzkZCMpG1nZSMtGXjYSM8O8eZn/ft+myy35/wHM
+D3PD""".decode('base64').decode('zlib'),
+                   4455,[150, 14731, 31177, 48245, 60099, 78289, 94077,
+                         110960, 125007, 138376, 156374, 172087, 194466,
+                         211820, 227485, 242784, 266168, 287790, 301276,
+                         320091],
+                   [('EXTT0', u''), ('EXTT1', u''), ('EXTT2', u''),
+                    ('EXTT3', u''), ('EXTT4', u''), ('EXTT5', u''),
+                    ('EXTT6', u''), ('EXTT7', u''), ('EXTT8', u''),
+                    ('EXTT9', u''),
+                    ('DTITLE', u'OneUp Studios / Xenogears Light'),
+                    ('EXTT19', u''), ('DYEAR', u'2005'),
+                    ('DISCID', u'22116514'), ('EXTT18', u''),
+                    ('EXTD', u' YEAR: 2005'), ('EXTT12', u''),
+                    ('EXTT13', u''), ('EXTT10', u''), ('DGENRE', u'Game'),
+                    ('EXTT16', u''), ('EXTT17', u''), ('EXTT14', u''),
+                    ('EXTT15', u''),
+                    ('TTITLE9', u'Bonds of Sea and Fire'),
+                    ('TTITLE8', u'One Who Bares Fangs At God'),
+                    ('TTITLE5', u'Shevat, the Wind is Calling'),
+                    ('TTITLE4', u'My Village Is Number One'),
+                    ('TTITLE7', u'Shattering the Egg of Dreams'),
+                    ('TTITLE6', u'Singing of the Gentle Wind'),
+                    ('TTITLE1', u'Grahf, Conqueror of Darkness'),
+                    ('TTITLE0', u'Premonition'),
+                    ('TTITLE3', u'Far Away Promise'),
+                    ('TTITLE2', u'Tears of the Stars, Hearts of the People'),
+                    ('TTITLE19', u'Into Eternal Sleep'),
+                    ('TTITLE18', u'The Alpha and Omega'),
+                    ('EXTT11', u''),
+                    ('TTITLE11', u'Broken Mirror'),
+                    ('TTITLE10', u'Ship of Sleep and Remorse'),
+                    ('TTITLE13', u'The Blue Traveler'),
+                    ('TTITLE12', u'Dreams of the Strong'),
+                    ('TTITLE15', u'The Treasure Which Cannot Be Stolen'),
+                    ('TTITLE14', u'October Mermaid'),
+                    ('TTITLE17', u'Gathering Stars in the Night Sky'),
+                    ('TTITLE16', u'Valley Where the Wind is Born'),
+                    ('PLAYORDER', u'')],
+                   [8573628, 9670248, 10035984, 6970152, 10695720, 9283344,
+                    9927204, 8259636, 7860972, 10582824, 9239244, 13158852,
+                    10204152, 9211020, 8995812, 13749792, 12713736, 7929768,
+                    11063220, 8289036]),
+                  (
+"""eJxdUU1v00AQvVfqf5iqF5BoajuO7UTag5OY1lI+KtsN5OjYm8ZKYke2k5JLhW3EoYA4gjiAxNeh
+iCKEQCAi8WMWqt76F1i3touwbL95s2/fzsxuwr2pZa+vbUL6Gb5pjWHom1MM3nAY4DCopfn0YStM
+EVbLjJgTnpWqBRGYKlPOiSjxbEHoFqFaGDBVSbxmnMALUsF4XhAKQ1bgK9f2rChy/5YhsqKU1950
+Agsm2D0IRzXgJKlY0PDCCRzPpdmU7vmehYMA2zBY1sCy7YENC7ZUKXF7LQYa3mzpOwejEG5YN0EP
+8QKDbo2wPwQcgjkppRb6fDB1wpBaLByzBnXPHSuulbowpezYpqo31CYyJWbAC4xFE4ZqtBTUM33H
+mwcg+6EThAFsQ32CTWsExghDHQchNJpU3FdkDXEMI9B4R+loCpJdZ4rX14xLGwZ1Nbmzo8DVfxsu
+VsdHJH5N4h8k/kWSk8vg01GuZ5HmYBjOqbLlDDE4AcUxBpPWboa5ikO73bYCbbmpwJ/Tb2fPnlI9
+ib+S5AuJP5LkHUlWF6uIvvmOMtrvKdqh509sKm1uhdhyvfSEXMAjkrxP9yfHqVf0k0QPSfTk7Pmr
+XFFB+tjzZuC5oHtTPPDsJVWOzNlsOcPebFJYCWhX3dkF07WhTQOjD41uq6tR8e/v989XJyQ6PT/+
+nKtF1N9X03bV20qek5A+d3V6jfqhE4zSepKXJH5Lkhe0MTqxXFdFdUU2oKHt63QUmk6VRreTnnnr
+PyzmyyASPaCNkTimdZDoMYkekTjteVfuyHW1ELIovaD4A0kikryh6+1uT+1sbKyvKXeNJtJ7dxpb
+Is+xl9xg0BWyGXIZljPkM6xkKGQoZihlWM19CsPUca8l97sa7ZDGfwEBGThn""".decode('base64').decode('zlib'),
+                   2888,[150, 19307, 41897, 60903, 78413, 93069, 109879,
+                         126468, 144667, 164597, 177250, 197178],
+                   [('EXTT0', u''), ('EXTT1', u''), ('EXTT2', u''),
+                    ('EXTT3', u''), ('EXTT4', u''), ('EXTT5', u''),
+                    ('EXTT6', u''), ('EXTT7', u''), ('EXTT8', u''),
+                    ('EXTT9', u''),
+                    ('DTITLE', u'Various Artists / Bleach The Best CD'),
+                    ('DYEAR', u'2006'), ('DISCID', u'a80b460c'),
+                    ('EXTD', u'SVWC-7421'), ('EXTT10', u''),
+                    ('DGENRE', u'Anime'),
+                    ('TTITLE9', u'BEAT CRUSADERS / TONIGHT,TONIGHT,TONIGHT'),
+                    ('TTITLE8', u'SunSet Swish / \u30de\u30a4\u30da\u30fc\u30b9'),
+                    ('TTITLE5', u'Skoop on Somebody / happypeople'),
+                    ('TTITLE4', u'\u30e6\u30f3\u30ca / \u307b\u3046\u304d\u661f'),
+                    ('TTITLE7', u'YUI / LIFE'),
+                    ('TTITLE6', u'HIGH and MIGHTY COLOR / \u4e00\u8f2a\u306e\u82b1'),
+                    ('TTITLE1', u'Rie fu / Life is Like a Boat'),
+                    ('TTITLE0', u'ORANGE RANGE / \uff0a~\u30a2\u30b9\u30bf\u30ea\u30b9\u30af~'),
+                    ('TTITLE3', u'UVERworld / D-tecnoLife'),
+                    ('TTITLE2', u'HOME MADE \u5bb6\u65cf / \u30b5\u30f3\u30ad\u30e5\u30fc\uff01\uff01'),
+                    ('EXTT11', u''),
+                    ('TTITLE11', u'\u30bf\u30ab\u30c1\u30e3 / MOVIN!!'),
+                    ('TTITLE10', u'\u3044\u304d\u3082\u306e\u304c\u304b\u308a / HANABI'),
+                    ('PLAYORDER', u'')],
+                   [11264316, 13282920, 11175528, 10295880, 8617728, 9884280,
+                    9754332, 10701012, 11718840, 7439964, 11717664, 11446596])
                   ]
 
     def testroundtrip(self):
@@ -2937,12 +3032,20 @@ MiJhSMKYhEEJoxKGJYxLGJgwssjIYkJemrtxazGfzeVx/w8vFHIR""".decode('base64').decode(
                     self.assertEqual(xmcd.length,xmcd2.length)
                     self.assertEqual(xmcd.offsets,xmcd2.offsets)
                     self.assertEqual(xmcd['DISCID'],xmcd2['DISCID'])
-                    self.assertEqual(xmcd['DTITLE'],xmcd2['DTITLE'])
+                    if (len([pair for pair in xmcd.items()
+                             if (pair[0].startswith('TTITLE') and
+                                 (u" / " in pair[1]))]) > 0):
+                        self.assertEqual(xmcd['DTITLE'].split(' / ',1)[1],
+                                         xmcd2['DTITLE'].split(' / ',1)[1])
+                    else:
+                        self.assertEqual(xmcd['DTITLE'],xmcd2['DTITLE'])
                     self.assertEqual(xmcd['DYEAR'],xmcd2['DYEAR'])
-                    self.assertEqual(sorted([pair for pair in xmcd.items()
-                                             if (pair[0].startswith('TTITLE'))]),
-                                     sorted([pair for pair in xmcd2.items()
-                                             if (pair[0].startswith('TTITLE'))]))
+                    for (pair1,pair2) in zip(
+                        sorted([pair for pair in xmcd.items()
+                                if (pair[0].startswith('TTITLE'))]),
+                        sorted([pair for pair in xmcd2.items()
+                                if (pair[0].startswith('TTITLE'))])):
+                        self.assertEqual(pair1,pair2)
                 finally:
                     for t in temp_files:
                         t.close()
@@ -2952,7 +3055,6 @@ MiJhSMKYhEEJoxKGJYxLGJgwssjIYkJemrtxazGfzeVx/w8vFHIR""".decode('base64').decode(
     def test_formatting(self):
         LENGTH = 1134
         OFFSETS = [150, 18740, 40778, 44676, 63267]
-
 
         #ensure that latin-1 and UTF-8 encodings are handled properly
         for (encoding,data) in zip(["ISO-8859-1","ISO-8859-1","UTF-8"],

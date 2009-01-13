@@ -208,8 +208,12 @@ class XMCD:
                           for t in audiofiles
                          if (t.get_metadata() is not None)])
 
-        album_artist = __most_numerous__([m.artist_name for m in
-                                          metadata.values()])
+        artist_names = [m.artist_name for m in metadata.values()]
+        if (len(set(artist_names)) == len(artist_names)):
+            #if all track artists are different, don't pick one
+            album_artist = u"Various"
+        else:
+            album_artist = __most_numerous__(artist_names)
 
         return XMCD(dict([("DISCID",str(discid).decode('ascii')),
                           ("DTITLE",u"%s / %s" % \
