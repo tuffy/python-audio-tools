@@ -171,7 +171,7 @@
   This behavior needs to be modified such that only source files
   which actually have foreign chunks, and a target format that supports them,
   results in a pass through RIFF WAVE.
-* TODO Convert editxmcd to PyGTK
+* DONE Convert editxmcd to PyGTK
   Although the dialog(1)-based version works in terminals and is curses-based,
   it's extremely hokey, error-prone and doesn't support any cut & paste.
   This needs to be reimplemented in PyGTK (since coverview already uses it)

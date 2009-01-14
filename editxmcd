@@ -341,6 +341,10 @@ class EditXMCD:
         self.xml.get_widget("about").run()
 
 if (__name__ == '__main__'):
+    parser = optparse.OptionParser(
+        '%prog [-x XMCD file] [track 1] [track 2] ...',
+        version="Python Audio Tools %s" % (audiotools.VERSION))
+
     gladepath = os.path.join(".","editxmcd.glade")
     if (os.path.isfile(gladepath)):
         xml = gtk.glade.XML(gladepath)
@@ -352,7 +356,7 @@ if (__name__ == '__main__'):
         else:
             print >>sys.stderr,"*** editxmcd.glade not found"
             sys.exit(1)
-    #xml = gtk.glade.XML("editxmcd.glade")
+
     editxmcd = EditXMCD(xml)
 
     xml.signal_connect("gtk_main_quit",editxmcd.quit)
@@ -375,9 +379,12 @@ if (__name__ == '__main__'):
     xml.signal_connect("confirmquit",editxmcd.confirm_quit)
     xml.signal_connect("display_about",editxmcd.display_about)
 
-    #FIXME - add proper optparse support
-    if (len(sys.argv) > 1):
-        editxmcd.read_file(sys.argv[1])
+    (options,args) = parser.parse_args()
+    if (options.xmcd is not None):
+        editxmcd.read_file(options.xmcd)
+    elif (len(args) > 0):
+        editxmcd.read_xmcd(audiotools.XMCD.from_files(
+                audiotools.open_files(args)))
 
     gtk.main()
 
