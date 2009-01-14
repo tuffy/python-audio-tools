@@ -176,12 +176,12 @@
   it's extremely hokey, error-prone and doesn't support any cut & paste.
   This needs to be reimplemented in PyGTK (since coverview already uses it)
   and made into a stable app someone would want to use.
-** TODO Update XMCD support
+** DONE Update XMCD support
    The current handling of XMCD files treats them only as very primative
    AlbumMetaData implementations.  This must be updated into something
    round-trippable if editxmcd is to be modernized.
-*** TODO Add XMCD unit tests
-*** TODO Update XMCD API documentation
+*** DONE Add XMCD unit tests
+*** DONE Update XMCD API documentation
 * TODO Require Python 2.5
   Since Python 2.4 is in bugfix-only mode and barely supported,
   it's best to move the minimum version to Python 2.5 or better

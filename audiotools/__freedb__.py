@@ -29,7 +29,7 @@ class XMCDException(Exception): pass
 class XMCD:
     LINE_LIMIT = 78
 
-    #values is a list of key->value pairs
+    #values is a dict of key->value pairs
     #such as "TTITLE0":u"Track Name"
     #offsets is a list of track offset integers (in CD frames)
     #length is a total album length integer (in seconds)

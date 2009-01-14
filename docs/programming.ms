@@ -569,12 +569,49 @@ Therefore, XMCD files are what Python Audio Tools use for external metadata
 not contained in the tracks themselves.
 If we cannot or do not wish to use FreeDB's XMCD files, ones can
 be created from AudioFiles.
+
+.CLASS XMCD "values, offsets, length"
+Our internel representation of an XMCD file.
+"values" is a dict of key->value pairs where key is an XMCD key string
+and value is its unicode value.
+For example, \fC"TTITLE0":u"Track Name"\fR.
+"offsets" is a list of track offset integers, in CD frames.
+"length" is the total length of the album (including lead-in) in seconds.
 .PP
-From a programmer's perspective, the goal is to get an
-AlbumMetaData object.
-Since all our AudioFile objects should have a valid track number
-(pulled from the filename, if necessary), AlbumMetaData can tell us
-what to name them and the appropriate MetaData to add to them.
+This implements a dict interface with __getitem__, __setitem__, keys methods,
+etc.
+These calls are forwarded to its internal values dict.
+
+.ATTRIBUTE offsets
+Our offsets int list
+
+.ATTRIBUTE length
+Our length int
+
+.FUNCTION build
+Returns an XMCD file string with values taken from our internal representation.
+This file will be in either ISO-8859-1 format, or UTF-8 format, depending
+on its contents.
+
+.FUNCTION metadata
+Returns an AlbumMetaData object of our internal representation.
+
+.CLASSMETHOD read filename
+Takes a filename and returns an XMCD object.
+Raises IOError if the file can't be read.
+Raises XMCDException if a problem is encountered with the file's syntax.
+
+.CLASSMETHOD read_data data
+Takes a unicode string of XMCD data and returns an XMCD object.
+Raises XMCDException if a problem is encountered with the data's syntax.
+
+.CLASSMETHOD from_files audiofiles
+Takes a list of AudioFile-compatible objects from the same album,
+ordered by track_number.
+Returns a corresponding XMCD object best matching that album from
+the tracks' lengths and metadata - if any.
+
+.bp
 
 .CLASS AlbumMetaData
 A track number->MetaData dictionary.
