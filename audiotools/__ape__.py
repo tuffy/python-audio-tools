@@ -212,39 +212,44 @@ class ApeTag(MetaData,dict):
                     footer.tag_size)
 
     def ape_tag_data(self):
-        header = Con.Container()
-        header.preamble = 'APETAGEX'
-        header.version_number = 0x07D0
-        header.tag_size = 0
-        header.item_count = len(self.keys())
+        header = Con.Container(preamble = 'APETAGEX',
+                               version_number = 0x07D0,
+                               tag_size = 0,
+                               item_count = len(self.keys()),
+                               undefined1 = 0,
+                               undefined2 = 0,
+                               undefined3 = 0,
+                               read_only = False,
+                               encoding = 0,
+                               contains_header = True,
+                               contains_no_footer = False,
+                               is_header = True,
+                               reserved = 0l)
 
-        header.undefined1 = header.undefined2 = header.undefined3 = 0
-        header.read_only = False
-        header.encoding = 0
-        header.contains_header = True
-        header.contains_no_footer = False
-        header.is_header = True
-
-        header.reserved = 0l
-
-        footer = Con.Container()
-        footer.preamble = header.preamble
-        footer.version_number = header.version_number
-        footer.tag_size = 0
-        footer.item_count = len(self.keys())
-
-        footer.undefined1 = footer.undefined2 = footer.undefined3 = 0
-        footer.read_only = False
-        footer.encoding = 0
-        footer.contains_header = True
-        footer.contains_no_footer = False
-        footer.is_header = False
-
-        footer.reserved = 0l
+        footer = Con.Container(preamble = header.preamble,
+                               version_number = header.version_number,
+                               tag_size = 0,
+                               item_count = len(self.keys()),
+                               undefined1 = 0,
+                               undefined2 = 0,
+                               undefined3 = 0,
+                               read_only = False,
+                               encoding = 0,
+                               contains_header = True,
+                               contains_no_footer = False,
+                               is_header = False,
+                               reserved = 0l)
 
         tags = []
         for (key,value) in self.items():
-            tag = Con.Container()
+            tag = Con.Container(key = key,
+                                undefined1 = 0,
+                                undefined2 = 0,
+                                undefined3 = 0,
+                                read_only = False,
+                                contains_header = False,
+                                contains_no_footer = False,
+                                is_header = False)
 
             if (isinstance(value,unicode)):
                 value = value.encode('utf-8')
@@ -253,14 +258,7 @@ class ApeTag(MetaData,dict):
                 tag.encoding = 1
 
             tag.length = len(value)
-            tag.key = key
             tag.value = value
-
-            tag.undefined1 = tag.undefined2 = tag.undefined3 = 0
-            tag.read_only = False
-            tag.contains_header = False
-            tag.contains_no_footer = False
-            tag.is_header = False
 
             tags.append(ApeTag.APEv2_TAG.build(tag))
         tags = "".join(tags)
@@ -277,19 +275,21 @@ class ApeTag(MetaData,dict):
 #This class presumes there will be a filename attribute which
 #can be opened and checked for tags, or written if necessary.
 class ApeTaggedAudio:
+    APE_TAG_CLASS = ApeTag
+
     def get_metadata(self):
         f = file(self.filename,'rb')
         try:
-            (info,tag_length) = ApeTag.read_ape_tag(f)
+            (info,tag_length) = self.APE_TAG_CLASS.read_ape_tag(f)
             if (len(info) > 0):
-                return ApeTag(info,tag_length)
+                return self.APE_TAG_CLASS(info,tag_length)
             else:
                 return None
         finally:
             f.close()
 
     def set_metadata(self, metadata):
-        apetag = ApeTag.converted(metadata)
+        apetag = self.APE_TAG_CLASS.converted(metadata)
 
         if (apetag is None): return
 

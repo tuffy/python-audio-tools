@@ -190,3 +190,10 @@
   and allows the use of more modern Python features which
   makes the code less clunky.
 
+* TODO Expand WavPack's APEv2 tag coverage
+  WavPack's official specification defines APEv2 tags such as
+  "Cuesheet" and "Cover Art" which the APEv2 standard does not.
+  It would be helpful to make WavPack's APEv2 tags a superset of regular APEv2.
+** TODO Add image support to WavePackAPEv2
+** TODO Add cuesheet support to WavePackAPEv2
+

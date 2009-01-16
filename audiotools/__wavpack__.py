@@ -18,9 +18,9 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,InvalidFile,Con,subprocess,BIN,open_files,os,ReplayGain,ignore_sigint,transfer_data
+from audiotools import AudioFile,InvalidFile,Con,subprocess,BIN,open_files,os,ReplayGain,ignore_sigint,transfer_data,Image
 from __wav__ import WaveAudio,WaveReader
-from __ape__ import ApeTaggedAudio
+from __ape__ import ApeTaggedAudio,ApeTag
 
 class __24BitsLE__(Con.Adapter):
     def _encode(self, value, context):
@@ -50,6 +50,37 @@ def __riff_chunk_ids__(data):
         yield chunk_header.chunk_id
 
 #######################
+#WavPack APEv2
+#######################
+
+class WavePackAPEv2(ApeTag):
+    @classmethod
+    def supports_images(cls):
+        return True
+
+    def add_image(self,image):
+        if (image.type == 0):
+            self['Cover Art (Front)'] = image.data
+        elif (image.type == 1):
+            self['Cover Art (Back)'] = image.data
+
+    def delete_image(self,image):
+        if ((image.type == 0) and 'Cover Art (Front)' in self.keys()):
+            del(self['Cover Art (Front)'])
+        elif ((image.type == 1) and 'Cover Art (Back)' in self.keys()):
+            del(self['Cover Art (Back)'])
+
+    def images(self):
+        #APEv2 supports only one value per key
+        #so a single front and back cover are all that is possible
+        img = []
+        if ('Cover Art (Front)' in self.keys()):
+            img.append(Image.new(self['Cover Art (Front)'],u'',0))
+        if ('Cover Art (Back)' in self.keys()):
+            img.append(Image.new(self['Cover Art (Back)'],u'',1))
+        return img
+
+#######################
 #WavPack
 #######################
 
@@ -60,6 +91,7 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
     COMPRESSION_MODES = ("fast","standard","high","veryhigh")
     BINARIES = ("wavpack","wvunpack")
 
+    APE_TAG_CLASS = WavePackAPEv2
 
     HEADER = Con.Struct("wavpackheader",
                         Con.Const(Con.String("id",4),'wvpk'),
