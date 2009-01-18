@@ -80,6 +80,31 @@ class WavePackAPEv2(ApeTag):
             img.append(Image.new(self['Cover Art (Back)'],u'',1))
         return img
 
+    @classmethod
+    def converted(cls,metadata):
+        if ((metadata is None) or (isinstance(metadata,WavePackAPEv2))):
+            return metadata
+        elif (isinstance(metadata,ApeTag)):
+            new_metadata = WavePackAPEv2(metadata)
+        else:
+            tags = {}
+            for (key,field) in cls.ITEM_MAP.items():
+                if ((field == 'track_number') and
+                    (getattr(metadata,field) == 0)):
+                    continue
+
+                field = unicode(getattr(metadata,field))
+                if (field != u''):
+                    tags[key] = field
+
+            new_metadata = WavePackAPEv2(tags)
+
+        if (metadata is not None):
+            for image in metadata.images():
+                new_metadata.add_image(image)
+
+        return new_metadata
+
 #######################
 #WavPack
 #######################

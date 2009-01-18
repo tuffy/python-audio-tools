@@ -1133,20 +1133,8 @@ class TestAiffAudio(unittest.TestCase):
                 track.set_metadata(metadata)
                 self.assertEqual(metadata,track.get_metadata())
 
-                flag_type_images_data = zip(["--front-cover",
-                                             "--back-cover",
-                                             "--leaflet",
-                                             "--leaflet",
-                                             "--media",
-                                             "--other-image",],
-                                            [0,1,2,2,3,4],
-                                            [jpeg,jpeg,png,jpeg,png,jpeg],
-                                            [TEST_COVER1,
-                                             TEST_COVER1,
-                                             TEST_COVER2,
-                                             TEST_COVER1,
-                                             TEST_COVER2,
-                                             TEST_COVER1])
+                flag_type_images_data = self.__flag_type_images_data__(
+                    jpeg,png,TEST_COVER1,TEST_COVER2)
 
                 for (flag,img_type,value,data) in flag_type_images_data:
                     subprocess.call(["tracktag",
@@ -1171,6 +1159,22 @@ class TestAiffAudio(unittest.TestCase):
             for f in os.listdir(basedir):
                 os.unlink(os.path.join(basedir,f))
             os.rmdir(basedir)
+
+    def __flag_type_images_data__(self,jpeg,png,test_cover1,test_cover2):
+        return zip(["--front-cover",
+                    "--back-cover",
+                    "--leaflet",
+                    "--leaflet",
+                    "--media",
+                    "--other-image",],
+                   [0,1,2,2,3,4],
+                   [jpeg,jpeg,png,jpeg,png,jpeg],
+                   [test_cover1,
+                    test_cover1,
+                    test_cover2,
+                    test_cover1,
+                    test_cover2,
+                    test_cover1])
 
     def test_coverdump(self):
         basefile = tempfile.NamedTemporaryFile(suffix="." + self.audio_class.SUFFIX)
@@ -1458,6 +1462,76 @@ class APEv2Lint:
 class TestWavPackAudio(TestForeignWaveChunks,APEv2Lint,TestAiffAudio):
     def setUp(self):
         self.audio_class = audiotools.WavPackAudio
+
+    def test_coverdump(self):
+        basefile = tempfile.NamedTemporaryFile(suffix="." + self.audio_class.SUFFIX)
+        imgdir = tempfile.mkdtemp()
+        try:
+            track = self.audio_class.from_pcm(basefile.name,
+                                              BLANK_PCM_Reader(10))
+            metadata = audiotools.MetaData(track_name=u"Name")
+            track.set_metadata(metadata)
+            metadata = track.get_metadata()
+            if ((metadata is None) or (not metadata.supports_images())):
+                return
+
+            metadata.add_image(audiotools.Image.new(
+                    TEST_COVER1,u"",0))
+            metadata.add_image(audiotools.Image.new(
+                    TEST_COVER3,u"",1))
+
+            track.set_metadata(metadata)
+
+            subprocess.call(["coverdump",
+                             "-V","quiet",
+                             "-d",imgdir,
+                             track.filename])
+
+            f = open(os.path.join(imgdir,"front_cover.jpg"),"rb")
+            self.assertEqual(f.read(),TEST_COVER1)
+            f.close()
+            f = open(os.path.join(imgdir,"back_cover.jpg"),"rb")
+            self.assertEqual(f.read(),TEST_COVER3)
+            f.close()
+
+            for f in os.listdir(imgdir):
+                os.unlink(os.path.join(imgdir,f))
+
+            metadata = audiotools.MetaData(track_name=u"Name")
+            track.set_metadata(metadata)
+            metadata = track.get_metadata()
+
+            metadata.add_image(audiotools.Image.new(
+                    TEST_COVER3,u"",0))
+            metadata.add_image(audiotools.Image.new(
+                    TEST_COVER1,u"",1))
+
+            track.set_metadata(metadata)
+
+            subprocess.call(["coverdump",
+                             "-V","quiet",
+                             "-d",imgdir,
+                             track.filename])
+
+            f = open(os.path.join(imgdir,"front_cover.jpg"),"rb")
+            self.assertEqual(f.read(),TEST_COVER3)
+            f.close()
+            f = open(os.path.join(imgdir,"back_cover.jpg"),"rb")
+            self.assertEqual(f.read(),TEST_COVER1)
+            f.close()
+        finally:
+            basefile.close()
+            for f in os.listdir(imgdir):
+                os.unlink(os.path.join(imgdir,f))
+            os.rmdir(imgdir)
+
+    def __flag_type_images_data__(self,jpeg,png,test_cover1,test_cover2):
+        return zip(["--front-cover",
+                    "--back-cover"],
+                   [0,1],
+                   [jpeg,png],
+                   [test_cover1,
+                    test_cover2])
 
 class M4AMetadata:
     #M4A supports only a subset of the MetaData of every other format
