@@ -667,6 +667,20 @@ class FlacAudio(AudioFile):
         p = FlacAudio.METADATA_BLOCK_HEADER.parse(flacfile.read(4))
         return (p.last_block, p.block_type, p.block_length)
 
+    def set_cuesheet(self,cuesheet):
+        metadata = self.get_metadata()
+        if (metadata is not None):
+            metadata.cuesheet = FlacCueSheet.converted(
+                cuesheet,self.total_frames(),self.sample_rate())
+            self.set_metadata(metadata)
+
+    def get_cuesheet(self):
+        metadata = self.get_metadata()
+        if (metadata is not None):
+            return metadata.cuesheet
+        else:
+            return None
+
     def to_pcm(self):
         sub = subprocess.Popen([BIN['flac'],"-s","-d","-c",
                                 "--force-raw-format",

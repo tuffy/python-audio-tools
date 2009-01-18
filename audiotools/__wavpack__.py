@@ -434,3 +434,31 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
                 return None
         else:
             return None
+
+    def get_cuesheet(self):
+        import cue
+
+        metadata = self.get_metadata()
+
+        if ((metadata is not None) and ('Cuesheet' in metadata.keys())):
+            try:
+                return cue.parse(cue.tokens(
+                        metadata['Cuesheet'].encode('utf-8','replace')))
+            except cue.CueException:
+                #unlike FLAC, just because a cuesheet is embedded
+                #does not mean it is compliant
+                return None
+        else:
+            return None
+
+    def set_cuesheet(self,cuesheet):
+        import os.path
+        import cue
+
+        metadata = self.get_metadata()
+        if (metadata is not None):
+            metadata['Cuesheet'] = cue.Cuesheet.file(
+                cuesheet,
+                os.path.basename(self.filename)).decode('ascii','replace')
+            self.set_metadata(metadata)
+

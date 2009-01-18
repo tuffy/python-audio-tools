@@ -1529,6 +1529,17 @@ class AudioFile:
     def replay_gain(self):
         return None
 
+    #takes a cuesheet-compatible object
+    #with catalog(), ISRCs(), indexes(), and pcm_lengths() methods
+    #sets this AudioFile's embedded cuesheet to that data, if possible
+    def set_cuesheet(self,cuesheet):
+        pass
+
+    #returns a cuesheet-compatible object
+    #or None if no cuesheet is embedded
+    def get_cuesheet(self):
+        return None
+
     def __eq__(self, audiofile):
         if (isinstance(audiofile, AudioFile)):
             p1 = self.to_pcm()
