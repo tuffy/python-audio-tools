@@ -90,11 +90,6 @@ if (__name__ == '__main__'):
               (AudioType.NAME)
         sys.exit(1)
 
-    if ((options.cuesheet is not None) and
-        ((AudioType.NAME != 'flac') and (AudioType.NAME != 'oga'))):
-        print >>sys.stderr,"*** cuesheets may only be embedded in FLAC files"
-        sys.exit(1)
-
     #grab the list of AudioFile objects we are converting from
     audiofiles = audiotools.open_files(args)
     if (len(audiofiles) < 1):
@@ -116,10 +111,7 @@ if (__name__ == '__main__'):
     #if embedding a cuesheet, try to read it before doing any work
     if (options.cuesheet is not None):
         try:
-            cuesheet = audiotools.FlacCueSheet.converted(
-                audiotools.read_sheet(options.cuesheet),
-                sum([f.total_frames() for f in audiofiles]),
-                audiofiles[0].sample_rate())
+            cuesheet = audiotools.read_sheet(options.cuesheet)
         except audiotools.SheetException,msg:
             print >>sys.stderr,"*** %s: %s" % (options.cuesheet,str(msg))
             sys.exit(1)
@@ -163,10 +155,11 @@ if (__name__ == '__main__'):
         encoded.set_metadata(metadata)
 
         if (cuesheet is not None):
-            metadata = encoded.get_metadata()
-            if (metadata is not None):
-                metadata.cuesheet = cuesheet
-                encoded.set_metadata(metadata)
+            #set_metadata() will sometimes transfer a cuesheet automatically
+            #in that case, don't transfer it again via set_cuesheet()
+            existing_cuesheet = encoded.get_cuesheet()
+            if (existing_cuesheet is None):
+                encoded.set_cuesheet(cuesheet)
 
     except audiotools.InvalidFormat,msg:
         print >>sys.stderr,"*** %s: %s" % (options.filename,str(msg))

@@ -195,7 +195,7 @@
   "Cuesheet" and "Cover Art" which the APEv2 standard does not.
   It would be helpful to make WavPack's APEv2 tags a superset of regular APEv2.
 ** DONE Add image support to WavePackAPEv2
-** TODO Add cuesheet support to WavePackAPEv2
+** DONE Add cuesheet support to WavePackAPEv2
 * TODO Build unified cuesheet interface
   Once both FLAC and WavPack support embedded cuesheets,
   there will need to be a unified interface to support them.
@@ -204,6 +204,8 @@
   rather than to MetaData objects.
 ** TODO Alter FLAC-specific cuesheet documentation to be more general
 ** TODO Ensure cuesheets are transferred properly when transcoding
+** TODO Update trackcat to use the interface
+** TODO Update tracksplit to use the interface
 ** TODO Document cuesheet interface
 ** TODO Add unit tests for embedded cuesheets across all formats
 
