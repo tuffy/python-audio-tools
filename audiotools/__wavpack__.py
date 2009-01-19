@@ -58,6 +58,12 @@ class WavePackAPEv2(ApeTag):
     def supports_images(cls):
         return True
 
+    def __comment_pairs__(self):
+        return filter(lambda pair: pair[0] not in ('Cuesheet',
+                                                   'Cover Art (Back)',
+                                                   'Cover Art (Front)'),
+                      ApeTag.__comment_pairs__(self))
+
     def add_image(self,image):
         if (image.type == 0):
             self['Cover Art (Front)'] = image.data

@@ -133,7 +133,7 @@ class ApeTag(MetaData,dict):
                 if (field != u''):
                     tags[key] = field
 
-            return ApeTag(tags)
+            return cls(tags)
 
     def __comment_name__(self):
         return u'APEv2'

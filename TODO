@@ -202,10 +202,10 @@
   I expect this will be a simple pair of get_cuesheet/set_cuesheet
   methods, probably attached to the AudioFiles themselves
   rather than to MetaData objects.
-** TODO Alter FLAC-specific cuesheet documentation to be more general
-** TODO Ensure cuesheets are transferred properly when transcoding
-** TODO Update trackcat to use the interface
-** TODO Update tracksplit to use the interface
+** DONE Alter FLAC-specific cuesheet documentation to be more general
+** DONE Ensure cuesheets are transferred properly when transcoding
+** DONE Update trackcat to use the interface
+** DONE Update tracksplit to use the interface
+** TODO Update track2cd to use the interface
 ** TODO Document cuesheet interface
 ** TODO Add unit tests for embedded cuesheets across all formats
-
