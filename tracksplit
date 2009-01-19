@@ -43,13 +43,7 @@ def extract_part(input_filename, input_pcm, output_filename, quality, metadata,
         destination_audiofile.set_metadata(metadata)
 
 def has_embedded_cuesheet(audiofile):
-    #FlacAudio is typically the only class to contain a
-    #sub_pcm_tracks() method and
-    #FlacMetaData with a cuesheet attribute signfifies
-    #the FLAC actually contains a cuesheet with the necessary sub-tracks
-    return (hasattr(audiofile,"sub_pcm_tracks") and
-            hasattr(audiofile.get_metadata(),"cuesheet"))
-
+    return audiofile.get_cuesheet() is not None
 
 if (__name__ == '__main__'):
     parser = optparse.OptionParser(
@@ -186,25 +180,26 @@ if (__name__ == '__main__'):
         except audiotools.SheetException,msg:
             print >>sys.stderr,"*** Cuesheet error: %s" % (msg)
             sys.exit(1)
-
-        if (not cuesheet.single_file_type()):
-            print >>sys.stderr,"*** Cuesheet error: %s" % \
-                "cuesheet is not formatted for splitting a single track"
-            sys.exit(1)
-
-        if (list(cuesheet.pcm_lengths(audiofile.total_frames()))[-1] <= 0):
-            print >>sys.stderr,"*** Cuesheet error: %s" % \
-                "cuesheet too short for track being split"
-            sys.exit(1)
-
-        split_pcm = audiotools.pcm_split(audiofile.to_pcm(),
-                                         cuesheet.pcm_lengths(audiofile.total_frames()))
     else:
-        split_pcm = list(audiofile.sub_pcm_tracks())
-        #this hackery is terrible form,
-        #but the only way we'll be able to wait() correctly
-        for p in split_pcm:
-            p.process = None
+        cuesheet = audiofile.get_cuesheet()
+
+    if (cuesheet is None):
+        print >>sys.stderr,"*** Cuesheet not given and none found embedded in audio file"
+        sys.exit(1)
+
+    if (not cuesheet.single_file_type()):
+        print >>sys.stderr,"*** Cuesheet error: %s" % \
+            "cuesheet is not formatted for splitting a single track"
+        sys.exit(1)
+
+    if (list(cuesheet.pcm_lengths(audiofile.total_frames()))[-1] <= 0):
+        print >>sys.stderr,"*** Cuesheet error: %s" % \
+            "cuesheet too short for track being split"
+        sys.exit(1)
+
+    split_pcm = audiotools.pcm_split(
+        audiofile.to_pcm(),
+        cuesheet.pcm_lengths(audiofile.total_frames()))
 
     try:
         for (i,pcmreader) in enumerate(split_pcm):

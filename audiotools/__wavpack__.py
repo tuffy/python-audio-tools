@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,InvalidFile,Con,subprocess,BIN,open_files,os,ReplayGain,ignore_sigint,transfer_data,Image
+from audiotools import AudioFile,InvalidFile,Con,subprocess,BIN,open_files,os,ReplayGain,ignore_sigint,transfer_data,Image,MetaData
 from __wav__ import WaveAudio,WaveReader
 from __ape__ import ApeTaggedAudio,ApeTag
 
@@ -455,10 +455,15 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
         import os.path
         import cue
 
+        if (cuesheet is None):
+            return
+
         metadata = self.get_metadata()
-        if (metadata is not None):
-            metadata['Cuesheet'] = cue.Cuesheet.file(
-                cuesheet,
-                os.path.basename(self.filename)).decode('ascii','replace')
-            self.set_metadata(metadata)
+        if (metadata is None):
+            metadata = WavePackAPEv2.converted(MetaData())
+
+        metadata['Cuesheet'] = cue.Cuesheet.file(
+            cuesheet,
+            os.path.basename(self.filename)).decode('ascii','replace')
+        self.set_metadata(metadata)
 

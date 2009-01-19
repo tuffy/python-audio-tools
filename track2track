@@ -83,6 +83,10 @@ def convert_file(destination_class, destination_filename,
                     track_number=source_audiofile.track_number(),
                     album_number=source_audiofile.album_number()))
 
+        existing_cuesheet = destination_audiofile.get_cuesheet()
+        if (existing_cuesheet is None):
+            destination_audiofile.set_cuesheet(source_audiofile.get_cuesheet())
+
     except audiotools.InvalidFormat,msg:
         print >>sys.stderr,(u"*** %s: %s" % \
                             (source_audiofile.filename.decode(

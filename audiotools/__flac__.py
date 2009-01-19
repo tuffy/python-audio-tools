@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,InvalidFile,PCMReader,Con,transfer_data,subprocess,BIN,BUFFER_SIZE,cStringIO,os,open_files,Image,sys,WaveAudio,ReplayGain,ignore_sigint
+from audiotools import AudioFile,MetaData,InvalidFile,PCMReader,Con,transfer_data,subprocess,BIN,BUFFER_SIZE,cStringIO,os,open_files,Image,sys,WaveAudio,ReplayGain,ignore_sigint
 from __vorbiscomment__ import *
 from __id3__ import ID3v2Comment
 from __vorbis__ import OggStreamReader,OggStreamWriter
@@ -668,11 +668,16 @@ class FlacAudio(AudioFile):
         return (p.last_block, p.block_type, p.block_length)
 
     def set_cuesheet(self,cuesheet):
+        if (cuesheet is None):
+            return
+
         metadata = self.get_metadata()
-        if (metadata is not None):
-            metadata.cuesheet = FlacCueSheet.converted(
-                cuesheet,self.total_frames(),self.sample_rate())
-            self.set_metadata(metadata)
+        if (metadata is None):
+            metadata = FlacMetaData.converted(MetaData())
+
+        metadata.cuesheet = FlacCueSheet.converted(
+            cuesheet,self.total_frames(),self.sample_rate())
+        self.set_metadata(metadata)
 
     def get_cuesheet(self):
         metadata = self.get_metadata()

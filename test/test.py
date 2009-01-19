@@ -1371,8 +1371,82 @@ class VorbisLint:
                 os.unlink(os.path.join(tempdir,f))
             os.rmdir(tempdir)
 
+class EmbeddedCuesheet:
+    def testembeddedcuesheet(self):
+        for (suffix,data) in zip([".cue",".toc"],
+                                 [
+"""eJydkF1LwzAUQN8L/Q+X/oBxk6YfyVtoM4mu68iy6WudQ8qkHbNu+u9NneCc1IdCnk649xyuUQXk
+epnpHGiOMU2Q+Z5xMCuLQs0tBOq92nTy7alus3b/AUeccL5/ZIHvZdLKWXkDjKcpIg2RszjxvYUy
+09IUykCwanZNe2pAHrr6tXMjVtuZ+uG27l62Dk91T03VPG8np+oYwL1cK98DsEZmd4AE5CrXZU8c
+O++wh2qzQxKc4X/S/l8vTQa3i7V2kWEap/iN57l66Pcjiq93IaWDUjpOyn9LETAVyASh1y0OR4Il
+Fy3hYEs4qiXB6wOQULBQkOhCygalbISUUvrnACQVERfIr1scI4K5lk9od5+/""".decode('base64').decode('zlib'),
+"""eJytkLtOxDAQRfv5ipE/gB0/Y09nOYE1hDhKDIgqiqCjQwh+n11BkSJlqtuM7jlzU7u0ESDFGvty
+h8IE74mUpmBcIwBOJ6yf69sHSqhTTA8Yn9pcYCiYyvh6zXHqlu5xPMc5z1BfypLOcRi6fvm7zPOU
+UNyPz/lSqb3zJOA29x2K9/VrvflZvwUSkmcyLBVsiOogYtgj/vOQLOvApGGucapIxCRZ262HPsaj
+oR0PqdlolvbqIS27sAWbI8BKqb0BpGd7+TsgNSwdy+0AirUD+AUsDYSu""".decode('base64').decode('zlib')]):
+            sheet_file = tempfile.NamedTemporaryFile(suffix=suffix)
+            try:
+                sheet_file.write(data)
+                sheet_file.flush()
+                sheet = audiotools.read_sheet(sheet_file.name)
 
-class TestFlacAudio(TestForeignWaveChunks,VorbisLint,TestAiffAudio):
+                basefile = tempfile.NamedTemporaryFile(
+                    suffix=self.audio_class.SUFFIX)
+                try:
+                    album = self.audio_class.from_pcm(
+                        basefile.name,
+                        EXACT_BLANK_PCM_Reader(69470436))
+                    album.set_cuesheet(sheet)
+                    album_sheet = album.get_cuesheet()
+
+                    #ensure the cuesheet embeds correctly
+                    #in our current album
+                    self.assertNotEqual(album_sheet,None)
+                    self.assertEqual(sheet.catalog(),
+                                     album_sheet.catalog())
+                    self.assertEqual(sorted(sheet.ISRCs().items()),
+                                     sorted(album_sheet.ISRCs().items()))
+                    self.assertEqual(list(sheet.indexes()),
+                                     list(album_sheet.indexes()))
+                    self.assertEqual(list(sheet.pcm_lengths(69470436)),
+                                     list(album_sheet.pcm_lengths(69470436)))
+
+                    #then ensure our embedded cuesheet
+                    #exports correctly to other audio formats
+                    for new_class in [audiotools.FlacAudio,
+                                      audiotools.OggFlacAudio,
+                                      audiotools.WavPackAudio]:
+                        newfile = tempfile.NamedTemporaryFile(
+                            suffix=new_class.SUFFIX)
+                        try:
+                            new_album = new_class.from_pcm(
+                                newfile.name,
+                                album.to_pcm())
+                            new_album.set_cuesheet(album.get_cuesheet())
+                            new_cuesheet = new_album.get_cuesheet()
+
+                            self.assertNotEqual(new_cuesheet,None)
+                            self.assertEqual(
+                                new_cuesheet.catalog(),
+                                album_sheet.catalog())
+                            self.assertEqual(
+                                sorted(new_cuesheet.ISRCs().items()),
+                                sorted(album_sheet.ISRCs().items()))
+                            self.assertEqual(
+                                list(new_cuesheet.indexes()),
+                                list(album_sheet.indexes()))
+                            self.assertEqual(
+                                list(new_cuesheet.pcm_lengths(69470436)),
+                                list(album_sheet.pcm_lengths(69470436)))
+                        finally:
+                            newfile.close()
+                finally:
+                    basefile.close()
+            finally:
+                sheet_file.close()
+
+
+class TestFlacAudio(EmbeddedCuesheet,TestForeignWaveChunks,VorbisLint,TestAiffAudio):
     def setUp(self):
         self.audio_class = audiotools.FlacAudio
 
@@ -1459,7 +1533,7 @@ class APEv2Lint:
                 os.unlink(os.path.join(tempdir,f))
             os.rmdir(tempdir)
 
-class TestWavPackAudio(TestForeignWaveChunks,APEv2Lint,TestAiffAudio):
+class TestWavPackAudio(EmbeddedCuesheet,TestForeignWaveChunks,APEv2Lint,TestAiffAudio):
     def setUp(self):
         self.audio_class = audiotools.WavPackAudio
 
@@ -2625,30 +2699,31 @@ IqWzFUixmyqeumDRdlhpO+C2s3Eocdn5wUixIZt3KdoOK20HindxcShxI3mX+IDg3b8MLEoQ6yTo
             finally:
                 temp_toc_file.close()
 
-            #convert to embedded FLAC cuesheet and test for equality
-            temp_flac_file = tempfile.NamedTemporaryFile(suffix='.flac')
-            try:
-                flac = audiotools.FlacAudio.from_pcm(
-                    temp_flac_file.name,
-                    EXACT_BLANK_PCM_Reader(191795016),
-                    "1")
-                metadata = flac.get_metadata()
-                metadata.cuesheet = audiotools.FlacCueSheet.converted(
-                    sheet,flac.total_frames(),flac.sample_rate())
-                flac.set_metadata(metadata)
-                flac_sheet = audiotools.open(temp_flac_file.name).get_metadata().cuesheet
+            #convert to embedded cuesheets and test for equality
+            for audio_class in [audiotools.FlacAudio,
+                                audiotools.OggFlacAudio,
+                                audiotools.WavPackAudio]:
+                temp_file = tempfile.NamedTemporaryFile(
+                    suffix=audio_class.SUFFIX)
+                try:
+                    f = audio_class.from_pcm(
+                        temp_file.name,
+                        EXACT_BLANK_PCM_Reader(191795016))
+                    f.set_cuesheet(sheet)
+                    f_sheet = audiotools.open(temp_file.name).get_cuesheet()
+                    self.assertNotEqual(f_sheet,None)
 
-                self.assertEqual(sheet.catalog(),flac_sheet.catalog())
-                self.assertEqual(sheet.single_file_type(),
-                                 flac_sheet.single_file_type())
-                self.assertEqual(list(sheet.indexes()),
-                                 list(flac_sheet.indexes()))
-                self.assertEqual(list(sheet.pcm_lengths(191795016)),
-                                 list(flac_sheet.pcm_lengths(191795016)))
-                self.assertEqual(sorted(sheet.ISRCs().items()),
-                                 sorted(flac_sheet.ISRCs().items()))
-            finally:
-                temp_flac_file.close()
+                    self.assertEqual(sheet.catalog(),f_sheet.catalog())
+                    self.assertEqual(sheet.single_file_type(),
+                                     f_sheet.single_file_type())
+                    self.assertEqual(list(sheet.indexes()),
+                                     list(f_sheet.indexes()))
+                    self.assertEqual(list(sheet.pcm_lengths(191795016)),
+                                     list(f_sheet.pcm_lengths(191795016)))
+                    self.assertEqual(sorted(sheet.ISRCs().items()),
+                                     sorted(f_sheet.ISRCs().items()))
+                finally:
+                    temp_file.close()
 
 
 class testtocsheet(testcuesheet):
