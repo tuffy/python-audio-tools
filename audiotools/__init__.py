@@ -1581,6 +1581,67 @@ class DummyAudioFile(AudioFile):
     def track_number(self):
         return self.__track_number__
 
+###########################
+#Cuesheet/TOC file handling
+###########################
+
+#Cuesheets and TOC files are bundled into a unified Sheet interface
+
+#a parent exception for CueException and TOCException
+class SheetException(ValueError): pass
+
+def read_sheet(filename):
+    import toc
+    import cue
+
+    try:
+        #try TOC first, since its CD_DA header makes it easier to spot
+        return toc.read_tocfile(filename)
+    except SheetException:
+        return cue.read_cuesheet(filename)
+
+def parse_timestamp(s):
+    if (":" in s):
+        (m,s,f) = map(int,s.split(":"))
+        return (m * 60 * 75) + (s * 75) + f
+    else:
+        return int(s)
+
+def build_timestamp(i):
+    return "%2.2d:%2.2d:%2.2d" % ((i / 75) / 60,(i / 75) % 60,i % 75)
+
+#given a cuesheet-compatible object and a total_frames integer
+#return a unicode string formatted for use by MetaData's __unicode__ method
+#for eventual display by trackinfo
+def sheet_to_unicode(sheet,total_frames):
+    #FIXME? - This (and pcm_lengths() in general) assumes all cuesheets
+    #have a sample rate of 44100Hz.
+    #It's difficult to envision a scenario in which this assumption doesn't hold
+    #The point of cuesheets is to manage disc-based data as
+    #"solid" archives which can be rewritten identically to the original
+    #yet this only works for CD audio, which must always be 44100Hz.
+    #DVD-Audio is encoded into AOB files which cannot be mapped to cuesheets
+    #and SACD's DSD format is beyond the scope of these PCM-centric tools.
+
+    ISRCs = sheet.ISRCs()
+
+    tracks = u"\n".join(
+        [" Track %2.2d - %2.2d:%2.2d%s" % \
+             (i + 1,
+              length / 44100 / 60,
+              length / 44100 % 60,
+              (" (ISRC %s)" % (ISRCs[i + 1].decode('ascii','replace'))) if ((i + 1) in ISRCs.keys()) else u"")
+         for (i,length) in enumerate(sheet.pcm_lengths(total_frames))])
+
+
+    if ((sheet.catalog() is not None) and
+        (len(sheet.catalog()) > 0)):
+        return u"  Catalog - %s\n%s" % \
+            (sheet.catalog().decode('ascii','replace'),tracks)
+    else:
+        return tracks
+
+
 from __image__ import *
 
 from __wav__ import *
@@ -1791,36 +1852,6 @@ class ExecQueue:
                 #print "Emptying %s" % (repr(process_pool))
             except KeyError:
                 continue
-
-###########################
-#Cuesheet/TOC file handling
-###########################
-
-#Cuesheets and TOC files are bundled into a unified Sheet interface
-
-#a parent exception for CueException and TOCException
-class SheetException(ValueError): pass
-
-def read_sheet(filename):
-    import toc
-    import cue
-
-    try:
-        #try TOC first, since its CD_DA header makes it easier to spot
-        return toc.read_tocfile(filename)
-    except SheetException:
-        return cue.read_cuesheet(filename)
-
-def parse_timestamp(s):
-    if (":" in s):
-        (m,s,f) = map(int,s.split(":"))
-        return (m * 60 * 75) + (s * 75) + f
-    else:
-        return int(s)
-
-def build_timestamp(i):
-    return "%2.2d:%2.2d:%2.2d" % ((i / 75) / 60,(i / 75) % 60,i % 75)
-
 
 #***ApeAudio temporarily removed***
 #Without a legal alternative to mac-port, I shall have to re-implement

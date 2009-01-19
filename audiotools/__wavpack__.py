@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,InvalidFile,Con,subprocess,BIN,open_files,os,ReplayGain,ignore_sigint,transfer_data,Image,MetaData
+from audiotools import AudioFile,InvalidFile,Con,subprocess,BIN,open_files,os,ReplayGain,ignore_sigint,transfer_data,Image,MetaData,sheet_to_unicode
 from __wav__ import WaveAudio,WaveReader
 from __ape__ import ApeTaggedAudio,ApeTag
 
@@ -63,6 +63,24 @@ class WavePackAPEv2(ApeTag):
                                                    'Cover Art (Back)',
                                                    'Cover Art (Front)'),
                       ApeTag.__comment_pairs__(self))
+
+    def __unicode__(self):
+        if ('Cuesheet' not in self.keys()):
+            return ApeTag.__unicode__(self)
+        else:
+            import cue
+
+            try:
+                return u"%s\n\nCuesheet:\n%s" % \
+                    (MetaData.__unicode__(self),
+                     sheet_to_unicode(
+                            cue.parse(
+                                cue.tokens(self['Cuesheet'].encode('ascii',
+                                                                   'replace'))),
+                            0)) #FIXME - need to pull total samples
+                                #from original file somehow
+            except cue.CueException:
+                return ApeTag.__unicode__(self)
 
     def add_image(self,image):
         if (image.type == 0):

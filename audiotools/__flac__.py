@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,MetaData,InvalidFile,PCMReader,Con,transfer_data,subprocess,BIN,BUFFER_SIZE,cStringIO,os,open_files,Image,sys,WaveAudio,ReplayGain,ignore_sigint
+from audiotools import AudioFile,MetaData,InvalidFile,PCMReader,Con,transfer_data,subprocess,BIN,BUFFER_SIZE,cStringIO,os,open_files,Image,sys,WaveAudio,ReplayGain,ignore_sigint,sheet_to_unicode
 from __vorbiscomment__ import *
 from __id3__ import ID3v2Comment
 from __vorbis__ import OggStreamReader,OggStreamWriter
@@ -443,23 +443,7 @@ class FlacCueSheet:
             return []
 
     def __unicode__(self):
-        ISRCs = self.ISRCs()
-
-        tracks = u"\n".join(
-            [" Track %2.2d - %2.2d:%2.2d%s" % \
-                 (i + 1,
-                  (length / self.sample_rate) / 60,
-                  (length / self.sample_rate) % 60,
-                  (" (ISRC %s)" % (ISRCs[i + 1].decode('ascii','replace'))) if ((i + 1) in ISRCs.keys()) else u"")
-             for (i,length) in enumerate(self.pcm_lengths(None))])
-
-
-        if ((self.catalog() is not None) and
-            (len(self.catalog()) > 0)):
-            return u"  Catalog - %s\n%s" % \
-                (self.catalog().decode('ascii','replace'),tracks)
-        else:
-            return tracks
+        return sheet_to_unicode(self,None)
 
 class FlacAudio(AudioFile):
     SUFFIX = "flac"
