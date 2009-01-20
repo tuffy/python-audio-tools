@@ -97,12 +97,11 @@ if (__name__ == '__main__'):
         sys.exit(1)
 
     if ((len(audiofiles) == 1) and
-        isinstance(audiofiles[0],audiotools.FlacAudio) and
-        (audiofiles[0].get_metadata().cuesheet is not None)):
-        #writing a single FLAC file with an embedded cuesheet
+        (audiofiles[0].get_cuesheet() is not None)):
+        #writing a single file with an embedded cuesheet
         #so extract its contents to wave/cue and call cdrdao
 
-        cuesheet = audiofiles[0].get_metadata().cuesheet
+        cuesheet = audiofiles[0].get_cuesheet()
 
         temptoc = tempfile.NamedTemporaryFile(suffix='.toc')
         tempwav = tempfile.NamedTemporaryFile(suffix='.wav')

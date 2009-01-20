@@ -190,7 +190,7 @@
   and allows the use of more modern Python features which
   makes the code less clunky.
 
-* TODO Expand WavPack's APEv2 tag coverage
+* DONE Expand WavPack's APEv2 tag coverage
   WavPack's official specification defines APEv2 tags such as
   "Cuesheet" and "Cover Art" which the APEv2 standard does not.
   It would be helpful to make WavPack's APEv2 tags a superset of regular APEv2.
@@ -206,7 +206,7 @@
 ** DONE Ensure cuesheets are transferred properly when transcoding
 ** DONE Update trackcat to use the interface
 ** DONE Update tracksplit to use the interface
-** TODO Update track2cd to use the interface
+** DONE Update track2cd to use the interface
 ** TODO Document cuesheet interface
 ** TODO Add unit tests for embedded cuesheets across all formats
 ** TODO Add cuesheet import option to tracktag
