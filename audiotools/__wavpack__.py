@@ -54,6 +54,10 @@ def __riff_chunk_ids__(data):
 #######################
 
 class WavePackAPEv2(ApeTag):
+    def __init__(self, tag_dict, tag_length=None, frame_count=0):
+        ApeTag.__init__(self,tag_dict=tag_dict,tag_length=tag_length)
+        self.frame_count = frame_count
+
     @classmethod
     def supports_images(cls):
         return True
@@ -77,8 +81,7 @@ class WavePackAPEv2(ApeTag):
                             cue.parse(
                                 cue.tokens(self['Cuesheet'].encode('ascii',
                                                                    'replace'))),
-                            0)) #FIXME - need to pull total samples
-                                #from original file somehow
+                            self.frame_count))
             except cue.CueException:
                 return ApeTag.__unicode__(self)
 
@@ -218,6 +221,11 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
     @classmethod
     def supports_foreign_riff_chunks(cls):
         return True
+
+    def get_metadata(self):
+        metadata = ApeTaggedAudio.get_metadata(self)
+        metadata.frame_count = self.total_frames()
+        return metadata
 
     def has_foreign_riff_chunks(self):
         for (sub_header,nondecoder,data) in self.sub_frames():
