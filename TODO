@@ -208,6 +208,5 @@
 ** DONE Update tracksplit to use the interface
 ** DONE Update track2cd to use the interface
 ** TODO Document cuesheet interface
-** TODO Add unit tests for embedded cuesheets across all formats
+** DONE Add unit tests for embedded cuesheets across all formats
 ** TODO Add cuesheet import option to tracktag
-

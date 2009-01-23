@@ -1792,7 +1792,7 @@ class M4AMetadata:
 #    def setUp(self):
 #        self.audio_class = audiotools.ALACAudio
 
-class TestOggFlacAudio(VorbisLint,TestAiffAudio):
+class TestOggFlacAudio(EmbeddedCuesheet,VorbisLint,TestAiffAudio):
     def setUp(self):
         self.audio_class = audiotools.OggFlacAudio
 
@@ -3211,17 +3211,17 @@ Is+xl9xg0BWyGXIZljPkM6xkKGQoZihlWM19CsPUca8l97sa7ZDGfwEBGThn""".decode('base64')
                                      "TTITLE1":u"track two",
                                      "TTITLE2":u"track three",
                                      "TTITLE4":u"track four",
-                                     "TTTIEL5":u"track five"},
+                                     "TTITLE5":u"track five"},
                                     {"TTITLE0":u"track \xf3ne",
                                      "TTITLE1":u"track two",
                                      "TTITLE2":u"track three",
                                      "TTITLE4":u"track four",
-                                     "TTTIEL5":u"track five"},
+                                     "TTITLE5":u"track five"},
                                     {"TTITLE0":u'\u30de\u30af\u30ed\u30b9',
                                      "TTITLE1":u"track tw\xf3",
                                      "TTITLE2":u"track three",
                                      "TTITLE4":u"track four",
-                                     "TTTIEL5":u"track five"}]):
+                                     "TTITLE5":u"track five"}]):
             xmcd = audiotools.XMCD(data,OFFSETS,LENGTH)
             xmcd2 = audiotools.XMCD.read_data(xmcd.build().decode(encoding))
             self.assertEqual(dict(xmcd.items()),dict(xmcd2.items()))
@@ -3240,7 +3240,7 @@ Is+xl9xg0BWyGXIZljPkM6xkKGQoZihlWM19CsPUca8l97sa7ZDGfwEBGThn""".decode('base64')
                                 "TTITLE1":u"track two",
                                 "TTITLE2":u"track three",
                                 "TTITLE4":u"track four",
-                                "TTTIEL5":u"track five"},
+                                "TTITLE5":u"track five"},
                                OFFSETS,LENGTH)
         xmcd2 = audiotools.XMCD.read_data(xmcd.build().decode('ISO-8859-1'))
         self.assertEqual(dict(xmcd.items()),dict(xmcd2.items()))
@@ -3251,12 +3251,137 @@ Is+xl9xg0BWyGXIZljPkM6xkKGQoZihlWM19CsPUca8l97sa7ZDGfwEBGThn""".decode('base64')
                                 "TTITLE1":u"a" + (u'\u30de\u30af\u30ed\u30b9' * 100),
                                 "TTITLE2":u"ab" + (u'\u30de\u30af\u30ed\u30b9' * 100),
                                 "TTITLE4":u"abc" + (u'\u30de\u30af\u30ed\u30b9' * 100),
-                                "TTTIEL5":u"track tw\xf3"},
+                                "TTITLE5":u"track tw\xf3"},
                                OFFSETS,LENGTH)
 
         xmcd2 = audiotools.XMCD.read_data(xmcd.build().decode('UTF-8'))
         self.assertEqual(dict(xmcd.items()),dict(xmcd2.items()))
         self.assert_(max(map(len,cStringIO.StringIO(xmcd.build()))) < 80)
+
+    def testtracktag(self):
+        LENGTH = 1134
+        OFFSETS = [150, 18740, 40778, 44676, 63267]
+        TRACK_LENGTHS = [y - x for x,y in zip(OFFSETS + [LENGTH * 75],
+                                              (OFFSETS + [LENGTH * 75])[1:])]
+        data = {"DTITLE":"Artist / Album",
+                "TTITLE0":u"track one",
+                "TTITLE1":u"track two",
+                "TTITLE2":u"track three",
+                "TTITLE3":u"track four",
+                "TTITLE4":u"track five"}
+
+        #construct our XMCD file
+        xmcd_file = tempfile.NamedTemporaryFile(suffix=".xmcd")
+        xmcd_file.write(audiotools.XMCD(data,OFFSETS,LENGTH).build())
+        xmcd_file.flush()
+
+        #construct a batch of temporary tracks
+        temp_tracks = [tempfile.NamedTemporaryFile(suffix=".flac")
+                       for i in xrange(len(OFFSETS))]
+        try:
+            tracks = [audiotools.FlacAudio.from_pcm(
+                    track.name,
+                    EXACT_BLANK_PCM_Reader(length * 44100 / 75))
+                      for (track,length) in zip(temp_tracks,TRACK_LENGTHS)]
+            for (i,track) in enumerate(tracks):
+                track.set_metadata(audiotools.MetaData(track_number=i + 1))
+
+            #tag them with tracktag
+            subprocess.call(["tracktag","-x",xmcd_file.name] + \
+                            [track.filename for track in tracks])
+
+            #ensure the metadata values are correct
+            for (track,name,i) in zip(tracks,[u"track one",
+                                              u"track two",
+                                              u"track three",
+                                              u"track four",
+                                              u"track five"],
+                                      range(len(tracks))):
+                metadata = track.get_metadata()
+                self.assertEqual(metadata.track_name,name)
+                self.assertEqual(metadata.track_number,i + 1)
+                self.assertEqual(metadata.album_name,u"Album")
+                self.assertEqual(metadata.artist_name,u"Artist")
+        finally:
+            xmcd_file.close()
+            for track in temp_tracks:
+                track.close()
+
+        #construct a fresh our XMCD file
+        xmcd_file = tempfile.NamedTemporaryFile(suffix=".xmcd")
+        xmcd_file.write(audiotools.XMCD(data,OFFSETS,LENGTH).build())
+        xmcd_file.flush()
+
+        #construct a batch of temporary tracks with a file missing
+        temp_tracks = [tempfile.NamedTemporaryFile(suffix=".flac")
+                       for i in xrange(len(OFFSETS))]
+        try:
+            tracks = [audiotools.FlacAudio.from_pcm(
+                    track.name,
+                    EXACT_BLANK_PCM_Reader(length * 44100 / 75))
+                      for (track,length) in zip(temp_tracks,TRACK_LENGTHS)]
+            for (i,track) in enumerate(tracks):
+                track.set_metadata(audiotools.MetaData(track_number=i + 1))
+
+            del(tracks[2])
+
+            #tag them with tracktag
+            subprocess.call(["tracktag","-x",xmcd_file.name] + \
+                            [track.filename for track in tracks])
+
+            #ensure the metadata values are correct
+            for (track,name,i) in zip(tracks,[u"track one",
+                                              u"track two",
+                                              u"track four",
+                                              u"track five"],
+                                      [0,1,3,4]):
+                metadata = track.get_metadata()
+                self.assertEqual(metadata.track_name,name)
+                self.assertEqual(metadata.track_number,i + 1)
+                self.assertEqual(metadata.album_name,u"Album")
+                self.assertEqual(metadata.artist_name,u"Artist")
+        finally:
+            xmcd_file.close()
+            for track in temp_tracks:
+                track.close()
+
+        #construct a fresh XMCD file with a track missing
+        del(data["TTITLE2"])
+        xmcd_file = tempfile.NamedTemporaryFile(suffix=".xmcd")
+        xmcd_file.write(audiotools.XMCD(data,OFFSETS,LENGTH).build())
+        xmcd_file.flush()
+
+        #construct a batch of temporary tracks
+        temp_tracks = [tempfile.NamedTemporaryFile(suffix=".flac")
+                       for i in xrange(len(OFFSETS))]
+        try:
+            tracks = [audiotools.FlacAudio.from_pcm(
+                    track.name,
+                    EXACT_BLANK_PCM_Reader(length * 44100 / 75))
+                      for (track,length) in zip(temp_tracks,TRACK_LENGTHS)]
+            for (i,track) in enumerate(tracks):
+                track.set_metadata(audiotools.MetaData(track_number=i + 1))
+
+            #tag them with tracktag
+            subprocess.call(["tracktag","-x",xmcd_file.name] + \
+                            [track.filename for track in tracks])
+
+            #ensure the metadata values are correct
+            for (track,name,i) in zip(tracks,[u"track one",
+                                              u"track two",
+                                              u"",
+                                              u"track four",
+                                              u"track five"],
+                                      range(len(tracks))):
+                metadata = track.get_metadata()
+                self.assertEqual(metadata.track_name,name)
+                self.assertEqual(metadata.track_number,i + 1)
+                self.assertEqual(metadata.album_name,u"Album")
+                self.assertEqual(metadata.artist_name,u"Artist")
+        finally:
+            xmcd_file.close()
+            for track in temp_tracks:
+                track.close()
 
 
 ############

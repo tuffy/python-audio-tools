@@ -33,15 +33,37 @@ def track_metadata(track, xmcd):
         return metadata
 
 def xmcd_metadata(track, xmcd):
-    metadata = xmcd[track.track_number()]
-    if (metadata != None):
+    try:
+        metadata = xmcd[track.track_number()]
+    except KeyError:
+        if (len(xmcd) > 0):
+            base_metadata = xmcd.values()[0]
+            return audiotools.MetaData(album_name=base_metadata.album_name,
+                                       artist_name=base_metadata.artist_name,
+                                       track_number=track,
+                                       track_name=u"")
+        else:
+            return audiotools.MetaData()
+
+    if (metadata is not None):
         return metadata
     else:
         return audiotools.MetaData()
 
 def xmcd_track_metadata(track, xmcd):
-    xmcd_metadata = xmcd[track.track_number()]
-    if (xmcd_metadata != None):
+    try:
+        xmcd_metadata = xmcd[track.track_number()]
+    except KeyError:
+        if (len(xmcd) > 0):
+            base_metadata = xmcd.values()[0]
+            return audiotools.MetaData(album_name=base_metadata.album_name,
+                                       artist_name=base_metadata.artist_name,
+                                       track_number=track,
+                                       track_name=u"")
+        else:
+            return audiotools.MetaData()
+
+    if (xmcd_metadata is not None):
         #xmcd data overwrites whatever comes from track
         #(so long as it's not blank)
         track_metadata = track.get_metadata()
