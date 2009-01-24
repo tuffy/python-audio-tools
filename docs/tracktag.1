@@ -90,8 +90,13 @@ programs.
 \fB--cue=\fIfilename\fR
 A cuesheet or
 .BR cdrdao (1)
-TOC file to use for ISRC metadata.
-Note that many, but not all, CDs contain ISRC metadata.
+TOC file.
+If given along with multiple audio tracks, this file's ISRC metadata will
+be added to those tracks.
+If given with a single CD image track, this file's cuesheet will
+be embedded in that image.
+Note that only FLAC and WavPack currently support embedded cuesheets
+and not all CDs contain ISRC metadata.
 .TP
 \fB--remove-images\fR
 Remove existing images prior to adding new ones.

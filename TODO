@@ -42,7 +42,7 @@
   should make a file "track215.cdda.wav" which then properly converts
   back to track_number 15 and album_number 2 if read.
 
-* TODO Improve XMCD handling
+* DONE Improve XMCD handling
   Support for XMCD files often breaks down if one or more tracks
   are missing.
   In some cases, there's no fix to be had (track2xmcd)
@@ -209,4 +209,10 @@
 ** DONE Update track2cd to use the interface
 ** TODO Document cuesheet interface
 ** DONE Add unit tests for embedded cuesheets across all formats
-** TODO Add cuesheet import option to tracktag
+** DONE Add cuesheet import option to tracktag
+   This can also use the --cue flag,
+   for consistency with other image-handling programs like tracksplit.
+   If given with a single, album-length track, --cue will import a cuesheet.
+   If given with multiple tracks or a single track that's too short,
+   --cue will function like --xmcd and act as a metadata source.
+

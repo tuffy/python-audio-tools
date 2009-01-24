@@ -90,18 +90,6 @@ def get_image(filename, type):
     except IOError:
         raise audiotools.InvalidImage("error opening file: \"%s\"" % (filename))
 
-#given a cuesheet filename,
-#returns a dict of track_number->u"ISRC" entries
-#or an empty dict if no ISRCs found
-def isrc_metadata(filename):
-    try:
-        return dict([(k,v.decode('ascii','replace'))
-                     for (k,v) in
-                     audiotools.read_sheet(filename).ISRCs().items()])
-    except audiotools.SheetException,msg:
-        print >>sys.stderr,msg
-        return {}
-
 #given a comment filename
 #returns the comment as a unicode string
 #or exits with an error if the file cannot be read
@@ -249,7 +237,7 @@ if (__name__ == '__main__'):
                       action='store',
                       type='string',
                       dest='cue',
-                      help='a cuesheet to get audio metadata from',
+                      help='a cuesheet to import or get audio metadata from',
                       metavar='FILENAME')
 
     parser.add_option('--remove-images',
@@ -320,10 +308,25 @@ if (__name__ == '__main__'):
     else:
         xmcd = None
 
+    isrcs = {}
+    import_cuesheet = None
     if (options.cue is not None):
-        isrcs = isrc_metadata(options.cue)
-    else:
-        isrcs = {}
+        try:
+            cuesheet = audiotools.read_sheet(options.cue)
+
+            #if there's a single audio file
+            #and the cuesheet is sized to fit that file
+            #attempt to embed the cuesheet in the file
+            if ((len(audiofiles) == 1) and
+                (list(cuesheet.pcm_lengths(audiofiles[0].total_frames()))[-1] > 0)):
+                import_cuesheet = cuesheet
+            else:
+                #otherwise, treat the cuesheet is a source of ISRC data
+                isrcs = dict([(k,v.decode('ascii','replace'))
+                              for (k,v) in
+                              cuesheet.ISRCs().items()])
+        except audiotools.SheetException,msg:
+            print >>sys.stderr,msg
 
     if (options.replace):
         if (xmcd is None):
@@ -396,6 +399,7 @@ if (__name__ == '__main__'):
                 sys.exit(1)
 
     #we're assuming all tracks are the same type
+    #add_replay_gain should check if they are not
     if (options.add_replay_gain and
         (len(audiofiles) > 0) and
         (audiofiles[0].can_add_replay_gain())):
@@ -406,3 +410,7 @@ if (__name__ == '__main__'):
             else:
                 print >>sys.stderr,"* Applying ReplayGain.  This may take some time."
         audiofiles[0].add_replay_gain([f.filename for f in audiofiles])
+
+    if (import_cuesheet is not None):
+        audiofiles[0].set_cuesheet(import_cuesheet)
+

@@ -224,7 +224,8 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
 
     def get_metadata(self):
         metadata = ApeTaggedAudio.get_metadata(self)
-        metadata.frame_count = self.total_frames()
+        if (metadata is not None):
+            metadata.frame_count = self.total_frames()
         return metadata
 
     def has_foreign_riff_chunks(self):
