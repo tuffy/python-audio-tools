@@ -20,8 +20,8 @@
 
 import sys
 
-if (sys.version_info < (2,4,4,'final',0)):
-    print >>sys.stderr,"*** Python 2.4.4 or better required"
+if (sys.version_info < (2,5.0,'final',0)):
+    print >>sys.stderr,"*** Python 2.5.0 or better required"
     sys.exit(1)
 
 import subprocess

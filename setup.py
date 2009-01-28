@@ -17,6 +17,11 @@
 #along with this program; if not, write to the Free Software
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
+import sys
+
+if (sys.version_info < (2,5.0,'final',0)):
+    print >>sys.stderr,"*** Python 2.5.0 or better required"
+    sys.exit(1)
 
 from distutils.core import setup, Extension
 import subprocess,re
