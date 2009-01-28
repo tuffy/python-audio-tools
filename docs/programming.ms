@@ -214,6 +214,29 @@ Returns a ReplayGain object of the track's ReplayGain values,
 if present.
 Returns None if no values or present or ReplayGain is not supported.
 
+.CLASSMETHOD supports_foreign_riff_chunks
+Returns True if this AudioFile class implementation supports
+foreign RIFF chunks.
+These are arbitrary chunks of data in RIFF WAVE files which sometimes
+contain useful audio metadata.
+
+.FUNCTION has_foreign_riff_chunks
+Returns True if this AudioFile instance contains nonstandard RIFF chunks.
+These methods are useful when transcoding.
+For example, if the source AudioFile contains foreign RIFF chunks
+and the target AudioFile class supports foreign RIFF chunks,
+a transcoder can make special effort to preserve those chunks.
+
+.FUNCTION set_cuesheet "cuesheet"
+Takes a cuesheet-compatible object with
+`catalog', `ISRCs', `indexes' and 'pcm_lengths' methods.
+Sets this AudioFile's embedded cuesheet, if possible.
+
+.FUNCTION get_cuesheet
+Returns this AudioFile's embedded cuesheet as a cuesheet-compatible object
+with `catalog', `ISRCs', `indexes' and 'pcm_lengths' methods.
+If no cuesheet is embedded, returns None.
+
 .CLASSMETHOD has_binaries "system_binaries"
 Takes a __system_binaries__ class, typically this module's
 BIN attribute.
@@ -312,8 +335,6 @@ whether the MetaData we're setting is already an instance of VorbisComment
 or not (e.g. from FlacAudio).
 By converting MetaData with this method, the VorbisAudio class
 only needs to know how to handle VorbisComment instances.
-
-.bp
 
 .CLASSMETHOD supports_images
 Returns True if this particular subclass of MetaData supports
@@ -430,6 +451,31 @@ The entire album's ReplayGain value, in dB.
 .ATTRIBUTE "album_peak"
 The entire album's peak value.
 
+
+.bp
+
+.SECTION Cuesheets
+.PP
+Although there is currently no base Cuesheet clase, those
+expected by an AudioFile's `set_cuesheet' method and returned by
+one's `set_cuesheet' method should implement the following methods:
+
+.FUNCTION catalog
+Returns a CD's catalog number as a plain string,
+or None if no catalog number is present in the cuesheet.
+
+.FUNCTION ISRCs
+Returns a CD's set of ISRCs as a dict whose keys are track number
+integers and whose values are ISRC plain strings.
+
+.FUNCTION indexes
+Returns an iterator of index tuples correspending to the track indexes.
+
+.FUNCTION pcm_lengths "total_length"
+Given the total length of the entire CD in PCM frames,
+returns a list of PCM lengths for all audio tracks within the cuesheet
+in PCM frames.
+
 .bp
 
 .SECTION PCMReader
@@ -485,6 +531,7 @@ But by wrapping PCMConverter around that PCMReader, like:
 \fCPCMConverter(pcmreader,44100,2,16)\fR
 .LP
 PCMConveter's read method will translate the stream to a CD-quality one.
+
 .bp
 
 .SECTION CDDA

@@ -196,7 +196,7 @@
   It would be helpful to make WavPack's APEv2 tags a superset of regular APEv2.
 ** DONE Add image support to WavePackAPEv2
 ** DONE Add cuesheet support to WavePackAPEv2
-* TODO Build unified cuesheet interface
+* DONE Build unified cuesheet interface
   Once both FLAC and WavPack support embedded cuesheets,
   there will need to be a unified interface to support them.
   I expect this will be a simple pair of get_cuesheet/set_cuesheet
@@ -207,7 +207,7 @@
 ** DONE Update trackcat to use the interface
 ** DONE Update tracksplit to use the interface
 ** DONE Update track2cd to use the interface
-** TODO Document cuesheet interface
+** DONE Document cuesheet interface
 ** DONE Add unit tests for embedded cuesheets across all formats
 ** DONE Add cuesheet import option to tracktag
    This can also use the --cue flag,
