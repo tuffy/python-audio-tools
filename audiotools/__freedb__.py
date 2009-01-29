@@ -209,7 +209,10 @@ class XMCD:
                          if (t.get_metadata() is not None)])
 
         artist_names = [m.artist_name for m in metadata.values()]
-        if (len(set(artist_names)) == len(artist_names)):
+        if (len(artist_names) == 0):
+            album_artist = u""
+        elif ((len(artist_names) > 1) and
+              (len(set(artist_names)) == len(artist_names))):
             #if all track artists are different, don't pick one
             album_artist = u"Various"
         else:
@@ -232,6 +235,17 @@ class XMCD:
                            for track in audiofiles]),
                     discid.offsets(),
                     (discid.length() / 75) + 2)
+
+    @classmethod
+    def from_cuesheet(cls, cuesheet, total_frames, sample_rate, metadata=None):
+        if (metadata is None):
+            metadata = MetaData()
+
+        return cls.from_files([DummyAudioFile(
+                    length = (pcm_frames * 75) / sample_rate,
+                    metadata = metadata,
+                    track_number = i + 1) for (i,pcm_frames) in enumerate(
+                    cuesheet.pcm_lengths(total_frames))])
 
     def metadata(self):
         dtitle = self.get('DTITLE',u'')

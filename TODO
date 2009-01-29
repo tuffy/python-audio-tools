@@ -218,3 +218,5 @@
    If given with multiple tracks or a single track that's too short,
    --cue will function like --xmcd and act as a metadata source.
 
+** DONE Update track2xmcd to support getting an XMCD file from CD image
+

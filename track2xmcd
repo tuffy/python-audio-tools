@@ -70,15 +70,40 @@ if (__name__ == '__main__'):
                   (options.xmcd)
             sys.exit(1)
 
-    if (options.discid):      #calculate the disc ID instead
-        discid = audiotools.DiscID([file.cd_frames()
-                                    for file in audiofiles])
+    if (options.discid):      #calculate the disc ID and do nothing else
+        if ((len(audiofiles) == 1) and
+            (audiofiles[0].get_cuesheet() is not None)):
+            file = audiofiles[0]
+            discid = audiotools.DiscID([(length * 75) / file.sample_rate()
+                                        for length in
+                                        file.get_cuesheet().pcm_lengths(
+                        file.total_frames())])
+        else:
+            discid = audiotools.DiscID([file.cd_frames()
+                                        for file in audiofiles])
         print discid.freedb_id()
     elif (options.metadata):  #pull XMCD data from AudioFile metadata
-        outfile.write(audiotools.XMCD.from_files(audiofiles).build())
+        if ((len(audiofiles) == 1) and
+            (audiofiles[0].get_cuesheet() is not None)):
+            outfile.write(audiotools.XMCD.from_cuesheet(
+                    audiofiles[0].get_cuesheet(),
+                    audiofiles[0].total_frames(),
+                    audiofiles[0].sample_rate(),
+                    audiofiles[0].get_metadata()).build())
+        else:
+            outfile.write(audiotools.XMCD.from_files(audiofiles).build())
     else:                     #grab XMCD data from FreeDB
-        discid = audiotools.DiscID([file.cd_frames()
-                                    for file in audiofiles])
+        if ((len(audiofiles) == 1) and
+            (audiofiles[0].get_cuesheet() is not None)):
+            file = audiofiles[0]
+            discid = audiotools.DiscID([(length * 75) / file.sample_rate()
+                                        for length in
+                                        file.get_cuesheet().pcm_lengths(
+                        file.total_frames())])
+        else:
+            discid = audiotools.DiscID([file.cd_frames()
+                                        for file in audiofiles])
+
         try:
             audiotools.get_xmcd(discid, outfile,
                                 options.freedb_server,
