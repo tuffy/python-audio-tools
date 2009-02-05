@@ -44,6 +44,13 @@ if (__name__ == '__main__'):
                       default="normal",
                       help='the verbosity level to execute at')
 
+    parser.add_option('-p','--prefix',
+                      action='store',
+                      dest='prefix',
+                      default="",
+                      help='add a prefix to the output image')
+
+
     (options,args) = parser.parse_args()
 
     if (len(args) != 1):
@@ -53,7 +60,7 @@ if (__name__ == '__main__'):
     try:
         audiofile = audiotools.open(args[0])
     except audiotools.UnsupportedFile:
-        print >>sys.stderr,"*** You must specify exactly 1 audio file"
+        print >>sys.stderr,"*** %s file format not supported" % args[0]
         sys.exit(1)
 
     metadata = audiofile.get_metadata()
@@ -64,14 +71,16 @@ if (__name__ == '__main__'):
 
         for (type,images) in image_types.items():
             if (len(images) != 1):
-                FILE_TEMPLATE = "%(filename)s%(filenum)2.2d.%(suffix)s"
+                FILE_TEMPLATE = "%(prefix)s%(filename)s%(filenum)2.2d.%(suffix)s"
             else:
-                FILE_TEMPLATE = "%(filename)s.%(suffix)s"
+                FILE_TEMPLATE = "%(prefix)s%(filename)s.%(suffix)s"
 
             for (i,image) in enumerate(images):
                 output_filename = os.path.join(
                     options.dir,
-                    FILE_TEMPLATE % {"filename":FILENAME_TYPES[image.type],
+                    FILE_TEMPLATE % {"prefix":options.prefix,
+                                     "filename":FILENAME_TYPES[image.type],
+                                     "filenum":i + 1,
                                      "filenum":i + 1,
                                      "suffix":image.suffix()})
                 try:

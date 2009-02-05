@@ -184,7 +184,7 @@
    round-trippable if editxmcd is to be modernized.
 *** DONE Add XMCD unit tests
 *** DONE Update XMCD API documentation
-* TODO Require Python 2.5
+* DONE Require Python 2.5
   Since Python 2.4 is in bugfix-only mode and barely supported,
   it's best to move the minimum version to Python 2.5 or better
   (which has already been superceded by Python 2.6).
