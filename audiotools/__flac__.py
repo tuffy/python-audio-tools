@@ -412,9 +412,6 @@ class FlacCueSheet:
         else:
             return None
 
-    def single_file_type(self):
-        return True
-
     def ISRCs(self):
         return dict([(track.track_number,track.ISRC) for track in
                      self.container.cuesheet_tracks

@@ -219,4 +219,9 @@
    --cue will function like --xmcd and act as a metadata source.
 
 ** DONE Update track2xmcd to support getting an XMCD file from CD image
+* TODO Ensure noncompliant cuesheets are handled properly
+  There are 4 different types of cuesheets,
+  1 single file type and 3 different multiple file variants.
+  Since we're only handling the single file type, it's important
+  to reject the others until they are handled correctly.
 

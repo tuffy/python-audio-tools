@@ -350,6 +350,10 @@ def read_cuesheet(filename):
     except IOError,msg:
         raise CueException(str(msg))
     try:
-        return parse(tokens(f.read()))
+        sheet = parse(tokens(f.read()))
+        if (not sheet.single_file_type()):
+            raise CueException("cuesheet not formatted for disc images")
+        else:
+            return sheet
     finally:
         f.close()

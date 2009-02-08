@@ -1,4 +1,3 @@
-
 #!/usr/bin/python
 
 #Audio Tools, a module and set of tools for manipulating audio data

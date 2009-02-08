@@ -120,9 +120,6 @@ class TOCFile:
 
         yield total_length
 
-    def single_file_type(self):
-        return True
-
     #returns a track_number->ISRC dict
     #of all tracks whose ISRC is not empty
     def ISRCs(self):
