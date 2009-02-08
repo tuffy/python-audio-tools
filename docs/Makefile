@@ -141,16 +141,16 @@ audioformats_a4.ps: audioformats_a4_unsorted.ps
 	psselect -p$(TOC_ORDER_FORMATS) $< $@
 
 audiotools_letter_unsorted.ps: audiotools.ms prereqs.ms install.ms usage.ms usage.eps programming.ms $(MAN_SECTIONS) $(SUBSECTIONS)
-	cat audiotools.ms | gsoelim | ./dformat | groff -p -t -e -ms -Tps -dpaper=letter -P-pletter > $@
+	cat audiotools.ms | soelim | ./dformat | groff -p -t -e -ms -Tps -dpaper=letter -P-pletter > $@
 
 audiotools_a4_unsorted.ps: audiotools.ms prereqs.ms install.ms usage.ms usage.eps programming.ms $(MAN_SECTIONS) $(SUBSECTIONS)
-	cat audiotools.ms | gsoelim | ./dformat | groff -p -t -e -ms -Tps -dpaper=a4 -P-pa4 > $@
+	cat audiotools.ms | soelim | ./dformat | groff -p -t -e -ms -Tps -dpaper=a4 -P-pa4 > $@
 
 audioformats_letter_unsorted.ps: audioformats.ms freedb.ms references.ms $(FORMATS) $(FIGURES) $(SUBSECTIONS)
-	cat audioformats.ms | gsoelim | ./dformat | groff -p -t -e -ms -Tps -dpaper=letter -P-pletter > $@
+	cat audioformats.ms | soelim | ./dformat | groff -p -t -e -ms -Tps -dpaper=letter -P-pletter > $@
 
 audioformats_a4_unsorted.ps: audioformats.ms freedb.ms references.ms $(FORMATS) $(FIGURES) $(SUBSECTIONS)
-	cat audioformats.ms | gsoelim | ./dformat | groff -p -t -e -ms -Tps -dpaper=a4 -P-pa4 > $@
+	cat audioformats.ms | soelim | ./dformat | groff -p -t -e -ms -Tps -dpaper=a4 -P-pa4 > $@
 
 %.ps: %.1
 	groff -man $< > $@
