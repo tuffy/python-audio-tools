@@ -2650,7 +2650,6 @@ IqWzFUixmyqeumDRdlhpO+C2s3Eocdn5wUixIZt3KdoOK20HindxcShxI3mX+IDg3b8MLEoQ6yTo
                               2738316, 4688712, 2727144, 13142388,
                               9533244, 13220004, 15823080, 5986428,
                               10870944, 2687748])
-            self.assertEqual(sheet.single_file_type(),True)
 
     def testconvertsheet(self):
         import audiotools.cue
@@ -2667,8 +2666,6 @@ IqWzFUixmyqeumDRdlhpO+C2s3Eocdn5wUixIZt3KdoOK20HindxcShxI3mX+IDg3b8MLEoQ6yTo
                 cue_sheet = audiotools.read_sheet(temp_cue_file.name)
 
                 self.assertEqual(sheet.catalog(),cue_sheet.catalog())
-                self.assertEqual(sheet.single_file_type(),
-                                 cue_sheet.single_file_type())
                 self.assertEqual(list(sheet.indexes()),
                                  list(cue_sheet.indexes()))
                 self.assertEqual(list(sheet.pcm_lengths(191795016)),
@@ -2688,8 +2685,6 @@ IqWzFUixmyqeumDRdlhpO+C2s3Eocdn5wUixIZt3KdoOK20HindxcShxI3mX+IDg3b8MLEoQ6yTo
                 toc_sheet = audiotools.read_sheet(temp_toc_file.name)
 
                 self.assertEqual(sheet.catalog(),toc_sheet.catalog())
-                self.assertEqual(sheet.single_file_type(),
-                                 toc_sheet.single_file_type())
                 self.assertEqual(list(sheet.indexes()),
                                  list(toc_sheet.indexes()))
                 self.assertEqual(list(sheet.pcm_lengths(191795016)),
@@ -2714,8 +2709,6 @@ IqWzFUixmyqeumDRdlhpO+C2s3Eocdn5wUixIZt3KdoOK20HindxcShxI3mX+IDg3b8MLEoQ6yTo
                     self.assertNotEqual(f_sheet,None)
 
                     self.assertEqual(sheet.catalog(),f_sheet.catalog())
-                    self.assertEqual(sheet.single_file_type(),
-                                     f_sheet.single_file_type())
                     self.assertEqual(list(sheet.indexes()),
                                      list(f_sheet.indexes()))
                     self.assertEqual(list(sheet.pcm_lengths(191795016)),
