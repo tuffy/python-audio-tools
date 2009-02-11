@@ -50,11 +50,11 @@
 * TODO Add more examples
   A lot of handy new features aren't documented with examples and walkthroughs.
   Examples to add include:
-- [ ] a full multi-CD example, detailing the use of --album-number
-- [ ] an image embedding walkthrough
+- [X] a full multi-CD example, detailing the use of --album-number
+- [X] an image embedding walkthrough
 - [ ] examples of how -d,--format,-o work together for different results
-- [ ] a CD image creation, splitting, burning example involving TOC/CUE files
-- [ ] an XMCD walkthrough with fetching, editing and tagging
+- [X] a CD image creation, splitting, burning example involving TOC/CUE files
+- [X] an XMCD walkthrough with fetching, editing and tagging
 * TODO More graceful handling of broken files
   A lot of the track handlers assume that once the start of the file is good,
   the rest of it is following the spec.  This is not always the case.
@@ -219,9 +219,9 @@
    --cue will function like --xmcd and act as a metadata source.
 
 ** DONE Update track2xmcd to support getting an XMCD file from CD image
-* TODO Ensure noncompliant cuesheets are handled properly
+* TODO Ensure non-image cuesheets are handled properly
   There are 4 different types of cuesheets,
   1 single file type and 3 different multiple file variants.
-  Since we're only handling the single file type, it's important
-  to reject the others until they are handled correctly.
+  We should be able to translate between them if necessary, and if possible.
+
 
