@@ -44,11 +44,6 @@ def convert_to_wave(audiofile,wave_filename,verbose=True):
                ).encode(audiotools.IO_ENCODING,'replace')
 
 if (__name__ == '__main__'):
-    if (not audiotools.BIN.can_execute(audiotools.BIN['cdrecord'])):
-        print >>sys.stderr,'*** Unable to find "cdrecord" executable'
-        print >>sys.stderr,'Please install "cdrecord" to burn CDs'
-        sys.exit(1)
-
     parser = optparse.OptionParser(
         usage="%prog [options] <track 1> [track 2] ...",
         version="Python Audio Tools %s" % (audiotools.VERSION))
@@ -101,6 +96,12 @@ if (__name__ == '__main__'):
         #writing a single file with an embedded cuesheet
         #so extract its contents to wave/cue and call cdrdao
 
+        if (not audiotools.BIN.can_execute(audiotools.BIN['cdrdao'])):
+            print >>sys.stderr,'*** Unable to find "cdrdao" executable'
+            print >>sys.stderr,'Please install "cdrdao" to burn CDs'
+            sys.exit(1)
+
+
         cuesheet = audiofiles[0].get_cuesheet()
 
         temptoc = tempfile.NamedTemporaryFile(suffix='.toc')
@@ -152,6 +153,11 @@ if (__name__ == '__main__'):
     elif (options.cuesheet is not None):
         #writing tracks with a cuesheet,
         #so combine them into a single wave/cue and call cdrdao
+
+        if (not audiotools.BIN.can_execute(audiotools.BIN['cdrdao'])):
+            print >>sys.stderr,'*** Unable to find "cdrdao" executable'
+            print >>sys.stderr,'Please install "cdrdao" to burn CDs'
+            sys.exit(1)
 
         if (len(set([f.sample_rate() for f in audiofiles])) != 1):
             print >>sys.stderr,"*** All audio files must have the same sample rate"
@@ -223,6 +229,11 @@ if (__name__ == '__main__'):
     else:
         #writing tracks without a cuesheet,
         #so extract them to waves and call cdrecord
+
+        if (not audiotools.BIN.can_execute(audiotools.BIN['cdrecord'])):
+            print >>sys.stderr,'*** Unable to find "cdrecord" executable'
+            print >>sys.stderr,'Please install "cdrecord" to burn CDs'
+            sys.exit(1)
 
         exec_args = [audiotools.BIN['cdrecord']]
 
