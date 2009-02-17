@@ -1485,8 +1485,9 @@ class AudioFile:
 
                 for field in track_metadata.__FIELDS__:
                     if (field not in ("track_number","suffix","album_number")):
-                        format_dict[field] = getattr(track_metadata,
-                                                     field).replace('/','-')
+                        format_dict[field] = getattr(
+                            track_metadata,
+                            field).replace('/','-').replace(chr(0),' ')
 
                 return (format % format_dict).encode(FS_ENCODING)
             else:

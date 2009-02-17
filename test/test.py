@@ -1303,7 +1303,7 @@ class VorbisLint:
     #tracklint is tricky to test since set_metadata()
     #usually won't write anything that needs fixing.
     #For instance, it won't generate empty fields or leading zeroes in numbers.
-    #So, bogus ID3 tags must be generated at a lower level.
+    #So, bogus tags must be generated at a lower level.
     def test_tracklint(self):
         bad_vorbiscomment = audiotools.VorbisComment(
             {"TITLE":[u"Track Name  "],
@@ -1788,6 +1788,42 @@ class M4AMetadata:
     def test_coverdump(self):
         pass
 
+    def test_invalid_name(self):
+        metadata = audiotools.MetaData(track_name=u"Name",
+                                       track_number=1)
+        format = "%(track_number)2.2d - %(track_name)s"
+
+        self.assertEqual(self.audio_class.track_name(track_number=1,
+                                                     track_metadata=metadata,
+                                                     format=format),
+                         "01 - Name")
+
+        self.assertEqual(self.audio_class.track_name(track_number=2,
+                                                     track_metadata=metadata,
+                                                     format=format),
+                         "02 - Name")
+
+        metadata.track_name = u"Name / Test"
+
+        self.assertEqual(self.audio_class.track_name(track_number=1,
+                                                     track_metadata=metadata,
+                                                     format=format),
+                         "01 - Name - Test")
+
+        metadata.track_name = u"Name\u0000Test"
+
+        self.assertEqual(self.audio_class.track_name(track_number=1,
+                                                     track_metadata=metadata,
+                                                     format=format),
+                         "01 - Name Test")
+
+        metadata.track_name = u"Name\u0000/\u0000Test"
+
+        self.assertEqual(self.audio_class.track_name(track_number=1,
+                                                     track_metadata=metadata,
+                                                     format=format),
+                         "01 - Name - Test")
+
 # class TestAlacAudio(M4AMetadata,TestAiffAudio):
 #    def setUp(self):
 #        self.audio_class = audiotools.ALACAudio
@@ -1876,7 +1912,7 @@ class ID3Lint:
                 [audiotools.ID3v22TextFrame.from_unicode("TT2",u"Track Name  "),
                  audiotools.ID3v22TextFrame.from_unicode("TRK",u"02"),
                  audiotools.ID3v22TextFrame.from_unicode("TPA",u"003"),
-                 audiotools.ID3v22TextFrame.from_unicode("TP1",u"  Some Artist"),
+                 audiotools.ID3v22TextFrame.from_unicode("TP1",u"  Some Artist\u0000"),
                  audiotools.ID3v22TextFrame.from_unicode("TP2",u"Some Artist"),
                  audiotools.ID3v22TextFrame.from_unicode("TRC",u""),
                  audiotools.ID3v22TextFrame.from_unicode("TYE",u""),
@@ -1888,7 +1924,7 @@ class ID3Lint:
                 [audiotools.ID3v23TextFrame.from_unicode("TIT2",u"Track Name  "),
                  audiotools.ID3v23TextFrame.from_unicode("TRCK",u"02"),
                  audiotools.ID3v23TextFrame.from_unicode("TPOS",u"003"),
-                 audiotools.ID3v23TextFrame.from_unicode("TPE1",u"  Some Artist"),
+                 audiotools.ID3v23TextFrame.from_unicode("TPE1",u"  Some Artist\u0000"),
                  audiotools.ID3v23TextFrame.from_unicode("TPE2",u"Some Artist"),
                  audiotools.ID3v23TextFrame.from_unicode("TYER",u""),
                  audiotools.ID3v23TextFrame.from_unicode("TCOP",u""),
@@ -1900,7 +1936,7 @@ class ID3Lint:
                 [audiotools.ID3v24TextFrame.from_unicode("TIT2",u"Track Name  "),
                  audiotools.ID3v24TextFrame.from_unicode("TRCK",u"02"),
                  audiotools.ID3v24TextFrame.from_unicode("TPOS",u"003"),
-                 audiotools.ID3v24TextFrame.from_unicode("TPE1",u"  Some Artist"),
+                 audiotools.ID3v24TextFrame.from_unicode("TPE1",u"  Some Artist\u0000"),
                  audiotools.ID3v24TextFrame.from_unicode("TPE2",u"Some Artist"),
                  audiotools.ID3v24TextFrame.from_unicode("TYER",u""),
                  audiotools.ID3v24TextFrame.from_unicode("TCOP",u""),
