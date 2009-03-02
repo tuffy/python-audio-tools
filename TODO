@@ -225,3 +225,10 @@
   We should be able to translate between them if necessary, and if possible.
 
 
+* TODO Convert to Muspack SV8
+  Now that Musepack SV8 is finalized, it should be the new default.
+  The old SV7 command-line tools aren't well supported and don't
+  seem to work outside of x86 platforms.
+  SV7 streams are, in theory, backwards compatible so switching
+  shouldn't be a problem.
+
