@@ -104,10 +104,12 @@ FILENAME_FORMAT = config.get_default(
     "Filenames","format",
     '%(track_number)2.2d - %(track_name)s.%(suffix)s')
 
-FS_ENCODING = sys.getfilesystemencoding()
+FS_ENCODING = config.get_default("System","fs_encoding",
+                                 sys.getfilesystemencoding())
 if (FS_ENCODING == None):
     FS_ENCODING = 'UTF-8'
-IO_ENCODING = "UTF-8"
+
+IO_ENCODING = config.get_default("System","io_encoding","UTF-8")
 
 try:
     import cpucount
@@ -1489,7 +1491,7 @@ class AudioFile:
                             track_metadata,
                             field).replace('/','-').replace(chr(0),' ')
 
-                return (format % format_dict).encode(FS_ENCODING)
+                return (format % format_dict).encode(FS_ENCODING,'replace')
             else:
                 if (album_number == 0):
                     return "track%(track_number)2.2d.%(suffix)s" % \

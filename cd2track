@@ -212,10 +212,11 @@ if (__name__ == '__main__'):
                                            str(cd_track.rip_log))
                 print (u"track %2.2d -> %s" % (cd_track.track_number,
                                                track.filename.decode(
-                            audiotools.FS_ENCODING))).encode(
-                    audiotools.IO_ENCODING)
+                            audiotools.FS_ENCODING,'replace'))).encode(
+                    audiotools.IO_ENCODING,'replace')
         except audiotools.UnsupportedTracknameField,msg:
-            sys.stderr.write(unicode(msg).encode(audiotools.IO_ENCODING))
+            sys.stderr.write(unicode(msg).encode(audiotools.IO_ENCODING,
+                                                 'replace'))
             sys.exit(1)
         except KeyError:
             continue

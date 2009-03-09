@@ -28,9 +28,9 @@ def extract_part(input_filename, input_pcm, output_filename, quality, metadata,
                  display_output=True):
     if (display_output):
         print (u"%s -> %s" % \
-                   (input_filename.decode(audiotools.FS_ENCODING),
-                    output_filename.decode(audiotools.FS_ENCODING))).encode(
-            audiotools.IO_ENCODING)
+                   (input_filename.decode(audiotools.FS_ENCODING,'replace'),
+                    output_filename.decode(audiotools.FS_ENCODING,'replace'))).encode(
+            audiotools.IO_ENCODING,'replace')
 
     destination_audiofile = AudioType.from_pcm(
         output_filename,
@@ -225,7 +225,7 @@ if (__name__ == '__main__'):
                            metadata,
                            options.verbosity != "quiet"))
     except audiotools.UnsupportedTracknameField,msg:
-        sys.stderr.write(unicode(msg).encode(audiotools.IO_ENCODING))
+        sys.stderr.write(unicode(msg).encode(audiotools.IO_ENCODING,'replace'))
         sys.exit(1)
 
     queue.run(options.max_processes)

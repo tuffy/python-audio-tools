@@ -28,9 +28,11 @@ def convert_file(destination_class, destination_filename,
                  display_output=True, thumbnail_images=False):
     if (display_output):
         print (u"%s -> %s" % \
-               (source_audiofile.filename.decode(audiotools.FS_ENCODING),
-                destination_filename.decode(audiotools.FS_ENCODING))).encode(
-            audiotools.IO_ENCODING)
+               (source_audiofile.filename.decode(audiotools.FS_ENCODING,
+                                                 'replace'),
+                destination_filename.decode(audiotools.FS_ENCODING,
+                                            'replace'))).encode(
+            audiotools.IO_ENCODING,'replace')
 
     try:
         if (isinstance(source_audiofile,audiotools.WaveAudio)):
@@ -90,8 +92,9 @@ def convert_file(destination_class, destination_filename,
     except audiotools.InvalidFormat,msg:
         print >>sys.stderr,(u"*** %s: %s" % \
                             (source_audiofile.filename.decode(
-                             audiotools.FS_ENCODING),
-                             str(msg))).encode(audiotools.IO_ENCODING)
+                             audiotools.FS_ENCODING,'replace'),
+                             str(msg))).encode(audiotools.IO_ENCODING,
+                                               'replace')
 
 if (__name__ == '__main__'):
     parser = optparse.OptionParser(
@@ -337,7 +340,8 @@ if (__name__ == '__main__'):
                                    options.thumbnail))
                 encoded_filenames.append(filename)
             except audiotools.UnsupportedTracknameField,msg:
-                sys.stderr.write(unicode(msg).encode(audiotools.IO_ENCODING))
+                sys.stderr.write(unicode(msg).encode(audiotools.IO_ENCODING,
+                                                     'replace'))
                 sys.exit(1)
             except KeyError:
                 continue
