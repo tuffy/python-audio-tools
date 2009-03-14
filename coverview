@@ -92,6 +92,7 @@ class ImageList:
         self.xml = xml
         self.image_width = 500
         self.image_height = 500
+        self.thumbnail_width = 120
 
         image_list = xml.get_widget("image_list")
         image = xml.get_widget("picture_image")
@@ -117,7 +118,9 @@ class ImageList:
 
         for (path,image) in picture_list:
             treeiter = self.image_liststore.append()
-            pb = get_pixbuf(image.data,120,120)
+            pb = get_pixbuf(image.data,
+                            self.thumbnail_width,
+                            self.thumbnail_width)
             large_pb = get_raw_pixbuf(image.data)
             self.image_liststore.set(treeiter,0,pb)
             self.image_liststore.set(treeiter,1,large_pb)
@@ -140,6 +143,20 @@ class ImageList:
             self.image_selected()
 
         window.set_cursor(None)
+
+    def resize_thumbnails(self):
+        self.image_liststore.foreach(self.resize_thumbnail,None)
+        self.xml.get_widget("image_list").columns_autosize()
+
+    def resize_thumbnail(self,model, path, treeiter, user_data):
+        big_pb = self.image_liststore.get_value(treeiter,1)
+
+        (thumb_width,thumb_height) = image_size(
+            (self.thumbnail_width,self.thumbnail_width),big_pb)
+
+        pb = big_pb.scale_simple(thumb_width,thumb_height,
+                                 gtk.gdk.INTERP_BILINEAR)
+        self.image_liststore.set(treeiter,0,pb)
 
     def image_selected(self, *args):
         (liststore,treeiter) = \
@@ -194,6 +211,11 @@ class ImageList:
             self.image_height = rectangle.height
             self.image_selected()
 
+    def thumbnails_resized(self, widget, rectangle):
+        if (self.thumbnail_width != rectangle.width):
+            self.thumbnail_width = rectangle.width
+            self.resize_thumbnails()
+
     def display_about(self,caller):
         self.xml.get_widget("about").run()
 
@@ -239,6 +261,7 @@ if (__name__ == '__main__'):
     xml.signal_connect("open_file",imagelist.open_file)
     xml.signal_connect("track_selected",imagelist.track_selected)
     xml.signal_connect("image_resize",imagelist.image_resized)
+    xml.signal_connect("thumbnails_resized",imagelist.thumbnails_resized)
     xml.signal_connect("display_about",imagelist.display_about)
     xml.signal_connect("dialog_done",imagelist.dialog_done)
 
