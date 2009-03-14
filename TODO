@@ -224,11 +224,15 @@
   1 single file type and 3 different multiple file variants.
   We should be able to translate between them if necessary, and if possible.
 
-
 * TODO Convert to Muspack SV8
   Now that Musepack SV8 is finalized, it should be the new default.
   The old SV7 command-line tools aren't well supported and don't
   seem to work outside of x86 platforms.
   SV7 streams are, in theory, backwards compatible so switching
   shouldn't be a problem.
+
+* TODO Update coverview to look more standard
+  It's currently a haphazard assortment of widgets
+  rather than anything like a proper GTK app.
+  It should be tweaked to look better.
 
