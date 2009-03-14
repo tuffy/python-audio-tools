@@ -110,8 +110,8 @@ class ImageList:
     #picture_list is a list of (filepath,Image) tuples
     def set_images(self, picture_list):
         first_image = None
-        xml.get_widget("picture_image").clear()
-        window = xml.get_widget("main_window").window
+        self.xml.get_widget("picture_image").clear()
+        window = self.xml.get_widget("main_window").window
         window.set_cursor(gtk.gdk.Cursor(gtk.gdk.WATCH))
         window.show()
 
@@ -144,6 +144,9 @@ class ImageList:
     def image_selected(self, *args):
         (liststore,treeiter) = \
             self.xml.get_widget("image_list").get_selection().get_selected()
+
+        if (treeiter is None):
+            return
 
         selected = liststore.get_value(treeiter,1)
 
