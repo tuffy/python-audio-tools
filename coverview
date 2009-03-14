@@ -56,6 +56,14 @@ def image_size(display_surface, image_surface):
 
     return (new_width,new_height)
 
+def size_string(size):
+    if (size < (2 ** 10)):
+        return u"%dB" % (size)
+    if (size < (2 ** 20)):
+        return u"%dKB" % (size / (2 ** 10))
+
+    return u"%dMB" % (size / (2 ** 20))
+
 def get_pixbuf(imagedata,width,height):
     imagedata = cStringIO.StringIO(imagedata)
     l = gtk.gdk.PixbufLoader()
@@ -90,7 +98,7 @@ class ImageList:
 
         self.image_liststore = gtk.ListStore(gtk.gdk.Pixbuf,
                                              gtk.gdk.Pixbuf,
-                                             str,str)
+                                             str,str,str)
         image_list.set_model(self.image_liststore)
         image_list.append_column(gtk.TreeViewColumn(
                 "Image",gtk.CellRendererPixbuf(),pixbuf=0))
@@ -115,6 +123,13 @@ class ImageList:
             self.image_liststore.set(treeiter,1,large_pb)
             self.image_liststore.set(treeiter,2,image.type_string())
             self.image_liststore.set(treeiter,3,path)
+            self.image_liststore.set(treeiter,4,
+                u"%(width)d \u00D7 %(height)d %(bits)d-bit %(size)s %(mime_type)s"%\
+                 {"width":image.width,
+                  "height":image.height,
+                  "mime_type":image.suffix().upper(),
+                  "bits":image.color_depth,
+                  "size":size_string(len(image.data))})
 
             if (first_image is None):
                 first_image = treeiter
@@ -144,6 +159,8 @@ class ImageList:
             liststore.get_value(treeiter,3))
         self.xml.get_widget("picture_type").set_text(
             liststore.get_value(treeiter,2))
+        self.xml.get_widget("picture_dimensions").set_text(
+            liststore.get_value(treeiter,4))
 
     def open_file(self, *args):
         self.xml.get_widget('file_chooser').run()
@@ -173,6 +190,12 @@ class ImageList:
             self.image_width = rectangle.width
             self.image_height = rectangle.height
             self.image_selected()
+
+    def display_about(self,caller):
+        self.xml.get_widget("about").run()
+
+    def dialog_done(self,caller,response):
+        caller.hide()
 
 if (__name__ == '__main__'):
     cover_list = []
@@ -213,4 +236,7 @@ if (__name__ == '__main__'):
     xml.signal_connect("open_file",imagelist.open_file)
     xml.signal_connect("track_selected",imagelist.track_selected)
     xml.signal_connect("image_resize",imagelist.image_resized)
+    xml.signal_connect("display_about",imagelist.display_about)
+    xml.signal_connect("dialog_done",imagelist.dialog_done)
+
     gtk.main()
