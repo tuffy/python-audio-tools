@@ -91,7 +91,7 @@ extensions = [cdiomodule,
 #     pass #pkg-config not available
 
 setup (name = 'Python Audio Tools',
-       version = '2.11',
+       version = '2.12alpha1',
        description = 'A collection of audio handling utilities',
        author = 'Brian Langenberger',
        author_email = 'tuffy@users.sourceforge.net',

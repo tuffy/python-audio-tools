@@ -27,6 +27,7 @@ try:
     import gtk
     import gtk.gdk
     import gtk.glade
+    import gobject
 except ImportError:
     print >>sys.stderr,"*** PyGTK2 is required"
     sys.exit(1)
@@ -93,6 +94,7 @@ class ImageList:
         self.image_width = 500
         self.image_height = 500
         self.thumbnail_width = 120
+        self.perform_thumbnail_resize = False
 
         image_list = xml.get_widget("image_list")
         image = xml.get_widget("picture_image")
@@ -214,13 +216,20 @@ class ImageList:
     def thumbnails_resized(self, widget, rectangle):
         if (self.thumbnail_width != rectangle.width):
             self.thumbnail_width = rectangle.width
-            self.resize_thumbnails()
+            self.perform_thumbnail_resize = True
 
     def display_about(self,caller):
         self.xml.get_widget("about").run()
 
     def dialog_done(self,caller,response):
         caller.hide()
+
+    def optional_thumbnail_resize(self):
+        if (self.perform_thumbnail_resize):
+            self.resize_thumbnails()
+            self.perform_thumbnail_resize = False
+
+        return True
 
 if (__name__ == '__main__'):
     cover_list = []
@@ -264,5 +273,7 @@ if (__name__ == '__main__'):
     xml.signal_connect("thumbnails_resized",imagelist.thumbnails_resized)
     xml.signal_connect("display_about",imagelist.display_about)
     xml.signal_connect("dialog_done",imagelist.dialog_done)
+
+    gobject.timeout_add(1500,imagelist.optional_thumbnail_resize)
 
     gtk.main()

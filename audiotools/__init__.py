@@ -98,7 +98,7 @@ FREEDB_PORT = config.getint_default("FreeDB","port",80)
 THUMBNAIL_FORMAT = config.get_default("Thumbnail","format","jpeg")
 THUMBNAIL_SIZE = config.getint_default("Thumbnail","size",150)
 
-VERSION = "2.11"
+VERSION = "2.12alpha1"
 
 FILENAME_FORMAT = config.get_default(
     "Filenames","format",

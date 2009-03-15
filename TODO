@@ -231,7 +231,7 @@
   SV7 streams are, in theory, backwards compatible so switching
   shouldn't be a problem.
 
-* TODO Update coverview to look more standard
+* DONE Update coverview to look more standard
   It's currently a haphazard assortment of widgets
   rather than anything like a proper GTK app.
   It should be tweaked to look better.
