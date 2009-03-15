@@ -85,10 +85,10 @@ class MusepackAudio(ApeTaggedAudio,AudioFile):
     COMPRESSION_MODES = ("thumb","radio","standard","extreme","insane")
 
     ###Musepack SV7###
-    BINARIES = ('mppdec','mppenc')
+    #BINARIES = ('mppdec','mppenc')
 
     ###Musepack SV8###
-    #BINARIES = ('mpcdec','mpcenc')
+    BINARIES = ('mpcdec','mpcenc')
 
     MUSEPACK8_HEADER = Con.Struct('musepack8_header',
                                   Con.UBInt32('crc32'),
@@ -176,23 +176,23 @@ class MusepackAudio(ApeTaggedAudio,AudioFile):
 
     def to_pcm(self):
         ###Musepack SV7###
-        sub = subprocess.Popen([BIN['mppdec'],'--silent',
-                                '--raw-le',
-                                self.filename,'-'],
-                               stdout=subprocess.PIPE)
-        return PCMReader(sub.stdout,
-                         sample_rate=self.sample_rate(),
-                         channels=self.channels(),
-                         bits_per_sample=self.bits_per_sample(),
-                         process=sub)
+        #sub = subprocess.Popen([BIN['mppdec'],'--silent',
+        #                        '--raw-le',
+        #                        self.filename,'-'],
+        #                       stdout=subprocess.PIPE)
+        #return PCMReader(sub.stdout,
+        #                 sample_rate=self.sample_rate(),
+        #                 channels=self.channels(),
+        #                 bits_per_sample=self.bits_per_sample(),
+        #                 process=sub)
 
         ###Musepack SV8###
-        #import tempfile
-        #
-        #f = tempfile.NamedTemporaryFile(suffix=".wav")
-        #self.__to_wave__(f.name)
-        #f.seek(0,0)
-        #return TempWaveReader(f)
+        import tempfile
+
+        f = tempfile.NamedTemporaryFile(suffix=".wav")
+        self.__to_wave__(f.name)
+        f.seek(0,0)
+        return TempWaveReader(f)
 
     @classmethod
     def from_pcm(cls, filename, pcmreader, compression=None):
@@ -248,21 +248,21 @@ class MusepackAudio(ApeTaggedAudio,AudioFile):
             actual_filename = tempfile = None
 
         ###Musepack SV7###
-        sub = subprocess.Popen([BIN['mppenc'],
-                                "--silent",
-                                "--overwrite",
-                                "--%s" % (compression),
-                                wave_filename,
-                                filename],
-                               preexec_fn=ignore_sigint)
-
-        ###Musepack SV8###
-        #sub = subprocess.Popen([BIN['mpcenc'],
+        #sub = subprocess.Popen([BIN['mppenc'],
         #                        "--silent",
         #                        "--overwrite",
         #                        "--%s" % (compression),
         #                        wave_filename,
-        #                        filename])
+        #                        filename],
+        #                       preexec_fn=ignore_sigint)
+
+        ###Musepack SV8###
+        sub = subprocess.Popen([BIN['mpcenc'],
+                                "--silent",
+                                "--overwrite",
+                                "--%s" % (compression),
+                                wave_filename,
+                                filename])
 
         sub.wait()
 
@@ -281,10 +281,10 @@ class MusepackAudio(ApeTaggedAudio,AudioFile):
         header = file.read(4)
 
         ###Musepack SV7###
-        return header == 'MP+\x07'
+        #return header == 'MP+\x07'
 
         ###Musepack SV8###
-        #return (header == 'MP+\x07') or (header == 'MPCK')
+        return (header == 'MP+\x07') or (header == 'MPCK')
 
     def sample_rate(self):
         return self.__sample_rate__
