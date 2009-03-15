@@ -23,6 +23,7 @@ import os
 import os.path
 import optparse
 import cStringIO
+from bisect import bisect
 try:
     import gtk
     import gtk.gdk
@@ -77,7 +78,13 @@ def get_pixbuf(imagedata,width,height):
 
     pb = l.get_pixbuf()
     (width,height) = image_size((width,height),pb)
-    pb = pb.scale_simple(width,height,gtk.gdk.INTERP_BILINEAR)
+    pb = pb.scale_simple(
+        width,
+        height,
+        [gtk.gdk.INTERP_NEAREST,
+         gtk.gdk.INTERP_BILINEAR,
+         gtk.gdk.INTERP_HYPER][bisect([30,300],
+                                      min(width,height))])
     return pb
 
 def get_raw_pixbuf(imagedata):
@@ -156,9 +163,18 @@ class ImageList:
         (thumb_width,thumb_height) = image_size(
             (self.thumbnail_width,self.thumbnail_width),big_pb)
 
-        pb = big_pb.scale_simple(thumb_width,thumb_height,
-                                 gtk.gdk.INTERP_BILINEAR)
-        self.image_liststore.set(treeiter,0,pb)
+        thumb_width = max(thumb_width,20)
+        thumb_height = max(thumb_height,20)
+
+        self.image_liststore.set(treeiter,
+                                 0,
+                                 big_pb.scale_simple(
+                thumb_width,
+                thumb_height,
+                [gtk.gdk.INTERP_NEAREST,
+                 gtk.gdk.INTERP_BILINEAR,
+                 gtk.gdk.INTERP_HYPER][bisect([30,300],
+                                              min(thumb_width,thumb_height))]))
 
     def image_selected(self, *args):
         (liststore,treeiter) = \
@@ -173,10 +189,18 @@ class ImageList:
                                      self.image_height),
                                     selected)
 
+        width = max(width,20)
+        height = max(height,20)
+
         image = xml.get_widget("picture_image")
-        image.set_from_pixbuf(selected.scale_simple(width,
-                                                    height,
-                                                    gtk.gdk.INTERP_BILINEAR))
+        image.set_from_pixbuf(selected.scale_simple(
+                width,
+                height,
+                [gtk.gdk.INTERP_NEAREST,
+                 gtk.gdk.INTERP_BILINEAR,
+                 gtk.gdk.INTERP_HYPER][bisect([30,600],
+                                              min(width,height))]))
+
         self.xml.get_widget("file_path").set_text(
             liststore.get_value(treeiter,3))
         self.xml.get_widget("picture_type").set_text(
@@ -226,7 +250,7 @@ class ImageList:
 
     def optional_thumbnail_resize(self):
         if (self.perform_thumbnail_resize):
-            self.resize_thumbnails()
+            gobject.idle_add(self.resize_thumbnails)
             self.perform_thumbnail_resize = False
 
         return True
