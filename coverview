@@ -66,6 +66,8 @@ def size_string(size):
 
     return u"%dMB" % (size / (2 ** 20))
 
+#given a string of raw data and a requested width/height
+#returns a new PixBuf at that size
 def get_pixbuf(imagedata,width,height):
     imagedata = cStringIO.StringIO(imagedata)
     l = gtk.gdk.PixbufLoader()
@@ -153,11 +155,14 @@ class ImageList:
 
         window.set_cursor(None)
 
+    #this performs a full resize on all thumbnails
+    #generating their thumbnail from the full-sized image
     def resize_thumbnails(self):
         self.image_liststore.foreach(self.resize_thumbnail,None)
         self.xml.get_widget("image_list").columns_autosize()
 
-    def resize_thumbnail(self,model, path, treeiter, user_data):
+    #this performs a full resize on a single thumbnail
+    def resize_thumbnail(self, model, path, treeiter, user_data):
         big_pb = self.image_liststore.get_value(treeiter,1)
 
         (thumb_width,thumb_height) = image_size(
@@ -208,9 +213,12 @@ class ImageList:
         self.xml.get_widget("picture_dimensions").set_text(
             liststore.get_value(treeiter,4))
 
+    #this opens a file open dialog
     def open_file(self, *args):
         self.xml.get_widget('file_chooser').run()
 
+    #when the file open dialog selects a new track
+    #this closes the dialog and updates our data
     def track_selected(self, dialog, signal):
         chooser = self.xml.get_widget('file_chooser')
         chooser.hide()
@@ -230,6 +238,7 @@ class ImageList:
             except audiotools.UnsupportedFile:
                 pass
 
+    #this is called by a resize event on the cover image widget
     def image_resized(self, image, rectangle):
         if ((self.image_width,self.image_height) !=
             (rectangle.width,rectangle.height)):
@@ -237,23 +246,41 @@ class ImageList:
             self.image_height = rectangle.height
             self.image_selected()
 
+    #this is called by a resize event on the thumbnail list widget
     def thumbnails_resized(self, widget, rectangle):
         if (self.thumbnail_width != rectangle.width):
             self.thumbnail_width = rectangle.width
+            self.image_liststore.foreach(self.resize_thumbnail_quick,None)
             self.perform_thumbnail_resize = True
+
+    def resize_thumbnail_quick(self, model, path, treeiter, user_data):
+        small_pb = self.image_liststore.get_value(treeiter,0)
+
+        thumb_width = max(thumb_width,20)
+        thumb_height = max(thumb_height,20)
+
+        self.image_liststore.set(
+            treeiter,
+            0,
+            big_pb.scale_simple(
+                thumb_width,
+                thumb_height,
+                gtk.gdk.INTERP_NEAREST))
+
+    #this is executed at regular intervals
+    #it performs a full thumbnail resize if the flag is set
+    def thumbnail_resize_daemon(self):
+        if (self.perform_thumbnail_resize):
+            gobject.idle_add(self.resize_thumbnails)
+            self.perform_thumbnail_resize = False
+
+        return True
 
     def display_about(self,caller):
         self.xml.get_widget("about").run()
 
     def dialog_done(self,caller,response):
         caller.hide()
-
-    def optional_thumbnail_resize(self):
-        if (self.perform_thumbnail_resize):
-            gobject.idle_add(self.resize_thumbnails)
-            self.perform_thumbnail_resize = False
-
-        return True
 
 if (__name__ == '__main__'):
     cover_list = []
@@ -298,6 +325,6 @@ if (__name__ == '__main__'):
     xml.signal_connect("display_about",imagelist.display_about)
     xml.signal_connect("dialog_done",imagelist.dialog_done)
 
-    gobject.timeout_add(1500,imagelist.optional_thumbnail_resize)
+    gobject.timeout_add(1500,imagelist.thumbnail_resize_daemon)
 
     gtk.main()
