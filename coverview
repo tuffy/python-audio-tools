@@ -252,9 +252,13 @@ class ImageList:
             self.thumbnail_width = rectangle.width
             self.image_liststore.foreach(self.resize_thumbnail_quick,None)
             self.perform_thumbnail_resize = True
+            self.xml.get_widget("image_list").columns_autosize()
 
     def resize_thumbnail_quick(self, model, path, treeiter, user_data):
         small_pb = self.image_liststore.get_value(treeiter,0)
+
+        (thumb_width,thumb_height) = image_size(
+            (self.thumbnail_width,self.thumbnail_width),small_pb)
 
         thumb_width = max(thumb_width,20)
         thumb_height = max(thumb_height,20)
@@ -262,7 +266,7 @@ class ImageList:
         self.image_liststore.set(
             treeiter,
             0,
-            big_pb.scale_simple(
+            small_pb.scale_simple(
                 thumb_width,
                 thumb_height,
                 gtk.gdk.INTERP_NEAREST))
