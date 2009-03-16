@@ -250,9 +250,9 @@ class ImageList:
     def thumbnails_resized(self, widget, rectangle):
         if (self.thumbnail_width != rectangle.width):
             self.thumbnail_width = rectangle.width
-            self.image_liststore.foreach(self.resize_thumbnail_quick,None)
+            #self.image_liststore.foreach(self.resize_thumbnail_quick,None)
             self.perform_thumbnail_resize = True
-            self.xml.get_widget("image_list").columns_autosize()
+            #self.xml.get_widget("image_list").columns_autosize()
 
     def resize_thumbnail_quick(self, model, path, treeiter, user_data):
         small_pb = self.image_liststore.get_value(treeiter,0)
