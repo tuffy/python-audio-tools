@@ -95,6 +95,12 @@ def convert_file(destination_class, destination_filename,
                              audiotools.FS_ENCODING,'replace'),
                              str(msg))).encode(audiotools.IO_ENCODING,
                                                'replace')
+    except audiotools.EncodingError,msg:
+        print >>sys.stderr,(u"*** %s: %s" % \
+                            (destination_audiofile.filename.decode(
+                             audiotools.FS_ENCODING,'replace'),
+                             str(msg))).encode(audiotools.IO_ENCODING,
+                                               'replace')
 
 if (__name__ == '__main__'):
     parser = optparse.OptionParser(

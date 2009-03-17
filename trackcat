@@ -164,5 +164,8 @@ if (__name__ == '__main__'):
     except audiotools.InvalidFormat,msg:
         print >>sys.stderr,"*** %s: %s" % (options.filename,str(msg))
         sys.exit(1)
+    except audiotools.EncodeError,msg:
+        print >>sys.stderr,"*** %s: %s" % (options.filename,str(msg))
+        sys.exit(1)
 
 

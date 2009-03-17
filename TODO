@@ -235,3 +235,8 @@
   rather than anything like a proper GTK app.
   It should be tweaked to look better.
 
+* TODO Improve transcoding robustness
+  Just about all of the to_pcm() and from_pcm() methods expect
+  that their subprocess calls will work as expected.
+  Though rare in practice, these need to be checked in case
+  the child processes fail for any reason.

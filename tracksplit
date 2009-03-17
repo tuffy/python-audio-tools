@@ -32,15 +32,30 @@ def extract_part(input_filename, input_pcm, output_filename, quality, metadata,
                     output_filename.decode(audiotools.FS_ENCODING,'replace'))).encode(
             audiotools.IO_ENCODING,'replace')
 
-    destination_audiofile = AudioType.from_pcm(
-        output_filename,
-        input_pcm,
-        quality)
+    try:
+        destination_audiofile = AudioType.from_pcm(
+            output_filename,
+            input_pcm,
+            quality)
 
-    encoded_filenames.append(filename)
+        encoded_filenames.append(filename)
 
-    if (metadata is not None):
-        destination_audiofile.set_metadata(metadata)
+        if (metadata is not None):
+            destination_audiofile.set_metadata(metadata)
+
+    except audiotools.InvalidFormat,msg:
+        print >>sys.stderr,(u"*** %s: %s" % \
+                            (destination_audiofile.filename.decode(
+                             audiotools.FS_ENCODING,'replace'),
+                             str(msg))).encode(audiotools.IO_ENCODING,
+                                               'replace')
+    except audiotools.EncodingError,msg:
+        print >>sys.stderr,(u"*** %s: %s" % \
+                            (destination_audiofile.filename.decode(
+                             audiotools.FS_ENCODING,'replace'),
+                             str(msg))).encode(audiotools.IO_ENCODING,
+                                               'replace')
+
 
 def has_embedded_cuesheet(audiofile):
     return audiofile.get_cuesheet() is not None

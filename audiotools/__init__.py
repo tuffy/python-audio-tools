@@ -131,7 +131,17 @@ class UnsupportedFile(Exception): pass
 class InvalidFile(Exception): pass
 
 #raised if an audio file cannot be created correctly from from_pcm()
+#due to having a PCM format unsupported by the output format
 class InvalidFormat(Exception): pass
+
+#raised if an audio file cannot be created correctly from from_pcm()
+#due to an error by the encoder
+class EncodingError(Exception):
+    def __init__(self,executable):
+        self.executable = executable
+
+    def __str__(self):
+        return "\"%s\" generated error during file encoding" % (self.executable)
 
 #takes a filename string
 #returns a valid AudioFile object based on the file data or extension

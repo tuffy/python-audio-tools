@@ -224,6 +224,10 @@ if (__name__ == '__main__'):
             print >>sys.stderr,"*** %2.2d: %s" % (cd_track.track_number,
                                                   str(msg))
             continue
+        except audiotools.EncodingError,msg:
+            print >>sys.stderr,"*** %2.2d: %s" % (cd_track.track_number,
+                                                  str(msg))
+            continue
 
     if (options.add_replay_gain and AudioType.can_add_replay_gain()):
         if (options.verbosity != 'quiet'):

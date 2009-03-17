@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,MetaData,InvalidFile,PCMReader,Con,transfer_data,subprocess,BIN,BUFFER_SIZE,cStringIO,os,open_files,Image,sys,WaveAudio,ReplayGain,ignore_sigint,sheet_to_unicode
+from audiotools import AudioFile,MetaData,InvalidFile,PCMReader,Con,transfer_data,subprocess,BIN,BUFFER_SIZE,cStringIO,os,open_files,Image,sys,WaveAudio,ReplayGain,ignore_sigint,sheet_to_unicode,EncodingError
 from __vorbiscomment__ import *
 from __id3__ import ID3v2Comment
 from __vorbis__ import OggStreamReader,OggStreamWriter
@@ -713,7 +713,9 @@ class FlacAudio(AudioFile):
         transfer_data(pcmreader.read,sub.stdin.write)
         sub.stdin.close()
         pcmreader.close()
-        sub.wait()
+
+        if (sub.wait() != 0):
+            raise EncodingError(BIN['flac'])
 
         sub = subprocess.Popen([BIN['metaflac'],
                                 "--add-seekpoint=10s",
@@ -767,9 +769,14 @@ class FlacAudio(AudioFile):
                                ["-o",filename,wave_filename],
                                stdout=devnull,
                                stderr=devnull)
-        sub.wait()
+
+        returncode = sub.wait()
         devnull.close()
-        return FlacAudio(filename)
+
+        if (returncode == 0):
+            return FlacAudio(filename)
+        else:
+            raise EncodingError(BIN['flac'])
 
     def bits_per_sample(self):
         return self.__bitspersample__
@@ -1138,9 +1145,11 @@ class OggFlacAudio(FlacAudio):
         transfer_data(pcmreader.read,sub.stdin.write)
         pcmreader.close()
         sub.stdin.close()
-        sub.wait()
 
-        return OggFlacAudio(filename)
+        if (sub.wait() == 0):
+            return OggFlacAudio(filename)
+        else:
+            raise EncodingError(BIN['flac'])
 
     def to_wave(self, wave_filename):
         if (self.has_foreign_riff_chunks() and
@@ -1181,11 +1190,13 @@ class OggFlacAudio(FlacAudio):
                                ["-o",filename,wave_filename],
                                stdout=devnull,
                                stderr=devnull)
-        sub.wait()
+        returncode = sub.wait()
         devnull.close()
 
-        return OggFlacAudio(filename)
-
+        if (returncode == 0):
+            return OggFlacAudio(filename)
+        else:
+            raise EncodingError(BIN['flac'])
 
     @classmethod
     def add_replay_gain(cls, filenames):

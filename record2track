@@ -201,7 +201,23 @@ if (__name__ == '__main__'):
         bits_per_sample=options.bits_per_sample),
                                            options.verbosity != 'quiet')
 
-    audiofile = AudioType.from_pcm(options.output,input,options.quality)
+    try:
+        audiofile = AudioType.from_pcm(options.output,input,options.quality)
 
-    if (options.verbosity != 'quiet'):
-        print "* Done"
+        if (options.verbosity != 'quiet'):
+            print "* Done"
+    except audiotools.InvalidFormat,msg:
+        print >>sys.stderr,(u"*** %s: %s" % \
+                            (options.output.decode(
+                             audiotools.FS_ENCODING,'replace'),
+                             str(msg))).encode(audiotools.IO_ENCODING,
+                                               'replace')
+        sys.exit(1)
+    except audiotools.EncodingError,msg:
+        print >>sys.stderr,(u"*** %s: %s" % \
+                            (options.output.decode(
+                             audiotools.FS_ENCODING,'replace'),
+                             str(msg))).encode(audiotools.IO_ENCODING,
+                                               'replace')
+        sys.exit(1)
+
