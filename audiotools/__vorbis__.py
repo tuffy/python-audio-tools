@@ -17,7 +17,7 @@
 #along with this program; if not, write to the Free Software
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-from audiotools import AudioFile,InvalidFile,PCMReader,PCMConverter,Con,transfer_data,subprocess,BIN,cStringIO,open_files,os,ReplayGain,ignore_sigint
+from audiotools import AudioFile,InvalidFile,PCMReader,PCMConverter,Con,transfer_data,subprocess,BIN,cStringIO,open_files,os,ReplayGain,ignore_sigint,EncodingError
 from __vorbiscomment__ import *
 
 class OggStreamReader:
@@ -409,9 +409,11 @@ class VorbisAudio(AudioFile):
         transfer_data(pcmreader.read,sub.stdin.write)
         pcmreader.close()
         sub.stdin.close()
-        sub.wait()
 
-        return VorbisAudio(filename)
+        if (sub.wait() == 0):
+            return VorbisAudio(filename)
+        else:
+            raise EncodingError(BIN['oggenc'])
 
     def set_metadata(self, metadata):
         metadata = VorbisComment.converted(metadata)

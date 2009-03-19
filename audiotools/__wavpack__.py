@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,InvalidFile,Con,subprocess,BIN,open_files,os,ReplayGain,ignore_sigint,transfer_data,Image,MetaData,sheet_to_unicode
+from audiotools import AudioFile,InvalidFile,Con,subprocess,BIN,open_files,os,ReplayGain,ignore_sigint,transfer_data,Image,MetaData,sheet_to_unicode,EncodingError
 from __wav__ import WaveAudio,WaveReader
 from __ape__ import ApeTaggedAudio,ApeTag
 
@@ -414,17 +414,20 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
                                 filename],
                                preexec_fn=ignore_sigint)
 
-        sub.wait()
+        if (sub.wait() == 0):
+            if (tempfile is not None):
+                filename = actual_filename
+                f = file(filename,'wb')
+                tempfile.seek(0,0)
+                transfer_data(tempfile.read,f.write)
+                f.close()
+                tempfile.close()
 
-        if (tempfile is not None):
-            filename = actual_filename
-            f = file(filename,'wb')
-            tempfile.seek(0,0)
-            transfer_data(tempfile.read,f.write)
-            f.close()
-            tempfile.close()
-
-        return WavPackAudio(filename)
+            return WavPackAudio(filename)
+        else:
+            if (tempfile is not None):
+                tempfile.close()
+            raise EncodingError(BIN['wavpack'])
 
     @classmethod
     def add_replay_gain(cls, filenames):

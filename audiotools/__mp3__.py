@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,InvalidFile,PCMReader,PCMConverter,Con,transfer_data,subprocess,BIN,BIG_ENDIAN,ApeTag,ReplayGain,ignore_sigint,pcmstream,open_files
+from audiotools import AudioFile,InvalidFile,PCMReader,PCMConverter,Con,transfer_data,subprocess,BIN,BIG_ENDIAN,ApeTag,ReplayGain,ignore_sigint,pcmstream,open_files,EncodingError
 from __id3__ import *
 
 #this is a wrapper around another PCMReader
@@ -261,9 +261,11 @@ class MP3Audio(AudioFile):
         transfer_data(pcmreader.read,sub.stdin.write)
         pcmreader.close()
         sub.stdin.close()
-        sub.wait()
 
-        return MP3Audio(filename)
+        if (sub.wait() == 0):
+            return MP3Audio(filename)
+        else:
+            raise EncodingError(BIN['lame'])
 
     def bits_per_sample(self):
         return 16
@@ -606,6 +608,8 @@ class MP2Audio(MP3Audio):
         transfer_data(pcmreader.read,sub.stdin.write)
         pcmreader.close()
         sub.stdin.close()
-        sub.wait()
 
-        return MP2Audio(filename)
+        if (sub.wait() == 0):
+            return MP2Audio(filename)
+        else:
+            raise EncodingError(BIN['twolame'])

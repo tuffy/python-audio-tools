@@ -227,6 +227,7 @@ class ImageList:
             xml.get_widget("picture_image").clear()
             xml.get_widget('file_path').set_text('')
             xml.get_widget('picture_type').set_text('')
+            self.xml.get_widget("picture_dimensions").set_text('')
 
             try:
                 metadata = audiotools.open(

@@ -1248,6 +1248,31 @@ class TestAiffAudio(unittest.TestCase):
                 os.unlink(os.path.join(imgdir,f))
             os.rmdir(imgdir)
 
+    def testinvalidbinaries(self):
+        if (len(self.audio_class.BINARIES) == 0):
+            return
+
+        #grab our original binaries so we can point them back later
+        old_settings = [(bin,audiotools.config.get_default("Binaries",bin,bin))
+                        for bin in self.audio_class.BINARIES]
+        try:
+            for bin in self.audio_class.BINARIES:
+                audiotools.config.set("Binaries",bin,"./error.py")
+
+            self.assertRaises(audiotools.EncodingError,
+                              self.audio_class.from_pcm,
+                              "test.%s" % (self.audio_class.SUFFIX),
+                              BLANK_PCM_Reader(5))
+
+            #FIXME - ensure to_pcm raises DecodingError properly
+
+            #FIXME - ensure from_wave raises EncodingError properly
+
+            #FIXME - ensure to_wave raises DecodingError properly
+        finally:
+            for (bin,setting) in old_settings:
+                audiotools.config.set("Binaries",bin,setting)
+
 class TestForeignWaveChunks:
     def testforeignwavechunks(self):
         import filecmp

@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,InvalidFile,PCMReader,PCMConverter,Con,subprocess,BIN,ApeTaggedAudio,os,TempWaveReader,ignore_sigint,transfer_data
+from audiotools import AudioFile,InvalidFile,PCMReader,PCMConverter,Con,subprocess,BIN,ApeTaggedAudio,os,TempWaveReader,ignore_sigint,transfer_data,EncodingError
 from __wav__ import WaveAudio
 
 #######################
@@ -230,6 +230,7 @@ class MusepackAudio(ApeTaggedAudio,AudioFile):
                                 wave_filename],
                                stdout=devnull,
                                stderr=devnull)
+
         sub.wait()
         devnull.close()
 
@@ -264,17 +265,20 @@ class MusepackAudio(ApeTaggedAudio,AudioFile):
                                 wave_filename,
                                 filename])
 
-        sub.wait()
+        if (sub.wait() == 0):
+            if (tempfile is not None):
+                filename = actual_filename
+                f = file(filename,'wb')
+                tempfile.seek(0,0)
+                transfer_data(tempfile.read,f.write)
+                f.close()
+                tempfile.close()
 
-        if (tempfile is not None):
-            filename = actual_filename
-            f = file(filename,'wb')
-            tempfile.seek(0,0)
-            transfer_data(tempfile.read,f.write)
-            f.close()
-            tempfile.close()
-
-        return MusepackAudio(filename)
+            return MusepackAudio(filename)
+        else:
+            if (tempfile is not None):
+                tempfile.close()
+            raise EncodingError(BIN['mpcenc'])
 
     @classmethod
     def is_type(cls, file):

@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,InvalidFile,PCMReader,PCMConverter,Con,transfer_data,subprocess,BIN,cStringIO,MetaData,os,Image,InvalidImage,ignore_sigint,InvalidFormat,open_files
+from audiotools import AudioFile,InvalidFile,PCMReader,PCMConverter,Con,transfer_data,subprocess,BIN,cStringIO,MetaData,os,Image,InvalidImage,ignore_sigint,InvalidFormat,open_files,EncodingError
 
 #######################
 #M4A File
@@ -345,17 +345,21 @@ class M4AAudio(AudioFile):
         transfer_data(pcmreader.read,sub.stdin.write)
         pcmreader.close()
         sub.stdin.close()
-        sub.wait()
 
-        if (tempfile is not None):
-            filename = actual_filename
-            f = file(filename,'wb')
-            tempfile.seek(0,0)
-            transfer_data(tempfile.read,f.write)
-            f.close()
-            tempfile.close()
+        if (sub.wait() == 0):
+            if (tempfile is not None):
+                filename = actual_filename
+                f = file(filename,'wb')
+                tempfile.seek(0,0)
+                transfer_data(tempfile.read,f.write)
+                f.close()
+                tempfile.close()
 
-        return M4AAudio(filename)
+            return M4AAudio(filename)
+        else:
+            if (tempfile is not None):
+                tempfile.close()
+            raise EncodingError(BIN['faac'])
 
     @classmethod
     def can_add_replay_gain(cls):
@@ -866,18 +870,21 @@ class AACAudio(AudioFile):
         transfer_data(pcmreader.read,sub.stdin.write)
         pcmreader.close()
         sub.stdin.close()
-        sub.wait()
 
-        if (tempfile is not None):
-            filename = actual_filename
-            f = file(filename,'wb')
-            tempfile.seek(0,0)
-            transfer_data(tempfile.read,f.write)
-            f.close()
-            tempfile.close()
+        if (sub.wait() == 0):
+            if (tempfile is not None):
+                filename = actual_filename
+                f = file(filename,'wb')
+                tempfile.seek(0,0)
+                transfer_data(tempfile.read,f.write)
+                f.close()
+                tempfile.close()
 
-        return AACAudio(filename)
-
+            return AACAudio(filename)
+        else:
+            if (tempfile is not None):
+                tempfile.close()
+            raise EncodingError(BIN['faac'])
 
     @classmethod
     def aac_frames(cls, stream):

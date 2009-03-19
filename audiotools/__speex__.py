@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,InvalidFile,PCMReader,PCMConverter,Con,transfer_data,subprocess,BIN,cStringIO,os,ignore_sigint
+from audiotools import AudioFile,InvalidFile,PCMReader,PCMConverter,Con,transfer_data,subprocess,BIN,cStringIO,os,ignore_sigint,EncodingError
 from __vorbis__ import *
 
 #######################
@@ -137,10 +137,13 @@ class SpeexAudio(VorbisAudio):
         transfer_data(pcmreader.read,sub.stdin.write)
         pcmreader.close()
         sub.stdin.close()
-        sub.wait()
+        result = sub.wait()
         devnull.close()
 
-        return SpeexAudio(filename)
+        if (result == 0):
+            return SpeexAudio(filename)
+        else:
+            raise EncodingError(BIN['speexenc'])
 
     def set_metadata(self, metadata):
         comment = VorbisComment.converted(metadata)
