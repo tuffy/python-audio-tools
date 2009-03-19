@@ -97,7 +97,7 @@ def convert_file(destination_class, destination_filename,
                                                'replace')
     except audiotools.EncodingError,msg:
         print >>sys.stderr,(u"*** %s: %s" % \
-                            (destination_audiofile.filename.decode(
+                            (source_audiofile.filename.decode(
                              audiotools.FS_ENCODING,'replace'),
                              str(msg))).encode(audiotools.IO_ENCODING,
                                                'replace')

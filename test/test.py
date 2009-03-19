@@ -1252,6 +1252,12 @@ class TestAiffAudio(unittest.TestCase):
         if (len(self.audio_class.BINARIES) == 0):
             return
 
+        wave_temp_file = tempfile.NamedTemporaryFile(suffix=".wav")
+
+        wave_file = audiotools.WaveAudio.from_pcm(
+            wave_temp_file.name,
+            BLANK_PCM_Reader(5))
+
         #grab our original binaries so we can point them back later
         old_settings = [(bin,audiotools.config.get_default("Binaries",bin,bin))
                         for bin in self.audio_class.BINARIES]
@@ -1266,12 +1272,16 @@ class TestAiffAudio(unittest.TestCase):
 
             #FIXME - ensure to_pcm raises DecodingError properly
 
-            #FIXME - ensure from_wave raises EncodingError properly
+            self.assertRaises(audiotools.EncodingError,
+                              self.audio_class.from_wave,
+                              "test.%s" % (self.audio_class.SUFFIX),
+                              wave_file.filename)
 
             #FIXME - ensure to_wave raises DecodingError properly
         finally:
             for (bin,setting) in old_settings:
                 audiotools.config.set("Binaries",bin,setting)
+            wave_temp_file.close()
 
 class TestForeignWaveChunks:
     def testforeignwavechunks(self):
