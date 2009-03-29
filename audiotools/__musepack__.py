@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,InvalidFile,PCMReader,PCMConverter,Con,subprocess,BIN,ApeTaggedAudio,os,TempWaveReader,ignore_sigint,transfer_data,EncodingError
+from audiotools import AudioFile,InvalidFile,InvalidFormat,PCMReader,PCMConverter,Con,subprocess,BIN,ApeTaggedAudio,os,TempWaveReader,ignore_sigint,transfer_data,EncodingError,DecodingError,PCMReaderError
 from __wav__ import WaveAudio
 
 #######################
@@ -190,9 +190,15 @@ class MusepackAudio(ApeTaggedAudio,AudioFile):
         import tempfile
 
         f = tempfile.NamedTemporaryFile(suffix=".wav")
-        self.__to_wave__(f.name)
-        f.seek(0,0)
-        return TempWaveReader(f)
+        try:
+            self.__to_wave__(f.name)
+            f.seek(0,0)
+            return TempWaveReader(f)
+        except DecodingError:
+            return PCMReaderError(None,
+                                  sample_rate=self.sample_rate(),
+                                  channels=self.channels(),
+                                  bits_per_sample=self.bits_per_sample())
 
     @classmethod
     def from_pcm(cls, filename, pcmreader, compression=None):
@@ -225,14 +231,20 @@ class MusepackAudio(ApeTaggedAudio,AudioFile):
     #Use the *_pcm() methods first.
     def __to_wave__(self, wave_filename):
         devnull = file(os.devnull,"wb")
-        sub = subprocess.Popen([BIN['mpcdec'],
-                                self.filename,
-                                wave_filename],
-                               stdout=devnull,
-                               stderr=devnull)
+        try:
+            sub = subprocess.Popen([BIN['mpcdec'],
+                                    self.filename,
+                                    wave_filename],
+                                   stdout=devnull,
+                                   stderr=devnull)
 
-        sub.wait()
-        devnull.close()
+            #FIXME - small files (~5 seconds) result in an error by mpcdec,
+            #even if they decode correctly.
+            #Not much we can do except try to workaround its bugs.
+            if (sub.wait() not in [0,250]):
+                raise DecodingError()
+        finally:
+            devnull.close()
 
     @classmethod
     def __from_wave__(cls, filename, wave_filename, compression=None):

@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,InvalidFile,Con,subprocess,BIN,open_files,os,ReplayGain,ignore_sigint,transfer_data,Image,MetaData,sheet_to_unicode,EncodingError
+from audiotools import AudioFile,InvalidFile,Con,subprocess,BIN,open_files,os,ReplayGain,ignore_sigint,transfer_data,Image,MetaData,sheet_to_unicode,EncodingError,DecodingError,PCMReaderError
 from __wav__ import WaveAudio,WaveReader
 from __ape__ import ApeTaggedAudio,ApeTag
 
@@ -347,7 +347,8 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
                                     '-q','-y',
                                     self.filename,
                                     '-o',wave_filename])
-            sub.wait()
+            if (sub.wait() != 0):
+                raise DecodingError()
         else:
             import tempfile
             wv = tempfile.NamedTemporaryFile(suffix='.wv')
@@ -359,8 +360,10 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
                                     '-q','-y',
                                     wv.name,
                                     '-o',wave_filename])
-            sub.wait()
+            returnval = sub.wait()
             wv.close()
+            if (returnval != 0):
+                raise DecodingError()
 
 
     def to_pcm(self):
@@ -383,10 +386,15 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
             import tempfile
             from audiotools import TempWaveReader
             f = tempfile.NamedTemporaryFile(suffix=".wav")
-            self.to_wave(f.name)
-            f.seek(0,0)
-            return TempWaveReader(f)
-
+            try:
+                self.to_wave(f.name)
+                f.seek(0,0)
+                return TempWaveReader(f)
+            except DecodingError:
+                return PCMReaderError(None,
+                                      sample_rate=self.sample_rate(),
+                                      channels=self.channels(),
+                                      bits_per_sample=self.bits_per_sample())
     @classmethod
     def from_wave(cls, filename, wave_filename, compression=None):
         if (str(compression) not in cls.COMPRESSION_MODES):

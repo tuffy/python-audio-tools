@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,InvalidFile,PCMReader,PCMConverter,Con,transfer_data,subprocess,BIN,BIG_ENDIAN,ApeTag,ReplayGain,ignore_sigint,pcmstream,open_files,EncodingError
+from audiotools import AudioFile,InvalidFile,PCMReader,PCMConverter,Con,transfer_data,subprocess,BIN,BIG_ENDIAN,ApeTag,ReplayGain,ignore_sigint,pcmstream,open_files,EncodingError,DecodingError,PCMReaderError
 from __id3__ import *
 
 #this is a wrapper around another PCMReader
@@ -189,14 +189,19 @@ class MP3Audio(AudioFile):
 
                 #decode the mp3 file to a WAVE file
                 wave = tempfile.NamedTemporaryFile(suffix='.wav')
-                subprocess.call([BIN['lame'],"--decode","--quiet",
-                                 tempmp3.name,wave.name])
+                returnval = subprocess.call([BIN['lame'],"--decode","--quiet",
+                                             tempmp3.name,wave.name])
                 tempmp3.close()
 
-                #return WAVE file as a stream
-                wave.seek(0,0)
-                return TempWaveReader(wave)
-
+                if (returnval == 0):
+                    #return WAVE file as a stream
+                    wave.seek(0,0)
+                    return TempWaveReader(wave)
+                else:
+                    return PCMReaderError(None,
+                                          sample_rate=self.sample_rate(),
+                                          channels=self.channels(),
+                                          bits_per_sample=16)
 
     @classmethod
     def __help_output__(cls):

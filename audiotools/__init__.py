@@ -142,6 +142,9 @@ class EncodingError(Exception):
 
     def __str__(self):
         return "\"%s\" generated error during file encoding" % (self.executable)
+class DecodingError(Exception):
+    def __str__(self):
+        return "error during file decoding"
 
 #takes a filename string
 #returns a valid AudioFile object based on the file data or extension
@@ -263,8 +266,15 @@ class PCMReader:
         self.file.close()
 
         if (self.process != None):
-            self.process.wait()
+            if (self.process.wait() != 0):
+                raise DecodingError()
 
+class PCMReaderError(PCMReader):
+    def read(self, bytes):
+        return ""
+
+    def close(self):
+        raise DecodingError()
 
 
 #sends BUFFER_SIZE strings from from_function to to_function
@@ -1420,7 +1430,7 @@ class AudioFile:
 
     #writes the contents of this AudioFile to the given RIFF WAVE filename
     def to_wave(self, wave_filename):
-        WaveAudio.from_pcm(wave_filename, self.to_pcm())
+        WaveAudio.from_pcm(wave_filename,self.to_pcm())
 
     #writes a new "filename" from the given RIFF WAVE filename
     #and at the given compression

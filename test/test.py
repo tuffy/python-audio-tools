@@ -412,7 +412,6 @@ class TestAiffAudio(unittest.TestCase):
         try:
             #not all of these combinations will be supported by all formats
             for (sample_rate,channels,bits_per_sample) in SHORT_PCM_COMBINATIONS:
-
                 try:
                     new_file = self.audio_class.from_pcm(
                         temp.name,
@@ -447,13 +446,13 @@ class TestAiffAudio(unittest.TestCase):
                     counter = PCM_Count()
                     pcm = new_file.to_pcm()
                     audiotools.transfer_data(pcm.read,counter.write)
+                    pcm.close()
                     self.assertEqual(
                         (D.Decimal(new_file.total_frames()) / \
                          new_file.sample_rate()).to_integral(),
                         SHORT_LENGTH,
                         "conversion mismatch on %sHz, %s channels, %s bps" % \
                             (sample_rate,channels,bits_per_sample))
-                    pcm.close()
 
         finally:
             temp.close()
@@ -528,6 +527,7 @@ class TestAiffAudio(unittest.TestCase):
                     counter = PCM_Count()
                     pcm = new_file.to_pcm()
                     audiotools.transfer_data(pcm.read,counter.write)
+                    pcm.close()
                     self.assert_(len(counter) > 0)
 
                 new_file_metadata = new_file.get_metadata()
@@ -585,6 +585,7 @@ class TestAiffAudio(unittest.TestCase):
                     counter = PCM_Count()
                     pcm = new_file.to_pcm()
                     audiotools.transfer_data(pcm.read,counter.write)
+                    pcm.close()
                     self.assert_(len(counter) > 0,
                                  "error converting %s to %s without suffix" % \
                                      (repr(f),repr(new_file)))
@@ -1252,6 +1253,13 @@ class TestAiffAudio(unittest.TestCase):
         if (len(self.audio_class.BINARIES) == 0):
             return
 
+        temp_track_file = tempfile.NamedTemporaryFile(
+            suffix=self.audio_class.SUFFIX)
+
+        temp_track = self.audio_class.from_pcm(
+            temp_track_file.name,
+            BLANK_PCM_Reader(5))
+
         wave_temp_file = tempfile.NamedTemporaryFile(suffix=".wav")
 
         wave_file = audiotools.WaveAudio.from_pcm(
@@ -1270,7 +1278,10 @@ class TestAiffAudio(unittest.TestCase):
                               "test.%s" % (self.audio_class.SUFFIX),
                               BLANK_PCM_Reader(5))
 
-            #FIXME - ensure to_pcm raises DecodingError properly
+            self.assertRaises(audiotools.DecodingError,
+                              audiotools.WaveAudio.from_pcm,
+                              "test.wav",
+                              temp_track.to_pcm())
 
             self.assertRaises(audiotools.EncodingError,
                               self.audio_class.from_wave,
@@ -1282,6 +1293,7 @@ class TestAiffAudio(unittest.TestCase):
             for (bin,setting) in old_settings:
                 audiotools.config.set("Binaries",bin,setting)
             wave_temp_file.close()
+            temp_track_file.close()
 
 class TestForeignWaveChunks:
     def testforeignwavechunks(self):
