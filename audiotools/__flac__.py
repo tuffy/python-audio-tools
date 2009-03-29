@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,MetaData,InvalidFile,PCMReader,Con,transfer_data,subprocess,BIN,BUFFER_SIZE,cStringIO,os,open_files,Image,sys,WaveAudio,ReplayGain,ignore_sigint,sheet_to_unicode,EncodingError
+from audiotools import AudioFile,MetaData,InvalidFile,PCMReader,Con,transfer_data,subprocess,BIN,BUFFER_SIZE,cStringIO,os,open_files,Image,sys,WaveAudio,ReplayGain,ignore_sigint,sheet_to_unicode,EncodingError,DecodingError
 from __vorbiscomment__ import *
 from __id3__ import ID3v2Comment
 from __vorbis__ import OggStreamReader,OggStreamWriter
@@ -746,8 +746,10 @@ class FlacAudio(AudioFile):
                                stdout=devnull,
                                stderr=devnull)
 
-        sub.wait()
+        returnval = sub.wait()
         devnull.close()
+        if (returnval != 0):
+            raise DecodingError()
 
     @classmethod
     def from_wave(cls, filename, wave_filename, compression=None):
@@ -1167,8 +1169,10 @@ class OggFlacAudio(FlacAudio):
                                 self.filename],
                                stdout=devnull,
                                stderr=devnull)
-        sub.wait()
+        returnval = sub.wait()
         devnull.close()
+        if (returnval != 0):
+            raise DecodingError()
 
     @classmethod
     def from_wave(cls, filename, wave_filename, compression=None):

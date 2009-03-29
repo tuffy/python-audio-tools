@@ -1288,7 +1288,9 @@ class TestAiffAudio(unittest.TestCase):
                               "test.%s" % (self.audio_class.SUFFIX),
                               wave_file.filename)
 
-            #FIXME - ensure to_wave raises DecodingError properly
+            self.assertRaises(audiotools.DecodingError,
+                              temp_track.to_wave,
+                              "test.wav")
         finally:
             for (bin,setting) in old_settings:
                 audiotools.config.set("Binaries",bin,setting)

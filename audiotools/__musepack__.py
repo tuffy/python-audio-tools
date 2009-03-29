@@ -226,7 +226,7 @@ class MusepackAudio(ApeTaggedAudio,AudioFile):
             del(w)
             f.close()
 
-    #Thile Musepack needs to pipe things through WAVE,
+    #While Musepack needs to pipe things through WAVE,
     #not all WAVEs are acceptable.
     #Use the *_pcm() methods first.
     def __to_wave__(self, wave_filename):
