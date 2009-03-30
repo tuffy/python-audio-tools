@@ -207,9 +207,13 @@ if (__name__ == '__main__'):
             "cuesheet too short for track being split"
         sys.exit(1)
 
-    split_pcm = audiotools.pcm_split(
-        audiofile.to_pcm(),
-        cuesheet.pcm_lengths(audiofile.total_frames()))
+    try:
+        split_pcm = audiotools.pcm_split(
+            audiofile.to_pcm(),
+            cuesheet.pcm_lengths(audiofile.total_frames()))
+    except audiotools.DecodingError,msg:
+        print >>sys.stderr,str(msg)
+        sys.exit(1)
 
     try:
         for (i,pcmreader) in enumerate(split_pcm):

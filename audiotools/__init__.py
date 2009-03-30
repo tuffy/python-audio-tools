@@ -141,7 +141,8 @@ class EncodingError(Exception):
         self.executable = executable
 
     def __str__(self):
-        return "\"%s\" generated error during file encoding" % (self.executable)
+        return "error during file encoding"
+
 class DecodingError(Exception):
     def __str__(self):
         return "error during file decoding"

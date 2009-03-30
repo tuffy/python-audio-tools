@@ -208,7 +208,7 @@ if (__name__ == '__main__'):
                     player.play(pcm, audiofile)
                 finally:
                     pcm.close()
-        except IOError,msg:
+        except (IOError,audiotools.DecodingError),msg:
             print >>sys.stderr,"*** trackplay: %s" % (msg)
             sys.exit(1)
     finally:

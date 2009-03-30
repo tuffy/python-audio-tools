@@ -145,9 +145,9 @@ if (__name__ == '__main__'):
 
     quality = options.quality
 
-    pcmdata = audiotools.PCMCat(iter([af.to_pcm() for af in audiofiles]))
-
     try:
+        pcmdata = audiotools.PCMCat(iter([af.to_pcm() for af in audiofiles]))
+
         encoded = AudioType.from_pcm(options.filename,
                                      pcmdata,
                                      quality)
@@ -161,11 +161,8 @@ if (__name__ == '__main__'):
             if (existing_cuesheet is None):
                 encoded.set_cuesheet(cuesheet)
 
-    except audiotools.InvalidFormat,msg:
+    except (audiotools.InvalidFormat,
+            audiotools.EncodingError,
+            audiotools.DecodingError),msg:
         print >>sys.stderr,"*** %s: %s" % (options.filename,str(msg))
         sys.exit(1)
-    except audiotools.EncodeError,msg:
-        print >>sys.stderr,"*** %s: %s" % (options.filename,str(msg))
-        sys.exit(1)
-
-

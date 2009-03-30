@@ -60,14 +60,18 @@ if (__name__ == '__main__'):
     if (os.path.isfile(args[0]) and os.path.isfile(args[1])):
         audiofiles = audiotools.open_files(args)
         if (len(audiofiles) == 2):
-            if (check_function(audiofiles[0],audiofiles[1])):
-                pass
-            else:
-                if (options.verbosity != 'quiet'):
-                    print (u"%s != %s" % \
-                               (audiofiles[0].filename.decode(audiotools.FS_ENCODING),
-                                audiofiles[1].filename.decode(audiotools.FS_ENCODING))).encode(audiotools.IO_ENCODING,'replace')
-                sys.exit(1)
+            try:
+                if (check_function(audiofiles[0],audiofiles[1])):
+                    pass
+                else:
+                    if (options.verbosity != 'quiet'):
+                        print (u"%s != %s" % \
+                                   (audiofiles[0].filename.decode(audiotools.FS_ENCODING),
+                                    audiofiles[1].filename.decode(audiotools.FS_ENCODING))).encode(audiotools.IO_ENCODING,'replace')
+                    sys.exit(1)
+            except audiotools.DecodingError,msg:
+                print >>sys.stderr,str(msg)
+                sys.exit(2)
         else:
             print "*** Exactly two audio files or two directories is required"
             sys.exit(1)
@@ -122,14 +126,18 @@ if (__name__ == '__main__'):
                                 audiotools.FS_ENCODING))).encode(audiotools.IO_ENCODING,'replace'))
                 sys.stdout.flush()
 
-            if (check_function(files1_map[(album_number,track_number)],
-                               files2_map[(album_number,track_number)])):
-                if (options.verbosity != 'quiet'):
-                    print "OK"
-            else:
-                if (options.verbosity != 'quiet'):
-                    print "differ"
-                returnval = 1
+            try:
+                if (check_function(files1_map[(album_number,track_number)],
+                                   files2_map[(album_number,track_number)])):
+                    if (options.verbosity != 'quiet'):
+                        print "OK"
+                else:
+                    if (options.verbosity != 'quiet'):
+                        print "differ"
+                    returnval = 1
+            except audiotools.DecodingError,msg:
+                print >>sys.stderr,str(msg)
+                returnval = 2
 
         if (returnval != 0):
             sys.exit(returnval)

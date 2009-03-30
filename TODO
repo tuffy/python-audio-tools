@@ -240,3 +240,8 @@
   that their subprocess calls will work as expected.
   Though rare in practice, these need to be checked in case
   the child processes fail for any reason.
+** TODO Check for invalid output files
+   If an output file can't be written to for some reason
+   (invalid permissions, etc.) generate a proper error message
+   instead of throwing ugly IOExceptions or confusing errors.
+

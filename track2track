@@ -89,18 +89,15 @@ def convert_file(destination_class, destination_filename,
         if (existing_cuesheet is None):
             destination_audiofile.set_cuesheet(source_audiofile.get_cuesheet())
 
-    except audiotools.InvalidFormat,msg:
+    except (audiotools.InvalidFormat,
+            audiotools.EncodingError,
+            audiotools.DecodingError),msg:
         print >>sys.stderr,(u"*** %s: %s" % \
                             (source_audiofile.filename.decode(
                              audiotools.FS_ENCODING,'replace'),
                              str(msg))).encode(audiotools.IO_ENCODING,
                                                'replace')
-    except audiotools.EncodingError,msg:
-        print >>sys.stderr,(u"*** %s: %s" % \
-                            (source_audiofile.filename.decode(
-                             audiotools.FS_ENCODING,'replace'),
-                             str(msg))).encode(audiotools.IO_ENCODING,
-                                               'replace')
+
 
 if (__name__ == '__main__'):
     parser = optparse.OptionParser(
