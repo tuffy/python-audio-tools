@@ -1,6 +1,6 @@
 /*
 ** Copyright (C) 2002-2008 Erik de Castro Lopo <erikd@mega-nerd.com>
-** Portions modified April 2008 by Brian Langenberger
+** Portions modified March 2009 by Brian Langenberger
 ** for use in Python Audio Tools
 **
 ** This program is free software; you can redistribute it and/or modify
@@ -31,9 +31,11 @@
 #include	"samplerate.h"
 #include	"float_cast.h"
 #include	"common.h"
+
 #include        "src_sinc.c"
 #include        "src_zoh.c"
 #include        "src_linear.c"
+
 
 static int psrc_set_converter (SRC_PRIVATE	*psrc, int converter_type) ;
 
@@ -390,8 +392,10 @@ src_strerror (int error)
 				return "SRC_DATA->data_out is NULL." ;
 		case SRC_ERR_NO_PRIVATE :
 				return "Internal error. No private data." ;
+
 		case SRC_ERR_BAD_SRC_RATIO :
-				return "SRC ratio outside [1/12, 12] range." ;
+				return "SRC ratio outside [1/" SRC_MAX_RATIO_STR ", " SRC_MAX_RATIO_STR "] range." ;
+
 		case SRC_ERR_BAD_SINC_STATE :
 				return "src_process() called without reset after end_of_input." ;
 		case SRC_ERR_BAD_PROC_PTR :
@@ -420,6 +424,8 @@ src_strerror (int error)
 				return "Callback function pointer is NULL in src_callback_read ()." ;
 		case SRC_ERR_NO_VARIABLE_RATIO :
 				return "This converter only allows constant conversion ratios." ;
+		case SRC_ERR_SINC_PREPARE_DATA_BAD_LEN :
+				return "Internal error : Bad length in prepare_data ()." ;
 
 		case SRC_ERR_MAX_ERROR :
 				return "Placeholder. No error defined for this error number." ;
@@ -536,3 +542,4 @@ psrc_set_converter (SRC_PRIVATE	*psrc, int converter_type)
 
 	return SRC_ERR_BAD_CONVERTER ;
 } /* psrc_set_converter */
+
