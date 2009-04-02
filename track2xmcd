@@ -53,21 +53,26 @@ if (__name__ == '__main__'):
                       help='the verbosity level to execute at')
 
     (options,args) = parser.parse_args()
+    msg = audiotools.Messenger("track2xmcd",options)
 
     audiofiles = audiotools.open_files(args)
 
     if (len(audiofiles) < 1):
-        print >>sys.stderr,"*** You must specify at least one valid audio file"
+        msg.error(u"You must specify at least one valid audio file")
         sys.exit(1)
 
     if (options.xmcd == '-'):
         outfile = sys.stdout
     else:
-        if (not os.path.isfile(options.xmcd)):
-            outfile = file(options.xmcd,"w")
-        else:
-            print >>sys.stderr,"*** Refusing to overwrite \"%s\"" % \
-                  (options.xmcd)
+        try:
+            if (not os.path.isfile(options.xmcd)):
+                outfile = file(options.xmcd,"w")
+            else:
+                msg.error(u"Refusing to overwrite \"%s\"" % \
+                              (msg.filename(options.xmcd)))
+                sys.exit(1)
+        except IOError,e:
+            msg.error(unicode(e))
             sys.exit(1)
 
     if (options.discid):      #calculate the disc ID and do nothing else
@@ -81,7 +86,7 @@ if (__name__ == '__main__'):
         else:
             discid = audiotools.DiscID([file.cd_frames()
                                         for file in audiofiles])
-        print discid.freedb_id()
+        msg.info(unicode(discid.freedb_id()))
     elif (options.metadata):  #pull XMCD data from AudioFile metadata
         if ((len(audiofiles) == 1) and
             (audiofiles[0].get_cuesheet() is not None)):
@@ -108,10 +113,10 @@ if (__name__ == '__main__'):
             audiotools.get_xmcd(discid, outfile,
                                 options.freedb_server,
                                 options.freedb_port,
-                                options.default,
-                                options.verbosity != 'quiet')
-        except IOError,msg:
-            print >>sys.stderr,"* Error: %s" % (msg)
+                                msg,
+                                options.default)
+        except IOError,e:
+            msg.error(unicode(e))
             sys.exit(1)
 
     outfile.close()

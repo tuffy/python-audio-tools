@@ -358,20 +358,20 @@ class FreeDBException(Exception): pass
 class FreeDB:
     LINE = re.compile(r'\d\d\d\s.+')
 
-    def __init__(self, server, port, display_output=True):
+    def __init__(self, server, port, messenger):
         self.server = server
         self.port = port
         self.socket = None
         self.r = None
         self.w = None
-        self.display_output = display_output
+        self.messenger = messenger
 
     def connect(self):
         import socket
 
         try:
-            if (self.display_output):
-                print >>sys.stderr,"* Connecting to \"%s\"" % (self.server)
+            self.messenger.info(u"* Connecting to \"%s\"" % (self.server))
+
             self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.socket.connect((self.server,self.port))
 
@@ -380,8 +380,7 @@ class FreeDB:
 
             (code,msg) = self.read()  #the welcome message
             if (code == 201):
-                if (self.display_output):
-                    print >>sys.stderr,"* Connected ... attempting to login"
+                self.messenger.info(u"* Connected ... attempting to login")
             else:
                 self.r.close()
                 self.w.close()
@@ -411,8 +410,7 @@ class FreeDB:
             raise FreeDBException(err[1])
 
     def close(self):
-        if (self.display_output):
-            print >>sys.stderr,"* Closing connection"
+        self.messenger.info(u"* Closing connection")
 
         self.write("quit")
         (code,msg) = self.read()  #the quit successful message
@@ -437,8 +435,7 @@ class FreeDB:
     def query(self, disc_id):
         matches = []
 
-        if (self.display_output):
-            print >>sys.stderr,"* Sending ID to server"
+        self.messenger.info(u"* Sending ID to server")
 
         self.write("cddb query " + disc_id.freedb_id())
         (code,msg) = self.read()
@@ -450,11 +447,10 @@ class FreeDB:
                 if (msg != "."):
                     matches.append(msg)
 
-        if (self.display_output):
-            if (len(matches) == 1):
-                print >>sys.stderr,"* 1 match found"
-            else:
-                print >>sys.stderr,"* %s matches found" % (len(matches))
+        if (len(matches) == 1):
+            self.messenger.info(u"* 1 match found")
+        else:
+            self.messenger.info(u"* %s matches found" % (len(matches)))
 
         return map(lambda m: m.split(" ",2), matches)
 
@@ -474,11 +470,11 @@ class FreeDB:
 
 
 class FreeDBWeb(FreeDB):
-    def __init__(self, server, port, display_output=True):
+    def __init__(self, server, port, messenger):
         self.server = server
         self.port = port
         self.connection = None
-        self.display_output = display_output
+        self.messenger = messenger
 
     def connect(self):
         import httplib
@@ -522,8 +518,7 @@ class FreeDBWeb(FreeDB):
     def query(self, disc_id):
         matches = []
 
-        if (self.display_output):
-            print >>sys.stderr,"* Sending ID to server"
+        self.messenger.info(u"* Sending ID to server")
 
         self.write("cddb query " + disc_id.freedb_id())
         data =  cStringIO.StringIO(self.read())
@@ -536,11 +531,10 @@ class FreeDBWeb(FreeDB):
                 if (msg != "."):
                     matches.append(msg)
 
-        if (self.display_output):
-            if (len(matches) == 1):
-                print >>sys.stderr,"* 1 match found"
-            else:
-                print >>sys.stderr,"* %s matches found" % (len(matches))
+        if (len(matches) == 1):
+            self.messenger.info(u"* 1 match found")
+        else:
+            self.messenger.info(u"* %s matches found" % (len(matches)))
 
         return map(lambda m: m.split(" ",2), matches)
 
@@ -564,20 +558,20 @@ class FreeDBWeb(FreeDB):
 #item.  If the length is greater than one, present the user a list of
 #choices and force him/her to pick the closest match for the CD.
 #That data can then be sent to FreeDB.read_data()
-def __select_match__(matches):
+def __select_match__(matches, messenger):
     if (len(matches) == 1):
         return matches[0]
     elif (len(matches) < 1):
         return None
     else:
-        print >>sys.stderr,"Please Select the Closest Match:"
+        messenger.info(u"Please Select the Closest Match:")
         selected = 0
         while ((selected < 1) or (selected > len(matches))):
             for i in range(len(matches)):
-                print >>sys.stderr,\
-                  "%s) [%s] %s" % (i + 1, matches[i][0],matches[i][2])
+                messenger.info(u"%s) [%s] %s" % (i + 1,
+                                                 matches[i][0],matches[i][2])
             try:
-                sys.stderr.write("Your Selection [1-%s]:" % (len(matches)))
+                messenger.partial_info("Your Selection [1-%s]:" % (len(matches)))
                 sys.stderr.flush()
                 selected = int(sys.stdin.readline().strip())
             except ValueError:
@@ -598,9 +592,9 @@ def __select_default_match__(matches, selection):
 #and runs the entire FreeDB querying sequence
 #the file handle is closed at the conclusion of this function
 def get_xmcd(disc_id, output, freedb_server, freedb_server_port,
-             default_selection=None, display_output=False):
+             messenger,default_selection=None):
     try:
-        freedb = FreeDBWeb(freedb_server,freedb_server_port,display_output)
+        freedb = FreeDBWeb(freedb_server,freedb_server_port,messenger)
         freedb.connect()
     except FreeDBException,msg:
         #if an exception occurs during the opening,
@@ -613,7 +607,8 @@ def get_xmcd(disc_id, output, freedb_server, freedb_server_port,
         #HANDLE MULTIPLE MATCHES, or NO MATCHES
         if (len(matches) > 0):
             if (default_selection is None):
-                (category,idstring,title) = __select_match__(matches)
+                (category,idstring,title) = __select_match__(
+                    matches,messenger)
             else:
                 (category,idstring,title) = __select_default_match__(
                     matches,default_selection)
@@ -629,5 +624,4 @@ def get_xmcd(disc_id, output, freedb_server, freedb_server_port,
         raise IOError(str(msg))
 
     output.close()
-    if (display_output):
-        print >>sys.stderr,"* %s written" % (output.name)
+    messenger.info(u"* %s written" % (messenger.filename(output.name)))
