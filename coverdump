@@ -52,15 +52,16 @@ if (__name__ == '__main__'):
 
 
     (options,args) = parser.parse_args()
+    msg = audiotools.Messenger("coverdump",options)
 
     if (len(args) != 1):
-        print >>sys.stderr,"*** You must specify exactly 1 audio file"
+        msg.error(u"You must specify exactly 1 audio file")
         sys.exit(1)
 
     try:
         audiofile = audiotools.open(args[0])
     except audiotools.UnsupportedFile:
-        print >>sys.stderr,"*** %s file format not supported" % args[0]
+        msg.error(u"%s file format not supported" % msg.filename(args[0]))
         sys.exit(1)
 
     metadata = audiofile.get_metadata()
@@ -88,8 +89,8 @@ if (__name__ == '__main__'):
                     f.write(image.data)
                     f.close()
                     if (options.verbosity != "quiet"):
-                        print "* %s" % (output_filename)
-                except IOError,msg:
-                    print "*** %s" % (str(msg))
+                        msg.info(u"* %s" % (msg.filename(output_filename)))
+                except IOError,e:
+                    msg.error(u"%s" % (str(e)))
                     sys.exit(1)
 

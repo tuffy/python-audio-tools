@@ -1906,10 +1906,12 @@ class VerboseMessenger:
     #displays an error message unicode string
     #and adds a newline
     def error(self,s):
+        sys.stderr.write("*** Error: ")
         sys.stderr.write(s.encode(IO_ENCODING,'replace'))
         sys.stderr.write("\n")
 
     def warning(self,s):
+        sys.stderr.write("*** Warning: ")
         sys.stderr.write(s.encode(IO_ENCODING,'replace'))
         sys.stderr.write("\n")
 
@@ -1927,9 +1929,6 @@ class SilentMessenger(VerboseMessenger):
         pass
 
     def partial_message(self,s):
-        pass
-
-    def error(self,s):
         pass
 
     def warning(self,s):
