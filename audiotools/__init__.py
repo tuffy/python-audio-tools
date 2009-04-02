@@ -1876,6 +1876,68 @@ class ExecQueue:
             except KeyError:
                 continue
 
+#######################
+#Output Messaging
+#######################
+
+def Messenger(executable, options):
+    if ((options.verbosity == 'normal') or
+        (options.verbosity == 'debug')):
+        return VerboseMessenger(executable)
+    else:
+        return SilentMessenger(executable)
+
+class VerboseMessenger:
+    def __init__(self, executable):
+        self.executable = executable
+
+    #displays an informative message unicode string
+    #and adds a newline
+    def message(self,s):
+        sys.stdout.write(s.encode(IO_ENCODING,'replace'))
+        sys.stdout.write("\n")
+
+    #displays a partial informative message unicode string
+    #and flushes output so it is displayed
+    def partial_message(self,s):
+        sys.stdout.write(s.encode(IO_ENCODING,'replace'))
+        sys.stdout.flush()
+
+    #displays an error message unicode string
+    #and adds a newline
+    def error(self,s):
+        sys.stderr.write(s.encode(IO_ENCODING,'replace'))
+        sys.stderr.write("\n")
+
+    def warning(self,s):
+        sys.stderr.write(s.encode(IO_ENCODING,'replace'))
+        sys.stderr.write("\n")
+
+    def info(self,s):
+        sys.stderr.write(s.encode(IO_ENCODING,'replace'))
+        sys.stderr.write("\n")
+
+    #takes a filename string and returns a unicode string
+    #decoded according to the system's encoding
+    def filename(self,s):
+        return s.decode(FS_ENCODING,'replace')
+
+class SilentMessenger(VerboseMessenger):
+    def message(self,s):
+        pass
+
+    def partial_message(self,s):
+        pass
+
+    def error(self,s):
+        pass
+
+    def warning(self,s):
+        pass
+
+    def info(self,s):
+        pass
+
 #***ApeAudio temporarily removed***
 #Without a legal alternative to mac-port, I shall have to re-implement
 #Monkey's Audio with my own code in order to make it available again.
