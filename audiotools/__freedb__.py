@@ -569,7 +569,7 @@ def __select_match__(matches, messenger):
         while ((selected < 1) or (selected > len(matches))):
             for i in range(len(matches)):
                 messenger.info(u"%s) [%s] %s" % (i + 1,
-                                                 matches[i][0],matches[i][2])
+                                                 matches[i][0],matches[i][2]))
             try:
                 messenger.partial_info("Your Selection [1-%s]:" % (len(matches)))
                 sys.stderr.flush()

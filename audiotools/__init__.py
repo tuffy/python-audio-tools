@@ -1891,18 +1891,17 @@ class VerboseMessenger:
     def __init__(self, executable):
         self.executable = executable
 
-    #FIXME - is message() necessary?  How does it differ from info?
-    # #displays an informative message unicode string
-    # #and adds a newline
-    # def message(self,s):
-    #     sys.stdout.write(s.encode(IO_ENCODING,'replace'))
-    #     sys.stdout.write("\n")
+    #displays an output message unicode string to stdout
+    #and adds a newline
+    def output(self,s):
+        sys.stdout.write(s.encode(IO_ENCODING,'replace'))
+        sys.stdout.write("\n")
 
-    # #displays a partial informative message unicode string
-    # #and flushes output so it is displayed
-    # def partial_message(self,s):
-    #     sys.stdout.write(s.encode(IO_ENCODING,'replace'))
-    #     sys.stdout.flush()
+    #displays a partial output message unicode string to stdout
+    #and flushes output so it is displayed
+    def partial_output(self,s):
+        sys.stdout.write(s.encode(IO_ENCODING,'replace'))
+        sys.stdout.flush()
 
     #displays an informative message unicode string to stderr
     #and adds a newline
@@ -1916,6 +1915,15 @@ class VerboseMessenger:
         sys.stderr.write(s.encode(IO_ENCODING,'replace'))
         sys.stderr.flush()
 
+    #what's the difference between output() and info() ?
+    #output() is for a program's primary data
+    #info() is for incidental information
+    #for example, trackinfo(1) should use output() for what it displays
+    #since that output is its primary function
+    #but track2track should use info() for its lines of progress
+    #since its primary function is converting audio
+    #and tty output is purely incidental
+
     #displays an error message unicode string
     #and adds a newline
     def error(self,s):
@@ -1927,6 +1935,15 @@ class VerboseMessenger:
         sys.stderr.write("*** Warning: ")
         sys.stderr.write(s.encode(IO_ENCODING,'replace'))
         sys.stderr.write("\n")
+
+    #displays the program's usage string to stderr
+    #and adds a newline
+    def usage(self,s):
+        sys.stderr.write("*** Usage: ")
+        sys.stderr.write(self.executable.decode('ascii'))
+        sys.stderr.write(" ")
+        sys.stderr.write(s.encode(IO_ENCODING,'replace'))
+        sys.stderr.write('\n')
 
     #takes a filename string and returns a unicode string
     #decoded according to the system's encoding
