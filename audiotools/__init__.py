@@ -1958,6 +1958,12 @@ class VerboseMessenger:
         return s.decode(FS_ENCODING,'replace')
 
 class SilentMessenger(VerboseMessenger):
+    def output(self,s):
+        pass
+
+    def partial_output(self,s):
+        pass
+
     def warning(self,s):
         pass
 

@@ -28,7 +28,7 @@ def extract_part(input_filename, input_pcm, output_filename, quality, metadata,
                  messenger):
     messenger.info(u"%s -> %s" % \
                        (messenger.filename(input_filename),
-                        messenger.filaname(output_filename)))
+                        messenger.filename(output_filename)))
 
     try:
         destination_audiofile = AudioType.from_pcm(
