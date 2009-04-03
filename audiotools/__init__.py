@@ -383,7 +383,10 @@ def stripped_pcm_cmp(pcmreader1, pcmreader2):
         (pcmreader1.bits_per_sample != pcmreader2.bits_per_sample)):
         return False
 
-    import sha
+    try:
+        from hashlib import sha1 as sha
+    except ImportError:
+        from sha import new as sha
 
     data = cStringIO.StringIO()
 
@@ -392,7 +395,7 @@ def stripped_pcm_cmp(pcmreader1, pcmreader2):
         data.write(d)
         d = pcmreader1.read(BUFFER_SIZE)
 
-    sum1 = sha.new(data.getvalue().strip(chr(0x00)))
+    sum1 = sha(data.getvalue().strip(chr(0x00)))
 
     data = cStringIO.StringIO()
 
@@ -401,7 +404,7 @@ def stripped_pcm_cmp(pcmreader1, pcmreader2):
         data.write(d)
         d = pcmreader2.read(BUFFER_SIZE)
 
-    sum2 = sha.new(data.getvalue().strip(chr(0x00)))
+    sum2 = sha(data.getvalue().strip(chr(0x00)))
 
     del(data)
 
@@ -1931,6 +1934,8 @@ class VerboseMessenger:
         sys.stderr.write(s.encode(IO_ENCODING,'replace'))
         sys.stderr.write("\n")
 
+    #displays an warninc message unicode string
+    #and adds a newline
     def warning(self,s):
         sys.stderr.write("*** Warning: ")
         sys.stderr.write(s.encode(IO_ENCODING,'replace'))

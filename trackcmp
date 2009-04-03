@@ -66,16 +66,15 @@ if (__name__ == '__main__'):
                 if (check_function(audiofiles[0],audiofiles[1])):
                     pass
                 else:
-                    if (options.verbosity != 'quiet'):
-                        print (u"%s != %s" % \
-                                   (audiofiles[0].filename.decode(audiotools.FS_ENCODING),
-                                    audiofiles[1].filename.decode(audiotools.FS_ENCODING))).encode(audiotools.IO_ENCODING,'replace')
+                    msg.output(u"%s != %s" % \
+                                   (msg.filename(audiofiles[0].filename),
+                                    msg.filename(audiofiles[1].filename)))
                     sys.exit(1)
             except audiotools.DecodingError,msg:
-                print >>sys.stderr,str(msg)
+                msg.error(unicode(msg))
                 sys.exit(2)
         else:
-            print "*** Exactly two audio files or two directories is required"
+            msg.error(u"Exactly two audio files or two directories are required")
             sys.exit(1)
     elif (os.path.isdir(args[0]) and os.path.isdir(args[1])):
         returnval = 0
@@ -98,52 +97,56 @@ if (__name__ == '__main__'):
         for (album_number,track_number) in sorted(
             list(files1_tracknumbers - files2_tracknumbers)):
             if (album_number == 0):
-                if (options.verbosity != 'quiet'):
-                    print "%s: missing" % (os.path.join(args[1],"track %2.2d" % (track_number)))
+                msg.output(u"%s: missing" % \
+                               (msg.filename(
+                            os.path.join(args[1],
+                                         "track %2.2d" % (track_number)))))
                 returnval = 1
             else:
-                if (options.verbosity != 'quiet'):
-                    print "%s: missing" % (os.path.join(args[1],"album %d track %2.2d" % (album_number,track_number)))
+                msg.output(u"%s: missing" % \
+                               (msg.filename(
+                            os.path.join(args[1],
+                                         "album %d track %2.2d" % (album_number,track_number)))))
                 returnval = 1
 
         for (album_number,track_number) in sorted(
             list(files2_tracknumbers - files1_tracknumbers)):
             if (album_number == 0):
-                if (options.verbosity != 'quiet'):
-                    print "%s: missing" % (os.path.join(args[0],"track %2.2d" % (track_number)))
+                msg.output(u"%s: missing" % \
+                               (msg.filename(
+                            os.path.join(args[0],
+                                         "track %2.2d" % (track_number)))))
                 returnval = 1
             else:
-                if (options.verbosity != 'quiet'):
-                    print "%s: missing" % (os.path.join(args[1],"album %d track %2.2d" % (album_number,track_number)))
+                msg.output(u"%s: missing" % \
+                               (msg.filename(
+                            os.path.join(args[1],
+                                         "album %d track %2.2d" % (album_number,track_number)))))
                 returnval = 1
 
         for (album_number,track_number) in sorted(
             list(files1_tracknumbers & files2_tracknumbers)):
-            if (options.verbosity != 'quiet'):
-                sys.stdout.write(
-                    (u"%s <> %s :" % \
-                         (files1_map[(album_number,track_number)].filename.decode(
-                                    audiotools.FS_ENCODING),
-                          files2_map[(album_number,track_number)].filename.decode(
-                                audiotools.FS_ENCODING))).encode(audiotools.IO_ENCODING,'replace'))
-                sys.stdout.flush()
+            msg.partial_output(u"%s <> %s :" % \
+                         (msg.filename(
+                        files1_map[(album_number,track_number)].filename),
+                          msg.filename(
+                        files2_map[(album_number,track_number)].filename)))
 
             try:
                 if (check_function(files1_map[(album_number,track_number)],
                                    files2_map[(album_number,track_number)])):
-                    if (options.verbosity != 'quiet'):
-                        print "OK"
+                    msg.output(u"OK")
                 else:
-                    if (options.verbosity != 'quiet'):
-                        print "differ"
+                    msg.output(u"differ")
                     returnval = 1
             except audiotools.DecodingError,msg:
-                print >>sys.stderr,str(msg)
+                msg.output(u"error")
+                msg.error(unicode(msg))
                 returnval = 2
 
         if (returnval != 0):
             sys.exit(returnval)
     else:
-        print (u"%s %s differ" % (args[0].decode(audiotools.FS_ENCODING),
-                                  args[1].decode(audiotools.FS_ENCODING))).encode(audiotools.IO_ENCODING,'replace')
+        msg.output(u"%s %s differ" % (msg.filename(args[0]),
+                                      msg.filename(args[1])))
         sys.exit(1)
