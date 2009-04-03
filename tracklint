@@ -47,11 +47,10 @@ YEAR = re.compile(r'^\d{4}$')
 TEXT_FIELDS = tuple([field for field in audiotools.MetaData.__FIELDS__
                      if (field not in ("track_number","album_number"))])
 
-def display_messages(track,messages):
+def display_messages(messenger,track,messages):
     for message in messages:
-        print (u"* %s: %s" % \
-                   (track.filename.decode(audiotools.IO_ENCODING,'replace'),
-                    message)).encode(audiotools.IO_ENCODING,'replace')
+        messenger.info(u"* %s: %s" % (messenger.filename(track.filename),
+                                      message))
 
 #track should be an existing Track object
 #if dry_run is True, a new Track object is written with the given fixes applied
@@ -225,7 +224,7 @@ def audiofiles(paths):
             except audiotools.InvalidFile:
                 pass
 
-def update_and_backup(track, undo_db, verbose=True):
+def update_and_backup(track, undo_db, messenger):
     changes_made = False
 
     #copy the track to a temporary location
@@ -239,14 +238,12 @@ def update_and_backup(track, undo_db, verbose=True):
     #perform any Track fixes on the temporary Track
     (temp_track,messages) = fix_track(temp_track,dry_run=False)
     changes_made = changes_made or (len(messages) > 0)
-    if (verbose):
-        display_messages(track,messages)
+    display_messages(messenger,track,messages)
 
     #perform any MetaData fixes on the temporary Track
     (metadata,messages) = fix_metadata(temp_track.get_metadata())
     changes_made = changes_made or (len(messages) > 0)
-    if (verbose):
-        display_messages(track,messages)
+    display_messages(messenger,track,messages)
     if (len(messages) > 0):
         temp_track.set_metadata(metadata)
 
@@ -276,7 +273,7 @@ def update_and_backup(track, undo_db, verbose=True):
 
     temp_track_f.close()
 
-def undo_from_backup(track, undo_db, verbose=True):
+def undo_from_backup(track, undo_db, messenger):
     undo_checksum = checksum(track.filename)
 
     if (undo_db.has_key(undo_checksum)):
@@ -301,8 +298,8 @@ def undo_from_backup(track, undo_db, verbose=True):
             old_track.close()
             xdelta_f.close()
 
-            if (verbose):
-                print (u"* restored: %s" % (track.filename.decode(audiotools.FS_ENCODING))).encode(audiotools.IO_ENCODING,'replace')
+            messenger.info(u"* restored: %s" % \
+                               (messenger.filename(track.filename)))
 
 #a FlacAudio Track prepended with ID3v2 tags
 #or appended with ID3v1 tags
@@ -450,14 +447,15 @@ if (__name__ == '__main__'):
                       help='the verbosity level to execute at')
 
     (options,args) = parser.parse_args()
+    msg = audiotools.Messenger("trackling",options)
 
     if (options.undo and (options.db is None)):
-        print >>sys.stderr,"*** cannot perform undo without undo db"
+        msg.error(u"cannot perform undo without undo db")
         sys.exit(1)
 
     if ((options.db is not None) and
         (not audiotools.BIN.can_execute(audiotools.BIN["xdelta"]))):
-        print >>sys.stderr,"*** xdelta must be installed for undo support"
+        msg.error(u"xdelta must be installed for undo support")
         sys.exit(1)
 
 
@@ -468,12 +466,11 @@ if (__name__ == '__main__'):
             try:
                 undo_db = anydbm.open(options.db,"c")
             except:
-                print >>sys.stderr,"*** Unable to open \"%s\"" % (options.db)
+                msg.error(u"Unable to open \"%s\"" % (msg.filename(options.db)))
                 sys.exit(1)
             try:
                 for track in audiofiles(args):
-                    update_and_backup(track,undo_db,
-                                      options.verbosity != 'quiet')
+                    update_and_backup(track,undo_db,msg)
             finally:
                 undo_db.close()
         else:
@@ -481,31 +478,26 @@ if (__name__ == '__main__'):
             #simply overwrite the track and track metadata directly
             for track in audiofiles(args):
                 (track,messages) = fix_track(track,dry_run=False)
-                if (options.verbosity != 'quiet'):
-                    display_messages(track,messages)
+                display_messages(msg,track,messages)
                 (metadata,messages) = fix_metadata(track.get_metadata())
-                if (options.verbosity != 'quiet'):
-                    display_messages(track,messages)
+                display_messages(msg,track,messages)
                 track.set_metadata(metadata)
     elif (options.undo):
         try:
             undo_db = anydbm.open(options.db,"r")
         except anydbm.error:
-            print >>sys.stderr,"*** Unable to open \"%s\"" % (options.db)
+            msg.error(u"Unable to open \"%s\"" % (msg.filename(options.db)))
             sys.exit(1)
         try:
             for track in audiofiles(args):
-                undo_from_backup(track,undo_db,
-                                 options.verbosity != 'quiet')
+                undo_from_backup(track,undo_db,msg)
         finally:
             undo_db.close()
     else: #a dry-run of the fixing procedure, with no changes made
         for track in audiofiles(args):
             (track,messages) = fix_track(track,dry_run=True)
-            if (options.verbosity != 'quiet'):
-                display_messages(track,messages)
+            display_messages(msg,track,messages)
             (metadata,messages) = fix_metadata(track.get_metadata())
-            if (options.verbosity != 'quiet'):
-                display_messages(track,messages)
+            display_messages(msg,track,messages)
 
 
