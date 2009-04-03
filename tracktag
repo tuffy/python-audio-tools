@@ -94,21 +94,20 @@ def get_image(filename, type):
 #returns the comment as a unicode string
 #or exits with an error if the file cannot be read
 #or is not UTF-8 text
-def read_comment(filename):
+def read_comment(filename,messenger):
     try:
         f = open(filename,'rb')
         data = f.read().decode('utf-8','replace')
         f.close()
 
         if (((data.count(u"\uFFFD") * 100) / len(data)) >= 10):
-            print >>sys.stderr,"*** comment file \"%s\" does not appear to be UTF-8 text" % \
-            (filename)
+            messenger.error(u"comment file \"%s\" does not appear to be UTF-8 text" % (messenger.filename(filename)))
             sys.exit(1)
         else:
             return data
     except IOError:
-        print >>sys.stderr,"*** Error opening comment file \"%s\"" % \
-            (filename)
+        messenger.error(u"unable to open comment file \"%s\"" % \
+                            (messenger.filename(filename)))
         sys.exit(1)
 
 
@@ -295,6 +294,7 @@ if (__name__ == '__main__'):
                       help='the verbosity level to execute at')
 
     (options,args) = parser.parse_args()
+    msg = audiotools.Messenger("tracktag",options)
 
     audiofiles = audiotools.open_files(args)
 
@@ -302,8 +302,8 @@ if (__name__ == '__main__'):
         try:
             xmcd = audiotools.XMCD.read(options.xmcd).metadata()
         except audiotools.XMCDException:
-            print >>sys.stderr,"*** Error opening XMCD file \"%s\"" % \
-                  (options.xmcd)
+            msg.error(u"Error opening XMCD file \"%s\"" % \
+                          (msg.filename(options.xmcd)))
             sys.exit(1)
     else:
         xmcd = None
@@ -326,7 +326,8 @@ if (__name__ == '__main__'):
                               for (k,v) in
                               cuesheet.ISRCs().items()])
         except audiotools.SheetException,msg:
-            print >>sys.stderr,msg
+            msg.error(unicode(msg))
+            sys.exit(1)
 
     if (options.replace):
         if (xmcd is None):
@@ -366,7 +367,7 @@ if (__name__ == '__main__'):
                     metadata.album_number = options.album_number
 
                 if (options.comment_file is not None):
-                    metadata.comment = read_comment(options.comment_file)
+                    metadata.comment = read_comment(options.comment_file,msg)
 
                 if (metadata.supports_images()):
                     if (options.remove_images):
@@ -395,7 +396,7 @@ if (__name__ == '__main__'):
 
                 file.set_metadata(metadata)
             except audiotools.InvalidImage,msg:
-                print >>sys.stderr,"* %s: %s" % (file.filename,msg)
+                msg.error(u"%s: %s" % (msg.filename(file.filename),msg))
                 sys.exit(1)
 
     #we're assuming all tracks are the same type
@@ -404,11 +405,10 @@ if (__name__ == '__main__'):
         (len(audiofiles) > 0) and
         (audiofiles[0].can_add_replay_gain())):
 
-        if (options.verbosity != 'quiet'):
-            if (audiofiles[0].lossless_replay_gain()):
-                print >>sys.stderr,"* Adding ReplayGain metadata.  This may take some time."
-            else:
-                print >>sys.stderr,"* Applying ReplayGain.  This may take some time."
+        if (audiofiles[0].lossless_replay_gain()):
+            msg.info(u"Adding ReplayGain metadata.  This may take some time.")
+        else:
+            msg.info(u"Applying ReplayGain.  This may take some time.")
         audiofiles[0].add_replay_gain([f.filename for f in audiofiles])
 
     if (import_cuesheet is not None):

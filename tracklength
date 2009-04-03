@@ -21,7 +21,7 @@
 import optparse,os.path
 import audiotools
 
-OUTPUT = "%(hours)d:%(minutes)2.2d:%(seconds)2.2d"
+OUTPUT = u"%(hours)d:%(minutes)2.2d:%(seconds)2.2d"
 
 if (__name__ == '__main__'):
     parser = optparse.OptionParser(
@@ -29,6 +29,7 @@ if (__name__ == '__main__'):
         version="Python Audio Tools %s" % (audiotools.VERSION))
 
     (options,args) = parser.parse_args()
+    msg = audiotools.Messenger("tracklength",options)
 
     total_length = 0l
 
@@ -42,8 +43,8 @@ if (__name__ == '__main__'):
                  audiotools.open_files([os.path.join(dir,f) for f in files])])
 
     if (total_length > 0):
-        print OUTPUT % {"hours":total_length / (75 * 60 * 60),
-                        "minutes":total_length / (75 * 60) % 60,
-                        "seconds":int(round(total_length / 75.0)) % 60}
+        msg.output(OUTPUT % {"hours":total_length / (75 * 60 * 60),
+                             "minutes":total_length / (75 * 60) % 60,
+                             "seconds":int(round(total_length / 75.0)) % 60})
     else:
-        print OUTPUT % {"hours":0,"minutes":0,"seconds":0}
+        msg.output(OUTPUT % {"hours":0,"minutes":0,"seconds":0})
