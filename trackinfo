@@ -36,34 +36,31 @@ if (__name__ == '__main__'):
                       action="store_true",dest="show_percentage")
 
     (options,args) = parser.parse_args()
+    msg = audiotools.Messenger("trackinfo",options)
 
     for file in audiotools.open_files(args):
         length = file.cd_frames() / 75
         if (options.show_bitrate):
-            print (u"%(bitrate)4.4s kbps: %(filename)s" % \
-                       {'bitrate':
-                            ((os.path.getsize(file.filename) * 8) / 2 ** 10) / \
-                            length,
-                        'filename':file.filename.decode(audiotools.FS_ENCODING,'replace')}).encode(audiotools.IO_ENCODING,'replace')
+            msg.output(u"%(bitrate)4.4s kbps: %(filename)s" % \
+                           {'bitrate': ((os.path.getsize(file.filename) * 8) / 2 ** 10) / length,
+                            'filename':msg.filename(file.filename)})
         elif (options.show_percentage):
-            print (u"%(percentage)3.3s%%: %(filename)s" % \
-                       {'percentage':
-                            int(round(float(os.path.getsize(file.filename) * 100) /
-                                      (file.total_frames() * file.channels() * \
-                                        (file.bits_per_sample() / 8)))),
-                        'filename':file.filename.decode(audiotools.FS_ENCODING,'replace')}).encode(audiotools.IO_ENCODING,'replace')
+            msg.output(u"%(percentage)3.3s%%: %(filename)s" % \
+                           {'percentage':
+                                int(round(float(os.path.getsize(file.filename) * 100) / (file.total_frames() * file.channels() * \
+                                                                                             (file.bits_per_sample() / 8)))),
+                            'filename':msg.filename(file.filename)})
         else:
-            print (u"%(minutes)2.2d:%(seconds)2.2d %(channels)dch %(rate)dHz %(bits)d-bit: %(filename)s" % \
-                       {"minutes":length / 60,
-                        "seconds":length % 60,
-                        "channels":file.channels(),
-                        "rate":file.sample_rate(),
-                        "bits":file.bits_per_sample(),
-                        "filename":file.filename.decode(audiotools.FS_ENCODING,'replace')}).encode(audiotools.IO_ENCODING,'replace')
-
+            msg.output(u"%(minutes)2.2d:%(seconds)2.2d %(channels)dch %(rate)dHz %(bits)d-bit: %(filename)s" % \
+                           {"minutes":length / 60,
+                            "seconds":length % 60,
+                            "channels":file.channels(),
+                            "rate":file.sample_rate(),
+                            "bits":file.bits_per_sample(),
+                            "filename":msg.filename(file.filename)})
         if (not options.no_metadata):
             metadata = file.get_metadata()
-            if (metadata != None):
-                print unicode(metadata).encode(audiotools.IO_ENCODING,'replace')
-                print
+            if (metadata is not None):
+                msg.output(unicode(metadata))
+                msg.output(u"")
 

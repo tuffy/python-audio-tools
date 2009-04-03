@@ -1884,7 +1884,9 @@ class ExecQueue:
 #######################
 
 def Messenger(executable, options):
-    if ((options.verbosity == 'normal') or
+    if (not hasattr(options,"verbosity")):
+        return VerboseMessenger(executable)
+    elif ((options.verbosity == 'normal') or
         (options.verbosity == 'debug')):
         return VerboseMessenger(executable)
     else:
