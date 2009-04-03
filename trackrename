@@ -50,10 +50,12 @@ if (__name__ == '__main__'):
                       help='the verbosity level to execute at')
 
     (options,args) = parser.parse_args()
+    msg = audiotools.Messenger("trackrename",options)
+
     audiofiles = audiotools.open_files(args)
 
     if (len(audiofiles) < 1):
-        print >>sys.stderr,"*** You must specify at least one audio file"
+        msg.error(u"You must specify at least one audio file")
         sys.exit(1)
 
     if (options.verbosity != 'quiet'):
@@ -66,8 +68,8 @@ if (__name__ == '__main__'):
         try:
             metadata = audiotools.XMCD.read(options.xmcd).metadata()
         except audiotools.XMCDException:
-            print >>sys.stderr,"*** Error opening XMCD file \"%s\"" % \
-                  (options.xmcd)
+            msg.error(u"Error opening XMCD file \"%s\"" % \
+                          (msg.filename(options.xmcd)))
             sys.exit(1)
 
         try:

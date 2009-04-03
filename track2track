@@ -217,7 +217,7 @@ if (__name__ == '__main__'):
     if (options.quality == 'help'):
         if (len(AudioType.COMPRESSION_MODES) > 1):
             msg.info(u"available compression types for %s:" % \
-                  (AudioType.NAME))
+                         (AudioType.NAME))
             for mode in AudioType.COMPRESSION_MODES:
                 msg.info(mode.decode('ascii'))
         else:

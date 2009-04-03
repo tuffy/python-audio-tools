@@ -244,7 +244,6 @@
    If an output file can't be written to for some reason
    (invalid permissions, etc.) generate a proper error message
    instead of throwing ugly IOExceptions or confusing errors.
-
 * TODO Make tty output consistent
   Currently, command-line programs generate output using a
   selection of scattered print statements - often accompanied by
@@ -253,3 +252,12 @@
   This should be replaced by a unified message system similar
   to Python's built-in logging module which can abstract away
   these difficulties.
+** TODO Convert tty output to gettext-based strings
+   This will not only make output messages more consistent across the tools,
+   but will also allow for foreign language translations in the future.
+** TODO Add unit tests for tty output
+   All programs which generate output should be unit tested
+   so that all code paths are assured of printing the messages they're
+   supposed to print, at the streams they're supposed to print on,
+   and in the proper encoding settings.
+

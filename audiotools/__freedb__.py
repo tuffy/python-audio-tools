@@ -139,7 +139,11 @@ class XMCD:
     def read(cls, filename):
         import StringIO,re
 
-        f = open(filename,'r')
+        try:
+            f = open(filename,'r')
+        except IOError:
+            raise XMCDException(filename)
+
         try:
             data = f.read()
             try:
