@@ -447,7 +447,7 @@ if (__name__ == '__main__'):
                       help='the verbosity level to execute at')
 
     (options,args) = parser.parse_args()
-    msg = audiotools.Messenger("trackling",options)
+    msg = audiotools.Messenger("tracklint",options)
 
     if (options.undo and (options.db is None)):
         msg.error(u"cannot perform undo without undo db")
