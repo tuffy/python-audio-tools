@@ -53,6 +53,7 @@ if (__name__ == '__main__'):
                       help='the verbosity level to execute at')
 
     (options,args) = parser.parse_args()
+    msg = audiotools.Messenger("cd2xmcd",options)
 
     try:
       if (options.xmcd == '-'):
@@ -60,14 +61,14 @@ if (__name__ == '__main__'):
       else:
          outfile = open(options.xmcd,"w")
     except IOError,err:
-      print >>audiotools.STDERR,"%s: %s" % (err.filename,err[1])
+      msg.error(unicode(err))
       sys.exit(1)
 
     try:
         cdda = audiotools.CDDA(options.cdrom)
 
         if (len(cdda) == 255):
-             print >>sys.stderr,"*** No CD in drive"
+             msg.error(u"No CD in drive")
              sys.exit(1)
 
         tracks = list(cdda)
@@ -77,20 +78,19 @@ if (__name__ == '__main__'):
                                cdda.length(),
                                tracks[0].offset())
 
-        if (options.verbosity != 'quiet'):
-            print >>sys.stderr,"* Found CD information"
+        msg.info(u"Found CD information")
 
         if (not options.discid):
             audiotools.get_xmcd(id, outfile,
                                 options.freedb_server,
                                 options.freedb_port,
-                                options.default,
-                                options.verbosity != 'quiet')
+                                msg,
+                                options.default)
         else:
-            print id.freedb_id()
+            msg.output(unicode(id.freedb_id()))
 
 
-    except IOError,msg:
-        print >>sys.stderr,"* Error: %s" % (msg)
+    except IOError,err:
+        msg.error(unicode(err))
         sys.exit(1)
 

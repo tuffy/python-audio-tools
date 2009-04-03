@@ -146,9 +146,10 @@ if (__name__ == '__main__'):
                       help='the verbosity level to execute at')
 
     (options,args) = parser.parse_args()
+    msg = audiotools.Messenger("record2track",options)
 
     if (options.output is None):
-        print >>sys.stderr,"*** You must specify an output file"
+        msg.error(u"You must specify an output file")
         sys.exit(1)
 
     #get the AudioFile class we are converted to
@@ -158,31 +159,31 @@ if (__name__ == '__main__'):
         try:
             AudioType = audiotools.filename_to_type(options.output)
         except audiotools.UnknownAudioType,exp:
-            print >>sys.stderr,exp.error_msg()
+            msg.error(unicode(exp.error_msg()))
             sys.exit(1)
 
     #ensure the selected compression is compatible with that class
     if (options.quality == 'help'):
         if (len(AudioType.COMPRESSION_MODES) > 1):
-            print >>sys.stderr,"*** Available compression types for %s:" % \
-                  (AudioType.NAME)
+            msg.info(u"available compression types for %s:" % \
+                         (AudioType.NAME))
             for mode in AudioType.COMPRESSION_MODES:
-                print >>sys.stderr,mode
+                msg.info(mode.decode('ascii'))
         else:
-            print >>sys.stderr,"*** Audio type %s has no compression modes" % \
-                  (AudioType.NAME)
+            msg.error(u"Audio type %s has no compression modes" % \
+                          (AudioType.NAME))
         sys.exit(0)
     elif (options.quality == None):
         options.quality = AudioType.DEFAULT_COMPRESSION
     elif (options.quality not in AudioType.COMPRESSION_MODES):
-        print >>sys.stderr,"*** \"%s\" is not a supported compression " % \
-              (options.quality) + "mode for type \"%s\"" % \
-              (AudioType.NAME)
+        msg.error(u"\"%s\" is not a supported compression " % \
+                      (options.quality) + u"mode for type \"%s\"" % \
+                      (AudioType.NAME))
         sys.exit(1)
 
     #ensure we have an output file to write to
     if (options.output is None):
-        print >>sys.stderr,"*** You must select an output file"
+        msg.error(u"You must select an output file")
         sys.exit(1)
 
     #I'd like to offer "kill -s SIGINT $MYPID" instructions at this point,
@@ -191,9 +192,7 @@ if (__name__ == '__main__'):
     #It might be the SIGINT signal handler interacting poorly with
     #InterruptableReader's background thread, but those are Python/OS
     #issues beyond my control.
-    if (options.verbosity != 'quiet'):
-        sys.stdout.write("* Recording (Ctrl-C to stop) ")
-        sys.stdout.flush()
+    msg.partial_info(u"Recording (Ctrl-C to stop) ")
 
     input = audiotools.InterruptableReader(inputs_map[options.input](
         sample_rate=options.sample_rate,
@@ -204,20 +203,10 @@ if (__name__ == '__main__'):
     try:
         audiofile = AudioType.from_pcm(options.output,input,options.quality)
 
-        if (options.verbosity != 'quiet'):
-            print "* Done"
-    except audiotools.InvalidFormat,msg:
-        print >>sys.stderr,(u"*** %s: %s" % \
-                            (options.output.decode(
-                             audiotools.FS_ENCODING,'replace'),
-                             str(msg))).encode(audiotools.IO_ENCODING,
-                                               'replace')
-        sys.exit(1)
-    except audiotools.EncodingError,msg:
-        print >>sys.stderr,(u"*** %s: %s" % \
-                            (options.output.decode(
-                             audiotools.FS_ENCODING,'replace'),
-                             str(msg))).encode(audiotools.IO_ENCODING,
-                                               'replace')
+        msg.info(u"Done")
+    except (audiotools.InvalidFormat,
+            audiotools.EncodingError),err:
+        msg.error(u"%s: %s" % (msg.filename(options.output),
+                               unicode(msg)))
         sys.exit(1)
 

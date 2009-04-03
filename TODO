@@ -260,4 +260,3 @@
    so that all code paths are assured of printing the messages they're
    supposed to print, at the streams they're supposed to print on,
    and in the proper encoding settings.
-

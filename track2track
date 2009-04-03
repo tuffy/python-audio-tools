@@ -228,7 +228,7 @@ if (__name__ == '__main__'):
         options.quality = AudioType.DEFAULT_COMPRESSION
     elif (options.quality not in AudioType.COMPRESSION_MODES):
         msg.error(u"\"%s\" is not a supported compression " % \
-                      (options.quality) + "mode for type \"%s\"" % \
+                      (options.quality) + u"mode for type \"%s\"" % \
                       (AudioType.NAME))
         sys.exit(1)
 

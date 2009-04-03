@@ -141,7 +141,7 @@ if (__name__ == '__main__'):
         sys.exit(-1)
 
     if (len(cdda) == 0xFF):
-        msg.error(u"No CD in drive")
+        msg.error(u"*** No CD in drive")
         sys.exit(1)
 
     encoded = []
