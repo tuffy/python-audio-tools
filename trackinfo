@@ -18,8 +18,12 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-import optparse,os.path
+import optparse
+import os.path
 import audiotools
+import gettext
+
+gettext.install("audiotools",unicode=True)
 
 if (__name__ == '__main__'):
     parser = optparse.OptionParser(
@@ -41,17 +45,17 @@ if (__name__ == '__main__'):
     for file in audiotools.open_files(args):
         length = file.cd_frames() / 75
         if (options.show_bitrate):
-            msg.output(u"%(bitrate)4.4s kbps: %(filename)s" % \
+            msg.output(_(u"%(bitrate)4.4s kbps: %(filename)s") % \
                            {'bitrate': ((os.path.getsize(file.filename) * 8) / 2 ** 10) / length,
                             'filename':msg.filename(file.filename)})
         elif (options.show_percentage):
-            msg.output(u"%(percentage)3.3s%%: %(filename)s" % \
+            msg.output(_(u"%(percentage)3.3s%%: %(filename)s") % \
                            {'percentage':
                                 int(round(float(os.path.getsize(file.filename) * 100) / (file.total_frames() * file.channels() * \
                                                                                              (file.bits_per_sample() / 8)))),
                             'filename':msg.filename(file.filename)})
         else:
-            msg.output(u"%(minutes)2.2d:%(seconds)2.2d %(channels)dch %(rate)dHz %(bits)d-bit: %(filename)s" % \
+            msg.output(_(u"%(minutes)2.2d:%(seconds)2.2d %(channels)dch %(rate)dHz %(bits)d-bit: %(filename)s") % \
                            {"minutes":length / 60,
                             "seconds":length % 60,
                             "channels":file.channels(),

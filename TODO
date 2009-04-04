@@ -263,10 +263,10 @@
 - [X] track2track
 - [X] track2xmcd
 - [X] trackcat
-- [ ] trackcmp
-- [ ] trackinfo
-- [ ] tracklength
-- [ ] tracklint
+- [X] trackcmp
+- [X] trackinfo
+- [X] tracklength
+- [X] tracklint
 - [ ] trackplay
 - [ ] trackrename
 - [X] tracksplit
@@ -287,4 +287,7 @@
 - [ ] trackrename
 - [ ] tracksplit
 - [ ] tracktag
+
+
+** TODO Convert --help output to gettext-based strings
 

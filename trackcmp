@@ -19,7 +19,14 @@
 
 
 import audiotools
-import optparse,sys,os,os.path,operator
+import optparse
+import sys
+import os
+import os.path
+import operator
+import gettext
+
+gettext.install("audiotools",unicode=True)
 
 def near_equal(audiofile1, audiofile2):
     p1 = audiofile1.to_pcm()
@@ -51,7 +58,7 @@ if (__name__ == '__main__'):
     msg = audiotools.Messenger("trackcmp",options)
 
     if (len(args) != 2):
-        msg.usage(u"<file 1> <file 2>")
+        msg.usage(_(u"<file 1> <file 2>"))
         sys.exit(1)
 
     if (not options.inexact):
@@ -66,15 +73,15 @@ if (__name__ == '__main__'):
                 if (check_function(audiofiles[0],audiofiles[1])):
                     pass
                 else:
-                    msg.output(u"%s != %s" % \
-                                   (msg.filename(audiofiles[0].filename),
-                                    msg.filename(audiofiles[1].filename)))
+                    msg.output(_(u"%(file1)s != %(file2)s") % \
+                                {"file1":msg.filename(audiofiles[0].filename),
+                                 "file2":msg.filename(audiofiles[1].filename)))
                     sys.exit(1)
             except audiotools.DecodingError,msg:
                 msg.error(unicode(msg))
                 sys.exit(2)
         else:
-            msg.error(u"Exactly two audio files or two directories are required")
+            msg.error(_(u"Exactly two audio files or two directories are required"))
             sys.exit(1)
     elif (os.path.isdir(args[0]) and os.path.isdir(args[1])):
         returnval = 0
@@ -97,13 +104,13 @@ if (__name__ == '__main__'):
         for (album_number,track_number) in sorted(
             list(files1_tracknumbers - files2_tracknumbers)):
             if (album_number == 0):
-                msg.output(u"%s: missing" % \
+                msg.output(_(u"%s: missing") % \
                                (msg.filename(
                             os.path.join(args[1],
                                          "track %2.2d" % (track_number)))))
                 returnval = 1
             else:
-                msg.output(u"%s: missing" % \
+                msg.output(_(u"%s: missing") % \
                                (msg.filename(
                             os.path.join(args[1],
                                          "album %d track %2.2d" % (album_number,track_number)))))
@@ -112,13 +119,13 @@ if (__name__ == '__main__'):
         for (album_number,track_number) in sorted(
             list(files2_tracknumbers - files1_tracknumbers)):
             if (album_number == 0):
-                msg.output(u"%s: missing" % \
+                msg.output(_(u"%s: missing") % \
                                (msg.filename(
                             os.path.join(args[0],
                                          "track %2.2d" % (track_number)))))
                 returnval = 1
             else:
-                msg.output(u"%s: missing" % \
+                msg.output(_(u"%s: missing") % \
                                (msg.filename(
                             os.path.join(args[1],
                                          "album %d track %2.2d" % (album_number,track_number)))))
@@ -126,27 +133,28 @@ if (__name__ == '__main__'):
 
         for (album_number,track_number) in sorted(
             list(files1_tracknumbers & files2_tracknumbers)):
-            msg.partial_output(u"%s <> %s :" % \
-                         (msg.filename(
+            msg.partial_output(_(u"%(file1)s <> %(file2)s :") % \
+                         {"file1":msg.filename(
                         files1_map[(album_number,track_number)].filename),
-                          msg.filename(
-                        files2_map[(album_number,track_number)].filename)))
+                          "file2":msg.filename(
+                        files2_map[(album_number,track_number)].filename)})
 
             try:
                 if (check_function(files1_map[(album_number,track_number)],
                                    files2_map[(album_number,track_number)])):
-                    msg.output(u"OK")
+                    msg.output(_(u"OK"))
                 else:
-                    msg.output(u"differ")
+                    msg.output(_(u"differ"))
                     returnval = 1
             except audiotools.DecodingError,msg:
-                msg.output(u"error")
+                msg.output(_(u"error"))
                 msg.error(unicode(msg))
                 returnval = 2
 
         if (returnval != 0):
             sys.exit(returnval)
     else:
-        msg.output(u"%s %s differ" % (msg.filename(args[0]),
-                                      msg.filename(args[1])))
+        msg.output(_(u"%(file1)s %(file2)s differ") % \
+                       {"file1":msg.filename(args[0]),
+                        "file2":msg.filename(args[1])})
         sys.exit(1)
