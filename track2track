@@ -19,16 +19,22 @@
 
 
 import audiotools
-import optparse,sys,os,os.path
+import optparse
+import sys
+import os
+import os.path
+import gettext
+
+gettext.install("audiotools",unicode=True)
 
 MAX_CPUS = audiotools.MAX_JOBS
 
 def convert_file(destination_class, destination_filename,
                  source_audiofile, metadata, compression,
                  messenger, thumbnail_images=False):
-    messenger.info(u"%s -> %s" % \
-                       (messenger.filename(source_audiofile.filename),
-                        messenger.filename(destination_filename)))
+    messenger.info(_(u"%(source)s -> %(destination)s") % \
+                      {"source":messenger.filename(source_audiofile.filename),
+                       "destination":messenger.filename(destination_filename)})
 
     try:
         if (isinstance(source_audiofile,audiotools.WaveAudio)):
@@ -185,14 +191,12 @@ if (__name__ == '__main__'):
     #complain about it right away
     if (options.output is not None):
         if (options.dir != "."):
-            msg.error(u"-o and -d options are not compatible")
-            msg.info(u"please specify the full output file path with -o")
-            msg.info(u"or an output directory with -d")
-            msg.info(u"but not both")
+            msg.error(_(u"-o and -d options are not compatible"))
+            msg.info(_(u"please specify either -o or -d but not both"))
             sys.exit(1)
 
         if (options.format != audiotools.FILENAME_FORMAT):
-            msg.warning(u"--format has no effect when used with -o")
+            msg.warning(_(u"--format has no effect when used with -o"))
 
     #get the AudioFile class we are converted to
     if (options.output is None):
@@ -216,35 +220,35 @@ if (__name__ == '__main__'):
     #ensure the selected compression is compatible with that class
     if (options.quality == 'help'):
         if (len(AudioType.COMPRESSION_MODES) > 1):
-            msg.info(u"available compression types for %s:" % \
-                         (AudioType.NAME))
+            msg.info(_(u"available compression types for %s:" % \
+                           (AudioType.NAME)))
             for mode in AudioType.COMPRESSION_MODES:
                 msg.info(mode.decode('ascii'))
         else:
-            msg.error(u"Audio type %s has no compression modes" % \
-                          (AudioType.NAME))
+            msg.error(_(u"Audio type %s has no compression modes") % \
+                            (AudioType.NAME))
         sys.exit(0)
     elif (options.quality == None):
         options.quality = AudioType.DEFAULT_COMPRESSION
     elif (options.quality not in AudioType.COMPRESSION_MODES):
-        msg.error(u"\"%s\" is not a supported compression " % \
-                      (options.quality) + u"mode for type \"%s\"" % \
-                      (AudioType.NAME))
+        msg.error(_(u"\"%(quality)s\" is not a supported compression mode for type \"%(type)s\"" % \
+                        {"quality":options.quality,
+                         "type":AudioType.NAME}))
         sys.exit(1)
 
     #grab the list of AudioFile objects we are converting from
     audiofiles = audiotools.open_files(args)
     if (len(audiofiles) < 1):
-        msg.error(u"You must specify at least 1 supported audio file")
+        msg.error(_(u"You must specify at least 1 supported audio file"))
         sys.exit(1)
 
     if (options.max_processes < 1):
-        msg.error(u'You must run at least 1 process at a time')
+        msg.error(_(u'You must run at least 1 process at a time'))
         sys.exit(1)
 
     if ((options.output != None) and
         (len(audiofiles) != 1)):
-        msg.error(u'You may specify only 1 input file for use with -o')
+        msg.error(_(u'You may specify only 1 input file for use with -o'))
         sys.exit(1)
 
 
@@ -253,23 +257,23 @@ if (__name__ == '__main__'):
         try:
             xmcd = audiotools.XMCD.read(options.xmcd).metadata()
         except audiotools.XMCDException:
-            msg.error(u"Invalid XMCD file")
+            msg.error(_(u"Invalid XMCD file"))
             sys.exit(1)
     else: #if we're not using an XMCD file, use the AudioFile objects' data
         xmcd = None
 
     if (options.thumbnail):
         if (not audiotools.can_thumbnail()):
-            msg.error(u"Unable to generate thumbnails")
-            msg.info(u"Please install the Python Imaging Library")
-            msg.info(u"available at http://www.pythonware.com/products/pil/")
-            msg.info(u"to enable image resizing")
+            msg.error(_(u"Unable to generate thumbnails"))
+            msg.info(_(u"Please install the Python Imaging Library"))
+            msg.info(_(u"available at http://www.pythonware.com/products/pil/"))
+            msg.info(_(u"to enable image resizing"))
             sys.exit(1)
 
         if (audiotools.THUMBNAIL_FORMAT.upper() not in audiotools.thumbnail_formats()):
-            msg.error(u"Unsupported thumbnail format \"%s\"" % \
-                (audiotools.THUMBNAIL_FORMAT))
-            msg.info(u"available formats are: %s" % \
+            msg.error(_(u"Unsupported thumbnail format \"%s\"") % \
+                          (audiotools.THUMBNAIL_FORMAT))
+            msg.info(_(u"available formats are: %s") % \
                          (", ".join(audiotools.thumbnail_formats())))
             sys.exit(1)
 
@@ -346,9 +350,9 @@ if (__name__ == '__main__'):
 
         if (options.add_replay_gain and AudioType.can_add_replay_gain()):
             if (AudioType.lossless_replay_gain()):
-                msg.info(u"Adding ReplayGain metadata.  This may take some time.")
+                msg.info(_(u"Adding ReplayGain metadata.  This may take some time."))
             else:
-                msg.info(u"Applying ReplayGain.  This may take some time.")
+                msg.info(_(u"Applying ReplayGain.  This may take some time."))
             AudioType.add_replay_gain(encoded_filenames)
     else:
         #encoding only a single file
