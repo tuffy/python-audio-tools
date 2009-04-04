@@ -75,7 +75,7 @@ if (__name__ == '__main__'):
                 else:
                     msg.output(_(u"%(file1)s != %(file2)s") % \
                                 {"file1":msg.filename(audiofiles[0].filename),
-                                 "file2":msg.filename(audiofiles[1].filename)))
+                                 "file2":msg.filename(audiofiles[1].filename)})
                     sys.exit(1)
             except audiotools.DecodingError,msg:
                 msg.error(unicode(msg))

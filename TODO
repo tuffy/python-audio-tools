@@ -244,7 +244,7 @@
    If an output file can't be written to for some reason
    (invalid permissions, etc.) generate a proper error message
    instead of throwing ugly IOExceptions or confusing errors.
-* TODO Make tty output consistent
+* TODO Make text output consistent
   Currently, command-line programs generate output using a
   selection of scattered print statements - often accompanied by
   if blocks when verbosity is indicated - and haphazardly
@@ -255,8 +255,8 @@
 ** TODO Convert tty output to gettext-based strings
    This will not only make output messages more consistent across the tools,
    but will also allow for foreign language translations in the future.
-- [ ] cd2track
-- [ ] cd2xmcd
+- [X] cd2track
+- [X] cd2xmcd
 - [X] coverdump
 - [X] record2track
 - [X] track2cd
@@ -267,10 +267,11 @@
 - [X] trackinfo
 - [X] tracklength
 - [X] tracklint
-- [ ] trackplay
-- [ ] trackrename
+- [X] trackplay
+- [X] trackrename
 - [X] tracksplit
-- [ ] tracktag
+- [X] tracktag
+*** TODO Convert output from audiotools module to gettext-based strings
 ** TODO Add unit tests for tty output
    All programs which generate output should be unit tested
    so that all code paths are assured of printing the messages they're
@@ -287,7 +288,7 @@
 - [ ] trackrename
 - [ ] tracksplit
 - [ ] tracktag
-
-
 ** TODO Convert --help output to gettext-based strings
-
+** TODO Convert GUI programs to gettext-based strings
+- [ ] coverview
+- [ ] editxmcd

@@ -22,6 +22,9 @@ import sys
 import audiotools
 import audiotools.cdio as cdio
 from optparse import OptionParser,make_option
+import gettext
+
+gettext.install("audiotools",unicode=True)
 
 if (__name__ == '__main__'):
     parser = OptionParser(usage=\
@@ -68,7 +71,7 @@ if (__name__ == '__main__'):
         cdda = audiotools.CDDA(options.cdrom)
 
         if (len(cdda) == 255):
-             msg.error(u"No CD in drive")
+             msg.error(_(u"No CD in drive"))
              sys.exit(1)
 
         tracks = list(cdda)
@@ -78,7 +81,7 @@ if (__name__ == '__main__'):
                                cdda.length(),
                                tracks[0].offset())
 
-        msg.info(u"Found CD information")
+        msg.info(_(u"Found CD information"))
 
         if (not options.discid):
             audiotools.get_xmcd(id, outfile,

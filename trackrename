@@ -23,6 +23,9 @@ import audiotools
 import os.path
 import optparse
 import subprocess
+import gettext
+
+gettext.install("audiotools",unicode=True)
 
 if (__name__ == '__main__'):
     parser = optparse.OptionParser(
@@ -55,7 +58,7 @@ if (__name__ == '__main__'):
     audiofiles = audiotools.open_files(args)
 
     if (len(audiofiles) < 1):
-        msg.error(u"You must specify at least one audio file")
+        msg.error(_(u"You must specify at least one audio file"))
         sys.exit(1)
 
     if (options.verbosity != 'quiet'):
@@ -68,7 +71,7 @@ if (__name__ == '__main__'):
         try:
             metadata = audiotools.XMCD.read(options.xmcd).metadata()
         except audiotools.XMCDException:
-            msg.error(u"Error opening XMCD file \"%s\"" % \
+            msg.error(_(u"Error opening XMCD file \"%s\"") % \
                           (msg.filename(options.xmcd)))
             sys.exit(1)
 

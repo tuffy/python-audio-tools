@@ -22,6 +22,9 @@ import sys
 import os
 from optparse import OptionParser,make_option
 import audiotools
+import gettext
+
+gettext.install("audiotools",unicode=True)
 
 if (__name__ == '__main__'):
     parser = OptionParser(usage="%prog [--cdrom CDROM device] [-p] [-s speed] [track] ...",
@@ -104,20 +107,20 @@ if (__name__ == '__main__'):
     #ensure the selected compression is compatible with that class
     if (options.quality == 'help'):
         if (len(AudioType.COMPRESSION_MODES) > 1):
-            msg.info(u"Available compression types for %s:" % \
+            msg.info(_(u"Available compression types for %s:") % \
                          (AudioType.NAME))
             for mode in AudioType.COMPRESSION_MODES:
                 msg.info(mode.decode('ascii'))
         else:
-            msg.error(u"Audio type %s has no compression modes" % \
+            msg.error(_(u"Audio type %s has no compression modes") % \
                           (AudioType.NAME))
         sys.exit(0)
     elif (options.quality == None):
         options.quality = AudioType.DEFAULT_COMPRESSION
     elif (options.quality not in AudioType.COMPRESSION_MODES):
-        msg.error(u"\"%s\" is not a supported compression " % \
-                      (options.quality) + "mode for type \"%s\"" % \
-                      (AudioType.NAME))
+        msg.error(_(u"\"%(quality)s\" is not a supported compression mode for type \"%(type)s\"" % \
+                        {"quality":options.quality,
+                         "type":AudioType.NAME}))
         sys.exit(1)
 
 
@@ -126,7 +129,7 @@ if (__name__ == '__main__'):
         try:
             xmcd = audiotools.XMCD.read(options.xmcd).metadata()
         except audiotools.XMCDException:
-            msg.error(u"Invalid XMCD file")
+            msg.error(_(u"Invalid XMCD file"))
             sys.exit(1)
     else: #if we're not using an XMCD file, no MetaData
         xmcd = None
@@ -137,11 +140,11 @@ if (__name__ == '__main__'):
     try:
         cdda = audiotools.CDDA(options.cdrom,options.speed)
     except IOError, err:
-        msg.error(unicode(err) + u". Is that an audio cd ?")
+        msg.error(unicode(err) + _(u". Is that an audio cd ?"))
         sys.exit(-1)
 
     if (len(cdda) == 0xFF):
-        msg.error(u"*** No CD in drive")
+        msg.error(_(u"No CD in drive"))
         sys.exit(1)
 
     encoded = []
@@ -208,10 +211,12 @@ if (__name__ == '__main__'):
 
                 encoded.append(track)
 
-            msg.info(u"track %2.2d: %s" % (cd_track.track_number,
-                                           str(cd_track.rip_log)))
-            msg.info(u"track %2.2d -> %s" % (cd_track.track_number,
-                                             msg.filename(track.filename)))
+            msg.info(_(u"track %(track_number)2.2d: %(log)s") % \
+                         {"track_number":cd_track.track_number,
+                          "log":str(cd_track.rip_log)})
+            msg.info(_(u"track %(track_number)2.2d -> %(filename)s") % \
+                         {"track_number":cd_track.track_number,
+                          "filename":msg.filename(track.filename)})
         except audiotools.UnsupportedTracknameField,msg:
             msg.error(unicode(msg))
             sys.exit(1)
@@ -219,13 +224,14 @@ if (__name__ == '__main__'):
             continue
         except (audiotools.InvalidFormat,
                 audiotools.EncodingError),msg:
-            msg.error(u"%2.2d: %s" % (cd_track.track_number,
-                                      unicode(msg)))
+            msg.error(_(u"%(track_number)2.2d: %(message)s") % \
+                          {"track_number":cd_track.track_number,
+                           "message":unicode(msg)})
             continue
 
     if (options.add_replay_gain and AudioType.can_add_replay_gain()):
         if (AudioType.lossless_replay_gain()):
-            msg.info(u"Adding ReplayGain metadata.  This may take some time.")
+            msg.info(_(u"Adding ReplayGain metadata.  This may take some time."))
         else:
-            msg.info(u"Applying ReplayGain.  This may take some time.")
+            msg.info(_(u"Applying ReplayGain.  This may take some time."))
         AudioType.add_replay_gain([track.filename for track in encoded])

@@ -20,7 +20,11 @@
 
 import sys
 import audiotools
-import os.path,optparse
+import os.path
+import optparse
+import gettext
+
+gettext.install("audiotools",unicode=True)
 
 def blank_metadata(track, xmcd):
     return audiotools.MetaData()
@@ -302,7 +306,7 @@ if (__name__ == '__main__'):
         try:
             xmcd = audiotools.XMCD.read(options.xmcd).metadata()
         except audiotools.XMCDException:
-            msg.error(u"Error opening XMCD file \"%s\"" % \
+            msg.error(_(u"Error opening XMCD file \"%s\"") % \
                           (msg.filename(options.xmcd)))
             sys.exit(1)
     else:
@@ -396,7 +400,9 @@ if (__name__ == '__main__'):
 
                 file.set_metadata(metadata)
             except audiotools.InvalidImage,msg:
-                msg.error(u"%s: %s" % (msg.filename(file.filename),msg))
+                msg.error(_(u"%(filename)s: %(message)s") % \
+                              {"filename":msg.filename(file.filename),
+                               "message":msg})
                 sys.exit(1)
 
     #we're assuming all tracks are the same type
@@ -406,9 +412,9 @@ if (__name__ == '__main__'):
         (audiofiles[0].can_add_replay_gain())):
 
         if (audiofiles[0].lossless_replay_gain()):
-            msg.info(u"Adding ReplayGain metadata.  This may take some time.")
+            msg.info(_(u"Adding ReplayGain metadata.  This may take some time."))
         else:
-            msg.info(u"Applying ReplayGain.  This may take some time.")
+            msg.info(_(u"Applying ReplayGain.  This may take some time."))
         audiofiles[0].add_replay_gain([f.filename for f in audiofiles])
 
     if (import_cuesheet is not None):
