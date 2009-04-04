@@ -261,8 +261,8 @@
 - [X] record2track
 - [X] track2cd
 - [X] track2track
-- [ ] track2xmcd
-- [ ] trackcat
+- [X] track2xmcd
+- [X] trackcat
 - [ ] trackcmp
 - [ ] trackinfo
 - [ ] tracklength

@@ -18,9 +18,14 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-import sys,os,os.path
+import sys
+import os
+import os.path
 import audiotools
 import optparse
+import gettext
+
+gettext.install("audiotools",unicode=True)
 
 if (__name__ == '__main__'):
     parser = optparse.OptionParser(
@@ -58,7 +63,7 @@ if (__name__ == '__main__'):
     audiofiles = audiotools.open_files(args)
 
     if (len(audiofiles) < 1):
-        msg.error(u"You must specify at least one valid audio file")
+        msg.error(_(u"You must specify at least one valid audio file"))
         sys.exit(1)
 
     if (options.xmcd == '-'):
@@ -68,7 +73,7 @@ if (__name__ == '__main__'):
             if (not os.path.isfile(options.xmcd)):
                 outfile = file(options.xmcd,"w")
             else:
-                msg.error(u"Refusing to overwrite \"%s\"" % \
+                msg.error(_(u"Refusing to overwrite \"%s\"") % \
                               (msg.filename(options.xmcd)))
                 sys.exit(1)
         except IOError,e:

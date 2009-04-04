@@ -24,6 +24,9 @@ import sys
 import os
 import os.path
 import subprocess
+import gettext
+
+gettext.install("audiotools",unicode=True)
 
 if (__name__ == '__main__'):
     parser = optparse.OptionParser(
@@ -59,7 +62,7 @@ if (__name__ == '__main__'):
     msg = audiotools.Messenger("trackcat",options)
 
     if (options.filename == None):
-        msg.error(u'You must specify an output filename')
+        msg.error(_(u'You must specify an output filename'))
         sys.exit(1)
 
     #get the AudioFile class we are converted to
@@ -75,38 +78,38 @@ if (__name__ == '__main__'):
     #ensure the selected compression is compatible with that class
     if (options.quality == 'help'):
         if (len(AudioType.COMPRESSION_MODES) > 1):
-            msg.info(u"*** Available compression types for %s:" % \
+            msg.info(_(u"Available compression types for %s:") % \
                          (AudioType.NAME))
             for mode in AudioType.COMPRESSION_MODES:
                 msg.info(mode.decode('ascii'))
         else:
-            msg.error(u"Audio type %s has no compression modes" % \
+            msg.error(_(u"Audio type %s has no compression modes") % \
                           (AudioType.NAME))
         sys.exit(0)
     elif (options.quality == None):
         options.quality = AudioType.DEFAULT_COMPRESSION
     elif (options.quality not in AudioType.COMPRESSION_MODES):
-        msg.error(u"\"%s\" is not a supported compression " % \
-                      (options.quality) + "mode for type \"%s\"" % \
-                      (AudioType.NAME))
+        msg.error(_(u"\"%(quality)s\" is not a supported compression mode for type \"%(type)s\"" % \
+                        {"quality":options.quality,
+                         "type":AudioType.NAME}))
         sys.exit(1)
 
     #grab the list of AudioFile objects we are converting from
     audiofiles = audiotools.open_files(args)
     if (len(audiofiles) < 1):
-        msg.error(u"You must specify at least 1 supported audio file")
+        msg.error(_(u"You must specify at least 1 supported audio file"))
         sys.exit(1)
 
     if (len(set([f.sample_rate() for f in audiofiles])) != 1):
-        msg.error(u"All audio files must have the same sample rate")
+        msg.error(_(u"All audio files must have the same sample rate"))
         sys.exit(1)
 
     if (len(set([f.channels() for f in audiofiles])) != 1):
-        msg.error(u"All audio files must have the same channel count")
+        msg.error(_(u"All audio files must have the same channel count"))
         sys.exit(1)
 
     if (len(set([f.bits_per_sample() for f in audiofiles])) != 1):
-        msg.error(u"All audio files must have the same bits per sample")
+        msg.error(_(u"All audio files must have the same bits per sample"))
         sys.exit(1)
 
     #if embedding a cuesheet, try to read it before doing any work
@@ -114,7 +117,7 @@ if (__name__ == '__main__'):
         try:
             cuesheet = audiotools.read_sheet(options.cuesheet)
         except audiotools.SheetException,err:
-            msg.error(u"%s: %s" % (options.cuesheet,unicode(err)))
+            msg.error(unicode(err))
             sys.exit(1)
     else:
         cuesheet = None
@@ -165,5 +168,5 @@ if (__name__ == '__main__'):
     except (audiotools.InvalidFormat,
             audiotools.EncodingError,
             audiotools.DecodingError),err:
-        msg.error(u"%s: %s" % (options.filename,unicode(err)))
+        msg.error(unicode(err))
         sys.exit(1)
