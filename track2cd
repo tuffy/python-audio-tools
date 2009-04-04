@@ -26,6 +26,9 @@ import audiotools.toc
 import optparse
 import tempfile
 import subprocess
+import gettext
+
+gettext.install("audiotools",unicode=True)
 
 MAX_CPUS = audiotools.MAX_JOBS
 
@@ -79,7 +82,7 @@ if (__name__ == '__main__'):
     msg = audiotools.Messenger("track2cd",options)
 
     if (options.max_processes < 1):
-        msg.error(u'You must run at least 1 process at a time')
+        msg.error(_(u'You must run at least 1 process at a time'))
         sys.exit(1)
     else:
         max_processes = options.max_processes
@@ -87,7 +90,7 @@ if (__name__ == '__main__'):
     audiofiles = audiotools.open_files(args,sorted=False)
 
     if (len(audiofiles) < 1):
-        msg.error(u"You must specify at least one audio file")
+        msg.error(_(u"You must specify at least one audio file"))
         sys.exit(1)
 
     if ((len(audiofiles) == 1) and
@@ -96,8 +99,8 @@ if (__name__ == '__main__'):
         #so extract its contents to wave/cue and call cdrdao
 
         if (not audiotools.BIN.can_execute(audiotools.BIN['cdrdao'])):
-            msg.error(u'Unable to find "cdrdao" executable')
-            msg.info(u'Please install "cdrdao" to burn CDs')
+            msg.error(_(u'Unable to find "cdrdao" executable'))
+            msg.info(_(u'Please install "cdrdao" to burn CDs'))
             sys.exit(1)
 
         cuesheet = audiofiles[0].get_cuesheet()
@@ -109,7 +112,7 @@ if (__name__ == '__main__'):
                 cuesheet,os.path.basename(tempwav.name)))
         temptoc.flush()
 
-        msg.info(u"Converting audio file")
+        msg.info(_(u"Converting audio file"))
 
         if ((audiofiles[0].sample_rate() == 44100) and
             (audiofiles[0].channels() == 2) and
@@ -152,26 +155,26 @@ if (__name__ == '__main__'):
         #so combine them into a single wave/cue and call cdrdao
 
         if (not audiotools.BIN.can_execute(audiotools.BIN['cdrdao'])):
-            msg.error(u'Unable to find "cdrdao" executable')
-            msg.info(u'Please install "cdrdao" to burn CDs')
+            msg.error(_(u'Unable to find "cdrdao" executable'))
+            msg.info(_(u'Please install "cdrdao" to burn CDs'))
             sys.exit(1)
 
         if (len(set([f.sample_rate() for f in audiofiles])) != 1):
-            msg.error(u"All audio files must have the same sample rate")
+            msg.error(_(u"All audio files must have the same sample rate"))
             sys.exit(1)
 
         if (len(set([f.channels() for f in audiofiles])) != 1):
-            msg.error(u"All audio files must have the same channel count")
+            msg.error(_(u"All audio files must have the same channel count"))
             sys.exit(1)
 
         if (len(set([f.bits_per_sample() for f in audiofiles])) != 1):
-            msg.error(u"All audio files must have the same bits per sample")
+            msg.error(_(u"All audio files must have the same bits per sample"))
             sys.exit(1)
 
         try:
             toc = audiotools.read_sheet(options.cuesheet)
         except audiotools.SheetException,msg:
-            msg.error(u"Cuesheet error: %s" % (msg))
+            msg.error(_(u"Cuesheet error: %s") % (msg))
             sys.exit(1)
 
         temptoc = tempfile.NamedTemporaryFile(suffix='.toc')
@@ -181,7 +184,7 @@ if (__name__ == '__main__'):
                 toc,os.path.basename(tempwav.name)))
         temptoc.flush()
 
-        msg.info(u"Converting audio files")
+        msg.info(_(u"Converting audio files"))
 
         if ((audiofiles[0].sample_rate() == 44100) and
             (audiofiles[0].channels() == 2) and
@@ -227,8 +230,8 @@ if (__name__ == '__main__'):
         #so extract them to waves and call cdrecord
 
         if (not audiotools.BIN.can_execute(audiotools.BIN['cdrecord'])):
-            msg.error(u'Unable to find "cdrecord" executable')
-            msg.info(u'Please install "cdrecord" to burn CDs')
+            msg.error(_(u'Unable to find "cdrecord" executable'))
+            msg.info(_(u'Please install "cdrecord" to burn CDs'))
             sys.exit(1)
 
         exec_args = [audiotools.BIN['cdrecord']]
@@ -247,7 +250,7 @@ if (__name__ == '__main__'):
         wave_files = []
         queue = audiotools.ExecQueue()
 
-        msg.info("Converting audio files")
+        msg.info(_(u"Converting audio files"))
         for audiofile in audiofiles:
             if (isinstance(audiofile,audiotools.WaveAudio)):
                 wave_files.append(audiofile.filename)

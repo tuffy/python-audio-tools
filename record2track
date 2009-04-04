@@ -22,6 +22,9 @@ import audiotools
 import optparse
 import sys
 import os
+import gettext
+
+gettext.install("audiotools",unicode=True)
 
 class OSSReader(audiotools.PCMReader):
     NAME = "oss"
@@ -149,7 +152,7 @@ if (__name__ == '__main__'):
     msg = audiotools.Messenger("record2track",options)
 
     if (options.output is None):
-        msg.error(u"You must specify an output file")
+        msg.error(_(u"You must specify an output file"))
         sys.exit(1)
 
     #get the AudioFile class we are converted to
@@ -165,25 +168,25 @@ if (__name__ == '__main__'):
     #ensure the selected compression is compatible with that class
     if (options.quality == 'help'):
         if (len(AudioType.COMPRESSION_MODES) > 1):
-            msg.info(u"available compression types for %s:" % \
+            msg.info(_(u"available compression types for %s:") % \
                          (AudioType.NAME))
             for mode in AudioType.COMPRESSION_MODES:
                 msg.info(mode.decode('ascii'))
         else:
-            msg.error(u"Audio type %s has no compression modes" % \
+            msg.error(_(u"Audio type %s has no compression modes") % \
                           (AudioType.NAME))
         sys.exit(0)
     elif (options.quality == None):
         options.quality = AudioType.DEFAULT_COMPRESSION
     elif (options.quality not in AudioType.COMPRESSION_MODES):
-        msg.error(u"\"%s\" is not a supported compression " % \
-                      (options.quality) + u"mode for type \"%s\"" % \
-                      (AudioType.NAME))
+        msg.error(_(u"\"%(quality)s\" is not a supported compression mode for type \"%(type)s\"" % \
+                        {"quality":options.quality,
+                         "type":AudioType.NAME}))
         sys.exit(1)
 
     #ensure we have an output file to write to
     if (options.output is None):
-        msg.error(u"You must select an output file")
+        msg.error(_(u"You must select an output file"))
         sys.exit(1)
 
     #I'd like to offer "kill -s SIGINT $MYPID" instructions at this point,
@@ -192,7 +195,7 @@ if (__name__ == '__main__'):
     #It might be the SIGINT signal handler interacting poorly with
     #InterruptableReader's background thread, but those are Python/OS
     #issues beyond my control.
-    msg.partial_info(u"Recording (Ctrl-C to stop) ")
+    msg.partial_info(_(u"Recording (Ctrl-C to stop) "))
 
     input = audiotools.InterruptableReader(inputs_map[options.input](
         sample_rate=options.sample_rate,
@@ -203,10 +206,9 @@ if (__name__ == '__main__'):
     try:
         audiofile = AudioType.from_pcm(options.output,input,options.quality)
 
-        msg.info(u"Done")
+        msg.info(_(u"Done"))
     except (audiotools.InvalidFormat,
             audiotools.EncodingError),err:
-        msg.error(u"%s: %s" % (msg.filename(options.output),
-                               unicode(msg)))
+        msg.error(unicode(msg))
         sys.exit(1)
 
