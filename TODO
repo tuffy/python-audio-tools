@@ -260,7 +260,7 @@
 - [ ] coverdump
 - [ ] record2track
 - [ ] track2cd
-- [ ] track2track
+- [X] track2track
 - [ ] track2xmcd
 - [ ] trackcat
 - [ ] trackcmp
@@ -269,7 +269,7 @@
 - [ ] tracklint
 - [ ] trackplay
 - [ ] trackrename
-- [ ] tracksplit
+- [X] tracksplit
 - [ ] tracktag
 ** TODO Add unit tests for tty output
    All programs which generate output should be unit tested
