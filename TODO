@@ -255,8 +255,36 @@
 ** TODO Convert tty output to gettext-based strings
    This will not only make output messages more consistent across the tools,
    but will also allow for foreign language translations in the future.
+- [ ] cd2track
+- [ ] cd2xmcd
+- [ ] coverdump
+- [ ] record2track
+- [ ] track2cd
+- [ ] track2track
+- [ ] track2xmcd
+- [ ] trackcat
+- [ ] trackcmp
+- [ ] trackinfo
+- [ ] tracklength
+- [ ] tracklint
+- [ ] trackplay
+- [ ] trackrename
+- [ ] tracksplit
+- [ ] tracktag
 ** TODO Add unit tests for tty output
    All programs which generate output should be unit tested
    so that all code paths are assured of printing the messages they're
    supposed to print, at the streams they're supposed to print on,
    and in the proper encoding settings.
+- [ ] coverdump
+- [ ] track2track
+- [ ] track2xmcd
+- [ ] trackcat
+- [ ] trackcmp
+- [ ] trackinfo
+- [ ] tracklength
+- [ ] tracklint
+- [ ] trackrename
+- [ ] tracksplit
+- [ ] tracktag
+
