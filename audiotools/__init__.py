@@ -31,17 +31,9 @@ import os.path
 import ConfigParser
 import struct
 from itertools import izip
+import gettext
 
-try:
-    import construct as Con
-except ImportError:
-    try:
-        import Construct as Con
-    except ImportError:
-        print >>sys.stderr,"*** construct module not found"
-        print >>sys.stderr,"""To remedy this: \"make construct_install\"
-from the audiotools source directory to install the Construct module."""
-        sys.exit(1)
+gettext.install("audiotools",unicode=True)
 
 
 class RawConfigParser(ConfigParser.RawConfigParser):
@@ -123,6 +115,114 @@ else:
     MAX_JOBS = MAX_CPUS
 
 BIG_ENDIAN = (struct.pack("=I",0x100) == struct.pack(">I",0x100))
+
+
+#######################
+#Output Messaging
+#######################
+
+def Messenger(executable, options):
+    if (not hasattr(options,"verbosity")):
+        return VerboseMessenger(executable)
+    elif ((options.verbosity == 'normal') or
+        (options.verbosity == 'debug')):
+        return VerboseMessenger(executable)
+    else:
+        return SilentMessenger(executable)
+
+class VerboseMessenger:
+    def __init__(self, executable):
+        self.executable = executable
+
+    #displays an output message unicode string to stdout
+    #and adds a newline
+    def output(self,s):
+        sys.stdout.write(s.encode(IO_ENCODING,'replace'))
+        sys.stdout.write("\n")
+
+    #displays a partial output message unicode string to stdout
+    #and flushes output so it is displayed
+    def partial_output(self,s):
+        sys.stdout.write(s.encode(IO_ENCODING,'replace'))
+        sys.stdout.flush()
+
+    #displays an informative message unicode string to stderr
+    #and adds a newline
+    def info(self,s):
+        sys.stderr.write(s.encode(IO_ENCODING,'replace'))
+        sys.stderr.write("\n")
+
+    #displays a partial informative message unicode string to stderr
+    #and flushes output so it is displayed
+    def partial_info(self,s):
+        sys.stderr.write(s.encode(IO_ENCODING,'replace'))
+        sys.stderr.flush()
+
+    #what's the difference between output() and info() ?
+    #output() is for a program's primary data
+    #info() is for incidental information
+    #for example, trackinfo(1) should use output() for what it displays
+    #since that output is its primary function
+    #but track2track should use info() for its lines of progress
+    #since its primary function is converting audio
+    #and tty output is purely incidental
+
+    #displays an error message unicode string
+    #and adds a newline
+    def error(self,s):
+        sys.stderr.write("*** Error: ")
+        sys.stderr.write(s.encode(IO_ENCODING,'replace'))
+        sys.stderr.write("\n")
+
+    #displays an warninc message unicode string
+    #and adds a newline
+    def warning(self,s):
+        sys.stderr.write("*** Warning: ")
+        sys.stderr.write(s.encode(IO_ENCODING,'replace'))
+        sys.stderr.write("\n")
+
+    #displays the program's usage string to stderr
+    #and adds a newline
+    def usage(self,s):
+        sys.stderr.write("*** Usage: ")
+        sys.stderr.write(self.executable.decode('ascii'))
+        sys.stderr.write(" ")
+        sys.stderr.write(s.encode(IO_ENCODING,'replace'))
+        sys.stderr.write('\n')
+
+    #takes a filename string and returns a unicode string
+    #decoded according to the system's encoding
+    def filename(self,s):
+        return s.decode(FS_ENCODING,'replace')
+
+class SilentMessenger(VerboseMessenger):
+    def output(self,s):
+        pass
+
+    def partial_output(self,s):
+        pass
+
+    def warning(self,s):
+        pass
+
+    def info(self,s):
+        pass
+
+    def partial_info(self,s):
+        pass
+
+
+try:
+    import construct as Con
+except ImportError:
+    try:
+        import Construct as Con
+    except ImportError:
+        msg = Messenger("audiotols",None)
+        msg.error(_(u"construct module not found"))
+        msg.info(_(u"To remedy this: \"make construct_install\""))
+        msg.info(_(u"from the audiotools source directory to install the Construct module."))
+        sys.exit(1)
 
 #raised by open() if the file cannot be identified or opened correctly
 class UnsupportedFile(Exception): pass
@@ -1879,99 +1979,6 @@ class ExecQueue:
             except KeyError:
                 continue
 
-#######################
-#Output Messaging
-#######################
-
-def Messenger(executable, options):
-    if (not hasattr(options,"verbosity")):
-        return VerboseMessenger(executable)
-    elif ((options.verbosity == 'normal') or
-        (options.verbosity == 'debug')):
-        return VerboseMessenger(executable)
-    else:
-        return SilentMessenger(executable)
-
-class VerboseMessenger:
-    def __init__(self, executable):
-        self.executable = executable
-
-    #displays an output message unicode string to stdout
-    #and adds a newline
-    def output(self,s):
-        sys.stdout.write(s.encode(IO_ENCODING,'replace'))
-        sys.stdout.write("\n")
-
-    #displays a partial output message unicode string to stdout
-    #and flushes output so it is displayed
-    def partial_output(self,s):
-        sys.stdout.write(s.encode(IO_ENCODING,'replace'))
-        sys.stdout.flush()
-
-    #displays an informative message unicode string to stderr
-    #and adds a newline
-    def info(self,s):
-        sys.stderr.write(s.encode(IO_ENCODING,'replace'))
-        sys.stderr.write("\n")
-
-    #displays a partial informative message unicode string to stderr
-    #and flushes output so it is displayed
-    def partial_info(self,s):
-        sys.stderr.write(s.encode(IO_ENCODING,'replace'))
-        sys.stderr.flush()
-
-    #what's the difference between output() and info() ?
-    #output() is for a program's primary data
-    #info() is for incidental information
-    #for example, trackinfo(1) should use output() for what it displays
-    #since that output is its primary function
-    #but track2track should use info() for its lines of progress
-    #since its primary function is converting audio
-    #and tty output is purely incidental
-
-    #displays an error message unicode string
-    #and adds a newline
-    def error(self,s):
-        sys.stderr.write("*** Error: ")
-        sys.stderr.write(s.encode(IO_ENCODING,'replace'))
-        sys.stderr.write("\n")
-
-    #displays an warninc message unicode string
-    #and adds a newline
-    def warning(self,s):
-        sys.stderr.write("*** Warning: ")
-        sys.stderr.write(s.encode(IO_ENCODING,'replace'))
-        sys.stderr.write("\n")
-
-    #displays the program's usage string to stderr
-    #and adds a newline
-    def usage(self,s):
-        sys.stderr.write("*** Usage: ")
-        sys.stderr.write(self.executable.decode('ascii'))
-        sys.stderr.write(" ")
-        sys.stderr.write(s.encode(IO_ENCODING,'replace'))
-        sys.stderr.write('\n')
-
-    #takes a filename string and returns a unicode string
-    #decoded according to the system's encoding
-    def filename(self,s):
-        return s.decode(FS_ENCODING,'replace')
-
-class SilentMessenger(VerboseMessenger):
-    def output(self,s):
-        pass
-
-    def partial_output(self,s):
-        pass
-
-    def warning(self,s):
-        pass
-
-    def info(self,s):
-        pass
-
-    def partial_info(self,s):
-        pass
 
 #***ApeAudio temporarily removed***
 #Without a legal alternative to mac-port, I shall have to re-implement
