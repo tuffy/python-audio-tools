@@ -274,10 +274,10 @@
 *** TODO Convert output from audiotools module to gettext-based strings
 - [X] __aiff__.py
 - [ ] __ape__.py
-- [ ] __au__.py
+- [X] __au__.py
 - [ ] cue.py
 - [ ] __flac__.py
-- [ ] __freedb__.py
+- [X] __freedb__.py
 - [ ] __id3__.py
 - [ ] __id3v1__.py
 - [ ] __image__.py

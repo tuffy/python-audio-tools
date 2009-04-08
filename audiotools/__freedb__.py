@@ -20,6 +20,10 @@
 
 from audiotools import VERSION,Con,cStringIO,sys,re,MetaData,AlbumMetaData,__most_numerous__,DummyAudioFile
 
+import gettext
+
+gettext.install("audiotools",unicode=True)
+
 #######################
 #XMCD
 #######################
@@ -374,7 +378,7 @@ class FreeDB:
         import socket
 
         try:
-            self.messenger.info(u"* Connecting to \"%s\"" % (self.server))
+            self.messenger.info(_(u"Connecting to \"%s\"") % (self.server))
 
             self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.socket.connect((self.server,self.port))
@@ -384,12 +388,12 @@ class FreeDB:
 
             (code,msg) = self.read()  #the welcome message
             if (code == 201):
-                self.messenger.info(u"* Connected ... attempting to login")
+                self.messenger.info(_(u"Connected ... attempting to login"))
             else:
                 self.r.close()
                 self.w.close()
                 self.socket.close()
-                raise FreeDBException("Invalid Hello Message")
+                raise FreeDBException(_(u"Invalid Hello Message"))
 
             self.write("cddb hello user %s %s %s" % \
                        (socket.getfqdn(),"audiotools",VERSION))
@@ -399,7 +403,7 @@ class FreeDB:
                 self.r.close()
                 self.w.close()
                 self.socket.close()
-                raise FreeDBException("Handshake unsuccessful")
+                raise FreeDBException(_(u"Handshake unsuccessful"))
 
             self.write("proto 6")
 
@@ -408,13 +412,13 @@ class FreeDB:
                 self.r.close()
                 self.w.close()
                 self.socket.close()
-                raise FreeDBException("Protocol change unsuccessful")
+                raise FreeDBException(_(u"Protocol change unsuccessful"))
 
         except socket.error,err:
             raise FreeDBException(err[1])
 
     def close(self):
-        self.messenger.info(u"* Closing connection")
+        self.messenger.info(_(u"Closing connection"))
 
         self.write("quit")
         (code,msg) = self.read()  #the quit successful message
@@ -439,7 +443,7 @@ class FreeDB:
     def query(self, disc_id):
         matches = []
 
-        self.messenger.info(u"* Sending ID to server")
+        self.messenger.info(_(u"Sending ID to server"))
 
         self.write("cddb query " + disc_id.freedb_id())
         (code,msg) = self.read()
@@ -452,9 +456,9 @@ class FreeDB:
                     matches.append(msg)
 
         if (len(matches) == 1):
-            self.messenger.info(u"* 1 match found")
+            self.messenger.info(_(u"1 match found"))
         else:
-            self.messenger.info(u"* %s matches found" % (len(matches)))
+            self.messenger.info(_(u"* %s matches found") % (len(matches)))
 
         return map(lambda m: m.split(" ",2), matches)
 
@@ -522,7 +526,7 @@ class FreeDBWeb(FreeDB):
     def query(self, disc_id):
         matches = []
 
-        self.messenger.info(u"* Sending ID to server")
+        self.messenger.info(_(u"Sending ID to server"))
 
         self.write("cddb query " + disc_id.freedb_id())
         data =  cStringIO.StringIO(self.read())
@@ -536,9 +540,9 @@ class FreeDBWeb(FreeDB):
                     matches.append(msg)
 
         if (len(matches) == 1):
-            self.messenger.info(u"* 1 match found")
+            self.messenger.info(_(u"1 match found"))
         else:
-            self.messenger.info(u"* %s matches found" % (len(matches)))
+            self.messenger.info(_(u"%s matches found") % (len(matches)))
 
         return map(lambda m: m.split(" ",2), matches)
 
@@ -568,14 +572,17 @@ def __select_match__(matches, messenger):
     elif (len(matches) < 1):
         return None
     else:
-        messenger.info(u"Please Select the Closest Match:")
+        messenger.info(_(u"Please Select the Closest Match:"))
         selected = 0
         while ((selected < 1) or (selected > len(matches))):
             for i in range(len(matches)):
-                messenger.info(u"%s) [%s] %s" % (i + 1,
-                                                 matches[i][0],matches[i][2]))
+                messenger.info(_(u"%(choice)s) [%(genre)s] %(name)s") % \
+                                   {"choice":i + 1,
+                                    "genre":matches[i][0],
+                                    "name":matches[i][2]})
             try:
-                messenger.partial_info("Your Selection [1-%s]:" % (len(matches)))
+                messenger.partial_info(_(u"Your Selection [1-%s]:") % \
+                                           (len(matches)))
                 sys.stderr.flush()
                 selected = int(sys.stdin.readline().strip())
             except ValueError:
@@ -628,4 +635,4 @@ def get_xmcd(disc_id, output, freedb_server, freedb_server_port,
         raise IOError(str(msg))
 
     output.close()
-    messenger.info(u"* %s written" % (messenger.filename(output.name)))
+    messenger.info(_(u"%s written") % (messenger.filename(output.name)))

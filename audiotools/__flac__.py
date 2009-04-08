@@ -18,10 +18,14 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,MetaData,InvalidFile,PCMReader,Con,transfer_data,subprocess,BIN,BUFFER_SIZE,cStringIO,os,open_files,Image,sys,WaveAudio,ReplayGain,ignore_sigint,sheet_to_unicode,EncodingError,DecodingError
+from audiotools import AudioFile,MetaData,InvalidFile,PCMReader,Con,transfer_data,subprocess,BIN,BUFFER_SIZE,cStringIO,os,open_files,Image,sys,WaveAudio,ReplayGain,ignore_sigint,sheet_to_unicode,EncodingError,DecodingError,Messenger
 from __vorbiscomment__ import *
 from __id3__ import ID3v2Comment
 from __vorbis__ import OggStreamReader,OggStreamWriter
+
+import gettext
+
+gettext.install("audiotools",unicode=True)
 
 
 #######################
@@ -261,6 +265,7 @@ class FlacPictureComment(Image):
             data=image.data)
 
     def type_string(self):
+        #FIXME - these should probably be internationalized
         return {0:"Other",
                 1:"32x32 pixels 'file icon' (PNG only)",
                 2:"Other file icon",
@@ -502,10 +507,8 @@ class FlacAudio(AudioFile):
             file.seek(-4,1)
             ID3v2Comment.skip(file)
             if (file.read(4) == 'fLaC'):
-                if (hasattr(file,"name")):
-                    print >>sys.stderr,"*** %s: ID3v2 tag found at start of FLAC file.  Please remove." % (file.name)
-                else:
-                    print >>sys.stderr,"*** ID3v2 tag found at start of FLAC file.  Please remove."
+                messenger = Messenger("audiotools",None)
+                messenger.error(_(u"ID3v2 tag found at start of FLAC file.  Please remove."))
             return False
 
     def lossless(self):
@@ -529,7 +532,7 @@ class FlacAudio(AudioFile):
         f = file(self.filename,'rb')
         try:
             if (f.read(4) != 'fLaC'):
-                raise FlacException('invalid FLAC file')
+                raise FlacException(_(u'invalid FLAC file'))
 
             blocks = []
 
@@ -606,7 +609,7 @@ class FlacAudio(AudioFile):
             stream = file(self.filename,'rb')
 
             if (stream.read(4) != 'fLaC'):
-                raise FlacException('invalid FLAC file')
+                raise FlacException(_(u'invalid FLAC file'))
 
             block = FlacAudio.METADATA_BLOCK_HEADER.parse_stream(stream)
             while (block.last_block == 0):
@@ -631,7 +634,7 @@ class FlacAudio(AudioFile):
         f = file(self.filename,'rb')
         try:
             if (f.read(4) != 'fLaC'):
-                raise FlacException('invalid FLAC file')
+                raise FlacException(_(u'invalid FLAC file'))
 
             header = FlacAudio.METADATA_BLOCK_HEADER.parse_stream(f)
             f.seek(header.block_length,1)
@@ -795,11 +798,11 @@ class FlacAudio(AudioFile):
     def __read_streaminfo__(self):
         f = file(self.filename,"rb")
         if (f.read(4) != "fLaC"):
-            raise FlacException("Not a FLAC file")
+            raise FlacException(_(u"Not a FLAC file"))
 
         (stop,header_type,length) = FlacAudio.__read_flac_header__(f)
         if (header_type != 0):
-            raise FlacException("STREAMINFO not first metadata block")
+            raise FlacException(_(u"STREAMINFO not first metadata block"))
 
         p = FlacAudio.STREAMINFO.parse(f.read(length))
 
@@ -1087,7 +1090,7 @@ class OggFlacAudio(FlacAudio):
             try:
                 header = self.OGGFLAC_STREAMINFO.parse(packets.next())
             except Con.ConstError:
-                raise FlacException('invalid Ogg FLAC streaminfo')
+                raise FlacException(_(u'invalid Ogg FLAC streaminfo'))
 
             self.__samplerate__ = header.samplerate
             self.__channels__ = header.channels + 1
