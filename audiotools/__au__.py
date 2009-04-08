@@ -20,6 +20,9 @@
 
 from audiotools import AudioFile,InvalidFile,PCMReader,Con,transfer_data,InvalidFormat,__capped_stream_reader__,BUFFER_SIZE,FILENAME_FORMAT
 import audiotools.pcmstream
+import gettext
+
+gettext.install("audiotools",unicode=True)
 
 #######################
 #Sun AU
@@ -66,7 +69,7 @@ class AuAudio(AudioFile):
             header = AuAudio.AU_HEADER.parse_stream(f)
 
             if (header.encoding_format not in (2,3,4)):
-                raise InvalidFile("unsupported Sun AU encoding format")
+                raise InvalidFile(_(u"unsupported Sun AU encoding format"))
 
             self.__bits_per_sample__ = {2:8,3:16,4:24}[header.encoding_format]
             self.__channels__ = header.channels
@@ -112,7 +115,7 @@ class AuAudio(AudioFile):
     def from_pcm(cls, filename, pcmreader, compression=None):
         if (pcmreader.bits_per_sample not in (8,16,24)):
             raise InvalidFormat(
-                "unsupported bits per sample %s" % (pcmreader.bits_per_sample))
+                _(u"unsupported bits per sample %s") % (pcmreader.bits_per_sample))
 
         bytes_per_sample = pcmreader.bits_per_sample / 8
 

@@ -272,7 +272,7 @@
 - [X] tracksplit
 - [X] tracktag
 *** TODO Convert output from audiotools module to gettext-based strings
-- [ ] __aiff__.py
+- [X] __aiff__.py
 - [ ] __ape__.py
 - [ ] __au__.py
 - [ ] cue.py

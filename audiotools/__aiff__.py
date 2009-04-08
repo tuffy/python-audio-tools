@@ -19,6 +19,10 @@
 
 from audiotools import AudioFile,InvalidFile,InvalidFormat,FrameReader,Con,transfer_data,FILENAME_FORMAT
 
+import gettext
+
+gettext.install("audiotools",unicode=True)
+
 #######################
 #AIFF
 #######################
@@ -84,10 +88,10 @@ class AiffAudio(AudioFile):
         #should re-write the AIFF routines to cover the full spec
         #like I've done with RIFF WAVE
         if (pcmreader.bits_per_sample != 16):
-            raise InvalidFormat('AIFF only supports 16 bits per sample')
+            raise InvalidFormat(_(u'AIFF only supports 16 bits per sample'))
 
         if (pcmreader.channels not in (1,2,4)):
-            raise InvalidFormat('AIFF only supports 1, 2 or 4 channels')
+            raise InvalidFormat(_(u'AIFF only supports 1, 2 or 4 channels'))
 
         f = aifc.open(filename,"w")
 

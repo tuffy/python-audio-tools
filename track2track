@@ -94,7 +94,7 @@ def convert_file(destination_class, destination_filename,
     except (audiotools.InvalidFormat,
             audiotools.EncodingError,
             audiotools.DecodingError),msg:
-        meseenger.error(unicode(msg))
+        messenger.error(unicode(msg))
 
 
 if (__name__ == '__main__'):
