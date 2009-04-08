@@ -19,6 +19,9 @@
 
 from audiotools import AudioFile,InvalidFile,PCMReader,PCMConverter,Con,transfer_data,subprocess,BIN,cStringIO,open_files,os,ReplayGain,ignore_sigint,EncodingError
 from __vorbiscomment__ import *
+import gettext
+
+gettext.install("audiotools",unicode=True)
 
 class OggStreamReader:
     OGGS = Con.Struct(
@@ -323,7 +326,7 @@ class VorbisAudio(AudioFile):
                 self.__sample_rate__ = identification.sample_rate
                 self.__channels__ = identification.channels
             else:
-                raise InvalidFile('first packet is not vorbis')
+                raise InvalidFile(_(u'first packet is not vorbis'))
 
             #the Comment packet comes next
             comment_packet = packets.next()

@@ -20,6 +20,9 @@
 
 from audiotools import AudioFile,InvalidFile,InvalidFormat,PCMReader,PCMConverter,Con,subprocess,BIN,ApeTaggedAudio,os,TempWaveReader,ignore_sigint,transfer_data,EncodingError,DecodingError,PCMReaderError
 from __wav__ import WaveAudio
+import gettext
+
+gettext.install("audiotools",unicode=True)
 
 #######################
 #Musepack Audio
@@ -151,7 +154,7 @@ class MusepackAudio(ApeTaggedAudio,AudioFile):
 
                         break
                     elif (key == 'SE'):
-                        raise InvalidFile('no Musepack header found')
+                        raise InvalidFile(_(u'no Musepack header found'))
 
             else:                     #a Musepack 7 stream
                 f.seek(0,0)
@@ -159,7 +162,7 @@ class MusepackAudio(ApeTaggedAudio,AudioFile):
                 try:
                     header = MusepackAudio.MUSEPACK7_HEADER.parse_stream(f)
                 except Con.ConstError:
-                    raise InvalidFile('Musepack signature incorrect')
+                    raise InvalidFile(_(u'Musepack signature incorrect'))
 
                 header.last_frame_length = \
                                    (header.last_frame_length_high << 4) | \

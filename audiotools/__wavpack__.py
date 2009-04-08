@@ -21,6 +21,9 @@
 from audiotools import AudioFile,InvalidFile,Con,subprocess,BIN,open_files,os,ReplayGain,ignore_sigint,transfer_data,Image,MetaData,sheet_to_unicode,EncodingError,DecodingError,PCMReaderError
 from __wav__ import WaveAudio,WaveReader
 from __ape__ import ApeTaggedAudio,ApeTag
+import gettext
+
+gettext.install("audiotools",unicode=True)
 
 class __24BitsLE__(Con.Adapter):
     def _encode(self, value, context):
@@ -245,7 +248,7 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
                     header = WavPackAudio.HEADER.parse(f.read(
                             WavPackAudio.HEADER.sizeof()))
                 except Con.ConstError:
-                    raise InvalidFile('wavpack header ID invalid')
+                    raise InvalidFile(_(u'wavpack header ID invalid'))
 
                 if (remaining_samples is None):
                     remaining_samples = (header.total_samples - \
@@ -284,7 +287,7 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
                 header = WavPackAudio.HEADER.parse(f.read(
                     WavPackAudio.HEADER.sizeof()))
             except Con.ConstError:
-                raise InvalidFile('wavpack header ID invalid')
+                raise InvalidFile(_(u'wavpack header ID invalid'))
 
             self.__samplerate__ = WavPackAudio.SAMPLING_RATE[
                 (header.sampling_rate_high << 1) |

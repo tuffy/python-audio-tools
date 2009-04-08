@@ -276,7 +276,7 @@
 - [ ] __ape__.py
 - [X] __au__.py
 - [ ] cue.py
-- [ ] __flac__.py
+- [X] __flac__.py
 - [X] __freedb__.py
 - [X] __id3__.py
 - [X] __id3v1__.py
@@ -284,13 +284,13 @@
 - [X] __init__.py
 - [X] __m4a__.py
 - [X] __mp3__.py
-- [ ] __musepack__.py
-- [ ] __speex__.py
+- [X] __musepack__.py
+- [X] __speex__.py
 - [ ] toc.py
-- [ ] __vorbiscomment__.py
-- [ ] __vorbis__.py
-- [ ] __wavpack__.py
-- [ ] __wav__.py
+- [X] __vorbiscomment__.py
+- [X] __vorbis__.py
+- [X] __wavpack__.py
+- [X] __wav__.py
 ** TODO Add unit tests for tty output
    All programs which generate output should be unit tested
    so that all code paths are assured of printing the messages they're

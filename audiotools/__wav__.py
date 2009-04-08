@@ -20,6 +20,9 @@
 
 from audiotools import AudioFile,InvalidFile,PCMReader,Con,BUFFER_SIZE,transfer_data,__capped_stream_reader__,FILENAME_FORMAT,BIN,open_files,os,subprocess
 import os.path
+import gettext
+
+gettext.install("audiotools",unicode=True)
 
 #######################
 #RIFF WAVE
@@ -43,7 +46,7 @@ class WaveReader(PCMReader):
         try:
             header = WaveAudio.WAVE_HEADER.parse_stream(self.file)
         except Con.ConstError:
-            raise WavException('invalid WAVE file')
+            raise WavException(_(u'invalid WAVE file'))
 
         #this won't be pretty for a WAVE file missing a 'data' chunk
         #but those are seriously invalid anyway
@@ -405,20 +408,20 @@ class WaveAudio(AudioFile):
             header = WaveAudio.WAVE_HEADER.parse(wave_file.read(12))
             return header.wave_size
         except Con.ConstError:
-            raise WavException("not a RIFF WAVE file")
+            raise WavException(_(u"not a RIFF WAVE file"))
         except Con.core.FieldError:
-            raise WavException("invalid RIFF WAVE file")
+            raise WavException(_(u"invalid RIFF WAVE file"))
 
     def __read_chunk_header__(self, wave_file):
         try:
             chunk = WaveAudio.CHUNK_HEADER.parse(wave_file.read(8))
             return (chunk.chunk_id,chunk.chunk_length)
         except Con.core.FieldError:
-            raise WavException("invalid RIFF WAVE file")
+            raise WavException(_(u"invalid RIFF WAVE file"))
 
     def __read_format_chunk__(self, wave_file, chunk_size):
         if (chunk_size < 16):
-            raise WavException("fmt chunk is too short")
+            raise WavException(_(u"fmt chunk is too short"))
 
         fmt = WaveAudio.FMT_CHUNK.parse(wave_file.read(chunk_size))
 
@@ -430,7 +433,7 @@ class WaveAudio(AudioFile):
         self.__bitspersample__ = fmt.bits_per_sample
 
         if ((self.__wavtype__ != 1) and (self.__wavtype__ != 0xFFFE)):
-            raise WavException("no support for compressed WAVE files")
+            raise WavException(_(u"no support for compressed WAVE files"))
 
     def __read_data_chunk__(self, wave_file, chunk_size):
         self.__data_size__ = chunk_size
