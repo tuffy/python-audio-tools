@@ -19,6 +19,9 @@
 
 import re
 from audiotools import SheetException,parse_timestamp,build_timestamp
+import gettext
+
+gettext.install("audiotools",unicode=True)
 
 ###################
 #TOC Parsing
@@ -36,7 +39,7 @@ def parse(lines):
     lines = list(lines)
 
     if ('CD_DA' not in [line.strip() for line in lines]):
-        raise TOCException("no CD_DA TOC header found")
+        raise TOCException(_(u"no CD_DA TOC header found"))
 
     lines = iter(lines)
 

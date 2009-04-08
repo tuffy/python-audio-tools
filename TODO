@@ -275,7 +275,7 @@
 - [X] __aiff__.py
 - [ ] __ape__.py
 - [X] __au__.py
-- [ ] cue.py
+- [X] cue.py
 - [X] __flac__.py
 - [X] __freedb__.py
 - [X] __id3__.py
@@ -286,7 +286,7 @@
 - [X] __mp3__.py
 - [X] __musepack__.py
 - [X] __speex__.py
-- [ ] toc.py
+- [X] toc.py
 - [X] __vorbiscomment__.py
 - [X] __vorbis__.py
 - [X] __wavpack__.py
