@@ -20,6 +20,9 @@
 from audiotools import Con
 import imghdr
 import cStringIO
+import gettext
+
+gettext.install("audiotools",unicode=True)
 
 def __jpeg__(h, f):
     if (h[0:3] == '\xFF\xD8\xFF'):
@@ -49,7 +52,7 @@ def image_metrics(file_data):
         elif (header == 'tiff'):
             return __TIFF__.parse(file)
         else:
-            raise InvalidImage('unknown image type')
+            raise InvalidImage(_(u'unknown image type'))
     finally:
         file.close()
 
@@ -110,7 +113,7 @@ class __JPEG__(ImageMetrics):
         try:
             header = cls.SEGMENT_HEADER.parse_stream(file)
             if (header.type != 0xD8):
-                raise InvalidJPEG('invalid JPEG header')
+                raise InvalidJPEG(_(u'invalid JPEG header'))
 
             segment = cls.SEGMENT_HEADER.parse_stream(file)
             while (segment.type != 0xD9):
@@ -136,9 +139,10 @@ class __JPEG__(ImageMetrics):
                 segment = cls.SEGMENT_HEADER.parse_stream(file)
 
 
-            raise InvalidJPEG('start of frame not found')
+            raise InvalidJPEG(_(u'start of frame not found'))
         except Con.ConstError:
-            raise InvalidJPEG("invalid JPEG segment marker at 0x%X" % (file.tell()))
+            raise InvalidJPEG(_(u"invalid JPEG segment marker at 0x%X") % \
+                                  (file.tell()))
 
 
 #######################
@@ -198,7 +202,7 @@ class __PNG__(ImageMetrics):
             elif (ihdr.color_type == 3): #palette
                 bits_per_pixel = 8
                 if ((len(plte) % 3) != 0):
-                    raise InvalidPNG('invalid PLTE chunk length')
+                    raise InvalidPNG(_(u'invalid PLTE chunk length'))
                 else:
                     color_count = len(plte) / 3
             elif (ihdr.color_type == 4): #grayscale + alpha
@@ -210,7 +214,7 @@ class __PNG__(ImageMetrics):
 
             return __PNG__(ihdr.width,ihdr.height,bits_per_pixel,color_count)
         except Con.ConstError:
-            raise InvalidPNG('invalid PNG')
+            raise InvalidPNG(_(u'invalid PNG'))
 
 #######################
 #BMP
@@ -254,7 +258,7 @@ class __BMP__(ImageMetrics):
                            information.colors_used)
 
         except Con.ConstError:
-            raise InvalidBMP('invalid BMP')
+            raise InvalidBMP(_(u'invalid BMP'))
 
 #######################
 #GIF
@@ -291,7 +295,7 @@ class __GIF__(ImageMetrics):
             return __GIF__(descriptor.width, descriptor.height,
                            2 ** (descriptor.global_color_table_size + 1))
         except Con.ConstError:
-            raise InvalidGIF('invalid GIF')
+            raise InvalidGIF(_(u'invalid GIF'))
 
 #######################
 #TIFF
@@ -392,7 +396,7 @@ class __TIFF__(ImageMetrics):
                 IFD = cls.B_IFD
                 tag_value = cls.b_tag_value
             else:
-                raise InvalidTIFF('invalid byte order')
+                raise InvalidTIFF(_(u'invalid byte order'))
 
             file.seek(header.offset,0)
 
@@ -422,7 +426,7 @@ class __TIFF__(ImageMetrics):
 
             return __TIFF__(width,height,bits_per_sample,color_count)
         except Con.ConstError:
-            raise InvalidTIFF('invalid TIFF')
+            raise InvalidTIFF(_(u'invalid TIFF'))
 
 
 #returns True if we have the capability to thumbnail images

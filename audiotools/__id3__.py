@@ -19,6 +19,9 @@
 
 from audiotools import MetaData,Con,re,os,cStringIO,Image,InvalidImage
 import codecs
+import gettext
+
+gettext.install("audiotools",unicode=True)
 
 class UCS2Codec(codecs.Codec):
     @classmethod
@@ -336,6 +339,7 @@ class ID3v22PicFrame(ID3v22Frame,Image):
                        type={3:0,4:1,5:2,6:3}.get(pic_type,4))
 
     def type_string(self):
+        #FIXME - these should be internationalized
         return {0:"Other",
                 1:"32x32 pixels 'file icon' (PNG only)",
                 2:"Other file icon",
@@ -1272,7 +1276,7 @@ class ID3CommentPair(MetaData):
         elif (self.id3v1 is not None):
             base_comment = self.id3v1
         else:
-            raise ValueError("id3v2 and id3v1 cannot both be blank")
+            raise ValueError(_(u"id3v2 and id3v1 cannot both be blank"))
 
         fields = dict([(field,getattr(base_comment,field))
                        for field in self.__FIELDS__])

@@ -20,6 +20,9 @@
 
 from audiotools import AudioFile,InvalidFile,PCMReader,PCMConverter,Con,transfer_data,subprocess,BIN,BIG_ENDIAN,ApeTag,ReplayGain,ignore_sigint,pcmstream,open_files,EncodingError,DecodingError,PCMReaderError
 from __id3__ import *
+import gettext
+
+gettext.install("audiotools",unicode=True)
 
 #this is a wrapper around another PCMReader
 #which swaps the samples from big-endian to little-endian
@@ -412,7 +415,7 @@ class MP3Audio(AudioFile):
         layer = 4 - header.layer  #layer 1, 2 or 3
 
         bit_rate = MP3Audio.__get_mp3_frame_bitrate__(header)
-        if (bit_rate == None): raise MP3Exception("invalid bit rate")
+        if (bit_rate == None): raise MP3Exception(_(u"invalid bit rate"))
 
         sample_rate = MP3Audio.__get_mp3_frame_sample_rate__(header)
 
@@ -436,7 +439,7 @@ class MP3Audio(AudioFile):
             else:                              #MPEG 1
                 return MP3Audio.MP3_SAMPLERATE[frame.sampling_rate][0]
         except IndexError:
-            raise MP3Exception("invalid sampling rate")
+            raise MP3Exception(_(u"invalid sampling rate"))
 
     @classmethod
     def __get_mp3_frame_channels__(cls, frame):
@@ -459,7 +462,7 @@ class MP3Audio(AudioFile):
             else:
                 return 0
         except IndexError:
-            raise MP3Exception("invalid bit rate")
+            raise MP3Exception(_(u"invalid bit rate"))
 
     def cd_frames(self):
         #calculate length at create-time so that we can
@@ -500,9 +503,9 @@ class MP3Audio(AudioFile):
                     frames_per_sample = 1152
                     bit_rate = MP3Audio.MP3_BITRATE[fr.bitrate][version + 2]
                 else:
-                    raise MP3Exception("unsupported MPEG layer")
+                    raise MP3Exception(_(u"unsupported MPEG layer"))
             except IndexError:
-                raise MP3Exception("invalid bit rate")
+                raise MP3Exception(_(u"invalid bit rate"))
 
             if ('Xing' in first_frame):
                 #the first frame has a Xing header,

@@ -19,6 +19,9 @@
 
 
 from audiotools import AudioFile,InvalidFile,PCMReader,PCMConverter,Con,transfer_data,subprocess,BIN,cStringIO,MetaData,os,Image,InvalidImage,ignore_sigint,InvalidFormat,open_files,EncodingError
+import gettext
+
+gettext.install("audiotools",unicode=True)
 
 #######################
 #M4A File
@@ -226,7 +229,7 @@ class M4AAudio(AudioFile):
             self.__sample_rate__ = mdhd.sample_rate
             self.__length__ = mdhd.track_length
         except KeyError:
-            raise InvalidFile('required moov atom not found')
+            raise InvalidFile(_(u'required moov atom not found'))
 
     @classmethod
     def is_type(cls, file):
@@ -663,7 +666,7 @@ class ALACAudio(M4AAudio):
 
         if ((pcmreader.bits_per_sample != 16) or
             (pcmreader.channels != 2)):
-            raise InvalidFormat("ALAC requires input files to be 16 bits-per-sample and have 2 channels")
+            raise InvalidFormat(_(u"ALAC requires input files to be 16 bits-per-sample and have 2 channels"))
 
         devnull = file(os.devnull,"ab")
 
@@ -895,7 +898,7 @@ class AACAudio(AudioFile):
                 break
 
             if (header.sync != 0xFFF):
-                raise ADTSException("invalid frame sync")
+                raise ADTSException(_(u"invalid frame sync"))
 
             if (header.protection_absent):
                 yield (header,stream.read(header.aac_frame_length - 7))

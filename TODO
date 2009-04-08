@@ -278,12 +278,12 @@
 - [ ] cue.py
 - [ ] __flac__.py
 - [X] __freedb__.py
-- [ ] __id3__.py
-- [ ] __id3v1__.py
-- [ ] __image__.py
+- [X] __id3__.py
+- [X] __id3v1__.py
+- [X] __image__.py
 - [X] __init__.py
-- [ ] __m4a__.py
-- [ ] __mp3__.py
+- [X] __m4a__.py
+- [X] __mp3__.py
 - [ ] __musepack__.py
 - [ ] __speex__.py
 - [ ] toc.py
