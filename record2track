@@ -162,7 +162,7 @@ if (__name__ == '__main__'):
         try:
             AudioType = audiotools.filename_to_type(options.output)
         except audiotools.UnknownAudioType,exp:
-            msg.error(unicode(exp.error_msg()))
+            exp.error_msg(msg)
             sys.exit(1)
 
     #ensure the selected compression is compatible with that class

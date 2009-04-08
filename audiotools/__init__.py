@@ -273,13 +273,15 @@ def open(filename):
 #any unsupported files are filtered out
 def open_files(filename_list, sorted=True):
     toreturn = []
+    msg = Messenger("audiotools",None)
+
     for filename in filename_list:
         try:
             toreturn.append(open(filename))
         except UnsupportedFile:
             pass
         except InvalidFile,msg:
-            print >>sys.stderr,"*** %s: %s" % (filename,msg)
+            msg.error(unicode(msg))
 
     if (sorted):
         toreturn.sort(lambda x,y: cmp((x.album_number(),x.track_number()),
@@ -304,19 +306,19 @@ class UnknownAudioType(Exception):
     def __init__(self,suffix):
         self.suffix = suffix
 
-    def error_msg(self):
-        return "*** Unsupported audio type \"%s\"" % (self.suffix)
+    def error_msg(self,messenger):
+        messenger.error(_(u"Unsupported audio type \"%s\"") % (self.suffix))
 
 class AmbiguousAudioType(UnknownAudioType):
     def __init__(self,suffix,type_list):
         self.suffix = suffix
         self.type_list = type_list
 
-    def error_msg(self):
-        return ("*** Ambiguious suffix type \"%s\"\n" % (self.suffix)) + \
-               ("*** Please use the -t option to specify %s" % \
-                    (" or ".join(["\"%s\"" % (t.NAME)
-                                  for t in self.type_list])))
+    def error_msg(self,messenger):
+        messenger.error(_(u"Ambiguious suffix type \"%s\"") % (self.suffix))
+        messenger.info(_(u"Please use the -t option to specify %s") % \
+                           (" or ".join(["\"%s\"" % (t.NAME)
+                                         for t in self.type_list])))
 
 #given a path string to a file,
 #try to guess its type based on suffix
@@ -520,7 +522,7 @@ class PCMCat(PCMReader):
         try:
             self.first = self.reader_queue.next()
         except StopIteration:
-            raise ValueError("You must have at least one PCMReader")
+            raise ValueError(_(u"You must have at least one PCMReader"))
 
         self.sample_rate = self.first.sample_rate
         self.channels = self.first.channels
@@ -685,7 +687,7 @@ class __downmixer__:
             C  = frame_list.channel(2)
             Lr = Rr = [0] * len(Lf)
         else:
-            raise ValueError("invalid number of channels in frame_list")
+            raise ValueError(_(u"invalid number of channels in frame_list"))
 
         if ((len(frame_list) > 0) and (isinstance(frame_list[0],int))):
             converter = int
@@ -1009,7 +1011,7 @@ class FrameList(list):
     #There should not be any partial frames in l.
     def __init__(self, l, total_channels):
         if ((len(l) % total_channels) != 0):
-            raise ValueError("partial frames are invalid")
+            raise ValueError(_(u"partial frames are invalid"))
         list.__init__(self,l)
         self.total_channels = total_channels
 
@@ -1026,7 +1028,7 @@ class FrameList(list):
         if (i < self.total_channels):
             return self[i::self.total_channels]
         else:
-            raise IndexError("invalid channel number")
+            raise IndexError(_(u"invalid channel number"))
 
     def channels(self):
         for i in xrange(self.total_channels):
@@ -1064,7 +1066,7 @@ class FrameList(list):
     @classmethod
     def from_channels(cls, channels):
         if ((len(channels) > 1) and (len(set(map(len,channels))) != 1)):
-            raise ValueError("all channels must be the same length (%s)" % \
+            raise ValueError(_(u"all channels must be the same length (%s)") % \
                              (map(len,channels)))
 
         data = [None] * len(channels) * len(channels[0])
@@ -1327,7 +1329,7 @@ class MetaData:
         if (self.supports_images()):
             self.__images__.append(image)
         else:
-            raise ValueError("this MetaData type does not support images")
+            raise ValueError(_(u"this MetaData type does not support images"))
 
     #image should be an existing Image object
     #this method should also affect the underlying metadata value
@@ -1337,7 +1339,7 @@ class MetaData:
         if (self.supports_images()):
             self.__images__.pop(self.__images__.index(image))
         else:
-            raise ValueError("this MetaData type does not support images")
+            raise ValueError(_(u"this MetaData type does not support images"))
 
 
 class AlbumMetaData(dict):
@@ -1465,19 +1467,17 @@ class UnsupportedTracknameField(Exception):
     def __init__(self, field):
         self.field = field
 
-    def __unicode__(self):
-        import StringIO
-        msg = StringIO.StringIO(u"")
-        print >>msg,u"*** Unknown field \"%s\" in file format" % \
-            (self.field)
-        print >>msg,u"*** Supported fields are:"
+    def error_msg(self,messenger):
+        messenger.error(_(u"Unknown field \"%s\" in file format") % \
+                            (self.field))
+        messenger.info(_(u"Supported fields are:"))
         for field in sorted(audiotools.MetaData.__FIELDS__ + \
                             ("album_track_number","suffix")):
             if (field == 'track_number'):
-                print >>msg,u"%(track_number)2.2d"
+                messenger.info(_(u"%(track_number)2.2d"))
             else:
-                print >>msg,u"%%(%s)s" % (field)
-        return msg.getvalue()
+                messenger.info(_(u"%%(%s)s" % (field)))
+
 
 class AudioFile:
     SUFFIX = ""

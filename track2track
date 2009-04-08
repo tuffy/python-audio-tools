@@ -211,7 +211,7 @@ if (__name__ == '__main__'):
             try:
                 AudioType = audiotools.filename_to_type(options.output)
             except audiotools.UnknownAudioType,exp:
-                msg.error(unicode(exp.error_msg()))
+                exp.error_msg(msg)
                 sys.exit(1)
 
     if (options.add_replay_gain is None):
@@ -339,9 +339,8 @@ if (__name__ == '__main__'):
                                    msg,
                                    options.thumbnail))
                 encoded_filenames.append(filename)
-            except audiotools.UnsupportedTracknameField,msg:
-                msg.error(unicode(msg).encode(audiotools.IO_ENCODING,
-                                              'replace'))
+            except audiotools.UnsupportedTracknameField,err:
+                err.error_msg(msg)
                 sys.exit(1)
             except KeyError:
                 continue

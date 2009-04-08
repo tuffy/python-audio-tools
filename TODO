@@ -281,7 +281,7 @@
 - [ ] __id3__.py
 - [ ] __id3v1__.py
 - [ ] __image__.py
-- [ ] __init__.py
+- [X] __init__.py
 - [ ] __m4a__.py
 - [ ] __mp3__.py
 - [ ] __musepack__.py

@@ -90,9 +90,8 @@ if (__name__ == '__main__'):
                                      mv_flags,
                                      track.filename,
                                      os.path.join(path,new_name)])
-        except audiotools.UnsupportedTracknameField,msg:
-            sys.stderr.write(unicode(msg).encode(audiotools.IO_ENCODING,
-                                                 'replace'))
+        except audiotools.UnsupportedTracknameField,err:
+            err.error_msg(msg)
             sys.exit(1)
     else:
         #try to set the track name from the track's metadata
@@ -112,7 +111,6 @@ if (__name__ == '__main__'):
                                      mv_flags,
                                      track.filename,
                                      os.path.join(path,new_name)])
-        except audiotools.UnsupportedTracknameField,msg:
-            sys.stderr.write(unicode(msg).encode(audiotools.IO_ENCODING,
-                                                 'replace'))
+        except audiotools.UnsupportedTracknameField,err:
+            err.error_msg(msg)
             sys.exit(1)

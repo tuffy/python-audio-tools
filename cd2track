@@ -217,8 +217,8 @@ if (__name__ == '__main__'):
             msg.info(_(u"track %(track_number)2.2d -> %(filename)s") % \
                          {"track_number":cd_track.track_number,
                           "filename":msg.filename(track.filename)})
-        except audiotools.UnsupportedTracknameField,msg:
-            msg.error(unicode(msg))
+        except audiotools.UnsupportedTracknameField,err:
+            err.error_msg(msg)
             sys.exit(1)
         except KeyError:
             continue

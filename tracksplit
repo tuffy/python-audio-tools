@@ -240,8 +240,8 @@ if (__name__ == '__main__'):
                            options.quality,
                            metadata,
                            msg))
-    except audiotools.UnsupportedTracknameField,msg:
-        sys.stderr.write(unicode(msg).encode(audiotools.IO_ENCODING,'replace'))
+    except audiotools.UnsupportedTracknameField,err:
+        err.error_msg(msg)
         sys.exit(1)
 
     queue.run(options.max_processes)
