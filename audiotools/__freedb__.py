@@ -393,7 +393,7 @@ class FreeDB:
                 self.r.close()
                 self.w.close()
                 self.socket.close()
-                raise FreeDBException(_(u"Invalid Hello Message"))
+                raise FreeDBException(_(u"Invalid hello message"))
 
             self.write("cddb hello user %s %s %s" % \
                        (socket.getfqdn(),"audiotools",VERSION))
@@ -458,7 +458,7 @@ class FreeDB:
         if (len(matches) == 1):
             self.messenger.info(_(u"1 match found"))
         else:
-            self.messenger.info(_(u"* %s matches found") % (len(matches)))
+            self.messenger.info(_(u"%s matches found") % (len(matches)))
 
         return map(lambda m: m.split(" ",2), matches)
 

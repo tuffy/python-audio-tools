@@ -46,7 +46,7 @@ class WaveReader(PCMReader):
         try:
             header = WaveAudio.WAVE_HEADER.parse_stream(self.file)
         except Con.ConstError:
-            raise WavException(_(u'invalid WAVE file'))
+            raise WavException(_(u'Invalid WAVE file'))
 
         #this won't be pretty for a WAVE file missing a 'data' chunk
         #but those are seriously invalid anyway
@@ -408,16 +408,16 @@ class WaveAudio(AudioFile):
             header = WaveAudio.WAVE_HEADER.parse(wave_file.read(12))
             return header.wave_size
         except Con.ConstError:
-            raise WavException(_(u"not a RIFF WAVE file"))
+            raise WavException(_(u"Not a RIFF WAVE file"))
         except Con.core.FieldError:
-            raise WavException(_(u"invalid RIFF WAVE file"))
+            raise WavException(_(u"Invalid RIFF WAVE file"))
 
     def __read_chunk_header__(self, wave_file):
         try:
             chunk = WaveAudio.CHUNK_HEADER.parse(wave_file.read(8))
             return (chunk.chunk_id,chunk.chunk_length)
         except Con.core.FieldError:
-            raise WavException(_(u"invalid RIFF WAVE file"))
+            raise WavException(_(u"Invalid RIFF WAVE file"))
 
     def __read_format_chunk__(self, wave_file, chunk_size):
         if (chunk_size < 16):
@@ -433,7 +433,7 @@ class WaveAudio(AudioFile):
         self.__bitspersample__ = fmt.bits_per_sample
 
         if ((self.__wavtype__ != 1) and (self.__wavtype__ != 0xFFFE)):
-            raise WavException(_(u"no support for compressed WAVE files"))
+            raise WavException(_(u"No support for compressed WAVE files"))
 
     def __read_data_chunk__(self, wave_file, chunk_size):
         self.__data_size__ = chunk_size

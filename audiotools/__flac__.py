@@ -532,7 +532,7 @@ class FlacAudio(AudioFile):
         f = file(self.filename,'rb')
         try:
             if (f.read(4) != 'fLaC'):
-                raise FlacException(_(u'invalid FLAC file'))
+                raise FlacException(_(u'Invalid FLAC file'))
 
             blocks = []
 
@@ -609,7 +609,7 @@ class FlacAudio(AudioFile):
             stream = file(self.filename,'rb')
 
             if (stream.read(4) != 'fLaC'):
-                raise FlacException(_(u'invalid FLAC file'))
+                raise FlacException(_(u'Invalid FLAC file'))
 
             block = FlacAudio.METADATA_BLOCK_HEADER.parse_stream(stream)
             while (block.last_block == 0):
@@ -634,7 +634,7 @@ class FlacAudio(AudioFile):
         f = file(self.filename,'rb')
         try:
             if (f.read(4) != 'fLaC'):
-                raise FlacException(_(u'invalid FLAC file'))
+                raise FlacException(_(u'Invalid FLAC file'))
 
             header = FlacAudio.METADATA_BLOCK_HEADER.parse_stream(f)
             f.seek(header.block_length,1)
@@ -1090,7 +1090,7 @@ class OggFlacAudio(FlacAudio):
             try:
                 header = self.OGGFLAC_STREAMINFO.parse(packets.next())
             except Con.ConstError:
-                raise FlacException(_(u'invalid Ogg FLAC streaminfo'))
+                raise FlacException(_(u'Invalid Ogg FLAC streaminfo'))
 
             self.__samplerate__ = header.samplerate
             self.__channels__ = header.channels + 1

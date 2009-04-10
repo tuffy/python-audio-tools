@@ -248,7 +248,7 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
                     header = WavPackAudio.HEADER.parse(f.read(
                             WavPackAudio.HEADER.sizeof()))
                 except Con.ConstError:
-                    raise InvalidFile(_(u'wavpack header ID invalid'))
+                    raise InvalidFile(_(u'WavPack header ID invalid'))
 
                 if (remaining_samples is None):
                     remaining_samples = (header.total_samples - \
@@ -287,7 +287,7 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
                 header = WavPackAudio.HEADER.parse(f.read(
                     WavPackAudio.HEADER.sizeof()))
             except Con.ConstError:
-                raise InvalidFile(_(u'wavpack header ID invalid'))
+                raise InvalidFile(_(u'WavPack header ID invalid'))
 
             self.__samplerate__ = WavPackAudio.SAMPLING_RATE[
                 (header.sampling_rate_high << 1) |

@@ -192,7 +192,7 @@ if (__name__ == '__main__'):
     if (options.output is not None):
         if (options.dir != "."):
             msg.error(_(u"-o and -d options are not compatible"))
-            msg.info(_(u"please specify either -o or -d but not both"))
+            msg.info(_(u"Please specify either -o or -d but not both"))
             sys.exit(1)
 
         if (options.format != audiotools.FILENAME_FORMAT):
@@ -220,7 +220,7 @@ if (__name__ == '__main__'):
     #ensure the selected compression is compatible with that class
     if (options.quality == 'help'):
         if (len(AudioType.COMPRESSION_MODES) > 1):
-            msg.info(_(u"available compression types for %s:" % \
+            msg.info(_(u"Available compression types for %s:" % \
                            (AudioType.NAME)))
             for mode in AudioType.COMPRESSION_MODES:
                 msg.info(mode.decode('ascii'))
@@ -273,7 +273,7 @@ if (__name__ == '__main__'):
         if (audiotools.THUMBNAIL_FORMAT.upper() not in audiotools.thumbnail_formats()):
             msg.error(_(u"Unsupported thumbnail format \"%s\"") % \
                           (audiotools.THUMBNAIL_FORMAT))
-            msg.info(_(u"available formats are: %s") % \
+            msg.info(_(u"Available formats are: %s") % \
                          (", ".join(audiotools.thumbnail_formats())))
             sys.exit(1)
 

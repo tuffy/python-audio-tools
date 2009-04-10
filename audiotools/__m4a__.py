@@ -229,7 +229,7 @@ class M4AAudio(AudioFile):
             self.__sample_rate__ = mdhd.sample_rate
             self.__length__ = mdhd.track_length
         except KeyError:
-            raise InvalidFile(_(u'required moov atom not found'))
+            raise InvalidFile(_(u'Required moov atom not found'))
 
     @classmethod
     def is_type(cls, file):
@@ -898,7 +898,7 @@ class AACAudio(AudioFile):
                 break
 
             if (header.sync != 0xFFF):
-                raise ADTSException(_(u"invalid frame sync"))
+                raise ADTSException(_(u"Invalid frame sync"))
 
             if (header.protection_absent):
                 yield (header,stream.read(header.aac_frame_length - 7))

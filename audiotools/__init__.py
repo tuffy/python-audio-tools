@@ -522,7 +522,7 @@ class PCMCat(PCMReader):
         try:
             self.first = self.reader_queue.next()
         except StopIteration:
-            raise ValueError(_(u"You must have at least one PCMReader"))
+            raise ValueError(_(u"You must have at least 1 PCMReader"))
 
         self.sample_rate = self.first.sample_rate
         self.channels = self.first.channels
@@ -687,7 +687,7 @@ class __downmixer__:
             C  = frame_list.channel(2)
             Lr = Rr = [0] * len(Lf)
         else:
-            raise ValueError(_(u"invalid number of channels in frame_list"))
+            raise ValueError(_(u"Invalid number of channels in frame_list"))
 
         if ((len(frame_list) > 0) and (isinstance(frame_list[0],int))):
             converter = int
@@ -1011,7 +1011,7 @@ class FrameList(list):
     #There should not be any partial frames in l.
     def __init__(self, l, total_channels):
         if ((len(l) % total_channels) != 0):
-            raise ValueError(_(u"partial frames are invalid"))
+            raise ValueError(_(u"Partial frames are invalid"))
         list.__init__(self,l)
         self.total_channels = total_channels
 
@@ -1028,7 +1028,7 @@ class FrameList(list):
         if (i < self.total_channels):
             return self[i::self.total_channels]
         else:
-            raise IndexError(_(u"invalid channel number"))
+            raise IndexError(_(u"Invalid channel number"))
 
     def channels(self):
         for i in xrange(self.total_channels):
@@ -1066,7 +1066,7 @@ class FrameList(list):
     @classmethod
     def from_channels(cls, channels):
         if ((len(channels) > 1) and (len(set(map(len,channels))) != 1)):
-            raise ValueError(_(u"all channels must be the same length (%s)") % \
+            raise ValueError(_(u"All channels must be the same length (%s)") % \
                              (map(len,channels)))
 
         data = [None] * len(channels) * len(channels[0])
@@ -1329,7 +1329,7 @@ class MetaData:
         if (self.supports_images()):
             self.__images__.append(image)
         else:
-            raise ValueError(_(u"this MetaData type does not support images"))
+            raise ValueError(_(u"This MetaData type does not support images"))
 
     #image should be an existing Image object
     #this method should also affect the underlying metadata value
@@ -1339,7 +1339,7 @@ class MetaData:
         if (self.supports_images()):
             self.__images__.pop(self.__images__.index(image))
         else:
-            raise ValueError(_(u"this MetaData type does not support images"))
+            raise ValueError(_(u"This MetaData type does not support images"))
 
 
 class AlbumMetaData(dict):
@@ -1474,9 +1474,9 @@ class UnsupportedTracknameField(Exception):
         for field in sorted(audiotools.MetaData.__FIELDS__ + \
                             ("album_track_number","suffix")):
             if (field == 'track_number'):
-                messenger.info(_(u"%(track_number)2.2d"))
+                messenger.info(u"%(track_number)2.2d")
             else:
-                messenger.info(_(u"%%(%s)s" % (field)))
+                messenger.info(u"%%(%s)s" % (field))
 
 
 class AudioFile:

@@ -326,7 +326,7 @@ class VorbisAudio(AudioFile):
                 self.__sample_rate__ = identification.sample_rate
                 self.__channels__ = identification.channels
             else:
-                raise InvalidFile(_(u'first packet is not vorbis'))
+                raise InvalidFile(_(u'First packet is not Vorbis'))
 
             #the Comment packet comes next
             comment_packet = packets.next()

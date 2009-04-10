@@ -154,7 +154,7 @@ class MusepackAudio(ApeTaggedAudio,AudioFile):
 
                         break
                     elif (key == 'SE'):
-                        raise InvalidFile(_(u'no Musepack header found'))
+                        raise InvalidFile(_(u'No Musepack header found'))
 
             else:                     #a Musepack 7 stream
                 f.seek(0,0)

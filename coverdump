@@ -61,7 +61,7 @@ if (__name__ == '__main__'):
     msg = audiotools.Messenger("coverdump",options)
 
     if (len(args) != 1):
-        msg.error(_(u"You must specify exactly 1 audio file"))
+        msg.error(_(u"You must specify exactly 1 supported audio file"))
         sys.exit(1)
 
     try:

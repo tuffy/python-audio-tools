@@ -168,7 +168,7 @@ if (__name__ == '__main__'):
     #ensure the selected compression is compatible with that class
     if (options.quality == 'help'):
         if (len(AudioType.COMPRESSION_MODES) > 1):
-            msg.info(_(u"available compression types for %s:") % \
+            msg.info(_(u"Available compression types for %s:") % \
                          (AudioType.NAME))
             for mode in AudioType.COMPRESSION_MODES:
                 msg.info(mode.decode('ascii'))
@@ -186,7 +186,7 @@ if (__name__ == '__main__'):
 
     #ensure we have an output file to write to
     if (options.output is None):
-        msg.error(_(u"You must select an output file"))
+        msg.error(_(u"You must specify an output file"))
         sys.exit(1)
 
     #I'd like to offer "kill -s SIGINT $MYPID" instructions at this point,

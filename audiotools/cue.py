@@ -88,7 +88,7 @@ def tokens(cuedata):
             break
 
     if (len(cuedata) > 0):
-        raise CueException(_(u"invalid token at char %d") % \
+        raise CueException(_(u"Invalid token at char %d") % \
                                  (full_length - len(cuedata)))
 
 #tokens is the token iterator
@@ -133,11 +133,11 @@ def parse(tokens):
                         cuesheet.tracks[track.number] = track
 
                     track = Track(get_value(tokens,NUMBER,
-                                            _(u"invalid track number")),
+                                            _(u"Invalid track number")),
                                   get_value(tokens,TAG | STRING,
-                                            _(u"invalid track type")))
+                                            _(u"Invalid track type")))
 
-                    get_value(tokens,EOL,"excess data")
+                    get_value(tokens,EOL,"Excess data")
 
                 #if we haven't started on track data yet,
                 #add attributes to the main cue sheet
@@ -148,23 +148,23 @@ def parse(tokens):
                         cuesheet.attribs[token] = get_value(
                             tokens,
                             STRING | TAG | NUMBER | ISRC,
-                            _(u"missing value"))
+                            _(u"Missing value"))
 
-                        get_value(tokens,EOL,_(u"excess data"))
+                        get_value(tokens,EOL,_(u"Excess data"))
 
                     elif (token == 'FILE'):
                         filename = get_value(tokens,STRING,
-                                             _(u"missing filename"))
+                                             _(u"Missing filename"))
                         filetype = get_value(tokens,STRING | TAG,
-                                             _(u"missing file type"))
+                                             _(u"Missing file type"))
 
                         cuesheet.attribs[token] = (filename,filetype)
 
-                        get_value(tokens,EOL,_(u"excess data"))
+                        get_value(tokens,EOL,_(u"Excess data"))
 
                     else:
                         raise CueException(
-                            _(u"invalid tag %(tag)s at line %(line)d") % \
+                            _(u"Invalid tag %(tag)s at line %(line)d") % \
                                   {"tag":token,
                                    "line":line_number})
                 #otherwise, we're adding data to the current track
@@ -174,46 +174,46 @@ def parse(tokens):
                         track.attribs[token] = get_value(
                             tokens,
                             STRING | TAG | NUMBER | ISRC,
-                            "missing value")
+                            "Missing value")
 
-                        get_value(tokens,EOL,_(u"invalid data"))
+                        get_value(tokens,EOL,_(u"Invalid data"))
 
                     elif (token == 'FLAGS'):
                         flags = []
                         s = get_value(tokens,STRING | TAG | EOL,
-                                      _(u"invalid flag"))
+                                      _(u"Invalid flag"))
                         while (('\n' not in s) and ('\r' not in s)):
                             flags.append(s)
                             s = get_value(tokens,STRING | TAG | EOL,
-                                          _(u"invalid flag"))
+                                          _(u"Invalid flag"))
                         track.attribs[token] = ",".join(flags)
 
                     elif (token in ('POSTGAP','PREGAP')):
                         track.attribs[token] = get_value(
                             tokens,TIMESTAMP,
-                            _(u"invalid timestamp"))
-                        get_value(tokens,EOL,_(u"excess data"))
+                            _(u"Invalid timestamp"))
+                        get_value(tokens,EOL,_(u"Excess data"))
 
                     elif (token == 'INDEX'):
                         index_number = get_value(tokens,NUMBER,
-                                                 _(u"invalid index number"))
+                                                 _(u"Invalid index number"))
                         index_timestamp = get_value(tokens,TIMESTAMP,
-                                                    _(u"invalid timestamp"))
+                                                    _(u"Invalid timestamp"))
                         track.indexes[index_number] = index_timestamp
 
-                        get_value(tokens,EOL,_(u"excess data"))
+                        get_value(tokens,EOL,_(u"Excess data"))
 
                     elif (token in ('FILE',)):
                         skip_to_eol(tokens)
 
                     else:
                         raise CueException(
-                            _(u"invalid tag %(tag)s at line %(line)d") % \
+                            _(u"Invalid tag %(tag)s at line %(line)d") % \
                                   {"tag":token,
                                    "line":line_number})
 
             else:
-                raise CueException(_(u"missing tag at line %d") % (line_number))
+                raise CueException(_(u"Missing tag at line %d") % (line_number))
     except StopIteration:
         if (track is not None):
             cuesheet.tracks[track.number] = track
@@ -363,7 +363,7 @@ def read_cuesheet(filename):
     try:
         sheet = parse(tokens(f.read()))
         if (not sheet.single_file_type()):
-            raise CueException(_(u"cuesheet not formatted for disc images"))
+            raise CueException(_(u"Cuesheet not formatted for disc images"))
         else:
             return sheet
     finally:

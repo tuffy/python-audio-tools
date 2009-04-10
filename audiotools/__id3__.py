@@ -1276,7 +1276,7 @@ class ID3CommentPair(MetaData):
         elif (self.id3v1 is not None):
             base_comment = self.id3v1
         else:
-            raise ValueError(_(u"id3v2 and id3v1 cannot both be blank"))
+            raise ValueError(_(u"ID3v2 and ID3v1 cannot both be blank"))
 
         fields = dict([(field,getattr(base_comment,field))
                        for field in self.__FIELDS__])

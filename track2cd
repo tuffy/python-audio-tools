@@ -90,7 +90,7 @@ if (__name__ == '__main__'):
     audiofiles = audiotools.open_files(args,sorted=False)
 
     if (len(audiofiles) < 1):
-        msg.error(_(u"You must specify at least one audio file"))
+        msg.error(_(u"You must specify at least 1 supported audio file"))
         sys.exit(1)
 
     if ((len(audiofiles) == 1) and

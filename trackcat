@@ -62,7 +62,7 @@ if (__name__ == '__main__'):
     msg = audiotools.Messenger("trackcat",options)
 
     if (options.filename == None):
-        msg.error(_(u'You must specify an output filename'))
+        msg.error(_(u'You must specify an output file'))
         sys.exit(1)
 
     #get the AudioFile class we are converted to

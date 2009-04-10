@@ -454,7 +454,7 @@ if (__name__ == '__main__'):
     msg = audiotools.Messenger("tracklint",options)
 
     if (options.undo and (options.db is None)):
-        msg.error(_(u"cannot perform undo without undo db"))
+        msg.error(_(u"Cannot perform undo without undo db"))
         sys.exit(1)
 
     if ((options.db is not None) and
