@@ -88,13 +88,12 @@ if (__name__ == '__main__'):
                     FILE_TEMPLATE % {"prefix":options.prefix,
                                      "filename":FILENAME_TYPES[image.type],
                                      "filenum":i + 1,
-                                     "filenum":i + 1,
                                      "suffix":image.suffix()})
                 try:
                     f = open(output_filename,"wb")
                     f.write(image.data)
                     f.close()
-                    msg.info(_(u"* %s") % (msg.filename(output_filename)))
+                    msg.info(msg.filename(output_filename))
                 except IOError,e:
                     msg.error(unicode(e))
                     sys.exit(1)

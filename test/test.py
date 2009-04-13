@@ -3655,6 +3655,44 @@ class TestProgramOutput(unittest.TestCase):
 
         self.__check_info__(_(u"Applying ReplayGain.  This may take some time."))
 
+    def test_coverdump1(self):
+        m1 = self.flac1.get_metadata()
+        m1.add_image(audiotools.Image.new(TEST_COVER1,u'',0))
+        self.flac1.set_metadata(m1)
+
+        self.assertEqual(self.__run_app__(
+                ["coverdump","-d",self.dir2]),1)
+
+        self.__check_error__(_(u"You must specify exactly 1 supported audio file"))
+
+        self.assertEqual(self.__run_app__(
+                ["coverdump","-d",self.dir2,"/dev/null"]),1)
+
+        self.__check_error__(_(u"%s file format not supported") % ("/dev/null"))
+
+        self.assertEqual(self.__run_app__(
+                ["coverdump","-d",self.dir2,self.flac1.filename]),0)
+
+        self.__check_info__(
+            self.filename(os.path.join(self.dir2,"front_cover.jpg")))
+
+    def test_coverdump2(self):
+        m1 = self.flac1.get_metadata()
+        m1.add_image(audiotools.Image.new(TEST_COVER1,u'',0))
+        m1.add_image(audiotools.Image.new(TEST_COVER2,u'',2))
+        m1.add_image(audiotools.Image.new(TEST_COVER3,u'',2))
+        self.flac1.set_metadata(m1)
+
+        self.assertEqual(self.__run_app__(
+                ["coverdump","-d",self.dir2,self.flac1.filename]),0)
+
+        self.__check_info__(
+            self.filename(os.path.join(self.dir2,"front_cover.jpg")))
+        self.__check_info__(
+            self.filename(os.path.join(self.dir2,"leaflet01.png")))
+        self.__check_info__(
+            self.filename(os.path.join(self.dir2,"leaflet02.jpg")))
+
     def tearDown(self):
         for f in os.listdir(self.dir1):
             os.unlink(os.path.join(self.dir1,f))
