@@ -220,8 +220,8 @@ if (__name__ == '__main__'):
     #ensure the selected compression is compatible with that class
     if (options.quality == 'help'):
         if (len(AudioType.COMPRESSION_MODES) > 1):
-            msg.info(_(u"Available compression types for %s:" % \
-                           (AudioType.NAME)))
+            msg.info(_(u"Available compression types for %s:") % \
+                           (AudioType.NAME))
             for mode in AudioType.COMPRESSION_MODES:
                 msg.info(mode.decode('ascii'))
         else:
@@ -231,9 +231,9 @@ if (__name__ == '__main__'):
     elif (options.quality == None):
         options.quality = AudioType.DEFAULT_COMPRESSION
     elif (options.quality not in AudioType.COMPRESSION_MODES):
-        msg.error(_(u"\"%(quality)s\" is not a supported compression mode for type \"%(type)s\"" % \
+        msg.error(_(u"\"%(quality)s\" is not a supported compression mode for type \"%(type)s\"") % \
                         {"quality":options.quality,
-                         "type":AudioType.NAME}))
+                         "type":AudioType.NAME})
         sys.exit(1)
 
     #grab the list of AudioFile objects we are converting from

@@ -30,6 +30,9 @@ import unittest
 import decimal as D
 import subprocess
 import filecmp
+import gettext
+
+gettext.install("audiotools",unicode=True)
 
 try:
     from hashlib import md5
@@ -3460,6 +3463,206 @@ Is+xl9xg0BWyGXIZljPkM6xkKGQoZihlWM19CsPUca8l97sa7ZDGfwEBGThn""".decode('base64')
             xmcd_file.close()
             for track in temp_tracks:
                 track.close()
+
+
+class TestProgramOutput(unittest.TestCase):
+    def setUp(self):
+        self.dir1 = tempfile.mkdtemp()
+        self.dir2 = tempfile.mkdtemp()
+        self.format_string = "%(track_number)2.2d - %(track_name)s.%(suffix)s"
+
+
+        metadata1 = audiotools.MetaData(
+            track_name=u"ASCII-only name",
+            track_number=1)
+
+        metadata2 = audiotools.MetaData(
+            track_name=u"L\u00e0t\u00edn-1 N\u00e4m\u00ea",
+            track_number=2)
+
+        metadata3 = audiotools.MetaData(
+            track_name=u"Unicode %s" % \
+                (u"".join(map(unichr,range(0x30a1,0x30b2 + 1)))),
+            track_number=3)
+
+        self.flac1 = audiotools.FlacAudio.from_pcm(
+            os.path.join(
+                self.dir1,
+                audiotools.FlacAudio.track_name(1,
+                                                metadata1,
+                                                format=self.format_string)),
+            BLANK_PCM_Reader(4),
+            compression="1")
+        self.flac1.set_metadata(metadata1)
+
+        self.flac2 = audiotools.FlacAudio.from_pcm(
+            os.path.join(
+                self.dir1,
+                audiotools.FlacAudio.track_name(2,
+                                                metadata2,
+                                                format=self.format_string)),
+            BLANK_PCM_Reader(5),
+            compression="1")
+        self.flac2.set_metadata(metadata2)
+
+        self.flac3 = audiotools.FlacAudio.from_pcm(
+            os.path.join(
+                self.dir1,
+                audiotools.FlacAudio.track_name(3,
+                                                metadata3,
+                                                format=self.format_string)),
+            BLANK_PCM_Reader(6),
+            compression="1")
+        self.flac3.set_metadata(metadata3)
+
+        self.stdout = cStringIO.StringIO("")
+        self.stderr = cStringIO.StringIO("")
+
+
+    #takes a list of argument strings
+    #returns a returnval integer
+    #self.stdout and self.stderr are set to file-like cStringIO objects
+    def __run_app__(self,arguments):
+        sub = subprocess.Popen(arguments,
+                               stdout=subprocess.PIPE,
+                               stderr=subprocess.PIPE)
+
+        self.stdout = cStringIO.StringIO(sub.stdout.read())
+        self.stderr = cStringIO.StringIO(sub.stderr.read())
+        sub.stdout.close()
+        sub.stderr.close()
+        returnval = sub.wait()
+        return returnval
+
+    def filename(self,s):
+        return s.decode(audiotools.FS_ENCODING,'replace')
+
+    def __check_output__(self,s):
+        #FIXME
+        pass
+
+    def __check_info__(self,s):
+        self.assertEqual(
+            self.stderr.readline().decode(audiotools.IO_ENCODING),
+            s + u"\n")
+
+    def __check_error__(self,s):
+        self.assertEqual(
+            self.stderr.readline().decode(audiotools.IO_ENCODING),
+            u"*** Error: " + s + u"\n")
+
+    def __check_warning__(self,s):
+        self.assertEqual(
+            self.stderr.readline().decode(audiotools.IO_ENCODING),
+            u"*** Warning: " + s + u"\n")
+
+    def __check_usage__(self,s):
+        #FIXME
+        pass
+
+    def test_track2track1(self):
+        returnval = self.__run_app__(
+            ["track2track","-j",str(1),"-t","flac","-d",self.dir2,
+             self.flac1.filename,self.flac2.filename,self.flac3.filename])
+
+        self.assertEqual(returnval,0)
+        self.__check_info__(_(u"%s -> %s" % \
+                                  (self.filename(self.flac1.filename),
+                                   self.filename(os.path.join(
+                            self.dir2,os.path.basename(self.flac1.filename))))))
+        self.__check_info__(_(u"%s -> %s" % \
+                                  (self.filename(self.flac2.filename),
+                                   self.filename(os.path.join(
+                            self.dir2,os.path.basename(self.flac2.filename))))))
+        self.__check_info__(_(u"%s -> %s" % \
+                                  (self.filename(self.flac3.filename),
+                                   self.filename(os.path.join(
+                            self.dir2,os.path.basename(self.flac3.filename))))))
+        self.__check_info__(_(u"Adding ReplayGain metadata.  This may take some time."))
+
+    def test_track2track2(self):
+        self.assertEqual(self.__run_app__(
+                ["track2track","-d",self.dir2,"-o","fail.flac",
+                 self.flac1.filename]),1)
+        self.__check_error__(_(u"-o and -d options are not compatible"))
+        self.__check_info__(_(u"Please specify either -o or -d but not both"))
+
+        self.assertEqual(self.__run_app__(
+                ["track2track","--format=%(track_name)s",
+                 "-o",os.path.join(self.dir2,"warn.flac"),
+                 self.flac1.filename]),0)
+        self.__check_warning__(_(u"--format has no effect when used with -o"))
+
+        self.assertEqual(self.__run_app__(
+                ["track2track","-t","flac","-q","help"]),0)
+        self.__check_info__(_(u"Available compression types for %s:") % \
+                                (audiotools.FlacAudio.NAME))
+        for m in audiotools.FlacAudio.COMPRESSION_MODES:
+            self.__check_info__(m.decode('ascii'))
+
+        self.assertEqual(self.__run_app__(
+                ["track2track","-t","wav","-q","help"]),0)
+
+        self.__check_error__(_(u"Audio type %s has no compression modes") % \
+                                 (audiotools.WaveAudio.NAME))
+
+        self.assertEqual(self.__run_app__(
+                ["track2track","-t","flac","-q","foobar"]),1)
+
+        self.__check_error__(_(u"\"%(quality)s\" is not a supported compression mode for type \"%(type)s\"") % \
+                                 {"quality":"foobar",
+                                  "type":audiotools.FlacAudio.NAME})
+
+        self.assertEqual(self.__run_app__(
+                ["track2track","-t","flac","-d",self.dir2]),1)
+
+        self.__check_error__(_(u"You must specify at least 1 supported audio file"))
+
+        self.assertEqual(self.__run_app__(
+                ["track2track","-j",str(0),"-t","flac","-d",self.dir2,
+                 self.flac1.filename]),1)
+
+        self.__check_error__(_(u'You must run at least 1 process at a time'))
+
+        self.assertEqual(self.__run_app__(
+                ["track2track","-o","fail.flac",
+                 self.flac1.filename,self.flac2.filename,self.flac3.filename]),1)
+
+        self.__check_error__(_(u'You may specify only 1 input file for use with -o'))
+
+        self.assertEqual(self.__run_app__(
+                ["track2track","-t","flac","-d",self.dir2,
+                 "-x","/dev/null",
+                 self.flac1.filename,self.flac2.filename,self.flac3.filename]),
+                         1)
+
+        self.__check_error__(_(u"Invalid XMCD file"))
+
+        #FIXME - check invalid thumbnails
+
+    def test_track2track3(self):
+        self.assertEqual(self.__run_app__(
+                ["track2track","-j",str(1),"-t","mp3","--replay-gain",
+                 "-d",self.dir2,self.flac1.filename]),0)
+
+        self.__check_info__(_(u"%s -> %s" % \
+                                  (self.filename(self.flac1.filename),
+                                   self.filename(os.path.join(
+                            self.dir2,self.format_string % \
+                                {"track_number":1,
+                                 "track_name":"ASCII-only name",
+                                 "suffix":"mp3"})))))
+
+        self.__check_info__(_(u"Applying ReplayGain.  This may take some time."))
+
+    def tearDown(self):
+        for f in os.listdir(self.dir1):
+            os.unlink(os.path.join(self.dir1,f))
+        os.rmdir(self.dir1)
+
+        for f in os.listdir(self.dir2):
+            os.unlink(os.path.join(self.dir2,f))
+        os.rmdir(self.dir2)
 
 
 ############

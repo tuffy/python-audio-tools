@@ -89,9 +89,9 @@ if (__name__ == '__main__'):
     elif (options.quality == None):
         options.quality = AudioType.DEFAULT_COMPRESSION
     elif (options.quality not in AudioType.COMPRESSION_MODES):
-        msg.error(_(u"\"%(quality)s\" is not a supported compression mode for type \"%(type)s\"" % \
+        msg.error(_(u"\"%(quality)s\" is not a supported compression mode for type \"%(type)s\"") % \
                         {"quality":options.quality,
-                         "type":AudioType.NAME}))
+                         "type":AudioType.NAME})
         sys.exit(1)
 
     #grab the list of AudioFile objects we are converting from
