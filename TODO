@@ -252,7 +252,7 @@
   This should be replaced by a unified message system similar
   to Python's built-in logging module which can abstract away
   these difficulties.
-** TODO Convert tty output to gettext-based strings
+** DONE Convert tty output to gettext-based strings
    This will not only make output messages more consistent across the tools,
    but will also allow for foreign language translations in the future.
 - [X] cd2track
@@ -271,9 +271,9 @@
 - [X] trackrename
 - [X] tracksplit
 - [X] tracktag
-*** TODO Convert output from audiotools module to gettext-based strings
+*** DONE Convert output from audiotools module to gettext-based strings
 - [X] __aiff__.py
-- [ ] __ape__.py
+- [X] __ape__.py
 - [X] __au__.py
 - [X] cue.py
 - [X] __flac__.py

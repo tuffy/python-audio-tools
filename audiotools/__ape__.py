@@ -19,6 +19,9 @@
 
 
 from audiotools import AudioFile,WaveAudio,InvalidFile,PCMReader,Con,transfer_data,subprocess,BIN,MetaData,os,re,TempWaveReader
+import gettext
+
+gettext.install("audiotools",unicode=True)
 
 #######################
 #MONKEY'S AUDIO
@@ -398,7 +401,7 @@ class ApeAudio(ApeTaggedAudio,AudioFile):
             file_head = cls.FILE_HEAD.parse_stream(f)
 
             if (file_head.id != 'MAC '):
-                raise InvalidFile("invalid Monkey's Audio header")
+                raise InvalidFile(_(u"Invalid Monkey's Audio header"))
 
             if (file_head.version >= 3980): #the latest APE file type
                 descriptor = cls.APE_DESCRIPTOR.parse_stream(f)
