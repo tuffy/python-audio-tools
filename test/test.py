@@ -3465,7 +3465,49 @@ Is+xl9xg0BWyGXIZljPkM6xkKGQoZihlWM19CsPUca8l97sa7ZDGfwEBGThn""".decode('base64')
                 track.close()
 
 
-class TestProgramOutput(unittest.TestCase):
+class TestTextOutput(unittest.TestCase):
+    #takes a list of argument strings
+    #returns a returnval integer
+    #self.stdout and self.stderr are set to file-like cStringIO objects
+    def __run_app__(self,arguments):
+        sub = subprocess.Popen(arguments,
+                               stdout=subprocess.PIPE,
+                               stderr=subprocess.PIPE)
+
+        self.stdout = cStringIO.StringIO(sub.stdout.read())
+        self.stderr = cStringIO.StringIO(sub.stderr.read())
+        sub.stdout.close()
+        sub.stderr.close()
+        returnval = sub.wait()
+        return returnval
+
+    def filename(self,s):
+        return s.decode(audiotools.FS_ENCODING,'replace')
+
+    def __check_output__(self,s):
+        #FIXME
+        pass
+
+    def __check_info__(self,s):
+        self.assertEqual(
+            self.stderr.readline().decode(audiotools.IO_ENCODING),
+            s + u"\n")
+
+    def __check_error__(self,s):
+        self.assertEqual(
+            self.stderr.readline().decode(audiotools.IO_ENCODING),
+            u"*** Error: " + s + u"\n")
+
+    def __check_warning__(self,s):
+        self.assertEqual(
+            self.stderr.readline().decode(audiotools.IO_ENCODING),
+            u"*** Warning: " + s + u"\n")
+
+    def __check_usage__(self,s):
+        #FIXME
+        pass
+
+class TestProgramOutput(TestTextOutput):
     def setUp(self):
         self.dir1 = tempfile.mkdtemp()
         self.dir2 = tempfile.mkdtemp()
@@ -3518,47 +3560,15 @@ class TestProgramOutput(unittest.TestCase):
         self.stdout = cStringIO.StringIO("")
         self.stderr = cStringIO.StringIO("")
 
+    def tearDown(self):
+        for f in os.listdir(self.dir1):
+            os.unlink(os.path.join(self.dir1,f))
+        os.rmdir(self.dir1)
 
-    #takes a list of argument strings
-    #returns a returnval integer
-    #self.stdout and self.stderr are set to file-like cStringIO objects
-    def __run_app__(self,arguments):
-        sub = subprocess.Popen(arguments,
-                               stdout=subprocess.PIPE,
-                               stderr=subprocess.PIPE)
+        for f in os.listdir(self.dir2):
+            os.unlink(os.path.join(self.dir2,f))
+        os.rmdir(self.dir2)
 
-        self.stdout = cStringIO.StringIO(sub.stdout.read())
-        self.stderr = cStringIO.StringIO(sub.stderr.read())
-        sub.stdout.close()
-        sub.stderr.close()
-        returnval = sub.wait()
-        return returnval
-
-    def filename(self,s):
-        return s.decode(audiotools.FS_ENCODING,'replace')
-
-    def __check_output__(self,s):
-        #FIXME
-        pass
-
-    def __check_info__(self,s):
-        self.assertEqual(
-            self.stderr.readline().decode(audiotools.IO_ENCODING),
-            s + u"\n")
-
-    def __check_error__(self,s):
-        self.assertEqual(
-            self.stderr.readline().decode(audiotools.IO_ENCODING),
-            u"*** Error: " + s + u"\n")
-
-    def __check_warning__(self,s):
-        self.assertEqual(
-            self.stderr.readline().decode(audiotools.IO_ENCODING),
-            u"*** Warning: " + s + u"\n")
-
-    def __check_usage__(self,s):
-        #FIXME
-        pass
 
     def test_track2track1(self):
         returnval = self.__run_app__(
@@ -3693,14 +3703,72 @@ class TestProgramOutput(unittest.TestCase):
         self.__check_info__(
             self.filename(os.path.join(self.dir2,"leaflet02.jpg")))
 
-    def tearDown(self):
-        for f in os.listdir(self.dir1):
-            os.unlink(os.path.join(self.dir1,f))
-        os.rmdir(self.dir1)
+    def test_trackcat1(self):
+        self.assertEqual(self.__run_app__(
+                ["trackcat",self.flac1.filename,self.flac2.filename,
+                 self.flac3.filename]),1)
+        self.__check_error__(_(u'You must specify an output file'))
 
-        for f in os.listdir(self.dir2):
-            os.unlink(os.path.join(self.dir2,f))
-        os.rmdir(self.dir2)
+        self.assertEqual(self.__run_app__(
+                ["trackcat","-o","fail.flac","-t","flac","-q","help"]),0)
+        self.__check_info__(_(u"Available compression types for %s:") % \
+                         (audiotools.FlacAudio.NAME))
+        for m in audiotools.FlacAudio.COMPRESSION_MODES:
+            self.__check_info__(m.decode('ascii'))
+
+        self.assertEqual(self.__run_app__(
+                ["trackcat","-o","fail.flac","-t","wav","-q","help"]),0)
+
+        self.__check_error__(_(u"Audio type %s has no compression modes") % \
+                                 (audiotools.WaveAudio.NAME))
+
+        self.assertEqual(self.__run_app__(
+                ["trackcat","-o","fail.flac","-t","flac","-q","foobar",
+                 self.flac1.filename,self.flac2.filename,self.flac3.filename]),
+                         1)
+
+        self.__check_error__(_(u"\"%(quality)s\" is not a supported compression mode for type \"%(type)s\"") % \
+                                 {"quality":"foobar",
+                                  "type":audiotools.FlacAudio.NAME})
+
+    def test_trackcat2(self):
+        self.assertEqual(self.__run_app__(
+                ["trackcat","-o","fail.flac","-t","flac"]),1)
+
+        self.__check_error__(_(u"You must specify at least 1 supported audio file"))
+
+        flac4 = audiotools.FlacAudio.from_pcm(
+            os.path.join(self.dir1,"test4.flac"),
+            BLANK_PCM_Reader(4,sample_rate=48000))
+
+        flac5 = audiotools.FlacAudio.from_pcm(
+            os.path.join(self.dir1,"test5.flac"),
+            BLANK_PCM_Reader(4,channels=6))
+
+        flac6 = audiotools.FlacAudio.from_pcm(
+            os.path.join(self.dir1,"test6.flac"),
+            BLANK_PCM_Reader(4,bits_per_sample=24))
+
+        self.assertEqual(self.__run_app__(
+                ["trackcat","-o","fail.flac","-t","flac",
+                 self.flac1.filename,self.flac2.filename,
+                 self.flac3.filename,flac4.filename]),1)
+
+        self.__check_error__(_(u"All audio files must have the same sample rate"))
+
+        self.assertEqual(self.__run_app__(
+                ["trackcat","-o","fail.flac","-t","flac",
+                 self.flac1.filename,self.flac2.filename,
+                 self.flac3.filename,flac5.filename]),1)
+
+        self.__check_error__(_(u"All audio files must have the same channel count"))
+
+        self.assertEqual(self.__run_app__(
+                ["trackcat","-o","fail.flac","-t","flac",
+                 self.flac1.filename,self.flac2.filename,
+                 self.flac3.filename,flac6.filename]),1)
+
+        self.__check_error__(_(u"All audio files must have the same bits per sample"))
 
 
 ############
