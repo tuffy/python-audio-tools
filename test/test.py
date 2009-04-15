@@ -3515,7 +3515,6 @@ class TestProgramOutput(TestTextOutput):
         self.dir2 = tempfile.mkdtemp()
         self.format_string = "%(track_number)2.2d - %(track_name)s.%(suffix)s"
 
-
         metadata1 = audiotools.MetaData(
             track_name=u"ASCII-only name",
             track_number=1)
@@ -4132,6 +4131,88 @@ class TestProgramOutput(TestTextOutput):
                             'filename':self.filename(flac.filename)})
 
             self.assertEqual(self.stdout.read(),"")
+
+class TestTracklengthOutput(TestTextOutput):
+    def setUp(self):
+        self.dir1 = tempfile.mkdtemp()
+        self.dir2 = tempfile.mkdtemp()
+        self.format_string = "%(track_number)2.2d - %(track_name)s.%(suffix)s"
+
+        metadata1 = audiotools.MetaData(
+            track_name=u"ASCII-only name",
+            track_number=1)
+
+        metadata2 = audiotools.MetaData(
+            track_name=u"L\u00e0t\u00edn-1 N\u00e4m\u00ea",
+            track_number=2)
+
+        metadata3 = audiotools.MetaData(
+            track_name=u"Unicode %s" % \
+                (u"".join(map(unichr,range(0x30a1,0x30b2 + 1)))),
+            track_number=3)
+
+        self.flac1 = audiotools.FlacAudio.from_pcm(
+            os.path.join(
+                self.dir1,
+                audiotools.FlacAudio.track_name(1,
+                                                metadata1,
+                                                format=self.format_string)),
+            BLANK_PCM_Reader(5),
+            compression="1")
+        self.flac1.set_metadata(metadata1)
+
+        self.flac2 = audiotools.FlacAudio.from_pcm(
+            os.path.join(
+                self.dir1,
+                audiotools.FlacAudio.track_name(2,
+                                                metadata2,
+                                                format=self.format_string)),
+            BLANK_PCM_Reader(122,sample_rate=48000,bits_per_sample=24),
+            compression="1")
+        self.flac2.set_metadata(metadata2)
+
+        self.flac3 = audiotools.FlacAudio.from_pcm(
+            os.path.join(
+                self.dir1,
+                audiotools.FlacAudio.track_name(3,
+                                                metadata3,
+                                                format=self.format_string)),
+            BLANK_PCM_Reader(3661,channels=1,sample_rate=22050),
+            compression="1")
+        self.flac3.set_metadata(metadata3)
+
+    def test_tracklength(self):
+        self.assertEqual(self.__run_app__(
+                ["tracklength",self.flac1.filename]),0)
+        total_length = self.flac1.cd_frames()
+
+        self.__check_output__(_(u"%(hours)d:%(minutes)2.2d:%(seconds)2.2d") % \
+                                  {"hours":total_length / (75 * 60 * 60),
+                                   "minutes":total_length / (75 * 60) % 60,
+                                   "seconds":int(round(total_length) / 75.0) % 60})
+
+        self.assertEqual(self.__run_app__(
+                ["tracklength",self.flac1.filename,
+                 self.flac2.filename]),0)
+        total_length = sum([self.flac1.cd_frames(),
+                            self.flac2.cd_frames()])
+
+        self.__check_output__(_(u"%(hours)d:%(minutes)2.2d:%(seconds)2.2d") % \
+                                  {"hours":total_length / (75 * 60 * 60),
+                                   "minutes":total_length / (75 * 60) % 60,
+                                   "seconds":int(round(total_length) / 75.0) % 60})
+
+        self.assertEqual(self.__run_app__(
+                ["tracklength",self.flac1.filename,
+                 self.flac2.filename,self.flac3.filename]),0)
+        total_length = sum([self.flac1.cd_frames(),
+                            self.flac2.cd_frames(),
+                            self.flac3.cd_frames()])
+
+        self.__check_output__(_(u"%(hours)d:%(minutes)2.2d:%(seconds)2.2d") % \
+                                  {"hours":total_length / (75 * 60 * 60),
+                                   "minutes":total_length / (75 * 60) % 60,
+                                   "seconds":int(round(total_length) / 75.0) % 60})
 
 
 ############

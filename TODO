@@ -302,7 +302,7 @@
 - [X] trackcat
 - [X] trackcmp
 - [X] trackinfo
-- [ ] tracklength
+- [X] tracklength
 - [ ] tracklint
 - [ ] trackrename
 - [ ] tracksplit
