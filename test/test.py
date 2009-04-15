@@ -4181,6 +4181,15 @@ class TestTracklengthOutput(TestTextOutput):
             compression="1")
         self.flac3.set_metadata(metadata3)
 
+    def tearDown(self):
+        for f in os.listdir(self.dir1):
+            os.unlink(os.path.join(self.dir1,f))
+        os.rmdir(self.dir1)
+
+        for f in os.listdir(self.dir2):
+            os.unlink(os.path.join(self.dir2,f))
+        os.rmdir(self.dir2)
+
     def test_tracklength(self):
         self.assertEqual(self.__run_app__(
                 ["tracklength",self.flac1.filename]),0)
@@ -4213,6 +4222,20 @@ class TestTracklengthOutput(TestTextOutput):
                                   {"hours":total_length / (75 * 60 * 60),
                                    "minutes":total_length / (75 * 60) % 60,
                                    "seconds":int(round(total_length) / 75.0) % 60})
+
+class TestTracksplitOutput(TestTextOutput):
+    def setUp(self):
+        self.dir1 = tempfile.mkdtemp()
+        self.dir2 = tempfile.mkdtemp()
+
+    def tearDown(self):
+        for f in os.listdir(self.dir1):
+            os.unlink(os.path.join(self.dir1,f))
+        os.rmdir(self.dir1)
+
+        for f in os.listdir(self.dir2):
+            os.unlink(os.path.join(self.dir2,f))
+        os.rmdir(self.dir2)
 
 
 ############
