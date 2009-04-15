@@ -4054,6 +4054,86 @@ class TestProgramOutput(TestTextOutput):
                                    {"file1":self.filename(self.flac3.filename),
                                     "file2":self.filename(flac6.filename)})+\
                                   _(u"differ"))
+
+    def test_trackinfo(self):
+        for flac in [self.flac1,self.flac2,self.flac3]:
+            self.assertEqual(self.__run_app__(
+                    ["trackinfo",flac.filename]),0)
+            self.__check_output__(_(u"%(minutes)2.2d:%(seconds)2.2d %(channels)dch %(rate)dHz %(bits)d-bit: %(filename)s") % \
+                                      {"minutes":flac.cd_frames() / 75 / 60,
+                                       "seconds":flac.cd_frames() / 75 % 60,
+                                       "channels":flac.channels(),
+                                       "rate":flac.sample_rate(),
+                                       "bits":flac.bits_per_sample(),
+                                       "filename":self.filename(flac.filename)})
+
+            self.__check_output__(_(u"%s Comment:") % ("FLAC"))
+            self.__check_output__(u"      TITLE : %s" % \
+                                      (flac.get_metadata().track_name))
+            self.__check_output__(u"TRACKNUMBER : %s" % \
+                                      (flac.get_metadata().track_number))
+
+            self.assertEqual(self.__run_app__(
+                    ["trackinfo","-n",flac.filename]),0)
+
+            self.__check_output__(_(u"%(minutes)2.2d:%(seconds)2.2d %(channels)dch %(rate)dHz %(bits)d-bit: %(filename)s") % \
+                                      {"minutes":flac.cd_frames() / 75 / 60,
+                                       "seconds":flac.cd_frames() / 75 % 60,
+                                       "channels":flac.channels(),
+                                       "rate":flac.sample_rate(),
+                                       "bits":flac.bits_per_sample(),
+                                       "filename":self.filename(flac.filename)})
+
+            self.assertEqual(self.stdout.read(),"")
+
+            self.assertEqual(self.__run_app__(
+                    ["trackinfo","-b",flac.filename]),0)
+
+            self.__check_output__(_(u"%(bitrate)4.4s kbps: %(filename)s") % \
+                               {'bitrate': ((os.path.getsize(flac.filename) * 8) / 2 ** 10) / (flac.cd_frames() / 75),
+                                'filename':self.filename(flac.filename)})
+            self.__check_output__(_(u"%s Comment:") % ("FLAC"))
+            self.__check_output__(u"      TITLE : %s" % \
+                                      (flac.get_metadata().track_name))
+            self.__check_output__(u"TRACKNUMBER : %s" % \
+                                      (flac.get_metadata().track_number))
+
+            self.assertEqual(self.__run_app__(
+                    ["trackinfo","-nb",flac.filename]),0)
+
+            self.__check_output__(_(u"%(bitrate)4.4s kbps: %(filename)s") % \
+                               {'bitrate': ((os.path.getsize(flac.filename) * 8) / 2 ** 10) / (flac.cd_frames() / 75),
+                                'filename':self.filename(flac.filename)})
+
+            self.assertEqual(self.stdout.read(),"")
+
+            self.assertEqual(self.__run_app__(
+                    ["trackinfo","-%",flac.filename]),0)
+
+            self.__check_output__(_(u"%(percentage)3.3s%%: %(filename)s") % \
+                           {'percentage':
+                                int(round(float(os.path.getsize(flac.filename) * 100) / (flac.total_frames() * flac.channels() * \
+                                                                                             (flac.bits_per_sample() / 8)))),
+                            'filename':self.filename(flac.filename)})
+
+            self.__check_output__(_(u"%s Comment:") % ("FLAC"))
+            self.__check_output__(u"      TITLE : %s" % \
+                                      (flac.get_metadata().track_name))
+            self.__check_output__(u"TRACKNUMBER : %s" % \
+                                      (flac.get_metadata().track_number))
+
+            self.assertEqual(self.__run_app__(
+                    ["trackinfo","-%n",flac.filename]),0)
+
+            self.__check_output__(_(u"%(percentage)3.3s%%: %(filename)s") % \
+                           {'percentage':
+                                int(round(float(os.path.getsize(flac.filename) * 100) / (flac.total_frames() * flac.channels() * \
+                                                                                             (flac.bits_per_sample() / 8)))),
+                            'filename':self.filename(flac.filename)})
+
+            self.assertEqual(self.stdout.read(),"")
+
+
 ############
 #END TESTS
 ############

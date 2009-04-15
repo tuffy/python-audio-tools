@@ -1256,7 +1256,7 @@ class MetaData:
                             {"length":max_key_length}
 
             base_comment = unicode(os.linesep.join(
-                [u"%s Comment:" % (self.__comment_name__())] + \
+                [_(u"%s Comment:") % (self.__comment_name__())] + \
                 [line_template % {"key":key,"value":value} for
                  (key,value) in comment_pairs]))
         else:

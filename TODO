@@ -301,7 +301,7 @@
 - [ ] track2xmcd
 - [X] trackcat
 - [X] trackcmp
-- [ ] trackinfo
+- [X] trackinfo
 - [ ] tracklength
 - [ ] tracklint
 - [ ] trackrename
