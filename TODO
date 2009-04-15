@@ -299,8 +299,8 @@
 - [X] coverdump
 - [ ] track2track
 - [ ] track2xmcd
-- [ ] trackcat
-- [ ] trackcmp
+- [X] trackcat
+- [X] trackcmp
 - [ ] trackinfo
 - [ ] tracklength
 - [ ] tracklint

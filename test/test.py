@@ -3485,8 +3485,9 @@ class TestTextOutput(unittest.TestCase):
         return s.decode(audiotools.FS_ENCODING,'replace')
 
     def __check_output__(self,s):
-        #FIXME
-        pass
+        self.assertEqual(
+            self.stdout.readline().decode(audiotools.IO_ENCODING),
+            s + u"\n")
 
     def __check_info__(self,s):
         self.assertEqual(
@@ -3503,9 +3504,10 @@ class TestTextOutput(unittest.TestCase):
             self.stderr.readline().decode(audiotools.IO_ENCODING),
             u"*** Warning: " + s + u"\n")
 
-    def __check_usage__(self,s):
-        #FIXME
-        pass
+    def __check_usage__(self,executable,s):
+        self.assertEqual(
+            self.stderr.readline().decode(audiotools.IO_ENCODING),
+            u"*** Usage: " + executable.decode('ascii') + u" " + s + u"\n")
 
 class TestProgramOutput(TestTextOutput):
     def setUp(self):
@@ -3771,6 +3773,287 @@ class TestProgramOutput(TestTextOutput):
         self.__check_error__(_(u"All audio files must have the same bits per sample"))
 
 
+    def test_trackcmp1(self):
+        self.assertEqual(self.__run_app__(
+                ["trackcmp",self.flac1.filename]),1)
+
+        self.__check_usage__("trackcmp",_(u"<path 1> <path 2>"))
+
+        self.assertEqual(self.__run_app__(
+                ["trackcmp",self.flac1.filename,self.dir2]),1)
+
+        self.__check_output__(_(u"%(file1)s %(file2)s differ") % \
+                                  {"file1":self.filename(self.flac1.filename),
+                                   "file2":self.filename(self.dir2)})
+
+        self.assertEqual(self.__run_app__(
+                ["trackcmp",self.flac1.filename,self.flac2.filename,
+                 self.flac3.filename]),1)
+
+        self.__check_usage__("trackcmp",_(u"<path 1> <path 2>"))
+
+        self.assertEqual(self.__run_app__(
+                ["trackcmp",self.flac1.filename,self.flac2.filename]),1)
+
+        self.__check_output__(_(u"%(file1)s != %(file2)s") % \
+                                {"file1":self.filename(self.flac1.filename),
+                                 "file2":self.filename(self.flac2.filename)})
+
+    def test_trackcmp2(self):
+        subprocess.call(["cp","-f",self.flac1.filename,self.dir2])
+        subprocess.call(["cp","-f",self.flac2.filename,self.dir2])
+        subprocess.call(["cp","-f",self.flac3.filename,self.dir2])
+
+        flac4 = audiotools.open(os.path.join(
+                self.dir2,
+                os.path.basename(self.flac1.filename)))
+
+        flac5 = audiotools.open(os.path.join(
+                self.dir2,
+                os.path.basename(self.flac2.filename)))
+
+        flac6 = audiotools.open(os.path.join(
+                self.dir2,
+                os.path.basename(self.flac3.filename)))
+
+        self.assertEqual(self.__run_app__(
+                ["trackcmp",self.dir1,self.dir2]),0)
+        self.__check_output__((_(u"%(file1)s <> %(file2)s :") % \
+                                   {"file1":self.filename(self.flac1.filename),
+                                    "file2":self.filename(flac4.filename)})+\
+                                  _(u"OK"))
+        self.__check_output__((_(u"%(file1)s <> %(file2)s :") % \
+                                   {"file1":self.filename(self.flac2.filename),
+                                    "file2":self.filename(flac5.filename)})+\
+                                  _(u"OK"))
+        self.__check_output__((_(u"%(file1)s <> %(file2)s :") % \
+                                   {"file1":self.filename(self.flac3.filename),
+                                    "file2":self.filename(flac6.filename)})+\
+                                  _(u"OK"))
+
+        subprocess.call(["rm","-f",flac6.filename])
+
+        self.assertEqual(self.__run_app__(
+                ["trackcmp",self.dir1,self.dir2]),1)
+
+        #FIXME - the "track %2.2d" and "album %d track %2.2d" templates
+        #should be internationalized
+        self.__check_output__(_(u"%s: missing") % \
+                                  (self.filename(
+                    os.path.join(self.dir2,
+                                 "track %2.2d" % (3)))))
+        self.__check_output__((_(u"%(file1)s <> %(file2)s :") % \
+                                   {"file1":self.filename(self.flac1.filename),
+                                    "file2":self.filename(flac4.filename)})+\
+                                  _(u"OK"))
+        self.__check_output__((_(u"%(file1)s <> %(file2)s :") % \
+                                   {"file1":self.filename(self.flac2.filename),
+                                    "file2":self.filename(flac5.filename)})+\
+                                  _(u"OK"))
+
+        subprocess.call(["mv","-f",self.flac3.filename,flac6.filename])
+
+        self.assertEqual(self.__run_app__(
+                ["trackcmp",self.dir1,self.dir2]),1)
+
+        self.__check_output__(_(u"%s: missing") % \
+                                  (self.filename(
+                    os.path.join(self.dir1,
+                                 "track %2.2d" % (3)))))
+        self.__check_output__((_(u"%(file1)s <> %(file2)s :") % \
+                                   {"file1":self.filename(self.flac1.filename),
+                                    "file2":self.filename(flac4.filename)})+\
+                                  _(u"OK"))
+        self.__check_output__((_(u"%(file1)s <> %(file2)s :") % \
+                                   {"file1":self.filename(self.flac2.filename),
+                                    "file2":self.filename(flac5.filename)})+\
+                                  _(u"OK"))
+
+    def test_trackcmp3(self):
+        m = self.flac1.get_metadata()
+        m.album_number = 1
+        self.flac1.set_metadata(m)
+
+        m = self.flac2.get_metadata()
+        m.album_number = 1
+        self.flac2.set_metadata(m)
+
+        m = self.flac3.get_metadata()
+        m.album_number = 1
+        self.flac3.set_metadata(m)
+
+        subprocess.call(["cp","-f",self.flac1.filename,self.dir2])
+        subprocess.call(["cp","-f",self.flac2.filename,self.dir2])
+        subprocess.call(["cp","-f",self.flac3.filename,self.dir2])
+
+        flac4 = audiotools.open(os.path.join(
+                self.dir2,
+                os.path.basename(self.flac1.filename)))
+
+        flac5 = audiotools.open(os.path.join(
+                self.dir2,
+                os.path.basename(self.flac2.filename)))
+
+        flac6 = audiotools.open(os.path.join(
+                self.dir2,
+                os.path.basename(self.flac3.filename)))
+
+        self.assertEqual(self.__run_app__(
+                ["trackcmp",self.dir1,self.dir2]),0)
+        self.__check_output__((_(u"%(file1)s <> %(file2)s :") % \
+                                   {"file1":self.filename(self.flac1.filename),
+                                    "file2":self.filename(flac4.filename)})+\
+                                  _(u"OK"))
+        self.__check_output__((_(u"%(file1)s <> %(file2)s :") % \
+                                   {"file1":self.filename(self.flac2.filename),
+                                    "file2":self.filename(flac5.filename)})+\
+                                  _(u"OK"))
+        self.__check_output__((_(u"%(file1)s <> %(file2)s :") % \
+                                   {"file1":self.filename(self.flac3.filename),
+                                    "file2":self.filename(flac6.filename)})+\
+                                  _(u"OK"))
+
+        subprocess.call(["rm","-f",flac6.filename])
+
+        self.assertEqual(self.__run_app__(
+                ["trackcmp",self.dir1,self.dir2]),1)
+
+        self.__check_output__(_(u"%s: missing") % \
+                                  (self.filename(
+                    os.path.join(self.dir2,
+                                 "album %d track %2.2d" % (1,3)))))
+        self.__check_output__((_(u"%(file1)s <> %(file2)s :") % \
+                                   {"file1":self.filename(self.flac1.filename),
+                                    "file2":self.filename(flac4.filename)})+\
+                                  _(u"OK"))
+        self.__check_output__((_(u"%(file1)s <> %(file2)s :") % \
+                                   {"file1":self.filename(self.flac2.filename),
+                                    "file2":self.filename(flac5.filename)})+\
+                                  _(u"OK"))
+
+        subprocess.call(["mv","-f",self.flac3.filename,flac6.filename])
+
+        self.assertEqual(self.__run_app__(
+                ["trackcmp",self.dir1,self.dir2]),1)
+
+        self.__check_output__(_(u"%s: missing") % \
+                                  (self.filename(
+                    os.path.join(self.dir1,
+                                 "album %d track %2.2d" % (1,3)))))
+        self.__check_output__((_(u"%(file1)s <> %(file2)s :") % \
+                                   {"file1":self.filename(self.flac1.filename),
+                                    "file2":self.filename(flac4.filename)})+\
+                                  _(u"OK"))
+        self.__check_output__((_(u"%(file1)s <> %(file2)s :") % \
+                                   {"file1":self.filename(self.flac2.filename),
+                                    "file2":self.filename(flac5.filename)})+\
+                                  _(u"OK"))
+
+    def test_trackcmp4(self):
+        subprocess.call(["cp","-f",self.flac2.filename,self.dir2])
+        subprocess.call(["cp","-f",self.flac3.filename,self.dir2])
+
+        flac4 = audiotools.FlacAudio.from_pcm(
+            os.path.join(
+                self.dir2,
+                audiotools.FlacAudio.track_name(1,
+                                                audiotools.MetaData(
+                        track_name=u"ASCII-only name",
+                        track_number=1),
+                                                format=self.format_string)),
+            RANDOM_PCM_Reader(4),
+            compression="1")
+
+        flac5 = audiotools.open(os.path.join(
+                self.dir2,
+                os.path.basename(self.flac2.filename)))
+
+        flac6 = audiotools.open(os.path.join(
+                self.dir2,
+                os.path.basename(self.flac3.filename)))
+
+        self.assertEqual(self.__run_app__(
+                ["trackcmp",self.flac1.filename,flac4.filename]),1)
+
+        self.__check_output__(_(u"%(file1)s != %(file2)s") % \
+                       {"file1":self.filename(self.flac1.filename),
+                        "file2":self.filename(flac4.filename)})
+
+        self.assertEqual(self.__run_app__(
+                ["trackcmp",self.dir1,self.dir2]),1)
+
+        self.__check_output__((_(u"%(file1)s <> %(file2)s :") % \
+                                   {"file1":self.filename(self.flac1.filename),
+                                    "file2":self.filename(flac4.filename)})+\
+                                  _(u"differ"))
+        self.__check_output__((_(u"%(file1)s <> %(file2)s :") % \
+                                   {"file1":self.filename(self.flac2.filename),
+                                    "file2":self.filename(flac5.filename)})+\
+                                  _(u"OK"))
+        self.__check_output__((_(u"%(file1)s <> %(file2)s :") % \
+                                   {"file1":self.filename(self.flac3.filename),
+                                    "file2":self.filename(flac6.filename)})+\
+                                  _(u"OK"))
+
+        m = flac5.get_metadata()
+        flac5 = audiotools.FlacAudio.from_pcm(
+            flac5.filename,
+            RANDOM_PCM_Reader(5),
+            compression="1")
+        flac5.set_metadata(m)
+
+        self.assertEqual(self.__run_app__(
+                ["trackcmp",self.flac2.filename,flac5.filename]),1)
+
+        self.__check_output__(_(u"%(file1)s != %(file2)s") % \
+                       {"file1":self.filename(self.flac2.filename),
+                        "file2":self.filename(flac5.filename)})
+
+        self.assertEqual(self.__run_app__(
+                ["trackcmp",self.dir1,self.dir2]),1)
+
+        self.__check_output__((_(u"%(file1)s <> %(file2)s :") % \
+                                   {"file1":self.filename(self.flac1.filename),
+                                    "file2":self.filename(flac4.filename)})+\
+                                  _(u"differ"))
+        self.__check_output__((_(u"%(file1)s <> %(file2)s :") % \
+                                   {"file1":self.filename(self.flac2.filename),
+                                    "file2":self.filename(flac5.filename)})+\
+                                  _(u"differ"))
+        self.__check_output__((_(u"%(file1)s <> %(file2)s :") % \
+                                   {"file1":self.filename(self.flac3.filename),
+                                    "file2":self.filename(flac6.filename)})+\
+                                  _(u"OK"))
+
+        m = flac6.get_metadata()
+        flac6 = audiotools.FlacAudio.from_pcm(
+            flac6.filename,
+            RANDOM_PCM_Reader(6),
+            compression="1")
+        flac6.set_metadata(m)
+
+        self.assertEqual(self.__run_app__(
+                ["trackcmp",self.flac3.filename,flac6.filename]),1)
+
+        self.__check_output__(_(u"%(file1)s != %(file2)s") % \
+                       {"file1":self.filename(self.flac3.filename),
+                        "file2":self.filename(flac6.filename)})
+
+        self.assertEqual(self.__run_app__(
+                ["trackcmp",self.dir1,self.dir2]),1)
+
+        self.__check_output__((_(u"%(file1)s <> %(file2)s :") % \
+                                   {"file1":self.filename(self.flac1.filename),
+                                    "file2":self.filename(flac4.filename)})+\
+                                  _(u"differ"))
+        self.__check_output__((_(u"%(file1)s <> %(file2)s :") % \
+                                   {"file1":self.filename(self.flac2.filename),
+                                    "file2":self.filename(flac5.filename)})+\
+                                  _(u"differ"))
+        self.__check_output__((_(u"%(file1)s <> %(file2)s :") % \
+                                   {"file1":self.filename(self.flac3.filename),
+                                    "file2":self.filename(flac6.filename)})+\
+                                  _(u"differ"))
 ############
 #END TESTS
 ############

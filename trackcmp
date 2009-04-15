@@ -58,7 +58,7 @@ if (__name__ == '__main__'):
     msg = audiotools.Messenger("trackcmp",options)
 
     if (len(args) != 2):
-        msg.usage(_(u"<file 1> <file 2>"))
+        msg.usage(_(u"<path 1> <path 2>"))
         sys.exit(1)
 
     if (not options.inexact):
@@ -68,21 +68,18 @@ if (__name__ == '__main__'):
 
     if (os.path.isfile(args[0]) and os.path.isfile(args[1])):
         audiofiles = audiotools.open_files(args)
-        if (len(audiofiles) == 2):
-            try:
-                if (check_function(audiofiles[0],audiofiles[1])):
-                    pass
-                else:
-                    msg.output(_(u"%(file1)s != %(file2)s") % \
-                                {"file1":msg.filename(audiofiles[0].filename),
-                                 "file2":msg.filename(audiofiles[1].filename)})
-                    sys.exit(1)
-            except audiotools.DecodingError,msg:
-                msg.error(unicode(msg))
-                sys.exit(2)
-        else:
-            msg.error(_(u"Exactly two audio files or two directories are required"))
-            sys.exit(1)
+        try:
+            if (check_function(audiofiles[0],audiofiles[1])):
+                pass
+            else:
+                msg.output(_(u"%(file1)s != %(file2)s") % \
+                            {"file1":msg.filename(audiofiles[0].filename),
+                             "file2":msg.filename(audiofiles[1].filename)})
+                sys.exit(1)
+        except audiotools.DecodingError,msg:
+            msg.error(unicode(msg))
+            sys.exit(2)
+
     elif (os.path.isdir(args[0]) and os.path.isdir(args[1])):
         returnval = 0
 
@@ -127,7 +124,7 @@ if (__name__ == '__main__'):
             else:
                 msg.output(_(u"%s: missing") % \
                                (msg.filename(
-                            os.path.join(args[1],
+                            os.path.join(args[0],
                                          "album %d track %2.2d" % (album_number,track_number)))))
                 returnval = 1
 
