@@ -4228,6 +4228,50 @@ class TestTracksplitOutput(TestTextOutput):
         self.dir1 = tempfile.mkdtemp()
         self.dir2 = tempfile.mkdtemp()
 
+        self.cue_path = os.path.join(self.dir1,"album.cue")
+        f = open(self.cue_path,"w")
+        f.write('FILE "data.wav" BINARY\n  TRACK 01 AUDIO\n    INDEX 01 00:00:00\n  TRACK 02 AUDIO\n    INDEX 00 03:16:55\n    INDEX 01 03:18:18\n  TRACK 03 AUDIO\n    INDEX 00 05:55:12\n    INDEX 01 06:01:45\n')
+        f.close()
+
+        self.bad_cue_path = os.path.join(self.dir1,"album2.cue")
+        f = open(self.bad_cue_path,"w")
+        f.write('FILE "data.wav" BINARY\n  TRACK 01 AUDIO\n    INDEX 01 00:00:00\n  TRACK 02 AUDIO\n    INDEX 00 03:16:55\n    INDEX 01 03:18:18\n  TRACK 03 AUDIO\n    INDEX 00 05:55:12\n    INDEX 01 06:01:45\n  TRACK 04 AUDIO\n    INDEX 00 06:03:45\n    INDEX 01 20:00:00\n')
+        f.close()
+
+        self.xmcd_path = os.path.join(self.dir1,"album.xmcd")
+        f = open(self.xmcd_path,"w")
+        f.write("""eJyFk0tv20YQgO8B8h+m8MHJReXyTQFEm0pyYcAvSELTHCmKigRLYiHSanUTSdt1agd9BGnsOo3R
+# uGmcNn60AYrakfNjsqVinfwXOpS0KwRtEQKL2Zmd/WZ2ZjgFXzTs8tUrU5CsYsuyl6HSshoOuJWK
+# 5/heOrEnH1EEthWJIClMkUVFJVwxVFFiiiIagswU1dAFlSmGomg6BxNd0TmbSBoaJpquEW2Sgqqo
+# ItdUQyCcT3RNV3kAYojKJBFREGRDm2gKmaQvipqs83uiLKmGwTVVJTqPJxqSYHBNEiRR4xEkkWij
+# KiQrW/NsqDvN2341DbKk8IO80655NbeJ1kRdarm243lOGUqdNNjlcqkMbZJSUuLSnAAZ97NOq3a7
+# 6sM1+zoUfKftQMGuOq0KOD5Y9VSCKKyUGjXfR0S7ZqXhI7e5nGvaCUVIqaOw2dlCZjZrygoRKmWC
+# xmxxtjiXM2n0iIbHNDqk4elMfnGhOJvLw/vwlhkWafSygKuIS4L4YJsGezR49Xqne9l7ie9cJpe9
+# c0Teyt3Im1hn7Fz249xCPmcW3JVm2U8G6uqV4jCigCE3aPSMhj/T8DGNXtDwJFGjHvMg5s2q5cN0
+# yV3xodEBz7daH8CHM26r4TIf0UwuIyJ6zEwSgruMOgRHd2D4iOc0+gbfcXn+KP79fv/hbrz2PH74
+# HQ1+o8Ev7LZs3nTqtosjX3RhvgMzVjNTXylNe7CQVP895qeY8clq/85mfPb09fZ6fHcjfrX19+mP
+# /Z0w6zanfSg5ULd8h7mr//UWdqiZwxdgovdpuE+jTRqt4wamNOahm7S7dfHnGuLfPDsb7B/HZw+G
+# 9e+u0e5dyMzT8HxUQriWt5rLFnzitJLZus4Ihtnf3ht8f2+wv3vx0xYvsWC+eRrQ4Cg+79EAS/Tt
+# MJNDGkXYHe5FTBoc0uBe/8GTi4NtbsbiJ7li2L+wbbiBObfteNBxV6DjWFVeLCKZ8dGX8dFOvLYa
+# 9/YuNk75iWwW5gvxydeDH77CNPqHW9gdGoRJSsl4HdPwYJjSr6Mh4feUSeNhMZVJ8QN1coCowYsn
+# iKLBHzQ44C6a2V/dxRGmAcbEd29g/2mwipNMgx0abHJH/V2jxD2Nt6JiqYY8DLyOvwha+LwK/9tr
+# +LzmV5PxaLu2Vff4DfKuKv/rYu7TYtaE5CdMw+gvREtRMEeSjKU4ltJYymOpjKU6ltpY6mNpMA4H
+# MiJhSMKYhEEJoxKGJYxLGJgwssjIYkJemrtxazGfzeVx/w8vFHIR""".decode('base64').decode('zlib'))
+        f.close()
+
+        self.flac = audiotools.FlacAudio.from_pcm(
+            os.path.join(self.dir1,"album.flac"),
+            EXACT_BLANK_PCM_Reader(24725400),
+            compression="1")
+
+        self.flac2 = audiotools.FlacAudio.from_pcm(
+            os.path.join(self.dir1,"extra.flac"),
+            BLANK_PCM_Reader(5),
+            compression="1")
+
+        self.format_string = "%(track_number)2.2d - %(track_name)s.%(suffix)s"
+
+
     def tearDown(self):
         for f in os.listdir(self.dir1):
             os.unlink(os.path.join(self.dir1,f))
@@ -4236,6 +4280,119 @@ class TestTracksplitOutput(TestTextOutput):
         for f in os.listdir(self.dir2):
             os.unlink(os.path.join(self.dir2,f))
         os.rmdir(self.dir2)
+
+    def test_tracksplit1(self):
+        self.assertEqual(self.__run_app__(
+                ["tracksplit","-t","flac","-q","help"]),0)
+        self.__check_info__(_(u"Available compression types for %s:") % \
+                                (audiotools.FlacAudio.NAME))
+        for m in audiotools.FlacAudio.COMPRESSION_MODES:
+            self.__check_info__(m.decode('ascii'))
+
+        self.assertEqual(self.__run_app__(
+                ["tracksplit","-t","wav","-q","help"]),0)
+
+        self.__check_error__(_(u"Audio type %s has no compression modes") % \
+                                 (audiotools.WaveAudio.NAME))
+
+        self.assertEqual(self.__run_app__(
+                ["tracksplit","-t","flac","-q","foobar"]),1)
+
+        self.__check_error__(_(u"\"%(quality)s\" is not a supported compression mode for type \"%(type)s\"") % \
+                                 {"quality":"foobar",
+                                  "type":audiotools.FlacAudio.NAME})
+
+        self.assertEqual(self.__run_app__(
+                ["tracksplit","-t","flac","-d",self.dir2]),1)
+
+        self.__check_error__(_(u"You must specify exactly 1 supported audio file"))
+
+        self.assertEqual(self.__run_app__(
+                ["tracksplit","-t","flac","-d",self.dir2,
+                 self.flac.filename,self.flac2.filename]),1)
+
+        self.__check_error__(_(u"You must specify exactly 1 supported audio file"))
+
+        self.assertEqual(self.__run_app__(
+                ["tracksplit","-j",str(0),"-t","flac","-d",self.dir2,
+                 "--cue",self.cue_path,self.flac.filename]),1)
+
+        self.__check_error__(_(u'You must run at least 1 process at a time'))
+
+        self.assertEqual(self.__run_app__(
+                ["tracksplit","-t","flac","-d",self.dir2,
+                 "--cue",self.cue_path,"-x","/dev/null",self.flac.filename]),1)
+
+        self.__check_error__(_(u"Invalid XMCD file"))
+
+        self.assertEqual(self.__run_app__(
+                ["tracksplit","-t","flac","-d",self.dir2,
+                 self.flac.filename]),1)
+
+        self.__check_error__(_(u"You must specify a cuesheet to split audio file"))
+
+        self.assertEqual(self.__run_app__(
+                ["tracksplit","-t","flac","-d",self.dir2,
+                 "--cue",self.bad_cue_path,self.flac.filename]),1)
+
+        self.__check_error__(_(u"Cuesheet too long for track being split"))
+
+        self.assertEqual(self.__run_app__(
+                ["tracksplit","-t","wav","-d",self.dir2,
+                 "--format=%s" % (self.format_string),
+                 "--cue",self.cue_path,self.flac.filename]),0)
+
+        for i in range(3):
+            self.__check_info__(_(u"%(source)s -> %(destination)s") % \
+                                    {"source":self.filename(self.flac.filename),
+                                     "destination":self.filename(
+                        os.path.join(self.dir2,
+                                     audiotools.WaveAudio.track_name(i + 1,
+                                                                     None,
+                                                                     format=self.format_string)))})
+
+        #FIXME? - check for broken cue sheet output?
+
+    def test_tracksplit2(self):
+        format_string = "%(track_name)s - %(album_track_number)s.%(suffix)s"
+
+        xmcd = audiotools.XMCD.read_data(open(self.xmcd_path).read().decode('utf-8'))
+        xmcd_metadata = xmcd.metadata()
+
+        self.assertEqual(self.__run_app__(
+                ["tracksplit","-t","mp3","-d",self.dir2,
+                 "-x",self.xmcd_path,
+                 "--format=%s" % (format_string),
+                 "--cue",self.cue_path,self.flac.filename]),0)
+
+        for i in xrange(3):
+            self.__check_info__(_(u"%(source)s -> %(destination)s") % \
+                                    {"source":self.filename(self.flac.filename),
+                                     "destination":self.filename(os.path.join(
+                            self.dir2,audiotools.MP3Audio.track_name(
+                                i+1,xmcd_metadata[i+1],format=format_string)))})
+
+        self.assertEqual(self.__run_app__(
+                ["tracksplit","-t","flac","-d",self.dir2,
+                 "--album-number=1",
+                 "-x",self.xmcd_path,
+                 "--format=%s" % (format_string),
+                 "--cue",self.cue_path,self.flac.filename]),0)
+
+        for i in xrange(3):
+            self.__check_info__(_(u"%(source)s -> %(destination)s") % \
+                                    {"source":self.filename(self.flac.filename),
+                                     "destination":self.filename(os.path.join(
+                            self.dir2,audiotools.FlacAudio.track_name(
+                                i+1,
+                                xmcd_metadata[i+1],
+                                album_number=1,
+                                format=format_string)))})
+        self.__check_info__(_(u"Adding ReplayGain metadata.  This may take some time."))
+
+
+
+
 
 
 ############

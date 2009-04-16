@@ -305,9 +305,11 @@
 - [X] tracklength
 - [ ] tracklint
 - [ ] trackrename
-- [ ] tracksplit
+- [X] tracksplit
 - [ ] tracktag
 ** TODO Convert --help output to gettext-based strings
 ** TODO Convert GUI programs to gettext-based strings
 - [ ] coverview
 - [ ] editxmcd
+* TODO Update tracksplit's man page
+  It now supports more of track2track's options

@@ -71,6 +71,18 @@ if (__name__ == '__main__'):
                       metavar='FILENAME',
                       help='the cuesheet to use for splitting track')
 
+    parser.add_option('-t','--type',
+                      action='store',
+                      dest='type',
+                      choices=audiotools.TYPE_MAP.keys(),
+                      help='the type of audio value to convert to')
+
+    parser.add_option('-q','--quality',
+                      action='store',
+                      type='string',
+                      dest='quality',
+                      help='the quality to store audio values at')
+
     parser.add_option('-x','--xmcd',
                       action='store',
                       type='string',
@@ -82,20 +94,21 @@ if (__name__ == '__main__'):
                       type='string',
                       dest='dir',
                       default='.',
-                      help='the directory to store extracted audio files')
+                      help='the directory to store converted audio files')
 
-    parser.add_option('-q','--quality',
+    parser.add_option('--format',
                       action='store',
                       type='string',
-                      dest='quality',
-                      help='the quality to store audio values at')
+                      default=audiotools.FILENAME_FORMAT,
+                      dest='format',
+                      help='the format string for new filenames')
 
-    parser.add_option('-t','--type',
+    parser.add_option('--album-number',
+                      dest='album_number',
                       action='store',
-                      dest='type',
-                      choices=audiotools.TYPE_MAP.keys(),
-                      default='wav',
-                      help='the type of audio value to convert to')
+                      type='int',
+                      default=None,
+                      help='the album number, if these tracks are one of a series of albums')
 
     parser.add_option('-j','--joint',
                       action='store',
@@ -168,6 +181,10 @@ if (__name__ == '__main__'):
         msg.error(_(u"You must specify a cuesheet to split audio file"))
         sys.exit(1)
 
+    if (options.max_processes < 1):
+        msg.error(_(u'You must run at least 1 process at a time'))
+        sys.exit(1)
+
     #if we're using an XMCD file, use that file for MetaData
     if (options.xmcd != None):
         try:
@@ -190,45 +207,55 @@ if (__name__ == '__main__'):
         #(this overrides an embedded cuesheet)
         try:
             cuesheet = audiotools.read_sheet(options.cuesheet)
-        except audiotools.SheetException,msg:
-            msg.error(u"Cuesheet error: %s" % (msg))
+        except audiotools.SheetException,err:
+            msg.error(u"Cuesheet error: %s" % (err))
             sys.exit(1)
     else:
         cuesheet = audiofile.get_cuesheet()
 
-    if (cuesheet is None):
-        msg.error(_(u"Cuesheet not given and none found embedded in audio file"))
-        sys.exit(1)
-
     if (list(cuesheet.pcm_lengths(audiofile.total_frames()))[-1] <= 0):
-        msg.error(_(u"Cuesheet too short for track being split"))
+        msg.error(_(u"Cuesheet too long for track being split"))
         sys.exit(1)
 
     try:
         split_pcm = audiotools.pcm_split(
             audiofile.to_pcm(),
             cuesheet.pcm_lengths(audiofile.total_frames()))
-    except audiotools.DecodingError,msg:
-        msg.error(unicode(msg))
+    except audiotools.DecodingError,err:
+        msg.error(unicode(err))
         sys.exit(1)
 
     try:
         for (i,pcmreader) in enumerate(split_pcm):
             track_number = i + 1
+            if (options.album_number is None):
+                album_number = audiofile.album_number()
+            else:
+                album_number = options.album_number
 
             if (xmcd is not None):
                 filename = os.path.join(
                     base_directory,
                     AudioType.track_name(track_number,
-                                         xmcd[track_number]))
+                                         xmcd[track_number],
+                                         album_number=album_number,
+                                         format=options.format))
                 metadata = xmcd[track_number]
             else:
                 filename = os.path.join(
                     base_directory,
                     AudioType.track_name(track_number,
-                                         None))
+                                         None,
+                                         album_number=album_number,
+                                         format=options.format))
 
                 metadata = None
+
+            if (album_number != 0):
+                if (metadata is not None):
+                    metadata.album_number = album_number
+                else:
+                    metadata = audiotools.MetaData(album_number=album_number)
 
             audiotools.make_dirs(filename)
             encoded_filenames.append(filename)
