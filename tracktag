@@ -92,7 +92,7 @@ def get_image(filename, type):
 
         return audiotools.Image.new(data,u'',type)
     except IOError:
-        raise audiotools.InvalidImage("error opening file: \"%s\"" % (filename))
+        raise audiotools.InvalidImage(_(u"Unable to open file"))
 
 #given a comment filename
 #returns the comment as a unicode string
@@ -105,12 +105,12 @@ def read_comment(filename,messenger):
         f.close()
 
         if (((data.count(u"\uFFFD") * 100) / len(data)) >= 10):
-            messenger.error(u"comment file \"%s\" does not appear to be UTF-8 text" % (messenger.filename(filename)))
+            messenger.error(_(u"Comment file \"%s\" does not appear to be UTF-8 text") % (messenger.filename(filename)))
             sys.exit(1)
         else:
             return data
     except IOError:
-        messenger.error(u"unable to open comment file \"%s\"" % \
+        messenger.error(_(u"Unable to open comment file \"%s\"") % \
                             (messenger.filename(filename)))
         sys.exit(1)
 
@@ -306,7 +306,7 @@ if (__name__ == '__main__'):
         try:
             xmcd = audiotools.XMCD.read(options.xmcd).metadata()
         except audiotools.XMCDException:
-            msg.error(_(u"Error opening XMCD file \"%s\"") % \
+            msg.error(_(u"Unable to open XMCD file \"%s\"") % \
                           (msg.filename(options.xmcd)))
             sys.exit(1)
     else:
@@ -399,10 +399,10 @@ if (__name__ == '__main__'):
                             metadata.add_image(get_image(path,4))
 
                 file.set_metadata(metadata)
-            except audiotools.InvalidImage,msg:
+            except audiotools.InvalidImage,err:
                 msg.error(_(u"%(filename)s: %(message)s") % \
                               {"filename":msg.filename(file.filename),
-                               "message":msg})
+                               "message":err})
                 sys.exit(1)
 
     #we're assuming all tracks are the same type

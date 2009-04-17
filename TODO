@@ -306,7 +306,7 @@
 - [ ] tracklint
 - [ ] trackrename
 - [X] tracksplit
-- [ ] tracktag
+- [X] tracktag
 ** TODO Convert --help output to gettext-based strings
 ** TODO Convert GUI programs to gettext-based strings
 - [ ] coverview

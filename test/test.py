@@ -4132,6 +4132,52 @@ class TestProgramOutput(TestTextOutput):
 
             self.assertEqual(self.stdout.read(),"")
 
+    def test_tracktag1(self):
+        self.assertEqual(self.__run_app__(
+                ["tracktag","-x","/dev/null",self.flac1.filename]),1)
+        self.__check_error__(_(u"Unable to open XMCD file \"%s\"") % \
+                          (self.filename("/dev/null")))
+
+        self.assertEqual(self.__run_app__(
+                ["tracktag","--front-cover=/dev/null/foo.jpg",
+                 self.flac1.filename]),1)
+        self.__check_error__(_(u"%(filename)s: %(message)s") % \
+                              {"filename":self.filename(self.flac1.filename),
+                               "message":_(u"Unable to open file")})
+
+        self.assertEqual(self.__run_app__(
+                ["tracktag","--comment-file=/dev/null/file.txt",
+                 self.flac1.filename]),1)
+        self.__check_error__(_(u"Unable to open comment file \"%s\"") % \
+                                 (self.filename("/dev/null/file.txt")))
+
+        f = open(os.path.join(self.dir1,"comment.txt"),"w")
+        f.write(os.urandom(1024) + ((u"\uFFFD".encode('utf-8')) * 103))
+        f.close()
+
+        self.assertEqual(self.__run_app__(
+                ["tracktag","--comment-file=%s" % \
+                     (os.path.join(self.dir1,"comment.txt")),
+                 self.flac1.filename]),1)
+        self.__check_error__(_(u"Comment file \"%s\" does not appear to be UTF-8 text") % \
+                                 (os.path.join(self.dir1,"comment.txt")))
+
+        self.assertEqual(self.__run_app__(
+                ["tracktag","--replay-gain",
+                 self.flac1.filename,self.flac2.filename,self.flac3.filename]),0)
+        self.__check_info__(_(u"Adding ReplayGain metadata.  This may take some time."))
+
+        self.assertEqual(self.__run_app__(
+                ["track2track","-t","mp3","-d",self.dir2,
+                 self.flac1.filename,self.flac2.filename,self.flac3.filename]),0)
+
+        mp3_files = [os.path.join(self.dir2,f) for f in os.listdir(self.dir2)]
+
+        self.assertEqual(self.__run_app__(
+                ["tracktag","--replay-gain"] + mp3_files),0)
+
+        self.__check_info__(_(u"Applying ReplayGain.  This may take some time."))
+
 class TestTracklengthOutput(TestTextOutput):
     def setUp(self):
         self.dir1 = tempfile.mkdtemp()
@@ -4389,9 +4435,6 @@ class TestTracksplitOutput(TestTextOutput):
                                 album_number=1,
                                 format=format_string)))})
         self.__check_info__(_(u"Adding ReplayGain metadata.  This may take some time."))
-
-
-
 
 
 
