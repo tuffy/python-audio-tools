@@ -311,5 +311,5 @@
 ** TODO Convert GUI programs to gettext-based strings
 - [ ] coverview
 - [ ] editxmcd
-* TODO Update tracksplit's man page
+* DONE Update tracksplit's man page
   It now supports more of track2track's options

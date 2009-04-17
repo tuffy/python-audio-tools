@@ -108,7 +108,7 @@ if (__name__ == '__main__'):
                       action='store',
                       type='int',
                       default=None,
-                      help='the album number, if these tracks are one of a series of albums')
+                      help='the album number, if this image one of a series of albums')
 
     parser.add_option('-j','--joint',
                       action='store',

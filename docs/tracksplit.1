@@ -1,4 +1,4 @@
-.TH "tracksplit" 1 "February 10, 2008" "" "Audio File Splitter"
+.TH "tracksplit" 1 "April 17, 2009" "" "Audio File Splitter"
 .SH NAME
 tracksplit \- split audio track
 .SH SYNOPSIS
@@ -44,12 +44,6 @@ and
 .BR editxmcd (1)
 programs.
 .TP
-\fB-j \fIprocesses\fB, --joint=\fIprocesses\fR
-The maximum number of tracks to extract at one time.
-If one has multiple CPUs or CPU cores, allowing
-.BR tracksplit (1)
-to use all of them simultaneously can greatly increase splitting speed.
-.TP
 \fB-d \fIdirectory\fB, --dir=\fIdirectory\fR
 The target directory for the split tracks.
 If none is given, the current working directory is used
@@ -57,6 +51,22 @@ If none is given, the current working directory is used
 .BR getcwd (3)
 ).
 If the target directory does not exist, it will be created automatically.
+.TP
+\fB--format=\fIformat string\fR
+The format string to use for new filenames.
+Template fields are replaced with metadata values when new tracks are created.
+All other text is left as-is.
+If this option is omitted, a default format string is used.
+.TP
+\fB--album-number=\fInumber\fR
+The album number of this image's CD,
+if it belongs to one of a series of albums.
+.TP
+\fB-j \fIprocesses\fB, --joint=\fIprocesses\fR
+The maximum number of tracks to extract at one time.
+If one has multiple CPUs or CPU cores, allowing
+.BR tracksplit (1)
+to use all of them simultaneously can greatly increase splitting speed.
 .TP
 \fB--replay-gain\fR
 Add ReplayGain metadata to newly created tracks
@@ -89,6 +99,37 @@ utilities:
 .B cdrdao read-toc \-\-device \fI/dev/cdrom\fR \fICDImage.toc\fR
 .br
 .B toc2cue \fICDImage.toc\fR \fICDImage.cue\fR
+
+.SH FORMAT STRING FIELDS
+.TS
+tab(:);
+| c   s |
+| c | c |
+| l | l |.
+_
+Template Fields
+Key:Value
+=
+\fC%(track_number)2.2d\fR:the track's number on the CD
+\fC%(album_number)d\fR:the CD's album number
+\fC%(album_track_number)s\fR:combination of album and track number
+\fC%(track_name)s\fR:the track's name
+\fC%(album_name)s\fR:the album's name
+\fC%(artist_name)s\fR:the track's artist name
+\fC%(performer_name)s\fR:the track's performer name
+\fC%(composer_name)s\fR:the track's composer name
+\fC%(conductor_name)s\fR:the track's conductor name
+\fC%(media)s\fR:the track's source media
+\fC%(ISRC)s\fR:the track's ISRC
+\fC%(catalog)s\fR:the track's catalog number
+\fC%(copyright)s\fR:the track's copyright information
+\fC%(publisher)s\fR:the track's publisher
+\fC%(year)s\fR:the track's publication year
+\fC%(date)s\fR:the track's original recording date
+\fC%(suffix)s\fR:the track's suffix
+_
+.TE
+
 .SH SEE ALSO
 .BR cd2track (1),
 .BR cd2xmcd (1),
