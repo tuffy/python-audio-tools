@@ -303,8 +303,8 @@
 - [X] trackcmp
 - [X] trackinfo
 - [X] tracklength
-- [ ] tracklint
-- [ ] trackrename
+- [X] tracklint
+- [X] trackrename
 - [X] tracksplit
 - [X] tracktag
 ** TODO Convert --help output to gettext-based strings

@@ -52,9 +52,9 @@ TEXT_FIELDS = tuple([field for field in audiotools.MetaData.__FIELDS__
 
 def display_messages(messenger,track,messages):
     for message in messages:
-        messenger.info(_(u"* %(filename)s: %(message)s" % \
-                             {"filename":messenger.filename(track.filename),
-                              "message":message}))
+        messenger.info(_(u"* %(filename)s: %(message)s") % \
+                           {"filename":messenger.filename(track.filename),
+                            "message":message})
 
 #track should be an existing Track object
 #if dry_run is True, a new Track object is written with the given fixes applied
@@ -68,7 +68,7 @@ def fix_track(track,dry_run=False):
     if (isinstance(track,BrokenFlacAudio)):
         if (not dry_run):
             track = track.fix_id3()
-        log.append(u"removed unnecessary ID3 tags")
+        log.append(_(u"Removed unnecessary ID3 tags"))
 
     return (track,log)
 
@@ -81,7 +81,7 @@ def __strip_list_dict__(d,log):
                 d[key] = new_values
             else:
                 del(d[key])
-            log.append(u"stripped blank %s field" % (key))
+            log.append(_(u"Stripped blank %s field") % (key))
 
 def __strip_zeroes_list_dict__(d,numeric_keys,log):
     def __strip_zeroes__(s):
@@ -97,7 +97,7 @@ def __strip_zeroes_list_dict__(d,numeric_keys,log):
             new_values = [__strip_zeroes__(unicode(v)) for v in old_values]
             if (old_values != new_values):
                 d[key] = new_values
-                log.append(u"stripped leading zeroes from %s field" % (key))
+                log.append(_(u"Stripped leading zeroes from %s field") % (key))
 
 #if the track number is between 100 and 999,
 #use the high digit for the album number and low digits for track number
@@ -106,18 +106,18 @@ def fix_track_number(metadata, log):
     if ((metadata.track_number >= 100) and
         (metadata.track_number <= 999) and
         (metadata.album_number == 0)):
-        log.append(u"converted track number %d to album number %d and track_number %d" % \
-                       (metadata.track_number,
-                        metadata.track_number / 100,
-                        metadata.track_number % 100))
+        log.append(_(u"Converted track number %(old_tracknum)d to album number %(albumnum)d and track_number %(new_tracknum)d") % \
+                       {"old_tracknum":metadata.track_number,
+                        "albumnum":metadata.track_number / 100,
+                        "new_tracknum":metadata.track_number % 100})
         metadata.album_number = metadata.track_number / 100
         metadata.track_number = metadata.track_number % 100
     elif ((metadata.track_number >= 100) and
           (metadata.track_number <= 999) and
           (metadata.album_number == (metadata.track_number / 100))):
-        log.append(u"converted track number %d to track number %d" % \
-                   (metadata.track_number,
-                    metadata.track_number % 100))
+        log.append(_(u"Converted track number %(old_tracknum)d to track number %(new_tracknum)d") % \
+                   {"old_tracknum":metadata.track_number,
+                    "new_tracknum":metadata.track_number % 100})
         metadata.track_number = metadata.track_number % 100
 
 #remove any leading zeroes from the track number and album number fields
@@ -140,7 +140,7 @@ def fix_leading_zeroes(metadata,log):
                 (len(metadata[key].lstrip(u"0")) > 0) and
                 (metadata[key].lstrip(u"0") != metadata[key])):
                 metadata[key] = metadata[key].lstrip(u"0")
-                log.append(u"stripped whitespace from %s field" % (key))
+                log.append(_(u"Stripped whitespace from %s field") % (key))
 
 #if performer name is the same as artist name,
 #clear the performer name value
@@ -148,7 +148,7 @@ def fix_performer_name(metadata, log):
     if ((len(metadata.artist_name) > 0) and
         (metadata.artist_name == metadata.performer_name)):
         metadata.performer_name = u""
-        log.append(u"removed redundant performer name field")
+        log.append(_(u"Removed redundant performer name field"))
 
 #if the "date" field is substituted for "year",
 #assign the current value to "year" and clear "date"
@@ -156,7 +156,7 @@ def fix_date(metadata, log):
     if (YEAR.match(metadata.date) and (metadata.year == u"")):
         metadata.year = metadata.date
         metadata.date = u""
-        log.append(u"moved track date to track year")
+        log.append(_(u"Moved track date to track year"))
 
 #remove any leading or trailing whitespace from text fields
 #this is common in ID3v1 comments where NULL bytes should be
@@ -166,8 +166,7 @@ def fix_whitespace(metadata, log):
         if (getattr(metadata,field).strip().strip(unichr(0)) !=
             getattr(metadata,field)):
             setattr(metadata,field,getattr(metadata,field).strip().strip(unichr(0)))
-            log.append(u"stripped whitespace from %s field" % \
-                           (field))
+            log.append(_(u"Stripped whitespace from %s field") % (field))
 
 #remove any blank tag fields from
 #VorbisComments, ID3v2Comments and ApeTags
@@ -182,7 +181,7 @@ def fix_blank_fields(metadata, log):
         for key in list(metadata.keys())[:]:
             if (len(metadata[key].strip().strip(unichr(0))) == 0):
                 del(metadata[key])
-                log.append(u"stripped blank %s field" % (key))
+                log.append(_(u"Stripped blank %s field") % (key))
 
 METADATA_FIXES = (fix_leading_zeroes,fix_track_number,
                   fix_whitespace,fix_performer_name,fix_blank_fields)
@@ -302,7 +301,7 @@ def undo_from_backup(track, undo_db, messenger):
             old_track.close()
             xdelta_f.close()
 
-            messenger.info(u"* restored: %s" % \
+            messenger.info(_(u"Restored: %s") % \
                                (messenger.filename(track.filename)))
 
 #a FlacAudio Track prepended with ID3v2 tags

@@ -3649,6 +3649,20 @@ class TestProgramOutput(TestTextOutput):
 
         self.__check_error__(_(u"Invalid XMCD file"))
 
+        self.assertEqual(self.__run_app__(
+                ["track2track","--format=%(foo)s","-t","flac","-d",self.dir2,
+                 self.flac1.filename]),1)
+
+        self.__check_error__(_(u"Unknown field \"%s\" in file format") % \
+                            ("foo"))
+        self.__check_info__(_(u"Supported fields are:"))
+        for field in sorted(audiotools.MetaData.__FIELDS__ + \
+                                ("album_track_number","suffix")):
+            if (field == 'track_number'):
+                self.__check_info__(u"%(track_number)2.2d")
+            else:
+                self.__check_info__(u"%%(%s)s" % (field))
+
         #FIXME - check invalid thumbnails
 
     def test_track2track3(self):
@@ -4178,6 +4192,48 @@ class TestProgramOutput(TestTextOutput):
 
         self.__check_info__(_(u"Applying ReplayGain.  This may take some time."))
 
+    def test_tracklint1(self):
+        self.assertEqual(self.__run_app__(
+                ["tracklint","--undo",self.flac1.filename]),1)
+        self.__check_error__(_(u"Cannot perform undo without undo db"))
+
+        self.assertEqual(self.__run_app__(
+                ["tracklint","--fix","--db","/dev/null/foo.db",
+                 self.flac1.filename]),1)
+        self.__check_error__(_(u"Unable to open \"%s\"") % \
+                                 (self.filename("/dev/null/foo.db")))
+
+        self.assertEqual(self.__run_app__(
+                ["tracklint","--undo","--db","/dev/null/foo.db",
+                 self.flac1.filename]),1)
+        self.__check_error__(_(u"Unable to open \"%s\"") % \
+                                 (self.filename("/dev/null/foo.db")))
+
+        #FIXME - tracklint can generate swaths of info text
+        #these should probably be tested somewhere
+
+    def test_trackrename(self):
+        self.assertEqual(self.__run_app__(["trackrename"]),1)
+        self.__check_error__(_(u"You must specify at least 1 supported audio file"))
+
+        self.assertEqual(self.__run_app__(
+                ["trackrename","-x","/dev/null",self.flac1.filename]),1)
+        self.__check_error__(_(u"Error opening XMCD file \"%s\"") % \
+                                 (self.filename("/dev/null")))
+
+        self.assertEqual(self.__run_app__(
+                ["trackrename","--format=%(foo)s",self.flac1.filename]),1)
+
+        self.__check_error__(_(u"Unknown field \"%s\" in file format") % \
+                            ("foo"))
+        self.__check_info__(_(u"Supported fields are:"))
+        for field in sorted(audiotools.MetaData.__FIELDS__ + \
+                                ("album_track_number","suffix")):
+            if (field == 'track_number'):
+                self.__check_info__(u"%(track_number)2.2d")
+            else:
+                self.__check_info__(u"%%(%s)s" % (field))
+
 class TestTracklengthOutput(TestTextOutput):
     def setUp(self):
         self.dir1 = tempfile.mkdtemp()
@@ -4382,6 +4438,21 @@ class TestTracksplitOutput(TestTextOutput):
                  "--cue",self.bad_cue_path,self.flac.filename]),1)
 
         self.__check_error__(_(u"Cuesheet too long for track being split"))
+
+        self.assertEqual(self.__run_app__(
+                ["tracksplit","-t","flac","--format=%(foo)s","-d",self.dir2,
+                 "--cue",self.cue_path,"-x",self.xmcd_path,
+                 self.flac.filename]),1)
+
+        self.__check_error__(_(u"Unknown field \"%s\" in file format") % \
+                            ("foo"))
+        self.__check_info__(_(u"Supported fields are:"))
+        for field in sorted(audiotools.MetaData.__FIELDS__ + \
+                                ("album_track_number","suffix")):
+            if (field == 'track_number'):
+                self.__check_info__(u"%(track_number)2.2d")
+            else:
+                self.__check_info__(u"%%(%s)s" % (field))
 
         self.assertEqual(self.__run_app__(
                 ["tracksplit","-t","wav","-d",self.dir2,
