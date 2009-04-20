@@ -19,7 +19,6 @@
 
 
 import audiotools
-import optparse
 import sys
 import struct
 import ossaudiodev
@@ -153,7 +152,7 @@ class PulsePlayer:
                 cls.server_alive())
 
 if (__name__ == '__main__'):
-    parser = optparse.OptionParser(
+    parser = audiotools.OptionParser(
         "%prog <track 1> [track 2] ...",
         version="Python Audio Tools %s" % (audiotools.VERSION))
 
@@ -161,13 +160,13 @@ if (__name__ == '__main__'):
                       action='store_true',
                       default=False,
                       dest='track_replaygain',
-                      help='apply track ReplayGain during playback, if present')
+                      help=_(u'apply track ReplayGain during playback, if present'))
 
     parser.add_option('-A','--album-replaygain',
                       action='store_true',
                       default=False,
                       dest='album_replaygain',
-                      help='apply album ReplayGain during playback, if present')
+                      help=_(u'apply album ReplayGain during playback, if present'))
 
 
     players = [p for p in [OSSPlayer,PulsePlayer] if p.available()]
@@ -178,7 +177,7 @@ if (__name__ == '__main__'):
                       dest='output',
                       choices=players_map.keys(),
                       default=players[-1].NAME,
-                      help="the method to play audio (choose from: %s)" % \
+                      help=_(u"the method to play audio (choose from: %s)") % \
                           ", ".join(["\"%s\"" % (k) for k in
                                      players_map.keys()]))
 

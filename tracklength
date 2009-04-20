@@ -18,7 +18,6 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-import optparse
 import os.path
 import audiotools
 import gettext
@@ -28,7 +27,7 @@ gettext.install("audiotools",unicode=True)
 OUTPUT = _(u"%(hours)d:%(minutes)2.2d:%(seconds)2.2d")
 
 if (__name__ == '__main__'):
-    parser = optparse.OptionParser(
+    parser = audiotools.OptionParser(
         "%prog <track 1> [track 2] ...",
         version="Python Audio Tools %s" % (audiotools.VERSION))
 

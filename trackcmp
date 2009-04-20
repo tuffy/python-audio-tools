@@ -19,7 +19,6 @@
 
 
 import audiotools
-import optparse
 import sys
 import os
 import os.path
@@ -38,7 +37,7 @@ def near_equal(audiofile1, audiofile2):
         p2.close()
 
 if (__name__ == '__main__'):
-    parser = optparse.OptionParser(
+    parser = audiotools.OptionParser(
         '%prog <file 1> <file 2>',
         version="Python Audio Tools %s" % (audiotools.VERSION))
 
@@ -52,7 +51,7 @@ if (__name__ == '__main__'):
                       dest='verbosity',
                       choices=["quiet","normal","debug"],
                       default="normal",
-                      help='the verbosity level to execute at')
+                      help=_(u'the verbosity level to execute at'))
 
     (options,args) = parser.parse_args()
     msg = audiotools.Messenger("trackcmp",options)

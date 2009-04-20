@@ -19,7 +19,6 @@
 
 
 import audiotools
-import optparse
 import sys
 import os
 import gettext
@@ -88,7 +87,7 @@ class PulseAudioReader(audiotools.PCMReader):
                 cls.server_alive())
 
 if (__name__ == '__main__'):
-    parser = optparse.OptionParser(
+    parser = audiotools.OptionParser(
         "%prog [OPTIONS]",
         version="Python Audio Tools %s" % (audiotools.VERSION))
 
@@ -99,54 +98,54 @@ if (__name__ == '__main__'):
                       action='store',
                       dest='type',
                       choices=audiotools.TYPE_MAP.keys(),
-                      help='the type of audio value to convert to')
+                      help=_(u'the type of audio value to convert to'))
 
     parser.add_option('-q','--quality',
                       action='store',
                       type='string',
                       dest='quality',
-                      help='the quality to store audio values at')
+                      help=_(u'the quality to store audio values at'))
 
     parser.add_option('-i','--input',
                       action='store',
                       dest='input',
                       choices=inputs_map.keys(),
                       default=inputs[-1].NAME,
-                      help="the method to record audio (choose from: %s)" % \
+                      help=_(u"the method to record audio (choose from: %s)")%\
                           ", ".join(["\"%s\"" % (k) for k in
                                      inputs_map.keys()]))
 
     parser.add_option('-o','--output',
                       action='store',
                       dest='output',
-                      help='output filename to use')
+                      help=_(u'output filename to use'))
 
     parser.add_option('--sample-rate',
                       action='store',
                       dest='sample_rate',
                       type='int',
                       default=44100,
-                      help='the sample rate to use when recording')
+                      help=_(u'the sample rate to use when recording'))
 
     parser.add_option('--bits-per-sample',
                       action='store',
                       dest='bits_per_sample',
                       type='int',
                       default=16,
-                      help='the number of bits-per-sample to use when recording')
+                      help=_(u'the number of bits-per-sample to use when recording'))
     parser.add_option('--channels',
                       action='store',
                       dest='channels',
                       type='int',
                       default=2,
-                      help='the number of channels to use when recording')
+                      help=_(u'the number of channels to use when recording'))
 
     parser.add_option('-V','--verbose',
                       action='store',
                       dest='verbosity',
                       choices=["quiet","normal","debug"],
                       default="normal",
-                      help='the verbosity level to execute at')
+                      help=_(u'the verbosity level to execute at'))
 
     (options,args) = parser.parse_args()
     msg = audiotools.Messenger("record2track",options)

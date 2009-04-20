@@ -23,7 +23,6 @@ import os.path
 import sys
 import audiotools
 import audiotools.toc
-import optparse
 import tempfile
 import subprocess
 import gettext
@@ -45,38 +44,39 @@ def convert_to_wave(audiofile,wave_filename,messenger):
     messenger.info(u"* %s" % (messenger.filename(audiofile.filename)))
 
 if (__name__ == '__main__'):
-    parser = optparse.OptionParser(
+    parser = audiotools.OptionParser(
         usage="%prog [options] <track 1> [track 2] ...",
         version="Python Audio Tools %s" % (audiotools.VERSION))
 
     parser.add_option("-c","--cdrom",dest="dev",
                       default=audiotools.DEFAULT_CDROM,
-                      help="cdrom device to use")
+                      help=_(u"cdrom device to use"))
 
     parser.add_option("-s","--speed",dest="speed",
                       default=20,
-                      help="the speed to burn the CD at",type="int")
+                      type="int",
+                      help=_(u"the speed to burn the CD at"))
 
     parser.add_option('--cue',
                       action='store',
                       type='string',
                       dest='cuesheet',
                       metavar='FILENAME',
-                      help='the cuesheet to use for writing tracks')
+                      help=_(u'the cuesheet to use for writing tracks'))
 
     parser.add_option('-j','--joint',
                       action='store',
                       type='int',
                       default=MAX_CPUS,
                       dest='max_processes',
-                      help='the maximum number of processes to run at a time')
+                      help=_(u'the maximum number of processes to run at a time'))
 
     parser.add_option('-V','--verbose',
                       action='store',
                       dest='verbosity',
                       choices=["quiet","normal","debug"],
                       default="normal",
-                      help='the verbosity level to execute at')
+                      help=_(u'the verbosity level to execute at'))
 
     (options,args) = parser.parse_args()
     msg = audiotools.Messenger("track2cd",options)

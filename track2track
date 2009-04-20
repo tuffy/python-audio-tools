@@ -19,7 +19,6 @@
 
 
 import audiotools
-import optparse
 import sys
 import os
 import os.path
@@ -98,7 +97,7 @@ def convert_file(destination_class, destination_filename,
 
 
 if (__name__ == '__main__'):
-    parser = optparse.OptionParser(
+    parser = audiotools.OptionParser(
         '%prog [-t track type ] [-x XMCD file] ' + \
         '[-d directory] [-q quality] ' + \
         '<track 1> [track 2] ...',
@@ -108,58 +107,58 @@ if (__name__ == '__main__'):
                       action='store',
                       dest='type',
                       choices=audiotools.TYPE_MAP.keys(),
-                      help='the type of audio value to convert to')
+                      help=_(u'the type of audio value to convert to'))
 
     parser.add_option('-q','--quality',
                       action='store',
                       type='string',
                       dest='quality',
-                      help='the quality to store audio values at')
+                      help=_(u'the quality to store audio values at'))
 
     parser.add_option('-x','--xmcd',
                       action='store',
                       type='string',
                       dest='xmcd',
-                      help='an XMCD file to get audio metadata from')
+                      help=_(u'an XMCD file to get audio metadata from'))
 
     parser.add_option('-d','--dir',
                       action='store',
                       type='string',
                       dest='dir',
                       default='.',
-                      help='the directory to store converted audio files')
+                      help=_(u'the directory to store converted audio files'))
 
     parser.add_option('--format',
                       action='store',
                       type='string',
                       default=audiotools.FILENAME_FORMAT,
                       dest='format',
-                      help='the format string for new filenames')
+                      help=_(u'the format string for new filenames'))
 
     parser.add_option('-o','--output',
                       action='store',
                       dest='output',
-                      help='output filename to use, overriding default and -d')
+                      help=_(u'output filename to use, overriding default and -d'))
 
     parser.add_option('--album-number',
                       dest='album_number',
                       action='store',
                       type='int',
                       default=None,
-                      help='the album number, if these tracks are one of a series of albums')
+                      help=_(u'the album number, if these tracks are one of a series of albums'))
 
     parser.add_option('-j','--joint',
                       action='store',
                       type='int',
                       default=MAX_CPUS,
                       dest='max_processes',
-                      help='the maximum number of processes to run at a time')
+                      help=_(u'the maximum number of processes to run at a time'))
 
     parser.add_option('-T','--thumbnail',
                       action='store_true',
                       default=False,
                       dest='thumbnail',
-                      help='convert embedded images to smaller thumbnails during conversion')
+                      help=_(u'convert embedded images to smaller thumbnails during conversion'))
 
 
     #if adding ReplayGain is a lossless process
@@ -170,19 +169,19 @@ if (__name__ == '__main__'):
     parser.add_option('--replay-gain',
                       action='store_true',
                       dest='add_replay_gain',
-                      help='add ReplayGain metadata to newly created tracks')
+                      help=_(u'add ReplayGain metadata to newly created tracks'))
 
     parser.add_option('--no-replay-gain',
                       action='store_false',
                       dest='add_replay_gain',
-                      help='do not add ReplayGain metadata to newly created tracks')
+                      help=_(u'do not add ReplayGain metadata to newly created tracks'))
 
     parser.add_option('-V','--verbose',
                       action='store',
                       dest='verbosity',
                       choices=["quiet","normal","debug"],
                       default="normal",
-                      help='the verbosity level to execute at')
+                      help=_(u'the verbosity level to execute at'))
 
     (options,args) = parser.parse_args()
     msg = audiotools.Messenger("track2track",options)

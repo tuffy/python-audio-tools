@@ -19,7 +19,6 @@
 
 import sys
 import os.path
-import optparse
 
 try:
     import gtk
@@ -342,7 +341,7 @@ class EditXMCD:
         self.xml.get_widget("about").run()
 
 if (__name__ == '__main__'):
-    parser = optparse.OptionParser(
+    parser = audiotools.OptionParser(
         '%prog [-x XMCD file] [track 1] [track 2] ...',
         version="Python Audio Tools %s" % (audiotools.VERSION))
 

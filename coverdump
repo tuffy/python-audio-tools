@@ -19,7 +19,6 @@
 
 
 import audiotools
-import optparse
 import sys
 import os
 import os.path
@@ -30,10 +29,8 @@ gettext.install("audiotools",unicode=True)
 FILENAME_TYPES = ("front_cover","back_cover","leaflet","media","other")
 
 if (__name__ == '__main__'):
-    parser = optparse.OptionParser(
-        '%prog ' + \
-        '[-d directory] ' + \
-        '<track>',
+    parser = audiotools.OptionParser(
+        usage='%prog [-d directory] <track>',
         version="Python Audio Tools %s" % (audiotools.VERSION))
 
     parser.add_option('-d','--dir',
@@ -41,20 +38,20 @@ if (__name__ == '__main__'):
                       type='string',
                       dest='dir',
                       default='.',
-                      help='the directory to store extracted images')
+                      help=_(u'the directory to store extracted images'))
 
     parser.add_option('-V','--verbose',
                       action='store',
                       dest='verbosity',
                       choices=["quiet","normal","debug"],
                       default="normal",
-                      help='the verbosity level to execute at')
+                      help=_(u'the verbosity level to execute at'))
 
     parser.add_option('-p','--prefix',
                       action='store',
                       dest='prefix',
                       default="",
-                      help='add a prefix to the output image')
+                      help=_(u'add a prefix to the output image'))
 
 
     (options,args) = parser.parse_args()

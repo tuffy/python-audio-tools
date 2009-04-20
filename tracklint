@@ -18,7 +18,6 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 import audiotools
-import optparse
 import sys
 import os
 import os.path
@@ -420,7 +419,7 @@ audiotools.TYPE_MAP = dict([(track_type.NAME,track_type)
                             if track_type.has_binaries(audiotools.BIN)])
 
 if (__name__ == '__main__'):
-    parser = optparse.OptionParser(
+    parser = audiotools.OptionParser(
         '%prog [--fix] [--undo] [--db file] <track 1> [track 2] ...',
         version="Python Audio Tools %s" % (audiotools.VERSION))
 
@@ -428,26 +427,26 @@ if (__name__ == '__main__'):
                       action='store_true',
                       default=False,
                       dest='fix',
-                      help='perform suggest fixes')
+                      help=_(u'perform suggest fixes'))
 
     parser.add_option('--db',
                       action='store',
                       type='string',
                       dest='db',
-                      help='undo database file')
+                      help=_(u'undo database file'))
 
     parser.add_option('--undo',
                       action='store_true',
                       default=False,
                       dest='undo',
-                      help='undo performed fixes')
+                      help=_(u'undo performed fixes'))
 
     parser.add_option('-V','--verbose',
                       action='store',
                       dest='verbosity',
                       choices=["quiet","normal","debug"],
                       default="normal",
-                      help='the verbosity level to execute at')
+                      help=_(u'the verbosity level to execute at'))
 
     (options,args) = parser.parse_args()
     msg = audiotools.Messenger("tracklint",options)
