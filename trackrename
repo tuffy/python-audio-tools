@@ -21,14 +21,13 @@
 import sys
 import audiotools
 import os.path
-import optparse
 import subprocess
 import gettext
 
 gettext.install("audiotools",unicode=True)
 
 if (__name__ == '__main__'):
-    parser = optparse.OptionParser(
+    parser = audiotools.OptionParser(
         "%prog [-x XMCD file] <track 1> [track 2] ...",
         version="Python Audio Tools %s" % (audiotools.VERSION))
 
@@ -36,21 +35,21 @@ if (__name__ == '__main__'):
                       action='store',
                       type='string',
                       dest='xmcd',
-                      help='an XMCD file')
+                      help=_(u'an XMCD file'))
 
     parser.add_option('--format',
                       action='store',
                       type='string',
                       default=audiotools.FILENAME_FORMAT,
                       dest='format',
-                      help='the format string for new filenames')
+                      help=_(u'the format string for new filenames'))
 
     parser.add_option('-V','--verbose',
                       action='store',
                       dest='verbosity',
                       choices=["quiet","normal","debug"],
                       default="normal",
-                      help='the verbosity level to execute at')
+                      help=_(u'the verbosity level to execute at'))
 
     (options,args) = parser.parse_args()
     msg = audiotools.Messenger("trackrename",options)

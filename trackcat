@@ -19,7 +19,6 @@
 
 
 import audiotools
-import optparse
 import sys
 import os
 import os.path
@@ -29,7 +28,7 @@ import gettext
 gettext.install("audiotools",unicode=True)
 
 if (__name__ == '__main__'):
-    parser = optparse.OptionParser(
+    parser = audiotools.OptionParser(
         '%prog [-t track type] ' + \
         '[-o output] [-q quality] ' + \
         '<track 1> [track 2] ...',
@@ -39,24 +38,24 @@ if (__name__ == '__main__'):
                       action='store',
                       type='string',
                       dest='quality',
-                      help='the quality to store audio values at')
+                      help=_(u'the quality to store audio values at'))
 
     parser.add_option('-t','--type',
                       action='store',
                       dest='type',
                       choices=audiotools.TYPE_MAP.keys(),
-                      help='the type of audio value to convert to')
+                      help=_(u'the type of audio value to convert to'))
 
     parser.add_option('-o','--output',dest='filename',
                       metavar='FILE',
-                      help='the output file')
+                      help=_(u'the output file'))
 
     parser.add_option('--cue',
                       action='store',
                       type='string',
                       dest='cuesheet',
                       metavar='FILENAME',
-                      help='a cuesheet to embed in the output file')
+                      help=_(u'a cuesheet to embed in the output file'))
 
     (options,args) = parser.parse_args()
     msg = audiotools.Messenger("trackcat",options)

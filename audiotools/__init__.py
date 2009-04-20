@@ -29,6 +29,7 @@ import cStringIO
 import os
 import os.path
 import ConfigParser
+import optparse
 import struct
 from itertools import izip
 import gettext
@@ -120,6 +121,10 @@ BIG_ENDIAN = (struct.pack("=I",0x100) == struct.pack(">I",0x100))
 #######################
 #Output Messaging
 #######################
+
+class OptionParser(optparse.OptionParser):
+    def _get_encoding(self,file):
+        return IO_ENCODING
 
 def Messenger(executable, options):
     if (not hasattr(options,"verbosity")):

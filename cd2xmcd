@@ -21,15 +21,14 @@
 import sys
 import audiotools
 import audiotools.cdio as cdio
-from optparse import OptionParser,make_option
 import gettext
 
 gettext.install("audiotools",unicode=True)
 
 if (__name__ == '__main__'):
-    parser = OptionParser(usage=\
-     "%prog [-x XMCD file] [-s server] [-p port] [--cdrom CDROM device]",
-                          version="Python Audio Tools %s" % (audiotools.VERSION))
+    parser = audiotools.OptionParser(
+        usage="%prog [-x XMCD file] [-s server] [-p port] [--cdrom CDROM device]",
+        version="Python Audio Tools %s" % (audiotools.VERSION))
     parser.add_option('-x','--xmcd',action='store',
                       type='string',dest='xmcd',default='-')
     parser.add_option('-c','--cdrom',action='store',
@@ -43,17 +42,17 @@ if (__name__ == '__main__'):
                       default=audiotools.FREEDB_PORT)
     parser.add_option('-i','--id',dest='discid',
                       action='store_true',default=False,
-                      help='display disc ID rather than fetch XMCD data')
+                      help=_(u'display disc ID rather than fetch XMCD data'))
     parser.add_option('-D','--default',
                       action='store_const',const=1,default=None,
-                      help='when multiple choices are available, select the first one automatically')
+                      help=_(u'when multiple choices are available, select the first one automatically'))
 
     parser.add_option('-V','--verbose',
                       action='store',
                       dest='verbosity',
                       choices=["quiet","normal","debug"],
                       default="normal",
-                      help='the verbosity level to execute at')
+                      help=_(u'the verbosity level to execute at'))
 
     (options,args) = parser.parse_args()
     msg = audiotools.Messenger("cd2xmcd",options)
