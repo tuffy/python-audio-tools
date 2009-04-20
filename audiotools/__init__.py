@@ -1627,7 +1627,7 @@ class AudioFile:
                          "album_number":album_number,
                          "suffix":cls.SUFFIX}
         except KeyError,error:
-            raise UnsupportedTracknameField(unicode(error))
+            raise UnsupportedTracknameField(unicode(error.args[0]))
 
     #takes a list of filenames matching this AudioFile type
     #and adds the proper ReplayGain values to them
