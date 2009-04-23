@@ -118,8 +118,9 @@ class PulsePlayer:
             stream_name = audiofile.filename
 
         if (pcm.channels in PULSEAUDIO_CHANNEL_MAP.keys()):
-            channel_map = ["--channel-map=%s" % \
-                               (",".join(PULSEAUDIO_CHANNEL_MAP[pcm.channels]))]
+            channel_map = []
+            #channel_map = ["--channel-map=%s" % \
+            #                   (",".join(PULSEAUDIO_CHANNEL_MAP[pcm.channels]))
         else:
             channel_map = []
 
