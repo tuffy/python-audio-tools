@@ -55,7 +55,8 @@ class RawConfigParser(ConfigParser.RawConfigParser):
             return default
 
 config = RawConfigParser()
-config.read([os.path.join(sys.prefix,"etc","audiotools.cfg"),
+config.read([os.path.join("/etc","audiotools.cfg"),
+             os.path.join(sys.prefix,"etc","audiotools.cfg"),
              os.path.expanduser('~/.audiotools.cfg')])
 
 BUFFER_SIZE = 0x100000

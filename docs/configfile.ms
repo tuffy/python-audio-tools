@@ -64,9 +64,7 @@ file.
 Since it need only contain the options that one wishes to override,
 it may be smaller than the system-wide config file.
 .IP 3.
-The system-wide \fC.audiotools.cfg\fR config file.
-This is often found in \fC/usr/etc/audiotools.cfg\fR (or wherever Python
-places data files).
+The system-wide config file found in \fC/etc/audiotools.cfg\fR.
 .RE
 .PP
 If no command-line option is given and no config files are found
