@@ -291,14 +291,14 @@
 - [X] __vorbis__.py
 - [X] __wavpack__.py
 - [X] __wav__.py
-** TODO Add unit tests for tty output
+** DONE Add unit tests for tty output
    All programs which generate output should be unit tested
    so that all code paths are assured of printing the messages they're
    supposed to print, at the streams they're supposed to print on,
    and in the proper encoding settings.
 - [X] coverdump
-- [ ] track2track
-- [ ] track2xmcd
+- [X] track2track
+- [X] track2xmcd
 - [X] trackcat
 - [X] trackcmp
 - [X] trackinfo

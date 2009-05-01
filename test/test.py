@@ -4507,6 +4507,75 @@ class TestTracksplitOutput(TestTextOutput):
                                 format=format_string)))})
         self.__check_info__(_(u"Adding ReplayGain metadata.  This may take some time."))
 
+class TestTrack2XMCD(TestTextOutput):
+    def setUp(self):
+        self.dir = tempfile.mkdtemp()
+        self.xmcd_filename = os.path.join(
+            self.dir,
+            (u"Unicode %s.xmcd" % \
+                 (u"".join(map(unichr,range(0x30a1,0x30b2 + 1))))).encode(
+                        audiotools.FS_ENCODING,"replace"))
+        self.existing_filename = os.path.join(
+            self.dir,
+            (u"Unicode2 %s.xmcd" % \
+                 (u"".join(map(unichr,range(0x30a1,0x30b2 + 1))))).encode(
+                        audiotools.FS_ENCODING,"replace"))
+
+        f = open(self.existing_filename,"w")
+        f.write("Hello World")
+        f.close()
+
+        self.flac_files = [audiotools.FlacAudio.from_pcm(
+                os.path.join(self.dir,"file%2.2d.flac" % (i + 1)),
+                EXACT_BLANK_PCM_Reader(sample_length),
+                compression="1")
+                           for (i,sample_length) in
+                           enumerate([12280380, 12657288, 4152456, 1929228,
+                                      9938376,15153936, 13525176, 10900344,
+                                      940212, 10492860,7321776, 11084976,
+                                      2738316, 4688712, 2727144,13142388,
+                                      9533244, 13220004, 15823080, 5986428,
+                                      10870944, 2687748])]
+
+    def tearDown(self):
+        for f in os.listdir(self.dir):
+            os.unlink(os.path.join(self.dir,f))
+        os.rmdir(self.dir)
+
+    def test_track2xmcd(self):
+        self.assertEqual(self.__run_app__(["track2xmcd"]),1)
+        self.__check_error__(_(u"You must specify at least 1 supported audio file"))
+
+        self.assertEqual(self.__run_app__(
+                ["track2xmcd","-x",self.existing_filename] + \
+                [flac.filename for flac in self.flac_files]),
+                         1)
+        self.__check_error__(_(u"Refusing to overwrite \"%s\"") % \
+                                 (self.filename(self.existing_filename)))
+
+        self.assertEqual(self.__run_app__(
+                ["track2xmcd","-i"] + \
+                [flac.filename for flac in self.flac_files]),
+                         0)
+
+        self.__check_output__(u"4510fd16 22 150 21035 42561 49623 52904 69806 95578 118580 137118 138717 156562 169014 187866 192523 200497 205135 227486 243699 266182 293092 303273 321761 4351")
+
+        self.assertEqual(self.__run_app__(
+                ["track2xmcd","-D","-x",self.xmcd_filename] + \
+                [flac.filename for flac in self.flac_files]),
+                         0)
+
+        self.__check_info__(_(u"Sending ID to server"))
+
+        #NOTE - This particular batch of tracks has 2 matches
+        #on FreeDB's servers right now.
+        #Since we're working with live data,
+        #that number may change further down the line
+        #so one mustn't panic if this test fails someday in the future.
+        self.__check_info__(_(u"2 matches found"))
+
+        self.__check_info__(_(u"%s written") % \
+                                (self.filename(self.xmcd_filename)))
 
 
 ############

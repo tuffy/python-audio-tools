@@ -90,7 +90,7 @@ if (__name__ == '__main__'):
         else:
             discid = audiotools.DiscID([file.cd_frames()
                                         for file in audiofiles])
-        msg.info(discid.freedb_id().decode('ascii'))
+        msg.output(discid.freedb_id().decode('ascii'))
     elif (options.metadata):  #pull XMCD data from AudioFile metadata
         if ((len(audiofiles) == 1) and
             (audiofiles[0].get_cuesheet() is not None)):
