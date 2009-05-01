@@ -574,7 +574,7 @@
   <property name="select_multiple">False</property>
   <property name="show_hidden">False</property>
   <property name="do_overwrite_confirmation">False</property>
-  <property name="title" translatable="yes">choose xmcd</property>
+  <property name="title" translatable="yes">Choose XMCD File</property>
   <property name="type">GTK_WINDOW_TOPLEVEL</property>
   <property name="window_position">GTK_WIN_POS_NONE</property>
   <property name="modal">True</property>
@@ -715,7 +715,7 @@
   <property name="select_multiple">True</property>
   <property name="show_hidden">False</property>
   <property name="do_overwrite_confirmation">False</property>
-  <property name="title" translatable="yes">select audio tracks</property>
+  <property name="title" translatable="yes">Select Audio Tracks</property>
   <property name="type">GTK_WINDOW_TOPLEVEL</property>
   <property name="window_position">GTK_WIN_POS_NONE</property>
   <property name="modal">True</property>
@@ -780,7 +780,7 @@
 </widget>
 
 <widget class="GtkDialog" id="fileerror">
-  <property name="title" translatable="yes">dialog1</property>
+  <property name="title" translatable="yes">File Error</property>
   <property name="type">GTK_WINDOW_TOPLEVEL</property>
   <property name="window_position">GTK_WIN_POS_NONE</property>
   <property name="modal">True</property>
@@ -1007,7 +1007,7 @@
 </widget>
 
 <widget class="GtkDialog" id="about">
-  <property name="title" translatable="yes">dialog1</property>
+  <property name="title" translatable="yes">About editxmcd</property>
   <property name="type">GTK_WINDOW_TOPLEVEL</property>
   <property name="window_position">GTK_WIN_POS_NONE</property>
   <property name="modal">True</property>

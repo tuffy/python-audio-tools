@@ -387,7 +387,7 @@
     <widget class="GtkVBox" id="dialog-vbox1">
       <property name="visible">True</property>
       <property name="homogeneous">False</property>
-      <property name="spacing">2</property>
+      <property name="spacing">24</property>
 
       <child internal-child="action_area">
 	<widget class="GtkHButtonBox" id="dialog-action_area1">
@@ -433,7 +433,7 @@
 </widget>
 
 <widget class="GtkDialog" id="about">
-  <property name="title" translatable="yes">dialog1</property>
+  <property name="title" translatable="yes">About coverview</property>
   <property name="type">GTK_WINDOW_TOPLEVEL</property>
   <property name="window_position">GTK_WIN_POS_NONE</property>
   <property name="modal">True</property>

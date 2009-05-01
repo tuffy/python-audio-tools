@@ -350,12 +350,12 @@ if (__name__ == '__main__'):
 
     gladepath = os.path.join(".","editxmcd.glade")
     if (os.path.isfile(gladepath)):
-        xml = gtk.glade.XML(gladepath)
+        xml = gtk.glade.XML(gladepath,domain="audiotools")
     else:
         gladepath = os.path.join(sys.prefix,"share/audiotools",
                                  "editxmcd.glade")
         if (os.path.isfile(gladepath)):
-            xml = gtk.glade.XML(gladepath)
+            xml = gtk.glade.XML(gladepath,domain="audiotools")
         else:
             print >>sys.stderr,"*** editxmcd.glade not found"
             sys.exit(1)
