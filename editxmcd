@@ -17,8 +17,12 @@
 #along with this program; if not, write to the Free Software
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
+import audiotools
 import sys
 import os.path
+import gettext
+
+gettext.install("audiotools",unicode=True)
 
 try:
     import gtk
@@ -27,11 +31,9 @@ try:
     import gobject
     import pango
 except ImportError:
-    print >>sys.stderr,"*** PyGTK2 is required"
+    audiotools.Messenger("editxmcd",None).error(_(u"PyGTK2 is required"))
     sys.exit(1)
 
-#import xmcd
-import audiotools
 
 #   columns
 (
@@ -42,8 +44,9 @@ import audiotools
 
 class EditXMCD:
     #track_data is a track_id->(name,artist,extra) dict
-    def __init__(self,xml):
+    def __init__(self,xml,messenger):
         self.xml = xml
+        self.msg = messenger
 
         # create tree view
         self.track_model = self.__create_model()
@@ -51,21 +54,21 @@ class EditXMCD:
         treeview.set_model(self.track_model)
         treeview.set_rules_hint(True)
         treeview.get_selection().set_mode(gtk.SELECTION_SINGLE)
-        self.__add_columns(treeview,"Name",self.on_field_edited)
+        self.__add_columns(treeview,_(u"Name"),self.on_field_edited)
 
         self.artist_model = self.__create_model()
         treeview = xml.get_widget("track_artists")
         treeview.set_model(self.artist_model)
         treeview.set_rules_hint(True)
         treeview.get_selection().set_mode(gtk.SELECTION_SINGLE)
-        self.__add_columns(treeview,"Artist",self.on_field_edited)
+        self.__add_columns(treeview,_(u"Artist"),self.on_field_edited)
 
         self.extra_model = self.__create_model()
         treeview = xml.get_widget("track_extras")
         treeview.set_model(self.extra_model)
         treeview.set_rules_hint(True)
         treeview.get_selection().set_mode(gtk.SELECTION_SINGLE)
-        self.__add_columns(treeview,"Extra",self.on_field_edited)
+        self.__add_columns(treeview,_(u"Extra"),self.on_field_edited)
 
         self.xmcd = None
         self.filename = None
@@ -209,8 +212,9 @@ class EditXMCD:
             self.edited = False
             self.set_title()
         except IOError:
-            self.file_error("unable to write \"%s\"" % (self.filename),
-                            "Write Error")
+            self.file_error(_(u"Unable to write \"%s\"") % \
+                                (self.msg.filename(self.filename)),
+                            _(u"Write Error"))
 
     def saveas(self,caller):
         if (self.xmcd is not None):
@@ -227,8 +231,9 @@ class EditXMCD:
                 self.edited = False
                 self.set_title()
             except IOError:
-                self.file_error("unable to write \"%s\"" % (self.filename),
-                                "Write Error")
+                self.file_error(_(u"Unable to write \"%s\"") % \
+                                    (self.msg.filename(self.filename)),
+                                _(u"Write Error"))
                 self.filename = None
                 self.set_title()
 
@@ -245,11 +250,13 @@ class EditXMCD:
         try:
             self.read_xmcd(audiotools.XMCD.read(filename))
         except audiotools.XMCDException:
-            self.file_error("Error opening \"%s\"" % (filename),
-                            "Read Error")
+            self.file_error(_(u"Error opening \"%s\"") % \
+                                (self.msg.filename(filename)),
+                            _(u"Read Error"))
         except IOError:
-            self.file_error("Error opening \"%s\"" % (filename),
-                            "Read Error")
+            self.file_error(_(u"Error opening \"%s\"") % \
+                                (self.msg.filename(filename)),
+                            _("Read Error"))
 
     def read_xmcd(self,xmcd):
         self.xmcd = xmcd
@@ -347,6 +354,8 @@ if (__name__ == '__main__'):
 
     parser.add_option('-x','--xmcd',action='store',
                       type='string',dest='xmcd')
+    (options,args) = parser.parse_args()
+    msg = audiotools.Messenger("editxmcd",options)
 
     gladepath = os.path.join(".","editxmcd.glade")
     if (os.path.isfile(gladepath)):
@@ -357,10 +366,10 @@ if (__name__ == '__main__'):
         if (os.path.isfile(gladepath)):
             xml = gtk.glade.XML(gladepath,domain="audiotools")
         else:
-            print >>sys.stderr,"*** editxmcd.glade not found"
+            msg.error(_(u"editxmcd.glade not found"))
             sys.exit(1)
 
-    editxmcd = EditXMCD(xml)
+    editxmcd = EditXMCD(xml,msg)
 
     xml.signal_connect("gtk_main_quit",editxmcd.quit)
     xml.signal_connect("on_cut1_activate",editxmcd.cut)
@@ -382,7 +391,6 @@ if (__name__ == '__main__'):
     xml.signal_connect("confirmquit",editxmcd.confirm_quit)
     xml.signal_connect("display_about",editxmcd.display_about)
 
-    (options,args) = parser.parse_args()
     if (options.xmcd is not None):
         editxmcd.read_file(options.xmcd)
     elif (len(args) > 0):

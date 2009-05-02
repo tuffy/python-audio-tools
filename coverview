@@ -17,21 +17,24 @@
 #along with this program; if not, write to the Free Software
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-
+import audiotools
 import sys
 import os
 import os.path
 import cStringIO
 from bisect import bisect
+import gettext
+
+gettext.install("audiotools",unicode=True)
+
 try:
     import gtk
     import gtk.gdk
     import gtk.glade
     import gobject
 except ImportError:
-    print >>sys.stderr,"*** PyGTK2 is required"
+    audiotools.Messenger("coverview",None).error(_(u"PyGTK2 is required"))
     sys.exit(1)
-import audiotools
 
 #returns the dimensions of image_surface scaled to match the
 #display surface size, but without changing its aspect ratio
@@ -287,6 +290,13 @@ class ImageList:
         caller.hide()
 
 if (__name__ == '__main__'):
+    parser = audiotools.OptionParser(
+        "%prog [options] <track 1> [track 2] ...",
+        version="Python Audio Tools %s" % (audiotools.VERSION))
+
+    (options,args) = parser.parse_args()
+    msg = audiotools.Messenger("coverview",options)
+
     cover_list = []
 
     gladepath = os.path.join(".","coverview.glade")
@@ -298,14 +308,8 @@ if (__name__ == '__main__'):
         if (os.path.isfile(gladepath)):
             xml = gtk.glade.XML(gladepath,domain="audiotools")
         else:
-            print >>sys.stderr,"*** coverview.glade not found"
+            msg.error(_(u"coverview.glade not found"))
             sys.exit(1)
-
-    parser = audiotools.OptionParser(
-        "%prog [options] <track 1> [track 2] ...",
-        version="Python Audio Tools %s" % (audiotools.VERSION))
-
-    (options,args) = parser.parse_args()
 
     for audiofile in audiotools.open_files(args):
         try:
