@@ -328,6 +328,7 @@
 		  <property name="hover_expand">False</property>
 		  <signal name="cursor_changed" handler="image_selected" last_modification_time="Sat, 14 Mar 2009 15:06:00 GMT"/>
 		  <signal name="size_allocate" handler="thumbnails_resized" last_modification_time="Sat, 14 Mar 2009 16:54:55 GMT"/>
+		  <signal name="drag_data_get" handler="thumbnail_drag_data_get" last_modification_time="Sun, 03 May 2009 20:48:16 GMT"/>
 		</widget>
 	      </child>
 	    </widget>
@@ -342,7 +343,7 @@
 	      <property name="visible">True</property>
 	      <property name="visible_window">True</property>
 	      <property name="above_child">False</property>
-	      <signal name="drag_data_get" handler="drag_data_get" last_modification_time="Sun, 03 May 2009 18:25:34 GMT"/>
+	      <signal name="drag_data_get" handler="image_drag_data_get" last_modification_time="Sun, 03 May 2009 20:36:43 GMT"/>
 
 	      <child>
 		<widget class="GtkImage" id="picture_image">

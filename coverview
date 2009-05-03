@@ -159,6 +159,15 @@ class ImageList:
                 first_image)
             self.image_selected()
 
+        mime_types = set([image.mime_type for (path,image) in picture_list])
+
+        self.xml.get_widget("image_list").drag_source_set(
+            gtk.gdk.BUTTON1_MASK,
+            [(mime_type,
+              0,
+              self.TARGET_TYPE_PIXMAP) for mime_type in mime_types],
+            gtk.gdk.ACTION_COPY)
+
         window.set_cursor(None)
 
     #this performs a full resize on all thumbnails
@@ -212,13 +221,12 @@ class ImageList:
                  gtk.gdk.INTERP_HYPER][bisect([30,600],
                                               min(width,height))]))
 
-        imagebox = xml.get_widget("image_eventbox")
-        imagebox.drag_source_set(gtk.gdk.BUTTON1_MASK,
-                              [(liststore.get_value(treeiter,5),
-                                0,
-                                self.TARGET_TYPE_PIXMAP)],
-                              gtk.gdk.ACTION_COPY)
-        self.drag_data = liststore.get_value(treeiter,6)
+        xml.get_widget("image_eventbox").drag_source_set(
+            gtk.gdk.BUTTON1_MASK,
+            [(liststore.get_value(treeiter,5),
+              0,
+              self.TARGET_TYPE_PIXMAP)],
+            gtk.gdk.ACTION_COPY)
 
         self.xml.get_widget("file_path").set_text(
             liststore.get_value(treeiter,3))
@@ -301,10 +309,26 @@ class ImageList:
     def dialog_done(self,caller,response):
         caller.hide()
 
-    def sendCallback(self, widget, context, selection, targetType, eventTime):
-        if targetType == self.TARGET_TYPE_PIXMAP:
-            selection.set(selection.target, 8,
-                          self.drag_data)
+    def image_drag_data(self, widget, context, selection, targetType,
+                        eventTime):
+        if (targetType == self.TARGET_TYPE_PIXMAP):
+            (liststore,treeiter) = \
+                self.xml.get_widget("image_list").get_selection().get_selected()
+            if (treeiter is None):
+                return
+
+            selection.set(selection.target,8,liststore.get_value(treeiter,6))
+
+
+    def thumbnail_drag_data(self, widget, context, selection, targetType,
+                        eventTime):
+        if (targetType == self.TARGET_TYPE_PIXMAP):
+            (liststore,treeiter) = \
+                self.xml.get_widget("image_list").get_selection().get_selected()
+            if (treeiter is None):
+                return
+
+            selection.set(selection.target,8,liststore.get_value(treeiter,6))
 
 if (__name__ == '__main__'):
     parser = audiotools.OptionParser(
@@ -349,7 +373,9 @@ if (__name__ == '__main__'):
     xml.signal_connect("thumbnails_resized",imagelist.thumbnails_resized)
     xml.signal_connect("display_about",imagelist.display_about)
     xml.signal_connect("dialog_done",imagelist.dialog_done)
-    xml.signal_connect("drag_data_get",imagelist.sendCallback)
+    xml.signal_connect("image_drag_data_get",imagelist.image_drag_data)
+    xml.signal_connect("thumbnail_drag_data_get",
+                       imagelist.thumbnail_drag_data)
 
     gobject.timeout_add(1500,imagelist.thumbnail_resize_daemon)
 
