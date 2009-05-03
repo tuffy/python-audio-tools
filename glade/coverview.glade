@@ -338,13 +338,24 @@
 	  </child>
 
 	  <child>
-	    <widget class="GtkImage" id="picture_image">
+	    <widget class="GtkEventBox" id="image_eventbox">
 	      <property name="visible">True</property>
-	      <property name="xalign">0.5</property>
-	      <property name="yalign">0.5</property>
-	      <property name="xpad">0</property>
-	      <property name="ypad">0</property>
-	      <signal name="size_allocate" handler="image_resize" last_modification_time="Sat, 14 Mar 2009 14:52:56 GMT"/>
+	      <property name="visible_window">True</property>
+	      <property name="above_child">False</property>
+	      <signal name="drag_data_get" handler="drag_data_get" last_modification_time="Sun, 03 May 2009 18:25:34 GMT"/>
+
+	      <child>
+		<widget class="GtkImage" id="picture_image">
+		  <property name="visible">True</property>
+		  <property name="can_default">True</property>
+		  <property name="can_focus">True</property>
+		  <property name="xalign">0.5</property>
+		  <property name="yalign">0.5</property>
+		  <property name="xpad">0</property>
+		  <property name="ypad">0</property>
+		  <signal name="size_allocate" handler="image_resize" last_modification_time="Sat, 14 Mar 2009 14:52:56 GMT"/>
+		</widget>
+	      </child>
 	    </widget>
 	    <packing>
 	      <property name="shrink">True</property>

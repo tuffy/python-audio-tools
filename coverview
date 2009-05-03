@@ -99,6 +99,8 @@ def get_raw_pixbuf(imagedata):
     return l.get_pixbuf()
 
 class ImageList:
+    TARGET_TYPE_PIXMAP = 81
+
     #picture_list is a list of (filepath,Image) tuples
     def __init__(self, picture_list, xml):
         self.xml = xml
@@ -112,13 +114,13 @@ class ImageList:
 
         self.image_liststore = gtk.ListStore(gtk.gdk.Pixbuf,
                                              gtk.gdk.Pixbuf,
-                                             str,str,str)
+                                             str,str,str,str,
+                                             gobject.TYPE_PYOBJECT)
         image_list.set_model(self.image_liststore)
         image_list.append_column(gtk.TreeViewColumn(
                 "Image",gtk.CellRendererPixbuf(),pixbuf=0))
 
         self.set_images(picture_list)
-
 
 
     #picture_list is a list of (filepath,Image) tuples
@@ -146,6 +148,8 @@ class ImageList:
                   "mime_type":image.suffix().upper(),
                   "bits":image.color_depth,
                   "size":size_string(len(image.data))})
+            self.image_liststore.set(treeiter,5,image.mime_type.encode('ascii'))
+            self.image_liststore.set(treeiter,6,image.data)
 
             if (first_image is None):
                 first_image = treeiter
@@ -207,6 +211,14 @@ class ImageList:
                  gtk.gdk.INTERP_BILINEAR,
                  gtk.gdk.INTERP_HYPER][bisect([30,600],
                                               min(width,height))]))
+
+        imagebox = xml.get_widget("image_eventbox")
+        imagebox.drag_source_set(gtk.gdk.BUTTON1_MASK,
+                              [(liststore.get_value(treeiter,5),
+                                0,
+                                self.TARGET_TYPE_PIXMAP)],
+                              gtk.gdk.ACTION_COPY)
+        self.drag_data = liststore.get_value(treeiter,6)
 
         self.xml.get_widget("file_path").set_text(
             liststore.get_value(treeiter,3))
@@ -289,6 +301,11 @@ class ImageList:
     def dialog_done(self,caller,response):
         caller.hide()
 
+    def sendCallback(self, widget, context, selection, targetType, eventTime):
+        if targetType == self.TARGET_TYPE_PIXMAP:
+            selection.set(selection.target, 8,
+                          self.drag_data)
+
 if (__name__ == '__main__'):
     parser = audiotools.OptionParser(
         "%prog [options] <track 1> [track 2] ...",
@@ -332,6 +349,7 @@ if (__name__ == '__main__'):
     xml.signal_connect("thumbnails_resized",imagelist.thumbnails_resized)
     xml.signal_connect("display_about",imagelist.display_about)
     xml.signal_connect("dialog_done",imagelist.dialog_done)
+    xml.signal_connect("drag_data_get",imagelist.sendCallback)
 
     gobject.timeout_add(1500,imagelist.thumbnail_resize_daemon)
 
