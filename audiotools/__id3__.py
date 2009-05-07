@@ -576,6 +576,8 @@ class ID3v22Comment(MetaData):
                 container = cls.Frame.FRAME.parse_stream(stream)
             except Con.core.FieldError:
                 break
+            except Con.core.ArrayError:
+                break
 
             if (chr(0) in container.frame_id):
                 break

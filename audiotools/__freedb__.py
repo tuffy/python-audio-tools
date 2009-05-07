@@ -260,8 +260,7 @@ class XMCD:
         if (u' / ' in dtitle):
             (album_artist,album_name) = dtitle.split(u' / ',1)
         else:
-            album_name = dtitle
-            artist_name = u''
+            (album_artist,album_name) = (dtitle,dtitle)
 
         dyear = self.get('DYEAR',u'')
 

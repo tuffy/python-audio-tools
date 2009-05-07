@@ -286,8 +286,8 @@ def open_files(filename_list, sorted=True):
             toreturn.append(open(filename))
         except UnsupportedFile:
             pass
-        except InvalidFile,msg:
-            msg.error(unicode(msg))
+        except InvalidFile,err:
+            msg.error(unicode(err))
 
     if (sorted):
         toreturn.sort(lambda x,y: cmp((x.album_number(),x.track_number()),
