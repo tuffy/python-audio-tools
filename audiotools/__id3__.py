@@ -177,11 +177,16 @@ class ID3v22Frame:
     @classmethod
     def parse(cls,container):
         if (container.frame_id.startswith('T')):
-            encoding_byte = ord(container.data[0])
-            return ID3v22TextFrame(container.frame_id,
-                                   encoding_byte,
-                                   container.data[1:].decode(
-                    ID3v22TextFrame.ENCODING[encoding_byte]))
+            try:
+                encoding_byte = ord(container.data[0])
+                return ID3v22TextFrame(container.frame_id,
+                                       encoding_byte,
+                                       container.data[1:].decode(
+                        ID3v22TextFrame.ENCODING[encoding_byte]))
+            except IndexError:
+                return ID3v22TextFrame(container.frame_id,
+                                       0,
+                                       u"")
         elif (container.frame_id == 'PIC'):
             frame_data = cStringIO.StringIO(container.data)
             pic_header = ID3v22PicFrame.FRAME_HEADER.parse_stream(frame_data)
@@ -709,11 +714,16 @@ class ID3v23Frame(ID3v22Frame):
     @classmethod
     def parse(cls,container):
         if (container.frame_id.startswith('T')):
-            encoding_byte = ord(container.data[0])
-            return ID3v23TextFrame(container.frame_id,
-                                   encoding_byte,
-                                   container.data[1:].decode(
-                    ID3v23TextFrame.ENCODING[encoding_byte]))
+            try:
+                encoding_byte = ord(container.data[0])
+                return ID3v23TextFrame(container.frame_id,
+                                       encoding_byte,
+                                       container.data[1:].decode(
+                        ID3v23TextFrame.ENCODING[encoding_byte]))
+            except IndexError:
+                return ID3v23TextFrame(container.frame_id,
+                                       0,
+                                       u"")
         elif (container.frame_id == 'APIC'):
             frame_data = cStringIO.StringIO(container.data)
             pic_header = ID3v23PicFrame.FRAME_HEADER.parse_stream(frame_data)
@@ -1035,11 +1045,16 @@ class ID3v24Frame(ID3v23Frame):
     @classmethod
     def parse(cls,container):
         if (container.frame_id.startswith('T')):
-            encoding_byte = ord(container.data[0])
-            return ID3v24TextFrame(container.frame_id,
-                                   encoding_byte,
-                                   container.data[1:].decode(
-                    ID3v24TextFrame.ENCODING[encoding_byte]))
+            try:
+                encoding_byte = ord(container.data[0])
+                return ID3v24TextFrame(container.frame_id,
+                                       encoding_byte,
+                                       container.data[1:].decode(
+                        ID3v24TextFrame.ENCODING[encoding_byte]))
+            except IndexError:
+                return ID3v24TextFrame(container.frame_id,
+                                       0,
+                                       u"")
         elif (container.frame_id == 'APIC'):
             frame_data = cStringIO.StringIO(container.data)
             pic_header = ID3v24PicFrame.FRAME_HEADER.parse_stream(frame_data)
