@@ -587,7 +587,10 @@ class ID3v22Comment(MetaData):
             if (chr(0) in container.frame_id):
                 break
             else:
-                frames.append(cls.Frame.parse(container))
+                try:
+                    frames.append(cls.Frame.parse(container))
+                except UnicodeDecodeError:
+                    break
 
         return cls(frames)
 
