@@ -313,3 +313,7 @@
 - [ ] editxmcd
 * DONE Update tracksplit's man page
   It now supports more of track2track's options
+* TODO Support total tracks/total albums metadata fields?
+  It would be useful to store total tracks/total albums metadata.
+  Although M4A supports these explicitly, other metadata formats may not.
+
