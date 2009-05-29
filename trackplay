@@ -209,8 +209,10 @@ if (__name__ == '__main__'):
                     player.play(pcm, audiofile)
                 finally:
                     pcm.close()
-        except (IOError,audiotools.DecodingError),msg:
-            msg.error(unicode(msg))
+        except IOError,err:
+            msg.error(unicode(err))
+            sys.exit(1)
+        except audiotools.DecodingError:
             sys.exit(1)
     finally:
         player.close()
