@@ -167,11 +167,23 @@ if (__name__ == '__main__'):
                       dest='track_number',
                       help=_(u"the number of the track in the album"))
 
+    parser.add_option('--track-total',
+                       action='store',
+                      type='int',
+                      dest='track_total',
+                      help=_(u"the total number of the track in the album"))
+
     parser.add_option('--album-number',
                       action='store',
                       type='int',
                       dest='album_number',
                       help=_(u'the number of the album in a set of albums'))
+
+    parser.add_option('--album-total',
+                       action='store',
+                      type='int',
+                      dest='album_total',
+                      help=_(u"the total number of albums in a set of albums"))
 
     parser.add_option('--ISRC',
                       action='store',
@@ -366,8 +378,14 @@ if (__name__ == '__main__'):
                 if (file.track_number() in isrcs.keys()):
                     metadata.ISRC = isrcs[file.track_number()]
 
+                if (options.track_total is not None):
+                    metadata.track_total = options.track_total
+
                 if (options.album_number is not None):
                     metadata.album_number = options.album_number
+
+                if (options.album_total is not None):
+                    metadata.album_total = options.album_total
 
                 if (options.comment_file is not None):
                     metadata.comment = read_comment(options.comment_file,msg)

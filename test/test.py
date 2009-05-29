@@ -34,6 +34,9 @@ import gettext
 
 gettext.install("audiotools",unicode=True)
 
+(METADATA,PCM,EXECUTABLE,CUESHEET) = range(4)
+CASES = set([METADATA,PCM,EXECUTABLE,CUESHEET])
+
 try:
     from hashlib import md5
 except ImportError:
@@ -332,6 +335,8 @@ class DummyMetaData3(audiotools.MetaData):
 
 class TestPCMCombinations(unittest.TestCase):
     def testpcmcombinations(self):
+        if (PCM not in CASES): return
+
         for (sample_rate,channels,bits_per_sample) in SHORT_PCM_COMBINATIONS:
             reader = BLANK_PCM_Reader(SHORT_LENGTH,
                                       sample_rate, channels,
@@ -356,6 +361,8 @@ class TestAiffAudio(unittest.TestCase):
 
     #this is a basic test of CD-quality audio
     def testblankencode(self):
+        if (PCM not in CASES): return
+
         temp = tempfile.NamedTemporaryFile(suffix="." + self.audio_class.SUFFIX)
         try:
             new_file = self.audio_class.from_pcm(temp.name,
@@ -381,6 +388,8 @@ class TestAiffAudio(unittest.TestCase):
             temp.close()
 
     def testrandomencode(self):
+        if (PCM not in CASES): return
+
         temp = tempfile.NamedTemporaryFile(suffix="." + self.audio_class.SUFFIX)
         try:
             reader = VARIABLE_PCM_Reader(TEST_LENGTH)
@@ -411,6 +420,8 @@ class TestAiffAudio(unittest.TestCase):
 
 
     def testunusualaudio(self):
+        if (PCM not in CASES): return
+
         temp = tempfile.NamedTemporaryFile(suffix="." + self.audio_class.SUFFIX)
         try:
             #not all of these combinations will be supported by all formats
@@ -461,6 +472,8 @@ class TestAiffAudio(unittest.TestCase):
             temp.close()
 
     def testwaveconversion(self):
+        if (PCM not in CASES): return
+
         tempwav = tempfile.NamedTemporaryFile(suffix=".wav")
         temp = tempfile.NamedTemporaryFile(suffix="." + self.audio_class.SUFFIX)
         temp2 = tempfile.NamedTemporaryFile(suffix="." + self.audio_class.SUFFIX)
@@ -500,6 +513,8 @@ class TestAiffAudio(unittest.TestCase):
 
 
     def testmassencode(self):
+        if (PCM not in CASES): return
+
         temp = tempfile.NamedTemporaryFile(suffix="." + self.audio_class.SUFFIX)
 
         tempfiles = [(tempfile.NamedTemporaryFile(
@@ -558,6 +573,8 @@ class TestAiffAudio(unittest.TestCase):
 
     #just like testmassencode, but without file suffixes
     def testmassencode_nonsuffix(self):
+        if (PCM not in CASES): return
+
         temp = tempfile.NamedTemporaryFile()
 
         tempfiles = [(tempfile.NamedTemporaryFile(),
@@ -616,6 +633,8 @@ class TestAiffAudio(unittest.TestCase):
                 temp_file.close()
 
     def testmetadata(self):
+        if (METADATA not in CASES): return
+
         temp = tempfile.NamedTemporaryFile(suffix="." + self.audio_class.SUFFIX)
         try:
             new_file = self.audio_class.from_pcm(temp.name,
@@ -640,6 +659,8 @@ class TestAiffAudio(unittest.TestCase):
             temp.close()
 
     def testimages(self):
+        if (METADATA not in CASES): return
+
         temp = tempfile.NamedTemporaryFile(suffix="." + self.audio_class.SUFFIX)
         try:
             new_file = self.audio_class.from_pcm(temp.name,
@@ -677,6 +698,8 @@ class TestAiffAudio(unittest.TestCase):
             temp.close()
 
     def testsplit(self):
+        if (PCM not in CASES): return
+
         temp = tempfile.NamedTemporaryFile(suffix="." + self.audio_class.SUFFIX)
         try:
             new_file = self.audio_class.from_pcm(temp.name,
@@ -714,6 +737,8 @@ class TestAiffAudio(unittest.TestCase):
 
     #much like testmassencode, but using track2track
     def test_track2track_massencode(self):
+        if (EXECUTABLE not in CASES): return
+
         base_file = tempfile.NamedTemporaryFile(suffix="." + self.audio_class.SUFFIX)
         try:
             base = self.audio_class.from_pcm(base_file.name,
@@ -774,6 +799,9 @@ class TestAiffAudio(unittest.TestCase):
 
     #tests the splitting and concatenating programs
     def test_tracksplit_trackcat(self):
+        if (EXECUTABLE not in CASES): return
+        if (CUESHEET not in CASES): return
+
         if (not self.__is_lossless__()):
             return
 
@@ -850,6 +878,8 @@ class TestAiffAudio(unittest.TestCase):
                 joined_file.close()
 
     def test_trackcmp(self):
+        if (EXECUTABLE not in CASES): return
+
         basedir = tempfile.mkdtemp()
         try:
             subdir1 = os.path.join(basedir,"subdir1")
@@ -968,6 +998,8 @@ class TestAiffAudio(unittest.TestCase):
             os.rmdir(basedir)
 
     def test_tracklength(self):
+        if (EXECUTABLE not in CASES): return
+
         basedir = tempfile.mkdtemp()
         try:
             tempfile1 = self.audio_class.from_pcm(
@@ -1009,6 +1041,9 @@ class TestAiffAudio(unittest.TestCase):
             os.rmdir(basedir)
 
     def test_tracktag_trackrename(self):
+        if (EXECUTABLE not in CASES): return
+        if (METADATA not in CASES): return
+
         template = "%(track_number)2.2d - %(album_number)d - %(album_track_number)s%(track_name)s%(album_name)s%(artist_name)s%(performer_name)s%(composer_name)s%(conductor_name)s%(media)s%(ISRC)s%(copyright)s%(publisher)s%(year)s%(suffix)s"
 
         basedir = tempfile.mkdtemp()
@@ -1181,6 +1216,9 @@ class TestAiffAudio(unittest.TestCase):
                     test_cover1])
 
     def test_coverdump(self):
+        if (EXECUTABLE not in CASES): return
+        if (METADATA not in CASES): return
+
         basefile = tempfile.NamedTemporaryFile(suffix="." + self.audio_class.SUFFIX)
         imgdir = tempfile.mkdtemp()
         try:
@@ -1253,6 +1291,8 @@ class TestAiffAudio(unittest.TestCase):
             os.rmdir(imgdir)
 
     def testinvalidbinaries(self):
+        if (EXECUTABLE not in CASES): return
+
         if (len(self.audio_class.BINARIES) == 0):
             return
 
@@ -1302,6 +1342,8 @@ class TestAiffAudio(unittest.TestCase):
 
 class TestForeignWaveChunks:
     def testforeignwavechunks(self):
+        if (METADATA not in CASES): return
+
         import filecmp
 
         self.assertEqual(self.audio_class.supports_foreign_riff_chunks(),True)
@@ -1357,6 +1399,8 @@ class VorbisLint:
     #For instance, it won't generate empty fields or leading zeroes in numbers.
     #So, bogus tags must be generated at a lower level.
     def test_tracklint(self):
+        if (EXECUTABLE not in CASES): return
+
         bad_vorbiscomment = audiotools.VorbisComment(
             {"TITLE":[u"Track Name  "],
              "TRACKNUMBER":[u"02"],
@@ -1425,6 +1469,8 @@ class VorbisLint:
 
 class EmbeddedCuesheet:
     def testembeddedcuesheet(self):
+        if (CUESHEET not in CASES): return
+
         for (suffix,data) in zip([".cue",".toc"],
                                  [
 """eJydkF1LwzAUQN8L/Q+X/oBxk6YfyVtoM4mu68iy6WudQ8qkHbNu+u9NneCc1IdCnk649xyuUQXk
@@ -1503,6 +1549,8 @@ class TestFlacAudio(EmbeddedCuesheet,TestForeignWaveChunks,VorbisLint,TestAiffAu
         self.audio_class = audiotools.FlacAudio
 
     def testpreservevendortags(self):
+        if (METADATA not in CASES): return
+
         tempflac1 = tempfile.NamedTemporaryFile(suffix=".flac")
         tempflac2 = tempfile.NamedTemporaryFile(suffix=".flac")
 
@@ -1525,6 +1573,8 @@ class APEv2Lint:
     #For instance, it won't generate empty fields or leading zeroes in numbers.
     #So, bogus ID3 tags must be generated at a lower level.
     def test_tracklint(self):
+        if (METADATA not in CASES): return
+
         bad_apev2 = audiotools.ApeTag(
             {"Title":u"Track Name  ",
              "Track":u"02",
@@ -1590,6 +1640,8 @@ class TestWavPackAudio(EmbeddedCuesheet,TestForeignWaveChunks,APEv2Lint,TestAiff
         self.audio_class = audiotools.WavPackAudio
 
     def test_coverdump(self):
+        if (METADATA not in CASES): return
+
         basefile = tempfile.NamedTemporaryFile(suffix="." + self.audio_class.SUFFIX)
         imgdir = tempfile.mkdtemp()
         try:
@@ -1663,6 +1715,8 @@ class M4AMetadata:
     #M4A supports only a subset of the MetaData of every other format
     #so it must be handled separately
     def testmetadata(self):
+        if (METADATA not in CASES): return
+
         temp = tempfile.NamedTemporaryFile(suffix="." + self.audio_class.SUFFIX)
         try:
             new_file = self.audio_class.from_pcm(temp.name,
@@ -1695,6 +1749,8 @@ class M4AMetadata:
             temp.close()
 
     def testimages(self):
+        if (METADATA not in CASES): return
+
         temp = tempfile.NamedTemporaryFile(suffix="." + self.audio_class.SUFFIX)
         try:
             new_file = self.audio_class.from_pcm(temp.name,
@@ -1732,6 +1788,8 @@ class M4AMetadata:
             temp.close()
 
     def test_tracktag_trackrename(self):
+        if (EXECUTABLE not in CASES): return
+
         template = "%(track_number)2.2d - %(album_number)d - %(album_track_number)s%(track_name)s%(album_name)s%(artist_name)s%(performer_name)s%(composer_name)s%(conductor_name)s%(media)s%(ISRC)s%(copyright)s%(publisher)s%(year)s%(suffix)s"
 
         basedir = tempfile.mkdtemp()
@@ -1841,6 +1899,8 @@ class M4AMetadata:
         pass
 
     def test_invalid_name(self):
+        if (METADATA not in CASES): return
+
         metadata = audiotools.MetaData(track_name=u"Name",
                                        track_number=1)
         format = "%(track_number)2.2d - %(track_name)s"
@@ -1885,6 +1945,8 @@ class TestOggFlacAudio(EmbeddedCuesheet,VorbisLint,TestAiffAudio):
         self.audio_class = audiotools.OggFlacAudio
 
     def testpreservevendortags(self):
+        if (METADATA not in CASES): return
+
         tempflac1 = tempfile.NamedTemporaryFile(suffix=".flac")
         tempflac2 = tempfile.NamedTemporaryFile(suffix=".flac")
 
@@ -1906,6 +1968,8 @@ class ID3Lint:
     #For instance, it won't generate empty fields or leading zeroes in numbers.
     #So, bogus ID3 tags must be generated at a lower level.
     def __test_tracklint__(self, bad_id3v2):
+        if (EXECUTABLE not in CASES): return
+
         fixed = audiotools.MetaData(
             track_name=u"Track Name",
             track_number=2,
@@ -1959,6 +2023,8 @@ class ID3Lint:
             os.rmdir(tempdir)
 
     def test_tracklint_id3v22(self):
+        if (EXECUTABLE not in CASES): return
+
         return self.__test_tracklint__(
             audiotools.ID3v22Comment(
                 [audiotools.ID3v22TextFrame.from_unicode("TT2",u"Track Name  "),
@@ -1971,6 +2037,8 @@ class ID3Lint:
                  audiotools.ID3v22TextFrame.from_unicode("COM",u"  Some Comment  ")]))
 
     def test_tracklint_id3v23(self):
+        if (EXECUTABLE not in CASES): return
+
         return self.__test_tracklint__(
             audiotools.ID3v23Comment(
                 [audiotools.ID3v23TextFrame.from_unicode("TIT2",u"Track Name  "),
@@ -1983,6 +2051,8 @@ class ID3Lint:
                  audiotools.ID3v23TextFrame.from_unicode("COMM",u"  Some Comment  ")]))
 
     def test_tracklint_id3v24(self):
+        if (EXECUTABLE not in CASES): return
+
         return self.__test_tracklint__(
             audiotools.ID3v24Comment(
                 [audiotools.ID3v24TextFrame.from_unicode("TIT2",u"Track Name  "),
@@ -2011,6 +2081,8 @@ class TestM4AAudio(M4AMetadata,TestAiffAudio):
         self.audio_class = audiotools.M4AAudio
 
     def test_tracklint(self):
+        if (EXECUTABLE not in CASES): return
+
         bad_m4a = audiotools.M4AMetaData(
             {'\xa9nam':[u"Track Name  "],
              'trkn':['\x00\x00\x00\x02\x00\x00\x00\x00'],
@@ -2234,6 +2306,8 @@ class TestID3v2(unittest.TestCase):
         self.__dict_test__(audiotools.ID3v24Comment)
 
     def testladder(self):
+        if (METADATA not in CASES): return
+
         self.mp3_file.set_metadata(DummyMetaData3())
         for new_class in (audiotools.ID3v22Comment,
                           audiotools.ID3v23Comment,
@@ -2250,6 +2324,8 @@ class TestID3v2(unittest.TestCase):
             self.assertEqual(metadata.images(),DummyMetaData3().images())
 
     def testsetpicture(self):
+        if (METADATA not in CASES): return
+
         m = DummyMetaData()
         m.add_image(audiotools.Image.new(TEST_COVER1,
                                          u'Unicode \u3057\u3066\u307f\u308b',
@@ -2263,6 +2339,8 @@ class TestID3v2(unittest.TestCase):
         self.assertEqual(m.images()[0],m2.images()[0])
 
     def testconvertedpicture(self):
+        if (METADATA not in CASES): return
+
         flac_tempfile = tempfile.NamedTemporaryFile(suffix=".flac")
 
         try:
@@ -2287,6 +2365,8 @@ class TestID3v2(unittest.TestCase):
             flac_tempfile.close()
 
     def testucs2codec(self):
+        if (METADATA not in CASES): return
+
         #this should be 4 characters long in UCS-4 environments
         #if not, we're in a UCS-2 environment
         #which is limited to 16 bits anyway
@@ -2370,6 +2450,8 @@ class TestFlacComment(unittest.TestCase):
             self.file.name,BLANK_PCM_Reader(TEST_LENGTH))
 
     def testsetpicture(self):
+        if (METADATA not in CASES): return
+
         m = DummyMetaData()
         m.add_image(audiotools.Image.new(TEST_COVER1,
                                          u'Unicode \u3057\u3066\u307f\u308b',
@@ -2382,6 +2464,8 @@ class TestFlacComment(unittest.TestCase):
         self.assertEqual(m.images()[0],m2.images()[0])
 
     def testconvertedpicture(self):
+        if (METADATA not in CASES): return
+
         mp3_tempfile = tempfile.NamedTemporaryFile(suffix=".mp3")
 
         try:
@@ -2416,6 +2500,8 @@ class TestPCMConversion(unittest.TestCase):
         self.tempwav.close()
 
     def testconversions(self):
+        if (PCM not in CASES): return
+
         for (input,output) in Combinations(SHORT_PCM_COMBINATIONS,2):
             #print >>sys.stderr,repr(input),repr(output)
             reader = BLANK_PCM_Reader(5,
@@ -2437,6 +2523,8 @@ class TestPCMConversion(unittest.TestCase):
 
 class TestPCMStreamReader(unittest.TestCase):
     def testinvalidstreams(self):
+        if (PCM not in CASES): return
+
         self.assertRaises(ValueError,
                           audiotools.pcmstream.PCMStreamReader,
                           cStringIO.StringIO(chr(0) * 10),0,False,False)
@@ -2449,6 +2537,8 @@ class TestPCMStreamReader(unittest.TestCase):
         self.assertRaises(AttributeError,r.read,10)
 
     def testroundtrip(self):
+        if (PCM not in CASES): return
+
         for (bytes_per_sample,big_endian) in ((1,False),(2,False),(3,False),
                                               (1,True), (2,True), (3, True)):
             #channels and sample_rate don't really matter here
@@ -2468,6 +2558,8 @@ class TestPCMStreamReader(unittest.TestCase):
             self.assertEqual(data.hexdigest(),md5sum.hexdigest())
 
     def testfloatroundtrip(self):
+        if (PCM not in CASES): return
+
         for (bytes_per_sample,big_endian) in ((1,False),(2,False),(3,False),
                                               (1,True), (2,True), (3, True)):
             data = VARIABLE_PCM_Reader(TEST_LENGTH,
@@ -2489,6 +2581,8 @@ class TestPCMStreamReader(unittest.TestCase):
             self.assertEqual(data.hexdigest(),md5sum.hexdigest())
 
     def testbyteswap(self):
+        if (PCM not in CASES): return
+
         for (bytes_per_sample,big_endian) in ((1,False),(2,False),(3,False),
                                               (1,True), (2,True), (3, True)):
             data = VARIABLE_PCM_Reader(SHORT_LENGTH,
@@ -2528,6 +2622,8 @@ class TestPCMStreamReader(unittest.TestCase):
             self.assertEqual(data.hexdigest(),md5sum.hexdigest())
 
     def test8bitpcmtostring(self):
+        if (PCM not in CASES): return
+
         def _8bits():
             for i in xrange(0x100):
                 yield chr(i)
@@ -2543,6 +2639,8 @@ class TestPCMStreamReader(unittest.TestCase):
                         be_parser.parse(c) - 0x7F],1,True))
 
     def test16bitpcmtostring(self):
+        if (PCM not in CASES): return
+
         def _16bits():
             for i in xrange(0x100):
                 for j in xrange(0x100):
@@ -2584,11 +2682,15 @@ class TestPCMStreamReader(unittest.TestCase):
 
 class testbitstream(unittest.TestCase):
     def testinvalidstream(self):
+        if (PCM not in CASES): return
+
         b = audiotools.bitstream.BitStreamReader(None)
         self.assertRaises(AttributeError,
                           b.read,10)
 
     def testcompliance(self):
+        if (PCM not in CASES): return
+
         allbits = "".join(map(chr,range(0,0x100)) + \
                           map(chr,reversed(range(0,0x100)))) * 20
         for i in xrange(1,65):
@@ -2608,6 +2710,8 @@ class testbitstream(unittest.TestCase):
 
 class testbufferedstream(unittest.TestCase):
     def testbuffer(self):
+        if (PCM not in CASES): return
+
         reader = VARIABLE_PCM_Reader(TEST_LENGTH)
         bufferedreader = audiotools.BufferedPCMReader(reader)
 
@@ -2621,6 +2725,8 @@ class testbufferedstream(unittest.TestCase):
         self.assertEqual(output.hexdigest(),reader.hexdigest())
 
     def testrandombuffer(self):
+        if (PCM not in CASES): return
+
         reader = VARIABLE_PCM_Reader(TEST_LENGTH)
         bufferedreader = audiotools.BufferedPCMReader(reader)
         size = reader.total_size
@@ -2638,6 +2744,8 @@ class testbufferedstream(unittest.TestCase):
 
 class testtracknumber(unittest.TestCase):
     def testnumber(self):
+        if (METADATA not in CASES): return
+
         dir01 = tempfile.mkdtemp(suffix="01")
         dir02 = tempfile.mkdtemp(suffix="02")
         dir03 = tempfile.mkdtemp(suffix="03")
@@ -2697,6 +2805,8 @@ IqWzFUixmyqeumDRdlhpO+C2s3Eocdn5wUixIZt3KdoOK20HindxcShxI3mX+IDg3b8MLEoQ6yTo
             yield sheet
 
     def testreadsheet(self):
+        if (CUESHEET not in CASES): return
+
         for sheet in self.sheets():
             self.assertEqual(isinstance(sheet,self.sheet_class),True)
             self.assertEqual(sheet.catalog(),'4580226563955')
@@ -2740,6 +2850,8 @@ IqWzFUixmyqeumDRdlhpO+C2s3Eocdn5wUixIZt3KdoOK20HindxcShxI3mX+IDg3b8MLEoQ6yTo
                               10870944, 2687748])
 
     def testconvertsheet(self):
+        if (CUESHEET not in CASES): return
+
         import audiotools.cue
         import audiotools.toc
 
@@ -3188,6 +3300,8 @@ Is+xl9xg0BWyGXIZljPkM6xkKGQoZihlWM19CsPUca8l97sa7ZDGfwEBGThn""".decode('base64')
                   ]
 
     def testroundtrip(self):
+        if (METADATA not in CASES): return
+
         for (data,length,offsets,items,track_lengths) in self.XMCD_FILES:
             f = tempfile.NamedTemporaryFile(suffix=".xmcd")
             try:
@@ -3226,6 +3340,8 @@ Is+xl9xg0BWyGXIZljPkM6xkKGQoZihlWM19CsPUca8l97sa7ZDGfwEBGThn""".decode('base64')
                 f.close()
 
     def testtracktagging(self):
+        if (METADATA not in CASES): return
+
         for (data,length,offsets,items,track_lengths) in self.XMCD_FILES:
             f = tempfile.NamedTemporaryFile(suffix=".xmcd")
             try:
@@ -3283,6 +3399,8 @@ Is+xl9xg0BWyGXIZljPkM6xkKGQoZihlWM19CsPUca8l97sa7ZDGfwEBGThn""".decode('base64')
                 f.close()
 
     def test_formatting(self):
+        if (METADATA not in CASES): return
+
         LENGTH = 1134
         OFFSETS = [150, 18740, 40778, 44676, 63267]
 
@@ -3340,6 +3458,8 @@ Is+xl9xg0BWyGXIZljPkM6xkKGQoZihlWM19CsPUca8l97sa7ZDGfwEBGThn""".decode('base64')
         self.assert_(max(map(len,cStringIO.StringIO(xmcd.build()))) < 80)
 
     def testtracktag(self):
+        if (EXECUTABLE not in CASES): return
+
         LENGTH = 1134
         OFFSETS = [150, 18740, 40778, 44676, 63267]
         TRACK_LENGTHS = [y - x for x,y in zip(OFFSETS + [LENGTH * 75],
@@ -3572,6 +3692,8 @@ class TestProgramOutput(TestTextOutput):
 
 
     def test_track2track1(self):
+        if (EXECUTABLE not in CASES): return
+
         returnval = self.__run_app__(
             ["track2track","-j",str(1),"-t","flac","-d",self.dir2,
              self.flac1.filename,self.flac2.filename,self.flac3.filename])
@@ -3592,6 +3714,8 @@ class TestProgramOutput(TestTextOutput):
         self.__check_info__(_(u"Adding ReplayGain metadata.  This may take some time."))
 
     def test_track2track2(self):
+        if (EXECUTABLE not in CASES): return
+
         self.assertEqual(self.__run_app__(
                 ["track2track","-d",self.dir2,"-o","fail.flac",
                  self.flac1.filename]),1)
@@ -3666,6 +3790,8 @@ class TestProgramOutput(TestTextOutput):
         #FIXME - check invalid thumbnails
 
     def test_track2track3(self):
+        if (EXECUTABLE not in CASES): return
+
         self.assertEqual(self.__run_app__(
                 ["track2track","-j",str(1),"-t","mp3","--replay-gain",
                  "-d",self.dir2,self.flac1.filename]),0)
@@ -3681,6 +3807,8 @@ class TestProgramOutput(TestTextOutput):
         self.__check_info__(_(u"Applying ReplayGain.  This may take some time."))
 
     def test_coverdump1(self):
+        if (EXECUTABLE not in CASES): return
+
         m1 = self.flac1.get_metadata()
         m1.add_image(audiotools.Image.new(TEST_COVER1,u'',0))
         self.flac1.set_metadata(m1)
@@ -3702,6 +3830,8 @@ class TestProgramOutput(TestTextOutput):
             self.filename(os.path.join(self.dir2,"front_cover.jpg")))
 
     def test_coverdump2(self):
+        if (EXECUTABLE not in CASES): return
+
         m1 = self.flac1.get_metadata()
         m1.add_image(audiotools.Image.new(TEST_COVER1,u'',0))
         m1.add_image(audiotools.Image.new(TEST_COVER2,u'',2))
@@ -3719,6 +3849,8 @@ class TestProgramOutput(TestTextOutput):
             self.filename(os.path.join(self.dir2,"leaflet02.jpg")))
 
     def test_trackcat1(self):
+        if (EXECUTABLE not in CASES): return
+
         self.assertEqual(self.__run_app__(
                 ["trackcat",self.flac1.filename,self.flac2.filename,
                  self.flac3.filename]),1)
@@ -3747,6 +3879,8 @@ class TestProgramOutput(TestTextOutput):
                                   "type":audiotools.FlacAudio.NAME})
 
     def test_trackcat2(self):
+        if (EXECUTABLE not in CASES): return
+
         self.assertEqual(self.__run_app__(
                 ["trackcat","-o","fail.flac","-t","flac"]),1)
 
@@ -3787,6 +3921,8 @@ class TestProgramOutput(TestTextOutput):
 
 
     def test_trackcmp1(self):
+        if (EXECUTABLE not in CASES): return
+
         self.assertEqual(self.__run_app__(
                 ["trackcmp",self.flac1.filename]),1)
 
@@ -3813,6 +3949,8 @@ class TestProgramOutput(TestTextOutput):
                                  "file2":self.filename(self.flac2.filename)})
 
     def test_trackcmp2(self):
+        if (EXECUTABLE not in CASES): return
+
         subprocess.call(["cp","-f",self.flac1.filename,self.dir2])
         subprocess.call(["cp","-f",self.flac2.filename,self.dir2])
         subprocess.call(["cp","-f",self.flac3.filename,self.dir2])
@@ -3883,6 +4021,8 @@ class TestProgramOutput(TestTextOutput):
                                   _(u"OK"))
 
     def test_trackcmp3(self):
+        if (EXECUTABLE not in CASES): return
+
         m = self.flac1.get_metadata()
         m.album_number = 1
         self.flac1.set_metadata(m)
@@ -3963,6 +4103,8 @@ class TestProgramOutput(TestTextOutput):
                                   _(u"OK"))
 
     def test_trackcmp4(self):
+        if (EXECUTABLE not in CASES): return
+
         subprocess.call(["cp","-f",self.flac2.filename,self.dir2])
         subprocess.call(["cp","-f",self.flac3.filename,self.dir2])
 
@@ -4069,6 +4211,8 @@ class TestProgramOutput(TestTextOutput):
                                   _(u"differ"))
 
     def test_trackinfo(self):
+        if (EXECUTABLE not in CASES): return
+
         for flac in [self.flac1,self.flac2,self.flac3]:
             self.assertEqual(self.__run_app__(
                     ["trackinfo",flac.filename]),0)
@@ -4147,6 +4291,8 @@ class TestProgramOutput(TestTextOutput):
             self.assertEqual(self.stdout.read(),"")
 
     def test_tracktag1(self):
+        if (EXECUTABLE not in CASES): return
+
         self.assertEqual(self.__run_app__(
                 ["tracktag","-x","/dev/null",self.flac1.filename]),1)
         self.__check_error__(_(u"Unable to open XMCD file \"%s\"") % \
@@ -4193,6 +4339,8 @@ class TestProgramOutput(TestTextOutput):
         self.__check_info__(_(u"Applying ReplayGain.  This may take some time."))
 
     def test_tracklint1(self):
+        if (EXECUTABLE not in CASES): return
+
         self.assertEqual(self.__run_app__(
                 ["tracklint","--undo",self.flac1.filename]),1)
         self.__check_error__(_(u"Cannot perform undo without undo db"))
@@ -4213,6 +4361,8 @@ class TestProgramOutput(TestTextOutput):
         #these should probably be tested somewhere
 
     def test_trackrename(self):
+        if (EXECUTABLE not in CASES): return
+
         self.assertEqual(self.__run_app__(["trackrename"]),1)
         self.__check_error__(_(u"You must specify at least 1 supported audio file"))
 
@@ -4252,6 +4402,8 @@ class TestTracklengthOutput(TestTextOutput):
             track_name=u"Unicode %s" % \
                 (u"".join(map(unichr,range(0x30a1,0x30b2 + 1)))),
             track_number=3)
+
+        if (EXECUTABLE not in CASES): return
 
         self.flac1 = audiotools.FlacAudio.from_pcm(
             os.path.join(
@@ -4293,6 +4445,8 @@ class TestTracklengthOutput(TestTextOutput):
         os.rmdir(self.dir2)
 
     def test_tracklength(self):
+        if (EXECUTABLE not in CASES): return
+
         self.assertEqual(self.__run_app__(
                 ["tracklength",self.flac1.filename]),0)
         total_length = self.flac1.cd_frames()
@@ -4361,6 +4515,8 @@ class TestTracksplitOutput(TestTextOutput):
 # MiJhSMKYhEEJoxKGJYxLGJgwssjIYkJemrtxazGfzeVx/w8vFHIR""".decode('base64').decode('zlib'))
         f.close()
 
+        if (EXECUTABLE not in CASES): return
+
         self.flac = audiotools.FlacAudio.from_pcm(
             os.path.join(self.dir1,"album.flac"),
             EXACT_BLANK_PCM_Reader(24725400),
@@ -4384,6 +4540,8 @@ class TestTracksplitOutput(TestTextOutput):
         os.rmdir(self.dir2)
 
     def test_tracksplit1(self):
+        if (EXECUTABLE not in CASES): return
+
         self.assertEqual(self.__run_app__(
                 ["tracksplit","-t","flac","-q","help"]),0)
         self.__check_info__(_(u"Available compression types for %s:") % \
@@ -4471,6 +4629,8 @@ class TestTracksplitOutput(TestTextOutput):
         #FIXME? - check for broken cue sheet output?
 
     def test_tracksplit2(self):
+        if (EXECUTABLE not in CASES): return
+
         format_string = "%(track_name)s - %(album_track_number)s.%(suffix)s"
 
         xmcd = audiotools.XMCD.read_data(open(self.xmcd_path).read().decode('utf-8'))
@@ -4525,6 +4685,8 @@ class TestTrack2XMCD(TestTextOutput):
         f.write("Hello World")
         f.close()
 
+        if (EXECUTABLE not in CASES): return
+
         self.flac_files = [audiotools.FlacAudio.from_pcm(
                 os.path.join(self.dir,"file%2.2d.flac" % (i + 1)),
                 EXACT_BLANK_PCM_Reader(sample_length),
@@ -4543,6 +4705,8 @@ class TestTrack2XMCD(TestTextOutput):
         os.rmdir(self.dir)
 
     def test_track2xmcd(self):
+        if (EXECUTABLE not in CASES): return
+
         self.assertEqual(self.__run_app__(["track2xmcd"]),1)
         self.__check_error__(_(u"You must specify at least 1 supported audio file"))
 

@@ -47,7 +47,10 @@ def checksum(path):
 YEAR = re.compile(r'^\d{4}$')
 
 TEXT_FIELDS = tuple([field for field in audiotools.MetaData.__FIELDS__
-                     if (field not in ("track_number","album_number"))])
+                     if (field not in ("track_number",
+                                       "album_number",
+                                       "track_total",
+                                       "album_total"))])
 
 def display_messages(messenger,track,messages):
     for message in messages:

@@ -1169,10 +1169,11 @@ def make_dirs(destination_path):
 #######################
 
 class MetaData:
-    __FIELDS__ = ("track_name","track_number","album_name","artist_name",
+    __FIELDS__ = ("track_name","track_number","track_total",
+                  "album_name","artist_name",
                   "performer_name","composer_name","conductor_name",
                   "media","ISRC","catalog","copyright",
-                  "publisher","year","date","album_number",
+                  "publisher","year","date","album_number","album_total",
                   "comment")
 
     #track_name, album_name, artist_name, performer_name, copyright and year
@@ -1181,6 +1182,7 @@ class MetaData:
     def __init__(self,
                  track_name=u"",     #the name of this individual track
                  track_number=0,     #the number of this track
+                 track_total=0,      #the total number of tracks
                  album_name=u"",     #the name of this track's album
                  artist_name=u"",    #the song's original creator/composer
                  performer_name=u"", #the song's performing artist
@@ -1194,6 +1196,7 @@ class MetaData:
                  year=u"",           #the album's release year
                  date=u"",           #the original recording date
                  album_number=0,     #the disc's volume number, if any
+                 album_total=0,      #the total number of discs, if any
                  comment=u"",        #the track's comment string
                  images=None):
         #we're avoiding self.foo = foo because
@@ -1201,6 +1204,7 @@ class MetaData:
         #which could lead to unwelcome side-effects
         self.__dict__['track_name'] = track_name
         self.__dict__['track_number'] = track_number
+        self.__dict__['track_total'] = track_total
         self.__dict__['album_name'] = album_name
         self.__dict__['artist_name'] = artist_name
         self.__dict__['performer_name'] = performer_name
@@ -1214,6 +1218,7 @@ class MetaData:
         self.__dict__['year'] = year
         self.__dict__['date'] = date
         self.__dict__['album_number'] = album_number
+        self.__dict__['album_total'] = album_total
         self.__dict__['comment'] = comment
 
         if (images is not None):
@@ -1616,7 +1621,11 @@ class AudioFile:
                         (album_number,track_number)
 
                 for field in track_metadata.__FIELDS__:
-                    if (field not in ("track_number","suffix","album_number")):
+                    if (field not in ("track_number",
+                                      "suffix",
+                                      "album_number",
+                                      "track_total",
+                                      "album_total")):
                         format_dict[field] = getattr(
                             track_metadata,
                             field).replace('/','-').replace(chr(0),' ')

@@ -32,6 +32,7 @@ class VorbisComment(MetaData,dict):
 
     ATTRIBUTE_MAP = {'track_name':'TITLE',
                      'track_number':'TRACKNUMBER',
+                     'track_total':'TRACKTOTAL',  #FIXME - verify this
                      'album_name':'ALBUM',
                      'artist_name':'ARTIST',
                      'performer_name':'PERFORMER',
@@ -44,6 +45,7 @@ class VorbisComment(MetaData,dict):
                      'publisher':'PUBLISHER',
                      'year':'DATE',
                      'album_number':'DISCNUMBER',
+                     'album_total':'DISCTOTAL',   #FIXME - verify this
                      'comment':'COMMENT'}
 
     ITEM_MAP = dict(map(reversed,ATTRIBUTE_MAP.items()))
@@ -57,14 +59,25 @@ class VorbisComment(MetaData,dict):
             track_number = 0
 
         try:
+            track_total = int(vorbis_data.get('TRACKTOTAL',['0'])[0])
+        except ValueError:
+            track_total = 0
+
+        try:
             album_number = int(vorbis_data.get('DISCNUMBER',['0'])[0])
         except ValueError:
             album_number = 0
+
+        try:
+            album_total = int(vorbis_data.get('DISCTOTAL',['0'])[0])
+        except ValueError:
+            album_total = 0
 
         MetaData.__init__(
             self,
             track_name = vorbis_data.get('TITLE',[u''])[0],
             track_number = track_number,
+            track_total = track_total,
             album_name = vorbis_data.get('ALBUM',[u''])[0],
             artist_name = vorbis_data.get('ARTIST',[u''])[0],
             performer_name = vorbis_data.get('PERFORMER',[u''])[0],
@@ -78,6 +91,7 @@ class VorbisComment(MetaData,dict):
             year = vorbis_data.get('DATE',[u''])[0],
             date = u"",
             album_number = album_number,
+            album_total = album_total,
             comment = vorbis_data.get('COMMENT',[u''])[0])
 
         dict.__init__(self,vorbis_data)
@@ -93,7 +107,10 @@ class VorbisComment(MetaData,dict):
         self.__dict__[key] = value
 
         if (key in self.ATTRIBUTE_MAP):
-            if (key not in ('track_number','album_number')):
+            if (key not in ('track_number',
+                            'track_total',
+                            'album_number',
+                            'album_total')):
                 self[self.ATTRIBUTE_MAP[key]] = [value]
             else:
                 self[self.ATTRIBUTE_MAP[key]] = [unicode(value)]
@@ -104,7 +121,10 @@ class VorbisComment(MetaData,dict):
         dict.__setitem__(self, key, value)
 
         if (self.ITEM_MAP.has_key(key)):
-            if (key not in ('TRACKNUMBER','DISCNUMBER')):
+            if (key not in ('TRACKNUMBER',
+                            'TRACKTOTAL',
+                            'DISCNUMBER',
+                            'DISCTOTAL')):
                 self.__dict__[self.ITEM_MAP[key]] = value[0]
             else:
                 self.__dict__[self.ITEM_MAP[key]] = int(value[0])
@@ -124,12 +144,11 @@ class VorbisComment(MetaData,dict):
         else:
             values = {}
             for key in cls.ATTRIBUTE_MAP.keys():
-                if (key == 'track_number'):
-                    if (metadata.track_number != 0):
-                        values[cls.ATTRIBUTE_MAP[key]] = \
-                            [unicode(getattr(metadata,key))]
-                elif (key == 'album_number'):
-                    if (metadata.album_number != 0):
+                if (key in ('track_number',
+                            'track_total',
+                            'album_number',
+                            'album_total')):
+                    if (getattr(metadata,key) != 0):
                         values[cls.ATTRIBUTE_MAP[key]] = \
                             [unicode(getattr(metadata,key))]
                 elif (getattr(metadata,key) != u""):

@@ -217,12 +217,11 @@ class FlacVorbisComment(VorbisComment):
         else:
             values = {}
             for key in cls.ATTRIBUTE_MAP.keys():
-                if (key == 'track_number'):
-                    if (metadata.track_number != 0):
-                        values[cls.ATTRIBUTE_MAP[key]] = \
-                            [unicode(getattr(metadata,key))]
-                elif (key == 'album_number'):
-                    if (metadata.album_number != 0):
+                if (key in ('track_number',
+                            'track_total',
+                            'album_number',
+                            'album_total')):
+                    if (getattr(metadata,key) != 0):
                         values[cls.ATTRIBUTE_MAP[key]] = \
                             [unicode(getattr(metadata,key))]
                 elif (getattr(metadata,key) != u""):
