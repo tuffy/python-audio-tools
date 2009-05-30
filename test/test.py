@@ -2190,13 +2190,20 @@ class TestID3v2(unittest.TestCase):
                              new_class.converted(metadata).images())
 
     def __dict_test__(self,id3_class):
+        INTEGER_ATTRIBS = ('track_number',
+                           'track_total',
+                           'album_number',
+                           'album_total')
+
         attribs1 = {}  #a dict of attribute -> value pairs ("track_name":u"foo")
         attribs2 = {}  #a dict of ID3v2 -> value pairs     ("TT2":u"foo")
         for (i,(attribute,key)) in enumerate(id3_class.ATTRIBUTE_MAP.items()):
-            if (key not in id3_class.INTEGER_ITEMS):
+            if (attribute not in INTEGER_ATTRIBS):
                 attribs1[attribute] = attribs2[key] = u"value %d" % (i)
-            else:
-                attribs1[attribute] = attribs2[key] = i
+        attribs1["track_number"] = 2
+        attribs1["track_total"] = 10
+        attribs1["album_number"] = 1
+        attribs1["album_total"] = 3
 
         id3 = id3_class.converted(audiotools.MetaData(**attribs1))
 
@@ -2208,12 +2215,19 @@ class TestID3v2(unittest.TestCase):
         for (attribute,value) in attribs1.items():
             self.assertEqual(getattr(id3,attribute),value)
 
-        #ensure that all the keys match up
+        #ensure that all the keys for non-integer items match up
         for (key,value) in attribs2.items():
-            if (key not in id3_class.INTEGER_ITEMS):
-                self.assertEqual(unicode(id3[key][0]),value)
-            else:
-                self.assertEqual(int(id3[key][0]),value)
+            self.assertEqual(unicode(id3[key][0]),value)
+
+        #ensure the keys for integer items match up
+        self.assertEqual(int(id3[id3_class.INTEGER_ITEMS[0]][0]),
+                         attribs1["track_number"])
+        self.assertEqual(id3[id3_class.INTEGER_ITEMS[0]][0].total(),
+                         attribs1["track_total"])
+        self.assertEqual(int(id3[id3_class.INTEGER_ITEMS[1]][0]),
+                         attribs1["album_number"])
+        self.assertEqual(id3[id3_class.INTEGER_ITEMS[1]][0].total(),
+                         attribs1["album_total"])
 
         #ensure that changing attributes changes the underlying frame
         #>>> id3.track_name = u"bar"
@@ -2222,9 +2236,24 @@ class TestID3v2(unittest.TestCase):
             if (key not in id3_class.INTEGER_ITEMS):
                 setattr(id3,attribute,u"new value %d" % (i))
                 self.assertEqual(unicode(id3[key][0]),u"new value %d" % (i))
-            else:
-                setattr(id3,attribute,i + 10)
-                self.assertEqual(int(id3[key][0]),i + 10)
+
+        #ensure that changing integer attributes changes the underlying frame
+        #>>> id3.track_number = 2
+        #>>> id3['TRK'][0] == u"2"
+        id3.track_number = 3
+        id3.track_total = 0
+        self.assertEqual(unicode(id3[id3_class.INTEGER_ITEMS[0]][0]),u"3")
+
+        id3.track_total = 8
+        self.assertEqual(unicode(id3[id3_class.INTEGER_ITEMS[0]][0]),u"3/8")
+
+        id3.album_number = 2
+        id3.album_total = 0
+        self.assertEqual(unicode(id3[id3_class.INTEGER_ITEMS[1]][0]),u"2")
+
+        id3.album_total = 4
+        self.assertEqual(unicode(id3[id3_class.INTEGER_ITEMS[1]][0]),u"2/4")
+
 
         #reset and re-check everything for the next round
         id3 = id3_class.converted(audiotools.MetaData(**attribs1))
@@ -2232,6 +2261,7 @@ class TestID3v2(unittest.TestCase):
         self.assertEqual(self.mp3_file.get_metadata(),id3)
         id3 = self.mp3_file.get_metadata()
 
+        #ensure that all the attributes match up
         for (attribute,value) in attribs1.items():
             self.assertEqual(getattr(id3,attribute),value)
 
@@ -2245,53 +2275,78 @@ class TestID3v2(unittest.TestCase):
         #>>> id3['TT2'] = [u"bar"]
         #>>> id3.track_name == u"bar"
         for (i,(attribute,key)) in enumerate(id3_class.ATTRIBUTE_MAP.items()):
-            if (key not in id3_class.INTEGER_ITEMS):
+            if (attribute not in INTEGER_ATTRIBS):
                 id3[key] = [u"new value %d" % (i)]
                 self.mp3_file.set_metadata(id3)
                 id3 = self.mp3_file.get_metadata()
                 self.assertEqual(getattr(id3,attribute),u"new value %d" % (i))
-            else:
-                id3[key] = [i + 10]
-                self.mp3_file.set_metadata(id3)
-                id3 = self.mp3_file.get_metadata()
-                self.assertEqual(getattr(id3,attribute),i + 10)
 
-        #ensure that nutty track and album numbers are handled correctly
-        #in both directions
-        for attribute in ('track_number','album_number'):
-            id3 = self.mp3_file.get_metadata()
-            setattr(id3,attribute,u"5/10")
-            self.mp3_file.set_metadata(id3)
-            id3 = self.mp3_file.get_metadata()
-            self.assertEqual(getattr(id3,attribute),5)
-            self.assertEqual(
-                unicode(id3[id3_class.ATTRIBUTE_MAP[attribute]][0]),u"5/10")
-
-        id3.track_number = 1
-        id3.album_number = 2
+        #ensure that changing the underlying integer frames changes attributes
+        id3[id3_class.INTEGER_ITEMS[0]] = [7]
         self.mp3_file.set_metadata(id3)
+        id3 = self.mp3_file.get_metadata()
+        self.assertEqual(id3.track_number,7)
 
-        for attribute in ('track_number','album_number'):
-            field = id3_class.ATTRIBUTE_MAP[attribute]
-            id3 = self.mp3_file.get_metadata()
-            id3[field] = [id3_class.TextFrame.from_unicode(field,u"5/10")]
-            self.mp3_file.set_metadata(id3)
-            id3 = self.mp3_file.get_metadata()
-            self.assertEqual(getattr(id3,attribute),5)
-            self.assertEqual(unicode(id3[field][0]),u"5/10")
+        id3[id3_class.INTEGER_ITEMS[0]] = [u"8/9"]
+        self.mp3_file.set_metadata(id3)
+        id3 = self.mp3_file.get_metadata()
+        self.assertEqual(id3.track_number,8)
+        self.assertEqual(id3.track_total,9)
+
+        id3[id3_class.INTEGER_ITEMS[1]] = [4]
+        self.mp3_file.set_metadata(id3)
+        id3 = self.mp3_file.get_metadata()
+        self.assertEqual(id3.album_number,4)
+
+        id3[id3_class.INTEGER_ITEMS[1]] = [u"5/6"]
+        self.mp3_file.set_metadata(id3)
+        id3 = self.mp3_file.get_metadata()
+        self.assertEqual(id3.album_number,5)
+        self.assertEqual(id3.album_total,6)
 
         #finally, just for kicks, ensure that explicitly setting
         #frames also changes attributes
         #>>> id3['TT2'] = [id3_class.TextFrame.from_unicode('TT2',u"foo")]
         #>>> id3.track_name = u"foo"
         for (i,(attribute,key)) in enumerate(id3_class.ATTRIBUTE_MAP.items()):
-            id3[key] = [id3_class.TextFrame.from_unicode(key,unicode(i))]
-            self.mp3_file.set_metadata(id3)
-            id3 = self.mp3_file.get_metadata()
-            if (key not in id3_class.INTEGER_ITEMS):
+            if (attribute not in INTEGER_ATTRIBS):
+                id3[key] = [id3_class.TextFrame.from_unicode(key,unicode(i))]
+                self.mp3_file.set_metadata(id3)
+                id3 = self.mp3_file.get_metadata()
                 self.assertEqual(getattr(id3,attribute),unicode(i))
-            else:
-                self.assertEqual(getattr(id3,attribute),i)
+
+        #and ensure explicitly setting integer frames also changes attribs
+        id3[id3_class.INTEGER_ITEMS[0]] = [
+            id3_class.TextFrame.from_unicode(id3_class.INTEGER_ITEMS[0],
+                                             u"4")]
+        self.mp3_file.set_metadata(id3)
+        id3 = self.mp3_file.get_metadata()
+        self.assertEqual(id3.track_number,4)
+        self.assertEqual(id3.track_total,0)
+
+        id3[id3_class.INTEGER_ITEMS[0]] = [
+            id3_class.TextFrame.from_unicode(id3_class.INTEGER_ITEMS[0],
+                                             u"2/10")]
+        self.mp3_file.set_metadata(id3)
+        id3 = self.mp3_file.get_metadata()
+        self.assertEqual(id3.track_number,2)
+        self.assertEqual(id3.track_total,10)
+
+        id3[id3_class.INTEGER_ITEMS[1]] = [
+            id3_class.TextFrame.from_unicode(id3_class.INTEGER_ITEMS[1],
+                                             u"3")]
+        self.mp3_file.set_metadata(id3)
+        id3 = self.mp3_file.get_metadata()
+        self.assertEqual(id3.album_number,3)
+        self.assertEqual(id3.album_total,0)
+
+        id3[id3_class.INTEGER_ITEMS[1]] = [
+            id3_class.TextFrame.from_unicode(id3_class.INTEGER_ITEMS[1],
+                                             u"5/7")]
+        self.mp3_file.set_metadata(id3)
+        id3 = self.mp3_file.get_metadata()
+        self.assertEqual(id3.album_number,5)
+        self.assertEqual(id3.album_total,7)
 
     def testid3v2_2(self):
         self.__comment_test__(audiotools.ID3v22Comment)
@@ -4736,7 +4791,7 @@ class TestTrack2XMCD(TestTextOutput):
         #Since we're working with live data,
         #that number may change further down the line
         #so one mustn't panic if this test fails someday in the future.
-        self.__check_info__(_(u"2 matches found"))
+        self.__check_info__(_(u"3 matches found"))
 
         self.__check_info__(_(u"%s written") % \
                                 (self.filename(self.xmcd_filename)))

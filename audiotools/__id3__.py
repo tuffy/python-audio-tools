@@ -141,6 +141,16 @@ def __attrib_equals__(attributes,o1,o2):
     except AttributeError:
         return False
 
+#takes a pair of integers for the current and total values
+#returns a unicode string of their combined pair
+#for example, __number_pair__(2,3) returns u"2/3"
+#whereas      __number_pair__(4,0) returns u"4"
+def __number_pair__(current,total):
+    if (total == 0):
+        return u"%d" % (current)
+    else:
+        return u"%d/%d" % (current,total)
+
 #######################
 #ID3v2.2
 #######################
@@ -235,6 +245,12 @@ class ID3v22TextFrame(ID3v22Frame):
     def __int__(self):
         try:
             return int(re.findall(r'\d+',self.string)[0])
+        except IndexError:
+            return 0
+
+    def total(self):
+        try:
+            return int(re.findall(r'\d+/(\d+)',self.string)[0])
         except IndexError:
             return 0
 
@@ -421,6 +437,7 @@ class ID3v22Comment(MetaData):
 
     ATTRIBUTE_MAP = {'track_name':'TT2',
                      'track_number':'TRK',
+                     'track_total':'TRK',
                      'album_name':'TAL',
                      'artist_name':'TP1',
                      'performer_name':'TP2',
@@ -433,9 +450,8 @@ class ID3v22Comment(MetaData):
                      'year':'TYE',
                      'date':'TRD',
                      'album_number':'TPA',
+                     'album_total':'TPA',
                      'comment':'COM'}
-
-    ITEM_MAP = dict(map(reversed,ATTRIBUTE_MAP.items()))
 
     INTEGER_ITEMS = ('TRK','TPA')
 
@@ -444,21 +460,13 @@ class ID3v22Comment(MetaData):
 
     #frames should be a list of ID3v22Frame-compatible objects
     def __init__(self,frames):
-        self.frames = {}  #a frame_id->[frame list] mapping
+        self.__dict__["frames"] = {}  #a frame_id->[frame list] mapping
 
         for frame in frames:
-            self.frames.setdefault(frame.id,[]).append(frame)
+            self.__dict__["frames"].setdefault(frame.id,[]).append(frame)
 
-        attribs = {}
-        for key in self.frames.keys():
-            if ((key in self.ITEM_MAP.keys()) and
-                (self.frames[key][0].TEXT_TYPE)):
-                if (key not in self.INTEGER_ITEMS):
-                    attribs[self.ITEM_MAP[key]] = unicode(self.frames[key][0])
-                else:
-                    attribs[self.ITEM_MAP[key]] = int(self.frames[key][0])
-
-        MetaData.__init__(self,**attribs)
+    def __repr__(self):
+        return "ID3v22Comment(%s)" % (repr(self.__dict__["frames"]))
 
     def __comment_name__(self):
         return u'ID3v2.2'
@@ -506,12 +514,46 @@ class ID3v22Comment(MetaData):
     #if an attribute is updated (e.g. self.track_name)
     #make sure to update the corresponding dict pair
     def __setattr__(self, key, value):
-        self.__dict__[key] = value
-
         if (key in self.ATTRIBUTE_MAP):
+            if (key == 'track_number'):
+                value = __number_pair__(value,self.track_total)
+            elif (key == 'track_total'):
+                value = __number_pair__(self.track_number,value)
+            elif (key == 'album_number'):
+                value = __number_pair__(value,self.album_total)
+            elif (key == 'album_total'):
+                value = __number_pair__(self.album_number,value)
+
             self.frames[self.ATTRIBUTE_MAP[key]] = [
                 self.TextFrame.from_unicode(self.ATTRIBUTE_MAP[key],
                                             unicode(value))]
+        elif (key in MetaData.__FIELDS__):
+            pass
+        else:
+            self.__dict__[key] = value
+
+    def __getattr__(self, key):
+        import sys
+
+        if (key in self.ATTRIBUTE_MAP):
+            try:
+                frame = self.frames[self.ATTRIBUTE_MAP[key]][0]
+                if (key in ('track_number','album_number')):
+                    return int(frame)
+                elif (key in ('track_total','album_total')):
+                    return frame.total()
+                else:
+                    return unicode(frame)
+            except KeyError:
+                if (key in ('track_number','album_number',
+                           'track_total','album_total')):
+                    return 0
+                else:
+                    return u""
+        elif (key in MetaData.__FIELDS__):
+            return u""
+        else:
+            raise AttributeError(key)
 
     def add_image(self, image):
         image = self.PictureFrame.converted(image)
@@ -542,12 +584,6 @@ class ID3v22Comment(MetaData):
                 frames.append(self.TextFrame.from_unicode(key,unicode(value)))
             elif (isinstance(value,self.Frame)):
                 frames.append(value)
-
-        if ((key in self.ITEM_MAP.keys()) and (len(frames) > 0)):
-            if (key not in self.INTEGER_ITEMS):
-                self.__dict__[self.ITEM_MAP[key]] = unicode(frames[0])
-            else:
-                self.__dict__[self.ITEM_MAP[key]] = int(frames[0])
 
         self.frames[key] = frames
 
@@ -604,14 +640,25 @@ class ID3v22Comment(MetaData):
 
         frames = []
 
-        for (key,field) in cls.ITEM_MAP.items():
+        for (field,key) in cls.ATTRIBUTE_MAP.items():
             value = getattr(metadata,field)
             if (key not in cls.INTEGER_ITEMS):
                 if (len(value.strip()) > 0):
                     frames.append(cls.TextFrame.from_unicode(key,value))
-            else:
-                if (value != 0):
-                    frames.append(cls.TextFrame.from_unicode(key,unicode(value)))
+            # else:
+            #     if (value != 0):
+            #         frames.append(cls.TextFrame.from_unicode(key,unicode(value)))
+        frames.append(cls.TextFrame.from_unicode(
+                cls.INTEGER_ITEMS[0],
+                __number_pair__(metadata.track_number,
+                                metadata.track_total)))
+
+        if ((metadata.album_number != 0) or
+            (metadata.album_total != 0)):
+            frames.append(cls.TextFrame.from_unicode(
+                cls.INTEGER_ITEMS[1],
+                __number_pair__(metadata.album_number,
+                                metadata.album_total)))
 
         for image in metadata.images():
             frames.append(cls.PictureFrame.converted(image))
@@ -787,6 +834,12 @@ class ID3v23TextFrame(ID3v23Frame):
         except IndexError:
             return 0
 
+    def total(self):
+        try:
+            return int(re.findall(r'\d+/(\d+)',self.string)[0])
+        except IndexError:
+            return 0
+
     @classmethod
     def from_unicode(cls,frame_id,s):
         if (frame_id == 'COMM'):
@@ -927,6 +980,7 @@ class ID3v23Comment(ID3v22Comment):
 
     ATTRIBUTE_MAP = {'track_name':'TIT2',
                      'track_number':'TRCK',
+                     'track_total':'TRCK',
                      'album_name':'TALB',
                      'artist_name':'TPE1',
                      'performer_name':'TPE2',
@@ -939,15 +993,17 @@ class ID3v23Comment(ID3v22Comment):
                      'year':'TYER',
                      'date':'TRDA',
                      'album_number':'TPOS',
+                     'album_total':'TPOS',
                      'comment':'COMM'}
-
-    ITEM_MAP = dict(map(reversed,ATTRIBUTE_MAP.items()))
 
     INTEGER_ITEMS = ('TRCK','TPOS')
 
     KEY_ORDER = ('TIT2','TALB','TRCK','TPOS','TPE1','TPE2','TCOM',
                  'TPE3','TPUB','TSRC','TMED','TYER','TRDA','TCOP',
                  None,'COMM','APIC')
+
+    def __repr__(self):
+        return "ID3v23Comment(%s)" % (repr(self.__dict__["frames"]))
 
     def __comment_name__(self):
         return u'ID3v2.3'
@@ -1005,6 +1061,7 @@ class ID3v23Comment(ID3v22Comment):
                           experimental=False,
                           footer=False,
                           length=len(subframes))) + subframes
+
 
 #######################
 #ID3v2.4
@@ -1118,6 +1175,12 @@ class ID3v24TextFrame(ID3v24Frame):
     def __int__(self):
         try:
             return int(re.findall(r'\d+',self.string)[0])
+        except IndexError:
+            return 0
+
+    def total(self):
+        try:
+            return int(re.findall(r'\d+/(\d+)',self.string)[0])
         except IndexError:
             return 0
 
@@ -1262,6 +1325,9 @@ class ID3v24Comment(ID3v23Comment):
     Frame = ID3v24Frame
     TextFrame = ID3v24TextFrame
     PictureFrame = ID3v24PicFrame
+
+    def __repr__(self):
+        return "ID3v24Comment(%s)" % (repr(self.__dict__["frames"]))
 
     def __comment_name__(self):
         return u'ID3v2.4'

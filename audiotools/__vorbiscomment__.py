@@ -32,7 +32,7 @@ class VorbisComment(MetaData,dict):
 
     ATTRIBUTE_MAP = {'track_name':'TITLE',
                      'track_number':'TRACKNUMBER',
-                     'track_total':'TRACKTOTAL',  #FIXME - verify this
+                     'track_total':'TRACKTOTAL',
                      'album_name':'ALBUM',
                      'artist_name':'ARTIST',
                      'performer_name':'PERFORMER',
@@ -45,7 +45,7 @@ class VorbisComment(MetaData,dict):
                      'publisher':'PUBLISHER',
                      'year':'DATE',
                      'album_number':'DISCNUMBER',
-                     'album_total':'DISCTOTAL',   #FIXME - verify this
+                     'album_total':'DISCTOTAL',
                      'comment':'COMMENT'}
 
     ITEM_MAP = dict(map(reversed,ATTRIBUTE_MAP.items()))

@@ -92,7 +92,7 @@ FREEDB_PORT = config.getint_default("FreeDB","port",80)
 THUMBNAIL_FORMAT = config.get_default("Thumbnail","format","jpeg")
 THUMBNAIL_SIZE = config.getint_default("Thumbnail","size",150)
 
-VERSION = "2.12alpha2"
+VERSION = "2.12alpha3"
 
 FILENAME_FORMAT = config.get_default(
     "Filenames","format",
@@ -1228,9 +1228,9 @@ class MetaData:
 
 
     def __repr__(self):
-        return ("MetaData(%s)" % (",".join(["%s"] * (len(self.__FIELDS__))))) %\
+        return ("MetaData(%s)" % (",".join(["%s"] * (len(MetaData.__FIELDS__))))) %\
             tuple(["%s=%s" % (field,repr(getattr(self,field)))
-                   for field in self.__FIELDS__])
+                   for field in MetaData.__FIELDS__])
 
     #returns the type of comment this is, as a unicode string
     def __comment_name__(self):
@@ -1283,7 +1283,7 @@ class MetaData:
     def __eq__(self, metadata):
         if (metadata is not None):
             return set([(getattr(self,attr) == getattr(metadata,attr))
-                        for attr in self.__FIELDS__]) == set([True])
+                        for attr in MetaData.__FIELDS__]) == set([True])
         else:
             return False
 
@@ -1326,7 +1326,7 @@ class MetaData:
     def leaflet_pages(self):
         return [i for i in self.images() if i.type == 2]
 
-    def media(self):
+    def media_images(self):
         return [i for i in self.images() if i.type == 3]
 
     def other_images(self):

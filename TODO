@@ -317,3 +317,7 @@
   It would be useful to store total tracks/total albums metadata.
   Although M4A supports these explicitly, other metadata formats may not.
 
+* TODO Add support for System->cdrom->offset
+  This will automatically apply offset samples when reading CDs
+  so that rips will have the appropate amount of null samples.
+
