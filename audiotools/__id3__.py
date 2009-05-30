@@ -1002,9 +1002,6 @@ class ID3v23Comment(ID3v22Comment):
                  'TPE3','TPUB','TSRC','TMED','TYER','TRDA','TCOP',
                  None,'COMM','APIC')
 
-    def __repr__(self):
-        return "ID3v23Comment(%s)" % (repr(self.__dict__["frames"]))
-
     def __comment_name__(self):
         return u'ID3v2.3'
 
