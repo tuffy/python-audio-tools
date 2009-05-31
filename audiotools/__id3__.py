@@ -645,9 +645,7 @@ class ID3v22Comment(MetaData):
             if (key not in cls.INTEGER_ITEMS):
                 if (len(value.strip()) > 0):
                     frames.append(cls.TextFrame.from_unicode(key,value))
-            # else:
-            #     if (value != 0):
-            #         frames.append(cls.TextFrame.from_unicode(key,unicode(value)))
+
         frames.append(cls.TextFrame.from_unicode(
                 cls.INTEGER_ITEMS[0],
                 __number_pair__(metadata.track_number,

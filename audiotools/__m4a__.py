@@ -426,11 +426,16 @@ class M4AMetaData(MetaData,dict):
             images = []
 
         attributes = {'track_number':trkn.track_number,
+                      'track_total':trkn.total_tracks,
                       'album_number':disk.disk_number,
+                      'album_total':disk.total_disks,
                       'images':images}
 
         for (attribute,key) in self.ATTRIBUTE_MAP.items():
-            if (attribute not in ("track_number","album_number")):
+            if (attribute not in ("track_number",
+                                  "track_total",
+                                  "album_number",
+                                  "album_total")):
                 attributes[attribute] = meta_data.get(key,[u''])[0]
 
         MetaData.__init__(self,**attributes)
@@ -443,18 +448,36 @@ class M4AMetaData(MetaData,dict):
         self.__dict__[key] = value
 
         if (self.ATTRIBUTE_MAP.has_key(key)):
-            if (key not in ('track_number','album_number')):
+            if (key not in ('track_number',
+                            'track_total',
+                            'album_number',
+                            'album_total')):
                 self[self.ATTRIBUTE_MAP[key]] = [value]
+
             elif (key == 'track_number'):
                 trkn = [__Qt_Meta_Atom__.TRKN.build(Con.Container(
                     track_number=int(value),
-                    total_tracks=0))]
+                    total_tracks=self.track_total))]
 
                 self[self.ATTRIBUTE_MAP[key]] = trkn
+
+            elif (key == 'track_total'):
+                trkn = [__Qt_Meta_Atom__.TRKN.build(Con.Container(
+                    track_number=self.track_number,
+                    total_tracks=int(value)))]
+
+                self[self.ATTRIBUTE_MAP[key]] = trkn
+
             elif (key == 'album_number'):
                 disk = [__Qt_Meta_Atom__.DISK.build(Con.Container(
                     disk_number=int(value),
-                    total_disks=0))]
+                    total_disks=self.album_total))]
+                self[self.ATTRIBUTE_MAP[key]] = disk
+
+            elif (key == 'album_total'):
+                disk = [__Qt_Meta_Atom__.DISK.build(Con.Container(
+                    disk_number=self.album_total,
+                    total_disks=int(value)))]
                 self[self.ATTRIBUTE_MAP[key]] = disk
 
     #if a dict pair is updated (e.g. self['\xa9nam'])
@@ -467,10 +490,12 @@ class M4AMetaData(MetaData,dict):
                 self.__dict__[self.ITEM_MAP[key]] = value[0]
             elif (key == 'trkn'):
                 trkn = __Qt_Meta_Atom__.TRKN.parse(value[0])
-                self.__dict__[self.ITEM_MAP[key]] = trkn.track_number
+                self.__dict__['track_number'] = trkn.track_number
+                self.__dict__['track_total'] = trkn.total_tracks
             elif (key == 'disk'):
                 disk = __Qt_Meta_Atom__.DISK.parse(value[0])
-                self.__dict__[self.ITEM_MAP[key]] = disk.disk_number
+                self.__dict__['disc_number'] = disk.disk_number
+                self.__dict__['disc_total'] = disk.total_disks
 
     def add_image(self, image):
         if (image.type == 0):
@@ -490,19 +515,22 @@ class M4AMetaData(MetaData,dict):
 
         for (key,field) in cls.ITEM_MAP.items():
             value = getattr(metadata,field)
-            if (field not in ('track_number','album_number')):
+            if (field not in ('track_number',
+                              'track_total',
+                              'album_number',
+                              'album_total')):
                 if (value != u''):
                     tags[key] = [value]
-            elif (field == 'track_number'):
-                if (value != 0):
-                    tags['trkn'] = [__Qt_Meta_Atom__.TRKN.build(Con.Container(
-                                track_number=int(value),
-                                total_tracks=0))]
-            elif (field == 'album_number'):
-                if (value != 0):
-                    tags['disk'] = [__Qt_Meta_Atom__.DISK.build(Con.Container(
-                                disk_number=int(value),
-                                total_disks=0))]
+
+        tags['trkn'] = [__Qt_Meta_Atom__.TRKN.build(Con.Container(
+                    track_number=metadata.track_number,
+                    total_tracks=metadata.track_total))]
+
+        if ((metadata.album_number != 0) or
+            (metadata.album_total != 0)):
+            tags['disk'] = [__Qt_Meta_Atom__.DISK.build(Con.Container(
+                        disk_number=metadata.album_number,
+                        total_disks=metadata.album_total))]
 
         if (len(metadata.front_covers()) > 0):
             tags['covr'] = [i.data for i in metadata.front_covers()]

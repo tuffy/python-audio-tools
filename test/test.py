@@ -1725,6 +1725,9 @@ class M4AMetadata:
             if (new_file.get_metadata() is not None):
                 metadata = audiotools.MetaData(track_name=u"Track Name",
                                                track_number=5,
+                                               track_total=10,
+                                               album_number=3,
+                                               album_total=4,
                                                album_name=u"Album Name",
                                                artist_name=u"Artist Name",
                                                performer_name=u"Performer")
@@ -1734,6 +1737,9 @@ class M4AMetadata:
 
                 metadata2 = audiotools.MetaData(track_name=u"New Track Name",
                                                 track_number=6,
+                                                track_total=11,
+                                                album_number=2,
+                                                album_total=5,
                                                 album_name=u"New Album Name",
                                                 artist_name=u"New Artist Name",
                                                 performer_name=u"New Performer")
