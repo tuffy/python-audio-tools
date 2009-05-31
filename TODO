@@ -328,3 +328,8 @@
   This will automatically apply offset samples when reading CDs
   so that rips will have the appropate amount of null samples.
 
+* TODO Add better progress indicator to coverview
+  Perhaps performing cover opening in a separate thread
+  would make the interface more responsive when opening tracks
+  containing many large images.
+

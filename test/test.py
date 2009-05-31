@@ -197,6 +197,7 @@ class DummyMetaData2(audiotools.MetaData):
         audiotools.MetaData.__init__(self,
                                      track_name=u"New Track Name",
                                      track_number=6,
+                                     track_total=10,
                                      album_name=u"New Album Name",
                                      artist_name=u"New Artist Name",
                                      performer_name=u"New Performer",

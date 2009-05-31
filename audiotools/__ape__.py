@@ -23,6 +23,16 @@ import gettext
 
 gettext.install("audiotools",unicode=True)
 
+#takes a pair of integers for the current and total values
+#returns a unicode string of their combined pair
+#for example, __number_pair__(2,3) returns u"2/3"
+#whereas      __number_pair__(4,0) returns u"4"
+def __number_pair__(current,total):
+    if (total == 0):
+        return u"%d" % (current)
+    else:
+        return u"%d/%d" % (current,total)
+
 #######################
 #MONKEY'S AUDIO
 #######################
@@ -55,6 +65,7 @@ class ApeTag(MetaData,dict):
 
     ATTRIBUTE_MAP = {'track_name':'Title',
                      'track_number':'Track',
+                     'track_total':'Track',
                      'album_name':'Album',
                      'artist_name':'Artist',
                      #"Performer" is not a defined APEv2 key
@@ -71,55 +82,53 @@ class ApeTag(MetaData,dict):
                      'date':'Record Date',
                      'comment':'Comment'}
 
-    ITEM_MAP = dict(map(reversed,ATTRIBUTE_MAP.items()))
-
     def __init__(self, tag_dict, tag_length=None):
-        try:
-            track_number = int(re.findall(r'\d+',tag_dict.get('Track',u'0'))[0])
-        except IndexError:
-            track_number = 0
-
-        MetaData.__init__(self,
-                          track_name=tag_dict.get('Title',u''),
-                          track_number=track_number,
-                          album_name=tag_dict.get('Album',u''),
-                          artist_name=tag_dict.get('Artist',u''),
-                          performer_name=tag_dict.get('Performer',u''),
-                          composer_name=tag_dict.get('Composer',u''),
-                          conductor_name=tag_dict.get('Conductor',u''),
-                          media=tag_dict.get('Media',u''),
-                          ISRC=tag_dict.get('ISRC',u''),
-                          catalog=tag_dict.get('Catalog',u''),
-                          copyright=tag_dict.get('Copyright',u''),
-                          publisher=tag_dict.get('Publisher',u''),
-                          year=tag_dict.get('Year',u''),
-                          date=tag_dict.get('Record Date',u''),
-                          comment=tag_dict.get('Comment',u'')
-                          )
         dict.__init__(self, tag_dict)
-        self.tag_length = tag_length
+        self.__dict__["tag_length"] = tag_length
 
     #if an attribute is updated (e.g. self.track_name)
     #make sure to update the corresponding dict pair
     def __setattr__(self, key, value):
-        self.__dict__[key] = value
-
         if (key in self.ATTRIBUTE_MAP):
-            if (key not in ('track_number','album_number')):
-                self[self.ATTRIBUTE_MAP[key]] = value
+            if (key == 'track_number'):
+                self['Track'] = __number_pair__(value,
+                                                self.track_total)
+            elif (key == 'track_total'):
+                self['Track'] = __number_pair__(self.track_number,
+                                                value)
+            elif (key == 'album_number'):
+                pass
+            elif (key == 'album_total'):
+                pass
             else:
                 self[self.ATTRIBUTE_MAP[key]] = unicode(value)
+        else:
+            self.__dict__[key] = value
 
-    #if a dict pair is updated (e.g. self['Title'])
-    #make sure to update the corresponding attribute
-    def __setitem__(self, key, value):
-        dict.__setitem__(self, key, value)
-
-        if (self.ITEM_MAP.has_key(key)):
-            if (key != 'Track'):
-                self.__dict__[self.ITEM_MAP[key]] = value
-            else:
-                self.__dict__[self.ITEM_MAP[key]] = int(value)
+    def __getattr__(self, key):
+        if (key == 'track_number'):
+            try:
+                return int(re.findall('\d+',self.get("Track",u"0"))[0])
+            except IndexError:
+                return 0
+        elif (key == 'track_total'):
+            try:
+                return int(re.findall('\d+/(\d+)',self.get("Track",u"0"))[0])
+            except IndexError:
+                return 0
+        elif (key == 'album_number'):
+            return 0
+        elif (key == 'album_total'):
+            return 0
+        elif (key in self.ATTRIBUTE_MAP):
+            return self.get(self.ATTRIBUTE_MAP[key],u'')
+        elif (key in MetaData.__FIELDS__):
+            return u''
+        else:
+            try:
+                return self.__dict__[key]
+            except KeyError:
+                raise AttributeError(key)
 
     @classmethod
     def converted(cls, metadata):
@@ -127,14 +136,19 @@ class ApeTag(MetaData,dict):
             return metadata
         else:
             tags = {}
-            for (key,field) in cls.ITEM_MAP.items():
-                if ((field == 'track_number') and
-                    (getattr(metadata,field) == 0)):
-                    continue
+            for (field,key) in cls.ATTRIBUTE_MAP.items():
+                if (field not in ('track_number',
+                                  'track_total',
+                                  'album_number',
+                                  'album_total')):
+                    field = unicode(getattr(metadata,field))
+                    if (len(field) > 0):
+                        tags[key] = field
 
-                field = unicode(getattr(metadata,field))
-                if (field != u''):
-                    tags[key] = field
+            if ((metadata.track_number != 0) or
+                (metadata.track_total != 0)):
+                tags["Track"] = __number_pair__(metadata.track_number,
+                                                metadata.track_total)
 
             return cls(tags)
 
@@ -144,6 +158,9 @@ class ApeTag(MetaData,dict):
     @classmethod
     def supports_images(cls):
         return False
+
+    def images(self):
+        return list()
 
     #takes two (key,value) apetag pairs
     #returns cmp on the weighted set of them

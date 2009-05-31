@@ -20,7 +20,7 @@
 
 from audiotools import AudioFile,InvalidFile,Con,subprocess,BIN,open_files,os,ReplayGain,ignore_sigint,transfer_data,Image,MetaData,sheet_to_unicode,EncodingError,DecodingError,PCMReaderError
 from __wav__ import WaveAudio,WaveReader
-from __ape__ import ApeTaggedAudio,ApeTag
+from __ape__ import ApeTaggedAudio,ApeTag,__number_pair__
 import gettext
 
 gettext.install("audiotools",unicode=True)
@@ -118,14 +118,19 @@ class WavePackAPEv2(ApeTag):
             new_metadata = WavePackAPEv2(metadata)
         else:
             tags = {}
-            for (key,field) in cls.ITEM_MAP.items():
-                if ((field == 'track_number') and
-                    (getattr(metadata,field) == 0)):
-                    continue
+            for (field,key) in cls.ATTRIBUTE_MAP.items():
+                if (field not in ('track_number',
+                                  'track_total',
+                                  'album_number',
+                                  'album_total')):
+                    field = unicode(getattr(metadata,field))
+                    if (len(field) > 0):
+                        tags[key] = field
 
-                field = unicode(getattr(metadata,field))
-                if (field != u''):
-                    tags[key] = field
+            if ((metadata.track_number != 0) or
+                (metadata.track_total != 0)):
+                tags["Track"] = __number_pair__(metadata.track_number,
+                                                metadata.track_total)
 
             new_metadata = WavePackAPEv2(tags)
 
