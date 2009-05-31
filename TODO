@@ -313,10 +313,17 @@
 - [ ] editxmcd
 * DONE Update tracksplit's man page
   It now supports more of track2track's options
-* TODO Support total tracks/total albums metadata fields?
-  It would be useful to store total tracks/total albums metadata.
-  Although M4A supports these explicitly, other metadata formats may not.
-
+* TODO Support total tracks/total albums metadata fields
+** TODO Add support for fields in the metadata tags
+- [X] Add support in Vorbis Comments
+- [X] Add support in ID3v2
+- [X] Add support in M4A
+- [ ] Add support in APEv2
+** TODO Add support in utilities
+- [ ] Add support in tracktag
+- [ ] Add support in cd2track
+- [ ] Add support in tracksplit
+** TODO Add unit tests
 * TODO Add support for System->cdrom->offset
   This will automatically apply offset samples when reading CDs
   so that rips will have the appropate amount of null samples.

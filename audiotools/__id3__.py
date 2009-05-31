@@ -533,8 +533,6 @@ class ID3v22Comment(MetaData):
             self.__dict__[key] = value
 
     def __getattr__(self, key):
-        import sys
-
         if (key in self.ATTRIBUTE_MAP):
             try:
                 frame = self.frames[self.ATTRIBUTE_MAP[key]][0]

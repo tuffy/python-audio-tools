@@ -411,42 +411,11 @@ class M4AMetaData(MetaData,dict):
     #of the 'meta' container atom
     #values are Unicode if the key starts with \xa9, binary strings otherwise
     def __init__(self, meta_data):
-        trkn = __Qt_Meta_Atom__.TRKN.parse(
-            meta_data.get('trkn',[chr(0) * 8])[0])
-
-        disk = __Qt_Meta_Atom__.DISK.parse(
-            meta_data.get('disk',[chr(0) * 6])[0])
-
-        if ('covr' in meta_data):
-            try:
-                images = [M4ACovr(i) for i in meta_data['covr']]
-            except InvalidImage:
-                images = []
-        else:
-            images = []
-
-        attributes = {'track_number':trkn.track_number,
-                      'track_total':trkn.total_tracks,
-                      'album_number':disk.disk_number,
-                      'album_total':disk.total_disks,
-                      'images':images}
-
-        for (attribute,key) in self.ATTRIBUTE_MAP.items():
-            if (attribute not in ("track_number",
-                                  "track_total",
-                                  "album_number",
-                                  "album_total")):
-                attributes[attribute] = meta_data.get(key,[u''])[0]
-
-        MetaData.__init__(self,**attributes)
-
         dict.__init__(self, meta_data)
 
     #if an attribute is updated (e.g. self.track_name)
     #make sure to update the corresponding dict pair
     def __setattr__(self, key, value):
-        self.__dict__[key] = value
-
         if (self.ATTRIBUTE_MAP.has_key(key)):
             if (key not in ('track_number',
                             'track_total',
@@ -480,6 +449,29 @@ class M4AMetaData(MetaData,dict):
                     total_disks=int(value)))]
                 self[self.ATTRIBUTE_MAP[key]] = disk
 
+    def __getattr__(self, key):
+        if (key == 'track_number'):
+            return __Qt_Meta_Atom__.TRKN.parse(
+                self.get('trkn',[chr(0) * 8])[0]).track_number
+        elif (key == 'track_total'):
+            return __Qt_Meta_Atom__.TRKN.parse(
+                self.get('trkn',[chr(0) * 8])[0]).total_tracks
+        elif (key == 'album_number'):
+            return __Qt_Meta_Atom__.DISK.parse(
+                self.get('disk',[chr(0) * 6])[0]).disk_number
+        elif (key ==  'album_total'):
+            return __Qt_Meta_Atom__.DISK.parse(
+                self.get('disk',[chr(0) * 6])[0]).total_disks
+        elif (key in self.ATTRIBUTE_MAP):
+            return self.get(self.ATTRIBUTE_MAP[key],[u''])[0]
+        elif (key in MetaData.__FIELDS__):
+            return u''
+        else:
+            try:
+                return self.__dict__[key]
+            except KeyError:
+                raise AttributeError(key)
+
     #if a dict pair is updated (e.g. self['\xa9nam'])
     #make sure to update the corresponding attribute
     def __setitem__(self, key, value):
@@ -497,14 +489,18 @@ class M4AMetaData(MetaData,dict):
                 self.__dict__['disc_number'] = disk.disk_number
                 self.__dict__['disc_total'] = disk.total_disks
 
+    def images(self):
+        try:
+            return [M4ACovr(i) for i in self['covr']]
+        except KeyError:
+            return list()
+
     def add_image(self, image):
         if (image.type == 0):
             self.setdefault('covr',[]).append(image.data)
-            MetaData.add_image(self,M4ACovr.converted(image))
 
     def delete_image(self, image):
         del(self['covr'][self['covr'].index(image.data)])
-        MetaData.delete_image(self,image)
 
     @classmethod
     def converted(cls, metadata):
