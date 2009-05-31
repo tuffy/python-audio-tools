@@ -318,7 +318,7 @@
 - [X] Add support in Vorbis Comments
 - [X] Add support in ID3v2
 - [X] Add support in M4A
-- [ ] Add support in APEv2
+- [X] Add support in APEv2
 ** TODO Add support in utilities
 - [ ] Add support in tracktag
 - [ ] Add support in cd2track

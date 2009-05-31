@@ -66,6 +66,8 @@ class ApeTag(MetaData,dict):
     ATTRIBUTE_MAP = {'track_name':'Title',
                      'track_number':'Track',
                      'track_total':'Track',
+                     'album_number':'Media',
+                     'album_total':'Media',
                      'album_name':'Album',
                      'artist_name':'Artist',
                      #"Performer" is not a defined APEv2 key
@@ -73,7 +75,6 @@ class ApeTag(MetaData,dict):
                      'performer_name':'Performer',
                      'composer_name':'Composer',
                      'conductor_name':'Conductor',
-                     'media':'Media',
                      'ISRC':'ISRC',
                      'catalog':'Catalog',
                      'copyright':'Copyright',
@@ -97,9 +98,11 @@ class ApeTag(MetaData,dict):
                 self['Track'] = __number_pair__(self.track_number,
                                                 value)
             elif (key == 'album_number'):
-                pass
+                self['Media'] = __number_pair__(value,
+                                                self.album_total)
             elif (key == 'album_total'):
-                pass
+                self['Media'] = __number_pair__(self.album_number,
+                                                value)
             else:
                 self[self.ATTRIBUTE_MAP[key]] = unicode(value)
         else:
@@ -117,9 +120,15 @@ class ApeTag(MetaData,dict):
             except IndexError:
                 return 0
         elif (key == 'album_number'):
-            return 0
+            try:
+                return int(re.findall('\d+',self.get("Media",u"0"))[0])
+            except IndexError:
+                return 0
         elif (key == 'album_total'):
-            return 0
+            try:
+                return int(re.findall('\d+/(\d+)',self.get("Media",u"0"))[0])
+            except IndexError:
+                return 0
         elif (key in self.ATTRIBUTE_MAP):
             return self.get(self.ATTRIBUTE_MAP[key],u'')
         elif (key in MetaData.__FIELDS__):
@@ -150,6 +159,11 @@ class ApeTag(MetaData,dict):
                 tags["Track"] = __number_pair__(metadata.track_number,
                                                 metadata.track_total)
 
+            if ((metadata.album_number != 0) or
+                (metadata.album_total != 0)):
+                tags["Media"] = __number_pair__(metadata.album_number,
+                                                metadata.album_total)
+
             return cls(tags)
 
     def __comment_name__(self):
@@ -170,6 +184,7 @@ class ApeTag(MetaData,dict):
         KEY_MAP = {"Title":1,
                    "Album":2,
                    "Track":3,
+                   "Media":4,
                    "Artist":5,
                    "Performer":6,
                    "Composer":7,
@@ -177,7 +192,7 @@ class ApeTag(MetaData,dict):
                    "Catalog":9,
                    "Publisher":10,
                    "ISRC":11,
-                   "Media":12,
+                   #"Media":12,
                    "Year":13,
                    "Record Date":14,
                    "Copyright":15}

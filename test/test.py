@@ -158,12 +158,12 @@ class DummyMetaData(audiotools.MetaData):
                                      track_name=u"Track Name",
                                      #track_name=u"T\u2604rack Name",
                                      track_number=5,
+                                     album_number=2,
                                      album_name=u"Album Name",
                                      artist_name=u"Artist Name",
                                      performer_name=u"Performer",
                                      composer_name=u"Composer",
                                      conductor_name=u"Conductor",
-                                     media=u"CD",
                                      ISRC=u"US-PR3-08-12345",
                                      copyright=u"Copyright Attribution",
                                      year=u"2008",
@@ -198,12 +198,13 @@ class DummyMetaData2(audiotools.MetaData):
                                      track_name=u"New Track Name",
                                      track_number=6,
                                      track_total=10,
+                                     album_number=3,
+                                     album_total=4,
                                      album_name=u"New Album Name",
                                      artist_name=u"New Artist Name",
                                      performer_name=u"New Performer",
                                      composer_name=u"New Composer",
                                      conductor_name=u"New Conductor",
-                                     media=u"CD-R",
                                      ISRC=u"US-PR3-08-54321",
                                      copyright=u"Copyright Attribution 2",
                                      year=u"2007",
@@ -652,10 +653,17 @@ class TestAiffAudio(unittest.TestCase):
                 new_file = audiotools.open(temp.name)
                 self.assertEqual(metadata2,new_file.get_metadata())
 
-                metadata2.track_name = u'Track Name 3'
-                new_file.set_metadata(metadata2)
-                new_file = audiotools.open(temp.name)
-                self.assertEqual(metadata2,new_file.get_metadata())
+                for field in metadata2.__FIELDS__:
+                    if (isinstance(getattr(metadata2,field),int)):
+                        setattr(metadata2,field,getattr(metadata2,field) + 1)
+                    elif (len(getattr(metadata2,field)) > 0):
+                        setattr(metadata2,field,getattr(metadata2,field) + u"+1")
+                    else:
+                        continue
+
+                    new_file.set_metadata(metadata2)
+                    new_file = audiotools.open(temp.name)
+                    self.assertEqual(metadata2,new_file.get_metadata())
         finally:
             temp.close()
 

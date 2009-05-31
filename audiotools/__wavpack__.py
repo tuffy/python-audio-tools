@@ -132,6 +132,11 @@ class WavePackAPEv2(ApeTag):
                 tags["Track"] = __number_pair__(metadata.track_number,
                                                 metadata.track_total)
 
+            if ((metadata.album_number != 0) or
+                (metadata.album_total != 0)):
+                tags["Media"] = __number_pair__(metadata.album_number,
+                                                metadata.album_total)
+
             new_metadata = WavePackAPEv2(tags)
 
         if (metadata is not None):
