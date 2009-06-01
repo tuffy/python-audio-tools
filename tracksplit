@@ -213,10 +213,14 @@ if (__name__ == '__main__'):
             track_metadata = audiotools.MetaData.converted(base_metadata)
             track_metadata.track_name = u""
             track_metadata.track_number = i + 1
-            track_metadata.track_total = len(cuesheet.indexes())
+            track_metadata.track_total = len(list(cuesheet.indexes()))
             track_metadata.ISRC = ISRCs.get(i + 1,u"")
 
             base[i + 1] = track_metadata
+    else:
+        base = audiotools.AlbumMetaData(
+            [audiotools.MetaData(track_number=i+1)
+                  for (i,indexes) in enumerate(cuesheet.indexes())])
 
     #if we're using an XMCD file, use that file for track MetaData
     if (options.xmcd != None):
