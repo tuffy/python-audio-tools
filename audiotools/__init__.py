@@ -1176,6 +1176,9 @@ class MetaData:
                   "publisher","year","date","album_number","album_total",
                   "comment")
 
+    __INTEGER_FIELDS__ = ("track_number","track_total",
+                          "album_number","album_total")
+
     #track_name, album_name, artist_name, performer_name, copyright and year
     #should be unicode strings
     #track_number should be an integer
@@ -1239,7 +1242,9 @@ class MetaData:
     #returns a list of (key,value) tuples
     def __comment_pairs__(self):
         return zip(("Title","Artist","Performer","Composer","Conductor",
-                    "Album","Catalog","Track Number","Volume Number",
+                    "Album","Catalog",
+                    "Track Number","Track Total",
+                    "Volume Number","Volume Total",
                     "ISRC","Publisher","Media","Year","Date","Copyright",
                     "Comment"),
                    (self.track_name,
@@ -1250,7 +1255,9 @@ class MetaData:
                     self.album_name,
                     self.catalog,
                     str(self.track_number),
+                    str(self.track_total),
                     str(self.album_number),
+                    str(self.album_total),
                     self.ISRC,
                     self.publisher,
                     self.media,
@@ -1352,6 +1359,33 @@ class MetaData:
         else:
             raise ValueError(_(u"This MetaData type does not support images"))
 
+    @classmethod
+    def merge(cls, metadata1, metadata2):
+        if (metadata2 is None):
+            return metadata1
+        if (metadata1 is None):
+            return metadata2
+
+        fields = {}
+        for field in cls.__FIELDS__:
+            if (field not in cls.__INTEGER_FIELDS__):
+                if (len(getattr(metadata1,field)) > 0):
+                    fields[field] = getattr(metadata1,field)
+                else:
+                    fields[field] = getattr(metadata2,field)
+            else:
+                if (getattr(metadata1,field) > 0):
+                    fields[field] = getattr(metadata1,field)
+                else:
+                    fields[field] = getattr(metadata2,field)
+
+        #FIXME - image merging should probably be handled more intelligently
+        if (len(metadata1.images()) > 0):
+            fields['images'] = metadata1.images()
+        else:
+            fields['images'] = metadata2.images()
+
+        return MetaData(**fields)
 
 class AlbumMetaData(dict):
     def __init__(self, metadata_iter):

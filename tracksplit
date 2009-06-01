@@ -184,19 +184,6 @@ if (__name__ == '__main__'):
         msg.error(_(u'You must run at least 1 process at a time'))
         sys.exit(1)
 
-    #if we're using an XMCD file, use that file for MetaData
-    if (options.xmcd != None):
-        try:
-            xmcd = audiotools.XMCD.read(options.xmcd).metadata()
-        except audiotools.XMCDException:
-            msg.error(_(u"Invalid XMCD file"))
-            sys.exit(1)
-    else:
-        #if we're not using an XMCD file, no MetaData
-        #(I could theoretically pull some from the base track
-        # but there usually isn't any and it's not very practical)
-        xmcd = None
-
     base_directory = options.dir
     encoded_filenames = []
     queue = audiotools.ExecQueue()
@@ -216,6 +203,34 @@ if (__name__ == '__main__'):
         msg.error(_(u"Cuesheet too long for track being split"))
         sys.exit(1)
 
+
+    #pull initial metadata from the base file, where appropriate
+    base_metadata = audiofile.get_metadata()
+    if (base_metadata is not None):
+        base = audiotools.AlbumMetaData([])
+        ISRCs = cuesheet.ISRCs()
+        for (i,indexes) in enumerate(cuesheet.indexes()):
+            track_metadata = audiotools.MetaData.converted(base_metadata)
+            track_metadata.track_name = u""
+            track_metadata.track_number = i + 1
+            track_metadata.track_total = len(cuesheet.indexes())
+            track_metadata.ISRC = ISRCs.get(i + 1,u"")
+
+            base[i + 1] = track_metadata
+
+    #if we're using an XMCD file, use that file for track MetaData
+    if (options.xmcd != None):
+        try:
+            xmcd = audiotools.XMCD.read(options.xmcd).metadata()
+        except audiotools.XMCDException:
+            msg.error(_(u"Invalid XMCD file"))
+            sys.exit(1)
+    else:
+        xmcd = audiotools.AlbumMetaData(
+            [audiotools.MetaData(track_number=i+1)
+                  for (i,indexes) in enumerate(cuesheet.indexes())])
+
+
     try:
         split_pcm = audiotools.pcm_split(
             audiofile.to_pcm(),
@@ -232,29 +247,16 @@ if (__name__ == '__main__'):
             else:
                 album_number = options.album_number
 
-            if (xmcd is not None):
-                filename = os.path.join(
-                    base_directory,
-                    AudioType.track_name(track_number,
-                                         xmcd[track_number],
-                                         album_number=album_number,
-                                         format=options.format))
-                metadata = xmcd[track_number]
-            else:
-                filename = os.path.join(
-                    base_directory,
-                    AudioType.track_name(track_number,
-                                         None,
-                                         album_number=album_number,
-                                         format=options.format))
+            metadata = audiotools.MetaData.merge(
+                base.get(track_number,None),
+                xmcd.get(track_number,None))
 
-                metadata = None
-
-            if (album_number != 0):
-                if (metadata is not None):
-                    metadata.album_number = album_number
-                else:
-                    metadata = audiotools.MetaData(album_number=album_number)
+            filename = os.path.join(
+                base_directory,
+                AudioType.track_name(track_number,
+                                     metadata,
+                                     album_number=album_number,
+                                     format=options.format))
 
             audiotools.make_dirs(filename)
             encoded_filenames.append(filename)

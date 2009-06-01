@@ -322,7 +322,8 @@
 ** TODO Add support in utilities
 - [X] Add support in tracktag
 - [X] Add support in cd2track
-- [ ] Add support in tracksplit
+- [X] Add support in tracksplit
+- [X] Add support in trackcat
 ** TODO Add unit tests
 * TODO Add support for System->cdrom->offset
   This will automatically apply offset samples when reading CDs
@@ -333,3 +334,10 @@
   would make the interface more responsive when opening tracks
   containing many large images.
 
+* TODO Integrate better MetaData merging
+  There's a few areas in which MetaData from multiple sources must
+  be merged in an intelligent manner,
+  such as where tracksplit takes a source track an XMCD file.
+  Now that a preliminary MetaData.merge() classmethod is in place,
+  this process must be integrated consistently.
+** TODO Add unit tests for MetaData merging process
