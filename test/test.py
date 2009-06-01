@@ -1087,7 +1087,6 @@ class TestAiffAudio(unittest.TestCase):
                                      "--number",
                                      "--ISRC",
                                      "--publisher",
-                                     "--media-type",
                                      "--year",
                                      "--copyright",
                                      "--comment"],
@@ -1100,7 +1099,6 @@ class TestAiffAudio(unittest.TestCase):
                                      "track_number",
                                      "ISRC",
                                      "publisher",
-                                     "media",
                                      "year",
                                      "copyright",
                                      "comment"],
@@ -1113,7 +1111,6 @@ class TestAiffAudio(unittest.TestCase):
                                      2,
                                      "ISRC-NUM",
                                      "Publisher Name",
-                                     "Media",
                                      "2008",
                                      "Copyright Text",
                                      "Some Lengthy Text Comment"])

@@ -71,9 +71,9 @@ def xmcd_track_metadata(track, xmcd):
         #(so long as it's not blank)
         track_metadata = track.get_metadata()
 
-        for field in ('track_name','track_number','album_name',
-                      'artist_name','performer_name','copyright',
-                      'year'):
+        for field in ('track_name','track_number','track_total',
+                      'album_name','artist_name','performer_name',
+                      'copyright','year'):
             if (getattr(xmcd_metadata,field) != u""):
                 setattr(track_metadata,field,
                         getattr(xmcd_metadata,field))

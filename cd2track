@@ -73,6 +73,13 @@ if (__name__ == '__main__'):
                       default=0,
                       help=_(u'the album number of this CD, if it is one of a series of albums'))
 
+    parser.add_option('--album-total',
+                      dest='album_total',
+                      action='store',
+                      type='int',
+                      default=0,
+                      help=_(u'the total albums of this CD\'s set, if it is one of a series of albums'))
+
     #if adding ReplayGain is a lossless process
     #(i.e. added as tags rather than modifying track data)
     #add_replay_gain should default to True
@@ -164,11 +171,13 @@ if (__name__ == '__main__'):
 
     for cd_track in to_rip:
         try:
-            if (xmcd != None):  #we have metadata
+            if (xmcd is not None):  #we have metadata
                 try:
                     metadata = xmcd[cd_track.track_number]
                     if (options.album_number != 0):
                         metadata.album_number = options.album_number
+                    if (options.album_total != 0):
+                        metadata.album_total = options.album_total
                 except KeyError:
                     metadata = None
 
@@ -207,7 +216,9 @@ if (__name__ == '__main__'):
                 #set track number and album number if possible
                 track.set_metadata(audiotools.MetaData(
                         track_number=cd_track.track_number,
-                        album_number=options.album_number))
+                        track_total=len(cdda),
+                        album_number=options.album_number,
+                        album_total=options.album_total))
 
                 encoded.append(track)
 

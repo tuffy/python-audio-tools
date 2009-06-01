@@ -314,14 +314,14 @@
 * DONE Update tracksplit's man page
   It now supports more of track2track's options
 * TODO Support total tracks/total albums metadata fields
-** TODO Add support for fields in the metadata tags
+** DONE Add support for fields in the metadata tags
 - [X] Add support in Vorbis Comments
 - [X] Add support in ID3v2
 - [X] Add support in M4A
 - [X] Add support in APEv2
 ** TODO Add support in utilities
-- [ ] Add support in tracktag
-- [ ] Add support in cd2track
+- [X] Add support in tracktag
+- [X] Add support in cd2track
 - [ ] Add support in tracksplit
 ** TODO Add unit tests
 * TODO Add support for System->cdrom->offset

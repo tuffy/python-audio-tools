@@ -286,6 +286,9 @@ class XMCD:
                                        artist_name=track_artist,
                                        year=dyear))
 
+        track_total = max([t.track_number for t in tracks])
+        for t in tracks:
+            t.track_total = track_total
         tracks.sort(lambda t1,t2: cmp(t1.track_number,t2.track_number))
         return AlbumMetaData(tracks)
 
