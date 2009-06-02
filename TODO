@@ -319,7 +319,7 @@
 - [X] Add support in ID3v2
 - [X] Add support in M4A
 - [X] Add support in APEv2
-** TODO Add support in utilities
+** DONE Add support in utilities
 - [X] Add support in tracktag
 - [X] Add support in cd2track
 - [X] Add support in tracksplit

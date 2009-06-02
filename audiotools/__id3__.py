@@ -543,8 +543,7 @@ class ID3v22Comment(MetaData):
                 else:
                     return unicode(frame)
             except KeyError:
-                if (key in ('track_number','album_number',
-                           'track_total','album_total')):
+                if (key in MetaData.__INTEGER_FIELDS__):
                     return 0
                 else:
                     return u""

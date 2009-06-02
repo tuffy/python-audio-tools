@@ -417,10 +417,7 @@ class M4AMetaData(MetaData,dict):
     #make sure to update the corresponding dict pair
     def __setattr__(self, key, value):
         if (self.ATTRIBUTE_MAP.has_key(key)):
-            if (key not in ('track_number',
-                            'track_total',
-                            'album_number',
-                            'album_total')):
+            if (key not in MetaData.__INTEGER_FIELDS__):
                 self[self.ATTRIBUTE_MAP[key]] = [value]
 
             elif (key == 'track_number'):
@@ -511,10 +508,7 @@ class M4AMetaData(MetaData,dict):
 
         for (key,field) in cls.ITEM_MAP.items():
             value = getattr(metadata,field)
-            if (field not in ('track_number',
-                              'track_total',
-                              'album_number',
-                              'album_total')):
+            if (field not in cls.__INTEGER_FIELDS__):
                 if (value != u''):
                     tags[key] = [value]
 

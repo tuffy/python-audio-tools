@@ -107,10 +107,7 @@ class VorbisComment(MetaData,dict):
         self.__dict__[key] = value
 
         if (key in self.ATTRIBUTE_MAP):
-            if (key not in ('track_number',
-                            'track_total',
-                            'album_number',
-                            'album_total')):
+            if (key not in MetaData.__INTEGER_FIELDS__):
                 self[self.ATTRIBUTE_MAP[key]] = [value]
             else:
                 self[self.ATTRIBUTE_MAP[key]] = [unicode(value)]
@@ -144,10 +141,7 @@ class VorbisComment(MetaData,dict):
         else:
             values = {}
             for key in cls.ATTRIBUTE_MAP.keys():
-                if (key in ('track_number',
-                            'track_total',
-                            'album_number',
-                            'album_total')):
+                if (key in cls.__INTEGER_FIELDS__):
                     if (getattr(metadata,key) != 0):
                         values[cls.ATTRIBUTE_MAP[key]] = \
                             [unicode(getattr(metadata,key))]

@@ -217,10 +217,7 @@ class FlacVorbisComment(VorbisComment):
         else:
             values = {}
             for key in cls.ATTRIBUTE_MAP.keys():
-                if (key in ('track_number',
-                            'track_total',
-                            'album_number',
-                            'album_total')):
+                if (key in cls.__INTEGER_FIELDS__):
                     if (getattr(metadata,key) != 0):
                         values[cls.ATTRIBUTE_MAP[key]] = \
                             [unicode(getattr(metadata,key))]

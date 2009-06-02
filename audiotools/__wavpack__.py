@@ -119,10 +119,7 @@ class WavePackAPEv2(ApeTag):
         else:
             tags = {}
             for (field,key) in cls.ATTRIBUTE_MAP.items():
-                if (field not in ('track_number',
-                                  'track_total',
-                                  'album_number',
-                                  'album_total')):
+                if (field not in MetaData.__INTEGER_FIELDS__):
                     field = unicode(getattr(metadata,field))
                     if (len(field) > 0):
                         tags[key] = field
