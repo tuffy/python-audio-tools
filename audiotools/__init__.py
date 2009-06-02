@@ -1646,6 +1646,8 @@ class AudioFile:
                 (cls not in (WaveAudio,AuAudio,AiffAudio))):
                 format_dict = {"track_number":track_number,
                                "album_number":track_metadata.album_number,
+                               "track_total":track_metadata.track_total,
+                               "album_total":track_metadata.album_total,
                                "suffix":cls.SUFFIX}
 
                 if (album_number == 0):
@@ -1655,11 +1657,8 @@ class AudioFile:
                         (album_number,track_number)
 
                 for field in track_metadata.__FIELDS__:
-                    if (field not in ("track_number",
-                                      "suffix",
-                                      "album_number",
-                                      "track_total",
-                                      "album_total")):
+                    if ((field != "suffix") and
+                        (field not in MetaData.__INTEGER_FIELDS__)):
                         format_dict[field] = getattr(
                             track_metadata,
                             field).replace('/','-').replace(chr(0),' ')

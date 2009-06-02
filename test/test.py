@@ -348,6 +348,62 @@ class TestPCMCombinations(unittest.TestCase):
             self.assertEqual(len(counter),reader.total_size)
 
 class TestAiffAudio(unittest.TestCase):
+    def DummyMetaData(self):
+        return DummyMetaData()
+
+    def DummyMetaData2(self):
+        return DummyMetaData2()
+
+    def DummyMetaData3(self):
+        return DummyMetaData3()
+
+    def flag_field_values(self):
+        return zip(["--name",
+                    "--artist",
+                    "--performer",
+                    "--composer",
+                    "--conductor",
+                    "--album",
+                    "--number",
+                    "--track-total",
+                    "--album-number",
+                    "--album-total",
+                    "--ISRC",
+                    "--publisher",
+                    "--year",
+                    "--copyright",
+                    "--comment"],
+                   ["track_name",
+                    "artist_name",
+                    "performer_name",
+                    "composer_name",
+                    "conductor_name",
+                    "album_name",
+                    "track_number",
+                    "track_total",
+                    "album_number",
+                    "album_total",
+                    "ISRC",
+                    "publisher",
+                    "year",
+                    "copyright",
+                    "comment"],
+                   ["Track Name",
+                    "Artist Name",
+                    "Performer Name",
+                    "Composer Name",
+                    "Conductor Name",
+                    "Album Name",
+                    2,
+                    5,
+                    3,
+                    4,
+                    "ISRC-NUM",
+                    "Publisher Name",
+                    "2008",
+                    "Copyright Text",
+                    "Some Lengthy Text Comment"])
+
     def setUp(self):
         self.audio_class = audiotools.AiffAudio
 
@@ -642,22 +698,49 @@ class TestAiffAudio(unittest.TestCase):
             new_file = self.audio_class.from_pcm(temp.name,
                                                  BLANK_PCM_Reader(TEST_LENGTH))
 
-            metadata = DummyMetaData()
+            metadata = self.DummyMetaData()
             new_file.set_metadata(metadata)
             if (new_file.get_metadata() is not None):
                 new_file = audiotools.open(temp.name)
                 self.assertEqual(metadata,new_file.get_metadata())
 
-                metadata2 = DummyMetaData2()
+                #ensure that setting data from external sources works
+                #(this tests the convert() method, mostly)
+                metadata2 = self.DummyMetaData2()
                 new_file.set_metadata(metadata2)
                 new_file = audiotools.open(temp.name)
                 self.assertEqual(metadata2,new_file.get_metadata())
 
                 for field in metadata2.__FIELDS__:
                     if (isinstance(getattr(metadata2,field),int)):
-                        setattr(metadata2,field,getattr(metadata2,field) + 1)
+                        new_field = getattr(metadata2,field) + 1
+                        setattr(metadata2,field,new_field)
+                        self.assertEqual(getattr(metadata2,field),new_field)
                     elif (len(getattr(metadata2,field)) > 0):
-                        setattr(metadata2,field,getattr(metadata2,field) + u"+1")
+                        new_field = getattr(metadata2,field) + u"+1"
+                        setattr(metadata2,field,new_field)
+                        self.assertEqual(getattr(metadata2,field),new_field)
+                    else:
+                        continue
+
+                    new_file.set_metadata(metadata2)
+                    new_file = audiotools.open(temp.name)
+                    self.assertEqual(metadata2,new_file.get_metadata())
+
+                #ensure that setting data from the actual format works
+                #(this tests that __setattr__/__getattr__ works, mostly)
+                new_file.set_metadata(self.DummyMetaData2())
+                new_file = audiotools.open(temp.name)
+                metadata2 = new_file.get_metadata()
+                for field in metadata2.__FIELDS__:
+                    if (isinstance(getattr(metadata2,field),int)):
+                        new_field = getattr(metadata2,field) + 1
+                        setattr(metadata2,field,new_field)
+                        self.assertEqual(getattr(metadata2,field),new_field)
+                    elif (len(getattr(metadata2,field)) > 0):
+                        new_field = getattr(metadata2,field) + u"+1"
+                        setattr(metadata2,field,new_field)
+                        self.assertEqual(getattr(metadata2,field),new_field)
                     else:
                         continue
 
@@ -677,7 +760,7 @@ class TestAiffAudio(unittest.TestCase):
 
             if ((new_file.get_metadata() is not None)
                 and (new_file.get_metadata().supports_images())):
-                metadata = DummyMetaData()
+                metadata = self.DummyMetaData()
                 new_file.set_metadata(metadata)
                 self.assertEqual(metadata,new_file.get_metadata())
 
@@ -752,7 +835,7 @@ class TestAiffAudio(unittest.TestCase):
         try:
             base = self.audio_class.from_pcm(base_file.name,
                                              BLANK_PCM_Reader(SHORT_LENGTH))
-            metadata = DummyMetaData3()
+            metadata = self.DummyMetaData3()
 
             base.set_metadata(metadata)
             metadata = base.get_metadata()
@@ -1053,7 +1136,7 @@ class TestAiffAudio(unittest.TestCase):
         if (EXECUTABLE not in CASES): return
         if (METADATA not in CASES): return
 
-        template = "%(track_number)2.2d - %(album_number)d - %(album_track_number)s%(track_name)s%(album_name)s%(artist_name)s%(performer_name)s%(composer_name)s%(conductor_name)s%(media)s%(ISRC)s%(copyright)s%(publisher)s%(year)s%(suffix)s"
+        template = "%(track_number)2.2d - %(album_number)d - %(album_track_number)s-%(track_total)d-%(album_total)d-%(track_name)s%(album_name)s%(artist_name)s%(performer_name)s%(composer_name)s%(conductor_name)s%(media)s%(ISRC)s%(copyright)s%(publisher)s%(year)s%(suffix)s"
 
         basedir = tempfile.mkdtemp()
         try:
@@ -1078,48 +1161,14 @@ class TestAiffAudio(unittest.TestCase):
 
             self.assertEqual(metadata.track_name,"Name")
 
-            flag_field_values = zip(["--name",
-                                     "--artist",
-                                     "--performer",
-                                     "--composer",
-                                     "--conductor",
-                                     "--album",
-                                     "--number",
-                                     "--ISRC",
-                                     "--publisher",
-                                     "--year",
-                                     "--copyright",
-                                     "--comment"],
-                                    ["track_name",
-                                     "artist_name",
-                                     "performer_name",
-                                     "composer_name",
-                                     "conductor_name",
-                                     "album_name",
-                                     "track_number",
-                                     "ISRC",
-                                     "publisher",
-                                     "year",
-                                     "copyright",
-                                     "comment"],
-                                    ["Track Name",
-                                     "Artist Name",
-                                     "Performer Name",
-                                     "Composer Name",
-                                     "Conductor Name",
-                                     "Album Name",
-                                     2,
-                                     "ISRC-NUM",
-                                     "Publisher Name",
-                                     "2008",
-                                     "Copyright Text",
-                                     "Some Lengthy Text Comment"])
-
-            for (flag,field,value) in flag_field_values:
+            for (flag,field,value) in self.flag_field_values():
                 subprocess.call(["tracktag",
                                  flag,str(value),
                                  track.filename])
                 setattr(metadata,field,value)
+                self.assertEqual(getattr(metadata,field),value,
+                                 "metadata.%s = %s, should be %s" % \
+                                     (field,getattr(metadata,field),value))
                 self.assertEqual(metadata,track.get_metadata())
 
                 new_path = os.path.join(basedir,
@@ -1143,7 +1192,7 @@ class TestAiffAudio(unittest.TestCase):
             track = audiotools.open(os.path.join(basedir,"track.%s" % \
                                                      (self.audio_class.SUFFIX)))
 
-            for (flag,field,value) in flag_field_values:
+            for (flag,field,value) in self.flag_field_values():
                 subprocess.call(["tracktag",
                                  "--replace",
                                  flag,str(value),
@@ -1382,7 +1431,7 @@ class TestForeignWaveChunks:
                                          False),True)
 
             #finally, ensure that setting metadata doesn't erase the chunks
-            wav.set_metadata(DummyMetaData())
+            wav.set_metadata(self.DummyMetaData())
             wav = audiotools.open(wav.filename)
             self.assertEqual(wav.has_foreign_riff_chunks(),True)
         finally:
@@ -1718,47 +1767,75 @@ class TestWavPackAudio(EmbeddedCuesheet,TestForeignWaveChunks,APEv2Lint,TestAiff
                     test_cover2])
 
 class M4AMetadata:
-    #M4A supports only a subset of the MetaData of every other format
-    #so it must be handled separately
-    def testmetadata(self):
-        if (METADATA not in CASES): return
+    def DummyMetaData(self):
+        return audiotools.MetaData(track_name=u"Track Name",
+                                   track_number=5,
+                                   album_number=2,
+                                   album_name=u"Album Name",
+                                   artist_name=u"Artist Name",
+                                   performer_name=u"Performer",
+                                   composer_name=u"Composer",
+                                   copyright=u"Copyright Attribution",
+                                   year=u"2008",
+                                   comment=u"C\u2604mment")
 
-        temp = tempfile.NamedTemporaryFile(suffix="." + self.audio_class.SUFFIX)
-        try:
-            new_file = self.audio_class.from_pcm(temp.name,
-                                                 BLANK_PCM_Reader(TEST_LENGTH))
+    def DummyMetaData2(self):
+        return audiotools.MetaData(track_name=u"New Track Name",
+                                   track_number=6,
+                                   track_total=10,
+                                   album_number=3,
+                                   album_total=4,
+                                   album_name=u"New Album Name",
+                                   artist_name=u"New Artist Name",
+                                   performer_name=u"New Performer",
+                                   composer_name=u"New Composer",
+                                   copyright=u"Copyright Attribution 2",
+                                   year=u"2007",
+                                   comment=u"Additional C\u2604mment")
 
-            if (new_file.get_metadata() is not None):
-                metadata = audiotools.MetaData(track_name=u"Track Name",
-                                               track_number=5,
-                                               track_total=10,
-                                               album_number=3,
-                                               album_total=4,
-                                               album_name=u"Album Name",
-                                               artist_name=u"Artist Name",
-                                               performer_name=u"Performer")
-                new_file.set_metadata(metadata)
-                new_file = audiotools.open(temp.name)
-                self.assertEqual(metadata,new_file.get_metadata())
+    def flag_field_values(self):
+        return zip(["--name",
+                    "--artist",
+                    "--performer",
+                    "--composer",
+                    "--album",
+                    "--number",
+                    "--track-total",
+                    "--album-number",
+                    "--album-total",
+                    "--year",
+                    "--copyright",
+                    "--comment"],
+                   ["track_name",
+                    "artist_name",
+                    "performer_name",
+                    "composer_name",
+                    "album_name",
+                    "track_number",
+                    "track_total",
+                    "album_number",
+                    "album_total",
+                    "year",
+                    "copyright",
+                    "comment"],
+                   ["Track Name",
+                    "Artist Name",
+                    "Performer Name",
+                    "Composer Name",
+                    "Album Name",
+                    2,
+                    3,
+                    4,
+                    5,
+                    "2008",
+                    "Copyright Text",
+                    "Some Lengthy Text Comment"])
 
-                metadata2 = audiotools.MetaData(track_name=u"New Track Name",
-                                                track_number=6,
-                                                track_total=11,
-                                                album_number=2,
-                                                album_total=5,
-                                                album_name=u"New Album Name",
-                                                artist_name=u"New Artist Name",
-                                                performer_name=u"New Performer")
-                new_file.set_metadata(metadata2)
-                new_file = audiotools.open(temp.name)
-                self.assertEqual(metadata2,new_file.get_metadata())
-
-                metadata2.track_name = u'Track Name 3'
-                new_file.set_metadata(metadata2)
-                new_file = audiotools.open(temp.name)
-                self.assertEqual(metadata2,new_file.get_metadata())
-        finally:
-            temp.close()
+    def __flag_type_images_data__(self,jpeg,png,test_cover1,test_cover2):
+        return zip(["--front-cover"],
+                   [0],
+                   [jpeg],
+                   [test_cover1])
 
     def testimages(self):
         if (METADATA not in CASES): return
@@ -1799,154 +1876,9 @@ class M4AMetadata:
         finally:
             temp.close()
 
-    def test_tracktag_trackrename(self):
-        if (EXECUTABLE not in CASES): return
-
-        template = "%(track_number)2.2d - %(album_number)d - %(album_track_number)s%(track_name)s%(album_name)s%(artist_name)s%(performer_name)s%(composer_name)s%(conductor_name)s%(media)s%(ISRC)s%(copyright)s%(publisher)s%(year)s%(suffix)s"
-
-        basedir = tempfile.mkdtemp()
-        try:
-            track = self.audio_class.from_pcm(
-                os.path.join(basedir,"track.%s" % (self.audio_class.SUFFIX)),
-                BLANK_PCM_Reader(5))
-            metadata = audiotools.MetaData(track_name="Name")
-            track.set_metadata(metadata)
-            metadata = track.get_metadata()
-            if (metadata is None):
-                return
-
-            self.assertEqual(metadata.track_name,"Name")
-
-            flag_field_values = zip(["--name",
-                                     "--artist",
-                                     "--performer",
-                                     "--composer",
-                                     "--album",
-                                     "--number",
-                                     "--year",
-                                     "--copyright",
-                                     "--comment"],
-                                    ["track_name",
-                                     "artist_name",
-                                     "performer_name",
-                                     "composer_name",
-                                     "album_name",
-                                     "track_number",
-                                     "year",
-                                     "copyright",
-                                     "comment"],
-                                    ["Track Name",
-                                     "Artist Name",
-                                     "Performer Name",
-                                     "Composer Name",
-                                     "Album Name",
-                                     2,
-                                     "2008",
-                                     "Copyright Text",
-                                     "Some Lengthy Text Comment"])
-
-            for (flag,field,value) in flag_field_values:
-                subprocess.call(["tracktag",
-                                 flag,str(value),
-                                 track.filename])
-                setattr(metadata,field,value)
-                self.assertEqual(metadata,track.get_metadata())
-
-                new_path = os.path.join(basedir,
-                                        self.audio_class.track_name(
-                        metadata.track_number,
-                        metadata,
-                        metadata.album_number,
-                        template))
-
-                subprocess.call(["trackrename",
-                                 "-V","quiet",
-                                 "--format",template,
-                                 track.filename])
-
-                self.assertEqual(os.path.isfile(new_path),True)
-                track = audiotools.open(new_path)
-
-            os.rename(track.filename,
-                      os.path.join(basedir,"track.%s" % \
-                                       (self.audio_class.SUFFIX)))
-            track = audiotools.open(os.path.join(basedir,"track.%s" % \
-                                                     (self.audio_class.SUFFIX)))
-
-            for (flag,field,value) in flag_field_values:
-                subprocess.call(["tracktag",
-                                 "--replace",
-                                 flag,str(value),
-                                 track.filename])
-                metadata = audiotools.MetaData(**{field:value})
-                self.assertEqual(metadata,track.get_metadata())
-
-                os.rename(track.filename,
-                          os.path.join(basedir,"track.%s" % \
-                                           (self.audio_class.SUFFIX)))
-                track = audiotools.open(os.path.join(basedir,"track.%s" % \
-                                                         (self.audio_class.SUFFIX)))
-
-                new_path = os.path.join(basedir,
-                                        self.audio_class.track_name(
-                        metadata.track_number,
-                        metadata,
-                        metadata.album_number,
-                        template))
-
-                subprocess.call(["trackrename",
-                                 "-V","quiet",
-                                 "--format",template,
-                                 track.filename])
-
-                self.assertEqual(os.path.isfile(new_path),True)
-                track = audiotools.open(new_path)
-                metadata = track.get_metadata()
-        finally:
-            for f in os.listdir(basedir):
-                os.unlink(os.path.join(basedir,f))
-            os.rmdir(basedir)
-
     def test_coverdump(self):
         pass
 
-    def test_invalid_name(self):
-        if (METADATA not in CASES): return
-
-        metadata = audiotools.MetaData(track_name=u"Name",
-                                       track_number=1)
-        format = "%(track_number)2.2d - %(track_name)s"
-
-        self.assertEqual(self.audio_class.track_name(track_number=1,
-                                                     track_metadata=metadata,
-                                                     format=format),
-                         "01 - Name")
-
-        self.assertEqual(self.audio_class.track_name(track_number=2,
-                                                     track_metadata=metadata,
-                                                     format=format),
-                         "02 - Name")
-
-        metadata.track_name = u"Name / Test"
-
-        self.assertEqual(self.audio_class.track_name(track_number=1,
-                                                     track_metadata=metadata,
-                                                     format=format),
-                         "01 - Name - Test")
-
-        metadata.track_name = u"Name\u0000Test"
-
-        self.assertEqual(self.audio_class.track_name(track_number=1,
-                                                     track_metadata=metadata,
-                                                     format=format),
-                         "01 - Name Test")
-
-        metadata.track_name = u"Name\u0000/\u0000Test"
-
-        self.assertEqual(self.audio_class.track_name(track_number=1,
-                                                     track_metadata=metadata,
-                                                     format=format),
-                         "01 - Name - Test")
 
 # class TestAlacAudio(M4AMetadata,TestAiffAudio):
 #    def setUp(self):
@@ -4608,6 +4540,7 @@ class TestTracksplitOutput(TestTextOutput):
 
     def test_tracksplit1(self):
         if (EXECUTABLE not in CASES): return
+        if (CUESHEET not in CASES): return
 
         self.assertEqual(self.__run_app__(
                 ["tracksplit","-t","flac","-q","help"]),0)
@@ -4697,6 +4630,7 @@ class TestTracksplitOutput(TestTextOutput):
 
     def test_tracksplit2(self):
         if (EXECUTABLE not in CASES): return
+        if (CUESHEET not in CASES): return
 
         format_string = "%(track_name)s - %(album_track_number)s.%(suffix)s"
 

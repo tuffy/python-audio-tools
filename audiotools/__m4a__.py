@@ -396,16 +396,16 @@ class M4AMetaData(MetaData,dict):
                      'year':'\xa9day',           # Year
                      'performer_name':'aART' ,   # Album Artist
                      'track_number':'trkn',      # Track Number
+                     'track_total':'trkn',
                      'album_name':'\xa9alb',     # Album
                      'album_number':'disk',      # Disc Number
+                     'album_total':'disk',
                      #?:'\xa9grp'                # Grouping
                      #?:'tmpo'                   # BPM
                      'composer_name':'\xa9wrt',  # Composer
                      'comment':'\xa9cmt',        # Comments
                      'copyright':'cprt'}         # (not listed)
                      #'artist_name':'\xa9com'}
-
-    ITEM_MAP = dict(map(reversed,ATTRIBUTE_MAP.items()))
 
     #meta_data is a key->[value1,value2,...] dict of the contents
     #of the 'meta' container atom
@@ -425,26 +425,26 @@ class M4AMetaData(MetaData,dict):
                     track_number=int(value),
                     total_tracks=self.track_total))]
 
-                self[self.ATTRIBUTE_MAP[key]] = trkn
+                self['trkn'] = trkn
 
             elif (key == 'track_total'):
                 trkn = [__Qt_Meta_Atom__.TRKN.build(Con.Container(
                     track_number=self.track_number,
                     total_tracks=int(value)))]
 
-                self[self.ATTRIBUTE_MAP[key]] = trkn
+                self['trkn'] = trkn
 
             elif (key == 'album_number'):
                 disk = [__Qt_Meta_Atom__.DISK.build(Con.Container(
                     disk_number=int(value),
                     total_disks=self.album_total))]
-                self[self.ATTRIBUTE_MAP[key]] = disk
+                self['disk'] = disk
 
             elif (key == 'album_total'):
                 disk = [__Qt_Meta_Atom__.DISK.build(Con.Container(
-                    disk_number=self.album_total,
+                    disk_number=self.album_number,
                     total_disks=int(value)))]
-                self[self.ATTRIBUTE_MAP[key]] = disk
+                self['disk'] = disk
 
     def __getattr__(self, key):
         if (key == 'track_number'):
@@ -469,23 +469,6 @@ class M4AMetaData(MetaData,dict):
             except KeyError:
                 raise AttributeError(key)
 
-    #if a dict pair is updated (e.g. self['\xa9nam'])
-    #make sure to update the corresponding attribute
-    def __setitem__(self, key, value):
-        dict.__setitem__(self, key, value)
-
-        if (self.ITEM_MAP.has_key(key)):
-            if (key not in ('trkn','disk')):
-                self.__dict__[self.ITEM_MAP[key]] = value[0]
-            elif (key == 'trkn'):
-                trkn = __Qt_Meta_Atom__.TRKN.parse(value[0])
-                self.__dict__['track_number'] = trkn.track_number
-                self.__dict__['track_total'] = trkn.total_tracks
-            elif (key == 'disk'):
-                disk = __Qt_Meta_Atom__.DISK.parse(value[0])
-                self.__dict__['disc_number'] = disk.disk_number
-                self.__dict__['disc_total'] = disk.total_disks
-
     def images(self):
         try:
             return [M4ACovr(i) for i in self['covr']]
@@ -506,7 +489,7 @@ class M4AMetaData(MetaData,dict):
 
         tags = {}
 
-        for (key,field) in cls.ITEM_MAP.items():
+        for (field,key) in cls.ATTRIBUTE_MAP.items():
             value = getattr(metadata,field)
             if (field not in cls.__INTEGER_FIELDS__):
                 if (value != u''):
