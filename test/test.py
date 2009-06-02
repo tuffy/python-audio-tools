@@ -4719,6 +4719,7 @@ class TestTracksplitOutput(TestTextOutput):
         self.assertEqual(self.__run_app__(
                 ["tracksplit","-t","flac","-d",self.dir2,
                  "--album-number=1",
+                 "-j",str(1),
                  "-x",self.xmcd_path,
                  "--format=%s" % (format_string),
                  "--cue",self.cue_path,self.flac.filename]),0)

@@ -25,19 +25,24 @@ import gettext
 
 gettext.install("audiotools",unicode=True)
 
+#--replace-metadata, no XMCD file given
+#completely wipe out existing metadata
+#and replace with tags given on command-line
 def blank_metadata(track, xmcd):
     return audiotools.MetaData()
 
+#no --replace-metadata, no XMCD file given
+#use metadata from existing tracks as base
+#and merge with tags given on command-line
 def track_metadata(track, xmcd):
-    metadata = track.get_metadata()
-    if (metadata is None):
-        return audiotools.MetaData()
-    else:
-        return metadata
+    return track.get_metadata()
 
+#--replace-metadata, XMCD file given
+#completely wipe out existing metadata
+#and replace with command-line tags merged with XMCD metadata
 def xmcd_metadata(track, xmcd):
     try:
-        metadata = xmcd[track.track_number()]
+        return xmcd[track.track_number()]
     except KeyError:
         if (len(xmcd) > 0):
             base_metadata = xmcd.values()[0]
@@ -46,40 +51,14 @@ def xmcd_metadata(track, xmcd):
                                        track_number=track.track_number(),
                                        track_name=u"")
         else:
-            return audiotools.MetaData()
+            return None
 
-    if (metadata is not None):
-        return metadata
-    else:
-        return audiotools.MetaData()
-
+#no --replace metadata, XMCD file given
+#replace with command-line tags merged with XMCD metadata
+#*and* existing metadata
 def xmcd_track_metadata(track, xmcd):
-    try:
-        xmcd_metadata = xmcd[track.track_number()]
-    except KeyError:
-        if (len(xmcd) > 0):
-            base_metadata = xmcd.values()[0]
-            return audiotools.MetaData(album_name=base_metadata.album_name,
-                                       artist_name=base_metadata.artist_name,
-                                       track_number=track.track_number(),
-                                       track_name=u"")
-        else:
-            return audiotools.MetaData()
-
-    if (xmcd_metadata is not None):
-        #xmcd data overwrites whatever comes from track
-        #(so long as it's not blank)
-        track_metadata = track.get_metadata()
-
-        for field in ('track_name','track_number','track_total',
-                      'album_name','artist_name','performer_name',
-                      'copyright','year'):
-            if (getattr(xmcd_metadata,field) != u""):
-                setattr(track_metadata,field,
-                        getattr(xmcd_metadata,field))
-        return track_metadata
-    else:
-        return track.get_metadata()
+    return audiotools.MetaData.merge(xmcd_metadata(track,xmcd),
+                                     track.get_metadata())
 
 #tries to return a populated Image object of the appropriate type
 #raises InvalidImage if something goes wrong during opening or parsing
@@ -357,70 +336,78 @@ if (__name__ == '__main__'):
 
 
     for file in audiofiles:
-        metadata = metadata_function(file, xmcd)
+        #our command-line built MetaData block,
+        #which takes precedence over the others
+        metadata = audiotools.MetaData()
+        try:
+            for field in ('track_name','artist_name','performer_name',
+                          'composer_name','conductor_name',
+                          'album_name','catalog','track_number',
+                          'ISRC','publisher',
+                          'year','date','copyright','comment'):
+                if (getattr(options,field) is not None):
+                    attr = getattr(options,field)
+                    if (isinstance(attr,str)):
+                        attr = attr.decode(audiotools.IO_ENCODING,
+                                           'replace')
+                    setattr(metadata,field,attr)
 
-        if (metadata is not None):
-            try:
-                for field in ('track_name','artist_name','performer_name',
-                              'composer_name','conductor_name',
-                              'album_name','catalog','track_number',
-                              'ISRC','publisher',
-                              'year','date','copyright','comment'):
-                    if (getattr(options,field) is not None):
-                        attr = getattr(options,field)
-                        if (isinstance(attr,str)):
-                            attr = attr.decode(audiotools.IO_ENCODING)
-                        setattr(metadata,field,attr)
+            if (options.media_type is not None):
+                metadata.media = options.media_type.decode(
+                    audiotools.IO_ENCODING)
 
-                if (options.media_type is not None):
-                    metadata.media = options.media_type.decode(audiotools.IO_ENCODING)
+            if (file.track_number() in isrcs.keys()):
+                metadata.ISRC = isrcs[file.track_number()]
 
-                if (file.track_number() in isrcs.keys()):
-                    metadata.ISRC = isrcs[file.track_number()]
+            if (options.track_total is not None):
+                metadata.track_total = options.track_total
 
-                if (options.track_total is not None):
-                    metadata.track_total = options.track_total
+            if (options.album_number is not None):
+                metadata.album_number = options.album_number
 
-                if (options.album_number is not None):
-                    metadata.album_number = options.album_number
+            if (options.album_total is not None):
+                metadata.album_total = options.album_total
 
-                if (options.album_total is not None):
-                    metadata.album_total = options.album_total
+            if (options.comment_file is not None):
+                metadata.comment = read_comment(options.comment_file,msg)
 
-                if (options.comment_file is not None):
-                    metadata.comment = read_comment(options.comment_file,msg)
+            track_metadata = metadata_function(file, xmcd)
 
-                if (metadata.supports_images()):
-                    if (options.remove_images):
-                        for i in metadata.images():
-                            metadata.delete_image(i)
+            if (metadata.supports_images()):
+                if (not options.remove_images):
+                    for i in track_metadata.images():
+                        metadata.add_image(i)
+                else:
+                    for i in track_metadata.images():
+                        track_metadata.delete_image(i)
 
-                    if (options.front_cover is not None):
-                        for path in options.front_cover:
-                            metadata.add_image(get_image(path,0))
+                if (options.front_cover is not None):
+                    for path in options.front_cover:
+                        metadata.add_image(get_image(path,0))
 
-                    if (options.leaflet is not None):
-                        for path in options.leaflet:
-                            metadata.add_image(get_image(path,2))
+                if (options.leaflet is not None):
+                    for path in options.leaflet:
+                        metadata.add_image(get_image(path,2))
 
-                    if (options.back_cover is not None):
-                        for path in options.back_cover:
-                            metadata.add_image(get_image(path,1))
+                if (options.back_cover is not None):
+                    for path in options.back_cover:
+                        metadata.add_image(get_image(path,1))
 
-                    if (options.media is not None):
-                        for path in options.media:
-                            metadata.add_image(get_image(path,3))
+                if (options.media is not None):
+                    for path in options.media:
+                        metadata.add_image(get_image(path,3))
 
-                    if (options.other_image is not None):
-                        for path in options.other_image:
-                            metadata.add_image(get_image(path,4))
+                if (options.other_image is not None):
+                    for path in options.other_image:
+                        metadata.add_image(get_image(path,4))
 
-                file.set_metadata(metadata)
-            except audiotools.InvalidImage,err:
-                msg.error(_(u"%(filename)s: %(message)s") % \
-                              {"filename":msg.filename(file.filename),
-                               "message":err})
-                sys.exit(1)
+            file.set_metadata(audiotools.MetaData.merge(
+                    metadata,track_metadata))
+        except audiotools.InvalidImage,err:
+            msg.error(_(u"%(filename)s: %(message)s") % \
+                          {"filename":msg.filename(file.filename),
+                           "message":err})
+            sys.exit(1)
 
     #we're assuming all tracks are the same type
     #add_replay_gain should check if they are not
