@@ -35,7 +35,7 @@ import gettext
 gettext.install("audiotools",unicode=True)
 
 (METADATA,PCM,EXECUTABLE,CUESHEET) = range(4)
-CASES = set([METADATA,PCM,EXECUTABLE,CUESHEET])
+CASES = set([METADATA,EXECUTABLE])
 
 try:
     from hashlib import md5
@@ -1132,6 +1132,7 @@ class TestAiffAudio(unittest.TestCase):
         finally:
             os.rmdir(basedir)
 
+
     def test_tracktag_trackrename(self):
         if (EXECUTABLE not in CASES): return
         if (METADATA not in CASES): return
@@ -2107,6 +2108,8 @@ class TestSpeexAudio(VorbisLint,TestAiffAudio):
 
 class TestID3v2(unittest.TestCase):
     def setUp(self):
+        if (METADATA not in CASES): return
+
         self.file = tempfile.NamedTemporaryFile(suffix=".mp3")
 
         self.mp3_file = audiotools.MP3Audio.from_pcm(
@@ -2293,14 +2296,20 @@ class TestID3v2(unittest.TestCase):
         self.assertEqual(id3.album_total,7)
 
     def testid3v2_2(self):
+        if (METADATA not in CASES): return
+
         self.__comment_test__(audiotools.ID3v22Comment)
         self.__dict_test__(audiotools.ID3v22Comment)
 
     def testid3v2_3(self):
+        if (METADATA not in CASES): return
+
         self.__comment_test__(audiotools.ID3v23Comment)
         self.__dict_test__(audiotools.ID3v23Comment)
 
     def testid3v2_4(self):
+        if (METADATA not in CASES): return
+
         self.__comment_test__(audiotools.ID3v24Comment)
         self.__dict_test__(audiotools.ID3v24Comment)
 
@@ -2439,10 +2448,14 @@ class TestID3v2(unittest.TestCase):
                 self.assertEqual(id3.images()[0].description,test_string_out)
 
     def tearDown(self):
+        if (METADATA not in CASES): return
+
         self.file.close()
 
 class TestFlacComment(unittest.TestCase):
     def setUp(self):
+        if (METADATA not in CASES): return
+
         self.file = tempfile.NamedTemporaryFile(suffix=".flac")
 
         self.flac_file = audiotools.FlacAudio.from_pcm(
@@ -2489,6 +2502,8 @@ class TestFlacComment(unittest.TestCase):
             mp3_tempfile.close()
 
     def tearDown(self):
+        if (METADATA not in CASES): return
+
         self.file.close()
 
 class TestPCMConversion(unittest.TestCase):

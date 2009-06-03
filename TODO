@@ -313,7 +313,7 @@
 - [X] editxmcd
 * DONE Update tracksplit's man page
   It now supports more of track2track's options
-* TODO Support total tracks/total albums metadata fields
+* DONE Support total tracks/total albums metadata fields
 ** DONE Add support for fields in the metadata tags
 - [X] Add support in Vorbis Comments
 - [X] Add support in ID3v2
@@ -324,7 +324,7 @@
 - [X] Add support in cd2track
 - [X] Add support in tracksplit
 - [X] Add support in trackcat
-** TODO Add unit tests
+** DONE Add unit tests
 ** DONE Add fields to --format output
 ** DONE Update man pages with fields information
 * TODO Add support for System->cdrom->offset
