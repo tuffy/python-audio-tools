@@ -35,7 +35,7 @@ import gettext
 gettext.install("audiotools",unicode=True)
 
 (METADATA,PCM,EXECUTABLE,CUESHEET) = range(4)
-CASES = set([METADATA,EXECUTABLE])
+CASES = set([METADATA,PCM,EXECUTABLE,CUESHEET])
 
 try:
     from hashlib import md5
@@ -4760,6 +4760,262 @@ class TestTrack2XMCD(TestTextOutput):
 
         self.__check_info__(_(u"%s written") % \
                                 (self.filename(self.xmcd_filename)))
+
+
+class TestTrackTag(unittest.TestCase):
+    def __run_tag__(self,arguments):
+        return subprocess.call(["tracktag",
+                                self.track.filename] + \
+                               list(arguments) + \
+                               ["-V","quiet"])
+
+    def setUp(self):
+        if (METADATA not in CASES): return
+        if (EXECUTABLE not in CASES): return
+
+        self.xmcd1_file = tempfile.NamedTemporaryFile(suffix=".xmcd")
+        self.xmcd2_file = tempfile.NamedTemporaryFile(suffix=".xmcd")
+        self.track_file = tempfile.NamedTemporaryFile(suffix=".flac")
+
+        self.xmcd1_file.write('# xmcd\n#\nDTITLE=XMCD Artist / XMCD Album\nDYEAR=2009\nTTITLE0=XMCD Track 1\nTTITLE1=XMCD Track 2\nTTITLE2=XMCD Track 3\nEXTDD=\nEXTT0=\nEXTT1=\nEXTT2=\nPLAYORDER=\n')
+        self.xmcd1_file.flush()
+
+        self.xmcd2_file.write('# xmcd\n#\nDTITLE=XMCD Artist 2 / XMCD Album 2\nDYEAR=2009\nTTITLE0=XMCD Track 4\nTTITLE1=XMCD Track 5\nTTITLE2=XMCD Track 6\nEXTDD=\nEXTT0=\nEXTT1=\nEXTT2=\nPLAYORDER=\n')
+        self.xmcd2_file.flush()
+
+        self.track = audiotools.FlacAudio.from_pcm(
+            self.track_file.name,
+            BLANK_PCM_Reader(5))
+        self.track.set_metadata(audiotools.MetaData(track_number=1))
+
+        self.xmcd1 = audiotools.XMCD.read(self.xmcd1_file.name)
+        self.xmcd2 = audiotools.XMCD.read(self.xmcd2_file.name)
+
+        self.metadata = audiotools.MetaData(track_name=u"Metadata Track 1",
+                                            album_name=u"Metadata Album",
+                                            year=u"2008",
+                                            track_number=2,
+                                            track_total=4)
+
+    def __metadata_fields__(self,metadata):
+        return ["--name",
+                metadata.track_name.encode('ascii'),
+                "--album",
+                metadata.album_name.encode('ascii'),
+                "--year",
+                metadata.year.encode('ascii'),
+                "--number",
+                str(metadata.track_number),
+                "--track-total",
+                str(metadata.track_total)]
+
+    def tearDown(self):
+        if (METADATA not in CASES): return
+        if (EXECUTABLE not in CASES): return
+
+        self.xmcd1_file.close()
+        self.xmcd2_file.close()
+        self.track_file.close()
+
+    #these tests handle all the combinations of
+    #command-line tagging ("tag"/"notag")
+    #XMCD file ("xmcd"/"noxmcd")
+    #and the --replace flag ("replace"/"noreplace")
+
+    def test_notag_noxmcd_noreplace(self):
+        #does nothing
+        pass
+
+    def test_tag_noxmcd_noreplace(self):
+        if (METADATA not in CASES): return
+        if (EXECUTABLE not in CASES): return
+
+        #test a standard command-line tag
+        self.assertEqual(self.__run_tag__(
+                self.__metadata_fields__(self.metadata)),0)
+        self.assertEqual(self.metadata,self.track.get_metadata())
+
+        #then test a command-line re-tag
+        self.metadata.track_name = u"Metadata Track 2"
+        self.assertEqual(self.__run_tag__(
+                ["--name","Metadata Track 2"]),0)
+        self.assertEqual(self.metadata,self.track.get_metadata())
+
+    def test_notag_xmcd_noreplace(self):
+        if (METADATA not in CASES): return
+        if (EXECUTABLE not in CASES): return
+
+        #test an XMCD file
+        self.assertEqual(self.__run_tag__(
+                ["-x",self.xmcd1_file.name]),0)
+
+        self.assertEqual(self.xmcd1.metadata()[1],self.track.get_metadata())
+
+        #then test overwriting it with another XMCD file
+        self.assertEqual(self.__run_tag__(
+                ["-x",self.xmcd2_file.name]),0)
+
+        self.assertEqual(self.xmcd2.metadata()[1],self.track.get_metadata())
+
+    def test_tag_xmcd_noreplace1(self):
+        if (METADATA not in CASES): return
+        if (EXECUTABLE not in CASES): return
+
+        #test a command-line tag followed by an XMCD tag
+        self.assertEqual(self.__run_tag__(
+                ["--name","Tagged Name",
+                 "--composer","Composer Name"]),0)
+
+        self.assertEqual(self.__run_tag__(
+                ["-x",self.xmcd1_file.name]),0)
+
+        self.assertEqual(audiotools.MetaData(
+                track_name=u"XMCD Track 1",
+                track_number=1,
+                track_total=3,
+                album_name=u"XMCD Album",
+                artist_name=u"XMCD Artist",
+                year=u"2009",
+                composer_name=u"Composer Name"),
+                         self.track.get_metadata())
+
+    def test_tag_xmcd_noreplace2(self):
+        if (METADATA not in CASES): return
+        if (EXECUTABLE not in CASES): return
+
+        #test an XMCD tag followed by a command-line tag
+        self.assertEqual(self.__run_tag__(
+                ["-x",self.xmcd1_file.name]),0)
+
+        self.assertEqual(self.__run_tag__(
+                ["--name","Tagged Name",
+                 "--composer","Composer Name"]),0)
+
+        self.assertEqual(audiotools.MetaData(
+                track_name=u"Tagged Name",
+                track_number=1,
+                track_total=3,
+                album_name=u"XMCD Album",
+                artist_name=u"XMCD Artist",
+                year=u"2009",
+                composer_name=u"Composer Name"),
+                         self.track.get_metadata())
+
+    def test_tag_xmcd_noreplace3(self):
+        if (METADATA not in CASES): return
+        if (EXECUTABLE not in CASES): return
+
+        #test simultaneous command-line and XMCD tag
+        self.assertEqual(self.__run_tag__(
+                ["-x",self.xmcd1_file.name,
+                 "--name","Tagged Name",
+                 "--composer","Composer Name"]),0)
+
+        self.assertEqual(audiotools.MetaData(
+                track_name=u"Tagged Name",
+                track_number=1,
+                track_total=3,
+                album_name=u"XMCD Album",
+                artist_name=u"XMCD Artist",
+                year=u"2009",
+                composer_name=u"Composer Name"),
+                         self.track.get_metadata())
+
+
+    def test_notag_noxmcd_replace(self):
+        #does nothing
+        pass
+
+    def test_tag_noxmcd_replace(self):
+        if (METADATA not in CASES): return
+        if (EXECUTABLE not in CASES): return
+
+        #test a standard command-line tag
+        self.assertEqual(self.__run_tag__(
+                self.__metadata_fields__(self.metadata) + ["--replace"]),0)
+        self.assertEqual(self.metadata,self.track.get_metadata())
+
+        #then test a command-line re-tag
+        self.assertEqual(self.__run_tag__(
+                ["--name","New Track Name","--number",str(2),"--replace"]),0)
+        self.assertEqual(audiotools.MetaData(track_name=u"New Track Name",
+                                             track_number=2),
+                         self.track.get_metadata())
+
+    def test_notag_xmcd_replace(self):
+        if (METADATA not in CASES): return
+        if (EXECUTABLE not in CASES): return
+
+        #test an XMCD file
+        self.assertEqual(self.__run_tag__(
+                ["-x",self.xmcd1_file.name,"--replace"]),0)
+
+        self.assertEqual(self.xmcd1.metadata()[1],self.track.get_metadata())
+
+        #then test overwriting it with another XMCD file
+        self.assertEqual(self.__run_tag__(
+                ["-x",self.xmcd2_file.name,"--replace"]),0)
+
+    def test_tag_xmcd_replace1(self):
+        if (METADATA not in CASES): return
+        if (EXECUTABLE not in CASES): return
+
+        #test a command-line tag followed by an XMCD tag
+        self.assertEqual(self.__run_tag__(
+                ["--name","Tagged Name",
+                 "--composer","Composer Name",
+                 "--number",str(1),"--replace"]),0)
+
+        self.assertEqual(self.__run_tag__(
+                ["-x",self.xmcd1_file.name,"--replace"]),0)
+
+        self.assertEqual(audiotools.MetaData(
+                track_name=u"XMCD Track 1",
+                track_number=1,
+                track_total=3,
+                album_name=u"XMCD Album",
+                artist_name=u"XMCD Artist",
+                year=u"2009"),
+                         self.track.get_metadata())
+
+    def test_tag_xmcd_replace2(self):
+        if (METADATA not in CASES): return
+        if (EXECUTABLE not in CASES): return
+
+        #test an XMCD tag followed by a command-line tag
+        self.assertEqual(self.__run_tag__(
+                ["-x",self.xmcd1_file.name,"--replace"]),0)
+
+        self.assertEqual(self.__run_tag__(
+                ["--name","Tagged Name",
+                 "--composer","Composer Name",
+                 "--number",str(1),"--replace"]),0)
+
+        self.assertEqual(audiotools.MetaData(
+                track_name=u"Tagged Name",
+                track_number=1,
+                composer_name=u"Composer Name"),
+                         self.track.get_metadata())
+
+    def test_tag_xmcd_replace3(self):
+        if (METADATA not in CASES): return
+        if (EXECUTABLE not in CASES): return
+
+        #test simultaneous command-line and XMCD tag
+        self.assertEqual(self.__run_tag__(
+                ["-x",self.xmcd1_file.name,
+                 "--name","Tagged Name",
+                 "--composer","Composer Name"]),0)
+
+        self.assertEqual(audiotools.MetaData(
+                track_name=u"Tagged Name",
+                track_number=1,
+                track_total=3,
+                album_name=u"XMCD Album",
+                artist_name=u"XMCD Artist",
+                year=u"2009",
+                composer_name=u"Composer Name"),
+                         self.track.get_metadata())
 
 
 ############
