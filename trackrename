@@ -65,51 +65,36 @@ if (__name__ == '__main__'):
     else:
         mv_flags = '-i'
 
-    if (options.xmcd != None):
+    if (options.xmcd is not None):
         #try to set the metadata and track name from the XMCD metadata
         try:
-            metadata = audiotools.XMCD.read(options.xmcd).metadata()
+            xmcd = audiotools.XMCD.read(options.xmcd).metadata()
         except audiotools.XMCDException:
             msg.error(_(u"Error opening XMCD file \"%s\"") % \
                           (msg.filename(options.xmcd)))
             sys.exit(1)
-
-        try:
-            for (track,new_name) in [(track,
-                                       track.track_name(track.track_number(),
-                                                        track.get_metadata(),
-                                                        track.album_number(),
-                                                        options.format))
-                                     for track in audiofiles]:
-                (path,filename) = os.path.split(track.filename)
-                if (filename != new_name):
-                    audiotools.make_dirs(os.path.join(path,new_name))
-
-                    subprocess.call([audiotools.BIN['mv'],
-                                     mv_flags,
-                                     track.filename,
-                                     os.path.join(path,new_name)])
-        except audiotools.UnsupportedTracknameField,err:
-            err.error_msg(msg)
-            sys.exit(1)
     else:
-        #try to set the track name from the track's metadata
-        try:
-            for (track,new_name) in [(track,
-                                      track.track_name(track.track_number(),
-                                                       track.get_metadata(),
-                                                       track.album_number(),
-                                                       options.format))
-                                     for track in audiofiles]:
-                (path,filename) = os.path.split(track.filename)
+        xmcd = {}
 
-                if (filename != new_name):
-                    audiotools.make_dirs(os.path.join(path,new_name))
+    try:
+        for (track,new_name) in [(
+                track,
+                track.track_name(track.track_number(),
+                                 audiotools.MetaData.merge(
+                        xmcd.get(track.track_number(),None),
+                        track.get_metadata()),
+                                 track.album_number(),
+                                 options.format))
+                                 for track in audiofiles]:
+            (path,filename) = os.path.split(track.filename)
+            if (filename != new_name):
+                audiotools.make_dirs(os.path.join(path,new_name))
 
-                    subprocess.call([audiotools.BIN['mv'],
-                                     mv_flags,
-                                     track.filename,
-                                     os.path.join(path,new_name)])
-        except audiotools.UnsupportedTracknameField,err:
-            err.error_msg(msg)
-            sys.exit(1)
+                subprocess.call([audiotools.BIN['mv'],
+                                 mv_flags,
+                                 track.filename,
+                                 os.path.join(path,new_name)])
+    except audiotools.UnsupportedTracknameField,err:
+        err.error_msg(msg)
+        sys.exit(1)
+

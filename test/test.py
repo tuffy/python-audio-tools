@@ -5328,6 +5328,67 @@ class TestTrackSplit(unittest.TestCase):
         finally:
             xmcd_file.close()
 
+class TestTrackrename(unittest.TestCase):
+    def setUp(self):
+        if (METADATA not in CASES): return
+        if (EXECUTABLE not in CASES): return
+
+        self.output_dir = tempfile.mkdtemp()
+        self.track = audiotools.FlacAudio.from_pcm(
+            os.path.join(self.output_dir,"test.flac"),
+            BLANK_PCM_Reader(5))
+
+        self.format = "%(track_number)2.2d - %(track_name)s - %(album_name)s - %(composer_name)s.%(suffix)s"
+
+    def tearDown(self):
+        if (METADATA not in CASES): return
+        if (EXECUTABLE not in CASES): return
+
+        for f in os.listdir(self.output_dir):
+            os.unlink(os.path.join(self.output_dir,f))
+        os.rmdir(self.output_dir)
+
+    def test_noxmcd(self):
+        if (METADATA not in CASES): return
+        if (EXECUTABLE not in CASES): return
+
+        self.track.set_metadata(audiotools.MetaData(
+                track_number=1,
+                track_name=u"Track Name",
+                album_name=u"Album Name",
+                composer_name=u"Composer Name"))
+        self.assertEqual(subprocess.call(["trackrename",
+                                          "--format",self.format,
+                                          self.track.filename,
+                                          "-V","quiet"]),0)
+        self.assertEqual(os.listdir(self.output_dir)[0],
+                         "01 - Track Name - Album Name - Composer Name.flac")
+
+    def test_xmcd(self):
+        if (METADATA not in CASES): return
+        if (EXECUTABLE not in CASES): return
+
+        xmcd_file = tempfile.NamedTemporaryFile(suffix=".xmcd")
+        try:
+            xmcd_file.write('# xmcd\n#\nDTITLE=XMCD Artist / XMCD Album\nDYEAR=2009\nTTITLE0=XMCD Track 1\nTTITLE1=XMCD Track 2\nTTITLE2=XMCD Track 3\nEXTDD=\nEXTT0=\nEXTT1=\nEXTT2=\nPLAYORDER=\n')
+            xmcd_file.flush()
+
+            self.track.set_metadata(audiotools.MetaData(
+                    track_number=1,
+                    track_name=u"Track Name",
+                    album_name=u"Album Name",
+                    composer_name=u"Composer Name"))
+
+            self.assertEqual(subprocess.call(["trackrename",
+                                              "--format",self.format,
+                                              self.track.filename,
+                                              "-x",xmcd_file.name,
+                                              "-V","quiet"]),0)
+            self.assertEqual(os.listdir(self.output_dir)[0],
+                             "01 - XMCD Track 1 - XMCD Album - Composer Name.flac")
+        finally:
+            xmcd_file.close()
+
 ############
 #END TESTS
 ############

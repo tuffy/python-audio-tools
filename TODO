@@ -336,18 +336,18 @@
   would make the interface more responsive when opening tracks
   containing many large images.
 
-* TODO Integrate better MetaData merging
+* DONE Integrate better MetaData merging
   There's a few areas in which MetaData from multiple sources must
   be merged in an intelligent manner,
   such as where tracksplit takes a source track an XMCD file.
   Now that a preliminary MetaData.merge() classmethod is in place,
   this process must be integrated consistently.
 - [X] track2track
-- [ ] trackrename
+- [X] trackrename
 - [X] tracksplit
 - [X] tracktag
-** TODO Add unit tests for MetaData merging process
+** DONE Add unit tests for MetaData merging process
 - [X] track2track
-- [ ] trackrename
+- [X] trackrename
 - [X] tracksplit
 - [X] tracktag
