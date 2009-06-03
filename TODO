@@ -342,4 +342,13 @@
   such as where tracksplit takes a source track an XMCD file.
   Now that a preliminary MetaData.merge() classmethod is in place,
   this process must be integrated consistently.
+- [X] track2track
+- [ ] trackrename
+- [ ] tracksplit
+- [X] tracktag
 ** TODO Add unit tests for MetaData merging process
+- [X] track2track
+- [ ] trackrename
+- [ ] tracksplit
+- [X] tracktag
+

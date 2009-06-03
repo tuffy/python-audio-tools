@@ -5095,6 +5095,109 @@ class TestTrackTag(unittest.TestCase):
             jpeg_file.close()
             png_file.close()
 
+class TestTrack2Track(unittest.TestCase):
+    def __run_convert__(self,arguments):
+        return subprocess.call(["track2track",
+                                self.track.filename] + \
+                               list(arguments) + \
+                               ["-o",self.output_file.name,"-V","quiet"])
+
+    def __run_convert2__(self,arguments):
+        return subprocess.call(["track2track",
+                                self.track.filename] + \
+                               list(arguments) + \
+                               ["-d",self.output_dir,"-t","flac","-V","quiet"])
+
+    def output_dir_track(self):
+        return audiotools.open(os.path.join(self.output_dir,
+                                            os.listdir(self.output_dir)[0]))
+
+    def setUp(self):
+        if (METADATA not in CASES): return
+        if (EXECUTABLE not in CASES): return
+
+        self.track_file = tempfile.NamedTemporaryFile(suffix=".flac")
+        self.output_file = tempfile.NamedTemporaryFile(suffix=".flac")
+        self.output_dir = tempfile.mkdtemp()
+
+        self.xmcd_file = tempfile.NamedTemporaryFile(suffix=".xmcd")
+        self.xmcd_file.write('# xmcd\n#\nDTITLE=XMCD Artist / XMCD Album\nDYEAR=2009\nTTITLE0=XMCD Track 1\nTTITLE1=XMCD Track 2\nTTITLE2=XMCD Track 3\nEXTDD=\nEXTT0=\nEXTT1=\nEXTT2=\nPLAYORDER=\n')
+        self.xmcd_file.flush()
+        self.xmcd = audiotools.XMCD.read(self.xmcd_file.name)
+
+        self.track = audiotools.FlacAudio.from_pcm(
+            self.track_file.name,
+            BLANK_PCM_Reader(5))
+        self.track.set_metadata(audiotools.MetaData(track_number=1))
+
+        self.metadata = audiotools.MetaData(track_name=u"Test Name",
+                                            artist_name=u"Some Artist",
+                                            composer_name=u"Composer",
+                                            track_number=1)
+
+    def tearDown(self):
+        if (METADATA not in CASES): return
+        if (EXECUTABLE not in CASES): return
+
+        self.track_file.close()
+        self.output_file.close()
+        self.xmcd_file.close()
+        for f in os.listdir(self.output_dir):
+            os.unlink(os.path.join(self.output_dir,f))
+        os.rmdir(self.output_dir)
+
+    def test_nonxmcd1(self):
+        if (METADATA not in CASES): return
+        if (EXECUTABLE not in CASES): return
+
+        self.track.set_metadata(self.metadata)
+        self.assertEqual(self.__run_convert__([]),0)
+        self.assertEqual(self.metadata,
+                         audiotools.open(self.output_file.name).get_metadata())
+
+    def test_nonxmcd2(self):
+        if (METADATA not in CASES): return
+        if (EXECUTABLE not in CASES): return
+
+        self.track.set_metadata(self.metadata)
+        self.assertEqual(self.__run_convert2__([]),0)
+        self.assertEqual(self.metadata,
+                         self.output_dir_track().get_metadata())
+
+    def test_xmcd1(self):
+        if (METADATA not in CASES): return
+        if (EXECUTABLE not in CASES): return
+
+        self.track.set_metadata(self.metadata)
+        self.assertEqual(self.__run_convert__(["-x",self.xmcd_file.name]),0)
+
+        self.assertEqual(audiotools.open(self.output_file.name).get_metadata(),
+                         audiotools.MetaData(track_name=u"XMCD Track 1",
+                                             album_name=u"XMCD Album",
+                                             artist_name=u"XMCD Artist",
+                                             track_number=1,
+                                             track_total=3,
+                                             year=u"2009",
+                                             composer_name=u"Composer"))
+
+
+
+    def test_xmcd2(self):
+        if (METADATA not in CASES): return
+        if (EXECUTABLE not in CASES): return
+
+        self.track.set_metadata(self.metadata)
+        self.assertEqual(self.__run_convert2__(["-x",self.xmcd_file.name]),0)
+
+        self.assertEqual(self.output_dir_track().get_metadata(),
+                         audiotools.MetaData(track_name=u"XMCD Track 1",
+                                             album_name=u"XMCD Album",
+                                             artist_name=u"XMCD Artist",
+                                             track_number=1,
+                                             track_total=3,
+                                             year=u"2009",
+                                             composer_name=u"Composer"))
+
 
 ############
 #END TESTS

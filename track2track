@@ -286,17 +286,19 @@ if (__name__ == '__main__'):
                 track_number = audiofile.track_number()
 
                 if (xmcd is not None):
+                    metadata = audiotools.MetaData.merge(
+                        xmcd.get(track_number,None),
+                        audiofile.get_metadata())
+
                     filename = os.path.join(
                                 base_directory,
                                 AudioType.track_name(
                             track_number,
-                            xmcd[track_number],
+                            metadata,
                             album_number=audiofile.album_number(),
                             format=options.format))
 
                     audiotools.make_dirs(filename)
-
-                    metadata = xmcd[track_number]
 
                     queue.execute(convert_file,
                                   (AudioType,
@@ -307,17 +309,17 @@ if (__name__ == '__main__'):
                                    msg))
                     encoded_filenames.append(filename)
                 else:
+                    metadata = audiofile.get_metadata()
+
                     filename = os.path.join(
                                 base_directory,
                                 AudioType.track_name(
                             track_number,
-                            audiofile.get_metadata(),
+                            metadata,
                             album_number=audiofile.album_number(),
                             format=options.format))
 
                     audiotools.make_dirs(filename)
-
-                    metadata = audiofile.get_metadata()
 
                     queue.execute(convert_file,
                                   (AudioType,
@@ -347,7 +349,9 @@ if (__name__ == '__main__'):
         audiofile = audiofiles[0]
 
         if (xmcd is not None):
-            metadata = xmcd[audiofile.track_number()]
+            metadata = audiotools.MetaData.merge(
+                xmcd.get(audiofile.track_number(),None),
+                audiofile.get_metadata())
         else:
             metadata = audiofile.get_metadata()
 
