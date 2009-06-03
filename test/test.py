@@ -5017,6 +5017,84 @@ class TestTrackTag(unittest.TestCase):
                 composer_name=u"Composer Name"),
                          self.track.get_metadata())
 
+    def test_images(self):
+        jpeg_file = tempfile.NamedTemporaryFile(suffix=".jpg")
+        png_file = tempfile.NamedTemporaryFile(suffix=".png")
+        jpeg2_file = tempfile.NamedTemporaryFile(suffix=".jpg")
+        try:
+            jpeg_file.write(TEST_COVER1);
+            jpeg_file.flush()
+            png_file.write(TEST_COVER2)
+            png_file.flush()
+            jpeg2_file.write(TEST_COVER3)
+            jpeg2_file.flush()
+
+            self.assertEqual(self.__run_tag__(["--name","Track Name"]),0)
+
+            self.assertEqual(audiotools.MetaData(track_name=u"Track Name",
+                                                 track_number=1),
+                             self.track.get_metadata())
+
+            self.assertEqual([],self.track.get_metadata().images())
+
+            self.assertEqual(self.__run_tag__(
+                    ["--front-cover",jpeg_file.name]),0)
+
+            self.assertEqual(audiotools.MetaData(track_name=u"Track Name",
+                                                 track_number=1),
+                             self.track.get_metadata())
+
+            self.assertEqual([audiotools.Image.new(TEST_COVER1,u"",0)],
+                             self.track.get_metadata().images())
+
+            self.assertEqual(self.__run_tag__(
+                    ["--back-cover",png_file.name]),0)
+
+            self.assertEqual([audiotools.Image.new(TEST_COVER1,u"",0),
+                              audiotools.Image.new(TEST_COVER2,u"",1)],
+                             self.track.get_metadata().images())
+
+            self.assertEqual(self.__run_tag__(
+                    ["--replace","--name","New Name","--number",str(1)]),0)
+
+            self.assertEqual(audiotools.MetaData(track_name=u"New Name",
+                                                 track_number=1),
+                             self.track.get_metadata())
+
+            self.assertEqual([],self.track.get_metadata().images())
+
+            self.assertEqual(self.__run_tag__(
+                    ["--front-cover",jpeg_file.name,
+                     "--back-cover",png_file.name]),0)
+
+            self.assertEqual([audiotools.Image.new(TEST_COVER1,u"",0),
+                              audiotools.Image.new(TEST_COVER2,u"",1)],
+                             self.track.get_metadata().images())
+
+            self.assertEqual(self.__run_tag__(
+                    ["--front-cover",jpeg2_file.name,
+                     "--remove-images"]),0)
+
+            self.assertEqual(audiotools.MetaData(track_name=u"New Name",
+                                                 track_number=1),
+                             self.track.get_metadata())
+
+            self.assertEqual([audiotools.Image.new(TEST_COVER3,u"",0)],
+                             self.track.get_metadata().images())
+
+            self.assertEqual(self.__run_tag__(
+                    ["--remove-images"]),0)
+
+            self.assertEqual(audiotools.MetaData(track_name=u"New Name",
+                                                 track_number=1),
+                             self.track.get_metadata())
+
+            self.assertEqual([],self.track.get_metadata().images())
+        finally:
+            jpeg2_file.close()
+            jpeg_file.close()
+            png_file.close()
+
 
 ############
 #END TESTS
