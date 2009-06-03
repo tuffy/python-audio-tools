@@ -344,11 +344,10 @@
   this process must be integrated consistently.
 - [X] track2track
 - [ ] trackrename
-- [ ] tracksplit
+- [X] tracksplit
 - [X] tracktag
 ** TODO Add unit tests for MetaData merging process
 - [X] track2track
 - [ ] trackrename
-- [ ] tracksplit
+- [X] tracksplit
 - [X] tracktag
-

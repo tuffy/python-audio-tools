@@ -5198,6 +5198,135 @@ class TestTrack2Track(unittest.TestCase):
                                              year=u"2009",
                                              composer_name=u"Composer"))
 
+class TestTrackSplit(unittest.TestCase):
+    def dir_files(self):
+        return audiotools.open_files([os.path.join(self.output_dir,f)
+                                      for f in os.listdir(self.output_dir)])
+
+    def dir_metadata(self):
+        return [f.get_metadata() for f in self.dir_files()]
+
+    def setUp(self):
+        if (METADATA not in CASES): return
+        if (EXECUTABLE not in CASES): return
+
+        self.flac_file = tempfile.NamedTemporaryFile(suffix=".flac")
+        self.track = audiotools.FlacAudio.from_pcm(
+            self.flac_file.name,
+            EXACT_BLANK_PCM_Reader(24725400))
+
+        self.cue_file = tempfile.NamedTemporaryFile(suffix=".cue")
+        self.cue_file.write('FILE "data.wav" BINARY\n  TRACK 01 AUDIO\n    INDEX 01 00:00:00\n  TRACK 02 AUDIO\n    INDEX 00 03:16:55\n    INDEX 01 03:18:18\n  TRACK 03 AUDIO\n    INDEX 00 05:55:12\n    INDEX 01 06:01:45\n')
+        self.cue_file.flush()
+
+        self.output_dir = tempfile.mkdtemp()
+
+    def tearDown(self):
+        if (METADATA not in CASES): return
+        if (EXECUTABLE not in CASES): return
+
+        self.flac_file.close()
+        self.cue_file.close()
+        for f in os.listdir(self.output_dir):
+            os.unlink(os.path.join(self.output_dir,f))
+        os.rmdir(self.output_dir)
+
+    def test_nonxmcd(self):
+        if (METADATA not in CASES): return
+        if (EXECUTABLE not in CASES): return
+
+        self.track.set_metadata(audiotools.MetaData(
+                album_name=u"Some Album",
+                performer_name=u"Performer"))
+
+        self.assertEqual(subprocess.call(["tracksplit",
+                                          self.track.filename,
+                                          "-d",
+                                          self.output_dir,
+                                          "-t","flac",
+                                          "-q","0",
+                                          "--cue",self.cue_file.name,
+                                          "-V","quiet"]),0)
+        metadata = self.dir_metadata()
+
+        self.assertEqual(metadata[0],
+                         audiotools.MetaData(
+                track_number=1,
+                track_total=3,
+                album_name=u"Some Album",
+                performer_name=u"Performer"))
+
+        self.assertEqual(metadata[1],
+                         audiotools.MetaData(
+                track_number=2,
+                track_total=3,
+                album_name=u"Some Album",
+                performer_name=u"Performer"))
+
+        self.assertEqual(metadata[2],
+                         audiotools.MetaData(
+                track_number=3,
+                track_total=3,
+                album_name=u"Some Album",
+                performer_name=u"Performer"))
+
+    def test_xmcd(self):
+        if (METADATA not in CASES): return
+        if (EXECUTABLE not in CASES): return
+
+        xmcd_file = tempfile.NamedTemporaryFile(suffix=".xmcd")
+        try:
+            xmcd_file.write('# xmcd\n#\nDTITLE=XMCD Artist / XMCD Album\nDYEAR=2009\nTTITLE0=XMCD Track 1\nTTITLE1=XMCD Track 2\nTTITLE2=XMCD Track 3\nEXTDD=\nEXTT0=\nEXTT1=\nEXTT2=\nPLAYORDER=\n')
+            xmcd_file.flush()
+
+            self.track.set_metadata(audiotools.MetaData(
+                album_name=u"Some Album",
+                performer_name=u"Performer"))
+
+            self.assertEqual(subprocess.call(["tracksplit",
+                                              self.track.filename,
+                                              "-d",
+                                              self.output_dir,
+                                              "-x",xmcd_file.name,
+                                              "-t","flac",
+                                              "-q","0",
+                                              "--cue",self.cue_file.name,
+                                              "-V","quiet"]),0)
+
+            metadata = self.dir_metadata()
+
+            self.assertEqual(metadata[0],
+                             audiotools.MetaData(
+                    track_number=1,
+                    track_total=3,
+                    track_name=u"XMCD Track 1",
+                    album_name=u"XMCD Album",
+                    artist_name=u"XMCD Artist",
+                    year=u"2009",
+                    performer_name=u"Performer"))
+
+            self.assertEqual(metadata[1],
+                             audiotools.MetaData(
+                    track_number=2,
+                    track_total=3,
+                    track_name=u"XMCD Track 2",
+                    album_name=u"XMCD Album",
+                    artist_name=u"XMCD Artist",
+                    year=u"2009",
+                    performer_name=u"Performer"))
+
+            self.assertEqual(metadata[2],
+                             audiotools.MetaData(
+                    track_number=3,
+                    track_total=3,
+                    track_name=u"XMCD Track 3",
+                    album_name=u"XMCD Album",
+                    artist_name=u"XMCD Artist",
+                    year=u"2009",
+                    performer_name=u"Performer"))
+
+        finally:
+            xmcd_file.close()
 
 ############
 #END TESTS

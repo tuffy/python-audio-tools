@@ -241,8 +241,8 @@ if (__name__ == '__main__'):
             track_number = i + 1
 
             metadata = audiotools.MetaData.merge(
-                base.get(track_number,None),
-                xmcd.get(track_number,None))
+                xmcd.get(track_number,None),
+                base.get(track_number,None))
 
             filename = os.path.join(
                 base_directory,
