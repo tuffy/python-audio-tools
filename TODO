@@ -308,9 +308,9 @@
 - [X] tracksplit
 - [X] tracktag
 ** DONE Convert --help output to gettext-based strings
-** TODO Convert GUI programs to gettext-based strings
-- [ ] coverview
-- [ ] editxmcd
+** DONE Convert GUI programs to gettext-based strings
+- [X] coverview
+- [X] editxmcd
 * DONE Update tracksplit's man page
   It now supports more of track2track's options
 * TODO Support total tracks/total albums metadata fields
@@ -325,8 +325,8 @@
 - [X] Add support in tracksplit
 - [X] Add support in trackcat
 ** TODO Add unit tests
-** TODO Add fields to --format output
-** TODO Update man pages with fields information
+** DONE Add fields to --format output
+** DONE Update man pages with fields information
 * TODO Add support for System->cdrom->offset
   This will automatically apply offset samples when reading CDs
   so that rips will have the appropate amount of null samples.
