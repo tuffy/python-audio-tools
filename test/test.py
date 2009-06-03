@@ -4650,9 +4650,12 @@ class TestTracksplitOutput(TestTextOutput):
                             self.dir2,audiotools.MP3Audio.track_name(
                                 i+1,xmcd_metadata[i+1],format=format_string)))})
 
+        metadata = self.flac.get_metadata()
+        metadata.album_number = 1
+        self.flac.set_metadata(metadata)
+
         self.assertEqual(self.__run_app__(
                 ["tracksplit","-t","flac","-d",self.dir2,
-                 "--album-number=1",
                  "-j",str(1),
                  "-x",self.xmcd_path,
                  "--format=%s" % (format_string),

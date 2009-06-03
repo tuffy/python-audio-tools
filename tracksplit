@@ -102,13 +102,6 @@ if (__name__ == '__main__'):
                       dest='format',
                       help=_(u'the format string for new filenames'))
 
-    parser.add_option('--album-number',
-                      dest='album_number',
-                      action='store',
-                      type='int',
-                      default=None,
-                      help=_(u'the album number, if this image one of a series of albums'))
-
     parser.add_option('-j','--joint',
                       action='store',
                       type='int',
@@ -246,10 +239,6 @@ if (__name__ == '__main__'):
     try:
         for (i,pcmreader) in enumerate(split_pcm):
             track_number = i + 1
-            if (options.album_number is None):
-                album_number = audiofile.album_number()
-            else:
-                album_number = options.album_number
 
             metadata = audiotools.MetaData.merge(
                 base.get(track_number,None),
@@ -259,7 +248,7 @@ if (__name__ == '__main__'):
                 base_directory,
                 AudioType.track_name(track_number,
                                      metadata,
-                                     album_number=album_number,
+                                     album_number=audiofile.album_number(),
                                      format=options.format))
 
             audiotools.make_dirs(filename)

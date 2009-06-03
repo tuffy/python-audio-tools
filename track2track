@@ -140,13 +140,6 @@ if (__name__ == '__main__'):
                       dest='output',
                       help=_(u'output filename to use, overriding default and -d'))
 
-    parser.add_option('--album-number',
-                      dest='album_number',
-                      action='store',
-                      type='int',
-                      default=None,
-                      help=_(u'the album number, if these tracks are one of a series of albums'))
-
     parser.add_option('-j','--joint',
                       action='store',
                       type='int',
@@ -291,23 +284,19 @@ if (__name__ == '__main__'):
         for audiofile in audiofiles:
             try:
                 track_number = audiofile.track_number()
-                if (options.album_number is None):
-                    album_number = audiofile.album_number()
-                else:
-                    album_number = options.album_number
 
                 if (xmcd is not None):
                     filename = os.path.join(
                                 base_directory,
-                                AudioType.track_name(track_number,
-                                                     xmcd[track_number],
-                                                     album_number=album_number,
-                                                     format=options.format))
+                                AudioType.track_name(
+                            track_number,
+                            xmcd[track_number],
+                            album_number=audiofile.album_number(),
+                            format=options.format))
 
                     audiotools.make_dirs(filename)
 
                     metadata = xmcd[track_number]
-                    metadata.album_number = album_number
 
                     queue.execute(convert_file,
                                   (AudioType,
@@ -320,10 +309,11 @@ if (__name__ == '__main__'):
                 else:
                     filename = os.path.join(
                                 base_directory,
-                                AudioType.track_name(track_number,
-                                                     audiofile.get_metadata(),
-                                                     album_number=album_number,
-                                                     format=options.format))
+                                AudioType.track_name(
+                            track_number,
+                            audiofile.get_metadata(),
+                            album_number=audiofile.album_number(),
+                            format=options.format))
 
                     audiotools.make_dirs(filename)
 
@@ -360,9 +350,6 @@ if (__name__ == '__main__'):
             metadata = xmcd[audiofile.track_number()]
         else:
             metadata = audiofile.get_metadata()
-
-        if ((metadata is not None) and (options.album_number is not None)):
-            metadata.album_number = options.album_number
 
         convert_file(AudioType,
                      options.output,
