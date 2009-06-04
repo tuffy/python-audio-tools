@@ -56,11 +56,8 @@ en_US.po: audiotools.pot
 audiotools.pot: audiotools-cli.pot audiotools-gui.pot
 	msgcat -o audiotools.pot audiotools-cli.pot audiotools-gui.pot
 
-#pygettext.py is bundled with Python but must be installed seperately
-#xgettext doesn't handle binary Python strings properly (found in __m4a__.py)
-#whereas pygettext.py does
 audiotools-cli.pot: $(EXECUTABLES) $(MODULES)
-	pygettext.py --keyword=_ --output=$@ $(EXECUTABLES) $(MODULES)
+	xgettext -L Python --keyword=_ --output=$@ $(EXECUTABLES) $(MODULES)
 
 audiotools-gui.pot: $(GLADE_H_FILES)
 	xgettext --keyword=N_ --from-code=UTF-8 --output=$@ $(GLADE_H_FILES)

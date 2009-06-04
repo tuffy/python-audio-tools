@@ -89,11 +89,23 @@ class __Qt_Atom__:
 
 class __Qt_Meta_Atom__(__Qt_Atom__):
     CONTAINERS = frozenset(
-        ['aaid','\xa9alb','akid','apid','\xa9ART','\xa9cmt',
-         '\xa9com','covr','cpil','cptr','\xa9day','disk',
-         'geid','gnre','\xa9grp','\xa9nam','plid','rtnd',
-         'stik','tmpo','\xa9too','trkn','\xa9wrt','----',
-         'meta'])
+        ['aaid',
+         '=A9alb'.decode('quopri'),
+         'akid',
+         'apid',
+         '=A9ART'.decode('quopri'),
+         '=A9cmt'.decode('quopri'),
+         '=A9com'.decode('quopri'),
+         'covr','cpil','cptr',
+         '=A9day'.decode('quopri'),
+         'disk','geid','gnre',
+         '=A9grp'.decode('quopri'),
+         '=A9nam'.decode('quopri'),
+         'plid','rtnd','stik','tmpo',
+         '=A9too'.decode('quopri'),
+         'trkn',
+         '=A9wrt'.decode('quopri'),
+         '----','meta'])
 
     TRKN = Con.Struct('trkn',
                       Con.Padding(2),
@@ -272,7 +284,7 @@ class M4AAudio(AudioFile):
                                      meta_atom.data)
         data = {}
         for atom in meta_atom['ilst']:
-            if (atom.type.startswith('\xa9') or (atom.type == 'cprt')):
+            if (atom.type.startswith(chr(0xA9)) or (atom.type == 'cprt')):
                 data.setdefault(atom.type,
                                 []).append(atom['data'].data[8:].decode('utf-8'))
             else:
@@ -390,22 +402,23 @@ class M4AAudio(AudioFile):
             devnull.close()
 
 class M4AMetaData(MetaData,dict):
-                                                 # iTunes ID:
-    ATTRIBUTE_MAP = {'track_name':'\xa9nam',     # Name
-                     'artist_name':'\xa9ART',    # Artist
-                     'year':'\xa9day',           # Year
-                     'performer_name':'aART' ,   # Album Artist
-                     'track_number':'trkn',      # Track Number
-                     'track_total':'trkn',
-                     'album_name':'\xa9alb',     # Album
-                     'album_number':'disk',      # Disc Number
-                     'album_total':'disk',
-                     #?:'\xa9grp'                # Grouping
-                     #?:'tmpo'                   # BPM
-                     'composer_name':'\xa9wrt',  # Composer
-                     'comment':'\xa9cmt',        # Comments
-                     'copyright':'cprt'}         # (not listed)
-                     #'artist_name':'\xa9com'}
+                                                   # iTunes ID:
+    ATTRIBUTE_MAP = {
+        'track_name':'=A9nam'.decode('quopri'),    # Name
+        'artist_name':'=A9ART'.decode('quopri'),   # Artist
+        'year':'=A9day'.decode('quopri'),          # Year
+        'performer_name':'aART',                   # Album Artist
+        'track_number':'trkn',                     # Track Number
+        'track_total':'trkn',
+        'album_name':'=A9alb'.decode('quopri'),    # Album
+        'album_number':'disk',                     # Disc Number
+        'album_total':'disk',
+        #?:'=A9grp'.decode('quopri')               # Grouping
+        #?:'tmpo'                                  # BPM
+        'composer_name':'=A9wrt'.decode('quopri'), # Composer
+        'comment':'=A9cmt'.decode('quopri'),       # Comments
+        'copyright':'cprt'}                        # (not listed)
+        #'artist_name':'=A9com'.decode('quopri')}
 
     #meta_data is a key->[value1,value2,...] dict of the contents
     #of the 'meta' container atom
@@ -524,15 +537,14 @@ class M4AMetaData(MetaData,dict):
                         __build_qt_atom__(
                           key,
                           __build_qt_atom__('data',
-                                            '\x00\x00\x00\x01\x00\x00\x00\x00' + \
+                                            '0000000100000000'.decode('hex') + \
                                             value.encode('utf-8'))))
                 else:
                     ilst.append(
                         __build_qt_atom__(
                           key,
                           __build_qt_atom__('data',
-                                            '\x00\x00\x00\x00\x00\x00\x00\x00' + \
-                                            value)))
+                                            (chr(0) * 8) + value)))
 
         return __Qt_Atom__('meta',
                            (chr(0) * 4) + \
@@ -566,8 +578,8 @@ class M4AMetaData(MetaData,dict):
         pairs = []
         for (key,values) in self.items():
             for value in values:
-                if (key.startswith('\xa9') or (key == 'cprt')):
-                    pairs.append((key.replace('\xa9',' '),value))
+                if (key.startswith(chr(0xA9)) or (key == 'cprt')):
+                    pairs.append((key.replace(chr(0xA9),' '),value))
                 elif (key == 'trkn'):
                     tracknumber = __Qt_Meta_Atom__.TRKN.parse(value)
 
