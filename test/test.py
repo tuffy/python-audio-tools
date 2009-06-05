@@ -5392,6 +5392,121 @@ class TestTrackrename(unittest.TestCase):
         finally:
             xmcd_file.close()
 
+class TestImageJPEG(unittest.TestCase):
+    def setUp(self):
+        self.image = """/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAAIBAQEBAQIBAQECAgICAgQDAgICAgUEBAMEBgUGBgYF
+BgYGBwkIBgcJBwYGCAsICQoKCgoKBggLDAsKDAkKCgr/2wBDAQICAgICAgUDAwUKBwYHCgoKCgoK
+CgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgr/wAARCAAVAAwDAREA
+AhEBAxEB/8QAGAAAAgMAAAAAAAAAAAAAAAAAAAgGBwn/xAAfEAACAgMAAwEBAAAAAAAAAAACAwQG
+AQUHCBITABn/xAAUAQEAAAAAAAAAAAAAAAAAAAAA/8QAFBEBAAAAAAAAAAAAAAAAAAAAAP/aAAwD
+AQACEQMRAD8A1/qnmzp6JO6PSvLudoqjZKDsZE6HB1TZEllhrLpABrNnCiYApEhrTcuAUZAuPM8M
+pXgsuQJhaPDbB1q18n0tn7pQIdUtOxjFJ2lZhbIZmNV7sIlRWPDOVtetWVg0lESvqLPmZh6mQLNd
+eO/02mVjy4qMeLpYXONsnb+Pe131ehvCws+2vm53hPE2SB1c1aMw1RvVJemSn5Brh1jIQNJyq32q
+90ODZrvzPZU/bOJy9hXdrLjyGxWKcas5FsZhrao/T6LPGcESmBkwWeSWISH8B+D/2Q==""".decode('base64')
+        self.md5sum = "f8c43ff52c53aff1625979de47a04cec"
+        self.width = 12
+        self.height = 21
+        self.bpp = 24
+        self.colors = 0
+        self.mime_type = "image/jpeg"
+
+    def tearDown(self):
+        pass
+
+    def test_checksum(self):
+        self.assertEqual(md5(self.image).hexdigest(),self.md5sum)
+
+    def test_image(self):
+        img = audiotools.Image.new(self.image,u"Description",1)
+        self.assertEqual(img.data,self.image)
+        self.assertEqual(img.mime_type,self.mime_type)
+        self.assertEqual(img.width,self.width)
+        self.assertEqual(img.height,self.height)
+        self.assertEqual(img.color_depth,self.bpp)
+        self.assertEqual(img.color_count,self.colors)
+        self.assertEqual(img.description,u"Description")
+        self.assertEqual(img.type,1)
+
+class TestImagePNG(TestImageJPEG):
+    def setUp(self):
+        self.image = """iVBORw0KGgoAAAANSUhEUgAAAAwAAAAVCAIAAAD9zpjjAAAAAXNSR0IArs4c6QAAAAlwSFlzAAAL
+EwAACxMBAJqcGAAAAAd0SU1FB9kGBQA7LTgWUZgAAAAIdEVYdENvbW1lbnQA9syWvwAAANFJREFU
+KM+9UrERgzAMfCUddy4pvIZZQPTsQOkBGAAxBgMwBBUTqGMHZqBSCuc4cO6SFLmokuT3698ymRk+
+xQ1fxHegdV3btn092LZtHMdnse97WZYxRrtG13VN06QcZqaqIYQMBODIKdXDMADo+z7RE9HF9QFn
+ZmY2sxCCqp5ZLzeIiJkBLMtycZFJKYpimqasmTOZWS7o/JhVVakqABFJPvJxInLmF5FzB2YWY3TO
+ZTpExHuf8jsROefmec7Wwsx1XXvvAVCa+H7B9Of/9DPQAzSV43jVGYrtAAAAAElFTkSuQmCC""".decode('base64')
+        self.md5sum = "31c4c5224327d5869aa6059bcda84d2e"
+        self.width = 12
+        self.height = 21
+        self.bpp = 24
+        self.colors = 0
+        self.mime_type = "image/png"
+
+class TestImageGIF(TestImageJPEG):
+    def setUp(self):
+        self.image = """R0lGODdhDAAVAIQSAAAAAAoKCg0NDRUVFRkZGTIyMkBAQExMTF5eXmdnZ3Nzc4CAgJiYmKWlpc3N
+zdPT0+bm5vn5+f///////////////////////////////////////////////////////ywAAAAA
+DAAVAAAFPKAkjmRpnuiDmBAjRkNSKsfoFCVQLsuomwaDpOBAAYIoUaCR1P1MRAnP1BtNRwnBjiC6
+loqSZ3JMLpvNIQA7""".decode('base64')
+        self.md5sum = "1d4d36801b53c41d01086cbf9d0cb471"
+        self.width = 12
+        self.height = 21
+        self.bpp = 8
+        self.colors = 32
+        self.mime_type = "image/gif"
+
+class TestImageBMP(TestImageJPEG):
+    def setUp(self):
+        self.image = """Qk0qAwAAAAAAADYAAAAoAAAADAAAABUAAAABABgAAAAAAPQCAAATCwAAEwsAAAAAAAAAAAAA////
+////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////
+////////AAAA////////////////////////////////////////////gICAgICA////////////
+////////////////zc3N////////////Z2dnDQ0N////////////////////gICAGRkZ////////
+////////gICA////////////////gICAgICA////////////////////////MjIyzc3N////gICA
+gICA////////////////////////////////AAAA////AAAA////////////////////////////
+////////////CgoKpaWl////////////////////////////////////AAAAQEBAQEBA////////
+////////////////////////QEBAQEBA////MjIyzc3N////////////////////////gICAgICA
+////////////AAAA////////////////////zc3NMjIy////////////////////AAAA////////
+////+fn5FRUVZ2dn////////////////////c3NzTExM////////09PTXl5e////////////////
+////////5ubmmJiY////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////
+////////////////""".decode('base64')
+        self.md5sum = "cb6ef2f7a458ab1d315c329f72ec9898"
+        self.width = 12
+        self.height = 21
+        self.bpp = 24
+        self.colors = 0
+        self.mime_type = "image/x-ms-bmp"
+
+class TestImageTIFF(TestImageJPEG):
+    def setUp(self):
+        self.image = """SUkqAPwCAAD/////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////
+///T09NeXl7////////////////////////m5uaYmJj////////5+fkVFRVnZ2f/////////////
+//////9zc3NMTEz////////////Nzc0yMjL///////////////////8AAAD/////////////////
+//+AgICAgID///////////8AAAD///////////////////////////9AQEBAQED///8yMjLNzc3/
+//////////////////////////////8AAABAQEBAQED/////////////////////////////////
+//////8KCgqlpaX///////////////////////////////////8AAAD///8AAAD/////////////
+//////////////////8yMjLNzc3///+AgICAgID///////////////////////+AgID/////////
+//////+AgICAgID///////////////9nZ2cNDQ3///////////////////+AgIAZGRn///////+A
+gICAgID////////////////////////////Nzc3///////8AAAD/////////////////////////
+////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////
+//////////////////////////////8QAP4ABAABAAAAAAAAAAABAwABAAAADAAAAAEBAwABAAAA
+FQAAAAIBAwADAAAAwgMAAAMBAwABAAAAAQAAAAYBAwABAAAAAgAAAA0BAgAzAAAAyAMAABEBBAAB
+AAAACAAAABIBAwABAAAAAQAAABUBAwABAAAAAwAAABYBAwABAAAAQAAAABcBBAABAAAA9AIAABoB
+BQABAAAA/AMAABsBBQABAAAABAQAABwBAwABAAAAAQAAACgBAwABAAAAAgAAAAAAAAAIAAgACAAv
+aG9tZS9icmlhbi9EZXZlbG9wbWVudC9hdWRpb3Rvb2xzL3Rlc3QvaW1hZ2UudGlmZgAAAAAASAAA
+AAEAAABIAAAAAQ==""".decode('base64')
+        self.md5sum = "192ceb086d217421a5f151cc0afa3f05"
+        self.width = 12
+        self.height = 21
+        self.bpp = 24
+        self.colors = 0
+        self.mime_type = "image/tiff"
+
 ############
 #END TESTS
 ############
