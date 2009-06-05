@@ -44,7 +44,7 @@ class CueException(SheetException): pass
 
 def tokens(cuedata):
     full_length = len(cuedata)
-    cuedata = cuedata.lstrip("\xEF\xBB\xBF")
+    cuedata = cuedata.lstrip('efbbbf'.decode('hex'))
     line_number = 1
 
     #This isn't completely accurate since the whitespace requirements

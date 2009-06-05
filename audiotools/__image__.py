@@ -25,7 +25,7 @@ import gettext
 gettext.install("audiotools",unicode=True)
 
 def __jpeg__(h, f):
-    if (h[0:3] == '\xFF\xD8\xFF'):
+    if (h[0:3] == "FFD8FF".decode('hex')):
         return 'jpeg'
     else:
         return None
@@ -76,7 +76,9 @@ class ImageMetrics:
                 repr(self.color_count),
                 repr(self.mime_type))
 
-class InvalidImage(Exception): pass
+class InvalidImage(Exception):
+    def __unicode__(self):
+        return self.message
 
 class InvalidJPEG(InvalidImage): pass
 
@@ -152,7 +154,8 @@ class __JPEG__(ImageMetrics):
 class InvalidPNG(InvalidImage): pass
 
 class __PNG__(ImageMetrics):
-    HEADER = Con.Const(Con.String('header',8),'\x89PNG\r\n\x1a\n')
+    HEADER = Con.Const(Con.String('header',8),
+                       '89504e470d0a1a0a'.decode('hex'))
     CHUNK_HEADER = Con.Struct('chunk',
                               Con.UBInt32('length'),
                               Con.String('type',4))

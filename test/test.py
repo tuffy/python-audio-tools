@@ -4756,7 +4756,7 @@ class TestTrack2XMCD(TestTextOutput):
         #Since we're working with live data,
         #that number may change further down the line
         #so one mustn't panic if this test fails someday in the future.
-        self.__check_info__(_(u"3 matches found"))
+        self.__check_info__(_(u"%s matches found") % (3,))
 
         self.__check_info__(_(u"%s written") % \
                                 (self.filename(self.xmcd_filename)))
@@ -5018,6 +5018,9 @@ class TestTrackTag(unittest.TestCase):
                          self.track.get_metadata())
 
     def test_images(self):
+        if (METADATA not in CASES): return
+        if (EXECUTABLE not in CASES): return
+
         jpeg_file = tempfile.NamedTemporaryFile(suffix=".jpg")
         png_file = tempfile.NamedTemporaryFile(suffix=".png")
         jpeg2_file = tempfile.NamedTemporaryFile(suffix=".jpg")

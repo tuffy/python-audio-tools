@@ -350,7 +350,7 @@ class MP3Audio(AudioFile):
 
         #then find the next mp3 frame
         (b1,b2) = mp3file.read(2)
-        while ((b1 != '\xff') or ((ord(b2) & 0xE0) != 0xE0)):
+        while ((b1 != chr(0xFF)) or ((ord(b2) & 0xE0) != 0xE0)):
             mp3file.seek(-1,1)
             (b1,b2) = mp3file.read(2)
         mp3file.seek(-2,1)
@@ -365,10 +365,10 @@ class MP3Audio(AudioFile):
 
         while (True):
             byte = mp3file.read(1)
-            while ((byte != '\xff') and (byte != 'R') and (len(byte) > 0)):
+            while ((byte != chr(0xFF)) and (byte != 'R') and (len(byte) > 0)):
                 byte = mp3file.read(1)
 
-            if (byte == '\xff'):  #possibly a frame sync
+            if (byte == chr(0xFF)):  #possibly a frame sync
                 mp3file.seek(-1,1)
                 try:
                     header = cls.MP3_FRAME_HEADER.parse_stream(mp3file)

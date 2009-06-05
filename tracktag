@@ -406,7 +406,7 @@ if (__name__ == '__main__'):
         except audiotools.InvalidImage,err:
             msg.error(_(u"%(filename)s: %(message)s") % \
                           {"filename":msg.filename(file.filename),
-                           "message":err})
+                           "message":unicode(err)})
             sys.exit(1)
 
     #we're assuming all tracks are the same type
