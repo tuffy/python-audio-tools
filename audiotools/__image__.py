@@ -77,8 +77,11 @@ class ImageMetrics:
                 repr(self.mime_type))
 
 class InvalidImage(Exception):
+    def __init__(self,err):
+        self.err = unicode(err)
+
     def __unicode__(self):
-        return self.message
+        return self.err
 
 class InvalidJPEG(InvalidImage): pass
 

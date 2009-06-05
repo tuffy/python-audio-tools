@@ -63,7 +63,7 @@ class FlacMetaData(MetaData):
 
         self.__dict__['vorbis_comment'] = None
         self.__dict__['cuesheet'] = None
-        image_blocks = []
+        self.__dict__['image_blocks'] = []
         self.__dict__['extra_blocks'] = []
 
         for block in blocks:
@@ -99,7 +99,7 @@ class FlacMetaData(MetaData):
                 #multiple PICTURE blocks are ok
                 image = FlacAudio.PICTURE_COMMENT.parse(block.data)
 
-                image_blocks.append(FlacPictureComment(
+                self.__dict__['image_blocks'].append(FlacPictureComment(
                     type=image.type,
                     mime_type=image.mime_type.decode('ascii','replace'),
                     description=image.description.decode('utf-8','replace'),
@@ -115,12 +115,6 @@ class FlacMetaData(MetaData):
         if (self.vorbis_comment is None):
             self.vorbis_comment = FlacVorbisComment({})
 
-        fields = dict([(field,getattr(self.vorbis_comment,field))
-                       for field in self.__FIELDS__])
-        fields["images"] = image_blocks
-
-        MetaData.__init__(self,**fields)
-
     def __comment_name__(self):
         return u'FLAC'
 
@@ -135,8 +129,21 @@ class FlacMetaData(MetaData):
                                              unicode(self.cuesheet))
 
     def __setattr__(self, key, value):
-        self.__dict__[key] = value
-        setattr(self.vorbis_comment, key, value)
+        # self.__dict__[key] = value
+        # setattr(self.vorbis_comment, key, value)
+        if (key in self.__FIELDS__):
+            setattr(self.vorbis_comment, key, value)
+        else:
+            self.__dict__[key] = value
+
+    def __getattr__(self, key):
+        if (key in self.__FIELDS__):
+            return getattr(self.vorbis_comment, key)
+        else:
+            try:
+                return self.__dict__[key]
+            except KeyError:
+                raise AttributeError(key)
 
     @classmethod
     def converted(cls, metadata):
@@ -153,9 +160,17 @@ class FlacMetaData(MetaData):
                   data=FlacPictureComment.converted(image).build())
                   for image in metadata.images()])
 
-
     def add_image(self, image):
-        MetaData.add_image(self, FlacPictureComment.converted(image))
+        self.__dict__['image_blocks'].append(FlacPictureComment.converted(image))
+
+    def delete_image(self, image):
+        image_blocks = self.__dict__['image_blocks']
+
+        if (image in image_blocks):
+            image_blocks.pop(image_blocks.index(image))
+
+    def images(self):
+        return self.__dict__['image_blocks'][:]
 
     #returns an iterator over all the current blocks as
     #FlacMetaDataBlock-compatible objects and without padding at the end

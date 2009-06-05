@@ -244,7 +244,7 @@
    If an output file can't be written to for some reason
    (invalid permissions, etc.) generate a proper error message
    instead of throwing ugly IOExceptions or confusing errors.
-* TODO Make text output consistent
+* DONE Make text output consistent
   Currently, command-line programs generate output using a
   selection of scattered print statements - often accompanied by
   if blocks when verbosity is indicated - and haphazardly
