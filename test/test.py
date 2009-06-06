@@ -5442,6 +5442,37 @@ ZTpExHuf8jsROefmec7Wwsx1XXvvAVCa+H7B9Of/9DPQAzSV43jVGYrtAAAAAElFTkSuQmCC""".deco
         self.colors = 0
         self.mime_type = "image/png"
 
+class TestImageCover1(TestImageJPEG):
+    def setUp(self):
+        self.image = TEST_COVER1
+        self.md5sum = "dbb6a01eca6336381754346de71e052e"
+        self.width = 500
+        self.height = 500
+        self.bpp = 24
+        self.colors = 0
+        self.mime_type = "image/jpeg"
+
+class TestImageCover2(TestImageJPEG):
+    def setUp(self):
+        self.image = TEST_COVER2
+        self.md5sum = "2d348cf729c840893d672dd69476955c"
+        self.width = 500
+        self.height = 500
+        self.bpp = 24
+        self.colors = 0
+        self.mime_type = "image/png"
+
+class TestImageCover3(TestImageJPEG):
+    def setUp(self):
+        self.image = TEST_COVER3
+        self.md5sum = "534b107e88d3830eac7ce814fc5d0279"
+        self.width = 100
+        self.height = 100
+        self.bpp = 24
+        self.colors = 0
+        self.mime_type = "image/jpeg"
+
+
 class TestImageGIF(TestImageJPEG):
     def setUp(self):
         self.image = """R0lGODdhDAAVAIQSAAAAAAoKCg0NDRUVFRkZGTIyMkBAQExMTF5eXmdnZ3Nzc4CAgJiYmKWlpc3N
