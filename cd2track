@@ -240,6 +240,8 @@ if (__name__ == '__main__'):
                            "message":unicode(msg)})
             continue
 
+    cdda.close()
+
     if (options.add_replay_gain and AudioType.can_add_replay_gain()):
         if (AudioType.lossless_replay_gain()):
             msg.info(_(u"Adding ReplayGain metadata.  This may take some time."))

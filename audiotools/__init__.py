@@ -1843,7 +1843,14 @@ from __speex__ import *
 #is something code should avoid at all costs!
 #there's simply no way to accomplish that cleanly
 
-class CDDA:
+def CDDA(device_name,speed=None):
+    offset = config.getint_default("System","cdrom_offset",0)
+    if (offset == 0):
+        return RawCDDA(device_name,speed)
+    else:
+        return OffsetCDDA(device_name,offset,speed)
+
+class RawCDDA:
     def __init__(self, device_name, speed=None):
         import cdio
         self.cdda = cdio.CDDA(device_name)
@@ -1866,6 +1873,60 @@ class CDDA:
 
     def length(self):
         return self.cdda.length_in_seconds() * 75
+
+    def close(self):
+        pass
+
+def at_a_time(total,per):
+    for i in xrange(total / per):
+        yield per
+    yield total % per
+
+class OffsetCDDA(RawCDDA):
+    def __init__(self, device_name, sample_offset, speed=None):
+        import cdio
+        import tempfile
+
+        self.cdda = cdio.CDDA(device_name)
+        self.total_tracks = self.cdda.total_tracks()
+
+        if (speed != None):
+            self.cdda.set_speed(speed)
+
+        self.__temp__ = tempfile.TemporaryFile()
+        self.__tracks__ = {}
+
+        if (self.total_tracks == 0xFF):
+            return
+
+        if (sample_offset < 0):
+            self.__temp__.write(chr(0) * (-sample_offset * 4))
+
+        for tracknum in xrange(1,self.cdda.total_tracks() + 1):
+            (start,end) = self.cdda.track_offsets(tracknum)
+            trackreader = OffsetCDTrackReader(
+                tracknum,
+                self.__temp__,
+                self.__temp__.tell() + (sample_offset * 4),
+                start,
+                end)
+
+            self.cdda.seek(start)
+            cdio.set_read_callback(trackreader.log)
+
+            for sector_count in at_a_time(end - start,445):
+                self.__temp__.write(self.cdda.read_sectors(sector_count))
+
+            self.__tracks__[tracknum] = trackreader
+
+        if (sample_offset > 0):
+            self.__temp__.write(chr(0) * (sample_offset * 4))
+
+    def __getitem__(self, key):
+        return self.__tracks__[key]
+
+    def close(self):
+        self.__temp__.close()
 
 
 class CDTrackLog(dict):
@@ -1958,6 +2019,52 @@ class CDTrackReader(PCMReader):
 
     def close(self):
         pass
+
+class OffsetCDTrackReader(PCMReader):
+    def __init__(self, track_number, temp_file,
+                 byte_offset, sector_start, sector_end):
+        PCMReader.__init__(self, None,
+                           sample_rate=44100,
+                           channels=2,
+                           bits_per_sample=16,
+                           process=None)
+        self.track_number = track_number
+        self.rip_log = CDTrackLog()
+
+        self.__file__ = temp_file
+        self.__byte_offset__ = byte_offset
+        self.__remaining_bytes__ = 0
+        self.__start__ = sector_start
+        self.__end__ = sector_end
+        self.__cursor_placed__ = False
+
+    def offset(self):
+        return self.__start__ + 150
+
+    def length(self):
+        return self.__end__ - self.__start__ + 1
+
+    def log(self, i, v):
+        if v in self.rip_log:
+            self.rip_log[v] += 1
+        else:
+            self.rip_log[v] = 1
+
+    def read(self, bytes):
+        if (not self.__cursor_placed__):
+            self.__file__.seek(self.__byte_offset__,0)
+            self.__remaining_bytes__ = (self.__end__ - self.__start__) * 2352
+            self.__cursor_placed__ = True
+
+        if (self.__remaining_bytes__ > 0):
+            data = self.__file__.read(min(bytes,self.__remaining_bytes__))
+            self.__remaining_bytes__ -= len(data)
+            return data
+        else:
+            return ""
+
+    def close(self):
+        self.__cursor_placed__ = False
 
 #returns the value in item_list which occurs most often
 def __most_numerous__(item_list):
