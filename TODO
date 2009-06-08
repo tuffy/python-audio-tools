@@ -327,9 +327,18 @@
 ** DONE Add unit tests
 ** DONE Add fields to --format output
 ** DONE Update man pages with fields information
-* DONE Add support for System->cdrom_offset
+* TODO Add support for System->cdrom_offset
   This will automatically apply offset samples when reading CDs
   so that rips will have the appropate amount of null samples.
+** DONE Add offset support when ripping
+   Automatically apply the configfile's cdrom_offset value to tracks
+   during reading.
+** TODO Add offset support when burning?
+   cd2track and track2cd should round-trip properly
+   If cd2track applies a sample offset when reading, does track2cd
+   need to apply that same offset when writing?
+   One would presume a drive's read offset and write offset are the same,
+   but that may not be correct.
 * TODO Add better progress indicator to coverview
   Perhaps performing cover opening in a separate thread
   would make the interface more responsive when opening tracks

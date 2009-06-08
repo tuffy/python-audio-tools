@@ -33,6 +33,7 @@ Section:Key:Value
 \^:\fCport\fR:the default FreeDB server port
 _
 \fC[System]\fR:\fCcdrom\fR:the default CD-ROM device to use for CD reading/writing
+\^:\fCcdrom_offset\fR:the sample offset to apply when reading tracks
 \^:\fCmaximum_jobs\fR:the maximum amount of processes to run simultaneously
 \^:\^:when converting tracks
 _
@@ -86,10 +87,13 @@ _
 Key:Value
 =
 \fC%(track_number)2.2d\fR:the track's number on the CD, from 01-99
+\fC%(track_total)d\fR:the total number of tracks on the CD, from 01-99
 \fC%(album_number)d\fR:the CD's album number, for multi-disc compilations
+\fC%(album_total)d\fR:the total number of CDs in the set
 \fC%(album_track_number)s\fR:a combination of album and track number as one field
 :(e.g. an album number of 2 and track number of 13 has the value \fC213\fR
 :but an empty album number and track number of 5 has the value \fC05\fR)
+
 \fC%(track_name)s\fR:the track's name
 \fC%(album_name)s\fR:the album's name
 \fC%(artist_name)s\fR:the track's artist name
