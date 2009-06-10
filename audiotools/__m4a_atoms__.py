@@ -99,3 +99,26 @@ ATOM_HDLR = Con.Struct("hdlr",
                        Con.UBInt32("quicktime_component_reserved_flags_mask"),
                        Con.PascalString("component_name"))
 
+ATOM_SMHD = Con.Struct('smhd',
+                       Con.Byte("version"),
+                       Con.String("flags",3),
+                       Con.String("audio_balance",2),
+                       Con.Padding(2))
+
+ATOM_DREF = Con.Struct('dref',
+                       Con.Byte("version"),
+                       Con.String("flags",3),
+                       Con.UBInt32("references"),
+                       Con.Struct("qt_atom",
+                                  Con.UBInt32("size"),
+                                  Con.String("type",4),
+                                  Con.String("data",lambda ctx: ctx["size"] - 8)))
+
+ATOM_STSD = Con.Struct('stsd',
+                       Con.Byte("version"),
+                       Con.String("flags",3),
+                       Con.UBInt32("number_of_descriptions"),
+                       Con.UBInt32("description_length"))
+
+
+
