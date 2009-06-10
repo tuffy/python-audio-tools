@@ -359,3 +359,12 @@
 - [X] trackrename
 - [X] tracksplit
 - [X] tracktag
+* TODO Add general-purpose track conversion short-circuiting
+  Certain type conversions should pass through specialized routines
+  rather than be piped through PCM conversion.
+  This is a generalization of the messy to/from_wave() situation
+  and allows for smarter, lossless conversion in certain situations.
+  For example, going from FLAC to Ogg FLAC should theoretically involve
+  wrapping up FLAC frames rather than re-encoding.
+  Or going from AAC to M4A should involve simple wrapper manipulation.
+

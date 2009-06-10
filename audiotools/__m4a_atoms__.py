@@ -114,6 +114,7 @@ ATOM_DREF = Con.Struct('dref',
                                   Con.String("type",4),
                                   Con.String("data",lambda ctx: ctx["size"] - 8)))
 
+#FIXME - this one's a mess
 ATOM_STSD = Con.Struct('stsd',
                        Con.Byte("version"),
                        Con.String("flags",3),
@@ -121,4 +122,38 @@ ATOM_STSD = Con.Struct('stsd',
                        Con.UBInt32("description_length"))
 
 
+ATOM_STTS = Con.Struct('stts',
+                       Con.Byte("version"),
+                       Con.String("flags",3),
+                       Con.UBInt32("number_of_times"),
+                       Con.GreedyRepeater(
+        Con.Struct("time_per_frame",
+                   Con.UBInt32("frame_count"),
+                   Con.UBInt32("duration"))))
+
+
+ATOM_STSZ = Con.Struct('stsz',
+                       Con.Byte("version"),
+                       Con.String("flags",3),
+                       Con.UBInt32("block_byte_size"),
+                       Con.UBInt32("number_of_block_sizes"),
+                       Con.GreedyRepeater(Con.UBInt32("block_byte_sizes")))
+
+#not sure about this one
+ATOM_STSC = Con.Struct('stsc',
+                       Con.Byte("version"),
+                       Con.String("flags",3),
+                       Con.PrefixedArray(
+        length_field=Con.UBInt32("total_blocks"),
+        subcon=Con.Struct("block",
+                          Con.UBInt32("next_block"),
+                          Con.UBInt32("total_frames"),
+                          Con.UBInt32("description_id"))))
+
+ATOM_STCO = Con.Struct('stco',
+                       Con.Byte("version"),
+                       Con.String("flags",3),
+                       Con.PrefixedArray(
+        length_field=Con.UBInt32("total_offsets"),
+        subcon=Con.UBInt32("offset")))
 
