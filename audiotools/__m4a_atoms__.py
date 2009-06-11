@@ -114,12 +114,58 @@ ATOM_DREF = Con.Struct('dref',
                                   Con.String("type",4),
                                   Con.String("data",lambda ctx: ctx["size"] - 8)))
 
-#FIXME - this one's a mess
+
 ATOM_STSD = Con.Struct('stsd',
                        Con.Byte("version"),
                        Con.String("flags",3),
                        Con.UBInt32("number_of_descriptions"),
-                       Con.UBInt32("description_length"))
+                       Con.StringAdapter(
+        Con.GreedyRepeater(Con.Field("sub_atoms",1))))
+
+ATOM_MP4A = Con.Struct("mp4a",
+                       Con.Padding(6),
+                       Con.UBInt16("reference_index"),
+                       Con.UBInt16("quicktime_audio_encoding_version"),
+                       Con.UBInt16("quicktime_audio_encoding_revision"),
+                       Con.String("quicktime_audio_encoding_vendor",4),
+                       Con.UBInt16("channels"),
+                       Con.UBInt16("sample_size"),
+                       Con.UBInt16("audio_compression_id"),
+                       Con.UBInt16("quicktime_audio_packet_size"),
+                       Con.String("sample_rate",4))
+
+ATOM_ESDS = Con.Struct("esds",
+                       Con.Byte("version"),
+                       Con.String("flags",3),
+                       Con.Byte("ES_descriptor_type"),
+                       Con.StrictRepeater(
+        3,Con.Byte("extended_descriptor_type_tag")),
+                       Con.Byte("descriptor_type_length"),
+                       Con.UBInt16("ES_ID"),
+                       Con.Byte("stream_priority"),
+                       Con.Byte("decoder_config_descriptor_type"),
+                       Con.StrictRepeater(
+        3,Con.Byte("extended_descriptor_type_tag2")),
+                       Con.Byte("descriptor_type_length2"),
+                       Con.Byte("object_ID"),
+                       Con.Embed(
+        Con.BitStruct(None,Con.Bits("stream_type",6),
+                      Con.Flag("upstream_flag"),
+                      Con.Flag("reserved_flag"),
+                      Con.Bits("buffer_size",24))),
+                       Con.UBInt32("maximum_bit_rate"),
+                       Con.UBInt32("average_bit_rate"),
+                       Con.Byte('decoder_specific_descriptor_type3'),
+                       Con.StrictRepeater(
+        3,Con.Byte("extended_descriptor_type_tag2")),
+                       Con.PrefixedArray(
+        length_field=Con.Byte("ES_header_length"),
+        subcon=Con.Byte("ES_header_start_codes")),
+                       Con.Byte("SL_config_descriptor_type"),
+                       Con.StrictRepeater(
+        3,Con.Byte("extended_descriptor_type_tag3")),
+                       Con.Byte("descriptor_type_length3"),
+                       Con.Byte("SL_value"))
 
 
 ATOM_STTS = Con.Struct('stts',
