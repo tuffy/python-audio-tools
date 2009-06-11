@@ -3,6 +3,36 @@
 #from audiotools import Con
 import construct as Con
 
+
+#M4A atoms are typically laid on in the file as follows:
+# ftyp
+# mdat
+# moov/
+# +mvhd
+# +iods
+# +trak/
+# +-tkhd
+# +-mdia/
+# +--mdhd
+# +--hdlr
+# +--minf/
+# +---smhd
+# +---dinf/
+# +----dref
+# +---stbl/
+# +----stsd
+# +----stts
+# +----stsz
+# +----stsc
+# +----stco
+# +----ctts
+# +udta/
+# +-meta
+#
+#Where atoms ending in / are container atoms and the rest are leaf atoms.
+#'mdat' is where the file's audio stream is stored
+#the rest are various bits of metadata
+
 def VersionLength(name):
     return Con.IfThenElse(name,
                           lambda ctx: ctx["version"] == 0,
@@ -134,6 +164,9 @@ ATOM_MP4A = Con.Struct("mp4a",
                        Con.UBInt16("quicktime_audio_packet_size"),
                        Con.String("sample_rate",4))
 
+#out of all this mess, the only interesting bits are the _bit_rate fields
+#and (maybe) the buffer_size
+#everything else is a constant of some kind as far as I can tell
 ATOM_ESDS = Con.Struct("esds",
                        Con.Byte("version"),
                        Con.String("flags",3),
@@ -185,16 +218,15 @@ ATOM_STSZ = Con.Struct('stsz',
                        Con.UBInt32("number_of_block_sizes"),
                        Con.GreedyRepeater(Con.UBInt32("block_byte_sizes")))
 
-#not sure about this one
 ATOM_STSC = Con.Struct('stsc',
                        Con.Byte("version"),
                        Con.String("flags",3),
                        Con.PrefixedArray(
-        length_field=Con.UBInt32("total_blocks"),
+        length_field=Con.UBInt32("entry_count"),
         subcon=Con.Struct("block",
-                          Con.UBInt32("next_block"),
-                          Con.UBInt32("total_frames"),
-                          Con.UBInt32("description_id"))))
+                          Con.UBInt32("first_chunk"),
+                          Con.UBInt32("samples_per_chunk"),
+                          Con.UBInt32("sample_description_index"))))
 
 ATOM_STCO = Con.Struct('stco',
                        Con.Byte("version"),
@@ -202,4 +234,13 @@ ATOM_STCO = Con.Struct('stco',
                        Con.PrefixedArray(
         length_field=Con.UBInt32("total_offsets"),
         subcon=Con.UBInt32("offset")))
+
+ATOM_CTTS = Con.Struct('ctts',
+                       Con.Byte("version"),
+                       Con.String("flags",3),
+                       Con.PrefixedArray(
+        length_field=Con.UBInt32("entry_count"),
+        subcon=Con.Struct("sample",
+                          Con.UBInt32("sample_count"),
+                          Con.UBInt32("sample_offset"))))
 
