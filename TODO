@@ -368,3 +368,9 @@
   wrapping up FLAC frames rather than re-encoding.
   Or going from AAC to M4A should involve simple wrapper manipulation.
 
+* TODO Improve M4A metadata handling
+** TODO Make M4A metadata updating less destructive
+  Like FLAC, not all fields need to be wiped out when overwriting
+  old metadata with new.
+** TODO Add more M4A-specific unit tests
+

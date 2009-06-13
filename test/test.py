@@ -1163,9 +1163,9 @@ class TestAiffAudio(unittest.TestCase):
             self.assertEqual(metadata.track_name,"Name")
 
             for (flag,field,value) in self.flag_field_values():
-                subprocess.call(["tracktag",
-                                 flag,str(value),
-                                 track.filename])
+                self.assertEqual(subprocess.call(["tracktag",
+                                                  flag,str(value),
+                                                  track.filename]),0)
                 setattr(metadata,field,value)
                 self.assertEqual(getattr(metadata,field),value,
                                  "metadata.%s = %s, should be %s" % \
@@ -1179,10 +1179,10 @@ class TestAiffAudio(unittest.TestCase):
                         metadata.album_number,
                         template))
 
-                subprocess.call(["trackrename",
-                                 "-V","quiet",
-                                 "--format",template,
-                                 track.filename])
+                self.assertEqual(subprocess.call(["trackrename",
+                                                  "-V","quiet",
+                                                  "--format",template,
+                                                  track.filename]),0)
 
                 self.assertEqual(os.path.isfile(new_path),True)
                 track = audiotools.open(new_path)
@@ -1194,10 +1194,10 @@ class TestAiffAudio(unittest.TestCase):
                                                      (self.audio_class.SUFFIX)))
 
             for (flag,field,value) in self.flag_field_values():
-                subprocess.call(["tracktag",
-                                 "--replace",
-                                 flag,str(value),
-                                 track.filename])
+                self.assertEqual(subprocess.call(["tracktag",
+                                                  "--replace",
+                                                  flag,str(value),
+                                                  track.filename]),0)
                 metadata = audiotools.MetaData(**{field:value})
                 self.assertEqual(metadata,track.get_metadata())
 
@@ -1214,10 +1214,10 @@ class TestAiffAudio(unittest.TestCase):
                         metadata.album_number,
                         template))
 
-                subprocess.call(["trackrename",
-                                 "-V","quiet",
-                                 "--format",template,
-                                 track.filename])
+                self.assertEqual(subprocess.call(["trackrename",
+                                                  "-V","quiet",
+                                                  "--format",template,
+                                                  track.filename]),0)
 
                 self.assertEqual(os.path.isfile(new_path),True)
                 track = audiotools.open(new_path)
@@ -1232,19 +1232,19 @@ class TestAiffAudio(unittest.TestCase):
                     jpeg,png,TEST_COVER1,TEST_COVER2)
 
                 for (flag,img_type,value,data) in flag_type_images_data:
-                    subprocess.call(["tracktag",
-                                     flag,str(value),
-                                     track.filename])
+                    self.assertEqual(subprocess.call(["tracktag",
+                                                      flag,str(value),
+                                                      track.filename]),0)
                     metadata.add_image(audiotools.Image.new(
                             data,u"",img_type))
                     self.assertEqual(metadata.images(),
                                      track.get_metadata().images())
 
                 for (flag,img_type,value,data) in flag_type_images_data:
-                    subprocess.call(["tracktag",
-                                     "--remove-images",
-                                     flag,str(value),
-                                     track.filename])
+                    self.assertEqual(subprocess.call(["tracktag",
+                                                      "--remove-images",
+                                                      flag,str(value),
+                                                      track.filename]),0)
                     metadata = audiotools.MetaData(track_name='Images')
                     metadata.add_image(audiotools.Image.new(
                             data,u"",img_type))

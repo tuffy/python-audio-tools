@@ -18,7 +18,8 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,InvalidFile,PCMReader,PCMConverter,Con,transfer_data,subprocess,BIN,cStringIO,MetaData,os,Image,InvalidImage,ignore_sigint,InvalidFormat,open_files,EncodingError
+from audiotools import AudioFile,InvalidFile,PCMReader,PCMConverter,Con,transfer_data,subprocess,BIN,cStringIO,MetaData,os,Image,InvalidImage,ignore_sigint,InvalidFormat,open,open_files,EncodingError,DecodingError,WaveAudio,TempWaveReader,PCMReaderError
+from __m4a_atoms__ import *
 import gettext
 
 gettext.install("audiotools",unicode=True)
@@ -38,9 +39,10 @@ class __Qt_Atom__:
                      Con.UBInt32("size"),
                      Con.String("type",4))
 
-    def __init__(self, type, data):
+    def __init__(self, type, data, offset):
         self.type = type
         self.data = data
+        self.offset = offset
 
     #takes an 8 byte string
     #returns an Atom's (type,size) as a tuple
@@ -118,7 +120,7 @@ class __Qt_Meta_Atom__(__Qt_Atom__):
                       Con.UBInt16('disk_number'),
                       Con.UBInt16('total_disks'))
 
-    def __init__(self, type, data):
+    def __init__(self, type, data, offset):
         self.type = type
 
         if (type == 'meta'):
@@ -126,11 +128,15 @@ class __Qt_Meta_Atom__(__Qt_Atom__):
         else:
             self.data = data
 
+        self.offset = offset
+
     def __iter__(self):
         for atom in __parse_qt_atoms__(cStringIO.StringIO(self.data),
-                                       __Qt_Meta_Atom__):
+                                       __Qt_Meta_Atom__,
+                                       self.offset):
             yield atom
 
+Qt_Meta_Atom = __Qt_Meta_Atom__
 
 #a stream of __Qt_Atom__ objects
 #though it is an Atom-like container, it has no type of its own
@@ -139,7 +145,7 @@ class __Qt_Atom_Stream__(__Qt_Atom__):
         self.stream = stream
         self.atom_class = __Qt_Atom__
 
-        __Qt_Atom__.__init__(self,None,None)
+        __Qt_Atom__.__init__(self,None,None,0)
 
     def is_container(self):
         return True
@@ -148,20 +154,26 @@ class __Qt_Atom_Stream__(__Qt_Atom__):
         self.stream.seek(0,0)
 
         for atom in __parse_qt_atoms__(self.stream,
-                                       self.atom_class):
+                                       self.atom_class,
+                                       self.offset):
             yield atom
 
 #takes a stream object with a read() method
 #iterates over all of the atoms it contains and yields
 #a series of qt_class objects, which defaults to __Qt_Atom__
-def __parse_qt_atoms__(stream, qt_class=__Qt_Atom__):
+def __parse_qt_atoms__(stream, qt_class=__Qt_Atom__, base_offset=0):
     h = stream.read(8)
     while (len(h) == 8):
         (header_type,header_size) = qt_class.parse(h)
         if (header_size == 0):
-            yield qt_class(header_type,stream.read())
+            yield qt_class(header_type,
+                           stream.read(),
+                           base_offset)
         else:
-            yield qt_class(header_type,stream.read(header_size - 8))
+            yield qt_class(header_type,
+                           stream.read(header_size - 8),
+                           base_offset)
+        base_offset += header_size
 
         h = stream.read(8)
 
@@ -177,7 +189,7 @@ def __build_qt_atom__(atom_type, atom_data):
 #finds all sub-atoms with the same type as new_atom and replaces them
 #returns a string
 def __replace_qt_atom__(qt_atom, new_atom):
-    if (qt_atom.type == None):
+    if (qt_atom.type is None):
         return "".join(
             [__replace_qt_atom__(a, new_atom) for a in qt_atom])
     elif (qt_atom.type == new_atom.type):
@@ -197,8 +209,22 @@ def __replace_qt_atom__(qt_atom, new_atom):
                                      "".join(
                     [__replace_qt_atom__(a,new_atom) for a in qt_atom]))
 
+def __remove_qt_atom__(qt_atom, atom_name):
+    if (qt_atom.type is None):
+        return "".join(
+            [__remove_qt_atom__(a, atom_name) for a in qt_atom])
+    elif (qt_atom.type == atom_name):
+        return ""
+    else:
+        if (not qt_atom.is_container()):
+            return __build_qt_atom__(qt_atom.type,qt_atom.data)
+        else:
+            return __build_qt_atom__(qt_atom.type,
+                                     "".join(
+                    [__remove_qt_atom__(a,atom_name) for a in qt_atom]))
 
-class M4AAudio(AudioFile):
+
+class __M4AAudio_faac__(AudioFile):
     SUFFIX = "m4a"
     NAME = SUFFIX
     DEFAULT_COMPRESSION = "100"
@@ -275,30 +301,59 @@ class M4AAudio(AudioFile):
         return self.__length__ - 1024
 
     def get_metadata(self):
+        f = file(self.filename,'rb')
         try:
-            meta_atom = self.qt_stream['moov']['udta']['meta']
-        except KeyError:
-            return None
+            qt_stream = __Qt_Atom_Stream__(f)
+            try:
+                meta_atom = qt_stream['moov']['udta']['meta']
+            except KeyError:
+                return None
 
-        meta_atom = __Qt_Meta_Atom__(meta_atom.type,
-                                     meta_atom.data)
-        data = {}
-        for atom in meta_atom['ilst']:
-            if (atom.type.startswith(chr(0xA9)) or (atom.type == 'cprt')):
-                data.setdefault(atom.type,
-                                []).append(atom['data'].data[8:].decode('utf-8'))
-            else:
-                data.setdefault(atom.type,
-                                []).append(atom['data'].data[8:])
+            meta_atom = __Qt_Meta_Atom__(meta_atom.type,
+                                         meta_atom.data,
+                                         meta_atom.offset)
+            data = {}
+            for atom in meta_atom['ilst']:
+                if (atom.type.startswith(chr(0xA9)) or (atom.type == 'cprt')):
+                    data.setdefault(atom.type,
+                                    []).append(atom['data'].data[8:].decode('utf-8'))
+                else:
+                    data.setdefault(atom.type,
+                                    []).append(atom['data'].data[8:])
 
-        return M4AMetaData(data)
+            return M4AMetaData(data)
+        finally:
+            f.close()
 
     def set_metadata(self, metadata):
         metadata = M4AMetaData.converted(metadata)
         if (metadata is None): return
 
-        new_file = __replace_qt_atom__(self.qt_stream,
-                                       metadata.to_atom())
+        #this is a two-pass operation
+        #first we replace the contents of the moov->udta->meta atom
+        #with our new metadata
+        #this may move the 'mdat' atom, so we must go back
+        #and update the contents of
+        #moov->trak->mdia->minf->stbl->stco
+        #with new offset information
+
+        stco = ATOM_STCO.parse(
+           self.qt_stream['moov']['trak']['mdia']['minf']['stbl']['stco'].data)
+
+        new_file = __Qt_Atom_Stream__(cStringIO.StringIO(
+                __replace_qt_atom__(self.qt_stream,
+                                    metadata.to_atom())))
+
+        mdat_offset = new_file['mdat'].offset
+
+        stco.offset = [x - stco.offset[0] + mdat_offset + 0x10
+                       for x in stco.offset]
+
+        new_file = __replace_qt_atom__(new_file,
+                                       __Qt_Atom__('stco',
+                                                   ATOM_STCO.build(stco),
+                                                   0))
+
         f = file(self.filename,"wb")
         f.write(new_file)
         f.close()
@@ -378,7 +433,8 @@ class M4AAudio(AudioFile):
 
     @classmethod
     def can_add_replay_gain(cls):
-        return BIN.can_execute(BIN['aacgain'])
+        #return BIN.can_execute(BIN['aacgain'])
+        return False
 
     @classmethod
     def lossless_replay_gain(cls):
@@ -400,6 +456,100 @@ class M4AAudio(AudioFile):
             sub.wait()
 
             devnull.close()
+
+class __M4AAudio_nero__(__M4AAudio_faac__):
+    DEFAULT_COMPRESSION = "0.5"
+    COMPRESSION_MODES = ("0.0","0.1","0.2","0.3","0.4","0.5",
+                         "0.6","0.7","0.8","0.9","1.0")
+    BINARIES = ("neroAacDec","neroAacEnc")
+
+    def to_pcm(self):
+        import tempfile
+        f = tempfile.NamedTemporaryFile(suffix=".wav")
+        try:
+            self.to_wave(f.name)
+            f.seek(0,0)
+            return TempWaveReader(f)
+        except DecodingError:
+            return PCMReaderError(None,
+                                  sample_rate=self.sample_rate(),
+                                  channels=self.channels(),
+                                  bits_per_sample=self.bits_per_sample())
+
+    @classmethod
+    def from_pcm(cls, filename, pcmreader, compression=None):
+        if (compression not in cls.COMPRESSION_MODES):
+            compression = cls.DEFAULT_COMPRESSION
+
+        import tempfile
+        tempwavefile = tempfile.NamedTemporaryFile(suffix=".wav")
+        if (pcmreader.sample_rate > 96000):
+            tempwave = WaveAudio.from_pcm(
+                tempwavefile.name,
+                PCMConverter(pcmreader,
+                             sample_rate=96000,
+                             channels=pcmreader.channels,
+                             bits_per_sample=pcmreader.bits_per_sample))
+        else:
+            tempwave = WaveAudio.from_pcm(
+                tempwavefile.name,
+                pcmreader)
+
+        cls.__from_wave__(filename,tempwave.filename,compression)
+        tempwavefile.close()
+        return cls(filename)
+
+    def to_wave(self, wave_file):
+        devnull = file(os.devnull,"w")
+        try:
+            sub = subprocess.Popen([BIN["neroAacDec"],
+                                    "-if",self.filename,
+                                    "-of",wave_file],
+                                   stderr=devnull)
+            if (sub.wait() != 0):
+                raise DecodingError()
+        finally:
+            devnull.close()
+
+    @classmethod
+    def from_wave(cls, filename, wave_filename, compression=None):
+        if (compression not in cls.COMPRESSION_MODES):
+            compression = cls.DEFAULT_COMPRESSION
+
+        wave = open(wave_filename)
+        if (wave.sample_rate > 96000):
+            #convert through PCMConverter if sample rate is too high
+            import tempfile
+            tempwavefile = tempfile.NamedTemporaryFile(suffix=".wav")
+            tempwave = WaveAudio.from_pcm(
+                tempwavefile.name,
+                PCMConverter(wave.to_pcm(),
+                             sample_rate=96000,
+                             channels=wave.channels(),
+                             bits_per_sample=wave.bits_per_sample()))
+            return cls.__from_wave__(filename,tempwave.filename,compression)
+            tempwavefile.close()
+        else:
+            return cls.__from_wave__(filename,wave_filename,compression)
+
+    @classmethod
+    def __from_wave__(cls, filename, wave_filename, compression):
+        devnull = file(os.devnull,"w")
+        try:
+            sub = subprocess.Popen([BIN["neroAacEnc"],
+                                    "-q",compression,
+                                    "-if",wave_filename,
+                                    "-of",filename],
+                                   stderr=devnull)
+
+            if (sub.wait() != 0):
+                raise EncodingError(BIN['neroAacEnc'])
+            else:
+                return cls(filename)
+        finally:
+            devnull.close()
+
+M4AAudio = __M4AAudio_nero__
 
 class M4AMetaData(MetaData,dict):
                                                    # iTunes ID:
@@ -550,7 +700,8 @@ class M4AMetaData(MetaData,dict):
                            (chr(0) * 4) + \
                            hdlr + \
                            __build_qt_atom__('ilst',"".join(ilst)) + \
-                           __build_qt_atom__('free',chr(0) * 2040))
+                           __build_qt_atom__('free',chr(0) * 2040),
+                           0)
 
 
 
