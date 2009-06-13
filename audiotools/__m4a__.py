@@ -549,7 +549,11 @@ class __M4AAudio_nero__(__M4AAudio_faac__):
         finally:
             devnull.close()
 
-M4AAudio = __M4AAudio_nero__
+if (BIN.can_execute(BIN["neroAacEnc"]) and
+    BIN.can_execute(BIN["neroAacDec"])):
+    M4AAudio = __M4AAudio_nero__
+else:
+    M4AAudio = __M4AAudio_faac__
 
 class M4AMetaData(MetaData,dict):
                                                    # iTunes ID:
