@@ -332,7 +332,7 @@ class ImageList:
 
 if (__name__ == '__main__'):
     parser = audiotools.OptionParser(
-        "%prog [options] <track 1> [track 2] ...",
+        usage=_(u"%prog [options] <track 1> [track 2] ..."),
         version="Python Audio Tools %s" % (audiotools.VERSION))
 
     (options,args) = parser.parse_args()

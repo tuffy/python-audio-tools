@@ -45,7 +45,7 @@ def convert_to_wave(audiofile,wave_filename,messenger):
 
 if (__name__ == '__main__'):
     parser = audiotools.OptionParser(
-        usage="%prog [options] <track 1> [track 2] ...",
+        usage=_(u"%prog [options] <track 1> [track 2] ..."),
         version="Python Audio Tools %s" % (audiotools.VERSION))
 
     parser.add_option("-c","--cdrom",dest="dev",

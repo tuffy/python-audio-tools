@@ -38,7 +38,7 @@ def near_equal(audiofile1, audiofile2):
 
 if (__name__ == '__main__'):
     parser = audiotools.OptionParser(
-        '%prog <file 1> <file 2>',
+        usage=_(u'%prog <file 1> <file 2>'),
         version="Python Audio Tools %s" % (audiotools.VERSION))
 
     parser.add_option('-i','--inexact',

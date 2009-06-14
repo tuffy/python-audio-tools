@@ -27,7 +27,7 @@ gettext.install("audiotools",unicode=True)
 
 if (__name__ == '__main__'):
     parser = audiotools.OptionParser(
-        usage="%prog [--cdrom CDROM device] [-p] [-s speed] [track] ...",
+        usage=_(u"%prog [--cdrom CDROM device] [-p] [-s speed] [track] ..."),
         version="Python Audio Tools %s" % (audiotools.VERSION))
 
     parser.add_option('-c','--cdrom',action='store',

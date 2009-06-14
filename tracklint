@@ -423,7 +423,7 @@ audiotools.TYPE_MAP = dict([(track_type.NAME,track_type)
 
 if (__name__ == '__main__'):
     parser = audiotools.OptionParser(
-        '%prog [--fix] [--undo] [--db file] <track 1> [track 2] ...',
+        usage=_(u'%prog [--fix] [--undo] [--db file] <track 1> [track 2] ...'),
         version="Python Audio Tools %s" % (audiotools.VERSION))
 
     parser.add_option('--fix',

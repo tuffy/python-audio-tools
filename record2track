@@ -88,7 +88,7 @@ class PulseAudioReader(audiotools.PCMReader):
 
 if (__name__ == '__main__'):
     parser = audiotools.OptionParser(
-        "%prog [OPTIONS]",
+        _(u"%prog [OPTIONS]"),
         version="Python Audio Tools %s" % (audiotools.VERSION))
 
     inputs = [r for r in [OSSReader,PulseAudioReader] if r.available()]

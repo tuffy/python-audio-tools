@@ -156,7 +156,7 @@ class PulsePlayer:
 
 if (__name__ == '__main__'):
     parser = audiotools.OptionParser(
-        "%prog <track 1> [track 2] ...",
+        usage=_(u"%prog <track 1> [track 2] ..."),
         version="Python Audio Tools %s" % (audiotools.VERSION))
 
     parser.add_option('-T','--track-replaygain',
