@@ -5456,14 +5456,10 @@ AAEAAABIAAAAAQ==""".decode('base64')
         self.colors = 0
         self.mime_type = "image/tiff"
 
+
 #tests to ensure that unsupported chunks of MetaData
 #aren't blown away improperly by MetaData modifying tools
-class TestForeignMetaData_APEv2(unittest.TestCase):
-    BASE_METADATA = audiotools.MetaData(
-        track_name=u"Track Name",
-        album_name=u"Album Name",
-        track_number=1)
-
+class TestForeignMetaData_WavPackAPE(unittest.TestCase):
     AUDIO_CLASS = audiotools.WavPackAudio
     METADATA_CLASS = audiotools.WavePackAPEv2
     BASE_CLASS_METADATA = audiotools.WavePackAPEv2(
@@ -5472,12 +5468,21 @@ class TestForeignMetaData_APEv2(unittest.TestCase):
          "Track":u"1",
          "Foo":u"Bar"})
 
-    def __verify_foreign_field__(self):
-        self.assert_("Foo" in self.track.get_metadata().keys())
-        self.assertEqual(self.track.get_metadata()["Foo"],u"Bar")
+    def __verify_foreign_field__(self, track=None):
+        if (track is None):
+            track = self.track
+        self.assert_("Foo" in track.get_metadata().keys())
+        self.assertEqual(track.get_metadata()["Foo"],u"Bar")
 
-    def __verify_no_foreign_field__(self):
-        self.assert_("Foo" not in self.track.get_metadata().keys())
+    def __verify_no_foreign_field__(self, track=None):
+        if (track is None):
+            track = self.track
+        self.assert_("Foo" not in track.get_metadata().keys())
+
+    BASE_METADATA = audiotools.MetaData(
+        track_name=u"Track Name",
+        album_name=u"Album Name",
+        track_number=1)
 
     @TEST_METADATA
     @TEST_EXECUTABLE
@@ -5502,22 +5507,37 @@ class TestForeignMetaData_APEv2(unittest.TestCase):
     @TEST_METADATA
     @TEST_EXECUTABLE
     def test_track2track_noxmcd(self):
-        pass
+        tempfile2 = tempfile.NamedTemporaryFile(
+            suffix=self.AUDIO_CLASS.SUFFIX)
+        try:
+            subprocess.call(["track2track","-t",self.AUDIO_CLASS.NAME,
+                             "-o",tempfile2.name,self.track.filename])
+            track2 = audiotools.open(tempfile2.name)
+            self.assertEqual(self.track.get_metadata(),
+                             track2.get_metadata())
+            self.__verify_foreign_field__(track2)
+        finally:
+            tempfile2.close()
 
     @TEST_METADATA
     @TEST_EXECUTABLE
     def test_track2track_xmcd(self):
-        pass
+        tempfile2 = tempfile.NamedTemporaryFile(
+            suffix=self.AUDIO_CLASS.SUFFIX)
+        try:
+            subprocess.call(["track2track","-t",self.AUDIO_CLASS.NAME,
+                             "-x",self.xmcd_file.name,
+                             "-o",tempfile2.name,self.track.filename])
+            track2 = audiotools.open(tempfile2.name)
+            self.assertEqual(track2.get_metadata().track_name,
+                             u"XMCD Track 1")
+            self.__verify_foreign_field__(track2)
+        finally:
+            tempfile2.close()
 
-    @TEST_METADATA
-    @TEST_EXECUTABLE
-    def test_tracksplit_noxmcd(self):
-        pass
-
-    @TEST_METADATA
-    @TEST_EXECUTABLE
-    def test_tracksplit_xmcd(self):
-        pass
+    #FIXME
+    #should tracksplit port foreign metadata to sub-tracks?
+    #such metadata may not be album-specific
 
     @TEST_METADATA
     @TEST_EXECUTABLE
@@ -5560,18 +5580,184 @@ class TestForeignMetaData_APEv2(unittest.TestCase):
         subprocess.call(["tracktag","--replace","-x",self.xmcd_file.name,
                          self.track.filename])
         self.assertEqual(self.track.get_metadata().track_name,u"XMCD Track 1")
-        self.__verify_no_3foreign_field__()
+        self.__verify_no_foreign_field__()
 
     @TEST_METADATA
     @TEST_EXECUTABLE
     def test_tracktag_images_noreplace(self):
-        pass
+        temp_img = tempfile.NamedTemporaryFile(suffix=".jpg")
+        try:
+            temp_img.write(TEST_COVER1)
+            temp_img.flush()
+
+            self.__verify_foreign_field__()
+            subprocess.call(["tracktag","--front-cover",temp_img.name,
+                             self.track.filename])
+            self.__verify_foreign_field__()
+        finally:
+            temp_img.close()
 
     @TEST_METADATA
     @TEST_EXECUTABLE
     def test_tracktag_images_replace(self):
-        pass
+        temp_img = tempfile.NamedTemporaryFile(suffix=".jpg")
+        try:
+            temp_img.write(TEST_COVER1)
+            temp_img.flush()
 
+            self.__verify_foreign_field__()
+            subprocess.call(["tracktag","--remove-images",
+                             "--front-cover",temp_img.name,
+                             self.track.filename])
+            self.__verify_foreign_field__()
+        finally:
+            temp_img.close()
+
+class TestForeignMetaData_MusepackAPE(TestForeignMetaData_WavPackAPE):
+    AUDIO_CLASS = audiotools.MusepackAudio
+    METADATA_CLASS = audiotools.ApeTag
+    BASE_CLASS_METADATA = audiotools.ApeTag(
+        {"Title":u'Track Name',
+         "Album":u'Album Name',
+         "Track":u"1",
+         "Foo":u"Bar"})
+
+    def __verify_foreign_field__(self, track=None):
+        if (track is None):
+            track = self.track
+        self.assert_("Foo" in track.get_metadata().keys())
+        self.assertEqual(track.get_metadata()["Foo"],u"Bar")
+
+    def __verify_no_foreign_field__(self, track=None):
+        if (track is None):
+            track = self.track
+        self.assert_("Foo" not in track.get_metadata().keys())
+
+class TestForeignMetaData_VorbisComment(TestForeignMetaData_WavPackAPE):
+    AUDIO_CLASS = audiotools.VorbisAudio
+    METADATA_CLASS = audiotools.VorbisComment
+    BASE_CLASS_METADATA = audiotools.VorbisComment(
+        {"TITLE":[u'Track Name'],
+         "ALBUM":[u'Album Name'],
+         "TRACKNUMBER":[u"1"],
+         "FOO":[u"Bar"]})
+
+    def __verify_foreign_field__(self, track=None):
+        if (track is None):
+            track = self.track
+        self.assert_("Foo" in track.get_metadata().keys())
+        self.assertEqual(track.get_metadata()["Foo"],[u"Bar"])
+
+    def __verify_no_foreign_field__(self, track=None):
+        if (track is None):
+            track = self.track
+        self.assert_("Foo" not in track.get_metadata().keys())
+
+class TestForeignMetaData_FLACComment(TestForeignMetaData_WavPackAPE):
+    AUDIO_CLASS = audiotools.FlacAudio
+    METADATA_CLASS = audiotools.FlacMetaData
+    BASE_CLASS_METADATA = audiotools.FlacMetaData([
+            audiotools.FlacMetaDataBlock(
+                type=4,
+                data=audiotools.FlacVorbisComment(
+                    {"TITLE":[u'Track Name'],
+                     "ALBUM":[u'Album Name'],
+                     "TRACKNUMBER":[u"1"],
+                     "FOO":[u"Bar"]}).build())])
+
+    def __verify_foreign_field__(self, track=None):
+        if (track is None):
+            track = self.track
+        self.assert_("FOO" in track.get_metadata().vorbis_comment.keys())
+        self.assertEqual(track.get_metadata().vorbis_comment["FOO"],[u"Bar"])
+
+    def __verify_no_foreign_field__(self, track=None):
+        if (track is None):
+            track = self.track
+        self.assert_("FOO" not in track.get_metadata().vorbis_comment.keys())
+
+class TestForeignMetaData_ID3v22(TestForeignMetaData_WavPackAPE):
+    AUDIO_CLASS = audiotools.MP3Audio
+    METADATA_CLASS = audiotools.ID3v22Comment
+    BASE_CLASS_METADATA = audiotools.ID3v22Comment(
+        [audiotools.ID3v22TextFrame("TT2",0,"Track Name"),
+         audiotools.ID3v22TextFrame("TAL",0,"Album Name"),
+         audiotools.ID3v22TextFrame("TRK",0,"1"),
+         audiotools.ID3v22TextFrame("TFO",0,"Bar")])
+
+    def __verify_foreign_field__(self, track=None):
+        if (track is None):
+            track = self.track
+        metadata = track.get_metadata()
+        if (hasattr(metadata,"id3v2")):
+            metadata = metadata.id3v2
+
+        self.assert_("TFO" in metadata.keys())
+        self.assertEqual(metadata["TFO"][0].string,"Bar")
+
+    def __verify_no_foreign_field__(self, track=None):
+        if (track is None):
+            track = self.track
+        metadata = track.get_metadata()
+        if (hasattr(metadata,"id3v2")):
+            metadata = metadata.id3v2
+        self.assert_("TFO" not in metadata.keys())
+
+class TestForeignMetaData_ID3v23(TestForeignMetaData_WavPackAPE):
+    AUDIO_CLASS = audiotools.MP3Audio
+    METADATA_CLASS = audiotools.ID3v23Comment
+    BASE_CLASS_METADATA = audiotools.ID3v23Comment(
+        [audiotools.ID3v23TextFrame("TIT2",0,"Track Name"),
+         audiotools.ID3v23TextFrame("TALB",0,"Album Name"),
+         audiotools.ID3v23TextFrame("TRCK",0,"1"),
+         audiotools.ID3v23TextFrame("TFOO",0,"Bar")])
+
+    def __verify_foreign_field__(self, track=None):
+        if (track is None):
+            track = self.track
+        metadata = track.get_metadata()
+        if (hasattr(metadata,"id3v2")):
+            metadata = metadata.id3v2
+
+        self.assert_("TFOO" in metadata.keys())
+        self.assertEqual(metadata["TFOO"][0].string,"Bar")
+
+    def __verify_no_foreign_field__(self, track=None):
+        if (track is None):
+            track = self.track
+        metadata = track.get_metadata()
+        if (hasattr(metadata,"id3v2")):
+            metadata = metadata.id3v2
+        self.assert_("TFOO" not in metadata.keys())
+
+class TestForeignMetaData_ID3v24(TestForeignMetaData_ID3v23):
+    AUDIO_CLASS = audiotools.MP3Audio
+    METADATA_CLASS = audiotools.ID3v24Comment
+    BASE_CLASS_METADATA = audiotools.ID3v24Comment(
+        [audiotools.ID3v24TextFrame("TIT2",0,"Track Name"),
+         audiotools.ID3v24TextFrame("TALB",0,"Album Name"),
+         audiotools.ID3v24TextFrame("TRCK",0,"1"),
+         audiotools.ID3v24TextFrame("TFOO",0,"Bar")])
+
+class TestForeignMetaData_M4A(TestForeignMetaData_WavPackAPE):
+    AUDIO_CLASS = audiotools.M4AAudio
+    METADATA_CLASS = audiotools.M4AMetaData
+    BASE_CLASS_METADATA = audiotools.M4AMetaData(
+        {"\xa9nam":[u'Track Name'],
+         "\xa9alb":[u'Album Name'],
+         "trkn":['\x00\x00\x00\x01\x00\x00\x00\x00'],
+         "\xa9foo":[u"Bar"]})
+
+    def __verify_foreign_field__(self, track=None):
+        if (track is None):
+            track = self.track
+        self.assert_("\xa9foo" in track.get_metadata().keys())
+        self.assertEqual(track.get_metadata()["\xa9foo"][0],u"Bar")
+
+    def __verify_no_foreign_field__(self, track=None):
+        if (track is None):
+            track = self.track
+        self.assert_("\xa9foo" not in track.get_metadata().keys())
 
 ############
 #END TESTS
