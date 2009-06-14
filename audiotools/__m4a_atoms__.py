@@ -55,6 +55,7 @@ def VersionLength(name):
                           Con.UBInt32(None),
                           Con.UBInt64(None))
 
+
 ATOM_FTYPE = Con.Struct("ftyp",
                         Con.String("major_brand",4),
                         Con.UBInt32("major_brand_version"),
@@ -260,3 +261,11 @@ ATOM_CTTS = Con.Struct('ctts',
                           Con.UBInt32("sample_count"),
                           Con.UBInt32("sample_offset"))))
 
+ATOM_META = Con.Struct('meta',
+                       Con.Byte("version"),
+                       Con.String("flags",3),
+                       Con.GreedyRepeater(
+        Con.Struct("atoms",
+                   Con.UBInt32("size"),
+                   Con.String("type",4),
+                   Con.String("data",lambda ctx: ctx["size"] - 8))))

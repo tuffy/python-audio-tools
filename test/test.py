@@ -37,6 +37,31 @@ gettext.install("audiotools",unicode=True)
 (METADATA,PCM,EXECUTABLE,CUESHEET) = range(4)
 CASES = set([METADATA,PCM,EXECUTABLE,CUESHEET])
 
+def TEST_METADATA(function):
+    if (METADATA not in CASES):
+        return
+    else:
+        function()
+
+def TEST_PCM(function):
+    if (PCM not in CASES):
+        return
+    else:
+        function()
+
+def TEST_EXECUTABLE(function):
+    if (EXECUTABLE not in CASES):
+        return
+    else:
+        function()
+
+def TEST_CUESHEET(function):
+    if (CUESHEET not in CASES):
+        return
+    else:
+        function()
+
+
 try:
     from hashlib import md5
 except ImportError:
@@ -5537,6 +5562,106 @@ AAEAAABIAAAAAQ==""".decode('base64')
         self.bpp = 24
         self.colors = 0
         self.mime_type = "image/tiff"
+
+#tests to ensure that unsupported chunks of MetaData
+#aren't blown away improperly by MetaData modifying tools
+class TestForeignMetaData_APEv2(unittest.TestCase):
+    BASE_METADATA = audiotools.MetaData(
+        track_name=u"Track Name",
+        album_name=u"Album Name",
+        track_number=1)
+
+    AUDIO_CLASS = audiotools.WavPackAudio
+    METADATA_CLASS = audiotools.WavePackAPEv2
+    BASE_CLASS_METADATA = audiotools.WavePackAPEv2(
+        {"Title":u'Track Name',
+         "Album":u'Album Name',
+         "Track":u"1",
+         "Foo":u"Bar"})
+
+    def __verify_foreign_field__(self):
+        self.assert_("Foo" in self.track.get_metadata().keys())
+        self.assertEqual(self.track.get_metadata()["Foo"],u"Bar")
+
+    def __verify_no_foreign_field__(self):
+        self.assert_("Foo" not in self.track.get_metadata().keys())
+
+    def setUp(self):
+        if (METADATA not in CASES): return
+        if (EXECUTABLE not in CASES): return
+
+        self.tempfile = tempfile.NamedTemporaryFile(
+            suffix=self.AUDIO_CLASS.SUFFIX)
+        self.track = self.AUDIO_CLASS.from_pcm(
+            self.tempfile.name,
+            BLANK_PCM_Reader(5))
+        self.track.set_metadata(self.BASE_CLASS_METADATA)
+
+        self.xmcd_file = tempfile.NamedTemporaryFile(suffix=".xmcd")
+        self.xmcd_file.write('# xmcd\n#\nDTITLE=XMCD Artist / XMCD Album\nDYEAR=2009\nTTITLE0=XMCD Track 1\nTTITLE1=XMCD Track 2\nTTITLE2=XMCD Track 3\nEXTDD=\nEXTT0=\nEXTT1=\nEXTT2=\nPLAYORDER=\n')
+        self.xmcd_file.flush()
+
+    def tearDown(self):
+        if (METADATA not in CASES): return
+        if (EXECUTABLE not in CASES): return
+
+        self.tempfile.close()
+
+    def test_track2track_noxmcd(self):
+        pass
+
+    def test_track2track_xmcd(self):
+        pass
+
+    def test_tracksplit_noxmcd(self):
+        pass
+
+    def test_tracksplit_xmcd(self):
+        pass
+
+    def test_tracktag_noxmcd_noreplace(self):
+        self.assertEqual(self.BASE_METADATA,
+                         self.track.get_metadata())
+        self.__verify_foreign_field__()
+        subprocess.call(["tracktag","--name=New Name",self.track.filename])
+        self.assertEqual(self.track.get_metadata().track_name,u"New Name")
+        self.__verify_foreign_field__()
+
+    def test_tracktag_xmcd_noreplace(self):
+        self.assertEqual(self.BASE_METADATA,
+                         self.track.get_metadata())
+        self.__verify_foreign_field__()
+        subprocess.call(["tracktag","-x",self.xmcd_file.name,
+                         self.track.filename])
+        self.assertEqual(self.track.get_metadata().track_name,u"XMCD Track 1")
+        self.__verify_foreign_field__()
+
+    def test_tracktag_noxmcd_replace(self):
+        self.assertEqual(self.BASE_METADATA,
+                         self.track.get_metadata())
+        self.__verify_foreign_field__()
+        subprocess.call(["tracktag","--replace",
+                         "--name=New Name",self.track.filename])
+        self.assertEqual(self.track.get_metadata().track_name,u"New Name")
+        self.__verify_no_foreign_field__()
+
+    def test_tracktag_xmcd_replace(self):
+        self.assertEqual(self.BASE_METADATA,
+                         self.track.get_metadata())
+        self.__verify_foreign_field__()
+        subprocess.call(["tracktag","--replace","-x",self.xmcd_file.name,
+                         self.track.filename])
+        self.assertEqual(self.track.get_metadata().track_name,u"XMCD Track 1")
+        self.__verify_no_3foreign_field__()
+
+    def test_tracktag_images_noreplace(self):
+        pass
+
+    def test_tracktag_images_replace(self):
+        pass
+
+
+
 
 ############
 #END TESTS
