@@ -77,12 +77,16 @@ if (__name__ == '__main__'):
         xmcd = {}
 
     try:
+        for track in audiofiles:
+            if (track.track_number() in xmcd):
+                xmcd[track.track_number()].merge(track.get_metadata())
+            else:
+                xmcd[track.track_number()] = track.get_metadata()
+
         for (track,new_name) in [(
                 track,
                 track.track_name(track.track_number(),
-                                 audiotools.MetaData.merge(
-                        xmcd.get(track.track_number(),None),
-                        track.get_metadata()),
+                                 xmcd.get(track.track_number(),None),
                                  track.album_number(),
                                  options.format))
                                  for track in audiofiles]:

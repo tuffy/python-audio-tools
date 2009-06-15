@@ -238,9 +238,11 @@ if (__name__ == '__main__'):
         for (i,pcmreader) in enumerate(split_pcm):
             track_number = i + 1
 
-            metadata = audiotools.MetaData.merge(
-                xmcd.get(track_number,None),
-                base.get(track_number,None))
+            metadata = xmcd.get(track_number,None)
+            if (metadata is not None):
+                metadata.merge(base.get(track_number,None))
+            else:
+                metadata = base.get(track_number,None)
 
             filename = os.path.join(
                 base_directory,

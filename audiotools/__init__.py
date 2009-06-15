@@ -1359,33 +1359,25 @@ class MetaData:
         else:
             raise ValueError(_(u"This MetaData type does not support images"))
 
-    @classmethod
-    def merge(cls, metadata1, metadata2):
-        if (metadata2 is None):
-            return metadata1
-        if (metadata1 is None):
-            return metadata2
+    #updates any currectly empty entries from values taken from "metadata"
+    def merge(self, metadata):
+        if (metadata is None):
+            return
 
         fields = {}
-        for field in cls.__FIELDS__:
-            if (field not in cls.__INTEGER_FIELDS__):
-                if (len(getattr(metadata1,field)) > 0):
-                    fields[field] = getattr(metadata1,field)
-                else:
-                    fields[field] = getattr(metadata2,field)
+        for field in self.__FIELDS__:
+            if (field not in self.__INTEGER_FIELDS__):
+                if (len(getattr(self,field)) == 0):
+                    setattr(self,field,getattr(metadata,field))
             else:
-                if (getattr(metadata1,field) > 0):
-                    fields[field] = getattr(metadata1,field)
-                else:
-                    fields[field] = getattr(metadata2,field)
+                if (getattr(self,field) == 0):
+                    setattr(self,field,getattr(metadata,field))
+
 
         #FIXME - image merging should probably be handled more intelligently
-        if (len(metadata1.images()) > 0):
-            fields['images'] = metadata1.images()
-        else:
-            fields['images'] = metadata2.images()
+        if (len(self.images()) == 0):
+            self.__dict__["__images__"] = metadata.images()
 
-        return MetaData(**fields)
 
 class AlbumMetaData(dict):
     def __init__(self, metadata_iter):
