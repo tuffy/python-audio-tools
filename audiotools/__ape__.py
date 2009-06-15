@@ -169,9 +169,15 @@ class ApeTag(MetaData,dict):
             return
 
         for (key,value) in metadata.items():
-            if ((len(value) > 0) and
+            if ((key not in ('Track','Media')) and
+                (len(value) > 0) and
                 (len(self.get(key,u"")) == 0)):
                 self[key] = value
+        for attr in ("track_number","track_total",
+                     "album_number","album_total"):
+            if ((getattr(self,attr) == 0) and
+                (getattr(metadata,attr) != 0)):
+                setattr(self,attr,getattr(metadata,attr))
 
     def __comment_name__(self):
         return u'APEv2'

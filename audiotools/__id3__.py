@@ -168,6 +168,9 @@ class ID3v22Frame:
         self.id = frame_id
         self.data = data
 
+    def __len__(self):
+        return len(self.data)
+
     def __eq__(self,o):
         return __attrib_equals__(["frame_id","data"],self,o)
 
@@ -238,6 +241,9 @@ class ID3v22TextFrame(ID3v22Frame):
 
     def __eq__(self,o):
         return __attrib_equals__(["id","encoding","string"],self,o)
+
+    def __len__(self):
+        return len(self.string)
 
     def __unicode__(self):
         return self.string
@@ -666,9 +672,17 @@ class ID3v22Comment(MetaData):
             return
 
         for (key,values) in metadata.frames.items():
-            if ((len(values) > 0) and
+            if ((key not in self.INTEGER_ITEMS) and
+                (len(values) > 0) and
+                (len(values[0]) > 0) and
                 (len(self.frames.get(key,[])) == 0)):
                 self.frames[key] = values
+
+        for attr in ("track_number","track_total",
+                     "album_number","album_total"):
+            if ((getattr(self,attr) == 0) and
+                (getattr(metadata,attr) != 0)):
+                setattr(self,attr,getattr(metadata,attr))
 
     def build(self):
         subframes = "".join(["".join([value.build() for value in values])
@@ -826,6 +840,9 @@ class ID3v23TextFrame(ID3v23Frame):
         self.id = frame_id
         self.encoding = encoding
         self.string = s
+
+    def __len__(self):
+        return len(self.string)
 
     def __eq__(self,o):
         return __attrib_equals__(["id","encoding","string"],self,o)
@@ -1171,6 +1188,9 @@ class ID3v24TextFrame(ID3v24Frame):
     def __eq__(self,o):
         return __attrib_equals__(["id","encoding","string"],self,o)
 
+    def __len__(self):
+        return len(self.string)
+
     def __unicode__(self):
         return self.string
 
@@ -1391,6 +1411,10 @@ class ID3CommentPair(MetaData):
             return ID3CommentPair(
                 ID3v23Comment.converted(metadata),
                 ID3v1Comment.converted(metadata))
+
+    def merge(self, metadata):
+        self.id3v2.merge(metadata)
+        self.id3v1.merge(metadata)
 
 
     def __unicode__(self):

@@ -5471,7 +5471,8 @@ class TestForeignMetaData_WavPackAPE(unittest.TestCase):
     BASE_CLASS_METADATA = audiotools.WavePackAPEv2(
         {"Title":u'Track Name',
          "Album":u'Album Name',
-         "Track":u"1",
+         "Track":u"1/3",
+         "Media":u"2/4",
          "Foo":u"Bar"})
 
     def __verify_foreign_field__(self, track=None):
@@ -5488,7 +5489,10 @@ class TestForeignMetaData_WavPackAPE(unittest.TestCase):
     BASE_METADATA = audiotools.MetaData(
         track_name=u"Track Name",
         album_name=u"Album Name",
-        track_number=1)
+        track_number=1,
+        track_total=3,
+        album_number=2,
+        album_total=4)
 
     @TEST_METADATA
     @TEST_EXECUTABLE
@@ -5553,6 +5557,10 @@ class TestForeignMetaData_WavPackAPE(unittest.TestCase):
         self.__verify_foreign_field__()
         subprocess.call(["tracktag","--name=New Name",self.track.filename])
         self.assertEqual(self.track.get_metadata().track_name,u"New Name")
+        self.assertEqual(self.track.get_metadata().track_number,1)
+        self.assertEqual(self.track.get_metadata().track_total,3)
+        self.assertEqual(self.track.get_metadata().album_number,2)
+        self.assertEqual(self.track.get_metadata().album_total,4)
         self.__verify_foreign_field__()
 
     @TEST_METADATA
@@ -5564,6 +5572,10 @@ class TestForeignMetaData_WavPackAPE(unittest.TestCase):
         subprocess.call(["tracktag","-x",self.xmcd_file.name,
                          self.track.filename])
         self.assertEqual(self.track.get_metadata().track_name,u"XMCD Track 1")
+        self.assertEqual(self.track.get_metadata().track_number,1)
+        self.assertEqual(self.track.get_metadata().track_total,3)
+        self.assertEqual(self.track.get_metadata().album_number,2)
+        self.assertEqual(self.track.get_metadata().album_total,4)
         self.__verify_foreign_field__()
 
     @TEST_METADATA
@@ -5599,6 +5611,10 @@ class TestForeignMetaData_WavPackAPE(unittest.TestCase):
             self.__verify_foreign_field__()
             subprocess.call(["tracktag","--front-cover",temp_img.name,
                              self.track.filename])
+            self.assertEqual(self.track.get_metadata().track_number,1)
+            self.assertEqual(self.track.get_metadata().track_total,3)
+            self.assertEqual(self.track.get_metadata().album_number,2)
+            self.assertEqual(self.track.get_metadata().album_total,4)
             self.__verify_foreign_field__()
         finally:
             temp_img.close()
@@ -5625,7 +5641,8 @@ class TestForeignMetaData_MusepackAPE(TestForeignMetaData_WavPackAPE):
     BASE_CLASS_METADATA = audiotools.ApeTag(
         {"Title":u'Track Name',
          "Album":u'Album Name',
-         "Track":u"1",
+         "Track":u"1/3",
+         "Media":u"2/4",
          "Foo":u"Bar"})
 
     def __verify_foreign_field__(self, track=None):
@@ -5646,6 +5663,9 @@ class TestForeignMetaData_VorbisComment(TestForeignMetaData_WavPackAPE):
         {"TITLE":[u'Track Name'],
          "ALBUM":[u'Album Name'],
          "TRACKNUMBER":[u"1"],
+         "TRACKTOTAL":[u"3"],
+         "DISCNUMBER":[u"2"],
+         "DISCTOTAL":[u"4"],
          "FOO":[u"Bar"]})
 
     def __verify_foreign_field__(self, track=None):
@@ -5669,6 +5689,9 @@ class TestForeignMetaData_FLACComment(TestForeignMetaData_WavPackAPE):
                     {"TITLE":[u'Track Name'],
                      "ALBUM":[u'Album Name'],
                      "TRACKNUMBER":[u"1"],
+                     "TRACKTOTAL":[u"3"],
+                     "DISCNUMBER":[u"2"],
+                     "DISCTOTAL":[u"4"],
                      "FOO":[u"Bar"]}).build())])
 
     def __verify_foreign_field__(self, track=None):
@@ -5688,7 +5711,8 @@ class TestForeignMetaData_ID3v22(TestForeignMetaData_WavPackAPE):
     BASE_CLASS_METADATA = audiotools.ID3v22Comment(
         [audiotools.ID3v22TextFrame("TT2",0,"Track Name"),
          audiotools.ID3v22TextFrame("TAL",0,"Album Name"),
-         audiotools.ID3v22TextFrame("TRK",0,"1"),
+         audiotools.ID3v22TextFrame("TRK",0,"1/3"),
+         audiotools.ID3v22TextFrame("TPA",0,"2/4"),
          audiotools.ID3v22TextFrame("TFO",0,"Bar")])
 
     def __verify_foreign_field__(self, track=None):
@@ -5715,7 +5739,8 @@ class TestForeignMetaData_ID3v23(TestForeignMetaData_WavPackAPE):
     BASE_CLASS_METADATA = audiotools.ID3v23Comment(
         [audiotools.ID3v23TextFrame("TIT2",0,"Track Name"),
          audiotools.ID3v23TextFrame("TALB",0,"Album Name"),
-         audiotools.ID3v23TextFrame("TRCK",0,"1"),
+         audiotools.ID3v23TextFrame("TRCK",0,"1/3"),
+         audiotools.ID3v23TextFrame("TPOS",0,"2/4"),
          audiotools.ID3v23TextFrame("TFOO",0,"Bar")])
 
     def __verify_foreign_field__(self, track=None):
@@ -5742,7 +5767,8 @@ class TestForeignMetaData_ID3v24(TestForeignMetaData_ID3v23):
     BASE_CLASS_METADATA = audiotools.ID3v24Comment(
         [audiotools.ID3v24TextFrame("TIT2",0,"Track Name"),
          audiotools.ID3v24TextFrame("TALB",0,"Album Name"),
-         audiotools.ID3v24TextFrame("TRCK",0,"1"),
+         audiotools.ID3v24TextFrame("TRCK",0,"1/3"),
+         audiotools.ID3v24TextFrame("TPOS",0,"2/4"),
          audiotools.ID3v24TextFrame("TFOO",0,"Bar")])
 
 class TestForeignMetaData_M4A(TestForeignMetaData_WavPackAPE):
@@ -5751,7 +5777,8 @@ class TestForeignMetaData_M4A(TestForeignMetaData_WavPackAPE):
     BASE_CLASS_METADATA = audiotools.M4AMetaData(
         {"\xa9nam":[u'Track Name'],
          "\xa9alb":[u'Album Name'],
-         "trkn":['\x00\x00\x00\x01\x00\x00\x00\x00'],
+         "trkn":['\x00\x00\x00\x01\x00\x03\x00\x00'],
+         "disk":['\x00\x00\x00\x02\x00\x04'],
          "\xa9foo":[u"Bar"]})
 
     def __verify_foreign_field__(self, track=None):

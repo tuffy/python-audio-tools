@@ -683,9 +683,15 @@ class M4AMetaData(MetaData,dict):
             return
 
         for (key,values) in metadata.items():
-            if ((len(values) > 0) and
+            if ((key not in 'trkn','disk') and
+                (len(values) > 0) and
                 (len(self.get(key,[])) == 0)):
                 self[key] = values
+        for attr in ("track_number","track_total",
+                     "album_number","album_total"):
+            if ((getattr(self,attr) == 0) and
+                (getattr(metadata,attr) != 0)):
+                setattr(self,attr,getattr(metadata,attr))
 
     #returns the contents of this M4AMetaData as a 'meta' atom string
     def to_atom(self):
