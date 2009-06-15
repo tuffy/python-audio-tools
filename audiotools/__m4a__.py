@@ -662,9 +662,11 @@ class M4AMetaData(MetaData,dict):
                 if (value != u''):
                     tags[key] = [value]
 
-        tags['trkn'] = [__Qt_Meta_Atom__.TRKN.build(Con.Container(
-                    track_number=metadata.track_number,
-                    total_tracks=metadata.track_total))]
+        if ((metadata.track_number != 0) or
+            (metadata.track_total != 0)):
+            tags['trkn'] = [__Qt_Meta_Atom__.TRKN.build(Con.Container(
+                        track_number=metadata.track_number,
+                        total_tracks=metadata.track_total))]
 
         if ((metadata.album_number != 0) or
             (metadata.album_total != 0)):
