@@ -660,6 +660,16 @@ class ID3v22Comment(MetaData):
 
         return cls(frames)
 
+    def merge(self, metadata):
+        metadata = self.__class__.converted(metadata)
+        if (metadata is None):
+            return
+
+        for (key,values) in metadata.frames.items():
+            if ((len(values) > 0) and
+                (len(self.frames.get(key,[])) == 0)):
+                self.frames[key] = values
+
     def build(self):
         subframes = "".join(["".join([value.build() for value in values])
                              for values in self.frames.values()])

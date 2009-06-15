@@ -677,6 +677,16 @@ class M4AMetaData(MetaData,dict):
 
         return M4AMetaData(tags)
 
+    def merge(self, metadata):
+        metadata = self.__class__.converted(metadata)
+        if (metadata is None):
+            return
+
+        for (key,values) in metadata.items():
+            if ((len(values) > 0) and
+                (len(self.get(key,[])) == 0)):
+                self[key] = values
+
     #returns the contents of this M4AMetaData as a 'meta' atom string
     def to_atom(self):
         hdlr = __build_qt_atom__(

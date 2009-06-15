@@ -34,7 +34,7 @@ import gettext
 
 gettext.install("audiotools",unicode=True)
 
-(METADATA,PCM,EXECUTABLE,CUESHEET) = range(4)
+(METADATA,PCM,EXECUTABLE,CUESHEET,CUSTOM) = range(5)
 CASES = set([METADATA,PCM,EXECUTABLE,CUESHEET])
 
 def nothing(self):
@@ -61,6 +61,12 @@ def TEST_EXECUTABLE(function):
 
 def TEST_CUESHEET(function):
     if (CUESHEET not in CASES):
+        return nothing
+    else:
+        return function
+
+def TEST_CUSTOM(function):
+    if (CUSTOM not in CASES):
         return nothing
     else:
         return function
@@ -5645,13 +5651,13 @@ class TestForeignMetaData_VorbisComment(TestForeignMetaData_WavPackAPE):
     def __verify_foreign_field__(self, track=None):
         if (track is None):
             track = self.track
-        self.assert_("Foo" in track.get_metadata().keys())
-        self.assertEqual(track.get_metadata()["Foo"],[u"Bar"])
+        self.assert_("FOO" in track.get_metadata().keys())
+        self.assertEqual(track.get_metadata()["FOO"],[u"Bar"])
 
     def __verify_no_foreign_field__(self, track=None):
         if (track is None):
             track = self.track
-        self.assert_("Foo" not in track.get_metadata().keys())
+        self.assert_("FOO" not in track.get_metadata().keys())
 
 class TestForeignMetaData_FLACComment(TestForeignMetaData_WavPackAPE):
     AUDIO_CLASS = audiotools.FlacAudio

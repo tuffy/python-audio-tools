@@ -163,6 +163,16 @@ class ApeTag(MetaData,dict):
 
             return cls(tags)
 
+    def merge(self, metadata):
+        metadata = self.__class__.converted(metadata)
+        if (metadata is None):
+            return
+
+        for (key,value) in metadata.items():
+            if ((len(value) > 0) and
+                (len(self.get(key,u"")) == 0)):
+                self[key] = value
+
     def __comment_name__(self):
         return u'APEv2'
 

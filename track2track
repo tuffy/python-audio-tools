@@ -284,11 +284,14 @@ if (__name__ == '__main__'):
                 track_number = audiofile.track_number()
 
                 if (xmcd is not None):
-                    metadata = xmcd.get(track_number,None)
-                    if (metadata is not None):
-                        metadata.merge(audiofile.get_metadata())
+                    track_metadata = audiofile.get_metadata()
+                    if (track_metadata is not None):
+                        xmcd_metadata = track_metadata.__class__.converted(
+                            xmcd.get(track_number,None))
+                        xmcd_metadata.merge(track_metadata)
+                        metadata = xmcd_metadata
                     else:
-                        metadata = audiofile.get_metadata()
+                        metadata = xmcd.get(track_number,None)
 
                     filename = os.path.join(
                                 base_directory,
@@ -349,11 +352,14 @@ if (__name__ == '__main__'):
         audiofile = audiofiles[0]
 
         if (xmcd is not None):
-            metadata = xmcd.get(audiofile.track_number(),None)
-            if (metadata is not None):
-                metadata.merge(audiofile.get_metadata())
+            track_metadata = audiofile.get_metadata()
+            if (track_metadata is not None):
+                xmcd_metadata = track_metadata.__class__.converted(
+                    xmcd.get(audiofile.track_number(),None))
+                xmcd_metadata.merge(track_metadata)
+                metadata = xmcd_metadata
             else:
-                metadata = audiofile.get_metadata()
+                metadata = xmcd.get(audiofile.track_number(),None)
         else:
             metadata = audiofile.get_metadata()
 

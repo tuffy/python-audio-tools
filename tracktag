@@ -57,10 +57,15 @@ def xmcd_metadata(track, xmcd):
 #replace with command-line tags merged with XMCD metadata
 #*and* existing metadata
 def xmcd_track_metadata(track, xmcd):
-    xmcd = xmcd_metadata(track,xmcd)
-    if (xmcd is not None):
-        xmcd.merge(track.get_metadata())
-    return xmcd
+    track_metadata = track.get_metadata()
+    if (track_metadata is not None):
+        xmcd_md = track_metadata.__class__.converted(
+            xmcd_metadata(track,xmcd))
+    else:
+        xmcd_md = xmcd
+    if (xmcd_md is not None):
+        xmcd_md.merge(track_metadata)
+    return xmcd_md
 
 #tries to return a populated Image object of the appropriate type
 #raises InvalidImage if something goes wrong during opening or parsing
@@ -403,6 +408,7 @@ if (__name__ == '__main__'):
                     for path in options.other_image:
                         metadata.add_image(get_image(path,4))
 
+            metadata = track_metadata.__class__.converted(metadata)
             metadata.merge(track_metadata)
             file.set_metadata(metadata)
         except audiotools.InvalidImage,err:

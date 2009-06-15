@@ -160,6 +160,9 @@ class FlacMetaData(MetaData):
                   data=FlacPictureComment.converted(image).build())
                   for image in metadata.images()])
 
+    def merge(self, metadata):
+        self.vorbis_comment.merge(metadata)
+
     def add_image(self, image):
         self.__dict__['image_blocks'].append(FlacPictureComment.converted(image))
 
