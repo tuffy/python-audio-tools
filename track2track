@@ -98,7 +98,7 @@ def convert_file(destination_class, destination_filename,
 
 if (__name__ == '__main__'):
     parser = audiotools.OptionParser(
-        usage=_(u'%prog [-t track type ] [-x XMCD file] [-d directory] [-q quality] <track 1> [track 2] ...'),
+        usage=_(u'%prog [options] <track 1> [track 2] ...'),
         version="Python Audio Tools %s" % (audiotools.VERSION))
 
     parser.add_option('-t','--type',

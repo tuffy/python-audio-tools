@@ -58,7 +58,7 @@ def has_embedded_cuesheet(audiofile):
 
 if (__name__ == '__main__'):
     parser = audiotools.OptionParser(
-        _(u'%prog [--cue cuesheet] [-t track type ] [-x XMCD file] [-d directory] [-q quality] <track>'),
+        _(u'%prog [options] [-d directory] <track>'),
         version="Python Audio Tools %s" % (audiotools.VERSION))
 
     parser.add_option('--cue',

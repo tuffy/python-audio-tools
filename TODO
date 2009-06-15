@@ -244,7 +244,7 @@
    If an output file can't be written to for some reason
    (invalid permissions, etc.) generate a proper error message
    instead of throwing ugly IOExceptions or confusing errors.
-* TODO Make text output consistent
+* DONE Make text output consistent
   Currently, command-line programs generate output using a
   selection of scattered print statements - often accompanied by
   if blocks when verbosity is indicated - and haphazardly
@@ -311,7 +311,7 @@
 ** DONE Convert GUI programs to gettext-based strings
 - [X] coverview
 - [X] editxmcd
-** TODO Convert "Usage" output to gettext-based strings
+** DONE Convert "Usage" output to gettext-based strings
 * DONE Update tracksplit's man page
   It now supports more of track2track's options
 * DONE Support total tracks/total albums metadata fields

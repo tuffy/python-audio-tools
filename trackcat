@@ -29,7 +29,7 @@ gettext.install("audiotools",unicode=True)
 
 if (__name__ == '__main__'):
     parser = audiotools.OptionParser(
-        usage=_(u'%prog [-t track type] [-o output] [-q quality] <track 1> [track 2] ...'),
+        usage=_(u'%prog [options] [-o output] <track 1> [track 2] ...'),
         version="Python Audio Tools %s" % (audiotools.VERSION))
 
     parser.add_option('-q','--quality',

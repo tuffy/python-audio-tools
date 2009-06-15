@@ -28,7 +28,7 @@ gettext.install("audiotools",unicode=True)
 
 if (__name__ == '__main__'):
     parser = audiotools.OptionParser(
-        _(u"%prog [-x XMCD file] <track 1> [track 2] ..."),
+        _(u"%prog [options] [-x XMCD file] <track 1> [track 2] ..."),
         version="Python Audio Tools %s" % (audiotools.VERSION))
 
     parser.add_option('-x','--xmcd',
