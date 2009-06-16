@@ -374,3 +374,7 @@
   Like FLAC, not all fields need to be wiped out when overwriting
   old metadata with new.
 ** TODO Add more M4A-specific unit tests
+* TODO Add cdinfo utility
+  Analagous to trackinfo, but for an inserted CD.
+  This would be a better location for cd2xmcd's "-i" option.
+

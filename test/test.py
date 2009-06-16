@@ -2497,6 +2497,169 @@ class TestFlacComment(unittest.TestCase):
     def tearDown(self):
         self.file.close()
 
+class TestM4AMetaData(unittest.TestCase):
+    @TEST_CUSTOM
+    def setUp(self):
+        self.file = tempfile.NamedTemporaryFile(suffix=".m4a")
+
+        self.m4a_file = audiotools.M4AAudio.from_pcm(
+            self.file.name,BLANK_PCM_Reader(TEST_LENGTH))
+
+    @TEST_CUSTOM
+    def tearDown(self):
+        self.file.close()
+
+    @TEST_CUSTOM
+    def testsetmetadata(self):
+        #does setting metadata result in a still-playable file?
+        tempfile1 = tempfile.NamedTemporaryFile(suffix=".wav")
+        tempfile2 = tempfile.NamedTemporaryFile(suffix=".wav")
+        try:
+            self.m4a_file.to_wave(tempfile1.name)
+            wave1 = audiotools.open(tempfile1.name)
+            self.assertEqual(wave1.sample_rate(),44100)
+            self.assertEqual(wave1.bits_per_sample(),16)
+            self.assertEqual(wave1.channels(),2)
+            self.assertEqual(wave1.total_frames(),TEST_LENGTH * 44100)
+
+            self.m4a_file.set_metadata(
+                audiotools.MetaData(track_name=u"Track Name",
+                                    track_number=1,
+                                    album_name=u"Some Album Name"))
+
+            self.m4a_file.to_wave(tempfile2.name)
+            wave2 = audiotools.open(tempfile2.name)
+            self.assertEqual(wave2.sample_rate(),44100)
+            self.assertEqual(wave2.bits_per_sample(),16)
+            self.assertEqual(wave2.channels(),2)
+            self.assertEqual(wave2.total_frames(),TEST_LENGTH * 44100)
+        finally:
+            tempfile1.close()
+            tempfile2.close()
+
+    @TEST_CUSTOM
+    def testcomment(self):
+        pass
+
+    @TEST_CUSTOM
+    def testsetpicture(self):
+        #setting 1 front cover is okay
+        self.assertEqual(len(self.m4a_file.get_metadata().images()),0)
+        m = DummyMetaData()
+        m.add_image(audiotools.Image.new(TEST_COVER1,
+                                         u'Unicode \u3057\u3066\u307f\u308b',
+                                         0))
+        self.m4a_file.set_metadata(m)
+
+        new_m4a_file = audiotools.open(self.file.name)
+        m2 = new_m4a_file.get_metadata()
+
+        self.assertEqual(len(m2.images()),1)
+        image2 = m2.images()[0]
+        self.assertEqual(image2.data,TEST_COVER1)
+        self.assertEqual(image2.mime_type,"image/jpeg")
+        self.assertEqual(image2.width,500)
+        self.assertEqual(image2.height,500)
+        self.assertEqual(image2.color_depth,24)
+        self.assertEqual(image2.color_count,0)
+        self.assertEqual(image2.description,u"")
+        self.assertEqual(image2.type,0)
+
+        #setting 2 front covers is also okay
+        m = m2
+        m.add_image(audiotools.Image.new(TEST_COVER2,
+                                         u'Unicode \u3057\u3066\u307f\u308b',
+                                         0))
+        self.m4a_file.set_metadata(m)
+
+        new_m4a_file = audiotools.open(self.file.name)
+        m2 = new_m4a_file.get_metadata()
+
+        self.assertEqual(len(m2.images()),2)
+        image1 = m2.images()[0]
+        image2 = m2.images()[1]
+
+        if (image2.mime_type == "image/jpeg"):
+            (image1,image2) = (image2,image1)
+
+        self.assertEqual(image1.data,TEST_COVER1)
+        self.assertEqual(image1.mime_type,"image/jpeg")
+        self.assertEqual(image1.width,500)
+        self.assertEqual(image1.height,500)
+        self.assertEqual(image1.color_depth,24)
+        self.assertEqual(image1.color_count,0)
+        self.assertEqual(image1.description,u"")
+        self.assertEqual(image1.type,0)
+
+        self.assertEqual(image2.data,TEST_COVER2)
+        self.assertEqual(image2.mime_type,"image/png")
+        self.assertEqual(image2.width,500)
+        self.assertEqual(image2.height,500)
+        self.assertEqual(image2.color_depth,24)
+        self.assertEqual(image2.color_count,0)
+        self.assertEqual(image2.description,u"")
+        self.assertEqual(image2.type,0)
+
+        #however, setting back covers are dropped
+        #M4AMetaData currently supports only 1 type of cover
+        m.add_image(audiotools.Image.new(TEST_COVER3,
+                                         u'Unicode \u3057\u3066\u307f\u308b',
+                                         1))
+        self.m4a_file.set_metadata(m)
+
+        new_m4a_file = audiotools.open(self.file.name)
+        m2 = new_m4a_file.get_metadata()
+
+        self.assertEqual(len(m2.images()),2)
+        image1 = m2.images()[0]
+        image2 = m2.images()[1]
+
+        if (image2.mime_type == "image/jpeg"):
+            (image1,image2) = (image2,image1)
+
+        self.assertEqual(image1.data,TEST_COVER1)
+        self.assertEqual(image1.mime_type,"image/jpeg")
+        self.assertEqual(image1.width,500)
+        self.assertEqual(image1.height,500)
+        self.assertEqual(image1.color_depth,24)
+        self.assertEqual(image1.color_count,0)
+        self.assertEqual(image1.description,u"")
+        self.assertEqual(image1.type,0)
+
+        self.assertEqual(image2.data,TEST_COVER2)
+        self.assertEqual(image2.mime_type,"image/png")
+        self.assertEqual(image2.width,500)
+        self.assertEqual(image2.height,500)
+        self.assertEqual(image2.color_depth,24)
+        self.assertEqual(image2.color_count,0)
+        self.assertEqual(image2.description,u"")
+        self.assertEqual(image2.type,0)
+
+    @TEST_CUSTOM
+    def testconvertedpicture(self):
+        m4a_tempfile = tempfile.NamedTemporaryFile(suffix=".m4a")
+
+        try:
+            m4a_file = audiotools.M4AAudio.from_pcm(
+                m4a_tempfile.name,BLANK_PCM_Reader(TEST_LENGTH))
+
+            m = DummyMetaData()
+            m.add_image(audiotools.Image.new(
+                TEST_COVER1,
+                u'',
+                1))
+            m4a_file.set_metadata(m)
+
+            new_flac = audiotools.FlacAudio.from_pcm(
+                self.file.name,
+                m4a_file.to_pcm())
+            new_flac.set_metadata(m4a_file.get_metadata())
+
+            self.assertEqual(m4a_file.get_metadata().images(),
+                             new_flac.get_metadata().images())
+        finally:
+            m4a_tempfile.close()
+
 class TestPCMConversion(unittest.TestCase):
     def setUp(self):
         self.tempwav = tempfile.NamedTemporaryFile(suffix=".wav")
