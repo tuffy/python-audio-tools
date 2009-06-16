@@ -242,7 +242,7 @@ if (__name__ == '__main__'):
         exec_args.append("-dev")
         exec_args.append(options.dev)
 
-        exec_args.append("-tao")
+        exec_args.append("-dao")
         exec_args.append("-pad")
         exec_args.append("-audio")
 

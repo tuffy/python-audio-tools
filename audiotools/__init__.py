@@ -1836,7 +1836,7 @@ from __speex__ import *
 #there's simply no way to accomplish that cleanly
 
 def CDDA(device_name,speed=None):
-    offset = config.getint_default("System","cdrom_offset",0)
+    offset = config.getint_default("System","cdrom_read_offset",0)
     if (offset == 0):
         return RawCDDA(device_name,speed)
     else:

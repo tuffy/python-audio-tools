@@ -374,4 +374,3 @@
   Like FLAC, not all fields need to be wiped out when overwriting
   old metadata with new.
 ** TODO Add more M4A-specific unit tests
-
