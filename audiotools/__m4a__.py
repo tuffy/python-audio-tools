@@ -314,7 +314,8 @@ class __M4AAudio_faac__(AudioFile):
                                          meta_atom.offset)
             data = {}
             for atom in meta_atom['ilst']:
-                if (atom.type.startswith(chr(0xA9)) or (atom.type == 'cprt')):
+                if (atom.type.startswith(chr(0xA9)) or (atom.type in ('cprt',
+                                                                      'aART'))):
                     data.setdefault(atom.type,
                                     []).append(atom['data'].data[8:].decode('utf-8'))
                 else:
@@ -576,7 +577,8 @@ class M4AMetaData(MetaData,dict):
 
     #meta_data is a key->[value1,value2,...] dict of the contents
     #of the 'meta' container atom
-    #values are Unicode if the key starts with \xa9, binary strings otherwise
+    #values are Unicode if the key starts with \xa9 or is in 'aART','cprt',
+    #binary strings otherwise
     def __init__(self, meta_data):
         dict.__init__(self, meta_data)
 
@@ -751,7 +753,7 @@ class M4AMetaData(MetaData,dict):
         pairs = []
         for (key,values) in self.items():
             for value in values:
-                if (key.startswith(chr(0xA9)) or (key == 'cprt')):
+                if (key.startswith(chr(0xA9)) or (key in ('cprt','aART'))):
                     pairs.append((key.replace(chr(0xA9),' '),value))
                 elif (key == 'trkn'):
                     tracknumber = __Qt_Meta_Atom__.TRKN.parse(value)

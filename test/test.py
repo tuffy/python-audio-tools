@@ -2501,18 +2501,18 @@ class TestFlacComment(unittest.TestCase):
         self.file.close()
 
 class TestM4AMetaData(unittest.TestCase):
-    @TEST_CUSTOM
+    @TEST_METADATA
     def setUp(self):
         self.file = tempfile.NamedTemporaryFile(suffix=".m4a")
 
         self.m4a_file = audiotools.M4AAudio.from_pcm(
             self.file.name,BLANK_PCM_Reader(TEST_LENGTH))
 
-    @TEST_CUSTOM
+    @TEST_METADATA
     def tearDown(self):
         self.file.close()
 
-    @TEST_CUSTOM
+    @TEST_METADATA
     def testsetmetadata(self):
         #does setting metadata result in a still-playable file?
         tempfile1 = tempfile.NamedTemporaryFile(suffix=".wav")
@@ -2540,11 +2540,131 @@ class TestM4AMetaData(unittest.TestCase):
             tempfile1.close()
             tempfile2.close()
 
-    @TEST_CUSTOM
-    def testcomment(self):
-        pass
+    @TEST_METADATA
+    def testcomment1(self):
+        for (attribute,value,key,result) in zip(
+            ["track_name",
+             "artist_name",
+             "year",
+             "performer_name",
+             "album_name",
+             "composer_name",
+             "comment",
+             "copyright"],
+            [u"Track Name\u03e8",
+             u"Artist \u03e8Name",
+             u"2009",
+             u"Performer\u03e8 Name",
+             u"Albu\u03e8m Name",
+             u"Composer N\u03e8ame",
+             u"Some Comm\u03e8ent",
+             u"Copyright T\u03e8ext"],
+            ["\xa9nam",
+             "\xa9ART",
+             "\xa9day",
+             "aART",
+             "\xa9alb",
+             "\xa9wrt",
+             "\xa9cmt",
+             "cprt"],
+            [u"Track Name\u03e8",
+             u"Artist \u03e8Name",
+             u"2009",
+             u"Performer\u03e8 Name",
+             u"Albu\u03e8m Name",
+             u"Composer N\u03e8ame",
+             u"Some Comm\u03e8ent",
+             u"Copyright T\u03e8ext"]):
+            metadata = self.m4a_file.get_metadata()
+            setattr(metadata,attribute,value)
+            self.m4a_file.set_metadata(metadata)
+            metadata = self.m4a_file.get_metadata()
+            if (key.startswith(chr(0xA9)) or (key in ('cprt','aART'))):
+                self.assertEqual(metadata[key][0],result)
+            else:
+                self.assertEqual(metadata[key][0].decode('utf-8'),result)
+        for (attribute,value,key,result) in zip(
+            ["track_number",
+             "track_total",
+             "album_number",
+             "album_total"],
+            [1,
+             3,
+             2,
+             4],
+            ["trkn",
+             "trkn",
+             "disk",
+             "disk"],
+            ["\x00\x00\x00\x01\x00\x00\x00\x00",
+             "\x00\x00\x00\x01\x00\x03\x00\x00",
+             "\x00\x00\x00\x02\x00\x00",
+             "\x00\x00\x00\x02\x00\x04"]):
+            metadata = self.m4a_file.get_metadata()
+            setattr(metadata,attribute,value)
+            self.m4a_file.set_metadata(metadata)
+            metadata = self.m4a_file.get_metadata()
+            self.assertEqual(metadata[key][0],result)
 
-    @TEST_CUSTOM
+    @TEST_METADATA
+    def testcomment2(self):
+        for (attribute,value,key) in zip(
+            ["track_name",
+             "artist_name",
+             "year",
+             "performer_name",
+             "album_name",
+             "composer_name",
+             "comment",
+             "copyright"],
+            [u"Track Name\u03e8",
+             u"Artist \u03e8Name",
+             u"2009",
+             u"Performer\u03e8 Name",
+             u"Albu\u03e8m Name",
+             u"Composer N\u03e8ame",
+             u"Some Comm\u03e8ent",
+             u"Copyright T\u03e8ext"],
+            ["\xa9nam",
+             "\xa9ART",
+             "\xa9day",
+             "aART",
+             "\xa9alb",
+             "\xa9wrt",
+             "\xa9cmt",
+             "cprt"]):
+            metadata = self.m4a_file.get_metadata()
+            metadata[key] = [value.encode('utf-8')]
+            self.m4a_file.set_metadata(metadata)
+            metadata = self.m4a_file.get_metadata()
+            if (key.startswith(chr(0xA9)) or (key in ('cprt','aART'))):
+                self.assertEqual(metadata[key][0],value)
+            else:
+                self.assertEqual(metadata[key][0].decode('utf-8'),value)
+        for (attribute,value,key,result) in zip(
+            ["track_number",
+             "track_total",
+             "album_number",
+             "album_total"],
+            [1,
+             3,
+             2,
+             4],
+            ["trkn",
+             "trkn",
+             "disk",
+             "disk"],
+            ["\x00\x00\x00\x01\x00\x00\x00\x00",
+             "\x00\x00\x00\x01\x00\x03\x00\x00",
+             "\x00\x00\x00\x02\x00\x00",
+             "\x00\x00\x00\x02\x00\x04"]):
+            metadata = self.m4a_file.get_metadata()
+            metadata[key] = [result]
+            self.m4a_file.set_metadata(metadata)
+            metadata = self.m4a_file.get_metadata()
+            self.assertEqual(metadata[key][0],result)
+
+    @TEST_METADATA
     def testsetpicture(self):
         #setting 1 front cover is okay
         self.assertEqual(len(self.m4a_file.get_metadata().images()),0)
@@ -2638,7 +2758,7 @@ class TestM4AMetaData(unittest.TestCase):
         self.assertEqual(image2.description,u"")
         self.assertEqual(image2.type,0)
 
-    @TEST_CUSTOM
+    @TEST_METADATA
     def testconvertedpicture(self):
         m4a_tempfile = tempfile.NamedTemporaryFile(suffix=".m4a")
 
