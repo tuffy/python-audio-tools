@@ -53,104 +53,78 @@ class VorbisComment(MetaData,dict):
     #vorbis_data is a key->[value1,value2,...] dict of the original
     #Vorbis comment data.  keys should be upper case
     def __init__(self, vorbis_data, vendor_string=u""):
-        try:
-            track_number = int(vorbis_data.get('TRACKNUMBER',['0'])[0])
-        except ValueError:
-            track_number = 0
-
-        try:
-            track_total = int(vorbis_data.get('TRACKTOTAL',['0'])[0])
-        except ValueError:
-            track_total = 0
-
-        try:
-            album_number = int(vorbis_data.get('DISCNUMBER',['0'])[0])
-        except ValueError:
-            album_number = 0
-
-        try:
-            album_total = int(vorbis_data.get('DISCTOTAL',['0'])[0])
-        except ValueError:
-            album_total = 0
-
-        MetaData.__init__(
-            self,
-            track_name = vorbis_data.get('TITLE',[u''])[0],
-            track_number = track_number,
-            track_total = track_total,
-            album_name = vorbis_data.get('ALBUM',[u''])[0],
-            artist_name = vorbis_data.get('ARTIST',[u''])[0],
-            performer_name = vorbis_data.get('PERFORMER',[u''])[0],
-            composer_name = vorbis_data.get('COMPOSER',[u''])[0],
-            conductor_name = vorbis_data.get('CONDUCTOR',[u''])[0],
-            media = vorbis_data.get('SOURCE MEDIUM',[u''])[0],
-            ISRC = vorbis_data.get('ISRC',[u''])[0],
-            catalog = vorbis_data.get('CATALOG',[u''])[0],
-            copyright = vorbis_data.get('COPYRIGHT',[u''])[0],
-            publisher = vorbis_data.get('PUBLISHER',[u''])[0],
-            year = vorbis_data.get('DATE',[u''])[0],
-            date = u"",
-            album_number = album_number,
-            album_total = album_total,
-            comment = vorbis_data.get('COMMENT',[u''])[0])
-
         dict.__init__(self,vorbis_data)
         self.vendor_string = vendor_string
+
+    def __getattr__(self, key):
+        if (key == 'track_number'):
+            match = re.match(r'^\d+$',self.get('TRACKNUMBER',[u''])[0])
+            if (match):
+                return int(match.group(0))
+            else:
+                match = re.match('^(\d+)/\d+$',self.get('TRACKNUMBER',[u''])[0])
+                if (match):
+                    return int(match.group(1))
+                else:
+                    return 0
+        elif (key == 'track_total'):
+            match = re.match(r'^\d+$',self.get('TRACKTOTAL',[u''])[0])
+            if (match):
+                return int(match.group(0))
+            else:
+                match = re.match('^\d+/(\d+)$',self.get('TRACKNUMBER',[u''])[0])
+                if (match):
+                    return int(match.group(1))
+                else:
+                    return 0
+        elif (key == 'album_number'):
+            match = re.match(r'^\d+$',self.get('DISCNUMBER',[u''])[0])
+            if (match):
+                return int(match.group(0))
+            else:
+                match = re.match('^(\d+)/\d+$',self.get('DISCNUMBER',[u''])[0])
+                if (match):
+                    return int(match.group(1))
+                else:
+                    return 0
+        elif (key ==  'album_total'):
+            match = re.match(r'^\d+$',self.get('DISCTOTAL',[u''])[0])
+            if (match):
+                return int(match.group(0))
+            else:
+                match = re.match('^\d+/(\d+)$',self.get('DISCNUMBER',[u''])[0])
+                if (match):
+                    return int(match.group(1))
+                else:
+                    return 0
+        elif (key in self.ATTRIBUTE_MAP):
+            return self.get(self.ATTRIBUTE_MAP[key],[u''])[0]
+        elif (key in MetaData.__FIELDS__):
+            return u''
+        else:
+            try:
+                return self.__dict__[key]
+            except KeyError:
+                raise AttributeError(key)
 
     @classmethod
     def supports_images(cls):
         return False
 
+    def images(self):
+        return list()
+
     #if an attribute is updated (e.g. self.track_name)
     #make sure to update the corresponding dict pair
     def __setattr__(self, key, value):
-        self.__dict__[key] = value
-
         if (key in self.ATTRIBUTE_MAP):
             if (key not in MetaData.__INTEGER_FIELDS__):
                 self[self.ATTRIBUTE_MAP[key]] = [value]
             else:
                 self[self.ATTRIBUTE_MAP[key]] = [unicode(value)]
+        else:
+            self.__dict__[key] = value
 
-    #if a dict pair is updated (e.g. self['TITLE'])
-    #make sure to update the corresponding attribute
-    def __setitem__(self, key, value):
-        if (self.ITEM_MAP.has_key(key)):
-            if (key in ('TRACKNUMBER','TRACKTOTAL')):
-                match = re.match(r'^\d+$',value[0])
-                if (match):
-                    dict.__setitem__(self, key, value)
-                    self.__dict__[self.ITEM_MAP[key]] = int(match.group(0))
-                else:
-                    match = re.match(r'^(\d+)/(\d+)$',value[0])
-                    if (match):
-                        self.__dict__["track_number"] = int(match.group(1))
-                        self.__dict__["track_total"] = int(match.group(2))
-                        dict.__setitem__(self,"TRACKNUMBER",
-                                         [unicode(match.group(1))])
-                        dict.__setitem__(self,"TRACKTOTAL",
-                                         [unicode(match.group(2))])
-                    else:
-                        dict.__setitem__(self, key, value)
-            elif (key in ('DISCNUMBER','DISCTOTAL')):
-                match = re.match(r'^\d+$',value[0])
-                if (match):
-                    dict.__setitem__(self, key, value)
-                    self.__dict__[self.ITEM_MAP[key]] = int(match.group(0))
-                else:
-                    match = re.match(r'^(\d+)/(\d+)$',value[0])
-                    if (match):
-                        self.__dict__["album_number"] = int(match.group(1))
-                        self.__dict__["album_total"] = int(match.group(2))
-                        dict.__setitem__(self,"DISCNUMBER",
-                                         [unicode(match.group(1))])
-                        dict.__setitem__(self,"DISCTOTAL",
-                                         [unicode(match.group(2))])
-                    else:
-                        dict.__setitem__(self, key, value)
-            else:
-                dict.__setitem__(self, key, value)
-                self.__dict__[self.ITEM_MAP[key]] = value[0]
 
     @classmethod
     def converted(cls, metadata):
