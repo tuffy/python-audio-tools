@@ -1383,6 +1383,9 @@ class TestAiffAudio(unittest.TestCase):
             BLANK_PCM_Reader(5))
 
         #grab our original binaries so we can point them back later
+        if (not audiotools.config.has_section("Binaries")):
+            audiotools.config.add_section("Binaries")
+
         old_settings = [(bin,audiotools.config.get_default("Binaries",bin,bin))
                         for bin in self.audio_class.BINARIES]
         try:
