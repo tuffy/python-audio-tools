@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import MetaData,Con,VERSION
+from audiotools import MetaData,Con,VERSION,re
 
 class VorbisComment(MetaData,dict):
     VORBIS_COMMENT = Con.Struct("vorbis_comment",
@@ -115,17 +115,42 @@ class VorbisComment(MetaData,dict):
     #if a dict pair is updated (e.g. self['TITLE'])
     #make sure to update the corresponding attribute
     def __setitem__(self, key, value):
-        dict.__setitem__(self, key, value)
-
         if (self.ITEM_MAP.has_key(key)):
-            if (key not in ('TRACKNUMBER',
-                            'TRACKTOTAL',
-                            'DISCNUMBER',
-                            'DISCTOTAL')):
-                self.__dict__[self.ITEM_MAP[key]] = value[0]
+            if (key in ('TRACKNUMBER','TRACKTOTAL')):
+                match = re.match(r'^\d+$',value[0])
+                if (match):
+                    dict.__setitem__(self, key, value)
+                    self.__dict__[self.ITEM_MAP[key]] = int(match.group(0))
+                else:
+                    match = re.match(r'^(\d+)/(\d+)$',value[0])
+                    if (match):
+                        self.__dict__["track_number"] = int(match.group(1))
+                        self.__dict__["track_total"] = int(match.group(2))
+                        dict.__setitem__(self,"TRACKNUMBER",
+                                         [unicode(match.group(1))])
+                        dict.__setitem__(self,"TRACKTOTAL",
+                                         [unicode(match.group(2))])
+                    else:
+                        dict.__setitem__(self, key, value)
+            elif (key in ('DISCNUMBER','DISCTOTAL')):
+                match = re.match(r'^\d+$',value[0])
+                if (match):
+                    dict.__setitem__(self, key, value)
+                    self.__dict__[self.ITEM_MAP[key]] = int(match.group(0))
+                else:
+                    match = re.match(r'^(\d+)/(\d+)$',value[0])
+                    if (match):
+                        self.__dict__["album_number"] = int(match.group(1))
+                        self.__dict__["album_total"] = int(match.group(2))
+                        dict.__setitem__(self,"DISCNUMBER",
+                                         [unicode(match.group(1))])
+                        dict.__setitem__(self,"DISCTOTAL",
+                                         [unicode(match.group(2))])
+                    else:
+                        dict.__setitem__(self, key, value)
             else:
-                self.__dict__[self.ITEM_MAP[key]] = int(value[0])
-
+                dict.__setitem__(self, key, value)
+                self.__dict__[self.ITEM_MAP[key]] = value[0]
 
     @classmethod
     def converted(cls, metadata):

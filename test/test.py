@@ -35,7 +35,7 @@ import gettext
 gettext.install("audiotools",unicode=True)
 
 (METADATA,PCM,EXECUTABLE,CUESHEET,CUSTOM) = range(5)
-CASES = set([CUSTOM])
+CASES = set([METADATA])
 
 def nothing(self):
     pass
@@ -2784,14 +2784,14 @@ class TestM4AMetaData(unittest.TestCase):
             m4a_tempfile.close()
 
 class TestVorbisMetaData(unittest.TestCase):
-    @TEST_CUSTOM
+    @TEST_METADATA
     def setUp(self):
         self.file = tempfile.NamedTemporaryFile(suffix=".ogg")
 
         self.track = audiotools.VorbisAudio.from_pcm(
             self.file.name,BLANK_PCM_Reader(TEST_LENGTH))
 
-    @TEST_CUSTOM
+    @TEST_METADATA
     def tearDown(self):
         self.file.close()
 
@@ -2869,7 +2869,7 @@ class TestVorbisMetaData(unittest.TestCase):
              u"2",
              u"4"])
 
-    @TEST_CUSTOM
+    @TEST_METADATA
     def testcomment1(self):
         for (attribute,value,key,result) in self.__attribute_value_key_result__():
             metadata = self.__track_metadata__()
@@ -2878,7 +2878,7 @@ class TestVorbisMetaData(unittest.TestCase):
             metadata = self.__track_metadata__()
             self.assertEqual(metadata[key][0],result)
 
-    @TEST_CUSTOM
+    @TEST_METADATA
     def testcomment2(self):
         for (attribute,value,key,result) in self.__attribute_value_key_result__():
             metadata = self.__track_metadata__()
@@ -2887,8 +2887,30 @@ class TestVorbisMetaData(unittest.TestCase):
             metadata = self.__track_metadata__()
             self.assertEqual(getattr(metadata,attribute),value)
 
+    @TEST_METADATA
+    def testtracktotal(self):
+        metadata = self.__track_metadata__()
+        metadata["TRACKNUMBER"] = [u"2/4"]
+        self.assertEqual(metadata.track_number,2)
+        self.assertEqual(metadata.track_total,4)
+        self.track.set_metadata(metadata)
+        metadata = self.__track_metadata__()
+        self.assertEqual(metadata.track_number,2)
+        self.assertEqual(metadata.track_total,4)
+
+    @TEST_METADATA
+    def testalbumtotal(self):
+        metadata = self.__track_metadata__()
+        metadata["DISCNUMBER"] = [u"1/3"]
+        self.assertEqual(metadata.album_number,1)
+        self.assertEqual(metadata.album_total,3)
+        self.track.set_metadata(metadata)
+        metadata = self.__track_metadata__()
+        self.assertEqual(metadata.album_number,1)
+        self.assertEqual(metadata.album_total,3)
+
 class TestFLACMetaData(TestVorbisMetaData):
-    @TEST_CUSTOM
+    @TEST_METADATA
     def setUp(self):
         self.file = tempfile.NamedTemporaryFile(suffix=".flac")
 
