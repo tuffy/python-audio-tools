@@ -35,7 +35,7 @@ import gettext
 gettext.install("audiotools",unicode=True)
 
 (METADATA,PCM,EXECUTABLE,CUESHEET,CUSTOM) = range(5)
-CASES = set([METADATA,PCM,EXECUTABLE,CUESHEET])
+CASES = set([CUSTOM])
 
 def nothing(self):
     pass
@@ -2782,6 +2782,121 @@ class TestM4AMetaData(unittest.TestCase):
                              new_flac.get_metadata().images())
         finally:
             m4a_tempfile.close()
+
+class TestVorbisMetaData(unittest.TestCase):
+    @TEST_CUSTOM
+    def setUp(self):
+        self.file = tempfile.NamedTemporaryFile(suffix=".ogg")
+
+        self.track = audiotools.VorbisAudio.from_pcm(
+            self.file.name,BLANK_PCM_Reader(TEST_LENGTH))
+
+    @TEST_CUSTOM
+    def tearDown(self):
+        self.file.close()
+
+    def __track_metadata__(self):
+        return self.track.get_metadata()
+
+    def __attribute_value_key_result__(self):
+        return zip(
+            ["track_name",
+             "album_name",
+             "artist_name",
+             "performer_name",
+             "composer_name",
+             "conductor_name",
+             "media",
+             "ISRC",
+             "catalog",
+             "copyright",
+             "publisher",
+             "year",
+             "comment",
+             "track_number",
+             "track_total",
+             "album_number",
+             "album_total"],
+            [u"Track Name\u03e8",
+             u"Albu\u03e8m Name",
+             u"Artist \u03e8Name",
+             u"Performer\u03e8 Name",
+             u"Composer N\u03e8ame",
+             u"Condu\u03e8ctor Name",
+             u"Med\u03e8ia",
+             u"US-PR3-08-54321",
+             u"Ca\u03e8talog",
+             u"Copyright T\u03e8ext",
+             u"Publishe\u03e8r",
+             u"2009",
+             u"Some Comm\u03e8ent",
+             1,
+             3,
+             2,
+             4],
+            ["TITLE",
+             "ALBUM",
+             "ARTIST",
+             "PERFORMER",
+             "COMPOSER",
+             "CONDUCTOR",
+             "SOURCE MEDIUM",
+             "ISRC",
+             "CATALOG",
+             "COPYRIGHT",
+             "PUBLISHER",
+             "DATE",
+             "COMMENT",
+             "TRACKNUMBER",
+             "TRACKTOTAL",
+             "DISCNUMBER",
+             "DISCTOTAL"],
+            [u"Track Name\u03e8",
+             u"Albu\u03e8m Name",
+             u"Artist \u03e8Name",
+             u"Performer\u03e8 Name",
+             u"Composer N\u03e8ame",
+             u"Condu\u03e8ctor Name",
+             u"Med\u03e8ia",
+             u"US-PR3-08-54321",
+             u"Ca\u03e8talog",
+             u"Copyright T\u03e8ext",
+             u"Publishe\u03e8r",
+             u"2009",
+             u"Some Comm\u03e8ent",
+             u"1",
+             u"3",
+             u"2",
+             u"4"])
+
+    @TEST_CUSTOM
+    def testcomment1(self):
+        for (attribute,value,key,result) in self.__attribute_value_key_result__():
+            metadata = self.__track_metadata__()
+            setattr(metadata,attribute,value)
+            self.track.set_metadata(metadata)
+            metadata = self.__track_metadata__()
+            self.assertEqual(metadata[key][0],result)
+
+    @TEST_CUSTOM
+    def testcomment2(self):
+        for (attribute,value,key,result) in self.__attribute_value_key_result__():
+            metadata = self.__track_metadata__()
+            metadata[key] = [result]
+            self.track.set_metadata(metadata)
+            metadata = self.__track_metadata__()
+            self.assertEqual(getattr(metadata,attribute),value)
+
+class TestFLACMetaData(TestVorbisMetaData):
+    @TEST_CUSTOM
+    def setUp(self):
+        self.file = tempfile.NamedTemporaryFile(suffix=".flac")
+
+        self.track = audiotools.FlacAudio.from_pcm(
+            self.file.name,BLANK_PCM_Reader(TEST_LENGTH))
+
+    def __track_metadata__(self):
+        return self.track.get_metadata().vorbis_comment
 
 class TestPCMConversion(unittest.TestCase):
     def setUp(self):
