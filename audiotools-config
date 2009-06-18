@@ -51,17 +51,32 @@ if (__name__ == '__main__'):
             else:
                 unavailable_binaries.add(binary)
 
-    msg.output(_(u"available formats : %s") % \
-                   u", ".join(sorted([s.decode('ascii') for s in available])))
-    msg.output(_(u"unavailable formats : %s") % \
-                   u", ".join(sorted([s.decode('ascii') for s in unavailable])))
+    msg.new_row()
+    msg.output_column(_(u"available formats"),True)
+    msg.output_column(u" : ")
+    msg.output_column(u", ".join(sorted([s.decode('ascii')
+                                         for s in available])))
+    msg.new_row()
+    msg.output_column(_(u"unavailable formats"),True)
+    msg.output_column(u" : ")
+    msg.output_column(u", ".join(sorted([s.decode('ascii')
+                                         for s in unavailable])))
+    msg.output_rows()
 
     binaries = sorted(list(available_binaries) + list(unavailable_binaries))
     for binary in binaries:
+        msg.new_row()
         if (audiotools.BIN.can_execute(audiotools.BIN[binary])):
-            msg.output(_(u"+     found : %s") % (binary.decode('ascii')))
+            msg.output_column(u"+ ")
+            msg.output_column(_(u"found"),True)
+            msg.output_column(u" : ")
+            msg.output_column(binary.decode('ascii'))
         else:
-            msg.output(_(u"- not found : %s") % (binary.decode('ascii')))
+            msg.output_column(u"- ")
+            msg.output_column(_(u"not found"),True)
+            msg.output_column(u" : ")
+            msg.output_column(binary.decode('ascii'))
+    msg.output_rows()
 
 
     msg.output(u"-" * 30)
@@ -69,32 +84,47 @@ if (__name__ == '__main__'):
     msg.output(_(u"System configuration:"))
     msg.output(u"")
 
-    msg.output(_(u"Default FreeDB server      : %s") % \
-                   (audiotools.FREEDB_SERVER.decode('ascii','replace')))
-    msg.output(_(u"Default FreeDB port        : %s") % \
-                   (audiotools.FREEDB_PORT))
+    msg.new_row()
+    msg.output_column(_(u"Default FreeDB server"),True)
+    msg.output_column(u" : ")
+    msg.output_column(audiotools.FREEDB_SERVER.decode('ascii','replace'))
+    msg.new_row()
+    msg.output_column(_(u"Default FreeDB port"),True)
+    msg.output_column(u" : ")
+    msg.output_column(unicode(audiotools.FREEDB_PORT))
 
-    msg.output(u"")
+    msg.blank_row()
 
-    msg.output(_(u"Default CD-ROM device      : %s") % \
-                   (audiotools.DEFAULT_CDROM.decode(audiotools.FS_ENCODING)))
-    msg.output(_(u"Default simultaneous jobs  : %s") % \
-                   (audiotools.MAX_JOBS))
+    msg.new_row()
+    msg.output_column(_(u"Default CD-ROM device"),True)
+    msg.output_column(u" : ")
+    msg.output_column(audiotools.DEFAULT_CDROM.decode(audiotools.FS_ENCODING))
+    msg.new_row()
+    msg.output_column(_(u"Default simultaneous jobs"),True)
+    msg.output_column(u" : ")
+    msg.output_column(unicode(audiotools.MAX_JOBS))
 
     output_options = ["OSS"]
     if (audiotools.BIN.can_execute(audiotools.BIN["pacat"]) and
         audiotools.BIN.can_execute(audiotools.BIN["pactl"])):
         output_options.append("PulseAudio")
-    msg.output(_(u"Audio output via trackplay : %s") % \
-                   (", ".join([s.decode('ascii') for s in output_options])))
 
-    msg.partial_output(_(u"CD Burning via track2cd    : "))
+    msg.new_row()
+    msg.output_column(_(u"Audio output via trackplay"),True)
+    msg.output_column(u" : ")
+    msg.output_column(u", ".join([s.decode('ascii') for s in output_options]))
+
+    msg.new_row()
+    msg.output_column(_(u"CD Burning via track2cd"),True)
+    msg.output_column(u" : ")
     if (audiotools.BIN.can_execute(audiotools.BIN["cdrecord"])):
-        msg.output(_(u"yes"))
+        msg.output_column(_(u"yes"))
     else:
-        msg.output(_(u"yes"))
+        msg.output_column(_(u"no"))
 
-    msg.output(u"")
+    msg.blank_row()
+
+    msg.output_rows()
 
     msg.output(_(u"File name format : %s") % \
                    (audiotools.FILENAME_FORMAT.decode('ascii','replace')))

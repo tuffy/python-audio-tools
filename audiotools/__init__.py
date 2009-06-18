@@ -136,9 +136,45 @@ def Messenger(executable, options):
     else:
         return SilentMessenger(executable)
 
+class __MessengerRow__:
+    def __init__(self):
+        self.strings = []    #a list of unicode strings
+        self.alignments = [] #a list of booleans
+                             #False if left-aligned, True if right-aligned
+        self.total_lengths = [] #a list of total length integers,
+                                #to be set at print-time
+
+    def add_string(self,string,left_aligned):
+        self.strings.append(string)
+        self.alignments.append(left_aligned)
+        self.total_lengths.append(len(string))
+
+    def lengths(self):
+        return [len(s) for s in self.strings]
+
+    def set_total_lengths(self,total_lengths):
+        self.total_lengths = total_lengths
+
+    def __unicode__(self):
+        output_string = []
+        for (string,right_aligned,length) in zip(self.strings,
+                                                self.alignments,
+                                                self.total_lengths):
+            if (len(string) < length):
+                if (not right_aligned):
+                    output_string.append(string)
+                    output_string.append(u" " * (length - len(string)))
+                else:
+                    output_string.append(u" " * (length - len(string)))
+                    output_string.append(string)
+            else:
+                output_string.append(string)
+        return u"".join(output_string)
+
 class VerboseMessenger:
     def __init__(self, executable):
         self.executable = executable
+        self.output_msg_rows = []  #a list of __MessengerRow__ objects
 
     #displays an output message unicode string to stdout
     #and adds a newline
@@ -151,6 +187,43 @@ class VerboseMessenger:
     def partial_output(self,s):
         sys.stdout.write(s.encode(IO_ENCODING,'replace'))
         sys.stdout.flush()
+
+    #sets up a new tabbed row for outputting aligned text
+    def new_row(self):
+        self.output_msg_rows.append(__MessengerRow__())
+
+    def blank_row(self):
+        if (len(self.output_msg_rows) == 0):
+            raise ValueError("first output row cannot be blank")
+        else:
+            self.new_row()
+            for i in xrange(len(self.output_msg_rows[0].lengths())):
+                self.output_column(u"")
+
+    def output_column(self,string,right_aligned=False):
+        if (len(self.output_msg_rows) > 0):
+            self.output_msg_rows[-1].add_string(string,right_aligned)
+        else:
+            raise ValueError("you must perform \"new_row\" before adding columns")
+
+    #outputs all of our accumulated output rows as aligned output
+    def output_rows(self):
+        lengths = [row.lengths() for row in self.output_msg_rows]
+        if (len(lengths) == 0):
+            raise ValueError("you must generate at least one output row")
+        if (len(set(map(len,lengths))) != 1):
+            raise ValueError("all output rows must be the same length")
+
+        max_lengths = []
+        for i in xrange(len(lengths[0])):
+            max_lengths.append(max([length[i] for length in lengths]))
+
+        for row in self.output_msg_rows:
+            row.set_total_lengths(max_lengths)
+
+        for row in self.output_msg_rows:
+            self.output(unicode(row))
+        self.output_msg_rows = []
 
     #displays an informative message unicode string to stderr
     #and adds a newline
