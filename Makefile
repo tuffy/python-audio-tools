@@ -30,7 +30,8 @@ construct_install:
 
 EXECUTABLES = cd2track cd2xmcd coverdump record2track track2cd \
 track2track track2xmcd trackcat trackcmp trackinfo tracksplit \
-tracklength trackrename tracklint tracktag coverdump editxmcd
+tracklength trackrename tracklint tracktag coverdump editxmcd \
+audiotools-config
 
 GLADE_DIR = glade
 GLADE_H_FILES = $(GLADE_DIR)/editxmcd.glade.h $(GLADE_DIR)/coverview.glade.h

@@ -19,13 +19,18 @@
 
 
 import sys
+import gettext
+
+gettext.install("audiotools",unicode=True)
 
 if (__name__ == '__main__'):
     try:
         import audiotools
     except ImportError:
-        print "* audiotools Python module not found!"
-        print "Perhaps you should re-install the Python Audio Tools"
+        print _(u"* audiotools Python module not found!")
+        print _(u"Perhaps you should re-install the Python Audio Tools")
+
+    msg = audiotools.Messenger("audiotools-config",None)
 
     name_len = max([len(audiotype.NAME) for audiotype in
                     audiotools.AVAILABLE_TYPES])
@@ -46,43 +51,50 @@ if (__name__ == '__main__'):
             else:
                 unavailable_binaries.add(binary)
 
-    print "*   available formats : %s" % \
-        ", ".join(sorted(available))
-    print "* unavailable formats : %s" % \
-        ", ".join(sorted(unavailable))
+    msg.output(_(u"available formats : %s") % \
+                   u", ".join(sorted([s.decode('ascii') for s in available])))
+    msg.output(_(u"unavailable formats : %s") % \
+                   u", ".join(sorted([s.decode('ascii') for s in unavailable])))
 
     binaries = sorted(list(available_binaries) + list(unavailable_binaries))
     for binary in binaries:
         if (audiotools.BIN.can_execute(audiotools.BIN[binary])):
-            print "+     found : %s" % (binary)
+            msg.output(_(u"+     found : %s") % (binary.decode('ascii')))
         else:
-            print "- not found : %s" % (binary)
+            msg.output(_(u"- not found : %s") % (binary.decode('ascii')))
 
 
-    print "-" * 30
+    msg.output(u"-" * 30)
 
-    print "* System configuration:"
-    print
+    msg.output(_(u"System configuration:"))
+    msg.output(u"")
 
-    print "+ Default FreeDB server      : %s" % (audiotools.FREEDB_SERVER)
-    print "+ Default FreeDB port        : %s" % (audiotools.FREEDB_PORT)
+    msg.output(_(u"Default FreeDB server      : %s") % \
+                   (audiotools.FREEDB_SERVER.decode('ascii','replace')))
+    msg.output(_(u"Default FreeDB port        : %s") % \
+                   (audiotools.FREEDB_PORT))
 
-    print
+    msg.output(u"")
 
-    print "+ Default CD-ROM device      : %s" % (audiotools.DEFAULT_CDROM)
-    print "+ Default simultaneous jobs  : %s" % (audiotools.MAX_JOBS)
+    msg.output(_(u"Default CD-ROM device      : %s") % \
+                   (audiotools.DEFAULT_CDROM.decode(audiotools.FS_ENCODING)))
+    msg.output(_(u"Default simultaneous jobs  : %s") % \
+                   (audiotools.MAX_JOBS))
 
     output_options = ["OSS"]
     if (audiotools.BIN.can_execute(audiotools.BIN["pacat"]) and
         audiotools.BIN.can_execute(audiotools.BIN["pactl"])):
         output_options.append("PulseAudio")
-    print "+ Audio output via trackplay : %s" % (", ".join(output_options))
+    msg.output(_(u"Audio output via trackplay : %s") % \
+                   (", ".join([s.decode('ascii') for s in output_options])))
 
+    msg.partial_output(_(u"CD Burning via track2cd    : "))
     if (audiotools.BIN.can_execute(audiotools.BIN["cdrecord"])):
-        print "+ CD Burning via track2cd    : yes"
+        msg.output(_(u"yes"))
     else:
-        print "+ CD Burning via track2cd    : no"
+        msg.output(_(u"yes"))
 
-    print
+    msg.output(u"")
 
-    print "+ File name format : %s" % (audiotools.FILENAME_FORMAT)
+    msg.output(_(u"File name format : %s") % \
+                   (audiotools.FILENAME_FORMAT.decode('ascii','replace')))
