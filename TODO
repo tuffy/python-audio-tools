@@ -378,6 +378,10 @@
   Analagous to trackinfo, but for an inserted CD.
   This would be a better location for cd2xmcd's "-i" option.
 
-* TODO Add more system information to audiotools-config
+* DONE Add more system information to audiotools-config
   All BIN-referenced binaries should be accounted for.
   Thumbnailing status and requirements should be shown.
+* TODO Add manual page for audiotools.cfg
+  It'll be easier to check what the options are from a man page
+  rather than having to check the website or PDF doc.
+

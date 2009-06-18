@@ -23,6 +23,21 @@ import gettext
 
 gettext.install("audiotools",unicode=True)
 
+def check_binaries(msg, binary_list):
+    for binary in binary_list:
+        msg.new_row()
+        if (audiotools.BIN.can_execute(audiotools.BIN[binary])):
+            msg.output_column(u"+ ")
+            msg.output_column(_(u"found"),True)
+            msg.output_column(u" : ")
+            msg.output_column(binary.decode('ascii'))
+        else:
+            msg.output_column(u"- ")
+            msg.output_column(_(u"not found"),True)
+            msg.output_column(u" : ")
+            msg.output_column(binary.decode('ascii'))
+    msg.output_rows()
+
 if (__name__ == '__main__'):
     try:
         import audiotools
@@ -62,22 +77,36 @@ if (__name__ == '__main__'):
     msg.output_column(u", ".join(sorted([s.decode('ascii')
                                          for s in unavailable])))
     msg.output_rows()
+    check_binaries(msg,sorted(list(available_binaries) + \
+                                  list(unavailable_binaries)))
 
-    binaries = sorted(list(available_binaries) + list(unavailable_binaries))
-    for binary in binaries:
-        msg.new_row()
-        if (audiotools.BIN.can_execute(audiotools.BIN[binary])):
-            msg.output_column(u"+ ")
-            msg.output_column(_(u"found"),True)
-            msg.output_column(u" : ")
-            msg.output_column(binary.decode('ascii'))
-        else:
-            msg.output_column(u"- ")
-            msg.output_column(_(u"not found"),True)
-            msg.output_column(u" : ")
-            msg.output_column(binary.decode('ascii'))
+    msg.output(u"-" * 30)
+
+    msg.new_row()
+    msg.output_column(_(u"CD Burning via track2cd"),True)
+    msg.output_column(u" : ")
+    burning_options = []
+    if (audiotools.BIN.can_execute(audiotools.BIN["cdrecord"])):
+        burning_options.append(_(u"without cue"))
+    if (audiotools.BIN.can_execute(audiotools.BIN["cdrdao"])):
+        burning_options.append(_(u"with cue"))
+    if (len(burning_options) == 0):
+        burning_options.append(_(u"no"))
+    msg.output_column(u", ".join([s.decode('ascii') for s in burning_options]))
     msg.output_rows()
+    check_binaries(msg,["cdrecord","cdrdao"])
 
+    msg.output(u"-" * 30)
+
+    msg.new_row()
+    msg.output_column(_(u"tracklint undo capability"),True)
+    msg.output_column(u" : ")
+    if (audiotools.BIN.can_execute(audiotools.BIN["xdelta"])):
+        msg.output_column(_(u"yes"))
+    else:
+        msg.output_column(_(u"no"))
+    msg.output_rows()
+    check_binaries(msg,["xdelta"])
 
     msg.output(u"-" * 30)
 
@@ -99,6 +128,16 @@ if (__name__ == '__main__'):
     msg.output_column(_(u"Default CD-ROM device"),True)
     msg.output_column(u" : ")
     msg.output_column(audiotools.DEFAULT_CDROM.decode(audiotools.FS_ENCODING))
+
+    msg.new_row()
+    msg.output_column(_(u"CD-ROM sample read offset"),True)
+    msg.output_column(u" : ")
+    msg.output_column(
+        unicode(audiotools.config.getint_default("System",
+                                                 "cdrom_read_offset",0)))
+
+    msg.blank_row()
+
     msg.new_row()
     msg.output_column(_(u"Default simultaneous jobs"),True)
     msg.output_column(u" : ")
@@ -115,15 +154,37 @@ if (__name__ == '__main__'):
     msg.output_column(u", ".join([s.decode('ascii') for s in output_options]))
 
     msg.new_row()
-    msg.output_column(_(u"CD Burning via track2cd"),True)
+    msg.output_column(_(u"Filesystem text encoding"),True)
     msg.output_column(u" : ")
-    if (audiotools.BIN.can_execute(audiotools.BIN["cdrecord"])):
-        msg.output_column(_(u"yes"))
-    else:
-        msg.output_column(_(u"no"))
+    msg.output_column(audiotools.FS_ENCODING.decode('ascii'))
+
+    msg.new_row()
+    msg.output_column(_(u"TTY text encoding"),True)
+    msg.output_column(u" : ")
+    msg.output_column(audiotools.IO_ENCODING.decode('ascii'))
 
     msg.blank_row()
 
+    msg.new_row()
+    msg.output_column(_(u"Can create thumbnails"),True)
+    msg.output_column(u" : ")
+    if (audiotools.can_thumbnail()):
+        msg.output_column(_(u"yes"))
+    else:
+        msg.output_column(_(u"no") + u" " + _(u"(Python Imaging Library not found)"))
+
+    msg.new_row()
+    msg.output_column(_(u"Default thumbnail format"),True)
+    msg.output_column(u" : ")
+    msg.output_column(audiotools.THUMBNAIL_FORMAT.decode('ascii'))
+
+    msg.new_row()
+    msg.output_column(_(u"Default thumbnail size"),True)
+    msg.output_column(u" : ")
+    msg.output_column(u"%d\u00D7%d" % (audiotools.THUMBNAIL_SIZE,
+                                       audiotools.THUMBNAIL_SIZE))
+
+    msg.blank_row()
     msg.output_rows()
 
     msg.output(_(u"File name format : %s") % \
