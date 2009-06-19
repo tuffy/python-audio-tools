@@ -1947,6 +1947,9 @@ def at_a_time(total,per):
         yield per
     yield total % per
 
+#a RawCDDA-compatible class which automatically applies sample offsets
+#note that this blocks for a *long* time at instantiation time
+#as it reads the whole CD to a temp file and applies the proper offset
 class OffsetCDDA(RawCDDA):
     def __init__(self, device_name, sample_offset, speed=None):
         import cdio
