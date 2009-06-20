@@ -345,9 +345,16 @@ class __M4AAudio_faac__(AudioFile):
                 __replace_qt_atom__(self.qt_stream,
                                     metadata.to_atom())))
 
-        mdat_offset = new_file['mdat'].offset
+        mdat = new_file['mdat'].data
+        i = 0
+        mdat_offset = new_file['mdat'].offset + 8
+        c = ord(mdat[i])
+        while (c != 0x21):
+            mdat_offset += 1
+            i += 1
+            c = ord(mdat[i])
 
-        stco.offset = [x - stco.offset[0] + mdat_offset + 0x10
+        stco.offset = [x - stco.offset[0] + mdat_offset
                        for x in stco.offset]
 
         new_file = __replace_qt_atom__(new_file,
