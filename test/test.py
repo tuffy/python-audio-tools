@@ -35,7 +35,7 @@ import gettext
 gettext.install("audiotools",unicode=True)
 
 (METADATA,PCM,EXECUTABLE,CUESHEET,CUSTOM) = range(5)
-CASES = set([METADATA,PCM,EXECUTABLE,CUESHEET])
+CASES = set([CUSTOM])
 
 def nothing(self):
     pass
@@ -2782,6 +2782,61 @@ class TestM4AMetaData(unittest.TestCase):
                              new_flac.get_metadata().images())
         finally:
             m4a_tempfile.close()
+
+    def __test_encoder__(self, encoder):
+        f = open("m4a-%s.m4a" % (encoder),'rb')
+        temp_file = tempfile.NamedTemporaryFile(suffix=".m4a")
+        try:
+            audiotools.transfer_data(f.read,temp_file.write)
+            temp_file.flush()
+            track = audiotools.open(temp_file.name)
+            self.assertEqual(track.sample_rate(),44100)
+            self.assertEqual(track.bits_per_sample(),16)
+            self.assertEqual(track.channels(),2)
+
+            pcm = track.to_pcm()
+            pcm_count = PCM_Count()
+            audiotools.transfer_data(pcm.read,pcm_count.write)
+            pcm.close()
+
+            original_pcm_count = len(pcm_count)
+
+            track.set_metadata(audiotools.MetaData(
+                    track_name=u"Foo",
+                    album_name=u"Bar",
+                    images=[audiotools.Image(
+                            TEST_COVER1,"image/jpeg",
+                            500,500,24,0,u"",0)]))
+
+            track = audiotools.open(temp_file.name)
+            self.assertEqual(track.get_metadata().track_name,u"Foo")
+            self.assertEqual(track.get_metadata().album_name,u"Bar")
+            self.assertEqual(track.sample_rate(),44100)
+            self.assertEqual(track.bits_per_sample(),16)
+            self.assertEqual(track.channels(),2)
+
+            pcm = track.to_pcm()
+            pcm_count = PCM_Count()
+            audiotools.transfer_data(pcm.read,pcm_count.write)
+            pcm.close()
+
+            self.assertEqual(len(pcm_count),original_pcm_count)
+
+        finally:
+            f.close()
+            temp_file.close()
+
+    @TEST_CUSTOM
+    def test_faac(self):
+        self.__test_encoder__("faac")
+
+    @TEST_CUSTOM
+    def test_nero(self):
+        self.__test_encoder__("nero")
+
+    @TEST_CUSTOM
+    def test_itunes(self):
+        self.__test_encoder__("itunes")
 
 class TestVorbisMetaData(unittest.TestCase):
     @TEST_METADATA
