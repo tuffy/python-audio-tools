@@ -2794,6 +2794,8 @@ class TestM4AMetaData(unittest.TestCase):
             self.assertEqual(track.bits_per_sample(),16)
             self.assertEqual(track.channels(),2)
 
+            original_mdat_data = md5(track.qt_stream['mdat'].data).hexdigest()
+
             pcm = track.to_pcm()
             pcm_count = PCM_Count()
             audiotools.transfer_data(pcm.read,pcm_count.write)
@@ -2814,6 +2816,9 @@ class TestM4AMetaData(unittest.TestCase):
             self.assertEqual(track.sample_rate(),44100)
             self.assertEqual(track.bits_per_sample(),16)
             self.assertEqual(track.channels(),2)
+
+            self.assertEqual(md5(track.qt_stream['mdat'].data).hexdigest(),
+                             original_mdat_data)
 
             pcm = track.to_pcm()
             pcm_count = PCM_Count()

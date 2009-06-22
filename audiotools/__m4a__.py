@@ -136,7 +136,7 @@ class __Qt_Meta_Atom__(__Qt_Atom__):
                                        self.offset):
             yield atom
 
-Qt_Meta_Atom = __Qt_Meta_Atom__
+
 
 #a stream of __Qt_Atom__ objects
 #though it is an Atom-like container, it has no type of its own
@@ -157,6 +157,8 @@ class __Qt_Atom_Stream__(__Qt_Atom__):
                                        self.atom_class,
                                        self.offset):
             yield atom
+
+Qt_Atom_Stream = __Qt_Atom_Stream__
 
 #takes a stream object with a read() method
 #iterates over all of the atoms it contains and yields
@@ -349,7 +351,7 @@ class __M4AAudio_faac__(AudioFile):
         i = 0
         mdat_offset = new_file['mdat'].offset + 8
         c = ord(mdat[i])
-        while (c != 0x21):
+        while (c == 0x00):
             mdat_offset += 1
             i += 1
             c = ord(mdat[i])
@@ -704,7 +706,7 @@ class M4AMetaData(MetaData,dict):
                 (getattr(metadata,attr) != 0)):
                 setattr(self,attr,getattr(metadata,attr))
 
-    #returns the contents of this M4AMetaData as a 'meta' atom string
+    #returns the contents of this M4AMetaData as a 'udta' __Qt_Atom__ object
     def to_atom(self):
         hdlr = __build_qt_atom__(
             'hdlr',
@@ -727,12 +729,13 @@ class M4AMetaData(MetaData,dict):
                           __build_qt_atom__('data',
                                             (chr(0) * 8) + value)))
 
-        return __Qt_Atom__('meta',
-                           (chr(0) * 4) + \
-                           hdlr + \
-                           __build_qt_atom__('ilst',"".join(ilst)) + \
-                           __build_qt_atom__('free',chr(0) * 2040),
-                           0)
+        return __Qt_Atom__(
+            'meta',
+            (chr(0) * 4) + \
+                hdlr + \
+                __build_qt_atom__('ilst',"".join(ilst)),
+            0)
+
 
 
 
