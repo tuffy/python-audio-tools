@@ -734,8 +734,6 @@ class M4AMetaData(MetaData,dict):
             if (sub_atom.type == 'ilst'):
                 new_meta.append(ilst)
             else:
-                import sys
-                print >>sys.stderr,"transferring %s" % (repr(sub_atom.type))
                 new_meta.append(__build_qt_atom__(
                         sub_atom.type,
                         sub_atom.data))

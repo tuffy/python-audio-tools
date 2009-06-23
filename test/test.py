@@ -2831,17 +2831,60 @@ class TestM4AMetaData(unittest.TestCase):
             f.close()
             temp_file.close()
 
+    def __test_roundtrip__(self, encoder):
+        f = open("m4a-%s.m4a" % (encoder),'rb')
+        temp_file = tempfile.NamedTemporaryFile(suffix=".m4a")
+        try:
+            audiotools.transfer_data(f.read,temp_file.write)
+            temp_file.flush()
+            track = audiotools.open(temp_file.name)
+
+            original_size = os.path.getsize(temp_file.name)
+
+            original_metadata = track.get_metadata()
+            track.set_metadata(original_metadata)
+            track = audiotools.open(temp_file.name)
+
+            new_metadata = track.get_metadata()
+
+            self.assertEqual(sorted(original_metadata.keys()),
+                             sorted(new_metadata.keys()))
+
+            for key in new_metadata.keys():
+                self.assertEqual(sorted(original_metadata[key],
+                                        lambda x,y: cmp(len(x),len(y))),
+                                 sorted(new_metadata[key],
+                                        lambda x,y: cmp(len(x),len(y))))
+
+            self.assertEqual(original_size,os.path.getsize(temp_file.name))
+
+        finally:
+            f.close()
+            temp_file.close()
+
     @TEST_CUSTOM
-    def test_faac(self):
+    def test_faac_encoder(self):
         self.__test_encoder__("faac")
 
     @TEST_CUSTOM
-    def test_nero(self):
+    def test_faac_roundtrip(self):
+        self.__test_roundtrip__("faac")
+
+    @TEST_CUSTOM
+    def test_nero_encoder(self):
         self.__test_encoder__("nero")
 
     @TEST_CUSTOM
-    def test_itunes(self):
+    def test_nero_roundtrip(self):
+        self.__test_roundtrip__("nero")
+
+    @TEST_CUSTOM
+    def test_itunes_encoder(self):
         self.__test_encoder__("itunes")
+
+    @TEST_CUSTOM
+    def test_itunes_roundtrip(self):
+        self.__test_roundtrip__("itunes")
 
 class TestVorbisMetaData(unittest.TestCase):
     @TEST_METADATA

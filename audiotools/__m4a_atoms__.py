@@ -55,6 +55,20 @@ def VersionLength(name):
                           Con.UBInt32(None),
                           Con.UBInt64(None))
 
+class AtomContainerAdapter(Con.Adapter):
+    SUB_ATOMS = Con.GreedyRepeater(
+        Con.Struct("atoms",
+                   Con.UBInt32("size"),
+                   Con.String("type",4),
+                   Con.String("data",lambda ctx: ctx["size"] - 8)))
+
+    def _encode(self, obj, context):
+        return self.SUB_ATOMS.build(obj)
+
+    def _decode(self, obj, context):
+        return self.SUB_ATOMS.parse(obj)
+
+
 
 ATOM_FTYPE = Con.Struct("ftyp",
                         Con.String("major_brand",4),
@@ -268,4 +282,13 @@ ATOM_META = Con.Struct('meta',
         Con.Struct("atoms",
                    Con.UBInt32("size"),
                    Con.String("type",4),
-                   Con.String("data",lambda ctx: ctx["size"] - 8))))
+                   Con.String(None,lambda ctx: ctx["size"] - 8))))
+
+ATOM_ILST = Con.Struct('ilst',
+                       Con.GreedyRepeater(
+        Con.Struct("atoms",
+                   Con.UBInt32("size"),
+                   Con.String("type",4),
+                   AtomContainerAdapter(
+                Con.String("data",lambda ctx: ctx["size"] - 8)))))
+
