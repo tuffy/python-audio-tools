@@ -55,18 +55,35 @@ def VersionLength(name):
                           Con.UBInt32(None),
                           Con.UBInt64(None))
 
-class AtomContainerAdapter(Con.Adapter):
-    SUB_ATOMS = Con.GreedyRepeater(
-        Con.Struct("atoms",
-                   Con.UBInt32("size"),
-                   Con.String("type",4),
-                   Con.String("data",lambda ctx: ctx["size"] - 8)))
-
+class AtomAdapter(Con.Adapter):
     def _encode(self, obj, context):
-        return self.SUB_ATOMS.build(obj)
+        obj.size = len(obj.data) + 8
+        return obj
 
     def _decode(self, obj, context):
-        return self.SUB_ATOMS.parse(obj)
+        del(obj.size)
+        return obj
+
+def Atom(name):
+    return AtomAdapter(Con.Struct(
+            name,
+            Con.UBInt32("size"),
+            Con.String("type",4),
+            Con.String("data",lambda ctx: ctx["size"] - 8)))
+
+class AtomListAdapter(Con.Adapter):
+    ATOM_LIST = Con.GreedyRepeater(Atom("atoms"))
+
+    def _encode(self, obj, context):
+        obj.data = self.ATOM_LIST.build(obj.data)
+        return obj
+
+    def _decode(self, obj, context):
+        obj.data = self.ATOM_LIST.parse(obj.data)
+        return obj
+
+def AtomContainer(name):
+    return AtomListAdapter(Atom(name))
 
 
 
@@ -278,17 +295,7 @@ ATOM_CTTS = Con.Struct('ctts',
 ATOM_META = Con.Struct('meta',
                        Con.Byte("version"),
                        Con.String("flags",3),
-                       Con.GreedyRepeater(
-        Con.Struct("atoms",
-                   Con.UBInt32("size"),
-                   Con.String("type",4),
-                   Con.String(None,lambda ctx: ctx["size"] - 8))))
+                       Con.GreedyRepeater(Atom("atoms")))
 
-ATOM_ILST = Con.Struct('ilst',
-                       Con.GreedyRepeater(
-        Con.Struct("atoms",
-                   Con.UBInt32("size"),
-                   Con.String("type",4),
-                   AtomContainerAdapter(
-                Con.String("data",lambda ctx: ctx["size"] - 8)))))
+ATOM_ILST = Con.GreedyRepeater(AtomContainer('ilst'))
 
