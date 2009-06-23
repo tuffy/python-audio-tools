@@ -2501,18 +2501,18 @@ class TestFlacComment(unittest.TestCase):
         self.file.close()
 
 class TestM4AMetaData(unittest.TestCase):
-    @TEST_METADATA
+    @TEST_CUSTOM
     def setUp(self):
         self.file = tempfile.NamedTemporaryFile(suffix=".m4a")
 
         self.m4a_file = audiotools.M4AAudio.from_pcm(
             self.file.name,BLANK_PCM_Reader(TEST_LENGTH))
 
-    @TEST_METADATA
+    @TEST_CUSTOM
     def tearDown(self):
         self.file.close()
 
-    @TEST_METADATA
+    @TEST_CUSTOM
     def testsetmetadata(self):
         #does setting metadata result in a still-playable file?
         tempfile1 = tempfile.NamedTemporaryFile(suffix=".wav")
@@ -2540,7 +2540,7 @@ class TestM4AMetaData(unittest.TestCase):
             tempfile1.close()
             tempfile2.close()
 
-    @TEST_METADATA
+    @TEST_CUSTOM
     def testcomment1(self):
         for (attribute,value,key,result) in zip(
             ["track_name",
@@ -2606,7 +2606,7 @@ class TestM4AMetaData(unittest.TestCase):
             metadata = self.m4a_file.get_metadata()
             self.assertEqual(metadata[key][0],result)
 
-    @TEST_METADATA
+    @TEST_CUSTOM
     def testcomment2(self):
         for (attribute,value,key) in zip(
             ["track_name",
@@ -2664,7 +2664,7 @@ class TestM4AMetaData(unittest.TestCase):
             metadata = self.m4a_file.get_metadata()
             self.assertEqual(metadata[key][0],result)
 
-    @TEST_METADATA
+    @TEST_CUSTOM
     def testsetpicture(self):
         #setting 1 front cover is okay
         self.assertEqual(len(self.m4a_file.get_metadata().images()),0)

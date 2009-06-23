@@ -566,6 +566,25 @@ if (BIN.can_execute(BIN["neroAacEnc"]) and
 else:
     M4AAudio = __M4AAudio_faac__
 
+#This is an ILST sub-atom, which itself is a container for other atoms.
+#For human-readable fields, those will contain a single DATA sub-atom
+#containing the data itself.
+#For instance:
+#
+#'ilst' atom
+#  |
+#  +-'\xa9nam' atom
+#        |
+#        +-'data' atom
+#            |
+#            +-'\x00\x00\x00\x01\x00\x00\x00\x00Track Name' data
+class __ILST_Atom__:
+    #type is a string
+    #sub_atoms is a list of __Qt_Atom__-compatible sub-atom objects
+    def __init__(self, type, sub_atoms):
+        self.type = type
+        self.data = sub_atoms
+
 class M4AMetaData(MetaData,dict):
                                                    # iTunes ID:
     ATTRIBUTE_MAP = {
