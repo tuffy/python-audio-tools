@@ -345,7 +345,8 @@ class __M4AAudio_faac__(AudioFile):
 
         new_file = __Qt_Atom_Stream__(cStringIO.StringIO(
                 __replace_qt_atom__(self.qt_stream,
-                                    metadata.to_atom())))
+                                    metadata.to_atom(
+                        self.qt_stream['moov']['udta']['meta']))))
 
         mdat = new_file['mdat'].data
         i = 0
@@ -706,12 +707,8 @@ class M4AMetaData(MetaData,dict):
                 (getattr(metadata,attr) != 0)):
                 setattr(self,attr,getattr(metadata,attr))
 
-    #returns the contents of this M4AMetaData as a 'udta' __Qt_Atom__ object
-    def to_atom(self):
-        hdlr = __build_qt_atom__(
-            'hdlr',
-            (chr(0) * 8) + 'mdirappl' + (chr(0) * 10))
-
+    #returns the contents of this M4AMetaData as a 'meta' __Qt_Atom__ object
+    def to_atom(self, previous_meta):
         ilst = []
         for (key,values) in self.items():
             for value in values:
@@ -728,16 +725,26 @@ class M4AMetaData(MetaData,dict):
                           key,
                           __build_qt_atom__('data',
                                             (chr(0) * 8) + value)))
+        ilst = __build_qt_atom__('ilst',"".join(ilst))
+
+        new_meta = []
+
+        for sub_atom in __Qt_Atom_Stream__(
+            cStringIO.StringIO(previous_meta.data[4:])):
+            if (sub_atom.type == 'ilst'):
+                new_meta.append(ilst)
+            else:
+                import sys
+                print >>sys.stderr,"transferring %s" % (repr(sub_atom.type))
+                new_meta.append(__build_qt_atom__(
+                        sub_atom.type,
+                        sub_atom.data))
 
         return __Qt_Atom__(
             'meta',
             (chr(0) * 4) + \
-                hdlr + \
-                __build_qt_atom__('ilst',"".join(ilst)),
+            "".join(new_meta),
             0)
-
-
-
 
     def __comment_name__(self):
         return u'M4A'
