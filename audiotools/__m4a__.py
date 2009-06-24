@@ -102,56 +102,6 @@ class __Qt_Atom__:
     def keys(self):
         return [atom.type for atom in self]
 
-
-class __Qt_Meta_Atom__(__Qt_Atom__):
-    CONTAINERS = frozenset(
-        ['aaid',
-         '=A9alb'.decode('quopri'),
-         'akid',
-         'apid',
-         '=A9ART'.decode('quopri'),
-         '=A9cmt'.decode('quopri'),
-         '=A9com'.decode('quopri'),
-         'covr','cpil','cptr',
-         '=A9day'.decode('quopri'),
-         'disk','geid','gnre',
-         '=A9grp'.decode('quopri'),
-         '=A9nam'.decode('quopri'),
-         'plid','rtnd','stik','tmpo',
-         '=A9too'.decode('quopri'),
-         'trkn',
-         '=A9wrt'.decode('quopri'),
-         '----','meta'])
-
-    TRKN = Con.Struct('trkn',
-                      Con.Padding(2),
-                      Con.UBInt16('track_number'),
-                      Con.UBInt16('total_tracks'),
-                      Con.Padding(2))
-
-    DISK = Con.Struct('disk',
-                      Con.Padding(2),
-                      Con.UBInt16('disk_number'),
-                      Con.UBInt16('total_disks'))
-
-    def __init__(self, type, data, offset):
-        self.type = type
-
-        if (type == 'meta'):
-            self.data = data[4:]
-        else:
-            self.data = data
-
-        self.offset = offset
-
-    def __iter__(self):
-        for atom in __parse_qt_atoms__(cStringIO.StringIO(self.data),
-                                       __Qt_Meta_Atom__,
-                                       self.offset):
-            yield atom
-
-
-
 #a stream of __Qt_Atom__ objects
 #though it is an Atom-like container, it has no type of its own
 class __Qt_Atom_Stream__(__Qt_Atom__):
@@ -626,14 +576,14 @@ class __ILST_Atom__:
                 if (atom.data.startswith('0000000100000000'.decode('hex'))):
                     return atom.data[8:].decode('utf-8')
                 elif (self.type == 'trkn'):
-                    trkn = __Qt_Meta_Atom__.TRKN.parse(atom.data[8:])
+                    trkn = ATOM_TRKN.parse(atom.data[8:])
                     if (trkn.total_tracks > 0):
                         return u"%d/%d" % (trkn.track_number,
                                            trkn.total_tracks)
                     else:
                         return unicode(trkn.track_number)
                 elif (self.type == 'disk'):
-                    disk = __Qt_Meta_Atom__.DISK.parse(atom.data[8:])
+                    disk = ATOM_DISK.parse(atom.data[8:])
                     if (disk.total_disks > 0):
                         return u"%d/%d" % (disk.disk_number,
                                            disk.total_disks)
@@ -703,7 +653,7 @@ class M4AMetaData(MetaData,dict):
     def trkn_atom(cls, track_number, track_total):
         return cls.binary_atom('trkn',
                                '0000000000000000'.decode('hex') + \
-                                   __Qt_Meta_Atom__.TRKN.build(
+                                   ATOM_TRKN.build(
                                        Con.Container(
                     track_number=track_number,
                     total_tracks=track_total)))
@@ -712,7 +662,7 @@ class M4AMetaData(MetaData,dict):
     def disk_atom(cls, disk_number, disk_total):
         return cls.binary_atom('disk',
                                '0000000000000000'.decode('hex') + \
-                                   __Qt_Meta_Atom__.DISK.build(
+                                   ATOM_DISK.build(
                                        Con.Container(
                     disk_number=disk_number,
                     total_disks=disk_total)))
@@ -744,16 +694,16 @@ class M4AMetaData(MetaData,dict):
 
     def __getattr__(self, key):
         if (key == 'track_number'):
-            return __Qt_Meta_Atom__.TRKN.parse(
+            return ATOM_TRKN.parse(
                 str(self.get('trkn',[chr(0) * 16])[0])[8:]).track_number
         elif (key == 'track_total'):
-            return __Qt_Meta_Atom__.TRKN.parse(
+            return ATOM_TRKN.parse(
                 str(self.get('trkn',[chr(0) * 16])[0])[8:]).total_tracks
         elif (key == 'album_number'):
-            return __Qt_Meta_Atom__.DISK.parse(
+            return ATOM_DISK.parse(
                 str(self.get('disk',[chr(0) * 14])[0])[8:]).disk_number
         elif (key ==  'album_total'):
-            return __Qt_Meta_Atom__.DISK.parse(
+            return ATOM_DISK.parse(
                 str(self.get('disk',[chr(0) * 14])[0])[8:]).total_disks
         elif (key in self.ATTRIBUTE_MAP):
             return unicode(self.get(self.ATTRIBUTE_MAP[key],[u''])[0])

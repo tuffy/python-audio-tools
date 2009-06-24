@@ -35,7 +35,7 @@ import gettext
 gettext.install("audiotools",unicode=True)
 
 (METADATA,PCM,EXECUTABLE,CUESHEET,CUSTOM) = range(5)
-CASES = set([METADATA,PCM,EXECUTABLE,CUESHEET])
+CASES = set([METADATA,PCM,EXECUTABLE,CUSTOM])
 
 def nothing(self):
     pass

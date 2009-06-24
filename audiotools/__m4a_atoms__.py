@@ -299,3 +299,13 @@ ATOM_META = Con.Struct('meta',
 
 ATOM_ILST = Con.GreedyRepeater(AtomContainer('ilst'))
 
+ATOM_TRKN = Con.Struct('trkn',
+                       Con.Padding(2),
+                       Con.UBInt16('track_number'),
+                       Con.UBInt16('total_tracks'),
+                       Con.Padding(2))
+
+ATOM_DISK = Con.Struct('disk',
+                       Con.Padding(2),
+                       Con.UBInt16('disk_number'),
+                       Con.UBInt16('total_disks'))
