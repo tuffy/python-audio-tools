@@ -2579,10 +2579,7 @@ class TestM4AMetaData(unittest.TestCase):
             setattr(metadata,attribute,value)
             self.m4a_file.set_metadata(metadata)
             metadata = self.m4a_file.get_metadata()
-            if (key.startswith(chr(0xA9)) or (key in ('cprt','aART'))):
-                self.assertEqual(unicode(metadata[key][0]),result)
-            else:
-                self.assertEqual(str(metadata[key][0]),result)
+            self.assertEqual(unicode(metadata[key][0]),result)
         for (attribute,value,key,result) in zip(
             ["track_number",
              "track_total",
@@ -2634,13 +2631,10 @@ class TestM4AMetaData(unittest.TestCase):
              "\xa9cmt",
              "cprt"]):
             metadata = self.m4a_file.get_metadata()
-            metadata[key] = [value.encode('utf-8')]
+            metadata[key] = audiotools.M4AMetaData.text_atom(key,value)
             self.m4a_file.set_metadata(metadata)
             metadata = self.m4a_file.get_metadata()
-            if (key.startswith(chr(0xA9)) or (key in ('cprt','aART'))):
-                self.assertEqual(metadata[key][0],value)
-            else:
-                self.assertEqual(metadata[key][0].decode('utf-8'),value)
+            self.assertEqual(unicode(metadata[key][0]),value)
         for (attribute,value,key,result) in zip(
             ["track_number",
              "track_total",
@@ -2654,15 +2648,15 @@ class TestM4AMetaData(unittest.TestCase):
              "trkn",
              "disk",
              "disk"],
-            ["\x00\x00\x00\x01\x00\x00\x00\x00",
-             "\x00\x00\x00\x01\x00\x03\x00\x00",
-             "\x00\x00\x00\x02\x00\x00",
-             "\x00\x00\x00\x02\x00\x04"]):
+            ["\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00",
+             "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01\x00\x03\x00\x00",
+             "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x02\x00\x00",
+             "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x02\x00\x04"]):
             metadata = self.m4a_file.get_metadata()
-            metadata[key] = [result]
+            metadata[key] = audiotools.M4AMetaData.binary_atom(key,result)
             self.m4a_file.set_metadata(metadata)
             metadata = self.m4a_file.get_metadata()
-            self.assertEqual(metadata[key][0],result)
+            self.assertEqual(str(metadata[key][0]),result)
 
     @TEST_CUSTOM
     def testsetpicture(self):

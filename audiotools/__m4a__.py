@@ -669,25 +669,31 @@ class M4AMetaData(MetaData,dict):
         for ilst_atom in ilst_atoms:
             self.setdefault(ilst_atom.type,[]).append(ilst_atom)
 
+    @classmethod
+    def binary_atom(cls, key, value):
+        return [__ILST_Atom__(key,
+                              [__Qt_Atom__(
+                        "data",
+                        value,
+                        0)])]
+
     #takes a unicode text object
     #returns an appropriate __ILST_Atom__ list
     #suitable for adding to our internal dictionary
     @classmethod
-    def text_atom(cls, text):
-        pass
+    def text_atom(cls, key, text):
+        return cls.binary_atom(key,'0000000100000000'.decode('hex') + \
+                                   text.encode('utf-8'))
+
 
     #if an attribute is updated (e.g. self.track_name)
     #make sure to update the corresponding dict pair
     def __setattr__(self, key, value):
         if (self.ATTRIBUTE_MAP.has_key(key)):
             if (key not in MetaData.__INTEGER_FIELDS__):
-                self[self.ATTRIBUTE_MAP[key]] = [
-                    __ILST_Atom__(self.ATTRIBUTE_MAP[key],
-                                  [__Qt_Atom__(
-                                "data",
-                                '0000000100000000'.decode('hex') + \
-                                    value.encode('utf-8'),
-                                0)])]
+                self[self.ATTRIBUTE_MAP[key]] = self.__class__.text_atom(
+                    self.ATTRIBUTE_MAP[key],
+                    value)
 
             elif (key == 'track_number'):
                 self[self.ATTRIBUTE_MAP[key]] = [
