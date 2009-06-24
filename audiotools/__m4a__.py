@@ -669,6 +669,10 @@ class M4AMetaData(MetaData,dict):
         for ilst_atom in ilst_atoms:
             self.setdefault(ilst_atom.type,[]).append(ilst_atom)
 
+    #takes an atom type string
+    #and a binary string object
+    #returns an appropriate __ILST_Atom__ list
+    #suitable for adding to our internal dictionary
     @classmethod
     def binary_atom(cls, key, value):
         return [__ILST_Atom__(key,
@@ -677,7 +681,8 @@ class M4AMetaData(MetaData,dict):
                         value,
                         0)])]
 
-    #takes a unicode text object
+    #takes an atom type string
+    #and a unicode text object
     #returns an appropriate __ILST_Atom__ list
     #suitable for adding to our internal dictionary
     @classmethod
@@ -685,6 +690,23 @@ class M4AMetaData(MetaData,dict):
         return cls.binary_atom(key,'0000000100000000'.decode('hex') + \
                                    text.encode('utf-8'))
 
+    @classmethod
+    def trkn_atom(cls, track_number, track_total):
+        return cls.binary_atom('trkn',
+                               '0000000000000000'.decode('hex') + \
+                                   __Qt_Meta_Atom__.TRKN.build(
+                                       Con.Container(
+                    track_number=track_number,
+                    total_tracks=track_total)))
+
+    @classmethod
+    def disk_atom(cls, disk_number, disk_total):
+        return cls.binary_atom('disk',
+                               '0000000000000000'.decode('hex') + \
+                                   __Qt_Meta_Atom__.DISK.build(
+                                       Con.Container(
+                    disk_number=disk_number,
+                    total_disks=disk_total)))
 
     #if an attribute is updated (e.g. self.track_name)
     #make sure to update the corresponding dict pair
@@ -696,52 +718,20 @@ class M4AMetaData(MetaData,dict):
                     value)
 
             elif (key == 'track_number'):
-                self[self.ATTRIBUTE_MAP[key]] = [
-                    __ILST_Atom__(self.ATTRIBUTE_MAP[key],
-                                  [__Qt_Atom__(
-                                "data",
-                                '0000000000000000'.decode('hex') + \
-                                    __Qt_Meta_Atom__.TRKN.build(
-                                                    Con.Container(
-                                        track_number=int(value),
-                                        total_tracks=self.track_total)),
-                                0)])]
+                self[self.ATTRIBUTE_MAP[key]] = self.__class__.trkn_atom(
+                    int(value),self.track_total)
 
             elif (key == 'track_total'):
-                self[self.ATTRIBUTE_MAP[key]] = [
-                    __ILST_Atom__(self.ATTRIBUTE_MAP[key],
-                                  [__Qt_Atom__(
-                                "data",
-                                '0000000000000000'.decode('hex') + \
-                                    __Qt_Meta_Atom__.TRKN.build(
-                                                    Con.Container(
-                                        track_number=self.track_number,
-                                        total_tracks=int(value))),
-                                0)])]
+                self[self.ATTRIBUTE_MAP[key]] = self.__class__.trkn_atom(
+                    self.track_number,int(value))
 
             elif (key == 'album_number'):
-                self[self.ATTRIBUTE_MAP[key]] = [
-                    __ILST_Atom__(self.ATTRIBUTE_MAP[key],
-                                  [__Qt_Atom__(
-                                "data",
-                                '0000000000000000'.decode('hex') + \
-                                    __Qt_Meta_Atom__.DISK.build(
-                                                    Con.Container(
-                                        disk_number=int(value),
-                                        total_disks=self.album_total)),
-                                0)])]
+                self[self.ATTRIBUTE_MAP[key]] = self.__class__.disk_atom(
+                    int(value),self.album_total)
 
             elif (key == 'album_total'):
-                self[self.ATTRIBUTE_MAP[key]] = [
-                    __ILST_Atom__(self.ATTRIBUTE_MAP[key],
-                                  [__Qt_Atom__(
-                                "data",
-                                '0000000000000000'.decode('hex') + \
-                                    __Qt_Meta_Atom__.DISK.build(
-                                                    Con.Container(
-                                        disk_number=self.album_number,
-                                        total_disks=int(value))),
-                                0)])]
+                self[self.ATTRIBUTE_MAP[key]] = self.__class__.disk_atom(
+                    self.album_number,int(value))
 
     def __getattr__(self, key):
         if (key == 'track_number'):
