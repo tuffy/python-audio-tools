@@ -338,21 +338,6 @@ class __M4AAudio_faac__(AudioFile):
                             for ilst_atom in ATOM_ILST.parse(atom.data)])
             else:
                 return None
-
-            # meta_atom = __Qt_Meta_Atom__(meta_atom.type,
-            #                              meta_atom.data,
-            #                              meta_atom.offset)
-            # data = {}
-            # for atom in meta_atom['ilst']:
-            #     if (atom.type.startswith(chr(0xA9)) or (atom.type in ('cprt',
-            #                                                           'aART'))):
-            #         data.setdefault(atom.type,
-            #                         []).append(atom['data'].data[8:].decode('utf-8'))
-            #     else:
-            #         data.setdefault(atom.type,
-            #                         []).append(atom['data'].data[8:])
-
-            # return M4AMetaData(data)
         finally:
             f.close()
 
@@ -633,8 +618,25 @@ class __ILST_Atom__:
             if (atom.type == 'data'):
                 if (atom.data.startswith('0000000100000000'.decode('hex'))):
                     return atom.data[8:].decode('utf-8')
+                elif (self.type == 'trkn'):
+                    trkn = __Qt_Meta_Atom__.TRKN.parse(atom.data[8:])
+                    if (trkn.total_tracks > 0):
+                        return u"%d/%d" % (trkn.track_number,
+                                           trkn.total_tracks)
+                    else:
+                        return unicode(trkn.track_number)
+                elif (self.type == 'disk'):
+                    disk = __Qt_Meta_Atom__.DISK.parse(atom.data[8:])
+                    if (disk.total_disks > 0):
+                        return u"%d/%d" % (disk.disk_number,
+                                           disk.total_disks)
+                    else:
+                        return unicode(disk.disk_number)
                 else:
-                    return unicode(atom.data[8:].encode('hex'))
+                    if (len(atom.data) > 28):
+                        return unicode(atom.data[8:20].encode('hex').upper()) + u"\u2026"
+                    else:
+                        return unicode(atom.data[8:].encode('hex'))
         else:
             return u""
 
@@ -758,46 +760,50 @@ class M4AMetaData(MetaData,dict):
 
     def images(self):
         try:
-            return [M4ACovr(i) for i in self['covr']]
+            return [M4ACovr(str(i)) for i in self['covr']]
         except KeyError:
             return list()
 
     def add_image(self, image):
         if (image.type == 0):
-            self.setdefault('covr',[]).append(image.data)
+            self.setdefault('covr',[]).append(self.__class__.binary_atom(
+                    'covr',image.data)[0])
 
     def delete_image(self, image):
-        del(self['covr'][self['covr'].index(image.data)])
+        i = 0
+        for image_atom in self.get('covr',[]):
+            if (str(image_atom) == image.data):
+                del(self['covr'][i])
+                break
 
     @classmethod
     def converted(cls, metadata):
         if ((metadata is None) or (isinstance(metadata,M4AMetaData))):
             return metadata
 
-        tags = {}
+        m4a = M4AMetaData([])
 
         for (field,key) in cls.ATTRIBUTE_MAP.items():
             value = getattr(metadata,field)
             if (field not in cls.__INTEGER_FIELDS__):
                 if (value != u''):
-                    tags[key] = [value]
+                    m4a[key] = cls.text_atom(key,value)
 
         if ((metadata.track_number != 0) or
             (metadata.track_total != 0)):
-            tags['trkn'] = [__Qt_Meta_Atom__.TRKN.build(Con.Container(
-                        track_number=metadata.track_number,
-                        total_tracks=metadata.track_total))]
+            m4a['trkn'] = cls.trkn_atom(metadata.track_number,
+                                         metadata.track_total)
 
         if ((metadata.album_number != 0) or
             (metadata.album_total != 0)):
-            tags['disk'] = [__Qt_Meta_Atom__.DISK.build(Con.Container(
-                        disk_number=metadata.album_number,
-                        total_disks=metadata.album_total))]
+            m4a['disk'] = cls.disk_atom(metadata.album_number,
+                                         metadata.album_total)
 
         if (len(metadata.front_covers()) > 0):
-            tags['covr'] = [i.data for i in metadata.front_covers()]
+            m4a['covr'] = [cls.binary_atom("covr",i.data)[0]
+                            for i in metadata.front_covers()]
 
-        return M4AMetaData(tags)
+        return m4a
 
     def merge(self, metadata):
         metadata = self.__class__.converted(metadata)
@@ -888,28 +894,6 @@ class M4AMetaData(MetaData,dict):
         for (key,values) in self.items():
             for value in values:
                 pairs.append((key.replace(chr(0xA9),' '),unicode(value)))
-                # if (key.startswith(chr(0xA9)) or (key in ('cprt','aART'))):
-                #     pairs.append((key.replace(chr(0xA9),' '),value))
-                # elif (key == 'trkn'):
-                #     tracknumber = __Qt_Meta_Atom__.TRKN.parse(value)
-
-                #     pairs.append((key,"%s/%s" % (tracknumber.track_number,
-                #                                  tracknumber.total_tracks)))
-                # elif (key == 'disk'):
-                #     disknumber = __Qt_Meta_Atom__.DISK.parse(value)
-                #     pairs.append((key,"%s/%s" % (disknumber.disk_number,
-                #                                  disknumber.total_disks)))
-                # else:
-                #     if (len(value) <= 20):
-                #         pairs.append(
-                #             (key,
-                #              unicode(value.encode('hex').upper())))
-                #     else:
-                #         pairs.append(
-                #             (key,
-                #              unicode(value.encode('hex')[0:39].upper()) + \
-                #                  u"\u2026"))
-
         pairs.sort(M4AMetaData.__by_pair__)
         return pairs
 

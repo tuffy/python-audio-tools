@@ -35,7 +35,7 @@ import gettext
 gettext.install("audiotools",unicode=True)
 
 (METADATA,PCM,EXECUTABLE,CUESHEET,CUSTOM) = range(5)
-CASES = set([CUSTOM])
+CASES = set([METADATA,PCM,EXECUTABLE,CUESHEET])
 
 def nothing(self):
     pass
@@ -2501,18 +2501,18 @@ class TestFlacComment(unittest.TestCase):
         self.file.close()
 
 class TestM4AMetaData(unittest.TestCase):
-    @TEST_CUSTOM
+    @TEST_METADATA
     def setUp(self):
         self.file = tempfile.NamedTemporaryFile(suffix=".m4a")
 
         self.m4a_file = audiotools.M4AAudio.from_pcm(
             self.file.name,BLANK_PCM_Reader(TEST_LENGTH))
 
-    @TEST_CUSTOM
+    @TEST_METADATA
     def tearDown(self):
         self.file.close()
 
-    @TEST_CUSTOM
+    @TEST_METADATA
     def testsetmetadata(self):
         #does setting metadata result in a still-playable file?
         tempfile1 = tempfile.NamedTemporaryFile(suffix=".wav")
@@ -2540,7 +2540,7 @@ class TestM4AMetaData(unittest.TestCase):
             tempfile1.close()
             tempfile2.close()
 
-    @TEST_CUSTOM
+    @TEST_METADATA
     def testcomment1(self):
         for (attribute,value,key,result) in zip(
             ["track_name",
@@ -2603,7 +2603,7 @@ class TestM4AMetaData(unittest.TestCase):
             metadata = self.m4a_file.get_metadata()
             self.assertEqual(str(metadata[key][0]),result)
 
-    @TEST_CUSTOM
+    @TEST_METADATA
     def testcomment2(self):
         for (attribute,value,key) in zip(
             ["track_name",
@@ -2658,7 +2658,7 @@ class TestM4AMetaData(unittest.TestCase):
             metadata = self.m4a_file.get_metadata()
             self.assertEqual(str(metadata[key][0]),result)
 
-    @TEST_CUSTOM
+    @TEST_METADATA
     def testsetpicture(self):
         #setting 1 front cover is okay
         self.assertEqual(len(self.m4a_file.get_metadata().images()),0)
@@ -2856,27 +2856,27 @@ class TestM4AMetaData(unittest.TestCase):
             f.close()
             temp_file.close()
 
-    @TEST_CUSTOM
+    @TEST_METADATA
     def test_faac_encoder(self):
         self.__test_encoder__("faac")
 
-    @TEST_CUSTOM
+    @TEST_METADATA
     def test_faac_roundtrip(self):
         self.__test_roundtrip__("faac")
 
-    @TEST_CUSTOM
+    @TEST_METADATA
     def test_nero_encoder(self):
         self.__test_encoder__("nero")
 
-    @TEST_CUSTOM
+    @TEST_METADATA
     def test_nero_roundtrip(self):
         self.__test_roundtrip__("nero")
 
-    @TEST_CUSTOM
+    @TEST_METADATA
     def test_itunes_encoder(self):
         self.__test_encoder__("itunes")
 
-    @TEST_CUSTOM
+    @TEST_METADATA
     def test_itunes_roundtrip(self):
         self.__test_roundtrip__("itunes")
 
@@ -6291,27 +6291,31 @@ class TestForeignMetaData_ID3v24(TestForeignMetaData_ID3v23):
          audiotools.ID3v24TextFrame("TPOS",0,"2/4"),
          audiotools.ID3v24TextFrame("TFOO",0,"Bar")])
 
-#FIXME - this needs to be updated to handle M4AMetaData's new representation
-# class TestForeignMetaData_M4A(TestForeignMetaData_WavPackAPE):
-#     AUDIO_CLASS = audiotools.M4AAudio
-#     METADATA_CLASS = audiotools.M4AMetaData
-#     BASE_CLASS_METADATA = audiotools.M4AMetaData(
-#         {"\xa9nam":[u'Track Name'],
-#          "\xa9alb":[u'Album Name'],
-#          "trkn":['\x00\x00\x00\x01\x00\x03\x00\x00'],
-#          "disk":['\x00\x00\x00\x02\x00\x04'],
-#          "\xa9foo":[u"Bar"]})
+class TestForeignMetaData_M4A(TestForeignMetaData_WavPackAPE):
+    AUDIO_CLASS = audiotools.M4AAudio
+    METADATA_CLASS = audiotools.M4AMetaData
+    BASE_CLASS_METADATA = audiotools.M4AMetaData([])
+    BASE_CLASS_METADATA["\xa9nam"] = audiotools.M4AMetaData.text_atom(
+        "\xa9nam",u'Track Name')
+    BASE_CLASS_METADATA["\xa9alb"] = audiotools.M4AMetaData.text_atom(
+        "\xa9alb",u'Album Name')
+    BASE_CLASS_METADATA["trkn"] = audiotools.M4AMetaData.trkn_atom(
+        1,3)
+    BASE_CLASS_METADATA["disk"] = audiotools.M4AMetaData.disk_atom(
+        2,4)
+    BASE_CLASS_METADATA["\xa9foo"] = audiotools.M4AMetaData.text_atom(
+        "\xa9foo",u'Bar')
 
-#     def __verify_foreign_field__(self, track=None):
-#         if (track is None):
-#             track = self.track
-#         self.assert_("\xa9foo" in track.get_metadata().keys())
-#         self.assertEqual(track.get_metadata()["\xa9foo"][0],u"Bar")
+    def __verify_foreign_field__(self, track=None):
+        if (track is None):
+            track = self.track
+        self.assert_("\xa9foo" in track.get_metadata().keys())
+        self.assertEqual(unicode(track.get_metadata()["\xa9foo"][0]),u"Bar")
 
-#     def __verify_no_foreign_field__(self, track=None):
-#         if (track is None):
-#             track = self.track
-#         self.assert_("\xa9foo" not in track.get_metadata().keys())
+    def __verify_no_foreign_field__(self, track=None):
+        if (track is None):
+            track = self.track
+        self.assert_("\xa9foo" not in track.get_metadata().keys())
 
 ############
 #END TESTS
