@@ -44,6 +44,20 @@ class __Qt_Atom__:
         self.data = data
         self.offset = offset
 
+    def __repr__(self):
+        return "__Qt_Atom__(%s,%s,%s)" % \
+            (repr(self.type),
+             repr(self.data),
+             repr(self.offset))
+
+    def __eq__(self, o):
+        if (hasattr(o,"type") and
+            hasattr(o,"data")):
+            return ((self.type == o.type) and
+                    (self.data == o.data))
+        else:
+            return False
+
     #takes an 8 byte string
     #returns an Atom's (type,size) as a tuple
     @classmethod
@@ -307,24 +321,38 @@ class __M4AAudio_faac__(AudioFile):
         try:
             qt_stream = __Qt_Atom_Stream__(f)
             try:
-                meta_atom = qt_stream['moov']['udta']['meta']
+                meta_atom = ATOM_META.parse(
+                    qt_stream['moov']['udta']['meta'].data)
             except KeyError:
                 return None
 
-            meta_atom = __Qt_Meta_Atom__(meta_atom.type,
-                                         meta_atom.data,
-                                         meta_atom.offset)
-            data = {}
-            for atom in meta_atom['ilst']:
-                if (atom.type.startswith(chr(0xA9)) or (atom.type in ('cprt',
-                                                                      'aART'))):
-                    data.setdefault(atom.type,
-                                    []).append(atom['data'].data[8:].decode('utf-8'))
-                else:
-                    data.setdefault(atom.type,
-                                    []).append(atom['data'].data[8:])
+            for atom in meta_atom.atoms:
+                if (atom.type == 'ilst'):
+                    return M4AMetaData([
+                            __ILST_Atom__(
+                                type=ilst_atom.type,
+                                sub_atoms=[__Qt_Atom__(type=sub_atom.type,
+                                                       data=sub_atom.data,
+                                                       offset=0)
+                                           for sub_atom in ilst_atom.data])
+                            for ilst_atom in ATOM_ILST.parse(atom.data)])
+            else:
+                return None
 
-            return M4AMetaData(data)
+            # meta_atom = __Qt_Meta_Atom__(meta_atom.type,
+            #                              meta_atom.data,
+            #                              meta_atom.offset)
+            # data = {}
+            # for atom in meta_atom['ilst']:
+            #     if (atom.type.startswith(chr(0xA9)) or (atom.type in ('cprt',
+            #                                                           'aART'))):
+            #         data.setdefault(atom.type,
+            #                         []).append(atom['data'].data[8:].decode('utf-8'))
+            #     else:
+            #         data.setdefault(atom.type,
+            #                         []).append(atom['data'].data[8:])
+
+            # return M4AMetaData(data)
         finally:
             f.close()
 
@@ -585,6 +613,38 @@ class __ILST_Atom__:
         self.type = type
         self.data = sub_atoms
 
+    def __eq__(self, o):
+        if (hasattr(o,"type") and
+            hasattr(o,"data")):
+            return ((self.type == o.type) and
+                    (self.data == o.data))
+        else:
+            return False
+
+    def __len__(self):
+        return len(self.data)
+
+    def __repr__(self):
+        return "__ILST_Atom__(%s,%s)" % (repr(self.type),
+                                         repr(self.data))
+
+    def __unicode__(self):
+        for atom in self.data:
+            if (atom.type == 'data'):
+                if (atom.data.startswith('0000000100000000'.decode('hex'))):
+                    return atom.data[8:].decode('utf-8')
+                else:
+                    return unicode(atom.data[8:].encode('hex'))
+        else:
+            return u""
+
+    def __str__(self):
+        for atom in self.data:
+            if (atom.type == 'data'):
+                return atom.data
+        else:
+            return ""
+
 class M4AMetaData(MetaData,dict):
                                                    # iTunes ID:
     ATTRIBUTE_MAP = {
@@ -604,61 +664,94 @@ class M4AMetaData(MetaData,dict):
         'copyright':'cprt'}                        # (not listed)
         #'artist_name':'=A9com'.decode('quopri')}
 
-    #meta_data is a key->[value1,value2,...] dict of the contents
-    #of the 'meta' container atom
-    #values are Unicode if the key starts with \xa9 or is in 'aART','cprt',
-    #binary strings otherwise
-    def __init__(self, meta_data):
-        dict.__init__(self, meta_data)
+    def __init__(self, ilst_atoms):
+        dict.__init__(self)
+        for ilst_atom in ilst_atoms:
+            self.setdefault(ilst_atom.type,[]).append(ilst_atom)
+
+    #takes a unicode text object
+    #returns an appropriate __ILST_Atom__ list
+    #suitable for adding to our internal dictionary
+    @classmethod
+    def text_atom(cls, text):
+        pass
 
     #if an attribute is updated (e.g. self.track_name)
     #make sure to update the corresponding dict pair
     def __setattr__(self, key, value):
         if (self.ATTRIBUTE_MAP.has_key(key)):
             if (key not in MetaData.__INTEGER_FIELDS__):
-                self[self.ATTRIBUTE_MAP[key]] = [value]
+                self[self.ATTRIBUTE_MAP[key]] = [
+                    __ILST_Atom__(self.ATTRIBUTE_MAP[key],
+                                  [__Qt_Atom__(
+                                "data",
+                                '0000000100000000'.decode('hex') + \
+                                    value.encode('utf-8'),
+                                0)])]
 
             elif (key == 'track_number'):
-                trkn = [__Qt_Meta_Atom__.TRKN.build(Con.Container(
-                    track_number=int(value),
-                    total_tracks=self.track_total))]
-
-                self['trkn'] = trkn
+                self[self.ATTRIBUTE_MAP[key]] = [
+                    __ILST_Atom__(self.ATTRIBUTE_MAP[key],
+                                  [__Qt_Atom__(
+                                "data",
+                                '0000000000000000'.decode('hex') + \
+                                    __Qt_Meta_Atom__.TRKN.build(
+                                                    Con.Container(
+                                        track_number=int(value),
+                                        total_tracks=self.track_total)),
+                                0)])]
 
             elif (key == 'track_total'):
-                trkn = [__Qt_Meta_Atom__.TRKN.build(Con.Container(
-                    track_number=self.track_number,
-                    total_tracks=int(value)))]
-
-                self['trkn'] = trkn
+                self[self.ATTRIBUTE_MAP[key]] = [
+                    __ILST_Atom__(self.ATTRIBUTE_MAP[key],
+                                  [__Qt_Atom__(
+                                "data",
+                                '0000000000000000'.decode('hex') + \
+                                    __Qt_Meta_Atom__.TRKN.build(
+                                                    Con.Container(
+                                        track_number=self.track_number,
+                                        total_tracks=int(value))),
+                                0)])]
 
             elif (key == 'album_number'):
-                disk = [__Qt_Meta_Atom__.DISK.build(Con.Container(
-                    disk_number=int(value),
-                    total_disks=self.album_total))]
-                self['disk'] = disk
+                self[self.ATTRIBUTE_MAP[key]] = [
+                    __ILST_Atom__(self.ATTRIBUTE_MAP[key],
+                                  [__Qt_Atom__(
+                                "data",
+                                '0000000000000000'.decode('hex') + \
+                                    __Qt_Meta_Atom__.DISK.build(
+                                                    Con.Container(
+                                        disk_number=int(value),
+                                        total_disks=self.album_total)),
+                                0)])]
 
             elif (key == 'album_total'):
-                disk = [__Qt_Meta_Atom__.DISK.build(Con.Container(
-                    disk_number=self.album_number,
-                    total_disks=int(value)))]
-                self['disk'] = disk
+                self[self.ATTRIBUTE_MAP[key]] = [
+                    __ILST_Atom__(self.ATTRIBUTE_MAP[key],
+                                  [__Qt_Atom__(
+                                "data",
+                                '0000000000000000'.decode('hex') + \
+                                    __Qt_Meta_Atom__.DISK.build(
+                                                    Con.Container(
+                                        disk_number=self.album_number,
+                                        total_disks=int(value))),
+                                0)])]
 
     def __getattr__(self, key):
         if (key == 'track_number'):
             return __Qt_Meta_Atom__.TRKN.parse(
-                self.get('trkn',[chr(0) * 8])[0]).track_number
+                str(self.get('trkn',[chr(0) * 16])[0])[8:]).track_number
         elif (key == 'track_total'):
             return __Qt_Meta_Atom__.TRKN.parse(
-                self.get('trkn',[chr(0) * 8])[0]).total_tracks
+                str(self.get('trkn',[chr(0) * 16])[0])[8:]).total_tracks
         elif (key == 'album_number'):
             return __Qt_Meta_Atom__.DISK.parse(
-                self.get('disk',[chr(0) * 6])[0]).disk_number
+                str(self.get('disk',[chr(0) * 14])[0])[8:]).disk_number
         elif (key ==  'album_total'):
             return __Qt_Meta_Atom__.DISK.parse(
-                self.get('disk',[chr(0) * 6])[0]).total_disks
+                str(self.get('disk',[chr(0) * 14])[0])[8:]).total_disks
         elif (key in self.ATTRIBUTE_MAP):
-            return self.get(self.ATTRIBUTE_MAP[key],[u''])[0]
+            return unicode(self.get(self.ATTRIBUTE_MAP[key],[u''])[0])
         elif (key in MetaData.__FIELDS__):
             return u''
         else:
@@ -728,39 +821,50 @@ class M4AMetaData(MetaData,dict):
 
     #returns the contents of this M4AMetaData as a 'meta' __Qt_Atom__ object
     def to_atom(self, previous_meta):
+        previous_meta = ATOM_META.parse(previous_meta.data)
+
+        new_meta = Con.Container(version=previous_meta.version,
+                                 flags=previous_meta.flags,
+                                 atoms=[])
+
         ilst = []
-        for (key,values) in self.items():
-            for value in values:
-                if (isinstance(value,unicode)):
-                    ilst.append(
-                        __build_qt_atom__(
-                          key,
-                          __build_qt_atom__('data',
-                                            '0000000100000000'.decode('hex') + \
-                                            value.encode('utf-8'))))
-                else:
-                    ilst.append(
-                        __build_qt_atom__(
-                          key,
-                          __build_qt_atom__('data',
-                                            (chr(0) * 8) + value)))
-        ilst = __build_qt_atom__('ilst',"".join(ilst))
+        for values in self.values():
+            for ilst_atom in values:
+                ilst.append(Con.Container(type=ilst_atom.type,
+                                          data=[Con.Container(
+                                type=sub_atom.type,
+                                data=sub_atom.data)
+                                                for sub_atom in ilst_atom.data]))
+        # for (key,values) in self.items():
+        #     for value in values:
+        #         if (isinstance(value,unicode)):
+        #             ilst.append(
+        #                 __build_qt_atom__(
+        #                   key,
+        #                   __build_qt_atom__('data',
+        #                                     '0000000100000000'.decode('hex') + \
+        #                                     value.encode('utf-8'))))
+        #         else:
+        #             ilst.append(
+        #                 __build_qt_atom__(
+        #                   key,
+        #                   __build_qt_atom__('data',
+        #                                     (chr(0) * 8) + value)))
+        # ilst = __build_qt_atom__('ilst',"".join(ilst))
 
-        new_meta = []
+        # new_meta = []
 
-        for sub_atom in __Qt_Atom_Stream__(
-            cStringIO.StringIO(previous_meta.data[4:])):
+        for sub_atom in previous_meta.atoms:
             if (sub_atom.type == 'ilst'):
-                new_meta.append(ilst)
+                new_meta.atoms.append(Con.Container(
+                        type='ilst',
+                        data=ATOM_ILST.build(ilst)))
             else:
-                new_meta.append(__build_qt_atom__(
-                        sub_atom.type,
-                        sub_atom.data))
+                new_meta.atoms.append(sub_atom)
 
         return __Qt_Atom__(
             'meta',
-            (chr(0) * 4) + \
-            "".join(new_meta),
+            ATOM_META.build(new_meta),
             0)
 
     def __comment_name__(self):
@@ -787,27 +891,28 @@ class M4AMetaData(MetaData,dict):
         pairs = []
         for (key,values) in self.items():
             for value in values:
-                if (key.startswith(chr(0xA9)) or (key in ('cprt','aART'))):
-                    pairs.append((key.replace(chr(0xA9),' '),value))
-                elif (key == 'trkn'):
-                    tracknumber = __Qt_Meta_Atom__.TRKN.parse(value)
+                pairs.append((key.replace(chr(0xA9),' '),unicode(value)))
+                # if (key.startswith(chr(0xA9)) or (key in ('cprt','aART'))):
+                #     pairs.append((key.replace(chr(0xA9),' '),value))
+                # elif (key == 'trkn'):
+                #     tracknumber = __Qt_Meta_Atom__.TRKN.parse(value)
 
-                    pairs.append((key,"%s/%s" % (tracknumber.track_number,
-                                                 tracknumber.total_tracks)))
-                elif (key == 'disk'):
-                    disknumber = __Qt_Meta_Atom__.DISK.parse(value)
-                    pairs.append((key,"%s/%s" % (disknumber.disk_number,
-                                                 disknumber.total_disks)))
-                else:
-                    if (len(value) <= 20):
-                        pairs.append(
-                            (key,
-                             unicode(value.encode('hex').upper())))
-                    else:
-                        pairs.append(
-                            (key,
-                             unicode(value.encode('hex')[0:39].upper()) + \
-                                 u"\u2026"))
+                #     pairs.append((key,"%s/%s" % (tracknumber.track_number,
+                #                                  tracknumber.total_tracks)))
+                # elif (key == 'disk'):
+                #     disknumber = __Qt_Meta_Atom__.DISK.parse(value)
+                #     pairs.append((key,"%s/%s" % (disknumber.disk_number,
+                #                                  disknumber.total_disks)))
+                # else:
+                #     if (len(value) <= 20):
+                #         pairs.append(
+                #             (key,
+                #              unicode(value.encode('hex').upper())))
+                #     else:
+                #         pairs.append(
+                #             (key,
+                #              unicode(value.encode('hex')[0:39].upper()) + \
+                #                  u"\u2026"))
 
         pairs.sort(M4AMetaData.__by_pair__)
         return pairs
