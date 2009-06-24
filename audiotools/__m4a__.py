@@ -345,6 +345,13 @@ class __M4AAudio_faac__(AudioFile):
         metadata = M4AMetaData.converted(metadata)
         if (metadata is None): return
 
+        old_metadata = self.get_metadata()
+        if (old_metadata is not None):
+            if ('----' in old_metadata.keys()):
+                metadata['----'] = old_metadata['----']
+            if ('\xa9too' in old_metadata.keys()):
+                metadata['\xa9too'] = old_metadata['\xa9too']
+
         #this is a two-pass operation
         #first we replace the contents of the moov->udta->meta atom
         #with our new metadata
