@@ -35,7 +35,7 @@ import gettext
 gettext.install("audiotools",unicode=True)
 
 (METADATA,PCM,EXECUTABLE,CUESHEET,CUSTOM) = range(5)
-CASES = set([METADATA,PCM,EXECUTABLE,CUSTOM])
+CASES = set([METADATA,PCM,EXECUTABLE,CUESHEET])
 
 def nothing(self):
     pass
@@ -2033,17 +2033,23 @@ class TestM4AAudio(M4AMetadata,TestAiffAudio):
     def setUp(self):
         self.audio_class = audiotools.M4AAudio
 
-    @TEST_EXECUTABLE
+    @TEST_CUSTOM
     def test_tracklint(self):
-        bad_m4a = audiotools.M4AMetaData(
-            {'\xa9nam':[u"Track Name  "],
-             'trkn':['\x00\x00\x00\x02\x00\x00\x00\x00'],
-             'disk':['\x00\x00\x00\x03\x00\x00'],
-             '\xa9ART':[u"  Some Artist"],
-             'aART':[u"Some Artist"],
-             'cprt':[u""],
-             '\xa9day':[u"  "],
-             '\xa9cmt':[u"  Some Comment  "]})
+        bad_m4a = audiotools.M4AMetaData([])
+        bad_m4a['\xa9nam'] = audiotools.M4AMetaData.text_atom(
+            '\xa9nam',u"Track Name  ")
+        bad_m4a['\xa9ART'] = audiotools.M4AMetaData.text_atom(
+            '\xa9ART',u"  Some Artist")
+        bad_m4a['aART'] = audiotools.M4AMetaData.text_atom(
+            'aART',u"Some Artist")
+        bad_m4a['cprt'] = audiotools.M4AMetaData.text_atom(
+            'cprt',u"")
+        bad_m4a['\xa9day'] = audiotools.M4AMetaData.text_atom(
+            '\xa9day',u"  ")
+        bad_m4a['\xa9cmt'] = audiotools.M4AMetaData.text_atom(
+            '\xa9cmt',u"  Some Comment  ")
+        bad_m4a['trkn'] = audiotools.M4AMetaData.trkn_atom(2,0)
+        bad_m4a['disk'] = audiotools.M4AMetaData.disk_atom(3,0)
 
         fixed = audiotools.MetaData(
             track_name=u"Track Name",

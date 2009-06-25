@@ -299,8 +299,9 @@ class __M4AAudio_faac__(AudioFile):
         if (old_metadata is not None):
             if ('----' in old_metadata.keys()):
                 metadata['----'] = old_metadata['----']
-            if ('\xa9too' in old_metadata.keys()):
-                metadata['\xa9too'] = old_metadata['\xa9too']
+            if ('=A9too'.decode('quopri') in old_metadata.keys()):
+                metadata['=A9too'.decode('quopri')] = \
+                    old_metadata['=A9too'.decode('quopri')]
 
         #this is a two-pass operation
         #first we replace the contents of the moov->udta->meta atom
