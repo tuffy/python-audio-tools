@@ -122,8 +122,6 @@ class __Qt_Atom_Stream__(__Qt_Atom__):
                                        self.offset):
             yield atom
 
-Qt_Atom_Stream = __Qt_Atom_Stream__
-
 #takes a stream object with a read() method
 #iterates over all of the atoms it contains and yields
 #a series of qt_class objects, which defaults to __Qt_Atom__
@@ -795,24 +793,6 @@ class M4AMetaData(MetaData,dict):
                                 type=sub_atom.type,
                                 data=sub_atom.data)
                                                 for sub_atom in ilst_atom.data]))
-        # for (key,values) in self.items():
-        #     for value in values:
-        #         if (isinstance(value,unicode)):
-        #             ilst.append(
-        #                 __build_qt_atom__(
-        #                   key,
-        #                   __build_qt_atom__('data',
-        #                                     '0000000100000000'.decode('hex') + \
-        #                                     value.encode('utf-8'))))
-        #         else:
-        #             ilst.append(
-        #                 __build_qt_atom__(
-        #                   key,
-        #                   __build_qt_atom__('data',
-        #                                     (chr(0) * 8) + value)))
-        # ilst = __build_qt_atom__('ilst',"".join(ilst))
-
-        # new_meta = []
 
         for sub_atom in previous_meta.atoms:
             if (sub_atom.type == 'ilst'):
