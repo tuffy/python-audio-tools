@@ -97,7 +97,7 @@ rmra:stbl:trak:tref:udta:vnrp::
 _
 .TE
 
-.SUBSECTION "M4A atom layout"
+.SUBSECTION "M4A atoms"
 .PP
 .mk
 .PSPIC -R "m4a-atoms.eps" 2i
@@ -130,6 +130,53 @@ noname
 .ll 4in
 The `Major Brand' and `Compatible Brand' fields are ASCII strings.
 `Major Brand Version' is an integer.
+
+.SUBSUBSECTION "the mvhd atom"
+.PP
+.ll 4in
+.begin dformat
+style bitwid 0.12
+style recspread 0
+noname
+    0-31-16 mvhd Length
+    32-63-16 `mvhd' (0x6D766864)
+noname
+    64-71-8 Version
+    72-95-24 Flags (0)
+noname
+    96-127/159-16 Created Mac UTC Date
+    128/160-159/223-16 Modified Mac UTC Date
+noname
+    160/224-191/255-16 Time Scale
+    192/256-223/319-16 Duration
+noname
+    224/320-255/351-16 Playback Speed
+    256/352-271/367-8 User Volume
+    272/368-351/447-8 Reserved (0)
+noname
+    352/448-383/479-8 WGM value A
+    384/480-415/511-8 WGM value B
+    416/512-447/543-8 WGM value U
+    448/544-479/575-8 WGM value C
+noname
+    480/576-511/607-8 WGM value D
+    512/608-543/639-8 WGM value V
+    544/640-575/671-8 WGM value X
+    576/672-607/703-8 WGM value Y
+noname
+    608/704-639/735-8 WGM value W
+    640/736-703/799-24 Quicktime Preview
+noname
+    704/800-735/831-16 Quicktime Still Poster
+    736/832-799/895-16 Quicktime selection time
+noname
+    800/896-831/927-16 Quicktime current time
+    832/928-863/959-16 next/new track ID
+.end dformat
+.PP
+.ll 4in
+If `Version' is 0, `Created Mac UTC Date', `Modified Mac UTC Date' and
+`Duration' are 32-bit fields.  If it is 1, they are 64-bit fields.
 
 .bp
 
