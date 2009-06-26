@@ -110,10 +110,32 @@ an optional `free' atom with nothing but empty space
 (so that metadata can be resized, if necessary) and an `mdat' atom
 containing the song data itself.
 
+.SUBSUBSECTION "the ftyp atom"
+.PP
+.ll 4in
+.begin dformat
+style bitwid 0.12
+style recspread 0
+noname
+    0-31-16 ftyp Length
+    32-63-16 `ftyp' (0x66747970)
+noname
+    64-95-16 Major Brand
+    96-127-16 Major Brand Version
+noname
+    128-159-16-dashed Compatible @roman Brand sub 1@
+    160--16-dashed ...
+.end dformat
+.PP
+.ll 4in
+The `Major Brand' and `Compatible Brand' fields are ASCII strings.
+`Major Brand Version' is an integer.
+
 .bp
 
-.SUBSECTION "the mdhd atom"
+.SUBSUBSECTION "the mdhd atom"
 .PP
+.ll 4in
 The \fCmdhd\fR atom contains track information such as samples-per-second,
 track length and creation/modification times.
 
@@ -139,9 +161,9 @@ noname
     225-239-12 Language
     240-255-16 Quality
 .end dformat
-
+.PP
+.ll 4in
 If version is 1, the date and length fields are 64-bit.
-
 .begin dformat
 style bitwid 0.16
 style recspread 0
