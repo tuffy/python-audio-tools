@@ -142,7 +142,7 @@ noname
     32-63-16 `mvhd' (0x6D766864)
 noname
     64-71-8 Version
-    72-95-24 Flags (0)
+    72-95-24 Flags (0x000000)
 noname
     96-127/159-16 Created Mac UTC Date
     128/160-159/223-16 Modified Mac UTC Date
@@ -223,6 +223,11 @@ noname
     640/736-671/767-8 VGM value W
     672/768-735/831-24 Video Frame Size
 .end dformat
+.PP
+As with `mvhd', if `Version' is 0, `Created Mac UTC Date',
+`Modified Mac UTC Date' and `Duration' are 32-bit fields.
+If it is 1, they are 64-bit fields.
+
 
 .SUBSUBSECTION "the mdhd atom"
 .PP
@@ -236,45 +241,23 @@ noname
     0-31-16 mdhd Length
     32-63-16 `mdhd' (0x6D646864)
 noname
-    64-71-8 Version (0x00)
+    64-71-8 Version
     72-95-24 Flags (0x000000)
 noname
-    96-127-32 Creation Date
+    96-127/159-16 Created Mac UTC Date
+    128/60-159/223-16 Modified Mac UTC Date
 noname
-    128-159-32 Modification Date
+    160/224-191/255-16 Sample Rate
+    192/256-223/319-16 Track Length
 noname
-    160-191-32 Sample Rate
-noname
-    192-223-32 Track Length
-noname
-    224-224-4 Pad
-    225-239-12 Language
-    240-255-16 Quality
+    224/320-224/320-4 Pad
+    225/321-239/335-12 Language
+    240/336-255/351-16 Quality
 .end dformat
 .PP
-If version is 1, the date and length fields are 64-bit.
-.begin dformat
-style bitwid 0.16
-style recspread 0
-noname
-    0-31-16 mdhd Length
-    32-63-16 `mdhd' (0x6D646864)
-noname
-    64-71-8 Version (0x01)
-    72-95-24 Flags (0x000000)
-noname
-    96-159-32 Creation Date
-noname
-    160-223-32 Modification Date
-noname
-    224-255-32 Sample Rate
-noname
-    256-319-32 Track Length
-noname
-    320-320-4 Pad
-    321-335-12 Language
-    336-351-16 Quality
-.end dformat
+As with `mvhd', if `Version' is 0, `Created Mac UTC Date',
+`Modified Mac UTC Date' and `Track Length' are 32-bit fields.
+If it is 1, they are 64-bit fields.
 
 .bp
 
