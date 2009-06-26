@@ -261,6 +261,51 @@ If it is 1, they are 64-bit fields.
 
 .bp
 
+.SUBSUBSECTION "the hdlr atom"
+.PP
+.begin dformat
+style bitwid 0.16
+style recspread 0
+noname
+    0-31-16 hdlr Length
+    32-63-16 `hdlr' (0x68646C72)
+noname
+    64-71-8 Version
+    72-95-24 Flags (0x000000)
+noname
+    96-127-16 Quicktime type
+    128-159-16 Subtype/media type
+noname
+    160-191-32 Quicktime manufacturer
+noname
+    192-223-16 Quicktime flags
+    224-255-16 Quicktime flags mask
+noname
+    256-263-10 Component Name Length
+    264--22-dashed Component Name
+.end dformat
+.PP
+`Quicktime flags', `Quicktime flags mask' and `Component Name Length'
+are integers.  The rest are ASCII strings.
+
+.SUBSUBSECTION "the smhd atom"
+.PP
+.begin dformat
+style bitwid 0.16
+style recspread 0
+noname
+    0-31-16 smhd Length
+    32-63-16 `smhd' (0x736D6864)
+noname
+    64-71-8 Version
+    72-95-24 Flags (0x000000)
+noname
+    96-111-16 Audio Balance
+    112-127-16 Reserved (0x0000)
+.end dformat
+
+.bp
+
 .SUBSECTION "the mp4a atom"
 .PP
 The \fCmp4a\fR atom contains information such as the number of channels
