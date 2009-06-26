@@ -97,26 +97,25 @@ rmra:stbl:trak:tref:udta:vnrp::
 _
 .TE
 
+.SUBSECTION "M4A atom layout"
+.PP
+.mk
+.PSPIC -R "m4a-atoms.eps" 2i
+.rt
+.PP
+.ll 4in
+A typical M4A begins with an `ftyp' atom indicating its file type,
+followed by a `moov' atom containing a copious amount of file metadata,
+an optional `free' atom with nothing but empty space
+(so that metadata can be resized, if necessary) and an `mdat' atom
+containing the song data itself.
+
+.bp
+
 .SUBSECTION "the mdhd atom"
 .PP
 The \fCmdhd\fR atom contains track information such as samples-per-second,
 track length and creation/modification times.
-
-.PS
-define atom {box ht 0.25}
-define con_atom {box ht 0.25 rad 0.125}
-lineht = 0.050;
-con_atom "moov";
-move to last box .s;
-line down then right->;
-con_atom "trak";
-move to last box .s;
-line down then right->;
-con_atom "mdia";
-move to last box .s;
-line down then right->;
-atom "mdhd";
-.PE
 
 .begin dformat
 style bitwid 0.16
@@ -174,27 +173,6 @@ The \fCmp4a\fR atom contains information such as the number of channels
 and bits-per-sample.
 It can be found in the \fCstsd\fR atom, offset 8 bytes.
 
-.PS
-define atom {box ht 0.25}
-lineht = 0.050;
-con_atom "moov";
-move to last box .s;
-line down then right->;
-con_atom "trak";
-move to last box .s;
-line down then right->;
-con_atom "mdia";
-move to last box .s;
-line down then right->;
-con_atom "minf";
-move to last box .s;
-line down then right->;
-con_atom "stbl";
-move to last box .s;
-line down then right->;
-atom "stsd";
-.PE
-
 .begin dformat
 style bitwid 0.16
 style recspread 0
@@ -235,17 +213,7 @@ The \fCmeta\fR atom contains track metadata such as the track name,
 artist, album name, etc.
 \fCmeta\fR is like other QuickTime containers, except that it contains
 an additional 4 bytes prior to its QuickTime Atom Data payload.
-.PS
-define atom {box ht 0.25}
-lineht = 0.050;
-con_atom "moov";
-move to last box .s;
-line down then right->;
-con_atom "udta";
-move to last box .s;
-line down then right->;
-atom "meta";
-.PE
+
 .begin dformat
 style bitwid 0.08
 style charwid 0
