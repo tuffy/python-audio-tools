@@ -180,9 +180,52 @@ If `Version' is 0, `Created Mac UTC Date', `Modified Mac UTC Date' and
 
 .bp
 
+.SUBSUBSECTION "the tkhd atom"
+.PP
+.begin dformat
+style bitwid 0.16
+style recspread 0
+noname
+    0-31-16 tkhd Length
+    32-63-16 `tkhd' (0x746B6864)
+noname
+    64-71-3 Version
+    72-91-5 Reserved (0)
+    92-92-6 Track in Poster
+    93-93-6 Track in Preview
+    94-94-6 Track in Movie
+    95-95-6 Track Enabled
+noname
+    96-127/159-16 Created Mac UTC Date
+    128/160-159/223-16 Modified Mac UTC Date
+noname
+    160/224-191/255-8 Track ID
+    192/256-255/319-24 Reserved (0)
+noname
+    256/320-287/383-16 Duration
+    288/384-319/415-16 Reserved (0)
+noname
+    320/415-335/431-8 Video Layer
+    336/432-351/447-8 Quicktime Alt/Other
+    352/448-367/463-8 Audio Volume
+    368/464-383/479-8 Reserved (0)
+noname
+    384/480-415/511-8 VGM value A
+    416/512-447/543-8 VGM value B
+    448/544-479/575-8 VGM value U
+    480/576-511/607-8 VGM value C
+noname
+    512/608-543/639-8 VGM value D
+    544/640-575/671-8 VGM value V
+    576/672-607/703-8 VGM value X
+    608/704-639/735-8 VGM value Y
+noname
+    640/736-671/767-8 VGM value W
+    672/768-735/831-24 Video Frame Size
+.end dformat
+
 .SUBSUBSECTION "the mdhd atom"
 .PP
-.ll 4in
 The \fCmdhd\fR atom contains track information such as samples-per-second,
 track length and creation/modification times.
 
@@ -209,7 +252,6 @@ noname
     240-255-16 Quality
 .end dformat
 .PP
-.ll 4in
 If version is 1, the date and length fields are 64-bit.
 .begin dformat
 style bitwid 0.16
