@@ -186,19 +186,17 @@ ATOM_SMHD = Con.Struct('smhd',
 ATOM_DREF = Con.Struct('dref',
                        Con.Byte("version"),
                        Con.String("flags",3),
-                       Con.UBInt32("references"),
-                       Con.Struct("qt_atom",
-                                  Con.UBInt32("size"),
-                                  Con.String("type",4),
-                                  Con.String("data",lambda ctx: ctx["size"] - 8)))
+                       Con.PrefixedArray(
+        length_field=Con.UBInt32("num_references"),
+        subcon=Atom("references")))
 
 
 ATOM_STSD = Con.Struct('stsd',
                        Con.Byte("version"),
                        Con.String("flags",3),
-                       Con.UBInt32("number_of_descriptions"),
-                       Con.StringAdapter(
-        Con.GreedyRepeater(Con.Field("sub_atoms",1))))
+                        Con.PrefixedArray(
+        length_field=Con.UBInt32("num_descriptions"),
+        subcon=Atom("descriptions")))
 
 ATOM_MP4A = Con.Struct("mp4a",
                        Con.Padding(6),

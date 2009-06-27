@@ -304,6 +304,24 @@ noname
     112-127-16 Reserved (0x0000)
 .end dformat
 
+.SUBSUBSECTION "the dref atom"
+.PP
+.begin dformat
+style bitwid 0.16
+style recspread 0
+noname
+    0-31-16 dref Length
+    32-63-16 `dref' (0x64726566)
+noname
+    64-71-8 Version
+    72-95-24 Flags (0x000000)
+noname
+    96-127-8 Number of References
+    128--8-dashed Reference @roman Atom sub 1@
+    --8-dashed Reference @roman Atom sub 2@
+    --8-dashed ...
+.end dformat
+
 .bp
 
 .SUBSECTION "the mp4a atom"
