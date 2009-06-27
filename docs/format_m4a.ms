@@ -100,7 +100,7 @@ _
 .SUBSECTION "M4A atoms"
 .PP
 .mk
-.PSPIC -R "m4a-atoms.eps" 2i
+.PSPIC -R "m4a-atoms.eps" 2.25i
 .rt
 .PP
 .ll 4in
@@ -322,45 +322,169 @@ noname
     --8-dashed ...
 .end dformat
 
+.SUBSUBSECTION "the stsd atom"
+.PP
+.begin dformat
+style bitwid 0.16
+style recspread 0
+noname
+    0-31-16 stsd Length
+    32-63-16 `stsd' (0x73747364)
+noname
+    64-71-8 Version
+    72-95-24 Flags (0x000000)
+noname
+    96-127-9 Number of Descriptions
+    128--8-dashed Description @roman Atom sub 1@
+    --8-dashed Description @roman Atom sub 2@
+    --7-dashed ...
+.end dformat
+
 .bp
 
-.SUBSECTION "the mp4a atom"
+.SUBSUBSECTION "the mp4a atom"
 .PP
 The \fCmp4a\fR atom contains information such as the number of channels
-and bits-per-sample.
-It can be found in the \fCstsd\fR atom, offset 8 bytes.
+and bits-per-sample.  It can be found in the \fCstsd\fR atom.
 
 .begin dformat
 style bitwid 0.16
 style recspread 0
 noname
-     0-31-8 stsd Length
-     32-63-8 `stsd' (0x73747364)
-     64-127-8 Flags
- M1: 128--8-dashed mp4a Atom
+    0-31-16 mp4a Length
+    32-63-16 `mp4a' (0x6D703461)
 noname
-    --32-invisible
-noname
- M2: 0-31-16 mp4a Length
- M3: 32-63-16 `mp4a' (0x6D703461)
-noname
-    64-95-32 Reserved (0x00000000)
-noname
-    96-111-16 Reserved (0x0000)
+    64-111-16 Reserved (0x000000000000)
     112-127-16 Reference Index
 noname
-    128-143-16 Version (0x0000)
-    144-159-16 Revision Level
+    128-143-16 Quicktime Version
+    144-159-16 Quicktime Revision Level
 noname
-    160-191-32 Audio Encoding Vendor
+    160-191-32 Quicktime Audio Encoding Vendor
 noname
     192-207-16 Channels
     208-223-16 Bits Per Sample
 noname
-    224--32-dashed Additional Data
-pic line dotted from M1.sw to M2.nw
-pic line dotted from M1.se to M3.ne
+    224-239-16 Quicktime Compression ID
+    240-255-16 Audio Packet Size
+noname
+     256-287-16 Audio Sample Rate
+ M4: 288--16 `esds' atom
+noname
+    --32-invis
+noname
+ E1: 0-31-16 esds Length
+ E2: 32-63-16 `esds' (0x65736473)
+noname
+    64-71-8 Version
+    72-95-24 Flags (0x000000)
+noname
+    96--32 ESDS Atom Data
+pic line dotted from M4.sw to E1.nw
+pic line dotted from M4.se to E2.ne
 .end dformat
+
+.bp
+
+.SUBSUBSECTION "the stts atom"
+.PP
+.begin dformat
+style bitwid 0.16
+style recspread 0
+noname
+    0-31-16 stts Length
+    32-63-16 `stts' (0x73747473)
+noname
+    64-71-8 Version
+    72-95-24 Flags (0x000000)
+noname
+    96-127-32 Number of Times
+noname
+    128-159-16 Frame @roman Count sub 1@
+    160-191-16 @roman Duration sub 1@
+noname
+    192-223-16 Frame @roman Count sub 2@
+    224-255-16 @roman Duration sub 2@
+noname
+    256--32-dashed ...
+.end dformat
+
+.SUBSUBSECTION "the stsc atom"
+.PP
+.begin dformat
+style bitwid 0.16
+style recspread 0
+noname
+    0-31-16 stsc Length
+    32-63-16 `stsc' (0x73747363)
+noname
+    64-71-8 Version
+    72-95-24 Flags (0x000000)
+noname
+    96-127-32 Number of Blocks
+noname
+    128-159-10 First @roman Chunk sub 1@
+    160-191-11 Samples per @roman Chunk sub 1@
+    192-223-11 Sample Duration @roman Index sub 1@
+noname
+    224-255-10 First @roman Chunk sub 2@
+    256-287-11 Samples per @roman Chunk sub 2@
+    288-319-11 Sample Duration @roman Index sub 2@
+noname
+    320--32-dashed ...
+.end dformat
+
+
+.SUBSUBSECTION "the stsz atom"
+.PP
+.begin dformat
+style bitwid 0.16
+style recspread 0
+noname
+    0-31-16 stsz Length
+    32-63-16 `stsz' (0x7374737A)
+noname
+    64-71-8 Version
+    72-95-24 Flags (0x000000)
+noname
+    96-127-32 Number of Block Sizes
+noname
+    128-159-10 Block @roman Size sub 1@
+    160-191-11 Block @roman Size sub 2@
+    192--11-dashed ...
+.end dformat
+
+.bp
+
+.SUBSUBSECTION "the stco atom"
+.PP
+.begin dformat
+style bitwid 0.16
+style recspread 0
+noname
+    0-31-16 stco Length
+    32-63-16 `stco' (0x7374636F)
+noname
+    64-71-8 Version
+    72-95-24 Flags (0x000000)
+noname
+    96-127-32 Number of Offsets
+noname
+    128-159-10 @roman Offset sub 1@
+    160-191-11 @roman Offset sub 2@
+    192--11-dashed ...
+.end dformat
+.PP
+Offsets point to the absolute position in the M4A file of AAC data in
+the `mdat' atom, which is the first non-NULL byte after the `mdat' header.
+Therefore, if the `moov' atom size changes
+(which can happen by writing new metadata in its `meta' child atom)
+the `mdat' atom may move and these obsolute offsets will change.
+In that instance, these offsets
+.B
+must
+.R
+be adjusted or the file may become unplayable.
 
 .bp
 
