@@ -31,7 +31,7 @@ lpc_process.eps lpc_process2.eps hann.eps tukey.eps rectangular.eps lag.eps \
 m4a-atoms.eps m4a-meta.eps
 
 TOC_ORDER_MANUAL = 1,_1-_1,2-_2
-TOC_ORDER_FORMATS = 1,_3-_1,2-_4
+TOC_ORDER_FORMATS = 1,_4-_1,2-_5
 
 MAN_PATH = /usr/share/man
 MAN_PAGES = \

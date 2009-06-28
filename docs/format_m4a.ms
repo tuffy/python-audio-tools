@@ -497,7 +497,7 @@ be re-adjusted in the `stco' atom or the file may become unplayable.
 style bitwid 0.14
 style recspread 0
 noname
-       0-31-16 Meta Length
+       0-31-16 meta Length
        32-63-16 `meta' (0x6D657461)
 noname
        64-71-8 Version
@@ -510,56 +510,52 @@ noname
 .end dformat
 .PP
 .ll 4.5in
-The atoms within \fCilst\fR are all containers, each with a
-\fCdata\fR atom of its own.  Notice that many of \fCilst\fR's sub-atoms
-begin with the non-ASCII 0xA9 byte.
-
-.bp
+The atoms within the \fCilst\fR container are all containers themselves,
+each with a \fCdata\fR atom of its own.
+Notice that many of \fCilst\fR's sub-atoms begin with the non-ASCII 0xA9 byte.
+.begin dformat
+style bitwid 0.14
+style recspread 0
+noname
+    0-31-16 data Length
+    32-63-16 `data' (0x64617461)
+noname
+    64-95-16 Type
+    96-127-16 Reserved (0x00000000)
+noname
+    128--32 Data
+.end dformat
+.LP
+.ll 4.5in
+Text data atoms have a type of 1.
+Binary data atoms typically have a type of 0.
 
 .ps 8
 .TS
 tab(:);
-| c s s s s s |
-| r | c | l || r | c | l |.
+| c s s s |
+| r | l || r | l |.
 _
-Known \fCmeta\fR Sub-Atoms
+Known \fCilst\fR Sub-Atoms
 _
-Atom Type:Hex:Description:Atom Type:Hex:Description
+Atom:Description:Atom:Description
 =
-aaid:\fC0x61616964\fR:Artist Name:alb:\fC0xA9616C62\fR:Album Name
-akid:\fC0x616B6964\fR:Alternative ID ?:apid:\fC0x61706964\fR:Apple ID
-ART:\fC0xA9415254\fR:Performer Name:cmt:\fC0xA9636D74\fR:Comment
-com:\fC0xA9636F6D\fR:Composer:covr:\fC0x636F7672\fR:Cover Image
-cpil:\fC0x6370696C\fR:Compilation:cprt:\fC0x63707274\fR:Copyright ?
-day:\fC0xA9646179\fR:Date:disk:\fC0x6469736B\fR:Disc X of Y
-geid:\fC0x67656964\fR:iTMS ID ?:gnre:\fC0x676E7265\fR:Genre
-grp:\fC0xA9677270\fR:Group ?:nam:\fC0xA96E616D\fR:Track Name
-plid:\fC0x706C6964\fR:Purchase ID ?:rtng:\fC0x72746E67\fR:Rating
-stik:\fC0x7374696B\fR:Movie Type:tmpo:\fC0x746D706F\fR:Tempo
-too:\fC0xA9746F6F\fR:Encoder:trkn:\fC0x74726B6E\fR:Track Number
-wrt:\fC0xA9777274\fR:Composer:----:\fC0x2D2D2D2D\fR:iTunes-specific
+\fCalb\fR:Album Nam:\fCART\fR:Track Artist
+\fCcmt\fR:Comments:\fCcovr\fR:Cover Image
+\fCcpil\fR:Compilation:\fCcprt\fR:Copyright
+\fCday\fR:Year:\fCdisk\fR:Disc Number
+\fCgnre\fR:Genre:\fCgrp\fR:Grouping
+\fC----\fR:iTunes-specific:\fCnam\fR:Track Name
+\fCrtng\fR:Rating:\fCtmpo\fR:BMP
+\fCtoo\fR:Encoder:\fCtrkn\fR:Track Number
+\fCwrt\fR:Composer
 _
 .TE
 .ps 10
 
-The \fCdata\fR sub-atoms contain the actual metadata, naturally,
-but that data is preceded by 8 bytes of additional information.
-
-.begin dformat
-style bitwid 0.16
-style recspread 0
-noname
-    0-31-16 Data Length
-    32-63-16 `data' (0x64617461)
-noname
-    64-127-32 Flags
-noname
-    128--32-dashed Data
-.end dformat
-
 .bp
 
-.SUBSUBSECTION "the trkn sub-atom"
+.SUBSUBSUBSECTION "the trkn sub-atom"
 .PP
 \fCtrkn\fR is a binary sub-atom of \fCmeta\fR which contains
 the track number.
@@ -587,7 +583,7 @@ pic line dotted from M1.sw to M2.nw
 pic line dotted from M1.se to M3.ne
 .end dformat
 
-.SUBSUBSECTION "the disk sub-atom"
+.SUBSUBSUBSECTION "the disk sub-atom"
 .PP
 \fCdisk\fR is a binary sub-atom of \fCmeta\fR which contains
 the disc number.
