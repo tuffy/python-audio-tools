@@ -36,6 +36,8 @@ _
 \^:\fCcdrom_read_offset\fR:the sample offset to apply when reading tracks
 \^:\fCmaximum_jobs\fR:the maximum amount of processes to run simultaneously
 \^:\^:when converting tracks
+\^:\fCfs_encoding\fR:the filesystem's text encoding, for reading/writing filenames
+\^:\fCio_encoding\fR:the terminal's text encoding, when generating screen output
 _
 \fC[Filenames]\fR:\fCformat\fR:the default filename format for new tracks
 _
