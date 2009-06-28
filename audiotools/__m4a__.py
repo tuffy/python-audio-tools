@@ -666,6 +666,12 @@ class M4AMetaData(MetaData,dict):
                     disk_number=disk_number,
                     total_disks=disk_total)))
 
+    @classmethod
+    def covr_atom(cls, image_data):
+        return cls.binary_atom('covr',
+                               '0000000000000000'.decode('hex') + \
+                                   image_data)
+
     #if an attribute is updated (e.g. self.track_name)
     #make sure to update the corresponding dict pair
     def __setattr__(self, key, value):
@@ -716,19 +722,19 @@ class M4AMetaData(MetaData,dict):
 
     def images(self):
         try:
-            return [M4ACovr(str(i)) for i in self['covr']]
+            return [M4ACovr(str(i)[8:]) for i in self['covr']]
         except KeyError:
             return list()
 
     def add_image(self, image):
         if (image.type == 0):
-            self.setdefault('covr',[]).append(self.__class__.binary_atom(
-                    'covr',image.data)[0])
+            self.setdefault('covr',[]).append(self.__class__.covr_atom(
+                    image.data)[0])
 
     def delete_image(self, image):
         i = 0
         for image_atom in self.get('covr',[]):
-            if (str(image_atom) == image.data):
+            if (str(image_atom)[8:] == image.data):
                 del(self['covr'][i])
                 break
 
@@ -756,7 +762,7 @@ class M4AMetaData(MetaData,dict):
                                          metadata.album_total)
 
         if (len(metadata.front_covers()) > 0):
-            m4a['covr'] = [cls.binary_atom("covr",i.data)[0]
+            m4a['covr'] = [cls.covr_atom(i.data)[0]
                             for i in metadata.front_covers()]
 
         return m4a

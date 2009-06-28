@@ -28,7 +28,7 @@ SUBSECTIONS = $(INSTALLATION) macros.ms programming.ms freedb.ms usage.ms \
 replaygain.ms references.ms
 FIGURES = binary.eps freedb-sequence.eps pcm.eps rice1.eps rice2.eps \
 lpc_process.eps lpc_process2.eps hann.eps tukey.eps rectangular.eps lag.eps \
-m4a-atoms.eps
+m4a-atoms.eps m4a-meta.eps
 
 TOC_ORDER_MANUAL = 1,_1-_1,2-_2
 TOC_ORDER_FORMATS = 1,_3-_1,2-_4
@@ -171,6 +171,9 @@ freedb-sequence.eps: freedb-sequence.fig
 
 m4a-atoms.eps: m4a-atoms.fig
 	fig2dev -L eps m4a-atoms.fig m4a-atoms.eps
+
+m4a-meta.eps: m4a-meta.fig
+	fig2dev -L eps m4a-meta.fig m4a-meta.eps
 
 binary.eps: binary.fig
 	fig2dev -L eps binary.fig binary.eps

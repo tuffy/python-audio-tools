@@ -476,65 +476,46 @@ noname
 .end dformat
 .PP
 Offsets point to the absolute position in the M4A file of AAC data in
-the `mdat' atom, which is the first non-NULL byte after the `mdat' header.
-Therefore, if the `moov' atom size changes
+the `mdat' atom, the first of which is the first non-NULL byte after the
+`mdat' header.  Therefore, if the `moov' atom size changes
 (which can happen by writing new metadata in its `meta' child atom)
 the `mdat' atom may move and these obsolute offsets will change.
-In that instance, these offsets
+In that instance, they
 .B
 must
 .R
-be adjusted or the file may become unplayable.
+be re-adjusted in the `stco' atom or the file may become unplayable.
 
-.bp
-
-.SUBSECTION "the meta atom"
+.SUBSUBSECTION "the meta atom"
 .PP
-The \fCmeta\fR atom contains track metadata such as the track name,
-artist, album name, etc.
-\fCmeta\fR is like other QuickTime containers, except that it contains
-an additional 4 bytes prior to its QuickTime Atom Data payload.
-
+.mk
+.PSPIC -R "m4a-meta.eps" 1.75i
+.rt
+.PP
+.ll 4.5in
 .begin dformat
-style bitwid 0.08
-style charwid 0
-style recspread 0.2
+style bitwid 0.14
+style recspread 0
 noname
        0-31-16 Meta Length
        32-63-16 `meta' (0x6D657461)
-       64-95-16 NULL (0x00000000)
-  P1:  96--16 Meta Data
 noname
-  I1:  --16 `hdlr' (0x68646c72)
-  I2:  --16 `ilst' (0x696c7374)
-  I3:  --16 `free' (0x66726565)
+       64-71-8 Version
+       72-95-24 Flags (0x000000)
 noname
-  N1:  --16 ` nam' (0xA96E616D)
-  N2:  --16 ` ART' (0xA9415254)
-  N3:  --16 `trkn' (0x74726B6E)
-  N4:  --16-dashed ...
-noname
-  D1:  --16 `data' (0x64617461)
-       --4-invisible
-  D2:  --16 `data' (0x64617461)
-       --4-invisible
-  D3:  --16 `data' (0x64617461)
-pic line dotted from P1.sw to I1.nw
-pic line dotted from P1.se to I3.ne
-pic line dotted from I2.sw to N1.nw
-pic line dotted from I2.se to N4.ne
-pic line dotted from N1.sw to D1.nw
-pic line dotted from N1.se to D1.ne
-pic line dotted from N2.sw to D2.nw
-pic line dotted from N2.se to D2.ne
-pic line dotted from N3.sw to D3.nw
-pic line dotted from N3.se to D3.ne
+       96--8 `ftyp' atom
+       --8 `ilst' atom
+       --8 `free' atom
+       --8-dashed ...
 .end dformat
+.PP
+.ll 4.5in
 The atoms within \fCilst\fR are all containers, each with a
-\fCdata\fR atom of its own.  Notice that \fCilst\fR's sub-atoms
-often have non-ASCII Atom Type values - many are preceded by the
-0xA9 byte.
-Such atoms are human-readable.
+\fCdata\fR atom of its own.  Notice that many of \fCilst\fR's sub-atoms
+begin with the non-ASCII 0xA9 byte.
+
+.bp
+
 .ps 8
 .TS
 tab(:);
