@@ -157,7 +157,7 @@ if (__name__ == '__main__'):
                        action='store',
                       type='int',
                       dest='track_total',
-                      help=_(u"the total number of the track in the album"))
+                      help=_(u"the total number of tracks in the album"))
 
     parser.add_option('--album-number',
                       action='store',

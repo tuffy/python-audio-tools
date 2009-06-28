@@ -9,44 +9,53 @@
 .PP
 .RS
 .IP \(bu
-Python 2.4.4				
+Python 2.5.0		
 http://www.python.org
 .IP \(bu
-Construct (included)			
+Construct (included)	
 http://construct.wikispaces.com
 .IP \(bu
-libcdio					
+libcdio			
 http://www.gnu.org/software/libcdio
 .IP \(bu
-FLAC 1.1.0					
+FLAC 			
 http://flac.sourceforge.net
 .IP \(bu
-LAME					
+LAME			
 http://lame.sourceforge.net
 .IP \(bu
-TwoLAME					
+TwoLAME			
 http://www.twolame.org
 .IP \(bu
-vorbis-tools					
+mpg123			
+http://www.mpg123.de/
+.IP \(bu
+vorbis-tools			
 http://www.xiph.org
 .IP \(bu
-Speex						
+Speex				
 http://www.speex.org
 .IP \(bu
-Musepack					
+Musepack			
 http://www.musepack.net
 .IP \(bu
-FAAC/FAAD2				
+FAAC/FAAD2		
 http://www.audiocoding.com
 .IP \(bu
-WavPack					
+Nero AAC Codec		
+http://www.nero.com/enu/downloads-nerodigital-nero-aac-codec.php
+.IP \(bu
+WavPack			
 http://www.wavpack.com
 .IP \(bu
-CDRecord					
+CDRecord			
 http://cdrecord.berlios.de/old/private/cdrecord.html
+.IP \(bu
+cdrdao			
+http://cdrdao.sourceforge.net/
 .RE
 .PP
-Python 2.4.4 or higher, libcdio and Construct 2.00 or higher are required.
+Python 2.5.0 or higher, libcdio and Construct 2.00 or higher are required.
 The rest are optional but recommended in order to get the most out of
 these tools.
 .TS
@@ -59,20 +68,20 @@ _
 Format:Suffix:Decoding:Encoding:Metadata:Metadata:ReplayGain
 \^:\^:\^:\^:Reading:Writing:\^
 =
-RIFF WAVE:.wav:Python:Python:N/A:N/A:N/A
-AIFF:.ape:Python:Python:N/A:N/A:N/A
-Sun AU:.au:Python:Python:N/A:N/A:N/A
+RIFF WAVE:\fC.wav\fR:Python:Python:N/A:N/A:N/A
+AIFF:\fC.aiff\fR:Python:Python:N/A:N/A:N/A
+Sun AU:\fC.au\fR:Python:Python:N/A:N/A:N/A
 _
-FLAC:.flac:flac:flac:Python:Python:metaflac
-Ogg FLAC:.oga:flac:flac:Python:Python:N/A
-WavPack:.wv:wvunpack:wavpack:Python:Python:wvgain
+FLAC:\fC.flac\fR:flac:flac:Python:Python:metaflac
+Ogg FLAC:\fC.oga\fR:flac:flac:Python:Python:N/A
+WavPack:\fC.wv\fR:wvunpack:wavpack:Python:Python:wvgain
 _
-MP3:.mp3:lame:lame:Python:Python:N/A
-MP2:.mp2:lame:twolame:Python:Python:N/A
-Ogg Vorbis:.ogg:oggdec:oggenc:Python:vorbiscomment:vorbisgain
-Ogg Speex:.spx:speexdec:speexenc:Python:Python:N/A
-M4A:.m4a:faad:faac:Python:Python:N/A
-Musepack:.mpc:mppdec:mppenc:Python:Python:N/A
+MP3:\fC.mp3\fR:lame / mpg123:lame:Python:Python:N/A
+MP2:\fC.mp2\fR:lame / mpg123:twolame:Python:Python:N/A
+Ogg Vorbis:\fC.ogg\fR:oggdec:oggenc:Python:vorbiscomment:vorbisgain
+Ogg Speex:\fC.spx\fR:speexdec:speexenc:Python:Python:N/A
+M4A:\fC.m4a\fR:faad / neroAacDec:faac / neroAacEnc:Python:Python:N/A
+Musepack:\fC.mpc\fR:mpcdec:mpcenc:Python:Python:N/A
 _
 .TE
 .PP

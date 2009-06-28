@@ -33,7 +33,7 @@ Section:Key:Value
 \^:\fCport\fR:the default FreeDB server port
 _
 \fC[System]\fR:\fCcdrom\fR:the default CD-ROM device to use for CD reading/writing
-\^:\fCcdrom_offset\fR:the sample offset to apply when reading tracks
+\^:\fCcdrom_read_offset\fR:the sample offset to apply when reading tracks
 \^:\fCmaximum_jobs\fR:the maximum amount of processes to run simultaneously
 \^:\^:when converting tracks
 _
