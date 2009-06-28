@@ -312,19 +312,14 @@ class __M4AAudio_faac__(AudioFile):
         stco = ATOM_STCO.parse(
            self.qt_stream['moov']['trak']['mdia']['minf']['stbl']['stco'].data)
 
+        mdat_offset = stco.offset[0] - self.qt_stream['mdat'].offset
+
         new_file = __Qt_Atom_Stream__(cStringIO.StringIO(
                 __replace_qt_atom__(self.qt_stream,
                                     metadata.to_atom(
                         self.qt_stream['moov']['udta']['meta']))))
 
-        mdat = new_file['mdat'].data
-        i = 0
-        mdat_offset = new_file['mdat'].offset + 8
-        c = ord(mdat[i])
-        while (c == 0x00):
-            mdat_offset += 1
-            i += 1
-            c = ord(mdat[i])
+        mdat_offset = new_file['mdat'].offset + mdat_offset
 
         stco.offset = [x - stco.offset[0] + mdat_offset
                        for x in stco.offset]

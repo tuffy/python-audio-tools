@@ -2033,7 +2033,7 @@ class TestM4AAudio(M4AMetadata,TestAiffAudio):
     def setUp(self):
         self.audio_class = audiotools.M4AAudio
 
-    @TEST_CUSTOM
+    @TEST_METADATA
     def test_tracklint(self):
         bad_m4a = audiotools.M4AMetaData([])
         bad_m4a['\xa9nam'] = audiotools.M4AMetaData.text_atom(
@@ -2783,16 +2783,19 @@ class TestM4AMetaData(unittest.TestCase):
         finally:
             m4a_tempfile.close()
 
-    def __test_encoder__(self, encoder):
+    def __test_encoder__(self, encoder,
+                         sample_rate=44100,
+                         bits_per_sample=16,
+                         channels=2):
         f = open("m4a-%s.m4a" % (encoder),'rb')
         temp_file = tempfile.NamedTemporaryFile(suffix=".m4a")
         try:
             audiotools.transfer_data(f.read,temp_file.write)
             temp_file.flush()
             track = audiotools.open(temp_file.name)
-            self.assertEqual(track.sample_rate(),44100)
-            self.assertEqual(track.bits_per_sample(),16)
-            self.assertEqual(track.channels(),2)
+            self.assertEqual(track.sample_rate(),sample_rate)
+            self.assertEqual(track.bits_per_sample(),bits_per_sample)
+            self.assertEqual(track.channels(),channels)
 
             original_mdat_data = md5(track.qt_stream['mdat'].data).hexdigest()
 
@@ -2813,9 +2816,9 @@ class TestM4AMetaData(unittest.TestCase):
             track = audiotools.open(temp_file.name)
             self.assertEqual(track.get_metadata().track_name,u"Foo")
             self.assertEqual(track.get_metadata().album_name,u"Bar")
-            self.assertEqual(track.sample_rate(),44100)
-            self.assertEqual(track.bits_per_sample(),16)
-            self.assertEqual(track.channels(),2)
+            self.assertEqual(track.sample_rate(),sample_rate)
+            self.assertEqual(track.bits_per_sample(),bits_per_sample)
+            self.assertEqual(track.channels(),channels)
 
             self.assertEqual(md5(track.qt_stream['mdat'].data).hexdigest(),
                              original_mdat_data)
@@ -2871,12 +2874,44 @@ class TestM4AMetaData(unittest.TestCase):
         self.__test_roundtrip__("faac")
 
     @TEST_METADATA
+    def test_faac_encoder2(self):
+        self.__test_encoder__("faac2",48000,16,2)
+
+    @TEST_METADATA
+    def test_faac_roundtrip2(self):
+        self.__test_roundtrip__("faac2")
+
+    @TEST_METADATA
+    def test_faac_encoder3(self):
+        self.__test_encoder__("faac3",96000,16,2)
+
+    @TEST_METADATA
+    def test_faac_roundtrip3(self):
+        self.__test_roundtrip__("faac3")
+
+    @TEST_METADATA
     def test_nero_encoder(self):
         self.__test_encoder__("nero")
 
     @TEST_METADATA
     def test_nero_roundtrip(self):
         self.__test_roundtrip__("nero")
+
+    @TEST_METADATA
+    def test_nero_encoder2(self):
+        self.__test_encoder__("nero2",48000,16,1)
+
+    @TEST_METADATA
+    def test_nero_roundtrip2(self):
+        self.__test_roundtrip__("nero2")
+
+    @TEST_METADATA
+    def test_nero_encoder3(self):
+        self.__test_encoder__("nero3",96000,16,6)
+
+    @TEST_METADATA
+    def test_nero_roundtrip3(self):
+        self.__test_roundtrip__("nero3")
 
     @TEST_METADATA
     def test_itunes_encoder(self):
