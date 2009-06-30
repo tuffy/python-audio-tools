@@ -475,9 +475,8 @@ noname
     192--11-dashed ...
 .end dformat
 .PP
-Offsets point to the absolute position in the M4A file of AAC data in
-the `mdat' atom, the first of which is the first non-NULL byte after the
-`mdat' header.  Therefore, if the `moov' atom size changes
+Offsets point to an absolute position in the M4A file of AAC data in
+the `mdat' atom.  Therefore, if the `moov' atom size changes
 (which can happen by writing new metadata in its `meta' child atom)
 the `mdat' atom may move and these obsolute offsets will change.
 In that instance, they
