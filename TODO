@@ -244,6 +244,9 @@
    If an output file can't be written to for some reason
    (invalid permissions, etc.) generate a proper error message
    instead of throwing ugly IOExceptions or confusing errors.
+** TODO Check for permissions errors
+   Executing set_metadata() on a non-writable file shouldn't throw
+   ugly IOExceptions, for example
 * DONE Make text output consistent
   Currently, command-line programs generate output using a
   selection of scattered print statements - often accompanied by

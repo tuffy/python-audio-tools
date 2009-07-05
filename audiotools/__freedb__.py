@@ -581,7 +581,8 @@ def __select_match__(matches, messenger):
                 messenger.info(_(u"%(choice)s) [%(genre)s] %(name)s") % \
                                    {"choice":i + 1,
                                     "genre":matches[i][0],
-                                    "name":matches[i][2]})
+                                    "name":matches[i][2].decode('utf-8',
+                                                                'replace')})
             try:
                 messenger.partial_info(_(u"Your Selection [1-%s]:") % \
                                            (len(matches)))

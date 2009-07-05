@@ -48,11 +48,15 @@ if (__name__ == '__main__'):
                            {'bitrate': ((os.path.getsize(file.filename) * 8) / 2 ** 10) / length,
                             'filename':msg.filename(file.filename)})
         elif (options.show_percentage):
-            msg.output(_(u"%(percentage)3.3s%%: %(filename)s") % \
-                           {'percentage':
-                                int(round(float(os.path.getsize(file.filename) * 100) / (file.total_frames() * file.channels() * \
-                                                                                             (file.bits_per_sample() / 8)))),
-                            'filename':msg.filename(file.filename)})
+            try:
+                msg.output(_(u"%(percentage)3.3s%%: %(filename)s") % \
+                               {'percentage':
+                                    int(round(float(os.path.getsize(file.filename) * 100) / (file.total_frames() * file.channels() * (file.bits_per_sample() / 8)))),
+                                'filename':msg.filename(file.filename)})
+            except ZeroDivisionError:
+                msg.output(_(u"%(percentage)3.3s%%: %(filename)s") % \
+                               {'percentage':"0",
+                                'filenam':msg.filename(file.filename)})
         else:
             msg.output(_(u"%(minutes)2.2d:%(seconds)2.2d %(channels)dch %(rate)dHz %(bits)d-bit: %(filename)s") % \
                            {"minutes":length / 60,
