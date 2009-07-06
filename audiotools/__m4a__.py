@@ -383,6 +383,7 @@ class __M4AAudio_faac__(AudioFile):
                                 "-"],
                                stdin=subprocess.PIPE,
                                stderr=devnull,
+                               stdout=devnull,
                                preexec_fn=ignore_sigint)
         #Note: faac handles SIGINT on its own,
         #so trying to ignore it doesn't work like on most other encoders.
@@ -515,6 +516,7 @@ class __M4AAudio_nero__(__M4AAudio_faac__):
                                     "-q",compression,
                                     "-if",wave_filename,
                                     "-of",filename],
+                                   stdout=devnull,
                                    stderr=devnull)
 
             if (sub.wait() != 0):

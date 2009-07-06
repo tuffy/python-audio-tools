@@ -255,6 +255,8 @@ class MP3Audio(AudioFile):
         else:
             endian = []
 
+        devnull = file(os.devnull,'ab')
+
         sub = subprocess.Popen([BIN['lame'],"--quiet",
                                 "-r"] + endian + \
                                ["-s",str(decimal.Decimal(pcmreader.sample_rate) / 1000),
@@ -264,11 +266,15 @@ class MP3Audio(AudioFile):
                                 "-",
                                 filename],
                                stdin=subprocess.PIPE,
+                               stdout=devnull,
+                               stderr=devnull,
                                preexec_fn=ignore_sigint)
 
         transfer_data(pcmreader.read,sub.stdin.write)
         pcmreader.close()
         sub.stdin.close()
+
+        devnull.close()
 
         if (sub.wait() == 0):
             return MP3Audio(filename)
@@ -600,6 +606,7 @@ class MP2Audio(MP3Audio):
                 channels=min(pcmreader.channels,2),
                 bits_per_sample=16)
 
+        devnull = file(os.devnull,'ab')
 
         sub = subprocess.Popen([BIN['twolame'],"--quiet",
                                 "-r",
@@ -611,11 +618,15 @@ class MP2Audio(MP3Audio):
                                 "-",
                                 filename],
                                stdin=subprocess.PIPE,
+                               stdout=devnull,
+                               stderr=devnull,
                                preexec_fn=ignore_sigint)
 
         transfer_data(pcmreader.read,sub.stdin.write)
         pcmreader.close()
         sub.stdin.close()
+
+        devnull.close()
 
         if (sub.wait() == 0):
             return MP2Audio(filename)

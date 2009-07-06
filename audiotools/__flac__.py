@@ -690,7 +690,8 @@ class FlacAudio(AudioFile):
                                 "--endian=little",
                                 "--sign=signed",
                                 self.filename],
-                               stdout=subprocess.PIPE)
+                               stdout=subprocess.PIPE,
+                               stderr=file(os.devnull,'ab'))
         return PCMReader(sub.stdout,
                          sample_rate=self.__samplerate__,
                          channels=self.__channels__,
@@ -714,6 +715,8 @@ class FlacAudio(AudioFile):
         else:
             lax = ["--lax"]
 
+        devnull = file(os.devnull,'ab')
+
         sub = subprocess.Popen([BIN['flac']] + lax + \
                                ["-s","-f","-%s" % (compression),
                                 "-V",
@@ -725,11 +728,14 @@ class FlacAudio(AudioFile):
                                 "--force-raw-format",
                                 "-o",filename,"-"],
                                stdin=subprocess.PIPE,
+                               stdout=devnull,
+                               stderr=devnull,
                                preexec_fn=ignore_sigint)
 
         transfer_data(pcmreader.read,sub.stdin.write)
         sub.stdin.close()
         pcmreader.close()
+        devnull.close()
 
         if (sub.wait() != 0):
             raise EncodingError(BIN['flac'])
@@ -1124,7 +1130,8 @@ class OggFlacAudio(FlacAudio):
                                 "--endian=little",
                                 "--sign=signed",
                                 self.filename],
-                               stdout=subprocess.PIPE)
+                               stdout=subprocess.PIPE,
+                               stderr=file(os.devnull,'ab'))
         return PCMReader(sub.stdout,
                          sample_rate=self.__samplerate__,
                          channels=self.__channels__,
@@ -1148,6 +1155,8 @@ class OggFlacAudio(FlacAudio):
         else:
             lax = ["--lax"]
 
+        devnull = file(os.devnull,'ab')
+
         sub = subprocess.Popen([BIN['flac']] + lax + \
                                ["-s","-f","-%s" % (compression),
                                 "-V","--ogg",
@@ -1159,11 +1168,14 @@ class OggFlacAudio(FlacAudio):
                                 "--force-raw-format",
                                 "-o",filename,"-"],
                                stdin=subprocess.PIPE,
+                               stdout=devnull,
+                               stderr=devnull,
                                preexec_fn=ignore_sigint)
 
         transfer_data(pcmreader.read,sub.stdin.write)
         pcmreader.close()
         sub.stdin.close()
+        devnull.close()
 
         if (sub.wait() == 0):
             return OggFlacAudio(filename)

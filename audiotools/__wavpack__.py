@@ -349,6 +349,8 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
             f.close()
 
     def to_wave(self, wave_filename):
+        devnull = file(os.devnull,'ab')
+
         #WavPack idiotically refuses to run if the filename doesn't end with .wv
         #I'll use temp files to fake the suffix, which will make WavPack
         #decode performance suck yet behave correctly.
@@ -356,7 +358,9 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
             sub = subprocess.Popen([BIN['wvunpack'],
                                     '-q','-y',
                                     self.filename,
-                                    '-o',wave_filename])
+                                    '-o',wave_filename],
+                                   stdout=devnull,
+                                   stderr=devnull)
             if (sub.wait() != 0):
                 raise DecodingError()
         else:
@@ -369,11 +373,15 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
             sub = subprocess.Popen([BIN['wvunpack'],
                                     '-q','-y',
                                     wv.name,
-                                    '-o',wave_filename])
+                                    '-o',wave_filename],
+                                   stdout=devnull,
+                                   stderr=devnull)
             returnval = sub.wait()
             wv.close()
             if (returnval != 0):
                 raise DecodingError()
+
+            devnull.close()
 
 
     def to_pcm(self):
@@ -382,7 +390,8 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
                                     '-q','-y',
                                     self.filename,
                                     '-o','-'],
-                                   stdout=subprocess.PIPE)
+                                   stdout=subprocess.PIPE,
+                                   stderr=file(os.devnull,'ab'))
 
             return WaveReader(sub.stdout,
                               sample_rate=self.sample_rate(),
@@ -425,12 +434,18 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
         else:
             actual_filename = tempfile = None
 
+        devnull = file(os.devnull,'ab')
+
         sub = subprocess.Popen([BIN['wavpack'],
                                 wave_filename] + \
                                compression_param[compression] + \
                                ['-q','-y','-o',
                                 filename],
+                               stdout=devnull,
+                               stderr=devnull,
                                preexec_fn=ignore_sigint)
+
+        devnull.close()
 
         if (sub.wait() == 0):
             if (tempfile is not None):

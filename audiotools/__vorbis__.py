@@ -398,6 +398,8 @@ class VorbisAudio(AudioFile):
                 channels=pcmreader.channels,
                 bits_per_sample=min(pcmreader.bits_per_sample,16))
 
+        devnull = file(os.devnull,'ab')
+
         sub = subprocess.Popen([BIN['oggenc'],'-Q',
                                 '-r',
                                 '-B',str(pcmreader.bits_per_sample),
@@ -407,11 +409,15 @@ class VorbisAudio(AudioFile):
                                 '-q',compression,
                                 '-o',filename,'-'],
                                stdin=subprocess.PIPE,
+                               stdout=devnull,
+                               stderr=devnull,
                                preexec_fn=ignore_sigint)
 
         transfer_data(pcmreader.read,sub.stdin.write)
         pcmreader.close()
         sub.stdin.close()
+
+        devnull.close()
 
         if (sub.wait() == 0):
             return VorbisAudio(filename)
