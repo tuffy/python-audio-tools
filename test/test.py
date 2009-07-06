@@ -718,6 +718,39 @@ class TestAiffAudio(unittest.TestCase):
             for (temp_file,audio_class) in tempfiles:
                 temp_file.close()
 
+    @TEST_PCM
+    def testinvalidoutput(self):
+        temp_track_file = tempfile.NamedTemporaryFile(suffix="." + self.audio_class.SUFFIX)
+        temp_wave_file = tempfile.NamedTemporaryFile(suffix=".wav")
+
+        temp_track = self.audio_class.from_pcm(
+            temp_track_file.name,
+            BLANK_PCM_Reader(5))
+
+        temp_wave = audiotools.WaveAudio.from_pcm(
+            temp_wave_file.name,
+            BLANK_PCM_Reader(5))
+
+        try:
+            self.assertRaises(audiotools.EncodingError,
+                              self.audio_class.from_pcm,
+                              "/dev/null/foo.%s" % (self.audio_class.SUFFIX),
+                              BLANK_PCM_Reader(5))
+
+            self.assertRaises(audiotools.EncodingError,
+                              self.audio_class.from_wave,
+                              "/dev/null/foo.%s" % (self.audio_class.SUFFIX),
+                              temp_wave_file.name)
+
+            self.assertRaises(audiotools.DecodingError,
+                              temp_track.to_wave,
+                              "/dev/null/foo.wav")
+
+        finally:
+            temp_track_file.close()
+            temp_wave_file.close()
+
+
     @TEST_METADATA
     def testmetadata(self):
         temp = tempfile.NamedTemporaryFile(suffix="." + self.audio_class.SUFFIX)
@@ -776,6 +809,33 @@ class TestAiffAudio(unittest.TestCase):
                     self.assertEqual(metadata2,new_file.get_metadata())
         finally:
             temp.close()
+
+    @TEST_METADATA
+    def testinvalidmetadata(self):
+        temp_track_file = tempfile.NamedTemporaryFile(suffix="." + self.audio_class.SUFFIX)
+
+        orig_stat = os.stat(temp_track_file.name)[0]
+
+        temp_track = self.audio_class.from_pcm(
+            temp_track_file.name,
+            BLANK_PCM_Reader(5))
+
+        try:
+            temp_track.set_metadata(DummyMetaData2())
+            if (temp_track.get_metadata() is not None):
+                os.chmod(temp_track_file.name,0)
+                self.assertRaises(IOError,
+                                  temp_track.set_metadata,
+                                  DummyMetaData())
+                os.chmod(temp_track_file.name,orig_stat)
+                temp_track.set_metadata(DummyMetaData())
+                os.chmod(temp_track_file.name,0)
+                self.assertRaises(IOError,
+                                  temp_track.get_metadata)
+                os.chmod(temp_track_file.name,orig_stat)
+        finally:
+            os.chmod(temp_track_file.name,orig_stat)
+            temp_track_file.close()
 
     @TEST_METADATA
     def testimages(self):
@@ -1615,6 +1675,43 @@ oR0PqdlolvbqIS27sAWbI8BKqb0BpGd7+TsgNSwdy+0AirUD+AUsDYSu""".decode('base64').dec
                     basefile.close()
             finally:
                 sheet_file.close()
+
+    @TEST_CUESHEET
+    def testioerrorcuesheet(self):
+        data = """eJydkF1LwzAUQN8L/Q+X/oBxk6YfyVtoM4mu68iy6WudQ8qkHbNu+u9NneCc1IdCnk649xyuUQXk
+epnpHGiOMU2Q+Z5xMCuLQs0tBOq92nTy7alus3b/AUeccL5/ZIHvZdLKWXkDjKcpIg2RszjxvYUy
+09IUykCwanZNe2pAHrr6tXMjVtuZ+uG27l62Dk91T03VPG8np+oYwL1cK98DsEZmd4AE5CrXZU8c
+O++wh2qzQxKc4X/S/l8vTQa3i7V2kWEap/iN57l66Pcjiq93IaWDUjpOyn9LETAVyASh1y0OR4Il
+Fy3hYEs4qiXB6wOQULBQkOhCygalbISUUvrnACQVERfIr1scI4K5lk9od5+/""".decode('base64').decode('zlib')
+        sheet_file = tempfile.NamedTemporaryFile(suffix=".cue")
+        try:
+            sheet_file.write(data)
+            sheet_file.flush()
+            sheet = audiotools.read_sheet(sheet_file.name)
+
+            basefile = tempfile.NamedTemporaryFile(
+                suffix=self.audio_class.SUFFIX)
+            basefile_stat = os.stat(basefile.name)[0]
+            try:
+                album = self.audio_class.from_pcm(
+                    basefile.name,
+                    EXACT_BLANK_PCM_Reader(69470436))
+
+                os.chmod(basefile.name,0)
+                self.assertRaises(IOError,
+                                  album.set_cuesheet,
+                                  sheet)
+                os.chmod(basefile.name,basefile_stat)
+                album.set_cuesheet(sheet)
+                os.chmod(basefile.name,0)
+                self.assertRaises(IOError,
+                                  album.get_cuesheet)
+                os.chmod(basefile.name,basefile_stat)
+            finally:
+                os.chmod(basefile.name,basefile_stat)
+                basefile.close()
+        finally:
+            sheet_file.close()
 
 
 class TestFlacAudio(EmbeddedCuesheet,TestForeignWaveChunks,VorbisLint,TestAiffAudio):

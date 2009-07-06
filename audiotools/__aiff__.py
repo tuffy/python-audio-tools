@@ -17,7 +17,7 @@
 #along with this program; if not, write to the Free Software
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-from audiotools import AudioFile,InvalidFile,InvalidFormat,FrameReader,Con,transfer_data,FILENAME_FORMAT
+from audiotools import AudioFile,InvalidFile,InvalidFormat,FrameReader,Con,transfer_data,FILENAME_FORMAT,EncodingError
 
 import gettext
 
@@ -93,7 +93,10 @@ class AiffAudio(AudioFile):
         if (pcmreader.channels not in (1,2,4)):
             raise InvalidFormat(_(u'AIFF only supports 1, 2 or 4 channels'))
 
-        f = aifc.open(filename,"w")
+        try:
+            f = aifc.open(filename,"w")
+        except IOError:
+            raise EncodingError(None)
 
         f.setparams((pcmreader.channels,
                      pcmreader.bits_per_sample / 8,

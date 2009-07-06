@@ -315,14 +315,14 @@ class InvalidFormat(Exception): pass
 
 #raised if an audio file cannot be created correctly from from_pcm()
 #due to an error by the encoder
-class EncodingError(Exception):
+class EncodingError(IOError):
     def __init__(self,executable):
         self.executable = executable
 
     def __str__(self):
         return "error during file encoding"
 
-class DecodingError(Exception):
+class DecodingError(IOError):
     def __str__(self):
         return "error during file decoding"
 
@@ -1569,8 +1569,6 @@ class ReplayGain:
 #Generic Audio File
 #######################
 
-class NotYetImplemented(Exception): pass
-
 #raised by AudioFile.track_name()
 #if its format string contains unknown fields
 class UnsupportedTracknameField(Exception):
@@ -1607,22 +1605,26 @@ class AudioFile:
         return False
 
     def bits_per_sample(self):
-        raise NotYetImplemented()
+        raise NotImplementedError()
 
     def channels(self):
-        raise NotYetImplemented()
+        raise NotImplementedError()
 
     def lossless(self):
-        raise NotYetImplemented()
+        raise NotImplementedError()
 
+    #takes a MetaData-compatible object and sets this track's metadata
+    #raises IOError if there's some problem reading the file
     def set_metadata(self, metadata):
         pass
 
+    #returns a MetaData-compatible object, or None
+    #raises IOError if there's some problem reading the file
     def get_metadata(self):
         return None
 
     def total_frames(self):
-        raise NotYetImplemented()
+        raise NotImplementedError()
 
     #returns the length of the audio in CD frames (1/75 of a second)
     def cd_frames(self):
@@ -1632,22 +1634,35 @@ class AudioFile:
             return 0
 
     def sample_rate(self):
-        raise NotYetImplemented()
+        raise NotImplementedError()
 
 
+    #returns a PCMReader-compatible object
     def to_pcm(self):
-        raise NotYetImplemented()
+        raise NotImplementedError()
 
+    #takes a filename string
+    #a PCMReader-compatible object
+    #and an optional compression level string
+    #returns a new object of this class
+    #raises EncodingError if an error occurs during encoding
     @classmethod
     def from_pcm(cls, filename, pcmreader, compression=None):
-        raise NotYetImplemented()
+        raise NotImplementedError()
 
     #writes the contents of this AudioFile to the given RIFF WAVE filename
+    #raises DecodingError if an error occurs during decoding
     def to_wave(self, wave_filename):
-        WaveAudio.from_pcm(wave_filename,self.to_pcm())
+        try:
+            WaveAudio.from_pcm(wave_filename,self.to_pcm())
+        except EncodingError:
+            raise DecodingError()
 
-    #writes a new "filename" from the given RIFF WAVE filename
-    #and at the given compression
+    #takes a filename string of our new file
+    #a wave_filename string of an existing RIFF WAVE file
+    #and an optional compression level string
+    #returns a new object of this class
+    #raises EncodingError if an error occurs during encoding
     @classmethod
     def from_wave(cls, filename, wave_filename, compression=None):
         return cls.from_pcm(
@@ -1771,11 +1786,13 @@ class AudioFile:
     #takes a cuesheet-compatible object
     #with catalog(), ISRCs(), indexes(), and pcm_lengths() methods
     #sets this AudioFile's embedded cuesheet to that data, if possible
+    #raises IOError if an error occurs setting the cuesheet
     def set_cuesheet(self,cuesheet):
         pass
 
     #returns a cuesheet-compatible object
     #or None if no cuesheet is embedded
+    #raises IOError if an error occurs reading the file
     def get_cuesheet(self):
         return None
 

@@ -240,13 +240,26 @@
   that their subprocess calls will work as expected.
   Though rare in practice, these need to be checked in case
   the child processes fail for any reason.
-** TODO Check for invalid output files
-   If an output file can't be written to for some reason
+** TODO Check for invalid input/output files/permissions errors
+   If an output file can't be read/written to for some reason
    (invalid permissions, etc.) generate a proper error message
    instead of throwing ugly IOExceptions or confusing errors.
-** TODO Check for permissions errors
-   Executing set_metadata() on a non-writable file shouldn't throw
-   ugly IOExceptions, for example
+- [ ] cd2track
+- [ ] cd2xmcd
+- [ ] coverdump
+- [ ] editxmcd
+- [ ] record2track
+- [ ] track2cd
+- [ ] track2xmcd
+- [ ] trackcat
+- [ ] trackcmp
+- [ ] trackinfo
+- [ ] tracklength
+- [ ] tracklint
+- [ ] trackplay
+- [ ] trackrename
+- [ ] tracksplit
+- [ ] tracktag
 * DONE Make text output consistent
   Currently, command-line programs generate output using a
   selection of scattered print statements - often accompanied by

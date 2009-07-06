@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,InvalidFile,PCMReader,Con,transfer_data,InvalidFormat,__capped_stream_reader__,BUFFER_SIZE,FILENAME_FORMAT
+from audiotools import AudioFile,InvalidFile,PCMReader,Con,transfer_data,InvalidFormat,__capped_stream_reader__,BUFFER_SIZE,FILENAME_FORMAT,EncodingError
 import audiotools.pcmstream
 import gettext
 
@@ -129,7 +129,10 @@ class AuAudio(AudioFile):
                                sample_rate=pcmreader.sample_rate,
                                channels=pcmreader.channels)
 
-        f = file(filename,'wb')
+        try:
+            f = file(filename,'wb')
+        except IOError:
+            raise EncodingError(None)
         try:
             #send out a dummy header
             f.write(AuAudio.AU_HEADER.build(header))

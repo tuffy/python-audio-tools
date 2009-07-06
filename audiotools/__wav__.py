@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,InvalidFile,PCMReader,Con,BUFFER_SIZE,transfer_data,__capped_stream_reader__,FILENAME_FORMAT,BIN,open_files,os,subprocess
+from audiotools import AudioFile,InvalidFile,PCMReader,Con,BUFFER_SIZE,transfer_data,__capped_stream_reader__,FILENAME_FORMAT,BIN,open_files,os,subprocess,EncodingError,DecodingError
 import os.path
 import gettext
 
@@ -228,7 +228,10 @@ class WaveAudio(AudioFile):
     #builds a WAV from that data and returns a new WaveAudio object
     @classmethod
     def from_pcm(cls, filename, pcmreader, compression=None):
-        f = file(filename,"wb")
+        try:
+            f = file(filename,"wb")
+        except IOError:
+            raise EncodingError(None)
         try:
             header = Con.Container()
             header.wave_id = 'RIFF'
@@ -311,8 +314,11 @@ class WaveAudio(AudioFile):
         return WaveAudio(filename)
 
     def to_wave(self, wave_filename):
-        output = file(wave_filename,'wb')
-        input = file(self.filename,'rb')
+        try:
+            output = file(wave_filename,'wb')
+            input = file(self.filename,'rb')
+        except IOError:
+            raise DecodingError()
         try:
             transfer_data(input.read,output.write)
         finally:
@@ -321,8 +327,11 @@ class WaveAudio(AudioFile):
 
     @classmethod
     def from_wave(cls, filename, wave_filename, compression=None):
-        output = file(filename,'wb')
-        input = file(wave_filename,'rb')
+        try:
+            output = file(filename,'wb')
+            input = file(wave_filename,'rb')
+        except IOError:
+            raise EncodingError(None)
         try:
             transfer_data(input.read,output.write)
             return WaveAudio(filename)
