@@ -316,7 +316,7 @@ class InvalidFormat(Exception): pass
 #raised if an audio file cannot be created correctly from from_pcm()
 #due to an error by the encoder
 class EncodingError(IOError):
-    def __init__(self,executable):
+    def __init__(self,executable=None):
         self.executable = executable
 
     def __str__(self):
@@ -1232,6 +1232,7 @@ class PCMFrameFilter(PCMReader):
 
 #ensures all the directories leading to "destination_path" are created
 #if necessary
+#raises OSError if a problem occurs during directory creation
 def make_dirs(destination_path):
     dirname = os.path.dirname(destination_path)
     if ((dirname != '') and (not os.path.isdir(dirname))):
@@ -1651,12 +1652,9 @@ class AudioFile:
         raise NotImplementedError()
 
     #writes the contents of this AudioFile to the given RIFF WAVE filename
-    #raises DecodingError if an error occurs during decoding
+    #raises EncodingError if an error occurs during decoding
     def to_wave(self, wave_filename):
-        try:
-            WaveAudio.from_pcm(wave_filename,self.to_pcm())
-        except EncodingError:
-            raise DecodingError()
+        WaveAudio.from_pcm(wave_filename,self.to_pcm())
 
     #takes a filename string of our new file
     #a wave_filename string of an existing RIFF WAVE file
@@ -1706,7 +1704,9 @@ class AudioFile:
             return metadata.album_number
         else:
             try:
-                long_track_number = int(re.findall(r'\d{3}',self.filename)[0])
+                long_track_number = int(re.findall(
+                        r'\d{3}',
+                        os.path.basename(self.filename))[0])
                 return long_track_number / 100
             except IndexError:
                 return 0
@@ -2173,6 +2173,7 @@ from __freedb__ import *
 class ExecQueue:
     def __init__(self):
         self.todo = []
+        self.return_values = set([])
 
     def execute(self, function, args, kwargs=None):
         self.todo.append((function,args,kwargs))
@@ -2204,7 +2205,9 @@ class ExecQueue:
 
         while (len(self.todo) > 0):
             try:
-                process_pool.remove(os.waitpid(0,0)[0])
+                (pid,return_value) = os.waitpid(0,0)
+                process_pool.remove(pid)
+                self.return_values.add(return_value)
                 (function,args,kwargs) = self.todo.pop(0)
                 process_pool.add(self.__run__(function,args,kwargs))
                 #print "Resuming %s" % (repr(process_pool))
@@ -2214,7 +2217,9 @@ class ExecQueue:
         #finally, wait for the running jobs to finish
         while (len(process_pool) > 0):
             try:
-                process_pool.remove(os.waitpid(0,0)[0])
+                (pid,return_value) = os.waitpid(0,0)
+                process_pool.remove(pid)
+                self.return_values.add(return_value)
                 #print "Emptying %s" % (repr(process_pool))
             except KeyError:
                 continue

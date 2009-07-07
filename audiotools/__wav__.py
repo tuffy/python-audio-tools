@@ -318,7 +318,7 @@ class WaveAudio(AudioFile):
             output = file(wave_filename,'wb')
             input = file(self.filename,'rb')
         except IOError:
-            raise DecodingError()
+            raise EncodingError()
         try:
             transfer_data(input.read,output.write)
         finally:

@@ -362,7 +362,7 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
                                    stdout=devnull,
                                    stderr=devnull)
             if (sub.wait() != 0):
-                raise DecodingError()
+                raise EncodingError()
         else:
             import tempfile
             wv = tempfile.NamedTemporaryFile(suffix='.wv')
@@ -379,7 +379,7 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
             returnval = sub.wait()
             wv.close()
             if (returnval != 0):
-                raise DecodingError()
+                raise EncodingError()
 
             devnull.close()
 

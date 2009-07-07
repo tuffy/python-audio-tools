@@ -381,7 +381,51 @@ class TestPCMCombinations(unittest.TestCase):
             audiotools.transfer_data(reader.read,counter.write)
             self.assertEqual(len(counter),reader.total_size)
 
-class TestAiffAudio(unittest.TestCase):
+class TestTextOutput(unittest.TestCase):
+    #takes a list of argument strings
+    #returns a returnval integer
+    #self.stdout and self.stderr are set to file-like cStringIO objects
+    def __run_app__(self,arguments):
+        sub = subprocess.Popen(arguments,
+                               stdout=subprocess.PIPE,
+                               stderr=subprocess.PIPE)
+
+        self.stdout = cStringIO.StringIO(sub.stdout.read())
+        self.stderr = cStringIO.StringIO(sub.stderr.read())
+        sub.stdout.close()
+        sub.stderr.close()
+        returnval = sub.wait()
+        return returnval
+
+    def filename(self,s):
+        return s.decode(audiotools.FS_ENCODING,'replace')
+
+    def __check_output__(self,s):
+        self.assertEqual(
+            self.stdout.readline().decode(audiotools.IO_ENCODING),
+            s + u"\n")
+
+    def __check_info__(self,s):
+        self.assertEqual(
+            self.stderr.readline().decode(audiotools.IO_ENCODING),
+            s + u"\n")
+
+    def __check_error__(self,s):
+        self.assertEqual(
+            self.stderr.readline().decode(audiotools.IO_ENCODING),
+            u"*** Error: " + s + u"\n")
+
+    def __check_warning__(self,s):
+        self.assertEqual(
+            self.stderr.readline().decode(audiotools.IO_ENCODING),
+            u"*** Warning: " + s + u"\n")
+
+    def __check_usage__(self,executable,s):
+        self.assertEqual(
+            self.stderr.readline().decode(audiotools.IO_ENCODING),
+            u"*** Usage: " + executable.decode('ascii') + u" " + s + u"\n")
+
+class TestAiffAudio(TestTextOutput):
     def DummyMetaData(self):
         return DummyMetaData()
 
@@ -742,7 +786,7 @@ class TestAiffAudio(unittest.TestCase):
                               "/dev/null/foo.%s" % (self.audio_class.SUFFIX),
                               temp_wave_file.name)
 
-            self.assertRaises(audiotools.DecodingError,
+            self.assertRaises(audiotools.EncodingError,
                               temp_track.to_wave,
                               "/dev/null/foo.wav")
 
@@ -972,6 +1016,97 @@ class TestAiffAudio(unittest.TestCase):
                     temp_file.close()
         finally:
             base_file.close()
+
+    @TEST_EXECUTABLE
+    def test_track2track_invalid(self):
+        basedir_src = tempfile.mkdtemp()
+
+        basedir_tar = tempfile.mkdtemp()
+        basedir_tar_stat = os.stat(basedir_tar)[0]
+
+        try:
+            track = self.audio_class.from_pcm(
+                os.path.join(basedir_src,"track01.%s" % \
+                                 (self.audio_class.SUFFIX)),
+                BLANK_PCM_Reader(5))
+
+            #try to use track2track -d on an un-writable directory
+            os.chmod(basedir_tar,basedir_tar_stat & 07555)
+
+            self.assertEqual(self.__run_app__(
+                    ["track2track",
+                     "-t","wav",
+                     "-j",str(1),
+                     track.filename,
+                     "-d",
+                     os.path.join(basedir_tar,"foo")]),1)
+
+            self.__check_error__(_(u"Unable to write \"%s\"") % \
+                                     (self.filename(
+                        os.path.join(basedir_tar,"foo","track01.wav"))))
+
+            #try to use track2track -o on an un-writable directory
+            self.assertEqual(self.__run_app__(
+                    ["track2track",
+                     "-t","wav",
+                     track.filename,
+                     "-o",
+                     os.path.join(basedir_tar,"foo","track01.wav")]),1)
+
+            self.__check_error__(_(u"Unable to write \"%s\"") % \
+                                     (self.filename(
+                        os.path.join(basedir_tar,"foo","track01.wav"))))
+
+            os.chmod(basedir_tar,basedir_tar_stat)
+
+            #try to use track2track -d on an un-writable file
+            f = open(os.path.join(basedir_tar,"track01.wav"),"wb")
+            f.write("")
+            f.close()
+            f_stat = os.stat(os.path.join(basedir_tar,"track01.wav"))[0]
+            os.chmod(os.path.join(basedir_tar,"track01.wav"),
+                     f_stat & 07555)
+            try:
+                self.assertEqual(self.__run_app__(
+                    ["track2track",
+                     "-t","wav",
+                     "-j",str(1),
+                     track.filename,
+                     "-d",
+                     basedir_tar]),1)
+
+                self.__check_info__(_(u"%s -> %s") % \
+                                        (self.filename(track.filename),
+                                         os.path.join(basedir_tar,"track01.wav")))
+
+                self.__check_error__(_(u"Unable to write \"%s\"") % \
+                                         (self.filename(
+                            os.path.join(basedir_tar,"track01.wav"))))
+
+                #try to use track2track -o on an un-writable file
+                self.assertEqual(self.__run_app__(
+                    ["track2track",
+                     "-t","wav",
+                     track.filename,
+                     "-o",
+                     os.path.join(basedir_tar,"track01.wav")]),1)
+
+                self.__check_error__(_(u"Unable to write \"%s\"") % \
+                                         (self.filename(
+                            os.path.join(basedir_tar,"track01.wav"))))
+            finally:
+                os.chmod(os.path.join(basedir_tar,"track01.wav"),f_stat)
+            os.unlink(os.path.join(basedir_tar,"track01.wav"))
+
+        finally:
+            for f in os.listdir(basedir_src):
+                os.unlink(os.path.join(basedir_src,f))
+            os.rmdir(basedir_src)
+
+            os.chmod(basedir_tar,basedir_tar_stat)
+            for f in os.listdir(basedir_tar):
+                os.unlink(os.path.join(basedir_tar,f))
+            os.rmdir(basedir_tar)
 
     #tests the splitting and concatenating programs
     @TEST_EXECUTABLE
@@ -1467,7 +1602,7 @@ class TestAiffAudio(unittest.TestCase):
                               "test.%s" % (self.audio_class.SUFFIX),
                               wave_file.filename)
 
-            self.assertRaises(audiotools.DecodingError,
+            self.assertRaises(audiotools.EncodingError,
                               temp_track.to_wave,
                               "test.wav")
         finally:
@@ -4229,50 +4364,6 @@ Is+xl9xg0BWyGXIZljPkM6xkKGQoZihlWM19CsPUca8l97sa7ZDGfwEBGThn""".decode('base64')
             for track in temp_tracks:
                 track.close()
 
-
-class TestTextOutput(unittest.TestCase):
-    #takes a list of argument strings
-    #returns a returnval integer
-    #self.stdout and self.stderr are set to file-like cStringIO objects
-    def __run_app__(self,arguments):
-        sub = subprocess.Popen(arguments,
-                               stdout=subprocess.PIPE,
-                               stderr=subprocess.PIPE)
-
-        self.stdout = cStringIO.StringIO(sub.stdout.read())
-        self.stderr = cStringIO.StringIO(sub.stderr.read())
-        sub.stdout.close()
-        sub.stderr.close()
-        returnval = sub.wait()
-        return returnval
-
-    def filename(self,s):
-        return s.decode(audiotools.FS_ENCODING,'replace')
-
-    def __check_output__(self,s):
-        self.assertEqual(
-            self.stdout.readline().decode(audiotools.IO_ENCODING),
-            s + u"\n")
-
-    def __check_info__(self,s):
-        self.assertEqual(
-            self.stderr.readline().decode(audiotools.IO_ENCODING),
-            s + u"\n")
-
-    def __check_error__(self,s):
-        self.assertEqual(
-            self.stderr.readline().decode(audiotools.IO_ENCODING),
-            u"*** Error: " + s + u"\n")
-
-    def __check_warning__(self,s):
-        self.assertEqual(
-            self.stderr.readline().decode(audiotools.IO_ENCODING),
-            u"*** Warning: " + s + u"\n")
-
-    def __check_usage__(self,executable,s):
-        self.assertEqual(
-            self.stderr.readline().decode(audiotools.IO_ENCODING),
-            u"*** Usage: " + executable.decode('ascii') + u" " + s + u"\n")
 
 class TestProgramOutput(TestTextOutput):
     def setUp(self):

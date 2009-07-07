@@ -483,7 +483,7 @@ class __M4AAudio_nero__(__M4AAudio_faac__):
                                     "-of",wave_file],
                                    stderr=devnull)
             if (sub.wait() != 0):
-                raise DecodingError()
+                raise EncodingError()
         finally:
             devnull.close()
 

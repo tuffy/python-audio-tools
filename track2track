@@ -90,10 +90,17 @@ def convert_file(destination_class, destination_filename,
         if (existing_cuesheet is None):
             destination_audiofile.set_cuesheet(source_audiofile.get_cuesheet())
 
-    except (audiotools.InvalidFormat,
-            audiotools.EncodingError,
-            audiotools.DecodingError),msg:
+    except audiotools.EncodingError:
+        messenger.error(_(u"Unable to write \"%s\"") % \
+                            (messenger.filename(destination_filename)))
+        sys.exit(1)
+    except audiotools.DecodingError:
+        messenger.error(_(u"Unable to read \"%s\"") % \
+                            (messenger.filename(source_audiofile.filename)))
+        sys.exit(1)
+    except audiotools.InvalidFormat,msg:
         messenger.error(unicode(msg))
+        sys.exit(1)
 
 
 if (__name__ == '__main__'):
@@ -301,7 +308,12 @@ if (__name__ == '__main__'):
                             album_number=audiofile.album_number(),
                             format=options.format))
 
-                    audiotools.make_dirs(filename)
+                    try:
+                        audiotools.make_dirs(filename)
+                    except OSError:
+                        msg.error(_(u"Unable to write \"%s\"") % \
+                                      (filename))
+                        sys.exit(1)
 
                     queue.execute(convert_file,
                                   (AudioType,
@@ -322,7 +334,12 @@ if (__name__ == '__main__'):
                             album_number=audiofile.album_number(),
                             format=options.format))
 
-                    audiotools.make_dirs(filename)
+                    try:
+                        audiotools.make_dirs(filename)
+                    except OSError:
+                        msg.error(_(u"Unable to write \"%s\"") % \
+                                      (filename))
+                        sys.exit(1)
 
                     queue.execute(convert_file,
                                   (AudioType,
@@ -340,6 +357,9 @@ if (__name__ == '__main__'):
                 continue
 
         queue.run(max_processes)
+
+        if (queue.return_values != set([0])):
+            sys.exit(1)
 
         if (options.add_replay_gain and AudioType.can_add_replay_gain()):
             if (AudioType.lossless_replay_gain()):

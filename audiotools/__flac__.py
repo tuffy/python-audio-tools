@@ -772,7 +772,7 @@ class FlacAudio(AudioFile):
         returnval = sub.wait()
         devnull.close()
         if (returnval != 0):
-            raise DecodingError()
+            raise EncodingError()
 
     @classmethod
     def from_wave(cls, filename, wave_filename, compression=None):
@@ -1201,7 +1201,7 @@ class OggFlacAudio(FlacAudio):
         returnval = sub.wait()
         devnull.close()
         if (returnval != 0):
-            raise DecodingError()
+            raise EncodingError()
 
     @classmethod
     def from_wave(cls, filename, wave_filename, compression=None):
