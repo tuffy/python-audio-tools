@@ -292,7 +292,10 @@ class WaveAudio(AudioFile):
                 buffer = pcmreader.read(BUFFER_SIZE)
 
             #close up the PCM reader and flush our output
-            pcmreader.close()
+            try:
+                pcmreader.close()
+            except DecodingError:
+                raise EncodingError()
             f.flush()
 
             #go back to the beginning the re-write the header

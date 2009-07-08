@@ -409,7 +409,7 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
                 self.to_wave(f.name)
                 f.seek(0,0)
                 return TempWaveReader(f)
-            except DecodingError:
+            except EncodingError:
                 return PCMReaderError(None,
                                       sample_rate=self.sample_rate(),
                                       channels=self.channels(),

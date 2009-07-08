@@ -1592,7 +1592,7 @@ class TestAiffAudio(TestTextOutput):
                               "test.%s" % (self.audio_class.SUFFIX),
                               BLANK_PCM_Reader(5))
 
-            self.assertRaises(audiotools.DecodingError,
+            self.assertRaises(audiotools.EncodingError,
                               audiotools.WaveAudio.from_pcm,
                               "test.wav",
                               temp_track.to_pcm())
