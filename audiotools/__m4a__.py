@@ -1119,7 +1119,10 @@ class AACAudio(AudioFile):
         #so trying to ignore it doesn't work like on most other encoders.
 
         transfer_data(pcmreader.read,sub.stdin.write)
-        pcmreader.close()
+        try:
+            pcmreader.close()
+        except DecodingError:
+            raise EncodingError()
         sub.stdin.close()
 
         if (sub.wait() == 0):

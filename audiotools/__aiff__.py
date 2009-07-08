@@ -17,7 +17,7 @@
 #along with this program; if not, write to the Free Software
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-from audiotools import AudioFile,InvalidFile,InvalidFormat,FrameReader,Con,transfer_data,FILENAME_FORMAT,EncodingError
+from audiotools import AudioFile,InvalidFile,InvalidFormat,FrameReader,Con,transfer_data,FILENAME_FORMAT,EncodingError,DecodingError
 
 import gettext
 
@@ -106,7 +106,10 @@ class AiffAudio(AudioFile):
                      'not compressed'))
 
         transfer_data(pcmreader.read,f.writeframes)
-        pcmreader.close()
+        try:
+            pcmreader.close()
+        except DecodingError:
+            raise EncodingError()
         f.close()
 
         return AiffAudio(filename)

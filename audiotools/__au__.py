@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,InvalidFile,PCMReader,Con,transfer_data,InvalidFormat,__capped_stream_reader__,BUFFER_SIZE,FILENAME_FORMAT,EncodingError
+from audiotools import AudioFile,InvalidFile,PCMReader,Con,transfer_data,InvalidFormat,__capped_stream_reader__,BUFFER_SIZE,FILENAME_FORMAT,EncodingError,DecodingError
 import audiotools.pcmstream
 import gettext
 
@@ -155,6 +155,11 @@ class AuAudio(AudioFile):
             f.write(AuAudio.AU_HEADER.build(header))
         finally:
             f.close()
+
+        try:
+            converter.close()
+        except DecodingError:
+            raise EncodingError()
 
         return AuAudio(filename)
 

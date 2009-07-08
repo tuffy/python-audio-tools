@@ -1588,16 +1588,6 @@ class TestAiffAudio(TestTextOutput):
                 audiotools.config.set("Binaries",bin,"./error.py")
 
             self.assertRaises(audiotools.EncodingError,
-                              self.audio_class.from_pcm,
-                              "test.%s" % (self.audio_class.SUFFIX),
-                              BLANK_PCM_Reader(5))
-
-            self.assertRaises(audiotools.EncodingError,
-                              audiotools.WaveAudio.from_pcm,
-                              "test.wav",
-                              temp_track.to_pcm())
-
-            self.assertRaises(audiotools.EncodingError,
                               self.audio_class.from_wave,
                               "test.%s" % (self.audio_class.SUFFIX),
                               wave_file.filename)
@@ -1605,6 +1595,18 @@ class TestAiffAudio(TestTextOutput):
             self.assertRaises(audiotools.EncodingError,
                               temp_track.to_wave,
                               "test.wav")
+
+            self.assertRaises(audiotools.EncodingError,
+                              self.audio_class.from_pcm,
+                              "test.%s" % (self.audio_class.SUFFIX),
+                              BLANK_PCM_Reader(5))
+
+            for audio_class in audiotools.TYPE_MAP.values():
+                self.assertRaises(audiotools.EncodingError,
+                                  audio_class.from_pcm,
+                                  "test.%s" % (audio_class.SUFFIX),
+                                  temp_track.to_pcm())
+
         finally:
             for (bin,setting) in old_settings:
                 audiotools.config.set("Binaries",bin,setting)

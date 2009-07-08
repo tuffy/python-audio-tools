@@ -271,7 +271,10 @@ class MP3Audio(AudioFile):
                                preexec_fn=ignore_sigint)
 
         transfer_data(pcmreader.read,sub.stdin.write)
-        pcmreader.close()
+        try:
+            pcmreader.close()
+        except DecodingError:
+            raise EncodingError()
         sub.stdin.close()
 
         devnull.close()
@@ -623,7 +626,10 @@ class MP2Audio(MP3Audio):
                                preexec_fn=ignore_sigint)
 
         transfer_data(pcmreader.read,sub.stdin.write)
-        pcmreader.close()
+        try:
+            pcmreader.close()
+        except DecodingError:
+            raise EncodingError()
         sub.stdin.close()
 
         devnull.close()

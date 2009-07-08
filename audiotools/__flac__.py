@@ -734,7 +734,10 @@ class FlacAudio(AudioFile):
 
         transfer_data(pcmreader.read,sub.stdin.write)
         sub.stdin.close()
-        pcmreader.close()
+        try:
+            pcmreader.close()
+        except DecodingError:
+            raise EncodingError()
         devnull.close()
 
         if (sub.wait() != 0):
@@ -1173,7 +1176,10 @@ class OggFlacAudio(FlacAudio):
                                preexec_fn=ignore_sigint)
 
         transfer_data(pcmreader.read,sub.stdin.write)
-        pcmreader.close()
+        try:
+            pcmreader.close()
+        except DecodingError:
+            raise EncodingError()
         sub.stdin.close()
         devnull.close()
 
