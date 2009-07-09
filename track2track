@@ -94,10 +94,6 @@ def convert_file(destination_class, destination_filename,
         messenger.error(_(u"Unable to write \"%s\"") % \
                             (messenger.filename(destination_filename)))
         sys.exit(1)
-    except audiotools.DecodingError:
-        messenger.error(_(u"Unable to read \"%s\"") % \
-                            (messenger.filename(source_audiofile.filename)))
-        sys.exit(1)
     except audiotools.InvalidFormat,msg:
         messenger.error(unicode(msg))
         sys.exit(1)

@@ -1030,6 +1030,15 @@ class TestAiffAudio(TestTextOutput):
                                  (self.audio_class.SUFFIX)),
                 BLANK_PCM_Reader(5))
 
+            #try to use track2track with an invalid XMCD file
+            self.assertEqual(self.__run_app__(
+                    ["track2track",
+                     "-t","wav",
+                     "-x","/dev/null/foo.xmcd",
+                     track.filename]),1)
+
+            self.__check_error__(_(u"Invalid XMCD file"))
+
             #try to use track2track -d on an un-writable directory
             os.chmod(basedir_tar,basedir_tar_stat & 07555)
 
@@ -1107,6 +1116,38 @@ class TestAiffAudio(TestTextOutput):
             for f in os.listdir(basedir_tar):
                 os.unlink(os.path.join(basedir_tar,f))
             os.rmdir(basedir_tar)
+
+    @TEST_EXECUTABLE
+    def test_trackcat_invalid(self):
+        temp_track_file1 = tempfile.NamedTemporaryFile(suffix="." + self.audio_class.SUFFIX)
+        temp_track_file2 = tempfile.NamedTemporaryFile(suffix="." + self.audio_class.SUFFIX)
+        temp_track_file3 = tempfile.NamedTemporaryFile(suffix="." + self.audio_class.SUFFIX)
+        try:
+            temp_track1 = self.audio_class.from_pcm(
+                temp_track_file1.name,
+                BLANK_PCM_Reader(5))
+
+            temp_track2 = self.audio_class.from_pcm(
+                temp_track_file1.name,
+                BLANK_PCM_Reader(6))
+
+            temp_track3 = self.audio_class.from_pcm(
+                temp_track_file1.name,
+                BLANK_PCM_Reader(7))
+
+            self.assertEqual(self.__run_app__(
+                    ["trackcat",
+                     temp_track1.filename,
+                     temp_track2.filename,
+                     temp_track3.filename,
+                     "-o","/dev/null/foo.wav"]),1)
+
+            self.__check_error__(_(u"Unable to write \"%s\"") % \
+                                         ("/dev/null/foo.wav"))
+        finally:
+            temp_track_file1.close()
+            temp_track_file2.close()
+            temp_track_file3.close()
 
     #tests the splitting and concatenating programs
     @TEST_EXECUTABLE

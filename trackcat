@@ -162,8 +162,10 @@ if (__name__ == '__main__'):
             if (existing_cuesheet is None):
                 encoded.set_cuesheet(cuesheet)
 
-    except (audiotools.InvalidFormat,
-            audiotools.EncodingError,
-            audiotools.DecodingError),err:
+    except audiotools.EncodingError:
+        msg.error(_(u"Unable to write \"%s\"") % \
+                      (msg.filename(options.filename)))
+        sys.exit(1)
+    except audiotools.InvalidFormat,err:
         msg.error(unicode(err))
         sys.exit(1)
