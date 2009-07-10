@@ -92,12 +92,18 @@ if (__name__ == '__main__'):
                                  for track in audiofiles]:
             (path,filename) = os.path.split(track.filename)
             if (filename != new_name):
-                audiotools.make_dirs(os.path.join(path,new_name))
+                try:
+                    audiotools.make_dirs(os.path.join(path,new_name))
+                except OSError:
+                    msg.error(_(u"Unable to write \"%s\"") % \
+                                      (new_name))
+                    sys.exit(1)
 
-                subprocess.call([audiotools.BIN['mv'],
-                                 mv_flags,
-                                 track.filename,
-                                 os.path.join(path,new_name)])
+                if (subprocess.call([audiotools.BIN['mv'],
+                                     mv_flags,
+                                     track.filename,
+                                     os.path.join(path,new_name)]) != 0):
+                    sys.exit(1)
     except audiotools.UnsupportedTracknameField,err:
         err.error_msg(msg)
         sys.exit(1)

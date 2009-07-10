@@ -258,7 +258,7 @@
 - [ ] tracklength
 - [ ] tracklint
 - [ ] trackplay
-- [ ] trackrename
+- [X] trackrename
 - [X] tracksplit
 - [X] tracktag
 * DONE Make text output consistent

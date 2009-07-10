@@ -1287,6 +1287,46 @@ class TestAiffAudio(TestTextOutput):
             cue_file.close()
             base_file.close()
 
+    @TEST_EXECUTABLE
+    def test_trackrename_invalid(self):
+        tempdir = tempfile.mkdtemp()
+        tempdir_stat = os.stat(tempdir)[0]
+        track = self.audio_class.from_pcm(
+            os.path.join(tempdir,"01 - track.%s" % (self.audio_class.SUFFIX)),
+            BLANK_PCM_Reader(5))
+        track.set_metadata(audiotools.MetaData(track_name=u"Name",
+                                               track_number=1,
+                                               album_name=u"Album"))
+        try:
+            if (track.get_metadata() is not None):
+                os.chmod(tempdir,tempdir_stat & 0x7555)
+
+                self.assertEqual(self.__run_app__(
+                        ["trackrename",
+                         '--format=%(album_name)s/%(track_number)2.2d - %(track_name)s.%(suffix)s',
+                         track.filename]),1)
+
+                self.__check_error__(_(u"Unable to write \"%s\"") % \
+                                         self.filename(
+                        os.path.join(
+                            "Album",
+                            "%(track_number)2.2d - %(track_name)s.%(suffix)s" % \
+                                {"track_number":1,
+                                 "track_name":"Name",
+                                 "suffix":self.audio_class.SUFFIX})))
+
+                self.assertEqual(self.__run_app__(
+                        ["trackrename",
+                         '--format=%(track_number)2.2d - %(track_name)s.%(suffix)s',
+                         track.filename]),1)
+
+                 #mv(1)'s output is system-specific and not something
+                 #that should be tested against directly
+        finally:
+            os.chmod(tempdir,tempdir_stat)
+            os.unlink(track.filename)
+            os.rmdir(tempdir)
+
     #tests the splitting and concatenating programs
     @TEST_EXECUTABLE
     @TEST_CUESHEET
