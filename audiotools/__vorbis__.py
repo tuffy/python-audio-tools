@@ -441,7 +441,9 @@ class VorbisAudio(AudioFile):
                 print >>sub.stdin,"%(tag)s=%(value)s" % \
                       {"tag":tag,"value":unicode(value).encode('utf-8')}
         sub.stdin.close()
-        sub.wait()
+
+        if (sub.wait() != 0):
+            raise IOError("error setting metadata")
 
         self.__read_metadata__()
 

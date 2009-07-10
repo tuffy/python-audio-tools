@@ -250,9 +250,9 @@
 - [ ] editxmcd
 - [ ] record2track
 - [ ] track2cd
-- [ ] track2track
-- [ ] track2xmcd
-- [ ] trackcat
+- [X] track2track
+- [X] track2xmcd
+- [X] trackcat
 - [ ] trackcmp
 - [ ] trackinfo
 - [ ] tracklength
@@ -260,7 +260,7 @@
 - [ ] trackplay
 - [ ] trackrename
 - [ ] tracksplit
-- [ ] tracktag
+- [X] tracktag
 * DONE Make text output consistent
   Currently, command-line programs generate output using a
   selection of scattered print statements - often accompanied by

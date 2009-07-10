@@ -326,8 +326,8 @@ if (__name__ == '__main__'):
                 isrcs = dict([(k,v.decode('ascii','replace'))
                               for (k,v) in
                               cuesheet.ISRCs().items()])
-        except audiotools.SheetException,msg:
-            msg.error(unicode(msg))
+        except audiotools.SheetException,err:
+            msg.error(unicode(err))
             sys.exit(1)
 
     if (options.replace):
@@ -346,47 +346,49 @@ if (__name__ == '__main__'):
         #our command-line built MetaData block,
         #which takes precedence over the others
         metadata = audiotools.MetaData()
+
+        for field in ('track_name','artist_name','performer_name',
+                      'composer_name','conductor_name',
+                      'album_name','catalog','track_number',
+                      'ISRC','publisher',
+                      'year','date','copyright','comment'):
+            if (getattr(options,field) is not None):
+                attr = getattr(options,field)
+                if (isinstance(attr,str)):
+                    attr = attr.decode(audiotools.IO_ENCODING,
+                                       'replace')
+                setattr(metadata,field,attr)
+
+        if (options.media_type is not None):
+            metadata.media = options.media_type.decode(
+                audiotools.IO_ENCODING)
+
+        if (file.track_number() in isrcs.keys()):
+            metadata.ISRC = isrcs[file.track_number()]
+
+        if (options.track_total is not None):
+            metadata.track_total = options.track_total
+
+        if (options.album_number is not None):
+            metadata.album_number = options.album_number
+
+        if (options.album_total is not None):
+            metadata.album_total = options.album_total
+
+        if (options.comment_file is not None):
+            metadata.comment = read_comment(options.comment_file,msg)
+
+        track_metadata = metadata_function(file, xmcd)
+
         try:
-            for field in ('track_name','artist_name','performer_name',
-                          'composer_name','conductor_name',
-                          'album_name','catalog','track_number',
-                          'ISRC','publisher',
-                          'year','date','copyright','comment'):
-                if (getattr(options,field) is not None):
-                    attr = getattr(options,field)
-                    if (isinstance(attr,str)):
-                        attr = attr.decode(audiotools.IO_ENCODING,
-                                           'replace')
-                    setattr(metadata,field,attr)
-
-            if (options.media_type is not None):
-                metadata.media = options.media_type.decode(
-                    audiotools.IO_ENCODING)
-
-            if (file.track_number() in isrcs.keys()):
-                metadata.ISRC = isrcs[file.track_number()]
-
-            if (options.track_total is not None):
-                metadata.track_total = options.track_total
-
-            if (options.album_number is not None):
-                metadata.album_number = options.album_number
-
-            if (options.album_total is not None):
-                metadata.album_total = options.album_total
-
-            if (options.comment_file is not None):
-                metadata.comment = read_comment(options.comment_file,msg)
-
-            track_metadata = metadata_function(file, xmcd)
-
             if (metadata.supports_images()):
-                if (not options.remove_images):
-                    for i in track_metadata.images():
-                        metadata.add_image(i)
-                else:
-                    for i in track_metadata.images():
-                        track_metadata.delete_image(i)
+                if (track_metadata is not None):
+                    if (not options.remove_images):
+                        for i in track_metadata.images():
+                            metadata.add_image(i)
+                    else:
+                        for i in track_metadata.images():
+                            track_metadata.delete_image(i)
 
                 if (options.front_cover is not None):
                     for path in options.front_cover:
@@ -407,14 +409,21 @@ if (__name__ == '__main__'):
                 if (options.other_image is not None):
                     for path in options.other_image:
                         metadata.add_image(get_image(path,4))
-
-            metadata = track_metadata.__class__.converted(metadata)
-            metadata.merge(track_metadata)
-            file.set_metadata(metadata)
         except audiotools.InvalidImage,err:
             msg.error(_(u"%(filename)s: %(message)s") % \
                           {"filename":msg.filename(file.filename),
                            "message":unicode(err)})
+            sys.exit(1)
+
+        if (track_metadata is not None):
+            metadata = track_metadata.__class__.converted(metadata)
+            metadata.merge(track_metadata)
+
+        try:
+            file.set_metadata(metadata)
+        except IOError:
+            msg.error(_(u"Unable to modify \"%s\"") % \
+                          msg.filename(file.filename))
             sys.exit(1)
 
     #we're assuming all tracks are the same type

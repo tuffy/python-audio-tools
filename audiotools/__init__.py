@@ -1615,7 +1615,7 @@ class AudioFile:
         raise NotImplementedError()
 
     #takes a MetaData-compatible object and sets this track's metadata
-    #raises IOError if there's some problem reading the file
+    #raises IOError if there's some problem writing the file
     def set_metadata(self, metadata):
         pass
 

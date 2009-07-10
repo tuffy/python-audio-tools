@@ -185,7 +185,7 @@ if (__name__ == '__main__'):
         try:
             cuesheet = audiotools.read_sheet(options.cuesheet)
         except audiotools.SheetException,err:
-            msg.error(u"Cuesheet error: %s" % (err))
+            msg.error(unicode(err))
             sys.exit(1)
     else:
         cuesheet = audiofile.get_cuesheet()

@@ -76,7 +76,8 @@ if (__name__ == '__main__'):
                               (msg.filename(options.xmcd)))
                 sys.exit(1)
         except IOError,e:
-            msg.error(unicode(e))
+            msg.error(_(u"Unable to write \"%s\"") % \
+                          (msg.filename(options.xmcd)))
             sys.exit(1)
 
     if (options.discid):      #calculate the disc ID and do nothing else

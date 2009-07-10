@@ -301,6 +301,9 @@ class ID3v22ComFrame(ID3v22TextFrame):
         self.content = content
         self.id = 'COM'
 
+    def __len__(self):
+        return len(self.content)
+
     def __eq__(self,o):
         return __attrib_equals__(["encoding","language",
                                   "short_description","content"],self,o)
@@ -953,6 +956,9 @@ class ID3v23ComFrame(ID3v23TextFrame):
         self.short_description = short_description
         self.content = content
         self.id = 'COMM'
+
+    def __len__(self):
+        return len(self.content)
 
     def __eq__(self,o):
         return __attrib_equals__(["encoding","language",

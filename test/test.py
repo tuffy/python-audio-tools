@@ -1144,10 +1144,75 @@ class TestAiffAudio(TestTextOutput):
 
             self.__check_error__(_(u"Unable to write \"%s\"") % \
                                          ("/dev/null/foo.wav"))
+
+            self.assertEqual(self.__run_app__(
+                    ["trackcat",
+                     "--cue","/dev/null/foo.cue",
+                     temp_track1.filename,
+                     temp_track2.filename,
+                     temp_track3.filename,
+                     "-o","foo.wav"]),1)
+
+            self.__check_error__(_(u"Unable to read cuesheet"))
         finally:
             temp_track_file1.close()
             temp_track_file2.close()
             temp_track_file3.close()
+
+    @TEST_EXECUTABLE
+    def test_track2xmcd_invalid(self):
+        temp_track_file1 = tempfile.NamedTemporaryFile(suffix="." + self.audio_class.SUFFIX)
+        temp_track_file2 = tempfile.NamedTemporaryFile(suffix="." + self.audio_class.SUFFIX)
+        try:
+            temp_track1 = self.audio_class.from_pcm(
+                temp_track_file1.name,
+                BLANK_PCM_Reader(5))
+
+            temp_track2 = self.audio_class.from_pcm(
+                temp_track_file1.name,
+                BLANK_PCM_Reader(6))
+
+            self.assertEqual(self.__run_app__(
+                    ["track2xmcd",
+                     "--freedb-server=foo.bar",
+                     "--freedb-port=9001",
+                     temp_track1.filename,
+                     temp_track2.filename]),1)
+
+            self.__check_info__(_(u"Sending ID to server"))
+            self.__check_error__(u"[Errno 111] Connection refused")
+
+            self.assertEqual(self.__run_app__(
+                    ["track2xmcd",
+                     temp_track1.filename,
+                     temp_track2.filename,
+                     "-x","/dev/null/foo.xmcd"]),1)
+            self.__check_error__(_(u"Unable to write \"%s\"") % \
+                                     (self.filename("/dev/null/foo.xmcd")))
+        finally:
+            temp_track_file1.close()
+            temp_track_file2.close()
+
+    @TEST_EXECUTABLE
+    def test_tracktag_invalid(self):
+        temp_track_file = tempfile.NamedTemporaryFile(suffix="." + self.audio_class.SUFFIX)
+        temp_track_stat = os.stat(temp_track_file.name)[0]
+        try:
+            temp_track = self.audio_class.from_pcm(
+                temp_track_file.name,
+                BLANK_PCM_Reader(5))
+
+            temp_track.set_metadata(DummyMetaData())
+            if (temp_track.get_metadata() is not None):
+                os.chmod(temp_track_file.name,temp_track_stat & 07555)
+                self.assertEqual(self.__run_app__(
+                        ["tracktag","--name=Foo",
+                         self.filename(temp_track.filename)]),1)
+                self.__check_error__(_(u"Unable to modify \"%s\"") % \
+                                         (self.filename(temp_track.filename)))
+        finally:
+            os.chmod(temp_track_file.name,temp_track_stat)
+            temp_track_file.close()
 
     #tests the splitting and concatenating programs
     @TEST_EXECUTABLE
@@ -2303,6 +2368,17 @@ class TestMP2Audio(ID3Lint,TestAiffAudio):
 class TestVorbisAudio(VorbisLint,TestAiffAudio):
     def setUp(self):
         self.audio_class = audiotools.VorbisAudio
+
+    @TEST_EXECUTABLE
+    def test_tracktag_invalid(self):
+        #VorbisAudio punts its set_metadata() calls to "vorbiscomment"
+        #which actually changes a file's mode to make it writeable
+        #this means it'll generate errors only if something goes bad
+        #between the time it's opened and the time we call set_metadata()
+
+        #overhauling its set_metadata() behaviour to pure Python
+        #will solve this problem
+        pass
 
 class TestM4AAudio(M4AMetadata,TestAiffAudio):
     def setUp(self):

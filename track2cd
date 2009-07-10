@@ -173,8 +173,8 @@ if (__name__ == '__main__'):
 
         try:
             toc = audiotools.read_sheet(options.cuesheet)
-        except audiotools.SheetException,msg:
-            msg.error(_(u"Cuesheet error: %s") % (msg))
+        except audiotools.SheetException,err:
+            msg.error(unicode(err))
             sys.exit(1)
 
         temptoc = tempfile.NamedTemporaryFile(suffix='.toc')

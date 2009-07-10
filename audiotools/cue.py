@@ -359,7 +359,7 @@ def read_cuesheet(filename):
     try:
         f = open(filename,'r')
     except IOError,msg:
-        raise CueException(unicode(msg))
+        raise CueException(unicode(_(u"Unable to read cuesheet")))
     try:
         sheet = parse(tokens(f.read()))
         if (not sheet.single_file_type()):
