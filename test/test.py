@@ -34,8 +34,8 @@ import gettext
 
 gettext.install("audiotools",unicode=True)
 
-(METADATA,PCM,EXECUTABLE,CUESHEET,CUSTOM) = range(5)
-CASES = set([METADATA,PCM,EXECUTABLE,CUESHEET])
+(METADATA,PCM,EXECUTABLE,CUESHEET,IMAGE,CUSTOM) = range(6)
+CASES = set([METADATA,PCM,EXECUTABLE,CUESHEET,IMAGE])
 
 def nothing(self):
     pass
@@ -61,6 +61,12 @@ def TEST_EXECUTABLE(function):
 
 def TEST_CUESHEET(function):
     if (CUESHEET not in CASES):
+        return nothing
+    else:
+        return function
+
+def TEST_IMAGE(function):
+    if (IMAGE not in CASES):
         return nothing
     else:
         return function
@@ -3477,9 +3483,11 @@ class TestFLACMetaData(TestVorbisMetaData):
         return self.track.get_metadata().vorbis_comment
 
 class TestPCMConversion(unittest.TestCase):
+    @TEST_PCM
     def setUp(self):
         self.tempwav = tempfile.NamedTemporaryFile(suffix=".wav")
 
+    @TEST_PCM
     def tearDown(self):
         self.tempwav.close()
 
@@ -3746,6 +3754,7 @@ class testtracknumber(unittest.TestCase):
             os.rmdir(dir03)
 
 class testcuesheet(unittest.TestCase):
+    @TEST_CUESHEET
     def setUp(self):
         import audiotools.cue
 
@@ -3890,6 +3899,7 @@ IqWzFUixmyqeumDRdlhpO+C2s3Eocdn5wUixIZt3KdoOK20HindxcShxI3mX+IDg3b8MLEoQ6yTo
 
 
 class testtocsheet(testcuesheet):
+    @TEST_CUESHEET
     def setUp(self):
         import audiotools.toc
 
@@ -3922,6 +3932,7 @@ c0X3z/cu+lUE0ySfNZ5QgQgq82S0R8+9OWBChth3PkyTfJaJC/a+3YCk97Xn+b7/NdBFv1thmjB0
         self.suffix = '.toc'
 
 class testflaccuesheet(testcuesheet):
+    @TEST_CUESHEET
     def setUp(self):
         from construct import Container
 
@@ -4552,6 +4563,7 @@ Is+xl9xg0BWyGXIZljPkM6xkKGQoZihlWM19CsPUca8l97sa7ZDGfwEBGThn""".decode('base64')
 
 
 class TestProgramOutput(TestTextOutput):
+    @TEST_EXECUTABLE
     def setUp(self):
         self.dir1 = tempfile.mkdtemp()
         self.dir2 = tempfile.mkdtemp()
@@ -4603,6 +4615,7 @@ class TestProgramOutput(TestTextOutput):
         self.stdout = cStringIO.StringIO("")
         self.stderr = cStringIO.StringIO("")
 
+    @TEST_EXECUTABLE
     def tearDown(self):
         for f in os.listdir(self.dir1):
             os.unlink(os.path.join(self.dir1,f))
@@ -6252,6 +6265,7 @@ class TestTrackrename(unittest.TestCase):
             xmcd_file.close()
 
 class TestImageJPEG(unittest.TestCase):
+    @TEST_IMAGE
     def setUp(self):
         self.image = """/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAAIBAQEBAQIBAQECAgICAgQDAgICAgUEBAMEBgUGBgYF
 BgYGBwkIBgcJBwYGCAsICQoKCgoKBggLDAsKDAkKCgr/2wBDAQICAgICAgUDAwUKBwYHCgoKCgoK
@@ -6269,12 +6283,15 @@ eO/02mVjy4qMeLpYXONsnb+Pe131ehvCws+2vm53hPE2SB1c1aMw1RvVJemSn5Brh1jIQNJyq32q
         self.colors = 0
         self.mime_type = "image/jpeg"
 
+    @TEST_IMAGE
     def tearDown(self):
         pass
 
+    @TEST_IMAGE
     def test_checksum(self):
         self.assertEqual(md5(self.image).hexdigest(),self.md5sum)
 
+    @TEST_IMAGE
     def test_image(self):
         img = audiotools.Image.new(self.image,u"Description",1)
         self.assertEqual(img.data,self.image)
@@ -6287,6 +6304,7 @@ eO/02mVjy4qMeLpYXONsnb+Pe131ehvCws+2vm53hPE2SB1c1aMw1RvVJemSn5Brh1jIQNJyq32q
         self.assertEqual(img.type,1)
 
 class TestImagePNG(TestImageJPEG):
+    @TEST_IMAGE
     def setUp(self):
         self.image = """iVBORw0KGgoAAAANSUhEUgAAAAwAAAAVCAIAAAD9zpjjAAAAAXNSR0IArs4c6QAAAAlwSFlzAAAL
 EwAACxMBAJqcGAAAAAd0SU1FB9kGBQA7LTgWUZgAAAAIdEVYdENvbW1lbnQA9syWvwAAANFJREFU
@@ -6302,6 +6320,7 @@ ZTpExHuf8jsROefmec7Wwsx1XXvvAVCa+H7B9Of/9DPQAzSV43jVGYrtAAAAAElFTkSuQmCC""".deco
         self.mime_type = "image/png"
 
 class TestImageCover1(TestImageJPEG):
+    @TEST_IMAGE
     def setUp(self):
         self.image = TEST_COVER1
         self.md5sum = "dbb6a01eca6336381754346de71e052e"
@@ -6312,6 +6331,7 @@ class TestImageCover1(TestImageJPEG):
         self.mime_type = "image/jpeg"
 
 class TestImageCover2(TestImageJPEG):
+    @TEST_IMAGE
     def setUp(self):
         self.image = TEST_COVER2
         self.md5sum = "2d348cf729c840893d672dd69476955c"
@@ -6322,6 +6342,7 @@ class TestImageCover2(TestImageJPEG):
         self.mime_type = "image/png"
 
 class TestImageCover3(TestImageJPEG):
+    @TEST_IMAGE
     def setUp(self):
         self.image = TEST_COVER3
         self.md5sum = "534b107e88d3830eac7ce814fc5d0279"
@@ -6333,6 +6354,7 @@ class TestImageCover3(TestImageJPEG):
 
 
 class TestImageGIF(TestImageJPEG):
+    @TEST_IMAGE
     def setUp(self):
         self.image = """R0lGODdhDAAVAIQSAAAAAAoKCg0NDRUVFRkZGTIyMkBAQExMTF5eXmdnZ3Nzc4CAgJiYmKWlpc3N
 zdPT0+bm5vn5+f///////////////////////////////////////////////////////ywAAAAA
@@ -6346,6 +6368,7 @@ loqSZ3JMLpvNIQA7""".decode('base64')
         self.mime_type = "image/gif"
 
 class TestImageBMP(TestImageJPEG):
+    @TEST_IMAGE
     def setUp(self):
         self.image = """Qk0qAwAAAAAAADYAAAAoAAAADAAAABUAAAABABgAAAAAAPQCAAATCwAAEwsAAAAAAAAAAAAA////
 ////////////////////////////////////////////////////////////////////////////
@@ -6370,6 +6393,7 @@ gICA////////////////////////////////AAAA////AAAA////////////////////////////
         self.mime_type = "image/x-ms-bmp"
 
 class TestImageTIFF(TestImageJPEG):
+    @TEST_IMAGE
     def setUp(self):
         self.image = """SUkqAPwCAAD/////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////
