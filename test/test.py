@@ -1086,7 +1086,7 @@ class TestAiffAudio(TestTextOutput):
 
                 self.__check_info__(_(u"%s -> %s") % \
                                         (self.filename(track.filename),
-                                         os.path.join(basedir_tar,"track01.wav")))
+                                         self.filename(os.path.join(basedir_tar,"track01.wav"))))
 
                 self.__check_error__(_(u"Unable to write \"%s\"") % \
                                          (self.filename(
@@ -1204,6 +1204,17 @@ class TestAiffAudio(TestTextOutput):
 
             temp_track.set_metadata(DummyMetaData())
             if (temp_track.get_metadata() is not None):
+                self.assertEqual(self.__run_app__(
+                        ["tracktag","--xmcd=/dev/null/foo.xmcd",
+                         self.filename(temp_track.filename)]),1)
+                self.__check_error__(_(u"Invalid XMCD file"))
+
+                self.assertEqual(self.__run_app__(
+                        ["tracktag","--comment-file=/dev/null/foo.txt",
+                         self.filename(temp_track.filename)]),1)
+                self.__check_error__(_(u"Unable to open comment file \"%s\"") % \
+                                         (self.filename("/dev/null/foo.txt")))
+
                 os.chmod(temp_track_file.name,temp_track_stat & 07555)
                 self.assertEqual(self.__run_app__(
                         ["tracktag","--name=Foo",
@@ -1213,6 +1224,62 @@ class TestAiffAudio(TestTextOutput):
         finally:
             os.chmod(temp_track_file.name,temp_track_stat)
             temp_track_file.close()
+
+    @TEST_EXECUTABLE
+    def test_tracksplit_invalid(self):
+        if (not self.__is_lossless__()):
+            return
+
+        TOTAL_FRAMES = 24725400
+        CUE_SHEET = 'FILE "data.wav" BINARY\n  TRACK 01 AUDIO\n    INDEX 01 00:00:00\n  TRACK 02 AUDIO\n    INDEX 00 03:16:55\n    INDEX 01 03:18:18\n  TRACK 03 AUDIO\n    INDEX 00 05:55:12\n    INDEX 01 06:01:45\n'
+
+        base_file = tempfile.NamedTemporaryFile(suffix="." + self.audio_class.SUFFIX)
+        cue_file = tempfile.NamedTemporaryFile(suffix=".cue")
+
+        tempdir = tempfile.mkdtemp()
+        tempdir_stat = os.stat(tempdir)[0]
+        try:
+            track = self.audio_class.from_pcm(
+                    base_file.name,
+                    EXACT_BLANK_PCM_Reader(TOTAL_FRAMES))
+            cue_file.write(CUE_SHEET)
+            cue_file.flush()
+
+            self.assertEqual(self.__run_app__(
+                    ["tracksplit","--xmcd=/dev/null/foo.xmcd",
+                     "--cue",cue_file.name,
+                     "-d",tempdir,self.filename(track.filename)]),1)
+
+            self.__check_error__(_(u"Invalid XMCD file"))
+
+            self.assertEqual(self.__run_app__(
+                    ["tracksplit",
+                     "--cue","/dev/null/foo.cue",
+                     "-d",tempdir,track.filename]),1)
+            self.__check_error__(_(u"Unable to read cuesheet"))
+
+            os.chmod(tempdir,tempdir_stat & 0x7555)
+            self.assertEqual(self.__run_app__(
+                    ["tracksplit",
+                     "--cue",cue_file.name,
+                     "-d",tempdir,
+                     "-j",str(1),
+                     "-t","wav",
+                     track.filename]),1)
+
+            self.__check_info__(_(u"%s -> %s") % \
+                                        (self.filename(track.filename),
+                                         self.filename(os.path.join(tempdir,"track01.wav"))))
+
+            self.__check_error__(_(u"Unable to write \"%s\"") % \
+                                     (self.filename(
+                        os.path.join(tempdir,"track01.wav"))))
+
+        finally:
+            os.chmod(tempdir,tempdir_stat)
+            os.rmdir(tempdir)
+            cue_file.close()
+            base_file.close()
 
     #tests the splitting and concatenating programs
     @TEST_EXECUTABLE

@@ -303,8 +303,7 @@ if (__name__ == '__main__'):
         try:
             xmcd = audiotools.XMCD.read(options.xmcd).metadata()
         except audiotools.XMCDException:
-            msg.error(_(u"Unable to open XMCD file \"%s\"") % \
-                          (msg.filename(options.xmcd)))
+            msg.error(_(u"Invalid XMCD file"))
             sys.exit(1)
     else:
         xmcd = None

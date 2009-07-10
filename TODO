@@ -259,7 +259,7 @@
 - [ ] tracklint
 - [ ] trackplay
 - [ ] trackrename
-- [ ] tracksplit
+- [X] tracksplit
 - [X] tracktag
 * DONE Make text output consistent
   Currently, command-line programs generate output using a
