@@ -434,7 +434,8 @@ class VorbisAudio(AudioFile):
 
         sub = subprocess.Popen([BIN['vorbiscomment'],
                                 "-R","-w",self.filename],
-                               stdin=subprocess.PIPE)
+                               stdin=subprocess.PIPE,
+                               stderr=file(os.devnull,"w"))
 
         for (tag,values) in metadata.items():
             for value in values:
