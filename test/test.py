@@ -1440,6 +1440,32 @@ class TestAiffAudio(TestTextOutput):
                 os.unlink(p)
             os.rmdir(undo_db_dir)
 
+    @TEST_EXECUTABLE
+    def test_coverdump_invalid(self):
+        track_file = tempfile.NamedTemporaryFile(
+            suffix="." + self.audio_class.SUFFIX)
+        temp_dir = tempfile.mkdtemp()
+        temp_dir_stat = os.stat(temp_dir)[0]
+        try:
+            track = self.audio_class.from_pcm(track_file.name,
+                                              BLANK_PCM_Reader(5))
+            track.set_metadata(DummyMetaData3())
+            if ((track.get_metadata() is not None) and
+                (len(track.get_metadata().images()) == 1)):
+                os.chmod(temp_dir,temp_dir_stat & 0x7555)
+                self.assertEqual(self.__run_app__(
+                        ["coverdump","-d",temp_dir,track.filename]),1)
+                self.__check_error__(_(u"Unable to write \"%s\"") % \
+                                         (self.filename(
+                            os.path.join(temp_dir,"front_cover.jpg"))))
+        finally:
+            track_file.close()
+            os.chmod(temp_dir,temp_dir_stat)
+            for p in [os.path.join(temp_dir,f) for f in
+                      os.listdir(temp_dir)]:
+                os.unlink(p)
+            os.rmdir(temp_dir)
+
     #tests the splitting and concatenating programs
     @TEST_EXECUTABLE
     @TEST_CUESHEET

@@ -92,6 +92,7 @@ if (__name__ == '__main__'):
                     f.close()
                     msg.info(msg.filename(output_filename))
                 except IOError,e:
-                    msg.error(unicode(e))
+                    msg.error(_(u"Unable to write \"%s\"") % \
+                                  msg.filename(output_filename))
                     sys.exit(1)
 

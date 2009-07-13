@@ -246,7 +246,7 @@
    instead of throwing ugly IOExceptions or confusing errors.
 - [ ] cd2track
 - [ ] cd2xmcd
-- [ ] coverdump
+- [X] coverdump
 - [ ] editxmcd
 - [ ] record2track
 - [ ] track2cd
