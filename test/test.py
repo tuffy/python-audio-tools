@@ -1331,6 +1331,115 @@ class TestAiffAudio(TestTextOutput):
             os.unlink(track.filename)
             os.rmdir(tempdir)
 
+    @TEST_EXECUTABLE
+    def test_tracklint_invalid1(self):
+        track_file = tempfile.NamedTemporaryFile(
+            suffix="." + self.audio_class.SUFFIX)
+        track_file_stat = os.stat(track_file.name)[0]
+
+        undo_db_dir = tempfile.mkdtemp()
+        undo_db = os.path.join(undo_db_dir,"undo.db")
+
+        try:
+            track = self.audio_class.from_pcm(track_file.name,
+                                              BLANK_PCM_Reader(5))
+            track.set_metadata(audiotools.MetaData(
+                    track_name=u"Track Name ",
+                    track_number=1))
+            if (track.get_metadata() is not None):
+                #unwritable undo DB, writable file
+                self.assertEqual(self.__run_app__(
+                        ["tracklint","--fix","--db","/dev/null/undo.db",
+                         track.filename]),1)
+                self.__check_error__(_(u"Unable to open \"%s\"") % \
+                                         (self.filename("/dev/null/undo.db")))
+
+                self.assertEqual(self.__run_app__(
+                        ["tracklint","--undo","--db","/dev/null/undo.db",
+                         track.filename]),1)
+                self.__check_error__(_(u"Unable to open \"%s\"") % \
+                                         (self.filename("/dev/null/undo.db")))
+
+                #unwritable undo DB, unwritable file
+                os.chmod(track.filename, track_file_stat & 0x7555)
+
+                self.assertEqual(self.__run_app__(
+                        ["tracklint","--fix","--db","/dev/null/undo.db",
+                         track.filename]),1)
+                self.__check_error__(_(u"Unable to open \"%s\"") % \
+                                         (self.filename("/dev/null/undo.db")))
+
+                self.assertEqual(self.__run_app__(
+                        ["tracklint","--undo","--db","/dev/null/undo.db",
+                         track.filename]),1)
+                self.__check_error__(_(u"Unable to open \"%s\"") % \
+                                         (self.filename("/dev/null/undo.db")))
+
+                #restore from DB to unwritable file
+                os.chmod(track.filename,track_file_stat)
+                self.assertEqual(self.__run_app__(
+                        ["tracklint","--fix","--db",undo_db,
+                         track.filename]),0)
+                os.chmod(track.filename,track_file_stat & 0x7555)
+                self.assertEqual(self.__run_app__(
+                        ["tracklint","--undo","--db",undo_db,
+                         track.filename]),1)
+                self.__check_error__(_(u"Unable to write \"%s\"") % \
+                                         (self.filename(track.filename)))
+
+        finally:
+            os.chmod(track_file.name,track_file_stat)
+            track_file.close()
+            for p in [os.path.join(undo_db_dir,f) for f in
+                      os.listdir(undo_db_dir)]:
+                os.unlink(p)
+            os.rmdir(undo_db_dir)
+
+    @TEST_EXECUTABLE
+    def test_tracklint_invalid2(self):
+        track_file = tempfile.NamedTemporaryFile(
+            suffix="." + self.audio_class.SUFFIX)
+        track_file_stat = os.stat(track_file.name)[0]
+
+        undo_db_dir = tempfile.mkdtemp()
+        undo_db = os.path.join(undo_db_dir,"undo.db")
+
+        try:
+            track = self.audio_class.from_pcm(track_file.name,
+                                              BLANK_PCM_Reader(5))
+            track.set_metadata(audiotools.MetaData(
+                    track_name=u"Track Name ",
+                    track_number=1))
+            if (track.get_metadata() is not None):
+                #writable undo DB, unwritable file
+                os.chmod(track.filename,
+                         track_file_stat & 0x7555)
+
+                self.assertEqual(self.__run_app__(
+                        ["tracklint","--fix","--db",undo_db,
+                         track.filename]),1)
+                self.__check_info__(_(u"* %(filename)s: %(message)s") % \
+                           {"filename":self.filename(track.filename),
+                            "message":_(u"Stripped whitespace from track_name field")})
+                self.__check_error__(_(u"Unable to write \"%s\"") % \
+                                         (self.filename(track.filename)))
+
+                #no undo DB, unwritable file
+                self.assertEqual(self.__run_app__(
+                        ["tracklint","--fix",track.filename]),1)
+                self.__check_info__(_(u"* %(filename)s: %(message)s") % \
+                           {"filename":self.filename(track.filename),
+                            "message":_(u"Stripped whitespace from track_name field")})
+                self.__check_error__(_(u"Unable to write \"%s\"") % \
+                                         (self.filename(track.filename)))
+        finally:
+            os.chmod(track_file.name,track_file_stat)
+            track_file.close()
+            for p in [os.path.join(undo_db_dir,f) for f in
+                      os.listdir(undo_db_dir)]:
+                os.unlink(p)
+            os.rmdir(undo_db_dir)
+
     #tests the splitting and concatenating programs
     @TEST_EXECUTABLE
     @TEST_CUESHEET
@@ -2478,7 +2587,59 @@ class TestMP3Audio(ID3Lint,TestAiffAudio):
     def setUp(self):
         self.audio_class = audiotools.MP3Audio
 
-class TestMP2Audio(ID3Lint,TestAiffAudio):
+    @TEST_EXECUTABLE
+    def test_tracklint_invalid2(self):
+        track_file = tempfile.NamedTemporaryFile(
+            suffix="." + self.audio_class.SUFFIX)
+        track_file_stat = os.stat(track_file.name)[0]
+
+        undo_db_dir = tempfile.mkdtemp()
+        undo_db = os.path.join(undo_db_dir,"undo.db")
+
+        try:
+            track = self.audio_class.from_pcm(track_file.name,
+                                              BLANK_PCM_Reader(5))
+            track.set_metadata(audiotools.MetaData(
+                    track_name=u"Track Name ",
+                    track_number=1))
+            if (track.get_metadata() is not None):
+                #writable undo DB, unwritable file
+                os.chmod(track.filename,
+                         track_file_stat & 0x7555)
+
+                self.assertEqual(self.__run_app__(
+                        ["tracklint","--fix","--db",undo_db,
+                         track.filename]),1)
+                self.__check_info__(_(u"* %(filename)s: %(message)s") % \
+                           {"filename":self.filename(track.filename),
+                            "message":_(u"Stripped whitespace from track_name field")})
+                self.__check_info__(_(u"* %(filename)s: %(message)s") % \
+                           {"filename":self.filename(track.filename),
+                            "message":_(u"Stripped whitespace from track_name field")})
+                self.__check_error__(_(u"Unable to write \"%s\"") % \
+                                         (self.filename(track.filename)))
+
+                #no undo DB, unwritable file
+                self.assertEqual(self.__run_app__(
+                        ["tracklint","--fix",track.filename]),1)
+                self.__check_info__(_(u"* %(filename)s: %(message)s") % \
+                           {"filename":self.filename(track.filename),
+                            "message":_(u"Stripped whitespace from track_name field")})
+                self.__check_info__(_(u"* %(filename)s: %(message)s") % \
+                           {"filename":self.filename(track.filename),
+                            "message":_(u"Stripped whitespace from track_name field")})
+                self.__check_error__(_(u"Unable to write \"%s\"") % \
+                                         (self.filename(track.filename)))
+        finally:
+            os.chmod(track_file.name,track_file_stat)
+            track_file.close()
+            for p in [os.path.join(undo_db_dir,f) for f in
+                      os.listdir(undo_db_dir)]:
+                os.unlink(p)
+            os.rmdir(undo_db_dir)
+
+
+class TestMP2Audio(TestMP3Audio):
     def setUp(self):
         self.audio_class = audiotools.MP2Audio
 
@@ -2495,6 +2656,11 @@ class TestVorbisAudio(VorbisLint,TestAiffAudio):
 
         #overhauling its set_metadata() behaviour to pure Python
         #will solve this problem
+        pass
+
+    @TEST_EXECUTABLE
+    def test_tracklint_invalid2(self):
+        #same as above
         pass
 
 class TestM4AAudio(M4AMetadata,TestAiffAudio):

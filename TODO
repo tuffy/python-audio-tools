@@ -256,7 +256,7 @@
 - [ ] trackcmp
 - [ ] trackinfo
 - [ ] tracklength
-- [ ] tracklint
+- [X] tracklint
 - [ ] trackplay
 - [X] trackrename
 - [X] tracksplit

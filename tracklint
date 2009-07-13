@@ -475,7 +475,12 @@ if (__name__ == '__main__'):
                 sys.exit(1)
             try:
                 for track in audiofiles(args):
-                    update_and_backup(track,undo_db,msg)
+                    try:
+                        update_and_backup(track,undo_db,msg)
+                    except IOError:
+                        msg.error(_(u"Unable to write \"%s\"") % \
+                                      (msg.filename(track.filename)))
+                        sys.exit(1)
             finally:
                 undo_db.close()
         else:
@@ -486,7 +491,12 @@ if (__name__ == '__main__'):
                 display_messages(msg,track,messages)
                 (metadata,messages) = fix_metadata(track.get_metadata())
                 display_messages(msg,track,messages)
-                track.set_metadata(metadata)
+                try:
+                    track.set_metadata(metadata)
+                except IOError:
+                    msg.error(_(u"Unable to write \"%s\"") % \
+                                  (msg.filename(track.filename)))
+                    sys.exit(1)
     elif (options.undo):
         try:
             undo_db = anydbm.open(options.db,"r")
@@ -495,7 +505,12 @@ if (__name__ == '__main__'):
             sys.exit(1)
         try:
             for track in audiofiles(args):
-                undo_from_backup(track,undo_db,msg)
+                try:
+                    undo_from_backup(track,undo_db,msg)
+                except IOError:
+                    msg.error(_(u"Unable to write \"%s\"") % \
+                                  (msg.filename(track.filename)))
+                    sys.exit(1)
         finally:
             undo_db.close()
     else: #a dry-run of the fixing procedure, with no changes made
