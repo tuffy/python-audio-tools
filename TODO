@@ -245,7 +245,7 @@
    (invalid permissions, etc.) generate a proper error message
    instead of throwing ugly IOExceptions or confusing errors.
 - [X] cd2track
-- [ ] cd2xmcd
+- [X] cd2xmcd
 - [X] coverdump
 - [ ] editxmcd
 - [ ] record2track

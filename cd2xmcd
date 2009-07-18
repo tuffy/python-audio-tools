@@ -63,7 +63,7 @@ if (__name__ == '__main__'):
       else:
          outfile = open(options.xmcd,"w")
     except IOError,err:
-      msg.error(unicode(err))
+      msg.error(_(u"Unable to write \"%s\"") % (msg.filename(options.xmcd)))
       sys.exit(1)
 
     try:
