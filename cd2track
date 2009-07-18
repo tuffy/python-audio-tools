@@ -233,12 +233,12 @@ if (__name__ == '__main__'):
             sys.exit(1)
         except KeyError:
             continue
-        except (audiotools.InvalidFormat,
-                audiotools.EncodingError),msg:
-            msg.error(_(u"%(track_number)2.2d: %(message)s") % \
-                          {"track_number":cd_track.track_number,
-                           "message":unicode(msg)})
-            continue
+        except audiotools.InvalidFormat,err:
+            msg.error(unicode(err))
+            sys.exit(1)
+        except audiotools.EncodingError,err:
+            msg.error(_(u"Unable to write \"%s\"") % (msg.filename(filename)))
+            sys.exit(1)
 
     cdda.close()
 
