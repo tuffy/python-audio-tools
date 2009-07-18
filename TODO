@@ -235,29 +235,29 @@
   rather than anything like a proper GTK app.
   It should be tweaked to look better.
 
-* TODO Improve transcoding robustness
+* DONE Improve transcoding robustness
   Just about all of the to_pcm() and from_pcm() methods expect
   that their subprocess calls will work as expected.
   Though rare in practice, these need to be checked in case
   the child processes fail for any reason.
-** TODO Check for invalid input/output files/permissions errors
+** DONE Check for invalid input/output files/permissions errors
    If an output file can't be read/written to for some reason
    (invalid permissions, etc.) generate a proper error message
    instead of throwing ugly IOExceptions or confusing errors.
 - [X] cd2track
 - [X] cd2xmcd
 - [X] coverdump
-- [ ] editxmcd
-- [ ] record2track
-- [ ] track2cd
+- [X] editxmcd
+- [X] record2track
+- [X] track2cd
 - [X] track2track
 - [X] track2xmcd
 - [X] trackcat
-- [ ] trackcmp
-- [ ] trackinfo
-- [ ] tracklength
+- [X] trackcmp
+- [X] trackinfo
+- [X] tracklength
 - [X] tracklint
-- [ ] trackplay
+- [X] trackplay
 - [X] trackrename
 - [X] tracksplit
 - [X] tracktag

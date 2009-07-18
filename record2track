@@ -206,8 +206,10 @@ if (__name__ == '__main__'):
         audiofile = AudioType.from_pcm(options.output,input,options.quality)
 
         msg.info(_(u"Done"))
-    except (audiotools.InvalidFormat,
-            audiotools.EncodingError),err:
-        msg.error(unicode(msg))
+    except audiotools.InvalidFormat,err:
+        msg.error(unicode(err))
+        sys.exit(1)
+    except audiotools.EncodingError,err:
+        msg.error(_(u"Unable to write \"%s\"") % (msg.filename(options.output)))
         sys.exit(1)
 
