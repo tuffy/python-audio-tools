@@ -5452,8 +5452,7 @@ class TestProgramOutput(TestTextOutput):
     def test_tracktag1(self):
         self.assertEqual(self.__run_app__(
                 ["tracktag","-x","/dev/null",self.flac1.filename]),1)
-        self.__check_error__(_(u"Unable to open XMCD file \"%s\"") % \
-                          (self.filename("/dev/null")))
+        self.__check_error__(_(u"Invalid XMCD file"))
 
         self.assertEqual(self.__run_app__(
                 ["tracktag","--front-cover=/dev/null/foo.jpg",

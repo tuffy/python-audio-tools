@@ -407,3 +407,11 @@
   and may pave the way for adding cover art to Ogg Vorbis
   (assuming I can find the standard for a secondary stream of image data)
 
+* TODO Convert TOC and CUE handling to proper grammars
+  Although the current ad-hoc method works in most cases,
+  it would be better to use a more formal method to parse these files
+  which can be proven to handle all legal files.
+  I expect this will require PLY or some similar lexx/yacc mechanism
+  which I'll bundle to avoid adding any extra depencies.
+
+
