@@ -26,11 +26,6 @@
   If changes to FLAC metadata are small enough, write over the
   padding (if present) rather than rewrite the whole file - like metaflac.
   This approach should speed up tagging considerably.
-* TODO [#A] Fix FAAC's M4A support
-  If faac is built without working libmp4v2 support,
-  m4a winds up completely broken since the current implementation
-  only modifies an existing Quicktime container.
-  So, if faac builds no container, the resulting file is unsupportable.
 * DONE Fix image support in ID3v2
   Very large images can take a very long time to load.
 * DONE Fix programs to key on album number and track number
@@ -47,19 +42,6 @@
   are missing.
   In some cases, there's no fix to be had (track2xmcd)
   but in most instances it should be made to work correctly.
-* TODO Add more examples
-  A lot of handy new features aren't documented with examples and walkthroughs.
-  Examples to add include:
-- [X] a full multi-CD example, detailing the use of --album-number
-- [X] an image embedding walkthrough
-- [ ] examples of how -d,--format,-o work together for different results
-- [X] a CD image creation, splitting, burning example involving TOC/CUE files
-- [X] an XMCD walkthrough with fetching, editing and tagging
-* TODO More graceful handling of broken files
-  A lot of the track handlers assume that once the start of the file is good,
-  the rest of it is following the spec.  This is not always the case.
-  There needs to be sanity checks such that if a file is wildly wrong,
-  sensible errors result rather than throwing an ugly pyconstruct exception.
 * DONE Perform type inference wherever possible
   Anything with a single output file (trackcat and record2track)
   should be able to infer its output type from the track suffix, if possible.
@@ -84,7 +66,6 @@
 ** DONE Ensure unknown frames are displayed correctly
    Anything that's not text, images or comments should get some sort
    of proper display instead of a Python object string.
-
 * DONE Add app testing to the unit test suite
   Though not everything is unit-testable
   (such as the CD handling programs or anything X11)
@@ -98,20 +79,6 @@
 - [X] trackrename
 - [X] tracksplit
 - [X] tracktag
-* TODO Add support for genre tag?
-  I'm not a big fan of the genre tag.
-  Unlike track number, album name, ISRC, etc. in which a value
-  can be reliably determined from the source material (e.g. back of the CD),
-  genre is akin to a "rating" tag. Its value varies from person to person
-  and this makes it less valuable for archival purposes.
-
-  In addition, the genre tag itself is implemented in incompatible ways.
-  APEv2 uses a chunk of text, ID3v1 uses an integer representing one
-  of many designated genre labels, ID3v2 uses a mix of genre byte
-  and/or text string, and so on.
-
-  That said, the genre field shows up in a lot of players.
-  So, some grudging support for it would probably be appreciated.
 
 * DONE Add verbosity levels to programs
   Every batch program should support a -V --verbose flag
@@ -160,9 +127,6 @@
    to build FLAC CUESHEET blocks directly instead of punting
    this task to metaflac.
 ** DONE Add unit tests for TOC/CUE files, as well as embedded FLAC cuesheets
-* TODO Replace magic numbers with named constants
-  There's still a few instances of magic numbers in use,
-  in the __flac__.py module, for instance.
 * DONE Update copyright text for 2009
 * DONE Preserve metadata when using trackcat
   Any fields shared by all tracks should be merged into metadata
@@ -219,11 +183,6 @@
    --cue will function like --xmcd and act as a metadata source.
 
 ** DONE Update track2xmcd to support getting an XMCD file from CD image
-* TODO Ensure non-image cuesheets are handled properly
-  There are 4 different types of cuesheets,
-  1 single file type and 3 different multiple file variants.
-  We should be able to translate between them if necessary, and if possible.
-
 * DONE Convert to Muspack SV8
   Now that Musepack SV8 is finalized, it should be the new default.
   The old SV7 command-line tools aren't well supported and don't
@@ -345,6 +304,63 @@
 ** DONE Add unit tests
 ** DONE Add fields to --format output
 ** DONE Update man pages with fields information
+* DONE Integrate better MetaData merging
+  There's a few areas in which MetaData from multiple sources must
+  be merged in an intelligent manner,
+  such as where tracksplit takes a source track an XMCD file.
+  Now that a preliminary MetaData.merge() classmethod is in place,
+  this process must be integrated consistently.
+- [X] track2track
+- [X] trackrename
+- [X] tracksplit
+- [X] tracktag
+** DONE Add unit tests for MetaData merging process
+- [X] track2track
+- [X] trackrename
+- [X] tracksplit
+- [X] tracktag
+* DONE Improve M4A metadata handling
+** DONE Make M4A metadata updating less destructive
+  Like FLAC, not all fields need to be wiped out when overwriting
+  old metadata with new.
+** DONE Add more M4A-specific unit tests
+* DONE Add more system information to audiotools-config
+  All BIN-referenced binaries should be accounted for.
+  Thumbnailing status and requirements should be shown.
+* TODO Ensure non-image cuesheets are handled properly
+  There are 4 different types of cuesheets,
+  1 single file type and 3 different multiple file variants.
+  We should be able to translate between them if necessary, and if possible.
+* TODO Replace magic numbers with named constants
+  There's still a few instances of magic numbers in use,
+  in the __flac__.py module, for instance.
+* TODO Add support for genre tag?
+  I'm not a big fan of the genre tag.
+  Unlike track number, album name, ISRC, etc. in which a value
+  can be reliably determined from the source material (e.g. back of the CD),
+  genre is akin to a "rating" tag. Its value varies from person to person
+  and this makes it less valuable for archival purposes.
+
+  In addition, the genre tag itself is implemented in incompatible ways.
+  APEv2 uses a chunk of text, ID3v1 uses an integer representing one
+  of many designated genre labels, ID3v2 uses a mix of genre byte
+  and/or text string, and so on.
+
+  That said, the genre field shows up in a lot of players.
+  So, some grudging support for it would probably be appreciated.
+* TODO More graceful handling of broken files
+  A lot of the track handlers assume that once the start of the file is good,
+  the rest of it is following the spec.  This is not always the case.
+  There needs to be sanity checks such that if a file is wildly wrong,
+  sensible errors result rather than throwing an ugly pyconstruct exception.
+* TODO Add more examples
+  A lot of handy new features aren't documented with examples and walkthroughs.
+  Examples to add include:
+- [X] a full multi-CD example, detailing the use of --album-number
+- [X] an image embedding walkthrough
+- [ ] examples of how -d,--format,-o work together for different results
+- [X] a CD image creation, splitting, burning example involving TOC/CUE files
+- [X] an XMCD walkthrough with fetching, editing and tagging
 * TODO Add support for System->cdrom_offset
   This will automatically apply offset samples when reading CDs
   so that rips will have the appropate amount of null samples.
@@ -361,22 +377,6 @@
   Perhaps performing cover opening in a separate thread
   would make the interface more responsive when opening tracks
   containing many large images.
-
-* DONE Integrate better MetaData merging
-  There's a few areas in which MetaData from multiple sources must
-  be merged in an intelligent manner,
-  such as where tracksplit takes a source track an XMCD file.
-  Now that a preliminary MetaData.merge() classmethod is in place,
-  this process must be integrated consistently.
-- [X] track2track
-- [X] trackrename
-- [X] tracksplit
-- [X] tracktag
-** DONE Add unit tests for MetaData merging process
-- [X] track2track
-- [X] trackrename
-- [X] tracksplit
-- [X] tracktag
 * TODO Add general-purpose track conversion short-circuiting
   Certain type conversions should pass through specialized routines
   rather than be piped through PCM conversion.
@@ -385,33 +385,20 @@
   For example, going from FLAC to Ogg FLAC should theoretically involve
   wrapping up FLAC frames rather than re-encoding.
   Or going from AAC to M4A should involve simple wrapper manipulation.
-
-* DONE Improve M4A metadata handling
-** DONE Make M4A metadata updating less destructive
-  Like FLAC, not all fields need to be wiped out when overwriting
-  old metadata with new.
-** DONE Add more M4A-specific unit tests
 * TODO Add cdinfo utility
   Analagous to trackinfo, but for an inserted CD.
   This would be a better location for cd2xmcd's "-i" option.
-
-* DONE Add more system information to audiotools-config
-  All BIN-referenced binaries should be accounted for.
-  Thumbnailing status and requirements should be shown.
 * TODO Add manual page for audiotools.cfg
   It'll be easier to check what the options are from a man page
   rather than having to check the website or PDF doc.
-
 * TODO Convert vorbiscomment dependency to Python
   This would remove the last app-based MetaData-setting utility
   and may pave the way for adding cover art to Ogg Vorbis
   (assuming I can find the standard for a secondary stream of image data)
-
 * TODO Convert TOC and CUE handling to proper grammars
   Although the current ad-hoc method works in most cases,
   it would be better to use a more formal method to parse these files
   which can be proven to handle all legal files.
   I expect this will require PLY or some similar lexx/yacc mechanism
   which I'll bundle to avoid adding any extra depencies.
-
 

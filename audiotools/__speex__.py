@@ -151,7 +151,7 @@ class SpeexAudio(VorbisAudio):
     def set_metadata(self, metadata):
         comment = VorbisComment.converted(metadata)
 
-        if (comment == None): return
+        if (comment is None): return
 
         reader = OggStreamReader(file(self.filename,'rb'))
         new_file = cStringIO.StringIO()
