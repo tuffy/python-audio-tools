@@ -2673,21 +2673,34 @@ class TestVorbisAudio(VorbisLint,TestAiffAudio):
     def setUp(self):
         self.audio_class = audiotools.VorbisAudio
 
-    @TEST_EXECUTABLE
-    def test_tracktag_invalid(self):
-        #VorbisAudio punts its set_metadata() calls to "vorbiscomment"
-        #which actually changes a file's mode to make it writeable
-        #this means it'll generate errors only if something goes bad
-        #between the time it's opened and the time we call set_metadata()
+    def test_bigvorbiscomment(self):
+        track_file = tempfile.NamedTemporaryFile(suffix=self.audio_class.SUFFIX)
+        try:
+            track = self.audio_class.from_pcm(track_file.name,
+                                              BLANK_PCM_Reader(5))
+            pcm = track.to_pcm()
+            original_pcm_sum = md5()
+            audiotools.transfer_data(pcm.read,original_pcm_sum.update)
+            pcm.close()
 
-        #overhauling its set_metadata() behaviour to pure Python
-        #will solve this problem
-        pass
+            comment = audiotools.MetaData(
+                track_name=u"Name",
+                track_number=1,
+                comment=u"abcdefghij" * 13005)
+            track.set_metadata(comment)
+            track = audiotools.open(track_file.name)
+            self.assertEqual(comment,track.get_metadata())
 
-    @TEST_EXECUTABLE
-    def test_tracklint_invalid2(self):
-        #same as above
-        pass
+            pcm = track.to_pcm()
+            new_pcm_sum = md5()
+            audiotools.transfer_data(pcm.read,new_pcm_sum.update)
+            pcm.close()
+
+            self.assertEqual(original_pcm_sum.hexdigest(),
+                             new_pcm_sum.hexdigest())
+        finally:
+            track_file.close()
+
 
 class TestM4AAudio(M4AMetadata,TestAiffAudio):
     def setUp(self):
