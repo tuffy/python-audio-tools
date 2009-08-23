@@ -430,21 +430,68 @@ class VorbisAudio(AudioFile):
     def set_metadata(self, metadata):
         metadata = VorbisComment.converted(metadata)
 
-        if (metadata == None): return
+        if (metadata is None): return
 
-        sub = subprocess.Popen([BIN['vorbiscomment'],
-                                "-R","-w",self.filename],
-                               stdin=subprocess.PIPE,
-                               stderr=file(os.devnull,"w"))
+        reader = OggStreamReader(file(self.filename,'rb'))
+        new_file = cStringIO.StringIO()
+        writer = OggStreamWriter(new_file)
+        current_sequence_number = 0
 
-        for (tag,values) in metadata.items():
-            for value in values:
-                print >>sub.stdin,"%(tag)s=%(value)s" % \
-                      {"tag":tag,"value":unicode(value).encode('utf-8')}
-        sub.stdin.close()
+        pages = reader.pages()
 
-        if (sub.wait() != 0):
-            raise IOError("error setting metadata")
+        #transfer our old header
+        #this must always be the first packet and the first page
+        (header_page,header_data) = pages.next()
+        writer.write_page(header_page,header_data)
+        current_sequence_number += 1
+
+        #grab the current "comment" and "setup headers" packets
+        #these may take one or more pages,
+        #but will always end on a page boundary
+        del(pages)
+        packets = reader.packets(from_beginning=False)
+
+        comment_packet = packets.next()
+        headers_packet = packets.next()
+
+        #write the pages for our new "comment" packet
+        for (page,data) in OggStreamWriter.build_pages(
+            0,
+            header_page.bitstream_serial_number,
+            current_sequence_number,
+            VorbisAudio.COMMENT_HEADER.build(Con.Container(
+                    packet_type=3,
+                    vorbis='vorbis')) + metadata.build()):
+            writer.write_page(page,data)
+            current_sequence_number += 1
+
+        #write the pages for the old "setup headers" packet
+        for (page,data) in OggStreamWriter.build_pages(
+            0,
+            header_page.bitstream_serial_number,
+            current_sequence_number,
+            headers_packet):
+            writer.write_page(page,data)
+            current_sequence_number += 1
+
+        #write the rest of the pages, re-sequenced and re-checksummed
+        del(packets)
+        pages = reader.pages(from_beginning=False)
+
+        for (i,(page,data)) in enumerate(pages):
+            page.page_sequence_number = i + current_sequence_number
+            page.checksum = OggStreamReader.calculate_ogg_checksum(page,data)
+            writer.write_page(page,data)
+
+        reader.close()
+
+        #re-write the file with our new data in "new_file"
+        f = file(self.filename,"wb")
+        f.write(new_file.getvalue())
+        f.close()
+        writer.close()
+
+        self.__read_metadata__()
 
         self.__read_metadata__()
 
