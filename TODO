@@ -391,7 +391,7 @@
 * TODO Add manual page for audiotools.cfg
   It'll be easier to check what the options are from a man page
   rather than having to check the website or PDF doc.
-* TODO Convert vorbiscomment dependency to Python
+* DONE Convert vorbiscomment dependency to Python
   This would remove the last app-based MetaData-setting utility
   and may pave the way for adding cover art to Ogg Vorbis
   (assuming I can find the standard for a secondary stream of image data)

@@ -130,13 +130,9 @@ class VorbisComment(MetaData,dict):
     def converted(cls, metadata):
         if ((metadata is None) or (isinstance(metadata,VorbisComment))):
             return metadata
-        elif (hasattr(metadata,'vorbis_comment')):
-            #This is a hack to support FlacMetaData.
-            #We can't use isinstance() because FlacMetaData contains
-            #FlacVorbisComment, and both are defined in __flac__
-            #which must be defined *after* __vorbiscomment__ since
-            #FlacVorbisComment is a subclass of VorbisComment.
-            return metadata.vorbis_comment
+        elif (metadata.__class__.__name__ == 'FlacMetaData'):
+            return cls(vorbis_data = dict(metadata.vorbis_comment.items()),
+                       vendor_string = metadata.vorbis_comment.vendor_string)
         else:
             values = {}
             for key in cls.ATTRIBUTE_MAP.keys():
