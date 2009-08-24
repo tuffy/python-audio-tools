@@ -388,7 +388,7 @@
 * TODO Add cdinfo utility
   Analagous to trackinfo, but for an inserted CD.
   This would be a better location for cd2xmcd's "-i" option.
-* TODO Add manual page for audiotools.cfg
+* DONE Add manual page for audiotools.cfg
   It'll be easier to check what the options are from a man page
   rather than having to check the website or PDF doc.
 * DONE Convert vorbiscomment dependency to Python

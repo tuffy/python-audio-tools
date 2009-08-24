@@ -1,0 +1,67 @@
+.TH "audiotools.cfg" 5 "August 24, 2009" "" "Audio Tools Config File"
+.SH NAME
+audiotools.cfg \- configuration data for Python Audio Tools
+.SH DESCRIPTION
+The format of this file is straightforward.
+It consists of one or more sections.
+Each section contains one or more \fCkey: value\fR pairs.
+.TS
+tab(:);
+| c | c | c |
+| r | r | l |.
+_
+Section:Key:Value
+=
+\fC[FreeDB]\fR:\fCserver\fR:the default FreeDB server hostname
+\^:\fCport\fR:the default FreeDB server port
+_
+\fC[System]\fR:\fCcdrom\fR:the default CD-ROM device to use
+\^:\^:for CD reading/writing
+\^:\fCcdrom_read_offset\fR:the sample offset to apply
+\^:\^:when reading tracks
+\^:\fCmaximum_jobs\fR:the maximum amount of processes
+\^:\^:to run simultaneously
+\^:\fCfs_encoding\fR:the filesystem's text encoding,
+\^:\^:for reading/writing filenames
+\^:\fCio_encoding\fR:the terminal's text encoding,
+\^:\^:when generating screen output
+_
+\fC[Filenames]\fR:\fCformat\fR:the default filename format
+\^:\^:for new tracks
+_
+\fC[Binaries]\fR:\fCflac\fR:the \fCflac\fR executable to use
+\^:\^:for encoding/decoding FLAC files
+\^:\fClame\fR:the \fClame\fR executable to use
+\^:\^:for encoding/decoding MP3 files
+\^:...:which executable to use
+\^:\^:other than the default
+_
+\fC[Thumbnail]\fR:\fCformat\fR:the image format to use for
+\^:\^:thumbnails, such as `jpeg' or `png'
+\^:\fCsize\fR:the maximum size of each thumbnail
+\^:\^:in pixels
+\^:\^:(e.g. a value of 100 results
+\^:\^:in a maximum size of 100\[mu]100 pixel
+\^:\^:thumbnails)
+_
+.TE
+.SH SEE ALSO
+.BR cd2track (1),
+.BR cd2xmcd (1),
+.BR coverdump (1),
+.BR coverview (1),
+.BR editxmcd (1),
+.BR record2track (1),
+.BR track2cd (1),
+.BR track2xmcd (1),
+.BR trackcat (1),
+.BR trackcmp (1),
+.BR trackinfo (1),
+.BR tracklength (1),
+.BR tracklint (1),
+.BR trackplay (1),
+.BR trackrename (1),
+.BR tracksplit (1),
+.BR tracktag (1)
+.SH AUTHOR
+Brian Langenberger
