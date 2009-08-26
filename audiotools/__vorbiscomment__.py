@@ -53,8 +53,12 @@ class VorbisComment(MetaData,dict):
     #vorbis_data is a key->[value1,value2,...] dict of the original
     #Vorbis comment data.  keys are generally upper case
     def __init__(self, vorbis_data, vendor_string=u""):
-        dict.__init__(self,vorbis_data)
+        dict.__init__(self,[(key.upper(),values)
+                            for (key,values) in vorbis_data.items()])
         self.vendor_string = vendor_string
+
+    def __setitem__(self,key,value):
+        dict.__setitem__(self,key.upper(),value)
 
     def __getattr__(self, key):
         if (key == 'track_number'):

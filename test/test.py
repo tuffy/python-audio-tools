@@ -2211,7 +2211,7 @@ Fy3hYEs4qiXB6wOQULBQkOhCygalbISUUvrnACQVERfIr1scI4K5lk9od5+/""".decode('base64')
             sheet_file.close()
 
 class LCVorbisComment:
-    @TEST_CUSTOM
+    @TEST_METADATA
     def test_lowercase_vorbiscomment(self):
         track_file = tempfile.NamedTemporaryFile(suffix=self.audio_class.SUFFIX)
         try:
@@ -2263,7 +2263,7 @@ class LCVorbisComment:
         finally:
             track_file.close()
 
-    @TEST_CUSTOM
+    @TEST_METADATA
     def test_lowercase_vorbiscomment_field(self):
         track_file = tempfile.NamedTemporaryFile(suffix=self.audio_class.SUFFIX)
         try:
