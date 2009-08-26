@@ -180,7 +180,7 @@ class VerboseMessenger:
     #and adds a newline
     def output(self,s):
         sys.stdout.write(s.encode(IO_ENCODING,'replace'))
-        sys.stdout.write("\n")
+        sys.stdout.write(os.linesep)
 
     #displays a partial output message unicode string to stdout
     #and flushes output so it is displayed
@@ -229,7 +229,7 @@ class VerboseMessenger:
     #and adds a newline
     def info(self,s):
         sys.stderr.write(s.encode(IO_ENCODING,'replace'))
-        sys.stderr.write("\n")
+        sys.stderr.write(os.linesep)
 
     #displays a partial informative message unicode string to stderr
     #and flushes output so it is displayed
@@ -251,14 +251,14 @@ class VerboseMessenger:
     def error(self,s):
         sys.stderr.write("*** Error: ")
         sys.stderr.write(s.encode(IO_ENCODING,'replace'))
-        sys.stderr.write("\n")
+        sys.stderr.write(os.linesep)
 
     #displays an warninc message unicode string
     #and adds a newline
     def warning(self,s):
         sys.stderr.write("*** Warning: ")
         sys.stderr.write(s.encode(IO_ENCODING,'replace'))
-        sys.stderr.write("\n")
+        sys.stderr.write(os.linesep)
 
     #displays the program's usage string to stderr
     #and adds a newline
@@ -267,7 +267,7 @@ class VerboseMessenger:
         sys.stderr.write(self.executable.decode('ascii'))
         sys.stderr.write(" ")
         sys.stderr.write(s.encode(IO_ENCODING,'replace'))
-        sys.stderr.write('\n')
+        sys.stderr.write(os.linesep)
 
     #takes a filename string and returns a unicode string
     #decoded according to the system's encoding
@@ -1355,9 +1355,10 @@ class MetaData:
             base_comment = u""
 
         if (len(self.images()) > 0):
-            return u"%s\n\n%s" % \
+            return u"%s%s%s" % \
                    (base_comment,
-                    "\n".join([unicode(p) for p in self.images()]))
+                    os.linesep * 2,
+                    os.linesep.join([unicode(p) for p in self.images()]))
         else:
             return base_comment
 
@@ -1881,7 +1882,7 @@ def sheet_to_unicode(sheet,total_frames):
 
     ISRCs = sheet.ISRCs()
 
-    tracks = u"\n".join(
+    tracks = unicode(os.linesep).join(
         [" Track %2.2d - %2.2d:%2.2d%s" % \
              (i + 1,
               length / 44100 / 60,
@@ -1892,8 +1893,9 @@ def sheet_to_unicode(sheet,total_frames):
 
     if ((sheet.catalog() is not None) and
         (len(sheet.catalog()) > 0)):
-        return u"  Catalog - %s\n%s" % \
-            (sheet.catalog().decode('ascii','replace'),tracks)
+        return u"  Catalog - %s%s%s" % \
+            (sheet.catalog().decode('ascii','replace'),
+             os.linesep,tracks)
     else:
         return tracks
 

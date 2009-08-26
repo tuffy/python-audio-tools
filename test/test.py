@@ -409,27 +409,28 @@ class TestTextOutput(unittest.TestCase):
     def __check_output__(self,s):
         self.assertEqual(
             self.stdout.readline().decode(audiotools.IO_ENCODING),
-            s + u"\n")
+            s + unicode(os.linesep))
 
     def __check_info__(self,s):
         self.assertEqual(
             self.stderr.readline().decode(audiotools.IO_ENCODING),
-            s + u"\n")
+            s + unicode(os.linesep))
 
     def __check_error__(self,s):
         self.assertEqual(
             self.stderr.readline().decode(audiotools.IO_ENCODING),
-            u"*** Error: " + s + u"\n")
+            u"*** Error: " + s + unicode(os.linesep))
 
     def __check_warning__(self,s):
         self.assertEqual(
             self.stderr.readline().decode(audiotools.IO_ENCODING),
-            u"*** Warning: " + s + u"\n")
+            u"*** Warning: " + s + unicode(os.linesep))
 
     def __check_usage__(self,executable,s):
         self.assertEqual(
             self.stderr.readline().decode(audiotools.IO_ENCODING),
-            u"*** Usage: " + executable.decode('ascii') + u" " + s + u"\n")
+            u"*** Usage: " + executable.decode('ascii') + u" " + s +
+            unicode(os.linesep))
 
 class TestAiffAudio(TestTextOutput):
     def DummyMetaData(self):
@@ -1252,6 +1253,7 @@ class TestAiffAudio(TestTextOutput):
             track = self.audio_class.from_pcm(
                     base_file.name,
                     EXACT_BLANK_PCM_Reader(TOTAL_FRAMES))
+            track.set_metadata(audiotools.MetaData(album_number=0))
             cue_file.write(CUE_SHEET)
             cue_file.flush()
 
@@ -2673,6 +2675,7 @@ class TestVorbisAudio(VorbisLint,TestAiffAudio):
     def setUp(self):
         self.audio_class = audiotools.VorbisAudio
 
+    @TEST_METADATA
     def test_bigvorbiscomment(self):
         track_file = tempfile.NamedTemporaryFile(suffix=self.audio_class.SUFFIX)
         try:

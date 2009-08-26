@@ -78,8 +78,9 @@ class WavePackAPEv2(ApeTag):
             import cue
 
             try:
-                return u"%s\n\nCuesheet:\n%s" % \
+                return u"%s%sCuesheet:\n%s" % \
                     (MetaData.__unicode__(self),
+                     os.linesep * 2,
                      sheet_to_unicode(
                             cue.parse(
                                 cue.tokens(self['Cuesheet'].encode('ascii',

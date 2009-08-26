@@ -125,8 +125,9 @@ class FlacMetaData(MetaData):
         if (self.cuesheet is None):
             return MetaData.__unicode__(self)
         else:
-            return u"%s\n\nCuesheet:\n%s" % (MetaData.__unicode__(self),
-                                             unicode(self.cuesheet))
+            return u"%s%sCuesheet:\n%s" % (MetaData.__unicode__(self),
+                                           os.linesep * 2,
+                                           unicode(self.cuesheet))
 
     def __setattr__(self, key, value):
         # self.__dict__[key] = value
