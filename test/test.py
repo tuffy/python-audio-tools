@@ -2210,8 +2210,101 @@ Fy3hYEs4qiXB6wOQULBQkOhCygalbISUUvrnACQVERfIr1scI4K5lk9od5+/""".decode('base64')
         finally:
             sheet_file.close()
 
+class LCVorbisComment:
+    @TEST_CUSTOM
+    def test_lowercase_vorbiscomment(self):
+        track_file = tempfile.NamedTemporaryFile(suffix=self.audio_class.SUFFIX)
+        try:
+            track = self.audio_class.from_pcm(track_file.name,
+                                              BLANK_PCM_Reader(5))
 
-class TestFlacAudio(EmbeddedCuesheet,TestForeignWaveChunks,VorbisLint,TestAiffAudio):
+            lc_metadata = audiotools.VorbisComment(
+                    {"title":[u"track name"],
+                     "tracknumber":[u"1"],
+                     "tracktotal":[u"3"],
+                     "album":[u"album name"],
+                     "artist":[u"artist name"],
+                     "performer":[u"performer name"],
+                     "composer":[u"composer name"],
+                     "conductor":[u"conductor name"],
+                     "source medium":[u"media"],
+                     "isrc":[u"isrc"],
+                     "catalog":[u"catalog"],
+                     "copyright":[u"copyright"],
+                     "publisher":[u"publisher"],
+                     "date":[u"2009"],
+                     "discnumber":[u"2"],
+                     "disctotal":[u"4"],
+                     "comment":[u"some comment"]},
+                    u"vendor string")
+
+            metadata = audiotools.MetaData(
+                track_name=u"track name",
+                track_number=1,
+                track_total=3,
+                album_name=u"album name",
+                artist_name=u"artist name",
+                performer_name=u"performer name",
+                composer_name=u"composer name",
+                conductor_name=u"conductor name",
+                media=u"media",
+                ISRC=u"isrc",
+                catalog=u"catalog",
+                copyright=u"copyright",
+                publisher=u"publisher",
+                year=u"2009",
+                album_number=2,
+                album_total=4,
+                comment=u"some comment")
+
+            track.set_metadata(lc_metadata)
+            track = audiotools.open(track_file.name)
+            self.assertEqual(metadata,lc_metadata)
+        finally:
+            track_file.close()
+
+    @TEST_CUSTOM
+    def test_lowercase_vorbiscomment_field(self):
+        track_file = tempfile.NamedTemporaryFile(suffix=self.audio_class.SUFFIX)
+        try:
+            track = self.audio_class.from_pcm(track_file.name,
+                                              BLANK_PCM_Reader(5))
+            track.set_metadata(audiotools.MetaData(
+                    track_name=u"Track Name",
+                    track_number=1))
+            metadata = track.get_metadata()
+            if (hasattr(metadata,"vorbis_comment")):
+                metadata = metadata.vorbis_comment
+            self.assertEqual(metadata["TITLE"],[u"Track Name"])
+            self.assertEqual(metadata["TRACKNUMBER"],[u"1"])
+            self.assertEqual(metadata.track_name,u"Track Name")
+            self.assertEqual(metadata.track_number,1)
+
+            metadata["title"] = [u"New Track Name"]
+            metadata["tracknumber"] = [u"2"]
+            track.set_metadata(metadata)
+            metadata = track.get_metadata()
+            if (hasattr(metadata,"vorbis_comment")):
+                metadata = metadata.vorbis_comment
+            self.assertEqual(metadata["TITLE"],[u"New Track Name"])
+            self.assertEqual(metadata["TRACKNUMBER"],[u"2"])
+            self.assertEqual(metadata.track_name,u"New Track Name")
+            self.assertEqual(metadata.track_number,2)
+
+            metadata.track_name = "New Track Name 2"
+            metadata.track_number = 3
+            track.set_metadata(metadata)
+            metadata = track.get_metadata()
+            if (hasattr(metadata,"vorbis_comment")):
+                metadata = metadata.vorbis_comment
+            self.assertEqual(metadata["TITLE"],[u"New Track Name 2"])
+            self.assertEqual(metadata["TRACKNUMBER"],[u"3"])
+            self.assertEqual(metadata.track_name,u"New Track Name 2")
+            self.assertEqual(metadata.track_number,3)
+        finally:
+            track_file.close()
+
+class TestFlacAudio(EmbeddedCuesheet,TestForeignWaveChunks,VorbisLint,TestAiffAudio,LCVorbisComment):
     def setUp(self):
         self.audio_class = audiotools.FlacAudio
 
@@ -2492,7 +2585,7 @@ class M4AMetadata:
 #    def setUp(self):
 #        self.audio_class = audiotools.ALACAudio
 
-class TestOggFlacAudio(EmbeddedCuesheet,VorbisLint,TestAiffAudio):
+class TestOggFlacAudio(EmbeddedCuesheet,VorbisLint,TestAiffAudio,LCVorbisComment):
     def setUp(self):
         self.audio_class = audiotools.OggFlacAudio
 
@@ -2671,7 +2764,7 @@ class TestMP2Audio(TestMP3Audio):
     def setUp(self):
         self.audio_class = audiotools.MP2Audio
 
-class TestVorbisAudio(VorbisLint,TestAiffAudio):
+class TestVorbisAudio(VorbisLint,TestAiffAudio,LCVorbisComment):
     def setUp(self):
         self.audio_class = audiotools.VorbisAudio
 
@@ -2703,6 +2796,8 @@ class TestVorbisAudio(VorbisLint,TestAiffAudio):
                              new_pcm_sum.hexdigest())
         finally:
             track_file.close()
+
+
 
 
 class TestM4AAudio(M4AMetadata,TestAiffAudio):
@@ -2787,7 +2882,7 @@ class TestMusepackAudio(APEv2Lint,TestAiffAudio):
     def setUp(self):
         self.audio_class = audiotools.MusepackAudio
 
-class TestSpeexAudio(VorbisLint,TestAiffAudio):
+class TestSpeexAudio(VorbisLint,TestAiffAudio,LCVorbisComment):
     def setUp(self):
         self.audio_class = audiotools.SpeexAudio
 

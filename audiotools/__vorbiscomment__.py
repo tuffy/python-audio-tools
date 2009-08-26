@@ -51,7 +51,7 @@ class VorbisComment(MetaData,dict):
     ITEM_MAP = dict(map(reversed,ATTRIBUTE_MAP.items()))
 
     #vorbis_data is a key->[value1,value2,...] dict of the original
-    #Vorbis comment data.  keys should be upper case
+    #Vorbis comment data.  keys are generally upper case
     def __init__(self, vorbis_data, vendor_string=u""):
         dict.__init__(self,vorbis_data)
         self.vendor_string = vendor_string
