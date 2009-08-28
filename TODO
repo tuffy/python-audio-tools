@@ -36,7 +36,6 @@
   For example, converting track_number 15 and album_number 2 to WAVE
   should make a file "track215.cdda.wav" which then properly converts
   back to track_number 15 and album_number 2 if read.
-
 * DONE Improve XMCD handling
   Support for XMCD files often breaks down if one or more tracks
   are missing.
@@ -45,7 +44,6 @@
 * DONE Perform type inference wherever possible
   Anything with a single output file (trackcat and record2track)
   should be able to infer its output type from the track suffix, if possible.
-
 * DONE Add "comment" field support to all metadata types
   Don't forget to add unit tests for comment field.
 ** TODO Sort "comment" fields correctly across all metadata types
@@ -79,7 +77,6 @@
 - [X] trackrename
 - [X] tracksplit
 - [X] tracktag
-
 * DONE Add verbosity levels to programs
   Every batch program should support a -V --verbose flag
   with options for "silence","normal" (the default) and "debug".
@@ -104,7 +101,6 @@
 * DONE Add support for W??? frames to ID3v2
   The various W??? frames are really just URLs and don't need to
   be displayed as hex-encoded blobs.
-
 * DONE Add CUE/TOC support to track2cd
   It should be possible to burn a selection of tracks, or a disc image,
   from a cuesheet with all its indexes/ISRC/catalog data intact
@@ -181,7 +177,6 @@
    If given with a single, album-length track, --cue will import a cuesheet.
    If given with multiple tracks or a single track that's too short,
    --cue will function like --xmcd and act as a metadata source.
-
 ** DONE Update track2xmcd to support getting an XMCD file from CD image
 * DONE Convert to Muspack SV8
   Now that Musepack SV8 is finalized, it should be the new default.
@@ -193,7 +188,6 @@
   It's currently a haphazard assortment of widgets
   rather than anything like a proper GTK app.
   It should be tweaked to look better.
-
 * DONE Improve transcoding robustness
   Just about all of the to_pcm() and from_pcm() methods expect
   that their subprocess calls will work as expected.
@@ -401,6 +395,3 @@
   which can be proven to handle all legal files.
   I expect this will require PLY or some similar lexx/yacc mechanism
   which I'll bundle to avoid adding any extra depencies.
-
-
-

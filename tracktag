@@ -62,7 +62,7 @@ def xmcd_track_metadata(track, xmcd):
         xmcd_md = track_metadata.__class__.converted(
             xmcd_metadata(track,xmcd))
     else:
-        xmcd_md = xmcd
+        xmcd_md = xmcd[track.track_number()]
     if (xmcd_md is not None):
         xmcd_md.merge(track_metadata)
     return xmcd_md
