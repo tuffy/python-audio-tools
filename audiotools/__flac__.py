@@ -660,6 +660,9 @@ class FlacAudio(AudioFile):
         finally:
             f.close()
 
+    def delete_metadata(self):
+        self.set_metadata(MetaData())
+
 
     @classmethod
     def __read_flac_header__(cls, flacfile):

@@ -336,6 +336,9 @@ class __M4AAudio_faac__(AudioFile):
         f = file(self.filename,"rb")
         self.qt_stream = __Qt_Atom_Stream__(f)
 
+    def delete_metadata(self):
+        self.set_metadata(MetaData())
+
 
     def to_pcm(self):
         devnull = file(os.devnull,"ab")

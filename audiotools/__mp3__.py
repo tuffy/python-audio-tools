@@ -316,7 +316,7 @@ class MP3Audio(AudioFile):
             f.close()
 
     def set_metadata(self, metadata):
-        if (metadata == None): return
+        if (metadata is None): return
 
         if ((not isinstance(metadata,ID3v2Comment)) and
             (not isinstance(metadata,ID3v1Comment))):
@@ -349,6 +349,22 @@ class MP3Audio(AudioFile):
         f.write(id3v2)
         f.write(mp3_data)
         f.write(id3v1)
+        f.close()
+
+    def delete_metadata(self):
+        #get the original MP3 data
+        f = file(self.filename,"rb")
+        MP3Audio.__find_mp3_start__(f)
+        data_start = f.tell()
+        MP3Audio.__find_last_mp3_frame__(f)
+        data_end = f.tell()
+        f.seek(data_start,0)
+        mp3_data = f.read(data_end - data_start)
+        f.close()
+
+        #write data to file
+        f = file(self.filename,"wb")
+        f.write(mp3_data)
         f.close()
 
     #places mp3file at the position of the next MP3 frame's start

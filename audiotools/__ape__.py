@@ -342,7 +342,7 @@ class ApeTaggedAudio:
         if (apetag is None): return
 
         current_metadata = self.get_metadata()
-        if (current_metadata != None):  #there's existing tags to delete
+        if (current_metadata is not None):  #there's existing tags to delete
             f = file(self.filename,"rb")
             untagged_data = f.read()[0:-current_metadata.tag_length]
             f.close()
@@ -353,6 +353,16 @@ class ApeTaggedAudio:
         else:                           #no existing tags
             f = file(self.filename,"ab")
             f.write(apetag.ape_tag_data())
+            f.close()
+
+    def delete_metadata(self):
+        current_metadata = self.get_metadata()
+        if (current_metadata is not None):  #there's existing tags to delete
+            f = file(self.filename,"rb")
+            untagged_data = f.read()[0:-current_metadata.tag_length]
+            f.close()
+            f = file(self.filename,"wb")
+            f.write(untagged_data)
             f.close()
 
 

@@ -507,6 +507,9 @@ class VorbisAudio(AudioFile):
 
         return VorbisComment(data)
 
+    def delete_metadata(self):
+        self.set_metadata(MetaData())
+
     @classmethod
     def add_replay_gain(cls, filenames):
         track_names = [track.filename for track in
