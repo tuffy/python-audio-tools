@@ -1309,6 +1309,18 @@ class MetaData:
             tuple(["%s=%s" % (field,repr(getattr(self,field)))
                    for field in MetaData.__FIELDS__])
 
+    def __delattr__(self, field):
+        if (field in self.__FIELDS__):
+            if (field in self.__INTEGER_FIELDS__):
+                self.__dict__[field] = 0
+            else:
+                self.__dict__[field] = u""
+        else:
+            try:
+                del(self.__dict__[field])
+            except KeyError:
+                raise AttributeError(field)
+
     #returns the type of comment this is, as a unicode string
     def __comment_name__(self):
         return u'MetaData'
@@ -1624,6 +1636,11 @@ class AudioFile:
     #raises IOError if there's some problem reading the file
     def get_metadata(self):
         return None
+
+    #deletes the track's MetaData, removing or unsetting tags as necessary
+    #raises IOError if there's some problem writing the file
+    def delete_metadata(self):
+        pass
 
     def total_frames(self):
         raise NotImplementedError()

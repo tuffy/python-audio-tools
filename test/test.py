@@ -861,6 +861,60 @@ class TestAiffAudio(TestTextOutput):
         finally:
             temp.close()
 
+    @TEST_CUSTOM
+    def test_metadata_deletion_full(self):
+        temp_track_file = tempfile.NamedTemporaryFile(suffix="." + self.audio_class.SUFFIX)
+        try:
+            temp_track = self.audio_class.from_pcm(
+                temp_track_file.name,
+                BLANK_PCM_Reader(5))
+
+            temp_track.set_metadata(DummyMetaData())
+            if (temp_track.get_metadata() is not None):
+                temp_track = audiotools.open(temp_track_file.name)
+                temp_track.delete_metadata()
+                metadata = temp_track.get_metadata()
+                if (metadata is None):
+                    self.assertEqual(metadata,None) #a formality
+                else:
+                    self.assertEqual(metadata,audiotools.MetaData())
+                temp_track = audiotools.open(temp_track_file.name)
+                metadata = temp_track.get_metadata()
+                if (metadata is None):
+                    self.assertEqual(metadata,None) #another formality
+                else:
+                    self.assertEqual(metadata,audiotools.MetaData())
+        finally:
+            temp_track_file.close()
+
+    @TEST_CUSTOM
+    def test_metadata_deletion_fields(self):
+        temp_track_file = tempfile.NamedTemporaryFile(suffix="." + self.audio_class.SUFFIX)
+        try:
+            temp_track = self.audio_class.from_pcm(
+                temp_track_file.name,
+                BLANK_PCM_Reader(5))
+
+            temp_track.set_metadata(DummyMetaData())
+            if (temp_track.get_metadata() is not None):
+                for field in audiotools.MetaData.__FIELDS__:
+                    temp_track = audiotools.open(temp_track_file.name)
+                    metadata = temp_track.get_metadata()
+                    if (field in audiotools.MetaData.__INTEGER_FIELDS__):
+                        if (getattr(metadata,field) != 0):
+                            delattr(metadata,field)
+                            temp_track.set_metadata(metadata)
+                            metadata = temp_track.get_metadata()
+                            self.assertEqual(getattr(metadata,field),0)
+                    else:
+                        if (getattr(metadata,field) != u''):
+                            delattr(metadata,field)
+                            temp_track.set_metadata(metadata)
+                            metadata = temp_track.get_metadata()
+                            self.assertEqual(getattr(metadata,field),u'')
+        finally:
+            temp_track_file.close()
+
     @TEST_METADATA
     def testinvalidmetadata(self):
         temp_track_file = tempfile.NamedTemporaryFile(suffix="." + self.audio_class.SUFFIX)
