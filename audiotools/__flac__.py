@@ -146,6 +146,15 @@ class FlacMetaData(MetaData):
             except KeyError:
                 raise AttributeError(key)
 
+    def __delattr__(self,key):
+        if (key in self.__FIELDS__):
+            delattr(self.vorbis_comment, key)
+        else:
+            try:
+                del(self.__dict__[key])
+            except KeyError:
+                raise AttributeError(key)
+
     @classmethod
     def converted(cls, metadata):
         if ((metadata is None) or (isinstance(metadata,FlacMetaData))):

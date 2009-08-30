@@ -111,6 +111,42 @@ class VorbisComment(MetaData,dict):
             except KeyError:
                 raise AttributeError(key)
 
+    def __delattr__(self, key):
+        if (key == 'track_number'):
+            track_number = self.get('TRACKNUMBER',[u''])[0]
+            if (re.match(r'^\d+$',track_number)):
+                del(self['TRACKNUMBER'])
+            elif (re.match('^\d+/(\d+)$',track_number)):
+                self['TRACKNUMBER'] = u"0/%s" % (re.match('^\d+/(\d+)$',track_number).group(1))
+        elif (key == 'track_total'):
+            track_number = self.get('TRACKNUMBER',[u''])[0]
+            if (re.match('^(\d+)/\d+$',track_number)):
+                self['TRACKNUMBER'] = u"%s" % (re.match('^(\d+)/\d+$',track_number).group(1))
+            if ('TRACKTOTAL' in self):
+                del(self['TRACKTOTAL'])
+        elif (key == 'album_number'):
+            album_number = self.get('DISCNUMBER',[u''])[0]
+            if (re.match(r'^\d+$',album_number)):
+                del(self['DISCNUMBER'])
+            elif (re.match('^\d+/(\d+)$',album_number)):
+                self['DISCNUMBER'] = u"0/%s" % (re.match('^\d+/(\d+)$',album_number).group(1))
+        elif (key == 'album_total'):
+            album_number = self.get('DISCNUMBER',[u''])[0]
+            if (re.match('^(\d+)/\d+$',album_number)):
+                self['DISCNUMBER'] = u"%s" % (re.match('^(\d+)/\d+$',album_number).group(1))
+            if ('DISCTOTAL' in self):
+                del(self['DISCTOTAL'])
+        elif (key in self.ATTRIBUTE_MAP):
+            if (self.ATTRIBUTE_MAP[key] in self):
+                del(self[self.ATTRIBUTE_MAP[key]])
+        elif (key in MetaData.__FIELDS__):
+            pass
+        else:
+            try:
+                del(self.__dict__[key])
+            except KeyError:
+                raise AttributeError(key)
+
     @classmethod
     def supports_images(cls):
         return False
