@@ -139,6 +139,34 @@ class ApeTag(MetaData,dict):
             except KeyError:
                 raise AttributeError(key)
 
+    def __delattr__(self,key):
+        if (key == 'track_number'):
+            setattr(self,'track_number',0)
+            if ((self.track_number == 0) and (self.track_total == 0)):
+                del(self['Track'])
+        elif (key == 'track_total'):
+            setattr(self,'track_total',0)
+            if ((self.track_number == 0) and (self.track_total == 0)):
+                del(self['Track'])
+        elif (key == 'album_number'):
+            setattr(self,'album_number',0)
+            if ((self.album_number == 0) and (self.album_total == 0)):
+                del(self['Media'])
+        elif (key == 'album_total'):
+            setattr(self,'album_total',0)
+            if ((self.album_number == 0) and (self.album_total == 0)):
+                del(self['Media'])
+        elif (key in self.ATTRIBUTE_MAP):
+            if (self.ATTRIBUTE_MAP[key] in self):
+                del(self.ATTRIBUTE_MAP[key])
+        elif (key in MetaData.__FIELDS__):
+            pass
+        else:
+            try:
+                del(self.__dict__[key])
+            except KeyError:
+                raise AttributeError(key)
+
     @classmethod
     def converted(cls, metadata):
         if ((metadata is None) or (isinstance(metadata,ApeTag))):
@@ -329,7 +357,7 @@ class ApeTaggedAudio:
         f = file(self.filename,'rb')
         try:
             (info,tag_length) = self.APE_TAG_CLASS.read_ape_tag(f)
-            if (len(info) > 0):
+            if (tag_length > 0):
                 return self.APE_TAG_CLASS(info,tag_length)
             else:
                 return None
