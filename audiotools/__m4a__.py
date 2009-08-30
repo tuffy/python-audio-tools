@@ -720,6 +720,34 @@ class M4AMetaData(MetaData,dict):
             except KeyError:
                 raise AttributeError(key)
 
+    def __delattr__(self,key):
+        if (key == 'track_number'):
+            setattr(self,'track_number',0)
+            if ((self.track_number == 0) and (self.track_total == 0)):
+                del(self['trkn'])
+        elif (key == 'track_total'):
+            setattr(self,'track_total',0)
+            if ((self.track_number == 0) and (self.track_total == 0)):
+                del(self['trkn'])
+        elif (key == 'album_number'):
+            setattr(self,'album_number',0)
+            if ((self.album_number == 0) and (self.album_total == 0)):
+                del(self['disk'])
+        elif (key == 'album_total'):
+            setattr(self,'album_total',0)
+            if ((self.album_number == 0) and (self.album_total == 0)):
+                del(self['disk'])
+        elif (key in self.ATTRIBUTE_MAP):
+            if (self.ATTRIBUTE_MAP[key] in self):
+                del(self[self.ATTRIBUTE_MAP[key]])
+        elif (key in MetaData.__FIELDS__):
+            pass
+        else:
+            try:
+                del(self.__dict__[key])
+            except KeyError:
+                raise AttributeError(key)
+
     def images(self):
         try:
             return [M4ACovr(str(i)[8:]) for i in self['covr']]

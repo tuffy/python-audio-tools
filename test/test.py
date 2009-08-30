@@ -912,6 +912,8 @@ class TestAiffAudio(TestTextOutput):
                             temp_track.set_metadata(metadata)
                             metadata = temp_track.get_metadata()
                             self.assertEqual(getattr(metadata,field),u'')
+
+                    delattr(metadata,field) #multiple deletion should be okay
         finally:
             temp_track_file.close()
 
