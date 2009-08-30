@@ -561,6 +561,31 @@ class ID3v22Comment(MetaData):
         else:
             raise AttributeError(key)
 
+    def __delattr__(self, key):
+        if (key in self.ATTRIBUTE_MAP):
+            if (key == 'track_number'):
+                setattr(self,'track_number',0)
+                if ((self.track_number == 0) and (self.track_total == 0)):
+                    del(self.frames[self.ATTRIBUTE_MAP[key]])
+            elif (key == 'track_total'):
+                setattr(self,'track_total',0)
+                if ((self.track_number == 0) and (self.track_total == 0)):
+                    del(self.frames[self.ATTRIBUTE_MAP[key]])
+            elif (key == 'album_number'):
+                setattr(self,'album_number',0)
+                if ((self.album_number == 0) and (self.album_total == 0)):
+                    del(self.frames[self.ATTRIBUTE_MAP[key]])
+            elif (key == 'album_total'):
+                setattr(self,'album_total',0)
+                if ((self.album_number == 0) and (self.album_total == 0)):
+                    del(self.frames[self.ATTRIBUTE_MAP[key]])
+            elif (self.ATTRIBUTE_MAP[key] in self.frames):
+                del(self.frames[self.ATTRIBUTE_MAP[key]])
+        elif (key in MetaData.__FIELDS__):
+            pass
+        else:
+            raise AttributeError(key)
+
     def add_image(self, image):
         image = self.PictureFrame.converted(image)
         self.frames.setdefault('PIC',[]).append(image)
@@ -1405,6 +1430,12 @@ class ID3CommentPair(MetaData):
         if (self.id3v1 is not None):
             setattr(self.id3v1,key,value)
 
+    def __delattr__(self, key):
+        if (self.id3v2 is not None):
+            delattr(self.id3v2,key)
+        if (self.id3v1 is not None):
+            delattr(self.id3v1,key)
+
     @classmethod
     def converted(cls, metadata):
         if ((metadata is None) or (isinstance(metadata,ID3CommentPair))):
@@ -1421,7 +1452,6 @@ class ID3CommentPair(MetaData):
     def merge(self, metadata):
         self.id3v2.merge(metadata)
         self.id3v1.merge(metadata)
-
 
     def __unicode__(self):
         if ((self.id3v2 != None) and (self.id3v1 != None)):

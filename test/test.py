@@ -861,7 +861,7 @@ class TestAiffAudio(TestTextOutput):
         finally:
             temp.close()
 
-    @TEST_CUSTOM
+    @TEST_METADATA
     def test_metadata_deletion_full(self):
         temp_track_file = tempfile.NamedTemporaryFile(suffix="." + self.audio_class.SUFFIX)
         try:
@@ -887,7 +887,7 @@ class TestAiffAudio(TestTextOutput):
         finally:
             temp_track_file.close()
 
-    @TEST_CUSTOM
+    @TEST_METADATA
     def test_metadata_deletion_fields(self):
         temp_track_file = tempfile.NamedTemporaryFile(suffix="." + self.audio_class.SUFFIX)
         try:

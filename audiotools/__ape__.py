@@ -378,7 +378,7 @@ class ApeTaggedAudio:
             f.write(untagged_data)
             f.write(apetag.ape_tag_data())
             f.close()
-        else:                           #no existing tags
+        else:                               #no existing tags
             f = file(self.filename,"ab")
             f.write(apetag.ape_tag_data())
             f.close()
