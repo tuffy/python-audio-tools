@@ -158,7 +158,7 @@ class ApeTag(MetaData,dict):
                 del(self['Media'])
         elif (key in self.ATTRIBUTE_MAP):
             if (self.ATTRIBUTE_MAP[key] in self):
-                del(self.ATTRIBUTE_MAP[key])
+                del(self[self.ATTRIBUTE_MAP[key]])
         elif (key in MetaData.__FIELDS__):
             pass
         else:

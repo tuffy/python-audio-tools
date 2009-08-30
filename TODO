@@ -395,7 +395,7 @@
   which can be proven to handle all legal files.
   I expect this will require PLY or some similar lexx/yacc mechanism
   which I'll bundle to avoid adding any extra depencies.
-* TODO Add metadata deletion capability
+* DONE Add metadata deletion capability
   It would be helpful to have the low-level capability of deleting
   either part of a MetaData tag or the entire tag altogether.
   For example, deleting the "track_name" field would delete

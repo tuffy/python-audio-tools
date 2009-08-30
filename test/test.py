@@ -812,6 +812,7 @@ class TestAiffAudio(TestTextOutput):
             metadata = self.DummyMetaData()
             new_file.set_metadata(metadata)
             if (new_file.get_metadata() is not None):
+                self.assertEqual(metadata,new_file.get_metadata())
                 new_file = audiotools.open(temp.name)
                 self.assertEqual(metadata,new_file.get_metadata())
 
