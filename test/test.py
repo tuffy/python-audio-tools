@@ -3284,6 +3284,65 @@ class TestID3v2(unittest.TestCase):
     def tearDown(self):
         self.file.close()
 
+class TestID3v1(unittest.TestCase):
+    @TEST_METADATA
+    def setUp(self):
+        self.file = tempfile.NamedTemporaryFile(suffix=".mp3")
+
+        self.mp3_file = audiotools.MP3Audio.from_pcm(
+            self.file.name,BLANK_PCM_Reader(TEST_LENGTH))
+
+    @TEST_METADATA
+    def test_comment(self):
+        id3v1_1 = audiotools.ID3v1Comment.converted(
+            audiotools.MetaData(track_name=u"Name 1",
+                                track_number=1,
+                                album_name=u"Album 1",
+                                artist_name=u"Artist 1",
+                                year=u"2009",
+                                comment=u"Comment 1"))
+
+        self.assertEqual(self.mp3_file.get_metadata(),None)
+        self.mp3_file.set_metadata(id3v1_1)
+        self.assertEqual(self.mp3_file.get_metadata(),id3v1_1)
+        self.assert_(isinstance(self.mp3_file.get_metadata(),
+                                audiotools.ID3v1Comment))
+
+        m = self.mp3_file.get_metadata()
+        for field in ("track_name","track_number","album_name",
+                      "artist_name","year","comment"):
+            self.assertEqual(getattr(id3v1_1,field),
+                             getattr(m,field))
+
+        for (field,new_value) in zip(("track_name","track_number","album_name",
+                                      "artist_name","year","comment"),
+                                     (u"Name 2",2,u"Album 2",
+                                      u"Artist 2",u"2008",u"Comment 2")):
+            m = self.mp3_file.get_metadata()
+            setattr(m,field,new_value)
+            self.mp3_file.set_metadata(m)
+            m = self.mp3_file.get_metadata()
+            self.assertEqual(getattr(m,field),new_value)
+
+        for field in ("track_name","album_name","artist_name","year","comment"):
+            m = self.mp3_file.get_metadata()
+            delattr(m,field)
+            self.assertEqual(getattr(m,field),u"")
+            self.mp3_file.set_metadata(m)
+            m = self.mp3_file.get_metadata()
+            self.assertEqual(getattr(m,field),u"")
+
+        m = self.mp3_file.get_metadata()
+        delattr(m,"track_number")
+        self.assertEqual(getattr(m,"track_number"),0)
+        self.mp3_file.set_metadata(m)
+        m = self.mp3_file.get_metadata()
+        self.assertEqual(getattr(m,"track_number"),0)
+
+    @TEST_METADATA
+    def tearDown(self):
+        self.file.close()
+
 class TestFlacComment(unittest.TestCase):
     @TEST_METADATA
     def setUp(self):

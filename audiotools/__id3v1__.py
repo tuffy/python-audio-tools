@@ -106,38 +106,36 @@ class ID3v1Comment(MetaData,list):
     #metadata is the title,artist,album,year,comment,tracknum tuple returned by
     #read_id3v1_comment
     def __init__(self, metadata):
-        MetaData.__init__(self,
-                          track_name=metadata[0],
-                          track_number=metadata[5],
-                          album_name=metadata[2],
-                          artist_name=metadata[1],
-                          performer_name=u"",
-                          copyright=u"",
-                          year=unicode(metadata[3]),
-                          comment=metadata[4])
         list.__init__(self, metadata)
 
     #if an attribute is updated (e.g. self.track_name)
     #make sure to update the corresponding list item
     def __setattr__(self, key, value):
-        self.__dict__[key] = value
-
         if (key in self.ATTRIBUTES):
-            if (key not in ('track_number','album_number')):
+            if (key != 'track_number'):
                 self[self.ATTRIBUTES.index(key)] = value
             else:
                 self[self.ATTRIBUTES.index(key)] = int(value)
+        elif (key in MetaData.__FIELDS__):
+            pass
+        else:
+            self.__dict__[key] = value
 
-    #if a list item is updated (e.g. self[1])
-    #make sure to update the corresponding attribute
-    def __setitem__(self, key, value):
-        list.__setitem__(self, key, value)
+    def __delattr__(self,key):
+        if (key == 'track_number'):
+            setattr(self,key,0)
+        elif (key in self.ATTRIBUTES):
+            setattr(self,key,u"")
 
-        if (key < len(self.ATTRIBUTES)):
-            if (key != 5):
-                self.__dict__[self.ATTRIBUTES[key]] = value
-            else:
-                self.__dict__[self.ATTRIBUTES[key]] = int(value)
+    def __getattr__(self,key):
+        if (key in self.ATTRIBUTES):
+            return self[self.ATTRIBUTES.index(key)]
+        elif (key in MetaData.__INTEGER_FIELDS__):
+            return 0
+        elif (key in MetaData.__FIELDS__):
+            return u""
+        else:
+            raise AttributeError(key)
 
     @classmethod
     def converted(cls, metadata):
