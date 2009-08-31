@@ -401,4 +401,4 @@
   For example, deleting the "track_name" field would delete
   a Vorbis comment's "TITLE" field.
   Or, deleting the MetaData from MP3 would remove all the ID3v2/ID3v1 tags.
-
+** DONE Add delattr to ID3v1

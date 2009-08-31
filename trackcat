@@ -58,7 +58,7 @@ if (__name__ == '__main__'):
     (options,args) = parser.parse_args()
     msg = audiotools.Messenger("trackcat",options)
 
-    if (options.filename == None):
+    if (options.filename is None):
         msg.error(_(u'You must specify an output file'))
         sys.exit(1)
 
@@ -83,7 +83,7 @@ if (__name__ == '__main__'):
             msg.error(_(u"Audio type %s has no compression modes") % \
                           (AudioType.NAME))
         sys.exit(0)
-    elif (options.quality == None):
+    elif (options.quality is None):
         options.quality = AudioType.DEFAULT_COMPRESSION
     elif (options.quality not in AudioType.COMPRESSION_MODES):
         msg.error(_(u"\"%(quality)s\" is not a supported compression mode for type \"%(type)s\"") % \

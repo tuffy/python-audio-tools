@@ -73,7 +73,7 @@ class __Qt_Atom__:
         elif (self.is_container()):
             for atom in self:
                 returned_atom = atom.get_atom(type)
-                if (returned_atom != None):
+                if (returned_atom is not None):
                     return returned_atom
 
         return None

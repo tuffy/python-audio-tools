@@ -1454,7 +1454,7 @@ class ID3CommentPair(MetaData):
         self.id3v1.merge(metadata)
 
     def __unicode__(self):
-        if ((self.id3v2 != None) and (self.id3v1 != None)):
+        if ((self.id3v2 is not None) and (self.id3v1 is not None)):
             #both comments present
             return unicode(self.id3v2) + \
                    (os.linesep * 2) + \

@@ -122,7 +122,7 @@ if (__name__ == '__main__'):
             msg.error(_(u"Audio type %s has no compression modes") % \
                           (AudioType.NAME))
         sys.exit(0)
-    elif (options.quality == None):
+    elif (options.quality is None):
         options.quality = AudioType.DEFAULT_COMPRESSION
     elif (options.quality not in AudioType.COMPRESSION_MODES):
         msg.error(_(u"\"%(quality)s\" is not a supported compression mode for type \"%(type)s\"") % \
@@ -132,7 +132,7 @@ if (__name__ == '__main__'):
 
 
     #if we're using an XMCD file, use that file for MetaData
-    if (options.xmcd != None):
+    if (options.xmcd is not None):
         try:
             xmcd = audiotools.XMCD.read(options.xmcd).metadata()
         except audiotools.XMCDException:

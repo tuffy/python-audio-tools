@@ -440,7 +440,7 @@ class MP3Audio(AudioFile):
         layer = 4 - header.layer  #layer 1, 2 or 3
 
         bit_rate = MP3Audio.__get_mp3_frame_bitrate__(header)
-        if (bit_rate == None): raise MP3Exception(_(u"Invalid bit rate"))
+        if (bit_rate is None): raise MP3Exception(_(u"Invalid bit rate"))
 
         sample_rate = MP3Audio.__get_mp3_frame_sample_rate__(header)
 

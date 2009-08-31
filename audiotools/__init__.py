@@ -100,7 +100,7 @@ FILENAME_FORMAT = config.get_default(
 
 FS_ENCODING = config.get_default("System","fs_encoding",
                                  sys.getfilesystemencoding())
-if (FS_ENCODING == None):
+if (FS_ENCODING is None):
     FS_ENCODING = 'UTF-8'
 
 IO_ENCODING = config.get_default("System","io_encoding","UTF-8")
@@ -447,7 +447,7 @@ class PCMReader:
     def close(self):
         self.file.close()
 
-        if (self.process != None):
+        if (self.process is not None):
             if (self.process.wait() != 0):
                 raise DecodingError()
 
@@ -1703,7 +1703,7 @@ class AudioFile:
     #if we come up empty, returns 0
     def track_number(self):
         metadata = self.get_metadata()
-        if ((metadata != None) and (metadata.track_number > 0)):
+        if ((metadata is not None) and (metadata.track_number > 0)):
             return metadata.track_number
         else:
             try:
@@ -1718,7 +1718,7 @@ class AudioFile:
     #if we come up empty, returns 0
     def album_number(self):
         metadata = self.get_metadata()
-        if (metadata != None):
+        if (metadata is not None):
             return metadata.album_number
         else:
             try:
@@ -1956,7 +1956,7 @@ class RawCDDA:
         import cdio
         self.cdda = cdio.CDDA(device_name)
         self.total_tracks = self.cdda.total_tracks()
-        if (speed != None):
+        if (speed is not None):
             self.cdda.set_speed(speed)
 
     def __len__(self):
@@ -1994,7 +1994,7 @@ class OffsetCDDA(RawCDDA):
         self.cdda = cdio.CDDA(device_name)
         self.total_tracks = self.cdda.total_tracks()
 
-        if (speed != None):
+        if (speed is not None):
             self.cdda.set_speed(speed)
 
         self.__temp__ = tempfile.TemporaryFile()
@@ -2202,7 +2202,7 @@ class ExecQueue:
         if (pid > 0):  #parent
             return pid
         else:          #child
-            if (kwargs != None):
+            if (kwargs is not None):
                 function(*args,**kwargs)
             else:
                 function(*args)

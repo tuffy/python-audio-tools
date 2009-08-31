@@ -575,7 +575,7 @@ class FlacAudio(AudioFile):
     def set_metadata(self, metadata):
         metadata = FlacMetaData.converted(metadata)
 
-        if (metadata == None): return
+        if (metadata is None): return
 
         #port over the old STREAMINFO and SEEKTABLE blocks
         old_metadata = self.get_metadata()
@@ -1012,7 +1012,7 @@ class OggFlacAudio(FlacAudio):
         comment = FlacMetaData.converted(metadata)
 
         #port over the old STREAMINFO and SEEKTABLE blocks
-        if (comment == None): return
+        if (comment is None): return
         old_metadata = self.get_metadata()
         old_streaminfo = old_metadata.streaminfo
         old_seektable = old_metadata.seektable

@@ -318,7 +318,7 @@ class DiscID:
         self.tracks.append(track)
 
     def offsets(self):
-        if (self.__offsets__ == None):
+        if (self.__offsets__ is None):
             offsets = [self.__lead_in__]
 
             for track in self.tracks[0:-1]:
@@ -329,7 +329,7 @@ class DiscID:
             return self.__offsets__
 
     def length(self):
-        if (self.__length__ == None):
+        if (self.__length__ is None):
             return sum(self.tracks)
         else:
             return self.__length__
@@ -430,7 +430,7 @@ class FreeDB:
         self.socket.close()
 
     def write(self, line):
-        if (self.socket != None):
+        if (self.socket is not None):
             self.w.write(line)
             self.w.write("\r\n")
             self.w.flush()
@@ -492,7 +492,7 @@ class FreeDBWeb(FreeDB):
         self.connection = httplib.HTTPConnection(self.server,self.port)
 
     def close(self):
-        if (self.connection != None):
+        if (self.connection is not None):
             self.connection.close()
 
     def write(self, line):

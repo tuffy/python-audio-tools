@@ -164,4 +164,7 @@ class ID3v1Comment(MetaData,list):
                                 self.comment,
                                 self.track_number)
 
+    def images(self):
+        return []
+
 

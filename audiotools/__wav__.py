@@ -65,7 +65,7 @@ class WaveReader(PCMReader):
 
     def close(self):
         self.wave.close()
-        if (self.process != None):
+        if (self.process is not None):
             self.process.wait()
 
 class TempWaveReader(WaveReader):

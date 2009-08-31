@@ -356,7 +356,7 @@ if (__name__ == '__main__'):
         try:
             metadata = audiofile.get_metadata()
 
-            if ((metadata != None) and
+            if ((metadata is not None) and
                 (len(metadata.images()) > 0)):
                 for image in metadata.images():
                     cover_list.append((audiofile.filename,image))
