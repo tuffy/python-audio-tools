@@ -307,8 +307,7 @@ class DiscID:
     #offsets, if present, is a list of track offsets in CD frames
     #length, if present, is the length of the entire disc in CD frames
     #lead_in is the location of the first track on the CD, in frames
-    def __init__(self, tracks=[],
-                 offsets=None, length=None, lead_in=150):
+    def __init__(self, tracks=[], offsets=None, length=None, lead_in=150):
         self.tracks = tracks
         self.__offsets__ = offsets
         self.__length__ = length
