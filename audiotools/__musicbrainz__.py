@@ -17,6 +17,7 @@
 #along with this program; if not, write to the Free Software
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
+from audiotools import MetaData,AlbumMetaData
 import urllib
 import gettext
 
@@ -107,4 +108,71 @@ class MusicBrainz:
         #FIXME - check for errors in the HTTP response
         output.write(response.read())
 
+class MusicBrainzReleaseXML:
+    #dom should be a DOM object such as xml.dom.minidom.Document
+    #of a MusicBrainz Release entry
+    def __init__(self, dom):
+        self.dom = dom
 
+    @classmethod
+    def read(cls, filename):
+        from xml.dom.minidom import parse
+
+        return cls(parse(filename))
+
+    @classmethod
+    def read_data(cls, data):
+        from xml.dom.minidom import parseString
+
+        return cls(parseString(data))
+
+    def metadata(self):
+        def get_nodes(parent,child_tag):
+            return [node for node in parent.childNodes
+                    if (hasattr(node,"tagName") and
+                        (node.tagName == child_tag))]
+
+        def get_text_node(parent, child_tag):
+            try:
+                return get_nodes(parent,child_tag)[0].childNodes[0].data
+            except IndexError:
+                return u''
+
+        def get_track_metadata(track_node,
+                               album_name, artist_name,
+                               track_number,track_total):
+            try:
+                artist_name = get_text_node(get_nodes(track_node,u'artist')[0],
+                                            u'name')
+            except IndexError:
+                pass
+
+            return MetaData(track_name=get_text_node(track_node,u'title'),
+                            album_name=album_name,
+                            artist_name=artist_name,
+                            track_number=track_number,
+                            track_total=track_total)
+
+        try:
+            release = self.dom.getElementsByTagName(u'release')[0]
+        except IndexError:
+            return AlbumMetaData([])
+
+        album_name = get_text_node(release,u'title')
+
+        try:
+            artist_name = get_text_node(get_nodes(release,u'artist')[0],u'name')
+        except IndexError:
+            artist_name = u''
+
+        try:
+            tracks = get_nodes(get_nodes(release,u'track-list')[0],u'track')
+        except IndexError:
+            tracks = []
+
+        return AlbumMetaData([get_track_metadata(track_node=node,
+                                                 album_name=album_name,
+                                                 artist_name=artist_name,
+                                                 track_number=i + 1,
+                                                 track_total=len(tracks))
+                              for (i,node) in enumerate(tracks)])
