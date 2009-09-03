@@ -78,7 +78,7 @@ WavPack:\fC.wv\fR:wvunpack:wavpack:Python:Python:wvgain
 _
 MP3:\fC.mp3\fR:lame / mpg123:lame:Python:Python:N/A
 MP2:\fC.mp2\fR:lame / mpg123:twolame:Python:Python:N/A
-Ogg Vorbis:\fC.ogg\fR:oggdec:oggenc:Python:vorbiscomment:vorbisgain
+Ogg Vorbis:\fC.ogg\fR:oggdec:oggenc:Python:Python:vorbisgain
 Ogg Speex:\fC.spx\fR:speexdec:speexenc:Python:Python:N/A
 M4A:\fC.m4a\fR:faad / neroAacDec:faac / neroAacEnc:Python:Python:N/A
 Musepack:\fC.mpc\fR:mpcdec:mpcenc:Python:Python:N/A

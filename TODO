@@ -402,3 +402,17 @@
   a Vorbis comment's "TITLE" field.
   Or, deleting the MetaData from MP3 would remove all the ID3v2/ID3v1 tags.
 ** DONE Add delattr to ID3v1
+* TODO Add Python3 support
+  It would be useful to have a build which functions properly on
+  Python3 when run through "2to3".
+  This requires updating C code and patching any bugs in the unit tests.
+** TODO Patch Construct for Python3
+   Since pyconstruct hasn't been updated in almost 2 years,
+   I'll likely have to update it myself to ensure it'll run on Python3.
+* TODO Add MusicBrainz support
+  It would be helpful to have external metadata support beyond FreeDB,
+  since FreeDB is very primitive.  MusicBrainz is the cool one to use.
+  However, its documentation is a mess and I'm unsure whether
+  it'll reliably deliver better results based on my own experiments with
+  its Picard tagger.
+
