@@ -17,11 +17,10 @@
 #along with this program; if not, write to the Free Software
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-from hashlib import sha1
+import urllib
 import gettext
 
 gettext.install("audiotools",unicode=True)
-
 
 class MBDiscID:
     #tracks is a list of track lengths in CD frames
@@ -47,10 +46,13 @@ class MBDiscID:
 
     #first_track_number, last_track_number and lead_out_track_offset are ints
     #frame_offsets is a list of ints
+    #FIXME - shift these fields to the object constructor
     #returns a MusicBrainz DiscID value as a string
     def discid(self, first_track_number = None,
                last_track_number = None,
                lead_out_track_offset = None):
+        from hashlib import sha1
+
         if (lead_out_track_offset is None):
             if (self.__length__ is None):
                 lead_out_track_offset = sum(self.tracks) + self.__lead_in__
@@ -73,3 +75,36 @@ class MBDiscID:
 
         return "".join([{'=':'-','+':'.','/':'_'}.get(c,c) for c in
                         digest.digest().encode('base64').rstrip('\n')])
+
+    def __str__(self):
+        return self.discid()
+
+class MusicBrainz:
+    def __init__(self, server, port, messenger):
+        self.server = server
+        self.port = port
+        self.connection = None
+        self.messenger = messenger
+
+    def connect(self):
+        import httplib
+
+        self.connection = httplib.HTTPConnection(self.server,self.port)
+
+    def close(self):
+        if (self.connection is not None):
+            self.connection.close()
+
+    #disc_id is a MBDiscID object
+    #output is a file-like stream
+    def read_data(self, disc_id, output):
+        self.connection.request(
+            "GET",
+            "%s?%s" % ("/ws/1/release",
+                       urllib.urlencode({"type":"xml","discid":str(disc_id)})))
+
+        response = self.connection.getresponse()
+        #FIXME - check for errors in the HTTP response
+        output.write(response.read())
+
+
