@@ -301,9 +301,9 @@ if (__name__ == '__main__'):
 
     if (options.xmcd is not None):
         try:
-            xmcd = audiotools.XMCD.read(options.xmcd).metadata()
-        except audiotools.XMCDException:
-            msg.error(_(u"Invalid XMCD file"))
+            xmcd = audiotools.read_metadata_file(options.xmcd)
+        except audiotools.MetaDataFileException,err:
+            msg.error(unicode(err))
             sys.exit(1)
     else:
         xmcd = None

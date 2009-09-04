@@ -416,3 +416,7 @@
   it'll reliably deliver better results based on my own experiments with
   its Picard tagger.
 ** TODO Ensure that MusicBrainz is interchangeable with FreeDB/XMCD
+** TODO Add MusicBrainz-specific unit tests
+** TODO Update --help text to indicate MusicBrainz compatibility
+** TODO Update man pages to indiciate MusicBrainz compatibility
+

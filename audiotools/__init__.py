@@ -1474,6 +1474,11 @@ class AlbumMetaData(dict):
                       dict([(m.track_number,m) for m in
                             metadata_iter]))
 
+#a superclass of MetaData file exceptions
+#such as XMCDException and MBXMLException
+class MetaDataFileException(Exception):
+    def __unicode__(self):
+        return _(u"Invalid XMCD or MusicBrainz XML file")
 
 #######################
 #Image MetaData
@@ -2187,6 +2192,25 @@ def __most_numerous__(item_list):
 
 from __freedb__ import *
 from __musicbrainz__ import *
+
+#takes an XMCD or MusicBrainz XML file
+#returns an AlbumMetaData-compatible object
+#or throws a MetaDataFileException exception subclass if an error occurs
+def read_metadata_file(filename):
+    #try XMCD first
+    try:
+        return XMCD.read(filename).metadata()
+    except XMCDException:
+        pass
+
+    #then try MusicBrainz
+    try:
+        return MusicBrainzReleaseXML.read(filename).metadata()
+    except MBXMLException:
+        pass
+
+    #otherwise, throw exception
+    raise MetaDataFileException(filename)
 
 #######################
 #Multiple Jobs Handling

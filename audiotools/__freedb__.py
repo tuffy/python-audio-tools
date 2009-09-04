@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import VERSION,Con,cStringIO,sys,re,MetaData,AlbumMetaData,__most_numerous__,DummyAudioFile
+from audiotools import VERSION,Con,cStringIO,sys,re,MetaData,AlbumMetaData,__most_numerous__,DummyAudioFile,MetaDataFileException
 
 import gettext
 
@@ -28,7 +28,9 @@ gettext.install("audiotools",unicode=True)
 #XMCD
 #######################
 
-class XMCDException(Exception): pass
+class XMCDException(MetaDataFileException):
+    def __unicode__(self):
+        return _(u"Invalid XMCD file")
 
 class XMCD:
     LINE_LIMIT = 78

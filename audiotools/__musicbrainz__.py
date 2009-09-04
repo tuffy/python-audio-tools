@@ -17,7 +17,7 @@
 #along with this program; if not, write to the Free Software
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-from audiotools import MetaData,AlbumMetaData
+from audiotools import MetaData,AlbumMetaData,MetaDataFileException
 import urllib
 import gettext
 
@@ -110,7 +110,15 @@ class MusicBrainz:
 
         response = self.connection.getresponse()
         #FIXME - check for errors in the HTTP response
+        #FIXME - throw exception if output is a "release not found" XML file
+        #        (i.e. an empty release file)
         output.write(response.read())
+
+
+#thrown if MusicBrainzReleaseXML.read() encounters an error
+class MBXMLException(MetaDataFileException):
+    def __unicode__(self):
+        return _(u"Invalid MusicBrainz XML file")
 
 class MusicBrainzReleaseXML:
     #dom should be a DOM object such as xml.dom.minidom.Document
@@ -121,14 +129,22 @@ class MusicBrainzReleaseXML:
     @classmethod
     def read(cls, filename):
         from xml.dom.minidom import parse
+        from xml.parsers.expat import ExpatError
 
-        return cls(parse(filename))
+        try:
+            return cls(parse(filename))
+        except (IOError,ExpatError):
+            raise MBXMLException(filename)
 
     @classmethod
     def read_data(cls, data):
         from xml.dom.minidom import parseString
+        from xml.parsers.expat import ExpatError
 
-        return cls(parseString(data))
+        try:
+            return cls(parseString(data))
+        except (IOError,ExpatError):
+            raise MBXMLException(filename)
 
     def metadata(self):
         def get_nodes(parent,child_tag):
@@ -146,6 +162,7 @@ class MusicBrainzReleaseXML:
                                album_metadata,
                                track_number):
             try:
+                #FIXME - not sure if name or sort-name should take precendence
                 artist_name = get_text_node(get_nodes(track_node,u'artist')[0],
                                             u'name')
             except IndexError:
@@ -168,6 +185,7 @@ class MusicBrainzReleaseXML:
         album_name = get_text_node(release,u'title')
 
         try:
+            #FIXME - not sure if name or sort-name should take precendence
             artist_name = get_text_node(get_nodes(release,u'artist')[0],
                                         u'name')
         except IndexError:

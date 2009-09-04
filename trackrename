@@ -68,10 +68,9 @@ if (__name__ == '__main__'):
     if (options.xmcd is not None):
         #try to set the metadata and track name from the XMCD metadata
         try:
-            xmcd = audiotools.XMCD.read(options.xmcd).metadata()
-        except audiotools.XMCDException:
-            msg.error(_(u"Error opening XMCD file \"%s\"") % \
-                          (msg.filename(options.xmcd)))
+            xmcd = audiotools.read_metadata_file(options.xmcd)
+        except audiotools.MetaDataFileException,err:
+            msg.error(unicode(err))
             sys.exit(1)
     else:
         xmcd = {}
