@@ -28,11 +28,17 @@ class MBDiscID:
     #offsets, if present, is a list of track offsets in CD frames
     #length, if present, is the length of the entire disc in CD frames
     #lead_in is the location of the first track on the CD, in frames
-    def __init__(self, tracks=[], offsets=None, length=None, lead_in=150):
+    #first_track_number, last_track_number and lead_out_track_offset are ints
+    def __init__(self, tracks=[], offsets=None, length=None, lead_in=150,
+                 first_track_number = None, last_track_number = None,
+                 lead_out_track_offset = None):
         self.tracks = tracks
         self.__offsets__ = offsets
         self.__length__ = length
         self.__lead_in__ = lead_in
+        self.first_track_number = first_track_number
+        self.last_track_number = last_track_number
+        self.lead_out_track_offset = lead_out_track_offset
 
     def offsets(self):
         if (self.__offsets__ is None):
@@ -45,26 +51,27 @@ class MBDiscID:
         else:
             return self.__offsets__
 
-    #first_track_number, last_track_number and lead_out_track_offset are ints
-    #frame_offsets is a list of ints
-    #FIXME - shift these fields to the object constructor
     #returns a MusicBrainz DiscID value as a string
-    def discid(self, first_track_number = None,
-               last_track_number = None,
-               lead_out_track_offset = None):
+    def __str__(self):
         from hashlib import sha1
 
-        if (lead_out_track_offset is None):
+        if (self.lead_out_track_offset is None):
             if (self.__length__ is None):
                 lead_out_track_offset = sum(self.tracks) + self.__lead_in__
             else:
                 lead_out_track_offset = self.__length__ + self.__lead_in__
+        else:
+            lead_out_track_offset = self.lead_out_track_offset
 
-        if (first_track_number is None):
+        if (self.first_track_number is None):
             first_track_number = 1
+        else:
+            first_track_number = self.first_track_number
 
-        if (last_track_number is None):
+        if (self.last_track_number is None):
             last_track_number = len(self.tracks)
+        else:
+            last_track_number = self.last_track_number
 
         digest = sha1("%02X%02X%s" % \
                       (first_track_number,
@@ -76,9 +83,6 @@ class MBDiscID:
 
         return "".join([{'=':'-','+':'.','/':'_'}.get(c,c) for c in
                         digest.digest().encode('base64').rstrip('\n')])
-
-    def __str__(self):
-        return self.discid()
 
 class MusicBrainz:
     def __init__(self, server, port, messenger):

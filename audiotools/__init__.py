@@ -88,6 +88,9 @@ DEFAULT_CDROM = config.get_default("System","cdrom","/dev/cdrom")
 
 FREEDB_SERVER = config.get_default("FreeDB","server","us.freedb.org")
 FREEDB_PORT = config.getint_default("FreeDB","port",80)
+MUSICBRAINZ_SERVER = config.get_default("MusicBrainz","server",
+                                        "musicbrainz.org")
+MUSICBRAINZ_PORT = config.getint_default("MusicBrainz","port",80)
 
 THUMBNAIL_FORMAT = config.get_default("Thumbnail","format","jpeg")
 THUMBNAIL_SIZE = config.getint_default("Thumbnail","size",150)
