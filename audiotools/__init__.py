@@ -1460,10 +1460,9 @@ class MetaData:
                 if (getattr(self,field) == 0):
                     setattr(self,field,getattr(metadata,field))
 
-
-        #FIXME - image merging should probably be handled more intelligently
         if (len(self.images()) == 0):
-            self.__dict__["__images__"] = metadata.images()
+            for img in metadata.images():
+                self.add_image(img)
 
 
 class AlbumMetaData(dict):

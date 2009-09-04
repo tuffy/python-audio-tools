@@ -139,19 +139,22 @@ class MusicBrainzReleaseXML:
                 return u''
 
         def get_track_metadata(track_node,
-                               album_name, artist_name,
-                               track_number,track_total):
+                               album_metadata,
+                               track_number):
             try:
                 artist_name = get_text_node(get_nodes(track_node,u'artist')[0],
                                             u'name')
             except IndexError:
-                pass
+                artist_name = album_metadata.artist_name
 
-            return MetaData(track_name=get_text_node(track_node,u'title'),
-                            album_name=album_name,
-                            artist_name=artist_name,
-                            track_number=track_number,
-                            track_total=track_total)
+            track_metadata = MetaData(track_name=get_text_node(track_node,
+                                                               u'title'),
+                                      artist_name=artist_name,
+                                      track_number=track_number)
+
+            track_metadata.merge(album_metadata)
+            return track_metadata
+
 
         try:
             release = self.dom.getElementsByTagName(u'release')[0]
@@ -161,7 +164,8 @@ class MusicBrainzReleaseXML:
         album_name = get_text_node(release,u'title')
 
         try:
-            artist_name = get_text_node(get_nodes(release,u'artist')[0],u'name')
+            artist_name = get_text_node(get_nodes(release,u'artist')[0],
+                                        u'name')
         except IndexError:
             artist_name = u''
 
@@ -170,9 +174,19 @@ class MusicBrainzReleaseXML:
         except IndexError:
             tracks = []
 
+        album_metadata = MetaData(album_name=album_name,
+                                  artist_name=artist_name,
+                                  track_total=len(tracks))
+
+        try:
+            release_events = get_nodes(release,u'release-event-list')[0]
+            event = get_nodes(release_events,u'event')[-1]
+            album_metadata.year = event.getAttribute('date')[0:4]
+            album_metadata.catalog = event.getAttribute('catalog-number')
+        except IndexError:
+            pass
+
         return AlbumMetaData([get_track_metadata(track_node=node,
-                                                 album_name=album_name,
-                                                 artist_name=artist_name,
-                                                 track_number=i + 1,
-                                                 track_total=len(tracks))
+                                                 album_metadata=album_metadata,
+                                                 track_number=i + 1)
                               for (i,node) in enumerate(tracks)])
