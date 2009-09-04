@@ -84,6 +84,7 @@ class MBDiscID:
         return "".join([{'=':'-','+':'.','/':'_'}.get(c,c) for c in
                         digest.digest().encode('base64').rstrip('\n')])
 
+
 class MusicBrainz:
     def __init__(self, server, port, messenger):
         self.server = server
@@ -102,6 +103,7 @@ class MusicBrainz:
 
     #disc_id is a MBDiscID object
     #output is a file-like stream
+    #returns 1 if matches found, 0 if no matches found
     def read_data(self, disc_id, output):
         self.connection.request(
             "GET",
@@ -110,9 +112,13 @@ class MusicBrainz:
 
         response = self.connection.getresponse()
         #FIXME - check for errors in the HTTP response
-        #FIXME - throw exception if output is a "release not found" XML file
-        #        (i.e. an empty release file)
-        output.write(response.read())
+
+        data = response.read()
+        if (len(MusicBrainzReleaseXML.read_data(data).metadata()) > 0):
+            output.write(data)
+            return 1
+        else:
+            return 0
 
 
 #thrown if MusicBrainzReleaseXML.read() encounters an error

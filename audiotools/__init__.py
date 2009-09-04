@@ -95,7 +95,7 @@ MUSICBRAINZ_PORT = config.getint_default("MusicBrainz","port",80)
 THUMBNAIL_FORMAT = config.get_default("Thumbnail","format","jpeg")
 THUMBNAIL_SIZE = config.getint_default("Thumbnail","size",150)
 
-VERSION = "2.13alpha1"
+VERSION = "2.13alpha2"
 
 FILENAME_FORMAT = config.get_default(
     "Filenames","format",

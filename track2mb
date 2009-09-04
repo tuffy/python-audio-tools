@@ -85,6 +85,12 @@ if (__name__ == '__main__'):
         discid = audiotools.MBDiscID([file.cd_frames() for file in audiofiles])
 
     mb.connect()
-    mb.read_data(discid,outfile)
-    mb.close()
+    matches = mb.read_data(discid,outfile)
     outfile.close()
+    if (matches == 0):
+        if (options.xml != '-'):
+            os.unlink(options.xml)
+        msg.info(_("%s matches found") % (0))
+
+    mb.close()
+
