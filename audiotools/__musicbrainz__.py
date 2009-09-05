@@ -218,3 +218,30 @@ class MusicBrainzReleaseXML:
                                                  album_metadata=album_metadata,
                                                  track_number=i + 1)
                               for (i,node) in enumerate(tracks)])
+
+#takes a MBDiscID value and a file handle for output
+#and runs the entire MusicBrainz querying sequence
+#the file handle is closed at the conclusion of this function
+#if at least one match is found
+#returns the number of matches
+def get_mbxml(disc_id, output, musicbrainz_server, musicbrainz_port,
+              messenger):
+    mb = MusicBrainz(musicbrainz_server,musicbrainz_port,messenger)
+
+    mb.connect()
+    messenger.info(
+        _(u"Sending Disc ID \"%(disc_id)s\" to server \"%(server)s\"") % \
+            {"disc_id":str(disc_id).decode('ascii'),
+             "server":musicbrainz_server.decode('ascii','replace')})
+    matches = mb.read_data(disc_id,output)
+
+    if (matches == 1):
+        messenger.info(_(u"1 match found"))
+    else:
+        messenger.info(_(u"%s matches found") % (matches))
+
+    mb.close()
+    if (matches > 0):
+        output.close()
+        messenger.info(_(u"%s written") % (messenger.filename(output.name)))
+    return matches

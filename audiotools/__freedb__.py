@@ -446,7 +446,10 @@ class FreeDB:
     def query(self, disc_id):
         matches = []
 
-        self.messenger.info(_(u"Sending ID to server"))
+        self.messenger.info(
+            _(u"Sending Disc ID \"%(disc_id)s\" to server \"%(server)s\"") % \
+                {"disc_id":str(disc_id).decode('ascii'),
+                 "server":self.server.decode('ascii','replace')})
 
         self.write("cddb query " + disc_id.freedb_id())
         (code,msg) = self.read()
@@ -529,7 +532,10 @@ class FreeDBWeb(FreeDB):
     def query(self, disc_id):
         matches = []
 
-        self.messenger.info(_(u"Sending ID to server"))
+        self.messenger.info(
+            _(u"Sending Disc ID \"%(disc_id)s\" to server \"%(server)s\"") % \
+                {"disc_id":str(disc_id).decode('ascii'),
+                 "server":self.server.decode('ascii','replace')})
 
         self.write("cddb query " + disc_id.freedb_id())
         data =  cStringIO.StringIO(self.read())
@@ -606,6 +612,8 @@ def __select_default_match__(matches, selection):
 #takes a DiscID value and a file handle for output
 #and runs the entire FreeDB querying sequence
 #the file handle is closed at the conclusion of this function
+#if at least one match is found
+#returns the number of matches
 def get_xmcd(disc_id, output, freedb_server, freedb_server_port,
              messenger,default_selection=None):
     try:
@@ -614,7 +622,6 @@ def get_xmcd(disc_id, output, freedb_server, freedb_server_port,
     except FreeDBException,msg:
         #if an exception occurs during the opening,
         #freedb will auto-close its sockets
-        output.close()
         raise IOError(str(msg))
 
     try:
@@ -638,5 +645,7 @@ def get_xmcd(disc_id, output, freedb_server, freedb_server_port,
         freedb.close()
         raise IOError(str(msg))
 
+    #if (len(matches) > 0):
     output.close()
     messenger.info(_(u"%s written") % (messenger.filename(output.name)))
+    return len(matches)

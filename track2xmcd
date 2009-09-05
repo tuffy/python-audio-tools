@@ -31,23 +31,42 @@ if (__name__ == '__main__'):
         usage=_(u'%prog [options] [-x XMCD file] <track 1> [track 2] ...'),
         version="Python Audio Tools %s" % (audiotools.VERSION))
     parser.add_option('-x','--xmcd',action='store',
-                      type='string',dest='xmcd',default='-')
-    parser.add_option('-s','--freedb-server',action='store',
-                      type='string',dest='freedb_server',
-                      default=audiotools.FREEDB_SERVER)
-    parser.add_option('-p','--freedb-port',action='store',
-                      type='int',dest='freedb_port',
-                      default=audiotools.FREEDB_PORT)
-    parser.add_option('-m','--metadata',action='store_true',
-                      dest='metadata',default=False)
+                      type='string',dest='xmcd',default='-',
+                      help=_(u'filename to store output'))
 
-    parser.add_option('-i','--id',dest='discid',
-                      action='store_true',default=False,
-                      help=_(u'display disc ID rather than fetch XMCD data'))
+
+    parser.add_option('--freedb-server',action='store',
+                      type='string',dest='freedb_server',
+                      default=audiotools.FREEDB_SERVER,
+                      metavar='HOSTNAME')
+    parser.add_option('--freedb-port',action='store',
+                      type='int',dest='freedb_port',
+                      default=audiotools.FREEDB_PORT,
+                      metavar='PORT')
+    parser.add_option('--musicbrainz-server',action='store',
+                      type='string',dest='musicbrainz_server',
+                      default=audiotools.MUSICBRAINZ_SERVER,
+                      metavar='HOSTNAME')
+    parser.add_option('--musicbrainz-port',action='store',
+                      type='int',dest='musicbrainz_port',
+                      default=audiotools.MUSICBRAINZ_PORT,
+                      metavar='PORT')
+
+    parser.add_option('--no-musicbrainz',action='store_false',
+                      dest='use_musicbrainz',default=True,
+                      help='do not query MusicBrainz for metadata')
+    parser.add_option('--no-freedb',action='store_false',
+                      dest='use_freedb',default=True,
+                      help='do not query FreeDB for metadata')
+
+    parser.add_option('-m','--metadata',action='store_true',
+                      dest='metadata',default=False,
+                      help=_(u'pull metadata from tracks rather than from server'))
 
     parser.add_option('-D','--default',
                       action='store_const',const=1,default=None,
                       help=_(u'when multiple choices are available, select the first one automatically'))
+
 
     parser.add_option('-V','--verbose',
                       action='store',
@@ -80,19 +99,8 @@ if (__name__ == '__main__'):
                           (msg.filename(options.xmcd)))
             sys.exit(1)
 
-    if (options.discid):      #calculate the disc ID and do nothing else
-        if ((len(audiofiles) == 1) and
-            (audiofiles[0].get_cuesheet() is not None)):
-            file = audiofiles[0]
-            discid = audiotools.DiscID([(length * 75) / file.sample_rate()
-                                        for length in
-                                        file.get_cuesheet().pcm_lengths(
-                        file.total_frames())])
-        else:
-            discid = audiotools.DiscID([file.cd_frames()
-                                        for file in audiofiles])
-        msg.output(discid.freedb_id().decode('ascii'))
-    elif (options.metadata):  #pull XMCD data from AudioFile metadata
+    if (options.metadata):   #pull XML/XMCD data from AudioFile metadata
+        #FIXME - generate MusicBrainz XML unless --no-musicbrainz is given
         if ((len(audiofiles) == 1) and
             (audiofiles[0].get_cuesheet() is not None)):
             outfile.write(audiotools.XMCD.from_cuesheet(
@@ -102,26 +110,54 @@ if (__name__ == '__main__'):
                     audiofiles[0].get_metadata()).build())
         else:
             outfile.write(audiotools.XMCD.from_files(audiofiles).build())
-    else:                     #grab XMCD data from FreeDB
+    else:                     #grab XML/XMCD data from MusicBrainz/FreeDB
         if ((len(audiofiles) == 1) and
             (audiofiles[0].get_cuesheet() is not None)):
             file = audiofiles[0]
-            discid = audiotools.DiscID([(length * 75) / file.sample_rate()
-                                        for length in
-                                        file.get_cuesheet().pcm_lengths(
-                        file.total_frames())])
+
+            musicbrainz_discid = audiotools.MBDiscID(
+                [(length * 75) / file.sample_rate() for length in
+                 file.get_cuesheet().pcm_lengths(file.total_frames())])
+
+            freedb_discid = audiotools.DiscID(
+                [(length * 75) / file.sample_rate() for length in
+                 file.get_cuesheet().pcm_lengths(file.total_frames())])
         else:
-            discid = audiotools.DiscID([file.cd_frames()
-                                        for file in audiofiles])
+            musicbrainz_discid = audiotools.MBDiscID(
+                [file.cd_frames() for file in audiofiles])
 
-        try:
-            audiotools.get_xmcd(discid, outfile,
-                                options.freedb_server,
-                                options.freedb_port,
-                                msg,
-                                options.default)
-        except IOError,e:
-            msg.error(unicode(e))
-            sys.exit(1)
+            freedb_discid = audiotools.DiscID(
+                [file.cd_frames() for file in audiofiles])
 
-    outfile.close()
+        returnval = 0
+        musicbrainz_matches = 0
+        if (options.use_musicbrainz):
+            try:
+                musicbrainz_matches = audiotools.get_mbxml(
+                    musicbrainz_discid,
+                    outfile,
+                    options.musicbrainz_server,
+                    options.musicbrainz_port,
+                    msg)
+                returnval = 0
+            except IOError,e:
+                msg.error(unicode(e))
+                returnval = 1
+
+        if ((musicbrainz_matches == 0) and options.use_freedb):
+            try:
+                freedb_matches = audiotools.get_xmcd(
+                    freedb_discid,
+                    outfile,
+                    options.freedb_server,
+                    options.freedb_port,
+                    msg,
+                    options.default)
+                returnval = 0
+            except IOError,e:
+                msg.error(unicode(e))
+                returnval = 1
+
+    if (returnval != 0):
+        sys.exit(1)
+
