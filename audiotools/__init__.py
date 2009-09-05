@@ -134,7 +134,7 @@ def Messenger(executable, options):
     if (not hasattr(options,"verbosity")):
         return VerboseMessenger(executable)
     elif ((options.verbosity == 'normal') or
-        (options.verbosity == 'debug')):
+          (options.verbosity == 'debug')):
         return VerboseMessenger(executable)
     else:
         return SilentMessenger(executable)
@@ -153,7 +153,7 @@ class __MessengerRow__:
         self.total_lengths.append(len(string))
 
     def lengths(self):
-        return [len(s) for s in self.strings]
+        return map(len,self.strings)
 
     def set_total_lengths(self,total_lengths):
         self.total_lengths = total_lengths
@@ -256,7 +256,7 @@ class VerboseMessenger:
         sys.stderr.write(s.encode(IO_ENCODING,'replace'))
         sys.stderr.write(os.linesep)
 
-    #displays an warninc message unicode string
+    #displays an warning message unicode string
     #and adds a newline
     def warning(self,s):
         sys.stderr.write("*** Warning: ")
