@@ -1101,7 +1101,7 @@ class TestAiffAudio(TestTextOutput):
                      "-x","/dev/null/foo.xmcd",
                      track.filename]),1)
 
-            self.__check_error__(_(u"Invalid XMCD file"))
+            self.__check_error__(_(u"Invalid XMCD or MusicBrainz XML file"))
 
             #try to use track2track -d on an un-writable directory
             os.chmod(basedir_tar,basedir_tar_stat & 07555)
@@ -1238,12 +1238,15 @@ class TestAiffAudio(TestTextOutput):
 
             self.assertEqual(self.__run_app__(
                     ["track2xmcd",
+                     "--no-musicbrainz",
                      "--freedb-server=foo.bar",
                      "--freedb-port=9001",
                      temp_track1.filename,
                      temp_track2.filename]),1)
 
-            self.__check_info__(_(u"Sending ID to server"))
+            self.__check_info__(_(u"Sending Disc ID \"%(disc_id)s\" to server \"%(server)s\"") % \
+                                   {"disc_id":u"0a000c02",
+                                    "server":u"foo.bar"})
 
             #an invalid freedb-server will generate one of the following
             #depending on whether DNS is spoofing bogus hostnames or not
@@ -1275,7 +1278,7 @@ class TestAiffAudio(TestTextOutput):
                 self.assertEqual(self.__run_app__(
                         ["tracktag","--xmcd=/dev/null/foo.xmcd",
                          self.filename(temp_track.filename)]),1)
-                self.__check_error__(_(u"Invalid XMCD file"))
+                self.__check_error__(_(u"Invalid XMCD or MusicBrainz XML file"))
 
                 self.assertEqual(self.__run_app__(
                         ["tracktag","--comment-file=/dev/null/foo.txt",
@@ -1319,7 +1322,7 @@ class TestAiffAudio(TestTextOutput):
                      "--cue",cue_file.name,
                      "-d",tempdir,self.filename(track.filename)]),1)
 
-            self.__check_error__(_(u"Invalid XMCD file"))
+            self.__check_error__(_(u"Invalid XMCD or MusicBrainz XML file"))
 
             self.assertEqual(self.__run_app__(
                     ["tracksplit",
@@ -2820,6 +2823,48 @@ class TestMP3Audio(ID3Lint,TestAiffAudio):
 class TestMP2Audio(TestMP3Audio):
     def setUp(self):
         self.audio_class = audiotools.MP2Audio
+
+    @TEST_EXECUTABLE
+    def test_track2xmcd_invalid(self):
+        temp_track_file1 = tempfile.NamedTemporaryFile(suffix="." + self.audio_class.SUFFIX)
+        temp_track_file2 = tempfile.NamedTemporaryFile(suffix="." + self.audio_class.SUFFIX)
+        try:
+            temp_track1 = self.audio_class.from_pcm(
+                temp_track_file1.name,
+                BLANK_PCM_Reader(5))
+
+            temp_track2 = self.audio_class.from_pcm(
+                temp_track_file1.name,
+                BLANK_PCM_Reader(6))
+
+            self.assertEqual(self.__run_app__(
+                    ["track2xmcd",
+                     "--no-musicbrainz",
+                     "--freedb-server=foo.bar",
+                     "--freedb-port=9001",
+                     temp_track1.filename,
+                     temp_track2.filename]),1)
+
+            #Disc ID is different in MP2 because of its lossy length
+            self.__check_info__(_(u"Sending Disc ID \"%(disc_id)s\" to server \"%(server)s\"") % \
+                                   {"disc_id":u"09000b02",
+                                    "server":u"foo.bar"})
+
+            #an invalid freedb-server will generate one of the following
+            #depending on whether DNS is spoofing bogus hostnames or not
+            #self.__check_error__(u"[Errno 111] Connection refused")
+            #self.__check_error__(u"[Errno -2] Name or service not known")
+
+            self.assertEqual(self.__run_app__(
+                    ["track2xmcd",
+                     temp_track1.filename,
+                     temp_track2.filename,
+                     "-x","/dev/null/foo.xmcd"]),1)
+            self.__check_error__(_(u"Unable to write \"%s\"") % \
+                                     (self.filename("/dev/null/foo.xmcd")))
+        finally:
+            temp_track_file1.close()
+            temp_track_file2.close()
 
 class TestVorbisAudio(VorbisLint,TestAiffAudio,LCVorbisComment):
     def setUp(self):
@@ -5167,7 +5212,7 @@ class TestProgramOutput(TestTextOutput):
                  self.flac1.filename,self.flac2.filename,self.flac3.filename]),
                          1)
 
-        self.__check_error__(_(u"Invalid XMCD file"))
+        self.__check_error__(_(u"Invalid XMCD or MusicBrainz XML file"))
 
         self.assertEqual(self.__run_app__(
                 ["track2track","--format=%(foo)s","-t","flac","-d",self.dir2,
@@ -5679,7 +5724,7 @@ class TestProgramOutput(TestTextOutput):
     def test_tracktag1(self):
         self.assertEqual(self.__run_app__(
                 ["tracktag","-x","/dev/null",self.flac1.filename]),1)
-        self.__check_error__(_(u"Invalid XMCD file"))
+        self.__check_error__(_(u"Invalid XMCD or MusicBrainz XML file"))
 
         self.assertEqual(self.__run_app__(
                 ["tracktag","--front-cover=/dev/null/foo.jpg",
@@ -5749,8 +5794,7 @@ class TestProgramOutput(TestTextOutput):
 
         self.assertEqual(self.__run_app__(
                 ["trackrename","-x","/dev/null",self.flac1.filename]),1)
-        self.__check_error__(_(u"Error opening XMCD file \"%s\"") % \
-                                 (self.filename("/dev/null")))
+        self.__check_error__(_(u"Invalid XMCD or MusicBrainz XML file"))
 
         self.assertEqual(self.__run_app__(
                 ["trackrename","--format=%(foo)s",self.flac1.filename]),1)
@@ -5963,7 +6007,7 @@ class TestTracksplitOutput(TestTextOutput):
                 ["tracksplit","-t","flac","-d",self.dir2,
                  "--cue",self.cue_path,"-x","/dev/null",self.flac.filename]),1)
 
-        self.__check_error__(_(u"Invalid XMCD file"))
+        self.__check_error__(_(u"Invalid XMCD or MusicBrainz XML file"))
 
         self.assertEqual(self.__run_app__(
                 ["tracksplit","-t","flac","-d",self.dir2,
@@ -6051,7 +6095,7 @@ class TestTracksplitOutput(TestTextOutput):
                                 format=format_string)))})
         self.__check_info__(_(u"Adding ReplayGain metadata.  This may take some time."))
 
-class TestTrack2XMCD(TestTextOutput):
+class TestTrack2XMCDFreeDB(TestTextOutput):
     @TEST_EXECUTABLE
     def setUp(self):
         self.dir = tempfile.mkdtemp()
@@ -6101,18 +6145,15 @@ class TestTrack2XMCD(TestTextOutput):
                                  (self.filename(self.existing_filename)))
 
         self.assertEqual(self.__run_app__(
-                ["track2xmcd","-i"] + \
+                ["track2xmcd","--no-musicbrainz",
+                 "--freedb-server=us.freedb.org",
+                 "-D","-x",self.xmcd_filename] + \
                 [flac.filename for flac in self.flac_files]),
                          0)
 
-        self.__check_output__(u"4510fd16 22 150 21035 42561 49623 52904 69806 95578 118580 137118 138717 156562 169014 187866 192523 200497 205135 227486 243699 266182 293092 303273 321761 4351")
-
-        self.assertEqual(self.__run_app__(
-                ["track2xmcd","-D","-x",self.xmcd_filename] + \
-                [flac.filename for flac in self.flac_files]),
-                         0)
-
-        self.__check_info__(_(u"Sending ID to server"))
+        self.__check_info__(_(u"Sending Disc ID \"%(disc_id)s\" to server \"%(server)s\"") % \
+                                {"disc_id":u"4510fd16",
+                                 "server":u"us.freedb.org"})
 
         #NOTE - This particular batch of tracks has 2 matches
         #on FreeDB's servers right now.

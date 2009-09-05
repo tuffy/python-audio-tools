@@ -108,6 +108,9 @@ class ID3v1Comment(MetaData,list):
     def __init__(self, metadata):
         list.__init__(self, metadata)
 
+    def supports_images(self):
+        return False
+
     #if an attribute is updated (e.g. self.track_name)
     #make sure to update the corresponding list item
     def __setattr__(self, key, value):

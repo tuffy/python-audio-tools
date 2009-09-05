@@ -1463,7 +1463,7 @@ class MetaData:
                 if (getattr(self,field) == 0):
                     setattr(self,field,getattr(metadata,field))
 
-        if (len(self.images()) == 0):
+        if ((len(self.images()) == 0) and self.supports_images()):
             for img in metadata.images():
                 self.add_image(img)
 
