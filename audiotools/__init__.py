@@ -1862,6 +1862,12 @@ class DummyAudioFile(AudioFile):
     def track_number(self):
         return self.__track_number__
 
+    def sample_rate(self):
+        return 44100
+
+    def total_frames(self):
+        return (self.cd_frames() * self.sample_rate()) / 75
+
 ###########################
 #Cuesheet/TOC file handling
 ###########################

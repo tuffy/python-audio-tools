@@ -413,7 +413,7 @@
   It would be helpful to have external metadata support beyond FreeDB,
   since FreeDB is very primitive.
 ** TODO Ensure that MusicBrainz is interchangeable with FreeDB/XMCD
-*** TODO Unify track2xmcd/track2mb, cd2xmcd/cd2mb
+*** DONE Unify track2xmcd/track2mb, cd2xmcd/cd2mb
     Based on preliminary testing, MusicBrainz's output is better than FreeDB's
     but its album coverage is not as broad.
     In addition, nobody wants to run their albums through two separate tools

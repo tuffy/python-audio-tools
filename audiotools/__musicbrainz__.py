@@ -17,7 +17,7 @@
 #along with this program; if not, write to the Free Software
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-from audiotools import MetaData,AlbumMetaData,MetaDataFileException,__most_numerous__
+from audiotools import MetaData,AlbumMetaData,MetaDataFileException,__most_numerous__,DummyAudioFile
 import urllib
 import gettext
 
@@ -84,6 +84,10 @@ class MBDiscID:
         return "".join([{'=':'-','+':'.','/':'_'}.get(c,c) for c in
                         digest.digest().encode('base64').rstrip('\n')])
 
+    def toxml(self, output):
+        output.write(MusicBrainzReleaseXML.from_files(
+                [DummyAudioFile(length,None,i + 1)
+                 for (i,length) in enumerate(self.tracks)]).build())
 
 class MusicBrainz:
     def __init__(self, server, port, messenger):

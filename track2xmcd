@@ -164,10 +164,17 @@ if (__name__ == '__main__'):
                 msg.error(unicode(e))
                 returnval = 1
 
-        #FIXME - if musicbrainz_matches and freedb_matches are both 0
+        #if musicbrainz_matches and freedb_matches are both 0
         #output a MusicBrainzReleaseXML file instead of a FreeDB one
         #since XML is better for editing by end users
         #(none of that " / "-handling nonsense)
+        if ((musicbrainz_matches == 0) and (freedb_matches == 0)):
+            if (options.use_musicbrainz):
+                musicbrainz_discid.toxml(outfile)
+            else:
+                freedb_discid.toxmcd(outfile)
+            msg.info(_(u"%s written") % (msg.filename(options.xmcd)))
+            outfile.close()
 
     if (returnval != 0):
         sys.exit(1)
