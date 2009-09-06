@@ -310,6 +310,20 @@ class MusicBrainzReleaseXML:
 
         return cls(dom)
 
+    @classmethod
+    def from_cuesheet(cls, cuesheet, total_frames, sample_rate, metadata=None):
+        if (metadata is None):
+            metadata = MetaData()
+
+        return cls.from_files([DummyAudioFile(
+                    length = (pcm_frames * 75) / sample_rate,
+                    metadata = metadata,
+                    track_number = i + 1) for (i,pcm_frames) in enumerate(
+                    cuesheet.pcm_lengths(total_frames))])
+
+    def build(self):
+        return self.dom.toxml(encoding='utf-8')
+
 #takes a MBDiscID value and a file handle for output
 #and runs the entire MusicBrainz querying sequence
 #the file handle is closed at the conclusion of this function

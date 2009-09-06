@@ -100,16 +100,22 @@ if (__name__ == '__main__'):
             sys.exit(1)
 
     if (options.metadata):   #pull XML/XMCD data from AudioFile metadata
-        #FIXME - generate MusicBrainz XML unless --no-musicbrainz is given
+        returnval = 0
+
+        if (options.use_musicbrainz):
+            output_class = audiotools.MusicBrainzReleaseXML
+        else:
+            output_class = audiotools.XMCD
+
         if ((len(audiofiles) == 1) and
             (audiofiles[0].get_cuesheet() is not None)):
-            outfile.write(audiotools.XMCD.from_cuesheet(
+            outfile.write(output_class.from_cuesheet(
                     audiofiles[0].get_cuesheet(),
                     audiofiles[0].total_frames(),
                     audiofiles[0].sample_rate(),
                     audiofiles[0].get_metadata()).build())
         else:
-            outfile.write(audiotools.XMCD.from_files(audiofiles).build())
+            outfile.write(output_class.from_files(audiofiles).build())
     else:                     #grab XML/XMCD data from MusicBrainz/FreeDB
         if ((len(audiofiles) == 1) and
             (audiofiles[0].get_cuesheet() is not None)):
@@ -157,6 +163,11 @@ if (__name__ == '__main__'):
             except IOError,e:
                 msg.error(unicode(e))
                 returnval = 1
+
+        #FIXME - if musicbrainz_matches and freedb_matches are both 0
+        #output a MusicBrainzReleaseXML file instead of a FreeDB one
+        #since XML is better for editing by end users
+        #(none of that " / "-handling nonsense)
 
     if (returnval != 0):
         sys.exit(1)

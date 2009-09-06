@@ -419,8 +419,14 @@
     In addition, nobody wants to run their albums through two separate tools
     in order to extract metadata for tagging.  The best solution is
     for tools to try both and output the one that's most complete.
+*** TODO Extend editxmcd to MusicBrainz XML
+    Although editxmcd was originally designed specifically for XMCD files
+    and MusicBrainz's XML format differs radically, no one should have to
+    know whether an album metadata file is one or the other.
+    Therefore, editxmcd should be extended with additional fields
+    to handle XML backend data if necessary.
 ** TODO Add MusicBrainz-specific unit tests
-** TODO Update --help text to indicate MusicBrainz compatibility
-** TODO Update man pages to indiciate MusicBrainz compatibility
 ** TODO Add MusicBrainz tag support to MetaData fields
 ** TODO Add MusicBrainz protocol/format documentation
+** TODO Update --help text to indicate MusicBrainz compatibility
+** TODO Update man pages to indiciate MusicBrainz compatibility
