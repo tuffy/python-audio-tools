@@ -17,7 +17,7 @@
 #along with this program; if not, write to the Free Software
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-from audiotools import MetaData,AlbumMetaData,MetaDataFileException
+from audiotools import MetaData,AlbumMetaData,MetaDataFileException,__most_numerous__
 import urllib
 import gettext
 
@@ -160,7 +160,7 @@ class MusicBrainzReleaseXML:
 
         def get_text_node(parent, child_tag):
             try:
-                return get_nodes(parent,child_tag)[0].childNodes[0].data
+                return get_nodes(parent,child_tag)[0].childNodes[0].data.strip()
             except IndexError:
                 return u''
 
@@ -218,6 +218,97 @@ class MusicBrainzReleaseXML:
                                                  album_metadata=album_metadata,
                                                  track_number=i + 1)
                               for (i,node) in enumerate(tracks)])
+
+    #audiofiles should be a list of AudioFile-compatible objects
+    #from the same album, possibly with valid MetaData
+    #returns a MusicBrainzReleaseXML object with populated DOM
+    @classmethod
+    def from_files(cls, audiofiles):
+        from xml.dom.minidom import parseString
+
+        def make_text_node(document,tagname,text):
+            node = document.createElement(tagname)
+            node.appendChild(document.createTextNode(text))
+            return node
+
+        #our base DOM to start with
+        dom = parseString('<?xml version="1.0" encoding="UTF-8"?><metadata xmlns="http://musicbrainz.org/ns/mmd-1.0#" xmlns:ext="http://musicbrainz.org/ns/ext-1.0#"></metadata>')
+
+        release = dom.createElement(u'release')
+
+        track_metadata = [t.get_metadata() for t in audiofiles
+                          if (t.get_metadata() is not None)]
+
+        #add album title
+        release.appendChild(make_text_node(
+                dom,u'title',unicode(__most_numerous__(
+                        [m.album_name for m in track_metadata]))))
+
+        #add album artist
+        if (len(set([m.artist_name for m in track_metadata])) <
+            len(track_metadata)):
+            artist = dom.createElement(u'artist')
+            album_artist = unicode(__most_numerous__(
+                    [m.artist_name for m in track_metadata]))
+            artist.appendChild(make_text_node(dom,u'name',album_artist))
+            release.appendChild(artist)
+        else:
+            album_artist = u'' #all track artist names differ
+
+        #add release info (catalog number, release date, media, etc.)
+        event_list = dom.createElement(u'release-event-list')
+        event = dom.createElement(u'event')
+
+        year = unicode(__most_numerous__(
+                [m.year for m in track_metadata]))
+        if (year != u""):
+            event.setAttribute(u'date',year)
+
+        catalog_number = unicode(__most_numerous__(
+                [m.catalog for m in track_metadata]))
+        if (catalog_number != u""):
+            event.setAttribute(u'catalog-number',catalog_number)
+
+        media = unicode(__most_numerous__(
+                [m.media for m in track_metadata]))
+        if (media != u""):
+            event.setAttribute(u'format',media)
+
+        event_list.appendChild(event)
+        release.appendChild(event_list)
+
+        #add tracks
+        track_list = dom.createElement(u'track-list')
+
+        for track in audiofiles:
+            node = dom.createElement(u'track')
+            track_metadata = track.get_metadata()
+            if (track_metadata is not None):
+                node.appendChild(make_text_node(
+                        dom,u'title',track_metadata.track_name))
+
+            node.appendChild(make_text_node(
+                    dom,u'duration',
+                    unicode((track.total_frames() * 1000) /
+                            track.sample_rate())))
+
+            if (track_metadata is not None):
+                #add track artist, if different from album artist
+                if (track_metadata.artist_name != album_artist):
+                    artist = dom.createElement(u'artist')
+                    artist.appendChild(make_text_node(
+                            dom,u'name',track_metadata.artist_name))
+                    node.appendChild(artist)
+
+            track_list.appendChild(node)
+
+        release.appendChild(track_list)
+
+        release_list = dom.createElement(u'release-list')
+        release_list.appendChild(release)
+        dom.getElementsByTagName(u'metadata')[0].appendChild(release_list)
+
+        return cls(dom)
 
 #takes a MBDiscID value and a file handle for output
 #and runs the entire MusicBrainz querying sequence
