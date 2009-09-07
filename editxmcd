@@ -248,15 +248,27 @@ class EditXMCD:
     def read_file(self,filename):
         self.filename = filename
         try:
-            self.read_xmcd(audiotools.XMCD.read(filename))
-        except audiotools.XMCDException:
+            try:
+                self.read_xmcd(audiotools.XMCD.read(filename))
+                return
+            except audiotools.XMCDException:
+                pass
+            try:
+                self.read_mbxml(audiotools.MusicBrainzReleaseXML.read(filename))
+                return
+            except audiotools.MBXMLException:
+                pass
+
+            raise audiotools.MetaDataFileException(filename)
+
+        except audiotools.MetaDataFileException,err:
             self.file_error(_(u"Error opening \"%s\"") % \
                                 (self.msg.filename(filename)),
                             _(u"Read Error"))
         except IOError:
             self.file_error(_(u"Error opening \"%s\"") % \
                                 (self.msg.filename(filename)),
-                            _("Read Error"))
+                            _(u"Read Error"))
 
     def read_xmcd(self,xmcd):
         self.xmcd = xmcd
@@ -305,6 +317,65 @@ class EditXMCD:
         self.set_data(album_name,album_artist,year,extra,
                       tracks,artists,extras)
 
+        self.edited = False
+        self.set_title()
+
+    def read_mbxml(self,mbxml):
+        def get_nodes(parent,child_tag):
+            return [node for node in parent.childNodes
+                    if (hasattr(node,"tagName") and
+                        (node.tagName == child_tag))]
+
+        def get_text_node(parent, child_tag):
+            try:
+                return get_nodes(parent,child_tag)[0].childNodes[0].data.strip()
+            except IndexError:
+                return u''
+
+        self.xmcd = mbxml
+
+        try:
+            release = mbxml.dom.getElementsByTagName(u'release')[0]
+        except IndexError:
+            self.set_data(u"",u"",u"",u"",[],[],[])
+            self.edited = False
+            self.set_title()
+            return
+
+        album_name = get_text_node(release,u'title')
+        try:
+            #FIXME - not sure if name or sort-name should take precendence
+            album_artist = get_text_node(get_nodes(release,u'artist')[0],
+                                         u'name')
+        except IndexError:
+            album_artist = u""
+
+        try:
+            release_events = get_nodes(release,u'release-event-list')[0]
+            event = get_nodes(release_events,u'event')[-1]
+            year = event.getAttribute('date')[0:4]
+        except IndexError:
+            year = u""
+
+        tracks = []
+        track_artists = []
+        try:
+            for (i,track_node) in enumerate(
+                get_nodes(get_nodes(release,u'track-list')[0],u'track')):
+                tracks.append([i + 1,
+                               get_text_node(track_node,u'title')])
+                try:
+                    track_artists.append([
+                            i + 1,
+                            get_text_node(get_nodes(track_node,u'artist')[0],
+                                          u'name')])
+                except IndexError:
+                    track_artists.append([i + 1,u""])
+        except IndexError:
+            pass
+
+        self.set_data(album_name,album_artist,year,u"",
+                      tracks,track_artists,[])
         self.edited = False
         self.set_title()
 
