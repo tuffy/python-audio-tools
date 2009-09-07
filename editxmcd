@@ -83,12 +83,13 @@ class EditXMCD:
     #album_name,artist_name,album_year,album_extra should be unicode strings
     #tracks,artists,extras should be [track_number,unicode] pairs
     def set_data(self,
-                 album_name,artist_name,album_year,album_extra,
+                 album_name,artist_name,album_year,album_extra,catalog,
                  tracks,artists,extras):
         self.xml.get_widget("album_name").set_text(album_name)
         self.xml.get_widget("artist_name").set_text(artist_name)
         self.xml.get_widget("album_year").set_text(album_year)
         self.xml.get_widget("album_extra").set_text(album_extra)
+        self.xml.get_widget("catalog").set_text(catalog)
 
         for (model,data) in zip([self.track_model,
                                  self.artist_model,
@@ -131,7 +132,6 @@ class EditXMCD:
         error_dialog.run()
 
     def on_field_edited(self, cell, path_string, new_text, model):
-
         iter = model.get_iter_from_string(path_string)
         path = model.get_path(iter)[0]
         column = cell.get_data("column")
@@ -227,6 +227,9 @@ class EditXMCD:
             event.setAttribute(
                 'date',
                 self.xml.get_widget("album_year").get_text().decode('utf-8'))
+            event.setAttribute(
+                'catalog-number',
+                self.xml.get_widget("catalog").get_text().decode('utf-8'))
         except IndexError:
             pass
 
@@ -352,6 +355,8 @@ class EditXMCD:
     def read_xmcd(self,xmcd):
         self.xmcd = xmcd
         self.metadata_update = self.xmcd_update
+        self.xml.get_widget("album_extra").set_sensitive(True)
+        self.xml.get_widget("catalog").set_sensitive(False)
 
         ttitle = self.xmcd.get('DTITLE',u'')
         if (u' / ' in ttitle):
@@ -394,8 +399,14 @@ class EditXMCD:
         artists.sort()
         extras.sort()
 
-        self.set_data(album_name,album_artist,year,extra,
-                      tracks,artists,extras)
+        self.set_data(album_name=album_name,
+                      artist_name=album_artist,
+                      album_year=year,
+                      album_extra=extra,
+                      catalog=u"",
+                      tracks=tracks,
+                      artists=artists,
+                      extras=extras)
 
         self.edited = False
         self.set_title()
@@ -414,11 +425,20 @@ class EditXMCD:
 
         self.xmcd = mbxml
         self.metadata_update = self.mbxml_update
+        self.xml.get_widget("album_extra").set_sensitive(False)
+        self.xml.get_widget("catalog").set_sensitive(True)
 
         try:
             release = mbxml.dom.getElementsByTagName(u'release')[0]
         except IndexError:
-            self.set_data(u"",u"",u"",u"",[],[],[])
+            self.set_data(album_name=u"",
+                          artist_name=u"",
+                          album_year=u"",
+                          album_extra=u"",
+                          catalog=u"",
+                          tracks=[],
+                          artists=[],
+                          extras=[])
             self.edited = False
             self.set_title()
             return
@@ -435,6 +455,7 @@ class EditXMCD:
             release_events = get_nodes(release,u'release-event-list')[0]
             event = get_nodes(release_events,u'event')[-1]
             year = event.getAttribute('date')[0:4]
+            catalog = event.getAttribute('catalog-number')
         except IndexError:
             year = u""
 
@@ -455,8 +476,14 @@ class EditXMCD:
         except IndexError:
             pass
 
-        self.set_data(album_name,album_artist,year,u"",
-                      tracks,track_artists,[])
+        self.set_data(album_name=album_name,
+                      artist_name=album_artist,
+                      album_year=year,
+                      album_extra=u"",
+                      catalog=catalog,
+                      tracks=tracks,
+                      artists=track_artists,
+                      extras=[])
         self.edited = False
         self.set_title()
 
