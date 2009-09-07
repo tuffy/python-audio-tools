@@ -192,6 +192,12 @@ class EditXMCD:
                     if (hasattr(node,"tagName") and
                         (node.tagName == child_tag))]
 
+        def get_text_node(parent, child_tag):
+            try:
+                return get_nodes(parent,child_tag)[0].childNodes[0].data.strip()
+            except IndexError:
+                return u''
+
         def update_text_node(document, parent, child_tag, new_value):
             for child_node in parent.childNodes:
                 if (hasattr(child_node,"tagName") and
@@ -214,10 +220,15 @@ class EditXMCD:
             self.xml.get_widget("album_name").get_text().decode('utf-8'))
 
         try:
-            artist = get_nodes(release,u'artist')[0]
-            update_text_node(
-                dom, artist, u'name',
-                self.xml.get_widget("artist_name").get_text().decode('utf-8'))
+            old_artist_node = get_nodes(release,u'artist')[0]
+            artist_name_string = self.xml.get_widget("artist_name").get_text().decode('utf-8')
+            if (get_text_node(old_artist_node,u'name') != artist_name_string):
+                artist_name_text = dom.createTextNode(artist_name_string)
+                artist_name = dom.createElement(u'name')
+                artist_name.appendChild(artist_name_text)
+                new_artist_node = dom.createElement(u'artist')
+                new_artist_node.appendChild(artist_name)
+                release.replaceChild(new_artist_node,old_artist_node)
         except IndexError:
             pass
 
