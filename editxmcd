@@ -186,6 +186,84 @@ class EditXMCD:
         for i in xrange(len(self.extra_model)):
             self.xmcd['EXTT%s' % (i)] = self.extra_model[i][1].decode('utf-8')
 
+    def mbxml_update(self):
+        def get_nodes(parent,child_tag):
+            return [node for node in parent.childNodes
+                    if (hasattr(node,"tagName") and
+                        (node.tagName == child_tag))]
+
+        def update_text_node(document, parent, child_tag, new_value):
+            for child_node in parent.childNodes:
+                if (hasattr(child_node,"tagName") and
+                    (child_node.tagName == child_tag)):
+                    child_node.replaceChild(
+                        document.createTextNode(new_value),
+                        child_node.firstChild)
+
+        if (self.xmcd is None):
+            return
+
+        try:
+            dom = self.xmcd.dom
+            release = self.xmcd.dom.getElementsByTagName(u'release')[0]
+        except IndexError:
+            return
+
+        update_text_node(
+            dom, release, u'title',
+            self.xml.get_widget("album_name").get_text().decode('utf-8'))
+
+        try:
+            artist = get_nodes(release,u'artist')[0]
+            update_text_node(
+                dom, artist, u'name',
+                self.xml.get_widget("artist_name").get_text().decode('utf-8'))
+        except IndexError:
+            pass
+
+        try:
+            release_events = get_nodes(release,u'release-event-list')[0]
+            event = get_nodes(release_events,u'event')[-1]
+            event.setAttribute(
+                'date',
+                self.xml.get_widget("album_year").get_text().decode('utf-8'))
+        except IndexError:
+            pass
+
+        try:
+            for (i,track_node) in enumerate(get_nodes(
+                    get_nodes(release,u'track-list')[0],u'track')):
+                track_name = self.track_model[i][1].decode('utf-8')
+                artist_name = self.artist_model[i][1].decode('utf-8')
+
+                update_text_node(dom, track_node, u'title', track_name)
+
+                if (len(artist_name) > 0):
+                    #add/modify a new <artist> child tag of <track>
+                    artist_name_text = dom.createTextNode(artist_name)
+                    artist_name = dom.createElement(u'name')
+                    artist_name.appendChild(artist_name_text)
+                    new_artist_node = dom.createElement(u'artist')
+                    new_artist_node.appendChild(artist_name)
+                    try:
+                        track_node.replaceChild(
+                            new_artist_node,
+                            get_nodes(track_node,u'artist')[0])
+                    except IndexError:
+                        track_node.appendChild(new_artist_node)
+                else:
+                    #if <track> has an <artist> child, delete it
+                    try:
+                        track_node.removeChild(
+                            get_nodes(track_node,u'artist')[0])
+                    except IndexError:
+                        pass
+
+        except IndexError:
+            pass
+
+    metadata_update = xmcd_update
+
     def new(self,caller):
         self.xml.get_widget("selecttracks").run()
 
@@ -204,7 +282,7 @@ class EditXMCD:
         elif (self.filename is None):
             return self.saveas(caller)
 
-        self.xmcd_update()
+        self.metadata_update()
         try:
             f = open(self.filename,'wb')
             f.write(self.xmcd.build())
@@ -224,6 +302,7 @@ class EditXMCD:
         dialog.hide()
         if (signal == -5):
             self.filename = dialog.get_filename()
+            self.metadata_update()
             try:
                 f = open(self.filename,'wb')
                 f.write(self.xmcd.build())
@@ -272,6 +351,7 @@ class EditXMCD:
 
     def read_xmcd(self,xmcd):
         self.xmcd = xmcd
+        self.metadata_update = self.xmcd_update
 
         ttitle = self.xmcd.get('DTITLE',u'')
         if (u' / ' in ttitle):
@@ -333,6 +413,7 @@ class EditXMCD:
                 return u''
 
         self.xmcd = mbxml
+        self.metadata_update = self.mbxml_update
 
         try:
             release = mbxml.dom.getElementsByTagName(u'release')[0]
