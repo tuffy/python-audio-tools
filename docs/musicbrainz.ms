@@ -118,5 +118,18 @@ type=xml&discid=2jmj7l5rSw0yVb_vlWAYkK_YBwk-
 .LP
 Whether the Release is found in the MusicBrainz database or not,
 an XML file will always be generated.
-.SUBSECTION "Release XML"
+.SECTION "MusicBrainz XML"
 .PP
+The following is the complete specification for MusicBrainz XML output
+in RELAX NG Compact syntax from
+\fChttp://bugs.musicbrainz.org/browser/mmd-schema/trunk/schema\fR
+and converted to compact syntax for better readability.
+.PS
+line right 4.5i
+.PE
+.LP
+.ft C
+.ps 8
+.so musicbrainz_mmd-1.4.rnc
+.ps
+.ft
