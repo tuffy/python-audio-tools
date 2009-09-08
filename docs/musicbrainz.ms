@@ -93,5 +93,30 @@ So to complete our example, the hash value becomes a disc ID of
 .bp
 .SUBSECTION "Server Query"
 .PP
+MusicBrainz runs as a service on HTTP port 80.
+To retrieve Release information, one can make a GET request to
+\fC/ws/1/release\fR using the following fields:
+.TS
+tab(:);
+| c | c |
+| r | l |.
+_
+key:value
+=
+\fCtype\fR:\fCxml\fR
+\fCdiscid\fR:\fC<disc ID string>\fR
+_
+.TE
+For example, to retrieve the Release data for disc ID
+`2jmj7l5rSw0yVb_vlWAYkK_YBwk-' one sends the GET query:
+.br
+.ft C
+.ps 8
+type=xml&discid=2jmj7l5rSw0yVb_vlWAYkK_YBwk-
+.ps
+.ft
+.LP
+Whether the Release is found in the MusicBrainz database or not,
+an XML file will always be generated.
 .SUBSECTION "Release XML"
 .PP
