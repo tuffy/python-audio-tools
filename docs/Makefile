@@ -24,8 +24,8 @@ FORMAT_VORBIS = format_ogg.ms format_vorbiscomment.ms format_speex.ms
 
 INSTALLATION = install.ms prereqs.ms configfile.ms
 
-SUBSECTIONS = $(INSTALLATION) macros.ms programming.ms freedb.ms usage.ms \
-replaygain.ms references.ms
+SUBSECTIONS = $(INSTALLATION) macros.ms programming.ms freedb.ms \
+musicbrainz.ms usage.ms replaygain.ms references.ms
 FIGURES = binary.eps freedb-sequence.eps pcm.eps rice1.eps rice2.eps \
 lpc_process.eps lpc_process2.eps hann.eps tukey.eps rectangular.eps lag.eps \
 m4a-atoms.eps m4a-meta.eps

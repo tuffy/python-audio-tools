@@ -11,7 +11,7 @@ Because compact discs do not usually contain metadata about
 track names, album names and so forth, that information
 must be retrieved from an external source.
 FreeDB is a service which allows users to submit CD
-metadata and to retrieve the meta-data submitted by others.
+metadata and to retrieve the metadata submitted by others.
 Both actions require a category and a 32-bit disc ID number,
 which combine to form a unique identifier for a particular CD.
 .PP

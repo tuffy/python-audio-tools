@@ -76,6 +76,8 @@ I don't want to print any more pages than I have to, after all.
 .bp
 .so freedb.ms
 .bp
+.so musicbrainz.ms
+.bp
 .so replaygain.ms
 .bp
 .so references.ms
