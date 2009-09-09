@@ -125,7 +125,60 @@ an XML file will always be generated.
 .rt
 .PP
 .ll 3.75in
-
+All XML files returned my a MusicBrainz query consist of a
+.TAG "metadata"
+tag container.
+When making a Release query, it contains a
+.TAG "release-list"
+which is itself a container for zero or more
+.TAG "release"
+tags, depending on how many Release entries match the submitted
+disc ID.
+.PP
+.ll 3.75in
+The
+.TAG "release"
+tag typically contains a
+.TAG "title"
+which is the album's name,
+an
+.TAG "artist"
+tag which is the album's primary artist,
+a
+.TAG "release-event-list"
+tag containing information such as the album's
+release date and catalog number,
+and finally a
+.TAG "track-list"
+which contains all the track data.
+.PP
+.ll 3.75in
+The
+.TAG "track"
+tags are always listed in order of their appearance in the album.
+Each contains a
+.TAG "title"
+which is the track's name,
+a
+.TAG "duration"
+which is the track's length in milliseconds,
+and optionally an
+.TAG "artist"
+tag which is information about a track-specific artist,
+for instances where the track's artist differs from the album's artist.
+.PP
+.ll 3.75in
+In addition, the
+.TAG "release"
+,
+.TAG "artist"
+,
+and
+.TAG "track"
+tags all contain an `id' attribute with 32 hex digits in the format
+`12345678-9abc-def1-2345-6789abcdef1234'.
+These uniquely identify the Release, Artist and Track information
+in the MusicBrainz database and can be used for direct lookups.
 .bp
 .SECTION "MusicBrainz XML"
 .PP

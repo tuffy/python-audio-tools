@@ -149,6 +149,10 @@ class
 .ft
 ..
 
+.de TAG
+\fC<\\$1>\fR
+..
+
 .EQ
 delim @@
 .EN
