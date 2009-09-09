@@ -23,6 +23,17 @@ import gettext
 
 gettext.install("audiotools",unicode=True)
 
+def get_xml_nodes(parent,child_tag):
+    return [node for node in parent.childNodes
+            if (hasattr(node,"tagName") and
+                (node.tagName == child_tag))]
+
+def get_xml_text_node(parent, child_tag):
+    try:
+        return get_xml_nodes(parent,child_tag)[0].childNodes[0].data.strip()
+    except IndexError:
+        return u''
+
 class MBDiscID:
     #tracks is a list of track lengths in CD frames
     #offsets, if present, is a list of track offsets in CD frames
@@ -162,29 +173,18 @@ class MusicBrainzReleaseXML:
             raise MBXMLException(filename)
 
     def metadata(self):
-        def get_nodes(parent,child_tag):
-            return [node for node in parent.childNodes
-                    if (hasattr(node,"tagName") and
-                        (node.tagName == child_tag))]
-
-        def get_text_node(parent, child_tag):
-            try:
-                return get_nodes(parent,child_tag)[0].childNodes[0].data.strip()
-            except IndexError:
-                return u''
-
         def get_track_metadata(track_node,
                                album_metadata,
                                track_number):
             try:
                 #FIXME - not sure if name or sort-name should take precendence
-                artist_name = get_text_node(get_nodes(track_node,u'artist')[0],
-                                            u'name')
+                artist_name = get_xml_text_node(
+                    get_xml_nodes(track_node,u'artist')[0],u'name')
             except IndexError:
                 artist_name = album_metadata.artist_name
 
-            track_metadata = MetaData(track_name=get_text_node(track_node,
-                                                               u'title'),
+            track_metadata = MetaData(track_name=get_xml_text_node(track_node,
+                                                                   u'title'),
                                       artist_name=artist_name,
                                       track_number=track_number)
 
@@ -197,17 +197,18 @@ class MusicBrainzReleaseXML:
         except IndexError:
             return AlbumMetaData([])
 
-        album_name = get_text_node(release,u'title')
+        album_name = get_xml_text_node(release,u'title')
 
         try:
             #FIXME - not sure if name or sort-name should take precendence
-            artist_name = get_text_node(get_nodes(release,u'artist')[0],
-                                        u'name')
+            artist_name = get_xml_text_node(get_xml_nodes(release,u'artist')[0],
+                                            u'name')
         except IndexError:
             artist_name = u''
 
         try:
-            tracks = get_nodes(get_nodes(release,u'track-list')[0],u'track')
+            tracks = get_xml_nodes(get_xml_nodes(release,u'track-list')[0],
+                                   u'track')
         except IndexError:
             tracks = []
 
@@ -216,8 +217,8 @@ class MusicBrainzReleaseXML:
                                   track_total=len(tracks))
 
         try:
-            release_events = get_nodes(release,u'release-event-list')[0]
-            event = get_nodes(release_events,u'event')[-1]
+            release_events = get_xml_nodes(release,u'release-event-list')[0]
+            event = get_xml_nodes(release_events,u'event')[-1]
             album_metadata.year = event.getAttribute('date')[0:4]
             album_metadata.catalog = event.getAttribute('catalog-number')
         except IndexError:
@@ -337,17 +338,6 @@ class MusicBrainzReleaseXML:
 #and a Messenger object to query for output
 #returns a modified Document containing only one <release>
 def __select_match__(dom, messenger):
-    def get_nodes(parent,child_tag):
-        return [node for node in parent.childNodes
-                if (hasattr(node,"tagName") and
-                    (node.tagName == child_tag))]
-
-    def get_text_node(parent, child_tag):
-        try:
-            return get_nodes(parent,child_tag)[0].childNodes[0].data.strip()
-        except IndexError:
-            return u''
-
     messenger.info(_(u"Please Select the Closest Match:"))
     matches = dom.getElementsByTagName(u'release')
     selected = 0
@@ -355,7 +345,7 @@ def __select_match__(dom, messenger):
         for i in range(len(matches)):
             messenger.info(_(u"%(choice)s) %(name)s") % \
                                {"choice":i + 1,
-                                "name":get_text_node(matches[i],u'title')})
+                                "name":get_xml_text_node(matches[i],u'title')})
         try:
             messenger.partial_info(_(u"Your Selection [1-%s]:") % \
                                        (len(matches)))

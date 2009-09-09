@@ -21,6 +21,7 @@ import audiotools
 import sys
 import os.path
 import gettext
+from audiotools import get_xml_nodes,get_xml_text_node
 
 gettext.install("audiotools",unicode=True)
 
@@ -187,17 +188,6 @@ class EditXMCD:
             self.xmcd['EXTT%s' % (i)] = self.extra_model[i][1].decode('utf-8')
 
     def mbxml_update(self):
-        def get_nodes(parent,child_tag):
-            return [node for node in parent.childNodes
-                    if (hasattr(node,"tagName") and
-                        (node.tagName == child_tag))]
-
-        def get_text_node(parent, child_tag):
-            try:
-                return get_nodes(parent,child_tag)[0].childNodes[0].data.strip()
-            except IndexError:
-                return u''
-
         def update_text_node(document, parent, child_tag, new_value):
             for child_node in parent.childNodes:
                 if (hasattr(child_node,"tagName") and
@@ -220,9 +210,9 @@ class EditXMCD:
             self.xml.get_widget("album_name").get_text().decode('utf-8'))
 
         try:
-            old_artist_node = get_nodes(release,u'artist')[0]
+            old_artist_node = get_xml_nodes(release,u'artist')[0]
             artist_name_string = self.xml.get_widget("artist_name").get_text().decode('utf-8')
-            if (get_text_node(old_artist_node,u'name') != artist_name_string):
+            if (get_xml_text_node(old_artist_node,u'name') != artist_name_string):
                 artist_name_text = dom.createTextNode(artist_name_string)
                 artist_name = dom.createElement(u'name')
                 artist_name.appendChild(artist_name_text)
@@ -233,8 +223,8 @@ class EditXMCD:
             pass
 
         try:
-            release_events = get_nodes(release,u'release-event-list')[0]
-            event = get_nodes(release_events,u'event')[-1]
+            release_events = get_xml_nodes(release,u'release-event-list')[0]
+            event = get_xml_nodes(release_events,u'event')[-1]
             event.setAttribute(
                 'date',
                 self.xml.get_widget("album_year").get_text().decode('utf-8'))
@@ -245,8 +235,8 @@ class EditXMCD:
             pass
 
         try:
-            for (i,track_node) in enumerate(get_nodes(
-                    get_nodes(release,u'track-list')[0],u'track')):
+            for (i,track_node) in enumerate(get_xml_nodes(
+                    get_xml_nodes(release,u'track-list')[0],u'track')):
                 track_name = self.track_model[i][1].decode('utf-8')
                 artist_name = self.artist_model[i][1].decode('utf-8')
 
@@ -262,14 +252,14 @@ class EditXMCD:
                     try:
                         track_node.replaceChild(
                             new_artist_node,
-                            get_nodes(track_node,u'artist')[0])
+                            get_xml_nodes(track_node,u'artist')[0])
                     except IndexError:
                         track_node.appendChild(new_artist_node)
                 else:
                     #if <track> has an <artist> child, delete it
                     try:
                         track_node.removeChild(
-                            get_nodes(track_node,u'artist')[0])
+                            get_xml_nodes(track_node,u'artist')[0])
                     except IndexError:
                         pass
 
@@ -423,17 +413,6 @@ class EditXMCD:
         self.set_title()
 
     def read_mbxml(self,mbxml):
-        def get_nodes(parent,child_tag):
-            return [node for node in parent.childNodes
-                    if (hasattr(node,"tagName") and
-                        (node.tagName == child_tag))]
-
-        def get_text_node(parent, child_tag):
-            try:
-                return get_nodes(parent,child_tag)[0].childNodes[0].data.strip()
-            except IndexError:
-                return u''
-
         self.xmcd = mbxml
         self.metadata_update = self.mbxml_update
         self.xml.get_widget("album_extra").set_sensitive(False)
@@ -454,17 +433,17 @@ class EditXMCD:
             self.set_title()
             return
 
-        album_name = get_text_node(release,u'title')
+        album_name = get_xml_text_node(release,u'title')
         try:
             #FIXME - not sure if name or sort-name should take precendence
-            album_artist = get_text_node(get_nodes(release,u'artist')[0],
-                                         u'name')
+            album_artist = get_xml_text_node(get_xml_nodes(release,u'artist')[0],
+                                             u'name')
         except IndexError:
             album_artist = u""
 
         try:
-            release_events = get_nodes(release,u'release-event-list')[0]
-            event = get_nodes(release_events,u'event')[-1]
+            release_events = get_xml_nodes(release,u'release-event-list')[0]
+            event = get_xml_nodes(release_events,u'event')[-1]
             year = event.getAttribute('date')[0:4]
             catalog = event.getAttribute('catalog-number')
         except IndexError:
@@ -474,14 +453,14 @@ class EditXMCD:
         track_artists = []
         try:
             for (i,track_node) in enumerate(
-                get_nodes(get_nodes(release,u'track-list')[0],u'track')):
+                get_xml_nodes(get_xml_nodes(release,u'track-list')[0],u'track')):
                 tracks.append([i + 1,
-                               get_text_node(track_node,u'title')])
+                               get_xml_text_node(track_node,u'title')])
                 try:
                     track_artists.append([
                             i + 1,
-                            get_text_node(get_nodes(track_node,u'artist')[0],
-                                          u'name')])
+                            get_xml_text_node(
+                                get_xml_nodes(track_node,u'artist')[0],u'name')])
                 except IndexError:
                     track_artists.append([i + 1,u""])
         except IndexError:
