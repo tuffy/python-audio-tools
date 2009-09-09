@@ -427,12 +427,13 @@
     Therefore, editxmcd should be extended with additional fields
     to handle XML backend data if necessary.
 *** DONE Handle multiple Release entries with single Disc ID
+** DONE Add MusicBrainz protocol/format documentation
+** TODO Add MusicBrainz-specific unit tests
+** TODO Update --help text to indicate MusicBrainz compatibility
+** TODO Update man pages to indiciate MusicBrainz compatibility
+** TODO Update documentation with MusicBrainz config file fields
 ** TODO Add MusicBrainz tag support to MetaData fields
    The MusicBrainz docs indicate support for Vorbis comments and ID3v2 tags
    for storing MusicBrainz-specific tag data such as album ID.
    However, I am wary of supporting this level of meta-metadata
    that's not directly applicable to the track.
-** TODO Add MusicBrainz-specific unit tests
-** TODO Add MusicBrainz protocol/format documentation
-** TODO Update --help text to indicate MusicBrainz compatibility
-** TODO Update man pages to indiciate MusicBrainz compatibility

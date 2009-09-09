@@ -4993,7 +4993,7 @@ Is+xl9xg0BWyGXIZljPkM6xkKGQoZihlWM19CsPUca8l97sa7ZDGfwEBGThn""".decode('base64')
             for track in temp_tracks:
                 track.close()
 
-        #construct a fresh our XMCD file
+        #construct a fresh XMCD file
         xmcd_file = tempfile.NamedTemporaryFile(suffix=".xmcd")
         xmcd_file.write(audiotools.XMCD(data,OFFSETS,LENGTH).build())
         xmcd_file.flush()
@@ -5068,6 +5068,186 @@ Is+xl9xg0BWyGXIZljPkM6xkKGQoZihlWM19CsPUca8l97sa7ZDGfwEBGThn""".decode('base64')
             xmcd_file.close()
             for track in temp_tracks:
                 track.close()
+
+class TestMusicBrainzXML(unittest.TestCase):
+    XML_FILES = [(
+"""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""".decode('base64').decode('bz2'),
+                  {1:audiotools.MetaData(track_name=u'Frontier 2059',track_number=1,track_total=24,album_name=u'\u30de\u30af\u30ed\u30b9\u30d5\u30ed\u30f3\u30c6\u30a3\u30a2: \u5a18\u30d5\u30ed',artist_name=u'\u83c5\u91ce\u3088\u3046\u5b50',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'VTCL-60060',copyright=u'',publisher=u'',year=u'2008',date=u'',album_number=0,album_total=0,comment=u''),
+                   2:audiotools.MetaData(track_name=u"Welcome To My FanClub's Night! (Sheryl On Stage)",track_number=2,track_total=24,album_name=u'\u30de\u30af\u30ed\u30b9\u30d5\u30ed\u30f3\u30c6\u30a3\u30a2: \u5a18\u30d5\u30ed',artist_name=u'\u83c5\u91ce\u3088\u3046\u5b50',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'VTCL-60060',copyright=u'',publisher=u'',year=u'2008',date=u'',album_number=0,album_total=0,comment=u''),
+                   3:audiotools.MetaData(track_name=u"What 'bout my star? (Sheryl On Stage)",track_number=3,track_total=24,album_name=u'\u30de\u30af\u30ed\u30b9\u30d5\u30ed\u30f3\u30c6\u30a3\u30a2: \u5a18\u30d5\u30ed',artist_name=u'\u83c5\u91ce\u3088\u3046\u5b50',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'VTCL-60060',copyright=u'',publisher=u'',year=u'2008',date=u'',album_number=0,album_total=0,comment=u''),
+                   4:audiotools.MetaData(track_name=u"\u5c04\u624b\u5ea7\u2606\u5348\u5f8c\u4e5d\u6642Don't be late (Sheryl On Stage)",track_number=4,track_total=24,album_name=u'\u30de\u30af\u30ed\u30b9\u30d5\u30ed\u30f3\u30c6\u30a3\u30a2: \u5a18\u30d5\u30ed',artist_name=u'\u83c5\u91ce\u3088\u3046\u5b50',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'VTCL-60060',copyright=u'',publisher=u'',year=u'2008',date=u'',album_number=0,album_total=0,comment=u''),
+                   5:audiotools.MetaData(track_name=u'Vital Force',track_number=5,track_total=24,album_name=u'\u30de\u30af\u30ed\u30b9\u30d5\u30ed\u30f3\u30c6\u30a3\u30a2: \u5a18\u30d5\u30ed',artist_name=u'\u83c5\u91ce\u3088\u3046\u5b50',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'VTCL-60060',copyright=u'',publisher=u'',year=u'2008',date=u'',album_number=0,album_total=0,comment=u''),
+                   6:audiotools.MetaData(track_name=u'\u30c8\u30e9\u30a4\u30a2\u30f3\u30b0\u30e9\u30fc',track_number=6,track_total=24,album_name=u'\u30de\u30af\u30ed\u30b9\u30d5\u30ed\u30f3\u30c6\u30a3\u30a2: \u5a18\u30d5\u30ed',artist_name=u'\u83c5\u91ce\u3088\u3046\u5b50',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'VTCL-60060',copyright=u'',publisher=u'',year=u'2008',date=u'',album_number=0,album_total=0,comment=u''),
+                   7:audiotools.MetaData(track_name=u'Zero Hour',track_number=7,track_total=24,album_name=u'\u30de\u30af\u30ed\u30b9\u30d5\u30ed\u30f3\u30c6\u30a3\u30a2: \u5a18\u30d5\u30ed',artist_name=u'\u83c5\u91ce\u3088\u3046\u5b50',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'VTCL-60060',copyright=u'',publisher=u'',year=u'2008',date=u'',album_number=0,album_total=0,comment=u''),
+                   8:audiotools.MetaData(track_name=u"What 'bout my star? @Formo",track_number=8,track_total=24,album_name=u'\u30de\u30af\u30ed\u30b9\u30d5\u30ed\u30f3\u30c6\u30a3\u30a2: \u5a18\u30d5\u30ed',artist_name=u'\u83c5\u91ce\u3088\u3046\u5b50',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'VTCL-60060',copyright=u'',publisher=u'',year=u'2008',date=u'',album_number=0,album_total=0,comment=u''),
+                   9:audiotools.MetaData(track_name=u'Innocent green',track_number=9,track_total=24,album_name=u'\u30de\u30af\u30ed\u30b9\u30d5\u30ed\u30f3\u30c6\u30a3\u30a2: \u5a18\u30d5\u30ed',artist_name=u'\u83c5\u91ce\u3088\u3046\u5b50',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'VTCL-60060',copyright=u'',publisher=u'',year=u'2008',date=u'',album_number=0,album_total=0,comment=u''),
+                   10:audiotools.MetaData(track_name=u'\u30a2\u30a4\u30e2',track_number=10,track_total=24,album_name=u'\u30de\u30af\u30ed\u30b9\u30d5\u30ed\u30f3\u30c6\u30a3\u30a2: \u5a18\u30d5\u30ed',artist_name=u'\u83c5\u91ce\u3088\u3046\u5b50',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'VTCL-60060',copyright=u'',publisher=u'',year=u'2008',date=u'',album_number=0,album_total=0,comment=u''),
+                   11:audiotools.MetaData(track_name=u'\u30d3\u30c3\u30b0\u30fb\u30dc\u30fc\u30a4\u30ba',track_number=11,track_total=24,album_name=u'\u30de\u30af\u30ed\u30b9\u30d5\u30ed\u30f3\u30c6\u30a3\u30a2: \u5a18\u30d5\u30ed',artist_name=u'\u83c5\u91ce\u3088\u3046\u5b50',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'VTCL-60060',copyright=u'',publisher=u'',year=u'2008',date=u'',album_number=0,album_total=0,comment=u''),
+                   12:audiotools.MetaData(track_name=u'Private Army',track_number=12,track_total=24,album_name=u'\u30de\u30af\u30ed\u30b9\u30d5\u30ed\u30f3\u30c6\u30a3\u30a2: \u5a18\u30d5\u30ed',artist_name=u'\u83c5\u91ce\u3088\u3046\u5b50',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'VTCL-60060',copyright=u'',publisher=u'',year=u'2008',date=u'',album_number=0,album_total=0,comment=u''),
+                   13:audiotools.MetaData(track_name=u'SMS\u5c0f\u968a\u306e\u6b4c\u301c\u3042\u306e\u5a18\u306f\u30a8\u30a4\u30ea\u30a2\u30f3',track_number=13,track_total=24,album_name=u'\u30de\u30af\u30ed\u30b9\u30d5\u30ed\u30f3\u30c6\u30a3\u30a2: \u5a18\u30d5\u30ed',artist_name=u'\u83c5\u91ce\u3088\u3046\u5b50',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'VTCL-60060',copyright=u'',publisher=u'',year=u'2008',date=u'',album_number=0,album_total=0,comment=u''),
+                   14:audiotools.MetaData(track_name=u'\u30cb\u30f3\u30b8\u30fc\u30f3 Loves you yeah!',track_number=14,track_total=24,album_name=u'\u30de\u30af\u30ed\u30b9\u30d5\u30ed\u30f3\u30c6\u30a3\u30a2: \u5a18\u30d5\u30ed',artist_name=u'\u83c5\u91ce\u3088\u3046\u5b50',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'VTCL-60060',copyright=u'',publisher=u'',year=u'2008',date=u'',album_number=0,album_total=0,comment=u''),
+                   15:audiotools.MetaData(track_name=u'\u8d85\u6642\u7a7a\u98ef\u5e97 \u5a18\u3005: CM\u30bd\u30f3\u30b0(Ranka Version)',track_number=15,track_total=24,album_name=u'\u30de\u30af\u30ed\u30b9\u30d5\u30ed\u30f3\u30c6\u30a3\u30a2: \u5a18\u30d5\u30ed',artist_name=u'\u83c5\u91ce\u3088\u3046\u5b50',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'VTCL-60060',copyright=u'',publisher=u'',year=u'2008',date=u'',album_number=0,album_total=0,comment=u''),
+                   16:audiotools.MetaData(track_name=u"Alto's Theme",track_number=16,track_total=24,album_name=u'\u30de\u30af\u30ed\u30b9\u30d5\u30ed\u30f3\u30c6\u30a3\u30a2: \u5a18\u30d5\u30ed',artist_name=u'\u83c5\u91ce\u3088\u3046\u5b50',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'VTCL-60060',copyright=u'',publisher=u'',year=u'2008',date=u'',album_number=0,album_total=0,comment=u''),
+                   17:audiotools.MetaData(track_name=u'Tally Ho!',track_number=17,track_total=24,album_name=u'\u30de\u30af\u30ed\u30b9\u30d5\u30ed\u30f3\u30c6\u30a3\u30a2: \u5a18\u30d5\u30ed',artist_name=u'\u83c5\u91ce\u3088\u3046\u5b50',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'VTCL-60060',copyright=u'',publisher=u'',year=u'2008',date=u'',album_number=0,album_total=0,comment=u''),
+                   18:audiotools.MetaData(track_name=u'The Target',track_number=18,track_total=24,album_name=u'\u30de\u30af\u30ed\u30b9\u30d5\u30ed\u30f3\u30c6\u30a3\u30a2: \u5a18\u30d5\u30ed',artist_name=u'\u83c5\u91ce\u3088\u3046\u5b50',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'VTCL-60060',copyright=u'',publisher=u'',year=u'2008',date=u'',album_number=0,album_total=0,comment=u''),
+                   19:audiotools.MetaData(track_name=u'Bajura',track_number=19,track_total=24,album_name=u'\u30de\u30af\u30ed\u30b9\u30d5\u30ed\u30f3\u30c6\u30a3\u30a2: \u5a18\u30d5\u30ed',artist_name=u'\u83c5\u91ce\u3088\u3046\u5b50',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'VTCL-60060',copyright=u'',publisher=u'',year=u'2008',date=u'',album_number=0,album_total=0,comment=u''),
+                   20:audiotools.MetaData(track_name=u'\u30ad\u30e9\u30ad\u30e9',track_number=20,track_total=24,album_name=u'\u30de\u30af\u30ed\u30b9\u30d5\u30ed\u30f3\u30c6\u30a3\u30a2: \u5a18\u30d5\u30ed',artist_name=u'\u83c5\u91ce\u3088\u3046\u5b50',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'VTCL-60060',copyright=u'',publisher=u'',year=u'2008',date=u'',album_number=0,album_total=0,comment=u''),
+                   21:audiotools.MetaData(track_name=u'\u30a2\u30a4\u30e2\u301c\u9ce5\u306e\u3072\u3068',track_number=21,track_total=24,album_name=u'\u30de\u30af\u30ed\u30b9\u30d5\u30ed\u30f3\u30c6\u30a3\u30a2: \u5a18\u30d5\u30ed',artist_name=u'\u83c5\u91ce\u3088\u3046\u5b50',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'VTCL-60060',copyright=u'',publisher=u'',year=u'2008',date=u'',album_number=0,album_total=0,comment=u''),
+                   22:audiotools.MetaData(track_name=u'Take Off',track_number=22,track_total=24,album_name=u'\u30de\u30af\u30ed\u30b9\u30d5\u30ed\u30f3\u30c6\u30a3\u30a2: \u5a18\u30d5\u30ed',artist_name=u'\u83c5\u91ce\u3088\u3046\u5b50',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'VTCL-60060',copyright=u'',publisher=u'',year=u'2008',date=u'',album_number=0,album_total=0,comment=u''),
+                   23:audiotools.MetaData(track_name=u'\u30a4\u30f3\u30d5\u30a3\u30cb\u30c6\u30a3',track_number=23,track_total=24,album_name=u'\u30de\u30af\u30ed\u30b9\u30d5\u30ed\u30f3\u30c6\u30a3\u30a2: \u5a18\u30d5\u30ed',artist_name=u'\u83c5\u91ce\u3088\u3046\u5b50',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'VTCL-60060',copyright=u'',publisher=u'',year=u'2008',date=u'',album_number=0,album_total=0,comment=u''),
+                   24:audiotools.MetaData(track_name=u'\u30c0\u30a4\u30a2\u30e2\u30f3\u30c9 \u30af\u30ec\u30d0\u30b9',track_number=24,track_total=24,album_name=u'\u30de\u30af\u30ed\u30b9\u30d5\u30ed\u30f3\u30c6\u30a3\u30a2: \u5a18\u30d5\u30ed',artist_name=u'\u83c5\u91ce\u3088\u3046\u5b50',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'VTCL-60060',copyright=u'',publisher=u'',year=u'2008',date=u'',album_number=0,album_total=0,comment=u'')})]
+
+    @TEST_METADATA
+    def testreading(self):
+        #check that reading in XML file data matches
+        #its expected values
+        for (xml,metadata) in self.XML_FILES:
+            self.assertEqual(audiotools.MusicBrainzReleaseXML.read_data(
+                    xml).metadata(),metadata)
+
+        #check that reading in an XML file matches
+        #its expected values
+        for (xml,metadata) in self.XML_FILES:
+            f = tempfile.NamedTemporaryFile(suffix=".xml")
+            try:
+                f.write(xml)
+                f.flush()
+                self.assertEqual(audiotools.MusicBrainzReleaseXML.read(
+                        f.name).metadata(),metadata)
+            finally:
+                f.close()
+
+    @TEST_METADATA
+    def testtracktagging(self):
+        for (xml,metadata) in self.XML_FILES:
+            #build a bunch of temporary FLAC files
+            temp_files = [tempfile.NamedTemporaryFile(suffix=".flac")
+                          for i in metadata.keys()]
+            try:
+                temp_tracks = [audiotools.FlacAudio.from_pcm(
+                        temp_file.name,
+                        BLANK_PCM_Reader(5),
+                        "1") for temp_file in temp_files]
+                for (i,track) in enumerate(temp_tracks):
+                    track.set_metadata(audiotools.MetaData(track_number=i + 1))
+
+                #tag them with metadata from XML
+                xml_metadata = audiotools.MusicBrainzReleaseXML.read_data(xml).metadata()
+                for track in temp_tracks:
+                    track.set_metadata(xml_metadata[track.track_number()])
+
+                #build a new XML file from track metadata
+                new_xml = audiotools.MusicBrainzReleaseXML.from_files(
+                    temp_tracks)
+
+                #check that the original XML values match the track ones
+                self.assertEqual(metadata,new_xml.metadata())
+            finally:
+                for t in temp_files:
+                    t.close()
+
+    @TEST_METADATA
+    def testtracktag(self):
+        for (xml,metadata) in self.XML_FILES:
+            #construct our XML file
+            xml_file = tempfile.NamedTemporaryFile(suffix=".xml")
+            xml_file.write(xml)
+            xml_file.flush()
+
+            #construct a batch of temporary tracks
+            temp_tracks = [tempfile.NamedTemporaryFile(suffix=".flac")
+                           for i in metadata.keys()]
+
+            try:
+                tracks = [audiotools.FlacAudio.from_pcm(
+                    track.name,
+                    BLANK_PCM_Reader(5),
+                    "1")
+                          for track in temp_tracks]
+
+                for (i,track) in enumerate(tracks):
+                    track.set_metadata(audiotools.MetaData(track_number=i + 1))
+
+                #tag them with tracktag
+                subprocess.call(["tracktag","-x",xml_file.name] + \
+                                    [track.filename for track in tracks])
+
+                #ensure the metadata values are correct
+                for track in tracks:
+                    self.assertEqual(track.get_metadata(),
+                                     metadata[track.track_number()])
+            finally:
+                xml_file.close()
+                for track in temp_tracks:
+                    track.close()
+
+    @TEST_EXECUTABLE
+    def testtracktag(self):
+        for (xml,metadata) in self.XML_FILES:
+            #construct our XML file
+            xml_file = tempfile.NamedTemporaryFile(suffix=".xml")
+            xml_file.write(xml)
+            xml_file.flush()
+
+            #construct a batch of temporary tracks
+            temp_tracks = [tempfile.NamedTemporaryFile(suffix=".flac")
+                           for i in metadata.keys()]
+
+            try:
+                tracks = [audiotools.FlacAudio.from_pcm(
+                    track.name,
+                    BLANK_PCM_Reader(5),
+                    "1")
+                          for track in temp_tracks]
+
+                for (i,track) in enumerate(tracks):
+                    track.set_metadata(audiotools.MetaData(track_number=i + 1))
+
+                #remove one of the tracks from consideration
+                tracks = [track for track in tracks if
+                          track.track_number() != 2]
+
+                #tag them with tracktag
+                subprocess.call(["tracktag","-x",xml_file.name] + \
+                                    [track.filename for track in tracks])
+
+                #ensure the metadata values are correct
+                for track in tracks:
+                    self.assertEqual(track.get_metadata(),
+                                     metadata[track.track_number()])
+            finally:
+                xml_file.close()
+                for track in temp_tracks:
+                    track.close()
 
 
 class TestProgramOutput(TestTextOutput):
