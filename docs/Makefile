@@ -29,7 +29,7 @@ musicbrainz.ms usage.ms replaygain.ms references.ms \
 musicbrainz_mmd-1.4.rnc
 FIGURES = binary.eps freedb-sequence.eps pcm.eps rice1.eps rice2.eps \
 lpc_process.eps lpc_process2.eps hann.eps tukey.eps rectangular.eps lag.eps \
-m4a-atoms.eps m4a-meta.eps
+m4a-atoms.eps m4a-meta.eps musicbrainz-releasexml.eps
 
 TOC_ORDER_MANUAL = 1,_1-_1,2-_2
 TOC_ORDER_FORMATS = 1,_4-_1,2-_5
@@ -209,3 +209,6 @@ tukey.eps: tukey.plot
 
 rectangular.eps: rectangular.plot
 	./rectangular.plot > rectangular.eps
+
+musicbrainz-releasexml.eps: musicbrainz-releasexml.fig
+	fig2dev -L eps musicbrainz-releasexml.fig musicbrainz-releasexml.eps

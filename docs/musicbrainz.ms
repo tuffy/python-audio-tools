@@ -72,7 +72,7 @@ Our string starts with `01040000F6C1000000960000406A00007C280000BBFC'
 and is padded with an additional 760 `0' characters which I'll omit for brevity.
 .PP
 That string is then passed through the SHA-1 hashing algorithm\(dg
-which results in a 20 byte long hash value.
+which results in a 20 byte hash value.
 Remember to use the binary hash value, not its 40 byte ASCII hexadecimal one.
 To continue our example, this yields the hash
 0xDA3D930462773DD57BBE43B535AD6A457138F079.
@@ -118,6 +118,14 @@ type=xml&discid=2jmj7l5rSw0yVb_vlWAYkK_YBwk-
 .LP
 Whether the Release is found in the MusicBrainz database or not,
 an XML file will always be generated.
+.SUBSECTION "Release XML"
+.PP
+.mk
+.PSPIC -R "musicbrainz-releasexml.eps" 2.5i
+.rt
+.PP
+.ll 3.75in
+
 .bp
 .SECTION "MusicBrainz XML"
 .PP
