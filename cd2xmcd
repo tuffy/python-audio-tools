@@ -116,7 +116,8 @@ if (__name__ == '__main__'):
                 outfile,
                 options.musicbrainz_server,
                 options.musicbrainz_port,
-                msg)
+                msg,
+                options.default)
             returnval = 0
         except IOError,e:
             msg.error(unicode(e))

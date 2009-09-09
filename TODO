@@ -409,6 +409,7 @@
 ** TODO Patch Construct for Python3
    Since pyconstruct hasn't been updated in almost 2 years,
    I'll likely have to update it myself to ensure it'll run on Python3.
+* TODO Integrate pyconstruct as a submodule
 * TODO Add MusicBrainz support
   It would be helpful to have external metadata support beyond FreeDB,
   since FreeDB is very primitive.
@@ -419,14 +420,19 @@
     In addition, nobody wants to run their albums through two separate tools
     in order to extract metadata for tagging.  The best solution is
     for tools to try both and output the one that's most complete.
-*** TODO Extend editxmcd to MusicBrainz XML
+*** DONE Extend editxmcd to MusicBrainz XML
     Although editxmcd was originally designed specifically for XMCD files
     and MusicBrainz's XML format differs radically, no one should have to
     know whether an album metadata file is one or the other.
     Therefore, editxmcd should be extended with additional fields
     to handle XML backend data if necessary.
-** TODO Add MusicBrainz-specific unit tests
+*** DONE Handle multiple Release entries with single Disc ID
 ** TODO Add MusicBrainz tag support to MetaData fields
+   The MusicBrainz docs indicate support for Vorbis comments and ID3v2 tags
+   for storing MusicBrainz-specific tag data such as album ID.
+   However, I am wary of supporting this level of meta-metadata
+   that's not directly applicable to the track.
+** TODO Add MusicBrainz-specific unit tests
 ** TODO Add MusicBrainz protocol/format documentation
 ** TODO Update --help text to indicate MusicBrainz compatibility
 ** TODO Update man pages to indiciate MusicBrainz compatibility

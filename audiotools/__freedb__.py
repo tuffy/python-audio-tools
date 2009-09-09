@@ -593,7 +593,6 @@ def __select_match__(matches, messenger):
             try:
                 messenger.partial_info(_(u"Your Selection [1-%s]:") % \
                                            (len(matches)))
-                sys.stderr.flush()
                 selected = int(sys.stdin.readline().strip())
             except ValueError:
                 selected = 0

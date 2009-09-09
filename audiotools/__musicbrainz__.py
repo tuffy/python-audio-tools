@@ -17,7 +17,7 @@
 #along with this program; if not, write to the Free Software
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-from audiotools import MetaData,AlbumMetaData,MetaDataFileException,__most_numerous__,DummyAudioFile
+from audiotools import MetaData,AlbumMetaData,MetaDataFileException,__most_numerous__,DummyAudioFile,sys
 import urllib
 import gettext
 
@@ -106,9 +106,13 @@ class MusicBrainz:
             self.connection.close()
 
     #disc_id is a MBDiscID object
-    #output is a file-like stream
-    #returns 1 if matches found, 0 if no matches found
+    #returns a (matches,dom) tuple
+    #where matches is an integer
+    #and dom is a minidom Document object or None
     def read_data(self, disc_id, output):
+        from xml.dom.minidom import parseString
+        from xml.parsers.expat import ExpatError
+
         self.connection.request(
             "GET",
             "%s?%s" % ("/ws/1/release",
@@ -118,11 +122,12 @@ class MusicBrainz:
         #FIXME - check for errors in the HTTP response
 
         data = response.read()
-        if (len(MusicBrainzReleaseXML.read_data(data).metadata()) > 0):
-            output.write(data)
-            return 1
-        else:
-            return 0
+
+        try:
+            dom = parseString(data)
+            return (len(dom.getElementsByTagName(u'release')),dom)
+        except ExpatError:
+            return (0,None)
 
 
 #thrown if MusicBrainzReleaseXML.read() encounters an error
@@ -328,13 +333,59 @@ class MusicBrainzReleaseXML:
     def build(self):
         return self.dom.toxml(encoding='utf-8')
 
+#takes a Document containing multiple <release> tags
+#and a Messenger object to query for output
+#returns a modified Document containing only one <release>
+def __select_match__(dom, messenger):
+    def get_nodes(parent,child_tag):
+        return [node for node in parent.childNodes
+                if (hasattr(node,"tagName") and
+                    (node.tagName == child_tag))]
+
+    def get_text_node(parent, child_tag):
+        try:
+            return get_nodes(parent,child_tag)[0].childNodes[0].data.strip()
+        except IndexError:
+            return u''
+
+    messenger.info(_(u"Please Select the Closest Match:"))
+    matches = dom.getElementsByTagName(u'release')
+    selected = 0
+    while ((selected < 1) or (selected > len(matches))):
+        for i in range(len(matches)):
+            messenger.info(_(u"%(choice)s) %(name)s") % \
+                               {"choice":i + 1,
+                                "name":get_text_node(matches[i],u'title')})
+        try:
+            messenger.partial_info(_(u"Your Selection [1-%s]:") % \
+                                       (len(matches)))
+            selected = int(sys.stdin.readline().strip())
+        except ValueError:
+            selected = 0
+
+    for (i,release) in enumerate(dom.getElementsByTagName(u'release')):
+        if (i != (selected - 1)):
+            release.parentNode.removeChild(release)
+
+    return dom
+
+#takes a Document containing multiple <release> tags
+#and a default selection integer
+#returns a modified Document containing only one <release>
+def __select_default_match__(dom, selection):
+    for (i,release) in enumerate(dom.getElementsByTagName(u'release')):
+        if (i != selection):
+            release.parentNode.removeChild(release)
+
+    return dom
+
 #takes a MBDiscID value and a file handle for output
 #and runs the entire MusicBrainz querying sequence
 #the file handle is closed at the conclusion of this function
 #if at least one match is found
 #returns the number of matches
 def get_mbxml(disc_id, output, musicbrainz_server, musicbrainz_port,
-              messenger):
+              messenger,default_selection=None):
     mb = MusicBrainz(musicbrainz_server,musicbrainz_port,messenger)
 
     mb.connect()
@@ -342,15 +393,29 @@ def get_mbxml(disc_id, output, musicbrainz_server, musicbrainz_port,
         _(u"Sending Disc ID \"%(disc_id)s\" to server \"%(server)s\"") % \
             {"disc_id":str(disc_id).decode('ascii'),
              "server":musicbrainz_server.decode('ascii','replace')})
-    matches = mb.read_data(disc_id,output)
+
+    (matches,dom) = mb.read_data(disc_id,output)
+    mb.close()
 
     if (matches == 1):
         messenger.info(_(u"1 match found"))
     else:
         messenger.info(_(u"%s matches found") % (matches))
 
-    mb.close()
-    if (matches > 0):
+    if (matches > 1):
+        if (default_selection is None):
+            output.write(__select_match__(
+                    dom,messenger).toxml(encoding='utf-8'))
+        else:
+            output.write(__select_default_match__(
+                    dom,default_selection).toxml(encoding='utf-8'))
+
         output.close()
         messenger.info(_(u"%s written") % (messenger.filename(output.name)))
-    return matches
+    elif (matches == 1):
+        output.write(dom.toxml(encoding='utf-8'))
+        output.close()
+        messenger.info(_(u"%s written") % (messenger.filename(output.name)))
+    else:
+        return matches
+

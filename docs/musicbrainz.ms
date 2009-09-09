@@ -52,7 +52,7 @@ the last track number becomes `04',
 the track offsets become `00000096', `0000406A', `00007C28' and `0000BBFC',
 and the lead out track offset becomes `0000F6C1'.
 .PP
-These individual strings are then combined into a single 804 byte long string:
+These individual strings are then combined into a single 804 byte string:
 .begin dformat
 style bitwid 0.10
 style charwid 0
@@ -118,6 +118,7 @@ type=xml&discid=2jmj7l5rSw0yVb_vlWAYkK_YBwk-
 .LP
 Whether the Release is found in the MusicBrainz database or not,
 an XML file will always be generated.
+.bp
 .SECTION "MusicBrainz XML"
 .PP
 The following is the complete specification for MusicBrainz XML output
