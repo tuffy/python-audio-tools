@@ -6698,6 +6698,11 @@ class TestTrack2Track(unittest.TestCase):
         self.xmcd_file.flush()
         self.xmcd = audiotools.XMCD.read(self.xmcd_file.name)
 
+        self.xml_file = tempfile.NamedTemporaryFile(suffix=".xml")
+        self.xml_file.write('<?xml version="1.0" encoding="utf-8"?>\n<metadata xmlns="http://musicbrainz.org/ns/mmd-1.0#" xmlns:ext="http://musicbrainz.org/ns/ext-1.0#"><release-list><release><title>XML Album</title><text-representation language="ENG" script="Latn"/><artist><name>XML Artist</name></artist><release-event-list><event date="2009-01-02" format="CD"/></release-event-list><track-list><track><title>XML Track 1</title><duration>218000</duration></track><track><title>XML Track 2</title><duration>204000</duration></track><track><title>XML Track 3</title><duration>218000</duration></track></track-list></release></release-list></metadata>\n')
+        self.xml_file.flush()
+        self.xml = audiotools.MusicBrainzReleaseXML.read(self.xml_file.name)
+
         self.track = audiotools.FlacAudio.from_pcm(
             self.track_file.name,
             BLANK_PCM_Reader(5))
@@ -6714,6 +6719,7 @@ class TestTrack2Track(unittest.TestCase):
         self.track_file.close()
         self.output_file.close()
         self.xmcd_file.close()
+        self.xml_file.close()
         for f in os.listdir(self.output_dir):
             os.unlink(os.path.join(self.output_dir,f))
         os.rmdir(self.output_dir)
@@ -6759,6 +6765,36 @@ class TestTrack2Track(unittest.TestCase):
                          audiotools.MetaData(track_name=u"XMCD Track 1",
                                              album_name=u"XMCD Album",
                                              artist_name=u"XMCD Artist",
+                                             track_number=1,
+                                             track_total=3,
+                                             year=u"2009",
+                                             composer_name=u"Composer"))
+
+    @TEST_METADATA
+    @TEST_EXECUTABLE
+    def test_xml1(self):
+        self.track.set_metadata(self.metadata)
+        self.assertEqual(self.__run_convert__(["-x",self.xml_file.name]),0)
+
+        self.assertEqual(audiotools.open(self.output_file.name).get_metadata(),
+                         audiotools.MetaData(track_name=u"XML Track 1",
+                                             album_name=u"XML Album",
+                                             artist_name=u"XML Artist",
+                                             track_number=1,
+                                             track_total=3,
+                                             year=u"2009",
+                                             composer_name=u"Composer"))
+
+    @TEST_METADATA
+    @TEST_EXECUTABLE
+    def test_xml2(self):
+        self.track.set_metadata(self.metadata)
+        self.assertEqual(self.__run_convert2__(["-x",self.xml_file.name]),0)
+
+        self.assertEqual(self.output_dir_track().get_metadata(),
+                         audiotools.MetaData(track_name=u"XML Track 1",
+                                             album_name=u"XML Album",
+                                             artist_name=u"XML Artist",
                                              track_number=1,
                                              track_total=3,
                                              year=u"2009",

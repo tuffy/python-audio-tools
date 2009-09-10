@@ -429,6 +429,11 @@
 *** DONE Handle multiple Release entries with single Disc ID
 ** DONE Add MusicBrainz protocol/format documentation
 ** TODO Add MusicBrainz-specific unit tests
+- [X] track2track
+- [ ] track2xmcd
+- [ ] trackrename
+- [ ] tracksplit
+- [ ] tracktag
 ** TODO Update --help text to indicate MusicBrainz compatibility
 ** TODO Update man pages to indiciate MusicBrainz compatibility
 ** TODO Update documentation with MusicBrainz config file fields
