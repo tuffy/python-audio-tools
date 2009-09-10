@@ -6926,6 +6926,62 @@ class TestTrackSplit(unittest.TestCase):
         finally:
             xmcd_file.close()
 
+    @TEST_METADATA
+    @TEST_EXECUTABLE
+    def test_xml(self):
+        xml_file = tempfile.NamedTemporaryFile(suffix=".xmcd")
+        try:
+            xml_file.write('<?xml version="1.0" encoding="utf-8"?>\n<metadata xmlns="http://musicbrainz.org/ns/mmd-1.0#" xmlns:ext="http://musicbrainz.org/ns/ext-1.0#"><release-list><release><title>XML Album</title><text-representation language="ENG" script="Latn"/><artist><name>XML Artist</name></artist><release-event-list><event date="2009-01-02" format="CD"/></release-event-list><track-list><track><title>XML Track 1</title><duration>218000</duration></track><track><title>XML Track 2</title><duration>204000</duration></track><track><title>XML Track 3</title><duration>218000</duration></track></track-list></release></release-list></metadata>\n')
+            xml_file.flush()
+
+            self.track.set_metadata(audiotools.MetaData(
+                album_name=u"Some Album",
+                performer_name=u"Performer"))
+
+            self.assertEqual(subprocess.call(["tracksplit",
+                                              self.track.filename,
+                                              "-d",
+                                              self.output_dir,
+                                              "-x",xml_file.name,
+                                              "-t","flac",
+                                              "-q","0",
+                                              "--cue",self.cue_file.name,
+                                              "-V","quiet"]),0)
+
+            metadata = self.dir_metadata()
+
+            self.assertEqual(metadata[0],
+                             audiotools.MetaData(
+                    track_number=1,
+                    track_total=3,
+                    track_name=u"XML Track 1",
+                    album_name=u"XML Album",
+                    artist_name=u"XML Artist",
+                    year=u"2009",
+                    performer_name=u"Performer"))
+
+            self.assertEqual(metadata[1],
+                             audiotools.MetaData(
+                    track_number=2,
+                    track_total=3,
+                    track_name=u"XML Track 2",
+                    album_name=u"XML Album",
+                    artist_name=u"XML Artist",
+                    year=u"2009",
+                    performer_name=u"Performer"))
+
+            self.assertEqual(metadata[2],
+                             audiotools.MetaData(
+                    track_number=3,
+                    track_total=3,
+                    track_name=u"XML Track 3",
+                    album_name=u"XML Album",
+                    artist_name=u"XML Artist",
+                    year=u"2009",
+                    performer_name=u"Performer"))
+        finally:
+            xml_file.close()
+
 class TestTrackrename(unittest.TestCase):
     @TEST_METADATA
     @TEST_EXECUTABLE
