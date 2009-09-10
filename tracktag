@@ -231,7 +231,7 @@ if (__name__ == '__main__'):
                       type='string',
                       dest='xmcd',
                       metavar='FILENAME',
-                      help=_(u'an XMCD file to get audio metadata from'))
+                      help=_(u'FreeDB XMCD file or MusicBrainz XML file'))
 
     parser.add_option('--cue',
                       action='store',

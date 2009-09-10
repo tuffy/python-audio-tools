@@ -35,7 +35,8 @@ if (__name__ == '__main__'):
                       action='store',
                       type='string',
                       dest='xmcd',
-                      help=_(u'an XMCD file'))
+                      metavar='FILENAME',
+                      help=_(u'FreeDB XMCD file or MusicBrainz XML file'))
 
     parser.add_option('--format',
                       action='store',

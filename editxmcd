@@ -522,7 +522,9 @@ if (__name__ == '__main__'):
         version="Python Audio Tools %s" % (audiotools.VERSION))
 
     parser.add_option('-x','--xmcd',action='store',
-                      type='string',dest='xmcd')
+                      type='string',dest='xmcd',
+                      metavar='FILENAME',
+                      help=_(u'FreeDB XMCD file or MusicBrainz XML file'))
     (options,args) = parser.parse_args()
     msg = audiotools.Messenger("editxmcd",options)
 

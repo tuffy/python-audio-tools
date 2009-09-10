@@ -125,7 +125,7 @@ an XML file will always be generated.
 .rt
 .PP
 .ll 3.75in
-All XML files returned my a MusicBrainz query consist of a
+All XML files returned by a MusicBrainz query consist of a
 .TAG "metadata"
 tag container.
 When making a Release query, it contains a

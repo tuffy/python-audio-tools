@@ -32,7 +32,8 @@ if (__name__ == '__main__'):
         version="Python Audio Tools %s" % (audiotools.VERSION))
     parser.add_option('-x','--xmcd',action='store',
                       type='string',dest='xmcd',default='-',
-                      help=_(u'filename to store output'))
+                      metavar='FILENAME',
+                      help=_(u'FreeDB XMCD file or MusicBrainz XML output file'))
 
 
     parser.add_option('--freedb-server',action='store',

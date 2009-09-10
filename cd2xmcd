@@ -30,7 +30,9 @@ if (__name__ == '__main__'):
         usage=_(u"%prog [-x XMCD file] [-s server] [-p port] [--cdrom CDROM device]"),
         version="Python Audio Tools %s" % (audiotools.VERSION))
     parser.add_option('-x','--xmcd',action='store',
-                      type='string',dest='xmcd',default='-')
+                      type='string',dest='xmcd',default='-',
+                      metavar='FILENAME',
+                      help=_(u'FreeDB XMCD file or MusicBrainz XML output file'))
 
     parser.add_option('-c','--cdrom',action='store',
                       type='string',dest='cdrom',
