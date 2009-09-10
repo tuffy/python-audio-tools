@@ -433,7 +433,7 @@
 - [ ] track2xmcd
 - [X] trackrename
 - [X] tracksplit
-- [ ] tracktag
+- [X] tracktag
 ** TODO Update --help text to indicate MusicBrainz compatibility
 ** TODO Update man pages to indiciate MusicBrainz compatibility
 ** TODO Update documentation with MusicBrainz config file fields

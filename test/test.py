@@ -6669,6 +6669,37 @@ class TestTrackTag(unittest.TestCase):
             jpeg_file.close()
             png_file.close()
 
+class TestTrackTagXML(TestTrackTag):
+    @TEST_METADATA
+    @TEST_EXECUTABLE
+    def setUp(self):
+        self.xmcd1_file = tempfile.NamedTemporaryFile(suffix=".xmcd")
+        self.xmcd2_file = tempfile.NamedTemporaryFile(suffix=".xmcd")
+        self.track_file = tempfile.NamedTemporaryFile(suffix=".flac")
+
+        self.xmcd1_file.write('<?xml version="1.0" encoding="utf-8"?>\n<metadata xmlns="http://musicbrainz.org/ns/mmd-1.0#" xmlns:ext="http://musicbrainz.org/ns/ext-1.0#"><release-list><release><title>XMCD Album</title><text-representation language="ENG" script="Latn"/><artist><name>XMCD Artist</name></artist><release-event-list><event date="2009-01-02" format="CD"/></release-event-list><track-list><track><title>XMCD Track 1</title><duration>218000</duration></track><track><title>XMCD Track 2</title><duration>204000</duration></track><track><title>XMCD Track 3</title><duration>218000</duration></track></track-list></release></release-list></metadata>\n')
+
+        self.xmcd1_file.flush()
+
+        self.xmcd2_file.write('<?xml version="1.0" encoding="utf-8"?>\n<metadata xmlns="http://musicbrainz.org/ns/mmd-1.0#" xmlns:ext="http://musicbrainz.org/ns/ext-1.0#"><release-list><release><title>XMCD Album 2</title><text-representation language="ENG" script="Latn"/><artist><name>XMCD Artist 2</name></artist><release-event-list><event date="2009-01-02" format="CD"/></release-event-list><track-list><track><title>XMCD Track 4</title><duration>218000</duration></track><track><title>XMCD Track 5</title><duration>204000</duration></track><track><title>XMCD Track 6</title><duration>218000</duration></track></track-list></release></release-list></metadata>\n')
+
+        self.xmcd2_file.flush()
+
+        self.track = audiotools.FlacAudio.from_pcm(
+            self.track_file.name,
+            BLANK_PCM_Reader(5))
+        self.track.set_metadata(audiotools.MetaData(track_number=1))
+
+        self.xmcd1 = audiotools.MusicBrainzReleaseXML.read(self.xmcd1_file.name)
+        self.xmcd2 = audiotools.MusicBrainzReleaseXML.read(self.xmcd2_file.name)
+
+        self.metadata = audiotools.MetaData(track_name=u"Metadata Track 1",
+                                            album_name=u"Metadata Album",
+                                            year=u"2008",
+                                            track_number=2,
+                                            track_total=4)
+
+
 class TestTrack2Track(unittest.TestCase):
     def __run_convert__(self,arguments):
         return subprocess.call(["track2track",
