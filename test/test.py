@@ -6335,7 +6335,7 @@ class TestTrack2XMCDFreeDB(TestTextOutput):
                                 {"disc_id":u"4510fd16",
                                  "server":u"us.freedb.org"})
 
-        #NOTE - This particular batch of tracks has 2 matches
+        #NOTE - This particular batch of tracks has 3 matches
         #on FreeDB's servers right now.
         #Since we're working with live data,
         #that number may change further down the line
@@ -6345,6 +6345,81 @@ class TestTrack2XMCDFreeDB(TestTextOutput):
         self.__check_info__(_(u"%s written") % \
                                 (self.filename(self.xmcd_filename)))
 
+
+class TestTrack2XMLMusicBrainz(TestTextOutput):
+    @TEST_EXECUTABLE
+    def setUp(self):
+        self.dir = tempfile.mkdtemp()
+        self.xml_filename = os.path.join(
+            self.dir,
+            (u"Unicode %s.xml" % \
+                 (u"".join(map(unichr,range(0x30a1,0x30b2 + 1))))).encode(
+                        audiotools.FS_ENCODING,"replace"))
+        self.existing_filename = os.path.join(
+            self.dir,
+            (u"Unicode2 %s.xml" % \
+                 (u"".join(map(unichr,range(0x30a1,0x30b2 + 1))))).encode(
+                        audiotools.FS_ENCODING,"replace"))
+
+        f = open(self.existing_filename,"w")
+        f.write("Hello World")
+        f.close()
+
+        self.flac_files = [audiotools.FlacAudio.from_pcm(
+                os.path.join(self.dir,"file%2.2d.flac" % (i + 1)),
+                EXACT_BLANK_PCM_Reader(sample_length),
+                compression="1")
+                           for (i,sample_length) in
+                           enumerate([12280380, 12657288, 4152456, 1929228,
+                                      9938376,15153936, 13525176, 10900344,
+                                      940212, 10492860,7321776, 11084976,
+                                      2738316, 4688712, 2727144,13142388,
+                                      9533244, 13220004, 15823080, 5986428,
+                                      10870944, 2687748])]
+
+    @TEST_EXECUTABLE
+    def tearDown(self):
+        for f in os.listdir(self.dir):
+            os.unlink(os.path.join(self.dir,f))
+        os.rmdir(self.dir)
+
+    @TEST_EXECUTABLE
+    def test_track2xmcd(self):
+        import time
+
+        self.assertEqual(self.__run_app__(["track2xmcd"]),1)
+        self.__check_error__(_(u"You must specify at least 1 supported audio file"))
+
+        self.assertEqual(self.__run_app__(
+                ["track2xmcd","-x",self.existing_filename] + \
+                [flac.filename for flac in self.flac_files]),
+                         1)
+        self.__check_error__(_(u"Refusing to overwrite \"%s\"") % \
+                                 (self.filename(self.existing_filename)))
+
+        #MusicBrainz will ban IPs who submit more than 1 search per second
+        time.sleep(1)
+
+        self.assertEqual(self.__run_app__(
+                ["track2xmcd","--no-freedb",
+                 "--musicbrainz-server=musicbrainz.org",
+                 "-D","-x",self.xml_filename] + \
+                [flac.filename for flac in self.flac_files]),
+                         0)
+
+        self.__check_info__(_(u"Sending Disc ID \"%(disc_id)s\" to server \"%(server)s\"") % \
+                                {"disc_id":u"I6V9tQ_QttDWJ0YffInP9pu57RY-",
+                                 "server":u"musicbrainz.org"})
+
+        #NOTE - This particular batch of tracks has 1 match
+        #on MusicBrainz's servers right now.
+        #Since we're working with live data,
+        #that number may change further down the line
+        #so one mustn't panic if this test fails someday in the future.
+        self.__check_info__(_(u"%s match found") % (1,))
+
+        self.__check_info__(_(u"%s written") % \
+                                (self.filename(self.xml_filename)))
 
 class TestTrackTag(unittest.TestCase):
     def __run_tag__(self,arguments):

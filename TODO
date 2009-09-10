@@ -428,9 +428,9 @@
     to handle XML backend data if necessary.
 *** DONE Handle multiple Release entries with single Disc ID
 ** DONE Add MusicBrainz protocol/format documentation
-** TODO Add MusicBrainz-specific unit tests
+** DONE Add MusicBrainz-specific unit tests
 - [X] track2track
-- [ ] track2xmcd
+- [X] track2xmcd
 - [X] trackrename
 - [X] tracksplit
 - [X] tracktag
