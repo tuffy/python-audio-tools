@@ -431,7 +431,7 @@
 ** TODO Add MusicBrainz-specific unit tests
 - [X] track2track
 - [ ] track2xmcd
-- [ ] trackrename
+- [X] trackrename
 - [ ] tracksplit
 - [ ] tracktag
 ** TODO Update --help text to indicate MusicBrainz compatibility

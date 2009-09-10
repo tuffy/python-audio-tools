@@ -6983,6 +6983,31 @@ class TestTrackrename(unittest.TestCase):
         finally:
             xmcd_file.close()
 
+    @TEST_METADATA
+    @TEST_EXECUTABLE
+    def test_xml(self):
+        xml_file = tempfile.NamedTemporaryFile(suffix=".xml")
+        try:
+            xml_file.write('<?xml version="1.0" encoding="utf-8"?>\n<metadata xmlns="http://musicbrainz.org/ns/mmd-1.0#" xmlns:ext="http://musicbrainz.org/ns/ext-1.0#"><release-list><release><title>XML Album</title><text-representation language="ENG" script="Latn"/><artist><name>XML Artist</name></artist><release-event-list><event date="2009-01-02" format="CD"/></release-event-list><track-list><track><title>XML Track 1</title><duration>218000</duration></track><track><title>XML Track 2</title><duration>204000</duration></track><track><title>XML Track 3</title><duration>218000</duration></track></track-list></release></release-list></metadata>\n')
+            xml_file.flush()
+
+            self.track.set_metadata(audiotools.MetaData(
+                    track_number=1,
+                    track_name=u"Track Name",
+                    album_name=u"Album Name",
+                    composer_name=u"Composer Name"))
+
+            self.assertEqual(subprocess.call(["trackrename",
+                                              "--format",self.format,
+                                              self.track.filename,
+                                              "-x",xml_file.name,
+                                              "-V","quiet"]),0)
+
+            self.assertEqual(os.listdir(self.output_dir)[0],
+                             "01 - XML Track 1 - XML Album - Composer Name.flac")
+        finally:
+            xml_file.close()
+
 class TestImageJPEG(unittest.TestCase):
     @TEST_IMAGE
     def setUp(self):
