@@ -5,10 +5,12 @@ track2xmcd \- retrieves metadata from audio tracks
 track2xmcd [OPTIONS] <track 1> [track 2] ...
 .SH DESCRIPTION
 .PP
-track2xmcd takes a list of audio tracks and retrieves an XMCD file 
+track2xmcd takes a list of audio tracks and retrieves an XMCD file
 containing their metadata such as track name, album name and artist.
-If no data can be found, an empty XMCD file is written which can
-be edited by the user.
+By default, the MusicBrainz service is queried first.
+If no matches are found, the FreeDB service is queried next.
+If no data is found on either, an empty MusicBrainz XML file is
+written which can be edited by the user.
 .SH OPTIONS
 .TP
 \fB-h, --help\fR
@@ -18,24 +20,27 @@ Show a list of options and exit
 Show the program's version and exit
 .TP
 \fB-x \fIfilename\fB, --xmcd=\fIfilename\fR
-The file in which the XMCD data will be placed.
+The file in which MusicBrainz XML or FreeDB XMCD data will be placed.
 .BR track2xmcd (1)
 will refuse to overwrite an existing file if present.
-If no filename is given, XMCD data will be written to
+If no filename is given, data will be written to
 standard output.
 .TP
-\fB-m, --metadata\fR
-Obtain XMCD data from the given tracks rather than obtaining it
-from a FreeDB server
+\fB--musicbrainz-server=\fIserver\fR
+The MusicBrainz server name to query for XML data
 .TP
-\fB-s \fIserver\fB, --freedb-server=\fIserver\fR
+\fB--musicbrainz-port=\fIport\fR
+The MusicBrainz port number to query for XML data
+.TP
+\fB--freedb-server=\fIserver\fR
 The FreeDB server name to query for XMCD data
 .TP
-\fB-p \fIport\fB, --freedb-port=\fIport\fR
+\fB--freedb-port=\fIport\fR
 The FreeDB port number to query for XMCD data
 .TP
-\fB-i, --id\fR
-Calculate and display the disc ID rather than retrieve XMCD data
+\fB-m, --metadata\fR
+Obtain XML or XMCD data from the given tracks rather than obtaining it
+from a MusicBrainz or FreeDB server
 .TP
 \fB-D, --default\fR
 If multiple matching discs are found, select the first choice automatically

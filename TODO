@@ -446,7 +446,7 @@
 - [X] cd2xmcd
 - [ ] editxmcd
 - [ ] track2track
-- [ ] track2xmcd
+- [X] track2xmcd
 - [ ] trackrename
 - [ ] tracksplit
 - [ ] tracktag
