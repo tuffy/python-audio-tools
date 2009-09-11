@@ -1,13 +1,14 @@
 .TH "editxmcd" 1 "June 15, 2007" "" "Metadata Editor"
 .SH NAME
-editxmcd \- edits new or existing XMCD metadata files
+editxmcd \- edits new or existing metadata files
 .SH SYNOPSIS
 editxmcd [OPTIONS] [track 1] [track 2] ...
 .SH DESCRIPTION
 .PP
-editxmcd can edit existing XMCD files, or take a list of audio tracks
-and allows one to edit a new XMCD file from those tracks' metadata.
-It does not perform FreeDB lookups.
+editxmcd can edit existing MusicBrain XML or FreeDB XMCD files,
+or take a list of audio tracks
+and allows one to edit a new file from those tracks' metadata.
+It does not perform MusicBrainz or FreeDB lookups.
 .SH OPTIONS
 .TP
 \fB-h, --help\fR
@@ -17,11 +18,11 @@ Show a list of options and exit
 Show the program's version and exit
 .TP
 \fB-x \fIfilename\fB, --xmcd=\fIfilename\fR
-The XMCD file to edit.
-If the XMCD file exists, that file will be edited and any audio tracks
+The MusicBrainz XML or FreeDB XMCD file to edit.
+If the file exists, that file will be edited and any audio tracks
 will be ignored.
-If the XMCD file does not exist, audio metadata will be retrieved from
-the given audio tracks and a new XMCD file will be created.
+If the file does not exist, audio metadata will be retrieved from
+the given audio tracks and a new file will be created.
 .SH EXAMPLES
 .LP
 Edit the data in an existing \fIalbum.xmcd\fR:

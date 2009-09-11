@@ -442,14 +442,14 @@
 - [X] trackrename
 - [X] tracksplit
 - [X] tracktag
-** TODO Update man pages to indiciate MusicBrainz compatibility
+** DONE Update man pages to indiciate MusicBrainz compatibility
 - [X] cd2xmcd
-- [ ] editxmcd
-- [ ] track2track
+- [X] editxmcd
+- [X] track2track
 - [X] track2xmcd
-- [ ] trackrename
-- [ ] tracksplit
-- [ ] tracktag
+- [X] trackrename
+- [X] tracksplit
+- [X] tracktag
 ** TODO Update documentation with MusicBrainz config file fields
 ** TODO Add MusicBrainz tag support to MetaData fields
    The MusicBrainz docs indicate support for Vorbis comments and ID3v2 tags
