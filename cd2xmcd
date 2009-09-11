@@ -38,6 +38,14 @@ if (__name__ == '__main__'):
                       type='string',dest='cdrom',
                       default=audiotools.DEFAULT_CDROM)
 
+    parser.add_option('--musicbrainz-server',action='store',
+                      type='string',dest='musicbrainz_server',
+                      default=audiotools.MUSICBRAINZ_SERVER,
+                      metavar='HOSTNAME')
+    parser.add_option('--musicbrainz-port',action='store',
+                      type='int',dest='musicbrainz_port',
+                      default=audiotools.MUSICBRAINZ_PORT,
+                      metavar='PORT')
 
     parser.add_option('--freedb-server',action='store',
                       type='string',dest='freedb_server',
@@ -46,14 +54,6 @@ if (__name__ == '__main__'):
     parser.add_option('--freedb-port',action='store',
                       type='int',dest='freedb_port',
                       default=audiotools.FREEDB_PORT,
-                      metavar='PORT')
-    parser.add_option('--musicbrainz-server',action='store',
-                      type='string',dest='musicbrainz_server',
-                      default=audiotools.MUSICBRAINZ_SERVER,
-                      metavar='HOSTNAME')
-    parser.add_option('--musicbrainz-port',action='store',
-                      type='int',dest='musicbrainz_port',
-                      default=audiotools.MUSICBRAINZ_PORT,
                       metavar='PORT')
 
     parser.add_option('--no-musicbrainz',action='store_false',

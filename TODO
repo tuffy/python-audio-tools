@@ -443,7 +443,7 @@
 - [X] tracksplit
 - [X] tracktag
 ** TODO Update man pages to indiciate MusicBrainz compatibility
-- [ ] cd2xmcd
+- [X] cd2xmcd
 - [ ] editxmcd
 - [ ] track2track
 - [ ] track2xmcd
