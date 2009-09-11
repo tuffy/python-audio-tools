@@ -5124,7 +5124,90 @@ vCUDDrZiT4cevVmI9LRpPw/7DgctthGdx4P+LuSKcKEhI7Nhwg==""".decode('base64').decode(
                    21:audiotools.MetaData(track_name=u'\u30a2\u30a4\u30e2\u301c\u9ce5\u306e\u3072\u3068',track_number=21,track_total=24,album_name=u'\u30de\u30af\u30ed\u30b9\u30d5\u30ed\u30f3\u30c6\u30a3\u30a2: \u5a18\u30d5\u30ed',artist_name=u'\u83c5\u91ce\u3088\u3046\u5b50',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'VTCL-60060',copyright=u'',publisher=u'',year=u'2008',date=u'',album_number=0,album_total=0,comment=u''),
                    22:audiotools.MetaData(track_name=u'Take Off',track_number=22,track_total=24,album_name=u'\u30de\u30af\u30ed\u30b9\u30d5\u30ed\u30f3\u30c6\u30a3\u30a2: \u5a18\u30d5\u30ed',artist_name=u'\u83c5\u91ce\u3088\u3046\u5b50',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'VTCL-60060',copyright=u'',publisher=u'',year=u'2008',date=u'',album_number=0,album_total=0,comment=u''),
                    23:audiotools.MetaData(track_name=u'\u30a4\u30f3\u30d5\u30a3\u30cb\u30c6\u30a3',track_number=23,track_total=24,album_name=u'\u30de\u30af\u30ed\u30b9\u30d5\u30ed\u30f3\u30c6\u30a3\u30a2: \u5a18\u30d5\u30ed',artist_name=u'\u83c5\u91ce\u3088\u3046\u5b50',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'VTCL-60060',copyright=u'',publisher=u'',year=u'2008',date=u'',album_number=0,album_total=0,comment=u''),
-                   24:audiotools.MetaData(track_name=u'\u30c0\u30a4\u30a2\u30e2\u30f3\u30c9 \u30af\u30ec\u30d0\u30b9',track_number=24,track_total=24,album_name=u'\u30de\u30af\u30ed\u30b9\u30d5\u30ed\u30f3\u30c6\u30a3\u30a2: \u5a18\u30d5\u30ed',artist_name=u'\u83c5\u91ce\u3088\u3046\u5b50',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'VTCL-60060',copyright=u'',publisher=u'',year=u'2008',date=u'',album_number=0,album_total=0,comment=u'')})]
+                   24:audiotools.MetaData(track_name=u'\u30c0\u30a4\u30a2\u30e2\u30f3\u30c9 \u30af\u30ec\u30d0\u30b9',track_number=24,track_total=24,album_name=u'\u30de\u30af\u30ed\u30b9\u30d5\u30ed\u30f3\u30c6\u30a3\u30a2: \u5a18\u30d5\u30ed',artist_name=u'\u83c5\u91ce\u3088\u3046\u5b50',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'VTCL-60060',copyright=u'',publisher=u'',year=u'2008',date=u'',album_number=0,album_total=0,comment=u'')}),
+                 (
+"""QlpoOTFBWSZTWeDENZEAAz5fgAAQeef//7/f36A/799xYAcrsz7YABzkbI43Y2qaoDJCGTU2iZMm
+NU0TMNJMjQepoGmgepggyEDQBJTUADyjTQABkAANNBzAEYJiAYBME0ZDQwCYIxMJCkamTJNqjaT0
+EbUPUGmgGRkGQAAcwBGCYgGATBNGQ0MAmCMTCKSYgIamlPRtRmhT2iDTITyhkG0jyhp6R7ft9O/i
+1Z4/pPTR3rEndbINagfOT+z0r/acXK6koolQSF4RDaTfyoI9CdAf2Q+6+JfP58XljKSVU1jYzzsv
+rxUEcNIiDTBtBYZYTFVzF0A1VJvW7m06MuQVuzR4vUQAFGcHeFFnWMEm8FVq6qJqbEzQY7rbK6Ht
+qIIYMjFCBtu0Kgu9S2ICsWHCtVacniFimTBY7DoXQua5d7FuDdoQaI7j9Atk1vS7WB9OeZUNoZdb
+Jh8ZzRmMZxD1rgPYXSVqTQ49QFKG8dGZ1mwhej0yDo6Bxd6YpMyuqauSI3gU1kOb5H5HKdqIViO0
+koeshQndohdYwJeDYy4GlnxbIpiIGW6ZW34jGcnGl7JHgzujXFHDKkYTtn1RTCY7hM3ZEghnCsZV
+tN0FT6zXwo1rVuBEzmCxnRlcv8257p0KUrRqrHp+p1Tk6TrecakrEMGAbjiW+kEGOCynYNnhjLjU
+jevIGSC2dXuxHShR0EbpUEoavBRa0bmbWx1npEYVQ3DzTJKGB0ctHoUzvdkzkoUqlr1siTbG1VK5
+EUfabNTHVcu/VJ8lvZnFVn01kCImuUqIkWNqLPlpPNUEtHTQmUIaCi1cNBDgXZsoN2XCIgMAi2IL
+Q1XW7KKUETE3o9YbxRqxoCuw97jW8vIodbPNuHRsgUth5UDmVJadRqmJxZUSFMziL7k9ZCqz5vaW
+FgcLRZ2ZoKwxeubSi44+ag8rykdMMX5mXIQbNdzTQG7C8Bmsq3MYQQQTNrIGgS4vIULY06UFebnd
+6rBd8XDbpZpT4ajY5mC3MMX4WbArheSqtzyOIXaQOZhUKQeouZtZ2L3zkcGMRGBO7gWiDsyhFFRt
+q6SllhMPhjYVWiJNLvuUMg6vuoEtGnSY21YtJbovyyy8Jv8UW8kF9u6SSSORscpsXGzYK/BWEtNm
+GsujIUrKN2Ss56MbB3SRk4bxF+EKoUK3W2AsFkLICV23uqIVUKRGUCGExDlsoIcahKJAkKFQshGc
+0ErO7j4BiaO0wgmJ2SNHzkTdJENkagwaYMaYe9wGJpMboKRMGNEZBjGM6GQQ3coRvVjxi3a5azbw
+V2gVpxUXcpNNinvCQE4T8LeBx3Zmja767xrTY8PDsCQIxqNdWXop6PZ7MDd2/sAXTjstBQ/VrbRa
+GgkePhNcp/8eC8fQodKhQP/gDae3RrBDxwWvs3cXPx/iZjzdEx1bXdbPxqYGMIsgT3qSaJY0YOkA
+7y+c199/G44GbVbgQ3qdCYiJou5xOPJtgaqO+Bdpv1s4VPlrqYjss52VQc8gkJG62B5CWQ3pJ4ID
+2nUsMdhqxaMSniimd0YCQNtlqY8II1ZfvgcTTKDmumwNSr9Jnc21qxPPKszuwbA6NCAkCuGukaY0
+ZzmgIVhczGuharoq2KBA1ggZ7z05EVtaCFpH2bMY3vGqjmChGcJqvF61SS9GPNCAki6WGNuBtHf/
+CE3h4ujYBYob9BCShBAMDChsTbaGk2x767N+WS14XpYH1zheB9tRfhwd5F91K66spY61AU7hX4dt
+2Tf96Y49yUZ3E0YN7AZQ+cZNo+sOojVlHli5Ne5TOdW1EK3dfLr3NByIC3y737D62wz5VUFzVvzU
+N4ACFBPjCrpRNQTVC8Z1ySDSAB2TeQC0C1dNofd58ZdJpx5BQ91DdLvXUhpDy65ZWYFhlAITweox
+pdyuqQMaQMYCJyZkZAhjEGeFJufzPeuugmEDAoSCyyXMmxbLC8obFzimVLGy2SbICQZubln4UsTK
+FSmMFEZk2yIQPFIKqFzJgGIIFgi2sd212zC6lNkrzMlOGps0Gek4N9LzrWfZecAwiHoL5395s37h
+QwX9ABOznbOweXBfpbYNR22fwAX6WjNFiFCUcCQMgp4BBAF/8y2cvHEcvzLQ5OL03nDC5mZw6LaT
+W9FZCg9QjtrHm+PNp5Zn2bw8qlCnfPkpA2E5xUKZkBwJAxJCxEpCpQIMbsZB7dYJ6sRQioEUZ11T
+sVKGBzFcZXXrlOQBq14B8sRQoAmahcoY5ihS8xKCFYgQreW2rhgZYAcGy7y0RK484IQbjqDn69OU
+Qav7keYLy1lhvaQNZW37i7kinChIcGIayIA=""".decode('base64').decode('bz2'),
+                  {1:audiotools.MetaData(track_name=u'Scars Left by Time (feat. Dale North)',track_number=1,track_total=18,album_name=u'OneUp Studios presents Time & Space ~ A Tribute to Yasunori Mitsuda',artist_name=u'Ailsean',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'',copyright=u'',publisher=u'',year=u'',date=u'',album_number=0,album_total=0,comment=u''),
+                   2:audiotools.MetaData(track_name=u'Star Stealing Girl (feat. Miss Sara Broome)',track_number=2,track_total=18,album_name=u'OneUp Studios presents Time & Space ~ A Tribute to Yasunori Mitsuda',artist_name=u'The OneUps',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'',copyright=u'',publisher=u'',year=u'',date=u'',album_number=0,album_total=0,comment=u''),
+                   3:audiotools.MetaData(track_name=u"A Hero's Judgement (feat. Ailsean, Dale North & Roy McClanahan)",track_number=3,track_total=18,album_name=u'OneUp Studios presents Time & Space ~ A Tribute to Yasunori Mitsuda',artist_name=u'Matt Pollard',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'',copyright=u'',publisher=u'',year=u'',date=u'',album_number=0,album_total=0,comment=u''),
+                   4:audiotools.MetaData(track_name=u'Parallelism (The Frozen Flame)',track_number=4,track_total=18,album_name=u'OneUp Studios presents Time & Space ~ A Tribute to Yasunori Mitsuda',artist_name=u'Matt Pollard',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'',copyright=u'',publisher=u'',year=u'',date=u'',album_number=0,album_total=0,comment=u''),
+                   5:audiotools.MetaData(track_name=u'Guardian of Time (feat. Greg Kennedy)',track_number=5,track_total=18,album_name=u'OneUp Studios presents Time & Space ~ A Tribute to Yasunori Mitsuda',artist_name=u'Mustin',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'',copyright=u'',publisher=u'',year=u'',date=u'',album_number=0,album_total=0,comment=u''),
+                   6:audiotools.MetaData(track_name=u'The Boy Feared by Time',track_number=6,track_total=18,album_name=u'OneUp Studios presents Time & Space ~ A Tribute to Yasunori Mitsuda',artist_name=u'Ailsean',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'',copyright=u'',publisher=u'',year=u'',date=u'',album_number=0,album_total=0,comment=u''),
+                   7:audiotools.MetaData(track_name=u'The Girl Forgotten by Time',track_number=7,track_total=18,album_name=u'OneUp Studios presents Time & Space ~ A Tribute to Yasunori Mitsuda',artist_name=u'Mark Porter',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'',copyright=u'',publisher=u'',year=u'',date=u'',album_number=0,album_total=0,comment=u''),
+                   8:audiotools.MetaData(track_name=u'Wings of Time',track_number=8,track_total=18,album_name=u'OneUp Studios presents Time & Space ~ A Tribute to Yasunori Mitsuda',artist_name=u'Dale North',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'',copyright=u'',publisher=u'',year=u'',date=u'',album_number=0,album_total=0,comment=u''),
+                   9:audiotools.MetaData(track_name=u'Good to be Home',track_number=9,track_total=18,album_name=u'OneUp Studios presents Time & Space ~ A Tribute to Yasunori Mitsuda',artist_name=u'Dale North',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'',copyright=u'',publisher=u'',year=u'',date=u'',album_number=0,album_total=0,comment=u''),
+                   10:audiotools.MetaData(track_name=u'Dream of Another Time',track_number=10,track_total=18,album_name=u'OneUp Studios presents Time & Space ~ A Tribute to Yasunori Mitsuda',artist_name=u'Mustin',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'',copyright=u'',publisher=u'',year=u'',date=u'',album_number=0,album_total=0,comment=u''),
+                   11:audiotools.MetaData(track_name=u'Fields of Time',track_number=11,track_total=18,album_name=u'OneUp Studios presents Time & Space ~ A Tribute to Yasunori Mitsuda',artist_name=u'Mellogear vs. Mark Porter',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'',copyright=u'',publisher=u'',year=u'',date=u'',album_number=0,album_total=0,comment=u''),
+                   12:audiotools.MetaData(track_name=u'To Good Friends (feat. Tim Sheehy)',track_number=12,track_total=18,album_name=u'OneUp Studios presents Time & Space ~ A Tribute to Yasunori Mitsuda',artist_name=u'Dale North',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'',copyright=u'',publisher=u'',year=u'',date=u'',album_number=0,album_total=0,comment=u''),
+                   13:audiotools.MetaData(track_name=u'The Fighting Priest',track_number=13,track_total=18,album_name=u'OneUp Studios presents Time & Space ~ A Tribute to Yasunori Mitsuda',artist_name=u'Ailsean',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'',copyright=u'',publisher=u'',year=u'',date=u'',album_number=0,album_total=0,comment=u''),
+                   14:audiotools.MetaData(track_name=u'June Mermaid',track_number=14,track_total=18,album_name=u'OneUp Studios presents Time & Space ~ A Tribute to Yasunori Mitsuda',artist_name=u'Dale North',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'',copyright=u'',publisher=u'',year=u'',date=u'',album_number=0,album_total=0,comment=u''),
+                   15:audiotools.MetaData(track_name=u'Navigation is Key! (feat. Dale North)',track_number=15,track_total=18,album_name=u'OneUp Studios presents Time & Space ~ A Tribute to Yasunori Mitsuda',artist_name=u'Matt Pollard',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'',copyright=u'',publisher=u'',year=u'',date=u'',album_number=0,album_total=0,comment=u''),
+                   16:audiotools.MetaData(track_name=u'Gentle Wind',track_number=16,track_total=18,album_name=u'OneUp Studios presents Time & Space ~ A Tribute to Yasunori Mitsuda',artist_name=u'Dale North',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'',copyright=u'',publisher=u'',year=u'',date=u'',album_number=0,album_total=0,comment=u''),
+                   17:audiotools.MetaData(track_name=u'Star of Hope (feat. Mark Porter)',track_number=17,track_total=18,album_name=u'OneUp Studios presents Time & Space ~ A Tribute to Yasunori Mitsuda',artist_name=u'Dale North',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'',copyright=u'',publisher=u'',year=u'',date=u'',album_number=0,album_total=0,comment=u''),
+                   18:audiotools.MetaData(track_name=u'Shake the Heavens (feat. Matt Pollard & Dale North)',track_number=18,track_total=18,album_name=u'OneUp Studios presents Time & Space ~ A Tribute to Yasunori Mitsuda',artist_name=u'Mark Porter',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'',copyright=u'',publisher=u'',year=u'',date=u'',album_number=0,album_total=0,comment=u'')}),
+                 (
+"""QlpoOTFBWSZTWborpk4AAb9f+QAQWIf/97//36A/79/xPeXqji45Q1ILwFAFBPIAg1bPdjQMGpkT
+RGgmg9CbSZNGhpoaAMJ6EBoAAAaGgGj0hFPTRoyaBSjEaGmg0AaAAAAAAAAAAA4aAaAA0BoDQAAA
+NNGmgDIAABo0yDDT1Up6mh6h6jJ6QABkDEABk0ABpoNMQAyAABJIEBMmjQ1PVTelPJk0T0n6o8oP
+TKP1Jo9NT1PUNAAAAAA5jWBiUcwUqQeZFEVhfPM5ZoFkRkUyeSggCQZmRESkhAaLVnaTswolMTqp
+VUriy58+eZUr/IogIFgJIqBg4DjeW5ErKKmgwAGWeGkB2zgzYEs+IZ+iyCFTtNww0FV4NO0wpGEW
+ugQ4THUaiJTOpSo8eIBawqjIUtOtpyIbvia0AmlUWR15hznCDaz0WLrOQ3gOVAcbNyjkFAwkuXMx
+ZVfdpfK/Tlhq0FLtPKEpqn0tOPcYtAm4CqUKmdXik1zmpOTxKUQSaxUBrQnVkSXgbroU1vFZT0Ty
+CQSq1ye98wjZwQQMKj6RpjVDMJIOTgK8JA9xuqkMG4oYlPAZgxmzYmRSnLEHVrTC0GNInW4zogGs
+hYDhh11gLMDqvR9bFBTuLxHI1Y3uECq4ARzgvBr2BRAwnJkgtYyQ3XC0b0tJoAyjZanQzhOQ1cJ1
+SLJZQsTILWnGkZuoYZrHI2KtBQZxioxjGZUoLMUluE3TqVDWKHeohCMQQXrUgiUFQovXAOwM3lOb
+2QXvAxci0os2AUMHOor2uYOBHJHErAV2Y7SZoYjWjK5VyB63qRkIYoW2DXbDOyAJQG4uBxamr1+/
+qe3rNu0yGSPhRhR46vEP/Hd/X9/BlEBzsAiOnNwPchzkD3CtZzLsgk/N3ts4HGTsww0nOdsYDREI
+sD4gMyOJA4ZwhkDpJRgkKHfxLvV5jMdR4SC20em+R5CDjm7fiK+oavx9BI6fZs5CuJaKxFkOsyFE
+iS7o4JZXjh3r9W4WBhNNMTPJojE93sdZIy4jFZNG1rVZWNYUPmjEjBQJY3UKkBRiGLUCKFCbTsah
+ChKCpMbUVUINMGyTz1CFXhHbyCCqMlG2PQxA6GpBBtFxdBgecg89BnF7d5ZJluGEATArSjyXG5Tb
+iEyjQxJgMqrk0uxZU0UFbuKgYMKEwB0gjHlYtRlzYeMpgJVvp40gKwmJTDIA0roA6AJrV0xG7SRp
+ua3UX3X54T3ZhBqnpM9NemyOq3s1oNYGE+N5jPkrtnByINkmdNlzyn0PG1V1xplVHHtbwvUZawu8
+sBwmBMIYAQMhAuBPwViZ+G/ckSCCG8DK8URNxh3QHCjAqBbU0cK9VDEcTccYsuJajyJGQs44kz0s
+ty0ngwGHXTYo4OGaNEqSxqpQqm1ore2zhrM/FgdqNaHaLxtG6U0iDmOBHc291HesKgpYAtUJ3oGG
+AZMzHGwgryCCc32uJqLdNAgiLfRuJQoKIk+yEAQTdvyJsGB1kAmsGQkk48yTrJQnABAgABPOihOU
+yMhFVM08w8wtlqiXpkgh2GfuREHPEsRMeiWI0EyOfpQarp2kINnCPKADwG5uYMzNhvQMTPQ8qQ4H
+CCAgoK8CsxTxre/rnFTMagyoLkFyKECvGKtIjW4nEDh1V74pJ5WTPHyamvNlgCKgRYgkgoEERwD2
+YCegjsMqDdN+VaW+AMYnBcp4HS4eFxdcgYpDyj+gF8PwDf3+jv5/z6YwvHbaV4nbSO9CzD7BoJQg
+nbvdly53/Ea4Pe78RYPpd/V9AYf/k/36b75h+9/i7kinChIXRXTJwA==""".decode('base64').decode('bz2'),
+                  {1:audiotools.MetaData(track_name=u'\u30e1\u30ea\u30c3\u30b5',track_number=1,track_total=8,album_name=u'FULLMETAL ALCHEMIST COMPLETE BEST',artist_name=u'\u30dd\u30eb\u30ce\u30b0\u30e9\u30d5\u30a3\u30c6\u30a3',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'SVWC-7218',copyright=u'',publisher=u'',year=u'2005',date=u'',album_number=0,album_total=0,comment=u''),
+                   2:audiotools.MetaData(track_name=u'\u6d88\u305b\u306a\u3044\u7f6a',track_number=2,track_total=8,album_name=u'FULLMETAL ALCHEMIST COMPLETE BEST',artist_name=u'\u5317\u51fa\u83dc\u5948',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'SVWC-7218',copyright=u'',publisher=u'',year=u'2005',date=u'',album_number=0,album_total=0,comment=u''),
+                   3:audiotools.MetaData(track_name=u'READY STEADY GO',track_number=3,track_total=8,album_name=u'FULLMETAL ALCHEMIST COMPLETE BEST',artist_name=u"L'Arc~en~Ciel",performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'SVWC-7218',copyright=u'',publisher=u'',year=u'2005',date=u'',album_number=0,album_total=0,comment=u''),
+                   4:audiotools.MetaData(track_name=u'\u6249\u306e\u5411\u3053\u3046\u3078',track_number=4,track_total=8,album_name=u'FULLMETAL ALCHEMIST COMPLETE BEST',artist_name=u'YeLLOW Generation',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'SVWC-7218',copyright=u'',publisher=u'',year=u'2005',date=u'',album_number=0,album_total=0,comment=u''),
+                   5:audiotools.MetaData(track_name=u'UNDO',track_number=5,track_total=8,album_name=u'FULLMETAL ALCHEMIST COMPLETE BEST',artist_name=u'COOL JOKE',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'SVWC-7218',copyright=u'',publisher=u'',year=u'2005',date=u'',album_number=0,album_total=0,comment=u''),
+                   6:audiotools.MetaData(track_name=u'Motherland',track_number=6,track_total=8,album_name=u'FULLMETAL ALCHEMIST COMPLETE BEST',artist_name=u'Crystal Kay',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'SVWC-7218',copyright=u'',publisher=u'',year=u'2005',date=u'',album_number=0,album_total=0,comment=u''),
+                   7:audiotools.MetaData(track_name=u'\u30ea\u30e9\u30a4\u30c8',track_number=7,track_total=8,album_name=u'FULLMETAL ALCHEMIST COMPLETE BEST',artist_name=u'ASIAN KUNG-FU GENERATION',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'SVWC-7218',copyright=u'',publisher=u'',year=u'2005',date=u'',album_number=0,album_total=0,comment=u''),
+                   8:audiotools.MetaData(track_name=u'I Will',track_number=8,track_total=8,album_name=u'FULLMETAL ALCHEMIST COMPLETE BEST',artist_name=u'Sowelu',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'SVWC-7218',copyright=u'',publisher=u'',year=u'2005',date=u'',album_number=0,album_total=0,comment=u'')})]
 
     @TEST_METADATA
     def testreading(self):

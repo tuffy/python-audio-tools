@@ -169,8 +169,8 @@ class MusicBrainzReleaseXML:
 
         try:
             return cls(parseString(data))
-        except (IOError,ExpatError):
-            raise MBXMLException(filename)
+        except ExpatError:
+            raise MBXMLException("")
 
     def metadata(self):
         def get_track_metadata(track_node,
