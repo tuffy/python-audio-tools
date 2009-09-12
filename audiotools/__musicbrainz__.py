@@ -35,10 +35,39 @@ def get_xml_text_node(parent, child_tag):
         return u''
 
 #parent is an element with childNodes
-#child_order is a list of unicode tag names
+#child_order is a list of unicode tag name strings
 #alters parent's childNodes to match the given order
 def reorder_xml_children(parent, child_order):
-    pass
+    if (parent.childNodes is None):
+        return
+
+    child_tags = {}
+    leftovers = []
+    for child in parent.childNodes:
+        if (hasattr(child,"tagName")):
+            child_tags.setdefault(child.tagName,[]).append(child)
+        else:
+            leftovers.append(child)
+
+    #remove all the old childen from parent
+    for child in parent.childNodes:
+        parent.removeChild(child)
+
+    #re-add the childen in child_order
+    for tagName in child_order:
+        if (tagName in child_tags):
+            for child in child_tags[tagName]:
+                parent.appendChild(child)
+            del(child_tags[tagName])
+
+    #re-add any leftover children tags or non-tags
+    for child_tags in child_tags.values():
+        for child in child_tags:
+            parent.appendChild(child)
+
+    for child in leftovers:
+        parent.appendChild(child)
+
 
 class MBDiscID:
     #tracks is a list of track lengths in CD frames
@@ -153,24 +182,44 @@ class MBXMLException(MetaDataFileException):
         return _(u"Invalid MusicBrainz XML file")
 
 class MusicBrainzReleaseXML:
-    RELEASE_ORDER = [(u"title",None),
-                     (u"text-representation",None),
-                     (u"artist",None), #FIXME
-                     (u"release-group",None), #FIXME
-                     (u"release-event-list",None), #FIXME
-                     (u"asin",None),
-                     (u"artist",None), #FIXME
-                     (u"release-group",None), #FIXME
-                     (u"release-event-list",None), #FIXME
-                     (u"disc-list",None),  #FIXME
-                     (u"puid-list",None),  #FIXME
-                     (u"track-list",None), #FIXME
-                     (u"relation-list",None), #FIXME
-                     (u"tag-list",None), #FIXME
-                     (u"user-tag-list",None), #FIXME
-                     (u"rating",None), #FIXME
-                     (u"user-rating",None), #FIXME
-                     (u"release-element-extension",None)]
+    RELEASE_ORDER = [u"title",
+                     u"text-representation",
+                     u"asin",
+                     u"artist",
+                     u"release-group",
+                     u"release-event-list",
+                     u"disc-list",
+                     u"puid-list",
+                     u"track-list",
+                     u"relation-list",
+                     u"tag-list",
+                     u"user-tag-list",
+                     u"rating",
+                     u"user-rating"]
+
+    ARTIST_ORDER = [u"name",
+                    u"sort-name",
+                    u"disambiguation",
+                    u"life-span",
+                    u"alias-list",
+                    u"release-list",
+                    u"release-group-list",
+                    u"relation-list",
+                    u"tag-list",
+                    u"user-tag-list",
+                    u"rating"]
+
+    TRACK_ORDER = [u"title",
+                   u"duration",
+                   u"isrc-list",
+                   u"artist",
+                   u"release-list",
+                   u"puid-list",
+                   u"relation-list",
+                   u"tag-list",
+                   u"user-tag-list",
+                   u"rating",
+                   u"user-rating"]
 
     #dom should be a DOM object such as xml.dom.minidom.Document
     #of a MusicBrainz Release entry
@@ -363,6 +412,15 @@ class MusicBrainzReleaseXML:
                     cuesheet.pcm_lengths(total_frames))])
 
     def build(self):
+        for release in self.dom.getElementsByTagName(u'release'):
+            reorder_xml_children(release,MusicBrainzReleaseXML.RELEASE_ORDER)
+
+        for track in self.dom.getElementsByTagName(u'track'):
+            reorder_xml_children(track,MusicBrainzReleaseXML.TRACK_ORDER)
+
+        for artist in self.dom.getElementsByTagName(u'artist'):
+            reorder_xml_children(artist,MusicBrainzReleaseXML.ARTIST_ORDER)
+
         return self.dom.toxml(encoding='utf-8')
 
 #takes a Document containing multiple <release> tags
