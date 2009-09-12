@@ -451,6 +451,10 @@
 - [X] tracksplit
 - [X] tracktag
 ** TODO Update documentation with MusicBrainz config file fields
+** TODO Ensure missing XML fields are handled correctly
+   The MusicBrainz XML spec allows most fields to be missing altogether
+   (such as <title>).  editxmcd should add these fields in the proper place
+   if necessary.
 ** TODO Add MusicBrainz tag support to MetaData fields
    The MusicBrainz docs indicate support for Vorbis comments and ID3v2 tags
    for storing MusicBrainz-specific tag data such as album ID.

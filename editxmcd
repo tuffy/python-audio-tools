@@ -196,10 +196,16 @@ class EditXMCD:
                         child_node.replaceChild(
                             document.createTextNode(new_value),
                             child_node.firstChild)
+                        break
                     else:
                         child_node.appendChild(
                             document.createTextNode(new_value))
-
+                        break
+            else:
+                child_node = document.createElement(child_tag)
+                child_node.appendChild(
+                    document.createTextNode(new_value))
+                parent.appendChild(child_node)
 
         if (self.xmcd is None):
             return
@@ -216,28 +222,38 @@ class EditXMCD:
 
         try:
             old_artist_node = get_xml_nodes(release,u'artist')[0]
-            artist_name_string = self.xml.get_widget("artist_name").get_text().decode('utf-8')
-            if (get_xml_text_node(old_artist_node,u'name') != artist_name_string):
-                artist_name_text = dom.createTextNode(artist_name_string)
-                artist_name = dom.createElement(u'name')
-                artist_name.appendChild(artist_name_text)
-                new_artist_node = dom.createElement(u'artist')
-                new_artist_node.appendChild(artist_name)
-                release.replaceChild(new_artist_node,old_artist_node)
         except IndexError:
-            pass
+            old_artist_node = dom.createElement(u'artist')
+            release.appendChild(old_artist_node)
+
+        artist_name_string = self.xml.get_widget("artist_name").get_text().decode('utf-8')
+        if (get_xml_text_node(old_artist_node,u'name') != artist_name_string):
+            artist_name_text = dom.createTextNode(artist_name_string)
+            artist_name = dom.createElement(u'name')
+            artist_name.appendChild(artist_name_text)
+            new_artist_node = dom.createElement(u'artist')
+            new_artist_node.appendChild(artist_name)
+            release.replaceChild(new_artist_node,old_artist_node)
 
         try:
             release_events = get_xml_nodes(release,u'release-event-list')[0]
-            event = get_xml_nodes(release_events,u'event')[-1]
-            event.setAttribute(
-                'date',
-                self.xml.get_widget("album_year").get_text().decode('utf-8'))
-            event.setAttribute(
-                'catalog-number',
-                self.xml.get_widget("catalog").get_text().decode('utf-8'))
         except IndexError:
-            pass
+            release_events = dom.createElement(u'release-event-list')
+            release.appendChild(release_events)
+
+        try:
+            event = get_xml_nodes(release_events,u'event')[-1]
+        except IndexError:
+            event = dom.createElement('event')
+            release_events.appendChild(event)
+
+        event.setAttribute(
+            'date',
+            self.xml.get_widget("album_year").get_text().decode('utf-8'))
+        event.setAttribute(
+            'catalog-number',
+            self.xml.get_widget("catalog").get_text().decode('utf-8'))
+
 
         try:
             for (i,track_node) in enumerate(get_xml_nodes(
@@ -453,6 +469,7 @@ class EditXMCD:
             catalog = event.getAttribute('catalog-number')
         except IndexError:
             year = u""
+            catalog = u""
 
         tracks = []
         track_artists = []

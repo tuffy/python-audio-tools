@@ -34,6 +34,12 @@ def get_xml_text_node(parent, child_tag):
     except IndexError:
         return u''
 
+#parent is an element with childNodes
+#child_order is a list of unicode tag names
+#alters parent's childNodes to match the given order
+def reorder_xml_children(parent, child_order):
+    pass
+
 class MBDiscID:
     #tracks is a list of track lengths in CD frames
     #offsets, if present, is a list of track offsets in CD frames
@@ -147,6 +153,25 @@ class MBXMLException(MetaDataFileException):
         return _(u"Invalid MusicBrainz XML file")
 
 class MusicBrainzReleaseXML:
+    RELEASE_ORDER = [(u"title",None),
+                     (u"text-representation",None),
+                     (u"artist",None), #FIXME
+                     (u"release-group",None), #FIXME
+                     (u"release-event-list",None), #FIXME
+                     (u"asin",None),
+                     (u"artist",None), #FIXME
+                     (u"release-group",None), #FIXME
+                     (u"release-event-list",None), #FIXME
+                     (u"disc-list",None),  #FIXME
+                     (u"puid-list",None),  #FIXME
+                     (u"track-list",None), #FIXME
+                     (u"relation-list",None), #FIXME
+                     (u"tag-list",None), #FIXME
+                     (u"user-tag-list",None), #FIXME
+                     (u"rating",None), #FIXME
+                     (u"user-rating",None), #FIXME
+                     (u"release-element-extension",None)]
+
     #dom should be a DOM object such as xml.dom.minidom.Document
     #of a MusicBrainz Release entry
     def __init__(self, dom):
@@ -299,6 +324,9 @@ class MusicBrainzReleaseXML:
             if (track_metadata is not None):
                 node.appendChild(make_text_node(
                         dom,u'title',track_metadata.track_name))
+            else:
+                node.appendChild(make_text_node(
+                        dom,u'title',u''))
 
             node.appendChild(make_text_node(
                     dom,u'duration',
