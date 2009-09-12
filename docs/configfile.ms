@@ -29,6 +29,9 @@ _
 _
 Section:Key:Value
 =
+\fC[MusicBrainz]\fR:\fCserver\fR:the default MusicBrainz server hostname
+\^:\fCport\fR:the default MusicBrainz server port
+_
 \fC[FreeDB]\fR:\fCserver\fR:the default FreeDB server hostname
 \^:\fCport\fR:the default FreeDB server port
 _
@@ -39,7 +42,7 @@ _
 \^:\fCfs_encoding\fR:the filesystem's text encoding, for reading/writing filenames
 \^:\fCio_encoding\fR:the terminal's text encoding, when generating screen output
 _
-\fC[Filenames]\fR:\fCformat\fR:the default filename format for new tracks
+\fC[Filenames]\fR:\fCformat\fR:the default filename template
 _
 \fC[Binaries]\fR:\fCflac\fR:the \fCflac\fR executable to use for encoding/decoding FLAC files
 \^:\fClame\fR:the \fClame\fR executable to use for encoding/decoding MP3 files

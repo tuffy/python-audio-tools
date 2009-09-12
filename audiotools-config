@@ -114,6 +114,15 @@ if (__name__ == '__main__'):
     msg.output(u"")
 
     msg.new_row()
+    msg.output_column(_(u"Default MusicBrainz server"),True)
+    msg.output_column(u" : ")
+    msg.output_column(audiotools.MUSICBRAINZ_SERVER.decode('ascii','replace'))
+    msg.new_row()
+    msg.output_column(_(u"Default MusicBrainz port"),True)
+    msg.output_column(u" : ")
+    msg.output_column(unicode(audiotools.MUSICBRAINZ_PORT))
+
+    msg.new_row()
     msg.output_column(_(u"Default FreeDB server"),True)
     msg.output_column(u" : ")
     msg.output_column(audiotools.FREEDB_SERVER.decode('ascii','replace'))
