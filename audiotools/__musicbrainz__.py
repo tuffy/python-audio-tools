@@ -182,44 +182,42 @@ class MBXMLException(MetaDataFileException):
         return _(u"Invalid MusicBrainz XML file")
 
 class MusicBrainzReleaseXML:
-    RELEASE_ORDER = [u"title",
-                     u"text-representation",
-                     u"asin",
-                     u"artist",
-                     u"release-group",
-                     u"release-event-list",
-                     u"disc-list",
-                     u"puid-list",
-                     u"track-list",
-                     u"relation-list",
-                     u"tag-list",
-                     u"user-tag-list",
-                     u"rating",
-                     u"user-rating"]
-
-    ARTIST_ORDER = [u"name",
-                    u"sort-name",
-                    u"disambiguation",
-                    u"life-span",
-                    u"alias-list",
-                    u"release-list",
-                    u"release-group-list",
-                    u"relation-list",
-                    u"tag-list",
-                    u"user-tag-list",
-                    u"rating"]
-
-    TRACK_ORDER = [u"title",
-                   u"duration",
-                   u"isrc-list",
-                   u"artist",
-                   u"release-list",
-                   u"puid-list",
-                   u"relation-list",
-                   u"tag-list",
-                   u"user-tag-list",
-                   u"rating",
-                   u"user-rating"]
+    TAG_ORDER = {u"release":[u"title",
+                             u"text-representation",
+                             u"asin",
+                             u"artist",
+                             u"release-group",
+                             u"release-event-list",
+                             u"disc-list",
+                             u"puid-list",
+                             u"track-list",
+                             u"relation-list",
+                             u"tag-list",
+                             u"user-tag-list",
+                             u"rating",
+                             u"user-rating"],
+                 u"artist":[u"name",
+                            u"sort-name",
+                            u"disambiguation",
+                            u"life-span",
+                            u"alias-list",
+                            u"release-list",
+                            u"release-group-list",
+                            u"relation-list",
+                            u"tag-list",
+                            u"user-tag-list",
+                            u"rating"],
+                 u"track":[u"title",
+                           u"duration",
+                           u"isrc-list",
+                           u"artist",
+                           u"release-list",
+                           u"puid-list",
+                           u"relation-list",
+                           u"tag-list",
+                           u"user-tag-list",
+                           u"rating",
+                           u"user-rating"]}
 
     #dom should be a DOM object such as xml.dom.minidom.Document
     #of a MusicBrainz Release entry
@@ -412,14 +410,9 @@ class MusicBrainzReleaseXML:
                     cuesheet.pcm_lengths(total_frames))])
 
     def build(self):
-        for release in self.dom.getElementsByTagName(u'release'):
-            reorder_xml_children(release,MusicBrainzReleaseXML.RELEASE_ORDER)
-
-        for track in self.dom.getElementsByTagName(u'track'):
-            reorder_xml_children(track,MusicBrainzReleaseXML.TRACK_ORDER)
-
-        for artist in self.dom.getElementsByTagName(u'artist'):
-            reorder_xml_children(artist,MusicBrainzReleaseXML.ARTIST_ORDER)
+        for (tag,order) in MusicBrainzReleaseXML.TAG_ORDER.items():
+            for parent in self.dom.getElementsByTagName(tag):
+                reorder_xml_children(parent,order)
 
         return self.dom.toxml(encoding='utf-8')
 
