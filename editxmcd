@@ -192,9 +192,14 @@ class EditXMCD:
             for child_node in parent.childNodes:
                 if (hasattr(child_node,"tagName") and
                     (child_node.tagName == child_tag)):
-                    child_node.replaceChild(
-                        document.createTextNode(new_value),
-                        child_node.firstChild)
+                    if (child_node.firstChild is not None):
+                        child_node.replaceChild(
+                            document.createTextNode(new_value),
+                            child_node.firstChild)
+                    else:
+                        child_node.appendChild(
+                            document.createTextNode(new_value))
+
 
         if (self.xmcd is None):
             return

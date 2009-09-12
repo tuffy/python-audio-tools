@@ -111,6 +111,7 @@ if (__name__ == '__main__'):
 
     returnval = 0
     musicbrainz_matches = 0
+    freedb_matches = 0
     if (options.use_musicbrainz):
         try:
             musicbrainz_matches = audiotools.get_mbxml(

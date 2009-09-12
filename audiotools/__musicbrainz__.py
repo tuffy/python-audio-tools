@@ -264,6 +264,9 @@ class MusicBrainzReleaseXML:
             release.appendChild(artist)
         else:
             album_artist = u'' #all track artist names differ
+            artist = dom.createElement(u'artist')
+            artist.appendChild(make_text_node(dom,u'name',album_artist))
+            release.appendChild(artist)
 
         #add release info (catalog number, release date, media, etc.)
         event_list = dom.createElement(u'release-event-list')
