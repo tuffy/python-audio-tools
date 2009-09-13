@@ -23,6 +23,8 @@ if (sys.version_info < (2,5,0,'final',0)):
     print >>sys.stderr,"*** Python 2.5.0 or better required"
     sys.exit(1)
 
+
+from . import construct as Con
 import subprocess
 import re
 import cStringIO
@@ -293,18 +295,6 @@ class SilentMessenger(VerboseMessenger):
     def partial_info(self,s):
         pass
 
-
-try:
-    import construct as Con
-except ImportError:
-    try:
-        import Construct as Con
-    except ImportError:
-        msg = Messenger("audiotols",None)
-        msg.error(_(u"construct module not found"))
-        msg.info(_(u"To remedy this: \"make construct_install\""))
-        msg.info(_(u"from the audiotools source directory to install the Construct module."))
-        sys.exit(1)
 
 #raised by open() if the file cannot be identified or opened correctly
 class UnsupportedFile(Exception): pass

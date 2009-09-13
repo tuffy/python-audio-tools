@@ -14,16 +14,15 @@ clean:
 	rm -rfv build
 	rm -fv audiotools/*.pyc
 	cd docs && $(MAKE) clean
-	cd pyconstruct && $(MAKE) clean
 
 distclean: clean
 	cd docs && $(MAKE) distclean
 
 construct:
-	cd pyconstruct && $(MAKE)
+	### This target is no longer required ###
 
 construct_install:
-	cd pyconstruct && $(MAKE) install
+	### This target is no longer required ###
 
 
 #translation specific targets below

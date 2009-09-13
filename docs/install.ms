@@ -18,14 +18,6 @@ This will use the Python interpreter to install the audiotools
 Python module and the executable scripts.
 It will then install the man pages from the \fCdoc/\fR
 subdirectory.
-If you do not have the Construct Python module installed,
-you can run:
-.LP
-.ft C
-make construct_install
-.ft
-.LP
-as root from the audiotools source directory to install it.
 .PP
 To verify your Python Audio Tools installation, run:
 .LP
@@ -50,13 +42,6 @@ as \fClibcdio\fR
 If \fClibcdio\fR is installed and the module still doesn't build,
 ensure that you've also installed any accompanying \fClibcdio-devel\fR
 package.
-.PP
-.IP \(bu
-.B "The Construct module isn't found"
-.PP
-Run the \fCmake construct_install\fR command from the audiotools
-source directory, as root, to install this module.
-.PP
 .PP
 .IP \(bu
 .B "The installer complains about missing `python/config/Makefile' of some sort"
@@ -108,7 +93,7 @@ with the following command:
 .B "My Python interpreter isn't found, or I wish to use a different one"
 .PP
 The first line of \fCMakefile\fR is which Python interpreter is being
-used for installation of both the Python Audio Tools and Construct module.
+used for installation of Python Audio Tools.
 For instance, to use a Python interpreter located at
 \fC/opt/python/bin/python\fR, you should change that line to read:
 .LP

@@ -12,9 +12,6 @@
 Python 2.5.0		
 http://www.python.org
 .IP \(bu
-Construct (included)	
-http://construct.wikispaces.com
-.IP \(bu
 libcdio			
 http://www.gnu.org/software/libcdio
 .IP \(bu
@@ -55,7 +52,7 @@ cdrdao
 http://cdrdao.sourceforge.net/
 .RE
 .PP
-Python 2.5.0 or higher, libcdio and Construct 2.00 or higher are required.
+Python 2.5.0 or higher and libcdio are required.
 The rest are optional but recommended in order to get the most out of
 these tools.
 .TS
