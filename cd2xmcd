@@ -98,8 +98,7 @@ if (__name__ == '__main__'):
         [t.length() for t in tracks],
         [t.offset() for t in tracks],
         cdda.length(),
-        tracks[0].offset()
-        )
+        tracks[0].offset())
 
     freedb_discid = audiotools.DiscID(
         [t.length() for t in tracks],
