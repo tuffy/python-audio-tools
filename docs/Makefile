@@ -38,6 +38,7 @@ MAN_PATH = /usr/share/man
 MAN_PAGES = \
 cd2track.1 \
 cd2xmcd.1 \
+cdinfo.1 \
 track2cd.1 \
 track2track.1 \
 track2xmcd.1 \

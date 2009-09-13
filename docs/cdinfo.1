@@ -1,11 +1,15 @@
-.TH "coverview" 1 "September 15, 2007" "" "Cover Image Viewer"
+.TH "cd2info" 1 "September 13, 2009" "" "Compact Disc Information"
 .SH NAME
-coverview \- display cover images
+cd2info \- prints information about a compact disc
 .SH SYNOPSIS
-coverview <track 1> [track 2] ...
+cd2info [OPTIONS]
 .SH DESCRIPTION
 .PP
-coverview displays cover images which are embedded in audio tracks.
+cdinfo takes a compact disc device and writes information about the
+current disc to standard output.
+This includes the total number of tracks, the total length of the disc,
+the FreeDB and MusicBrainz disc IDs, and the length/offset information
+of each track.
 .SH OPTIONS
 .TP
 \fB-h, --help\fR
@@ -13,12 +17,14 @@ Show a list of options and exit
 .TP
 \fB--version\fR
 Show the program's version and exit
-
+.TP
+\fB-c \fIcdrom\fB, --cdrom=\fIcdrom\fR
+The cdrom device to read CD information from
 .SH SEE ALSO
 .BR cd2track (1),
 .BR cd2xmcd (1),
-.BR cdinfo (1),
 .BR coverdump (1),
+.BR coverview (1),
 .BR editxmcd (1),
 .BR record2track (1),
 .BR track2cd (1),

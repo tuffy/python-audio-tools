@@ -379,11 +379,11 @@
   For example, going from FLAC to Ogg FLAC should theoretically involve
   wrapping up FLAC frames rather than re-encoding.
   Or going from AAC to M4A should involve simple wrapper manipulation.
-* TODO Add cdinfo utility
+* DONE Add cdinfo utility
   Analagous to trackinfo, but for an inserted CD.
   This would be a better location for cd2xmcd's "-i" option.
-** TODO Add cdinfo man page
-** TODO Link cdinfo man page to other utility man pages
+** DONE Add cdinfo man page
+** DONE Link cdinfo man page to other utility man pages
 * DONE Add manual page for audiotools.cfg
   It'll be easier to check what the options are from a man page
   rather than having to check the website or PDF doc.
