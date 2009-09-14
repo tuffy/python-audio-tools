@@ -75,8 +75,13 @@ class EditXMCD:
         self.filename = None
         self.edited = False
 
-        #a stack of (function,args) tuples to undo the latest actions
+        #a stack of (undo_function,undo_args,redo_functions,redo_args) tuples
+        #to undo/redo the the latest actions
         self.undo_stack = []
+
+        #a stack of (undo_function,undo_args,redo_functions,redo_args) tuples
+        #to undo/redo the the latest actions
+        self.redo_stack = []
 
         #a dict of widget name->text values corresponding to the
         #current Entry values
@@ -154,7 +159,9 @@ class EditXMCD:
 
         if (old_text != new_text):
             self.undo_stack.append((model.set,
-                                    [iter,column,old_text]))
+                                    [iter,column,old_text],
+                                    model.set,
+                                    [iter,column,new_text]))
             self.edited = True
             self.set_title()
 
@@ -534,7 +541,10 @@ class EditXMCD:
         try:
             self.undo_stack.append((self.__undo_widget__,
                                     [widget.name,
-                                     self.current_fields[widget.name]]))
+                                     self.current_fields[widget.name]],
+                                    self.__undo_widget__,
+                                    [widget.name,
+                                     widget.get_text()]))
         except KeyError:
             pass
         self.current_fields[widget.name] = widget.get_text()
@@ -551,8 +561,36 @@ class EditXMCD:
         if (len(self.undo_stack) == 0):
             return
 
-        (function,args) = self.undo_stack.pop()
-        function(*args)
+        (undo_function,
+         undo_args,
+         redo_function,
+         redo_args) = self.undo_stack.pop()
+        undo_function(*undo_args)
+
+        self.redo_stack.append((undo_function,
+                                undo_args,
+                                redo_function,
+                                redo_args))
+
+        self.edited = True
+        self.set_title()
+
+    def redo(self,widget):
+        # print repr(self.undo_stack)
+        # print repr(self.redo_stack)
+        if (len(self.redo_stack) == 0):
+            return
+
+        (undo_function,
+         undo_args,
+         redo_function,
+         redo_args) = self.redo_stack.pop()
+        redo_function(*redo_args)
+
+        self.undo_stack.append((undo_function,
+                                undo_args,
+                                redo_function,
+                                redo_args))
 
         self.edited = True
         self.set_title()
@@ -616,6 +654,7 @@ if (__name__ == '__main__'):
     xml.signal_connect("file_saved_as",editxmcd.file_savedas)
     xml.signal_connect("field_changed",editxmcd.field_changed)
     xml.signal_connect("on_undo_activate",editxmcd.undo)
+    xml.signal_connect("on_redo_activate",editxmcd.redo)
 
     xml.signal_connect("filerror_done",editxmcd.error_closed)
     xml.signal_connect("confirmquit",editxmcd.confirm_quit)
