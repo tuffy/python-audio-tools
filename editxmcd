@@ -101,6 +101,7 @@ class EditXMCD:
                  album_name,artist_name,album_year,album_extra,catalog,
                  tracks,artists,extras):
         self.undo_stack = []
+        self.redo_Stack = []
         self.current_fields = {}
         self.xml.get_widget("album_name").set_text(album_name)
         self.xml.get_widget("artist_name").set_text(artist_name)
