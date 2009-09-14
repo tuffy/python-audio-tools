@@ -75,6 +75,15 @@ class EditXMCD:
         self.filename = None
         self.edited = False
 
+        #a stack of (function,args) tuples to undo the latest actions
+        self.undo_stack = []
+
+        #a dict of widget name->text values corresponding to the
+        #current Entry values
+        #(so when Editable's "changed" signal is sent,
+        # the old value is known, so an undo entry can be made)
+        self.current_fields = {}
+
     def __create_model(self):
         return gtk.ListStore(
             gobject.TYPE_INT,
@@ -86,6 +95,8 @@ class EditXMCD:
     def set_data(self,
                  album_name,artist_name,album_year,album_extra,catalog,
                  tracks,artists,extras):
+        self.undo_stack = []
+        self.current_fields = {}
         self.xml.get_widget("album_name").set_text(album_name)
         self.xml.get_widget("artist_name").set_text(artist_name)
         self.xml.get_widget("album_year").set_text(album_year)
@@ -142,6 +153,8 @@ class EditXMCD:
             model.set(iter, column, new_text)
 
         if (old_text != new_text):
+            self.undo_stack.append((model.set,
+                                    [iter,column,old_text]))
             self.edited = True
             self.set_title()
 
@@ -518,8 +531,28 @@ class EditXMCD:
                     "%s%s - editxmcd" % (edited,filename))
 
     def field_changed(self,widget):
+        try:
+            self.undo_stack.append((self.__undo_widget__,
+                                    [widget.name,
+                                     self.current_fields[widget.name]]))
+        except KeyError:
+            pass
+        self.current_fields[widget.name] = widget.get_text()
         self.edited = True
         self.set_title()
+
+    #sets widget_name to the new value
+    #then pops the newly-created undo value
+    def __undo_widget__(self, widget_name, value):
+        self.xml.get_widget(widget_name).set_text(value)
+        self.undo_stack.pop()
+
+    def undo(self,widget):
+        if (len(self.undo_stack) == 0):
+            return
+
+        (function,args) = self.undo_stack.pop()
+        function(*args)
 
     def error_closed(self,dialog,response):
         dialog.hide()
@@ -579,6 +612,7 @@ if (__name__ == '__main__'):
     xml.signal_connect("file_opened",editxmcd.opened)
     xml.signal_connect("file_saved_as",editxmcd.file_savedas)
     xml.signal_connect("field_changed",editxmcd.field_changed)
+    xml.signal_connect("on_undo_activate",editxmcd.undo)
 
     xml.signal_connect("filerror_done",editxmcd.error_closed)
     xml.signal_connect("confirmquit",editxmcd.confirm_quit)

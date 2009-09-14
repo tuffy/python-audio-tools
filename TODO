@@ -465,3 +465,5 @@
    for storing MusicBrainz-specific tag data such as album ID.
    However, I am wary of supporting this level of meta-metadata
    that's not directly applicable to the track.
+* TODO Add undo capability to editxmcd
+

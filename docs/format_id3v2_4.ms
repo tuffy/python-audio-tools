@@ -71,7 +71,7 @@ noname
 Frame ID's that begin with the letter `T' (0x54) are text frames.
 These have an additional text encoding byte before the actual
 text data.
-All text strings are terminated by a null character
+All text strings may be terminated by a null character
 (0x00 or 0x0000, depending on the encoding).
 .begin dformat
 style bitwid 0.15
