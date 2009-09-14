@@ -321,6 +321,27 @@
 * DONE Add more system information to audiotools-config
   All BIN-referenced binaries should be accounted for.
   Thumbnailing status and requirements should be shown.
+* DONE Add cdinfo utility
+  Analagous to trackinfo, but for an inserted CD.
+  This would be a better location for cd2xmcd's "-i" option.
+** DONE Add cdinfo man page
+** DONE Link cdinfo man page to other utility man pages
+* DONE Add manual page for audiotools.cfg
+  It'll be easier to check what the options are from a man page
+  rather than having to check the website or PDF doc.
+* DONE Convert vorbiscomment dependency to Python
+  This would remove the last app-based MetaData-setting utility
+  and may pave the way for adding cover art to Ogg Vorbis
+  (assuming I can find the standard for a secondary stream of image data)
+* DONE Add metadata deletion capability
+  It would be helpful to have the low-level capability of deleting
+  either part of a MetaData tag or the entire tag altogether.
+  For example, deleting the "track_name" field would delete
+  a Vorbis comment's "TITLE" field.
+  Or, deleting the MetaData from MP3 would remove all the ID3v2/ID3v1 tags.
+** DONE Add delattr to ID3v1
+* DONE Integrate pyconstruct as a submodule
+* DONE Add undo capability to editxmcd
 * TODO Ensure non-image cuesheets are handled properly
   There are 4 different types of cuesheets,
   1 single file type and 3 different multiple file variants.
@@ -379,31 +400,12 @@
   For example, going from FLAC to Ogg FLAC should theoretically involve
   wrapping up FLAC frames rather than re-encoding.
   Or going from AAC to M4A should involve simple wrapper manipulation.
-* DONE Add cdinfo utility
-  Analagous to trackinfo, but for an inserted CD.
-  This would be a better location for cd2xmcd's "-i" option.
-** DONE Add cdinfo man page
-** DONE Link cdinfo man page to other utility man pages
-* DONE Add manual page for audiotools.cfg
-  It'll be easier to check what the options are from a man page
-  rather than having to check the website or PDF doc.
-* DONE Convert vorbiscomment dependency to Python
-  This would remove the last app-based MetaData-setting utility
-  and may pave the way for adding cover art to Ogg Vorbis
-  (assuming I can find the standard for a secondary stream of image data)
 * TODO Convert TOC and CUE handling to proper grammars
   Although the current ad-hoc method works in most cases,
   it would be better to use a more formal method to parse these files
   which can be proven to handle all legal files.
   I expect this will require PLY or some similar lexx/yacc mechanism
   which I'll bundle to avoid adding any extra depencies.
-* DONE Add metadata deletion capability
-  It would be helpful to have the low-level capability of deleting
-  either part of a MetaData tag or the entire tag altogether.
-  For example, deleting the "track_name" field would delete
-  a Vorbis comment's "TITLE" field.
-  Or, deleting the MetaData from MP3 would remove all the ID3v2/ID3v1 tags.
-** DONE Add delattr to ID3v1
 * TODO Add Python3 support
   It would be useful to have a build which functions properly on
   Python3 when run through "2to3".
@@ -411,7 +413,6 @@
 ** TODO Patch Construct for Python3
    Since pyconstruct hasn't been updated in almost 2 years,
    I'll likely have to update it myself to ensure it'll run on Python3.
-* DONE Integrate pyconstruct as a submodule
 * TODO Add MusicBrainz support
   It would be helpful to have external metadata support beyond FreeDB,
   since FreeDB is very primitive.
@@ -465,5 +466,4 @@
    for storing MusicBrainz-specific tag data such as album ID.
    However, I am wary of supporting this level of meta-metadata
    that's not directly applicable to the track.
-* TODO Add undo capability to editxmcd
 
