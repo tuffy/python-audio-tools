@@ -554,9 +554,8 @@ class EditXMCD:
         (function,args) = self.undo_stack.pop()
         function(*args)
 
-        if (len(self.undo_stack) == 0):
-            self.edited = False
-            self.set_title()
+        self.edited = True
+        self.set_title()
 
     def error_closed(self,dialog,response):
         dialog.hide()
