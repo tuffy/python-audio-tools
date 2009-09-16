@@ -57,8 +57,8 @@ def __riff_chunk_ids__(data):
 #######################
 
 class WavePackAPEv2(ApeTag):
-    def __init__(self, tag_dict, tag_length=None, frame_count=0):
-        ApeTag.__init__(self,tag_dict=tag_dict,tag_length=tag_length)
+    def __init__(self, tags, tag_length=None, frame_count=0):
+        ApeTag.__init__(self,tags=tags,tag_length=tag_length)
         self.frame_count = frame_count
 
     @classmethod
@@ -83,32 +83,34 @@ class WavePackAPEv2(ApeTag):
                      os.linesep * 2,
                      sheet_to_unicode(
                             cue.parse(
-                                cue.tokens(self['Cuesheet'].encode('ascii',
-                                                                   'replace'))),
+                                cue.tokens(unicode(self['Cuesheet']).encode(
+                                        'ascii','replace'))),
                             self.frame_count))
             except cue.CueException:
                 return ApeTag.__unicode__(self)
 
     def add_image(self,image):
         if (image.type == 0):
-            self['Cover Art (Front)'] = image.data
+            self['Cover Art (Front)'] = self.ITEM.binary(
+                'Cover Art (Front)',image.data)
         elif (image.type == 1):
-            self['Cover Art (Back)'] = image.data
+            self['Cover Art (Back)'] = self.ITEM.binary(
+                'Cover Art (Back)',image.data)
 
     def delete_image(self,image):
         if ((image.type == 0) and 'Cover Art (Front)' in self.keys()):
-            del(self['Cover Art (Front)'])
+            del(self.tags[self.index('Cover Art (Front)')])
         elif ((image.type == 1) and 'Cover Art (Back)' in self.keys()):
-            del(self['Cover Art (Back)'])
+            del(self.tags[self.index('Cover Art (Back)')])
 
     def images(self):
         #APEv2 supports only one value per key
         #so a single front and back cover are all that is possible
         img = []
         if ('Cover Art (Front)' in self.keys()):
-            img.append(Image.new(self['Cover Art (Front)'],u'',0))
+            img.append(Image.new(str(self['Cover Art (Front)']),u'',0))
         if ('Cover Art (Back)' in self.keys()):
-            img.append(Image.new(self['Cover Art (Back)'],u'',1))
+            img.append(Image.new(str(self['Cover Art (Back)']),u'',1))
         return img
 
     @classmethod
@@ -116,32 +118,33 @@ class WavePackAPEv2(ApeTag):
         if ((metadata is None) or (isinstance(metadata,WavePackAPEv2))):
             return metadata
         elif (isinstance(metadata,ApeTag)):
-            new_metadata = WavePackAPEv2(metadata)
+            tags = WavePackAPEv2(metadata)
         else:
-            tags = {}
+            tags = cls([])
             for (field,key) in cls.ATTRIBUTE_MAP.items():
-                if (field not in MetaData.__INTEGER_FIELDS__):
+                if (field not in cls.__INTEGER_FIELDS__):
                     field = unicode(getattr(metadata,field))
                     if (len(field) > 0):
-                        tags[key] = field
+                        tags[key] = cls.ITEM.string(key,field)
 
             if ((metadata.track_number != 0) or
                 (metadata.track_total != 0)):
-                tags["Track"] = __number_pair__(metadata.track_number,
-                                                metadata.track_total)
+                tags["Track"] = cls.ITEM.string(
+                    "Track",__number_pair__(metadata.track_number,
+                                            metadata.track_total))
 
             if ((metadata.album_number != 0) or
                 (metadata.album_total != 0)):
-                tags["Media"] = __number_pair__(metadata.album_number,
-                                                metadata.album_total)
+                tags["Media"] = cls.ITEM.string(
+                    "Media",__number_pair__(metadata.album_number,
+                                            metadata.album_total))
 
-            new_metadata = WavePackAPEv2(tags)
 
         if (metadata is not None):
             for image in metadata.images():
-                new_metadata.add_image(image)
+                tags.add_image(image)
 
-        return new_metadata
+        return tags
 
 #######################
 #WavPack

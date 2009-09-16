@@ -37,7 +37,76 @@ def __number_pair__(current,total):
 #MONKEY'S AUDIO
 #######################
 
-class ApeTag(MetaData,dict):
+class ApeTagItem:
+    APEv2_FLAGS = Con.BitStruct("APEv2_FLAGS",
+      Con.Bits("undefined1",5),
+      Con.Flag("read_only"),
+      Con.Bits("encoding",2),
+      Con.Bits("undefined2",16),
+      Con.Flag("contains_header"),
+      Con.Flag("contains_no_footer"),
+      Con.Flag("is_header"),
+      Con.Bits("undefined3",5))
+
+    APEv2_TAG = Con.Struct("APEv2_TAG",
+      Con.ULInt32("length"),
+      Con.Embed(APEv2_FLAGS),
+      Con.CString("key"),
+      Con.MetaField("value",
+        lambda ctx: ctx["length"]))
+
+    #item_type is an int (0 = UTF-8, 1 = binary, 2 = external, 3 = reserved)
+    #read_only is a boolean, True if the item is read only
+    #key is an ASCII string
+    #data is a binary string of the data itself
+    def __init__(self,item_type,read_only,key,data):
+        self.type = item_type
+        self.read_only = read_only
+        self.key = key
+        self.data = data
+
+    def __repr__(self):
+        return "ApeTagItem(%s,%s,%s,%s)" % \
+            (repr(self.type),
+             repr(self.read_only),
+             repr(self.key),
+             repr(self.data))
+
+    def __str__(self):
+        return self.data
+
+    def __unicode__(self):
+        return self.data.decode('utf-8','replace')
+
+    def build(self):
+        return self.APEv2_TAG.build(
+            Con.Container(key=self.key,
+                          value=self.data,
+                          length=len(self.data),
+                          encoding=self.type,
+                          undefined1=0,
+                          undefined2=0,
+                          undefined3=0,
+                          read_only=self.read_only,
+                          contains_header=False,
+                          contains_no_footer=False,
+                          is_header=False))
+
+    #takes an ASCII key and string of binary data
+    #returns an ApeTagItem of that data
+    @classmethod
+    def binary(cls, key, data):
+        return cls(1,False,key,data)
+
+    #takes an ASCII key and a unicode string of data
+    #returns an ApeTagItem of that data
+    @classmethod
+    def string(cls, key, data):
+        return cls(0,False,key,data.encode('utf-8','replace'))
+
+class ApeTag(MetaData):
+    ITEM = ApeTagItem
+
     APEv2_FLAGS = Con.BitStruct("APEv2_FLAGS",
       Con.Bits("undefined1",5),
       Con.Flag("read_only"),
@@ -56,12 +125,9 @@ class ApeTag(MetaData,dict):
       Con.Embed(APEv2_FLAGS),
       Con.ULInt64("reserved"))
 
-    APEv2_TAG = Con.Struct("APEv2_TAG",
-      Con.ULInt32("length"),
-      Con.Embed(APEv2_FLAGS),
-      Con.CString("key"),
-      Con.MetaField("value",
-        lambda ctx: ctx["length"]))
+    APEv2_HEADER = APEv2_FOOTER
+
+    APEv2_TAG = ApeTagItem.APEv2_TAG
 
     ATTRIBUTE_MAP = {'track_name':'Title',
                      'track_number':'Track',
@@ -83,54 +149,92 @@ class ApeTag(MetaData,dict):
                      'date':'Record Date',
                      'comment':'Comment'}
 
-    def __init__(self, tag_dict, tag_length=None):
-        dict.__init__(self, tag_dict)
+    #tags is a list of ApeTagItem objects
+    #tag_length is an optional total length integer
+    def __init__(self, tags, tag_length=None):
+        self.__dict__["tags"] = tags
         self.__dict__["tag_length"] = tag_length
+
+    def keys(self):
+        return [tag.key for tag in self.tags]
+
+    def __getitem__(self,key):
+        for tag in self.tags:
+            if (tag.key == key):
+                return tag
+        else:
+            raise KeyError(key)
+
+    def get(self,key,default):
+        try:
+            return self[key]
+        except KeyError:
+            return default
+
+    def __setitem__(self,key,value):
+        for i in xrange(len(self.tags)):
+            if (self.tags[i].key == key):
+                self.tags[i] = value
+                return
+        else:
+            self.tags.append(value)
+
+    def index(self,key):
+        for (i,tag) in enumerate(self.tags):
+            if (tag.key == key):
+                return i
+        else:
+            raise ValueError(key)
 
     #if an attribute is updated (e.g. self.track_name)
     #make sure to update the corresponding dict pair
     def __setattr__(self, key, value):
         if (key in self.ATTRIBUTE_MAP):
             if (key == 'track_number'):
-                self['Track'] = __number_pair__(value,
-                                                self.track_total)
+                self['Track'] = self.ITEM.string(
+                    'Track',__number_pair__(value,self.track_total))
             elif (key == 'track_total'):
-                self['Track'] = __number_pair__(self.track_number,
-                                                value)
+                self['Track'] = self.ITEM.string(
+                    'Track',__number_pair__(self.track_number,value))
             elif (key == 'album_number'):
-                self['Media'] = __number_pair__(value,
-                                                self.album_total)
+                self['Media'] = self.ITEM.string(
+                    'Media',__number_pair__(value,self.album_total))
             elif (key == 'album_total'):
-                self['Media'] = __number_pair__(self.album_number,
-                                                value)
+                self['Media'] = self.ITEM.string(
+                    'Media',__number_pair__(self.album_number,value))
             else:
-                self[self.ATTRIBUTE_MAP[key]] = unicode(value)
+                self[self.ATTRIBUTE_MAP[key]] = self.ITEM.string(
+                    self.ATTRIBUTE_MAP[key],value)
         else:
             self.__dict__[key] = value
 
     def __getattr__(self, key):
         if (key == 'track_number'):
             try:
-                return int(re.findall('\d+',self.get("Track",u"0"))[0])
+                return int(re.findall('\d+',
+                                      unicode(self.get("Track",u"0")))[0])
             except IndexError:
                 return 0
         elif (key == 'track_total'):
             try:
-                return int(re.findall('\d+/(\d+)',self.get("Track",u"0"))[0])
+                return int(re.findall('\d+/(\d+)',
+                                      unicode(self.get("Track",u"0")))[0])
             except IndexError:
                 return 0
         elif (key == 'album_number'):
             try:
-                return int(re.findall('\d+',self.get("Media",u"0"))[0])
+                return int(re.findall('\d+',
+                                      unicode(self.get("Media",u"0")))[0])
             except IndexError:
                 return 0
         elif (key == 'album_total'):
             try:
-                return int(re.findall('\d+/(\d+)',self.get("Media",u"0"))[0])
+                return int(re.findall('\d+/(\d+)',
+                                      unicode(self.get("Media",u"0")))[0])
             except IndexError:
                 return 0
         elif (key in self.ATTRIBUTE_MAP):
-            return self.get(self.ATTRIBUTE_MAP[key],u'')
+            return unicode(self.get(self.ATTRIBUTE_MAP[key],u''))
         elif (key in MetaData.__FIELDS__):
             return u''
         else:
@@ -143,22 +247,24 @@ class ApeTag(MetaData,dict):
         if (key == 'track_number'):
             setattr(self,'track_number',0)
             if ((self.track_number == 0) and (self.track_total == 0)):
-                del(self['Track'])
+                del(self.tags[self.index('Track')])
         elif (key == 'track_total'):
             setattr(self,'track_total',0)
             if ((self.track_number == 0) and (self.track_total == 0)):
-                del(self['Track'])
+                del(self.tags[self.index('Track')])
         elif (key == 'album_number'):
             setattr(self,'album_number',0)
             if ((self.album_number == 0) and (self.album_total == 0)):
-                del(self['Media'])
+                del(self.tags[self.index('Media')])
         elif (key == 'album_total'):
             setattr(self,'album_total',0)
             if ((self.album_number == 0) and (self.album_total == 0)):
-                del(self['Media'])
+                del(self.tags[self.index('Media')])
         elif (key in self.ATTRIBUTE_MAP):
-            if (self.ATTRIBUTE_MAP[key] in self):
-                del(self[self.ATTRIBUTE_MAP[key]])
+            try:
+                del(self.tags[self.index(self.ATTRIBUTE_MAP[key])])
+            except ValueError:
+                pass
         elif (key in MetaData.__FIELDS__):
             pass
         else:
@@ -172,35 +278,37 @@ class ApeTag(MetaData,dict):
         if ((metadata is None) or (isinstance(metadata,ApeTag))):
             return metadata
         else:
-            tags = {}
+            tags = cls([])
             for (field,key) in cls.ATTRIBUTE_MAP.items():
                 if (field not in cls.__INTEGER_FIELDS__):
                     field = unicode(getattr(metadata,field))
                     if (len(field) > 0):
-                        tags[key] = field
+                        tags[key] = cls.ITEM.string(key,field)
 
             if ((metadata.track_number != 0) or
                 (metadata.track_total != 0)):
-                tags["Track"] = __number_pair__(metadata.track_number,
-                                                metadata.track_total)
+                tags["Track"] = cls.ITEM.string(
+                    "Track",__number_pair__(metadata.track_number,
+                                            metadata.track_total))
 
             if ((metadata.album_number != 0) or
                 (metadata.album_total != 0)):
-                tags["Media"] = __number_pair__(metadata.album_number,
-                                                metadata.album_total)
+                tags["Media"] = cls.ITEM.string(
+                    "Media",__number_pair__(metadata.album_number,
+                                            metadata.album_total))
 
-            return cls(tags)
+            return tags
 
     def merge(self, metadata):
         metadata = self.__class__.converted(metadata)
         if (metadata is None):
             return
 
-        for (key,value) in metadata.items():
-            if ((key not in ('Track','Media')) and
-                (len(value) > 0) and
-                (len(self.get(key,u"")) == 0)):
-                self[key] = value
+        for tag in metadata.tags:
+            if ((tag.key not in ('Track','Media')) and
+                (len(str(tag)) > 0) and
+                (len(str(self.get(tag.key,""))) == 0)):
+                self[key] = tag
         for attr in ("track_number","track_total",
                      "album_number","album_total"):
             if ((getattr(self,attr) == 0) and
@@ -244,54 +352,47 @@ class ApeTag(MetaData,dict):
     def __comment_pairs__(self):
         items = []
 
-        for (key,value) in self.items():
-            if (isinstance(value,unicode)):
-                items.append((key,value))
+        for tag in self.tags:
+            if ((tag.type == 0) or (tag.type == 2)):
+                items.append((tag.key,unicode(tag)))
             else:
-                if (len(value) <= 20):
-                    items.append((key,value.encode('hex')))
+                if (len(str(tag)) <= 20):
+                    items.append((tag.key,str(tag).encode('hex')))
                 else:
-                    items.append((key,value.encode('hex')[0:39].upper() + u"\u2026"))
+                    items.append((tag.key,str(tag).encode('hex')[0:39].upper() + u"\u2026"))
 
         return sorted(items,ApeTag.__by_pair__)
 
 
-    #Takes a file object of a Monkey's Audio file
-    #and returns a tuple.
-    #That tuple contains the dict of its APE tag info
-    #and the total tag size.
+    #takes a file object of a APEv2 tagged file
+    #returns an ApeTag object or None
     @classmethod
-    def read_ape_tag(cls, apefile):
+    def read(cls, apefile):
         apefile.seek(-32,2)
         footer = cls.APEv2_FOOTER.parse(apefile.read(32))
 
         if (footer.preamble != 'APETAGEX'):
-            return ({},0)
+            return None
 
         apefile.seek(-(footer.tag_size),2)
 
-        apev2tag = {}
+        return cls([ApeTagItem(item_type=tag.encoding,
+                               read_only=tag.read_only,
+                               key=tag.key,
+                               data=tag.value)
+                    for tag in Con.StrictRepeater(
+                      footer.item_count,
+                      cls.APEv2_TAG).parse(apefile.read())],
+                   tag_length=footer.tag_size + ApeTag.APEv2_FOOTER.sizeof()
+                     if footer.contains_header else
+                     footer.tag_size)
 
-        for tag in Con.StrictRepeater(footer.item_count,
-                                      cls.APEv2_TAG).parse(apefile.read()):
-            if (tag.encoding == 0):
-                apev2tag[tag.key] = tag.value.rstrip("\0").decode('utf-8',
-                                                                  'replace')
-            else:
-                apev2tag[tag.key] = tag.value
 
-        if (footer.contains_header):
-            return (apev2tag,
-                    footer.tag_size + ApeTag.APEv2_FOOTER.sizeof())
-        else:
-            return (apev2tag,
-                    footer.tag_size)
-
-    def ape_tag_data(self):
+    def build(self):
         header = Con.Container(preamble = 'APETAGEX',
-                               version_number = 0x07D0,
+                               version_number = 2000,
                                tag_size = 0,
-                               item_count = len(self.keys()),
+                               item_count = len(self.tags),
                                undefined1 = 0,
                                undefined2 = 0,
                                undefined3 = 0,
@@ -305,7 +406,7 @@ class ApeTag(MetaData,dict):
         footer = Con.Container(preamble = header.preamble,
                                version_number = header.version_number,
                                tag_size = 0,
-                               item_count = len(self.keys()),
+                               item_count = len(self.tags),
                                undefined1 = 0,
                                undefined2 = 0,
                                undefined3 = 0,
@@ -316,28 +417,7 @@ class ApeTag(MetaData,dict):
                                is_header = False,
                                reserved = 0l)
 
-        tags = []
-        for (key,value) in self.items():
-            tag = Con.Container(key = key,
-                                undefined1 = 0,
-                                undefined2 = 0,
-                                undefined3 = 0,
-                                read_only = False,
-                                contains_header = False,
-                                contains_no_footer = False,
-                                is_header = False)
-
-            if (isinstance(value,unicode)):
-                value = value.encode('utf-8')
-                tag.encoding = 0
-            else:
-                tag.encoding = 1
-
-            tag.length = len(value)
-            tag.value = value
-
-            tags.append(ApeTag.APEv2_TAG.build(tag))
-        tags = "".join(tags)
+        tags = "".join([tag.build() for tag in self.tags])
 
         footer.tag_size = header.tag_size = \
           len(tags) + len(ApeTag.APEv2_FOOTER.build(footer))
@@ -356,11 +436,7 @@ class ApeTaggedAudio:
     def get_metadata(self):
         f = file(self.filename,'rb')
         try:
-            (info,tag_length) = self.APE_TAG_CLASS.read_ape_tag(f)
-            if (tag_length > 0):
-                return self.APE_TAG_CLASS(info,tag_length)
-            else:
-                return None
+            return self.APE_TAG_CLASS.read(f)
         finally:
             f.close()
 
@@ -376,11 +452,11 @@ class ApeTaggedAudio:
             f.close()
             f = file(self.filename,"wb")
             f.write(untagged_data)
-            f.write(apetag.ape_tag_data())
+            f.write(apetag.build())
             f.close()
         else:                               #no existing tags
             f = file(self.filename,"ab")
-            f.write(apetag.ape_tag_data())
+            f.write(apetag.build())
             f.close()
 
     def delete_metadata(self):

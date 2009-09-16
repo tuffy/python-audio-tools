@@ -35,7 +35,7 @@ import gettext
 gettext.install("audiotools",unicode=True)
 
 (METADATA,PCM,EXECUTABLE,CUESHEET,IMAGE,CUSTOM) = range(6)
-CASES = set([METADATA,PCM,EXECUTABLE,CUESHEET,IMAGE])
+CASES = set([METADATA])
 
 def nothing(self):
     pass
@@ -2394,13 +2394,13 @@ class APEv2Lint:
     @TEST_METADATA
     def test_tracklint(self):
         bad_apev2 = audiotools.ApeTag(
-            {"Title":u"Track Name  ",
-             "Track":u"02",
-             "Artist":u"  Some Artist",
-             "Performer":u"Some Artist",
-             "Catalog":u"",
-             "Year":u"  ",
-             "Comment":u"  Some Comment  "})
+            [audiotools.ApeTagItem(0,False,"Title","Track Name  "),
+             audiotools.ApeTagItem(0,False,"Track","02"),
+             audiotools.ApeTagItem(0,False,"Artist","  Some Artist"),
+             audiotools.ApeTagItem(0,False,"Performer","Some Artist"),
+             audiotools.ApeTagItem(0,False,"Catalog",""),
+             audiotools.ApeTagItem(0,False,"Year","  "),
+             audiotools.ApeTagItem(0,False,"Comment","  Some Comment  ")])
 
         fixed = audiotools.MetaData(
             track_name=u"Track Name",
@@ -2421,8 +2421,8 @@ class APEv2Lint:
             track.set_metadata(bad_apev2)
             metadata = track.get_metadata()
             self.assertEqual(metadata,bad_apev2)
-            for (key,value) in metadata.items():
-                self.assertEqual(value,bad_apev2[key])
+            for key in metadata.keys():
+                self.assertEqual(metadata[key].data,bad_apev2[key].data)
 
             original_checksum = md5()
             f = open(track.filename,'rb')
