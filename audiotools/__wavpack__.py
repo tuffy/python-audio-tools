@@ -516,7 +516,7 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
         if ((metadata is not None) and ('Cuesheet' in metadata.keys())):
             try:
                 return cue.parse(cue.tokens(
-                        metadata['Cuesheet'].encode('utf-8','replace')))
+                        unicode(metadata['Cuesheet']).encode('utf-8','replace')))
             except cue.CueException:
                 #unlike FLAC, just because a cuesheet is embedded
                 #does not mean it is compliant
@@ -535,8 +535,9 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
         if (metadata is None):
             metadata = WavePackAPEv2.converted(MetaData())
 
-        metadata['Cuesheet'] = cue.Cuesheet.file(
-            cuesheet,
-            os.path.basename(self.filename)).decode('ascii','replace')
+        metadata['Cuesheet'] = WavePackAPEv2.ITEM.string('Cuesheet',
+                                                         cue.Cuesheet.file(
+                cuesheet,
+                os.path.basename(self.filename)).decode('ascii','replace'))
         self.set_metadata(metadata)
 

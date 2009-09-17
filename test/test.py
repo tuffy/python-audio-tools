@@ -3439,7 +3439,7 @@ class TestFlacComment(unittest.TestCase):
         self.file.close()
 
 class TestAPEv2MetaData(unittest.TestCase):
-    @TEST_CUSTOM
+    @TEST_METADATA
     def setUp(self):
         self.file = tempfile.NamedTemporaryFile(suffix=".mpc")
 
@@ -3448,11 +3448,11 @@ class TestAPEv2MetaData(unittest.TestCase):
 
         self.tag_class = audiotools.ApeTag
 
-    @TEST_CUSTOM
+    @TEST_METADATA
     def tearDown(self):
         self.file.close()
 
-    @TEST_CUSTOM
+    @TEST_METADATA
     def test_comment(self):
         self.ape_file.set_metadata(DummyMetaData())
         metadata = self.ape_file.get_metadata()
@@ -3488,7 +3488,7 @@ class TestAPEv2MetaData(unittest.TestCase):
                           'Bar')
         self.assertNotEqual(metadata,metadata2)
 
-    @TEST_CUSTOM
+    @TEST_METADATA
     def test_dict(self):
         INTEGER_ATTRIBS = ('track_number',
                            'track_total',
@@ -3596,6 +3596,96 @@ class TestAPEv2MetaData(unittest.TestCase):
         apev2 = self.ape_file.get_metadata()
         self.assertEqual(apev2.album_number,5)
         self.assertEqual(apev2.album_total,6)
+
+class TestWavPackAPEv2MetaData(TestAPEv2MetaData):
+    @TEST_METADATA
+    def setUp(self):
+        self.file = tempfile.NamedTemporaryFile(suffix=".wv")
+
+        self.ape_file = audiotools.WavPackAudio.from_pcm(
+            self.file.name,BLANK_PCM_Reader(TEST_LENGTH))
+
+        self.tag_class = audiotools.WavePackAPEv2
+
+    @TEST_METADATA
+    def testimages(self):
+        self.ape_file.set_metadata(audiotools.MetaData(
+                track_name=u'Images Track'))
+        apev2 = self.ape_file.get_metadata()
+        apev2.add_image(audiotools.Image.new(
+                TEST_COVER1,u'',0))
+        self.ape_file.set_metadata(apev2)
+        apev2 = self.ape_file.get_metadata()
+        img = apev2.front_covers()[0]
+        self.assertEqual(img.data,TEST_COVER1)
+        self.assertEqual(img.mime_type,u"image/jpeg")
+        self.assertEqual(img.width,500)
+        self.assertEqual(img.height,500)
+        self.assertEqual(img.color_depth,24)
+        self.assertEqual(img.color_count,0)
+        self.assertEqual(img.description,u'')
+        self.assertEqual(img.type,0)
+
+        apev2.add_image(audiotools.Image.new(
+                TEST_COVER2,u'',1))
+        self.ape_file.set_metadata(apev2)
+        apev2 = self.ape_file.get_metadata()
+        img = apev2.back_covers()[0]
+        self.assertEqual(img.data,TEST_COVER2)
+        self.assertEqual(img.mime_type,u"image/png")
+        self.assertEqual(img.width,500)
+        self.assertEqual(img.height,500)
+        self.assertEqual(img.color_depth,24)
+        self.assertEqual(img.color_count,0)
+        self.assertEqual(img.description,u'')
+        self.assertEqual(img.type,1)
+
+        apev2.add_image(audiotools.Image.new(
+                TEST_COVER1,u'',2))
+        self.ape_file.set_metadata(apev2)
+        apev2 = self.ape_file.get_metadata()
+        self.assertEqual(apev2.leaflet_pages(),[])
+
+        self.assertEqual(len(apev2.images()),2)
+        apev2.delete_image(audiotools.Image.new(
+                TEST_COVER1,u'',0))
+        self.ape_file.set_metadata(apev2)
+        apev2 = self.ape_file.get_metadata()
+        self.assertEqual(len(apev2.images()),1)
+        apev2.delete_image(audiotools.Image.new(
+                TEST_COVER2,u'',1))
+        self.ape_file.set_metadata(apev2)
+        apev2 = self.ape_file.get_metadata()
+        self.assertEqual(len(apev2.images()),0)
+
+    @TEST_METADATA
+    def test_wvunpack(self):
+        import re
+
+        self.ape_file.set_metadata(SmallDummyMetaData())
+        metadata = self.ape_file.get_metadata()
+        sub = subprocess.Popen([audiotools.BIN["wvunpack"],
+                                "-ss",self.ape_file.filename],
+                               stdout=subprocess.PIPE,
+                               stderr=subprocess.PIPE)
+        sub.stderr.read()
+        data = sub.stdout.read()
+        sub.wait()
+        self.assert_(len(data) > 0)
+        #this assumes wvunpack -ss always outputs UTF-8
+        fields = dict([(key,value.decode('utf-8')) for (key,value) in
+                       re.findall(r'(.+) = (.+)',data)])
+        self.assert_(len(fields) > 0)
+        self.assertEqual(metadata.track_name,fields['Title'])
+        self.assertEqual(metadata.artist_name,fields['Artist'])
+        self.assertEqual(metadata.year,fields['Year'])
+        self.assertEqual(metadata.performer_name,fields['Performer'])
+        self.assertEqual(unicode(metadata.track_number),fields['Track'])
+        self.assertEqual(metadata.album_name,fields['Album'])
+        self.assertEqual(metadata.composer_name,fields['Composer'])
+        self.assertEqual(unicode(metadata.album_number),fields['Media'])
+        self.assertEqual(metadata.comment,fields['Comment'])
+
 
 class TestM4AMetaData(unittest.TestCase):
     @TEST_METADATA
