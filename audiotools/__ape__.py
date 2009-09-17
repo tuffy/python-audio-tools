@@ -214,8 +214,6 @@ class ApeTag(MetaData):
             if (self.tags[i].key == key):
                 del(self.tags[i])
                 return
-        else:
-            raise KeyError(key)
 
     #if an attribute is updated (e.g. self.track_name)
     #make sure to update the corresponding dict pair
@@ -278,22 +276,22 @@ class ApeTag(MetaData):
         if (key == 'track_number'):
             setattr(self,'track_number',0)
             if ((self.track_number == 0) and (self.track_total == 0)):
-                del(self.tags[self.index('Track')])
+                del(self['Track'])
         elif (key == 'track_total'):
             setattr(self,'track_total',0)
             if ((self.track_number == 0) and (self.track_total == 0)):
-                del(self.tags[self.index('Track')])
+                del(self['Track'])
         elif (key == 'album_number'):
             setattr(self,'album_number',0)
             if ((self.album_number == 0) and (self.album_total == 0)):
-                del(self.tags[self.index('Media')])
+                del(self['Media'])
         elif (key == 'album_total'):
             setattr(self,'album_total',0)
             if ((self.album_number == 0) and (self.album_total == 0)):
-                del(self.tags[self.index('Media')])
+                del(self['Media'])
         elif (key in self.ATTRIBUTE_MAP):
             try:
-                del(self.tags[self.index(self.ATTRIBUTE_MAP[key])])
+                del(self[self.ATTRIBUTE_MAP[key]])
             except ValueError:
                 pass
         elif (key in MetaData.__FIELDS__):

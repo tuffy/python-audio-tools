@@ -99,9 +99,9 @@ class WavePackAPEv2(ApeTag):
 
     def delete_image(self,image):
         if ((image.type == 0) and 'Cover Art (Front)' in self.keys()):
-            del(self.tags[self.index('Cover Art (Front)')])
+            del(self['Cover Art (Front)'])
         elif ((image.type == 1) and 'Cover Art (Back)' in self.keys()):
-            del(self.tags[self.index('Cover Art (Back)')])
+            del(self['Cover Art (Back)'])
 
     def images(self):
         #APEv2 supports only one value per key

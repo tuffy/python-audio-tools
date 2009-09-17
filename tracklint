@@ -183,7 +183,7 @@ def fix_blank_fields(metadata, log):
     elif (isinstance(metadata,audiotools.ApeTag)):
         for key in list(metadata.keys())[:]:
             if (len(unicode(metadata[key]).strip().strip(unichr(0))) == 0):
-                del(metadata.tags[metadata.index(key)])
+                del(metadata[key])
                 log.append(_(u"Stripped blank %s field") % (key))
 
 METADATA_FIXES = (fix_leading_zeroes,fix_track_number,
