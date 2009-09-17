@@ -3597,16 +3597,6 @@ class TestAPEv2MetaData(unittest.TestCase):
         self.assertEqual(apev2.album_number,5)
         self.assertEqual(apev2.album_total,6)
 
-class TestWavPackAPEv2MetaData(TestAPEv2MetaData):
-    @TEST_METADATA
-    def setUp(self):
-        self.file = tempfile.NamedTemporaryFile(suffix=".wv")
-
-        self.ape_file = audiotools.WavPackAudio.from_pcm(
-            self.file.name,BLANK_PCM_Reader(TEST_LENGTH))
-
-        self.tag_class = audiotools.WavePackAPEv2
-
     @TEST_METADATA
     def testimages(self):
         self.ape_file.set_metadata(audiotools.MetaData(
@@ -3657,6 +3647,16 @@ class TestWavPackAPEv2MetaData(TestAPEv2MetaData):
         self.ape_file.set_metadata(apev2)
         apev2 = self.ape_file.get_metadata()
         self.assertEqual(len(apev2.images()),0)
+
+class TestWavPackAPEv2MetaData(TestAPEv2MetaData):
+    @TEST_METADATA
+    def setUp(self):
+        self.file = tempfile.NamedTemporaryFile(suffix=".wv")
+
+        self.ape_file = audiotools.WavPackAudio.from_pcm(
+            self.file.name,BLANK_PCM_Reader(TEST_LENGTH))
+
+        self.tag_class = audiotools.WavePackAPEv2
 
     @TEST_METADATA
     def test_wvunpack(self):

@@ -61,14 +61,8 @@ class WavePackAPEv2(ApeTag):
         ApeTag.__init__(self,tags=tags,tag_length=tag_length)
         self.frame_count = frame_count
 
-    @classmethod
-    def supports_images(cls):
-        return True
-
     def __comment_pairs__(self):
-        return filter(lambda pair: pair[0] not in ('Cuesheet',
-                                                   'Cover Art (Back)',
-                                                   'Cover Art (Front)'),
+        return filter(lambda pair: pair[0] != 'Cuesheet',
                       ApeTag.__comment_pairs__(self))
 
     def __unicode__(self):
@@ -89,62 +83,14 @@ class WavePackAPEv2(ApeTag):
             except cue.CueException:
                 return ApeTag.__unicode__(self)
 
-    def add_image(self,image):
-        if (image.type == 0):
-            self['Cover Art (Front)'] = self.ITEM.binary(
-                'Cover Art (Front)',image.data)
-        elif (image.type == 1):
-            self['Cover Art (Back)'] = self.ITEM.binary(
-                'Cover Art (Back)',image.data)
-
-    def delete_image(self,image):
-        if ((image.type == 0) and 'Cover Art (Front)' in self.keys()):
-            del(self['Cover Art (Front)'])
-        elif ((image.type == 1) and 'Cover Art (Back)' in self.keys()):
-            del(self['Cover Art (Back)'])
-
-    def images(self):
-        #APEv2 supports only one value per key
-        #so a single front and back cover are all that is possible
-        img = []
-        if ('Cover Art (Front)' in self.keys()):
-            img.append(Image.new(str(self['Cover Art (Front)']),u'',0))
-        if ('Cover Art (Back)' in self.keys()):
-            img.append(Image.new(str(self['Cover Art (Back)']),u'',1))
-        return img
-
     @classmethod
     def converted(cls,metadata):
         if ((metadata is None) or (isinstance(metadata,WavePackAPEv2))):
             return metadata
         elif (isinstance(metadata,ApeTag)):
-            tags = WavePackAPEv2(metadata.tags)
+            return WavePackAPEv2(metadata.tags)
         else:
-            tags = cls([])
-            for (field,key) in cls.ATTRIBUTE_MAP.items():
-                if (field not in cls.__INTEGER_FIELDS__):
-                    field = unicode(getattr(metadata,field))
-                    if (len(field) > 0):
-                        tags[key] = cls.ITEM.string(key,field)
-
-            if ((metadata.track_number != 0) or
-                (metadata.track_total != 0)):
-                tags["Track"] = cls.ITEM.string(
-                    "Track",__number_pair__(metadata.track_number,
-                                            metadata.track_total))
-
-            if ((metadata.album_number != 0) or
-                (metadata.album_total != 0)):
-                tags["Media"] = cls.ITEM.string(
-                    "Media",__number_pair__(metadata.album_number,
-                                            metadata.album_total))
-
-
-        if (metadata is not None):
-            for image in metadata.images():
-                tags.add_image(image)
-
-        return tags
+            return WavePackAPEv2(ApeTag.converted(metadata).tags)
 
 #######################
 #WavPack

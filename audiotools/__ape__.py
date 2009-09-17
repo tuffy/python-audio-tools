@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,WaveAudio,InvalidFile,PCMReader,Con,transfer_data,subprocess,BIN,MetaData,os,re,TempWaveReader
+from audiotools import AudioFile,WaveAudio,InvalidFile,PCMReader,Con,transfer_data,subprocess,BIN,MetaData,os,re,TempWaveReader,Image,cStringIO
 import gettext
 
 gettext.install("audiotools",unicode=True)
@@ -97,6 +97,12 @@ class ApeTagItem:
     @classmethod
     def binary(cls, key, data):
         return cls(1,False,key,data)
+
+    #takes an ASCII key and string of binary data
+    #returns an ApeTagItem of that data
+    @classmethod
+    def external(cls, key, data):
+        return cls(2,False,key,data)
 
     #takes an ASCII key and a unicode string of data
     #returns an ApeTagItem of that data
@@ -326,6 +332,9 @@ class ApeTag(MetaData):
                     "Media",__number_pair__(metadata.album_number,
                                             metadata.album_total))
 
+            for image in metadata.images():
+                tags.add_image(image)
+
             return tags
 
     def merge(self, metadata):
@@ -346,13 +355,6 @@ class ApeTag(MetaData):
 
     def __comment_name__(self):
         return u'APEv2'
-
-    @classmethod
-    def supports_images(cls):
-        return False
-
-    def images(self):
-        return list()
 
     #takes two (key,value) apetag pairs
     #returns cmp on the weighted set of them
@@ -382,7 +384,9 @@ class ApeTag(MetaData):
         items = []
 
         for tag in self.tags:
-            if ((tag.type == 0) or (tag.type == 2)):
+            if (tag.key in ('Cover Art (front)','Cover Art (back)')):
+                pass
+            elif (tag.type == 0):
                 items.append((tag.key,unicode(tag)))
             else:
                 if (len(str(tag)) <= 20):
@@ -392,6 +396,44 @@ class ApeTag(MetaData):
 
         return sorted(items,ApeTag.__by_pair__)
 
+    @classmethod
+    def supports_images(cls):
+        return True
+
+    def __parse_image__(self,key,type):
+        data = cStringIO.StringIO(str(self[key]))
+        description = Con.CString(None).parse_stream(data).decode('utf-8',
+                                                                  'replace')
+        data = data.read()
+        return Image.new(data,description,type)
+
+    def add_image(self,image):
+        if (image.type == 0):
+            self['Cover Art (front)'] = self.ITEM.external(
+                'Cover Art (front)',
+                Con.CString(None).build(image.description.encode(
+                        'utf-8','replace')) + image.data)
+        elif (image.type == 1):
+            self['Cover Art (back)'] = self.ITEM.binary(
+                'Cover Art (back)',
+                Con.CString(None).build(image.description.encode(
+                        'utf-8','replace')) + image.data)
+
+    def delete_image(self,image):
+        if ((image.type == 0) and 'Cover Art (front)' in self.keys()):
+            del(self['Cover Art (front)'])
+        elif ((image.type == 1) and 'Cover Art (back)' in self.keys()):
+            del(self['Cover Art (back)'])
+
+    def images(self):
+        #APEv2 supports only one value per key
+        #so a single front and back cover are all that is possible
+        img = []
+        if ('Cover Art (front)' in self.keys()):
+            img.append(self.__parse_image__('Cover Art (front)',0))
+        if ('Cover Art (back)' in self.keys()):
+            img.append(self.__parse_image__('Cover Art (back)',1))
+        return img
 
     #takes a file object of a APEv2 tagged file
     #returns an ApeTag object or None
