@@ -3438,6 +3438,22 @@ class TestFlacComment(unittest.TestCase):
     def tearDown(self):
         self.file.close()
 
+class TestAPEv2MetaData(unittest.TestCase):
+    @TEST_CUSTOM
+    def setUp(self):
+        self.file = tempfile.NamedTemporaryFile(suffix=".mpc")
+
+        self.ape_file = audiotools.MusepackAudio.from_pcm(
+            self.file.name,BLANK_PCM_Reader(TEST_LENGTH))
+
+    @TEST_CUSTOM
+    def tearDown(self):
+        self.file.close()
+
+    @TEST_CUSTOM
+    def testmetadata(self):
+        pass
+
 class TestM4AMetaData(unittest.TestCase):
     @TEST_METADATA
     def setUp(self):
@@ -7245,6 +7261,32 @@ class TestTrackrename(unittest.TestCase):
                                           "-V","quiet"]),0)
         self.assertEqual(os.listdir(self.output_dir)[0],
                          "01 - Track Name - Album Name - Composer Name.flac")
+
+    @TEST_METADATA
+    @TEST_EXECUTABLE
+    def test_noxmcd2(self):
+        self.track.set_metadata(audiotools.MetaData(
+                track_number=1,
+                track_name=u"Track Name",
+                album_name=u"Album Name",
+                composer_name=u"Composer Name"))
+        track2 = audiotools.FlacAudio.from_pcm(
+            os.path.join(self.output_dir,"test2.flac"),
+            BLANK_PCM_Reader(5))
+        track2.set_metadata(audiotools.MetaData(
+                track_number=1,
+                track_name=u"Track Name 2",
+                album_name=u"Album Name 2",
+                composer_name=u"Composer Name 2"))
+        self.assertEqual(subprocess.call(["trackrename",
+                                          "--format",self.format,
+                                          self.track.filename,
+                                          track2.filename,
+                                          "-V","quiet"]),0)
+        self.assertEqual(set(os.listdir(self.output_dir)),
+                         set([
+                    "01 - Track Name - Album Name - Composer Name.flac",
+                    "01 - Track Name 2 - Album Name 2 - Composer Name 2.flac"]))
 
     @TEST_METADATA
     @TEST_EXECUTABLE
