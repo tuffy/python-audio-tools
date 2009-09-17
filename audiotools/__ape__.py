@@ -158,6 +158,24 @@ class ApeTag(MetaData):
         self.__dict__["tags"] = tags
         self.__dict__["tag_length"] = tag_length
 
+    def __eq__(self,metadata):
+        if (isinstance(metadata,ApeTag)):
+            if (set(self.keys()) != set(metadata.keys())):
+                return False
+
+            for tag in self.tags:
+                try:
+                    if (tag.data != metadata[tag.key].data):
+                        return False
+                except KeyError:
+                    return False
+            else:
+                return True
+        elif (isinstance(metadata,MetaData)):
+            return MetaData.__eq__(self,metadata)
+        else:
+            return False
+
     def keys(self):
         return [tag.key for tag in self.tags]
 
@@ -188,6 +206,14 @@ class ApeTag(MetaData):
                 return i
         else:
             raise ValueError(key)
+
+    def __delitem__(self,key):
+        for i in xrange(len(self.tags)):
+            if (self.tags[i].key == key):
+                del(self.tags[i])
+                return
+        else:
+            raise KeyError(key)
 
     #if an attribute is updated (e.g. self.track_name)
     #make sure to update the corresponding dict pair

@@ -3451,7 +3451,43 @@ class TestAPEv2MetaData(unittest.TestCase):
         self.file.close()
 
     @TEST_CUSTOM
-    def testmetadata(self):
+    def test_comment(self):
+        self.ape_file.set_metadata(DummyMetaData())
+        metadata = self.ape_file.get_metadata()
+        self.assert_(isinstance(metadata,audiotools.ApeTag))
+        self.assertEqual(metadata,DummyMetaData())
+
+        metadata.track_name = u"New Track Name"
+        self.assertEqual(metadata.track_name,u"New Track Name")
+        self.ape_file.set_metadata(metadata)
+        metadata2 = self.ape_file.get_metadata()
+        self.assert_(isinstance(metadata,audiotools.ApeTag))
+        self.assertEqual(metadata,metadata2)
+
+        #handle unknown fields correctly
+        metadata['Foo'] = audiotools.ApeTagItem.string('Foo',u'Bar')
+        self.assertEqual(metadata['Foo'].data,'Bar')
+        self.ape_file.set_metadata(metadata)
+        metadata2 = self.ape_file.get_metadata()
+        self.assertEqual(metadata2['Foo'].data,'Bar')
+        self.assertEqual(metadata,metadata2)
+
+        metadata2['Foo'] = audiotools.ApeTagItem.string('Foo',u'Baz')
+        self.assertNotEqual(metadata,metadata2)
+        metadata2['Foo'] = metadata['Foo']
+        self.assertEqual(metadata,metadata2)
+        metadata2['Bar'] = audiotools.ApeTagItem.string('Bar',u'Blah')
+        self.assertNotEqual(metadata,metadata2)
+        metadata['Bar'] = metadata2['Bar']
+        self.assertEqual(metadata,metadata2)
+        del(metadata2['Bar'])
+        self.assertRaises(KeyError,
+                          metadata2.__getitem__,
+                          'Bar')
+        self.assertNotEqual(metadata,metadata2)
+
+    @TEST_CUSTOM
+    def test_dict(self):
         pass
 
 class TestM4AMetaData(unittest.TestCase):
