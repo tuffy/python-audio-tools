@@ -3446,6 +3446,8 @@ class TestAPEv2MetaData(unittest.TestCase):
         self.ape_file = audiotools.MusepackAudio.from_pcm(
             self.file.name,BLANK_PCM_Reader(TEST_LENGTH))
 
+        self.tag_class = audiotools.ApeTag
+
     @TEST_CUSTOM
     def tearDown(self):
         self.file.close()
@@ -3454,14 +3456,14 @@ class TestAPEv2MetaData(unittest.TestCase):
     def test_comment(self):
         self.ape_file.set_metadata(DummyMetaData())
         metadata = self.ape_file.get_metadata()
-        self.assert_(isinstance(metadata,audiotools.ApeTag))
+        self.assert_(isinstance(metadata,self.tag_class))
         self.assertEqual(metadata,DummyMetaData())
 
         metadata.track_name = u"New Track Name"
         self.assertEqual(metadata.track_name,u"New Track Name")
         self.ape_file.set_metadata(metadata)
         metadata2 = self.ape_file.get_metadata()
-        self.assert_(isinstance(metadata,audiotools.ApeTag))
+        self.assert_(isinstance(metadata,self.tag_class))
         self.assertEqual(metadata,metadata2)
 
         #handle unknown fields correctly
@@ -3488,7 +3490,112 @@ class TestAPEv2MetaData(unittest.TestCase):
 
     @TEST_CUSTOM
     def test_dict(self):
-        pass
+        INTEGER_ATTRIBS = ('track_number',
+                           'track_total',
+                           'album_number',
+                           'album_total')
+
+        attribs1 = {}  #a dict of attribute -> value pairs ("track_name":u"foo")
+        attribs2 = {}  #a dict of APEv2 -> value pairs     ("Title":u"foo")
+        for (i,(attribute,key)) in enumerate(self.tag_class.ATTRIBUTE_MAP.items()):
+            if (attribute not in INTEGER_ATTRIBS):
+                attribs1[attribute] = attribs2[key] = u"value %d" % (i)
+        attribs1["track_number"] = 2
+        attribs1["track_total"] = 10
+        attribs1["album_number"] = 1
+        attribs1["album_total"] = 3
+
+        apev2 = self.tag_class.converted(audiotools.MetaData(**attribs1))
+        self.ape_file.set_metadata(apev2)
+        self.assertEqual(self.ape_file.get_metadata(),apev2)
+        apev2 = self.ape_file.get_metadata()
+
+        #ensure that all the attributes match up
+        for (attribute,value) in attribs1.items():
+            self.assertEqual(getattr(apev2,attribute),value)
+
+        #ensure that all the keys for non-integer items match up
+        for (key,value) in attribs2.items():
+            self.assertEqual(unicode(apev2[key]),value)
+
+        #ensure the keys for integer items match up
+        self.assertEqual(unicode(apev2['Track']),u'2/10')
+        self.assertEqual(unicode(apev2['Media']),u'1/3')
+
+        #ensure that changing attributes changes the underlying frame
+        #>>> apev2.track_name = u"bar"
+        #>>> unicode(apev2['Title']) == u"bar"
+        for (i,(attribute,key)) in enumerate(self.tag_class.ATTRIBUTE_MAP.items()):
+            if (key not in self.tag_class.INTEGER_ITEMS):
+                setattr(apev2,attribute,u"new value %d" % (i))
+                self.assertEqual(unicode(apev2[key]),u"new value %d" % (i))
+
+        #ensure that changing integer attributes changes the underlying frame
+        #>>> apev2.track_number = 2
+        #>>> unicode(apev2['Track']) == u"2"
+        apev2.track_number = 3
+        apev2.track_total = 0
+        self.assertEqual(unicode(apev2['Track']),u"3")
+
+        apev2.track_total = 8
+        self.assertEqual(unicode(apev2['Track']),u"3/8")
+
+        apev2.album_number = 2
+        apev2.album_total = 0
+        self.assertEqual(unicode(apev2['Media']),u"2")
+
+        apev2.album_total = 4
+        self.assertEqual(unicode(apev2['Media']),u"2/4")
+
+        #reset and re-check everything for the next round
+        apev2 = self.tag_class.converted(audiotools.MetaData(**attribs1))
+        self.ape_file.set_metadata(apev2)
+        self.assertEqual(self.ape_file.get_metadata(),apev2)
+        apev2 = self.ape_file.get_metadata()
+
+        #ensure that all the attributes match up
+        for (attribute,value) in attribs1.items():
+            self.assertEqual(getattr(apev2,attribute),value)
+
+        for (key,value) in attribs2.items():
+            if (key not in self.tag_class.INTEGER_ITEMS):
+                self.assertEqual(unicode(apev2[key]),value)
+        self.assertEqual(unicode(apev2['Track']),u"2/10")
+        self.assertEqual(unicode(apev2['Media']),u"1/3")
+
+        #ensure that changing the underlying frames changes attributes
+        #>>> apev2['Title'] = ApeTag.string('Title',u"bar")
+        #>>> apev2.track_name == u"bar"
+        for (i,(attribute,key)) in enumerate(self.tag_class.ATTRIBUTE_MAP.items()):
+            if (attribute not in INTEGER_ATTRIBS):
+                apev2[key] = self.tag_class.ITEM.string(key,
+                                                        u"new value %d" % (i))
+                self.ape_file.set_metadata(apev2)
+                apev2 = self.ape_file.get_metadata()
+                self.assertEqual(getattr(apev2,attribute),u"new value %d" % (i))
+
+        #ensure that changing the underlying integer frames changes attributes
+        apev2['Track'] = self.tag_class.ITEM.string('Track',u'7')
+        self.ape_file.set_metadata(apev2)
+        apev2 = self.ape_file.get_metadata()
+        self.assertEqual(apev2.track_number,7)
+
+        apev2['Track'] = self.tag_class.ITEM.string('Track',u'8/9')
+        self.ape_file.set_metadata(apev2)
+        apev2 = self.ape_file.get_metadata()
+        self.assertEqual(apev2.track_number,8)
+        self.assertEqual(apev2.track_total,9)
+
+        apev2['Media'] = self.tag_class.ITEM.string('Media',u'4')
+        self.ape_file.set_metadata(apev2)
+        apev2 = self.ape_file.get_metadata()
+        self.assertEqual(apev2.album_number,4)
+
+        apev2['Media'] = self.tag_class.ITEM.string('Media',u'5/6')
+        self.ape_file.set_metadata(apev2)
+        apev2 = self.ape_file.get_metadata()
+        self.assertEqual(apev2.album_number,5)
+        self.assertEqual(apev2.album_total,6)
 
 class TestM4AMetaData(unittest.TestCase):
     @TEST_METADATA

@@ -149,6 +149,8 @@ class ApeTag(MetaData):
                      'date':'Record Date',
                      'comment':'Comment'}
 
+    INTEGER_ITEMS = ('Track','Media')
+
     #tags is a list of ApeTagItem objects
     #tag_length is an optional total length integer
     def __init__(self, tags, tag_length=None):
