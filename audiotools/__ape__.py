@@ -76,7 +76,7 @@ class ApeTagItem:
         return self.data
 
     def __unicode__(self):
-        return self.data.decode('utf-8','replace')
+        return self.data.rstrip(chr(0)).decode('utf-8','replace')
 
     def build(self):
         return self.APEv2_TAG.build(
@@ -152,6 +152,9 @@ class ApeTag(MetaData):
     #tags is a list of ApeTagItem objects
     #tag_length is an optional total length integer
     def __init__(self, tags, tag_length=None):
+        for tag in tags:
+            if (not isinstance(tag,ApeTagItem)):
+                raise ValueError("%s is not ApeTag" % (repr(tag)))
         self.__dict__["tags"] = tags
         self.__dict__["tag_length"] = tag_length
 
@@ -308,7 +311,7 @@ class ApeTag(MetaData):
             if ((tag.key not in ('Track','Media')) and
                 (len(str(tag)) > 0) and
                 (len(str(self.get(tag.key,""))) == 0)):
-                self[key] = tag
+                self[tag.key] = tag
         for attr in ("track_number","track_total",
                      "album_number","album_total"):
             if ((getattr(self,attr) == 0) and

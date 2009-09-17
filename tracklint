@@ -138,11 +138,12 @@ def fix_leading_zeroes(metadata,log):
                                    log)
     elif (isinstance(metadata,audiotools.ApeTag)):
         for key in list(metadata.keys())[:]:
-            if ((key == "Track") and
-                (len(metadata[key].lstrip(u"0")) > 0) and
-                (metadata[key].lstrip(u"0") != metadata[key])):
-                metadata[key] = metadata[key].lstrip(u"0")
-                log.append(_(u"Stripped whitespace from %s field") % (key))
+            if ((key in ("Track","Media")) and
+                (len(unicode(metadata[key]).lstrip(u"0")) > 0) and
+                (unicode(metadata[key]).lstrip(u"0") != unicode(metadata[key]))):
+                metadata[key] = audiotools.ApeTagItem.string(
+                    key,unicode(metadata[key]).lstrip(u"0"))
+                log.append(_(u"Stripped leading zeroes from %s field") % (key))
 
 #if performer name is the same as artist name,
 #clear the performer name value
@@ -181,8 +182,8 @@ def fix_blank_fields(metadata, log):
         __strip_list_dict__(metadata,log)
     elif (isinstance(metadata,audiotools.ApeTag)):
         for key in list(metadata.keys())[:]:
-            if (len(metadata[key].strip().strip(unichr(0))) == 0):
-                del(metadata[key])
+            if (len(unicode(metadata[key]).strip().strip(unichr(0))) == 0):
+                del(metadata.tags[metadata.index(key)])
                 log.append(_(u"Stripped blank %s field") % (key))
 
 METADATA_FIXES = (fix_leading_zeroes,fix_track_number,

@@ -118,7 +118,7 @@ class WavePackAPEv2(ApeTag):
         if ((metadata is None) or (isinstance(metadata,WavePackAPEv2))):
             return metadata
         elif (isinstance(metadata,ApeTag)):
-            tags = WavePackAPEv2(metadata)
+            tags = WavePackAPEv2(metadata.tags)
         else:
             tags = cls([])
             for (field,key) in cls.ATTRIBUTE_MAP.items():

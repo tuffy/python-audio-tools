@@ -35,7 +35,7 @@ import gettext
 gettext.install("audiotools",unicode=True)
 
 (METADATA,PCM,EXECUTABLE,CUESHEET,IMAGE,CUSTOM) = range(6)
-CASES = set([METADATA])
+CASES = set([METADATA,PCM,EXECUTABLE,CUESHEET,IMAGE])
 
 def nothing(self):
     pass
@@ -2446,8 +2446,8 @@ class APEv2Lint:
             metadata = track.get_metadata()
             self.assertEqual(metadata,bad_apev2)
             self.assertNotEqual(metadata,fixed)
-            for (key,value) in metadata.items():
-                self.assertEqual(value,bad_apev2[key])
+            for tag in metadata.tags:
+                self.assertEqual(tag.data,bad_apev2[tag.key].data)
         finally:
             for f in os.listdir(tempdir):
                 os.unlink(os.path.join(tempdir,f))
@@ -7459,17 +7459,17 @@ class TestForeignMetaData_WavPackAPE(unittest.TestCase):
     AUDIO_CLASS = audiotools.WavPackAudio
     METADATA_CLASS = audiotools.WavePackAPEv2
     BASE_CLASS_METADATA = audiotools.WavePackAPEv2(
-        {"Title":u'Track Name',
-         "Album":u'Album Name',
-         "Track":u"1/3",
-         "Media":u"2/4",
-         "Foo":u"Bar"})
+        [audiotools.ApeTagItem(0,False,"Title",'Track Name'),
+         audiotools.ApeTagItem(0,False,"Album",'Album Name'),
+         audiotools.ApeTagItem(0,False,"Track","1/3"),
+         audiotools.ApeTagItem(0,False,"Media","2/4"),
+         audiotools.ApeTagItem(0,False,"Foo","Bar")])
 
     def __verify_foreign_field__(self, track=None):
         if (track is None):
             track = self.track
         self.assert_("Foo" in track.get_metadata().keys())
-        self.assertEqual(track.get_metadata()["Foo"],u"Bar")
+        self.assertEqual(unicode(track.get_metadata()["Foo"]),u"Bar")
 
     def __verify_no_foreign_field__(self, track=None):
         if (track is None):
@@ -7629,17 +7629,17 @@ class TestForeignMetaData_MusepackAPE(TestForeignMetaData_WavPackAPE):
     AUDIO_CLASS = audiotools.MusepackAudio
     METADATA_CLASS = audiotools.ApeTag
     BASE_CLASS_METADATA = audiotools.ApeTag(
-        {"Title":u'Track Name',
-         "Album":u'Album Name',
-         "Track":u"1/3",
-         "Media":u"2/4",
-         "Foo":u"Bar"})
+        [audiotools.ApeTagItem(0,False,"Title",'Track Name'),
+         audiotools.ApeTagItem(0,False,"Album",'Album Name'),
+         audiotools.ApeTagItem(0,False,"Track","1/3"),
+         audiotools.ApeTagItem(0,False,"Media","2/4"),
+         audiotools.ApeTagItem(0,False,"Foo","Bar")])
 
     def __verify_foreign_field__(self, track=None):
         if (track is None):
             track = self.track
         self.assert_("Foo" in track.get_metadata().keys())
-        self.assertEqual(track.get_metadata()["Foo"],u"Bar")
+        self.assertEqual(unicode(track.get_metadata()["Foo"]),u"Bar")
 
     def __verify_no_foreign_field__(self, track=None):
         if (track is None):
