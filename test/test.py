@@ -2453,10 +2453,7 @@ class APEv2Lint:
                 os.unlink(os.path.join(tempdir,f))
             os.rmdir(tempdir)
 
-class TestWavPackAudio(EmbeddedCuesheet,TestForeignWaveChunks,APEv2Lint,TestAiffAudio):
-    def setUp(self):
-        self.audio_class = audiotools.WavPackAudio
-
+class ApeTaggedAudio:
     @TEST_METADATA
     def test_coverdump(self):
         basefile = tempfile.NamedTemporaryFile(suffix="." + self.audio_class.SUFFIX)
@@ -2527,6 +2524,10 @@ class TestWavPackAudio(EmbeddedCuesheet,TestForeignWaveChunks,APEv2Lint,TestAiff
                    [jpeg,png],
                    [test_cover1,
                     test_cover2])
+
+class TestWavPackAudio(EmbeddedCuesheet,ApeTaggedAudio,TestForeignWaveChunks,APEv2Lint,TestAiffAudio):
+    def setUp(self):
+        self.audio_class = audiotools.WavPackAudio
 
 class M4AMetadata:
     def DummyMetaData(self):
@@ -2980,7 +2981,7 @@ class TestAACAudio(TestAiffAudio):
     def setUp(self):
         self.audio_class = audiotools.AACAudio
 
-class TestMusepackAudio(APEv2Lint,TestAiffAudio):
+class TestMusepackAudio(ApeTaggedAudio,APEv2Lint,TestAiffAudio):
     def setUp(self):
         self.audio_class = audiotools.MusepackAudio
 
