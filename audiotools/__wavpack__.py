@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,InvalidFile,Con,subprocess,BIN,open_files,os,ReplayGain,ignore_sigint,transfer_data,Image,MetaData,sheet_to_unicode,EncodingError,DecodingError,PCMReaderError
+from audiotools import AudioFile,InvalidFile,Con,subprocess,BIN,open_files,os,ReplayGain,ignore_sigint,transfer_data,Image,MetaData,sheet_to_unicode,EncodingError,DecodingError,PCMReaderError,PCMReader
 from __wav__ import WaveAudio,WaveReader
 from __ape__ import ApeTaggedAudio,ApeTag,__number_pair__
 import gettext
@@ -328,18 +328,32 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
 
     def to_pcm(self):
         if (self.filename.endswith(".wv")):
-            sub = subprocess.Popen([BIN['wvunpack'],
-                                    '-q','-y',
-                                    self.filename,
-                                    '-o','-'],
-                                   stdout=subprocess.PIPE,
-                                   stderr=file(os.devnull,'ab'))
+            if ('-r' in self.__wvunpack_help__()):
+                sub = subprocess.Popen([BIN['wvunpack'],
+                                        '-q','-y',
+                                        self.filename,
+                                        '-r','-o','-'],
+                                       stdout=subprocess.PIPE,
+                                       stderr=file(os.devnull,'ab'))
 
-            return WaveReader(sub.stdout,
-                              sample_rate=self.sample_rate(),
-                              channels=self.channels(),
-                              bits_per_sample=self.bits_per_sample(),
-                              process=sub)
+                return PCMReader(sub.stdout,
+                                 sample_rate=self.sample_rate(),
+                                 channels=self.channels(),
+                                 bits_per_sample=self.bits_per_sample(),
+                                 process=sub)
+            else:
+                sub = subprocess.Popen([BIN['wvunpack'],
+                                        '-q','-y',
+                                        self.filename,
+                                        '-o','-'],
+                                       stdout=subprocess.PIPE,
+                                       stderr=file(os.devnull,'ab'))
+
+                return WaveReader(sub.stdout,
+                                  sample_rate=self.sample_rate(),
+                                  channels=self.channels(),
+                                  bits_per_sample=self.bits_per_sample(),
+                                  process=sub)
         else:
             #create a temporary symlink to the current file
             #rather than rewrite the whole thing
@@ -348,12 +362,11 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
             tempdir = tempfile.mkdtemp()
             symlink = os.path.join(tempdir,
                                    os.path.basename(self.filename) + ".wv")
-            try:
-                os.symlink(os.path.abspath(self.filename),symlink)
-                return WavPackAudio(symlink).to_pcm()
-            finally:
-                os.unlink(symlink)
-                os.rmdir(tempdir)
+            os.symlink(os.path.abspath(self.filename),symlink)
+            pcm = WavPackAudio(symlink).to_pcm()
+            os.unlink(symlink)
+            os.rmdir(tempdir)
+            return pcm
 
     @classmethod
     def from_wave(cls, filename, wave_filename, compression=None):
