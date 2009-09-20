@@ -367,41 +367,36 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
 
         #wavpack will add a .wv suffix if there isn't one
         #this isn't desired behavior
-        if (not filename.endswith(".wv")):
+        if (filename.endswith(".wv")):
+            devnull = file(os.devnull,'ab')
+
+            sub = subprocess.Popen([BIN['wavpack'],
+                                    wave_filename] + \
+                                   compression_param[compression] + \
+                                   ['-q','-y','-o',
+                                    filename],
+                                   stdout=devnull,
+                                   stderr=devnull,
+                                   preexec_fn=ignore_sigint)
+
+            devnull.close()
+
+            if (sub.wait() == 0):
+                return WavPackAudio(filename)
+            else:
+                raise EncodingError(BIN['wavpack'])
+        else:
             import tempfile
-            actual_filename = filename
-            tempfile = tempfile.NamedTemporaryFile(suffix=".wv")
-            filename = tempfile.name
-        else:
-            actual_filename = tempfile = None
 
-        devnull = file(os.devnull,'ab')
-
-        sub = subprocess.Popen([BIN['wavpack'],
-                                wave_filename] + \
-                               compression_param[compression] + \
-                               ['-q','-y','-o',
-                                filename],
-                               stdout=devnull,
-                               stderr=devnull,
-                               preexec_fn=ignore_sigint)
-
-        devnull.close()
-
-        if (sub.wait() == 0):
-            if (tempfile is not None):
-                filename = actual_filename
-                f = file(filename,'wb')
-                tempfile.seek(0,0)
-                transfer_data(tempfile.read,f.write)
-                f.close()
-                tempfile.close()
-
-            return WavPackAudio(filename)
-        else:
-            if (tempfile is not None):
-                tempfile.close()
-            raise EncodingError(BIN['wavpack'])
+            tempdir = tempfile.mkdtemp()
+            symlink = os.path.join(tempdir,os.path.basename(filename) + ".wv")
+            try:
+                os.symlink(os.path.abspath(filename),symlink)
+                cls.from_wave(symlink,wave_filename,compression)
+                return WavPackAudio(filename)
+            finally:
+                os.unlink(symlink)
+                os.rmdir(tempdir)
 
     def __wavpack_help__(self):
         devnull = open(os.devnull,"wb")
