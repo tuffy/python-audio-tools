@@ -301,9 +301,7 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
     def to_wave(self, wave_filename):
         devnull = file(os.devnull,'ab')
 
-        #WavPack idiotically refuses to run if the filename doesn't end with .wv
-        #I'll use temp files to fake the suffix, which will make WavPack
-        #decode performance suck yet behave correctly.
+        #WavPack stupidly refuses to run if the filename doesn't end with .wv
         if (self.filename.endswith(".wv")):
             sub = subprocess.Popen([BIN['wvunpack'],
                                     '-q','-y',
@@ -314,25 +312,19 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
             if (sub.wait() != 0):
                 raise EncodingError()
         else:
+            #create a temporary symlink to the current file
+            #rather than rewrite the whole thing
             import tempfile
-            wv = tempfile.NamedTemporaryFile(suffix='.wv')
-            f = file(self.filename,'rb')
-            transfer_data(f.read,wv.write)
-            f.close()
-            wv.flush()
-            sub = subprocess.Popen([BIN['wvunpack'],
-                                    '-q','-y',
-                                    wv.name,
-                                    '-o',wave_filename],
-                                   stdout=devnull,
-                                   stderr=devnull)
-            returnval = sub.wait()
-            wv.close()
-            if (returnval != 0):
-                raise EncodingError()
 
-            devnull.close()
-
+            tempdir = tempfile.mkdtemp()
+            symlink = os.path.join(tempdir,
+                                   os.path.basename(self.filename) + ".wv")
+            try:
+                os.symlink(os.path.abspath(self.filename),symlink)
+                WavPackAudio(symlink).to_wave(wave_filename)
+            finally:
+                os.unlink(symlink)
+                os.rmdir(tempdir)
 
     def to_pcm(self):
         if (self.filename.endswith(".wv")):
@@ -349,21 +341,20 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
                               bits_per_sample=self.bits_per_sample(),
                               process=sub)
         else:
-            #This is the crappiest performance possible,
-            #involving *two* temp files strung together.
-            #Thankfully, this case is probably quite rare in practice.
+            #create a temporary symlink to the current file
+            #rather than rewrite the whole thing
             import tempfile
-            from audiotools import TempWaveReader
-            f = tempfile.NamedTemporaryFile(suffix=".wav")
+
+            tempdir = tempfile.mkdtemp()
+            symlink = os.path.join(tempdir,
+                                   os.path.basename(self.filename) + ".wv")
             try:
-                self.to_wave(f.name)
-                f.seek(0,0)
-                return TempWaveReader(f)
-            except EncodingError:
-                return PCMReaderError(None,
-                                      sample_rate=self.sample_rate(),
-                                      channels=self.channels(),
-                                      bits_per_sample=self.bits_per_sample())
+                os.symlink(os.path.abspath(self.filename),symlink)
+                return WavPackAudio(symlink).to_pcm()
+            finally:
+                os.unlink(symlink)
+                os.rmdir(tempdir)
+
     @classmethod
     def from_wave(cls, filename, wave_filename, compression=None):
         if (str(compression) not in cls.COMPRESSION_MODES):
@@ -411,6 +402,28 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
             if (tempfile is not None):
                 tempfile.close()
             raise EncodingError(BIN['wavpack'])
+
+    def __wavpack_help__(self):
+        devnull = open(os.devnull,"wb")
+        sub = subprocess.Popen([BIN["wavpack"],"--help"],
+                               stdout=subprocess.PIPE,
+                               stderr=devnull)
+        help_data = sub.stdout.read()
+        sub.stdout.close()
+        devnull.close()
+        sub.wait()
+        return help_data
+
+    def __wvunpack_help__(self):
+        devnull = open(os.devnull,"wb")
+        sub = subprocess.Popen([BIN["wvunpack"],"--help"],
+                               stdout=subprocess.PIPE,
+                               stderr=devnull)
+        help_data = sub.stdout.read()
+        sub.stdout.close()
+        devnull.close()
+        sub.wait()
+        return help_data
 
     @classmethod
     def add_replay_gain(cls, filenames):
