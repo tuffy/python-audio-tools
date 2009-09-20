@@ -287,16 +287,60 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
 
     @classmethod
     def from_pcm(cls, filename, pcmreader, compression=None):
-        import tempfile
+        if ('--raw-pcm' in cls.__wavpack_help__()):
+            compression_param = {"fast":["-f"],
+                                 "standard":[],
+                                 "high":["-h"],
+                                 "veryhigh":["-hh"]}
 
-        f = tempfile.NamedTemporaryFile(suffix=".wav")
-        w = WaveAudio.from_pcm(f.name, pcmreader)
+            if (filename.endswith(".wv")):
+                devnull = file(os.devnull,'ab')
 
-        try:
-            return cls.from_wave(filename,w.filename,compression)
-        finally:
-            del(w)
-            f.close()
+                sub = subprocess.Popen([BIN['wavpack']] + \
+                                           compression_param[compression] + \
+                                           ['-q','-y',
+                                            "--raw-pcm=%(sr)s,%(bps)s,%(ch)s"%\
+                                              {"sr":pcmreader.sample_rate,
+                                               "bps":pcmreader.bits_per_sample,
+                                               "ch":pcmreader.channels},
+                                            '-','-o',filename],
+                                       stdout=devnull,
+                                       stderr=devnull,
+                                       stdin=subprocess.PIPE,
+                                       preexec_fn=ignore_sigint)
+
+                transfer_data(pcmreader.read,sub.stdin.write)
+                devnull.close()
+                sub.stdin.close()
+
+                if (sub.wait() == 0):
+                    return WavPackAudio(filename)
+                else:
+                    raise EncodingError(BIN['wavpack'])
+            else:
+                import tempfile
+
+                tempdir = tempfile.mkdtemp()
+                symlink = os.path.join(tempdir,
+                                       os.path.basename(filename) + ".wv")
+                try:
+                    os.symlink(os.path.abspath(filename),symlink)
+                    cls.from_pcm(symlink,pcmreader,compression)
+                    return WavPackAudio(filename)
+                finally:
+                    os.unlink(symlink)
+                    os.rmdir(tempdir)
+        else:
+            import tempfile
+
+            f = tempfile.NamedTemporaryFile(suffix=".wav")
+            w = WaveAudio.from_pcm(f.name, pcmreader)
+
+            try:
+                return cls.from_wave(filename,w.filename,compression)
+            finally:
+                del(w)
+                f.close()
 
     def to_wave(self, wave_filename):
         devnull = file(os.devnull,'ab')
@@ -328,7 +372,7 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
 
     def to_pcm(self):
         if (self.filename.endswith(".wv")):
-            if ('-r' in self.__wvunpack_help__()):
+            if ('-r' in WavPackAudio.__wvunpack_help__()):
                 sub = subprocess.Popen([BIN['wvunpack'],
                                         '-q','-y',
                                         self.filename,
@@ -411,7 +455,8 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
                 os.unlink(symlink)
                 os.rmdir(tempdir)
 
-    def __wavpack_help__(self):
+    @classmethod
+    def __wavpack_help__(cls):
         devnull = open(os.devnull,"wb")
         sub = subprocess.Popen([BIN["wavpack"],"--help"],
                                stdout=subprocess.PIPE,
@@ -422,7 +467,8 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
         sub.wait()
         return help_data
 
-    def __wvunpack_help__(self):
+    @classmethod
+    def __wvunpack_help__(cls):
         devnull = open(os.devnull,"wb")
         sub = subprocess.Popen([BIN["wvunpack"],"--help"],
                                stdout=subprocess.PIPE,
