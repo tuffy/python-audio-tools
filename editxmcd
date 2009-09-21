@@ -310,13 +310,25 @@ class EditXMCD:
 
     metadata_update = xmcd_update
 
-    def new(self,caller):
-        self.xml.get_widget("selecttracks").run()
+    def new_xmcd(self,caller):
+        self.xml.get_widget("select_xmcd_tracks").run()
 
-    def from_tracks(self,dialog,signal):
+    def new_mbxml(self,caller):
+        self.xml.get_widget("select_mbxml_tracks").run()
+
+    def from_xmcd_tracks(self,dialog,signal):
         dialog.hide()
         if (signal == -5):
             self.read_xmcd(audiotools.XMCD.from_files(
+                    audiotools.open_files(dialog.get_filenames())))
+            self.edited = False
+            self.filename = None
+            self.set_title()
+
+    def from_mbxml_tracks(self,dialog,signal):
+        dialog.hide()
+        if (signal == -5):
+            self.read_mbxml(audiotools.MusicBrainzReleaseXML.from_files(
                     audiotools.open_files(dialog.get_filenames())))
             self.edited = False
             self.filename = None
@@ -645,8 +657,10 @@ if (__name__ == '__main__'):
     xml.signal_connect("on_paste1_activate",editxmcd.paste)
     xml.signal_connect("on_delete1_activate",editxmcd.clear)
 
-    xml.signal_connect("on_new1_activate",editxmcd.new)
-    xml.signal_connect("tracks_selected",editxmcd.from_tracks)
+    xml.signal_connect("on_new1_activate",editxmcd.new_xmcd)
+    xml.signal_connect("on_new2_activate",editxmcd.new_mbxml)
+    xml.signal_connect("xmcd_tracks_selected",editxmcd.from_xmcd_tracks)
+    xml.signal_connect("mbxml_tracks_selected",editxmcd.from_mbxml_tracks)
     xml.signal_connect("on_save_as1_activate",editxmcd.saveas)
 
     xml.signal_connect("save_file",editxmcd.save)
