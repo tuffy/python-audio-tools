@@ -121,7 +121,7 @@ if (config.has_option("System","maximum_jobs")):
 else:
     MAX_JOBS = MAX_CPUS
 
-BIG_ENDIAN = (struct.pack("=I",0x100) == struct.pack(">I",0x100))
+BIG_ENDIAN = sys.byteorder == 'big'
 
 
 #######################
