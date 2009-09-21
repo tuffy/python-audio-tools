@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,InvalidFile,PCMReader,Con,BUFFER_SIZE,transfer_data,__capped_stream_reader__,FILENAME_FORMAT,BIN,open_files,os,subprocess,EncodingError,DecodingError
+from audiotools import AudioFile,InvalidFile,PCMReader,Con,BUFFER_SIZE,transfer_data,__capped_stream_reader__,FILENAME_FORMAT,BIN,open_files,os,subprocess,cStringIO,EncodingError,DecodingError
 import os.path
 import gettext
 
@@ -47,6 +47,9 @@ class WaveReader(PCMReader):
             header = WaveAudio.WAVE_HEADER.parse_stream(self.file)
         except Con.ConstError:
             raise WavException(_(u'Invalid WAVE file'))
+        except Con.core.FieldError:
+            self.wave = cStringIO.StringIO("")
+            return
 
         #this won't be pretty for a WAVE file missing a 'data' chunk
         #but those are seriously invalid anyway
@@ -66,7 +69,8 @@ class WaveReader(PCMReader):
     def close(self):
         self.wave.close()
         if (self.process is not None):
-            self.process.wait()
+            if (self.process.wait() != 0):
+                raise DecodingError()
 
 class TempWaveReader(WaveReader):
     def __init__(self, tempfile):

@@ -1985,7 +1985,7 @@ class TestAiffAudio(TestTextOutput):
             return
 
         temp_track_file = tempfile.NamedTemporaryFile(
-            suffix=self.audio_class.SUFFIX)
+            suffix="." + self.audio_class.SUFFIX)
 
         temp_track = self.audio_class.from_pcm(
             temp_track_file.name,
@@ -2179,7 +2179,7 @@ oR0PqdlolvbqIS27sAWbI8BKqb0BpGd7+TsgNSwdy+0AirUD+AUsDYSu""".decode('base64').dec
                 sheet = audiotools.read_sheet(sheet_file.name)
 
                 basefile = tempfile.NamedTemporaryFile(
-                    suffix=self.audio_class.SUFFIX)
+                    suffix="." + self.audio_class.SUFFIX)
                 try:
                     album = self.audio_class.from_pcm(
                         basefile.name,
@@ -2205,7 +2205,7 @@ oR0PqdlolvbqIS27sAWbI8BKqb0BpGd7+TsgNSwdy+0AirUD+AUsDYSu""".decode('base64').dec
                                       audiotools.OggFlacAudio,
                                       audiotools.WavPackAudio]:
                         newfile = tempfile.NamedTemporaryFile(
-                            suffix=new_class.SUFFIX)
+                            suffix="." + self.audio_class.SUFFIX)
                         try:
                             new_album = new_class.from_pcm(
                                 newfile.name,
@@ -2248,6 +2248,7 @@ Fy3hYEs4qiXB6wOQULBQkOhCygalbISUUvrnACQVERfIr1scI4K5lk9od5+/""".decode('base64')
 
             basefile = tempfile.NamedTemporaryFile(
                 suffix=self.audio_class.SUFFIX)
+
             basefile_stat = os.stat(basefile.name)[0]
             try:
                 album = self.audio_class.from_pcm(
@@ -2273,7 +2274,7 @@ Fy3hYEs4qiXB6wOQULBQkOhCygalbISUUvrnACQVERfIr1scI4K5lk9od5+/""".decode('base64')
 class LCVorbisComment:
     @TEST_METADATA
     def test_lowercase_vorbiscomment(self):
-        track_file = tempfile.NamedTemporaryFile(suffix=self.audio_class.SUFFIX)
+        track_file = tempfile.NamedTemporaryFile(suffix="." + self.audio_class.SUFFIX)
         try:
             track = self.audio_class.from_pcm(track_file.name,
                                               BLANK_PCM_Reader(5))
@@ -2325,7 +2326,7 @@ class LCVorbisComment:
 
     @TEST_METADATA
     def test_lowercase_vorbiscomment_field(self):
-        track_file = tempfile.NamedTemporaryFile(suffix=self.audio_class.SUFFIX)
+        track_file = tempfile.NamedTemporaryFile(suffix="." + self.audio_class.SUFFIX)
         try:
             track = self.audio_class.from_pcm(track_file.name,
                                               BLANK_PCM_Reader(5))
@@ -2873,7 +2874,7 @@ class TestVorbisAudio(VorbisLint,TestAiffAudio,LCVorbisComment):
 
     @TEST_METADATA
     def test_bigvorbiscomment(self):
-        track_file = tempfile.NamedTemporaryFile(suffix=self.audio_class.SUFFIX)
+        track_file = tempfile.NamedTemporaryFile(suffix="." + self.audio_class.SUFFIX)
         try:
             track = self.audio_class.from_pcm(track_file.name,
                                               BLANK_PCM_Reader(5))
@@ -3675,7 +3676,9 @@ class TestWavPackAPEv2MetaData(TestAPEv2MetaData):
         self.assert_(len(data) > 0)
         #this assumes wvunpack -ss always outputs UTF-8
         fields = dict([(key,value.decode('utf-8')) for (key,value) in
-                       re.findall(r'(.+) = (.+)',data)])
+                       re.findall(r'(.+) = (.+)',data)] + \
+                      [(key,value.decode('utf-8')) for (key,value) in
+                       re.findall(r'(.+):\s+(.+)',data)])
         self.assert_(len(fields) > 0)
         self.assertEqual(metadata.track_name,fields['Title'])
         self.assertEqual(metadata.artist_name,fields['Artist'])
@@ -4636,7 +4639,7 @@ IqWzFUixmyqeumDRdlhpO+C2s3Eocdn5wUixIZt3KdoOK20HindxcShxI3mX+IDg3b8MLEoQ6yTo
                                 audiotools.OggFlacAudio,
                                 audiotools.WavPackAudio]:
                 temp_file = tempfile.NamedTemporaryFile(
-                    suffix=audio_class.SUFFIX)
+                    suffix="." + audio_class.SUFFIX)
                 try:
                     f = audio_class.from_pcm(
                         temp_file.name,
@@ -7764,7 +7767,7 @@ class TestForeignMetaData_WavPackAPE(unittest.TestCase):
     @TEST_EXECUTABLE
     def setUp(self):
         self.tempfile = tempfile.NamedTemporaryFile(
-            suffix=self.AUDIO_CLASS.SUFFIX)
+            suffix="." + self.AUDIO_CLASS.SUFFIX)
         self.track = self.AUDIO_CLASS.from_pcm(
             self.tempfile.name,
             BLANK_PCM_Reader(5))
@@ -7784,7 +7787,7 @@ class TestForeignMetaData_WavPackAPE(unittest.TestCase):
     @TEST_EXECUTABLE
     def test_track2track_noxmcd(self):
         tempfile2 = tempfile.NamedTemporaryFile(
-            suffix=self.AUDIO_CLASS.SUFFIX)
+            suffix="." + self.AUDIO_CLASS.SUFFIX)
         try:
             subprocess.call(["track2track","-t",self.AUDIO_CLASS.NAME,
                              "-o",tempfile2.name,self.track.filename])
@@ -7799,7 +7802,7 @@ class TestForeignMetaData_WavPackAPE(unittest.TestCase):
     @TEST_EXECUTABLE
     def test_track2track_xmcd(self):
         tempfile2 = tempfile.NamedTemporaryFile(
-            suffix=self.AUDIO_CLASS.SUFFIX)
+            suffix="." + self.AUDIO_CLASS.SUFFIX)
         try:
             subprocess.call(["track2track","-t",self.AUDIO_CLASS.NAME,
                              "-x",self.xmcd_file.name,

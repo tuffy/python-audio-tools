@@ -75,8 +75,8 @@ if (__name__ == '__main__'):
                             {"file1":msg.filename(audiofiles[0].filename),
                              "file2":msg.filename(audiofiles[1].filename)})
                 sys.exit(1)
-        except audiotools.DecodingError,msg:
-            msg.error(unicode(msg))
+        except audiotools.DecodingError,err:
+            msg.error(unicode(err))
             sys.exit(2)
 
     elif (os.path.isdir(args[0]) and os.path.isdir(args[1])):

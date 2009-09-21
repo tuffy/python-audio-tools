@@ -52,6 +52,33 @@ def __riff_chunk_ids__(data):
         data.seek(chunk_size,1)
         yield chunk_header.chunk_id
 
+class SymlinkPCMReader(PCMReader):
+    def __init__(self,reader,tempdir,symlink):
+        PCMReader.__init__(self,None,
+                           sample_rate=reader.sample_rate,
+                           channels=reader.channels,
+                           bits_per_sample=reader.bits_per_sample)
+        self.tempdir = tempdir
+        self.symlink = symlink
+        self.reader = reader
+
+    def read(self,bytes):
+        return self.reader.read(bytes)
+
+    def close(self):
+        self.reader.close()
+        os.unlink(self.symlink)
+        os.rmdir(self.tempdir)
+
+    @classmethod
+    def new(cls, filename, suffix):
+        import tempfile
+
+        tempdir = tempfile.mkdtemp()
+        symlink = os.path.join(tempdir,os.path.basename(filename) + suffix)
+        os.symlink(os.path.abspath(filename),symlink)
+        return (tempdir,symlink)
+
 #######################
 #WavPack APEv2
 #######################
@@ -293,6 +320,9 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
                                  "high":["-h"],
                                  "veryhigh":["-hh"]}
 
+            if (str(compression) not in cls.COMPRESSION_MODES):
+                compression = cls.DEFAULT_COMPRESSION
+
             if (filename.endswith(".wv")):
                 devnull = file(os.devnull,'ab')
 
@@ -401,16 +431,10 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
         else:
             #create a temporary symlink to the current file
             #rather than rewrite the whole thing
-            import tempfile
+            (tempdir,symlink) = SymlinkPCMReader.new(self.filename,".wv")
+            return SymlinkPCMReader(WavPackAudio(symlink).to_pcm(),
+                                    tempdir,symlink)
 
-            tempdir = tempfile.mkdtemp()
-            symlink = os.path.join(tempdir,
-                                   os.path.basename(self.filename) + ".wv")
-            os.symlink(os.path.abspath(self.filename),symlink)
-            pcm = WavPackAudio(symlink).to_pcm()
-            os.unlink(symlink)
-            os.rmdir(tempdir)
-            return pcm
 
     @classmethod
     def from_wave(cls, filename, wave_filename, compression=None):
