@@ -5623,10 +5623,12 @@ xgc9dasZmA0qsKdVxQWEfGIfIyv5/a66+X9X/i7kinChICe+4J4=""".decode('base64').decode(
                 INVALID_ORDER).metadata())
 
         self.assertEqual(audiotools.MusicBrainzReleaseXML.read_data(
-                VALID_ORDER).build(),VALID_ORDER)
+                VALID_ORDER).build().replace('\n',''),
+                         VALID_ORDER.replace('\n',''))
 
         self.assertEqual(audiotools.MusicBrainzReleaseXML.read_data(
-                INVALID_ORDER).build(),VALID_ORDER)
+                INVALID_ORDER).build().replace('\n',''),
+                         VALID_ORDER.replace('\n',''))
 
 class TestProgramOutput(TestTextOutput):
     @TEST_EXECUTABLE
