@@ -108,10 +108,8 @@ class XMCD:
             return cmp(p1,p2)
 
         def encode(u):
-            try:
-                return u.encode('ISO-8859-1')
-            except UnicodeEncodeError:
-                return u.encode('utf-8')
+            return u.encode('utf-8')
+
 
         def split_fields(pairs):
             #returns index i which is less than l bytes from unicode string u

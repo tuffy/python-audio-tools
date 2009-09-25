@@ -1873,7 +1873,7 @@ def read_sheet(filename):
 
     try:
         #try TOC first, since its CD_DA header makes it easier to spot
-        return toc.read_tocfile(filename)
+        return toc.read_tofile(filename)
     except SheetException:
         return cue.read_cuesheet(filename)
 

@@ -31,6 +31,7 @@ import decimal as D
 import subprocess
 import filecmp
 import gettext
+import time
 
 gettext.install("audiotools",unicode=True)
 
@@ -1080,6 +1081,407 @@ class TestAiffAudio(TestTextOutput):
                     temp_file.close()
         finally:
             base_file.close()
+
+    def __test_track2xmcd__(self, arguments, album_metadata,
+                            lossless, has_metadata):
+
+        #these are both collections of live data,
+        #which may change as the data on the servers changes
+        MUSICBRAINZ_METADATA = \
+            {1: audiotools.MetaData(
+                    track_name=u'\u65b0\u305f\u306a\u308b\u5192\u967a\u306e\u821e\u53f0\u3078\u3002',
+                    track_number=1,
+                    track_total=7,
+                    album_name=u'Sekaiju no MeiQ 2 *syoou no seihai* sound track : Piano sketch version',
+                    artist_name=u'\u53e4\u4ee3\u7950\u4e09',
+                    catalog=u'SJMK-0001',
+                    year=u'2008'),
+             2: audiotools.MetaData(
+                    track_name=u'\u751f\u6b7b\u3092\u5206\u304b\u3064\u6fc0\u95d8\u306e\u97ff\u304d\u3002',
+                    track_number=2,
+                    track_total=7,
+                    album_name=u'Sekaiju no MeiQ 2 *syoou no seihai* sound track : Piano sketch version',
+                    artist_name=u'\u53e4\u4ee3\u7950\u4e09',
+                    catalog=u'SJMK-0001',
+                    year=u'2008'),
+             3: audiotools.MetaData(
+                    track_name=u'\u5176\u306f\u7d05\u304d\u8ff7\u8def\u306e\u679c\u3066\u3002',
+                    track_number=3,
+                    track_total=7,
+                    album_name=u'Sekaiju no MeiQ 2 *syoou no seihai* sound track : Piano sketch version',
+                    artist_name=u'\u53e4\u4ee3\u7950\u4e09',
+                    catalog=u'SJMK-0001',
+                    year=u'2008'),
+             4: audiotools.MetaData(
+                    track_name=u'\u7a7a\u3067\u307e\u307f\u3048\u308b\u795e\u306e\u4ed4\u3089\u3002',
+                    track_number=4,
+                    track_total=7,
+                    album_name=u'Sekaiju no MeiQ 2 *syoou no seihai* sound track : Piano sketch version',
+                    artist_name=u'\u53e4\u4ee3\u7950\u4e09',
+                    catalog=u'SJMK-0001',
+                    year=u'2008'),
+             5: audiotools.MetaData(
+                    track_name=u'\u96ea\u3068\u6c37\u306e\u54c0\u3057\u307f\u306e\u5148\u3078\u3002',
+                    track_number=5,
+                    track_total=7,
+                    album_name=u'Sekaiju no MeiQ 2 *syoou no seihai* sound track : Piano sketch version',
+                    artist_name=u'\u53e4\u4ee3\u7950\u4e09',
+                    catalog=u'SJMK-0001',
+                    year=u'2008'),
+             6: audiotools.MetaData(
+                    track_name=u'***Secret Sound***',
+                    track_number=6,
+                    track_total=7,
+                    album_name=u'Sekaiju no MeiQ 2 *syoou no seihai* sound track : Piano sketch version',
+                    artist_name=u'\u53e4\u4ee3\u7950\u4e09',
+                    catalog=u'SJMK-0001',
+                    year=u'2008'),
+             7: audiotools.MetaData(
+                    track_name=u'\u5192\u967a\u8005\u305f\u3061\u306e\u5b89\u3089\u304e\u306e\u5834\u3002',
+                    track_number=7,
+                    track_total=7,
+                    album_name=u'Sekaiju no MeiQ 2 *syoou no seihai* sound track : Piano sketch version',
+                    artist_name=u'\u53e4\u4ee3\u7950\u4e09',
+                    catalog=u'SJMK-0001',
+                    year=u'2008')}
+
+        FREEDB_METADATA = \
+            {1: audiotools.MetaData(
+                    track_name=u'\u65b0\u305f\u306a\u308b\u5192\u967a\u306e\u821e\u53f0\u3078\u3002',
+                    track_number=1,
+                    track_total=7,
+                    album_name=u'\u4e16\u754c\u6a39\u306e\u8ff7\u5baeII \u30d4\u30a2\u30ce\u30b9\u30b1\u30c3\u30c1Ver.',
+                    artist_name=u'\u53e4\u4ee3\u7950\u4e09',
+                    year=u'2007'),
+             2: audiotools.MetaData(
+                    track_name=u'\u751f\u6b7b\u3092\u5206\u304b\u3064\u6fc0\u95d8\u306e\u97ff\u304d\u3002',
+                    track_number=2,
+                    track_total=7,
+                    album_name=u'\u4e16\u754c\u6a39\u306e\u8ff7\u5baeII \u30d4\u30a2\u30ce\u30b9\u30b1\u30c3\u30c1Ver.',
+                    artist_name=u'\u53e4\u4ee3\u7950\u4e09',
+                    year=u'2007'),
+             3: audiotools.MetaData(
+                    track_name=u'\u5176\u306f\u7d05\u304d\u8ff7\u8def\u306e\u679c\u3066\u3002',
+                    track_number=3,
+                    track_total=7,
+                    album_name=u'\u4e16\u754c\u6a39\u306e\u8ff7\u5baeII \u30d4\u30a2\u30ce\u30b9\u30b1\u30c3\u30c1Ver.',
+                    artist_name=u'\u53e4\u4ee3\u7950\u4e09',
+                    year=u'2007'),
+             4: audiotools.MetaData(
+                    track_name=u'\u7a7a\u3067\u307e\u307f\u3048\u308b\u795e\u306e\u4ed4\u3089\u3002',
+                    track_number=4,
+                    track_total=7,
+                    album_name=u'\u4e16\u754c\u6a39\u306e\u8ff7\u5baeII \u30d4\u30a2\u30ce\u30b9\u30b1\u30c3\u30c1Ver.',
+                    artist_name=u'\u53e4\u4ee3\u7950\u4e09',
+                    year=u'2007'),
+             5: audiotools.MetaData(
+                    track_name=u'\u96ea\u3068\u6c37\u306e\u54c0\u3057\u307f\u306e\u5148\u3078\u3002',
+                    track_number=5,
+                    track_total=7,
+                    album_name=u'\u4e16\u754c\u6a39\u306e\u8ff7\u5baeII \u30d4\u30a2\u30ce\u30b9\u30b1\u30c3\u30c1Ver.',
+                    artist_name=u'\u53e4\u4ee3\u7950\u4e09',
+                    year=u'2007'),
+             6: audiotools.MetaData(
+                    track_name=u'***Secret Sount***',
+                    track_number=6,
+                    track_total=7,
+                    album_name=u'\u4e16\u754c\u6a39\u306e\u8ff7\u5baeII \u30d4\u30a2\u30ce\u30b9\u30b1\u30c3\u30c1Ver.',
+                    artist_name=u'\u53e4\u4ee3\u7950\u4e09',
+                    year=u'2007'),
+             7: audiotools.MetaData(
+                    track_name=u'\u5192\u967a\u8005\u305f\u3061\u306e\u5b89\u3089\u304e\u306e\u5834\u3002',
+                    track_number=7,
+                    track_total=7,
+                    album_name=u'\u4e16\u754c\u6a39\u306e\u8ff7\u5baeII \u30d4\u30a2\u30ce\u30b9\u30b1\u30c3\u30c1Ver.',
+                    artist_name=u'\u53e4\u4ee3\u7950\u4e09',
+                    year=u'2007')}
+
+        if (lossless):
+            #test musicbrainz, no --metadata
+            time.sleep(1)
+            sub = subprocess.Popen(["track2xmcd","-V","quiet","-D",
+                                    "--musicbrainz-server=musicbrainz.org",
+                                    "--no-freedb"] + arguments,
+                                   stdout=subprocess.PIPE)
+            xml = sub.stdout.read()
+            self.assertEqual(sub.wait(),0)
+            self.assert_(len(xml) > 0)
+            mbxml = audiotools.MusicBrainzReleaseXML.read_data(xml).metadata()
+            self.assertEqual(mbxml,MUSICBRAINZ_METADATA)
+
+            #test freedb, no --metadata
+            sub = subprocess.Popen(["track2xmcd","-V","quiet","-D",
+                                    "--freedb-server=us.freedb.org",
+                                    "--no-musicbrainz"] + arguments,
+                                   stdout=subprocess.PIPE,
+                                   stderr=open(os.devnull,"ab"))
+            xmcd = sub.stdout.read().decode('utf-8','replace')
+            self.assertEqual(sub.wait(),0)
+            self.assert_(len(xmcd) > 0)
+            xmcd = audiotools.XMCD.read_data(xmcd).metadata()
+            self.assertEqual(xmcd,FREEDB_METADATA)
+
+        if (has_metadata):
+            #test musicbrainz, with --metadata
+            sub = subprocess.Popen(["track2xmcd","-V","quiet",
+                                    "--metadata",
+                                    "--no-freedb"] + arguments,
+                                   stdout=subprocess.PIPE,
+                                   stderr=open(os.devnull,"ab"))
+            xml = sub.stdout.read()
+            self.assertEqual(sub.wait(),0)
+            self.assert_(len(xml) > 0)
+            mbxml = audiotools.MusicBrainzReleaseXML.read_data(xml).metadata()
+            self.assertEqual(mbxml,album_metadata)
+
+            #test freedb, with --metadata
+            sub = subprocess.Popen(["track2xmcd","-V","quiet",
+                                    "--metadata",
+                                    "--no-musicbrainz"] + arguments,
+                                   stdout=subprocess.PIPE,
+                                   stderr=open(os.devnull,"ab"))
+            xmcd = sub.stdout.read().decode('utf-8','replace')
+            self.assertEqual(sub.wait(),0)
+            self.assert_(len(xmcd) > 0)
+            xmcd = audiotools.XMCD.read_data(xmcd).metadata()
+            self.assertEqual(xmcd,album_metadata)
+
+    #test individual tracks run through track2xmcd
+    @TEST_EXECUTABLE
+    def test_track2xmcd1(self):
+        album_metadata = audiotools.AlbumMetaData(
+            [audiotools.MetaData(
+                    track_name=u'To the Stage of a New Adventure',
+                    track_number=1,track_total=7,
+                    album_name=u'Sekaiju no MeiQ\xb2 *syoou no seihai* sound track : Piano sketch version',
+                    artist_name=u'Yuzo Koshiro & Yuji Himukai',
+                    year=u'2008'),
+             audiotools.MetaData(
+                    track_name=u'Echoes of a Fierce Battle that Separates Life and Death',
+                    track_number=2,track_total=7,
+                    album_name=u'Sekaiju no MeiQ\xb2 *syoou no seihai* sound track : Piano sketch version',
+                    artist_name=u'Yuzo Koshiro & Yuji Himukai',
+                    year=u'2008'),
+             audiotools.MetaData(
+                    track_name=u'That is the Depths of a Crimson Labyrinth',
+                    track_number=3,track_total=7,
+                    album_name=u'Sekaiju no MeiQ\xb2 *syoou no seihai* sound track : Piano sketch version',
+                    artist_name=u'Yuzo Koshiro & Yuji Himukai',
+                    year=u'2008'),
+             audiotools.MetaData(
+                    track_name=u'The Sons of God Meeting in the Sky',
+                    track_number=4,track_total=7,
+                    album_name=u'Sekaiju no MeiQ\xb2 *syoou no seihai* sound track : Piano sketch version',
+                    artist_name=u'Yuzo Koshiro & Yuji Himukai',
+                    year=u'2008'),
+             audiotools.MetaData(
+                    track_name=u'To a Sorrowful Future of Snow and Ice',
+                    track_number=5,track_total=7,
+                    album_name=u'Sekaiju no MeiQ\xb2 *syoou no seihai* sound track : Piano sketch version',
+                    artist_name=u'Yuzo Koshiro & Yuji Himukai',
+                    year=u'2008'),
+             audiotools.MetaData(
+                    track_name=u'***Secret Sound***',
+                    track_number=6,track_total=7,
+                    album_name=u'Sekaiju no MeiQ\xb2 *syoou no seihai* sound track : Piano sketch version',
+                    artist_name=u'Yuzo Koshiro & Yuji Himukai',
+                    year=u'2008',date=u''),
+              audiotools.MetaData(
+                    track_name=u'A Restful Place for the Adventurers',
+                    track_number=7,track_total=7,
+                    album_name=u'Sekaiju no MeiQ\xb2 *syoou no seihai* sound track : Piano sketch version',
+                    artist_name=u'Yuzo Koshiro & Yuji Himukai',
+                    year=u'2008')])
+
+        trackdir = tempfile.mkdtemp()
+
+        track_files = [tempfile.NamedTemporaryFile(
+                suffix=self.audio_class.SUFFIX) for i in
+                       xrange(5)]
+        try:
+            tracks = [self.audio_class.from_pcm(
+                    os.path.join(trackdir,"track %2.2d.%s" % \
+                                     (i,self.audio_class.SUFFIX)),
+                    EXACT_BLANK_PCM_Reader(frames))
+                      for (i,frames) in
+                      enumerate([7939176, 4799256, 6297480, 5383140,
+                                 5246136, 5052684, 5013876])]
+
+            for (i,track) in enumerate(tracks):
+                track.set_metadata(album_metadata[i + 1])
+            self.__test_track2xmcd__(
+                [track.filename for track in tracks],
+                album_metadata,
+                set([track.lossless() for track in tracks]) == set([True]),
+                None not in [track.get_metadata() for track in tracks])
+        finally:
+            for f in os.listdir(trackdir):
+                os.unlink(os.path.join(trackdir,f))
+            os.rmdir(trackdir)
+
+    #test CD image and cuesheet run through track2xmcd
+    @TEST_EXECUTABLE
+    def test_track2xmcd2(self):
+        track_file = tempfile.NamedTemporaryFile(
+            suffix="." + self.audio_class.SUFFIX)
+        cue_file = tempfile.NamedTemporaryFile(
+            suffix=".toc")
+
+        try:
+            track = self.audio_class.from_pcm(
+                track_file.name,
+                EXACT_BLANK_PCM_Reader(sum([7939176, 4799256, 6297480, 5383140,
+                                            5246136, 5052684, 5013876])))
+
+            #FIXME - AIFF has a stupid race condition
+            #in which calling close() does not guarantee writing to disk
+            #this should be fixed by replacing Python's built-in aifc module
+            time.sleep(1)
+
+            track.set_metadata(audiotools.MetaData(
+                    track_total=7,
+                    album_name=u'Sekaiju no MeiQ\xb2 *syoou no seihai* sound track : Piano sketch version',
+                    artist_name=u'Yuzo Koshiro & Yuji Himukai',
+                    year=u'2008'))
+            cue_file.write(
+"""QlpoOTFBWSZTWbyn4AMAALXfgAAQUAH/8C9v3qCsCBWAMAEtkBGpGg9Q0ZAAAAAaaBFAAMhpoAAE
+fqlBTYpmJBoGQxpqHlFvwqjDgECCIriA1AeSphpbRItLIsgKQGZkDM34D22RH5MTDiYwcDQ4GZSe
+ZhfWe0omZRIIIIOMJlzMzqQS4YDXOeWlICCr0cvBeYADTSHABVTJajiYELoVgw2FKlIXBWIwzKWg
+zbRFFkTFETNfdPx1Pk9ISZmJvoOJSUdoProZFRcWFZ2Opug5lRkdILi8tgqgpgrMzMxOZ4l5dC0k
+uhhDdCiCwqg2Gw3lphgaGhoamR+mptKYNT/F3JFOFCQvKfgAwA==""".decode('base64').decode('bz2'))
+            cue_file.flush()
+            self.__test_track2xmcd__(
+                ["--cue",cue_file.name,track.filename],
+                audiotools.AlbumMetaData([
+                        audiotools.MetaData(
+                            track_number=1,
+                            track_total=7,
+                            album_name=u'Sekaiju no MeiQ\xb2 *syoou no seihai* sound track : Piano sketch version',
+                            artist_name=u'Yuzo Koshiro & Yuji Himukai',
+                            year=u'2008'),
+                        audiotools.MetaData(
+                            track_number=2,
+                            track_total=7,
+                            album_name=u'Sekaiju no MeiQ\xb2 *syoou no seihai* sound track : Piano sketch version',
+                            artist_name=u'Yuzo Koshiro & Yuji Himukai',
+                            year=u'2008'),
+                        audiotools.MetaData(
+                            track_number=3,
+                            track_total=7,
+                            album_name=u'Sekaiju no MeiQ\xb2 *syoou no seihai* sound track : Piano sketch version',
+                            artist_name=u'Yuzo Koshiro & Yuji Himukai',
+                            year=u'2008'),
+                        audiotools.MetaData(
+                            track_number=4,
+                            track_total=7,
+                            album_name=u'Sekaiju no MeiQ\xb2 *syoou no seihai* sound track : Piano sketch version',
+                            artist_name=u'Yuzo Koshiro & Yuji Himukai',
+                            year=u'2008'),
+                        audiotools.MetaData(
+                            track_number=5,
+                            track_total=7,
+                            album_name=u'Sekaiju no MeiQ\xb2 *syoou no seihai* sound track : Piano sketch version',
+                            artist_name=u'Yuzo Koshiro & Yuji Himukai',
+                            year=u'2008'),
+                        audiotools.MetaData(
+                            track_number=6,
+                            track_total=7,
+                            album_name=u'Sekaiju no MeiQ\xb2 *syoou no seihai* sound track : Piano sketch version',
+                            artist_name=u'Yuzo Koshiro & Yuji Himukai',
+                            year=u'2008'),audiotools.MetaData(
+                            track_number=7,
+                            track_total=7,
+                            album_name=u'Sekaiju no MeiQ\xb2 *syoou no seihai* sound track : Piano sketch version',
+                            artist_name=u'Yuzo Koshiro & Yuji Himukai',
+                            year=u'2008')]),
+                track.lossless(),
+                track.get_metadata() is not None)
+        finally:
+            track_file.close()
+            cue_file.close()
+
+    #test CD image with embedded cuesheet run through track2xmcd
+    @TEST_EXECUTABLE
+    def test_track2xmcd3(self):
+        import audiotools.toc
+
+        track_file = tempfile.NamedTemporaryFile(
+            suffix="." + self.audio_class.SUFFIX)
+
+        try:
+            track = self.audio_class.from_pcm(
+                track_file.name,
+                EXACT_BLANK_PCM_Reader(sum([7939176, 4799256, 6297480, 5383140,
+                                            5246136, 5052684, 5013876])))
+
+            #FIXME - AIFF has a stupid race condition
+            #in which calling close() does not guarantee writing to disk
+            #this should be fixed by replacing Python's built-in aifc module
+            time.sleep(1)
+
+            track.set_metadata(audiotools.MetaData(
+                    track_total=7,
+                    album_name=u'Sekaiju no MeiQ\xb2 *syoou no seihai* sound track : Piano sketch version',
+                    artist_name=u'Yuzo Koshiro & Yuji Himukai',
+                    year=u'2008'))
+            track.set_cuesheet(audiotools.toc.parse(
+                    cStringIO.StringIO("""QlpoOTFBWSZTWbyn4AMAALXfgAAQUAH/8C9v3qCsCBWAMAEtkBGpGg9Q0ZAAAAAaaBFAAMhpoAAE
+fqlBTYpmJBoGQxpqHlFvwqjDgECCIriA1AeSphpbRItLIsgKQGZkDM34D22RH5MTDiYwcDQ4GZSe
+ZhfWe0omZRIIIIOMJlzMzqQS4YDXOeWlICCr0cvBeYADTSHABVTJajiYELoVgw2FKlIXBWIwzKWg
+zbRFFkTFETNfdPx1Pk9ISZmJvoOJSUdoProZFRcWFZ2Opug5lRkdILi8tgqgpgrMzMxOZ4l5dC0k
+uhhDdCiCwqg2Gw3lphgaGhoamR+mptKYNT/F3JFOFCQvKfgAwA==""".decode('base64').decode('bz2')).readlines()))
+            if (track.get_cuesheet() is None):
+                return
+
+            self.__test_track2xmcd__(
+                [track.filename],
+                audiotools.AlbumMetaData([
+                        audiotools.MetaData(
+                            track_number=1,
+                            track_total=7,
+                            album_name=u'Sekaiju no MeiQ\xb2 *syoou no seihai* sound track : Piano sketch version',
+                            artist_name=u'Yuzo Koshiro & Yuji Himukai',
+                            year=u'2008'),
+                        audiotools.MetaData(
+                            track_number=2,
+                            track_total=7,
+                            album_name=u'Sekaiju no MeiQ\xb2 *syoou no seihai* sound track : Piano sketch version',
+                            artist_name=u'Yuzo Koshiro & Yuji Himukai',
+                            year=u'2008'),
+                        audiotools.MetaData(
+                            track_number=3,
+                            track_total=7,
+                            album_name=u'Sekaiju no MeiQ\xb2 *syoou no seihai* sound track : Piano sketch version',
+                            artist_name=u'Yuzo Koshiro & Yuji Himukai',
+                            year=u'2008'),
+                        audiotools.MetaData(
+                            track_number=4,
+                            track_total=7,
+                            album_name=u'Sekaiju no MeiQ\xb2 *syoou no seihai* sound track : Piano sketch version',
+                            artist_name=u'Yuzo Koshiro & Yuji Himukai',
+                            year=u'2008'),
+                        audiotools.MetaData(
+                            track_number=5,
+                            track_total=7,
+                            album_name=u'Sekaiju no MeiQ\xb2 *syoou no seihai* sound track : Piano sketch version',
+                            artist_name=u'Yuzo Koshiro & Yuji Himukai',
+                            year=u'2008'),
+                        audiotools.MetaData(
+                            track_number=6,
+                            track_total=7,
+                            album_name=u'Sekaiju no MeiQ\xb2 *syoou no seihai* sound track : Piano sketch version',
+                            artist_name=u'Yuzo Koshiro & Yuji Himukai',
+                            year=u'2008'),audiotools.MetaData(
+                            track_number=7,
+                            track_total=7,
+                            album_name=u'Sekaiju no MeiQ\xb2 *syoou no seihai* sound track : Piano sketch version',
+                            artist_name=u'Yuzo Koshiro & Yuji Himukai',
+                            year=u'2008')]),
+                track.lossless(),
+                track.get_metadata() is not None)
+        finally:
+            track_file.close()
+
 
     @TEST_EXECUTABLE
     def test_track2track_invalid(self):
@@ -6765,8 +7167,6 @@ class TestTrack2XMLMusicBrainz(TestTextOutput):
 
     @TEST_EXECUTABLE
     def test_track2xmcd(self):
-        import time
-
         self.assertEqual(self.__run_app__(["track2xmcd"]),1)
         self.__check_error__(_(u"You must specify at least 1 supported audio file"))
 
