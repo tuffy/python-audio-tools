@@ -64,6 +64,13 @@ if (__name__ == '__main__'):
                       dest='metadata',default=False,
                       help=_(u'pull metadata from tracks rather than from server'))
 
+    parser.add_option('--cue',
+                      action='store',
+                      type='string',
+                      dest='cuesheet',
+                      metavar='FILENAME',
+                      help=_(u'the cuesheet to use for track boundaries'))
+
     parser.add_option('-D','--default',
                       action='store_const',const=1,default=None,
                       help=_(u'when multiple choices are available, select the first one automatically'))
@@ -108,27 +115,58 @@ if (__name__ == '__main__'):
         else:
             output_class = audiotools.XMCD
 
-        if ((len(audiofiles) == 1) and
-            (audiofiles[0].get_cuesheet() is not None)):
-            outfile.write(output_class.from_cuesheet(
-                    audiofiles[0].get_cuesheet(),
-                    audiofiles[0].total_frames(),
-                    audiofiles[0].sample_rate(),
-                    audiofiles[0].get_metadata()).build())
+        if (len(audiofiles) == 1):
+            if (options.cuesheet is not None):
+                try:
+                    outfile.write(output_class.from_cuesheet(
+                            audiotools.read_sheet(options.cuesheet),
+                            audiofiles[0].total_frames(),
+                            audiofiles[0].sample_rate(),
+                            audiofiles[0].get_metadata()).build())
+                except audiotools.SheetException,err:
+                    msg.error(unicode(err))
+                    sys.exit(1)
+            elif (audiofiles[0].get_cuesheet() is not None):
+                outfile.write(output_class.from_cuesheet(
+                        audiofiles[0].get_cuesheet(),
+                        audiofiles[0].total_frames(),
+                        audiofiles[0].sample_rate(),
+                        audiofiles[0].get_metadata()).build())
+            else:
+                outfile.write(output_class.from_files(audiofiles).build())
         else:
             outfile.write(output_class.from_files(audiofiles).build())
     else:                     #grab XML/XMCD data from MusicBrainz/FreeDB
-        if ((len(audiofiles) == 1) and
-            (audiofiles[0].get_cuesheet() is not None)):
+        if (len(audiofiles) == 1):
             file = audiofiles[0]
+            if (file.get_cuesheet() is not None):
+                musicbrainz_discid = audiotools.MBDiscID(
+                    [(length * 75) / file.sample_rate() for length in
+                     file.get_cuesheet().pcm_lengths(file.total_frames())])
 
-            musicbrainz_discid = audiotools.MBDiscID(
-                [(length * 75) / file.sample_rate() for length in
-                 file.get_cuesheet().pcm_lengths(file.total_frames())])
+                freedb_discid = audiotools.DiscID(
+                    [(length * 75) / file.sample_rate() for length in
+                     file.get_cuesheet().pcm_lengths(file.total_frames())])
+            elif (options.cuesheet is not None):
+                try:
+                    cuesheet = audiotools.read_sheet(options.cuesheet)
+                except audiotools.SheetException,err:
+                    msg.error(unicode(err))
+                    sys.exit(1)
 
-            freedb_discid = audiotools.DiscID(
-                [(length * 75) / file.sample_rate() for length in
-                 file.get_cuesheet().pcm_lengths(file.total_frames())])
+                musicbrainz_discid = audiotools.MBDiscID(
+                    [(length * 75) / file.sample_rate() for length in
+                     cuesheet.pcm_lengths(file.total_frames())])
+
+                freedb_discid = audiotools.DiscID(
+                    [(length * 75) / file.sample_rate() for length in
+                     cuesheet.pcm_lengths(file.total_frames())])
+            else:
+                musicbrainz_discid = audiotools.MBDiscID(
+                    [file.cd_frames() for file in audiofiles])
+
+                freedb_discid = audiotools.DiscID(
+                    [file.cd_frames() for file in audiofiles])
         else:
             musicbrainz_discid = audiotools.MBDiscID(
                 [file.cd_frames() for file in audiofiles])

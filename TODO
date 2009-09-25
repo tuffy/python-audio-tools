@@ -466,4 +466,13 @@
    for storing MusicBrainz-specific tag data such as album ID.
    However, I am wary of supporting this level of meta-metadata
    that's not directly applicable to the track.
+* TODO Add --cue option to track2xmcd
+  One should be able to pull metadata from CD images
+  without having to embed the cuesheet.
+** TODO Add unit tests for track2xmcd's --cue option
+** TODO Update man page
+* TODO Group --help output more intelligently
+  For tools with a large number of options (such as track2track or tracktag)
+  the --help output is particularly jumbled.
+  Use more of optparse's features to make this output clearer.
 
