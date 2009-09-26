@@ -65,6 +65,13 @@ if (__name__ == '__main__'):
         _(u'%prog [options] [-d directory] <track>'),
         version="Python Audio Tools %s" % (audiotools.VERSION))
 
+    parser.add_option('-V','--verbose',
+                      action='store',
+                      dest='verbosity',
+                      choices=["quiet","normal","debug"],
+                      default="normal",
+                      help=_(u'the verbosity level to execute at'))
+
     parser.add_option('--cue',
                       action='store',
                       type='string',
@@ -72,67 +79,68 @@ if (__name__ == '__main__'):
                       metavar='FILENAME',
                       help=_(u'the cuesheet to use for splitting track'))
 
-    parser.add_option('-t','--type',
-                      action='store',
-                      dest='type',
-                      choices=audiotools.TYPE_MAP.keys(),
-                      help=_(u'the type of audio value to convert to'))
+    conversion = audiotools.OptionGroup(parser,_(u"Conversion Options"))
 
-    parser.add_option('-q','--quality',
-                      action='store',
-                      type='string',
-                      dest='quality',
-                      help=_(u'the quality to store audio values at'))
+    conversion.add_option('-t','--type',
+                          action='store',
+                          dest='type',
+                          choices=audiotools.TYPE_MAP.keys(),
+                          help=_(u'the type of audio track to convert to'))
 
-    parser.add_option('-x','--xmcd',
-                      action='store',
-                      type='string',
-                      dest='xmcd',
-                      metavar='FILENAME',
-                      help=_(u'FreeDB XMCD file or MusicBrainz XML file'))
+    conversion.add_option('-q','--quality',
+                          action='store',
+                          type='string',
+                          dest='quality',
+                          help=_(u'the quality to store audio tracks at'))
 
-    parser.add_option('-d','--dir',
-                      action='store',
-                      type='string',
-                      dest='dir',
-                      default='.',
-                      help=_(u'the directory to store converted audio files'))
+    conversion.add_option('-d','--dir',
+                          action='store',
+                          type='string',
+                          dest='dir',
+                          default='.',
+                          help=_(u'the directory to store converted audio tracks'))
 
-    parser.add_option('--format',
-                      action='store',
-                      type='string',
-                      default=audiotools.FILENAME_FORMAT,
-                      dest='format',
-                      help=_(u'the format string for new filenames'))
+    conversion.add_option('--format',
+                          action='store',
+                          type='string',
+                          default=audiotools.FILENAME_FORMAT,
+                          dest='format',
+                          help=_(u'the format string for new filenames'))
 
-    parser.add_option('-j','--joint',
-                      action='store',
-                      type='int',
-                      default=MAX_CPUS,
-                      dest='max_processes',
-                      help=_(u'the maximum number of processes to run at a time'))
+    conversion.add_option('-j','--joint',
+                          action='store',
+                          type='int',
+                          default=MAX_CPUS,
+                          dest='max_processes',
+                          help=_(u'the maximum number of processes to run at a time'))
+
+    parser.add_option_group(conversion)
+
+    metadata = audiotools.OptionGroup(parser,_(u"Metadata Options"))
+
+    metadata.add_option('-x','--xmcd',
+                          action='store',
+                          type='string',
+                          dest='xmcd',
+                          metavar='FILENAME',
+                          help=_(u'FreeDB XMCD file or MusicBrainz XML file'))
 
     #if adding ReplayGain is a lossless process
     #(i.e. added as tags rather than modifying track data)
     #add_replay_gain should default to True
     #if not, add_replay_gain should default to False
     #which is which depends on the track type
-    parser.add_option('--replay-gain',
-                      action='store_true',
-                      dest='add_replay_gain',
-                      help=_(u'add ReplayGain metadata to newly created tracks'))
+    metadata.add_option('--replay-gain',
+                        action='store_true',
+                        dest='add_replay_gain',
+                        help=_(u'add ReplayGain metadata to newly created tracks'))
 
-    parser.add_option('--no-replay-gain',
+    metadata.add_option('--no-replay-gain',
                       action='store_false',
                       dest='add_replay_gain',
                       help=_(u'do not add ReplayGain metadata to newly extracted tracks'))
 
-    parser.add_option('-V','--verbose',
-                      action='store',
-                      dest='verbosity',
-                      choices=["quiet","normal","debug"],
-                      default="normal",
-                      help=_(u'the verbosity level to execute at'))
+    parser.add_option_group(metadata)
 
     (options,args) = parser.parse_args()
     msg = audiotools.Messenger("tracksplit",options)

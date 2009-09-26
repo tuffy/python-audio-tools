@@ -25,6 +25,36 @@ This option will erase
 .I all
 existing metadata and replace it with any specified values.
 .TP
+\fB-x \fIfilename\fB, --xmcd=\fIfilename\fR
+A MusicBrainz XML file or FreeDB XMCD file to use for metadata
+for the tracks to be retagged.
+XML and XMCD files can be obtained from the
+.BR track2xmcd (1)
+,
+.BR cd2xmcd (1)
+and
+.BR editxmcd (1)
+programs.
+.TP
+\fB--cue=\fIfilename\fR
+A cuesheet or
+.BR cdrdao (1)
+TOC file.
+If given along with multiple audio tracks, this file's ISRC metadata will
+be added to those tracks.
+If given with a single CD image track, this file's cuesheet will
+be embedded in that image.
+Note that only FLAC and WavPack currently support embedded cuesheets
+and not all CDs contain ISRC metadata.
+.TP
+\fB--replay-gain\fR
+Adds ReplayGain metadata to the track.
+.TP
+\fB-V \fIVERBOSITY\fB, --verbose=\fIVERBOSITY\fR
+The level of output to display.
+Choose between `normal', `quiet' and `debug'.
+.SH TEXT OPTIONS
+.TP
 \fB--name=\fITRACK NAME\fR
 The file's track name
 .TP
@@ -82,28 +112,7 @@ Comment text
 \fB--comment-file=\fIFILENAME\fR
 A file containing UTF-8-encoded text to use for the audio track's
 comment metadata.
-.TP
-\fB-x \fIfilename\fB, --xmcd=\fIfilename\fR
-A MusicBrainz XML file or FreeDB XMCD file to use for metadata
-for the tracks to be retagged.
-XML and XMCD files can be obtained from the
-.BR track2xmcd (1)
-,
-.BR cd2xmcd (1)
-and
-.BR editxmcd (1)
-programs.
-.TP
-\fB--cue=\fIfilename\fR
-A cuesheet or
-.BR cdrdao (1)
-TOC file.
-If given along with multiple audio tracks, this file's ISRC metadata will
-be added to those tracks.
-If given with a single CD image track, this file's cuesheet will
-be embedded in that image.
-Note that only FLAC and WavPack currently support embedded cuesheets
-and not all CDs contain ISRC metadata.
+.SH IMAGE OPTIONS
 .TP
 \fB--remove-images\fR
 Remove existing images prior to adding new ones.
@@ -122,14 +131,6 @@ Adds the given image file to the track as media.
 .TP
 \fB--other-image=\fIfilename\fR
 Adds the given image file to the track.
-.TP
-\fB--replay-gain\fR
-Adds ReplayGain metadata to the track.
-.TP
-\fB-V \fIVERBOSITY\fB, --verbose=\fIVERBOSITY\fR
-The level of output to display.
-Choose between `normal', `quiet' and `debug'.
-
 .SH EXAMPLES
 .LP
 Update \fItrack.flac\fR to be track number 5 and have a

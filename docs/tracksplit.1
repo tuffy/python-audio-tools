@@ -14,6 +14,10 @@ Show a list of options and exit
 \fB--version\fR
 Show the program's version and exit
 .TP
+\fB-V \fIVERBOSITY\fB, --verbose=\fIVERBOSITY\fR
+The level of output to display.
+Choose between `normal', `quiet' and `debug'.
+.TP
 \fB--cue=\fIfilename\fR
 A cuesheet or
 .BR cdrdao (1)
@@ -21,6 +25,7 @@ TOC file to use for splitting.
 This file contains a series of track length indices which indicate
 the length of each sub-track.
 FLAC or WavPack files with embedded cuesheets may omit this argument.
+.SH CONVERSION OPTIONS
 .TP
 \fB-t \fItype\fB, --type=\fItype\fR
 The audio format to convert the split tracks to.
@@ -33,17 +38,6 @@ The desired quality of the split tracks.
 For a list of available quality modes for a given format, try:
 .B \-q
 .B help
-.TP
-\fB-x \fIfilename\fB, --xmcd=\fIfilename\fR
-A MusicBrainz XML file or FreeDB XMCD file to use for metadata
-for the split tracks.
-XML and XMCD files can be obtained from the
-.BR track2xmcd (1)
-,
-.BR cd2xmcd (1)
-and
-.BR editxmcd (1)
-programs.
 .TP
 \fB-d \fIdirectory\fB, --dir=\fIdirectory\fR
 The target directory for the split tracks.
@@ -64,16 +58,24 @@ The maximum number of tracks to extract at one time.
 If one has multiple CPUs or CPU cores, allowing
 .BR tracksplit (1)
 to use all of them simultaneously can greatly increase splitting speed.
+.SH METADATA OPTIONS
+.TP
+\fB-x \fIfilename\fB, --xmcd=\fIfilename\fR
+A MusicBrainz XML file or FreeDB XMCD file to use for metadata
+for the split tracks.
+XML and XMCD files can be obtained from the
+.BR track2xmcd (1)
+,
+.BR cd2xmcd (1)
+and
+.BR editxmcd (1)
+programs.
 .TP
 \fB--replay-gain\fR
 Add ReplayGain metadata to newly created tracks
 .TP
 \fB--no-replay-gain\fR
 Do not add ReplayGain metadata to newly split tracks
-.TP
-\fB-V \fIVERBOSITY\fB, --verbose=\fIVERBOSITY\fR
-The level of output to display.
-Choose between `normal', `quiet' and `debug'.
 .SH EXAMPLES
 .LP
 Split \fICDImage.wav\fR into several WAVE files using the cuesheet

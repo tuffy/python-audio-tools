@@ -19,6 +19,10 @@ Show a list of options and exit
 \fB--version\fR
 Show the program's version and exit
 .TP
+\fB-V \fIVERBOSITY\fB, --verbose=\fIVERBOSITY\fR
+The level of output to display.
+Choose between `normal', `quiet' and `debug'.
+.TP
 \fB-x \fIfilename\fB, --xmcd=\fIfilename\fR
 The file in which MusicBrainz XML or FreeDB XMCD data will be placed.
 .BR cd2xmcd (1)
@@ -28,6 +32,7 @@ standard output.
 .TP
 \fB-c \fIcdrom\fB, --cdrom=\fIcdrom\fR
 The cdrom device to read CD information from
+.SH SERVER OPTIONS
 .TP
 \fB--musicbrainz-server=\fIserver\fR
 The MusicBrainz server name to query for XML data
@@ -49,10 +54,6 @@ Do not query FreeDB
 .TP
 \fB-D, --default\fR
 If multiple matching discs are found, select the first choice automatically
-.TP
-\fB-V \fIVERBOSITY\fB, --verbose=\fIVERBOSITY\fR
-The level of output to display.
-Choose between `normal', `quiet' and `debug'.
 
 .SH EXAMPLE
 .LP

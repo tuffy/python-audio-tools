@@ -347,6 +347,16 @@
   without having to embed the cuesheet.
 ** DONE Add unit tests for track2xmcd's --cue option
 ** DONE Update man page
+* DONE Group --help output more intelligently
+  For tools with a large number of options (such as track2track or tracktag)
+  the --help output is particularly jumbled.
+  Use more of optparse's features to make this output clearer.
+- [X] cd2track
+- [X] cd2xmcd
+- [X] track2track
+- [X] track2xmcd
+- [X] tracksplit
+- [X] tracktag
 * TODO Ensure non-image cuesheets are handled properly
   There are 4 different types of cuesheets,
   1 single file type and 3 different multiple file variants.
@@ -471,9 +481,5 @@
    for storing MusicBrainz-specific tag data such as album ID.
    However, I am wary of supporting this level of meta-metadata
    that's not directly applicable to the track.
-* TODO Group --help output more intelligently
-  For tools with a large number of options (such as track2track or tracktag)
-  the --help output is particularly jumbled.
-  Use more of optparse's features to make this output clearer.
 * TODO Fix or replace Python's built-in aifc module
   The current implementation suffers from bugs.

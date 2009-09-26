@@ -132,6 +132,8 @@ class OptionParser(optparse.OptionParser):
     def _get_encoding(self,file):
         return IO_ENCODING
 
+OptionGroup = optparse.OptionGroup
+
 def Messenger(executable, options):
     if (not hasattr(options,"verbosity")):
         return VerboseMessenger(executable)
@@ -1873,7 +1875,7 @@ def read_sheet(filename):
 
     try:
         #try TOC first, since its CD_DA header makes it easier to spot
-        return toc.read_tofile(filename)
+        return toc.read_tocfile(filename)
     except SheetException:
         return cue.read_cuesheet(filename)
 

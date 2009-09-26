@@ -17,11 +17,16 @@ Show a list of options and exit
 \fB--version\fR
 Show the program's version and exit
 .TP
+\fB-V \fIVERBOSITY\fB, --verbose=\fIVERBOSITY\fR
+The level of output to display.
+Choose between `normal', `quiet' and `debug'.
+.TP
 \fB-c \fIcdrom\fB, --cdrom=\fIcdrom\fR
 The cdrom device to extract tracks from
 .TP
 \fB-s \fIspeed\fB, --speed=\fIspeed\fR
 The speed in which to read CD data at
+.SH CONVERSION OPTIONS
 .TP
 \fB-t \fItype\fB, --type=\fItype\fR
 The audio format to extract the given tracks to.
@@ -34,16 +39,6 @@ The desired quality of the extracted tracks.
 For a list of available quality modes for a given format, try:
 .B \-q
 .B help
-.TP
-\fB-x \fIfilename\fB, --xmcd=\fIfilename\fR
-The XMCD file to use for metadata for the extracted tracks.
-XMCD files can be obtained from the
-.BR track2xmcd (1)
-,
-.BR cd2xmcd (1)
-and
-.BR editxmcd (1)
-programs.
 .TP
 \fB-d \fIdirectory\fB, --dir=\fIdirectory\fR
 The target directory for the converted tracks.
@@ -58,6 +53,17 @@ The format string to use for new filenames.
 Template fields are replaced with metadata values when new tracks are created.
 All other text is left as-is.
 If this option is omitted, a default format string is used.
+.SH METADATA OPTIONS
+.TP
+\fB-x \fIfilename\fB, --xmcd=\fIfilename\fR
+The XMCD file to use for metadata for the extracted tracks.
+XMCD files can be obtained from the
+.BR track2xmcd (1)
+,
+.BR cd2xmcd (1)
+and
+.BR editxmcd (1)
+programs.
 .TP
 \fB--album-number=\fInumber\fR
 The album number of this CD, if it is one of a series of albums.
@@ -73,10 +79,6 @@ ReplayGain is added automatically by default
 when it is implemented by inserting a metadata tag.
 When ReplayGain is implemented by modifying audio data,
 it is not added automatically and must be explicitly enabled.
-.TP
-\fB-V \fIVERBOSITY\fB, --verbose=\fIVERBOSITY\fR
-The level of output to display.
-Choose between `normal', `quiet' and `debug'.
 
 .SH EXAMPLE
 .LP

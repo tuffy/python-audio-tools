@@ -105,120 +105,124 @@ if (__name__ == '__main__'):
         usage=_(u"%prog [options] [-x XMCD file] <track 1> [track 2] ..."),
         version="Python Audio Tools %s" % (audiotools.VERSION))
 
-    parser.add_option('--name',
-                      action='store',
-                      type='string',
-                      dest='track_name',
-                      help=_(u"the name of the track"))
+    text_group = audiotools.OptionGroup(parser,_(u"Text Options"))
 
-    parser.add_option('--artist',
+    text_group.add_option('--name',
+                          action='store',
+                          type='string',
+                          dest='track_name',
+                          help=_(u"the name of the track"))
+
+    text_group.add_option('--artist',
                       action='store',
                       type='string',
                       dest='artist_name',
                       help=_(u'the name of the artist'))
 
-    parser.add_option('--performer',
+    text_group.add_option('--performer',
                       action='store',
                       type='string',
                       dest='performer_name',
                       help=_(u'the name of the performer'))
 
-    parser.add_option('--composer',
+    text_group.add_option('--composer',
                       action='store',
                       type='string',
                       dest='composer_name',
                       help=_(u'the name of the composer'))
 
-    parser.add_option('--conductor',
+    text_group.add_option('--conductor',
                       action='store',
                       type='string',
                       dest='conductor_name',
                       help=_(u'the name of the conductor'))
 
-    parser.add_option('--album',
+    text_group.add_option('--album',
                       action='store',
                       type='string',
                       dest='album_name',
                       help=_(u'the name of the album'))
 
-    parser.add_option('--catalog',
+    text_group.add_option('--catalog',
                       action='store',
                       type='string',
                       dest='catalog',
                       help=_(u'the catalog number of the album'))
 
-    parser.add_option('--number',
+    text_group.add_option('--number',
                       action='store',
                       type='int',
                       dest='track_number',
                       help=_(u"the number of the track in the album"))
 
-    parser.add_option('--track-total',
+    text_group.add_option('--track-total',
                        action='store',
                       type='int',
                       dest='track_total',
                       help=_(u"the total number of tracks in the album"))
 
-    parser.add_option('--album-number',
+    text_group.add_option('--album-number',
                       action='store',
                       type='int',
                       dest='album_number',
                       help=_(u'the number of the album in a set of albums'))
 
-    parser.add_option('--album-total',
+    text_group.add_option('--album-total',
                        action='store',
                       type='int',
                       dest='album_total',
                       help=_(u"the total number of albums in a set of albums"))
 
-    parser.add_option('--ISRC',
+    text_group.add_option('--ISRC',
                       action='store',
                       type='string',
                       dest='ISRC',
                       help=_(u'the ISRC of the track'))
 
-    parser.add_option('--publisher',
+    text_group.add_option('--publisher',
                       action='store',
                       type='string',
                       dest='publisher',
                       help=_(u'the publisher of the album'))
 
-    parser.add_option('--media-type',
+    text_group.add_option('--media-type',
                       action='store',
                       type='string',
                       dest='media_type',
                       help=_(u'the media type of the album, such as "CD"'))
 
-    parser.add_option('--year',
+    text_group.add_option('--year',
                       action='store',
                       type='string',
                       dest='year',
                       help=_(u'the year of release'))
 
-    parser.add_option('--date',
+    text_group.add_option('--date',
                       action='store',
                       type='string',
                       dest='date',
                       help=_(u'the date of recording'))
 
-    parser.add_option('--copyright',
+    text_group.add_option('--copyright',
                       action='store',
                       type='string',
                       dest='copyright',
                       help=_(u'copyright information'))
 
-    parser.add_option('--comment',
+    text_group.add_option('--comment',
                       action='store',
                       type='string',
                       dest='comment',
                       help=_(u'a text comment'))
 
-    parser.add_option('--comment-file',
+    text_group.add_option('--comment-file',
                       action='store',
                       type='string',
                       dest='comment_file',
                       metavar='FILENAME',
                       help=_(u'a file containing comment text'))
+
+    parser.add_option_group(text_group)
 
     parser.add_option('-r','--replace',
                       action='store_true',
@@ -240,46 +244,50 @@ if (__name__ == '__main__'):
                       metavar='FILENAME',
                       help=_(u'a cuesheet to import or get audio metadata from'))
 
-    parser.add_option('--remove-images',
-                      action='store_true',
-                      default=False,
-                      dest='remove_images',
-                      help=_(u'remove existing images prior to adding new ones'))
+    img_group = audiotools.OptionGroup(parser,_(u"Image Options"))
 
-    parser.add_option('--front-cover',
-                      action='append',
-                      type='string',
-                      dest='front_cover',
-                      metavar='FILENAME',
-                      help=_(u'an image file of the front cover'))
+    img_group.add_option('--remove-images',
+                         action='store_true',
+                         default=False,
+                         dest='remove_images',
+                         help=_(u'remove existing images prior to adding new ones'))
 
-    parser.add_option('--back-cover',
-                      action='append',
-                      type='string',
-                      dest='back_cover',
-                      metavar='FILENAME',
-                      help=_(u'an image file of the back cover'))
+    img_group.add_option('--front-cover',
+                         action='append',
+                         type='string',
+                         dest='front_cover',
+                         metavar='FILENAME',
+                         help=_(u'an image file of the front cover'))
 
-    parser.add_option('--leaflet',
-                      action='append',
-                      type='string',
-                      dest='leaflet',
-                      metavar='FILENAME',
-                      help=_(u'an image file of a leaflet page'))
+    img_group.add_option('--back-cover',
+                         action='append',
+                         type='string',
+                         dest='back_cover',
+                         metavar='FILENAME',
+                         help=_(u'an image file of the back cover'))
 
-    parser.add_option('--media',
-                      action='append',
-                      type='string',
-                      dest='media',
-                      metavar='FILENAME',
-                      help=_(u'an image file of the media'))
+    img_group.add_option('--leaflet',
+                         action='append',
+                         type='string',
+                         dest='leaflet',
+                         metavar='FILENAME',
+                         help=_(u'an image file of a leaflet page'))
 
-    parser.add_option('--other-image',
-                      action='append',
-                      type='string',
-                      dest='other_image',
-                      metavar='FILENAME',
-                      help=_(u'an image file related to the track'))
+    img_group.add_option('--media',
+                         action='append',
+                         type='string',
+                         dest='media',
+                         metavar='FILENAME',
+                         help=_(u'an image file of the media'))
+
+    img_group.add_option('--other-image',
+                         action='append',
+                         type='string',
+                         dest='other_image',
+                         metavar='FILENAME',
+                         help=_(u'an image file related to the track'))
+
+    parser.add_option_group(img_group)
 
     parser.add_option('--replay-gain',
                       action='store_true',

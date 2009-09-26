@@ -29,6 +29,14 @@ if (__name__ == '__main__'):
     parser = audiotools.OptionParser(
         usage=_(u"%prog [-x filename] [--cdrom CDROM device]"),
         version="Python Audio Tools %s" % (audiotools.VERSION))
+
+    parser.add_option('-V','--verbose',
+                      action='store',
+                      dest='verbosity',
+                      choices=["quiet","normal","debug"],
+                      default="normal",
+                      help=_(u'the verbosity level to execute at'))
+
     parser.add_option('-x','--xmcd',action='store',
                       type='string',dest='xmcd',default='-',
                       metavar='FILENAME',
@@ -38,41 +46,38 @@ if (__name__ == '__main__'):
                       type='string',dest='cdrom',
                       default=audiotools.DEFAULT_CDROM)
 
-    parser.add_option('--musicbrainz-server',action='store',
+    server = audiotools.OptionGroup(parser,_(u"Server Options"))
+
+    server.add_option('--musicbrainz-server',action='store',
                       type='string',dest='musicbrainz_server',
                       default=audiotools.MUSICBRAINZ_SERVER,
                       metavar='HOSTNAME')
-    parser.add_option('--musicbrainz-port',action='store',
+    server.add_option('--musicbrainz-port',action='store',
                       type='int',dest='musicbrainz_port',
                       default=audiotools.MUSICBRAINZ_PORT,
                       metavar='PORT')
 
-    parser.add_option('--freedb-server',action='store',
+    server.add_option('--freedb-server',action='store',
                       type='string',dest='freedb_server',
                       default=audiotools.FREEDB_SERVER,
                       metavar='HOSTNAME')
-    parser.add_option('--freedb-port',action='store',
+    server.add_option('--freedb-port',action='store',
                       type='int',dest='freedb_port',
                       default=audiotools.FREEDB_PORT,
                       metavar='PORT')
 
-    parser.add_option('--no-musicbrainz',action='store_false',
+    server.add_option('--no-musicbrainz',action='store_false',
                       dest='use_musicbrainz',default=True,
                       help='do not query MusicBrainz for metadata')
-    parser.add_option('--no-freedb',action='store_false',
+    server.add_option('--no-freedb',action='store_false',
                       dest='use_freedb',default=True,
                       help='do not query FreeDB for metadata')
 
-    parser.add_option('-D','--default',
+    server.add_option('-D','--default',
                       action='store_const',const=1,default=None,
                       help=_(u'when multiple choices are available, select the first one automatically'))
 
-    parser.add_option('-V','--verbose',
-                      action='store',
-                      dest='verbosity',
-                      choices=["quiet","normal","debug"],
-                      default="normal",
-                      help=_(u'the verbosity level to execute at'))
+    parser.add_option_group(server)
 
     (options,args) = parser.parse_args()
     msg = audiotools.Messenger("cd2xmcd",options)

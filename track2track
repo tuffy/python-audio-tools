@@ -104,56 +104,63 @@ if (__name__ == '__main__'):
         usage=_(u'%prog [options] <track 1> [track 2] ...'),
         version="Python Audio Tools %s" % (audiotools.VERSION))
 
-    parser.add_option('-t','--type',
-                      action='store',
-                      dest='type',
-                      choices=audiotools.TYPE_MAP.keys(),
-                      help=_(u'the type of audio value to convert to'))
+    conversion = audiotools.OptionGroup(parser,_(u"Conversion Options"))
 
-    parser.add_option('-q','--quality',
+    conversion.add_option('-t','--type',
+                          action='store',
+                          dest='type',
+                          choices=audiotools.TYPE_MAP.keys(),
+                          help=_(u'the type of audio track to convert to'))
+
+    conversion.add_option('-q','--quality',
                       action='store',
                       type='string',
                       dest='quality',
-                      help=_(u'the quality to store audio values at'))
+                      help=_(u'the quality to store audio tracks at'))
 
-    parser.add_option('-x','--xmcd',
-                      action='store',
-                      type='string',
-                      dest='xmcd',
-                      metavar='FILENAME',
-                      help=_(u'FreeDB XMCD file or MusicBrainz XML file'))
-
-    parser.add_option('-d','--dir',
+    conversion.add_option('-d','--dir',
                       action='store',
                       type='string',
                       dest='dir',
                       default='.',
-                      help=_(u'the directory to store converted audio files'))
+                      help=_(u'the directory to store converted audio tracks'))
 
-    parser.add_option('--format',
+    conversion.add_option('--format',
                       action='store',
                       type='string',
                       default=audiotools.FILENAME_FORMAT,
                       dest='format',
                       help=_(u'the format string for new filenames'))
 
-    parser.add_option('-o','--output',
+    conversion.add_option('-o','--output',
                       action='store',
                       dest='output',
                       help=_(u'output filename to use, overriding default and -d'))
 
-    parser.add_option('-j','--joint',
+
+    conversion.add_option('-j','--joint',
                       action='store',
                       type='int',
                       default=MAX_CPUS,
                       dest='max_processes',
                       help=_(u'the maximum number of processes to run at a time'))
 
-    parser.add_option('-T','--thumbnail',
-                      action='store_true',
-                      default=False,
-                      dest='thumbnail',
-                      help=_(u'convert embedded images to smaller thumbnails during conversion'))
+    parser.add_option_group(conversion)
+
+    metadata = audiotools.OptionGroup(parser,_(u"Metadata Options"))
+
+    metadata.add_option('-x','--xmcd',
+                        action='store',
+                        type='string',
+                        dest='xmcd',
+                        metavar='FILENAME',
+                        help=_(u'FreeDB XMCD file or MusicBrainz XML file'))
+
+    metadata.add_option('-T','--thumbnail',
+                        action='store_true',
+                        default=False,
+                        dest='thumbnail',
+                        help=_(u'convert embedded images to smaller thumbnails during conversion'))
 
 
     #if adding ReplayGain is a lossless process
@@ -161,15 +168,17 @@ if (__name__ == '__main__'):
     #add_replay_gain should default to True
     #if not, add_replay_gain should default to False
     #which is which depends on the track type
-    parser.add_option('--replay-gain',
-                      action='store_true',
-                      dest='add_replay_gain',
-                      help=_(u'add ReplayGain metadata to newly created tracks'))
+    metadata.add_option('--replay-gain',
+                        action='store_true',
+                        dest='add_replay_gain',
+                        help=_(u'add ReplayGain metadata to newly created tracks'))
 
-    parser.add_option('--no-replay-gain',
-                      action='store_false',
-                      dest='add_replay_gain',
-                      help=_(u'do not add ReplayGain metadata to newly created tracks'))
+    metadata.add_option('--no-replay-gain',
+                        action='store_false',
+                        dest='add_replay_gain',
+                        help=_(u'do not add ReplayGain metadata to newly created tracks'))
+
+    parser.add_option_group(metadata)
 
     parser.add_option('-V','--verbose',
                       action='store',
