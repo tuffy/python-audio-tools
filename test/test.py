@@ -5544,7 +5544,7 @@ Is+xl9xg0BWyGXIZljPkM6xkKGQoZihlWM19CsPUca8l97sa7ZDGfwEBGThn""".decode('base64')
         OFFSETS = [150, 18740, 40778, 44676, 63267]
 
         #ensure that latin-1 and UTF-8 encodings are handled properly
-        for (encoding,data) in zip(["ISO-8859-1","ISO-8859-1","UTF-8"],
+        for (encoding,data) in zip(["ISO-8859-1","UTF-8","UTF-8"],
                                    [{"TTITLE0":u"track one",
                                      "TTITLE1":u"track two",
                                      "TTITLE2":u"track three",

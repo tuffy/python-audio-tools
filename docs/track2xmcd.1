@@ -42,6 +42,10 @@ The FreeDB port number to query for XMCD data
 Obtain XML or XMCD data from the given tracks rather than obtaining it
 from a MusicBrainz or FreeDB server
 .TP
+\fB--cue=\fIFILENAME\fR
+The cuesheet to use for track boundaries when attempting to
+retrieve metadata from a CD image
+.TP
 \fB-D, --default\fR
 If multiple matching discs are found, select the first choice automatically
 .TP
@@ -56,6 +60,15 @@ files in the current directory:
 .IP
 .B track2xmcd \-x
 .I album.xmcd *.wav
+
+.LP
+Obtain an XMCD file called \fIalbum.xmcd\fR from \fICDImage.wav\fR
+and \fICDImage.cue\fR:
+.IP
+.B track2xmcd \-x
+.I album.xmcd
+.B --cue=\fICDImage.cue\fR
+.I CDImage.wav
 
 .LP
 Build an XMCD file from FLAC metadata and write it to standard output:
