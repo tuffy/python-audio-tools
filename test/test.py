@@ -1968,7 +1968,7 @@ uhhDdCiCwqg2Gw3lphgaGhoamR+mptKYNT/F3JFOFCQvKfgAwA==""".decode('base64').decode(
                 tempdir = tempfile.mkdtemp()
 
                 subprocess.call(["tracksplit",
-                                 "-V","quiet",
+                                 "-V","quiet","-j",str(1),
                                  "-t",self.audio_class.NAME,
                                  "--cue=%s" % (cue_file.name),
                                  "--no-replay-gain",
@@ -6984,8 +6984,8 @@ class TestTracksplitOutput(TestTextOutput):
         self.__check_error__(_(u"Cuesheet too long for track being split"))
 
         self.assertEqual(self.__run_app__(
-                ["tracksplit","-t","flac","--format=%(foo)s","-d",self.dir2,
-                 "--cue",self.cue_path,"-x",self.xmcd_path,
+                ["tracksplit","-j",str(1),"-t","flac","--format=%(foo)s","-d",
+                 self.dir2,"--cue",self.cue_path,"-x",self.xmcd_path,
                  self.flac.filename]),1)
 
         self.__check_error__(_(u"Unknown field \"%s\" in file format") % \
@@ -6999,7 +6999,7 @@ class TestTracksplitOutput(TestTextOutput):
                 self.__check_info__(u"%%(%s)s" % (field))
 
         self.assertEqual(self.__run_app__(
-                ["tracksplit","-t","wav","-d",self.dir2,
+                ["tracksplit","-j",str(1),"-t","wav","-d",self.dir2,
                  "--format=%s" % (self.format_string),
                  "--cue",self.cue_path,self.flac.filename]),0)
 
@@ -7023,7 +7023,7 @@ class TestTracksplitOutput(TestTextOutput):
         xmcd_metadata = xmcd.metadata()
 
         self.assertEqual(self.__run_app__(
-                ["tracksplit","-t","mp3","-d",self.dir2,
+                ["tracksplit","-j",str(1),"-t","mp3","-d",self.dir2,
                  "-x",self.xmcd_path,
                  "--format=%s" % (format_string),
                  "--cue",self.cue_path,self.flac.filename]),0)

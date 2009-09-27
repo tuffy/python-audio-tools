@@ -543,6 +543,8 @@ def pcm_cmp(pcmreader1, pcmreader2):
 
     while ((len(s1) > 0) and (len(s2) > 0)):
         if (s1 != s2):
+            transfer_data(reader1.read,lambda x: x)
+            transfer_data(reader2.read,lambda x: x)
             return False
         else:
             s1 = reader1.read(BUFFER_SIZE)
