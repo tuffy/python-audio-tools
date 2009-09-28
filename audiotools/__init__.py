@@ -1468,6 +1468,17 @@ class AlbumMetaData(dict):
                       dict([(m.track_number,m) for m in
                             metadata_iter]))
 
+    #returns a single MetaData object containing all
+    #the consistent fields contained in the album
+    def metadata(self):
+        return MetaData(**dict([(field,list(items)[0])
+                                for (field,items) in
+                                [(field,
+                                  set([getattr(track,field) for track
+                                       in self.values()]))
+                                 for field in MetaData.__FIELDS__]
+                                if (len(items) == 1)]))
+
 #a superclass of MetaData file exceptions
 #such as XMCDException and MBXMLException
 class MetaDataFileException(Exception):

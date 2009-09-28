@@ -45,11 +45,7 @@ def xmcd_metadata(track, xmcd):
         return xmcd[track.track_number()]
     except KeyError:
         if (len(xmcd) > 0):
-            base_metadata = xmcd.values()[0]
-            return audiotools.MetaData(album_name=base_metadata.album_name,
-                                       artist_name=base_metadata.artist_name,
-                                       track_number=track.track_number(),
-                                       track_name=u"")
+            return xmcd.metadata()
         else:
             return None
 
@@ -58,13 +54,22 @@ def xmcd_metadata(track, xmcd):
 #*and* existing metadata
 def xmcd_track_metadata(track, xmcd):
     track_metadata = track.get_metadata()
+
     if (track_metadata is not None):
         xmcd_md = track_metadata.__class__.converted(
             xmcd_metadata(track,xmcd))
     else:
-        xmcd_md = xmcd[track.track_number()]
+        if (len(xmcd) > 0):
+            try:
+                xmcd_md = xmcd[track.track_number()]
+            except KeyError:
+                xmcd_md = xmcd.metadata()
+        else:
+            xmcd_md = None
+
     if (xmcd_md is not None):
         xmcd_md.merge(track_metadata)
+
     return xmcd_md
 
 #tries to return a populated Image object of the appropriate type
