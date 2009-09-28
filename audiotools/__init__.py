@@ -1938,7 +1938,6 @@ def sheet_to_unicode(sheet,total_frames):
 from __image__ import *
 
 from __wav__ import *
-from __aiff__ import *
 from __au__ import *
 from __vorbiscomment__ import *
 from __flac__ import *
@@ -1951,6 +1950,7 @@ from __m4a__ import *
 from __wavpack__ import *
 from __musepack__ import *
 from __speex__ import *
+from __aiff__ import *
 
 #######################
 #CD data

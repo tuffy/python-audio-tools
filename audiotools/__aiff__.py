@@ -17,7 +17,7 @@
 #along with this program; if not, write to the Free Software
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-from audiotools import AudioFile,InvalidFile,Con,PCMReader,__capped_stream_reader__,PCMFrameFilter,pcmstream,PCMReaderError,transfer_data,FrameList,DecodingError,EncodingError
+from audiotools import AudioFile,InvalidFile,Con,PCMReader,__capped_stream_reader__,PCMFrameFilter,pcmstream,PCMReaderError,transfer_data,FrameList,DecodingError,EncodingError,ID3v22Comment
 
 import gettext
 
@@ -200,6 +200,104 @@ class AiffAudio(AudioFile):
                         int(comm.sample_rate))
         else:
             raise AiffException(_(u"COMM chunk not found"))
+
+    def chunk_files(self):
+        f = open(self.filename,'rb')
+        try:
+            aiff_header = self.AIFF_HEADER.parse_stream(f)
+        except Con.ConstError:
+            raise AiffException(_(u"Not an AIFF file"))
+        except Con.core.FieldError:
+            raise AiffException(_(u"Invalid AIFF file"))
+
+        total_size = aiff_header.aiff_size - 4
+        while (total_size > 0):
+            chunk_header = self.CHUNK_HEADER.parse_stream(f)
+            total_size -= 8
+            yield (chunk_header.chunk_id,
+                   chunk_header.chunk_length,
+                   __capped_stream_reader__(f,chunk_header.chunk_length))
+            total_size -= chunk_header.chunk_length
+        f.close()
+
+    def get_metadata(self):
+        for (chunk_id,chunk_length,chunk_offset) in self.chunks():
+            if (chunk_id == 'ID3 '):
+                f = open(self.filename,'rb')
+                f.seek(chunk_offset,0)
+                id3 = ID3v22Comment.parse(f)
+                f.close()
+                return id3
+        else:
+            return None
+
+    def set_metadata(self, metadata):
+        if (metadata is None):
+            return
+
+        import tempfile
+
+        id3_chunk = ID3v22Comment.converted(metadata).build()
+
+        new_aiff = tempfile.TemporaryFile()
+        new_aiff.seek(12,0)
+
+        id3_found = False
+        for (chunk_id,chunk_length,chunk_file) in self.chunk_files():
+            if (chunk_id != 'ID3 '):
+                new_aiff.write(self.CHUNK_HEADER.build(
+                        Con.Container(chunk_id=chunk_id,
+                                      chunk_length=chunk_length)))
+                transfer_data(chunk_file.read,new_aiff.write)
+            else:
+                new_aiff.write(self.CHUNK_HEADER.build(
+                        Con.Container(chunk_id='ID3 ',
+                                      chunk_length=len(id3_chunk))))
+                new_aiff.write(id3_chunk)
+                id3_found = True
+
+        if (not id3_found):
+            new_aiff.write(self.CHUNK_HEADER.build(
+                    Con.Container(chunk_id='ID3 ',
+                                  chunk_length=len(id3_chunk))))
+            new_aiff.write(id3_chunk)
+
+        header = Con.Container(
+            aiff_id='FORM',
+            aiff_size=new_aiff.tell() - 8,
+            aiff_type='AIFF')
+        new_aiff.seek(0,0)
+        new_aiff.write(self.AIFF_HEADER.build(header))
+        new_aiff.seek(0,0)
+        f = open(self.filename,'wb')
+        transfer_data(new_aiff.read,f.write)
+        new_aiff.close()
+        f.close()
+
+    def delete_metadata(self):
+        import tempfile
+
+        new_aiff = tempfile.TemporaryFile()
+        new_aiff.seek(12,0)
+
+        for (chunk_id,chunk_length,chunk_file) in self.chunk_files():
+            if (chunk_id != 'ID3 '):
+                new_aiff.write(self.CHUNK_HEADER.build(
+                        Con.Container(chunk_id=chunk_id,
+                                      chunk_length=chunk_length)))
+                transfer_data(chunk_file.read,new_aiff.write)
+
+        header = Con.Container(
+            aiff_id='FORM',
+            aiff_size=new_aiff.tell() - 8,
+            aiff_type='AIFF')
+        new_aiff.seek(0,0)
+        new_aiff.write(self.AIFF_HEADER.build(header))
+        new_aiff.seek(0,0)
+        f = open(self.filename,'wb')
+        transfer_data(new_aiff.read,f.write)
+        new_aiff.close()
+        f.close()
 
     def to_pcm(self):
         import pcmstream
