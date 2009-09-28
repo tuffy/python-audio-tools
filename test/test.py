@@ -36,7 +36,7 @@ import time
 gettext.install("audiotools",unicode=True)
 
 (METADATA,PCM,EXECUTABLE,CUESHEET,IMAGE,CUSTOM) = range(6)
-CASES = set([METADATA,PCM,EXECUTABLE,CUESHEET,IMAGE])
+CASES = set([EXECUTABLE])
 
 def nothing(self):
     pass
@@ -8467,6 +8467,13 @@ class TestForeignMetaData_M4A(TestForeignMetaData_WavPackAPE):
         if (track is None):
             track = self.track
         self.assert_("\xa9foo" not in track.get_metadata().keys())
+
+class Test_IEEEExtended(unittest.TestCase):
+    @TEST_PCM
+    def testroundtrip(self):
+        ieee = audiotools.IEEE_Extended("i")
+        for i in xrange(0,192000 + 1):
+            assert(i == int(ieee.parse(ieee.build(float(i)))))
 
 ############
 #END TESTS

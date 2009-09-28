@@ -17,37 +17,148 @@
 #along with this program; if not, write to the Free Software
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-from audiotools import AudioFile,InvalidFile,InvalidFormat,FrameReader,Con,transfer_data,FILENAME_FORMAT,EncodingError,DecodingError
+from audiotools import AudioFile,InvalidFile,Con,PCMReader,__capped_stream_reader__,PCMFrameFilter,pcmstream,PCMReaderError,transfer_data,FrameList,DecodingError,EncodingError
 
 import gettext
 
 gettext.install("audiotools",unicode=True)
 
+_HUGE_VAL = 1.79769313486231e+308
+
+class IEEE_Extended(Con.Adapter):
+    def __init__(self,name):
+        Con.Adapter.__init__(
+            self,
+            Con.Struct(name,
+                       Con.Embed(Con.BitStruct(None,
+                                               Con.Flag("signed"),
+                                               Con.Bits("exponent",15))),
+                       Con.UBInt64("mantissa")))
+
+    def _encode(self, value, context):
+        import math
+
+        if (value < 0):
+            signed = True
+            value *= -1
+        else:
+            signed = False
+
+        (fmant,exponent) = math.frexp(value)
+        if ((exponent > 16384) or (fmant >= 1)):
+            exponent = 0x7FFF
+            mantissa = 0
+        else:
+            exponent += 16382
+            mantissa = fmant * (2 ** 64)
+
+        return Con.Container(signed=signed,
+                             exponent=exponent,
+                             mantissa=mantissa)
+
+    def _decode(self, obj, context):
+        if ((obj.exponent == 0) and (obj.mantissa == 0)):
+            return 0
+        else:
+            if (obj.exponent == 0x7FFF):
+                return _HUGE_VAL
+            else:
+                f = obj.mantissa * (2.0 ** (obj.exponent - 16383 - 63))
+                return f if not obj.signed else -f
+
+class BigEndianReader(PCMFrameFilter):
+    def __init__(self, input_reader,
+                 sample_rate=None, channels=None, bits_per_sample=None,
+                 filter_func=lambda x: x):
+
+        self.input_reader = input_reader
+
+        if (sample_rate is None):
+            sample_rate = input_reader.sample_rate
+        if (channels is None):
+            channels = input_reader.channels
+        if (bits_per_sample is None):
+            bits_per_sample = input_reader.bits_per_sample
+
+        PCMReader.__init__(self,
+                           file=input_reader,
+                           sample_rate=sample_rate,
+                           channels=channels,
+                           bits_per_sample=bits_per_sample)
+        self.filter = filter_func
+        self.remaining_samples = []
+        self.reader = pcmstream.PCMStreamReader(
+            input_reader,
+            input_reader.bits_per_sample / 8,
+            True,
+            False)
+
+class BigEndianWriter(PCMFrameFilter):
+    def __init__(self, input_reader,
+                 sample_rate=None, channels=None, bits_per_sample=None,
+                 filter_func=lambda x: x):
+        PCMFrameFilter.__init__(self,
+                                input_reader=input_reader,
+                                sample_rate=sample_rate,
+                                channels=channels,
+                                bits_per_sample=bits_per_sample,
+                                filter_func=filter_func)
+        self.total_pcm_frames = 0
+
+    #returns big-endian bytes on each call to read()
+    def read(self,bytes):
+        (framelist,self.remaining_samples) = FrameList.from_samples(
+            self.remaining_samples + self.reader.read(bytes),
+            self.input_reader.channels)
+        self.total_pcm_frames += framelist.total_frames()
+        return self.filter(framelist).string(self.bits_per_sample,True)
+
 #######################
 #AIFF
 #######################
+
+class AiffException(Exception): pass
 
 class AiffAudio(AudioFile):
     SUFFIX = "aiff"
     NAME = SUFFIX
 
+    AIFF_HEADER = Con.Struct("aiff_header",
+                             Con.Const(Con.Bytes("aiff_id",4),"FORM"),
+                             Con.UBInt32("aiff_size"),
+                             Con.Const(Con.Bytes("aiff_type",4),"AIFF"))
+
+    CHUNK_HEADER = Con.Struct("chunk_header",
+                              Con.Bytes("chunk_id",4),
+                              Con.UBInt32("chunk_length"))
+
+    COMM_CHUNK = Con.Struct("comm",
+                            Con.UBInt16("channels"),
+                            Con.UBInt32("total_sample_frames"),
+                            Con.UBInt16("sample_size"),
+                            IEEE_Extended("sample_rate"))
+
     def __init__(self, filename):
-        import aifc
+        self.filename = filename
+        (self.__channels__,
+         self.__total_sample_frames__,
+         self.__sample_size__,
+         self.__sample_rate__) = self.comm_chunk()
 
-        AudioFile.__init__(self, filename)
+    def bits_per_sample(self):
+        return self.__sample_size__
 
-        try:
-            f = aifc.open(filename,"r")
-            (self.__channels__,
-             bytes_per_sample,
-             self.__sample_rate__,
-             self.__total_frames__,
-             self.comptype,
-             self.compname) = f.getparams()
-            self.__bits_per_sample__ = bytes_per_sample * 8
-            f.close()
-        except aifc.Error,msg:
-            raise InvalidFile(str(msg))
+    def channels(self):
+        return self.__channels__
+
+    def lossless(self):
+        return True
+
+    def total_frames(self):
+        return self.__total_sample_frames__
+
+    def sample_rate(self):
+        return self.__sample_rate__
 
     @classmethod
     def is_type(cls, file):
@@ -56,62 +167,114 @@ class AiffAudio(AudioFile):
         return ((header[0:4] == 'FORM') and
                 (header[8:12] == 'AIFF'))
 
-    def lossless(self):
-        return True
+    def chunks(self):
+        f = open(self.filename,'rb')
+        try:
+            aiff_header = self.AIFF_HEADER.parse_stream(f)
+        except Con.ConstError:
+            raise AiffException(_(u"Not an AIFF file"))
+        except Con.core.FieldError:
+            raise AiffException(_(u"Invalid AIFF file"))
 
-    def bits_per_sample(self):
-        return self.__bits_per_sample__
+        total_size = aiff_header.aiff_size - 4
+        while (total_size > 0):
+            chunk_header = self.CHUNK_HEADER.parse_stream(f)
+            total_size -= 8
+            yield (chunk_header.chunk_id,
+                   chunk_header.chunk_length,
+                   f.tell())
+            f.seek(chunk_header.chunk_length,1)
+            total_size -= chunk_header.chunk_length
+        f.close()
 
-    def channels(self):
-        return self.__channels__
-
-    def sample_rate(self):
-        return self.__sample_rate__
-
-    def total_frames(self):
-        return self.__total_frames__
-
+    def comm_chunk(self):
+        for (chunk_id,chunk_length,chunk_offset) in self.chunks():
+            if (chunk_id == 'COMM'):
+                f = open(self.filename,'rb')
+                f.seek(chunk_offset,0)
+                comm = self.COMM_CHUNK.parse(f.read(chunk_length))
+                f.close()
+                return (comm.channels,
+                        comm.total_sample_frames,
+                        comm.sample_size,
+                        int(comm.sample_rate))
+        else:
+            raise AiffException(_(u"COMM chunk not found"))
 
     def to_pcm(self):
-        import aifc
+        import pcmstream
 
-        return FrameReader(aifc.open(self.filename,"r"),
-                           self.sample_rate(),
-                           self.channels(),
-                           self.bits_per_sample())
+        for (chunk_id,chunk_length,chunk_offset) in self.chunks():
+            if (chunk_id == 'SSND'):
+                f = open(self.filename,'rb')
+                f.seek(chunk_offset,0)
+                return BigEndianReader(PCMReader(
+                    __capped_stream_reader__(f,chunk_length),
+                    self.sample_rate(),
+                    self.channels(),
+                    self.bits_per_sample()))
+        else:
+            return PCMReaderError()
 
     @classmethod
     def from_pcm(cls, filename, pcmreader, compression=None):
-        import aifc
-
-        #FIXME
-        #should re-write the AIFF routines to cover the full spec
-        #like I've done with RIFF WAVE
-        if (pcmreader.bits_per_sample != 16):
-            raise InvalidFormat(_(u'AIFF only supports 16 bits per sample'))
-
-        if (pcmreader.channels not in (1,2,4)):
-            raise InvalidFormat(_(u'AIFF only supports 1, 2 or 4 channels'))
-
         try:
-            f = aifc.open(filename,"w")
+            f = open(filename,'wb')
         except IOError:
             raise EncodingError(None)
 
-        f.setparams((pcmreader.channels,
-                     pcmreader.bits_per_sample / 8,
-                     pcmreader.sample_rate,
-                     0,
-                     'NONE',
-                     'not compressed'))
-
-        transfer_data(pcmreader.read,f.writeframes)
         try:
-            pcmreader.close()
-        except DecodingError:
-            raise EncodingError()
-        f.close()
+            aiff_header = Con.Container(aiff_id='FORM',
+                                        aiff_size=4,
+                                        aiff_type='AIFF')
 
-        return AiffAudio(filename)
+            comm_chunk = Con.Container(channels=pcmreader.channels,
+                                       total_sample_frames=0,
+                                       sample_size=pcmreader.bits_per_sample,
+                                       sample_rate=float(pcmreader.sample_rate))
+
+            ssnd_header = Con.Container(chunk_id='SSND',
+                                        chunk_length=0)
+
+            #skip ahead to the start of the data chunk
+            f.seek(cls.AIFF_HEADER.sizeof() +
+                   cls.CHUNK_HEADER.sizeof() +
+                   cls.COMM_CHUNK.sizeof() +
+                   cls.CHUNK_HEADER.sizeof(),0)
+
+            #write big-endian samples to SSND chunk from pcmreader
+            be_pcm = BigEndianWriter(pcmreader)
+            transfer_data(be_pcm.read,f.write)
+            total_size = f.tell()
+
+            #return to the start of the file
+            f.seek(0,0)
+
+            #write AIFF header
+            aiff_header.aiff_size = total_size - 8
+            f.write(cls.AIFF_HEADER.build(aiff_header))
+
+            #write COMM chunk
+            comm_chunk.total_sample_frames = be_pcm.total_pcm_frames
+            comm_chunk = cls.COMM_CHUNK.build(comm_chunk)
+            f.write(cls.CHUNK_HEADER.build(Con.Container(
+                        chunk_id='COMM',
+                        chunk_length=len(comm_chunk))))
+            f.write(comm_chunk)
+
+            #write SSND chunk header
+            f.write(cls.CHUNK_HEADER.build(Con.Container(
+                        chunk_id='SSND',
+                        chunk_length=be_pcm.total_pcm_frames *
+                          (be_pcm.bits_per_sample / 8) *
+                          be_pcm.channels)))
+            try:
+                be_pcm.close()
+            except DecodingError:
+                raise EncodingError()
+        finally:
+            f.close()
+
+        return cls(filename)
 
 
