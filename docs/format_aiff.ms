@@ -35,7 +35,6 @@ pic line dotted from WD1.se to WD3.ne
 pic line dotted from WC1.sw to WC2.nw
 pic line dotted from WC1.se to WC3.ne
 .end dformat
-
 .SUBSECTION "the COMM chunk"
 .PP
 .begin dformat
@@ -52,10 +51,34 @@ noname
 noname
     128-207-32 Sample Rate
 .end
-
 The Sample Rate field is an 80-bit IEEE Standard 754 floating point value
 instead of the big-endian integers common to all the other fields.
-
+.SUBSUBSECTION "80 bit IEEE Standard 754 floating point"
+.PP
+.begin dformat
+style bitwid 0.16
+style recspread 0
+noname
+  0-0-3 Sign
+  1-15-7 Exponent
+  16-79-22 Mantissa
+.end
+.EQ
+"Value" mark = (\-) { {"Mantissa" over {2 sup 63} } ~~\[mu]~~ 2 sup { "Exponent"~-~16383 } }
+.EN
+.LP
+For example, given a sign bit of 0, an exponent value of 0x400E
+and a mantissa value of 0xAC44000000000000:
+.EQ
+"Value" lineup = { {12413046472939929600 over {2 sup 63} } ~~\[mu]~~ 2 sup {16398~-~16383}}
+.EN
+.EQ
+"Value" lineup = { 1.3458251953125 ~~\[mu]~~ 2 sup 15 }
+.EN
+.EQ
+"Value" lineup = 44100.0
+.EN
+.bp
 .SUBSECTION "the SSND chunk"
 .PP
 .begin dformat
@@ -66,5 +89,8 @@ noname
 noname
     32-63-32 Chunk Size
 noname
-    64--32 PCM Data
+    64-95-16 Offset
+    96-127-16 Block Size
+noname
+    128--32 PCM Data
 .end
