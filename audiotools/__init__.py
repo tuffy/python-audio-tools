@@ -1753,7 +1753,7 @@ class AudioFile:
                    format = FILENAME_FORMAT):
         try:
             if ((track_metadata is not None) and
-                (cls not in (WaveAudio,AuAudio,AiffAudio))):
+                (cls not in (WaveAudio,AuAudio))):
                 format_dict = {"track_number":track_number,
                                "album_number":track_metadata.album_number,
                                "track_total":track_metadata.track_total,

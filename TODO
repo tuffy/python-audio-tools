@@ -483,3 +483,4 @@
    that's not directly applicable to the track.
 * TODO Fix or replace Python's built-in aifc module
   The current implementation suffers from bugs.
+** TODO Document AIFF better

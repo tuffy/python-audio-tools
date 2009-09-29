@@ -138,6 +138,10 @@ class AiffAudio(AudioFile):
                             Con.UBInt16("sample_size"),
                             IEEE_Extended("sample_rate"))
 
+    SSND_ALIGN = Con.Struct("ssnd",
+                            Con.UBInt32("offset"),
+                            Con.UBInt32("blocksize"))
+
     def __init__(self, filename):
         self.filename = filename
         (self.__channels__,
@@ -306,8 +310,11 @@ class AiffAudio(AudioFile):
             if (chunk_id == 'SSND'):
                 f = open(self.filename,'rb')
                 f.seek(chunk_offset,0)
+                alignment = self.SSND_ALIGN.parse_stream(f)
+                #FIXME - handle different types of SSND alignment
                 return BigEndianReader(PCMReader(
-                    __capped_stream_reader__(f,chunk_length),
+                    __capped_stream_reader__(
+                            f,chunk_length - self.SSND_ALIGN.sizeof()),
                     self.sample_rate(),
                     self.channels(),
                     self.bits_per_sample()))
@@ -333,12 +340,17 @@ class AiffAudio(AudioFile):
 
             ssnd_header = Con.Container(chunk_id='SSND',
                                         chunk_length=0)
+            ssnd_alignment = Con.Container(offset=0,
+                                           blocksize=0)
 
-            #skip ahead to the start of the data chunk
+            #skip ahead to the start of the SSND chunk
             f.seek(cls.AIFF_HEADER.sizeof() +
                    cls.CHUNK_HEADER.sizeof() +
                    cls.COMM_CHUNK.sizeof() +
                    cls.CHUNK_HEADER.sizeof(),0)
+
+            #write the SSND alignment info
+            f.write(cls.SSND_ALIGN.build(ssnd_alignment))
 
             #write big-endian samples to SSND chunk from pcmreader
             be_pcm = BigEndianWriter(pcmreader)
@@ -363,9 +375,10 @@ class AiffAudio(AudioFile):
             #write SSND chunk header
             f.write(cls.CHUNK_HEADER.build(Con.Container(
                         chunk_id='SSND',
-                        chunk_length=be_pcm.total_pcm_frames *
-                          (be_pcm.bits_per_sample / 8) *
-                          be_pcm.channels)))
+                        chunk_length=(be_pcm.total_pcm_frames *
+                                      (be_pcm.bits_per_sample / 8) *
+                                      be_pcm.channels) +
+                        cls.SSND_ALIGN.sizeof())))
             try:
                 be_pcm.close()
             except DecodingError:
