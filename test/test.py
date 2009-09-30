@@ -331,6 +331,11 @@ Q/8LeyX0e/ZK6M+w/z9h5ahFWOF6xsYTVuUy8O8BsbVytHx43PPKPwEw98Hh""".decode('base64')
 TEST_COVER3 = \
 """eJz7f+P/AwYBLzdPNwZGRkYGDyBk+H+bwZmBl5OLm4uDl5uLm4+Pl19YQVRYSEhYXUZOXEFP09BA\nT1NXx9jKy87YzM1cR9ch3NHNxy8oOMjILioxKiDBKzDIH2QIIx8fn7CgsJqoqJq/qa6pP8ng/wEG\nQQ6GFIYUZkZBBiZBRmZBxv9HGMTATkUGLBzsQHEJAUZGNBlmJiNHoIwImnogAIkKYoreYuBhZgRa\nxSzIYM9wpviCpICZQknDjcaLzEnsLrwdsiCuwwSfmS+4O6QFrBRyHF40bmRexHaED8R18FDz+cJ6\nBKYMSZeKsFoV0yOgsgnIuk7wdQg/ULP5wuaCTwvEoga4RUKc/baME5HdA9KVwu7CyXJ8XsMJJPdA\nLVrC0pRy3iEGyXAFMwewp5gcDZ8vMELzBZirMOPzBUkFNCdB/F75gmcCpt8VPCAemQBW1nCTEewk\nsEfk/98EALdspDk=\n""".decode('base64').decode('zlib')
 
+#this is a very large, plain BMP encoded as bz2
+HUGE_BMP = \
+"""QlpoOTFBWSZTWSpJrRQACVR+SuEoCEAAQAEBEAIIAABAAAEgAAAIoABwU0yMTExApURDRoeppjv2
+2uMceMt8M40qoj5nGLjFQkcuWdsL3rW+ugRSA6SFFV4lUR1/F3JFOFCQKkmtFA==""".decode('base64')
+
 #this is an insane amount of different PCM combinations
 PCM_COMBINATIONS = (
     (11025,  1, 8), (22050,  1, 8), (32000,  1, 8), (44100,  1, 8),
@@ -2767,26 +2772,211 @@ class LCVorbisComment:
         finally:
             track_file.close()
 
-class TestFlacAudio(EmbeddedCuesheet,TestForeignWaveChunks,VorbisLint,TestAiffAudio,LCVorbisComment):
+class TestOggFlacAudio(EmbeddedCuesheet,VorbisLint,TestAiffAudio,LCVorbisComment):
     def setUp(self):
-        self.audio_class = audiotools.FlacAudio
+        self.audio_class = audiotools.OggFlacAudio
 
     @TEST_METADATA
     def testpreservevendortags(self):
-        tempflac1 = tempfile.NamedTemporaryFile(suffix=".flac")
-        tempflac2 = tempfile.NamedTemporaryFile(suffix=".flac")
+        tempflac1 = tempfile.NamedTemporaryFile(
+            suffix="." + self.audio_class.SUFFIX)
+        tempflac2 = tempfile.NamedTemporaryFile(
+            suffix="." + self.audio_class.SUFFIX)
 
-        f1 = audiotools.FlacAudio.from_pcm(tempflac1.name,
+        try:
+            f1 = self.audio_class.from_pcm(tempflac1.name,
                                            BLANK_PCM_Reader(3))
-        f1.set_metadata(DummyMetaData())
+            f1.set_metadata(DummyMetaData())
 
-        f2 = audiotools.FlacAudio.from_pcm(tempflac2.name,
+            f2 = self.audio_class.from_pcm(tempflac2.name,
                                            f1.to_pcm())
 
-        f2.set_metadata(f1.get_metadata())
+            f2.set_metadata(f1.get_metadata())
 
-        self.assertEqual(f1.get_metadata().vorbis_comment.vendor_string,
-                         f2.get_metadata().vorbis_comment.vendor_string)
+            self.assertEqual(f1.get_metadata().vorbis_comment.vendor_string,
+                             f2.get_metadata().vorbis_comment.vendor_string)
+        finally:
+            tempflac1.close()
+            tempflac2.close()
+
+    @TEST_METADATA
+    def test_oversized_images(self):
+        tempflac = tempfile.NamedTemporaryFile(
+            suffix="." + self.audio_class.SUFFIX)
+        try:
+            flac = self.audio_class.from_pcm(
+                tempflac.name,
+                BLANK_PCM_Reader(5))
+
+            flac.set_metadata(DummyMetaData())
+
+            orig_md5 = md5()
+            pcm = flac.to_pcm()
+            audiotools.transfer_data(pcm.read,orig_md5.update)
+            pcm.close()
+
+            #add an image too large to fit into a FLAC metadata chunk
+            metadata = flac.get_metadata()
+            metadata.add_image(
+                audiotools.Image.new(HUGE_BMP.decode('bz2'),u'',0))
+
+            flac.set_metadata(metadata)
+
+            #ensure that setting the metadata doesn't break the file
+            new_md5 = md5()
+            pcm = flac.to_pcm()
+            audiotools.transfer_data(pcm.read,new_md5.update)
+            pcm.close()
+
+            self.assertEqual(orig_md5.hexdigest(),
+                             new_md5.hexdigest())
+
+            #ensure that setting fresh oversized metadata doesn't break the file
+            metadata = audiotools.MetaData()
+            metadata.add_image(
+                audiotools.Image.new(HUGE_BMP.decode('bz2'),u'',0))
+
+            flac.set_metadata(metadata)
+
+            new_md5 = md5()
+            pcm = flac.to_pcm()
+            audiotools.transfer_data(pcm.read,new_md5.update)
+            pcm.close()
+
+            self.assertEqual(orig_md5.hexdigest(),
+                             new_md5.hexdigest())
+
+        finally:
+            tempflac.close()
+
+    @TEST_METADATA
+    def test_oversized_text(self):
+        tempflac = tempfile.NamedTemporaryFile(
+            suffix="." + self.audio_class.SUFFIX)
+        try:
+            flac = self.audio_class.from_pcm(
+                tempflac.name,
+                BLANK_PCM_Reader(5))
+
+            flac.set_metadata(DummyMetaData())
+
+            orig_md5 = md5()
+            pcm = flac.to_pcm()
+            audiotools.transfer_data(pcm.read,orig_md5.update)
+            pcm.close()
+
+            #add a COMMENT block too large to fit into a FLAC metadata chunk
+            metadata = flac.get_metadata()
+            metadata.comment = "QlpoOTFBWSZTWYmtEk8AgICBAKAAAAggADCAKRoBANIBAOLuSKcKEhE1okng".decode('base64').decode('bz2').decode('ascii')
+
+            flac.set_metadata(metadata)
+
+            #ensure that setting the metadata doesn't break the file
+            new_md5 = md5()
+            pcm = flac.to_pcm()
+            audiotools.transfer_data(pcm.read,new_md5.update)
+            pcm.close()
+
+            self.assertEqual(orig_md5.hexdigest(),
+                             new_md5.hexdigest())
+
+            #ensure that setting fresh oversized metadata doesn't break the file
+            metadata = audiotools.MetaData(
+                comment = "QlpoOTFBWSZTWYmtEk8AgICBAKAAAAggADCAKRoBANIBAOLuSKcKEhE1okng".decode('base64').decode('bz2').decode('ascii'))
+
+            flac.set_metadata(metadata)
+
+            new_md5 = md5()
+            pcm = flac.to_pcm()
+            audiotools.transfer_data(pcm.read,new_md5.update)
+            pcm.close()
+
+            self.assertEqual(orig_md5.hexdigest(),
+                             new_md5.hexdigest())
+        finally:
+            tempflac.close()
+
+    @TEST_METADATA
+    def test_oversized_metadata_via_apps(self):
+        tempflac = tempfile.NamedTemporaryFile(
+            suffix="." + self.audio_class.SUFFIX)
+        tempwv = tempfile.NamedTemporaryFile(
+            suffix="." + audiotools.WavPackAudio.SUFFIX)
+        big_bmp = tempfile.NamedTemporaryFile(suffix=".bmp")
+        big_text = tempfile.NamedTemporaryFile(suffix=".txt")
+        try:
+            flac = self.audio_class.from_pcm(
+                tempflac.name,
+                BLANK_PCM_Reader(5))
+
+            flac.set_metadata(DummyMetaData())
+
+            big_bmp.write(HUGE_BMP.decode('bz2'))
+            big_bmp.flush()
+
+            big_text.write("QlpoOTFBWSZTWYmtEk8AgICBAKAAAAggADCAKRoBANIBAOLuSKcKEhE1okng".decode('base64').decode('bz2'))
+            big_text.flush()
+
+            orig_md5 = md5()
+            pcm = flac.to_pcm()
+            audiotools.transfer_data(pcm.read,orig_md5.update)
+            pcm.close()
+
+            #ensure that setting a big image via tracktag doesn't break the file
+            subprocess.call(["tracktag","-V","quiet",
+                             "--front-cover=%s" % (big_bmp.name),
+                             flac.filename])
+            new_md5 = md5()
+            pcm = flac.to_pcm()
+            audiotools.transfer_data(pcm.read,new_md5.update)
+            pcm.close()
+            self.assertEqual(orig_md5.hexdigest(),
+                             new_md5.hexdigest())
+
+            #ensure that setting big text via tracktag doesn't break the file
+            subprocess.call(["tracktag","-V","quiet",
+                             "--comment-file=%s" % (big_text.name),
+                             flac.filename])
+            new_md5 = md5()
+            pcm = flac.to_pcm()
+            audiotools.transfer_data(pcm.read,new_md5.update)
+            pcm.close()
+            self.assertEqual(orig_md5.hexdigest(),
+                             new_md5.hexdigest())
+
+            subprocess.call(["track2track","-V","quiet","-t","wv",
+                             "-o",tempwv.name,
+                             flac.filename])
+
+            wv = audiotools.open(tempwv.name)
+
+            self.assertEqual(flac,wv)
+
+            self.assertEqual(subprocess.call(
+                    ["tracktag","-V","quiet",
+                     "--front-cover=%s" % (big_bmp.name),
+                     "--comment-file=%s" % (big_text.name),
+                     wv.filename]),0)
+
+            self.assertEqual(len(wv.get_metadata().images()),1)
+            self.assert_(len(wv.get_metadata().comment) > 0)
+
+            subprocess.call(["track2track","-t",self.audio_class.NAME,"-o",
+                             flac.filename,wv.filename])
+
+            flac = audiotools.open(tempflac.name)
+            self.assertEqual(flac,wv)
+        finally:
+            tempflac.close()
+            tempwv.close()
+            big_bmp.close()
+            big_text.close()
+
+
+
+class TestFlacAudio(TestOggFlacAudio,TestForeignWaveChunks):
+    def setUp(self):
+        self.audio_class = audiotools.FlacAudio
 
 
 class APEv2Lint:
@@ -3049,26 +3239,8 @@ class M4AMetadata:
 #    def setUp(self):
 #        self.audio_class = audiotools.ALACAudio
 
-class TestOggFlacAudio(EmbeddedCuesheet,VorbisLint,TestAiffAudio,LCVorbisComment):
-    def setUp(self):
-        self.audio_class = audiotools.OggFlacAudio
 
-    @TEST_METADATA
-    def testpreservevendortags(self):
-        tempflac1 = tempfile.NamedTemporaryFile(suffix=".flac")
-        tempflac2 = tempfile.NamedTemporaryFile(suffix=".flac")
 
-        f1 = audiotools.FlacAudio.from_pcm(tempflac1.name,
-                                           BLANK_PCM_Reader(3))
-        f1.set_metadata(DummyMetaData())
-
-        f2 = audiotools.FlacAudio.from_pcm(tempflac2.name,
-                                           f1.to_pcm())
-
-        f2.set_metadata(f1.get_metadata())
-
-        self.assertEqual(f1.get_metadata().vorbis_comment.vendor_string,
-                         f2.get_metadata().vorbis_comment.vendor_string)
 
 class ID3Lint:
     #tracklint is tricky to test since set_metadata()
@@ -8133,6 +8305,16 @@ AAEAAABIAAAAAQ==""".decode('base64')
         self.colors = 0
         self.mime_type = "image/tiff"
 
+class TestHugeBMP(TestImageJPEG):
+    @TEST_IMAGE
+    def setUp(self):
+        self.image = HUGE_BMP.decode('bz2')
+        self.md5sum = "558d875195829de829059fd4952fed46"
+        self.width = 2366
+        self.height = 2366
+        self.bpp = 24
+        self.colors = 0
+        self.mime_type = "image/x-ms-bmp"
 
 #tests to ensure that unsupported chunks of MetaData
 #aren't blown away improperly by MetaData modifying tools

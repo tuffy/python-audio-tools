@@ -34,6 +34,8 @@ gettext.install("audiotools",unicode=True)
 
 class FlacException(InvalidFile): pass
 
+class FlacMetaDataBlockTooLarge(Exception): pass
+
 class FlacMetaDataBlock:
     #type is an int
     #data is a string of metadata
@@ -42,7 +44,11 @@ class FlacMetaDataBlock:
         self.data = data
 
     #returns the entire metadata block as a string, including the header
+    #raises FlacMetaDataBlockTooLarge if self.data is too large to fit
     def build_block(self, last=0):
+        if (len(self.data) > (1 << 24)):
+            raise FlacMetaDataBlockTooLarge()
+
         return FlacAudio.METADATA_BLOCK_HEADER.build(
             Con.Container(last_block=last,
                           block_type=self.type,
@@ -67,6 +73,10 @@ class FlacMetaData(MetaData):
         self.__dict__['extra_blocks'] = []
 
         for block in blocks:
+            #metadata block data cannot exceed 2^24 bits
+            if (len(block.data) > (1 << 24)):
+                continue
+
             if ((block.type == 0) and (self.streaminfo is None)):
                 #only one STREAMINFO allowed
                 self.__dict__['streaminfo'] = block
@@ -160,15 +170,23 @@ class FlacMetaData(MetaData):
         if ((metadata is None) or (isinstance(metadata,FlacMetaData))):
             return metadata
         else:
-            return FlacMetaData([
-                FlacMetaDataBlock(
-                type=4,
-                data=FlacVorbisComment.converted(metadata).build())] + \
-                                [
-                FlacMetaDataBlock(
-                  type=6,
-                  data=FlacPictureComment.converted(image).build())
-                  for image in metadata.images()])
+            blocks = []
+            try:
+                blocks.append(FlacMetaDataBlock(
+                        type=4,
+                        data=FlacVorbisComment.converted(metadata).build()))
+            except FlacMetaDataBlockTooLarge:
+                pass
+
+            for image in metadata.images():
+                try:
+                    blocks.append(FlacMetaDataBlock(
+                            type=6,
+                            data=FlacPictureComment.converted(image).build()))
+                except FlacMetaDataBlockTooLarge:
+                    pass
+
+            return FlacMetaData(blocks)
 
     def merge(self, metadata):
         self.vorbis_comment.merge(metadata)
@@ -205,10 +223,39 @@ class FlacMetaData(MetaData):
 
 
     def build(self,padding_size=4096):
-        return "".join(
-            [block.build_block() for block in self.metadata_blocks()]) + \
+        built_blocks = []
+        blocks = self.metadata_blocks()
+
+        #STREAMINFO must always be first and is always a fixed size
+        built_blocks.append(blocks.next().build_block())
+
+        #VORBISCOMMENT must always be next
+        vorbis = blocks.next()
+        try:
+            built_blocks.append(vorbis.build_block())
+        except FlacMetaDataBlockTooLarge:
+            #if VORBISCOMMENT is too large, substitute a blank one
+            #(this only happens when one pushes over 16MB(!) of text
+            # into a comment, which simply isn't going to happen
+            # accidentcally)
+            built_blocks.append(FlacVorbisComment(
+                    vorbis_data={},
+                    vendor_string=vorbis.vendor_string).build_block())
+
+        #then come the rest of the blocks in any order
+        for block in blocks:
+            try:
+                built_blocks.append(block.build_block())
+            except FlacMetaDataBlockTooLarge:
+                pass
+
+        #finally, append a fresh PADDING block
+        built_blocks.append(
             FlacMetaDataBlock(type=1,
-                              data=chr(0) * padding_size).build_block(last=1)
+                              data=chr(0) * padding_size).build_block(last=1))
+
+        return "".join(built_blocks)
+
 
     @classmethod
     def supports_images(cls):
@@ -229,6 +276,9 @@ class FlacVorbisComment(VorbisComment):
 
     def build_block(self, last=0):
         block = self.build()
+        if (len(block) > (1 << 24)):
+            raise FlacMetaDataBlockTooLarge()
+
         return FlacAudio.METADATA_BLOCK_HEADER.build(
             Con.Container(last_block=last,
                           block_type=4,
@@ -320,6 +370,9 @@ class FlacPictureComment(Image):
                 repr(self.width),repr(self.height))
 
     def build(self):
+        if (len(self.data) > (1 << 24)):
+            raise FlacMetaDataBlockTooLarge()
+
         return FlacAudio.PICTURE_COMMENT.build(
             Con.Container(type=self.flac_type,
                           mime_type=self.mime_type.encode('ascii'),
@@ -332,6 +385,13 @@ class FlacPictureComment(Image):
 
     def build_block(self,last=0):
         block = self.build()
+        if (len(block) > (1 << 24)):
+            #why check both here and in build()?
+            #because while the raw image data itself might be small enough
+            #additional info like "description" could push it over
+            #the metadata block size limit
+            raise FlacMetaDataBlockTooLarge()
+
         return FlacAudio.METADATA_BLOCK_HEADER.build(
             Con.Container(last_block=last,
                           block_type=6,
@@ -372,6 +432,8 @@ class FlacCueSheet:
         self.sample_rate = sample_rate
 
     def build_block(self,last=0):
+        #the largest possible CUESHEET cannot exceed the metadata block size
+        #so no need to test for it
         block = self.CUESHEET.build(self.container)
 
         return FlacAudio.METADATA_BLOCK_HEADER.build(
@@ -1083,11 +1145,24 @@ class OggFlacAudio(FlacAudio):
 
         #the non-STREAMINFO blocks are the same as FLAC, so write them out
         for block in blocks:
-            for (page_header,page_data) in OggStreamWriter.build_pages(
-                0,serial_number,sequence_number,
-                block.build_block()):
-                writer.write_page(page_header,page_data)
-                sequence_number += 1
+            try:
+                for (page_header,page_data) in OggStreamWriter.build_pages(
+                    0,serial_number,sequence_number,
+                    block.build_block()):
+                    writer.write_page(page_header,page_data)
+                    sequence_number += 1
+            except FlacMetaDataBlockTooLarge:
+                if (isinstance(block,VorbisComment)):
+                    #VORBISCOMMENT can't be skipped, so build an empty one
+                    for (page_header,page_data) in OggStreamWriter.build_pages(
+                        0,serial_number,sequence_number,
+                        FlacVorbisComment(
+                            vorbis_data={},
+                            vendor_string=block.vendor_string).build_block()):
+                        writer.write_page(page_header,page_data)
+                        sequence_number += 1
+                else:
+                    pass
 
         #finally, write out a padding block
         for (page_header,page_data) in OggStreamWriter.build_pages(
