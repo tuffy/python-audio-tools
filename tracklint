@@ -47,10 +47,7 @@ def checksum(path):
 YEAR = re.compile(r'^\d{4}$')
 
 TEXT_FIELDS = tuple([field for field in audiotools.MetaData.__FIELDS__
-                     if (field not in ("track_number",
-                                       "album_number",
-                                       "track_total",
-                                       "album_total"))])
+                     if (field not in audiotools.MetaData.__INTEGER_FIELDS__)])
 
 def display_messages(messenger,track,messages):
     for message in messages:
@@ -71,6 +68,10 @@ def fix_track(track,dry_run=False):
         if (not dry_run):
             track = track.fix_id3()
         log.append(_(u"Removed unnecessary ID3 tags"))
+    elif (isinstance(track,DisorderedFlacAudio)):
+        if (not dry_run):
+            track = track.fix_blocks()
+        log.append(_(u"Reordered metadata blocks"))
 
     return (track,log)
 
@@ -406,17 +407,60 @@ class BrokenFlacAudio(audiotools.FlacAudio):
 
         return audiotools.open(self.filename)
 
+class DisorderedFlacAudio(audiotools.FlacAudio):
+    NAME = "disorderedflac"
+
+    def __read_streaminfo__(self):
+        f = file(self.filename,"rb")
+        f.read(4)
+
+        (stop,header_type,length) = (False,None,0)
+        while (not stop):
+            (stop,header_type,length) = audiotools.FlacAudio.__read_flac_header__(f)
+            if (header_type == 0):
+                p = audiotools.FlacAudio.STREAMINFO.parse(f.read(length))
+
+                md5sum = "".join(["%.2X" % (x) for x in p.md5]).lower()
+
+                self.__samplerate__ = p.samplerate
+                self.__channels__ = p.channels + 1
+                self.__bitspersample__ = p.bits_per_sample + 1
+                self.__total_frames__ = p.total_samples
+                self.__md5__ = "".join([chr(c) for c in p.md5])
+                break
+            else:
+                f.seek(length,1)
+        f.close()
+
+    #rewrites the FLAC track with its metadata blocks in the proper order
+    def fix_blocks(self):
+        metadata = self.get_metadata()
+
+        self.set_metadata(metadata)
+
+        return audiotools.open(self.filename)
+
+    @classmethod
+    def is_type(cls,file):
+        header = file.read(4)
+        first_block_type = ord(file.read(1))
+        return (header == 'fLaC') and ((first_block_type & 0x7) != 0)
+
 class PureFlacAudio(audiotools.FlacAudio):
     NAME = "flac"
 
     @classmethod
     def is_type(cls,file):
-        return (file.read(4) == 'fLaC')
+        header = file.read(4)
+        first_block_type = ord(file.read(1))
+        return (header == 'fLaC') and ((first_block_type & 0x7) == 0)
 
 if (audiotools.FlacAudio in audiotools.AVAILABLE_TYPES):
     audiotools.AVAILABLE_TYPES = tuple([t for t in audiotools.AVAILABLE_TYPES
                                         if t != audiotools.FlacAudio] + \
-                                       [BrokenFlacAudio,PureFlacAudio])
+                                       [BrokenFlacAudio,
+                                        DisorderedFlacAudio,
+                                        PureFlacAudio])
 
 audiotools.TYPE_MAP = dict([(track_type.NAME,track_type)
                             for track_type in audiotools.AVAILABLE_TYPES

@@ -229,25 +229,19 @@ class FlacMetaData(MetaData):
         #STREAMINFO must always be first and is always a fixed size
         built_blocks.append(blocks.next().build_block())
 
-        #VORBISCOMMENT must always be next
-        vorbis = blocks.next()
-        try:
-            built_blocks.append(vorbis.build_block())
-        except FlacMetaDataBlockTooLarge:
-            #if VORBISCOMMENT is too large, substitute a blank one
-            #(this only happens when one pushes over 16MB(!) of text
-            # into a comment, which simply isn't going to happen
-            # accidentcally)
-            built_blocks.append(FlacVorbisComment(
-                    vorbis_data={},
-                    vendor_string=vorbis.vendor_string).build_block())
-
         #then come the rest of the blocks in any order
         for block in blocks:
             try:
                 built_blocks.append(block.build_block())
             except FlacMetaDataBlockTooLarge:
-                pass
+                if (isinstance(block,VorbisComment)):
+                    #if VORBISCOMMENT is too large, substitute a blank one
+                    #(this only happens when one pushes over 16MB(!) of text
+                    # into a comment, which simply isn't going to happen
+                    # accidentcally)
+                    built_blocks.append(FlacVorbisComment(
+                            vorbis_data={},
+                            vendor_string=block.vendor_string).build_block())
 
         #finally, append a fresh PADDING block
         built_blocks.append(
@@ -583,7 +577,15 @@ class FlacAudio(AudioFile):
     @classmethod
     def is_type(cls, file):
         if (file.read(4) == 'fLaC'):
-            return True
+            block_ids = list(cls.__block_ids__(file))
+            if ((len(block_ids) == 0) or (0 not in block_ids)):
+                messenger = Messenger("audiotools",None)
+                messenger.error(_(u"STREAMINFO block not found"))
+            elif (block_ids[0] != 0):
+                messenger = Messenger("audiotools",None)
+                messenger.error(_(u"STREAMINFO not first metadata block.  Please fix with tracklint(1)"))
+            else:
+                return True
         else:
             #I've seen FLAC files tagged with ID3v2 comments.
             #Though the official flac binaries grudgingly accept these,
@@ -594,7 +596,7 @@ class FlacAudio(AudioFile):
             ID3v2Comment.skip(file)
             if (file.read(4) == 'fLaC'):
                 messenger = Messenger("audiotools",None)
-                messenger.error(_(u"ID3v2 tag found at start of FLAC file.  Please remove."))
+                messenger.error(_(u"ID3v2 tag found at start of FLAC file.  Please remove with tracklint(1)"))
             return False
 
     def lossless(self):
@@ -739,6 +741,17 @@ class FlacAudio(AudioFile):
     def __read_flac_header__(cls, flacfile):
         p = FlacAudio.METADATA_BLOCK_HEADER.parse(flacfile.read(4))
         return (p.last_block, p.block_type, p.block_length)
+
+    @classmethod
+    def __block_ids__(cls, flacfile):
+        p = Con.Container(last_block=False,
+                          block_type=None,
+                          block_length=0)
+
+        while (not p.last_block):
+            p = FlacAudio.METADATA_BLOCK_HEADER.parse_stream(flacfile)
+            yield p.block_type
+            flacfile.seek(p.block_length,1)
 
     def set_cuesheet(self,cuesheet):
         if (cuesheet is None):

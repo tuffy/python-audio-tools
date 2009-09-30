@@ -357,6 +357,10 @@
 - [X] track2xmcd
 - [X] tracksplit
 - [X] tracktag
+* DONE Check for FLAC metadata chunk overflow
+  Although APEv2 and ID3 tags support very large objects (hundreds of MB),
+  FLAC metadata chunks have a maxmimum of about 16MB per chunk,
+  which may be hit accidentally.
 * TODO Ensure non-image cuesheets are handled properly
   There are 4 different types of cuesheets,
   1 single file type and 3 different multiple file variants.
@@ -484,3 +488,4 @@
 * TODO Fix or replace Python's built-in aifc module
   The current implementation suffers from bugs.
 ** TODO Document AIFF better
+
