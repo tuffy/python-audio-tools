@@ -361,6 +361,57 @@
   Although APEv2 and ID3 tags support very large objects (hundreds of MB),
   FLAC metadata chunks have a maxmimum of about 16MB per chunk,
   which may be hit accidentally.
+* DONE Fix or replace Python's built-in aifc module
+  The current implementation suffers from bugs.
+** DONE Document AIFF better
+* DONE Add MusicBrainz support
+  It would be helpful to have external metadata support beyond FreeDB,
+  since FreeDB is very primitive.
+** DONE Ensure that MusicBrainz is interchangeable with FreeDB/XMCD
+*** DONE Unify track2xmcd/track2mb, cd2xmcd/cd2mb
+    Based on preliminary testing, MusicBrainz's output is better than FreeDB's
+    but its album coverage is not as broad.
+    In addition, nobody wants to run their albums through two separate tools
+    in order to extract metadata for tagging.  The best solution is
+    for tools to try both and output the one that's most complete.
+*** DONE Extend editxmcd to MusicBrainz XML
+    Although editxmcd was originally designed specifically for XMCD files
+    and MusicBrainz's XML format differs radically, no one should have to
+    know whether an album metadata file is one or the other.
+    Therefore, editxmcd should be extended with additional fields
+    to handle XML backend data if necessary.
+*** DONE Handle multiple Release entries with single Disc ID
+*** DONE Allow MusicBrainz XML output for new editxmcd files
+    FreeDB output should also be an option, however.
+** DONE Add MusicBrainz protocol/format documentation
+** DONE Add MusicBrainz-specific unit tests
+- [X] track2track
+- [X] track2xmcd
+- [X] trackrename
+- [X] tracksplit
+- [X] tracktag
+** DONE Update --help text to indicate MusicBrainz compatibility
+- [X] cd2xmcd
+- [X] editxmcd
+- [X] track2track
+- [X] track2xmcd
+- [X] trackrename
+- [X] tracksplit
+- [X] tracktag
+** DONE Update man pages to indiciate MusicBrainz compatibility
+- [X] cd2xmcd
+- [X] editxmcd
+- [X] track2track
+- [X] track2xmcd
+- [X] trackrename
+- [X] tracksplit
+- [X] tracktag
+** DONE Update documentation with MusicBrainz config file fields
+** DONE Ensure missing XML fields are handled correctly
+   The MusicBrainz XML spec allows most fields to be missing altogether
+   (such as <title>).  editxmcd should add these fields in the proper place
+   if necessary.
+*** DONE Add unit tests for improperly reordered XML fields
 * TODO Ensure non-image cuesheets are handled properly
   There are 4 different types of cuesheets,
   1 single file type and 3 different multiple file variants.
@@ -432,60 +483,3 @@
 ** TODO Patch Construct for Python3
    Since pyconstruct hasn't been updated in almost 2 years,
    I'll likely have to update it myself to ensure it'll run on Python3.
-* TODO Add MusicBrainz support
-  It would be helpful to have external metadata support beyond FreeDB,
-  since FreeDB is very primitive.
-** DONE Ensure that MusicBrainz is interchangeable with FreeDB/XMCD
-*** DONE Unify track2xmcd/track2mb, cd2xmcd/cd2mb
-    Based on preliminary testing, MusicBrainz's output is better than FreeDB's
-    but its album coverage is not as broad.
-    In addition, nobody wants to run their albums through two separate tools
-    in order to extract metadata for tagging.  The best solution is
-    for tools to try both and output the one that's most complete.
-*** DONE Extend editxmcd to MusicBrainz XML
-    Although editxmcd was originally designed specifically for XMCD files
-    and MusicBrainz's XML format differs radically, no one should have to
-    know whether an album metadata file is one or the other.
-    Therefore, editxmcd should be extended with additional fields
-    to handle XML backend data if necessary.
-*** DONE Handle multiple Release entries with single Disc ID
-*** DONE Allow MusicBrainz XML output for new editxmcd files
-    FreeDB output should also be an option, however.
-** DONE Add MusicBrainz protocol/format documentation
-** DONE Add MusicBrainz-specific unit tests
-- [X] track2track
-- [X] track2xmcd
-- [X] trackrename
-- [X] tracksplit
-- [X] tracktag
-** DONE Update --help text to indicate MusicBrainz compatibility
-- [X] cd2xmcd
-- [X] editxmcd
-- [X] track2track
-- [X] track2xmcd
-- [X] trackrename
-- [X] tracksplit
-- [X] tracktag
-** DONE Update man pages to indiciate MusicBrainz compatibility
-- [X] cd2xmcd
-- [X] editxmcd
-- [X] track2track
-- [X] track2xmcd
-- [X] trackrename
-- [X] tracksplit
-- [X] tracktag
-** DONE Update documentation with MusicBrainz config file fields
-** DONE Ensure missing XML fields are handled correctly
-   The MusicBrainz XML spec allows most fields to be missing altogether
-   (such as <title>).  editxmcd should add these fields in the proper place
-   if necessary.
-*** DONE Add unit tests for improperly reordered XML fields
-** TODO Add MusicBrainz tag support to MetaData fields
-   The MusicBrainz docs indicate support for Vorbis comments and ID3v2 tags
-   for storing MusicBrainz-specific tag data such as album ID.
-   However, I am wary of supporting this level of meta-metadata
-   that's not directly applicable to the track.
-* TODO Fix or replace Python's built-in aifc module
-  The current implementation suffers from bugs.
-** TODO Document AIFF better
-

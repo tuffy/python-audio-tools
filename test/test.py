@@ -36,7 +36,7 @@ import time
 gettext.install("audiotools",unicode=True)
 
 (METADATA,PCM,EXECUTABLE,CUESHEET,IMAGE,CUSTOM) = range(6)
-CASES = set([METADATA])
+CASES = set([METADATA,PCM,EXECUTABLE,CUESHEET,IMAGE])
 
 def nothing(self):
     pass
@@ -2978,6 +2978,66 @@ class TestFlacAudio(TestOggFlacAudio,TestForeignWaveChunks):
     def setUp(self):
         self.audio_class = audiotools.FlacAudio
 
+    @TEST_METADATA
+    def test_tracklint2(self):
+        #copy the test track to a temporary location
+        tempflac = tempfile.NamedTemporaryFile(suffix=".flac")
+        try:
+            f = open("flac-id3.flac","rb")
+            audiotools.transfer_data(f.read,tempflac.write)
+            f.close()
+            tempflac.flush()
+
+            tempflac.seek(0,0)
+            self.assertEqual(tempflac.read(3),"ID3")
+            tempflac.seek(-0x80,2)
+            self.assertEqual(tempflac.read(3),"TAG")
+
+            self.assertEqual(self.__run_app__(["trackinfo",tempflac.name]),0)
+            self.__check_error__(_(u"ID3v2 tag found at start of FLAC file.  Please remove with tracklint(1)"))
+
+            #ensure that FLACs tagged with ID3v2/ID3v1 comments are scrubbed
+            self.assertEqual(self.__run_app__(
+                    ["tracklint","-V","quiet","--fix",tempflac.name]),0)
+            flac = audiotools.open(tempflac.name)
+            md5sum = md5()
+            pcm = flac.to_pcm()
+            audiotools.transfer_data(pcm.read,md5sum.update)
+            pcm.close()
+            self.assertEqual(md5sum.hexdigest(),
+                             "9a0ab096c517a627b0ab5a0b959e5f36")
+        finally:
+            tempflac.close()
+
+    @TEST_METADATA
+    def test_tracklint3(self):
+        #copy the test track to a temporary location
+        tempflac = tempfile.NamedTemporaryFile(suffix=".flac")
+        try:
+            f = open("flac-disordered.flac","rb")
+            audiotools.transfer_data(f.read,tempflac.write)
+            f.close()
+            tempflac.flush()
+
+            tempflac.seek(0,0)
+            self.assertEqual(tempflac.read(4),'fLaC')
+            self.assertNotEqual(ord(tempflac.read(1)) & 0x07,0)
+
+            self.assertEqual(self.__run_app__(["trackinfo",tempflac.name]),0)
+            self.__check_error__(_(u"STREAMINFO not first metadata block.  Please fix with tracklint(1)"))
+
+            #ensure that FLACs with improper metadata ordering are reordered
+            self.assertEqual(self.__run_app__(
+                    ["tracklint","-V","quiet","--fix",tempflac.name]),0)
+            flac = audiotools.open(tempflac.name)
+            md5sum = md5()
+            pcm = flac.to_pcm()
+            audiotools.transfer_data(pcm.read,md5sum.update)
+            pcm.close()
+            self.assertEqual(md5sum.hexdigest(),
+                             "9a0ab096c517a627b0ab5a0b959e5f36")
+        finally:
+            tempflac.close()
 
 class APEv2Lint:
     #tracklint is tricky to test since set_metadata()
