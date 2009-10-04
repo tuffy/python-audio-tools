@@ -38,6 +38,9 @@ static PyObject *CDDA_total_tracks(cdio_CDDAObject* self);
 static PyObject *CDDA_track_offsets(cdio_CDDAObject* self, PyObject *args);
 static PyObject *CDDA_read_sector(cdio_CDDAObject* self);
 static PyObject *CDDA_read_sectors(cdio_CDDAObject* self, PyObject *args);
+static PyObject *CDDA_first_sector(cdio_CDDAObject* self, PyObject *args);
+static PyObject *CDDA_last_sector(cdio_CDDAObject* self, PyObject *args);
+static PyObject *CDDA_track_type(cdio_CDDAObject* self, PyObject *args);
 static PyObject *CDDA_seek(cdio_CDDAObject* self, PyObject *args);
 static PyObject *CDDA_set_speed(cdio_CDDAObject* self, PyObject *args);
 static PyObject *CDDA_length_in_seconds(cdio_CDDAObject* self);
@@ -54,6 +57,12 @@ static PyMethodDef CDDA_methods[] = {
    METH_NOARGS,"Returns a sector at the current position as a string"},
   {"read_sectors", (PyCFunction)CDDA_read_sectors,
    METH_VARARGS,"Returns a number of sectors starting at the current position"},
+  {"first_sector", (PyCFunction)CDDA_first_sector,
+   METH_NOARGS,"Returns the first sector on the disc"},
+  {"last_sector", (PyCFunction)CDDA_last_sector,
+   METH_NOARGS,"Returns the last sector on the disc"},
+  {"track_type", (PyCFunction)CDDA_track_type,
+   METH_VARARGS,"Returns the type of the given track"},
   {"seek", (PyCFunction)CDDA_seek,
    METH_VARARGS,"Seeks to a specific LSN"},
   {"set_speed", (PyCFunction)CDDA_set_speed,
@@ -268,6 +277,48 @@ static PyObject *CDDA_read_sectors(cdio_CDDAObject* self, PyObject *args) {
   if (result == NULL) return NULL;
 
   return result;
+}
+
+static PyObject *CDDA_first_sector(cdio_CDDAObject* self, PyObject *args) {
+  lsn_t sector;
+  static PyObject *result = NULL;
+
+  sector = cdio_cddap_disc_firstsector(self->cdrom_drive);
+
+  result = Py_BuildValue("i",sector);
+  if (result == NULL)
+    return NULL;
+  else
+    return result;
+}
+
+static PyObject *CDDA_last_sector(cdio_CDDAObject* self, PyObject *args) {
+  lsn_t sector;
+  static PyObject *result = NULL;
+
+  sector = cdio_cddap_disc_lastsector(self->cdrom_drive);
+
+  result = Py_BuildValue("i",sector);
+  if (result == NULL)
+    return NULL;
+  else
+    return result;
+}
+
+static PyObject *CDDA_track_type(cdio_CDDAObject* self, PyObject *args) {
+  static PyObject *result = NULL;
+  track_format_t format;
+  track_t tracknum;
+
+  if (!PyArg_ParseTuple(args, "H", &tracknum))
+    return NULL;
+
+  format = cdio_get_track_format(self->cdrom_drive->p_cdio,tracknum);
+  result = Py_BuildValue("i",format);
+  if (result == NULL)
+    return NULL;
+  else
+    return result;
 }
 
 static PyObject *CDDA_seek(cdio_CDDAObject* self, PyObject *args) {

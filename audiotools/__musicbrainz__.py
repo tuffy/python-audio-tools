@@ -86,6 +86,17 @@ class MBDiscID:
         self.last_track_number = last_track_number
         self.lead_out_track_offset = lead_out_track_offset
 
+    @classmethod
+    def from_cdda(cls, cdda):
+        tracks = list(cdda)
+
+        return cls(
+            tracks=[t.length() for t in tracks],
+            offsets=[t.offset() for t in tracks],
+            length=cdda.length(),
+            lead_in=tracks[0].offset(),
+            lead_out_track_offset=cdda.last_sector() + 150 + 1)
+
     def offsets(self):
         if (self.__offsets__ is None):
             offsets = [self.__lead_in__]
@@ -96,6 +107,16 @@ class MBDiscID:
             return offsets
         else:
             return self.__offsets__
+
+    def __repr__(self):
+        return "MBDiscID(tracks=%s,offsets=%s,length=%s,lead_in=%s,first_track_number=%s,last_track_number=%s,lead_out_track_offset=%s)" % \
+            (repr(self.tracks),
+             repr(self.__offsets__),
+             repr(self.__length__),
+             repr(self.__lead_in__),
+             repr(self.first_track_number),
+             repr(self.last_track_number),
+             repr(self.lead_out_track_offset))
 
     #returns a MusicBrainz DiscID value as a string
     def __str__(self):

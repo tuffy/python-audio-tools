@@ -1203,7 +1203,7 @@ class TestAiffAudio(TestTextOutput):
 
         if (lossless):
             #test musicbrainz, no --metadata
-            time.sleep(1)
+            time.sleep(2)
             sub = subprocess.Popen(["track2xmcd","-V","quiet","-D",
                                     "--musicbrainz-server=musicbrainz.org",
                                     "--no-freedb"] + arguments,
@@ -1212,6 +1212,12 @@ class TestAiffAudio(TestTextOutput):
             self.assertEqual(sub.wait(),0)
             self.assert_(len(xml) > 0)
             mbxml = audiotools.MusicBrainzReleaseXML.read_data(xml).metadata()
+
+            #NOTE: this fails intermittently simply because
+            #the MusicBrainz service is not 100% reliable
+            #an album that returns 1 match may return 0 later on
+            #even with a lengthy delay between checks
+            #this may only be a temporary problem
             self.assertEqual(mbxml,MUSICBRAINZ_METADATA)
 
             #test freedb, no --metadata

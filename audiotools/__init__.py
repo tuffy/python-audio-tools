@@ -1973,7 +1973,10 @@ class RawCDDA:
     def __init__(self, device_name, speed=None):
         import cdio
         self.cdda = cdio.CDDA(device_name)
-        self.total_tracks = self.cdda.total_tracks()
+        self.total_tracks = len([track_type for track_type in
+                                 map(self.cdda.track_type,
+                                     xrange(1,self.cdda.total_tracks() + 1))
+                                 if (track_type == 0)])
         if (speed is not None):
             self.cdda.set_speed(speed)
 
@@ -1991,10 +1994,17 @@ class RawCDDA:
             yield self[i]
 
     def length(self):
-        return self.cdda.length_in_seconds() * 75
+        #lead-in should always be 150
+        return self.last_sector() + 150 + 1
 
     def close(self):
         pass
+
+    def first_sector(self):
+        return self.cdda.first_sector()
+
+    def last_sector(self):
+        return self.cdda.last_sector()
 
 def at_a_time(total,per):
     for i in xrange(total / per):

@@ -40,7 +40,7 @@ if (__name__ == '__main__'):
     cdda = audiotools.RawCDDA(options.cdrom)
     tracks = list(cdda)
 
-    if (len(cdda) == 255):
+    if (len(cdda) == 0):
          msg.error(_(u"No CD in drive"))
          sys.exit(1)
 
@@ -59,20 +59,13 @@ if (__name__ == '__main__'):
     msg.new_row()
     msg.output_column(_(u"FreeDB disc ID"),True)
     msg.output_column(_(u" : "))
-    msg.output_column(unicode(str(audiotools.DiscID(
-                    [t.length() for t in tracks],
-                    [t.offset() for t in tracks],
-                    cdda.length(),
-                    tracks[0].offset()))))
+    msg.output_column(unicode(str(audiotools.DiscID.from_cdda(cdda))))
 
     msg.new_row()
     msg.output_column(_(u"MusicBrainz disc ID"),True)
     msg.output_column(_(u" : "))
-    msg.output_column(unicode(str(audiotools.MBDiscID(
-                    [t.length() for t in tracks],
-                    [t.offset() for t in tracks],
-                    cdda.length(),
-                    tracks[0].offset()))))
+
+    msg.output_column(unicode(str(audiotools.MBDiscID.from_cdda(cdda))))
 
     msg.blank_row()
     msg.output_rows()

@@ -313,6 +313,15 @@ class DiscID:
         self.__length__ = length
         self.__lead_in__ = lead_in
 
+    @classmethod
+    def from_cdda(cls, cdda):
+        tracks = list(cdda)
+
+        return cls(tracks=[t.length() for t in tracks],
+                   offsets=[t.offset() for t in tracks],
+                   length=cdda.length(),
+                   lead_in=tracks[0].offset())
+
     def add(self, track):
         self.tracks.append(track)
 

@@ -99,17 +99,9 @@ if (__name__ == '__main__'):
 
     tracks = list(cdda)
 
-    musicbrainz_discid = audiotools.MBDiscID(
-        [t.length() for t in tracks],
-        [t.offset() for t in tracks],
-        cdda.length(),
-        tracks[0].offset())
+    musicbrainz_discid = audiotools.MBDiscID.from_cdda(cdda)
 
-    freedb_discid = audiotools.DiscID(
-        [t.length() for t in tracks],
-        [t.offset() for t in tracks],
-        cdda.length(),
-        tracks[0].offset())
+    freedb_discid = audiotools.DiscID.from_cdda(cdda)
 
     msg.info(_(u"Found CD information"))
 
