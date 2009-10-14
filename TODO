@@ -483,9 +483,3 @@
 ** TODO Patch Construct for Python3
    Since pyconstruct hasn't been updated in almost 2 years,
    I'll likely have to update it myself to ensure it'll run on Python3.
-* TODO Add numpy support
-  All PCM parsing deals with arrays of numbers
-  (such as FrameList, the resampling routines, and so forth)
-  which are more efficiently handled by numpy.
-  But if numpy is not installed, we should fall back on standard arrays.
-
