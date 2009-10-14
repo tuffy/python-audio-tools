@@ -23,6 +23,52 @@
 #include "pcmstream.h"
 #include "samplerate/samplerate.c"
 
+#ifdef IS_PY3K
+
+static PyModuleDef pcmstreammodule = {
+    PyModuleDef_HEAD_INIT,
+    "pcmstream",
+    "A PCM stream reading module.",
+    -1,
+    NULL,
+    NULL, NULL, NULL, NULL
+};
+
+PyMODINIT_FUNC PyInit_pcmstream(void)
+{
+    PyObject* m;
+
+    pcmstream_PCMStreamReaderType.tp_new = PyType_GenericNew;
+    if (PyType_Ready(&pcmstream_PCMStreamReaderType) < 0)
+        return NULL;
+
+    pcmstream_ResamplerType.tp_new = PyType_GenericNew;
+    if (PyType_Ready(&pcmstream_ResamplerType) < 0)
+      return NULL;
+
+    m = PyModule_Create(&pcmstreammodule);
+    if (m == NULL)
+      return NULL;
+
+    Py_INCREF(&pcmstream_PCMStreamReaderType);
+    PyModule_AddObject(m, "PCMStreamReader",
+		       (PyObject *)&pcmstream_PCMStreamReaderType);
+
+    Py_INCREF(&pcmstream_ResamplerType);
+    PyModule_AddObject(m, "Resampler",
+		       (PyObject *)&pcmstream_ResamplerType);
+    return m;
+}
+
+void
+PCMStreamReader_dealloc(pcmstream_PCMStreamReader* self)
+{
+  Py_XDECREF(self->substream);
+  Py_TYPE(self)->tp_free((PyObject*)self);
+}
+
+#else
+
 PyMODINIT_FUNC initpcmstream(void) {
     PyObject* m;
 
@@ -44,6 +90,15 @@ PyMODINIT_FUNC initpcmstream(void) {
     PyModule_AddObject(m, "Resampler",
 		       (PyObject *)&pcmstream_ResamplerType);
 }
+
+void
+PCMStreamReader_dealloc(pcmstream_PCMStreamReader* self)
+{
+  Py_XDECREF(self->substream);
+  self->ob_type->tp_free((PyObject*)self);
+}
+
+#endif
 
 /********************************/
 /*PCMStreamReader implementation*/
@@ -122,13 +177,6 @@ int PCMStreamReader_init(pcmstream_PCMStreamReader *self,
   return 0;
 }
 
-void
-PCMStreamReader_dealloc(pcmstream_PCMStreamReader* self)
-{
-  Py_XDECREF(self->substream);
-  self->ob_type->tp_free((PyObject*)self);
-}
-
 PyObject *PCMStreamReader_get_sample_size(
     pcmstream_PCMStreamReader *self,
     void *closure) {
@@ -174,12 +222,21 @@ PyObject *PCMStreamReader_read(pcmstream_PCMStreamReader* self,
   read_string = PyObject_CallMethod(self->substream,"read","l",read_count);
   if (read_string == NULL) return NULL;
 
+#ifdef IS_PY3K
+  if (PyBytes_AsStringAndSize(read_string,
+			      &read_data,
+			      &read_data_length) == -1) {
+    Py_DECREF(read_string);
+    return NULL;
+  }
+#else
   if (PyString_AsStringAndSize(read_string,
 			       &read_data,
 			       &read_data_length) == -1) {
     Py_DECREF(read_string);
     return NULL;
   }
+#endif
 
   pcm_data_length = read_data_length + self->unhandled_bytes_length;
   pcm_data = (unsigned char *)malloc(pcm_data_length);
@@ -301,7 +358,11 @@ PyObject *pcm_to_string(PyObject *dummy, PyObject *args) {
   for (input = 0,output = 0;
        (input < fast_list_size) && (output < pcm_data_length);
        input++,output += sample_size) {
+#ifdef IS_PY3K
+    item = PyLong_AsLong(PySequence_Fast_GET_ITEM(fast_list,input));
+#else
     item = PyInt_AsLong(PySequence_Fast_GET_ITEM(fast_list,input));
+#endif
     if ((item == -1) && (PyErr_Occurred())) {
       Py_DECREF(fast_list);
       free(pcm_data);
@@ -312,7 +373,11 @@ PyObject *pcm_to_string(PyObject *dummy, PyObject *args) {
 
 
   /*build our output string and free all the junk we've allocated*/
+#ifdef IS_PY3K
+  output_string = PyBytes_FromStringAndSize((char *)pcm_data,pcm_data_length);
+#else
   output_string = PyString_FromStringAndSize((char *)pcm_data,pcm_data_length);
+#endif
 
   Py_DECREF(fast_list);
   free(pcm_data);
@@ -326,7 +391,11 @@ long char_to_S8long(unsigned char *s) {
 }
 
 PyObject *char_to_python_S8long(unsigned char *s) {
+#ifdef IS_PY3K
+  return PyLong_FromLong(char_to_S8long(s));
+#else
   return PyInt_FromLong(char_to_S8long(s));
+#endif
 }
 
 PyObject *char_to_python_S8float(unsigned char *s) {
@@ -348,7 +417,11 @@ long char_to_SL16long(unsigned char *s) {
 }
 
 PyObject *char_to_python_SL16long(unsigned char *s) {
+#ifdef IS_PY3K
+  return PyLong_FromLong(char_to_SL16long(s));
+#else
   return PyInt_FromLong(char_to_SL16long(s));
+#endif
 }
 
 PyObject *char_to_python_SL16float(unsigned char *s) {
@@ -371,7 +444,11 @@ long char_to_SL24long(unsigned char *s) {
 }
 
 PyObject *char_to_python_SL24long(unsigned char *s) {
+#ifdef IS_PY3K
+  return PyLong_FromLong(char_to_SL24long(s));
+#else
   return PyInt_FromLong(char_to_SL24long(s));
+#endif
 }
 
 PyObject *char_to_python_SL24float(unsigned char *s) {
@@ -395,7 +472,11 @@ long char_to_SB16long(unsigned char *s) {
 }
 
 PyObject *char_to_python_SB16long(unsigned char *s) {
+#ifdef IS_PY3K
+  return PyLong_FromLong(char_to_SB16long(s));
+#else
   return PyInt_FromLong(char_to_SB16long(s));
+#endif
 }
 
 PyObject *char_to_python_SB16float(unsigned char *s) {
@@ -418,7 +499,11 @@ long char_to_SB24long(unsigned char *s) {
 }
 
 PyObject *char_to_python_SB24long(unsigned char *s) {
+#ifdef IS_PY3K
+  return PyLong_FromLong(char_to_SB24long(s));
+#else
   return PyInt_FromLong(char_to_SB24long(s));
+#endif
 }
 
 PyObject *char_to_python_SB24float(unsigned char *s) {
@@ -434,11 +519,21 @@ void SB24long_to_char(long i, unsigned char *s) {
   s[2] = i & 0x0000FF;
 }
 
+#ifdef IS_PY3K
+
+void Resampler_dealloc(pcmstream_Resampler* self) {
+  src_delete(self->src_state);
+  Py_TYPE(self)->tp_free((PyObject*)self);
+}
+
+#else
 
 void Resampler_dealloc(pcmstream_Resampler* self) {
   src_delete(self->src_state);
   self->ob_type->tp_free((PyObject*)self);
 }
+
+#endif
 
 PyObject *Resampler_new(PyTypeObject *type,
 			PyObject *args, PyObject *kwds) {
@@ -509,11 +604,19 @@ PyObject *Resampler_process(pcmstream_Resampler* self,
 
 
   /*ensure samples_object is a sequence and turn it into a fast sequence*/
+#ifdef IS_PY3K
+  if ((!PySequence_Check(samples_object)) || (PyBytes_Check(samples_object))) {
+    PyErr_SetString(PyExc_TypeError,
+		    "samples must be a sequence");
+    return NULL;
+  }
+#else
   if ((!PySequence_Check(samples_object)) || (PyString_Check(samples_object))) {
     PyErr_SetString(PyExc_TypeError,
 		    "samples must be a sequence");
     return NULL;
   }
+#endif
 
   samples_list = PySequence_Fast(samples_object,
 				 "samples must be a sequence");

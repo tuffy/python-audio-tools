@@ -24,6 +24,10 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  *******************************************************/
 
+#if PY_MAJOR_VERSION >= 3
+#define IS_PY3K
+#endif
+
 typedef struct {
   PyObject_HEAD
   cdrom_drive_t *cdrom_drive;
@@ -79,7 +83,96 @@ static PyMethodDef cdioMethods[] = {
   {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
+#ifndef PyMODINIT_FUNC	/* declarations for DLL import/export */
+#define PyMODINIT_FUNC void
+#endif
 
+
+#ifdef IS_PY3K
+
+static PyTypeObject cdio_CDDAType = {
+    PyVarObject_HEAD_INIT(NULL, 0)
+    "cdio.CDDA",               /* tp_name */
+    sizeof(cdio_CDDAObject),   /* tp_basicsize */
+    0,                         /* tp_itemsize */
+    (destructor)CDDA_dealloc,  /* tp_dealloc */
+    0,                         /* tp_print */
+    0,                         /* tp_getattr */
+    0,                         /* tp_setattr */
+    0,                         /* tp_reserved */
+    0,                         /* tp_repr */
+    0,                         /* tp_as_number */
+    0,                         /* tp_as_sequence */
+    0,                         /* tp_as_mapping */
+    0,                         /* tp_hash  */
+    0,                         /* tp_call */
+    0,                         /* tp_str */
+    0,                         /* tp_getattro */
+    0,                         /* tp_setattro */
+    0,                         /* tp_as_buffer */
+    Py_TPFLAGS_DEFAULT |
+        Py_TPFLAGS_BASETYPE,   /* tp_flags */
+    "CDDA objects",            /* tp_doc */
+    0,		               /* tp_traverse */
+    0,		               /* tp_clear */
+    0,		               /* tp_richcompare */
+    0,		               /* tp_weaklistoffset */
+    0,		               /* tp_iter */
+    0,		               /* tp_iternext */
+    CDDA_methods,              /* tp_methods */
+    0,                         /* tp_members */
+    0,                         /* tp_getset */
+    0,                         /* tp_base */
+    0,                         /* tp_dict */
+    0,                         /* tp_descr_get */
+    0,                         /* tp_descr_set */
+    0,                         /* tp_dictoffset */
+    (initproc)CDDA_init,       /* tp_init */
+    0,                         /* tp_alloc */
+    CDDA_new,                  /* tp_new */
+};
+
+
+static PyModuleDef cdiomodule = {
+    PyModuleDef_HEAD_INIT,
+    "cdio",
+    "A CDDA reading module.",
+    -1,
+    cdioMethods,
+    NULL, NULL, NULL, NULL
+};
+
+
+PyMODINIT_FUNC PyInit_cdio(void)
+{
+    PyObject* m;
+
+    cdio_CDDAType.tp_new = PyType_GenericNew;
+    if (PyType_Ready(&cdio_CDDAType) < 0)
+        return NULL;
+
+    m = PyModule_Create(&cdiomodule);
+    if (m == NULL)
+        return NULL;
+
+    Py_INCREF(&cdio_CDDAType);
+    PyModule_AddObject(m, "CDDA", (PyObject *)&cdio_CDDAType);
+    return m;
+}
+
+static void
+CDDA_dealloc(cdio_CDDAObject* self)
+{
+  if (self->paranoia != NULL)
+    cdio_paranoia_free(self->paranoia);
+  if (self->cdrom_drive != NULL)
+    cdio_cddap_close(self->cdrom_drive);
+  Py_TYPE(self)->tp_free((PyObject*)self);
+}
+
+
+
+#else
 
 static PyTypeObject cdio_CDDAType = {
     PyObject_HEAD_INIT(NULL)
@@ -123,11 +216,6 @@ static PyTypeObject cdio_CDDAType = {
     CDDA_new,                   /* tp_new */
 };
 
-
-
-#ifndef PyMODINIT_FUNC	/* declarations for DLL import/export */
-#define PyMODINIT_FUNC void
-#endif
 PyMODINIT_FUNC initcdio(void) {
     PyObject* m;
 
@@ -141,6 +229,19 @@ PyMODINIT_FUNC initcdio(void) {
     Py_INCREF(&cdio_CDDAType);
     PyModule_AddObject(m, "CDDA", (PyObject *)&cdio_CDDAType);
 }
+
+static void
+CDDA_dealloc(cdio_CDDAObject* self)
+{
+  if (self->paranoia != NULL)
+    cdio_paranoia_free(self->paranoia);
+  if (self->cdrom_drive != NULL)
+    cdio_cddap_close(self->cdrom_drive);
+  if (self != NULL)
+    self->ob_type->tp_free((PyObject*)self);
+}
+#endif
+
 
 static PyObject *CDDA_new(PyTypeObject *type, PyObject *args, PyObject *kwds) {
   cdio_CDDAObject *self;
@@ -173,17 +274,6 @@ static int CDDA_init(cdio_CDDAObject *self, PyObject *args, PyObject *kwds) {
   paranoia_modeset(self->paranoia, PARANOIA_MODE_FULL^PARANOIA_MODE_NEVERSKIP);
 
   return 0;
-}
-
-static void
-CDDA_dealloc(cdio_CDDAObject* self)
-{
-  if (self->paranoia != NULL)
-    cdio_paranoia_free(self->paranoia);
-  if (self->cdrom_drive != NULL)
-    cdio_cddap_close(self->cdrom_drive);
-  if (self != NULL)
-    self->ob_type->tp_free((PyObject*)self);
 }
 
 static PyObject *CDDA_total_tracks(cdio_CDDAObject* self) {
@@ -236,7 +326,11 @@ static PyObject *CDDA_read_sector(cdio_CDDAObject* self) {
     sector[(i * 2) + 1] = (pair & 0xFF00) >> 8;
   }
 
+#ifdef IS_PY3K
+  result = PyBytes_FromStringAndSize(sector,SECTOR_LENGTH);
+#else
   result = PyString_FromStringAndSize(sector,SECTOR_LENGTH);
+#endif
   if (result == NULL) return NULL;
 
   return result;
@@ -272,7 +366,11 @@ static PyObject *CDDA_read_sectors(cdio_CDDAObject* self, PyObject *args) {
     }
   }
 
+#ifdef IS_PY3K
+  result = PyBytes_FromStringAndSize(sectors,current_sectors_position);
+#else
   result = PyString_FromStringAndSize(sectors,current_sectors_position);
+#endif
   free(sectors);
   if (result == NULL) return NULL;
 

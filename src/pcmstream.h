@@ -4,7 +4,6 @@ typedef int Py_ssize_t;
 #define PY_SSIZE_T_MIN INT_MIN
 #endif
 
-
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
  Copyright (C) 2007-2009  Brian Langenberger
@@ -23,6 +22,10 @@ typedef int Py_ssize_t;
  along with this program; if not, write to the Free Software
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  *******************************************************/
+
+#if PY_MAJOR_VERSION >= 3
+#define IS_PY3K
+#endif
 
 /*****************************/
 /*PCMStreamReader definitions*/
@@ -122,6 +125,52 @@ PyMethodDef PCMStreamReader_methods[] = {
   {NULL}
 };
 
+#ifdef IS_PY3K
+
+static PyTypeObject pcmstream_PCMStreamReaderType = {
+    PyVarObject_HEAD_INIT(NULL, 0)
+    "pcmstream.PCMStreamReader", /* tp_name */
+    sizeof(pcmstream_PCMStreamReader), /* tp_basicsize */
+    0,                         /* tp_itemsize */
+    (destructor)PCMStreamReader_dealloc, /* tp_dealloc */
+    0,                         /* tp_print */
+    0,                         /* tp_getattr */
+    0,                         /* tp_setattr */
+    0,                         /* tp_reserved */
+    0,                         /* tp_repr */
+    0,                         /* tp_as_number */
+    0,                         /* tp_as_sequence */
+    0,                         /* tp_as_mapping */
+    0,                         /* tp_hash  */
+    0,                         /* tp_call */
+    0,                         /* tp_str */
+    0,                         /* tp_getattro */
+    0,                         /* tp_setattro */
+    0,                         /* tp_as_buffer */
+    Py_TPFLAGS_DEFAULT |
+        Py_TPFLAGS_BASETYPE,   /* tp_flags */
+    "PCMStreamReader objects", /* tp_doc */
+    0,		               /* tp_traverse */
+    0,		               /* tp_clear */
+    0,		               /* tp_richcompare */
+    0,		               /* tp_weaklistoffset */
+    0,		               /* tp_iter */
+    0,		               /* tp_iternext */
+    PCMStreamReader_methods,   /* tp_methods */
+    0,                         /* tp_members */
+    PCMStreamReader_getseters, /* tp_getset */
+    0,                         /* tp_base */
+    0,                         /* tp_dict */
+    0,                         /* tp_descr_get */
+    0,                         /* tp_descr_set */
+    0,                         /* tp_dictoffset */
+    (initproc)PCMStreamReader_init, /* tp_init */
+    0,                         /* tp_alloc */
+    PCMStreamReader_new,       /* tp_new */
+};
+
+#else
+
 PyTypeObject pcmstream_PCMStreamReaderType = {
     PyObject_HEAD_INIT(NULL)
     0,                         /*ob_size*/
@@ -164,6 +213,8 @@ PyTypeObject pcmstream_PCMStreamReaderType = {
     PCMStreamReader_new,       /* tp_new */
 };
 
+#endif
+
 /***********************/
 /*Resampler definitions*/
 /***********************/
@@ -192,6 +243,52 @@ PyMethodDef Resampler_methods[] = {
   {NULL}
 };
 
+
+#ifdef IS_PY3K
+
+static PyTypeObject pcmstream_ResamplerType = {
+    PyVarObject_HEAD_INIT(NULL, 0)
+    "pcmstream.Resampler",     /* tp_name */
+    sizeof(pcmstream_Resampler), /* tp_basicsize */
+    0,                         /* tp_itemsize */
+    (destructor)Resampler_dealloc, /* tp_dealloc */
+    0,                         /* tp_print */
+    0,                         /* tp_getattr */
+    0,                         /* tp_setattr */
+    0,                         /* tp_reserved */
+    0,                         /* tp_repr */
+    0,                         /* tp_as_number */
+    0,                         /* tp_as_sequence */
+    0,                         /* tp_as_mapping */
+    0,                         /* tp_hash  */
+    0,                         /* tp_call */
+    0,                         /* tp_str */
+    0,                         /* tp_getattro */
+    0,                         /* tp_setattro */
+    0,                         /* tp_as_buffer */
+    Py_TPFLAGS_DEFAULT |
+        Py_TPFLAGS_BASETYPE,   /* tp_flags */
+    "Resampler objects",        /* tp_doc */
+    0,		               /* tp_traverse */
+    0,		               /* tp_clear */
+    0,		               /* tp_richcompare */
+    0,		               /* tp_weaklistoffset */
+    0,		               /* tp_iter */
+    0,		               /* tp_iternext */
+    Resampler_methods,         /* tp_methods */
+    0,                         /* tp_members */
+    0,                         /* tp_getset */
+    0,                         /* tp_base */
+    0,                         /* tp_dict */
+    0,                         /* tp_descr_get */
+    0,                         /* tp_descr_set */
+    0,                         /* tp_dictoffset */
+    (initproc)Resampler_init,  /* tp_init */
+    0,                         /* tp_alloc */
+    Resampler_new,             /* tp_new */
+};
+
+#else
 
 PyTypeObject pcmstream_ResamplerType = {
     PyObject_HEAD_INIT(NULL)
@@ -235,7 +332,4 @@ PyTypeObject pcmstream_ResamplerType = {
     Resampler_new,       /* tp_new */
 };
 
-
-#ifndef PyMODINIT_FUNC	/* declarations for DLL import/export */
-#define PyMODINIT_FUNC void
 #endif

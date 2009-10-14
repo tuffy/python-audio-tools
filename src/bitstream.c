@@ -19,6 +19,10 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  *******************************************************/
 
+#if PY_MAJOR_VERSION >= 3
+#define IS_PY3K
+#endif
+
 #if PY_VERSION_HEX < 0x02050000 && !defined(PY_SSIZE_T_MIN)
 typedef int Py_ssize_t;
 #define PY_SSIZE_T_MAX INT_MAX
@@ -92,6 +96,87 @@ static PyGetSetDef BitStreamReader_getseters[] = {
     {NULL}  /* Sentinel */
 };
 
+#ifdef IS_PY3K
+
+static PyTypeObject bitstream_BitStreamReaderType = {
+    PyVarObject_HEAD_INIT(NULL, 0)
+    "bitstream.BitStreamReader", /* tp_name */
+    sizeof(bitstream_BitStreamReader), /* tp_basicsize */
+    0,                         /* tp_itemsize */
+    (destructor)BitStreamReader_dealloc,  /* tp_dealloc */
+    0,                         /* tp_print */
+    0,                         /* tp_getattr */
+    0,                         /* tp_setattr */
+    0,                         /* tp_reserved */
+    0,                         /* tp_repr */
+    0,                         /* tp_as_number */
+    0,                         /* tp_as_sequence */
+    0,                         /* tp_as_mapping */
+    0,                         /* tp_hash  */
+    0,                         /* tp_call */
+    0,                         /* tp_str */
+    0,                         /* tp_getattro */
+    0,                         /* tp_setattro */
+    0,                         /* tp_as_buffer */
+    Py_TPFLAGS_DEFAULT |
+        Py_TPFLAGS_BASETYPE,   /* tp_flags */
+    "BitStreamReader objects", /* tp_doc */
+    0,		               /* tp_traverse */
+    0,		               /* tp_clear */
+    0,		               /* tp_richcompare */
+    0,		               /* tp_weaklistoffset */
+    0,		               /* tp_iter */
+    0,		               /* tp_iternext */
+    BitStreamReader_methods,   /* tp_methods */
+    0,                         /* tp_members */
+    BitStreamReader_getseters, /* tp_getset */
+    0,                         /* tp_base */
+    0,                         /* tp_dict */
+    0,                         /* tp_descr_get */
+    0,                         /* tp_descr_set */
+    0,                         /* tp_dictoffset */
+    (initproc)BitStreamReader_init, /* tp_init */
+    0,                         /* tp_alloc */
+    BitStreamReader_new,       /* tp_new */
+};
+
+static PyModuleDef bitstreammodule = {
+    PyModuleDef_HEAD_INIT,
+    "bitstream",
+    "A bitstream reading module.",
+    -1,
+    module_methods,
+    NULL, NULL, NULL, NULL
+};
+
+
+PyMODINIT_FUNC PyInit_bitstream(void)
+{
+    PyObject* m;
+
+    bitstream_BitStreamReaderType.tp_new = PyType_GenericNew;
+    if (PyType_Ready(&bitstream_BitStreamReaderType) < 0)
+        return NULL;
+
+    m = PyModule_Create(&bitstreammodule);
+    if (m == NULL)
+        return NULL;
+
+    Py_INCREF(&bitstream_BitStreamReaderType);
+    PyModule_AddObject(m, "BitStreamReader",
+		       (PyObject *)&bitstream_BitStreamReaderType);
+    return m;
+}
+
+static void
+BitStreamReader_dealloc(bitstream_BitStreamReader* self)
+{
+  Py_DECREF(self->substream);
+  Py_TYPE(self)->tp_free((PyObject*)self);
+}
+
+#else
+
 static PyTypeObject bitstream_BitStreamReaderType = {
     PyObject_HEAD_INIT(NULL)
     0,                         /*ob_size*/
@@ -134,8 +219,6 @@ static PyTypeObject bitstream_BitStreamReaderType = {
     BitStreamReader_new,       /* tp_new */
 };
 
-
-
 #ifndef PyMODINIT_FUNC	/* declarations for DLL import/export */
 #define PyMODINIT_FUNC void
 #endif
@@ -154,6 +237,17 @@ PyMODINIT_FUNC initbitstream(void) {
     PyModule_AddObject(m, "BitStreamReader",
 		       (PyObject *)&bitstream_BitStreamReaderType);
 }
+
+static void
+BitStreamReader_dealloc(bitstream_BitStreamReader* self)
+{
+  Py_DECREF(self->substream);
+  self->ob_type->tp_free((PyObject*)self);
+}
+
+#endif
+
+
 
 static PyObject *BitStreamReader_new(PyTypeObject *type,
 				     PyObject *args, PyObject *kwds) {
@@ -179,12 +273,7 @@ static int BitStreamReader_init(bitstream_BitStreamReader *self,
   return 0;
 }
 
-static void
-BitStreamReader_dealloc(bitstream_BitStreamReader* self)
-{
-  Py_DECREF(self->substream);
-  self->ob_type->tp_free((PyObject*)self);
-}
+
 
 static PyObject *BitStreamReader_close(bitstream_BitStreamReader* self) {
   return PyObject_CallMethod(self->substream,"close",NULL);
@@ -214,8 +303,13 @@ static PyObject *BitStreamReader_seek(bitstream_BitStreamReader* self,
 
 static PyObject *BitStreamReader_buffer(bitstream_BitStreamReader* self,
 					void *closure) {
+#ifdef IS_PY3K
+  return PyBytes_FromStringAndSize(remaining_bits(self),
+				   remaining_bits_length(self));
+#else
   return PyString_FromStringAndSize(remaining_bits(self),
 				    remaining_bits_length(self));
+#endif
 }
 
 static PyObject *BitStreamReader_read(bitstream_BitStreamReader* self,
@@ -258,11 +352,19 @@ static PyObject *BitStreamReader_read(bitstream_BitStreamReader* self,
       return NULL;
 
     /*convert the returned Python object into a C string (with length)*/
+#ifdef IS_PY3K
+    if (PyBytes_AsStringAndSize(read_data,
+				&byte_buffer,&byte_length) == -1) {
+      Py_DECREF(read_data);
+      return NULL;
+    }
+#else
     if (PyString_AsStringAndSize(read_data,
 				 &byte_buffer,&byte_length) == -1) {
       Py_DECREF(read_data);
       return NULL;
     }
+#endif
 
     Py_DECREF(read_data);
 
@@ -292,8 +394,13 @@ static PyObject *BitStreamReader_read(bitstream_BitStreamReader* self,
 
     /*grab up to the requested number of bits to a Python
       string for returning to the user*/
+#ifdef IS_PY3K
+    bit_string = PyBytes_FromStringAndSize(bit_buffer,
+					    read_count);
+#else
     bit_string = PyString_FromStringAndSize(bit_buffer,
 					    read_count);
+#endif
 
     /*toss any remaining bits into our internal buffer*/
     leftover_bits = bit_buffer + read_count;
@@ -310,8 +417,13 @@ static PyObject *BitStreamReader_read(bitstream_BitStreamReader* self,
   } else {
     /*if there are enough bits in the buffer,
       return those bits and increment the index*/
+#ifdef IS_PY3K
+    bit_string = PyBytes_FromStringAndSize(remaining_bits(self),
+					   read_count);
+#else
     bit_string = PyString_FromStringAndSize(remaining_bits(self),
 					    read_count);
+#endif
     self->buffer_index += read_count;
   }
 
