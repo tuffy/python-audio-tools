@@ -2291,6 +2291,69 @@ class ExecQueue:
             except KeyError:
                 continue
 
+#######################
+#Bitstream Handling
+#######################
+
+class BitstreamReader:
+    #byte_source should be a standard file-like object
+    #with a read() method that returns strings of bytes
+    #and a close() method
+    def __init__(self, byte_source):
+        from . import bitstream
+
+        self.byte_source = byte_source
+        self.context = 0
+
+        self.read_bits = bitstream.read_bits
+        self.read_unary = bitstream.read_unary
+
+    def read(self, bits):
+        read_bits = self.read_bits
+        accumulator = 0
+
+        while (bits > 0):
+            if (self.context == 0):
+                self.context = 0x800 | ord(self.byte_source.read(1))
+
+            if (bits > 8):
+                result = read_bits(self.context,8)
+            else:
+                result = read_bits(self.context,bits)
+
+            accumulator = (accumulator << ((result & 0xF00000) >> 20)) | \
+              ((result & 0xFF000) >> 12)
+            self.context = (result & 0xFFF)
+            bits -= ((result & 0xF00000) >> 20)
+
+        return accumulator
+
+    def unary(self, stop_bit):
+        if ((stop_bit != 0) and (stop_bit != 1)):
+            raise ValueError("stop_bit must be 0 or 1")
+
+        accumulator = 0
+
+        if (self.context == 0):
+            self.context = 0x800 | ord(self.byte_source.read(1))
+
+        result = self.read_unary(self.context,stop_bit)
+        accumulator += ((result & 0xFF000) >> 12)
+        self.context = result & 0xFFF
+
+        while (result >> 24):
+            if (self.context == 0):
+                self.context = 0x800 | ord(self.byte_source.read(1))
+
+            result = self.read_unary(self.context,stop_bit)
+            accumulator += ((result & 0xFF000) >> 12)
+            self.context = result & 0xFFF
+
+        return accumulator
+
+    def close(self):
+        self.byte_source.close()
+        self.context = 0
 
 #***ApeAudio temporarily removed***
 #Without a legal alternative to mac-port, I shall have to re-implement
