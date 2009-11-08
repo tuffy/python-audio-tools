@@ -2305,11 +2305,14 @@ class BitstreamReader:
         self.byte_source = byte_source
         self.context = 0
 
-        self.read_bits = bitstream.read_bits
-        self.read_unary = bitstream.read_unary
+        self.__read_bits__ = bitstream.read_bits
+        self.__read_unary__ = bitstream.read_unary
+
+    def byte_align(self):
+        self.context = 0
 
     def read(self, bits):
-        read_bits = self.read_bits
+        read_bits = self.__read_bits__
         accumulator = 0
 
         while (bits > 0):
@@ -2328,16 +2331,23 @@ class BitstreamReader:
 
         return accumulator
 
+    def read_signed(self, bits):
+        if (self.read(1)):              #negative
+            return self.read(bits - 1) - (1 << (bits - 1))
+        else:
+            return self.read(bits - 1)  #positive
+
     def unary(self, stop_bit):
         if ((stop_bit != 0) and (stop_bit != 1)):
             raise ValueError("stop_bit must be 0 or 1")
 
+        read_unary = self.__read_unary__
         accumulator = 0
 
         if (self.context == 0):
             self.context = 0x800 | ord(self.byte_source.read(1))
 
-        result = self.read_unary(self.context,stop_bit)
+        result = read_unary(self.context,stop_bit)
         accumulator += ((result & 0xFF000) >> 12)
         self.context = result & 0xFFF
 
@@ -2345,11 +2355,14 @@ class BitstreamReader:
             if (self.context == 0):
                 self.context = 0x800 | ord(self.byte_source.read(1))
 
-            result = self.read_unary(self.context,stop_bit)
+            result = read_unary(self.context,stop_bit)
             accumulator += ((result & 0xFF000) >> 12)
             self.context = result & 0xFFF
 
         return accumulator
+
+    def tell(self):
+        return self.byte_source.tell()
 
     def close(self):
         self.byte_source.close()
