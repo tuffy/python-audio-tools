@@ -423,7 +423,7 @@ def filename_to_type(path):
 class PCMReader:
     def __init__(self, file,
                  sample_rate, channels, bits_per_sample,
-                 process=None):
+                  process=None):
         self.file = file
         self.sample_rate = sample_rate
         self.channels = channels
