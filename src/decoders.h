@@ -33,17 +33,46 @@ PyMethodDef module_methods[] = {
   {NULL}
 };
 
+struct flac_STREAMINFO {
+  uint16_t minimum_block_size;
+  uint16_t maximum_block_size;
+  uint32_t minimum_frame_size;
+  uint32_t maximum_frame_size;
+  uint32_t sample_rate;
+  uint8_t channels;
+  uint8_t bits_per_sample;
+  uint64_t total_samples;
+  unsigned char md5sum[16];
+};
+
 typedef struct {
   PyObject_HEAD
   char* filename;
+
   FILE* file;
   Bitstream* bitstream;
+
+  struct flac_STREAMINFO streaminfo;
 } decoders_FlacDecoder;
+
+static PyObject *FlacDecoder_sample_rate(decoders_FlacDecoder *self,
+					 void *closure);
+static PyObject *FlacDecoder_bits_per_sample(decoders_FlacDecoder *self,
+					     void *closure);
+
+static PyObject *FlacDecoder_channels(decoders_FlacDecoder *self,
+				      void *closure);
 
 int FlacDecoder_init(decoders_FlacDecoder *self,
 		     PyObject *args, PyObject *kwds);
 
 PyGetSetDef FlacDecoder_getseters[] = {
+  {"sample_rate",
+   (getter)FlacDecoder_sample_rate, NULL, "sample rate", NULL},
+  {"bits_per_sample",
+   (getter)FlacDecoder_bits_per_sample, NULL, "bits per sample", NULL},
+  {"channels",
+   (getter)FlacDecoder_channels, NULL, "channels", NULL},
   {NULL}
 };
 
