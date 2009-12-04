@@ -1,490 +1,198 @@
-#include <Python.h>
+#include "bitstream.h"
+#include <stdlib.h>
+#include <stdint.h>
 
-/********************************************************
- Audio Tools, a module and set of tools for manipulating audio data
- Copyright (C) 2007-2009  Brian Langenberger
+const static unsigned int read_bits_table[0x900][8] =
+#include "read_bits_table.h"
+    ;
 
- This program is free software; you can redistribute it and/or modify
- it under the terms of the GNU General Public License as published by
- the Free Software Foundation; either version 2 of the License, or
- (at your option) any later version.
+const static unsigned int write_bits_table[0x400][0x900] =
+#include "write_bits_table.h"
+    ;
 
- This program is distributed in the hope that it will be useful,
- but WITHOUT ANY WARRANTY; without even the implied warranty of
- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- GNU General Public License for more details.
-
- You should have received a copy of the GNU General Public License
- along with this program; if not, write to the Free Software
- Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
- *******************************************************/
-
-#if PY_MAJOR_VERSION >= 3
-#define IS_PY3K
-#endif
-
-#if PY_VERSION_HEX < 0x02050000 && !defined(PY_SSIZE_T_MIN)
-typedef int Py_ssize_t;
-#define PY_SSIZE_T_MAX INT_MAX
-#define PY_SSIZE_T_MIN INT_MIN
-#endif
-
-typedef struct {
-  PyObject_HEAD
-  PyObject *substream; /*the Python file object to get new bytes from*/
-  char buffer[8];      /*our internal bit buffer*/
-  int buffer_index;    /*a value from 0-7*/
-  int buffer_length;   /*another value from 0-7*/
-  /*index and length form a sliding window on the buffer
-    reading bits increases the index until it hits the total length
-    adding new bits means resetting the index and setting the
-    buffer and length to the new bits' value
-   */
-} bitstream_BitStreamReader;
-
-static void BitStreamReader_dealloc(bitstream_BitStreamReader* self);
-static PyObject *BitStreamReader_new(PyTypeObject *type,
-				     PyObject *args, PyObject *kwds);
-static int BitStreamReader_init(bitstream_BitStreamReader *self,
-				PyObject *args, PyObject *kwds);
-
-static PyObject *BitStreamReader_close(bitstream_BitStreamReader* self);
-
-static PyObject *BitStreamReader_tell(bitstream_BitStreamReader* self);
-
-static PyObject *BitStreamReader_seek(bitstream_BitStreamReader* self,
-				      PyObject *args, PyObject *kwds);
-
-static PyObject *BitStreamReader_read(bitstream_BitStreamReader* self,
-				      PyObject *args);
-
-static PyObject *BitStreamReader_ungetc(bitstream_BitStreamReader* self,
-					PyObject *args);
-
-static PyObject *BitStreamReader_buffer(bitstream_BitStreamReader* self,
-					void *closure);
-
-char *remaining_bits(bitstream_BitStreamReader *reader);
-int remaining_bits_length(bitstream_BitStreamReader *reader);
-
-void bytes_to_bits(char *bytes, Py_ssize_t bytes_length, char *bits);
-
-static PyMethodDef module_methods[] = {
-  {NULL}
-};
-
-static PyMethodDef BitStreamReader_methods[] = {
-  {"close", (PyCFunction)BitStreamReader_close,
-   METH_NOARGS,"Closes the BitStreamReader and substream"},
-  {"tell", (PyCFunction)BitStreamReader_tell,
-   METH_NOARGS,"Returns the current position in the substream"},
-  {"seek", (PyCFunction)BitStreamReader_seek,
-   METH_VARARGS | METH_KEYWORDS,"Seeks to a new position in the substream"},
-  {"read", (PyCFunction)BitStreamReader_read,
-   METH_VARARGS,"Reads the given number of bits from the substream"},
-  {"ungetc", (PyCFunction)BitStreamReader_ungetc,
-   METH_VARARGS,"Pushes a single bit character back into the stream"},
-  {NULL}
-};
-
-
-static PyGetSetDef BitStreamReader_getseters[] = {
-    {"buffer",
-     (getter)BitStreamReader_buffer, 0,
-     "buffer string",
-     NULL},
-    {NULL}  /* Sentinel */
-};
-
-#ifdef IS_PY3K
-
-static PyTypeObject bitstream_BitStreamReaderType = {
-    PyVarObject_HEAD_INIT(NULL, 0)
-    "bitstream.BitStreamReader", /* tp_name */
-    sizeof(bitstream_BitStreamReader), /* tp_basicsize */
-    0,                         /* tp_itemsize */
-    (destructor)BitStreamReader_dealloc,  /* tp_dealloc */
-    0,                         /* tp_print */
-    0,                         /* tp_getattr */
-    0,                         /* tp_setattr */
-    0,                         /* tp_reserved */
-    0,                         /* tp_repr */
-    0,                         /* tp_as_number */
-    0,                         /* tp_as_sequence */
-    0,                         /* tp_as_mapping */
-    0,                         /* tp_hash  */
-    0,                         /* tp_call */
-    0,                         /* tp_str */
-    0,                         /* tp_getattro */
-    0,                         /* tp_setattro */
-    0,                         /* tp_as_buffer */
-    Py_TPFLAGS_DEFAULT |
-        Py_TPFLAGS_BASETYPE,   /* tp_flags */
-    "BitStreamReader objects", /* tp_doc */
-    0,		               /* tp_traverse */
-    0,		               /* tp_clear */
-    0,		               /* tp_richcompare */
-    0,		               /* tp_weaklistoffset */
-    0,		               /* tp_iter */
-    0,		               /* tp_iternext */
-    BitStreamReader_methods,   /* tp_methods */
-    0,                         /* tp_members */
-    BitStreamReader_getseters, /* tp_getset */
-    0,                         /* tp_base */
-    0,                         /* tp_dict */
-    0,                         /* tp_descr_get */
-    0,                         /* tp_descr_set */
-    0,                         /* tp_dictoffset */
-    (initproc)BitStreamReader_init, /* tp_init */
-    0,                         /* tp_alloc */
-    BitStreamReader_new,       /* tp_new */
-};
-
-static PyModuleDef bitstreammodule = {
-    PyModuleDef_HEAD_INIT,
-    "bitstream",
-    "A bitstream reading module.",
-    -1,
-    module_methods,
-    NULL, NULL, NULL, NULL
-};
-
-
-PyMODINIT_FUNC PyInit_bitstream(void)
-{
-    PyObject* m;
-
-    bitstream_BitStreamReaderType.tp_new = PyType_GenericNew;
-    if (PyType_Ready(&bitstream_BitStreamReaderType) < 0)
-        return NULL;
-
-    m = PyModule_Create(&bitstreammodule);
-    if (m == NULL)
-        return NULL;
-
-    Py_INCREF(&bitstream_BitStreamReaderType);
-    PyModule_AddObject(m, "BitStreamReader",
-		       (PyObject *)&bitstream_BitStreamReaderType);
-    return m;
+Bitstream* bs_open(FILE* f) {
+  Bitstream* bs = malloc(sizeof(Bitstream));
+  bs->file = f;
+  bs->state = 0;
+  bs->callback = NULL;
+  return bs;
 }
 
-static void
-BitStreamReader_dealloc(bitstream_BitStreamReader* self)
-{
-  Py_DECREF(self->substream);
-  Py_TYPE(self)->tp_free((PyObject*)self);
+void bs_close(Bitstream* bs) {
+  struct bs_callback* node;
+  struct bs_callback* next;
+
+  if (bs == NULL) return;
+
+  if (bs->file != NULL) fclose(bs->file);
+
+  for (node = bs->callback; node != NULL; node = next) {
+    next = node->next;
+    free(node);
+  }
+  free(bs);
 }
 
-#else
-
-static PyTypeObject bitstream_BitStreamReaderType = {
-    PyObject_HEAD_INIT(NULL)
-    0,                         /*ob_size*/
-    "bitstream.BitStreamReader", /*tp_name*/
-    sizeof(bitstream_BitStreamReader), /*tp_basicsize*/
-    0,                         /*tp_itemsize*/
-    (destructor)BitStreamReader_dealloc, /*tp_dealloc*/
-    0,                         /*tp_print*/
-    0,                         /*tp_getattr*/
-    0,                         /*tp_setattr*/
-    0,                         /*tp_compare*/
-    0,                         /*tp_repr*/
-    0,                         /*tp_as_number*/
-    0,                         /*tp_as_sequence*/
-    0,                         /*tp_as_mapping*/
-    0,                         /*tp_hash */
-    0,                         /*tp_call*/
-    0,                         /*tp_str*/
-    0,                         /*tp_getattro*/
-    0,                         /*tp_setattro*/
-    0,                         /*tp_as_buffer*/
-    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE, /*tp_flags*/
-    "BitStreamReader objects", /* tp_doc */
-    0,		               /* tp_traverse */
-    0,		               /* tp_clear */
-    0,		               /* tp_richcompare */
-    0,		               /* tp_weaklistoffset */
-    0,		               /* tp_iter */
-    0,		               /* tp_iternext */
-    BitStreamReader_methods,   /* tp_methods */
-    0,                         /* tp_members */
-    BitStreamReader_getseters, /* tp_getset */
-    0,                         /* tp_base */
-    0,                         /* tp_dict */
-    0,                         /* tp_descr_get */
-    0,                         /* tp_descr_set */
-    0,                         /* tp_dictoffset */
-    (initproc)BitStreamReader_init, /* tp_init */
-    0,                         /* tp_alloc */
-    BitStreamReader_new,       /* tp_new */
-};
-
-#ifndef PyMODINIT_FUNC	/* declarations for DLL import/export */
-#define PyMODINIT_FUNC void
-#endif
-
-PyMODINIT_FUNC initbitstream(void) {
-    PyObject* m;
-
-    bitstream_BitStreamReaderType.tp_new = PyType_GenericNew;
-    if (PyType_Ready(&bitstream_BitStreamReaderType) < 0)
-        return;
-
-    m = Py_InitModule3("bitstream", module_methods,
-                       "A bit stream reading module.");
-
-    Py_INCREF(&bitstream_BitStreamReaderType);
-    PyModule_AddObject(m, "BitStreamReader",
-		       (PyObject *)&bitstream_BitStreamReaderType);
+void bs_add_callback(Bitstream* bs, void (*callback)(unsigned int)) {
+  struct bs_callback* callback_node = malloc(sizeof(struct bs_callback));
+  callback_node->callback = callback;
+  callback_node->next = bs->callback;
+  bs->callback = callback_node;
 }
 
-static void
-BitStreamReader_dealloc(bitstream_BitStreamReader* self)
-{
-  Py_DECREF(self->substream);
-  self->ob_type->tp_free((PyObject*)self);
-}
+unsigned int read_bits(Bitstream* bs, unsigned int count) {
+  int context = bs->state;
+  unsigned int result;
+  unsigned int byte;
+  struct bs_callback* callback;
+  unsigned int accumulator = 0;
 
-#endif
-
-
-
-static PyObject *BitStreamReader_new(PyTypeObject *type,
-				     PyObject *args, PyObject *kwds) {
-  bitstream_BitStreamReader *self;
-
-  self = (bitstream_BitStreamReader *)type->tp_alloc(type, 0);
-
-  return (PyObject *)self;
-}
-
-static int BitStreamReader_init(bitstream_BitStreamReader *self,
-				PyObject *args, PyObject *kwds) {
-  PyObject *substream = NULL;
-
-  if (!PyArg_ParseTuple(args, "O", &substream))
-    return -1;
-
-  Py_INCREF(substream);
-  self->substream = substream;
-  self->buffer_length = 0;
-  self->buffer_index = 0;
-
-  return 0;
-}
-
-
-
-static PyObject *BitStreamReader_close(bitstream_BitStreamReader* self) {
-  return PyObject_CallMethod(self->substream,"close",NULL);
-}
-
-static PyObject *BitStreamReader_tell(bitstream_BitStreamReader* self) {
-  return PyObject_CallMethod(self->substream,"tell",NULL);
-}
-
-static PyObject *BitStreamReader_seek(bitstream_BitStreamReader* self,
-				      PyObject *args,
-				      PyObject *kwds) {
-  static long int position = 0;
-  static long int whence = 0;
-  static char *kwlist[] = {"pos", "whence", NULL};
-
-  if (!PyArg_ParseTupleAndKeywords(args, kwds, "l|l", kwlist,
-				   &position, &whence))
-    return NULL;
-
-  self->buffer_index = 0;
-  self->buffer_length = 0;
-
-  return PyObject_CallMethod(self->substream,"seek", "(l,l)",
-			     position, whence);
-}
-
-static PyObject *BitStreamReader_buffer(bitstream_BitStreamReader* self,
-					void *closure) {
-#ifdef IS_PY3K
-  return PyBytes_FromStringAndSize(remaining_bits(self),
-				   remaining_bits_length(self));
-#else
-  return PyString_FromStringAndSize(remaining_bits(self),
-				    remaining_bits_length(self));
-#endif
-}
-
-static PyObject *BitStreamReader_read(bitstream_BitStreamReader* self,
-				      PyObject *args) {
-  static long int read_count = 0;
-  Py_ssize_t bytes_to_read;
-
-  char *byte_buffer;
-  Py_ssize_t byte_length;
-
-  PyObject *read_data = NULL;  /*input string from the file object*/
-
-  char *bit_buffer;
-  Py_ssize_t bit_length;
-
-  char *leftover_bits;
-  Py_ssize_t leftover_bits_length;
-
-  PyObject *bit_string = NULL; /*output string to the user*/
-
-  /*get the number of bits to read*/
-  if (!PyArg_ParseTuple(args,"l",&read_count))
-    return NULL;
-
-  if (read_count > remaining_bits_length(self)) {
-    /*If there's not enough bits in the buffer,
-      we need to fetch at least 1 more byte.*/
-
-    bytes_to_read = ((read_count - remaining_bits_length(self)) / 8);
-
-    if (((read_count - remaining_bits_length(self)) % 8) > 0)
-      bytes_to_read++;
-
-    if (bytes_to_read < 1) bytes_to_read = 1;
-
-    read_data = PyObject_CallMethod(self->substream,"read","l",
-				    bytes_to_read);
-
-    if (read_data == NULL)
-      return NULL;
-
-    /*convert the returned Python object into a C string (with length)*/
-#ifdef IS_PY3K
-    if (PyBytes_AsStringAndSize(read_data,
-				&byte_buffer,&byte_length) == -1) {
-      Py_DECREF(read_data);
-      return NULL;
+  while (count > 0) {
+    if (context == 0) {
+      byte = (unsigned int)fgetc(bs->file);
+      context = 0x800 | byte;
+      for (callback = bs->callback; callback != NULL; callback = callback->next)
+	callback->callback(byte);
     }
-#else
-    if (PyString_AsStringAndSize(read_data,
-				 &byte_buffer,&byte_length) == -1) {
-      Py_DECREF(read_data);
-      return NULL;
+
+    result = read_bits_table[context][(count > 8 ? 8 : count) - 1];
+
+    accumulator = (accumulator << ((result & 0xF00000) >> 20)) |
+      ((result & 0xFF000) >> 12);
+    count -= ((result & 0xF00000) >> 20);
+    context = (result & 0xFFF);
+  }
+
+  bs->state = context;
+  return accumulator;
+}
+
+uint64_t read_bits64(Bitstream* bs, unsigned int count) {
+  int context = bs->state;
+  unsigned int result;
+  unsigned int byte;
+  struct bs_callback* callback;
+  uint64_t accumulator = 0;
+
+  while (count > 0) {
+    if (context == 0) {
+      byte = (unsigned int)fgetc(bs->file);
+      context = 0x800 | byte;
+      for (callback = bs->callback; callback != NULL; callback = callback->next)
+	callback->callback(byte);
     }
-#endif
 
-    Py_DECREF(read_data);
+    result = read_bits_table[context][(count > 8 ? 8 : count) - 1];
 
-    /*Combine our new bytes with the contents of our internel bit buffer
-      into one continual bit_buffer.
-      This buffer may be larger than the user's request.
-    */
-    bit_length = (byte_length * 8) + remaining_bits_length(self);
-    bit_buffer = (char *)malloc(bit_length);
-
-    /*add the old bits*/
-    memcpy(bit_buffer,remaining_bits(self),(size_t)remaining_bits_length(self));
-
-    /*add the new bits*/
-    bytes_to_bits(byte_buffer, byte_length,
-		  bit_buffer + remaining_bits_length(self));
-
-    /*mark old bits as consumed*/
-    self->buffer_index = 0;
-    self->buffer_length = 0;
-
-    /*If the request is larger than the number of bits we've received
-      (which happens at the end of the stream)
-      reduce the request accordingly.*/
-    if (read_count > bit_length)
-      read_count = bit_length;
-
-    /*grab up to the requested number of bits to a Python
-      string for returning to the user*/
-#ifdef IS_PY3K
-    bit_string = PyBytes_FromStringAndSize(bit_buffer,
-					    read_count);
-#else
-    bit_string = PyString_FromStringAndSize(bit_buffer,
-					    read_count);
-#endif
-
-    /*toss any remaining bits into our internal buffer*/
-    leftover_bits = bit_buffer + read_count;
-    leftover_bits_length = bit_length - read_count;
-    if (leftover_bits_length > 7)
-      leftover_bits_length = 7;
-
-    memcpy(self->buffer,leftover_bits,(size_t)leftover_bits_length);
-
-    self->buffer_index = 0;
-    self->buffer_length = leftover_bits_length;
-
-    free(bit_buffer);
-  } else {
-    /*if there are enough bits in the buffer,
-      return those bits and increment the index*/
-#ifdef IS_PY3K
-    bit_string = PyBytes_FromStringAndSize(remaining_bits(self),
-					   read_count);
-#else
-    bit_string = PyString_FromStringAndSize(remaining_bits(self),
-					    read_count);
-#endif
-    self->buffer_index += read_count;
+    accumulator = (accumulator << ((result & 0xF00000) >> 20)) |
+      ((result & 0xFF000) >> 12);
+    count -= ((result & 0xF00000) >> 20);
+    context = (result & 0xFFF);
   }
 
-  return bit_string;
+  bs->state = context;
+  return accumulator;
 }
 
-static PyObject *BitStreamReader_ungetc(bitstream_BitStreamReader* self,
-					PyObject *args) {
-  char *bit;
-  int bit_length;
+unsigned int read_unary(Bitstream* bs, int stop_bit) {
+    static unsigned int jumptable[0x900][2] =
+#include "read_unary_table.h"
+    ;
+  int context = bs->state;
+  unsigned int result;
+  struct bs_callback* callback;
+  unsigned int byte;
+  unsigned int accumulator = 0;
 
-  int old_length;
-
-  if (!PyArg_ParseTuple(args,"s#",&bit,&bit_length))
-    return NULL;
-
-  if (bit_length != 1) {
-    PyErr_SetString(PyExc_ValueError,"bit string must be exactly 1");
-    return NULL;
-  }
-
-  if (remaining_bits_length(self) >= 8) {
-    PyErr_SetString(PyExc_ValueError,"no more characters can be ungotten");
-    return NULL;
-  }
-
-  old_length = remaining_bits_length(self);
-
-  memmove(self->buffer + 1, remaining_bits(self), remaining_bits_length(self));
-
-  if (bit[0] == (char)0)
-    self->buffer[0] = (char)0;
-  else
-    self->buffer[0] = (char)1;
-
-  self->buffer_index = 0;
-  self->buffer_length = old_length + 1;
-
-  Py_INCREF(Py_None);
-  return Py_None;
-}
-
-
-/*takes a set of bytes and length,
-  converts those bytes to bits in the bits array*/
-void bytes_to_bits(char *bytes, Py_ssize_t bytes_length, char *bits) {
-  int bit;
-  int byte;
-  int i;
-
-  for (byte = 0,bit=0; byte < bytes_length; byte++) {
-    for (i = 7; i >= 0; i--,bit++) {
-      bits[bit] = ((bytes[byte] & (1 << i)) >> i);
+  do {
+    if (context == 0) {
+      byte = (unsigned int)fgetc(bs->file);
+      for (callback = bs->callback; callback != NULL; callback = callback->next)
+	callback->callback(byte);
+      context = 0x800 | byte;
     }
+
+    result = jumptable[context][stop_bit];
+
+    accumulator += ((result & 0xFF000) >> 12);
+
+    context = result & 0xFFF;
+  } while (result >> 24);
+
+  bs->state = context;
+  return accumulator;
+}
+
+int bs_eof(Bitstream* bs) {
+  return feof(bs->file);
+}
+
+void write_bits(Bitstream* bs, unsigned int count, int value) {
+  int bits_to_write;
+  int value_to_write;
+  int result;
+  int context = bs->state;
+  unsigned int byte;
+  struct bs_callback* callback;
+
+  while (count > 0) {
+    /*chop off up to 8 bits to write at a time*/
+    bits_to_write = count > 8 ? 8 : count;
+    value_to_write = value >> (count - bits_to_write);
+
+    /*feed them through the jump table*/
+    result = write_bits_table[context][(value_to_write | (bits_to_write << 8))];
+
+    /*write a byte if necessary*/
+    if (result >> 18) {
+      byte = (result >> 10) & 0xFF;
+      fputc(byte,bs->file);
+      for (callback = bs->callback; callback != NULL; callback = callback->next)
+	callback->callback(byte);
+    }
+
+    /*update the context*/
+    context = result & 0x3FF;
+
+    /*decrement the count and value*/
+    value -= (value_to_write << (count - bits_to_write));
+    count -= bits_to_write;
   }
+  bs->state = context;
 }
 
-char *remaining_bits(bitstream_BitStreamReader *reader) {
-  return reader->buffer + reader->buffer_index;
+
+void write_unary(Bitstream* bs, int stop_bit, int value) {
+  static unsigned int jumptable[0x400][0x20] =
+#include "write_unary_table.h"
+    ;
+  int result;
+  int context = bs->state;
+  unsigned int byte;
+  struct bs_callback* callback;
+
+  /*send continuation blocks until we get to 7 bits or less*/
+  while (value >= 8) {
+    result = jumptable[context][(stop_bit << 4) | 0x08];
+    if (result >> 18) {
+      byte = (result >> 10) & 0xFF;
+      fputc(byte,bs->file);
+      for (callback = bs->callback; callback != NULL; callback = callback->next)
+	callback->callback(byte);
+    }
+
+    context = result & 0x3FF;
+
+    value -= 8;
+  }
+
+  result = jumptable[context][(stop_bit << 4) | value];
+
+  if (result >> 18) {
+      fputc((result >> 10) & 0xFF,bs->file);
+  }
+
+  context = result & 0x3FF;
+  bs->state = context;
 }
 
-int remaining_bits_length(bitstream_BitStreamReader *reader) {
-  return reader->buffer_length - reader->buffer_index;
-}

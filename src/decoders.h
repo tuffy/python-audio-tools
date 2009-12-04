@@ -27,12 +27,17 @@ typedef int Py_ssize_t;
 #define IS_PY3K
 #endif
 
+#include "bitstream.h"
+
 PyMethodDef module_methods[] = {
   {NULL}
 };
 
 typedef struct {
   PyObject_HEAD
+  char* filename;
+  FILE* file;
+  Bitstream* bitstream;
 } decoders_FlacDecoder;
 
 int FlacDecoder_init(decoders_FlacDecoder *self,
@@ -50,6 +55,8 @@ void FlacDecoder_dealloc(decoders_FlacDecoder *self);
 
 PyObject *FlacDecoder_new(PyTypeObject *type,
 			  PyObject *args, PyObject *kwds);
+
+int FlacDecoder_read_metadata(decoders_FlacDecoder *self);
 
 #ifdef IS_PY3K
 
