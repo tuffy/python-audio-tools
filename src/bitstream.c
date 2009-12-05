@@ -1,93 +1,197 @@
-#include <Python.h>
+#include "bitstream.h"
+#include <stdlib.h>
+#include <stdint.h>
 
-/********************************************************
- Audio Tools, a module and set of tools for manipulating audio data
- Copyright (C) 2007-2009  Brian Langenberger
+const static unsigned int read_bits_table[0x900][8] =
+#include "read_bits_table.h"
+    ;
 
- This program is free software; you can redistribute it and/or modify
- it under the terms of the GNU General Public License as published by
- the Free Software Foundation; either version 2 of the License, or
- (at your option) any later version.
+const static unsigned int write_bits_table[0x400][0x900] =
+#include "write_bits_table.h"
+    ;
 
- This program is distributed in the hope that it will be useful,
- but WITHOUT ANY WARRANTY; without even the implied warranty of
- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- GNU General Public License for more details.
+Bitstream* bs_open(FILE* f) {
+  Bitstream* bs = malloc(sizeof(Bitstream));
+  bs->file = f;
+  bs->state = 0;
+  bs->callback = NULL;
+  return bs;
+}
 
- You should have received a copy of the GNU General Public License
- along with this program; if not, write to the Free Software
- Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
- *******************************************************/
+void bs_close(Bitstream* bs) {
+  struct bs_callback* node;
+  struct bs_callback* next;
 
-#if PY_MAJOR_VERSION >= 3
-#define IS_PY3K
-#endif
+  if (bs == NULL) return;
 
-#if PY_VERSION_HEX < 0x02050000 && !defined(PY_SSIZE_T_MIN)
-typedef int Py_ssize_t;
-#define PY_SSIZE_T_MAX INT_MAX
-#define PY_SSIZE_T_MIN INT_MIN
-#endif
+  if (bs->file != NULL) fclose(bs->file);
 
-static PyObject* read_bits(PyObject* self, PyObject* args);
-static PyObject* read_unary(PyObject* self, PyObject* args);
+  for (node = bs->callback; node != NULL; node = next) {
+    next = node->next;
+    free(node);
+  }
+  free(bs);
+}
 
-static PyMethodDef BitStreamMethods[] = {
-    {"read_bits",  read_bits, METH_VARARGS,
-     "Read bits from context and return bits, count and new context."},
-    {"read_unary", read_unary, METH_VARARGS,
-     "Read a unary value from context and return bits, count and new context."},
-    {NULL, NULL, 0, NULL}        /* Sentinel */
-};
+void bs_add_callback(Bitstream* bs, void (*callback)(unsigned int)) {
+  struct bs_callback* callback_node = malloc(sizeof(struct bs_callback));
+  callback_node->callback = callback;
+  callback_node->next = bs->callback;
+  bs->callback = callback_node;
+}
 
-PyMODINIT_FUNC initbitstream(void) {
-    (void) Py_InitModule("bitstream", BitStreamMethods);
+unsigned int read_bits(Bitstream* bs, unsigned int count) {
+  int context = bs->state;
+  unsigned int result;
+  unsigned int byte;
+  struct bs_callback* callback;
+  unsigned int accumulator = 0;
+
+  while (count > 0) {
+    if (context == 0) {
+      byte = (unsigned int)fgetc(bs->file);
+      context = 0x800 | byte;
+      for (callback = bs->callback; callback != NULL; callback = callback->next)
+	callback->callback(byte);
+    }
+
+    result = read_bits_table[context][(count > 8 ? 8 : count) - 1];
+
+    accumulator = (accumulator << ((result & 0xF00000) >> 20)) |
+      ((result & 0xFF000) >> 12);
+    count -= ((result & 0xF00000) >> 20);
+    context = (result & 0xFFF);
+  }
+
+  bs->state = context;
+  return accumulator;
+}
+
+uint64_t read_bits64(Bitstream* bs, unsigned int count) {
+  int context = bs->state;
+  unsigned int result;
+  unsigned int byte;
+  struct bs_callback* callback;
+  uint64_t accumulator = 0;
+
+  while (count > 0) {
+    if (context == 0) {
+      byte = (unsigned int)fgetc(bs->file);
+      context = 0x800 | byte;
+      for (callback = bs->callback; callback != NULL; callback = callback->next)
+	callback->callback(byte);
+    }
+
+    result = read_bits_table[context][(count > 8 ? 8 : count) - 1];
+
+    accumulator = (accumulator << ((result & 0xF00000) >> 20)) |
+      ((result & 0xFF000) >> 12);
+    count -= ((result & 0xF00000) >> 20);
+    context = (result & 0xFFF);
+  }
+
+  bs->state = context;
+  return accumulator;
+}
+
+unsigned int read_unary(Bitstream* bs, int stop_bit) {
+    static unsigned int jumptable[0x900][2] =
+#include "read_unary_table.h"
+    ;
+  int context = bs->state;
+  unsigned int result;
+  struct bs_callback* callback;
+  unsigned int byte;
+  unsigned int accumulator = 0;
+
+  do {
+    if (context == 0) {
+      byte = (unsigned int)fgetc(bs->file);
+      for (callback = bs->callback; callback != NULL; callback = callback->next)
+	callback->callback(byte);
+      context = 0x800 | byte;
+    }
+
+    result = jumptable[context][stop_bit];
+
+    accumulator += ((result & 0xFF000) >> 12);
+
+    context = result & 0xFFF;
+  } while (result >> 24);
+
+  bs->state = context;
+  return accumulator;
+}
+
+int bs_eof(Bitstream* bs) {
+  return feof(bs->file);
+}
+
+void write_bits(Bitstream* bs, unsigned int count, int value) {
+  int bits_to_write;
+  int value_to_write;
+  int result;
+  int context = bs->state;
+  unsigned int byte;
+  struct bs_callback* callback;
+
+  while (count > 0) {
+    /*chop off up to 8 bits to write at a time*/
+    bits_to_write = count > 8 ? 8 : count;
+    value_to_write = value >> (count - bits_to_write);
+
+    /*feed them through the jump table*/
+    result = write_bits_table[context][(value_to_write | (bits_to_write << 8))];
+
+    /*write a byte if necessary*/
+    if (result >> 18) {
+      byte = (result >> 10) & 0xFF;
+      fputc(byte,bs->file);
+      for (callback = bs->callback; callback != NULL; callback = callback->next)
+	callback->callback(byte);
+    }
+
+    /*update the context*/
+    context = result & 0x3FF;
+
+    /*decrement the count and value*/
+    value -= (value_to_write << (count - bits_to_write));
+    count -= bits_to_write;
+  }
+  bs->state = context;
 }
 
 
-static PyObject* read_bits(PyObject* self, PyObject* args) {
-  int context;
-  int total_bits;
-  static unsigned int jumptable[0x900][8] =
-#include "read_bits_table.c"
+void write_unary(Bitstream* bs, int stop_bit, int value) {
+  static unsigned int jumptable[0x400][0x20] =
+#include "write_unary_table.h"
     ;
+  int result;
+  int context = bs->state;
+  unsigned int byte;
+  struct bs_callback* callback;
 
-  if (!PyArg_ParseTuple(args, "ii", &context,&total_bits))
-    return NULL;
+  /*send continuation blocks until we get to 7 bits or less*/
+  while (value >= 8) {
+    result = jumptable[context][(stop_bit << 4) | 0x08];
+    if (result >> 18) {
+      byte = (result >> 10) & 0xFF;
+      fputc(byte,bs->file);
+      for (callback = bs->callback; callback != NULL; callback = callback->next)
+	callback->callback(byte);
+    }
 
-  /*DANGER! - If context or total_bits are outside the array
-    this will bomb horribly.  This function should only be called
-    by high-level routines that know what they're doing.*/
+    context = result & 0x3FF;
 
-  /*the context's low 8 bits are parts of a byte that have not been read
-    its remaining high bits are the amount of bits in the byte not read
+    value -= 8;
+  }
 
-    the jumptable's result is an int encoded with 3 separate values
-    its low 12 bits are the new context
-    the next 8 bits are the returned value
-    the high 8 bits are the amount of bits in the returned value*/
-  return Py_BuildValue("i",jumptable[context][total_bits - 1]);
-}
+  result = jumptable[context][(stop_bit << 4) | value];
 
-static PyObject* read_unary(PyObject* self, PyObject* args) {
-  int context;
-  int stop_bit;
-  static unsigned int jumptable[0x900][2] =
-#include "read_unary_table.c"
-    ;
+  if (result >> 18) {
+      fputc((result >> 10) & 0xFF,bs->file);
+  }
 
-  if (!PyArg_ParseTuple(args, "ii", &context,&stop_bit))
-    return NULL;
-
-  /*DANGER! - If context or stop_bit are outside the array
-    this will bomb horribly.  This function should only be called
-    by high-level routines that know what they're doing.*/
-
-  /*the context is the same as read_bits and the two are interchangeable
-
-    the jumptable's result is an int encoded with 3 separate values
-    the low 12 bits are the new context
-    the middle 8 bits are the returned value
-    the highest bit indicates whether we need to continune reading*/
-  return Py_BuildValue("i",jumptable[context][stop_bit]);
+  context = result & 0x3FF;
+  bs->state = context;
 }

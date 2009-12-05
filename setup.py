@@ -40,15 +40,15 @@ cdiomodule = Extension('audiotools.cdio',
                     libraries = ['cdio','cdio_paranoia',
                                  'cdio_cdda','m'])
 
-bitstreammodule = Extension('audiotools.bitstream',
-                            sources = ['src/bitstream.c'])
-
 pcmstreammodule = Extension('audiotools.pcmstream',
                             sources = ['src/pcmstream.c'])
 
+decodersmodule = Extension('audiotools.decoders',
+                           sources = ['src/decoders.c'])
+
 extensions = [cdiomodule,
-              bitstreammodule,
-              pcmstreammodule]
+              pcmstreammodule,
+              decodersmodule]
 
 
 #This is an ALSA extension module, not quite ready for use.
