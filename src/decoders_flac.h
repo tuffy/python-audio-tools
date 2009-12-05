@@ -10,6 +10,22 @@ struct flac_STREAMINFO {
   unsigned char md5sum[16];
 };
 
+struct flac_frame_header {
+  uint8_t blocking_strategy;
+  uint32_t block_size;
+  uint32_t sample_rate;
+  uint8_t channel_assignment;
+  uint8_t channel_count;
+  uint8_t bits_per_sample;
+  uint64_t frame_number;
+};
+
+struct flac_subframe_header {
+  uint8_t subframe_type;
+  uint8_t order;
+  uint8_t wasted_bits_per_sample;
+};
+
 typedef struct {
   PyObject_HEAD
   char* filename;
@@ -28,6 +44,9 @@ static PyObject *FlacDecoder_bits_per_sample(decoders_FlacDecoder *self,
 static PyObject *FlacDecoder_channels(decoders_FlacDecoder *self,
 				      void *closure);
 
+PyObject *FLACDecoder_read(decoders_FlacDecoder* self,
+			   PyObject *args);
+
 int FlacDecoder_init(decoders_FlacDecoder *self,
 		     PyObject *args, PyObject *kwds);
 
@@ -42,6 +61,8 @@ PyGetSetDef FlacDecoder_getseters[] = {
 };
 
 PyMethodDef FlacDecoder_methods[] = {
+  {"read", (PyCFunction)FLACDecoder_read,
+   METH_VARARGS,"Reads the given number of bytes from the FLAC file, if possible"},
   {NULL}
 };
 
@@ -51,6 +72,9 @@ PyObject *FlacDecoder_new(PyTypeObject *type,
 			  PyObject *args, PyObject *kwds);
 
 int FlacDecoder_read_metadata(decoders_FlacDecoder *self);
+
+int FlacDecoder_read_frame_header(decoders_FlacDecoder *self,
+				  struct flac_frame_header *header);
 
 #ifdef IS_PY3K
 
