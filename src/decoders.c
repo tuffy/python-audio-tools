@@ -88,7 +88,11 @@ int FlacDecoder_read_metadata(decoders_FlacDecoder *self) {
     self->streaminfo.channels = read_bits(self->bitstream,3) + 1;
     self->streaminfo.bits_per_sample = read_bits(self->bitstream,5) + 1;
     self->streaminfo.total_samples = read_bits64(self->bitstream,36);
-    fread(self->streaminfo.md5sum,sizeof(unsigned char),16,self->file);
+    if (fread(self->streaminfo.md5sum,sizeof(unsigned char),16,self->file)
+	!= 16) {
+      PyErr_SetString(PyExc_ValueError,"unable to read md5sum");
+      return 0;
+    }
   } else {
     PyErr_SetString(PyExc_ValueError,"STREAMINFO not first metadata block");
     return 0;
