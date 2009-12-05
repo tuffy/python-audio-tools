@@ -28,6 +28,7 @@ typedef int Py_ssize_t;
 #endif
 
 #include "bitstream.h"
+#include "array.h"
 
 PyMethodDef module_methods[] = {
   {NULL}

@@ -20,8 +20,13 @@ struct flac_frame_header {
   uint64_t frame_number;
 };
 
+typedef enum {FLAC_SUBFRAME_CONSTANT,
+	      FLAC_SUBFRAME_VERBATIM,
+	      FLAC_SUBFRAME_FIXED,
+	      FLAC_SUBFRAME_LPC} flac_subframe_type;
+
 struct flac_subframe_header {
-  uint8_t subframe_type;
+  flac_subframe_type type;
   uint8_t order;
   uint8_t wasted_bits_per_sample;
 };
@@ -75,6 +80,18 @@ int FlacDecoder_read_metadata(decoders_FlacDecoder *self);
 
 int FlacDecoder_read_frame_header(decoders_FlacDecoder *self,
 				  struct flac_frame_header *header);
+
+int FlacDecoder_read_subframe_header(decoders_FlacDecoder *self,
+				     struct flac_subframe_header *subframe_header);
+
+int FlacDecoder_read_subframe(decoders_FlacDecoder *self,
+			      uint32_t block_size,
+			      uint8_t bits_per_sample);
+
+int FlacDecoder_read_fixed_subframe(decoders_FlacDecoder *self,
+				    uint8_t order,
+				    uint32_t block_size,
+				    uint8_t bits_per_sample);
 
 #ifdef IS_PY3K
 

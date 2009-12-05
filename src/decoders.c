@@ -1,6 +1,5 @@
 #include <Python.h>
 #include "decoders.h"
-#include "bitstream.h"
 
 PyMODINIT_FUNC initdecoders(void) {
     PyObject* m;
@@ -20,4 +19,5 @@ PyMODINIT_FUNC initdecoders(void) {
 #include "decoders_flac.c"
 
 #include "bitstream.c"
+#include "array.c"
 

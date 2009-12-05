@@ -67,6 +67,14 @@ unsigned int read_bits(Bitstream* bs, unsigned int count) {
   return accumulator;
 }
 
+int read_signed_bits(Bitstream* bs, unsigned int count) {
+  if (!read_bits(bs,1)) {
+    return read_bits(bs,count - 1);
+  } else {
+    return read_bits(bs,count - 1) - (1 << (count - 1));
+  }
+}
+
 uint64_t read_bits64(Bitstream* bs, unsigned int count) {
   int context = bs->state;
   unsigned int result;
