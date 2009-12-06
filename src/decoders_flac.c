@@ -265,8 +265,12 @@ int FlacDecoder_read_subframe(decoders_FlacDecoder *self,
       return 0;
     break;
   case FLAC_SUBFRAME_LPC:
-    PyErr_SetString(PyExc_ValueError,"subframe type not yet supported");
-    return 0;
+    /*FIXME - account for wasted bits-per-sample*/
+    /*FIXME - account for difference channels*/
+    if (!FlacDecoder_read_lpc_subframe(self, subframe_header.order,
+				       block_size, bits_per_sample))
+      return 0;
+    break;
   }
 
   return 1;
@@ -290,7 +294,7 @@ int FlacDecoder_read_subframe_header(decoders_FlacDecoder *self,
     subframe_header->order = subframe_type & 0x07;
   } else if ((subframe_type & 0x20) == 0x20) {
     subframe_header->type = FLAC_SUBFRAME_LPC;
-    subframe_header->order = subframe_type & 0x1F;
+    subframe_header->order = (subframe_type & 0x1F) + 1;
   } else {
     PyErr_SetString(PyExc_ValueError,"invalid subframe type");
     return 0;
@@ -317,6 +321,42 @@ int FlacDecoder_read_fixed_subframe(decoders_FlacDecoder *self,
   for (i = 0; i < order; i++) {
     printf("read warm-up (%d) %d\n",bits_per_sample,
 	   read_signed_bits(bitstream,bits_per_sample));
+  }
+
+  /*read the residual*/
+  if (!FlacDecoder_read_residual(self,order,block_size))
+    return 0;
+
+  /*FIXME - calculate subframe samples from warm-up samples and residual*/
+
+  return 1;
+}
+
+int FlacDecoder_read_lpc_subframe(decoders_FlacDecoder *self,
+				  uint8_t order,
+				  uint32_t block_size,
+				  uint8_t bits_per_sample) {
+  int i;
+  Bitstream *bitstream = self->bitstream;
+  uint32_t qlp_precision;
+  uint32_t qlp_shift_needed;
+
+  /*read order number of warm-up samples*/
+  for (i = 0; i < order; i++) {
+    printf("read warm-up (%d) %d\n",bits_per_sample,
+	   read_signed_bits(bitstream,bits_per_sample));
+  }
+
+  /*read QLP precision*/
+  qlp_precision = read_bits(bitstream,4) + 1;
+
+  /*read QLP shift needed*/
+  qlp_shift_needed = read_bits(bitstream,5);
+
+  /*read order number of QLP coefficients of size qlp_precision*/
+  for (i = 0; i < order; i++) {
+    printf("qlp coefficient (%d) %d\n",
+	   qlp_precision,read_signed_bits(bitstream,qlp_precision));
   }
 
   /*read the residual*/
