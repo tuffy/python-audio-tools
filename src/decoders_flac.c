@@ -289,7 +289,7 @@ int FlacDecoder_read_subframe_header(decoders_FlacDecoder *self,
     return 0;
   }
 
-  if (read_bits(bitstream,1) == 1) {
+  if (read_bits(bitstream,1) == 0) {
     subframe_header->wasted_bits_per_sample = 0;
   } else {
     /*FIXME - need to check this*/
@@ -303,10 +303,71 @@ int FlacDecoder_read_fixed_subframe(decoders_FlacDecoder *self,
 				    uint8_t order,
 				    uint32_t block_size,
 				    uint8_t bits_per_sample) {
+  int i;
+  Bitstream *bitstream = self->bitstream;
+
   /*read "order" number of warm-up samples*/
+  for (i = 0; i < order; i++) {
+    printf("read warm-up (%d) %d\n",bits_per_sample,
+	   read_signed_bits(bitstream,bits_per_sample));
+  }
 
   /*read the residual*/
+  if (!FlacDecoder_read_residual(self,order,block_size))
+    return 0;
 
   /*calculate subframe samples from warm-up samples and residual*/
+
+
+  return 1;
+}
+
+int FlacDecoder_read_residual(decoders_FlacDecoder *self,
+			      uint8_t order,
+			      uint32_t block_size) {
+  Bitstream *bitstream = self->bitstream;
+  uint32_t coding_method = read_bits(bitstream,2);
+  uint32_t partition_order = read_bits(bitstream,4);
+  int total_partitions = 1 << partition_order;
+  int partition;
+  uint32_t rice_parameter;
+  uint32_t partition_samples;
+  uint32_t i;
+  int32_t msb;
+  int32_t lsb;
+  int32_t value;
+
+  for (partition = 0; partition < total_partitions; partition++) {
+    if (partition == 0) {
+      partition_samples = (block_size / (1 << partition_order)) - order;
+    } else {
+      partition_samples = block_size / (1 << partition_order);
+    }
+
+    switch (coding_method) {
+    case 0:
+      rice_parameter = read_bits(bitstream,4);
+      break;
+    case 1:
+      rice_parameter = read_bits(bitstream,5);
+      break;
+    default:
+      PyErr_SetString(PyExc_ValueError,"invalid partition coding method");
+      return 0;
+    }
+
+    for (i = 0; i < partition_samples; i++) {
+      msb = read_unary(bitstream,1);
+      lsb = read_bits(bitstream,rice_parameter);
+      value = (msb << rice_parameter) | lsb;
+      if (value & 1) {
+	value = -(value >> 1) - 1;
+      } else {
+	value = value >> 1;
+      }
+      /*FIXME - place value in residual list*/
+    }
+  }
+
   return 1;
 }

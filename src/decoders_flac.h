@@ -93,6 +93,10 @@ int FlacDecoder_read_fixed_subframe(decoders_FlacDecoder *self,
 				    uint32_t block_size,
 				    uint8_t bits_per_sample);
 
+int FlacDecoder_read_residual(decoders_FlacDecoder *self,
+			      uint8_t order,
+			      uint32_t block_size);
+
 #ifdef IS_PY3K
 
 static PyTypeObject decoders_FlacDecoderType = {
