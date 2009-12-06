@@ -12,6 +12,7 @@ typedef struct {
   struct bs_callback* callback;
 } Bitstream;
 
+typedef enum {BYTE_ALIGN_READ,BYTE_ALIGN_WRITE} byte_align_mode;
 
 Bitstream* bs_open(FILE* f);
 
@@ -29,5 +30,7 @@ int bs_eof(Bitstream* bs);
 
 void write_bits(Bitstream* bs, unsigned int count, int value);
 void write_unary(Bitstream* bs, int stop_bit, int value);
+
+void byte_align(Bitstream* bs, byte_align_mode mode);
 
 #endif

@@ -107,6 +107,7 @@ PyObject *FLACDecoder_read(decoders_FlacDecoder* self,
 			   PyObject *args) {
   int bytes;
   struct flac_frame_header frame_header;
+  int channel;
 
   if (!PyArg_ParseTuple(args, "i", &bytes))
     return NULL;
@@ -119,10 +120,16 @@ PyObject *FLACDecoder_read(decoders_FlacDecoder* self,
     return NULL;
 
   /*FIXME - read one subframe per channel*/
-  if (!FlacDecoder_read_subframe(self,
-				 frame_header.block_size,
-				 frame_header.bits_per_sample))
-    return NULL;
+  for (channel = 0; channel < frame_header.channel_count; channel++) {
+    if (!FlacDecoder_read_subframe(self,
+				   frame_header.block_size,
+				   frame_header.bits_per_sample))
+      return NULL;
+  }
+
+  /*FIXME - check CRC-16*/
+  byte_align(self->bitstream,BYTE_ALIGN_READ);
+  read_bits(self->bitstream,16);
 
   /*FIXME - transform subframe data into string*/
 
@@ -292,7 +299,7 @@ int FlacDecoder_read_subframe_header(decoders_FlacDecoder *self,
   if (read_bits(bitstream,1) == 0) {
     subframe_header->wasted_bits_per_sample = 0;
   } else {
-    /*FIXME - need to check this*/
+    /*FIXME - need to check if this is accurate*/
     subframe_header->wasted_bits_per_sample = read_unary(bitstream,1);
   }
 
@@ -316,8 +323,7 @@ int FlacDecoder_read_fixed_subframe(decoders_FlacDecoder *self,
   if (!FlacDecoder_read_residual(self,order,block_size))
     return 0;
 
-  /*calculate subframe samples from warm-up samples and residual*/
-
+  /*FIXME - calculate subframe samples from warm-up samples and residual*/
 
   return 1;
 }

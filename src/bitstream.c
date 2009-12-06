@@ -203,3 +203,15 @@ void write_unary(Bitstream* bs, int stop_bit, int value) {
   context = result & 0x3FF;
   bs->state = context;
 }
+
+void byte_align(Bitstream* bs, byte_align_mode mode) {
+  switch (mode) {
+  case BYTE_ALIGN_READ:
+    bs->state = 0;
+    break;
+  case BYTE_ALIGN_WRITE:
+    write_bits(bs,7,0);
+    bs->state = 0;
+    break;
+  }
+}
