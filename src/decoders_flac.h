@@ -39,6 +39,8 @@ typedef struct {
   Bitstream* bitstream;
 
   struct flac_STREAMINFO streaminfo;
+
+  struct i_array subframe_data[8];
 } decoders_FlacDecoder;
 
 static PyObject *FlacDecoder_sample_rate(decoders_FlacDecoder *self,
@@ -86,21 +88,25 @@ int FlacDecoder_read_subframe_header(decoders_FlacDecoder *self,
 
 int FlacDecoder_read_subframe(decoders_FlacDecoder *self,
 			      uint32_t block_size,
-			      uint8_t bits_per_sample);
+			      uint8_t bits_per_sample,
+			      struct i_array *samples);
 
 int FlacDecoder_read_fixed_subframe(decoders_FlacDecoder *self,
 				    uint8_t order,
 				    uint32_t block_size,
-				    uint8_t bits_per_sample);
+				    uint8_t bits_per_sample,
+				    struct i_array *samples);
 
 int FlacDecoder_read_lpc_subframe(decoders_FlacDecoder *self,
 				  uint8_t order,
 				  uint32_t block_size,
-				  uint8_t bits_per_sample);
+				  uint8_t bits_per_sample,
+				  struct i_array *samples);
 
 int FlacDecoder_read_residual(decoders_FlacDecoder *self,
 			      uint8_t order,
-			      uint32_t block_size);
+			      uint32_t block_size,
+			      struct i_array *residuals);
 
 #ifdef IS_PY3K
 

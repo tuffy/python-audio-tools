@@ -17,5 +17,9 @@ void reset_i_array(struct i_array *array);
 
 void append_i(struct i_array* array, int32_t val);
 
+int32_t getitem_i(struct i_array *array, int32_t index);
+
+void print_i(struct i_array *array);
+
 #endif
 

@@ -1,6 +1,7 @@
 int FlacDecoder_init(decoders_FlacDecoder *self,
 		     PyObject *args, PyObject *kwds) {
   char* filename;
+  int i;
 
   if (!PyArg_ParseTuple(args, "s", &filename))
     return -1;
@@ -24,10 +25,21 @@ int FlacDecoder_init(decoders_FlacDecoder *self,
     return -1;
   }
 
+  for (i = 0; i < self->streaminfo.channels; i++) {
+    init_i_array(&(self->subframe_data[i]),
+		 self->streaminfo.maximum_block_size);
+  }
+
   return 0;
 }
 
 void FlacDecoder_dealloc(decoders_FlacDecoder *self) {
+  int i;
+
+  for (i = 0; i < self->streaminfo.channels; i++) {
+    free_i_array(&(self->subframe_data[i]));
+  }
+
   if (self->filename != NULL)
     free(self->filename);
 
@@ -128,12 +140,14 @@ PyObject *FLACDecoder_read(decoders_FlacDecoder* self,
 	 (channel == 1))) {
       if (!FlacDecoder_read_subframe(self,
 				     frame_header.block_size,
-				     frame_header.bits_per_sample + 1))
+				     frame_header.bits_per_sample + 1,
+				     &(self->subframe_data[channel])))
 	return NULL;
     } else {
       if (!FlacDecoder_read_subframe(self,
 				     frame_header.block_size,
-				     frame_header.bits_per_sample))
+				     frame_header.bits_per_sample,
+				     &(self->subframe_data[channel])))
 	return NULL;
     }
   }
@@ -257,7 +271,8 @@ int FlacDecoder_read_frame_header(decoders_FlacDecoder *self,
 
 int FlacDecoder_read_subframe(decoders_FlacDecoder *self,
 			      uint32_t block_size,
-			      uint8_t bits_per_sample) {
+			      uint8_t bits_per_sample,
+			      struct i_array *samples) {
   struct flac_subframe_header subframe_header;
 
   if (!FlacDecoder_read_subframe_header(self,&subframe_header))
@@ -273,13 +288,15 @@ int FlacDecoder_read_subframe(decoders_FlacDecoder *self,
   case FLAC_SUBFRAME_FIXED:
     /*FIXME - account for wasted bits-per-sample*/
     if (!FlacDecoder_read_fixed_subframe(self, subframe_header.order,
-					 block_size, bits_per_sample))
+					 block_size, bits_per_sample,
+					 samples))
       return 0;
     break;
   case FLAC_SUBFRAME_LPC:
     /*FIXME - account for wasted bits-per-sample*/
     if (!FlacDecoder_read_lpc_subframe(self, subframe_header.order,
-				       block_size, bits_per_sample))
+				       block_size, bits_per_sample,
+				       samples))
       return 0;
     break;
   }
@@ -324,21 +341,75 @@ int FlacDecoder_read_subframe_header(decoders_FlacDecoder *self,
 int FlacDecoder_read_fixed_subframe(decoders_FlacDecoder *self,
 				    uint8_t order,
 				    uint32_t block_size,
-				    uint8_t bits_per_sample) {
-  int i;
+				    uint8_t bits_per_sample,
+				    struct i_array *samples) {
+  int32_t i;
   Bitstream *bitstream = self->bitstream;
+
+  struct i_array residuals; /*FIXME - don't reallocate/free these all the time*/
+  init_i_array(&residuals,block_size);
+
+
+  reset_i_array(samples);
 
   /*read "order" number of warm-up samples*/
   for (i = 0; i < order; i++) {
-    printf("read warm-up (%d) %d\n",bits_per_sample,
-	   read_signed_bits(bitstream,bits_per_sample));
+    append_i(samples,read_signed_bits(bitstream,bits_per_sample));
   }
 
   /*read the residual*/
-  if (!FlacDecoder_read_residual(self,order,block_size))
+  if (!FlacDecoder_read_residual(self,order,block_size,&residuals))
     return 0;
 
-  /*FIXME - calculate subframe samples from warm-up samples and residual*/
+  /*calculate subframe samples from warm-up samples and residual*/
+  switch (order) {
+  case 0:
+    for (i = 0; i < residuals.size; i++) {
+      append_i(samples,
+	       getitem_i(&residuals,i));
+    }
+    break;
+  case 1:
+    for (i = 0; i < residuals.size; i++) {
+      append_i(samples,
+	       getitem_i(samples,-1) +
+	       getitem_i(&residuals,i));
+    }
+    break;
+  case 2:
+    for (i = 0; i < residuals.size; i++) {
+      append_i(samples,
+	       (2 * getitem_i(samples,-1)) -
+	       getitem_i(samples,-2) +
+	       getitem_i(&residuals,i));
+    }
+    break;
+  case 3:
+    for (i = 0; i < residuals.size; i++) {
+      append_i(samples,
+	       (3 * getitem_i(samples,-1)) -
+	       (3 * getitem_i(samples,-2)) +
+	       getitem_i(samples,-3) +
+	       getitem_i(&residuals,i));
+    }
+    break;
+  case 4:
+    for (i = 0; i < residuals.size; i++) {
+      append_i(samples,
+	       (4 * getitem_i(samples,-1)) -
+	       (6 * getitem_i(samples,-2)) +
+	       (4 * getitem_i(samples,-3)) -
+	       getitem(samples,-4) +
+	       getitem_i(&residuals,i));
+    }
+    break;
+  default:
+    PyErr_SetString(PyExc_ValueError,"invalid FIXED subframe order");
+    return 0;
+  }
+
+  /*FIXME - don't reallocate/free these all the time*/
+  free_i_array(&residuals);
 
   return 1;
 }
@@ -346,11 +417,15 @@ int FlacDecoder_read_fixed_subframe(decoders_FlacDecoder *self,
 int FlacDecoder_read_lpc_subframe(decoders_FlacDecoder *self,
 				  uint8_t order,
 				  uint32_t block_size,
-				  uint8_t bits_per_sample) {
+				  uint8_t bits_per_sample,
+				  struct i_array *samples) {
   int i;
   Bitstream *bitstream = self->bitstream;
   uint32_t qlp_precision;
   uint32_t qlp_shift_needed;
+
+  struct i_array residuals; /*FIXME - don't reallocate/free these all the time*/
+  init_i_array(&residuals,block_size);
 
   /*read order number of warm-up samples*/
   for (i = 0; i < order; i++) {
@@ -371,17 +446,21 @@ int FlacDecoder_read_lpc_subframe(decoders_FlacDecoder *self,
   }
 
   /*read the residual*/
-  if (!FlacDecoder_read_residual(self,order,block_size))
+  if (!FlacDecoder_read_residual(self,order,block_size,&residuals))
     return 0;
 
   /*FIXME - calculate subframe samples from warm-up samples and residual*/
+
+
+  free_i_array(&residuals);  /*FIXME - don't reallocate/free these all the time*/
 
   return 1;
 }
 
 int FlacDecoder_read_residual(decoders_FlacDecoder *self,
 			      uint8_t order,
-			      uint32_t block_size) {
+			      uint32_t block_size,
+			      struct i_array *residuals) {
   Bitstream *bitstream = self->bitstream;
   uint32_t coding_method = read_bits(bitstream,2);
   uint32_t partition_order = read_bits(bitstream,4);
@@ -393,6 +472,8 @@ int FlacDecoder_read_residual(decoders_FlacDecoder *self,
   int32_t msb;
   int32_t lsb;
   int32_t value;
+
+  reset_i_array(residuals);
 
   for (partition = 0; partition < total_partitions; partition++) {
     if (partition == 0) {
@@ -422,7 +503,8 @@ int FlacDecoder_read_residual(decoders_FlacDecoder *self,
       } else {
 	value = value >> 1;
       }
-      /*FIXME - place value in residual list*/
+
+      append_i(residuals,value);
     }
   }
 

@@ -25,3 +25,34 @@ void append_i(struct i_array* array, int32_t val) {
 }
 
 
+int32_t getitem_i(struct i_array *array, int32_t index) {
+  if (index >= 0) {
+    return array->data[index];
+  } else {
+    return array->data[array->size + index];
+  }
+}
+
+void print_i(struct i_array *array) {
+  int32_t i;
+
+  printf("[");
+  if (array->size <= 10) {
+    for (i = 0; i < array->size; i++) {
+      printf("%d",array->data[i]);
+      if ((i + 1) < array->size)
+	printf(",");
+    }
+  } else {
+    for (i = 0; i < 5; i++) {
+      printf("%d,",getitem_i(array,i));
+    }
+    printf("...,");
+    for (i = -5; i < 0; i++) {
+      printf("%d",getitem_i(array,i));
+      if ((i + 1) < 0)
+	printf(",");
+    }
+  }
+  printf("]");
+}
