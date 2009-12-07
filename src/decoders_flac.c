@@ -119,12 +119,23 @@ PyObject *FLACDecoder_read(decoders_FlacDecoder* self,
   if (!FlacDecoder_read_frame_header(self,&frame_header))
     return NULL;
 
-  /*FIXME - read one subframe per channel*/
   for (channel = 0; channel < frame_header.channel_count; channel++) {
-    if (!FlacDecoder_read_subframe(self,
-				   frame_header.block_size,
-				   frame_header.bits_per_sample))
-      return NULL;
+    if (((frame_header.channel_assignment == 0x8) &&
+	 (channel == 1)) ||
+	((frame_header.channel_assignment == 0x9) &&
+	 (channel == 0)) ||
+	((frame_header.channel_assignment == 0xA) &&
+	 (channel == 1))) {
+      if (!FlacDecoder_read_subframe(self,
+				     frame_header.block_size,
+				     frame_header.bits_per_sample + 1))
+	return NULL;
+    } else {
+      if (!FlacDecoder_read_subframe(self,
+				     frame_header.block_size,
+				     frame_header.bits_per_sample))
+	return NULL;
+    }
   }
 
   /*FIXME - check CRC-16*/
@@ -171,8 +182,10 @@ int FlacDecoder_read_frame_header(decoders_FlacDecoder *self,
   case 0x9:
   case 0xA:
     header->channel_count = 2;
+    break;
   default:
     header->channel_count = header->channel_assignment + 1;
+    break;
   }
 
   switch (read_bits(bitstream,3)) {
@@ -259,14 +272,12 @@ int FlacDecoder_read_subframe(decoders_FlacDecoder *self,
     return 0;
   case FLAC_SUBFRAME_FIXED:
     /*FIXME - account for wasted bits-per-sample*/
-    /*FIXME - account for difference channels*/
     if (!FlacDecoder_read_fixed_subframe(self, subframe_header.order,
 					 block_size, bits_per_sample))
       return 0;
     break;
   case FLAC_SUBFRAME_LPC:
     /*FIXME - account for wasted bits-per-sample*/
-    /*FIXME - account for difference channels*/
     if (!FlacDecoder_read_lpc_subframe(self, subframe_header.order,
 				       block_size, bits_per_sample))
       return 0;
