@@ -120,6 +120,9 @@ PyObject *FLACDecoder_read(decoders_FlacDecoder* self,
   int bytes;
   struct flac_frame_header frame_header;
   int channel;
+  unsigned char *data;
+  int data_size;
+  PyObject *string;
 
   if (!PyArg_ParseTuple(args, "i", &bytes))
     return NULL;
@@ -128,8 +131,15 @@ PyObject *FLACDecoder_read(decoders_FlacDecoder* self,
     return NULL;
   }
 
+  /*FIXME - if all samples have been read, return an empty string*/
+
   if (!FlacDecoder_read_frame_header(self,&frame_header))
     return NULL;
+
+  /*FIXME - don't reallocate data so many times*/
+  data_size = frame_header.block_size * frame_header.bits_per_sample *
+    frame_header.channel_count / 8;
+  data = malloc(data_size);
 
   for (channel = 0; channel < frame_header.channel_count; channel++) {
     if (((frame_header.channel_assignment == 0x8) &&
@@ -152,20 +162,37 @@ PyObject *FLACDecoder_read(decoders_FlacDecoder* self,
     }
   }
 
+  /*FIXME handle difference channels correctly*/
+
   /*FIXME - check CRC-16*/
   byte_align(self->bitstream,BYTE_ALIGN_READ);
   read_bits(self->bitstream,16);
 
-  /*FIXME - transform subframe data into string*/
+  /*transform subframe data into single string*/
+  for (channel = 0; channel < frame_header.channel_count; channel++) {
+    switch (frame_header.bits_per_sample) {
+    case 8:
+      S8_to_char_i(data,&(self->subframe_data[channel]),
+		   channel,frame_header.channel_count);
+      break;
+    case 16:
+      SL16_to_char_i(data,&(self->subframe_data[channel]),
+		     channel,frame_header.channel_count);
+      break;
+    case 24:
+      SL24_to_char_i(data,&(self->subframe_data[channel]),
+		     channel,frame_header.channel_count);
+      break;
+    default:
+      PyErr_SetString(PyExc_ValueError,"unsupported bits per sample value");
+      return 0;
+    }
+  }
 
-  /*FIXME - return string*/
-
-  return Py_BuildValue("(i,i,i,i,i)",
-		       frame_header.block_size,
-		       frame_header.sample_rate,
-		       frame_header.channel_assignment,
-		       frame_header.bits_per_sample,
-		       frame_header.frame_number);
+  /*return string*/
+  string = PyString_FromStringAndSize((char*)data,data_size);
+  free(data);
+  return string;
 }
 
 int FlacDecoder_read_frame_header(decoders_FlacDecoder *self,

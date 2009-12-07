@@ -82,3 +82,63 @@ void tail_i(struct i_array* target, struct i_array* source, uint32_t size) {
   target->total_size = source->total_size;
   target->data = source->data + (source->size - size);
 }
+
+void S8_to_char_i(unsigned char* target, struct i_array* source,
+		  int channel, int total_channels) {
+  uint32_t i;
+  int32_t value;
+
+  target += channel;
+
+  for (i = 0; i < source->size; i++) {
+    value = getitem_i(source,i);
+    /*avoid overflow/underflow*/
+    if (value > 0x80) value = 0x80;
+    else if (value < -0x7F) value = -0x7F;
+
+    target[0] = (value + 0x7F) & 0xFF;
+
+    target += total_channels;
+  }
+}
+
+void SL16_to_char_i(unsigned char* target, struct i_array* source,
+		    int channel, int total_channels) {
+  uint32_t i;
+  int32_t value;
+
+  target += (channel * 2);
+
+  for (i = 0; i < source->size; i++) {
+    value = getitem_i(source,i);
+    /*avoid overflow/underflow*/
+    if (value < -0x8000) value = -0x8000;
+    else if (value > 0x7FFF) value = 0x7FFF;
+
+    target[0] = value & 0x00FF;
+    target[1] = (value & 0xFF00) >> 8;
+
+    target += (total_channels * 2);
+  }
+}
+
+void SL24_to_char_i(unsigned char* target, struct i_array* source,
+		    int channel, int total_channels) {
+  uint32_t i;
+  int32_t value;
+
+  target += (channel * 3);
+
+  for (i = 0; i < source->size; i++) {
+    value = getitem_i(source,i);
+    /*avoid overflow/underflow*/
+    if (value < -0x800000) value = -0x800000;
+    else if (value > 0x7FFFFF) value = 0x7FFFFF;
+
+    target[0] = value & 0x0000FF;
+    target[1] = (value & 0x00FF00) >> 8;
+    target[2] = (value & 0xFF0000) >> 16;
+
+    target += (total_channels * 3);
+  }
+}

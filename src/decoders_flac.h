@@ -70,6 +70,7 @@ PyGetSetDef FlacDecoder_getseters[] = {
 PyMethodDef FlacDecoder_methods[] = {
   {"read", (PyCFunction)FLACDecoder_read,
    METH_VARARGS,"Reads the given number of bytes from the FLAC file, if possible"},
+  /*FIXME - add close() method*/
   {NULL}
 };
 

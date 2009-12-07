@@ -27,5 +27,13 @@ void head_i(struct i_array* target, struct i_array* source, uint32_t size);
 
 void tail_i(struct i_array* target, struct i_array* source, uint32_t size);
 
-#endif
+void S8_to_char_i(unsigned char* target, struct i_array* source,
+		  int channel, int total_channels);
 
+void SL16_to_char_i(unsigned char* target, struct i_array* source,
+		    int channel, int total_channels);
+
+void SL24_to_char_i(unsigned char* target, struct i_array* source,
+		    int channel, int total_channels);
+
+#endif
