@@ -56,3 +56,29 @@ void print_i(struct i_array *array) {
   }
   printf("]");
 }
+
+void reverse_i(struct i_array* array) {
+  uint32_t start;
+  uint32_t end;
+  int32_t val;
+
+  for (start = 0,end = array->size - 1;
+       start < end;
+       start++,end--) {
+    val = array->data[start];
+    array->data[start] = array->data[end];
+    array->data[end] = val;
+  }
+}
+
+void head_i(struct i_array* target, struct i_array* source, uint32_t size) {
+  target->size = size;
+  target->total_size = source->total_size;
+  target->data = source->data;
+}
+
+void tail_i(struct i_array* target, struct i_array* source, uint32_t size) {
+  target->size = size;
+  target->total_size = source->total_size;
+  target->data = source->data + (source->size - size);
+}

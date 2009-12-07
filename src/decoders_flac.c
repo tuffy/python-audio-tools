@@ -301,6 +301,8 @@ int FlacDecoder_read_subframe(decoders_FlacDecoder *self,
     break;
   }
 
+  printf("Samples : ");print_i(samples);printf("\n");
+
   return 1;
 }
 
@@ -399,7 +401,7 @@ int FlacDecoder_read_fixed_subframe(decoders_FlacDecoder *self,
 	       (4 * getitem_i(samples,-1)) -
 	       (6 * getitem_i(samples,-2)) +
 	       (4 * getitem_i(samples,-3)) -
-	       getitem(samples,-4) +
+	       getitem_i(samples,-4) +
 	       getitem_i(&residuals,i));
     }
     break;
@@ -419,18 +421,24 @@ int FlacDecoder_read_lpc_subframe(decoders_FlacDecoder *self,
 				  uint32_t block_size,
 				  uint8_t bits_per_sample,
 				  struct i_array *samples) {
-  int i;
+  int i,j;
   Bitstream *bitstream = self->bitstream;
   uint32_t qlp_precision;
   uint32_t qlp_shift_needed;
+  struct i_array tail;
+  int64_t accumulator;
+
+  struct i_array qlp_coeffs; /*FIXME  don't reallocate/free these all the time*/
+  init_i_array(&qlp_coeffs,order);
 
   struct i_array residuals; /*FIXME - don't reallocate/free these all the time*/
   init_i_array(&residuals,block_size);
 
+  reset_i_array(samples);
+
   /*read order number of warm-up samples*/
   for (i = 0; i < order; i++) {
-    printf("read warm-up (%d) %d\n",bits_per_sample,
-	   read_signed_bits(bitstream,bits_per_sample));
+    append_i(samples,read_signed_bits(bitstream,bits_per_sample));
   }
 
   /*read QLP precision*/
@@ -441,17 +449,27 @@ int FlacDecoder_read_lpc_subframe(decoders_FlacDecoder *self,
 
   /*read order number of QLP coefficients of size qlp_precision*/
   for (i = 0; i < order; i++) {
-    printf("qlp coefficient (%d) %d\n",
-	   qlp_precision,read_signed_bits(bitstream,qlp_precision));
+    append_i(&qlp_coeffs,read_signed_bits(bitstream,qlp_precision));
   }
+  reverse_i(&qlp_coeffs);
 
   /*read the residual*/
   if (!FlacDecoder_read_residual(self,order,block_size,&residuals))
     return 0;
 
-  /*FIXME - calculate subframe samples from warm-up samples and residual*/
+  /*calculate subframe samples from warm-up samples and residual*/
+  for (i = 0; i < residuals.size; i++) {
+    accumulator = 0;
+    tail_i(&tail,samples,order);
+    for (j = 0; j < qlp_coeffs.size; j++) {
+      accumulator += getitem_i(&tail,j) * getitem_i(&qlp_coeffs,j);
+    }
+    append_i(samples,
+	     (accumulator >> qlp_shift_needed) + getitem_i(&residuals,i));
+  }
 
 
+  free_i_array(&qlp_coeffs); /*FIXME - don't reallocate/free these all the time*/
   free_i_array(&residuals);  /*FIXME - don't reallocate/free these all the time*/
 
   return 1;

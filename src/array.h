@@ -21,5 +21,11 @@ int32_t getitem_i(struct i_array *array, int32_t index);
 
 void print_i(struct i_array *array);
 
+void reverse_i(struct i_array* array);
+
+void head_i(struct i_array* target, struct i_array* source, uint32_t size);
+
+void tail_i(struct i_array* target, struct i_array* source, uint32_t size);
+
 #endif
 
