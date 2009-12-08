@@ -217,11 +217,11 @@ PyObject *FLACDecoder_read(decoders_FlacDecoder* self,
       break;
     case 16:
       ia_SL16_to_char(self->data,&(self->subframe_data[channel]),
-		      channel,frame_header.channel_count);
+  		      channel,frame_header.channel_count);
       break;
     case 24:
       ia_SL24_to_char(self->data,&(self->subframe_data[channel]),
-		      channel,frame_header.channel_count);
+  		      channel,frame_header.channel_count);
       break;
     default:
       PyErr_SetString(PyExc_ValueError,"unsupported bits per sample value");
