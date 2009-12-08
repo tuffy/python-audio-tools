@@ -31,6 +31,10 @@ int FlacDecoder_init(decoders_FlacDecoder *self,
     ia_init(&(self->subframe_data[i]),
 	    self->streaminfo.maximum_block_size);
   }
+  ia_init(&(self->residuals),self->streaminfo.maximum_block_size);
+  ia_init(&(self->qlp_coeffs),1);
+  self->data = NULL;
+  self->data_size = 0;
 
   return 0;
 }
@@ -41,6 +45,8 @@ void FlacDecoder_dealloc(decoders_FlacDecoder *self) {
   for (i = 0; i < self->streaminfo.channels; i++) {
     ia_free(&(self->subframe_data[i]));
   }
+  ia_free(&(self->residuals));
+  ia_free(&(self->qlp_coeffs));
 
   if (self->filename != NULL)
     free(self->filename);
@@ -122,7 +128,6 @@ PyObject *FLACDecoder_read(decoders_FlacDecoder* self,
   int bytes;
   struct flac_frame_header frame_header;
   int channel;
-  unsigned char *data;
   int data_size;
   PyObject *string;
 
@@ -144,10 +149,12 @@ PyObject *FLACDecoder_read(decoders_FlacDecoder* self,
   if (!FlacDecoder_read_frame_header(self,&frame_header))
     return NULL;
 
-  /*FIXME - don't reallocate data so many times*/
   data_size = frame_header.block_size * frame_header.bits_per_sample *
     frame_header.channel_count / 8;
-  data = malloc(data_size);
+  if (data_size > self->data_size) {
+    self->data = realloc(self->data,data_size);
+    self->data_size = data_size;
+  }
 
   for (channel = 0; channel < frame_header.channel_count; channel++) {
     if (((frame_header.channel_assignment == 0x8) &&
@@ -205,15 +212,15 @@ PyObject *FLACDecoder_read(decoders_FlacDecoder* self,
   for (channel = 0; channel < frame_header.channel_count; channel++) {
     switch (frame_header.bits_per_sample) {
     case 8:
-      ia_S8_to_char(data,&(self->subframe_data[channel]),
+      ia_S8_to_char(self->data,&(self->subframe_data[channel]),
 		    channel,frame_header.channel_count);
       break;
     case 16:
-      ia_SL16_to_char(data,&(self->subframe_data[channel]),
+      ia_SL16_to_char(self->data,&(self->subframe_data[channel]),
 		      channel,frame_header.channel_count);
       break;
     case 24:
-      ia_SL24_to_char(data,&(self->subframe_data[channel]),
+      ia_SL24_to_char(self->data,&(self->subframe_data[channel]),
 		      channel,frame_header.channel_count);
       break;
     default:
@@ -226,8 +233,7 @@ PyObject *FLACDecoder_read(decoders_FlacDecoder* self,
   self->remaining_samples -= frame_header.block_size;
 
   /*return string*/
-  string = PyString_FromStringAndSize((char*)data,data_size);
-  free(data);
+  string = PyString_FromStringAndSize((char*)self->data,data_size);
   return string;
 }
 
@@ -406,7 +412,6 @@ int FlacDecoder_read_subframe_header(decoders_FlacDecoder *self,
   if (read_bits(bitstream,1) == 0) {
     subframe_header->wasted_bits_per_sample = 0;
   } else {
-    /*FIXME - need to check if this is accurate*/
     subframe_header->wasted_bits_per_sample = read_unary(bitstream,1) + 1;
   }
 
@@ -448,11 +453,9 @@ int FlacDecoder_read_fixed_subframe(decoders_FlacDecoder *self,
 				    struct i_array *samples) {
   int32_t i;
   Bitstream *bitstream = self->bitstream;
+  struct i_array *residuals = &(self->residuals);
 
-  struct i_array residuals; /*FIXME - don't reallocate/free these all the time*/
-  ia_init(&residuals,block_size);
-
-
+  ia_reset(residuals);
   ia_reset(samples);
 
   /*read "order" number of warm-up samples*/
@@ -461,58 +464,55 @@ int FlacDecoder_read_fixed_subframe(decoders_FlacDecoder *self,
   }
 
   /*read the residual*/
-  if (!FlacDecoder_read_residual(self,order,block_size,&residuals))
+  if (!FlacDecoder_read_residual(self,order,block_size,residuals))
     return 0;
 
   /*calculate subframe samples from warm-up samples and residual*/
   switch (order) {
   case 0:
-    for (i = 0; i < residuals.size; i++) {
+    for (i = 0; i < residuals->size; i++) {
       ia_append(samples,
-	       ia_getitem(&residuals,i));
+	       ia_getitem(residuals,i));
     }
     break;
   case 1:
-    for (i = 0; i < residuals.size; i++) {
+    for (i = 0; i < residuals->size; i++) {
       ia_append(samples,
 	       ia_getitem(samples,-1) +
-	       ia_getitem(&residuals,i));
+	       ia_getitem(residuals,i));
     }
     break;
   case 2:
-    for (i = 0; i < residuals.size; i++) {
+    for (i = 0; i < residuals->size; i++) {
       ia_append(samples,
 	       (2 * ia_getitem(samples,-1)) -
 	       ia_getitem(samples,-2) +
-	       ia_getitem(&residuals,i));
+	       ia_getitem(residuals,i));
     }
     break;
   case 3:
-    for (i = 0; i < residuals.size; i++) {
+    for (i = 0; i < residuals->size; i++) {
       ia_append(samples,
 	       (3 * ia_getitem(samples,-1)) -
 	       (3 * ia_getitem(samples,-2)) +
 	       ia_getitem(samples,-3) +
-	       ia_getitem(&residuals,i));
+	       ia_getitem(residuals,i));
     }
     break;
   case 4:
-    for (i = 0; i < residuals.size; i++) {
+    for (i = 0; i < residuals->size; i++) {
       ia_append(samples,
 	       (4 * ia_getitem(samples,-1)) -
 	       (6 * ia_getitem(samples,-2)) +
 	       (4 * ia_getitem(samples,-3)) -
 	       ia_getitem(samples,-4) +
-	       ia_getitem(&residuals,i));
+	       ia_getitem(residuals,i));
     }
     break;
   default:
     PyErr_SetString(PyExc_ValueError,"invalid FIXED subframe order");
     return 0;
   }
-
-  /*FIXME - don't reallocate/free these all the time*/
-  ia_free(&residuals);
 
   return 1;
 }
@@ -529,13 +529,12 @@ int FlacDecoder_read_lpc_subframe(decoders_FlacDecoder *self,
   struct i_array tail;
   int64_t accumulator;
 
-  struct i_array qlp_coeffs; /*FIXME  don't reallocate/free these all the time*/
-  ia_init(&qlp_coeffs,order);
+  struct i_array *qlp_coeffs = &(self->qlp_coeffs);
+  struct i_array *residuals = &(self->residuals);
 
-  struct i_array residuals; /*FIXME - don't reallocate/free these all the time*/
-  ia_init(&residuals,block_size);
-
+  ia_reset(residuals);
   ia_reset(samples);
+  ia_reset(qlp_coeffs);
 
   /*read order number of warm-up samples*/
   for (i = 0; i < order; i++) {
@@ -550,28 +549,24 @@ int FlacDecoder_read_lpc_subframe(decoders_FlacDecoder *self,
 
   /*read order number of QLP coefficients of size qlp_precision*/
   for (i = 0; i < order; i++) {
-    ia_append(&qlp_coeffs,read_signed_bits(bitstream,qlp_precision));
+    ia_append(qlp_coeffs,read_signed_bits(bitstream,qlp_precision));
   }
-  ia_reverse(&qlp_coeffs);
+  ia_reverse(qlp_coeffs);
 
   /*read the residual*/
-  if (!FlacDecoder_read_residual(self,order,block_size,&residuals))
+  if (!FlacDecoder_read_residual(self,order,block_size,residuals))
     return 0;
 
   /*calculate subframe samples from warm-up samples and residual*/
-  for (i = 0; i < residuals.size; i++) {
+  for (i = 0; i < residuals->size; i++) {
     accumulator = 0;
     ia_tail(&tail,samples,order);
-    for (j = 0; j < qlp_coeffs.size; j++) {
-      accumulator += (int64_t)ia_getitem(&tail,j) * (int64_t)ia_getitem(&qlp_coeffs,j);
+    for (j = 0; j < qlp_coeffs->size; j++) {
+      accumulator += (int64_t)ia_getitem(&tail,j) * (int64_t)ia_getitem(qlp_coeffs,j);
     }
     ia_append(samples,
-	     (accumulator >> qlp_shift_needed) + ia_getitem(&residuals,i));
+	     (accumulator >> qlp_shift_needed) + ia_getitem(residuals,i));
   }
-
-
-  ia_free(&qlp_coeffs); /*FIXME - don't reallocate/free these all the time*/
-  ia_free(&residuals);  /*FIXME - don't reallocate/free these all the time*/
 
   return 1;
 }

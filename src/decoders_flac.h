@@ -42,6 +42,10 @@ typedef struct {
   uint64_t remaining_samples;
 
   struct i_array subframe_data[8];
+  struct i_array residuals;
+  struct i_array qlp_coeffs;
+  unsigned char *data;
+  ssize_t data_size;
 } decoders_FlacDecoder;
 
 static PyObject *FlacDecoder_sample_rate(decoders_FlacDecoder *self,
