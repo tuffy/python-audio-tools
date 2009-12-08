@@ -39,6 +39,13 @@ int FlacDecoder_init(decoders_FlacDecoder *self,
   return 0;
 }
 
+PyObject *FLACDecoder_close(decoders_FlacDecoder* self,
+			    PyObject *args) {
+  self->remaining_samples = 0;
+  Py_INCREF(Py_None);
+  return Py_None;
+}
+
 void FlacDecoder_dealloc(decoders_FlacDecoder *self) {
   int i;
 

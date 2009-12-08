@@ -59,6 +59,9 @@ static PyObject *FlacDecoder_channels(decoders_FlacDecoder *self,
 PyObject *FLACDecoder_read(decoders_FlacDecoder* self,
 			   PyObject *args);
 
+PyObject *FLACDecoder_close(decoders_FlacDecoder* self,
+			    PyObject *args);
+
 int FlacDecoder_init(decoders_FlacDecoder *self,
 		     PyObject *args, PyObject *kwds);
 
@@ -75,7 +78,8 @@ PyGetSetDef FlacDecoder_getseters[] = {
 PyMethodDef FlacDecoder_methods[] = {
   {"read", (PyCFunction)FLACDecoder_read,
    METH_VARARGS,"Reads the given number of bytes from the FLAC file, if possible"},
-  /*FIXME - add close() method*/
+  {"close", (PyCFunction)FLACDecoder_close,
+   METH_NOARGS,"Closes the FLAC decoder stream"},
   {NULL}
 };
 
