@@ -285,7 +285,6 @@ int FlacDecoder_read_frame_header(decoders_FlacDecoder *self,
   read_bits(bitstream,1); /*padding*/
 
   header->frame_number = read_utf8(bitstream);
-  fprintf(stderr,"frame number %lu\n",header->frame_number);
 
   switch (block_size_bits) {
   case 0x0: header->block_size = self->streaminfo.maximum_block_size; break;
@@ -342,6 +341,8 @@ int FlacDecoder_read_subframe(decoders_FlacDecoder *self,
   if (!FlacDecoder_read_subframe_header(self,&subframe_header))
     return 0;
 
+  /*FIXME - account for wasted bits-per-sample*/
+
   switch (subframe_header.type) {
   case FLAC_SUBFRAME_CONSTANT:
     if (!FlacDecoder_read_constant_subframe(self, block_size, bits_per_sample,
@@ -349,17 +350,17 @@ int FlacDecoder_read_subframe(decoders_FlacDecoder *self,
       return 0;
     break;
   case FLAC_SUBFRAME_VERBATIM:
-    PyErr_SetString(PyExc_ValueError,"subframe type not yet supported");
-    return 0;
+    if (!FlacDecoder_read_verbatim_subframe(self, block_size, bits_per_sample,
+					    samples))
+      return 0;
+    break;
   case FLAC_SUBFRAME_FIXED:
-    /*FIXME - account for wasted bits-per-sample*/
     if (!FlacDecoder_read_fixed_subframe(self, subframe_header.order,
 					 block_size, bits_per_sample,
 					 samples))
       return 0;
     break;
   case FLAC_SUBFRAME_LPC:
-    /*FIXME - account for wasted bits-per-sample*/
     if (!FlacDecoder_read_lpc_subframe(self, subframe_header.order,
 				       block_size, bits_per_sample,
 				       samples))
@@ -415,6 +416,19 @@ int FlacDecoder_read_constant_subframe(decoders_FlacDecoder *self,
 
   for (i = 0; i < block_size; i++)
     ia_append(samples,value);
+
+  return 1;
+}
+
+int FlacDecoder_read_verbatim_subframe(decoders_FlacDecoder *self,
+				       uint32_t block_size,
+				       uint8_t bits_per_sample,
+				       struct i_array *samples) {
+  int32_t i;
+
+  ia_reset(samples);
+  for (i = 0; i < block_size; i++)
+    ia_append(samples,read_signed_bits(self->bitstream,bits_per_sample));
 
   return 1;
 }

@@ -98,6 +98,11 @@ int FlacDecoder_read_constant_subframe(decoders_FlacDecoder *self,
 				       uint8_t bits_per_sample,
 				       struct i_array *samples);
 
+int FlacDecoder_read_verbatim_subframe(decoders_FlacDecoder *self,
+				       uint32_t block_size,
+				       uint8_t bits_per_sample,
+				       struct i_array *samples);
+
 int FlacDecoder_read_fixed_subframe(decoders_FlacDecoder *self,
 				    uint8_t order,
 				    uint32_t block_size,
