@@ -337,11 +337,14 @@ int FlacDecoder_read_subframe(decoders_FlacDecoder *self,
 			      uint8_t bits_per_sample,
 			      struct i_array *samples) {
   struct flac_subframe_header subframe_header;
+  uint32_t i;
 
   if (!FlacDecoder_read_subframe_header(self,&subframe_header))
     return 0;
 
-  /*FIXME - account for wasted bits-per-sample*/
+  /*account for wasted bits-per-sample*/
+  if (subframe_header.wasted_bits_per_sample > 0)
+    bits_per_sample -= subframe_header.wasted_bits_per_sample;
 
   switch (subframe_header.type) {
   case FLAC_SUBFRAME_CONSTANT:
@@ -367,6 +370,11 @@ int FlacDecoder_read_subframe(decoders_FlacDecoder *self,
       return 0;
     break;
   }
+
+  /*reinsert wasted bits-per-sample, if necessary*/
+  if (subframe_header.wasted_bits_per_sample > 0)
+    for (i = 0; i < block_size; i++)
+      ia_setitem(samples,i,ia_getitem(samples,i) << subframe_header.wasted_bits_per_sample);
 
   return 1;
 }
@@ -399,7 +407,7 @@ int FlacDecoder_read_subframe_header(decoders_FlacDecoder *self,
     subframe_header->wasted_bits_per_sample = 0;
   } else {
     /*FIXME - need to check if this is accurate*/
-    subframe_header->wasted_bits_per_sample = read_unary(bitstream,1);
+    subframe_header->wasted_bits_per_sample = read_unary(bitstream,1) + 1;
   }
 
   return 1;
