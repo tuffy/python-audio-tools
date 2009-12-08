@@ -124,6 +124,10 @@ PyObject *FLACDecoder_read(decoders_FlacDecoder* self,
   int data_size;
   PyObject *string;
 
+  int32_t i;
+  int32_t mid;
+  int32_t side;
+
   if (!PyArg_ParseTuple(args, "i", &bytes))
     return NULL;
   if (bytes < 0) {
@@ -162,7 +166,32 @@ PyObject *FLACDecoder_read(decoders_FlacDecoder* self,
     }
   }
 
-  /*FIXME handle difference channels correctly*/
+  /*handle difference channels, if any*/
+  switch (frame_header.channel_assignment) {
+  case 0x8:
+    /*left-difference*/
+    ia_sub(&(self->subframe_data[1]),
+	   &(self->subframe_data[0]),&(self->subframe_data[1]));
+    break;
+  case 0x9:
+    /*difference-right*/
+    ia_add(&(self->subframe_data[0]),
+	   &(self->subframe_data[0]),&(self->subframe_data[1]));
+    break;
+  case 0xA:
+    /*mid-side*/
+    for (i = 0; i < frame_header.block_size; i++) {
+      mid = ia_getitem(&(self->subframe_data[0]),i);
+      side = ia_getitem(&(self->subframe_data[1]),i);
+      mid = (mid << 1) | (side & 1);
+      ia_setitem(&(self->subframe_data[0]),i,(mid + side) >> 1);
+      ia_setitem(&(self->subframe_data[1]),i,(mid - side) >> 1);
+    }
+    break;
+  default:
+    /*do nothing for independent channels*/
+    break;
+  }
 
   /*FIXME - check CRC-16*/
   byte_align(self->bitstream,BYTE_ALIGN_READ);
@@ -327,8 +356,6 @@ int FlacDecoder_read_subframe(decoders_FlacDecoder *self,
       return 0;
     break;
   }
-
-  printf("Samples : ");ia_print(samples);printf("\n");
 
   return 1;
 }

@@ -14,6 +14,13 @@ void ia_reset(struct i_array *array) {
   array->size = 0;
 }
 
+void ia_resize(struct i_array *array, uint32_t maximum_size) {
+  if (array->total_size < maximum_size) {
+    array->total_size = maximum_size;
+    array->data = realloc(array->data,maximum_size);
+  }
+}
+
 void ia_append(struct i_array* array, int32_t val) {
   if (array->size < array->total_size) {
     array->data[array->size++] = val;
@@ -30,6 +37,14 @@ int32_t ia_getitem(struct i_array *array, int32_t index) {
     return array->data[index];
   } else {
     return array->data[array->size + index];
+  }
+}
+
+void ia_setitem(struct i_array *array, int32_t index, int32_t value) {
+  if (index >= 0) {
+    array->data[index] = value;
+  } else {
+    array->data[array->size + index] = value;
   }
 }
 
@@ -141,4 +156,26 @@ void ia_SL24_to_char(unsigned char* target, struct i_array* source,
 
     target += (total_channels * 3);
   }
+}
+
+void ia_add(struct i_array *target,
+	    struct i_array *source1, struct i_array *source2) {
+  uint32_t size = source1->size > source2->size ? source1->size : source2->size;
+  uint32_t i;
+
+  ia_resize(target,size);
+  for (i = 0; i < size; i++)
+    target->data[i] = source1->data[i] + source2->data[i];
+  target->size = size;
+}
+
+void ia_sub(struct i_array *target,
+	    struct i_array *source1, struct i_array *source2) {
+   uint32_t size = source1->size > source2->size ? source1->size : source2->size;
+  uint32_t i;
+
+  ia_resize(target,size);
+  for (i = 0; i < size; i++)
+    target->data[i] = source1->data[i] - source2->data[i];
+  target->size = size;
 }
