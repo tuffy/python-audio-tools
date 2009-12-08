@@ -25,6 +25,8 @@ int FlacDecoder_init(decoders_FlacDecoder *self,
     return -1;
   }
 
+  self->remaining_samples = self->streaminfo.total_samples;
+
   for (i = 0; i < self->streaminfo.channels; i++) {
     ia_init(&(self->subframe_data[i]),
 	    self->streaminfo.maximum_block_size);
@@ -125,7 +127,7 @@ PyObject *FLACDecoder_read(decoders_FlacDecoder* self,
   PyObject *string;
 
   int32_t i;
-  int32_t mid;
+  int64_t mid;
   int32_t side;
 
   if (!PyArg_ParseTuple(args, "i", &bytes))
@@ -135,7 +137,9 @@ PyObject *FLACDecoder_read(decoders_FlacDecoder* self,
     return NULL;
   }
 
-  /*FIXME - if all samples have been read, return an empty string*/
+  /*if all samples have been read, return an empty string*/
+  if (self->remaining_samples < 1)
+    return PyString_FromStringAndSize("",0);
 
   if (!FlacDecoder_read_frame_header(self,&frame_header))
     return NULL;
@@ -218,6 +222,9 @@ PyObject *FLACDecoder_read(decoders_FlacDecoder* self,
     }
   }
 
+  /*decrement remaining samples*/
+  self->remaining_samples -= frame_header.block_size;
+
   /*return string*/
   string = PyString_FromStringAndSize((char*)data,data_size);
   free(data);
@@ -277,7 +284,8 @@ int FlacDecoder_read_frame_header(decoders_FlacDecoder *self,
   }
   read_bits(bitstream,1); /*padding*/
 
-  header->frame_number = read_bits(bitstream,8); /*FIXME - must be UTF-8*/
+  header->frame_number = read_utf8(bitstream);
+  fprintf(stderr,"frame number %lu\n",header->frame_number);
 
   switch (block_size_bits) {
   case 0x0: header->block_size = self->streaminfo.maximum_block_size; break;
@@ -336,8 +344,10 @@ int FlacDecoder_read_subframe(decoders_FlacDecoder *self,
 
   switch (subframe_header.type) {
   case FLAC_SUBFRAME_CONSTANT:
-    PyErr_SetString(PyExc_ValueError,"subframe type not yet supported");
-    return 0;
+    if (!FlacDecoder_read_constant_subframe(self, block_size, bits_per_sample,
+					    samples))
+      return 0;
+    break;
   case FLAC_SUBFRAME_VERBATIM:
     PyErr_SetString(PyExc_ValueError,"subframe type not yet supported");
     return 0;
@@ -390,6 +400,21 @@ int FlacDecoder_read_subframe_header(decoders_FlacDecoder *self,
     /*FIXME - need to check if this is accurate*/
     subframe_header->wasted_bits_per_sample = read_unary(bitstream,1);
   }
+
+  return 1;
+}
+
+int FlacDecoder_read_constant_subframe(decoders_FlacDecoder *self,
+				       uint32_t block_size,
+				       uint8_t bits_per_sample,
+				       struct i_array *samples) {
+  int32_t value = read_signed_bits(self->bitstream,bits_per_sample);
+  int32_t i;
+
+  ia_reset(samples);
+
+  for (i = 0; i < block_size; i++)
+    ia_append(samples,value);
 
   return 1;
 }
@@ -516,7 +541,7 @@ int FlacDecoder_read_lpc_subframe(decoders_FlacDecoder *self,
     accumulator = 0;
     ia_tail(&tail,samples,order);
     for (j = 0; j < qlp_coeffs.size; j++) {
-      accumulator += ia_getitem(&tail,j) * ia_getitem(&qlp_coeffs,j);
+      accumulator += (int64_t)ia_getitem(&tail,j) * (int64_t)ia_getitem(&qlp_coeffs,j);
     }
     ia_append(samples,
 	     (accumulator >> qlp_shift_needed) + ia_getitem(&residuals,i));
@@ -581,4 +606,15 @@ int FlacDecoder_read_residual(decoders_FlacDecoder *self,
   }
 
   return 1;
+}
+
+
+uint32_t read_utf8(Bitstream *stream) {
+  uint32_t total_bytes = read_unary(stream,0);
+  uint32_t value = read_bits(stream,7 - total_bytes);
+  for (;total_bytes > 1;total_bytes--) {
+    value = (value << 6) | (read_bits(stream,8) & 0x3F);
+  }
+
+  return value;
 }

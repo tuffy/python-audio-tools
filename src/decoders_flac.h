@@ -39,6 +39,7 @@ typedef struct {
   Bitstream* bitstream;
 
   struct flac_STREAMINFO streaminfo;
+  uint64_t remaining_samples;
 
   struct i_array subframe_data[8];
 } decoders_FlacDecoder;
@@ -92,6 +93,11 @@ int FlacDecoder_read_subframe(decoders_FlacDecoder *self,
 			      uint8_t bits_per_sample,
 			      struct i_array *samples);
 
+int FlacDecoder_read_constant_subframe(decoders_FlacDecoder *self,
+				       uint32_t block_size,
+				       uint8_t bits_per_sample,
+				       struct i_array *samples);
+
 int FlacDecoder_read_fixed_subframe(decoders_FlacDecoder *self,
 				    uint8_t order,
 				    uint32_t block_size,
@@ -108,6 +114,8 @@ int FlacDecoder_read_residual(decoders_FlacDecoder *self,
 			      uint8_t order,
 			      uint32_t block_size,
 			      struct i_array *residuals);
+
+uint32_t read_utf8(Bitstream *stream);
 
 #ifdef IS_PY3K
 
