@@ -2,7 +2,8 @@
 #define BITSTREAM_H
 
 struct bs_callback {
-  void (*callback)(unsigned int);
+  void (*callback)(unsigned int, void*);
+  void *data;
   struct bs_callback* next;
 };
 
@@ -30,7 +31,9 @@ Bitstream* bs_open(FILE* f);
 
 void bs_close(Bitstream* bs);
 
-void bs_add_callback(Bitstream* bs, void (*callback)(unsigned int));
+void bs_add_callback(Bitstream* bs,
+		     void (*callback)(unsigned int, void*),
+		     void *data);
 
 static inline unsigned int read_bits(Bitstream* bs, unsigned int count) {
   int context = bs->state;
@@ -44,7 +47,7 @@ static inline unsigned int read_bits(Bitstream* bs, unsigned int count) {
       byte = (unsigned int)fgetc(bs->file);
       context = 0x800 | byte;
       for (callback = bs->callback; callback != NULL; callback = callback->next)
-	callback->callback(byte);
+	callback->callback(byte,callback->data);
     }
 
     result = read_bits_table[context][(count > 8 ? 8 : count) - 1];
@@ -79,7 +82,7 @@ static inline uint64_t read_bits64(Bitstream* bs, unsigned int count) {
       byte = (unsigned int)fgetc(bs->file);
       context = 0x800 | byte;
       for (callback = bs->callback; callback != NULL; callback = callback->next)
-	callback->callback(byte);
+	callback->callback(byte,callback->data);
     }
 
     result = read_bits_table[context][(count > 8 ? 8 : count) - 1];
@@ -105,7 +108,7 @@ static inline unsigned int read_unary(Bitstream* bs, int stop_bit) {
     if (context == 0) {
       byte = (unsigned int)fgetc(bs->file);
       for (callback = bs->callback; callback != NULL; callback = callback->next)
-	callback->callback(byte);
+	callback->callback(byte,callback->data);
       context = 0x800 | byte;
     }
 

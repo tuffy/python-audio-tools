@@ -41,6 +41,10 @@ typedef struct {
   struct flac_STREAMINFO streaminfo;
   uint64_t remaining_samples;
 
+  uint32_t crc8;
+  uint32_t crc16;
+
+  /*temporary buffers*/
   struct i_array subframe_data[8];
   struct i_array residuals;
   struct i_array qlp_coeffs;
@@ -127,6 +131,9 @@ int FlacDecoder_read_residual(decoders_FlacDecoder *self,
 			      uint8_t order,
 			      uint32_t block_size,
 			      struct i_array *residuals);
+
+void crc8(unsigned int byte, void *checksum);
+void crc16(unsigned int byte, void *checksum);
 
 uint32_t read_utf8(Bitstream *stream);
 

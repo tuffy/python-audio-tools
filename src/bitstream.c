@@ -25,9 +25,12 @@ void bs_close(Bitstream* bs) {
   free(bs);
 }
 
-void bs_add_callback(Bitstream* bs, void (*callback)(unsigned int)) {
+void bs_add_callback(Bitstream* bs,
+		     void (*callback)(unsigned int, void*),
+		     void *data) {
   struct bs_callback* callback_node = malloc(sizeof(struct bs_callback));
   callback_node->callback = callback;
+  callback_node->data = data;
   callback_node->next = bs->callback;
   bs->callback = callback_node;
 }
@@ -57,7 +60,7 @@ void write_bits(Bitstream* bs, unsigned int count, int value) {
       byte = (result >> 10) & 0xFF;
       fputc(byte,bs->file);
       for (callback = bs->callback; callback != NULL; callback = callback->next)
-	callback->callback(byte);
+	callback->callback(byte,callback->data);
     }
 
     /*update the context*/
@@ -87,7 +90,7 @@ void write_unary(Bitstream* bs, int stop_bit, int value) {
       byte = (result >> 10) & 0xFF;
       fputc(byte,bs->file);
       for (callback = bs->callback; callback != NULL; callback = callback->next)
-	callback->callback(byte);
+	callback->callback(byte,callback->data);
     }
 
     context = result & 0x3FF;
