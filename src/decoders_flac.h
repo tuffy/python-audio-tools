@@ -25,6 +25,8 @@ typedef enum {FLAC_SUBFRAME_CONSTANT,
 	      FLAC_SUBFRAME_FIXED,
 	      FLAC_SUBFRAME_LPC} flac_subframe_type;
 
+typedef enum {OK,ERROR} status;
+
 struct flac_subframe_header {
   flac_subframe_type type;
   uint8_t order;
@@ -92,45 +94,45 @@ void FlacDecoder_dealloc(decoders_FlacDecoder *self);
 PyObject *FlacDecoder_new(PyTypeObject *type,
 			  PyObject *args, PyObject *kwds);
 
-int FlacDecoder_read_metadata(decoders_FlacDecoder *self);
+status FlacDecoder_read_metadata(decoders_FlacDecoder *self);
 
-int FlacDecoder_read_frame_header(decoders_FlacDecoder *self,
-				  struct flac_frame_header *header);
+status FlacDecoder_read_frame_header(decoders_FlacDecoder *self,
+				     struct flac_frame_header *header);
 
-int FlacDecoder_read_subframe_header(decoders_FlacDecoder *self,
-				     struct flac_subframe_header *subframe_header);
+status FlacDecoder_read_subframe_header(decoders_FlacDecoder *self,
+					struct flac_subframe_header *subframe_header);
 
-int FlacDecoder_read_subframe(decoders_FlacDecoder *self,
-			      uint32_t block_size,
-			      uint8_t bits_per_sample,
-			      struct i_array *samples);
+status FlacDecoder_read_subframe(decoders_FlacDecoder *self,
+				 uint32_t block_size,
+				 uint8_t bits_per_sample,
+				 struct i_array *samples);
 
-int FlacDecoder_read_constant_subframe(decoders_FlacDecoder *self,
+status FlacDecoder_read_constant_subframe(decoders_FlacDecoder *self,
+					  uint32_t block_size,
+					  uint8_t bits_per_sample,
+					  struct i_array *samples);
+
+status FlacDecoder_read_verbatim_subframe(decoders_FlacDecoder *self,
+					  uint32_t block_size,
+					  uint8_t bits_per_sample,
+					  struct i_array *samples);
+
+status FlacDecoder_read_fixed_subframe(decoders_FlacDecoder *self,
+				       uint8_t order,
 				       uint32_t block_size,
 				       uint8_t bits_per_sample,
 				       struct i_array *samples);
 
-int FlacDecoder_read_verbatim_subframe(decoders_FlacDecoder *self,
-				       uint32_t block_size,
-				       uint8_t bits_per_sample,
-				       struct i_array *samples);
+status FlacDecoder_read_lpc_subframe(decoders_FlacDecoder *self,
+				     uint8_t order,
+				     uint32_t block_size,
+				     uint8_t bits_per_sample,
+				     struct i_array *samples);
 
-int FlacDecoder_read_fixed_subframe(decoders_FlacDecoder *self,
-				    uint8_t order,
-				    uint32_t block_size,
-				    uint8_t bits_per_sample,
-				    struct i_array *samples);
-
-int FlacDecoder_read_lpc_subframe(decoders_FlacDecoder *self,
-				  uint8_t order,
-				  uint32_t block_size,
-				  uint8_t bits_per_sample,
-				  struct i_array *samples);
-
-int FlacDecoder_read_residual(decoders_FlacDecoder *self,
-			      uint8_t order,
-			      uint32_t block_size,
-			      struct i_array *residuals);
+status FlacDecoder_read_residual(decoders_FlacDecoder *self,
+				 uint8_t order,
+				 uint32_t block_size,
+				 struct i_array *residuals);
 
 void crc8(unsigned int byte, void *checksum);
 void crc16(unsigned int byte, void *checksum);
