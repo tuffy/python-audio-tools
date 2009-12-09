@@ -13,7 +13,7 @@ void ia_free(struct i_array *array) {
 void ia_resize(struct i_array *array, uint32_t maximum_size) {
   if (array->total_size < maximum_size) {
     array->total_size = maximum_size;
-    array->data = realloc(array->data,maximum_size);
+    array->data = realloc(array->data,maximum_size * sizeof(int32_t));
   }
 }
 

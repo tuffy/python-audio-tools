@@ -24,7 +24,7 @@ static inline void ia_append(struct i_array *array, int32_t val) {
     array->data[array->size++] = val;
   } else {
     array->total_size *= 2;
-    array->data = realloc(array->data,array->total_size);
+    array->data = realloc(array->data,array->total_size * sizeof(int32_t));
     array->data[array->size++] = val;
   }
 }
