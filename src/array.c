@@ -17,28 +17,28 @@ void ia_resize(struct i_array *array, uint32_t maximum_size) {
   }
 }
 
-void ia_print(struct i_array *array) {
+void ia_print(FILE *stream,struct i_array *array) {
   int32_t i;
 
-  printf("[");
+  fprintf(stream,"[");
   if (array->size <= 10) {
     for (i = 0; i < array->size; i++) {
-      printf("%d",array->data[i]);
+      fprintf(stream,"%d",array->data[i]);
       if ((i + 1) < array->size)
-	printf(",");
+	fprintf(stream,",");
     }
   } else {
     for (i = 0; i < 5; i++) {
-      printf("%d,",ia_getitem(array,i));
+      fprintf(stream,"%d,",ia_getitem(array,i));
     }
-    printf("...,");
+    fprintf(stream,"...,");
     for (i = -5; i < 0; i++) {
-      printf("%d",ia_getitem(array,i));
+      fprintf(stream,"%d",ia_getitem(array,i));
       if ((i + 1) < 0)
-	printf(",");
+	fprintf(stream,",");
     }
   }
-  printf("]");
+  fprintf(stream,"]");
 }
 
 void ia_S8_to_char(unsigned char* target, struct i_array* source,
@@ -50,12 +50,7 @@ void ia_S8_to_char(unsigned char* target, struct i_array* source,
 
   for (i = 0; i < source->size; i++) {
     value = ia_getitem(source,i);
-    /*avoid overflow/underflow*/
-    if (value > 0x80) value = 0x80;
-    else if (value < -0x7F) value = -0x7F;
-
-    target[0] = (value + 0x7F) & 0xFF;
-
+    target[0] = value & 0xFF;
     target += total_channels;
   }
 }

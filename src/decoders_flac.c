@@ -29,8 +29,8 @@ int FlacDecoder_init(decoders_FlacDecoder *self,
   self->remaining_samples = self->streaminfo.total_samples;
 
   /*add callbacks for CRC8 and CRC16 calculation*/
-  bs_add_callback(self->bitstream,crc8,&(self->crc8));  /*FIXME - add checksum*/
-  bs_add_callback(self->bitstream,crc16,&(self->crc16)); /*FIXME - add checksum*/
+  bs_add_callback(self->bitstream,crc8,&(self->crc8));
+  bs_add_callback(self->bitstream,crc16,&(self->crc16));
 
   /*setup a bunch of temporary buffers*/
   for (i = 0; i < self->streaminfo.channels; i++) {

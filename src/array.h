@@ -71,7 +71,7 @@ static inline void ia_tail(struct i_array *target, struct i_array *source, uint3
   target->data = source->data + (source->size - size);
 }
 
-void ia_print(struct i_array *array);
+void ia_print(FILE *stream, struct i_array *array);
 
 void ia_S8_to_char(unsigned char *target, struct i_array *source,
 		   int channel, int total_channels);
