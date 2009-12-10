@@ -612,7 +612,10 @@ status FlacDecoder_read_residual(decoders_FlacDecoder *self,
 
   ia_reset(residuals);
 
+  /*read 2^partition_order number of partitions*/
   for (partition = 0; partition < total_partitions; partition++) {
+    /*each partition after the first contains
+      block_size / (2 ^ partition_order) number of residual values*/
     if (partition == 0) {
       partition_samples = (block_size / (1 << partition_order)) - order;
     } else {
