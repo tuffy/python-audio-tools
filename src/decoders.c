@@ -16,6 +16,26 @@ PyMODINIT_FUNC initdecoders(void) {
 		       (PyObject *)&decoders_FlacDecoderType);
 }
 
+PyObject *decoders_read_bits(PyObject *dummy, PyObject *args) {
+  int context;
+  int bits;
+
+  if (!PyArg_ParseTuple(args,"ii",&context,&bits))
+    return NULL;
+
+  return Py_BuildValue("i",read_bits_table[context][bits - 1]);
+}
+
+PyObject *decoders_read_unary(PyObject *dummy, PyObject *args) {
+  int context;
+  int stop_bit;
+
+  if (!PyArg_ParseTuple(args, "ii", &context,&stop_bit))
+    return NULL;
+
+  return Py_BuildValue("i",read_unary_table[context][stop_bit]);
+}
+
 #include "decoders_flac.c"
 
 #include "bitstream.c"

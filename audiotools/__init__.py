@@ -2291,6 +2291,85 @@ class ExecQueue:
             except KeyError:
                 continue
 
+
+#######################
+#Bitstream Handling
+#######################
+
+class BitstreamReader:
+    #byte_source should be a standard file-like object
+    #with a read() method that returns strings of bytes
+    #and a close() method
+    def __init__(self, byte_source):
+        from . import decoders
+
+        self.byte_source = byte_source
+        self.context = 0
+
+        self.__read_bits__ = decoders.read_bits
+        self.__read_unary__ = decoders.read_unary
+
+    def byte_align(self):
+        self.context = 0
+
+    def read(self, bits):
+        read_bits = self.__read_bits__
+        accumulator = 0
+
+        while (bits > 0):
+            if (self.context == 0):
+                self.context = 0x800 | ord(self.byte_source.read(1))
+
+            if (bits > 8):
+                result = read_bits(self.context,8)
+            else:
+                result = read_bits(self.context,bits)
+
+            accumulator = (accumulator << ((result & 0xF00000) >> 20)) | \
+              ((result & 0xFF000) >> 12)
+            self.context = (result & 0xFFF)
+            bits -= ((result & 0xF00000) >> 20)
+
+        return accumulator
+
+    def read_signed(self, bits):
+        if (self.read(1)):              #negative
+            return self.read(bits - 1) - (1 << (bits - 1))
+        else:
+            return self.read(bits - 1)  #positive
+
+    def unary(self, stop_bit):
+        if ((stop_bit != 0) and (stop_bit != 1)):
+            raise ValueError("stop_bit must be 0 or 1")
+
+        read_unary = self.__read_unary__
+        accumulator = 0
+
+        if (self.context == 0):
+            self.context = 0x800 | ord(self.byte_source.read(1))
+
+        result = read_unary(self.context,stop_bit)
+        accumulator += ((result & 0xFF000) >> 12)
+        self.context = result & 0xFFF
+
+        while (result >> 24):
+            if (self.context == 0):
+                self.context = 0x800 | ord(self.byte_source.read(1))
+
+            result = read_unary(self.context,stop_bit)
+            accumulator += ((result & 0xFF000) >> 12)
+            self.context = result & 0xFFF
+
+        return accumulator
+
+    def tell(self):
+        return self.byte_source.tell()
+
+    def close(self):
+        self.byte_source.close()
+        self.context = 0
+
+
 #***ApeAudio temporarily removed***
 #Without a legal alternative to mac-port, I shall have to re-implement
 #Monkey's Audio with my own code in order to make it available again.

@@ -30,7 +30,14 @@ typedef int Py_ssize_t;
 #include "bitstream.h"
 #include "array.h"
 
+PyObject *decoders_read_bits(PyObject *dummy, PyObject *args);
+PyObject *decoders_read_unary(PyObject *dummy, PyObject *args);
+
 PyMethodDef module_methods[] = {
+  {"read_bits",(PyCFunction)decoders_read_bits,
+   METH_VARARGS,""},
+  {"read_unary",(PyCFunction)decoders_read_unary,
+   METH_VARARGS,""},
   {NULL}
 };
 

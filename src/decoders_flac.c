@@ -224,7 +224,7 @@ PyObject *FLACDecoder_read(decoders_FlacDecoder* self,
   read_bits(self->bitstream,16);
   if (self->crc16 != 0) {
     PyErr_SetString(PyExc_ValueError,"invalid checksum in frame");
-    return ERROR;
+    return NULL;
   }
 
   /*transform subframe data into single string*/
@@ -244,7 +244,7 @@ PyObject *FLACDecoder_read(decoders_FlacDecoder* self,
       break;
     default:
       PyErr_SetString(PyExc_ValueError,"unsupported bits per sample value");
-      return ERROR;
+      return NULL;
     }
   }
 
