@@ -103,10 +103,14 @@ static inline void write_unary(Bitstream* bs, int stop_bit, int value) {
     value -= 8;
   }
 
+  /*finally, send the remaning value*/
   result = write_unary_table[context][(stop_bit << 4) | value];
 
   if (result >> 18) {
-      fputc((result >> 10) & 0xFF,bs->file);
+    byte = (result >> 10) & 0xFF
+    fputc(byte,bs->file);
+    for (callback = bs->callback; callback != NULL; callback = callback->next)
+      callback->callback(byte,callback->data);
   }
 
   context = result & 0x3FF;

@@ -2382,7 +2382,9 @@ class BitstreamWriter:
         self.__write_bits__ = encoders.write_bits
         self.__write_unary__ = encoders.write_unary
 
-    #def byte_align(self):
+    def byte_align(self):
+        self.write(7,0)
+        self.context = 0
 
     def write(self, bits, value):
         while (bits > 0):
@@ -2409,11 +2411,33 @@ class BitstreamWriter:
             value -= (value_to_write << (bits - bits_to_write))
             bits -= bits_to_write
 
-    #def write_signed(self, bits value):
+    def write_signed(self, bits, value):
+        if (value >= 0):
+            self.write(1,0)
+            self.write(bits - 1, value)
+        else:
+            self.write(1,1)
+            self.write(bits - 1, value + (1 << (bits - 1)))
 
-    #def unary(self, stop_bit, value):
+    def unary(self, stop_bit, value):
+        #send continuation blocks until we get to 7 bits or less
+        while (value >= 8):
+            result = self.__write_unary__(self.context,(stop_bit << 4) | 0x08)
+            if (result >> 18):
+                self.byte_sink.write(chr((result >> 10) & 0xFF))
 
-    #def tell(self)
+            self.context = result & 0x3FF
+            value -= 8
+
+        #finally, send the remaining value
+        result = self.__write_unary__(self.context,(stop_bit << 4) | value)
+        if (result >> 18):
+            self.byte_sink.write(chr((result >> 10) & 0xFF))
+
+        self.context = result & 0x3FF
+
+    def tell(self):
+        return self.byte_sink.tell()
 
     def close(self):
         self.byte_sink.close()

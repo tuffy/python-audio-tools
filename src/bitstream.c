@@ -45,6 +45,7 @@ void byte_align(Bitstream* bs, byte_align_mode mode) {
     bs->state = 0;
     break;
   case BYTE_ALIGN_WRITE:
+    /*FIXME*/
     /*write_bits(bs,7,0);*/
     bs->state = 0;
     break;
