@@ -120,12 +120,12 @@ def next_read_unary_states(context):
 def next_write_bits_states(context):
     for wrote_context in xrange(0x8FF + 1):
         #note that the vertical context is only 10 bits wide
-        #3 for remaining bits
+        #3 for bank_size
         #7 for the byte_bank
         #unlike when reading, writing involves a byte-write call
         #every 8 bits, so the context need not be as large
 
-        remaining_bits = context >> 7
+        bank_size = context >> 7
         byte_bank = context & 0x7F
 
         wrote_bits = wrote_context >> 8
@@ -133,13 +133,13 @@ def next_write_bits_states(context):
 
         #add our newly wrote bits to the beginning of the byte bank
         new_bank = wrote_bank | (byte_bank << wrote_bits)
-        new_bank_size = remaining_bits + wrote_bits
+        new_bank_size = bank_size + wrote_bits
 
         #if we have more than 8 bits in the bank,
         #generate a write request and new context
         if (new_bank_size >= 8):
-            write_byte = new_bank & 0xFF
-            new_bank = new_bank >> 8
+            write_byte = new_bank >> (new_bank_size - 8)
+            new_bank -= (write_byte << (new_bank_size - 8))
             new_bank_size -= 8
 
             yield (1 << 18) | \

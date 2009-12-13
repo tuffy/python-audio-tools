@@ -2369,6 +2369,56 @@ class BitstreamReader:
         self.byte_source.close()
         self.context = 0
 
+class BitstreamWriter:
+    #byte_sink should be a file-like object
+    #with a write() method that takes a string of bytes
+    #and a close() method
+    def __init__(self, byte_sink):
+        from . import encoders
+
+        self.byte_sink = byte_sink
+        self.context = 0
+
+        self.__write_bits__ = encoders.write_bits
+        self.__write_unary__ = encoders.write_unary
+
+    #def byte_align(self):
+
+    def write(self, bits, value):
+        while (bits > 0):
+            #chop off up to 8 bits to write at a time
+            if (bits > 8):
+                bits_to_write = 8
+            else:
+                bits_to_write = bits
+
+            value_to_write = value >> (bits - bits_to_write)
+
+            #feed them through the jump table
+            result = self.__write_bits__(self.context,
+                                         value_to_write | (bits_to_write << 8))
+
+            #write a byte if necessary
+            if (result >> 18):
+                self.byte_sink.write(chr((result >> 10) & 0xFF))
+
+            #update the context
+            self.context = result & 0x3FF
+
+            #decrement the count and value
+            value -= (value_to_write << (bits - bits_to_write))
+            bits -= bits_to_write
+
+    #def write_signed(self, bits value):
+
+    #def unary(self, stop_bit, value):
+
+    #def tell(self)
+
+    def close(self):
+        self.byte_sink.close()
+        self.context = 0
+
 
 #***ApeAudio temporarily removed***
 #Without a legal alternative to mac-port, I shall have to re-implement

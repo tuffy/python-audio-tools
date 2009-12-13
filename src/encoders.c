@@ -10,11 +10,24 @@ PyMODINIT_FUNC initencoders(void) {
 }
 
 PyObject *encoders_write_bits(PyObject *dummy, PyObject *args) {
-  return NULL;
+  int context;
+  int value;
+
+  if (!PyArg_ParseTuple(args,"ii",&context,&value))
+    return NULL;
+
+  return Py_BuildValue("i",write_bits_table[context][value]);
 }
 
+
 PyObject *encoders_write_unary(PyObject *dummy, PyObject *args) {
-  return NULL;
+  int context;
+  int value;
+
+  if (!PyArg_ParseTuple(args,"ii",&context,&value))
+    return NULL;
+
+  return Py_BuildValue("i",write_unary_table[context][value]);
 }
 
 #include "bitstream.c"
