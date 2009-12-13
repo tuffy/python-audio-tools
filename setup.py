@@ -46,9 +46,13 @@ pcmstreammodule = Extension('audiotools.pcmstream',
 decodersmodule = Extension('audiotools.decoders',
                            sources = ['src/decoders.c'])
 
+encodersmodule = Extension('audiotools.encoders',
+                           sources = ['src/encoders.c'])
+
 extensions = [cdiomodule,
               pcmstreammodule,
-              decodersmodule]
+              decodersmodule,
+              encodersmodule]
 
 
 #This is an ALSA extension module, not quite ready for use.

@@ -122,6 +122,8 @@ class __Qt_Atom_Stream__(__Qt_Atom__):
                                        self.offset):
             yield atom
 
+Qt_Atom_Stream = __Qt_Atom_Stream__
+
 #takes a stream object with a read() method
 #iterates over all of the atoms it contains and yields
 #a series of qt_class objects, which defaults to __Qt_Atom__
