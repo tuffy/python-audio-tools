@@ -140,4 +140,6 @@ static inline unsigned int read_unary(Bitstream* bs, int stop_bit) {
   return accumulator;
 }
 
-
+static inline void byte_align_r(Bitstream* bs) {
+  bs->state = 0;
+}

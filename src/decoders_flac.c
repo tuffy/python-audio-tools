@@ -220,7 +220,7 @@ PyObject *FLACDecoder_read(decoders_FlacDecoder* self,
   }
 
   /*check CRC-16*/
-  byte_align(self->bitstream,BYTE_ALIGN_READ);
+  byte_align_r(self->bitstream);
   read_bits(self->bitstream,16);
   if (self->crc16 != 0) {
     PyErr_SetString(PyExc_ValueError,"invalid checksum in frame");

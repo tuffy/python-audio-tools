@@ -107,7 +107,7 @@ static inline void write_unary(Bitstream* bs, int stop_bit, int value) {
   result = write_unary_table[context][(stop_bit << 4) | value];
 
   if (result >> 18) {
-    byte = (result >> 10) & 0xFF
+    byte = (result >> 10) & 0xFF;
     fputc(byte,bs->file);
     for (callback = bs->callback; callback != NULL; callback = callback->next)
       callback->callback(byte,callback->data);
@@ -115,4 +115,9 @@ static inline void write_unary(Bitstream* bs, int stop_bit, int value) {
 
   context = result & 0x3FF;
   bs->state = context;
+}
+
+static inline void byte_align_w(Bitstream* bs) {
+  write_bits(bs,7,0);
+  bs->state = 0;
 }

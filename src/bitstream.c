@@ -38,16 +38,3 @@ void bs_add_callback(Bitstream* bs,
 int bs_eof(Bitstream* bs) {
   return feof(bs->file);
 }
-
-void byte_align(Bitstream* bs, byte_align_mode mode) {
-  switch (mode) {
-  case BYTE_ALIGN_READ:
-    bs->state = 0;
-    break;
-  case BYTE_ALIGN_WRITE:
-    /*FIXME*/
-    /*write_bits(bs,7,0);*/
-    bs->state = 0;
-    break;
-  }
-}
