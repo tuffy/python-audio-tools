@@ -36,7 +36,7 @@ PyObject *decoders_read_unary(PyObject *dummy, PyObject *args) {
   return Py_BuildValue("i",read_unary_table[context][stop_bit]);
 }
 
-#include "decoders_flac.c"
+#include "decoders/flac.c"
 
 #include "bitstream.c"
 #include "array.c"
