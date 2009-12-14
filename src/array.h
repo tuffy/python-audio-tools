@@ -92,7 +92,8 @@ static inline void ia_tail(struct i_array *target, struct i_array *source, uint3
 
 void ia_print(FILE *stream, struct i_array *array);
 
-void ia_S8_to_char(unsigned char *target, struct i_array *source,
+
+void ia_U8_to_char(unsigned char *target, struct i_array *source,
 		   int channel, int total_channels);
 
 void ia_SL16_to_char(unsigned char *target, struct i_array *source,
@@ -100,6 +101,18 @@ void ia_SL16_to_char(unsigned char *target, struct i_array *source,
 
 void ia_SL24_to_char(unsigned char *target, struct i_array *source,
 		     int channel, int total_channels);
+
+
+void ia_char_to_U8(struct i_array *target, unsigned char *source,
+		   int source_len, int channel, int total_channels);
+
+void ia_char_to_SL16(struct i_array *target, unsigned char *source,
+		     int source_len, int channel, int total_channels);
+
+void ia_char_to_SL24(struct i_array *target, unsigned char *source,
+		     int source_len, int channel, int total_channels);
+
+
 
 void ia_add(struct i_array *target,
 	    struct i_array *source1, struct i_array *source2);

@@ -60,7 +60,7 @@ void ia_print(FILE *stream,struct i_array *array) {
   fprintf(stream,"]");
 }
 
-void ia_S8_to_char(unsigned char* target, struct i_array* source,
+void ia_U8_to_char(unsigned char* target, struct i_array* source,
 		   int channel, int total_channels) {
   uint32_t i;
   int32_t value;
@@ -112,6 +112,53 @@ void ia_SL24_to_char(unsigned char* target, struct i_array* source,
     target[2] = (value & 0xFF0000) >> 16;
 
     target += (total_channels * 3);
+  }
+}
+
+
+void ia_char_to_U8(struct i_array *target, unsigned char *source,
+		   int source_len, int channel, int total_channels) {
+  source += channel;
+  source_len -= channel;
+
+  for (;source_len >= 1;
+       source += total_channels, source_len -= total_channels) {
+    ia_append(target,(int32_t)source[0]);
+  }
+}
+
+void ia_char_to_SL16(struct i_array *target, unsigned char *source,
+		     int source_len, int channel, int total_channels) {
+  source += (channel * 2);
+  source_len -= (channel * 2);
+
+  for (;source_len >= 2;
+       source += (total_channels * 2), source_len -= (total_channels * 2)) {
+    if ((source[1] & 0x80) != 0)
+      /*negative*/
+      ia_append(target,-(int32_t)(0x10000 - ((source[1] << 8) | source[0])));
+    else
+      /*positive*/
+      ia_append(target,(int32_t)(source[1] << 8) | source[0]);
+  }
+}
+
+void ia_char_to_SL24(struct i_array *target, unsigned char *source,
+		     int source_len, int channel, int total_channels) {
+  source += (channel * 3);
+  source_len -= (channel * 3);
+
+  for (;source_len >= 3;
+       source += (total_channels * 3), source_len -= (total_channels * 3)) {
+    if ((source[2] & 0x80) != 0)
+      /*negative*/
+      ia_append(target,
+		-(int32_t)(0x1000000 -
+			   ((source[2] << 16) | (source[1] << 8) | source[0])));
+    else
+      /*positive*/
+      ia_append(target,
+		(int32_t)(source[2] << 16) | (source[1] << 8) | source[0]);
   }
 }
 

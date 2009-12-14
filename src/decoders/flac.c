@@ -231,7 +231,7 @@ PyObject *FLACDecoder_read(decoders_FlacDecoder* self,
   for (channel = 0; channel < frame_header.channel_count; channel++) {
     switch (frame_header.bits_per_sample) {
     case 8:
-      ia_S8_to_char(self->data,&(self->subframe_data[channel]),
+      ia_U8_to_char(self->data,&(self->subframe_data[channel]),
 		    channel,frame_header.channel_count);
       break;
     case 16:
