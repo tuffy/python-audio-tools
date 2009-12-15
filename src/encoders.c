@@ -49,6 +49,54 @@ PyObject *encoders_write_unary(PyObject *dummy, PyObject *args) {
   return Py_BuildValue("i",write_unary_table[context][value]);
 }
 
+int parse_pcmreader(PyObject *pcmreader,
+		    PyObject **read,
+		    PyObject **close,
+		    long *sample_rate,
+		    long *channels,
+		    long *bits_per_sample) {
+  PyObject *attr;
+
+  if ((attr = PyObject_GetAttrString(pcmreader,"sample_rate")) == NULL)
+    return 0;
+  *sample_rate = PyInt_AsLong(attr);
+  Py_DECREF(attr);
+  if ((*sample_rate == -1) && (PyErr_Occurred()))
+    return 0;
+
+  if ((attr = PyObject_GetAttrString(pcmreader,"bits_per_sample")) == NULL)
+    return 0;
+  *bits_per_sample = PyInt_AsLong(attr);
+  Py_DECREF(attr);
+  if ((*bits_per_sample == -1) && (PyErr_Occurred()))
+    return 0;
+
+  if ((attr = PyObject_GetAttrString(pcmreader,"channels")) == NULL)
+    return 0;
+  *channels = PyInt_AsLong(attr);
+  Py_DECREF(attr);
+  if ((*channels == -1) && (PyErr_Occurred()))
+    return 0;
+
+  if ((*read = PyObject_GetAttrString(pcmreader,"read")) == NULL)
+    return 0;
+  if (!PyCallable_Check(*read)) {
+    Py_DECREF(*read);
+    PyErr_SetString(PyExc_TypeError,"read parameter must be callable");
+    return 0;
+  }
+  if ((*close = PyObject_GetAttrString(pcmreader,"close")) == NULL)
+    return 0;
+  if (!PyCallable_Check(*close)) {
+    Py_DECREF(*read);
+    Py_DECREF(*close);
+    PyErr_SetString(PyExc_TypeError,"close parameter must be callable");
+    return 0;
+  }
+
+  return 1;
+}
+
 #include "encoders/flac.c"
 
 #include "bitstream.c"
