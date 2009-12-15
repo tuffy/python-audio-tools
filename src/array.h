@@ -22,6 +22,8 @@
 
 #include <stdint.h>
 
+/*an array of int32_t values which can grow as needed
+  typically for storing PCM sample values*/
 struct i_array {
   int32_t *data;
   uint32_t size;
@@ -112,12 +114,38 @@ void ia_char_to_SL16(struct i_array *target, unsigned char *source,
 void ia_char_to_SL24(struct i_array *target, unsigned char *source,
 		     int source_len, int channel, int total_channels);
 
-
-
 void ia_add(struct i_array *target,
 	    struct i_array *source1, struct i_array *source2);
 
 void ia_sub(struct i_array *target,
 	    struct i_array *source1, struct i_array *source2);
+
+
+/*an array of i_array structs
+  typically for storing multiple channels of PCM values*/
+struct ia_array {
+  struct i_array *arrays;
+  uint32_t size;
+};
+
+void iaa_init(struct ia_array *array, uint32_t total_arrays,
+	      uint32_t initial_size);
+
+void iaa_free(struct ia_array *array);
+
+static inline struct i_array* iaa_getitem(struct ia_array *array, int32_t index) {
+  if (index >= 0) {
+    return &(array->arrays[index]);
+  } else {
+    return &(array->arrays[array->size + index]);
+  }
+}
+
+static inline void iaa_reset(struct ia_array *array) {
+  uint32_t i;
+
+  for (i = 0; i < array->size; i++)
+    ia_reset(&(array->arrays[i]));
+}
 
 #endif

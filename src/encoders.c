@@ -97,6 +97,56 @@ int parse_pcmreader(PyObject *pcmreader,
   return 1;
 }
 
+int read_samples(PyObject *read,
+		 long total_samples,
+		 long bits_per_sample,
+		 struct ia_array *samples) {
+  uint32_t i;
+  PyObject *args;
+  PyObject *result;
+
+  unsigned char *buffer;
+  Py_ssize_t buffer_length;
+
+  args = Py_BuildValue("(l)",
+		       total_samples * bits_per_sample * samples->size / 8);
+  result = PyEval_CallObject(read,args);
+  Py_DECREF(args);
+  if (result == NULL)
+    return 0;
+  if (PyString_AsStringAndSize(result,(char **)(&buffer),&buffer_length) == -1){
+    Py_DECREF(result);
+    return 0;
+  }
+
+  for (i = 0; i < samples->size; i++) {
+    ia_reset(iaa_getitem(samples,i));
+    switch (bits_per_sample) {
+    case 8:
+      ia_char_to_U8(iaa_getitem(samples,i),
+		    buffer,(int)buffer_length,i,samples->size);
+      break;
+    case 16:
+      ia_char_to_SL16(iaa_getitem(samples,i),
+		      buffer,(int)buffer_length,i,samples->size);
+      break;
+    case 24:
+      ia_char_to_SL24(iaa_getitem(samples,i),
+		      buffer,(int)buffer_length,i,samples->size);
+      break;
+    default:
+      PyErr_SetString(PyExc_ValueError,"unsupported bits per sample");
+      Py_DECREF(result);
+      return 0;
+    }
+  }
+
+  Py_DECREF(result);
+  return 1;
+}
+
 #include "encoders/flac.c"
 
 #include "bitstream.c"
+#include "array.c"
+
