@@ -49,4 +49,6 @@ PyObject *encoders_write_unary(PyObject *dummy, PyObject *args) {
   return Py_BuildValue("i",write_unary_table[context][value]);
 }
 
+#include "encoders/flac.c"
+
 #include "bitstream.c"

@@ -43,7 +43,6 @@ PyMethodDef module_methods[] = {
 
 #include "decoders/flac.h"
 
-
 const static unsigned int read_bits_table[0x900][8] =
 #include "read_bits_table.h"
   ;

@@ -32,10 +32,14 @@ typedef int Py_ssize_t;
 PyObject *encoders_write_bits(PyObject *dummy, PyObject *args);
 PyObject *encoders_write_unary(PyObject *dummy, PyObject *args);
 
+#include "encoders/flac.h"
+
 PyMethodDef module_methods[] = {
   {"write_bits",(PyCFunction)encoders_write_bits,
    METH_VARARGS,""},
   {"write_unary",(PyCFunction)encoders_write_unary,
+   METH_VARARGS,""},
+  {"encode_flac",(PyCFunction)encoders_encode_flac,
    METH_VARARGS,""},
   {NULL}
 };
