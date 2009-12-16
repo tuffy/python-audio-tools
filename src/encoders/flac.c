@@ -8,7 +8,7 @@ static PyObject* encoders_encode_flac(PyObject *dummy, PyObject *args) {
 
   struct ia_array samples;
 
-  uint32_t i;
+  int block_size = 4096;
 
   /*extract a filename and PCMReader-compatible object*/
   if (!PyArg_ParseTuple(args,"sO",&filename,&pcmreader_obj))
@@ -53,24 +53,34 @@ static PyObject* encoders_encode_flac(PyObject *dummy, PyObject *args) {
   /*write placeholder STREAMINFO*/
   FlacEncoder_write_streaminfo(stream,streaminfo);
 
+
   /*build frames until reader is empty,
     which updates STREAMINFO in the process*/
+  iaa_init(&samples,reader->channels,block_size);
+
+  if (!pcmr_read(reader,block_size,&samples))
+    goto error;
+
+  while (iaa_getitem(&samples,0)->size > 0) {
+    if (!FlacEncoder_write_frame(stream,&streaminfo,&samples))
+      goto error;
+
+    if (!pcmr_read(reader,block_size,&samples))
+      goto error;
+  }
+
 
   /*go back and re-write STREAMINFO with complete values*/
 
 
-  iaa_init(&samples,reader->channels,20);
 
-  printf("sample rate %ld\nchannels %ld\nbits per sample %ld\n",
-	 reader->sample_rate,reader->channels,reader->bits_per_sample);
+  /* if (!pcmr_read(reader,20,&samples)) */
+  /*   goto error; */
 
-  if (!pcmr_read(reader,20,&samples))
-    goto error;
-
-  for (i = 0; i < reader->channels; i++) {
-    ia_print(stdout,iaa_getitem(&samples,i));
-    printf(" %d\n",iaa_getitem(&samples,i)->size);
-  }
+  /* for (i = 0; i < reader->channels; i++) { */
+  /*   ia_print(stdout,iaa_getitem(&samples,i)); */
+  /*   printf(" %d\n",iaa_getitem(&samples,i)->size); */
+  /* } */
 
 
   iaa_free(&samples); /*deallocate the temporary samples block*/
@@ -99,4 +109,52 @@ void FlacEncoder_write_streaminfo(Bitstream *bs,
   write_bits(bs,5,streaminfo.bits_per_sample - 1);
   write_bits64(bs,36,streaminfo.total_samples);
   fwrite(streaminfo.md5sum,sizeof(unsigned char),16,bs->file);
+}
+
+int FlacEncoder_write_frame(Bitstream *bs,
+			    struct flac_STREAMINFO *streaminfo,
+			    struct ia_array *samples) {
+  if (!FlacEncoder_write_frame_header(bs,streaminfo,samples))
+    return 0;
+
+  streaminfo->total_samples++;
+
+  return 1;
+}
+
+int FlacEncoder_write_frame_header(Bitstream *bs,
+				    struct flac_STREAMINFO *streaminfo,
+				    struct ia_array *samples) {
+  int block_size_bits;
+
+  /*from the given amount of samples, determine the block size bits*/
+  switch (iaa_getitem(samples,0)->size) {
+  case 192:   block_size_bits = 0x1; break;
+  case 576:   block_size_bits = 0x2; break;
+  case 1152:  block_size_bits = 0x3; break;
+  case 2304:  block_size_bits = 0x4; break;
+  case 4608:  block_size_bits = 0x5; break;
+  case 256:   block_size_bits = 0x8; break;
+  case 512:   block_size_bits = 0x9; break;
+  case 1024:  block_size_bits = 0xA; break;
+  case 2048:  block_size_bits = 0xB; break;
+  case 4096:  block_size_bits = 0xC; break;
+  case 8192:  block_size_bits = 0xD; break;
+  case 16384: block_size_bits = 0xE; break;
+  case 32768: block_size_bits = 0xF; break;
+  default:
+    if (iaa_getitem(samples,0)->size < (0xFF + 1))
+      block_size_bits = 0x6;
+    else if (iaa_getitem(samples,0)->size < (0xFFFF + 1))
+      block_size_bits = 0x7;
+    else {
+      PyErr_SetString(PyExc_ValueError,"invalid sample rate");
+      return 0;
+    }
+    break;
+  }
+
+
+
+  return 1;
 }

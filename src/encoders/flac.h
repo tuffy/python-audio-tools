@@ -36,3 +36,12 @@ static PyObject* encoders_encode_flac(PyObject *dummy, PyObject *args);
 void FlacEncoder_write_streaminfo(Bitstream *bs,
 				  struct flac_STREAMINFO streaminfo);
 
+int FlacEncoder_write_frame(Bitstream *bs,
+			    struct flac_STREAMINFO *streaminfo,
+			    struct ia_array *samples);
+
+
+void FlacEncoder_write_frame_header(Bitstream *bs,
+				    struct flac_STREAMINFO *streaminfo,
+				    struct ia_array *samples);
+
