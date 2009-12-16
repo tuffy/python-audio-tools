@@ -30,25 +30,23 @@ typedef int Py_ssize_t;
 #include "bitstream.h"
 #include "array.h"
 
-/*given an pcmreader object,
-  extracts callable "read", and "close" methods
-  and "sample_rate", "channels" and "bits_per_sample" int attributes
-  returns 1 on success, 0 on failure (with exception set)*/
-int parse_pcmreader(PyObject *pcmreader,
-		    PyObject **read,
-		    PyObject **close,
-		    long *sample_rate,
-		    long *channels,
-		    long *bits_per_sample);
+struct pcm_reader {
+  PyObject *read;
+  PyObject *close;
+  long sample_rate;
+  long channels;
+  long bits_per_sample;
+};
 
-/*reads a chunk of samples via the "read" function
-  each of size "bits_per_sample" and "total_samples" in length
-  (the number of channels to read is taken from samples->size)
-  returns 1 on success, 0 on failure (with exception set)*/
-int read_samples(PyObject *read,
-		 long total_samples,
-		 long bits_per_sample,
-		 struct ia_array *samples);
+/*given a Python object PCMReader
+  return a pcm_reader struct, or NULL (with exception set) if an error occurs*/
+struct pcm_reader* pcmr_open(PyObject *pcmreader);
+
+int pcmr_close(struct pcm_reader *reader);
+
+int pcmr_read(struct pcm_reader *reader,
+	      long sample_count,
+	      struct ia_array *samples);
 
 PyObject *encoders_write_bits(PyObject *dummy, PyObject *args);
 PyObject *encoders_write_unary(PyObject *dummy, PyObject *args);

@@ -49,58 +49,74 @@ PyObject *encoders_write_unary(PyObject *dummy, PyObject *args) {
   return Py_BuildValue("i",write_unary_table[context][value]);
 }
 
-int parse_pcmreader(PyObject *pcmreader,
-		    PyObject **read,
-		    PyObject **close,
-		    long *sample_rate,
-		    long *channels,
-		    long *bits_per_sample) {
+struct pcm_reader* pcmr_open(PyObject *pcmreader) {
+  struct pcm_reader *reader = malloc(sizeof(struct pcm_reader));
   PyObject *attr;
 
   if ((attr = PyObject_GetAttrString(pcmreader,"sample_rate")) == NULL)
-    return 0;
-  *sample_rate = PyInt_AsLong(attr);
+    goto error;
+  reader->sample_rate = PyInt_AsLong(attr);
   Py_DECREF(attr);
-  if ((*sample_rate == -1) && (PyErr_Occurred()))
-    return 0;
+  if ((reader->sample_rate == -1) && (PyErr_Occurred()))
+    goto error;
 
   if ((attr = PyObject_GetAttrString(pcmreader,"bits_per_sample")) == NULL)
-    return 0;
-  *bits_per_sample = PyInt_AsLong(attr);
+    goto error;
+  reader->bits_per_sample = PyInt_AsLong(attr);
   Py_DECREF(attr);
-  if ((*bits_per_sample == -1) && (PyErr_Occurred()))
-    return 0;
+  if ((reader->bits_per_sample == -1) && (PyErr_Occurred()))
+    goto error;
 
   if ((attr = PyObject_GetAttrString(pcmreader,"channels")) == NULL)
-    return 0;
-  *channels = PyInt_AsLong(attr);
+    goto error;
+  reader->channels = PyInt_AsLong(attr);
   Py_DECREF(attr);
-  if ((*channels == -1) && (PyErr_Occurred()))
-    return 0;
+  if ((reader->channels == -1) && (PyErr_Occurred()))
+    goto error;
 
-  if ((*read = PyObject_GetAttrString(pcmreader,"read")) == NULL)
-    return 0;
-  if (!PyCallable_Check(*read)) {
-    Py_DECREF(*read);
+  if ((reader->read = PyObject_GetAttrString(pcmreader,"read")) == NULL)
+    goto error;
+  if (!PyCallable_Check(reader->read)) {
+    Py_DECREF(reader->read);
     PyErr_SetString(PyExc_TypeError,"read parameter must be callable");
-    return 0;
+    goto error;
   }
-  if ((*close = PyObject_GetAttrString(pcmreader,"close")) == NULL)
-    return 0;
-  if (!PyCallable_Check(*close)) {
-    Py_DECREF(*read);
-    Py_DECREF(*close);
+  if ((reader->close = PyObject_GetAttrString(pcmreader,"close")) == NULL)
+    goto error;
+  if (!PyCallable_Check(reader->close)) {
+    Py_DECREF(reader->read);
+    Py_DECREF(reader->close);
     PyErr_SetString(PyExc_TypeError,"close parameter must be callable");
-    return 0;
+    goto error;
   }
 
-  return 1;
+  return reader;
+ error:
+  free(reader);
+  return NULL;
 }
 
-int read_samples(PyObject *read,
-		 long total_samples,
-		 long bits_per_sample,
-		 struct ia_array *samples) {
+int pcmr_close(struct pcm_reader *reader) {
+  PyObject *result;
+  int returnval;
+
+  result = PyEval_CallObject(reader->close,NULL);
+  if (result == NULL)
+    returnval = 0;
+  else {
+    Py_DECREF(result);
+    returnval = 1;
+  }
+
+  Py_DECREF(reader->read);
+  Py_DECREF(reader->close);
+  free(reader);
+  return returnval;
+}
+
+int pcmr_read(struct pcm_reader *reader,
+	      long sample_count,
+	      struct ia_array *samples) {
   uint32_t i;
   PyObject *args;
   PyObject *result;
@@ -108,9 +124,9 @@ int read_samples(PyObject *read,
   unsigned char *buffer;
   Py_ssize_t buffer_length;
 
-  args = Py_BuildValue("(l)",
-		       total_samples * bits_per_sample * samples->size / 8);
-  result = PyEval_CallObject(read,args);
+  args = Py_BuildValue("(l)", sample_count *
+		              reader->bits_per_sample * samples->size / 8);
+  result = PyEval_CallObject(reader->read,args);
   Py_DECREF(args);
   if (result == NULL)
     return 0;
@@ -119,9 +135,9 @@ int read_samples(PyObject *read,
     return 0;
   }
 
-  for (i = 0; i < samples->size; i++) {
+  for (i = 0; i < reader->channels; i++) {
     ia_reset(iaa_getitem(samples,i));
-    switch (bits_per_sample) {
+    switch (reader->bits_per_sample) {
     case 8:
       ia_char_to_U8(iaa_getitem(samples,i),
 		    buffer,(int)buffer_length,i,samples->size);
