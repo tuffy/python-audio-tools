@@ -48,6 +48,9 @@ int pcmr_read(struct pcm_reader *reader,
 	      long sample_count,
 	      struct ia_array *samples);
 
+/*FIXME - add support for callbacks to pcm_reader
+  for handling the chunks of string data returned by read() Python methods*/
+
 PyObject *encoders_write_bits(PyObject *dummy, PyObject *args);
 PyObject *encoders_write_unary(PyObject *dummy, PyObject *args);
 
@@ -104,6 +107,42 @@ static inline void write_bits(Bitstream* bs, unsigned int count, int value) {
   }
   bs->state = context;
 }
+
+static inline void write_bits64(Bitstream* bs, unsigned int count,
+				uint64_t value) {
+  int bits_to_write;
+  int value_to_write;
+  int result;
+  int context = bs->state;
+  unsigned int byte;
+  struct bs_callback* callback;
+
+  while (count > 0) {
+    /*chop off up to 8 bits to write at a time*/
+    bits_to_write = count > 8 ? 8 : count;
+    value_to_write = value >> (count - bits_to_write);
+
+    /*feed them through the jump table*/
+    result = write_bits_table[context][(value_to_write | (bits_to_write << 8))];
+
+    /*write a byte if necessary*/
+    if (result >> 18) {
+      byte = (result >> 10) & 0xFF;
+      fputc(byte,bs->file);
+      for (callback = bs->callback; callback != NULL; callback = callback->next)
+	callback->callback(byte,callback->data);
+    }
+
+    /*update the context*/
+    context = result & 0x3FF;
+
+    /*decrement the count and value*/
+    value -= (value_to_write << (count - bits_to_write));
+    count -= bits_to_write;
+  }
+  bs->state = context;
+}
+
 
 static inline void write_unary(Bitstream* bs, int stop_bit, int value) {
   int result;
