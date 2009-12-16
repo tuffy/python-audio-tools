@@ -100,6 +100,8 @@ static PyObject* encoders_encode_flac(PyObject *dummy, PyObject *args) {
 
 void FlacEncoder_write_streaminfo(Bitstream *bs,
 				  struct flac_STREAMINFO streaminfo) {
+  int i;
+
   write_bits(bs,16,streaminfo.minimum_block_size);
   write_bits(bs,16,streaminfo.maximum_block_size);
   write_bits(bs,24,streaminfo.minimum_frame_size);
@@ -108,7 +110,8 @@ void FlacEncoder_write_streaminfo(Bitstream *bs,
   write_bits(bs,3,streaminfo.channels - 1);
   write_bits(bs,5,streaminfo.bits_per_sample - 1);
   write_bits64(bs,36,streaminfo.total_samples);
-  fwrite(streaminfo.md5sum,sizeof(unsigned char),16,bs->file);
+  for (i = 0; i < 16; i++)
+    write_bits(bs,8,streaminfo.md5sum[i]);
 }
 
 int FlacEncoder_write_frame(Bitstream *bs,
@@ -123,8 +126,8 @@ int FlacEncoder_write_frame(Bitstream *bs,
 }
 
 int FlacEncoder_write_frame_header(Bitstream *bs,
-				    struct flac_STREAMINFO *streaminfo,
-				    struct ia_array *samples) {
+				   struct flac_STREAMINFO *streaminfo,
+				   struct ia_array *samples) {
   int block_size_bits;
 
   /*from the given amount of samples, determine the block size bits*/
