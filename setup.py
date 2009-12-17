@@ -47,7 +47,8 @@ decodersmodule = Extension('audiotools.decoders',
                            sources = ['src/decoders.c'])
 
 encodersmodule = Extension('audiotools.encoders',
-                           sources = ['src/encoders.c'])
+                           sources = ['src/encoders.c'],
+                           libraries = ["ssl"])
 
 extensions = [cdiomodule,
               pcmstreammodule,

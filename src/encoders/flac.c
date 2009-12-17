@@ -1,3 +1,5 @@
+#include <openssl/md5.h>
+
 static PyObject* encoders_encode_flac(PyObject *dummy, PyObject *args) {
   char *filename;
   FILE *file;
@@ -5,6 +7,7 @@ static PyObject* encoders_encode_flac(PyObject *dummy, PyObject *args) {
   PyObject *pcmreader_obj;
   struct pcm_reader *reader;
   struct flac_STREAMINFO streaminfo;
+  MD5_CTX md5sum;
 
   struct ia_array samples;
 
@@ -26,6 +29,9 @@ static PyObject* encoders_encode_flac(PyObject *dummy, PyObject *args) {
     Py_DECREF(pcmreader_obj);
     return NULL;
   }
+
+  MD5_Init(&md5sum);
+  pcmr_add_callback(reader,md5_update,&md5sum);
 
   stream = bs_open(file);
   bs_add_callback(stream,flac_crc8,&(streaminfo.crc8));
@@ -74,6 +80,7 @@ static PyObject* encoders_encode_flac(PyObject *dummy, PyObject *args) {
 
 
   /*go back and re-write STREAMINFO with complete values*/
+  MD5_Final(streaminfo.md5sum,&md5sum);
   fseek(stream->file, 4 + 4, SEEK_SET);
   FlacEncoder_write_streaminfo(stream,streaminfo);
 
@@ -266,6 +273,10 @@ void FlacEncoder_write_verbatim_subframe(Bitstream *bs,
   /*write subframe samples*/
   for (i = 0; i < samples->size; i++)
     write_signed_bits(bs, bits_per_sample, ia_getitem(samples,i));
+}
+
+void md5_update(void *data, unsigned char *buffer, unsigned long len) {
+  MD5_Update((MD5_CTX*)data, (const void*)buffer, len);
 }
 
 #include "flac_crc.c"
