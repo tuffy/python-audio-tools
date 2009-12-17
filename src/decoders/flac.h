@@ -162,10 +162,7 @@ status FlacDecoder_read_residual(decoders_FlacDecoder *self,
 				 uint32_t block_size,
 				 struct i_array *residuals);
 
-/*given a new byte and the previous checksum value,
-  assigns a new checksum to that value*/
-void crc8(unsigned int byte, void *checksum);
-void crc16(unsigned int byte, void *checksum);
+#include "flac_crc.h"
 
 uint32_t read_utf8(Bitstream *stream);
 

@@ -28,6 +28,8 @@ static PyObject* encoders_encode_flac(PyObject *dummy, PyObject *args) {
   }
 
   stream = bs_open(file);
+  bs_add_callback(stream,flac_crc8,&(streaminfo.crc8));
+  bs_add_callback(stream,flac_crc16,&(streaminfo.crc16));
 
   /*fill streaminfo with some placeholder values*/
   streaminfo.minimum_block_size = 0;
@@ -41,6 +43,8 @@ static PyObject* encoders_encode_flac(PyObject *dummy, PyObject *args) {
   memcpy(streaminfo.md5sum,
 	 "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
 	 16);
+  streaminfo.crc8 = streaminfo.crc16 = 0;
+  streaminfo.total_frames = 0;
 
   /*write FLAC stream header*/
   write_bits(stream,32,0x664C6143);
@@ -52,7 +56,6 @@ static PyObject* encoders_encode_flac(PyObject *dummy, PyObject *args) {
 
   /*write placeholder STREAMINFO*/
   FlacEncoder_write_streaminfo(stream,streaminfo);
-
 
   /*build frames until reader is empty,
     which updates STREAMINFO in the process*/
@@ -111,18 +114,24 @@ int FlacEncoder_write_frame(Bitstream *bs,
 			    struct ia_array *samples) {
   uint32_t i;
 
+  streaminfo->crc8 = streaminfo->crc16 = 0;
+
   FlacEncoder_write_frame_header(bs,streaminfo,samples);
 
   for (i = 0; i < samples->size; i++)
     FlacEncoder_write_verbatim_subframe(bs,
-					streaminfo->bits_per_sample,
-					iaa_getitem(samples,i));
+    					streaminfo->bits_per_sample,
+    					iaa_getitem(samples,i));
 
   byte_align_w(bs);
 
-  /*FIXME - write CRC-16*/
+  /*write CRC-16*/
+  write_bits(bs, 16, streaminfo->crc16);
 
-  streaminfo->total_samples++;
+  /*FIXME - update streaminfo with new values*/
+
+  streaminfo->total_samples += iaa_getitem(samples,0)->size;
+  streaminfo->total_frames++;
 
   return 1;
 }
@@ -211,8 +220,8 @@ void FlacEncoder_write_frame_header(Bitstream *bs,
   write_bits(bs, 3, bits_per_sample_bits); /*bits per sample*/
   write_bits(bs, 1, 0);                    /*padding*/
 
-  /*frame number is taken from total_samples in streaminfo*/
-  write_bits(bs, 8, streaminfo->total_samples);  /*FIXME - should be UTF-8*/
+  /*frame number is taken from total_frames in streaminfo*/
+  write_bits(bs, 8, streaminfo->total_frames);  /*FIXME - should be UTF-8*/
 
   /*if block_size_bits are 0x6 or 0x7, write a PCM frames field*/
   if (block_size_bits == 0x6)
@@ -228,7 +237,20 @@ void FlacEncoder_write_frame_header(Bitstream *bs,
   else if (sample_rate_bits == 0xE)
     write_bits(bs, 16, streaminfo->sample_rate / 10);
 
-  /*FIXME - write CRC-8*/
+  /*xwrite CRC-8*/
+  write_bits(bs, 8, streaminfo->crc8);
+}
+
+void FlacEncoder_write_constant_subframe(Bitstream *bs,
+					 int bits_per_sample,
+					 int32_t sample) {
+  /*write subframe header*/
+  write_bits(bs, 1, 0);
+  write_bits(bs, 6, 0);
+  write_bits(bs, 1, 0);
+
+  /*write subframe sample*/
+  write_signed_bits(bs, bits_per_sample, sample);
 }
 
 void FlacEncoder_write_verbatim_subframe(Bitstream *bs,
@@ -245,3 +267,6 @@ void FlacEncoder_write_verbatim_subframe(Bitstream *bs,
   for (i = 0; i < samples->size; i++)
     write_signed_bits(bs, bits_per_sample, ia_getitem(samples,i));
 }
+
+#include "flac_crc.c"
+
