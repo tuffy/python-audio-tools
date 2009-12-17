@@ -30,12 +30,20 @@ typedef int Py_ssize_t;
 #include "bitstream.h"
 #include "array.h"
 
+struct pcmr_callback {
+  void (*callback)(void*, unsigned char*, unsigned long);
+  void *data;
+  struct pcmr_callback *next;
+};
+
 struct pcm_reader {
   PyObject *read;
   PyObject *close;
   long sample_rate;
   long channels;
   long bits_per_sample;
+
+  struct pcmr_callback *callback;
 };
 
 /*given a Python object PCMReader
@@ -47,6 +55,10 @@ int pcmr_close(struct pcm_reader *reader);
 int pcmr_read(struct pcm_reader *reader,
 	      long sample_count,
 	      struct ia_array *samples);
+
+void pcmr_add_callback(struct pcm_reader *reader,
+		       void (*callback)(void*, unsigned char*, unsigned long),
+		       void *data);
 
 /*FIXME - add support for callbacks to pcm_reader
   for handling the chunks of string data returned by read() Python methods*/

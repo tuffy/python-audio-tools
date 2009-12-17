@@ -53,6 +53,8 @@ struct pcm_reader* pcmr_open(PyObject *pcmreader) {
   struct pcm_reader *reader = malloc(sizeof(struct pcm_reader));
   PyObject *attr;
 
+  reader->callback = NULL;
+
   if ((attr = PyObject_GetAttrString(pcmreader,"sample_rate")) == NULL)
     goto error;
   reader->sample_rate = PyInt_AsLong(attr);
@@ -99,6 +101,8 @@ struct pcm_reader* pcmr_open(PyObject *pcmreader) {
 int pcmr_close(struct pcm_reader *reader) {
   PyObject *result;
   int returnval;
+  struct pcmr_callback *callback;
+  struct pcmr_callback *next;
 
   result = PyEval_CallObject(reader->close,NULL);
   if (result == NULL)
@@ -108,10 +112,25 @@ int pcmr_close(struct pcm_reader *reader) {
     returnval = 1;
   }
 
+  for (callback = reader->callback; callback != NULL; callback = next) {
+    next = callback->next;
+    free(callback);
+  }
+
   Py_DECREF(reader->read);
   Py_DECREF(reader->close);
   free(reader);
   return returnval;
+}
+
+void pcmr_add_callback(struct pcm_reader *reader,
+		       void (*callback)(void*, unsigned char*, unsigned long),
+		       void *data) {
+  struct pcmr_callback *callback_node = malloc(sizeof(struct pcmr_callback));
+  callback_node->callback = callback;
+  callback_node->data = data;
+  callback_node->next = reader->callback;
+  reader->callback = callback_node;
 }
 
 int pcmr_read(struct pcm_reader *reader,
@@ -124,6 +143,9 @@ int pcmr_read(struct pcm_reader *reader,
   unsigned char *buffer;
   Py_ssize_t buffer_length;
 
+  struct pcmr_callback *node;
+  struct pcmr_callback *next;
+
   args = Py_BuildValue("(l)", sample_count *
 		              reader->bits_per_sample * samples->size / 8);
   result = PyEval_CallObject(reader->read,args);
@@ -133,6 +155,11 @@ int pcmr_read(struct pcm_reader *reader,
   if (PyString_AsStringAndSize(result,(char **)(&buffer),&buffer_length) == -1){
     Py_DECREF(result);
     return 0;
+  }
+
+  for (node = reader->callback; node != NULL; node = next) {
+    next = node->next;
+    node->callback(node->data,buffer,(unsigned long)buffer_length);
   }
 
   for (i = 0; i < reader->channels; i++) {
