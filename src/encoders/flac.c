@@ -71,16 +71,8 @@ static PyObject* encoders_encode_flac(PyObject *dummy, PyObject *args) {
 
 
   /*go back and re-write STREAMINFO with complete values*/
-
-
-
-  /* if (!pcmr_read(reader,20,&samples)) */
-  /*   goto error; */
-
-  /* for (i = 0; i < reader->channels; i++) { */
-  /*   ia_print(stdout,iaa_getitem(&samples,i)); */
-  /*   printf(" %d\n",iaa_getitem(&samples,i)->size); */
-  /* } */
+  fseek(stream->file, 4 + 4, SEEK_SET);
+  FlacEncoder_write_streaminfo(stream,streaminfo);
 
 
   iaa_free(&samples); /*deallocate the temporary samples block*/
@@ -117,21 +109,35 @@ void FlacEncoder_write_streaminfo(Bitstream *bs,
 int FlacEncoder_write_frame(Bitstream *bs,
 			    struct flac_STREAMINFO *streaminfo,
 			    struct ia_array *samples) {
-  if (!FlacEncoder_write_frame_header(bs,streaminfo,samples))
-    return 0;
+  uint32_t i;
+
+  FlacEncoder_write_frame_header(bs,streaminfo,samples);
+
+  for (i = 0; i < samples->size; i++)
+    FlacEncoder_write_verbatim_subframe(bs,
+					streaminfo->bits_per_sample,
+					iaa_getitem(samples,i));
+
+  byte_align_w(bs);
+
+  /*FIXME - write CRC-16*/
 
   streaminfo->total_samples++;
 
   return 1;
 }
 
-int FlacEncoder_write_frame_header(Bitstream *bs,
-				   struct flac_STREAMINFO *streaminfo,
-				   struct ia_array *samples) {
+void FlacEncoder_write_frame_header(Bitstream *bs,
+				    struct flac_STREAMINFO *streaminfo,
+				    struct ia_array *samples) {
   int block_size_bits;
+  int sample_rate_bits;
+  int channel_assignment;
+  int bits_per_sample_bits;
+  int block_size = iaa_getitem(samples,0)->size;
 
-  /*from the given amount of samples, determine the block size bits*/
-  switch (iaa_getitem(samples,0)->size) {
+  /*determine the block size bits from the given amount of samples*/
+  switch (block_size) {
   case 192:   block_size_bits = 0x1; break;
   case 576:   block_size_bits = 0x2; break;
   case 1152:  block_size_bits = 0x3; break;
@@ -150,14 +156,92 @@ int FlacEncoder_write_frame_header(Bitstream *bs,
       block_size_bits = 0x6;
     else if (iaa_getitem(samples,0)->size < (0xFFFF + 1))
       block_size_bits = 0x7;
-    else {
-      PyErr_SetString(PyExc_ValueError,"invalid sample rate");
-      return 0;
-    }
+    else
+      block_size_bits = 0x0;
     break;
   }
 
+  /*determine sample rate bits from streaminfo*/
+  switch (streaminfo->sample_rate) {
+  case 88200:  sample_rate_bits = 0x1; break;
+  case 176400: sample_rate_bits = 0x2; break;
+  case 192000: sample_rate_bits = 0x3; break;
+  case 8000:   sample_rate_bits = 0x4; break;
+  case 16000:  sample_rate_bits = 0x5; break;
+  case 22050:  sample_rate_bits = 0x6; break;
+  case 24000:  sample_rate_bits = 0x7; break;
+  case 32000:  sample_rate_bits = 0x8; break;
+  case 44100:  sample_rate_bits = 0x9; break;
+  case 48000:  sample_rate_bits = 0xA; break;
+  case 96000:  sample_rate_bits = 0xB; break;
+  default:
+    if ((streaminfo->sample_rate <= 255000) &&
+	((streaminfo->sample_rate % 1000) == 0))
+      sample_rate_bits = 0xC;
+    else if ((streaminfo->sample_rate <= 655350) &&
+	     ((streaminfo->sample_rate % 10) == 0))
+      sample_rate_bits = 0xE;
+    else if (streaminfo->sample_rate <= 0xFFFF)
+      sample_rate_bits = 0xF;
+    else
+      sample_rate_bits = 0x0;
+    break;
+  }
 
+  /*FIXME - channel assignment should be passed in from write_frame*/
+  channel_assignment = streaminfo->channels - 1;
 
-  return 1;
+  /*determine bits-per-sample bits from streaminfo*/
+  switch (streaminfo->bits_per_sample) {
+  case 8:  bits_per_sample_bits = 0x1; break;
+  case 12: bits_per_sample_bits = 0x2; break;
+  case 16: bits_per_sample_bits = 0x4; break;
+  case 20: bits_per_sample_bits = 0x5; break;
+  case 24: bits_per_sample_bits = 0x6; break;
+  default: bits_per_sample_bits = 0x0; break;
+  }
+
+  /*once the four bits-encoded fields are set, write the actual header*/
+  write_bits(bs, 14, 0x3FFE);              /*sync code*/
+  write_bits(bs, 1, 0);                    /*reserved*/
+  write_bits(bs, 1, 0);                    /*blocking strategy*/
+  write_bits(bs, 4, block_size_bits);      /*block size*/
+  write_bits(bs, 4, sample_rate_bits);     /*sample rate*/
+  write_bits(bs, 4, channel_assignment);   /*channel assignment*/
+  write_bits(bs, 3, bits_per_sample_bits); /*bits per sample*/
+  write_bits(bs, 1, 0);                    /*padding*/
+
+  /*frame number is taken from total_samples in streaminfo*/
+  write_bits(bs, 8, streaminfo->total_samples);  /*FIXME - should be UTF-8*/
+
+  /*if block_size_bits are 0x6 or 0x7, write a PCM frames field*/
+  if (block_size_bits == 0x6)
+    write_bits(bs, 8, block_size - 1);
+  else if (block_size_bits == 0x7)
+    write_bits(bs, 16, block_size - 1);
+
+  /*if sample rate is unusual, write one of the three sample rate fields*/
+  if (sample_rate_bits == 0xC)
+    write_bits(bs, 8, streaminfo->sample_rate / 1000);
+  else if (sample_rate_bits == 0xD)
+    write_bits(bs, 16, streaminfo->sample_rate);
+  else if (sample_rate_bits == 0xE)
+    write_bits(bs, 16, streaminfo->sample_rate / 10);
+
+  /*FIXME - write CRC-8*/
+}
+
+void FlacEncoder_write_verbatim_subframe(Bitstream *bs,
+					 int bits_per_sample,
+					 struct i_array *samples) {
+  uint32_t i;
+
+  /*write subframe header*/
+  write_bits(bs, 1, 0);
+  write_bits(bs, 6, 1);
+  write_bits(bs, 1, 0);
+
+  /*write subframe samples*/
+  for (i = 0; i < samples->size; i++)
+    write_signed_bits(bs, bits_per_sample, ia_getitem(samples,i));
 }

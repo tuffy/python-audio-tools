@@ -108,6 +108,15 @@ static inline void write_bits(Bitstream* bs, unsigned int count, int value) {
   bs->state = context;
 }
 
+static inline void write_signed_bits(Bitstream* bs, unsigned int count,
+				     int value) {
+  if (value >= 0) {
+    write_bits(bs, count, value);
+  } else {
+    write_bits(bs, count, (1 << count) - (-value));
+  }
+}
+
 static inline void write_bits64(Bitstream* bs, unsigned int count,
 				uint64_t value) {
   int bits_to_write;
