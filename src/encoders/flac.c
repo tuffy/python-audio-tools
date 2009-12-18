@@ -1,5 +1,8 @@
 #include <openssl/md5.h>
 
+#define MIN(x,y) ((x) < (y) ? (x) : (y))
+#define MAX(x,y) ((x) > (y) ? (x) : (y))
+
 static PyObject* encoders_encode_flac(PyObject *dummy, PyObject *args) {
   char *filename;
   FILE *file;
@@ -11,11 +14,17 @@ static PyObject* encoders_encode_flac(PyObject *dummy, PyObject *args) {
 
   struct ia_array samples;
 
-  int block_size = 4096;
+  int block_size;
 
-  /*extract a filename and PCMReader-compatible object*/
-  if (!PyArg_ParseTuple(args,"sO",&filename,&pcmreader_obj))
+  /*extract a filename, PCMReader-compatible object and encoding options:
+    blocksize int*/
+  if (!PyArg_ParseTuple(args,"sOi",&filename,&pcmreader_obj,&block_size))
     return NULL;
+
+  if (block_size <= 0) {
+    PyErr_SetString(PyExc_ValueError,"blocksize must be positive");
+    return NULL;
+  }
 
   /*open the given filename for writing*/
   if ((file = fopen(filename,"wb")) == NULL) {
@@ -38,10 +47,10 @@ static PyObject* encoders_encode_flac(PyObject *dummy, PyObject *args) {
   bs_add_callback(stream,flac_crc16,&(streaminfo.crc16));
 
   /*fill streaminfo with some placeholder values*/
-  streaminfo.minimum_block_size = 0;
-  streaminfo.maximum_block_size = 0xFFFF;
-  streaminfo.minimum_frame_size = 0;
-  streaminfo.maximum_frame_size = 0xFFFFFF;
+  streaminfo.minimum_block_size = 0xFFFF;
+  streaminfo.maximum_block_size = 0;
+  streaminfo.minimum_frame_size = 0xFFFFFF;
+  streaminfo.maximum_frame_size = 0;
   streaminfo.sample_rate = reader->sample_rate;
   streaminfo.channels = reader->channels;
   streaminfo.bits_per_sample = reader->bits_per_sample;
@@ -120,8 +129,12 @@ int FlacEncoder_write_frame(Bitstream *bs,
 			    struct flac_STREAMINFO *streaminfo,
 			    struct ia_array *samples) {
   uint32_t i;
+  long startpos;
+  long framesize;
 
   streaminfo->crc8 = streaminfo->crc16 = 0;
+
+  startpos = ftell(bs->file);
 
   FlacEncoder_write_frame_header(bs,streaminfo,samples);
 
@@ -135,8 +148,17 @@ int FlacEncoder_write_frame(Bitstream *bs,
   /*write CRC-16*/
   write_bits(bs, 16, streaminfo->crc16);
 
-  /*FIXME - update streaminfo with new values*/
+  /*update streaminfo with new values*/
+  framesize = ftell(bs->file) - startpos;
 
+  streaminfo->minimum_block_size = MIN(streaminfo->minimum_block_size,
+				       iaa_getitem(samples,0)->size);
+  streaminfo->maximum_block_size = MAX(streaminfo->maximum_block_size,
+				       iaa_getitem(samples,0)->size);
+  streaminfo->minimum_frame_size = MIN(streaminfo->minimum_frame_size,
+				       framesize);
+  streaminfo->maximum_frame_size = MAX(streaminfo->maximum_frame_size,
+				       framesize);
   streaminfo->total_samples += iaa_getitem(samples,0)->size;
   streaminfo->total_frames++;
 
