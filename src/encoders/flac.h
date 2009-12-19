@@ -57,6 +57,8 @@ void FlacEncoder_write_verbatim_subframe(Bitstream *bs,
 					 int bits_per_sample,
 					 struct i_array *samples);
 
+void write_utf8(Bitstream *stream, unsigned int value);
+
 void md5_update(void *data, unsigned char *buffer, unsigned long len);
 
 #include "flac_crc.h"

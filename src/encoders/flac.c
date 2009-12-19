@@ -250,7 +250,7 @@ void FlacEncoder_write_frame_header(Bitstream *bs,
   write_bits(bs, 1, 0);                    /*padding*/
 
   /*frame number is taken from total_frames in streaminfo*/
-  write_bits(bs, 8, streaminfo->total_frames);  /*FIXME - should be UTF-8*/
+  write_utf8(bs, streaminfo->total_frames);  /*FIXME - should be UTF-8*/
 
   /*if block_size_bits are 0x6 or 0x7, write a PCM frames field*/
   if (block_size_bits == 0x6)
@@ -266,7 +266,7 @@ void FlacEncoder_write_frame_header(Bitstream *bs,
   else if (sample_rate_bits == 0xE)
     write_bits(bs, 16, streaminfo->sample_rate / 10);
 
-  /*xwrite CRC-8*/
+  /*write CRC-8*/
   write_bits(bs, 8, streaminfo->crc8);
 }
 
@@ -295,6 +295,37 @@ void FlacEncoder_write_verbatim_subframe(Bitstream *bs,
   /*write subframe samples*/
   for (i = 0; i < samples->size; i++)
     write_signed_bits(bs, bits_per_sample, ia_getitem(samples,i));
+}
+
+void write_utf8(Bitstream *stream, unsigned int value) {
+  if ((value >= 0) && (value <= 0x7F)) {
+    /*1 byte UTF-8 sequence*/
+    write_bits(stream,8,value);
+  } else if ((value >= 0x80) && (value <= 0x7FF)) {
+    /*2 byte UTF-8 sequence*/
+    write_unary(stream,0,2);
+    write_bits(stream,5,value >> 6);
+    write_unary(stream,0,1);
+    write_bits(stream,6,value & 0x3F);
+  } else if ((value >= 0x800) && (value <= 0xFFFF)) {
+    /*3 byte UTF-8 sequence*/
+    write_unary(stream,0,3);
+    write_bits(stream,4,value >> 12);
+    write_unary(stream,0,1);
+    write_bits(stream,6,(value >> 6) & 0x3F);
+    write_unary(stream,0,1);
+    write_bits(stream,6,value & 0x3F);
+  } else if ((value >= 0x10000) && (value <= 0xFFFFF)) {
+    /*4 byte UTF-8 sequence*/
+    write_unary(stream,0,4);
+    write_bits(stream,3,value >> 18);
+    write_unary(stream,0,1);
+    write_bits(stream,6,(value >> 12) & 0x3F);
+    write_unary(stream,0,1);
+    write_bits(stream,6,(value >> 6) & 0x3F);
+    write_unary(stream,0,1);
+    write_bits(stream,6,value & 0x3F);
+  }
 }
 
 void md5_update(void *data, unsigned char *buffer, unsigned long len) {
