@@ -80,8 +80,7 @@ static PyObject* encoders_encode_flac(PyObject *dummy, PyObject *args) {
     goto error;
 
   while (iaa_getitem(&samples,0)->size > 0) {
-    if (!FlacEncoder_write_frame(stream,&streaminfo,&samples))
-      goto error;
+    FlacEncoder_write_frame(stream,&streaminfo,&samples);
 
     if (!pcmr_read(reader,block_size,&samples))
       goto error;
@@ -125,9 +124,9 @@ void FlacEncoder_write_streaminfo(Bitstream *bs,
     write_bits(bs,8,streaminfo.md5sum[i]);
 }
 
-int FlacEncoder_write_frame(Bitstream *bs,
-			    struct flac_STREAMINFO *streaminfo,
-			    struct ia_array *samples) {
+void FlacEncoder_write_frame(Bitstream *bs,
+			     struct flac_STREAMINFO *streaminfo,
+			     struct ia_array *samples) {
   uint32_t i;
   long startpos;
   long framesize;
@@ -161,8 +160,6 @@ int FlacEncoder_write_frame(Bitstream *bs,
 				       framesize);
   streaminfo->total_samples += iaa_getitem(samples,0)->size;
   streaminfo->total_frames++;
-
-  return 1;
 }
 
 void FlacEncoder_write_frame_header(Bitstream *bs,
@@ -250,7 +247,7 @@ void FlacEncoder_write_frame_header(Bitstream *bs,
   write_bits(bs, 1, 0);                    /*padding*/
 
   /*frame number is taken from total_frames in streaminfo*/
-  write_utf8(bs, streaminfo->total_frames);  /*FIXME - should be UTF-8*/
+  write_utf8(bs, streaminfo->total_frames);
 
   /*if block_size_bits are 0x6 or 0x7, write a PCM frames field*/
   if (block_size_bits == 0x6)
