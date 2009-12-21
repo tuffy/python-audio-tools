@@ -188,6 +188,53 @@ int pcmr_read(struct pcm_reader *reader,
   return 1;
 }
 
+BitbufferW* bbw_open(unsigned int initial_size) {
+  BitbufferW *bbw = malloc(sizeof(BitbufferW));
+  bbw->actions = malloc(sizeof(bbw_action) * initial_size);
+  bbw->keys = malloc(sizeof(bbw_key) * initial_size);
+  bbw->values = malloc(sizeof(bbw_value) * initial_size);
+  bbw->size = 0;
+  bbw->total_size = initial_size;
+  bbw->bits_written = 0;
+  return bbw;
+}
+
+void bbw_close(BitbufferW *bbw) {
+  free(bbw->actions);
+  free(bbw->keys);
+  free(bbw->values);
+  free(bbw);
+}
+
+void bbw_reset(BitbufferW *bbw) {
+  bbw->size = 0;
+  bbw->bits_written = 0;
+}
+
+void bbw_dump(BitbufferW *bbw, Bitstream *bs) {
+  unsigned int i;
+
+  for (i = 0; i < bbw->size; i++)
+    switch (bbw->actions[i]) {
+    case BBW_WRITE_BITS:
+      write_bits(bs,bbw->keys[i].count,bbw->values[i].value);
+      break;
+    case BBW_WRITE_SIGNED_BITS:
+      write_signed_bits(bs,bbw->keys[i].count,bbw->values[i].value);
+      break;
+    case BBW_WRITE_BITS64:
+      write_bits64(bs,bbw->keys[i].count,bbw->values[i].value64);
+      break;
+    case BBW_WRITE_UNARY:
+      write_unary(bs,bbw->keys[i].stop_bit,bbw->values[i].value);
+      break;
+    case BBW_BYTE_ALIGN:
+      byte_align_w(bs);
+      break;
+    }
+
+}
+
 #include "encoders/flac.c"
 
 #include "bitstream.c"

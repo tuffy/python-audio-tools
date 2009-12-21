@@ -78,6 +78,12 @@ PyMethodDef module_methods[] = {
   {NULL}
 };
 
+/*******************************
+   bitstream writing functions
+
+ these write actual bits to disk
+********************************/
+
 const static unsigned int write_bits_table[0x400][0x900] =
 #include "write_bits_table.h"
   ;
@@ -204,3 +210,79 @@ static inline void byte_align_w(Bitstream* bs) {
   write_bits(bs,7,0);
   bs->state = 0;
 }
+
+
+/*****************************
+   buffer writing functions
+
+ these write bits to a buffer
+which might be written to disk
+******************************/
+
+BitbufferW* bbw_open(unsigned int initial_size);
+
+void bbw_close(BitbufferW *bbw);
+
+void bbw_reset(BitbufferW *bbw);
+
+static inline void bbw_enlarge(BitbufferW *bbw) {
+  bbw->total_size *= 2;
+  bbw->actions = realloc(bbw->actions,sizeof(bbw_action) * bbw->total_size);
+  bbw->keys = realloc(bbw->keys,sizeof(bbw_key) * bbw->total_size);
+  bbw->values = realloc(bbw->values,sizeof(bbw_value) * bbw->total_size);
+}
+
+static inline void bbw_write_bits(BitbufferW *bbw, unsigned int count,
+				  int value) {
+  if (bbw->size == bbw->total_size)
+    bbw_enlarge(bbw);
+  bbw->actions[bbw->size] = BBW_WRITE_BITS;
+  bbw->keys[bbw->size].count = count;
+  bbw->values[bbw->size].value = value;
+  bbw->bits_written += count;
+  bbw->size++;
+}
+
+static inline void bbw_write_signed_bits(BitbufferW *bbw, unsigned int count,
+					 int value) {
+  if (bbw->size == bbw->total_size) {
+    bbw_enlarge(bbw);
+  }
+  bbw->actions[bbw->size] = BBW_WRITE_SIGNED_BITS;
+  bbw->keys[bbw->size].count = count;
+  bbw->values[bbw->size].value = value;
+  bbw->bits_written += count;
+  bbw->size++;
+}
+
+static inline void bbw_write_bits64(BitbufferW *bbw, unsigned int count,
+				    uint64_t value) {
+  if (bbw->size == bbw->total_size)
+    bbw_enlarge(bbw);
+  bbw->actions[bbw->size] = BBW_WRITE_BITS64;
+  bbw->keys[bbw->size].count = count;
+  bbw->values[bbw->size].value64 = value;
+  bbw->bits_written += count;
+  bbw->size++;
+}
+
+static inline void bbw_write_unary(BitbufferW *bbw, int stop_bit, int value) {
+  if (bbw->size == bbw->total_size)
+    bbw_enlarge(bbw);
+  bbw->actions[bbw->size] = BBW_WRITE_UNARY;
+  bbw->keys[bbw->size].stop_bit = stop_bit;
+  bbw->values[bbw->size].value = value;
+  bbw->bits_written += (value + 1);
+  bbw->size++;
+}
+
+
+static inline void bbw_byte_align_w(BitbufferW *bbw) {
+  if (bbw->size == bbw->total_size)
+    bbw_enlarge(bbw);
+  bbw->actions[bbw->size] = BBW_BYTE_ALIGN;
+  bbw->bits_written += (bbw->bits_written % 8);
+  bbw->size++;
+}
+
+void bbw_dump(BitbufferW *bbw, Bitstream *bs);

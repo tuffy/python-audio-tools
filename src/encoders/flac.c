@@ -130,17 +130,23 @@ void FlacEncoder_write_frame(Bitstream *bs,
   uint32_t i;
   long startpos;
   long framesize;
+  BitbufferW *subframe_buffer;
 
   streaminfo->crc8 = streaminfo->crc16 = 0;
+
+  subframe_buffer = bbw_open(samples->size);
 
   startpos = ftell(bs->file);
 
   FlacEncoder_write_frame_header(bs,streaminfo,samples);
 
-  for (i = 0; i < samples->size; i++)
-    FlacEncoder_write_verbatim_subframe(bs,
+  for (i = 0; i < samples->size; i++) {
+    bbw_reset(subframe_buffer);
+    FlacEncoder_write_verbatim_subframe(subframe_buffer,
     					streaminfo->bits_per_sample,
     					iaa_getitem(samples,i));
+    bbw_dump(subframe_buffer,bs);
+  }
 
   byte_align_w(bs);
 
@@ -267,31 +273,32 @@ void FlacEncoder_write_frame_header(Bitstream *bs,
   write_bits(bs, 8, streaminfo->crc8);
 }
 
-void FlacEncoder_write_constant_subframe(Bitstream *bs,
+void FlacEncoder_write_constant_subframe(BitbufferW *bbw,
 					 int bits_per_sample,
 					 int32_t sample) {
   /*write subframe header*/
-  write_bits(bs, 1, 0);
-  write_bits(bs, 6, 0);
-  write_bits(bs, 1, 0);
+  bbw_write_bits(bbw, 1, 0);
+  bbw_write_bits(bbw, 6, 0);
+  bbw_write_bits(bbw, 1, 0);
 
   /*write subframe sample*/
-  write_signed_bits(bs, bits_per_sample, sample);
+  bbw_write_signed_bits(bbw, bits_per_sample, sample);
 }
 
-void FlacEncoder_write_verbatim_subframe(Bitstream *bs,
+void FlacEncoder_write_verbatim_subframe(BitbufferW *bbw,
 					 int bits_per_sample,
 					 struct i_array *samples) {
   uint32_t i;
 
   /*write subframe header*/
-  write_bits(bs, 1, 0);
-  write_bits(bs, 6, 1);
-  write_bits(bs, 1, 0);
+  bbw_write_bits(bbw, 1, 0);
+  bbw_write_bits(bbw, 6, 1);
+  bbw_write_bits(bbw, 1, 0);
 
   /*write subframe samples*/
-  for (i = 0; i < samples->size; i++)
-    write_signed_bits(bs, bits_per_sample, ia_getitem(samples,i));
+  for (i = 0; i < samples->size; i++) {
+    bbw_write_signed_bits(bbw, bits_per_sample, ia_getitem(samples,i));
+  }
 }
 
 void write_utf8(Bitstream *stream, unsigned int value) {

@@ -42,4 +42,33 @@ void bs_add_callback(Bitstream *bs,
 
 int bs_eof(Bitstream *bs);
 
+
+
+typedef enum {BBW_WRITE_BITS,
+	      BBW_WRITE_SIGNED_BITS,
+	      BBW_WRITE_BITS64,
+	      BBW_WRITE_UNARY,
+	      BBW_BYTE_ALIGN} bbw_action;
+
+typedef union {
+  unsigned int count;
+  int stop_bit;
+} bbw_key;
+
+typedef union {
+  int value;
+  uint64_t value64;
+} bbw_value;
+
+typedef struct {
+  bbw_action *actions;
+  bbw_key *keys;
+  bbw_value *values;
+  unsigned int size;
+  unsigned int total_size;
+  unsigned int bits_written;
+} BitbufferW;
+
+
+
 #endif

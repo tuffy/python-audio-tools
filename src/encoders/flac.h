@@ -51,11 +51,11 @@ void FlacEncoder_write_frame_header(Bitstream *bs,
 				    struct flac_STREAMINFO *streaminfo,
 				    struct ia_array *samples);
 
-void FlacEncoder_write_constant_subframe(Bitstream *bs,
+void FlacEncoder_write_constant_subframe(BitbufferW *bbw,
 					 int bits_per_sample,
 					 int32_t sample);
 
-void FlacEncoder_write_verbatim_subframe(Bitstream *bs,
+void FlacEncoder_write_verbatim_subframe(BitbufferW *bbw,
 					 int bits_per_sample,
 					 struct i_array *samples);
 
