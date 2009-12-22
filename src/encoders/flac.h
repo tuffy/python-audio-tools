@@ -59,6 +59,35 @@ void FlacEncoder_write_verbatim_subframe(BitbufferW *bbw,
 					 int bits_per_sample,
 					 struct i_array *samples);
 
+
+void FlacEncoder_write_fixed_subframe(BitbufferW *bbw,
+				      int bits_per_sample,
+				      struct i_array *samples,
+				      int predictor_order);
+
+/*given a "predictor_order" int
+  given a coding method (0 or 1)
+  a list of rice_parameters ints
+  and a list of residuals ints
+  encodes the residuals into partitions and writes them to "bbw"
+  (a Rice partition also requires a "partition_order" which can
+  be derived from the length of "rice_parameters")
+ */
+void FlacEncoder_write_residual(BitbufferW *bbw,
+				int predictor_order,
+				int coding_method,
+				struct i_array *rice_parameters,
+				struct i_array *residuals);
+
+/*given a coding method (0 or 1)
+  a rice_parameter int
+  and a list of residuals ints
+  encodes the residual partition and writes them to "bbw"*/
+void FlacEncoder_write_residual_partition(BitbufferW *bbw,
+					  int coding_method,
+					  int rice_parameter,
+					  struct i_array *residuals);
+
 void write_utf8(Bitstream *stream, unsigned int value);
 
 void md5_update(void *data, unsigned char *buffer, unsigned long len);

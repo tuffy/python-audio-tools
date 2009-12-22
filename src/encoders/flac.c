@@ -332,6 +332,106 @@ void write_utf8(Bitstream *stream, unsigned int value) {
   }
 }
 
+void FlacEncoder_write_fixed_subframe(BitbufferW *bbw,
+				      int bits_per_sample,
+				      struct i_array *samples,
+				      int predictor_order) {
+  uint32_t i;
+  struct i_array residual;
+
+  /*write subframe header*/
+  bbw_write_bits(bbw, 1, 0);
+  bbw_write_bits(bbw, 6, 0x8 | predictor_order);
+  bbw_write_bits(bbw, 1, 0); /*FIXME - handle wasted bits-per-sample*/
+
+  /*write warm-up samples*/
+  for (i = 0; i < predictor_order; i++)
+    bbw_write_signed_bits(bbw, bits_per_sample, ia_getitem(samples,i));
+
+  /*calculate residual values based on predictor order*/
+  ia_init(&residual,samples->size);
+  switch (predictor_order) {
+  case 0:
+    for (i = 0; i < samples->size; i++)
+      ia_append(&residual,ia_getitem(samples,i));
+    break;
+  case 1:
+    for (i = 1; i < samples->size; i++)
+      ia_append(&residual,ia_getitem(samples,i) - ia_getitem(samples,i - 1));
+    break;
+  case 2:
+    for (i = 2; i < samples->size; i++)
+      ia_append(&residual,ia_getitem(samples,i) -
+		((2 * ia_getitem(samples,i - 1)) - ia_getitem(samples,i - 2)));
+    break;
+  case 3:
+    for (i = 3; i < samples->size; i++)
+      ia_append(&residual,ia_getitem(samples,i) -
+		((3 * ia_getitem(samples,i - 1)) -
+		 (3 * ia_getitem(samples,i - 2)) +
+		 ia_getitem(samples,i - 3)));
+    break;
+  case 4:
+    for (i = 4; i < samples->size; i++)
+      ia_append(&residual,ia_getitem(samples,i) -
+		((4 * ia_getitem(samples,i - 1)) -
+		 (6 * ia_getitem(samples,i - 2)) +
+		 (4 * ia_getitem(samples,i - 3)) -
+		 ia_getitem(samples,i - 4)));
+    break;
+  }
+
+  /*write residual*/
+
+  ia_free(&residual);
+}
+
+void FlacEncoder_write_residual(BitbufferW *bbw,
+				int predictor_order,
+				int coding_method,
+				struct i_array *rice_parameters,
+				struct i_array *residuals) {
+  uint32_t partition_order;
+  int32_t partitions = rice_parameters->size;
+
+  /*derive the partition_order value*/
+  for (partition_order = 0; partitions > 1; partition_order++)
+    partitions /= 2;
+
+  bbw_write_bits(bbw, 2, coding_method);
+  bbw_write_bits(bbw, 4, partition_order);
+
+  /*for each rice_parameter, write a residual partition*/
+}
+
+void FlacEncoder_write_residual_partition(BitbufferW *bbw,
+					  int coding_method,
+					  int rice_parameter,
+					  struct i_array *residuals) {
+  uint32_t i;
+  int32_t residual;
+  int32_t msb;
+  int32_t lsb;
+
+  /*write the 4-5 bit Rice parameter header (depending on coding method)*/
+  bbw_write_bits(bbw, coding_method == 0 ? 4 : 5, rice_parameter);
+
+  /*for each residual, write a unary/unsigned bits pair
+    whose breakpoint depends on "rice_parameter"*/
+  for (i = 0; i < residuals->size; i++) {
+    residual = ia_getitem(residuals,i);
+    if (residual >= 0) {
+      residual <<= 1;
+    } else {
+      residual = ((-residual - 1) << 1) | 1;
+    }
+    msb = residual >> rice_parameter;
+    lsb = residual - (msb << rice_parameter);
+    bbw_write_unary(bbw,1,msb);
+    bbw_write_bits(bbw,rice_parameter,lsb);
+  }
+}
+
 void md5_update(void *data, unsigned char *buffer, unsigned long len) {
   MD5_Update((MD5_CTX*)data, (const void*)buffer, len);
 }
