@@ -80,6 +80,15 @@ static inline void ia_reverse(struct i_array *array) {
   }
 }
 
+/*duplicates the attributes of source in target,
+  but not the array data itself
+  analagous to calling ia_head(target,source,source->size)*/
+static inline void ia_dupe(struct i_array *target, struct i_array *source) {
+  target->size = source->size;
+  target->total_size = source->total_size;
+  target->data = source->data;
+}
+
 static inline void ia_head(struct i_array *target, struct i_array *source, uint32_t size) {
   target->size = size;
   target->total_size = source->total_size;

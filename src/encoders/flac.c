@@ -142,9 +142,13 @@ void FlacEncoder_write_frame(Bitstream *bs,
 
   for (i = 0; i < samples->size; i++) {
     bbw_reset(subframe_buffer);
-    FlacEncoder_write_verbatim_subframe(subframe_buffer,
-    					streaminfo->bits_per_sample,
-    					iaa_getitem(samples,i));
+    /* FlacEncoder_write_verbatim_subframe(subframe_buffer, */
+    /* 					streaminfo->bits_per_sample, */
+    /* 					iaa_getitem(samples,i)); */
+    FlacEncoder_write_fixed_subframe(subframe_buffer,
+				     streaminfo->bits_per_sample,
+				     iaa_getitem(samples,i),
+				     1 /*FIXME - make this dynamic*/);
     bbw_dump(subframe_buffer,bs);
   }
 
@@ -337,6 +341,7 @@ void FlacEncoder_write_fixed_subframe(BitbufferW *bbw,
 				      struct i_array *samples,
 				      int predictor_order) {
   uint32_t i;
+  struct i_array rice_parameters;
   struct i_array residual;
 
   /*write subframe header*/
@@ -382,7 +387,16 @@ void FlacEncoder_write_fixed_subframe(BitbufferW *bbw,
   }
 
   /*write residual*/
+  ia_init(&rice_parameters,1);      /*FIXME - make this dynamic*/
+  ia_append(&rice_parameters,6);    /*FIXME - make this dynamic*/
 
+  FlacEncoder_write_residual(bbw,
+			     predictor_order,
+			     0, /*FIXME - make coding method dynamic?*/
+			     &rice_parameters,
+			     &residual);
+
+  ia_free(&rice_parameters);
   ia_free(&residual);
 }
 
@@ -393,15 +407,51 @@ void FlacEncoder_write_residual(BitbufferW *bbw,
 				struct i_array *residuals) {
   uint32_t partition_order;
   int32_t partitions = rice_parameters->size;
+  int32_t partition;
+  int32_t block_size = predictor_order + residuals->size;
+  struct i_array remaining_residuals;
+  struct i_array partition_residuals;
 
   /*derive the partition_order value*/
   for (partition_order = 0; partitions > 1; partition_order++)
     partitions /= 2;
+  partitions = rice_parameters->size;
 
   bbw_write_bits(bbw, 2, coding_method);
   bbw_write_bits(bbw, 4, partition_order);
 
   /*for each rice_parameter, write a residual partition*/
+  ia_dupe(&remaining_residuals,residuals);
+
+  for (partition = 0; partition < partitions; partition++) {
+    if (partition == 0) {
+      /*the first partition contains (block_size / 2 ^ partition_order) - order
+	number of residuals*/
+      ia_head(&partition_residuals,
+	      &remaining_residuals,
+	      (block_size / (1 << partition_order)) - predictor_order);
+      ia_tail(&remaining_residuals,
+	      &remaining_residuals,
+	      remaining_residuals.size -
+	      ((block_size / (1 << partition_order)) - predictor_order));
+    } else {
+      /*subsequence partitions contain (block_size / 2 ^ partition_order)
+	number of residuals*/
+      ia_head(&partition_residuals,
+	      &remaining_residuals,
+	      block_size / (1 << partition_order));
+      ia_tail(&remaining_residuals,
+	      &remaining_residuals,
+	      remaining_residuals.size -
+	      (block_size / (1 << partition_order)));
+    }
+    FlacEncoder_write_residual_partition(bbw,
+					 coding_method,
+					 ia_getitem(rice_parameters,
+						    partition),
+					 &partition_residuals);
+  }
+
 }
 
 void FlacEncoder_write_residual_partition(BitbufferW *bbw,

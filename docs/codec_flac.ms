@@ -1207,7 +1207,7 @@ The MSB value is written unary encoded, whereas the LSB is written as-is.
 .PP
 As with residual decoding, this process is not as difficult as it
 sounds and is best explained by an example, in this case using
-a parameter of 3:
+a parameter of 3 and encoding the residual values 18, -25 and 12:
 .PSPIC -L "rice3.eps" 6i
 .bp
 .SUBSECTION "the Checksums"
