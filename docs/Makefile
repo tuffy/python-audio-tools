@@ -27,7 +27,7 @@ INSTALLATION = install.ms prereqs.ms configfile.ms
 SUBSECTIONS = $(INSTALLATION) macros.ms programming.ms freedb.ms \
 musicbrainz.ms usage.ms replaygain.ms references.ms \
 musicbrainz_mmd-1.4.rnc
-FIGURES = binary.eps freedb-sequence.eps pcm.eps rice1.eps rice2.eps \
+FIGURES = binary.eps freedb-sequence.eps pcm.eps rice1.eps rice2.eps rice3.eps \
 lpc_process.eps lpc_process2.eps hann.eps tukey.eps rectangular.eps lag.eps \
 m4a-atoms.eps m4a-meta.eps musicbrainz-releasexml.eps
 
@@ -186,6 +186,9 @@ rice1.eps: rice1.fig
 
 rice2.eps: rice2.fig
 	fig2dev -L eps rice2.fig rice2.eps
+
+rice3.eps: rice3.fig
+	fig2dev -L eps rice3.fig rice3.eps
 
 pcm.eps: pcm.plot
 	./pcm.plot > pcm.eps

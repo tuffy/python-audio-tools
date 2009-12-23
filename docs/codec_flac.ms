@@ -1193,6 +1193,23 @@ for this block of residuals is 1.
 .PP
 Remember that the Rice parameter's maximum value is limited to
 @2 sup 4@ using coding method 0, or @2 sup 5@ using coding method 1.
+.SUBSUBSUBSECTION "Residual Values"
+.PP
+Encoding individual residual values to Rice coding requires only
+the Rice parameter and the values themselves.
+First, one must convert any negative values to positive by
+multiplying it by -1, subtracting 1 and prepending a 1 bit.
+If the value is already positive, prepend a 0 bit instead.
+Next, we split out new value into most significant bits (MSB) and
+least significant bits (LSB) where the length of the LSB is
+equal to the Rice parameter and MSB contains the remaining bits.
+The MSB value is written unary encoded, whereas the LSB is written as-is.
+.PP
+As with residual decoding, this process is not as difficult as it
+sounds and is best explained by an example, in this case using
+a parameter of 3:
+.PSPIC -L "rice3.eps" 6i
+.bp
 .SUBSECTION "the Checksums"
 .PP
 Calculating the frame header's CRC-8 and frame footer's CRC-16 is necessary
