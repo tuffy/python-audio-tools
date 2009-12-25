@@ -30,6 +30,21 @@ typedef int Py_ssize_t;
 #include "bitstream.h"
 #include "array.h"
 
+/************************************
+      PCM reading functions
+
+ these wrap around a Python PCMReader
+ and perform the low-level task of converting Python strings
+ returned by pcmreader.read() to an ia_array struct
+************************************************************/
+
+/*IMPORTANT!
+  pcmr_read() presumes that pcmreader.read() will return a number of bytes
+  equal to or divisible by (sample_count * channels * bytes_per_sample)
+  Since the Python PCMReader interface makes no such guarantee,
+  one needs to send pcmr_open a BufferedPCMReader object.
+  I may fix this limitation in the future.*/
+
 struct pcmr_callback {
   void (*callback)(void*, unsigned char*, unsigned long);
   void *data;
@@ -59,9 +74,6 @@ int pcmr_read(struct pcm_reader *reader,
 void pcmr_add_callback(struct pcm_reader *reader,
 		       void (*callback)(void*, unsigned char*, unsigned long),
 		       void *data);
-
-/*FIXME - add support for callbacks to pcm_reader
-  for handling the chunks of string data returned by read() Python methods*/
 
 PyObject *encoders_write_bits(PyObject *dummy, PyObject *args);
 PyObject *encoders_write_unary(PyObject *dummy, PyObject *args);

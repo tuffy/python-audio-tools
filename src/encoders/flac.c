@@ -32,7 +32,7 @@ static PyObject* encoders_encode_flac(PyObject *dummy, PyObject *args) {
     return NULL;
   }
 
-  /*transform the Python PCMReader-compatible object to a struct pcm_reader*/
+  /*transform the Python PCMReader-compatible object to a pcm_reader struct*/
   if ((reader = pcmr_open(pcmreader_obj)) == NULL) {
     fclose(file);
     Py_DECREF(pcmreader_obj);

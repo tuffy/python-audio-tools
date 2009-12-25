@@ -39,32 +39,47 @@ typedef enum {OK,ERROR} status;
 
 static PyObject* encoders_encode_flac(PyObject *dummy, PyObject *args);
 
+/*writes a STREAMINFO metadata block to the bitstream*/
 void FlacEncoder_write_streaminfo(Bitstream *bs,
 				  struct flac_STREAMINFO streaminfo);
 
+/*takes a list of sample lists (one per channel)
+  and the FLAC's streaminfo
+  writes a full FLAC frame to the bitstream*/
 void FlacEncoder_write_frame(Bitstream *bs,
 			     struct flac_STREAMINFO *streaminfo,
 			     struct ia_array *samples);
 
-
+/*takes a list of sample lists (one per channel)
+  and the FLAC's streaminfo
+  writes a FLAC frame header to the bitstream*/
 void FlacEncoder_write_frame_header(Bitstream *bs,
 				    struct flac_STREAMINFO *streaminfo,
 				    struct ia_array *samples);
 
+
+/*writes a CONSTANT subframe with the value "sample"
+  to the bitbuffer*/
 void FlacEncoder_write_constant_subframe(BitbufferW *bbw,
 					 int bits_per_sample,
 					 int32_t sample);
 
+/*writes a VERBATIM subframe with the values "samples"
+  to the bitbuffer*/
 void FlacEncoder_write_verbatim_subframe(BitbufferW *bbw,
 					 int bits_per_sample,
 					 struct i_array *samples);
 
-
+/*write a FIXED subframe with values from "samples"
+  and the given "predictor_order" (from 0-4) to the bitbuffer*/
 void FlacEncoder_write_fixed_subframe(BitbufferW *bbw,
 				      int bits_per_sample,
 				      struct i_array *samples,
 				      int predictor_order);
 
+/*writes an LPC subframe with values from "samples"
+  a list of LPC coefficients and a LPC shift needed value
+  to the bitbuffer*/
 void FlacEncoder_write_lpc_subframe(BitbufferW *bbw,
 				    int bits_per_sample,
 				    struct i_array *samples,
@@ -94,8 +109,10 @@ void FlacEncoder_write_residual_partition(BitbufferW *bbw,
 					  int rice_parameter,
 					  struct i_array *residuals);
 
+/*writes a UTF-8 value to the bitstream*/
 void write_utf8(Bitstream *stream, unsigned int value);
 
+/*an MD5 summing callback, updated when reading input strings*/
 void md5_update(void *data, unsigned char *buffer, unsigned long len);
 
 #include "flac_crc.h"
