@@ -65,6 +65,12 @@ void FlacEncoder_write_fixed_subframe(BitbufferW *bbw,
 				      struct i_array *samples,
 				      int predictor_order);
 
+void FlacEncoder_write_lpc_subframe(BitbufferW *bbw,
+				    int bits_per_sample,
+				    struct i_array *samples,
+				    struct i_array *coeffs,
+				    int shift_needed);
+
 /*given a "predictor_order" int
   given a coding method (0 or 1)
   a list of rice_parameters ints

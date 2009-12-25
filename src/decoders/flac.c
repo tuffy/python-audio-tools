@@ -584,7 +584,7 @@ status FlacDecoder_read_lpc_subframe(decoders_FlacDecoder *self,
   for (i = 0; i < residuals->size; i++) {
     accumulator = 0;
     ia_tail(&tail,samples,order);
-    for (j = 0; j < qlp_coeffs->size; j++) {
+    for (j = 0; j < order; j++) {
       accumulator += (int64_t)ia_getitem(&tail,j) * (int64_t)ia_getitem(qlp_coeffs,j);
     }
     ia_append(samples,

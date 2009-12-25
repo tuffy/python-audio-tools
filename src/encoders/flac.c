@@ -132,6 +132,8 @@ void FlacEncoder_write_frame(Bitstream *bs,
   long framesize;
   BitbufferW *subframe_buffer;
 
+  struct i_array lpc_coeffs;
+
   streaminfo->crc8 = streaminfo->crc16 = 0;
 
   subframe_buffer = bbw_open(samples->size);
@@ -145,10 +147,21 @@ void FlacEncoder_write_frame(Bitstream *bs,
     /* FlacEncoder_write_verbatim_subframe(subframe_buffer, */
     /* 					streaminfo->bits_per_sample, */
     /* 					iaa_getitem(samples,i)); */
-    FlacEncoder_write_fixed_subframe(subframe_buffer,
-				     streaminfo->bits_per_sample,
-				     iaa_getitem(samples,i),
-				     1 /*FIXME - make this dynamic*/);
+    /* FlacEncoder_write_fixed_subframe(subframe_buffer, */
+    /* 				     streaminfo->bits_per_sample, */
+    /* 				     iaa_getitem(samples,i), */
+    /* 				     1 /\*FIXME - make this dynamic*\/); */
+
+    ia_init(&lpc_coeffs,1);
+    ia_append(&lpc_coeffs,1);
+
+    FlacEncoder_write_lpc_subframe(subframe_buffer,
+				   streaminfo->bits_per_sample,
+				   iaa_getitem(samples,i),
+				   &lpc_coeffs,
+				   0);
+    ia_free(&lpc_coeffs);
+
     bbw_dump(subframe_buffer,bs);
   }
 
@@ -389,6 +402,64 @@ void FlacEncoder_write_fixed_subframe(BitbufferW *bbw,
   /*write residual*/
   ia_init(&rice_parameters,1);      /*FIXME - make this dynamic*/
   ia_append(&rice_parameters,6);    /*FIXME - make this dynamic*/
+
+  FlacEncoder_write_residual(bbw,
+			     predictor_order,
+			     0, /*FIXME - make coding method dynamic?*/
+			     &rice_parameters,
+			     &residual);
+
+  ia_free(&rice_parameters);
+  ia_free(&residual);
+}
+
+void FlacEncoder_write_lpc_subframe(BitbufferW *bbw,
+				    int bits_per_sample,
+				    struct i_array *samples,
+				    struct i_array *coeffs,
+				    int shift_needed) {
+  int predictor_order = coeffs->size;
+  int qlp_precision = 10;   /*FIXME determine this based on coeffs size*/
+  struct i_array residual;
+  struct i_array rice_parameters;
+  int64_t accumulator;
+  int i,j;
+
+  /*write subframe header*/
+  bbw_write_bits(bbw,1,0);
+  bbw_write_bits(bbw,6,0x20 | (predictor_order - 1));
+  bbw_write_bits(bbw,1,0);  /*FIXME - handle wasted bits-per-sample*/
+
+  /*write warm-up samples*/
+  for (i = 0; i < predictor_order; i++) {
+    bbw_write_signed_bits(bbw,bits_per_sample,ia_getitem(samples,i));
+  }
+
+  /*write QLP Precision*/
+  bbw_write_bits(bbw,4,qlp_precision - 1);
+
+  /*write QLP Shift Needed*/
+  bbw_write_bits(bbw,5,shift_needed);
+
+  /*write QLP Coefficients*/
+  for (i = 0; i < predictor_order; i++) {
+    bbw_write_signed_bits(bbw,qlp_precision,ia_getitem(coeffs,i));
+  }
+
+  /*calculate residual values*/
+  ia_init(&residual,samples->size);
+  for (i = predictor_order; i < samples->size; i++) {
+    accumulator = 0;
+    for (j = 0; j < predictor_order; j++) {
+      accumulator += (int64_t)ia_getitem(samples,i - j - 1) * (int64_t)ia_getitem(coeffs,j);
+    }
+    ia_append(&residual,
+	      ia_getitem(samples,i) - (int32_t)(accumulator >> shift_needed));
+  }
+
+  /*write residual*/
+  ia_init(&rice_parameters,1);      /*FIXME - make this dynamic*/
+  ia_append(&rice_parameters,14);    /*FIXME - make this dynamic*/
 
   FlacEncoder_write_residual(bbw,
 			     predictor_order,
