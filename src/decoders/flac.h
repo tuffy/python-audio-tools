@@ -1,8 +1,3 @@
-#include <Python.h>
-#include <stdint.h>
-#include "../bitstream_r.h"
-#include "../array.h"
-
 struct flac_STREAMINFO {
   uint16_t minimum_block_size;  /*16  bits*/
   uint16_t maximum_block_size;  /*16  bits*/

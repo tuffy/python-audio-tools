@@ -46,7 +46,6 @@ pcmstreammodule = Extension('audiotools.pcmstream',
 decodersmodule = Extension('audiotools.decoders',
                            sources = ['src/array.c',
                                       'src/bitstream_r.c',
-                                      'src/decoders/flac.c',
                                       'src/decoders.c'])
 
 encodersmodule = Extension('audiotools.encoders',

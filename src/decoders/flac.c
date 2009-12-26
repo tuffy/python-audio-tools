@@ -1,5 +1,3 @@
-#include "flac.h"
-
 int FlacDecoder_init(decoders_FlacDecoder *self,
 		     PyObject *args, PyObject *kwds) {
   char* filename;
