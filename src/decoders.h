@@ -38,7 +38,3 @@ PyMethodDef module_methods[] = {
   {NULL}
 };
 
-#include "bitstream_r.h"
-#include "array.h"
-#include "decoders/flac.h"
-

@@ -1,5 +1,6 @@
 #include <Python.h>
 #include "decoders.h"
+#include "bitstream_r.h"
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -19,6 +20,8 @@
  along with this program; if not, write to the Free Software
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  *******************************************************/
+
+extern PyTypeObject decoders_FlacDecoderType;
 
 PyMODINIT_FUNC initdecoders(void) {
     PyObject* m;
@@ -54,6 +57,3 @@ PyObject *decoders_read_unary(PyObject *dummy, PyObject *args) {
 
   return Py_BuildValue("i",read_unary_table[context][stop_bit]);
 }
-
-#include "decoders/flac.c"
-
