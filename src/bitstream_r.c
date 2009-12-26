@@ -1,8 +1,7 @@
-#if PY_VERSION_HEX < 0x02050000 && !defined(PY_SSIZE_T_MIN)
-typedef int Py_ssize_t;
-#define PY_SSIZE_T_MAX INT_MAX
-#define PY_SSIZE_T_MIN INT_MIN
-#endif
+#include "bitstream_r.h"
+
+#include <stdlib.h>
+#include <stdint.h>
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -23,20 +22,39 @@ typedef int Py_ssize_t;
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  *******************************************************/
 
-#if PY_MAJOR_VERSION >= 3
-#define IS_PY3K
-#endif
+Bitstream* bs_open(FILE *f) {
+  Bitstream *bs = malloc(sizeof(Bitstream));
+  bs->file = f;
+  bs->state = 0;
+  bs->callback = NULL;
+  return bs;
+}
 
-PyObject *decoders_read_bits(PyObject *dummy, PyObject *args);
-PyObject *decoders_read_unary(PyObject *dummy, PyObject *args);
+void bs_close(Bitstream *bs) {
+  struct bs_callback *node;
+  struct bs_callback *next;
 
-PyMethodDef module_methods[] = {
-  {"read_bits",(PyCFunction)decoders_read_bits,
-   METH_VARARGS,""},
-  {"read_unary",(PyCFunction)decoders_read_unary,
-   METH_VARARGS,""},
-  {NULL}
-};
+  if (bs == NULL) return;
 
-#include "decoders/flac.h"
+  if (bs->file != NULL) fclose(bs->file);
 
+  for (node = bs->callback; node != NULL; node = next) {
+    next = node->next;
+    free(node);
+  }
+  free(bs);
+}
+
+void bs_add_callback(Bitstream *bs,
+		     void (*callback)(unsigned int, void*),
+		     void *data) {
+  struct bs_callback *callback_node = malloc(sizeof(struct bs_callback));
+  callback_node->callback = callback;
+  callback_node->data = data;
+  callback_node->next = bs->callback;
+  bs->callback = callback_node;
+}
+
+int bs_eof(Bitstream *bs) {
+  return feof(bs->file);
+}

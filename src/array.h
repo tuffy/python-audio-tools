@@ -1,6 +1,10 @@
 #ifndef ARRAY_H
 #define ARRAY_H
 
+#include <stdlib.h>
+#include <stdio.h>
+#include <stdint.h>
+
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
  Copyright (C) 2007-2009  Brian Langenberger
