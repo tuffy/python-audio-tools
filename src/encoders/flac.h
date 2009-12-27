@@ -22,6 +22,10 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  *******************************************************/
 
+struct flac_encoding_options {
+  int block_size;
+};
+
 struct flac_STREAMINFO {
   uint16_t minimum_block_size;  /*16  bits*/
   uint16_t maximum_block_size;  /*16  bits*/
@@ -36,6 +40,7 @@ struct flac_STREAMINFO {
   unsigned int crc8;
   unsigned int crc16;
   unsigned int total_frames;
+  struct flac_encoding_options options;
 };
 
 struct flac_frame_header {

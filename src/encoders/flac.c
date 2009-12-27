@@ -5,25 +5,29 @@
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
 #define MAX(x,y) ((x) > (y) ? (x) : (y))
 
-PyObject* encoders_encode_flac(PyObject *dummy, PyObject *args) {
+PyObject* encoders_encode_flac(PyObject *dummy,
+			       PyObject *args, PyObject *keywds) {
   char *filename;
   FILE *file;
   Bitstream *stream;
   PyObject *pcmreader_obj;
   struct pcm_reader *reader;
   struct flac_STREAMINFO streaminfo;
+  static char *kwlist[] = {"filename","pcmreader","block_size",NULL};
   MD5_CTX md5sum;
 
   struct ia_array samples;
 
-  int block_size;
-
   /*extract a filename, PCMReader-compatible object and encoding options:
     blocksize int*/
-  if (!PyArg_ParseTuple(args,"sOi",&filename,&pcmreader_obj,&block_size))
+  if (!PyArg_ParseTupleAndKeywords(args,keywds,"sOi",
+				   kwlist,
+				   &filename,
+				   &pcmreader_obj,
+				   &(streaminfo.options.block_size)))
     return NULL;
 
-  if (block_size <= 0) {
+  if (streaminfo.options.block_size <= 0) {
     PyErr_SetString(PyExc_ValueError,"blocksize must be positive");
     return NULL;
   }
@@ -76,15 +80,15 @@ PyObject* encoders_encode_flac(PyObject *dummy, PyObject *args) {
 
   /*build frames until reader is empty,
     which updates STREAMINFO in the process*/
-  iaa_init(&samples,reader->channels,block_size);
+  iaa_init(&samples,reader->channels,streaminfo.options.block_size);
 
-  if (!pcmr_read(reader,block_size,&samples))
+  if (!pcmr_read(reader,streaminfo.options.block_size,&samples))
     goto error;
 
   while (iaa_getitem(&samples,0)->size > 0) {
     FlacEncoder_write_frame(stream,&streaminfo,&samples);
 
-    if (!pcmr_read(reader,block_size,&samples))
+    if (!pcmr_read(reader,streaminfo.options.block_size,&samples))
       goto error;
   }
 
