@@ -525,7 +525,62 @@ void FlacEncoder_write_residual_partition(BitbufferW *bbw,
 }
 
 int FlacEncoder_compute_best_fixed_predictor_order(struct i_array *samples) {
-  return 0;
+  struct i_array delta0;
+  struct i_array delta1;
+  struct i_array delta2;
+  struct i_array delta3;
+  struct i_array delta4;
+  struct i_array subtract;
+  uint64_t delta0_sum;
+  uint64_t delta1_sum;
+  uint64_t delta2_sum;
+  uint64_t delta3_sum;
+  uint64_t delta4_sum;
+  uint32_t i;
+
+  ia_tail(&delta0,samples,samples->size - 1);
+  for (delta0_sum = 0,i = 3; i < delta0.size; i++)
+    delta0_sum += abs(ia_getitem(&delta0,i));
+
+  ia_init(&delta1,samples->size);
+  ia_tail(&subtract,&delta0,delta0.size - 1);
+  ia_sub(&delta1,&delta0,&subtract);
+  for (delta1_sum = 0,i = 2; i < delta1.size; i++)
+    delta1_sum += abs(ia_getitem(&delta1,i));
+
+  ia_init(&delta2,samples->size);
+  ia_tail(&subtract,&delta1,delta1.size - 1);
+  ia_sub(&delta2,&delta1,&subtract);
+  for (delta2_sum = 0,i = 2; i < delta2.size; i++)
+    delta2_sum += abs(ia_getitem(&delta2,i));
+
+  ia_init(&delta3,samples->size);
+  ia_tail(&subtract,&delta2,delta2.size - 1);
+  ia_sub(&delta3,&delta2,&subtract);
+  for (delta3_sum = 0,i = 1; i < delta3.size; i++)
+    delta3_sum += abs(ia_getitem(&delta3,i));
+
+  ia_init(&delta4,samples->size);
+  ia_tail(&subtract,&delta3,delta3.size - 1);
+  ia_sub(&delta4,&delta3,&subtract);
+  for (delta4_sum = 0,i = 0; i < delta4.size; i++)
+    delta4_sum += abs(ia_getitem(&delta4,i));
+
+  ia_free(&delta1);
+  ia_free(&delta2);
+  ia_free(&delta3);
+  ia_free(&delta4);
+
+  if (delta0_sum < MIN(delta1_sum,MIN(delta2_sum,MIN(delta3_sum,delta4_sum))))
+    return 0;
+  else if (delta1_sum < MIN(delta2_sum,MIN(delta3_sum,delta4_sum)))
+    return 1;
+  else if (delta2_sum < MIN(delta3_sum,delta4_sum))
+    return 2;
+  else if (delta3_sum < delta4_sum)
+    return 3;
+  else
+    return 4;
 }
 
 void write_utf8(Bitstream *stream, unsigned int value) {

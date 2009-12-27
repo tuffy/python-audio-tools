@@ -164,7 +164,7 @@ void ia_char_to_SL24(struct i_array *target, unsigned char *source,
 
 void ia_add(struct i_array *target,
 	    struct i_array *source1, struct i_array *source2) {
-  uint32_t size = source1->size > source2->size ? source1->size : source2->size;
+  uint32_t size = source1->size < source2->size ? source1->size : source2->size;
   uint32_t i;
 
   ia_resize(target,size);
@@ -175,7 +175,7 @@ void ia_add(struct i_array *target,
 
 void ia_sub(struct i_array *target,
 	    struct i_array *source1, struct i_array *source2) {
-   uint32_t size = source1->size > source2->size ? source1->size : source2->size;
+  uint32_t size = source1->size < source2->size ? source1->size : source2->size;
   uint32_t i;
 
   ia_resize(target,size);
