@@ -1,9 +1,11 @@
+#include "flac.h"
+#include "../pcmreader.h"
 #include <openssl/md5.h>
 
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
 #define MAX(x,y) ((x) > (y) ? (x) : (y))
 
-static PyObject* encoders_encode_flac(PyObject *dummy, PyObject *args) {
+PyObject* encoders_encode_flac(PyObject *dummy, PyObject *args) {
   char *filename;
   FILE *file;
   Bitstream *stream;

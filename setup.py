@@ -50,7 +50,11 @@ decodersmodule = Extension('audiotools.decoders',
                                       'src/decoders.c'])
 
 encodersmodule = Extension('audiotools.encoders',
-                           sources = ['src/encoders.c'],
+                           sources = ['src/array.c',
+                                      'src/bitstream_w.c',
+                                      'src/pcmreader.c',
+                                      'src/encoders/flac.c',
+                                      'src/encoders.c'],
                            libraries = ["ssl"])
 
 extensions = [cdiomodule,
