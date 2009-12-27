@@ -1,8 +1,5 @@
 #include "bitstream_r.h"
 
-#include <stdlib.h>
-#include <stdint.h>
-
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
  Copyright (C) 2007-2009  Brian Langenberger
@@ -21,6 +18,14 @@
  along with this program; if not, write to the Free Software
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  *******************************************************/
+
+const unsigned int read_bits_table[0x900][8] =
+#include "read_bits_table.h"
+  ;
+
+const unsigned int read_unary_table[0x900][2] =
+#include "read_unary_table.h"
+  ;
 
 Bitstream* bs_open(FILE *f) {
   Bitstream *bs = malloc(sizeof(Bitstream));

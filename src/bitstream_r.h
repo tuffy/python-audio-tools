@@ -3,6 +3,7 @@
 
 #include <stdio.h>
 #include <stdint.h>
+#include <stdlib.h>
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -72,13 +73,8 @@ typedef struct {
   unsigned int bits_written;
 } BitbufferW;
 
-const static unsigned int read_bits_table[0x900][8] =
-#include "read_bits_table.h"
-  ;
-
-const static unsigned int read_unary_table[0x900][2] =
-#include "read_unary_table.h"
-  ;
+extern const unsigned int read_bits_table[0x900][8];
+extern const unsigned int read_unary_table[0x900][2];
 
 static inline unsigned int read_bits(Bitstream* bs, unsigned int count) {
   int context = bs->state;

@@ -24,8 +24,6 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  *******************************************************/
 
-#include <stdint.h>
-
 /*an array of int32_t values which can grow as needed
   typically for storing PCM sample values*/
 struct i_array {
