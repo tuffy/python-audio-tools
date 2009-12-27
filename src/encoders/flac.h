@@ -84,6 +84,13 @@ void FlacEncoder_write_frame_header(Bitstream *bs,
 				    struct flac_STREAMINFO *streaminfo,
 				    struct ia_array *samples);
 
+/*given a bits_per_sample and list of sample values,
+  and the user-defined encoding options
+  writes the best subframe to the bitbuffer*/
+void FlacEncoder_write_subframe(BitbufferW *bbw,
+				struct flac_encoding_options *options,
+				int bits_per_sample,
+				struct i_array *samples);
 
 /*writes a CONSTANT subframe with the value "sample"
   to the bitbuffer*/
@@ -100,6 +107,7 @@ void FlacEncoder_write_verbatim_subframe(BitbufferW *bbw,
 /*write a FIXED subframe with values from "samples"
   and the given "predictor_order" (from 0-4) to the bitbuffer*/
 void FlacEncoder_write_fixed_subframe(BitbufferW *bbw,
+				      struct flac_encoding_options *options,
 				      int bits_per_sample,
 				      struct i_array *samples,
 				      int predictor_order);
@@ -108,6 +116,7 @@ void FlacEncoder_write_fixed_subframe(BitbufferW *bbw,
   a list of LPC coefficients and a LPC shift needed value
   to the bitbuffer*/
 void FlacEncoder_write_lpc_subframe(BitbufferW *bbw,
+				    struct flac_encoding_options *options,
 				    int bits_per_sample,
 				    struct i_array *samples,
 				    struct i_array *coeffs,
@@ -135,6 +144,10 @@ void FlacEncoder_write_residual_partition(BitbufferW *bbw,
 					  int coding_method,
 					  int rice_parameter,
 					  struct i_array *residuals);
+
+/*given a list of samples,
+  return the best predictor_order for FIXED subframes*/
+int FlacEncoder_compute_best_fixed_predictor_order(struct i_array *samples);
 
 /*writes a UTF-8 value to the bitstream*/
 void write_utf8(Bitstream *stream, unsigned int value);

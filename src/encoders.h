@@ -41,5 +41,3 @@ PyMethodDef module_methods[] = {
    METH_VARARGS | METH_KEYWORDS,"Encode FLAC file from PCMReader"},
   {NULL}
 };
-
-
