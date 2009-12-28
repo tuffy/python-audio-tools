@@ -24,6 +24,7 @@
 
 struct flac_encoding_options {
   int block_size;
+  int max_residual_partition_order;
 };
 
 struct flac_STREAMINFO {
@@ -121,6 +122,12 @@ void FlacEncoder_write_lpc_subframe(BitbufferW *bbw,
 				    struct i_array *samples,
 				    struct i_array *coeffs,
 				    int shift_needed);
+
+
+void FlacEncoder_write_best_residual(BitbufferW *bbw,
+				     struct flac_encoding_options *options,
+				     int predictor_order,
+				     struct i_array *residuals);
 
 /*given a "predictor_order" int
   given a coding method (0 or 1)

@@ -13,18 +13,20 @@ PyObject* encoders_encode_flac(PyObject *dummy,
   PyObject *pcmreader_obj;
   struct pcm_reader *reader;
   struct flac_STREAMINFO streaminfo;
-  static char *kwlist[] = {"filename","pcmreader","block_size",NULL};
+  static char *kwlist[] = {"filename","pcmreader",
+			   "block_size","max_residual_partition_order",NULL};
   MD5_CTX md5sum;
 
   struct ia_array samples;
 
   /*extract a filename, PCMReader-compatible object and encoding options:
     blocksize int*/
-  if (!PyArg_ParseTupleAndKeywords(args,keywds,"sOi",
+  if (!PyArg_ParseTupleAndKeywords(args,keywds,"sOii",
 				   kwlist,
 				   &filename,
 				   &pcmreader_obj,
-				   &(streaminfo.options.block_size)))
+				   &(streaminfo.options.block_size),
+				   &(streaminfo.options.max_residual_partition_order)))
     return NULL;
 
   if (streaminfo.options.block_size <= 0) {
@@ -324,7 +326,6 @@ void FlacEncoder_write_fixed_subframe(BitbufferW *bbw,
 				      struct i_array *samples,
 				      int predictor_order) {
   uint32_t i;
-  struct i_array rice_parameters;
   struct i_array residual;
 
   /*write subframe header*/
@@ -370,16 +371,8 @@ void FlacEncoder_write_fixed_subframe(BitbufferW *bbw,
   }
 
   /*write residual*/
-  ia_init(&rice_parameters,1);      /*FIXME - make this dynamic*/
-  ia_append(&rice_parameters,6);    /*FIXME - make this dynamic*/
+  FlacEncoder_write_best_residual(bbw, options, predictor_order, &residual);
 
-  FlacEncoder_write_residual(bbw,
-			     predictor_order,
-			     0, /*FIXME - make coding method dynamic?*/
-			     &rice_parameters,
-			     &residual);
-
-  ia_free(&rice_parameters);
   ia_free(&residual);
 }
 
@@ -392,7 +385,6 @@ void FlacEncoder_write_lpc_subframe(BitbufferW *bbw,
   int predictor_order = coeffs->size;
   int qlp_precision = 10;   /*FIXME determine this based on coeffs size*/
   struct i_array residual;
-  struct i_array rice_parameters;
   int64_t accumulator;
   int i,j;
 
@@ -429,17 +421,28 @@ void FlacEncoder_write_lpc_subframe(BitbufferW *bbw,
   }
 
   /*write residual*/
-  ia_init(&rice_parameters,1);      /*FIXME - make this dynamic*/
+  FlacEncoder_write_best_residual(bbw, options, predictor_order, &residual);
+
+  ia_free(&residual);
+}
+
+void FlacEncoder_write_best_residual(BitbufferW *bbw,
+				     struct flac_encoding_options *options,
+				     int predictor_order,
+				     struct i_array *residuals) {
+  struct i_array rice_parameters;
+  int block_size;
+
+  ia_init(&rice_parameters,options->max_residual_partition_order);
   ia_append(&rice_parameters,14);    /*FIXME - make this dynamic*/
 
   FlacEncoder_write_residual(bbw,
 			     predictor_order,
 			     0, /*FIXME - make coding method dynamic?*/
 			     &rice_parameters,
-			     &residual);
+			     residuals);
 
   ia_free(&rice_parameters);
-  ia_free(&residual);
 }
 
 void FlacEncoder_write_residual(BitbufferW *bbw,
