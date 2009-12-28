@@ -432,18 +432,26 @@ void FlacEncoder_write_best_residual(BitbufferW *bbw,
 				     struct i_array *residuals) {
   struct i_array rice_parameters;
   int block_size;
+  BitbufferW *current_best;
+  BitbufferW *potential_residual;
 
+  potential_residual = bbw_open(residuals->size);
   ia_init(&rice_parameters,options->max_residual_partition_order);
   ia_append(&rice_parameters,14);    /*FIXME - make this dynamic*/
 
-  FlacEncoder_write_residual(bbw,
+  FlacEncoder_write_residual(potential_residual,
 			     predictor_order,
 			     0, /*FIXME - make coding method dynamic?*/
 			     &rice_parameters,
 			     residuals);
 
+  current_best = potential_residual;
+
+  bbw_append(bbw,current_best);
+  bbw_close(current_best);
   ia_free(&rice_parameters);
 }
+
 
 void FlacEncoder_write_residual(BitbufferW *bbw,
 				int predictor_order,

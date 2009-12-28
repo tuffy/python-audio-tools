@@ -1,4 +1,5 @@
 #include "bitstream_w.h"
+#include <string.h>
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -120,5 +121,33 @@ void bbw_dump(BitbufferW *bbw, Bitstream *bs) {
       byte_align_w(bs);
       break;
     }
+}
 
+void bbw_append(BitbufferW *target, BitbufferW *source) {
+  /*if the target buffer is too small to contain the items from source
+    realloc buffer sizes to fit*/
+  if ((target->total_size - target->size) < source->size) {
+    target->total_size = target->size + source->size;
+    target->actions = realloc(target->actions,
+			      sizeof(bbw_action) * target->total_size);
+    target->keys = realloc(target->keys,
+			   sizeof(bbw_key) * target->total_size);
+    target->values = realloc(target->values,
+			     sizeof(bbw_value) * target->total_size);
+  }
+
+  /*then memcpy source buffers to target buffers at the proper offset*/
+  memcpy(target->actions + target->size,
+	 source->actions,
+	 sizeof(bbw_action) * source->size);
+  memcpy(target->keys + target->size,
+	 source->keys,
+	 sizeof(bbw_key) * source->size);
+  memcpy(target->values + target->size,
+	 source->values,
+	 sizeof(bbw_value) * source->size);
+
+  /*and update the "size" and "bits_written" fields*/
+  target->size += source->size;
+  target->bits_written += source->bits_written;
 }
