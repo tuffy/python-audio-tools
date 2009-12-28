@@ -432,21 +432,95 @@ void FlacEncoder_write_best_residual(BitbufferW *bbw,
 				     struct i_array *residuals) {
   struct i_array rice_parameters;
   int block_size;
+  int max_partition_order;
+  int partition_order;
   BitbufferW *current_best;
   BitbufferW *potential_residual;
+  struct i_array remaining_residuals;
+  struct i_array partition_residuals;
+  uint32_t partitions;
+  uint32_t partition;
 
+  /*keep dividing block_size by 2 until its no longer divisible by 2
+    to determine the maximum partition order
+    since there are 2 ^ partition_order number of partitions
+    and the residuals must be evenly distributed between them*/
+  for (block_size = predictor_order + residuals->size,max_partition_order = 0;
+       (block_size > 1) && ((block_size % 2) == 0);
+       max_partition_order++)
+    block_size /= 2;
+
+  block_size = predictor_order + residuals->size;
+  /*although if the user-specified max_partition_order is smaller,
+    use that instead*/
+  max_partition_order = MIN(options->max_residual_partition_order,
+			    max_partition_order);
+
+  /*initialize working space to try different residual sizes*/
+  current_best = NULL;
   potential_residual = bbw_open(residuals->size);
-  ia_init(&rice_parameters,options->max_residual_partition_order);
-  ia_append(&rice_parameters,14);    /*FIXME - make this dynamic*/
+  ia_init(&rice_parameters,max_partition_order);
 
-  FlacEncoder_write_residual(potential_residual,
-			     predictor_order,
-			     0, /*FIXME - make coding method dynamic?*/
-			     &rice_parameters,
-			     residuals);
+  /*for each partition_order possibility*/
+  for (partition_order = 0;
+       partition_order <= max_partition_order;
+       partition_order++) {
 
-  current_best = potential_residual;
+    /*chop the residuals into 2 ^ partition_order number of partitions*/
+    ia_dupe(&remaining_residuals,residuals);
+    partitions = 1 << partition_order;
+    for (partition = 0; partition < partitions; partition++) {
+      if (partition == 0) {
+	/*first partition contains (block_size / 2 ^ partition_order) - order
+	  number of residuals*/
 
+	ia_head(&partition_residuals,
+		&remaining_residuals,
+		(block_size / (1 << partition_order)) - predictor_order);
+	ia_tail(&remaining_residuals,
+		&remaining_residuals,
+		remaining_residuals.size -
+		((block_size / (1 << partition_order)) - predictor_order));
+      } else {
+	/*subsequence partitions contain (block_size / 2 ^ partition_order)
+	  number of residuals*/
+
+	ia_head(&partition_residuals,
+		&remaining_residuals,
+		(block_size / (1 << partition_order)) - predictor_order);
+	ia_tail(&remaining_residuals,
+		&remaining_residuals,
+		remaining_residuals.size -
+		((block_size / (1 << partition_order)) - predictor_order));
+      }
+
+      /*for each partition, determine the Rice parameter*/
+
+      /*and append that parameter to the parameter list*/
+    }
+
+    /*once the parameter list is set,
+      write a complete residual block to potential_residual*/
+
+    /*and if potential_residual is better than current_best (or no current_best)
+      swap current_best for potential_residual*/
+
+    /*otherwise, dump potential_residual*/
+
+  }
+
+  /* ia_append(&rice_parameters,14);    /\*FIXME - make this dynamic*\/ */
+
+  /* FlacEncoder_write_residual(potential_residual, */
+  /* 			     predictor_order, */
+  /* 			     0, /\*FIXME - make coding method dynamic?*\/ */
+  /* 			     &rice_parameters, */
+  /* 			     residuals); */
+
+  /* current_best = potential_residual; */
+
+
+  /*finally, send the best possible residual to the bitbuffer*/
   bbw_append(bbw,current_best);
   bbw_close(current_best);
   ia_free(&rice_parameters);
@@ -548,6 +622,9 @@ int FlacEncoder_compute_best_fixed_predictor_order(struct i_array *samples) {
   uint64_t delta3_sum;
   uint64_t delta4_sum;
   uint32_t i;
+
+  if (samples->size < 5)
+    return 0;
 
   ia_tail(&delta0,samples,samples->size - 1);
   for (delta0_sum = 0,i = 3; i < delta0.size; i++)
