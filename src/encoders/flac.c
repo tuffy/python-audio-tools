@@ -94,12 +94,10 @@ PyObject* encoders_encode_flac(PyObject *dummy,
       goto error;
   }
 
-
   /*go back and re-write STREAMINFO with complete values*/
   MD5_Final(streaminfo.md5sum,&md5sum);
   fseek(stream->file, 4 + 4, SEEK_SET);
   FlacEncoder_write_streaminfo(stream,streaminfo);
-
 
   iaa_free(&samples); /*deallocate the temporary samples block*/
   pcmr_close(reader); /*close the pcm_reader object
@@ -372,7 +370,6 @@ void FlacEncoder_write_fixed_subframe(BitbufferW *bbw,
 
   /*write residual*/
   FlacEncoder_write_best_residual(bbw, options, predictor_order, &residual);
-
   ia_free(&residual);
 }
 
@@ -459,12 +456,13 @@ void FlacEncoder_write_best_residual(BitbufferW *bbw,
   /*initialize working space to try different residual sizes*/
   current_best = NULL;
   potential_residual = bbw_open(residuals->size);
-  ia_init(&rice_parameters,max_partition_order);
+  ia_init(&rice_parameters,1 << max_partition_order);
 
   /*for each partition_order possibility*/
   for (partition_order = 0;
        partition_order <= max_partition_order;
        partition_order++) {
+    ia_reset(&rice_parameters);
 
     /*chop the residuals into 2 ^ partition_order number of partitions*/
     ia_dupe(&remaining_residuals,residuals);
@@ -495,35 +493,42 @@ void FlacEncoder_write_best_residual(BitbufferW *bbw,
       }
 
       /*for each partition, determine the Rice parameter*/
-
       /*and append that parameter to the parameter list*/
+      ia_append(&rice_parameters,
+		FlacEncoder_compute_best_rice_parameter(&partition_residuals));
     }
 
     /*once the parameter list is set,
       write a complete residual block to potential_residual*/
+    FlacEncoder_write_residual(potential_residual,
+			       predictor_order,
+			       0, /*FIXME - make coding method dynamic?*/
+			       &rice_parameters,
+			       residuals);
 
     /*and if potential_residual is better than current_best (or no current_best)
       swap current_best for potential_residual*/
-
+    if (current_best == NULL) {
+      current_best = potential_residual;
+      potential_residual = bbw_open(residuals->size);
+    } else if (potential_residual->bits_written < current_best->bits_written) {
+      bbw_swap(current_best,potential_residual);
+      bbw_reset(potential_residual);
+    } else {
     /*otherwise, dump potential_residual*/
-
+      bbw_reset(potential_residual);
+    }
   }
-
-  /* ia_append(&rice_parameters,14);    /\*FIXME - make this dynamic*\/ */
-
-  /* FlacEncoder_write_residual(potential_residual, */
-  /* 			     predictor_order, */
-  /* 			     0, /\*FIXME - make coding method dynamic?*\/ */
-  /* 			     &rice_parameters, */
-  /* 			     residuals); */
-
-  /* current_best = potential_residual; */
-
 
   /*finally, send the best possible residual to the bitbuffer*/
   bbw_append(bbw,current_best);
   bbw_close(current_best);
+  bbw_close(potential_residual);
   ia_free(&rice_parameters);
+}
+
+int FlacEncoder_compute_best_rice_parameter(struct i_array *residuals) {
+  return 6; /*FIXME - make this work properly*/
 }
 
 

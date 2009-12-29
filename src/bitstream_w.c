@@ -103,24 +103,41 @@ void bbw_reset(BitbufferW *bbw) {
 void bbw_dump(BitbufferW *bbw, Bitstream *bs) {
   unsigned int i;
 
-  for (i = 0; i < bbw->size; i++)
+  /* fprintf(stderr,"dumping %d actions\n",bbw->size); */
+
+  for (i = 0; i < bbw->size; i++) {
     switch (bbw->actions[i]) {
     case BBW_WRITE_BITS:
+      /* fprintf(stderr, */
+      /* 	      "%5.5d - write_bits %d %u\n", */
+      /* 	      i,bbw->keys[i].count,bbw->values[i].value); */
       write_bits(bs,bbw->keys[i].count,bbw->values[i].value);
       break;
     case BBW_WRITE_SIGNED_BITS:
+      /* fprintf(stderr, */
+      /* 	      "%5.5d - write_signed_bits %d %d\n", */
+      /* 	      i,bbw->keys[i].count,bbw->values[i].value); */
       write_signed_bits(bs,bbw->keys[i].count,bbw->values[i].value);
       break;
     case BBW_WRITE_BITS64:
+      /* fprintf(stderr, */
+      /* 	      "%5.5d - write_bits64 %d %lu\n", */
+      /* 	      i,bbw->keys[i].count,bbw->values[i].value64); */
       write_bits64(bs,bbw->keys[i].count,bbw->values[i].value64);
       break;
     case BBW_WRITE_UNARY:
+      /* fprintf(stderr, */
+      /* 	      "%5.5d - write_unary %d %d\n", */
+      /* 	      i,bbw->keys[i].count,bbw->values[i].value); */
       write_unary(bs,bbw->keys[i].stop_bit,bbw->values[i].value);
       break;
     case BBW_BYTE_ALIGN:
+      /* fprintf(stderr, */
+      /* 	      "%5.5d - byte_align\n",i); */
       byte_align_w(bs);
       break;
     }
+  }
 }
 
 void bbw_append(BitbufferW *target, BitbufferW *source) {
@@ -150,4 +167,32 @@ void bbw_append(BitbufferW *target, BitbufferW *source) {
   /*and update the "size" and "bits_written" fields*/
   target->size += source->size;
   target->bits_written += source->bits_written;
+}
+
+void bbw_swap(BitbufferW *a, BitbufferW *b) {
+  BitbufferW c;
+
+  /*move values from a to c*/
+  c.actions = a->actions;
+  c.keys = a->keys;
+  c.values = a->values;
+  c.size = a->size;
+  c.total_size = a->total_size;
+  c.bits_written = a->bits_written;
+
+  /*move values from b to a*/
+  a->actions = b->actions;
+  a->keys = b->keys;
+  a->values = b->values;
+  a->size = b->size;
+  a->total_size = b->total_size;
+  a->bits_written = b->bits_written;
+
+  /*move values from c to b*/
+  b->actions = c.actions;
+  b->keys = c.keys;
+  b->values = c.values;
+  b->size = c.size;
+  b->total_size = c.total_size;
+  b->bits_written = c.bits_written;
 }

@@ -156,6 +156,8 @@ void FlacEncoder_write_residual_partition(BitbufferW *bbw,
   return the best predictor_order for FIXED subframes*/
 int FlacEncoder_compute_best_fixed_predictor_order(struct i_array *samples);
 
+int FlacEncoder_compute_best_rice_parameter(struct i_array *residuals);
+
 /*writes a UTF-8 value to the bitstream*/
 void write_utf8(Bitstream *stream, unsigned int value);
 

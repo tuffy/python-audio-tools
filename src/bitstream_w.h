@@ -205,6 +205,8 @@ void bbw_dump(BitbufferW *bbw, Bitstream *bs);
 
 void bbw_append(BitbufferW *target, BitbufferW *source);
 
+void bbw_swap(BitbufferW *a, BitbufferW *b);
+
 static inline void bbw_enlarge(BitbufferW *bbw) {
   bbw->total_size *= 2;
   bbw->actions = realloc(bbw->actions,sizeof(bbw_action) * bbw->total_size);
