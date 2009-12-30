@@ -103,6 +103,23 @@ static inline void ia_tail(struct i_array *target, struct i_array *source, uint3
   target->data = source->data + (source->size - size);
 }
 
+/*splits source into two lists, "head" and "tail"
+  where "head" contains "split" number of elements
+  and "tail" contains the rest*/
+static inline void ia_split(struct i_array *head, struct i_array *tail,
+			    struct i_array *source, uint32_t split) {
+  if (split > source->size)
+    split = source->size;
+
+  head->size = split;
+  head->total_size = source->total_size;
+  head->data = source->data;
+
+  tail->size = source->size - split;
+  tail->total_size = source->total_size;
+  tail->data = source->data + split;
+}
+
 void ia_print(FILE *stream, struct i_array *array);
 
 

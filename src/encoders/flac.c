@@ -472,24 +472,18 @@ void FlacEncoder_write_best_residual(BitbufferW *bbw,
 	/*first partition contains (block_size / 2 ^ partition_order) - order
 	  number of residuals*/
 
-	ia_head(&partition_residuals,
-		&remaining_residuals,
-		(block_size / (1 << partition_order)) - predictor_order);
-	ia_tail(&remaining_residuals,
-		&remaining_residuals,
-		remaining_residuals.size -
-		((block_size / (1 << partition_order)) - predictor_order));
+	ia_split(&partition_residuals,
+		 &remaining_residuals,
+		 &remaining_residuals,
+		 (block_size / (1 << partition_order)) - predictor_order);
       } else {
 	/*subsequence partitions contain (block_size / 2 ^ partition_order)
 	  number of residuals*/
 
-	ia_head(&partition_residuals,
-		&remaining_residuals,
-		(block_size / (1 << partition_order)) - predictor_order);
-	ia_tail(&remaining_residuals,
-		&remaining_residuals,
-		remaining_residuals.size -
-		((block_size / (1 << partition_order)) - predictor_order));
+	ia_split(&partition_residuals,
+		 &remaining_residuals,
+		 &remaining_residuals,
+		 block_size / (1 << partition_order));
       }
 
       /*for each partition, determine the Rice parameter*/
@@ -559,23 +553,17 @@ void FlacEncoder_write_residual(BitbufferW *bbw,
     if (partition == 0) {
       /*the first partition contains (block_size / 2 ^ partition_order) - order
 	number of residuals*/
-      ia_head(&partition_residuals,
-	      &remaining_residuals,
-	      (block_size / (1 << partition_order)) - predictor_order);
-      ia_tail(&remaining_residuals,
-	      &remaining_residuals,
-	      remaining_residuals.size -
-	      ((block_size / (1 << partition_order)) - predictor_order));
+      ia_split(&partition_residuals,
+	       &remaining_residuals,
+	       &remaining_residuals,
+	       (block_size / (1 << partition_order)) - predictor_order);
     } else {
       /*subsequence partitions contain (block_size / 2 ^ partition_order)
 	number of residuals*/
-      ia_head(&partition_residuals,
-	      &remaining_residuals,
-	      block_size / (1 << partition_order));
-      ia_tail(&remaining_residuals,
-	      &remaining_residuals,
-	      remaining_residuals.size -
-	      (block_size / (1 << partition_order)));
+      ia_split(&partition_residuals,
+	       &remaining_residuals,
+	       &remaining_residuals,
+	       block_size / (1 << partition_order));
     }
     FlacEncoder_write_residual_partition(bbw,
 					 coding_method,
