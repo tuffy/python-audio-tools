@@ -24,6 +24,7 @@
 
 struct flac_encoding_options {
   int block_size;
+  int min_residual_partition_order;
   int max_residual_partition_order;
 };
 

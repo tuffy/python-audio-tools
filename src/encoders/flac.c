@@ -14,18 +14,21 @@ PyObject* encoders_encode_flac(PyObject *dummy,
   struct pcm_reader *reader;
   struct flac_STREAMINFO streaminfo;
   static char *kwlist[] = {"filename","pcmreader",
-			   "block_size","max_residual_partition_order",NULL};
+			   "block_size",
+			   "min_residual_partition_order",
+			   "max_residual_partition_order",NULL};
   MD5_CTX md5sum;
 
   struct ia_array samples;
 
   /*extract a filename, PCMReader-compatible object and encoding options:
     blocksize int*/
-  if (!PyArg_ParseTupleAndKeywords(args,keywds,"sOii",
+  if (!PyArg_ParseTupleAndKeywords(args,keywds,"sOiii",
 				   kwlist,
 				   &filename,
 				   &pcmreader_obj,
 				   &(streaminfo.options.block_size),
+				   &(streaminfo.options.min_residual_partition_order),
 				   &(streaminfo.options.max_residual_partition_order)))
     return NULL;
 
@@ -431,6 +434,7 @@ void FlacEncoder_write_best_residual(BitbufferW *bbw,
 				     struct i_array *residuals) {
   struct i_array rice_parameters;
   int block_size;
+  int min_partition_order;
   int max_partition_order;
   int partition_order;
   BitbufferW *current_best;
@@ -449,11 +453,15 @@ void FlacEncoder_write_best_residual(BitbufferW *bbw,
        max_partition_order++)
     block_size /= 2;
 
-  block_size = predictor_order + residuals->size;
   /*although if the user-specified max_partition_order is smaller,
     use that instead*/
   max_partition_order = MIN(options->max_residual_partition_order,
 			    max_partition_order);
+
+  min_partition_order = MIN(options->min_residual_partition_order,
+			    max_partition_order);
+
+  block_size = predictor_order + residuals->size;
 
   /*initialize working space to try different residual sizes*/
   current_best = NULL;
@@ -461,7 +469,7 @@ void FlacEncoder_write_best_residual(BitbufferW *bbw,
   ia_init(&rice_parameters,1 << max_partition_order);
 
   /*for each partition_order possibility*/
-  for (partition_order = 0;
+  for (partition_order = min_partition_order;
        partition_order <= max_partition_order;
        partition_order++) {
     ia_reset(&rice_parameters);
