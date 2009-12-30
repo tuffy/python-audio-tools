@@ -157,6 +157,8 @@ void FlacEncoder_write_frame(Bitstream *bs,
     bbw_dump(subframe_buffer,bs);
   }
 
+  bbw_close(subframe_buffer);
+
   byte_align_w(bs);
 
   /*write CRC-16*/
