@@ -54,6 +54,7 @@ encodersmodule = Extension('audiotools.encoders',
                                       'src/bitstream_w.c',
                                       'src/pcmreader.c',
                                       'src/encoders/flac.c',
+                                      'src/encoders/flac_lpc.c',
                                       'src/encoders.c'],
                            libraries = ["ssl"])
 

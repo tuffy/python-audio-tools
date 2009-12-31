@@ -1,3 +1,6 @@
+#ifndef A_FLAC_ENCODE
+#define A_FLAC_ENCODE
+
 #include <Python.h>
 #include <stdint.h>
 #include "../bitstream_w.h"
@@ -166,4 +169,7 @@ void write_utf8(Bitstream *stream, unsigned int value);
 void md5_update(void *data, unsigned char *buffer, unsigned long len);
 
 #include "flac_crc.h"
+
+#endif
+
 

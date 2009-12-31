@@ -1,4 +1,5 @@
 #include "flac.h"
+#include "flac_lpc.h"
 #include "../pcmreader.h"
 #include <openssl/md5.h>
 
@@ -291,8 +292,23 @@ void FlacEncoder_write_subframe(BitbufferW *bbw,
 				struct flac_encoding_options *options,
 				int bits_per_sample,
 				struct i_array *samples) {
-  FlacEncoder_write_fixed_subframe(bbw,options,bits_per_sample,samples,
-      FlacEncoder_compute_best_fixed_predictor_order(samples));
+  struct i_array lpc_coeffs;
+  int lpc_shift_needed;
+
+  ia_init(&lpc_coeffs,1);
+  FlacEncoder_compute_best_lpc_coeffs(options,bits_per_sample,
+				      samples,
+				      &lpc_coeffs,
+				      &lpc_shift_needed);
+  FlacEncoder_write_lpc_subframe(bbw,
+				 options,
+				 bits_per_sample,
+				 samples,
+				 &lpc_coeffs,
+				 lpc_shift_needed);
+
+  /* FlacEncoder_write_fixed_subframe(bbw,options,bits_per_sample,samples, */
+  /*     FlacEncoder_compute_best_fixed_predictor_order(samples)); */
 }
 
 void FlacEncoder_write_constant_subframe(BitbufferW *bbw,
