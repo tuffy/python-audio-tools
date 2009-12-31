@@ -85,7 +85,7 @@ static inline void ia_reverse(struct i_array *array) {
 /*duplicates the attributes of source in target,
   but not the array data itself
   analagous to calling ia_head(target,source,source->size)*/
-static inline void ia_dupe(struct i_array *target, struct i_array *source) {
+static inline void ia_link(struct i_array *target, struct i_array *source) {
   target->size = source->size;
   target->total_size = source->total_size;
   target->data = source->data;
@@ -175,5 +175,86 @@ static inline void iaa_reset(struct ia_array *array) {
   for (i = 0; i < array->size; i++)
     ia_reset(&(array->arrays[i]));
 }
+
+
+/*an array of double values which can grow as needed*/
+struct f_array {
+  double *data;
+  uint32_t size;
+  uint32_t total_size;
+};
+
+void fa_init(struct f_array *array, uint32_t initial_size);
+
+void fa_free(struct f_array *array);
+
+static inline void fa_reset(struct f_array *array) {
+
+}
+
+void fa_resize(struct f_array *array, uint32_t maximum_size);
+
+static inline void fa_append(struct f_array *array, double value) {
+  if (array->size < array->total_size) {
+    array->data[array->size++] = value;
+  } else {
+    array->total_size *= 2;
+    array->data = realloc(array->data,array->total_size * sizeof(double));
+    array->data[array->size++] = value;
+  }
+}
+
+static inline double fa_getitem(struct f_array *array, int32_t index) {
+  if (index >= 0) {
+    return array->data[index];
+  } else {
+    return array->data[array->size + index];
+  }
+}
+
+static inline void fa_setitem(struct f_array *array, int32_t index, double value) {
+  if (index >= 0) {
+    array->data[index] = value;
+  } else {
+    array->data[array->size + index] = value;
+  }
+}
+
+static inline void fa_head(struct f_array *target, struct f_array *source, uint32_t size) {
+  target->size = size;
+  target->total_size = source->total_size;
+  target->data = source->data;
+}
+
+static inline void fa_tail(struct f_array *target, struct f_array *source, uint32_t size) {
+  target->size = size;
+  target->total_size = source->total_size;
+  target->data = source->data + (source->size - size);
+}
+
+/*splits source into two lists, "head" and "tail"
+  where "head" contains "split" number of elements
+  and "tail" contains the rest*/
+static inline void fa_split(struct f_array *head, struct f_array *tail,
+			    struct f_array *source, uint32_t split) {
+  if (split > source->size)
+    split = source->size;
+
+  head->size = split;
+  head->total_size = source->total_size;
+  head->data = source->data;
+
+  tail->size = source->size - split;
+  tail->total_size = source->total_size;
+  tail->data = source->data + split;
+}
+
+void fa_print(FILE *stream, struct f_array *array);
+
+void fa_mul(struct f_array *target,
+	    struct f_array *source1, struct f_array *source2);
+
+void fa_mul_ia(struct f_array *target,
+	       struct f_array *source1, struct i_array *source2);
 
 #endif

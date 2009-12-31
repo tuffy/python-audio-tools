@@ -203,3 +203,66 @@ void iaa_free(struct ia_array *array) {
 
   free(array->arrays);
 }
+
+void fa_init(struct f_array *array, uint32_t initial_size) {
+  array->data = malloc(sizeof(double) * initial_size);
+  array->total_size = initial_size;
+  array->size = 0;
+}
+
+void fa_free(struct f_array *array) {
+  free(array->data);
+}
+
+void fa_resize(struct f_array *array, uint32_t maximum_size) {
+  if (array->total_size < maximum_size) {
+    array->total_size = maximum_size;
+    array->data = realloc(array->data,maximum_size * sizeof(double));
+  }
+}
+
+void fa_print(FILE *stream, struct f_array *array) {
+  int32_t i;
+
+  fprintf(stream,"[");
+  if (array->size <= 10) {
+    for (i = 0; i < array->size; i++) {
+      fprintf(stream,"%f",array->data[i]);
+      if ((i + 1) < array->size)
+	fprintf(stream,",");
+    }
+  } else {
+    for (i = 0; i < 5; i++) {
+      fprintf(stream,"%f,",fa_getitem(array,i));
+    }
+    fprintf(stream,"...,");
+    for (i = -5; i < 0; i++) {
+      fprintf(stream,"%f",fa_getitem(array,i));
+      if ((i + 1) < 0)
+	fprintf(stream,",");
+    }
+  }
+  fprintf(stream,"]");
+}
+
+void fa_mul(struct f_array *target,
+	    struct f_array *source1, struct f_array *source2) {
+  uint32_t size = source1->size < source2->size ? source1->size : source2->size;
+  uint32_t i;
+
+  fa_resize(target,size);
+  for (i = 0; i < size; i++)
+    target->data[i] = source1->data[i] * source2->data[i];
+  target->size = size;
+}
+
+void fa_mul_ia(struct f_array *target,
+	       struct f_array *source1, struct i_array *source2) {
+  uint32_t size = source1->size < source2->size ? source1->size : source2->size;
+  uint32_t i;
+
+  fa_resize(target,size);
+  for (i = 0; i < size; i++)
+    target->data[i] = source1->data[i] * source2->data[i];
+  target->size = size;
+}

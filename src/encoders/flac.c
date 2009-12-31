@@ -491,7 +491,7 @@ void FlacEncoder_write_best_residual(BitbufferW *bbw,
     ia_reset(&rice_parameters);
 
     /*chop the residuals into 2 ^ partition_order number of partitions*/
-    ia_dupe(&remaining_residuals,residuals);
+    ia_link(&remaining_residuals,residuals);
     partitions = 1 << partition_order;
     for (partition = 0; partition < partitions; partition++) {
       if (partition == 0) {
@@ -582,7 +582,7 @@ void FlacEncoder_write_residual(BitbufferW *bbw,
   bbw_write_bits(bbw, 4, partition_order);
 
   /*for each rice_parameter, write a residual partition*/
-  ia_dupe(&remaining_residuals,residuals);
+  ia_link(&remaining_residuals,residuals);
 
   for (partition = 0; partition < partitions; partition++) {
     if (partition == 0) {
