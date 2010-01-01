@@ -40,7 +40,7 @@ void ia_print(FILE *stream,struct i_array *array) {
   int32_t i;
 
   fprintf(stream,"[");
-  if (array->size <= 10) {
+  if (array->size <= 20) {
     for (i = 0; i < array->size; i++) {
       fprintf(stream,"%d",array->data[i]);
       if ((i + 1) < array->size)
@@ -225,7 +225,7 @@ void fa_print(FILE *stream, struct f_array *array) {
   int32_t i;
 
   fprintf(stream,"[");
-  if (array->size <= 10) {
+  if (array->size <= 20) {
     for (i = 0; i < array->size; i++) {
       fprintf(stream,"%f",array->data[i]);
       if ((i + 1) < array->size)

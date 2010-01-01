@@ -9,4 +9,14 @@ void FlacEncoder_compute_best_lpc_coeffs(struct flac_encoding_options *options,
 					 struct i_array *coeffs,
 					 int *shift_needed);
 
+void FlacEncoder_rectangular_window(struct f_array *window,
+				    int L);
+
+void FlacEncoder_hann_window(struct f_array *window,
+			     int L);
+
+void FlacEncoder_tukey_window(struct f_array *window,
+			      int L,
+			      double p);
+
 #endif
