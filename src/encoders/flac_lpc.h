@@ -19,4 +19,8 @@ void FlacEncoder_tukey_window(struct f_array *window,
 			      int L,
 			      double p);
 
+void FlacEncoder_compute_autocorrelation(struct f_array *values,
+					 struct f_array *windowed_signal,
+					 int max_lpc_order);
+
 #endif

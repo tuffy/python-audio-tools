@@ -7,6 +7,7 @@ void FlacEncoder_compute_best_lpc_coeffs(struct flac_encoding_options *options,
 					 int *shift_needed) {
   struct f_array tukey_window;
   struct f_array windowed_signal;
+  struct f_array autocorrelation_values;
 
   /*window signal*/
   fa_init(&tukey_window,samples->size);
@@ -15,6 +16,10 @@ void FlacEncoder_compute_best_lpc_coeffs(struct flac_encoding_options *options,
   fa_mul_ia(&windowed_signal,&tukey_window,samples);
 
   /*compute autocorrelation*/
+  fa_init(&autocorrelation_values,options->max_lpc_order);
+  FlacEncoder_compute_autocorrelation(&autocorrelation_values,
+				      &windowed_signal,
+				      options->max_lpc_order);
 
   /*compute LP coefficients*/
 
@@ -83,3 +88,18 @@ void FlacEncoder_tukey_window(struct f_array *window,
   fa_free(&rect_window);
 }
 
+void FlacEncoder_compute_autocorrelation(struct f_array *values,
+					 struct f_array *windowed_signal,
+					 int max_lpc_order) {
+  int i,j;
+  struct f_array lagged_signal;
+  double sum;
+
+  for (i = 0; i < max_lpc_order; i++) {
+    sum = 0.0;
+    fa_tail(&lagged_signal,windowed_signal,windowed_signal->size - i);
+    for (j = 0; j < lagged_signal.size; j++)
+      sum += (fa_getitem(windowed_signal,j) * fa_getitem(&lagged_signal,j));
+    fa_append(values,sum);
+  }
+}

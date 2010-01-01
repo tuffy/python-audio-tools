@@ -16,6 +16,7 @@ PyObject* encoders_encode_flac(PyObject *dummy,
   struct flac_STREAMINFO streaminfo;
   static char *kwlist[] = {"filename","pcmreader",
 			   "block_size",
+			   "max_lpc_order",
 			   "min_residual_partition_order",
 			   "max_residual_partition_order",NULL};
   MD5_CTX md5sum;
@@ -24,11 +25,12 @@ PyObject* encoders_encode_flac(PyObject *dummy,
 
   /*extract a filename, PCMReader-compatible object and encoding options:
     blocksize int*/
-  if (!PyArg_ParseTupleAndKeywords(args,keywds,"sOiii",
+  if (!PyArg_ParseTupleAndKeywords(args,keywds,"sOiiii",
 				   kwlist,
 				   &filename,
 				   &pcmreader_obj,
 				   &(streaminfo.options.block_size),
+				   &(streaminfo.options.max_lpc_order),
 				   &(streaminfo.options.min_residual_partition_order),
 				   &(streaminfo.options.max_residual_partition_order)))
     return NULL;
