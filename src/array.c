@@ -238,11 +238,21 @@ void fa_print(FILE *stream, struct f_array *array) {
     fprintf(stream,"...,");
     for (i = -5; i < 0; i++) {
       fprintf(stream,"%f",fa_getitem(array,i));
-      if ((i + 1) < 0)
+      if ((i + 1) < array->size)
 	fprintf(stream,",");
     }
   }
   fprintf(stream,"]");
+}
+
+double fa_sum(struct f_array *array) {
+  double accumulator = 0.0;
+  uint32_t i;
+
+  for (i = 0; i < array->size; i++)
+    accumulator += array->data[i];
+
+  return accumulator;
 }
 
 void fa_mul(struct f_array *target,
@@ -284,4 +294,16 @@ void faa_free(struct fa_array *array) {
     fa_free(&(array->arrays[i]));
 
   free(array->arrays);
+}
+
+void faa_print(FILE *stream, struct fa_array *array) {
+  int32_t i;
+
+  fprintf(stream,"[");
+  for (i = 0; i < array->size; i++) {
+    fa_print(stream,faa_getitem(array,i));
+    if ((i + 1) < array->size)
+      fprintf(stream,",");
+  }
+  fprintf(stream,"]");
 }

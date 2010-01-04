@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdint.h>
+#include <string.h>
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -189,7 +190,7 @@ void fa_init(struct f_array *array, uint32_t initial_size);
 void fa_free(struct f_array *array);
 
 static inline void fa_reset(struct f_array *array) {
-
+  array->size = 0;
 }
 
 void fa_resize(struct f_array *array, uint32_t maximum_size);
@@ -249,7 +250,29 @@ static inline void fa_split(struct f_array *head, struct f_array *tail,
   tail->data = source->data + split;
 }
 
+static inline void fa_copy(struct f_array *target, struct f_array *source) {
+  fa_resize(target,source->size);
+  memcpy(target->data,source->data,source->size * sizeof(double));
+  target->size = source->size;
+}
+
+static inline void fa_reverse(struct f_array *array) {
+  uint32_t start;
+  uint32_t end;
+  double val;
+
+  for (start = 0,end = array->size - 1;
+       start < end;
+       start++,end--) {
+    val = array->data[start];
+    array->data[start] = array->data[end];
+    array->data[end] = val;
+  }
+}
+
 void fa_print(FILE *stream, struct f_array *array);
+
+double fa_sum(struct f_array *array);
 
 void fa_mul(struct f_array *target,
 	    struct f_array *source1, struct f_array *source2);
@@ -276,11 +299,21 @@ static inline struct f_array* faa_getitem(struct fa_array *array, int32_t index)
   }
 }
 
+static inline struct f_array* faa_append(struct fa_array *array) {
+  array->arrays = realloc(array->arrays,(array->size + 1) *
+			  sizeof(struct f_array));
+  array->size++;
+  fa_init(&(array->arrays[array->size - 1]),8);
+  return &(array->arrays[array->size - 1]);
+}
+
 static inline void faa_reset(struct fa_array *array) {
   uint32_t i;
 
   for (i = 0; i < array->size; i++)
     fa_reset(&(array->arrays[i]));
 }
+
+void faa_print(FILE *stream, struct fa_array *array);
 
 #endif

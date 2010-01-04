@@ -127,31 +127,45 @@ void FlacEncoder_compute_lp_coefficients(struct fa_array *lp_coefficients,
 
   double qm;
   double km;
-  double sum;
-  struct f_array *a;
+  struct f_array a;
+  struct f_array r;
   int m;
-  int i;
+
+  fa_init(&a,max_lpc_order);
+
 
   /*E(0) = r(0)*/
   fa_append(error_values,fa_getitem(autocorrelation_values,0));
 
   /*a(1)(1) = k(1) = r(1) / E(0)*/
   km = fa_getitem(autocorrelation_values,1) / fa_getitem(error_values,0);
-  fa_append(faa_getitem(lp_coefficients,0),km);
+  fa_append(faa_append(lp_coefficients),km);
 
   /*E(1) = E(0) * (1 - (k(1) ^ 2))*/
   fa_append(error_values,
 	    fa_getitem(error_values,-1) * (1 - (km * km)));
 
+  for (m = 2; m <= max_lpc_order; m++) {
+    printf("m : %d\n",m);
+
     /*q(m) = r(m) - sum(i = 1 to m - 1, a(i)(m - 1) * r(m - i))*/
+    fa_copy(&a,faa_getitem(lp_coefficients,-1));
+    fa_reverse(&a);
+    fa_tail(&r,autocorrelation_values,autocorrelation_values->size - 1);
+    fa_mul(&a,&a,&r);
+    qm = fa_getitem(autocorrelation_values,m) - fa_sum(&a);
 
     /*k(m) = q(m) / E(m - 1)*/
-
-    /*a(m)(m) = k(m)*/
+    km = qm / fa_getitem(error_values,m - 1);
 
     /*a(i)(m) = a(i)(m - 1) - k(m) * a(m - i)(m - 1) for i = 1 to m - 1*/
+
+    /*a(m)(m) = k(m)*/
 
     /*E(m) = E(m - 1) * (1 - k(m) ^ 2)*/
 
     /*continue until m == M*/
+  }
+
+  fa_free(&a);
 }
