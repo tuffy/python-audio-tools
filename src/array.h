@@ -257,4 +257,30 @@ void fa_mul(struct f_array *target,
 void fa_mul_ia(struct f_array *target,
 	       struct f_array *source1, struct i_array *source2);
 
+/*an array if f_array structs*/
+struct fa_array {
+  struct f_array *arrays;
+  uint32_t size;
+};
+
+void faa_init(struct fa_array *array, uint32_t total_arrays,
+	      uint32_t initial_size);
+
+void faa_free(struct fa_array *array);
+
+static inline struct f_array* faa_getitem(struct fa_array *array, int32_t index) {
+  if (index >= 0) {
+    return &(array->arrays[index]);
+  } else {
+    return &(array->arrays[array->size + index]);
+  }
+}
+
+static inline void faa_reset(struct fa_array *array) {
+  uint32_t i;
+
+  for (i = 0; i < array->size; i++)
+    fa_reset(&(array->arrays[i]));
+}
+
 #endif

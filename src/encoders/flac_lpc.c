@@ -8,6 +8,8 @@ void FlacEncoder_compute_best_lpc_coeffs(struct flac_encoding_options *options,
   struct f_array tukey_window;
   struct f_array windowed_signal;
   struct f_array autocorrelation_values;
+  struct fa_array lp_coefficients;
+  struct f_array error_values;
 
   /*window signal*/
   fa_init(&tukey_window,samples->size);
@@ -22,6 +24,12 @@ void FlacEncoder_compute_best_lpc_coeffs(struct flac_encoding_options *options,
 				      options->max_lpc_order);
 
   /*compute LP coefficients*/
+  faa_init(&lp_coefficients,options->max_lpc_order,options->max_lpc_order);
+  fa_init(&error_values,options->max_lpc_order);
+  FlacEncoder_compute_lp_coefficients(&lp_coefficients,
+				      &error_values,
+				      &autocorrelation_values,
+				      options->max_lpc_order);
 
   /*if non-exhaustive search, estimate best order*/
 
@@ -34,6 +42,9 @@ void FlacEncoder_compute_best_lpc_coeffs(struct flac_encoding_options *options,
   /*free temporary values*/
   fa_free(&tukey_window);
   fa_free(&windowed_signal);
+  fa_free(&autocorrelation_values);
+  faa_free(&lp_coefficients);
+  fa_free(&error_values);
 
   ia_reset(coeffs);
   ia_append(coeffs,1);
@@ -102,4 +113,45 @@ void FlacEncoder_compute_autocorrelation(struct f_array *values,
       sum += (fa_getitem(windowed_signal,j) * fa_getitem(&lagged_signal,j));
     fa_append(values,sum);
   }
+}
+
+void FlacEncoder_compute_lp_coefficients(struct fa_array *lp_coefficients,
+					 struct f_array *error_values,
+					 struct f_array *autocorrelation_values,
+					 int max_lpc_order) {
+  /*r is autocorrelation_values
+    a is lp_coefficients, a list of LP coefficient lists
+    E is error_values
+    M is max_lpc_order
+    q and k are temporary values*/
+
+  double qm;
+  double km;
+  double sum;
+  struct f_array *a;
+  int m;
+  int i;
+
+  /*E(0) = r(0)*/
+  fa_append(error_values,fa_getitem(autocorrelation_values,0));
+
+  /*a(1)(1) = k(1) = r(1) / E(0)*/
+  km = fa_getitem(autocorrelation_values,1) / fa_getitem(error_values,0);
+  fa_append(faa_getitem(lp_coefficients,0),km);
+
+  /*E(1) = E(0) * (1 - (k(1) ^ 2))*/
+  fa_append(error_values,
+	    fa_getitem(error_values,-1) * (1 - (km * km)));
+
+    /*q(m) = r(m) - sum(i = 1 to m - 1, a(i)(m - 1) * r(m - i))*/
+
+    /*k(m) = q(m) / E(m - 1)*/
+
+    /*a(m)(m) = k(m)*/
+
+    /*a(i)(m) = a(i)(m - 1) - k(m) * a(m - i)(m - 1) for i = 1 to m - 1*/
+
+    /*E(m) = E(m - 1) * (1 - k(m) ^ 2)*/
+
+    /*continue until m == M*/
 }

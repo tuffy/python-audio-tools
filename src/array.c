@@ -266,3 +266,22 @@ void fa_mul_ia(struct f_array *target,
     target->data[i] = source1->data[i] * source2->data[i];
   target->size = size;
 }
+
+void faa_init(struct fa_array *array, uint32_t total_arrays,
+	      uint32_t initial_size) {
+  uint32_t i;
+
+  array->arrays = malloc(sizeof(struct f_array) * total_arrays);
+  array->size = total_arrays;
+  for (i = 0; i < total_arrays; i++)
+    fa_init(&(array->arrays[i]),initial_size);
+}
+
+void faa_free(struct fa_array *array) {
+  uint32_t i;
+
+  for (i = 0; i < array->size; i++)
+    fa_free(&(array->arrays[i]));
+
+  free(array->arrays);
+}

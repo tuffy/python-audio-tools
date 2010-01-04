@@ -309,6 +309,8 @@ void FlacEncoder_write_subframe(BitbufferW *bbw,
 				 &lpc_coeffs,
 				 lpc_shift_needed);
 
+  ia_free(&lpc_coeffs);
+
   /* FlacEncoder_write_fixed_subframe(bbw,options,bits_per_sample,samples, */
   /*     FlacEncoder_compute_best_fixed_predictor_order(samples)); */
 }
