@@ -129,9 +129,14 @@ void FlacEncoder_compute_lp_coefficients(struct fa_array *lp_coefficients,
   double km;
   struct f_array a;
   struct f_array r;
+  struct f_array *a_1;
+  struct f_array ra_1;
+  struct f_array *aim;
   int m;
+  uint32_t i;
 
   fa_init(&a,max_lpc_order);
+  fa_init(&ra_1,max_lpc_order);
 
 
   /*E(0) = r(0)*/
@@ -146,7 +151,7 @@ void FlacEncoder_compute_lp_coefficients(struct fa_array *lp_coefficients,
 	    fa_getitem(error_values,-1) * (1 - (km * km)));
 
   for (m = 2; m <= max_lpc_order; m++) {
-    printf("m : %d\n",m);
+    fprintf(stderr,"m : %d\n",m);
 
     /*q(m) = r(m) - sum(i = 1 to m - 1, a(i)(m - 1) * r(m - i))*/
     fa_copy(&a,faa_getitem(lp_coefficients,-1));
@@ -159,13 +164,27 @@ void FlacEncoder_compute_lp_coefficients(struct fa_array *lp_coefficients,
     km = qm / fa_getitem(error_values,m - 1);
 
     /*a(i)(m) = a(i)(m - 1) - k(m) * a(m - i)(m - 1) for i = 1 to m - 1*/
+    a_1 = faa_getitem(lp_coefficients,-1);
+    fa_copy(&ra_1,a_1);
+    fa_reverse(&ra_1);
+
+    fa_print(stderr,a_1);fprintf(stderr," %u\n",a_1->size);
+    fa_print(stderr,&ra_1);fprintf(stderr," %u\n",ra_1.size);
+
+    aim = faa_append(lp_coefficients);
+    for (i = 0; i < ra_1.size; i++) {
+      fa_append(aim,fa_getitem(a_1,i) - (km * fa_getitem(&ra_1,i)));
+    }
 
     /*a(m)(m) = k(m)*/
+    fa_append(aim,km);
 
     /*E(m) = E(m - 1) * (1 - k(m) ^ 2)*/
+    fa_append(error_values, fa_getitem(error_values,-1) * (1 - (km * km)));
 
     /*continue until m == M*/
   }
 
   fa_free(&a);
+  fa_free(&ra_1);
 }

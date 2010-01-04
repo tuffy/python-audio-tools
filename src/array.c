@@ -281,10 +281,15 @@ void faa_init(struct fa_array *array, uint32_t total_arrays,
 	      uint32_t initial_size) {
   uint32_t i;
 
-  array->arrays = malloc(sizeof(struct f_array) * total_arrays);
-  array->size = total_arrays;
-  for (i = 0; i < total_arrays; i++)
-    fa_init(&(array->arrays[i]),initial_size);
+  if (total_arrays > 0) {
+    array->arrays = malloc(sizeof(struct f_array) * total_arrays);
+    array->size = total_arrays;
+    for (i = 0; i < total_arrays; i++)
+      fa_init(&(array->arrays[i]),initial_size);
+  } else {
+    array->arrays = NULL;
+    array->size = 0;
+  }
 }
 
 void faa_free(struct fa_array *array) {
