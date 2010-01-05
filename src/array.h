@@ -299,14 +299,6 @@ static inline struct f_array* faa_getitem(struct fa_array *array, int32_t index)
   }
 }
 
-static inline struct f_array* faa_append(struct fa_array *array) {
-  array->arrays = realloc(array->arrays,
-			  (array->size + 1) * sizeof(struct f_array));
-  array->size++;
-  fa_init(&(array->arrays[array->size - 1]),8);
-  return &(array->arrays[array->size - 1]);
-}
-
 static inline void faa_reset(struct fa_array *array) {
   uint32_t i;
 
