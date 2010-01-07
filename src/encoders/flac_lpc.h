@@ -30,4 +30,12 @@ void FlacEncoder_compute_lp_coefficients(struct fa_array *lp_coefficients,
 					 struct f_array *autocorrelation_values,
 					 int max_lpc_order);
 
+int FlacEncoder_compute_best_order(struct f_array *error_values,
+				   int total_samples,
+				   int overhead_bits_per_order);
+
+double FlacEncoder_compute_expected_bits_per_residual_sample(double lpc_error,
+							     double error_scale);
+
+
 #endif

@@ -1,5 +1,8 @@
 #include "flac_lpc.h"
 
+#define MIN(x,y) ((x) < (y) ? (x) : (y))
+#define MAX(x,y) ((x) > (y) ? (x) : (y))
+
 void FlacEncoder_compute_best_lpc_coeffs(struct flac_encoding_options *options,
 					 int bits_per_sample,
 					 struct i_array *samples,
@@ -10,6 +13,7 @@ void FlacEncoder_compute_best_lpc_coeffs(struct flac_encoding_options *options,
   struct f_array autocorrelation_values;
   struct fa_array lp_coefficients;
   struct f_array error_values;
+  int lpc_order;
 
   /*window signal*/
   fa_init(&tukey_window,samples->size);
@@ -32,6 +36,9 @@ void FlacEncoder_compute_best_lpc_coeffs(struct flac_encoding_options *options,
 				      options->max_lpc_order - 1);
 
   /*if non-exhaustive search, estimate best order*/
+  lpc_order = FlacEncoder_compute_best_order(&error_values,
+					     samples->size,
+					     bits_per_sample + 5);
 
   /*if exhaustive search, calculate best order*/
 
@@ -182,4 +189,38 @@ void FlacEncoder_compute_lp_coefficients(struct fa_array *lp_coefficients,
 
   fa_free(&a);
   fa_free(&ra_i);
+}
+
+int FlacEncoder_compute_best_order(struct f_array *error_values,
+				   int total_samples,
+				   int overhead_bits_per_order) {
+  double error_scale = (M_LN2 * M_LN2) / (total_samples * 2);
+  int best_order;
+  double best_bits = 1e32;
+  double bits;
+  int order;
+
+  for (order = 0; order < error_values->size; order++) {
+    bits = FlacEncoder_compute_expected_bits_per_residual_sample(
+      fa_getitem(error_values,order),
+      error_scale) + (order * overhead_bits_per_order);
+    if (bits < best_bits) {
+      best_order = order;
+      best_bits = bits;
+    }
+  }
+
+  return 0;
+}
+
+double FlacEncoder_compute_expected_bits_per_residual_sample(double lpc_error,
+							     double error_scale) {
+  if (lpc_error > 0.0) {
+    return MAX(log(error_scale * lpc_error) / (M_LN2 * 2),
+	       0.0);
+  } else if (lpc_error < 0.0) {
+    return 1e32;
+  } else {
+    return 0.0;
+  }
 }
