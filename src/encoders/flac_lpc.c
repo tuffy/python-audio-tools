@@ -224,3 +224,44 @@ double FlacEncoder_compute_expected_bits_per_residual_sample(double lpc_error,
     return 0.0;
   }
 }
+
+#define SUBFRAME_LPC_QLP_SHIFT_LEN 5
+
+void FlacEncoder_quantize_coefficients(struct f_array *lp_coefficients,
+				       int precision,
+				       struct i_array *qlp_coefficients,
+				       int *shift_needed) {
+  int qlp_precision_min;
+  int qlp_precision_max;
+  int max_shiftlimit;
+  int min_shiftlimit;
+  double max_lp_coefficient = 0;
+  double error = 0.0;
+  double new_error;
+  uint32_t i;
+  int32_t qlp;
+
+  precision--;
+  qlp_precision_max = (precision << 1) - 1;
+  qlp_precision_min = -(precision << 1);
+  max_shiftlimit = ((SUBFRAME_LPC_QLP_SHIFT_LEN - 1) << 1) - 1;
+  min_shiftlimit = -max_shiftlimit - 1;
+
+  for (i = 0; i < lp_coefficients->size; i++) {
+    max_lp_coefficient = MAX(fabs(fa_getitem(lp_coefficients,i)),
+			     max_lp_coefficient);
+  }
+
+  *shift_needed = MIN((precision - (int)(ceil(log(max_lp_coefficient) /
+					      log(2.0)))),
+		      max_shiftlimit);
+
+  for (i = 0; i < lp_coefficients->size; i++) {
+    new_error = error + (fa_getitem(lp_coefficients,i) *
+			 (*shift_needed << 1));
+    qlp = MAX(MIN((int)round(new_error),qlp_precision_max),
+	      qlp_precision_min);
+    ia_append(qlp_coefficients,qlp);
+    error = new_error - qlp;
+  }
+}

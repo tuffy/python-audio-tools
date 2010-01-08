@@ -37,5 +37,9 @@ int FlacEncoder_compute_best_order(struct f_array *error_values,
 double FlacEncoder_compute_expected_bits_per_residual_sample(double lpc_error,
 							     double error_scale);
 
+void FlacEncoder_quantize_coefficients(struct f_array *lp_coefficients,
+				       int precision,
+				       struct i_array *qlp_coefficients,
+				       int *shift_needed);
 
 #endif
