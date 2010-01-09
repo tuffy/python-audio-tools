@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
+#include <float.h>
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -24,6 +25,9 @@
  along with this program; if not, write to the Free Software
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  *******************************************************/
+
+#define MIN(x,y) ((x) < (y) ? (x) : (y))
+#define MAX(x,y) ((x) > (y) ? (x) : (y))
 
 /*an array of int32_t values which can grow as needed
   typically for storing PCM sample values*/
@@ -279,6 +283,32 @@ void fa_mul(struct f_array *target,
 
 void fa_mul_ia(struct f_array *target,
 	       struct f_array *source1, struct i_array *source2);
+
+static inline double fa_max(struct f_array *array) {
+  uint32_t i;
+  double max = -DBL_MAX;
+  for (i = 0; i < array->size; i++)
+    max = MAX(array->data[i],max);
+  return max;
+}
+
+static inline double fa_min(struct f_array *array) {
+  uint32_t i;
+  double min = DBL_MAX;
+  for (i = 0; i < array->size; i++)
+    min = MIN(array->data[i],min);
+  return min;
+}
+
+static inline void fa_map(struct f_array *target,
+			  struct f_array *source,
+			  double (function)(double)) {
+  uint32_t i;
+  fa_resize(target,source->size);
+  for (i = 0; i < source->size; i++)
+    target->data[i] = function(source->data[i]);
+  target->size = source->size;
+}
 
 /*an array if f_array structs*/
 struct fa_array {

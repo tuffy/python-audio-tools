@@ -231,37 +231,31 @@ void FlacEncoder_quantize_coefficients(struct f_array *lp_coefficients,
 				       int precision,
 				       struct i_array *qlp_coefficients,
 				       int *shift_needed) {
-  int qlp_precision_min;
-  int qlp_precision_max;
-  int max_shiftlimit;
-  int min_shiftlimit;
-  double max_lp_coefficient = 0;
-  double error = 0.0;
-  double new_error;
+  struct f_array lp_coefficients_abs;
+  double cmax;
+  int log2cmax;
+  int32_t qlp_coeff_min;
+  int32_t qlp_coeff_max;
   uint32_t i;
   int32_t qlp;
+  double error = 0.0;
 
   precision--;
-  qlp_precision_max = (precision << 1) - 1;
-  qlp_precision_min = -(precision << 1);
-  max_shiftlimit = ((SUBFRAME_LPC_QLP_SHIFT_LEN - 1) << 1) - 1;
-  min_shiftlimit = -max_shiftlimit - 1;
+  fa_init(&lp_coefficients_abs,lp_coefficients->size);
+  fa_map(&lp_coefficients_abs,lp_coefficients,fabs);
+  cmax = fa_max(&lp_coefficients_abs);
+  fa_free(&lp_coefficients_abs);
+
+  (void)frexp(cmax,&log2cmax);
+  *shift_needed = precision - (log2cmax - 1) - 1;
+
+  qlp_coeff_max = (1 << precision) - 1;
+  qlp_coeff_min = -(1 << precision);
 
   for (i = 0; i < lp_coefficients->size; i++) {
-    max_lp_coefficient = MAX(fabs(fa_getitem(lp_coefficients,i)),
-			     max_lp_coefficient);
-  }
-
-  *shift_needed = MIN((precision - (int)(ceil(log(max_lp_coefficient) /
-					      log(2.0)))),
-		      max_shiftlimit);
-
-  for (i = 0; i < lp_coefficients->size; i++) {
-    new_error = error + (fa_getitem(lp_coefficients,i) *
-			 (*shift_needed << 1));
-    qlp = MAX(MIN((int)round(new_error),qlp_precision_max),
-	      qlp_precision_min);
+    error += fa_getitem(lp_coefficients,i) * (1 << *shift_needed);
+    qlp = MIN(MAX(lround(error),qlp_coeff_min),qlp_coeff_max);
     ia_append(qlp_coefficients,qlp);
-    error = new_error - qlp;
+    error -= qlp;
   }
 }
