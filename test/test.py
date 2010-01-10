@@ -20,7 +20,6 @@
 
 import audiotools
 import audiotools.pcmstream
-import audiotools.bitstream
 import tempfile
 import sys
 import os
@@ -5065,32 +5064,6 @@ class TestPCMStreamReader(unittest.TestCase):
     #
     #        self.assertEqual(c,audiotools.pcmstream.pcm_to_string([
     #                    be_parser.parse(c).value],3,True))
-
-class testbitstream(unittest.TestCase):
-    @TEST_PCM
-    def testinvalidstream(self):
-        b = audiotools.bitstream.BitStreamReader(None)
-        self.assertRaises(AttributeError,
-                          b.read,10)
-
-    @TEST_PCM
-    def testcompliance(self):
-        allbits = "".join(map(chr,range(0,0x100)) + \
-                          map(chr,reversed(range(0,0x100)))) * 20
-        for i in xrange(1,65):
-            reader1 = Con.BitStreamReader(cStringIO.StringIO(allbits))
-            reader2 = audiotools.bitstream.BitStreamReader(cStringIO.StringIO(allbits))
-            sum1 = md5()
-            sum2 = md5()
-
-            for (reader,sum) in ((reader1,sum1),(reader2,sum2)):
-                bits = reader.read(i)
-                while (len(bits) > 0):
-                    sum.update(bits)
-                    bits = reader.read(i)
-                reader.close()
-
-            self.assertEqual(sum1.hexdigest(),sum2.hexdigest())
 
 class testbufferedstream(unittest.TestCase):
     @TEST_PCM
