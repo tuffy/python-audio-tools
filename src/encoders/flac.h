@@ -30,6 +30,7 @@ struct flac_encoding_options {
   int min_residual_partition_order;
   int max_residual_partition_order;
   int max_lpc_order;
+  int qlp_coeff_precision;
 };
 
 struct flac_STREAMINFO {

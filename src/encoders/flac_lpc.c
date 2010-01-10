@@ -41,8 +41,14 @@ void FlacEncoder_compute_best_lpc_coeffs(struct flac_encoding_options *options,
 					     bits_per_sample + 5);
 
   /*if exhaustive search, calculate best order*/
+  /*FIXME*/
 
   /*quantize coefficients*/
+  ia_reset(coeffs);
+  FlacEncoder_quantize_coefficients(faa_getitem(&lp_coefficients,lpc_order),
+				    options->qlp_coeff_precision,
+				    coeffs,
+				    shift_needed);
 
   /*return best QLP coefficients and shift-needed values*/
 
@@ -52,10 +58,6 @@ void FlacEncoder_compute_best_lpc_coeffs(struct flac_encoding_options *options,
   fa_free(&autocorrelation_values);
   faa_free(&lp_coefficients);
   fa_free(&error_values);
-
-  ia_reset(coeffs);
-  ia_append(coeffs,1);
-  *shift_needed = 0;
 }
 
 void FlacEncoder_rectangular_window(struct f_array *window,

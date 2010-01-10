@@ -40,6 +40,8 @@ PyObject* encoders_encode_flac(PyObject *dummy,
     return NULL;
   }
 
+  streaminfo.options.qlp_coeff_precision = 10; /*FIXME - make this dynamic*/
+
   /*open the given filename for writing*/
   if ((file = fopen(filename,"wb")) == NULL) {
     PyErr_SetFromErrnoWithFilename(PyExc_IOError,filename);
