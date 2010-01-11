@@ -28,14 +28,17 @@ void FlacEncoder_compute_best_lpc_coeffs(struct flac_encoding_options *options,
 				      options->max_lpc_order);
 
   /*compute LP coefficients*/
-  faa_init(&lp_coefficients,options->max_lpc_order,options->max_lpc_order);
+  faa_init(&lp_coefficients,
+	   options->max_lpc_order,
+	   options->max_lpc_order);
   fa_init(&error_values,options->max_lpc_order);
   FlacEncoder_compute_lp_coefficients(&lp_coefficients,
 				      &error_values,
 				      &autocorrelation_values,
-				      options->max_lpc_order - 1);
+				      options->max_lpc_order);
 
   /*if non-exhaustive search, estimate best order*/
+  fa_tail(&error_values,&error_values,error_values.size - 1);
   lpc_order = FlacEncoder_compute_best_order(&error_values,
 					     samples->size,
 					     bits_per_sample + 5);
@@ -196,30 +199,34 @@ void FlacEncoder_compute_lp_coefficients(struct fa_array *lp_coefficients,
 int FlacEncoder_compute_best_order(struct f_array *error_values,
 				   int total_samples,
 				   int overhead_bits_per_order) {
-  double error_scale = (M_LN2 * M_LN2) / (total_samples * 2);
-  int best_order;
+  double error_scale = (M_LN2 * M_LN2) / (double)(total_samples * 2);
+  int best_order = 0;
   double best_bits = 1e32;
   double bits;
   int order;
+  int i;
 
-  for (order = 0; order < error_values->size; order++) {
+  fprintf(stderr,"Error values : ");
+  fa_print(stderr,error_values);
+  fprintf(stderr,"\n");
+
+  for (i = 0,order = 1; i < error_values->size; i++,order++) {
     bits = FlacEncoder_compute_expected_bits_per_residual_sample(
-      fa_getitem(error_values,order),
-      error_scale) + (order * overhead_bits_per_order);
+      fa_getitem(error_values,i),
+      error_scale) + (double)(order * overhead_bits_per_order);
     if (bits < best_bits) {
       best_order = order;
       best_bits = bits;
     }
   }
 
-  return 0;
+  return best_order;
 }
 
 double FlacEncoder_compute_expected_bits_per_residual_sample(double lpc_error,
 							     double error_scale) {
   if (lpc_error > 0.0) {
-    return MAX(log(error_scale * lpc_error) / (M_LN2 * 2),
-	       0.0);
+    return MAX(log(error_scale * lpc_error) / (M_LN2 * 2.0),0.0);
   } else if (lpc_error < 0.0) {
     return 1e32;
   } else {

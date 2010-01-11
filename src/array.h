@@ -103,9 +103,15 @@ static inline void ia_head(struct i_array *target, struct i_array *source, uint3
 }
 
 static inline void ia_tail(struct i_array *target, struct i_array *source, uint32_t size) {
+  if (target != source) {
+    target->data = source->data + (source->size - size);
+  } else {
+    memmove(target->data,
+	    source->data + (source->size - size),
+	    size * sizeof(int32_t));
+  }
   target->size = size;
   target->total_size = source->total_size;
-  target->data = source->data + (source->size - size);
 }
 
 /*splits source into two lists, "head" and "tail"
@@ -232,9 +238,15 @@ static inline void fa_head(struct f_array *target, struct f_array *source, uint3
 }
 
 static inline void fa_tail(struct f_array *target, struct f_array *source, uint32_t size) {
+  if (target != source) {
+    target->data = source->data + (source->size - size);
+  } else {
+    memmove(target->data,
+	    source->data + (source->size - size),
+	    size * sizeof(double));
+  }
   target->size = size;
   target->total_size = source->total_size;
-  target->data = source->data + (source->size - size);
 }
 
 /*splits source into two lists, "head" and "tail"
