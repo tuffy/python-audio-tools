@@ -35,7 +35,7 @@ void FlacEncoder_compute_best_lpc_coeffs(struct flac_encoding_options *options,
   FlacEncoder_compute_lp_coefficients(&lp_coefficients,
 				      &error_values,
 				      &autocorrelation_values,
-				      options->max_lpc_order);
+				      options->max_lpc_order - 1);
 
   /*if non-exhaustive search, estimate best order*/
   fa_tail(&error_values,&error_values,error_values.size - 1);
@@ -206,14 +206,10 @@ int FlacEncoder_compute_best_order(struct f_array *error_values,
   int order;
   int i;
 
-  fprintf(stderr,"Error values : ");
-  fa_print(stderr,error_values);
-  fprintf(stderr,"\n");
-
   for (i = 0,order = 1; i < error_values->size; i++,order++) {
     bits = FlacEncoder_compute_expected_bits_per_residual_sample(
       fa_getitem(error_values,i),
-      error_scale) + (double)(order * overhead_bits_per_order);
+      error_scale) * (double)(total_samples - order) + (double)(order * overhead_bits_per_order);
     if (bits < best_bits) {
       best_order = order;
       best_bits = bits;
