@@ -1,4 +1,8 @@
+#ifndef STANDALONE
 #include <Python.h>
+#else
+#include <stdio.h>
+#endif
 #include "array.h"
 
 /********************************************************
@@ -42,8 +46,12 @@ struct pcmr_callback {
 };
 
 struct pcm_reader {
+#ifndef STANDALONE
   PyObject *read;
   PyObject *close;
+#else
+  FILE *read;
+#endif
   long sample_rate;
   long channels;
   long bits_per_sample;
@@ -53,7 +61,14 @@ struct pcm_reader {
 
 /*given a Python object PCMReader
   return a pcm_reader struct, or NULL (with exception set) if an error occurs*/
-struct pcm_reader* pcmr_open(PyObject *pcmreader);
+#ifndef STANDALONE
+  struct pcm_reader* pcmr_open(PyObject *pcmreader);
+#else
+  struct pcm_reader* pcmr_open(FILE *pcmreader,
+                               long sample_rate,
+                               long channels,
+                               long bits_per_sample);
+#endif
 
 int pcmr_close(struct pcm_reader *reader);
 

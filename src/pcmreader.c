@@ -19,6 +19,7 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  *******************************************************/
 
+#ifndef STANDALONE
 struct pcm_reader* pcmr_open(PyObject *pcmreader) {
   struct pcm_reader *reader = malloc(sizeof(struct pcm_reader));
   PyObject *attr;
@@ -92,6 +93,34 @@ int pcmr_close(struct pcm_reader *reader) {
   free(reader);
   return returnval;
 }
+#else
+
+struct pcm_reader* pcmr_open(FILE *pcmreader,
+			     long sample_rate,
+			     long channels,
+			     long bits_per_sample) {
+  struct pcm_reader *reader = malloc(sizeof(struct pcm_reader));
+  reader->read = pcmreader;
+  reader->sample_rate = sample_rate;
+  reader->channels = channels;
+  reader->bits_per_sample = bits_per_sample;
+  return reader;
+}
+
+int pcmr_close(struct pcm_reader *reader) {
+  struct pcmr_callback *callback;
+  struct pcmr_callback *next;
+
+  for (callback = reader->callback; callback != NULL; callback = next) {
+    next = callback->next;
+    free(callback);
+  }
+
+  fclose(reader->read);
+  free(reader);
+}
+
+#endif
 
 void pcmr_add_callback(struct pcm_reader *reader,
 		       void (*callback)(void*, unsigned char*, unsigned long),
@@ -107,15 +136,21 @@ int pcmr_read(struct pcm_reader *reader,
 	      long sample_count,
 	      struct ia_array *samples) {
   uint32_t i;
+
+#ifndef STANDALONE
   PyObject *args;
   PyObject *result;
+  Py_ssize_t buffer_length;
+#else
+  size_t buffer_length;
+#endif
 
   unsigned char *buffer;
-  Py_ssize_t buffer_length;
 
   struct pcmr_callback *node;
   struct pcmr_callback *next;
 
+#ifndef STANDALONE
   args = Py_BuildValue("(l)", sample_count *
 		              reader->bits_per_sample * samples->size / 8);
   result = PyEval_CallObject(reader->read,args);
@@ -126,6 +161,11 @@ int pcmr_read(struct pcm_reader *reader,
     Py_DECREF(result);
     return 0;
   }
+#else
+  buffer_length = sample_count * reader->bits_per_sample * samples->size / 8;
+  buffer = malloc(buffer_length);
+  buffer_length = fread(buffer,1,buffer_length,reader->read);
+#endif
 
   for (node = reader->callback; node != NULL; node = next) {
     next = node->next;
@@ -148,13 +188,22 @@ int pcmr_read(struct pcm_reader *reader,
 		      buffer,(int)buffer_length,i,samples->size);
       break;
     default:
+#ifndef STANDALONE
       PyErr_SetString(PyExc_ValueError,"unsupported bits per sample");
       Py_DECREF(result);
       return 0;
+#else
+      fprintf(stderr,"unsupported bits per sample\n");
+      return 0;
+#endif
     }
   }
 
+#ifndef STANDALONE
   Py_DECREF(result);
+#else
+  free(buffer);
+#endif
   return 1;
 }
 
