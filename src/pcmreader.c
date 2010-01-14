@@ -104,6 +104,7 @@ struct pcm_reader* pcmr_open(FILE *pcmreader,
   reader->sample_rate = sample_rate;
   reader->channels = channels;
   reader->bits_per_sample = bits_per_sample;
+  reader->callback = NULL;
   return reader;
 }
 
@@ -118,6 +119,7 @@ int pcmr_close(struct pcm_reader *reader) {
 
   fclose(reader->read);
   free(reader);
+  return 1;
 }
 
 #endif

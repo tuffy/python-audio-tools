@@ -56,6 +56,33 @@ PyObject* encoders_encode_flac(PyObject *dummy,
     return NULL;
   }
 
+#else
+
+  int encoders_encode_flac(char *filename,
+                           FILE *input,
+			   int block_size,
+			   int max_lpc_order,
+			   int min_residual_partition_order,
+			   int max_residual_partition_order) {
+  FILE *file;
+  Bitstream *stream;
+  struct pcm_reader *reader;
+  struct flac_STREAMINFO streaminfo;
+  MD5_CTX md5sum;
+
+  struct ia_array samples;
+
+  streaminfo.options.block_size = block_size;
+  streaminfo.options.max_lpc_order = max_lpc_order;
+  streaminfo.options.min_residual_partition_order = min_residual_partition_order;
+  streaminfo.options.max_residual_partition_order = max_residual_partition_order;
+  streaminfo.options.qlp_coeff_precision = 10; /*FIXME - make this dynamic*/
+
+  file = fopen(filename,"wb");
+  reader = pcmr_open(input,44100,2,16); /*FIXME - assume CD quality for now*/
+
+#endif
+
   MD5_Init(&md5sum);
   pcmr_add_callback(reader,md5_update,&md5sum);
 
@@ -112,6 +139,7 @@ PyObject* encoders_encode_flac(PyObject *dummy,
   pcmr_close(reader); /*close the pcm_reader object
 			which calls pcmreader.close() in the process*/
   bs_close(stream);     /*close the output file*/
+#ifndef STANDALONE
   Py_INCREF(Py_None);
   return Py_None;
  error:
@@ -121,6 +149,14 @@ PyObject* encoders_encode_flac(PyObject *dummy,
   pcmr_close(reader);
   bs_close(stream);
   return NULL;
+}
+#else
+ return 1;
+ error:
+ iaa_free(&samples);
+ pcmr_close(reader);
+ bs_close(stream);
+ return 0;
 }
 #endif
 
@@ -302,22 +338,22 @@ void FlacEncoder_write_subframe(BitbufferW *bbw,
   struct i_array lpc_coeffs;
   int lpc_shift_needed;
 
-  ia_init(&lpc_coeffs,1);
-  FlacEncoder_compute_best_lpc_coeffs(options,bits_per_sample,
-				      samples,
-				      &lpc_coeffs,
-				      &lpc_shift_needed);
-  FlacEncoder_write_lpc_subframe(bbw,
-				 options,
-				 bits_per_sample,
-				 samples,
-				 &lpc_coeffs,
-				 lpc_shift_needed);
+  /* ia_init(&lpc_coeffs,1); */
+  /* FlacEncoder_compute_best_lpc_coeffs(options,bits_per_sample, */
+  /* 				      samples, */
+  /* 				      &lpc_coeffs, */
+  /* 				      &lpc_shift_needed); */
+  /* FlacEncoder_write_lpc_subframe(bbw, */
+  /* 				 options, */
+  /* 				 bits_per_sample, */
+  /* 				 samples, */
+  /* 				 &lpc_coeffs, */
+  /* 				 lpc_shift_needed); */
 
-  ia_free(&lpc_coeffs);
+  /* ia_free(&lpc_coeffs); */
 
-  /* FlacEncoder_write_fixed_subframe(bbw,options,bits_per_sample,samples, */
-  /*     FlacEncoder_compute_best_fixed_predictor_order(samples)); */
+  FlacEncoder_write_fixed_subframe(bbw,options,bits_per_sample,samples,
+      FlacEncoder_compute_best_fixed_predictor_order(samples));
 }
 
 void FlacEncoder_write_constant_subframe(BitbufferW *bbw,
@@ -748,6 +784,9 @@ void md5_update(void *data, unsigned char *buffer, unsigned long len) {
 #ifdef STANDALONE
 
 int main(int argc, char *argv[]) {
+  encoders_encode_flac(argv[1],
+		       stdin,
+		       4096,3,0,6);
 
   return 0;
 }
