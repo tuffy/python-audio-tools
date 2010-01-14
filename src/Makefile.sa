@@ -1,0 +1,20 @@
+#This makefile is for generating debug standalone executables
+
+OBJS = array.o bitstream_w.o pcmreader.o
+
+flacenc: $(OBJS) flac_lpc.o
+	gcc -o flacenc encoders/flac.c $(OBJS) flac_lpc.o -DSTANDALONE -lssl -lm
+clean:
+	rm -f flacenc *.o
+
+array.o: array.c array.h
+	gcc -c array.c -DSTANDALONE
+
+bitstream_w.o: bitstream_w.c bitstream_w.h
+	gcc -c bitstream_w.c -DSTANDALONE
+
+pcmreader.o: pcmreader.c pcmreader.h
+	gcc -c pcmreader.c -DSTANDALONE
+
+flac_lpc.o: encoders/flac_lpc.c encoders/flac_lpc.h
+	gcc -c encoders/flac_lpc.c -DSTANDALONE

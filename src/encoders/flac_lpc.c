@@ -1,4 +1,5 @@
 #include "flac_lpc.h"
+#include <math.h>
 
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
 #define MAX(x,y) ((x) > (y) ? (x) : (y))

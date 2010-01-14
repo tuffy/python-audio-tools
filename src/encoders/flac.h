@@ -1,7 +1,6 @@
 #ifndef A_FLAC_ENCODE
 #define A_FLAC_ENCODE
 
-#include <Python.h>
 #include <stdint.h>
 #include "../bitstream_w.h"
 #include "../array.h"

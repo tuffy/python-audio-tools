@@ -6,6 +6,7 @@
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
 #define MAX(x,y) ((x) > (y) ? (x) : (y))
 
+#ifndef STANDALONE
 PyObject* encoders_encode_flac(PyObject *dummy,
 			       PyObject *args, PyObject *keywds) {
   char *filename;
@@ -121,6 +122,8 @@ PyObject* encoders_encode_flac(PyObject *dummy,
   bs_close(stream);
   return NULL;
 }
+#endif
+
 
 void FlacEncoder_write_streaminfo(Bitstream *bs,
 				  struct flac_STREAMINFO streaminfo) {
@@ -742,3 +745,10 @@ void md5_update(void *data, unsigned char *buffer, unsigned long len) {
 
 #include "flac_crc.c"
 
+#ifdef STANDALONE
+
+int main(int argc, char *argv[]) {
+
+  return 0;
+}
+#endif
