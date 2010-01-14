@@ -49,7 +49,7 @@ void FlacEncoder_compute_best_lpc_coeffs(struct flac_encoding_options *options,
 
   /*quantize coefficients*/
   ia_reset(coeffs);
-  FlacEncoder_quantize_coefficients(faa_getitem(&lp_coefficients,lpc_order),
+  FlacEncoder_quantize_coefficients(faa_getitem(&lp_coefficients,lpc_order - 1),
 				    options->qlp_coeff_precision,
 				    coeffs,
 				    shift_needed);

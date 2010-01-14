@@ -338,22 +338,23 @@ void FlacEncoder_write_subframe(BitbufferW *bbw,
   struct i_array lpc_coeffs;
   int lpc_shift_needed;
 
-  /* ia_init(&lpc_coeffs,1); */
-  /* FlacEncoder_compute_best_lpc_coeffs(options,bits_per_sample, */
-  /* 				      samples, */
-  /* 				      &lpc_coeffs, */
-  /* 				      &lpc_shift_needed); */
-  /* FlacEncoder_write_lpc_subframe(bbw, */
-  /* 				 options, */
-  /* 				 bits_per_sample, */
-  /* 				 samples, */
-  /* 				 &lpc_coeffs, */
-  /* 				 lpc_shift_needed); */
+  ia_init(&lpc_coeffs,1);
+  FlacEncoder_compute_best_lpc_coeffs(options,bits_per_sample,
+  				      samples,
+  				      &lpc_coeffs,
+  				      &lpc_shift_needed);
 
-  /* ia_free(&lpc_coeffs); */
+  FlacEncoder_write_lpc_subframe(bbw,
+  				 options,
+  				 bits_per_sample,
+  				 samples,
+  				 &lpc_coeffs,
+  				 lpc_shift_needed);
 
-  FlacEncoder_write_fixed_subframe(bbw,options,bits_per_sample,samples,
-      FlacEncoder_compute_best_fixed_predictor_order(samples));
+  ia_free(&lpc_coeffs);
+
+  /* FlacEncoder_write_fixed_subframe(bbw,options,bits_per_sample,samples, */
+  /*     FlacEncoder_compute_best_fixed_predictor_order(samples)); */
 }
 
 void FlacEncoder_write_constant_subframe(BitbufferW *bbw,
@@ -446,7 +447,7 @@ void FlacEncoder_write_lpc_subframe(BitbufferW *bbw,
 				    struct i_array *coeffs,
 				    int shift_needed) {
   int predictor_order = coeffs->size;
-  int qlp_precision = 10;   /*FIXME determine this based on coeffs size*/
+  int qlp_precision = 15;   /*FIXME determine this based on coeffs size*/
   struct i_array residual;
   int64_t accumulator;
   int i,j;
@@ -786,7 +787,7 @@ void md5_update(void *data, unsigned char *buffer, unsigned long len) {
 int main(int argc, char *argv[]) {
   encoders_encode_flac(argv[1],
 		       stdin,
-		       4096,3,0,6);
+		       4096,12,0,6);
 
   return 0;
 }
