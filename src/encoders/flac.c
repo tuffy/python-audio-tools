@@ -15,6 +15,7 @@ PyObject* encoders_encode_flac(PyObject *dummy,
   PyObject *pcmreader_obj;
   struct pcm_reader *reader;
   struct flac_STREAMINFO streaminfo;
+  char version_string[0xFF];
   static char *kwlist[] = {"filename","pcmreader",
 			   "block_size",
 			   "max_lpc_order",
@@ -68,6 +69,7 @@ PyObject* encoders_encode_flac(PyObject *dummy,
   Bitstream *stream;
   struct pcm_reader *reader;
   struct flac_STREAMINFO streaminfo;
+  char version_string[0xFF];
   MD5_CTX md5sum;
 
   struct ia_array samples;
@@ -83,6 +85,7 @@ PyObject* encoders_encode_flac(PyObject *dummy,
 
 #endif
 
+  sprintf(version_string,"Python Audio Tools %s",AUDIOTOOLS_VERSION);
   MD5_Init(&md5sum);
   pcmr_add_callback(reader,md5_update,&md5sum);
 
@@ -109,12 +112,23 @@ PyObject* encoders_encode_flac(PyObject *dummy,
   write_bits(stream,32,0x664C6143);
 
   /*write metadata header*/
-  write_bits(stream,1,1);
+  write_bits(stream,1,0);
   write_bits(stream,7,0);
   write_bits(stream,24,34);
 
   /*write placeholder STREAMINFO*/
   FlacEncoder_write_streaminfo(stream,streaminfo);
+
+  /*write VORBIS_COMMENT*/
+  write_bits(stream,1,1);
+  write_bits(stream,7,4);
+  write_bits(stream,24,4 + strlen(version_string) + 4);
+
+  /*this is a hack to fake little-endian output*/
+  write_bits(stream,8,strlen(version_string));
+  write_bits(stream,24,0);
+  fputs(version_string,file);
+  write_bits(stream,32,0);
 
   /*build frames until reader is empty,
     which updates STREAMINFO in the process*/
@@ -339,6 +353,27 @@ void FlacEncoder_write_subframe(BitbufferW *bbw,
   int lpc_shift_needed;
   BitbufferW *fixed_subframe;
   BitbufferW *lpc_subframe;
+  uint32_t i;
+  int32_t first_sample;
+
+  if (samples->size < 2) {
+    FlacEncoder_write_constant_subframe(bbw,
+					bits_per_sample,
+					ia_getitem(samples,0));
+  }
+
+  /*check for a constant subframe*/
+  first_sample = ia_getitem(samples,0);
+  for (i = 1; i < samples->size; i++) {
+    if (ia_getitem(samples,i) != first_sample)
+      break;
+  }
+  if (i == samples->size) {
+    FlacEncoder_write_constant_subframe(bbw,
+					bits_per_sample,
+					first_sample);
+    return;
+  }
 
   fixed_subframe = bbw_open(samples->size);
   FlacEncoder_write_fixed_subframe(fixed_subframe,

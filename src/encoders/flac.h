@@ -24,6 +24,10 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  *******************************************************/
 
+#define VERSION_STRING_(x) #x
+#define VERSION_STRING(x) VERSION_STRING_(x)
+const static char* AUDIOTOOLS_VERSION = VERSION_STRING(VERSION);
+
 struct flac_encoding_options {
   int block_size;
   int min_residual_partition_order;

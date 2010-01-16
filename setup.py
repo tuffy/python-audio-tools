@@ -17,6 +17,8 @@
 #along with this program; if not, write to the Free Software
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
+VERSION = '2.14alpha1'
+
 import sys
 
 if (sys.version_info < (2,5,0,'final',0)):
@@ -47,7 +49,8 @@ decodersmodule = Extension('audiotools.decoders',
                            sources = ['src/array.c',
                                       'src/bitstream_r.c',
                                       'src/decoders/flac.c',
-                                      'src/decoders.c'])
+                                      'src/decoders.c'],
+                           define_macros = [("VERSION",VERSION)])
 
 encodersmodule = Extension('audiotools.encoders',
                            sources = ['src/array.c',
@@ -56,7 +59,8 @@ encodersmodule = Extension('audiotools.encoders',
                                       'src/encoders/flac.c',
                                       'src/encoders/flac_lpc.c',
                                       'src/encoders.c'],
-                           libraries = ["ssl"])
+                           libraries = ["ssl"],
+                           define_macros = [("VERSION",VERSION)])
 
 extensions = [cdiomodule,
               pcmstreammodule,
@@ -104,7 +108,7 @@ extensions = [cdiomodule,
 #     pass #pkg-config not available
 
 setup (name = 'Python Audio Tools',
-       version = '2.13',
+       version = VERSION,
        description = 'A collection of audio handling utilities',
        author = 'Brian Langenberger',
        author_email = 'tuffy@users.sourceforge.net',
