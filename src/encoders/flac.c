@@ -41,7 +41,7 @@ PyObject* encoders_encode_flac(PyObject *dummy,
     return NULL;
   }
 
-  streaminfo.options.qlp_coeff_precision = 10; /*FIXME - make this dynamic*/
+  streaminfo.options.qlp_coeff_precision = FlacEncoder_qlp_coeff_precision(streaminfo.options.block_size);
 
   /*open the given filename for writing*/
   if ((file = fopen(filename,"wb")) == NULL) {
@@ -76,7 +76,7 @@ PyObject* encoders_encode_flac(PyObject *dummy,
   streaminfo.options.max_lpc_order = max_lpc_order;
   streaminfo.options.min_residual_partition_order = min_residual_partition_order;
   streaminfo.options.max_residual_partition_order = max_residual_partition_order;
-  streaminfo.options.qlp_coeff_precision = 10; /*FIXME - make this dynamic*/
+  streaminfo.options.qlp_coeff_precision = FlacEncoder_qlp_coeff_precision(block_size);
 
   file = fopen(filename,"wb");
   reader = pcmr_open(input,44100,2,16); /*FIXME - assume CD quality for now*/
@@ -337,14 +337,24 @@ void FlacEncoder_write_subframe(BitbufferW *bbw,
 				struct i_array *samples) {
   struct i_array lpc_coeffs;
   int lpc_shift_needed;
+  BitbufferW *fixed_subframe;
+  BitbufferW *lpc_subframe;
 
+  fixed_subframe = bbw_open(samples->size);
+  FlacEncoder_write_fixed_subframe(fixed_subframe,
+				   options,
+				   bits_per_sample,
+				   samples,
+				   FlacEncoder_compute_best_fixed_predictor_order(samples));
+
+  lpc_subframe = bbw_open(samples->size);
   ia_init(&lpc_coeffs,1);
   FlacEncoder_compute_best_lpc_coeffs(options,bits_per_sample,
   				      samples,
   				      &lpc_coeffs,
   				      &lpc_shift_needed);
 
-  FlacEncoder_write_lpc_subframe(bbw,
+  FlacEncoder_write_lpc_subframe(lpc_subframe,
   				 options,
   				 bits_per_sample,
   				 samples,
@@ -353,8 +363,13 @@ void FlacEncoder_write_subframe(BitbufferW *bbw,
 
   ia_free(&lpc_coeffs);
 
-  /* FlacEncoder_write_fixed_subframe(bbw,options,bits_per_sample,samples, */
-  /*     FlacEncoder_compute_best_fixed_predictor_order(samples)); */
+  if (fixed_subframe->bits_written <= lpc_subframe->bits_written)
+    bbw_append(bbw,fixed_subframe);
+  else
+    bbw_append(bbw,lpc_subframe);
+
+  bbw_close(fixed_subframe);
+  bbw_close(lpc_subframe);
 }
 
 void FlacEncoder_write_constant_subframe(BitbufferW *bbw,
@@ -447,7 +462,7 @@ void FlacEncoder_write_lpc_subframe(BitbufferW *bbw,
 				    struct i_array *coeffs,
 				    int shift_needed) {
   int predictor_order = coeffs->size;
-  int qlp_precision = 15;   /*FIXME determine this based on coeffs size*/
+  int qlp_precision = ia_reduce(coeffs,2,maximum_bits_size);
   struct i_array residual;
   int64_t accumulator;
   int i,j;
@@ -776,8 +791,39 @@ void write_utf8(Bitstream *stream, unsigned int value) {
   }
 }
 
+int FlacEncoder_qlp_coeff_precision(int block_size) {
+  if (block_size <= 192)
+    return 7;
+  else if (block_size <= 384)
+    return 8;
+  else if (block_size <= 576)
+    return 9;
+  else if (block_size <= 1152)
+    return 10;
+  else if (block_size <= 2304)
+    return 11;
+  else if (block_size <= 4608)
+    return 12;
+  else
+    return 13;
+}
+
 void md5_update(void *data, unsigned char *buffer, unsigned long len) {
   MD5_Update((MD5_CTX*)data, (const void*)buffer, len);
+}
+
+int maximum_bits_size(int value, int current_maximum) {
+  int bits = 1;
+  if (value < 0) {
+    value = -value;
+  }
+  for (;value > 0; value >>= 1)
+    bits++;
+
+  if (bits > current_maximum)
+    return bits;
+  else
+    return current_maximum;
 }
 
 #include "flac_crc.c"

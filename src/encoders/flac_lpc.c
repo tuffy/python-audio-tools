@@ -31,7 +31,8 @@ void FlacEncoder_compute_best_lpc_coeffs(struct flac_encoding_options *options,
   /*if all autocorrelation values are 0.0,
     we've got a bunch of 0 samples
     and should use special case values for LPC coeffs and shift*/
-  if (fa_max(&autocorrelation_values) == 0.0) {
+  if ((fa_min(&autocorrelation_values) == 0.0) &&
+      (fa_max(&autocorrelation_values) == 0.0)) {
     fa_free(&tukey_window);
     fa_free(&windowed_signal);
     fa_free(&autocorrelation_values);

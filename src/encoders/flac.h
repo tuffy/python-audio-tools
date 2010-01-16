@@ -163,11 +163,16 @@ int FlacEncoder_compute_best_fixed_predictor_order(struct i_array *samples);
 
 int FlacEncoder_compute_best_rice_parameter(struct i_array *residuals);
 
+/*given a block_size, return a QLP coefficient precision value*/
+int FlacEncoder_qlp_coeff_precision(int block_size);
+
 /*writes a UTF-8 value to the bitstream*/
 void write_utf8(Bitstream *stream, unsigned int value);
 
 /*an MD5 summing callback, updated when reading input strings*/
 void md5_update(void *data, unsigned char *buffer, unsigned long len);
+
+int maximum_bits_size(int value, int current_maximum);
 
 #include "flac_crc.h"
 

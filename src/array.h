@@ -26,6 +26,8 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  *******************************************************/
 
+/*FIXME - ensure the ia_* and fa_* functions have equivilents*/
+
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
 #define MAX(x,y) ((x) > (y) ? (x) : (y))
 
@@ -159,6 +161,25 @@ void ia_add(struct i_array *target,
 void ia_sub(struct i_array *target,
 	    struct i_array *source1, struct i_array *source2);
 
+/*this calls "function" over the elements in source
+  and returns a single value
+  for example,  ia_reduce([1,2,3],0,f)  is the equivilent of calling:
+  f(3,f(2,f(1,0)))
+*/
+static inline int ia_reduce(struct i_array *source,
+			    int base,
+			    int (function)(int, int)) {
+  uint32_t i;
+
+  if (source->size == 0)
+    return base;
+  else {
+    for (i = 0; i < source->size; i++) {
+      base = function(source->data[i],base);
+    }
+    return base;
+  }
+}
 
 /*an array of i_array structs
   typically for storing multiple channels of PCM values*/
