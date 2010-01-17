@@ -1,5 +1,8 @@
 #ifndef A_FLAC_ENCODE
 #define A_FLAC_ENCODE
+#ifndef STANDALONE
+#include <Python.h>
+#endif
 
 #include <stdint.h>
 #include "../bitstream_w.h"
@@ -23,10 +26,6 @@
  along with this program; if not, write to the Free Software
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  *******************************************************/
-
-#define VERSION_STRING_(x) #x
-#define VERSION_STRING(x) VERSION_STRING_(x)
-const static char* AUDIOTOOLS_VERSION = VERSION_STRING(VERSION);
 
 struct flac_encoding_options {
   int block_size;

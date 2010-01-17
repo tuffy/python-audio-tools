@@ -1,4 +1,3 @@
-#include <Python.h>
 #include "encoders.h"
 #include "bitstream_w.h"
 
