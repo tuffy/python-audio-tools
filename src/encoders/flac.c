@@ -220,28 +220,55 @@ void FlacEncoder_write_frame(Bitstream *bs,
   uint32_t i;
   long startpos;
   long framesize;
-  BitbufferW *subframe_buffer;
+  int channel_assignment;
+  BitbufferW *best_subframe;
+  BitbufferW *next_subframe;
 
   streaminfo->crc8 = streaminfo->crc16 = 0;
 
-  subframe_buffer = bbw_open(samples->size);
-
   startpos = ftell(bs->file);
 
-  FlacEncoder_write_frame_header(bs,streaminfo,samples);
+  best_subframe = bbw_open(samples->size);
 
   /*for each channel in samples, write a subframe*/
-  /*FIXME - this must try various channel assignments, if necessary*/
+
+  /*first, try independent  subframes*/
+  channel_assignment = samples->size - 1;
   for (i = 0; i < samples->size; i++) {
-    bbw_reset(subframe_buffer);
-    FlacEncoder_write_subframe(subframe_buffer,
+    FlacEncoder_write_subframe(best_subframe,
 			       &(streaminfo->options),
 			       streaminfo->bits_per_sample,
 			       iaa_getitem(samples,i));
-    bbw_dump(subframe_buffer,bs);
   }
 
-  bbw_close(subframe_buffer);
+  if (samples->size == 2) {
+    next_subframe = bbw_open(samples->size);
+
+    /*if 2 channels, try difference subframes*/
+    channel_assignment = 0x8;
+    ia_sub(iaa_getitem(samples,1),
+	   iaa_getitem(samples,0),iaa_getitem(samples,1));
+    FlacEncoder_write_subframe(next_subframe,
+			       &(streaminfo->options),
+			       streaminfo->bits_per_sample,
+			       iaa_getitem(samples,0));
+    FlacEncoder_write_subframe(next_subframe,
+			       &(streaminfo->options),
+			       streaminfo->bits_per_sample + 1,
+			       iaa_getitem(samples,1));
+
+    if (next_subframe->bits_written < best_subframe->bits_written) {
+      bbw_close(best_subframe);
+      best_subframe = next_subframe;
+    } else {
+      channel_assignment = 1;
+      bbw_close(next_subframe);
+    }
+  }
+
+  FlacEncoder_write_frame_header(bs,streaminfo,samples,channel_assignment);
+  bbw_dump(best_subframe,bs);
+  bbw_close(best_subframe);
 
   byte_align_w(bs);
 
@@ -265,10 +292,10 @@ void FlacEncoder_write_frame(Bitstream *bs,
 
 void FlacEncoder_write_frame_header(Bitstream *bs,
 				    struct flac_STREAMINFO *streaminfo,
-				    struct ia_array *samples) {
+				    struct ia_array *samples,
+				    int channel_assignment) {
   int block_size_bits;
   int sample_rate_bits;
-  int channel_assignment;
   int bits_per_sample_bits;
   int block_size = iaa_getitem(samples,0)->size;
 
@@ -323,9 +350,6 @@ void FlacEncoder_write_frame_header(Bitstream *bs,
       sample_rate_bits = 0x0;
     break;
   }
-
-  /*FIXME - channel assignment should be passed in from write_frame*/
-  channel_assignment = streaminfo->channels - 1;
 
   /*determine bits-per-sample bits from streaminfo*/
   switch (streaminfo->bits_per_sample) {

@@ -91,7 +91,8 @@ void FlacEncoder_write_frame(Bitstream *bs,
   writes a FLAC frame header to the bitstream*/
 void FlacEncoder_write_frame_header(Bitstream *bs,
 				    struct flac_STREAMINFO *streaminfo,
-				    struct ia_array *samples);
+				    struct ia_array *samples,
+				    int channel_assignment);
 
 /*given a bits_per_sample and list of sample values,
   and the user-defined encoding options
