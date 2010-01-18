@@ -549,6 +549,10 @@ void FlacEncoder_write_lpc_subframe(BitbufferW *bbw,
   int64_t accumulator;
   int i,j;
 
+  uint32_t samples_size;
+  int32_t *samples_data;
+  int32_t *coeffs_data;
+
   /*write subframe header*/
   bbw_write_bits(bbw,1,0);
   bbw_write_bits(bbw,6,0x20 | (predictor_order - 1));
@@ -571,14 +575,18 @@ void FlacEncoder_write_lpc_subframe(BitbufferW *bbw,
   }
 
   /*calculate residual values*/
-  ia_init(&residual,samples->size);
-  for (i = predictor_order; i < samples->size; i++) {
+  samples_size = samples->size;
+  samples_data = samples->data;
+  coeffs_data = coeffs->data;
+
+  ia_init(&residual,samples_size);
+  for (i = predictor_order; i < samples_size; i++) {
     accumulator = 0;
     for (j = 0; j < predictor_order; j++) {
-      accumulator += (int64_t)ia_getitem(samples,i - j - 1) * (int64_t)ia_getitem(coeffs,j);
+      accumulator += (int64_t)samples_data[i - j - 1] * (int64_t)coeffs_data[j];
     }
     ia_append(&residual,
-	      ia_getitem(samples,i) - (int32_t)(accumulator >> shift_needed));
+	      samples_data[i] - (int32_t)(accumulator >> shift_needed));
   }
 
   /*write residual*/
@@ -761,13 +769,19 @@ void FlacEncoder_write_residual_partition(BitbufferW *bbw,
   int32_t msb;
   int32_t lsb;
 
+  uint32_t residuals_size;
+  int32_t *residuals_data;
+
+  residuals_size = residuals->size;
+  residuals_data = residuals->data;
+
   /*write the 4-5 bit Rice parameter header (depending on coding method)*/
   bbw_write_bits(bbw, coding_method == 0 ? 4 : 5, rice_parameter);
 
   /*for each residual, write a unary/unsigned bits pair
     whose breakpoint depends on "rice_parameter"*/
-  for (i = 0; i < residuals->size; i++) {
-    residual = ia_getitem(residuals,i);
+  for (i = 0; i < residuals_size; i++) {
+    residual = residuals_data[i];
     if (residual >= 0) {
       residual <<= 1;
     } else {

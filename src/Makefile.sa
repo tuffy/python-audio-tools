@@ -2,20 +2,21 @@
 
 VERSION = "2.14alpha1"
 OBJS = array.o bitstream_w.o pcmreader.o
+FLAGS = -Wall -g
 
 flacenc: $(OBJS) encoders/flac.c encoders/flac.h flac_lpc.o
-	gcc -Wall -g -DVERSION=$(VERSION) -o flacenc encoders/flac.c $(OBJS) flac_lpc.o -DSTANDALONE -lssl -lm
+	gcc $(FLAGS) -DVERSION=$(VERSION) -o flacenc encoders/flac.c $(OBJS) flac_lpc.o -DSTANDALONE -lssl -lm
 clean:
 	rm -f flacenc *.o
 
 array.o: array.c array.h
-	gcc -Wall -g -c array.c -DSTANDALONE
+	gcc $(FLAGS) -c array.c -DSTANDALONE
 
 bitstream_w.o: bitstream_w.c bitstream_w.h
-	gcc -Wall -g -c bitstream_w.c -DSTANDALONE
+	gcc $(FLAGS) -c bitstream_w.c -DSTANDALONE
 
 pcmreader.o: pcmreader.c pcmreader.h
-	gcc -Wall -g -c pcmreader.c -DSTANDALONE
+	gcc $(FLAGS) -c pcmreader.c -DSTANDALONE
 
 flac_lpc.o: encoders/flac_lpc.c encoders/flac_lpc.h
-	gcc -Wall -g -c encoders/flac_lpc.c -DSTANDALONE
+	gcc $(FLAGS) -c encoders/flac_lpc.c -DSTANDALONE

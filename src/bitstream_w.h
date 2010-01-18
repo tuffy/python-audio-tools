@@ -216,44 +216,59 @@ static inline void bbw_enlarge(BitbufferW *bbw) {
 
 static inline void bbw_write_bits(BitbufferW *bbw, unsigned int count,
 				  int value) {
+  unsigned int index;
+
   if (bbw->size == bbw->total_size)
     bbw_enlarge(bbw);
-  bbw->actions[bbw->size] = BBW_WRITE_BITS;
-  bbw->keys[bbw->size].count = count;
-  bbw->values[bbw->size].value = value;
+  index = bbw->size;
+
+  bbw->actions[index] = BBW_WRITE_BITS;
+  bbw->keys[index].count = count;
+  bbw->values[index].value = value;
   bbw->bits_written += count;
   bbw->size++;
 }
 
 static inline void bbw_write_signed_bits(BitbufferW *bbw, unsigned int count,
 					 int value) {
-  if (bbw->size == bbw->total_size) {
+  unsigned int index;
+
+  if (bbw->size == bbw->total_size)
     bbw_enlarge(bbw);
-  }
-  bbw->actions[bbw->size] = BBW_WRITE_SIGNED_BITS;
-  bbw->keys[bbw->size].count = count;
-  bbw->values[bbw->size].value = value;
+  index = bbw->size;
+
+  bbw->actions[index] = BBW_WRITE_SIGNED_BITS;
+  bbw->keys[index].count = count;
+  bbw->values[index].value = value;
   bbw->bits_written += count;
   bbw->size++;
 }
 
 static inline void bbw_write_bits64(BitbufferW *bbw, unsigned int count,
 				    uint64_t value) {
+  unsigned int index;
+
   if (bbw->size == bbw->total_size)
     bbw_enlarge(bbw);
-  bbw->actions[bbw->size] = BBW_WRITE_BITS64;
-  bbw->keys[bbw->size].count = count;
-  bbw->values[bbw->size].value64 = value;
+  index = bbw->size;
+
+  bbw->actions[index] = BBW_WRITE_BITS64;
+  bbw->keys[index].count = count;
+  bbw->values[index].value64 = value;
   bbw->bits_written += count;
   bbw->size++;
 }
 
 static inline void bbw_write_unary(BitbufferW *bbw, int stop_bit, int value) {
+  unsigned int index;
+
   if (bbw->size == bbw->total_size)
     bbw_enlarge(bbw);
-  bbw->actions[bbw->size] = BBW_WRITE_UNARY;
-  bbw->keys[bbw->size].stop_bit = stop_bit;
-  bbw->values[bbw->size].value = value;
+  index = bbw->size;
+
+  bbw->actions[index] = BBW_WRITE_UNARY;
+  bbw->keys[index].stop_bit = stop_bit;
+  bbw->values[index].value = value;
   bbw->bits_written += (value + 1);
   bbw->size++;
 }
