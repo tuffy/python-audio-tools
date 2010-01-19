@@ -79,9 +79,7 @@ which might be written to disk
 
 BitbufferW* bbw_open(unsigned int initial_size) {
   BitbufferW *bbw = malloc(sizeof(BitbufferW));
-  bbw->actions = malloc(sizeof(bbw_action) * initial_size);
-  bbw->keys = malloc(sizeof(bbw_key) * initial_size);
-  bbw->values = malloc(sizeof(bbw_value) * initial_size);
+  bbw->actions = malloc(sizeof(BitbufferAction) * initial_size);
   bbw->size = 0;
   bbw->total_size = initial_size;
   bbw->bits_written = 0;
@@ -90,8 +88,6 @@ BitbufferW* bbw_open(unsigned int initial_size) {
 
 void bbw_close(BitbufferW *bbw) {
   free(bbw->actions);
-  free(bbw->keys);
-  free(bbw->values);
   free(bbw);
 }
 
@@ -102,34 +98,36 @@ void bbw_reset(BitbufferW *bbw) {
 
 void bbw_dump(BitbufferW *bbw, Bitstream *bs) {
   unsigned int i;
+  BitbufferAction action;
 
   /* fprintf(stderr,"dumping %d actions\n",bbw->size); */
 
   for (i = 0; i < bbw->size; i++) {
-    switch (bbw->actions[i]) {
+    action = bbw->actions[i];
+    switch (action.action) {
     case BBW_WRITE_BITS:
       /* fprintf(stderr, */
       /* 	      "%5.5d - write_bits %d %u\n", */
       /* 	      i,bbw->keys[i].count,bbw->values[i].value); */
-      write_bits(bs,bbw->keys[i].count,bbw->values[i].value);
+      write_bits(bs,action.key.count,action.value.value);
       break;
     case BBW_WRITE_SIGNED_BITS:
       /* fprintf(stderr, */
       /* 	      "%5.5d - write_signed_bits %d %d\n", */
       /* 	      i,bbw->keys[i].count,bbw->values[i].value); */
-      write_signed_bits(bs,bbw->keys[i].count,bbw->values[i].value);
+      write_signed_bits(bs,action.key.count,action.value.value);
       break;
     case BBW_WRITE_BITS64:
       /* fprintf(stderr, */
       /* 	      "%5.5d - write_bits64 %d %lu\n", */
       /* 	      i,bbw->keys[i].count,bbw->values[i].value64); */
-      write_bits64(bs,bbw->keys[i].count,bbw->values[i].value64);
+      write_bits64(bs,action.key.count,action.value.value64);
       break;
     case BBW_WRITE_UNARY:
       /* fprintf(stderr, */
       /* 	      "%5.5d - write_unary %d %d\n", */
       /* 	      i,bbw->keys[i].count,bbw->values[i].value); */
-      write_unary(bs,bbw->keys[i].stop_bit,bbw->values[i].value);
+      write_unary(bs,action.key.stop_bit,action.value.value);
       break;
     case BBW_BYTE_ALIGN:
       /* fprintf(stderr, */
@@ -146,23 +144,13 @@ void bbw_append(BitbufferW *target, BitbufferW *source) {
   if ((target->total_size - target->size) < source->size) {
     target->total_size = target->size + source->size;
     target->actions = realloc(target->actions,
-			      sizeof(bbw_action) * target->total_size);
-    target->keys = realloc(target->keys,
-			   sizeof(bbw_key) * target->total_size);
-    target->values = realloc(target->values,
-			     sizeof(bbw_value) * target->total_size);
+			      sizeof(BitbufferAction) * target->total_size);
   }
 
   /*then memcpy source buffers to target buffers at the proper offset*/
   memcpy(target->actions + target->size,
 	 source->actions,
-	 sizeof(bbw_action) * source->size);
-  memcpy(target->keys + target->size,
-	 source->keys,
-	 sizeof(bbw_key) * source->size);
-  memcpy(target->values + target->size,
-	 source->values,
-	 sizeof(bbw_value) * source->size);
+	 sizeof(BitbufferAction) * source->size);
 
   /*and update the "size" and "bits_written" fields*/
   target->size += source->size;
@@ -174,24 +162,18 @@ void bbw_swap(BitbufferW *a, BitbufferW *b) {
 
   /*move values from a to c*/
   c.actions = a->actions;
-  c.keys = a->keys;
-  c.values = a->values;
   c.size = a->size;
   c.total_size = a->total_size;
   c.bits_written = a->bits_written;
 
   /*move values from b to a*/
   a->actions = b->actions;
-  a->keys = b->keys;
-  a->values = b->values;
   a->size = b->size;
   a->total_size = b->total_size;
   a->bits_written = b->bits_written;
 
   /*move values from c to b*/
   b->actions = c.actions;
-  b->keys = c.keys;
-  b->values = c.values;
   b->size = c.size;
   b->total_size = c.total_size;
   b->bits_written = c.bits_written;

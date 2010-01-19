@@ -176,20 +176,20 @@ typedef enum {BBW_WRITE_BITS,
 	      BBW_WRITE_UNARY,
 	      BBW_BYTE_ALIGN} bbw_action;
 
-typedef union {
-  unsigned int count;
-  int stop_bit;
-} bbw_key;
-
-typedef union {
-  int value;
-  uint64_t value64;
-} bbw_value;
+typedef struct {
+  bbw_action action;
+  union {
+    unsigned int count;
+    int stop_bit;
+  } key;
+  union {
+    int value;
+    uint64_t value64;
+  } value;
+} BitbufferAction;
 
 typedef struct {
-  bbw_action *actions;
-  bbw_key *keys;
-  bbw_value *values;
+  BitbufferAction *actions;
   unsigned int size;
   unsigned int total_size;
   unsigned int bits_written;
@@ -209,77 +209,75 @@ void bbw_swap(BitbufferW *a, BitbufferW *b);
 
 static inline void bbw_enlarge(BitbufferW *bbw) {
   bbw->total_size *= 2;
-  bbw->actions = realloc(bbw->actions,sizeof(bbw_action) * bbw->total_size);
-  bbw->keys = realloc(bbw->keys,sizeof(bbw_key) * bbw->total_size);
-  bbw->values = realloc(bbw->values,sizeof(bbw_value) * bbw->total_size);
+  bbw->actions = realloc(bbw->actions,
+			 sizeof(BitbufferAction) * bbw->total_size);
 }
 
 static inline void bbw_write_bits(BitbufferW *bbw, unsigned int count,
 				  int value) {
-  unsigned int index;
+  BitbufferAction write;
+  write.action = BBW_WRITE_BITS;
+  write.key.count = count;
+  write.value.value = value;
 
   if (bbw->size == bbw->total_size)
     bbw_enlarge(bbw);
-  index = bbw->size;
 
-  bbw->actions[index] = BBW_WRITE_BITS;
-  bbw->keys[index].count = count;
-  bbw->values[index].value = value;
+  bbw->actions[bbw->size++] = write;
   bbw->bits_written += count;
-  bbw->size++;
 }
 
 static inline void bbw_write_signed_bits(BitbufferW *bbw, unsigned int count,
 					 int value) {
-  unsigned int index;
+  BitbufferAction write;
+  write.action = BBW_WRITE_SIGNED_BITS;
+  write.key.count = count;
+  write.value.value = value;
 
   if (bbw->size == bbw->total_size)
     bbw_enlarge(bbw);
-  index = bbw->size;
 
-  bbw->actions[index] = BBW_WRITE_SIGNED_BITS;
-  bbw->keys[index].count = count;
-  bbw->values[index].value = value;
+  bbw->actions[bbw->size++] = write;
   bbw->bits_written += count;
-  bbw->size++;
 }
 
 static inline void bbw_write_bits64(BitbufferW *bbw, unsigned int count,
 				    uint64_t value) {
-  unsigned int index;
+  BitbufferAction write;
+  write.action = BBW_WRITE_BITS64;
+  write.key.count = count;
+  write.value.value64 = value;
 
   if (bbw->size == bbw->total_size)
     bbw_enlarge(bbw);
-  index = bbw->size;
 
-  bbw->actions[index] = BBW_WRITE_BITS64;
-  bbw->keys[index].count = count;
-  bbw->values[index].value64 = value;
+  bbw->actions[bbw->size++] = write;
   bbw->bits_written += count;
-  bbw->size++;
 }
 
 static inline void bbw_write_unary(BitbufferW *bbw, int stop_bit, int value) {
-  unsigned int index;
+  BitbufferAction write;
+  write.action = BBW_WRITE_UNARY;
+  write.key.stop_bit = stop_bit;
+  write.value.value64 = value;
 
   if (bbw->size == bbw->total_size)
     bbw_enlarge(bbw);
-  index = bbw->size;
 
-  bbw->actions[index] = BBW_WRITE_UNARY;
-  bbw->keys[index].stop_bit = stop_bit;
-  bbw->values[index].value = value;
+  bbw->actions[bbw->size++] = write;
   bbw->bits_written += (value + 1);
-  bbw->size++;
 }
 
 
 static inline void bbw_byte_align_w(BitbufferW *bbw) {
+  BitbufferAction write;
+  write.action = BBW_BYTE_ALIGN;
+
   if (bbw->size == bbw->total_size)
     bbw_enlarge(bbw);
-  bbw->actions[bbw->size] = BBW_BYTE_ALIGN;
+
+  bbw->actions[bbw->size++] = write;
   bbw->bits_written += (bbw->bits_written % 8);
-  bbw->size++;
 }
 
 
