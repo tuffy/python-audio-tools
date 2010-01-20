@@ -25,6 +25,13 @@ Bitstream* bs_open(FILE *f) {
   bs->file = f;
   bs->state = 0;
   bs->callback = NULL;
+
+  bs->write_bits = write_bits_actual;
+  bs->write_signed_bits = write_signed_bits_actual;
+  bs->write_bits64 = write_bits64_actual;
+  bs->write_unary = write_unary_actual;
+  bs->byte_align = byte_align_w_actual;
+
   return bs;
 }
 
@@ -61,6 +68,123 @@ int bs_eof(Bitstream *bs) {
 
  these write actual bits to disk
 ********************************/
+
+void write_bits_actual(Bitstream* bs, unsigned int count, int value) {
+  int bits_to_write;
+  int value_to_write;
+  int result;
+  int context = bs->state;
+  unsigned int byte;
+  struct bs_callback* callback;
+
+  while (count > 0) {
+    /*chop off up to 8 bits to write at a time*/
+    bits_to_write = count > 8 ? 8 : count;
+    value_to_write = value >> (count - bits_to_write);
+
+    /*feed them through the jump table*/
+    result = write_bits_table[context][(value_to_write | (bits_to_write << 8))];
+
+    /*write a byte if necessary*/
+    if (result >> 18) {
+      byte = (result >> 10) & 0xFF;
+      fputc(byte,bs->file);
+      for (callback = bs->callback; callback != NULL; callback = callback->next)
+	callback->callback(byte,callback->data);
+    }
+
+    /*update the context*/
+    context = result & 0x3FF;
+
+    /*decrement the count and value*/
+    value -= (value_to_write << (count - bits_to_write));
+    count -= bits_to_write;
+  }
+  bs->state = context;
+}
+
+void write_signed_bits_actual(Bitstream* bs, unsigned int count, int value) {
+  if (value >= 0) {
+    write_bits_actual(bs, count, value);
+  } else {
+    write_bits_actual(bs, count, (1 << count) - (-value));
+  }
+}
+
+void write_bits64_actual(Bitstream* bs, unsigned int count, uint64_t value) {
+  int bits_to_write;
+  int value_to_write;
+  int result;
+  int context = bs->state;
+  unsigned int byte;
+  struct bs_callback* callback;
+
+  while (count > 0) {
+    /*chop off up to 8 bits to write at a time*/
+    bits_to_write = count > 8 ? 8 : count;
+    value_to_write = value >> (count - bits_to_write);
+
+    /*feed them through the jump table*/
+    result = write_bits_table[context][(value_to_write | (bits_to_write << 8))];
+
+    /*write a byte if necessary*/
+    if (result >> 18) {
+      byte = (result >> 10) & 0xFF;
+      fputc(byte,bs->file);
+      for (callback = bs->callback; callback != NULL; callback = callback->next)
+	callback->callback(byte,callback->data);
+    }
+
+    /*update the context*/
+    context = result & 0x3FF;
+
+    /*decrement the count and value*/
+    value -= (value_to_write << (count - bits_to_write));
+    count -= bits_to_write;
+  }
+  bs->state = context;
+}
+
+
+void write_unary_actual(Bitstream* bs, int stop_bit, int value) {
+  int result;
+  int context = bs->state;
+  unsigned int byte;
+  struct bs_callback* callback;
+
+  /*send continuation blocks until we get to 7 bits or less*/
+  while (value >= 8) {
+    result = write_unary_table[context][(stop_bit << 4) | 0x08];
+    if (result >> 18) {
+      byte = (result >> 10) & 0xFF;
+      fputc(byte,bs->file);
+      for (callback = bs->callback; callback != NULL; callback = callback->next)
+	callback->callback(byte,callback->data);
+    }
+
+    context = result & 0x3FF;
+
+    value -= 8;
+  }
+
+  /*finally, send the remaning value*/
+  result = write_unary_table[context][(stop_bit << 4) | value];
+
+  if (result >> 18) {
+    byte = (result >> 10) & 0xFF;
+    fputc(byte,bs->file);
+    for (callback = bs->callback; callback != NULL; callback = callback->next)
+      callback->callback(byte,callback->data);
+  }
+
+  context = result & 0x3FF;
+  bs->state = context;
+}
+
+void byte_align_w_actual(Bitstream* bs) {
+  write_bits_actual(bs,7,0);
+  bs->state = 0;
+}
 
 const unsigned int write_bits_table[0x400][0x900] =
 #include "write_bits_table.h"
@@ -109,30 +233,30 @@ void bbw_dump(BitbufferW *bbw, Bitstream *bs) {
       /* fprintf(stderr, */
       /* 	      "%5.5d - write_bits %d %u\n", */
       /* 	      i,bbw->keys[i].count,bbw->values[i].value); */
-      write_bits(bs,action.key.count,action.value.value);
+      bs->write_bits(bs,action.key.count,action.value.value);
       break;
     case BBW_WRITE_SIGNED_BITS:
       /* fprintf(stderr, */
       /* 	      "%5.5d - write_signed_bits %d %d\n", */
       /* 	      i,bbw->keys[i].count,bbw->values[i].value); */
-      write_signed_bits(bs,action.key.count,action.value.value);
+      bs->write_signed_bits(bs,action.key.count,action.value.value);
       break;
     case BBW_WRITE_BITS64:
       /* fprintf(stderr, */
       /* 	      "%5.5d - write_bits64 %d %lu\n", */
       /* 	      i,bbw->keys[i].count,bbw->values[i].value64); */
-      write_bits64(bs,action.key.count,action.value.value64);
+      bs->write_bits64(bs,action.key.count,action.value.value64);
       break;
     case BBW_WRITE_UNARY:
       /* fprintf(stderr, */
       /* 	      "%5.5d - write_unary %d %d\n", */
       /* 	      i,bbw->keys[i].count,bbw->values[i].value); */
-      write_unary(bs,action.key.stop_bit,action.value.value);
+      bs->write_unary(bs,action.key.stop_bit,action.value.value);
       break;
     case BBW_BYTE_ALIGN:
       /* fprintf(stderr, */
       /* 	      "%5.5d - byte_align\n",i); */
-      byte_align_w(bs);
+      bs->byte_align(bs);
       break;
     }
   }

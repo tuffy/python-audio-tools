@@ -30,10 +30,18 @@ struct bs_callback {
   struct bs_callback *next;
 };
 
-typedef struct {
+typedef struct Bitstream_s {
   FILE *file;
   int state;
   struct bs_callback *callback;
+
+  void (*write_bits)(struct Bitstream_s* bs, unsigned int count, int value);
+  void (*write_signed_bits)(struct Bitstream_s* bs, unsigned int count,
+			    int value);
+  void (*write_bits64)(struct Bitstream_s* bs, unsigned int count,
+		       uint64_t value);
+  void (*write_unary)(struct Bitstream_s* bs, int stop_bit, int value);
+  void (*byte_align)(struct Bitstream_s* bs);
 } Bitstream;
 
 extern const unsigned int write_bits_table[0x400][0x900];
@@ -49,124 +57,16 @@ void bs_add_callback(Bitstream *bs,
 
 int bs_eof(Bitstream *bs);
 
-static inline void write_bits(Bitstream* bs, unsigned int count, int value) {
-  int bits_to_write;
-  int value_to_write;
-  int result;
-  int context = bs->state;
-  unsigned int byte;
-  struct bs_callback* callback;
 
-  while (count > 0) {
-    /*chop off up to 8 bits to write at a time*/
-    bits_to_write = count > 8 ? 8 : count;
-    value_to_write = value >> (count - bits_to_write);
+void write_bits_actual(Bitstream* bs, unsigned int count, int value);
 
-    /*feed them through the jump table*/
-    result = write_bits_table[context][(value_to_write | (bits_to_write << 8))];
+void write_signed_bits_actual(Bitstream* bs, unsigned int count, int value);
 
-    /*write a byte if necessary*/
-    if (result >> 18) {
-      byte = (result >> 10) & 0xFF;
-      fputc(byte,bs->file);
-      for (callback = bs->callback; callback != NULL; callback = callback->next)
-	callback->callback(byte,callback->data);
-    }
+void write_bits64_actual(Bitstream* bs, unsigned int count, uint64_t value);
 
-    /*update the context*/
-    context = result & 0x3FF;
+void write_unary_actual(Bitstream* bs, int stop_bit, int value);
 
-    /*decrement the count and value*/
-    value -= (value_to_write << (count - bits_to_write));
-    count -= bits_to_write;
-  }
-  bs->state = context;
-}
-
-static inline void write_signed_bits(Bitstream* bs, unsigned int count,
-				     int value) {
-  if (value >= 0) {
-    write_bits(bs, count, value);
-  } else {
-    write_bits(bs, count, (1 << count) - (-value));
-  }
-}
-
-static inline void write_bits64(Bitstream* bs, unsigned int count,
-				uint64_t value) {
-  int bits_to_write;
-  int value_to_write;
-  int result;
-  int context = bs->state;
-  unsigned int byte;
-  struct bs_callback* callback;
-
-  while (count > 0) {
-    /*chop off up to 8 bits to write at a time*/
-    bits_to_write = count > 8 ? 8 : count;
-    value_to_write = value >> (count - bits_to_write);
-
-    /*feed them through the jump table*/
-    result = write_bits_table[context][(value_to_write | (bits_to_write << 8))];
-
-    /*write a byte if necessary*/
-    if (result >> 18) {
-      byte = (result >> 10) & 0xFF;
-      fputc(byte,bs->file);
-      for (callback = bs->callback; callback != NULL; callback = callback->next)
-	callback->callback(byte,callback->data);
-    }
-
-    /*update the context*/
-    context = result & 0x3FF;
-
-    /*decrement the count and value*/
-    value -= (value_to_write << (count - bits_to_write));
-    count -= bits_to_write;
-  }
-  bs->state = context;
-}
-
-
-static inline void write_unary(Bitstream* bs, int stop_bit, int value) {
-  int result;
-  int context = bs->state;
-  unsigned int byte;
-  struct bs_callback* callback;
-
-  /*send continuation blocks until we get to 7 bits or less*/
-  while (value >= 8) {
-    result = write_unary_table[context][(stop_bit << 4) | 0x08];
-    if (result >> 18) {
-      byte = (result >> 10) & 0xFF;
-      fputc(byte,bs->file);
-      for (callback = bs->callback; callback != NULL; callback = callback->next)
-	callback->callback(byte,callback->data);
-    }
-
-    context = result & 0x3FF;
-
-    value -= 8;
-  }
-
-  /*finally, send the remaning value*/
-  result = write_unary_table[context][(stop_bit << 4) | value];
-
-  if (result >> 18) {
-    byte = (result >> 10) & 0xFF;
-    fputc(byte,bs->file);
-    for (callback = bs->callback; callback != NULL; callback = callback->next)
-      callback->callback(byte,callback->data);
-  }
-
-  context = result & 0x3FF;
-  bs->state = context;
-}
-
-static inline void byte_align_w(Bitstream* bs) {
-  write_bits(bs,7,0);
-  bs->state = 0;
-}
+void byte_align_w_actual(Bitstream* bs);
 
 
 

@@ -132,26 +132,26 @@ PyObject* encoders_encode_flac(PyObject *dummy,
   streaminfo.total_frames = 0;
 
   /*write FLAC stream header*/
-  write_bits(stream,32,0x664C6143);
+  stream->write_bits(stream,32,0x664C6143);
 
   /*write metadata header*/
-  write_bits(stream,1,0);
-  write_bits(stream,7,0);
-  write_bits(stream,24,34);
+  stream->write_bits(stream,1,0);
+  stream->write_bits(stream,7,0);
+  stream->write_bits(stream,24,34);
 
   /*write placeholder STREAMINFO*/
   FlacEncoder_write_streaminfo(stream,streaminfo);
 
   /*write VORBIS_COMMENT*/
-  write_bits(stream,1,1);
-  write_bits(stream,7,4);
-  write_bits(stream,24,4 + strlen(version_string) + 4);
+  stream->write_bits(stream,1,1);
+  stream->write_bits(stream,7,4);
+  stream->write_bits(stream,24,4 + strlen(version_string) + 4);
 
   /*this is a hack to fake little-endian output*/
-  write_bits(stream,8,strlen(version_string));
-  write_bits(stream,24,0);
+  stream->write_bits(stream,8,strlen(version_string));
+  stream->write_bits(stream,24,0);
   fputs(version_string,file);
-  write_bits(stream,32,0);
+  stream->write_bits(stream,32,0);
 
   /*build frames until reader is empty,
     which updates STREAMINFO in the process*/
@@ -202,16 +202,16 @@ void FlacEncoder_write_streaminfo(Bitstream *bs,
 				  struct flac_STREAMINFO streaminfo) {
   int i;
 
-  write_bits(bs,16,streaminfo.minimum_block_size);
-  write_bits(bs,16,streaminfo.maximum_block_size);
-  write_bits(bs,24,streaminfo.minimum_frame_size);
-  write_bits(bs,24,streaminfo.maximum_frame_size);
-  write_bits(bs,20,streaminfo.sample_rate);
-  write_bits(bs,3,streaminfo.channels - 1);
-  write_bits(bs,5,streaminfo.bits_per_sample - 1);
-  write_bits64(bs,36,streaminfo.total_samples);
+  bs->write_bits(bs,16,streaminfo.minimum_block_size);
+  bs->write_bits(bs,16,streaminfo.maximum_block_size);
+  bs->write_bits(bs,24,streaminfo.minimum_frame_size);
+  bs->write_bits(bs,24,streaminfo.maximum_frame_size);
+  bs->write_bits(bs,20,streaminfo.sample_rate);
+  bs->write_bits(bs,3,streaminfo.channels - 1);
+  bs->write_bits(bs,5,streaminfo.bits_per_sample - 1);
+  bs->write_bits64(bs,36,streaminfo.total_samples);
   for (i = 0; i < 16; i++)
-    write_bits(bs,8,streaminfo.md5sum[i]);
+    bs->write_bits(bs,8,streaminfo.md5sum[i]);
 }
 
 void FlacEncoder_write_frame(Bitstream *bs,
@@ -270,10 +270,10 @@ void FlacEncoder_write_frame(Bitstream *bs,
   bbw_dump(best_subframe,bs);
   bbw_close(best_subframe);
 
-  byte_align_w(bs);
+  bs->byte_align(bs);
 
   /*write CRC-16*/
-  write_bits(bs, 16, streaminfo->crc16);
+  bs->write_bits(bs, 16, streaminfo->crc16);
 
   /*update streaminfo with new values*/
   framesize = ftell(bs->file) - startpos;
@@ -362,34 +362,34 @@ void FlacEncoder_write_frame_header(Bitstream *bs,
   }
 
   /*once the four bits-encoded fields are set, write the actual header*/
-  write_bits(bs, 14, 0x3FFE);              /*sync code*/
-  write_bits(bs, 1, 0);                    /*reserved*/
-  write_bits(bs, 1, 0);                    /*blocking strategy*/
-  write_bits(bs, 4, block_size_bits);      /*block size*/
-  write_bits(bs, 4, sample_rate_bits);     /*sample rate*/
-  write_bits(bs, 4, channel_assignment);   /*channel assignment*/
-  write_bits(bs, 3, bits_per_sample_bits); /*bits per sample*/
-  write_bits(bs, 1, 0);                    /*padding*/
+  bs->write_bits(bs, 14, 0x3FFE);              /*sync code*/
+  bs->write_bits(bs, 1, 0);                    /*reserved*/
+  bs->write_bits(bs, 1, 0);                    /*blocking strategy*/
+  bs->write_bits(bs, 4, block_size_bits);      /*block size*/
+  bs->write_bits(bs, 4, sample_rate_bits);     /*sample rate*/
+  bs->write_bits(bs, 4, channel_assignment);   /*channel assignment*/
+  bs->write_bits(bs, 3, bits_per_sample_bits); /*bits per sample*/
+  bs->write_bits(bs, 1, 0);                    /*padding*/
 
   /*frame number is taken from total_frames in streaminfo*/
   write_utf8(bs, streaminfo->total_frames);
 
   /*if block_size_bits are 0x6 or 0x7, write a PCM frames field*/
   if (block_size_bits == 0x6)
-    write_bits(bs, 8, block_size - 1);
+    bs->write_bits(bs, 8, block_size - 1);
   else if (block_size_bits == 0x7)
-    write_bits(bs, 16, block_size - 1);
+    bs->write_bits(bs, 16, block_size - 1);
 
   /*if sample rate is unusual, write one of the three sample rate fields*/
   if (sample_rate_bits == 0xC)
-    write_bits(bs, 8, streaminfo->sample_rate / 1000);
+    bs->write_bits(bs, 8, streaminfo->sample_rate / 1000);
   else if (sample_rate_bits == 0xD)
-    write_bits(bs, 16, streaminfo->sample_rate);
+    bs->write_bits(bs, 16, streaminfo->sample_rate);
   else if (sample_rate_bits == 0xE)
-    write_bits(bs, 16, streaminfo->sample_rate / 10);
+    bs->write_bits(bs, 16, streaminfo->sample_rate / 10);
 
   /*write CRC-8*/
-  write_bits(bs, 8, streaminfo->crc8);
+  bs->write_bits(bs, 8, streaminfo->crc8);
 }
 
 void FlacEncoder_write_subframe(BitbufferW *bbw,
@@ -860,31 +860,31 @@ int FlacEncoder_compute_best_fixed_predictor_order(struct i_array *samples) {
 void write_utf8(Bitstream *stream, unsigned int value) {
   if ((value >= 0) && (value <= 0x7F)) {
     /*1 byte UTF-8 sequence*/
-    write_bits(stream,8,value);
+    stream->write_bits(stream,8,value);
   } else if ((value >= 0x80) && (value <= 0x7FF)) {
     /*2 byte UTF-8 sequence*/
-    write_unary(stream,0,2);
-    write_bits(stream,5,value >> 6);
-    write_unary(stream,0,1);
-    write_bits(stream,6,value & 0x3F);
+    stream->write_unary(stream,0,2);
+    stream->write_bits(stream,5,value >> 6);
+    stream->write_unary(stream,0,1);
+    stream->write_bits(stream,6,value & 0x3F);
   } else if ((value >= 0x800) && (value <= 0xFFFF)) {
     /*3 byte UTF-8 sequence*/
-    write_unary(stream,0,3);
-    write_bits(stream,4,value >> 12);
-    write_unary(stream,0,1);
-    write_bits(stream,6,(value >> 6) & 0x3F);
-    write_unary(stream,0,1);
-    write_bits(stream,6,value & 0x3F);
+    stream->write_unary(stream,0,3);
+    stream->write_bits(stream,4,value >> 12);
+    stream->write_unary(stream,0,1);
+    stream->write_bits(stream,6,(value >> 6) & 0x3F);
+    stream->write_unary(stream,0,1);
+    stream->write_bits(stream,6,value & 0x3F);
   } else if ((value >= 0x10000) && (value <= 0xFFFFF)) {
     /*4 byte UTF-8 sequence*/
-    write_unary(stream,0,4);
-    write_bits(stream,3,value >> 18);
-    write_unary(stream,0,1);
-    write_bits(stream,6,(value >> 12) & 0x3F);
-    write_unary(stream,0,1);
-    write_bits(stream,6,(value >> 6) & 0x3F);
-    write_unary(stream,0,1);
-    write_bits(stream,6,value & 0x3F);
+    stream->write_unary(stream,0,4);
+    stream->write_bits(stream,3,value >> 18);
+    stream->write_unary(stream,0,1);
+    stream->write_bits(stream,6,(value >> 12) & 0x3F);
+    stream->write_unary(stream,0,1);
+    stream->write_bits(stream,6,(value >> 6) & 0x3F);
+    stream->write_unary(stream,0,1);
+    stream->write_bits(stream,6,value & 0x3F);
   }
 }
 
