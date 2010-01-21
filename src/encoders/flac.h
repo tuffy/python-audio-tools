@@ -122,15 +122,15 @@ void FlacEncoder_write_fixed_subframe(Bitstream *bs,
 				      struct i_array *samples,
 				      int predictor_order);
 
-/* /\*writes an LPC subframe with values from "samples" */
-/*   a list of LPC coefficients and a LPC shift needed value */
-/*   to the bitbuffer*\/ */
-/* void FlacEncoder_write_lpc_subframe(BitbufferW *bbw, */
-/* 				    struct flac_encoding_options *options, */
-/* 				    int bits_per_sample, */
-/* 				    struct i_array *samples, */
-/* 				    struct i_array *coeffs, */
-/* 				    int shift_needed); */
+/*writes an LPC subframe with values from "samples"
+  a list of LPC coefficients and a LPC shift needed value
+  to the bitbuffer*/
+void FlacEncoder_write_lpc_subframe(Bitstream *bs,
+				    struct flac_encoding_options *options,
+				    int bits_per_sample,
+				    struct i_array *samples,
+				    struct i_array *coeffs,
+				    int shift_needed);
 
 
 void FlacEncoder_write_best_residual(Bitstream *bs,
