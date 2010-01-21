@@ -35,6 +35,7 @@ typedef struct Bitstream_s {
   int state;
   struct bs_callback *callback;
 
+  int bits_written;
   void (*write_bits)(struct Bitstream_s* bs, unsigned int count, int value);
   void (*write_signed_bits)(struct Bitstream_s* bs, unsigned int count,
 			    int value);
@@ -48,6 +49,7 @@ extern const unsigned int write_bits_table[0x400][0x900];
 extern const unsigned int write_unary_table[0x400][0x20];
 
 Bitstream* bs_open(FILE *f);
+Bitstream* bs_open_accumulator(void);
 
 void bs_close(Bitstream *bs);
 
@@ -67,5 +69,18 @@ void write_bits64_actual(Bitstream* bs, unsigned int count, uint64_t value);
 void write_unary_actual(Bitstream* bs, int stop_bit, int value);
 
 void byte_align_w_actual(Bitstream* bs);
+
+
+void write_bits_accumulator(Bitstream* bs, unsigned int count, int value);
+
+void write_signed_bits_accumulator(Bitstream* bs, unsigned int count,
+				   int value);
+
+void write_bits64_accumulator(Bitstream* bs, unsigned int count,
+			      uint64_t value);
+
+void write_unary_accumulator(Bitstream* bs, int stop_bit, int value);
+
+void byte_align_w_accumulator(Bitstream* bs);
 
 #endif

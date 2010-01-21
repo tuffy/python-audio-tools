@@ -98,6 +98,12 @@ static inline void ia_link(struct i_array *target, struct i_array *source) {
   target->data = source->data;
 }
 
+static inline void ia_copy(struct i_array *target, struct i_array *source) {
+  ia_resize(target,source->size);
+  memcpy(target->data,source->data,source->size * sizeof(int32_t));
+  target->size = source->size;
+}
+
 static inline void ia_head(struct i_array *target, struct i_array *source, uint32_t size) {
   target->size = size;
   target->total_size = source->total_size;

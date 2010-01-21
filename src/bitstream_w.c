@@ -35,6 +35,21 @@ Bitstream* bs_open(FILE *f) {
   return bs;
 }
 
+Bitstream* bs_open_accumulator(void) {
+  Bitstream *bs = malloc(sizeof(Bitstream));
+  bs->file = NULL;
+  bs->bits_written = 0;
+  bs->callback = NULL;
+
+  bs->write_bits = write_bits_accumulator;
+  bs->write_signed_bits = write_bits_accumulator;
+  bs->write_bits64 = write_bits64_accumulator;
+  bs->write_unary = write_unary_accumulator;
+  bs->byte_align = byte_align_w_accumulator;
+
+  return bs;
+}
+
 void bs_close(Bitstream *bs) {
   struct bs_callback *node;
   struct bs_callback *next;
@@ -195,3 +210,20 @@ const unsigned int write_unary_table[0x400][0x20] =
     ;
 
 
+void write_bits_accumulator(Bitstream* bs, unsigned int count, int value) {
+  bs->bits_written += count;
+}
+
+void write_bits64_accumulator(Bitstream* bs, unsigned int count,
+			      uint64_t value) {
+  bs->bits_written += count;
+}
+
+void write_unary_accumulator(Bitstream* bs, int stop_bit, int value) {
+  bs->bits_written += (value + 1);
+}
+
+void byte_align_w_accumulator(Bitstream* bs) {
+  if (bs->bits_written % 8)
+    bs->bits_written += (bs->bits_written % 8);
+}
