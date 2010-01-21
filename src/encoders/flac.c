@@ -413,17 +413,12 @@ void FlacEncoder_write_subframe(Bitstream *bs,
     return;
   }
 
-  /*otherwise, write verbatim subframe - FIXME*/
-  FlacEncoder_write_verbatim_subframe(bs,
-				      bits_per_sample,
-				      samples);
-
-  /* fixed_subframe = bbw_open(samples->size); */
-  /* FlacEncoder_write_fixed_subframe(fixed_subframe, */
-  /* 				   options, */
-  /* 				   bits_per_sample, */
-  /* 				   samples, */
-  /* 				   FlacEncoder_compute_best_fixed_predictor_order(samples)); */
+  /*otherwise, write FIXED subframe - FIXME*/
+  FlacEncoder_write_fixed_subframe(bs,
+  				   options,
+  				   bits_per_sample,
+  				   samples,
+  				   FlacEncoder_compute_best_fixed_predictor_order(samples));
 
   /* lpc_subframe = bbw_open(samples->size); */
   /* ia_init(&lpc_coeffs,1); */
@@ -478,60 +473,60 @@ void FlacEncoder_write_verbatim_subframe(Bitstream *bs,
   }
 }
 
-/* void FlacEncoder_write_fixed_subframe(BitbufferW *bbw, */
-/* 				      struct flac_encoding_options *options, */
-/* 				      int bits_per_sample, */
-/* 				      struct i_array *samples, */
-/* 				      int predictor_order) { */
-/*   uint32_t i; */
-/*   struct i_array residual; */
+void FlacEncoder_write_fixed_subframe(Bitstream *bs,
+				      struct flac_encoding_options *options,
+				      int bits_per_sample,
+				      struct i_array *samples,
+				      int predictor_order) {
+  uint32_t i;
+  struct i_array residual;
 
-/*   /\*write subframe header*\/ */
-/*   bbw_write_bits(bbw, 1, 0); */
-/*   bbw_write_bits(bbw, 6, 0x8 | predictor_order); */
-/*   bbw_write_bits(bbw, 1, 0); /\*FIXME - handle wasted bits-per-sample*\/ */
+  /*write subframe header*/
+  bs->write_bits(bs, 1, 0);
+  bs->write_bits(bs, 6, 0x8 | predictor_order);
+  bs->write_bits(bs, 1, 0); /*FIXME - handle wasted bits-per-sample*/
 
-/*   /\*write warm-up samples*\/ */
-/*   for (i = 0; i < predictor_order; i++) */
-/*     bbw_write_signed_bits(bbw, bits_per_sample, ia_getitem(samples,i)); */
+  /*write warm-up samples*/
+  for (i = 0; i < predictor_order; i++)
+    bs->write_signed_bits(bs, bits_per_sample, ia_getitem(samples,i));
 
-/*   /\*calculate residual values based on predictor order*\/ */
-/*   ia_init(&residual,samples->size); */
-/*   switch (predictor_order) { */
-/*   case 0: */
-/*     for (i = 0; i < samples->size; i++) */
-/*       ia_append(&residual,ia_getitem(samples,i)); */
-/*     break; */
-/*   case 1: */
-/*     for (i = 1; i < samples->size; i++) */
-/*       ia_append(&residual,ia_getitem(samples,i) - ia_getitem(samples,i - 1)); */
-/*     break; */
-/*   case 2: */
-/*     for (i = 2; i < samples->size; i++) */
-/*       ia_append(&residual,ia_getitem(samples,i) - */
-/* 		((2 * ia_getitem(samples,i - 1)) - ia_getitem(samples,i - 2))); */
-/*     break; */
-/*   case 3: */
-/*     for (i = 3; i < samples->size; i++) */
-/*       ia_append(&residual,ia_getitem(samples,i) - */
-/* 		((3 * ia_getitem(samples,i - 1)) - */
-/* 		 (3 * ia_getitem(samples,i - 2)) + */
-/* 		 ia_getitem(samples,i - 3))); */
-/*     break; */
-/*   case 4: */
-/*     for (i = 4; i < samples->size; i++) */
-/*       ia_append(&residual,ia_getitem(samples,i) - */
-/* 		((4 * ia_getitem(samples,i - 1)) - */
-/* 		 (6 * ia_getitem(samples,i - 2)) + */
-/* 		 (4 * ia_getitem(samples,i - 3)) - */
-/* 		 ia_getitem(samples,i - 4))); */
-/*     break; */
-/*   } */
+  /*calculate residual values based on predictor order*/
+  ia_init(&residual,samples->size);
+  switch (predictor_order) {
+  case 0:
+    for (i = 0; i < samples->size; i++)
+      ia_append(&residual,ia_getitem(samples,i));
+    break;
+  case 1:
+    for (i = 1; i < samples->size; i++)
+      ia_append(&residual,ia_getitem(samples,i) - ia_getitem(samples,i - 1));
+    break;
+  case 2:
+    for (i = 2; i < samples->size; i++)
+      ia_append(&residual,ia_getitem(samples,i) -
+		((2 * ia_getitem(samples,i - 1)) - ia_getitem(samples,i - 2)));
+    break;
+  case 3:
+    for (i = 3; i < samples->size; i++)
+      ia_append(&residual,ia_getitem(samples,i) -
+		((3 * ia_getitem(samples,i - 1)) -
+		 (3 * ia_getitem(samples,i - 2)) +
+		 ia_getitem(samples,i - 3)));
+    break;
+  case 4:
+    for (i = 4; i < samples->size; i++)
+      ia_append(&residual,ia_getitem(samples,i) -
+		((4 * ia_getitem(samples,i - 1)) -
+		 (6 * ia_getitem(samples,i - 2)) +
+		 (4 * ia_getitem(samples,i - 3)) -
+		 ia_getitem(samples,i - 4)));
+    break;
+  }
 
-/*   /\*write residual*\/ */
-/*   FlacEncoder_write_best_residual(bbw, options, predictor_order, &residual); */
-/*   ia_free(&residual); */
-/* } */
+  /*write residual*/
+  FlacEncoder_write_best_residual(bs, options, predictor_order, &residual);
+  ia_free(&residual);
+}
 
 /* void FlacEncoder_write_lpc_subframe(BitbufferW *bbw, */
 /* 				    struct flac_encoding_options *options, */
@@ -591,7 +586,24 @@ void FlacEncoder_write_verbatim_subframe(Bitstream *bs,
 /*   ia_free(&residual); */
 /* } */
 
-/* void FlacEncoder_write_best_residual(BitbufferW *bbw, */
+void FlacEncoder_write_best_residual(Bitstream *bs,
+				     struct flac_encoding_options *options,
+				     int predictor_order,
+				     struct i_array *residuals) {
+  struct i_array rice_parameters;
+
+  ia_init(&rice_parameters,1);
+  ia_append(&rice_parameters,1);
+
+  FlacEncoder_write_residual(bs,
+			     predictor_order,
+			     0,
+			     &rice_parameters,
+			     residuals);
+  ia_free(&rice_parameters);
+}
+
+/* void FlacEncoder_write_best_residual(Bitstream *bs, */
 /* 				     struct flac_encoding_options *options, */
 /* 				     int predictor_order, */
 /* 				     struct i_array *residuals) { */
@@ -694,164 +706,164 @@ void FlacEncoder_write_verbatim_subframe(Bitstream *bs,
 /*   ia_free(&rice_parameters); */
 /* } */
 
-/* int FlacEncoder_compute_best_rice_parameter(struct i_array *residuals) { */
-/*   uint64_t sum = 0; */
-/*   int i; */
+int FlacEncoder_compute_best_rice_parameter(struct i_array *residuals) {
+  uint64_t sum = 0;
+  int i;
 
-/*   for (i = 0; i < residuals->size; i++) */
-/*     sum += abs(ia_getitem(residuals,i)); */
+  for (i = 0; i < residuals->size; i++)
+    sum += abs(ia_getitem(residuals,i));
 
-/*   for (i = 0; (residuals->size * (1 << i)) < sum; i++) */
-/*     /\*do nothing*\/; */
+  for (i = 0; (residuals->size * (1 << i)) < sum; i++)
+    /*do nothing*/;
 
-/*   return i; */
-/* } */
+  return i;
+}
 
 
-/* void FlacEncoder_write_residual(BitbufferW *bbw, */
-/* 				int predictor_order, */
-/* 				int coding_method, */
-/* 				struct i_array *rice_parameters, */
-/* 				struct i_array *residuals) { */
-/*   uint32_t partition_order; */
-/*   int32_t partitions = rice_parameters->size; */
-/*   int32_t partition; */
-/*   int32_t block_size = predictor_order + residuals->size; */
-/*   struct i_array remaining_residuals; */
-/*   struct i_array partition_residuals; */
+void FlacEncoder_write_residual(Bitstream *bs,
+				int predictor_order,
+				int coding_method,
+				struct i_array *rice_parameters,
+				struct i_array *residuals) {
+  uint32_t partition_order;
+  int32_t partitions = rice_parameters->size;
+  int32_t partition;
+  int32_t block_size = predictor_order + residuals->size;
+  struct i_array remaining_residuals;
+  struct i_array partition_residuals;
 
-/*   /\*derive the partition_order value*\/ */
-/*   for (partition_order = 0; partitions > 1; partition_order++) */
-/*     partitions /= 2; */
-/*   partitions = rice_parameters->size; */
+  /*derive the partition_order value*/
+  for (partition_order = 0; partitions > 1; partition_order++)
+    partitions /= 2;
+  partitions = rice_parameters->size;
 
-/*   bbw_write_bits(bbw, 2, coding_method); */
-/*   bbw_write_bits(bbw, 4, partition_order); */
+  bs->write_bits(bs, 2, coding_method);
+  bs->write_bits(bs, 4, partition_order);
 
-/*   /\*for each rice_parameter, write a residual partition*\/ */
-/*   ia_link(&remaining_residuals,residuals); */
+  /*for each rice_parameter, write a residual partition*/
+  ia_link(&remaining_residuals,residuals);
 
-/*   for (partition = 0; partition < partitions; partition++) { */
-/*     if (partition == 0) { */
-/*       /\*the first partition contains (block_size / 2 ^ partition_order) - order */
-/* 	number of residuals*\/ */
-/*       ia_split(&partition_residuals, */
-/* 	       &remaining_residuals, */
-/* 	       &remaining_residuals, */
-/* 	       (block_size / (1 << partition_order)) - predictor_order); */
-/*     } else { */
-/*       /\*subsequence partitions contain (block_size / 2 ^ partition_order) */
-/* 	number of residuals*\/ */
-/*       ia_split(&partition_residuals, */
-/* 	       &remaining_residuals, */
-/* 	       &remaining_residuals, */
-/* 	       block_size / (1 << partition_order)); */
-/*     } */
-/*     FlacEncoder_write_residual_partition(bbw, */
-/* 					 coding_method, */
-/* 					 ia_getitem(rice_parameters, */
-/* 						    partition), */
-/* 					 &partition_residuals); */
-/*   } */
+  for (partition = 0; partition < partitions; partition++) {
+    if (partition == 0) {
+      /*the first partition contains (block_size / 2 ^ partition_order) - order
+	number of residuals*/
+      ia_split(&partition_residuals,
+	       &remaining_residuals,
+	       &remaining_residuals,
+	       (block_size / (1 << partition_order)) - predictor_order);
+    } else {
+      /*subsequence partitions contain (block_size / 2 ^ partition_order)
+	number of residuals*/
+      ia_split(&partition_residuals,
+	       &remaining_residuals,
+	       &remaining_residuals,
+	       block_size / (1 << partition_order));
+    }
+    FlacEncoder_write_residual_partition(bs,
+					 coding_method,
+					 ia_getitem(rice_parameters,
+						    partition),
+					 &partition_residuals);
+  }
 
-/* } */
+}
 
-/* void FlacEncoder_write_residual_partition(BitbufferW *bbw, */
-/* 					  int coding_method, */
-/* 					  int rice_parameter, */
-/* 					  struct i_array *residuals) { */
-/*   uint32_t i; */
-/*   int32_t residual; */
-/*   int32_t msb; */
-/*   int32_t lsb; */
+void FlacEncoder_write_residual_partition(Bitstream *bs,
+					  int coding_method,
+					  int rice_parameter,
+					  struct i_array *residuals) {
+  uint32_t i;
+  int32_t residual;
+  int32_t msb;
+  int32_t lsb;
 
-/*   uint32_t residuals_size; */
-/*   int32_t *residuals_data; */
+  uint32_t residuals_size;
+  int32_t *residuals_data;
 
-/*   residuals_size = residuals->size; */
-/*   residuals_data = residuals->data; */
+  residuals_size = residuals->size;
+  residuals_data = residuals->data;
 
-/*   /\*write the 4-5 bit Rice parameter header (depending on coding method)*\/ */
-/*   bbw_write_bits(bbw, coding_method == 0 ? 4 : 5, rice_parameter); */
+  /*write the 4-5 bit Rice parameter header (depending on coding method)*/
+  bs->write_bits(bs, coding_method == 0 ? 4 : 5, rice_parameter);
 
-/*   /\*for each residual, write a unary/unsigned bits pair */
-/*     whose breakpoint depends on "rice_parameter"*\/ */
-/*   for (i = 0; i < residuals_size; i++) { */
-/*     residual = residuals_data[i]; */
-/*     if (residual >= 0) { */
-/*       residual <<= 1; */
-/*     } else { */
-/*       residual = ((-residual - 1) << 1) | 1; */
-/*     } */
-/*     msb = residual >> rice_parameter; */
-/*     lsb = residual - (msb << rice_parameter); */
-/*     bbw_write_unary(bbw,1,msb); */
-/*     bbw_write_bits(bbw,rice_parameter,lsb); */
-/*   } */
-/* } */
+  /*for each residual, write a unary/unsigned bits pair
+    whose breakpoint depends on "rice_parameter"*/
+  for (i = 0; i < residuals_size; i++) {
+    residual = residuals_data[i];
+    if (residual >= 0) {
+      residual <<= 1;
+    } else {
+      residual = ((-residual - 1) << 1) | 1;
+    }
+    msb = residual >> rice_parameter;
+    lsb = residual - (msb << rice_parameter);
+    bs->write_unary(bs,1,msb);
+    bs->write_bits(bs,rice_parameter,lsb);
+  }
+}
 
-/* int FlacEncoder_compute_best_fixed_predictor_order(struct i_array *samples) { */
-/*   struct i_array delta0; */
-/*   struct i_array delta1; */
-/*   struct i_array delta2; */
-/*   struct i_array delta3; */
-/*   struct i_array delta4; */
-/*   struct i_array subtract; */
-/*   uint64_t delta0_sum; */
-/*   uint64_t delta1_sum; */
-/*   uint64_t delta2_sum; */
-/*   uint64_t delta3_sum; */
-/*   uint64_t delta4_sum; */
-/*   uint32_t i; */
+int FlacEncoder_compute_best_fixed_predictor_order(struct i_array *samples) {
+  struct i_array delta0;
+  struct i_array delta1;
+  struct i_array delta2;
+  struct i_array delta3;
+  struct i_array delta4;
+  struct i_array subtract;
+  uint64_t delta0_sum;
+  uint64_t delta1_sum;
+  uint64_t delta2_sum;
+  uint64_t delta3_sum;
+  uint64_t delta4_sum;
+  uint32_t i;
 
-/*   if (samples->size < 5) */
-/*     return 0; */
+  if (samples->size < 5)
+    return 0;
 
-/*   delta0.data = NULL; /\*to elimate a "used without being defined" warning*\/ */
-/*   ia_tail(&delta0,samples,samples->size - 1); */
-/*   for (delta0_sum = 0,i = 3; i < delta0.size; i++) */
-/*     delta0_sum += abs(ia_getitem(&delta0,i)); */
+  delta0.data = NULL; /*to elimate a "used without being defined" warning*/
+  ia_tail(&delta0,samples,samples->size - 1);
+  for (delta0_sum = 0,i = 3; i < delta0.size; i++)
+    delta0_sum += abs(ia_getitem(&delta0,i));
 
-/*   ia_init(&delta1,samples->size); */
-/*   ia_tail(&subtract,&delta0,delta0.size - 1); */
-/*   ia_sub(&delta1,&delta0,&subtract); */
-/*   for (delta1_sum = 0,i = 2; i < delta1.size; i++) */
-/*     delta1_sum += abs(ia_getitem(&delta1,i)); */
+  ia_init(&delta1,samples->size);
+  ia_tail(&subtract,&delta0,delta0.size - 1);
+  ia_sub(&delta1,&delta0,&subtract);
+  for (delta1_sum = 0,i = 2; i < delta1.size; i++)
+    delta1_sum += abs(ia_getitem(&delta1,i));
 
-/*   ia_init(&delta2,samples->size); */
-/*   ia_tail(&subtract,&delta1,delta1.size - 1); */
-/*   ia_sub(&delta2,&delta1,&subtract); */
-/*   for (delta2_sum = 0,i = 2; i < delta2.size; i++) */
-/*     delta2_sum += abs(ia_getitem(&delta2,i)); */
+  ia_init(&delta2,samples->size);
+  ia_tail(&subtract,&delta1,delta1.size - 1);
+  ia_sub(&delta2,&delta1,&subtract);
+  for (delta2_sum = 0,i = 2; i < delta2.size; i++)
+    delta2_sum += abs(ia_getitem(&delta2,i));
 
-/*   ia_init(&delta3,samples->size); */
-/*   ia_tail(&subtract,&delta2,delta2.size - 1); */
-/*   ia_sub(&delta3,&delta2,&subtract); */
-/*   for (delta3_sum = 0,i = 1; i < delta3.size; i++) */
-/*     delta3_sum += abs(ia_getitem(&delta3,i)); */
+  ia_init(&delta3,samples->size);
+  ia_tail(&subtract,&delta2,delta2.size - 1);
+  ia_sub(&delta3,&delta2,&subtract);
+  for (delta3_sum = 0,i = 1; i < delta3.size; i++)
+    delta3_sum += abs(ia_getitem(&delta3,i));
 
-/*   ia_init(&delta4,samples->size); */
-/*   ia_tail(&subtract,&delta3,delta3.size - 1); */
-/*   ia_sub(&delta4,&delta3,&subtract); */
-/*   for (delta4_sum = 0,i = 0; i < delta4.size; i++) */
-/*     delta4_sum += abs(ia_getitem(&delta4,i)); */
+  ia_init(&delta4,samples->size);
+  ia_tail(&subtract,&delta3,delta3.size - 1);
+  ia_sub(&delta4,&delta3,&subtract);
+  for (delta4_sum = 0,i = 0; i < delta4.size; i++)
+    delta4_sum += abs(ia_getitem(&delta4,i));
 
-/*   ia_free(&delta1); */
-/*   ia_free(&delta2); */
-/*   ia_free(&delta3); */
-/*   ia_free(&delta4); */
+  ia_free(&delta1);
+  ia_free(&delta2);
+  ia_free(&delta3);
+  ia_free(&delta4);
 
-/*   if (delta0_sum < MIN(delta1_sum,MIN(delta2_sum,MIN(delta3_sum,delta4_sum)))) */
-/*     return 0; */
-/*   else if (delta1_sum < MIN(delta2_sum,MIN(delta3_sum,delta4_sum))) */
-/*     return 1; */
-/*   else if (delta2_sum < MIN(delta3_sum,delta4_sum)) */
-/*     return 2; */
-/*   else if (delta3_sum < delta4_sum) */
-/*     return 3; */
-/*   else */
-/*     return 4; */
-/* } */
+  if (delta0_sum < MIN(delta1_sum,MIN(delta2_sum,MIN(delta3_sum,delta4_sum))))
+    return 0;
+  else if (delta1_sum < MIN(delta2_sum,MIN(delta3_sum,delta4_sum)))
+    return 1;
+  else if (delta2_sum < MIN(delta3_sum,delta4_sum))
+    return 2;
+  else if (delta3_sum < delta4_sum)
+    return 3;
+  else
+    return 4;
+}
 
 void write_utf8(Bitstream *stream, unsigned int value) {
   if ((value >= 0) && (value <= 0x7F)) {
