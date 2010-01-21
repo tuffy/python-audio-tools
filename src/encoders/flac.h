@@ -97,75 +97,75 @@ void FlacEncoder_write_frame_header(Bitstream *bs,
 /*given a bits_per_sample and list of sample values,
   and the user-defined encoding options
   writes the best subframe to the bitbuffer*/
-void FlacEncoder_write_subframe(BitbufferW *bbw,
+void FlacEncoder_write_subframe(Bitstream *bs,
 				struct flac_encoding_options *options,
 				int bits_per_sample,
 				struct i_array *samples);
 
 /*writes a CONSTANT subframe with the value "sample"
   to the bitbuffer*/
-void FlacEncoder_write_constant_subframe(BitbufferW *bbw,
+void FlacEncoder_write_constant_subframe(Bitstream *bs,
 					 int bits_per_sample,
 					 int32_t sample);
 
 /*writes a VERBATIM subframe with the values "samples"
   to the bitbuffer*/
-void FlacEncoder_write_verbatim_subframe(BitbufferW *bbw,
+void FlacEncoder_write_verbatim_subframe(Bitstream *bs,
 					 int bits_per_sample,
 					 struct i_array *samples);
 
-/*write a FIXED subframe with values from "samples"
-  and the given "predictor_order" (from 0-4) to the bitbuffer*/
-void FlacEncoder_write_fixed_subframe(BitbufferW *bbw,
-				      struct flac_encoding_options *options,
-				      int bits_per_sample,
-				      struct i_array *samples,
-				      int predictor_order);
+/* /\*write a FIXED subframe with values from "samples" */
+/*   and the given "predictor_order" (from 0-4) to the bitbuffer*\/ */
+/* void FlacEncoder_write_fixed_subframe(BitbufferW *bbw, */
+/* 				      struct flac_encoding_options *options, */
+/* 				      int bits_per_sample, */
+/* 				      struct i_array *samples, */
+/* 				      int predictor_order); */
 
-/*writes an LPC subframe with values from "samples"
-  a list of LPC coefficients and a LPC shift needed value
-  to the bitbuffer*/
-void FlacEncoder_write_lpc_subframe(BitbufferW *bbw,
-				    struct flac_encoding_options *options,
-				    int bits_per_sample,
-				    struct i_array *samples,
-				    struct i_array *coeffs,
-				    int shift_needed);
+/* /\*writes an LPC subframe with values from "samples" */
+/*   a list of LPC coefficients and a LPC shift needed value */
+/*   to the bitbuffer*\/ */
+/* void FlacEncoder_write_lpc_subframe(BitbufferW *bbw, */
+/* 				    struct flac_encoding_options *options, */
+/* 				    int bits_per_sample, */
+/* 				    struct i_array *samples, */
+/* 				    struct i_array *coeffs, */
+/* 				    int shift_needed); */
 
 
-void FlacEncoder_write_best_residual(BitbufferW *bbw,
-				     struct flac_encoding_options *options,
-				     int predictor_order,
-				     struct i_array *residuals);
+/* void FlacEncoder_write_best_residual(BitbufferW *bbw, */
+/* 				     struct flac_encoding_options *options, */
+/* 				     int predictor_order, */
+/* 				     struct i_array *residuals); */
 
-/*given a "predictor_order" int
-  given a coding method (0 or 1)
-  a list of rice_parameters ints
-  and a list of residuals ints
-  encodes the residuals into partitions and writes them to "bbw"
-  (a Rice partition also requires a "partition_order" which can
-  be derived from the length of "rice_parameters")
- */
-void FlacEncoder_write_residual(BitbufferW *bbw,
-				int predictor_order,
-				int coding_method,
-				struct i_array *rice_parameters,
-				struct i_array *residuals);
+/* /\*given a "predictor_order" int */
+/*   given a coding method (0 or 1) */
+/*   a list of rice_parameters ints */
+/*   and a list of residuals ints */
+/*   encodes the residuals into partitions and writes them to "bbw" */
+/*   (a Rice partition also requires a "partition_order" which can */
+/*   be derived from the length of "rice_parameters") */
+/*  *\/ */
+/* void FlacEncoder_write_residual(BitbufferW *bbw, */
+/* 				int predictor_order, */
+/* 				int coding_method, */
+/* 				struct i_array *rice_parameters, */
+/* 				struct i_array *residuals); */
 
-/*given a coding method (0 or 1)
-  a rice_parameter int
-  and a list of residuals ints
-  encodes the residual partition and writes them to "bbw"*/
-void FlacEncoder_write_residual_partition(BitbufferW *bbw,
-					  int coding_method,
-					  int rice_parameter,
-					  struct i_array *residuals);
+/* /\*given a coding method (0 or 1) */
+/*   a rice_parameter int */
+/*   and a list of residuals ints */
+/*   encodes the residual partition and writes them to "bbw"*\/ */
+/* void FlacEncoder_write_residual_partition(BitbufferW *bbw, */
+/* 					  int coding_method, */
+/* 					  int rice_parameter, */
+/* 					  struct i_array *residuals); */
 
-/*given a list of samples,
-  return the best predictor_order for FIXED subframes*/
-int FlacEncoder_compute_best_fixed_predictor_order(struct i_array *samples);
+/* /\*given a list of samples, */
+/*   return the best predictor_order for FIXED subframes*\/ */
+/* int FlacEncoder_compute_best_fixed_predictor_order(struct i_array *samples); */
 
-int FlacEncoder_compute_best_rice_parameter(struct i_array *residuals);
+/* int FlacEncoder_compute_best_rice_parameter(struct i_array *residuals); */
 
 /*given a block_size, return a QLP coefficient precision value*/
 int FlacEncoder_qlp_coeff_precision(int block_size);
