@@ -393,8 +393,12 @@ void FlacEncoder_write_subframe(Bitstream *bs,
 				struct i_array *samples) {
   uint32_t i;
   int32_t first_sample;
+  int fixed_predictor_order;
   struct i_array lpc_coeffs;
   int lpc_shift_needed;
+
+  Bitstream *fixed_subframe;
+  Bitstream *lpc_subframe;
 
   if (samples->size < 2) {
     FlacEncoder_write_constant_subframe(bs,
@@ -416,37 +420,48 @@ void FlacEncoder_write_subframe(Bitstream *bs,
     return;
   }
 
+  /*first check FIXED subframe*/
+  fixed_subframe = bs_open_accumulator();
+  fixed_predictor_order = FlacEncoder_compute_best_fixed_predictor_order(samples);
+  FlacEncoder_write_fixed_subframe(fixed_subframe,
+  				   options,
+  				   bits_per_sample,
+  				   samples,
+  				   fixed_predictor_order);
 
-  /* FlacEncoder_write_fixed_subframe(bs, */
-  /* 				   options, */
-  /* 				   bits_per_sample, */
-  /* 				   samples, */
-  /* 				   FlacEncoder_compute_best_fixed_predictor_order(samples)); */
-
-
-  /*otherwise, write LPC subframe - FIXME*/
+  /*then check LPC subframe*/
+  lpc_subframe = bs_open_accumulator();
   ia_init(&lpc_coeffs,1);
   FlacEncoder_compute_best_lpc_coeffs(options,bits_per_sample,
   				      samples,
   				      &lpc_coeffs,
   				      &lpc_shift_needed);
 
-  FlacEncoder_write_lpc_subframe(bs,
+  FlacEncoder_write_lpc_subframe(lpc_subframe,
   				 options,
   				 bits_per_sample,
   				 samples,
   				 &lpc_coeffs,
   				 lpc_shift_needed);
 
+  if (fixed_subframe->bits_written <= lpc_subframe->bits_written) {
+    FlacEncoder_write_fixed_subframe(bs,
+				     options,
+				     bits_per_sample,
+				     samples,
+				     fixed_predictor_order);
+  } else {
+    FlacEncoder_write_lpc_subframe(bs,
+				   options,
+				   bits_per_sample,
+				   samples,
+				   &lpc_coeffs,
+				   lpc_shift_needed);
+  }
+
   ia_free(&lpc_coeffs);
-
-  /* if (fixed_subframe->bits_written <= lpc_subframe->bits_written) */
-  /*   bbw_append(bbw,fixed_subframe); */
-  /* else */
-  /*   bbw_append(bbw,lpc_subframe); */
-
-  /* bbw_close(fixed_subframe); */
-  /* bbw_close(lpc_subframe); */
+  bs_close(fixed_subframe);
+  bs_close(lpc_subframe);
 }
 
 void FlacEncoder_write_constant_subframe(Bitstream *bs,
