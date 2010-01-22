@@ -423,11 +423,11 @@ void FlacEncoder_write_subframe(Bitstream *bs,
   /*first check FIXED subframe*/
   fixed_subframe = bs_open_accumulator();
   fixed_predictor_order = FlacEncoder_compute_best_fixed_predictor_order(samples);
-  FlacEncoder_write_fixed_subframe(fixed_subframe,
-  				   options,
-  				   bits_per_sample,
-  				   samples,
-  				   fixed_predictor_order);
+  FlacEncoder_write_fixed_subframe_complete(fixed_subframe,
+					    options,
+					    bits_per_sample,
+					    samples,
+					    fixed_predictor_order);
 
   /*then check LPC subframe*/
   lpc_subframe = bs_open_accumulator();
@@ -444,12 +444,13 @@ void FlacEncoder_write_subframe(Bitstream *bs,
   				 &lpc_coeffs,
   				 lpc_shift_needed);
 
+  /*perform actual writing on the smaller of the two*/
   if (fixed_subframe->bits_written <= lpc_subframe->bits_written) {
-    FlacEncoder_write_fixed_subframe(bs,
-				     options,
-				     bits_per_sample,
-				     samples,
-				     fixed_predictor_order);
+    FlacEncoder_write_fixed_subframe_complete(bs,
+					      options,
+					      bits_per_sample,
+					      samples,
+					      fixed_predictor_order);
   } else {
     FlacEncoder_write_lpc_subframe(bs,
 				   options,
@@ -492,49 +493,44 @@ void FlacEncoder_write_verbatim_subframe(Bitstream *bs,
   }
 }
 
-void FlacEncoder_write_fixed_subframe(Bitstream *bs,
-				      struct flac_encoding_options *options,
-				      int bits_per_sample,
-				      struct i_array *samples,
-				      int predictor_order) {
+void FlacEncoder_evaluate_fixed_subframe(struct i_array *warm_up_samples,
+					 struct i_array *residual,
+					 struct i_array *rice_parameters,
+					 struct flac_encoding_options *options,
+					 int bits_per_sample,
+					 struct i_array *samples,
+					 int predictor_order) {
   uint32_t i;
-  struct i_array residual;
-
-  /*write subframe header*/
-  bs->write_bits(bs, 1, 0);
-  bs->write_bits(bs, 6, 0x8 | predictor_order);
-  bs->write_bits(bs, 1, 0); /*FIXME - handle wasted bits-per-sample*/
 
   /*write warm-up samples*/
   for (i = 0; i < predictor_order; i++)
-    bs->write_signed_bits(bs, bits_per_sample, ia_getitem(samples,i));
+    ia_append(warm_up_samples,ia_getitem(samples,i));
 
   /*calculate residual values based on predictor order*/
-  ia_init(&residual,samples->size);
   switch (predictor_order) {
   case 0:
     for (i = 0; i < samples->size; i++)
-      ia_append(&residual,ia_getitem(samples,i));
+      ia_append(residual,ia_getitem(samples,i));
     break;
   case 1:
     for (i = 1; i < samples->size; i++)
-      ia_append(&residual,ia_getitem(samples,i) - ia_getitem(samples,i - 1));
+      ia_append(residual,ia_getitem(samples,i) - ia_getitem(samples,i - 1));
     break;
   case 2:
     for (i = 2; i < samples->size; i++)
-      ia_append(&residual,ia_getitem(samples,i) -
+      ia_append(residual,ia_getitem(samples,i) -
 		((2 * ia_getitem(samples,i - 1)) - ia_getitem(samples,i - 2)));
     break;
   case 3:
     for (i = 3; i < samples->size; i++)
-      ia_append(&residual,ia_getitem(samples,i) -
+      ia_append(residual,ia_getitem(samples,i) -
 		((3 * ia_getitem(samples,i - 1)) -
 		 (3 * ia_getitem(samples,i - 2)) +
 		 ia_getitem(samples,i - 3)));
     break;
   case 4:
     for (i = 4; i < samples->size; i++)
-      ia_append(&residual,ia_getitem(samples,i) -
+      ia_append(residual,ia_getitem(samples,i) -
 		((4 * ia_getitem(samples,i - 1)) -
 		 (6 * ia_getitem(samples,i - 2)) +
 		 (4 * ia_getitem(samples,i - 3)) -
@@ -543,8 +539,63 @@ void FlacEncoder_write_fixed_subframe(Bitstream *bs,
   }
 
   /*write residual*/
-  FlacEncoder_write_best_residual(bs, options, predictor_order, &residual);
+  FlacEncoder_evaluate_best_residual(rice_parameters, options, predictor_order,
+				     residual);
+}
+
+void FlacEncoder_write_fixed_subframe_complete(Bitstream *bs,
+					       struct flac_encoding_options *options,
+					       int bits_per_sample,
+					       struct i_array *samples,
+					       int predictor_order) {
+  struct i_array warm_up_samples;
+  struct i_array residual;
+  struct i_array rice_parameters;
+
+  ia_init(&warm_up_samples,predictor_order);
+  ia_init(&residual,samples->size);
+  ia_init(&rice_parameters,1);
+
+  FlacEncoder_evaluate_fixed_subframe(&warm_up_samples,
+				      &residual,
+				      &rice_parameters,
+				      options,
+				      bits_per_sample,
+				      samples,
+				      predictor_order);
+
+  FlacEncoder_write_fixed_subframe(bs,
+				   &warm_up_samples,
+				   &rice_parameters,
+				   &residual,
+				   bits_per_sample,
+				   predictor_order);
+
+  ia_free(&warm_up_samples);
   ia_free(&residual);
+  ia_free(&rice_parameters);
+}
+
+void FlacEncoder_write_fixed_subframe(Bitstream *bs,
+				      struct i_array *warm_up_samples,
+				      struct i_array *rice_parameters,
+				      struct i_array *residuals,
+				      int bits_per_sample,
+				      int predictor_order) {
+  uint32_t i;
+
+  /*write subframe header*/
+  bs->write_bits(bs, 1, 0);
+  bs->write_bits(bs, 6, 0x8 | predictor_order);
+  bs->write_bits(bs, 1, 0); /*FIXME - handle wasted bits-per-sample*/
+
+  /*write warm-up samples*/
+  for (i = 0; i < predictor_order; i++)
+    bs->write_signed_bits(bs, bits_per_sample, ia_getitem(warm_up_samples,i));
+
+  /*write residual*/
+  FlacEncoder_write_residual(bs, predictor_order, 0, rice_parameters,
+			     residuals);
 }
 
 void FlacEncoder_write_lpc_subframe(Bitstream *bs,
@@ -603,6 +654,112 @@ void FlacEncoder_write_lpc_subframe(Bitstream *bs,
   FlacEncoder_write_best_residual(bs, options, predictor_order, &residual);
 
   ia_free(&residual);
+}
+
+
+void FlacEncoder_evaluate_best_residual(struct i_array *rice_parameters,
+					struct flac_encoding_options *options,
+					int predictor_order,
+					struct i_array *residuals) {
+  struct i_array working_rice_parameters;
+  int block_size;
+  int min_partition_order;
+  int max_partition_order;
+  int partition_order;
+
+
+  struct i_array current_best_rice_parameters;
+  int current_best_bits;
+  Bitstream *potential_residual;
+
+
+  struct i_array remaining_residuals;
+  struct i_array partition_residuals;
+  uint32_t partitions;
+  uint32_t partition;
+
+  /*keep dividing block_size by 2 until its no longer divisible by 2
+    to determine the maximum partition order
+    since there are 2 ^ partition_order number of partitions
+    and the residuals must be evenly distributed between them*/
+  for (block_size = predictor_order + residuals->size,max_partition_order = 0;
+       (block_size > 1) && ((block_size % 2) == 0);
+       max_partition_order++)
+    block_size /= 2;
+
+  /*although if the user-specified max_partition_order is smaller,
+    use that instead*/
+  max_partition_order = MIN(options->max_residual_partition_order,
+			    max_partition_order);
+
+  min_partition_order = MIN(options->min_residual_partition_order,
+			    max_partition_order);
+
+  block_size = predictor_order + residuals->size;
+
+  /*initialize working space to try different residual sizes*/
+  ia_init(&current_best_rice_parameters,0);
+  current_best_bits = INT_MAX;
+  potential_residual = bs_open_accumulator();
+  ia_init(&working_rice_parameters,1 << max_partition_order);
+
+  /*for each partition_order possibility*/
+  for (partition_order = min_partition_order;
+       partition_order <= max_partition_order;
+       partition_order++) {
+    ia_reset(&working_rice_parameters);
+    potential_residual->bits_written = 0;
+
+    /*chop the residuals into 2 ^ partition_order number of partitions*/
+    ia_link(&remaining_residuals,residuals);
+    partitions = 1 << partition_order;
+    for (partition = 0; partition < partitions; partition++) {
+      if (partition == 0) {
+	/*first partition contains (block_size / 2 ^ partition_order) - order
+	  number of residuals*/
+
+	ia_split(&partition_residuals,
+		 &remaining_residuals,
+		 &remaining_residuals,
+		 (block_size / (1 << partition_order)) - predictor_order);
+      } else {
+	/*subsequence partitions contain (block_size / 2 ^ partition_order)
+	  number of residuals*/
+
+	ia_split(&partition_residuals,
+		 &remaining_residuals,
+		 &remaining_residuals,
+		 block_size / (1 << partition_order));
+      }
+
+      /*for each partition, determine the Rice parameter*/
+      /*and append that parameter to the parameter list*/
+      ia_append(&working_rice_parameters,
+		FlacEncoder_compute_best_rice_parameter(&partition_residuals));
+    }
+
+    /*once the parameter list is set,
+      write a complete residual block to potential_residual*/
+    FlacEncoder_write_residual(potential_residual,
+			       predictor_order,
+			       0, /*FIXME - make coding method dynamic?*/
+			       &working_rice_parameters,
+			       residuals);
+
+    /*and if potential_residual is better than current_best (or no current_best)
+      swap current_best for potential_residual*/
+    if (potential_residual->bits_written < current_best_bits) {
+      ia_copy(&current_best_rice_parameters,&working_rice_parameters);
+      current_best_bits = potential_residual->bits_written;
+    }
+  }
+
+  /*finally, send the best possible residual to "rice_parameters"*/
+  ia_copy(rice_parameters,&working_rice_parameters);
+
+  bs_close(potential_residual);
+  ia_free(&working_rice_parameters);
+  ia_free(&current_best_rice_parameters);
 }
 
 
