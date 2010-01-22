@@ -437,12 +437,12 @@ void FlacEncoder_write_subframe(Bitstream *bs,
   				      &lpc_coeffs,
   				      &lpc_shift_needed);
 
-  FlacEncoder_write_lpc_subframe(lpc_subframe,
-  				 options,
-  				 bits_per_sample,
-  				 samples,
-  				 &lpc_coeffs,
-  				 lpc_shift_needed);
+  FlacEncoder_write_lpc_subframe_complete(lpc_subframe,
+					  options,
+					  bits_per_sample,
+					  samples,
+					  &lpc_coeffs,
+					  lpc_shift_needed);
 
   /*perform actual writing on the smaller of the two*/
   if (fixed_subframe->bits_written <= lpc_subframe->bits_written) {
@@ -452,12 +452,12 @@ void FlacEncoder_write_subframe(Bitstream *bs,
 					      samples,
 					      fixed_predictor_order);
   } else {
-    FlacEncoder_write_lpc_subframe(bs,
-				   options,
-				   bits_per_sample,
-				   samples,
-				   &lpc_coeffs,
-				   lpc_shift_needed);
+    FlacEncoder_write_lpc_subframe_complete(bs,
+					    options,
+					    bits_per_sample,
+					    samples,
+					    &lpc_coeffs,
+					    lpc_shift_needed);
   }
 
   ia_free(&lpc_coeffs);
@@ -598,21 +598,93 @@ void FlacEncoder_write_fixed_subframe(Bitstream *bs,
 			     residuals);
 }
 
-void FlacEncoder_write_lpc_subframe(Bitstream *bs,
-				    struct flac_encoding_options *options,
-				    int bits_per_sample,
-				    struct i_array *samples,
-				    struct i_array *coeffs,
-				    int shift_needed) {
-  int predictor_order = coeffs->size;
-  int qlp_precision = ia_reduce(coeffs,2,maximum_bits_size);
+void FlacEncoder_write_lpc_subframe_complete(Bitstream *bs,
+					     struct flac_encoding_options *options,
+					     int bits_per_sample,
+					     struct i_array *samples,
+					     struct i_array *coeffs,
+					     int shift_needed) {
+  struct i_array warm_up_samples;
   struct i_array residual;
+  struct i_array rice_parameters;
+
+  ia_init(&warm_up_samples,coeffs->size);
+  ia_init(&residual,samples->size);
+  ia_init(&rice_parameters,1);
+
+  FlacEncoder_evaluate_lpc_subframe(&warm_up_samples,
+				    &residual,
+				    &rice_parameters,
+				    options,
+				    bits_per_sample,
+				    samples,
+				    coeffs,
+				    shift_needed);
+
+  FlacEncoder_write_lpc_subframe(bs,
+				 &warm_up_samples,
+				 &rice_parameters,
+				 &residual,
+				 bits_per_sample,
+				 coeffs,
+				 shift_needed);
+
+  ia_free(&warm_up_samples);
+  ia_free(&residual);
+  ia_free(&rice_parameters);
+}
+
+
+void FlacEncoder_evaluate_lpc_subframe(struct i_array *warm_up_samples,
+				       struct i_array *residual,
+				       struct i_array *rice_parameters,
+				       struct flac_encoding_options *options,
+				       int bits_per_sample,
+				       struct i_array *samples,
+				       struct i_array *coeffs,
+				       int shift_needed) {
+  int predictor_order = coeffs->size;
   int64_t accumulator;
   int i,j;
 
   uint32_t samples_size;
   int32_t *samples_data;
   int32_t *coeffs_data;
+
+  /*write warm-up samples*/
+  for (i = 0; i < predictor_order; i++) {
+    ia_append(warm_up_samples,ia_getitem(samples,i));
+  }
+
+  /*calculate residual values*/
+  samples_size = samples->size;
+  samples_data = samples->data;
+  coeffs_data = coeffs->data;
+
+  for (i = predictor_order; i < samples_size; i++) {
+    accumulator = 0;
+    for (j = 0; j < predictor_order; j++) {
+      accumulator += (int64_t)samples_data[i - j - 1] * (int64_t)coeffs_data[j];
+    }
+    ia_append(residual,
+	      samples_data[i] - (int32_t)(accumulator >> shift_needed));
+  }
+
+  /*write residual*/
+  FlacEncoder_evaluate_best_residual(rice_parameters, options, predictor_order,
+				     residual);
+}
+
+void FlacEncoder_write_lpc_subframe(Bitstream *bs,
+				    struct i_array *warm_up_samples,
+				    struct i_array *rice_parameters,
+				    struct i_array *residuals,
+				    int bits_per_sample,
+				    struct i_array *coeffs,
+				    int shift_needed) {
+  int predictor_order = coeffs->size;
+  int qlp_precision = ia_reduce(coeffs,2,maximum_bits_size);
+  uint32_t i;
 
   /*write subframe header*/
   bs->write_bits(bs,1,0);
@@ -621,7 +693,7 @@ void FlacEncoder_write_lpc_subframe(Bitstream *bs,
 
   /*write warm-up samples*/
   for (i = 0; i < predictor_order; i++) {
-    bs->write_signed_bits(bs,bits_per_sample,ia_getitem(samples,i));
+    bs->write_signed_bits(bs,bits_per_sample,ia_getitem(warm_up_samples,i));
   }
 
   /*write QLP Precision*/
@@ -635,25 +707,9 @@ void FlacEncoder_write_lpc_subframe(Bitstream *bs,
     bs->write_signed_bits(bs,qlp_precision,ia_getitem(coeffs,i));
   }
 
-  /*calculate residual values*/
-  samples_size = samples->size;
-  samples_data = samples->data;
-  coeffs_data = coeffs->data;
-
-  ia_init(&residual,samples_size);
-  for (i = predictor_order; i < samples_size; i++) {
-    accumulator = 0;
-    for (j = 0; j < predictor_order; j++) {
-      accumulator += (int64_t)samples_data[i - j - 1] * (int64_t)coeffs_data[j];
-    }
-    ia_append(&residual,
-	      samples_data[i] - (int32_t)(accumulator >> shift_needed));
-  }
-
   /*write residual*/
-  FlacEncoder_write_best_residual(bs, options, predictor_order, &residual);
-
-  ia_free(&residual);
+  FlacEncoder_write_residual(bs, predictor_order, 0, rice_parameters,
+			     residuals);
 }
 
 
