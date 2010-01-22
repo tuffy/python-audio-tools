@@ -718,9 +718,12 @@ void FlacEncoder_write_best_residual(Bitstream *bs,
 int FlacEncoder_compute_best_rice_parameter(struct i_array *residuals) {
   uint64_t sum = 0;
   int i;
+  int32_t* residuals_data;
+
+  residuals_data = residuals->data;
 
   for (i = 0; i < residuals->size; i++)
-    sum += abs(ia_getitem(residuals,i));
+    sum += abs(residuals_data[i]);
 
   for (i = 0; (residuals->size * (1 << i)) < sum; i++)
     /*do nothing*/;

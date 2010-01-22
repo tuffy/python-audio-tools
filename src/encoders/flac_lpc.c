@@ -132,12 +132,15 @@ void FlacEncoder_compute_autocorrelation(struct f_array *values,
   int i,j;
   struct f_array lagged_signal;
   double sum;
+  double *windowed_signal_data = windowed_signal->data;
+  double *lagged_signal_data;
 
   for (i = 0; i < max_lpc_order; i++) {
     sum = 0.0;
     fa_tail(&lagged_signal,windowed_signal,windowed_signal->size - i);
+    lagged_signal_data = lagged_signal.data;
     for (j = 0; j < lagged_signal.size; j++)
-      sum += (fa_getitem(windowed_signal,j) * fa_getitem(&lagged_signal,j));
+      sum += (windowed_signal_data[j] * lagged_signal_data[j]);
     fa_append(values,sum);
   }
 }
