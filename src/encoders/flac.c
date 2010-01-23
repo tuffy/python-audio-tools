@@ -223,6 +223,8 @@ void FlacEncoder_write_frame(Bitstream *bs,
   long framesize;
   int channel_assignment;
 
+  Bitstream *independent_subframes;
+
   streaminfo->crc8 = streaminfo->crc16 = 0;
 
   startpos = ftell(bs->file);
@@ -233,12 +235,16 @@ void FlacEncoder_write_frame(Bitstream *bs,
   /*for each channel in samples, write a subframe*/
 
   /*first, try independent  subframes*/
+  independent_subframes = bs_open_recorder();
   for (i = 0; i < samples->size; i++) {
-    FlacEncoder_write_subframe(bs,
+    FlacEncoder_write_subframe(independent_subframes,
 			       &(streaminfo->options),
 			       streaminfo->bits_per_sample,
 			       iaa_getitem(samples,i));
   }
+
+  bs_dump_records(bs,independent_subframes);
+  bs_close(independent_subframes);
 
   /* if (samples->size == 2) { */
   /*   next_subframe = bbw_open(samples->size); */

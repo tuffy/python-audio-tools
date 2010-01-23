@@ -25,6 +25,7 @@ Bitstream* bs_open(FILE *f) {
   bs->file = f;
   bs->state = 0;
   bs->callback = NULL;
+  bs->records = NULL;
 
   bs->write_bits = write_bits_actual;
   bs->write_signed_bits = write_signed_bits_actual;
@@ -40,12 +41,32 @@ Bitstream* bs_open_accumulator(void) {
   bs->file = NULL;
   bs->bits_written = 0;
   bs->callback = NULL;
+  bs->records = NULL;
 
   bs->write_bits = write_bits_accumulator;
   bs->write_signed_bits = write_bits_accumulator;
   bs->write_bits64 = write_bits64_accumulator;
   bs->write_unary = write_unary_accumulator;
   bs->byte_align = byte_align_w_accumulator;
+
+  return bs;
+}
+
+Bitstream* bs_open_recorder(void) {
+  Bitstream *bs = malloc(sizeof(Bitstream));
+  bs->file = NULL;
+  bs->bits_written = 0;
+  bs->callback = NULL;
+
+  bs->records_written = 0;
+  bs->records_total = 0x100;
+  bs->records = malloc(sizeof(BitstreamRecord) * bs->records_total);
+
+  bs->write_bits = write_bits_record;
+  bs->write_signed_bits = write_signed_bits_record;
+  bs->write_bits64 = write_bits64_record;
+  bs->write_unary = write_unary_record;
+  bs->byte_align = byte_align_w_record;
 
   return bs;
 }
@@ -57,6 +78,7 @@ void bs_close(Bitstream *bs) {
   if (bs == NULL) return;
 
   if (bs->file != NULL) fclose(bs->file);
+  if (bs->records != NULL) free(bs->records);
 
   for (node = bs->callback; node != NULL; node = next) {
     next = node->next;
@@ -226,4 +248,88 @@ void write_unary_accumulator(Bitstream* bs, int stop_bit, int value) {
 void byte_align_w_accumulator(Bitstream* bs) {
   if (bs->bits_written % 8)
     bs->bits_written += (bs->bits_written % 8);
+}
+
+
+void write_bits_record(Bitstream* bs, unsigned int count, int value) {
+  BitstreamRecord record;
+
+  record.type = BS_WRITE_BITS;
+  record.key.count = count;
+  record.value.value = value;
+  bs_record_resize(bs);
+  bs->records[bs->records_written++] = record;
+  bs->bits_written += count;
+}
+
+void write_signed_bits_record(Bitstream* bs, unsigned int count,
+			      int value) {
+  BitstreamRecord record;
+
+  record.type = BS_WRITE_SIGNED_BITS;
+  record.key.count = count;
+  record.value.value = value;
+  bs_record_resize(bs);
+  bs->records[bs->records_written++] = record;
+  bs->bits_written += count;
+}
+
+void write_bits64_record(Bitstream* bs, unsigned int count,
+			 uint64_t value) {
+  BitstreamRecord record;
+
+  record.type = BS_WRITE_BITS64;
+  record.key.count = count;
+  record.value.value64 = value;
+  bs_record_resize(bs);
+  bs->records[bs->records_written++] = record;
+  bs->bits_written += count;
+}
+
+void write_unary_record(Bitstream* bs, int stop_bit, int value) {
+  BitstreamRecord record;
+
+  record.type = BS_WRITE_UNARY;
+  record.key.stop_bit = stop_bit;
+  record.value.value = value;
+  bs_record_resize(bs);
+  bs->records[bs->records_written++] = record;
+  bs->bits_written += (value + 1);
+}
+
+void byte_align_w_record(Bitstream* bs) {
+  BitstreamRecord record;
+
+  record.type = BS_BYTE_ALIGN;
+  bs_record_resize(bs);
+  bs->records[bs->records_written++] = record;
+  if (bs->bits_written % 8)
+    bs->bits_written += (bs->bits_written % 8);
+}
+
+void bs_dump_records(Bitstream* target, Bitstream* source) {
+  int records_written = source->records_written;
+  int i;
+  BitstreamRecord record;
+
+  for (i = 0; i < records_written; i++) {
+    record = source->records[i];
+    switch (record.type) {
+    case BS_WRITE_BITS:
+      target->write_bits(target,record.key.count,record.value.value);
+      break;
+    case BS_WRITE_SIGNED_BITS:
+      target->write_signed_bits(target,record.key.count,record.value.value);
+      break;
+    case BS_WRITE_BITS64:
+      target->write_bits64(target,record.key.count,record.value.value64);
+      break;
+    case BS_WRITE_UNARY:
+      target->write_unary(target,record.key.stop_bit,record.value.value);
+      break;
+    case BS_BYTE_ALIGN:
+      target->byte_align(target);
+      break;
+    }
+  }
 }
