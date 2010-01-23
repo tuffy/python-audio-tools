@@ -393,13 +393,24 @@ void FlacEncoder_write_subframe(Bitstream *bs,
 				struct i_array *samples) {
   uint32_t i;
   int32_t first_sample;
+
+  /*FIXED subframe params*/
   int fixed_predictor_order;
+  struct i_array fixed_warm_up_samples;
+  struct i_array fixed_residual;
+  struct i_array fixed_rice_parameters;
+  Bitstream *fixed_subframe;
+
+  /*LPC subframe params*/
+  struct i_array lpc_warm_up_samples;
+  struct i_array lpc_residual;
+  struct i_array lpc_rice_parameters;
   struct i_array lpc_coeffs;
   int lpc_shift_needed;
-
-  Bitstream *fixed_subframe;
   Bitstream *lpc_subframe;
 
+
+  /*check for a constant subframe*/
   if (samples->size < 2) {
     FlacEncoder_write_constant_subframe(bs,
 					bits_per_sample,
@@ -407,7 +418,6 @@ void FlacEncoder_write_subframe(Bitstream *bs,
     return;
   }
 
-  /*check for a constant subframe*/
   first_sample = ia_getitem(samples,0);
   for (i = 1; i < samples->size; i++) {
     if (ia_getitem(samples,i) != first_sample)
@@ -421,48 +431,83 @@ void FlacEncoder_write_subframe(Bitstream *bs,
   }
 
   /*first check FIXED subframe*/
-  fixed_subframe = bs_open_accumulator();
   fixed_predictor_order = FlacEncoder_compute_best_fixed_predictor_order(samples);
-  FlacEncoder_write_fixed_subframe_complete(fixed_subframe,
-					    options,
-					    bits_per_sample,
-					    samples,
-					    fixed_predictor_order);
+  ia_init(&fixed_warm_up_samples,fixed_predictor_order);
+  ia_init(&fixed_residual,samples->size);
+  ia_init(&fixed_rice_parameters,1);
+  fixed_subframe = bs_open_accumulator();
+
+  FlacEncoder_evaluate_fixed_subframe(&fixed_warm_up_samples,
+				      &fixed_residual,
+				      &fixed_rice_parameters,
+				      options,
+				      bits_per_sample,
+				      samples,
+				      fixed_predictor_order);
+
+  FlacEncoder_write_fixed_subframe(fixed_subframe,
+				   &fixed_warm_up_samples,
+				   &fixed_rice_parameters,
+				   &fixed_residual,
+				   bits_per_sample,
+				   fixed_predictor_order);
 
   /*then check LPC subframe*/
-  lpc_subframe = bs_open_accumulator();
   ia_init(&lpc_coeffs,1);
-  FlacEncoder_compute_best_lpc_coeffs(options,bits_per_sample,
+  FlacEncoder_compute_best_lpc_coeffs(options,
+				      bits_per_sample,
   				      samples,
   				      &lpc_coeffs,
   				      &lpc_shift_needed);
+  ia_init(&lpc_warm_up_samples,lpc_coeffs.size);
+  ia_init(&lpc_residual,samples->size);
+  ia_init(&lpc_rice_parameters,1);
+  lpc_subframe = bs_open_accumulator();
 
-  FlacEncoder_write_lpc_subframe_complete(lpc_subframe,
-					  options,
-					  bits_per_sample,
-					  samples,
-					  &lpc_coeffs,
-					  lpc_shift_needed);
+  FlacEncoder_evaluate_lpc_subframe(&lpc_warm_up_samples,
+				    &lpc_residual,
+				    &lpc_rice_parameters,
+				    options,
+				    bits_per_sample,
+				    samples,
+				    &lpc_coeffs,
+				    lpc_shift_needed);
+
+  FlacEncoder_write_lpc_subframe(lpc_subframe,
+				 &lpc_warm_up_samples,
+				 &lpc_rice_parameters,
+				 &lpc_residual,
+				 bits_per_sample,
+				 &lpc_coeffs,
+				 lpc_shift_needed);
 
   /*perform actual writing on the smaller of the two*/
   if (fixed_subframe->bits_written <= lpc_subframe->bits_written) {
-    FlacEncoder_write_fixed_subframe_complete(bs,
-					      options,
-					      bits_per_sample,
-					      samples,
-					      fixed_predictor_order);
+    FlacEncoder_write_fixed_subframe(bs,
+				     &fixed_warm_up_samples,
+				     &fixed_rice_parameters,
+				     &fixed_residual,
+				     bits_per_sample,
+				     fixed_predictor_order);
   } else {
-    FlacEncoder_write_lpc_subframe_complete(bs,
-					    options,
-					    bits_per_sample,
-					    samples,
-					    &lpc_coeffs,
-					    lpc_shift_needed);
+    FlacEncoder_write_lpc_subframe(bs,
+				   &lpc_warm_up_samples,
+				   &lpc_rice_parameters,
+				   &lpc_residual,
+				   bits_per_sample,
+				   &lpc_coeffs,
+				   lpc_shift_needed);
   }
 
-  ia_free(&lpc_coeffs);
   bs_close(fixed_subframe);
   bs_close(lpc_subframe);
+  ia_free(&fixed_warm_up_samples);
+  ia_free(&fixed_residual);
+  ia_free(&fixed_rice_parameters);
+  ia_free(&lpc_warm_up_samples);
+  ia_free(&lpc_residual);
+  ia_free(&lpc_rice_parameters);
+  ia_free(&lpc_coeffs);
 }
 
 void FlacEncoder_write_constant_subframe(Bitstream *bs,
@@ -543,39 +588,6 @@ void FlacEncoder_evaluate_fixed_subframe(struct i_array *warm_up_samples,
 				     residual);
 }
 
-void FlacEncoder_write_fixed_subframe_complete(Bitstream *bs,
-					       struct flac_encoding_options *options,
-					       int bits_per_sample,
-					       struct i_array *samples,
-					       int predictor_order) {
-  struct i_array warm_up_samples;
-  struct i_array residual;
-  struct i_array rice_parameters;
-
-  ia_init(&warm_up_samples,predictor_order);
-  ia_init(&residual,samples->size);
-  ia_init(&rice_parameters,1);
-
-  FlacEncoder_evaluate_fixed_subframe(&warm_up_samples,
-				      &residual,
-				      &rice_parameters,
-				      options,
-				      bits_per_sample,
-				      samples,
-				      predictor_order);
-
-  FlacEncoder_write_fixed_subframe(bs,
-				   &warm_up_samples,
-				   &rice_parameters,
-				   &residual,
-				   bits_per_sample,
-				   predictor_order);
-
-  ia_free(&warm_up_samples);
-  ia_free(&residual);
-  ia_free(&rice_parameters);
-}
-
 void FlacEncoder_write_fixed_subframe(Bitstream *bs,
 				      struct i_array *warm_up_samples,
 				      struct i_array *rice_parameters,
@@ -597,43 +609,6 @@ void FlacEncoder_write_fixed_subframe(Bitstream *bs,
   FlacEncoder_write_residual(bs, predictor_order, 0, rice_parameters,
 			     residuals);
 }
-
-void FlacEncoder_write_lpc_subframe_complete(Bitstream *bs,
-					     struct flac_encoding_options *options,
-					     int bits_per_sample,
-					     struct i_array *samples,
-					     struct i_array *coeffs,
-					     int shift_needed) {
-  struct i_array warm_up_samples;
-  struct i_array residual;
-  struct i_array rice_parameters;
-
-  ia_init(&warm_up_samples,coeffs->size);
-  ia_init(&residual,samples->size);
-  ia_init(&rice_parameters,1);
-
-  FlacEncoder_evaluate_lpc_subframe(&warm_up_samples,
-				    &residual,
-				    &rice_parameters,
-				    options,
-				    bits_per_sample,
-				    samples,
-				    coeffs,
-				    shift_needed);
-
-  FlacEncoder_write_lpc_subframe(bs,
-				 &warm_up_samples,
-				 &rice_parameters,
-				 &residual,
-				 bits_per_sample,
-				 coeffs,
-				 shift_needed);
-
-  ia_free(&warm_up_samples);
-  ia_free(&residual);
-  ia_free(&rice_parameters);
-}
-
 
 void FlacEncoder_evaluate_lpc_subframe(struct i_array *warm_up_samples,
 				       struct i_array *residual,
@@ -811,7 +786,7 @@ void FlacEncoder_evaluate_best_residual(struct i_array *rice_parameters,
   }
 
   /*finally, send the best possible residual to "rice_parameters"*/
-  ia_copy(rice_parameters,&working_rice_parameters);
+  ia_copy(rice_parameters,&current_best_rice_parameters);
 
   bs_close(potential_residual);
   ia_free(&working_rice_parameters);
