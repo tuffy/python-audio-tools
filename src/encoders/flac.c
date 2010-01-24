@@ -221,55 +221,58 @@ void FlacEncoder_write_frame(Bitstream *bs,
   uint32_t i;
   long startpos;
   long framesize;
-  int channel_assignment;
 
   Bitstream *independent_subframes;
+  Bitstream *left_difference_subframes;
 
   streaminfo->crc8 = streaminfo->crc16 = 0;
 
   startpos = ftell(bs->file);
 
-  channel_assignment = samples->size - 1;
-  FlacEncoder_write_frame_header(bs,streaminfo,samples,channel_assignment);
-
   /*for each channel in samples, write a subframe*/
+  if (samples->size != 2) {
+    FlacEncoder_write_frame_header(bs,streaminfo,samples,samples->size - 1);
+    for (i = 0; i < samples->size; i++) {
+      FlacEncoder_write_subframe(bs,
+				 &(streaminfo->options),
+				 streaminfo->bits_per_sample,
+				 iaa_getitem(samples,i));
+    }
+  } else {
+    /*first, try independent  subframes*/
+    independent_subframes = bs_open_recorder();
+    for (i = 0; i < 2; i++) {
+      FlacEncoder_write_subframe(independent_subframes,
+				 &(streaminfo->options),
+				 streaminfo->bits_per_sample,
+				 iaa_getitem(samples,i));
+    }
 
-  /*first, try independent  subframes*/
-  independent_subframes = bs_open_recorder();
-  for (i = 0; i < samples->size; i++) {
-    FlacEncoder_write_subframe(independent_subframes,
-			       &(streaminfo->options),
-			       streaminfo->bits_per_sample,
-			       iaa_getitem(samples,i));
+    /*then, try difference subframes*/
+    left_difference_subframes = bs_open_recorder();
+    ia_sub(iaa_getitem(samples,1),
+   	   iaa_getitem(samples,0),iaa_getitem(samples,1));
+    FlacEncoder_write_subframe(left_difference_subframes,
+  			       &(streaminfo->options),
+  			       streaminfo->bits_per_sample,
+  			       iaa_getitem(samples,0));
+    FlacEncoder_write_subframe(left_difference_subframes,
+  			       &(streaminfo->options),
+  			       streaminfo->bits_per_sample + 1,
+  			       iaa_getitem(samples,1));
+
+    /*write the smaller of the two to disk, along with a frame header*/
+    if (independent_subframes->bits_written <=
+	left_difference_subframes->bits_written) {
+      FlacEncoder_write_frame_header(bs,streaminfo,samples,1);
+      bs_dump_records(bs,independent_subframes);
+    } else {
+      FlacEncoder_write_frame_header(bs,streaminfo,samples,0x8);
+      bs_dump_records(bs,left_difference_subframes);
+    }
+    bs_close(independent_subframes);
+    bs_close(left_difference_subframes);
   }
-
-  bs_dump_records(bs,independent_subframes);
-  bs_close(independent_subframes);
-
-  /* if (samples->size == 2) { */
-  /*   next_subframe = bbw_open(samples->size); */
-
-  /*   /\*if 2 channels, try difference subframes*\/ */
-  /*   channel_assignment = 0x8; */
-  /*   ia_sub(iaa_getitem(samples,1), */
-  /* 	   iaa_getitem(samples,0),iaa_getitem(samples,1)); */
-  /*   FlacEncoder_write_subframe(next_subframe, */
-  /* 			       &(streaminfo->options), */
-  /* 			       streaminfo->bits_per_sample, */
-  /* 			       iaa_getitem(samples,0)); */
-  /*   FlacEncoder_write_subframe(next_subframe, */
-  /* 			       &(streaminfo->options), */
-  /* 			       streaminfo->bits_per_sample + 1, */
-  /* 			       iaa_getitem(samples,1)); */
-
-  /*   if (next_subframe->bits_written < best_subframe->bits_written) { */
-  /*     bbw_close(best_subframe); */
-  /*     best_subframe = next_subframe; */
-  /*   } else { */
-  /*     channel_assignment = 1; */
-  /*     bbw_close(next_subframe); */
-  /*   } */
-  /* } */
 
   bs->byte_align(bs);
 
@@ -979,18 +982,22 @@ void FlacEncoder_write_residual_partition(Bitstream *bs,
 					  int rice_parameter,
 					  struct i_array *residuals) {
   uint32_t i;
-  int32_t residual;
-  int32_t msb;
-  int32_t lsb;
+  register int32_t residual;
+  register int32_t msb;
+  register int32_t lsb;
 
   uint32_t residuals_size;
   int32_t *residuals_data;
+  void (*write_bits)(struct Bitstream_s* bs, unsigned int count, int value);
+  void (*write_unary)(struct Bitstream_s* bs, int stop_bit, int value);
 
+  write_bits = bs->write_bits;
+  write_unary = bs->write_unary;
   residuals_size = residuals->size;
   residuals_data = residuals->data;
 
   /*write the 4-5 bit Rice parameter header (depending on coding method)*/
-  bs->write_bits(bs, coding_method == 0 ? 4 : 5, rice_parameter);
+  write_bits(bs, coding_method == 0 ? 4 : 5, rice_parameter);
 
   /*for each residual, write a unary/unsigned bits pair
     whose breakpoint depends on "rice_parameter"*/
@@ -1003,8 +1010,8 @@ void FlacEncoder_write_residual_partition(Bitstream *bs,
     }
     msb = residual >> rice_parameter;
     lsb = residual - (msb << rice_parameter);
-    bs->write_unary(bs,1,msb);
-    bs->write_bits(bs,rice_parameter,lsb);
+    write_unary(bs,1,msb);
+    write_bits(bs,rice_parameter,lsb);
   }
 }
 
