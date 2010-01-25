@@ -696,6 +696,28 @@ void FlacEncoder_write_lpc_subframe(Bitstream *bs,
 			     residuals);
 }
 
+int FlacEncoder_estimate_residual_partition_size(int rice_parameter,
+						 struct i_array *residuals) {
+  uint32_t residuals_size;
+  int32_t *residuals_data;
+  uint64_t abs_residual_partition_sum = 0;
+  uint32_t i;
+
+  residuals_size = residuals->size;
+  residuals_data = residuals->data;
+
+  for (i = 0; i < residuals_size; i++)
+    abs_residual_partition_sum += abs(residuals_data[i]);
+
+  if (rice_parameter != 0)
+    return 4 + (1 + rice_parameter) * residuals->size +
+      (int)(abs_residual_partition_sum >> (rice_parameter - 1)) -
+      (int)(residuals->size >> 1);
+  else
+    return 4 + (1 + rice_parameter) * residuals->size +
+      (int)(abs_residual_partition_sum << 1) -
+      (int)(residuals->size >> 1);
+}
 
 void FlacEncoder_evaluate_best_residual(struct i_array *rice_parameters,
 					struct flac_encoding_options *options,
@@ -710,7 +732,7 @@ void FlacEncoder_evaluate_best_residual(struct i_array *rice_parameters,
 
   struct i_array current_best_rice_parameters;
   int current_best_bits;
-  Bitstream *potential_residual;
+  int estimated_residual_bits;
 
 
   struct i_array remaining_residuals;
@@ -740,7 +762,6 @@ void FlacEncoder_evaluate_best_residual(struct i_array *rice_parameters,
   /*initialize working space to try different residual sizes*/
   ia_init(&current_best_rice_parameters,0);
   current_best_bits = INT_MAX;
-  potential_residual = bs_open_accumulator();
   ia_init(&working_rice_parameters,1 << max_partition_order);
 
   /*for each partition_order possibility*/
@@ -748,7 +769,7 @@ void FlacEncoder_evaluate_best_residual(struct i_array *rice_parameters,
        partition_order <= max_partition_order;
        partition_order++) {
     ia_reset(&working_rice_parameters);
-    potential_residual->bits_written = 0;
+    estimated_residual_bits = 6; /*coding method and partition_order*/
 
     /*chop the residuals into 2 ^ partition_order number of partitions*/
     ia_link(&remaining_residuals,residuals);
@@ -763,7 +784,7 @@ void FlacEncoder_evaluate_best_residual(struct i_array *rice_parameters,
 		 &remaining_residuals,
 		 (block_size / (1 << partition_order)) - predictor_order);
       } else {
-	/*subsequence partitions contain (block_size / 2 ^ partition_order)
+	/*subsequent partitions contain (block_size / 2 ^ partition_order)
 	  number of residuals*/
 
 	ia_split(&partition_residuals,
@@ -776,28 +797,31 @@ void FlacEncoder_evaluate_best_residual(struct i_array *rice_parameters,
       /*and append that parameter to the parameter list*/
       ia_append(&working_rice_parameters,
 		FlacEncoder_compute_best_rice_parameter(&partition_residuals));
+
+      estimated_residual_bits += FlacEncoder_estimate_residual_partition_size(
+          ia_getitem(&working_rice_parameters,-1),
+	  &partition_residuals);
     }
 
     /*once the parameter list is set,
       write a complete residual block to potential_residual*/
-    FlacEncoder_write_residual(potential_residual,
-			       predictor_order,
-			       0, /*FIXME - make coding method dynamic?*/
-			       &working_rice_parameters,
-			       residuals);
+    /* FlacEncoder_write_residual(potential_residual, */
+    /* 			       predictor_order, */
+    /* 			       0, /\*FIXME - make coding method dynamic?*\/ */
+    /* 			       &working_rice_parameters, */
+    /* 			       residuals); */
 
     /*and if potential_residual is better than current_best (or no current_best)
       swap current_best for potential_residual*/
-    if (potential_residual->bits_written < current_best_bits) {
+    if (estimated_residual_bits < current_best_bits) {
       ia_copy(&current_best_rice_parameters,&working_rice_parameters);
-      current_best_bits = potential_residual->bits_written;
+      current_best_bits = estimated_residual_bits;
     }
   }
 
-  /*finally, send the best possible residual to "rice_parameters"*/
+  /*finally, send the best possible set of parameters to "rice_parameters"*/
   ia_copy(rice_parameters,&current_best_rice_parameters);
 
-  bs_close(potential_residual);
   ia_free(&working_rice_parameters);
   ia_free(&current_best_rice_parameters);
 }

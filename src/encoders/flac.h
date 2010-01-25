@@ -152,6 +152,9 @@ void FlacEncoder_write_lpc_subframe(Bitstream *bs,
 				    struct i_array *coeffs,
 				    int shift_needed);
 
+int FlacEncoder_estimate_residual_partition_size(int rice_parameter,
+						 struct i_array *residuals);
+
 void FlacEncoder_evaluate_best_residual(struct i_array *rice_parameters,
 					struct flac_encoding_options *options,
 					int predictor_order,
