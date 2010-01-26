@@ -153,7 +153,8 @@ void FlacEncoder_write_lpc_subframe(Bitstream *bs,
 				    int shift_needed);
 
 int FlacEncoder_estimate_residual_partition_size(int rice_parameter,
-						 struct i_array *residuals);
+						 struct i_array *residuals,
+						 uint64_t abs_residual_partition_sum);
 
 void FlacEncoder_evaluate_best_residual(struct i_array *rice_parameters,
 					struct flac_encoding_options *options,
@@ -192,7 +193,8 @@ void FlacEncoder_write_residual_partition(Bitstream *bs,
   return the best predictor_order for FIXED subframes*/
 int FlacEncoder_compute_best_fixed_predictor_order(struct i_array *samples);
 
-int FlacEncoder_compute_best_rice_parameter(struct i_array *residuals);
+int FlacEncoder_compute_best_rice_parameter(struct i_array *residuals,
+					    uint64_t abs_residual_partition_sum);
 
 /*given a block_size, return a QLP coefficient precision value*/
 int FlacEncoder_qlp_coeff_precision(int block_size);
@@ -204,6 +206,18 @@ void write_utf8(Bitstream *stream, unsigned int value);
 void md5_update(void *data, unsigned char *buffer, unsigned long len);
 
 int maximum_bits_size(int value, int current_maximum);
+
+static inline uint64_t abs_sum(struct i_array *a) {
+  register uint64_t sum = 0;
+  uint32_t a_size = a->size;
+  int32_t *a_data = a->data;
+  uint32_t i;
+
+  for (i = 0; i < a_size; i++)
+    sum += abs(a_data[i]);
+
+  return sum;
+}
 
 #include "flac_crc.h"
 

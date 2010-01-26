@@ -697,18 +697,8 @@ void FlacEncoder_write_lpc_subframe(Bitstream *bs,
 }
 
 int FlacEncoder_estimate_residual_partition_size(int rice_parameter,
-						 struct i_array *residuals) {
-  uint32_t residuals_size;
-  int32_t *residuals_data;
-  uint64_t abs_residual_partition_sum = 0;
-  uint32_t i;
-
-  residuals_size = residuals->size;
-  residuals_data = residuals->data;
-
-  for (i = 0; i < residuals_size; i++)
-    abs_residual_partition_sum += abs(residuals_data[i]);
-
+						 struct i_array *residuals,
+						 uint64_t abs_residual_partition_sum) {
   if (rice_parameter != 0)
     return 4 + (1 + rice_parameter) * residuals->size +
       (int)(abs_residual_partition_sum >> (rice_parameter - 1)) -
@@ -737,6 +727,7 @@ void FlacEncoder_evaluate_best_residual(struct i_array *rice_parameters,
 
   struct i_array remaining_residuals;
   struct i_array partition_residuals;
+  uint64_t abs_residual_partition_sum;
   uint32_t partitions;
   uint32_t partition;
 
@@ -793,14 +784,18 @@ void FlacEncoder_evaluate_best_residual(struct i_array *rice_parameters,
 		 block_size / (1 << partition_order));
       }
 
+      abs_residual_partition_sum = abs_sum(&partition_residuals);
+
       /*for each partition, determine the Rice parameter*/
       /*and append that parameter to the parameter list*/
       ia_append(&working_rice_parameters,
-		FlacEncoder_compute_best_rice_parameter(&partition_residuals));
+		FlacEncoder_compute_best_rice_parameter(&partition_residuals,
+							abs_residual_partition_sum));
 
       estimated_residual_bits += FlacEncoder_estimate_residual_partition_size(
           ia_getitem(&working_rice_parameters,-1),
-	  &partition_residuals);
+	  &partition_residuals,
+	  abs_residual_partition_sum);
     }
 
     /*once the parameter list is set,
@@ -826,127 +821,11 @@ void FlacEncoder_evaluate_best_residual(struct i_array *rice_parameters,
   ia_free(&current_best_rice_parameters);
 }
 
-
-void FlacEncoder_write_best_residual(Bitstream *bs,
-				     struct flac_encoding_options *options,
-				     int predictor_order,
-				     struct i_array *residuals) {
-  struct i_array rice_parameters;
-  int block_size;
-  int min_partition_order;
-  int max_partition_order;
-  int partition_order;
-
-
-  struct i_array current_best_rice_parameters;
-  int current_best_bits;
-  Bitstream *potential_residual;
-
-
-  struct i_array remaining_residuals;
-  struct i_array partition_residuals;
-  uint32_t partitions;
-  uint32_t partition;
-
-  /*keep dividing block_size by 2 until its no longer divisible by 2
-    to determine the maximum partition order
-    since there are 2 ^ partition_order number of partitions
-    and the residuals must be evenly distributed between them*/
-  for (block_size = predictor_order + residuals->size,max_partition_order = 0;
-       (block_size > 1) && ((block_size % 2) == 0);
-       max_partition_order++)
-    block_size /= 2;
-
-  /*although if the user-specified max_partition_order is smaller,
-    use that instead*/
-  max_partition_order = MIN(options->max_residual_partition_order,
-			    max_partition_order);
-
-  min_partition_order = MIN(options->min_residual_partition_order,
-			    max_partition_order);
-
-  block_size = predictor_order + residuals->size;
-
-  /*initialize working space to try different residual sizes*/
-  ia_init(&current_best_rice_parameters,0);
-  current_best_bits = INT_MAX;
-  potential_residual = bs_open_accumulator();
-  ia_init(&rice_parameters,1 << max_partition_order);
-
-  /*for each partition_order possibility*/
-  for (partition_order = min_partition_order;
-       partition_order <= max_partition_order;
-       partition_order++) {
-    ia_reset(&rice_parameters);
-    potential_residual->bits_written = 0;
-
-    /*chop the residuals into 2 ^ partition_order number of partitions*/
-    ia_link(&remaining_residuals,residuals);
-    partitions = 1 << partition_order;
-    for (partition = 0; partition < partitions; partition++) {
-      if (partition == 0) {
-	/*first partition contains (block_size / 2 ^ partition_order) - order
-	  number of residuals*/
-
-	ia_split(&partition_residuals,
-		 &remaining_residuals,
-		 &remaining_residuals,
-		 (block_size / (1 << partition_order)) - predictor_order);
-      } else {
-	/*subsequence partitions contain (block_size / 2 ^ partition_order)
-	  number of residuals*/
-
-	ia_split(&partition_residuals,
-		 &remaining_residuals,
-		 &remaining_residuals,
-		 block_size / (1 << partition_order));
-      }
-
-      /*for each partition, determine the Rice parameter*/
-      /*and append that parameter to the parameter list*/
-      ia_append(&rice_parameters,
-		FlacEncoder_compute_best_rice_parameter(&partition_residuals));
-    }
-
-    /*once the parameter list is set,
-      write a complete residual block to potential_residual*/
-    FlacEncoder_write_residual(potential_residual,
-			       predictor_order,
-			       0, /*FIXME - make coding method dynamic?*/
-			       &rice_parameters,
-			       residuals);
-
-    /*and if potential_residual is better than current_best (or no current_best)
-      swap current_best for potential_residual*/
-    if (potential_residual->bits_written < current_best_bits) {
-      ia_copy(&current_best_rice_parameters,&rice_parameters);
-      current_best_bits = potential_residual->bits_written;
-    }
-  }
-
-  /*finally, send the best possible residual to the bitbuffer*/
-  FlacEncoder_write_residual(bs,
-			     predictor_order,
-			     0, /*FIXME - make coding method dynamic?*/
-			     &current_best_rice_parameters,
-			     residuals);
-
-  bs_close(potential_residual);
-  ia_free(&rice_parameters);
-  ia_free(&current_best_rice_parameters);
-}
-
-int FlacEncoder_compute_best_rice_parameter(struct i_array *residuals) {
-  uint64_t sum = 0;
+int FlacEncoder_compute_best_rice_parameter(struct i_array *residuals,
+					    uint64_t abs_residual_partition_sum) {
   int i;
-  int32_t* residuals_data;
 
-  residuals_data = residuals->data;
-
-  for (i = 0; i < residuals->size; i++)
-    sum += abs(residuals_data[i]);
-
-  for (i = 0; (residuals->size * (1 << i)) < sum; i++)
+  for (i = 0; (residuals->size * (1 << i)) < abs_residual_partition_sum; i++)
     /*do nothing*/;
 
   return i;
