@@ -62,7 +62,7 @@ void FlacEncoder_compute_best_lpc_coeffs(struct flac_encoding_options *options,
 				      &autocorrelation_values,
 				      options->max_lpc_order - 1);
 
-  if (0) {
+  if (1) {
     /*if non-exhaustive search, estimate best order*/
     fa_tail(&error_values,&error_values,error_values.size - 1);
     lpc_order = FlacEncoder_compute_best_order(&error_values,
@@ -84,11 +84,18 @@ void FlacEncoder_compute_best_lpc_coeffs(struct flac_encoding_options *options,
     ia_init(&temp_rice_parameters,1);
 
     for (i = 0; i < options->max_lpc_order - 1; i++) {
+      ia_reset(&temp_coefficients);
+      ia_reset(&temp_warm_up_samples);
+      ia_reset(&temp_residual);
+      ia_reset(&temp_rice_parameters);
       temp_subframe->bits_written = 0;
+
+
       FlacEncoder_quantize_coefficients(faa_getitem(&lp_coefficients,i),
 					options->qlp_coeff_precision,
 					&temp_coefficients,
 					&temp_shift_needed);
+
       FlacEncoder_evaluate_lpc_subframe(&temp_warm_up_samples,
 					&temp_residual,
 					&temp_rice_parameters,
@@ -97,6 +104,7 @@ void FlacEncoder_compute_best_lpc_coeffs(struct flac_encoding_options *options,
 					samples,
 					&temp_coefficients,
 					temp_shift_needed);
+
       FlacEncoder_write_lpc_subframe(temp_subframe,
 				     &temp_warm_up_samples,
 				     &temp_rice_parameters,

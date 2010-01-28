@@ -837,7 +837,7 @@ int FlacEncoder_compute_best_rice_parameter(struct i_array *residuals,
 					    uint64_t abs_residual_partition_sum) {
   int i;
 
-  for (i = 0; (residuals->size * (1 << i)) < abs_residual_partition_sum; i++)
+  for (i = 0; ((uint64_t)residuals->size * (uint64_t)(1 << i)) < abs_residual_partition_sum; i++)
     /*do nothing*/;
 
   return i;
