@@ -457,24 +457,20 @@ void FlacEncoder_write_subframe(Bitstream *bs,
   /*then check LPC subframe, if necessary*/
   if (options->max_lpc_order > 0) {
     ia_init(&lpc_coeffs,1);
-    FlacEncoder_compute_best_lpc_coeffs(options,
+    ia_init(&lpc_warm_up_samples,options->max_lpc_order);
+    ia_init(&lpc_residual,samples->size);
+    ia_init(&lpc_rice_parameters,1);
+    FlacEncoder_compute_best_lpc_coeffs(&lpc_warm_up_samples,
+					&lpc_residual,
+					&lpc_rice_parameters,
+
+					options,
 					bits_per_sample,
 					samples,
 					&lpc_coeffs,
 					&lpc_shift_needed);
-    ia_init(&lpc_warm_up_samples,lpc_coeffs.size);
-    ia_init(&lpc_residual,samples->size);
-    ia_init(&lpc_rice_parameters,1);
-    lpc_subframe = bs_open_accumulator();
 
-    FlacEncoder_evaluate_lpc_subframe(&lpc_warm_up_samples,
-				      &lpc_residual,
-				      &lpc_rice_parameters,
-				      options,
-				      bits_per_sample,
-				      samples,
-				      &lpc_coeffs,
-				      lpc_shift_needed);
+    lpc_subframe = bs_open_accumulator();
 
     FlacEncoder_write_lpc_subframe(lpc_subframe,
 				   &lpc_warm_up_samples,

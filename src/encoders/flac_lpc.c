@@ -5,7 +5,11 @@
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
 #define MAX(x,y) ((x) > (y) ? (x) : (y))
 
-void FlacEncoder_compute_best_lpc_coeffs(struct flac_encoding_options *options,
+void FlacEncoder_compute_best_lpc_coeffs(struct i_array *lpc_warm_up_samples,
+					 struct i_array *lpc_residual,
+					 struct i_array *lpc_rice_parameters,
+
+					 struct flac_encoding_options *options,
 					 int bits_per_sample,
 					 struct i_array *samples,
 					 struct i_array *coeffs,
@@ -75,6 +79,16 @@ void FlacEncoder_compute_best_lpc_coeffs(struct flac_encoding_options *options,
 				      options->qlp_coeff_precision,
 				      coeffs,
 				      shift_needed);
+
+    FlacEncoder_evaluate_lpc_subframe(lpc_warm_up_samples,
+				      lpc_residual,
+				      lpc_rice_parameters,
+
+				      options,
+				      bits_per_sample,
+				      samples,
+				      coeffs,
+				      *shift_needed);
   } else {
     /*if exhaustive search, calculate best order*/
     temp_subframe = bs_open_accumulator();
@@ -112,10 +126,14 @@ void FlacEncoder_compute_best_lpc_coeffs(struct flac_encoding_options *options,
 				     bits_per_sample,
 				     &temp_coefficients,
 				     temp_shift_needed);
+
       if (temp_subframe->bits_written < current_best_subframe) {
 	current_best_subframe = temp_subframe->bits_written;
 	ia_copy(coeffs,&temp_coefficients);
 	*shift_needed = temp_shift_needed;
+	ia_copy(lpc_warm_up_samples,&temp_warm_up_samples);
+	ia_copy(lpc_residual,&temp_residual);
+	ia_copy(lpc_rice_parameters,&temp_rice_parameters);
       }
     }
 
