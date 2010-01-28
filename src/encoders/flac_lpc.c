@@ -1,5 +1,6 @@
 #include "flac_lpc.h"
 #include <math.h>
+#include <limits.h>
 
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
 #define MAX(x,y) ((x) > (y) ? (x) : (y))
@@ -15,6 +16,15 @@ void FlacEncoder_compute_best_lpc_coeffs(struct flac_encoding_options *options,
   struct fa_array lp_coefficients;
   struct f_array error_values;
   int lpc_order;
+
+  struct i_array temp_coefficients;
+  struct i_array temp_warm_up_samples;
+  struct i_array temp_residual;
+  struct i_array temp_rice_parameters;
+  int temp_shift_needed;
+  uint32_t i;
+  Bitstream *temp_subframe;
+  int current_best_subframe = INT_MAX;
 
   /*window signal*/
   fa_init(&tukey_window,samples->size);
@@ -52,21 +62,61 @@ void FlacEncoder_compute_best_lpc_coeffs(struct flac_encoding_options *options,
 				      &autocorrelation_values,
 				      options->max_lpc_order - 1);
 
-  /*if non-exhaustive search, estimate best order*/
-  fa_tail(&error_values,&error_values,error_values.size - 1);
-  lpc_order = FlacEncoder_compute_best_order(&error_values,
-					     samples->size,
-					     bits_per_sample + 5);
+  if (0) {
+    /*if non-exhaustive search, estimate best order*/
+    fa_tail(&error_values,&error_values,error_values.size - 1);
+    lpc_order = FlacEncoder_compute_best_order(&error_values,
+					       samples->size,
+					       bits_per_sample + 5);
 
-  /*if exhaustive search, calculate best order*/
-  /*FIXME*/
+    /*quantize coefficients*/
+    ia_reset(coeffs);
+    FlacEncoder_quantize_coefficients(faa_getitem(&lp_coefficients,lpc_order - 1),
+				      options->qlp_coeff_precision,
+				      coeffs,
+				      shift_needed);
+  } else {
+    /*if exhaustive search, calculate best order*/
+    temp_subframe = bs_open_accumulator();
+    ia_init(&temp_coefficients,options->max_lpc_order);
+    ia_init(&temp_warm_up_samples,options->max_lpc_order);
+    ia_init(&temp_residual,samples->size);
+    ia_init(&temp_rice_parameters,1);
 
-  /*quantize coefficients*/
-  ia_reset(coeffs);
-  FlacEncoder_quantize_coefficients(faa_getitem(&lp_coefficients,lpc_order - 1),
-				    options->qlp_coeff_precision,
-				    coeffs,
-				    shift_needed);
+    for (i = 0; i < options->max_lpc_order - 1; i++) {
+      temp_subframe->bits_written = 0;
+      FlacEncoder_quantize_coefficients(faa_getitem(&lp_coefficients,i),
+					options->qlp_coeff_precision,
+					&temp_coefficients,
+					&temp_shift_needed);
+      FlacEncoder_evaluate_lpc_subframe(&temp_warm_up_samples,
+					&temp_residual,
+					&temp_rice_parameters,
+					options,
+					bits_per_sample,
+					samples,
+					&temp_coefficients,
+					temp_shift_needed);
+      FlacEncoder_write_lpc_subframe(temp_subframe,
+				     &temp_warm_up_samples,
+				     &temp_rice_parameters,
+				     &temp_residual,
+				     bits_per_sample,
+				     &temp_coefficients,
+				     temp_shift_needed);
+      if (temp_subframe->bits_written < current_best_subframe) {
+	current_best_subframe = temp_subframe->bits_written;
+	ia_copy(coeffs,&temp_coefficients);
+	*shift_needed = temp_shift_needed;
+      }
+    }
+
+    ia_free(&temp_coefficients);
+    ia_free(&temp_warm_up_samples);
+    ia_free(&temp_residual);
+    ia_free(&temp_rice_parameters);
+    bs_close(temp_subframe);
+  }
 
   /*return best QLP coefficients and shift-needed values*/
 
