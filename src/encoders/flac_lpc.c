@@ -66,7 +66,7 @@ void FlacEncoder_compute_best_lpc_coeffs(struct i_array *lpc_warm_up_samples,
 				      &autocorrelation_values,
 				      options->max_lpc_order - 1);
 
-  if (1) {
+  if (!(options->exhaustive_model_search)) {
     /*if non-exhaustive search, estimate best order*/
     fa_tail(&error_values,&error_values,error_values.size - 1);
     lpc_order = FlacEncoder_compute_best_order(&error_values,

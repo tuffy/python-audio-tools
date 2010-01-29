@@ -44,21 +44,23 @@ PyObject* encoders_encode_flac(PyObject *dummy,
 			   "block_size",
 			   "max_lpc_order",
 			   "min_residual_partition_order",
-			   "max_residual_partition_order",NULL};
+			   "max_residual_partition_order",
+			   "exhaustive_model_search",NULL};
   MD5_CTX md5sum;
 
   struct ia_array samples;
 
   /*extract a filename, PCMReader-compatible object and encoding options:
     blocksize int*/
-  if (!PyArg_ParseTupleAndKeywords(args,keywds,"sOiiii",
+  if (!PyArg_ParseTupleAndKeywords(args,keywds,"sOiiii|i",
 				   kwlist,
 				   &filename,
 				   &pcmreader_obj,
 				   &(streaminfo.options.block_size),
 				   &(streaminfo.options.max_lpc_order),
 				   &(streaminfo.options.min_residual_partition_order),
-				   &(streaminfo.options.max_residual_partition_order)))
+				   &(streaminfo.options.max_residual_partition_order),
+				   &(streaminfo.options.exhaustive_model_search)))
     return NULL;
 
   if (streaminfo.options.block_size <= 0) {
@@ -88,7 +90,8 @@ PyObject* encoders_encode_flac(PyObject *dummy,
 			   int block_size,
 			   int max_lpc_order,
 			   int min_residual_partition_order,
-			   int max_residual_partition_order) {
+			   int max_residual_partition_order,
+			   int exhaustive_model_search) {
   FILE *file;
   Bitstream *stream;
   struct pcm_reader *reader;
@@ -103,6 +106,7 @@ PyObject* encoders_encode_flac(PyObject *dummy,
   streaminfo.options.min_residual_partition_order = min_residual_partition_order;
   streaminfo.options.max_residual_partition_order = max_residual_partition_order;
   streaminfo.options.qlp_coeff_precision = FlacEncoder_qlp_coeff_precision(block_size);
+  streaminfo.options.exhaustive_model_search = exhaustive_model_search;
 
   file = fopen(filename,"wb");
   reader = pcmr_open(input,44100,2,16); /*FIXME - assume CD quality for now*/
@@ -1062,7 +1066,7 @@ int maximum_bits_size(int value, int current_maximum) {
 int main(int argc, char *argv[]) {
   encoders_encode_flac(argv[1],
 		       stdin,
-		       4096,12,0,6);
+		       4096,12,0,6,0);
 
   return 0;
 }
