@@ -45,14 +45,20 @@ PyObject* encoders_encode_flac(PyObject *dummy,
 			   "max_lpc_order",
 			   "min_residual_partition_order",
 			   "max_residual_partition_order",
+			   "mid_side",
+			   "adaptive_mid_side",
 			   "exhaustive_model_search",NULL};
   MD5_CTX md5sum;
 
   struct ia_array samples;
 
+  streaminfo.options.mid_side = 0;
+  streaminfo.options.adaptive_mid_side = 0;
+  streaminfo.options.exhaustive_model_search = 0;
+
   /*extract a filename, PCMReader-compatible object and encoding options:
     blocksize int*/
-  if (!PyArg_ParseTupleAndKeywords(args,keywds,"sOiiii|i",
+  if (!PyArg_ParseTupleAndKeywords(args,keywds,"sOiiii|iii",
 				   kwlist,
 				   &filename,
 				   &pcmreader_obj,
@@ -60,6 +66,8 @@ PyObject* encoders_encode_flac(PyObject *dummy,
 				   &(streaminfo.options.max_lpc_order),
 				   &(streaminfo.options.min_residual_partition_order),
 				   &(streaminfo.options.max_residual_partition_order),
+				   &(streaminfo.options.mid_side),
+				   &(streaminfo.options.adaptive_mid_side),
 				   &(streaminfo.options.exhaustive_model_search)))
     return NULL;
 
@@ -91,6 +99,8 @@ PyObject* encoders_encode_flac(PyObject *dummy,
 			   int max_lpc_order,
 			   int min_residual_partition_order,
 			   int max_residual_partition_order,
+			   int mid_side,
+			   int adaptive_mid_side,
 			   int exhaustive_model_search) {
   FILE *file;
   Bitstream *stream;
@@ -106,6 +116,8 @@ PyObject* encoders_encode_flac(PyObject *dummy,
   streaminfo.options.min_residual_partition_order = min_residual_partition_order;
   streaminfo.options.max_residual_partition_order = max_residual_partition_order;
   streaminfo.options.qlp_coeff_precision = FlacEncoder_qlp_coeff_precision(block_size);
+  streaminfo.options.mid_side = mid_side;
+  streaminfo.options.adaptive_mid_side = adaptive_mid_side;
   streaminfo.options.exhaustive_model_search = exhaustive_model_search;
 
   file = fopen(filename,"wb");
@@ -227,14 +239,19 @@ void FlacEncoder_write_frame(Bitstream *bs,
   long framesize;
 
   Bitstream *independent_subframes;
-  Bitstream *left_difference_subframes;
+  Bitstream *mid_side_subframes;
+  struct i_array mid_subframe;
+  struct i_array side_subframe;
 
   streaminfo->crc8 = streaminfo->crc16 = 0;
 
   startpos = ftell(bs->file);
 
   /*for each channel in samples, write a subframe*/
-  if (samples->size != 2) {
+  if (!(streaminfo->options.mid_side ||
+	streaminfo->options.adaptive_mid_side) ||
+      (samples->size != 2)) {
+    /*if no mid/adaptive-mid-side or non-stereo, do independent*/
     FlacEncoder_write_frame_header(bs,streaminfo,samples,samples->size - 1);
     for (i = 0; i < samples->size; i++) {
       FlacEncoder_write_subframe(bs,
@@ -243,7 +260,7 @@ void FlacEncoder_write_frame(Bitstream *bs,
 				 iaa_getitem(samples,i));
     }
   } else {
-    /*first, try independent  subframes*/
+    /*otherwise, first try independent subframes*/
     independent_subframes = bs_open_recorder();
     for (i = 0; i < 2; i++) {
       FlacEncoder_write_subframe(independent_subframes,
@@ -252,30 +269,36 @@ void FlacEncoder_write_frame(Bitstream *bs,
 				 iaa_getitem(samples,i));
     }
 
-    /*then, try difference subframes*/
-    left_difference_subframes = bs_open_recorder();
-    ia_sub(iaa_getitem(samples,1),
-   	   iaa_getitem(samples,0),iaa_getitem(samples,1));
-    FlacEncoder_write_subframe(left_difference_subframes,
+    /*then, try mid-side subframes*/
+    mid_side_subframes = bs_open_recorder();
+    ia_init(&mid_subframe,iaa_getitem(samples,0)->size);
+    ia_init(&side_subframe,iaa_getitem(samples,0)->size);
+
+    FlacEncoder_build_mid_side_subframes(samples,&mid_subframe,&side_subframe);
+
+    FlacEncoder_write_subframe(mid_side_subframes,
   			       &(streaminfo->options),
   			       streaminfo->bits_per_sample,
-  			       iaa_getitem(samples,0));
-    FlacEncoder_write_subframe(left_difference_subframes,
+  			       &mid_subframe);
+    FlacEncoder_write_subframe(mid_side_subframes,
   			       &(streaminfo->options),
   			       streaminfo->bits_per_sample + 1,
-  			       iaa_getitem(samples,1));
+  			       &side_subframe);
 
     /*write the smaller of the two to disk, along with a frame header*/
     if (independent_subframes->bits_written <=
-	left_difference_subframes->bits_written) {
+	mid_side_subframes->bits_written) {
       FlacEncoder_write_frame_header(bs,streaminfo,samples,1);
       bs_dump_records(bs,independent_subframes);
     } else {
-      FlacEncoder_write_frame_header(bs,streaminfo,samples,0x8);
-      bs_dump_records(bs,left_difference_subframes);
+      FlacEncoder_write_frame_header(bs,streaminfo,samples,0xA);
+      bs_dump_records(bs,mid_side_subframes);
     }
+
     bs_close(independent_subframes);
-    bs_close(left_difference_subframes);
+    bs_close(mid_side_subframes);
+    ia_free(&mid_subframe);
+    ia_free(&side_subframe);
   }
 
   bs->byte_align(bs);
@@ -1041,6 +1064,31 @@ int FlacEncoder_qlp_coeff_precision(int block_size) {
     return 13;
 }
 
+void FlacEncoder_build_mid_side_subframes(struct ia_array *samples,
+					  struct i_array *mid_subframe,
+					  struct i_array *side_subframe) {
+  struct i_array *left = iaa_getitem(samples,0);
+  struct i_array *right = iaa_getitem(samples,1);
+  int32_t *left_data = left->data;
+  int32_t *right_data = right->data;
+  int32_t *mid_data;
+  int32_t *side_data;
+  uint32_t sample_size = left->size;
+  uint32_t i;
+
+  ia_resize(mid_subframe,sample_size);
+  ia_resize(side_subframe,sample_size);
+  mid_data = mid_subframe->data;
+  side_data = side_subframe->data;
+  mid_subframe->size = sample_size;
+  side_subframe->size = sample_size;
+
+  for (i = 0; i < sample_size; i++) {
+    mid_data[i] = (left_data[i] + right_data[i]) >> 1;
+    side_data[i] = left_data[i] - right_data[i];
+  }
+}
+
 void md5_update(void *data, unsigned char *buffer, unsigned long len) {
   MD5_Update((MD5_CTX*)data, (const void*)buffer, len);
 }
@@ -1066,7 +1114,7 @@ int maximum_bits_size(int value, int current_maximum) {
 int main(int argc, char *argv[]) {
   encoders_encode_flac(argv[1],
 		       stdin,
-		       4096,12,0,6,0);
+		       1152,0,0,3,0,1,0);
 
   return 0;
 }

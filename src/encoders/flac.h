@@ -34,6 +34,8 @@ struct flac_encoding_options {
   int max_lpc_order;
   int qlp_coeff_precision;
   int exhaustive_model_search;
+  int mid_side;
+  int adaptive_mid_side;
 };
 
 struct flac_STREAMINFO {
@@ -199,6 +201,10 @@ int FlacEncoder_compute_best_rice_parameter(struct i_array *residuals,
 
 /*given a block_size, return a QLP coefficient precision value*/
 int FlacEncoder_qlp_coeff_precision(int block_size);
+
+void FlacEncoder_build_mid_side_subframes(struct ia_array *samples,
+					  struct i_array *mid_subframe,
+					  struct i_array *side_subframe);
 
 /*writes a UTF-8 value to the bitstream*/
 void write_utf8(Bitstream *stream, unsigned int value);
