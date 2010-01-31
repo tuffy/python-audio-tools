@@ -238,15 +238,16 @@ void FlacEncoder_write_frame(Bitstream *bs,
   long startpos;
   long framesize;
 
-  Bitstream *independent_subframes;
-  Bitstream *left_side_subframes;
-  Bitstream *side_right_subframes;
-  Bitstream *mid_side_subframes;
+  Bitstream *left_subframe;
+  Bitstream *right_subframe;
+  Bitstream *side_subframe;
 
-  struct i_array left_side;
-  struct i_array side_right;
-  struct i_array mid_subframe;
-  struct i_array side_subframe;
+  Bitstream *avg_subframe;
+  Bitstream *difference_subframe;
+
+  struct i_array side_samples;
+  struct i_array avg_subframe_samples;
+  struct i_array difference_subframe_samples;
 
   streaminfo->crc8 = streaminfo->crc16 = 0;
 
@@ -267,107 +268,102 @@ void FlacEncoder_write_frame(Bitstream *bs,
     }
   } else {
     /*otherwise, first try independent subframes*/
-    independent_subframes = bs_open_recorder();
-    for (i = 0; i < 2; i++) {
-      FlacEncoder_write_subframe(independent_subframes,
-				 &(streaminfo->options),
-				 streaminfo->bits_per_sample,
-				 iaa_getitem(samples,i));
-    }
+    left_subframe = bs_open_recorder();
+    FlacEncoder_write_subframe(left_subframe,
+			       &(streaminfo->options),
+			       streaminfo->bits_per_sample,
+			       iaa_getitem(samples,0));
+    right_subframe = bs_open_recorder();
+    FlacEncoder_write_subframe(right_subframe,
+			       &(streaminfo->options),
+			       streaminfo->bits_per_sample,
+			       iaa_getitem(samples,1));
 
-    /*then, try mid-side subframes*/
-    mid_side_subframes = bs_open_recorder();
-    ia_init(&mid_subframe,iaa_getitem(samples,0)->size);
-    ia_init(&side_subframe,iaa_getitem(samples,0)->size);
+    /*then, try mid-side subframe*/
+    avg_subframe = bs_open_recorder();
+    difference_subframe = bs_open_recorder();
 
-    FlacEncoder_build_mid_side_subframes(samples,&mid_subframe,&side_subframe);
+    ia_init(&avg_subframe_samples,iaa_getitem(samples,0)->size);
+    ia_init(&difference_subframe_samples,iaa_getitem(samples,0)->size);
 
-    FlacEncoder_write_subframe(mid_side_subframes,
+    FlacEncoder_build_mid_side_subframes(samples,
+					 &avg_subframe_samples,
+					 &difference_subframe_samples);
+
+    FlacEncoder_write_subframe(avg_subframe,
   			       &(streaminfo->options),
   			       streaminfo->bits_per_sample,
-  			       &mid_subframe);
-    FlacEncoder_write_subframe(mid_side_subframes,
+  			       &avg_subframe_samples);
+
+    FlacEncoder_write_subframe(difference_subframe,
   			       &(streaminfo->options),
   			       streaminfo->bits_per_sample + 1,
-  			       &side_subframe);
+  			       &difference_subframe_samples);
 
     if (streaminfo->options.mid_side) {
       /*if mid-side is selected, try left-side and side-right also*/
 
-      left_side_subframes = bs_open_recorder();
-      ia_init(&left_side,iaa_getitem(samples,0)->size);
+      side_subframe = bs_open_recorder();
+      ia_init(&side_samples,iaa_getitem(samples,0)->size);
 
-      FlacEncoder_build_left_side_subframes(samples,&left_side);
+      FlacEncoder_build_left_side_subframes(samples,&side_samples);
 
-      FlacEncoder_write_subframe(left_side_subframes,
-				 &(streaminfo->options),
-				 streaminfo->bits_per_sample,
-				 iaa_getitem(samples,0));
-      FlacEncoder_write_subframe(left_side_subframes,
+      FlacEncoder_write_subframe(side_subframe,
 				 &(streaminfo->options),
 				 streaminfo->bits_per_sample + 1,
-				 &left_side);
+				 &side_samples);
 
-      side_right_subframes = bs_open_recorder();
-      ia_init(&side_right,iaa_getitem(samples,0)->size);
-
-      FlacEncoder_build_side_right_subframes(samples,&side_right);
-
-      FlacEncoder_write_subframe(side_right_subframes,
-				 &(streaminfo->options),
-				 streaminfo->bits_per_sample + 1,
-				 &side_right);
-
-      FlacEncoder_write_subframe(side_right_subframes,
-				 &(streaminfo->options),
-				 streaminfo->bits_per_sample,
-				 iaa_getitem(samples,1));
-
-      if (independent_subframes->bits_written <
-	  MIN(left_side_subframes->bits_written,
-	      MIN(side_right_subframes->bits_written,
-		  mid_side_subframes->bits_written))) {
+      if ((left_subframe->bits_written + right_subframe->bits_written) <
+	  MIN(left_subframe->bits_written + side_subframe->bits_written,
+	      MIN(side_subframe->bits_written + right_subframe->bits_written,
+		  avg_subframe->bits_written + difference_subframe->bits_written))) {
 	/*do independent subframes*/
 	FlacEncoder_write_frame_header(bs,streaminfo,samples,1);
-	bs_dump_records(bs,independent_subframes);
-      } else if (left_side_subframes->bits_written <
-		 MIN(side_right_subframes->bits_written,
-		     mid_side_subframes->bits_written)) {
+	bs_dump_records(bs,left_subframe);
+	bs_dump_records(bs,right_subframe);
+      } else if ((left_subframe->bits_written + side_subframe->bits_written) <
+		 MIN(side_subframe->bits_written + right_subframe->bits_written,
+		     avg_subframe->bits_written + difference_subframe->bits_written)) {
 	/*do left-side subframes*/
 	FlacEncoder_write_frame_header(bs,streaminfo,samples,0x8);
-	bs_dump_records(bs,left_side_subframes);
-      } else if (side_right_subframes->bits_written <
-		 mid_side_subframes->bits_written) {
+	bs_dump_records(bs,left_subframe);
+	bs_dump_records(bs,side_subframe);
+      } else if (side_subframe->bits_written + right_subframe->bits_written <
+		 avg_subframe->bits_written + difference_subframe->bits_written) {
 	/*do side-right subframes*/
 	FlacEncoder_write_frame_header(bs,streaminfo,samples,0x9);
-	bs_dump_records(bs,side_right_subframes);
+	bs_dump_records(bs,side_subframe);
+	bs_dump_records(bs,right_subframe);
       } else {
 	/*do mid-side subframes*/
 	FlacEncoder_write_frame_header(bs,streaminfo,samples,0xA);
-	bs_dump_records(bs,mid_side_subframes);
+	bs_dump_records(bs,avg_subframe);
+	bs_dump_records(bs,difference_subframe);
       }
 
-      bs_close(left_side_subframes);
-      bs_close(side_right_subframes);
-      ia_free(&left_side);
-      ia_free(&side_right);
+      bs_close(side_subframe);
+      ia_free(&side_samples);
     } else {
       /*otherwise, write the smaller of independent and mid-side to disk,
 	along with a frame header*/
-      if (independent_subframes->bits_written <=
-	  mid_side_subframes->bits_written) {
+      if ((left_subframe->bits_written + right_subframe->bits_written) <=
+	  (avg_subframe->bits_written + difference_subframe->bits_written)) {
 	FlacEncoder_write_frame_header(bs,streaminfo,samples,1);
-	bs_dump_records(bs,independent_subframes);
+	bs_dump_records(bs,left_subframe);
+	bs_dump_records(bs,right_subframe);
       } else {
 	FlacEncoder_write_frame_header(bs,streaminfo,samples,0xA);
-	bs_dump_records(bs,mid_side_subframes);
+	bs_dump_records(bs,avg_subframe);
+	bs_dump_records(bs,difference_subframe);
       }
     }
 
-    bs_close(independent_subframes);
-    bs_close(mid_side_subframes);
-    ia_free(&mid_subframe);
-    ia_free(&side_subframe);
+    bs_close(left_subframe);
+    bs_close(right_subframe);
+    bs_close(avg_subframe);
+    bs_close(difference_subframe);
+    ia_free(&avg_subframe_samples);
+    ia_free(&difference_subframe_samples);
   }
 
   bs->byte_align(bs);
