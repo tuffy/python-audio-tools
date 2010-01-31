@@ -202,6 +202,12 @@ int FlacEncoder_compute_best_rice_parameter(struct i_array *residuals,
 /*given a block_size, return a QLP coefficient precision value*/
 int FlacEncoder_qlp_coeff_precision(int block_size);
 
+void FlacEncoder_build_left_side_subframes(struct ia_array *samples,
+					   struct i_array *left_side);
+
+void FlacEncoder_build_side_right_subframes(struct ia_array *samples,
+					    struct i_array *side_right);
+
 void FlacEncoder_build_mid_side_subframes(struct ia_array *samples,
 					  struct i_array *mid_subframe,
 					  struct i_array *side_subframe);

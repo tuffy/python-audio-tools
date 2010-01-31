@@ -239,7 +239,12 @@ void FlacEncoder_write_frame(Bitstream *bs,
   long framesize;
 
   Bitstream *independent_subframes;
+  Bitstream *left_side_subframes;
+  Bitstream *side_right_subframes;
   Bitstream *mid_side_subframes;
+
+  struct i_array left_side;
+  struct i_array side_right;
   struct i_array mid_subframe;
   struct i_array side_subframe;
 
@@ -248,6 +253,7 @@ void FlacEncoder_write_frame(Bitstream *bs,
   startpos = ftell(bs->file);
 
   /*for each channel in samples, write a subframe*/
+
   if (!(streaminfo->options.mid_side ||
 	streaminfo->options.adaptive_mid_side) ||
       (samples->size != 2)) {
@@ -285,14 +291,77 @@ void FlacEncoder_write_frame(Bitstream *bs,
   			       streaminfo->bits_per_sample + 1,
   			       &side_subframe);
 
-    /*write the smaller of the two to disk, along with a frame header*/
-    if (independent_subframes->bits_written <=
-	mid_side_subframes->bits_written) {
-      FlacEncoder_write_frame_header(bs,streaminfo,samples,1);
-      bs_dump_records(bs,independent_subframes);
+    if (streaminfo->options.mid_side) {
+      /*if mid-side is selected, try left-side and side-right also*/
+
+      left_side_subframes = bs_open_recorder();
+      ia_init(&left_side,iaa_getitem(samples,0)->size);
+
+      FlacEncoder_build_left_side_subframes(samples,&left_side);
+
+      FlacEncoder_write_subframe(left_side_subframes,
+				 &(streaminfo->options),
+				 streaminfo->bits_per_sample,
+				 iaa_getitem(samples,0));
+      FlacEncoder_write_subframe(left_side_subframes,
+				 &(streaminfo->options),
+				 streaminfo->bits_per_sample + 1,
+				 &left_side);
+
+      side_right_subframes = bs_open_recorder();
+      ia_init(&side_right,iaa_getitem(samples,0)->size);
+
+      FlacEncoder_build_side_right_subframes(samples,&side_right);
+
+      FlacEncoder_write_subframe(side_right_subframes,
+				 &(streaminfo->options),
+				 streaminfo->bits_per_sample + 1,
+				 &side_right);
+
+      FlacEncoder_write_subframe(side_right_subframes,
+				 &(streaminfo->options),
+				 streaminfo->bits_per_sample,
+				 iaa_getitem(samples,1));
+
+      if (independent_subframes->bits_written <
+	  MIN(left_side_subframes->bits_written,
+	      MIN(side_right_subframes->bits_written,
+		  mid_side_subframes->bits_written))) {
+	/*do independent subframes*/
+	FlacEncoder_write_frame_header(bs,streaminfo,samples,1);
+	bs_dump_records(bs,independent_subframes);
+      } else if (left_side_subframes->bits_written <
+		 MIN(side_right_subframes->bits_written,
+		     mid_side_subframes->bits_written)) {
+	/*do left-side subframes*/
+	FlacEncoder_write_frame_header(bs,streaminfo,samples,0x8);
+	bs_dump_records(bs,left_side_subframes);
+      } else if (side_right_subframes->bits_written <
+		 mid_side_subframes->bits_written) {
+	/*do side-right subframes*/
+	FlacEncoder_write_frame_header(bs,streaminfo,samples,0x9);
+	bs_dump_records(bs,side_right_subframes);
+      } else {
+	/*do mid-side subframes*/
+	FlacEncoder_write_frame_header(bs,streaminfo,samples,0xA);
+	bs_dump_records(bs,mid_side_subframes);
+      }
+
+      bs_close(left_side_subframes);
+      bs_close(side_right_subframes);
+      ia_free(&left_side);
+      ia_free(&side_right);
     } else {
-      FlacEncoder_write_frame_header(bs,streaminfo,samples,0xA);
-      bs_dump_records(bs,mid_side_subframes);
+      /*otherwise, write the smaller of independent and mid-side to disk,
+	along with a frame header*/
+      if (independent_subframes->bits_written <=
+	  mid_side_subframes->bits_written) {
+	FlacEncoder_write_frame_header(bs,streaminfo,samples,1);
+	bs_dump_records(bs,independent_subframes);
+      } else {
+	FlacEncoder_write_frame_header(bs,streaminfo,samples,0xA);
+	bs_dump_records(bs,mid_side_subframes);
+      }
     }
 
     bs_close(independent_subframes);
@@ -1089,6 +1158,18 @@ void FlacEncoder_build_mid_side_subframes(struct ia_array *samples,
   }
 }
 
+void FlacEncoder_build_left_side_subframes(struct ia_array *samples,
+					   struct i_array *left_side) {
+  ia_sub(left_side,
+	 iaa_getitem(samples,0),iaa_getitem(samples,1));
+}
+
+void FlacEncoder_build_side_right_subframes(struct ia_array *samples,
+					    struct i_array *side_right) {
+  ia_sub(side_right,
+	 iaa_getitem(samples,0),iaa_getitem(samples,1));
+}
+
 void md5_update(void *data, unsigned char *buffer, unsigned long len) {
   MD5_Update((MD5_CTX*)data, (const void*)buffer, len);
 }
@@ -1114,7 +1195,7 @@ int maximum_bits_size(int value, int current_maximum) {
 int main(int argc, char *argv[]) {
   encoders_encode_flac(argv[1],
 		       stdin,
-		       1152,0,0,3,0,1,0);
+		       1152,0,0,3,1,1,0);
 
   return 0;
 }
