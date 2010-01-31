@@ -177,10 +177,13 @@ void ia_sub(struct i_array *target,
 	    struct i_array *source1, struct i_array *source2) {
   uint32_t size = source1->size < source2->size ? source1->size : source2->size;
   uint32_t i;
+  int32_t *target_data = target->data;
+  int32_t *source1_data = source1->data;
+  int32_t *source2_data = source2->data;
 
   ia_resize(target,size);
   for (i = 0; i < size; i++)
-    target->data[i] = source1->data[i] - source2->data[i];
+    target_data[i] = source1_data[i] - source2_data[i];
   target->size = size;
 }
 

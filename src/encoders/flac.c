@@ -654,41 +654,42 @@ void FlacEncoder_evaluate_fixed_subframe(struct i_array *warm_up_samples,
 					 int bits_per_sample,
 					 struct i_array *samples,
 					 int predictor_order) {
+  int32_t *samples_data = samples->data;
   uint32_t i;
 
   /*write warm-up samples*/
   for (i = 0; i < predictor_order; i++)
-    ia_append(warm_up_samples,ia_getitem(samples,i));
+    ia_append(warm_up_samples,samples_data[i]);
 
   /*calculate residual values based on predictor order*/
   switch (predictor_order) {
   case 0:
     for (i = 0; i < samples->size; i++)
-      ia_append(residual,ia_getitem(samples,i));
+      ia_append(residual,samples_data[i]);
     break;
   case 1:
     for (i = 1; i < samples->size; i++)
-      ia_append(residual,ia_getitem(samples,i) - ia_getitem(samples,i - 1));
+      ia_append(residual,samples_data[i] - samples_data[i - 1]);
     break;
   case 2:
     for (i = 2; i < samples->size; i++)
-      ia_append(residual,ia_getitem(samples,i) -
-		((2 * ia_getitem(samples,i - 1)) - ia_getitem(samples,i - 2)));
+      ia_append(residual,samples_data[i] -
+		((2 * samples_data[i - 1]) - samples_data[i - 2]));
     break;
   case 3:
     for (i = 3; i < samples->size; i++)
-      ia_append(residual,ia_getitem(samples,i) -
-		((3 * ia_getitem(samples,i - 1)) -
-		 (3 * ia_getitem(samples,i - 2)) +
-		 ia_getitem(samples,i - 3)));
+      ia_append(residual,samples_data[i] -
+		((3 * samples_data[i - 1]) -
+		 (3 * samples_data[i - 2]) +
+		 samples_data[i - 3]));
     break;
   case 4:
     for (i = 4; i < samples->size; i++)
-      ia_append(residual,ia_getitem(samples,i) -
-		((4 * ia_getitem(samples,i - 1)) -
-		 (6 * ia_getitem(samples,i - 2)) +
-		 (4 * ia_getitem(samples,i - 3)) -
-		 ia_getitem(samples,i - 4)));
+      ia_append(residual,samples_data[i] -
+		((4 * samples_data[i - 1]) -
+		 (6 * samples_data[i - 2]) +
+		 (4 * samples_data[i - 3]) -
+		 samples_data[i - 4]));
     break;
   }
 
@@ -1025,11 +1026,18 @@ int FlacEncoder_compute_best_fixed_predictor_order(struct i_array *samples) {
   struct i_array delta3;
   struct i_array delta4;
   struct i_array subtract;
+
   uint64_t delta0_sum;
   uint64_t delta1_sum;
   uint64_t delta2_sum;
   uint64_t delta3_sum;
   uint64_t delta4_sum;
+
+  int32_t *delta0_data;
+  int32_t *delta1_data;
+  int32_t *delta2_data;
+  int32_t *delta3_data;
+  int32_t *delta4_data;
   uint32_t i;
 
   if (samples->size < 5)
@@ -1037,32 +1045,37 @@ int FlacEncoder_compute_best_fixed_predictor_order(struct i_array *samples) {
 
   delta0.data = NULL; /*to elimate a "used without being defined" warning*/
   ia_tail(&delta0,samples,samples->size - 1);
+  delta0_data = delta0.data;
   for (delta0_sum = 0,i = 3; i < delta0.size; i++)
-    delta0_sum += abs(ia_getitem(&delta0,i));
+    delta0_sum += abs(delta0_data[i]);
 
   ia_init(&delta1,samples->size);
   ia_tail(&subtract,&delta0,delta0.size - 1);
   ia_sub(&delta1,&delta0,&subtract);
+  delta1_data = delta1.data;
   for (delta1_sum = 0,i = 2; i < delta1.size; i++)
-    delta1_sum += abs(ia_getitem(&delta1,i));
+    delta1_sum += abs(delta1_data[i]);
 
   ia_init(&delta2,samples->size);
   ia_tail(&subtract,&delta1,delta1.size - 1);
   ia_sub(&delta2,&delta1,&subtract);
+  delta2_data = delta2.data;
   for (delta2_sum = 0,i = 2; i < delta2.size; i++)
-    delta2_sum += abs(ia_getitem(&delta2,i));
+    delta2_sum += abs(delta2_data[i]);
 
   ia_init(&delta3,samples->size);
   ia_tail(&subtract,&delta2,delta2.size - 1);
   ia_sub(&delta3,&delta2,&subtract);
+  delta3_data = delta3.data;
   for (delta3_sum = 0,i = 1; i < delta3.size; i++)
-    delta3_sum += abs(ia_getitem(&delta3,i));
+    delta3_sum += abs(delta3_data[i]);
 
   ia_init(&delta4,samples->size);
   ia_tail(&subtract,&delta3,delta3.size - 1);
   ia_sub(&delta4,&delta3,&subtract);
+  delta4_data = delta4.data;
   for (delta4_sum = 0,i = 0; i < delta4.size; i++)
-    delta4_sum += abs(ia_getitem(&delta4,i));
+    delta4_sum += abs(delta4_data[i]);
 
   ia_free(&delta1);
   ia_free(&delta2);
