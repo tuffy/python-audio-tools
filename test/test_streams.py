@@ -3,6 +3,7 @@
 import audiotools
 import cStringIO
 import math
+import os
 
 #these are test stream generators using stream formulas
 #taken from the FLAC reference encoder
@@ -148,3 +149,51 @@ class Sine24_Stereo(audiotools.PCMReader):
         self.file.write(audiotools.FrameList(wave,2).string(24))
 
         self.file.seek(0,0)
+
+class Raw(audiotools.PCMReader):
+    def __init__(self, pcm_frames, channels, bits_per_sample):
+        self.sample_rate = 44100
+        self.channels = channels
+        self.bits_per_sample = bits_per_sample
+        self.process = None
+        self.file = cStringIO.StringIO()
+
+        full_scale = (1 << (bits_per_sample - 1)) - 1
+        f1 = 441.0
+        a1 = 0.61
+        f2 = 661.5
+        a2 = 0.37
+        delta1 = 2.0 * math.pi / (self.sample_rate / f1)
+        delta2 = 2.0 * math.pi / (self.sample_rate / f2)
+        theta1 = theta2 = 0.0
+        channel = []
+        for i in xrange(pcm_frames):
+            channel.append(int(((a1 * math.sin(theta1) + a2 * math.sin(theta2)) * full_scale) + 0.5) + ((ord(os.urandom(1)) >> 4) - 8))
+            theta1 += delta1
+            theta2 += delta2
+
+        self.file.write(audiotools.FrameList.from_channels([channel] * channels).string(bits_per_sample))
+
+        self.file.seek(0,0)
+
+PATTERN01 = [1,-1]
+PATTERN02 = [1,1,-1]
+PATTERN03 = [1,-1,-1]
+PATTERN04 = [1,-1,1,-1]
+PATTERN05 = [1,-1,-1,1]
+PATTERN06 = [1,-1,1,1,-1]
+PATTERN07 = [1,-1,-1,1,-1]
+
+def fsd8(pattern, reps):
+    #FIXME - not quite accurate
+    values = {1:127,-1:-128}
+    return audiotools.FrameList([values[p] for p in pattern],1).string(8) * reps
+
+def fsd16(pattern, reps):
+    values = {1:32767,-1:-32768}
+    return audiotools.FrameList([values[p] for p in pattern],1).string(16) * reps
+
+def fsd24(pattern, reps):
+    values = {1:8388607,-1:-8388608}
+    return audiotools.FrameList([values[p] for p in pattern],1).string(24) * reps
+
