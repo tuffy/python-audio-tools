@@ -483,3 +483,20 @@
 ** TODO Patch Construct for Python3
    Since pyconstruct hasn't been updated in almost 2 years,
    I'll likely have to update it myself to ensure it'll run on Python3.
+* TODO Add C-based FLAC decoder
+** TODO Add a variety of unit tests
+** TODO Ensure decoder raises the proper exceptions
+* TODO Add C-based FLAC encoder
+** DONE Use VERBATIM subframes when necessary
+** TODO Add a variety of unit tests
+   - [ ] digital silence
+   - [ ] random noise
+** TODO Ensure FLACs work on a variety of other decoders
+   Although decoding properly on the reference decoder *should* guarantee
+   the file works everywhere, the only way to be certain is to test it.
+** TODO Improve speed
+   Try to get encoder to within 1/3 to 1/2 the speed of the reference encoder.
+** TODO Support Rice2 partitions?
+   The reference encoder uses these for more efficient handling of 24-bit audio
+   but I'm not sure they're strictly necessary for my more basic encoder.
+** TODO Ensure encoder raises the proper exceptions

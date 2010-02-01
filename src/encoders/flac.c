@@ -546,6 +546,13 @@ void FlacEncoder_write_subframe(Bitstream *bs,
 				      samples,
 				      fixed_predictor_order);
 
+  FlacEncoder_write_fixed_subframe(fixed_subframe,
+				   &fixed_warm_up_samples,
+				   &fixed_rice_parameters,
+				   &fixed_residual,
+				   bits_per_sample,
+				   fixed_predictor_order);
+
   /*then check LPC subframe, if necessary*/
   if (options->max_lpc_order > 0) {
     ia_init(&lpc_coeffs,1);
@@ -572,15 +579,15 @@ void FlacEncoder_write_subframe(Bitstream *bs,
 				   &lpc_coeffs,
 				   lpc_shift_needed);
 
-    FlacEncoder_write_fixed_subframe(fixed_subframe,
-				     &fixed_warm_up_samples,
-				     &fixed_rice_parameters,
-				     &fixed_residual,
-				     bits_per_sample,
-				     fixed_predictor_order);
-
-    /*perform actual writing on the smaller of the two*/
-    if (fixed_subframe->bits_written <= lpc_subframe->bits_written) {
+    /*if neither FIXED nor LPC generate small enough subframes,
+      use VERBATIM instead*/
+    if ((bits_per_sample * samples->size) <= MIN(fixed_subframe->bits_written,
+						 lpc_subframe->bits_written)) {
+      FlacEncoder_write_verbatim_subframe(bs,
+					  bits_per_sample,
+					  samples);
+    } else if (fixed_subframe->bits_written <= lpc_subframe->bits_written) {
+      /* otherwise perform actual writing on the smaller of the two*/
       FlacEncoder_write_fixed_subframe(bs,
 				       &fixed_warm_up_samples,
 				       &fixed_rice_parameters,
@@ -604,13 +611,20 @@ void FlacEncoder_write_subframe(Bitstream *bs,
     ia_free(&lpc_warm_up_samples);
     ia_free(&lpc_coeffs);
   } else {
-    /*if no LPC subframe, perform actual writing on the FIXED subframe*/
-    FlacEncoder_write_fixed_subframe(bs,
-				     &fixed_warm_up_samples,
-				     &fixed_rice_parameters,
-				     &fixed_residual,
-				     bits_per_sample,
-				     fixed_predictor_order);
+    /*if no LPC subframe, perform actual writing on the FIXED subframe
+      so long as it's smaller than VERBATIM*/
+    if ((bits_per_sample * samples->size) < fixed_subframe->bits_written) {
+      FlacEncoder_write_verbatim_subframe(bs,
+					  bits_per_sample,
+					  samples);
+    } else {
+      FlacEncoder_write_fixed_subframe(bs,
+				       &fixed_warm_up_samples,
+				       &fixed_rice_parameters,
+				       &fixed_residual,
+				       bits_per_sample,
+				       fixed_predictor_order);
+    }
   }
 
   bs_close(fixed_subframe);
@@ -691,6 +705,9 @@ void FlacEncoder_evaluate_fixed_subframe(struct i_array *warm_up_samples,
 		 (4 * samples_data[i - 3]) -
 		 samples_data[i - 4]));
     break;
+  default:
+    fprintf(stderr,"Invalid predictor order %d\n",predictor_order);
+    exit(1);
   }
 
   /*write residual*/
@@ -861,7 +878,7 @@ void FlacEncoder_evaluate_best_residual(struct i_array *rice_parameters,
        partition_order <= max_partition_order;
        partition_order++) {
     ia_reset(&working_rice_parameters);
-    estimated_residual_bits = 6; /*coding method and partition_order*/
+    estimated_residual_bits = 6; /*for coding method and partition_order*/
 
     /*chop the residuals into 2 ^ partition_order number of partitions*/
     ia_link(&remaining_residuals,residuals);
@@ -899,14 +916,6 @@ void FlacEncoder_evaluate_best_residual(struct i_array *rice_parameters,
 	  abs_residual_partition_sum);
     }
 
-    /*once the parameter list is set,
-      write a complete residual block to potential_residual*/
-    /* FlacEncoder_write_residual(potential_residual, */
-    /* 			       predictor_order, */
-    /* 			       0, /\*FIXME - make coding method dynamic?*\/ */
-    /* 			       &working_rice_parameters, */
-    /* 			       residuals); */
-
     /*and if potential_residual is better than current_best (or no current_best)
       swap current_best for potential_residual*/
     if (estimated_residual_bits < current_best_bits) {
@@ -929,7 +938,7 @@ int FlacEncoder_compute_best_rice_parameter(struct i_array *residuals,
   for (i = 0; ((uint64_t)residuals->size * (uint64_t)(1 << i)) < abs_residual_partition_sum; i++)
     /*do nothing*/;
 
-  return i;
+  return MIN(i,0xE); /*setting this to 0xF triggers the Rice escape code*/
 }
 
 
