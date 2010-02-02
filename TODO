@@ -488,11 +488,11 @@
 ** TODO Ensure decoder raises the proper exceptions
 * TODO Add C-based FLAC encoder
 ** DONE Use VERBATIM subframes when necessary
+** DONE Add significant initial padding blocks
+   This will save a lot of time during retagging after FLAC creation
 ** TODO Add a variety of unit tests
    - [ ] digital silence
    - [ ] random noise
-** TODO Add significant initial padding blocks
-   This will save a lot of time during retagging after FLAC creation
 ** TODO Ensure FLACs work on a variety of other decoders
    Although decoding properly on the reference decoder *should* guarantee
    the file works everywhere, the only way to be certain is to test it.

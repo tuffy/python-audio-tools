@@ -27,6 +27,8 @@
 #define VERSION_STRING(x) VERSION_STRING_(x)
 const static char* AUDIOTOOLS_VERSION = VERSION_STRING(VERSION);
 
+#define DEFAULT_PADDING_SIZE 1024
+
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
 #define MAX(x,y) ((x) > (y) ? (x) : (y))
 
@@ -40,14 +42,16 @@ PyObject* encoders_encode_flac(PyObject *dummy,
   struct pcm_reader *reader;
   struct flac_STREAMINFO streaminfo;
   char version_string[0xFF];
-  static char *kwlist[] = {"filename","pcmreader",
+  static char *kwlist[] = {"filename",
+			   "pcmreader",
 			   "block_size",
 			   "max_lpc_order",
 			   "min_residual_partition_order",
 			   "max_residual_partition_order",
 			   "mid_side",
 			   "adaptive_mid_side",
-			   "exhaustive_model_search",NULL};
+			   "exhaustive_model_search",
+			   NULL};
   MD5_CTX md5sum;
 
   struct ia_array samples;
@@ -160,7 +164,7 @@ PyObject* encoders_encode_flac(PyObject *dummy,
   FlacEncoder_write_streaminfo(stream,streaminfo);
 
   /*write VORBIS_COMMENT*/
-  stream->write_bits(stream,1,1);
+  stream->write_bits(stream,1,0);
   stream->write_bits(stream,7,4);
   stream->write_bits(stream,24,4 + strlen(version_string) + 4);
 
@@ -169,6 +173,12 @@ PyObject* encoders_encode_flac(PyObject *dummy,
   stream->write_bits(stream,24,0);
   fputs(version_string,file);
   stream->write_bits(stream,32,0);
+
+  /*write PADDING*/
+  stream->write_bits(stream,1,1);
+  stream->write_bits(stream,7,1);
+  stream->write_bits(stream,24,DEFAULT_PADDING_SIZE);
+  stream->write_bits(stream,DEFAULT_PADDING_SIZE * 8,0);
 
   /*build frames until reader is empty,
     which updates STREAMINFO in the process*/
