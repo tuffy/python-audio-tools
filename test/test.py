@@ -8718,9 +8718,23 @@ class TestFlacCodec(unittest.TestCase):
         self.encode(temp_file.name,
                     pcmreader,
                     **encode_options)
+
+        self.assertEqual(subprocess.call([audiotools.BIN["flac"],"-ts",
+                                          temp_file.name]),
+                         0,
+                         "flac decode error on %s with options %s" % \
+                             (repr(pcmreader),
+                              repr(encode_options)))
+
         flac = audiotools.open(temp_file.name)
         if (hasattr(pcmreader,"digest")):
             self.assertEqual(flac.__md5__,pcmreader.digest())
+
+        md5sum = md5()
+        d = self.decoder(temp_file.name)
+        audiotools.transfer_data(d.read,md5sum.update)
+        d.close()
+        self.assertEqual(md5sum.digest(),pcmreader.digest())
 
     @TEST_FLAC
     def test_small_files(self):
@@ -8739,11 +8753,93 @@ class TestFlacCodec(unittest.TestCase):
 
     @TEST_FLAC
     def test_full_scale_deflection(self):
-        pass
+        #FIXME - include support for 8-bit fsd
+        for (bps,fsd) in [(16,test_streams.fsd16),
+                          (24,test_streams.fsd24)]:
+            for pattern in [test_streams.PATTERN01,
+                            test_streams.PATTERN02,
+                            test_streams.PATTERN03,
+                            test_streams.PATTERN04,
+                            test_streams.PATTERN05,
+                            test_streams.PATTERN06,
+                            test_streams.PATTERN07]:
+                self.__test_reader__(
+                    test_streams.MD5Reader(cStringIO.StringIO(fsd(pattern,100)),
+                                           44100,
+                                           1,
+                                           bps),
+                    block_size=1152,
+                    max_lpc_order=16,
+                    min_residual_partition_order=0,
+                    max_residual_partition_order=3,
+                    mid_side=True,
+                    adaptive_mid_side=True,
+                    exhaustive_model_search=True)
 
     @TEST_FLAC
     def test_sines(self):
-        pass
+        for g in [
+            # FIXME - handle 8bps streams correctly
+            # test_streams.Sine8_Mono(200000,48000,441.0,0.50,441.0,0.49),
+            # test_streams.Sine8_Mono(200000,96000,441.0,0.61,661.5,0.37),
+            # test_streams.Sine8_Mono(200000,44100,441.0,0.50,882.0,0.49),
+            # test_streams.Sine8_Mono(200000,44100,441.0,0.50,4410.0,0.49),
+            # test_streams.Sine8_Mono(200000,44100,8820.0,0.70,4410.0,0.29),
+
+            # test_streams.Sine8_Stereo(200000,48000,441.0,0.50,441.0,0.49,1.0),
+            # test_streams.Sine8_Stereo(200000,48000,441.0,0.61,661.5,0.37,1.0),
+            # test_streams.Sine8_Stereo(200000,96000,441.0,0.50,882.0,0.49,1.0),
+            # test_streams.Sine8_Stereo(200000,44100,441.0,0.50,4410.0,0.49,1.0),
+            # test_streams.Sine8_Stereo(200000,44100,8820.0,0.70,4410.0,0.29,1.0),
+            # test_streams.Sine8_Stereo(200000,44100,441.0,0.50,441.0,0.49,0.5),
+            # test_streams.Sine8_Stereo(200000,44100,441.0,0.61,661.5,0.37,2.0),
+            # test_streams.Sine8_Stereo(200000,44100,441.0,0.50,882.0,0.49,0.7),
+            # test_streams.Sine8_Stereo(200000,44100,441.0,0.50,4410.0,0.49,1.3),
+            # test_streams.Sine8_Stereo(200000,44100,8820.0,0.70,4410.0,0.29,0.1),
+
+            test_streams.Sine16_Mono(200000,48000,441.0,0.50,441.0,0.49),
+            test_streams.Sine16_Mono(200000,96000,441.0,0.61,661.5,0.37),
+            test_streams.Sine16_Mono(200000,44100,441.0,0.50,882.0,0.49),
+            test_streams.Sine16_Mono(200000,44100,441.0,0.50,4410.0,0.49),
+            test_streams.Sine16_Mono(200000,44100,8820.0,0.70,4410.0,0.29),
+
+            test_streams.Sine16_Stereo(200000,48000,441.0,0.50,441.0,0.49,1.0),
+            test_streams.Sine16_Stereo(200000,48000,441.0,0.61,661.5,0.37,1.0),
+            test_streams.Sine16_Stereo(200000,96000,441.0,0.50,882.0,0.49,1.0),
+            test_streams.Sine16_Stereo(200000,44100,441.0,0.50,4410.0,0.49,1.0),
+            test_streams.Sine16_Stereo(200000,44100,8820.0,0.70,4410.0,0.29,1.0),
+            test_streams.Sine16_Stereo(200000,44100,441.0,0.50,441.0,0.49,0.5),
+            test_streams.Sine16_Stereo(200000,44100,441.0,0.61,661.5,0.37,2.0),
+            test_streams.Sine16_Stereo(200000,44100,441.0,0.50,882.0,0.49,0.7),
+            test_streams.Sine16_Stereo(200000,44100,441.0,0.50,4410.0,0.49,1.3),
+            test_streams.Sine16_Stereo(200000,44100,8820.0,0.70,4410.0,0.29,0.1),
+
+            test_streams.Sine24_Mono(200000,48000,441.0,0.50,441.0,0.49),
+            test_streams.Sine24_Mono(200000,96000,441.0,0.61,661.5,0.37),
+            test_streams.Sine24_Mono(200000,44100,441.0,0.50,882.0,0.49),
+            test_streams.Sine24_Mono(200000,44100,441.0,0.50,4410.0,0.49),
+            test_streams.Sine24_Mono(200000,44100,8820.0,0.70,4410.0,0.29),
+
+            test_streams.Sine24_Stereo(200000,48000,441.0,0.50,441.0,0.49,1.0),
+            test_streams.Sine24_Stereo(200000,48000,441.0,0.61,661.5,0.37,1.0),
+            test_streams.Sine24_Stereo(200000,96000,441.0,0.50,882.0,0.49,1.0),
+            test_streams.Sine24_Stereo(200000,44100,441.0,0.50,4410.0,0.49,1.0),
+            test_streams.Sine24_Stereo(200000,44100,8820.0,0.70,4410.0,0.29,1.0),
+            test_streams.Sine24_Stereo(200000,44100,441.0,0.50,441.0,0.49,0.5),
+            test_streams.Sine24_Stereo(200000,44100,441.0,0.61,661.5,0.37,2.0),
+            test_streams.Sine24_Stereo(200000,44100,441.0,0.50,882.0,0.49,0.7),
+            test_streams.Sine24_Stereo(200000,44100,441.0,0.50,4410.0,0.49,1.3),
+            test_streams.Sine24_Stereo(200000,44100,8820.0,0.70,4410.0,0.29,0.1)]:
+            self.__test_reader__(g,
+                                 block_size=1152,
+                                 max_lpc_order=16,
+                                 min_residual_partition_order=0,
+                                 max_residual_partition_order=3,
+                                 mid_side=True,
+                                 adaptive_mid_side=True,
+                                 exhaustive_model_search=True)
+
+    #FIXME - add support for wasted-bps at some point
 
     @TEST_FLAC
     def test_blocksizes(self):
