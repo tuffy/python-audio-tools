@@ -51,6 +51,11 @@ PyObject* encoders_encode_flac(PyObject *dummy,
 			   "mid_side",
 			   "adaptive_mid_side",
 			   "exhaustive_model_search",
+
+			   "disable_verbatim_subframes",
+			   "disable_constant_subframes",
+			   "disable_fixed_subframes",
+			   "disable_lpc_subframes",
 			   NULL};
   MD5_CTX md5sum;
 
@@ -60,9 +65,14 @@ PyObject* encoders_encode_flac(PyObject *dummy,
   streaminfo.options.adaptive_mid_side = 0;
   streaminfo.options.exhaustive_model_search = 0;
 
+  streaminfo.options.no_verbatim_subframes = 0;
+  streaminfo.options.no_constant_subframes = 0;
+  streaminfo.options.no_fixed_subframes = 0;
+  streaminfo.options.no_lpc_subframes = 0;
+
   /*extract a filename, PCMReader-compatible object and encoding options:
     blocksize int*/
-  if (!PyArg_ParseTupleAndKeywords(args,keywds,"sOiiii|iii",
+  if (!PyArg_ParseTupleAndKeywords(args,keywds,"sOiiii|iiiiiii",
 				   kwlist,
 				   &filename,
 				   &pcmreader_obj,
@@ -72,7 +82,12 @@ PyObject* encoders_encode_flac(PyObject *dummy,
 				   &(streaminfo.options.max_residual_partition_order),
 				   &(streaminfo.options.mid_side),
 				   &(streaminfo.options.adaptive_mid_side),
-				   &(streaminfo.options.exhaustive_model_search)))
+				   &(streaminfo.options.exhaustive_model_search),
+
+				   &(streaminfo.options.no_verbatim_subframes),
+				   &(streaminfo.options.no_constant_subframes),
+				   &(streaminfo.options.no_fixed_subframes),
+				   &(streaminfo.options.no_lpc_subframes)))
     return NULL;
 
   if (streaminfo.options.block_size <= 0) {
@@ -123,6 +138,11 @@ PyObject* encoders_encode_flac(PyObject *dummy,
   streaminfo.options.mid_side = mid_side;
   streaminfo.options.adaptive_mid_side = adaptive_mid_side;
   streaminfo.options.exhaustive_model_search = exhaustive_model_search;
+
+  streaminfo.options.no_verbatim_subframes = 0;
+  streaminfo.options.no_constant_subframes = 0;
+  streaminfo.options.no_fixed_subframes = 0;
+  streaminfo.options.no_lpc_subframes = 0;
 
   file = fopen(filename,"wb");
   reader = pcmr_open(input,44100,2,16); /*FIXME - assume CD quality for now*/
@@ -522,49 +542,58 @@ void FlacEncoder_write_subframe(Bitstream *bs,
 
 
   /*check for a constant subframe*/
-  if (samples->size < 2) {
-    FlacEncoder_write_constant_subframe(bs,
-					bits_per_sample,
-					ia_getitem(samples,0));
-    return;
-  }
+  if (!options->no_constant_subframes) {
+    if (samples->size < 2) {
+      FlacEncoder_write_constant_subframe(bs,
+					  bits_per_sample,
+					  ia_getitem(samples,0));
+      return;
+    }
 
-  first_sample = ia_getitem(samples,0);
-  for (i = 1; i < samples->size; i++) {
-    if (ia_getitem(samples,i) != first_sample)
-      break;
-  }
-  if (i == samples->size) {
-    FlacEncoder_write_constant_subframe(bs,
-					bits_per_sample,
-					first_sample);
-    return;
+    first_sample = ia_getitem(samples,0);
+    for (i = 1; i < samples->size; i++) {
+      if (ia_getitem(samples,i) != first_sample)
+	break;
+    }
+    if (i == samples->size) {
+      FlacEncoder_write_constant_subframe(bs,
+					  bits_per_sample,
+					  first_sample);
+      return;
+    }
   }
 
   /*first check FIXED subframe*/
-  fixed_predictor_order = FlacEncoder_compute_best_fixed_predictor_order(samples);
-  ia_init(&fixed_warm_up_samples,fixed_predictor_order);
+  ia_init(&fixed_warm_up_samples,8);
   ia_init(&fixed_residual,samples->size);
   ia_init(&fixed_rice_parameters,1);
   fixed_subframe = bs_open_accumulator();
 
-  FlacEncoder_evaluate_fixed_subframe(&fixed_warm_up_samples,
-				      &fixed_residual,
-				      &fixed_rice_parameters,
-				      options,
-				      bits_per_sample,
-				      samples,
-				      fixed_predictor_order);
+  if (!options->no_fixed_subframes) {
+    fixed_predictor_order = FlacEncoder_compute_best_fixed_predictor_order(samples);
 
-  FlacEncoder_write_fixed_subframe(fixed_subframe,
-				   &fixed_warm_up_samples,
-				   &fixed_rice_parameters,
-				   &fixed_residual,
-				   bits_per_sample,
-				   fixed_predictor_order);
+    FlacEncoder_evaluate_fixed_subframe(&fixed_warm_up_samples,
+					&fixed_residual,
+					&fixed_rice_parameters,
+					options,
+					bits_per_sample,
+					samples,
+					fixed_predictor_order);
+
+    FlacEncoder_write_fixed_subframe(fixed_subframe,
+				     &fixed_warm_up_samples,
+				     &fixed_rice_parameters,
+				     &fixed_residual,
+				     bits_per_sample,
+				     fixed_predictor_order);
+  } else {
+    fixed_predictor_order = 0; /*to avoid compiler warnings*/
+    fixed_subframe->bits_written = INT_MAX;
+  }
 
   /*then check LPC subframe, if necessary*/
-  if (options->max_lpc_order > 0) {
+  if ((options->max_lpc_order > 0) &&
+      (!options->no_lpc_subframes)) {
     options->max_lpc_order = MIN(options->max_lpc_order,
 				 samples->size - 1);
     ia_init(&lpc_coeffs,1);
@@ -593,8 +622,9 @@ void FlacEncoder_write_subframe(Bitstream *bs,
 
     /*if neither FIXED nor LPC generate small enough subframes,
       use VERBATIM instead*/
-    if ((bits_per_sample * samples->size) <= MIN(fixed_subframe->bits_written,
-						 lpc_subframe->bits_written)) {
+    if (((bits_per_sample * samples->size) <= MIN(fixed_subframe->bits_written,
+						  lpc_subframe->bits_written))
+	&& (!options->no_verbatim_subframes)) {
       FlacEncoder_write_verbatim_subframe(bs,
 					  bits_per_sample,
 					  samples);
@@ -625,7 +655,8 @@ void FlacEncoder_write_subframe(Bitstream *bs,
   } else {
     /*if no LPC subframe, perform actual writing on the FIXED subframe
       so long as it's smaller than VERBATIM*/
-    if ((bits_per_sample * samples->size) < fixed_subframe->bits_written) {
+    if (((bits_per_sample * samples->size) < fixed_subframe->bits_written) &&
+	(!options->no_verbatim_subframes)) {
       FlacEncoder_write_verbatim_subframe(bs,
 					  bits_per_sample,
 					  samples);
@@ -1225,7 +1256,7 @@ int maximum_bits_size(int value, int current_maximum) {
 int main(int argc, char *argv[]) {
   encoders_encode_flac(argv[1],
 		       stdin,
-		       1152,0,0,3,1,1,0);
+		       1152,12,0,3,1,1,0);
 
   return 0;
 }
