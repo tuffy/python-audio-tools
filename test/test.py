@@ -34,8 +34,8 @@ import time
 
 gettext.install("audiotools",unicode=True)
 
-(METADATA,PCM,EXECUTABLE,CUESHEET,IMAGE,CUSTOM) = range(6)
-CASES = set([METADATA,PCM,EXECUTABLE,CUESHEET,IMAGE])
+(METADATA,PCM,EXECUTABLE,CUESHEET,IMAGE,FLAC,CUSTOM) = range(7)
+CASES = set([METADATA,PCM,EXECUTABLE,CUESHEET,IMAGE,FLAC])
 
 def nothing(self):
     pass
@@ -67,6 +67,12 @@ def TEST_CUESHEET(function):
 
 def TEST_IMAGE(function):
     if (IMAGE not in CASES):
+        return nothing
+    else:
+        return function
+
+def TEST_FLAC(function):
+    if (FLAC not in CASES):
         return nothing
     else:
         return function
@@ -8695,6 +8701,65 @@ class Test_IEEEExtended(unittest.TestCase):
         ieee = audiotools.IEEE_Extended("i")
         for i in xrange(0,192000 + 1):
             assert(i == int(ieee.parse(ieee.build(float(i)))))
+
+import test_streams
+
+#these are tests on our built-in FLAC encoder
+class TestFlacCodec(unittest.TestCase):
+    def setUp(self):
+        import audiotools.decoders
+        import audiotools.encoders
+        self.audio_class = audiotools.FlacAudio
+        self.decoder = audiotools.decoders.FlacDecoder
+        self.encode = audiotools.encoders.encode_flac
+
+    def __test_reader__(self, pcmreader, **encode_options):
+        temp_file = tempfile.NamedTemporaryFile(suffix=".flac")
+        self.encode(temp_file.name,
+                    pcmreader,
+                    **encode_options)
+        flac = audiotools.open(temp_file.name)
+        if (hasattr(pcmreader,"digest")):
+            self.assertEqual(flac.__md5__,pcmreader.digest())
+
+    @TEST_FLAC
+    def test_small_files(self):
+        for g in [test_streams.Generate01,
+                  test_streams.Generate02,
+                  test_streams.Generate03,
+                  test_streams.Generate04]:
+            self.__test_reader__(g(44100),
+                                 block_size=1152,
+                                 max_lpc_order=16,
+                                 min_residual_partition_order=0,
+                                 max_residual_partition_order=3,
+                                 mid_side=True,
+                                 adaptive_mid_side=True,
+                                 exhaustive_model_search=True)
+
+    @TEST_FLAC
+    def test_full_scale_deflection(self):
+        pass
+
+    @TEST_FLAC
+    def test_sines(self):
+        pass
+
+    @TEST_FLAC
+    def test_blocksizes(self):
+        pass
+
+    @TEST_FLAC
+    def test_frame_header_variations(self):
+        pass
+
+    @TEST_FLAC
+    def test_option_variations(self):
+        pass
+
+    @TEST_FLAC
+    def test_noise(self):
+        pass
 
 ############
 #END TESTS

@@ -555,6 +555,8 @@ void FlacEncoder_write_subframe(Bitstream *bs,
 
   /*then check LPC subframe, if necessary*/
   if (options->max_lpc_order > 0) {
+    options->max_lpc_order = MIN(options->max_lpc_order,
+				 samples->size - 1);
     ia_init(&lpc_coeffs,1);
     ia_init(&lpc_warm_up_samples,options->max_lpc_order);
     ia_init(&lpc_residual,samples->size);

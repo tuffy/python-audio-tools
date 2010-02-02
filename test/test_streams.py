@@ -4,36 +4,56 @@ import audiotools
 import cStringIO
 import math
 import os
+from hashlib import md5
 
 #these are test stream generators using stream formulas
 #taken from the FLAC reference encoder
 #but converted to PCMReaders for more general use
 
-class ShortStream(audiotools.PCMReader):
+class MD5Reader(audiotools.PCMReader):
+    def __init__(self, file, sample_rate, channels, bits_per_sample,
+                 process=None):
+        audiotools.PCMReader.__init__(self,
+                                      file=file,
+                                      sample_rate=sample_rate,
+                                      channels=channels,
+                                      bits_per_sample=bits_per_sample,
+                                      process=None)
+        self.md5 = md5()
+
+    def read(self, bytes):
+        data = audiotools.PCMReader.read(self,bytes)
+        self.md5.update(data)
+        return data
+
+    def digest(self):
+        return self.md5.digest()
+
+    def hexdigest(self):
+        return self.md5.hexdigest()
+
+class ShortStream(MD5Reader):
     def __init__(self,samples,sample_rate,channels,bits_per_sample):
-        self.sample_rate = sample_rate
-        self.channels = channels
-        self.bits_per_sample = bits_per_sample
-        self.process = None
-        self.file = cStringIO.StringIO()
-        self.file.write(audiotools.FrameList(samples,channels).string(bits_per_sample))
-        self.file.seek(0,0)
+        file = cStringIO.StringIO()
+        file.write(audiotools.FrameList(samples,channels).string(bits_per_sample))
+        file.seek(0,0)
+        MD5Reader.__init__(self,file,sample_rate,channels,bits_per_sample)
 
 class Generate01(ShortStream):
     def __init__(self,sample_rate):
-        ShortStream.__init__([-32768],sample_rate,1,16)
+        ShortStream.__init__(self,[-32768],sample_rate,1,16)
 
 class Generate02(ShortStream):
     def __init__(self,sample_rate):
-        ShortStream.__init__([-32768,32767],sample_rate,2,16)
+        ShortStream.__init__(self,[-32768,32767],sample_rate,2,16)
 
 class Generate03(ShortStream):
     def __init__(self,sample_rate):
-        ShortStream.__init__([-25,0,25,50,100],sample_rate,1,16)
+        ShortStream.__init__(self,[-25,0,25,50,100],sample_rate,1,16)
 
 class Generate04(ShortStream):
     def __init__(self,sample_rate):
-        ShortStream.__init__([-25,500,0,400,25,300,50,200,100,100],
+        ShortStream.__init__(self,[-25,500,0,400,25,300,50,200,100,100],
                              sample_rate,2,16)
 
 class Sine8_Mono(audiotools.PCMReader):
