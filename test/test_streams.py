@@ -21,6 +21,11 @@ class MD5Reader(audiotools.PCMReader):
                                       process=None)
         self.md5 = md5()
 
+    def __repr__(self):
+        return "MD5Reader(%s,%s,%s)" % (self.sample_rate,
+                                        self.channels,
+                                        self.bits_per_sample)
+
     def read(self, bytes):
         data = audiotools.PCMReader.read(self,bytes)
         self.md5.update(data)

@@ -145,7 +145,7 @@ PyObject* encoders_encode_flac(PyObject *dummy,
   streaminfo.options.no_lpc_subframes = 0;
 
   file = fopen(filename,"wb");
-  reader = pcmr_open(input,44100,2,16); /*FIXME - assume CD quality for now*/
+  reader = pcmr_open(input,44100,1,16); /*FIXME - assume CD quality for now*/
 
 #endif
 
@@ -592,7 +592,7 @@ void FlacEncoder_write_subframe(Bitstream *bs,
   }
 
   /*then check LPC subframe, if necessary*/
-  if ((options->max_lpc_order > 0) &&
+  if ((options->max_lpc_order > 1) &&
       (!options->no_lpc_subframes)) {
     options->max_lpc_order = MIN(options->max_lpc_order,
 				 samples->size - 1);
@@ -1256,7 +1256,7 @@ int maximum_bits_size(int value, int current_maximum) {
 int main(int argc, char *argv[]) {
   encoders_encode_flac(argv[1],
 		       stdin,
-		       1152,12,0,3,1,1,0);
+		       16,1,0,6,1,1,1);
 
   return 0;
 }

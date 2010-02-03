@@ -8843,7 +8843,29 @@ class TestFlacCodec(unittest.TestCase):
 
     @TEST_FLAC
     def test_blocksizes(self):
-        pass
+        noise = os.urandom(64)
+        encoding_args = {"min_residual_partition_order":0,
+                         "max_residual_partition_order":6,
+                         "mid_side":True,
+                         "adaptive_mid_side":True,
+                         "exhaustive_model_search":True}
+        for to_disable in [[],
+                           ["disable_verbatim_subframes",
+                            "disable_constant_subframes"],
+                           ["disable_verbatim_subframes",
+                            "disable_constant_subframes",
+                            "disable_fixed_subframes"]]:
+            for block_size in [16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33]:
+                for lpc_order in [0,1,2,3,4,5,7,8,9,15,16,17,31,32]:
+                    args = encoding_args.copy()
+                    for disable in to_disable:
+                        args[disable] = True
+                    args["block_size"] = block_size
+                    args["max_lpc_order"] = lpc_order
+                    self.__test_reader__(test_streams.MD5Reader(
+                            cStringIO.StringIO(noise),
+                            44100,1,16),
+                                         **args)
 
     @TEST_FLAC
     def test_frame_header_variations(self):
