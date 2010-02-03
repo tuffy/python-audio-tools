@@ -8706,12 +8706,78 @@ import test_streams
 
 #these are tests on our built-in FLAC encoder
 class TestFlacCodec(unittest.TestCase):
+    def __stream_variations__(self):
+        if (not hasattr(self,"__stream_variations_cache__")):
+            self.__class__.__stream_variations_cache__ = [
+                # FIXME - handle 8bps streams correctly
+                # test_streams.Sine8_Mono(200000,48000,441.0,0.50,441.0,0.49),
+                # test_streams.Sine8_Mono(200000,96000,441.0,0.61,661.5,0.37),
+                # test_streams.Sine8_Mono(200000,44100,441.0,0.50,882.0,0.49),
+                # test_streams.Sine8_Mono(200000,44100,441.0,0.50,4410.0,0.49),
+                # test_streams.Sine8_Mono(200000,44100,8820.0,0.70,4410.0,0.29),
+
+                # test_streams.Sine8_Stereo(200000,48000,441.0,0.50,441.0,0.49,1.0),
+                # test_streams.Sine8_Stereo(200000,48000,441.0,0.61,661.5,0.37,1.0),
+                # test_streams.Sine8_Stereo(200000,96000,441.0,0.50,882.0,0.49,1.0),
+                # test_streams.Sine8_Stereo(200000,44100,441.0,0.50,4410.0,0.49,1.0),
+                # test_streams.Sine8_Stereo(200000,44100,8820.0,0.70,4410.0,0.29,1.0),
+                # test_streams.Sine8_Stereo(200000,44100,441.0,0.50,441.0,0.49,0.5),
+                # test_streams.Sine8_Stereo(200000,44100,441.0,0.61,661.5,0.37,2.0),
+                # test_streams.Sine8_Stereo(200000,44100,441.0,0.50,882.0,0.49,0.7),
+                # test_streams.Sine8_Stereo(200000,44100,441.0,0.50,4410.0,0.49,1.3),
+                # test_streams.Sine8_Stereo(200000,44100,8820.0,0.70,4410.0,0.29,0.1),
+
+                test_streams.Sine16_Mono(200000,48000,441.0,0.50,441.0,0.49),
+                test_streams.Sine16_Mono(200000,96000,441.0,0.61,661.5,0.37),
+                test_streams.Sine16_Mono(200000,44100,441.0,0.50,882.0,0.49),
+                test_streams.Sine16_Mono(200000,44100,441.0,0.50,4410.0,0.49),
+                test_streams.Sine16_Mono(200000,44100,8820.0,0.70,4410.0,0.29),
+
+                test_streams.Sine16_Stereo(200000,48000,441.0,0.50,441.0,0.49,1.0),
+                test_streams.Sine16_Stereo(200000,48000,441.0,0.61,661.5,0.37,1.0),
+                test_streams.Sine16_Stereo(200000,96000,441.0,0.50,882.0,0.49,1.0),
+                test_streams.Sine16_Stereo(200000,44100,441.0,0.50,4410.0,0.49,1.0),
+                test_streams.Sine16_Stereo(200000,44100,8820.0,0.70,4410.0,0.29,1.0),
+                test_streams.Sine16_Stereo(200000,44100,441.0,0.50,441.0,0.49,0.5),
+                test_streams.Sine16_Stereo(200000,44100,441.0,0.61,661.5,0.37,2.0),
+                test_streams.Sine16_Stereo(200000,44100,441.0,0.50,882.0,0.49,0.7),
+                test_streams.Sine16_Stereo(200000,44100,441.0,0.50,4410.0,0.49,1.3),
+                test_streams.Sine16_Stereo(200000,44100,8820.0,0.70,4410.0,0.29,0.1),
+
+                test_streams.Sine24_Mono(200000,48000,441.0,0.50,441.0,0.49),
+                test_streams.Sine24_Mono(200000,96000,441.0,0.61,661.5,0.37),
+                test_streams.Sine24_Mono(200000,44100,441.0,0.50,882.0,0.49),
+                test_streams.Sine24_Mono(200000,44100,441.0,0.50,4410.0,0.49),
+                test_streams.Sine24_Mono(200000,44100,8820.0,0.70,4410.0,0.29),
+
+                test_streams.Sine24_Stereo(200000,48000,441.0,0.50,441.0,0.49,1.0),
+                test_streams.Sine24_Stereo(200000,48000,441.0,0.61,661.5,0.37,1.0),
+                test_streams.Sine24_Stereo(200000,96000,441.0,0.50,882.0,0.49,1.0),
+                test_streams.Sine24_Stereo(200000,44100,441.0,0.50,4410.0,0.49,1.0),
+                test_streams.Sine24_Stereo(200000,44100,8820.0,0.70,4410.0,0.29,1.0),
+                test_streams.Sine24_Stereo(200000,44100,441.0,0.50,441.0,0.49,0.5),
+                test_streams.Sine24_Stereo(200000,44100,441.0,0.61,661.5,0.37,2.0),
+                test_streams.Sine24_Stereo(200000,44100,441.0,0.50,882.0,0.49,0.7),
+                test_streams.Sine24_Stereo(200000,44100,441.0,0.50,4410.0,0.49,1.3),
+                test_streams.Sine24_Stereo(200000,44100,8820.0,0.70,4410.0,0.29,0.1)]
+        for stream in self.__class__.__stream_variations_cache__:
+            stream.reset()
+            yield stream
+
     def setUp(self):
         import audiotools.decoders
         import audiotools.encoders
         self.audio_class = audiotools.FlacAudio
         self.decoder = audiotools.decoders.FlacDecoder
         self.encode = audiotools.encoders.encode_flac
+
+    @TEST_FLAC
+    def test_streams(self):
+        for g in self.__stream_variations__():
+            md5sum = md5()
+            audiotools.transfer_data(g.read,md5sum.update)
+            self.assertEqual(md5sum.digest(),g.digest())
+            g.close()
 
     def __test_reader__(self, pcmreader, **encode_options):
         temp_file = tempfile.NamedTemporaryFile(suffix=".flac")
@@ -8727,6 +8793,7 @@ class TestFlacCodec(unittest.TestCase):
                               repr(encode_options)))
 
         flac = audiotools.open(temp_file.name)
+        self.assert_(flac.total_frames() > 0)
         if (hasattr(pcmreader,"digest")):
             self.assertEqual(flac.__md5__,pcmreader.digest())
 
@@ -8778,58 +8845,7 @@ class TestFlacCodec(unittest.TestCase):
 
     @TEST_FLAC
     def test_sines(self):
-        for g in [
-            # FIXME - handle 8bps streams correctly
-            # test_streams.Sine8_Mono(200000,48000,441.0,0.50,441.0,0.49),
-            # test_streams.Sine8_Mono(200000,96000,441.0,0.61,661.5,0.37),
-            # test_streams.Sine8_Mono(200000,44100,441.0,0.50,882.0,0.49),
-            # test_streams.Sine8_Mono(200000,44100,441.0,0.50,4410.0,0.49),
-            # test_streams.Sine8_Mono(200000,44100,8820.0,0.70,4410.0,0.29),
-
-            # test_streams.Sine8_Stereo(200000,48000,441.0,0.50,441.0,0.49,1.0),
-            # test_streams.Sine8_Stereo(200000,48000,441.0,0.61,661.5,0.37,1.0),
-            # test_streams.Sine8_Stereo(200000,96000,441.0,0.50,882.0,0.49,1.0),
-            # test_streams.Sine8_Stereo(200000,44100,441.0,0.50,4410.0,0.49,1.0),
-            # test_streams.Sine8_Stereo(200000,44100,8820.0,0.70,4410.0,0.29,1.0),
-            # test_streams.Sine8_Stereo(200000,44100,441.0,0.50,441.0,0.49,0.5),
-            # test_streams.Sine8_Stereo(200000,44100,441.0,0.61,661.5,0.37,2.0),
-            # test_streams.Sine8_Stereo(200000,44100,441.0,0.50,882.0,0.49,0.7),
-            # test_streams.Sine8_Stereo(200000,44100,441.0,0.50,4410.0,0.49,1.3),
-            # test_streams.Sine8_Stereo(200000,44100,8820.0,0.70,4410.0,0.29,0.1),
-
-            test_streams.Sine16_Mono(200000,48000,441.0,0.50,441.0,0.49),
-            test_streams.Sine16_Mono(200000,96000,441.0,0.61,661.5,0.37),
-            test_streams.Sine16_Mono(200000,44100,441.0,0.50,882.0,0.49),
-            test_streams.Sine16_Mono(200000,44100,441.0,0.50,4410.0,0.49),
-            test_streams.Sine16_Mono(200000,44100,8820.0,0.70,4410.0,0.29),
-
-            test_streams.Sine16_Stereo(200000,48000,441.0,0.50,441.0,0.49,1.0),
-            test_streams.Sine16_Stereo(200000,48000,441.0,0.61,661.5,0.37,1.0),
-            test_streams.Sine16_Stereo(200000,96000,441.0,0.50,882.0,0.49,1.0),
-            test_streams.Sine16_Stereo(200000,44100,441.0,0.50,4410.0,0.49,1.0),
-            test_streams.Sine16_Stereo(200000,44100,8820.0,0.70,4410.0,0.29,1.0),
-            test_streams.Sine16_Stereo(200000,44100,441.0,0.50,441.0,0.49,0.5),
-            test_streams.Sine16_Stereo(200000,44100,441.0,0.61,661.5,0.37,2.0),
-            test_streams.Sine16_Stereo(200000,44100,441.0,0.50,882.0,0.49,0.7),
-            test_streams.Sine16_Stereo(200000,44100,441.0,0.50,4410.0,0.49,1.3),
-            test_streams.Sine16_Stereo(200000,44100,8820.0,0.70,4410.0,0.29,0.1),
-
-            test_streams.Sine24_Mono(200000,48000,441.0,0.50,441.0,0.49),
-            test_streams.Sine24_Mono(200000,96000,441.0,0.61,661.5,0.37),
-            test_streams.Sine24_Mono(200000,44100,441.0,0.50,882.0,0.49),
-            test_streams.Sine24_Mono(200000,44100,441.0,0.50,4410.0,0.49),
-            test_streams.Sine24_Mono(200000,44100,8820.0,0.70,4410.0,0.29),
-
-            test_streams.Sine24_Stereo(200000,48000,441.0,0.50,441.0,0.49,1.0),
-            test_streams.Sine24_Stereo(200000,48000,441.0,0.61,661.5,0.37,1.0),
-            test_streams.Sine24_Stereo(200000,96000,441.0,0.50,882.0,0.49,1.0),
-            test_streams.Sine24_Stereo(200000,44100,441.0,0.50,4410.0,0.49,1.0),
-            test_streams.Sine24_Stereo(200000,44100,8820.0,0.70,4410.0,0.29,1.0),
-            test_streams.Sine24_Stereo(200000,44100,441.0,0.50,441.0,0.49,0.5),
-            test_streams.Sine24_Stereo(200000,44100,441.0,0.61,661.5,0.37,2.0),
-            test_streams.Sine24_Stereo(200000,44100,441.0,0.50,882.0,0.49,0.7),
-            test_streams.Sine24_Stereo(200000,44100,441.0,0.50,4410.0,0.49,1.3),
-            test_streams.Sine24_Stereo(200000,44100,8820.0,0.70,4410.0,0.29,0.1)]:
+        for g in self.__stream_variations__():
             self.__test_reader__(g,
                                  block_size=1152,
                                  max_lpc_order=16,
@@ -8928,7 +8944,15 @@ class TestFlacCodec(unittest.TestCase):
 
     @TEST_FLAC
     def test_option_variations(self):
-        pass
+        for g in self.__stream_variations__():
+            for opts in [{"block_size":1152,
+                          "max_lpc_order":0,
+                          "min_residual_partition_order":0,
+                          "max_residual_partition_order":3}]:
+                encode_opts = opts.copy()
+                self.__test_reader__(g,**encode_opts)
+                # for disable in [[]]:
+                #     for extra in [[]]:
 
     @TEST_FLAC
     def test_noise(self):

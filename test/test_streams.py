@@ -75,11 +75,16 @@ class Sine8_Mono(MD5Reader):
             theta1 += delta1
             theta2 += delta2
 
+        self.wave = audiotools.FrameList(wave,1).string(8)
         MD5Reader.__init__(self,
-                           cStringIO.StringIO(audiotools.FrameList(wave,1).string(8)),
+                           cStringIO.StringIO(self.wave),
                            sample_rate,
                            1,
                            8)
+
+    def reset(self):
+        self.file = cStringIO.StringIO(self.wave)
+        self.md5 = md5()
 
     def __repr__(self):
         return "Sine(%s,%s,%s,%s)" % \
@@ -101,12 +106,16 @@ class Sine8_Stereo(MD5Reader):
             wave.append(int((-(a1 * math.sin(theta1 * fmult) + a2 * math.sin(theta2 * fmult)) * full_scale) + 0.5))
             theta1 += delta1
             theta2 += delta2
-
+        self.wave = audiotools.FrameList(wave,2).string(8)
         MD5Reader.__init__(self,
-                           cStringIO.StringIO(audiotools.FrameList(wave,2).string(8)),
+                           cStringIO.StringIO(self.wave),
                            sample_rate,
                            2,
                            8)
+
+    def reset(self):
+        self.file = cStringIO.StringIO(self.wave)
+        self.md5 = md5()
 
 class Sine16_Mono(MD5Reader):
     def __init__(self, pcm_frames, sample_rate,
@@ -121,11 +130,16 @@ class Sine16_Mono(MD5Reader):
             theta1 += delta1
             theta2 += delta2
 
+        self.wave = audiotools.FrameList(wave,1).string(16)
         MD5Reader.__init__(self,
-                           cStringIO.StringIO(audiotools.FrameList(wave,1).string(16)),
+                           cStringIO.StringIO(self.wave),
                            sample_rate,
                            1,
                            16)
+
+    def reset(self):
+        self.file = cStringIO.StringIO(self.wave)
+        self.md5 = md5()
 
 class Sine16_Stereo(MD5Reader):
     def __init__(self, pcm_frames, sample_rate,
@@ -141,11 +155,16 @@ class Sine16_Stereo(MD5Reader):
             theta1 += delta1
             theta2 += delta2
 
+        self.wave = audiotools.FrameList(wave,2).string(16)
         MD5Reader.__init__(self,
-                           cStringIO.StringIO(audiotools.FrameList(wave,2).string(16)),
+                           cStringIO.StringIO(self.wave),
                            sample_rate,
                            2,
                            16)
+
+    def reset(self):
+        self.file = cStringIO.StringIO(self.wave)
+        self.md5 = md5()
 
 class Sine24_Mono(MD5Reader):
     def __init__(self, pcm_frames, sample_rate,
@@ -160,11 +179,15 @@ class Sine24_Mono(MD5Reader):
             theta1 += delta1
             theta2 += delta2
 
+        self.wave = audiotools.FrameList(wave,1).string(24)
         MD5Reader.__init__(self,
-                           cStringIO.StringIO(audiotools.FrameList(wave,1).string(24)),
+                           cStringIO.StringIO(self.wave),
                            sample_rate,
                            1,
                            24)
+    def reset(self):
+        self.file = cStringIO.StringIO(self.wave)
+        self.md5 = md5()
 
 class Sine24_Stereo(MD5Reader):
     def __init__(self, pcm_frames, sample_rate,
@@ -180,11 +203,16 @@ class Sine24_Stereo(MD5Reader):
             theta1 += delta1
             theta2 += delta2
 
+        self.wave = audiotools.FrameList(wave,2).string(24)
         MD5Reader.__init__(self,
-                           cStringIO.StringIO(audiotools.FrameList(wave,2).string(24)),
+                           cStringIO.StringIO(self.wave),
                            sample_rate,
                            2,
                            24)
+
+    def reset(self):
+        self.file = cStringIO.StringIO(self.wave)
+        self.md5 = md5()
 
 class Raw(audiotools.PCMReader):
     def __init__(self, pcm_frames, channels, bits_per_sample):
