@@ -145,7 +145,7 @@ PyObject* encoders_encode_flac(PyObject *dummy,
   streaminfo.options.no_lpc_subframes = 0;
 
   file = fopen(filename,"wb");
-  reader = pcmr_open(input,44100,1,16); /*FIXME - assume CD quality for now*/
+  reader = pcmr_open(input,44100,2,16); /*FIXME - assume CD quality for now*/
 
 #endif
 
@@ -471,7 +471,7 @@ void FlacEncoder_write_frame_header(Bitstream *bs,
 	     ((streaminfo->sample_rate % 10) == 0))
       sample_rate_bits = 0xE;
     else if (streaminfo->sample_rate <= 0xFFFF)
-      sample_rate_bits = 0xF;
+      sample_rate_bits = 0xD;
     else
       sample_rate_bits = 0x0;
     break;
@@ -1270,7 +1270,7 @@ int maximum_bits_size(int value, int current_maximum) {
 int main(int argc, char *argv[]) {
   encoders_encode_flac(argv[1],
 		       stdin,
-		       27,2,0,6,1,1,1);
+		       1152,16,0,3,1,1,1);
 
   return 0;
 }

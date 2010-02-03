@@ -8843,6 +8843,7 @@ class TestFlacCodec(unittest.TestCase):
 
     @TEST_FLAC
     def test_blocksizes(self):
+        #FIXME - handle 8bps/24bps also
         noise = os.urandom(64)
         encoding_args = {"min_residual_partition_order":0,
                          "max_residual_partition_order":6,
@@ -8869,7 +8870,61 @@ class TestFlacCodec(unittest.TestCase):
 
     @TEST_FLAC
     def test_frame_header_variations(self):
-        pass
+        max_lpc_order = 16
+
+        self.__test_reader__(test_streams.Sine16_Mono(200000,96000,
+                                                      441.0,0.61,661.5,0.37),
+                             block_size=max_lpc_order,
+                             max_lpc_order=max_lpc_order,
+                             min_residual_partition_order=0,
+                             max_residual_partition_order=3,
+                             mid_side=True,
+                             adaptive_mid_side=True,
+                             exhaustive_model_search=True)
+
+        self.__test_reader__(test_streams.Sine16_Mono(200000,96000,
+                                                      441.0,0.61,661.5,0.37),
+                             block_size=65535,
+                             max_lpc_order=max_lpc_order,
+                             min_residual_partition_order=0,
+                             max_residual_partition_order=3,
+                             mid_side=True,
+                             adaptive_mid_side=True,
+                             exhaustive_model_search=True)
+
+        self.__test_reader__(test_streams.Sine16_Mono(200000,9,
+                                                      441.0,0.61,661.5,0.37),
+                             block_size=1152,
+                             max_lpc_order=max_lpc_order,
+                             min_residual_partition_order=0,
+                             max_residual_partition_order=3,
+                             mid_side=True,
+                             adaptive_mid_side=True,
+                             exhaustive_model_search=True)
+
+        self.__test_reader__(test_streams.Sine16_Mono(200000,90,
+                                                      441.0,0.61,661.5,0.37),
+                             block_size=1152,
+                             max_lpc_order=max_lpc_order,
+                             min_residual_partition_order=0,
+                             max_residual_partition_order=3,
+                             mid_side=True,
+                             adaptive_mid_side=True,
+                             exhaustive_model_search=True)
+
+        self.__test_reader__(test_streams.Sine16_Mono(200000,90000,
+                                                      441.0,0.61,661.5,0.37),
+                             block_size=1152,
+                             max_lpc_order=max_lpc_order,
+                             min_residual_partition_order=0,
+                             max_residual_partition_order=3,
+                             mid_side=True,
+                             adaptive_mid_side=True,
+                             exhaustive_model_search=True)
+
+        #the reference encoder's test_streams.sh unit test
+        #re-does the 9Hz/90Hz/90000Hz tests for some reason
+        #which I won't repeat here
 
     @TEST_FLAC
     def test_option_variations(self):
