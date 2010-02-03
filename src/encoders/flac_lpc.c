@@ -42,17 +42,31 @@ void FlacEncoder_compute_best_lpc_coeffs(struct i_array *lpc_warm_up_samples,
 				      &windowed_signal,
 				      options->max_lpc_order);
 
-  /*if all autocorrelation values are 0.0,
+  /*if there's less than 2 autocorrelation values,
+    use special case values for LPC coeffs and shift
+
+    if all autocorrelation values are 0.0,
     we've got a bunch of 0 samples
-    and should use special case values for LPC coeffs and shift*/
-  if ((fa_min(&autocorrelation_values) == 0.0) &&
-      (fa_max(&autocorrelation_values) == 0.0)) {
+    and should also use special case values for LPC coeffs and shift*/
+  if ((autocorrelation_values.size < 2) ||
+      ((fa_min(&autocorrelation_values) == 0.0) &&
+       (fa_max(&autocorrelation_values) == 0.0))) {
     fa_free(&tukey_window);
     fa_free(&windowed_signal);
     fa_free(&autocorrelation_values);
     ia_reset(coeffs);
     ia_append(coeffs,0);
     *shift_needed = 0;
+
+    FlacEncoder_evaluate_lpc_subframe(lpc_warm_up_samples,
+				      lpc_residual,
+				      lpc_rice_parameters,
+
+				      options,
+				      bits_per_sample,
+				      samples,
+				      coeffs,
+				      *shift_needed);
     return;
   }
 
@@ -346,7 +360,7 @@ void FlacEncoder_quantize_coefficients(struct f_array *lp_coefficients,
   fa_free(&lp_coefficients_abs);
 
   (void)frexp(cmax,&log2cmax);
-  *shift_needed = precision - (log2cmax - 1) - 1;
+  *shift_needed = MAX(precision - (log2cmax - 1) - 1,0);
 
   qlp_coeff_max = (1 << precision) - 1;
   qlp_coeff_min = -(1 << precision);

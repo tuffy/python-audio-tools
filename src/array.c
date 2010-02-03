@@ -20,6 +20,9 @@
  *******************************************************/
 
 void ia_init(struct i_array *array, uint32_t initial_size) {
+  if (initial_size < 1)
+    initial_size = 1;
+
   array->data = malloc(sizeof(int32_t) * initial_size);
   array->total_size = initial_size;
   array->size = 0;
@@ -208,6 +211,9 @@ void iaa_free(struct ia_array *array) {
 }
 
 void fa_init(struct f_array *array, uint32_t initial_size) {
+  if (initial_size < 1)
+    initial_size = 1;
+
   array->data = malloc(sizeof(double) * initial_size);
   array->total_size = initial_size;
   array->size = 0;

@@ -587,12 +587,12 @@ void FlacEncoder_write_subframe(Bitstream *bs,
 				     bits_per_sample,
 				     fixed_predictor_order);
   } else {
-    fixed_predictor_order = 0; /*to avoid compiler warnings*/
+    fixed_predictor_order = -1; /*to avoid compiler warnings*/
     fixed_subframe->bits_written = INT_MAX;
   }
 
   /*then check LPC subframe, if necessary*/
-  if ((options->max_lpc_order > 1) &&
+  if ((options->max_lpc_order > 0) &&
       (!options->no_lpc_subframes)) {
     options->max_lpc_order = MIN(options->max_lpc_order,
 				 samples->size - 1);
@@ -661,6 +661,20 @@ void FlacEncoder_write_subframe(Bitstream *bs,
 					  bits_per_sample,
 					  samples);
     } else {
+      /*if no FIXED subframe *and* no LPC subframe,
+	give up and write a FIXED subframe anyway*/
+      if (fixed_predictor_order < 0) {
+	fixed_predictor_order = FlacEncoder_compute_best_fixed_predictor_order(samples);
+
+	FlacEncoder_evaluate_fixed_subframe(&fixed_warm_up_samples,
+					    &fixed_residual,
+					    &fixed_rice_parameters,
+					    options,
+					    bits_per_sample,
+					    samples,
+					    fixed_predictor_order);
+      }
+
       FlacEncoder_write_fixed_subframe(bs,
 				       &fixed_warm_up_samples,
 				       &fixed_rice_parameters,
@@ -1256,7 +1270,7 @@ int maximum_bits_size(int value, int current_maximum) {
 int main(int argc, char *argv[]) {
   encoders_encode_flac(argv[1],
 		       stdin,
-		       16,1,0,6,1,1,1);
+		       27,2,0,6,1,1,1);
 
   return 0;
 }
