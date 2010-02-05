@@ -8942,17 +8942,69 @@ class TestFlacCodec(unittest.TestCase):
         #re-does the 9Hz/90Hz/90000Hz tests for some reason
         #which I won't repeat here
 
-    @TEST_FLAC
+    @TEST_CUSTOM
     def test_option_variations(self):
-        for g in self.__stream_variations__():
-            for opts in [{"block_size":1152,
-                          "max_lpc_order":0,
-                          "min_residual_partition_order":0,
-                          "max_residual_partition_order":3}]:
-                encode_opts = opts.copy()
-                self.__test_reader__(g,**encode_opts)
-                # for disable in [[]]:
-                #     for extra in [[]]:
+        for opts in [{"block_size":1152,
+                      "max_lpc_order":0,
+                      "min_residual_partition_order":0,
+                      "max_residual_partition_order":3},
+                     {"block_size":1152,
+                      "max_lpc_order":0,
+                      "adaptive_mid_side":True,
+                      "min_residual_partition_order":0,
+                      "max_residual_partition_order":3},
+                     {"block_size":1152,
+                      "max_lpc_order":0,
+                      "exhaustive_model_search":True,
+                      "min_residual_partition_order":0,
+                      "max_residual_partition_order":3},
+                     {"block_size":4096,
+                      "max_lpc_order":6,
+                      "min_residual_partition_order":0,
+                      "max_residual_partition_order":4},
+                     {"block_size":4096,
+                      "max_lpc_order":8,
+                      "adaptive_mid_side":True,
+                      "min_residual_partition_order":0,
+                      "max_residual_partition_order":4},
+                     {"block_size":4096,
+                      "max_lpc_order":8,
+                      "mid_side":True,
+                      "min_residual_partition_order":0,
+                      "max_residual_partition_order":5},
+                     {"block_size":4096,
+                      "max_lpc_order":8,
+                      "mid_side":True,
+                      "min_residual_partition_order":0,
+                      "max_residual_partition_order":6},
+                     {"block_size":4096,
+                      "max_lpc_order":8,
+                      "mid_side":True,
+                      "exhaustive_model_search":True,
+                      "min_residual_partition_order":0,
+                      "max_residual_partition_order":6},
+                     {"block_size":4096,
+                      "max_lpc_order":12,
+                      "mid_side":True,
+                      "exhaustive_model_search":True,
+                      "min_residual_partition_order":0,
+                      "max_residual_partition_order":6}]:
+            encode_opts = opts.copy()
+            for disable in [[],
+                            ["disable_verbatim_subframes",
+                             "disable_constant_subframes"],
+                            ["disable_verbatim_subframes",
+                             "disable_constant_subframes",
+                             "disable_fixed_subframes"]]:
+                for extra in [[],
+                              #FIXME - no analogue for -p option
+                              ["exhaustive_model_search"]]:
+                    for d in disable:
+                        encode_opts[d] = True
+                    for e in extra:
+                        encode_opts[e] = True
+                    for g in self.__stream_variations__():
+                        self.__test_reader__(g,**encode_opts)
 
     @TEST_FLAC
     def test_noise(self):

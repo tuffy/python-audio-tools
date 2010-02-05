@@ -96,6 +96,7 @@ class Sine8_Mono(MD5Reader):
 class Sine8_Stereo(MD5Reader):
     def __init__(self, pcm_frames, sample_rate,
                  f1, a1, f2, a2, fmult):
+        self.options = [f1,a2,f2,a2,fmult]
         full_scale = 0x7F
         wave = []
         delta1 = 2 * math.pi / (sample_rate / f1)
@@ -117,9 +118,17 @@ class Sine8_Stereo(MD5Reader):
         self.file = cStringIO.StringIO(self.wave)
         self.md5 = md5()
 
+    def __repr__(self):
+        return "Sine(%s,%s,%s,%s)" % \
+            (self.sample_rate,
+             self.channels,
+             self.bits_per_sample,
+             ",".join(map(repr,self.options)))
+
 class Sine16_Mono(MD5Reader):
     def __init__(self, pcm_frames, sample_rate,
                  f1, a1, f2, a2):
+        self.options = [f1,a2,f2,a2]
         full_scale = 0x7FFF
         wave = []
         delta1 = 2 * math.pi / (sample_rate / f1)
@@ -141,9 +150,17 @@ class Sine16_Mono(MD5Reader):
         self.file = cStringIO.StringIO(self.wave)
         self.md5 = md5()
 
+    def __repr__(self):
+        return "Sine(%s,%s,%s,%s)" % \
+            (self.sample_rate,
+             self.channels,
+             self.bits_per_sample,
+             ",".join(map(repr,self.options)))
+
 class Sine16_Stereo(MD5Reader):
     def __init__(self, pcm_frames, sample_rate,
                  f1, a1, f2, a2, fmult):
+        self.options = [f1,a2,f2,a2,fmult]
         full_scale = 0x7FFF
         wave = []
         delta1 = 2 * math.pi / (sample_rate / f1)
@@ -166,9 +183,17 @@ class Sine16_Stereo(MD5Reader):
         self.file = cStringIO.StringIO(self.wave)
         self.md5 = md5()
 
+    def __repr__(self):
+        return "Sine(%s,%s,%s,%s)" % \
+            (self.sample_rate,
+             self.channels,
+             self.bits_per_sample,
+             ",".join(map(repr,self.options)))
+
 class Sine24_Mono(MD5Reader):
     def __init__(self, pcm_frames, sample_rate,
                  f1, a1, f2, a2):
+        self.options = [f1,a2,f2,a2]
         full_scale = 0x7FFFFF
         wave = []
         delta1 = 2 * math.pi / (sample_rate / f1)
@@ -189,9 +214,17 @@ class Sine24_Mono(MD5Reader):
         self.file = cStringIO.StringIO(self.wave)
         self.md5 = md5()
 
+    def __repr__(self):
+        return "Sine(%s,%s,%s,%s)" % \
+            (self.sample_rate,
+             self.channels,
+             self.bits_per_sample,
+             ",".join(map(repr,self.options)))
+
 class Sine24_Stereo(MD5Reader):
     def __init__(self, pcm_frames, sample_rate,
                  f1, a1, f2, a2, fmult):
+        self.options = [f1,a2,f2,a2,fmult]
         full_scale = 0x7FFFFF
         wave = []
         delta1 = 2 * math.pi / (sample_rate / f1)
@@ -213,6 +246,13 @@ class Sine24_Stereo(MD5Reader):
     def reset(self):
         self.file = cStringIO.StringIO(self.wave)
         self.md5 = md5()
+
+    def __repr__(self):
+        return "Sine(%s,%s,%s,%s)" % \
+            (self.sample_rate,
+             self.channels,
+             self.bits_per_sample,
+             ",".join(map(repr,self.options)))
 
 class Raw(audiotools.PCMReader):
     def __init__(self, pcm_frames, channels, bits_per_sample):
