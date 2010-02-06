@@ -493,6 +493,9 @@
 ** TODO Add a variety of unit tests
    - [ ] digital silence
    - [ ] random noise
+** TODO Add a variety of assert() statements
+   As with unit tests, these ensure everything is working during testing
+   without a performance penalty at runtime.
 ** TODO Ensure FLACs work on a variety of other decoders
    Although decoding properly on the reference decoder *should* guarantee
    the file works everywhere, the only way to be certain is to test it.

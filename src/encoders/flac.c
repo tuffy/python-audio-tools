@@ -3,6 +3,7 @@
 #include "../pcmreader.h"
 #include <openssl/md5.h>
 #include <limits.h>
+#include <assert.h>
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -587,13 +588,12 @@ void FlacEncoder_write_subframe(Bitstream *bs,
 				     bits_per_sample,
 				     fixed_predictor_order);
   } else {
-    fixed_predictor_order = -1; /*to avoid compiler warnings*/
+    fixed_predictor_order = -1;
     fixed_subframe->bits_written = INT_MAX;
   }
 
   /*then check LPC subframe, if necessary*/
-  if ((options->max_lpc_order > 0) &&
-      (!options->no_lpc_subframes)) {
+  if ((options->max_lpc_order > 0) && (!options->no_lpc_subframes)) {
     options->max_lpc_order = MIN(options->max_lpc_order,
 				 samples->size - 1);
     ia_init(&lpc_coeffs,1);
@@ -1052,7 +1052,7 @@ void FlacEncoder_write_residual_partition(Bitstream *bs,
 					  int rice_parameter,
 					  struct i_array *residuals) {
   uint32_t i;
-  register int32_t residual;
+  register int64_t residual;
   register int32_t msb;
   register int32_t lsb;
 
@@ -1072,14 +1072,14 @@ void FlacEncoder_write_residual_partition(Bitstream *bs,
   /*for each residual, write a unary/unsigned bits pair
     whose breakpoint depends on "rice_parameter"*/
   for (i = 0; i < residuals_size; i++) {
-    residual = residuals_data[i];
+    residual = (int64_t)residuals_data[i];
     if (residual >= 0) {
       residual <<= 1;
     } else {
       residual = ((-residual - 1) << 1) | 1;
     }
-    msb = residual >> rice_parameter;
-    lsb = residual - (msb << rice_parameter);
+    msb = (int32_t)(residual >> rice_parameter);
+    lsb = (int32_t)(residual - (msb << rice_parameter));
     write_unary(bs,1,msb);
     write_bits(bs,rice_parameter,lsb);
   }
@@ -1270,7 +1270,7 @@ int maximum_bits_size(int value, int current_maximum) {
 int main(int argc, char *argv[]) {
   encoders_encode_flac(argv[1],
 		       stdin,
-		       1152,16,0,3,1,1,1);
+		       4096,12,0,6,1,1,1);
 
   return 0;
 }

@@ -8942,7 +8942,7 @@ class TestFlacCodec(unittest.TestCase):
         #re-does the 9Hz/90Hz/90000Hz tests for some reason
         #which I won't repeat here
 
-    @TEST_CUSTOM
+    @TEST_FLAC
     def test_option_variations(self):
         for opts in [{"block_size":1152,
                       "max_lpc_order":0,

@@ -1,5 +1,6 @@
 #include "bitstream_w.h"
 #include <string.h>
+#include <assert.h>
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -114,6 +115,8 @@ void write_bits_actual(Bitstream* bs, unsigned int count, int value) {
   unsigned int byte;
   struct bs_callback* callback;
 
+  assert(value >= 0);
+
   while (count > 0) {
     /*chop off up to 8 bits to write at a time*/
     bits_to_write = count > 8 ? 8 : count;
@@ -156,6 +159,8 @@ void write_bits64_actual(Bitstream* bs, unsigned int count, uint64_t value) {
   unsigned int byte;
   struct bs_callback* callback;
 
+  assert(value >= 0l);
+
   while (count > 0) {
     /*chop off up to 8 bits to write at a time*/
     bits_to_write = count > 8 ? 8 : count;
@@ -188,6 +193,8 @@ void write_unary_actual(Bitstream* bs, int stop_bit, int value) {
   int context = bs->state;
   unsigned int byte;
   struct bs_callback* callback;
+
+  assert(value >= 0);
 
   /*send continuation blocks until we get to 7 bits or less*/
   while (value >= 8) {
