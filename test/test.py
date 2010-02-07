@@ -9026,7 +9026,7 @@ class TestFlacCodec(unittest.TestCase):
                              "disable_constant_subframes",
                              "disable_fixed_subframes"]]:
                 for channels in [1,2,4,8]:
-                    for bps in [24]: #FIXME - perform 8/24bps
+                    for bps in [16,24]: #FIXME - perform 8bps
                         for extra in  [[],
                                        #FIXME - no analogue for -p option
                                        ["exhaustive_model_search"]]:

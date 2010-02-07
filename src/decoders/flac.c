@@ -569,7 +569,7 @@ status FlacDecoder_read_lpc_subframe(decoders_FlacDecoder *self,
   int i,j;
   Bitstream *bitstream = self->bitstream;
   uint32_t qlp_precision;
-  uint32_t qlp_shift_needed;
+  int32_t qlp_shift_needed;
   struct i_array tail;
   int64_t accumulator;
 
@@ -589,7 +589,7 @@ status FlacDecoder_read_lpc_subframe(decoders_FlacDecoder *self,
   qlp_precision = read_bits(bitstream,4) + 1;
 
   /*read QLP shift needed*/
-  qlp_shift_needed = read_bits(bitstream,5);
+  qlp_shift_needed = read_signed_bits(bitstream,5);
 
   /*read order number of QLP coefficients of size qlp_precision*/
   for (i = 0; i < order; i++) {

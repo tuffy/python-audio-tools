@@ -45,7 +45,7 @@ Bitstream* bs_open_accumulator(void) {
   bs->records = NULL;
 
   bs->write_bits = write_bits_accumulator;
-  bs->write_signed_bits = write_bits_accumulator;
+  bs->write_signed_bits = write_signed_bits_accumulator;
   bs->write_bits64 = write_bits64_accumulator;
   bs->write_unary = write_unary_accumulator;
   bs->byte_align = byte_align_w_accumulator;
@@ -145,6 +145,8 @@ void write_bits_actual(Bitstream* bs, unsigned int count, int value) {
 }
 
 void write_signed_bits_actual(Bitstream* bs, unsigned int count, int value) {
+  assert(value < (1 << (count - 1)));
+  assert(value >= -(1 << (count - 1)));
   if (value >= 0) {
     write_bits_actual(bs, count, value);
   } else {
@@ -242,15 +244,26 @@ const unsigned int write_unary_table[0x400][0x20] =
 
 
 void write_bits_accumulator(Bitstream* bs, unsigned int count, int value) {
+  assert(value >= 0);
+  assert(value < (1l << count));
+  bs->bits_written += count;
+}
+
+void write_signed_bits_accumulator(Bitstream* bs, unsigned int count, int value) {
+  assert(value < (1 << (count - 1)));
+  assert(value >= -(1 << (count - 1)));
   bs->bits_written += count;
 }
 
 void write_bits64_accumulator(Bitstream* bs, unsigned int count,
 			      uint64_t value) {
+  assert(value >= 0l);
+  assert(value < (1l << count));
   bs->bits_written += count;
 }
 
 void write_unary_accumulator(Bitstream* bs, int stop_bit, int value) {
+  assert(value >= 0);
   bs->bits_written += (value + 1);
 }
 
@@ -263,6 +276,8 @@ void byte_align_w_accumulator(Bitstream* bs) {
 void write_bits_record(Bitstream* bs, unsigned int count, int value) {
   BitstreamRecord record;
 
+  assert(value >= 0);
+  assert(value < (1l << count));
   record.type = BS_WRITE_BITS;
   record.key.count = count;
   record.value.value = value;
@@ -275,6 +290,8 @@ void write_signed_bits_record(Bitstream* bs, unsigned int count,
 			      int value) {
   BitstreamRecord record;
 
+  assert(value < (1 << (count - 1)));
+  assert(value >= -(1 << (count - 1)));
   record.type = BS_WRITE_SIGNED_BITS;
   record.key.count = count;
   record.value.value = value;
@@ -287,6 +304,8 @@ void write_bits64_record(Bitstream* bs, unsigned int count,
 			 uint64_t value) {
   BitstreamRecord record;
 
+  assert(value >= 0l);
+  assert(value < (1l << count));
   record.type = BS_WRITE_BITS64;
   record.key.count = count;
   record.value.value64 = value;
@@ -298,6 +317,7 @@ void write_bits64_record(Bitstream* bs, unsigned int count,
 void write_unary_record(Bitstream* bs, int stop_bit, int value) {
   BitstreamRecord record;
 
+  assert(value >= 0);
   record.type = BS_WRITE_UNARY;
   record.key.stop_bit = stop_bit;
   record.value.value = value;

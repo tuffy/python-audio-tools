@@ -360,7 +360,9 @@ void FlacEncoder_quantize_coefficients(struct f_array *lp_coefficients,
   fa_free(&lp_coefficients_abs);
 
   (void)frexp(cmax,&log2cmax);
-  *shift_needed = MAX(precision - (log2cmax - 1) - 1,0);
+
+  /*FIXME - handle negative or overly-large shift-needed corretly*/
+  *shift_needed = MIN(MAX(precision - (log2cmax - 1) - 1,0),0xF);
 
   qlp_coeff_max = (1 << precision) - 1;
   qlp_coeff_min = -(1 << precision);

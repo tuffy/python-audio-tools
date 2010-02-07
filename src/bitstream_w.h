@@ -98,6 +98,8 @@ void byte_align_w_actual(Bitstream* bs);
 
 void write_bits_accumulator(Bitstream* bs, unsigned int count, int value);
 
+void write_signed_bits_accumulator(Bitstream* bs, unsigned int count, int value);
+
 void write_signed_bits_accumulator(Bitstream* bs, unsigned int count,
 				   int value);
 

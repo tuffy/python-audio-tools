@@ -876,7 +876,7 @@ void FlacEncoder_write_lpc_subframe(Bitstream *bs,
   bs->write_bits(bs,4,qlp_precision - 1);
 
   /*write QLP Shift Needed*/
-  bs->write_bits(bs,5,shift_needed);
+  bs->write_signed_bits(bs,5,shift_needed);
 
   /*write QLP Coefficients*/
   for (i = 0; i < predictor_order; i++) {
