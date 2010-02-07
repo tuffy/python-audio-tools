@@ -140,13 +140,13 @@ PyObject* encoders_encode_flac(PyObject *dummy,
   streaminfo.options.adaptive_mid_side = adaptive_mid_side;
   streaminfo.options.exhaustive_model_search = exhaustive_model_search;
 
-  streaminfo.options.no_verbatim_subframes = 0;
-  streaminfo.options.no_constant_subframes = 0;
+  streaminfo.options.no_verbatim_subframes = 1;
+  streaminfo.options.no_constant_subframes = 1;
   streaminfo.options.no_fixed_subframes = 0;
   streaminfo.options.no_lpc_subframes = 0;
 
   file = fopen(filename,"wb");
-  reader = pcmr_open(input,44100,2,16); /*FIXME - assume CD quality for now*/
+  reader = pcmr_open(input,44100,1,24); /*FIXME - assume CD quality for now*/
 
 #endif
 
@@ -250,14 +250,31 @@ void FlacEncoder_write_streaminfo(Bitstream *bs,
 				  struct flac_STREAMINFO streaminfo) {
   int i;
 
-  bs->write_bits(bs,16,streaminfo.minimum_block_size);
-  bs->write_bits(bs,16,streaminfo.maximum_block_size);
-  bs->write_bits(bs,24,streaminfo.minimum_frame_size);
-  bs->write_bits(bs,24,streaminfo.maximum_frame_size);
-  bs->write_bits(bs,20,streaminfo.sample_rate);
-  bs->write_bits(bs,3,streaminfo.channels - 1);
-  bs->write_bits(bs,5,streaminfo.bits_per_sample - 1);
+  bs->write_bits(bs,16,MAX(MIN(streaminfo.minimum_block_size,
+			       (1 << 16) - 1),0));
+
+  bs->write_bits(bs,16,MAX(MIN(streaminfo.maximum_block_size,
+			       (1 << 16) - 1),0));
+
+  bs->write_bits(bs,24,MAX(MIN(streaminfo.minimum_frame_size,
+			       (1 << 24) - 1),0));
+
+  bs->write_bits(bs,24,MAX(MIN(streaminfo.maximum_frame_size,
+			       (1 << 24) - 1),0));
+
+  bs->write_bits(bs,20,MAX(MIN(streaminfo.sample_rate,
+			       (1 << 20) - 1),0));
+
+  bs->write_bits(bs,3,MAX(MIN(streaminfo.channels - 1,
+			      (1 << 3) - 1),0));
+
+  bs->write_bits(bs,5,MAX(MIN(streaminfo.bits_per_sample - 1,
+			      (1 << 5) - 1),0));
+
+  assert(streaminfo.total_samples >= 0);
+  assert(streaminfo.total_samples < (1l << 36));
   bs->write_bits64(bs,36,streaminfo.total_samples);
+
   for (i = 0; i < 16; i++)
     bs->write_bits(bs,8,streaminfo.md5sum[i]);
 }
@@ -1270,7 +1287,7 @@ int maximum_bits_size(int value, int current_maximum) {
 int main(int argc, char *argv[]) {
   encoders_encode_flac(argv[1],
 		       stdin,
-		       4096,12,0,6,1,1,1);
+		       65535,6,0,4,0,0,1);
 
   return 0;
 }

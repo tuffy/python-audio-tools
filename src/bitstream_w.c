@@ -116,6 +116,7 @@ void write_bits_actual(Bitstream* bs, unsigned int count, int value) {
   struct bs_callback* callback;
 
   assert(value >= 0);
+  assert(value < (1l << count));
 
   while (count > 0) {
     /*chop off up to 8 bits to write at a time*/
@@ -160,6 +161,7 @@ void write_bits64_actual(Bitstream* bs, unsigned int count, uint64_t value) {
   struct bs_callback* callback;
 
   assert(value >= 0l);
+  assert(value < (1l << count));
 
   while (count > 0) {
     /*chop off up to 8 bits to write at a time*/

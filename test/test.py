@@ -174,8 +174,13 @@ class EXACT_RANDOM_PCM_Reader(RANDOM_PCM_Reader):
         self.total_size = pcm_frames * channels * bits_per_sample / 8
         self.current_size = self.total_size
 
-
         self.md5 = md5()
+
+    def __repr__(self):
+        return "EXACT_RANDOM_PCM_Reader(%s,%s,%s)" % \
+            (self.sample_rate,
+             self.channels,
+             self.bits_per_sample)
 
 #this not only sends out random samples,
 #but the amount sent on each read() is also random
@@ -9021,7 +9026,7 @@ class TestFlacCodec(unittest.TestCase):
                              "disable_constant_subframes",
                              "disable_fixed_subframes"]]:
                 for channels in [1,2,4,8]:
-                    for bps in [16]: #FIXME - perform 8/24bps
+                    for bps in [24]: #FIXME - perform 8/24bps
                         for extra in  [[],
                                        #FIXME - no analogue for -p option
                                        ["exhaustive_model_search"]]:
