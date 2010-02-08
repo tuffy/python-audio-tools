@@ -8824,6 +8824,8 @@ class TestFlacCodec(unittest.TestCase):
                              "min_residual_partition_order":0,
                              "max_residual_partition_order":6}]
 
+    ### these are close analogues to FLAC's test_stream.sh ###
+
     @TEST_FLAC
     def test_streams(self):
         for g in self.__stream_variations__():
@@ -9044,6 +9046,47 @@ class TestFlacCodec(unittest.TestCase):
                                         channels=channels,
                                         bits_per_sample=bps),
                                     **encode_opts)
+
+    ### these are close analogues to FLAC's test_flac.sh ####
+
+    @TEST_FLAC
+    def test_fractional(self):
+        def __perform_test__(block_size,pcm_frames):
+            self.__test_reader__(
+                EXACT_RANDOM_PCM_Reader(
+                    pcm_frames=pcm_frames,
+                    sample_rate=44100,
+                    channels=2,
+                    bits_per_sample=16),
+                block_size=block_size,
+                max_lpc_order=8,
+                min_residual_partition_order=0,
+                max_residual_partition_order=6)
+
+        for pcm_frames in [31,32,33,34,35,2046,2047,2048,2049,2050]:
+            __perform_test__(33,pcm_frames)
+
+        for pcm_frames in [254,255,256,257,258,510,511,512,513,514,1022,1023,1024,1025,1026,2046,2047,2048,2049,2050,4094,4095,4096,4097,4098]:
+            __perform_test__(256,pcm_frames)
+
+        for pcm_frames in [1022,1023,1024,1025,1026,2046,2047,2048,2049,2050,4094,4095,4096,4097,4098]:
+            __perform_test__(2048,pcm_frames)
+
+        for pcm_frames in [1022,1023,1024,1025,1026,2046,2047,2048,2049,2050,4094,4095,4096,4097,4098,4606,4607,4608,4609,4610,8190,8191,8192,8193,8194,16382,16383,16384,16385,16386]:
+            __perform_test__(4608,pcm_frames)
+
+    #PCMReaders don't yet support seeking,
+    #so the seek tests can be skipped
+
+    #cuesheets are supported at the metadata level,
+    #which is tested above
+
+    #WAVE and AIFF length fixups are handled by the
+    #WaveAudio and AIFFAudio classes
+
+    #multiple file handling is performed at the tool level
+
+    #as is metadata handling
 
 ############
 #END TESTS
