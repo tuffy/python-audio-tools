@@ -8717,23 +8717,22 @@ class TestFlacCodec(unittest.TestCase):
     def __stream_variations__(self):
         if (not hasattr(self,"__stream_variations_cache__")):
             self.__class__.__stream_variations_cache__ = [
-                # FIXME - handle 8bps streams correctly
-                # test_streams.Sine8_Mono(200000,48000,441.0,0.50,441.0,0.49),
-                # test_streams.Sine8_Mono(200000,96000,441.0,0.61,661.5,0.37),
-                # test_streams.Sine8_Mono(200000,44100,441.0,0.50,882.0,0.49),
-                # test_streams.Sine8_Mono(200000,44100,441.0,0.50,4410.0,0.49),
-                # test_streams.Sine8_Mono(200000,44100,8820.0,0.70,4410.0,0.29),
+                test_streams.Sine8_Mono(200000,48000,441.0,0.50,441.0,0.49),
+                test_streams.Sine8_Mono(200000,96000,441.0,0.61,661.5,0.37),
+                test_streams.Sine8_Mono(200000,44100,441.0,0.50,882.0,0.49),
+                test_streams.Sine8_Mono(200000,44100,441.0,0.50,4410.0,0.49),
+                test_streams.Sine8_Mono(200000,44100,8820.0,0.70,4410.0,0.29),
 
-                # test_streams.Sine8_Stereo(200000,48000,441.0,0.50,441.0,0.49,1.0),
-                # test_streams.Sine8_Stereo(200000,48000,441.0,0.61,661.5,0.37,1.0),
-                # test_streams.Sine8_Stereo(200000,96000,441.0,0.50,882.0,0.49,1.0),
-                # test_streams.Sine8_Stereo(200000,44100,441.0,0.50,4410.0,0.49,1.0),
-                # test_streams.Sine8_Stereo(200000,44100,8820.0,0.70,4410.0,0.29,1.0),
-                # test_streams.Sine8_Stereo(200000,44100,441.0,0.50,441.0,0.49,0.5),
-                # test_streams.Sine8_Stereo(200000,44100,441.0,0.61,661.5,0.37,2.0),
-                # test_streams.Sine8_Stereo(200000,44100,441.0,0.50,882.0,0.49,0.7),
-                # test_streams.Sine8_Stereo(200000,44100,441.0,0.50,4410.0,0.49,1.3),
-                # test_streams.Sine8_Stereo(200000,44100,8820.0,0.70,4410.0,0.29,0.1),
+                test_streams.Sine8_Stereo(200000,48000,441.0,0.50,441.0,0.49,1.0),
+                test_streams.Sine8_Stereo(200000,48000,441.0,0.61,661.5,0.37,1.0),
+                test_streams.Sine8_Stereo(200000,96000,441.0,0.50,882.0,0.49,1.0),
+                test_streams.Sine8_Stereo(200000,44100,441.0,0.50,4410.0,0.49,1.0),
+                test_streams.Sine8_Stereo(200000,44100,8820.0,0.70,4410.0,0.29,1.0),
+                test_streams.Sine8_Stereo(200000,44100,441.0,0.50,441.0,0.49,0.5),
+                test_streams.Sine8_Stereo(200000,44100,441.0,0.61,661.5,0.37,2.0),
+                test_streams.Sine8_Stereo(200000,44100,441.0,0.50,882.0,0.49,0.7),
+                test_streams.Sine8_Stereo(200000,44100,441.0,0.50,4410.0,0.49,1.3),
+                test_streams.Sine8_Stereo(200000,44100,8820.0,0.70,4410.0,0.29,0.1),
 
                 test_streams.Sine16_Mono(200000,48000,441.0,0.50,441.0,0.49),
                 test_streams.Sine16_Mono(200000,96000,441.0,0.61,661.5,0.37),
@@ -8875,8 +8874,8 @@ class TestFlacCodec(unittest.TestCase):
 
     @TEST_FLAC
     def test_full_scale_deflection(self):
-        #FIXME - include support for 8-bit fsd
-        for (bps,fsd) in [(16,test_streams.fsd16),
+        for (bps,fsd) in [(8,test_streams.fsd8),
+                          (16,test_streams.fsd16),
                           (24,test_streams.fsd24)]:
             for pattern in [test_streams.PATTERN01,
                             test_streams.PATTERN02,
@@ -9028,7 +9027,7 @@ class TestFlacCodec(unittest.TestCase):
                              "disable_constant_subframes",
                              "disable_fixed_subframes"]]:
                 for channels in [1,2,4,8]:
-                    for bps in [16,24]: #FIXME - perform 8bps
+                    for bps in [8,16,24]:
                         for extra in  [[],
                                        #FIXME - no analogue for -p option
                                        ["exhaustive_model_search"]]:

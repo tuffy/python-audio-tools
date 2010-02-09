@@ -124,10 +124,16 @@ void ia_char_to_U8(struct i_array *target, unsigned char *source,
   source += channel;
   source_len -= channel;
 
+  /*FIXME - this can't be right, since it treats unsigned input as signed
+    The long-term solution will be to have IO work on blobs of
+    endian-independent integers, but that's further down the line.
+    This will have to suffice in the short term.*/
   for (;source_len >= 1;
-       source += total_channels, source_len -= total_channels) {
-    ia_append(target,(int32_t)source[0]);
-  }
+       source += total_channels, source_len -= total_channels)
+    if ((source[0] & 0x80))
+      ia_append(target,-(int32_t)(0x100 - source[0]));
+    else
+      ia_append(target,(int32_t)source[0]);
 }
 
 void ia_char_to_SL16(struct i_array *target, unsigned char *source,

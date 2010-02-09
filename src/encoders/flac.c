@@ -140,13 +140,13 @@ PyObject* encoders_encode_flac(PyObject *dummy,
   streaminfo.options.adaptive_mid_side = adaptive_mid_side;
   streaminfo.options.exhaustive_model_search = exhaustive_model_search;
 
-  streaminfo.options.no_verbatim_subframes = 1;
-  streaminfo.options.no_constant_subframes = 1;
+  streaminfo.options.no_verbatim_subframes = 0;
+  streaminfo.options.no_constant_subframes = 0;
   streaminfo.options.no_fixed_subframes = 0;
   streaminfo.options.no_lpc_subframes = 0;
 
   file = fopen(filename,"wb");
-  reader = pcmr_open(input,44100,1,24); /*FIXME - assume CD quality for now*/
+  reader = pcmr_open(input,44100,1,8); /*FIXME - assume CD quality for now*/
 
 #endif
 
@@ -1287,7 +1287,7 @@ int maximum_bits_size(int value, int current_maximum) {
 int main(int argc, char *argv[]) {
   encoders_encode_flac(argv[1],
 		       stdin,
-		       65535,6,0,4,0,0,1);
+		       4096,6,0,4,0,0,0);
 
   return 0;
 }
