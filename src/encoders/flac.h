@@ -227,9 +227,9 @@ int maximum_bits_size(int value, int current_maximum);
 
 static inline uint64_t abs_sum(struct i_array *a) {
   register uint64_t sum = 0;
-  uint32_t a_size = a->size;
-  int32_t *a_data = a->data;
-  uint32_t i;
+  ia_size_t a_size = a->size;
+  ia_data_t *a_data = a->data;
+  ia_size_t i;
 
   for (i = 0; i < a_size; i++)
     sum += abs(a_data[i]);

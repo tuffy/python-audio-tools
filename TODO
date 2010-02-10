@@ -488,7 +488,6 @@
 * TODO Add C-based FLAC decoder
 ** DONE Add a variety of unit tests
 ** TODO Ensure decoder raises the proper exceptions
-** TODO Convert i_array size and data types to typedefs
 * TODO Add C-based FLAC encoder
 ** DONE Use VERBATIM subframes when necessary
 ** DONE Add significant initial padding blocks
@@ -496,11 +495,11 @@
 ** DONE Add a variety of unit tests
    - [X] test_stream.sh
    - [X] test_flac.sh
+** DONE Convert i_array size and data types to typedefs
+** DONE Convert f_array size and data types to typedefs
 ** TODO Add a variety of assert() statements
    As with unit tests, these ensure everything is working during testing
    without a performance penalty at runtime.
-** TODO Convert i_array size and data types to typedefs
-** TODO Convert f_array size and data types to typedefs
 ** TODO Improve speed
    Try to get encoder to within 1/3 to 1/2 the speed of the reference encoder.
 ** TODO Ensure FLACs work on a variety of other decoders

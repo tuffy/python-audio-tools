@@ -35,6 +35,7 @@
   typically for storing PCM sample values*/
 typedef int32_t ia_data_t;
 typedef uint32_t ia_size_t;
+typedef int32_t ia_offset_t;
 
 struct i_array {
   ia_data_t *data;
@@ -62,7 +63,7 @@ static inline void ia_append(struct i_array *array, ia_data_t val) {
   }
 }
 
-static inline int32_t ia_getitem(struct i_array *array, ia_size_t index) {
+static inline ia_data_t ia_getitem(struct i_array *array, ia_offset_t index) {
   if (index >= 0) {
     return array->data[index];
   } else {
@@ -71,7 +72,7 @@ static inline int32_t ia_getitem(struct i_array *array, ia_size_t index) {
 }
 
 static inline void ia_setitem(struct i_array *array,
-			      ia_size_t index, ia_data_t value) {
+			      ia_offset_t index, ia_data_t value) {
   if (index >= 0) {
     array->data[index] = value;
   } else {
@@ -203,7 +204,7 @@ void iaa_init(struct ia_array *array, ia_size_t total_arrays,
 
 void iaa_free(struct ia_array *array);
 
-static inline struct i_array* iaa_getitem(struct ia_array *array, ia_size_t index) {
+static inline struct i_array* iaa_getitem(struct ia_array *array, ia_offset_t index) {
   if (index >= 0) {
     return &(array->arrays[index]);
   } else {
@@ -222,6 +223,7 @@ static inline void iaa_reset(struct ia_array *array) {
 /*an array of double values which can grow as needed*/
 typedef double fa_data_t;
 typedef uint32_t fa_size_t;
+typedef int32_t fa_offset_t;
 
 struct f_array {
   fa_data_t *data;
@@ -249,7 +251,7 @@ static inline void fa_append(struct f_array *array, fa_data_t value) {
   }
 }
 
-static inline fa_data_t fa_getitem(struct f_array *array, fa_size_t index) {
+static inline fa_data_t fa_getitem(struct f_array *array, fa_offset_t index) {
   if (index >= 0) {
     return array->data[index];
   } else {
@@ -257,7 +259,7 @@ static inline fa_data_t fa_getitem(struct f_array *array, fa_size_t index) {
   }
 }
 
-static inline void fa_setitem(struct f_array *array, fa_size_t index, fa_data_t value) {
+static inline void fa_setitem(struct f_array *array, fa_offset_t index, fa_data_t value) {
   if (index >= 0) {
     array->data[index] = value;
   } else {
@@ -367,7 +369,7 @@ void faa_init(struct fa_array *array, fa_size_t total_arrays,
 
 void faa_free(struct fa_array *array);
 
-static inline struct f_array* faa_getitem(struct fa_array *array, fa_size_t index) {
+static inline struct f_array* faa_getitem(struct fa_array *array, fa_offset_t index) {
   if (index >= 0) {
     return &(array->arrays[index]);
   } else {

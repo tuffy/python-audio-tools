@@ -26,7 +26,7 @@ void FlacEncoder_compute_best_lpc_coeffs(struct i_array *lpc_warm_up_samples,
   struct i_array temp_residual;
   struct i_array temp_rice_parameters;
   int temp_shift_needed;
-  uint32_t i;
+  int i;
   Bitstream *temp_subframe;
   int current_best_subframe = INT_MAX;
 
@@ -253,7 +253,7 @@ void FlacEncoder_compute_lp_coefficients(struct fa_array *lp_coefficients,
   struct f_array ra_i;
   struct f_array *a_im;
   int m;
-  uint32_t i;
+  fa_size_t i;
 
   fa_init(&a,max_lpc_order);
   fa_init(&ra_i,max_lpc_order);
@@ -349,7 +349,7 @@ void FlacEncoder_quantize_coefficients(struct f_array *lp_coefficients,
   int log2cmax;
   int32_t qlp_coeff_min;
   int32_t qlp_coeff_max;
-  uint32_t i;
+  fa_size_t i;
   int32_t qlp;
   double error = 0.0;
 

@@ -282,7 +282,7 @@ void FlacEncoder_write_streaminfo(Bitstream *bs,
 void FlacEncoder_write_frame(Bitstream *bs,
 			     struct flac_STREAMINFO *streaminfo,
 			     struct ia_array *samples) {
-  uint32_t i;
+  ia_size_t i;
   long startpos;
   long framesize;
 
@@ -540,8 +540,8 @@ void FlacEncoder_write_subframe(Bitstream *bs,
 				struct flac_encoding_options *options,
 				int bits_per_sample,
 				struct i_array *samples) {
-  uint32_t i;
-  int32_t first_sample;
+  ia_size_t i;
+  ia_data_t first_sample;
 
   /*FIXED subframe params*/
   int fixed_predictor_order;
@@ -709,7 +709,7 @@ void FlacEncoder_write_subframe(Bitstream *bs,
 
 void FlacEncoder_write_constant_subframe(Bitstream *bs,
 					 int bits_per_sample,
-					 int32_t sample) {
+					 ia_data_t sample) {
   /*write subframe header*/
   bs->write_bits(bs, 1, 0);
   bs->write_bits(bs, 6, 0);
@@ -722,7 +722,7 @@ void FlacEncoder_write_constant_subframe(Bitstream *bs,
 void FlacEncoder_write_verbatim_subframe(Bitstream *bs,
 					 int bits_per_sample,
 					 struct i_array *samples) {
-  uint32_t i;
+  ia_size_t i;
 
   /*write subframe header*/
   bs->write_bits(bs, 1, 0);
@@ -742,8 +742,8 @@ void FlacEncoder_evaluate_fixed_subframe(struct i_array *warm_up_samples,
 					 int bits_per_sample,
 					 struct i_array *samples,
 					 int predictor_order) {
-  int32_t *samples_data = samples->data;
-  uint32_t i;
+  ia_data_t *samples_data = samples->data;
+  ia_size_t i;
 
   /*write warm-up samples*/
   for (i = 0; i < predictor_order; i++)
@@ -795,7 +795,7 @@ void FlacEncoder_write_fixed_subframe(Bitstream *bs,
 				      struct i_array *residuals,
 				      int bits_per_sample,
 				      int predictor_order) {
-  uint32_t i;
+  ia_size_t i;
 
   /*write subframe header*/
   bs->write_bits(bs, 1, 0);
@@ -823,9 +823,9 @@ void FlacEncoder_evaluate_lpc_subframe(struct i_array *warm_up_samples,
   int64_t accumulator;
   int i,j;
 
-  uint32_t samples_size;
-  int32_t *samples_data;
-  int32_t *coeffs_data;
+  ia_size_t samples_size;
+  ia_data_t *samples_data;
+  ia_data_t *coeffs_data;
 
   /*write warm-up samples*/
   for (i = 0; i < predictor_order; i++) {
@@ -843,7 +843,7 @@ void FlacEncoder_evaluate_lpc_subframe(struct i_array *warm_up_samples,
       accumulator += (int64_t)samples_data[i - j - 1] * (int64_t)coeffs_data[j];
     }
     ia_append(residual,
-	      samples_data[i] - (int32_t)(accumulator >> shift_needed));
+	      samples_data[i] - (ia_data_t)(accumulator >> shift_needed));
   }
 
   /*write residual*/
@@ -860,7 +860,7 @@ void FlacEncoder_write_lpc_subframe(Bitstream *bs,
 				    int shift_needed) {
   int predictor_order = coeffs->size;
   int qlp_precision = ia_reduce(coeffs,2,maximum_bits_size);
-  uint32_t i;
+  ia_size_t i;
 
   /*write subframe header*/
   bs->write_bits(bs,1,0);
@@ -1069,13 +1069,13 @@ void FlacEncoder_write_residual_partition(Bitstream *bs,
 					  int coding_method,
 					  int rice_parameter,
 					  struct i_array *residuals) {
-  uint32_t i;
+  ia_size_t i;
   register int64_t residual;
   register int32_t msb;
   register int32_t lsb;
 
-  uint32_t residuals_size;
-  int32_t *residuals_data;
+  ia_size_t residuals_size;
+  ia_data_t *residuals_data;
   void (*write_bits)(struct Bitstream_s* bs, unsigned int count, int value);
   void (*write_unary)(struct Bitstream_s* bs, int stop_bit, int value);
 
@@ -1117,12 +1117,12 @@ int FlacEncoder_compute_best_fixed_predictor_order(struct i_array *samples) {
   uint64_t delta3_sum;
   uint64_t delta4_sum;
 
-  int32_t *delta0_data;
-  int32_t *delta1_data;
-  int32_t *delta2_data;
-  int32_t *delta3_data;
-  int32_t *delta4_data;
-  uint32_t i;
+  ia_data_t *delta0_data;
+  ia_data_t *delta1_data;
+  ia_data_t *delta2_data;
+  ia_data_t *delta3_data;
+  ia_data_t *delta4_data;
+  ia_size_t i;
 
   if (samples->size < 5)
     return 0;
@@ -1231,12 +1231,12 @@ void FlacEncoder_build_mid_side_subframes(struct ia_array *samples,
 					  struct i_array *side_subframe) {
   struct i_array *left = iaa_getitem(samples,0);
   struct i_array *right = iaa_getitem(samples,1);
-  int32_t *left_data = left->data;
-  int32_t *right_data = right->data;
-  int32_t *mid_data;
-  int32_t *side_data;
-  uint32_t sample_size = left->size;
-  uint32_t i;
+  ia_data_t *left_data = left->data;
+  ia_data_t *right_data = right->data;
+  ia_data_t *mid_data;
+  ia_data_t *side_data;
+  ia_size_t sample_size = left->size;
+  ia_size_t i;
 
   ia_resize(mid_subframe,sample_size);
   ia_resize(side_subframe,sample_size);

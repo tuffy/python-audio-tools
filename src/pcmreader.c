@@ -137,7 +137,7 @@ void pcmr_add_callback(struct pcm_reader *reader,
 int pcmr_read(struct pcm_reader *reader,
 	      long sample_count,
 	      struct ia_array *samples) {
-  uint32_t i;
+  ia_size_t i;
 
 #ifndef STANDALONE
   PyObject *args;
