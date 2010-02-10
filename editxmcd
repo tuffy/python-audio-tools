@@ -637,17 +637,12 @@ if (__name__ == '__main__'):
     (options,args) = parser.parse_args()
     msg = audiotools.Messenger("editxmcd",options)
 
-    gladepath = os.path.join(".","editxmcd.glade")
-    if (os.path.isfile(gladepath)):
-        xml = gtk.glade.XML(gladepath,domain="audiotools")
-    else:
-        gladepath = os.path.join(sys.prefix,"share/audiotools",
-                                 "editxmcd.glade")
-        if (os.path.isfile(gladepath)):
-            xml = gtk.glade.XML(gladepath,domain="audiotools")
-        else:
-            msg.error(_(u"editxmcd.glade not found"))
-            sys.exit(1)
+    try:
+        xml = gtk.glade.XML(audiotools.find_glade_file("editxmcd.glade"),
+                            domain="audiotools")
+    except IOError:
+        msg.error(_(u"editxmcd.glade not found"))
+        sys.exit(1)
 
     editxmcd = EditXMCD(xml,msg)
 

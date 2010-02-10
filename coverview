@@ -340,17 +340,12 @@ if (__name__ == '__main__'):
 
     cover_list = []
 
-    gladepath = os.path.join(".","coverview.glade")
-    if (os.path.isfile(gladepath)):
-        xml = gtk.glade.XML(gladepath,domain="audiotools")
-    else:
-        gladepath = os.path.join(sys.prefix,"share/audiotools",
-                                 "coverview.glade")
-        if (os.path.isfile(gladepath)):
-            xml = gtk.glade.XML(gladepath,domain="audiotools")
-        else:
-            msg.error(_(u"coverview.glade not found"))
-            sys.exit(1)
+    try:
+        xml = gtk.glade.XML(audiotools.find_glade_file("coverview.glade"),
+                            domain="audiotools")
+    except IOError:
+        msg.error(_(u"coverview.glade not found"))
+        sys.exit(1)
 
     for audiofile in audiotools.open_files(args):
         try:

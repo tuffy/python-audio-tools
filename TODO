@@ -412,6 +412,8 @@
    (such as <title>).  editxmcd should add these fields in the proper place
    if necessary.
 *** DONE Add unit tests for improperly reordered XML fields
+* DONE Ensure .glade files are found
+  Not all systems place Python data files in the same locations.
 * TODO Ensure non-image cuesheets are handled properly
   There are 4 different types of cuesheets,
   1 single file type and 3 different multiple file variants.

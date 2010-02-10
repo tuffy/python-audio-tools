@@ -123,6 +123,18 @@ else:
 
 BIG_ENDIAN = sys.byteorder == 'big'
 
+def find_glade_file(glade_filename):
+    glade_paths = [".",
+                   os.path.join(sys.prefix,"share/audiotools"),
+                   os.path.join("/usr","share/audiotools"),
+                   os.path.join("/usr/local","share/audiotools")]
+
+    for path in glade_paths:
+        filename = os.path.join(path,glade_filename)
+        if (os.path.isfile(filename)):
+            return filename
+    else:
+        raise IOError(glade_filename)
 
 #######################
 #Output Messaging
