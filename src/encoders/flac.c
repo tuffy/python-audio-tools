@@ -952,7 +952,8 @@ void FlacEncoder_evaluate_best_residual(struct i_array *rice_parameters,
        partition_order <= max_partition_order;
        partition_order++) {
     ia_reset(&working_rice_parameters);
-    estimated_residual_bits = 6; /*for coding method and partition_order*/
+    estimated_residual_bits = 6; /*6 bits for coding method
+				   and partition_order headers*/
 
     /*chop the residuals into 2 ^ partition_order number of partitions*/
     ia_link(&remaining_residuals,residuals);

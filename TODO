@@ -486,26 +486,29 @@
    Since pyconstruct hasn't been updated in almost 2 years,
    I'll likely have to update it myself to ensure it'll run on Python3.
 * TODO Add C-based FLAC decoder
-** TODO Add a variety of unit tests
+** DONE Add a variety of unit tests
 ** TODO Ensure decoder raises the proper exceptions
+** TODO Convert i_array size and data types to typedefs
 * TODO Add C-based FLAC encoder
 ** DONE Use VERBATIM subframes when necessary
 ** DONE Add significant initial padding blocks
    This will save a lot of time during retagging after FLAC creation
-** TODO Add a variety of unit tests
-   - [ ] digital silence
-   - [ ] random noise
+** DONE Add a variety of unit tests
+   - [X] test_stream.sh
+   - [X] test_flac.sh
 ** TODO Add a variety of assert() statements
    As with unit tests, these ensure everything is working during testing
    without a performance penalty at runtime.
+** TODO Convert i_array size and data types to typedefs
+** TODO Convert f_array size and data types to typedefs
+** TODO Improve speed
+   Try to get encoder to within 1/3 to 1/2 the speed of the reference encoder.
 ** TODO Ensure FLACs work on a variety of other decoders
    Although decoding properly on the reference decoder *should* guarantee
    the file works everywhere, the only way to be certain is to test it.
-** TODO Handle foreign RIFF chunks
-** TODO Improve speed
-   Try to get encoder to within 1/3 to 1/2 the speed of the reference encoder.
 ** TODO Support Rice2 partitions?
    The reference encoder uses these for more efficient handling of 24-bit audio
    but I'm not sure they're strictly necessary for my more basic encoder.
 ** TODO Add more comprehensive encoding documentation
+** TODO Handle foreign RIFF chunks
 ** TODO Ensure encoder raises the proper exceptions

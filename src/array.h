@@ -33,13 +33,16 @@
 
 /*an array of int32_t values which can grow as needed
   typically for storing PCM sample values*/
+typedef int32_t ia_data_t;
+typedef uint32_t ia_size_t;
+
 struct i_array {
-  int32_t *data;
-  uint32_t size;
-  uint32_t total_size;
+  ia_data_t *data;
+  ia_size_t size;
+  ia_size_t total_size;
 };
 
-void ia_init(struct i_array *array, uint32_t initial_size);
+void ia_init(struct i_array *array, ia_size_t initial_size);
 
 void ia_free(struct i_array *array);
 
@@ -47,19 +50,19 @@ static inline void ia_reset(struct i_array *array) {
   array->size = 0;
 }
 
-void ia_resize(struct i_array *array, uint32_t maximum_size);
+void ia_resize(struct i_array *array, ia_size_t maximum_size);
 
-static inline void ia_append(struct i_array *array, int32_t val) {
+static inline void ia_append(struct i_array *array, ia_data_t val) {
   if (array->size < array->total_size) {
     array->data[array->size++] = val;
   } else {
     array->total_size *= 2;
-    array->data = realloc(array->data,array->total_size * sizeof(int32_t));
+    array->data = realloc(array->data,array->total_size * sizeof(ia_data_t));
     array->data[array->size++] = val;
   }
 }
 
-static inline int32_t ia_getitem(struct i_array *array, int32_t index) {
+static inline int32_t ia_getitem(struct i_array *array, ia_size_t index) {
   if (index >= 0) {
     return array->data[index];
   } else {
@@ -67,7 +70,8 @@ static inline int32_t ia_getitem(struct i_array *array, int32_t index) {
   }
 }
 
-static inline void ia_setitem(struct i_array *array, int32_t index, int32_t value) {
+static inline void ia_setitem(struct i_array *array,
+			      ia_size_t index, ia_data_t value) {
   if (index >= 0) {
     array->data[index] = value;
   } else {
@@ -76,9 +80,9 @@ static inline void ia_setitem(struct i_array *array, int32_t index, int32_t valu
 }
 
 static inline void ia_reverse(struct i_array *array) {
-  uint32_t start;
-  uint32_t end;
-  int32_t val;
+  ia_size_t start;
+  ia_size_t end;
+  ia_data_t val;
 
   for (start = 0,end = array->size - 1;
        start < end;
@@ -100,23 +104,23 @@ static inline void ia_link(struct i_array *target, struct i_array *source) {
 
 static inline void ia_copy(struct i_array *target, struct i_array *source) {
   ia_resize(target,source->size);
-  memcpy(target->data,source->data,source->size * sizeof(int32_t));
+  memcpy(target->data,source->data,source->size * sizeof(ia_data_t));
   target->size = source->size;
 }
 
-static inline void ia_head(struct i_array *target, struct i_array *source, uint32_t size) {
+static inline void ia_head(struct i_array *target, struct i_array *source, ia_size_t size) {
   target->size = size;
   target->total_size = source->total_size;
   target->data = source->data;
 }
 
-static inline void ia_tail(struct i_array *target, struct i_array *source, uint32_t size) {
+static inline void ia_tail(struct i_array *target, struct i_array *source, ia_size_t size) {
   if (target != source) {
     target->data = source->data + (source->size - size);
   } else {
     memmove(target->data,
 	    source->data + (source->size - size),
-	    size * sizeof(int32_t));
+	    size * sizeof(ia_data_t));
   }
   target->size = size;
   target->total_size = source->total_size;
@@ -126,7 +130,7 @@ static inline void ia_tail(struct i_array *target, struct i_array *source, uint3
   where "head" contains "split" number of elements
   and "tail" contains the rest*/
 static inline void ia_split(struct i_array *head, struct i_array *tail,
-			    struct i_array *source, uint32_t split) {
+			    struct i_array *source, ia_size_t split) {
   if (split > source->size)
     split = source->size;
 
@@ -175,7 +179,7 @@ void ia_sub(struct i_array *target,
 static inline int ia_reduce(struct i_array *source,
 			    int base,
 			    int (function)(int, int)) {
-  uint32_t i;
+  ia_size_t i;
 
   if (source->size == 0)
     return base;
@@ -191,15 +195,15 @@ static inline int ia_reduce(struct i_array *source,
   typically for storing multiple channels of PCM values*/
 struct ia_array {
   struct i_array *arrays;
-  uint32_t size;
+  ia_size_t size;
 };
 
-void iaa_init(struct ia_array *array, uint32_t total_arrays,
-	      uint32_t initial_size);
+void iaa_init(struct ia_array *array, ia_size_t total_arrays,
+	      ia_size_t initial_size);
 
 void iaa_free(struct ia_array *array);
 
-static inline struct i_array* iaa_getitem(struct ia_array *array, int32_t index) {
+static inline struct i_array* iaa_getitem(struct ia_array *array, ia_size_t index) {
   if (index >= 0) {
     return &(array->arrays[index]);
   } else {
@@ -208,7 +212,7 @@ static inline struct i_array* iaa_getitem(struct ia_array *array, int32_t index)
 }
 
 static inline void iaa_reset(struct ia_array *array) {
-  uint32_t i;
+  ia_size_t i;
 
   for (i = 0; i < array->size; i++)
     ia_reset(&(array->arrays[i]));
@@ -216,13 +220,16 @@ static inline void iaa_reset(struct ia_array *array) {
 
 
 /*an array of double values which can grow as needed*/
+typedef double fa_data_t;
+typedef uint32_t fa_size_t;
+
 struct f_array {
-  double *data;
-  uint32_t size;
-  uint32_t total_size;
+  fa_data_t *data;
+  fa_size_t size;
+  fa_size_t total_size;
 };
 
-void fa_init(struct f_array *array, uint32_t initial_size);
+void fa_init(struct f_array *array, fa_size_t initial_size);
 
 void fa_free(struct f_array *array);
 
@@ -230,19 +237,19 @@ static inline void fa_reset(struct f_array *array) {
   array->size = 0;
 }
 
-void fa_resize(struct f_array *array, uint32_t maximum_size);
+void fa_resize(struct f_array *array, fa_size_t maximum_size);
 
-static inline void fa_append(struct f_array *array, double value) {
+static inline void fa_append(struct f_array *array, fa_data_t value) {
   if (array->size < array->total_size) {
     array->data[array->size++] = value;
   } else {
     array->total_size *= 2;
-    array->data = realloc(array->data,array->total_size * sizeof(double));
+    array->data = realloc(array->data,array->total_size * sizeof(fa_data_t));
     array->data[array->size++] = value;
   }
 }
 
-static inline double fa_getitem(struct f_array *array, int32_t index) {
+static inline fa_data_t fa_getitem(struct f_array *array, fa_size_t index) {
   if (index >= 0) {
     return array->data[index];
   } else {
@@ -250,7 +257,7 @@ static inline double fa_getitem(struct f_array *array, int32_t index) {
   }
 }
 
-static inline void fa_setitem(struct f_array *array, int32_t index, double value) {
+static inline void fa_setitem(struct f_array *array, fa_size_t index, fa_data_t value) {
   if (index >= 0) {
     array->data[index] = value;
   } else {
@@ -258,19 +265,19 @@ static inline void fa_setitem(struct f_array *array, int32_t index, double value
   }
 }
 
-static inline void fa_head(struct f_array *target, struct f_array *source, uint32_t size) {
+static inline void fa_head(struct f_array *target, struct f_array *source, fa_size_t size) {
   target->size = size;
   target->total_size = source->total_size;
   target->data = source->data;
 }
 
-static inline void fa_tail(struct f_array *target, struct f_array *source, uint32_t size) {
+static inline void fa_tail(struct f_array *target, struct f_array *source, fa_size_t size) {
   if (target != source) {
     target->data = source->data + (source->size - size);
   } else {
     memmove(target->data,
 	    source->data + (source->size - size),
-	    size * sizeof(double));
+	    size * sizeof(fa_data_t));
   }
   target->size = size;
   target->total_size = source->total_size;
@@ -280,7 +287,7 @@ static inline void fa_tail(struct f_array *target, struct f_array *source, uint3
   where "head" contains "split" number of elements
   and "tail" contains the rest*/
 static inline void fa_split(struct f_array *head, struct f_array *tail,
-			    struct f_array *source, uint32_t split) {
+			    struct f_array *source, fa_size_t split) {
   if (split > source->size)
     split = source->size;
 
@@ -295,14 +302,14 @@ static inline void fa_split(struct f_array *head, struct f_array *tail,
 
 static inline void fa_copy(struct f_array *target, struct f_array *source) {
   fa_resize(target,source->size);
-  memcpy(target->data,source->data,source->size * sizeof(double));
+  memcpy(target->data,source->data,source->size * sizeof(fa_data_t));
   target->size = source->size;
 }
 
 static inline void fa_reverse(struct f_array *array) {
-  uint32_t start;
-  uint32_t end;
-  double val;
+  fa_size_t start;
+  fa_size_t end;
+  fa_data_t val;
 
   for (start = 0,end = array->size - 1;
        start < end;
@@ -315,7 +322,7 @@ static inline void fa_reverse(struct f_array *array) {
 
 void fa_print(FILE *stream, struct f_array *array);
 
-double fa_sum(struct f_array *array);
+fa_data_t fa_sum(struct f_array *array);
 
 void fa_mul(struct f_array *target,
 	    struct f_array *source1, struct f_array *source2);
@@ -323,17 +330,17 @@ void fa_mul(struct f_array *target,
 void fa_mul_ia(struct f_array *target,
 	       struct f_array *source1, struct i_array *source2);
 
-static inline double fa_max(struct f_array *array) {
-  uint32_t i;
-  double max = -DBL_MAX;
+static inline fa_data_t fa_max(struct f_array *array) {
+  fa_size_t i;
+  fa_data_t max = -DBL_MAX;
   for (i = 0; i < array->size; i++)
     max = MAX(array->data[i],max);
   return max;
 }
 
-static inline double fa_min(struct f_array *array) {
-  uint32_t i;
-  double min = DBL_MAX;
+static inline fa_data_t fa_min(struct f_array *array) {
+  fa_size_t i;
+  fa_data_t min = DBL_MAX;
   for (i = 0; i < array->size; i++)
     min = MIN(array->data[i],min);
   return min;
@@ -341,8 +348,8 @@ static inline double fa_min(struct f_array *array) {
 
 static inline void fa_map(struct f_array *target,
 			  struct f_array *source,
-			  double (function)(double)) {
-  uint32_t i;
+			  fa_data_t (function)(fa_data_t)) {
+  fa_size_t i;
   fa_resize(target,source->size);
   for (i = 0; i < source->size; i++)
     target->data[i] = function(source->data[i]);
@@ -352,15 +359,15 @@ static inline void fa_map(struct f_array *target,
 /*an array if f_array structs*/
 struct fa_array {
   struct f_array *arrays;
-  uint32_t size;
+  fa_size_t size;
 };
 
-void faa_init(struct fa_array *array, uint32_t total_arrays,
-	      uint32_t initial_size);
+void faa_init(struct fa_array *array, fa_size_t total_arrays,
+	      fa_size_t initial_size);
 
 void faa_free(struct fa_array *array);
 
-static inline struct f_array* faa_getitem(struct fa_array *array, int32_t index) {
+static inline struct f_array* faa_getitem(struct fa_array *array, fa_size_t index) {
   if (index >= 0) {
     return &(array->arrays[index]);
   } else {
@@ -369,7 +376,7 @@ static inline struct f_array* faa_getitem(struct fa_array *array, int32_t index)
 }
 
 static inline void faa_reset(struct fa_array *array) {
-  uint32_t i;
+  fa_size_t i;
 
   for (i = 0; i < array->size; i++)
     fa_reset(&(array->arrays[i]));

@@ -19,11 +19,11 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  *******************************************************/
 
-void ia_init(struct i_array *array, uint32_t initial_size) {
+void ia_init(struct i_array *array, ia_size_t initial_size) {
   if (initial_size < 1)
     initial_size = 1;
 
-  array->data = malloc(sizeof(int32_t) * initial_size);
+  array->data = malloc(sizeof(ia_data_t) * initial_size);
   array->total_size = initial_size;
   array->size = 0;
 }
@@ -32,15 +32,15 @@ void ia_free(struct i_array *array) {
   free(array->data);
 }
 
-void ia_resize(struct i_array *array, uint32_t maximum_size) {
+void ia_resize(struct i_array *array, ia_size_t maximum_size) {
   if (array->total_size < maximum_size) {
     array->total_size = maximum_size;
-    array->data = realloc(array->data,maximum_size * sizeof(int32_t));
+    array->data = realloc(array->data,maximum_size * sizeof(ia_data_t));
   }
 }
 
 void ia_print(FILE *stream,struct i_array *array) {
-  int32_t i;
+  ia_size_t i;
 
   fprintf(stream,"[");
   if (array->size <= 20) {
@@ -65,8 +65,8 @@ void ia_print(FILE *stream,struct i_array *array) {
 
 void ia_U8_to_char(unsigned char* target, struct i_array* source,
 		   int channel, int total_channels) {
-  uint32_t i;
-  int32_t value;
+  ia_size_t i;
+  ia_data_t value;
 
   target += channel;
 
@@ -79,8 +79,8 @@ void ia_U8_to_char(unsigned char* target, struct i_array* source,
 
 void ia_SL16_to_char(unsigned char* target, struct i_array* source,
 		     int channel, int total_channels) {
-  uint32_t i;
-  int32_t value;
+  ia_size_t i;
+  ia_data_t value;
 
   target += (channel * 2);
 
@@ -99,8 +99,8 @@ void ia_SL16_to_char(unsigned char* target, struct i_array* source,
 
 void ia_SL24_to_char(unsigned char* target, struct i_array* source,
 		     int channel, int total_channels) {
-  uint32_t i;
-  int32_t value;
+  ia_size_t i;
+  ia_data_t value;
 
   target += (channel * 3);
 
@@ -131,9 +131,9 @@ void ia_char_to_U8(struct i_array *target, unsigned char *source,
   for (;source_len >= 1;
        source += total_channels, source_len -= total_channels)
     if ((source[0] & 0x80))
-      ia_append(target,-(int32_t)(0x100 - source[0]));
+      ia_append(target,-(ia_data_t)(0x100 - source[0]));
     else
-      ia_append(target,(int32_t)source[0]);
+      ia_append(target,(ia_data_t)source[0]);
 }
 
 void ia_char_to_SL16(struct i_array *target, unsigned char *source,
@@ -145,10 +145,10 @@ void ia_char_to_SL16(struct i_array *target, unsigned char *source,
        source += (total_channels * 2), source_len -= (total_channels * 2)) {
     if ((source[1] & 0x80) != 0)
       /*negative*/
-      ia_append(target,-(int32_t)(0x10000 - ((source[1] << 8) | source[0])));
+      ia_append(target,-(ia_data_t)(0x10000 - ((source[1] << 8) | source[0])));
     else
       /*positive*/
-      ia_append(target,(int32_t)(source[1] << 8) | source[0]);
+      ia_append(target,(ia_data_t)(source[1] << 8) | source[0]);
   }
 }
 
@@ -162,19 +162,19 @@ void ia_char_to_SL24(struct i_array *target, unsigned char *source,
     if ((source[2] & 0x80) != 0)
       /*negative*/
       ia_append(target,
-		-(int32_t)(0x1000000 -
+		-(ia_data_t)(0x1000000 -
 			   ((source[2] << 16) | (source[1] << 8) | source[0])));
     else
       /*positive*/
       ia_append(target,
-		(int32_t)(source[2] << 16) | (source[1] << 8) | source[0]);
+		(ia_data_t)(source[2] << 16) | (source[1] << 8) | source[0]);
   }
 }
 
 void ia_add(struct i_array *target,
 	    struct i_array *source1, struct i_array *source2) {
-  uint32_t size = source1->size < source2->size ? source1->size : source2->size;
-  uint32_t i;
+  ia_size_t size = source1->size < source2->size ? source1->size : source2->size;
+  ia_size_t i;
 
   ia_resize(target,size);
   for (i = 0; i < size; i++)
@@ -184,11 +184,11 @@ void ia_add(struct i_array *target,
 
 void ia_sub(struct i_array *target,
 	    struct i_array *source1, struct i_array *source2) {
-  uint32_t size = source1->size < source2->size ? source1->size : source2->size;
-  uint32_t i;
-  int32_t *target_data = target->data;
-  int32_t *source1_data = source1->data;
-  int32_t *source2_data = source2->data;
+  ia_size_t size = source1->size < source2->size ? source1->size : source2->size;
+  ia_size_t i;
+  ia_data_t *target_data = target->data;
+  ia_data_t *source1_data = source1->data;
+  ia_data_t *source2_data = source2->data;
 
   ia_resize(target,size);
   for (i = 0; i < size; i++)
@@ -197,9 +197,9 @@ void ia_sub(struct i_array *target,
 }
 
 
-void iaa_init(struct ia_array *array, uint32_t total_arrays,
-	      uint32_t initial_size) {
-  uint32_t i;
+void iaa_init(struct ia_array *array, ia_size_t total_arrays,
+	      ia_size_t initial_size) {
+  ia_size_t i;
 
   array->arrays = malloc(sizeof(struct i_array) * total_arrays);
   array->size = total_arrays;
@@ -208,7 +208,7 @@ void iaa_init(struct ia_array *array, uint32_t total_arrays,
 }
 
 void iaa_free(struct ia_array *array) {
-  uint32_t i;
+  ia_size_t i;
 
   for (i = 0; i < array->size; i++)
     ia_free(&(array->arrays[i]));
@@ -216,11 +216,11 @@ void iaa_free(struct ia_array *array) {
   free(array->arrays);
 }
 
-void fa_init(struct f_array *array, uint32_t initial_size) {
+void fa_init(struct f_array *array, fa_size_t initial_size) {
   if (initial_size < 1)
     initial_size = 1;
 
-  array->data = malloc(sizeof(double) * initial_size);
+  array->data = malloc(sizeof(fa_data_t) * initial_size);
   array->total_size = initial_size;
   array->size = 0;
 }
@@ -229,15 +229,15 @@ void fa_free(struct f_array *array) {
   free(array->data);
 }
 
-void fa_resize(struct f_array *array, uint32_t maximum_size) {
+void fa_resize(struct f_array *array, fa_size_t maximum_size) {
   if (array->total_size < maximum_size) {
     array->total_size = maximum_size;
-    array->data = realloc(array->data,maximum_size * sizeof(double));
+    array->data = realloc(array->data,maximum_size * sizeof(fa_data_t));
   }
 }
 
 void fa_print(FILE *stream, struct f_array *array) {
-  int32_t i;
+  fa_size_t i;
 
   fprintf(stream,"[");
   if (array->size <= 20) {
@@ -260,9 +260,9 @@ void fa_print(FILE *stream, struct f_array *array) {
   fprintf(stream,"]");
 }
 
-double fa_sum(struct f_array *array) {
-  double accumulator = 0.0;
-  uint32_t i;
+fa_data_t fa_sum(struct f_array *array) {
+  fa_data_t accumulator = 0.0;
+  fa_size_t i;
 
   for (i = 0; i < array->size; i++)
     accumulator += array->data[i];
@@ -272,8 +272,8 @@ double fa_sum(struct f_array *array) {
 
 void fa_mul(struct f_array *target,
 	    struct f_array *source1, struct f_array *source2) {
-  uint32_t size = source1->size < source2->size ? source1->size : source2->size;
-  uint32_t i;
+  fa_size_t size = source1->size < source2->size ? source1->size : source2->size;
+  fa_size_t i;
 
   fa_resize(target,size);
   for (i = 0; i < size; i++)
@@ -283,8 +283,8 @@ void fa_mul(struct f_array *target,
 
 void fa_mul_ia(struct f_array *target,
 	       struct f_array *source1, struct i_array *source2) {
-  uint32_t size = source1->size < source2->size ? source1->size : source2->size;
-  uint32_t i;
+  fa_size_t size = source1->size < source2->size ? source1->size : source2->size;
+  fa_size_t i;
 
   fa_resize(target,size);
   for (i = 0; i < size; i++)
@@ -292,9 +292,9 @@ void fa_mul_ia(struct f_array *target,
   target->size = size;
 }
 
-void faa_init(struct fa_array *array, uint32_t total_arrays,
-	      uint32_t initial_size) {
-  uint32_t i;
+void faa_init(struct fa_array *array, fa_size_t total_arrays,
+	      fa_size_t initial_size) {
+  fa_size_t i;
 
   if (total_arrays > 0) {
     array->arrays = malloc(sizeof(struct f_array) * total_arrays);
@@ -308,7 +308,7 @@ void faa_init(struct fa_array *array, uint32_t total_arrays,
 }
 
 void faa_free(struct fa_array *array) {
-  uint32_t i;
+  fa_size_t i;
 
   for (i = 0; i < array->size; i++)
     fa_free(&(array->arrays[i]));
@@ -317,7 +317,7 @@ void faa_free(struct fa_array *array) {
 }
 
 void faa_print(FILE *stream, struct fa_array *array) {
-  int32_t i;
+  fa_size_t i;
 
   fprintf(stream,"[");
   for (i = 0; i < array->size; i++) {
