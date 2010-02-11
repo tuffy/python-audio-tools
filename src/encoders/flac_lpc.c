@@ -8,12 +8,12 @@
 void FlacEncoder_compute_best_lpc_coeffs(struct i_array *lpc_warm_up_samples,
 					 struct i_array *lpc_residual,
 					 struct i_array *lpc_rice_parameters,
+					 struct i_array *coeffs,
+					 int *shift_needed,
 
 					 struct flac_encoding_options *options,
 					 int bits_per_sample,
-					 struct i_array *samples,
-					 struct i_array *coeffs,
-					 int *shift_needed) {
+					 struct i_array *samples) {
   struct f_array tukey_window;
   struct f_array windowed_signal;
   struct f_array autocorrelation_values;

@@ -241,7 +241,8 @@ The number of warm-up samples equals the `LPC Order'
 (which is encoded in the `Subframe Type').
 The size of each QLP Coefficient is equal to
 `QLP Precision' number of bits, plus 1.
-The value of each Coefficient is a signed two's-complement integer.
+`QLP Shift Needed' and the value of each Coefficient are
+signed two's-complement integers.
 The number of Coefficients equals the `LPC Order'.
 .EQ
 "Sample" sub i =

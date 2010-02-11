@@ -620,12 +620,12 @@ void FlacEncoder_write_subframe(Bitstream *bs,
     FlacEncoder_compute_best_lpc_coeffs(&lpc_warm_up_samples,
 					&lpc_residual,
 					&lpc_rice_parameters,
+					&lpc_coeffs,
+					&lpc_shift_needed,
 
 					options,
 					bits_per_sample,
-					samples,
-					&lpc_coeffs,
-					&lpc_shift_needed);
+					samples);
 
     lpc_subframe = bs_open_accumulator();
 
@@ -736,8 +736,9 @@ void FlacEncoder_write_verbatim_subframe(Bitstream *bs,
 }
 
 void FlacEncoder_evaluate_fixed_subframe(struct i_array *warm_up_samples,
-					 struct i_array *residual,
+					 struct i_array *residuals,
 					 struct i_array *rice_parameters,
+
 					 struct flac_encoding_options *options,
 					 int bits_per_sample,
 					 struct i_array *samples,
@@ -753,27 +754,27 @@ void FlacEncoder_evaluate_fixed_subframe(struct i_array *warm_up_samples,
   switch (predictor_order) {
   case 0:
     for (i = 0; i < samples->size; i++)
-      ia_append(residual,samples_data[i]);
+      ia_append(residuals,samples_data[i]);
     break;
   case 1:
     for (i = 1; i < samples->size; i++)
-      ia_append(residual,samples_data[i] - samples_data[i - 1]);
+      ia_append(residuals,samples_data[i] - samples_data[i - 1]);
     break;
   case 2:
     for (i = 2; i < samples->size; i++)
-      ia_append(residual,samples_data[i] -
+      ia_append(residuals,samples_data[i] -
 		((2 * samples_data[i - 1]) - samples_data[i - 2]));
     break;
   case 3:
     for (i = 3; i < samples->size; i++)
-      ia_append(residual,samples_data[i] -
+      ia_append(residuals,samples_data[i] -
 		((3 * samples_data[i - 1]) -
 		 (3 * samples_data[i - 2]) +
 		 samples_data[i - 3]));
     break;
   case 4:
     for (i = 4; i < samples->size; i++)
-      ia_append(residual,samples_data[i] -
+      ia_append(residuals,samples_data[i] -
 		((4 * samples_data[i - 1]) -
 		 (6 * samples_data[i - 2]) +
 		 (4 * samples_data[i - 3]) -
@@ -784,9 +785,9 @@ void FlacEncoder_evaluate_fixed_subframe(struct i_array *warm_up_samples,
     exit(1);
   }
 
-  /*write residual*/
+  /*write residuals*/
   FlacEncoder_evaluate_best_residual(rice_parameters, options, predictor_order,
-				     residual);
+				     residuals);
 }
 
 void FlacEncoder_write_fixed_subframe(Bitstream *bs,
