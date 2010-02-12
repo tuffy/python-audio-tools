@@ -985,30 +985,30 @@ Continuing with our example, we have 20 samples and
 now have the error values of 2495, 2492 and 2490.
 This gives us an error scale of:
 @{{ln (2) sup 2}} over {2~\[mu]~20}~=~{{.6931 sup 2} over 40}~=~.01201@
-.br
-\v1
-At LPC order 1, our bits per residual are:
-@{{ln (.01201~\[mu]~2495)} over {2~\[mu]~ln (2)}}~=~{{ln (29.96)} over {1.386}}~=~2.453@
-.br
-\v1
-And our total bits are:
-@(2.453~\[mu]~(20 - 1))~+~(1~\[mu]~(16 + 5))~=~46.61~+~21~=~67.61@
-.br
-\v1
-At LPC order 2, our bits per residual are:
-@{{ln (.01201~\[mu]~2492)} over {2~\[mu]~ln (2)}}~=~{{ln (29.92)} over {1.386}}~=~2.452@
-.br
-\v1
-And our total bits are:
-@(2.452~\[mu]~(20 - 2))~+~(2~\[mu]~(16 + 5))~=~44.14~+~42~=~86.14@
-.br
-\v1
-At LPC order 3, our bits per residual are:
-@{{ln (.01201~\[mu]~2490)} over {2~\[mu]~ln (2)}}~=~{{ln (29.90)} over {1.386}}~=~2.451@
-.br
-\v1
-And our total bits are:
-@(2.451~\[mu]~(20 - 3))~+~(3~\[mu]~(16 + 5))~=~41.67~+~63~=~104.7@
+.EQ
+{roman "At LPC order 1, our bits per residual are:"}~~
+{{ln (.01201~\[mu]~2495)} over {2~\[mu]~ln (2)}}~=~{{ln (29.96)} over {1.386}}~ mark =~2.453
+.EN
+.EQ
+{roman "And our total bits are:"}~~
+(2.453~\[mu]~(20 - 1))~+~(1~\[mu]~(16 + 5))~=~46.61~+~21~ lineup =~67.61
+.EN
+.EQ
+{roman "At LPC order 2, our bits per residual are:"}~~
+{{ln (.01201~\[mu]~2492)} over {2~\[mu]~ln (2)}}~=~{{ln (29.92)} over {1.386}}~ lineup =~2.452
+.EN
+.EQ
+{roman "And our total bits are:"}~~
+(2.452~\[mu]~(20 - 2))~+~(2~\[mu]~(16 + 5))~=~44.14~+~42~ lineup =~86.14
+.EN
+.EQ
+{roman "At LPC order 3, our bits per residual are:"}~~
+{{ln (.01201~\[mu]~2490)} over {2~\[mu]~ln (2)}}~=~{{ln (29.90)} over {1.386}}~ lineup =~2.451
+.EN
+.EQ
+{roman "And our total bits are:"}~~
+(2.451~\[mu]~(20 - 3))~+~(3~\[mu]~(16 + 5))~=~41.67~+~63~ lineup =~104.7
+.EN
 .LP
 Therefore, since the total bits for order 1 are the smallest,
 the best order for this group of samples is 1.
