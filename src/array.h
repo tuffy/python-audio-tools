@@ -174,12 +174,12 @@ void ia_sub(struct i_array *target,
 
 /*this calls "function" over the elements in source
   and returns a single value
-  for example,  ia_reduce([1,2,3],0,f)  is the equivilent of calling:
+  for example,  ia_reduce([1,2,3],0,f)  is the equivalent of calling:
   f(3,f(2,f(1,0)))
 */
-static inline int ia_reduce(struct i_array *source,
-			    int base,
-			    int (function)(int, int)) {
+static inline ia_data_t ia_reduce(struct i_array *source,
+				  ia_data_t base,
+				  ia_data_t (function)(ia_data_t, ia_data_t)) {
   ia_size_t i;
 
   if (source->size == 0)
@@ -363,6 +363,21 @@ struct fa_array {
   struct f_array *arrays;
   fa_size_t size;
 };
+
+static inline fa_data_t fa_reduce(struct f_array *source,
+				  fa_data_t base,
+				  fa_data_t (function)(fa_data_t, fa_data_t)) {
+  fa_size_t i;
+
+  if (source->size == 0)
+    return base;
+  else {
+    for (i = 0; i < source->size; i++) {
+      base = function(source->data[i],base);
+    }
+    return base;
+  }
+}
 
 void faa_init(struct fa_array *array, fa_size_t total_arrays,
 	      fa_size_t initial_size);

@@ -344,8 +344,6 @@ void FlacEncoder_quantize_coefficients(struct f_array *lp_coefficients,
 				       int precision,
 				       struct i_array *qlp_coefficients,
 				       int *shift_needed) {
-  struct f_array lp_coefficients_abs;
-  double cmax;
   int log2cmax;
   int32_t qlp_coeff_min;
   int32_t qlp_coeff_max;
@@ -354,12 +352,8 @@ void FlacEncoder_quantize_coefficients(struct f_array *lp_coefficients,
   double error = 0.0;
 
   precision--;
-  fa_init(&lp_coefficients_abs,lp_coefficients->size);
-  fa_map(&lp_coefficients_abs,lp_coefficients,fabs);
-  cmax = fa_max(&lp_coefficients_abs);
-  fa_free(&lp_coefficients_abs);
 
-  (void)frexp(cmax,&log2cmax);
+  (void)frexp(fa_reduce(lp_coefficients,0.0,f_abs_max),&log2cmax);
 
   /*FIXME - handle negative or overly-large shift-needed corretly*/
   *shift_needed = MIN(MAX(precision - (log2cmax - 1) - 1,0),0xF);
@@ -373,4 +367,9 @@ void FlacEncoder_quantize_coefficients(struct f_array *lp_coefficients,
     ia_append(qlp_coefficients,qlp);
     error -= qlp;
   }
+}
+
+fa_data_t f_abs_max(fa_data_t val, fa_data_t max) {
+  fa_data_t abs = fabs(val);
+  return MAX(abs,max);
 }

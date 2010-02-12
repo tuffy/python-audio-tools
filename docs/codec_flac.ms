@@ -1057,25 +1057,49 @@ returning a list of QLP Coefficients and a QLP Shift Needed value.
 The first step is determining the upper and lower limits of the
 QLP Coefficients:
 .EQ
-"QLP coefficient maximum" mark = {2 sup "precision"} - 1
+"QLP coefficient maximum" mark = {2 sup {"precision" - 1}} - 1
 .EN
 .EQ
-"QLP coefficient mininum" lineup = - {2 sup "precision"}
+"QLP coefficient mininum" lineup = - {2 sup {"precision" - 1}}
 .EN
-The next step is determining the maximum shift limit and minimum
-shift limit constants, which are what their names imply:
-.EQ
-"max shift limit" mark = {2 sup {"QLP shift length" - 1}} - 1 = {2 sup {5 - 1}} - 1 = {2 sup 4} - 1 = 16 - 1 = 15
-.EN
-.EQ
-"min shift limit" lineup = -({"max shift limit" - 1}) = -14
-.EN
+.LP
+The QLP Coefficients Precision value is typically based on the encoder's
+block size.
+.TS
+tab(:);
+| c | c || c | c |
+| r | r || r | r |.
+_
+Block Size:Precision:Block Size:Precision
+=
+Size \[<=] 192:7:Size \[<=] 2304:11
+Size \[<=] 384:8:Size \[<=] 4608:12
+Size \[<=] 576:9:Size > 4608:13
+Size \[<=] 1152:10
+_
+.TE
+.LP
+So in our example of a block of 20 samples,
+@"QLP Coefficient maximum" = {2 sup {7 - 1}} -1 = 64 - 1 = 63@
+and
+.br
+@"QLP Coefficient minimum" = - {2 sup {7 - 1}} = -64@
+.LP
 Now we determine the initial QLP Shift Needed value:
 .EQ
-"shift" = "precision" - {left ceiling {log ({roman max} (~|~"LP Coefficients"~|~)) } over {log (2) } right ceiling}
+"shift" = "precision" - {left ceiling {log ({roman max} (~|~"LP Coefficients"~|~)) } over {log (2) } right ceiling} - 1
 .EN
-where `shift' is adjusted if necessary such that:
-@"min shift limit" <= "shift" <= "max shift limit"@
+where `shift' is adjusted if necessary such that
+@0 <= "shift" <= {roman "0xF"}@
+since it must fit into a 5-bit signed field, and negative shifts
+are no-ops in the FLAC decoder.
+.LP
+Continuing our ongoing example, let's assume we're quantizing the LP
+coefficients 0.9065, -0.0052 and -0.0293.  So our shift should be:
+.EQ
+"shift" = 7 - {left ceiling {log (0.9065)} over {log (2)} right ceiling} - 1~~=~~
+7 - {left ceiling {-0.0981 over 0.6931} right ceiling} - 1~~=~~7 - 0 - 1~~=~~6
+.EN
 .LP
 Finally, we determine the QLP Coefficient values themselves via a small
 recursive routine:
@@ -1088,10 +1112,47 @@ X(i) mark = E(i - 1) + ({"LP Coefficient" sub i}~\[mu]~{2 sup "shift"})
 .EQ
 E(i) lineup = X(i) - {"QLP Coefficient" sub i}
 .EN
-where @E(-1) = 0@ and each QLP Coefficient is adjusted
+where @E(0) = 0@ and each QLP Coefficient is adjusted
 prior to calculating the next @E(i)@ value such that:
 .br
 @"QLP coefficient minimum" <= {"QLP Coefficient" sub i} <= "QLP coefficient maximum"@
+.bp
+So to finish our LPC example:
+.EQ
+X(1) mark = E(0) + (0.9065~\[mu]~2 sup 6 ) = 0 + 58.016 = 58.016
+.EN
+.EQ
+{"QLP Coefficient" sub 1} lineup = {{roman "round"} (58.016)} = 58
+.EN
+.EQ
+E(1) lineup = X(1) - {"QLP Coefficient" sub 1}~~=~~58.016 - 58~~=~~0.016
+.EN
+.EQ
+X(2) lineup = E(1) + (-0.0052~\[mu]~2 sup 6 )~~=~~0.016 + -0.3328~~=~~0.3168
+.EN
+.EQ
+{"QLP Coefficient" sub 2} lineup = {{roman "round"} (0.3168)}~~=~~0
+.EN
+.EQ
+E(2) lineup = X(2) - {"QLP Coefficient" sub 2}~~=~~0.3168 - 0~~=~~0.3168
+.EN
+.EQ
+X(3) lineup = E(2) + (-0.0293~\[mu]~2 sup 6 )~~=~~0.3168 + -1.875~~=~~-1.558
+.EN
+.EQ
+{"QLP Coefficient" sub 3} lineup = {{roman "round"} (-1.558)}~~=~~-2
+.EN
+.EQ
+E(3) lineup = X(3) - {"QLP Coefficient" sub 3}~~=~~-1.558~-~-2~~=~~0.4420
+.EN
+.LP
+Therefore, the LPC order is 3.
+The QLP Coefficients are 58, 0 and -2.
+The QLP Shift Needed value is 6.
+And, the QLP precision value can be calculated from the bits required
+for the largest absolute QLP Coefficient value.
+In this case, 6 bits are required to hold the value 58 so
+QLP precision can be 6.
 .sp
 .LP
 The LPC Order, QLP Precision, QLP Shift Needed, and QLP Coefficients
