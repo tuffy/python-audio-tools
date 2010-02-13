@@ -800,8 +800,7 @@ class FlacAudio(AudioFile):
                          process=sub)
 
     @classmethod
-    def from_pcm(cls, filename, pcmreader,
-                 compression="8"):
+    def from_pcm(cls, filename, pcmreader,compression="8"):
         SUBSTREAM_SAMPLE_RATES = frozenset([
                 8000, 16000,22050,24000,32000,
                 44100,48000,96000])
@@ -888,33 +887,49 @@ class FlacAudio(AudioFile):
             WaveAudio.from_pcm(wave_filename,self.to_pcm())
 
     @classmethod
-    def from_wave(cls, filename, wave_filename, compression=None):
+    def from_wave(cls, filename, wave_filename, compression="8"):
         if (compression not in cls.COMPRESSION_MODES):
             compression = cls.DEFAULT_COMPRESSION
 
         if (cls.supports_foreign_riff_chunks() and
             WaveAudio(wave_filename).has_foreign_riff_chunks()):
-            foreign_metadata = ['--keep-foreign-metadata']
+            flac = cls.from_pcm(filename,
+                                WaveAudio(wave_filename).to_pcm(),
+                                compression=compression)
+
+            metadata = flac.get_metadata()
+
+            wav = file(wave_filename,'rb')
+            try:
+                wav_header = wav.read(12)
+
+                metadata.extra_blocks.append(
+                    FlacMetaDataBlock(2,"riff" + wav_header))
+
+                total_size = WaveAudio.WAVE_HEADER.parse(wav_header).wave_size - 4
+                while (total_size > 0):
+                    chunk_header = WaveAudio.CHUNK_HEADER.parse(wav.read(8))
+                    if (chunk_header.chunk_id != 'data'):
+                        metadata.extra_blocks.append(
+                            FlacMetaDataBlock(2,"riff" +
+                                              WaveAudio.CHUNK_HEADER.build(chunk_header) +
+                                              wav.read(chunk_header.chunk_length)))
+                    else:
+                        metadata.extra_blocks.append(
+                            FlacMetaDataBlock(2,"riff" +
+                                              WaveAudio.CHUNK_HEADER.build(chunk_header)))
+                        wav.seek(chunk_header.chunk_length,1)
+                    total_size -= (chunk_header.chunk_length + 8)
+
+                flac.set_metadata(metadata)
+
+                return flac
+            finally:
+                wav.close()
         else:
-            foreign_metadata = []
-
-        devnull = file(os.devnull,'ab')
-
-        sub = subprocess.Popen([BIN['flac']] + \
-                               ["-s","-f","-%s" % (compression),
-                                "-V","--lax"] + \
-                               foreign_metadata + \
-                               ["-o",filename,wave_filename],
-                               stdout=devnull,
-                               stderr=devnull)
-
-        returncode = sub.wait()
-        devnull.close()
-
-        if (returncode == 0):
-            return FlacAudio(filename)
-        else:
-            raise EncodingError(BIN['flac'])
+            return cls.from_pcm(filename,
+                                WaveAudio(wave_filename).to_pcm(),
+                                compression=compression)
 
     def bits_per_sample(self):
         return self.__bitspersample__
@@ -1307,55 +1322,6 @@ class OggFlacAudio(FlacAudio):
         devnull.close()
 
         if (sub.wait() == 0):
-            return OggFlacAudio(filename)
-        else:
-            raise EncodingError(BIN['flac'])
-
-    def to_wave(self, wave_filename):
-        if (self.has_foreign_riff_chunks() and
-            self.supports_foreign_riff_chunks()):
-            foreign_metadata = ['--keep-foreign-metadata']
-        else:
-            foreign_metadata = []
-
-        devnull = file(os.devnull,'ab')
-
-        sub = subprocess.Popen([BIN['flac'],"-s","-f"] + \
-                               foreign_metadata + \
-                               ["-d","--ogg",
-                                "-o",wave_filename,
-                                self.filename],
-                               stdout=devnull,
-                               stderr=devnull)
-        returnval = sub.wait()
-        devnull.close()
-        if (returnval != 0):
-            raise EncodingError()
-
-    @classmethod
-    def from_wave(cls, filename, wave_filename, compression=None):
-        if (compression not in cls.COMPRESSION_MODES):
-            compression = cls.DEFAULT_COMPRESSION
-
-        if (cls.supports_foreign_riff_chunks() and
-            WaveAudio(wave_filename).has_foreign_riff_chunks()):
-            foreign_metadata = ['--keep-foreign-metadata']
-        else:
-            foreign_metadata = []
-
-        devnull = file(os.devnull,'ab')
-
-        sub = subprocess.Popen([BIN['flac']] + \
-                               ["-s","-f","--ogg","-%s" % (compression),
-                                "-V","--lax"] + \
-                               foreign_metadata + \
-                               ["-o",filename,wave_filename],
-                               stdout=devnull,
-                               stderr=devnull)
-        returncode = sub.wait()
-        devnull.close()
-
-        if (returncode == 0):
             return OggFlacAudio(filename)
         else:
             raise EncodingError(BIN['flac'])
