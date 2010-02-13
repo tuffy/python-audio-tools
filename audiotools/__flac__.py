@@ -857,26 +857,35 @@ class FlacAudio(AudioFile):
                           self.get_metadata().extra_blocks
                           if block.type == 2]
 
+    #generates a set of (chunk_id,chunk_data) tuples
+    #for use by WaveAudio.from_chunks
+    #these chunks are taken from "riff" APPLICATION blocks
+    #or generated from our PCM data
+    def riff_wave_chunks(self):
+        for application_block in [block.data for block in
+                                  self.get_metadata().extra_blocks
+                                  if (block.data.startswith("riff"))]:
+            (chunk_id,chunk_data) = (application_block[4:8],
+                                     application_block[12:])
+            if (chunk_id == 'RIFF'):
+                continue
+            elif (chunk_id == 'data'):
+                #FIXME - this is a lot more inefficient than it should be
+                data = cStringIO.StringIO()
+                pcm = self.to_pcm()
+                transfer_data(pcm.read,data.write)
+                pcm.close()
+                yield (chunk_id,data.getvalue())
+                data.close()
+            else:
+                yield (chunk_id,chunk_data)
+
     def to_wave(self, wave_filename):
-        if (self.has_foreign_riff_chunks() and
-            self.supports_foreign_riff_chunks()):
-            foreign_metadata = ['--keep-foreign-metadata']
+        if (self.has_foreign_riff_chunks()):
+            WaveAudio.wave_from_chunks(wave_filename,
+                                       self.riff_wave_chunks())
         else:
-            foreign_metadata = []
-
-        devnull = file(os.devnull,'ab')
-
-        sub = subprocess.Popen([BIN['flac'],"-s","-f"] + \
-                               foreign_metadata + \
-                               ["-d","-o",wave_filename,
-                                self.filename],
-                               stdout=devnull,
-                               stderr=devnull)
-
-        returnval = sub.wait()
-        devnull.close()
-        if (returnval != 0):
-            raise EncodingError()
+            WaveAudio.from_pcm(wave_filename,self.to_pcm())
 
     @classmethod
     def from_wave(cls, filename, wave_filename, compression=None):

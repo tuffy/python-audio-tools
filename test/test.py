@@ -35,7 +35,7 @@ import time
 gettext.install("audiotools",unicode=True)
 
 (METADATA,PCM,EXECUTABLE,CUESHEET,IMAGE,FLAC,CUSTOM) = range(7)
-CASES = set([METADATA])
+CASES = set([METADATA,PCM,EXECUTABLE,CUESHEET,IMAGE,FLAC])
 
 def nothing(self):
     pass
