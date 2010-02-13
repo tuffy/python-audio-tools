@@ -502,10 +502,10 @@
    As with unit tests, these ensure everything is working during testing
    without a performance penalty at runtime.
 ** DONE Handle foreign RIFF chunks
+** TODO Generate SEEKTABLE blocks
 ** TODO Ensure FLACs work on a variety of other decoders
    Although decoding properly on the reference decoder *should* guarantee
    the file works everywhere, the only way to be certain is to test it.
-** TODO Generate SEEKTABLE blocks
 ** TODO Support Rice2 partitions?
    The reference encoder uses these for more efficient handling of 24-bit audio
    but I'm not sure they're strictly necessary for my more basic encoder.
@@ -526,6 +526,5 @@
   objects (stored as C-based lists of int32s behind-the-scenes)
   and convert that data to/from strings only at the beginning and end
   of processing.
-
 * TODO Add native ReplayGain handling routines
 

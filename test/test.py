@@ -8532,26 +8532,26 @@ class TestForeignMetaData_WavPackAPE(unittest.TestCase):
         finally:
             temp_img.close()
 
-class TestForeignMetaData_MusepackAPE(TestForeignMetaData_WavPackAPE):
-    AUDIO_CLASS = audiotools.MusepackAudio
-    METADATA_CLASS = audiotools.ApeTag
-    BASE_CLASS_METADATA = audiotools.ApeTag(
-        [audiotools.ApeTagItem(0,False,"Title",'Track Name'),
-         audiotools.ApeTagItem(0,False,"Album",'Album Name'),
-         audiotools.ApeTagItem(0,False,"Track","1/3"),
-         audiotools.ApeTagItem(0,False,"Media","2/4"),
-         audiotools.ApeTagItem(0,False,"Foo","Bar")])
+# class TestForeignMetaData_MusepackAPE(TestForeignMetaData_WavPackAPE):
+#     AUDIO_CLASS = audiotools.MusepackAudio
+#     METADATA_CLASS = audiotools.ApeTag
+#     BASE_CLASS_METADATA = audiotools.ApeTag(
+#         [audiotools.ApeTagItem(0,False,"Title",'Track Name'),
+#          audiotools.ApeTagItem(0,False,"Album",'Album Name'),
+#          audiotools.ApeTagItem(0,False,"Track","1/3"),
+#          audiotools.ApeTagItem(0,False,"Media","2/4"),
+#          audiotools.ApeTagItem(0,False,"Foo","Bar")])
 
-    def __verify_foreign_field__(self, track=None):
-        if (track is None):
-            track = self.track
-        self.assert_("Foo" in track.get_metadata().keys())
-        self.assertEqual(unicode(track.get_metadata()["Foo"]),u"Bar")
+#     def __verify_foreign_field__(self, track=None):
+#         if (track is None):
+#             track = self.track
+#         self.assert_("Foo" in track.get_metadata().keys())
+#         self.assertEqual(unicode(track.get_metadata()["Foo"]),u"Bar")
 
-    def __verify_no_foreign_field__(self, track=None):
-        if (track is None):
-            track = self.track
-        self.assert_("Foo" not in track.get_metadata().keys())
+#     def __verify_no_foreign_field__(self, track=None):
+#         if (track is None):
+#             track = self.track
+#         self.assert_("Foo" not in track.get_metadata().keys())
 
 class TestForeignMetaData_VorbisComment(TestForeignMetaData_WavPackAPE):
     AUDIO_CLASS = audiotools.VorbisAudio
