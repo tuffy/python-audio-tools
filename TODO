@@ -497,17 +497,35 @@
    - [X] test_flac.sh
 ** DONE Convert i_array size and data types to typedefs
 ** DONE Convert f_array size and data types to typedefs
-** TODO Add a variety of assert() statements
+** DONE Add more comprehensive encoding documentation
+** DONE Add a variety of assert() statements
    As with unit tests, these ensure everything is working during testing
    without a performance penalty at runtime.
-** TODO Improve speed
-   Try to get encoder to within 1/3 to 1/2 the speed of the reference encoder.
 ** TODO Ensure FLACs work on a variety of other decoders
    Although decoding properly on the reference decoder *should* guarantee
    the file works everywhere, the only way to be certain is to test it.
+** TODO Handle foreign RIFF chunks
+** TODO Generate SEEKTABLE blocks
 ** TODO Support Rice2 partitions?
    The reference encoder uses these for more efficient handling of 24-bit audio
    but I'm not sure they're strictly necessary for my more basic encoder.
-** TODO Add more comprehensive encoding documentation
-** TODO Handle foreign RIFF chunks
+** TODO Support wasted-bits-per-sample?
+   I don't think I've ever seen these used on actual audio data
+   that isn't artificial and hasn't been processed specifically for its use.
+   As with Rice2, it's something that may get added later.
 ** TODO Ensure encoder raises the proper exceptions
+* TODO Convert to_pcm()/from_pcm() to FrameList-based I/O
+  Passing specifically-sized blobs of binary data between conversion
+  routines worked well when those routines are little more than
+  subprocess black-boxes.  However, this approach works less well
+  whenever actual sample values are required, or when processing is needed.
+  In those cases, going from integers to strings, converting the strings
+  back to integers for processing, then bouncing them into strings once
+  again becomes needless work.
+  A more sensible approach is to keep all data as FrameList-compatible
+  objects (stored as C-based lists of int32s behind-the-scenes)
+  and convert that data to/from strings only at the beginning and end
+  of processing.
+
+* TODO Add native ReplayGain handling routines
+

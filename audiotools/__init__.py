@@ -2468,7 +2468,7 @@ class BitstreamWriter:
 
 AVAILABLE_TYPES = (FlacAudio,OggFlacAudio,
                    MP3Audio,MP2Audio,WaveAudio,
-                   VorbisAudio,SpeexAudio,MusepackAudio,
+                   VorbisAudio,SpeexAudio,
                    AiffAudio,AuAudio,M4AAudio,AACAudio,
                    WavPackAudio)
 

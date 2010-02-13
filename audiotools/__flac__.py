@@ -640,37 +640,50 @@ class FlacAudio(AudioFile):
         metadata = FlacMetaData.converted(metadata)
 
         if (metadata is None): return
-
-        #port over the old STREAMINFO and SEEKTABLE blocks
         old_metadata = self.get_metadata()
-        old_streaminfo = old_metadata.streaminfo
-        old_seektable = old_metadata.seektable
-        metadata.streaminfo = old_streaminfo
-        if (old_seektable is not None):
-            metadata.seektable = old_seektable
 
-        #grab "vendor_string" from the existing file
-        vendor_string = old_metadata.vorbis_comment.vendor_string
-        metadata.vorbis_comment.vendor_string = vendor_string
+        #if metadata's STREAMINFO block matches old_metadata's STREAMINFO
+        #we're almost certainly setting a modified version
+        #of our original metadata
+        #in that case, we skip the metadata block porting
+        #and assume higher-level routines know what they're doing
+        if ((old_metadata.streaminfo is not None) and
+            (metadata.streaminfo is not None) and
+            (old_metadata.streaminfo.data == metadata.streaminfo.data)):
+            #do nothing
+            pass
+        else:
+            #port over the old STREAMINFO and SEEKTABLE blocks
+            old_streaminfo = old_metadata.streaminfo
+            old_seektable = old_metadata.seektable
+            metadata.streaminfo = old_streaminfo
+            if (old_seektable is not None):
+                metadata.seektable = old_seektable
 
-        #grab "WAVEFORMATEXTENSIBLE_CHANNEL_MASK" from existing file (if any)
-        if ("WAVEFORMATEXTENSIBLE_CHANNEL_MASK" in
-            old_metadata.vorbis_comment.keys()):
-            metadata.vorbis_comment["WAVEFORMATEXTENSIBLE_CHANNEL_MASK"] = \
-               old_metadata.vorbis_comment["WAVEFORMATEXTENSIBLE_CHANNEL_MASK"]
-        elif ("WAVEFORMATEXTENSIBLE_CHANNEL_MASK" in
-              metadata.vorbis_comment.keys()):
-            #if the existing file has no "WAVEFORMATEXTENSIBLE_CHANNEL_MASK"
-            #don't port one from another file
-            del(metadata.vorbis_comment["WAVEFORMATEXTENSIBLE_CHANNEL_MASK"])
+            #grab "vendor_string" from the existing file
+            vendor_string = old_metadata.vorbis_comment.vendor_string
+            metadata.vorbis_comment.vendor_string = vendor_string
 
-        #APPLICATION blocks should stay with the existing file (if any)
-        metadata.extra_blocks = [block for block in metadata.extra_blocks
-                                 if (block.type != 2)]
+            #grab "WAVEFORMATEXTENSIBLE_CHANNEL_MASK" from existing file
+            #(if any)
+            CHANNEL_MASK = "WAVEFORMATEXTENSIBLE_CHANNEL_MASK"
+            if (CHANNEL_MASK in old_metadata.vorbis_comment.keys()):
+                metadata.vorbis_comment[CHANNEL_MASK] = \
+                    old_metadata.vorbis_comment[CHANNEL_MASK]
+            elif (CHANNEL_MASK in
+                  metadata.vorbis_comment.keys()):
+                #if the existing file has no
+                #CHANNEL_MASK
+                #don't port one from another file
+                del(metadata.vorbis_comment[CHANNEL_MASK])
 
-        for block in old_metadata.extra_blocks:
-            if (block.type == 2):
-                metadata.extra_blocks.append(block)
+            #APPLICATION blocks should stay with the existing file (if any)
+            metadata.extra_blocks = [block for block in metadata.extra_blocks
+                                     if (block.type != 2)]
+
+            for block in old_metadata.extra_blocks:
+                if (block.type == 2):
+                    metadata.extra_blocks.append(block)
 
         minimum_metadata_length = len(metadata.build(padding_size=0)) + 4
         current_metadata_length = self.metadata_length()

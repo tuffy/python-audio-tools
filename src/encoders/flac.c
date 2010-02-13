@@ -781,7 +781,7 @@ void FlacEncoder_evaluate_fixed_subframe(struct i_array *warm_up_samples,
 		 samples_data[i - 4]));
     break;
   default:
-    fprintf(stderr,"Invalid predictor order %d\n",predictor_order);
+    fprintf(stderr,"Invalid FIXED predictor order %d\n",predictor_order);
     exit(1);
   }
 

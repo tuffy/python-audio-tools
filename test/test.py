@@ -35,7 +35,7 @@ import time
 gettext.install("audiotools",unicode=True)
 
 (METADATA,PCM,EXECUTABLE,CUESHEET,IMAGE,FLAC,CUSTOM) = range(7)
-CASES = set([METADATA,PCM,EXECUTABLE,CUESHEET,IMAGE,FLAC])
+CASES = set([METADATA])
 
 def nothing(self):
     pass
@@ -3635,9 +3635,9 @@ class TestAACAudio(TestAiffAudio):
     def setUp(self):
         self.audio_class = audiotools.AACAudio
 
-class TestMusepackAudio(ApeTaggedAudio,APEv2Lint,TestAiffAudio):
-    def setUp(self):
-        self.audio_class = audiotools.MusepackAudio
+# class TestMusepackAudio(ApeTaggedAudio,APEv2Lint,TestAiffAudio):
+#     def setUp(self):
+#         self.audio_class = audiotools.MusepackAudio
 
 class TestSpeexAudio(VorbisLint,TestAiffAudio,LCVorbisComment):
     def setUp(self):
@@ -4093,15 +4093,16 @@ class TestFlacComment(unittest.TestCase):
     def tearDown(self):
         self.file.close()
 
-class TestAPEv2MetaData(unittest.TestCase):
+
+class TestWavPackAPEv2MetaData(unittest.TestCase):
     @TEST_METADATA
     def setUp(self):
-        self.file = tempfile.NamedTemporaryFile(suffix=".mpc")
+        self.file = tempfile.NamedTemporaryFile(suffix=".wv")
 
-        self.ape_file = audiotools.MusepackAudio.from_pcm(
+        self.ape_file = audiotools.WavPackAudio.from_pcm(
             self.file.name,BLANK_PCM_Reader(TEST_LENGTH))
 
-        self.tag_class = audiotools.ApeTag
+        self.tag_class = audiotools.WavePackAPEv2
 
     @TEST_METADATA
     def tearDown(self):
@@ -4302,16 +4303,6 @@ class TestAPEv2MetaData(unittest.TestCase):
         self.ape_file.set_metadata(apev2)
         apev2 = self.ape_file.get_metadata()
         self.assertEqual(len(apev2.images()),0)
-
-class TestWavPackAPEv2MetaData(TestAPEv2MetaData):
-    @TEST_METADATA
-    def setUp(self):
-        self.file = tempfile.NamedTemporaryFile(suffix=".wv")
-
-        self.ape_file = audiotools.WavPackAudio.from_pcm(
-            self.file.name,BLANK_PCM_Reader(TEST_LENGTH))
-
-        self.tag_class = audiotools.WavePackAPEv2
 
     @TEST_METADATA
     def test_wvunpack(self):
