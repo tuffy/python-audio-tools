@@ -222,8 +222,8 @@ void FlacEncoder_compute_autocorrelation(struct f_array *values,
   int i,j;
   struct f_array lagged_signal;
   double sum;
-  double *windowed_signal_data = windowed_signal->data;
-  double *lagged_signal_data;
+  fa_data_t *windowed_signal_data = windowed_signal->data;
+  fa_data_t *lagged_signal_data;
 
   for (i = 0; i < max_lpc_order; i++) {
     sum = 0.0;

@@ -159,8 +159,11 @@ PyObject* encoders_encode_flac(PyObject *dummy,
   bs_add_callback(stream,flac_crc16,&(streaminfo.crc16));
 
   /*fill streaminfo with some placeholder values*/
-  streaminfo.minimum_block_size = 0xFFFF;
-  streaminfo.maximum_block_size = 0;
+  /* streaminfo.minimum_block_size = 0xFFFF; */
+  /* streaminfo.maximum_block_size = 0; */
+  streaminfo.minimum_block_size =
+    streaminfo.maximum_block_size =
+    streaminfo.options.block_size;
   streaminfo.minimum_frame_size = 0xFFFFFF;
   streaminfo.maximum_frame_size = 0;
   streaminfo.sample_rate = reader->sample_rate;
@@ -422,10 +425,10 @@ void FlacEncoder_write_frame(Bitstream *bs,
   /*update streaminfo with new values*/
   framesize = ftell(bs->file) - startpos;
 
-  streaminfo->minimum_block_size = MIN(streaminfo->minimum_block_size,
-				       iaa_getitem(samples,0)->size);
-  streaminfo->maximum_block_size = MAX(streaminfo->maximum_block_size,
-				       iaa_getitem(samples,0)->size);
+  /* streaminfo->minimum_block_size = MIN(streaminfo->minimum_block_size, */
+  /* 				       iaa_getitem(samples,0)->size); */
+  /* streaminfo->maximum_block_size = MAX(streaminfo->maximum_block_size, */
+  /* 				       iaa_getitem(samples,0)->size); */
   streaminfo->minimum_frame_size = MIN(streaminfo->minimum_frame_size,
 				       framesize);
   streaminfo->maximum_frame_size = MAX(streaminfo->maximum_frame_size,
