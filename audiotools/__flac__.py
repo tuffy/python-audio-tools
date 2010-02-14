@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,MetaData,InvalidFile,PCMReader,Con,transfer_data,subprocess,BIN,BUFFER_SIZE,cStringIO,os,open_files,Image,sys,WaveAudio,ReplayGain,ignore_sigint,sheet_to_unicode,EncodingError,DecodingError,Messenger
+from audiotools import AudioFile,MetaData,InvalidFile,PCMReader,Con,transfer_data,subprocess,BIN,BUFFER_SIZE,cStringIO,os,open_files,Image,sys,WaveAudio,ReplayGain,ignore_sigint,sheet_to_unicode,EncodingError,DecodingError,Messenger,BufferedPCMReader
 from __vorbiscomment__ import *
 from __id3__ import ID3v2Comment
 from __vorbis__ import OggStreamReader,OggStreamWriter
@@ -667,10 +667,6 @@ class FlacAudio(AudioFile):
             if (old_seektable is not None):
                 metadata.seektable = old_seektable
 
-            #grab "vendor_string" from the existing file
-            vendor_string = old_metadata.vorbis_comment.vendor_string
-            metadata.vorbis_comment.vendor_string = vendor_string
-
             #grab "WAVEFORMATEXTENSIBLE_CHANNEL_MASK" from existing file
             #(if any)
             CHANNEL_MASK = "WAVEFORMATEXTENSIBLE_CHANNEL_MASK"
@@ -691,6 +687,10 @@ class FlacAudio(AudioFile):
             for block in old_metadata.extra_blocks:
                 if (block.type == 2):
                     metadata.extra_blocks.append(block)
+
+        #always grab "vendor_string" from the existing file
+        vendor_string = old_metadata.vorbis_comment.vendor_string
+        metadata.vorbis_comment.vendor_string = vendor_string
 
         minimum_metadata_length = len(metadata.build(padding_size=0)) + 4
         current_metadata_length = self.metadata_length()
@@ -807,7 +807,68 @@ class FlacAudio(AudioFile):
                          process=sub)
 
     @classmethod
-    def from_pcm(cls, filename, pcmreader,compression="8"):
+    def from_pcm(cls, filename, pcmreader, compression="8"):
+        from . import encoders
+
+        if (compression not in cls.COMPRESSION_MODES):
+            compression = cls.DEFAULT_COMPRESSION
+
+        encoding_options = {"0":{"block_size":1152,
+                                 "max_lpc_order":0,
+                                 "min_residual_partition_order":0,
+                                 "max_residual_partition_order":3},
+                            "1":{"block_size":1152,
+                                 "max_lpc_order":0,
+                                 "adaptive_mid_side":True,
+                                 "min_residual_partition_order":0,
+                                 "max_residual_partition_order":3},
+                            "2":{"block_size":1152,
+                                 "max_lpc_order":0,
+                                 "exhaustive_model_search":True,
+                                 "min_residual_partition_order":0,
+                                 "max_residual_partition_order":3},
+                            "3":{"block_size":4096,
+                                 "max_lpc_order":6,
+                                 "min_residual_partition_order":0,
+                                 "max_residual_partition_order":4},
+                            "4":{"block_size":4096,
+                                 "max_lpc_order":8,
+                                 "adaptive_mid_side":True,
+                                 "min_residual_partition_order":0,
+                                 "max_residual_partition_order":4},
+                            "5":{"block_size":4096,
+                                 "max_lpc_order":8,
+                                 "mid_side":True,
+                                 "min_residual_partition_order":0,
+                                 "max_residual_partition_order":5},
+                            "6":{"block_size":4096,
+                                 "max_lpc_order":8,
+                                 "mid_side":True,
+                                 "min_residual_partition_order":0,
+                                 "max_residual_partition_order":6},
+                            "7":{"block_size":4096,
+                                 "max_lpc_order":8,
+                                 "mid_side":True,
+                                 "exhaustive_model_search":True,
+                                 "min_residual_partition_order":0,
+                                 "max_residual_partition_order":6},
+                            "8":{"block_size":4096,
+                                 "max_lpc_order":12,
+                                 "mid_side":True,
+                                 "exhaustive_model_search":True,
+                                 "min_residual_partition_order":0,
+                                 "max_residual_partition_order":6}}[compression]
+
+        try:
+            encoders.encode_flac(filename,
+                                 pcmreader=BufferedPCMReader(pcmreader),
+                                 **encoding_options)
+            return FlacAudio(filename)
+        except IOError:
+            raise EncodingError("flac")
+
+    @classmethod
+    def from_pcm_old(cls, filename, pcmreader,compression="8"):
         SUBSTREAM_SAMPLE_RATES = frozenset([
                 8000, 16000,22050,24000,32000,
                 44100,48000,96000])
