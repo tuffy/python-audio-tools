@@ -150,7 +150,7 @@ status FlacDecoder_read_frame_header(decoders_FlacDecoder *self,
 status FlacDecoder_read_subframe_header(decoders_FlacDecoder *self,
 					struct flac_subframe_header *subframe_header);
 
-/*reads a FLAC subframe (including the subframe header)
+/*reads a FLAC subframe
   with "block_size" and "bits_per_sample" (determined from the frame header)
   and places the result in "samples"*/
 status FlacDecoder_read_subframe(decoders_FlacDecoder *self,
@@ -191,6 +191,37 @@ status FlacDecoder_read_residual(decoders_FlacDecoder *self,
 				 uint8_t order,
 				 uint32_t block_size,
 				 struct i_array *residuals);
+
+
+/*reads a FLAC subframe
+  with "block_size" and "bits_per_sample" (determined from the frame header)
+  skipping any subframe calculation and discarding the values*/
+status FlacDecoder_skip_subframe(decoders_FlacDecoder *self,
+				 uint32_t block_size,
+				 uint8_t bits_per_sample);
+
+status FlacDecoder_skip_constant_subframe(decoders_FlacDecoder *self,
+					  uint32_t block_size,
+					  uint8_t bits_per_sample);
+
+status FlacDecoder_skip_verbatim_subframe(decoders_FlacDecoder *self,
+					  uint32_t block_size,
+					  uint8_t bits_per_sample);
+
+status FlacDecoder_skip_fixed_subframe(decoders_FlacDecoder *self,
+				       uint8_t order,
+				       uint32_t block_size,
+				       uint8_t bits_per_sample);
+
+status FlacDecoder_skip_lpc_subframe(decoders_FlacDecoder *self,
+				     uint8_t order,
+				     uint32_t block_size,
+				     uint8_t bits_per_sample);
+
+status FlacDecoder_skip_residual(decoders_FlacDecoder *self,
+				 uint8_t order,
+				 uint32_t block_size);
+
 
 #include "flac_crc.h"
 

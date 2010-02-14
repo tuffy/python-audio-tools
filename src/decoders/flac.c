@@ -304,11 +304,6 @@ PyObject *FLACDecoder_seekpoints(decoders_FlacDecoder* self,
     data_size = frame_header.block_size * frame_header.bits_per_sample *
       frame_header.channel_count / 8;
 
-    if (data_size > self->data_size) { /*FIXME - don't actually read data*/
-      self->data = realloc(self->data,data_size);
-      self->data_size = data_size;
-    }
-
     for (channel = 0; channel < frame_header.channel_count; channel++) {
       if (((frame_header.channel_assignment == 0x8) &&
 	   (channel == 1)) ||
@@ -316,16 +311,14 @@ PyObject *FLACDecoder_seekpoints(decoders_FlacDecoder* self,
 	   (channel == 0)) ||
 	  ((frame_header.channel_assignment == 0xA) &&
 	   (channel == 1))) {
-	if (FlacDecoder_read_subframe(self, /*FIXME - don't actually read data*/
+	if (FlacDecoder_skip_subframe(self,
 				      frame_header.block_size,
-				      frame_header.bits_per_sample + 1,
-				      &(self->subframe_data[channel])) == ERROR)
+				      frame_header.bits_per_sample + 1) == ERROR)
 	  goto error;
       } else {
-	if (FlacDecoder_read_subframe(self, /*FIXME - don't actually read data*/
+	if (FlacDecoder_skip_subframe(self,
 				      frame_header.block_size,
-				      frame_header.bits_per_sample,
-				      &(self->subframe_data[channel])) == ERROR)
+				      frame_header.bits_per_sample) == ERROR)
 	  goto error;
       }
     }
@@ -744,6 +737,156 @@ status FlacDecoder_read_residual(decoders_FlacDecoder *self,
 }
 
 
+status FlacDecoder_skip_subframe(decoders_FlacDecoder *self,
+				 uint32_t block_size,
+				 uint8_t bits_per_sample) {
+  struct flac_subframe_header subframe_header;
+
+  if (FlacDecoder_read_subframe_header(self,&subframe_header) == ERROR)
+    return ERROR;
+
+  /*account for wasted bits-per-sample*/
+  if (subframe_header.wasted_bits_per_sample > 0)
+    bits_per_sample -= subframe_header.wasted_bits_per_sample;
+
+  switch (subframe_header.type) {
+  case FLAC_SUBFRAME_CONSTANT:
+    if (FlacDecoder_skip_constant_subframe(self, block_size,
+					   bits_per_sample) == ERROR)
+      return ERROR;
+    break;
+  case FLAC_SUBFRAME_VERBATIM:
+    if (FlacDecoder_skip_verbatim_subframe(self, block_size,
+					   bits_per_sample) == ERROR)
+      return ERROR;
+    break;
+  case FLAC_SUBFRAME_FIXED:
+    if (FlacDecoder_skip_fixed_subframe(self, subframe_header.order,
+					block_size,
+					bits_per_sample) == ERROR)
+      return ERROR;
+    break;
+  case FLAC_SUBFRAME_LPC:
+    if (FlacDecoder_skip_lpc_subframe(self, subframe_header.order,
+				      block_size,
+				      bits_per_sample) == ERROR)
+      return ERROR;
+    break;
+  }
+
+  return OK;
+}
+
+status FlacDecoder_skip_constant_subframe(decoders_FlacDecoder *self,
+					  uint32_t block_size,
+					  uint8_t bits_per_sample) {
+  read_signed_bits(self->bitstream,bits_per_sample);
+  return OK;
+}
+
+status FlacDecoder_skip_verbatim_subframe(decoders_FlacDecoder *self,
+					  uint32_t block_size,
+					  uint8_t bits_per_sample) {
+  int32_t i;
+
+  for (i = 0; i < block_size; i++)
+    read_signed_bits(self->bitstream,bits_per_sample);
+
+  return OK;
+}
+
+status FlacDecoder_skip_fixed_subframe(decoders_FlacDecoder *self,
+				       uint8_t order,
+				       uint32_t block_size,
+				       uint8_t bits_per_sample) {
+  Bitstream *bitstream = self->bitstream;
+  int32_t i;
+
+  /*read "order" number of warm-up samples*/
+  for (i = 0; i < order; i++) {
+    read_signed_bits(bitstream,bits_per_sample);
+  }
+
+  /*read the residual*/
+  if (FlacDecoder_skip_residual(self,order,block_size) == ERROR)
+    return ERROR;
+
+  return OK;
+}
+
+status FlacDecoder_skip_lpc_subframe(decoders_FlacDecoder *self,
+				     uint8_t order,
+				     uint32_t block_size,
+				     uint8_t bits_per_sample) {
+  Bitstream *bitstream = self->bitstream;
+  int i;
+  uint32_t qlp_precision;
+
+  /*read order number of warm-up samples*/
+  for (i = 0; i < order; i++) {
+    read_signed_bits(bitstream,bits_per_sample);
+  }
+
+  /*read QLP precision*/
+  qlp_precision = read_bits(bitstream,4) + 1;
+
+  /*read QLP shift needed*/
+  read_signed_bits(bitstream,5);
+
+  /*read order number of QLP coefficients of size qlp_precision*/
+  for (i = 0; i < order; i++) {
+    read_signed_bits(bitstream,qlp_precision);
+  }
+
+  /*read the residual*/
+  if (FlacDecoder_skip_residual(self,order,block_size) == ERROR)
+    return ERROR;
+
+  return OK;
+}
+
+status FlacDecoder_skip_residual(decoders_FlacDecoder *self,
+				 uint8_t order,
+				 uint32_t block_size) {
+  Bitstream *bitstream = self->bitstream;
+  uint32_t coding_method = read_bits(bitstream,2);
+  uint32_t partition_order = read_bits(bitstream,4);
+  int total_partitions = 1 << partition_order;
+  int partition;
+  uint32_t rice_parameter;
+  uint32_t partition_samples;
+  uint32_t i;
+
+  /*read 2^partition_order number of partitions*/
+  for (partition = 0; partition < total_partitions; partition++) {
+    /*each partition after the first contains
+      block_size / (2 ^ partition_order) number of residual values*/
+    if (partition == 0) {
+      partition_samples = (block_size / (1 << partition_order)) - order;
+    } else {
+      partition_samples = block_size / (1 << partition_order);
+    }
+
+    switch (coding_method) {
+    case 0:
+      rice_parameter = read_bits(bitstream,4);
+      break;
+    case 1:
+      rice_parameter = read_bits(bitstream,5);
+      break;
+    default:
+      PyErr_SetString(PyExc_ValueError,"invalid partition coding method");
+      return ERROR;
+    }
+
+    for (i = 0; i < partition_samples; i++) {
+      read_unary(bitstream,1);
+      read_bits(bitstream,rice_parameter);
+    }
+  }
+
+  return OK;
+}
 
 uint32_t read_utf8(Bitstream *stream) {
   uint32_t total_bytes = read_unary(stream,0);
