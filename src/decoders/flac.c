@@ -277,6 +277,77 @@ PyObject *FLACDecoder_read(decoders_FlacDecoder* self,
   return string;
 }
 
+PyObject *FLACDecoder_seekpoints(decoders_FlacDecoder* self,
+				 PyObject *args) {
+  PyObject *seekpoints = PyList_New(0);
+  struct flac_frame_header frame_header;
+  int data_size;
+  int channel;
+  int sample_number = 0;
+  long frame_offset;
+
+  while (self->remaining_samples > 0) {
+    self->crc8 = self->crc16 = 0;
+
+    frame_offset = ftell(self->file);
+    if (FlacDecoder_read_frame_header(self,&frame_header) == ERROR)
+      goto error;
+
+    if (PyList_Append(seekpoints,Py_BuildValue("(i,i,i)",
+					       sample_number,
+					       frame_offset,
+					       frame_header.block_size)) == -1)
+      goto error;
+
+    sample_number += frame_header.block_size;
+
+    data_size = frame_header.block_size * frame_header.bits_per_sample *
+      frame_header.channel_count / 8;
+
+    if (data_size > self->data_size) { /*FIXME - don't actually read data*/
+      self->data = realloc(self->data,data_size);
+      self->data_size = data_size;
+    }
+
+    for (channel = 0; channel < frame_header.channel_count; channel++) {
+      if (((frame_header.channel_assignment == 0x8) &&
+	   (channel == 1)) ||
+	  ((frame_header.channel_assignment == 0x9) &&
+	   (channel == 0)) ||
+	  ((frame_header.channel_assignment == 0xA) &&
+	   (channel == 1))) {
+	if (FlacDecoder_read_subframe(self, /*FIXME - don't actually read data*/
+				      frame_header.block_size,
+				      frame_header.bits_per_sample + 1,
+				      &(self->subframe_data[channel])) == ERROR)
+	  goto error;
+      } else {
+	if (FlacDecoder_read_subframe(self, /*FIXME - don't actually read data*/
+				      frame_header.block_size,
+				      frame_header.bits_per_sample,
+				      &(self->subframe_data[channel])) == ERROR)
+	  goto error;
+      }
+    }
+
+    /*check CRC-16*/
+    byte_align_r(self->bitstream);
+    read_bits(self->bitstream,16);
+    if (self->crc16 != 0) {
+      PyErr_SetString(PyExc_ValueError,"invalid checksum in frame");
+      goto error;
+    }
+
+    /*decrement remaining samples*/
+    self->remaining_samples -= frame_header.block_size;
+  }
+
+  return seekpoints;
+ error:
+  Py_DECREF(seekpoints);
+  return NULL;
+}
+
 status FlacDecoder_read_frame_header(decoders_FlacDecoder *self,
 				     struct flac_frame_header *header) {
   Bitstream *bitstream = self->bitstream;

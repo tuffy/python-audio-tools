@@ -527,6 +527,13 @@ class FlacCueSheet:
     def __unicode__(self):
         return sheet_to_unicode(self,None)
 
+class FlacSeektable:
+    SEEKTABLE = Con.GreedyRepeater(
+            Con.Struct("seekpoint",
+                       Con.UBInt64("first_sample_number"),
+                       Con.UBInt64("first_byte_offset"),
+                       Con.UBInt16("sample_count")))
+
 class FlacAudio(AudioFile):
     SUFFIX = "flac"
     NAME = SUFFIX
