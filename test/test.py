@@ -2448,10 +2448,11 @@ uhhDdCiCwqg2Gw3lphgaGhoamR+mptKYNT/F3JFOFCQvKfgAwA==""".decode('base64').decode(
                               BLANK_PCM_Reader(5))
 
             for audio_class in audiotools.TYPE_MAP.values():
-                self.assertRaises(audiotools.EncodingError,
-                                  audio_class.from_pcm,
-                                  "test.%s" % (audio_class.SUFFIX),
-                                  temp_track.to_pcm())
+                if (len(audio_class.BINARIES) > 0):
+                    self.assertRaises(audiotools.EncodingError,
+                                      audio_class.from_pcm,
+                                      "test.%s" % (audio_class.SUFFIX),
+                                      temp_track.to_pcm())
 
         finally:
             for (bin,setting) in old_settings:

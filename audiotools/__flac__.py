@@ -539,8 +539,7 @@ class FlacAudio(AudioFile):
     NAME = SUFFIX
     DEFAULT_COMPRESSION = "8"
     COMPRESSION_MODES = tuple(map(str,range(0,9)))
-    BINARIES = ("flac","metaflac")
-
+    #BINARIES = ("flac","metaflac")
 
     METADATA_BLOCK_HEADER = Con.BitStruct("metadata_block_header",
                                           Con.Bit("last_block"),
