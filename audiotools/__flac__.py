@@ -792,6 +792,11 @@ class FlacAudio(AudioFile):
             return None
 
     def to_pcm(self):
+        from . import decoders
+
+        return decoders.FlacDecoder(self.filename)
+
+    def to_pcm_old(self):
         sub = subprocess.Popen([BIN['flac'],"-s","-d","-c",
                                 "--force-raw-format",
                                 "--endian=little",

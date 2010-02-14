@@ -502,10 +502,11 @@
    As with unit tests, these ensure everything is working during testing
    without a performance penalty at runtime.
 ** DONE Handle foreign RIFF chunks
-** TODO Generate SEEKTABLE blocks
-** TODO Ensure FLACs work on a variety of other decoders
+** DONE Ensure FLACs work on a variety of other decoders
    Although decoding properly on the reference decoder *should* guarantee
    the file works everywhere, the only way to be certain is to test it.
+** DONE Ensure encoder raises the proper exceptions
+** TODO Generate SEEKTABLE blocks
 ** TODO Support Rice2 partitions?
    The reference encoder uses these for more efficient handling of 24-bit audio
    but I'm not sure they're strictly necessary for my more basic encoder.
@@ -513,7 +514,6 @@
    I don't think I've ever seen these used on actual audio data
    that isn't artificial and hasn't been processed specifically for its use.
    As with Rice2, it's something that may get added later.
-** TODO Ensure encoder raises the proper exceptions
 * TODO Convert to_pcm()/from_pcm() to FrameList-based I/O
   Passing specifically-sized blobs of binary data between conversion
   routines worked well when those routines are little more than
