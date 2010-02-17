@@ -1,0 +1,117 @@
+#if PY_VERSION_HEX < 0x02050000 && !defined(PY_SSIZE_T_MIN)
+typedef int Py_ssize_t;
+#define PY_SSIZE_T_MAX INT_MAX
+#define PY_SSIZE_T_MIN INT_MIN
+#endif
+
+/********************************************************
+ Audio Tools, a module and set of tools for manipulating audio data
+ Copyright (C) 2007-2010  Brian Langenberger
+
+ This program is free software; you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation; either version 2 of the License, or
+ (at your option) any later version.
+
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+
+ You should have received a copy of the GNU General Public License
+ along with this program; if not, write to the Free Software
+ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+ *******************************************************/
+
+#if PY_MAJOR_VERSION >= 3
+#define IS_PY3K
+#endif
+
+#include <stdint.h>
+
+typedef struct {
+  PyObject_HEAD;
+
+  int frames;          /*the total number of PCM frames in this FrameList
+			 aka the total number of rows in the "samples" array*/
+  int channels;        /*the total number of channels in this FrameList
+			 aka the total number of columns in "samples*/
+  int bits_per_sample; /*the maximum size of each sample, in bits*/
+  int is_signed;       /*1 if the samples are signed, 0 if unsigned*/
+
+  int32_t* samples;    /*the actual sample data itself,
+			 stored raw as 32-bit signed integers*/
+} pcm_FrameList;
+
+void FrameList_dealloc(pcm_FrameList* self);
+
+PyObject *FrameList_new(PyTypeObject *type, PyObject *args, PyObject *kwds);
+
+int FrameList_init(pcm_FrameList *self, PyObject *args, PyObject *kwds);
+
+PyObject* FrameList_frames(pcm_FrameList *self, void* closure);
+
+PyObject* FrameList_channels(pcm_FrameList *self, void* closure);
+
+PyObject* FrameList_bits_per_sample(pcm_FrameList *self, void* closure);
+
+PyObject* FrameList_signed(pcm_FrameList *self, void* closure);
+
+PyMethodDef module_methods[] = {
+  {NULL}
+};
+
+PyGetSetDef FrameList_getseters[] = {
+    {"frames", (getter)FrameList_frames, 0, "frame count", NULL},
+    {"channels", (getter)FrameList_channels, 0, "channel count", NULL},
+    {"bits_per_sample", (getter)FrameList_bits_per_sample,
+     0, "bits per sample", NULL},
+    {"signed", (getter)FrameList_signed, 0, "signed", NULL},
+    {NULL}  /* Sentinel */
+};
+
+PyMethodDef FrameList_methods[] = {
+  {NULL}
+};
+
+PyTypeObject pcm_FrameListType = {
+    PyObject_HEAD_INIT(NULL)
+    0,                         /*ob_size*/
+    "pcm.FrameList",           /*tp_name*/
+    sizeof(pcm_FrameList),     /*tp_basicsize*/
+    0,                         /*tp_itemsize*/
+    (destructor)FrameList_dealloc, /*tp_dealloc*/
+    0,                         /*tp_print*/
+    0,                         /*tp_getattr*/
+    0,                         /*tp_setattr*/
+    0,                         /*tp_compare*/
+    0,                         /*tp_repr*/
+    0,                         /*tp_as_number*/
+    0,                         /*tp_as_sequence*/
+    0,                         /*tp_as_mapping*/
+    0,                         /*tp_hash */
+    0,                         /*tp_call*/
+    0,                         /*tp_str*/
+    0,                         /*tp_getattro*/
+    0,                         /*tp_setattro*/
+    0,                         /*tp_as_buffer*/
+    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE, /*tp_flags*/
+    "FrameList objects",       /* tp_doc */
+    0,		               /* tp_traverse */
+    0,		               /* tp_clear */
+    0,		               /* tp_richcompare */
+    0,		               /* tp_weaklistoffset */
+    0,		               /* tp_iter */
+    0,		               /* tp_iternext */
+    FrameList_methods,         /* tp_methods */
+    0,                         /* tp_members */
+    FrameList_getseters,       /* tp_getset */
+    0,                         /* tp_base */
+    0,                         /* tp_dict */
+    0,                         /* tp_descr_get */
+    0,                         /* tp_descr_set */
+    0,                         /* tp_dictoffset */
+    (initproc)FrameList_init,  /* tp_init */
+    0,                         /* tp_alloc */
+    FrameList_new,             /* tp_new */
+};

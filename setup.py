@@ -45,6 +45,9 @@ cdiomodule = Extension('audiotools.cdio',
 pcmstreammodule = Extension('audiotools.pcmstream',
                             sources = ['src/pcmstream.c'])
 
+pcmmodule = Extension('audiotools.pcm',
+                      sources = ['src/pcm.c'])
+
 decodersmodule = Extension('audiotools.decoders',
                            sources = ['src/array.c',
                                       'src/bitstream_r.c',
@@ -64,6 +67,7 @@ encodersmodule = Extension('audiotools.encoders',
 
 extensions = [cdiomodule,
               pcmstreammodule,
+              pcmmodule,
               decodersmodule,
               encodersmodule]
 
