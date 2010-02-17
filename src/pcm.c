@@ -50,7 +50,11 @@ PyObject *FrameList_new(PyTypeObject *type, PyObject *args, PyObject *kwds) {
 
 int FrameList_init(pcm_FrameList *self, PyObject *args, PyObject *kwds) {
   unsigned char *data;
+#ifdef PY_SSIZE_T_CLEAN
   Py_ssize_t data_size;
+#else
+  int data_size;
+#endif
 
   if (!PyArg_ParseTuple(args, "s#iii",
 			&data,&data_size,
@@ -63,6 +67,9 @@ int FrameList_init(pcm_FrameList *self, PyObject *args, PyObject *kwds) {
     PyErr_SetString(PyExc_ValueError,
 		    "number of samples must be divisible by bits-per-sample and number of channels");
     return -1;
+  } else {
+    self->samples_length = data_size / (self->bits_per_sample / 8);
+    /*FIXME - place samples into internal array*/
   }
 
   return 0;
@@ -82,4 +89,17 @@ PyObject* FrameList_bits_per_sample(pcm_FrameList *self, void* closure) {
 
 PyObject* FrameList_signed(pcm_FrameList *self, void* closure) {
   return Py_BuildValue("i",self->is_signed);
+}
+
+Py_ssize_t FrameList_len(pcm_FrameList *o) {
+  return o->samples_length;
+}
+
+PyObject* FrameList_GetItem(pcm_FrameList *o, Py_ssize_t i) {
+  if ((i >= o->samples_length) || (i < 0)) {
+    PyErr_SetString(PyExc_IndexError,"index out of range");
+    return NULL;
+  } else {
+    return Py_BuildValue("i",0);
+  }
 }

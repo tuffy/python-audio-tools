@@ -41,6 +41,9 @@ typedef struct {
 
   int32_t* samples;    /*the actual sample data itself,
 			 stored raw as 32-bit signed integers*/
+  uint32_t samples_length; /*the total number of samples
+			     which must be evenly distributable
+			     between channels and bits-per-sample*/
 } pcm_FrameList;
 
 void FrameList_dealloc(pcm_FrameList* self);
@@ -56,6 +59,10 @@ PyObject* FrameList_channels(pcm_FrameList *self, void* closure);
 PyObject* FrameList_bits_per_sample(pcm_FrameList *self, void* closure);
 
 PyObject* FrameList_signed(pcm_FrameList *self, void* closure);
+
+Py_ssize_t FrameList_len(pcm_FrameList *o);
+
+PyObject* FrameList_GetItem(pcm_FrameList *o, Py_ssize_t i);
 
 PyMethodDef module_methods[] = {
   {NULL}
@@ -74,6 +81,19 @@ PyMethodDef FrameList_methods[] = {
   {NULL}
 };
 
+static PySequenceMethods pcm_FrameListType_as_sequence = {
+	(lenfunc)FrameList_len,		/* sq_length */
+	(binaryfunc)NULL,		/* sq_concat */
+	(ssizeargfunc)NULL,		/* sq_repeat */
+	(ssizeargfunc)FrameList_GetItem, /* sq_item */
+	(ssizessizeargfunc)NULL,        /* sq_slice */
+	(ssizeobjargproc)NULL,		/* sq_ass_item */
+	(ssizessizeobjargproc)NULL,	/* sq_ass_slice */
+	(objobjproc)NULL,		/* sq_contains */
+	(binaryfunc)NULL,               /* sq_inplace_concat */
+	(ssizeargfunc)NULL,             /* sq_inplace_repeat */
+};
+
 PyTypeObject pcm_FrameListType = {
     PyObject_HEAD_INIT(NULL)
     0,                         /*ob_size*/
@@ -87,7 +107,7 @@ PyTypeObject pcm_FrameListType = {
     0,                         /*tp_compare*/
     0,                         /*tp_repr*/
     0,                         /*tp_as_number*/
-    0,                         /*tp_as_sequence*/
+    &pcm_FrameListType_as_sequence, /*tp_as_sequence*/
     0,                         /*tp_as_mapping*/
     0,                         /*tp_hash */
     0,                         /*tp_call*/
