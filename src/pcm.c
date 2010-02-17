@@ -49,21 +49,37 @@ PyObject *FrameList_new(PyTypeObject *type, PyObject *args, PyObject *kwds) {
 }
 
 int FrameList_init(pcm_FrameList *self, PyObject *args, PyObject *kwds) {
+  unsigned char *data;
+  Py_ssize_t data_size;
+
+  if (!PyArg_ParseTuple(args, "s#iii",
+			&data,&data_size,
+			&(self->channels),
+			&(self->bits_per_sample),
+			&(self->is_signed)))
+    return -1;
+
+  if (data_size % (self->channels * self->bits_per_sample / 8)) {
+    PyErr_SetString(PyExc_ValueError,
+		    "number of samples must be divisible by bits-per-sample and number of channels");
+    return -1;
+  }
+
   return 0;
 }
 
 PyObject* FrameList_frames(pcm_FrameList *self, void* closure) {
-  return Py_BuildValue("i",0);
+  return Py_BuildValue("i",self->frames);
 }
 
 PyObject* FrameList_channels(pcm_FrameList *self, void* closure) {
-  return Py_BuildValue("i",0);
+  return Py_BuildValue("i",self->channels);
 }
 
 PyObject* FrameList_bits_per_sample(pcm_FrameList *self, void* closure) {
-  return Py_BuildValue("i",0);
+  return Py_BuildValue("i",self->bits_per_sample);
 }
 
 PyObject* FrameList_signed(pcm_FrameList *self, void* closure) {
-  return Py_BuildValue("i",0);
+  return Py_BuildValue("i",self->is_signed);
 }
