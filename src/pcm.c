@@ -72,6 +72,7 @@ int FrameList_init(pcm_FrameList *self, PyObject *args, PyObject *kwds) {
     return -1;
   } else {
     self->samples_length = data_size / (self->bits_per_sample / 8);
+    self->frames = self->samples_length / self->channels;
     self->samples = malloc(sizeof(int32_t) * self->samples_length);
     FrameList_char_to_samples(self->samples,
 			      data,
