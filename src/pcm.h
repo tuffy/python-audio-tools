@@ -135,3 +135,26 @@ PyTypeObject pcm_FrameListType = {
     0,                         /* tp_alloc */
     FrameList_new,             /* tp_new */
 };
+
+typedef int32_t (*FrameList_pcm_converter)(unsigned char *s);
+
+void FrameList_char_to_samples(int32_t *samples,
+			       unsigned char *data,
+			       FrameList_pcm_converter converter,
+			       uint32_t samples_length,
+			       int bits_per_sample);
+
+FrameList_pcm_converter FrameList_get_converter(int bits_per_sample, int is_big_endian, int is_signed);
+
+int32_t FrameList_S8_char_to_int(unsigned char *s);
+int32_t FrameList_U8_char_to_int(unsigned char *s);
+
+int32_t FrameList_SL16_char_to_int(unsigned char *s);
+int32_t FrameList_SB16_char_to_int(unsigned char *s);
+int32_t FrameList_UL16_char_to_int(unsigned char *s);
+int32_t FrameList_UB16_char_to_int(unsigned char *s);
+
+int32_t FrameList_SL24_char_to_int(unsigned char *s);
+int32_t FrameList_SB24_char_to_int(unsigned char *s);
+int32_t FrameList_UL24_char_to_int(unsigned char *s);
+int32_t FrameList_UB24_char_to_int(unsigned char *s);
