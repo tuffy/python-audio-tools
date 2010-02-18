@@ -113,6 +113,30 @@ PyObject* FrameList_GetItem(pcm_FrameList *o, Py_ssize_t i) {
   }
 }
 
+PyObject* FrameList_frame(pcm_FrameList *self, PyObject *args) {
+  int frame_number;
+  pcm_FrameList *frame;
+
+  if (!PyArg_ParseTuple(args,"i",&frame_number))
+    return NULL;
+  if ((frame_number < 0) || (frame_number >= self->frames)) {
+    PyErr_SetString(PyExc_IndexError,"frame number out of range");
+    return NULL;
+  }
+
+  frame = (pcm_FrameList*)_PyObject_New(&pcm_FrameListType);
+  frame->frames = 1;
+  frame->channels = self->channels;
+  frame->bits_per_sample = self->bits_per_sample;
+  frame->is_signed = self->is_signed;
+  frame->samples = malloc(sizeof(int32_t) * self->channels);
+  frame->samples_length = self->channels;
+  memcpy(frame->samples,
+	 self->samples + (frame_number * self->channels),
+	 sizeof(int32_t) * self->channels);
+  return (PyObject*)frame;
+}
+
 void FrameList_char_to_samples(int32_t *samples,
 			       unsigned char *data,
 			       FrameList_pcm_converter converter,

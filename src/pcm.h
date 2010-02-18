@@ -64,6 +64,8 @@ Py_ssize_t FrameList_len(pcm_FrameList *o);
 
 PyObject* FrameList_GetItem(pcm_FrameList *o, Py_ssize_t i);
 
+PyObject* FrameList_frame(pcm_FrameList *self, PyObject *args);
+
 PyMethodDef module_methods[] = {
   {NULL}
 };
@@ -78,6 +80,8 @@ PyGetSetDef FrameList_getseters[] = {
 };
 
 PyMethodDef FrameList_methods[] = {
+  {"frame", (PyCFunction)FrameList_frame,
+   METH_VARARGS,"Reads the given frame from the framelist"},
   {NULL}
 };
 
