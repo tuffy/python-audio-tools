@@ -76,7 +76,9 @@ int FrameList_init(pcm_FrameList *self, PyObject *args, PyObject *kwds) {
     self->samples = malloc(sizeof(int32_t) * self->samples_length);
     FrameList_char_to_samples(self->samples,
 			      data,
-			      FrameList_SL16_char_to_int,
+			      FrameList_get_converter(self->bits_per_sample,
+						      is_big_endian,
+						      self->is_signed),
 			      self->samples_length,
 			      self->bits_per_sample);
   }
@@ -135,6 +137,37 @@ PyObject* FrameList_frame(pcm_FrameList *self, PyObject *args) {
 	 self->samples + (frame_number * self->channels),
 	 sizeof(int32_t) * self->channels);
   return (PyObject*)frame;
+}
+
+PyObject* FrameList_channel(pcm_FrameList *self, PyObject *args) {
+  int channel_number;
+  pcm_FrameList *channel;
+  uint32_t i,j;
+  uint32_t samples_length;
+  int total_channels;
+
+  if (!PyArg_ParseTuple(args,"i",&channel_number))
+    return NULL;
+  if ((channel_number < 0) || (channel_number >= self->channels)) {
+    PyErr_SetString(PyExc_IndexError,"channel number out of range");
+    return NULL;
+  }
+
+  channel = (pcm_FrameList*)_PyObject_New(&pcm_FrameListType);
+  channel->frames = self->frames;
+  channel->channels = 1;
+  channel->bits_per_sample = self->bits_per_sample;
+  channel->is_signed = self->is_signed;
+  channel->samples = malloc(sizeof(int32_t) * self->frames);
+  channel->samples_length = self->frames;
+
+  samples_length = self->samples_length;
+  total_channels = self->channels;
+  for (j=0,i = channel_number; i < samples_length; j++,i += total_channels) {
+    channel->samples[j] = self->samples[i];
+  }
+
+  return (PyObject*)channel;
 }
 
 void FrameList_char_to_samples(int32_t *samples,
