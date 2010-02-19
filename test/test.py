@@ -9085,6 +9085,24 @@ class TestFlacCodec(unittest.TestCase):
     #as is metadata handling
 
 class TestFrameList(unittest.TestCase):
+    @classmethod
+    def Bits8(cls):
+        for i in xrange(0,0xFF + 1):
+            yield chr(i)
+
+    @classmethod
+    def Bits16(cls):
+        for i in xrange(0,0xFF + 1):
+            for j in xrange(0,0xFF + 1):
+                yield chr(i) + chr(j)
+
+    @classmethod
+    def Bits24(cls):
+        for i in xrange(0,0xFF + 1):
+            for j in xrange(0,0xFF + 1):
+                for k in xrange(0,0xFF + 1):
+                    yield chr(i) + chr(j) + chr(k)
+
     @TEST_FRAMELIST
     def test_8bit_roundtrip(self):
         import audiotools.pcm
@@ -9121,6 +9139,16 @@ class TestFrameList(unittest.TestCase):
         #             1,8,0,1)))
 
     @TEST_FRAMELIST
+    def test_8bit_roundtrip_str(self):
+        import audiotools.pcm
+
+        s = "".join(TestFrameList.Bits8())
+        self.assertEqual(audiotools.pcm.FrameList(s,1,8,1,0).to_bytes(1),s)
+        self.assertEqual(audiotools.pcm.FrameList(s,1,8,1,1).to_bytes(1),s)
+        self.assertEqual(audiotools.pcm.FrameList(s,1,8,0,0).to_bytes(0),s)
+        self.assertEqual(audiotools.pcm.FrameList(s,1,8,0,1).to_bytes(0),s)
+
+    @TEST_FRAMELIST
     def test_16bit_roundtrip(self):
         import audiotools.pcm
 
@@ -9151,6 +9179,16 @@ class TestFrameList(unittest.TestCase):
                          list(audiotools.pcm.FrameList(
                     SL16Int.build(signed_ints),
                     1,16,0,1)))
+
+    @TEST_FRAMELIST
+    def test_16bit_roundtrip_str(self):
+        import audiotools.pcm
+
+        s = "".join(TestFrameList.Bits16())
+        self.assertEqual(audiotools.pcm.FrameList(s,1,16,1,0).to_bytes(1),s)
+        self.assertEqual(audiotools.pcm.FrameList(s,1,16,1,1).to_bytes(1),s)
+        self.assertEqual(audiotools.pcm.FrameList(s,1,16,0,0).to_bytes(0),s)
+        self.assertEqual(audiotools.pcm.FrameList(s,1,16,0,1).to_bytes(0),s)
 
     @TEST_FRAMELIST
     def test_24bit_roundtrip(self):
@@ -9223,6 +9261,16 @@ class TestFrameList(unittest.TestCase):
                              list(audiotools.pcm.FrameList(
                         SL24Int.build(Con.Container(i=signed_values)),
                         1,24,0,1)))
+
+    @TEST_FRAMELIST
+    def test_24bit_roundtrip_str(self):
+        import audiotools.pcm
+
+        s = "".join(TestFrameList.Bits24())
+        self.assertEqual(audiotools.pcm.FrameList(s,1,24,1,0).to_bytes(1),s)
+        self.assertEqual(audiotools.pcm.FrameList(s,1,24,1,1).to_bytes(1),s)
+        self.assertEqual(audiotools.pcm.FrameList(s,1,24,0,0).to_bytes(0),s)
+        self.assertEqual(audiotools.pcm.FrameList(s,1,24,0,1).to_bytes(0),s)
 
 
 ############
