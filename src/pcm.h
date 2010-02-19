@@ -68,6 +68,8 @@ PyObject* FrameList_frame(pcm_FrameList *self, PyObject *args);
 
 PyObject* FrameList_channel(pcm_FrameList *self, PyObject *args);
 
+PyObject* FrameList_to_bytes(pcm_FrameList *self, PyObject *args);
+
 PyMethodDef module_methods[] = {
   {NULL}
 };
@@ -86,6 +88,8 @@ PyMethodDef FrameList_methods[] = {
    METH_VARARGS,"Reads the given frame from the framelist"},
   {"channel", (PyCFunction)FrameList_channel,
    METH_VARARGS,"Reads the given channel from the framelist"},
+  {"to_bytes", (PyCFunction)FrameList_to_bytes,
+   METH_VARARGS,"Converts the framelist to a binary string"},
   {NULL}
 };
 
@@ -144,15 +148,18 @@ PyTypeObject pcm_FrameListType = {
     FrameList_new,             /* tp_new */
 };
 
-typedef int32_t (*FrameList_pcm_converter)(unsigned char *s);
+typedef int32_t (*FrameList_char_to_int_converter)(unsigned char *s);
 
 void FrameList_char_to_samples(int32_t *samples,
 			       unsigned char *data,
-			       FrameList_pcm_converter converter,
+			       FrameList_char_to_int_converter converter,
 			       uint32_t samples_length,
 			       int bits_per_sample);
 
-FrameList_pcm_converter FrameList_get_converter(int bits_per_sample, int is_big_endian, int is_signed);
+FrameList_char_to_int_converter FrameList_get_char_to_int_converter(
+					      int bits_per_sample,
+					      int is_big_endian,
+					      int is_signed);
 
 int32_t FrameList_S8_char_to_int(unsigned char *s);
 int32_t FrameList_U8_char_to_int(unsigned char *s);
@@ -166,3 +173,16 @@ int32_t FrameList_SL24_char_to_int(unsigned char *s);
 int32_t FrameList_SB24_char_to_int(unsigned char *s);
 int32_t FrameList_UL24_char_to_int(unsigned char *s);
 int32_t FrameList_UB24_char_to_int(unsigned char *s);
+
+
+typedef void (*FrameList_int_to_char_converter)(int32_t i, unsigned char *s);
+
+void FrameList_samples_to_char(unsigned char *data,
+			       int32_t *samples,
+			       FrameList_int_to_char_converter converter,
+			       uint32_t samples_length,
+			       int bits_per_sample);
+
+void FrameList_int_to_S8_char(int32_t i, unsigned char *s);
+void FrameList_int_to_U8_char(int32_t i, unsigned char *s);
+
