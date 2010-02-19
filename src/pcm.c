@@ -392,23 +392,23 @@ FrameList_int_to_char_converter FrameList_get_int_to_char_converter(
 	return FrameList_int_to_SB16_char;
       }
     }
-  /* case 24: */
-  /*   switch (is_big_endian) { */
-  /*   case 0: */
-  /*     switch (is_signed) { */
-  /*     case 0:  /\*24 bits-per-sample, little-endian, unsigned*\/ */
-  /* 	return FrameList_UL24_char_to_int; */
-  /*     default: /\*24 bits-per-sample, little-endian, signed*\/ */
-  /* 	return FrameList_SL24_char_to_int; */
-  /*     } */
-  /*   default: */
-  /*     switch (is_signed) { */
-  /*     case 0:  /\*24 bits-per-sample, big-endian, unsigned*\/ */
-  /* 	return FrameList_UB24_char_to_int; */
-  /*     default: /\*24 bits-per-sample, big-endian, signed*\/ */
-  /* 	return FrameList_SB24_char_to_int; */
-  /*     } */
-  /*   } */
+  case 24:
+    switch (is_big_endian) {
+    case 0:
+      switch (is_signed) {
+      case 0:  /*24 bits-per-sample, little-endian, unsigned*/
+  	return FrameList_int_to_UL24_char;
+      default: /*24 bits-per-sample, little-endian, signed*/
+  	return FrameList_int_to_SL24_char;
+      }
+    default:
+      switch (is_signed) {
+      case 0:  /*24 bits-per-sample, big-endian, unsigned*/
+  	return FrameList_int_to_UB24_char;
+      default: /*24 bits-per-sample, big-endian, signed*/
+  	return FrameList_int_to_SB24_char;
+      }
+    }
   default:
     return NULL;
   }
@@ -430,21 +430,11 @@ void FrameList_int_to_S8_char(int32_t i, unsigned char *s) {
 }
 
 void FrameList_int_to_U8_char(int32_t i, unsigned char *s) {
-  if (i > 0xFF)
-    i = 0xFF;
-  else if (i < 0)
-    i = 0;
-
   s[0] = i & 0xFF;
 }
 
 void FrameList_int_to_UB16_char(int32_t i, unsigned char *s) {
-  if (i > 0xFFFF)
-    i = 0xFFFF;
-  else if (i < 0)
-    i = 0;
-
-  s[0] = i >> 8;
+  s[0] = (i >> 8) & 0xFF;
   s[1] = i & 0xFF;
 }
 
@@ -463,12 +453,7 @@ void FrameList_int_to_SB16_char(int32_t i, unsigned char *s) {
 }
 
 void FrameList_int_to_UL16_char(int32_t i, unsigned char *s) {
-  if (i > 0xFFFF)
-    i = 0xFFFF;
-  else if (i < 0)
-    i = 0;
-
-  s[1] = i >> 8;
+  s[1] = (i >> 8) & 0xFF;
   s[0] = i & 0xFF;
 }
 
@@ -483,5 +468,47 @@ void FrameList_int_to_SL16_char(int32_t i, unsigned char *s) {
   }
 
   s[1] = i >> 8;
+  s[0] = i & 0xFF;
+}
+
+void FrameList_int_to_UB24_char(int32_t i, unsigned char *s) {
+  s[0] = (i >> 16) & 0xFF;
+  s[1] = (i >> 8) & 0xFF;
+  s[2] = i & 0xFF;
+}
+
+void FrameList_int_to_SB24_char(int32_t i, unsigned char *s) {
+  if (i > 0x7FFFFF)
+    i = 0x7FFFFF;
+  else if (i < -0x800000)
+    i = -0x800000;
+
+  if (i < 0) {
+    i = (1 << 24) - (-i);
+  }
+
+  s[0] = i >> 16;
+  s[1] = (i >> 8) & 0xFF;
+  s[2] = i & 0xFF;
+}
+
+void FrameList_int_to_UL24_char(int32_t i, unsigned char *s) {
+  s[2] = (i >> 16) & 0xFF;
+  s[1] = (i >> 8) & 0xFF;
+  s[0] = i & 0xFF;
+}
+
+void FrameList_int_to_SL24_char(int32_t i, unsigned char *s) {
+  if (i > 0x7FFFFF)
+    i = 0x7FFFFF;
+  else if (i < -0x800000)
+    i = -0x800000;
+
+  if (i < 0) {
+    i = (1 << 24) - (-i);
+  }
+
+  s[2] = i >> 16;
+  s[1] = (i >> 8) & 0xFF;
   s[0] = i & 0xFF;
 }

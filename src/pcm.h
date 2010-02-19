@@ -195,3 +195,8 @@ void FrameList_int_to_UB16_char(int32_t i, unsigned char *s);
 void FrameList_int_to_SB16_char(int32_t i, unsigned char *s);
 void FrameList_int_to_UL16_char(int32_t i, unsigned char *s);
 void FrameList_int_to_SL16_char(int32_t i, unsigned char *s);
+
+void FrameList_int_to_UB24_char(int32_t i, unsigned char *s);
+void FrameList_int_to_SB24_char(int32_t i, unsigned char *s);
+void FrameList_int_to_UL24_char(int32_t i, unsigned char *s);
+void FrameList_int_to_SL24_char(int32_t i, unsigned char *s);

@@ -34,8 +34,8 @@ import time
 
 gettext.install("audiotools",unicode=True)
 
-(METADATA,PCM,EXECUTABLE,CUESHEET,IMAGE,FLAC,CUSTOM) = range(7)
-CASES = set([METADATA,PCM,EXECUTABLE,CUESHEET,IMAGE,FLAC])
+(METADATA,PCM,FRAMELIST,EXECUTABLE,CUESHEET,IMAGE,FLAC,CUSTOM) = range(8)
+CASES = set([METADATA,PCM,FRAMELIST,EXECUTABLE,CUESHEET,IMAGE,FLAC])
 
 def nothing(self):
     pass
@@ -46,9 +46,14 @@ def TEST_METADATA(function):
     else:
         return function
 
-
 def TEST_PCM(function):
     if (PCM not in CASES):
+        return nothing
+    else:
+        return function
+
+def TEST_FRAMELIST(function):
+    if (FRAMELIST not in CASES):
         return nothing
     else:
         return function
@@ -9078,6 +9083,147 @@ class TestFlacCodec(unittest.TestCase):
     #multiple file handling is performed at the tool level
 
     #as is metadata handling
+
+class TestFrameList(unittest.TestCase):
+    @TEST_FRAMELIST
+    def test_8bit_roundtrip(self):
+        import audiotools.pcm
+
+        unsigned_ints = range(0,0xFF + 1)
+        signed_ints = range(-0x80,0x7F + 1)
+
+        UB8Int = audiotools.Con.GreedyRepeater(audiotools.Con.UBInt8(None))
+        UL8Int = audiotools.Con.GreedyRepeater(audiotools.Con.ULInt8(None))
+        SB8Int = audiotools.Con.GreedyRepeater(audiotools.Con.SBInt8(None))
+        SL8Int = audiotools.Con.GreedyRepeater(audiotools.Con.UBInt8(None))
+
+        self.assertEqual(unsigned_ints,
+                         list(audiotools.pcm.FrameList(
+                    UB8Int.build(unsigned_ints),
+                    1,8,1,0)))
+
+        self.assertEqual(unsigned_ints,
+                         list(audiotools.pcm.FrameList(
+                    UL8Int.build(unsigned_ints),
+                    1,8,0,0)))
+
+        self.assertEqual(signed_ints,
+                         list(audiotools.pcm.FrameList(
+                    SB8Int.build(signed_ints),
+                    1,8,1,1)))
+
+        #this test triggers a DeprecationWarning
+        #which is odd since signed little-endian 8 bit
+        #should be the same as signed big-endian 8 bit
+        # self.assertEqual(signed_ints,
+        #                  list(audiotools.pcm.FrameList(
+        #             SL8Int.build(signed_ints),
+        #             1,8,0,1)))
+
+    @TEST_FRAMELIST
+    def test_16bit_roundtrip(self):
+        import audiotools.pcm
+
+        unsigned_ints = range(0,0xFFFF + 1)
+        signed_ints = range(-0x8000,0x7FFF + 1)
+
+        UB16Int = audiotools.Con.GreedyRepeater(audiotools.Con.UBInt16(None))
+        UL16Int = audiotools.Con.GreedyRepeater(audiotools.Con.ULInt16(None))
+        SB16Int = audiotools.Con.GreedyRepeater(audiotools.Con.SBInt16(None))
+        SL16Int = audiotools.Con.GreedyRepeater(audiotools.Con.SLInt16(None))
+
+        self.assertEqual(unsigned_ints,
+                         list(audiotools.pcm.FrameList(
+                    UB16Int.build(unsigned_ints),
+                    1,16,1,0)))
+
+        self.assertEqual(unsigned_ints,
+                         list(audiotools.pcm.FrameList(
+                    UL16Int.build(unsigned_ints),
+                    1,16,0,0)))
+
+        self.assertEqual(signed_ints,
+                         list(audiotools.pcm.FrameList(
+                    SB16Int.build(signed_ints),
+                    1,16,1,1)))
+
+        self.assertEqual(signed_ints,
+                         list(audiotools.pcm.FrameList(
+                    SL16Int.build(signed_ints),
+                    1,16,0,1)))
+
+    @TEST_FRAMELIST
+    def test_24bit_roundtrip(self):
+        import audiotools.pcm
+
+        #setting this higher than 1 means we only test a sample
+        #of the fill 24-bit value range
+        #since testing the whole range takes a very, very long time
+        RANGE = 8
+
+        unsigned_ints_high = [r << 8 for r in xrange(0,0xFFFF + 1)]
+        signed_ints_high = [r << 8 for r in xrange(-0x8000,0x7FFF + 1)]
+
+        UB24Int = audiotools.Con.BitStruct(
+            None,
+            audiotools.Con.GreedyRepeater(audiotools.Con.Bits("i",
+                                                              length=24,
+                                                              swapped=False,
+                                                              signed=False)))
+
+        UL24Int = audiotools.Con.BitStruct(
+            None,
+            audiotools.Con.GreedyRepeater(audiotools.Con.Bits("i",
+                                                              length=24,
+                                                              swapped=True,
+                                                              signed=False)))
+
+        SB24Int = audiotools.Con.BitStruct(
+            None,
+            audiotools.Con.GreedyRepeater(audiotools.Con.Bits("i",
+                                                              length=24,
+                                                              swapped=False,
+                                                              signed=True)))
+
+        SL24Int = audiotools.Con.BitStruct(
+            None,
+            audiotools.Con.GreedyRepeater(audiotools.Con.Bits("i",
+                                                              length=24,
+                                                              swapped=True,
+                                                              signed=True)))
+
+        for low_bits in xrange(0,0xFF + 1,RANGE):
+            unsigned_values = [high_bits | low_bits for high_bits in
+                               unsigned_ints_high]
+
+            self.assertEqual(unsigned_values,
+                             list(audiotools.pcm.FrameList(
+                        UB24Int.build(Con.Container(i=unsigned_values)),
+                        1,24,1,0)))
+
+            self.assertEqual(unsigned_values,
+                             list(audiotools.pcm.FrameList(
+                        UL24Int.build(Con.Container(i=unsigned_values)),
+                        1,24,0,0)))
+
+        for low_bits in xrange(0,0xFF + 1,RANGE):
+            if (high_bits < 0):
+                signed_values = [high_bits - low_bits for high_bits in
+                                 signed_ints_high]
+            else:
+                signed_values = [high_bits + low_bits for high_bits in
+                                 signed_ints_high]
+
+            self.assertEqual(signed_values,
+                             list(audiotools.pcm.FrameList(
+                        SB24Int.build(Con.Container(i=signed_values)),
+                        1,24,1,1)))
+
+            self.assertEqual(signed_values,
+                             list(audiotools.pcm.FrameList(
+                        SL24Int.build(Con.Container(i=signed_values)),
+                        1,24,0,1)))
+
 
 ############
 #END TESTS
