@@ -358,10 +358,10 @@ void FrameList_int_to_S8_char(int32_t i, unsigned char *s) {
 
   if (i >= 0) {
     /*positive*/
-    s[0] = i & 0x7F;
+    s[0] = i;
   } else {
     /*negative*/
-    s[0] = (-(-i - 0x100)) | 0x80;
+    s[0] = (1 << 8) - (-i);
   }
 }
 
