@@ -183,6 +183,15 @@ void FrameList_samples_to_char(unsigned char *data,
 			       uint32_t samples_length,
 			       int bits_per_sample);
 
+FrameList_int_to_char_converter FrameList_get_int_to_char_converter(
+                                              int bits_per_sample,
+                                              int is_big_endian,
+                                              int is_signed);
+
 void FrameList_int_to_S8_char(int32_t i, unsigned char *s);
 void FrameList_int_to_U8_char(int32_t i, unsigned char *s);
 
+void FrameList_int_to_UB16_char(int32_t i, unsigned char *s);
+void FrameList_int_to_SB16_char(int32_t i, unsigned char *s);
+void FrameList_int_to_UL16_char(int32_t i, unsigned char *s);
+void FrameList_int_to_SL16_char(int32_t i, unsigned char *s);
