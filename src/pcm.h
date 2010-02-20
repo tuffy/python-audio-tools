@@ -76,11 +76,15 @@ PyObject *FrameList_from_list(PyObject *dummy, PyObject *args);
 
 PyObject *FrameList_from_frames(PyObject *dummy, PyObject *args);
 
+PyObject *FrameList_from_channels(PyObject *dummy, PyObject *args);
+
 PyMethodDef module_methods[] = {
   {"from_list",(PyCFunction)FrameList_from_list,
    METH_VARARGS,"Converts a list of PCM integers to a FrameList"},
   {"from_frames",(PyCFunction)FrameList_from_frames,
-   METH_VARARGS,"Converts a list of FrameLists to a FrameList"},
+   METH_VARARGS,"Converts a list of FrameList frames to a FrameList"},
+  {"from_channels",(PyCFunction)FrameList_from_channels,
+   METH_VARARGS,"Converts a list of FrameList channels to a FrameList"},
   {NULL}
 };
 
