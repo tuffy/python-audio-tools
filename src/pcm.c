@@ -87,6 +87,10 @@ int FrameList_init(pcm_FrameList *self, PyObject *args, PyObject *kwds) {
   return 0;
 }
 
+int FrameList_CheckExact(PyObject *o) {
+  return o->ob_type == &pcm_FrameListType;
+}
+
 PyObject* FrameList_frames(pcm_FrameList *self, void* closure) {
   return Py_BuildValue("i",self->frames);
 }
@@ -210,13 +214,11 @@ void FrameList_char_to_samples(int32_t *samples,
 }
 
 PyObject *FrameList_from_list(PyObject *dummy, PyObject *args) {
-  pcm_FrameList *framelist;
+  pcm_FrameList *framelist = NULL;
   PyObject *list;
   PyObject *integer;
   Py_ssize_t list_len,i;
   long integer_val;
-
-  framelist = (pcm_FrameList*)_PyObject_New(&pcm_FrameListType);
 
   if (!PyArg_ParseTuple(args,"Oiii",&list,
 			&(framelist->channels),
@@ -233,6 +235,7 @@ PyObject *FrameList_from_list(PyObject *dummy, PyObject *args) {
     goto error;
   }
 
+  framelist = (pcm_FrameList*)_PyObject_New(&pcm_FrameListType);
   framelist->samples = malloc(sizeof(int32_t) * list_len);
   framelist->samples_length = list_len;
   framelist->frames = list_len / framelist->channels;
@@ -249,7 +252,77 @@ PyObject *FrameList_from_list(PyObject *dummy, PyObject *args) {
 
   return (PyObject*)framelist;
  error:
-  Py_DECREF(framelist);
+  Py_XDECREF(framelist);
+  return NULL;
+}
+
+PyObject *FrameList_from_frames(PyObject *dummy, PyObject *args) {
+  pcm_FrameList *framelist = NULL;
+  PyObject *list;
+  PyObject *list_item;
+  Py_ssize_t list_len,i;
+  pcm_FrameList *frame;
+
+  if (!PyArg_ParseTuple(args,"O",&list))
+    goto error;
+
+  if ((list_len = PySequence_Size(list)) == -1)
+    goto error;
+
+  if ((list_item = PySequence_GetItem(list,0)) == NULL)
+    goto error;
+
+  if (!FrameList_CheckExact(list_item)) {
+    PyErr_SetString(PyExc_TypeError,
+		    "frames must be of type FrameList");
+    goto error;
+  }
+
+  frame = (pcm_FrameList*)list_item;
+
+  framelist = (pcm_FrameList*)_PyObject_New(&pcm_FrameListType);
+  framelist->frames = list_len;
+  framelist->channels = frame->channels;
+  framelist->bits_per_sample = frame->bits_per_sample;
+  framelist->is_signed = frame->is_signed;
+  framelist->samples_length = list_len * frame->channels;
+  framelist->samples = malloc(sizeof(int32_t) * framelist->samples_length);
+
+  memcpy(framelist->samples,frame->samples,
+	 sizeof(int32_t) * frame->samples_length);
+
+  for (i = 1; i < list_len; i++) {
+    if ((list_item = PySequence_GetItem(list,i)) == NULL)
+      goto error;
+    if (!FrameList_CheckExact(list_item)) {
+      PyErr_SetString(PyExc_TypeError,
+		      "frames must be of type FrameList");
+      goto error;
+    }
+    frame = (pcm_FrameList*)list_item;
+    if (frame->channels != framelist->channels) {
+      PyErr_SetString(PyExc_ValueError,
+		      "all subframes must have the same number of channels");
+      goto error;
+    }
+    if (frame->bits_per_sample != framelist->bits_per_sample) {
+      PyErr_SetString(PyExc_ValueError,
+		      "all subframes must have the same number of bits per sample");
+      goto error;
+    }
+    if (frame->is_signed != framelist->is_signed) {
+      PyErr_SetString(PyExc_ValueError,
+		      "all subframes must have the same signed or unsigned value");
+      goto error;
+    }
+    memcpy(framelist->samples + (i * framelist->channels),
+	   frame->samples,
+	   sizeof(int32_t) * frame->samples_length);
+  }
+
+  return (PyObject*)framelist;
+ error:
+  Py_XDECREF(framelist);
   return NULL;
 }
 

@@ -52,6 +52,8 @@ PyObject *FrameList_new(PyTypeObject *type, PyObject *args, PyObject *kwds);
 
 int FrameList_init(pcm_FrameList *self, PyObject *args, PyObject *kwds);
 
+int FrameList_CheckExact(PyObject *o);
+
 PyObject* FrameList_frames(pcm_FrameList *self, void* closure);
 
 PyObject* FrameList_channels(pcm_FrameList *self, void* closure);
@@ -72,9 +74,13 @@ PyObject* FrameList_to_bytes(pcm_FrameList *self, PyObject *args);
 
 PyObject *FrameList_from_list(PyObject *dummy, PyObject *args);
 
+PyObject *FrameList_from_frames(PyObject *dummy, PyObject *args);
+
 PyMethodDef module_methods[] = {
   {"from_list",(PyCFunction)FrameList_from_list,
    METH_VARARGS,"Converts a list of PCM integers to a FrameList"},
+  {"from_frames",(PyCFunction)FrameList_from_frames,
+   METH_VARARGS,"Converts a list of FrameLists to a FrameList"},
   {NULL}
 };
 
