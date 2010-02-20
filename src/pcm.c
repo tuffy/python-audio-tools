@@ -209,6 +209,50 @@ void FrameList_char_to_samples(int32_t *samples,
   }
 }
 
+PyObject *FrameList_from_list(PyObject *dummy, PyObject *args) {
+  pcm_FrameList *framelist;
+  PyObject *list;
+  PyObject *integer;
+  Py_ssize_t list_len,i;
+  long integer_val;
+
+  framelist = (pcm_FrameList*)_PyObject_New(&pcm_FrameListType);
+
+  if (!PyArg_ParseTuple(args,"Oiii",&list,
+			&(framelist->channels),
+			&(framelist->bits_per_sample),
+			&(framelist->is_signed)))
+    goto error;
+
+  if ((list_len = PySequence_Size(list)) == -1)
+    goto error;
+
+  if (list_len % framelist->channels) {
+    PyErr_SetString(PyExc_ValueError,
+		    "number of samples must be divisible by number of channels");
+    goto error;
+  }
+
+  framelist->samples = malloc(sizeof(int32_t) * list_len);
+  framelist->samples_length = list_len;
+  framelist->frames = list_len / framelist->channels;
+  for (i = 0; i < list_len; i++) {
+    if ((integer = PySequence_GetItem(list,i)) == NULL)
+      goto error;
+    if (((integer_val = PyInt_AsLong(integer)) == -1) &&
+	PyErr_Occurred())
+      goto error;
+    else {
+      framelist->samples[i] = integer_val;
+    }
+  }
+
+  return (PyObject*)framelist;
+ error:
+  Py_DECREF(framelist);
+  return NULL;
+}
+
 FrameList_char_to_int_converter FrameList_get_char_to_int_converter(
                                               int bits_per_sample,
 			         	      int is_big_endian,
