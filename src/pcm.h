@@ -1,3 +1,6 @@
+#ifndef PCM_H
+#define PCM_H
+
 #if PY_VERSION_HEX < 0x02050000 && !defined(PY_SSIZE_T_MIN)
 typedef int Py_ssize_t;
 #define PY_SSIZE_T_MAX INT_MAX
@@ -28,6 +31,7 @@ typedef int Py_ssize_t;
 #endif
 
 #include <stdint.h>
+#include "array.h"
 
 typedef struct {
   PyObject_HEAD;
@@ -39,9 +43,9 @@ typedef struct {
   int bits_per_sample; /*the maximum size of each sample, in bits*/
   int is_signed;       /*1 if the samples are signed, 0 if unsigned*/
 
-  int32_t* samples;    /*the actual sample data itself,
+  ia_data_t* samples;    /*the actual sample data itself,
 			 stored raw as 32-bit signed integers*/
-  uint32_t samples_length; /*the total number of samples
+  ia_size_t samples_length; /*the total number of samples
 			     which must be evenly distributable
 			     between channels and bits-per-sample*/
 } pcm_FrameList;
@@ -176,12 +180,12 @@ PyTypeObject pcm_FrameListType = {
     FrameList_new,             /* tp_new */
 };
 
-typedef int32_t (*FrameList_char_to_int_converter)(unsigned char *s);
+typedef ia_data_t (*FrameList_char_to_int_converter)(unsigned char *s);
 
-void FrameList_char_to_samples(int32_t *samples,
+void FrameList_char_to_samples(ia_data_t *samples,
 			       unsigned char *data,
 			       FrameList_char_to_int_converter converter,
-			       uint32_t samples_length,
+			       ia_size_t samples_length,
 			       int bits_per_sample);
 
 FrameList_char_to_int_converter FrameList_get_char_to_int_converter(
@@ -189,26 +193,26 @@ FrameList_char_to_int_converter FrameList_get_char_to_int_converter(
 					      int is_big_endian,
 					      int is_signed);
 
-int32_t FrameList_S8_char_to_int(unsigned char *s);
-int32_t FrameList_U8_char_to_int(unsigned char *s);
+ia_data_t FrameList_S8_char_to_int(unsigned char *s);
+ia_data_t FrameList_U8_char_to_int(unsigned char *s);
 
-int32_t FrameList_SL16_char_to_int(unsigned char *s);
-int32_t FrameList_SB16_char_to_int(unsigned char *s);
-int32_t FrameList_UL16_char_to_int(unsigned char *s);
-int32_t FrameList_UB16_char_to_int(unsigned char *s);
+ia_data_t FrameList_SL16_char_to_int(unsigned char *s);
+ia_data_t FrameList_SB16_char_to_int(unsigned char *s);
+ia_data_t FrameList_UL16_char_to_int(unsigned char *s);
+ia_data_t FrameList_UB16_char_to_int(unsigned char *s);
 
-int32_t FrameList_SL24_char_to_int(unsigned char *s);
-int32_t FrameList_SB24_char_to_int(unsigned char *s);
-int32_t FrameList_UL24_char_to_int(unsigned char *s);
-int32_t FrameList_UB24_char_to_int(unsigned char *s);
+ia_data_t FrameList_SL24_char_to_int(unsigned char *s);
+ia_data_t FrameList_SB24_char_to_int(unsigned char *s);
+ia_data_t FrameList_UL24_char_to_int(unsigned char *s);
+ia_data_t FrameList_UB24_char_to_int(unsigned char *s);
 
 
-typedef void (*FrameList_int_to_char_converter)(int32_t i, unsigned char *s);
+typedef void (*FrameList_int_to_char_converter)(ia_data_t i, unsigned char *s);
 
 void FrameList_samples_to_char(unsigned char *data,
-			       int32_t *samples,
+			       ia_data_t *samples,
 			       FrameList_int_to_char_converter converter,
-			       uint32_t samples_length,
+			       ia_size_t samples_length,
 			       int bits_per_sample);
 
 FrameList_int_to_char_converter FrameList_get_int_to_char_converter(
@@ -216,15 +220,17 @@ FrameList_int_to_char_converter FrameList_get_int_to_char_converter(
                                               int is_big_endian,
                                               int is_signed);
 
-void FrameList_int_to_S8_char(int32_t i, unsigned char *s);
-void FrameList_int_to_U8_char(int32_t i, unsigned char *s);
+void FrameList_int_to_S8_char(ia_data_t i, unsigned char *s);
+void FrameList_int_to_U8_char(ia_data_t i, unsigned char *s);
 
-void FrameList_int_to_UB16_char(int32_t i, unsigned char *s);
-void FrameList_int_to_SB16_char(int32_t i, unsigned char *s);
-void FrameList_int_to_UL16_char(int32_t i, unsigned char *s);
-void FrameList_int_to_SL16_char(int32_t i, unsigned char *s);
+void FrameList_int_to_UB16_char(ia_data_t i, unsigned char *s);
+void FrameList_int_to_SB16_char(ia_data_t i, unsigned char *s);
+void FrameList_int_to_UL16_char(ia_data_t i, unsigned char *s);
+void FrameList_int_to_SL16_char(ia_data_t i, unsigned char *s);
 
-void FrameList_int_to_UB24_char(int32_t i, unsigned char *s);
-void FrameList_int_to_SB24_char(int32_t i, unsigned char *s);
-void FrameList_int_to_UL24_char(int32_t i, unsigned char *s);
-void FrameList_int_to_SL24_char(int32_t i, unsigned char *s);
+void FrameList_int_to_UB24_char(ia_data_t i, unsigned char *s);
+void FrameList_int_to_SB24_char(ia_data_t i, unsigned char *s);
+void FrameList_int_to_UL24_char(ia_data_t i, unsigned char *s);
+void FrameList_int_to_SL24_char(ia_data_t i, unsigned char *s);
+
+#endif

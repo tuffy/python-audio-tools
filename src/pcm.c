@@ -74,7 +74,7 @@ int FrameList_init(pcm_FrameList *self, PyObject *args, PyObject *kwds) {
   } else {
     self->samples_length = data_size / (self->bits_per_sample / 8);
     self->frames = self->samples_length / self->channels;
-    self->samples = malloc(sizeof(int32_t) * self->samples_length);
+    self->samples = malloc(sizeof(ia_data_t) * self->samples_length);
     converter = FrameList_get_char_to_int_converter(self->bits_per_sample,
 						    is_big_endian,
 						    self->is_signed);
@@ -143,19 +143,19 @@ PyObject* FrameList_frame(pcm_FrameList *self, PyObject *args) {
   frame->channels = self->channels;
   frame->bits_per_sample = self->bits_per_sample;
   frame->is_signed = self->is_signed;
-  frame->samples = malloc(sizeof(int32_t) * self->channels);
+  frame->samples = malloc(sizeof(ia_data_t) * self->channels);
   frame->samples_length = self->channels;
   memcpy(frame->samples,
 	 self->samples + (frame_number * self->channels),
-	 sizeof(int32_t) * self->channels);
+	 sizeof(ia_data_t) * self->channels);
   return (PyObject*)frame;
 }
 
 PyObject* FrameList_channel(pcm_FrameList *self, PyObject *args) {
   int channel_number;
   pcm_FrameList *channel;
-  uint32_t i,j;
-  uint32_t samples_length;
+  ia_size_t i,j;
+  ia_size_t samples_length;
   int total_channels;
 
   if (!PyArg_ParseTuple(args,"i",&channel_number))
@@ -170,7 +170,7 @@ PyObject* FrameList_channel(pcm_FrameList *self, PyObject *args) {
   channel->channels = 1;
   channel->bits_per_sample = self->bits_per_sample;
   channel->is_signed = self->is_signed;
-  channel->samples = malloc(sizeof(int32_t) * self->frames);
+  channel->samples = malloc(sizeof(ia_data_t) * self->frames);
   channel->samples_length = self->frames;
 
   samples_length = self->samples_length;
@@ -208,8 +208,8 @@ PyObject* FrameList_to_bytes(pcm_FrameList *self, PyObject *args) {
 }
 
 PyObject* FrameList_set_signed(pcm_FrameList *self, PyObject *args) {
-  int32_t adjustment;
-  uint32_t i;
+  ia_data_t adjustment;
+  ia_size_t i;
 
   if (!self->is_signed) {
     adjustment = 1 << (self->bits_per_sample - 1);
@@ -222,8 +222,8 @@ PyObject* FrameList_set_signed(pcm_FrameList *self, PyObject *args) {
 }
 
 PyObject* FrameList_set_unsigned(pcm_FrameList *self, PyObject *args) {
-  int32_t adjustment;
-  uint32_t i;
+  ia_data_t adjustment;
+  ia_size_t i;
 
   if (self->is_signed) {
     adjustment = 1 << (self->bits_per_sample - 1);
@@ -238,6 +238,7 @@ PyObject* FrameList_set_unsigned(pcm_FrameList *self, PyObject *args) {
 PyObject* FrameList_split(pcm_FrameList *self, PyObject *args){
   pcm_FrameList *head = NULL;
   pcm_FrameList *tail = NULL;
+  PyObject* tuple;
   int split_point;
 
   if (!PyArg_ParseTuple(args,"i",&split_point))
@@ -270,26 +271,28 @@ PyObject* FrameList_split(pcm_FrameList *self, PyObject *args){
     head = (pcm_FrameList*)_PyObject_New(&pcm_FrameListType);
     head->frames = split_point;
     head->samples_length = (head->frames * self->channels);
-    head->samples = malloc(head->samples_length * sizeof(int32_t));
+    head->samples = malloc(head->samples_length * sizeof(ia_data_t));
     memcpy(head->samples,
 	   self->samples,
-	   head->samples_length * sizeof(int32_t));
+	   head->samples_length * sizeof(ia_data_t));
 
     tail = (pcm_FrameList*)_PyObject_New(&pcm_FrameListType);
     tail->frames = (self->frames - split_point);
     tail->samples_length = (tail->frames * self->channels);
-    tail->samples = malloc(tail->samples_length * sizeof(int32_t));
+    tail->samples = malloc(tail->samples_length * sizeof(ia_data_t));
     memcpy(tail->samples,
 	   self->samples + head->samples_length,
-	   tail->samples_length * sizeof(int32_t));
+	   tail->samples_length * sizeof(ia_data_t));
 
     head->channels = tail->channels = self->channels;
     head->bits_per_sample = tail->bits_per_sample = self->bits_per_sample;
     head->is_signed = tail->is_signed = self->is_signed;
   }
 
-  /*FIXME - decref head and tail before buildvalue?*/
-  return Py_BuildValue("(O,O)",head,tail);
+  tuple = Py_BuildValue("(O,O)",head,tail);
+  Py_DECREF(head);
+  Py_DECREF(tail);
+  return tuple;
  error:
   Py_XDECREF(head);
   Py_XDECREF(tail);
@@ -330,11 +333,11 @@ PyObject* FrameList_concat(pcm_FrameList *a, PyObject *bb) {
   concat->bits_per_sample = a->bits_per_sample;
   concat->is_signed = a->is_signed;
   concat->samples_length = a->samples_length + b->samples_length;
-  concat->samples = malloc(concat->samples_length * sizeof(int32_t));
-  memcpy(concat->samples,a->samples,a->samples_length * sizeof(int32_t));
+  concat->samples = malloc(concat->samples_length * sizeof(ia_data_t));
+  memcpy(concat->samples,a->samples,a->samples_length * sizeof(ia_data_t));
   memcpy(concat->samples + a->samples_length,
 	 b->samples,
-	 b->samples_length * sizeof(int32_t));
+	 b->samples_length * sizeof(ia_data_t));
 
   return (PyObject*)concat;
  error:
@@ -342,10 +345,10 @@ PyObject* FrameList_concat(pcm_FrameList *a, PyObject *bb) {
   return NULL;
 }
 
-void FrameList_char_to_samples(int32_t *samples,
+void FrameList_char_to_samples(ia_data_t *samples,
 			       unsigned char *data,
 			       FrameList_char_to_int_converter converter,
-			       uint32_t samples_length,
+			       ia_size_t samples_length,
 			       int bits_per_sample) {
   int bytes_per_sample = bits_per_sample / 8;
   int i;
@@ -395,7 +398,7 @@ PyObject *FrameList_from_list(PyObject *dummy, PyObject *args) {
   framelist->channels = channels;
   framelist->bits_per_sample = bits_per_sample;
   framelist->is_signed = is_signed;
-  framelist->samples = malloc(sizeof(int32_t) * list_len);
+  framelist->samples = malloc(sizeof(ia_data_t) * list_len);
   framelist->samples_length = list_len;
   framelist->frames = list_len / framelist->channels;
   for (i = 0; i < list_len; i++) {
@@ -450,10 +453,10 @@ PyObject *FrameList_from_frames(PyObject *dummy, PyObject *args) {
   framelist->bits_per_sample = frame->bits_per_sample;
   framelist->is_signed = frame->is_signed;
   framelist->samples_length = list_len * frame->channels;
-  framelist->samples = malloc(sizeof(int32_t) * framelist->samples_length);
+  framelist->samples = malloc(sizeof(ia_data_t) * framelist->samples_length);
 
   memcpy(framelist->samples,frame->samples,
-	 sizeof(int32_t) * frame->samples_length);
+	 sizeof(ia_data_t) * frame->samples_length);
 
   for (i = 1; i < list_len; i++) {
     if ((list_item = PySequence_GetItem(list,i)) == NULL)
@@ -488,7 +491,7 @@ PyObject *FrameList_from_frames(PyObject *dummy, PyObject *args) {
 
     memcpy(framelist->samples + (i * framelist->channels),
 	   frame->samples,
-	   sizeof(int32_t) * frame->samples_length);
+	   sizeof(ia_data_t) * frame->samples_length);
   }
 
   return (PyObject*)framelist;
@@ -503,7 +506,7 @@ PyObject *FrameList_from_channels(PyObject *dummy, PyObject *args) {
   PyObject *list_item;
   Py_ssize_t list_len,i;
   pcm_FrameList *channel;
-  uint32_t j;
+  ia_size_t j;
 
   if (!PyArg_ParseTuple(args,"O",&list))
     goto error;
@@ -533,7 +536,7 @@ PyObject *FrameList_from_channels(PyObject *dummy, PyObject *args) {
   framelist->bits_per_sample = channel->bits_per_sample;
   framelist->is_signed = channel->is_signed;
   framelist->samples_length = framelist->frames * list_len;
-  framelist->samples = malloc(sizeof(int32_t) * framelist->samples_length);
+  framelist->samples = malloc(sizeof(ia_data_t) * framelist->samples_length);
 
   for (j = 0; j < channel->samples_length; j++) {
     framelist->samples[j * list_len] = channel->samples[j];
@@ -642,80 +645,80 @@ FrameList_char_to_int_converter FrameList_get_char_to_int_converter(
   }
 }
 
-int32_t FrameList_U8_char_to_int(unsigned char *s) {
-  return (int32_t)s[0];
+ia_data_t FrameList_U8_char_to_int(unsigned char *s) {
+  return (ia_data_t)s[0];
 }
 
-int32_t FrameList_S8_char_to_int(unsigned char *s) {
+ia_data_t FrameList_S8_char_to_int(unsigned char *s) {
   if (s[0] & 0x80) {
     /*negative*/
-    return -(int32_t)(0x100 - s[0]);
+    return -(ia_data_t)(0x100 - s[0]);
   } else {
     /*positive*/
-    return (int32_t)s[0];
+    return (ia_data_t)s[0];
   }
 }
 
-int32_t FrameList_UB16_char_to_int(unsigned char *s) {
-  return (int32_t)(s[0] << 8) | s[1];
+ia_data_t FrameList_UB16_char_to_int(unsigned char *s) {
+  return (ia_data_t)(s[0] << 8) | s[1];
 }
 
-int32_t FrameList_UL16_char_to_int(unsigned char *s) {
-  return (int32_t)(s[1] << 8) | s[0];
+ia_data_t FrameList_UL16_char_to_int(unsigned char *s) {
+  return (ia_data_t)(s[1] << 8) | s[0];
 }
 
-int32_t FrameList_SL16_char_to_int(unsigned char *s) {
+ia_data_t FrameList_SL16_char_to_int(unsigned char *s) {
   if (s[1] & 0x80) {
     /*negative*/
-    return -(int32_t)(0x10000 - ((s[1] << 8) | s[0]));
+    return -(ia_data_t)(0x10000 - ((s[1] << 8) | s[0]));
   } else {
     /*positive*/
-    return (int32_t)(s[1] << 8) | s[0];
+    return (ia_data_t)(s[1] << 8) | s[0];
   }
 }
 
-int32_t FrameList_SB16_char_to_int(unsigned char *s) {
+ia_data_t FrameList_SB16_char_to_int(unsigned char *s) {
   if (s[0] & 0x80) {
     /*negative*/
-    return -(int32_t)(0x10000 - ((s[0] << 8) | s[1]));
+    return -(ia_data_t)(0x10000 - ((s[0] << 8) | s[1]));
   } else {
     /*positive*/
-    return (int32_t)(s[0] << 8) | s[1];
+    return (ia_data_t)(s[0] << 8) | s[1];
   }
 }
 
-int32_t FrameList_UL24_char_to_int(unsigned char *s) {
-  return (int32_t)((s[2] << 16) | (s[1] << 8) | s[0]);
+ia_data_t FrameList_UL24_char_to_int(unsigned char *s) {
+  return (ia_data_t)((s[2] << 16) | (s[1] << 8) | s[0]);
 }
 
-int32_t FrameList_UB24_char_to_int(unsigned char *s) {
-  return (int32_t)((s[0] << 16) | (s[1] << 8) | s[2]);
+ia_data_t FrameList_UB24_char_to_int(unsigned char *s) {
+  return (ia_data_t)((s[0] << 16) | (s[1] << 8) | s[2]);
 }
 
-int32_t FrameList_SL24_char_to_int(unsigned char *s) {
+ia_data_t FrameList_SL24_char_to_int(unsigned char *s) {
   if (s[2] & 0x80) {
     /*negative*/
-    return -(int32_t)(0x1000000 - ((s[2] << 16) | (s[1] << 8) | s[0]));
+    return -(ia_data_t)(0x1000000 - ((s[2] << 16) | (s[1] << 8) | s[0]));
   } else {
     /*positive*/
-    return (int32_t)((s[2] << 16) | (s[1] << 8) | s[0]);
+    return (ia_data_t)((s[2] << 16) | (s[1] << 8) | s[0]);
   }
 }
 
-int32_t FrameList_SB24_char_to_int(unsigned char *s) {
+ia_data_t FrameList_SB24_char_to_int(unsigned char *s) {
   if (s[0] & 0x80) {
     /*negative*/
-    return -(int32_t)(0x1000000 - ((s[0] << 16) | (s[1] << 8) | s[2]));
+    return -(ia_data_t)(0x1000000 - ((s[0] << 16) | (s[1] << 8) | s[2]));
   } else {
     /*positive*/
-    return (int32_t)((s[0] << 16) | (s[1] << 8) | s[2]);
+    return (ia_data_t)((s[0] << 16) | (s[1] << 8) | s[2]);
   }
 }
 
 void FrameList_samples_to_char(unsigned char *data,
-			       int32_t *samples,
+			       ia_data_t *samples,
 			       FrameList_int_to_char_converter converter,
-			       uint32_t samples_length,
+			       ia_size_t samples_length,
 			       int bits_per_sample) {
   int bytes_per_sample = bits_per_sample / 8;
   int i;
@@ -786,7 +789,7 @@ FrameList_int_to_char_converter FrameList_get_int_to_char_converter(
   }
 }
 
-void FrameList_int_to_S8_char(int32_t i, unsigned char *s) {
+void FrameList_int_to_S8_char(ia_data_t i, unsigned char *s) {
   if (i > 0x7F)
     i = 0x7F;  /*avoid overflow*/
   else if (i < -0x80)
@@ -801,16 +804,16 @@ void FrameList_int_to_S8_char(int32_t i, unsigned char *s) {
   }
 }
 
-void FrameList_int_to_U8_char(int32_t i, unsigned char *s) {
+void FrameList_int_to_U8_char(ia_data_t i, unsigned char *s) {
   s[0] = i & 0xFF;
 }
 
-void FrameList_int_to_UB16_char(int32_t i, unsigned char *s) {
+void FrameList_int_to_UB16_char(ia_data_t i, unsigned char *s) {
   s[0] = (i >> 8) & 0xFF;
   s[1] = i & 0xFF;
 }
 
-void FrameList_int_to_SB16_char(int32_t i, unsigned char *s) {
+void FrameList_int_to_SB16_char(ia_data_t i, unsigned char *s) {
   if (i > 0x7FFF)
     i = 0x7FFF;
   else if (i < -0x8000)
@@ -824,12 +827,12 @@ void FrameList_int_to_SB16_char(int32_t i, unsigned char *s) {
   s[1] = i & 0xFF;
 }
 
-void FrameList_int_to_UL16_char(int32_t i, unsigned char *s) {
+void FrameList_int_to_UL16_char(ia_data_t i, unsigned char *s) {
   s[1] = (i >> 8) & 0xFF;
   s[0] = i & 0xFF;
 }
 
-void FrameList_int_to_SL16_char(int32_t i, unsigned char *s) {
+void FrameList_int_to_SL16_char(ia_data_t i, unsigned char *s) {
   if (i > 0x7FFF)
     i = 0x7FFF;
   else if (i < -0x8000)
@@ -843,13 +846,13 @@ void FrameList_int_to_SL16_char(int32_t i, unsigned char *s) {
   s[0] = i & 0xFF;
 }
 
-void FrameList_int_to_UB24_char(int32_t i, unsigned char *s) {
+void FrameList_int_to_UB24_char(ia_data_t i, unsigned char *s) {
   s[0] = (i >> 16) & 0xFF;
   s[1] = (i >> 8) & 0xFF;
   s[2] = i & 0xFF;
 }
 
-void FrameList_int_to_SB24_char(int32_t i, unsigned char *s) {
+void FrameList_int_to_SB24_char(ia_data_t i, unsigned char *s) {
   if (i > 0x7FFFFF)
     i = 0x7FFFFF;
   else if (i < -0x800000)
@@ -864,13 +867,13 @@ void FrameList_int_to_SB24_char(int32_t i, unsigned char *s) {
   s[2] = i & 0xFF;
 }
 
-void FrameList_int_to_UL24_char(int32_t i, unsigned char *s) {
+void FrameList_int_to_UL24_char(ia_data_t i, unsigned char *s) {
   s[2] = (i >> 16) & 0xFF;
   s[1] = (i >> 8) & 0xFF;
   s[0] = i & 0xFF;
 }
 
-void FrameList_int_to_SL24_char(int32_t i, unsigned char *s) {
+void FrameList_int_to_SL24_char(ia_data_t i, unsigned char *s) {
   if (i > 0x7FFFFF)
     i = 0x7FFFFF;
   else if (i < -0x800000)

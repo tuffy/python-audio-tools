@@ -9215,6 +9215,7 @@ class TestFrameList(unittest.TestCase):
         import operator
 
         f1 = audiotools.pcm.from_list(range(10),2,16,False)
+        self.assertRaises(TypeError,operator.concat,f1,[1,2,3])
         f2 = audiotools.pcm.from_list(range(10,20),1,16,False)
         self.assertRaises(ValueError,operator.concat,f1,f2)
         f2 = audiotools.pcm.from_list(range(10,20),2,8,False)
