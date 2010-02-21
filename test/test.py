@@ -9104,6 +9104,81 @@ class TestFrameList(unittest.TestCase):
                     yield chr(i) + chr(j) + chr(k)
 
     @TEST_FRAMELIST
+    def test_basics(self):
+        import audiotools.pcm
+
+        self.assertRaises(ValueError,
+                          audiotools.pcm.FrameList,
+                          "abc",2,16,0,1)
+
+        self.assertRaises(ValueError,
+                          audiotools.pcm.FrameList,
+                          "abc",4,8,0,1)
+
+        self.assertRaises(ValueError,
+                          audiotools.pcm.FrameList,
+                          "abcd",1,15,0,1)
+
+        f = audiotools.pcm.FrameList("".join(map(chr,range(16))),
+                                     2,16,1,0)
+        self.assertEqual(len(f),8)
+        self.assertEqual(f.channels,2)
+        self.assertEqual(f.frames,4)
+        self.assertEqual(f.bits_per_sample,16)
+        self.assertEqual(f.signed,False)
+        self.assertRaises(IndexError,f.__getitem__,17)
+
+        self.assertEqual(list(f.frame(0)),
+                         [0x0001,0x0203])
+        self.assertEqual(list(f.frame(1)),
+                         [0x0405,0x0607])
+        self.assertEqual(list(f.frame(2)),
+                         [0x0809,0x0A0B])
+        self.assertEqual(list(f.frame(3)),
+                         [0x0C0D,0x0E0F])
+        self.assertRaises(IndexError,f.frame,4)
+        self.assertRaises(IndexError,f.frame,-1)
+
+        self.assertEqual(list(f.channel(0)),
+                         [0x0001,0x0405,0x0809,0x0C0D])
+        self.assertEqual(list(f.channel(1)),
+                         [0x0203,0x0607,0x0A0B,0x0E0F])
+        self.assertRaises(IndexError,f.channel,2)
+        self.assertRaises(IndexError,f.channel,-1)
+
+        self.assertEqual(f.to_bytes(True),
+                         '\x00\x01\x02\x03\x04\x05\x06\x07\x08\t\n\x0b\x0c\r\x0e\x0f')
+        self.assertEqual(f.to_bytes(False),
+                         '\x01\x00\x03\x02\x05\x04\x07\x06\t\x08\x0b\n\r\x0c\x0f\x0e')
+
+        self.assertEqual(list(f),
+                         list(audiotools.pcm.from_frames([f.frame(0),
+                                                          f.frame(1),
+                                                          f.frame(2),
+                                                          f.frame(3)])))
+        self.assertEqual(list(f),
+                         list(audiotools.pcm.from_channels([f.channel(0),
+                                                            f.channel(1)])))
+
+        self.assertEqual(list(audiotools.pcm.from_list(
+                    [0x0001,0x0203,0x0405,0x0607,
+                     0x0809,0x0A0B,0x0C0D,0x0E0F],2,16,0)),
+                         list(f))
+
+        self.assertRaises(ValueError,
+                          audiotools.pcm.from_list,
+                          [0x0001,0x0203,0x0405,0x0607,
+                           0x0809,0x0A0B,0x0C0D],2,16,0)
+
+        self.assertRaises(ValueError,
+                          audiotools.pcm.from_list,
+                          [0x0001,0x0203,0x0405,0x0607,
+                           0x0809,0x0A0B,0x0C0D,0x0E0F],2,15,0)
+
+        #FIXME - check from_frames
+        #FIXME - check from_channels
+
+    @TEST_FRAMELIST
     def test_8bit_roundtrip(self):
         import audiotools.pcm
 

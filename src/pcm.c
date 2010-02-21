@@ -57,6 +57,7 @@ int FrameList_init(pcm_FrameList *self, PyObject *args, PyObject *kwds) {
   int data_size;
 #endif
   int is_big_endian;
+  FrameList_char_to_int_converter converter;
 
   if (!PyArg_ParseTuple(args, "s#iiii",
 			&data,&data_size,
@@ -74,14 +75,20 @@ int FrameList_init(pcm_FrameList *self, PyObject *args, PyObject *kwds) {
     self->samples_length = data_size / (self->bits_per_sample / 8);
     self->frames = self->samples_length / self->channels;
     self->samples = malloc(sizeof(int32_t) * self->samples_length);
-    FrameList_char_to_samples(self->samples,
-			      data,
-			      FrameList_get_char_to_int_converter(
-						    self->bits_per_sample,
+    converter = FrameList_get_char_to_int_converter(self->bits_per_sample,
 						    is_big_endian,
-						    self->is_signed),
-			      self->samples_length,
-			      self->bits_per_sample);
+						    self->is_signed);
+    if (converter) {
+      FrameList_char_to_samples(self->samples,
+				data,
+				converter,
+				self->samples_length,
+				self->bits_per_sample);
+    } else {
+      PyErr_SetString(PyExc_ValueError,
+		      "unsupported number of bits per sample");
+      return -1;
+    }
   }
 
   return 0;
@@ -200,6 +207,34 @@ PyObject* FrameList_to_bytes(pcm_FrameList *self, PyObject *args) {
   return bytes_obj;
 }
 
+PyObject* FrameList_set_signed(pcm_FrameList *self, PyObject *args) {
+  int32_t adjustment;
+  uint32_t i;
+
+  if (!self->is_signed) {
+    adjustment = 1 << (self->bits_per_sample - 1);
+    for (i = 0; i < self->samples_length; i++)
+      self->samples[i] -= adjustment;
+  }
+
+  Py_INCREF(Py_None);
+  return Py_None;
+}
+
+PyObject* FrameList_set_unsigned(pcm_FrameList *self, PyObject *args) {
+  int32_t adjustment;
+  uint32_t i;
+
+  if (self->is_signed) {
+    adjustment = 1 << (self->bits_per_sample - 1);
+    for (i = 0; i < self->samples_length; i++)
+      self->samples[i] += adjustment;
+  }
+
+  Py_INCREF(Py_None);
+  return Py_None;
+}
+
 void FrameList_char_to_samples(int32_t *samples,
 			       unsigned char *data,
 			       FrameList_char_to_int_converter converter,
@@ -219,23 +254,40 @@ PyObject *FrameList_from_list(PyObject *dummy, PyObject *args) {
   PyObject *integer;
   Py_ssize_t list_len,i;
   long integer_val;
+  int channels;
+  int bits_per_sample;
+  int is_signed;
 
   if (!PyArg_ParseTuple(args,"Oiii",&list,
-			&(framelist->channels),
-			&(framelist->bits_per_sample),
-			&(framelist->is_signed)))
+			&channels,
+			&bits_per_sample,
+			&is_signed))
     goto error;
 
   if ((list_len = PySequence_Size(list)) == -1)
     goto error;
 
-  if (list_len % framelist->channels) {
+  if (list_len % channels) {
     PyErr_SetString(PyExc_ValueError,
 		    "number of samples must be divisible by number of channels");
     goto error;
   }
 
+  switch (bits_per_sample) {
+  case 8:
+  case 16:
+  case 24:
+    break;
+  default:
+    PyErr_SetString(PyExc_ValueError,
+		    "unsupported number of bits per sample");
+    goto error;
+  }
+
   framelist = (pcm_FrameList*)_PyObject_New(&pcm_FrameListType);
+  framelist->channels = channels;
+  framelist->bits_per_sample = bits_per_sample;
+  framelist->is_signed = is_signed;
   framelist->samples = malloc(sizeof(int32_t) * list_len);
   framelist->samples_length = list_len;
   framelist->frames = list_len / framelist->channels;

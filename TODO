@@ -526,5 +526,26 @@
   objects (stored as C-based lists of int32s behind-the-scenes)
   and convert that data to/from strings only at the beginning and end
   of processing.
+** TODO Build C-based audiotools.pcm.FrameList object
+   This needs to closely match audiotools.FrameList's functionality
+   and combine all the PCM conversion features from audiotools.pcmreader
+*** TODO Unit test audiotools.pcm.FrameList
+*** TODO Integrate audiotools.pcm.FrameList with i_array structures
+*** TODO Make audiotools.pcm.FrameList into a standalone object
+    So standalone test codecs can use them, such as "flacenc"
+** TODO Convert FLAC encoder/decoder to use FrameList objects
+** TODO Convert to_pcm()/from_pcm() routines to use FrameList objects
+   - [ ] AAC
+   - [ ] AIFF
+   - [ ] Sun AU
+   - [ ] FLAC
+   - [ ] M4A
+   - [ ] MP2
+   - [ ] MP3
+   - [ ] Ogg FLAC
+   - [ ] Ogg Speex
+   - [ ] WAVE
+   - [ ] WavPack
+** TODO Convert PCMConverter to use FrameList objects
+** TODO Convert CDTrackReader/OffsetCDTrackReader to use FrameList objects
 * TODO Add native ReplayGain handling routines
-

@@ -72,6 +72,10 @@ PyObject* FrameList_channel(pcm_FrameList *self, PyObject *args);
 
 PyObject* FrameList_to_bytes(pcm_FrameList *self, PyObject *args);
 
+PyObject* FrameList_set_signed(pcm_FrameList *self, PyObject *args);
+
+PyObject* FrameList_set_unsigned(pcm_FrameList *self, PyObject *args);
+
 PyObject *FrameList_from_list(PyObject *dummy, PyObject *args);
 
 PyObject *FrameList_from_frames(PyObject *dummy, PyObject *args);
@@ -104,6 +108,10 @@ PyMethodDef FrameList_methods[] = {
    METH_VARARGS,"Reads the given channel from the framelist"},
   {"to_bytes", (PyCFunction)FrameList_to_bytes,
    METH_VARARGS,"Converts the framelist to a binary string"},
+  {"set_signed", (PyCFunction)FrameList_set_signed,
+   METH_NOARGS,"Sets the framelist's data to be signed"},
+  {"set_unsigned", (PyCFunction)FrameList_set_unsigned,
+   METH_NOARGS,"Sets the framelist's data to be unsigned"},
   {NULL}
 };
 
