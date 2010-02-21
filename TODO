@@ -548,4 +548,6 @@
    - [ ] WavPack
 ** TODO Convert PCMConverter to use FrameList objects
 ** TODO Convert CDTrackReader/OffsetCDTrackReader to use FrameList objects
+** TODO Remove deprecated audiotools.FrameList object
+** TODO Ensure integrated FrameList passes all unit tests
 * TODO Add native ReplayGain handling routines

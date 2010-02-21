@@ -9178,6 +9178,50 @@ class TestFrameList(unittest.TestCase):
         #FIXME - check from_frames
         #FIXME - check from_channels
 
+        self.assertRaises(IndexError,f.split,-1)
+
+        (f1,f2) = f.split(2)
+        self.assertEqual(list(f1),
+                         [0x0001,0x0203,
+                          0x0405,0x0607])
+        self.assertEqual(list(f2),
+                         [0x0809,0x0A0B,
+                          0x0C0D,0x0E0F])
+
+        (f1,f2) = f.split(0)
+        self.assertEqual(list(f1),
+                         [])
+        self.assertEqual(list(f2),
+                         [0x0001,0x0203,
+                          0x0405,0x0607,
+                          0x0809,0x0A0B,
+                          0x0C0D,0x0E0F])
+
+        (f1,f2) = f.split(20)
+        self.assertEqual(list(f1),
+                         [0x0001,0x0203,
+                          0x0405,0x0607,
+                          0x0809,0x0A0B,
+                          0x0C0D,0x0E0F])
+        self.assertEqual(list(f2),
+                         [])
+
+        for i in xrange(f.frames):
+            (f1,f2) = f.split(i)
+            self.assertEqual(len(f1),i * f.channels)
+            self.assertEqual(len(f2),(len(f) - (i * f.channels)))
+            self.assertEqual(list(f1 + f2),list(f))
+
+        import operator
+
+        f1 = audiotools.pcm.from_list(range(10),2,16,False)
+        f2 = audiotools.pcm.from_list(range(10,20),1,16,False)
+        self.assertRaises(ValueError,operator.concat,f1,f2)
+        f2 = audiotools.pcm.from_list(range(10,20),2,8,False)
+        self.assertRaises(ValueError,operator.concat,f1,f2)
+        f2 = audiotools.pcm.from_list(range(10,20),2,16,True)
+        self.assertRaises(ValueError,operator.concat,f1,f2)
+
     @TEST_FRAMELIST
     def test_8bit_roundtrip(self):
         import audiotools.pcm

@@ -235,6 +235,113 @@ PyObject* FrameList_set_unsigned(pcm_FrameList *self, PyObject *args) {
   return Py_None;
 }
 
+PyObject* FrameList_split(pcm_FrameList *self, PyObject *args){
+  pcm_FrameList *head = NULL;
+  pcm_FrameList *tail = NULL;
+  int split_point;
+
+  if (!PyArg_ParseTuple(args,"i",&split_point))
+    goto error;
+
+  if (split_point < 0) {
+    PyErr_SetString(PyExc_IndexError,"split point must be positive");
+    goto error;
+  } else if (split_point >= self->frames) {
+    head = self;
+    Py_INCREF(head);
+    tail = (pcm_FrameList*)_PyObject_New(&pcm_FrameListType);
+    tail->frames = 0;
+    tail->channels = self->channels;
+    tail->bits_per_sample = self->bits_per_sample;
+    tail->is_signed = self->is_signed;
+    tail->samples_length = 0;
+    tail->samples = malloc(0);
+  } else if (split_point == 0) {
+    head = (pcm_FrameList*)_PyObject_New(&pcm_FrameListType);
+    head->frames = 0;
+    head->channels = self->channels;
+    head->bits_per_sample = self->bits_per_sample;
+    head->is_signed = self->is_signed;
+    head->samples_length = 0;
+    head->samples = malloc(0);
+    tail = self;
+    Py_INCREF(tail);
+  } else {
+    head = (pcm_FrameList*)_PyObject_New(&pcm_FrameListType);
+    head->frames = split_point;
+    head->samples_length = (head->frames * self->channels);
+    head->samples = malloc(head->samples_length * sizeof(int32_t));
+    memcpy(head->samples,
+	   self->samples,
+	   head->samples_length * sizeof(int32_t));
+
+    tail = (pcm_FrameList*)_PyObject_New(&pcm_FrameListType);
+    tail->frames = (self->frames - split_point);
+    tail->samples_length = (tail->frames * self->channels);
+    tail->samples = malloc(tail->samples_length * sizeof(int32_t));
+    memcpy(tail->samples,
+	   self->samples + head->samples_length,
+	   tail->samples_length * sizeof(int32_t));
+
+    head->channels = tail->channels = self->channels;
+    head->bits_per_sample = tail->bits_per_sample = self->bits_per_sample;
+    head->is_signed = tail->is_signed = self->is_signed;
+  }
+
+  /*FIXME - decref head and tail before buildvalue?*/
+  return Py_BuildValue("(O,O)",head,tail);
+ error:
+  Py_XDECREF(head);
+  Py_XDECREF(tail);
+  return NULL;
+}
+
+PyObject* FrameList_concat(pcm_FrameList *a, PyObject *bb) {
+  pcm_FrameList *concat = NULL;
+  pcm_FrameList *b;
+
+  if (!FrameList_CheckExact(bb)) {
+    PyErr_SetString(PyExc_TypeError,
+		    "can only concatenate FrameList with other FrameLists");
+    goto error;
+  } else {
+    b = (pcm_FrameList*)bb;
+  }
+
+  if (a->channels != b->channels) {
+    PyErr_SetString(PyExc_ValueError,
+		    "both FrameLists must have the same number of channels");
+    goto error;
+  }
+  if (a->bits_per_sample != b->bits_per_sample) {
+    PyErr_SetString(PyExc_ValueError,
+		    "both FrameLists must have the same number of bits per sample");
+    goto error;
+  }
+  if (a->is_signed != b->is_signed) {
+    PyErr_SetString(PyExc_ValueError,
+		    "both FrameLists must have the same sign value");
+    goto error;
+  }
+
+  concat = (pcm_FrameList*)_PyObject_New(&pcm_FrameListType);
+  concat->frames = a->frames + b->frames;
+  concat->channels = a->channels;
+  concat->bits_per_sample = a->bits_per_sample;
+  concat->is_signed = a->is_signed;
+  concat->samples_length = a->samples_length + b->samples_length;
+  concat->samples = malloc(concat->samples_length * sizeof(int32_t));
+  memcpy(concat->samples,a->samples,a->samples_length * sizeof(int32_t));
+  memcpy(concat->samples + a->samples_length,
+	 b->samples,
+	 b->samples_length * sizeof(int32_t));
+
+  return (PyObject*)concat;
+ error:
+  Py_XDECREF(concat);
+  return NULL;
+}
+
 void FrameList_char_to_samples(int32_t *samples,
 			       unsigned char *data,
 			       FrameList_char_to_int_converter converter,

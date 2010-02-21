@@ -76,11 +76,15 @@ PyObject* FrameList_set_signed(pcm_FrameList *self, PyObject *args);
 
 PyObject* FrameList_set_unsigned(pcm_FrameList *self, PyObject *args);
 
-PyObject *FrameList_from_list(PyObject *dummy, PyObject *args);
+PyObject* FrameList_split(pcm_FrameList *self, PyObject *args);
 
-PyObject *FrameList_from_frames(PyObject *dummy, PyObject *args);
+PyObject* FrameList_concat(pcm_FrameList *a, PyObject *bb);
 
-PyObject *FrameList_from_channels(PyObject *dummy, PyObject *args);
+PyObject* FrameList_from_list(PyObject *dummy, PyObject *args);
+
+PyObject* FrameList_from_frames(PyObject *dummy, PyObject *args);
+
+PyObject* FrameList_from_channels(PyObject *dummy, PyObject *args);
 
 PyMethodDef module_methods[] = {
   {"from_list",(PyCFunction)FrameList_from_list,
@@ -112,12 +116,14 @@ PyMethodDef FrameList_methods[] = {
    METH_NOARGS,"Sets the framelist's data to be signed"},
   {"set_unsigned", (PyCFunction)FrameList_set_unsigned,
    METH_NOARGS,"Sets the framelist's data to be unsigned"},
+  {"split", (PyCFunction)FrameList_split,
+   METH_VARARGS,"Splits the framelist into 2 sub framelists by number of frames"},
   {NULL}
 };
 
 static PySequenceMethods pcm_FrameListType_as_sequence = {
 	(lenfunc)FrameList_len,		/* sq_length */
-	(binaryfunc)NULL,		/* sq_concat */
+	(binaryfunc)FrameList_concat,	/* sq_concat */
 	(ssizeargfunc)NULL,		/* sq_repeat */
 	(ssizeargfunc)FrameList_GetItem, /* sq_item */
 	(ssizessizeargfunc)NULL,        /* sq_slice */
