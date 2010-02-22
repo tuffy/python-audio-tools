@@ -165,16 +165,13 @@ PyObject *FLACDecoder_read(decoders_FlacDecoder* self,
   int channel;
   int data_size;
 
-  PyObject *pcm;
+  PyObject *pcm = NULL;
   pcm_FrameList *framelist;
   struct i_array channel_data;
 
   int32_t i,j;
   int64_t mid;
   int32_t side;
-
-  if ((pcm = PyImport_ImportModuleNoBlock("audiotools.pcm")) == NULL)
-    return NULL;
 
   if (!PyArg_ParseTuple(args, "i", &bytes))
     return NULL;
@@ -185,14 +182,19 @@ PyObject *FLACDecoder_read(decoders_FlacDecoder* self,
 
   /*if all samples have been read, return an empty FrameList*/
   if (self->remaining_samples < 1) {
+    if ((pcm = PyImport_ImportModuleNoBlock("audiotools.pcm")) == NULL)
+      goto error;
     framelist = (pcm_FrameList*)PyObject_CallMethod(pcm,"__blank__",NULL);
+    Py_DECREF(pcm);
     return (PyObject*)framelist;
   }
 
   self->crc8 = self->crc16 = 0;
 
-  if (FlacDecoder_read_frame_header(self,&frame_header) == ERROR)
+  if (FlacDecoder_read_frame_header(self,&frame_header) == ERROR) {
+    Py_DECREF(pcm);
     return NULL;
+  }
 
   data_size = frame_header.block_size * frame_header.bits_per_sample *
     frame_header.channel_count / 8;
@@ -212,13 +214,13 @@ PyObject *FLACDecoder_read(decoders_FlacDecoder* self,
 				    frame_header.block_size,
 				    frame_header.bits_per_sample + 1,
 				    &(self->subframe_data[channel])) == ERROR)
-	return NULL;
+	goto error;
     } else {
       if (FlacDecoder_read_subframe(self,
 				    frame_header.block_size,
 				    frame_header.bits_per_sample,
 				    &(self->subframe_data[channel])) == ERROR)
-	return NULL;
+	goto error;
     }
   }
 
@@ -254,11 +256,14 @@ PyObject *FLACDecoder_read(decoders_FlacDecoder* self,
   read_bits(self->bitstream,16);
   if (self->crc16 != 0) {
     PyErr_SetString(PyExc_ValueError,"invalid checksum in frame");
-    return NULL;
+    goto error;
   }
 
   /*transform subframe data into a pcm_FrameList object*/
+  if ((pcm = PyImport_ImportModuleNoBlock("audiotools.pcm")) == NULL)
+    goto error;
   framelist = (pcm_FrameList*)PyObject_CallMethod(pcm,"__blank__",NULL);
+  Py_DECREF(pcm);
 
   framelist->frames = frame_header.block_size;
   framelist->channels = frame_header.channel_count;
@@ -280,6 +285,9 @@ PyObject *FLACDecoder_read(decoders_FlacDecoder* self,
 
   /*return pcm_FrameList*/
   return (PyObject*)framelist;
+ error:
+  Py_XDECREF(pcm);
+  return NULL;
 }
 
 PyObject *FLACDecoder_seekpoints(decoders_FlacDecoder* self,
