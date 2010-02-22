@@ -146,7 +146,7 @@ PyObject* encoders_encode_flac(PyObject *dummy,
   streaminfo.options.no_lpc_subframes = 0;
 
   file = fopen(filename,"wb");
-  reader = pcmr_open(input,44100,1,8); /*FIXME - assume CD quality for now*/
+  reader = pcmr_open(input,44100,1,16,1,1);/*FIXME - assume CD quality for now*/
 
 #endif
 

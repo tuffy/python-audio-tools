@@ -1,6 +1,7 @@
 #ifndef PCM_H
 #define PCM_H
 
+#ifndef STANDALONE
 #if PY_VERSION_HEX < 0x02050000 && !defined(PY_SSIZE_T_MIN)
 typedef int Py_ssize_t;
 #define PY_SSIZE_T_MAX INT_MAX
@@ -29,10 +30,12 @@ typedef int Py_ssize_t;
 #if PY_MAJOR_VERSION >= 3
 #define IS_PY3K
 #endif
+#endif
 
 #include <stdint.h>
 #include "array.h"
 
+#ifndef STANDALONE
 typedef struct {
   PyObject_HEAD;
 
@@ -179,6 +182,7 @@ PyTypeObject pcm_FrameListType = {
     0,                         /* tp_alloc */
     FrameList_new,             /* tp_new */
 };
+#endif
 
 typedef ia_data_t (*FrameList_char_to_int_converter)(unsigned char *s);
 

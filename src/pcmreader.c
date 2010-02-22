@@ -1,4 +1,5 @@
 #include "pcmreader.h"
+#include "pcm.h"
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -98,12 +99,16 @@ int pcmr_close(struct pcm_reader *reader) {
 struct pcm_reader* pcmr_open(FILE *pcmreader,
 			     long sample_rate,
 			     long channels,
-			     long bits_per_sample) {
+			     long bits_per_sample,
+			     long big_endian,
+			     long is_signed) {
   struct pcm_reader *reader = malloc(sizeof(struct pcm_reader));
   reader->read = pcmreader;
   reader->sample_rate = sample_rate;
   reader->channels = channels;
   reader->bits_per_sample = bits_per_sample;
+  reader->big_endian = big_endian;
+  reader->is_signed = is_signed;
   reader->callback = NULL;
   return reader;
 }
@@ -134,25 +139,19 @@ void pcmr_add_callback(struct pcm_reader *reader,
   reader->callback = callback_node;
 }
 
+#ifndef STANDALONE
 int pcmr_read(struct pcm_reader *reader,
 	      long sample_count,
 	      struct ia_array *samples) {
   ia_size_t i;
-
-#ifndef STANDALONE
   PyObject *args;
   PyObject *result;
   Py_ssize_t buffer_length;
-#else
-  size_t buffer_length;
-#endif
-
   unsigned char *buffer;
 
   struct pcmr_callback *node;
   struct pcmr_callback *next;
 
-#ifndef STANDALONE
   args = Py_BuildValue("(l)", sample_count *
 		              reader->bits_per_sample * samples->size / 8);
   result = PyEval_CallObject(reader->read,args);
@@ -163,11 +162,6 @@ int pcmr_read(struct pcm_reader *reader,
     Py_DECREF(result);
     return 0;
   }
-#else
-  buffer_length = sample_count * reader->bits_per_sample * samples->size / 8;
-  buffer = malloc(buffer_length);
-  buffer_length = fread(buffer,1,buffer_length,reader->read);
-#endif
 
   for (node = reader->callback; node != NULL; node = next) {
     next = node->next;
@@ -190,22 +184,81 @@ int pcmr_read(struct pcm_reader *reader,
 		      buffer,(int)buffer_length,i,samples->size);
       break;
     default:
-#ifndef STANDALONE
       PyErr_SetString(PyExc_ValueError,"unsupported bits per sample");
       Py_DECREF(result);
       return 0;
-#else
-      fprintf(stderr,"unsupported bits per sample\n");
-      return 0;
-#endif
     }
   }
 
-#ifndef STANDALONE
   Py_DECREF(result);
-#else
-  free(buffer);
-#endif
   return 1;
 }
+#else
+int pcmr_read(struct pcm_reader *reader,
+	      long sample_count,
+	      struct ia_array *samples) {
+  ia_size_t i,j;
+
+  size_t buffer_length;
+  unsigned char *buffer;
+  ia_data_t *buffer_samples;
+  ia_size_t buffer_samples_length;
+
+  struct i_array *channel;
+
+  struct pcmr_callback *node;
+  struct pcmr_callback *next;
+
+  /*read in "buffer" as a string of plain bytes*/
+  buffer_length = sample_count * reader->bits_per_sample * samples->size / 8;
+  buffer = malloc(buffer_length);
+  buffer_length = fread(buffer,1,buffer_length,reader->read);
+
+  /*convert "buffer" to "buffer_samples", a list of int32s*/
+  buffer_samples_length = buffer_length / (reader->bits_per_sample / 8);
+  buffer_samples = malloc(sizeof(ia_data_t) * buffer_samples_length);
+
+  FrameList_char_to_samples(
+            buffer_samples,
+	    buffer,
+	    FrameList_get_char_to_int_converter(reader->bits_per_sample,
+						reader->big_endian,
+						reader->is_signed),
+	    buffer_samples_length,
+	    reader->bits_per_sample);
+
+  /*if "buffer_samples" are unsigned, make them signed*/
+  /*FIXME*/
+
+  /*place "buffer_samples" into "samples", split up by channel*/
+  for (i = 0; i < reader->channels; i++) {
+    channel = iaa_getitem(samples,i);
+    ia_reset(channel);
+    for (j = i; j < buffer_samples_length; j += reader->channels)
+      ia_append(channel,buffer_samples[j]);
+  }
+
+  /*convert "buffer_samples" back into a signed, little-endian string*/
+  FrameList_samples_to_char(
+            buffer,
+	    buffer_samples,
+	    FrameList_get_int_to_char_converter(reader->bits_per_sample,
+						0,
+						1),
+	    buffer_samples_length,
+	    reader->bits_per_sample);
+
+  /*apply all callbacks to that string*/
+  for (node = reader->callback; node != NULL; node = next) {
+    next = node->next;
+    node->callback(node->data,buffer,(unsigned long)buffer_length);
+  }
+
+  /*free any allocated buffers*/
+  free(buffer_samples);
+  free(buffer);
+  return 1;
+}
+#endif
+
 

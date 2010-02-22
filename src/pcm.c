@@ -1,4 +1,6 @@
+#ifndef STANDALONE
 #include <Python.h>
+#endif
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -21,6 +23,7 @@
 
 #include "pcm.h"
 
+#ifndef STANDALONE
 PyMODINIT_FUNC initpcm(void) {
     PyObject* m;
 
@@ -344,6 +347,7 @@ PyObject* FrameList_concat(pcm_FrameList *a, PyObject *bb) {
   Py_XDECREF(concat);
   return NULL;
 }
+#endif
 
 void FrameList_char_to_samples(ia_data_t *samples,
 			       unsigned char *data,
@@ -358,6 +362,7 @@ void FrameList_char_to_samples(ia_data_t *samples,
   }
 }
 
+#ifndef STANDALONE
 PyObject *FrameList_from_list(PyObject *dummy, PyObject *args) {
   pcm_FrameList *framelist = NULL;
   PyObject *list;
@@ -583,6 +588,7 @@ PyObject *FrameList_from_channels(PyObject *dummy, PyObject *args) {
   Py_XDECREF(framelist);
   return NULL;
 }
+#endif
 
 FrameList_char_to_int_converter FrameList_get_char_to_int_converter(
                                               int bits_per_sample,

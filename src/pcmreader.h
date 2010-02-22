@@ -55,6 +55,8 @@ struct pcm_reader {
   long sample_rate;
   long channels;
   long bits_per_sample;
+  long big_endian;
+  long is_signed;
 
   struct pcmr_callback *callback;
 };
@@ -67,7 +69,9 @@ struct pcm_reader {
   struct pcm_reader* pcmr_open(FILE *pcmreader,
                                long sample_rate,
                                long channels,
-                               long bits_per_sample);
+                               long bits_per_sample,
+			       long big_endian,
+			       long is_signed);
 #endif
 
 int pcmr_close(struct pcm_reader *reader);
