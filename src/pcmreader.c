@@ -143,54 +143,65 @@ void pcmr_add_callback(struct pcm_reader *reader,
 int pcmr_read(struct pcm_reader *reader,
 	      long sample_count,
 	      struct ia_array *samples) {
-  ia_size_t i;
+  ia_size_t i,j;
   PyObject *args;
   PyObject *result;
+  pcm_FrameList *framelist;
   Py_ssize_t buffer_length;
   unsigned char *buffer;
+
+  ia_data_t *buffer_samples;
+  ia_size_t buffer_samples_length;
+  struct i_array *channel;
 
   struct pcmr_callback *node;
   struct pcmr_callback *next;
 
+  /*make a call to "reader.read(bytes)"
+    where "bytes" is set to the proper PCM frame count*/
   args = Py_BuildValue("(l)", sample_count *
 		              reader->bits_per_sample * samples->size / 8);
   result = PyEval_CallObject(reader->read,args);
   Py_DECREF(args);
   if (result == NULL)
     return 0;
-  if (PyString_AsStringAndSize(result,(char **)(&buffer),&buffer_length) == -1){
-    Py_DECREF(result);
+
+  /*ensure result is a FrameList*/
+  /*FIXME*/
+  if (1) {
+    PyErr_SetString(PyExc_TypeError,"results from pcmreader must be FrameLists");
     return 0;
+  } else {
+    framelist = (pcm_FrameList*)result;
+    buffer_samples = framelist->samples;
+    buffer_samples_length = framelist->samples_length;
   }
 
+  /*if "buffer_samples" are unsigned, make them signed*/
+  /*FIXME*/
+
+  /*place "buffer_samples" into "samples", split up by channel*/
+  for (i = 0; i < reader->channels; i++) {
+    channel = iaa_getitem(samples,i);
+    ia_reset(channel);
+    for (j = i; j < buffer_samples_length; j += reader->channels)
+      ia_append(channel,buffer_samples[j]);
+  }
+
+  /*convert "buffer_samples" to a signed, little-endian string*/
+  buffer_length = framelist->samples_length * (framelist->bits_per_sample / 8);
+  buffer = malloc(buffer_length);
+  /*FIXME*/
+
+  /*apply all callbacks to that string*/
   for (node = reader->callback; node != NULL; node = next) {
     next = node->next;
     node->callback(node->data,buffer,(unsigned long)buffer_length);
   }
 
-  for (i = 0; i < reader->channels; i++) {
-    ia_reset(iaa_getitem(samples,i));
-    switch (reader->bits_per_sample) {
-    case 8:
-      ia_char_to_U8(iaa_getitem(samples,i),
-		    buffer,(int)buffer_length,i,samples->size);
-      break;
-    case 16:
-      ia_char_to_SL16(iaa_getitem(samples,i),
-		      buffer,(int)buffer_length,i,samples->size);
-      break;
-    case 24:
-      ia_char_to_SL24(iaa_getitem(samples,i),
-		      buffer,(int)buffer_length,i,samples->size);
-      break;
-    default:
-      PyErr_SetString(PyExc_ValueError,"unsupported bits per sample");
-      Py_DECREF(result);
-      return 0;
-    }
-  }
-
+  /*free any allocated buffers and Python objects*/
   Py_DECREF(result);
+  free(buffer);
   return 1;
 }
 #else
