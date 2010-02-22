@@ -540,7 +540,7 @@
 *** TODO Unit test audiotools.pcm.FrameList
 ** TODO Convert FLAC encoder/decoder to use FrameList objects
    - [X] flacenc
-   - [ ] audiotools.decoders.FlacDecoder
+   - [X] audiotools.decoders.FlacDecoder
    - [ ] audiotools.encoders.encode_flac
 ** TODO Convert to_pcm()/from_pcm() routines to use FrameList objects
    - [ ] AAC

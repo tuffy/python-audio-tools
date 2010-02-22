@@ -31,6 +31,8 @@ PyMethodDef module_methods[] = {
    METH_VARARGS,"Converts a list of FrameList frames to a FrameList"},
   {"from_channels",(PyCFunction)FrameList_from_channels,
    METH_VARARGS,"Converts a list of FrameList channels to a FrameList"},
+  {"__blank__",(PyCFunction)FrameList_blank,
+   METH_NOARGS,"Creates an empty FrameList"},
   {NULL}
 };
 
@@ -188,6 +190,19 @@ int FrameList_init(pcm_FrameList *self, PyObject *args, PyObject *kwds) {
   return 0;
 }
 
+PyObject* FrameList_blank(PyObject *dummy, PyObject *args) {
+  pcm_FrameList *framelist = FrameList_create();
+  framelist->frames = framelist->channels = framelist->is_signed = 0;
+  framelist->bits_per_sample = 8;
+  framelist->samples_length = 0;
+  framelist->samples = malloc(0);
+  return (PyObject*)framelist;
+}
+
+pcm_FrameList* FrameList_create(void) {
+  return (pcm_FrameList*)_PyObject_New(&pcm_FrameListType);
+}
+
 int FrameList_CheckExact(PyObject *o) {
   return o->ob_type == &pcm_FrameListType;
 }
@@ -232,7 +247,7 @@ PyObject* FrameList_frame(pcm_FrameList *self, PyObject *args) {
     return NULL;
   }
 
-  frame = (pcm_FrameList*)_PyObject_New(&pcm_FrameListType);
+  frame = FrameList_create();
   frame->frames = 1;
   frame->channels = self->channels;
   frame->bits_per_sample = self->bits_per_sample;
@@ -259,7 +274,7 @@ PyObject* FrameList_channel(pcm_FrameList *self, PyObject *args) {
     return NULL;
   }
 
-  channel = (pcm_FrameList*)_PyObject_New(&pcm_FrameListType);
+  channel = FrameList_create();
   channel->frames = self->frames;
   channel->channels = 1;
   channel->bits_per_sample = self->bits_per_sample;
@@ -285,16 +300,18 @@ PyObject* FrameList_to_bytes(pcm_FrameList *self, PyObject *args) {
   if (!PyArg_ParseTuple(args,"i",&is_big_endian))
     return NULL;
 
-  bytes_size = (self->bits_per_sample / 8) * self->frames * self->channels;
+  bytes_size = (self->bits_per_sample / 8) * self->samples_length;
   bytes = malloc(bytes_size);
 
-  FrameList_samples_to_char(bytes, self->samples,
-			    FrameList_get_int_to_char_converter(
-					  self->bits_per_sample,
-					  is_big_endian,
-					  self->is_signed),
-			    self->samples_length,
-			    self->bits_per_sample);
+  if (bytes_size > 0) {
+    FrameList_samples_to_char(bytes, self->samples,
+			      FrameList_get_int_to_char_converter(
+					    self->bits_per_sample,
+					    is_big_endian,
+					    self->is_signed),
+			      self->samples_length,
+			      self->bits_per_sample);
+  }
 
   bytes_obj = PyString_FromStringAndSize((char*)bytes,bytes_size);
   free(bytes);
@@ -344,7 +361,7 @@ PyObject* FrameList_split(pcm_FrameList *self, PyObject *args){
   } else if (split_point >= self->frames) {
     head = self;
     Py_INCREF(head);
-    tail = (pcm_FrameList*)_PyObject_New(&pcm_FrameListType);
+    tail = FrameList_create();
     tail->frames = 0;
     tail->channels = self->channels;
     tail->bits_per_sample = self->bits_per_sample;
@@ -352,7 +369,7 @@ PyObject* FrameList_split(pcm_FrameList *self, PyObject *args){
     tail->samples_length = 0;
     tail->samples = malloc(0);
   } else if (split_point == 0) {
-    head = (pcm_FrameList*)_PyObject_New(&pcm_FrameListType);
+    head = FrameList_create();
     head->frames = 0;
     head->channels = self->channels;
     head->bits_per_sample = self->bits_per_sample;
@@ -362,7 +379,7 @@ PyObject* FrameList_split(pcm_FrameList *self, PyObject *args){
     tail = self;
     Py_INCREF(tail);
   } else {
-    head = (pcm_FrameList*)_PyObject_New(&pcm_FrameListType);
+    head = FrameList_create();
     head->frames = split_point;
     head->samples_length = (head->frames * self->channels);
     head->samples = malloc(head->samples_length * sizeof(ia_data_t));
@@ -370,7 +387,7 @@ PyObject* FrameList_split(pcm_FrameList *self, PyObject *args){
 	   self->samples,
 	   head->samples_length * sizeof(ia_data_t));
 
-    tail = (pcm_FrameList*)_PyObject_New(&pcm_FrameListType);
+    tail = FrameList_create();
     tail->frames = (self->frames - split_point);
     tail->samples_length = (tail->frames * self->channels);
     tail->samples = malloc(tail->samples_length * sizeof(ia_data_t));
@@ -421,7 +438,7 @@ PyObject* FrameList_concat(pcm_FrameList *a, PyObject *bb) {
     goto error;
   }
 
-  concat = (pcm_FrameList*)_PyObject_New(&pcm_FrameListType);
+  concat = FrameList_create();
   concat->frames = a->frames + b->frames;
   concat->channels = a->channels;
   concat->bits_per_sample = a->bits_per_sample;
@@ -490,7 +507,7 @@ PyObject *FrameList_from_list(PyObject *dummy, PyObject *args) {
     goto error;
   }
 
-  framelist = (pcm_FrameList*)_PyObject_New(&pcm_FrameListType);
+  framelist = FrameList_create();
   framelist->channels = channels;
   framelist->bits_per_sample = bits_per_sample;
   framelist->is_signed = is_signed;
@@ -543,7 +560,7 @@ PyObject *FrameList_from_frames(PyObject *dummy, PyObject *args) {
     goto error;
   }
 
-  framelist = (pcm_FrameList*)_PyObject_New(&pcm_FrameListType);
+  framelist = FrameList_create();
   framelist->frames = list_len;
   framelist->channels = frame->channels;
   framelist->bits_per_sample = frame->bits_per_sample;
@@ -626,7 +643,7 @@ PyObject *FrameList_from_channels(PyObject *dummy, PyObject *args) {
     goto error;
   }
 
-  framelist = (pcm_FrameList*)_PyObject_New(&pcm_FrameListType);
+  framelist = FrameList_create();
   framelist->frames = channel->frames;
   framelist->channels = list_len;
   framelist->bits_per_sample = channel->bits_per_sample;

@@ -71,7 +71,7 @@ class WaveReader(PCMReader):
                              self.channels,
                              self.bits_per_sample,
                              False,
-                             True) #FIXME - 8bps may not be signed
+                             self.bits_per_sample != 8)
 
     def close(self):
         self.wave.close()

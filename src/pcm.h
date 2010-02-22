@@ -59,6 +59,12 @@ PyObject *FrameList_new(PyTypeObject *type, PyObject *args, PyObject *kwds);
 
 int FrameList_init(pcm_FrameList *self, PyObject *args, PyObject *kwds);
 
+/*generates a new pcm_FrameList object via _PyObject_New
+  whose fields *must* be populated by additional C code*/
+pcm_FrameList* FrameList_create(void);
+
+PyObject* FrameList_blank(PyObject *dummy, PyObject *args);
+
 int FrameList_CheckExact(PyObject *o);
 
 PyObject* FrameList_frames(pcm_FrameList *self, void* closure);

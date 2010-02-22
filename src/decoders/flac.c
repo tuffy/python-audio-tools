@@ -1,4 +1,5 @@
 #include "flac.h"
+#include "../pcm.h"
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -163,11 +164,17 @@ PyObject *FLACDecoder_read(decoders_FlacDecoder* self,
   struct flac_frame_header frame_header;
   int channel;
   int data_size;
-  PyObject *string;
 
-  int32_t i;
+  PyObject *pcm;
+  pcm_FrameList *framelist;
+  struct i_array channel_data;
+
+  int32_t i,j;
   int64_t mid;
   int32_t side;
+
+  if ((pcm = PyImport_ImportModuleNoBlock("audiotools.pcm")) == NULL)
+    return NULL;
 
   if (!PyArg_ParseTuple(args, "i", &bytes))
     return NULL;
@@ -176,9 +183,11 @@ PyObject *FLACDecoder_read(decoders_FlacDecoder* self,
     return NULL;
   }
 
-  /*if all samples have been read, return an empty string*/
-  if (self->remaining_samples < 1)
-    return PyString_FromStringAndSize("",0);
+  /*if all samples have been read, return an empty FrameList*/
+  if (self->remaining_samples < 1) {
+    framelist = (pcm_FrameList*)PyObject_CallMethod(pcm,"__blank__",NULL);
+    return (PyObject*)framelist;
+  }
 
   self->crc8 = self->crc16 = 0;
 
@@ -248,33 +257,29 @@ PyObject *FLACDecoder_read(decoders_FlacDecoder* self,
     return NULL;
   }
 
-  /*transform subframe data into single string*/
+  /*transform subframe data into a pcm_FrameList object*/
+  framelist = (pcm_FrameList*)PyObject_CallMethod(pcm,"__blank__",NULL);
+
+  framelist->frames = frame_header.block_size;
+  framelist->channels = frame_header.channel_count;
+  framelist->bits_per_sample = frame_header.bits_per_sample;
+  framelist->is_signed = 1;
+  framelist->samples_length = framelist->frames * framelist->channels;
+  framelist->samples = realloc(framelist->samples,
+			       sizeof(ia_data_t) * framelist->samples_length);
+
   for (channel = 0; channel < frame_header.channel_count; channel++) {
-    switch (frame_header.bits_per_sample) {
-    case 8:
-      ia_U8_to_char(self->data,&(self->subframe_data[channel]),
-		    channel,frame_header.channel_count);
-      break;
-    case 16:
-      ia_SL16_to_char(self->data,&(self->subframe_data[channel]),
-  		      channel,frame_header.channel_count);
-      break;
-    case 24:
-      ia_SL24_to_char(self->data,&(self->subframe_data[channel]),
-  		      channel,frame_header.channel_count);
-      break;
-    default:
-      PyErr_SetString(PyExc_ValueError,"unsupported bits per sample value");
-      return NULL;
-    }
+    channel_data = self->subframe_data[channel];
+    for (i = channel,j = 0; j < channel_data.size;
+  	 i += frame_header.channel_count,j++)
+      framelist->samples[i] = ia_getitem(&channel_data,j);
   }
 
   /*decrement remaining samples*/
   self->remaining_samples -= frame_header.block_size;
 
-  /*return string*/
-  string = PyString_FromStringAndSize((char*)self->data,data_size);
-  return string;
+  /*return pcm_FrameList*/
+  return (PyObject*)framelist;
 }
 
 PyObject *FLACDecoder_seekpoints(decoders_FlacDecoder* self,

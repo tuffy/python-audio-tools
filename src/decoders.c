@@ -36,6 +36,7 @@ PyMODINIT_FUNC initdecoders(void) {
     Py_INCREF(&decoders_FlacDecoderType);
     PyModule_AddObject(m, "FlacDecoder",
 		       (PyObject *)&decoders_FlacDecoderType);
+
 }
 
 PyObject *decoders_read_bits(PyObject *dummy, PyObject *args) {
