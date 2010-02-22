@@ -24,6 +24,97 @@
 #include "pcm.h"
 
 #ifndef STANDALONE
+PyMethodDef module_methods[] = {
+  {"from_list",(PyCFunction)FrameList_from_list,
+   METH_VARARGS,"Converts a list of PCM integers to a FrameList"},
+  {"from_frames",(PyCFunction)FrameList_from_frames,
+   METH_VARARGS,"Converts a list of FrameList frames to a FrameList"},
+  {"from_channels",(PyCFunction)FrameList_from_channels,
+   METH_VARARGS,"Converts a list of FrameList channels to a FrameList"},
+  {NULL}
+};
+
+PyGetSetDef FrameList_getseters[] = {
+    {"frames", (getter)FrameList_frames, 0, "frame count", NULL},
+    {"channels", (getter)FrameList_channels, 0, "channel count", NULL},
+    {"bits_per_sample", (getter)FrameList_bits_per_sample,
+     0, "bits per sample", NULL},
+    {"signed", (getter)FrameList_signed, 0, "signed", NULL},
+    {NULL}  /* Sentinel */
+};
+
+PyMethodDef FrameList_methods[] = {
+  {"frame", (PyCFunction)FrameList_frame,
+   METH_VARARGS,"Reads the given frame from the framelist"},
+  {"channel", (PyCFunction)FrameList_channel,
+   METH_VARARGS,"Reads the given channel from the framelist"},
+  {"to_bytes", (PyCFunction)FrameList_to_bytes,
+   METH_VARARGS,"Converts the framelist to a binary string"},
+  {"set_signed", (PyCFunction)FrameList_set_signed,
+   METH_NOARGS,"Sets the framelist's data to be signed"},
+  {"set_unsigned", (PyCFunction)FrameList_set_unsigned,
+   METH_NOARGS,"Sets the framelist's data to be unsigned"},
+  {"split", (PyCFunction)FrameList_split,
+   METH_VARARGS,"Splits the framelist into 2 sub framelists by number of frames"},
+  {NULL}
+};
+
+static PySequenceMethods pcm_FrameListType_as_sequence = {
+	(lenfunc)FrameList_len,		/* sq_length */
+	(binaryfunc)FrameList_concat,	/* sq_concat */
+	(ssizeargfunc)NULL,		/* sq_repeat */
+	(ssizeargfunc)FrameList_GetItem, /* sq_item */
+	(ssizessizeargfunc)NULL,        /* sq_slice */
+	(ssizeobjargproc)NULL,		/* sq_ass_item */
+	(ssizessizeobjargproc)NULL,	/* sq_ass_slice */
+	(objobjproc)NULL,		/* sq_contains */
+	(binaryfunc)NULL,               /* sq_inplace_concat */
+	(ssizeargfunc)NULL,             /* sq_inplace_repeat */
+};
+
+PyTypeObject pcm_FrameListType = {
+    PyObject_HEAD_INIT(NULL)
+    0,                         /*ob_size*/
+    "pcm.FrameList",           /*tp_name*/
+    sizeof(pcm_FrameList),     /*tp_basicsize*/
+    0,                         /*tp_itemsize*/
+    (destructor)FrameList_dealloc, /*tp_dealloc*/
+    0,                         /*tp_print*/
+    0,                         /*tp_getattr*/
+    0,                         /*tp_setattr*/
+    0,                         /*tp_compare*/
+    0,                         /*tp_repr*/
+    0,                         /*tp_as_number*/
+    &pcm_FrameListType_as_sequence, /*tp_as_sequence*/
+    0,                         /*tp_as_mapping*/
+    0,                         /*tp_hash */
+    0,                         /*tp_call*/
+    0,                         /*tp_str*/
+    0,                         /*tp_getattro*/
+    0,                         /*tp_setattro*/
+    0,                         /*tp_as_buffer*/
+    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE, /*tp_flags*/
+    "FrameList objects",       /* tp_doc */
+    0,		               /* tp_traverse */
+    0,		               /* tp_clear */
+    0,		               /* tp_richcompare */
+    0,		               /* tp_weaklistoffset */
+    0,		               /* tp_iter */
+    0,		               /* tp_iternext */
+    FrameList_methods,         /* tp_methods */
+    0,                         /* tp_members */
+    FrameList_getseters,       /* tp_getset */
+    0,                         /* tp_base */
+    0,                         /* tp_dict */
+    0,                         /* tp_descr_get */
+    0,                         /* tp_descr_set */
+    0,                         /* tp_dictoffset */
+    (initproc)FrameList_init,  /* tp_init */
+    0,                         /* tp_alloc */
+    FrameList_new,             /* tp_new */
+};
+
+
 PyMODINIT_FUNC initpcm(void) {
     PyObject* m;
 

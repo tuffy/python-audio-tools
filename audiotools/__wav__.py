@@ -21,6 +21,7 @@
 from audiotools import AudioFile,InvalidFile,PCMReader,Con,BUFFER_SIZE,transfer_data,__capped_stream_reader__,FILENAME_FORMAT,BIN,open_files,os,subprocess,cStringIO,EncodingError,DecodingError
 import os.path
 import gettext
+from . import pcm
 
 gettext.install("audiotools",unicode=True)
 
@@ -64,7 +65,13 @@ class WaveReader(PCMReader):
                                              chunk_header.chunk_length)
 
     def read(self, bytes):
-        return self.wave.read(bytes)
+        bytes -= (bytes % (self.channels * self.bits_per_sample / 8))
+        return pcm.FrameList(self.wave.read(
+                max(bytes,self.channels * self.bits_per_sample / 8)),
+                             self.channels,
+                             self.bits_per_sample,
+                             False,
+                             True) #FIXME - 8bps may not be signed
 
     def close(self):
         self.wave.close()
@@ -289,11 +296,16 @@ class WaveAudio(AudioFile):
 
             #pcmreader should be little-endian audio
             #we can dump straight into the file
-            buffer = pcmreader.read(BUFFER_SIZE)
-            while (len(buffer) > 0):
-                f.write(buffer)
-                data_header.chunk_length += len(buffer)
-                buffer = pcmreader.read(BUFFER_SIZE)
+            framelist = pcmreader.read(BUFFER_SIZE)
+            while (len(framelist) > 0):
+                if (framelist.bits_per_sample > 8):
+                    framelist.set_signed()
+                else:
+                    framelist.set_unsigned()
+                bytes = framelist.to_bytes(False)
+                f.write(bytes)
+                data_header.chunk_length += len(bytes)
+                framelist = pcmreader.read(BUFFER_SIZE)
 
             #close up the PCM reader and flush our output
             try:
