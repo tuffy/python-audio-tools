@@ -154,13 +154,23 @@ class RANDOM_PCM_Reader(BLANK_PCM_Reader):
         self.md5 = md5()
 
     def read(self, bytes):
+        import audiotools.pcm
+
         if (self.current_size > 0):
-            buffer = os.urandom(min(bytes,self.current_size))
-            self.md5.update(buffer)
-            self.current_size -= len(buffer)
-            return buffer
+            framelist = audiotools.pcm.FrameList(
+                os.urandom(min(bytes,self.current_size)),
+                self.channels,
+                self.bits_per_sample,
+                True,True)
+            s = framelist.to_bytes(False)
+            self.md5.update(s)
+            self.current_size -= len(s)
+            return framelist
         else:
-            return ""
+            return audiotools.pcm.FrameList("",
+                                            self.channels,
+                                            self.bits_per_sample,
+                                            True,True)
 
     def digest(self):
         return self.md5.digest()
@@ -8826,7 +8836,10 @@ class TestFlacCodec(unittest.TestCase):
     def test_streams(self):
         for g in self.__stream_variations__():
             md5sum = md5()
-            audiotools.transfer_data(g.read,md5sum.update)
+            f = g.read(audiotools.BUFFER_SIZE)
+            while (len(f) > 0):
+                md5sum.update(f.to_bytes(False))
+                f = g.read(audiotools.BUFFER_SIZE)
             self.assertEqual(md5sum.digest(),g.digest())
             g.close()
 
@@ -8850,7 +8863,10 @@ class TestFlacCodec(unittest.TestCase):
 
         md5sum = md5()
         d = self.decoder(temp_file.name)
-        audiotools.transfer_data(d.read,md5sum.update)
+        f = d.read(audiotools.BUFFER_SIZE)
+        while (len(f) > 0):
+            md5sum.update(f.to_bytes(False))
+            f = d.read(audiotools.BUFFER_SIZE)
         d.close()
         self.assertEqual(md5sum.digest(),pcmreader.digest())
 
@@ -8882,10 +8898,7 @@ class TestFlacCodec(unittest.TestCase):
                             test_streams.PATTERN06,
                             test_streams.PATTERN07]:
                 self.__test_reader__(
-                    test_streams.MD5Reader(cStringIO.StringIO(fsd(pattern,100)),
-                                           44100,
-                                           1,
-                                           bps),
+                    test_streams.MD5Reader(fsd(pattern,100)),
                     block_size=1152,
                     max_lpc_order=16,
                     min_residual_partition_order=0,
@@ -8911,7 +8924,7 @@ class TestFlacCodec(unittest.TestCase):
     @TEST_FLAC
     def test_blocksizes(self):
         #FIXME - handle 8bps/24bps also
-        noise = os.urandom(64)
+        noise = audiotools.Con.GreedyRepeater(audiotools.Con.SBInt16(None)).parse(os.urandom(64))
         encoding_args = {"min_residual_partition_order":0,
                          "max_residual_partition_order":6,
                          "mid_side":True,
@@ -8931,8 +8944,8 @@ class TestFlacCodec(unittest.TestCase):
                     args["block_size"] = block_size
                     args["max_lpc_order"] = lpc_order
                     self.__test_reader__(test_streams.MD5Reader(
-                            cStringIO.StringIO(noise),
-                            44100,1,16),
+                            test_streams.FrameListReader(noise,
+                                                         44100,1,16)),
                                          **args)
 
     @TEST_FLAC

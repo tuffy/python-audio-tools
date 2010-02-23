@@ -58,6 +58,10 @@ PyMethodDef FrameList_methods[] = {
    METH_NOARGS,"Sets the framelist's data to be unsigned"},
   {"split", (PyCFunction)FrameList_split,
    METH_VARARGS,"Splits the framelist into 2 sub framelists by number of frames"},
+  {"copy", (PyCFunction)FrameList_copy,
+   METH_NOARGS,"Returns a copy of this framelist"},
+  {"frame_count", (PyCFunction)FrameList_frame_count,
+   METH_VARARGS,"Given a number of bytes, returns the maximum number of frames that would fit or a minimum of 1"},
   {NULL}
 };
 
@@ -455,6 +459,32 @@ PyObject* FrameList_concat(pcm_FrameList *a, PyObject *bb) {
   Py_XDECREF(concat);
   return NULL;
 }
+
+PyObject* FrameList_copy(pcm_FrameList *self, PyObject *args) {
+  pcm_FrameList *framelist = FrameList_create();
+  framelist->frames = self->frames;
+  framelist->channels = self->channels;
+  framelist->bits_per_sample = self->bits_per_sample;
+  framelist->is_signed = self->is_signed;
+  framelist->samples_length = self->samples_length;
+  framelist->samples = malloc(sizeof(ia_data_t) * framelist->samples_length);
+  memcpy(framelist->samples,self->samples,
+	 sizeof(ia_data_t) * framelist->samples_length);
+  return (PyObject*)framelist;
+}
+
+PyObject* FrameList_frame_count(pcm_FrameList *self, PyObject *args) {
+  int byte_count;
+  int bytes_per_frame = self->channels * (self->bits_per_sample / 8);
+
+  if (!PyArg_ParseTuple(args,"i",&byte_count))
+    return NULL;
+  else {
+    byte_count -= (byte_count % bytes_per_frame);
+    return Py_BuildValue("i",byte_count ? byte_count / bytes_per_frame : 1);
+  }
+}
+
 #endif
 
 void FrameList_char_to_samples(ia_data_t *samples,

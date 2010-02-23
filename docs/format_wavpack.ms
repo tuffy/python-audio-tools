@@ -105,17 +105,15 @@ block header, minus 24 bytes.
 .KS
 .TS
 tab(:);
-| c s |
-| c | r |.
+| c s s s |
+| c | r || c | r |.
 _
 Bits-per-Sample
 _
-bits:per-sample
+bits:per-sample:bits:per-sample
 =
-00:8
-01:16
-10:24
-11:32
+00:8:10:24
+01:16:11:32
 _
 .TE
 .KE

@@ -89,6 +89,10 @@ PyObject* FrameList_set_signed(pcm_FrameList *self, PyObject *args);
 
 PyObject* FrameList_set_unsigned(pcm_FrameList *self, PyObject *args);
 
+PyObject* FrameList_copy(pcm_FrameList *self, PyObject *args);
+
+PyObject* FrameList_frame_count(pcm_FrameList *self, PyObject *args);
+
 PyObject* FrameList_split(pcm_FrameList *self, PyObject *args);
 
 PyObject* FrameList_concat(pcm_FrameList *a, PyObject *bb);
