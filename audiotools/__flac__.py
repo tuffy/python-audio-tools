@@ -865,7 +865,9 @@ class FlacAudio(AudioFile):
 
         try:
             encoders.encode_flac(filename,
-                                 pcmreader=BufferedPCMReader(pcmreader),
+                                 #FIXME - need to update BufferedPCMReader
+                                 #pcmreader=BufferedPCMReader(pcmreader),
+                                 pcmreader,
                                  **encoding_options)
             return FlacAudio(filename)
         except IOError:

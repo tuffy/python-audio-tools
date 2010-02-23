@@ -182,7 +182,7 @@ PyObject *FLACDecoder_read(decoders_FlacDecoder* self,
 
   /*if all samples have been read, return an empty FrameList*/
   if (self->remaining_samples < 1) {
-    if ((pcm = PyImport_ImportModuleNoBlock("audiotools.pcm")) == NULL)
+    if ((pcm = PyImport_ImportModule("audiotools.pcm")) == NULL)
       goto error;
     framelist = (pcm_FrameList*)PyObject_CallMethod(pcm,"__blank__",NULL);
     Py_DECREF(pcm);

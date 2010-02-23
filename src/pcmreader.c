@@ -145,10 +145,11 @@ int pcmr_read(struct pcm_reader *reader,
 	      struct ia_array *samples) {
   ia_size_t i,j;
   PyObject *args;
-  PyObject *result;
+  PyObject *framelist_obj = NULL;
   pcm_FrameList *framelist;
   Py_ssize_t buffer_length;
   unsigned char *buffer;
+  PyObject *buffer_obj = NULL;
 
   ia_data_t *buffer_samples;
   ia_size_t buffer_samples_length;
@@ -161,20 +162,20 @@ int pcmr_read(struct pcm_reader *reader,
     where "bytes" is set to the proper PCM frame count*/
   args = Py_BuildValue("(l)", sample_count *
 		              reader->bits_per_sample * samples->size / 8);
-  result = PyEval_CallObject(reader->read,args);
+  framelist_obj = PyEval_CallObject(reader->read,args);
   Py_DECREF(args);
-  if (result == NULL)
-    return 0;
+  if (framelist_obj == NULL)
+    goto error;
 
   /*ensure result is a FrameList*/
   /*FIXME*/
   if (1) {
-    PyErr_SetString(PyExc_TypeError,"results from pcmreader must be FrameLists");
-    return 0;
-  } else {
-    framelist = (pcm_FrameList*)result;
+    framelist = (pcm_FrameList*)framelist_obj;
     buffer_samples = framelist->samples;
     buffer_samples_length = framelist->samples_length;
+  } else {
+    PyErr_SetString(PyExc_TypeError,"results from pcmreader must be FrameLists");
+    goto error;
   }
 
   /*if "buffer_samples" are unsigned, make them signed*/
@@ -189,9 +190,12 @@ int pcmr_read(struct pcm_reader *reader,
   }
 
   /*convert "buffer_samples" to a signed, little-endian string*/
-  buffer_length = framelist->samples_length * (framelist->bits_per_sample / 8);
-  buffer = malloc(buffer_length);
-  /*FIXME*/
+  buffer_obj = PyObject_CallMethod(framelist_obj,"to_bytes","(i)",0);
+  if (buffer_obj == NULL)
+    goto error;
+  if (PyString_AsStringAndSize(buffer_obj,(char**)(&buffer),
+			       &buffer_length) == -1)
+    goto error;
 
   /*apply all callbacks to that string*/
   for (node = reader->callback; node != NULL; node = next) {
@@ -200,9 +204,13 @@ int pcmr_read(struct pcm_reader *reader,
   }
 
   /*free any allocated buffers and Python objects*/
-  Py_DECREF(result);
-  free(buffer);
+  Py_DECREF(framelist_obj);
+  Py_DECREF(buffer_obj);
   return 1;
+ error:
+  Py_XDECREF(framelist_obj);
+  Py_XDECREF(buffer_obj);
+  return 0;
 }
 #else
 int pcmr_read(struct pcm_reader *reader,
