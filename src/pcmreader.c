@@ -155,6 +155,9 @@ int pcmr_read(struct pcm_reader *reader,
   ia_size_t buffer_samples_length;
   struct i_array *channel;
 
+  PyObject *pcm_obj = NULL;
+  PyObject *framelist_type_obj = NULL;
+
   struct pcmr_callback *node;
   struct pcmr_callback *next;
 
@@ -168,18 +171,22 @@ int pcmr_read(struct pcm_reader *reader,
     goto error;
 
   /*ensure result is a FrameList*/
-  /*FIXME*/
-  if (1) {
+  if ((pcm_obj = PyImport_ImportModuleNoBlock("audiotools.pcm")) == NULL)
+    goto error;
+  if ((framelist_type_obj = PyObject_GetAttrString(pcm_obj,"FrameList")) == NULL)
+    goto error;
+
+  if (framelist_obj->ob_type == (PyTypeObject*)framelist_type_obj) {
     framelist = (pcm_FrameList*)framelist_obj;
     buffer_samples = framelist->samples;
     buffer_samples_length = framelist->samples_length;
   } else {
-    PyErr_SetString(PyExc_TypeError,"results from pcmreader must be FrameLists");
+    PyErr_SetString(PyExc_TypeError,"results from pcmreader.read() must be FrameLists");
     goto error;
   }
 
   /*if "buffer_samples" are unsigned, make them signed*/
-  /*FIXME*/
+  Py_XDECREF(PyObject_CallMethod(framelist_obj,"set_signed",NULL));
 
   /*place "buffer_samples" into "samples", split up by channel*/
   for (i = 0; i < reader->channels; i++) {
@@ -189,7 +196,7 @@ int pcmr_read(struct pcm_reader *reader,
       ia_append(channel,buffer_samples[j]);
   }
 
-  /*convert "buffer_samples" to a signed, little-endian string*/
+  /*convert "buffer_samples" to a little-endian string*/
   buffer_obj = PyObject_CallMethod(framelist_obj,"to_bytes","(i)",0);
   if (buffer_obj == NULL)
     goto error;
@@ -206,8 +213,12 @@ int pcmr_read(struct pcm_reader *reader,
   /*free any allocated buffers and Python objects*/
   Py_DECREF(framelist_obj);
   Py_DECREF(buffer_obj);
+  Py_DECREF(pcm_obj);
+  Py_DECREF(framelist_type_obj);
   return 1;
  error:
+  Py_XDECREF(pcm_obj);
+  Py_XDECREF(framelist_type_obj);
   Py_XDECREF(framelist_obj);
   Py_XDECREF(buffer_obj);
   return 0;
