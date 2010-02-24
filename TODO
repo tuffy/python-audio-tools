@@ -534,22 +534,22 @@
 ** TODO Build C-based audiotools.pcm.FrameList object
    This needs to closely match audiotools.FrameList's functionality
    and combine all the PCM conversion features from audiotools.pcmreader
-*** TODO Integrate audiotools.pcm.FrameList with i_array structures
-*** TODO Make audiotools.pcm.FrameList into a standalone object
+*** DONE Integrate audiotools.pcm.FrameList with i_array structures
+*** DONE Make audiotools.pcm.FrameList into a standalone object
     So standalone test codecs can use them, such as "flacenc"
 *** TODO Unit test audiotools.pcm.FrameList
-** TODO Convert FLAC encoder/decoder to use FrameList objects
+** DONE Convert FLAC encoder/decoder to use FrameList objects
    - [X] flacenc
    - [X] audiotools.decoders.FlacDecoder
-   - [ ] audiotools.encoders.encode_flac
+   - [X] audiotools.encoders.encode_flac
 ** TODO Convert to_pcm()/from_pcm() routines to use FrameList objects
    - [ ] AAC
    - [ ] AIFF
    - [ ] Sun AU
-   - [ ] FLAC
+   - [X] FLAC
    - [ ] M4A
-   - [ ] MP2
-   - [ ] MP3
+   - [X] MP2
+   - [X] MP3
    - [ ] Ogg FLAC
    - [ ] Ogg Speex
    - [X] WAVE

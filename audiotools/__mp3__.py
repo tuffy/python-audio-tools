@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,InvalidFile,PCMReader,PCMConverter,Con,transfer_data,subprocess,BIN,BIG_ENDIAN,ApeTag,ReplayGain,ignore_sigint,pcmstream,open_files,EncodingError,DecodingError,PCMReaderError
+from audiotools import AudioFile,InvalidFile,PCMReader,PCMConverter,Con,transfer_data,transfer_framelist_data,subprocess,BIN,BIG_ENDIAN,ApeTag,ReplayGain,ignore_sigint,pcmstream,open_files,EncodingError,DecodingError,PCMReaderError
 from __id3__ import *
 import gettext
 
@@ -248,19 +248,21 @@ class MP3Audio(AudioFile):
         else:
             mode = "m"
 
-        #LAME 3.98 (and up, presumably) handle the byteswap correctly
-        #LAME 3.97 always uses -x
-        if (BIG_ENDIAN or (cls.__lame_version__() < (3,98))):
-            endian = ['-x']
-        else:
-            endian = []
+        #FIXME - not sure if all LAME versions support "--little-endian"
+        # #LAME 3.98 (and up, presumably) handle the byteswap correctly
+        # #LAME 3.97 always uses -x
+        # if (BIG_ENDIAN or (cls.__lame_version__() < (3,98))):
+        #     endian = ['-x']
+        # else:
+        #     endian = []
 
         devnull = file(os.devnull,'ab')
 
         sub = subprocess.Popen([BIN['lame'],"--quiet",
-                                "-r"] + endian + \
-                               ["-s",str(decimal.Decimal(pcmreader.sample_rate) / 1000),
+                                "-r",
+                                "-s",str(decimal.Decimal(pcmreader.sample_rate) / 1000),
                                 "--bitwidth",str(pcmreader.bits_per_sample),
+                                "--signed","--little-endian",
                                 "-m",mode,
                                 "-V" + str(compression),
                                 "-",
@@ -270,7 +272,7 @@ class MP3Audio(AudioFile):
                                stderr=devnull,
                                preexec_fn=ignore_sigint)
 
-        transfer_data(pcmreader.read,sub.stdin.write)
+        transfer_framelist_data(pcmreader,sub.stdin.write)
         try:
             pcmreader.close()
         except DecodingError:
@@ -641,7 +643,7 @@ class MP2Audio(MP3Audio):
                                stderr=devnull,
                                preexec_fn=ignore_sigint)
 
-        transfer_data(pcmreader.read,sub.stdin.write)
+        transfer_framelist_data(pcmreader,sub.stdin.write)
         try:
             pcmreader.close()
         except DecodingError:
