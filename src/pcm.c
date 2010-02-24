@@ -330,6 +330,7 @@ PyObject* FrameList_set_signed(pcm_FrameList *self, PyObject *args) {
     adjustment = 1 << (self->bits_per_sample - 1);
     for (i = 0; i < self->samples_length; i++)
       self->samples[i] -= adjustment;
+    self->is_signed = 1;
   }
 
   Py_INCREF(Py_None);
@@ -344,6 +345,7 @@ PyObject* FrameList_set_unsigned(pcm_FrameList *self, PyObject *args) {
     adjustment = 1 << (self->bits_per_sample - 1);
     for (i = 0; i < self->samples_length; i++)
       self->samples[i] += adjustment;
+    self->is_signed = 0;
   }
 
   Py_INCREF(Py_None);

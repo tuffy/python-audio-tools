@@ -9236,6 +9236,30 @@ class TestFrameList(unittest.TestCase):
         f2 = audiotools.pcm.from_list(range(10,20),2,16,True)
         self.assertRaises(ValueError,operator.concat,f1,f2)
 
+        #check round-trip from signed->unsigned->signed
+        for bps in [8,16,24]:
+            signed = range(-20,20)
+            f = audiotools.pcm.from_list(signed,1,bps,True)
+            self.assertEqual(f.signed,True)
+            self.assertEqual(list(f),signed)
+            f.set_unsigned()
+            self.assertEqual(f.signed,False)
+            f.set_signed()
+            self.assertEqual(f.signed,True)
+            self.assertEqual(list(f),signed)
+
+        #check round-trip from unsigned->signed->unsigned
+        for bps in [8,16,24]:
+            unsigned = range(0,40)
+            f = audiotools.pcm.from_list(unsigned,1,bps,False)
+            self.assertEqual(f.signed,False)
+            self.assertEqual(list(f),unsigned)
+            f.set_signed()
+            self.assertEqual(f.signed,True)
+            f.set_unsigned()
+            self.assertEqual(f.signed,False)
+            self.assertEqual(list(f),unsigned)
+
     @TEST_FRAMELIST
     def test_8bit_roundtrip(self):
         import audiotools.pcm
