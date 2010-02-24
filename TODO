@@ -543,11 +543,11 @@
    - [X] audiotools.decoders.FlacDecoder
    - [X] audiotools.encoders.encode_flac
 ** TODO Convert to_pcm()/from_pcm() routines to use FrameList objects
-   - [ ] AAC
-   - [ ] AIFF
-   - [ ] Sun AU
+   - [X] AAC
+   - [X] AIFF
+   - [X] Sun AU
    - [X] FLAC
-   - [ ] M4A
+   - [X] M4A
    - [X] MP2
    - [X] MP3
    - [ ] Ogg FLAC

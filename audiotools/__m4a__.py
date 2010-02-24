@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,InvalidFile,PCMReader,PCMConverter,Con,transfer_data,subprocess,BIN,cStringIO,MetaData,os,Image,InvalidImage,ignore_sigint,InvalidFormat,open,open_files,EncodingError,DecodingError,WaveAudio,TempWaveReader,PCMReaderError
+from audiotools import AudioFile,InvalidFile,PCMReader,PCMConverter,Con,transfer_data,transfer_framelist_data,subprocess,BIN,cStringIO,MetaData,os,Image,InvalidImage,ignore_sigint,InvalidFormat,open,open_files,EncodingError,DecodingError,WaveAudio,TempWaveReader,PCMReaderError
 from __m4a_atoms__ import *
 import gettext
 
@@ -393,7 +393,7 @@ class __M4AAudio_faac__(AudioFile):
         #Note: faac handles SIGINT on its own,
         #so trying to ignore it doesn't work like on most other encoders.
 
-        transfer_data(pcmreader.read,sub.stdin.write)
+        transfer_framelist_data(pcmreader,sub.stdin.write)
         pcmreader.close()
         sub.stdin.close()
 
@@ -1151,7 +1151,7 @@ class AACAudio(AudioFile):
         #Note: faac handles SIGINT on its own,
         #so trying to ignore it doesn't work like on most other encoders.
 
-        transfer_data(pcmreader.read,sub.stdin.write)
+        transfer_framelist_data(pcmreader,sub.stdin.write)
         try:
             pcmreader.close()
         except DecodingError:

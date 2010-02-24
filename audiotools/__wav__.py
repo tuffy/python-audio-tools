@@ -294,8 +294,7 @@ class WaveAudio(AudioFile):
             f.write(WaveAudio.FMT_CHUNK.build(fmt))
             f.write(WaveAudio.CHUNK_HEADER.build(data_header))
 
-            #pcmreader should be little-endian audio
-            #we can dump straight into the file
+            #dump pcmreader's FrameLists into the file as little-endian
             framelist = pcmreader.read(BUFFER_SIZE)
             while (len(framelist) > 0):
                 if (framelist.bits_per_sample > 8):

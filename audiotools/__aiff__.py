@@ -17,7 +17,7 @@
 #along with this program; if not, write to the Free Software
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-from audiotools import AudioFile,InvalidFile,Con,PCMReader,__capped_stream_reader__,PCMFrameFilter,pcmstream,PCMReaderError,transfer_data,FrameList,DecodingError,EncodingError,ID3v22Comment
+from audiotools import AudioFile,InvalidFile,Con,PCMReader,__capped_stream_reader__,PCMFrameFilter,pcmstream,PCMReaderError,transfer_data,FrameList,DecodingError,EncodingError,ID3v22Comment,BUFFER_SIZE
 
 import gettext
 
@@ -312,12 +312,14 @@ class AiffAudio(AudioFile):
                 f.seek(chunk_offset,0)
                 alignment = self.SSND_ALIGN.parse_stream(f)
                 #FIXME - handle different types of SSND alignment
-                return BigEndianReader(PCMReader(
+                return PCMReader(
                     __capped_stream_reader__(
-                            f,chunk_length - self.SSND_ALIGN.sizeof()),
-                    self.sample_rate(),
-                    self.channels(),
-                    self.bits_per_sample()))
+                        f,chunk_length - self.SSND_ALIGN.sizeof()),
+                    sample_rate=self.sample_rate(),
+                    channels=self.channels(),
+                    bits_per_sample=self.bits_per_sample(),
+                    signed=True,
+                    big_endian=True)
         else:
             return PCMReaderError()
 
@@ -353,8 +355,12 @@ class AiffAudio(AudioFile):
             f.write(cls.SSND_ALIGN.build(ssnd_alignment))
 
             #write big-endian samples to SSND chunk from pcmreader
-            be_pcm = BigEndianWriter(pcmreader)
-            transfer_data(be_pcm.read,f.write)
+            framelist = pcmreader.read(BUFFER_SIZE)
+            total_pcm_frames = 0
+            while (len(framelist) > 0):
+                f.write(framelist.to_bytes(True))
+                total_pcm_frames += framelist.frames
+                framelist = pcmreader.read(BUFFER_SIZE)
             total_size = f.tell()
 
             #return to the start of the file
@@ -365,7 +371,7 @@ class AiffAudio(AudioFile):
             f.write(cls.AIFF_HEADER.build(aiff_header))
 
             #write COMM chunk
-            comm_chunk.total_sample_frames = be_pcm.total_pcm_frames
+            comm_chunk.total_sample_frames = total_pcm_frames
             comm_chunk = cls.COMM_CHUNK.build(comm_chunk)
             f.write(cls.CHUNK_HEADER.build(Con.Container(
                         chunk_id='COMM',
@@ -375,12 +381,12 @@ class AiffAudio(AudioFile):
             #write SSND chunk header
             f.write(cls.CHUNK_HEADER.build(Con.Container(
                         chunk_id='SSND',
-                        chunk_length=(be_pcm.total_pcm_frames *
-                                      (be_pcm.bits_per_sample / 8) *
-                                      be_pcm.channels) +
+                        chunk_length=(total_pcm_frames *
+                                      (pcmreader.bits_per_sample / 8) *
+                                      pcmreader.channels) +
                         cls.SSND_ALIGN.sizeof())))
             try:
-                be_pcm.close()
+                pcmreader.close()
             except DecodingError:
                 raise EncodingError()
         finally:

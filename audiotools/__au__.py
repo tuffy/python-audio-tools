@@ -106,10 +106,12 @@ class AuAudio(AudioFile):
         f = file(self.filename,'rb')
         f.seek(self.__data_offset__,0)
 
-        return AuReader(f,self.__data_size__,
-                        self.sample_rate(),
-                        self.channels(),
-                        self.bits_per_sample())
+        return PCMReader(f,
+                         sample_rate=self.sample_rate(),
+                         channels=self.channels(),
+                         bits_per_sample=self.bits_per_sample(),
+                         signed=True,
+                         big_endian=True)
 
     @classmethod
     def from_pcm(cls, filename, pcmreader, compression=None):
@@ -118,9 +120,6 @@ class AuAudio(AudioFile):
                 _(u"Unsupported bits per sample %s") % (pcmreader.bits_per_sample))
 
         bytes_per_sample = pcmreader.bits_per_sample / 8
-
-        converter = audiotools.pcmstream.PCMStreamReader(
-            pcmreader,bytes_per_sample,False,False)
 
         header = Con.Container(magic_number='.snd',
                                data_offset=0,
@@ -140,15 +139,12 @@ class AuAudio(AudioFile):
 
             #send our big-endian PCM data
             #d will be a list of ints, so we can't use transfer_data
-            d = converter.read(BUFFER_SIZE)
-            while (len(d) > 0):
-                s = audiotools.pcmstream.pcm_to_string(d,
-                                                       bytes_per_sample,
-                                                       True)
-                f.write(s)
-
-                header.data_size += len(s)
-                d = converter.read(BUFFER_SIZE)
+            framelist = pcmreader.read(BUFFER_SIZE)
+            while (len(framelist) > 0):
+                bytes = framelist.to_bytes(True)
+                f.write(bytes)
+                header.data_size += len(bytes)
+                framelist = pcmreader.read(BUFFER_SIZE)
 
             #send out a complete header
             f.seek(0,0)
@@ -157,7 +153,7 @@ class AuAudio(AudioFile):
             f.close()
 
         try:
-            converter.close()
+            pcmreader.close()
         except DecodingError:
             raise EncodingError()
 
