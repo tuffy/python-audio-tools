@@ -28,26 +28,6 @@ gettext.install("audiotools",unicode=True)
 #Sun AU
 #######################
 
-class AuReader(PCMReader):
-    #takes an open, properly positioned file handle
-    #the total size of the data
-    #and the usual sample_rate,channels,bits_per_sample stuff
-    def __init__(self, au_file, data_size,
-                 sample_rate,channels,bits_per_sample):
-        self.stream = audiotools.pcmstream.PCMStreamReader(
-            __capped_stream_reader__(au_file,data_size),
-            bits_per_sample / 8,
-            True, False)
-
-        PCMReader.__init__(self,self.stream,
-                           sample_rate,channels,bits_per_sample)
-
-    #handles all the proper byte swapping
-    def read(self, bytes):
-        return audiotools.pcmstream.pcm_to_string(
-            self.stream.read(bytes),self.bits_per_sample / 8,False)
-
-
 class AuAudio(AudioFile):
     SUFFIX = "au"
     NAME = SUFFIX

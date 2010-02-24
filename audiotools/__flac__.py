@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,MetaData,InvalidFile,PCMReader,Con,transfer_data,subprocess,BIN,BUFFER_SIZE,cStringIO,os,open_files,Image,sys,WaveAudio,ReplayGain,ignore_sigint,sheet_to_unicode,EncodingError,DecodingError,Messenger,BufferedPCMReader
+from audiotools import AudioFile,MetaData,InvalidFile,PCMReader,Con,transfer_data,transfer_framelist_data,subprocess,BIN,BUFFER_SIZE,cStringIO,os,open_files,Image,sys,WaveAudio,ReplayGain,ignore_sigint,sheet_to_unicode,EncodingError,DecodingError,Messenger,BufferedPCMReader
 from __vorbiscomment__ import *
 from __id3__ import ID3v2Comment
 from __vorbis__ import OggStreamReader,OggStreamWriter
@@ -1351,7 +1351,9 @@ class OggFlacAudio(FlacAudio):
                          sample_rate=self.__samplerate__,
                          channels=self.__channels__,
                          bits_per_sample=self.__bitspersample__,
-                         process=sub)
+                         process=sub,
+                         signed=True,
+                         big_endian=False)
 
     @classmethod
     def from_pcm(cls, filename, pcmreader,
@@ -1387,7 +1389,7 @@ class OggFlacAudio(FlacAudio):
                                stderr=devnull,
                                preexec_fn=ignore_sigint)
 
-        transfer_data(pcmreader.read,sub.stdin.write)
+        transfer_framelist_data(pcmreader,sub.stdin.write)
         try:
             pcmreader.close()
         except DecodingError:

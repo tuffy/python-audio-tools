@@ -542,7 +542,7 @@
    - [X] flacenc
    - [X] audiotools.decoders.FlacDecoder
    - [X] audiotools.encoders.encode_flac
-** TODO Convert to_pcm()/from_pcm() routines to use FrameList objects
+** DONE Convert to_pcm()/from_pcm() routines to use FrameList objects
    - [X] AAC
    - [X] AIFF
    - [X] Sun AU
@@ -550,12 +550,12 @@
    - [X] M4A
    - [X] MP2
    - [X] MP3
-   - [ ] Ogg FLAC
-   - [ ] Ogg Speex
+   - [X] Ogg FLAC
+   - [X] Ogg Speex
    - [X] WAVE
-   - [ ] WavPack
-** TODO Convert PCMConverter to use FrameList objects
+   - [X] WavPack
 ** TODO Convert CDTrackReader/OffsetCDTrackReader to use FrameList objects
+** TODO Convert PCMConverter to use FrameList objects
 ** TODO Remove deprecated audiotools.FrameList object
 ** TODO Ensure integrated FrameList passes all unit tests
 * TODO Add native ReplayGain handling routines

@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,InvalidFile,Con,subprocess,BIN,open_files,os,ReplayGain,ignore_sigint,transfer_data,Image,MetaData,sheet_to_unicode,EncodingError,DecodingError,PCMReaderError,PCMReader
+from audiotools import AudioFile,InvalidFile,Con,subprocess,BIN,open_files,os,ReplayGain,ignore_sigint,transfer_data,transfer_framelist_data,Image,MetaData,sheet_to_unicode,EncodingError,DecodingError,PCMReaderError,PCMReader
 from __wav__ import WaveAudio,WaveReader
 from __ape__ import ApeTaggedAudio,ApeTag,__number_pair__
 import gettext
@@ -314,15 +314,15 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
 
     @classmethod
     def from_pcm(cls, filename, pcmreader, compression=None):
+        compression_param = {"fast":["-f"],
+                             "standard":[],
+                             "high":["-h"],
+                             "veryhigh":["-hh"]}
+
+        if (str(compression) not in cls.COMPRESSION_MODES):
+            compression = cls.DEFAULT_COMPRESSION
+
         if ('--raw-pcm' in cls.__wavpack_help__()):
-            compression_param = {"fast":["-f"],
-                                 "standard":[],
-                                 "high":["-h"],
-                                 "veryhigh":["-hh"]}
-
-            if (str(compression) not in cls.COMPRESSION_MODES):
-                compression = cls.DEFAULT_COMPRESSION
-
             if (filename.endswith(".wv")):
                 devnull = file(os.devnull,'ab')
 
@@ -339,7 +339,7 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
                                        stdin=subprocess.PIPE,
                                        preexec_fn=ignore_sigint)
 
-                transfer_data(pcmreader.read,sub.stdin.write)
+                transfer_framelist_data(pcmreader,sub.stdin.write)
                 devnull.close()
                 sub.stdin.close()
 
