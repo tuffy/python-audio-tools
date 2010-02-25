@@ -9120,6 +9120,14 @@ class TestFrameList(unittest.TestCase):
     def test_basics(self):
         import audiotools.pcm
 
+        self.assertRaises(TypeError,
+                          audiotools.pcm.FrameList,
+                          0,2,16,0,1)
+
+        self.assertRaises(TypeError,
+                          audiotools.pcm.FrameList,
+                          [1,2,3],2,16,0,1)
+
         self.assertRaises(ValueError,
                           audiotools.pcm.FrameList,
                           "abc",2,16,0,1)
@@ -9139,7 +9147,7 @@ class TestFrameList(unittest.TestCase):
         self.assertEqual(f.frames,4)
         self.assertEqual(f.bits_per_sample,16)
         self.assertEqual(f.signed,False)
-        self.assertRaises(IndexError,f.__getitem__,17)
+        self.assertRaises(IndexError,f.__getitem__,9)
 
         self.assertEqual(list(f.frame(0)),
                          [0x0001,0x0203])
@@ -9429,6 +9437,117 @@ class TestFrameList(unittest.TestCase):
         self.assertEqual(audiotools.pcm.FrameList(s,1,24,0,0).to_bytes(0),s)
         self.assertEqual(audiotools.pcm.FrameList(s,1,24,0,1).to_bytes(0),s)
 
+class TestFloatFrameList(unittest.TestCase):
+    @TEST_FRAMELIST
+    def test_basics(self):
+        import audiotools.pcm
+
+        self.assertRaises(ValueError,
+                          audiotools.pcm.FloatFrameList,
+                          [1.0,2.0,3.0],2)
+
+        self.assertRaises(TypeError,
+                          audiotools.pcm.FloatFrameList,
+                          0,1)
+
+        self.assertRaises(TypeError,
+                          audiotools.pcm.FloatFrameList,
+                          [1.0,2.0,"a"],1)
+
+        f = audiotools.pcm.FloatFrameList(map(float,range(8)),2)
+        self.assertEqual(len(f),8)
+        self.assertEqual(f.channels,2)
+        self.assertEqual(f.frames,4)
+        self.assertRaises(IndexError,f.__getitem__,9)
+
+        self.assertEqual(list(f.frame(0)),
+                         [0.0,1.0])
+        self.assertEqual(list(f.frame(1)),
+                         [2.0,3.0])
+        self.assertEqual(list(f.frame(2)),
+                         [4.0,5.0])
+        self.assertEqual(list(f.frame(3)),
+                         [6.0,7.0])
+        self.assertRaises(IndexError,f.frame,4)
+        self.assertRaises(IndexError,f.frame,-1)
+
+        self.assertEqual(list(f.channel(0)),
+                         [0.0,2.0,4.0,6.0])
+        self.assertEqual(list(f.channel(1)),
+                         [1.0,3.0,5.0,7.0])
+        self.assertRaises(IndexError,f.channel,2)
+        self.assertRaises(IndexError,f.channel,-1)
+
+        self.assertEqual(list(f),
+                         list(audiotools.pcm.from_float_frames([f.frame(0),
+                                                                f.frame(1),
+                                                                f.frame(2),
+                                                                f.frame(3)])))
+        self.assertEqual(list(f),
+                         list(audiotools.pcm.from_float_channels([f.channel(0),
+                                                                  f.channel(1)])))
+
+        #FIXME - check from_frames
+        #FIXME - check from_channels
+
+        self.assertRaises(IndexError,f.split,-1)
+
+        (f1,f2) = f.split(2)
+        self.assertEqual(list(f1),
+                         [0.0,1.0,
+                          2.0,3.0])
+        self.assertEqual(list(f2),
+                         [4.0,5.0,
+                          6.0,7.0])
+
+        (f1,f2) = f.split(0)
+        self.assertEqual(list(f1),
+                         [])
+        self.assertEqual(list(f2),
+                         [0.0,1.0,
+                          2.0,3.0,
+                          4.0,5.0,
+                          6.0,7.0])
+
+        (f1,f2) = f.split(20)
+        self.assertEqual(list(f1),
+                         [0.0,1.0,
+                          2.0,3.0,
+                          4.0,5.0,
+                          6.0,7.0])
+        self.assertEqual(list(f2),
+                         [])
+
+        for i in xrange(f.frames):
+            (f1,f2) = f.split(i)
+            self.assertEqual(len(f1),i * f.channels)
+            self.assertEqual(len(f2),(len(f) - (i * f.channels)))
+            self.assertEqual(list(f1 + f2),list(f))
+
+        import operator
+
+        f1 = audiotools.pcm.FloatFrameList(map(float,range(10)),2)
+        self.assertRaises(TypeError,operator.concat,f1,[1,2,3])
+
+        #check round-trip from float->int->float
+        l = [float(i - 128) / (1 << 7) for i in range(0,1 << 8)]
+        for bps in [8,16,24]:
+            for signed in [True,False]:
+                self.assertEqual(
+                    l,
+                    list(audiotools.pcm.FloatFrameList(l,1).to_int(bps,signed).to_float()))
+
+        #check round-trip from int->float->int
+        for bps in [8,16,24]:
+            l = range(0,1 << bps,4)
+            self.assertEqual(
+                l,
+                list(audiotools.pcm.from_list(l,1,bps,False).to_float().to_int(bps,False)))
+
+            l = range(-(1 << (bps - 1)),(1 << (bps - 1)) - 1,4)
+            self.assertEqual(
+                l,
+                list(audiotools.pcm.from_list(l,1,bps,True).to_float().to_int(bps,True)))
 
 ############
 #END TESTS

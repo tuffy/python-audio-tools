@@ -69,6 +69,8 @@ PyMethodDef FrameList_methods[] = {
    METH_VARARGS,"Splits the framelist into 2 sub framelists by number of frames"},
   {"copy", (PyCFunction)FrameList_copy,
    METH_NOARGS,"Returns a copy of this framelist"},
+  {"to_float", (PyCFunction)FrameList_to_float,
+   METH_NOARGS,"Converts FrameList to FloatFrameList"},
   {"frame_count", (PyCFunction)FrameList_frame_count,
    METH_VARARGS,"Given a number of bytes, returns the maximum number of frames that would fit or a minimum of 1"},
   {NULL}
@@ -469,6 +471,29 @@ PyObject* FrameList_copy(pcm_FrameList *self, PyObject *args) {
   return (PyObject*)framelist;
 }
 
+PyObject* FrameList_to_float(pcm_FrameList *self, PyObject *args) {
+  ia_size_t i;
+  ia_data_t adjustment;
+  pcm_FloatFrameList *framelist = FloatFrameList_create();
+  framelist->frames = self->frames;
+  framelist->channels = self->channels;
+  framelist->samples_length = self->samples_length;
+  framelist->samples = malloc(sizeof(fa_data_t) * framelist->samples_length);
+
+  adjustment = 1 << (self->bits_per_sample - 1);
+  if (self->is_signed) {
+    for (i = 0; i < self->samples_length; i++) {
+      framelist->samples[i] = ((fa_data_t)self->samples[i]) / adjustment;
+    }
+  } else {
+    for (i = 0; i < self->samples_length; i++) {
+      framelist->samples[i] = ((fa_data_t)(self->samples[i] - adjustment)) / adjustment;
+    }
+  }
+
+  return (PyObject*)framelist;
+}
+
 PyObject* FrameList_frame_count(pcm_FrameList *self, PyObject *args) {
   int byte_count;
   int bytes_per_frame = self->channels * (self->bits_per_sample / 8);
@@ -744,6 +769,8 @@ PyMethodDef FloatFrameList_methods[] = {
    METH_VARARGS,"Splits the framelist into 2 sub framelists by number of frames"},
   {"copy", (PyCFunction)FloatFrameList_copy,
    METH_NOARGS,"Returns a copy of this framelist"},
+  {"to_int", (PyCFunction)FloatFrameList_to_int,
+   METH_VARARGS,"Converts FloatFrameList to FrameList"},
   {NULL}
 };
 
@@ -942,6 +969,44 @@ PyObject* FloatFrameList_copy(pcm_FloatFrameList *self, PyObject *args) {
   framelist->samples = malloc(sizeof(fa_data_t) * framelist->samples_length);
   memcpy(framelist->samples,self->samples,
 	 sizeof(fa_data_t) * framelist->samples_length);
+  return (PyObject*)framelist;
+}
+
+PyObject* FloatFrameList_to_int(pcm_FloatFrameList *self, PyObject *args) {
+  ia_size_t i;
+  ia_data_t adjustment;
+  ia_data_t sample_min;
+  ia_data_t sample_max;
+  pcm_FrameList *framelist;
+  int bits_per_sample;
+  int is_signed;
+
+  if (!PyArg_ParseTuple(args,"ii",&bits_per_sample,&is_signed))
+    return NULL;
+
+  framelist = FrameList_create();
+  framelist->frames = self->frames;
+  framelist->channels = self->channels;
+  framelist->bits_per_sample = bits_per_sample;
+  framelist->is_signed = is_signed;
+  framelist->samples_length = self->samples_length;
+  framelist->samples = malloc(sizeof(ia_data_t) * framelist->samples_length);
+
+  adjustment = 1 << (bits_per_sample - 1);
+  if (is_signed) {
+    sample_min = -adjustment;
+    sample_max = adjustment - 1;
+    for (i = 0; i < self->samples_length; i++) {
+      framelist->samples[i] =  MAX(MIN((ia_data_t)(self->samples[i] * adjustment),sample_max),sample_min);
+    }
+  } else {
+    sample_min = 0;
+    sample_max = (1 << bits_per_sample) - 1;
+    for (i = 0; i < self->samples_length; i++) {
+      framelist->samples[i] = MAX(MIN((ia_data_t)(self->samples[i] * adjustment) + adjustment,sample_max),sample_min);
+    }
+  }
+
   return (PyObject*)framelist;
 }
 
