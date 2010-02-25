@@ -185,6 +185,9 @@ PyObject *FLACDecoder_read(decoders_FlacDecoder* self,
     if ((pcm = PyImport_ImportModule("audiotools.pcm")) == NULL)
       goto error;
     framelist = (pcm_FrameList*)PyObject_CallMethod(pcm,"__blank__",NULL);
+    framelist->channels = self->streaminfo.channels;
+    framelist->bits_per_sample = self->streaminfo.bits_per_sample;
+    framelist->is_signed = 1;
     Py_DECREF(pcm);
     return (PyObject*)framelist;
   }

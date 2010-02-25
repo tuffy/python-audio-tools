@@ -826,65 +826,48 @@ class __downmix_remover__:
     def convert(self, frame_list):
         return self.mono.convert(self.downmix.convert(frame_list))
 
-class PCMConverter(PCMReader):
+class PCMConverter:
     def __init__(self, pcmreader,
                  sample_rate, channels, bits_per_sample):
         import pcmstream
 
-        PCMReader.__init__(self, None, sample_rate, channels, bits_per_sample)
-
-        self.input = pcmreader
-
-        #if we're converting sample rate,
-        #PCMStreamReader should return floats to
-        #convert_sample_rate() or convert_sample_rate_and_bits_per_sample()
-        #this hurts consistency since those two expect lists of floats
-        #instead of lists of ints, but it speeds conversion up a little
-        self.reader = pcmstream.PCMStreamReader(
-            pcmreader,
-            pcmreader.bits_per_sample / 8,
-            False,
-            self.input.sample_rate != self.sample_rate)
-
-        self.bytes_per_sample = self.bits_per_sample / 8
-
-        self.leftover_samples = []
-
+        self.sample_rate = sample_rate
+        self.channels = channels
+        self.bits_per_sample = bits_per_sample
+        self.reader = pcmreader
 
         self.conversions = []
-        if (self.input.channels != self.channels):
+        if (self.reader.channels != self.channels):
             self.conversions.append(self.convert_channels)
 
-        if (self.input.sample_rate != self.sample_rate):
+        if (self.reader.sample_rate != self.sample_rate):
             self.resampler = pcmstream.Resampler(
                 self.channels,
-                float(self.sample_rate) / float(self.input.sample_rate),
+                float(self.sample_rate) / float(self.reader.sample_rate),
                 0)
 
-            self.unresampled = []
+            self.unresampled = pcm.FloatFrameList([],self.channels)
 
             #if we're converting sample rate and bits-per-sample
             #at the same time, short-circuit the conversion to do both at once
             #which can be sped up somewhat
-            if (self.input.bits_per_sample != self.bits_per_sample):
+            if (self.reader.bits_per_sample != self.bits_per_sample):
                 self.conversions.append(self.convert_sample_rate_and_bits_per_sample)
             else:
                 self.conversions.append(self.convert_sample_rate)
 
         else:
-            if (self.input.bits_per_sample != self.bits_per_sample):
+            if (self.reader.bits_per_sample != self.bits_per_sample):
                 self.conversions.append(self.convert_bits_per_sample)
 
 
     def read(self, bytes):
-        (frame_list,self.leftover_samples) = FrameList.from_samples(
-            self.leftover_samples + self.reader.read(bytes),
-            self.input.channels)
+        frame_list = self.reader.read(bytes)
 
         for converter in self.conversions:
             frame_list = converter(frame_list)
 
-        return pcmstream.pcm_to_string(frame_list,self.bytes_per_sample,False)
+        return frame_list
 
     def close(self):
         self.reader.close()
@@ -963,8 +946,6 @@ class PCMConverter(PCMReader):
             return FrameList.from_channels(channels)
 
     def convert_sample_rate(self, frame_list):
-        multiplier = 1 << (self.bits_per_sample - 1)
-
         #FIXME - The floating-point output from resampler.process()
         #should be normalized rather than just chopping off
         #excessively high or low samples (above 1.0 or below -1.0)
@@ -973,10 +954,13 @@ class PCMConverter(PCMReader):
         #into the conversion process which will complicate PCMConverter
         #a lot.
         (output,self.unresampled) = self.resampler.process(
-            self.unresampled + frame_list,
+            self.unresampled + frame_list.to_float(),
             (len(frame_list) == 0) and (len(self.unresampled) == 0))
 
-        return [int(round(s * multiplier)) for s in output]
+        self.unresampled = pcm.FloatFrameList(self.unresampled,
+                                              self.channels)
+        return pcm.FloatFrameList(output,
+                                  self.channels).to_int(self.bits_per_sample,True)
 
 
     #though this method name is huge, it is also unambiguous
