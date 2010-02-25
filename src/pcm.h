@@ -135,6 +135,10 @@ PyObject *FloatFrameList_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 
 int FloatFrameList_init(pcm_FloatFrameList *self, PyObject *args, PyObject *kwds);
 
+int FloatFrameList_CheckExact(PyObject *o);
+
+PyObject* FloatFrameList_blank(PyObject *dummy, PyObject *args);
+
 pcm_FloatFrameList* FloatFrameList_create(void);
 
 PyObject* FloatFrameList_frames(pcm_FloatFrameList *self, void* closure);

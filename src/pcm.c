@@ -38,6 +38,8 @@ PyMethodDef module_methods[] = {
    METH_VARARGS,"Converts a list of FloatFrameList channels to a FloatFrameList"},
   {"__blank__",(PyCFunction)FrameList_blank,
    METH_NOARGS,"Creates an empty FrameList"},
+  {"__blank_float__",(PyCFunction)FloatFrameList_blank,
+   METH_NOARGS,"Creates an empty FloatFrameList"},
   {NULL}
 };
 
@@ -887,6 +889,14 @@ pcm_FloatFrameList* FloatFrameList_create(void) {
 
 int FloatFrameList_CheckExact(PyObject *o) {
   return o->ob_type == &pcm_FloatFrameListType;
+}
+
+PyObject* FloatFrameList_blank(PyObject *dummy, PyObject *args) {
+  pcm_FloatFrameList *framelist = FloatFrameList_create();
+  framelist->frames = framelist->channels = 0;
+  framelist->samples_length = 0;
+  framelist->samples = malloc(0);
+  return (PyObject*)framelist;
 }
 
 PyObject* FloatFrameList_frames(pcm_FloatFrameList *self, void* closure) {

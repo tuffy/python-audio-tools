@@ -957,10 +957,7 @@ class PCMConverter:
             self.unresampled + frame_list.to_float(),
             (len(frame_list) == 0) and (len(self.unresampled) == 0))
 
-        self.unresampled = pcm.FloatFrameList(self.unresampled,
-                                              self.channels)
-        return pcm.FloatFrameList(output,
-                                  self.channels).to_int(self.bits_per_sample,True)
+        return output.to_int(self.bits_per_sample,True)
 
 
     #though this method name is huge, it is also unambiguous

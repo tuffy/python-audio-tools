@@ -171,7 +171,7 @@ int pcmr_read(struct pcm_reader *reader,
     goto error;
 
   /*ensure result is a FrameList*/
-  if ((pcm_obj = PyImport_ImportModuleNoBlock("audiotools.pcm")) == NULL)
+  if ((pcm_obj = PyImport_ImportModule("audiotools.pcm")) == NULL)
     goto error;
   if ((framelist_type_obj = PyObject_GetAttrString(pcm_obj,"FrameList")) == NULL)
     goto error;

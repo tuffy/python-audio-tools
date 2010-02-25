@@ -21,6 +21,7 @@
  *******************************************************/
 
 #include "pcmstream.h"
+#include "pcm.h"
 #include "samplerate/samplerate.c"
 
 #ifdef IS_PY3K
@@ -580,8 +581,7 @@ int Resampler_init(pcmstream_Resampler *self,
 
 PyObject *Resampler_process(pcmstream_Resampler* self,
 				   PyObject *args) {
-  PyObject *samples_list;
-  Py_ssize_t samples_list_size;
+  PyObject *framelist_obj;
   int last;
 
   SRC_DATA src_data;
@@ -591,90 +591,106 @@ PyObject *Resampler_process(pcmstream_Resampler* self,
 
   Py_ssize_t i,j;
 
-  PyObject *processed_samples = NULL;
-  PyObject *unprocessed_samples = NULL;
+  PyObject *pcm = NULL;
+  PyObject *framelist_type_obj = NULL;
+  pcm_FloatFrameList *framelist;
+  pcm_FloatFrameList *processed_samples = NULL;
+  pcm_FloatFrameList *unprocessed_samples = NULL;
   PyObject *toreturn;
-  PyObject *sample;
 
+  src_data.data_in = NULL;
 
-  /*grab (samples[],last) passed in from the method call*/
-  if (!PyArg_ParseTuple(args,"Oi",&samples_list,&last))
+  if ((pcm = PyImport_ImportModule("audiotools.pcm")) == NULL)
     goto error;
 
-  /*grab the size of samples_object*/
-  if ((samples_list_size = PySequence_Size(samples_list)) == -1)
+  /*grab (framelist,last) passed in from the method call*/
+  if (!PyArg_ParseTuple(args,"Oi",&framelist_obj,&last))
     goto error;
+
+  /*ensure input is a FloatFrameList*/
+  if ((framelist_type_obj = PyObject_GetAttrString(pcm,"FloatFrameList")) == NULL)
+    goto error;
+  if (framelist_obj->ob_type == (PyTypeObject*)framelist_type_obj) {
+    framelist = (pcm_FloatFrameList*)framelist_obj;
+  } else {
+    PyErr_SetString(PyExc_TypeError,"first argument must be a FloatFrameList");
+    goto error;
+  }
 
 
   /*build SRC_DATA from our inputs*/
-  src_data.data_in = (float *)malloc(samples_list_size * sizeof(float));
-
-  if (src_data.data_in == NULL) {
+  if ((src_data.data_in = malloc(framelist->samples_length * sizeof(float))) == NULL) {
     PyErr_SetString(PyExc_MemoryError,"out of memory");
     goto error;
   }
 
   src_data.data_out = data_out;
-  src_data.input_frames = samples_list_size / self->channels;
+  src_data.input_frames = framelist->frames;
   src_data.output_frames = OUTPUT_SAMPLES_LENGTH / self->channels;
   src_data.end_of_input = last;
   src_data.src_ratio = self->ratio;
 
-  for (i = 0; i < samples_list_size; i++) {
-    if ((sample = PySequence_GetItem(samples_list,i)) == NULL)
-      goto error;
-
-    if (((src_data.data_in[i] = (float)PyFloat_AsDouble(sample)) == -1) &&
-	PyErr_Occurred())
-      goto error;
+  for (i = 0; i < framelist->samples_length; i++) {
+    src_data.data_in[i] = framelist->samples[i];
   }
 
   /*run src_process() on our self->SRC_STATE and SRC_DATA*/
   if ((processing_error = src_process(self->src_state,&src_data)) != 0) {
     /*some sort of processing error raises ValueError*/
-    free(src_data.data_in);
-
     PyErr_SetString(PyExc_ValueError,
 		    src_strerror(processing_error));
     goto error;
   }
 
 
-  /*turn our processed and unprocessed data into two new arrays*/
-  processed_samples = PyList_New((Py_ssize_t)src_data.output_frames_gen * self->channels);
-  unprocessed_samples = PyList_New((Py_ssize_t)((src_data.input_frames - src_data.input_frames_used) * self->channels));
+  /*turn our processed and unprocessed data into two new FloatFrameLists*/
+  if ((processed_samples = (pcm_FloatFrameList*)PyObject_CallMethod(pcm,"__blank_float__",NULL)) == NULL)
+    goto error;
+  processed_samples->channels = framelist->channels;
+  processed_samples->frames = src_data.output_frames_gen;
+  processed_samples->samples_length = processed_samples->frames * processed_samples->channels;
+  processed_samples->samples = realloc(processed_samples->samples,
+				       sizeof(fa_data_t) * processed_samples->samples_length);
+
+  if ((unprocessed_samples = (pcm_FloatFrameList*)PyObject_CallMethod(pcm,"__blank_float__",NULL)) == NULL)
+    goto error;
+  unprocessed_samples->channels = framelist->channels;
+  unprocessed_samples->frames = src_data.input_frames - src_data.input_frames_used;
+  unprocessed_samples->samples_length = unprocessed_samples->frames * unprocessed_samples->channels;
+  unprocessed_samples->samples = realloc(unprocessed_samples->samples,
+					 sizeof(fa_data_t) * unprocessed_samples->samples_length);
+
 
   /*successfully processed samples*/
   for (i = 0; i < src_data.output_frames_gen * self->channels; i++) {
-    if (PyList_SetItem(processed_samples,i,
-		       PyFloat_FromDouble((double)src_data.data_out[i])) == -1)
-      goto error;
+    processed_samples->samples[i] = src_data.data_out[i];
   }
 
   /*not-yet-successfully processed samples*/
   for (i = src_data.input_frames_used * self->channels,j=0;
        i < (src_data.input_frames * self->channels);
        i++,j++) {
-    if (PyList_SetItem(unprocessed_samples,j,
-		       PyFloat_FromDouble((double)src_data.data_in[i])) == -1)
-      goto error;
+    unprocessed_samples->samples[j] = src_data.data_in[i];
   }
-
-
-  /*cleanup anything allocated*/
-  free(src_data.data_in);
 
 
   /*return those two arrays as a tuple*/
   toreturn = PyTuple_Pack(2,processed_samples,unprocessed_samples);
 
+  /*cleanup anything allocated*/
+  free(src_data.data_in);
+  Py_DECREF(pcm);
+  Py_DECREF(framelist_type_obj);
   Py_DECREF(processed_samples);
   Py_DECREF(unprocessed_samples);
 
   return toreturn;
 
  error:
-  free(src_data.data_in);
+  if (src_data.data_in != NULL)
+    free(src_data.data_in);
+  Py_XDECREF(pcm);
+  Py_XDECREF(framelist_type_obj);
   Py_XDECREF(processed_samples);
   Py_XDECREF(unprocessed_samples);
 
