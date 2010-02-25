@@ -35,6 +35,10 @@ typedef int Py_ssize_t;
 #include <stdint.h>
 #include "array.h"
 
+/******************
+  FrameList Object
+*******************/
+
 #ifndef STANDALONE
 typedef struct {
   PyObject_HEAD;
@@ -47,7 +51,7 @@ typedef struct {
   int is_signed;       /*1 if the samples are signed, 0 if unsigned*/
 
   ia_data_t* samples;    /*the actual sample data itself,
-			 stored raw as 32-bit signed integers*/
+			   stored raw as 32-bit signed integers*/
   ia_size_t samples_length; /*the total number of samples
 			     which must be evenly distributable
 			     between channels and bits-per-sample*/
@@ -102,6 +106,56 @@ PyObject* FrameList_from_list(PyObject *dummy, PyObject *args);
 PyObject* FrameList_from_frames(PyObject *dummy, PyObject *args);
 
 PyObject* FrameList_from_channels(PyObject *dummy, PyObject *args);
+
+
+/***********************
+  FloatFrameList Object
+************************/
+
+typedef struct {
+  PyObject_HEAD;
+
+  int frames;          /*the total number of PCM frames in this FrameList
+			 aka the total number of rows in the "samples" array*/
+  int channels;        /*the total number of channels in this FrameList
+			 aka the total number of columns in "samples*/
+
+  fa_data_t *samples;  /*the actual sample data itself,
+			 stored raw as doubles*/
+  fa_size_t samples_length; /*the total number of samples
+			     which must be evenly distributable
+			     between channels and bits-per-sample*/
+} pcm_FloatFrameList;
+
+void FloatFrameList_dealloc(pcm_FloatFrameList* self);
+
+PyObject *FloatFrameList_new(PyTypeObject *type, PyObject *args, PyObject *kwds);
+
+int FloatFrameList_init(pcm_FloatFrameList *self, PyObject *args, PyObject *kwds);
+
+pcm_FloatFrameList* FloatFrameList_create(void);
+
+PyObject* FloatFrameList_frames(pcm_FloatFrameList *self, void* closure);
+
+PyObject* FloatFrameList_channels(pcm_FloatFrameList *self, void* closure);
+
+Py_ssize_t FloatFrameList_len(pcm_FloatFrameList *o);
+
+PyObject* FloatFrameList_GetItem(pcm_FloatFrameList *o, Py_ssize_t i);
+
+PyObject* FloatFrameList_frame(pcm_FloatFrameList *self, PyObject *args);
+
+PyObject* FloatFrameList_channel(pcm_FloatFrameList *self, PyObject *args);
+
+PyObject* FloatFrameList_copy(pcm_FloatFrameList *self, PyObject *args);
+
+PyObject* FloatFrameList_split(pcm_FloatFrameList *self, PyObject *args);
+
+PyObject* FloatFrameList_concat(pcm_FloatFrameList *a, PyObject *bb);
+
+PyObject* FloatFrameList_from_frames(PyObject *dummy, PyObject *args);
+
+PyObject* FloatFrameList_from_channels(PyObject *dummy, PyObject *args);
 
 #endif
 
