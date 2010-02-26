@@ -617,6 +617,10 @@ PyObject *Resampler_process(pcmstream_Resampler* self,
     goto error;
   }
 
+  if (framelist->channels != self->channels) {
+    PyErr_SetString(PyExc_ValueError,"FrameList's channel count differs from Resampler's");
+    goto error;
+  }
 
   /*build SRC_DATA from our inputs*/
   if ((src_data.data_in = malloc(framelist->samples_length * sizeof(float))) == NULL) {
@@ -646,7 +650,7 @@ PyObject *Resampler_process(pcmstream_Resampler* self,
   /*turn our processed and unprocessed data into two new FloatFrameLists*/
   if ((processed_samples = (pcm_FloatFrameList*)PyObject_CallMethod(pcm,"__blank_float__",NULL)) == NULL)
     goto error;
-  processed_samples->channels = framelist->channels;
+  processed_samples->channels = self->channels;
   processed_samples->frames = src_data.output_frames_gen;
   processed_samples->samples_length = processed_samples->frames * processed_samples->channels;
   processed_samples->samples = realloc(processed_samples->samples,
@@ -654,7 +658,7 @@ PyObject *Resampler_process(pcmstream_Resampler* self,
 
   if ((unprocessed_samples = (pcm_FloatFrameList*)PyObject_CallMethod(pcm,"__blank_float__",NULL)) == NULL)
     goto error;
-  unprocessed_samples->channels = framelist->channels;
+  unprocessed_samples->channels = self->channels;
   unprocessed_samples->frames = src_data.input_frames - src_data.input_frames_used;
   unprocessed_samples->samples_length = unprocessed_samples->frames * unprocessed_samples->channels;
   unprocessed_samples->samples = realloc(unprocessed_samples->samples,

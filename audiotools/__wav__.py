@@ -129,6 +129,12 @@ def __channel_mask__(total_channels):
             5:('front_left','front_right','side_left','side_right',
                'front_center'),
             6:('front_left','front_right','side_left','side_right',
+               'front_center','LFE'),
+            7:('front_left','front_right','rear_left','rear_right',
+               'side_left','side_right',
+               'front_center'),
+            8:('front_left','front_right','rear_left','rear_right',
+               'side_left','side_right',
                'front_center','LFE')}
 
     c = __blank_channel_mask__()
@@ -162,29 +168,66 @@ class WaveAudio(AudioFile):
                            Con.ULInt16('cb_size'),
                            Con.ULInt16('valid_bits_per_sample'),
                            Con.BitStruct('channel_mask',
-                                         #byte 1
+                                         #0x80
                                          Con.Flag('front_right_of_center'),
+
+                                         #0x40
                                          Con.Flag('front_left_of_center'),
+
+                                         #0x20
                                          Con.Flag('rear_right'),
+
+                                         #0x10
                                          Con.Flag('rear_left'),
+
+                                         #0x8
                                          Con.Flag('LFE'),
+
+                                         #0x4
                                          Con.Flag('front_center'),
+
+                                         #0x2
                                          Con.Flag('front_right'),
+
+                                         #0x1
                                          Con.Flag('front_left'),
 
-                                         #byte 2
+                                         #0x8000
                                          Con.Flag('top_back_left'),
+
+                                         #0x4000
                                          Con.Flag('top_front_right'),
+
+                                         #0x2000
                                          Con.Flag('top_front_center'),
+
+                                         #0x1000
                                          Con.Flag('top_front_left'),
+
+                                         #0x800
                                          Con.Flag('top_center'),
+
+                                         #0x400
                                          Con.Flag('side_right'),
+
+                                         #0x200
                                          Con.Flag('side_left'),
+
+                                         #0x100
                                          Con.Flag('rear_center'),
 
-                                         #byte 3
+                                         #0x800000
+                                         #0x400000
+                                         #0x200000
+                                         #0x100000
+                                         #0x80000
+                                         #0x40000
                                          Con.Bits('undefined',6),
+
+                                         #0x20000
                                          Con.Flag('top_back_right'),
+
+                                         #0x10000
                                          Con.Flag('top_back_center'),
 
                                          Con.Bits('undefined2',8)

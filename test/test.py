@@ -115,21 +115,20 @@ class BLANK_PCM_Reader:
         self.channels = channels
         self.bits_per_sample = bits_per_sample
 
-        self.total_size = length * sample_rate * channels * bits_per_sample / 8
-        self.current_size = self.total_size
+        self.total_frames = length * sample_rate
 
     def read(self, bytes):
-        if (self.current_size > 0):
-            if (self.bits_per_sample > 8):
-                buffer = ('\x01\x00' * (min(bytes,self.current_size) / 2)) + \
-                          '\x00' * (min(bytes,self.current_size) % 2)
-            else:
-                buffer = chr(0) * (min(bytes,self.current_size))
-
-            self.current_size -= len(buffer)
-            return buffer
+        if (self.total_frames > 0):
+            frame_list = audiotools.pcm.from_list(
+                [1] * self.channels * min(
+                    bytes / (self.channels * (self.bits_per_sample / 8)),
+                    self.total_frames),
+                self.channels,self.bits_per_sample,True)
+            self.total_frames -= frame_list.frames
+            return frame_list
         else:
-            return ""
+            return audiotools.pcm.from_list(
+                [],self.channels,self.bits_per_sample,True)
 
     def close(self):
         pass
@@ -1372,11 +1371,6 @@ class TestAiffAudio(TestTextOutput):
                 EXACT_BLANK_PCM_Reader(sum([7939176, 4799256, 6297480, 5383140,
                                             5246136, 5052684, 5013876])))
 
-            #FIXME - AIFF has a stupid race condition
-            #in which calling close() does not guarantee writing to disk
-            #this should be fixed by replacing Python's built-in aifc module
-            time.sleep(1)
-
             track.set_metadata(audiotools.MetaData(
                     track_total=7,
                     album_name=u'Sekaiju no MeiQ\xb2 *syoou no seihai* sound track : Piano sketch version',
@@ -1452,11 +1446,6 @@ uhhDdCiCwqg2Gw3lphgaGhoamR+mptKYNT/F3JFOFCQvKfgAwA==""".decode('base64').decode(
                 track_file.name,
                 EXACT_BLANK_PCM_Reader(sum([7939176, 4799256, 6297480, 5383140,
                                             5246136, 5052684, 5013876])))
-
-            #FIXME - AIFF has a stupid race condition
-            #in which calling close() does not guarantee writing to disk
-            #this should be fixed by replacing Python's built-in aifc module
-            time.sleep(1)
 
             track.set_metadata(audiotools.MetaData(
                     track_total=7,
@@ -4915,7 +4904,7 @@ class TestPCMConversion(unittest.TestCase):
     @TEST_PCM
     def testconversions(self):
         for (input,output) in Combinations(SHORT_PCM_COMBINATIONS,2):
-            #print >>sys.stderr,repr(input),repr(output)
+            #print >>sys.stderr,"%s -> %s" % (repr(input),repr(output))
             reader = BLANK_PCM_Reader(5,
                                       sample_rate=input[0],
                                       channels=input[1],
@@ -9167,6 +9156,21 @@ class TestFrameList(unittest.TestCase):
         self.assertRaises(IndexError,f.channel,2)
         self.assertRaises(IndexError,f.channel,-1)
 
+        for channels in range(1,9):
+            for bps in [8,16,24]:
+                for signed in [True,False]:
+                    if (signed):
+                        l = [random.choice(range(-40,40)) for i in
+                             xrange(16 * channels)]
+                    else:
+                        l = [random.choice(range(0,80)) for i in
+                             xrange(16 * channels)]
+                    f2 = audiotools.pcm.from_list(l,channels,bps,signed)
+                    self.assertEqual(list(f2),l)
+                    for channel in range(channels):
+                        self.assertEqual(list(f2.channel(channel)),
+                                         l[channel::channels])
+
         self.assertEqual(f.to_bytes(True),
                          '\x00\x01\x02\x03\x04\x05\x06\x07\x08\t\n\x0b\x0c\r\x0e\x0f')
         self.assertEqual(f.to_bytes(False),
@@ -9196,8 +9200,66 @@ class TestFrameList(unittest.TestCase):
                           [0x0001,0x0203,0x0405,0x0607,
                            0x0809,0x0A0B,0x0C0D,0x0E0F],2,15,0)
 
-        #FIXME - check from_frames
-        #FIXME - check from_channels
+
+        self.assertRaises(TypeError,
+                          audiotools.pcm.from_frames,
+                          [audiotools.pcm.from_list(range(2),2,16,False),
+                           range(2)])
+
+        self.assertRaises(ValueError,
+                          audiotools.pcm.from_frames,
+                          [audiotools.pcm.from_list(range(2),2,16,False),
+                           audiotools.pcm.from_list(range(4),2,16,False)])
+
+        self.assertRaises(ValueError,
+                          audiotools.pcm.from_frames,
+                          [audiotools.pcm.from_list(range(2),2,16,False),
+                           audiotools.pcm.from_list(range(2),1,16,False)])
+
+        self.assertRaises(ValueError,
+                          audiotools.pcm.from_frames,
+                          [audiotools.pcm.from_list(range(2),2,16,False),
+                           audiotools.pcm.from_list(range(2),2,8,False)])
+
+        self.assertRaises(ValueError,
+                          audiotools.pcm.from_frames,
+                          [audiotools.pcm.from_list(range(2),2,16,False),
+                           audiotools.pcm.from_list(range(2),2,16,True)])
+
+        self.assertEqual(list(audiotools.pcm.from_frames(
+                    [audiotools.pcm.from_list(range(2),2,16,False),
+                     audiotools.pcm.from_list(range(2,4),2,16,False)])),
+                         range(4))
+
+        self.assertRaises(TypeError,
+                          audiotools.pcm.from_channels,
+                          [audiotools.pcm.from_list(range(2),1,16,False),
+                           range(2)])
+
+        self.assertRaises(ValueError,
+                          audiotools.pcm.from_channels,
+                          [audiotools.pcm.from_list(range(1),1,16,False),
+                           audiotools.pcm.from_list(range(2),2,16,False)])
+
+        self.assertRaises(ValueError,
+                          audiotools.pcm.from_channels,
+                          [audiotools.pcm.from_list(range(2),1,16,False),
+                           audiotools.pcm.from_list(range(3),1,16,False)])
+
+        self.assertRaises(ValueError,
+                          audiotools.pcm.from_channels,
+                          [audiotools.pcm.from_list(range(2),1,16,False),
+                           audiotools.pcm.from_list(range(2),1,8,False)])
+
+        self.assertRaises(ValueError,
+                          audiotools.pcm.from_channels,
+                          [audiotools.pcm.from_list(range(2),1,16,False),
+                           audiotools.pcm.from_list(range(2),1,16,True)])
+
+        self.assertEqual(list(audiotools.pcm.from_channels(
+                    [audiotools.pcm.from_list(range(2),1,16,False),
+                     audiotools.pcm.from_list(range(2,4),1,16,False)])),
+                         [0,2,1,3])
 
         self.assertRaises(IndexError,f.split,-1)
 

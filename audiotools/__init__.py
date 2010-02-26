@@ -753,17 +753,18 @@ class __channel_remover__:
         self.channel_numbers = channel_numbers
 
     def convert(self, frame_list):
-        return FrameList.from_channels(
-            list([frame_list.channel(i) for i in self.channel_numbers]))
+        return pcm.from_channels(
+            [frame_list.channel(i) for i in self.channel_numbers])
 
 class __stereo_to_mono__:
     def __init__(self):
         pass
 
     def convert(self, frame_list):
-        return FrameList.from_channels(
-            [[(l + r) / 2 for l,r in izip(frame_list.channel(0),
-                                          frame_list.channel(1))]])
+        return pcm.from_list(
+            [(l + r) / 2 for l,r in izip(frame_list.channel(0),
+                                         frame_list.channel(1))],
+            1,frame_list.bits_per_sample,frame_list.signed)
 
 #going from many channels to 2
 class __downmixer__:
@@ -774,29 +775,35 @@ class __downmixer__:
         REAR_GAIN = 0.6
         CENTER_GAIN = 0.7
 
-        if (frame_list.total_channels == 6):
+        if (frame_list.channels in (6,7,8)):
             Lf = frame_list.channel(0)
             Rf = frame_list.channel(1)
             C  = frame_list.channel(2)
             Lr = frame_list.channel(4)
             Rr = frame_list.channel(5)
-        elif (frame_list.total_channels == 5):
+        elif (frame_list.channels == 5):
             Lf = frame_list.channel(0)
             Rf = frame_list.channel(1)
             C  = frame_list.channel(2)
             Lr = frame_list.channel(3)
             Rr = frame_list.channel(4)
-        elif (frame_list.total_channels == 4):
+        elif (frame_list.channels == 4):
             Lf = frame_list.channel(0)
             Rf = frame_list.channel(1)
-            C  = [0] * len(Lf)
+            C  = pcm.from_list([0] * len(Lf),
+                               1,
+                               frame_list.bits_per_sample,
+                               frame_list.signed)
             Lr = frame_list.channel(2)
             Rr = frame_list.channel(3)
-        elif (frame_list.total_channels == 3):
+        elif (frame_list.channels == 3):
             Lf = frame_list.channel(0)
             Rf = frame_list.channel(1)
             C  = frame_list.channel(2)
-            Lr = Rr = [0] * len(Lf)
+            Lr = Rr = pcm.from_list([0] * len(Lf),
+                                    1,
+                                    frame_list.bits_per_sample,
+                                    frame_list.signed)
         else:
             raise ValueError(_(u"Invalid number of channels in frame_list"))
 
@@ -807,15 +814,22 @@ class __downmixer__:
 
         mono_rear = [0.7 * (Lr_i + Rr_i) for Lr_i,Rr_i in izip(Lr,Rr)]
 
-        return FrameList.from_channels([
-                [converter(Lf_i +
-                           (REAR_GAIN * mono_rear_i) +
-                           (CENTER_GAIN * C_i))
-                 for Lf_i,mono_rear_i,C_i in izip(Lf,mono_rear,C)],
-                [converter(Rf_i -
-                           (REAR_GAIN * mono_rear_i) +
-                           (CENTER_GAIN * C_i))
-                 for Rf_i,mono_rear_i,C_i in izip(Rf,mono_rear,C)]])
+        return pcm.from_channels([
+                pcm.from_list([converter(Lf_i +
+                                         (REAR_GAIN * mono_rear_i) +
+                                         (CENTER_GAIN * C_i))
+                               for Lf_i,mono_rear_i,C_i in izip(Lf,mono_rear,C)],
+                              1,
+                              frame_list.bits_per_sample,
+                              frame_list.signed),
+
+                pcm.from_list([converter(Rf_i -
+                                         (REAR_GAIN * mono_rear_i) +
+                                         (CENTER_GAIN * C_i))
+                               for Rf_i,mono_rear_i,C_i in izip(Rf,mono_rear,C)],
+                              1,
+                              frame_list.bits_per_sample,
+                              frame_list.signed)])
 
 #going from many channels to 1
 class __downmix_remover__:
@@ -880,44 +894,51 @@ class PCMConverter:
         #damaging anything.
         #Just be careful when using this routine elsewhere.
 
-        difference = self.bits_per_sample - self.input.bits_per_sample
+        return frame_list.to_float().to_int(self.bits_per_sample,
+                                            frame_list.signed)
 
-        if (difference < 0):   #removing bits per sample
-            bits_difference = -difference
+        # difference = self.bits_per_sample - self.input.bits_per_sample
 
-            #add some white noise when dithering the signal
-            #to make it sound better, assuming we have at least 16 bits
-            if (self.bits_per_sample >= 16):
-                random_bytes = map(ord, os.urandom((len(frame_list) / 8) + 1))
-                white_noise = [(random_bytes[i / 8] & (1 << (i % 8))) >> (i % 8)
-                               for i in xrange(len(frame_list))]
-            else:
-                white_noise = [0] * len(frame_list)
+        # if (difference < 0):   #removing bits per sample
+        #     bits_difference = -difference
+
+        #     #add some white noise when dithering the signal
+        #     #to make it sound better, assuming we have at least 16 bits
+        #     if (self.bits_per_sample >= 16):
+        #         random_bytes = map(ord, os.urandom((len(frame_list) / 8) + 1))
+        #         white_noise = [(random_bytes[i / 8] & (1 << (i % 8))) >> (i % 8)
+        #                        for i in xrange(len(frame_list))]
+        #     else:
+        #         white_noise = [0] * len(frame_list)
 
 
-            return [(s >> bits_difference) ^ w for (s,w) in izip(frame_list,
-                                                                 white_noise)]
+        #     return [(s >> bits_difference) ^ w for (s,w) in izip(frame_list,
+        #                                                          white_noise)]
 
-        elif (difference > 0): #adding bits per sample
-            bits_difference = difference
+        # elif (difference > 0): #adding bits per sample
+        #     bits_difference = difference
 
-            return [(s << bits_difference) for s in frame_list]
+        #     return [(s << bits_difference) for s in frame_list]
 
-        return frame_list
+        # return frame_list
 
     def convert_channels(self, frame_list):
-        difference = self.channels - self.input.channels
+        difference = self.channels - self.reader.channels
 
         if (difference < 0): #removing channels
-            if ((self.input.channels > 6)):
-                frame_list = FrameList.from_channels(
-                    list([frame_list.channel(i) for i in
-                          range(max(6,self.channels) - 1)]))
+
+            #any channels above 6 are removed entirely
+            if ((self.reader.channels > 6)):
+                frame_list = pcm.from_channels([
+                        frame_list.channel(i) for i in
+                        xrange(6 + 1)])
 
             #return if we've removed all the channels necessary
-            if (self.channels > 6):
+            if (self.channels >= 6):
                 return frame_list
 
+            #otherwise, perform downmixing/channel removing
+            #on the remaining set of channels
             return {2:{1:__stereo_to_mono__()},
 
                     3:{2:__downmixer__(),1:__downmix_remover__()},
@@ -932,18 +953,28 @@ class PCMConverter:
                     6:{5:__channel_remover__([0,1,2,4,5]),
                        4:__channel_remover__([0,1,4,5]),
                        3:__channel_remover__([0,1,2]),
+                       2:__downmixer__(),1:__downmix_remover__()},
+
+                    7:{5:__channel_remover__([0,1,2,4,5]),
+                       4:__channel_remover__([0,1,4,5]),
+                       3:__channel_remover__([0,1,2]),
+                       2:__downmixer__(),1:__downmix_remover__()},
+
+                    8:{5:__channel_remover__([0,1,2,4,5]),
+                       4:__channel_remover__([0,1,4,5]),
+                       3:__channel_remover__([0,1,2]),
                        2:__downmixer__(),1:__downmix_remover__()}}[
-                           self.input.channels][
+                           self.reader.channels][
                                self.channels].convert(frame_list)
 
         else:                #adding new channels
             #we'll simply add more copies of the first channel
             #since this is typically going from mono to stereo
-            channels = list(frame_list.channels())
+            channels = [frame_list.channel(i) for i in xrange(frame_list.channels)]
             for i in xrange(difference):
                 channels.append(channels[0])
 
-            return FrameList.from_channels(channels)
+            return pcm.from_channels(channels)
 
     def convert_sample_rate(self, frame_list):
         #FIXME - The floating-point output from resampler.process()
@@ -962,35 +993,42 @@ class PCMConverter:
 
     #though this method name is huge, it is also unambiguous
     def convert_sample_rate_and_bits_per_sample(self, frame_list):
-        multiplier = 1 << (self.bits_per_sample - 1)
-
-        #turn our PCM samples into floats and resample them,
-        #which removes bits-per-sample
         (output,self.unresampled) = self.resampler.process(
-            self.unresampled + frame_list,
+            self.unresampled + frame_list.to_float(),
             (len(frame_list) == 0) and (len(self.unresampled) == 0))
 
-        frame_list = FrameList(output,frame_list.total_channels)
+        return output.to_int(self.bits_per_sample,True)
 
-        #turn our PCM samples back into ints, which re-adds bits-per-sample
-        if (self.bits_per_sample - self.input.bits_per_sample < 0):
-            #add some white noise when dithering the signal
-            #to make it sound better
-            if (self.bits_per_sample >= 16):
-                random_bytes = map(ord, os.urandom((len(frame_list) / 8) + 1))
-                white_noise = [(random_bytes[i / 8] & (1 << (i % 8))) >> (i % 8)
-                               for i in xrange(len(frame_list))]
-            else:
-                white_noise = [0] * len(frame_list)
+    # def convert_sample_rate_and_bits_per_sample(self, frame_list):
+    #     multiplier = 1 << (self.bits_per_sample - 1)
 
-            return [int(round(s * multiplier)) ^ w
-                    for (s,w) in izip(frame_list,white_noise)]
+    #     #turn our PCM samples into floats and resample them,
+    #     #which removes bits-per-sample
+    #     (output,self.unresampled) = self.resampler.process(
+    #         self.unresampled + frame_list,
+    #         (len(frame_list) == 0) and (len(self.unresampled) == 0))
 
-        else:
-            return [int(round(s * multiplier)) for s in frame_list]
+    #     frame_list = FrameList(output,frame_list.total_channels)
+
+    #     #turn our PCM samples back into ints, which re-adds bits-per-sample
+    #     if (self.bits_per_sample - self.input.bits_per_sample < 0):
+    #         #add some white noise when dithering the signal
+    #         #to make it sound better
+    #         if (self.bits_per_sample >= 16):
+    #             random_bytes = map(ord, os.urandom((len(frame_list) / 8) + 1))
+    #             white_noise = [(random_bytes[i / 8] & (1 << (i % 8))) >> (i % 8)
+    #                            for i in xrange(len(frame_list))]
+    #         else:
+    #             white_noise = [0] * len(frame_list)
+
+    #         return [int(round(s * multiplier)) ^ w
+    #                 for (s,w) in izip(frame_list,white_noise)]
+
+    #     else:
+    #         return [int(round(s * multiplier)) for s in frame_list]
 
 
-        return frame_list
+    #     return frame_list
 
 #wraps around an existing PCMReader
 #and applies ReplayGain upon calling the read() method
