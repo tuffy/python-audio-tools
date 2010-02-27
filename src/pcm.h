@@ -48,7 +48,6 @@ typedef struct {
   int channels;        /*the total number of channels in this FrameList
 			 aka the total number of columns in "samples*/
   int bits_per_sample; /*the maximum size of each sample, in bits*/
-  int is_signed;       /*1 if the samples are signed, 0 if unsigned*/
 
   ia_data_t* samples;    /*the actual sample data itself,
 			   stored raw as 32-bit signed integers*/
@@ -77,8 +76,6 @@ PyObject* FrameList_channels(pcm_FrameList *self, void* closure);
 
 PyObject* FrameList_bits_per_sample(pcm_FrameList *self, void* closure);
 
-PyObject* FrameList_signed(pcm_FrameList *self, void* closure);
-
 Py_ssize_t FrameList_len(pcm_FrameList *o);
 
 PyObject* FrameList_GetItem(pcm_FrameList *o, Py_ssize_t i);
@@ -88,10 +85,6 @@ PyObject* FrameList_frame(pcm_FrameList *self, PyObject *args);
 PyObject* FrameList_channel(pcm_FrameList *self, PyObject *args);
 
 PyObject* FrameList_to_bytes(pcm_FrameList *self, PyObject *args);
-
-PyObject* FrameList_set_signed(pcm_FrameList *self, PyObject *args);
-
-PyObject* FrameList_set_unsigned(pcm_FrameList *self, PyObject *args);
 
 PyObject* FrameList_copy(pcm_FrameList *self, PyObject *args);
 

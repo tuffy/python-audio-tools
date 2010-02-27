@@ -52,7 +52,6 @@ PyGetSetDef FrameList_getseters[] = {
     {"channels", (getter)FrameList_channels, 0, "channel count", NULL},
     {"bits_per_sample", (getter)FrameList_bits_per_sample,
      0, "bits per sample", NULL},
-    {"signed", (getter)FrameList_signed, 0, "signed", NULL},
     {NULL}  /* Sentinel */
 };
 
@@ -63,10 +62,6 @@ PyMethodDef FrameList_methods[] = {
    METH_VARARGS,"Reads the given channel from the framelist"},
   {"to_bytes", (PyCFunction)FrameList_to_bytes,
    METH_VARARGS,"Converts the framelist to a binary string"},
-  {"set_signed", (PyCFunction)FrameList_set_signed,
-   METH_NOARGS,"Sets the framelist's data to be signed"},
-  {"set_unsigned", (PyCFunction)FrameList_set_unsigned,
-   METH_NOARGS,"Sets the framelist's data to be unsigned"},
   {"split", (PyCFunction)FrameList_split,
    METH_VARARGS,"Splits the framelist into 2 sub framelists by number of frames"},
   {"copy", (PyCFunction)FrameList_copy,
@@ -155,6 +150,7 @@ int FrameList_init(pcm_FrameList *self, PyObject *args, PyObject *kwds) {
   int data_size;
 #endif
   int is_big_endian;
+  int is_signed;
   FrameList_char_to_int_converter converter;
 
   if (!PyArg_ParseTuple(args, "s#iiii",
@@ -162,7 +158,7 @@ int FrameList_init(pcm_FrameList *self, PyObject *args, PyObject *kwds) {
 			&(self->channels),
 			&(self->bits_per_sample),
 			&(is_big_endian),
-			&(self->is_signed)))
+			&is_signed))
     return -1;
 
   if (data_size % (self->channels * self->bits_per_sample / 8)) {
@@ -175,7 +171,7 @@ int FrameList_init(pcm_FrameList *self, PyObject *args, PyObject *kwds) {
     self->samples = malloc(sizeof(ia_data_t) * self->samples_length);
     converter = FrameList_get_char_to_int_converter(self->bits_per_sample,
 						    is_big_endian,
-						    self->is_signed);
+						    is_signed);
     if (converter) {
       FrameList_char_to_samples(self->samples,
 				data,
@@ -194,7 +190,7 @@ int FrameList_init(pcm_FrameList *self, PyObject *args, PyObject *kwds) {
 
 PyObject* FrameList_blank(PyObject *dummy, PyObject *args) {
   pcm_FrameList *framelist = FrameList_create();
-  framelist->frames = framelist->channels = framelist->is_signed = 0;
+  framelist->frames = framelist->channels = 0;
   framelist->bits_per_sample = 8;
   framelist->samples_length = 0;
   framelist->samples = malloc(0);
@@ -221,9 +217,9 @@ PyObject* FrameList_bits_per_sample(pcm_FrameList *self, void* closure) {
   return Py_BuildValue("i",self->bits_per_sample);
 }
 
-PyObject* FrameList_signed(pcm_FrameList *self, void* closure) {
-  return Py_BuildValue("i",self->is_signed);
-}
+/* PyObject* FrameList_signed(pcm_FrameList *self, void* closure) { */
+/*   return Py_BuildValue("i",self->is_signed); */
+/* } */
 
 Py_ssize_t FrameList_len(pcm_FrameList *o) {
   return o->samples_length;
@@ -253,7 +249,6 @@ PyObject* FrameList_frame(pcm_FrameList *self, PyObject *args) {
   frame->frames = 1;
   frame->channels = self->channels;
   frame->bits_per_sample = self->bits_per_sample;
-  frame->is_signed = self->is_signed;
   frame->samples = malloc(sizeof(ia_data_t) * self->channels);
   frame->samples_length = self->channels;
   memcpy(frame->samples,
@@ -280,7 +275,6 @@ PyObject* FrameList_channel(pcm_FrameList *self, PyObject *args) {
   channel->frames = self->frames;
   channel->channels = 1;
   channel->bits_per_sample = self->bits_per_sample;
-  channel->is_signed = self->is_signed;
   channel->samples = malloc(sizeof(ia_data_t) * self->frames);
   channel->samples_length = self->frames;
 
@@ -295,11 +289,12 @@ PyObject* FrameList_channel(pcm_FrameList *self, PyObject *args) {
 
 PyObject* FrameList_to_bytes(pcm_FrameList *self, PyObject *args) {
   int is_big_endian;
+  int is_signed;
   unsigned char *bytes;
   Py_ssize_t bytes_size;
   PyObject *bytes_obj;
 
-  if (!PyArg_ParseTuple(args,"i",&is_big_endian))
+  if (!PyArg_ParseTuple(args,"ii",&is_big_endian,&is_signed))
     return NULL;
 
   bytes_size = (self->bits_per_sample / 8) * self->samples_length;
@@ -310,7 +305,7 @@ PyObject* FrameList_to_bytes(pcm_FrameList *self, PyObject *args) {
 			      FrameList_get_int_to_char_converter(
 					    self->bits_per_sample,
 					    is_big_endian,
-					    self->is_signed),
+					    is_signed),
 			      self->samples_length,
 			      self->bits_per_sample);
   }
@@ -318,36 +313,6 @@ PyObject* FrameList_to_bytes(pcm_FrameList *self, PyObject *args) {
   bytes_obj = PyString_FromStringAndSize((char*)bytes,bytes_size);
   free(bytes);
   return bytes_obj;
-}
-
-PyObject* FrameList_set_signed(pcm_FrameList *self, PyObject *args) {
-  ia_data_t adjustment;
-  ia_size_t i;
-
-  if (!self->is_signed) {
-    adjustment = 1 << (self->bits_per_sample - 1);
-    for (i = 0; i < self->samples_length; i++)
-      self->samples[i] -= adjustment;
-    self->is_signed = 1;
-  }
-
-  Py_INCREF(Py_None);
-  return Py_None;
-}
-
-PyObject* FrameList_set_unsigned(pcm_FrameList *self, PyObject *args) {
-  ia_data_t adjustment;
-  ia_size_t i;
-
-  if (self->is_signed) {
-    adjustment = 1 << (self->bits_per_sample - 1);
-    for (i = 0; i < self->samples_length; i++)
-      self->samples[i] += adjustment;
-    self->is_signed = 0;
-  }
-
-  Py_INCREF(Py_None);
-  return Py_None;
 }
 
 PyObject* FrameList_split(pcm_FrameList *self, PyObject *args){
@@ -369,7 +334,6 @@ PyObject* FrameList_split(pcm_FrameList *self, PyObject *args){
     tail->frames = 0;
     tail->channels = self->channels;
     tail->bits_per_sample = self->bits_per_sample;
-    tail->is_signed = self->is_signed;
     tail->samples_length = 0;
     tail->samples = malloc(0);
   } else if (split_point == 0) {
@@ -377,7 +341,6 @@ PyObject* FrameList_split(pcm_FrameList *self, PyObject *args){
     head->frames = 0;
     head->channels = self->channels;
     head->bits_per_sample = self->bits_per_sample;
-    head->is_signed = self->is_signed;
     head->samples_length = 0;
     head->samples = malloc(0);
     tail = self;
@@ -401,7 +364,6 @@ PyObject* FrameList_split(pcm_FrameList *self, PyObject *args){
 
     head->channels = tail->channels = self->channels;
     head->bits_per_sample = tail->bits_per_sample = self->bits_per_sample;
-    head->is_signed = tail->is_signed = self->is_signed;
   }
 
   tuple = Py_BuildValue("(O,O)",head,tail);
@@ -436,17 +398,11 @@ PyObject* FrameList_concat(pcm_FrameList *a, PyObject *bb) {
 		    "both FrameLists must have the same number of bits per sample");
     goto error;
   }
-  if (a->is_signed != b->is_signed) {
-    PyErr_SetString(PyExc_ValueError,
-		    "both FrameLists must have the same sign value");
-    goto error;
-  }
 
   concat = FrameList_create();
   concat->frames = a->frames + b->frames;
   concat->channels = a->channels;
   concat->bits_per_sample = a->bits_per_sample;
-  concat->is_signed = a->is_signed;
   concat->samples_length = a->samples_length + b->samples_length;
   concat->samples = malloc(concat->samples_length * sizeof(ia_data_t));
   memcpy(concat->samples,a->samples,a->samples_length * sizeof(ia_data_t));
@@ -465,7 +421,6 @@ PyObject* FrameList_copy(pcm_FrameList *self, PyObject *args) {
   framelist->frames = self->frames;
   framelist->channels = self->channels;
   framelist->bits_per_sample = self->bits_per_sample;
-  framelist->is_signed = self->is_signed;
   framelist->samples_length = self->samples_length;
   framelist->samples = malloc(sizeof(ia_data_t) * framelist->samples_length);
   memcpy(framelist->samples,self->samples,
@@ -483,14 +438,8 @@ PyObject* FrameList_to_float(pcm_FrameList *self, PyObject *args) {
   framelist->samples = malloc(sizeof(fa_data_t) * framelist->samples_length);
 
   adjustment = 1 << (self->bits_per_sample - 1);
-  if (self->is_signed) {
-    for (i = 0; i < self->samples_length; i++) {
-      framelist->samples[i] = ((fa_data_t)self->samples[i]) / adjustment;
-    }
-  } else {
-    for (i = 0; i < self->samples_length; i++) {
-      framelist->samples[i] = ((fa_data_t)(self->samples[i] - adjustment)) / adjustment;
-    }
+  for (i = 0; i < self->samples_length; i++) {
+    framelist->samples[i] = ((fa_data_t)self->samples[i]) / adjustment;
   }
 
   return (PyObject*)framelist;
@@ -530,6 +479,7 @@ PyObject *FrameList_from_list(PyObject *dummy, PyObject *args) {
   PyObject *integer;
   Py_ssize_t list_len,i;
   long integer_val;
+  int adjustment;
   int channels;
   int bits_per_sample;
   int is_signed;
@@ -560,10 +510,15 @@ PyObject *FrameList_from_list(PyObject *dummy, PyObject *args) {
     goto error;
   }
 
+  if (is_signed) {
+    adjustment = 0;
+  } else {
+    adjustment = (1 << (bits_per_sample - 1));
+  }
+
   framelist = FrameList_create();
   framelist->channels = channels;
   framelist->bits_per_sample = bits_per_sample;
-  framelist->is_signed = is_signed;
   framelist->samples = malloc(sizeof(ia_data_t) * list_len);
   framelist->samples_length = list_len;
   framelist->frames = list_len / framelist->channels;
@@ -574,7 +529,7 @@ PyObject *FrameList_from_list(PyObject *dummy, PyObject *args) {
 	PyErr_Occurred())
       goto error;
     else {
-      framelist->samples[i] = integer_val;
+      framelist->samples[i] = integer_val - adjustment;
     }
   }
 
@@ -617,7 +572,6 @@ PyObject *FrameList_from_frames(PyObject *dummy, PyObject *args) {
   framelist->frames = list_len;
   framelist->channels = frame->channels;
   framelist->bits_per_sample = frame->bits_per_sample;
-  framelist->is_signed = frame->is_signed;
   framelist->samples_length = list_len * frame->channels;
   framelist->samples = malloc(sizeof(ia_data_t) * framelist->samples_length);
 
@@ -641,11 +595,6 @@ PyObject *FrameList_from_frames(PyObject *dummy, PyObject *args) {
     if (frame->bits_per_sample != framelist->bits_per_sample) {
       PyErr_SetString(PyExc_ValueError,
 		      "all subframes must have the same number of bits per sample");
-      goto error;
-    }
-    if (frame->is_signed != framelist->is_signed) {
-      PyErr_SetString(PyExc_ValueError,
-		      "all subframes must have the same signed or unsigned value");
       goto error;
     }
 
@@ -700,7 +649,6 @@ PyObject *FrameList_from_channels(PyObject *dummy, PyObject *args) {
   framelist->frames = channel->frames;
   framelist->channels = list_len;
   framelist->bits_per_sample = channel->bits_per_sample;
-  framelist->is_signed = channel->is_signed;
   framelist->samples_length = framelist->frames * list_len;
   framelist->samples = malloc(sizeof(ia_data_t) * framelist->samples_length);
 
@@ -725,11 +673,6 @@ PyObject *FrameList_from_channels(PyObject *dummy, PyObject *args) {
     if (channel->bits_per_sample != framelist->bits_per_sample) {
       PyErr_SetString(PyExc_ValueError,
 		      "all channels must have the same number of bits per sample");
-      goto error;
-    }
-    if (channel->is_signed != framelist->is_signed) {
-      PyErr_SetString(PyExc_ValueError,
-		      "all channels must have the same signed or unsigned value");
       goto error;
     }
 
@@ -998,23 +941,14 @@ PyObject* FloatFrameList_to_int(pcm_FloatFrameList *self, PyObject *args) {
   framelist->frames = self->frames;
   framelist->channels = self->channels;
   framelist->bits_per_sample = bits_per_sample;
-  framelist->is_signed = is_signed;
   framelist->samples_length = self->samples_length;
   framelist->samples = malloc(sizeof(ia_data_t) * framelist->samples_length);
 
   adjustment = 1 << (bits_per_sample - 1);
-  if (is_signed) {
-    sample_min = -adjustment;
-    sample_max = adjustment - 1;
-    for (i = 0; i < self->samples_length; i++) {
-      framelist->samples[i] =  MAX(MIN((ia_data_t)(self->samples[i] * adjustment),sample_max),sample_min);
-    }
-  } else {
-    sample_min = 0;
-    sample_max = (1 << bits_per_sample) - 1;
-    for (i = 0; i < self->samples_length; i++) {
-      framelist->samples[i] = MAX(MIN((ia_data_t)(self->samples[i] * adjustment) + adjustment,sample_max),sample_min);
-    }
+  sample_min = -adjustment;
+  sample_max = adjustment - 1;
+  for (i = 0; i < self->samples_length; i++) {
+    framelist->samples[i] =  MAX(MIN((ia_data_t)(self->samples[i] * adjustment),sample_max),sample_min);
   }
 
   return (PyObject*)framelist;

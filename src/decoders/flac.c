@@ -187,7 +187,6 @@ PyObject *FLACDecoder_read(decoders_FlacDecoder* self,
     framelist = (pcm_FrameList*)PyObject_CallMethod(pcm,"__blank__",NULL);
     framelist->channels = self->streaminfo.channels;
     framelist->bits_per_sample = self->streaminfo.bits_per_sample;
-    framelist->is_signed = 1;
     Py_DECREF(pcm);
     return (PyObject*)framelist;
   }
@@ -271,7 +270,6 @@ PyObject *FLACDecoder_read(decoders_FlacDecoder* self,
   framelist->frames = frame_header.block_size;
   framelist->channels = frame_header.channel_count;
   framelist->bits_per_sample = frame_header.bits_per_sample;
-  framelist->is_signed = 1;
   framelist->samples_length = framelist->frames * framelist->channels;
   framelist->samples = realloc(framelist->samples,
 			       sizeof(ia_data_t) * framelist->samples_length);

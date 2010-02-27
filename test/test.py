@@ -9130,12 +9130,11 @@ class TestFrameList(unittest.TestCase):
                           "abcd",1,15,0,1)
 
         f = audiotools.pcm.FrameList("".join(map(chr,range(16))),
-                                     2,16,1,0)
+                                     2,16,True,False)
         self.assertEqual(len(f),8)
         self.assertEqual(f.channels,2)
         self.assertEqual(f.frames,4)
         self.assertEqual(f.bits_per_sample,16)
-        self.assertEqual(f.signed,False)
         self.assertRaises(IndexError,f.__getitem__,9)
 
         self.assertEqual(list(f.frame(0)),
@@ -9156,6 +9155,17 @@ class TestFrameList(unittest.TestCase):
         self.assertRaises(IndexError,f.channel,2)
         self.assertRaises(IndexError,f.channel,-1)
 
+        for bps in [8,16,24]:
+            self.assertEqual(list(audiotools.pcm.from_list(
+                        range(-40,40),1,bps,True)),
+                             range(-40,40))
+
+        for bps in [8,16,24]:
+            self.assertEqual(list(audiotools.pcm.from_list(
+                        range((1 << (bps - 1)) - 40,
+                              (1 << (bps - 1)) + 40),1,bps,False)),
+                             range(-40,40))
+
         for channels in range(1,9):
             for bps in [8,16,24]:
                 for signed in [True,False]:
@@ -9166,15 +9176,25 @@ class TestFrameList(unittest.TestCase):
                         l = [random.choice(range(0,80)) for i in
                              xrange(16 * channels)]
                     f2 = audiotools.pcm.from_list(l,channels,bps,signed)
-                    self.assertEqual(list(f2),l)
-                    for channel in range(channels):
-                        self.assertEqual(list(f2.channel(channel)),
-                                         l[channel::channels])
+                    if (signed):
+                        self.assertEqual(list(f2),l)
+                        for channel in range(channels):
+                            self.assertEqual(list(f2.channel(channel)),
+                                             l[channel::channels])
+                    else:
+                        self.assertEqual(list(f2),
+                                         [i - (1 << (bps - 1))
+                                          for i in l])
+                        for channel in range(channels):
+                            self.assertEqual(list(f2.channel(channel)),
+                                             [i - (1 << (bps - 1))
+                                              for i in l[channel::channels]])
 
-        self.assertEqual(f.to_bytes(True),
+        self.assertEqual(f.to_bytes(True,False),
                          '\x00\x01\x02\x03\x04\x05\x06\x07\x08\t\n\x0b\x0c\r\x0e\x0f')
-        self.assertEqual(f.to_bytes(False),
+        self.assertEqual(f.to_bytes(False,False),
                          '\x01\x00\x03\x02\x05\x04\x07\x06\t\x08\x0b\n\r\x0c\x0f\x0e')
+        #FIXME - check signed
 
         self.assertEqual(list(f),
                          list(audiotools.pcm.from_frames([f.frame(0),
@@ -9187,18 +9207,18 @@ class TestFrameList(unittest.TestCase):
 
         self.assertEqual(list(audiotools.pcm.from_list(
                     [0x0001,0x0203,0x0405,0x0607,
-                     0x0809,0x0A0B,0x0C0D,0x0E0F],2,16,0)),
+                     0x0809,0x0A0B,0x0C0D,0x0E0F],2,16,True)),
                          list(f))
 
         self.assertRaises(ValueError,
                           audiotools.pcm.from_list,
                           [0x0001,0x0203,0x0405,0x0607,
-                           0x0809,0x0A0B,0x0C0D],2,16,0)
+                           0x0809,0x0A0B,0x0C0D],2,16,True)
 
         self.assertRaises(ValueError,
                           audiotools.pcm.from_list,
                           [0x0001,0x0203,0x0405,0x0607,
-                           0x0809,0x0A0B,0x0C0D,0x0E0F],2,15,0)
+                           0x0809,0x0A0B,0x0C0D,0x0E0F],2,15,True)
 
 
         self.assertRaises(TypeError,
@@ -9221,14 +9241,9 @@ class TestFrameList(unittest.TestCase):
                           [audiotools.pcm.from_list(range(2),2,16,False),
                            audiotools.pcm.from_list(range(2),2,8,False)])
 
-        self.assertRaises(ValueError,
-                          audiotools.pcm.from_frames,
-                          [audiotools.pcm.from_list(range(2),2,16,False),
-                           audiotools.pcm.from_list(range(2),2,16,True)])
-
         self.assertEqual(list(audiotools.pcm.from_frames(
-                    [audiotools.pcm.from_list(range(2),2,16,False),
-                     audiotools.pcm.from_list(range(2,4),2,16,False)])),
+                    [audiotools.pcm.from_list(range(2),2,16,True),
+                     audiotools.pcm.from_list(range(2,4),2,16,True)])),
                          range(4))
 
         self.assertRaises(TypeError,
@@ -9251,14 +9266,9 @@ class TestFrameList(unittest.TestCase):
                           [audiotools.pcm.from_list(range(2),1,16,False),
                            audiotools.pcm.from_list(range(2),1,8,False)])
 
-        self.assertRaises(ValueError,
-                          audiotools.pcm.from_channels,
-                          [audiotools.pcm.from_list(range(2),1,16,False),
-                           audiotools.pcm.from_list(range(2),1,16,True)])
-
         self.assertEqual(list(audiotools.pcm.from_channels(
-                    [audiotools.pcm.from_list(range(2),1,16,False),
-                     audiotools.pcm.from_list(range(2,4),1,16,False)])),
+                    [audiotools.pcm.from_list(range(2),1,16,True),
+                     audiotools.pcm.from_list(range(2,4),1,16,True)])),
                          [0,2,1,3])
 
         self.assertRaises(IndexError,f.split,-1)
@@ -9303,32 +9313,6 @@ class TestFrameList(unittest.TestCase):
         self.assertRaises(ValueError,operator.concat,f1,f2)
         f2 = audiotools.pcm.from_list(range(10,20),2,8,False)
         self.assertRaises(ValueError,operator.concat,f1,f2)
-        f2 = audiotools.pcm.from_list(range(10,20),2,16,True)
-        self.assertRaises(ValueError,operator.concat,f1,f2)
-
-        #check round-trip from signed->unsigned->signed
-        for bps in [8,16,24]:
-            signed = range(-20,20)
-            f = audiotools.pcm.from_list(signed,1,bps,True)
-            self.assertEqual(f.signed,True)
-            self.assertEqual(list(f),signed)
-            f.set_unsigned()
-            self.assertEqual(f.signed,False)
-            f.set_signed()
-            self.assertEqual(f.signed,True)
-            self.assertEqual(list(f),signed)
-
-        #check round-trip from unsigned->signed->unsigned
-        for bps in [8,16,24]:
-            unsigned = range(0,40)
-            f = audiotools.pcm.from_list(unsigned,1,bps,False)
-            self.assertEqual(f.signed,False)
-            self.assertEqual(list(f),unsigned)
-            f.set_signed()
-            self.assertEqual(f.signed,True)
-            f.set_unsigned()
-            self.assertEqual(f.signed,False)
-            self.assertEqual(list(f),unsigned)
 
     @TEST_FRAMELIST
     def test_8bit_roundtrip(self):
@@ -9370,10 +9354,26 @@ class TestFrameList(unittest.TestCase):
         import audiotools.pcm
 
         s = "".join(TestFrameList.Bits8())
-        self.assertEqual(audiotools.pcm.FrameList(s,1,8,1,0).to_bytes(1),s)
-        self.assertEqual(audiotools.pcm.FrameList(s,1,8,1,1).to_bytes(1),s)
-        self.assertEqual(audiotools.pcm.FrameList(s,1,8,0,0).to_bytes(0),s)
-        self.assertEqual(audiotools.pcm.FrameList(s,1,8,0,1).to_bytes(0),s)
+
+        #big endian, unsigned
+        self.assertEqual(
+            audiotools.pcm.FrameList(s,1,8,
+                                     True,False).to_bytes(True,False),s)
+
+        #big-endian, signed
+        self.assertEqual(
+            audiotools.pcm.FrameList(s,1,8,
+                                     True,True).to_bytes(True,True),s)
+
+        #little-endian, unsigned
+        self.assertEqual(
+            audiotools.pcm.FrameList(s,1,8,
+                                     False,False).to_bytes(False,False),s)
+
+        #little-endian, signed
+        self.assertEqual(
+            audiotools.pcm.FrameList(s,1,8,
+                                     False,True).to_bytes(False,True),s)
 
     @TEST_FRAMELIST
     def test_16bit_roundtrip(self):
@@ -9412,10 +9412,26 @@ class TestFrameList(unittest.TestCase):
         import audiotools.pcm
 
         s = "".join(TestFrameList.Bits16())
-        self.assertEqual(audiotools.pcm.FrameList(s,1,16,1,0).to_bytes(1),s)
-        self.assertEqual(audiotools.pcm.FrameList(s,1,16,1,1).to_bytes(1),s)
-        self.assertEqual(audiotools.pcm.FrameList(s,1,16,0,0).to_bytes(0),s)
-        self.assertEqual(audiotools.pcm.FrameList(s,1,16,0,1).to_bytes(0),s)
+
+        #big-endian, unsigned
+        self.assertEqual(
+            audiotools.pcm.FrameList(s,1,16,
+                                     True,False).to_bytes(True,False),s)
+
+        #big-endian, signed
+        self.assertEqual(
+            audiotools.pcm.FrameList(s,1,16,
+                                     True,True).to_bytes(True,True),s)
+
+        #little-endian, unsigned
+        self.assertEqual(
+            audiotools.pcm.FrameList(s,1,16,
+                                     False,False).to_bytes(False,False),s)
+
+        #little-endian, signed
+        self.assertEqual(
+            audiotools.pcm.FrameList(s,1,16,
+                                     False,True).to_bytes(False,True),s)
 
     @TEST_FRAMELIST
     def test_24bit_roundtrip(self):
@@ -9494,10 +9510,25 @@ class TestFrameList(unittest.TestCase):
         import audiotools.pcm
 
         s = "".join(TestFrameList.Bits24())
-        self.assertEqual(audiotools.pcm.FrameList(s,1,24,1,0).to_bytes(1),s)
-        self.assertEqual(audiotools.pcm.FrameList(s,1,24,1,1).to_bytes(1),s)
-        self.assertEqual(audiotools.pcm.FrameList(s,1,24,0,0).to_bytes(0),s)
-        self.assertEqual(audiotools.pcm.FrameList(s,1,24,0,1).to_bytes(0),s)
+         #big-endian, unsigned
+        self.assertEqual(
+            audiotools.pcm.FrameList(s,1,24,
+                                     True,False).to_bytes(True,False),s)
+
+        #big-endian, signed
+        self.assertEqual(
+            audiotools.pcm.FrameList(s,1,24,
+                                     True,True).to_bytes(True,True),s)
+
+        #little-endian, unsigned
+        self.assertEqual(
+            audiotools.pcm.FrameList(s,1,24,
+                                     False,False).to_bytes(False,False),s)
+
+        #little-endian, signed
+        self.assertEqual(
+            audiotools.pcm.FrameList(s,1,24,
+                                     False,True).to_bytes(False,True),s)
 
 class TestFloatFrameList(unittest.TestCase):
     @TEST_FRAMELIST
@@ -9603,7 +9634,7 @@ class TestFloatFrameList(unittest.TestCase):
         for bps in [8,16,24]:
             l = range(0,1 << bps,4)
             self.assertEqual(
-                l,
+                [i - (1 << (bps - 1)) for i in l],
                 list(audiotools.pcm.from_list(l,1,bps,False).to_float().to_int(bps,False)))
 
             l = range(-(1 << (bps - 1)),(1 << (bps - 1)) - 1,4)
