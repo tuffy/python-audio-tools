@@ -1438,7 +1438,7 @@ void FrameList_int_to_U8_char(ia_data_t i, unsigned char *s) {
 }
 
 void FrameList_int_to_UB16_char(ia_data_t i, unsigned char *s) {
-  i += (i << 15);
+  i += (1 << 15);
   s[0] = (i >> 8) & 0xFF;
   s[1] = i & 0xFF;
 }

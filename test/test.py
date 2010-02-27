@@ -9130,7 +9130,7 @@ class TestFrameList(unittest.TestCase):
                           "abcd",1,15,0,1)
 
         f = audiotools.pcm.FrameList("".join(map(chr,range(16))),
-                                     2,16,True,False)
+                                     2,16,True,True)
         self.assertEqual(len(f),8)
         self.assertEqual(f.channels,2)
         self.assertEqual(f.frames,4)
@@ -9190,9 +9190,9 @@ class TestFrameList(unittest.TestCase):
                                              [i - (1 << (bps - 1))
                                               for i in l[channel::channels]])
 
-        self.assertEqual(f.to_bytes(True,False),
+        self.assertEqual(f.to_bytes(True,True),
                          '\x00\x01\x02\x03\x04\x05\x06\x07\x08\t\n\x0b\x0c\r\x0e\x0f')
-        self.assertEqual(f.to_bytes(False,False),
+        self.assertEqual(f.to_bytes(False,True),
                          '\x01\x00\x03\x02\x05\x04\x07\x06\t\x08\x0b\n\r\x0c\x0f\x0e')
         #FIXME - check signed
 
@@ -9326,20 +9326,23 @@ class TestFrameList(unittest.TestCase):
         SB8Int = audiotools.Con.GreedyRepeater(audiotools.Con.SBInt8(None))
         SL8Int = audiotools.Con.GreedyRepeater(audiotools.Con.UBInt8(None))
 
-        self.assertEqual(unsigned_ints,
+        #unsigned, big-endian
+        self.assertEqual([i - (1 << 7) for i in unsigned_ints],
                          list(audiotools.pcm.FrameList(
                     UB8Int.build(unsigned_ints),
-                    1,8,1,0)))
+                    1,8,True,False)))
 
-        self.assertEqual(unsigned_ints,
+        #unsigned, little-endian
+        self.assertEqual([i - (1 << 7) for i in unsigned_ints],
                          list(audiotools.pcm.FrameList(
                     UL8Int.build(unsigned_ints),
-                    1,8,0,0)))
+                    1,8,False,False)))
 
+        #signed, big-endian
         self.assertEqual(signed_ints,
                          list(audiotools.pcm.FrameList(
                     SB8Int.build(signed_ints),
-                    1,8,1,1)))
+                    1,8,True,True)))
 
         #this test triggers a DeprecationWarning
         #which is odd since signed little-endian 8 bit
@@ -9387,25 +9390,29 @@ class TestFrameList(unittest.TestCase):
         SB16Int = audiotools.Con.GreedyRepeater(audiotools.Con.SBInt16(None))
         SL16Int = audiotools.Con.GreedyRepeater(audiotools.Con.SLInt16(None))
 
-        self.assertEqual(unsigned_ints,
+        #unsigned, big-endian
+        self.assertEqual([i - (1 << 15) for i in unsigned_ints],
                          list(audiotools.pcm.FrameList(
                     UB16Int.build(unsigned_ints),
-                    1,16,1,0)))
+                    1,16,True,False)))
 
-        self.assertEqual(unsigned_ints,
+        #unsigned, little-endian
+        self.assertEqual([i - (1 << 15) for i in unsigned_ints],
                          list(audiotools.pcm.FrameList(
                     UL16Int.build(unsigned_ints),
-                    1,16,0,0)))
+                    1,16,False,False)))
 
+        #signed, big-endian
         self.assertEqual(signed_ints,
                          list(audiotools.pcm.FrameList(
                     SB16Int.build(signed_ints),
-                    1,16,1,1)))
+                    1,16,True,True)))
 
+        #signed, little-endian
         self.assertEqual(signed_ints,
                          list(audiotools.pcm.FrameList(
                     SL16Int.build(signed_ints),
-                    1,16,0,1)))
+                    1,16,False,True)))
 
     @TEST_FRAMELIST
     def test_16bit_roundtrip_str(self):
@@ -9416,22 +9423,30 @@ class TestFrameList(unittest.TestCase):
         #big-endian, unsigned
         self.assertEqual(
             audiotools.pcm.FrameList(s,1,16,
-                                     True,False).to_bytes(True,False),s)
+                                     True,False).to_bytes(True,False),
+            s,
+            "data mismatch converting UBInt16 through string")
 
         #big-endian, signed
         self.assertEqual(
             audiotools.pcm.FrameList(s,1,16,
-                                     True,True).to_bytes(True,True),s)
+                                     True,True).to_bytes(True,True),
+            s,
+            "data mismatch converting SBInt16 through string")
 
         #little-endian, unsigned
         self.assertEqual(
             audiotools.pcm.FrameList(s,1,16,
-                                     False,False).to_bytes(False,False),s)
+                                     False,False).to_bytes(False,False),
+            s,
+            "data mismatch converting ULInt16 through string")
 
         #little-endian, signed
         self.assertEqual(
             audiotools.pcm.FrameList(s,1,16,
-                                     False,True).to_bytes(False,True),s)
+                                     False,True).to_bytes(False,True),
+            s,
+            "data mismatch converting USInt16 through string")
 
     @TEST_FRAMELIST
     def test_24bit_roundtrip(self):
@@ -9477,15 +9492,15 @@ class TestFrameList(unittest.TestCase):
             unsigned_values = [high_bits | low_bits for high_bits in
                                unsigned_ints_high]
 
-            self.assertEqual(unsigned_values,
+            self.assertEqual([i - (1 << 23) for i in unsigned_values],
                              list(audiotools.pcm.FrameList(
                         UB24Int.build(Con.Container(i=unsigned_values)),
-                        1,24,1,0)))
+                        1,24,True,False)))
 
-            self.assertEqual(unsigned_values,
+            self.assertEqual([i - (1 << 23) for i in unsigned_values],
                              list(audiotools.pcm.FrameList(
                         UL24Int.build(Con.Container(i=unsigned_values)),
-                        1,24,0,0)))
+                        1,24,False,False)))
 
         for low_bits in xrange(0,0xFF + 1,RANGE):
             if (high_bits < 0):
@@ -9498,19 +9513,19 @@ class TestFrameList(unittest.TestCase):
             self.assertEqual(signed_values,
                              list(audiotools.pcm.FrameList(
                         SB24Int.build(Con.Container(i=signed_values)),
-                        1,24,1,1)))
+                        1,24,True,True)))
 
             self.assertEqual(signed_values,
                              list(audiotools.pcm.FrameList(
                         SL24Int.build(Con.Container(i=signed_values)),
-                        1,24,0,1)))
+                        1,24,False,True)))
 
     @TEST_FRAMELIST
     def test_24bit_roundtrip_str(self):
         import audiotools.pcm
 
         s = "".join(TestFrameList.Bits24())
-         #big-endian, unsigned
+        #big-endian, unsigned
         self.assertEqual(
             audiotools.pcm.FrameList(s,1,24,
                                      True,False).to_bytes(True,False),s)
@@ -9663,19 +9678,19 @@ class TestFloatFrameList(unittest.TestCase):
             for signed in [True,False]:
                 self.assertEqual(
                     l,
-                    list(audiotools.pcm.FloatFrameList(l,1).to_int(bps,signed).to_float()))
+                    list(audiotools.pcm.FloatFrameList(l,1).to_int(bps).to_float()))
 
         #check round-trip from int->float->int
         for bps in [8,16,24]:
             l = range(0,1 << bps,4)
             self.assertEqual(
                 [i - (1 << (bps - 1)) for i in l],
-                list(audiotools.pcm.from_list(l,1,bps,False).to_float().to_int(bps,False)))
+                list(audiotools.pcm.from_list(l,1,bps,False).to_float().to_int(bps)))
 
             l = range(-(1 << (bps - 1)),(1 << (bps - 1)) - 1,4)
             self.assertEqual(
                 l,
-                list(audiotools.pcm.from_list(l,1,bps,True).to_float().to_int(bps,True)))
+                list(audiotools.pcm.from_list(l,1,bps,True).to_float().to_int(bps)))
 
 ############
 #END TESTS
