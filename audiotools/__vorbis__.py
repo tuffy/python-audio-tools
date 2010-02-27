@@ -17,7 +17,7 @@
 #along with this program; if not, write to the Free Software
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-from audiotools import AudioFile,InvalidFile,PCMReader,PCMConverter,Con,transfer_data,subprocess,BIN,cStringIO,open_files,os,ReplayGain,ignore_sigint,EncodingError,DecodingError
+from audiotools import AudioFile,InvalidFile,PCMReader,PCMConverter,Con,transfer_data,transfer_framelist_data,subprocess,BIN,cStringIO,open_files,os,ReplayGain,ignore_sigint,EncodingError,DecodingError
 from __vorbiscomment__ import *
 import gettext
 
@@ -413,7 +413,7 @@ class VorbisAudio(AudioFile):
                                stderr=devnull,
                                preexec_fn=ignore_sigint)
 
-        transfer_data(pcmreader.read,sub.stdin.write)
+        transfer_framelist_data(pcmreader,sub.stdin.write)
         try:
             pcmreader.close()
         except DecodingError:

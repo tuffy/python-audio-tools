@@ -932,9 +932,8 @@ PyObject* FloatFrameList_to_int(pcm_FloatFrameList *self, PyObject *args) {
   ia_data_t sample_max;
   pcm_FrameList *framelist;
   int bits_per_sample;
-  int is_signed;
 
-  if (!PyArg_ParseTuple(args,"ii",&bits_per_sample,&is_signed))
+  if (!PyArg_ParseTuple(args,"i",&bits_per_sample))
     return NULL;
 
   framelist = FrameList_create();
@@ -1434,10 +1433,12 @@ void FrameList_int_to_S8_char(ia_data_t i, unsigned char *s) {
 }
 
 void FrameList_int_to_U8_char(ia_data_t i, unsigned char *s) {
+  i += (1 << 7);
   s[0] = i & 0xFF;
 }
 
 void FrameList_int_to_UB16_char(ia_data_t i, unsigned char *s) {
+  i += (i << 15);
   s[0] = (i >> 8) & 0xFF;
   s[1] = i & 0xFF;
 }
@@ -1457,6 +1458,7 @@ void FrameList_int_to_SB16_char(ia_data_t i, unsigned char *s) {
 }
 
 void FrameList_int_to_UL16_char(ia_data_t i, unsigned char *s) {
+  i += (1 << 15);
   s[1] = (i >> 8) & 0xFF;
   s[0] = i & 0xFF;
 }
@@ -1476,6 +1478,7 @@ void FrameList_int_to_SL16_char(ia_data_t i, unsigned char *s) {
 }
 
 void FrameList_int_to_UB24_char(ia_data_t i, unsigned char *s) {
+  i += (1 << 23);
   s[0] = (i >> 16) & 0xFF;
   s[1] = (i >> 8) & 0xFF;
   s[2] = i & 0xFF;
@@ -1497,6 +1500,7 @@ void FrameList_int_to_SB24_char(ia_data_t i, unsigned char *s) {
 }
 
 void FrameList_int_to_UL24_char(ia_data_t i, unsigned char *s) {
+  i += (1 << 23);
   s[2] = (i >> 16) & 0xFF;
   s[1] = (i >> 8) & 0xFF;
   s[0] = i & 0xFF;

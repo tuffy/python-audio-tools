@@ -358,7 +358,7 @@ class AiffAudio(AudioFile):
             framelist = pcmreader.read(BUFFER_SIZE)
             total_pcm_frames = 0
             while (len(framelist) > 0):
-                f.write(framelist.to_bytes(True))
+                f.write(framelist.to_bytes(True,True))
                 total_pcm_frames += framelist.frames
                 framelist = pcmreader.read(BUFFER_SIZE)
             total_size = f.tell()

@@ -35,7 +35,7 @@ import time
 gettext.install("audiotools",unicode=True)
 
 (METADATA,PCM,FRAMELIST,EXECUTABLE,CUESHEET,IMAGE,FLAC,CUSTOM) = range(8)
-CASES = set([METADATA,PCM,FRAMELIST,EXECUTABLE,CUESHEET,IMAGE,FLAC])
+CASES = set([CUSTOM])
 
 def nothing(self):
     pass
@@ -9529,6 +9529,27 @@ class TestFrameList(unittest.TestCase):
         self.assertEqual(
             audiotools.pcm.FrameList(s,1,24,
                                      False,True).to_bytes(False,True),s)
+
+    @TEST_CUSTOM
+    def test_conversion(self):
+        for format in audiotools.AVAILABLE_TYPES:
+            temp_track = tempfile.NamedTemporaryFile(suffix="." + format.SUFFIX)
+            try:
+                for sine_class in [test_streams.Sine8_Stereo,
+                                   test_streams.Sine16_Stereo,
+                                   test_streams.Sine24_Stereo]:
+                    sine = sine_class(88200,44100,441.0,0.50,441.0,0.49,1.0)
+                    track = format.from_pcm(temp_track.name,sine)
+                    if (track.lossless()):
+                        md5sum = md5()
+                        audiotools.transfer_framelist_data(track.to_pcm(),
+                                                           md5sum.update)
+                        self.assertEqual(md5sum.hexdigest(),sine.hexdigest(),
+                                         "MD5 mismatch for %s using %s" % \
+                                             (track.NAME,repr(sine)))
+            finally:
+                temp_track.close()
+
 
 class TestFloatFrameList(unittest.TestCase):
     @TEST_FRAMELIST

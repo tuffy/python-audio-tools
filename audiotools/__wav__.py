@@ -341,10 +341,10 @@ class WaveAudio(AudioFile):
             framelist = pcmreader.read(BUFFER_SIZE)
             while (len(framelist) > 0):
                 if (framelist.bits_per_sample > 8):
-                    framelist.set_signed()
+                    bytes = framelist.to_bytes(False,True)
                 else:
-                    framelist.set_unsigned()
-                bytes = framelist.to_bytes(False)
+                    bytes = framelist.to_bytes(False,False)
+
                 f.write(bytes)
                 data_header.chunk_length += len(bytes)
                 framelist = pcmreader.read(BUFFER_SIZE)

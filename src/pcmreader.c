@@ -196,8 +196,8 @@ int pcmr_read(struct pcm_reader *reader,
       ia_append(channel,buffer_samples[j]);
   }
 
-  /*convert "buffer_samples" to a little-endian string*/
-  buffer_obj = PyObject_CallMethod(framelist_obj,"to_bytes","(i)",0);
+  /*convert "buffer_samples" to a signed, little-endian string*/
+  buffer_obj = PyObject_CallMethod(framelist_obj,"to_bytes","(ii)",0,1);
   if (buffer_obj == NULL)
     goto error;
   if (PyString_AsStringAndSize(buffer_obj,(char**)(&buffer),

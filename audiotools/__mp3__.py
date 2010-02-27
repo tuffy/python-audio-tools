@@ -619,7 +619,8 @@ class MP2Audio(MP3Audio):
 
 
         if ((pcmreader.channels > 2) or
-            (pcmreader.sample_rate not in (32000,48000,44100))):
+            (pcmreader.sample_rate not in (32000,48000,44100)) or
+            (pcmreader.bits_per_sample != 16)):
             pcmreader = PCMConverter(
                 pcmreader,
                 sample_rate=[32000,32000,44100,48000][bisect.bisect(

@@ -491,11 +491,7 @@ def transfer_framelist_data(pcmreader, to_function,
     try:
         f = pcmreader.read(BUFFER_SIZE)
         while (len(f) > 0):
-            if (signed):
-                f.set_signed()
-            else:
-                f.set_unsigned()
-            to_function(f.to_bytes(big_endian))
+            to_function(f.to_bytes(big_endian,signed))
             f = pcmreader.read(BUFFER_SIZE)
     except IOError:
         #this usually means a broken pipe, so we can only hope
@@ -894,8 +890,7 @@ class PCMConverter:
         #damaging anything.
         #Just be careful when using this routine elsewhere.
 
-        return frame_list.to_float().to_int(self.bits_per_sample,
-                                            frame_list.signed)
+        return frame_list.to_float().to_int(self.bits_per_sample)
 
         # difference = self.bits_per_sample - self.input.bits_per_sample
 

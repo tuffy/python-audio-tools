@@ -45,7 +45,7 @@ class MD5Reader:
 
     def read(self, bytes):
         framelist = self.pcmreader.read(bytes)
-        self.md5.update(framelist.to_bytes(False))
+        self.md5.update(framelist.to_bytes(False,True))
         return framelist
 
     def close(self):
