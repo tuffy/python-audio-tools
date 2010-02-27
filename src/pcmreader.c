@@ -185,9 +185,6 @@ int pcmr_read(struct pcm_reader *reader,
     goto error;
   }
 
-  /*if "buffer_samples" are unsigned, make them signed*/
-  Py_XDECREF(PyObject_CallMethod(framelist_obj,"set_signed",NULL));
-
   /*place "buffer_samples" into "samples", split up by channel*/
   for (i = 0; i < reader->channels; i++) {
     channel = iaa_getitem(samples,i);

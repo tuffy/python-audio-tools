@@ -35,7 +35,7 @@ import time
 gettext.install("audiotools",unicode=True)
 
 (METADATA,PCM,FRAMELIST,EXECUTABLE,CUESHEET,IMAGE,FLAC,CUSTOM) = range(8)
-CASES = set([CUSTOM])
+CASES = set([METADATA,PCM,FRAMELIST,EXECUTABLE,CUESHEET,IMAGE,FLAC])
 
 def nothing(self):
     pass
@@ -9530,7 +9530,7 @@ class TestFrameList(unittest.TestCase):
             audiotools.pcm.FrameList(s,1,24,
                                      False,True).to_bytes(False,True),s)
 
-    @TEST_CUSTOM
+    @TEST_FRAMELIST
     def test_conversion(self):
         for format in audiotools.AVAILABLE_TYPES:
             temp_track = tempfile.NamedTemporaryFile(suffix="." + format.SUFFIX)
@@ -9547,6 +9547,20 @@ class TestFrameList(unittest.TestCase):
                         self.assertEqual(md5sum.hexdigest(),sine.hexdigest(),
                                          "MD5 mismatch for %s using %s" % \
                                              (track.NAME,repr(sine)))
+                        for new_format in audiotools.AVAILABLE_TYPES:
+                            temp_track2 = tempfile.NamedTemporaryFile(suffix="." + format.SUFFIX)
+                            try:
+                                track2 = new_format.from_pcm(temp_track2.name,
+                                                             track.to_pcm())
+                                if (track2.lossless()):
+                                    md5sum2 = md5()
+                                    audiotools.transfer_framelist_data(track2.to_pcm(),
+                                                                       md5sum2.update)
+                                    self.assertEqual(md5sum.hexdigest(),sine.hexdigest(),
+                                         "MD5 mismatch for converting %s from %s to %s" % \
+                                             (repr(sine),track.NAME,track2.NAME))
+                            finally:
+                                temp_track2.close()
             finally:
                 temp_track.close()
 

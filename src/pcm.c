@@ -1274,7 +1274,7 @@ FrameList_char_to_int_converter FrameList_get_char_to_int_converter(
 }
 
 ia_data_t FrameList_U8_char_to_int(unsigned char *s) {
-  return (ia_data_t)s[0];
+  return ((ia_data_t)s[0]) - (1 << 7);
 }
 
 ia_data_t FrameList_S8_char_to_int(unsigned char *s) {
@@ -1288,11 +1288,11 @@ ia_data_t FrameList_S8_char_to_int(unsigned char *s) {
 }
 
 ia_data_t FrameList_UB16_char_to_int(unsigned char *s) {
-  return (ia_data_t)(s[0] << 8) | s[1];
+  return ((ia_data_t)(s[0] << 8) | s[1]) - (1 << 15);
 }
 
 ia_data_t FrameList_UL16_char_to_int(unsigned char *s) {
-  return (ia_data_t)(s[1] << 8) | s[0];
+  return ((ia_data_t)(s[1] << 8) | s[0]) - (1 << 15);
 }
 
 ia_data_t FrameList_SL16_char_to_int(unsigned char *s) {
@@ -1316,11 +1316,11 @@ ia_data_t FrameList_SB16_char_to_int(unsigned char *s) {
 }
 
 ia_data_t FrameList_UL24_char_to_int(unsigned char *s) {
-  return (ia_data_t)((s[2] << 16) | (s[1] << 8) | s[0]);
+  return ((ia_data_t)((s[2] << 16) | (s[1] << 8) | s[0])) - (1 << 23);
 }
 
 ia_data_t FrameList_UB24_char_to_int(unsigned char *s) {
-  return (ia_data_t)((s[0] << 16) | (s[1] << 8) | s[2]);
+  return ((ia_data_t)((s[0] << 16) | (s[1] << 8) | s[2])) - (1 << 23);
 }
 
 ia_data_t FrameList_SL24_char_to_int(unsigned char *s) {
