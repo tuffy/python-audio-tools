@@ -2193,7 +2193,7 @@ class CDTrackReader(PCMReader):
             self.__position__ += sectors
             return s
         else:
-            return ""
+            return pcm.from_list([],2,16,True)
 
     def read(self, bytes):
         #returns a sector-aligned number of bytes

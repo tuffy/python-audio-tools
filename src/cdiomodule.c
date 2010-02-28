@@ -4,6 +4,7 @@
 #include <cdio/paranoia.h>
 #include <cdio/audio.h>
 #include <cdio/track.h>
+#include "pcm.h"
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -308,73 +309,76 @@ static PyObject *CDDA_track_offsets(cdio_CDDAObject* self, PyObject *args) {
 #define SECTOR_LENGTH 2352
 
 static PyObject *CDDA_read_sector(cdio_CDDAObject* self) {
-  static PyObject *result = NULL;
-  static char sector[SECTOR_LENGTH];
   int16_t *raw_sector;
-  int16_t pair;
   int i;
+
+  int current_sector_position = 0;
+
+  PyObject *pcm = NULL;
+  pcm_FrameList *sector;
+
+  if ((pcm = PyImport_ImportModule("audiotools.pcm")) == NULL)
+    goto error;
+
+  sector = (pcm_FrameList*)PyObject_CallMethod(pcm,"__blank__",NULL);
+  sector->frames = 44100 / 75;
+  sector->channels = 2;
+  sector->bits_per_sample = 16;
+  sector->samples_length = (sector->frames * sector->channels);
+  sector->samples = realloc(sector->samples,
+			    sector->samples_length * sizeof(ia_data_t));
 
   raw_sector = cdio_paranoia_read_limited(self->paranoia,
 					  &read_sector_callback,
 					  10);
-
-  /*shift all of the signed 16-bit samples into "sector"
-    which we can turn into a Python string to return*/
   for (i = 0; i < (SECTOR_LENGTH / 2); i++) {
-    pair = raw_sector[i];
-    sector[i * 2] = pair & 0x00FF;
-    sector[(i * 2) + 1] = (pair & 0xFF00) >> 8;
+    sector->samples[current_sector_position++] = raw_sector[i];
   }
 
-#ifdef IS_PY3K
-  result = PyBytes_FromStringAndSize(sector,SECTOR_LENGTH);
-#else
-  result = PyString_FromStringAndSize(sector,SECTOR_LENGTH);
-#endif
-  if (result == NULL) return NULL;
-
-  return result;
+  return (PyObject*)sector;
+ error:
+  Py_XDECREF(pcm);
+  return NULL;
 }
 
 static PyObject *CDDA_read_sectors(cdio_CDDAObject* self, PyObject *args) {
-  static PyObject *result = NULL;
-  char *sectors = NULL;
   int16_t *raw_sector;
-  int16_t pair;
   int i;
 
   int current_sectors_position = 0;
   int sectors_read;
   int sectors_to_read;
 
-  if (!PyArg_ParseTuple(args, "i", &sectors_to_read))
-    return NULL;
+  PyObject *pcm = NULL;
+  pcm_FrameList *sectors;
 
-  sectors = (char *)malloc(sectors_to_read * SECTOR_LENGTH);
+  if (!PyArg_ParseTuple(args, "i", &sectors_to_read))
+    goto error;
+
+  if ((pcm = PyImport_ImportModule("audiotools.pcm")) == NULL)
+    goto error;
+
+  sectors = (pcm_FrameList*)PyObject_CallMethod(pcm,"__blank__",NULL);
+  sectors->frames = sectors_to_read * (44100 / 75);
+  sectors->channels = 2;
+  sectors->bits_per_sample = 16;
+  sectors->samples_length = (sectors->frames * sectors->channels);
+  sectors->samples = realloc(sectors->samples,
+			     sectors->samples_length * sizeof(ia_data_t));
 
   for (sectors_read = 0; sectors_read < sectors_to_read; sectors_read++) {
     raw_sector = cdio_paranoia_read_limited(self->paranoia,
 					    &read_sector_callback,
 					    10);
-    for (i = 0; i < (SECTOR_LENGTH / 2);
-	 i++) {
-      pair = raw_sector[i];
-      sectors[current_sectors_position] = pair & 0x00FF;
-      current_sectors_position++;
-      sectors[current_sectors_position] = (pair & 0xFF00) >> 8;
-      current_sectors_position++;
+    for (i = 0; i < (SECTOR_LENGTH / 2); i++) {
+      sectors->samples[current_sectors_position++] = raw_sector[i];
     }
   }
 
-#ifdef IS_PY3K
-  result = PyBytes_FromStringAndSize(sectors,current_sectors_position);
-#else
-  result = PyString_FromStringAndSize(sectors,current_sectors_position);
-#endif
-  free(sectors);
-  if (result == NULL) return NULL;
-
-  return result;
+  return (PyObject*)sectors;
+ error:
+  Py_XDECREF(pcm);
+  return NULL;
 }
 
 static PyObject *CDDA_first_sector(cdio_CDDAObject* self, PyObject *args) {
