@@ -652,17 +652,25 @@ class PCMCat(PCMReader):
 
 
 class __buffer__:
-    def __init__(self):
-        self.buffer = []
+    def __init__(self, channels, bits_per_sample, framelists=None):
+        if (framelists is None):
+            self.buffer = []
+        else:
+            self.buffer = framelists
+        self.end_frame = pcm.from_list([],channels,bits_per_sample,True)
+        self.bytes_per_sample = bits_per_sample / 8
 
+    #returns the length of the entire buffer in bytes
     def __len__(self):
         if (len(self.buffer) > 0):
-            return sum(map(len,self.buffer))
+            return sum(map(len,self.buffer)) * self.bytes_per_sample
         else:
             return 0
 
-    def __str__(self):
-        return "".join(self.buffer)
+    def framelist(self):
+        import operator
+
+        return reduce(operator.concat,self.buffer,self.end_frame)
 
     def push(self, s):
         self.buffer.append(s)
@@ -673,35 +681,31 @@ class __buffer__:
     def unpop(self, s):
         self.buffer.insert(0,s)
 
-class BufferedPCMReader(PCMReader):
+class BufferedPCMReader:
     def __init__(self, pcmreader):
-        PCMReader.__init__(self,pcmreader,
-                           pcmreader.sample_rate,
-                           pcmreader.channels,
-                           pcmreader.bits_per_sample)
-        self.buffer = __buffer__()
+        self.pcmreader = pcmreader
+        self.sample_rate = pcmreader.sample_rate
+        self.channels = pcmreader.channels
+        self.bits_per_sample = pcmreader.bits_per_sample
+        self.buffer = __buffer__(self.channels,self.bits_per_sample)
         self.reader_finished = False
 
     def close(self):
-        self.file.close()
+        self.pcmreader.close()
 
     def read(self, bytes):
+        #fill our buffer to at least "bytes", possibly more
         self.__fill__(bytes)
-        output = __buffer__()
-        while ((len(self.buffer) > 0) and (len(output) < bytes)):
-            output.push(self.buffer.pop())
-        if (len(output) > bytes):
-            toreturn = str(output)[0:bytes]
-            self.buffer.unpop(str(output)[bytes:])
-            return toreturn
-        else:
-            return str(output)
+        output_framelist = self.buffer.framelist()
+        (output,remainder) = output_framelist.split(output_framelist.frame_count(bytes))
+        self.buffer.buffer = [remainder]
+        return output
 
     #try to fill our internal buffer to at least "bytes"
     def __fill__(self, bytes):
         while ((len(self.buffer) < bytes) and
                (not self.reader_finished)):
-            s = self.file.read(BUFFER_SIZE)
+            s = self.pcmreader.read(BUFFER_SIZE)
             if (len(s) > 0):
                 self.buffer.push(s)
             else:
