@@ -989,21 +989,15 @@ class PCMConverter:
 
 #wraps around an existing PCMReader
 #and applies ReplayGain upon calling the read() method
-class ReplayGainReader(PCMReader):
+class ReplayGainReader:
     #pcmreader is a PCMReader-compatible object
     #replaygain is a floating point dB value
     #peak is a floating point value
     def __init__(self, pcmreader, replaygain, peak):
-        import pcmstream
-
-        self.reader = pcmstream.PCMStreamReader(pcmreader,
-                                                pcmreader.bits_per_sample / 8,
-                                                False, False)
-
-        PCMReader.__init__(self, None,
-                           pcmreader.sample_rate,
-                           pcmreader.channels,
-                           pcmreader.bits_per_sample)
+        self.reader = pcmreader
+        self.sample_rate = pcmreader.sample_rate
+        self.channels = pcmreader.channels
+        self.bits_per_sample = pcmreader.bits_per_sample
 
         self.replaygain = replaygain
         self.peak = peak
@@ -1027,11 +1021,12 @@ class ReplayGainReader(PCMReader):
         else:
             white_noise = [0] * len(samples)
 
-        return pcmstream.pcm_to_string(
+        return pcm.from_list(
             [(int(round(s * multiplier)) ^ w) for (s,w) in
              izip(samples,white_noise)],
-            self.bytes_per_sample,
-            False)
+            samples.channels,
+            samples.bits_per_sample,
+            True)
 
     def close(self):
         self.reader.close()
