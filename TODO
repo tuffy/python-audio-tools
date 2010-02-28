@@ -554,7 +554,7 @@
    - [X] Ogg Speex
    - [X] WAVE
    - [X] WavPack
-** TODO Convert CDTrackReader/OffsetCDTrackReader to use FrameList objects
+** DONE Convert CDTrackReader/OffsetCDTrackReader to use FrameList objects
 ** TODO Convert PCMConverter to use FrameList objects
 ** TODO Convert ReplayGainReader to use FrameList objects
 ** TODO Remove deprecated audiotools.FrameList object

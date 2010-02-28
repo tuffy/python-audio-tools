@@ -2100,7 +2100,8 @@ class OffsetCDDA(RawCDDA):
             cdio.set_read_callback(trackreader.log)
 
             for sector_count in at_a_time(end - start,445):
-                self.__temp__.write(self.cdda.read_sectors(sector_count))
+                self.__temp__.write(
+                    self.cdda.read_sectors(sector_count).to_bytes(False,True))
 
             self.__tracks__[tracknum] = trackreader
 
@@ -2236,6 +2237,9 @@ class OffsetCDTrackReader(PCMReader):
             self.rip_log[v] = 1
 
     def read(self, bytes):
+        if (bytes % 4):
+            bytes -= (bytes % 4)
+
         if (not self.__cursor_placed__):
             self.__file__.seek(self.__byte_offset__,0)
             self.__remaining_bytes__ = (self.__end__ - self.__start__) * 2352
@@ -2244,9 +2248,9 @@ class OffsetCDTrackReader(PCMReader):
         if (self.__remaining_bytes__ > 0):
             data = self.__file__.read(min(bytes,self.__remaining_bytes__))
             self.__remaining_bytes__ -= len(data)
-            return data
+            return pcm.FrameList(data,2,16,False,True)
         else:
-            return ""
+            return pcm.FrameList("",2,16,False,True)
 
     def close(self):
         self.__cursor_placed__ = False
