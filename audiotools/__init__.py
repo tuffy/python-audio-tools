@@ -894,32 +894,7 @@ class PCMConverter:
         #damaging anything.
         #Just be careful when using this routine elsewhere.
 
-        return frame_list.to_float().to_int(self.bits_per_sample)
-
-        # difference = self.bits_per_sample - self.input.bits_per_sample
-
-        # if (difference < 0):   #removing bits per sample
-        #     bits_difference = -difference
-
-        #     #add some white noise when dithering the signal
-        #     #to make it sound better, assuming we have at least 16 bits
-        #     if (self.bits_per_sample >= 16):
-        #         random_bytes = map(ord, os.urandom((len(frame_list) / 8) + 1))
-        #         white_noise = [(random_bytes[i / 8] & (1 << (i % 8))) >> (i % 8)
-        #                        for i in xrange(len(frame_list))]
-        #     else:
-        #         white_noise = [0] * len(frame_list)
-
-
-        #     return [(s >> bits_difference) ^ w for (s,w) in izip(frame_list,
-        #                                                          white_noise)]
-
-        # elif (difference > 0): #adding bits per sample
-        #     bits_difference = difference
-
-        #     return [(s << bits_difference) for s in frame_list]
-
-        # return frame_list
+        return self.add_dither(frame_list.to_float().to_int(self.bits_per_sample))
 
     def convert_channels(self, frame_list):
         difference = self.channels - self.reader.channels
@@ -996,38 +971,21 @@ class PCMConverter:
             self.unresampled + frame_list.to_float(),
             (len(frame_list) == 0) and (len(self.unresampled) == 0))
 
-        return output.to_int(self.bits_per_sample,True)
+        return self.add_dither(output.to_int(self.bits_per_sample))
 
-    # def convert_sample_rate_and_bits_per_sample(self, frame_list):
-    #     multiplier = 1 << (self.bits_per_sample - 1)
+    def add_dither(self, frame_list):
+        if (frame_list.bits_per_sample >= 16):
+            random_bytes = map(ord, os.urandom((len(frame_list) / 8) + 1))
+            white_noise = [(random_bytes[i / 8] & (1 << (i % 8))) >> (i % 8)
+                           for i in xrange(len(frame_list))]
+        else:
+            white_noise = [0] * len(frame_list)
 
-    #     #turn our PCM samples into floats and resample them,
-    #     #which removes bits-per-sample
-    #     (output,self.unresampled) = self.resampler.process(
-    #         self.unresampled + frame_list,
-    #         (len(frame_list) == 0) and (len(self.unresampled) == 0))
-
-    #     frame_list = FrameList(output,frame_list.total_channels)
-
-    #     #turn our PCM samples back into ints, which re-adds bits-per-sample
-    #     if (self.bits_per_sample - self.input.bits_per_sample < 0):
-    #         #add some white noise when dithering the signal
-    #         #to make it sound better
-    #         if (self.bits_per_sample >= 16):
-    #             random_bytes = map(ord, os.urandom((len(frame_list) / 8) + 1))
-    #             white_noise = [(random_bytes[i / 8] & (1 << (i % 8))) >> (i % 8)
-    #                            for i in xrange(len(frame_list))]
-    #         else:
-    #             white_noise = [0] * len(frame_list)
-
-    #         return [int(round(s * multiplier)) ^ w
-    #                 for (s,w) in izip(frame_list,white_noise)]
-
-    #     else:
-    #         return [int(round(s * multiplier)) for s in frame_list]
-
-
-    #     return frame_list
+        return pcm.from_list([i ^ w for (i,w) in izip(frame_list,
+                                                      white_noise)],
+                             frame_list.channels,
+                             frame_list.bits_per_sample,
+                             True)
 
 #wraps around an existing PCMReader
 #and applies ReplayGain upon calling the read() method
