@@ -64,7 +64,7 @@ class OSSPlayer:
                           pcm.channels,
                           pcm.sample_rate)
 
-        audiotools.threaded_transfer_data(pcm.read,self.dev.writeall)
+        audiotools.threaded_transfer_framelist_data(pcm,self.dev.writeall)
 
     @classmethod
     def available(cls):
@@ -72,13 +72,15 @@ class OSSPlayer:
 
 
 class __FloatConverter__:
-    def __init__(self, pcmstream, bits_per_sample):
-        self.floatstream = audiotools.pcmstream.PCMStreamReader(
-            pcmstream, bits_per_sample / 8, False, True)
+    def __init__(self, pcmreader):
+        self.pcmreader = pcmreader
+        self.bits_per_sample = pcmreader.bits_per_sample
+        self.channels = pcmreader.channels
+        self.sample_rate = pcmreader.sample_rate
 
     def read(self, bytes):
-        data = self.floatstream.read(bytes)
-        return struct.pack("<%df" % (len(data)),*data)
+        framelist = self.pcmreader.read(bytes)
+        return struct.pack("<%df" % (len(framelist)),*(framelist.to_float()))
 
 
 class PulsePlayer:
@@ -131,19 +133,19 @@ class PulsePlayer:
                                 "-p","-n","trackplay",
                                 "--stream-name=%s" % (stream_name),
                                 "--rate=%d" % (pcm.sample_rate),
-                                "--format=%s" % {8:"u8",16:"s16le"}.get(
-                    pcm.bits_per_sample,"float32le"),
+                                "--format=float32le",
                                 "--channels=%d" % (pcm.channels)] + \
                                    channel_map,
                                stdin=subprocess.PIPE)
 
-        if (pcm.bits_per_sample in (8,16)):
-            #8 and 16 bit ints can be passed through directly
-            audiotools.threaded_transfer_data(pcm.read,dev.stdin.write)
-        else:
-            #24 bit ints must be converted to floats
-            converter = __FloatConverter__(pcm,pcm.bits_per_sample)
-            audiotools.threaded_transfer_data(converter.read,dev.stdin.write)
+        # if (pcm.bits_per_sample in (8,16)):
+        #     #8 and 16 bit ints can be passed through directly
+        #     audiotools.threaded_transfer_framelist_data(pcm,dev.stdin.write)
+        # else:
+        #    #24 bit ints must be converted to floats
+        audiotools.threaded_transfer_framelist_data(
+            __FloatConverter__(pcm),
+            dev.stdin.write)
 
         dev.stdin.close()
         dev.wait()

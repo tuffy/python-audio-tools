@@ -111,7 +111,7 @@ PyTypeObject pcm_FrameListType = {
     "FrameList objects",       /* tp_doc */
     0,		               /* tp_traverse */
     0,		               /* tp_clear */
-    0,		               /* tp_richcompare */
+    (richcmpfunc)FrameList_richcompare, /* tp_richcompare */
     0,		               /* tp_weaklistoffset */
     0,		               /* tp_iter */
     0,		               /* tp_iternext */
@@ -223,6 +223,49 @@ PyObject* FrameList_bits_per_sample(pcm_FrameList *self, void* closure) {
 
 Py_ssize_t FrameList_len(pcm_FrameList *o) {
   return o->samples_length;
+}
+
+PyObject *FrameList_richcompare(PyObject *a, PyObject *b, int op) {
+  switch (op) {
+  case Py_EQ:
+    if (FrameList_CheckExact(a) && FrameList_CheckExact(b) &&
+	FrameList_equals((pcm_FrameList*)a,(pcm_FrameList*)b)) {
+      Py_INCREF(Py_True);
+      return Py_True;
+    } else {
+      Py_INCREF(Py_False);
+      return Py_False;
+    }
+  case Py_NE:
+    if (FrameList_CheckExact(a) && FrameList_CheckExact(b) &&
+	FrameList_equals((pcm_FrameList*)a,(pcm_FrameList*)b)) {
+      Py_INCREF(Py_False);
+      return Py_False;
+    } else {
+      Py_INCREF(Py_True);
+      return Py_True;
+    }
+  default:
+    PyErr_SetString(PyExc_TypeError,"unsupported comparison");
+    return NULL;
+  }
+}
+
+int FrameList_equals(pcm_FrameList *a, pcm_FrameList *b) {
+  ia_size_t i;
+
+  if ((a->frames == b->frames) &&
+      (a->channels == b->channels) &&
+      (a->bits_per_sample == b->bits_per_sample) &&
+      (a->samples_length == b->samples_length)) {
+    for (i = 0; i < a->samples_length; i++) {
+      if (a->samples[i] != b->samples[i])
+	return 0;
+    }
+    return 1;
+  } else {
+    return 0;
+  }
 }
 
 PyObject* FrameList_GetItem(pcm_FrameList *o, Py_ssize_t i) {

@@ -498,20 +498,21 @@ def transfer_framelist_data(pcmreader, to_function,
         #the data reader is closing down correctly
         pass
 
-def threaded_transfer_data(from_function, to_function):
+def threaded_transfer_framelist_data(pcmreader, to_function,
+                                     signed=True,big_endian=False):
     import threading,Queue
 
-    def send_data(from_function, queue):
-        s = from_function(BUFFER_SIZE)
+    def send_data(pcmreader, queue):
+        s = pcmreader.read(BUFFER_SIZE)
         while (len(s) > 0):
             queue.put(s)
-            s = from_function(BUFFER_SIZE)
+            s = pcmreader.read(BUFFER_SIZE)
         queue.put(None)
 
     data_queue = Queue.Queue(10)
     #thread.start_new_thread(send_data,(from_function,data_queue))
     thread = threading.Thread(target=send_data,
-                              args=(from_function,data_queue))
+                              args=(pcmreader,data_queue))
     thread.setDaemon(True)
     thread.start()
     s = data_queue.get()
@@ -645,7 +646,10 @@ class PCMCat(PCMReader):
                 self.first = self.reader_queue.next()
                 return self.read(bytes)
         except StopIteration:
-            return ""
+            return pcm.from_list([],
+                                 self.channels,
+                                 self.bits_per_sample,
+                                 True)
 
     def close(self):
         pass
@@ -734,11 +738,11 @@ def pcm_split(reader, pcm_lengths):
             #if the sub-file length is somewhat large, use a temporary file
             sub_file = tempfile.TemporaryFile()
             for size in chunk_sizes(byte_length,BUFFER_SIZE):
-                sub_file.write(full_data.read(size))
+                sub_file.write(full_data.read(size).to_bytes(False,True))
             sub_file.seek(0,0)
         else:
             #if the sub-file length is very small, use StringIO
-            sub_file = cStringIO.StringIO(full_data.read(byte_length))
+            sub_file = cStringIO.StringIO(full_data.read(byte_length).to_bytes(False,True))
 
         yield PCMReader(sub_file,
                         reader.sample_rate,
@@ -764,7 +768,7 @@ class __stereo_to_mono__:
         return pcm.from_list(
             [(l + r) / 2 for l,r in izip(frame_list.channel(0),
                                          frame_list.channel(1))],
-            1,frame_list.bits_per_sample,frame_list.signed)
+            1,frame_list.bits_per_sample,True)
 
 #going from many channels to 2
 class __downmixer__:
@@ -821,7 +825,7 @@ class __downmixer__:
                                for Lf_i,mono_rear_i,C_i in izip(Lf,mono_rear,C)],
                               1,
                               frame_list.bits_per_sample,
-                              frame_list.signed),
+                              True),
 
                 pcm.from_list([converter(Rf_i -
                                          (REAR_GAIN * mono_rear_i) +
@@ -829,7 +833,7 @@ class __downmixer__:
                                for Rf_i,mono_rear_i,C_i in izip(Rf,mono_rear,C)],
                               1,
                               frame_list.bits_per_sample,
-                              frame_list.signed)])
+                              True)])
 
 #going from many channels to 1
 class __downmix_remover__:
@@ -962,7 +966,7 @@ class PCMConverter:
             self.unresampled + frame_list.to_float(),
             (len(frame_list) == 0) and (len(self.unresampled) == 0))
 
-        return output.to_int(self.bits_per_sample,True)
+        return output.to_int(self.bits_per_sample)
 
 
     #though this method name is huge, it is also unambiguous

@@ -944,7 +944,10 @@ class FlacAudio(AudioFile):
                 #FIXME - this is a lot more inefficient than it should be
                 data = cStringIO.StringIO()
                 pcm = self.to_pcm()
-                transfer_data(pcm.read,data.write)
+                if (self.bits_per_sample > 8):
+                    transfer_framelist_data(pcm,data.write,True,False)
+                else:
+                    transfer_framelist_data(pcm,data.write,False,False)
                 pcm.close()
                 yield (chunk_id,data.getvalue())
                 data.close()
@@ -1086,7 +1089,7 @@ class FlacAudio(AudioFile):
             m = md5()
             s = p.read(BUFFER_SIZE)
             while (len(s) > 0):
-                m.update(s)
+                m.update(s.to_bytes(False,True))
                 s = p.read(BUFFER_SIZE)
             p.close()
             return m.digest() == self.__md5__

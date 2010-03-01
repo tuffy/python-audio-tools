@@ -78,6 +78,10 @@ PyObject* FrameList_bits_per_sample(pcm_FrameList *self, void* closure);
 
 Py_ssize_t FrameList_len(pcm_FrameList *o);
 
+PyObject *FrameList_richcompare(PyObject *a, PyObject *b, int op);
+
+int FrameList_equals(pcm_FrameList *a, pcm_FrameList *b);
+
 PyObject* FrameList_GetItem(pcm_FrameList *o, Py_ssize_t i);
 
 PyObject* FrameList_frame(pcm_FrameList *self, PyObject *args);
