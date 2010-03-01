@@ -557,7 +557,7 @@
 ** DONE Convert CDTrackReader/OffsetCDTrackReader to use FrameList objects
 ** DONE Convert PCMConverter to use FrameList objects
 ** DONE Convert ReplayGainReader to use FrameList objects
+** DONE Ensure integrated FrameList passes all unit tests
 ** TODO Remove deprecated audiotools.FrameList object
 ** TODO Remove deprecated pcmstream.PCMStreamReader object
-** TODO Ensure integrated FrameList passes all unit tests
 * TODO Add native ReplayGain handling routines
