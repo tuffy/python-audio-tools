@@ -694,9 +694,13 @@ class TestAiffAudio(TestTextOutput):
 
         try:
             for f in other_files:
+                pcm = f.to_pcm()
+                self.assertNotEqual(pcm,
+                                    None,
+                                    "unable to get PCM from %s" % (repr(f)))
                 new_file = self.audio_class.from_pcm(
                     temp.name,
-                    f.to_pcm())
+                    pcm)
 
                 new_file.set_metadata(f.get_metadata())
 

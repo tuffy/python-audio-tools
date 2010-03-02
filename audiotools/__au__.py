@@ -19,7 +19,6 @@
 
 
 from audiotools import AudioFile,InvalidFile,PCMReader,Con,transfer_data,InvalidFormat,__capped_stream_reader__,BUFFER_SIZE,FILENAME_FORMAT,EncodingError,DecodingError
-import audiotools.pcmstream
 import gettext
 
 gettext.install("audiotools",unicode=True)

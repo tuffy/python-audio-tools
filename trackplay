@@ -22,7 +22,6 @@ import audiotools
 import sys
 import struct
 import ossaudiodev
-import audiotools.pcmstream
 
 #This takes a channel count and returns a tuple of PulseAudio
 #channel map strings (for sending to pacat(1)) in order to know

@@ -17,7 +17,7 @@
 #along with this program; if not, write to the Free Software
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-from audiotools import AudioFile,InvalidFile,Con,PCMReader,__capped_stream_reader__,PCMFrameFilter,pcmstream,PCMReaderError,transfer_data,FrameList,DecodingError,EncodingError,ID3v22Comment,BUFFER_SIZE
+from audiotools import AudioFile,InvalidFile,Con,PCMReader,__capped_stream_reader__,PCMReaderError,transfer_data,DecodingError,EncodingError,ID3v22Comment,BUFFER_SIZE
 
 import gettext
 
@@ -65,53 +65,6 @@ class IEEE_Extended(Con.Adapter):
             else:
                 f = obj.mantissa * (2.0 ** (obj.exponent - 16383 - 63))
                 return f if not obj.signed else -f
-
-class BigEndianReader(PCMFrameFilter):
-    def __init__(self, input_reader,
-                 sample_rate=None, channels=None, bits_per_sample=None,
-                 filter_func=lambda x: x):
-
-        self.input_reader = input_reader
-
-        if (sample_rate is None):
-            sample_rate = input_reader.sample_rate
-        if (channels is None):
-            channels = input_reader.channels
-        if (bits_per_sample is None):
-            bits_per_sample = input_reader.bits_per_sample
-
-        PCMReader.__init__(self,
-                           file=input_reader,
-                           sample_rate=sample_rate,
-                           channels=channels,
-                           bits_per_sample=bits_per_sample)
-        self.filter = filter_func
-        self.remaining_samples = []
-        self.reader = pcmstream.PCMStreamReader(
-            input_reader,
-            input_reader.bits_per_sample / 8,
-            True,
-            False)
-
-class BigEndianWriter(PCMFrameFilter):
-    def __init__(self, input_reader,
-                 sample_rate=None, channels=None, bits_per_sample=None,
-                 filter_func=lambda x: x):
-        PCMFrameFilter.__init__(self,
-                                input_reader=input_reader,
-                                sample_rate=sample_rate,
-                                channels=channels,
-                                bits_per_sample=bits_per_sample,
-                                filter_func=filter_func)
-        self.total_pcm_frames = 0
-
-    #returns big-endian bytes on each call to read()
-    def read(self,bytes):
-        (framelist,self.remaining_samples) = FrameList.from_samples(
-            self.remaining_samples + self.reader.read(bytes),
-            self.input_reader.channels)
-        self.total_pcm_frames += framelist.total_frames()
-        return self.filter(framelist).string(self.bits_per_sample,True)
 
 #######################
 #AIFF
@@ -304,8 +257,6 @@ class AiffAudio(AudioFile):
         f.close()
 
     def to_pcm(self):
-        import pcmstream
-
         for (chunk_id,chunk_length,chunk_offset) in self.chunks():
             if (chunk_id == 'SSND'):
                 f = open(self.filename,'rb')

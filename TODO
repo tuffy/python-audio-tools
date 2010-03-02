@@ -487,6 +487,8 @@
    I'll likely have to update it myself to ensure it'll run on Python3.
 * TODO Add C-based FLAC decoder
 ** DONE Add a variety of unit tests
+** TODO Handle Rice escape codes
+   Not sure how to test these, but they should be handled properly.
 ** TODO Ensure decoder raises the proper exceptions
 * TODO Add C-based FLAC encoder
 ** DONE Use VERBATIM subframes when necessary
@@ -531,13 +533,13 @@
   objects (stored as C-based lists of int32s behind-the-scenes)
   and convert that data to/from strings only at the beginning and end
   of processing.
-** TODO Build C-based audiotools.pcm.FrameList object
+** DONE Build C-based audiotools.pcm.FrameList object
    This needs to closely match audiotools.FrameList's functionality
    and combine all the PCM conversion features from audiotools.pcmreader
 *** DONE Integrate audiotools.pcm.FrameList with i_array structures
 *** DONE Make audiotools.pcm.FrameList into a standalone object
     So standalone test codecs can use them, such as "flacenc"
-*** TODO Unit test audiotools.pcm.FrameList
+*** DONE Unit test audiotools.pcm.FrameList
 ** DONE Convert FLAC encoder/decoder to use FrameList objects
    - [X] flacenc
    - [X] audiotools.decoders.FlacDecoder
@@ -558,6 +560,7 @@
 ** DONE Convert PCMConverter to use FrameList objects
 ** DONE Convert ReplayGainReader to use FrameList objects
 ** DONE Ensure integrated FrameList passes all unit tests
-** TODO Remove deprecated audiotools.FrameList object
-** TODO Remove deprecated pcmstream.PCMStreamReader object
+** DONE Remove deprecated audiotools.FrameList object
+** DONE Remove deprecated pcmstream.PCMStreamReader object
+** TODO Convert pcmstream module to resampler module
 * TODO Add native ReplayGain handling routines

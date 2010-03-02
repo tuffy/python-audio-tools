@@ -18,32 +18,12 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,InvalidFile,PCMReader,PCMConverter,Con,transfer_data,transfer_framelist_data,subprocess,BIN,BIG_ENDIAN,ApeTag,ReplayGain,ignore_sigint,pcmstream,open_files,EncodingError,DecodingError,PCMReaderError
+from audiotools import AudioFile,InvalidFile,PCMReader,PCMConverter,Con,transfer_data,transfer_framelist_data,subprocess,BIN,BIG_ENDIAN,ApeTag,ReplayGain,ignore_sigint,open_files,EncodingError,DecodingError,PCMReaderError
 from __id3__ import *
 import gettext
 
 gettext.install("audiotools",unicode=True)
 
-#this is a wrapper around another PCMReader
-#which swaps the samples from big-endian to little-endian
-class __BSSampleReader__(PCMReader):
-    def __init__(self, pcmreader):
-        PCMReader.__init__(self,
-                           pcmstream.PCMStreamReader(pcmreader,
-                                                     pcmreader.bits_per_sample / 8,
-                                                     True,
-                                                     False),
-                           sample_rate=pcmreader.sample_rate,
-                           channels=pcmreader.channels,
-                           bits_per_sample=pcmreader.bits_per_sample)
-
-    def read(self, bytes):
-        return pcmstream.pcm_to_string(self.file.read(bytes),
-                                       self.bits_per_sample / 8,
-                                       False)
-
-    def close(self):
-        self.file.close()
 
 #######################
 #MP3
@@ -154,15 +134,12 @@ class MP3Audio(AudioFile):
         if (BIN.can_execute(BIN["mpg123"])):
             sub = subprocess.Popen([BIN["mpg123"],"-qs",self.filename],
                                    stdout=subprocess.PIPE)
-            reader = PCMReader(sub.stdout,
-                               sample_rate=self.sample_rate(),
-                               channels=self.channels(),
-                               bits_per_sample=16,
-                               process=sub)
-            if (BIG_ENDIAN):
-                return __BSSampleReader__(reader)
-            else:
-                return reader
+            return PCMReader(sub.stdout,
+                             sample_rate=self.sample_rate(),
+                             channels=self.channels(),
+                             bits_per_sample=16,
+                             process=sub,
+                             big_endian=BIG_ENDIAN)
         else:
             #if not, use LAME for decoding
             if (self.filename.endswith("." + self.SUFFIX)):
