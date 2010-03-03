@@ -36,6 +36,7 @@ struct flac_encoding_options {
   int exhaustive_model_search;
   int mid_side;
   int adaptive_mid_side;
+  int max_rice_parameter;
 
   int no_verbatim_subframes;
   int no_constant_subframes;

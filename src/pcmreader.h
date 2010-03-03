@@ -32,13 +32,6 @@
  returned by pcmreader.read() to an ia_array struct
 ************************************************************/
 
-/*IMPORTANT!
-  pcmr_read() presumes that pcmreader.read() will return a number of bytes
-  equal to or divisible by (sample_count * channels * bytes_per_sample)
-  Since the Python PCMReader interface makes no such guarantee,
-  one needs to send pcmr_open a BufferedPCMReader object.
-  I may fix this limitation in the future.*/
-
 struct pcmr_callback {
   void (*callback)(void*, unsigned char*, unsigned long);
   void *data;

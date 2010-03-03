@@ -146,9 +146,15 @@ PyObject* encoders_encode_flac(PyObject *dummy,
   streaminfo.options.no_lpc_subframes = 0;
 
   file = fopen(filename,"wb");
-  reader = pcmr_open(input,192000,2,24,0,1);/*FIXME - assume CD quality for now*/
+  reader = pcmr_open(input,48000,5,24,0,1);/*FIXME - assume CD quality for now*/
 
 #endif
+
+  if (reader->bits_per_sample <= 16) {
+    streaminfo.options.max_rice_parameter = 0xE;
+  } else {
+    streaminfo.options.max_rice_parameter = 0x1E;
+  }
 
   sprintf(version_string,"Python Audio Tools %s",AUDIOTOOLS_VERSION);
   MD5_Init(&md5sum);
@@ -986,8 +992,9 @@ void FlacEncoder_evaluate_best_residual(struct i_array *rice_parameters,
       /*for each partition, determine the Rice parameter*/
       /*and append that parameter to the parameter list*/
       ia_append(&working_rice_parameters,
-		FlacEncoder_compute_best_rice_parameter(&partition_residuals,
-							abs_residual_partition_sum));
+		MIN(FlacEncoder_compute_best_rice_parameter(&partition_residuals,
+							    abs_residual_partition_sum),
+		    options->max_rice_parameter));
 
       estimated_residual_bits += FlacEncoder_estimate_residual_partition_size(
           ia_getitem(&working_rice_parameters,-1),
@@ -1017,7 +1024,7 @@ int FlacEncoder_compute_best_rice_parameter(struct i_array *residuals,
   for (i = 0; ((uint64_t)residuals->size * (uint64_t)(1 << i)) < abs_residual_partition_sum; i++)
     /*do nothing*/;
 
-  return MIN(i,0xE); /*setting this to 0xF triggers the Rice escape code*/
+  return i;
 }
 
 
@@ -1034,7 +1041,7 @@ void FlacEncoder_write_residual(Bitstream *bs,
   int coding_method;
 
   /*derive the coding method value*/
-  if (ia_max(rice_parameters) <= 0xF)
+  if (ia_max(rice_parameters) <= 0xE)
     coding_method = 0;
   else
     coding_method = 1;
