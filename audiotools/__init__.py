@@ -1467,7 +1467,7 @@ class UnsupportedTracknameField(Exception):
         messenger.error(_(u"Unknown field \"%s\" in file format") % \
                             (self.field))
         messenger.info(_(u"Supported fields are:"))
-        for field in sorted(audiotools.MetaData.__FIELDS__ + \
+        for field in sorted(MetaData.__FIELDS__ + \
                             ("album_track_number","suffix")):
             if (field == 'track_number'):
                 messenger.info(u"%(track_number)2.2d")
