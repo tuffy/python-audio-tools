@@ -193,7 +193,6 @@ void FlacEncoder_evaluate_best_residual(struct i_array *rice_parameters,
  */
 void FlacEncoder_write_residual(Bitstream *bs,
 				int predictor_order,
-				int coding_method,
 				struct i_array *rice_parameters,
 				struct i_array *residuals);
 

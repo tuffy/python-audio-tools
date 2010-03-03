@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <float.h>
+#include <limits.h>
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -191,6 +192,24 @@ static inline ia_data_t ia_reduce(struct i_array *source,
     return base;
   }
 }
+
+static inline ia_data_t ia_max(struct i_array *array) {
+  ia_size_t i;
+  ia_data_t max = INT_MIN;
+  for (i = 0; i < array->size; i++)
+    max = MAX(array->data[i],max);
+  return max;
+}
+
+static inline ia_data_t ia_min(struct i_array *array) {
+  ia_size_t i;
+  ia_data_t min = INT_MAX;
+  for (i = 0; i < array->size; i++)
+    min = MIN(array->data[i],min);
+  return min;
+}
+
+
 
 /*an array of i_array structs
   typically for storing multiple channels of PCM values*/

@@ -146,7 +146,7 @@ PyObject* encoders_encode_flac(PyObject *dummy,
   streaminfo.options.no_lpc_subframes = 0;
 
   file = fopen(filename,"wb");
-  reader = pcmr_open(input,44100,1,16,1,1);/*FIXME - assume CD quality for now*/
+  reader = pcmr_open(input,192000,2,24,0,1);/*FIXME - assume CD quality for now*/
 
 #endif
 
@@ -811,7 +811,7 @@ void FlacEncoder_write_fixed_subframe(Bitstream *bs,
     bs->write_signed_bits(bs, bits_per_sample, ia_getitem(warm_up_samples,i));
 
   /*write residual*/
-  FlacEncoder_write_residual(bs, predictor_order, 0, rice_parameters,
+  FlacEncoder_write_residual(bs, predictor_order, rice_parameters,
 			     residuals);
 }
 
@@ -888,7 +888,7 @@ void FlacEncoder_write_lpc_subframe(Bitstream *bs,
   }
 
   /*write residual*/
-  FlacEncoder_write_residual(bs, predictor_order, 0, rice_parameters,
+  FlacEncoder_write_residual(bs, predictor_order, rice_parameters,
 			     residuals);
 }
 
@@ -1023,18 +1023,25 @@ int FlacEncoder_compute_best_rice_parameter(struct i_array *residuals,
 
 void FlacEncoder_write_residual(Bitstream *bs,
 				int predictor_order,
-				int coding_method,
 				struct i_array *rice_parameters,
 				struct i_array *residuals) {
   uint32_t partition_order;
-  int32_t partitions = rice_parameters->size;
+  int32_t partitions;
   int32_t partition;
   int32_t block_size = predictor_order + residuals->size;
   struct i_array remaining_residuals;
   struct i_array partition_residuals;
+  int coding_method;
+
+  /*derive the coding method value*/
+  if (ia_max(rice_parameters) <= 0xF)
+    coding_method = 0;
+  else
+    coding_method = 1;
 
   /*derive the partition_order value*/
-  for (partition_order = 0; partitions > 1; partition_order++)
+  for (partitions = rice_parameters->size, partition_order = 0;
+       partitions > 1; partition_order++)
     partitions /= 2;
   partitions = rice_parameters->size;
 
@@ -1292,7 +1299,7 @@ int maximum_bits_size(int value, int current_maximum) {
 int main(int argc, char *argv[]) {
   encoders_encode_flac(argv[1],
 		       stdin,
-		       4096,6,0,4,0,0,0);
+		       4096,12,0,6,1,1,1);
 
   return 0;
 }
