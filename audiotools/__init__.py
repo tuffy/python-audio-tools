@@ -847,7 +847,7 @@ class __downmix_remover__:
 class PCMConverter:
     def __init__(self, pcmreader,
                  sample_rate, channels, bits_per_sample):
-        import pcmstream
+        import resample
 
         self.sample_rate = sample_rate
         self.channels = channels
@@ -859,7 +859,7 @@ class PCMConverter:
             self.conversions.append(self.convert_channels)
 
         if (self.reader.sample_rate != self.sample_rate):
-            self.resampler = pcmstream.Resampler(
+            self.resampler = resample.Resampler(
                 self.channels,
                 float(self.sample_rate) / float(self.reader.sample_rate),
                 0)

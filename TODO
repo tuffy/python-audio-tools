@@ -521,7 +521,7 @@
    and the vorbis comment to the proper value.
    I expect this will be a long-term project
    coinciding with re-engineering the to_pcm()/from_pcm() methods.
-* TODO Convert to_pcm()/from_pcm() to FrameList-based I/O
+* DONE Convert to_pcm()/from_pcm() to FrameList-based I/O
   Passing specifically-sized blobs of binary data between conversion
   routines worked well when those routines are little more than
   subprocess black-boxes.  However, this approach works less well
@@ -562,5 +562,5 @@
 ** DONE Ensure integrated FrameList passes all unit tests
 ** DONE Remove deprecated audiotools.FrameList object
 ** DONE Remove deprecated pcmstream.PCMStreamReader object
-** TODO Convert pcmstream module to resampler module
+** DONE Convert pcmstream module to resample module
 * TODO Add native ReplayGain handling routines

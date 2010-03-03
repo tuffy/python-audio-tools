@@ -40,17 +40,17 @@ typedef struct {
   SRC_STATE *src_state;
   int channels;
   double ratio;
-} pcmstream_Resampler;
+} resample_Resampler;
 
-void Resampler_dealloc(pcmstream_Resampler* self);
+void Resampler_dealloc(resample_Resampler* self);
 
 PyObject *Resampler_new(PyTypeObject *type,
 			PyObject *args, PyObject *kwds);
 
-int Resampler_init(pcmstream_Resampler *self,
+int Resampler_init(resample_Resampler *self,
 		   PyObject *args, PyObject *kwds);
 
-PyObject *Resampler_process(pcmstream_Resampler* self,
+PyObject *Resampler_process(resample_Resampler* self,
 			    PyObject *args);
 
 PyMethodDef Resampler_methods[] = {
@@ -62,10 +62,10 @@ PyMethodDef Resampler_methods[] = {
 
 #ifdef IS_PY3K
 
-static PyTypeObject pcmstream_ResamplerType = {
+static PyTypeObject resample_ResamplerType = {
     PyVarObject_HEAD_INIT(NULL, 0)
-    "pcmstream.Resampler",     /* tp_name */
-    sizeof(pcmstream_Resampler), /* tp_basicsize */
+    "resample.Resampler",     /* tp_name */
+    sizeof(resample_Resampler), /* tp_basicsize */
     0,                         /* tp_itemsize */
     (destructor)Resampler_dealloc, /* tp_dealloc */
     0,                         /* tp_print */
@@ -106,11 +106,11 @@ static PyTypeObject pcmstream_ResamplerType = {
 
 #else
 
-PyTypeObject pcmstream_ResamplerType = {
+PyTypeObject resample_ResamplerType = {
     PyObject_HEAD_INIT(NULL)
     0,                         /*ob_size*/
-    "pcmstream.Resampler", /*tp_name*/
-    sizeof(pcmstream_Resampler), /*tp_basicsize*/
+    "resample.Resampler", /*tp_name*/
+    sizeof(resample_Resampler), /*tp_basicsize*/
     0,                         /*tp_itemsize*/
     (destructor)Resampler_dealloc, /*tp_dealloc*/
     0,                         /*tp_print*/

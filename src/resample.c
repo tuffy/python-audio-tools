@@ -20,68 +20,68 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  *******************************************************/
 
-#include "pcmstream.h"
+#include "resample.h"
 #include "pcm.h"
 #include "samplerate/samplerate.c"
 
 #ifdef IS_PY3K
 
-static PyModuleDef pcmstreammodule = {
+static PyModuleDef resamplemodule = {
     PyModuleDef_HEAD_INIT,
-    "pcmstream",
-    "A PCM stream reading module.",
+    "resample",
+    "A PCM resampling module.",
     -1,
     NULL,
     NULL, NULL, NULL, NULL
 };
 
-PyMODINIT_FUNC PyInit_pcmstream(void)
+PyMODINIT_FUNC PyInit_resample(void)
 {
     PyObject* m;
 
-    pcmstream_ResamplerType.tp_new = PyType_GenericNew;
-    if (PyType_Ready(&pcmstream_ResamplerType) < 0)
+    resample_ResamplerType.tp_new = PyType_GenericNew;
+    if (PyType_Ready(&resample_ResamplerType) < 0)
       return NULL;
 
-    m = PyModule_Create(&pcmstreammodule);
+    m = PyModule_Create(&resamplemodule);
     if (m == NULL)
       return NULL;
 
-    Py_INCREF(&pcmstream_ResamplerType);
+    Py_INCREF(&resample_ResamplerType);
     PyModule_AddObject(m, "Resampler",
-		       (PyObject *)&pcmstream_ResamplerType);
+		       (PyObject *)&resample_ResamplerType);
     return m;
 }
 
 #else
 
-PyMODINIT_FUNC initpcmstream(void) {
+PyMODINIT_FUNC initresample(void) {
     PyObject* m;
 
-    pcmstream_ResamplerType.tp_new = PyType_GenericNew;
-    if (PyType_Ready(&pcmstream_ResamplerType) < 0)
+    resample_ResamplerType.tp_new = PyType_GenericNew;
+    if (PyType_Ready(&resample_ResamplerType) < 0)
       return;
 
-    m = Py_InitModule3("pcmstream", module_methods,
+    m = Py_InitModule3("resample", module_methods,
                        "A PCM stream reading, writing and editing module.");
 
-    Py_INCREF(&pcmstream_ResamplerType);
+    Py_INCREF(&resample_ResamplerType);
     PyModule_AddObject(m, "Resampler",
-		       (PyObject *)&pcmstream_ResamplerType);
+		       (PyObject *)&resample_ResamplerType);
 }
 
 #endif
 
 #ifdef IS_PY3K
 
-void Resampler_dealloc(pcmstream_Resampler* self) {
+void Resampler_dealloc(resample_Resampler* self) {
   src_delete(self->src_state);
   Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
 #else
 
-void Resampler_dealloc(pcmstream_Resampler* self) {
+void Resampler_dealloc(resample_Resampler* self) {
   src_delete(self->src_state);
   self->ob_type->tp_free((PyObject*)self);
 }
@@ -90,14 +90,14 @@ void Resampler_dealloc(pcmstream_Resampler* self) {
 
 PyObject *Resampler_new(PyTypeObject *type,
 			PyObject *args, PyObject *kwds) {
-  pcmstream_Resampler *self;
+  resample_Resampler *self;
 
-  self = (pcmstream_Resampler *)type->tp_alloc(type, 0);
+  self = (resample_Resampler *)type->tp_alloc(type, 0);
 
   return (PyObject *)self;
 }
 
-int Resampler_init(pcmstream_Resampler *self,
+int Resampler_init(resample_Resampler *self,
 		   PyObject *args, PyObject *kwds) {
   int error;
   int channels;
@@ -131,7 +131,7 @@ int Resampler_init(pcmstream_Resampler *self,
 
 #define OUTPUT_SAMPLES_LENGTH 0x100000
 
-PyObject *Resampler_process(pcmstream_Resampler* self,
+PyObject *Resampler_process(resample_Resampler* self,
 				   PyObject *args) {
   PyObject *framelist_obj;
   int last;
