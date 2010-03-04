@@ -549,6 +549,7 @@ void FlacEncoder_write_subframe(Bitstream *bs,
 				struct flac_encoding_options *options,
 				int bits_per_sample,
 				struct i_array *samples) {
+  int wasted_bits_per_sample = 0;
   ia_size_t i;
   ia_data_t first_sample;
 
@@ -568,11 +569,12 @@ void FlacEncoder_write_subframe(Bitstream *bs,
   Bitstream *lpc_subframe;
 
 
-  /*check for a constant subframe*/
+  /*first, check for a constant subframe*/
   if (!options->no_constant_subframes) {
     if (samples->size < 2) {
       FlacEncoder_write_constant_subframe(bs,
 					  bits_per_sample,
+					  wasted_bits_per_sample,
 					  ia_getitem(samples,0));
       return;
     }
@@ -585,12 +587,13 @@ void FlacEncoder_write_subframe(Bitstream *bs,
     if (i == samples->size) {
       FlacEncoder_write_constant_subframe(bs,
 					  bits_per_sample,
+					  wasted_bits_per_sample,
 					  first_sample);
       return;
     }
   }
 
-  /*first check FIXED subframe*/
+  /*next, check FIXED subframe*/
   ia_init(&fixed_warm_up_samples,8);
   ia_init(&fixed_residual,samples->size);
   ia_init(&fixed_rice_parameters,1);
@@ -612,6 +615,7 @@ void FlacEncoder_write_subframe(Bitstream *bs,
 				     &fixed_rice_parameters,
 				     &fixed_residual,
 				     bits_per_sample,
+				     wasted_bits_per_sample,
 				     fixed_predictor_order);
   } else {
     fixed_predictor_order = -1;
@@ -634,6 +638,7 @@ void FlacEncoder_write_subframe(Bitstream *bs,
 
 					options,
 					bits_per_sample,
+					wasted_bits_per_sample,
 					samples);
 
     lpc_subframe = bs_open_accumulator();
@@ -643,6 +648,7 @@ void FlacEncoder_write_subframe(Bitstream *bs,
 				   &lpc_rice_parameters,
 				   &lpc_residual,
 				   bits_per_sample,
+				   wasted_bits_per_sample,
 				   &lpc_coeffs,
 				   lpc_shift_needed);
 
@@ -653,6 +659,7 @@ void FlacEncoder_write_subframe(Bitstream *bs,
 	&& (!options->no_verbatim_subframes)) {
       FlacEncoder_write_verbatim_subframe(bs,
 					  bits_per_sample,
+					  wasted_bits_per_sample,
 					  samples);
     } else if (fixed_subframe->bits_written <= lpc_subframe->bits_written) {
       /* otherwise perform actual writing on the smaller of the two*/
@@ -661,6 +668,7 @@ void FlacEncoder_write_subframe(Bitstream *bs,
 				       &fixed_rice_parameters,
 				       &fixed_residual,
 				       bits_per_sample,
+				       wasted_bits_per_sample,
 				       fixed_predictor_order);
     } else {
       FlacEncoder_write_lpc_subframe(bs,
@@ -668,6 +676,7 @@ void FlacEncoder_write_subframe(Bitstream *bs,
 				     &lpc_rice_parameters,
 				     &lpc_residual,
 				     bits_per_sample,
+				     wasted_bits_per_sample,
 				     &lpc_coeffs,
 				     lpc_shift_needed);
     }
@@ -685,6 +694,7 @@ void FlacEncoder_write_subframe(Bitstream *bs,
 	(!options->no_verbatim_subframes)) {
       FlacEncoder_write_verbatim_subframe(bs,
 					  bits_per_sample,
+					  wasted_bits_per_sample,
 					  samples);
     } else {
       /*if no FIXED subframe *and* no LPC subframe,
@@ -706,6 +716,7 @@ void FlacEncoder_write_subframe(Bitstream *bs,
 				       &fixed_rice_parameters,
 				       &fixed_residual,
 				       bits_per_sample,
+				       wasted_bits_per_sample,
 				       fixed_predictor_order);
     }
   }
@@ -718,11 +729,16 @@ void FlacEncoder_write_subframe(Bitstream *bs,
 
 void FlacEncoder_write_constant_subframe(Bitstream *bs,
 					 int bits_per_sample,
+					 int wasted_bits_per_sample,
 					 ia_data_t sample) {
   /*write subframe header*/
   bs->write_bits(bs, 1, 0);
   bs->write_bits(bs, 6, 0);
-  bs->write_bits(bs, 1, 0);
+  if (wasted_bits_per_sample) {
+    bs->write_bits(bs, 1, 1);
+    bs->write_unary(bs, 1, wasted_bits_per_sample - 1);
+  } else
+    bs->write_bits(bs, 1, 0);
 
   /*write subframe sample*/
   bs->write_signed_bits(bs, bits_per_sample, sample);
@@ -730,13 +746,18 @@ void FlacEncoder_write_constant_subframe(Bitstream *bs,
 
 void FlacEncoder_write_verbatim_subframe(Bitstream *bs,
 					 int bits_per_sample,
+					 int wasted_bits_per_sample,
 					 struct i_array *samples) {
   ia_size_t i;
 
   /*write subframe header*/
   bs->write_bits(bs, 1, 0);
   bs->write_bits(bs, 6, 1);
-  bs->write_bits(bs, 1, 0);
+  if (wasted_bits_per_sample) {
+    bs->write_bits(bs, 1, 1);
+    bs->write_unary(bs, 1, wasted_bits_per_sample - 1);
+  } else
+    bs->write_bits(bs, 1, 0);
 
   /*write subframe samples*/
   for (i = 0; i < samples->size; i++) {
@@ -804,13 +825,18 @@ void FlacEncoder_write_fixed_subframe(Bitstream *bs,
 				      struct i_array *rice_parameters,
 				      struct i_array *residuals,
 				      int bits_per_sample,
+				      int wasted_bits_per_sample,
 				      int predictor_order) {
   ia_size_t i;
 
   /*write subframe header*/
   bs->write_bits(bs, 1, 0);
   bs->write_bits(bs, 6, 0x8 | predictor_order);
-  bs->write_bits(bs, 1, 0); /*FIXME - handle wasted bits-per-sample*/
+  if (wasted_bits_per_sample) {
+    bs->write_bits(bs, 1, 1);
+    bs->write_unary(bs, 1, wasted_bits_per_sample - 1);
+  } else
+    bs->write_bits(bs, 1, 0);
 
   /*write warm-up samples*/
   for (i = 0; i < predictor_order; i++)
@@ -866,6 +892,7 @@ void FlacEncoder_write_lpc_subframe(Bitstream *bs,
 				    struct i_array *rice_parameters,
 				    struct i_array *residuals,
 				    int bits_per_sample,
+				    int wasted_bits_per_sample,
 				    struct i_array *coeffs,
 				    int shift_needed) {
   int predictor_order = coeffs->size;
@@ -875,7 +902,11 @@ void FlacEncoder_write_lpc_subframe(Bitstream *bs,
   /*write subframe header*/
   bs->write_bits(bs,1,0);
   bs->write_bits(bs,6,0x20 | (predictor_order - 1));
-  bs->write_bits(bs,1,0);  /*FIXME - handle wasted bits-per-sample*/
+  if (wasted_bits_per_sample) {
+    bs->write_bits(bs, 1, 1);
+    bs->write_unary(bs, 1, wasted_bits_per_sample - 1);
+  } else
+    bs->write_bits(bs, 1, 0);
 
   /*write warm-up samples*/
   for (i = 0; i < predictor_order; i++) {

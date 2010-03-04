@@ -115,12 +115,14 @@ void FlacEncoder_write_subframe(Bitstream *bs,
   to the bitbuffer*/
 void FlacEncoder_write_constant_subframe(Bitstream *bs,
 					 int bits_per_sample,
+					 int wasted_bits_per_sample,
 					 int32_t sample);
 
 /*writes a VERBATIM subframe with the values "samples"
   to the bitbuffer*/
 void FlacEncoder_write_verbatim_subframe(Bitstream *bs,
 					 int bits_per_sample,
+					 int wasted_bits_per_sample,
 					 struct i_array *samples);
 
 /*given bits_per_sample, samples, predictor order and encoding options,
@@ -142,6 +144,7 @@ void FlacEncoder_write_fixed_subframe(Bitstream *bs,
 				      struct i_array *rice_parameters,
 				      struct i_array *residuals,
 				      int bits_per_sample,
+				      int wasted_bits_per_sample,
 				      int predictor_order);
 
 /*given bits_per_sample, samples, LPC coefficients (whose length is LPC order)
@@ -165,6 +168,7 @@ void FlacEncoder_write_lpc_subframe(Bitstream *bs,
 				    struct i_array *rice_parameters,
 				    struct i_array *residuals,
 				    int bits_per_sample,
+				    int wasted_bits_per_sample,
 				    struct i_array *coeffs,
 				    int shift_needed);
 

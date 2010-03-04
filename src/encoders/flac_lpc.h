@@ -14,6 +14,7 @@ void FlacEncoder_compute_best_lpc_coeffs(struct i_array *lpc_warm_up_samples,
 
 					 struct flac_encoding_options *options,
 					 int bits_per_sample,
+					 int wasted_bits_per_sample,
 					 struct i_array *samples);
 
 void FlacEncoder_rectangular_window(struct f_array *window,

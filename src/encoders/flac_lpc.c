@@ -13,6 +13,7 @@ void FlacEncoder_compute_best_lpc_coeffs(struct i_array *lpc_warm_up_samples,
 
 					 struct flac_encoding_options *options,
 					 int bits_per_sample,
+					 int wasted_bits_per_sample,
 					 struct i_array *samples) {
   struct f_array tukey_window;
   struct f_array windowed_signal;
@@ -138,6 +139,7 @@ void FlacEncoder_compute_best_lpc_coeffs(struct i_array *lpc_warm_up_samples,
 				     &temp_rice_parameters,
 				     &temp_residual,
 				     bits_per_sample,
+				     wasted_bits_per_sample,
 				     &temp_coefficients,
 				     temp_shift_needed);
 

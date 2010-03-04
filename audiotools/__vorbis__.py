@@ -493,8 +493,6 @@ class VorbisAudio(AudioFile):
 
         self.__read_metadata__()
 
-        self.__read_metadata__()
-
     def get_metadata(self):
         self.__read_metadata__()
         data = {}
