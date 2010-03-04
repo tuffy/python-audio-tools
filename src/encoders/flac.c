@@ -146,7 +146,7 @@ PyObject* encoders_encode_flac(PyObject *dummy,
   streaminfo.options.no_lpc_subframes = 0;
 
   file = fopen(filename,"wb");
-  reader = pcmr_open(input,48000,5,24,0,1);/*FIXME - assume CD quality for now*/
+  reader = pcmr_open(input,96000,2,24,0,1);/*FIXME - assume CD quality for now*/
 
 #endif
 
@@ -569,7 +569,7 @@ void FlacEncoder_write_subframe(Bitstream *bs,
   Bitstream *lpc_subframe;
 
 
-  /*first, check for a constant subframe*/
+  /*first, check for a CONSTANT subframe*/
   if (!options->no_constant_subframes) {
     if (samples->size < 2) {
       FlacEncoder_write_constant_subframe(bs,
@@ -591,6 +591,16 @@ void FlacEncoder_write_subframe(Bitstream *bs,
 					  first_sample);
       return;
     }
+  }
+
+  /*if not CONSTANT, check to see if we have any wasted bits-per-sample*/
+  wasted_bits_per_sample = max_wasted_bits_per_sample(samples);
+  wasted_bits_per_sample = MIN(wasted_bits_per_sample,bits_per_sample - 1);
+  if (wasted_bits_per_sample) {
+    /*if so, chop them off the beginning of each sample*/
+    for (i = 0; i < samples->size; i++)
+      samples->data[i] >>= wasted_bits_per_sample;
+    bits_per_sample -= wasted_bits_per_sample;
   }
 
   /*next, check FIXED subframe*/
@@ -719,6 +729,13 @@ void FlacEncoder_write_subframe(Bitstream *bs,
 				       wasted_bits_per_sample,
 				       fixed_predictor_order);
     }
+  }
+
+  /*if we've applied wasted bits-per-sample,
+    un-apply those changes before finishing this function*/
+  if (wasted_bits_per_sample) {
+    for (i = 0; i < samples->size; i++)
+      samples->data[i] <<= wasted_bits_per_sample;
   }
 
   bs_close(fixed_subframe);
@@ -1328,6 +1345,32 @@ int maximum_bits_size(int value, int current_maximum) {
     return bits;
   else
     return current_maximum;
+}
+
+int max_wasted_bits_per_sample(struct i_array *samples) {
+  /*this seems like a good opportunity to use ia_reduce,
+    except we want to quit once wasted bits-per-sample hits 0
+    which will happen very early in the vast majority of cases*/
+  ia_size_t i;
+  ia_data_t sample;
+  int wasted_bits;
+  int wasted_bits_per_sample = INT_MAX;
+
+  if (samples->size > 0) {
+    for (i = 0; i < samples->size; i++) {
+      sample = samples->data[i];
+      if (sample != 0) {
+	for (wasted_bits = 0;((sample & 1) == 0) && (sample != 0);sample >>= 1)
+	  wasted_bits++;
+	wasted_bits_per_sample = MIN(wasted_bits_per_sample,wasted_bits);
+	if (wasted_bits_per_sample == 0)
+	  return 0;
+      }
+    }
+    return wasted_bits_per_sample;
+  } else {
+    return 0;
+  }
 }
 
 #include "flac_crc.c"

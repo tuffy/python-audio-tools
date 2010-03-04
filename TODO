@@ -511,11 +511,11 @@
 ** DONE Support Rice2 partitions?
    The reference encoder uses these for more efficient handling of 24-bit audio
    but I'm not sure they're strictly necessary for my more basic encoder.
-** TODO Generate SEEKTABLE blocks
-** TODO Support wasted-bits-per-sample?
+** DONE Support wasted-bits-per-sample?
    I don't think I've ever seen these used on actual audio data
    that isn't artificial and hasn't been processed specifically for its use.
    As with Rice2, it's something that may get added later.
+** TODO Generate SEEKTABLE blocks
 ** TODO Handle multi-channel PCM data correctly
    Anything higher than 2 channels needs to set a channel mask
    and the vorbis comment to the proper value.

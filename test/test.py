@@ -8923,7 +8923,16 @@ class TestFlacCodec(unittest.TestCase):
                                  adaptive_mid_side=True,
                                  exhaustive_model_search=True)
 
-    #FIXME - add support for wasted-bps at some point
+    @TEST_FLAC
+    def test_wasted_bps(self):
+        self.__test_reader__(test_streams.WastedBPS16(1000),
+                             block_size=1152,
+                             max_lpc_order=16,
+                             min_residual_partition_order=0,
+                             max_residual_partition_order=3,
+                             mid_side=True,
+                             adaptive_mid_side=True,
+                             exhaustive_model_search=True)
 
     @TEST_FLAC
     def test_blocksizes(self):

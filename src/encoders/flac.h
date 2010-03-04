@@ -247,6 +247,9 @@ void md5_update(void *data, unsigned char *buffer, unsigned long len);
 
 int maximum_bits_size(int value, int current_maximum);
 
+/*given a set of samples, returns the maximum amount of wasted bits*/
+int max_wasted_bits_per_sample(struct i_array *samples);
+
 static inline uint64_t abs_sum(struct i_array *a) {
   register uint64_t sum = 0;
   ia_size_t a_size = a->size;

@@ -289,6 +289,28 @@ class Sine24_Stereo(MD5Reader):
              self.bits_per_sample,
              ",".join(map(repr,self.options)))
 
+class WastedBPS16(MD5Reader):
+    def __init__(self, pcm_frames):
+        l = [(i % 2000) << 2 for i in xrange(pcm_frames)]
+        r = [(i % 1000) << 3 for i in xrange(pcm_frames)]
+        self.wave = [0] * (len(l) + len(r))
+        self.wave[0::2] = l
+        self.wave[1::2] = r
+
+        MD5Reader.__init__(self,
+                           FrameListReader(self.wave,
+                                           44100,
+                                           2,
+                                           16))
+
+    def reset(self):
+        self.pcmreader = FrameListReader(self.wave,
+                                         self.sample_rate,
+                                         2,
+                                         16)
+        self.md5 = md5()
+
+
 class Raw(audiotools.PCMReader):
     def __init__(self, pcm_frames, channels, bits_per_sample):
         self.sample_rate = 44100
