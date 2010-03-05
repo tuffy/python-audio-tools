@@ -87,6 +87,8 @@ void FlacDecoder_dealloc(decoders_FlacDecoder *self) {
     free(self->filename);
 
   bs_close(self->bitstream);
+  if (self->data != NULL)
+    free(self->data);
 
   Py_TYPE(self)->tp_free((PyObject*)self);
 }

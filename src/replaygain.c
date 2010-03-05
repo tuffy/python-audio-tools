@@ -1,6 +1,6 @@
 #include <Python.h>
 #include "replaygain.h"
-
+#include "pcm.h"
 
 PyMethodDef module_methods[] = {
   {NULL}
@@ -80,10 +80,80 @@ int ReplayGain_init(replaygain_ReplayGain *self, PyObject *args, PyObject *kwds)
 }
 
 PyObject* ReplayGain_update(replaygain_ReplayGain *self, PyObject *args) {
-  /*FIXME - read FloatFrameList object and update internal state*/
+  PyObject *floatframelist_obj = NULL;
+  PyObject *channels_obj = NULL;
+  PyObject *channel_l_obj = NULL;
+  PyObject *channel_r_obj = NULL;
+  PyObject *pcm_obj = NULL;
+  PyObject *floatframelist_type_obj = NULL;
+  pcm_FloatFrameList *channel_l;
+  pcm_FloatFrameList *channel_r;
+  long channel_count;
 
+  /*receive a (presumably) FloatFrameList from our arguments*/
+  if (!PyArg_ParseTuple(args,"O",&floatframelist_obj))
+    return NULL;
+
+  /*get floatframelist.channels attrib and convert it to an integer*/
+  if ((channels_obj = PyObject_GetAttrString(floatframelist_obj,"channels")) == NULL)
+    goto error;
+  if (((channel_count = PyInt_AsLong(channels_obj)) == -1) && PyErr_Occurred())
+    goto error;
+
+  /*call floatframelist.channel(0) and floatframelist.channel(1)*/
+  switch (channel_count) {
+  case 1:
+     if ((channel_l_obj = PyObject_CallMethod(floatframelist_obj,"channel","(i)",0)) == NULL)
+      goto error;
+     if ((channel_r_obj = PyObject_CallMethod(floatframelist_obj,"channel","(i)",0)) == NULL)
+       goto error;
+     break;
+  case 2:
+    if ((channel_l_obj = PyObject_CallMethod(floatframelist_obj,"channel","(i)",0)) == NULL)
+      goto error;
+    if ((channel_r_obj = PyObject_CallMethod(floatframelist_obj,"channel","(i)",1)) == NULL)
+      goto error;
+    break;
+  default:
+    PyErr_SetString(PyExc_ValueError,"channel count must be 1 or 2");
+    goto error;
+  }
+
+  /*ensure channel_l_obj and channel_r_obj are FloatFrameLists*/
+  if ((pcm_obj = PyImport_ImportModule("audiotools.pcm")) == NULL)
+    goto error;
+  if ((floatframelist_type_obj = PyObject_GetAttrString(pcm_obj,"FloatFrameList")) == NULL)
+    goto error;
+  if (channel_l_obj->ob_type != (PyTypeObject*)floatframelist_type_obj) {
+    PyErr_SetString(PyExc_TypeError,"channel 0 must be a FloatFrameList");
+    goto error;
+  }
+  if (channel_r_obj->ob_type != (PyTypeObject*)floatframelist_type_obj) {
+    PyErr_SetString(PyExc_TypeError,"channel 1 must be a FloatFrameList");
+    goto error;
+  }
+
+  channel_l = (pcm_FloatFrameList*)channel_l_obj;
+  channel_r = (pcm_FloatFrameList*)channel_r_obj;
+
+  /*perform actual gain analysis on channels*/
+
+
+  /*clean up Python objects and return None*/
+  Py_XDECREF(channels_obj);
+  Py_XDECREF(channel_l_obj);
+  Py_XDECREF(channel_r_obj);
+  Py_XDECREF(pcm_obj);
+  Py_XDECREF(floatframelist_type_obj);
   Py_INCREF(Py_None);
   return Py_None;
+ error:
+  Py_XDECREF(channels_obj);
+  Py_XDECREF(channel_l_obj);
+  Py_XDECREF(channel_r_obj);
+  Py_XDECREF(pcm_obj);
+  Py_XDECREF(floatframelist_type_obj);
+  return NULL;
 }
 
 PyObject* ReplayGain_title_gain(replaygain_ReplayGain *self) {
