@@ -48,6 +48,9 @@ resamplemodule = Extension('audiotools.resample',
 pcmmodule = Extension('audiotools.pcm',
                       sources = ['src/pcm.c'])
 
+replaygainmodule = Extension('audiotools.replaygain',
+                             sources = ['src/replaygain.c'])
+
 decodersmodule = Extension('audiotools.decoders',
                            sources = ['src/array.c',
                                       'src/bitstream_r.c',
@@ -68,6 +71,7 @@ encodersmodule = Extension('audiotools.encoders',
 extensions = [cdiomodule,
               resamplemodule,
               pcmmodule,
+              replaygainmodule,
               decodersmodule,
               encodersmodule]
 
