@@ -72,12 +72,46 @@ PyObject *ReplayGain_new(PyTypeObject *type, PyObject *args, PyObject *kwds) {
 
 int ReplayGain_init(replaygain_ReplayGain *self, PyObject *args, PyObject *kwds) {
   long sample_rate;
+  int  i;
 
   if (!PyArg_ParseTuple(args,"l",&sample_rate))
     return -1;
 
-  /*FIXME - make this local instead of global*/
-  InitGainAnalysis(sample_rate);
+  /* zero out initial values*/
+  for ( i = 0; i < MAX_ORDER; i++ )
+    linprebuf[i] = lstepbuf[i] = loutbuf[i] = rinprebuf[i] = rstepbuf[i] = routbuf[i] = 0.;
+
+  switch (sample_rate) {
+  case 48000: freqindex = 0; break;
+  case 44100: freqindex = 1; break;
+  case 32000: freqindex = 2; break;
+  case 24000: freqindex = 3; break;
+  case 22050: freqindex = 4; break;
+  case 16000: freqindex = 5; break;
+  case 12000: freqindex = 6; break;
+  case 11025: freqindex = 7; break;
+  case  8000: freqindex = 8; break;
+  default:
+    PyErr_SetString(PyExc_ValueError,"unsupported sample rate");
+    return -1;
+  }
+
+  sampleWindow = (int) ceil (sample_rate * RMS_WINDOW_TIME);
+
+  lsum         = 0.;
+  rsum         = 0.;
+  totsamp      = 0;
+
+  memset ( A, 0, sizeof(A) );
+
+  linpre       = linprebuf + MAX_ORDER;
+  rinpre       = rinprebuf + MAX_ORDER;
+  lstep        = lstepbuf  + MAX_ORDER;
+  rstep        = rstepbuf  + MAX_ORDER;
+  lout         = loutbuf   + MAX_ORDER;
+  rout         = routbuf   + MAX_ORDER;
+
+  memset ( B, 0, sizeof(B) );
 
   return 0;
 }
@@ -212,45 +246,7 @@ PyMODINIT_FUNC initreplaygain(void) {
 }
 
 
-typedef unsigned short  Uint16_t;
-typedef signed short    Int16_t;
-typedef unsigned int    Uint32_t;
-typedef signed int      Int32_t;
 
-#define YULE_ORDER         10
-#define BUTTER_ORDER        2
-#define YULE_FILTER     filterYule
-#define BUTTER_FILTER   filterButter
-#define RMS_PERCENTILE      0.95        // percentile which is louder than the proposed level
-#define MAX_SAMP_FREQ   48000.          // maximum allowed sample frequency [Hz]
-#define RMS_WINDOW_TIME     0.050       // Time slice size [s]
-#define STEPS_per_dB      100.          // Table entries per dB
-#define MAX_dB            120.          // Table entries for 0...MAX_dB (normal max. values are 70...80 dB)
-
-#define MAX_ORDER               (BUTTER_ORDER > YULE_ORDER ? BUTTER_ORDER : YULE_ORDER)
-#define MAX_SAMPLES_PER_WINDOW  (size_t) (MAX_SAMP_FREQ * RMS_WINDOW_TIME)      // max. Samples per Time slice
-#define PINK_REF                64.82 //298640883795                              // calibration value
-
-Float_t          linprebuf [MAX_ORDER * 2];
-Float_t*         linpre;                                          // left input samples, with pre-buffer
-Float_t          lstepbuf  [MAX_SAMPLES_PER_WINDOW + MAX_ORDER];
-Float_t*         lstep;                                           // left "first step" (i.e. post first filter) samples
-Float_t          loutbuf   [MAX_SAMPLES_PER_WINDOW + MAX_ORDER];
-Float_t*         lout;                                            // left "out" (i.e. post second filter) samples
-Float_t          rinprebuf [MAX_ORDER * 2];
-Float_t*         rinpre;                                          // right input samples ...
-Float_t          rstepbuf  [MAX_SAMPLES_PER_WINDOW + MAX_ORDER];
-Float_t*         rstep;
-Float_t          routbuf   [MAX_SAMPLES_PER_WINDOW + MAX_ORDER];
-Float_t*         rout;
-long             sampleWindow;                                    // number of samples required to reach number of milliseconds required for RMS window
-long             totsamp;
-double           lsum;
-double           rsum;
-int              freqindex;
-int              first;
-static Uint32_t  A [(size_t)(STEPS_per_dB * MAX_dB)];
-static Uint32_t  B [(size_t)(STEPS_per_dB * MAX_dB)];
 
 // for each filter:
 // [0] 48 kHz, [1] 44.1 kHz, [2] 32 kHz, [3] 24 kHz, [4] 22050 Hz, [5] 16 kHz, [6] 12 kHz, [7] is 11025 Hz, [8] 8 kHz
@@ -333,59 +329,6 @@ filterButter (const Float_t* input, Float_t* output, size_t nSamples, const Floa
     }
 }
 
-
-// returns a INIT_GAIN_ANALYSIS_OK if successful, INIT_GAIN_ANALYSIS_ERROR if not
-
-int
-ResetSampleFrequency ( long samplefreq ) {
-    int  i;
-
-    // zero out initial values
-    for ( i = 0; i < MAX_ORDER; i++ )
-        linprebuf[i] = lstepbuf[i] = loutbuf[i] = rinprebuf[i] = rstepbuf[i] = routbuf[i] = 0.;
-
-    switch ( (int)(samplefreq) ) {
-        case 48000: freqindex = 0; break;
-        case 44100: freqindex = 1; break;
-        case 32000: freqindex = 2; break;
-        case 24000: freqindex = 3; break;
-        case 22050: freqindex = 4; break;
-        case 16000: freqindex = 5; break;
-        case 12000: freqindex = 6; break;
-        case 11025: freqindex = 7; break;
-        case  8000: freqindex = 8; break;
-        default:    return INIT_GAIN_ANALYSIS_ERROR;
-    }
-
-    sampleWindow = (int) ceil (samplefreq * RMS_WINDOW_TIME);
-
-    lsum         = 0.;
-    rsum         = 0.;
-    totsamp      = 0;
-
-    memset ( A, 0, sizeof(A) );
-
-    return INIT_GAIN_ANALYSIS_OK;
-}
-
-int
-InitGainAnalysis ( long samplefreq )
-{
-    if (ResetSampleFrequency(samplefreq) != INIT_GAIN_ANALYSIS_OK) {
-        return INIT_GAIN_ANALYSIS_ERROR;
-    }
-
-    linpre       = linprebuf + MAX_ORDER;
-    rinpre       = rinprebuf + MAX_ORDER;
-    lstep        = lstepbuf  + MAX_ORDER;
-    rstep        = rstepbuf  + MAX_ORDER;
-    lout         = loutbuf   + MAX_ORDER;
-    rout         = routbuf   + MAX_ORDER;
-
-    memset ( B, 0, sizeof(B) );
-
-    return INIT_GAIN_ANALYSIS_OK;
-}
 
 // returns GAIN_ANALYSIS_OK if successful, GAIN_ANALYSIS_ERROR if not
 
