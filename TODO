@@ -564,3 +564,14 @@
 ** DONE Remove deprecated pcmstream.PCMStreamReader object
 ** DONE Convert pcmstream module to resample module
 * TODO Add native ReplayGain handling routines
+** DONE Add native ReplayGain handling to FlacAudio/OggFlacAudio
+** TODO Ensure add_replay_gain()'s exceptions are caught
+   Errors during calculation may raise ValueError,
+   which must be caught anywhere the function is called
+** TODO Add ReplayGain unit tests
+** TODO Ensure ReplayGain is applied consistently
+   Although cd2track is guaranteed to generate only one album at a time,
+   track2track is not.  If multiple albums are converted at once,
+   add_replay_gain must be called on an album-by-album basis
+   rather than one the entire set.
+

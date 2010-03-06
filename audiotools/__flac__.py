@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,MetaData,InvalidFile,PCMReader,Con,transfer_data,transfer_framelist_data,subprocess,BIN,BUFFER_SIZE,cStringIO,os,open_files,Image,sys,WaveAudio,ReplayGain,ignore_sigint,sheet_to_unicode,EncodingError,DecodingError,Messenger,BufferedPCMReader
+from audiotools import AudioFile,MetaData,InvalidFile,PCMReader,Con,transfer_data,transfer_framelist_data,subprocess,BIN,BUFFER_SIZE,cStringIO,os,open_files,Image,sys,WaveAudio,ReplayGain,ignore_sigint,sheet_to_unicode,EncodingError,DecodingError,Messenger,BufferedPCMReader,calculate_replay_gain
 from __vorbiscomment__ import *
 from __id3__ import ID3v2Comment
 from __vorbis__ import OggStreamReader,OggStreamWriter
@@ -1040,20 +1040,28 @@ class FlacAudio(AudioFile):
 
     @classmethod
     def add_replay_gain(cls, filenames):
-        track_names = [track.filename for track in
-                       open_files(filenames) if
-                       (isinstance(track,cls) and
-                        (track.channels() == 2) and
-                        ((track.sample_rate() == 44100) or
-                         (track.sample_rate() == 48000)))]
+        tracks = [track for track in open_files(filenames) if
+                  isinstance(track,cls)]
 
-        if ((len(track_names) > 0) and (BIN.can_execute(BIN['metaflac']))):
-            subprocess.call([BIN['metaflac'],'--add-replay-gain'] + \
-                            track_names)
+        if (len(tracks) > 0):
+            for (track,
+                 track_gain,
+                 track_peak,
+                 album_gain,
+                 album_peak) in calculate_replay_gain(tracks):
+                metadata = track.get_metadata()
+                if (hasattr(metadata,"vorbis_comment")):
+                    comment = metadata.vorbis_comment
+                    comment["REPLAYGAIN_TRACK_GAIN"] = ["%1.2f dB" % (track_gain)]
+                    comment["REPLAYGAIN_TRACK_PEAK"] = ["%1.8f" % (track_peak)]
+                    comment["REPLAYGAIN_ALBUM_GAIN"] = ["%1.2f dB" % (album_gain)]
+                    comment["REPLAYGAIN_ALBUM_PEAK"] = ["%1.8f" % (album_peak)]
+                    comment["REPLAYGAIN_REFERENCE_LOUDNESS"] = [u"89.0 dB"]
+                    track.set_metadata(metadata)
 
     @classmethod
     def can_add_replay_gain(cls):
-        return BIN.can_execute(BIN['metaflac'])
+        return True
 
     @classmethod
     def lossless_replay_gain(cls):
@@ -1402,10 +1410,6 @@ class OggFlacAudio(FlacAudio):
             return OggFlacAudio(filename)
         else:
             raise EncodingError(BIN['flac'])
-
-    @classmethod
-    def add_replay_gain(cls, filenames):
-        pass
 
     #FIXME - this needs to be adjusted to support
     #Ogg FLACs with embedded cuesheets

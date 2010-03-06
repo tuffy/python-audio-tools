@@ -1035,6 +1035,29 @@ class ReplayGainReader:
     def close(self):
         self.reader.close()
 
+#given a list of tracks,
+#returns an iterator of (track,track_gain,track_peak,album_gain,album_peak)
+#tuples or raises ValueError if a problem occurs during calculation
+def calculate_replay_gain(tracks):
+    from . import replaygain as replaygain
+
+    sample_rate = set([track.sample_rate() for track in tracks])
+    if (len(sample_rate) != 1):
+        raise ValueError("at least one track is required and all must have the same sample rate")
+    rg = replaygain.ReplayGain(list(sample_rate)[0])
+    gains = []
+    for track in tracks:
+        pcm = track.to_pcm()
+        frame = pcm.read(BUFFER_SIZE)
+        while (len(frame) > 0):
+            rg.update(frame)
+            frame = pcm.read(BUFFER_SIZE)
+        pcm.close()
+        (track_gain,track_peak) = rg.title_gain()
+        gains.append((track,track_gain,track_peak))
+    (album_gain,album_peak) = rg.album_gain()
+    for (track,track_gain,track_peak) in gains:
+        yield (track,track_gain,track_peak,album_gain,album_peak)
 
 #this is a wrapper around another PCMReader meant for audio recording
 #it runs read() continually in a separate thread
