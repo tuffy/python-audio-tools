@@ -78,40 +78,45 @@ int ReplayGain_init(replaygain_ReplayGain *self, PyObject *args, PyObject *kwds)
     return -1;
 
   /* zero out initial values*/
-  for ( i = 0; i < MAX_ORDER; i++ )
-    linprebuf[i] = lstepbuf[i] = loutbuf[i] = rinprebuf[i] = rstepbuf[i] = routbuf[i] = 0.;
+  for (i = 0; i < MAX_ORDER; i++ )
+    self->linprebuf[i] =
+      self->lstepbuf[i] =
+      self->loutbuf[i] =
+      self->rinprebuf[i] =
+      self->rstepbuf[i] =
+      self->routbuf[i] = 0.;
 
   switch (sample_rate) {
-  case 48000: freqindex = 0; break;
-  case 44100: freqindex = 1; break;
-  case 32000: freqindex = 2; break;
-  case 24000: freqindex = 3; break;
-  case 22050: freqindex = 4; break;
-  case 16000: freqindex = 5; break;
-  case 12000: freqindex = 6; break;
-  case 11025: freqindex = 7; break;
-  case  8000: freqindex = 8; break;
+  case 48000: self->freqindex = 0; break;
+  case 44100: self->freqindex = 1; break;
+  case 32000: self->freqindex = 2; break;
+  case 24000: self->freqindex = 3; break;
+  case 22050: self->freqindex = 4; break;
+  case 16000: self->freqindex = 5; break;
+  case 12000: self->freqindex = 6; break;
+  case 11025: self->freqindex = 7; break;
+  case  8000: self->freqindex = 8; break;
   default:
     PyErr_SetString(PyExc_ValueError,"unsupported sample rate");
     return -1;
   }
 
-  sampleWindow = (int) ceil (sample_rate * RMS_WINDOW_TIME);
+  self->sampleWindow = (int)ceil(sample_rate * RMS_WINDOW_TIME);
 
-  lsum         = 0.;
-  rsum         = 0.;
-  totsamp      = 0;
+  self->lsum         = 0.;
+  self->rsum         = 0.;
+  self->totsamp      = 0;
 
-  memset ( A, 0, sizeof(A) );
+  memset (self->A, 0, sizeof(self->A));
 
-  linpre       = linprebuf + MAX_ORDER;
-  rinpre       = rinprebuf + MAX_ORDER;
-  lstep        = lstepbuf  + MAX_ORDER;
-  rstep        = rstepbuf  + MAX_ORDER;
-  lout         = loutbuf   + MAX_ORDER;
-  rout         = routbuf   + MAX_ORDER;
+  self->linpre       = self->linprebuf + MAX_ORDER;
+  self->rinpre       = self->rinprebuf + MAX_ORDER;
+  self->lstep        = self->lstepbuf  + MAX_ORDER;
+  self->rstep        = self->rstepbuf  + MAX_ORDER;
+  self->lout         = self->loutbuf   + MAX_ORDER;
+  self->rout         = self->routbuf   + MAX_ORDER;
 
-  memset ( B, 0, sizeof(B) );
+  memset (self->B, 0, sizeof(self->B));
 
   return 0;
 }
@@ -187,7 +192,8 @@ PyObject* ReplayGain_update(replaygain_ReplayGain *self, PyObject *args) {
   }
 
   /*perform actual gain analysis on channels*/
-  AnalyzeSamples(channel_l_buffer,
+  AnalyzeSamples(self,
+		 channel_l_buffer,
 		 channel_r_buffer,
 		 channel_l->frames,
 		 2);
@@ -221,12 +227,12 @@ PyObject* ReplayGain_update(replaygain_ReplayGain *self, PyObject *args) {
 
 PyObject* ReplayGain_title_gain(replaygain_ReplayGain *self) {
   /*FIXME - reset state and return real value*/
-  return Py_BuildValue("(d,d)",GetTitleGain(),1.0);
+  return Py_BuildValue("(d,d)",GetTitleGain(self),1.0);
 }
 
 PyObject* ReplayGain_album_gain(replaygain_ReplayGain *self) {
   /*FIXME - return real value*/
-  return Py_BuildValue("(d,d)",GetAlbumGain(),1.0);
+  return Py_BuildValue("(d,d)",GetAlbumGain(self),1.0);
 }
 
 
@@ -337,7 +343,7 @@ static __inline double fsqr(const double d)
 }
 
 int
-AnalyzeSamples ( const Float_t* left_samples, const Float_t* right_samples, size_t num_samples, int num_channels )
+AnalyzeSamples (replaygain_ReplayGain* self, const Float_t* left_samples, const Float_t* right_samples, size_t num_samples, int num_channels )
 {
     const Float_t*  curleft;
     const Float_t*  curright;
@@ -359,19 +365,19 @@ AnalyzeSamples ( const Float_t* left_samples, const Float_t* right_samples, size
     }
 
     if ( num_samples < MAX_ORDER ) {
-        memcpy ( linprebuf + MAX_ORDER, left_samples , num_samples * sizeof(Float_t) );
-        memcpy ( rinprebuf + MAX_ORDER, right_samples, num_samples * sizeof(Float_t) );
+        memcpy (self->linprebuf + MAX_ORDER, left_samples , num_samples * sizeof(Float_t) );
+        memcpy ( self->rinprebuf + MAX_ORDER, right_samples, num_samples * sizeof(Float_t) );
     }
     else {
-        memcpy ( linprebuf + MAX_ORDER, left_samples,  MAX_ORDER   * sizeof(Float_t) );
-        memcpy ( rinprebuf + MAX_ORDER, right_samples, MAX_ORDER   * sizeof(Float_t) );
+        memcpy ( self->linprebuf + MAX_ORDER, left_samples,  MAX_ORDER   * sizeof(Float_t) );
+        memcpy ( self->rinprebuf + MAX_ORDER, right_samples, MAX_ORDER   * sizeof(Float_t) );
     }
 
     while ( batchsamples > 0 ) {
-        cursamples = batchsamples > sampleWindow-totsamp  ?  sampleWindow - totsamp  :  batchsamples;
+        cursamples = batchsamples > self->sampleWindow - self->totsamp  ?  self->sampleWindow - self->totsamp  :  batchsamples;
         if ( cursamplepos < MAX_ORDER ) {
-            curleft  = linpre+cursamplepos;
-            curright = rinpre+cursamplepos;
+            curleft  = self->linpre + cursamplepos;
+            curright = self->rinpre + cursamplepos;
             if (cursamples > MAX_ORDER - cursamplepos )
                 cursamples = MAX_ORDER - cursamplepos;
         }
@@ -380,23 +386,23 @@ AnalyzeSamples ( const Float_t* left_samples, const Float_t* right_samples, size
             curright = right_samples + cursamplepos;
         }
 
-        YULE_FILTER ( curleft , lstep + totsamp, cursamples, ABYule[freqindex]);
-        YULE_FILTER ( curright, rstep + totsamp, cursamples, ABYule[freqindex]);
+        YULE_FILTER ( curleft , self->lstep + self->totsamp, cursamples, ABYule[self->freqindex]);
+        YULE_FILTER ( curright, self->rstep + self->totsamp, cursamples, ABYule[self->freqindex]);
 
-        BUTTER_FILTER ( lstep + totsamp, lout + totsamp, cursamples, ABButter[freqindex]);
-        BUTTER_FILTER ( rstep + totsamp, rout + totsamp, cursamples, ABButter[freqindex]);
+        BUTTER_FILTER ( self->lstep + self->totsamp, self->lout + self->totsamp, cursamples, ABButter[self->freqindex]);
+        BUTTER_FILTER ( self->rstep + self->totsamp, self->rout + self->totsamp, cursamples, ABButter[self->freqindex]);
 
-        curleft = lout + totsamp;                   // Get the squared values
-        curright = rout + totsamp;
+        curleft = self->lout + self->totsamp;                   // Get the squared values
+        curright = self->rout + self->totsamp;
 
         i = cursamples % 16;
         while (i--)
-        {   lsum += fsqr(*curleft++);
-            rsum += fsqr(*curright++);
+        {   self->lsum += fsqr(*curleft++);
+            self->rsum += fsqr(*curright++);
         }
         i = cursamples / 16;
         while (i--)
-        {   lsum += fsqr(curleft[0])
+        {   self->lsum += fsqr(curleft[0])
                   + fsqr(curleft[1])
                   + fsqr(curleft[2])
                   + fsqr(curleft[3])
@@ -413,7 +419,7 @@ AnalyzeSamples ( const Float_t* left_samples, const Float_t* right_samples, size
                   + fsqr(curleft[14])
                   + fsqr(curleft[15]);
             curleft += 16;
-            rsum += fsqr(curright[0])
+            self->rsum += fsqr(curright[0])
                   + fsqr(curright[1])
                   + fsqr(curright[2])
                   + fsqr(curright[3])
@@ -434,32 +440,32 @@ AnalyzeSamples ( const Float_t* left_samples, const Float_t* right_samples, size
 
         batchsamples -= cursamples;
         cursamplepos += cursamples;
-        totsamp      += cursamples;
-        if ( totsamp == sampleWindow ) {  // Get the Root Mean Square (RMS) for this set of samples
-            double  val  = STEPS_per_dB * 10. * log10 ( (lsum+rsum) / totsamp * 0.5 + 1.e-37 );
+        self->totsamp      += cursamples;
+        if ( self->totsamp == self->sampleWindow ) {  // Get the Root Mean Square (RMS) for this set of samples
+            double  val  = STEPS_per_dB * 10. * log10 ( (self->lsum + self->rsum) / self->totsamp * 0.5 + 1.e-37 );
             int     ival = (int) val;
             if ( ival <                     0 ) ival = 0;
-            if ( ival >= (int)(sizeof(A)/sizeof(*A)) ) ival = sizeof(A)/sizeof(*A) - 1;
-            A [ival]++;
-            lsum = rsum = 0.;
-            memmove ( loutbuf , loutbuf  + totsamp, MAX_ORDER * sizeof(Float_t) );
-            memmove ( routbuf , routbuf  + totsamp, MAX_ORDER * sizeof(Float_t) );
-            memmove ( lstepbuf, lstepbuf + totsamp, MAX_ORDER * sizeof(Float_t) );
-            memmove ( rstepbuf, rstepbuf + totsamp, MAX_ORDER * sizeof(Float_t) );
-            totsamp = 0;
+            if ( ival >= (int)(sizeof(self->A)/sizeof(*(self->A))) ) ival = sizeof(self->A)/sizeof(*(self->A)) - 1;
+            self->A [ival]++;
+            self->lsum = self->rsum = 0.;
+            memmove ( self->loutbuf , self->loutbuf  + self->totsamp, MAX_ORDER * sizeof(Float_t) );
+            memmove ( self->routbuf , self->routbuf  + self->totsamp, MAX_ORDER * sizeof(Float_t) );
+            memmove ( self->lstepbuf, self->lstepbuf + self->totsamp, MAX_ORDER * sizeof(Float_t) );
+            memmove ( self->rstepbuf, self->rstepbuf + self->totsamp, MAX_ORDER * sizeof(Float_t) );
+            self->totsamp = 0;
         }
-        if ( totsamp > sampleWindow )   // somehow I really screwed up: Error in programming! Contact author about totsamp > sampleWindow
+        if ( self->totsamp > self->sampleWindow )   // somehow I really screwed up: Error in programming! Contact author about self->totsamp > self->sampleWindow
             return GAIN_ANALYSIS_ERROR;
     }
     if ( num_samples < MAX_ORDER ) {
-        memmove ( linprebuf,                           linprebuf + num_samples, (MAX_ORDER-num_samples) * sizeof(Float_t) );
-        memmove ( rinprebuf,                           rinprebuf + num_samples, (MAX_ORDER-num_samples) * sizeof(Float_t) );
-        memcpy  ( linprebuf + MAX_ORDER - num_samples, left_samples,          num_samples             * sizeof(Float_t) );
-        memcpy  ( rinprebuf + MAX_ORDER - num_samples, right_samples,         num_samples             * sizeof(Float_t) );
+        memmove ( self->linprebuf,                           self->linprebuf + num_samples, (MAX_ORDER-num_samples) * sizeof(Float_t) );
+        memmove ( self->rinprebuf,                           self->rinprebuf + num_samples, (MAX_ORDER-num_samples) * sizeof(Float_t) );
+        memcpy  ( self->linprebuf + MAX_ORDER - num_samples, left_samples,          num_samples             * sizeof(Float_t) );
+        memcpy  ( self->rinprebuf + MAX_ORDER - num_samples, right_samples,         num_samples             * sizeof(Float_t) );
     }
     else {
-        memcpy  ( linprebuf, left_samples  + num_samples - MAX_ORDER, MAX_ORDER * sizeof(Float_t) );
-        memcpy  ( rinprebuf, right_samples + num_samples - MAX_ORDER, MAX_ORDER * sizeof(Float_t) );
+        memcpy  ( self->linprebuf, left_samples  + num_samples - MAX_ORDER, MAX_ORDER * sizeof(Float_t) );
+        memcpy  ( self->rinprebuf, right_samples + num_samples - MAX_ORDER, MAX_ORDER * sizeof(Float_t) );
     }
 
     return GAIN_ANALYSIS_OK;
@@ -490,31 +496,36 @@ analyzeResult ( Uint32_t* Array, size_t len )
 
 
 Float_t
-GetTitleGain ( void )
+GetTitleGain (replaygain_ReplayGain *self)
 {
     Float_t  retval;
     int    i;
 
-    retval = analyzeResult ( A, sizeof(A)/sizeof(*A) );
+    retval = analyzeResult (self->A, sizeof(self->A)/sizeof(*(self->A)) );
 
-    for ( i = 0; i < (int)(sizeof(A)/sizeof(*A)); i++ ) {
-        B[i] += A[i];
-        A[i]  = 0;
+    for ( i = 0; i < (int)(sizeof(self->A)/sizeof(*(self->A))); i++ ) {
+        self->B[i] += self->A[i];
+        self->A[i]  = 0;
     }
 
     for ( i = 0; i < MAX_ORDER; i++ )
-        linprebuf[i] = lstepbuf[i] = loutbuf[i] = rinprebuf[i] = rstepbuf[i] = routbuf[i] = 0.f;
+        self->linprebuf[i] =
+	  self->lstepbuf[i] =
+	  self->loutbuf[i] =
+	  self->rinprebuf[i] =
+	  self->rstepbuf[i] =
+	  self->routbuf[i] = 0.f;
 
-    totsamp = 0;
-    lsum    = rsum = 0.;
+    self->totsamp = 0;
+    self->lsum    = self->rsum = 0.;
     return retval;
 }
 
 
 Float_t
-GetAlbumGain ( void )
+GetAlbumGain (replaygain_ReplayGain *self)
 {
-    return analyzeResult ( B, sizeof(B)/sizeof(*B) );
+  return analyzeResult (self->B, sizeof(self->B)/sizeof(*(self->B)) );
 }
 
 /* end of gain_analysis.c */
