@@ -2,6 +2,34 @@
 #include "replaygain.h"
 #include "pcm.h"
 
+/*
+ *  ReplayGainAnalysis - analyzes input samples and give the recommended dB change
+ *  Copyright (C) 2001 David Robinson and Glen Sawyer
+ *  Modified 2010 by Brian Langenberger for use in Python Audio Tools
+ *
+ *  This library is free software; you can redistribute it and/or
+ *  modify it under the terms of the GNU Lesser General Public
+ *  License as published by the Free Software Foundation; either
+ *  version 2.1 of the License, or (at your option) any later version.
+ *
+ *  This library is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ *  Lesser General Public License for more details.
+ *
+ *  You should have received a copy of the GNU Lesser General Public
+ *  License along with this library; if not, write to the Free Software
+ *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ *
+ *  concept and filter values by David Robinson (David@Robinson.org)
+ *    -- blame him if you think the idea is flawed
+ *  coding by Glen Sawyer (mp3gain@hotmail.com) 735 W 255 N, Orem, UT 84057-4505 USA
+ *    -- blame him if you think this runs too slowly, or the coding is otherwise flawed
+ *
+ *  For an explanation of the concepts and the basic algorithms involved, go to:
+ *    http://www.replaygain.org/
+ */
+
 PyMethodDef module_methods[] = {
   {NULL}
 };
@@ -118,6 +146,8 @@ int ReplayGain_init(replaygain_ReplayGain *self, PyObject *args, PyObject *kwds)
 
   memset (self->B, 0, sizeof(self->B));
 
+  self->title_peak = self->album_peak = 0.0;
+
   return 0;
 }
 
@@ -134,6 +164,7 @@ PyObject* ReplayGain_update(replaygain_ReplayGain *self, PyObject *args) {
   double *channel_l_buffer = NULL;
   double *channel_r_buffer = NULL;
   fa_size_t sample;
+  double peak;
 
   /*receive a (presumably) FrameList from our arguments*/
   if (!PyArg_ParseTuple(args,"O",&framelist_obj))
@@ -189,16 +220,22 @@ PyObject* ReplayGain_update(replaygain_ReplayGain *self, PyObject *args) {
   for (sample = 0; sample < channel_l->frames; sample++) {
     channel_l_buffer[sample] = (double)(channel_l->samples[sample]);
     channel_r_buffer[sample] = (double)(channel_r->samples[sample]);
+
+    peak = (double)(MAX(abs(channel_l->samples[sample]),
+			abs(channel_r->samples[sample]))) / (1 << (channel_l->bits_per_sample - 1));
+    self->title_peak = MAX(self->title_peak,peak);
+    self->album_peak = MAX(self->album_peak,peak);
   }
 
   /*perform actual gain analysis on channels*/
-  AnalyzeSamples(self,
-		 channel_l_buffer,
-		 channel_r_buffer,
-		 channel_l->frames,
-		 2);
-
-  /*FIXME - calculate peak of channel_l and channel_r*/
+  if (ReplayGain_analyze_samples(self,
+				 channel_l_buffer,
+				 channel_r_buffer,
+				 channel_l->frames,
+				 2) == GAIN_ANALYSIS_ERROR) {
+    PyErr_SetString(PyExc_ValueError,"ReplayGain calculation error");
+    goto error;
+  }
 
   /*clean up Python objects and return None*/
   Py_XDECREF(channels_obj);
@@ -226,13 +263,25 @@ PyObject* ReplayGain_update(replaygain_ReplayGain *self, PyObject *args) {
 }
 
 PyObject* ReplayGain_title_gain(replaygain_ReplayGain *self) {
-  /*FIXME - reset state and return real value*/
-  return Py_BuildValue("(d,d)",GetTitleGain(self),1.0);
+  double gain_value = ReplayGain_get_title_gain(self);
+  double peak_value = self->title_peak;
+  if (gain_value != GAIN_NOT_ENOUGH_SAMPLES) {
+    self->title_peak = 0.0;
+    return Py_BuildValue("(d,d)",gain_value,peak_value);
+  } else {
+    PyErr_SetString(PyExc_ValueError,"Not enough samples to perform calculation");
+    return NULL;
+  }
 }
 
 PyObject* ReplayGain_album_gain(replaygain_ReplayGain *self) {
-  /*FIXME - return real value*/
-  return Py_BuildValue("(d,d)",GetAlbumGain(self),1.0);
+  double gain_value = ReplayGain_get_album_gain(self);
+  if (gain_value != GAIN_NOT_ENOUGH_SAMPLES) {
+    return Py_BuildValue("(d,d)",gain_value,self->album_peak);
+  } else {
+    PyErr_SetString(PyExc_ValueError,"Not enough samples to perform calculation");
+    return NULL;
+  }
 }
 
 
@@ -254,10 +303,10 @@ PyMODINIT_FUNC initreplaygain(void) {
 
 
 
-// for each filter:
-// [0] 48 kHz, [1] 44.1 kHz, [2] 32 kHz, [3] 24 kHz, [4] 22050 Hz, [5] 16 kHz, [6] 12 kHz, [7] is 11025 Hz, [8] 8 kHz
+/* for each filter: */
+/* [0] 48 kHz, [1] 44.1 kHz, [2] 32 kHz, [3] 24 kHz, [4] 22050 Hz, [5] 16 kHz, [6] 12 kHz, [7] is 11025 Hz, [8] 8 kHz */
 
-static const Float_t ABYule[9][2*YULE_ORDER + 1] = {
+static const double ABYule[9][2*YULE_ORDER + 1] = {
     {0.03857599435200, -3.84664617118067, -0.02160367184185,  7.81501653005538, -0.00123395316851,-11.34170355132042, -0.00009291677959, 13.05504219327545, -0.01655260341619,-12.28759895145294,  0.02161526843274,  9.48293806319790, -0.02074045215285, -5.87257861775999,  0.00594298065125,  2.75465861874613,  0.00306428023191, -0.86984376593551,  0.00012025322027,  0.13919314567432,  0.00288463683916 },
     {0.05418656406430, -3.47845948550071, -0.02911007808948,  6.36317777566148, -0.00848709379851, -8.54751527471874, -0.00851165645469,  9.47693607801280, -0.00834990904936, -8.81498681370155,  0.02245293253339,  6.85401540936998, -0.02596338512915, -4.39470996079559,  0.01624864962975,  2.19611684890774, -0.00240879051584, -0.75104302451432,  0.00674613682247,  0.13149317958808, -0.00187763777362 },
     {0.15457299681924, -2.37898834973084, -0.09331049056315,  2.84868151156327, -0.06247880153653, -2.64577170229825,  0.02163541888798,  2.23697657451713, -0.05588393329856, -1.67148153367602,  0.04781476674921,  1.00595954808547,  0.00222312597743, -0.45953458054983,  0.03174092540049,  0.16378164858596, -0.01390589421898, -0.05032077717131,  0.00651420667831,  0.02347897407020, -0.00881362733839 },
@@ -269,7 +318,7 @@ static const Float_t ABYule[9][2*YULE_ORDER + 1] = {
     {0.53648789255105, -0.25049871956020, -0.42163034350696, -0.43193942311114, -0.00275953611929, -0.03424681017675,  0.04267842219415, -0.04678328784242, -0.10214864179676,  0.26408300200955,  0.14590772289388,  0.15113130533216, -0.02459864859345, -0.17556493366449, -0.11202315195388, -0.18823009262115, -0.04060034127000,  0.05477720428674,  0.04788665548180,  0.04704409688120, -0.02217936801134 }
 };
 
-static const Float_t ABButter[9][2*BUTTER_ORDER + 1] = {
+static const double ABButter[9][2*BUTTER_ORDER + 1] = {
     {0.98621192462708, -1.97223372919527, -1.97242384925416,  0.97261396931306,  0.98621192462708 },
     {0.98500175787242, -1.96977855582618, -1.97000351574484,  0.97022847566350,  0.98500175787242 },
     {0.97938932735214, -1.95835380975398, -1.95877865470428,  0.95920349965459,  0.97938932735214 },
@@ -282,15 +331,12 @@ static const Float_t ABButter[9][2*BUTTER_ORDER + 1] = {
 };
 
 
-// When calling these filter procedures, make sure that ip[-order] and op[-order] point to real data!
+/* When calling these filter procedures, make sure that ip[-order] and op[-order] point to real data! */
 
-// If your compiler complains that "'operation on 'output' may be undefined", you can
-// either ignore the warnings or uncomment the three "y" lines (and comment out the indicated line)
+/* If your compiler complains that "'operation on 'output' may be undefined", you can */
+/* either ignore the warnings or uncomment the three "y" lines (and comment out the indicated line) */
 
-static void
-filterYule (const Float_t* input, Float_t* output, size_t nSamples, const Float_t* kernel)
-{
-
+static void filterYule (const double* input, double* output, size_t nSamples, const double* kernel) {
     while (nSamples--) {
        *output =  1e-10  /* 1e-10 is a hack to avoid slowdown because of denormals */
          + input [0]  * kernel[0]
@@ -319,12 +365,9 @@ filterYule (const Float_t* input, Float_t* output, size_t nSamples, const Float_
     }
 }
 
-static void
-filterButter (const Float_t* input, Float_t* output, size_t nSamples, const Float_t* kernel)
-{   
-
+static void filterButter (const double* input, double* output, size_t nSamples, const double* kernel) {
     while (nSamples--) {
-        *output =  
+        *output =
            input [0]  * kernel[0]
          - output[-1] * kernel[1]
          + input [-1] * kernel[2]
@@ -335,25 +378,25 @@ filterButter (const Float_t* input, Float_t* output, size_t nSamples, const Floa
     }
 }
 
-
-// returns GAIN_ANALYSIS_OK if successful, GAIN_ANALYSIS_ERROR if not
-
-static __inline double fsqr(const double d)
-{  return d*d;
+static inline double fsqr(const double d) {
+  return d * d;
 }
 
-int
-AnalyzeSamples (replaygain_ReplayGain* self, const Float_t* left_samples, const Float_t* right_samples, size_t num_samples, int num_channels )
-{
-    const Float_t*  curleft;
-    const Float_t*  curright;
+/* returns GAIN_ANALYSIS_OK if successful, GAIN_ANALYSIS_ERROR if not */
+gain_calc_status ReplayGain_analyze_samples(replaygain_ReplayGain* self,
+					    const double* left_samples,
+					    const double* right_samples,
+					    size_t num_samples,
+					    int num_channels) {
+    const double*  curleft;
+    const double*  curright;
     long            batchsamples;
     long            cursamples;
     long            cursamplepos;
     int             i;
 
     if ( num_samples == 0 )
-        return GAIN_ANALYSIS_OK;
+      return GAIN_ANALYSIS_OK;
 
     cursamplepos = 0;
     batchsamples = num_samples;
@@ -365,12 +408,12 @@ AnalyzeSamples (replaygain_ReplayGain* self, const Float_t* left_samples, const 
     }
 
     if ( num_samples < MAX_ORDER ) {
-        memcpy (self->linprebuf + MAX_ORDER, left_samples , num_samples * sizeof(Float_t) );
-        memcpy ( self->rinprebuf + MAX_ORDER, right_samples, num_samples * sizeof(Float_t) );
+        memcpy (self->linprebuf + MAX_ORDER, left_samples , num_samples * sizeof(double) );
+        memcpy ( self->rinprebuf + MAX_ORDER, right_samples, num_samples * sizeof(double) );
     }
     else {
-        memcpy ( self->linprebuf + MAX_ORDER, left_samples,  MAX_ORDER   * sizeof(Float_t) );
-        memcpy ( self->rinprebuf + MAX_ORDER, right_samples, MAX_ORDER   * sizeof(Float_t) );
+        memcpy ( self->linprebuf + MAX_ORDER, left_samples,  MAX_ORDER   * sizeof(double) );
+        memcpy ( self->rinprebuf + MAX_ORDER, right_samples, MAX_ORDER   * sizeof(double) );
     }
 
     while ( batchsamples > 0 ) {
@@ -392,7 +435,7 @@ AnalyzeSamples (replaygain_ReplayGain* self, const Float_t* left_samples, const 
         BUTTER_FILTER ( self->lstep + self->totsamp, self->lout + self->totsamp, cursamples, ABButter[self->freqindex]);
         BUTTER_FILTER ( self->rstep + self->totsamp, self->rout + self->totsamp, cursamples, ABButter[self->freqindex]);
 
-        curleft = self->lout + self->totsamp;                   // Get the squared values
+        curleft = self->lout + self->totsamp; /* Get the squared values */
         curright = self->rout + self->totsamp;
 
         i = cursamples % 16;
@@ -441,42 +484,40 @@ AnalyzeSamples (replaygain_ReplayGain* self, const Float_t* left_samples, const 
         batchsamples -= cursamples;
         cursamplepos += cursamples;
         self->totsamp      += cursamples;
-        if ( self->totsamp == self->sampleWindow ) {  // Get the Root Mean Square (RMS) for this set of samples
+        if ( self->totsamp == self->sampleWindow ) {  /* Get the Root Mean Square (RMS) for this set of samples */
             double  val  = STEPS_per_dB * 10. * log10 ( (self->lsum + self->rsum) / self->totsamp * 0.5 + 1.e-37 );
             int     ival = (int) val;
             if ( ival <                     0 ) ival = 0;
             if ( ival >= (int)(sizeof(self->A)/sizeof(*(self->A))) ) ival = sizeof(self->A)/sizeof(*(self->A)) - 1;
             self->A [ival]++;
             self->lsum = self->rsum = 0.;
-            memmove ( self->loutbuf , self->loutbuf  + self->totsamp, MAX_ORDER * sizeof(Float_t) );
-            memmove ( self->routbuf , self->routbuf  + self->totsamp, MAX_ORDER * sizeof(Float_t) );
-            memmove ( self->lstepbuf, self->lstepbuf + self->totsamp, MAX_ORDER * sizeof(Float_t) );
-            memmove ( self->rstepbuf, self->rstepbuf + self->totsamp, MAX_ORDER * sizeof(Float_t) );
+            memmove ( self->loutbuf , self->loutbuf  + self->totsamp, MAX_ORDER * sizeof(double) );
+            memmove ( self->routbuf , self->routbuf  + self->totsamp, MAX_ORDER * sizeof(double) );
+            memmove ( self->lstepbuf, self->lstepbuf + self->totsamp, MAX_ORDER * sizeof(double) );
+            memmove ( self->rstepbuf, self->rstepbuf + self->totsamp, MAX_ORDER * sizeof(double) );
             self->totsamp = 0;
         }
-        if ( self->totsamp > self->sampleWindow )   // somehow I really screwed up: Error in programming! Contact author about self->totsamp > self->sampleWindow
+        if ( self->totsamp > self->sampleWindow )   /* somehow I really screwed up: Error in programming! Contact author about self->totsamp > self->sampleWindow */
             return GAIN_ANALYSIS_ERROR;
     }
     if ( num_samples < MAX_ORDER ) {
-        memmove ( self->linprebuf,                           self->linprebuf + num_samples, (MAX_ORDER-num_samples) * sizeof(Float_t) );
-        memmove ( self->rinprebuf,                           self->rinprebuf + num_samples, (MAX_ORDER-num_samples) * sizeof(Float_t) );
-        memcpy  ( self->linprebuf + MAX_ORDER - num_samples, left_samples,          num_samples             * sizeof(Float_t) );
-        memcpy  ( self->rinprebuf + MAX_ORDER - num_samples, right_samples,         num_samples             * sizeof(Float_t) );
+        memmove ( self->linprebuf,                           self->linprebuf + num_samples, (MAX_ORDER-num_samples) * sizeof(double) );
+        memmove ( self->rinprebuf,                           self->rinprebuf + num_samples, (MAX_ORDER-num_samples) * sizeof(double) );
+        memcpy  ( self->linprebuf + MAX_ORDER - num_samples, left_samples,          num_samples             * sizeof(double) );
+        memcpy  ( self->rinprebuf + MAX_ORDER - num_samples, right_samples,         num_samples             * sizeof(double) );
     }
     else {
-        memcpy  ( self->linprebuf, left_samples  + num_samples - MAX_ORDER, MAX_ORDER * sizeof(Float_t) );
-        memcpy  ( self->rinprebuf, right_samples + num_samples - MAX_ORDER, MAX_ORDER * sizeof(Float_t) );
+        memcpy  ( self->linprebuf, left_samples  + num_samples - MAX_ORDER, MAX_ORDER * sizeof(double) );
+        memcpy  ( self->rinprebuf, right_samples + num_samples - MAX_ORDER, MAX_ORDER * sizeof(double) );
     }
 
     return GAIN_ANALYSIS_OK;
 }
 
 
-static Float_t
-analyzeResult ( Uint32_t* Array, size_t len )
-{
-    Uint32_t  elems;
-    Int32_t   upper;
+static double analyzeResult(uint32_t* Array, size_t len) {
+    uint32_t  elems;
+    int32_t   upper;
     size_t    i;
 
     elems = 0;
@@ -485,23 +526,21 @@ analyzeResult ( Uint32_t* Array, size_t len )
     if ( elems == 0 )
         return GAIN_NOT_ENOUGH_SAMPLES;
 
-    upper = (Int32_t) ceil (elems * (1. - RMS_PERCENTILE));
+    upper = (int32_t)ceil (elems * (1. - RMS_PERCENTILE));
     for ( i = len; i-- > 0; ) {
         if ( (upper -= Array[i]) <= 0 )
             break;
     }
 
-    return (Float_t) ((Float_t)PINK_REF - (Float_t)i / (Float_t)STEPS_per_dB);
+    return (double) ((double)PINK_REF - (double)i / (double)STEPS_per_dB);
 }
 
 
-Float_t
-GetTitleGain (replaygain_ReplayGain *self)
-{
-    Float_t  retval;
+double ReplayGain_get_title_gain(replaygain_ReplayGain *self) {
+    double  retval;
     int    i;
 
-    retval = analyzeResult (self->A, sizeof(self->A)/sizeof(*(self->A)) );
+    retval = analyzeResult(self->A, sizeof(self->A)/sizeof(*(self->A)) );
 
     for ( i = 0; i < (int)(sizeof(self->A)/sizeof(*(self->A))); i++ ) {
         self->B[i] += self->A[i];
@@ -522,10 +561,7 @@ GetTitleGain (replaygain_ReplayGain *self)
 }
 
 
-Float_t
-GetAlbumGain (replaygain_ReplayGain *self)
-{
-  return analyzeResult (self->B, sizeof(self->B)/sizeof(*(self->B)) );
+double ReplayGain_get_album_gain(replaygain_ReplayGain *self) {
+  return analyzeResult(self->B, sizeof(self->B)/sizeof(*(self->B)) );
 }
 
-/* end of gain_analysis.c */
