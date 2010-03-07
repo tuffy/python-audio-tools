@@ -448,7 +448,11 @@ if (__name__ == '__main__'):
             msg.info(_(u"Adding ReplayGain metadata.  This may take some time."))
         else:
             msg.info(_(u"Applying ReplayGain.  This may take some time."))
-        audiofiles[0].add_replay_gain([f.filename for f in audiofiles])
+        try:
+            audiofiles[0].add_replay_gain([f.filename for f in audiofiles])
+        except ValueError,err:
+            msg.error(unicode(err))
+            sys.exit(1)
 
     if (import_cuesheet is not None):
         audiofiles[0].set_cuesheet(import_cuesheet)

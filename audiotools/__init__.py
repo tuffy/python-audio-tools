@@ -1674,6 +1674,7 @@ class AudioFile:
 
     #takes a list of filenames matching this AudioFile type
     #and adds the proper ReplayGain values to them
+    #raises ValueError if some problem occurs during ReplayGain application
     @classmethod
     def add_replay_gain(cls, filenames):
         track_names = [track.filename for track in

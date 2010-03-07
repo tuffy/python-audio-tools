@@ -521,7 +521,7 @@
    and the vorbis comment to the proper value.
    I expect this will be a long-term project
    coinciding with re-engineering the to_pcm()/from_pcm() methods.
-* DONE Convert to_pcm()/from_pcm() to FrameList-based I/O
+* TODO Convert to_pcm()/from_pcm() to FrameList-based I/O
   Passing specifically-sized blobs of binary data between conversion
   routines worked well when those routines are little more than
   subprocess black-boxes.  However, this approach works less well
@@ -563,15 +563,33 @@
 ** DONE Remove deprecated audiotools.FrameList object
 ** DONE Remove deprecated pcmstream.PCMStreamReader object
 ** DONE Convert pcmstream module to resample module
+** TODO Add FrameList and FloatFrameList programming documentation
 * TODO Add native ReplayGain handling routines
 ** DONE Add native ReplayGain handling to FlacAudio/OggFlacAudio
-** TODO Ensure add_replay_gain()'s exceptions are caught
+** DONE Ensure add_replay_gain()'s exceptions are caught
    Errors during calculation may raise ValueError,
    which must be caught anywhere the function is called
-** TODO Add ReplayGain unit tests
+** DONE Add ReplayGain unit tests
+** TODO Ensure ReplayGain works properly on 8bps and 24bps output
 ** TODO Ensure ReplayGain is applied consistently
-   Although cd2track is guaranteed to generate only one album at a time,
-   track2track is not.  If multiple albums are converted at once,
+   Although cd2track and tracksplit are guaranteed
+   to generate only one album at a time, track2track and tracktag are not.
+   If multiple albums are applied gain at once,
    add_replay_gain must be called on an album-by-album basis
-   rather than one the entire set.
-
+   rather than on the entire set.
+** TODO Double-check ReplayGainReader
+   Ensure its output is consistent with other implementations.
+* TODO Fix multi-channel audio handling
+  It's important that channel mapping information be preserved
+  when transcoding between sources with 3+ channels.
+  This likely means another flag for PCMReader so that
+  from_pcm() can build a file with the proper channel mask set.
+  However, it may also be necessary to build some sort of
+  channel reordering mechanism in the event that formats differ
+  on how channels are to be ordered in the file.
+* TODO Make documentation render consistently
+  Some versions of groff place text and page breaks differently.
+  This needs to be fixed such that the documentation renders properly
+  everywhere.
+  This may be an opportunity to see if plain TeX or LaTeX could
+  be substituted for troff.

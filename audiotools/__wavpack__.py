@@ -530,16 +530,18 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
 
     def replay_gain(self):
         metadata = self.get_metadata()
+        if (metadata is None):
+            return None
 
         if (set(['replaygain_track_gain', 'replaygain_track_peak',
                  'replaygain_album_gain', 'replaygain_album_peak']).issubset(
                 metadata.keys())):  #we have ReplayGain data
             try:
                 return ReplayGain(
-                    metadata['replaygain_track_gain'][0:-len(" dB")],
-                    metadata['replaygain_track_peak'],
-                    metadata['replaygain_album_gain'][0:-len(" dB")],
-                    metadata['replaygain_album_peak'])
+                    unicode(metadata['replaygain_track_gain'])[0:-len(" dB")],
+                    unicode(metadata['replaygain_track_peak']),
+                    unicode(metadata['replaygain_album_gain'])[0:-len(" dB")],
+                    unicode(metadata['replaygain_album_peak']))
             except ValueError:
                 return None
         else:

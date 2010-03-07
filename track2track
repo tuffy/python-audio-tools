@@ -372,7 +372,11 @@ if (__name__ == '__main__'):
                 msg.info(_(u"Adding ReplayGain metadata.  This may take some time."))
             else:
                 msg.info(_(u"Applying ReplayGain.  This may take some time."))
-            AudioType.add_replay_gain(encoded_filenames)
+            try:
+                AudioType.add_replay_gain(encoded_filenames)
+            except ValueError,err:
+                msg.error(unicode(err))
+                sys.exit(1)
     else:
         #encoding only a single file
         audiofile = audiofiles[0]

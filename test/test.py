@@ -19,7 +19,6 @@
 
 
 import audiotools
-import audiotools.pcmstream
 import tempfile
 import sys
 import os
@@ -1013,6 +1012,37 @@ class TestAiffAudio(TestTextOutput):
                 self.assertEqual(metadata.front_covers()[0],image2)
         finally:
             temp.close()
+
+    @TEST_METADATA
+    def testreplaygain(self):
+        if (self.audio_class.can_add_replay_gain() and
+            self.audio_class.lossless_replay_gain()):
+            track_file1 = tempfile.NamedTemporaryFile(suffix="." + self.audio_class.SUFFIX)
+            track_file2 = tempfile.NamedTemporaryFile(suffix="." + self.audio_class.SUFFIX)
+            track_file3 = tempfile.NamedTemporaryFile(suffix="." + self.audio_class.SUFFIX)
+            try:
+                track1 = self.audio_class.from_pcm(track_file1.name,
+                                                   BLANK_PCM_Reader(2))
+                track2 = self.audio_class.from_pcm(track_file2.name,
+                                                   BLANK_PCM_Reader(3))
+                track3 = self.audio_class.from_pcm(track_file3.name,
+                                                   BLANK_PCM_Reader(4))
+
+                self.assert_(track1.replay_gain() is None)
+                self.assert_(track2.replay_gain() is None)
+                self.assert_(track3.replay_gain() is None)
+
+                self.audio_class.add_replay_gain([track_file1.name,
+                                                  track_file2.name,
+                                                  track_file3.name])
+
+                self.assert_(track1.replay_gain() is not None)
+                self.assert_(track2.replay_gain() is not None)
+                self.assert_(track3.replay_gain() is not None)
+            finally:
+                track_file1.close()
+                track_file2.close()
+                track_file3.close()
 
     @TEST_PCM
     def testsplit(self):
@@ -9725,6 +9755,77 @@ class TestFloatFrameList(unittest.TestCase):
             self.assertEqual(
                 l,
                 list(audiotools.pcm.from_list(l,1,bps,True).to_float().to_int(bps)))
+
+
+class TestReplayGain(unittest.TestCase):
+    @TEST_METADATA
+    def test_basics(self):
+        import audiotools.replaygain
+        import audiotools.pcm
+
+        #check for invalid sample rate
+        self.assertRaises(ValueError,
+                          audiotools.replaygain.ReplayGain,
+                          96000)
+
+        #check for invalid channel count
+        rg = audiotools.replaygain.ReplayGain(44100)
+        self.assertRaises(ValueError,
+                          rg.update,
+                          audiotools.pcm.from_list(range(20),4,16,True))
+
+        #check for not enough samples
+        rg.update(audiotools.pcm.from_list([1,2],2,16,True))
+        self.assertRaises(ValueError,rg.title_gain)
+        self.assertRaises(ValueError,rg.album_gain)
+
+        #check for no tracks
+        gain = audiotools.calculate_replay_gain([])
+        self.assertRaises(ValueError,list,gain)
+
+        #check for lots of invalid combinations for calculate_replay_gain
+        track_file1 = tempfile.NamedTemporaryFile(suffix=".wav")
+        track_file2 = tempfile.NamedTemporaryFile(suffix=".wav")
+        track_file3 = tempfile.NamedTemporaryFile(suffix=".wav")
+        try:
+            track1 = audiotools.WaveAudio.from_pcm(track_file1.name,
+                                                   BLANK_PCM_Reader(2))
+            track2 = audiotools.WaveAudio.from_pcm(track_file2.name,
+                                                   BLANK_PCM_Reader(3))
+            track3 = audiotools.WaveAudio.from_pcm(
+                track_file3.name,
+                BLANK_PCM_Reader(2,sample_rate=48000))
+
+            gain = audiotools.calculate_replay_gain([track1,track2,track3])
+            self.assertRaises(ValueError,list,gain)
+
+            track3 = audiotools.WaveAudio.from_pcm(
+                track_file3.name,
+                BLANK_PCM_Reader(2,channels=4))
+
+            gain = audiotools.calculate_replay_gain([track1,track2,track3])
+            self.assertRaises(ValueError,list,gain)
+
+            track3 = audiotools.WaveAudio.from_pcm(
+                track_file3.name,
+                BLANK_PCM_Reader(2,sample_rate=48000,channels=3))
+
+            gain = audiotools.calculate_replay_gain([track1,track2,track3])
+            self.assertRaises(ValueError,list,gain)
+
+            track3 = audiotools.WaveAudio.from_pcm(
+                track_file3.name,
+                BLANK_PCM_Reader(2))
+
+            gain = list(audiotools.calculate_replay_gain([track1,track2,track3]))
+            self.assertEqual(len(gain),3)
+            self.assert_(gain[0][0] is track1)
+            self.assert_(gain[1][0] is track2)
+            self.assert_(gain[2][0] is track3)
+        finally:
+            track_file1.close()
+            track_file2.close()
+            track_file3.close()
 
 ############
 #END TESTS

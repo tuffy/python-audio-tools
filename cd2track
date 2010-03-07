@@ -257,4 +257,9 @@ if (__name__ == '__main__'):
             msg.info(_(u"Adding ReplayGain metadata.  This may take some time."))
         else:
             msg.info(_(u"Applying ReplayGain.  This may take some time."))
-        AudioType.add_replay_gain([track.filename for track in encoded])
+        try:
+            AudioType.add_replay_gain([track.filename for track in encoded])
+        except ValueError,err:
+            msg.error(unicode(err))
+            sys.exit(1)
+

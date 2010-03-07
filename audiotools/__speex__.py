@@ -194,3 +194,7 @@ class SpeexAudio(VorbisAudio):
         writer.close()
 
         self.__read_metadata__()
+
+    @classmethod
+    def can_add_replay_gain(cls):
+        return False
