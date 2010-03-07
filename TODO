@@ -574,7 +574,7 @@
    which must be caught anywhere the function is called
 ** DONE Add ReplayGain unit tests
 ** DONE Ensure ReplayGain works properly on 8bps and 24bps output
-** TODO Ensure ReplayGain is applied consistently
+** DONE Ensure ReplayGain is applied consistently
    Although cd2track and tracksplit are guaranteed
    to generate only one album at a time, track2track and tracktag are not.
    If multiple albums are applied gain at once,

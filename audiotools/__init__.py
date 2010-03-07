@@ -388,6 +388,21 @@ def open_directory(directory, sorted=True):
                                     sorted=sorted):
             yield audiofile
 
+#takes an iterable collection of tracks
+#yields list of tracks grouped by album
+#where their album_name and album_number match, if possible
+def group_tracks(tracks):
+    collection = {}
+    for track in tracks:
+        metadata = track.get_metadata()
+        if (metadata is not None):
+            collection.setdefault((track.album_number(),
+                                   metadata.album_name),[]).append(track)
+        else:
+            collection.setdefault((track.album_number(),
+                                   None),[]).append(track)
+    for tracks in collection.values():
+        yield tracks
 
 class UnknownAudioType(Exception):
     def __init__(self,suffix):
@@ -1474,6 +1489,15 @@ class ReplayGain:
         return "ReplayGain(%s,%s,%s,%s)" % \
             (self.track_gain,self.track_peak,
              self.album_gain,self.album_peak)
+
+    def __eq__(self, rg):
+        return ((self.track_gain == rg.track_gain) and
+                (self.track_peak == rg.track_peak) and
+                (self.album_gain == rg.album_gain) and
+                (self.album_peak == rg.album_peak))
+
+    def __ne__(self, rg):
+        return not self.__eq__(rg)
 
 
 #######################

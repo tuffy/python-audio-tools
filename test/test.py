@@ -1044,6 +1044,143 @@ class TestAiffAudio(TestTextOutput):
                 track_file2.close()
                 track_file3.close()
 
+    @TEST_EXECUTABLE
+    def testtrack2trackreplaygain(self):
+        if (not self.audio_class.can_add_replay_gain()):
+            return
+        if (not self.audio_class.lossless_replay_gain()):
+            return
+
+        temp_files = [tempfile.NamedTemporaryFile(suffix="." + self.audio_class.SUFFIX) for i in xrange(7)]
+        temp_dir = tempfile.mkdtemp()
+        temp_tracks = []
+        try:
+            temp_tracks.append(self.audio_class.from_pcm(
+                    temp_files[0].name,
+                    test_streams.Sine16_Stereo(44100,44100,441.0,0.50,4410.0,0.49,1.0)))
+
+            temp_tracks.append(self.audio_class.from_pcm(
+                    temp_files[1].name,
+                    test_streams.Sine16_Stereo(66150,44100,8820.0,0.70,4410.0,0.29,1.0)))
+            temp_tracks.append(self.audio_class.from_pcm(
+                    temp_files[2].name,
+                    test_streams.Sine16_Stereo(52920,44100,441.0,0.50,441.0,0.49,0.5)))
+            temp_tracks.append(self.audio_class.from_pcm(
+                    temp_files[3].name,
+                    test_streams.Sine16_Stereo(61740,44100,441.0,0.61,661.5,0.37,2.0)))
+            temp_tracks.append(self.audio_class.from_pcm(
+                    temp_files[4].name,
+                    test_streams.Sine16_Stereo(26460,44100,441.0,0.50,882.0,0.49,0.7)))
+            temp_tracks.append(self.audio_class.from_pcm(
+                    temp_files[5].name,
+                    test_streams.Sine16_Stereo(61740,44100,441.0,0.50,4410.0,0.49,1.3)))
+            temp_tracks.append(self.audio_class.from_pcm(
+                    temp_files[6].name,
+                    test_streams.Sine16_Stereo(79380,44100,8820.0,0.70,4410.0,0.29,0.1)))
+
+            temp_tracks[0].set_metadata(audiotools.MetaData(
+                    track_name=u"Track 3",
+                    album_name=u"Test Album",
+                    track_number=1,
+                    album_number=1))
+            temp_tracks[1].set_metadata(audiotools.MetaData(
+                    track_name=u"Track 4",
+                    album_name=u"Test Album",
+                    track_number=2,
+                    album_number=1))
+            temp_tracks[2].set_metadata(audiotools.MetaData(
+                    track_name=u"Track 5",
+                    album_name=u"Test Album",
+                    track_number=1,
+                    album_number=2))
+            temp_tracks[3].set_metadata(audiotools.MetaData(
+                    track_name=u"Track 6",
+                    album_name=u"Test Album",
+                    track_number=2,
+                    album_number=2))
+            temp_tracks[4].set_metadata(audiotools.MetaData(
+                    track_name=u"Track 7",
+                    album_name=u"Test Album",
+                    track_number=3,
+                    album_number=2))
+            temp_tracks[5].set_metadata(audiotools.MetaData(
+                    track_name=u"Track 1",
+                    album_name=u"Test Album 2",
+                    track_number=1))
+            temp_tracks[6].set_metadata(audiotools.MetaData(
+                    track_name=u"Track 2",
+                    album_name=u"Test Album 2",
+                    track_number=2))
+
+            for new_class in audiotools.AVAILABLE_TYPES:
+                if (new_class.can_add_replay_gain() and
+                    new_class.lossless_replay_gain()):
+                    subprocess.call(["track2track",
+                                     "-d",temp_dir,
+                                     "--format=%(track_name)s.%(suffix)s",
+                                     "-t",new_class.NAME,
+                                     "--replay-gain",
+                                     "-V","quiet"] + \
+                                        [f.filename for f in temp_tracks])
+
+                    converted_tracks = audiotools.open_files(
+                        [os.path.join(temp_dir,f) for f in
+                         os.listdir(temp_dir)],sorted=True)
+
+                    self.assertEqual(len(converted_tracks),7)
+
+                    for (i,track) in enumerate(converted_tracks):
+                        self.assertEqual(track.get_metadata().track_name,
+                                         u"Track %d" % (i + 1))
+                        self.assert_(track.replay_gain() is not None)
+
+                    replay_gains = [track.replay_gain() for track in
+                                    converted_tracks]
+
+                    #tracks 0 and 1 should be on the same album
+                    self.assertEqual(replay_gains[0],
+                                     replay_gains[0])
+                    self.assertEqual(replay_gains[0].album_gain,
+                                     replay_gains[1].album_gain)
+
+                    self.assertNotEqual(replay_gains[0].album_gain,
+                                        replay_gains[2].album_gain)
+                    self.assertNotEqual(replay_gains[0].album_gain,
+                                        replay_gains[4].album_gain)
+
+
+                    #tracks 2 and 3 should be on the same album
+                    self.assertEqual(replay_gains[2].album_gain,
+                                     replay_gains[3].album_gain)
+
+                    self.assertNotEqual(replay_gains[3].album_gain,
+                                        replay_gains[0].album_gain)
+                    self.assertNotEqual(replay_gains[3].album_gain,
+                                        replay_gains[5].album_gain)
+
+
+                    #tracks 4, 5 and 6 should be on the same album
+                    self.assertEqual(replay_gains[4].album_gain,
+                                     replay_gains[5].album_gain)
+                    self.assertEqual(replay_gains[5].album_gain,
+                                     replay_gains[6].album_gain)
+                    self.assertEqual(replay_gains[4].album_gain,
+                                     replay_gains[6].album_gain)
+
+                    self.assertNotEqual(replay_gains[6].album_gain,
+                                        replay_gains[0].album_gain)
+                    self.assertNotEqual(replay_gains[6].album_gain,
+                                        replay_gains[2].album_gain)
+
+                    for f in os.listdir(temp_dir):
+                       os.unlink(os.path.join(temp_dir,f))
+        finally:
+            for t in temp_files:
+                t.close()
+            for f in os.listdir(temp_dir):
+                os.unlink(os.path.join(temp_dir,f))
+            os.rmdir(temp_dir)
+
     @TEST_PCM
     def testsplit(self):
         temp = tempfile.NamedTemporaryFile(suffix="." + self.audio_class.SUFFIX)

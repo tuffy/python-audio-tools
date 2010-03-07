@@ -373,7 +373,12 @@ if (__name__ == '__main__'):
             else:
                 msg.info(_(u"Applying ReplayGain.  This may take some time."))
             try:
-                AudioType.add_replay_gain(encoded_filenames)
+                #separate encoded files by album_name and album_number
+                for album in audiotools.group_tracks(
+                    audiotools.open_files(encoded_filenames)):
+                    #add ReplayGain to groups of files
+                    #belonging to the same album
+                    AudioType.add_replay_gain([a.filename for a in album])
             except ValueError,err:
                 msg.error(unicode(err))
                 sys.exit(1)
