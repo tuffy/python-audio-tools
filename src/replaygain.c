@@ -165,6 +165,7 @@ PyObject* ReplayGain_update(replaygain_ReplayGain *self, PyObject *args) {
   double *channel_r_buffer = NULL;
   fa_size_t sample;
   double peak;
+  int32_t peak_shift;
 
   /*receive a (presumably) FrameList from our arguments*/
   if (!PyArg_ParseTuple(args,"O",&framelist_obj))
@@ -217,14 +218,45 @@ PyObject* ReplayGain_update(replaygain_ReplayGain *self, PyObject *args) {
   channel_l_buffer = malloc(channel_l->frames * sizeof(double));
   channel_r_buffer = malloc(channel_r->frames * sizeof(double));
 
-  for (sample = 0; sample < channel_l->frames; sample++) {
-    channel_l_buffer[sample] = (double)(channel_l->samples[sample]);
-    channel_r_buffer[sample] = (double)(channel_r->samples[sample]);
+  peak_shift = 1 << (channel_l->bits_per_sample - 1);
 
-    peak = (double)(MAX(abs(channel_l->samples[sample]),
-			abs(channel_r->samples[sample]))) / (1 << (channel_l->bits_per_sample - 1));
-    self->title_peak = MAX(self->title_peak,peak);
-    self->album_peak = MAX(self->album_peak,peak);
+  switch (channel_l->bits_per_sample) {
+  case 8:
+    for (sample = 0; sample < channel_l->frames; sample++) {
+      channel_l_buffer[sample] = (double)(channel_l->samples[sample] << 8);
+      channel_r_buffer[sample] = (double)(channel_r->samples[sample] << 8);
+
+      peak = (double)(MAX(abs(channel_l->samples[sample]),
+			  abs(channel_r->samples[sample]))) / peak_shift;
+      self->title_peak = MAX(self->title_peak,peak);
+      self->album_peak = MAX(self->album_peak,peak);
+    }
+    break;
+  case 16:
+    for (sample = 0; sample < channel_l->frames; sample++) {
+      channel_l_buffer[sample] = (double)(channel_l->samples[sample]);
+      channel_r_buffer[sample] = (double)(channel_r->samples[sample]);
+
+      peak = (double)(MAX(abs(channel_l->samples[sample]),
+			  abs(channel_r->samples[sample]))) / peak_shift;
+      self->title_peak = MAX(self->title_peak,peak);
+      self->album_peak = MAX(self->album_peak,peak);
+    }
+    break;
+  case 24:
+    for (sample = 0; sample < channel_l->frames; sample++) {
+      channel_l_buffer[sample] = (double)(channel_l->samples[sample] >> 8);
+      channel_r_buffer[sample] = (double)(channel_r->samples[sample] >> 8);
+
+      peak = (double)(MAX(abs(channel_l->samples[sample]),
+			  abs(channel_r->samples[sample]))) / peak_shift;
+      self->title_peak = MAX(self->title_peak,peak);
+      self->album_peak = MAX(self->album_peak,peak);
+    }
+    break;
+  default:
+    PyErr_SetString(PyExc_ValueError,"unsupported bits per sample");
+    goto error;
   }
 
   /*perform actual gain analysis on channels*/

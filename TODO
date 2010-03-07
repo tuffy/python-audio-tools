@@ -563,6 +563,9 @@
 ** DONE Remove deprecated audiotools.FrameList object
 ** DONE Remove deprecated pcmstream.PCMStreamReader object
 ** DONE Convert pcmstream module to resample module
+** TODO Avoid importing audiotools.pcm so often
+   Other C libraries often import audiotools.pcm via Python callbacks
+   This library importing should be cached when possible.
 ** TODO Add FrameList and FloatFrameList programming documentation
 * TODO Add native ReplayGain handling routines
 ** DONE Add native ReplayGain handling to FlacAudio/OggFlacAudio
@@ -570,7 +573,7 @@
    Errors during calculation may raise ValueError,
    which must be caught anywhere the function is called
 ** DONE Add ReplayGain unit tests
-** TODO Ensure ReplayGain works properly on 8bps and 24bps output
+** DONE Ensure ReplayGain works properly on 8bps and 24bps output
 ** TODO Ensure ReplayGain is applied consistently
    Although cd2track and tracksplit are guaranteed
    to generate only one album at a time, track2track and tracktag are not.
