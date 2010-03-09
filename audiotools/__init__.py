@@ -444,6 +444,90 @@ def filename_to_type(path):
     else:
         return TYPE_MAP['wav']
 
+#an integer-like class that abstracts a PCMReader's channel assignments
+#All channels in a FrameList will be in RIFF WAVE order
+#as a sensible convention.
+#But which channel corresponds to which speaker is decided by this mask.
+#For example, a 4 channel PCMReader with the channel mask 0x33
+#corresponds to the bits 00110011
+#reading those bits from right to left (least significant first)
+#the "front_left", "front_right", "back_left", "back_right" speakers are set.
+#Therefore, the PCMReader's 4 channel FrameLists are laid out as follows:
+#
+# channel 0 -> front_left
+# channel 1 -> front_right
+# channel 2 -> back_left
+# channel 3 -> back_right
+#
+#since the "front_center" and "low_frequency" bits are not set,
+#those channels are skipped in the returned FrameLists.
+#
+#Many formats store their channels internally in a different order.
+#Their PCMReaders will be expected to reorder channels
+#and set a ChannelMask matching this convention.
+#And, their from_pcm() functions will be expected to reverse the process.
+class ChannelMask:
+    SPEAKER_TO_MASK = {"front_left":0x1,
+                       "front_right":0x2,
+                       "front_center":0x4,
+                       "low_frequency":0x8,
+                       "back_left":0x10,
+                       "back_right":0x20,
+                       "front_left_of_center":0x40,
+                       "front_right_of_center":0x80,
+                       "back_center":0x100,
+                       "side_left":0x200,
+                       "side_right":0x400,
+                       "top_center":0x800,
+                       "top_front_left":0x1000,
+                       "top_front_center":0x2000,
+                       "top_front_right":0x4000,
+                       "top_back_left":0x8000,
+                       "top_back_center":0x10000,
+                       "top_back_right":0x20000}
+
+    MASK_TO_SPEAKER = dict(map(reversed,map(list,SPEAKER_TO_MASK.items())))
+
+    def __init__(self, mask):
+        for (speaker,speaker_mask) in self.SPEAKER_TO_MASK.items():
+            setattr(self,speaker,(mask & speaker_mask) != 0)
+
+    def __repr__(self):
+        return "ChannelMask(%s)" % \
+            ",".join(["%s=%s" % (field,getattr(self,field))
+                      for field in self.SPEAKER_TO_MASK.keys()
+                      if (getattr(self,field))])
+
+    def __int__(self):
+        import operator
+
+        return reduce(operator.or_,
+                      [self.SPEAKER_TO_MASK[field] for field in
+                       self.SPEAKER_TO_MASK.keys()
+                       if getattr(self,field)],
+                      0)
+
+    #returns a list of speakers this mask contains
+    #in the order in which they should appear in the PCM stream
+    def channels(self):
+        c = []
+        for (mask,speaker) in sorted(self.MASK_TO_SPEAKER.items(),
+                                     lambda x,y: cmp(x[0],y[0])):
+            if (getattr(self,speaker)):
+                c.append(speaker)
+
+        return c
+
+    @classmethod
+    def from_fields(cls,**fields):
+        mask = cls(0)
+
+        for (key,value) in fields.items():
+            if (key in cls.SPEAKER_TO_MASK.keys()):
+                setattr(mask,key,bool(value))
+
+        return mask
+
 #a class that wraps around a file object and generates pcm.FrameList objects
 #sample rate, channels and bits per sample are integers
 class PCMReader:

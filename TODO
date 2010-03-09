@@ -516,6 +516,7 @@
    that isn't artificial and hasn't been processed specifically for its use.
    As with Rice2, it's something that may get added later.
 ** TODO Generate SEEKTABLE blocks
+** TODO Remove external MD5 dependency
 ** TODO Handle multi-channel PCM data correctly
    Anything higher than 2 channels needs to set a channel mask
    and the vorbis comment to the proper value.
@@ -594,9 +595,27 @@
   However, it may also be necessary to build some sort of
   channel reordering mechanism in the event that formats differ
   on how channels are to be ordered in the file.
+| Format     | Maximum Channels | Ordering   |
+|------------+------------------+------------|
+| AAC        |               48 |            |
+| AIFF       |             2^16 |            |
+| Sun AU     |             2^32 |            |
+| FLAC       |                8 | predefined |
+| M4A        |               48 |            |
+| MP2        |                2 |            |
+| MP3        |                2 |            |
+| Musepack   |                2 |            |
+| Ogg FLAC   |                8 | predefined |
+| Ogg Vorbis |              255 | predefined |
+| Ogg Speex  |             2^32 |            |
+| RIFF WAVE  |             2^16 |            |
+| WavPack    |               16 |            |
+|------------+------------------+------------|
 * TODO Make documentation render consistently
   Some versions of groff place text and page breaks differently.
   This needs to be fixed such that the documentation renders properly
   everywhere.
   This may be an opportunity to see if plain TeX or LaTeX could
   be substituted for troff.
+* TODO Get coverview and editxmcd working on Mac OS X
+  Preferably without falling back to Tkinter
