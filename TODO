@@ -563,11 +563,15 @@
 ** DONE Remove deprecated audiotools.FrameList object
 ** DONE Remove deprecated pcmstream.PCMStreamReader object
 ** DONE Convert pcmstream module to resample module
-** TODO Avoid importing audiotools.pcm so often
+** DONE Avoid importing audiotools.pcm so often
    Other C libraries often import audiotools.pcm via Python callbacks
    This library importing should be cached when possible.
+   - [X] cdiomodule
+   - [X] pcmreader
+   - [X] replaygain
+   - [X] resample
 ** TODO Add FrameList and FloatFrameList programming documentation
-* TODO Add native ReplayGain handling routines
+* DONE Add native ReplayGain handling routines
 ** DONE Add native ReplayGain handling to FlacAudio/OggFlacAudio
 ** DONE Ensure add_replay_gain()'s exceptions are caught
    Errors during calculation may raise ValueError,
@@ -580,7 +584,7 @@
    If multiple albums are applied gain at once,
    add_replay_gain must be called on an album-by-album basis
    rather than on the entire set.
-** TODO Double-check ReplayGainReader
+** DONE Double-check ReplayGainReader
    Ensure its output is consistent with other implementations.
 * TODO Fix multi-channel audio handling
   It's important that channel mapping information be preserved

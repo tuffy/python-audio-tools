@@ -42,6 +42,7 @@ struct pcm_reader {
 #ifndef STANDALONE
   PyObject *read;
   PyObject *close;
+  PyObject *pcm_module;
 #else
   FILE *read;
 #endif

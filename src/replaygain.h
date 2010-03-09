@@ -73,6 +73,8 @@ typedef struct {
 
   double title_peak;
   double album_peak;
+
+  PyObject *pcm_module;
 } replaygain_ReplayGain;
 
 void ReplayGain_dealloc(replaygain_ReplayGain* self);

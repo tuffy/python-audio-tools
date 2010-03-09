@@ -83,6 +83,7 @@ void Resampler_dealloc(resample_Resampler* self) {
 
 void Resampler_dealloc(resample_Resampler* self) {
   src_delete(self->src_state);
+  Py_XDECREF(self->pcm_module);
   self->ob_type->tp_free((PyObject*)self);
 }
 
@@ -93,6 +94,7 @@ PyObject *Resampler_new(PyTypeObject *type,
   resample_Resampler *self;
 
   self = (resample_Resampler *)type->tp_alloc(type, 0);
+  self->pcm_module = NULL;
 
   return (PyObject *)self;
 }
@@ -105,6 +107,9 @@ int Resampler_init(resample_Resampler *self,
   double ratio;
 
   if (!PyArg_ParseTuple(args, "idi", &channels, &ratio, &quality))
+    return -1;
+
+  if ((self->pcm_module = PyImport_ImportModule("audiotools.pcm")) == NULL)
     return -1;
 
   if (channels < 1) {
@@ -143,7 +148,6 @@ PyObject *Resampler_process(resample_Resampler* self,
 
   Py_ssize_t i,j;
 
-  PyObject *pcm = NULL;
   PyObject *framelist_type_obj = NULL;
   pcm_FloatFrameList *framelist;
   pcm_FloatFrameList *processed_samples = NULL;
@@ -152,15 +156,12 @@ PyObject *Resampler_process(resample_Resampler* self,
 
   src_data.data_in = NULL;
 
-  if ((pcm = PyImport_ImportModule("audiotools.pcm")) == NULL)
-    goto error;
-
   /*grab (framelist,last) passed in from the method call*/
   if (!PyArg_ParseTuple(args,"Oi",&framelist_obj,&last))
     goto error;
 
   /*ensure input is a FloatFrameList*/
-  if ((framelist_type_obj = PyObject_GetAttrString(pcm,"FloatFrameList")) == NULL)
+  if ((framelist_type_obj = PyObject_GetAttrString(self->pcm_module,"FloatFrameList")) == NULL)
     goto error;
   if (framelist_obj->ob_type == (PyTypeObject*)framelist_type_obj) {
     framelist = (pcm_FloatFrameList*)framelist_obj;
@@ -200,7 +201,7 @@ PyObject *Resampler_process(resample_Resampler* self,
 
 
   /*turn our processed and unprocessed data into two new FloatFrameLists*/
-  if ((processed_samples = (pcm_FloatFrameList*)PyObject_CallMethod(pcm,"__blank_float__",NULL)) == NULL)
+  if ((processed_samples = (pcm_FloatFrameList*)PyObject_CallMethod(self->pcm_module,"__blank_float__",NULL)) == NULL)
     goto error;
   processed_samples->channels = self->channels;
   processed_samples->frames = src_data.output_frames_gen;
@@ -208,7 +209,7 @@ PyObject *Resampler_process(resample_Resampler* self,
   processed_samples->samples = realloc(processed_samples->samples,
 				       sizeof(fa_data_t) * processed_samples->samples_length);
 
-  if ((unprocessed_samples = (pcm_FloatFrameList*)PyObject_CallMethod(pcm,"__blank_float__",NULL)) == NULL)
+  if ((unprocessed_samples = (pcm_FloatFrameList*)PyObject_CallMethod(self->pcm_module,"__blank_float__",NULL)) == NULL)
     goto error;
   unprocessed_samples->channels = self->channels;
   unprocessed_samples->frames = src_data.input_frames - src_data.input_frames_used;
@@ -235,7 +236,6 @@ PyObject *Resampler_process(resample_Resampler* self,
 
   /*cleanup anything allocated*/
   free(src_data.data_in);
-  Py_DECREF(pcm);
   Py_DECREF(framelist_type_obj);
   Py_DECREF(processed_samples);
   Py_DECREF(unprocessed_samples);
@@ -245,7 +245,6 @@ PyObject *Resampler_process(resample_Resampler* self,
  error:
   if (src_data.data_in != NULL)
     free(src_data.data_in);
-  Py_XDECREF(pcm);
   Py_XDECREF(framelist_type_obj);
   Py_XDECREF(processed_samples);
   Py_XDECREF(unprocessed_samples);

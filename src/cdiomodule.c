@@ -33,7 +33,7 @@ typedef struct {
   PyObject_HEAD
   cdrom_drive_t *cdrom_drive;
   cdrom_paranoia_t *paranoia;
-    /* Type-specific fields go here. */
+  PyObject *pcm_module;
 } cdio_CDDAObject;
 
 static void CDDA_dealloc(cdio_CDDAObject* self);
@@ -238,6 +238,7 @@ CDDA_dealloc(cdio_CDDAObject* self)
     cdio_paranoia_free(self->paranoia);
   if (self->cdrom_drive != NULL)
     cdio_cddap_close(self->cdrom_drive);
+  Py_XDECREF(self->pcm_module);
   if (self != NULL)
     self->ob_type->tp_free((PyObject*)self);
 }
@@ -248,6 +249,7 @@ static PyObject *CDDA_new(PyTypeObject *type, PyObject *args, PyObject *kwds) {
   cdio_CDDAObject *self;
 
   self = (cdio_CDDAObject *)type->tp_alloc(type, 0);
+  self->pcm_module = NULL;
 
   return (PyObject *)self;
 }
@@ -256,6 +258,9 @@ static int CDDA_init(cdio_CDDAObject *self, PyObject *args, PyObject *kwds) {
   const char *drive = NULL;
 
   if (!PyArg_ParseTuple(args, "s", &drive))
+    return -1;
+
+  if ((self->pcm_module = PyImport_ImportModule("audiotools.pcm")) == NULL)
     return -1;
 
   self->cdrom_drive = cdio_cddap_identify(drive,0,NULL);
@@ -314,13 +319,12 @@ static PyObject *CDDA_read_sector(cdio_CDDAObject* self) {
 
   int current_sector_position = 0;
 
-  PyObject *pcm = NULL;
   pcm_FrameList *sector;
 
-  if ((pcm = PyImport_ImportModule("audiotools.pcm")) == NULL)
-    goto error;
+  sector = (pcm_FrameList*)PyObject_CallMethod(self->pcm_module,"__blank__",NULL);
+  if (sector == NULL)
+    return NULL;
 
-  sector = (pcm_FrameList*)PyObject_CallMethod(pcm,"__blank__",NULL);
   sector->frames = 44100 / 75;
   sector->channels = 2;
   sector->bits_per_sample = 16;
@@ -336,9 +340,6 @@ static PyObject *CDDA_read_sector(cdio_CDDAObject* self) {
   }
 
   return (PyObject*)sector;
- error:
-  Py_XDECREF(pcm);
-  return NULL;
 }
 
 static PyObject *CDDA_read_sectors(cdio_CDDAObject* self, PyObject *args) {
@@ -349,16 +350,15 @@ static PyObject *CDDA_read_sectors(cdio_CDDAObject* self, PyObject *args) {
   int sectors_read;
   int sectors_to_read;
 
-  PyObject *pcm = NULL;
   pcm_FrameList *sectors;
 
   if (!PyArg_ParseTuple(args, "i", &sectors_to_read))
-    goto error;
+    return NULL;
 
-  if ((pcm = PyImport_ImportModule("audiotools.pcm")) == NULL)
-    goto error;
+  sectors = (pcm_FrameList*)PyObject_CallMethod(self->pcm_module,"__blank__",NULL);
+  if (sectors == NULL)
+    return NULL;
 
-  sectors = (pcm_FrameList*)PyObject_CallMethod(pcm,"__blank__",NULL);
   sectors->frames = sectors_to_read * (44100 / 75);
   sectors->channels = 2;
   sectors->bits_per_sample = 16;
@@ -376,9 +376,6 @@ static PyObject *CDDA_read_sectors(cdio_CDDAObject* self, PyObject *args) {
   }
 
   return (PyObject*)sectors;
- error:
-  Py_XDECREF(pcm);
-  return NULL;
 }
 
 static PyObject *CDDA_first_sector(cdio_CDDAObject* self, PyObject *args) {

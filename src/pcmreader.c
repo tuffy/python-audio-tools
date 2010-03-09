@@ -27,6 +27,9 @@ struct pcm_reader* pcmr_open(PyObject *pcmreader) {
 
   reader->callback = NULL;
 
+  if ((reader->pcm_module = PyImport_ImportModule("audiotools.pcm")) == NULL)
+    goto error;
+
   if ((attr = PyObject_GetAttrString(pcmreader,"sample_rate")) == NULL)
     goto error;
   reader->sample_rate = PyInt_AsLong(attr);
@@ -91,6 +94,7 @@ int pcmr_close(struct pcm_reader *reader) {
 
   Py_DECREF(reader->read);
   Py_DECREF(reader->close);
+  Py_DECREF(reader->pcm_module);
   free(reader);
   return returnval;
 }
@@ -155,7 +159,6 @@ int pcmr_read(struct pcm_reader *reader,
   ia_size_t buffer_samples_length;
   struct i_array *channel;
 
-  PyObject *pcm_obj = NULL;
   PyObject *framelist_type_obj = NULL;
 
   struct pcmr_callback *node;
@@ -171,9 +174,7 @@ int pcmr_read(struct pcm_reader *reader,
     goto error;
 
   /*ensure result is a FrameList*/
-  if ((pcm_obj = PyImport_ImportModule("audiotools.pcm")) == NULL)
-    goto error;
-  if ((framelist_type_obj = PyObject_GetAttrString(pcm_obj,"FrameList")) == NULL)
+  if ((framelist_type_obj = PyObject_GetAttrString(reader->pcm_module,"FrameList")) == NULL)
     goto error;
 
   if (framelist_obj->ob_type == (PyTypeObject*)framelist_type_obj) {
@@ -210,11 +211,9 @@ int pcmr_read(struct pcm_reader *reader,
   /*free any allocated buffers and Python objects*/
   Py_DECREF(framelist_obj);
   Py_DECREF(buffer_obj);
-  Py_DECREF(pcm_obj);
   Py_DECREF(framelist_type_obj);
   return 1;
  error:
-  Py_XDECREF(pcm_obj);
   Py_XDECREF(framelist_type_obj);
   Py_XDECREF(framelist_obj);
   Py_XDECREF(buffer_obj);

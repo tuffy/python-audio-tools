@@ -87,6 +87,7 @@ PyTypeObject replaygain_ReplayGainType = {
 };
 
 void ReplayGain_dealloc(replaygain_ReplayGain* self) {
+  Py_XDECREF(self->pcm_module);
   self->ob_type->tp_free((PyObject*)self);
 }
 
@@ -94,6 +95,7 @@ PyObject *ReplayGain_new(PyTypeObject *type, PyObject *args, PyObject *kwds) {
   replaygain_ReplayGain *self;
 
   self = (replaygain_ReplayGain *)type->tp_alloc(type, 0);
+  self->pcm_module = NULL;
 
   return (PyObject *)self;
 }
@@ -103,6 +105,9 @@ int ReplayGain_init(replaygain_ReplayGain *self, PyObject *args, PyObject *kwds)
   int  i;
 
   if (!PyArg_ParseTuple(args,"l",&sample_rate))
+    return -1;
+
+  if ((self->pcm_module = PyImport_ImportModule("audiotools.pcm")) == NULL)
     return -1;
 
   /* zero out initial values*/
@@ -156,7 +161,6 @@ PyObject* ReplayGain_update(replaygain_ReplayGain *self, PyObject *args) {
   PyObject *channels_obj = NULL;
   PyObject *channel_l_obj = NULL;
   PyObject *channel_r_obj = NULL;
-  PyObject *pcm_obj = NULL;
   PyObject *framelist_type_obj = NULL;
   pcm_FrameList *channel_l;
   pcm_FrameList *channel_r;
@@ -197,9 +201,7 @@ PyObject* ReplayGain_update(replaygain_ReplayGain *self, PyObject *args) {
   }
 
   /*ensure channel_l_obj and channel_r_obj are FrameLists*/
-  if ((pcm_obj = PyImport_ImportModule("audiotools.pcm")) == NULL)
-    goto error;
-  if ((framelist_type_obj = PyObject_GetAttrString(pcm_obj,"FrameList")) == NULL)
+  if ((framelist_type_obj = PyObject_GetAttrString(self->pcm_module,"FrameList")) == NULL)
     goto error;
   if (channel_l_obj->ob_type != (PyTypeObject*)framelist_type_obj) {
     PyErr_SetString(PyExc_TypeError,"channel 0 must be a FrameList");
@@ -273,7 +275,6 @@ PyObject* ReplayGain_update(replaygain_ReplayGain *self, PyObject *args) {
   Py_XDECREF(channels_obj);
   Py_XDECREF(channel_l_obj);
   Py_XDECREF(channel_r_obj);
-  Py_XDECREF(pcm_obj);
   Py_XDECREF(framelist_type_obj);
   if (channel_l_buffer != NULL)
     free(channel_l_buffer);
@@ -285,7 +286,6 @@ PyObject* ReplayGain_update(replaygain_ReplayGain *self, PyObject *args) {
   Py_XDECREF(channels_obj);
   Py_XDECREF(channel_l_obj);
   Py_XDECREF(channel_r_obj);
-  Py_XDECREF(pcm_obj);
   Py_XDECREF(framelist_type_obj);
   if (channel_l_buffer != NULL)
     free(channel_l_buffer);

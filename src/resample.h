@@ -40,6 +40,7 @@ typedef struct {
   SRC_STATE *src_state;
   int channels;
   double ratio;
+  PyObject *pcm_module;
 } resample_Resampler;
 
 void Resampler_dealloc(resample_Resampler* self);
