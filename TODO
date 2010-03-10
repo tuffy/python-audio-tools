@@ -595,6 +595,7 @@
   However, it may also be necessary to build some sort of
   channel reordering mechanism in the event that formats differ
   on how channels are to be ordered in the file.
+** Channel Counts and Ordering
 | Format     | Maximum Channels | Ordering   |
 |------------+------------------+------------|
 | AAC        |               48 |            |
@@ -611,6 +612,39 @@
 | RIFF WAVE  |             2^16 |            |
 | WavPack    |               16 |            |
 |------------+------------------+------------|
+** TODO Fix to_pcm() methods to support channel_mask
+   - [ ] AAC
+   - [ ] AIFF
+   - [ ] Sun AU
+   - [ ] FLAC
+   - [ ] M4A
+   - [ ] MP2
+   - [ ] MP3
+   - [ ] Ogg FLAC
+   - [ ] Ogg Vorbis
+   - [ ] Ogg Speex
+   - [X] WAVE
+   - [ ] WavPack
+** TODO Fix from_pcm() classmethods to support channel_mask
+   - [ ] AAC
+   - [ ] AIFF
+   - [ ] Sun AU
+   - [ ] FLAC
+   - [ ] M4A
+   - [ ] MP2
+   - [ ] MP3
+   - [ ] Ogg FLAC
+   - [ ] Ogg Vorbis
+   - [ ] Ogg Speex
+   - [X] WAVE
+   - [ ] WavPack
+** TODO Fix alternate PCMReaders to support channel_mask
+   - [X] BufferedPCMReader
+   - [ ] PCMConverter
+   - [ ] ReplayGainReader
+   - [ ] CDTrackReader
+   - [ ] OffsetCDTrackReader
+** TODO Unit test multichannel encoding and channel_mask handling
 * TODO Make documentation render consistently
   Some versions of groff place text and page breaks differently.
   This needs to be fixed such that the documentation renders properly

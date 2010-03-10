@@ -38,6 +38,9 @@ if (__name__ == '__main__'):
     parser.add_option("-%","--percentage",
                       action="store_true",dest="show_percentage")
 
+    parser.add_option("-C","--channel-assignment",
+                      action="store_true",dest="channel_assignment")
+
     (options,args) = parser.parse_args()
     msg = audiotools.Messenger("trackinfo",options)
 
@@ -70,4 +73,26 @@ if (__name__ == '__main__'):
             if (metadata is not None):
                 msg.output(unicode(metadata))
                 msg.output(u"")
+        if (options.channel_assignment):
+            msg.output(_("Assigned Channels:"))
+            channel_names = {"front_left":_(u"Front Left"),
+                             "front_right":_(u"Front Right"),
+                             "front_center":_(u"Front Center"),
+                             "low_frequency":_(u"Low Frequency"),
+                             "back_left":_(u"Back Left"),
+                             "back_right":_(u"Back Right"),
+                             "front_left_of_center":_(u"Front Left of Center"),
+                             "front_right_of_center":_(u"Front Right of Center"),
+                             "back_center":_(u"Back Center"),
+                             "side_left":_(u"Side Left"),
+                             "side_right":_(u"Side Right"),
+                             "top_center":_(u"Top Center"),
+                             "top_front_left":_(u"Top Front Left"),
+                             "top_front_center":_(u"Top Front Center"),
+                             "top_front_right":_(u"Top Front Right"),
+                             "top_back_left":_(u"Top Back Left"),
+                             "top_back_center":_(u"Top Back Center"),
+                             "top_back_right":_(u"Top Back Right")}
+            for (i,channel) in enumerate(file.channel_mask().channels()):
+                msg.output(_(u"channel %(channel_number)d - %(channel_name)s") % {"channel_number":i + 1,"channel_name":channel_names[channel]})
 

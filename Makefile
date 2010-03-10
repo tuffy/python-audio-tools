@@ -38,7 +38,7 @@ GLADE_H_FILES = $(GLADE_DIR)/editxmcd.glade.h $(GLADE_DIR)/coverview.glade.h
 MODULES = audiotools/__aiff__.py audiotools/__m4a__.py \
 audiotools/__ape__.py audiotools/__mp3__.py \
 audiotools/__au__.py audiotools/__musepack__.py \
-audiotools/cue.py audiotools/replaygain.py \
+audiotools/cue.py \
 audiotools/__flac__.py audiotools/__speex__.py \
 audiotools/flac.py audiotools/toc.py \
 audiotools/__freedb__.py audiotools/__vorbiscomment__.py \

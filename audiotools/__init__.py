@@ -531,26 +531,24 @@ class ChannelMask:
         return mask
 
     @classmethod
-    def from_channels(cls, channel_count, mask):
-        if (mask is not None):
-            return mask
+    def from_channels(cls, channel_count):
+        if (channel_count == 2):
+            return cls(0x3)
+        elif (channel_count == 1):
+            return cls(0x4)
         else:
-            if (channel_count == 2):
-                return cls(0x3)
-            elif (channel_count == 1):
-                return cls(0x4)
-            else:
-                raise ValueError(_(u"ambiguous channel assignment"))
+            raise ValueError("ambiguous channel assignment")
 
 #a class that wraps around a file object and generates pcm.FrameList objects
 #sample rate, channels and bits per sample are integers
 class PCMReader:
     def __init__(self, file,
-                 sample_rate, channels, bits_per_sample,
+                 sample_rate, channels, channel_mask, bits_per_sample,
                  process=None, signed=True, big_endian=False):
         self.file = file
         self.sample_rate = sample_rate
         self.channels = channels
+        self.channel_mask = channel_mask
         self.bits_per_sample = bits_per_sample
         self.process = process
         self.signed = signed
@@ -803,6 +801,7 @@ class BufferedPCMReader:
         self.pcmreader = pcmreader
         self.sample_rate = pcmreader.sample_rate
         self.channels = pcmreader.channels
+        self.channel_mask = pcmreader.channel_mask
         self.bits_per_sample = pcmreader.bits_per_sample
         self.buffer = __buffer__(self.channels,self.bits_per_sample)
         self.reader_finished = False
@@ -1637,12 +1636,24 @@ class AudioFile:
     def is_type(cls, file):
         return False
 
+    #returns an integer number of bits per sample in this track
     def bits_per_sample(self):
         raise NotImplementedError()
 
+    #returns an integer number of channels this track contains
     def channels(self):
         raise NotImplementedError()
 
+    #returns a ChannelMask-compatible object
+    def channel_mask(self):
+        #WARNING - This only returns valid masks for 1 and 2 channel audio
+        #anything over 2 channels raises a ValueError
+        #since there isn't any standard on what those channels should be.
+        #AudioFiles that support more than 2 channels should override
+        #this method with one that returns the proper mask.
+        return ChannelMask.from_channels(self.channels())
+
+    #returns True if this track is lossless, False if not
     def lossless(self):
         raise NotImplementedError()
 

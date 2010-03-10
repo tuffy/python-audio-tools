@@ -33,8 +33,8 @@ gettext.install("audiotools",unicode=True)
 class WaveReader(PCMReader):
     #wave_file should be a file-like stream of wave data
     def __init__(self, wave_file,
-                 sample_rate, channels, bits_per_sample,
-                 process = None, channel_mask = None):
+                 sample_rate, channels, channel_mask, bits_per_sample,
+                 process = None):
 
         self.file = wave_file
         self.sample_rate = sample_rate
@@ -87,8 +87,8 @@ class TempWaveReader(WaveReader):
                             tempfile,
                             sample_rate = wave.sample_rate(),
                             channels = wave.channels(),
-                            bits_per_sample = wave.bits_per_sample(),
-                            channel_mask = wave.channel_mask())
+                            channel_mask = wave.channel_mask(),
+                            bits_per_sample = wave.bits_per_sample())
         self.tempfile = tempfile
 
     def close(self):
@@ -335,10 +335,7 @@ class WaveAudio(AudioFile):
             fmt.valid_bits_per_sample = pcmreader.bits_per_sample
             fmt.sub_format = "0100000000001000800000aa00389b71".decode('hex')
             if (fmt.compression == 0xFFFE):
-                if (hasattr(pcmreader,"channel_mask")):
-                    fmt.channel_mask = __channel_mask__(pcmreader.channel_mask)
-                else:
-                    raise EncodingError(None)
+                fmt.channel_mask = __channel_mask__(pcmreader.channel_mask)
             else:
                 fmt.channel_mask = __blank_channel_mask__()
 
@@ -545,7 +542,35 @@ class WaveAudio(AudioFile):
                 else:
                     setattr(self.__channel_mask__,value,False)
         else:
-            self.__channel_mask__ = ChannelMask.from_channels(self.__channels__)
+            if (self.__channels__ == 1):
+                self.__channel_mask__ = ChannelMask.from_fields(
+                    front_center=True)
+            elif (self.__channels__ == 2):
+                self.__channel_mask__ = ChannelMask.from_fields(
+                    front_left=True,front_right=True)
+            #if we have a multi-channel WAVE file
+            #that's not WAVEFORMATEXTENSIBLE,
+            #assume the channels follow SMPTE/ITU-R recommendations
+            #and hope for the best
+            elif (self.__channels__ == 3):
+                self.__channel_mask__ = ChannelMask.from_fields(
+                    front_left=True,front_right=True,front_center=True)
+            elif (self.__channels__ == 4):
+                self.__channel_mask__ = ChannelMask.from_fields(
+                    front_left=True,front_right=True,
+                    back_left=True,back_right=True)
+            elif (self.__channels__ == 5):
+                self.__channel_mask__ = ChannelMask.from_fields(
+                    front_left=True,front_right=True,
+                    back_left=True,back_right=True,
+                    front_center=True)
+            elif (self.__channels__ == 6):
+                self.__channel_mask__ = ChannelMask.from_fields(
+                    front_left=True,front_right=True,
+                    back_left=True,back_right=True,
+                    front_center=True,low_frequency=True)
+            else:
+                raise WavException(_(u"Unsupported number of channels in non-WAVEFORMATEXTENSIBLE file"))
 
         if ((self.__wavtype__ != 1) and (self.__wavtype__ != 0xFFFE)):
             raise WavException(_(u"No support for compressed WAVE files"))
