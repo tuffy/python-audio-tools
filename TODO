@@ -629,7 +629,7 @@
    - [ ] AACAudio
    - [ ] AiffAudio
    - [ ] AuAudio
-   - [ ] FlacAudio
+   - [X] FlacAudio
    - [ ] M4AAudio
    - [ ] MP2Audio
    - [ ] MP3Audio
@@ -642,7 +642,7 @@
    - [ ] AACAudio
    - [ ] AiffAudio
    - [ ] AuAudio
-   - [ ] FlacAudio
+   - [X] FlacAudio
    - [ ] M4AAudio
    - [ ] MP2Audio
    - [ ] MP3Audio

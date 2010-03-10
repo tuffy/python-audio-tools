@@ -162,7 +162,7 @@ static PyObject *FlacDecoder_channels(decoders_FlacDecoder *self,
 
 static PyObject *FlacDecoder_channel_mask(decoders_FlacDecoder *self,
 					  void *closure) {
-  return Py_BuildValue("i",self->streaminfo.channels);
+  return Py_BuildValue("i",self->channel_mask);
 }
 
 PyObject *FLACDecoder_read(decoders_FlacDecoder* self,

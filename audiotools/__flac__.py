@@ -829,20 +829,6 @@ class FlacAudio(AudioFile):
         return decoders.FlacDecoder(self.filename,
                                     self.channel_mask())
 
-    def to_pcm_old(self):
-        sub = subprocess.Popen([BIN['flac'],"-s","-d","-c",
-                                "--force-raw-format",
-                                "--endian=little",
-                                "--sign=signed",
-                                self.filename],
-                               stdout=subprocess.PIPE,
-                               stderr=file(os.devnull,'ab'))
-        return PCMReader(sub.stdout,
-                         sample_rate=self.__samplerate__,
-                         channels=self.__channels__,
-                         bits_per_sample=self.__bitspersample__,
-                         process=sub)
-
     @classmethod
     def from_pcm(cls, filename, pcmreader, compression="8"):
         from . import encoders
@@ -918,57 +904,6 @@ class FlacAudio(AudioFile):
             return flac
         except IOError:
             raise EncodingError("flac")
-
-    @classmethod
-    def from_pcm_old(cls, filename, pcmreader,compression="8"):
-        SUBSTREAM_SAMPLE_RATES = frozenset([
-                8000, 16000,22050,24000,32000,
-                44100,48000,96000])
-        SUBSTREAM_BITS = frozenset([8,12,16,20,24])
-
-        if (compression not in cls.COMPRESSION_MODES):
-            compression = cls.DEFAULT_COMPRESSION
-
-        if ((pcmreader.sample_rate in SUBSTREAM_SAMPLE_RATES) and
-            (pcmreader.bits_per_sample in SUBSTREAM_BITS)):
-            lax = []
-        else:
-            lax = ["--lax"]
-
-        devnull = file(os.devnull,'ab')
-
-        sub = subprocess.Popen([BIN['flac']] + lax + \
-                               ["-s","-f","-%s" % (compression),
-                                "-V",
-                                "--endian=little",
-                                "--channels=%d" % (pcmreader.channels),
-                                "--bps=%d" % (pcmreader.bits_per_sample),
-                                "--sample-rate=%d" % (pcmreader.sample_rate),
-                                "--sign=signed",
-                                "--force-raw-format",
-                                "-o",filename,"-"],
-                               stdin=subprocess.PIPE,
-                               stdout=devnull,
-                               stderr=devnull,
-                               preexec_fn=ignore_sigint)
-
-        transfer_data(pcmreader.read,sub.stdin.write)
-        sub.stdin.close()
-        try:
-            pcmreader.close()
-        except DecodingError:
-            raise EncodingError()
-        devnull.close()
-
-        if (sub.wait() != 0):
-            raise EncodingError(BIN['flac'])
-
-        sub = subprocess.Popen([BIN['metaflac'],
-                                "--add-seekpoint=10s",
-                                filename])
-        sub.wait()
-
-        return FlacAudio(filename)
 
 
     def has_foreign_riff_chunks(self):
