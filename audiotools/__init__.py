@@ -489,6 +489,8 @@ class ChannelMask:
     MASK_TO_SPEAKER = dict(map(reversed,map(list,SPEAKER_TO_MASK.items())))
 
     def __init__(self, mask):
+        mask = int(mask)
+
         for (speaker,speaker_mask) in self.SPEAKER_TO_MASK.items():
             setattr(self,speaker,(mask & speaker_mask) != 0)
 
@@ -527,6 +529,18 @@ class ChannelMask:
                 setattr(mask,key,bool(value))
 
         return mask
+
+    @classmethod
+    def from_channels(cls, channel_count, mask):
+        if (mask is not None):
+            return mask
+        else:
+            if (channel_count == 2):
+                return cls(0x3)
+            elif (channel_count == 1):
+                return cls(0x4)
+            else:
+                raise ValueError(_(u"ambiguous channel assignment"))
 
 #a class that wraps around a file object and generates pcm.FrameList objects
 #sample rate, channels and bits per sample are integers
@@ -2093,8 +2107,7 @@ class CDTrackReader(PCMReader):
         PCMReader.__init__(self, None,
                            sample_rate=44100,
                            channels=2,
-                           bits_per_sample=16,
-                           process=None)
+                           bits_per_sample=16)
 
         self.cdda = cdda
         self.track_number = track_number

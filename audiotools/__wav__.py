@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,InvalidFile,PCMReader,Con,BUFFER_SIZE,transfer_data,__capped_stream_reader__,FILENAME_FORMAT,BIN,open_files,os,subprocess,cStringIO,EncodingError,DecodingError
+from audiotools import AudioFile,InvalidFile,ChannelMask,PCMReader,Con,BUFFER_SIZE,transfer_data,__capped_stream_reader__,FILENAME_FORMAT,BIN,open_files,os,subprocess,cStringIO,EncodingError,DecodingError
 import os.path
 import gettext
 from . import pcm
@@ -34,12 +34,13 @@ class WaveReader(PCMReader):
     #wave_file should be a file-like stream of wave data
     def __init__(self, wave_file,
                  sample_rate, channels, bits_per_sample,
-                 process = None):
+                 process = None, channel_mask = None):
 
         self.file = wave_file
         self.sample_rate = sample_rate
         self.channels = channels
         self.bits_per_sample = bits_per_sample
+        self.channel_mask = channel_mask
 
         self.process = process
 
@@ -86,7 +87,8 @@ class TempWaveReader(WaveReader):
                             tempfile,
                             sample_rate = wave.sample_rate(),
                             channels = wave.channels(),
-                            bits_per_sample = wave.bits_per_sample())
+                            bits_per_sample = wave.bits_per_sample(),
+                            channel_mask = wave.channel_mask())
         self.tempfile = tempfile
 
     def close(self):
@@ -121,25 +123,29 @@ def __blank_channel_mask__():
 
     return c
 
-def __channel_mask__(total_channels):
-    mask = {1:('front_center'),
-            2:('front_left','front_right'),
-            3:('front_left','front_right','front_center'),
-            4:('front_left','front_right','rear_left','rear_right'),
-            5:('front_left','front_right','side_left','side_right',
-               'front_center'),
-            6:('front_left','front_right','side_left','side_right',
-               'front_center','LFE'),
-            7:('front_left','front_right','rear_left','rear_right',
-               'side_left','side_right',
-               'front_center'),
-            8:('front_left','front_right','rear_left','rear_right',
-               'side_left','side_right',
-               'front_center','LFE')}
+def __channel_mask__(mask):
+    attr_map = {"front_left":'front_left',
+                "front_right":'front_right',
+                "front_center":'front_center',
+                "low_frequency":'LFE',
+                "back_left":'rear_left',
+                "back_right":'rear_right',
+                "front_left_of_center":'front_left_of_center',
+                "front_right_of_center":'front_right_of_center',
+                "back_center":'rear_center',
+                "side_left":'side_left',
+                "side_right":'side_right',
+                "top_center":'top_center',
+                "top_front_left":'top_front_left',
+                "top_front_center":'top_front_center',
+                "top_front_right":'top_front_right',
+                "top_back_left":'top_back_left',
+                "top_back_center":'top_back_center',
+                "top_back_right":'top_back_right'}
 
     c = __blank_channel_mask__()
-    for channel in mask[total_channels]:
-        setattr(c,channel,True)
+    for channel in ChannelMask(mask).channels():
+        setattr(c,attr_map[channel],True)
     return c
 
 class WaveAudio(AudioFile):
@@ -247,6 +253,7 @@ class WaveAudio(AudioFile):
         self.__blockalign__ = 0
         self.__bitspersample__ = 0
         self.__data_size__ = 0
+        self.__channel_mask__ = 0
 
         self.__chunk_ids__ = []
 
@@ -271,12 +278,16 @@ class WaveAudio(AudioFile):
     def has_foreign_riff_chunks(self):
         return set(['fmt ','data']) != set(self.__chunk_ids__)
 
+    def channel_mask(self):
+        return self.__channel_mask__
+
     #Returns the PCMReader object for this WAV's data
     def to_pcm(self):
         return WaveReader(file(self.filename,'rb'),
                           sample_rate = self.sample_rate(),
                           channels = self.channels(),
-                          bits_per_sample = self.bits_per_sample())
+                          bits_per_sample = self.bits_per_sample(),
+                          channel_mask = self.channel_mask())
 
     #Takes a filename and PCMReader containing WAV data
     #builds a WAV from that data and returns a new WaveAudio object
@@ -294,7 +305,6 @@ class WaveAudio(AudioFile):
 
             fmt_header = Con.Container()
             fmt_header.chunk_id = 'fmt '
-            #fmt_header.chunk_length = WaveAudio.FMT_CHUNK.sizeof()
 
             if (pcmreader.channels <= 2):
                 fmt_header.chunk_length = 16
@@ -303,7 +313,8 @@ class WaveAudio(AudioFile):
 
             fmt = Con.Container()
 
-            if (pcmreader.channels <= 2):
+            if ((pcmreader.channels <= 2) and
+                (pcmreader.bits_per_sample <= 16)):
                 fmt.compression = 1
             else:
                 fmt.compression = 0xFFFE
@@ -323,7 +334,13 @@ class WaveAudio(AudioFile):
             fmt.cb_size = 22
             fmt.valid_bits_per_sample = pcmreader.bits_per_sample
             fmt.sub_format = "0100000000001000800000aa00389b71".decode('hex')
-            fmt.channel_mask = __channel_mask__(pcmreader.channels)
+            if (fmt.compression == 0xFFFE):
+                if (hasattr(pcmreader,"channel_mask")):
+                    fmt.channel_mask = __channel_mask__(pcmreader.channel_mask)
+                else:
+                    raise EncodingError(None)
+            else:
+                fmt.channel_mask = __blank_channel_mask__()
 
 
             data_header = Con.Container()
@@ -501,6 +518,34 @@ class WaveAudio(AudioFile):
         self.__bytespersec__ = fmt.bytes_per_second
         self.__blockalign__ = fmt.block_align
         self.__bitspersample__ = fmt.bits_per_sample
+
+        if (self.__wavtype__ == 0xFFFE):
+            self.__channel_mask__ = ChannelMask(0)
+            attr_map = {'front_left':"front_left",
+                        'front_right':"front_right",
+                        'front_center':"front_center",
+                        'LFE':"low_frequency",
+                        'rear_left':"back_left",
+                        'rear_right':"back_right",
+                        'front_left_of_center':"front_left_of_center",
+                        'front_right_of_center':"front_right_of_center",
+                        'rear_center':"back_center",
+                        'side_left':"side_left",
+                        'side_right':"side_right",
+                        'top_center':"top_center",
+                        'top_front_left':"top_front_left",
+                        'top_front_center':"top_front_center",
+                        'top_front_right':"top_front_right",
+                        'top_back_left':"top_back_left",
+                        'top_back_center':"top_back_center",
+                        'top_back_right':"top_back_right"}
+            for (key,value) in attr_map.items():
+                if (getattr(fmt.channel_mask,key)):
+                    setattr(self.__channel_mask__,value,True)
+                else:
+                    setattr(self.__channel_mask__,value,False)
+        else:
+            self.__channel_mask__ = ChannelMask.from_channels(self.__channels__)
 
         if ((self.__wavtype__ != 1) and (self.__wavtype__ != 0xFFFE)):
             raise WavException(_(u"No support for compressed WAVE files"))
