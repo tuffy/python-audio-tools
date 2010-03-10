@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,MetaData,InvalidFile,PCMReader,Con,transfer_data,transfer_framelist_data,subprocess,BIN,BUFFER_SIZE,cStringIO,os,open_files,Image,sys,WaveAudio,ReplayGain,ignore_sigint,sheet_to_unicode,EncodingError,DecodingError,Messenger,BufferedPCMReader,calculate_replay_gain
+from audiotools import AudioFile,MetaData,InvalidFile,PCMReader,Con,transfer_data,transfer_framelist_data,subprocess,BIN,BUFFER_SIZE,cStringIO,os,open_files,Image,sys,WaveAudio,ReplayGain,ignore_sigint,sheet_to_unicode,EncodingError,DecodingError,Messenger,BufferedPCMReader,calculate_replay_gain,ChannelMask
 from __vorbiscomment__ import *
 from __id3__ import ID3v2Comment
 from __vorbis__ import OggStreamReader,OggStreamWriter
@@ -605,6 +605,38 @@ class FlacAudio(AudioFile):
                 messenger.error(_(u"ID3v2 tag found at start of FLAC file.  Please remove with tracklint(1)"))
             return False
 
+    def channel_mask(self):
+        if (self.channels() <= 2):
+            return ChannelMask.from_channels(self.channels())
+        else:
+            vorbis_comment = self.get_metadata().vorbis_comment
+            if (vorbis_comment.has_key("WAVEFORMATEXTENSIBLE_CHANNEL_MASK")):
+                try:
+                    return ChannelMask(int(vorbis_comment["WAVEFORMATEXTENSIBLE_CHANNEL_MASK"][0],16))
+                except ValueError:
+                    pass
+
+            #if there is no WAVEFORMATEXTENSIBLE_CHANNEL_MASK
+            #or it's not an integer, use FLAC's default mask based on channels
+            if (self.channels() == 3):
+                return ChannelMask.from_fields(
+                    front_left=True,front_right=True,front_center=True)
+            elif (self.channels() == 4):
+                return ChannelMask.from_fields(
+                    front_left=True,front_right=True,
+                    back_left=True,back_right=True)
+            elif (self.channels() == 5):
+                return ChannelMask.from_fields(
+                    front_left=True,front_right=True,front_center=True,
+                    back_left=True,back_right=True)
+            elif (self.channels() == 6):
+                return ChannelMask.from_fields(
+                    front_left=True,front_right=True,front_center=True,
+                    back_left=True,back_right=True,
+                    low_frequency=True)
+            else:
+                raise ValueError("undefined channel mask")
+
     def lossless(self):
         return True
 
@@ -666,18 +698,18 @@ class FlacAudio(AudioFile):
             if (old_seektable is not None):
                 metadata.seektable = old_seektable
 
-            #grab "WAVEFORMATEXTENSIBLE_CHANNEL_MASK" from existing file
-            #(if any)
-            CHANNEL_MASK = "WAVEFORMATEXTENSIBLE_CHANNEL_MASK"
-            if (CHANNEL_MASK in old_metadata.vorbis_comment.keys()):
-                metadata.vorbis_comment[CHANNEL_MASK] = \
-                    old_metadata.vorbis_comment[CHANNEL_MASK]
-            elif (CHANNEL_MASK in
-                  metadata.vorbis_comment.keys()):
-                #if the existing file has no
-                #CHANNEL_MASK
-                #don't port one from another file
-                del(metadata.vorbis_comment[CHANNEL_MASK])
+            # #grab "WAVEFORMATEXTENSIBLE_CHANNEL_MASK" from existing file
+            # #(if any)
+            # CHANNEL_MASK = "WAVEFORMATEXTENSIBLE_CHANNEL_MASK"
+            # if (CHANNEL_MASK in old_metadata.vorbis_comment.keys()):
+            #     metadata.vorbis_comment[CHANNEL_MASK] = \
+            #         old_metadata.vorbis_comment[CHANNEL_MASK]
+            # elif (CHANNEL_MASK in
+            #       metadata.vorbis_comment.keys()):
+            #     #if the existing file has no
+            #     #CHANNEL_MASK
+            #     #don't port one from another file
+            #     del(metadata.vorbis_comment[CHANNEL_MASK])
 
             #APPLICATION blocks should stay with the existing file (if any)
             metadata.extra_blocks = [block for block in metadata.extra_blocks
@@ -794,7 +826,8 @@ class FlacAudio(AudioFile):
     def to_pcm(self):
         from . import decoders
 
-        return decoders.FlacDecoder(self.filename)
+        return decoders.FlacDecoder(self.filename,
+                                    self.channel_mask())
 
     def to_pcm_old(self):
         sub = subprocess.Popen([BIN['flac'],"-s","-d","-c",
@@ -862,12 +895,27 @@ class FlacAudio(AudioFile):
                                  "exhaustive_model_search":True,
                                  "min_residual_partition_order":0,
                                  "max_residual_partition_order":6}}[compression]
+        if (int(pcmreader.channel_mask) not in
+            (0x0001,0x0003,0x0033,0x0603,
+             0x0007,0x0037,0x0607,0x003F,
+             0x060F)):
+            #FIXME - raise something other than EncodingError
+            #for invalid channel masks
+            print "invalid channel mask %x" % (pcmreader.channel_mask)
+            raise EncodingError("flac")
 
         try:
             encoders.encode_flac(filename,
                                  pcmreader=BufferedPCMReader(pcmreader),
                                  **encoding_options)
-            return FlacAudio(filename)
+            flac = FlacAudio(filename)
+
+            if ((pcmreader.channels > 2) or (pcmreader.bits_per_sample > 16)):
+                metadata = flac.get_metadata()
+                metadata.vorbis_comment["WAVEFORMATEXTENSIBLE_CHANNEL_MASK"] = [u"0x%.4x" % (int(pcmreader.channel_mask))]
+                flac.set_metadata(metadata)
+
+            return flac
         except IOError:
             raise EncodingError("flac")
 

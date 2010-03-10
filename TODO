@@ -612,32 +612,45 @@
 | RIFF WAVE  |             2^16 |            |
 | WavPack    |               16 |            |
 |------------+------------------+------------|
+** TODO Fix AudioFile definitions to support channel_mask()
+   - [ ] AACAudio
+   - [ ] AiffAudio
+   - [ ] AuAudio
+   - [X] FlacAudio
+   - [ ] M4AAudio
+   - [ ] MP2Audio
+   - [ ] MP3Audio
+   - [ ] OggFlacAudio
+   - [ ] VorbisAudio
+   - [ ] SpeexAudio
+   - [X] WaveAudio
+   - [ ] WavPackAudio
 ** TODO Fix to_pcm() methods to support channel_mask
-   - [ ] AAC
-   - [ ] AIFF
-   - [ ] Sun AU
-   - [ ] FLAC
-   - [ ] M4A
-   - [ ] MP2
-   - [ ] MP3
-   - [ ] Ogg FLAC
-   - [ ] Ogg Vorbis
-   - [ ] Ogg Speex
-   - [X] WAVE
-   - [ ] WavPack
+   - [ ] AACAudio
+   - [ ] AiffAudio
+   - [ ] AuAudio
+   - [ ] FlacAudio
+   - [ ] M4AAudio
+   - [ ] MP2Audio
+   - [ ] MP3Audio
+   - [ ] OggFlacAudio
+   - [ ] VorbisAudio
+   - [ ] SpeexAudio
+   - [X] WaveAudio
+   - [ ] WavPackAudio
 ** TODO Fix from_pcm() classmethods to support channel_mask
-   - [ ] AAC
-   - [ ] AIFF
-   - [ ] Sun AU
-   - [ ] FLAC
-   - [ ] M4A
-   - [ ] MP2
-   - [ ] MP3
-   - [ ] Ogg FLAC
-   - [ ] Ogg Vorbis
-   - [ ] Ogg Speex
-   - [X] WAVE
-   - [ ] WavPack
+   - [ ] AACAudio
+   - [ ] AiffAudio
+   - [ ] AuAudio
+   - [ ] FlacAudio
+   - [ ] M4AAudio
+   - [ ] MP2Audio
+   - [ ] MP3Audio
+   - [ ] OggFlacAudio
+   - [ ] VorbisAudio
+   - [ ] SpeexAudio
+   - [X] WaveAudio
+   - [ ] WavPackAudio
 ** TODO Fix alternate PCMReaders to support channel_mask
    - [X] BufferedPCMReader
    - [ ] PCMConverter

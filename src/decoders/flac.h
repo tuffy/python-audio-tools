@@ -63,6 +63,7 @@ typedef struct {
   char* filename;
   FILE* file;
   Bitstream* bitstream;
+  int channel_mask;
 
   struct flac_STREAMINFO streaminfo;
   uint64_t remaining_samples;
@@ -90,6 +91,10 @@ static PyObject *FlacDecoder_bits_per_sample(decoders_FlacDecoder *self,
 static PyObject *FlacDecoder_channels(decoders_FlacDecoder *self,
 				      void *closure);
 
+/*the FlacDecoder.channel_mask attribute getter*/
+static PyObject *FlacDecoder_channel_mask(decoders_FlacDecoder *self,
+					  void *closure);
+
 /*the FlacDecoder.read() method*/
 PyObject *FLACDecoder_read(decoders_FlacDecoder* self,
 			   PyObject *args);
@@ -113,6 +118,8 @@ PyGetSetDef FlacDecoder_getseters[] = {
    (getter)FlacDecoder_bits_per_sample, NULL, "bits per sample", NULL},
   {"channels",
    (getter)FlacDecoder_channels, NULL, "channels", NULL},
+  {"channel_mask",
+   (getter)FlacDecoder_channel_mask, NULL, "channel_mask", NULL},
   {NULL}
 };
 

@@ -25,12 +25,12 @@ int FlacDecoder_init(decoders_FlacDecoder *self,
   char* filename;
   int i;
 
-  if (!PyArg_ParseTuple(args, "s", &filename))
-    return -1;
-
   self->filename = NULL;
   self->file = NULL;
   self->bitstream = NULL;
+
+  if (!PyArg_ParseTuple(args, "si", &filename, &(self->channel_mask)))
+    return -1;
 
   /*open the flac file*/
   self->file = fopen(filename,"rb");
@@ -157,6 +157,11 @@ static PyObject *FlacDecoder_bits_per_sample(decoders_FlacDecoder *self,
 
 static PyObject *FlacDecoder_channels(decoders_FlacDecoder *self,
 				      void *closure) {
+  return Py_BuildValue("i",self->streaminfo.channels);
+}
+
+static PyObject *FlacDecoder_channel_mask(decoders_FlacDecoder *self,
+					  void *closure) {
   return Py_BuildValue("i",self->streaminfo.channels);
 }
 
