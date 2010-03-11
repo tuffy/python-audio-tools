@@ -698,18 +698,10 @@ class FlacAudio(AudioFile):
             if (old_seektable is not None):
                 metadata.seektable = old_seektable
 
-            # #grab "WAVEFORMATEXTENSIBLE_CHANNEL_MASK" from existing file
-            # #(if any)
-            # CHANNEL_MASK = "WAVEFORMATEXTENSIBLE_CHANNEL_MASK"
-            # if (CHANNEL_MASK in old_metadata.vorbis_comment.keys()):
-            #     metadata.vorbis_comment[CHANNEL_MASK] = \
-            #         old_metadata.vorbis_comment[CHANNEL_MASK]
-            # elif (CHANNEL_MASK in
-            #       metadata.vorbis_comment.keys()):
-            #     #if the existing file has no
-            #     #CHANNEL_MASK
-            #     #don't port one from another file
-            #     del(metadata.vorbis_comment[CHANNEL_MASK])
+            #grab "WAVEFORMATEXTENSIBLE_CHANNEL_MASK" from existing file
+            #(if any)
+            if ((self.channels() > 2) or (self.bits_per_sample() > 16)):
+                metadata.vorbis_comment["WAVEFORMATEXTENSIBLE_CHANNEL_MASK"] = [u"0x%.4x" % (int(self.channel_mask()))]
 
             #APPLICATION blocks should stay with the existing file (if any)
             metadata.extra_blocks = [block for block in metadata.extra_blocks
