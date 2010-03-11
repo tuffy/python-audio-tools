@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,InvalidFile,PCMReader,PCMConverter,Con,transfer_data,transfer_framelist_data,subprocess,BIN,cStringIO,os,ignore_sigint,EncodingError,DecodingError
+from audiotools import AudioFile,InvalidFile,PCMReader,PCMConverter,Con,transfer_data,transfer_framelist_data,subprocess,BIN,cStringIO,os,ignore_sigint,EncodingError,DecodingError,ChannelMask
 from __vorbis__ import *
 
 #######################
@@ -92,11 +92,13 @@ class SpeexAudio(VorbisAudio):
         sub = subprocess.Popen([BIN['speexdec'],self.filename,'-'],
                                stdout=subprocess.PIPE,
                                stderr=devnull)
-        return PCMReader(sub.stdout,
-                         sample_rate=self.sample_rate(),
-                         channels=self.channels(),
-                         bits_per_sample=self.bits_per_sample(),
-                         process=sub)
+        return PCMReader(
+            sub.stdout,
+            sample_rate=self.sample_rate(),
+            channels=self.channels(),
+            channel_mask=ChannelMask.from_channels(self.channels()),
+            bits_per_sample=self.bits_per_sample(),
+            process=sub)
 
     @classmethod
     def from_pcm(cls, filename, pcmreader, compression=None):

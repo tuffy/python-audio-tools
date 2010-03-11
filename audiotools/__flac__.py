@@ -1198,16 +1198,10 @@ class OggFlacAudio(FlacAudio):
         vendor_string = old_metadata.vorbis_comment.vendor_string
         comment.vorbis_comment.vendor_string = vendor_string
 
-        #grab "WAVEFORMATEXTENSIBLE_CHANNEL_MASK" from existing file (if any)
-        if ("WAVEFORMATEXTENSIBLE_CHANNEL_MASK" in
-            old_metadata.vorbis_comment.keys()):
-            comment.vorbis_comment["WAVEFORMATEXTENSIBLE_CHANNEL_MASK"] = \
-               old_metadata.vorbis_comment["WAVEFORMATEXTENSIBLE_CHANNEL_MASK"]
-        elif ("WAVEFORMATEXTENSIBLE_CHANNEL_MASK" in
-              comment.vorbis_comment.keys()):
-            #if the existing file has no "WAVEFORMATEXTENSIBLE_CHANNEL_MASK"
-            #don't port one from another file
-            del(comment.vorbis_comment["WAVEFORMATEXTENSIBLE_CHANNEL_MASK"])
+        #grab "WAVEFORMATEXTENSIBLE_CHANNEL_MASK" from existing file
+        #(if any)
+        if ((self.channels() > 2) or (self.bits_per_sample() > 16)):
+                comment.vorbis_comment["WAVEFORMATEXTENSIBLE_CHANNEL_MASK"] = [u"0x%.4x" % (int(self.channel_mask()))]
 
         reader = OggStreamReader(file(self.filename,'rb'))
         new_file = tempfile.TemporaryFile()
@@ -1339,6 +1333,7 @@ class OggFlacAudio(FlacAudio):
                          sample_rate=self.__samplerate__,
                          channels=self.__channels__,
                          bits_per_sample=self.__bitspersample__,
+                         channel_mask=self.channel_mask(),
                          process=sub,
                          signed=True,
                          big_endian=False)
@@ -1359,6 +1354,19 @@ class OggFlacAudio(FlacAudio):
             lax = []
         else:
             lax = ["--lax"]
+
+        if (int(pcmreader.channel_mask) not in
+            (0x0001, #1ch - mono
+             0x0003, #2ch - left, right
+             0x0007, #3ch - left, right, center
+             0x0033, #4ch - left, right, back left, back right
+             0x0603, #4ch - left, right, side left, side right
+             0x0037, #5ch - L, R, C, back left, back right
+             0x0607, #5ch - L, R, C, side left, side right
+             0x003F, #6ch - L, R, C, LFE, back left, back right
+             0x060F #6ch - L, R, C, LFE, side left, side right
+             )):
+            raise UnsupportedChannelMask()
 
         devnull = file(os.devnull,'ab')
 
@@ -1386,7 +1394,12 @@ class OggFlacAudio(FlacAudio):
         devnull.close()
 
         if (sub.wait() == 0):
-            return OggFlacAudio(filename)
+            oggflac = OggFlacAudio(filename)
+            if ((pcmreader.channels > 2) or (pcmreader.bits_per_sample > 16)):
+                metadata = oggflac.get_metadata()
+                metadata.vorbis_comment["WAVEFORMATEXTENSIBLE_CHANNEL_MASK"] = [u"0x%.4x" % (int(pcmreader.channel_mask))]
+                oggflac.set_metadata(metadata)
+            return oggflac
         else:
             raise EncodingError(BIN['flac'])
 

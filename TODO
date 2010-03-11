@@ -598,19 +598,19 @@
 ** Channel Counts and Ordering
 | Format     | Maximum Channels | Ordering   |
 |------------+------------------+------------|
-| AAC        |               48 |            |
-| AIFF       |             2^16 |            |
-| Sun AU     |             2^32 |            |
-| FLAC       |                8 | predefined |
-| M4A        |               48 |            |
-| MP2        |                2 |            |
-| MP3        |                2 |            |
-| Musepack   |                2 |            |
-| Ogg FLAC   |                8 | predefined |
+| AAC        |               48 | as WAVE?   |
+| AIFF       |             2^16 | ?          |
+| Sun AU     |             2^32 | ?          |
+| FLAC       |                8 | as WAVE    |
+| M4A        |               48 | as WAVE?   |
+| MP2        |                2 | N/A        |
+| MP3        |                2 | N/A        |
+| Musepack   |                2 | N/A        |
+| Ogg FLAC   |                8 | as WAVE    |
 | Ogg Vorbis |              255 | predefined |
-| Ogg Speex  |             2^32 |            |
-| RIFF WAVE  |             2^16 |            |
-| WavPack    |               16 |            |
+| Ogg Speex  |             2^32 | N/A        |
+| RIFF WAVE  |             2^16 | predefined |
+| WavPack    |               16 | as WAVE    |
 |------------+------------------+------------|
 ** TODO Fix AudioFile definitions to support channel_mask()
    - [ ] AACAudio
@@ -620,9 +620,9 @@
    - [ ] M4AAudio
    - [X] MP2Audio
    - [X] MP3Audio
-   - [ ] OggFlacAudio
+   - [X] OggFlacAudio
    - [ ] VorbisAudio
-   - [ ] SpeexAudio
+   - [X] SpeexAudio
    - [X] WaveAudio
    - [X] WavPackAudio
 ** TODO Fix to_pcm() methods to support channel_mask
@@ -633,9 +633,9 @@
    - [ ] M4AAudio
    - [X] MP2Audio
    - [X] MP3Audio
-   - [ ] OggFlacAudio
+   - [X] OggFlacAudio
    - [ ] VorbisAudio
-   - [ ] SpeexAudio
+   - [X] SpeexAudio
    - [X] WaveAudio
    - [X] WavPackAudio
 ** TODO Fix from_pcm() classmethods to support channel_mask
@@ -646,9 +646,9 @@
    - [ ] M4AAudio
    - [X] MP2Audio
    - [X] MP3Audio
-   - [ ] OggFlacAudio
+   - [X] OggFlacAudio
    - [ ] VorbisAudio
-   - [ ] SpeexAudio
+   - [X] SpeexAudio
    - [X] WaveAudio
    - [X] WavPackAudio
 ** TODO Fix alternate PCMReaders to support channel_mask
@@ -659,6 +659,20 @@
    - [X] OffsetCDTrackReader
    - [X] PCMCat
 ** TODO Unit test multichannel encoding and channel_mask handling
+*** TODO Ensure all AudioFile types have a working channel_mask() method
+    Even 2 channel audio should yield something valid.
+*** TODO Ensure all to_pcm() methods yield a matching channel_mask attribute
+*** TODO Ensure channel_mask is preserved between from_pcm(to_pcm()) calls
+*** TODO Ensure channel_mask is preserved between to_wave()/from_wave() calls
+*** TODO Ensure UnsupportedChannelMask is raised when necessary
+    This includes calls to from_pcm() and from_wave()
+*** TODO Ensure channels are actually stored in the proper order
+    This is less of an issue for .wav, .flac, .oga or .wv
+    which already store channels in RIFF WAVE order
+    and more of an issue for Ogg Vorbis and other formats that do not.
+*** TODO Add sanity checks to ensure channel mask matches channel count
+    This signifies either a broken audio file or programming bug
+    and should toss the proper exception.
 * TODO Make documentation render consistently
   Some versions of groff place text and page breaks differently.
   This needs to be fixed such that the documentation renders properly

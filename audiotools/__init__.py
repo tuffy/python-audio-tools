@@ -513,6 +513,10 @@ class ChannelMask:
                        if getattr(self,field)],
                       0)
 
+    def __len__(self):
+        return sum([1 for field in self.SPEAKER_TO_MASK.keys()
+                    if getattr(self,field)])
+
     #returns a list of speakers this mask contains
     #in the order in which they should appear in the PCM stream
     def channels(self):
