@@ -637,7 +637,7 @@
    - [ ] VorbisAudio
    - [ ] SpeexAudio
    - [X] WaveAudio
-   - [ ] WavPackAudio
+   - [X] WavPackAudio
 ** TODO Fix from_pcm() classmethods to support channel_mask
    - [ ] AACAudio
    - [ ] AiffAudio
@@ -650,13 +650,14 @@
    - [ ] VorbisAudio
    - [ ] SpeexAudio
    - [X] WaveAudio
-   - [ ] WavPackAudio
+   - [X] WavPackAudio
 ** TODO Fix alternate PCMReaders to support channel_mask
    - [X] BufferedPCMReader
    - [ ] PCMConverter
    - [X] ReplayGainReader
    - [X] CDTrackReader
    - [X] OffsetCDTrackReader
+   - [X] PCMCat
 ** TODO Unit test multichannel encoding and channel_mask handling
 * TODO Make documentation render consistently
   Some versions of groff place text and page breaks differently.

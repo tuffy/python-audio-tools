@@ -330,6 +330,10 @@ class EncodingError(IOError):
     def __str__(self):
         return "error during file encoding"
 
+class UnsupportedChannelMask(EncodingError):
+    def __str__(self):
+        return "unsupported channel mask during file encoding"
+
 class DecodingError(IOError):
     def __str__(self):
         return "error during file decoding"
@@ -745,6 +749,7 @@ class PCMCat(PCMReader):
 
         self.sample_rate = self.first.sample_rate
         self.channels = self.first.channels
+        self.channel_mask = self.first.channel_mask
         self.bits_per_sample = self.first.bits_per_sample
 
     def read(self, bytes):

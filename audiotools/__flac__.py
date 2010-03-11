@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,MetaData,InvalidFile,PCMReader,Con,transfer_data,transfer_framelist_data,subprocess,BIN,BUFFER_SIZE,cStringIO,os,open_files,Image,sys,WaveAudio,ReplayGain,ignore_sigint,sheet_to_unicode,EncodingError,DecodingError,Messenger,BufferedPCMReader,calculate_replay_gain,ChannelMask
+from audiotools import AudioFile,MetaData,InvalidFile,PCMReader,Con,transfer_data,transfer_framelist_data,subprocess,BIN,BUFFER_SIZE,cStringIO,os,open_files,Image,sys,WaveAudio,ReplayGain,ignore_sigint,sheet_to_unicode,EncodingError,UnsupportedChannelMask,DecodingError,Messenger,BufferedPCMReader,calculate_replay_gain,ChannelMask
 from __vorbiscomment__ import *
 from __id3__ import ID3v2Comment
 from __vorbis__ import OggStreamReader,OggStreamWriter
@@ -874,13 +874,17 @@ class FlacAudio(AudioFile):
                                  "min_residual_partition_order":0,
                                  "max_residual_partition_order":6}}[compression]
         if (int(pcmreader.channel_mask) not in
-            (0x0001,0x0003,0x0033,0x0603,
-             0x0007,0x0037,0x0607,0x003F,
-             0x060F)):
-            #FIXME - raise something other than EncodingError
-            #for invalid channel masks
-            print "invalid channel mask %x" % (pcmreader.channel_mask)
-            raise EncodingError("flac")
+            (0x0001, #1ch - mono
+             0x0003, #2ch - left, right
+             0x0007, #3ch - left, right, center
+             0x0033, #4ch - left, right, back left, back right
+             0x0603, #4ch - left, right, side left, side right
+             0x0037, #5ch - L, R, C, back left, back right
+             0x0607, #5ch - L, R, C, side left, side right
+             0x003F, #6ch - L, R, C, LFE, back left, back right
+             0x060F #6ch - L, R, C, LFE, side left, side right
+             )):
+            raise UnsupportedChannelMask()
 
         try:
             encoders.encode_flac(filename,

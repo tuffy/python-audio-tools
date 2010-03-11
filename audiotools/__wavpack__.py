@@ -356,14 +356,42 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
             if (filename.endswith(".wv")):
                 devnull = file(os.devnull,'ab')
 
+                if (pcmreader.channels > 2):
+                    order_map = {"front_left":"FL",
+                                 "front_right":"FR",
+                                 "front_center":"FC",
+                                 "low_frequency":"LFE",
+                                 "back_left":"BL",
+                                 "back_right":"BR",
+                                 "front_left_of_center":"FLC",
+                                 "front_right_of_center":"FRC",
+                                 "back_center":"BC",
+                                 "side_left":"SL",
+                                 "side_right":"SR",
+                                 "top_center":"TC",
+                                 "top_front_left":"TFL",
+                                 "top_front_center":"TFC",
+                                 "top_front_right":"TFR",
+                                 "top_back_left":"TBL",
+                                 "top_back_center":"TBC",
+                                 "top_back_right":"TBR"}
+
+                    channel_order = ["--channel-order=%s" % (",".join([
+                        order_map[channel]
+                        for channel in
+                        ChannelMask(pcmreader.channel_mask).channels()]))]
+                else:
+                    channel_order = []
+
                 sub = subprocess.Popen([BIN['wavpack']] + \
                                            compression_param[compression] + \
                                            ['-q','-y',
                                             "--raw-pcm=%(sr)s,%(bps)s,%(ch)s"%\
                                               {"sr":pcmreader.sample_rate,
                                                "bps":pcmreader.bits_per_sample,
-                                               "ch":pcmreader.channels},
-                                            '-','-o',filename],
+                                               "ch":pcmreader.channels}] + \
+                                           channel_order + \
+                                           ['-','-o',filename],
                                        stdout=devnull,
                                        stderr=devnull,
                                        stdin=subprocess.PIPE,
@@ -443,6 +471,7 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
                 return PCMReader(sub.stdout,
                                  sample_rate=self.sample_rate(),
                                  channels=self.channels(),
+                                 channel_mask=self.channel_mask(),
                                  bits_per_sample=self.bits_per_sample(),
                                  process=sub)
             else:
@@ -456,6 +485,7 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
                 return WaveReader(sub.stdout,
                                   sample_rate=self.sample_rate(),
                                   channels=self.channels(),
+                                  channel_mask=self.channel_mask(),
                                   bits_per_sample=self.bits_per_sample(),
                                   process=sub)
         else:
