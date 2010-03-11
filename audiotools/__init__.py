@@ -591,6 +591,25 @@ class PCMReaderError(PCMReader):
     def close(self):
         raise DecodingError()
 
+class ReorderedPCMReader:
+    def __init__(self, pcmreader, channel_order):
+        self.pcmreader = pcmreader
+        self.sample_rate = pcmreader.sample_rate
+        self.channels = pcmreader.channels
+        self.channel_mask = pcmreader.channel_mask
+        self.bits_per_sample = pcmreader.bits_per_sample
+        self.channel_order = channel_order
+
+    def read(self, bytes):
+        framelist = self.pcmreader.read(bytes)
+
+        return pcm.from_channels([framelist.channel(channel)
+                                  for channel in self.channel_order])
+
+
+    def close(self):
+        self.pcmreader.close()
+
 
 #sends BUFFER_SIZE strings from from_function to to_function
 #until the string is empty

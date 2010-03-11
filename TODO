@@ -621,7 +621,7 @@
    - [X] MP2Audio
    - [X] MP3Audio
    - [X] OggFlacAudio
-   - [ ] VorbisAudio
+   - [X] VorbisAudio
    - [X] SpeexAudio
    - [X] WaveAudio
    - [X] WavPackAudio
@@ -634,7 +634,7 @@
    - [X] MP2Audio
    - [X] MP3Audio
    - [X] OggFlacAudio
-   - [ ] VorbisAudio
+   - [X] VorbisAudio
    - [X] SpeexAudio
    - [X] WaveAudio
    - [X] WavPackAudio
@@ -658,6 +658,10 @@
    - [X] CDTrackReader
    - [X] OffsetCDTrackReader
    - [X] PCMCat
+** TODO Handle undefined channel masks in a sane way
+   In spite of my best efforts, some channel assignments are simply
+   "defined by application" and aren't mapped to anything.
+   These cases need to do something that doesn't break the world.
 ** TODO Unit test multichannel encoding and channel_mask handling
 *** TODO Ensure all AudioFile types have a working channel_mask() method
     Even 2 channel audio should yield something valid.

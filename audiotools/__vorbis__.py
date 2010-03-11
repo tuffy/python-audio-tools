@@ -17,7 +17,7 @@
 #along with this program; if not, write to the Free Software
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-from audiotools import AudioFile,InvalidFile,PCMReader,PCMConverter,Con,transfer_data,transfer_framelist_data,subprocess,BIN,cStringIO,open_files,os,ReplayGain,ignore_sigint,EncodingError,DecodingError
+from audiotools import AudioFile,InvalidFile,PCMReader,ReorderedPCMReader,PCMConverter,Con,transfer_data,transfer_framelist_data,subprocess,BIN,cStringIO,open_files,os,ReplayGain,ignore_sigint,EncodingError,DecodingError,ChannelMask
 from __vorbiscomment__ import *
 import gettext
 
@@ -349,6 +349,47 @@ class VorbisAudio(AudioFile):
     def channels(self):
         return self.__channels__
 
+    def channel_mask(self):
+        if (self.channels() == 1):
+            return ChannelMask.from_fields(
+                front_center=True)
+        elif (self.channels() == 2):
+            return ChannelMask.from_fields(
+                front_left=True,front_right=True)
+        elif (self.channels() == 3):
+            return ChannelMask.from_fields(
+                front_left=True,front_right=True,
+                front_center=True)
+        elif (self.channels() == 4):
+            return ChannelMask.from_fields(
+                front_left=True,front_right=True,
+                back_left=True,back_right=True)
+        elif (self.channels() == 5):
+            return ChannelMask.from_fields(
+                front_left=True,front_right=True,
+                front_center=True,
+                back_left=True,back_right=True)
+        elif (self.channels() == 6):
+            return ChannelMask.from_fields(
+                front_left=True,front_right=True,
+                front_center=True,
+                back_left=True,back_right=True,
+                low_frequency=True)
+        elif (self.channels() == 7):
+            return ChannelMask.from_fields(
+                front_left=True,front_right=True,
+                front_center=True,
+                side_left=True,side_right=True,
+                rear_center=True,low_frequency=True)
+        elif (self.channels() == 8):
+            return ChannelMask.from_fields(
+                front_left=True,front_right=True,
+                side_left=True,side_right=True,
+                back_left=True,back_right=True,
+                front_center=True,low_frequency=True)
+        else:
+            raise ValueError("undefined channel mask")
+
     def total_frames(self):
         pcm_samples = 0
         f = file(self.filename,"rb")
@@ -380,11 +421,38 @@ class VorbisAudio(AudioFile):
                                 self.filename],
                                stdout=subprocess.PIPE)
 
-        return PCMReader(sub.stdout,
-                         sample_rate = self.__sample_rate__,
-                         channels = self.__channels__,
-                         bits_per_sample = self.bits_per_sample(),
-                         process=sub)
+        pcmreader = PCMReader(sub.stdout,
+                              sample_rate = self.sample_rate(),
+                              channels = self.channels(),
+                              channel_mask = self.channel_mask(),
+                              bits_per_sample = self.bits_per_sample(),
+                              process=sub)
+
+        if (self.channels() <= 2):
+            return pcmreader
+        elif (self.channels() <= 8):
+            #these mappings transform Vorbis order into ChannelMask order
+            return ReorderedPCMReader(pcmreader,
+                                      {
+                    #3 - front_left, front_center, front_right
+                    3:[0,2,1],
+
+                    #4 - front_left, front_right, back_left, back_right
+                    4:[0,1,2,3],
+
+                    #5 - FL, FC, FR, BL, BR
+                    5:[0,2,1,3,4],
+
+                    #6 - FL, FC, FR, BL, BR, LFE
+                    6:[0,2,1,5,3,4],
+
+                    #7 - FL, FC, FR, SL, SR, BC, LFE
+                    7:[0,2,1,6,5,3,4],
+
+                    #8 - FL, FC, FR, SL, SR, BL, BR, LFE
+                    8:[0,2,1,7,5,6,3,4]}[self.channels()])
+        else:
+            raise ValueError("unsupported channel count")
 
     @classmethod
     def from_pcm(cls, filename, pcmreader, compression=None):
@@ -413,7 +481,14 @@ class VorbisAudio(AudioFile):
                                stderr=devnull,
                                preexec_fn=ignore_sigint)
 
-        transfer_framelist_data(pcmreader,sub.stdin.write)
+        if (pcmreader.channels <= 2):
+            transfer_framelist_data(pcmreader,sub.stdin.write)
+        elif (pcmreader.channels <= 8):
+            #FIXME - adjust framelists based on pcmreader.channel_mask
+        else:
+          raise UnsupportedChannelMask()
+
+
         try:
             pcmreader.close()
         except DecodingError:
