@@ -503,6 +503,37 @@ class WaveAudio(AudioFile):
         except Con.core.FieldError:
             raise WavException(_(u"Invalid RIFF WAVE file"))
 
+    #takes a Container object parsed from the fmt_chunk.channel_mask
+    #returns a proper ChannelMask object
+    @classmethod
+    def fmt_chunk_to_channel_mask(cls, fmt_channel_mask):
+        channel_mask = ChannelMask(0)
+        attr_map = {'front_left':"front_left",
+                    'front_right':"front_right",
+                    'front_center':"front_center",
+                    'LFE':"low_frequency",
+                    'rear_left':"back_left",
+                    'rear_right':"back_right",
+                    'front_left_of_center':"front_left_of_center",
+                    'front_right_of_center':"front_right_of_center",
+                    'rear_center':"back_center",
+                    'side_left':"side_left",
+                    'side_right':"side_right",
+                    'top_center':"top_center",
+                    'top_front_left':"top_front_left",
+                    'top_front_center':"top_front_center",
+                    'top_front_right':"top_front_right",
+                    'top_back_left':"top_back_left",
+                    'top_back_center':"top_back_center",
+                    'top_back_right':"top_back_right"}
+        for (key,value) in attr_map.items():
+            if (getattr(fmt_channel_mask,key)):
+                setattr(channel_mask,value,True)
+            else:
+                setattr(channel_mask,value,False)
+
+        return channel_mask
+
     def __read_format_chunk__(self, wave_file, chunk_size):
         if (chunk_size < 16):
             raise WavException(_(u"fmt chunk is too short"))
@@ -517,30 +548,7 @@ class WaveAudio(AudioFile):
         self.__bitspersample__ = fmt.bits_per_sample
 
         if (self.__wavtype__ == 0xFFFE):
-            self.__channel_mask__ = ChannelMask(0)
-            attr_map = {'front_left':"front_left",
-                        'front_right':"front_right",
-                        'front_center':"front_center",
-                        'LFE':"low_frequency",
-                        'rear_left':"back_left",
-                        'rear_right':"back_right",
-                        'front_left_of_center':"front_left_of_center",
-                        'front_right_of_center':"front_right_of_center",
-                        'rear_center':"back_center",
-                        'side_left':"side_left",
-                        'side_right':"side_right",
-                        'top_center':"top_center",
-                        'top_front_left':"top_front_left",
-                        'top_front_center':"top_front_center",
-                        'top_front_right':"top_front_right",
-                        'top_back_left':"top_back_left",
-                        'top_back_center':"top_back_center",
-                        'top_back_right':"top_back_right"}
-            for (key,value) in attr_map.items():
-                if (getattr(fmt.channel_mask,key)):
-                    setattr(self.__channel_mask__,value,True)
-                else:
-                    setattr(self.__channel_mask__,value,False)
+            self.__channel_mask__ = WaveAudio.fmt_chunk_to_channel_mask(fmt.channel_mask)
         else:
             if (self.__channels__ == 1):
                 self.__channel_mask__ = ChannelMask.from_fields(

@@ -618,21 +618,21 @@
    - [ ] AuAudio
    - [X] FlacAudio
    - [ ] M4AAudio
-   - [ ] MP2Audio
-   - [ ] MP3Audio
+   - [X] MP2Audio
+   - [X] MP3Audio
    - [ ] OggFlacAudio
    - [ ] VorbisAudio
    - [ ] SpeexAudio
    - [X] WaveAudio
-   - [ ] WavPackAudio
+   - [X] WavPackAudio
 ** TODO Fix to_pcm() methods to support channel_mask
    - [ ] AACAudio
    - [ ] AiffAudio
    - [ ] AuAudio
    - [X] FlacAudio
    - [ ] M4AAudio
-   - [ ] MP2Audio
-   - [ ] MP3Audio
+   - [X] MP2Audio
+   - [X] MP3Audio
    - [ ] OggFlacAudio
    - [ ] VorbisAudio
    - [ ] SpeexAudio
@@ -644,8 +644,8 @@
    - [ ] AuAudio
    - [X] FlacAudio
    - [ ] M4AAudio
-   - [ ] MP2Audio
-   - [ ] MP3Audio
+   - [X] MP2Audio
+   - [X] MP3Audio
    - [ ] OggFlacAudio
    - [ ] VorbisAudio
    - [ ] SpeexAudio
@@ -654,9 +654,9 @@
 ** TODO Fix alternate PCMReaders to support channel_mask
    - [X] BufferedPCMReader
    - [ ] PCMConverter
-   - [ ] ReplayGainReader
-   - [ ] CDTrackReader
-   - [ ] OffsetCDTrackReader
+   - [X] ReplayGainReader
+   - [X] CDTrackReader
+   - [X] OffsetCDTrackReader
 ** TODO Unit test multichannel encoding and channel_mask handling
 * TODO Make documentation render consistently
   Some versions of groff place text and page breaks differently.

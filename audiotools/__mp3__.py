@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,InvalidFile,PCMReader,PCMConverter,Con,transfer_data,transfer_framelist_data,subprocess,BIN,BIG_ENDIAN,ApeTag,ReplayGain,ignore_sigint,open_files,EncodingError,DecodingError,PCMReaderError
+from audiotools import AudioFile,InvalidFile,PCMReader,PCMConverter,Con,transfer_data,transfer_framelist_data,subprocess,BIN,BIG_ENDIAN,ApeTag,ReplayGain,ignore_sigint,open_files,EncodingError,DecodingError,PCMReaderError,ChannelMask
 from __id3__ import *
 import gettext
 
@@ -138,6 +138,7 @@ class MP3Audio(AudioFile):
                              sample_rate=self.sample_rate(),
                              channels=self.channels(),
                              bits_per_sample=16,
+                             channel_mask=ChannelMask.from_channels(self.channels()),
                              process=sub,
                              big_endian=BIG_ENDIAN)
         else:
@@ -156,6 +157,7 @@ class MP3Audio(AudioFile):
                                  sample_rate=self.sample_rate(),
                                  channels=self.channels(),
                                  bits_per_sample=16,
+                                 channel_mask=ChannelMask.from_channels(self.channels()),
                                  process=sub)
             else:
                 import tempfile

@@ -1113,6 +1113,7 @@ class ReplayGainReader:
         self.reader = pcmreader
         self.sample_rate = pcmreader.sample_rate
         self.channels = pcmreader.channels
+        self.channel_mask = pcmreader.channel_mask
         self.bits_per_sample = pcmreader.bits_per_sample
 
         self.replaygain = replaygain
@@ -2115,10 +2116,13 @@ class CDTrackReader(PCMReader):
     #cdda is a cdio.CDDA object
     #track_number is which track this is from the disc, starting from 1
     def __init__(self, cdda, track_number):
-        PCMReader.__init__(self, None,
-                           sample_rate=44100,
-                           channels=2,
-                           bits_per_sample=16)
+        PCMReader.__init__(
+            self, None,
+            sample_rate=44100,
+            channels=2,
+            channel_mask=ChannelMask.from_fields(front_left=True,
+                                                 front_right=True),
+            bits_per_sample=16)
 
         self.cdda = cdda
         self.track_number = track_number
@@ -2174,11 +2178,14 @@ class CDTrackReader(PCMReader):
 class OffsetCDTrackReader(PCMReader):
     def __init__(self, track_number, temp_file,
                  byte_offset, sector_start, sector_end):
-        PCMReader.__init__(self, None,
-                           sample_rate=44100,
-                           channels=2,
-                           bits_per_sample=16,
-                           process=None)
+        PCMReader.__init__(
+            self, None,
+            sample_rate=44100,
+            channels=2,
+            channel_mask=ChannelMask.from_fields(front_left=True,
+                                                 front_right=True),
+            bits_per_sample=16,
+            process=None)
         self.track_number = track_number
         self.rip_log = CDTrackLog()
 

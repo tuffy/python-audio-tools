@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,InvalidFile,Con,subprocess,BIN,open_files,os,ReplayGain,ignore_sigint,transfer_data,transfer_framelist_data,Image,MetaData,sheet_to_unicode,EncodingError,DecodingError,PCMReaderError,PCMReader
+from audiotools import AudioFile,InvalidFile,Con,subprocess,BIN,open_files,os,ReplayGain,ignore_sigint,transfer_data,transfer_framelist_data,Image,MetaData,sheet_to_unicode,EncodingError,DecodingError,PCMReaderError,PCMReader,ChannelMask
 from __wav__ import WaveAudio,WaveReader
 from __ape__ import ApeTaggedAudio,ApeTag,__number_pair__
 import gettext
@@ -51,6 +51,20 @@ def __riff_chunk_ids__(data):
             chunk_size += 1
         data.seek(chunk_size,1)
         yield chunk_header.chunk_id
+
+def __riff_chunks__(data):
+    import cStringIO
+
+    total_size = len(data)
+    data = cStringIO.StringIO(data)
+    header = WaveAudio.WAVE_HEADER.parse_stream(data)
+
+    while (data.tell() < total_size):
+        chunk_header = WaveAudio.CHUNK_HEADER.parse_stream(data)
+        chunk_size = chunk_header.chunk_length
+        if ((chunk_size & 1) == 1):
+            chunk_size += 1
+        yield (chunk_header.chunk_id,data.read(chunk_size))
 
 class SymlinkPCMReader(PCMReader):
     def __init__(self,reader,tempdir,symlink):
@@ -209,6 +223,13 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
     def supports_foreign_riff_chunks(cls):
         return True
 
+    def channel_mask(self):
+        fmt_chunk = WaveAudio.FMT_CHUNK.parse(self.__fmt_chunk__())
+        if (fmt_chunk.compression != 0xFFFE):
+            return ChannelMask.from_channels(self.channels())
+        else:
+            return WaveAudio.fmt_chunk_to_channel_mask(fmt_chunk.channel_mask)
+
     def get_metadata(self):
         metadata = ApeTaggedAudio.get_metadata(self)
         if (metadata is not None):
@@ -221,6 +242,15 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
                 return set(__riff_chunk_ids__(data)) != set(['fmt ','data'])
         else:
             return False
+
+    def __fmt_chunk__(self):
+        for (sub_header,nondecoder,data) in self.sub_frames():
+            if ((sub_header == 1) and nondecoder):
+                for (chunk_id,chunk_data) in __riff_chunks__(data):
+                    if (chunk_id == 'fmt '):
+                        return chunk_data
+        else:
+            return None
 
     def frames(self):
         f = file(self.filename)
