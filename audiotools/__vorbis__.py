@@ -459,7 +459,7 @@ class VorbisAudio(AudioFile):
         if (compression not in cls.COMPRESSION_MODES):
             compression = cls.DEFAULT_COMPRESSION
 
-        if (pcmreader.bits_per_sample not in (8,16)):
+        if (pcmreader.bits_per_sample not in (8,16,24)):
             pcmreader = PCMConverter(
                 pcmreader,
                 sample_rate=pcmreader.sample_rate,
@@ -484,7 +484,58 @@ class VorbisAudio(AudioFile):
         if (pcmreader.channels <= 2):
             transfer_framelist_data(pcmreader,sub.stdin.write)
         elif (pcmreader.channels <= 8):
-            #FIXME - adjust framelists based on pcmreader.channel_mask
+            channel_mask = int(pcmreader.channel_mask)
+            if (channel_mask ==
+                int(ChannelMask.from_fields(front_left=True,
+                                            front_right=True,
+                                            front_center=True))):
+                channel_map = [0,2,1]
+            elif (channel_mask ==
+                int(ChannelMask.from_fields(front_left=True,
+                                            front_right=True,
+                                            back_left=True,
+                                            back_right=True))):
+                channel_map = [0,1,2,3]
+            elif (channel_mask ==
+                int(ChannelMask.from_fields(front_left=True,
+                                            front_right=True,
+                                            front_center=True,
+                                            back_left=True,
+                                            back_right=True))):
+                channel_map = [0,2,1,3,4]
+            elif (channel_mask ==
+                int(ChannelMask.from_fields(front_left=True,
+                                            front_right=True,
+                                            front_center=True,
+                                            back_left=True,
+                                            back_right=True,
+                                            low_frequency=True))):
+                channel_map = [0,2,1,5,3,4]
+            elif (channel_mask ==
+                int(ChannelMask.from_fields(front_left=True,
+                                            front_right=True,
+                                            front_center=True,
+                                            side_left=True,
+                                            side_right=True,
+                                            back_center=True,
+                                            low_frequency=True))):
+                channel_map = [0,2,1,6,5,3,4]
+            elif (channel_mask ==
+                int(ChannelMask.from_fields(front_left=True,
+                                            front_right=True,
+                                            front_center=True,
+                                            side_left=True,
+                                            side_right=True,
+                                            back_left=True,
+                                            back_right=True,
+                                            low_frequency=True))):
+                channel_map = [0,2,1,7,5,6,3,4]
+            else:
+                raise UnsupportedChannelMask()
+
+            print "Using channel map %s" % (channel_map)
+            transfer_framelist_data(ReorderedPCMReader(pcmreader),
+                                    sub.stdin.write)
         else:
           raise UnsupportedChannelMask()
 
@@ -624,3 +675,38 @@ class VorbisAudio(AudioFile):
                 return None
         else:
             return None
+
+class VorbisChannelMask(ChannelMask):
+    def __repr__(self):
+        return "VorbisChannelMask(%s)" % \
+            ",".join(["%s=%s" % (field,getattr(self,field))
+                      for field in self.SPEAKER_TO_MASK.keys()
+                      if (getattr(self,field))])
+
+    def channels(self):
+        count = len(self)
+        if (count == 1):
+            return ["front_center"]
+        elif (count == 2):
+            return ["front_left","front_right"]
+        elif (count == 3):
+            return ["front_left","front_center","front_right"]
+        elif (count == 4):
+            return ["front_left","front_right",
+                    "back_left","back_right"]
+        elif (count == 5):
+            return ["front_left","front_center","front_right",
+                    "back_left","back_right"]
+        elif (count == 6):
+            return ["front_left","front_center","front_right",
+                    "back_left","back_right","low_frequency"]
+        elif (count == 7):
+            return ["front_left","front_center","front_right",
+                    "side_left","side_right","back_center",
+                    "low_frequency"]
+        elif (count == 8):
+            return ["front_left","front_center","front_right",
+                    "side_left","side_right",
+                    "back_left","back_right","low_frequency"]
+        else:
+            return []

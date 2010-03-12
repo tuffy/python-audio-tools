@@ -513,6 +513,12 @@ class ChannelMask:
                        if getattr(self,field)],
                       0)
 
+    def __eq__(self, v):
+        return int(self) == int(v)
+
+    def __ne__(self, v):
+        return int(self) != int(v)
+
     def __len__(self):
         return sum([1 for field in self.SPEAKER_TO_MASK.keys()
                     if getattr(self,field)])
