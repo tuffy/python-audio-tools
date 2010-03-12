@@ -1130,7 +1130,7 @@ class AACAudio(AudioFile):
                 pcmreader,
                 sample_rate=pcmreader.sample_rate,
                 channels=2,
-                channel_mask = ChannelMask.from_channels(2)
+                channel_mask = ChannelMask.from_channels(2),
                 bits_per_sample=pcmreader.bits_per_sample)
 
         #faac requires files to end with .aac for some reason

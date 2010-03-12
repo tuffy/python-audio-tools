@@ -534,6 +534,13 @@ class ChannelMask:
 
         return c
 
+    #returns the index of the given channel name within this mask
+    #for example, given the mask 0xB (fL, fR, LFE, but no fC)
+    #index("low_frequency") will return 3
+    #if the channel is not in this mask, raises ValueError
+    def index(self, channel_name):
+        return self.channels().index(channel_name)
+
     @classmethod
     def from_fields(cls,**fields):
         mask = cls(0)
@@ -899,12 +906,16 @@ def pcm_split(reader, pcm_lengths):
 
 #going from many channels to less channels
 class __channel_remover__:
-    def __init__(self, channel_numbers):
-        self.channel_numbers = channel_numbers
+    def __init__(self, old_channel_mask, new_channel_mask):
+        old_channels = ChannelMask(old_channel_mask).channels()
+        self.channels_to_keep = []
+        for new_channel in ChannelMask(new_channel_mask).channels():
+            if (new_channel in old_channels):
+                self.channels_to_keep.append(old_channels.index(new_channel))
 
     def convert(self, frame_list):
         return pcm.from_channels(
-            [frame_list.channel(i) for i in self.channel_numbers])
+            [frame_list.channel(i) for i in self.channels_to_keep])
 
 class __stereo_to_mono__:
     def __init__(self):
@@ -918,68 +929,105 @@ class __stereo_to_mono__:
 
 #going from many channels to 2
 class __downmixer__:
-    def __init__(self):
-        pass
+    def __init__(self, old_channel_mask):
+        #grab the front_left, front_right, front_center,
+        #back_left and back_right channels from old frame_list, if possible
+        #missing channels are replaced with 0-sample channels
+        #excess channels are dropped entirely
+        #side_left and side_right may be substituted for back_left/right
+        #but back channels take precedence
+
+        old_channel_mask = ChannelMask(old_channel_mask)
+
+        #channels_to_keep is an array of channel offsets
+        #where the index is:
+        #0 - front_left
+        #1 - front_right
+        #2 - front_center
+        #3 - back/side_left
+        #4 - back/side_right
+        #if -1, the channel is blank
+        self.channels_to_keep = []
+        for channel in ["front_left","front_right","front_center"]:
+            if (getattr(old_channel_mask,channel)):
+                self.channels_to_keep.append(old_channel_mask.index(channel))
+            else:
+                self.channels_to_keep.append(-1)
+
+        if (old_channel_mask.back_left):
+            self.channels_to_keep.append(old_channel_mask.index("back_left"))
+        elif (old_channel_mask.side_left):
+            self.channels_to_keep.append(old_channel_mask.index("side_left"))
+        else:
+            self.channels_to_keep.append(-1)
+
+        if (old_channel_mask.back_right):
+            self.channels_to_keep.append(old_channel_mask.index("back_right"))
+        elif (old_channel_mask.side_right):
+            self.channels_to_keep.append(old_channel_mask.index("side_right"))
+        else:
+            self.channels_to_keep.append(-1)
+
+        self.has_empty_channels = (-1 in self.channels_to_keep)
 
     def convert(self, frame_list):
         REAR_GAIN = 0.6
         CENTER_GAIN = 0.7
 
-        if (frame_list.channels in (6,7,8)):
-            Lf = frame_list.channel(0)
-            Rf = frame_list.channel(1)
-            C  = frame_list.channel(2)
-            Lr = frame_list.channel(4)
-            Rr = frame_list.channel(5)
-        elif (frame_list.channels == 5):
-            Lf = frame_list.channel(0)
-            Rf = frame_list.channel(1)
-            C  = frame_list.channel(2)
-            Lr = frame_list.channel(3)
-            Rr = frame_list.channel(4)
-        elif (frame_list.channels == 4):
-            Lf = frame_list.channel(0)
-            Rf = frame_list.channel(1)
-            C  = pcm.from_list([0] * len(Lf),
-                               1,
-                               frame_list.bits_per_sample,
-                               frame_list.signed)
-            Lr = frame_list.channel(2)
-            Rr = frame_list.channel(3)
-        elif (frame_list.channels == 3):
-            Lf = frame_list.channel(0)
-            Rf = frame_list.channel(1)
-            C  = frame_list.channel(2)
-            Lr = Rr = pcm.from_list([0] * len(Lf),
-                                    1,
-                                    frame_list.bits_per_sample,
-                                    frame_list.signed)
-        else:
-            raise ValueError(_(u"Invalid number of channels in frame_list"))
+        if (self.has_empty_channels):
+            empty_channel = pcm.from_list([0] * frame_list.frames,
+                                          1,
+                                          frame_list.bits_per_sample,
+                                          True)
 
-        if ((len(frame_list) > 0) and (isinstance(frame_list[0],int))):
-            converter = int
+        if (self.channels_to_keep[0] != -1):
+            Lf = self_channels_to_keep[0]
         else:
-            converter = lambda(i): i
+            Lf = empty_channel
+
+        if (self.channels_to_keep[1] != -1):
+            Rf = self_channels_to_keep[1]
+        else:
+            Rf = empty_channel
+
+        if (self.channels_to_keep[2] != -1):
+            C = self_channels_to_keep[2]
+        else:
+            C = empty_channel
+
+        if (self.channels_to_keep[3] != -1):
+            Lr = self_channels_to_keep[3]
+        else:
+            Lr = empty_channel
+
+        if (self.channels_to_keep[4] != -1):
+            Rr = self_channels_to_keep[4]
+        else:
+            Rr = empty_channel
 
         mono_rear = [0.7 * (Lr_i + Rr_i) for Lr_i,Rr_i in izip(Lr,Rr)]
 
-        return pcm.from_channels([
-                pcm.from_list([converter(Lf_i +
-                                         (REAR_GAIN * mono_rear_i) +
-                                         (CENTER_GAIN * C_i))
-                               for Lf_i,mono_rear_i,C_i in izip(Lf,mono_rear,C)],
-                              1,
-                              frame_list.bits_per_sample,
-                              True),
+        converter = lambda x: int(round(x))
 
-                pcm.from_list([converter(Rf_i -
-                                         (REAR_GAIN * mono_rear_i) +
-                                         (CENTER_GAIN * C_i))
-                               for Rf_i,mono_rear_i,C_i in izip(Rf,mono_rear,C)],
-                              1,
-                              frame_list.bits_per_sample,
-                              True)])
+        left_channel = pcm.from_list(
+            [converter(Lf_i +
+                       (REAR_GAIN * mono_rear_i) +
+                       (CENTER_GAIN * C_i))
+             for Lf_i,mono_rear_i,C_i in izip(Lf,mono_rear,C)],
+            1,
+            frame_list.bits_per_sample,
+            True)
+
+        right_channel = pcm.from_list(
+            [converter(Rf_i -
+                       (REAR_GAIN * mono_rear_i) +
+                       (CENTER_GAIN * C_i))
+             for Rf_i,mono_rear_i,C_i in izip(Rf,mono_rear,C)],
+            1,
+            frame_list.bits_per_sample,
+            True)
+
+        return pcm.from_channels([left_channel,right_channel])
 
 #going from many channels to 1
 class __downmix_remover__:
