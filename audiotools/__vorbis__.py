@@ -17,7 +17,7 @@
 #along with this program; if not, write to the Free Software
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-from audiotools import AudioFile,InvalidFile,PCMReader,ReorderedPCMReader,PCMConverter,Con,transfer_data,transfer_framelist_data,subprocess,BIN,cStringIO,open_files,os,ReplayGain,ignore_sigint,EncodingError,DecodingError,ChannelMask,UnsupportedChannelMask
+from audiotools import AudioFile,InvalidFile,PCMReader,ReorderedPCMReader,Con,transfer_data,transfer_framelist_data,subprocess,BIN,cStringIO,open_files,os,ReplayGain,ignore_sigint,EncodingError,DecodingError,ChannelMask,UnsupportedChannelMask
 from __vorbiscomment__ import *
 import gettext
 
@@ -445,13 +445,6 @@ class VorbisAudio(AudioFile):
     def from_pcm(cls, filename, pcmreader, compression=None):
         if (compression not in cls.COMPRESSION_MODES):
             compression = cls.DEFAULT_COMPRESSION
-
-        if (pcmreader.bits_per_sample not in (8,16,24)):
-            pcmreader = PCMConverter(
-                pcmreader,
-                sample_rate=pcmreader.sample_rate,
-                channels=pcmreader.channels,
-                bits_per_sample=min(pcmreader.bits_per_sample,16))
 
         devnull = file(os.devnull,'ab')
 

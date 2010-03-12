@@ -992,12 +992,16 @@ class __downmix_remover__:
 
 class PCMConverter:
     def __init__(self, pcmreader,
-                 sample_rate, channels, bits_per_sample):
+                 sample_rate,
+                 channels,
+                 channel_mask,
+                 bits_per_sample):
         import resample
 
         self.sample_rate = sample_rate
         self.channels = channels
         self.bits_per_sample = bits_per_sample
+        self.channel_mask = channel_mask
         self.reader = pcmreader
 
         self.conversions = []
@@ -1065,29 +1069,35 @@ class PCMConverter:
             #on the remaining set of channels
             return {2:{1:__stereo_to_mono__()},
 
-                    3:{2:__downmixer__(),1:__downmix_remover__()},
+                    3:{2:__downmixer__(),
+                       1:__downmix_remover__()},
 
                     4:{3:__channel_remover__([0,1,2]),
-                       2:__downmixer__(),1:__downmix_remover__()},
+                       2:__downmixer__(),
+                       1:__downmix_remover__()},
 
                     5:{4:__channel_remover__([0,1,3,4]),
                        3:__channel_remover__([0,1,2]),
-                       2:__downmixer__(),1:__downmix_remover__()},
+                       2:__downmixer__(),
+                       1:__downmix_remover__()},
 
                     6:{5:__channel_remover__([0,1,2,4,5]),
                        4:__channel_remover__([0,1,4,5]),
                        3:__channel_remover__([0,1,2]),
-                       2:__downmixer__(),1:__downmix_remover__()},
+                       2:__downmixer__(),
+                       1:__downmix_remover__()},
 
                     7:{5:__channel_remover__([0,1,2,4,5]),
                        4:__channel_remover__([0,1,4,5]),
                        3:__channel_remover__([0,1,2]),
-                       2:__downmixer__(),1:__downmix_remover__()},
+                       2:__downmixer__(),
+                       1:__downmix_remover__()},
 
                     8:{5:__channel_remover__([0,1,2,4,5]),
                        4:__channel_remover__([0,1,4,5]),
                        3:__channel_remover__([0,1,2]),
-                       2:__downmixer__(),1:__downmix_remover__()}}[
+                       2:__downmixer__(),
+                       1:__downmix_remover__()}}[
                            self.reader.channels][
                                self.channels].convert(frame_list)
 

@@ -55,8 +55,11 @@ class OSSPlayer:
             #if the bits-per-sample is not 8/16 (which usually means 24)
             #have PCMConverter turn it into 16 for us
             pcm = audiotools.PCMConverter(
-                pcm,pcm.sample_rate,pcm.channels,
-                16)
+                pcm,
+                sample_rate=pcm.sample_rate,
+                channels=pcm.channels,
+                channel_mask=pcm.channel_mask
+                bits_per_sample=16)
             fmt = ossaudiodev.AFMT_S16_LE
 
         self.dev.setparameters(fmt,

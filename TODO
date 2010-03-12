@@ -647,7 +647,7 @@
    - [X] MP2Audio
    - [X] MP3Audio
    - [X] OggFlacAudio
-   - [ ] VorbisAudio
+   - [X] VorbisAudio
    - [X] SpeexAudio
    - [X] WaveAudio
    - [X] WavPackAudio

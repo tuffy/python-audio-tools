@@ -219,6 +219,7 @@ class MP3Audio(AudioFile):
                 sample_rate=[32000,32000,44100,48000][bisect.bisect(
                         [32000,44100,48000],pcmreader.sample_rate)],
                 channels=min(pcmreader.channels,2),
+                channel_mask=ChannelMask.from_channels(min(pcmreader.channels,2)),
                 bits_per_sample=16)
 
 

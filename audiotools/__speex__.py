@@ -115,6 +115,7 @@ class SpeexAudio(VorbisAudio):
                 sample_rate=[8000,8000,16000,32000,44100][bisect.bisect(
                     [8000,16000,32000,44100],pcmreader.sample_rate)],
                 channels=min(pcmreader.channels,2),
+                channel_mask=ChannelMask.from_channels(min(pcmreader.channels,2)),
                 bits_per_sample=min(pcmreader.bits_per_sample,16))
 
 

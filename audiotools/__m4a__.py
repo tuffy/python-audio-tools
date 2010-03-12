@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,InvalidFile,PCMReader,PCMConverter,Con,transfer_data,transfer_framelist_data,subprocess,BIN,cStringIO,MetaData,os,Image,InvalidImage,ignore_sigint,InvalidFormat,open,open_files,EncodingError,DecodingError,WaveAudio,TempWaveReader,PCMReaderError
+from audiotools import AudioFile,InvalidFile,PCMReader,PCMConverter,Con,transfer_data,transfer_framelist_data,subprocess,BIN,cStringIO,MetaData,os,Image,InvalidImage,ignore_sigint,InvalidFormat,open,open_files,EncodingError,DecodingError,WaveAudio,TempWaveReader,PCMReaderError,ChannelMask
 from __m4a_atoms__ import *
 import gettext
 
@@ -364,6 +364,7 @@ class __M4AAudio_faac__(AudioFile):
             pcmreader = PCMConverter(pcmreader,
                                      sample_rate=pcmreader.sample_rate,
                                      channels=2,
+                                     channel_mask=ChannelMask.from_channels(2),
                                      bits_per_sample=pcmreader.bits_per_sample)
 
         #faac requires files to end with .m4a for some reason
@@ -470,6 +471,7 @@ class __M4AAudio_nero__(__M4AAudio_faac__):
                 PCMConverter(pcmreader,
                              sample_rate=96000,
                              channels=pcmreader.channels,
+                             channel_mask=pcmreader.channel_mask,
                              bits_per_sample=pcmreader.bits_per_sample))
         else:
             tempwave = WaveAudio.from_pcm(
@@ -507,6 +509,7 @@ class __M4AAudio_nero__(__M4AAudio_faac__):
                 PCMConverter(wave.to_pcm(),
                              sample_rate=96000,
                              channels=wave.channels(),
+                             channel_mask=wave.channel_mask(),
                              bits_per_sample=wave.bits_per_sample()))
             return cls.__from_wave__(filename,tempwave.filename,compression)
             tempwavefile.close()
@@ -1108,8 +1111,10 @@ class AACAudio(AudioFile):
         if (pcmreader.sample_rate not in AACAudio.SAMPLE_RATES):
             if (pcmreader.channels > 2):
                 channels = 2
+                channel_mask = ChannelMask.from_channels(2)
             else:
                 channels = pcmreader.channels
+                channel_mask = ChannelMask.from_channels(channels)
 
             sample_rates = list(sorted(AACAudio.SAMPLE_RATES))
 
@@ -1118,12 +1123,15 @@ class AACAudio(AudioFile):
                 sample_rate=([sample_rates[0]] + sample_rates)[
                     bisect.bisect(sample_rates,pcmreader.sample_rate)],
                 channels=channels,
+                channel_mask=channel_mask,
                 bits_per_sample=pcmreader.bits_per_sample)
         elif (pcmreader.channels > 2):
-            pcmreader = PCMConverter(pcmreader,
-                                     sample_rate=pcmreader.sample_rate,
-                                     channels=2,
-                                     bits_per_sample=pcmreader.bits_per_sample)
+            pcmreader = PCMConverter(
+                pcmreader,
+                sample_rate=pcmreader.sample_rate,
+                channels=2,
+                channel_mask = ChannelMask.from_channels(2)
+                bits_per_sample=pcmreader.bits_per_sample)
 
         #faac requires files to end with .aac for some reason
         if (not filename.endswith(".aac")):
