@@ -1030,9 +1030,9 @@ class __downmixer__:
         return pcm.from_channels([left_channel,right_channel])
 
 #going from many channels to 1
-class __downmix_remover__:
-    def __init__(self):
-        self.downmix = __downmixer__()
+class __downmix_to_mono__:
+    def __init__(self, old_channel_mask):
+        self.downmix = __downmixer__(old_channel_mask)
         self.mono = __stereo_to_mono__()
 
     def convert(self, frame_list):
@@ -1054,7 +1054,16 @@ class PCMConverter:
 
         self.conversions = []
         if (self.reader.channels != self.channels):
-            self.conversions.append(self.convert_channels)
+            if (self.channels == 1):
+                self.conversions.append(
+                    __downmix_to_mono__(pcmreader.channel_mask).convert)
+            elif (self.channels == 2):
+                self.conversions.append(
+                    __downmixer__(pcmreader.channel_mask).convert)
+            else:
+                self.conversions.append(
+                    __channel_remover__(pcmreader.channel_mask,
+                                        channel_mask).convert)
 
         if (self.reader.sample_rate != self.sample_rate):
             self.resampler = resample.Resampler(
