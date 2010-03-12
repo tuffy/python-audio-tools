@@ -17,7 +17,7 @@
 #along with this program; if not, write to the Free Software
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-from audiotools import AudioFile,InvalidFile,PCMReader,ReorderedPCMReader,PCMConverter,Con,transfer_data,transfer_framelist_data,subprocess,BIN,cStringIO,open_files,os,ReplayGain,ignore_sigint,EncodingError,DecodingError,ChannelMask
+from audiotools import AudioFile,InvalidFile,PCMReader,ReorderedPCMReader,PCMConverter,Con,transfer_data,transfer_framelist_data,subprocess,BIN,cStringIO,open_files,os,ReplayGain,ignore_sigint,EncodingError,DecodingError,ChannelMask,UnsupportedChannelMask
 from __vorbiscomment__ import *
 import gettext
 
@@ -432,25 +432,12 @@ class VorbisAudio(AudioFile):
             return pcmreader
         elif (self.channels() <= 8):
             #these mappings transform Vorbis order into ChannelMask order
-            return ReorderedPCMReader(pcmreader,
-                                      {
-                    #3 - front_left, front_center, front_right
-                    3:[0,2,1],
-
-                    #4 - front_left, front_right, back_left, back_right
-                    4:[0,1,2,3],
-
-                    #5 - FL, FC, FR, BL, BR
-                    5:[0,2,1,3,4],
-
-                    #6 - FL, FC, FR, BL, BR, LFE
-                    6:[0,2,1,5,3,4],
-
-                    #7 - FL, FC, FR, SL, SR, BC, LFE
-                    7:[0,2,1,6,5,3,4],
-
-                    #8 - FL, FC, FR, SL, SR, BL, BR, LFE
-                    8:[0,2,1,7,5,6,3,4]}[self.channels()])
+            standard_channel_mask = self.channel_mask()
+            vorbis_channel_mask = VorbisChannelMask(self.channel_mask())
+            return ReorderedPCMReader(
+                pcmreader,
+                [standard_channel_mask.channels().index(channel) for channel in
+                 vorbis_channel_mask.channels()])
         else:
             raise ValueError("unsupported channel count")
 
@@ -484,58 +471,24 @@ class VorbisAudio(AudioFile):
         if (pcmreader.channels <= 2):
             transfer_framelist_data(pcmreader,sub.stdin.write)
         elif (pcmreader.channels <= 8):
-            channel_mask = int(pcmreader.channel_mask)
-            if (channel_mask ==
-                int(ChannelMask.from_fields(front_left=True,
-                                            front_right=True,
-                                            front_center=True))):
-                channel_map = [0,2,1]
-            elif (channel_mask ==
-                int(ChannelMask.from_fields(front_left=True,
-                                            front_right=True,
-                                            back_left=True,
-                                            back_right=True))):
-                channel_map = [0,1,2,3]
-            elif (channel_mask ==
-                int(ChannelMask.from_fields(front_left=True,
-                                            front_right=True,
-                                            front_center=True,
-                                            back_left=True,
-                                            back_right=True))):
-                channel_map = [0,2,1,3,4]
-            elif (channel_mask ==
-                int(ChannelMask.from_fields(front_left=True,
-                                            front_right=True,
-                                            front_center=True,
-                                            back_left=True,
-                                            back_right=True,
-                                            low_frequency=True))):
-                channel_map = [0,2,1,5,3,4]
-            elif (channel_mask ==
-                int(ChannelMask.from_fields(front_left=True,
-                                            front_right=True,
-                                            front_center=True,
-                                            side_left=True,
-                                            side_right=True,
-                                            back_center=True,
-                                            low_frequency=True))):
-                channel_map = [0,2,1,6,5,3,4]
-            elif (channel_mask ==
-                int(ChannelMask.from_fields(front_left=True,
-                                            front_right=True,
-                                            front_center=True,
-                                            side_left=True,
-                                            side_right=True,
-                                            back_left=True,
-                                            back_right=True,
-                                            low_frequency=True))):
-                channel_map = [0,2,1,7,5,6,3,4]
+            if (int(pcmreader.channel_mask) in
+                (0x7,    #FR, FC, FL
+                 0x33,   #FR, FL, BR, BL
+                 0x37,   #FR, FC, FL, BL, BR
+                 0x3f,   #FR, FC, FL, BL, BR, LFE
+                 0x70f,  #FL, FC, FR, SL, SR, BC, LFE
+                 0x63f)  #FL, FC, FR, SL, SR, BL, BR, LFE
+                ):
+                standard_channel_mask = ChannelMask(pcmreader.channel_mask)
+                vorbis_channel_mask = VorbisChannelMask(standard_channel_mask)
             else:
                 raise UnsupportedChannelMask()
 
-            print "Using channel map %s" % (channel_map)
-            transfer_framelist_data(ReorderedPCMReader(pcmreader),
-                                    sub.stdin.write)
+            transfer_framelist_data(ReorderedPCMReader(
+                        pcmreader,
+                        [standard_channel_mask.channels().index(channel)
+                         for channel in vorbis_channel_mask.channels()]),
+                                        sub.stdin.write)
         else:
           raise UnsupportedChannelMask()
 
