@@ -10077,6 +10077,43 @@ class TestMultiChannel(unittest.TestCase):
             target_file.close()
             wav_file.close()
 
+    def __test_assignment__(self, audio_class, tone_tracks, channel_mask):
+        from audiotools import replaygain as replaygain
+
+        self.assertEqual(len(tone_tracks),len(channel_mask))
+        temp_file = tempfile.NamedTemporaryFile(suffix="." + audio_class.SUFFIX)
+        gain_calcs = [replaygain.ReplayGain(44100) for t in tone_tracks]
+        try:
+            temp_track = audio_class.from_pcm(
+                temp_file.name,
+                PCM_Reader_Multiplexer([t.to_pcm() for t in tone_tracks],
+                                       channel_mask))
+
+            pcm = temp_track.to_pcm()
+            frame = pcm.read(audiotools.BUFFER_SIZE)
+            while (len(frame) > 0):
+                for c in xrange(frame.channels):
+                    gain_calcs[c].update(frame.channel(c))
+                frame = pcm.read(audiotools.BUFFER_SIZE)
+            pcm.close()
+
+            self.assertEqual(set([True]),
+                             set([prev.replay_gain().track_gain >
+                                  curr.replay_gain().track_gain
+                                  for (prev,curr) in
+                                  zip(tone_tracks,tone_tracks[1:])]))
+
+            gain_values = [gain_calc.title_gain()[0]
+                           for gain_calc in gain_calcs]
+
+            self.assertEqual(set([True]),
+                             set([prev > curr for (prev,curr) in
+                                  zip(gain_values,gain_values[1:])]),
+                             "channel mismatch for mask %s with format %s (gain values %s)" % (channel_mask,audio_class.NAME,gain_values))
+
+        finally:
+            temp_file.close()
+
     @TEST_PCM
     def test_channel_mask(self):
         from_fields = audiotools.ChannelMask.from_fields
@@ -10178,13 +10215,13 @@ class TestMultiChannel(unittest.TestCase):
             for target_audio_class in (self.wav_channel_masks +
                                        self.vorbis_channel_masks):
                 for mask in [from_fields(front_left=True,front_right=True,
-                                     front_center=True,
-                                     side_left=True,side_right=True,
-                                     back_center=True,low_frequency=True),
-                         from_fields(front_left=True,front_right=True,
-                                     side_left=True,side_right=True,
-                                     back_left=True,back_right=True,
-                                     front_center=True,low_frequency=True)]:
+                                         front_center=True,
+                                         side_left=True,side_right=True,
+                                         back_center=True,low_frequency=True),
+                             from_fields(front_left=True,front_right=True,
+                                         side_left=True,side_right=True,
+                                         back_left=True,back_right=True,
+                                         front_center=True,low_frequency=True)]:
                     self.__test_pcm_conversion__(source_audio_class,
                                                  target_audio_class,
                                                  mask)
@@ -10203,6 +10240,67 @@ class TestMultiChannel(unittest.TestCase):
                     self.__test_pcm_conversion__(source_audio_class,
                                                  target_audio_class,
                                                  mask)
+
+    @TEST_PCM
+    def test_channel_assignment(self):
+        from_fields = audiotools.ChannelMask.from_fields
+
+        TONE_TRACKS = map(audiotools.open,
+                          ["tone%d.flac" % (i + 1) for i in xrange(8)])
+
+        for audio_class in audiotools.AVAILABLE_TYPES:
+            self.__test_assignment__(audio_class,
+                                     TONE_TRACKS[0:2],
+                                     from_fields(front_left=True,
+                                                 front_right=True))
+
+        for audio_class in (self.wav_channel_masks +
+                            self.flac_channel_masks +
+                            self.vorbis_channel_masks):
+            for mask in [from_fields(front_left=True,
+                                     front_right=True,
+                                     front_center=True),
+                         from_fields(front_right=True,
+                                     front_left=True,
+                                     back_right=True,
+                                     back_left=True),
+                         from_fields(front_right=True,
+                                     front_center=True,
+                                     front_left=True,
+                                     back_right=True,
+                                     back_left=True),
+                         from_fields(front_right=True,
+                                     front_center=True,
+                                     low_frequency=True,
+                                     front_left=True,
+                                     back_right=True,
+                                     back_left=True)]:
+                self.__test_assignment__(audio_class,
+                                         TONE_TRACKS[0:len(mask)],
+                                         mask)
+        for audio_class in (self.wav_channel_masks +
+                            self.vorbis_channel_masks):
+            for mask in [from_fields(front_left=True,front_right=True,
+                                     front_center=True,
+                                     side_left=True,side_right=True,
+                                     back_center=True,low_frequency=True),
+                         from_fields(front_left=True,front_right=True,
+                                     side_left=True,side_right=True,
+                                     back_left=True,back_right=True,
+                                     front_center=True,low_frequency=True)]:
+                self.__test_assignment__(audio_class,
+                                         TONE_TRACKS[0:len(mask)],
+                                         mask)
+
+        for audio_class in self.wav_channel_masks:
+            for mask in [from_fields(front_left=True,front_right=True,
+                                     side_left=True,side_right=True,
+                                     back_left=True,back_right=True,
+                                     front_center=True,back_center=True)]:
+                self.__test_assignment__(audio_class,
+                                         TONE_TRACKS[0:len(mask)],
+                                         mask)
+
 ############
 #END TESTS
 ############

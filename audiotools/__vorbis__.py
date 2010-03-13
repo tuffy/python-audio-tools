@@ -436,8 +436,8 @@ class VorbisAudio(AudioFile):
             vorbis_channel_mask = VorbisChannelMask(self.channel_mask())
             return ReorderedPCMReader(
                 pcmreader,
-                [standard_channel_mask.channels().index(channel) for channel in
-                 vorbis_channel_mask.channels()])
+                [vorbis_channel_mask.channels().index(channel) for channel in
+                 standard_channel_mask.channels()])
         else:
             raise ValueError("unsupported channel count")
 

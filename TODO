@@ -662,21 +662,21 @@
    In spite of my best efforts, some channel assignments are simply
    "defined by application" and aren't mapped to anything.
    These cases need to do something that doesn't break the world.
+** TODO Add sanity checks to ensure channel mask matches channel count
+    This signifies either a broken audio file or programming bug
+    and should toss the proper exception.
 ** TODO Unit test multichannel encoding and channel_mask handling
 *** DONE Ensure all AudioFile types have a working channel_mask() method
     Even 2 channel audio should yield something valid.
 *** DONE Ensure all to_pcm() methods yield a matching channel_mask attribute
 *** DONE Ensure channel_mask is preserved between from_pcm(to_pcm()) calls
 *** DONE Ensure channel_mask is preserved between to_wave()/from_wave() calls
-*** TODO Ensure UnsupportedChannelMask is raised when necessary
-    This includes calls to from_pcm() and from_wave()
-*** TODO Ensure channels are actually stored in the proper order
+*** DONE Ensure channels are actually stored in the proper order
     This is less of an issue for .wav, .flac, .oga or .wv
     which already store channels in RIFF WAVE order
     and more of an issue for Ogg Vorbis and other formats that do not.
-*** TODO Add sanity checks to ensure channel mask matches channel count
-    This signifies either a broken audio file or programming bug
-    and should toss the proper exception.
+*** TODO Ensure UnsupportedChannelMask is raised when necessary
+    This includes calls to from_pcm() and from_wave()
 * TODO Make documentation render consistently
   Some versions of groff place text and page breaks differently.
   This needs to be fixed such that the documentation renders properly
