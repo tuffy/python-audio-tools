@@ -93,6 +93,11 @@ if (__name__ == '__main__'):
                              "top_back_left":_(u"Top Back Left"),
                              "top_back_center":_(u"Top Back Center"),
                              "top_back_right":_(u"Top Back Right")}
-            for (i,channel) in enumerate(file.channel_mask().channels()):
-                msg.output(_(u"channel %(channel_number)d - %(channel_name)s") % {"channel_number":i + 1,"channel_name":channel_names[channel]})
+
+            if (file.channel_mask().defined()):
+                for (i,channel) in enumerate(file.channel_mask().channels()):
+                    msg.output(_(u"channel %(channel_number)d - %(channel_name)s") % {"channel_number":i + 1,"channel_name":channel_names[channel]})
+            else:
+                for i in xrange(file.channels()):
+                    msg.output(_(u"channel %(channel_number)d - undefined") % {"channel_number":i + 1})
 

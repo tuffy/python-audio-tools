@@ -34,7 +34,7 @@ import time
 gettext.install("audiotools",unicode=True)
 
 (METADATA,PCM,FRAMELIST,EXECUTABLE,CUESHEET,IMAGE,FLAC,CUSTOM) = range(8)
-CASES = set([METADATA,PCM,FRAMELIST,EXECUTABLE,CUESHEET,IMAGE,FLAC])
+CASES = set([CUSTOM])
 
 def nothing(self):
     pass
@@ -108,10 +108,15 @@ def Combinations(items, n):
 class BLANK_PCM_Reader:
     #length is the total length of this PCM stream, in seconds
     def __init__(self, length,
-                 sample_rate=44100,channels=2,bits_per_sample=16):
+                 sample_rate=44100,channels=2,bits_per_sample=16,
+                 channel_mask=None):
         self.length = length
         self.sample_rate = sample_rate
         self.channels = channels
+        if (channel_mask is None):
+            self.channel_mask = audiotools.ChannelMask.from_channels(channels)
+        else:
+            self.channel_mask = channel_mask
         self.bits_per_sample = bits_per_sample
 
         self.total_frames = length * sample_rate
@@ -2640,6 +2645,27 @@ uhhDdCiCwqg2Gw3lphgaGhoamR+mptKYNT/F3JFOFCQvKfgAwA==""".decode('base64').decode(
                 audiotools.config.set("Binaries",bin,setting)
             wave_temp_file.close()
             temp_track_file.close()
+
+    @TEST_CUSTOM
+    def test_channel_mask(self):
+        #test basic channel_mask() support
+        #more complex testing is handled in its own class
+
+        temp_file = tempfile.NamedTemporaryFile(suffix="." + self.audio_class.SUFFIX)
+        try:
+            temp_track = self.audio_class.from_pcm(temp_file.name,
+                                                   BLANK_PCM_Reader(3))
+            self.assertEqual(temp_track.channel_mask(),
+                             audiotools.ChannelMask.from_fields(
+                    front_left=True,front_right=True))
+
+            pcm = temp_track.to_pcm()
+            self.assertEqual(int(temp_track.channel_mask()),
+                             int(pcm.channel_mask))
+            audiotools.transfer_framelist_data(pcm,lambda x: x)
+            pcm.close()
+        finally:
+            temp_file.close()
 
 class TestForeignWaveChunks:
     @TEST_METADATA

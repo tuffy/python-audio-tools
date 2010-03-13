@@ -578,7 +578,7 @@ class WaveAudio(AudioFile):
                     back_left=True,back_right=True,
                     front_center=True,low_frequency=True)
             else:
-                raise WavException(_(u"Unsupported number of channels in non-WAVEFORMATEXTENSIBLE file"))
+                self.__channel_mask__ = ChannelMask(0)
 
         if ((self.__wavtype__ != 1) and (self.__wavtype__ != 0xFFFE)):
             raise WavException(_(u"No support for compressed WAVE files"))

@@ -873,6 +873,7 @@ class FlacAudio(AudioFile):
                                  "exhaustive_model_search":True,
                                  "min_residual_partition_order":0,
                                  "max_residual_partition_order":6}}[compression]
+
         if (int(pcmreader.channel_mask) not in
             (0x0001, #1ch - mono
              0x0003, #2ch - left, right
@@ -882,7 +883,7 @@ class FlacAudio(AudioFile):
              0x0037, #5ch - L, R, C, back left, back right
              0x0607, #5ch - L, R, C, side left, side right
              0x003F, #6ch - L, R, C, LFE, back left, back right
-             0x060F #6ch - L, R, C, LFE, side left, side right
+             0x060F  #6ch - L, R, C, LFE, side left, side right
              )):
             raise UnsupportedChannelMask()
 

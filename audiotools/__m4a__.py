@@ -1096,9 +1096,10 @@ class AACAudio(AudioFile):
                                stdout=subprocess.PIPE,
                                stderr=devnull)
         return PCMReader(sub.stdout,
-                         sample_rate=self.__sample_rate__,
-                         channels=self.__channels__,
-                         bits_per_sample=self.__bits_per_sample__,
+                         sample_rate=self.sample_rate(),
+                         channels=self.channels(),
+                         channel_mask=self.channel_mask(),
+                         bits_per_sample=self.bits_per_sample(),
                          process=sub)
 
     @classmethod

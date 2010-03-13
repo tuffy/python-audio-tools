@@ -625,12 +625,12 @@
    - [X] SpeexAudio
    - [X] WaveAudio
    - [X] WavPackAudio
-** TODO Fix to_pcm() methods to support channel_mask
-   - [ ] AACAudio
-   - [ ] AiffAudio
-   - [ ] AuAudio
+** DONE Fix to_pcm() methods to support channel_mask
+   - [X] AACAudio
+   - [X] AiffAudio
+   - [X] AuAudio
    - [X] FlacAudio
-   - [ ] M4AAudio
+   - [X] M4AAudio
    - [X] MP2Audio
    - [X] MP3Audio
    - [X] OggFlacAudio
@@ -663,7 +663,7 @@
    "defined by application" and aren't mapped to anything.
    These cases need to do something that doesn't break the world.
 ** TODO Unit test multichannel encoding and channel_mask handling
-*** TODO Ensure all AudioFile types have a working channel_mask() method
+*** DONE Ensure all AudioFile types have a working channel_mask() method
     Even 2 channel audio should yield something valid.
 *** TODO Ensure all to_pcm() methods yield a matching channel_mask attribute
 *** TODO Ensure channel_mask is preserved between from_pcm(to_pcm()) calls

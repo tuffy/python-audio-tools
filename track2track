@@ -90,6 +90,11 @@ def convert_file(destination_class, destination_filename,
         if (existing_cuesheet is None):
             destination_audiofile.set_cuesheet(source_audiofile.get_cuesheet())
 
+    except audiotools.UnsupportedChannelMask:
+        messenger.error(_(u"Unable to write \"%(target_filename)s\" with channel assignment from \"%(source_filename)s\"") % \
+                            {"target_filename":messenger.filename(destination_filename),
+                             "source_filename":messenger.filename(source_audiofile.filename)})
+        sys.exit(1)
     except audiotools.EncodingError:
         messenger.error(_(u"Unable to write \"%s\"") % \
                             (messenger.filename(destination_filename)))

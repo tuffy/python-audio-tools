@@ -470,6 +470,11 @@ def filename_to_type(path):
 #Their PCMReaders will be expected to reorder channels
 #and set a ChannelMask matching this convention.
 #And, their from_pcm() functions will be expected to reverse the process.
+#
+#A ChannelMask of 0 is "undefined",
+#which means that channels aren't assigned to *any* speaker.
+#This is an ugly last resort for handling formats
+#where multi-channel assignments aren't properly defined.
 class ChannelMask:
     SPEAKER_TO_MASK = {"front_left":0x1,
                        "front_right":0x2,
@@ -522,6 +527,14 @@ class ChannelMask:
     def __len__(self):
         return sum([1 for field in self.SPEAKER_TO_MASK.keys()
                     if getattr(self,field)])
+
+    #returns True if this ChannelMask is defined, False if not
+    def defined(self):
+        return int(self) != 0
+
+    #returns True if this ChannelMask is undefined, False if not
+    def undefined(self):
+        return int(self) == 0
 
     #returns a list of speakers this mask contains
     #in the order in which they should appear in the PCM stream

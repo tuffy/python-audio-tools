@@ -88,6 +88,7 @@ class AuAudio(AudioFile):
         return PCMReader(f,
                          sample_rate=self.sample_rate(),
                          channels=self.channels(),
+                         channel_mask=self.channel_mask(),
                          bits_per_sample=self.bits_per_sample(),
                          signed=True,
                          big_endian=True)
