@@ -515,13 +515,13 @@
    I don't think I've ever seen these used on actual audio data
    that isn't artificial and hasn't been processed specifically for its use.
    As with Rice2, it's something that may get added later.
-** TODO Generate SEEKTABLE blocks
-** TODO Remove external MD5 dependency
-** TODO Handle multi-channel PCM data correctly
+** DONE Handle multi-channel PCM data correctly
    Anything higher than 2 channels needs to set a channel mask
    and the vorbis comment to the proper value.
    I expect this will be a long-term project
    coinciding with re-engineering the to_pcm()/from_pcm() methods.
+** TODO Generate SEEKTABLE blocks
+** TODO Remove external MD5 dependency
 * TODO Convert to_pcm()/from_pcm() to FrameList-based I/O
   Passing specifically-sized blobs of binary data between conversion
   routines worked well when those routines are little more than
@@ -651,9 +651,9 @@
    - [X] SpeexAudio
    - [X] WaveAudio
    - [X] WavPackAudio
-** TODO Fix alternate PCMReaders to support channel_mask
+** DONE Fix alternate PCMReaders to support channel_mask
    - [X] BufferedPCMReader
-   - [ ] PCMConverter
+   - [X] PCMConverter
    - [X] ReplayGainReader
    - [X] CDTrackReader
    - [X] OffsetCDTrackReader
