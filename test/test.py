@@ -34,7 +34,7 @@ import time
 gettext.install("audiotools",unicode=True)
 
 (METADATA,PCM,FRAMELIST,EXECUTABLE,CUESHEET,IMAGE,FLAC,CUSTOM) = range(8)
-CASES = set([CUSTOM])
+CASES = set([METADATA,PCM,FRAMELIST,EXECUTABLE,CUESHEET,IMAGE,FLAC])
 
 def nothing(self):
     pass
@@ -9990,6 +9990,219 @@ class TestReplayGain(unittest.TestCase):
             track_file2.close()
             track_file3.close()
 
+#takes several 1-channel PCMReaders and combines them into a single PCMReader
+class PCM_Reader_Multiplexer:
+    def __init__(self, pcm_readers, channel_mask):
+        self.pcm_readers = pcm_readers
+        self.buffers = map(audiotools.BufferedPCMReader,pcm_readers)
+        self.sample_rate = self.pcm_readers[0].sample_rate
+        self.channels = len(pcm_readers)
+        self.channel_mask = channel_mask
+        self.bits_per_sample = self.pcm_readers[0].bits_per_sample
+
+    def read(self, bytes):
+        return audiotools.pcm.from_channels(
+            [reader.read(bytes) for reader in self.buffers])
+
+    def close(self):
+        for reader in self.pcm_readers:
+            reader.close()
+
+class TestMultiChannel(unittest.TestCase):
+    def setUp(self):
+        #these support the full range of ChannelMasks
+        self.wav_channel_masks = [audiotools.WaveAudio,
+                                  audiotools.WavPackAudio]
+
+        #these support a subset of ChannelMasks up to 6 channels
+        self.flac_channel_masks = [audiotools.FlacAudio,
+                                   audiotools.OggFlacAudio]
+
+        #these support a reordered subset of ChannelMasks up to 8 channels
+        self.vorbis_channel_masks = [audiotools.VorbisAudio]
+
+    def __test_mask_blank__(self, audio_class, channel_mask):
+        temp_file = tempfile.NamedTemporaryFile(suffix="." + audio_class.SUFFIX)
+        try:
+            temp_track = audio_class.from_pcm(
+                temp_file.name,
+                PCM_Reader_Multiplexer(
+                    [BLANK_PCM_Reader(2,channels=1)
+                     for i in xrange(len(channel_mask))],
+                    channel_mask))
+            self.assertEqual(temp_track.channel_mask(),channel_mask)
+
+            pcm = temp_track.to_pcm()
+            self.assertEqual(int(pcm.channel_mask),int(channel_mask))
+            audiotools.transfer_framelist_data(pcm,lambda x: x)
+            pcm.close()
+        finally:
+            temp_file.close()
+
+    def __test_pcm_conversion__(self,
+                                source_audio_class,
+                                target_audio_class,
+                                channel_mask):
+        source_file = tempfile.NamedTemporaryFile(suffix="." + source_audio_class.SUFFIX)
+        target_file = tempfile.NamedTemporaryFile(suffix="." + target_audio_class.SUFFIX)
+        wav_file = tempfile.NamedTemporaryFile(suffix=".wav")
+        try:
+            source_track = source_audio_class.from_pcm(
+                source_file.name,
+                PCM_Reader_Multiplexer(
+                    [BLANK_PCM_Reader(2,channels=1)
+                     for i in xrange(len(channel_mask))],
+                    channel_mask))
+            self.assertEqual(source_track.channel_mask(),channel_mask)
+
+            target_track = target_audio_class.from_pcm(
+                target_file.name,
+                source_track.to_pcm())
+
+            self.assertEqual(target_track.channel_mask(),channel_mask)
+            self.assertEqual(source_track.channel_mask(),
+                             target_track.channel_mask())
+
+            source_track.to_wave(wav_file.name)
+            wav = audiotools.open(wav_file.name)
+            self.assertEqual(source_track.channel_mask(),
+                             wav.channel_mask())
+            target_track = target_audio_class.from_wave(
+                target_file.name,wav_file.name)
+            self.assertEqual(target_track.channel_mask(),channel_mask)
+            self.assertEqual(source_track.channel_mask(),
+                             target_track.channel_mask())
+        finally:
+            source_file.close()
+            target_file.close()
+            wav_file.close()
+
+    @TEST_PCM
+    def test_channel_mask(self):
+        from_fields = audiotools.ChannelMask.from_fields
+
+        for audio_class in (self.wav_channel_masks +
+                            self.flac_channel_masks +
+                            self.vorbis_channel_masks):
+            for mask in [from_fields(front_center=True),
+                         from_fields(front_left=True,
+                                     front_right=True),
+                         from_fields(front_left=True,
+                                     front_right=True,
+                                     front_center=True),
+                         from_fields(front_right=True,
+                                     front_left=True,
+                                     back_right=True,
+                                     back_left=True),
+                         from_fields(front_right=True,
+                                     front_center=True,
+                                     front_left=True,
+                                     back_right=True,
+                                     back_left=True),
+                         from_fields(front_right=True,
+                                     front_center=True,
+                                     low_frequency=True,
+                                     front_left=True,
+                                     back_right=True,
+                                     back_left=True)]:
+                self.__test_mask_blank__(audio_class,mask)
+
+        for audio_class in (self.wav_channel_masks +
+                            self.vorbis_channel_masks):
+            for mask in [from_fields(front_left=True,front_right=True,
+                                     front_center=True,
+                                     side_left=True,side_right=True,
+                                     back_center=True,low_frequency=True),
+                         from_fields(front_left=True,front_right=True,
+                                     side_left=True,side_right=True,
+                                     back_left=True,back_right=True,
+                                     front_center=True,low_frequency=True)]:
+                self.__test_mask_blank__(audio_class,mask)
+
+        for audio_class in self.wav_channel_masks:
+            for mask in [from_fields(front_left=True,front_right=True,
+                                     side_left=True,side_right=True,
+                                     back_left=True,back_right=True,
+                                     front_center=True,back_center=True,
+                                     low_frequency=True),
+                         from_fields(front_left=True,front_right=True,
+                                     side_left=True,side_right=True,
+                                     back_left=True,back_right=True,
+                                     front_center=True,back_center=True)]:
+                self.__test_mask_blank__(audio_class,mask)
+
+    @TEST_PCM
+    def test_channel_mask_conversion(self):
+        from_fields = audiotools.ChannelMask.from_fields
+
+        for source_audio_class in audiotools.AVAILABLE_TYPES:
+            for target_audio_class in audiotools.AVAILABLE_TYPES:
+                self.__test_pcm_conversion__(source_audio_class,
+                                             target_audio_class,
+                                             from_fields(front_left=True,
+                                                         front_right=True))
+
+        for source_audio_class in (self.wav_channel_masks +
+                                   self.flac_channel_masks +
+                                   self.vorbis_channel_masks):
+            for target_audio_class in (self.wav_channel_masks +
+                                       self.flac_channel_masks +
+                                       self.vorbis_channel_masks):
+                for mask in [from_fields(front_center=True),
+                             from_fields(front_left=True,
+                                         front_right=True),
+                             from_fields(front_left=True,
+                                         front_right=True,
+                                         front_center=True),
+                             from_fields(front_right=True,
+                                         front_left=True,
+                                         back_right=True,
+                                         back_left=True),
+                             from_fields(front_right=True,
+                                         front_center=True,
+                                         front_left=True,
+                                         back_right=True,
+                                         back_left=True),
+                             from_fields(front_right=True,
+                                         front_center=True,
+                                         low_frequency=True,
+                                         front_left=True,
+                                         back_right=True,
+                                         back_left=True)]:
+                    self.__test_pcm_conversion__(source_audio_class,
+                                                 target_audio_class,
+                                                 mask)
+
+        for source_audio_class in (self.wav_channel_masks +
+                                   self.vorbis_channel_masks):
+            for target_audio_class in (self.wav_channel_masks +
+                                       self.vorbis_channel_masks):
+                for mask in [from_fields(front_left=True,front_right=True,
+                                     front_center=True,
+                                     side_left=True,side_right=True,
+                                     back_center=True,low_frequency=True),
+                         from_fields(front_left=True,front_right=True,
+                                     side_left=True,side_right=True,
+                                     back_left=True,back_right=True,
+                                     front_center=True,low_frequency=True)]:
+                    self.__test_pcm_conversion__(source_audio_class,
+                                                 target_audio_class,
+                                                 mask)
+
+        for source_audio_class in self.wav_channel_masks:
+            for target_audio_class in self.wav_channel_masks:
+                for mask in [from_fields(front_left=True,front_right=True,
+                                         side_left=True,side_right=True,
+                                         back_left=True,back_right=True,
+                                         front_center=True,back_center=True,
+                                         low_frequency=True),
+                             from_fields(front_left=True,front_right=True,
+                                         side_left=True,side_right=True,
+                                         back_left=True,back_right=True,
+                                         front_center=True,back_center=True)]:
+                    self.__test_pcm_conversion__(source_audio_class,
+                                                 target_audio_class,
+                                                 mask)
 ############
 #END TESTS
 ############

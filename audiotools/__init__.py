@@ -561,6 +561,8 @@ class ChannelMask:
         for (key,value) in fields.items():
             if (key in cls.SPEAKER_TO_MASK.keys()):
                 setattr(mask,key,bool(value))
+            else:
+                raise KeyError(key)
 
         return mask
 

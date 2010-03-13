@@ -876,6 +876,7 @@ class FlacAudio(AudioFile):
 
         if (int(pcmreader.channel_mask) not in
             (0x0001, #1ch - mono
+             0x0004, #1ch - mono
              0x0003, #2ch - left, right
              0x0007, #3ch - left, right, center
              0x0033, #4ch - left, right, back left, back right
@@ -1358,6 +1359,7 @@ class OggFlacAudio(FlacAudio):
 
         if (int(pcmreader.channel_mask) not in
             (0x0001, #1ch - mono
+             0x0004, #1ch - mono
              0x0003, #2ch - left, right
              0x0007, #3ch - left, right, center
              0x0033, #4ch - left, right, back left, back right

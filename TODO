@@ -665,9 +665,9 @@
 ** TODO Unit test multichannel encoding and channel_mask handling
 *** DONE Ensure all AudioFile types have a working channel_mask() method
     Even 2 channel audio should yield something valid.
-*** TODO Ensure all to_pcm() methods yield a matching channel_mask attribute
-*** TODO Ensure channel_mask is preserved between from_pcm(to_pcm()) calls
-*** TODO Ensure channel_mask is preserved between to_wave()/from_wave() calls
+*** DONE Ensure all to_pcm() methods yield a matching channel_mask attribute
+*** DONE Ensure channel_mask is preserved between from_pcm(to_pcm()) calls
+*** DONE Ensure channel_mask is preserved between to_wave()/from_wave() calls
 *** TODO Ensure UnsupportedChannelMask is raised when necessary
     This includes calls to from_pcm() and from_wave()
 *** TODO Ensure channels are actually stored in the proper order

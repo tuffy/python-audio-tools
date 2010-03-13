@@ -380,7 +380,7 @@ class VorbisAudio(AudioFile):
                 front_left=True,front_right=True,
                 front_center=True,
                 side_left=True,side_right=True,
-                rear_center=True,low_frequency=True)
+                back_center=True,low_frequency=True)
         elif (self.channels() == 8):
             return ChannelMask.from_fields(
                 front_left=True,front_right=True,
