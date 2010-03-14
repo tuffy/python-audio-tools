@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,InvalidFile,Con,subprocess,BIN,open_files,os,ReplayGain,ignore_sigint,transfer_data,transfer_framelist_data,Image,MetaData,sheet_to_unicode,EncodingError,DecodingError,PCMReaderError,PCMReader,ChannelMask
+from audiotools import AudioFile,InvalidFile,Con,subprocess,BIN,open_files,os,ReplayGain,ignore_sigint,transfer_data,transfer_framelist_data,Image,MetaData,sheet_to_unicode,EncodingError,DecodingError,PCMReaderError,PCMReader,ChannelMask,UnsupportedChannelMask
 from __wav__ import WaveAudio,WaveReader
 from __ape__ import ApeTaggedAudio,ApeTag,__number_pair__
 import gettext
@@ -356,7 +356,9 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
             if (filename.endswith(".wv")):
                 devnull = file(os.devnull,'ab')
 
-                if (pcmreader.channels > 2):
+                if (pcmreader.channels > 18):
+                    raise UnsupportedChannelMask()
+                elif (pcmreader.channels > 2):
                     order_map = {"front_left":"FL",
                                  "front_right":"FR",
                                  "front_center":"FC",

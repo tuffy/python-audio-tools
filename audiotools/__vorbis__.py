@@ -388,7 +388,7 @@ class VorbisAudio(AudioFile):
                 back_left=True,back_right=True,
                 front_center=True,low_frequency=True)
         else:
-            raise ValueError("undefined channel mask")
+            return ChannelMask(0)
 
     def total_frames(self):
         pcm_samples = 0
@@ -439,7 +439,7 @@ class VorbisAudio(AudioFile):
                 [vorbis_channel_mask.channels().index(channel) for channel in
                  standard_channel_mask.channels()])
         else:
-            raise ValueError("unsupported channel count")
+            return pcmreader
 
     @classmethod
     def from_pcm(cls, filename, pcmreader, compression=None):
@@ -461,7 +461,7 @@ class VorbisAudio(AudioFile):
                                stderr=devnull,
                                preexec_fn=ignore_sigint)
 
-        if (pcmreader.channels <= 2):
+        if ((pcmreader.channels <= 2) or (int(pcmreader.channel_mask) == 0)):
             transfer_framelist_data(pcmreader,sub.stdin.write)
         elif (pcmreader.channels <= 8):
             if (int(pcmreader.channel_mask) in

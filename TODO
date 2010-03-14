@@ -663,33 +663,33 @@
     If a format has not defined channel assignments for a given
     channel count, its to_pcm() method should return undefined ChannelMasks.
     - [ ] AACAudio
-    - [ ] AiffAudio
+    - [X] AiffAudio
     - [ ] AuAudio
     - [X] FlacAudio
     - [ ] M4AAudio
     - [X] MP2Audio
     - [X] MP3Audio
     - [X] OggFlacAudio
-    - [ ] VorbisAudio
+    - [X] VorbisAudio
     - [X] SpeexAudio
     - [X] WaveAudio
-    - [ ] WavPackAudio
+    - [X] WavPackAudio
 *** TODO Fix from_pcm() classmethods to accept undefined ChannelMasks
     So long as the number of channels is acceptable,
     audio formats are free to place undefined ChannelMasks
     in whatever arrangement they'd like.
     - [ ] AACAudio
-    - [ ] AiffAudio
+    - [X] AiffAudio
     - [ ] AuAudio
     - [X] FlacAudio
     - [ ] M4AAudio
     - [X] MP2Audio
     - [X] MP3Audio
     - [X] OggFlacAudio
-    - [ ] VorbisAudio
+    - [X] VorbisAudio
     - [X] SpeexAudio
     - [X] WaveAudio
-    - [ ] WavPackAudio
+    - [X] WavPackAudio
 ** TODO Add sanity checks to ensure channel mask matches channel count
     This signifies either a broken audio file or programming bug
     and should toss the proper exception.

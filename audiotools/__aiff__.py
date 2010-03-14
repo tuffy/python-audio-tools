@@ -125,7 +125,7 @@ class AiffAudio(AudioFile):
                 front_center=True,front_right=True,
                 side_right=True,back_center=True)
         else:
-            raise ValueError("undefined channel mask")
+            return ChannelMask(0)
 
     def lossless(self):
         return True
@@ -293,7 +293,7 @@ class AiffAudio(AudioFile):
                     big_endian=True)
                 if (self.channels() <= 2):
                     return pcmreader
-                else:
+                elif (self.channels() in (3,4,6)):
                     #FIXME - handle undefined channel mask
                     standard_channel_mask = self.channel_mask()
                     aiff_channel_mask = AIFFChannelMask(self.channel_mask())
@@ -302,6 +302,8 @@ class AiffAudio(AudioFile):
                         [aiff_channel_mask.channels().index(channel)
                          for channel in
                          standard_channel_mask.channels()])
+                else:
+                    return pcmreader
         else:
             return PCMReaderError()
 
@@ -325,9 +327,6 @@ class AiffAudio(AudioFile):
                 pcmreader,
                 [standard_channel_mask.channels().index(channel)
                  for channel in aiff_channel_mask.channels()])
-        else:
-            #FIXME - support undefined channel assignments, if possible
-            raise UnsupportedChannelMask()
 
         try:
             aiff_header = Con.Container(aiff_id='FORM',
