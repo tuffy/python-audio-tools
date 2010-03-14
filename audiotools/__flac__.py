@@ -635,7 +635,7 @@ class FlacAudio(AudioFile):
                     back_left=True,back_right=True,
                     low_frequency=True)
             else:
-                raise ValueError("undefined channel mask")
+                return ChannelMask(0)
 
     def lossless(self):
         return True
@@ -873,8 +873,19 @@ class FlacAudio(AudioFile):
                                  "exhaustive_model_search":True,
                                  "min_residual_partition_order":0,
                                  "max_residual_partition_order":6}}[compression]
-
-        if (int(pcmreader.channel_mask) not in
+        if (int(pcmreader.channel_mask) == 0):
+            if (pcmreader.channels <= 6):
+                channel_mask = {1:0x0004,
+                                2:0x0003,
+                                3:0x0007,
+                                4:0x0033,
+                                5:0x0037,
+                                6:0x003F}[pcmreader.channels]
+            elif (pcmreader.channels <= 8):
+                channel_mask = 0
+            else:
+                raise UnsupportedChannelMask()
+        elif (int(pcmreader.channel_mask) not in
             (0x0001, #1ch - mono
              0x0004, #1ch - mono
              0x0003, #2ch - left, right
@@ -887,6 +898,8 @@ class FlacAudio(AudioFile):
              0x060F  #6ch - L, R, C, LFE, side left, side right
              )):
             raise UnsupportedChannelMask()
+        else:
+            channel_mask = int(pcmreader.channel_mask)
 
         try:
             encoders.encode_flac(filename,
@@ -894,9 +907,11 @@ class FlacAudio(AudioFile):
                                  **encoding_options)
             flac = FlacAudio(filename)
 
-            if ((pcmreader.channels > 2) or (pcmreader.bits_per_sample > 16)):
+            if (((pcmreader.channels > 2) or
+                 (pcmreader.bits_per_sample > 16)) and
+                (channel_mask != 0)):
                 metadata = flac.get_metadata()
-                metadata.vorbis_comment["WAVEFORMATEXTENSIBLE_CHANNEL_MASK"] = [u"0x%.4x" % (int(pcmreader.channel_mask))]
+                metadata.vorbis_comment["WAVEFORMATEXTENSIBLE_CHANNEL_MASK"] = [u"0x%.4x" % (channel_mask)]
                 flac.set_metadata(metadata)
 
             return flac
@@ -1357,7 +1372,19 @@ class OggFlacAudio(FlacAudio):
         else:
             lax = ["--lax"]
 
-        if (int(pcmreader.channel_mask) not in
+        if (int(pcmreader.channel_mask) == 0):
+            if (pcmreader.channels <= 6):
+                channel_mask = {1:0x0004,
+                                2:0x0003,
+                                3:0x0007,
+                                4:0x0033,
+                                5:0x0037,
+                                6:0x003F}[pcmreader.channels]
+            elif (pcmreader.channels <= 8):
+                channel_mask = 0
+            else:
+                raise UnsupportedChannelMask()
+        elif (int(pcmreader.channel_mask) not in
             (0x0001, #1ch - mono
              0x0004, #1ch - mono
              0x0003, #2ch - left, right
@@ -1367,9 +1394,11 @@ class OggFlacAudio(FlacAudio):
              0x0037, #5ch - L, R, C, back left, back right
              0x0607, #5ch - L, R, C, side left, side right
              0x003F, #6ch - L, R, C, LFE, back left, back right
-             0x060F #6ch - L, R, C, LFE, side left, side right
+             0x060F  #6ch - L, R, C, LFE, side left, side right
              )):
             raise UnsupportedChannelMask()
+        else:
+            channel_mask = int(pcmreader.channel_mask)
 
         devnull = file(os.devnull,'ab')
 
@@ -1398,9 +1427,11 @@ class OggFlacAudio(FlacAudio):
 
         if (sub.wait() == 0):
             oggflac = OggFlacAudio(filename)
-            if ((pcmreader.channels > 2) or (pcmreader.bits_per_sample > 16)):
+            if (((pcmreader.channels > 2) or
+                 (pcmreader.bits_per_sample > 16)) and
+                (channel_mask != 0)):
                 metadata = oggflac.get_metadata()
-                metadata.vorbis_comment["WAVEFORMATEXTENSIBLE_CHANNEL_MASK"] = [u"0x%.4x" % (int(pcmreader.channel_mask))]
+                metadata.vorbis_comment["WAVEFORMATEXTENSIBLE_CHANNEL_MASK"] = [u"0x%.4x" % (channel_mask)]
                 oggflac.set_metadata(metadata)
             return oggflac
         else:

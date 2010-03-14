@@ -34,7 +34,7 @@ import time
 gettext.install("audiotools",unicode=True)
 
 (METADATA,PCM,FRAMELIST,EXECUTABLE,CUESHEET,IMAGE,FLAC,CUSTOM) = range(8)
-CASES = set([METADATA,PCM,FRAMELIST,EXECUTABLE,CUESHEET,IMAGE,FLAC])
+CASES = set([CUSTOM])
 
 def nothing(self):
     pass
@@ -10039,6 +10039,47 @@ class TestMultiChannel(unittest.TestCase):
         finally:
             temp_file.close()
 
+    def __test_undefined_mask_blank__(self, audio_class, channels,
+                                      should_be_blank):
+        temp_file = tempfile.NamedTemporaryFile(suffix="." + audio_class.SUFFIX)
+        try:
+            temp_track = audio_class.from_pcm(
+                temp_file.name,
+                PCM_Reader_Multiplexer(
+                    [BLANK_PCM_Reader(2,channels=1)
+                     for i in xrange(channels)],
+                    audiotools.ChannelMask(0)))
+            self.assertEqual(temp_track.channels(),channels)
+            if (should_be_blank):
+                self.assertEqual(int(temp_track.channel_mask()),0)
+                pcm = temp_track.to_pcm()
+                self.assertEqual(int(pcm.channel_mask),0)
+                audiotools.transfer_framelist_data(pcm,lambda x: x)
+                pcm.close()
+            else:
+                self.assertNotEqual(int(temp_track.channel_mask()),0)
+                pcm = temp_track.to_pcm()
+                self.assertEqual(int(pcm.channel_mask),
+                                 int(temp_track.channel_mask()))
+                audiotools.transfer_framelist_data(pcm,lambda x: x)
+                pcm.close()
+        finally:
+            temp_file.close()
+
+    def __test_error_mask_blank__(self, audio_class, channels,
+                                  channel_mask):
+        temp_file = tempfile.NamedTemporaryFile(suffix="." + audio_class.SUFFIX)
+        try:
+            self.assertRaises(audiotools.UnsupportedChannelMask,
+                              audio_class.from_pcm,
+                              temp_file.name,
+                              PCM_Reader_Multiplexer(
+                    [BLANK_PCM_Reader(2,channels=1)
+                     for i in xrange(channels)],
+                    channel_mask))
+        finally:
+            temp_file.close()
+
     def __test_pcm_conversion__(self,
                                 source_audio_class,
                                 target_audio_class,
@@ -10331,6 +10372,59 @@ class TestMultiChannel(unittest.TestCase):
             self.__test_assignment__(audiotools.AiffAudio,
                                      TONE_TRACKS[0:len(mask)],
                                      mask)
+
+    @TEST_CUSTOM
+    def test_unsupported_channel_mask_from_pcm(self):
+        for channels in xrange(1,19):
+            self.__test_undefined_mask_blank__(audiotools.WaveAudio,
+                                               channels,
+                                               False)
+        self.__test_error_mask_blank__(audiotools.WaveAudio,
+                                       19,audiotools.ChannelMask(0))
+        self.__test_error_mask_blank__(audiotools.WaveAudio,
+                                       20,audiotools.ChannelMask(0))
+
+        for audio_class in [audiotools.FlacAudio,audiotools.OggFlacAudio]:
+            for channels in xrange(1,7):
+                self.__test_undefined_mask_blank__(audio_class,
+                                                   channels,
+                                                   False)
+            for channels in xrange(7,9):
+                self.__test_undefined_mask_blank__(audio_class,
+                                                   channels,
+                                                   True)
+            self.__test_error_mask_blank__(audio_class,
+                                           9,audiotools.ChannelMask(0))
+            self.__test_error_mask_blank__(audio_class,
+                                           10,audiotools.ChannelMask(0))
+
+        for stereo_audio_class in [audiotools.MP3Audio,
+                                   audiotools.MP2Audio,
+                                   audiotools.SpeexAudio]:
+            for channels in xrange(1,3):
+                self.__test_undefined_mask_blank__(stereo_audio_class,
+                                                   channels,
+                                                   False)
+            for channels in xrange(3,20):
+                temp_file = tempfile.NamedTemporaryFile(suffix="." + stereo_audio_class.SUFFIX)
+                try:
+                    temp_track = stereo_audio_class.from_pcm(
+                        temp_file.name,
+                        PCM_Reader_Multiplexer(
+                            [BLANK_PCM_Reader(2,channels=1)
+                             for i in xrange(channels)],
+                            audiotools.ChannelMask(0)))
+                    self.assertEqual(temp_track.channels(),2)
+                    self.assertEqual(int(temp_track.channel_mask()),
+                                     int(audiotools.ChannelMask.from_fields(
+                                front_left=True,front_right=True)))
+                    pcm = temp_track.to_pcm()
+                    self.assertEqual(int(pcm.channel_mask),
+                                     int(temp_track.channel_mask()))
+                    audiotools.transfer_framelist_data(pcm,lambda x: x)
+                    pcm.close()
+                finally:
+                    temp_file.close()
 
 ############
 #END TESTS

@@ -947,7 +947,7 @@ class __stereo_to_mono__:
 
 #going from many channels to 2
 class __downmixer__:
-    def __init__(self, old_channel_mask):
+    def __init__(self, old_channel_mask, old_channel_count):
         #grab the front_left, front_right, front_center,
         #back_left and back_right channels from old frame_list, if possible
         #missing channels are replaced with 0-sample channels
@@ -955,7 +955,27 @@ class __downmixer__:
         #side_left and side_right may be substituted for back_left/right
         #but back channels take precedence
 
-        old_channel_mask = ChannelMask(old_channel_mask)
+        if (int(old_channel_mask) == 0):
+            #if the old_channel_mask is undefined
+            #invent a channel mask based on the channel count
+            old_channel_mask = {1:ChannelMask.from_fields(front_center=True),
+                                2:ChannelMask.from_fields(front_left=True,
+                                                          front_right=True),
+                                3:ChannelMask.from_fields(front_left=True,
+                                                          front_right=True,
+                                                          front_center=True),
+                                4:ChannelMask.from_fields(front_left=True,
+                                                          front_right=True,
+                                                          back_left=True,
+                                                          back_right=True),
+                                5:ChannelMask.from_fields(front_left=True,
+                                                          front_right=True,
+                                                          front_center=True,
+                                                          back_left=True,
+                                                          back_right=True)}[
+                min(old_channel_count,5)]
+        else:
+            old_channel_mask = ChannelMask(old_channel_mask)
 
         #channels_to_keep is an array of channel offsets
         #where the index is:
@@ -999,27 +1019,27 @@ class __downmixer__:
                                           True)
 
         if (self.channels_to_keep[0] != -1):
-            Lf = self_channels_to_keep[0]
+            Lf = frame_list.channel(self.channels_to_keep[0])
         else:
             Lf = empty_channel
 
         if (self.channels_to_keep[1] != -1):
-            Rf = self_channels_to_keep[1]
+            Rf = frame_list.channel(self.channels_to_keep[1])
         else:
             Rf = empty_channel
 
         if (self.channels_to_keep[2] != -1):
-            C = self_channels_to_keep[2]
+            C = frame_list.channel(self.channels_to_keep[2])
         else:
             C = empty_channel
 
         if (self.channels_to_keep[3] != -1):
-            Lr = self_channels_to_keep[3]
+            Lr = frame_list.channel(self.channels_to_keep[3])
         else:
             Lr = empty_channel
 
         if (self.channels_to_keep[4] != -1):
-            Rr = self_channels_to_keep[4]
+            Rr = frame_list.channel(self.channels_to_keep[4])
         else:
             Rr = empty_channel
 
@@ -1049,8 +1069,8 @@ class __downmixer__:
 
 #going from many channels to 1
 class __downmix_to_mono__:
-    def __init__(self, old_channel_mask):
-        self.downmix = __downmixer__(old_channel_mask)
+    def __init__(self, old_channel_mask, old_channel_count):
+        self.downmix = __downmixer__(old_channel_mask, old_channel_count)
         self.mono = __stereo_to_mono__()
 
     def convert(self, frame_list):
@@ -1074,10 +1094,12 @@ class PCMConverter:
         if (self.reader.channels != self.channels):
             if (self.channels == 1):
                 self.conversions.append(
-                    __downmix_to_mono__(pcmreader.channel_mask).convert)
+                    __downmix_to_mono__(pcmreader.channel_mask,
+                                        pcmreader.channels).convert)
             elif (self.channels == 2):
                 self.conversions.append(
-                    __downmixer__(pcmreader.channel_mask).convert)
+                    __downmixer__(pcmreader.channel_mask,
+                                  pcmreader.channels).convert)
             else:
                 self.conversions.append(
                     __channel_remover__(pcmreader.channel_mask,

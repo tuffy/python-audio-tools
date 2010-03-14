@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,InvalidFile,ChannelMask,PCMReader,Con,BUFFER_SIZE,transfer_data,__capped_stream_reader__,FILENAME_FORMAT,BIN,open_files,os,subprocess,cStringIO,EncodingError,DecodingError
+from audiotools import AudioFile,InvalidFile,ChannelMask,PCMReader,Con,BUFFER_SIZE,transfer_data,__capped_stream_reader__,FILENAME_FORMAT,BIN,open_files,os,subprocess,cStringIO,EncodingError,DecodingError,UnsupportedChannelMask
 import os.path
 import gettext
 from . import pcm
@@ -123,29 +123,57 @@ def __blank_channel_mask__():
 
     return c
 
-def __channel_mask__(mask):
-    attr_map = {"front_left":'front_left',
-                "front_right":'front_right',
-                "front_center":'front_center',
-                "low_frequency":'LFE',
-                "back_left":'rear_left',
-                "back_right":'rear_right',
-                "front_left_of_center":'front_left_of_center',
-                "front_right_of_center":'front_right_of_center',
-                "back_center":'rear_center',
-                "side_left":'side_left',
-                "side_right":'side_right',
-                "top_center":'top_center',
-                "top_front_left":'top_front_left',
-                "top_front_center":'top_front_center',
-                "top_front_right":'top_front_right',
-                "top_back_left":'top_back_left',
-                "top_back_center":'top_back_center',
-                "top_back_right":'top_back_right'}
-
+def __channel_mask__(mask, channel_count):
+    mask = ChannelMask(mask)
     c = __blank_channel_mask__()
-    for channel in ChannelMask(mask).channels():
-        setattr(c,attr_map[channel],True)
+
+    if (mask.defined()):
+        attr_map = {"front_left":'front_left',
+                    "front_right":'front_right',
+                    "front_center":'front_center',
+                    "low_frequency":'LFE',
+                    "back_left":'rear_left',
+                    "back_right":'rear_right',
+                    "front_left_of_center":'front_left_of_center',
+                    "front_right_of_center":'front_right_of_center',
+                    "back_center":'rear_center',
+                    "side_left":'side_left',
+                    "side_right":'side_right',
+                    "top_center":'top_center',
+                    "top_front_left":'top_front_left',
+                    "top_front_center":'top_front_center',
+                    "top_front_right":'top_front_right',
+                    "top_back_left":'top_back_left',
+                    "top_back_center":'top_back_center',
+                    "top_back_right":'top_back_right'}
+
+        for channel in mask.channels():
+            setattr(c,attr_map[channel],True)
+    else:
+        attr_map = ['front_left',
+                    'front_right',
+                    'front_center',
+                    'LFE',
+                    'rear_left',
+                    'rear_right',
+                    'front_left_of_center',
+                    'front_right_of_center',
+                    'rear_center',
+                    'side_left',
+                    'side_right',
+                    'top_center',
+                    'top_front_left',
+                    'top_front_center',
+                    'top_front_right',
+                    'top_back_left',
+                    'top_back_center',
+                    'top_back_right']
+        if (channel_count <= len(attr_map)):
+            for channel in attr_map[0:channel_count]:
+                setattr(c,channel,True)
+        else:
+            raise UnsupportedChannelMask()
+
     return c
 
 class WaveAudio(AudioFile):
@@ -335,7 +363,8 @@ class WaveAudio(AudioFile):
             fmt.valid_bits_per_sample = pcmreader.bits_per_sample
             fmt.sub_format = "0100000000001000800000aa00389b71".decode('hex')
             if (fmt.compression == 0xFFFE):
-                fmt.channel_mask = __channel_mask__(pcmreader.channel_mask)
+                fmt.channel_mask = __channel_mask__(pcmreader.channel_mask,
+                                                    pcmreader.channels)
             else:
                 fmt.channel_mask = __blank_channel_mask__()
 
