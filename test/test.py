@@ -34,7 +34,7 @@ import time
 gettext.install("audiotools",unicode=True)
 
 (METADATA,PCM,FRAMELIST,EXECUTABLE,CUESHEET,IMAGE,FLAC,CUSTOM) = range(8)
-CASES = set([CUSTOM])
+CASES = set([METADATA,PCM,FRAMELIST,EXECUTABLE,CUESHEET,IMAGE,FLAC])
 
 def nothing(self):
     pass
@@ -9990,6 +9990,8 @@ class TestReplayGain(unittest.TestCase):
             track_file2.close()
             track_file3.close()
 
+
+
 #takes several 1-channel PCMReaders and combines them into a single PCMReader
 class PCM_Reader_Multiplexer:
     def __init__(self, pcm_readers, channel_mask):
@@ -10016,7 +10018,8 @@ class TestMultiChannel(unittest.TestCase):
 
         #these support a subset of ChannelMasks up to 6 channels
         self.flac_channel_masks = [audiotools.FlacAudio,
-                                   audiotools.OggFlacAudio]
+                                   audiotools.OggFlacAudio,
+                                   audiotools.M4AAudio_nero]
 
         #these support a reordered subset of ChannelMasks up to 8 channels
         self.vorbis_channel_masks = [audiotools.VorbisAudio]
@@ -10337,9 +10340,20 @@ class TestMultiChannel(unittest.TestCase):
                                      front_left=True,
                                      back_right=True,
                                      back_left=True)]:
+
+                #FIXME -Encoding 6 channel audio with neroAacEnc
+                #with this batch of tones causes Nero to essentially
+                #zero out the LFE channel.
+                #I'm not entirely certain if this is a Nero encoder bug
+                #or if it's being more lossy than usual when encoding,
+                #but I'm guessing the former.
+                if ((len(mask) == 6) and (audio_class is audiotools.M4AAudio_nero)):
+                    continue
+
                 self.__test_assignment__(audio_class,
                                          TONE_TRACKS[0:len(mask)],
                                          mask)
+
         for audio_class in (self.wav_channel_masks +
                             self.vorbis_channel_masks):
             for mask in [from_fields(front_left=True,front_right=True,
@@ -10373,7 +10387,7 @@ class TestMultiChannel(unittest.TestCase):
                                      TONE_TRACKS[0:len(mask)],
                                      mask)
 
-    @TEST_CUSTOM
+    @TEST_PCM
     def test_unsupported_channel_mask_from_pcm(self):
         for audio_class in [audiotools.WaveAudio,
                             audiotools.WavPackAudio]:
@@ -10402,11 +10416,12 @@ class TestMultiChannel(unittest.TestCase):
 
         for stereo_audio_class in [audiotools.MP3Audio,
                                    audiotools.MP2Audio,
-                                   audiotools.SpeexAudio]:
-            for channels in xrange(1,3):
-                self.__test_undefined_mask_blank__(stereo_audio_class,
-                                                   channels,
-                                                   False)
+                                   audiotools.SpeexAudio,
+                                   audiotools.AACAudio,
+                                   audiotools.M4AAudio_faac]:
+
+            self.__test_undefined_mask_blank__(stereo_audio_class,
+                                               2,False)
             for channels in xrange(3,20):
                 temp_file = tempfile.NamedTemporaryFile(suffix="." + stereo_audio_class.SUFFIX)
                 try:
@@ -10447,6 +10462,20 @@ class TestMultiChannel(unittest.TestCase):
             self.__test_undefined_mask_blank__(audiotools.AiffAudio,
                                                channels,
                                                True)
+
+        for channels in [1,2]:
+            self.__test_undefined_mask_blank__(audiotools.AuAudio,
+                                               channels,
+                                               False)
+        for channels in xrange(3,11):
+            self.__test_undefined_mask_blank__(audiotools.AuAudio,
+                                               channels,
+                                               True)
+
+        for channels in xrange(1,7):
+            self.__test_undefined_mask_blank__(audiotools.M4AAudio_nero,
+                                               channels,
+                                               False)
 
 ############
 #END TESTS

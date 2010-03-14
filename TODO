@@ -596,28 +596,28 @@
   channel reordering mechanism in the event that formats differ
   on how channels are to be ordered in the file.
 ** Channel Counts and Ordering
-| Format     | Maximum Channels | Ordering   |
-|------------+------------------+------------|
-| AAC        |               48 | as WAVE?   |
-| AIFF       |             2^16 | ?          |
-| Sun AU     |             2^32 | ?          |
-| FLAC       |                8 | as WAVE    |
-| M4A        |               48 | as WAVE?   |
-| MP2        |                2 | N/A        |
-| MP3        |                2 | N/A        |
-| Musepack   |                2 | N/A        |
-| Ogg FLAC   |                8 | as WAVE    |
-| Ogg Vorbis |              255 | predefined |
-| Ogg Speex  |             2^32 | N/A        |
-| RIFF WAVE  |             2^16 | predefined |
-| WavPack    |               16 | as WAVE    |
-|------------+------------------+------------|
-** TODO Fix AudioFile definitions to support channel_mask()
-   - [ ] AACAudio
+| Format     | Maximum Channels | Ordering               |
+|------------+------------------+------------------------|
+| AAC        |               48 | stereo-only (via faac) |
+| AIFF       |             2^16 | predefined             |
+| Sun AU     |             2^32 | mostly undefined       |
+| FLAC       |                8 | as WAVE                |
+| M4A        |               48 | as WAVE?               |
+| MP2        |                2 | stereo-only            |
+| MP3        |                2 | stereo-only            |
+| Musepack   |                2 | stereo-only            |
+| Ogg FLAC   |                8 | as WAVE                |
+| Ogg Vorbis |              255 | predefined             |
+| Ogg Speex  |             2^32 | stereo-only            |
+| RIFF WAVE  |             2^16 | predefined             |
+| WavPack    |               16 | as WAVE                |
+|------------+------------------+------------------------|
+** DONE Fix AudioFile definitions to support channel_mask()
+   - [X] AACAudio
    - [X] AiffAudio
-   - [ ] AuAudio
+   - [X] AuAudio
    - [X] FlacAudio
-   - [ ] M4AAudio
+   - [X] M4AAudio
    - [X] MP2Audio
    - [X] MP3Audio
    - [X] OggFlacAudio
@@ -638,12 +638,12 @@
    - [X] SpeexAudio
    - [X] WaveAudio
    - [X] WavPackAudio
-** TODO Fix from_pcm() classmethods to support channel_mask
-   - [ ] AACAudio
+** DONE Fix from_pcm() classmethods to support channel_mask
+   - [X] AACAudio
    - [X] AiffAudio
-   - [ ] AuAudio
+   - [X] AuAudio
    - [X] FlacAudio
-   - [ ] M4AAudio
+   - [X] M4AAudio
    - [X] MP2Audio
    - [X] MP3Audio
    - [X] OggFlacAudio
@@ -658,15 +658,15 @@
    - [X] CDTrackReader
    - [X] OffsetCDTrackReader
    - [X] PCMCat
-** TODO Handle undefined channel masks in a sane way
-*** TODO Fix to_pcm() methods to output undefined ChannelMasks
+** DONE Handle undefined channel masks in a sane way
+*** DONE Fix to_pcm() methods to output undefined ChannelMasks
     If a format has not defined channel assignments for a given
     channel count, its to_pcm() method should return undefined ChannelMasks.
-    - [ ] AACAudio
+    - [X] AACAudio
     - [X] AiffAudio
-    - [ ] AuAudio
+    - [X] AuAudio
     - [X] FlacAudio
-    - [ ] M4AAudio
+    - [X] M4AAudio
     - [X] MP2Audio
     - [X] MP3Audio
     - [X] OggFlacAudio
@@ -674,15 +674,15 @@
     - [X] SpeexAudio
     - [X] WaveAudio
     - [X] WavPackAudio
-*** TODO Fix from_pcm() classmethods to accept undefined ChannelMasks
+*** DONE Fix from_pcm() classmethods to accept undefined ChannelMasks
     So long as the number of channels is acceptable,
     audio formats are free to place undefined ChannelMasks
     in whatever arrangement they'd like.
-    - [ ] AACAudio
+    - [X] AACAudio
     - [X] AiffAudio
-    - [ ] AuAudio
+    - [X] AuAudio
     - [X] FlacAudio
-    - [ ] M4AAudio
+    - [X] M4AAudio
     - [X] MP2Audio
     - [X] MP3Audio
     - [X] OggFlacAudio
@@ -693,7 +693,7 @@
 ** TODO Add sanity checks to ensure channel mask matches channel count
     This signifies either a broken audio file or programming bug
     and should toss the proper exception.
-** TODO Unit test multichannel encoding and channel_mask handling
+** DONE Unit test multichannel encoding and channel_mask handling
 *** DONE Ensure all AudioFile types have a working channel_mask() method
     Even 2 channel audio should yield something valid.
 *** DONE Ensure all to_pcm() methods yield a matching channel_mask attribute
@@ -703,7 +703,7 @@
     This is less of an issue for .wav, .flac, .oga or .wv
     which already store channels in RIFF WAVE order
     and more of an issue for Ogg Vorbis and other formats that do not.
-*** TODO Ensure UnsupportedChannelMask is raised when necessary
+*** DONE Ensure UnsupportedChannelMask is raised when necessary
     This includes calls to from_pcm() and from_wave()
 * TODO Make documentation render consistently
   Some versions of groff place text and page breaks differently.

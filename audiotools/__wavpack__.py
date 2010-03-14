@@ -226,7 +226,35 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
     def channel_mask(self):
         fmt_chunk = WaveAudio.FMT_CHUNK.parse(self.__fmt_chunk__())
         if (fmt_chunk.compression != 0xFFFE):
-            return ChannelMask.from_channels(self.channels())
+            if (self.__channels__ == 1):
+                return ChannelMask.from_fields(
+                    front_center=True)
+            elif (self.__channels__ == 2):
+                return ChannelMask.from_fields(
+                    front_left=True,front_right=True)
+            #if we have a multi-channel WavPack file
+            #that's not WAVEFORMATEXTENSIBLE,
+            #assume the channels follow SMPTE/ITU-R recommendations
+            #and hope for the best
+            elif (self.__channels__ == 3):
+                return ChannelMask.from_fields(
+                    front_left=True,front_right=True,front_center=True)
+            elif (self.__channels__ == 4):
+                return ChannelMask.from_fields(
+                    front_left=True,front_right=True,
+                    back_left=True,back_right=True)
+            elif (self.__channels__ == 5):
+                return ChannelMask.from_fields(
+                    front_left=True,front_right=True,
+                    back_left=True,back_right=True,
+                    front_center=True)
+            elif (self.__channels__ == 6):
+                return ChannelMask.from_fields(
+                    front_left=True,front_right=True,
+                    back_left=True,back_right=True,
+                    front_center=True,low_frequency=True)
+            else:
+                return ChannelMask(0)
         else:
             return WaveAudio.fmt_chunk_to_channel_mask(fmt_chunk.channel_mask)
 

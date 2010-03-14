@@ -190,7 +190,7 @@ def __remove_qt_atom__(qt_atom, atom_name):
                     [__remove_qt_atom__(a,atom_name) for a in qt_atom]))
 
 
-class __M4AAudio_faac__(AudioFile):
+class M4AAudio_faac(AudioFile):
     SUFFIX = "m4a"
     NAME = SUFFIX
     DEFAULT_COMPRESSION = "100"
@@ -349,11 +349,13 @@ class __M4AAudio_faac__(AudioFile):
                                 self.filename],
                                stdout=subprocess.PIPE,
                                stderr=devnull)
-        return PCMReader(sub.stdout,
-                         sample_rate=self.__sample_rate__,
-                         channels=self.__channels__,
-                         bits_per_sample=self.__bits_per_sample__,
-                         process=sub)
+        return PCMReader(
+            sub.stdout,
+            sample_rate=self.sample_rate(),
+            channels=self.channels(),
+            channel_mask=ChannelMask.from_channels(self.channels()),
+            bits_per_sample=self.bits_per_sample(),
+            process=sub)
 
     @classmethod
     def from_pcm(cls, filename, pcmreader,compression="100"):
@@ -439,11 +441,39 @@ class __M4AAudio_faac__(AudioFile):
 
             devnull.close()
 
-class __M4AAudio_nero__(__M4AAudio_faac__):
+class M4AAudio_nero(M4AAudio_faac):
     DEFAULT_COMPRESSION = "0.5"
     COMPRESSION_MODES = ("0.0","0.1","0.2","0.3","0.4","0.5",
                          "0.6","0.7","0.8","0.9","1.0")
     BINARIES = ("neroAacDec","neroAacEnc")
+
+    def channel_mask(self):
+        #M4A seems to use the same channel assignment
+        #as old-style RIFF WAVE/FLAC
+        if (self.channels() == 1):
+            return ChannelMask.from_fields(
+                front_center=True)
+        elif (self.channels() == 2):
+            return ChannelMask.from_fields(
+                front_left=True,front_right=True)
+        elif (self.channels() == 3):
+            return ChannelMask.from_fields(
+                front_left=True,front_right=True,front_center=True)
+        elif (self.channels() == 4):
+            return ChannelMask.from_fields(
+                front_left=True,front_right=True,
+                back_left=True,back_right=True)
+        elif (self.channels() == 5):
+            return ChannelMask.from_fields(
+                front_left=True,front_right=True,front_center=True,
+                back_left=True,back_right=True)
+        elif (self.channels() == 6):
+            return ChannelMask.from_fields(
+                front_left=True,front_right=True,front_center=True,
+                back_left=True,back_right=True,
+                low_frequency=True)
+        else:
+            return ChannelMask(0)
 
     def to_pcm(self):
         import tempfile
@@ -536,9 +566,9 @@ class __M4AAudio_nero__(__M4AAudio_faac__):
 
 if (BIN.can_execute(BIN["neroAacEnc"]) and
     BIN.can_execute(BIN["neroAacDec"])):
-    M4AAudio = __M4AAudio_nero__
+    M4AAudio = M4AAudio_nero
 else:
-    M4AAudio = __M4AAudio_faac__
+    M4AAudio = M4AAudio_faac
 
 #This is an ILST sub-atom, which itself is a container for other atoms.
 #For human-readable fields, those will contain a single DATA sub-atom
@@ -1110,21 +1140,15 @@ class AACAudio(AudioFile):
             compression = cls.DEFAULT_COMPRESSION
 
         if (pcmreader.sample_rate not in AACAudio.SAMPLE_RATES):
-            if (pcmreader.channels > 2):
-                channels = 2
-                channel_mask = ChannelMask.from_channels(2)
-            else:
-                channels = pcmreader.channels
-                channel_mask = ChannelMask.from_channels(channels)
-
             sample_rates = list(sorted(AACAudio.SAMPLE_RATES))
 
             pcmreader = PCMConverter(
                 pcmreader,
                 sample_rate=([sample_rates[0]] + sample_rates)[
                     bisect.bisect(sample_rates,pcmreader.sample_rate)],
-                channels=channels,
-                channel_mask=channel_mask,
+                channels=max(pcmreader.channels,2),
+                channel_mask=ChannelMask.from_channels(
+                    max(pcmreader.channels,2)),
                 bits_per_sample=pcmreader.bits_per_sample)
         elif (pcmreader.channels > 2):
             pcmreader = PCMConverter(

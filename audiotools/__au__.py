@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,InvalidFile,PCMReader,Con,transfer_data,InvalidFormat,__capped_stream_reader__,BUFFER_SIZE,FILENAME_FORMAT,EncodingError,DecodingError
+from audiotools import AudioFile,InvalidFile,PCMReader,Con,transfer_data,InvalidFormat,__capped_stream_reader__,BUFFER_SIZE,FILENAME_FORMAT,EncodingError,DecodingError,ChannelMask
 import gettext
 
 gettext.install("audiotools",unicode=True)
@@ -73,6 +73,12 @@ class AuAudio(AudioFile):
 
     def channels(self):
         return self.__channels__
+
+    def channel_mask(self):
+        if (self.channels() <= 2):
+            return ChannelMask.from_channels(self.channels())
+        else:
+            return ChannelMask(0)
 
     def sample_rate(self):
         return self.__sample_rate__
