@@ -475,6 +475,9 @@ def filename_to_type(path):
 #which means that channels aren't assigned to *any* speaker.
 #This is an ugly last resort for handling formats
 #where multi-channel assignments aren't properly defined.
+#In this case, a from_pcm() method is free to assign the undefined channels
+#any way it likes, and is under no obligation to keep them undefined
+#when passing back out to to_pcm()
 class ChannelMask:
     SPEAKER_TO_MASK = {"front_left":0x1,
                        "front_right":0x2,

@@ -614,7 +614,7 @@
 |------------+------------------+------------|
 ** TODO Fix AudioFile definitions to support channel_mask()
    - [ ] AACAudio
-   - [ ] AiffAudio
+   - [X] AiffAudio
    - [ ] AuAudio
    - [X] FlacAudio
    - [ ] M4AAudio
@@ -640,7 +640,7 @@
    - [X] WavPackAudio
 ** TODO Fix from_pcm() classmethods to support channel_mask
    - [ ] AACAudio
-   - [ ] AiffAudio
+   - [X] AiffAudio
    - [ ] AuAudio
    - [X] FlacAudio
    - [ ] M4AAudio
@@ -659,9 +659,13 @@
    - [X] OffsetCDTrackReader
    - [X] PCMCat
 ** TODO Handle undefined channel masks in a sane way
-   In spite of my best efforts, some channel assignments are simply
-   "defined by application" and aren't mapped to anything.
-   These cases need to do something that doesn't break the world.
+*** TODO Fix to_pcm() methods to output undefined ChannelMasks
+    If a format has not defined channel assignments for a given
+    channel count, its to_pcm() method should return undefined ChannelMasks.
+*** TODO Fix from_pcm() classmethods to accept undefined ChannelMasks
+    So long as the number of channels is acceptable,
+    audio formats are free to place undefined ChannelMasks
+    in whatever arrangement they'd like.
 ** TODO Add sanity checks to ensure channel mask matches channel count
     This signifies either a broken audio file or programming bug
     and should toss the proper exception.

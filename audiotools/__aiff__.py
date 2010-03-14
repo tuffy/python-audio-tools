@@ -17,7 +17,7 @@
 #along with this program; if not, write to the Free Software
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-from audiotools import AudioFile,InvalidFile,Con,PCMReader,__capped_stream_reader__,PCMReaderError,transfer_data,DecodingError,EncodingError,ID3v22Comment,BUFFER_SIZE
+from audiotools import AudioFile,InvalidFile,Con,PCMReader,__capped_stream_reader__,PCMReaderError,transfer_data,DecodingError,EncodingError,ID3v22Comment,BUFFER_SIZE,ChannelMask,UnsupportedChannelMask,ReorderedPCMReader
 
 import gettext
 
@@ -107,6 +107,25 @@ class AiffAudio(AudioFile):
 
     def channels(self):
         return self.__channels__
+
+    def channel_mask(self):
+        #this unusual arrangement is taken from the AIFF specification
+        if (self.channels() <= 2):
+            return ChannelMask.from_channels(self.channels())
+        elif (self.channels() == 3):
+            return ChannelMask.from_fields(
+                front_left=True,front_right=True,front_center=True)
+        elif (self.channels() == 4):
+            return ChannelMask.from_fields(
+                front_left=True,front_right=True,
+                back_left=True,back_right=True)
+        elif (self.channels() == 6):
+            return ChannelMask.from_fields(
+                front_left=True,side_left=True,
+                front_center=True,front_right=True,
+                side_right=True,back_center=True)
+        else:
+            raise ValueError("undefined channel mask")
 
     def lossless(self):
         return True
@@ -263,7 +282,7 @@ class AiffAudio(AudioFile):
                 f.seek(chunk_offset,0)
                 alignment = self.SSND_ALIGN.parse_stream(f)
                 #FIXME - handle different types of SSND alignment
-                return PCMReader(
+                pcmreader = PCMReader(
                     __capped_stream_reader__(
                         f,chunk_length - self.SSND_ALIGN.sizeof()),
                     sample_rate=self.sample_rate(),
@@ -272,6 +291,17 @@ class AiffAudio(AudioFile):
                     bits_per_sample=self.bits_per_sample(),
                     signed=True,
                     big_endian=True)
+                if (self.channels() <= 2):
+                    return pcmreader
+                else:
+                    #FIXME - handle undefined channel mask
+                    standard_channel_mask = self.channel_mask()
+                    aiff_channel_mask = AIFFChannelMask(self.channel_mask())
+                    return ReorderedPCMReader(
+                        pcmreader,
+                        [aiff_channel_mask.channels().index(channel)
+                         for channel in
+                         standard_channel_mask.channels()])
         else:
             return PCMReaderError()
 
@@ -281,6 +311,23 @@ class AiffAudio(AudioFile):
             f = open(filename,'wb')
         except IOError:
             raise EncodingError(None)
+
+        if (int(pcmreader.channel_mask) in
+            (0x4,   #FC
+             0x3,   #FL, FR
+             0x7,   #FL, FR, FC
+             0x33,  #FL, FR, BL, BR
+             0x707) #FL, SL, FC, FR, SR, BC
+            ):
+            standard_channel_mask = ChannelMask(pcmreader.channel_mask)
+            aiff_channel_mask = AIFFChannelMask(standard_channel_mask)
+            pcmreader = ReorderedPCMReader(
+                pcmreader,
+                [standard_channel_mask.channels().index(channel)
+                 for channel in aiff_channel_mask.channels()])
+        else:
+            #FIXME - support undefined channel assignments, if possible
+            raise UnsupportedChannelMask()
 
         try:
             aiff_header = Con.Container(aiff_id='FORM',
@@ -346,4 +393,26 @@ class AiffAudio(AudioFile):
 
         return cls(filename)
 
+class AIFFChannelMask(ChannelMask):
+    def __repr__(self):
+        return "AIFFChannelMask(%s)" % \
+            ",".join(["%s=%s" % (field,getattr(self,field))
+                      for field in self.SPEAKER_TO_MASK.keys()
+                      if (getattr(self,field))])
 
+    def channels(self):
+        count = len(self)
+        if (count == 1):
+            return ["front_center"]
+        elif (count == 2):
+            return ["front_left","front_right"]
+        elif (count == 3):
+            return ["front_left","front_right","front_center"]
+        elif (count == 4):
+            return ["front_left","front_right",
+                    "back_left","back_right"]
+        elif (count == 6):
+            return ["front_left","side_left","front_center",
+                    "front_right","side_right","back_center"]
+        else:
+            return []

@@ -2646,7 +2646,7 @@ uhhDdCiCwqg2Gw3lphgaGhoamR+mptKYNT/F3JFOFCQvKfgAwA==""".decode('base64').decode(
             wave_temp_file.close()
             temp_track_file.close()
 
-    @TEST_CUSTOM
+    @TEST_PCM
     def test_channel_mask(self):
         #test basic channel_mask() support
         #more complex testing is handled in its own class
@@ -10168,6 +10168,15 @@ class TestMultiChannel(unittest.TestCase):
                                      front_center=True,back_center=True)]:
                 self.__test_mask_blank__(audio_class,mask)
 
+        for mask in [from_fields(front_center=True),
+                     from_fields(front_left=True,front_right=True),
+                     from_fields(front_left=True,front_right=True,
+                                 back_left=True,back_right=True),
+                     from_fields(front_left=True,side_left=True,
+                                 front_center=True,front_right=True,
+                                 side_right=True,back_center=True)]:
+            self.__test_mask_blank__(audiotools.AiffAudio,mask)
+
     @TEST_PCM
     def test_channel_mask_conversion(self):
         from_fields = audiotools.ChannelMask.from_fields
@@ -10241,6 +10250,18 @@ class TestMultiChannel(unittest.TestCase):
                                                  target_audio_class,
                                                  mask)
 
+        for target_audio_class in self.wav_channel_masks:
+            for mask in [from_fields(front_center=True),
+                         from_fields(front_left=True,front_right=True),
+                         from_fields(front_left=True,front_right=True,
+                                     back_left=True,back_right=True),
+                         from_fields(front_left=True,side_left=True,
+                                     front_center=True,front_right=True,
+                                     side_right=True,back_center=True)]:
+                self.__test_pcm_conversion__(audiotools.AiffAudio,
+                                             target_audio_class,
+                                             mask)
+
     @TEST_PCM
     def test_channel_assignment(self):
         from_fields = audiotools.ChannelMask.from_fields
@@ -10300,6 +10321,16 @@ class TestMultiChannel(unittest.TestCase):
                 self.__test_assignment__(audio_class,
                                          TONE_TRACKS[0:len(mask)],
                                          mask)
+
+        for mask in [from_fields(front_left=True,front_right=True),
+                     from_fields(front_left=True,front_right=True,
+                                 back_left=True,back_right=True),
+                     from_fields(front_left=True,side_left=True,
+                                 front_center=True,front_right=True,
+                                 side_right=True,back_center=True)]:
+            self.__test_assignment__(audiotools.AiffAudio,
+                                     TONE_TRACKS[0:len(mask)],
+                                     mask)
 
 ############
 #END TESTS
