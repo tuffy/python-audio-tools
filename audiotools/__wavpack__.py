@@ -71,6 +71,7 @@ class SymlinkPCMReader(PCMReader):
         PCMReader.__init__(self,None,
                            sample_rate=reader.sample_rate,
                            channels=reader.channels,
+                           channel_mask=reader.channel_mask,
                            bits_per_sample=reader.bits_per_sample)
         self.tempdir = tempdir
         self.symlink = symlink

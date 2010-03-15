@@ -17,7 +17,6 @@
 #along with this program; if not, write to the Free Software
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-
 import audiotools
 import tempfile
 import sys
@@ -30,6 +29,10 @@ import subprocess
 import filecmp
 import gettext
 import time
+import gc
+
+gc.set_debug(gc.DEBUG_LEAK)
+
 
 gettext.install("audiotools",unicode=True)
 
@@ -139,10 +142,15 @@ class BLANK_PCM_Reader:
 
 class EXACT_BLANK_PCM_Reader(BLANK_PCM_Reader):
     def __init__(self, pcm_frames,
-                 sample_rate=44100,channels=2,bits_per_sample=16):
+                 sample_rate=44100,channels=2,bits_per_sample=16,
+                 channel_mask=None):
         self.length = pcm_frames * sample_rate
         self.sample_rate = sample_rate
         self.channels = channels
+        if (channel_mask is None):
+            self.channel_mask = audiotools.ChannelMask.from_channels(channels)
+        else:
+            self.channel_mask = channel_mask
         self.bits_per_sample = bits_per_sample
 
         self.total_frames = pcm_frames
@@ -150,9 +158,11 @@ class EXACT_BLANK_PCM_Reader(BLANK_PCM_Reader):
 #this sends out random samples instead of a bunch of identical ones
 class RANDOM_PCM_Reader(BLANK_PCM_Reader):
     def __init__(self, length,
-                 sample_rate=44100,channels=2,bits_per_sample=16):
+                 sample_rate=44100,channels=2,bits_per_sample=16,
+                 channel_mask=None):
         BLANK_PCM_Reader.__init__(self,length,
-                                  sample_rate,channels,bits_per_sample)
+                                  sample_rate,channels,bits_per_sample,
+                                  channel_mask)
         self.md5 = md5()
 
     def read(self, bytes):
@@ -182,10 +192,15 @@ class RANDOM_PCM_Reader(BLANK_PCM_Reader):
 
 class EXACT_RANDOM_PCM_Reader(RANDOM_PCM_Reader):
     def __init__(self, pcm_frames,
-                 sample_rate=44100,channels=2,bits_per_sample=16):
+                 sample_rate=44100,channels=2,bits_per_sample=16,
+                 channel_mask=None):
         self.length = pcm_frames * sample_rate
         self.sample_rate = sample_rate
         self.channels = channels
+        if (channel_mask is None):
+            self.channel_mask = audiotools.ChannelMask.from_channels(channels)
+        else:
+            self.channel_mask = channel_mask
         self.bits_per_sample = bits_per_sample
 
         self.total_frames = pcm_frames
@@ -360,6 +375,8 @@ HUGE_BMP = \
 """QlpoOTFBWSZTWSpJrRQACVR+SuEoCEAAQAEBEAIIAABAAAEgAAAIoABwU0yMTExApURDRoeppjv2
 2uMceMt8M40qoj5nGLjFQkcuWdsL3rW+ugRSA6SFFV4lUR1/F3JFOFCQKkmtFA==""".decode('base64')
 
+from_channels = audiotools.ChannelMask.from_channels
+
 #this is an insane amount of different PCM combinations
 PCM_COMBINATIONS = (
     (11025,  1, 8), (22050,  1, 8), (32000,  1, 8), (44100,  1, 8),
@@ -380,12 +397,23 @@ PCM_COMBINATIONS = (
     (48000,  6, 24),(96000,  6, 24),(192000, 6, 24))
 
 #these are combinations that tend to occur in nature
-SHORT_PCM_COMBINATIONS = ((11025,  1, 8), (22050, 1, 8),
-                          (22050,  1, 16),(32000, 2, 16),
-                          (44100,  1, 16),(44100, 2, 16),
-                          (48000,  1, 16),(48000, 2, 16),
-                          (48000,  6, 16),
-                          (192000, 2, 24),(96000, 6, 24))
+SHORT_PCM_COMBINATIONS = ((11025,  1, from_channels(1), 8),
+                          (22050,  1, from_channels(1), 8),
+                          (22050,  1, from_channels(1), 16),
+                          (32000,  2, from_channels(2), 16),
+                          (44100,  1, from_channels(1), 16),
+                          (44100,  2, from_channels(2), 16),
+                          (48000,  1, from_channels(1), 16),
+                          (48000,  2, from_channels(2), 16),
+                          (48000,  6, audiotools.ChannelMask.from_fields(
+            front_left=True,front_right=True,
+            front_center=True,low_frequency=True,
+            back_left=True,back_right=True), 16),
+                          (192000, 2, from_channels(2), 24),
+                          (96000,  6, audiotools.ChannelMask.from_fields(
+            front_left=True,front_right=True,
+            front_center=True,low_frequency=True,
+            back_left=True,back_right=True), 24))
 
 class DummyMetaData3(audiotools.MetaData):
     def __init__(self):
@@ -409,10 +437,11 @@ class DummyMetaData3(audiotools.MetaData):
 class TestPCMCombinations(unittest.TestCase):
     @TEST_PCM
     def testpcmcombinations(self):
-        for (sample_rate,channels,bits_per_sample) in SHORT_PCM_COMBINATIONS:
+        for (sample_rate,channels,channel_mask,bits_per_sample) in SHORT_PCM_COMBINATIONS:
             reader = BLANK_PCM_Reader(SHORT_LENGTH,
                                       sample_rate, channels,
-                                      bits_per_sample)
+                                      bits_per_sample,
+                                      channel_mask)
             total_frames = reader.total_frames
             counter = PCM_Count()
             audiotools.transfer_framelist_data(reader,counter.write)
@@ -596,13 +625,14 @@ class TestAiffAudio(TestTextOutput):
         temp = tempfile.NamedTemporaryFile(suffix="." + self.audio_class.SUFFIX)
         try:
             #not all of these combinations will be supported by all formats
-            for (sample_rate,channels,bits_per_sample) in SHORT_PCM_COMBINATIONS:
+            for (sample_rate,channels,channel_mask,bits_per_sample) in SHORT_PCM_COMBINATIONS:
                 try:
                     new_file = self.audio_class.from_pcm(
                         temp.name,
                         BLANK_PCM_Reader(SHORT_LENGTH,
                                          sample_rate, channels,
-                                         bits_per_sample))
+                                         bits_per_sample,
+                                         channel_mask))
                 except audiotools.InvalidFormat:
                     continue
 
@@ -612,7 +642,8 @@ class TestAiffAudio(TestTextOutput):
                         new_file.to_pcm(),
                         BLANK_PCM_Reader(SHORT_LENGTH,
                                          sample_rate, channels,
-                                         bits_per_sample)),
+                                         bits_per_sample,
+                                         channel_mask)),
                                      True)
 
                     #lots of lossy formats convert BPS to 16 bits or float bits
@@ -5106,22 +5137,42 @@ class TestPCMConversion(unittest.TestCase):
 
     @TEST_PCM
     def testconversions(self):
-        for (input,output) in Combinations(SHORT_PCM_COMBINATIONS,2):
-            #print >>sys.stderr,"%s -> %s" % (repr(input),repr(output))
+        for ((i_sample_rate,
+              i_channels,
+              i_channel_mask,
+              i_bits_per_sample),
+             (o_sample_rate,
+              o_channels,
+              o_channel_mask,
+              o_bits_per_sample)) in Combinations(SHORT_PCM_COMBINATIONS,2):
+
+            # print "(%s,%s,%s,%s) -> (%s,%s,%s,%s)" % \
+            #     (i_sample_rate,
+            #      i_channels,
+            #      i_channel_mask,
+            #      i_bits_per_sample,
+            #      o_sample_rate,
+            #      o_channels,
+            #      o_channel_mask,
+            #      o_bits_per_sample)
             reader = BLANK_PCM_Reader(5,
-                                      sample_rate=input[0],
-                                      channels=input[1],
-                                      bits_per_sample=input[2])
+                                      sample_rate=i_sample_rate,
+                                      channels=i_channels,
+                                      bits_per_sample=i_bits_per_sample,
+                                      channel_mask=i_channel_mask)
+
             converter = audiotools.PCMConverter(reader,
-                                                sample_rate=output[0],
-                                                channels=output[1],
-                                                bits_per_sample=output[2])
+                                                sample_rate=o_sample_rate,
+                                                channels=o_channels,
+                                                bits_per_sample=o_bits_per_sample,
+                                                channel_mask=o_channel_mask)
             wave = audiotools.WaveAudio.from_pcm(self.tempwav.name,converter)
             converter.close()
 
-            self.assertEqual(wave.sample_rate(),output[0])
-            self.assertEqual(wave.channels(),output[1])
-            self.assertEqual(wave.bits_per_sample(),output[2])
+            self.assertEqual(wave.sample_rate(),o_sample_rate)
+            self.assertEqual(wave.channels(),o_channels)
+            self.assertEqual(wave.bits_per_sample(),o_bits_per_sample)
+            self.assertEqual(wave.channel_mask(),o_channel_mask)
             self.assertEqual((D.Decimal(wave.cd_frames()) / 75).to_integral(),
                              5)
 
@@ -8975,6 +9026,7 @@ class TestFlacCodec(unittest.TestCase):
             stream.reset()
             yield stream
 
+    @TEST_FLAC
     def setUp(self):
         import audiotools.decoders
         import audiotools.encoders
@@ -9059,7 +9111,7 @@ class TestFlacCodec(unittest.TestCase):
             self.assertEqual(flac.__md5__,pcmreader.digest())
 
         md5sum = md5()
-        d = self.decoder(temp_file.name)
+        d = self.decoder(temp_file.name,pcmreader.channel_mask)
         f = d.read(audiotools.BUFFER_SIZE)
         while (len(f) > 0):
             md5sum.update(f.to_bytes(False,True))
@@ -9242,7 +9294,15 @@ class TestFlacCodec(unittest.TestCase):
                             ["disable_verbatim_subframes",
                              "disable_constant_subframes",
                              "disable_fixed_subframes"]]:
-                for channels in [1,2,4,8]:
+                for (channels,mask) in [
+                    (1,audiotools.ChannelMask.from_channels(1)),
+                    (2,audiotools.ChannelMask.from_channels(2)),
+                    (4,audiotools.ChannelMask.from_fields(
+                            front_left=True,
+                            front_right=True,
+                            back_left=True,
+                            back_right=True)),
+                    (8,audiotools.ChannelMask(0))]:
                     for bps in [8,16,24]:
                         for extra in  [[],
                                        #FIXME - no analogue for -p option
@@ -9259,6 +9319,7 @@ class TestFlacCodec(unittest.TestCase):
                                         pcm_frames=65536,
                                         sample_rate=44100,
                                         channels=channels,
+                                        channel_mask=mask,
                                         bits_per_sample=bps),
                                     **encode_opts)
 
@@ -9964,14 +10025,28 @@ class TestReplayGain(unittest.TestCase):
 
             track3 = audiotools.WaveAudio.from_pcm(
                 track_file3.name,
-                BLANK_PCM_Reader(2,channels=4))
+                BLANK_PCM_Reader(
+                    2,
+                    channels=4,
+                    channel_mask=audiotools.ChannelMask.from_fields(
+                        front_left=True,
+                        front_right=True,
+                        back_left=True,
+                        back_right=True)))
 
             gain = audiotools.calculate_replay_gain([track1,track2,track3])
             self.assertRaises(ValueError,list,gain)
 
             track3 = audiotools.WaveAudio.from_pcm(
                 track_file3.name,
-                BLANK_PCM_Reader(2,sample_rate=48000,channels=3))
+                BLANK_PCM_Reader(
+                    2,
+                    sample_rate=48000,
+                    channels=3,
+                    channel_mask=audiotools.ChannelMask.from_fields(
+                        front_left=True,
+                        front_right=True,
+                        front_center=True)))
 
             gain = audiotools.calculate_replay_gain([track1,track2,track3])
             self.assertRaises(ValueError,list,gain)
@@ -9995,22 +10070,22 @@ class TestReplayGain(unittest.TestCase):
 #takes several 1-channel PCMReaders and combines them into a single PCMReader
 class PCM_Reader_Multiplexer:
     def __init__(self, pcm_readers, channel_mask):
-        self.pcm_readers = pcm_readers
         self.buffers = map(audiotools.BufferedPCMReader,pcm_readers)
-        self.sample_rate = self.pcm_readers[0].sample_rate
+        self.sample_rate = pcm_readers[0].sample_rate
         self.channels = len(pcm_readers)
         self.channel_mask = channel_mask
-        self.bits_per_sample = self.pcm_readers[0].bits_per_sample
+        self.bits_per_sample = pcm_readers[0].bits_per_sample
 
     def read(self, bytes):
         return audiotools.pcm.from_channels(
             [reader.read(bytes) for reader in self.buffers])
 
     def close(self):
-        for reader in self.pcm_readers:
+        for reader in self.buffers:
             reader.close()
 
 class TestMultiChannel(unittest.TestCase):
+    @TEST_PCM
     def setUp(self):
         #these support the full range of ChannelMasks
         self.wav_channel_masks = [audiotools.WaveAudio,
@@ -10082,6 +10157,7 @@ class TestMultiChannel(unittest.TestCase):
                     channel_mask))
         finally:
             temp_file.close()
+
 
     def __test_pcm_conversion__(self,
                                 source_audio_class,

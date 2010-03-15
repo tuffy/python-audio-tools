@@ -334,17 +334,14 @@ class WaveAudio(AudioFile):
             fmt_header = Con.Container()
             fmt_header.chunk_id = 'fmt '
 
-            if (pcmreader.channels <= 2):
-                fmt_header.chunk_length = 16
-            else:
-                fmt_header.chunk_length = 40
-
             fmt = Con.Container()
 
             if ((pcmreader.channels <= 2) and
                 (pcmreader.bits_per_sample <= 16)):
+                fmt_header.chunk_length = 16
                 fmt.compression = 1
             else:
+                fmt_header.chunk_length = 40
                 fmt.compression = 0xFFFE
 
             fmt.channels = pcmreader.channels

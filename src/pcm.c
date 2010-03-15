@@ -217,10 +217,6 @@ PyObject* FrameList_bits_per_sample(pcm_FrameList *self, void* closure) {
   return Py_BuildValue("i",self->bits_per_sample);
 }
 
-/* PyObject* FrameList_signed(pcm_FrameList *self, void* closure) { */
-/*   return Py_BuildValue("i",self->is_signed); */
-/* } */
-
 Py_ssize_t FrameList_len(pcm_FrameList *o) {
   return o->samples_length;
 }

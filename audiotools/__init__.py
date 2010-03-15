@@ -866,6 +866,7 @@ class BufferedPCMReader:
         self.reader_finished = False
 
     def close(self):
+        del(self.buffer)
         self.pcmreader.close()
 
     def read(self, bytes):
@@ -918,6 +919,7 @@ def pcm_split(reader, pcm_lengths):
         yield PCMReader(sub_file,
                         reader.sample_rate,
                         reader.channels,
+                        reader.channel_mask,
                         reader.bits_per_sample)
 
     full_data.close()
@@ -934,6 +936,18 @@ class __channel_remover__:
     def convert(self, frame_list):
         return pcm.from_channels(
             [frame_list.channel(i) for i in self.channels_to_keep])
+
+class __channel_adder__:
+    def __init__(self, channels):
+        self.channels = channels
+
+    def convert(self, frame_list):
+        current_channels = [frame_list.channel(i)
+                            for i in xrange(frame_list.channels)]
+        while (len(current_channels) < self.channels):
+            current_channels.append(current_channels[0])
+
+        return pcm.from_channels(current_channels)
 
 class __stereo_to_mono__:
     def __init__(self):
@@ -1100,10 +1114,13 @@ class PCMConverter:
                 self.conversions.append(
                     __downmixer__(pcmreader.channel_mask,
                                   pcmreader.channels).convert)
-            else:
+            elif (self.channels < pcmreader.channels):
                 self.conversions.append(
                     __channel_remover__(pcmreader.channel_mask,
                                         channel_mask).convert)
+            elif (self.channels > pcmreader.channels):
+                self.conversions.append(
+                    __channel_adder__(self.channels).convert)
 
         if (self.reader.sample_rate != self.sample_rate):
             self.resampler = resample.Resampler(

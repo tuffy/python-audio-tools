@@ -20,6 +20,7 @@ class FrameListReader:
                                                   True)
         self.sample_rate = sample_rate
         self.channels = channels
+        self.channel_mask = audiotools.ChannelMask.from_channels(channels)
         self.bits_per_sample = bits_per_sample
 
     def read(self, bytes):
@@ -35,6 +36,7 @@ class MD5Reader:
         self.pcmreader = pcmreader
         self.sample_rate = pcmreader.sample_rate
         self.channels = pcmreader.channels
+        self.channel_mask = pcmreader.channel_mask
         self.bits_per_sample = pcmreader.bits_per_sample
         self.md5 = md5()
 
@@ -59,11 +61,12 @@ class MD5Reader:
 
 class ShortStream(MD5Reader):
     def __init__(self,samples,sample_rate,channels,bits_per_sample):
-        MD5Reader.__init__(self,
-                           FrameListReader(samples,
-                                           sample_rate,
-                                           channels,
-                                           bits_per_sample))
+        MD5Reader.__init__(
+            self,
+            FrameListReader(samples,
+                            sample_rate,
+                            channels,
+                            bits_per_sample))
 
 class Generate01(ShortStream):
     def __init__(self,sample_rate):
