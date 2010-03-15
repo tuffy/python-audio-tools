@@ -571,6 +571,7 @@
    - [X] pcmreader
    - [X] replaygain
    - [X] resample
+** TODO Check for memory leaks
 ** TODO Add FrameList and FloatFrameList programming documentation
 * DONE Add native ReplayGain handling routines
 ** DONE Add native ReplayGain handling to FlacAudio/OggFlacAudio
@@ -705,11 +706,20 @@
     and more of an issue for Ogg Vorbis and other formats that do not.
 *** DONE Ensure UnsupportedChannelMask is raised when necessary
     This includes calls to from_pcm() and from_wave()
-* TODO Make documentation render consistently
-  Some versions of groff place text and page breaks differently.
-  This needs to be fixed such that the documentation renders properly
-  everywhere.
-  This may be an opportunity to see if plain TeX or LaTeX could
-  be substituted for troff.
 * TODO Get coverview and editxmcd working on Mac OS X
   Preferably without falling back to Tkinter
+* TODO Perform code review of C-based extensions
+** TODO audiotools.cdio
+** TODO audiotools.decoders
+** TODO audiotools.encoders
+** TODO audiotools.pcm
+** TODO audiotools.replaygain
+** TODO audiotools.resample
+* TODO Update documentation
+** TODO Make the programming documentation web-capable
+   It should render consistently with the regular Python reference docs
+   and be placed both in the source tree and on the website
+   for better accessability.
+** TODO Make reference documentation render consistently
+   This may entail conversion to LaTeX,
+   since troff's limitations are started to show.

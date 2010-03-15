@@ -105,7 +105,7 @@ if (__name__ == '__main__'):
         msg.error(_(u"All audio files must have the same channel count"))
         sys.exit(1)
 
-    if (len(set([f.channel_mask() for f in audiofiles])) != 1):
+    if (len(set([int(f.channel_mask()) for f in audiofiles])) != 1):
         msg.error(_(u"All audio files must have the same channel assignment"))
         sys.exit(1)
 

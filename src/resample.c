@@ -137,7 +137,7 @@ int Resampler_init(resample_Resampler *self,
 #define OUTPUT_SAMPLES_LENGTH 0x100000
 
 PyObject *Resampler_process(resample_Resampler* self,
-				   PyObject *args) {
+			    PyObject *args) {
   PyObject *framelist_obj;
   int last;
 

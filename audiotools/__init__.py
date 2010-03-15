@@ -1090,14 +1090,67 @@ class __downmix_to_mono__:
     def convert(self, frame_list):
         return self.mono.convert(self.downmix.convert(frame_list))
 
+class __convert_sample_rate__:
+    def __init__(self, old_sample_rate, new_sample_rate,
+                 channels, bits_per_sample):
+        from . import resample
+
+        self.resampler = resample.Resampler(
+                channels,
+                float(new_sample_rate) / float(old_sample_rate),
+                0)
+        self.unresampled = pcm.FloatFrameList([],channels)
+        self.bits_per_sample = bits_per_sample
+
+    def convert(self, frame_list):
+        #FIXME - The floating-point output from resampler.process()
+        #should be normalized rather than just chopping off
+        #excessively high or low samples (above 1.0 or below -1.0)
+        #during conversion to PCM.
+        #Unfortunately, that'll require building a second pass
+        #into the conversion process which will complicate PCMConverter
+        #a lot.
+        (output,self.unresampled) = self.resampler.process(
+            self.unresampled + frame_list.to_float(),
+            (len(frame_list) == 0) and (len(self.unresampled) == 0))
+
+        return output.to_int(self.bits_per_sample)
+
+class __convert_sample_rate_and_bits_per_sample__(__convert_sample_rate__):
+    def convert(self, frame_list):
+        (output,self.unresampled) = self.resampler.process(
+            self.unresampled + frame_list.to_float(),
+            (len(frame_list) == 0) and (len(self.unresampled) == 0))
+
+        return __add_dither__(output.to_int(self.bits_per_sample))
+
+class __convert_bits_per_sample__:
+    def __init__(self, bits_per_sample):
+        self.bits_per_sample = bits_per_sample
+
+    def convert(self, frame_list):
+        return __add_dither__(frame_list.to_float().to_int(self.bits_per_sample))
+
+def __add_dither__(frame_list):
+    if (frame_list.bits_per_sample >= 16):
+        random_bytes = map(ord, os.urandom((len(frame_list) / 8) + 1))
+        white_noise = [(random_bytes[i / 8] & (1 << (i % 8))) >> (i % 8)
+                       for i in xrange(len(frame_list))]
+    else:
+        white_noise = [0] * len(frame_list)
+
+    return pcm.from_list([i ^ w for (i,w) in izip(frame_list,
+                                                 white_noise)],
+                         frame_list.channels,
+                         frame_list.bits_per_sample,
+                         True)
+
 class PCMConverter:
     def __init__(self, pcmreader,
                  sample_rate,
                  channels,
                  channel_mask,
                  bits_per_sample):
-        import resample
-
         self.sample_rate = sample_rate
         self.channels = channels
         self.bits_per_sample = bits_per_sample
@@ -1109,60 +1162,42 @@ class PCMConverter:
             if (self.channels == 1):
                 self.conversions.append(
                     __downmix_to_mono__(pcmreader.channel_mask,
-                                        pcmreader.channels).convert)
+                                        pcmreader.channels))
             elif (self.channels == 2):
                 self.conversions.append(
                     __downmixer__(pcmreader.channel_mask,
-                                  pcmreader.channels).convert)
+                                  pcmreader.channels))
             elif (self.channels < pcmreader.channels):
                 self.conversions.append(
                     __channel_remover__(pcmreader.channel_mask,
-                                        channel_mask).convert)
+                                        channel_mask))
             elif (self.channels > pcmreader.channels):
                 self.conversions.append(
-                    __channel_adder__(self.channels).convert)
+                    __channel_adder__(self.channels))
 
         if (self.reader.sample_rate != self.sample_rate):
-            self.resampler = resample.Resampler(
-                self.channels,
-                float(self.sample_rate) / float(self.reader.sample_rate),
-                0)
-
-            self.unresampled = pcm.FloatFrameList([],self.channels)
-
             #if we're converting sample rate and bits-per-sample
             #at the same time, short-circuit the conversion to do both at once
             #which can be sped up somewhat
             if (self.reader.bits_per_sample != self.bits_per_sample):
-                self.conversions.append(self.convert_sample_rate_and_bits_per_sample)
+                self.conversions.append(__convert_sample_rate_and_bits_per_sample__(self.reader.sample_rate,self.sample_rate,self.channels,self.bits_per_sample))
             else:
-                self.conversions.append(self.convert_sample_rate)
+                self.conversions.append(__convert_sample_rate__(self.reader.sample_rate,self.sample_rate,self.channels,self.bits_per_sample))
 
         else:
             if (self.reader.bits_per_sample != self.bits_per_sample):
-                self.conversions.append(self.convert_bits_per_sample)
-
+                self.conversions.append(__convert_bits_per_sample__(self.bits_per_sample))
 
     def read(self, bytes):
         frame_list = self.reader.read(bytes)
 
         for converter in self.conversions:
-            frame_list = converter(frame_list)
+            frame_list = converter.convert(frame_list)
 
         return frame_list
 
     def close(self):
         self.reader.close()
-
-    def convert_bits_per_sample(self, frame_list):
-        #This modifies the bytes of "frame_list" in-place
-        #rather than build a whole new array and return it.
-        #Since our chained converters will overwrite the old frame_list
-        #anyway, this should speed up the conversion without
-        #damaging anything.
-        #Just be careful when using this routine elsewhere.
-
-        return self.add_dither(frame_list.to_float().to_int(self.bits_per_sample))
 
     def convert_channels(self, frame_list):
         difference = self.channels - self.reader.channels
@@ -1223,43 +1258,6 @@ class PCMConverter:
                 channels.append(channels[0])
 
             return pcm.from_channels(channels)
-
-    def convert_sample_rate(self, frame_list):
-        #FIXME - The floating-point output from resampler.process()
-        #should be normalized rather than just chopping off
-        #excessively high or low samples (above 1.0 or below -1.0)
-        #during conversion to PCM.
-        #Unfortunately, that'll require building a second pass
-        #into the conversion process which will complicate PCMConverter
-        #a lot.
-        (output,self.unresampled) = self.resampler.process(
-            self.unresampled + frame_list.to_float(),
-            (len(frame_list) == 0) and (len(self.unresampled) == 0))
-
-        return output.to_int(self.bits_per_sample)
-
-
-    #though this method name is huge, it is also unambiguous
-    def convert_sample_rate_and_bits_per_sample(self, frame_list):
-        (output,self.unresampled) = self.resampler.process(
-            self.unresampled + frame_list.to_float(),
-            (len(frame_list) == 0) and (len(self.unresampled) == 0))
-
-        return self.add_dither(output.to_int(self.bits_per_sample))
-
-    def add_dither(self, frame_list):
-        if (frame_list.bits_per_sample >= 16):
-            random_bytes = map(ord, os.urandom((len(frame_list) / 8) + 1))
-            white_noise = [(random_bytes[i / 8] & (1 << (i % 8))) >> (i % 8)
-                           for i in xrange(len(frame_list))]
-        else:
-            white_noise = [0] * len(frame_list)
-
-        return pcm.from_list([i ^ w for (i,w) in izip(frame_list,
-                                                      white_noise)],
-                             frame_list.channels,
-                             frame_list.bits_per_sample,
-                             True)
 
 #wraps around an existing PCMReader
 #and applies ReplayGain upon calling the read() method

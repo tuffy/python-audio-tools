@@ -29,10 +29,6 @@ import subprocess
 import filecmp
 import gettext
 import time
-import gc
-
-gc.set_debug(gc.DEBUG_LEAK)
-
 
 gettext.install("audiotools",unicode=True)
 
@@ -6770,7 +6766,8 @@ class TestProgramOutput(TestTextOutput):
 
         flac5 = audiotools.FlacAudio.from_pcm(
             os.path.join(self.dir1,"test5.flac"),
-            BLANK_PCM_Reader(4,channels=6))
+            BLANK_PCM_Reader(4,channels=6,
+                             channel_mask=audiotools.ChannelMask(0)))
 
         flac6 = audiotools.FlacAudio.from_pcm(
             os.path.join(self.dir1,"test6.flac"),
@@ -10085,7 +10082,6 @@ class PCM_Reader_Multiplexer:
             reader.close()
 
 class TestMultiChannel(unittest.TestCase):
-    @TEST_PCM
     def setUp(self):
         #these support the full range of ChannelMasks
         self.wav_channel_masks = [audiotools.WaveAudio,

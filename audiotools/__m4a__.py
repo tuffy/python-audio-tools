@@ -486,6 +486,7 @@ class M4AAudio_nero(M4AAudio_faac):
             return PCMReaderError(None,
                                   sample_rate=self.sample_rate(),
                                   channels=self.channels(),
+                                  channel_mask=self.channel_mask(),
                                   bits_per_sample=self.bits_per_sample())
 
     @classmethod
