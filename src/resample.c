@@ -232,7 +232,7 @@ PyObject *Resampler_process(resample_Resampler* self,
 
 
   /*return those two arrays as a tuple*/
-  toreturn = PyTuple_Pack(2,processed_samples,unprocessed_samples);
+  toreturn = Py_BuildValue("(O,O)",processed_samples,unprocessed_samples);
 
   /*cleanup anything allocated*/
   free(src_data.data_in);

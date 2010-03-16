@@ -571,7 +571,10 @@
    - [X] pcmreader
    - [X] replaygain
    - [X] resample
-** TODO Check for memory leaks
+** DONE Check for memory leaks
+** TODO Make pcm objects self-documenting
+   For example, their methods and functions should give useful info
+   when checked with "help()"
 ** TODO Add FrameList and FloatFrameList programming documentation
 * DONE Add native ReplayGain handling routines
 ** DONE Add native ReplayGain handling to FlacAudio/OggFlacAudio

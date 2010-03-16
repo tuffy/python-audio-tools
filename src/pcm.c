@@ -735,6 +735,8 @@ PyObject *FrameList_from_channels(PyObject *dummy, PyObject *args) {
     Py_DECREF(list_item);
   }
 
+  Py_DECREF(framelist_obj);
+
   return (PyObject*)framelist;
  error:
   Py_XDECREF(framelist);
@@ -1194,7 +1196,7 @@ PyObject* FloatFrameList_from_channels(PyObject *dummy, PyObject *args) {
     goto error;
   }
 
-  channel = (pcm_FloatFrameList*)list_item;
+  channel = (pcm_FloatFrameList*)framelist_obj;
   if (channel->channels != 1) {
     PyErr_SetString(PyExc_ValueError,
 		    "all channels must be 1 channel wide");
@@ -1237,6 +1239,8 @@ PyObject* FloatFrameList_from_channels(PyObject *dummy, PyObject *args) {
     }
     Py_DECREF(list_item);
   }
+
+  Py_DECREF(framelist_obj);
 
   return (PyObject*)framelist;
  error:
