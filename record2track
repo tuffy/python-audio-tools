@@ -31,11 +31,13 @@ class OSSReader(audiotools.PCMReader):
     def __init__(self, sample_rate, channels, bits_per_sample):
         import ossaudiodev
 
-        audiotools.PCMReader.__init__(self,
-                                      ossaudiodev.open('r'),
-                                      sample_rate=sample_rate,
-                                      channels=channels,
-                                      bits_per_sample=bits_per_sample)
+        audiotools.PCMReader.__init__(
+            self,
+            ossaudiodev.open('r'),
+            sample_rate=sample_rate,
+            channels=channels,
+            channel_mask=audiotools.ChannelMask.from_channels(channels),
+            bits_per_sample=bits_per_sample)
         self.file.channels(channels)
         self.file.speed(sample_rate)
         if (bits_per_sample == 8):
@@ -62,12 +64,14 @@ class PulseAudioReader(audiotools.PCMReader):
                     bits_per_sample,"float32le"),
                                  "--channels=%d" % (channels)],
                                 stdout=subprocess.PIPE)
-        audiotools.PCMReader.__init__(self,
-                                      proc.stdout,
-                                      sample_rate=sample_rate,
-                                      channels=channels,
-                                      bits_per_sample=bits_per_sample,
-                                      process=proc)
+        audiotools.PCMReader.__init__(
+            self,
+            proc.stdout,
+            sample_rate=sample_rate,
+            channels=channels,
+            channel_mask=audiotools.ChannelMask.from_channels(channels),
+            bits_per_sample=bits_per_sample,
+            process=proc)
 
     @classmethod
     def server_alive(cls):

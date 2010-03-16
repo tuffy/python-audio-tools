@@ -1338,6 +1338,7 @@ class InterruptableReader(PCMReader):
         PCMReader.__init__(self, pcmreader,
                            sample_rate=pcmreader.sample_rate,
                            channels=pcmreader.channels,
+                           channel_mask=pcmreader.channel_mask,
                            bits_per_sample=pcmreader.bits_per_sample)
 
         self.stop_reading = False

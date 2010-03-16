@@ -58,7 +58,7 @@ class OSSPlayer:
                 pcm,
                 sample_rate=pcm.sample_rate,
                 channels=pcm.channels,
-                channel_mask=pcm.channel_mask
+                channel_mask=pcm.channel_mask,
                 bits_per_sample=16)
             fmt = ossaudiodev.AFMT_S16_LE
 
