@@ -1,6 +1,9 @@
 #ifndef MD5_H
 #define MD5_H
 
+#ifndef STANDALONE
+#include <Python.h>
+#endif
 #include <stdint.h>
 
 /*

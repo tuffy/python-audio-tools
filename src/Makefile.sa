@@ -1,7 +1,7 @@
 #This makefile is for generating debug standalone executables
 
 VERSION = "2.14alpha3"
-OBJS = array.o pcm.o bitstream_w.o pcmreader.o
+OBJS = array.o pcm.o bitstream_w.o pcmreader.o md5.o
 FLAGS = -Wall -g
 
 flacenc: $(OBJS) encoders/flac.c encoders/flac.h flac_lpc.o
@@ -20,6 +20,9 @@ bitstream_w.o: bitstream_w.c bitstream_w.h
 
 pcmreader.o: pcmreader.c pcmreader.h
 	gcc $(FLAGS) -c pcmreader.c -DSTANDALONE
+
+md5.o: md5.c md5.h
+	gcc $(FLAGS) -c md5.c -DSTANDALONE
 
 flac_lpc.o: encoders/flac_lpc.c encoders/flac_lpc.h
 	gcc $(FLAGS) -c encoders/flac_lpc.c -DSTANDALONE
