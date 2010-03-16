@@ -90,7 +90,7 @@ void FlacDecoder_dealloc(decoders_FlacDecoder *self) {
   if (self->data != NULL)
     free(self->data);
 
-  Py_TYPE(self)->tp_free((PyObject*)self);
+  self->ob_type->tp_free((PyObject*)self);
 }
 
 PyObject *FlacDecoder_new(PyTypeObject *type,
@@ -269,7 +269,7 @@ PyObject *FLACDecoder_read(decoders_FlacDecoder* self,
   }
 
   /*transform subframe data into a pcm_FrameList object*/
-  if ((pcm = PyImport_ImportModuleNoBlock("audiotools.pcm")) == NULL)
+  if ((pcm = PyImport_ImportModule("audiotools.pcm")) == NULL)
     goto error;
   framelist = (pcm_FrameList*)PyObject_CallMethod(pcm,"__blank__",NULL);
   Py_DECREF(pcm);

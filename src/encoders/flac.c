@@ -1,7 +1,7 @@
 #include "flac.h"
 #include "flac_lpc.h"
 #include "../pcmreader.h"
-#include <openssl/md5.h>
+#include "../md5.h"
 #include <limits.h>
 #include <assert.h>
 
@@ -58,7 +58,7 @@ PyObject* encoders_encode_flac(PyObject *dummy,
 			   "disable_fixed_subframes",
 			   "disable_lpc_subframes",
 			   NULL};
-  MD5_CTX md5sum;
+  audiotools__MD5Context md5sum;
 
   struct ia_array samples;
 
@@ -127,7 +127,7 @@ PyObject* encoders_encode_flac(PyObject *dummy,
   struct pcm_reader *reader;
   struct flac_STREAMINFO streaminfo;
   char version_string[0xFF];
-  MD5_CTX md5sum;
+  audiotools__MD5Context md5sum;
 
   struct ia_array samples;
 
@@ -157,7 +157,7 @@ PyObject* encoders_encode_flac(PyObject *dummy,
   }
 
   sprintf(version_string,"Python Audio Tools %s",AUDIOTOOLS_VERSION);
-  MD5_Init(&md5sum);
+  audiotools__MD5Init(&md5sum);
   pcmr_add_callback(reader,md5_update,&md5sum);
 
   stream = bs_open(file);
@@ -225,7 +225,7 @@ PyObject* encoders_encode_flac(PyObject *dummy,
   }
 
   /*go back and re-write STREAMINFO with complete values*/
-  MD5_Final(streaminfo.md5sum,&md5sum);
+  audiotools__MD5Final(streaminfo.md5sum,&md5sum);
   fseek(stream->file, 4 + 4, SEEK_SET);
   FlacEncoder_write_streaminfo(stream,streaminfo);
 
@@ -1330,7 +1330,7 @@ void FlacEncoder_build_side_right_subframes(struct ia_array *samples,
 }
 
 void md5_update(void *data, unsigned char *buffer, unsigned long len) {
-  MD5_Update((MD5_CTX*)data, (const void*)buffer, len);
+  audiotools__MD5Update((audiotools__MD5Context*)data, (const void*)buffer, len);
 }
 
 int maximum_bits_size(int value, int current_maximum) {

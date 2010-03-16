@@ -520,8 +520,8 @@
    and the vorbis comment to the proper value.
    I expect this will be a long-term project
    coinciding with re-engineering the to_pcm()/from_pcm() methods.
+** DONE Remove external MD5 dependency
 ** TODO Generate SEEKTABLE blocks
-** TODO Remove external MD5 dependency
 * TODO Convert to_pcm()/from_pcm() to FrameList-based I/O
   Passing specifically-sized blobs of binary data between conversion
   routines worked well when those routines are little more than

@@ -62,10 +62,10 @@ encodersmodule = Extension('audiotools.encoders',
                            sources = ['src/array.c',
                                       'src/bitstream_w.c',
                                       'src/pcmreader.c',
+                                      'src/md5.c',
                                       'src/encoders/flac.c',
                                       'src/encoders/flac_lpc.c',
                                       'src/encoders.c'],
-                           libraries = ["ssl"],
                            define_macros = [("VERSION",VERSION)])
 
 extensions = [cdiomodule,
