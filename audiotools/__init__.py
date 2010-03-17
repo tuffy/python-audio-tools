@@ -552,7 +552,7 @@ class ChannelMask:
 
     #returns the index of the given channel name within this mask
     #for example, given the mask 0xB (fL, fR, LFE, but no fC)
-    #index("low_frequency") will return 3
+    #index("low_frequency") will return 2
     #if the channel is not in this mask, raises ValueError
     def index(self, channel_name):
         return self.channels().index(channel_name)

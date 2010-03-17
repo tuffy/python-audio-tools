@@ -728,12 +728,12 @@
     - [ ] BitstreamReader
     - [ ] BitstreamWriter
     - [ ] BufferedPCMReader
-    - [ ] ChannelMask
+    - [X] ChannelMask
     - [ ] ExecQueue
     - [X] Image
     - [X] MetaData
     - [ ] PCMConverter
-    - [ ] PCMReader
+    - [X] PCMReader
     - [ ] PCMCat
     - [ ] ReorderedPCMReader
     - [X] ReplayGain

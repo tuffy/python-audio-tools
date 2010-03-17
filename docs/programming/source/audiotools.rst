@@ -262,32 +262,32 @@ MetaData Objects
    The album's media type, such as u"CD", u"tape", u"LP", etc.
    as a Unicode string.
 
-.. data:: ISRC
+.. data:: MetaData.ISRC
 
    This track's ISRC value as a Unicode string.
 
-.. data:: catalog
+.. data:: MetaData.catalog
 
    This track's album catalog number as a Unicode string.
 
-.. data:: year
+.. data:: MetaData.year
 
    This track's album release year as a Unicode string.
 
-.. data:: date
+.. data:: MetaData.date
 
    This track's album recording date as a Unicode string.
 
-.. data:: album_number
+.. data:: MetaData.album_number
 
    This track's album number if it is one of a series of albums,
    as an integer.
 
-.. data:: album_total
+.. data:: MetaData.album_total
 
    The total number of albums within the set, as an integer.
 
-.. data:: comment
+.. data:: MetaData.comment
 
    This track's comment as a Unicode string.
 
@@ -459,4 +459,162 @@ ReplayGain Objects
 .. data:: ReplayGain.album_peak
 
    A float of an album's peak value, from 0.0 to 1.0
+
+PCMReader Objects
+-----------------
+
+.. class:: PCMReader(file, sample_rate, channels, channel_mask, bits_per_sample[, process[, signed[, big_endian]]])
+
+   This class wraps around file-like objects and generates
+   :class:`pcm.FrameList` objects on each call to :meth:`read`.
+   ``sample_rate``, ``channels``, ``channel_mask`` and ``bits_per_sample``
+   should be integer-compatible objects.
+   ``process`` is a subprocess helper object which generates PCM data.
+   ``signed`` is ``True`` if the generated PCM data is signed.
+   ``big_endian`` is ``True`` if the generated PCM data is big-endian.
+
+   Note that :class:`PCMReader`-compatible objects need only implement the
+   ``sample_rate``, ``channels``, ``channel_mask`` and ``bits_per_sample``
+   fields.
+   The rest are helpers for converting raw strings into :class:`pcm.FrameList`
+   objects.
+
+.. data:: PCMReader.sample_rate
+
+   The sample rate of this audio stream, in Hz, as a positive integer.
+
+.. data:: PCMReader.channels
+
+   The number of channels in this audio stream as a positive integer.
+
+.. data:: PCMReader.channel_mask
+
+   The channel mask of this audio stream as a non-negative integer.
+
+.. data:: PCMReader.bits_per_sample
+
+   The number of bits-per-sample in this audio stream as a positive integer.
+
+.. method:: PCMReader.read(bytes)
+
+   Try to read a :class:`pcm.FrameList` object of size ``bytes``, if possible.
+   This method is *not* guaranteed to read that amount of bytes.
+   It may return less, particularly at the end of an audio stream.
+   It may even return FrameLists larger than requested.
+   However, it must always return a non-empty FrameList until the
+   end of the PCM stream is reached.
+
+.. method:: PCMReader.close()
+
+   Closes the audio stream.
+   If any subprocesses were used for audio decoding, they will also be
+   closed and waited for their process to finish.
+
+ChannelMask Objects
+-------------------
+
+.. class:: ChannelMask(mask)
+
+   This is an integer-like class that abstracts channel assignments
+   into a set of bit fields.
+
+   ======= =========================
+   Mask    Speaker
+   ------- -------------------------
+   0x1     ``front_left``
+   0x2     ``front_right``
+   0x4     ``front_center``
+   0x8     ``low_frequency``
+   0x10    ``back_left``
+   0x20    ``back_right``
+   0x40    ``front_left_of_center``
+   0x80    ``front_right_of_center``
+   0x100   ``back_center``
+   0x200   ``side_left``
+   0x400   ``side_right``
+   0x800   ``top_center``
+   0x1000  ``top_front_left``
+   0x2000  ``top_front_center``
+   0x4000  ``top_front_right``
+   0x8000  ``top_back_left``
+   0x10000 ``top_back_center``
+   0x20000 ``top_back_right``
+   ======= =========================
+
+   All channels in a :class:`pcm.FrameList` will be in RIFF WAVE order
+   as a sensible convention.
+   But which channel corresponds to which speaker is decided by this mask.
+   For example, a 4 channel PCMReader with the channel mask ``0x33``
+   corresponds to the bits ``00110011``
+
+   Reading those bits from right to left (least significant first)
+   the ``front_left``, ``front_right``, ``back_left``, ``back_right``
+   speakers are set.
+   Therefore, the PCMReader's 4 channel FrameLists are laid out as follows:
+
+   0. ``front_left``
+   1. ``front_right``
+   2. ``back_left``
+   3. ``back_right``
+
+   Since the ``front_center`` and ``low_frequency`` bits are not set,
+   those channels are skipped in the returned FrameLists.
+
+   Many formats store their channels internally in a different order.
+   Their :class:`PCMReader` objects will be expected to reorder channels
+   and set a :class:`ChannelMask` matching this convention.
+   And, their :func:`from_pcm` classmethods will be expected
+   to reverse the process.
+
+   A :class:`ChannelMask` of 0 is "undefined",
+   which means that channels aren't assigned to *any* speaker.
+   This is an ugly last resort for handling formats
+   where multi-channel assignments aren't properly defined.
+   In this case, a :func:`from_pcm` classmethod is free to assign
+   the undefined channels any way it likes, and is under no obligation
+   to keep them undefined when passing back out to :meth:`to_pcm`
+
+.. method:: defined()
+
+   Returns ``True`` if this mask is defined.
+
+.. method:: undefined()
+
+   Returns ``True`` if this mask is undefined.
+
+.. method:: channels()
+
+   Returns the speakers this mask contains as a list of strings
+   in the order they appear in the PCM stream.
+
+.. method:: index(channel_name)
+
+   Given a channel name string, returns the index of that channel
+   within the PCM stream.
+   For example:
+
+   >>> mask = ChannelMask(0xB)     #fL, fR, LFE, but no fC
+   >>> mask.index("low_frequency")
+   2
+
+.. classmethod:: from_fields(**fields)
+
+   Takes channel names as function arguments and returns a
+   :class:`ChannelMask` object.
+
+   >>> mask = ChannelMask.from_fields(front_right=True,
+   ...                                front_left=True,
+   ...                                front_center=True)
+   >>> int(mask)
+   7
+
+.. classmethod:: from_channels(channel_count)
+
+   Takes a channel count integer and returns a :class:`ChannelMask` object.
+
+.. warning::
+
+   :func:`from_channel` *only* works for 1 and 2 channel counts
+   and is meant purely as a convenience method for mono or stereo streams.
+   All other values will trigger a :exc:`ValueError`
 
