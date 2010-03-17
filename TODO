@@ -723,6 +723,77 @@
    It should render consistently with the regular Python reference docs
    and be placed both in the source tree and on the website
    for better accessability.
+*** TODO Document audiotools
+    - [ ] AudioFile
+    - [ ] BitstreamReader
+    - [ ] BitstreamWriter
+    - [ ] BufferedPCMReader
+    - [ ] ChannelMask
+    - [ ] ExecQueue
+    - [ ] Image
+    - [ ] MetaData
+    - [ ] PCMConverter
+    - [ ] PCMReader
+    - [ ] PCMCat
+    - [ ] ReorderedPCMReader
+    - [ ] ReplayGain
+    - [ ] ReplayGainReader
+    - [ ] Messenger
+    - [ ] AlbumMetaData
+    - [ ] CDTrackLog
+    - [ ] CDDA
+    - [ ] calculate_replay_gain
+    - [ ] filename_to_type
+    - [ ] find_glade_file
+    - [ ] group_tracks
+    - [ ] open
+    - [ ] open_directory
+    - [ ] open_files
+    - [ ] pcm_cmp
+    - [ ] pcm_split
+    - [ ] read_metadata_file
+    - [ ] read_sheet
+    - [ ] sheet_to_unicode
+    - [ ] stripped_pcm_cmp
+    - [ ] transfer_data
+    - [ ] transfer_framelist_data
+    - [ ] BIN
+    - [ ] BIG_ENDIAN
+    - [ ] BUFFER_SIZE
+    - [ ] DEFAULT_CDROM
+    - [ ] FILENAME_FORMAT
+    - [ ] FREEDB_PORT
+    - [ ] FREEDB_SERVER
+    - [ ] FS_ENCODING
+    - [ ] IO_ENCODING
+    - [ ] MUSICBRAINZ_PORT
+    - [ ] MUSICBRAINZ_SERVER
+    - [ ] THUMBNAIL_FORMAT
+    - [ ] THUMBNAIL_SIZE
+    - [ ] TYPE_MAP
+    - [ ] VERSION
+    - [ ] AVAILABLE_TYPES
+*** TODO Document audiotools.pcm
+    - [ ] FloatFrameList
+    - [ ] FrameList
+    - [ ] from_channels
+    - [ ] from_float_channels
+    - [ ] from_float_frames
+    - [ ] from_frames
+    - [ ] from_list
+*** TODO Document audiotools.resample
+    - [ ] Resampler
+*** TODO Document audiotools.replaygain
+    - [ ] ReplayGain
+*** TODO Document audiotools.cdio
+    - [ ] CDDA
+    - [ ] set_read_callback
+*** TODO Document audiotools.cue
+    - [ ] Cuesheet
+    - [ ] Track
+*** TODO Document audiotools.toc
+    - [ ] TOCFile
+    - [ ] Track
 ** TODO Make reference documentation render consistently
    This may entail conversion to LaTeX,
    since troff's limitations are started to show.
