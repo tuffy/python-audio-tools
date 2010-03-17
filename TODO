@@ -731,7 +731,7 @@
     - [ ] ChannelMask
     - [ ] ExecQueue
     - [ ] Image
-    - [ ] MetaData
+    - [X] MetaData
     - [ ] PCMConverter
     - [ ] PCMReader
     - [ ] PCMCat
