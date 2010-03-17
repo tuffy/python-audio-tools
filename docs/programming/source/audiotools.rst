@@ -362,3 +362,101 @@ MetaData Objects
    Updates this metadata by replacing empty fields with those
    from ``new_metadata``.  Non-empty fields are left as-is.
 
+Image Objects
+-------------
+
+.. class:: Image(data, mime_type, width, height, color_depth, color_count, description, type)
+
+   This class is a container for image data.
+
+.. data:: Image.data
+
+   A plain string of raw image bytes.
+
+.. data:: Image.mime_type
+
+   A Unicode string of this image's MIME type, such as u'image/jpeg'
+
+.. data:: Image.width
+
+   This image's width in pixels as an integer.
+
+.. data:: Image.height
+
+   This image's height in pixels as an integer
+
+.. data:: Image.color_depth
+
+   This image's color depth in bits as an integer.
+   24 for JPEG, 8 for GIF, etc.
+
+.. data:: Image.color_count
+
+   For palette-based images, this is the number of colors the image contains
+   as an integer.
+   For non-palette images, this value is 0.
+
+.. data:: Image.description
+
+   A Unicode string of this image's description.
+
+.. data:: Image.type
+
+   An integer representing this image's type.
+
+   ===== ============
+   Value Type
+   ----- ------------
+   0     front cover
+   1     back cover
+   2     leaflet page
+   3     media
+   4     other
+   ===== ============
+
+.. method:: Image.suffix()
+
+   Returns this image's typical filename suffix as a plain string.
+   For example, JPEGs return ``"jpg"``
+
+.. method:: Image.type_string()
+
+   Returns this image's type as a plain string.
+   For example, an image of type 0 returns ``"Front Cover"``
+
+.. classmethod:: Image.new(image_data, description, type)
+
+   Given a string of raw image bytes, a Unicode description string
+   and image type integer, returns an :class:`Image`-compatible object.
+   Raises :exc:`InvalidImage` If unable to determine the
+   image type from the data string.
+
+.. method:: Image.thumbnail(width, height, format)
+
+   Given width and height integers and a format string (such as ``"JPEG"``)
+   returns a new :class:`Image` object resized to those dimensions
+   while retaining its original aspect ratio.
+
+ReplayGain Objects
+------------------
+
+.. class:: ReplayGain(track_gain, track_peak, album_gain, album_peak)
+
+   This is a simple container for ReplayGain values.
+
+.. data:: ReplayGain.track_gain
+
+   A float of a track's ReplayGain value.
+
+.. data:: ReplayGain.track_peak
+
+   A float of a track's peak value, from 0.0 to 1.0
+
+.. data:: ReplayGain.album_gain
+
+   A float of an album's ReplayGain value.
+
+.. data:: ReplayGain.album_peak
+
+   A float of an album's peak value, from 0.0 to 1.0
+
