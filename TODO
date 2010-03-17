@@ -724,7 +724,7 @@
    and be placed both in the source tree and on the website
    for better accessability.
 *** TODO Document audiotools
-    - [ ] AudioFile
+    - [X] AudioFile
     - [ ] BitstreamReader
     - [ ] BitstreamWriter
     - [ ] BufferedPCMReader
