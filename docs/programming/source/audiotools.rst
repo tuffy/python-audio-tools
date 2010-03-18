@@ -20,9 +20,9 @@ AudioFile Objects
 
    The :class:`AudioFile` class represents an audio file on disk,
    such as a FLAC file, MP3 file, WAVE file and so forth.
-   It is not meant to be instatiated directly, but returned from functions
-   such as :func:`open` which will return an :class:`AudioFile`-compatible
-   object implementing the following methods and attributes.
+   It is not meant to be instatiated directly.  Instead, functions
+   such as :func:`open` will return :class:`AudioFile`-compatible
+   objects implementing the following methods.
 
 .. classmethod:: AudioFile.is_type(file)
 
@@ -574,20 +574,20 @@ ChannelMask Objects
    the undefined channels any way it likes, and is under no obligation
    to keep them undefined when passing back out to :meth:`to_pcm`
 
-.. method:: defined()
+.. method:: ChannelMask.defined()
 
    Returns ``True`` if this mask is defined.
 
-.. method:: undefined()
+.. method:: ChannelMask.undefined()
 
    Returns ``True`` if this mask is undefined.
 
-.. method:: channels()
+.. method:: ChannelMask.channels()
 
    Returns the speakers this mask contains as a list of strings
    in the order they appear in the PCM stream.
 
-.. method:: index(channel_name)
+.. method:: ChannelMask.index(channel_name)
 
    Given a channel name string, returns the index of that channel
    within the PCM stream.
@@ -597,7 +597,7 @@ ChannelMask Objects
    >>> mask.index("low_frequency")
    2
 
-.. classmethod:: from_fields(**fields)
+.. classmethod:: ChannelMask.from_fields(**fields)
 
    Takes channel names as function arguments and returns a
    :class:`ChannelMask` object.
@@ -608,13 +608,13 @@ ChannelMask Objects
    >>> int(mask)
    7
 
-.. classmethod:: from_channels(channel_count)
+.. classmethod:: ChannelMask.from_channels(channel_count)
 
    Takes a channel count integer and returns a :class:`ChannelMask` object.
 
 .. warning::
 
-   :func:`from_channel` *only* works for 1 and 2 channel counts
+   :func:`from_channels` *only* works for 1 and 2 channel counts
    and is meant purely as a convenience method for mono or stereo streams.
    All other values will trigger a :exc:`ValueError`
 

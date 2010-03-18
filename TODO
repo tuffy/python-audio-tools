@@ -774,8 +774,8 @@
     - [ ] VERSION
     - [ ] AVAILABLE_TYPES
 *** TODO Document audiotools.pcm
-    - [ ] FloatFrameList
-    - [ ] FrameList
+    - [X] FloatFrameList
+    - [X] FrameList
     - [ ] from_channels
     - [ ] from_float_channels
     - [ ] from_float_frames
