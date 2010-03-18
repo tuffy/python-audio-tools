@@ -729,7 +729,7 @@
     - [ ] BitstreamWriter
     - [X] BufferedPCMReader
     - [X] ChannelMask
-    - [ ] ExecQueue
+    - [X] ExecQueue
     - [X] Image
     - [X] MetaData
     - [X] PCMConverter
@@ -738,10 +738,11 @@
     - [X] ReorderedPCMReader
     - [X] ReplayGain
     - [X] ReplayGainReader
-    - [ ] Messenger
+    - [X] Messenger
     - [ ] AlbumMetaData
-    - [ ] CDTrackLog
-    - [ ] CDDA
+    - [X] CDTrackLog
+    - [X] CDDA
+    - [X] CDTrackReader
     - [ ] calculate_replay_gain
     - [ ] filename_to_type
     - [ ] find_glade_file

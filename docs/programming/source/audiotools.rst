@@ -724,3 +724,208 @@ ChannelMask Objects
    and is meant purely as a convenience method for mono or stereo streams.
    All other values will trigger a :exc:`ValueError`
 
+CDDA Objects
+------------
+
+.. class:: CDDA(device[, speed])
+
+   This class is used to access a CD-ROM device.
+   It functions as a list of :class:`CDTrackReader` objects,
+   each representing a CD track and starting from index 1.
+
+   >>> cd = CDDA("/dev/cdrom")
+   >>> len(cd)
+   17
+   >>> cd[1]
+   <audiotools.CDTrackReader instance at 0x170def0>
+   >>> cd[17]
+   <audiotools.CDTrackReader instance at 0x1341b00>
+
+.. method:: CDDA.length()
+
+   The length of the entire CD, in sectors.
+
+.. method:: CDDA.first_sector()
+
+   The position of the first sector on the CD, typically 0.
+
+.. method:: CDDA.last_sector()
+
+   The position of the last sector on the CD.
+
+CDTrackReader Objects
+^^^^^^^^^^^^^^^^^^^^^
+
+.. class:: CDTrackReader(cdda, track_number)
+
+   These objects are usually retrieved from :class:`CDDA` objects
+   rather than instantiated directly.
+   Each is a :class:`PCMReader`-compatible object
+   with a few additional methods specific to CD reading.
+
+.. data:: CDTrackReader.rip_log
+
+   A :class:`CDTrackLog` object indicating cdparanoia's
+   results from reading this track from the CD.
+   This attribute should be checked only after the track
+   has been fully read.
+
+.. method:: CDTrackReader.offset()
+
+   Returns the offset of this track within the CD, in sectors.
+
+.. method:: CDTrackReader.length()
+
+   Returns the total length of this track, in sectors.
+
+CDTrackLog Objects
+^^^^^^^^^^^^^^^^^^
+
+.. class:: CDTrackLog()
+
+   This is a dictionary-like object which should be retrieved
+   from :class:`CDTrackReader` rather than instantiated directly.
+   Its :meth:`__str__` method will return a human-readable
+   collection of error statistics comparable to what's
+   returned by the cdda2wav program.
+
+ExecQueue Objects
+-----------------
+
+.. class:: ExecQueue()
+
+   This is a class for executing multiple Python functions in
+   parallel across multiple CPUs.
+
+.. method:: ExecQueue.execute(function, args[, kwargs])
+
+   Queues a Python function, list of arguments and optional
+   dictionary of keyword arguments.
+
+.. method:: ExecQueue.run([max_processes])
+
+   Executes all queued Python functions, running ``"max_processes"``
+   number of functions at a time until the entire queue is empty.
+   This operates by forking a new subprocess per function,
+   executing that function and then, regardless of the function's result,
+   the child job performs an unconditional exit.
+
+   This means that any side effects of executed functions have
+   no effect on ExecQueue's caller besides those which modify
+   files on disk (encoding an audio file, for example).
+
+Messenger Objects
+-----------------
+
+.. class:: Messenger(executable_name, options)
+
+   This is a helper class for displaying program data,
+   analagous to a primitive logging facility.
+   It takes a raw ``executable_name`` string and
+   :class:`optparse.OptionParser` object.
+   Its behavior changes depending on whether the
+   ``options`` object's ``verbosity`` attribute is
+   ``"normal"``, ``"debug"`` or ``"silent"``.
+
+.. method:: Messenger.output(string)
+
+   Outputs Unicode ``string`` to stdout and adds a newline,
+   unless ``verbosity`` level is ``"silent"``.
+
+.. method:: Messenger.partial_output(string)
+
+   Output Unicode ``string`` to stdout and flushes output
+   so it is displayed, but does not add a newline.
+   Does nothing if ``verbosity`` level is ``"silent"``.
+
+.. method:: Messenger.info(string)
+
+   Outputs Unicode ``string`` to stdout and adds a newline,
+   unless ``verbosity`` level is ``"silent"``.
+
+.. method:: Messenger.partial_info(string)
+
+   Output Unicode ``string`` to stdout and flushes output
+   so it is displayed, but does not add a newline.
+   Does nothing if ``verbosity`` level is ``"silent"``.
+
+.. note::
+
+   What's the difference between :meth:`Messenger.output` and :meth:`Messenger.info`?
+   :meth:`Messenger.output` is for a program's primary data.
+   :meth:`Messenger.info` is for incidental information.
+   For example, trackinfo uses :meth:`Messenger.output` for what it
+   displays since that output is its primary function.
+   But track2track uses :meth:`Messenger.info` for its lines of progress
+   since its primary function is converting audio
+   and tty output is purely incidental.
+
+.. method:: Messenger.warning(string)
+
+   Outputs warning text, Unicode ``string`` and a newline to stderr,
+   unless ``verbosity`` level is ``"silent"``.
+
+   >>> m = audiotools.Messenger("audiotools",options)
+   >>> m.warning(u"Watch Out!")
+   *** Warning: Watch Out!
+
+.. method:: Messenger.error(string)
+
+   Outputs error text, Unicode ``string`` and a newline to stderr.
+
+   >>> m.error(u"Fatal Error!")
+   *** Error: Fatal Error!
+
+.. method:: Messenger.usage(string)
+
+   Outputs usage text, Unicode ``string`` and a newline to stderr.
+
+   >>> m.usage(u"<arg1> <arg2> <arg3>")
+   *** Usage: audiotools <arg1> <arg2> <arg3>
+
+.. method:: Messenger.filename(string)
+
+   Takes a raw filename string and converts it to a Unicode string.
+
+.. method:: Messenger.new_row()
+
+   This method begins the process of creating aligned table data output.
+   It sets up a new row in our output table to which we can add
+   columns of text which will be aligned automatically upon completion.
+
+.. method:: Messenger.output_column(string[, right_aligned])
+
+   This method adds a new Unicode string to the currently open row.
+   If ``right_aligned`` is ``True``, its text will be right-aligned
+   when it is displayed.
+   When you've finished with one row and wish to start on another,
+   call :meth:`Messenger.new_row` again.
+
+.. method:: Messenger.blank_row()
+
+   This method adds a completely blank row to its table data.
+   Note that the first row within an output table cannot be blank.
+
+.. method:: Messenger.output_rows()
+
+   Formats and displays the entire table data through the
+   :meth:`Messenger.output` method (which will do nothing
+   if ``verbosity`` level is ``"silent"``).
+
+   >>> m.new_row()
+   >>> m.output_column(u"a",True)
+   >>> m.output_column(u" : ",True)
+   >>> m.output_column(u"This is some test data")
+   >>> m.new_row()
+   >>> m.output_column(u"ab",True)
+   >>> m.output_column(u" : ",True)
+   >>> m.output_column(u"Another row of test data")
+   >>> m.new_row()
+   >>> m.output_column(u"abc",True)
+   >>> m.output_column(u" : ",True)
+   >>> m.output_column(u"The final row of test data")
+   >>> m.output_rows()
+     a : This is some test data
+    ab : Another row of test data
+   abc : The final row of test data
+
