@@ -773,14 +773,14 @@
     - [ ] TYPE_MAP
     - [ ] VERSION
     - [ ] AVAILABLE_TYPES
-*** TODO Document audiotools.pcm
+*** DONE Document audiotools.pcm
     - [X] FloatFrameList
     - [X] FrameList
-    - [ ] from_channels
-    - [ ] from_float_channels
-    - [ ] from_float_frames
-    - [ ] from_frames
-    - [ ] from_list
+    - [X] from_channels
+    - [X] from_float_channels
+    - [X] from_float_frames
+    - [X] from_frames
+    - [X] from_list
 *** TODO Document audiotools.resample
     - [ ] Resampler
 *** TODO Document audiotools.replaygain

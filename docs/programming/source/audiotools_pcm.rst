@@ -6,7 +6,76 @@
 
 
 The :mod:`audiotools.pcm` module contains the FrameList and FloatFrameList
-classes for handling blobs of raw PCM data.
+classes for handling blobs of raw data.
+These classes are immutable and list-like, but provide several additional
+methods and attributes to aid in processing PCM data.
+
+.. function:: from_list(list, channels, bits_per_sample, is_signed)
+
+   Given a list of integer values, a number of channels,
+   the amount of bits-per-sample and whether the samples are signed,
+   returns a new :class:`FrameList` object with those values.
+   Raises :exc:`ValueError` if a :class:`FrameList` cannot be built
+   from those values.
+
+   >>> f = from_list([-1,0,1,2],2,16,True)
+   >>> list(f)
+   [-1, 0, 1, 2]
+
+.. function:: from_frames(frame_list)
+
+   Given a list of :class:`FrameList` objects, returns a new
+   :class:`FrameList` whose values are built from those objects.
+   Raises :exc:`ValueError` if any of the objects are longer than
+   1 PCM frame, their number of channels are not consistent
+   or their bits_per_sample are not consistent.
+
+   >>> l = [from_list([-1,0],2,16,True),
+   ...      from_list([ 1,2],2,16,True)]
+   >>> f = from_frames(l)
+   >>> list(f)
+   [-1, 0, 1, 2]
+
+.. function:: from_channels(frame_list)
+
+   Given a list of :class:`FrameList` objects, returns a new
+   :class:`FrameList` whose values are built from those objects.
+   Raises :exc:`ValueError` if any of the objects are wider than
+   1 channel, their number of frames are not consistent
+   or their bits_per_sample are not consistent.
+
+   >>> l = [from_list([-1,1],1,16,True),
+   ...      from_list([ 0,2],1,16,True)]
+   >>> f = from_channels(l)
+   >>> list(f)
+   [-1, 0, 1, 2]
+
+.. function:: from_float_frames(float_frame_list)
+
+   Given a list of :class:`FloatFrameList` objects, returns a new
+   :class:`FloatFrameList` whose values are built from those objects.
+   Raises :exc:`ValueError` if any of the objects are longer than
+   1 PCM frame or their number of channels are not consistent.
+
+   >>> l = [FloatFrameList([-1.0,0.0],2),
+   ...      FloatFrameList([ 0.5,1.0],2)]
+   >>> f = from_float_frames(l)
+   >>> list(f)
+   [-1.0, 0.0, 0.5, 1.0]
+
+.. function:: from_float_channels(float_frame_list)
+
+   Given a list of :class:`FloatFrameList` objects, returns a new
+   :class:`FloatFrameList` whose values are built from those objects.
+   Raises :exc:`ValueError` if any of the objects are wider than
+   1 channel or their number of frames are not consistent.
+
+   >>> l = [FloatFrameList([-1.0,0.5],1),
+   ...      FloatFrameList([ 0.0,1.0],1)]
+   >>> f = from_float_channels(l)
+   >>> list(f)
+   [-1.0, 0.0, 0.5, 1.0]
+
 
 FrameList Objects
 -----------------
@@ -135,7 +204,7 @@ FloatFrameList Objects
 
    Returns a new :class:`FloatFrameList` object as an exact copy of this one.
 
-.. method:: FrameList.to_int(bits_per_sample)
+.. method:: FloatFrameList.to_int(bits_per_sample)
 
    Given a ``bits_per_sample`` integer, converts this object's
    floating point values to a new :class:`FrameList` object.
