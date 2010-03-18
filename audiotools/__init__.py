@@ -1199,65 +1199,6 @@ class PCMConverter:
     def close(self):
         self.reader.close()
 
-    def convert_channels(self, frame_list):
-        difference = self.channels - self.reader.channels
-
-        if (difference < 0): #removing channels
-
-            #any channels above 6 are removed entirely
-            if ((self.reader.channels > 6)):
-                frame_list = pcm.from_channels([
-                        frame_list.channel(i) for i in
-                        xrange(6 + 1)])
-
-            #return if we've removed all the channels necessary
-            if (self.channels >= 6):
-                return frame_list
-
-            #otherwise, perform downmixing/channel removing
-            #on the remaining set of channels
-            return {2:{1:__stereo_to_mono__()},
-
-                    3:{2:__downmixer__(),
-                       1:__downmix_remover__()},
-
-                    4:{3:__channel_remover__([0,1,2]),
-                       2:__downmixer__(),
-                       1:__downmix_remover__()},
-
-                    5:{4:__channel_remover__([0,1,3,4]),
-                       3:__channel_remover__([0,1,2]),
-                       2:__downmixer__(),
-                       1:__downmix_remover__()},
-
-                    6:{5:__channel_remover__([0,1,2,4,5]),
-                       4:__channel_remover__([0,1,4,5]),
-                       3:__channel_remover__([0,1,2]),
-                       2:__downmixer__(),
-                       1:__downmix_remover__()},
-
-                    7:{5:__channel_remover__([0,1,2,4,5]),
-                       4:__channel_remover__([0,1,4,5]),
-                       3:__channel_remover__([0,1,2]),
-                       2:__downmixer__(),
-                       1:__downmix_remover__()},
-
-                    8:{5:__channel_remover__([0,1,2,4,5]),
-                       4:__channel_remover__([0,1,4,5]),
-                       3:__channel_remover__([0,1,2]),
-                       2:__downmixer__(),
-                       1:__downmix_remover__()}}[
-                           self.reader.channels][
-                               self.channels].convert(frame_list)
-
-        else:                #adding new channels
-            #we'll simply add more copies of the first channel
-            #since this is typically going from mono to stereo
-            channels = [frame_list.channel(i) for i in xrange(frame_list.channels)]
-            for i in xrange(difference):
-                channels.append(channels[0])
-
-            return pcm.from_channels(channels)
 
 #wraps around an existing PCMReader
 #and applies ReplayGain upon calling the read() method

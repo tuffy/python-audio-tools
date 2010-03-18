@@ -510,6 +510,112 @@ PCMReader Objects
    If any subprocesses were used for audio decoding, they will also be
    closed and waited for their process to finish.
 
+PCMConverter Objects
+^^^^^^^^^^^^^^^^^^^^
+
+.. class:: PCMConverter(pcmreader, sample_rate, channels, channel_mask, bits_per_sample)
+
+   This class takes an existing :class:`PCMReader`-compatible object
+   along with a new set of ``sample_rate``, ``channels``,
+   ``channel_mask`` and ``bits_per_sample`` values.
+   Data from ``pcmreader`` is then automatically converted to
+   the same format as those values.
+
+.. data:: PCMConverter.sample_rate
+
+   If the new sample rate differs from ``pcmreader``'s sample rate,
+   audio data is automatically resampled on each call to :meth:`read`.
+
+.. data:: PCMConverter.channels
+
+   If the new number of channels is smaller than ``pcmreader``'s channel
+   count, existing channels are removed or downmixed as necessary.
+   If the new number of channels is larger, data from the first channel
+   is duplicated as necessary to fill the rest.
+
+.. data:: PCMConverter.channel_mask
+
+   If the new channel mask differs from ``pcmreader``'s channel mask,
+   channels are removed as necessary such that the proper channel
+   only outputs to the proper speaker.
+
+.. data:: PCMConverter.bits_per_sample
+
+   If the new bits-per-sample differs from ``pcmreader``'s
+   number of bits-per-sample, samples are shrunk or enlarged
+   as necessary to cover the full amount of bits.
+
+.. method:: PCMConverter.read
+
+   This method functions the same as the :meth:`PCMReader.read` method.
+
+.. method:: PCMConverter.close
+
+   This method functions the same as the :meth:`PCMReader.close` method.
+
+BufferedPCMReader Objects
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. class:: BufferedPCMReader(pcmreader)
+
+   This class wraps around an existing :class:`PCMReader` object.
+   Its calls to :meth:`read` are guaranteed to return
+   :class:`pcm.FrameList` objects as close to the requested amount
+   of bytes as possible without going over by buffering data
+   internally.
+
+   The reason such behavior is not required is that we often
+   don't care about the size of the individual FrameLists being
+   passed from one routine to another.
+   But on occasions when we need :class:`pcm.FrameList` objects
+   to be of a particular size, this class can accomplish that.
+
+ReorderedPCMReader Objects
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. class:: ReorderedPCMReader(pcmreader, channel_order)
+
+   This class wraps around an existing :class:`PCMReader` object.
+   It takes a list of channel number integers
+   (which should be the same as ``pcmreader``'s channel count)
+   and reorders channels upon each call to :meth:`read`.
+
+   For example, to swap channels 0 and 1 in a stereo stream,
+   one could do the following:
+
+   >>> reordered = ReorderedPCMReader(original, [1, 0])
+
+   Calls to ``reordered.read()`` will then have the left channel
+   on the right side and vice versa.
+
+PCMCat Objects
+^^^^^^^^^^^^^^
+
+.. class:: PCMCat(pcmreaders)
+
+   This class wraps around an iterable group of :class:`PCMReader` objects
+   and concatenates their output into a single output stream.
+
+.. warning::
+
+   :class:`PCMCat` does not check that its input :class:`PCMReader` objects
+   all have the same sample rate, channels, channel mask or bits-per-sample.
+   Mixing incompatible readers is likely to trigger undesirable behavior
+   from any sort of processing - which often assumes data will be in a
+   consistent format.
+
+ReplayGainReader Objects
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. class:: ReplayGainReader(pcmreader, gain, peak)
+
+   This class wraps around an existing :class:`PCMReader` object.
+   It takes floating point ``gain`` and ``peak`` values
+   and modifies the pcmreader's output as necessary
+   to match those values.
+   This has the effect of raising or lowering a stream's sound volume
+   to ReplayGain's reference value.
+
 ChannelMask Objects
 -------------------
 

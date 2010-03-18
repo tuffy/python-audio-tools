@@ -727,17 +727,17 @@
     - [X] AudioFile
     - [ ] BitstreamReader
     - [ ] BitstreamWriter
-    - [ ] BufferedPCMReader
+    - [X] BufferedPCMReader
     - [X] ChannelMask
     - [ ] ExecQueue
     - [X] Image
     - [X] MetaData
-    - [ ] PCMConverter
+    - [X] PCMConverter
     - [X] PCMReader
-    - [ ] PCMCat
-    - [ ] ReorderedPCMReader
+    - [X] PCMCat
+    - [X] ReorderedPCMReader
     - [X] ReplayGain
-    - [ ] ReplayGainReader
+    - [X] ReplayGainReader
     - [ ] Messenger
     - [ ] AlbumMetaData
     - [ ] CDTrackLog
