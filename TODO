@@ -788,12 +788,14 @@
 *** DONE Document audiotools.cdio
     - [X] CDDA
     - [X] set_read_callback
-*** TODO Document audiotools.cue
-    - [ ] Cuesheet
-    - [ ] Track
-*** TODO Document audiotools.toc
-    - [ ] TOCFile
-    - [ ] Track
+*** DONE Document audiotools.cue
+    - [X] Cuesheet
+    - [X] read_cuesheet
+    - [X] CueException
+*** DONE Document audiotools.toc
+    - [X] TOCFile
+    - [X] read_tocfile
+    - [X] TOCException
 ** TODO Make reference documentation render consistently
    This may entail conversion to LaTeX,
    since troff's limitations are started to show.
