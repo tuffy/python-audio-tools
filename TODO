@@ -785,9 +785,9 @@
     - [X] Resampler
 *** DONE Document audiotools.replaygain
     - [X] ReplayGain
-*** TODO Document audiotools.cdio
-    - [ ] CDDA
-    - [ ] set_read_callback
+*** DONE Document audiotools.cdio
+    - [X] CDDA
+    - [X] set_read_callback
 *** TODO Document audiotools.cue
     - [ ] Cuesheet
     - [ ] Track
