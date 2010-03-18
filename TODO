@@ -781,10 +781,10 @@
     - [X] from_float_frames
     - [X] from_frames
     - [X] from_list
-*** TODO Document audiotools.resample
-    - [ ] Resampler
-*** TODO Document audiotools.replaygain
-    - [ ] ReplayGain
+*** DONE Document audiotools.resample
+    - [X] Resampler
+*** DONE Document audiotools.replaygain
+    - [X] ReplayGain
 *** TODO Document audiotools.cdio
     - [ ] CDDA
     - [ ] set_read_callback
