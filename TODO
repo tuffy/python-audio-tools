@@ -572,10 +572,12 @@
    - [X] replaygain
    - [X] resample
 ** DONE Check for memory leaks
+** DONE Add FrameList and FloatFrameList programming documentation
 ** TODO Make pcm objects self-documenting
    For example, their methods and functions should give useful info
    when checked with "help()"
-** TODO Add FrameList and FloatFrameList programming documentation
+** TODO Remove .copy() method
+   Since FrameLists are now immutable, there's no need for it
 * DONE Add native ReplayGain handling routines
 ** DONE Add native ReplayGain handling to FlacAudio/OggFlacAudio
 ** DONE Ensure add_replay_gain()'s exceptions are caught
@@ -694,9 +696,6 @@
     - [X] SpeexAudio
     - [X] WaveAudio
     - [X] WavPackAudio
-** TODO Add sanity checks to ensure channel mask matches channel count
-    This signifies either a broken audio file or programming bug
-    and should toss the proper exception.
 ** DONE Unit test multichannel encoding and channel_mask handling
 *** DONE Ensure all AudioFile types have a working channel_mask() method
     Even 2 channel audio should yield something valid.
@@ -709,6 +708,7 @@
     and more of an issue for Ogg Vorbis and other formats that do not.
 *** DONE Ensure UnsupportedChannelMask is raised when necessary
     This includes calls to from_pcm() and from_wave()
+** TODO Ensure PCMReader.channel_mask is always an integer
 * TODO Get coverview and editxmcd working on Mac OS X
   Preferably without falling back to Tkinter
 * TODO Perform code review of C-based extensions
@@ -719,14 +719,12 @@
 ** TODO audiotools.replaygain
 ** TODO audiotools.resample
 * TODO Update documentation
-** TODO Make the programming documentation web-capable
+** DONE Make the programming documentation web-capable
    It should render consistently with the regular Python reference docs
    and be placed both in the source tree and on the website
    for better accessability.
-*** TODO Document audiotools
+*** DONE Document audiotools
     - [X] AudioFile
-    - [ ] BitstreamReader
-    - [ ] BitstreamWriter
     - [X] BufferedPCMReader
     - [X] ChannelMask
     - [X] ExecQueue
@@ -739,31 +737,28 @@
     - [X] ReplayGain
     - [X] ReplayGainReader
     - [X] Messenger
-    - [ ] AlbumMetaData
+    - [X] AlbumMetaData
     - [X] CDTrackLog
     - [X] CDDA
     - [X] CDTrackReader
-    - [ ] calculate_replay_gain
+    - [X] calculate_replay_gain
     - [X] filename_to_type
-    - [ ] find_glade_file
+    - [X] find_glade_file
     - [X] group_tracks
     - [X] open
     - [X] open_directory
     - [X] open_files
-    - [ ] pcm_cmp
-    - [ ] pcm_split
-    - [ ] read_metadata_file
+    - [X] pcm_cmp
+    - [X] pcm_split
+    - [X] read_metadata_file
     - [X] read_sheet
-    - [ ] stripped_pcm_cmp
+    - [X] stripped_pcm_cmp
     - [X] transfer_data
     - [X] transfer_framelist_data
-    - [ ] BIN
-    - [ ] BIG_ENDIAN
-    - [ ] FS_ENCODING
-    - [ ] IO_ENCODING
-    - [ ] TYPE_MAP
-    - [ ] VERSION
-    - [ ] AVAILABLE_TYPES
+    - [X] BIN
+    - [X] TYPE_MAP
+    - [X] VERSION
+    - [X] AVAILABLE_TYPES
 *** DONE Document audiotools.pcm
     - [X] FloatFrameList
     - [X] FrameList

@@ -132,10 +132,6 @@ FrameList Objects
    If ``frame_count`` is larger than the number of frames in the FrameList,
    the first will contain all of the frames and the second will be empty.
 
-.. method:: FrameList.copy()
-
-   Returns a new :class:`FrameList` object as an exact copy of this one.
-
 .. method:: FrameList.to_float()
 
    Converts this object's values to a new :class:`FloatFrameList` object
@@ -199,10 +195,6 @@ FloatFrameList Objects
    If ``frame_count`` is larger than the number of frames in the
    FloatFrameList, the first will contain all of the frames and the
    second will be empty.
-
-.. method:: FloatFrameList.copy()
-
-   Returns a new :class:`FloatFrameList` object as an exact copy of this one.
 
 .. method:: FloatFrameList.to_int(bits_per_sample)
 

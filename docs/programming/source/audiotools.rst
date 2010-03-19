@@ -8,6 +8,42 @@
 The :mod:`audiotools` module contains a number of useful base
 classes and functions upon which all of the other modules depend.
 
+
+.. data:: VERSION
+
+   The current Python Audio Tools version as a plain string.
+
+.. data:: AVAILALBLE_TYPES
+
+   A tuple of :class:`AudioFile`-compatible objects of available
+   audio types.
+   Note these are types available to audiotools, not necessarily
+   available to the user - depending on whether the required binaries
+   are installed or not.
+
+.. data:: TYPE_MAP
+
+   A dictionary of type_name strings -> :class:`AudioFile`
+   values containing only types which have all required binaries
+   installed.
+
+.. data:: BIN
+
+   A dictionary-like class for performing lookups of system binaries.
+   This checks the system and user's config files and ensures that
+   any redirected binaries are called from their proper location.
+   For example, if the user has configured ``flac(1)`` to be run
+   from ``/opt/flac/bin/flac``
+
+   >>> BIN["flac"]
+   "/opt/flac/bin/flac"
+
+   This class also has a ``can_execute()`` method which returns
+   ``True`` if the given binary is executable.
+
+   >>> BIN.can_execute(BIN["flac"])
+   True
+
 .. function:: open(filename)
 
    Opens the given filename string and returns an :class:`AudioFile`-compatible
@@ -72,11 +108,52 @@ classes and functions upon which all of the other modules depend.
    >>> pcm_data.close()
    >>> outfile.close()
 
+.. function:: pcm_cmp(pcmreader1, pcmreader2)
+
+   This function takes two :class:`PCMReader` objects and compares
+   their PCM output.
+   Returns ``True`` if that output matches exactly, ``False`` if not.
+
+.. function:: stripped_pcm_cmp(pcmreader1, pcmreader2)
+
+   This function takes two :class:`PCMReader` objects and compares
+   their PCM output after stripping any 0 samples from the beginning
+   and end of each.
+   Returns ``True`` if the remaining output matches exactly,
+   ``False`` if not.
+
+.. function:: pcm_split(pcmreader, pcm_lengths)
+
+   Takes a :class:`PCMReader` object and list of PCM sample length integers.
+   Returns an iterator of new :class:`PCMReader` objects,
+   each limited to the given lengths.
+   The original pcmreader is closed upon the iterator's completion.
+
+.. function:: calculate_replay_gain(audiofiles)
+
+   Takes a list of :class:`AudioFile`-compatible objects.
+   Returns an iterator of
+   ``(audiofile, track_gain, track_peak, album_gain, album_peak)``
+   tuples or raises :exc:`ValueError` if a problem occurs during calculation.
+
+.. function:: read_metadata_file(path)
+
+   Given a path to a FreeDB XMCD file or MusicBrainz XML file,
+   returns an :class:`AlbumMetaData`-compatible object
+   or raises a :exc:`MetaDataFileException` if the file cannot be
+   read or parsed correctly.
+
 .. function:: read_sheet(filename)
 
    Reads a Cuesheet-compatible file such as :class:`toc.TOCFile` or
    :class:`cue.Cuesheet` or raises :exc:`SheetException` if
    the file cannot be opened, identified or parsed correctly.
+
+.. function:: find_glade_file(glade_filename)
+
+   Given a Glade filename, search various system directories for
+   the full path to an existing file.
+   Raises :exc:`IOError` if the file cannot be found.
 
 AudioFile Objects
 -----------------
@@ -164,11 +241,8 @@ AudioFile Objects
    and returns a new :class:`AudioFile`-compatible object.
    Raises :exc:`EncodingError` if a problem occurs during encoding.
 
-Transcoding an Audio File
-^^^^^^^^^^^^^^^^^^^^^^^^^
-
-In this example, we'll transcode ``track.flac`` to ``track.mp3``
-at the default compression level:
+   In this example, we'll transcode ``track.flac`` to ``track.mp3``
+   at the default compression level:
 
    >>> audiotools.MP3Audio.from_pcm("track.mp3",
    ...                              audiotools.open("track.flac").to_pcm())
@@ -426,6 +500,22 @@ MetaData Objects
 
    Updates this metadata by replacing empty fields with those
    from ``new_metadata``.  Non-empty fields are left as-is.
+
+AlbumMetaData Objects
+---------------------
+
+.. class:: AlbumMetaData(metadata_iter)
+
+   This is a dictionary-like object of
+   track_number -> :class:`MetaData` values.
+   It is designed to represent metadata returned by CD lookup
+   services such as FreeDB or MusicBrainz.
+
+.. method:: AlbumMetaData.metadata()
+
+   Returns a single :class:`MetaData` object containing all the
+   fields that are consistent across this object's collection of MetaData.
+
 
 Image Objects
 -------------
