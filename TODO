@@ -522,7 +522,7 @@
    coinciding with re-engineering the to_pcm()/from_pcm() methods.
 ** DONE Remove external MD5 dependency
 ** TODO Generate SEEKTABLE blocks
-* TODO Convert to_pcm()/from_pcm() to FrameList-based I/O
+* DONE Convert to_pcm()/from_pcm() to FrameList-based I/O
   Passing specifically-sized blobs of binary data between conversion
   routines worked well when those routines are little more than
   subprocess black-boxes.  However, this approach works less well
@@ -573,11 +573,11 @@
    - [X] resample
 ** DONE Check for memory leaks
 ** DONE Add FrameList and FloatFrameList programming documentation
-** TODO Make pcm objects self-documenting
+** DONE Remove .copy() method
+   Since FrameLists are now immutable, there's no need for it
+** DONE Make pcm objects self-documenting
    For example, their methods and functions should give useful info
    when checked with "help()"
-** TODO Remove .copy() method
-   Since FrameLists are now immutable, there's no need for it
 * DONE Add native ReplayGain handling routines
 ** DONE Add native ReplayGain handling to FlacAudio/OggFlacAudio
 ** DONE Ensure add_replay_gain()'s exceptions are caught

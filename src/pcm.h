@@ -90,8 +90,6 @@ PyObject* FrameList_channel(pcm_FrameList *self, PyObject *args);
 
 PyObject* FrameList_to_bytes(pcm_FrameList *self, PyObject *args);
 
-PyObject* FrameList_copy(pcm_FrameList *self, PyObject *args);
-
 PyObject* FrameList_to_float(pcm_FrameList *self, PyObject *args);
 
 PyObject* FrameList_frame_count(pcm_FrameList *self, PyObject *args);
@@ -149,8 +147,6 @@ PyObject* FloatFrameList_GetItem(pcm_FloatFrameList *o, Py_ssize_t i);
 PyObject* FloatFrameList_frame(pcm_FloatFrameList *self, PyObject *args);
 
 PyObject* FloatFrameList_channel(pcm_FloatFrameList *self, PyObject *args);
-
-PyObject* FloatFrameList_copy(pcm_FloatFrameList *self, PyObject *args);
 
 PyObject* FloatFrameList_to_int(pcm_FloatFrameList *self, PyObject *args);
 

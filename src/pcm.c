@@ -27,15 +27,15 @@
 
 PyMethodDef module_methods[] = {
   {"from_list",(PyCFunction)FrameList_from_list,
-   METH_VARARGS,"Converts a list of PCM integers to a FrameList"},
+   METH_VARARGS,"from_list(int_list, channels, bits_per_sample, is_signed) -> FrameList"},
   {"from_frames",(PyCFunction)FrameList_from_frames,
-   METH_VARARGS,"Converts a list of FrameList frames to a FrameList"},
+   METH_VARARGS,"from_frames(framelist_list) -> FrameList"},
   {"from_channels",(PyCFunction)FrameList_from_channels,
-   METH_VARARGS,"Converts a list of FrameList channels to a FrameList"},
+   METH_VARARGS,"from_channels(framelist_list) -> FrameList"},
   {"from_float_frames",(PyCFunction)FloatFrameList_from_frames,
-   METH_VARARGS,"Converts a list of FloatFrameList frames to a FloatFrameList"},
+   METH_VARARGS,"from_float_frames(floatframelist_list) -> FloatFrameList"},
   {"from_float_channels",(PyCFunction)FloatFrameList_from_channels,
-   METH_VARARGS,"Converts a list of FloatFrameList channels to a FloatFrameList"},
+   METH_VARARGS,"from_float_channels(floatframelist_list) -> FloatFrameList"},
   {"__blank__",(PyCFunction)FrameList_blank,
    METH_NOARGS,"Creates an empty FrameList"},
   {"__blank_float__",(PyCFunction)FloatFrameList_blank,
@@ -57,19 +57,17 @@ PyGetSetDef FrameList_getseters[] = {
 
 PyMethodDef FrameList_methods[] = {
   {"frame", (PyCFunction)FrameList_frame,
-   METH_VARARGS,"Reads the given frame from the framelist"},
+   METH_VARARGS,"F.frame(i) -> FrameList -- return the given PCM frame"},
   {"channel", (PyCFunction)FrameList_channel,
-   METH_VARARGS,"Reads the given channel from the framelist"},
+   METH_VARARGS,"F.channel(i) -> FrameList -- return the given channel"},
   {"to_bytes", (PyCFunction)FrameList_to_bytes,
-   METH_VARARGS,"Converts the framelist to a binary string"},
+   METH_VARARGS,"F.to_bytes(is_big_endian, is_signed) -> string"},
   {"split", (PyCFunction)FrameList_split,
-   METH_VARARGS,"Splits the framelist into 2 sub framelists by number of frames"},
-  {"copy", (PyCFunction)FrameList_copy,
-   METH_NOARGS,"Returns a copy of this framelist"},
+   METH_VARARGS,"F.split(i) -> (FrameList,FrameList) -- splits the FrameList at the given index"},
   {"to_float", (PyCFunction)FrameList_to_float,
-   METH_NOARGS,"Converts FrameList to FloatFrameList"},
+   METH_NOARGS,"F.to_float() -> FloatFrameList"},
   {"frame_count", (PyCFunction)FrameList_frame_count,
-   METH_VARARGS,"Given a number of bytes, returns the maximum number of frames that would fit or a minimum of 1"},
+   METH_VARARGS,"F.frame_count(bytes) -> int -- given a number of bytes, returns the maximum number of frames that would fit or a minimum of 1"},
   {NULL}
 };
 
@@ -108,7 +106,7 @@ PyTypeObject pcm_FrameListType = {
     0,                         /*tp_setattro*/
     0,                         /*tp_as_buffer*/
     Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE, /*tp_flags*/
-    "FrameList objects",       /* tp_doc */
+    "FrameList(string, channels, bits_per_sample, is_big_endian, is_signed)", /* tp_doc */
     0,		               /* tp_traverse */
     0,		               /* tp_clear */
     (richcmpfunc)FrameList_richcompare, /* tp_richcompare */
@@ -455,18 +453,6 @@ PyObject* FrameList_concat(pcm_FrameList *a, PyObject *bb) {
   return NULL;
 }
 
-PyObject* FrameList_copy(pcm_FrameList *self, PyObject *args) {
-  pcm_FrameList *framelist = FrameList_create();
-  framelist->frames = self->frames;
-  framelist->channels = self->channels;
-  framelist->bits_per_sample = self->bits_per_sample;
-  framelist->samples_length = self->samples_length;
-  framelist->samples = malloc(sizeof(ia_data_t) * framelist->samples_length);
-  memcpy(framelist->samples,self->samples,
-	 sizeof(ia_data_t) * framelist->samples_length);
-  return (PyObject*)framelist;
-}
-
 PyObject* FrameList_to_float(pcm_FrameList *self, PyObject *args) {
   ia_size_t i;
   ia_data_t adjustment;
@@ -759,15 +745,13 @@ PyGetSetDef FloatFrameList_getseters[] = {
 
 PyMethodDef FloatFrameList_methods[] = {
   {"frame", (PyCFunction)FloatFrameList_frame,
-   METH_VARARGS,"Reads the given frame from the framelist"},
+   METH_VARARGS,"FF.frame(i) -> FloatFrameList -- return the given PCM frame"},
   {"channel", (PyCFunction)FloatFrameList_channel,
-   METH_VARARGS,"Reads the given channel from the framelist"},
+   METH_VARARGS,"FF.channel(i) -> FloatFrameList -- return the given channel"},
   {"split", (PyCFunction)FloatFrameList_split,
-   METH_VARARGS,"Splits the framelist into 2 sub framelists by number of frames"},
-  {"copy", (PyCFunction)FloatFrameList_copy,
-   METH_NOARGS,"Returns a copy of this framelist"},
+   METH_VARARGS,"FF.split(i) -> (FloatFrameList,FloatFrameList) -- splits the FloatFrameList at the given index"},
   {"to_int", (PyCFunction)FloatFrameList_to_int,
-   METH_VARARGS,"Converts FloatFrameList to FrameList"},
+   METH_VARARGS,"FF.to_int(bits_per_sample) -> FrameList"},
   {NULL}
 };
 
@@ -806,7 +790,7 @@ PyTypeObject pcm_FloatFrameListType = {
     0,                         /*tp_setattro*/
     0,                         /*tp_as_buffer*/
     Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE, /*tp_flags*/
-    "FloatFrameList objects",  /* tp_doc */
+    "FloatFrameList(float_list, channels)",  /* tp_doc */
     0,		               /* tp_traverse */
     0,		               /* tp_clear */
     0,		               /* tp_richcompare */
@@ -964,17 +948,6 @@ PyObject* FloatFrameList_channel(pcm_FloatFrameList *self, PyObject *args) {
   }
 
   return (PyObject*)channel;
-}
-
-PyObject* FloatFrameList_copy(pcm_FloatFrameList *self, PyObject *args) {
-  pcm_FloatFrameList *framelist = FloatFrameList_create();
-  framelist->frames = self->frames;
-  framelist->channels = self->channels;
-  framelist->samples_length = self->samples_length;
-  framelist->samples = malloc(sizeof(fa_data_t) * framelist->samples_length);
-  memcpy(framelist->samples,self->samples,
-	 sizeof(fa_data_t) * framelist->samples_length);
-  return (PyObject*)framelist;
 }
 
 PyObject* FloatFrameList_to_int(pcm_FloatFrameList *self, PyObject *args) {
