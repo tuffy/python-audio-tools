@@ -12,6 +12,71 @@ classes and functions upon which all of the other modules depend.
 
    Opens the given filename string and returns an :class:`AudioFile`-compatible
    object.
+   Raises :exc:`UnsupportedFile` if the file cannot be opened,
+   identified or is not supported.
+
+.. function:: open_files(filenames[, sorted])
+
+   Given a list of filename strings, returns a list of
+   :class:`AudioFile`-compatible objects which can be successfully opened.
+   By default, they are returned sorted by album number and track number.
+   If ``sorted`` is ``False``, they are returned in the same order
+   as they appear in the filenames list.
+
+.. function:: open_directory(directory[, sorted])
+
+   Given a root directory, returns an iterator of all the
+   :class:`AudioFile`-compatible objects found via a recursive
+   search of that directory.
+   ``sorted`` works as in :func:`open_files`.
+
+.. function:: group_tracks(audiofiles)
+
+   Given an iterable collection of :class:`AudioFile`-compatible objects,
+   returns an iterator of objects grouped into lists by album.
+   That is, all objects with the same ``album_name`` and ``album_number``
+   metadata fields will be returned in the same list on each pass.
+
+.. function:: filename_to_type(path)
+
+   Given a path, try to guess its :class:`AudioFile` class based on
+   its filename suffix.
+   Raises :exc:`UnknownAudioType` if the suffix is unrecognized.
+   Raises :exc:`AmbiguousAudioType` if more than one type of audio
+   shares the same suffix.
+
+.. function:: transfer_data(from_function, to_function)
+
+   This function takes two functions, presumably analagous
+   to :func:`write` and :func:`read` functions, respectively.
+   It calls ``to_function`` on the object returned by calling
+   ``from_function`` with an integer argument (presumably a string)
+   until that object's length is 0.
+
+   >>> infile = open("input.txt","r")
+   >>> outfile = open("output.txt","w")
+   >>> transfer_data(infile.read,outfile.write)
+   >>> infile.close()
+   >>> outfile.close()
+
+.. function:: transfer_framelist_data(pcmreader, to_function[, signed[, big_endian]])
+
+   A natural progression of :func:`transfer_data`, this function takes
+   a :class:`PCMReader` object and transfers the :class:`pcm.FrameList`
+   objects returned by its :meth:`PCMReader.read` method to ``to_function``
+   after converting them to plain strings.
+
+   >>> pcm_data = audiotools.open("file.wav").to_pcm()
+   >>> outfile = open("output.pcm","wb")
+   >>> transfer_framelist_data(pcm_data,outfile)
+   >>> pcm_data.close()
+   >>> outfile.close()
+
+.. function:: read_sheet(filename)
+
+   Reads a Cuesheet-compatible file such as :class:`toc.TOCFile` or
+   :class:`cue.Cuesheet` or raises :exc:`SheetException` if
+   the file cannot be opened, identified or parsed correctly.
 
 AudioFile Objects
 -----------------
@@ -804,7 +869,7 @@ ExecQueue Objects
 
 .. method:: ExecQueue.run([max_processes])
 
-   Executes all queued Python functions, running ``"max_processes"``
+   Executes all queued Python functions, running ``max_processes``
    number of functions at a time until the entire queue is empty.
    This operates by forking a new subprocess per function,
    executing that function and then, regardless of the function's result,

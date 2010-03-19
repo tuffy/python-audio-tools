@@ -744,33 +744,23 @@
     - [X] CDDA
     - [X] CDTrackReader
     - [ ] calculate_replay_gain
-    - [ ] filename_to_type
+    - [X] filename_to_type
     - [ ] find_glade_file
-    - [ ] group_tracks
-    - [ ] open
-    - [ ] open_directory
-    - [ ] open_files
+    - [X] group_tracks
+    - [X] open
+    - [X] open_directory
+    - [X] open_files
     - [ ] pcm_cmp
     - [ ] pcm_split
     - [ ] read_metadata_file
-    - [ ] read_sheet
-    - [ ] sheet_to_unicode
+    - [X] read_sheet
     - [ ] stripped_pcm_cmp
-    - [ ] transfer_data
-    - [ ] transfer_framelist_data
+    - [X] transfer_data
+    - [X] transfer_framelist_data
     - [ ] BIN
     - [ ] BIG_ENDIAN
-    - [ ] BUFFER_SIZE
-    - [ ] DEFAULT_CDROM
-    - [ ] FILENAME_FORMAT
-    - [ ] FREEDB_PORT
-    - [ ] FREEDB_SERVER
     - [ ] FS_ENCODING
     - [ ] IO_ENCODING
-    - [ ] MUSICBRAINZ_PORT
-    - [ ] MUSICBRAINZ_SERVER
-    - [ ] THUMBNAIL_FORMAT
-    - [ ] THUMBNAIL_SIZE
     - [ ] TYPE_MAP
     - [ ] VERSION
     - [ ] AVAILABLE_TYPES
