@@ -22,16 +22,13 @@ FORMAT_BASICS = format_basics.ms format_basics_hex.ms format_basics_pcm.ms
 
 FORMAT_VORBIS = format_ogg.ms format_vorbiscomment.ms format_speex.ms
 
-INSTALLATION = install.ms prereqs.ms configfile.ms
-
-SUBSECTIONS = $(INSTALLATION) macros.ms programming.ms freedb.ms \
-musicbrainz.ms usage.ms replaygain.ms references.ms \
+SUBSECTIONS = macros.ms freedb.ms \
+musicbrainz.ms replaygain.ms references.ms \
 musicbrainz_mmd-1.4.rnc
 FIGURES = binary.eps freedb-sequence.eps pcm.eps rice1.eps rice2.eps rice3.eps \
 lpc_process.eps lpc_process2.eps hann.eps tukey.eps rectangular.eps lag.eps \
 m4a-atoms.eps m4a-meta.eps musicbrainz-releasexml.eps
 
-TOC_ORDER_MANUAL = 1,_1-_1,2-_2
 TOC_ORDER_FORMATS = 1,_4-_1,2-_5
 
 MAN_PATH = /usr/share/man
@@ -83,8 +80,7 @@ ifndef PDFLICENSE
 endif
 
 
-all: audiotools_letter.pdf audiotools_a4.pdf \
-audioformats_letter.pdf audioformats_a4.pdf
+all: audioformats_letter.pdf audioformats_a4.pdf
 
 clean:
 	rm -fv *.ps $(MAN_SECTIONS) $(FIGURES) usage.eps *_unlicensed.pdf
@@ -100,14 +96,6 @@ install: $(MAN_PAGES)
 	ps2pdf $< > $@
 
 
-audiotools_letter.pdf: audiotools_letter_unlicensed.pdf
-	rm -f $@
-	$(PDFLICENSE) $< $@
-
-audiotools_a4.pdf: audiotools_a4_unlicensed.pdf
-	rm -f $@
-	$(PDFLICENSE) $< $@
-
 audioformats_letter.pdf: audioformats_letter_unlicensed.pdf
 	rm -f $@
 	$(PDFLICENSE) $< $@
@@ -115,15 +103,6 @@ audioformats_letter.pdf: audioformats_letter_unlicensed.pdf
 audioformats_a4.pdf: audioformats_a4_unlicensed.pdf
 	rm -f $@
 	$(PDFLICENSE) $< $@
-
-
-audiotools_letter_unlicensed.pdf: audiotools_letter.ps properties_audiotools.txt
-	gs -q -dNOPAUSE -dBATCH -sDEVICE=pdfwrite \
--sPAPERSIZE=letter -sOutputFile=$@ audiotools_letter.ps properties_audiotools.txt
-
-audiotools_a4_unlicensed.pdf: audiotools_a4.ps properties_audiotools.txt
-	gs -q -dNOPAUSE -dBATCH -sDEVICE=pdfwrite \
--sPAPERSIZE=a4 -sOutputFile=$@ audiotools_a4.ps properties_audiotools.txt
 
 audioformats_letter_unlicensed.pdf: audioformats_letter.ps properties_audioformats.txt
 	gs -q -dNOPAUSE -dBATCH -sDEVICE=pdfwrite \
@@ -133,23 +112,11 @@ audioformats_a4_unlicensed.pdf: audioformats_a4.ps properties_audioformats.txt
 	gs -q -dNOPAUSE -dBATCH -sDEVICE=pdfwrite \
 -sPAPERSIZE=a4 -sOutputFile=$@ audioformats_a4.ps properties_audioformats.txt
 
-audiotools_letter.ps: audiotools_letter_unsorted.ps
-	psselect -p$(TOC_ORDER_MANUAL) $< $@ 
-
-audiotools_a4.ps: audiotools_a4_unsorted.ps
-	psselect -p$(TOC_ORDER_MANUAL) $< $@ 
-
 audioformats_letter.ps: audioformats_letter_unsorted.ps
 	psselect -p$(TOC_ORDER_FORMATS) $< $@ 
 
 audioformats_a4.ps: audioformats_a4_unsorted.ps
 	psselect -p$(TOC_ORDER_FORMATS) $< $@
-
-audiotools_letter_unsorted.ps: audiotools.ms prereqs.ms install.ms usage.ms usage.eps programming.ms $(MAN_SECTIONS) $(SUBSECTIONS)
-	cat audiotools.ms | soelim | ./dformat | groff -p -t -e -ms -Tps -dpaper=letter -P-pletter > $@
-
-audiotools_a4_unsorted.ps: audiotools.ms prereqs.ms install.ms usage.ms usage.eps programming.ms $(MAN_SECTIONS) $(SUBSECTIONS)
-	cat audiotools.ms | soelim | ./dformat | groff -p -t -e -ms -Tps -dpaper=a4 -P-pa4 > $@
 
 audioformats_letter_unsorted.ps: audioformats.ms freedb.ms references.ms $(FORMATS) $(FIGURES) $(SUBSECTIONS)
 	cat audioformats.ms | soelim | ./dformat | groff -p -t -e -ms -Tps -dpaper=letter -P-pletter > $@
@@ -192,9 +159,6 @@ rice3.eps: rice3.fig
 
 pcm.eps: pcm.plot
 	./pcm.plot > pcm.eps
-
-usage.eps: usage.fig
-	fig2dev -L eps usage.fig usage.eps
 
 lpc_process.eps: lpc_process.fig
 	fig2dev -L eps lpc_process.fig lpc_process.eps
