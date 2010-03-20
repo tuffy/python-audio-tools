@@ -593,7 +593,7 @@
    rather than on the entire set.
 ** DONE Double-check ReplayGainReader
    Ensure its output is consistent with other implementations.
-* TODO Fix multi-channel audio handling
+* DONE Fix multi-channel audio handling
   It's important that channel mapping information be preserved
   when transcoding between sources with 3+ channels.
   This likely means another flag for PCMReader so that
@@ -708,7 +708,7 @@
     and more of an issue for Ogg Vorbis and other formats that do not.
 *** DONE Ensure UnsupportedChannelMask is raised when necessary
     This includes calls to from_pcm() and from_wave()
-** TODO Ensure PCMReader.channel_mask is always an integer
+** DONE Ensure PCMReader.channel_mask is always an integer
 * TODO Get coverview and editxmcd working on Mac OS X
   Preferably without falling back to Tkinter
 * TODO Perform code review of C-based extensions
@@ -785,3 +785,5 @@
 ** TODO Make reference documentation render consistently
    This may entail conversion to LaTeX,
    since troff's limitations are started to show.
+* TODO Fix the unit test error messages
+

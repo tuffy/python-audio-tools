@@ -353,7 +353,7 @@ class M4AAudio_faac(AudioFile):
             sub.stdout,
             sample_rate=self.sample_rate(),
             channels=self.channels(),
-            channel_mask=ChannelMask.from_channels(self.channels()),
+            channel_mask=int(ChannelMask.from_channels(self.channels())),
             bits_per_sample=self.bits_per_sample(),
             process=sub)
 
@@ -486,7 +486,7 @@ class M4AAudio_nero(M4AAudio_faac):
             return PCMReaderError(None,
                                   sample_rate=self.sample_rate(),
                                   channels=self.channels(),
-                                  channel_mask=self.channel_mask(),
+                                  channel_mask=int(self.channel_mask()),
                                   bits_per_sample=self.bits_per_sample())
 
     @classmethod
@@ -1129,7 +1129,7 @@ class AACAudio(AudioFile):
         return PCMReader(sub.stdout,
                          sample_rate=self.sample_rate(),
                          channels=self.channels(),
-                         channel_mask=self.channel_mask(),
+                         channel_mask=int(self.channel_mask()),
                          bits_per_sample=self.bits_per_sample(),
                          process=sub)
 

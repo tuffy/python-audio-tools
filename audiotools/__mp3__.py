@@ -138,7 +138,7 @@ class MP3Audio(AudioFile):
                              sample_rate=self.sample_rate(),
                              channels=self.channels(),
                              bits_per_sample=16,
-                             channel_mask=ChannelMask.from_channels(self.channels()),
+                             channel_mask=int(ChannelMask.from_channels(self.channels())),
                              process=sub,
                              big_endian=BIG_ENDIAN)
         else:

@@ -96,7 +96,7 @@ class SpeexAudio(VorbisAudio):
             sub.stdout,
             sample_rate=self.sample_rate(),
             channels=self.channels(),
-            channel_mask=ChannelMask.from_channels(self.channels()),
+            channel_mask=int(ChannelMask.from_channels(self.channels())),
             bits_per_sample=self.bits_per_sample(),
             process=sub)
 

@@ -1350,7 +1350,7 @@ class OggFlacAudio(FlacAudio):
                          sample_rate=self.__samplerate__,
                          channels=self.__channels__,
                          bits_per_sample=self.__bitspersample__,
-                         channel_mask=self.channel_mask(),
+                         channel_mask=int(self.channel_mask()),
                          process=sub,
                          signed=True,
                          big_endian=False)

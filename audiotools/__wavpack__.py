@@ -502,7 +502,7 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
                 return PCMReader(sub.stdout,
                                  sample_rate=self.sample_rate(),
                                  channels=self.channels(),
-                                 channel_mask=self.channel_mask(),
+                                 channel_mask=int(self.channel_mask()),
                                  bits_per_sample=self.bits_per_sample(),
                                  process=sub)
             else:
@@ -516,7 +516,7 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
                 return WaveReader(sub.stdout,
                                   sample_rate=self.sample_rate(),
                                   channels=self.channels(),
-                                  channel_mask=self.channel_mask(),
+                                  channel_mask=int(self.channel_mask()),
                                   bits_per_sample=self.bits_per_sample(),
                                   process=sub)
         else:

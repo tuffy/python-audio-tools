@@ -10173,9 +10173,16 @@ class TestMultiChannel(unittest.TestCase):
                     channel_mask))
             self.assertEqual(source_track.channel_mask(),channel_mask)
 
+            source_pcm = source_track.to_pcm()
+
+            self.assertEqual(isinstance(source_pcm.channel_mask,int),
+                             True,
+                             "%s's to_pcm() PCMReader is not an int" % \
+                                 (source_audio_class.NAME))
+
             target_track = target_audio_class.from_pcm(
                 target_file.name,
-                source_track.to_pcm())
+                source_pcm)
 
             self.assertEqual(target_track.channel_mask(),channel_mask)
             self.assertEqual(source_track.channel_mask(),

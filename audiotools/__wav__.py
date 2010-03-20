@@ -87,7 +87,7 @@ class TempWaveReader(WaveReader):
                             tempfile,
                             sample_rate = wave.sample_rate(),
                             channels = wave.channels(),
-                            channel_mask = wave.channel_mask(),
+                            channel_mask = int(wave.channel_mask()),
                             bits_per_sample = wave.bits_per_sample())
         self.tempfile = tempfile
 
@@ -315,7 +315,7 @@ class WaveAudio(AudioFile):
                           sample_rate = self.sample_rate(),
                           channels = self.channels(),
                           bits_per_sample = self.bits_per_sample(),
-                          channel_mask = self.channel_mask())
+                          channel_mask = int(self.channel_mask()))
 
     #Takes a filename and PCMReader containing WAV data
     #builds a WAV from that data and returns a new WaveAudio object
