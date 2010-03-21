@@ -519,6 +519,7 @@ class M4AAudio_nero(M4AAudio_faac):
             sub = subprocess.Popen([BIN["neroAacDec"],
                                     "-if",self.filename,
                                     "-of",wave_file],
+                                   stdout=devnull,
                                    stderr=devnull)
             if (sub.wait() != 0):
                 raise EncodingError()

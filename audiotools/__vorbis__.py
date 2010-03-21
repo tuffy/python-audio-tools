@@ -419,7 +419,8 @@ class VorbisAudio(AudioFile):
                                 '-R',
                                 '-o','-',
                                 self.filename],
-                               stdout=subprocess.PIPE)
+                               stdout=subprocess.PIPE,
+                               stderr=file(os.devnull,"a"))
 
         pcmreader = PCMReader(sub.stdout,
                               sample_rate = self.sample_rate(),

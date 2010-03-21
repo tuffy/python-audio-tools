@@ -21,6 +21,23 @@ classes and functions upon which all of the other modules depend.
    available to the user - depending on whether the required binaries
    are installed or not.
 
+   ============= ==================================
+   Class         Format
+   ------------- ----------------------------------
+   AACAudio      AAC in ADTS container
+   AiffAudio     Audio Interchange File Format
+   AuAudio       Sun Au
+   FlacAudio     Native Free Lossless Audio Codec
+   M4AAudio      AAC in M4A container
+   MP3Audio      MPEG-1 Layer 3
+   MP2Audio      MPEG-1 Layer 2
+   OggFlacAudio  Ogg Free Lossless Audio Codec
+   SpeexAudio    Ogg Speex
+   VorbisAudio   Ogg Vorbis
+   WaveAudio     Waveform Audio File Format
+   WavPackAudio  WavPack
+   ============= ==================================
+
 .. data:: TYPE_MAP
 
    A dictionary of type_name strings -> :class:`AudioFile`
@@ -623,7 +640,7 @@ PCMReader Objects
    This class wraps around file-like objects and generates
    :class:`pcm.FrameList` objects on each call to :meth:`read`.
    ``sample_rate``, ``channels``, ``channel_mask`` and ``bits_per_sample``
-   should be integer-compatible objects.
+   should be integers.
    ``process`` is a subprocess helper object which generates PCM data.
    ``signed`` is ``True`` if the generated PCM data is signed.
    ``big_endian`` is ``True`` if the generated PCM data is big-endian.

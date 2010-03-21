@@ -76,6 +76,7 @@ class SymlinkPCMReader(PCMReader):
         self.tempdir = tempdir
         self.symlink = symlink
         self.reader = reader
+        self.closed = False
 
     def read(self,bytes):
         return self.reader.read(bytes)
@@ -84,6 +85,11 @@ class SymlinkPCMReader(PCMReader):
         self.reader.close()
         os.unlink(self.symlink)
         os.rmdir(self.tempdir)
+        self.closed = True
+
+    def __del__(self):
+        if (not self.closed):
+            self.close()
 
     @classmethod
     def new(cls, filename, suffix):

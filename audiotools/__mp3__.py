@@ -133,7 +133,8 @@ class MP3Audio(AudioFile):
         #if mpg123 is available, use that for decoding
         if (BIN.can_execute(BIN["mpg123"])):
             sub = subprocess.Popen([BIN["mpg123"],"-qs",self.filename],
-                                   stdout=subprocess.PIPE)
+                                   stdout=subprocess.PIPE,
+                                   stderr=file(os.devnull,"a"))
             return PCMReader(sub.stdout,
                              sample_rate=self.sample_rate(),
                              channels=self.channels(),
