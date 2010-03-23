@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<diagram>
+  <row>
+    <col start="0" end="15" width=".5">Minimum Block Size (in samples)</col>
+    <col start="16" end="31" width=".5">Maximum Block Size (in samples)</col>
+  </row>
+  <row>
+    <col start="32" end="55" width=".5">Minimum Frame Size (in bytes)</col>
+    <col start="56" end="79" width=".5">Maximum Frame Size (in bytes)</col>
+  </row>
+  <row>
+    <col start="80" end="99" width=".60">Sample Rate</col>
+    <col start="100" end="102" width=".20">Channels</col>
+    <col start="103" end="107" width=".20">Bits per Sample</col>
+  </row>
+  <row>
+    <col start="108" end="143">Total Samples</col>
+  </row>
+  <row>
+    <col start="144" end="271">MD5SUM of PCM Data</col>
+  </row>
+</diagram>

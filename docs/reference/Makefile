@@ -1,7 +1,9 @@
 FIGURES = binary.pdf figures/pcm.pdf figures/wav_stream.pdf \
-figures/wav_fmt.pdf figures/wav_fmtext.pdf figures/wav_data.pdf
+figures/wav_fmt.pdf figures/wav_fmtext.pdf figures/wav_data.pdf \
+figures/flac_stream.pdf figures/flac_streaminfo.pdf \
+figures/flac_application.pdf figures/flac_seektable.pdf
 
-CHAPTERS = basics.tex wav.tex
+CHAPTERS = basics.tex wav.tex flac.tex
 
 all: audiotools.pdf
 
@@ -23,14 +25,8 @@ figures/pcm.pdf: figures/pcm.fig
 figures/pcm.fig: figures/pcm.plot
 	./figures/pcm.plot > $@
 
-figures/wav_stream.pdf: figures/wav_stream.xml
+.SUFFIXES: .pdf .xml
+
+.xml.pdf:
 	./bitdiagram.py -i $< -o $@
 
-figures/wav_fmt.pdf: figures/wav_fmt.xml
-	./bitdiagram.py -i $< -o $@
-
-figures/wav_fmtext.pdf: figures/wav_fmtext.xml
-	./bitdiagram.py -i $< -o $@
-
-figures/wav_data.pdf: figures/wav_data.xml
-	./bitdiagram.py -i $< -o $@

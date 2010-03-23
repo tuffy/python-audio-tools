@@ -1,0 +1,71 @@
+\chapter{Free Lossless Audio Codec}
+FLAC compresses PCM audio data losslessly using predictors and a
+residual.
+FLACs contain checksumming to verify their integrity, contain comment tags for
+metadata and are streamable.
+
+Except for the contents of the VORBIS\_COMMENT metadata block, everything in FLAC is big-endian.
+
+\section{the FLAC File Stream}
+\begin{figure}[h]
+\includegraphics{figures/flac_stream.pdf}
+\end{figure}
+\par
+\noindent
+``Last'' is 0 when there are no additional metadata blocks and 1 when
+it is the final block before the the audio frames.
+``Block Length'' is the size of the metadata block data to follow,
+not including the header.
+\begin{figure}[h]
+\begin{tabular}{| r | l |}
+\hline
+Block Type & Block \\
+\hline
+\texttt{0} & STREAMINFO \\
+\texttt{1} & PADDING \\
+\texttt{2} & APPLICATION \\
+\texttt{3} & SEEKTABLE \\
+\texttt{4} & VORBIS\_COMMENT \\
+\texttt{5} & CUESHEET \\
+\texttt{6} & PICTURE \\
+\texttt{7-126} & reserved \\
+\texttt{127} & invalid \\
+\hline
+\end{tabular}
+\end{figure}
+
+\pagebreak
+
+\section{FLAC Metadata Blocks}
+
+\subsection{STREAMINFO}
+\begin{figure}[h]
+\includegraphics{figures/flac_streaminfo.pdf}
+\end{figure}
+
+\subsection{PADDING}
+
+PADDING is simply a block full of NULL (\texttt{0x00}) bytes.
+Its purpose is to provide extra metadata space within the FLAC file.
+By having a padding block, other metadata blocks can be grown or
+shrunk without having to rewrite the entire FLAC file by removing or
+adding space to the padding.
+
+
+\subsection{APPLICATION}
+\begin{figure}[h]
+\includegraphics{figures/flac_application.pdf}
+\end{figure}
+\noindent
+APPLICATION is a general-purpose metadata block used by a variety of
+different programs.
+Its contents are defined by the ASCII Application ID value.
+
+\subsection{SEEKTABLE}
+\begin{figure}[h]
+\includegraphics{figures/flac_seektable.pdf}
+\end{figure}
+
+\subsection{VORBIS\_COMMENT}
+
+\subsection{PICTURE}

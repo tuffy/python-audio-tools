@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<diagram>
+  <row>
+    <col start="0" end="143" name="seekpoint" width=".333333" id="seekpoint">Seekpoint₁</col>
+    <col start="144" end="287" width=".333333">Seekpoint₂</col>
+    <col style="dashed" width=".333333">...</col>
+  </row>
+  <row><blank/></row>
+  <row>
+    <col start="0" end="63" width=".40" id="sample_number">Sample Number in Target Frame</col>
+    <col start="64" end="127" width=".36">Byte Offset to Frame Header</col>
+    <col start="128" end="143" width=".24" id="samples_in_frame">Samples in Frame</col>
+  </row>
+  <line s_id="seekpoint" s_corner="sw" e_id="sample_number" e_corner="nw" style="dotted"/>
+  <line s_id="seekpoint" s_corner="se" e_id="samples_in_frame" e_corner="ne" style="dotted"/>
+</diagram>
