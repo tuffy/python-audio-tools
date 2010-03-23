@@ -1,5 +1,5 @@
 FIGURES = binary.pdf figures/pcm.pdf figures/wav_stream.pdf \
-figures/wav_fmt.pdf figures/wav_fmtext.pdf
+figures/wav_fmt.pdf figures/wav_fmtext.pdf figures/wav_data.pdf
 
 CHAPTERS = basics.tex wav.tex
 
@@ -30,4 +30,7 @@ figures/wav_fmt.pdf: figures/wav_fmt.xml
 	./bitdiagram.py -i $< -o $@
 
 figures/wav_fmtext.pdf: figures/wav_fmtext.xml
+	./bitdiagram.py -i $< -o $@
+
+figures/wav_data.pdf: figures/wav_data.xml
 	./bitdiagram.py -i $< -o $@

@@ -25,8 +25,53 @@ This chunk is required to appear before the `data' chunk.
 Wave files with more than 2 channels or more than 16 bits-per-sample
 should use a WAVEFORMATEXTENSIBLE `fmt' chunk which contains
 additional fields for channel assignment.
-
+\begin{figure}[h]
 \includegraphics{figures/wav_fmtext.pdf}
+\end{figure}
+\par
 \noindent
 Note that the `Average Bytes per Second' and `Block Align' fields
 are calculated the same as a classic fmt chunk.
+
+\section{the `data' Chunk}
+\begin{figure}[h]
+\includegraphics{figures/wav_data.pdf}
+\end{figure}
+\par
+\noindent
+`PCM Data' is a stream of PCM samples stored in little-endian format.
+
+\section{Channel Mapping}
+Channels whose bits are set in the WAVEFORMATEXTENSIBLE `fmt' chunk
+appear in the following order:
+\begin{figure}[h]
+\begin{tabular}{| c | r | l |}
+\hline
+Index & Channel & Mask Bit \\
+\hline
+1 & Front Left & \texttt{0x1} \\
+2 & Front Right & \texttt{0x2} \\
+3 & Front Center & \texttt{0x4} \\
+4 & LFE & \texttt{0x8} \\
+5 & Back Left & \texttt{0x10} \\
+6 & Back Right & \texttt{0x20} \\
+7 & Front Left OF Center & \texttt{0x40} \\
+8 & Front Right OF Center & \texttt{0x80} \\
+9 & Back Center & \texttt{0x100} \\
+10 & Side Left & \texttt{0x200} \\
+11 & Side Right & \texttt{0x400} \\
+12 & Top Center & \texttt{0x800} \\
+13 & Top Front Left & \texttt{0x1000} \\
+14 & Top Front Center & \texttt{0x2000} \\
+15 & Top Front Right & \texttt{0x4000} \\
+16 & Top Back Left & \texttt{0x8000} \\
+17 & Top Back Center & \texttt{0x10000} \\
+18 & Top Back Right & \texttt{0x20000} \\
+\hline
+\end{tabular}
+\end{figure}
+\par
+\noindent
+For example, if the file's channel mask is set to \texttt{0x33},
+it contains the channels `Front Left', `Front Right',
+`Back Left' and `Back Right', in that order.

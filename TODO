@@ -784,17 +784,18 @@
     - [X] TOCException
 * TODO Make reference documentation render consistently
 ** TODO Ensure documents render in letter and A4 size
+** TODO Add Creative Commons licensing to source code and doc itself
 ** DONE Basics
 *** DONE Hexadecimal
 *** DONE Endianness
 *** DONE Character Encodings
 *** DONE PCM
-** TODO .wav
+** DONE .wav
 *** DONE the RIFF WAVE stream
 *** DONE the fmt chunk
 *** DONE the WAVEFORMATEXTENSIBLE fmt chunk
-*** TODO the data chunk
-*** TODO channel mapping
+*** DONE the data chunk
+*** DONE channel mapping
 ** TODO .aiff
 *** TODO the AIFF stream
 *** TODO the COMM chunk

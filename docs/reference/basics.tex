@@ -142,6 +142,7 @@ In the case of 2 channels, the first sample is sent to the
 left speaker and the second is sent to the right speaker.
 So, our stream of data now looks like:
 
+\begin{figure}[h]
 \begin{tabular}{| r | l |}
 \hline
 left speaker & right speaker \\
@@ -152,6 +153,7 @@ left speaker & right speaker \\
 \texttt{30} & \texttt{-167} \\
 \hline
 \end{tabular}
+\end{figure}
 
 \noindent
 44100Hz means those pairs of samples are sent at the rate of
@@ -166,4 +168,3 @@ However, the term `frame' appears a lot in digital audio.
 It is important not to confuse a PCM frame with a CD frame
 (a block of audio 1/75th of a second long), an MP3 frame,
 a FLAC frame or any other sort of frame.
-
