@@ -786,8 +786,8 @@
 ** TODO Ensure documents render in letter and A4 size
 ** TODO Basics
 *** DONE Hexadecimal
-*** TODO Endianness
-*** TODO Character Encodings
+*** DONE Endianness
+*** DONE Character Encodings
 *** TODO PCM
 ** TODO .wav
 *** TODO the RIFF WAVE stream

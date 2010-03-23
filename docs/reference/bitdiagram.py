@@ -1,5 +1,17 @@
 #!/usr/bin/python
 
+import sys
+
+try:
+    from reportlab.pdfgen import canvas
+    from reportlab.lib.units import inch
+    from reportlab.pdfbase.pdfmetrics import registerFont
+    from reportlab.pdfbase.ttfonts import TTFont
+except ImportError:
+    print "*** ReportLab is required"
+    print "Please fetch the open-source version from http://www.reportlab.org"
+    sys.exit(1)
+
 (SOLID,DASHED,DOTTED,BLANK) = range(4)
 (NE,NW,SE,SW) = range(4)
 ROW_HEIGHT = 22
@@ -165,11 +177,6 @@ class ChunkTable:
     #given a width value (in points) and filename string,
     #render all the lines and chunks as a PDF file
     def to_pdf(self, total_width, filename):
-        from reportlab.pdfgen import canvas
-        from reportlab.lib.units import inch
-        from reportlab.pdfbase.pdfmetrics import registerFont
-        from reportlab.pdfbase.ttfonts import TTFont
-
         total_rows = len(self.rows)
         total_height = ROW_HEIGHT * total_rows
 
@@ -208,35 +215,35 @@ class ChunkTable:
         pdf.save()
 
 
-def build_pdf():
-    wave = ChunkTable()
-    wave.add_row(Chunk(u"ID (\u2018RIFF\u2019 0x52494646)",0,31,.333333),
-                 Chunk(u"Chunk Size (file size - 8)",32,63,.333333),
-                 Chunk(u"Chunk Data",64,None,.333333,
-                       chunk_id="data"))
-    wave.add_row(BlankChunk(1.0))
-    wave.add_row(Chunk(u"Type (\u2018WAVE\u2019 0x57415645)",0,31,.333333,
-                       chunk_id="type"),
-                 Chunk(u"Chunk\u2081",32,None,.222222,
-                       chunk_id="chunk"),
-                 Chunk(u"Chunk\u2082",None,None,.222222),
-                 Chunk(u"...",None,None,.222222,style=DASHED,
-                       chunk_id="..."))
+# def build_pdf():
+#     wave = ChunkTable()
+#     wave.add_row(Chunk(u"ID (\u2018RIFF\u2019 0x52494646)",0,31,.333333),
+#                  Chunk(u"Chunk Size (file size - 8)",32,63,.333333),
+#                  Chunk(u"Chunk Data",64,None,.333333,
+#                        chunk_id="data"))
+#     wave.add_row(BlankChunk(1.0))
+#     wave.add_row(Chunk(u"Type (\u2018WAVE\u2019 0x57415645)",0,31,.333333,
+#                        chunk_id="type"),
+#                  Chunk(u"Chunk\u2081",32,None,.222222,
+#                        chunk_id="chunk"),
+#                  Chunk(u"Chunk\u2082",None,None,.222222),
+#                  Chunk(u"...",None,None,.222222,style=DASHED,
+#                        chunk_id="..."))
 
-    wave.add_line("data",SW,"type",NW,DOTTED)
-    wave.add_line("data",SE,"...",NE,DOTTED)
+#     wave.add_line("data",SW,"type",NW,DOTTED)
+#     wave.add_line("data",SE,"...",NE,DOTTED)
 
-    wave.add_row(BlankChunk(1.0))
-    wave.add_row(Chunk(u"Chunk ID (ASCII text)",0,31,.333333,
-                       chunk_id="chunk_id"),
-                 Chunk(u"Chunk Size",32,63,.333333),
-                 Chunk(u"Chunk Data",64,None,.333333,style=DASHED,
-                       chunk_id="chunk_data"))
+#     wave.add_row(BlankChunk(1.0))
+#     wave.add_row(Chunk(u"Chunk ID (ASCII text)",0,31,.333333,
+#                        chunk_id="chunk_id"),
+#                  Chunk(u"Chunk Size",32,63,.333333),
+#                  Chunk(u"Chunk Data",64,None,.333333,style=DASHED,
+#                        chunk_id="chunk_data"))
 
-    wave.add_line("chunk",SW,"chunk_id",NW,DOTTED)
-    wave.add_line("chunk",SE,"chunk_data",NE,DOTTED)
+#     wave.add_line("chunk",SW,"chunk_id",NW,DOTTED)
+#     wave.add_line("chunk",SE,"chunk_data",NE,DOTTED)
 
-    wave.to_pdf(6 * 72,"bits.pdf")
+#     wave.to_pdf(6 * 72,"bits.pdf")
 
 def parse_xml(xml_filename):
     import xml.dom.minidom
@@ -291,6 +298,22 @@ def parse_xml(xml_filename):
     return table
 
 if (__name__ == '__main__'):
-    import sys
+    import optparse
 
-    parse_xml(sys.argv[1]).to_pdf(6 * 72,"bits.pdf")
+    parser = optparse.OptionParser()
+    parser.add_option('-i','--input',dest='input',help='input XML file')
+    parser.add_option('-o','--output',dest='output',help='output PDF file')
+    parser.add_option('-w','--width',dest='width',
+                      type='int',default=6 * 72,
+                      help='digram width, in PostScript points')
+
+    (options,args) = parser.parse_args()
+
+    if (options.input is None):
+        print "*** An input file is required"
+        sys.exit(1)
+    if (options.output is None):
+        print "*** An output file is required"
+        sys.exit(1)
+
+    parse_xml(options.input).to_pdf(options.width,options.output)
