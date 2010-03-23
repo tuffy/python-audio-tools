@@ -790,9 +790,9 @@
 *** DONE Character Encodings
 *** DONE PCM
 ** TODO .wav
-*** TODO the RIFF WAVE stream
-*** TODO the fmt chunk
-*** TODO the WAVEFORMATEXTENSIBLE fmt chunk
+*** DONE the RIFF WAVE stream
+*** DONE the fmt chunk
+*** DONE the WAVEFORMATEXTENSIBLE fmt chunk
 *** TODO the data chunk
 *** TODO channel mapping
 ** TODO .aiff

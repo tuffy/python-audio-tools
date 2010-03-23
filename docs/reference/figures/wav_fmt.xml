@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<diagram>
+  <row>
+    <col start="0" end="31" width=".5">Chunk ID (‘fmt ’ 0x666D7420)</col>
+    <col start="32" end="63" width=".5">Chunk Size (16)</col>
+  </row>
+  <row>
+    <col start="64" end="79" width=".5">Compression Code (0x0001)</col>
+    <col start="80" end="95" width=".5">Channel Count</col>
+  </row>
+  <row>
+    <col start="96" end="127">Sample Rate</col>
+  </row>
+  <row>
+    <col start="128" end="159">Average Bytes per Second</col>
+  </row>
+  <row>
+    <col start="160" end="175" width=".5">Block Align</col>
+    <col start="176" end="191" width=".5">Bits per Sample</col>
+  </row>
+</diagram>

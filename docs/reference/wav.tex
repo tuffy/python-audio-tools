@@ -1,0 +1,32 @@
+\chapter{Waveform Audio File Format}
+The Waveform Audio File Format is the most common form of PCM container.
+What that means is that the file is mostly PCM data with a
+small amount of header data to tell applications what format the
+PCM data is in.
+Since RIFF WAVE originated on Intel processors, everything in it
+is little-endian.
+\section{the RIFF WAVE Stream}
+\includegraphics{figures/wav_stream.pdf}
+\par
+\noindent
+`Chunk Size' is the total size of the chunk, minus
+8 bytes for the chunk header.
+\section{the Classic `fmt' Chunk}
+Wave files with 2 channels or less, and 16 bits-per-sample or less,
+use a classic `fmt' chunk to indicate its PCM data format.
+This chunk is required to appear before the `data' chunk.
+\includegraphics{figures/wav_fmt.pdf}
+\begin{align}
+\text{Average Bytes per Second} &= \frac{\text{Sample Rate}
+  \times \text{Channel Count} \times \text{Bits per Sample}}{8} \\
+\text{Block Align} &= \frac{\text{Channel Count} \times \text{Bits per Sample}}{8}
+\end{align}
+\section{the WAVEFORMATEXTENSIBLE `fmt' Chunk}
+Wave files with more than 2 channels or more than 16 bits-per-sample
+should use a WAVEFORMATEXTENSIBLE `fmt' chunk which contains
+additional fields for channel assignment.
+
+\includegraphics{figures/wav_fmtext.pdf}
+\noindent
+Note that the `Average Bytes per Second' and `Block Align' fields
+are calculated the same as a classic fmt chunk.
