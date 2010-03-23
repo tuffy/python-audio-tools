@@ -1,4 +1,4 @@
-FIGURES = binary.pdf
+FIGURES = binary.pdf figures/pcm.pdf
 
 CHAPTERS = basics.tex
 
@@ -15,3 +15,9 @@ audiotools.toc: audiotools.tex $(CHAPTERS) $(FIGURES)
 
 binary.pdf: binary.fig
 	fig2dev -L pdf binary.fig binary.pdf
+
+figures/pcm.pdf: figures/pcm.fig
+	fig2dev -Z 3 -L pdf $< $@
+
+figures/pcm.fig: figures/pcm.plot
+	./figures/pcm.plot > $@

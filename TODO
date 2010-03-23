@@ -784,11 +784,11 @@
     - [X] TOCException
 * TODO Make reference documentation render consistently
 ** TODO Ensure documents render in letter and A4 size
-** TODO Basics
+** DONE Basics
 *** DONE Hexadecimal
 *** DONE Endianness
 *** DONE Character Encodings
-*** TODO PCM
+*** DONE PCM
 ** TODO .wav
 *** TODO the RIFF WAVE stream
 *** TODO the fmt chunk
