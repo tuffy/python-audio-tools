@@ -718,12 +718,12 @@
 ** TODO audiotools.pcm
 ** TODO audiotools.replaygain
 ** TODO audiotools.resample
-* TODO Update documentation
-** DONE Make the programming documentation web-capable
+* DONE Fix the unit test error messages
+* DONE Make the programming documentation web-capable
    It should render consistently with the regular Python reference docs
    and be placed both in the source tree and on the website
    for better accessability.
-*** DONE Document audiotools
+** DONE Document audiotools
     - [X] AudioFile
     - [X] BufferedPCMReader
     - [X] ChannelMask
@@ -759,7 +759,7 @@
     - [X] TYPE_MAP
     - [X] VERSION
     - [X] AVAILABLE_TYPES
-*** DONE Document audiotools.pcm
+** DONE Document audiotools.pcm
     - [X] FloatFrameList
     - [X] FrameList
     - [X] from_channels
@@ -767,23 +767,192 @@
     - [X] from_float_frames
     - [X] from_frames
     - [X] from_list
-*** DONE Document audiotools.resample
+** DONE Document audiotools.resample
     - [X] Resampler
-*** DONE Document audiotools.replaygain
+** DONE Document audiotools.replaygain
     - [X] ReplayGain
-*** DONE Document audiotools.cdio
+** DONE Document audiotools.cdio
     - [X] CDDA
     - [X] set_read_callback
-*** DONE Document audiotools.cue
+** DONE Document audiotools.cue
     - [X] Cuesheet
     - [X] read_cuesheet
     - [X] CueException
-*** DONE Document audiotools.toc
+** DONE Document audiotools.toc
     - [X] TOCFile
     - [X] read_tocfile
     - [X] TOCException
-** TODO Make reference documentation render consistently
-   This may entail conversion to LaTeX,
-   since troff's limitations are started to show.
-* TODO Fix the unit test error messages
-
+* TODO Make reference documentation render consistently
+** TODO Ensure documents render in letter and A4 size
+** TODO Basics
+*** DONE Hexadecimal
+*** TODO Endianness
+*** TODO Character Encodings
+*** TODO PCM
+** TODO .wav
+*** TODO the RIFF WAVE stream
+*** TODO the fmt chunk
+*** TODO the WAVEFORMATEXTENSIBLE fmt chunk
+*** TODO the data chunk
+*** TODO channel mapping
+** TODO .aiff
+*** TODO the AIFF stream
+*** TODO the COMM chunk
+**** TODO 80 bit IEEE standard 754 floating point
+*** the SSND chunk
+** TODO .au
+*** TODO the AU stream
+*** TODO the AU header
+** TODO .flac
+*** TODO the FLAC file stream
+*** TODO FLAC metadata
+**** TODO the PADDING metadata block
+**** TODO the APPLICATION metadata block
+**** TODO the SEEKTABLE metadata block
+**** TODO the VORBIS_COMMENT metadata block
+**** TODO the PICTURE metadata block
+**** TODO the CUESHEET metadata block
+*** TODO FLAC decoding
+**** TODO the CONSTANT subframe
+**** TODO the VERBATIM subframe
+**** TODO the FIXED subframe
+**** TODO the Residual
+***** TODO Rice Encoding
+**** TODO Channels
+**** TODO Wasted bits per sample
+*** TODO FLAC encoding
+**** TODO Metadata header
+**** TODO the STREAMINFO metadata block
+**** TODO the VORBIS_COMMENT metadata block
+**** TODO the PADDING metadata block
+**** TODO Frame header
+**** TODO Channel assignment
+**** TODO Subframe header
+**** TODO the CONSTANT subframe
+**** TODO the VERBATIM subframe
+**** TODO the FIXED subframe
+**** TODO the LPC subframe
+***** TODO Windowing
+***** TODO Computing autocorrelation
+***** TODO LP coefficient calculation
+***** TODO Best order estimation
+***** TODO Best order exhaustive search
+***** TODO Quantizing coefficients
+***** TODO Calculation Residual
+**** TODO the Residual
+***** TODO Residual Values
+*** the Checksums
+**** CRC-8
+**** CRC-16
+** TODO .ape
+*** TODO the Monkey's Audio stream
+*** TODO the APE Descriptor
+*** TODO the APE Header
+*** TODO the APEv2 tag
+*** TODO the APEv2 tag header/footer
+*** TODO the APEv2 flags
+** TODO .wv
+*** TODO the WavPack file stream
+*** TODO a WavPack block header
+*** TODO a WavPack sub-block header
+** TODO .mp3
+*** TODO the MP3 file stream
+*** TODO an MPEG frame header
+**** TODO the Xing header
+*** TODO the ID3v1 tag
+**** TODO ID3v1
+**** TODO ID3v1.1
+*** TODO the ID3v2 tag
+**** TODO the ID3v2 stream
+**** TODO ID3v2.2
+***** TODO the ID3v2.2 Header
+***** TODO an ID3v2.2 Frame
+***** TODO ID3v2.2 Frame IDs
+***** TODO the PIC Frame
+**** TODO ID3v2.3
+***** TODO the ID3v2.3 Header
+***** TODO an ID3v2.3 Frame
+***** TODO ID3v2.3 Frame IDs
+***** TODO the APIC Frame
+**** TODO ID3v2.4
+***** TODO the ID3v2.4 Header
+***** TODO an ID3v2.4 Frame
+***** TODO ID3v2.4 Frame IDs
+***** TODO the APIC Frame
+** TODO .ogg
+*** TODO the Ogg file stream
+*** TODO an Ogg Page
+*** TODO Ogg packets
+*** TODO the Identification packet
+*** TODO the Comment packet
+** TODO .spx
+*** TODO the Header packet
+*** TODO the Comment packet
+** TODO .oga
+*** TODO the Ogg FLAC file stream
+*** TODO the STREAMINFO metadata packet
+*** TODO the Metadata packets
+** TODO .m4a
+*** TODO the QuickTime file stream
+*** TODO a QuickTime atom
+*** TODO Container atoms
+*** TODO M4A atoms
+**** TODO the ftyp atom
+**** TODO the mvhd atom
+**** TODO the tkhd atom
+**** TODO the mdhd atom
+**** TODO the hdlr atom
+**** TODO the smhd atom
+**** TODO the dref atom
+**** TODO the stsd atom
+**** TODO the mp4a atom
+**** TODO the stts atom
+**** TODO the stsc atom
+**** TODO the stsz atom
+**** TODO the stco atom
+**** TODO the meta atom
+***** TODO the trkn sub-atom
+***** TODO the disk sub-atom
+** TODO .mpc
+*** TODO Musepack SV7
+**** TODO the Musepack SV7 file stream
+**** TODO the Musepack SV7 header
+*** TODO Musepack SV8
+**** TODO the Musepack SV8 file stream
+**** TODO Nut-encoded values
+**** TODO the SH packet
+**** TODO the SE packet
+**** TODO the RG packet
+**** TODO the EI packet
+** TODO FreeDB
+*** TODO Native Protocol
+**** TODO the Disc ID
+**** TODO Initial Greeting
+**** TODO Client-Server Handshake
+**** TODO Set Protocol Level
+**** TODO Calculate Disc ID
+**** TODO Query Database
+**** TODO Read XMCD Data
+**** TODO Close Connection
+**** TODO List Genres
+**** TODO List Mirrors
+*** TODO Web Protocol
+*** TODO XMCD
+**** TODO BNF
+** TODO MusicBrainz
+*** TODO Searching Releases
+**** TODO The Disc ID
+**** TODO Server Query
+**** TODO Release XML
+*** TODO MusieBrainz XML
+** TODO ReplayGain
+*** TODO Applying ReplayGain
+*** TODO Calculating ReplayGain
+**** TODO the Equal Loudness Filter
+     This should be re-documented to be closer to the actual implementation
+***** TODO the Yule Filter
+***** TODO the Buffer Filter
+***** TODO a Filtering Example
+**** TODO RMS Energy Blocks
+**** TODO Statistical Processing and Calibration
+** TODO References
