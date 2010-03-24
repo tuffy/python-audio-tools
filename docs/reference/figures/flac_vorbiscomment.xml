@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<diagram>
+  <row>
+    <col width=".17" id="vendorstring">Vendor String</col>
+    <col width=".20" start="0" end="31">Total Comments</col>
+    <col width=".21">Comment String₁</col>
+    <col width=".21" id="comment">Comment String₂</col>
+    <col width=".21" style="dashed">...</col>
+  </row>
+  <row><blank/></row>
+  <row>
+    <col width=".25" id="v_len" start="0" end="31">Vendor String Length</col>
+    <col width=".20" id="v_str" start="32">Vendor String</col>
+    <blank width=".05"/>
+    <col width=".30" id="c_len" start="0" end="31">Comment String Length</col>
+    <col width=".20" id="c_str" start="0">Comment String</col>
+  </row>
+  <line s_id="vendorstring" s_corner="sw" e_id="v_len" e_corner="nw" style="dotted"/>
+  <line s_id="vendorstring" s_corner="se" e_id="v_str" e_corner="ne" style="dotted"/>
+  <line s_id="comment" s_corner="sw" e_id="c_len" e_corner="nw" style="dotted"/>
+  <line s_id="comment" s_corner="se" e_id="c_str" e_corner="ne" style="dotted"/>
+</diagram>

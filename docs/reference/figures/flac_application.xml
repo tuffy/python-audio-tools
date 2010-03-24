@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<diagram>
+  <row>
+    <col start="0" end="31" width=".25">Application ID</col>
+    <col start="32" width=".75">Application Data</col>
+  </row>
+</diagram>

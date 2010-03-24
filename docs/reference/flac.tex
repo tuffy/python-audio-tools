@@ -66,6 +66,68 @@ Its contents are defined by the ASCII Application ID value.
 \includegraphics{figures/flac_seektable.pdf}
 \end{figure}
 
+\pagebreak
+
 \subsection{VORBIS\_COMMENT}
+\begin{figure}[h]
+\includegraphics{figures/flac_vorbiscomment.pdf}
+\end{figure}
+\par
+\noindent
+The length fields are all little-endian.
+The Vendor String and Comment Strings are all UTF-8 encoded.
+Keys are not case-sensitive and may occur multiple times,
+indicating multiple values for the same field.
+For instance, a track with multiple artists may have
+more than one \texttt{ARTIST}.
+
+\begin{minipage}{\linewidth}
+\renewcommand\thefootnote{\thempfootnote}
+{\relsize{-1}
+\begin{tabular}{|r|l|}
+\hline
+key & value \\
+\hline
+ALBUM & album name \\
+ARTIST & artist name, band name, composer, author, etc. \\
+CATALOGNUMBER\footnote{These are proposed extension fields and not part of the official Vorbis comment specification.} & CD spine number \\
+COMPOSER\footnotemark[\value{mpfootnote}] & the work's author \\
+CONDUCTOR\footnotemark[\value{mpfootnote}] & performing ensemble's leader \\
+COPYRIGHT & copyright attribution \\
+DATE & recording date \\
+DESCRIPTION & a short description \\
+DISCNUMBER\footnotemark[\value{mpfootnote}] & disc number for multi-volume work \\
+ENGINEER\footnotemark[\value{mpfootnote}] & the recording masterer \\
+ENSEMBLE\footnotemark[\value{mpfootnote}] & performing group \\
+GENRE & a short music genre label \\
+GUEST ARTIST\footnotemark[\value{mpfootnote}] & collaborating artist \\
+ISRC & ISRC number for the track \\
+LICENSE & license information \\
+LOCATION & recording location \\
+OPUS\footnotemark[\value{mpfootnote}] & number of the work \\
+ORGANIZATION & record label \\
+PART\footnotemark[\value{mpfootnote}] & track's movement title \\
+PERFORMER & performer name, orchestra, actor, etc. \\
+PRODUCER\footnotemark[\value{mpfootnote}] & person responsible for the project \\
+PRODUCTNUMBER\footnotemark[\value{mpfootnote}] & UPC, EAN, or JAN code \\
+PUBLISHER\footnotemark[\value{mpfootnote}] & album's publisher \\
+RELEASE DATE\footnotemark[\value{mpfootnote}] & date the album was published \\
+REMIXER\footnotemark[\value{mpfootnote}] & person who created the remix \\
+SOURCE ARTIST\footnotemark[\value{mpfootnote}] & artist of the work being performed \\
+SOURCE MEDIUM\footnotemark[\value{mpfootnote}] & CD, radio, cassette, vinyl LP, etc. \\
+SOURCE WORK\footnotemark[\value{mpfootnote}] & a soundtrack's original work \\
+SPARS\footnotemark[\value{mpfootnote}] & DDD, ADD, AAD, etc. \\
+SUBTITLE\footnotemark[\value{mpfootnote}] & for multiple track names in a single file \\
+TITLE & track name \\
+TRACKNUMBER & track number \\
+VERSION & track version \\
+\hline
+\end{tabular}
+}
+\end{minipage}
+
+\pagebreak
+
+\subsection{CUESHEET}
 
 \subsection{PICTURE}
