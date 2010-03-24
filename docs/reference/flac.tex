@@ -165,3 +165,66 @@ Picture Type & Type \\
 \hline
 \end{tabular}
 
+\section{FLAC Decoding}
+A FLAC stream is made up of individual FLAC frames, as follows:
+\begin{figure}[h]
+\includegraphics{figures/flac_frame.pdf}
+\end{figure}
+
+\begin{figure}[h]
+\begin{tiny}
+\begin{tabular}{|c|r|r|r|l|r|c|}
+\hline
+Value & Block Size & Sample Rate & Channels & Assignment & Bits per Sample & Value \\
+\hline
+\texttt{0000} & STREAMINFO & STREAMINFO & 1 & front center & STREAMINFO & \texttt{0000} \\
+\texttt{0001} & 192 & 88200 & 2 & front left, front right & 8 & \texttt{0001} \\
+\texttt{0010} & 576 & 176400 & 3 & f. left, f. right, f. center & 12 & \texttt{0010} \\
+\texttt{0011} & 1152 & 192000 & 4 & f. left, f. right, back left, back right & reserved & \texttt{0011} \\
+\texttt{0100} & 2304 & 8000 & 5 & f. L, f. R, f. C, b. L, b. R & 16 & \texttt{0100} \\
+\texttt{0101} & 4608 & 16000 & 6 & f. L, f. R, f. C, LFE, b. L, b. R & 20 & \texttt{0101} \\
+\texttt{0110} & 8 bits (+1) & 22050 & 7 & undefined & 24 & \texttt{0110} \\
+\texttt{0111} & 16 bits (+1) & 24000 & 8 & undefined & reserved & \texttt{0111} \\
+\texttt{1000} & 256 & 32000 & 2 & 0 left, 1 difference & & \texttt{1000} \\
+\texttt{1001} & 512 & 44100 & 2 & 0 difference, 1 right & & \texttt{1001} \\
+\texttt{1010} & 1024 & 48000 & 2 & 0 average, 1 difference & & \texttt{1010} \\
+\texttt{1011} & 2048 & 96000 & & reserved & & \texttt{1011} \\
+\texttt{1100} & 4096 & 8 bits (in kHz) & & reserved & & \texttt{1100} \\
+\texttt{1101} & 8192 & 16 bits (in Hz) & & reserved & & \texttt{1101} \\
+\texttt{1110} & 16384 & 16 bits (in 10s of Hz) & & reserved & & \texttt{1110} \\
+\texttt{1111} & 32768 & invalid & & reserved & & \texttt{1111} \\
+\hline
+\end{tabular}
+\end{tiny}
+\end{figure}
+\par
+\parpic[r]{
+\begin{tabular}{|c|l|}
+\hline
+Value & Subframe Type \\
+\hline
+\texttt{000000} & \texttt{SUBFRAME\_CONSTANT} \\
+\texttt{000001} & \texttt{SUBFRAME\_VERBATIM} \\
+\texttt{00001x} & reserved \\
+\texttt{0001xx} & reserved \\
+\texttt{001xxx} & \texttt{SUBFRAME\_FIXED} \\
+& \texttt{xxx} = predictor order \\
+\texttt{01xxxx} & reserved \\
+\texttt{1xxxxx} & \texttt{SUBFRAME\_LPC} \\
+& \texttt{xxxxx} = predictor order - 1 \\
+\hline
+\end{tabular}
+}
+\noindent
+Sample/Frame Number is a UTF-8 coded value.
+If the blocking strategy is 0, it decodes to a 32-bit frame number.
+If the blocking strategy is 1, it decodes to a 36-bit sample number.
+
+There is one Subframe per channel.
+
+`Wasted Bits Per Sample' is typically a single bit set to 0, indicating
+no wasted bits per sample.  If set to 1, a unary-encoded value
+follows which indicates how many bits are wasted per sample.
+
+Padding is added as needed between the final subframe and CRC-16
+in order to byte-align frames.

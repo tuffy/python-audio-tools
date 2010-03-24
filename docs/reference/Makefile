@@ -3,7 +3,8 @@ figures/wav_fmt.pdf figures/wav_fmtext.pdf figures/wav_data.pdf \
 figures/flac_stream.pdf figures/flac_streaminfo.pdf \
 figures/flac_application.pdf figures/flac_seektable.pdf \
 figures/flac_vorbiscomment.pdf figures/flac_cuesheet.pdf \
-figures/flac_picture.pdf
+figures/flac_picture.pdf \
+figures/flac_frame.pdf
 
 CHAPTERS = basics.tex wav.tex flac.tex
 
