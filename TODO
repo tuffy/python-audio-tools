@@ -805,14 +805,14 @@
 *** TODO the AU stream
 *** TODO the AU header
 ** TODO .flac
-*** TODO the FLAC file stream
-*** TODO FLAC metadata
-**** TODO the PADDING metadata block
-**** TODO the APPLICATION metadata block
-**** TODO the SEEKTABLE metadata block
-**** TODO the VORBIS_COMMENT metadata block
-**** TODO the PICTURE metadata block
-**** TODO the CUESHEET metadata block
+*** DONE the FLAC file stream
+*** DONE FLAC metadata
+**** DONE the PADDING metadata block
+**** DONE the APPLICATION metadata block
+**** DONE the SEEKTABLE metadata block
+**** DONE the VORBIS_COMMENT metadata block
+**** DONE the PICTURE metadata block
+**** DONE the CUESHEET metadata block
 *** TODO FLAC decoding
 **** TODO the CONSTANT subframe
 **** TODO the VERBATIM subframe

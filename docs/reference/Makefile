@@ -2,7 +2,8 @@ FIGURES = binary.pdf figures/pcm.pdf figures/wav_stream.pdf \
 figures/wav_fmt.pdf figures/wav_fmtext.pdf figures/wav_data.pdf \
 figures/flac_stream.pdf figures/flac_streaminfo.pdf \
 figures/flac_application.pdf figures/flac_seektable.pdf \
-figures/flac_vorbiscomment.pdf
+figures/flac_vorbiscomment.pdf figures/flac_cuesheet.pdf \
+figures/flac_picture.pdf
 
 CHAPTERS = basics.tex wav.tex flac.tex
 
