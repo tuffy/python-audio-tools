@@ -5,7 +5,7 @@ figures/flac_application.pdf figures/flac_seektable.pdf \
 figures/flac_vorbiscomment.pdf figures/flac_cuesheet.pdf \
 figures/flac_picture.pdf \
 figures/flac_frame.pdf \
-figures/flac_verbatim.pdf figures/flac_fixed.pdf
+figures/flac_verbatim.pdf figures/flac_fixed.pdf figures/flac_lpc.pdf
 
 CHAPTERS = basics.tex wav.tex flac.tex
 

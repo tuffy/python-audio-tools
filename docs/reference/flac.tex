@@ -288,6 +288,7 @@ Order & \text{Calculation} \\
 }
 \end{figure}
 \parpic[r]{
+{\relsize{-3} %% need to make this small or it fudges the next page's text
 \begin{tabular}{|c|r|>{$}r<{$}|}
 \hline
 Index & Residual & \text{Sample} \\
@@ -301,7 +302,79 @@ Index & Residual & \text{Sample} \\
 \hline
 \end{tabular}
 }
+}
 \par
 Let's run through a simple example in which the Predictor Order is 1.
 Note that residual does not apply to warm-up samples.
 How to extract the encoded residual will be covered in a later section.
+
+\subsection{LPC Subframe}
+\begin{figure}[h]
+\includegraphics{figures/flac_lpc.pdf}
+\end{figure}
+\par
+\noindent
+The number of warm-up samples equals the `LPC Order'
+(which is encoded in the `Subframe Type').
+The size of each QLP Coefficient is equal to
+`QLP Precision' number of bits, plus 1.
+`QLP Shift Needed' and the value of each Coefficient are
+signed two's-complement integers.
+The number of Coefficients equals the `LPC Order'.
+\begin{equation}
+Sample_i = \left\lfloor \frac{\overset{Order - 1}{\underset{j = 0}{\sum}}
+  \text{QLP Coeffcient}_j \times \text{Sample}_{i - j - 1} } {2 ^ \text{QLP Shift Needed}}\right\rfloor + Residual_i
+\end{equation}
+This simply means we're taking the sum of the calculated values from
+0 to Order - 1, bit-shifting that sum down and added the residual
+when determining the current sample.
+Much like the FIXED subframe, LPC subframes also contain warm-up
+samples which serve as our calculation's starting point.
+
+In this example, the LPC Order is 5, the QLP Shift Needed is 9
+and the encoded Coefficients are as follows:
+
+\begin{figure}[h]
+{\relsize{-2}
+\begin{tabular}{>{$}r<{$} r}
+\text{QLP Coefficient}_0 & 1241 \\
+\text{QLP Coefficient}_1 & -944 \\
+\text{QLP Coefficient}_2 & 14 \\
+\text{QLP Coefficient}_3 & 342 \\
+\text{QLP Coefficient}_4 & -147 \\
+\end{tabular}
+}
+\end{figure}
+
+\begin{figure}[h]
+{\relsize{-2}
+\begin{tabular}{|c|r|>{$}r<{$}|}
+\hline
+Index & Residual & \text{Sample} \\
+\hline
+0 & & \text{(warm-up)} \thickspace \bf1053 \\
+1 & & \text{(warm-up)} \thickspace \bf1116 \\
+2 & & \text{(warm-up)} \thickspace \bf1257 \\
+3 & & \text{(warm-up)} \thickspace \bf1423 \\
+4 & & \text{(warm-up)} \thickspace \bf1529 \\
+\hline
+5 & 11 & (1241 \times 1529) + (-944 \times 1423) + (14 \times 1257) + (342 \times 1116) + (-147 \times 1053) = 798656 \\
+& & \lfloor 798656 \div 2 ^ 9 \rfloor = 1559 + 11 = \bf1570 \\
+\hline
+6 & 79 & (1241 \times 1570) + (-944 \times 1529) + (14 \times 1423) + (342 \times 1257) + (-147 \times 1116) = 790758 \\
+& & \lfloor 790758 \div 2 ^ 9 \rfloor = 1544 + 79 = \bf1623 \\
+\hline
+7 & 24 & (1241 \times 1623) + (-944 \times 1570) + (14 \times 1529) + (342 \times 1423) + (-147 \times 1257) = 855356 \\
+& & \lfloor 855356 \div 2 ^ 9 \rfloor = 1670 + 24 = \bf1694 \\
+\hline
+8 & -81 & (1241 \times 1694) + (-944 \times 1623) + (14 \times 1570) + (342 \times 1529) + (-147 \times 1423) = 905859 \\
+& & \lfloor 905859 \div 2 ^ 9 \rfloor = 1769 - 81 = \bf1688 \\
+\hline
+9 & -72 & (1241 \times 1688) + (-944 \times 1694) + (14 \times 1623) + (342 \times 1570) + (-147 \times 1529) = 830571 \\
+& & \lfloor 830571 \div 2 ^ 9 \rfloor = 1622 - 72 = \bf1550 \\
+\hline
+\end{tabular}
+}
+\end{figure}
+\noindent
+In this instance, division should always round down and \textit{not} towards zero.
