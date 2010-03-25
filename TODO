@@ -814,9 +814,10 @@
 **** DONE the PICTURE metadata block
 **** DONE the CUESHEET metadata block
 *** TODO FLAC decoding
-**** TODO the CONSTANT subframe
-**** TODO the VERBATIM subframe
-**** TODO the FIXED subframe
+**** DONE the CONSTANT subframe
+**** DONE the VERBATIM subframe
+**** DONE the FIXED subframe
+**** TODO the LPC subframe
 **** TODO the Residual
 ***** TODO Rice Encoding
 **** TODO Channels

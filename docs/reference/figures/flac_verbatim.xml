@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<diagram>
+  <row>
+    <col start="0" width=".20">Sample₁</col>
+    <col width=".20">Sample₂</col>
+    <col width=".20">Sample₃</col>
+    <col width=".20" style="dashed">...</col>
+    <col width=".20">Sampleₓ</col>
+  </row>
+</diagram>

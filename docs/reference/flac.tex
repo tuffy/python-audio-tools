@@ -228,3 +228,80 @@ follows which indicates how many bits are wasted per sample.
 
 Padding is added as needed between the final subframe and CRC-16
 in order to byte-align frames.
+
+\pagebreak
+
+\subsection{CONSTANT subframe}
+
+This is the simplest possible subframe.
+It consists of a single value whose size is equal to the subframe's
+`Bits per Sample'.
+For instance, a 16-bit subframe would have CONSTANT subframes
+16 bits in length.
+The value of the subframe is the value of all samples the subframe
+contains.
+An obvious use of this subframe is to store an entire subframe's worth
+of digital silence (samples with a value of 0) very efficiently.
+
+\subsection{VERBATIM subframe}
+
+\begin{figure}[h]
+\includegraphics{figures/flac_verbatim.pdf}
+\end{figure}
+\noindent
+This subframe's length is equal to the subframe's `Bits per Sample'
+multiplied by the frame's `Block Size'.
+Since it does no compression whatsoever and simply stores
+audio samples as-is, this subframe is only suitable for especially
+noisy portions of a track where no suitable predictor can be found.
+
+\subsection{FIXED subframe}
+
+\begin{figure}[h]
+\includegraphics{figures/flac_fixed.pdf}
+\end{figure}
+\noindent
+The number of warm-up samples equals the `Predictor Order'
+(which is encoded in the `Subframe Type').
+Each warm-up sample is the same size as the subframe's `Bits per Sample'.
+These samples are sent out as-is; they are the subframe's
+`starting point' upon which further samples build when decompressing
+the stream.
+Determining the value of the current sample is then a matter of
+looking backwards at previously decoded samples (or warm-up samples),
+applying a simple formula on their values (which depends on the
+Predictor Order) and adding the residual.
+
+\begin{figure}[h]
+{\relsize{-1}
+\begin{tabular}{|c| >{$}l<{$} |}
+\hline
+Order & \text{Calculation} \\
+\hline
+0 & Sample_i = Residual_i  \\
+1 & Sample_i = Sample_{i - 1} + Residual_i \\
+2 & Sample_i = ( 2 \times Sample_{i - 1} ) - Sample_{i - 2} + Residual_i \\
+3 & Sample_i = ( 3 \times Sample_{i - 1} ) - ( 3 \times Sample_{i - 2} ) + Sample_{i - 3} + Residual_i \\
+4 & Sample_i = ( 4 \times Sample_{i - 1} ) - ( 6 \times Sample_{i - 2} ) + (4 \times Sample_{i - 3} ) - Sample_{i - 4} + Residual_i \\
+\hline
+\end{tabular}
+}
+\end{figure}
+\parpic[r]{
+\begin{tabular}{|c|r|>{$}r<{$}|}
+\hline
+Index & Residual & \text{Sample} \\
+\hline
+0 & & \text{(warm-up)} \thickspace \bf10 \\
+1 & 1 & 10 + 1 = \bf11 \\
+2 & 2 & 11 + 2 = \bf13 \\
+3 & -2 & 13 - 2 = \bf11 \\
+4 & 1 & 11 + 1 = \bf12 \\
+5 & -1 & 12 - 1 = \bf11 \\
+\hline
+\end{tabular}
+}
+\par
+Let's run through a simple example in which the Predictor Order is 1.
+Note that residual does not apply to warm-up samples.
+How to extract the encoded residual will be covered in a later section.
