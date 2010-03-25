@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<diagram>
+  <row>
+    <col width=".20" start="0" end="1">Coding Method</col>
+    <col width=".20" start="2" end="5">Partition Order</col>
+    <col width=".20" start="6" id="partition">Partition₁</col>
+    <col width=".20">Partition₂</col>
+    <col width=".20" style="dashed">...</col>
+  </row>
+  <row><blank/></row>
+  <row>
+    <col style="blank" width=".17">Method = 0</col>
+    <col start="0" end="3" width=".20" id="rice">Rice Parameter</col>
+    <col start="4" end="8" style="dashed" width=".20">Escape Code</col>
+    <col width=".38" id="residual">Encoded Residual</col>
+  </row>
+  <row><blank/></row>
+  <row>
+    <col style="blank" width=".17">Method = 1</col>
+    <col start="0" end="4" width=".25">Rice Parameter</col>
+    <col start="5" end="9" style="dashed" width=".20">Escape Code</col>
+    <col width=".38">Encoded Residual</col>
+  </row>
+  <line s_id="partition" s_corner="sw" e_id="rice" e_corner="nw" style="dotted"/>
+  <line s_id="partition" s_corner="se" e_id="residual" e_corner="ne" style="dotted"/>
+</diagram>

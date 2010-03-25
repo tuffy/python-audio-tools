@@ -378,3 +378,65 @@ Index & Residual & \text{Sample} \\
 \end{figure}
 \noindent
 In this instance, division should always round down and \textit{not} towards zero.
+
+\subsection{the Residual}
+Though the FLAC format allows for different forms of
+residual coding, two forms of partitioned Rice are the only ones
+currently supported.
+The difference between the two is that when `Coding Method' is 0,
+the Rice Parameter in each partition is 4 bits.
+When the `Coding Method' is 1, that parameter is 5 bits.
+\begin{figure}[h]
+\includegraphics{figures/flac_residual.pdf}
+\end{figure}
+\par
+\noindent
+
+There are $2 ^ \text{Partition Order}$ number of Partitions.
+The number of decoded samples in a Partition depends on the
+its position in the subframe.
+The first partition in the subframe contains:
+\begin{align}
+\text{Total Samples} &= \frac{\text{Frame's Block Size}}{2 ^ {\text{Partition Order}}} - \text{Predictor Order} \\
+\intertext{Subsequent partitions contain:}
+\text{Total Samples} &= \frac{\text{Frame's Block Size}}{2 ^ {\text{Partition Order}}} \\
+\intertext{Unless the Partition Order is 0.  In that case:}
+\text{Total Samples} &= \text{Frame's Block Size} - \text{Predictor Order}
+\end{align}
+\noindent
+since there is only one partition which takes up the entire block.
+
+If all of the bits in `Rice Parameter' are set,
+the partition is unencoded binary using `Escape Code' number of bits per
+sample.
+
+\pagebreak
+
+\subsubsection{Rice Encoding}
+The residual uses Rice coding to compress lots of mostly small values
+in a very small amount of space.
+To decode it, one first needs the Rice parameter.
+Take a unary-encoded value\footnote{In this instance, unary-encoding is a simple matter of
+counting the number of 0 bits before the next 1 bit.
+The resulting sum is the value.}
+from the bit stream, which are our most
+significant bits (MSB).
+Then take `parameter' number of additional bits, which are our least
+significant bits (LSB).
+Combine the two sets into our new value,
+making the MSB set as the high bits and the LSB set as the low bits.
+Bit 0 of this new value is the sign bit.
+If it is 0, the actual value is equal to the rest of the bits.
+If it is 1, the actual value is equal to the rest of the bits,
+multiplied by -1 and minus 1.
+
+This is less complicated than it sounds, so let's run through an example
+in which the Rice parameter is 1:
+\begin{figure}[h]
+\includegraphics{figures/flac_rice1.pdf}
+\end{figure}
+
+Now, let's run through another example in which the Rice parameter is 4:
+\begin{figure}[h]
+\includegraphics{figures/flac_rice2.pdf}
+\end{figure}

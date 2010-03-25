@@ -5,7 +5,9 @@ figures/flac_application.pdf figures/flac_seektable.pdf \
 figures/flac_vorbiscomment.pdf figures/flac_cuesheet.pdf \
 figures/flac_picture.pdf \
 figures/flac_frame.pdf \
-figures/flac_verbatim.pdf figures/flac_fixed.pdf figures/flac_lpc.pdf
+figures/flac_verbatim.pdf figures/flac_fixed.pdf figures/flac_lpc.pdf \
+figures/flac_residual.pdf \
+figures/flac_rice1.pdf figures/flac_rice2.pdf
 
 CHAPTERS = basics.tex wav.tex flac.tex
 
@@ -28,6 +30,12 @@ figures/pcm.pdf: figures/pcm.fig
 
 figures/pcm.fig: figures/pcm.plot
 	./figures/pcm.plot > $@
+
+figures/flac_rice1.pdf: figures/flac_rice1.fig
+	fig2dev -Z 5 -L pdf $< $@
+
+figures/flac_rice2.pdf: figures/flac_rice2.fig
+	fig2dev -Z 6 -L pdf $< $@
 
 .SUFFIXES: .pdf .xml
 
