@@ -171,6 +171,7 @@ A FLAC stream is made up of individual FLAC frames, as follows:
 \includegraphics{figures/flac_frame.pdf}
 \end{figure}
 
+\label{flac_encoded_fields}
 \begin{figure}[h]
 \begin{tiny}
 \begin{tabular}{|c|r|r|r|l|r|c|}
@@ -553,4 +554,166 @@ When encoding a FLAC file, many of these fields cannot be known in advance.
 Instead, one must keep track of those values during encoding and then
 rewrite the STREAMINFO block when finished.
 
+\subsection{Frame header}
+\begin{minipage}{\linewidth}
+\renewcommand\thefootnote{\thempfootnote}
+\begin{tabular}{|r|l|}
+\hline
+bits & value \\
+\hline
+14 & \texttt{0x3FFE} sync code \\
+1 & \texttt{0} reserved \\
+1 & \texttt{0} if the header encodes the frame number, \texttt{1} if it encodes the sample number \\
+4 & this frame's block size, as encoded PCM frames\footnote{See table on page \pageref{flac_encoded_fields}} \\
+4 & this frame's encoded sample rate\footnotemark[\value{mpfootnote}] \\
+4 & this frame's encoded channel assignment\footnotemark[\value{mpfootnote}] \\
+3 & this frame's encoded bits per sample\footnotemark[\value{mpfootnote}] \\
+1 & \texttt{0} padding \\
+8-56 & the frame number, or sample number, UTF-8 encoded and starting from 0 \\
+0/8/16 & the number of PCM frames (minus one) in this FLAC frame \\
+& if block size is \texttt{0x6} (8 bits) or \texttt{0x7} (16 bits) \\
+0/8/16 & the sample rate of this FLAC frame \\
+& if sample rate is \texttt{0xC} (8 bits), \texttt{0xD} (16 bits) or \texttt{0xE} (16 bits) \\
+8 & the CRC-8 of all data from the beginning of the frame header \\
+\hline
+\end{tabular}
+\end{minipage}
 
+\vspace{2ex}
+%% The FLAC frame's block size in PCM frames
+%% (called ``channel independent samples'' in FLAC's documentation)
+%% is typically encoded in the 4 bit `block size' field.
+%% But for odd-sized frames - which often occur at the end of the stream -
+%% that value is stored as an 8 or 16 bit integer following the UTF-8 encoded
+%% frame number.
+
+%% In addition, odd sample rate values are stored as 8 bit (in kHz),
+%% 16 bit (in Hz) or 16 bit (in 10s of Hz) prior to the CRC-8,
+%% should a predefined value not be available.
+
+%% Up until this point, nearly all of these fields can be filled from
+%% the PCM stream data.
+%% Unless you're writing a variable block size encoder,
+%% one should encode the frame number starting from 0 in the frame header
+%% and choose a predefined block size for as many FLAC frames as possible.
+
+\subsection{Channel assignment}
+
+If the input stream has a number of channels other than 2,
+one has no choice but to store them independently.
+If the number of channels equals 2, one can try all four possible
+assignments (left-difference, difference-right, mid-side and
+independent) and use the one which takes the least amount of space.
+
+\subsection{Subframe header}
+\begin{figure}[h]
+\begin{tabular}{|r|l|}
+\hline
+bits & value \\
+\hline
+1 & \texttt{0} padding \\
+\texttt{000000} & \texttt{SUBFRAME\_CONSTANT} \\
+\texttt{000001} & \texttt{SUBFRAME\_VERBATIM} \\
+\texttt{001xxx} & \texttt{SUBFRAME\_FIXED} (\texttt{xxx} = Predictor Order) \\
+\texttt{1xxxxx} & \texttt{SUBFRAME\_LPC} (\texttt{xxxxx} = Predictor Order - 1) \\
+1 & \texttt{0} if no wasted bits per sample, \texttt{1} if a unary-encoded number follows \\
+0+ & the number of wasted bits per sample (minus one) encoded as unary \\
+\hline
+\end{tabular}
+\end{figure}
+
+\pagebreak
+
+\subsection{the CONSTANT subframe}
+
+If all the samples in a subframe are identical, one can encode them
+using a \texttt{CONSTANT} subframe, which is essentially a single sample value
+that gets duplicated `block size' number of times when decoded.
+
+\subsection{the VERBATIM subframe}
+
+This subframe simply stores all the samples as-is,
+with no compression whatsoever.
+It is a fallback encoding method for when no other subframe makes one's
+data any smaller.
+
+\subsection{the FIXED subframe}
+
+This subframe consists of `predictor order' number of unencoded
+warm-up samples followed by a residual.
+Determining which predictor order to use on a given set of input samples
+depends on their minimum delta sum.
+This process is best explained by example:
+
+
+\begin{wrapfigure}{r}{3in}
+{\relsize{-2}
+\begin{tabular}{|c|r|r|r|r|r|r|}
+\hline
+index & sample & $\Delta ^ 0$ & $\Delta ^ 1$ & $\Delta ^ 2$ & $\Delta ^ 3$ & $\Delta ^ 4$ \\
+\hline
+0 & -40 & & & & & \\
+1 & -41 & \textit{-41} & & & & \\
+2 & -40 & \textit{-40} & \textit{-1} & & & \\
+3 & -39 & \textit{-39} & \textit{-1} & \textit{0} & & \\
+4 & -38 & -38 & \textit{-1} & \textit{0} & \textit{0} & \\
+5 & -38 & -38 & 0 & -1 & 1 & -1 \\
+6 & -35 & -35 & -3 & 3 & -4 & 5 \\
+7 & -35 & -35 & 0 & -3 & 6 & -10 \\
+8 & -39 & -39 & 4 & -4 & 1 & 5 \\
+9 & -40 & -40 & 1 & 3 & -7 & 8 \\
+10 & -40 & -40 & 0 & 1 & 2 & -9 \\
+11 & -39 & -39 & -1 & 1 & 0 & 2 \\
+12 & -38 & -38 & -1 & 0 & 1 & -1 \\
+13 & -37 & -37 & -1 & 0 & 0 & 1 \\
+14 & -33 & -33 & -4 & 3 & -3 & 3 \\
+15 & -36 & -36 & 3 & -7 & 10 & -13 \\
+16 & -35 & -35 & -1 & 4 & -11 & 21 \\
+17 & -31 & -31 & -4 & 3 & 1 & -12 \\
+18 & -32 & -32 & 1 & -5 & 8 & -7 \\
+19 & -33 & -33 & 1 & 0 & -5 & 13 \\
+\hline
+$| sum |$ &  & 579 & 26 & 38 & 60 & 111 \\
+\hline
+\end{tabular}
+}
+\end{wrapfigure}
+Note that the numbers in italics play a part in the delta
+calculation to their right, but do \textbf{not} figure into the
+delta's absolute value sum, below.
+
+In this example, $\Delta ^ 1$'s value of 26 is the smallest.
+Therefore, when compressing this set of samples in a FIXED subframe,
+it's best to use a predictor order of 1.
+
+The predictor order indicates how many warm-up samples to take from
+the PCM stream.
+Determining the residual values can then be done automatically
+based on the current $\text{Sample}_i$ and previously encoded samples, or
+warm-up samples.
+
+In this example, warm-up sample is -40 and the residual values are: -1 1 1 1 0 3 0 -4 -1 0 1 1 1 4 -3 1 4 -1 -1
+\begin{figure}[h]
+{\relsize{-1}
+\begin{tabular}{|c|>{$}l<{$}|}
+\hline
+Order & \text{Calculation} \\
+\hline
+0 & \text{Residual}_i = \text{Sample}_i \\
+1 & \text{Residual}_i = \text{Sample}_i - \text{Sample}_{i - 1} \\
+2 & \text{Residual}_i = \text{Sample}_i - ((2 \times \text{Sample}_{i - 1}) - \text{Sample}_{i - 2}) \\
+3 & \text{Residual}_i = \text{Sample}_i - ((3 \times \text{Sample}_{i - 1}) - (3 \times \text{Sample}_{i - 2}) + \text{Sample}_{i - 3}) \\
+4 & \text{Residual}_i = \text{Sample}_i - ((4 \times \text{Sample}_{i - 1}) - (6 \times \text{Sample}_{i - 2}) + (4 \times \text{Sample}_{i - 3}) - \text{Sample}_{i - 4}) \\
+\hline
+\end{tabular}
+}
+\end{figure}
+
+\pagebreak
+
+\subsection{the LPC subframe}
+
+Unlike the FIXED subframe which required only input samples and a
+predictor order, LPC subframes also require a list of QLP coefficients,
+a QLP precision value of those coefficients, and a QLP shift needed
+value.

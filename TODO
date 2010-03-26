@@ -825,12 +825,12 @@
 *** TODO FLAC encoding
 **** DONE Metadata header
 **** DONE the STREAMINFO metadata block
-**** TODO Frame header
-**** TODO Channel assignment
-**** TODO Subframe header
-**** TODO the CONSTANT subframe
-**** TODO the VERBATIM subframe
-**** TODO the FIXED subframe
+**** DONE Frame header
+**** DONE Channel assignment
+**** DONE Subframe header
+**** DONE the CONSTANT subframe
+**** DONE the VERBATIM subframe
+**** DONE the FIXED subframe
 **** TODO the LPC subframe
 ***** TODO Windowing
 ***** TODO Computing autocorrelation
