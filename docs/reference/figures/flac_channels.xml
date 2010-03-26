@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<diagram>
+  <row>
+    <col width=".45">Subframe 0</col>
+    <blank width=".10"/>
+    <col width=".45">Subframe 1</col>
+  </row>
+  <row>
+    <col width=".15" id="sf0-0">Sample₀₋₀</col>
+    <col width=".15">Sample₀₋₁</col>
+    <col width=".15">Sample₀₋₂</col>
+    <blank width=".10"/>
+    <col width=".15">Sample₁₋₀</col>
+    <col width=".15" id="sf1-1">Sample₁₋₁</col>
+    <col width=".15">Sample₁₋₂</col>
+  </row>
+  <row><blank/></row>
+  <row>
+    <blank width=".05"/>
+    <col width=".15" id="0-0">Sample₀₋₀</col>
+    <col width=".15">Sample₁₋₀</col>
+    <col width=".15">Sample₀₋₁</col>
+    <col width=".15" id="1-1">Sample₁₋₁</col>
+    <col width=".15">Sample₀₋₂</col>
+    <col width=".15">Sample₁₋₂</col>
+  </row>
+  <line s_id="sf0-0" s_corner="sw" e_id="0-0" e_corner="nw" style="dotted"/>
+  <line s_id="sf0-0" s_corner="se" e_id="0-0" e_corner="ne" style="dotted"/>
+  <line s_id="sf1-1" s_corner="sw" e_id="1-1" e_corner="nw" style="dotted"/>
+  <line s_id="sf1-1" s_corner="se" e_id="1-1" e_corner="ne" style="dotted"/>
+</diagram>

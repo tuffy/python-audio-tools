@@ -440,3 +440,65 @@ Now, let's run through another example in which the Rice parameter is 4:
 \begin{figure}[h]
 \includegraphics{figures/flac_rice2.pdf}
 \end{figure}
+
+\subsection{Channels}
+Since most audio has more than one channel, it is important to
+understand how FLAC handles putting it back together.
+When channels are stored independently, one simply interleaves
+them together in the proper order.
+Let's take an example of 2 channel, 16-bit audio stored this way:
+
+\begin{figure}[h]
+\includegraphics{figures/flac_channels.pdf}
+\end{figure}
+
+This is the simplest case.
+However, in the case of difference channels, one subframe will
+contain actual channel data and the other channel will contain
+signed difference data which is applied to that actual data
+in order to reconstruct both channels.
+It's very important to remember that the difference channel
+has 1 additional bit per sample which will be consumed during
+reconstruction.
+Why 1 additional bit?
+Let's take an example where the left sample's value is -30000
+and the right sample's value is +30000.
+Storing this pair as left + difference means the left
+sample remains -30000 and the difference is -60000
+($-30000 - -60000 = +30000$).
+-60000 won't fit into a 16-bit signed integer.
+Adding that 1 additional bit doubles our range of values
+and that's just enough to cover any possible difference between
+two samples.
+
+\begin{figure}[h]
+{\relsize{-2}
+\begin{tabular}{|c||l|l||>{$}l<{$}|>{$}l<{$}|}
+\hline
+Assignment & Channel 0 & Channel 1 & \text{Left Channel} & \text{Right Channel} \\
+\hline
+\texttt{1000} & left & difference & \text{left} & \text{left} - \text{difference} \\
+\texttt{1001} & difference & right & \text{right} + \text{difference} & \text{right} \\
+\texttt{1010} & mid & side & (((\text{mid} \ll 1) | (\text{side} \& 1)) + \text{side}) \gg 1 & (((\text{mid} \ll 1) | (\text{side} \& 1)) - \text{side}) \gg 1 \\
+\hline
+\end{tabular}
+}
+\end{figure}
+
+The mid channel case is another unusual exception.
+We're prepending the mid channel with bit 0 from the
+side channel, performing the addition/subtraction and then
+discarding that bit before assigning the results to the left and
+right channels.
+
+\subsection{Wasted Bits per Sample}
+Though rare in practice, FLAC subframes support `wasted bits per sample'.
+Put simply, these wasted bits are removed during subframe calculation
+and restored to the subframe's least significant bits as zero value bits
+when it is returned.
+For instance, a subframe with 1 wasted bit per sample in a 16-bit FLAC
+stream is treated as having only 15 bits per sample when reading
+warm-up samples and then all through the rest of the subframe
+calculation.
+That wasted zero bit is then prepended to each sample prior to returning
+the subframe.

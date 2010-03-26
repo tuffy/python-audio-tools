@@ -7,7 +7,8 @@ figures/flac_picture.pdf \
 figures/flac_frame.pdf \
 figures/flac_verbatim.pdf figures/flac_fixed.pdf figures/flac_lpc.pdf \
 figures/flac_residual.pdf \
-figures/flac_rice1.pdf figures/flac_rice2.pdf
+figures/flac_rice1.pdf figures/flac_rice2.pdf \
+figures/flac_channels.pdf
 
 CHAPTERS = basics.tex wav.tex flac.tex
 
