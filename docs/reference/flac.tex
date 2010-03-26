@@ -502,3 +502,55 @@ warm-up samples and then all through the rest of the subframe
 calculation.
 That wasted zero bit is then prepended to each sample prior to returning
 the subframe.
+
+\section{FLAC Encoding}
+For the purposes of discussing FLAC encoding,
+we'll assume one has a stream of input PCM values along with the
+stream's sample rate, number of channels and bits per sample.
+Creating a valid FLAC file is then a matter of writing the proper
+file header, metadata blocks and FLAC frames.
+\begin{figure}[h]
+\includegraphics{figures/flac_stream2.pdf}
+\end{figure}
+
+\begin{figure}[h]
+\begin{tabular}{|r|l|}
+\hline
+bits & value \\
+\hline
+1 & 0 if additional metadata blocks follow, 1 if not \\
+7 & 0 for STREAMINFO, 1 for PADDING, 4 for VORBIS\_COMMENT, etc. \\
+24 & the length of the block data in bytes, not including the header \\
+\hline
+\end{tabular}
+\caption{Metadata Header}
+\end{figure}
+
+\subsection{the STREAMINFO metadata block}
+\begin{figure}[h]
+\begin{tabular}{|r|l|}
+\hline
+bits & value \\
+\hline
+16 & the minimum FLAC frame size, in PCM frames \\
+16 & the maximum FLAC frame size, in PCM frames \\
+24 & the minimum FLAC frame size, in bytes \\
+24 & the maximum FLAC frame size, in bytes \\
+20 & the stream's sample rate, in Hz \\
+3 & the stream's channel count, minus one \\
+5 & the stream's bit-per-sample, minus one \\
+36 & the stream's total number of PCM frames \\
+128 & an MD5 sum of the PCM stream's bytes \\
+\hline
+\end{tabular}
+\end{figure}
+\par
+\noindent
+This metadata block must come first and is the only required block
+in a FLAC file.
+
+When encoding a FLAC file, many of these fields cannot be known in advance.
+Instead, one must keep track of those values during encoding and then
+rewrite the STREAMINFO block when finished.
+
+

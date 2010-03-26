@@ -1,3 +1,4 @@
+#FIXME - reorganize this big mess
 FIGURES = binary.pdf figures/pcm.pdf figures/wav_stream.pdf \
 figures/wav_fmt.pdf figures/wav_fmtext.pdf figures/wav_data.pdf \
 figures/flac_stream.pdf figures/flac_streaminfo.pdf \
@@ -8,7 +9,8 @@ figures/flac_frame.pdf \
 figures/flac_verbatim.pdf figures/flac_fixed.pdf figures/flac_lpc.pdf \
 figures/flac_residual.pdf \
 figures/flac_rice1.pdf figures/flac_rice2.pdf \
-figures/flac_channels.pdf
+figures/flac_channels.pdf \
+figures/flac_stream2.pdf
 
 CHAPTERS = basics.tex wav.tex flac.tex
 

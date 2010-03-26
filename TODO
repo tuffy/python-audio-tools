@@ -813,20 +813,18 @@
 **** DONE the VORBIS_COMMENT metadata block
 **** DONE the PICTURE metadata block
 **** DONE the CUESHEET metadata block
-*** TODO FLAC decoding
+*** DONE FLAC decoding
 **** DONE the CONSTANT subframe
 **** DONE the VERBATIM subframe
 **** DONE the FIXED subframe
 **** DONE the LPC subframe
 **** DONE the Residual
 ***** DONE Rice Encoding
-**** TODO Channels
-**** TODO Wasted bits per sample
+**** DONE Channels
+**** DONE Wasted bits per sample
 *** TODO FLAC encoding
-**** TODO Metadata header
-**** TODO the STREAMINFO metadata block
-**** TODO the VORBIS_COMMENT metadata block
-**** TODO the PADDING metadata block
+**** DONE Metadata header
+**** DONE the STREAMINFO metadata block
 **** TODO Frame header
 **** TODO Channel assignment
 **** TODO Subframe header
@@ -843,9 +841,9 @@
 ***** TODO Calculation Residual
 **** TODO the Residual
 ***** TODO Residual Values
-*** the Checksums
-**** CRC-8
-**** CRC-16
+*** TODO the Checksums
+**** TODO CRC-8
+**** TODO CRC-16
 ** TODO .ape
 *** TODO the Monkey's Audio stream
 *** TODO the APE Descriptor
