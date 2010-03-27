@@ -717,3 +717,23 @@ Unlike the FIXED subframe which required only input samples and a
 predictor order, LPC subframes also require a list of QLP coefficients,
 a QLP precision value of those coefficients, and a QLP shift needed
 value.
+
+\begin{figure}[h]
+\includegraphics{figures/flac_lpc.pdf}
+\end{figure}
+\par
+\noindent
+Determining these values for a given input PCM signal is a somewhat
+complicated process which depends on whether one is performing an
+exhaustive LP coefficient order search or not:
+
+\begin{figure}[h]
+\subfloat[non-exhaustive search]{
+\includegraphics{figures/flac_nonexhaustive.pdf}
+}
+\qquad
+\subfloat[exhaustive search]{
+\includegraphics{figures/flac_exhaustive.pdf}
+}
+\end{figure}
+

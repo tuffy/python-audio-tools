@@ -10,7 +10,8 @@ figures/flac_verbatim.pdf figures/flac_fixed.pdf figures/flac_lpc.pdf \
 figures/flac_residual.pdf \
 figures/flac_rice1.pdf figures/flac_rice2.pdf \
 figures/flac_channels.pdf \
-figures/flac_stream2.pdf
+figures/flac_stream2.pdf \
+figures/flac_nonexhaustive.pdf figures/flac_exhaustive.pdf
 
 CHAPTERS = basics.tex wav.tex flac.tex
 
@@ -39,6 +40,12 @@ figures/flac_rice1.pdf: figures/flac_rice1.fig
 
 figures/flac_rice2.pdf: figures/flac_rice2.fig
 	fig2dev -Z 6 -L pdf $< $@
+
+figures/flac_nonexhaustive.pdf: figures/flac_nonexhaustive.fig
+	fig2dev -Z 3.5 -L pdf $< $@
+
+figures/flac_exhaustive.pdf: figures/flac_exhaustive.fig
+	fig2dev -Z 3.5 -L pdf $< $@
 
 .SUFFIXES: .pdf .xml
 
