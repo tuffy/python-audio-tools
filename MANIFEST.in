@@ -1,0 +1,31 @@
+recursive-include audiotools *
+recursive-include docs *
+recursive-include glade *
+recursive-include src *
+recursive-include test *
+include audiotools.cfg
+include audiotools-config
+include cd2track
+include cd2xmcd
+include cdinfo
+include COPYING
+include coverdump
+include coverview
+include editxmcd
+include INSTALL
+include Makefile
+include record2track
+include setup.py
+include TODO
+include track2cd
+include track2track
+include track2xmcd
+include trackcat
+include trackcmp
+include trackinfo
+include tracklength
+include tracklint
+include trackplay
+include trackrename
+include tracksplit
+include tracktag
