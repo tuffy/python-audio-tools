@@ -11,7 +11,9 @@ figures/flac_residual.pdf \
 figures/flac_rice1.pdf figures/flac_rice2.pdf \
 figures/flac_channels.pdf \
 figures/flac_stream2.pdf \
-figures/flac_nonexhaustive.pdf figures/flac_exhaustive.pdf
+figures/flac_nonexhaustive.pdf figures/flac_exhaustive.pdf \
+figures/flac_hann.pdf figures/flac_rectangular.pdf figures/flac_tukey.pdf \
+figures/flac_lag.pdf
 
 CHAPTERS = basics.tex wav.tex flac.tex
 
@@ -35,10 +37,31 @@ figures/pcm.pdf: figures/pcm.fig
 figures/pcm.fig: figures/pcm.plot
 	./figures/pcm.plot > $@
 
+figures/flac_hann.pdf: figures/flac_hann.fig
+	fig2dev -Z 2 -L pdf $< $@
+
+figures/flac_hann.fig: figures/flac_hann.plot
+	./figures/flac_hann.plot > $@
+
+figures/flac_rectangular.pdf: figures/flac_rectangular.fig
+	fig2dev -Z 2 -L pdf $< $@
+
+figures/flac_rectangular.fig: figures/flac_rectangular.plot
+	./figures/flac_rectangular.plot > $@
+
+figures/flac_tukey.pdf: figures/flac_tukey.fig
+	fig2dev -Z 2 -L pdf $< $@
+
+figures/flac_tukey.fig: figures/flac_tukey.plot
+	./figures/flac_tukey.plot > $@
+
 figures/flac_rice1.pdf: figures/flac_rice1.fig
 	fig2dev -Z 5 -L pdf $< $@
 
 figures/flac_rice2.pdf: figures/flac_rice2.fig
+	fig2dev -Z 6 -L pdf $< $@
+
+figures/flac_lag.pdf: figures/flac_lag.fig
 	fig2dev -Z 6 -L pdf $< $@
 
 figures/flac_nonexhaustive.pdf: figures/flac_nonexhaustive.fig

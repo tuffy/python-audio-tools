@@ -737,3 +737,87 @@ exhaustive LP coefficient order search or not:
 }
 \end{figure}
 
+\pagebreak
+
+\subsubsection{Windowing}
+
+The first step in LPC subframe encoding is `windowing' the input signal.
+Put simply, this is a process of multiplying each input sample by
+an equivalent value from the window, which are floats from 0.0 to 1.0.
+In this case, the default is a Tukey window with a ratio of 0.5.
+A Tukey window is a combination of the Hann and Rectangular windows.
+The ratio of 0.5 means there's 0.5 samples in the Hann window per
+sample in the Rectangular window.
+
+\begin{align}
+\text{hann}(n) &= \frac{1}{2} \left ( 1 - \cos \left ( \frac{2 \pi n}{\text{sample count} - 1} \right ) \right ) \\
+\text{rectangle}(n) &= 1.0
+\end{align}
+
+The Tukey window is defined by taking a Hann window, splitting it at
+the halfway point, and inserting a Rectangular window between the
+two.
+
+\begin{figure}[h]
+\subfloat{
+\includegraphics{figures/flac_hann.pdf}
+}
+\subfloat{
+\includegraphics{figures/flac_rectangular.pdf}
+}
+\subfloat{
+\includegraphics{figures/flac_tukey.pdf}
+}
+\end{figure}
+
+Let's run through a short example with 20 samples:
+
+{\relsize{-1}
+\begin{tabular}{|r|r >{$}c<{$} r >{$}c<{$} r|}
+\hline
+& input & & Tukey & & windowed \\
+index & sample & & window & & signal \\
+\hline
+0 & -40 & \times & 0.0000 & = & 0.00 \\
+1 & -41 & \times & 0.1464 & = & -6.00 \\
+2 & -40 & \times & 0.5000 & = & -20.00 \\
+3 & -39 & \times & 0.8536 & = & -33.29 \\
+4 & -38 & \times & 1.0000 & = & -38.00 \\
+5 & -38 & \times & 1.0000 & = & -38.00 \\
+6 & -35 & \times & 1.0000 & = & -35.00 \\
+7 & -35 & \times & 1.0000 & = & -35.00 \\
+8 & -39 & \times & 1.0000 & = & -39.00 \\
+9 & -40 & \times & 1.0000 & = & -40.00 \\
+10 & -40 & \times & 1.0000 & = & -40.00 \\
+11 & -39 & \times & 1.0000 & = & -39.00 \\
+12 & -38 & \times & 1.0000 & = & -38.00 \\
+13 & -37 & \times & 1.0000 & = & -37.00 \\
+14 & -33 & \times & 1.0000 & = & -33.00 \\
+15 & -36 & \times & 1.0000 & = & -36.00 \\
+16 & -35 & \times & 0.8536 & = & -29.88 \\
+17 & -31 & \times & 0.5000 & = & -15.50 \\
+18 & -32 & \times & 0.1464 & = & -4.68 \\
+19 & -33 & \times & 0.0000 & = & 0.00 \\
+\hline
+\end{tabular}
+}
+
+\pagebreak
+
+\subsubsection{Computing autocorrelation}
+
+Once our input samples have been converted to a windowed signal,
+we then compute the autocorrelation values from that signal.
+Each autocorrelation value is determined by multiplying the signal's
+samples by the samples of a lagged version of that same signal,
+and then taking the sum.
+The lagged signal is simply the original signal with `lag' number of
+samples removed from the beginning.
+
+\begin{figure}[h]
+\includegraphics{figures/flac_lag.pdf}
+\end{figure}
+
+The lagged sums from 0 to the maximum LPC order are our autocorrelation
+values.  In this example, they are 14979.0, 13651.0 and 12405.0.
+
