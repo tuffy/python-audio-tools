@@ -804,7 +804,7 @@
 ** TODO .au
 *** TODO the AU stream
 *** TODO the AU header
-** TODO .flac
+** DONE .flac
 *** DONE the FLAC file stream
 *** DONE FLAC metadata
 **** DONE the PADDING metadata block
@@ -822,7 +822,7 @@
 ***** DONE Rice Encoding
 **** DONE Channels
 **** DONE Wasted bits per sample
-*** TODO FLAC encoding
+*** DONE FLAC encoding
 **** DONE Metadata header
 **** DONE the STREAMINFO metadata block
 **** DONE Frame header
@@ -831,17 +831,17 @@
 **** DONE the CONSTANT subframe
 **** DONE the VERBATIM subframe
 **** DONE the FIXED subframe
-**** TODO the LPC subframe
-***** TODO Windowing
-***** TODO Computing autocorrelation
-***** TODO LP coefficient calculation
-***** TODO Best order estimation
-***** TODO Best order exhaustive search
-***** TODO Quantizing coefficients
-***** TODO Calculation Residual
-**** TODO the Residual
-***** TODO Residual Values
-*** TODO the Checksums
+**** DONE the LPC subframe
+***** DONE Windowing
+***** DONE Computing autocorrelation
+***** DONE LP coefficient calculation
+***** DONE Best order estimation
+***** DONE Best order exhaustive search
+***** DONE Quantizing coefficients
+***** DONE Calculation Residual
+**** DONE the Residual
+***** DONE Residual Values
+*** DONE the Checksums
 **** TODO CRC-8
 **** TODO CRC-16
 ** TODO .ape
