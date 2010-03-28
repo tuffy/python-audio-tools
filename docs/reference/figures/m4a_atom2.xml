@@ -2,10 +2,8 @@
 <diagram>
   <row>
     <col start="0" end="31" width=".25">False Length (0x01)</col>
-    <col start="32" end="63" width=".25">Atom Type</col>
-    <col start="64" end="127" width=".50">Atom Length</col>
-  </row>
-  <row>
-    <col start="64" style="dashed">Atom Data</col>
+    <col start="32" end="63" width=".20">Atom Type</col>
+    <col start="64" end="127" width=".20">Atom Length</col>
+    <col start="64" style="dashed" width=".35">Atom Data</col>
   </row>
 </diagram>

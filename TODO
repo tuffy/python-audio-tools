@@ -893,11 +893,11 @@
 *** TODO the STREAMINFO metadata packet
 *** TODO the Metadata packets
 ** TODO .m4a
-*** TODO the QuickTime file stream
-*** TODO a QuickTime atom
-*** TODO Container atoms
+*** DONE the QuickTime file stream
+*** DONE a QuickTime atom
+*** DONE Container atoms
 *** TODO M4A atoms
-**** TODO the ftyp atom
+**** DONE the ftyp atom
 **** TODO the mvhd atom
 **** TODO the tkhd atom
 **** TODO the mdhd atom

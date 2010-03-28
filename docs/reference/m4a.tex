@@ -27,7 +27,6 @@ the atom's actual size.
 \subsection{Container atoms}
 There is no flag or field to tell a QuickTime parser which
 of its atoms are containers and which ones are not.
-Instead, one must check against a table of known container atom types.
 If an atom is known to be a container, one can treat its Atom Data
 as a QuickTime stream and parse it in a recursive fashion.
 \section{M4A atoms}
@@ -36,3 +35,27 @@ followed by a `moov' atom containing a copious amount of file metadata,
 an optional `free' atom with nothing but empty space
 (so that metadata can be resized, if necessary) and an `mdat' atom
 containing the song data itself.
+\begin{figure}[h]
+\parpic[r]{
+\includegraphics{figures/m4a_atoms.pdf}
+}
+\subsection{the ftyp atom}
+\includegraphics{figures/m4a_ftyp.pdf}
+\par
+The `Major Brand' and `Compatible Brand' fields are ASCII strings.
+`Major Brand Version' is an integer.
+
+\subsection{the mvhd atom}
+\includegraphics{figures/m4a_mvhd.pdf}
+\par
+If `Version' is 0, `Created Mac UTC Date', `Modified Mac UTC Date' and
+`Duration' are 32-bit fields.  If it is 1, they are 64-bit fields.
+\end{figure}
+
+\pagebreak
+
+\subsection{the tkhd atom}
+As with `mvhd', if `Version' is 0, `Created Mac UTC Date',
+`Modified Mac UTC Date' and `Duration' are 32-bit fields.
+If it is 1, they are 64-bit fields.
+

@@ -14,8 +14,8 @@ figures/flac_stream2.pdf \
 figures/flac_nonexhaustive.pdf figures/flac_exhaustive.pdf \
 figures/flac_hann.pdf figures/flac_rectangular.pdf figures/flac_tukey.pdf \
 figures/flac_lag.pdf \
-figures/m4a_quicktime.pdf figures/m4a_atom.pdf figures/m4a_atom2.pdf
-
+figures/m4a_quicktime.pdf figures/m4a_atom.pdf figures/m4a_atom2.pdf \
+figures/m4a_atoms.pdf figures/m4a_ftyp.pdf figures/m4a_mvhd.pdf
 
 CHAPTERS = basics.tex wav.tex flac.tex m4a.tex
 
@@ -75,8 +75,16 @@ figures/flac_nonexhaustive.pdf: figures/flac_nonexhaustive.fig
 figures/flac_exhaustive.pdf: figures/flac_exhaustive.fig
 	fig2dev -Z 3.5 -L pdf $< $@
 
+figures/m4a_atoms.pdf: figures/m4a_atoms.fig
+	fig2dev -Z 6 -L pdf $< $@
+
 .SUFFIXES: .pdf .xml
 
 .xml.pdf:
 	./bitdiagram.py -i $< -o $@
 
+figures/m4a_ftyp.pdf: figures/m4a_ftyp.xml
+	./bitdiagram.py -w 270 -i $< -o $@
+
+figures/m4a_mvhd.pdf: figures/m4a_mvhd.xml
+	./bitdiagram.py -w 270 -i $< -o $@
