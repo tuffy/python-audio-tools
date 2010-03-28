@@ -10,6 +10,14 @@
 \usepackage{array}
 \usepackage{wrapfig}
 \usepackage{subfig}
+\newcommand{\xor}{\textbf{ xor }}
+%#1 = i
+%#2 = byte
+%#3 = previous checksum
+%#4 = shift results
+%#5 = new xor
+%#6 = new CRC-16
+\newcommand{\CRCSIXTEEN}[6]{\text{checksum}_{#1} &= \text{CRC16}(\texttt{#2}\xor(\texttt{#3} \gg \texttt{8}))\xor(\texttt{#3} \ll \texttt{8}) = \text{CRC16}(\texttt{#4})\xor \texttt{#5} = \texttt{#6}}
 \title{Audio Formats Reference}
 \author{Brian Langenberger}
 \begin{document}

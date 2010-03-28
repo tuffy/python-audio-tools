@@ -804,7 +804,7 @@
 ** TODO .au
 *** TODO the AU stream
 *** TODO the AU header
-** TODO .flac
+** DONE .flac
 *** DONE the FLAC file stream
 *** DONE FLAC metadata
 **** DONE the PADDING metadata block
@@ -841,7 +841,7 @@
 ***** DONE Calculation Residual
 **** DONE the Residual
 ***** DONE Residual Values
-*** TODO the Checksums
+*** DONE the Checksums
 **** TODO CRC-8
 **** TODO CRC-16
 ** TODO .ape
