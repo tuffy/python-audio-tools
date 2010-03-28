@@ -822,7 +822,7 @@
 ***** DONE Rice Encoding
 **** DONE Channels
 **** DONE Wasted bits per sample
-*** TODO FLAC encoding
+*** DONE FLAC encoding
 **** DONE Metadata header
 **** DONE the STREAMINFO metadata block
 **** DONE Frame header
@@ -839,8 +839,8 @@
 ***** DONE Best order exhaustive search
 ***** DONE Quantizing coefficients
 ***** DONE Calculation Residual
-**** TODO the Residual
-***** TODO Residual Values
+**** DONE the Residual
+***** DONE Residual Values
 *** TODO the Checksums
 **** TODO CRC-8
 **** TODO CRC-16

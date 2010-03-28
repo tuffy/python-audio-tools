@@ -8,7 +8,7 @@ figures/flac_picture.pdf \
 figures/flac_frame.pdf \
 figures/flac_verbatim.pdf figures/flac_fixed.pdf figures/flac_lpc.pdf \
 figures/flac_residual.pdf \
-figures/flac_rice1.pdf figures/flac_rice2.pdf \
+figures/flac_rice1.pdf figures/flac_rice2.pdf figures/flac_rice3.pdf \
 figures/flac_channels.pdf \
 figures/flac_stream2.pdf \
 figures/flac_nonexhaustive.pdf figures/flac_exhaustive.pdf \
@@ -59,6 +59,9 @@ figures/flac_rice1.pdf: figures/flac_rice1.fig
 	fig2dev -Z 5 -L pdf $< $@
 
 figures/flac_rice2.pdf: figures/flac_rice2.fig
+	fig2dev -Z 6 -L pdf $< $@
+
+figures/flac_rice3.pdf: figures/flac_rice3.fig
 	fig2dev -Z 6 -L pdf $< $@
 
 figures/flac_lag.pdf: figures/flac_lag.fig
