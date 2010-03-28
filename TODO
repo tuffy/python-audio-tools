@@ -832,12 +832,12 @@
 **** DONE the VERBATIM subframe
 **** DONE the FIXED subframe
 **** TODO the LPC subframe
-***** TODO Windowing
-***** TODO Computing autocorrelation
-***** TODO LP coefficient calculation
-***** TODO Best order estimation
-***** TODO Best order exhaustive search
-***** TODO Quantizing coefficients
+***** DONE Windowing
+***** DONE Computing autocorrelation
+***** DONE LP coefficient calculation
+***** DONE Best order estimation
+***** DONE Best order exhaustive search
+***** DONE Quantizing coefficients
 ***** TODO Calculation Residual
 **** TODO the Residual
 ***** TODO Residual Values
