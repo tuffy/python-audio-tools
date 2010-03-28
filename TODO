@@ -831,14 +831,14 @@
 **** DONE the CONSTANT subframe
 **** DONE the VERBATIM subframe
 **** DONE the FIXED subframe
-**** TODO the LPC subframe
+**** DONE the LPC subframe
 ***** DONE Windowing
 ***** DONE Computing autocorrelation
 ***** DONE LP coefficient calculation
 ***** DONE Best order estimation
 ***** DONE Best order exhaustive search
 ***** DONE Quantizing coefficients
-***** TODO Calculation Residual
+***** DONE Calculation Residual
 **** TODO the Residual
 ***** TODO Residual Values
 *** TODO the Checksums

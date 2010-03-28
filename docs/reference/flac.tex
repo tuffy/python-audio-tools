@@ -1054,6 +1054,51 @@ for the largest absolute QLP Coefficient value.
 In this case, 6 bits are required to hold the value 58 so
 QLP precision can be 6.
 
-The LPC Order, QLP Precision, QLP Shift Needed, and QLP Coefficients
-make up the LPC subframe.
+%% The LPC Order, QLP Precision, QLP Shift Needed, and QLP Coefficients
+%% make up the LPC subframe.
 
+\subsubsection{Calculating LPC residual}
+
+A number of warm-up samples equal to LPC Order are taken from the input PCM
+and the subframe's residuals are calculated according to the following formula:
+\begin{equation}
+\text{Residual}_i = \text{Sample}_i -
+\left \lfloor \frac{\overset{Order - 1}{\underset{j = 0}{\sum}}
+  \text{QLP Coeffcient}_j \times \text{Sample}_{i - j - 1} }{
+2 ^ \text{QLP Shift Needed}} \right \rfloor
+\end{equation}
+For example, given the samples
+1053, 1116, 1257, 1423, 1529, 1570, 1623, 1694, 1688, 1550,
+the coefficients: 1241, -944, 14, 342, -147
+%% \begin{table}[h]
+%% {\relsize{-2}
+%% \begin{tabular}{>{$}r<{$} r}
+%% \text{QLP Coefficient}_0 & 1241 \\
+%% \text{QLP Coefficient}_1 & -944 \\
+%% \text{QLP Coefficient}_2 & 14 \\
+%% \text{QLP Coefficient}_3 & 342 \\
+%% \text{QLP Coefficient}_4 & -147 \\
+%% \end{tabular}
+%% }
+%% \end{table}
+and a QLP Shift Needed value of 9, our residuals are as follows:
+\begin{table}[h]
+{\relsize{-2}
+\begin{tabular}{|c|r|>{$}r<{$}|}
+\hline
+Index & Sample & \text{Residual} \\
+\hline
+0 & (warm-up) 1053 & \\
+1 & (warm-up) 1116 & \\
+2 & (warm-up) 1257 & \\
+3 & (warm-up) 1423 & \\
+4 & (warm-up) 1529 & \\
+5 & 1570 & 1570 - \frac{(1241 \times 1529) + (-944 \times 1423) + (14 \times 1257) + (342 \times 1116) + (-147 \times 1053)}{2 ^ 9} = 1570 - \frac{798656}{512} = \textbf{11} \\
+6 & 1623 & 1623 - \frac{(1241 \times 1570) + (-944 \times 1529) + (14 \times 1423) + (342 \times 1257) + (-147 \times 1116)}{2 ^ 9} = 1623 - \frac{790758}{512} = \textbf{79} \\
+7 & 1694 & 1694 -  \frac{(1241 \times 1623) + (-944 \times 1570) + (14 \times 1529) + (342 \times 1423) + (-147 \times 1257)}{2 ^ 9} = 1694 - \frac{855356}{512} = \textbf{24} \\
+8 & 1688 & 1688 - \frac{(1241 \times 1694) + (-944 \times 1623) + (14 \times 1570) + (342 \times 1529) + (-147 \times 1423)}{2 ^ 9} = 1688 - \frac{905859}{512} = \textbf{-81} \\
+9 & 1550 & 1550 - \frac{(1241 \times 1688) + (-944 \times 1694) + (14 \times 1623) + (342 \times 1570) + (-147 \times 1529)}{2 ^ 9} = 1550 - \frac{830571}{512} = \textbf{-72} \\
+\hline
+\end{tabular}
+}
+\end{table}
