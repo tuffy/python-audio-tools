@@ -13,9 +13,11 @@ figures/flac_channels.pdf \
 figures/flac_stream2.pdf \
 figures/flac_nonexhaustive.pdf figures/flac_exhaustive.pdf \
 figures/flac_hann.pdf figures/flac_rectangular.pdf figures/flac_tukey.pdf \
-figures/flac_lag.pdf
+figures/flac_lag.pdf \
+figures/m4a_quicktime.pdf figures/m4a_atom.pdf figures/m4a_atom2.pdf
 
-CHAPTERS = basics.tex wav.tex flac.tex
+
+CHAPTERS = basics.tex wav.tex flac.tex m4a.tex
 
 all: audiotools.pdf
 

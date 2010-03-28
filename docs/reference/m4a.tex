@@ -1,0 +1,38 @@
+\chapter{M4A}
+
+M4A is typically AAC audio in a QuickTime container stream, though
+it may also contain other formats such as MPEG-1 audio.
+
+\section{the QuickTime file stream}
+\begin{figure}[h]
+\includegraphics{figures/m4a_quicktime.pdf}
+\end{figure}
+\par
+\noindent
+Unlike other chunked formats such as RIFF WAVE, QuickTime's atom chunks
+may be containers for other atoms.  All of its fields are big-endian.
+\subsection{a QuickTime atom}
+\begin{figure}[h]
+\includegraphics{figures/m4a_atom.pdf}
+\end{figure}
+Atom Type is an ASCII string.
+Atom Length is the length of the entire atom, including the header.
+If Atom Length is 0, the atom continues until the end of the file.
+If Atom Length is 1, the atom has an extended size.  This means
+there is a 64-bit length field immediately after the header which is
+the atom's actual size.
+\begin{figure}[h]
+\includegraphics{figures/m4a_atom2.pdf}
+\end{figure}
+\subsection{Container atoms}
+There is no flag or field to tell a QuickTime parser which
+of its atoms are containers and which ones are not.
+Instead, one must check against a table of known container atom types.
+If an atom is known to be a container, one can treat its Atom Data
+as a QuickTime stream and parse it in a recursive fashion.
+\section{M4A atoms}
+A typical M4A begins with an `ftyp' atom indicating its file type,
+followed by a `moov' atom containing a copious amount of file metadata,
+an optional `free' atom with nothing but empty space
+(so that metadata can be resized, if necessary) and an `mdat' atom
+containing the song data itself.
