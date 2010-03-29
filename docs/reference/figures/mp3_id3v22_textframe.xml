@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<diagram>
+  <row>
+    <col start="0" end="23" width=".5">Frame ID `TXX' (0x54XXXX)</col>
+    <col start="24" end="47" width=".5">Size</col>
+  </row>
+  <row>
+    <col start="48" end="55" width=".25">Encoding</col>
+    <col start="56" width=".75" style="dashed">Text</col>
+  </row>
+</diagram>

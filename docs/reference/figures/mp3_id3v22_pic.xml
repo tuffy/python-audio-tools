@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<diagram>
+  <row>
+    <col start="0" end="23" width=".5">Frame ID `PIC' (0x504943)</col>
+    <col start="24" end="47" width=".5">Size</col>
+  </row>
+  <row>
+    <col start="48" end="55" width=".25"> Text Encoding</col>
+    <col start="56" end="79" width=".75"> Image Format</col>
+  </row>
+  <row>
+    <col start="80" end="87" width=".25">Picture Type</col>
+    <col start="88" width=".75" style="dashed">Description</col>
+  </row>
+  <row>
+    <col style="dashed">Picture Data</col>
+  </row>
+</diagram>

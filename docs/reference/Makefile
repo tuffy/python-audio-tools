@@ -23,7 +23,10 @@ figures/m4a_stsz.pdf figures/m4a_stco.pdf \
 figures/m4a_meta_atoms.pdf figures/m4a_meta.pdf figures/m4a_data.pdf \
 figures/m4a_trkn.pdf figures/m4a_disk.pdf \
 figures/mp3_stream.pdf figures/mp3_xing.pdf \
-figures/mp3_id3v1.pdf figures/mp3_id3v11.pdf
+figures/mp3_id3v1.pdf figures/mp3_id3v11.pdf \
+figures/mp3_id3v2_stream.pdf \
+figures/mp3_id3v22_header.pdf figures/mp3_id3v22_frame.pdf \
+figures/mp3_id3v22_textframe.pdf figures/mp3_id3v22_pic.pdf
 
 CHAPTERS = basics.tex wav.tex flac.tex m4a.tex mp3.tex
 

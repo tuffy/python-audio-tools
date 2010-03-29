@@ -109,7 +109,7 @@ All of the fields within a Xing header are big-endian.
 \includegraphics{figures/mp3_xing.pdf}
 \end{figure}
 
-\subsection{ID3v1 tags}
+\section{ID3v1 tags}
 ID3v1 tags are very simple metadata tags appended to an MP3 file.
 All of the fields are fixed length and the text encoding is
 undefined.
@@ -120,14 +120,154 @@ If the byte just before the end is not null (0x00),
 assume we're dealing with a classic ID3v1 tag without a
 track number.
 
-\subsubsection{ID3v1}
+\subsection{ID3v1}
 
 \begin{figure}[h]
 \includegraphics{figures/mp3_id3v1.pdf}
 \end{figure}
 
-\subsubsection{ID3v1.1}
+\subsection{ID3v1.1}
 
 \begin{figure}[h]
 \includegraphics{figures/mp3_id3v11.pdf}
 \end{figure}
+
+\section{ID3v2 tags}
+
+The ID3v2 tag was invented to address the deficiencies in the original
+ID3v1 tag.
+ID3v2 comes in three similar but not entirely compatible variants:
+ID3v2.2, ID3v2.3 and ID3v2.4.
+All of its fields are big-endian.
+
+\begin{figure}[h]
+\includegraphics{figures/mp3_id3v2_stream.pdf}
+\end{figure}
+
+\subsection{ID3v2.2}
+
+\subsubsection{ID3v2.2 header}
+
+\begin{figure}[h]
+\includegraphics{figures/mp3_id3v22_header.pdf}
+\end{figure}
+\par
+\noindent
+The single Size field is split by NULL (0x00) bytes in order to make
+it `sync-safe'.  That is, no possible size value will result in a false
+MP3 frame sync (11 bits set in a row).
+
+\subsubsection{ID3v2.2 frame}
+
+\begin{figure}[h]
+\includegraphics{figures/mp3_id3v22_frame.pdf}
+\end{figure}
+\par
+\noindent
+Frame ID's that begin with the letter `T' (0x54) are text frames.
+These have an additional text encoding byte before the actual
+text data.
+All text strings may be terminated by a null character
+(0x00 or 0x0000, depending on the encoding).
+
+\pagebreak
+
+\begin{figure}[h]
+\includegraphics{figures/mp3_id3v22_textframe.pdf}
+\begin{tabular}{r|l}
+Encoding Byte & Text Encoding \\
+\hline
+\texttt{0x00} & ISO-8859-1 \\
+\texttt{0x01} & UCS-16 \\
+\end{tabular}
+\end{figure}
+
+\subsubsection{ID3v2.2 frame IDs}
+\begin{table}[h]
+{\relsize{-2}
+\begin{tabular}{|c|l||c|l|}
+\hline
+ID & Description & ID & Description \\
+\hline
+\texttt{BUF} & Recommended buffer size & \texttt{CNT} & Play counter \\
+\texttt{COM} & Comments & \texttt{CRA} & Audio encryption \\
+\texttt{CRM} & Encrypted meta frame & \texttt{ETC} & Event timing codes \\
+\texttt{EQU} & Equalization & \texttt{GEO} & General encapsulated object \\
+\texttt{IPL} & Involved people list & \texttt{LNK} & Linked information \\
+\texttt{MCI} & Music CD Identifier & \texttt{MLL} & MPEG location lookup table \\
+\texttt{PIC} & Attached picture & \texttt{POP} & Popularimeter \\
+\texttt{REV} & Reverb & \texttt{RVA} & Relative volume adjustment \\
+\texttt{SLT} & Synchronized lyric/text & \texttt{STC} & Synced tempo codes \\
+\texttt{TAL} & Album/Movie/Show title & \texttt{TBP} & BPM (Beats Per Minute) \\
+\texttt{TCM} & Composer & \texttt{TCO} & Content type \\
+\texttt{TCR} & Copyright message & \texttt{TDA} & Date \\
+\texttt{TDY} & Playlist delay & \texttt{TEN} & Encoded by \\
+\texttt{TFT} & File type & \texttt{TIM} & Time \\
+\texttt{TKE} & Initial key & \texttt{TLA} & Language(s) \\
+\texttt{TLE} & Length & \texttt{TMT} & Media type \\
+\texttt{TOA} & Original artist(s)/performer(s) & \texttt{TOF} & Original filename \\
+\texttt{TOL} & Original Lyricist(s)/text writer(s) & \texttt{TOR} & Original release year \\
+\texttt{TOT} & Original album/Movie/Show title & \texttt{TP1} & Lead artist(s)/performer(s)/Soloist(s)/Performing group \\
+\texttt{TP2} & Band/Orchestra/Accompaniment & \texttt{TP3} & Conductor/Performer refinement \\
+\texttt{TP4} & Interpreted, remixed, or otherwise modified by & \texttt{TPA} & Part of a set \\
+\texttt{TPB} & Publisher & \texttt{TRC} & ISRC (International Standard Recording Code) \\
+\texttt{TRD} & Recording dates & \texttt{TRK} & Track number/Position in set \\
+\texttt{TSI} & Size & \texttt{TSS} & Software/hardware and settings used for encoding \\
+\texttt{TT1} & Content group description & \texttt{TT2} & Title/Songname/Content description \\
+\texttt{TT3} & Subtitle/Description refinement & \texttt{TXT} & Lyricist/text writer \\
+\texttt{TXX} & User defined text information frame & \texttt{TYE} & Year \\
+\texttt{UFI} & Unique file identifier & \texttt{ULT} & Unsychronized lyric/text transcription \\
+\texttt{WAF} & Official audio file webpage & \texttt{WAR} & Official artist/performer webpage \\
+\texttt{WAS} & Official audio source webpage & \texttt{WCM} & Commercial information \\
+\texttt{WCP} & Copyright/Legal information & \texttt{WPB} & Publishers official webpage \\
+\texttt{WXX} & User defined URL link frame & & \\
+\hline
+\end{tabular}
+}
+\end{table}
+
+\pagebreak
+
+\subsubsection{ID3v2.2 pic frame}
+
+`PIC' frames are attached pictures.
+This allows an ID3v2.2 tag to contain a JPEG or PNG image,
+typically of album artwork which can be displayed to the user
+when the track is played.
+
+\begin{figure}[h]
+\includegraphics{figures/mp3_id3v22_pic.pdf}
+\end{figure}
+\par
+\noindent
+Text Encoding is the encoding of the Description field.
+Its value is either ISO-8859-1 or UCS-16 - the same as in
+text frames.
+Image Format is a 3 byte string indicating the format of the image,
+typically `JPG' for JPEG images or 'PNG' for PNG images.
+Description is a NULL-terminated C-string which contains
+a text description of the image.
+
+\begin{table}[h]
+{\relsize{-1}
+\begin{tabular}{|r|l||r|l|}
+\hline
+value & type & value & type \\
+\hline
+0 & Other & 1 & 32x32 pixels `file icon' (PNG only) \\
+2 & Other file icon & 3 & Cover (front) \\
+4 & Cover (back) & 5 & Leaflet page \\
+6 & Media (e.g. label side of CD) & 7 & Lead artist / Lead performer / Soloist \\
+8 & Artist / Performer & 9 & Conductor \\
+10 & Band / Orchestra & 11 & Composer \\
+12 & Lyricist / Text writer & 13 & Recording location \\
+14 & During recording & 15 & During performance \\
+16 & Movie / Video screen capture & 17 & A bright coloured fish \\
+18 & Illustration & 19 & Band / Artist logotype \\
+20 & Publisher / Studio logotype & &  \\
+\hline
+\end{tabular}
+\caption{PIC image types}
+}
+\end{table}
+

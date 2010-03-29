@@ -863,12 +863,12 @@
 **** DONE ID3v1
 **** DONE ID3v1.1
 *** TODO the ID3v2 tag
-**** TODO the ID3v2 stream
-**** TODO ID3v2.2
-***** TODO the ID3v2.2 Header
-***** TODO an ID3v2.2 Frame
-***** TODO ID3v2.2 Frame IDs
-***** TODO the PIC Frame
+**** DONE the ID3v2 stream
+**** DONE ID3v2.2
+***** DONE the ID3v2.2 Header
+***** DONE an ID3v2.2 Frame
+***** DONE ID3v2.2 Frame IDs
+***** DONE the PIC Frame
 **** TODO ID3v2.3
 ***** TODO the ID3v2.3 Header
 ***** TODO an ID3v2.3 Frame
