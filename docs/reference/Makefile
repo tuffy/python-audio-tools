@@ -16,7 +16,8 @@ figures/flac_hann.pdf figures/flac_rectangular.pdf figures/flac_tukey.pdf \
 figures/flac_lag.pdf \
 figures/m4a_quicktime.pdf figures/m4a_atom.pdf figures/m4a_atom2.pdf \
 figures/m4a_atoms.pdf figures/m4a_ftyp.pdf figures/m4a_mvhd.pdf \
-figures/m4a_tkhd.pdf
+figures/m4a_tkhd.pdf figures/m4a_mdhd.pdf figures/m4a_hdlr.pdf \
+figures/m4a_smhd.pdf figures/m4a_dref.pdf figures/m4a_stsd.pdf
 
 CHAPTERS = basics.tex wav.tex flac.tex m4a.tex
 

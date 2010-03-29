@@ -67,3 +67,46 @@ If it is 1, they are 64-bit fields.
 
 \subsection{the mdhd atom}
 
+The \texttt{mdhd} atom contains track information such as samples-per-second,
+track length and creation/modification times.
+
+\begin{figure}[h]
+\includegraphics{figures/m4a_mdhd.pdf}
+\end{figure}
+\par
+\noindent
+As with `mvhd', if `Version' is 0, `Created Mac UTC Date',
+`Modified Mac UTC Date' and `Track Length' are 32-bit fields.
+If it is 1, they are 64-bit fields.
+
+\pagebreak
+
+\subsection{the hdlr atom}
+
+\begin{figure}[h]
+\includegraphics{figures/m4a_hdlr.pdf}
+\end{figure}
+\par
+\noindent
+`QuickTime flags', `QuickTime flags mask' and `Component Name Length'
+are integers.  The rest are ASCII strings.
+
+\subsection{the smhd atom}
+
+\begin{figure}[h]
+\includegraphics{figures/m4a_smhd.pdf}
+\end{figure}
+
+\subsection{the dref atom}
+
+\begin{figure}[h]
+\includegraphics{figures/m4a_dref.pdf}
+\end{figure}
+
+\pagebreak
+
+\subsection{the stsd atom}
+
+\begin{figure}[h]
+\includegraphics{figures/m4a_stsd.pdf}
+\end{figure}

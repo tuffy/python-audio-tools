@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<diagram>
+  <row>
+    <col start="0" end="31" width=".5">stsd Length</col>
+    <col start="32" end="63" width=".5">`stsd' (0x73747364)</col>
+  </row>
+  <row>
+    <col start="64" end="71" width=".25">Version</col>
+    <col start="72" end="95" width=".25">Flags (0x000000)</col>
+    <col start="96" end="127" width=".5">Number of Descriptions</col>
+  </row>
+  <row>
+    <col start="128" width=".333333" style="dashed">Description Atom₁</col>
+    <col width=".333333" style="dashed">Description Atom₂</col>
+    <col width=".333333" style="dashed">...</col>
+  </row>
+</diagram>

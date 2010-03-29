@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<diagram>
+  <row>
+    <col start="0" end="31" width=".5">hdlr Length</col>
+    <col start="32" end="63" width=".5">`hdlr' (0x68646C72)</col>
+  </row>
+  <row>
+    <col start="64" end="71" width=".25">Version</col>
+    <col start="72" end="95" width=".75">Flags (0x000000)</col>
+  </row>
+  <row>
+    <col start="96" end="127" width=".5">QuickTime type</col>
+    <col start="128" end="159" width=".5">Subtype/media type</col>
+  </row>
+  <row>
+    <col start="160" end="191">Quicktime manufacturer</col>
+  </row>
+  <row>
+    <col start="192" end="223" width=".5">QuickTime flags</col>
+    <col start="224" end="255" width=".5">Quicktime flags mask</col>
+  </row>
+  <row>
+    <col start="256" end="263" width=".4">Component Name Length</col>
+    <col start="264" style="dashed" width=".6">Component Name</col>
+  </row>
+</diagram>
