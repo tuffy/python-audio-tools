@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<diagram>
+  <row>
+    <col start="0" end="31" width=".5">tkhd Length</col>
+    <col start="32" end="63" width=".5">`tkhd' (0x746B6864)</col>
+  </row>
+  <row>
+    <col start="64" end="71" width=".12">Version</col>
+    <col start="72" end="91" width=".16">Reserved (0)</col>
+    <col start="92" end="92" width=".18">Track in Poster</col>
+    <col start="93" end="93" width=".20">Track in Preview</col>
+    <col start="94" end="94" width=".17">Track in Movie</col>
+    <col start="95" end="95" width=".17">Track Enabled</col>
+  </row>
+  <row>
+    <col start="96" end="127/159" width=".5">Created Mac UTC Date</col>
+    <col start="128/160" end="159/223" width=".5">Modified Mac UTC Date</col>
+  </row>
+  <row>
+    <col start="160/224" end="191/255" width=".25">Track ID</col>
+    <col start="192/256" end="255/319" width=".75">Reserved (0)</col>
+  </row>
+  <row>
+    <col start="256/320" end="287/383" width=".5">Duration</col>
+    <col start="288/384" end="319/415" width=".5">Reserved (0)</col>
+  </row>
+  <row>
+    <col start="320/415" end="335/431" width=".25">Video Layer</col>
+    <col start="336/432" end="351/447" width=".25">QuickTime Alt</col>
+    <col start="352/448" end="367/463" width=".25">Audio Volume</col>
+    <col start="368/464" end="383/479" width=".25">Reserved (0)</col>
+  </row>
+  <row>
+    <col start="384/480" end="415/511" width=".25">VGM value A</col>
+    <col start="416/512" end="447/543" width=".25">VGM value B</col>
+    <col start="448/544" end="479/575" width=".25">VGM value U</col>
+    <col start="480/576" end="511/607" width=".25">VGM value C</col>
+  </row>
+  <row>
+    <col start="512/608" end="543/639" width=".25">VGM value D</col>
+    <col start="544/640" end="575/671" width=".25">VGM value V</col>
+    <col start="576/672" end="607/703" width=".25">VGM value X</col>
+    <col start="608/704" end="639/735" width=".25">VGM value Y</col>
+  </row>
+  <row>
+    <col start="640/736" end="671/767" width=".25">VGM value W</col>
+    <col start="672/768" end="735/831" width=".75">Video Frame Size</col>
+  </row>
+</diagram>

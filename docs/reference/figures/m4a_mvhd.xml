@@ -1,33 +1,48 @@
 <?xml version="1.0" encoding="utf-8"?>
 <diagram>
   <row>
-    <col>...</col>
+    <col start="0" end="31" width=".5">mvhd Length</col>
+    <col start="32" end="63" width=".5">`mvhd' (0x6D766864)</col>
   </row>
   <row>
-    <col>...</col>
+    <col start="64" end="71" width=".25">Version</col>
+    <col start="72" end="95" width=".75">Flags (0x000000)</col>
   </row>
   <row>
-    <col>...</col>
+    <col start="96" end="127/159" width=".5">Created Mac UTC Date</col>
+    <col start="128/160" end="159/223" width=".5">Modified Mac UTC Date</col>
   </row>
   <row>
-    <col>...</col>
+    <col start="160/224" end="191/255" width=".5">Time Scale</col>
+    <col start="192/256" end="223/319" width=".5">Duration</col>
   </row>
   <row>
-    <col>...</col>
+    <col start="224/320" end="255/351" width=".5">Playback Speed</col>
+    <col start="256/352" end="271/367" width=".25">User Volume</col>
+    <col start="272/368" end="351/447" width=".25">Reserved (0)</col>
   </row>
   <row>
-    <col>...</col>
+    <col start="352/448" end="383/479" width=".25">WGM A</col>
+    <col start="384/480" end="415/511" width=".25">WGM B</col>
+    <col start="416/512" end="447/543" width=".25">WGM U</col>
+    <col start="448/544" end="479/575" width=".25">WGM C</col>
   </row>
   <row>
-    <col>...</col>
+    <col start="480/576" end="511/607" width=".25">WGM D</col>
+    <col start="512/608" end="543/639" width=".25">WGM V</col>
+    <col start="544/640" end="575/671" width=".25">WGM X</col>
+    <col start="576/672" end="607/703" width=".25">WGM Y</col>
   </row>
   <row>
-    <col>...</col>
+    <col start="608/704" end="639/735" width=".25">WGM W</col>
+    <col start="640/736" end="703/799" width=".75">QuickTime Preview</col>
   </row>
   <row>
-    <col>...</col>
+    <col start="704/800" end="735/831" width=".5">QuickTime Still Poster</col>
+    <col start="736/832" end="799/895" width=".5">QuickTime Selection Time</col>
   </row>
   <row>
-    <col>...</col>
+    <col start="800/896" end="831/927" width=".5">QuickTime Current Time</col>
+    <col start="832/928" end="863/959" width=".5">next/new track ID</col>
   </row>
 </diagram>
