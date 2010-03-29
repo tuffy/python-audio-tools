@@ -856,12 +856,12 @@
 *** TODO a WavPack block header
 *** TODO a WavPack sub-block header
 ** TODO .mp3
-*** TODO the MP3 file stream
-*** TODO an MPEG frame header
-**** TODO the Xing header
-*** TODO the ID3v1 tag
-**** TODO ID3v1
-**** TODO ID3v1.1
+*** DONE the MP3 file stream
+*** DONE an MPEG frame header
+**** DONE the Xing header
+*** DONE the ID3v1 tag
+**** DONE ID3v1
+**** DONE ID3v1.1
 *** TODO the ID3v2 tag
 **** TODO the ID3v2 stream
 **** TODO ID3v2.2

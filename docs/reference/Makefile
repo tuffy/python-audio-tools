@@ -21,9 +21,11 @@ figures/m4a_smhd.pdf figures/m4a_dref.pdf figures/m4a_stsd.pdf \
 figures/m4a_mp4a.pdf figures/m4a_stts.pdf figures/m4a_stsc.pdf \
 figures/m4a_stsz.pdf figures/m4a_stco.pdf \
 figures/m4a_meta_atoms.pdf figures/m4a_meta.pdf figures/m4a_data.pdf \
-figures/m4a_trkn.pdf figures/m4a_disk.pdf
+figures/m4a_trkn.pdf figures/m4a_disk.pdf \
+figures/mp3_stream.pdf figures/mp3_xing.pdf \
+figures/mp3_id3v1.pdf figures/mp3_id3v11.pdf
 
-CHAPTERS = basics.tex wav.tex flac.tex m4a.tex
+CHAPTERS = basics.tex wav.tex flac.tex m4a.tex mp3.tex
 
 all: audiotools.pdf
 

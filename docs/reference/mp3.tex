@@ -1,0 +1,133 @@
+\chapter{MP3}
+MP3 is the de-facto standard for lossy audio.
+It is little more than a series of MPEG frames with an
+optional ID3v2 metadata header and optional ID3v1 metadata
+footer.
+
+MP3 decoders are assumed to be very tolerant of anything in
+the stream that doesn't look like an MPEG frame, ignoring such
+junk until the next frame is found.
+Since MP3 files have no standard container format in which
+non-MPEG data can be placed, metadata such as ID3 tags are often
+made `sync-safe' by formatting them in a way that decoders won't
+confuse tags for MPEG frames.
+\section{the MP3 File Stream}
+\begin{figure}[h]
+\includegraphics{figures/mp3_stream.pdf}
+\end{figure}
+\begin{table}[h]
+\begin{tabular}{|c||l||l||r|r|r||l|}
+\hline
+& & & \multicolumn{3}{c||}{Sample Rate} & \\
+bits & MPEG ID & Description & MPEG-1 & MPEG-2 & MPEG-2.5 & Channels \\
+\hline
+\texttt{00} & MPEG-2.5 & reserved & 44100 & 22050 & 11025 & Stereo \\
+\texttt{01} & reserved & Layer III & 48000 & 24000 & 12000 & Joint stereo \\
+\texttt{10} & MPEG-2 & Layer II & 32000 & 16000 & 8000 & Dual channel stereo\\
+\texttt{11} & MPEG-1 & Layer I & reserved & reserved & reserved & Mono \\
+\hline
+\end{tabular}
+\end{table}
+\par
+\noindent
+Layer I frames always contain 384 samples.
+Layer II and Layer III frames always contain 1152 samples.
+If the `Protection' bit is set, the frame header is followed by a
+16 bit CRC.
+
+\pagebreak
+
+\begin{table}[h]
+{\relsize{-2}
+\begin{tabular}{|c||r|r|r|r|r|}
+\hline
+& MPEG-1 & MPEG-1 & MPEG-1 & MPEG-2 & MPEG-2 \\
+bits & Layer-1 & Layer-2 & Layer-3 & Layer-1 & Layer-2/3 \\
+\hline
+\texttt{0000} & free & free & free & free & free \\
+\texttt{0001} & 32 & 32 & 32 & 32 & 8 \\
+\texttt{0010} & 64 & 48 & 40 & 48 & 16 \\
+\texttt{0011} & 96 & 56 & 48 & 56 & 24 \\
+\texttt{0100} & 128 & 64 & 56 & 64 & 32 \\
+\texttt{0101} & 160 & 80 & 64 & 80 & 40 \\
+\texttt{0110} & 192 & 96 & 80 & 96 & 48 \\
+\texttt{0111} & 224 & 112 & 96 & 112 & 56 \\
+\texttt{1000} & 256 & 128 & 112 & 128 & 64 \\
+\texttt{1001} & 288 & 160 & 128 & 144 & 80 \\
+\texttt{1010} & 320 & 192 & 160 & 160 & 96 \\
+\texttt{1011} & 352 & 224 & 192 & 176 & 112 \\
+\texttt{1100} & 384 & 256 & 224 & 192 & 128 \\
+\texttt{1101} & 416 & 320 & 256 & 224 & 144 \\
+\texttt{1110} & 448 & 384 & 320 & 256 & 160 \\
+\texttt{1111} & bad & bad & bad & bad & bad \\
+\hline
+\end{tabular}
+}
+\caption{Bitrate in 1000 bits per second}
+\end{table}
+To find the total size of an MPEG frame, use one of the following
+formulas:
+\begin{align}
+\intertext{Layer I:}
+\text{Byte Length} &= \left ( \frac{12 \times \text{Bitrate}}{\text{Sample Rate}} + \text{Pad} \right ) \times 4 \\
+\intertext{Layer II/III:}
+\text{Byte Length} &= \frac{144 \times \text{Bitrate}}{\text{Sample Rate}} + Pad
+\end{align}
+For example, an MPEG-1 Layer III frame with a sampling rate of 44100,
+a bitrate of 128kbps and a set pad bit is 418 bytes long, including the header.
+\begin{equation}
+\frac{144 \times 128000}{44100} + 1 = 418
+\end{equation}
+
+\subsection{the Xing header}
+
+An MP3 frame header contains the track's sampling rate,
+bits-per-sample and number of channels.
+However, because MP3 files are little more than
+concatenated MPEG frames, there is no obvious place to
+store the track's total length.
+Since the length of each frame is a constant number of samples,
+one can calculate the track length by counting the number of frames.
+This method is the most accurate but is also quite slow.
+
+For MP3 files in which all frames have the same bitrate
+- also known as constant bitrate, or CBR files -
+one can divide the total size of file (minus any ID3 headers/footers),
+by the bitrate to determine its length.
+If an MP3 file has no Xing header in its first frame,
+one can assume it is CBR.
+
+An MP3 file that does contain a Xing header in its first frame
+can be assumed to be variable bitrate, or VBR.
+In that case, the rate of the first frame cannot be used as a
+basis to calculate the length of the entire file.
+Instead, one must use the information from the Xing header
+which contains that length.
+
+All of the fields within a Xing header are big-endian.
+\begin{figure}[h]
+\includegraphics{figures/mp3_xing.pdf}
+\end{figure}
+
+\subsection{ID3v1 tags}
+ID3v1 tags are very simple metadata tags appended to an MP3 file.
+All of the fields are fixed length and the text encoding is
+undefined.
+There are two versions of ID3v1 tags.
+ID3v1.1 has a track number field as a 1 byte value
+at the end of the comment field.
+If the byte just before the end is not null (0x00),
+assume we're dealing with a classic ID3v1 tag without a
+track number.
+
+\subsubsection{ID3v1}
+
+\begin{figure}[h]
+\includegraphics{figures/mp3_id3v1.pdf}
+\end{figure}
+
+\subsubsection{ID3v1.1}
+
+\begin{figure}[h]
+\includegraphics{figures/mp3_id3v11.pdf}
+\end{figure}

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<diagram>
+  <row>
+    <col start="0" end="23" width=".40">Header (`TAG' 0x544147)</col>
+    <col start="24" end="263" width=".20">Track Title</col>
+    <col start="264" end="503" width=".20">Artist Name</col>
+    <col start="504" end="743" width=".20">Album Name</col>
+  </row>
+  <row>
+    <col start="744" end="775" width=".20">Year</col>
+    <col start="776" end="1015" width=".80">Comment</col>
+  </row>
+  <row>
+    <col start="1016" end="1023">Genre</col>
+  </row>
+</diagram>
