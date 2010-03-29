@@ -155,3 +155,69 @@ the \texttt{mdat} atom.  Therefore, if the \texttt{moov} atom size changes
 the \texttt{mdat} atom may move and these obsolute offsets will change.
 In that instance, they \textbf{must}
 be re-adjusted in the \texttt{stco} atom or the file may become unplayable.
+
+\subsection{the meta atom}
+
+\begin{figure}[h]
+\parpic[r]{
+\includegraphics{figures/m4a_meta_atoms.pdf}
+}
+\includegraphics{figures/m4a_meta.pdf}
+The atoms within the \texttt{ilst} container are all containers themselves,
+each with a \texttt{data} atom of its own.
+Notice that many of \texttt{ilst}'s sub-atoms begin with the
+non-ASCII 0xA9 byte.
+
+\includegraphics{figures/m4a_data.pdf}
+\par
+\noindent
+Text data atoms have a type of 1.
+Binary data atoms typically have a type of 0.
+\end{figure}
+\begin{table}[h]
+{\relsize{-1}
+\begin{tabular}{|r|l||r|l||r|l|}
+\hline
+Atom & Description & Atom & Description & Atom & Description \\
+\hline
+\texttt{alb} & Album Nam &
+\texttt{ART} & Track Artist &
+\texttt{cmt} & Comments \\
+\texttt{covr} & Cover Image &
+\texttt{cpil} & Compilation &
+\texttt{cprt} & Copyright \\
+\texttt{day} & Year &
+\texttt{disk} & Disc Number &
+\texttt{gnre} & Genre \\
+\texttt{grp} & Grouping &
+\texttt{----} & iTunes-specific &
+\texttt{nam} & Track Name \\
+\texttt{rtng} & Rating &
+\texttt{tmpo} & BMP &
+\texttt{too} & Encoder \\
+\texttt{trkn} & Track Number &
+\texttt{wrt} & Composer &
+& \\
+\hline
+\end{tabular}
+\caption{Known \texttt{ilst} sub-atoms}
+}
+\end{table}
+
+\pagebreak
+
+\subsubsection{the trkn sub-atom}
+\texttt{trkn} is a binary sub-atom of \texttt{meta} which contains
+the track number.
+\begin{figure}[h]
+\includegraphics{figures/m4a_trkn.pdf}
+\end{figure}
+
+\subsubsection{the disk sub-atom}
+\texttt{disk} is a binary sub-atom of \texttt{meta} which contains
+the disc number.
+For example, if the track belongs to the first disc in a set of
+two discs, the sub-atom will contain that information.
+\begin{figure}[h]
+\includegraphics{figures/m4a_disk.pdf}
+\end{figure}

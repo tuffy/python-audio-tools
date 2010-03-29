@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<diagram>
+  <row>
+    <col start="0" end="31" width=".5">data Length</col>
+    <col start="32" end="63" width=".5">`data' (0x64617461)</col>
+  </row>
+  <row>
+    <col start="64" end="95" width=".5">Type</col>
+    <col start="96" end="127" width=".5">Reserved (0x00000000)</col>
+  </row>
+  <row>
+    <col start="128">Data</col>
+  </row>
+</diagram>

@@ -892,11 +892,11 @@
 *** TODO the Ogg FLAC file stream
 *** TODO the STREAMINFO metadata packet
 *** TODO the Metadata packets
-** TODO .m4a
+** DONE .m4a
 *** DONE the QuickTime file stream
 *** DONE a QuickTime atom
 *** DONE Container atoms
-*** TODO M4A atoms
+*** DONE M4A atoms
 **** DONE the ftyp atom
 **** DONE the mvhd atom
 **** DONE the tkhd atom
@@ -910,9 +910,9 @@
 **** DONE the stsc atom
 **** DONE the stsz atom
 **** DONE the stco atom
-**** TODO the meta atom
-***** TODO the trkn sub-atom
-***** TODO the disk sub-atom
+**** DONE the meta atom
+***** DONE the trkn sub-atom
+***** DONE the disk sub-atom
 ** TODO .mpc
 *** TODO Musepack SV7
 **** TODO the Musepack SV7 file stream

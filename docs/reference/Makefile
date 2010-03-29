@@ -19,7 +19,9 @@ figures/m4a_atoms.pdf figures/m4a_ftyp.pdf figures/m4a_mvhd.pdf \
 figures/m4a_tkhd.pdf figures/m4a_mdhd.pdf figures/m4a_hdlr.pdf \
 figures/m4a_smhd.pdf figures/m4a_dref.pdf figures/m4a_stsd.pdf \
 figures/m4a_mp4a.pdf figures/m4a_stts.pdf figures/m4a_stsc.pdf \
-figures/m4a_stsz.pdf figures/m4a_stco.pdf
+figures/m4a_stsz.pdf figures/m4a_stco.pdf \
+figures/m4a_meta_atoms.pdf figures/m4a_meta.pdf figures/m4a_data.pdf \
+figures/m4a_trkn.pdf figures/m4a_disk.pdf
 
 CHAPTERS = basics.tex wav.tex flac.tex m4a.tex
 
@@ -82,6 +84,9 @@ figures/flac_exhaustive.pdf: figures/flac_exhaustive.fig
 figures/m4a_atoms.pdf: figures/m4a_atoms.fig
 	fig2dev -Z 6 -L pdf $< $@
 
+figures/m4a_meta_atoms.pdf: figures/m4a_meta_atoms.fig
+	fig2dev -Z 3 -L pdf $< $@
+
 .SUFFIXES: .pdf .xml
 
 .xml.pdf:
@@ -92,3 +97,9 @@ figures/m4a_ftyp.pdf: figures/m4a_ftyp.xml
 
 figures/m4a_mvhd.pdf: figures/m4a_mvhd.xml
 	./bitdiagram.py -w 270 -i $< -o $@
+
+figures/m4a_meta.pdf: figures/m4a_meta.xml
+	./bitdiagram.py -w 306 -i $< -o $@
+
+figures/m4a_data.pdf: figures/m4a_data.xml
+	./bitdiagram.py -w 306 -i $< -o $@
