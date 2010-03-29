@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<diagram>
+  <row>
+    <col start="0" end="31" width=".5">stts Length</col>
+    <col start="32" end="63" width=".5">`stts' (0x73747473)</col>
+  </row>
+  <row>
+    <col start="64" end="71" width=".25">Version</col>
+    <col start="72" end="95" width=".25">Flags (0x000000)</col>
+    <col start="96" end="127" width=".5">Number of Times</col>
+  </row>
+  <row>
+    <col start="128" end="159" width=".5">Frame Count₁</col>
+    <col start="160" end="191" width=".5">Duration₁</col>
+  </row>
+  <row>
+    <col start="192" end="223" width=".5">Frame Count₂</col>
+    <col start="224" end="255" width=".5">Duration₂</col>
+  </row>
+  <row>
+    <col start="256" style="dashed">...</col>
+  </row>
+</diagram>

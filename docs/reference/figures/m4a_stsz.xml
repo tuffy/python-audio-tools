@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<diagram>
+  <row>
+    <col start="0" end="31" width=".5">stsz Length</col>
+    <col start="32" end="63" width=".5">`stsz' (0x7374737A)</col>
+  </row>
+  <row>
+    <col start="64" end="71" width=".25">Version</col>
+    <col start="72" end="95" width=".25">Flags (0x000000)</col>
+    <col start="96" end="127" width=".5">Number of Block Sizes</col>
+  </row>
+  <row>
+    <col start="128" end="159" width=".333333">Block Size₁</col>
+    <col start="160" end="191" width=".333333">Block Size₂</col>
+    <col start="192" style="dashed" width=".333333">...</col>
+  </row>
+</diagram>

@@ -110,3 +110,48 @@ are integers.  The rest are ASCII strings.
 \begin{figure}[h]
 \includegraphics{figures/m4a_stsd.pdf}
 \end{figure}
+
+\subsection{the mp4a atom}
+
+The \texttt{mp4a} atom contains information such as the number of channels
+and bits-per-sample.  It can be found in the \texttt{stsd} atom.
+
+\begin{figure}[h]
+\includegraphics{figures/m4a_mp4a.pdf}
+\end{figure}
+
+\pagebreak
+
+\subsection{the stts atom}
+
+\begin{figure}[h]
+\includegraphics{figures/m4a_stts.pdf}
+\end{figure}
+
+\subsection{the stsc atom}
+
+\begin{figure}[h]
+\includegraphics{figures/m4a_stsc.pdf}
+\end{figure}
+
+\subsection{the stsz atom}
+
+\begin{figure}[h]
+\includegraphics{figures/m4a_stsz.pdf}
+\end{figure}
+
+\pagebreak
+
+\subsection{the stco atom}
+
+\begin{figure}[h]
+\includegraphics{figures/m4a_stco.pdf}
+\end{figure}
+\par
+\noindent
+Offsets point to an absolute position in the M4A file of AAC data in
+the \texttt{mdat} atom.  Therefore, if the \texttt{moov} atom size changes
+(which can happen by writing new metadata in its \texttt{meta} child atom)
+the \texttt{mdat} atom may move and these obsolute offsets will change.
+In that instance, they \textbf{must}
+be re-adjusted in the \texttt{stco} atom or the file may become unplayable.
