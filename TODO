@@ -869,11 +869,11 @@
 ***** DONE an ID3v2.2 Frame
 ***** DONE ID3v2.2 Frame IDs
 ***** DONE the PIC Frame
-**** TODO ID3v2.3
-***** TODO the ID3v2.3 Header
-***** TODO an ID3v2.3 Frame
-***** TODO ID3v2.3 Frame IDs
-***** TODO the APIC Frame
+**** DONE ID3v2.3
+***** DONE the ID3v2.3 Header
+***** DONE an ID3v2.3 Frame
+***** DONE ID3v2.3 Frame IDs
+***** DONE the APIC Frame
 **** TODO ID3v2.4
 ***** TODO the ID3v2.4 Header
 ***** TODO an ID3v2.4 Frame
