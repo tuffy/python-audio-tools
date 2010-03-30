@@ -391,3 +391,130 @@ value & type & value & type \\
 \caption{APIC image types}
 }
 \end{table}
+
+\pagebreak
+
+\subsection{ID3v2.4}
+\subsubsection{ID3v2.4 header}
+\begin{figure}[h]
+\includegraphics{figures/mp3_id3v24_header.pdf}
+\end{figure}
+
+\subsubsection{ID3v2.4 frame}
+\begin{figure}[h]
+\includegraphics{figures/mp3_id3v24_frame.pdf}
+\end{figure}
+\par
+\noindent
+Frame ID's that begin with the letter `T' (0x54) are text frames.
+These have an additional text encoding byte before the actual
+text data.
+All text strings may be terminated by a null character
+(0x00 or 0x0000, depending on the encoding).
+\begin{figure}[h]
+\includegraphics{figures/mp3_id3v24_textframe.pdf}
+\begin{tabular}{r|l}
+Encoding Byte & Text Encoding \\
+\hline
+\texttt{0x00} & ISO-8859-1 \\
+\texttt{0x01} & UTF-16 \\
+\texttt{0x02} & UTF-16BE \\
+\texttt{0x03} & UTF-8
+\end{tabular}
+\end{figure}
+
+\pagebreak
+
+\subsubsection{ID3v2.4 frame IDs}
+
+\begin{table}[h]
+{\relsize{-2}
+\begin{tabular}{|c|l||c|l|}
+\hline
+ID & Description & ID & Description \\
+\hline
+\texttt{AENC} & Audio encryption & \texttt{APIC} & Attached picture \\
+\texttt{ASPI} & Audio seek point index & \texttt{COMM} & Comments \\
+\texttt{COMR} & Commercial frame & \texttt{ENCR} & Encryption method registration \\
+\texttt{EQU2} & Equalisation (2) & \texttt{ETCO} & Event timing codes \\
+\texttt{GEOB} & General encapsulated object & \texttt{GRID} & Group identification registration \\
+\texttt{LINK} & Linked information & \texttt{MCDI} & Music CD identifier \\
+\texttt{MLLT} & MPEG location lookup table & \texttt{OWNE} & Ownership frame \\
+\texttt{PRIV} & Private frame & \texttt{PCNT} & Play counter \\
+\texttt{POPM} & Popularimeter & \texttt{POSS} & Position synchronisation frame \\
+\texttt{RBUF} & Recommended buffer size & \texttt{RVA2} & Relative volume adjustment (2) \\
+\texttt{RVRB} & Reverb & \texttt{SEEK} & Seek frame \\
+\texttt{SIGN} & Signature frame & \texttt{SYLT} & Synchronised lyric/text \\
+\texttt{SYTC} & Synchronised tempo codes & \texttt{TALB} & Album/Movie/Show title \\
+\texttt{TBPM} & BPM (beats per minute) & \texttt{TCOM} & Composer \\
+\texttt{TCON} & Content type & \texttt{TCOP} & Copyright message \\
+\texttt{TDEN} & Encoding time & \texttt{TDLY} & Playlist delay \\
+\texttt{TDOR} & Original release time & \texttt{TDRC} & Recording time \\
+\texttt{TDRL} & Release time & \texttt{TDTG} & Tagging time \\
+\texttt{TENC} & Encoded by & \texttt{TEXT} & Lyricist/Text writer \\
+\texttt{TFLT} & File type & \texttt{TIPL} & Involved people list \\
+\texttt{TIT1} & Content group description & \texttt{TIT2} & Title/songname/content description \\
+\texttt{TIT3} & Subtitle/Description refinement & \texttt{TKEY} & Initial key \\
+\texttt{TLAN} & Language(s) & \texttt{TLEN} & Length \\
+\texttt{TMCL} & Musician credits list & \texttt{TMED} & Media type \\
+\texttt{TMOO} & Mood & \texttt{TOAL} & Original album/movie/show title \\
+\texttt{TOFN} & Original filename & \texttt{TOLY} & Original lyricist(s)/text writer(s) \\
+\texttt{TOPE} & Original artist(s)/performer(s) & \texttt{TOWN} & File owner/licensee \\
+\texttt{TPE1} & Lead performer(s)/Soloist(s) & \texttt{TPE2} & Band/orchestra/accompaniment \\
+\texttt{TPE3} & Conductor/performer refinement & \texttt{TPE4} & Interpreted, remixed, or otherwise modified by \\
+\texttt{TPOS} & Part of a set & \texttt{TPRO} & Produced notice \\
+\texttt{TPUB} & Publisher & \texttt{TRCK} & Track number/Position in set \\
+\texttt{TRSN} & Internet radio station name & \texttt{TRSO} & Internet radio station owner \\
+\texttt{TSOA} & Album sort order & \texttt{TSOP} & Performer sort order \\
+\texttt{TSOT} & Title sort order & \texttt{TSRC} & ISRC (international standard recording code) \\
+\texttt{TSSE} & Software/Hardware and settings used for encoding & \texttt{TSST} & Set subtitle \\
+\texttt{TXXX} & User defined text information frame & \texttt{UFID} & Unique file identifier \\
+\texttt{USER} & Terms of use & \texttt{USLT} & Unsynchronised lyric/text transcription \\
+\texttt{WCOM} & Commercial information & \texttt{WCOP} & Copyright/Legal information \\
+\texttt{WOAF} & Official audio file webpage & \texttt{WOAR} & Official artist/performer webpage \\
+\texttt{WOAS} & Official audio source webpage & \texttt{WORS} & Official Internet radio station homepage \\
+\texttt{WPAY} & Payment & \texttt{WPUB} & Publishers official webpage \\
+\texttt{WXXX} & User defined URL link frame & &  \\
+\hline
+\end{tabular}
+}
+\end{table}
+
+
+\pagebreak
+
+\subsubsection{ID3v2.3 APIC frame}
+\begin{figure}[h]
+\includegraphics{figures/mp3_id3v24_apic.pdf}
+\end{figure}
+\par
+\noindent
+Text Encoding is the encoding of the Description field.
+Its value is either ISO-8859-1, UTF-16 or UTF-8 - the same as in
+text frames.
+MIME Type is a NULL-terminated, ASCII C-string which contains the
+image's MIME type, such as `image/jpeg' or `image/png'.
+Description is a NULL-terminated C-string which contains
+a text description of the image.
+\begin{table}[h]
+{\relsize{-1}
+\begin{tabular}{|r|l||r|l|}
+\hline
+value & type & value & type \\
+\hline
+0 & Other & 1 & 32x32 pixels `file icon' (PNG only) \\
+2 & Other file icon & 3 & Cover (front) \\
+4 & Cover (back) & 5 & Leaflet page \\
+6 & Media (e.g. label side of CD) & 7 & Lead artist / Lead performer / Soloist \\
+8 & Artist / Performer & 9 & Conductor \\
+10 & Band / Orchestra & 11 & Composer \\
+12 & Lyricist / Text writer & 13 & Recording location \\
+14 & During recording & 15 & During performance \\
+16 & Movie / Video screen capture & 17 & A bright coloured fish \\
+18 & Illustration & 19 & Band / Artist logotype \\
+20 & Publisher / Studio logotype & &  \\
+\hline
+\end{tabular}
+\caption{APIC image types}
+}
+\end{table}

@@ -28,7 +28,9 @@ figures/mp3_id3v2_stream.pdf \
 figures/mp3_id3v22_header.pdf figures/mp3_id3v22_frame.pdf \
 figures/mp3_id3v22_textframe.pdf figures/mp3_id3v22_pic.pdf \
 figures/mp3_id3v23_header.pdf figures/mp3_id3v23_frame.pdf \
-figures/mp3_id3v23_textframe.pdf figures/mp3_id3v23_apic.pdf
+figures/mp3_id3v23_textframe.pdf figures/mp3_id3v23_apic.pdf \
+figures/mp3_id3v24_header.pdf figures/mp3_id3v24_frame.pdf \
+figures/mp3_id3v24_textframe.pdf figures/mp3_id3v24_apic.pdf
 
 CHAPTERS = basics.tex wav.tex flac.tex m4a.tex mp3.tex
 

@@ -2,7 +2,7 @@
 <diagram>
   <row>
     <col start="0" end="23" width=".5">ID (`ID3' 0x494433)</col>
-    <col start="24" end="39" width=".5">Version (0x0300)</col>
+    <col start="24" end="39" width=".5">Version (0x0400)</col>
   </row>
   <row>
     <col start="40" end="40" width=".17">Unsync</col>

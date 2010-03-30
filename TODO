@@ -875,10 +875,10 @@
 ***** DONE ID3v2.3 Frame IDs
 ***** DONE the APIC Frame
 **** TODO ID3v2.4
-***** TODO the ID3v2.4 Header
-***** TODO an ID3v2.4 Frame
-***** TODO ID3v2.4 Frame IDs
-***** TODO the APIC Frame
+***** DONE the ID3v2.4 Header
+***** DONE an ID3v2.4 Frame
+***** DONE ID3v2.4 Frame IDs
+***** DONE the APIC Frame
 ** TODO .ogg
 *** TODO the Ogg file stream
 *** TODO an Ogg Page

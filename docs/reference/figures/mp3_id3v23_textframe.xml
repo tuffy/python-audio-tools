@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <diagram>
   <row>
-    <col start="0" end="31" width=".5">Frame ID</col>
+    <col start="0" end="31" width=".5">Frame ID ‘TXXX’ (0x54XXXXXX)</col>
     <col start="32" end="63" width=".5">Size</col>
   </row>
   <row>
