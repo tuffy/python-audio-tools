@@ -81,50 +81,48 @@ indicating multiple values for the same field.
 For instance, a track with multiple artists may have
 more than one \texttt{ARTIST}.
 
-\begin{minipage}{\linewidth}
-\renewcommand\thefootnote{\thempfootnote}
-{\relsize{-1}
-\begin{tabular}{|r|l|}
-\hline
-key & value \\
-\hline
-ALBUM & album name \\
-ARTIST & artist name, band name, composer, author, etc. \\
-CATALOGNUMBER\footnote{These are proposed extension fields and not part of the official Vorbis comment specification.} & CD spine number \\
-COMPOSER\footnotemark[\value{mpfootnote}] & the work's author \\
-CONDUCTOR\footnotemark[\value{mpfootnote}] & performing ensemble's leader \\
-COPYRIGHT & copyright attribution \\
-DATE & recording date \\
-DESCRIPTION & a short description \\
-DISCNUMBER\footnotemark[\value{mpfootnote}] & disc number for multi-volume work \\
-ENGINEER\footnotemark[\value{mpfootnote}] & the recording masterer \\
-ENSEMBLE\footnotemark[\value{mpfootnote}] & performing group \\
-GENRE & a short music genre label \\
-GUEST ARTIST\footnotemark[\value{mpfootnote}] & collaborating artist \\
-ISRC & ISRC number for the track \\
-LICENSE & license information \\
-LOCATION & recording location \\
-OPUS\footnotemark[\value{mpfootnote}] & number of the work \\
-ORGANIZATION & record label \\
-PART\footnotemark[\value{mpfootnote}] & track's movement title \\
-PERFORMER & performer name, orchestra, actor, etc. \\
-PRODUCER\footnotemark[\value{mpfootnote}] & person responsible for the project \\
-PRODUCTNUMBER\footnotemark[\value{mpfootnote}] & UPC, EAN, or JAN code \\
-PUBLISHER\footnotemark[\value{mpfootnote}] & album's publisher \\
-RELEASE DATE\footnotemark[\value{mpfootnote}] & date the album was published \\
-REMIXER\footnotemark[\value{mpfootnote}] & person who created the remix \\
-SOURCE ARTIST\footnotemark[\value{mpfootnote}] & artist of the work being performed \\
-SOURCE MEDIUM\footnotemark[\value{mpfootnote}] & CD, radio, cassette, vinyl LP, etc. \\
-SOURCE WORK\footnotemark[\value{mpfootnote}] & a soundtrack's original work \\
-SPARS\footnotemark[\value{mpfootnote}] & DDD, ADD, AAD, etc. \\
-SUBTITLE\footnotemark[\value{mpfootnote}] & for multiple track names in a single file \\
-TITLE & track name \\
-TRACKNUMBER & track number \\
-VERSION & track version \\
-\hline
-\end{tabular}
+\begin{multicols}{2}
+{\relsize{-2}
+\begin{description}
+\item[ALBUM] album name
+\item[ARTIST] artist name, band name, composer, author, etc.
+\item[CATALOGNUMBER*] CD spine number
+\item[COMPOSER*] the work's author
+\item[CONDUCTOR*] performing ensemble's leader
+\item[COPYRIGHT] copyright attribution
+\item[DATE] recording date
+\item[DESCRIPTION] a short description
+\item[DISCNUMBER*] disc number for multi-volume work
+\item[ENGINEER*] the recording masterer
+\item[ENSEMBLE*] performing group
+\item[GENRE] a short music genre label
+\item[GUEST ARTIST*] collaborating artist
+\item[ISRC] ISRC number for the track
+\item[LICENSE] license information
+\item[LOCATION] recording location
+\item[OPUS*] number of the work
+\item[ORGANIZATION] record label
+\item[PART*] track's movement title
+\item[PERFORMER] performer name, orchestra, actor, etc.
+\item[PRODUCER*] person responsible for the project
+\item[PRODUCTNUMBER*] UPC, EAN, or JAN code
+\item[PUBLISHER*] album's publisher
+\item[RELEASE DATE*] date the album was published
+\item[REMIXER*] person who created the remix
+\item[SOURCE ARTIST*] artist of the work being performed
+\item[SOURCE MEDIUM*] CD, radio, cassette, vinyl LP, etc.
+\item[SOURCE WORK*] a soundtrack's original work
+\item[SPARS*] DDD, ADD, AAD, etc.
+\item[SUBTITLE*] for multiple track names in a single file
+\item[TITLE] track name
+\item[TRACKNUMBER] track number
+\item[VERSION] track version
+\end{description}
 }
-\end{minipage}
+\end{multicols}
+\par
+\noindent
+Fields marked with * are proposed extension fields and not part of the official Vorbis comment specification.
 
 \pagebreak
 
