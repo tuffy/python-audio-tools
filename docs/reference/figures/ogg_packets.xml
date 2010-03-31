@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<diagram>
+  <row>
+    <col width=".25" id="page1">Ogg Page₁</col>
+    <col width=".25" id="page2">Ogg Page₂</col>
+    <col width=".25" id="page3">Ogg Page₃</col>
+    <col width=".25" style="dashed">...</col>
+  </row>
+  <row><blank/></row>
+  <row>
+    <col start="30 bytes" end="30 bytes" width=".125" id="segment1">Segment₁</col>
+    <blank width=".0625"/>
+    <col start="255 bytes" end="255 bytes" width=".125" id="segment2">Segment₂</col>
+    <col start="255 bytes" end="255 bytes" width=".125" id="segment3">Segment₃</col>
+    <col start="255 bytes" end="255 bytes" width=".125" id="segment4">Segment₄</col>
+    <col start="255 bytes" end="255 bytes" width=".125" id="segment5">Segment₅</col>
+    <blank width=".0625"/>
+    <col start="40 bytes" end="40 bytes" width=".125" id="segment6">Segment₆</col>
+    <col start="60 bytes" end="60 bytes" width=".125" id="segment7">Segment₇</col>
+  </row>
+  <row><blank/></row>
+  <row>
+    <col start="30 bytes" end="30 bytes" width=".30" id="packet1">Packet₁</col>
+    <blank width=".05"/>
+    <col start="1060 bytes" end="1060 bytes" width=".30" id="packet2">Packet₂</col>
+    <blank width=".05"/>
+    <col start="60 bytes" end="60 bytes" width=".30" id="packet3">Packet₃</col>
+  </row>
+  <line s_id="page1" s_corner="sw" e_id="segment1" e_corner="nw" style="dotted"/>
+  <line s_id="page1" s_corner="se" e_id="segment1" e_corner="ne" style="dotted"/>
+  <line s_id="page2" s_corner="sw" e_id="segment2" e_corner="nw" style="dotted"/>
+  <line s_id="page2" s_corner="se" e_id="segment5" e_corner="ne" style="dotted"/>
+  <line s_id="page3" s_corner="sw" e_id="segment6" e_corner="nw" style="dotted"/>
+  <line s_id="page3" s_corner="se" e_id="segment7" e_corner="ne" style="dotted"/>
+  <line s_id="segment1" s_corner="sw" e_id="packet1" e_corner="nw" style="dotted"/>
+  <line s_id="segment1" s_corner="se" e_id="packet1" e_corner="ne" style="dotted"/>
+  <line s_id="segment2" s_corner="sw" e_id="packet2" e_corner="nw" style="dotted"/>
+  <line s_id="segment6" s_corner="se" e_id="packet2" e_corner="ne" style="dotted"/>
+  <line s_id="segment7" s_corner="sw" e_id="packet3" e_corner="nw" style="dotted"/>
+  <line s_id="segment7" s_corner="se" e_id="packet3" e_corner="ne" style="dotted"/>
+</diagram>

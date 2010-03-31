@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<diagram>
+  <row>
+    <col width=".25" id="oggpage">Ogg Page₁</col>
+    <col width=".25">Ogg Page₂</col>
+    <col width=".25">Ogg Page₃</col>
+    <col width=".25" style="dashed">...</col>
+  </row>
+  <row><blank/></row>
+  <row>
+    <col start="0" end="31" id="magic">Magic Number `OggS' (0x4F676753)</col>
+  </row>
+  <row>
+    <col start="32" end="39" width=".333333">Version (0x00)</col>
+    <col start="40" end="47" width=".333333">Header Type</col>
+    <col start="48" end="111" width=".333333">Granule Position</col>
+  </row>
+  <row>
+    <col start="112" end="143" width=".333333">Bitstream Serial Number</col>
+    <col start="144" end="175" width=".333333">Page Sequence Number</col>
+    <col start="176" end="207" width=".333333">Checksum</col>
+  </row>
+  <row>
+    <col start="208" end="215" width=".25">Page Segments</col>
+    <col start="216" end="223" width=".25">Segment Length₁</col>
+    <col style="dashed" width=".25">...</col>
+    <col width=".25">Segment Lengthₓ</col>
+  </row>
+  <row>
+    <col width=".333333">Segment₁</col>
+    <col width=".333333" style="dashed">...</col>
+    <col width=".333333">Segmentₓ</col>
+  </row>
+  <line s_id="oggpage" s_corner="sw" e_id="magic" e_corner="nw" style="dotted"/>
+  <line s_id="oggpage" s_corner="se" e_id="magic" e_corner="ne" style="dotted"/>
+</diagram>

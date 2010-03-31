@@ -1,0 +1,90 @@
+\chapter{Ogg Vorbis}
+Ogg Vorbis is Vorbis audio in an Ogg container.
+Ogg containers are a series of Ogg pages, each containing
+one or more segments of data.
+All of the fields within Ogg Vorbis are little-endian.
+\section{Ogg file stream}
+\begin{figure}[h]
+\includegraphics{figures/ogg_stream.pdf}
+\end{figure}
+\parpic[r]{
+\begin{tabular}{|c|l|}
+\hline
+bits & Header Type \\
+\hline
+\texttt{001} & Continuation \\
+\texttt{010} & Beginning of Stream \\
+\texttt{100} & End of Stream \\
+\hline
+\end{tabular}
+}
+`Granule position' is a time marker.
+In the case of Ogg Vorbis, it is the sample count.
+
+`Bitstream Serial Number' is an identifier for the given
+bitstream which is unique within the Ogg file.
+For instance, an Ogg file might contain both video and
+audio pages, interleaved.
+The Ogg pages for the audio will have a different
+serial number from those of the video so that the decoder
+knows where to send the data of each.
+
+`Page Sequence Number' is an integer counter which starts from 0
+and increments 1 for each Ogg page.
+Multiple bitstreams will have separate sequence numbers.
+
+`Checksum' is a 32-bit checksum of the entire Ogg page.
+
+The `Page Segments' value indicates how many segments are in
+this Ogg page.
+Each segment will have an 8-bit length.
+If that length is 255, it indicates the next segment is
+part of the current one and should be concatenated with it when
+creating packets from the segments.
+In this way, packets larger than 255 bytes can be stored in
+an Ogg page.
+If the final segment in the Ogg page has a length of 255 bytes,
+the packet it is a part of continues into the next Ogg page.
+
+\subsection{Ogg packets}
+\begin{figure}[h]
+\includegraphics{figures/ogg_packets.pdf}
+\end{figure}
+\par
+\noindent
+This is an example Ogg stream to illustrate a few key points about
+the format.
+Note that Ogg pages may have one or more segments,
+and packets are composed of one of more segments,
+yet the boundaries between packets are segments
+that are less than 255 bytes long.
+Which segment belongs to which Ogg page is not important
+for building packets.
+
+\section{the Identification packet}
+The first packet within a Vorbis stream is the Identification packet.
+This contains the sample rate and number of channels.
+Vorbis does not have a bits-per-sample field, as samples
+are stored internally as floating point values and are
+converted into a certain number of bits in the decoding process.
+To find the total samples, use the `Granule Position' value
+in the stream's final Ogg page.
+\begin{figure}[h]
+\includegraphics{figures/vorbis_identification.pdf}
+\end{figure}
+
+\clearpage
+
+\section{the Comment packet}
+The second packet within a Vorbis stream is the Comment packet.
+
+\begin{figure}[h]
+\includegraphics{figures/vorbis_comment.pdf}
+\end{figure}
+
+The length fields are all little-endian.
+The Vendor String and Comment Strings are all UTF-8 encoded.
+Keys are not case-sensitive and may occur multiple times,
+indicating multiple values for the same field.
+For instance, a track with multiple artists may have
+more than one \texttt{ARTIST}.
