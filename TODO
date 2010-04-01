@@ -844,13 +844,13 @@
 *** DONE the Checksums
 **** TODO CRC-8
 **** TODO CRC-16
-** TODO .ape
+** DONE .ape
 *** DONE the Monkey's Audio stream
 *** DONE the APE Descriptor
 *** DONE the APE Header
 *** DONE the APEv2 tag
-*** TODO the APEv2 tag header/footer
-*** TODO the APEv2 flags
+*** DONE the APEv2 tag header/footer
+*** DONE the APEv2 flags
 ** DONE .wv
 *** DONE the WavPack file stream
 *** DONE a WavPack block header
