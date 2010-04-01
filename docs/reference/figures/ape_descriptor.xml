@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<diagram>
+  <row>
+    <col start="0" end="31" width=".5">ID (`MAC' 0x4D414320)</col>
+    <col start="32" end="63" width=".5">Version</col>
+  </row>
+  <row>
+    <col start="64" end="95" width=".333333">Descriptor Bytes</col>
+    <col start="96" end="127" width=".333333">Header Bytes</col>
+    <col start="128" end="159" width=".333333">Seektable Bytes</col>
+  </row>
+  <row>
+    <col start="160" end="191" width=".333333">Header Data Bytes</col>
+    <col start="192" end="223" width=".333333">Frame Data Bytes</col>
+    <col start="224" end="255" width=".333333">Frame Data Bytes (High)</col>
+  </row>
+  <row>
+    <col start="256" end="287" width=".333333">Terminating Data Bytes</col>
+    <col start="288" end="415" width=".666666">MD5 Sum</col>
+  </row>
+</diagram>

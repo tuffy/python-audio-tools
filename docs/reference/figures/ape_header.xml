@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<diagram>
+  <row>
+    <col start="0" end="15" width=".5">Compression Level</col>
+    <col start="16" end="31" width=".5">Format Flags</col>
+  </row>
+  <row>
+    <col start="32" end="63" width=".5">Blocks Per Frame</col>
+    <col start="64" end="95" width=".5">Final Frame Blocks</col>
+  </row>
+  <row>
+    <col start="96" end="127" width=".5">Total Frames</col>
+    <col start="128" end="143" width=".5">Bits Per Sample</col>
+  </row>
+  <row>
+    <col start="144" end="159" width=".5">Channels</col>
+    <col start="160" end="191" width=".5">Sample Rate</col>
+  </row>
+</diagram>

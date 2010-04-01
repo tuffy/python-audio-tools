@@ -34,7 +34,9 @@ figures/mp3_id3v24_textframe.pdf figures/mp3_id3v24_apic.pdf \
 figures/ogg_stream.pdf figures/ogg_packets.pdf \
 figures/vorbis_identification.pdf figures/vorbis_comment.pdf \
 figures/wavpack_stream.pdf figures/wavpack_block_header.pdf \
-figures/wavpack_subblock_header.pdf
+figures/wavpack_subblock_header.pdf \
+figures/ape_stream.pdf figures/ape_descriptor.pdf \
+figures/apev2_tag.pdf
 
 CHAPTERS = basics.tex wav.tex flac.tex m4a.tex mp3.tex vorbis.tex \
 wavpack.tex

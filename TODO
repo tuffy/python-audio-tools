@@ -845,10 +845,10 @@
 **** TODO CRC-8
 **** TODO CRC-16
 ** TODO .ape
-*** TODO the Monkey's Audio stream
-*** TODO the APE Descriptor
-*** TODO the APE Header
-*** TODO the APEv2 tag
+*** DONE the Monkey's Audio stream
+*** DONE the APE Descriptor
+*** DONE the APE Header
+*** DONE the APEv2 tag
 *** TODO the APEv2 tag header/footer
 *** TODO the APEv2 flags
 ** DONE .wv
