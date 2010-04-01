@@ -1,0 +1,112 @@
+\chapter{Monkey's Audio}
+Monkey's Audio is a lossless RIFF WAVE compressor.
+Unlike FLAC, which is a PCM compressor, Monkey's Audio also stores
+IFF chunks and reproduces the original WAVE file in its entirety rather
+than storing only the data it contains.
+All of its fields are little-endian.
+
+\section{the Monkey's Audio file stream}
+\begin{figure}[h]
+\includegraphics{figures/ape_stream.pdf}
+\end{figure}
+
+\section{the Monkey's Audio descriptor}
+\begin{figure}[h]
+\includegraphics{figures/ape_descriptor.pdf}
+\end{figure}
+\par
+\noindent
+Version is the encoding software's version times 1000.
+i.e. Monkey's Audio 3.99 = 3990
+
+\section{the Monkey's Audio header}
+\begin{figure}[h]
+\includegraphics{figures/ape_header.pdf}
+\end{figure}
+{\relsize{-2}
+\begin{equation}
+\text{Length in Seconds} = \frac{((\text{Total Frames} - 1) \times \text{Blocks Per Frame}) + \text{Final Frame Blocks}}{\text{Sample Rate}}
+\end{equation}
+}
+\section{the APEv2 tag}
+\label{apev2}
+The APEv2 tag is a little-endian metadata tag appended to
+Monkey's Audio files, among others.
+\begin{figure}[h]
+\includegraphics{figures/apev2_tag.pdf}
+\end{figure}
+\par
+\noindent
+Item Key is an ASCII string from the range 0x20 to 0x7E.
+Item Value is typically a UTF-8 encoded string, but may
+also be binary depending on the Flags.
+
+\begin{multicols}{2}
+{\relsize{-2}
+\begin{description}
+\item[Abstract] Abstract
+\item[Album] album name
+\item[Artist] performing artist
+\item[Bibliography] Bibliography/Discography
+\item[Catalog] catalog number
+\item[Comment] user comment
+\item[Composer] original composer
+\item[Conductor] conductor
+\item[Copyright] copyright holder
+\item[Debut album] debut album name
+\item[Dummy] place holder
+\item[EAN/UPC] EAN-13/UPC-A bar code identifier
+\item[File] file location
+\item[Genre] genre
+\item[Index] indexes for quick access
+\item[Introplay] characteric part of piece for intro playing
+\item[ISBN] ISBN number with check digit
+\item[ISRC] International Standard Recording Number
+\item[Language] used Language(s) for music/spoken words
+\item[LC] Label Code
+\item[Media] source media
+\item[Publicationright] publication right holder
+\item[Publisher] record label or publisher
+\item[Record Date] record date
+\item[Record Location] record location
+\item[Related] location of related information
+\item[Subtitle] track subtitle
+\item[Title] track title
+\item[Track] track number
+\item[Year] release date
+\end{description}
+}
+\end{multicols}
+
+\pagebreak
+
+\subsection{the APEv2 tag header/footer}
+\begin{figure}[h]
+\includegraphics{figures/apev2_tagheader.pdf}
+\end{figure}
+\par
+\noindent
+The format of the APEv2 header and footer are identical
+except for the `Is Header' tag.
+`Version' is typically 2000 (stored little-endian).
+`Tag Size' is the size of the entire APEv2 tag, including the
+footer but excluding the header.
+`Item Count' is the number of individual tag items.
+
+\subsection{the APEv2 flags}
+\begin{figure}[h]
+\includegraphics{figures/apev2_flags.pdf}
+\end{figure}
+\par
+\noindent
+This flags field is used by both the APEv2 header/footer and the
+individual tag items.
+The `Encoding' field indicates the encoding of its value:
+
+\begin{inparaenum}
+\item[\texttt{00} = ] UTF-8,
+\item[\texttt{01} = ] Binary,
+\item[\texttt{10} = ] External Link,
+\item[\texttt{11} = ] Reserved
+\end{inparaenum}
+.
