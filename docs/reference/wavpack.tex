@@ -1,0 +1,96 @@
+\chapter{WavPack}
+WavPack is a format for compressing Wave files, typically in lossless mode.
+Notably, it also has a lossy mode and even a hybrid mode which allows
+the `correction' file to be separated from a lossy core.
+
+All of its fields are little-endian.
+
+\section{the WavPack file stream}
+\begin{figure}[h]
+\includegraphics{figures/wavpack_stream.pdf}
+\end{figure}
+
+\pagebreak
+
+\section{the WavPack block header}
+\begin{figure}[h]
+\includegraphics{figures/wavpack_block_header.pdf}
+\end{figure}
+\parpic[r]{
+{\relsize{-1}
+\begin{tabular}{|c|r|}
+\hline
+value & sample rate \\
+\hline
+\texttt{0000} & 6000 \\
+\texttt{0001} & 8000 \\
+\texttt{0010} & 9600 \\
+\texttt{0011} & 11025 \\
+\texttt{0100} & 12000 \\
+\texttt{0101} & 16000 \\
+\texttt{0110} & 22050 \\
+\texttt{0111} & 24000 \\
+\texttt{1000} & 32000 \\
+\texttt{1001} & 44100 \\
+\texttt{1010} & 48000 \\
+\texttt{1011} & 64000 \\
+\texttt{1100} & 88200 \\
+\texttt{1101} & 96000 \\
+\texttt{1110} & 192000 \\
+\texttt{1111} & reserved \\
+\hline
+\end{tabular}
+}
+}
+The `flags' field is stored as a little-endian 32-bit integer.
+Since some fields cross byte boundaries, their high and low bits
+will be far apart when written in this format where the bits are
+ordered the way they appear in the file.
+
+`Block Size' is the length of everything past everything past the
+block header, minus 24 bytes.
+
+`Bits per Sample' is one of 4 values:
+
+\begin{inparaenum}
+\item[\texttt{00} = ] 8 bps,
+\item[\texttt{01} = ] 16 bps,
+\item[\texttt{10} = ] 24 bps,
+\item[\texttt{11} = ] 32 bps
+\end{inparaenum}
+.
+
+`Mono Output' bit indicates the channel count.
+If 1, this block has 1 channel.
+If 0, this block has 2 channels.
+For an audio stream with more than 2 channels,
+check the `Initial Block' and `Final Block' bits to indicate
+the start and end of the channels.  As an example:
+
+\begin{tabular}{c|c|c|c}
+Initial Block & Final Block & Mono Output & Channels \\
+\hline
+1 & 0 & 0 & 2 \\
+0 & 0 & 1 & 1 \\
+0 & 0 & 1 & 1 \\
+0 & 1 & 0 & 2 \\
+\hline
+\multicolumn{3}{r|}{Total} & 6
+\end{tabular}
+
+\subsection{WavPack sub-block header}
+\begin{figure}[h]
+\includegraphics{figures/wavpack_subblock_header.pdf}
+\end{figure}
+\par
+\noindent
+If the `Large Block' field is 0, the `Block Size' field is 8 bits long.
+If it is 1, the `Block Size' field is 24 bits long.
+The `Block Size' field is the length of `Block Data', in 16-bit
+words rather than bytes.
+If `Actual Size 1 Less' is set, that means `Block Data' doesn't contain
+an even number of bytes; it is padded with a single null byte at the
+end in order to fit.
+If `Nondecoder Data' is set, that means the decoder does not have
+to understand the contents of this particular sub-block in
+order to decode the audio.

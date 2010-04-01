@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<diagram>
+  <row>
+    <col width=".20">WavPack Block₁</col>
+    <col width=".20" id="block">WavPack Block₂</col>
+    <col width=".20" style="dashed">...</col>
+    <col width=".20">WavPack Blockₓ</col>
+    <col width=".20" style="dashed">APEv2 Tag</col>
+  </row>
+  <row><blank/></row>
+  <row>
+    <col width=".22" start="0" end="255" id="blockheader">Block Header</col>
+    <col width=".22" start="256" id="subblock">Sub Block₁</col>
+    <col width=".22">Sub Block₂</col>
+    <col width=".22" style="dashed" id="blockend">...</col>
+  </row>
+  <row><blank/></row>
+  <row>
+    <col width=".25" start="0" end="7" id="subblockheader">Sub-Block Header</col>
+    <col width=".25" start="8" end="15/31">Sub-Block Length</col>
+    <col width=".30" id="subblockdata">Sub-Block Data</col>
+  </row>
+  <line s_id="block" s_corner="sw" e_id="blockheader" e_corner="nw" style="dotted"/>
+  <line s_id="block" s_corner="se" e_id="blockend" e_corner="ne" style="dotted"/>
+  <line s_id="subblock" s_corner="sw" e_id="subblockheader" e_corner="nw" style="dotted"/>
+  <line s_id="subblock" s_corner="se" e_id="subblockdata" e_corner="ne" style="dotted"/>
+</diagram>

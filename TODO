@@ -851,10 +851,10 @@
 *** TODO the APEv2 tag
 *** TODO the APEv2 tag header/footer
 *** TODO the APEv2 flags
-** TODO .wv
-*** TODO the WavPack file stream
-*** TODO a WavPack block header
-*** TODO a WavPack sub-block header
+** DONE .wv
+*** DONE the WavPack file stream
+*** DONE a WavPack block header
+*** DONE a WavPack sub-block header
 ** DONE .mp3
 *** DONE the MP3 file stream
 *** DONE an MPEG frame header

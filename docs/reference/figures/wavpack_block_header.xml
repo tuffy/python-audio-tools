@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<diagram>
+  <row>
+    <col start="0" end="31" width=".5">Block ID `wvpk' (0x7776706B)</col>
+    <col start="32" end="63" width=".5">Block Size</col>
+  </row>
+  <row>
+    <col start="64" end="79" width=".25">Version</col>
+    <col start="80" end="87" width=".25">Track Number</col>
+    <col start="88" end="95" width=".25">Index Number</col>
+    <col start="96" end="127" width=".25">Total Samples</col>
+  </row>
+  <row>
+    <col start="128" end="159" width=".5">Block Index</col>
+    <col start="160" end="191" width=".5">Block Samples</col>
+  </row>
+  <row>
+    <col start="192" end="192" width=".24">Floating Point Data</col>
+    <col start="193" end="193" width=".26">Hybrid Noise Shaping</col>
+    <col start="194" end="194" width=".27">Channel Decorrelation</col>
+    <col start="195" end="195" width=".23">Joint Stereo</col>
+  </row>
+  <row>
+    <col start="196" end="196" width=".25">Hybrid Mode</col>
+    <col start="197" end="197" width=".25">Mono Output</col>
+    <col start="198" end="199" width=".5">Bits-per-Sample</col>
+  </row>
+  <row>
+    <col start="200" end="202" width=".75">Left Shift Data (low)</col>
+    <col start="203" end="203" width=".25">Final Block</col>
+  </row>
+  <row>
+    <col start="204" end="204" width=".23">Initial Block</col>
+    <col start="205" end="205" width=".25">Hbd. Noise Balanced</col>
+    <col start="206" end="206" width=".25">Hbd. Controls Bitrate</col>
+    <col start="207" end="207" width=".27">Extended Size Integers</col>
+  </row>
+  <row>
+    <col start="208" end="208" width=".25">Sampling Rate (low)</col>
+    <col start="209" end="211" width=".75">Maximum Magnitude</col>
+  </row>
+  <row>
+    <col start="212" end="213" width=".5">Maximum Magnitude (cont.)</col>
+    <col start="214" end="215" width=".5">Left Shift Data (high)</col>
+  </row>
+  <row>
+    <col start="216" end="216" width=".25">Reserved</col>
+    <col start="217" end="217" width=".25">False Stereo</col>
+    <col start="218" end="218" width=".25">Use IIR</col>
+    <col start="219" end="219" width=".25">Reserved</col>
+  </row>
+  <row>
+    <col start="220" end="220" width=".25">Reserved</col>
+    <col start="221" end="223" width=".75">Sampling Rate (high)</col>
+  </row>
+  <row>
+    <col start="224" end="255">CRC</col>
+  </row>
+</diagram>
