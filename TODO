@@ -855,14 +855,14 @@
 *** TODO the WavPack file stream
 *** TODO a WavPack block header
 *** TODO a WavPack sub-block header
-** TODO .mp3
+** DONE .mp3
 *** DONE the MP3 file stream
 *** DONE an MPEG frame header
 **** DONE the Xing header
 *** DONE the ID3v1 tag
 **** DONE ID3v1
 **** DONE ID3v1.1
-*** TODO the ID3v2 tag
+*** DONE the ID3v2 tag
 **** DONE the ID3v2 stream
 **** DONE ID3v2.2
 ***** DONE the ID3v2.2 Header
@@ -874,17 +874,17 @@
 ***** DONE an ID3v2.3 Frame
 ***** DONE ID3v2.3 Frame IDs
 ***** DONE the APIC Frame
-**** TODO ID3v2.4
+**** DONE ID3v2.4
 ***** DONE the ID3v2.4 Header
 ***** DONE an ID3v2.4 Frame
 ***** DONE ID3v2.4 Frame IDs
 ***** DONE the APIC Frame
-** TODO .ogg
+** DONE .ogg
 *** DONE the Ogg file stream
 *** DONE an Ogg Page
 *** DONE Ogg packets
 *** DONE the Identification packet
-*** TODO the Comment packet
+*** DONE the Comment packet
 ** TODO .spx
 *** TODO the Header packet
 *** TODO the Comment packet
