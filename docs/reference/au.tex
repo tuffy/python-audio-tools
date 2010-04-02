@@ -1,0 +1,46 @@
+\chapter{Sun AU}
+The AU file format was invented by Sun Microsystems
+and also used on NeXT systems.
+All values in AU are stored as big-endian.
+It supports a wide array of data formats, including \textmu-law logarithmic
+encoding, but can also be used as a PCM container.
+
+\section{the Sun AU file stream}
+\begin{figure}[h]
+\includegraphics{figures/au_stream.pdf}
+\end{figure}
+
+\begin{table}[h]
+{\relsize{-2}
+\begin{tabular}{|r|l|}
+\hline
+value & encoding format \\
+\hline
+1 & 8-bit G.711 \textmu-law \\
+2 & 8-bit linear PCM \\
+3 & 16-bit linear PCM \\
+4 & 24-bit linear PCM \\
+5 & 32-bit linear PCM \\
+6 & 32-bit IEEE floating point \\
+7 & 64-bit IEEE floating point \\
+8 & Fragmented sample data \\
+9 & DSP program \\
+10 & 8-bit fixed point \\
+11 & 16-bit fixed point \\
+12 & 24-bit fixed point \\
+13 & 32-bit fixed point \\
+18 & 16-bit linear with emphasis \\
+19 & 16-bit linear compressed \\
+20 & 16-bit linear with emphasis and compression \\
+21 & Music kit DSP commands \\
+23 & 4-bit ISDN \textmu-law compressed using \\
+& the ITU-T G.721 ADPCM voice data encoding scheme \\
+24 & ITU-T G.722 ADPCM \\
+25 & ITU-T G.723 3-bit ADPCM \\
+26 & ITU-T G.723 5-bit ADPCM \\
+27 & 8-bit G.711 A-law \\
+\hline
+\end{tabular}
+}
+\end{table}
+

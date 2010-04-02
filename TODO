@@ -785,9 +785,12 @@
 * TODO Make reference documentation render consistently
 ** TODO Ensure documents render in letter and A4 size
 ** TODO Add Creative Commons licensing to source code and doc itself
-** DONE Basics
+** TODO Add new introduction
+** TODO Basics
 *** DONE Hexadecimal
 *** DONE Endianness
+*** TODO Signed values
+    How to decode/encode signed integers should be properly explained
 *** DONE Character Encodings
 *** DONE PCM
 ** DONE .wav
@@ -801,9 +804,9 @@
 *** DONE the COMM chunk
 **** TODO 80 bit IEEE standard 754 floating point
 *** DONE the SSND chunk
-** TODO .au
-*** TODO the AU stream
-*** TODO the AU header
+** DONE .au
+*** DONE the AU stream
+*** DONE the AU header
 ** DONE .flac
 *** DONE the FLAC file stream
 *** DONE FLAC metadata

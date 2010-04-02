@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<diagram>
+  <row>
+    <col start="0" end="191" width=".20" id="header">Header</col>
+    <col start="192" width=".20">Info</col>
+    <col width=".60" style="dashed">Data</col>
+  </row>
+  <row><blank/></row>
+  <row>
+    <col start="0" end="31" width=".5" id="magic">Magic Number (`.snd' 0x2e736e64)</col>
+    <col start="32" end="63" width=".5" id="offset">Data Offset</col>
+  </row>
+  <row>
+    <col start="64" end="95" width=".5">Data Size</col>
+    <col start="96" end="127" width=".5">Encoding Format</col>
+  </row>
+  <row>
+    <col start="128" end="159" width=".5">Sample Rate</col>
+    <col start="160" end="191" width=".5">Channels</col>
+  </row>
+  <line s_id="header" s_corner="sw" e_id="magic" e_corner="nw" style="dotted"/>
+  <line s_id="header" s_corner="se" e_id="offset" e_corner="ne" style="dotted"/>
+</diagram>
