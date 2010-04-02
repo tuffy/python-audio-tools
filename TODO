@@ -888,13 +888,13 @@
 *** DONE Ogg packets
 *** DONE the Identification packet
 *** DONE the Comment packet
-** TODO .spx
-*** TODO the Header packet
-*** TODO the Comment packet
-** TODO .oga
-*** TODO the Ogg FLAC file stream
-*** TODO the STREAMINFO metadata packet
-*** TODO the Metadata packets
+** DONE .spx
+*** DONE the Header packet
+*** DONE the Comment packet
+** DONE .oga
+*** DONE the Ogg FLAC file stream
+*** DONE the STREAMINFO metadata packet
+*** DONE the Metadata packets
 ** DONE .m4a
 *** DONE the QuickTime file stream
 *** DONE a QuickTime atom

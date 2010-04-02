@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<diagram>
+  <row>
+    <col start="0" end="63">Speex String `Speex   ' (0x5370656578202020)</col>
+  </row>
+  <row>
+    <col start="64" end="223" width=".5">Speex Version</col>
+    <col start="224" end="255" width=".5">Speex Version ID</col>
+  </row>
+  <row>
+    <col start="256" end="287" width=".333333">Header Size</col>
+    <col start="288" end="319" width=".333333">Sampling Rate</col>
+    <col start="320" end="351" width=".333333">Mode</col>
+  </row>
+  <row>
+    <col start="352" end="383" width=".333333">Mode Bitstream Version</col>
+    <col start="384" end="415" width=".333333">Number of Channels</col>
+    <col start="416" end="447" width=".333333">Bitrate</col>
+  </row>
+  <row>
+    <col start="448" end="479" width=".333333">Frame Size</col>
+    <col start="480" end="511" width=".333333">VBR</col>
+    <col start="512" end="543" width=".333333">Frames Per Packet</col>
+  </row>
+  <row>
+    <col start="544" end="575" width=".333333">Extra Headers</col>
+    <col start="576" end="607" width=".333333">Reserved₁</col>
+    <col start="608" end="639" width=".333333">Reserved₂</col>
+  </row>
+</diagram>

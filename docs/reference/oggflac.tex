@@ -1,0 +1,16 @@
+\chapter{Ogg FLAC}
+Ogg FLAC is a FLAC audio stream in an Ogg container.
+
+\section{the Ogg FLAC file stream}
+\begin{figure}[h]
+\includegraphics{figures/oggflac_stream.pdf}
+\end{figure}
+\par
+\noindent
+Subsequent FLAC metadata blocks are stored 1 per packet.
+Each contains the 32-bit FLAC metadata block header
+in addition to the metadata itself.
+The \texttt{VORBIS\_COMMENT} metadata block is required to immediately
+follow the \texttt{STREAMINFO} block, but all others may appear in
+any order.
+

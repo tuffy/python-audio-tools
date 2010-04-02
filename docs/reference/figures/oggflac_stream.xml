@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<diagram>
+  <row>
+    <col width=".2" id="page1">Ogg Page</col>
+    <col width=".2" id="page2">Ogg Page</col>
+    <col width=".0666666" style="dashed">...</col>
+    <col width=".2" id="page3">Ogg Page</col>
+    <col width=".0666666" style="dashed">...</col>
+    <col width=".2" id="page4">Ogg Page</col>
+    <col width=".0666666" style="dashed">...</col>
+  </row>
+  <row><blank/></row>
+  <row>
+    <col width=".125" id="segment1">Segment</col>
+    <blank width=".041666666"/>
+    <col width=".125" id="segment2">Segment</col>
+    <col width=".125" id="segment3">Segment</col>
+    <blank width=".041666666"/>
+    <col width=".125" id="segment4">Segment</col>
+    <col width=".125" id="segment5">Segment</col>
+    <blank width=".041666666"/>
+    <col width=".125" id="segment6">Segment</col>
+    <col width=".125" id="segment7">Segment</col>
+  </row>
+  <row><blank/></row>2
+  <line s_id="page1" s_corner="sw" e_id="segment1" e_corner="nw" style="dotted"/>
+  <line s_id="page1" s_corner="se" e_id="segment1" e_corner="ne" style="dotted"/>
+  <line s_id="page2" s_corner="sw" e_id="segment2" e_corner="nw" style="dotted"/>
+  <line s_id="page2" s_corner="se" e_id="segment3" e_corner="ne" style="dotted"/>
+  <line s_id="page3" s_corner="sw" e_id="segment4" e_corner="nw" style="dotted"/>
+  <line s_id="page3" s_corner="se" e_id="segment5" e_corner="ne" style="dotted"/>
+  <line s_id="page4" s_corner="sw" e_id="segment6" e_corner="nw" style="dotted"/>
+  <line s_id="page4" s_corner="se" e_id="segment7" e_corner="ne" style="dotted"/>
+  <row>
+    <col start="0" end="407" width=".16" id="streaminfo">STREAMINFO</col>
+    <col width=".26" id="vorbiscomment">Vorbis Comment</col>
+    <col width=".13" id="metadata3">Metadata₃</col>
+    <col width=".13" id="metadata4">Metadata₄</col>
+    <col width=".05" style="dashed">...</col>
+    <col width=".11" id="frame1">Frame₁</col>
+    <col width=".11" id="frame2">Frame₂</col>
+    <col width=".05" style="dashed">...</col>
+  </row>
+  <row><blank/></row>
+  <line s_id="segment1" s_corner="sw" e_id="streaminfo" e_corner="nw" style="dotted"/>
+  <line s_id="segment1" s_corner="se" e_id="streaminfo" e_corner="ne" style="dotted"/>
+  <line s_id="segment2" s_corner="sw" e_id="vorbiscomment" e_corner="nw" style="dotted"/>
+  <line s_id="segment3" s_corner="se" e_id="vorbiscomment" e_corner="ne" style="dotted"/>
+  <line s_id="segment4" s_corner="sw" e_id="metadata4" e_corner="nw" style="dotted"/>
+  <line s_id="segment5" s_corner="se" e_id="metadata4" e_corner="ne" style="dotted"/>
+  <line s_id="segment6" s_corner="sw" e_id="frame2" e_corner="nw" style="dotted"/>
+  <line s_id="segment7" s_corner="se" e_id="frame2" e_corner="ne" style="dotted"/>
+  <row>
+    <col start="0" end="7" width=".5" id="packet_byte">Packet Byte (0x7F)</col>
+    <col start="8" end="39" width=".5" id="signature">Signature `FLAC' (0x464C4143)</col>
+  </row>
+  <row>
+    <col start="40" end="47" width=".5">Major Version (0x1)</col>
+    <col start="48" end="55" width=".5">Minor Version (0x0)</col>
+  </row>
+  <row>
+    <col start="56" end="71" width=".5">Header Packets</col>
+    <col start="72" end="103" width=".5">FLAC Signature `fLaC' (0x664C6143)</col>
+  </row>
+  <row>
+    <col start="104" end="104" width=".333333">Last Block (0)</col>
+    <col start="105" end="111" width=".333333">Block Type (0x0)</col>
+    <col start="112" end="135" width=".333333">Block Length</col>
+  </row>
+  <row>
+    <col start="136" end="151" width=".5">Minimum Block Size (in samples)</col>
+    <col start="152" end="167" width=".5">Maximum Block Size (in samples)</col>
+  </row>
+  <row>
+    <col start="168" end="191" width=".5">Minimum Frame Size (in bytes)</col>
+    <col start="192" end="215" width=".5">Maximum Frame Size (in bytes)</col>
+  </row>
+  <row>
+    <col start="216" end="235" width=".333333">Sample Rate</col>
+    <col start="236" end="238" width=".333333">Channels</col>
+    <col start="239" end="243" width=".333333">Bits Per Sample</col>
+  </row>
+  <row>
+    <col start="244" end="279">Total Samples</col>
+  </row>
+  <row>
+    <col start="280" end="407">MD5 Sum of PCM Data</col>
+  </row>
+  <line s_id="streaminfo" s_corner="sw" e_id="packet_byte" e_corner="nw" style="dotted"/>
+  <line s_id="streaminfo" s_corner="se" e_id="signature" e_corner="ne" style="dotted"/>
+</diagram>
