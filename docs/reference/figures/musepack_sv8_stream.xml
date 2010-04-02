@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<diagram>
+  <row>
+    <col start="0" end="31" width=".30">`MPCK' (0x4D50434B)</col>
+    <col start="32" width=".175" id="packet">Packet₁</col>
+    <col width=".175">Packet₂</col>
+    <col style="dashed" width=".175">...</col>
+    <col width=".175">APEv2 tag</col>
+  </row>
+  <row><blank/></row>
+  <row>
+    <blank width=".15"/>
+    <col start="0" end="15" width=".15" id="key">Key</col>
+    <col start="16" width=".15">Length</col>
+    <col width=".25" id="value">Value</col>
+  </row>
+  <line s_id="packet" s_corner="sw" e_id="key" e_corner="nw" style="dotted"/>
+  <line s_id="packet" s_corner="se" e_id="value" e_corner="ne" style="dotted"/>
+</diagram>

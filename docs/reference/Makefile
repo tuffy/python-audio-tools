@@ -39,10 +39,13 @@ figures/wavpack_stream.pdf figures/wavpack_block_header.pdf \
 figures/wavpack_subblock_header.pdf \
 figures/ape_stream.pdf figures/ape_descriptor.pdf figures/ape_header.pdf \
 figures/apev2_tag.pdf figures/apev2_tagheader.pdf figures/apev2_flags.pdf \
-figures/speex_header.pdf
+figures/speex_header.pdf \
+figures/musepack_sv7_stream.pdf figures/musepack_sv8_stream.pdf \
+figures/musepack_sv8_sh.pdf figures/musepack_sv8_rg.pdf \
+figures/musepack_sv8_ei.pdf
 
 CHAPTERS = basics.tex wav.tex flac.tex m4a.tex mp3.tex vorbis.tex \
-wavpack.tex ape.tex aiff.tex au.tex speex.tex oggflac.tex
+wavpack.tex ape.tex aiff.tex au.tex speex.tex oggflac.tex musepack.tex
 
 all: audiotools.pdf
 

@@ -917,16 +917,16 @@
 ***** DONE the trkn sub-atom
 ***** DONE the disk sub-atom
 ** TODO .mpc
-*** TODO Musepack SV7
-**** TODO the Musepack SV7 file stream
-**** TODO the Musepack SV7 header
+*** DONE Musepack SV7
+**** DONE the Musepack SV7 file stream
+**** DONE the Musepack SV7 header
 *** TODO Musepack SV8
-**** TODO the Musepack SV8 file stream
+**** DONE the Musepack SV8 file stream
 **** TODO Nut-encoded values
-**** TODO the SH packet
-**** TODO the SE packet
-**** TODO the RG packet
-**** TODO the EI packet
+**** DONE the SH packet
+**** DONE the SE packet
+**** DONE the RG packet
+**** DONE the EI packet
 ** TODO FreeDB
 *** TODO Native Protocol
 **** TODO the Disc ID
