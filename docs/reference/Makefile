@@ -1,6 +1,7 @@
 #FIXME - reorganize this big mess
 FIGURES = binary.pdf figures/pcm.pdf figures/wav_stream.pdf \
 figures/wav_fmt.pdf figures/wav_fmtext.pdf figures/wav_data.pdf \
+figures/aiff_stream.pdf figures/aiff_comm.pdf figures/aiff_ssnd.pdf \
 figures/flac_stream.pdf figures/flac_streaminfo.pdf \
 figures/flac_application.pdf figures/flac_seektable.pdf \
 figures/flac_vorbiscomment.pdf figures/flac_cuesheet.pdf \
@@ -39,12 +40,13 @@ figures/ape_stream.pdf figures/ape_descriptor.pdf figures/ape_header.pdf \
 figures/apev2_tag.pdf figures/apev2_tagheader.pdf figures/apev2_flags.pdf
 
 CHAPTERS = basics.tex wav.tex flac.tex m4a.tex mp3.tex vorbis.tex \
-wavpack.tex ape.tex
+wavpack.tex ape.tex aiff.tex
 
 all: audiotools.pdf
 
 clean:
-	rm -f *.toc *.aux *.log *.pdf
+	rm -f audiotools.pdf *.toc *.aux *.log $(FIGURES)
+	rm -f figures/pcm.fig figures/flac_hann.fig figures/flac_rectangular.fig figures/flac_tukey.fig
 
 audiotools.pdf: audiotools.tex audiotools.toc $(CHAPTERS) $(FIGURES)
 	pdflatex audiotools.tex

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<diagram>
+  <row>
+    <col start="0" end="31" width=".5">Chunk ID (`COMM' 0x434F4D4D)</col>
+    <col start="32" end="63" width=".5">Chunk Size (18)</col>
+  </row>
+  <row>
+    <col start="64" end="79" width=".125">Channels</col>
+    <col start="80" end="111" width=".30">Total Sample Frames</col>
+    <col start="112" end="127" width=".175">Sample Size</col>
+    <col start="128" end="207" width=".4" id="sample_rate">Sample Rate</col>
+  </row>
+  <row><blank/></row>
+  <row>
+    <col start="0" end="0" width=".10" id="sign">Sign</col>
+    <col start="1" end="15" width=".20">Exponent</col>
+    <col start="16" end="79" width=".70" id="mantissa">Mantissa</col>
+  </row>
+  <line s_id="sample_rate" s_corner="sw" e_id="sign" e_corner="nw" style="dotted"/>
+  <line s_id="sample_rate" s_corner="se" e_id="mantissa" e_corner="ne" style="dotted"/>
+</diagram>

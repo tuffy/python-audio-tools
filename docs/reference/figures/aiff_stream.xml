@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<diagram>
+  <row>
+    <col start="0" end="31" width=".333333">ID (‘FORM’ 0x464F524D)</col>
+    <col start="32" end="63" width=".333333">Chunk Size (file size - 8)</col>
+    <col start="64" width=".333333" id="big_chunk_data">Chunk Data</col>
+  </row>
+  <row><blank/></row>
+  <row>
+    <col start="64" end="95" width=".333333" id="type">Type (‘AIFF’ 0x41494646)</col>
+    <col start="96" width=".222222" id="chunk1">Chunk₁</col>
+    <col width=".222222">Chunk₂</col>
+    <col width=".222222" style="dashed" id="...">...</col>
+  </row>
+  <row><blank/></row>
+  <row>
+    <col start="0" end="31" width=".333333" id="chunk_id">Chunk ID (ASCII text)</col>
+    <col start="32" end="63" width=".333333">Chunk Size</col>
+    <col start="64" width=".333333" style="dashed" id="chunk_data">Chunk Data</col>
+  </row>
+  <line s_id="big_chunk_data" s_corner="sw" e_id="type" e_corner="nw" style="dotted"/>
+  <line s_id="big_chunk_data" s_corner="se" e_id="..." e_corner="ne" style="dotted"/>
+  <line s_id="chunk1" s_corner="sw" e_id="chunk_id" e_corner="nw" style="dotted"/>
+  <line s_id="chunk1" s_corner="se" e_id="chunk_data" e_corner="ne" style="dotted"/>
+</diagram>

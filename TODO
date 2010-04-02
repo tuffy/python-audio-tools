@@ -796,11 +796,11 @@
 *** DONE the WAVEFORMATEXTENSIBLE fmt chunk
 *** DONE the data chunk
 *** DONE channel mapping
-** TODO .aiff
-*** TODO the AIFF stream
-*** TODO the COMM chunk
+** DONE .aiff
+*** DONE the AIFF stream
+*** DONE the COMM chunk
 **** TODO 80 bit IEEE standard 754 floating point
-*** the SSND chunk
+*** DONE the SSND chunk
 ** TODO .au
 *** TODO the AU stream
 *** TODO the AU header
