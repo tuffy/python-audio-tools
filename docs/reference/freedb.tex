@@ -1,0 +1,103 @@
+\chapter{FreeDB}
+Because compact discs do not usually contain metadata about
+track names, album names and so forth, that information
+must be retrieved from an external source.
+FreeDB is a service which allows users to submit CD
+metadata and to retrieve the metadata submitted by others.
+Both actions require a category and a 32-bit disc ID number,
+which combine to form a unique identifier for a particular CD.
+
+%% The 32-bit disc ID is calculated from the total number of tracks,
+%% the track offsets (in CD sectors) and the total length of the CD
+%% (in seconds).
+
+%% In the case of CD submission, the genre is decided by the submitter.
+%% In the case of CD retrieval, the user must choose from a list
+%% of possible choices when there is a collision between 32-bit disc ID
+%% numbers.
+
+%% The actual metadata is stored as XMCD files.
+
+\begin{wrapfigure}[18]{r}{1.24in}
+\includegraphics{figures/freedb_sequence.pdf}
+\end{wrapfigure}
+\section{Native Protocol}
+FreeDB's native protocol runs as a service on TCP port 8880.
+\begin{itemize}
+\item After connecting, the client and server exchange a handshake using
+the \texttt{hello} command.
+The server will not do anything without this handshake.
+
+\item Next the client changes to protocol level 6 with
+the \texttt{proto} command.
+This is necessary because only the highest protocol supports
+UTF-8 text encoding.
+Without this, any characters not in the latin-1 set will not be
+sent properly.
+
+\item Once that is accomplished, the client should calculate the 32-bit
+disc ID from the track information.
+
+\item One then sends the 32-bit disc ID and additional disc information
+to the server with the \texttt{query} command to retrieve a list of
+matching disc IDs, genres and titles.
+If there are multiple matches, the user must be prompted to
+choose one of the matches.
+
+\item When our match is known, the client uses the \texttt{read} command
+to retrieve the actual XMCD data.
+
+\item Finally, the \texttt{close} command is used to sever the connection
+and complete the transaction.
+\end{itemize}
+
+\pagebreak
+
+\section{the disc ID}
+FreeDB uses a big-endian 32-bit disc ID to differentiate
+on disc from another.
+
+\begin{figure}[h]
+\includegraphics{figures/freedb_discid.pdf}
+\end{figure}
+\par
+\noindent
+`Track Count' is self-explanatory.
+`Total Length' is the total length of all the tracks, not
+counting the initial 2 second lead-in.
+`Offset Seconds Digit Sum' is the sum of the digits of all
+the disc's track offsets, in seconds, and truncated to 8 bits.
+Remember to count the initial 2 second/150 frame lead-in when calculating
+offsets.
+\begin{table}[h]
+\begin{tabular}{|c||r|r|r||r|r|r|}
+\hline
+Track & \multicolumn{3}{c||}{Length} & \multicolumn{3}{c|}{Offset} \\
+Number & in M:SS & in seconds & in frames & in M:SS & in seconds & in frames \\
+\hline
+1 & 3:37 & 217 & 16340 & 0:02 & 2 & 150 \\
+2 & 3:23 & 203 & 15294 & 3:39 & 219 & 16490 \\
+3 & 3:37 & 217 & 16340 & 7:03 & 423 & 31784 \\
+4 & 3:20 & 200 & 15045 & 10:41 & 641 & 48124 \\
+\hline
+\end{tabular}
+\end{table}
+\par
+\noindent
+In this example, `Track Count' is \textbf{4}.
+`Total Length' is
+$\frac{16340 + 15294 + 16340 + 15045}{75} = \textbf{840}$
+
+There are 75 frames per second, and one must remember to count
+fractions of seconds when calculating the total disc length.
+
+The `Offset Seconds Digit Sum' is calculated by looking at the
+`Offset in Seconds' column.
+Those values are 2, 219, 423 and 641.
+One must take all of those digits and add them, which works out to
+$2 + 2 + 1 + 9 + 4 + 2 + 3 + 6 + 4 + 1 = \textbf{34}$
+
+This means our three values are 34, 840 and 4.
+In hexadecimal, they are 0x22, 0x0348 and 0x04.
+Combining them into a single value yields 0x22034804.
+Thus, our FreeDB disc ID is \texttt{22034804}

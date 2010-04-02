@@ -709,8 +709,6 @@
 *** DONE Ensure UnsupportedChannelMask is raised when necessary
     This includes calls to from_pcm() and from_wave()
 ** DONE Ensure PCMReader.channel_mask is always an integer
-* TODO Get coverview and editxmcd working on Mac OS X
-  Preferably without falling back to Tkinter
 * TODO Perform code review of C-based extensions
 ** TODO audiotools.cdio
 ** TODO audiotools.decoders
@@ -929,16 +927,13 @@
 **** DONE the EI packet
 ** TODO FreeDB
 *** TODO Native Protocol
-**** TODO the Disc ID
+**** DONE the Disc ID
 **** TODO Initial Greeting
 **** TODO Client-Server Handshake
 **** TODO Set Protocol Level
-**** TODO Calculate Disc ID
 **** TODO Query Database
 **** TODO Read XMCD Data
 **** TODO Close Connection
-**** TODO List Genres
-**** TODO List Mirrors
 *** TODO Web Protocol
 *** TODO XMCD
 **** TODO BNF
@@ -959,3 +954,12 @@
 **** TODO RMS Energy Blocks
 **** TODO Statistical Processing and Calibration
 ** TODO References
+* TODO Seperate unreadable files from unknown files
+  Files we're unable to read should be handled differently
+  from files we're unable to understand.
+* TODO Support disc metadata submission
+  If a disc is not found on FreeDB or MusicBrainz,
+  there should be some mechanism to submit user-defined data
+  to those services.
+* TODO Get coverview and editxmcd working on Mac OS X
+  Preferably without falling back to Tkinter

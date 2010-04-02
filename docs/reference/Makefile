@@ -42,10 +42,12 @@ figures/apev2_tag.pdf figures/apev2_tagheader.pdf figures/apev2_flags.pdf \
 figures/speex_header.pdf \
 figures/musepack_sv7_stream.pdf figures/musepack_sv8_stream.pdf \
 figures/musepack_sv8_sh.pdf figures/musepack_sv8_rg.pdf \
-figures/musepack_sv8_ei.pdf
+figures/musepack_sv8_ei.pdf \
+figures/freedb_sequence.pdf figures/freedb_discid.pdf
 
 CHAPTERS = basics.tex wav.tex flac.tex m4a.tex mp3.tex vorbis.tex \
-wavpack.tex ape.tex aiff.tex au.tex speex.tex oggflac.tex musepack.tex
+wavpack.tex ape.tex aiff.tex au.tex speex.tex oggflac.tex musepack.tex \
+freedb.tex
 
 all: audiotools.pdf
 
@@ -103,6 +105,9 @@ figures/flac_nonexhaustive.pdf: figures/flac_nonexhaustive.fig
 
 figures/flac_exhaustive.pdf: figures/flac_exhaustive.fig
 	fig2dev -Z 3.5 -L pdf $< $@
+
+figures/freedb_sequence.pdf: figures/freedb_sequence.fig
+	fig2dev -Z 4 -L pdf $< $@
 
 figures/m4a_atoms.pdf: figures/m4a_atoms.fig
 	fig2dev -Z 6 -L pdf $< $@
