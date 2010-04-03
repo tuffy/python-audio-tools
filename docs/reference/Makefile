@@ -44,7 +44,7 @@ figures/musepack_sv7_stream.pdf figures/musepack_sv8_stream.pdf \
 figures/musepack_sv8_sh.pdf figures/musepack_sv8_rg.pdf \
 figures/musepack_sv8_ei.pdf \
 figures/freedb_sequence.pdf figures/freedb_discid.pdf \
-figures/musicbrainz_discid.pdf
+figures/musicbrainz_discid.pdf figures/musicbrainz_xml.pdf
 
 CHAPTERS = basics.tex wav.tex flac.tex m4a.tex mp3.tex vorbis.tex \
 wavpack.tex ape.tex aiff.tex au.tex speex.tex oggflac.tex musepack.tex \

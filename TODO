@@ -783,7 +783,7 @@
 * TODO Make reference documentation render consistently
 ** TODO Ensure documents render in letter and A4 size
 ** TODO Add Creative Commons licensing to source code and doc itself
-** TODO Add internal PDF linkage
+** DONE Add internal PDF linkage
    The file should have working bookmarks
    and internal links so one can click directly to a chapter
 ** TODO Add new introduction
