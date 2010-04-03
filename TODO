@@ -783,6 +783,9 @@
 * TODO Make reference documentation render consistently
 ** TODO Ensure documents render in letter and A4 size
 ** TODO Add Creative Commons licensing to source code and doc itself
+** TODO Add internal PDF linkage
+   The file should have working bookmarks
+   and internal links so one can click directly to a chapter
 ** TODO Add new introduction
 ** TODO Basics
 *** DONE Hexadecimal
@@ -797,11 +800,12 @@
 *** DONE the WAVEFORMATEXTENSIBLE fmt chunk
 *** DONE the data chunk
 *** DONE channel mapping
-** DONE .aiff
+** TODO .aiff
 *** DONE the AIFF stream
 *** DONE the COMM chunk
 **** TODO 80 bit IEEE standard 754 floating point
 *** DONE the SSND chunk
+*** TODO Channel assignment
 ** DONE .au
 *** DONE the AU stream
 *** DONE the AU header
@@ -880,12 +884,13 @@
 ***** DONE an ID3v2.4 Frame
 ***** DONE ID3v2.4 Frame IDs
 ***** DONE the APIC Frame
-** DONE .ogg
+** TODO .ogg
 *** DONE the Ogg file stream
 *** DONE an Ogg Page
 *** DONE Ogg packets
 *** DONE the Identification packet
 *** DONE the Comment packet
+*** TODO Channel assignment
 ** DONE .spx
 *** DONE the Header packet
 *** DONE the Comment packet
@@ -943,9 +948,9 @@
 **** DONE Release XML
 *** DONE MusieBrainz XML
 ** TODO ReplayGain
-*** TODO Applying ReplayGain
+*** DONE Applying ReplayGain
 *** TODO Calculating ReplayGain
-**** TODO the Equal Loudness Filter
+**** DONE the Equal Loudness Filter
      This should be re-documented to be closer to the actual implementation
 ***** TODO the Yule Filter
 ***** TODO the Buffer Filter
@@ -953,6 +958,8 @@
 **** TODO RMS Energy Blocks
 **** TODO Statistical Processing and Calibration
 ** TODO References
+** TODO Index
+   If possible without too much pain, generate a working index
 * TODO Seperate unreadable files from unknown files
   Files we're unable to read should be handled differently
   from files we're unable to understand.

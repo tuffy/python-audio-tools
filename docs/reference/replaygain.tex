@@ -1,0 +1,223 @@
+\chapter{ReplayGain}
+The ReplayGain standard is designed to address the problem of
+highly variable music loudness.
+For example, let's assume we have two audio tracks, A and B, and that
+track B is much louder than A.
+If played in sequence, the listener will have to scramble for the volume
+control once B starts in order to have a comfortable experience.
+ReplayGain solves this problem by calculating the overall loudness of a
+track as a delta (some positive or negative number of decibels, in
+relation to a reference loudness value).
+This delta is then applied during playback, which has the same effect
+as turning the volume up or down so that the user doesn't have to.
+
+ReplayGain requires four floating-point values which are typically
+stored as metadata in each audio track:
+`track gain', a positive or negative number of decibels representing
+the loudness delta of this particular track,
+`track peak', the highest sample value of this particular track
+from a range of 0.0 to 1.0,
+`album gain', a positive or negative number of decibels representing
+the loudness delta of the track's entire album
+and `album peak', the highest sample value of the track's entire album
+from a range of 0.0 to 1.0.
+
+\section{Applying ReplayGain}
+The user will be expected to choose whether to apply `album gain'
+or `track gain' during playback.
+When listening to audio on an album-by-album basis, album gain
+keeps quiet tracks quiet and loud tracks loud within the context of
+that album.
+When listening to audio on a track-by-track basis, perhaps as
+a randomly shuffled set, track gain keeps them all to roughly the same
+loudness.
+So from an implementation perspective, a program only needs to apply
+the given gain and peak value to the stream being played back.
+Applying the gain value to each input PCM sample is quite simple:
+\begin{equation}
+\text{Output}_i = \text{Input}_i \times 10 ^ \frac{\text{gain}}{20}
+\end{equation}
+For example, if the gain is -2.19, each sample should be multiplied by
+$10 ^ \frac{-2.19}{20}$ or about 0.777.
+
+If the gain is negative, the PCM stream gets quieter than it was
+originally.
+If the gain is positive, the PCM stream gets louder.
+However, increasing the value of each sample may cause a problem
+if doing so sends any samples beyond the maximum value the stream
+can hold.
+For example, if the gain indicates we should be multiplying each sample
+by 1.28 and we encounter a 16-bit input sample with a value of 32000,
+the resulting output sample of 34560 is outside of the stream's
+16-bit signed range (-32678 to 32767).
+That will result in `clipping' the audio peaks, which doesn't sound good.
+
+Preventing this is what ReplayGain's peak value is for;
+it's the highest PCM value in the stream and no multiplier should push
+that value beyond 1.0.
+Thus, if the peak value of a stream is 0.9765625, no ReplayGain value
+should generate a multiplier higher than 1.024
+($0.9765625 \times 1.024 = 1.0$).
+
+\section{Calculating ReplayGain}
+
+As explained earlier, ReplayGain requires a peak and gain value
+which are split into `track' and `album' varieties for a total of four.
+The `track' values require the PCM data for the particular track
+we're generating data for.
+The `album' values require the PCM data for the entire album,
+concatenated together into a single stream.
+
+Determining the peak value is very straightforward.
+We simply convert each sample's value to the range of 0.0 to 1.0
+and find the highest value which occurs in the stream.
+For signed samples, the conversion process is also simple:
+\begin{equation}
+\text{Output}_i = \frac{| \text{Input}_i |}{2 ^ {\text{bits per sample} - 1}}
+\end{equation}
+Determining the gain value is a more complicated process.
+It involves running the input stream through an equal loudness filter,
+breaking that stream into 50 millisecond long blocks, and then
+determining a final value based on the value of those blocks.
+
+\subsection{the equal loudness filter}
+Because people don't perceive all frequencies of sounds as having
+equal loudness, ReplayGain runs audio through a filter which
+emphasizes ones we hear as loud and deemphasizes ones we hear as quiet.
+This equal loudness filtering is actually comprised of two separate
+filters: Yule and Butter (these are Infinite Impulse Response filters
+named after their creators).
+Each works on a similar principle.
+
+The basic premise is that each output sample is derived from multiplying
+`order' number of previous input samples by certain values (which
+depend on the filter) \textit{and} `order' number of previous output
+samples by a different set of values (also depending on the filter)
+and then combining the results.
+This filter is applied independently to each channel.
+In purely mathematical terms, it looks like this:
+\begin{equation}
+\text{Output}_i =
+\left ( \overset{i}{\underset{j = i - order}{\sum}}
+\text{Input}_j \times {\text{Input Filter}_j} \right )
+-
+\left ( \overset{i - 1}{\underset{k = i - order}{\sum}}
+\text{Output}_k \times {\text{Output Filter}_k} \right )
+\end{equation}
+`Input Filter' and `Output Filter' are lists of predefined values.
+`Order' refers to the size of those lists.
+When filtering at the start of the stream, treat any samples
+before the beginning as 0.
+
+\subsubsection{a filtering example}
+%[-14.908036018014995, -14.932052848963609, -14.650601584845713, -14.459643778083507, -14.152323319190605, -13.579604004214648, -13.182759811625989, -13.158326446068649, -13.122474161484691, -12.889629169763936, -12.808159820040585]
+Let's assume we have a 44100Hz stream and our previous input and output
+samples are as follows:
+\begin{table}[h]
+{\relsize{-2}
+\begin{tabular}{|r|r|r|r|}
+\hline
+sample & $\text{Input}_i$ & $\text{Yule}_i$ & $\text{Butter}_i$ \\
+\hline
+89 & \texttt{-33} & \texttt{-14.90} & \\
+90 & \texttt{-32} & \texttt{-14.93} & \\
+91 & \texttt{-35} & \texttt{-14.65} & \\
+92 & \texttt{-32} & \texttt{-14.46} & \\
+93 & \texttt{-30} & \texttt{-14.15} & \\
+94 & \texttt{-32} & \texttt{-13.58} & \\
+95 & \texttt{-33} & \texttt{-13.18} & \\
+96 & \texttt{-30} & \texttt{-13.16} & \\
+97 & \texttt{-30} & \texttt{-13.12} & \texttt{0.41} \\
+98 & \texttt{-30} & \texttt{-12.89} & \texttt{0.61} \\
+99 & \texttt{-32} & \texttt{-12.81} & \texttt{0.66} \\
+\hline
+\end{tabular}
+}
+\end{table}
+\par
+\noindent
+If the value of sample 100 from the input stream is -30,
+here's how we calculate output sample 100:
+\begin{table}[h]
+{\relsize{-2}
+\begin{tabular}{|r|rcrcr|rcrcr|}
+\hline
+sample & $\text{Input}_i$ & & $\text{Yule Input Filter}_i$ & & result &
+$\text{Yule}_i$ & & $\text{Yule Output Filter}_i$ & & result \\
+\hline
+90 & \texttt{-32} & $\times$ & \texttt{-0.00187763777362} & = & \texttt{0.06} &
+\texttt{-14.93} & $\times$ & \texttt{0.13149317958807999} & = & \texttt{-1.96} \\
+
+91 & \texttt{-35} & $\times$ & \texttt{0.0067461368224699999} & = & \texttt{-0.24} &
+\texttt{-14.65} & $\times$ & \texttt{-0.75104302451432003} & = & \texttt{11.00} \\
+
+92 & \texttt{-32} & $\times$ & \texttt{-0.0024087905158400001} & = & \texttt{0.08} &
+\texttt{-14.46} & $\times$ & \texttt{2.1961168489077401} & = & \texttt{-31.76} \\
+
+93 & \texttt{-30} & $\times$ & \texttt{0.016248649629749999} & = & \texttt{-0.49} &
+\texttt{-14.15} & $\times$ & \texttt{-4.3947099607955904} & = & \texttt{62.19} \\
+
+94 & \texttt{-32} & $\times$ & \texttt{-0.025963385129149998} & = & \texttt{0.83} &
+\texttt{-13.58} & $\times$ & \texttt{6.8540154093699801} & = & \texttt{-93.08} \\
+
+95 & \texttt{-33} & $\times$ & \texttt{0.022452932533390001} & = & \texttt{-0.74} &
+\texttt{-13.18} & $\times$ & \texttt{-8.8149868137015499} & = & \texttt{116.18} \\
+
+96 & \texttt{-30} & $\times$ & \texttt{-0.0083499090493599996} & = & \texttt{0.25} &
+\texttt{-13.16} & $\times$ & \texttt{9.4769360780128} & = & \texttt{-124.72} \\
+
+97 & \texttt{-30} & $\times$ & \texttt{-0.0085116564546900003} & = & \texttt{0.26} &
+\texttt{-13.12} & $\times$ & \texttt{-8.5475152747187408} & = & \texttt{112.14} \\
+
+98 & \texttt{-30} & $\times$ & \texttt{-0.0084870937985100006} & = & \texttt{0.25} &
+\texttt{-12.89} & $\times$ & \texttt{6.3631777756614802} & = & \texttt{-82.02} \\
+
+99 & \texttt{-32} & $\times$ & \texttt{-0.029110078089480001} & = & \texttt{0.93} &
+\texttt{-12.81} & $\times$ & \texttt{-3.4784594855007098} & = & \texttt{44.56} \\
+
+100 & \textbf{-30} & $\times$ & \texttt{0.054186564064300002} & = & \texttt{-1.63} &
+& & & & \\
+\hline
+\multicolumn{4}{|r}{input values sum} & = & \texttt{-0.44} &
+\multicolumn{3}{r}{output values sum} & = & \texttt{12.53} \\
+\hline
+\end{tabular}
+}
+\end{table}
+\par
+\noindent
+Therefore, $\text{Yule}_{100} = -0.44 - 12.53 = -12.97$
+
+We're not quite done yet.
+Remember, ReplayGain's equal loudness filter requires both
+a Yule \textit{and} Butter filter, in that order.
+Notice how Butter's input samples are Yule's output samples.
+Thus, our next input sample to the Butter filter is -12.97.
+Calculating sample 100 is now a similar process:
+\begin{table}[h]
+{\relsize{-2}
+\begin{tabular}{|r|rcrcr|rcrcr|}
+\hline
+sample & $\text{Yule}_i$ & & $\text{Butter Input Filter}_i$ & & result &
+$\text{Butter}_i$ & & $\text{Butter Output Filter}_i$ & & result \\
+\hline
+98 & \texttt{-12.89} & $\times$ & \texttt{0.98500175787241995} & = & \texttt{-12.70} &
+\texttt{0.61} & $\times$ & \texttt{0.97022847566350001} & = & \texttt{0.59} \\
+
+99 & \texttt{-12.81} & $\times$ & \texttt{-1.9700035157448399} & = & \texttt{25.24} &
+\texttt{0.66} & $\times$ & \texttt{-1.96977855582618} & = & \texttt{-1.30} \\
+
+100 & \textbf{-12.97} & $\times$ & \texttt{0.98500175787241995} & = & \texttt{-12.78} &
+& & & & \\
+\hline
+\multicolumn{4}{|r}{input values sum} & = & \texttt{-0.24} &
+\multicolumn{3}{r}{output values sum} & = & \texttt{-0.71} \\
+\hline
+\end{tabular}
+}
+\end{table}
+\par
+\noindent
+Therefore, $\text{Butter}_{100} = -0.24 - -0.71 = 0.47$
+, which is the next sample from the equal loudness filter.
+
