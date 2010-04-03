@@ -947,16 +947,16 @@
 **** DONE Server Query
 **** DONE Release XML
 *** DONE MusieBrainz XML
-** TODO ReplayGain
+** DONE ReplayGain
 *** DONE Applying ReplayGain
-*** TODO Calculating ReplayGain
+*** DONE Calculating ReplayGain
 **** DONE the Equal Loudness Filter
      This should be re-documented to be closer to the actual implementation
 ***** TODO the Yule Filter
 ***** TODO the Buffer Filter
 ***** TODO a Filtering Example
-**** TODO RMS Energy Blocks
-**** TODO Statistical Processing and Calibration
+**** DONE RMS Energy Blocks
+**** DONE Statistical Processing and Calibration
 ** TODO References
 ** TODO Index
    If possible without too much pain, generate a working index
