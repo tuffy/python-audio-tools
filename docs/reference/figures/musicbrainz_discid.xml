@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<diagram>
+  <row>
+    <col start="0" end="15" width=".23">First Track Number</col>
+    <col start="16" end="31" width=".23">Last Track Number</col>
+    <col start="32" end="95" width=".20">Lead Out Offset</col>
+    <col start="96" end="127" width=".10">Offset₁</col>
+    <col start="128" end="191" width=".10">Offset₂</col>
+    <col style="dashed" width=".04">...</col>
+    <col start="6368" end="6431" width=".10">Offset₉₉</col>
+  </row>
+</diagram>

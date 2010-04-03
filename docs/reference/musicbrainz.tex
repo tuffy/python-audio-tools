@@ -1,0 +1,79 @@
+\chapter{MusicBrainz}
+MusicBrainz is another CD metadata retrieval service similar to FreeDB,
+but designed to eliminate many of FreeDB's limitations.
+For example, MusicBrainz has a more robust disc ID calculation mechanism,
+it has an easier way to disambiguate database entries in case of collision,
+and its XML metadata format is less prone to errors
+(track names with `\texttt{/}' characters are a particular problem for
+FreeDB).
+
+However, because it is a newer service, it's common to find disc entries
+that are on FreeDB but do not yet have a MusicBrainz entry - whereas
+the converse is much more rare.
+Therefore, a metadata looking program would be wise to check both
+services if possible.
+
+\section{Searching releases}
+This is analagous to FreeDB's search routine in which one calculates
+a CD's disc ID, submits it to MusicBrainz via an HTTP get query
+and receives information such as album name, artist name, track names
+and so forth as an XML file.
+
+\pagebreak
+
+\subsection{the disc ID}
+Calculating a MusicBrainz disc ID requires knowing a CD's first track number,
+last track number, track offsets (in CD frames) and lead out track offset
+(also in CD frames).
+For example, given the following CD:
+\begin{table}[h]
+\begin{tabular}{|c||r|r|r||r|r|r|}
+\hline
+Track & \multicolumn{3}{c||}{Length} & \multicolumn{3}{c|}{Offset} \\
+Number & in M:SS & in seconds & in frames & in M:SS & in seconds & in frames \\
+\hline
+1 & 3:37 & 217 & 16340 & 0:02 & 2 & 150 \\
+2 & 3:23 & 203 & 15294 & 3:39 & 219 & 16490 \\
+3 & 3:37 & 217 & 16340 & 7:03 & 423 & 31784 \\
+4 & 3:20 & 200 & 15045 & 10:41 & 641 & 48124 \\
+\hline
+\end{tabular}
+\end{table}
+\par
+\noindent
+The first track number is 1, the last track number is 4, the track offsets
+are 150, 16490, 31784 and 48124, and the lead out track offset is
+63169 (track 4's offset 48124 plus its length of 15045).
+
+These numbers are then converted to 0-padded, big-endian hexadecimal strings
+with the track numbers using 2 digits and the offsets using 8 digits.
+In this example, the first track number becomes \texttt{01},
+the last track number becomes \texttt{04},
+the track offsets become \texttt{00000096}, \texttt{0000406A},
+\texttt{00007C28} and \texttt{0000BBFC},
+and the lead out track offset becomes \texttt{0000F6C1}.
+
+These individual strings are then combined into a single 804 byte string:
+\begin{figure}[h]
+\includegraphics{figures/musicbrainz_discid.pdf}
+\end{figure}
+
+Excess track offsets are treated as having an offset value of 0,
+or a string value of \texttt{00000000}.
+Our string starts with \texttt{01040000F6C1000000960000406A00007C280000BBFC}
+and is padded with an additional 760 `\texttt{0}' characters
+which I'll omit for brevity.
+
+That string is then passed through the SHA-1 hashing algorithm\footnote{This is described in RFC3174}
+which results in a 20 byte hash value.
+Remember to use the binary hash value, not its 40 byte ASCII hexadecimal one.
+
+In our example, this yields the hash:
+\texttt{0xDA3D930462773DD57BBE43B535AD6A457138F079}
+
+The resulting hash value is then encoded to a 28 byte Base64\footnote{This is described in RFC3548 and RFC4648} string.
+However, unlike standard Base64, MusicBrainz's disc ID replaces the
+characters `\texttt{=}', `\texttt{+}' and `\texttt{/}' with `\texttt{-}', `\texttt{.}' and `\texttt{\_}' respectively to
+make the value better suited to HTTP requests.
+So to complete our example, the hash value becomes a disc ID of
+\texttt{2j2TBGJ3PdV7vkO1Na1qRXE48Hk-}
