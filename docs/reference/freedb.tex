@@ -253,4 +253,89 @@ quit
 \texttt{<hostname>} & & server's host name
 \end{tabular}
 
+\pagebreak
 
+\section{Web protocol}
+FreeDB's web protocol runs as a service on HTTP port 80.
+A web client POSTs data to a location, typically: \texttt{cddb/cddb.cgi}
+and retrieves results.
+This method is similar to the native protocol and the returned
+data is identical.
+However, since HTTP POST requests are stateless,
+there is no separate \texttt{hello}, \texttt{proto} and \texttt{quit} commands;
+these are issued along with the primary server command or are implied.
+\begin{table}[h]
+\begin{tabular}{|r|l|}
+\hline
+key & value \\
+\hline
+\texttt{hello} &
+\texttt{<username> <hostname> <clientname> <version>} \\
+\texttt{proto} &
+\texttt{<protocol>} \\
+\texttt{cmd} &
+\texttt{<command>} \\
+\hline
+\end{tabular}
+\caption{POST arguments}
+\end{table}
+\par
+\noindent
+For example, to execute the \texttt{read} command on disc ID \texttt{AABBCCDD}
+in the \texttt{soundtrack} category, one can POST the following string:
+\begin{Verbatim}
+cmd=read+soundtrack+aabbccdd&hello=username+hostname+audiotools+1.0&proto=6
+\end{Verbatim}
+
+\section{XMCD}
+
+XMCD files are text files encoded either in UTF-8, ISO-8859-1 or
+US-ASCII.
+All begin with the string `\texttt{\# XMCD}'.
+Lines are delimited by either the 0x0A character
+or the 0x0D 0x0A character pair.
+All lines must be less than 256 characters long,
+including delimiters.
+Blank lines are prohibited.
+Lines that begin with the `\texttt{\#}' character are comments.
+Curiously, the comments themselves are expected by FreeDB to contain
+important information such as track offsets and disc length.
+Fortunately, FreeDB clients can safely ignore such information
+unless submitting a new disc entry.
+
+What we are interested in are the \texttt{KEY=value} pairs in the
+rest of the file.
+\begin{table}[h]
+{\relsize{-2}
+\begin{tabular}{|r|l|}
+\hline
+key & value \\
+\hline
+\texttt{DISCID} & a comma-separated list of 32-bit disc IDs \\
+\hline
+\texttt{DTITLE} & an artist name and album name, separated by ` / ' \\
+\hline
+\texttt{DYEAR} & a 4 digit disc release year \\
+\hline
+\texttt{DGENRE} & the disc's FreeDB category string \\
+\hline
+\texttt{TITLE}\textbf{X} & the track title, or \\
+& the track artist name and track title, separated by ` / ' \\
+& \textbf{X} is an integer starting from 0 \\
+\hline
+\texttt{EXTD} & extended data about the disc \\
+\hline
+\texttt{EXTT}\textbf{X} & extended data about the track \\
+& \textbf{X} is an integer starting from 0 \\
+\hline
+\texttt{PLAYORDER} & a comma-separated list of track numbers \\
+\hline
+\end{tabular}
+}
+\end{table}
+\par
+\noindent
+Multiple identical keys should have their values
+concatenated (minus the newline delimiter), which allows
+a single key to have a value longer than the
+256 characters line length.
