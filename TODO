@@ -936,12 +936,12 @@
 **** DONE Close Connection
 *** DONE Web Protocol
 *** DONE XMCD
-** TODO MusicBrainz
-*** TODO Searching Releases
-**** TODO The Disc ID
-**** TODO Server Query
-**** TODO Release XML
-*** TODO MusieBrainz XML
+** DONE MusicBrainz
+*** DONE Searching Releases
+**** DONE The Disc ID
+**** DONE Server Query
+**** DONE Release XML
+*** DONE MusieBrainz XML
 ** TODO ReplayGain
 *** TODO Applying ReplayGain
 *** TODO Calculating ReplayGain

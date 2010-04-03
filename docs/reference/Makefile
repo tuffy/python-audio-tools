@@ -48,7 +48,7 @@ figures/musicbrainz_discid.pdf
 
 CHAPTERS = basics.tex wav.tex flac.tex m4a.tex mp3.tex vorbis.tex \
 wavpack.tex ape.tex aiff.tex au.tex speex.tex oggflac.tex musepack.tex \
-freedb.tex musicbrainz.tex
+freedb.tex musicbrainz.tex musicbrainz_mmd.tex
 
 all: audiotools.pdf
 
@@ -108,6 +108,9 @@ figures/flac_exhaustive.pdf: figures/flac_exhaustive.fig
 	fig2dev -Z 3.5 -L pdf $< $@
 
 figures/freedb_sequence.pdf: figures/freedb_sequence.fig
+	fig2dev -Z 4 -L pdf $< $@
+
+figures/musicbrainz_xml.pdf: figures/musicbrainz_xml.fig
 	fig2dev -Z 4 -L pdf $< $@
 
 figures/m4a_atoms.pdf: figures/m4a_atoms.fig

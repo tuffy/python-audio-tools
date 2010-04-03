@@ -77,3 +77,86 @@ characters `\texttt{=}', `\texttt{+}' and `\texttt{/}' with `\texttt{-}', `\text
 make the value better suited to HTTP requests.
 So to complete our example, the hash value becomes a disc ID of
 \texttt{2j2TBGJ3PdV7vkO1Na1qRXE48Hk-}
+
+\pagebreak
+
+\subsection{Server query}
+MusicBrainz runs as a service on HTTP port 80.
+To retrieve Release information, one can make a GET request to
+\texttt{/ws/1/release} using the following fields:
+\begin{table}[h]
+\begin{tabular}{|r|l|}
+\hline
+key & value \\
+\hline
+\texttt{type} & \texttt{xml} \\
+\texttt{discid} & \texttt{<disc ID string>} \\
+\hline
+\end{tabular}
+\end{table}
+\par
+\noindent
+For example, to retrieve the Release data for disc ID
+\texttt{2jmj7l5rSw0yVb\_vlWAYkK\_YBwk-} one sends the GET query:
+\begin{Verbatim}[frame=single]
+type=xml&discid=2jmj7l5rSw0yVb_vlWAYkK_YBwk-
+\end{Verbatim}
+Whether the Release is found in the MusicBrainz database or not,
+an XML file will always be generated.
+
+\subsection{Release XML}
+\begin{wrapfigure}[21]{r}{1.94in}
+\includegraphics{figures/musicbrainz_xml.pdf}
+\end{wrapfigure}
+All XML files returned by a MusicBrainz query consist of a
+\texttt{<metadata>}
+tag container.
+When making a Release query, it contains a
+\texttt{<release-list>}
+which is itself a container for zero or more
+\texttt{<release>}
+tags, depending on how many Release entries match the submitted
+disc ID.
+
+The
+\texttt{<release>}
+tag typically contains a
+\texttt{<title>}
+which is the album's name,
+an
+\texttt{<artist>}
+tag which is the album's primary artist,
+a
+\texttt{<release-event-list>}
+tag containing information such as the album's
+release date and catalog number,
+and finally a
+\texttt{<track-list>}
+which contains all the track data.
+
+The
+\texttt{<track>}
+tags are always listed in order of their appearance in the album.
+Each contains a
+\texttt{<title>}
+which is the track's name,
+a
+\texttt{<duration>}
+which is the track's length in milliseconds,
+and optionally an
+\texttt{<artist>}
+tag which is information about a track-specific artist,
+for instances where the track's artist differs from the album's artist.
+
+In addition, the
+\texttt{<release>}
+,
+\texttt{<artist>}
+,
+and
+\texttt{<track>}
+tags all contain an `id' attribute with 32 hex digits in the format
+`12345678-9abc-def1-2345-6789abcdef1234'.
+These uniquely identify the Release, Artist and Track information
+in the MusicBrainz database and can be used for direct lookups.
+
