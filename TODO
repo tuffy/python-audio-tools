@@ -926,14 +926,14 @@
 **** DONE the RG packet
 **** DONE the EI packet
 ** TODO FreeDB
-*** TODO Native Protocol
+*** DONE Native Protocol
 **** DONE the Disc ID
-**** TODO Initial Greeting
-**** TODO Client-Server Handshake
-**** TODO Set Protocol Level
-**** TODO Query Database
-**** TODO Read XMCD Data
-**** TODO Close Connection
+**** DONE Initial Greeting
+**** DONE Client-Server Handshake
+**** DONE Set Protocol Level
+**** DONE Query Database
+**** DONE Read XMCD Data
+**** DONE Close Connection
 *** TODO Web Protocol
 *** TODO XMCD
 **** TODO BNF

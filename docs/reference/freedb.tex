@@ -53,7 +53,7 @@ and complete the transaction.
 
 \pagebreak
 
-\section{the disc ID}
+\subsection{the disc ID}
 FreeDB uses a big-endian 32-bit disc ID to differentiate
 on disc from another.
 
@@ -101,3 +101,156 @@ This means our three values are 34, 840 and 4.
 In hexadecimal, they are 0x22, 0x0348 and 0x04.
 Combining them into a single value yields 0x22034804.
 Thus, our FreeDB disc ID is \texttt{22034804}
+
+\subsection{Initial greeting}
+\begin{Verbatim}[frame=single,label=\textit{From Server},showspaces=true]
+<code> <host> CDDBP server <version> ready at <datetime>
+\end{Verbatim}
+\begin{tabular}{rcl}
+\multirow{5}{3em}{\texttt{<code>}}
+& \texttt{200} & OK, reading/writing allowed \\
+& \texttt{201} & OK, read-only \\
+& \texttt{432} & No connections allowed: permission denied \\
+& \texttt{433} & No connections allowed: X users allowed, Y currently active \\
+& \texttt{434} & No connections allowed: system load too high \\
+\texttt{<hostname>} & & the server's host name \\
+\texttt{<version>} & & the server's version \\
+\texttt{<datetime>} & & the current date and time
+\end{tabular}
+
+\subsection{Client-server handshake}
+\begin{Verbatim}[frame=single,label=\textit{To Server},showspaces=true]
+cddb hello <username> <hostname> <clientname> <version>
+\end{Verbatim}
+\begin{tabular}{rl}
+\texttt{<username>} & login name of user \\
+\texttt{<hostname>} & host name of client \\
+\texttt{<clientname>} & name of client program \\
+\texttt{<version>} & version of client program
+\end{tabular}
+
+\begin{Verbatim}[frame=single,label=\textit{From Server},showspaces=true]
+<code> hello and welcome <username>@<hostname> running <client> <version>
+\end{Verbatim}
+\begin{tabular}{rcl}
+\multirow{3}{3em}{\texttt{<code>}}
+& \texttt{200} & handshake successful \\
+& \texttt{402} & already shook hands \\
+& \texttt{431} & handshake unsuccessful, closing connection \\
+\texttt{<username>} & & login name of user \\
+\texttt{<hostname>} & & host name of client \\
+\texttt{<clientname>} & & name of client program \\
+\texttt{<version>} & & version of client program
+\end{tabular}
+
+\subsection{Set protocol level}
+\begin{Verbatim}[frame=single,label=\textit{To Server},showspaces=true]
+proto [level]
+\end{Verbatim}
+\begin{tabular}{rl}
+\texttt{[level]} & protocol level as integer (optional)
+\end{tabular}
+\begin{Verbatim}[frame=single,label=\textit{From Server},showspaces=true]
+<code> CDDB protocol level: <current>, supported <supported>
+
+OR
+
+<code> OK, protocol version now:  <current>
+\end{Verbatim}
+\begin{tabular}{rcl}
+\multirow{4}{3em}{\texttt{<code>}}
+& \texttt{200} & displaying current protocol level \\
+& \texttt{201} & protocol level set \\
+& \texttt{501} & illegal protocol level \\
+& \texttt{502} & protocol level already at \texttt{<current>} \\
+\texttt{<current>} & & the current protocol level of this connection \\
+\texttt{<supported>} & & the maximum supported protocol level
+\end{tabular}
+
+\pagebreak
+
+\subsection{Query database}
+\begin{Verbatim}[frame=single,label=\textit{To Server},showspaces=true]
+cddb query <disc_id> <track_count> <offset_1> <...> <offset_n> <seconds>
+\end{Verbatim}
+\begin{tabular}{rl}
+\texttt{<disc\_id>} & 32-bit disc ID \\
+\texttt{<track\_count>} & number of tracks in CD \\
+\texttt{<offset>} & frame offset of each track \\
+\texttt{<seconds>} & total length of CD in seconds
+\end{tabular}
+\begin{Verbatim}[frame=single,label=\textit{From Server},showspaces=true]
+<code> <category> <disc_id> <disc_title>
+
+OR
+
+<code> close matches found
+<category> <disc_id> <disc_title>
+<category> <disc_id> <disc_title>
+<...>
+.
+
+OR
+
+<code> exact matches found
+<category> <disc_id> <disc_title>
+<category> <disc_id> <disc_title>
+<...>
+.
+\end{Verbatim}
+\begin{tabular}{rcl}
+\multirow{6}{3em}{\texttt{<code>}}
+& \texttt{200} & Found exact match \\
+& \texttt{211} & Found inexact matches, list follows \\
+& \texttt{202} & No match found \\
+& \texttt{210} & Found exact matches, list follows \\
+& \texttt{403} & Database entry corrupt \\
+& \texttt{409} & no handshake \\
+\texttt{<category>} & & category string \\
+\texttt{<disc\_id>} & & 32-bit disc ID \\
+\texttt{<disc\_title>} & & disc title string
+\end{tabular}
+
+\pagebreak
+
+\subsection{Read XMCD data}
+\begin{Verbatim}[frame=single,label=\textit{To Server},showspaces=true]
+cddb read <category> <disc_id>
+\end{Verbatim}
+\begin{tabular}{rl}
+\texttt{<category>} & category string \\
+\texttt{<disc\_id>} & 32-bit disc ID
+\end{tabular}
+\begin{Verbatim}[frame=single,label=\textit{From Server},showspaces=true]
+<code> <category> <disc_id>
+<XMCD_file_data>
+<...>
+.
+\end{Verbatim}
+\begin{tabular}{rcl}
+\multirow{5}{3em}{\texttt{<code>}}
+& \texttt{210} & XMCD data follows\\
+& \texttt{401} & XMCD data not found\\
+& \texttt{402} & server error\\
+& \texttt{403} & database entry corrupt\\
+& \texttt{409} & no handshake \\
+\texttt{<category>} & & category string \\
+\texttt{<disc\_id>} & & 32-bit disc ID \\
+\end{tabular}
+
+\subsection{Close connection}
+\begin{Verbatim}[frame=single,label=\textit{To Server},showspaces=true]
+quit
+\end{Verbatim}
+\begin{Verbatim}[frame=single,label=\textit{From Server},showspaces=true]
+<code> <hostname> <message>
+\end{Verbatim}
+\begin{tabular}{rcl}
+\multirow{2}{3em}{\texttt{<code>}}
+& \texttt{230} & Closing connection.  Goodbye.\\
+& \texttt{530} & error, closing connection.\\
+\texttt{<message>} & & exit message \\
+\texttt{<hostname>} & & server's host name
+\end{tabular}
+
+
