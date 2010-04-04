@@ -919,13 +919,13 @@
 **** DONE the meta atom
 ***** DONE the trkn sub-atom
 ***** DONE the disk sub-atom
-** TODO .mpc
+** DONE .mpc
 *** DONE Musepack SV7
 **** DONE the Musepack SV7 file stream
 **** DONE the Musepack SV7 header
-*** TODO Musepack SV8
+*** DONE Musepack SV8
 **** DONE the Musepack SV8 file stream
-**** TODO Nut-encoded values
+**** DONE Nut-encoded values
 **** DONE the SH packet
 **** DONE the SE packet
 **** DONE the RG packet
@@ -960,6 +960,8 @@
 ** DONE References
 ** TODO Index
    If possible without too much pain, generate a working index
+** TODO Remove old troff reference documentation
+* TODO Ensure make(1) from doc/ directory builds both doc trees
 * TODO Seperate unreadable files from unknown files
   Files we're unable to read should be handled differently
   from files we're unable to understand.

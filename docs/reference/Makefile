@@ -42,7 +42,7 @@ figures/apev2_tag.pdf figures/apev2_tagheader.pdf figures/apev2_flags.pdf \
 figures/speex_header.pdf \
 figures/musepack_sv7_stream.pdf figures/musepack_sv8_stream.pdf \
 figures/musepack_sv8_sh.pdf figures/musepack_sv8_rg.pdf \
-figures/musepack_sv8_ei.pdf \
+figures/musepack_sv8_ei.pdf figures/musepack_sv8_nut.pdf \
 figures/freedb_sequence.pdf figures/freedb_discid.pdf \
 figures/musicbrainz_discid.pdf figures/musicbrainz_xml.pdf
 

@@ -82,7 +82,7 @@ class Chunk:
             (repr(self.text),self.start_size,self_end_size,
              self.width,self.id,self.style)
 
-    def render(self, pdf):
+    def to_pdf(self, pdf):
         pdf.setStrokeColorRGB(0,0,0)
         pdf.setFillColorRGB(0,0,0)
 
@@ -123,6 +123,55 @@ class BlankChunk(Chunk):
                        width=width,chunk_id=None,
                        style=BLANK)
 
+class Row:
+    def __init__(self):
+        self.chunks = []
+        self.height = ROW_HEIGHT
+
+    def add_chunk(self, chunk):
+        self.chunks.append(chunk)
+
+    def index(self, chunk):
+        return self.chunks.index(chunk)
+
+    def __iter__(self):
+        return iter(self.chunks)
+
+    def __len__(self):
+        return len(self.chunks)
+
+    def __getitem__(self, i):
+        return self.chunks[i]
+
+    def to_pdf(self, pdf, total_width, top, bottom):
+        for (col_pos,chunk) in enumerate(self):
+            previous_column = chunk.previous_column(self)
+            if (previous_column is None):
+                left = 0
+            else:
+                left = previous_column.ne[0]
+            right = left + (chunk.width * total_width)
+
+            chunk.nw = (left,top)
+            chunk.ne = (right,top)
+            chunk.sw = (left,bottom)
+            chunk.se = (right,bottom)
+
+            #render the calculated chunk
+            chunk.to_pdf(pdf)
+
+class Spacer(Row):
+    def __init__(self, height):
+        self.chunks = []
+        self.height = height
+
+    def add_chunk(self, chunk):
+        pass
+
+    def to_pdf(self, pdf, total_width, top, bottom):
+        pass
+
+
 class Line:
     def __init__(self,
                  start_chunk, start_corner,
@@ -155,7 +204,7 @@ class ChunkTable:
         self.chunk_map = {}
 
     def add_row(self, *chunks):
-        row = []
+        row = Row()
         for chunk in chunks:
             if (chunk.id is not None):
                 if (chunk.id in self.chunk_map):
@@ -163,9 +212,12 @@ class ChunkTable:
                 else:
                     self.chunk_map[chunk.id] = chunk
 
-            row.append(chunk)
+            row.add_chunk(chunk)
             self.chunks.append(chunk)
         self.rows.append(row)
+
+    def add_spacer(self, height):
+        self.rows.append(Spacer(height))
 
     def add_line(self, start_id, start_corner,
                  end_id, end_corner,
@@ -178,7 +230,7 @@ class ChunkTable:
     #render all the lines and chunks as a PDF file
     def to_pdf(self, total_width, filename):
         total_rows = len(self.rows)
-        total_height = ROW_HEIGHT * total_rows
+        total_height = sum([row.height for row in self.rows])
 
         registerFont(TTFont("DejaVu", "DejaVuSans.ttf"))
 
@@ -186,26 +238,11 @@ class ChunkTable:
         pdf.setPageSize((total_width,total_height))
 
         #calculate the positions of each row
+        top = total_height
         for (row_pos,row) in enumerate(self.rows):
-            top = (total_rows - row_pos) * ROW_HEIGHT
-            bottom = (total_rows - (row_pos + 1) )* ROW_HEIGHT
-            #calculate the positions for chunks in each row
-            for (col_pos,chunk) in enumerate(row):
-                previous_column = chunk.previous_column(row)
-                previous_chunk = chunk.previous_chunk(self.chunks)
-                if (previous_column is None):
-                    left = 0
-                else:
-                    left = previous_column.ne[0]
-                right = left + (chunk.width * total_width)
-
-                chunk.nw = (left,top)
-                chunk.ne = (right,top)
-                chunk.sw = (left,bottom)
-                chunk.se = (right,bottom)
-
-                #render the calculated chunk
-                chunk.render(pdf)
+            bottom = top - row.height
+            row.to_pdf(pdf, total_width, top, bottom)
+            top = bottom
 
         #calculate the positions for each line
         for line in self.lines:
@@ -288,6 +325,13 @@ def parse_xml(xml_filename):
                     columns.append(BlankChunk(**chunk_args))
 
             table.add_row(*columns)
+        elif (part.nodeName == u"spacer"):
+            if (part.hasAttribute("height")):
+                table.add_spacer(int(
+                        round(ROW_HEIGHT *
+                              float(part.getAttribute("height")))))
+            else:
+                table.add_spacer(ROW_HEIGHT)
         elif (part.nodeName == u"line"):
             table.add_line(part.getAttribute("s_id"),
                            CORNER_MAP[part.getAttribute("s_corner")],
