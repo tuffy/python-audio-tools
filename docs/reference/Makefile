@@ -48,7 +48,7 @@ figures/musicbrainz_discid.pdf figures/musicbrainz_xml.pdf
 
 CHAPTERS = basics.tex wav.tex flac.tex m4a.tex mp3.tex vorbis.tex \
 wavpack.tex ape.tex aiff.tex au.tex speex.tex oggflac.tex musepack.tex \
-freedb.tex musicbrainz.tex musicbrainz_mmd.tex replaygain.tex
+freedb.tex musicbrainz.tex musicbrainz_mmd.tex replaygain.tex references.tex
 
 all: audiotools.pdf
 
