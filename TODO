@@ -787,10 +787,10 @@
    The file should have working bookmarks
    and internal links so one can click directly to a chapter
 ** TODO Add new introduction
-** TODO Basics
+** DONE Basics
 *** DONE Hexadecimal
 *** DONE Endianness
-*** TODO Signed values
+*** DONE Signed values
     How to decode/encode signed integers should be properly explained
 *** DONE Character Encodings
 *** DONE PCM
@@ -800,12 +800,11 @@
 *** DONE the WAVEFORMATEXTENSIBLE fmt chunk
 *** DONE the data chunk
 *** DONE channel mapping
-** TODO .aiff
+** DONE .aiff
 *** DONE the AIFF stream
 *** DONE the COMM chunk
 **** TODO 80 bit IEEE standard 754 floating point
 *** DONE the SSND chunk
-*** TODO Channel assignment
 ** DONE .au
 *** DONE the AU stream
 *** DONE the AU header
@@ -884,13 +883,13 @@
 ***** DONE an ID3v2.4 Frame
 ***** DONE ID3v2.4 Frame IDs
 ***** DONE the APIC Frame
-** TODO .ogg
+** DONE .ogg
 *** DONE the Ogg file stream
 *** DONE an Ogg Page
 *** DONE Ogg packets
 *** DONE the Identification packet
 *** DONE the Comment packet
-*** TODO Channel assignment
+*** DONE Channel assignment
 ** DONE .spx
 *** DONE the Header packet
 *** DONE the Comment packet

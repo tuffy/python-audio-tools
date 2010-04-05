@@ -60,6 +60,55 @@ Going from binary to hexadecimal is a simple matter of reversing
 the process.
 \end{flushleft}
 
+\section{Signed integers}
+Signed integers are typically stored as ``2's-complement'' values.
+To decode them, one needs to know the integer's size in bits, its
+topmost (most-signficant) bit value and the value of its remaining bits.
+
+\begin{equation}
+\text{signed value} =
+\begin{cases}
+\text{remaining bits} & \text{if topmost bit} = 0 \\
+%%-(2 ^ \text{integer size} - \text{unsigned value} ) & \text{if topmost bit} = 1
+\text{remaining bits} - (2 ^ {\text{integer size} - 1}) & \text{if topmost bit} = 1
+\end{cases}
+\end{equation}
+For example, take an 8-bit integer whose bit values are \texttt{00000101}.
+Since the topmost bit is \texttt{0}, its value is simply \texttt{0000101},
+which is 5 in base-10 ($2 ^ 2 + 2 ^ 0 = 5$).
+
+Next, let's take an integer whose bit values are \texttt{11111011}.
+Its topmost bit is \texttt{1} and its remaining bits are \texttt{1111011},
+which is 123 in base-10
+($2 ^ 6 + 2 ^ 5 + 2 ^ 4 + 2 ^ 3 + 2 ^ 1 + 2 ^ 0 = 123$).
+Therefore:
+\begin{align}
+\text{signed value} &= 123 - 2 ^ {8 - 1} \\
+ &= 123 - 128 \\
+ &= -5
+\end{align}
+
+Transforming a signed integer into its unsigned 2's-complement value
+is a simple matter of reversing the process.
+\begin{equation}
+\text{unsigned value} =
+\begin{cases}
+\text{signed value} & \text{if signed value} \geq 0 \\
+2 ^ \text{integer size} - (-\text{signed value}) & \text{if signed value} < 0
+\end{cases}
+\end{equation}
+
+For example, let's convert the value -20 to a signed, 8-bit integer:
+\begin{align}
+\text{unsigned value} &= 2 ^ 8 - (- -20) \\
+&= 256 - 20 \\
+&= 236
+\end{align}
+which is \texttt{11101100} in binary
+($2 ^ 7 + 2 ^ 6 + 2 ^ 5 + 2 ^ 3 + 2 ^ 2 = 236$).
+
+\pagebreak
+
 \section{Endianness}
 You will need to know about endianness anytime a single value spans
 multiple bytes.
@@ -84,6 +133,17 @@ That's a little over 1 megabyte, which is closer to our expectations.
 
 Remember that little endian reverses the bytes, not the hexadecimal
 digits.  Simply reversing the string to \texttt{0x0021B945} is not correct.
+
+When converting a signed, little-endian value to an integer,
+the 2's-complement decoding comes \textit{after} one performs
+the endianness reversing.
+For example, given a signed 16-bit little-endian value of
+\texttt{0xFBFF}, one firsts reorders the bytes to \texttt{0xFFFB}
+before decoding it to a signed value ($32763 - 2 ^ {15} = -5$).
+
+Conversely, when converting a signed integer to a little-endian value,
+the endian reversing comes \textit{after} one performs the
+2's-complement encoding.
 
 \section{Character Encodings}
 

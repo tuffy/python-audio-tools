@@ -133,3 +133,41 @@ more than one \texttt{ARTIST}.
 \par
 \noindent
 Fields marked with * are proposed extension fields and not part of the official Vorbis comment specification.
+
+\section{Channel assignment}
+\begin{table}[h]
+{\relsize{-1}
+\begin{tabular}{|c|r|r|r|r|r|r|r|r|}
+\hline
+channel & & & & & & & & \\
+count & channel 1 & channel 2 & channel 3 & channel 4 & channel 5 & channel 6 & channel 7 & channel 8 \\
+\hline
+\multirow{2}{1em}{1} & front & & & & & & & \\
+                     & center & & & & & & & \\
+\hline
+\multirow{2}{1em}{2} & front & front & & & & & & \\
+                     & left  & right & & & & & & \\
+\hline
+\multirow{2}{1em}{3} & front & front & front & & & & & \\
+                     & left  & center & right & & & & & \\
+\hline
+\multirow{2}{1em}{4} & front & front & back & back & & & & \\
+                     & left  & right & left & right & & & & \\
+\hline
+\multirow{2}{1em}{5} & front & front  & front & back & back & & & \\
+                     & left  & center & right & left & right & & & \\
+\hline
+\multirow{2}{1em}{6} & front & front  & front & back & back & & & \\
+                     & left  & center & right & left & right & LFE & & \\
+\hline
+\multirow{2}{1em}{7} & front & front  & front & side & side  & back   & & \\
+                     & left  & center & right & left & right & center & LFE& \\
+\hline
+\multirow{2}{1em}{8} & front & front  & front & side & side  & back   & back & \\
+                     & left  & center & right & left & right & left & right & LFE \\
+\hline
+8+ & \multicolumn{8}{c|}{defined by application} \\
+\hline
+\end{tabular}
+}
+\end{table}
