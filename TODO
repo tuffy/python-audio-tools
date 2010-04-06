@@ -782,11 +782,11 @@
     - [X] TOCException
 * TODO Make reference documentation render consistently
 ** TODO Ensure documents render in letter and A4 size
-** TODO Add Creative Commons licensing to source code and doc itself
+** DONE Add Creative Commons licensing to source code and doc itself
 ** DONE Add internal PDF linkage
    The file should have working bookmarks
    and internal links so one can click directly to a chapter
-** TODO Add new introduction
+** DONE Add new introduction
 ** DONE Basics
 *** DONE Hexadecimal
 *** DONE Endianness
