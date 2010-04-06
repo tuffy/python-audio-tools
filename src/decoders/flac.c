@@ -710,6 +710,7 @@ status FlacDecoder_read_residual(decoders_FlacDecoder *self,
   int total_partitions = 1 << partition_order;
   int partition;
   uint32_t rice_parameter;
+  uint32_t escape_code = 0;
   uint32_t partition_samples;
   uint32_t i;
   int32_t msb;
@@ -731,26 +732,39 @@ status FlacDecoder_read_residual(decoders_FlacDecoder *self,
     switch (coding_method) {
     case 0:
       rice_parameter = read_bits(bitstream,4);
+      if (rice_parameter == 0xF)
+	escape_code = read_bits(bitstream,5);
+      else
+	escape_code = 0;
       break;
     case 1:
       rice_parameter = read_bits(bitstream,5);
+      if (rice_parameter == 0x1F)
+	escape_code = read_bits(bitstream,5);
+      else
+	escape_code = 0;
       break;
     default:
       PyErr_SetString(PyExc_ValueError,"invalid partition coding method");
       return ERROR;
     }
 
-    for (i = 0; i < partition_samples; i++) {
-      msb = read_unary(bitstream,1);
-      lsb = read_bits(bitstream,rice_parameter);
-      value = (msb << rice_parameter) | lsb;
-      if (value & 1) {
-	value = -(value >> 1) - 1;
-      } else {
-	value = value >> 1;
+    if (!escape_code) {
+      for (i = 0; i < partition_samples; i++) {
+	msb = read_unary(bitstream,1);
+	lsb = read_bits(bitstream,rice_parameter);
+	value = (msb << rice_parameter) | lsb;
+	if (value & 1) {
+	  value = -(value >> 1) - 1;
+	} else {
+	  value = value >> 1;
+	}
+	ia_append(residuals,value);
       }
-
-      ia_append(residuals,value);
+    } else {
+      for (i = 0; i < partition_samples; i++) {
+	ia_append(residuals,read_signed_bits(bitstream,escape_code));
+      }
     }
   }
 
