@@ -957,7 +957,7 @@
 **** DONE RMS Energy Blocks
 **** DONE Statistical Processing and Calibration
 ** DONE References
-** TODO Remove old troff reference documentation
+** DONE Remove old troff reference documentation
 * TODO Ensure make(1) from doc/ directory builds both doc trees
 * TODO Seperate unreadable files from unknown files
   Files we're unable to read should be handled differently
