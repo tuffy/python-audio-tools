@@ -780,8 +780,8 @@
     - [X] TOCFile
     - [X] read_tocfile
     - [X] TOCException
-* TODO Make reference documentation render consistently
-** TODO Ensure documents render in letter and A4 size
+* DONE Make reference documentation render consistently
+** DONE Ensure documents render in letter and A4 size
 ** DONE Add Creative Commons licensing to source code and doc itself
 ** DONE Add internal PDF linkage
    The file should have working bookmarks

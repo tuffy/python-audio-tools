@@ -117,8 +117,9 @@ In purely mathematical terms, it looks like this:
 When filtering at the start of the stream, treat any samples
 before the beginning as 0.
 
+\pagebreak
+
 \subsubsection{a filtering example}
-%[-14.908036018014995, -14.932052848963609, -14.650601584845713, -14.459643778083507, -14.152323319190605, -13.579604004214648, -13.182759811625989, -13.158326446068649, -13.122474161484691, -12.889629169763936, -12.808159820040585]
 Let's assume we have a 44100Hz stream and our previous input and output
 samples are as follows:
 \begin{table}[h]
@@ -228,6 +229,8 @@ $\text{Butter}_i$ & & $\text{Butter Output Filter}_i$ & & result \\
 \noindent
 Therefore, $\text{Butter}_{100} = -0.24 - -0.71 = 0.47$
 , which is the next sample from the equal loudness filter.
+
+\pagebreak
 
 \section{RMS energy blocks}
 The next step is to take our stream of filtered samples and convert
