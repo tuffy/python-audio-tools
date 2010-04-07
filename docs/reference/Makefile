@@ -54,14 +54,11 @@ license.tex introduction.tex
 all: audiotools.pdf
 
 clean:
-	rm -f audiotools.pdf *.toc *.aux *.log $(FIGURES)
+	rm -f audiotools.pdf *.toc *.aux *.log *.out $(FIGURES)
 	rm -f figures/pcm.fig figures/flac_hann.fig figures/flac_rectangular.fig figures/flac_tukey.fig
 
-audiotools.pdf: audiotools.tex audiotools.toc $(CHAPTERS) $(FIGURES)
-	pdflatex audiotools.tex
-
-audiotools.toc: audiotools.tex $(CHAPTERS) $(FIGURES)
-	pdflatex audiotools.tex
+audiotools.pdf: audiotools.tex $(CHAPTERS) $(FIGURES)
+	python pdflatexbuild.py -halt-on-error audiotools.tex
 
 binary.pdf: binary.fig
 	fig2dev -L pdf binary.fig binary.pdf
