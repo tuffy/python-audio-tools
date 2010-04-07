@@ -487,7 +487,7 @@
    I'll likely have to update it myself to ensure it'll run on Python3.
 * TODO Add C-based FLAC decoder
 ** DONE Add a variety of unit tests
-** TODO Handle Rice escape codes
+** DONE Handle Rice escape codes
    Not sure how to test these, but they should be handled properly.
 ** TODO Ensure decoder raises the proper exceptions
 * TODO Add C-based FLAC encoder
@@ -782,11 +782,11 @@
     - [X] TOCException
 * TODO Make reference documentation render consistently
 ** TODO Ensure documents render in letter and A4 size
-** TODO Add Creative Commons licensing to source code and doc itself
+** DONE Add Creative Commons licensing to source code and doc itself
 ** DONE Add internal PDF linkage
    The file should have working bookmarks
    and internal links so one can click directly to a chapter
-** TODO Add new introduction
+** DONE Add new introduction
 ** DONE Basics
 *** DONE Hexadecimal
 *** DONE Endianness
@@ -957,9 +957,7 @@
 **** DONE RMS Energy Blocks
 **** DONE Statistical Processing and Calibration
 ** DONE References
-** TODO Index
-   If possible without too much pain, generate a working index
-** TODO Remove old troff reference documentation
+** DONE Remove old troff reference documentation
 * TODO Ensure make(1) from doc/ directory builds both doc trees
 * TODO Seperate unreadable files from unknown files
   Files we're unable to read should be handled differently

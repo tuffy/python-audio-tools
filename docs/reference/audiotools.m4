@@ -1,4 +1,12 @@
-\documentclass[letterpaper]{scrbook}
+%This work is licensed under the
+%Creative Commons Attribution-Share Alike 3.0 United States License.
+%To view a copy of this license, visit
+%http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to
+%Creative Commons,
+%171 Second Street, Suite 300,
+%San Francisco, California, 94105, USA.
+
+\documentclass[PAPERSIZE]{scrbook}
 \setlength{\pdfpagewidth}{\paperwidth}
 \setlength{\pdfpageheight}{\paperheight}
 \setlength{\textwidth}{6in}
@@ -15,6 +23,7 @@
 \usepackage{textcomp}
 \usepackage{fancyvrb}
 \usepackage{multirow}
+\usepackage[toc,page]{appendix}
 \usepackage{hyperref}
 \newcommand{\xor}{\textbf{ xor }}
 %#1 = i
@@ -31,6 +40,7 @@
 \begin{document}
 \maketitle
 \tableofcontents
+\include{introduction}
 \include{basics}
 \include{wav}
 \include{flac}
@@ -49,4 +59,7 @@
 \include{musicbrainz_mmd}
 \include{replaygain}
 \include{references}
+\begin{appendices}
+\include{license}
+\end{appendices}
 \end{document}

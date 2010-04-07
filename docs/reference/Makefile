@@ -48,19 +48,27 @@ figures/musicbrainz_discid.pdf figures/musicbrainz_xml.pdf
 
 CHAPTERS = basics.tex wav.tex flac.tex m4a.tex mp3.tex vorbis.tex \
 wavpack.tex ape.tex aiff.tex au.tex speex.tex oggflac.tex musepack.tex \
-freedb.tex musicbrainz.tex musicbrainz_mmd.tex replaygain.tex references.tex
+freedb.tex musicbrainz.tex musicbrainz_mmd.tex replaygain.tex references.tex \
+license.tex introduction.tex
 
-all: audiotools.pdf
+all: audiotools-letter.pdf audiotools-a4.pdf
 
 clean:
-	rm -f audiotools.pdf *.toc *.aux *.log $(FIGURES)
+	rm -f *.toc *.aux *.log *.out $(FIGURES)
 	rm -f figures/pcm.fig figures/flac_hann.fig figures/flac_rectangular.fig figures/flac_tukey.fig
+	rm -f audiotools-a4.tex audiotools-letter.tex
 
-audiotools.pdf: audiotools.tex audiotools.toc $(CHAPTERS) $(FIGURES)
-	pdflatex audiotools.tex
+audiotools-letter.pdf: audiotools-letter.tex $(CHAPTERS) $(FIGURES)
+	python pdflatexbuild.py -halt-on-error audiotools-letter.tex
 
-audiotools.toc: audiotools.tex $(CHAPTERS) $(FIGURES)
-	pdflatex audiotools.tex
+audiotools-a4.pdf: audiotools-a4.tex $(CHAPTERS) $(FIGURES)
+	python pdflatexbuild.py -halt-on-error audiotools-a4.tex
+
+audiotools-letter.tex: audiotools.m4
+	m4 -D PAPERSIZE=letterpaper $< > $@
+
+audiotools-a4.tex: audiotools.m4
+	m4 -D PAPERSIZE=a4paper $< > $@
 
 binary.pdf: binary.fig
 	fig2dev -L pdf binary.fig binary.pdf
