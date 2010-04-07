@@ -957,8 +957,6 @@
 **** DONE RMS Energy Blocks
 **** DONE Statistical Processing and Calibration
 ** DONE References
-** TODO Index
-   If possible without too much pain, generate a working index
 ** TODO Remove old troff reference documentation
 * TODO Ensure make(1) from doc/ directory builds both doc trees
 * TODO Seperate unreadable files from unknown files

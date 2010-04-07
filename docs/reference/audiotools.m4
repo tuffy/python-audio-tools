@@ -6,7 +6,7 @@
 %171 Second Street, Suite 300,
 %San Francisco, California, 94105, USA.
 
-\documentclass[letterpaper]{scrbook}
+\documentclass[PAPERSIZE]{scrbook}
 \setlength{\pdfpagewidth}{\paperwidth}
 \setlength{\pdfpageheight}{\paperheight}
 \setlength{\textwidth}{6in}
