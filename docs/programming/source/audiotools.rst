@@ -65,23 +65,27 @@ classes and functions upon which all of the other modules depend.
 
    Opens the given filename string and returns an :class:`AudioFile`-compatible
    object.
-   Raises :exc:`UnsupportedFile` if the file cannot be opened,
-   identified or is not supported.
+   Raises :exc:`UnsupportedFile` if the file cannot identified or is
+   not supported.
+   Raises :exc:`IOError` if the file cannot be opened at all.
 
-.. function:: open_files(filenames[, sorted])
+.. function:: open_files(filenames[, sorted[, messenger]])
 
    Given a list of filename strings, returns a list of
    :class:`AudioFile`-compatible objects which can be successfully opened.
    By default, they are returned sorted by album number and track number.
    If ``sorted`` is ``False``, they are returned in the same order
    as they appear in the filenames list.
+   If ``messenger`` is given, use that :class:`Messenger` object
+   to for warnings if files cannot be opened.
+   Otherwise, such warnings are sent to stdout.
 
-.. function:: open_directory(directory[, sorted])
+.. function:: open_directory(directory[, sorted[, messenger]])
 
    Given a root directory, returns an iterator of all the
    :class:`AudioFile`-compatible objects found via a recursive
    search of that directory.
-   ``sorted`` works as in :func:`open_files`.
+   ``sorted``, and ``messenger`` work as in :func:`open_files`.
 
 .. function:: group_tracks(audiofiles)
 

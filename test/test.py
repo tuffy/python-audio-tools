@@ -33,7 +33,7 @@ import time
 gettext.install("audiotools",unicode=True)
 
 (METADATA,PCM,FRAMELIST,EXECUTABLE,CUESHEET,IMAGE,FLAC,CUSTOM) = range(8)
-CASES = set([CUSTOM])
+CASES = set([METADATA,PCM,FRAMELIST,EXECUTABLE,CUESHEET,IMAGE,FLAC])
 
 def nothing(self):
     pass
@@ -10458,12 +10458,12 @@ class TestIOError(unittest.TestCase):
         self.dummy1.write("12345" * 1000)
         self.dummy2.write("54321" * 1000)
 
-    @TEST_CUSTOM
+    @TEST_PCM
     def tearDown(self):
         self.dummy1.close()
         self.dummy2.close()
 
-    @TEST_CUSTOM
+    @TEST_PCM
     def test_open(self):
         #ensure open on dummy file raises UnsupportedFile
         self.assertRaises(audiotools.UnsupportedFile,
@@ -10489,7 +10489,7 @@ class TestIOError(unittest.TestCase):
         finally:
             os.chmod(self.dummy1.name,0600)
 
-    @TEST_CUSTOM
+    @TEST_PCM
     def test_open_files(self):
         audiotools.open_files(["/dev/null/foo","/foo/bar"],sorted=True,
                               messenger=TestMessenger(

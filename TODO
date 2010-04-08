@@ -960,7 +960,7 @@
 ** DONE Remove old troff reference documentation
 ** DONE Add title and author to PDF documentation
 * DONE Ensure make(1) from doc/ directory builds both doc trees
-* TODO Seperate unreadable files from unknown files
+* DONE Seperate unreadable files from unknown files
   Files we're unable to read should be handled differently
   from files we're unable to understand.
 ** DONE Update audiotools.open() to raise IOErrors
@@ -988,11 +988,13 @@
    - [X] trackrename
    - [X] tracksplit
    - [X] tracktag
-** TODO Add unit tests to demonstrate new behavior
-** TODO Update programming documentation with new behavior
+** DONE Add unit tests to demonstrate new behavior
+** DONE Update programming documentation with new behavior
 * TODO Support disc metadata submission
   If a disc is not found on FreeDB or MusicBrainz,
   there should be some mechanism to submit user-defined data
   to those services.
 * TODO Get coverview and editxmcd working on Mac OS X
   Preferably without falling back to Tkinter
+* TODO Ensure embedded cuesheets aren't clobbered by adding more metadata
+
