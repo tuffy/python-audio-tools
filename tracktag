@@ -310,7 +310,7 @@ if (__name__ == '__main__'):
     (options,args) = parser.parse_args()
     msg = audiotools.Messenger("tracktag",options)
 
-    audiofiles = audiotools.open_files(args)
+    audiofiles = audiotools.open_files(args,messenger=msg)
 
     if (options.xmcd is not None):
         try:

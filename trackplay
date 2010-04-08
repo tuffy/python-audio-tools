@@ -195,7 +195,8 @@ if (__name__ == '__main__'):
 
     try:
         try:
-            for audiofile in audiotools.open_files(args,sorted=False):
+            for audiofile in audiotools.open_files(args,sorted=False,
+                                                   messenger=msg):
                 pcm = audiofile.to_pcm()
 
                 try:

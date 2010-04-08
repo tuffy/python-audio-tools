@@ -92,7 +92,7 @@ if (__name__ == '__main__'):
         sys.exit(1)
 
     #grab the list of AudioFile objects we are converting from
-    audiofiles = audiotools.open_files(args)
+    audiofiles = audiotools.open_files(args,messenger=msg)
     if (len(audiofiles) < 1):
         msg.error(_(u"You must specify at least 1 supported audio file"))
         sys.exit(1)

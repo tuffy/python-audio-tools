@@ -966,28 +966,28 @@
 ** DONE Update audiotools.open() to raise IOErrors
 ** DONE Update audiotools.open_files() to handle IOErrors
 ** DONE Update audiotools.open_directory() to handle IOErrors
-** TODO Update internal calls to open()/open_files() to handle IOErrors
-   - [ ] __flac__.py
-   - [ ] __m4a__.py
-   - [ ] __mp3__.py
-   - [ ] __vorbis__.py
-   - [ ] __wavpack__.py
-   - [ ] __wav__.py
-** TODO Update tools which use open()/open_files() to handle IOErrors
-   - [ ] coverdump
-   - [ ] editxmcd
-   - [ ] track2cd
-   - [ ] track2track
-   - [ ] track2xmcd
-   - [ ] trackcat
-   - [ ] trackcmp
-   - [ ] trackinfo
-   - [ ] tracklength
-   - [ ] tracklint
-   - [ ] trackplay
-   - [ ] trackrename
-   - [ ] tracksplit
-   - [ ] tracktag
+** DONE Update internal calls to open()/open_files() to handle IOErrors
+   - [X] __flac__.py
+   - [X] __m4a__.py
+   - [X] __mp3__.py
+   - [X] __vorbis__.py
+   - [X] __wavpack__.py
+   - [X] __wav__.py
+** DONE Update tools which use open()/open_files() to handle IOErrors
+   - [X] coverdump
+   - [X] editxmcd
+   - [X] track2cd
+   - [X] track2track
+   - [X] track2xmcd
+   - [X] trackcat
+   - [X] trackcmp
+   - [X] trackinfo
+   - [X] tracklength
+   - [X] tracklint
+   - [X] trackplay
+   - [X] trackrename
+   - [X] tracksplit
+   - [X] tracktag
 ** TODO Add unit tests to demonstrate new behavior
 ** TODO Update programming documentation with new behavior
 * TODO Support disc metadata submission

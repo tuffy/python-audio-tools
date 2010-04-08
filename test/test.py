@@ -6541,9 +6541,9 @@ class TestProgramOutput(TestTextOutput):
         self.__check_error__(_(u"You must specify exactly 1 supported audio file"))
 
         self.assertEqual(self.__run_app__(
-                ["coverdump","-d",self.dir2,"/dev/null"]),1)
+                ["coverdump","-d",self.dir2,"/dev/null/foo"]),1)
 
-        self.__check_error__(_(u"%s file format not supported") % ("/dev/null"))
+        self.__check_error__(_(u"Unable to open \"%s\"") % ("/dev/null/foo"))
 
         self.assertEqual(self.__run_app__(
                 ["coverdump","-d",self.dir2,self.flac1.filename]),0)
@@ -7269,6 +7269,11 @@ class TestTracksplitOutput(TestTextOutput):
         self.__check_error__(_(u"\"%(quality)s\" is not a supported compression mode for type \"%(type)s\"") % \
                                  {"quality":"foobar",
                                   "type":audiotools.FlacAudio.NAME})
+
+        self.assertEqual(self.__run_app__(
+                ["tracksplit","-t","flac","-d",self.dir2,"/dev/null/foo"]),1)
+
+        self.__check_error__(_(u"Unable to open \"%s\"") % (u"/dev/null/foo"))
 
         self.assertEqual(self.__run_app__(
                 ["tracksplit","-t","flac","-d",self.dir2]),1)

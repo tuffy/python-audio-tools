@@ -44,7 +44,7 @@ if (__name__ == '__main__'):
     (options,args) = parser.parse_args()
     msg = audiotools.Messenger("trackinfo",options)
 
-    for file in audiotools.open_files(args):
+    for file in audiotools.open_files(args,messenger=msg):
         length = file.cd_frames() / 75
         if (options.show_bitrate):
             msg.output(_(u"%(bitrate)4.4s kbps: %(filename)s") % \

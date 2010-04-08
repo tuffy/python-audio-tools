@@ -182,6 +182,9 @@ if (__name__ == '__main__'):
     except audiotools.UnsupportedFile:
         msg.error(_(u"You must specify exactly 1 supported audio file"))
         sys.exit(1)
+    except IOError:
+        msg.error(_(u"Unable to open \"%s\"") % (msg.filename(args[0])))
+        sys.exit(1)
 
     if ((options.cuesheet is None) and (not has_embedded_cuesheet(audiofile))):
         msg.error(_(u"You must specify a cuesheet to split audio file"))

@@ -212,24 +212,15 @@ def fix_metadata(metadata):
 
         return (metadata,log)
 
-def audiofiles(paths):
-    for path in paths:
-        if (os.path.isdir(path)):
-            for (dir,dirs,files) in os.walk(path):
-                for file in files:
-                    try:
-                        yield audiotools.open(os.path.join(dir,file))
-                    except audiotools.UnsupportedFile:
-                        pass
-                    except audiotools.InvalidFile:
-                        pass
-        else:
-            try:
-                yield audiotools.open(path)
-            except audiotools.UnsupportedFile:
-                pass
-            except audiotools.InvalidFile:
-                pass
+def audiofiles(paths, messenger):
+    directories = [p for p in paths if os.path.isdir(p)]
+    files = [p for p in paths if os.path.isfile(p)]
+
+    for f in audiotools.open_files(files,messenger=messenger):
+        yield f
+    for d in directories:
+        for f in audiotools.open_directory(d,messenger=messenger):
+            yield f
 
 def update_and_backup(track, undo_db, messenger):
     changes_made = False
@@ -519,7 +510,7 @@ if (__name__ == '__main__'):
                 msg.error(_(u"Unable to open \"%s\"") % (msg.filename(options.db)))
                 sys.exit(1)
             try:
-                for track in audiofiles(args):
+                for track in audiofiles(args,messenger=msg):
                     try:
                         update_and_backup(track,undo_db,msg)
                     except IOError:
@@ -531,7 +522,7 @@ if (__name__ == '__main__'):
         else:
             #if we're fixing tracks and have no undo DB,
             #simply overwrite the track and track metadata directly
-            for track in audiofiles(args):
+            for track in audiofiles(args,messenger=msg):
                 (track,messages) = fix_track(track,dry_run=False)
                 display_messages(msg,track,messages)
                 (metadata,messages) = fix_metadata(track.get_metadata())
@@ -549,7 +540,7 @@ if (__name__ == '__main__'):
             msg.error(_(u"Unable to open \"%s\"") % (msg.filename(options.db)))
             sys.exit(1)
         try:
-            for track in audiofiles(args):
+            for track in audiofiles(args,messenger=msg):
                 try:
                     undo_from_backup(track,undo_db,msg)
                 except IOError:
@@ -559,10 +550,8 @@ if (__name__ == '__main__'):
         finally:
             undo_db.close()
     else: #a dry-run of the fixing procedure, with no changes made
-        for track in audiofiles(args):
+        for track in audiofiles(args,messenger=msg):
             (track,messages) = fix_track(track,dry_run=True)
             display_messages(msg,track,messages)
             (metadata,messages) = fix_metadata(track.get_metadata())
             display_messages(msg,track,messages)
-
-

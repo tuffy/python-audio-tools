@@ -91,7 +91,7 @@ if (__name__ == '__main__'):
     (options,args) = parser.parse_args()
     msg = audiotools.Messenger("track2xmcd",options)
 
-    audiofiles = audiotools.open_files(args)
+    audiofiles = audiotools.open_files(args,messenger=msg)
 
     if (len(audiofiles) < 1):
         msg.error(_(u"You must specify at least 1 supported audio file"))

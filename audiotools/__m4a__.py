@@ -531,7 +531,11 @@ class M4AAudio_nero(M4AAudio_faac):
         if (compression not in cls.COMPRESSION_MODES):
             compression = cls.DEFAULT_COMPRESSION
 
-        wave = open(wave_filename)
+        try:
+            wave = audiotools.WaveAudio(wave_filename)
+        except audiotools.InvalidFile:
+            raise audiotools.EncodingError()
+
         if (wave.sample_rate > 96000):
             #convert through PCMConverter if sample rate is too high
             import tempfile

@@ -66,7 +66,7 @@ if (__name__ == '__main__'):
         check_function = near_equal
 
     if (os.path.isfile(args[0]) and os.path.isfile(args[1])):
-        audiofiles = audiotools.open_files(args)
+        audiofiles = audiotools.open_files(args,messenger=msg)
         try:
             if (check_function(audiofiles[0],audiofiles[1])):
                 pass
@@ -84,10 +84,12 @@ if (__name__ == '__main__'):
 
         files1 = audiotools.open_files(
             [os.path.join(args[0],f) for f in os.listdir(args[0])
-             if os.path.isfile(os.path.join(args[0],f))])
+             if os.path.isfile(os.path.join(args[0],f))],
+            messenger=msg)
         files2 = audiotools.open_files(
             [os.path.join(args[1],f) for f in os.listdir(args[1])
-             if os.path.isfile(os.path.join(args[1],f))])
+             if os.path.isfile(os.path.join(args[1],f))],
+            messenger=msg)
 
         files1_map = dict([((f.album_number(),f.track_number()),f)
                            for f in files1])
