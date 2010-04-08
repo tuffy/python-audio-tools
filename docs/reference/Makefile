@@ -51,7 +51,7 @@ wavpack.tex ape.tex aiff.tex au.tex speex.tex oggflac.tex musepack.tex \
 freedb.tex musicbrainz.tex musicbrainz_mmd.tex replaygain.tex references.tex \
 license.tex introduction.tex
 
-all: audiotools-letter.pdf audiotools-a4.pdf
+all: audioformats-letter.pdf audioformats-a4.pdf
 
 clean:
 	rm -f *.toc *.aux *.log *.out $(FIGURES)
@@ -60,9 +60,11 @@ clean:
 
 audioformats-letter.pdf: audioformats-letter.tex $(CHAPTERS) $(FIGURES)
 	python pdflatexbuild.py -halt-on-error audioformats-letter.tex
+	python ../pdftag.py "--title=Audio Formats Reference" "--author=Brian Langenberger" $@
 
 audioformats-a4.pdf: audioformats-a4.tex $(CHAPTERS) $(FIGURES)
 	python pdflatexbuild.py -halt-on-error audioformats-a4.tex
+	python ../pdftag.py "--title=Audio Formats Reference" "--author=Brian Langenberger" $@
 
 audioformats-letter.tex: audioformats.m4
 	m4 -D PAPERSIZE=letterpaper $< > $@

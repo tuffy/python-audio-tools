@@ -39,8 +39,10 @@ audiotools-letter.pdf:
 	sphinx-build -b latex -d programming/build/doctrees/ -D latex_paper_size=letter programming/source/ programming/build/latex/letter
 	cd programming/build/latex/letter && make PythonAudioTools.pdf
 	cp -fv programming/build/latex/letter/PythonAudioTools.pdf $@
+	python pdftag.py "--title=Python Audio Tools Documentation" "--author=Brian Langenberger" $@
 
 audiotools-a4.pdf:
 	sphinx-build -b latex -d programming/build/doctrees/ -D latex_paper_size=a4 programming/source/ programming/build/latex/a4
 	cd programming/build/latex/a4 && make PythonAudioTools.pdf
 	cp -fv programming/build/latex/a4/PythonAudioTools.pdf $@
+	python pdftag.py "--title=Python Audio Tools Documentation" "--author=Brian Langenberger" $@
