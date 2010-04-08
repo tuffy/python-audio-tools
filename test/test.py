@@ -33,7 +33,7 @@ import time
 gettext.install("audiotools",unicode=True)
 
 (METADATA,PCM,FRAMELIST,EXECUTABLE,CUESHEET,IMAGE,FLAC,CUSTOM) = range(8)
-CASES = set([METADATA,PCM,FRAMELIST,EXECUTABLE,CUESHEET,IMAGE,FLAC])
+CASES = set([CUSTOM])
 
 def nothing(self):
     pass
@@ -10402,6 +10402,111 @@ class TestMultiChannel(unittest.TestCase):
             self.__test_undefined_mask_blank__(audiotools.M4AAudio_nero,
                                                channels,
                                                False)
+
+#these are Messenger output classes
+(OUTPUT,PARTIAL_OUTPUT,INFO,PARTIAL_INFO,ERROR,WARNING) = range(6)
+
+class TestMessenger(audiotools.VerboseMessenger):
+    #test should be a unittest.TestCase of some sort
+    #outputs should be a list of (output_class,output_string) pairs
+    #which will be tested for in that order
+    def __init__(self, test, outputs):
+        self.outputs = outputs
+        self.test = test
+
+    def output(self, s):
+        (o_c,o_s) = self.outputs.pop(0)
+        self.test.assertEqual(o_c,OUTPUT)
+        self.test.assertEqual(o_s,s)
+
+    def partial_output(self, s):
+        (o_c,o_s) = self.outputs.pop(0)
+        self.test.assertEqual(o_c,PARTIAL_OUTPUT)
+        self.test.assertEqual(o_s,s)
+
+    def info(self, s):
+        (o_c,o_s) = self.outputs.pop(0)
+        self.test.assertEqual(o_c,INFO)
+        self.test.assertEqual(o_s,s)
+
+    def partial_info(self, s):
+        (o_c,o_s) = self.outputs.pop(0)
+        self.test.assertEqual(o_c,PARTIAL_INFO)
+        self.test.assertEqual(o_s,s)
+
+    def error(self, s):
+        (o_c,o_s) = self.outputs.pop(0)
+        self.test.assertEqual(o_c,ERROR)
+        self.test.assertEqual(o_s,s)
+
+    def warning(self, s):
+        (o_c,o_s) = self.outputs.pop(0)
+        self.test.assertEqual(o_c,WARNING)
+        self.test.assertEqual(o_s,s)
+
+
+class TestIOError(unittest.TestCase):
+    @TEST_CUSTOM
+    def setUp(self):
+        self.dummy1 = tempfile.NamedTemporaryFile()
+        self.dummy2 = tempfile.NamedTemporaryFile()
+        self.dummy1.write("12345" * 1000)
+        self.dummy2.write("54321" * 1000)
+
+    @TEST_CUSTOM
+    def tearDown(self):
+        self.dummy1.close()
+        self.dummy2.close()
+
+    @TEST_CUSTOM
+    def test_open(self):
+        #ensure open on dummy file raises UnsupportedFile
+        self.assertRaises(audiotools.UnsupportedFile,
+                          audiotools.open,
+                          self.dummy1.name)
+
+        #ensure open on nonexistent file raises IOError
+        self.assertRaises(IOError,
+                          audiotools.open,
+                          "/dev/null/foo")
+
+        #ensure open on directory raises IOError
+        self.assertRaises(IOError,
+                          audiotools.open,
+                          "/")
+
+        #ensure open on unreadable file raises IOError
+        os.chmod(self.dummy1.name,0)
+        try:
+            self.assertRaises(IOError,
+                              audiotools.open,
+                              self.dummy1.name)
+        finally:
+            os.chmod(self.dummy1.name,0600)
+
+    @TEST_CUSTOM
+    def test_open_files(self):
+        audiotools.open_files(["/dev/null/foo","/foo/bar"],sorted=True,
+                              messenger=TestMessenger(
+                self,
+                [(WARNING,_(u"Unable to open \"%s\"") % ("/dev/null/foo")),
+                 (WARNING,_(u"Unable to open \"%s\"") % ("/foo/bar"))]))
+
+        audiotools.open_files([self.dummy1.name,"/foo/bar"],sorted=True,
+                              messenger=TestMessenger(
+                self,
+                [(WARNING,_(u"Unable to open \"%s\"") % ("/foo/bar"))]))
+
+        audiotools.open_files(["/foo/bar",self.dummy2.name],sorted=True,
+                              messenger=TestMessenger(
+                self,
+                [(WARNING,_(u"Unable to open \"%s\"") % ("/foo/bar"))]))
+
+        audiotools.open_files([self.dummy1.name,"/dev/null/bar",
+                               self.dummy2.name],sorted=True,
+                              messenger=TestMessenger(
+                self,
+                [(WARNING,_(u"Unable to open \"%s\"") % ("/dev/null/bar"))]))
 
 ############
 #END TESTS

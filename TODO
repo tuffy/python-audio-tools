@@ -963,6 +963,33 @@
 * TODO Seperate unreadable files from unknown files
   Files we're unable to read should be handled differently
   from files we're unable to understand.
+** DONE Update audiotools.open() to raise IOErrors
+** DONE Update audiotools.open_files() to handle IOErrors
+** DONE Update audiotools.open_directory() to handle IOErrors
+** TODO Update internal calls to open()/open_files() to handle IOErrors
+   - [ ] __flac__.py
+   - [ ] __m4a__.py
+   - [ ] __mp3__.py
+   - [ ] __vorbis__.py
+   - [ ] __wavpack__.py
+   - [ ] __wav__.py
+** TODO Update tools which use open()/open_files() to handle IOErrors
+   - [ ] coverdump
+   - [ ] editxmcd
+   - [ ] track2cd
+   - [ ] track2track
+   - [ ] track2xmcd
+   - [ ] trackcat
+   - [ ] trackcmp
+   - [ ] trackinfo
+   - [ ] tracklength
+   - [ ] tracklint
+   - [ ] trackplay
+   - [ ] trackrename
+   - [ ] tracksplit
+   - [ ] tracktag
+** TODO Add unit tests to demonstrate new behavior
+** TODO Update programming documentation with new behavior
 * TODO Support disc metadata submission
   If a disc is not found on FreeDB or MusicBrainz,
   there should be some mechanism to submit user-defined data

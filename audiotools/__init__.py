@@ -340,39 +340,41 @@ class DecodingError(IOError):
 
 #takes a filename string
 #returns a valid AudioFile object based on the file data or extension
-#or raises UnsupportedFile if it's not a file we support
+#raises UnsupportedFile if it's not a file we support
+#raise IOError if some problem occurs opening the file
 def open(filename):
     available_types = frozenset(TYPE_MAP.values())
 
+    f = file(filename,"rb")
     try:
-        f = file(filename,"rb")
-        try:
-            for audioclass in TYPE_MAP.values():
-                f.seek(0,0)
-                if (audioclass.is_type(f)):
-                    return audioclass(filename)
-            else:
-                raise UnsupportedFile(filename)
+        for audioclass in TYPE_MAP.values():
+            f.seek(0,0)
+            if (audioclass.is_type(f)):
+                return audioclass(filename)
+        else:
+            raise UnsupportedFile(filename)
 
-        finally:
-            f.close()
-    except IOError:
-        raise UnsupportedFile(filename)
+    finally:
+        f.close()
 
 #takes a list of filenames
 #returns a list of AudioFile objects, sorted by track_number()
 #any unsupported files are filtered out
-def open_files(filename_list, sorted=True):
+def open_files(filename_list, sorted=True, messenger=None):
     toreturn = []
-    msg = Messenger("audiotools",None)
+    if (messenger is None):
+        messenger = Messenger("audiotools",None)
 
     for filename in filename_list:
         try:
             toreturn.append(open(filename))
         except UnsupportedFile:
             pass
+        except IOError,err:
+            messenger.warning(_(u"Unable to open \"%s\"" % \
+                                    (messenger.filename(filename))))
         except InvalidFile,err:
-            msg.error(unicode(err))
+            messenger.error(unicode(err))
 
     if (sorted):
         toreturn.sort(lambda x,y: cmp((x.album_number(),x.track_number()),
@@ -383,13 +385,14 @@ def open_files(filename_list, sorted=True):
 #iterates recursively over any and all audio files in it
 #optionally sorted by directory name and track_number()
 #any unsupported files are filtered out
-def open_directory(directory, sorted=True):
+def open_directory(directory, sorted=True, messenger=None):
     for (basedir,subdirs,filenames) in os.walk(directory):
         if (sorted):
             subdirs.sort()
         for audiofile in open_files([os.path.join(basedir,filename)
                                      for filename in filenames],
-                                    sorted=sorted):
+                                    sorted=sorted,
+                                    messenger=messenger):
             yield audiofile
 
 #takes an iterable collection of tracks
