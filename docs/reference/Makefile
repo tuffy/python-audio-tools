@@ -58,16 +58,16 @@ clean:
 	rm -f figures/pcm.fig figures/flac_hann.fig figures/flac_rectangular.fig figures/flac_tukey.fig
 	rm -f audiotools-a4.tex audiotools-letter.tex
 
-audiotools-letter.pdf: audiotools-letter.tex $(CHAPTERS) $(FIGURES)
-	python pdflatexbuild.py -halt-on-error audiotools-letter.tex
+audioformats-letter.pdf: audioformats-letter.tex $(CHAPTERS) $(FIGURES)
+	python pdflatexbuild.py -halt-on-error audioformats-letter.tex
 
-audiotools-a4.pdf: audiotools-a4.tex $(CHAPTERS) $(FIGURES)
-	python pdflatexbuild.py -halt-on-error audiotools-a4.tex
+audioformats-a4.pdf: audioformats-a4.tex $(CHAPTERS) $(FIGURES)
+	python pdflatexbuild.py -halt-on-error audioformats-a4.tex
 
-audiotools-letter.tex: audiotools.m4
+audioformats-letter.tex: audioformats.m4
 	m4 -D PAPERSIZE=letterpaper $< > $@
 
-audiotools-a4.tex: audiotools.m4
+audioformats-a4.tex: audioformats.m4
 	m4 -D PAPERSIZE=a4paper $< > $@
 
 binary.pdf: binary.fig

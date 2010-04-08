@@ -780,7 +780,7 @@
     - [X] TOCFile
     - [X] read_tocfile
     - [X] TOCException
-* DONE Make reference documentation render consistently
+* TODO Make reference documentation render consistently
 ** DONE Ensure documents render in letter and A4 size
 ** DONE Add Creative Commons licensing to source code and doc itself
 ** DONE Add internal PDF linkage
@@ -958,7 +958,8 @@
 **** DONE Statistical Processing and Calibration
 ** DONE References
 ** DONE Remove old troff reference documentation
-* TODO Ensure make(1) from doc/ directory builds both doc trees
+** TODO Add title and author to PDF documentation
+* DONE Ensure make(1) from doc/ directory builds both doc trees
 * TODO Seperate unreadable files from unknown files
   Files we're unable to read should be handled differently
   from files we're unable to understand.
