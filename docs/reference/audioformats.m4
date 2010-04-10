@@ -58,8 +58,8 @@
 \include{musicbrainz}
 \include{musicbrainz_mmd}
 \include{replaygain}
-\include{references}
 \begin{appendices}
+\include{references}
 \include{license}
 \end{appendices}
 \end{document}

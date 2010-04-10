@@ -32,8 +32,9 @@ import time
 
 gettext.install("audiotools",unicode=True)
 
-(METADATA,PCM,FRAMELIST,EXECUTABLE,CUESHEET,IMAGE,FLAC,CUSTOM) = range(8)
-CASES = set([METADATA,PCM,FRAMELIST,EXECUTABLE,CUESHEET,IMAGE,FLAC])
+(METADATA,PCM,FRAMELIST,EXECUTABLE,CUESHEET,IMAGE,FLAC,NETWORK,
+ CUSTOM) = range(9)
+CASES = set([METADATA,PCM,FRAMELIST,EXECUTABLE,CUESHEET,IMAGE,FLAC,NETWORK])
 
 def nothing(self):
     pass
@@ -76,6 +77,12 @@ def TEST_IMAGE(function):
 
 def TEST_FLAC(function):
     if (FLAC not in CASES):
+        return nothing
+    else:
+        return function
+
+def TEST_NETWORK(function):
+    if (NETWORK not in CASES):
         return nothing
     else:
         return function
@@ -1484,6 +1491,7 @@ class TestAiffAudio(TestTextOutput):
 
     #test individual tracks run through track2xmcd
     @TEST_EXECUTABLE
+    @TEST_NETWORK
     def test_track2xmcd1(self):
         album_metadata = audiotools.AlbumMetaData(
             [audiotools.MetaData(
@@ -1557,6 +1565,7 @@ class TestAiffAudio(TestTextOutput):
 
     #test CD image and cuesheet run through track2xmcd
     @TEST_EXECUTABLE
+    @TEST_NETWORK
     def test_track2xmcd2(self):
         track_file = tempfile.NamedTemporaryFile(
             suffix="." + self.audio_class.SUFFIX)
@@ -1633,6 +1642,7 @@ uhhDdCiCwqg2Gw3lphgaGhoamR+mptKYNT/F3JFOFCQvKfgAwA==""".decode('base64').decode(
 
     #test CD image with embedded cuesheet run through track2xmcd
     @TEST_EXECUTABLE
+    @TEST_NETWORK
     def test_track2xmcd3(self):
         import audiotools.toc
 
@@ -1852,6 +1862,7 @@ uhhDdCiCwqg2Gw3lphgaGhoamR+mptKYNT/F3JFOFCQvKfgAwA==""".decode('base64').decode(
             temp_track_file3.close()
 
     @TEST_EXECUTABLE
+    @TEST_NETWORK
     def test_track2xmcd_invalid(self):
         temp_track_file1 = tempfile.NamedTemporaryFile(suffix="." + self.audio_class.SUFFIX)
         temp_track_file2 = tempfile.NamedTemporaryFile(suffix="." + self.audio_class.SUFFIX)
@@ -2933,6 +2944,125 @@ Fy3hYEs4qiXB6wOQULBQkOhCygalbISUUvrnACQVERfIr1scI4K5lk9od5+/""".decode('base64')
         finally:
             sheet_file.close()
 
+    #test adding metadata, then cuesheet using tracktag
+    @TEST_CUESHEET
+    def test_metadata1(self):
+        #create single track and cuesheet
+        temp_track = tempfile.NamedTemporaryFile(
+            suffix="." + self.audio_class.SUFFIX)
+        temp_sheet = tempfile.NamedTemporaryFile(
+            suffix=".cue")
+        try:
+            temp_sheet.write(
+"""eJydkF1LwzAUQN8L/Q+X/oBxk6YfyVtoM4mu68iy6WudQ8qkHbNu+u9NneCc1IdCnk649xyuUQXk
+epnpHGiOMU2Q+Z5xMCuLQs0tBOq92nTy7alus3b/AUeccL5/ZIHvZdLKWXkDjKcpIg2RszjxvYUy
+09IUykCwanZNe2pAHrr6tXMjVtuZ+uG27l62Dk91T03VPG8np+oYwL1cK98DsEZmd4AE5CrXZU8c
+O++wh2qzQxKc4X/S/l8vTQa3i7V2kWEap/iN57l66Pcjiq93IaWDUjpOyn9LETAVyASh1y0OR4Il
+Fy3hYEs4qiXB6wOQULBQkOhCygalbISUUvrnACQVERfIr1scI4K5lk9od5+/""".decode('base64').decode('zlib'))
+            temp_sheet.flush()
+            album = self.audio_class.from_pcm(
+                        temp_track.name,
+                        EXACT_BLANK_PCM_Reader(69470436))
+            sheet = audiotools.read_sheet(temp_sheet.name)
+
+            #add metadata
+            self.assertEqual(subprocess.call(["tracktag",
+                                              "--album","Album Name",
+                                              "--artist","Artist Name",
+                                              "--album-number","2",
+                                              "--album-total","3",
+                                              temp_track.name]),0)
+
+            metadata = audiotools.MetaData(
+                album_name=u"Album Name",
+                artist_name=u"Artist Name",
+                album_number=2,
+                album_total=3)
+
+            #add cuesheet
+            self.assertEqual(
+                subprocess.call(["tracktag","--cue",temp_sheet.name,
+                                 temp_track.name]),0)
+
+            #ensure metadata matches
+            self.assertEqual(album.get_metadata(),metadata)
+
+            #ensure cuesheet matches
+            sheet2 = album.get_cuesheet()
+
+            self.assertNotEqual(sheet2,None)
+            self.assertEqual(sheet.catalog(),
+                             sheet2.catalog())
+            self.assertEqual(sorted(sheet.ISRCs().items()),
+                             sorted(sheet2.ISRCs().items()))
+            self.assertEqual(list(sheet.indexes()),
+                             list(sheet2.indexes()))
+            self.assertEqual(list(sheet.pcm_lengths(69470436)),
+                             list(sheet2.pcm_lengths(69470436)))
+        finally:
+            temp_track.close()
+            temp_sheet.close()
+
+    #test adding cuesheet, then metadata using tracktag
+    @TEST_CUESHEET
+    def test_metadata2(self):
+        #create single track and cuesheet
+        temp_track = tempfile.NamedTemporaryFile(
+            suffix="." + self.audio_class.SUFFIX)
+        temp_sheet = tempfile.NamedTemporaryFile(
+            suffix=".cue")
+        try:
+            temp_sheet.write(
+"""eJydkF1LwzAUQN8L/Q+X/oBxk6YfyVtoM4mu68iy6WudQ8qkHbNu+u9NneCc1IdCnk649xyuUQXk
+epnpHGiOMU2Q+Z5xMCuLQs0tBOq92nTy7alus3b/AUeccL5/ZIHvZdLKWXkDjKcpIg2RszjxvYUy
+09IUykCwanZNe2pAHrr6tXMjVtuZ+uG27l62Dk91T03VPG8np+oYwL1cK98DsEZmd4AE5CrXZU8c
+O++wh2qzQxKc4X/S/l8vTQa3i7V2kWEap/iN57l66Pcjiq93IaWDUjpOyn9LETAVyASh1y0OR4Il
+Fy3hYEs4qiXB6wOQULBQkOhCygalbISUUvrnACQVERfIr1scI4K5lk9od5+/""".decode('base64').decode('zlib'))
+            temp_sheet.flush()
+            album = self.audio_class.from_pcm(
+                        temp_track.name,
+                        EXACT_BLANK_PCM_Reader(69470436))
+            sheet = audiotools.read_sheet(temp_sheet.name)
+
+            #add cuesheet
+            self.assertEqual(
+                subprocess.call(["tracktag","--cue",temp_sheet.name,
+                                 temp_track.name]),0)
+
+            #add metadata
+            self.assertEqual(subprocess.call(["tracktag",
+                                              "--album","Album Name",
+                                              "--artist","Artist Name",
+                                              "--album-number","2",
+                                              "--album-total","3",
+                                              temp_track.name]),0)
+
+            metadata = audiotools.MetaData(
+                album_name=u"Album Name",
+                artist_name=u"Artist Name",
+                album_number=2,
+                album_total=3)
+
+            #ensure metadata matches
+            self.assertEqual(album.get_metadata(),metadata)
+
+            #ensure cuesheet matches
+            sheet2 = album.get_cuesheet()
+
+            self.assertNotEqual(sheet2,None)
+            self.assertEqual(sheet.catalog(),
+                             sheet2.catalog())
+            self.assertEqual(sorted(sheet.ISRCs().items()),
+                             sorted(sheet2.ISRCs().items()))
+            self.assertEqual(list(sheet.indexes()),
+                             list(sheet2.indexes()))
+            self.assertEqual(list(sheet.pcm_lengths(69470436)),
+                             list(sheet2.pcm_lengths(69470436)))
+        finally:
+            temp_track.close()
+            temp_sheet.close()
+
+
 class LCVorbisComment:
     @TEST_METADATA
     def test_lowercase_vorbiscomment(self):
@@ -3716,6 +3846,7 @@ class TestMP2Audio(TestMP3Audio):
         self.audio_class = audiotools.MP2Audio
 
     @TEST_EXECUTABLE
+    @TEST_NETWORK
     def test_track2xmcd_invalid(self):
         temp_track_file1 = tempfile.NamedTemporaryFile(suffix="." + self.audio_class.SUFFIX)
         temp_track_file2 = tempfile.NamedTemporaryFile(suffix="." + self.audio_class.SUFFIX)
@@ -7386,6 +7517,7 @@ class TestTracksplitOutput(TestTextOutput):
 
 class TestTrack2XMCDFreeDB(TestTextOutput):
     @TEST_EXECUTABLE
+    @TEST_NETWORK
     def setUp(self):
         self.dir = tempfile.mkdtemp()
         self.xmcd_filename = os.path.join(
@@ -7416,12 +7548,14 @@ class TestTrack2XMCDFreeDB(TestTextOutput):
                                       10870944, 2687748])]
 
     @TEST_EXECUTABLE
+    @TEST_NETWORK
     def tearDown(self):
         for f in os.listdir(self.dir):
             os.unlink(os.path.join(self.dir,f))
         os.rmdir(self.dir)
 
     @TEST_EXECUTABLE
+    @TEST_NETWORK
     def test_track2xmcd(self):
         self.assertEqual(self.__run_app__(["track2xmcd"]),1)
         self.__check_error__(_(u"You must specify at least 1 supported audio file"))
@@ -7457,6 +7591,7 @@ class TestTrack2XMCDFreeDB(TestTextOutput):
 
 class TestTrack2XMLMusicBrainz(TestTextOutput):
     @TEST_EXECUTABLE
+    @TEST_NETWORK
     def setUp(self):
         self.dir = tempfile.mkdtemp()
         self.xml_filename = os.path.join(
@@ -7487,12 +7622,14 @@ class TestTrack2XMLMusicBrainz(TestTextOutput):
                                       10870944, 2687748])]
 
     @TEST_EXECUTABLE
+    @TEST_NETWORK
     def tearDown(self):
         for f in os.listdir(self.dir):
             os.unlink(os.path.join(self.dir,f))
         os.rmdir(self.dir)
 
     @TEST_EXECUTABLE
+    @TEST_NETWORK
     def test_track2xmcd(self):
         self.assertEqual(self.__run_app__(["track2xmcd"]),1)
         self.__check_error__(_(u"You must specify at least 1 supported audio file"))
@@ -10451,7 +10588,7 @@ class TestMessenger(audiotools.VerboseMessenger):
 
 
 class TestIOError(unittest.TestCase):
-    @TEST_CUSTOM
+    @TEST_PCM
     def setUp(self):
         self.dummy1 = tempfile.NamedTemporaryFile()
         self.dummy2 = tempfile.NamedTemporaryFile()

@@ -72,6 +72,17 @@ def xmcd_track_metadata(track, xmcd):
 
     return xmcd_md
 
+#--replace-metadata
+def replace_cuesheet(track, import_cuesheet):
+    return import_cuesheet
+
+#no --replace-metadata
+def noreplace_cuesheet(track, import_cuesheet):
+    if (import_cuesheet is None):
+        return track.get_cuesheet()
+    else:
+        return import_cuesheet
+
 #tries to return a populated Image object of the appropriate type
 #raises InvalidImage if something goes wrong during opening or parsing
 def get_image(filename, type):
@@ -347,11 +358,13 @@ if (__name__ == '__main__'):
             metadata_function = blank_metadata
         else:
             metadata_function = xmcd_metadata
+        cuesheet_function = replace_cuesheet
     else:
         if (xmcd is None):
             metadata_function = track_metadata
         else:
             metadata_function = xmcd_track_metadata
+        cuesheet_function = noreplace_cuesheet
 
 
     for file in audiofiles:
@@ -391,6 +404,7 @@ if (__name__ == '__main__'):
             metadata.comment = read_comment(options.comment_file,msg)
 
         track_metadata = metadata_function(file, xmcd)
+        track_cuesheet = cuesheet_function(file, import_cuesheet)
 
         try:
             if (metadata.supports_images()):
@@ -433,6 +447,8 @@ if (__name__ == '__main__'):
 
         try:
             file.set_metadata(metadata)
+            if (track_cuesheet is not None):
+                file.set_cuesheet(track_cuesheet)
         except IOError:
             msg.error(_(u"Unable to modify \"%s\"") % \
                           msg.filename(file.filename))
@@ -453,7 +469,4 @@ if (__name__ == '__main__'):
         except ValueError,err:
             msg.error(unicode(err))
             sys.exit(1)
-
-    if (import_cuesheet is not None):
-        audiofiles[0].set_cuesheet(import_cuesheet)
 

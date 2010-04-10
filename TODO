@@ -996,5 +996,4 @@
   to those services.
 * TODO Get coverview and editxmcd working on Mac OS X
   Preferably without falling back to Tkinter
-* TODO Ensure embedded cuesheets aren't clobbered by adding more metadata
-
+* DONE Ensure embedded cuesheets aren't clobbered by adding more metadata
