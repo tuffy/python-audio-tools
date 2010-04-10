@@ -14,7 +14,7 @@
     <col start="4" end="8" style="dashed" width=".20">Escape Code</col>
     <col width=".38" id="residual">Encoded Residual</col>
   </row>
-  <row><blank/></row>
+  <spacer height=".5"/>
   <row>
     <col style="blank" width=".17">Method = 1</col>
     <col start="0" end="4" width=".25">Rice Parameter</col>

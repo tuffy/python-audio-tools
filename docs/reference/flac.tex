@@ -1105,11 +1105,16 @@ Index & Sample & \text{Residual} \\
 2 & (warm-up) 1257 & \\
 3 & (warm-up) 1423 & \\
 4 & (warm-up) 1529 & \\
-5 & 1570 & 1570 - \frac{(1241 \times 1529) + (-944 \times 1423) + (14 \times 1257) + (342 \times 1116) + (-147 \times 1053)}{2 ^ 9} = 1570 - \frac{798656}{512} = \textbf{11} \\
-6 & 1623 & 1623 - \frac{(1241 \times 1570) + (-944 \times 1529) + (14 \times 1423) + (342 \times 1257) + (-147 \times 1116)}{2 ^ 9} = 1623 - \frac{790758}{512} = \textbf{79} \\
-7 & 1694 & 1694 -  \frac{(1241 \times 1623) + (-944 \times 1570) + (14 \times 1529) + (342 \times 1423) + (-147 \times 1257)}{2 ^ 9} = 1694 - \frac{855356}{512} = \textbf{24} \\
-8 & 1688 & 1688 - \frac{(1241 \times 1694) + (-944 \times 1623) + (14 \times 1570) + (342 \times 1529) + (-147 \times 1423)}{2 ^ 9} = 1688 - \frac{905859}{512} = \textbf{-81} \\
-9 & 1550 & 1550 - \frac{(1241 \times 1688) + (-944 \times 1694) + (14 \times 1623) + (342 \times 1570) + (-147 \times 1529)}{2 ^ 9} = 1550 - \frac{830571}{512} = \textbf{-72} \\
+\hline
+5 & 1570 & 1570 - \left \lfloor \frac{(1241 \times 1529) + (-944 \times 1423) + (14 \times 1257) + (342 \times 1116) + (-147 \times 1053)}{2 ^ 9} \right \rfloor = 1570 - \left \lfloor \frac{798656}{512} \right \rfloor = \textbf{11} \\
+\hline
+6 & 1623 & 1623 - \left \lfloor \frac{(1241 \times 1570) + (-944 \times 1529) + (14 \times 1423) + (342 \times 1257) + (-147 \times 1116)}{2 ^ 9} \right \rfloor = 1623 - \left \lfloor \frac{790758}{512} \right \rfloor = \textbf{79} \\
+\hline
+7 & 1694 & 1694 -  \left \lfloor \frac{(1241 \times 1623) + (-944 \times 1570) + (14 \times 1529) + (342 \times 1423) + (-147 \times 1257)}{2 ^ 9} \right \rfloor = 1694 - \left \lfloor \frac{855356}{512} \right \rfloor = \textbf{24} \\
+\hline
+8 & 1688 & 1688 - \left \lfloor \frac{(1241 \times 1694) + (-944 \times 1623) + (14 \times 1570) + (342 \times 1529) + (-147 \times 1423)}{2 ^ 9} \right \rfloor = 1688 - \left \lfloor \frac{905859}{512} \right \rfloor  = \textbf{-81} \\
+\hline
+9 & 1550 & 1550 - \left \lfloor \frac{(1241 \times 1688) + (-944 \times 1694) + (14 \times 1623) + (342 \times 1570) + (-147 \times 1529)}{2 ^ 9} \right \rfloor = 1550 - \left \lfloor \frac{830571}{512} \right \rfloor = \textbf{-72} \\
 \hline
 \end{tabular}
 }
