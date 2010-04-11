@@ -319,8 +319,16 @@ class EditXMCD:
     def from_xmcd_tracks(self,dialog,signal):
         dialog.hide()
         if (signal == -5):
-            self.read_xmcd(audiotools.XMCD.from_files(
-                    audiotools.open_files(dialog.get_filenames())))
+            audiofiles = audiotools.open_files(dialog.get_filenames())
+            if ((len(audiofiles) == 1) and
+                audiofiles[0].get_cuesheet() is not None):
+                self.read_xmcd(audiotools.XMCD.from_cuesheet(
+                        audiofiles[0].get_cuesheet(),
+                        audiofiles[0].total_frames(),
+                        audiofiles[0].sample_rate(),
+                        audiofiles[0].get_metadata()))
+            else:
+                self.read_xmcd(audiotools.XMCD.from_files(audiofiles))
             self.edited = False
             self.filename = None
             self.set_title()
@@ -328,8 +336,17 @@ class EditXMCD:
     def from_mbxml_tracks(self,dialog,signal):
         dialog.hide()
         if (signal == -5):
-            self.read_mbxml(audiotools.MusicBrainzReleaseXML.from_files(
-                    audiotools.open_files(dialog.get_filenames())))
+            audiofiles = audiotools.open_files(dialog.get_filenames())
+            if ((len(audiofiles) == 1) and
+                audiofiles[0].get_cuesheet() is not None):
+                self.read_mbxml(audiotools.MusicBrainzReleaseXML.from_cuesheet(
+                        audiofiles[0].get_cuesheet(),
+                        audiofiles[0].total_frames(),
+                        audiofiles[0].sample_rate(),
+                        audiofiles[0].get_metadata()))
+            else:
+                self.read_mbxml(audiotools.MusicBrainzReleaseXML.from_files(
+                        audiofiles))
             self.edited = False
             self.filename = None
             self.set_title()

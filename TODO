@@ -997,3 +997,11 @@
 * TODO Get coverview and editxmcd working on Mac OS X
   Preferably without falling back to Tkinter
 * DONE Ensure embedded cuesheets aren't clobbered by adding more metadata
+* TODO Adjust %(album_track_number)s to accomodate more than 9 albums
+  For example, track 2 of 7, album 5 of 11 in format
+  "%(album_track_number)s - %(track_name)s.%(suffix)s should be:
+  "0502 - name.suffix"
+* DONE editxmcd's "New" command should work with embedded cuesheets
+  Selecting a single disc image with embedded cuesheets should
+  fill in the proper XMCD/MusicBrainz fields
+

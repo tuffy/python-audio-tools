@@ -1364,7 +1364,7 @@
 	  <child>
 	    <widget class="GtkLabel" id="label14">
 	      <property name="visible">True</property>
-	      <property name="label" translatable="yes">&lt;span font-size=&quot;small&quot;&gt;© 2007-2009 by Brian Langenberger&lt;/span&gt;</property>
+	      <property name="label" translatable="yes">&lt;span font-size=&quot;small&quot;&gt;© 2007-2010 by Brian Langenberger&lt;/span&gt;</property>
 	      <property name="use_underline">False</property>
 	      <property name="use_markup">True</property>
 	      <property name="justify">GTK_JUSTIFY_LEFT</property>
