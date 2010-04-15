@@ -771,21 +771,11 @@ def stripped_pcm_cmp(pcmreader1, pcmreader2):
         from sha import new as sha
 
     data = cStringIO.StringIO()
-
-    d = pcmreader1.read(BUFFER_SIZE)
-    while (len(d) > 0):
-        data.write(d)
-        d = pcmreader1.read(BUFFER_SIZE)
-
+    transfer_framelist_data(pcmreader1,data.write)
     sum1 = sha(data.getvalue().strip(chr(0x00)))
 
     data = cStringIO.StringIO()
-
-    d = pcmreader2.read(BUFFER_SIZE)
-    while (len(d) > 0):
-        data.write(d)
-        d = pcmreader2.read(BUFFER_SIZE)
-
+    transfer_framelist_data(pcmreader2,data.write)
     sum2 = sha(data.getvalue().strip(chr(0x00)))
 
     del(data)
@@ -1883,8 +1873,12 @@ class AudioFile:
                 if (album_number == 0):
                     format_dict["album_track_number"] = "%2.2d" % (track_number)
                 else:
-                    format_dict["album_track_number"] = "%d%2.2d" % \
-                        (album_number,track_number)
+                    album_digits = len(str(track_metadata.album_total))
+
+                    format_dict["album_track_number"] = (
+                        "%%%(album_digits)d.%(album_digits)dd%%2.2d" %
+                        {"album_digits":album_digits} %
+                        (album_number,track_number))
 
                 for field in track_metadata.__FIELDS__:
                     if ((field != "suffix") and
