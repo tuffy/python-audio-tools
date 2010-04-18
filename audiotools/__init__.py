@@ -1249,6 +1249,23 @@ class ReplayGainReader:
         self.reader.close()
 
 #given a list of tracks,
+#returns True if ReplayGain can be applied to those tracks
+#False if not
+def applicable_replay_gain(tracks):
+    sample_rates = set([track.sample_rate() for track in tracks])
+    if ((len(sample_rates) > 1) or
+        (list(sample_rates)[0] not in (48000,44100,32000,24000,22050,
+                                       16000,12000,11025,8000))):
+        return False
+
+    channels = set([track.channels() for track in tracks])
+    if ((len(channels) > 1) or
+        (list(channels)[0] not in (1,2))):
+        return False
+
+    return True
+
+#given a list of tracks,
 #returns an iterator of (track,track_gain,track_peak,album_gain,album_peak)
 #tuples or raises ValueError if a problem occurs during calculation
 def calculate_replay_gain(tracks):

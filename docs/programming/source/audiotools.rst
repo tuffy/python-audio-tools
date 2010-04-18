@@ -150,6 +150,13 @@ classes and functions upon which all of the other modules depend.
    each limited to the given lengths.
    The original pcmreader is closed upon the iterator's completion.
 
+.. function:: applicable_replay_gain(audiofiles)
+
+   Takes a list of :class:`AudioFile`-compatible objects.
+   Returns ``True`` if ReplayGain can be applied to those files
+   based on their sample rate, number of channels, and so forth.
+   Returns ``False`` if not.
+
 .. function:: calculate_replay_gain(audiofiles)
 
    Takes a list of :class:`AudioFile`-compatible objects.

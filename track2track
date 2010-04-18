@@ -222,9 +222,6 @@ if (__name__ == '__main__'):
                 exp.error_msg(msg)
                 sys.exit(1)
 
-    if (options.add_replay_gain is None):
-        options.add_replay_gain = AudioType.lossless_replay_gain()
-
     #ensure the selected compression is compatible with that class
     if (options.quality == 'help'):
         if (len(AudioType.COMPRESSION_MODES) > 1):
@@ -259,6 +256,10 @@ if (__name__ == '__main__'):
         msg.error(_(u'You may specify only 1 input file for use with -o'))
         sys.exit(1)
 
+    #determine whether to add ReplayGain by default
+    if (options.add_replay_gain is None):
+        options.add_replay_gain = (AudioType.lossless_replay_gain() and
+                                   audiotools.applicable_replay_gain(audiofiles))
 
     #if we're using an XMCD/XML file, use that file for MetaData
     if (options.xmcd is not None):

@@ -232,7 +232,7 @@ Therefore, $\text{Butter}_{100} = -0.24 - -0.71 = 0.47$
 
 \pagebreak
 
-\section{RMS energy blocks}
+\subsection{RMS energy blocks}
 The next step is to take our stream of filtered samples and convert
 them to a list of blocks, each 1/20th of a second long.
 For example, a 44100Hz stream is sliced into blocks containing
@@ -271,7 +271,7 @@ Sample & Left Value & $\text{Left Value} ^ 2$ & Right Value & $\text{Right Value
 \end{align}
 Thus, the decibel value of this block is 36.28.
 
-\section{Statistical processing and calibration}
+\subsection{Statistical processing and calibration}
 At this point, we've converted our stream of input samples into a
 list of RMS energy blocks.
 We now pick the 95th percentile value as the audio stream's representative

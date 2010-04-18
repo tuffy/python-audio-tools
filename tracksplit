@@ -151,9 +151,6 @@ if (__name__ == '__main__'):
     else:
         AudioType = audiotools.TYPE_MAP['wav']
 
-    if (options.add_replay_gain is None):
-        options.add_replay_gain = AudioType.lossless_replay_gain()
-
     #ensure the selected compression is compatible with that class
     if (options.quality == 'help'):
         if (len(AudioType.COMPRESSION_MODES) > 1):
@@ -185,6 +182,10 @@ if (__name__ == '__main__'):
     except IOError:
         msg.error(_(u"Unable to open \"%s\"") % (msg.filename(args[0])))
         sys.exit(1)
+
+    if (options.add_replay_gain is None):
+        options.add_replay_gain = (AudioType.lossless_replay_gain() and
+                                   audiotools.applicable_replay_gain([audiofile]))
 
     if ((options.cuesheet is None) and (not has_embedded_cuesheet(audiofile))):
         msg.error(_(u"You must specify a cuesheet to split audio file"))
