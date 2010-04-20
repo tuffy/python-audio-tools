@@ -137,6 +137,13 @@ FrameList Objects
    Converts this object's values to a new :class:`FloatFrameList` object
    by transforming all samples to the range -1.0 to 1.0.
 
+.. method:: FrameList.to_bytes(is_big_endian, is_signed)
+
+   Given ``is_big_endian`` and ``is_signed`` booleans,
+   returns a plain string of raw PCM data.
+   This is much like the inverse of :class:`FrameList`'s initialization
+   routine.
+
 .. method:: FrameList.frame_count(bytes)
 
    A convenience method which converts a given byte count to the
