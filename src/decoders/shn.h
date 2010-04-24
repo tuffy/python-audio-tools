@@ -27,6 +27,15 @@ typedef struct {
 
   char* filename;
   Bitstream* bitstream;
+
+  unsigned int version;
+  unsigned int file_type;
+  unsigned int channels;
+  unsigned int block_size;
+  unsigned int maxnlpc;
+  unsigned int nmean;
+  unsigned int nskip;
+  unsigned int wrap;
 } decoders_SHNDecoder;
 
 /*the SHNDecoder.read() method*/
@@ -46,8 +55,31 @@ int SHNDecoder_init(decoders_SHNDecoder *self,
 		    PyObject *args, PyObject *kwds);
 
 
+/*the SHNDecoder.version attribute getter*/
+static PyObject *SHNDecoder_version(decoders_SHNDecoder *self,
+				    void *closure);
+
+/*the SHNDecoder.file_type attribute getter*/
+static PyObject *SHNDecoder_file_type(decoders_SHNDecoder *self,
+				      void *closure);
+
+/*the SHNDecoder.channels attribute getter*/
+static PyObject *SHNDecoder_channels(decoders_SHNDecoder *self,
+				     void *closure);
+
+/*the SHNDecoder.block_size attribute getter*/
+static PyObject *SHNDecoder_block_size(decoders_SHNDecoder *self,
+				       void *closure);
 
 PyGetSetDef SHNDecoder_getseters[] = {
+  {"version",
+   (getter)SHNDecoder_version, NULL, "version", NULL},
+  {"file_type",
+   (getter)SHNDecoder_file_type, NULL, "file_type", NULL},
+  {"channels",
+   (getter)SHNDecoder_channels, NULL, "channels", NULL},
+  {"block_size",
+   (getter)SHNDecoder_block_size, NULL, "block_size", NULL},
   {NULL}
 };
 
@@ -108,3 +140,9 @@ PyTypeObject decoders_SHNDecoderType = {
     0,                         /* tp_alloc */
     SHNDecoder_new,           /* tp_new */
 };
+
+int SHNDecoder_read_header(decoders_SHNDecoder* self);
+
+unsigned int shn_read_uvar(Bitstream* bs, unsigned int count);
+
+unsigned int shn_read_long(Bitstream* bs);
