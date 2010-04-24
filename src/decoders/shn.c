@@ -24,6 +24,7 @@ int SHNDecoder_init(decoders_SHNDecoder *self,
 		    PyObject *args, PyObject *kwds) {
   char* filename;
   FILE* fp;
+  int i,j;
 
   if (!PyArg_ParseTuple(args, "s", &filename))
     return -1;
@@ -39,9 +40,19 @@ int SHNDecoder_init(decoders_SHNDecoder *self,
   if (!SHNDecoder_read_header(self)) {
     PyErr_SetString(PyExc_ValueError,"not a SHN file");
     return -1;
+  } else {
+    iaa_init(&(self->buffer),self->channels,self->block_size + self->wrap);
+    for (i = 0; i < self->channels; i++) {
+      for (j = 0; j < self->wrap; j++) {
+    	ia_append(iaa_getitem(&(self->buffer),i),0);
+      }
+    }
   }
 
   self->filename = strdup(filename);
+
+  self->bits_per_sample = 16; /*FIXME - this must come from file type*/
+  self->sample_rate = 44100;  /*FIXME - this must come externally*/
 
   return 0;
 }
@@ -57,6 +68,7 @@ void SHNDecoder_dealloc(decoders_SHNDecoder *self) {
     free(self->filename);
 
   bs_close(self->bitstream);
+  iaa_free(&(self->buffer));
 
   self->ob_type->tp_free((PyObject*)self);
 }
@@ -86,6 +98,16 @@ static PyObject *SHNDecoder_channels(decoders_SHNDecoder *self,
   return Py_BuildValue("i",self->channels);
 }
 
+static PyObject *SHNDecoder_bits_per_sample(decoders_SHNDecoder *self,
+					    void *closure) {
+  return Py_BuildValue("i",self->bits_per_sample);
+}
+
+static PyObject *SHNDecoder_sample_rate(decoders_SHNDecoder *self,
+					void *closure) {
+  return Py_BuildValue("i",self->sample_rate);
+}
+
 static PyObject *SHNDecoder_block_size(decoders_SHNDecoder *self,
 				       void *closure) {
   return Py_BuildValue("i",self->block_size);
@@ -94,29 +116,29 @@ static PyObject *SHNDecoder_block_size(decoders_SHNDecoder *self,
 
 PyObject *SHNDecoder_read(decoders_SHNDecoder* self,
 			  PyObject *args) {
-  int channels_read = 0;
-  int i;
+  int channel = 0;
+  int i,j;
   unsigned int cmd;
   unsigned int verbatim_length;
-  unsigned int residual_size;
+
+  PyObject *pcm = NULL;
+  pcm_FrameList *framelist;
+  struct i_array* channel_data;
 
   if (!self->read_started) {
     fseek(self->bitstream->file,0,SEEK_SET);
     self->bitstream->state = 0;
 
     SHNDecoder_read_header(self);
-    printf("starting new read\n");
   }
 
   if (self->read_finished) {
-    /*FIXME - return empty FrameList here*/
-    Py_INCREF(Py_None);
-    return Py_None;
+    goto finished;
   }
 
   /*read the next instructions to fill all buffers,
     until FN_QUIT reached*/
-  while (channels_read < self->channels) {
+  while (channel < self->channels) {
     cmd = shn_read_uvar(self->bitstream,2);
     switch (cmd) {
     case FN_VERBATIM:
@@ -127,29 +149,87 @@ PyObject *SHNDecoder_read(decoders_SHNDecoder* self,
       }
       break;
     case FN_DIFF0:
+      SHNDecoder_read_diff(iaa_getitem(&(self->buffer),channel),
+			   self->bitstream,
+			   self->block_size,
+			   SHNDecoder_diff0);
+      channel++;
+      break;
     case FN_DIFF1:
+      SHNDecoder_read_diff(iaa_getitem(&(self->buffer),channel),
+			   self->bitstream,
+			   self->block_size,
+			   SHNDecoder_diff1);
+      channel++;
+      break;
     case FN_DIFF2:
+      SHNDecoder_read_diff(iaa_getitem(&(self->buffer),channel),
+			   self->bitstream,
+			   self->block_size,
+			   SHNDecoder_diff2);
+      channel++;
+      break;
     case FN_DIFF3:
-      residual_size = shn_read_uvar(self->bitstream, ENERGY_SIZE);
-      for (i = 0; i < self->block_size; i++) {
-	shn_read_var(self->bitstream, residual_size);
-      }
-      printf("residual size: %d ",residual_size);
-      channels_read++;
+      SHNDecoder_read_diff(iaa_getitem(&(self->buffer),channel),
+			   self->bitstream,
+			   self->block_size,
+			   SHNDecoder_diff3);
+      channel++;
       break;
     case FN_BLOCKSIZE:
       self->block_size = shn_read_long(self->bitstream);
       break;
     case FN_QUIT:
       self->read_finished = 1;
-      /*FIXME - return empty FrameList here*/
-      Py_INCREF(Py_None);
-      return Py_None;
+      goto finished;
     }
   }
-  printf("\n");
-  Py_INCREF(Py_None);
-  return Py_None;
+
+  /*once self->buffer is full of PCM data on each channel,
+    convert the integer values to a pcm.FrameList object*/
+  if ((pcm = PyImport_ImportModule("audiotools.pcm")) == NULL)
+    goto error;
+  framelist = (pcm_FrameList*)PyObject_CallMethod(pcm,"__blank__",NULL);
+  Py_DECREF(pcm);
+  framelist->frames = self->block_size;
+  framelist->channels = self->channels;
+  framelist->bits_per_sample = self->bits_per_sample;
+  framelist->samples_length = framelist->frames * framelist->channels;
+  framelist->samples = realloc(framelist->samples,
+			       sizeof(ia_data_t) * framelist->samples_length);
+
+  for (channel = 0; channel < self->channels; channel++) {
+    channel_data = iaa_getitem(&(self->buffer),channel);
+    for (i = channel,j = 0; j < self->block_size;
+  	 i += self->channels,j++)
+      framelist->samples[i] = ia_getitem(channel_data,j + self->wrap);
+  }
+
+  /*wrap the last (usually 3) values back to the beginning
+    of the buffers and reset their lengths for the next run*/
+  for (channel = 0; channel < self->channels; channel++) {
+    channel_data = iaa_getitem(&(self->buffer),channel);
+    for (i = -self->wrap; i < 0; i++) {
+      ia_setitem(channel_data,self->wrap + i,ia_getitem(channel_data,i));
+    }
+    channel_data->size = self->wrap;
+  }
+
+  /*then return the pcm.FrameList*/
+  return (PyObject*)framelist;
+
+ finished:
+  if ((pcm = PyImport_ImportModule("audiotools.pcm")) == NULL)
+    goto error;
+  framelist = (pcm_FrameList*)PyObject_CallMethod(pcm,"__blank__",NULL);
+  Py_DECREF(pcm);
+  framelist->frames = 0;
+  framelist->channels = self->channels;
+  framelist->bits_per_sample = self->bits_per_sample;
+  framelist->samples_length = framelist->frames * framelist->channels;
+  return (PyObject*)framelist;
+ error:
+  return NULL;
 }
 
 PyObject *SHNDecoder_verbatim(decoders_SHNDecoder* self,
@@ -245,6 +325,37 @@ int SHNDecoder_read_header(decoders_SHNDecoder* self) {
 
   return 1;
 }
+
+void SHNDecoder_read_diff(struct i_array *buffer,
+			  Bitstream* bs,
+			  unsigned int block_size,
+			  int (*calculation)(int residual,
+					     struct i_array *buffer)) {
+  unsigned int i;
+  unsigned int residual_size = shn_read_uvar(bs,ENERGY_SIZE);
+
+  for (i = 0; i < block_size; i++) {
+    ia_append(buffer,calculation(shn_read_var(bs,residual_size),buffer));
+  }
+}
+
+int SHNDecoder_diff0(int residual, struct i_array *buffer) {
+  return residual;
+}
+
+int SHNDecoder_diff1(int residual, struct i_array *buffer) {
+  return residual + ia_getitem(buffer,-1);
+}
+
+int SHNDecoder_diff2(int residual, struct i_array *buffer) {
+  return residual + ((2 * ia_getitem(buffer,-1)) - ia_getitem(buffer,-2));
+}
+
+int SHNDecoder_diff3(int residual, struct i_array *buffer) {
+  return residual + (3 * (ia_getitem(buffer,-1) -
+			  ia_getitem(buffer,-2))) + ia_getitem(buffer,-3);
+}
+
 
 unsigned int shn_read_uvar(Bitstream* bs, unsigned int count) {
   unsigned int high_bits = read_unary(bs,1);

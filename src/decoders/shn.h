@@ -51,6 +51,11 @@ typedef struct {
 
   int read_started;
   int read_finished;
+
+  int bits_per_sample;
+  int sample_rate;
+
+  struct ia_array buffer;
 } decoders_SHNDecoder;
 
 /*the SHNDecoder.read() method*/
@@ -82,6 +87,14 @@ static PyObject *SHNDecoder_file_type(decoders_SHNDecoder *self,
 static PyObject *SHNDecoder_channels(decoders_SHNDecoder *self,
 				     void *closure);
 
+/*the SHNDecoder.bits_per_sample attribute getter*/
+static PyObject *SHNDecoder_bits_per_sample(decoders_SHNDecoder *self,
+					    void *closure);
+
+/*the SHNDecoder.sample_rate attribute getter*/
+static PyObject *SHNDecoder_sample_rate(decoders_SHNDecoder *self,
+					void *closure);
+
 /*the SHNDecoder.block_size attribute getter*/
 static PyObject *SHNDecoder_block_size(decoders_SHNDecoder *self,
 				       void *closure);
@@ -93,6 +106,10 @@ PyGetSetDef SHNDecoder_getseters[] = {
    (getter)SHNDecoder_file_type, NULL, "file_type", NULL},
   {"channels",
    (getter)SHNDecoder_channels, NULL, "channels", NULL},
+  {"bits_per_sample",
+   (getter)SHNDecoder_bits_per_sample, NULL, "bits_per_sample", NULL},
+  {"sample_rate",
+   (getter)SHNDecoder_sample_rate, NULL, "sample_rate", NULL},
   {"block_size",
    (getter)SHNDecoder_block_size, NULL, "block_size", NULL},
   {NULL}
@@ -156,7 +173,20 @@ PyTypeObject decoders_SHNDecoderType = {
     SHNDecoder_new,           /* tp_new */
 };
 
+
+
 int SHNDecoder_read_header(decoders_SHNDecoder* self);
+
+void SHNDecoder_read_diff(struct i_array *buffer,
+			  Bitstream* bs,
+			  unsigned int block_size,
+			  int (*calculation)(int residual,
+					     struct i_array *buffer));
+
+int SHNDecoder_diff0(int residual, struct i_array *buffer);
+int SHNDecoder_diff1(int residual, struct i_array *buffer);
+int SHNDecoder_diff2(int residual, struct i_array *buffer);
+int SHNDecoder_diff3(int residual, struct i_array *buffer);
 
 unsigned int shn_read_uvar(Bitstream* bs, unsigned int count);
 
