@@ -94,6 +94,60 @@ static PyObject *SHNDecoder_block_size(decoders_SHNDecoder *self,
 
 PyObject *SHNDecoder_read(decoders_SHNDecoder* self,
 			  PyObject *args) {
+  int channels_read = 0;
+  int i;
+  unsigned int cmd;
+  unsigned int verbatim_length;
+  unsigned int residual_size;
+
+  if (!self->read_started) {
+    fseek(self->bitstream->file,0,SEEK_SET);
+    self->bitstream->state = 0;
+
+    SHNDecoder_read_header(self);
+    printf("starting new read\n");
+  }
+
+  if (self->read_finished) {
+    /*FIXME - return empty FrameList here*/
+    Py_INCREF(Py_None);
+    return Py_None;
+  }
+
+  /*read the next instructions to fill all buffers,
+    until FN_QUIT reached*/
+  while (channels_read < self->channels) {
+    cmd = shn_read_uvar(self->bitstream,2);
+    switch (cmd) {
+    case FN_VERBATIM:
+      /*skip VERBATIM chunks*/
+      verbatim_length = shn_read_uvar(self->bitstream, VERBATIM_CHUNK_SIZE);
+      for (i = 0; i < verbatim_length; i++) {
+	shn_read_uvar(self->bitstream, VERBATIM_BYTE_SIZE);
+      }
+      break;
+    case FN_DIFF0:
+    case FN_DIFF1:
+    case FN_DIFF2:
+    case FN_DIFF3:
+      residual_size = shn_read_uvar(self->bitstream, ENERGY_SIZE);
+      for (i = 0; i < self->block_size; i++) {
+	shn_read_var(self->bitstream, residual_size);
+      }
+      printf("residual size: %d ",residual_size);
+      channels_read++;
+      break;
+    case FN_BLOCKSIZE:
+      self->block_size = shn_read_long(self->bitstream);
+      break;
+    case FN_QUIT:
+      self->read_finished = 1;
+      /*FIXME - return empty FrameList here*/
+      Py_INCREF(Py_None);
+      return Py_None;
+    }
+  }
+  printf("\n");
   Py_INCREF(Py_None);
   return Py_None;
 }
@@ -165,6 +219,8 @@ PyObject *SHNDecoder_verbatim(decoders_SHNDecoder* self,
     }
   }
 
+  self->read_started = 0;
+
   return list;
 }
 
@@ -183,6 +239,9 @@ int SHNDecoder_read_header(decoders_SHNDecoder* self) {
   self->nskip = shn_read_long(bs);
   /*FIXME - perform writing if bytes skipped*/
   self->wrap = self->maxnlpc > 3 ? self->maxnlpc : 3;
+
+  self->read_started = 1;
+  self->read_finished = 0;
 
   return 1;
 }

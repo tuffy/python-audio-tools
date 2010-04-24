@@ -48,6 +48,9 @@ typedef struct {
   unsigned int nmean;
   unsigned int nskip;
   unsigned int wrap;
+
+  int read_started;
+  int read_finished;
 } decoders_SHNDecoder;
 
 /*the SHNDecoder.read() method*/
