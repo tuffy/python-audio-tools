@@ -22,6 +22,7 @@
  *******************************************************/
 
 extern PyTypeObject decoders_FlacDecoderType;
+extern PyTypeObject decoders_SHNDecoderType;
 
 PyMODINIT_FUNC initdecoders(void) {
     PyObject* m;
@@ -30,12 +31,20 @@ PyMODINIT_FUNC initdecoders(void) {
     if (PyType_Ready(&decoders_FlacDecoderType) < 0)
       return;
 
+    decoders_SHNDecoderType.tp_new = PyType_GenericNew;
+    if (PyType_Ready(&decoders_SHNDecoderType) < 0)
+      return;
+
     m = Py_InitModule3("decoders", module_methods,
                        "Low-level audio format decoders");
 
     Py_INCREF(&decoders_FlacDecoderType);
     PyModule_AddObject(m, "FlacDecoder",
 		       (PyObject *)&decoders_FlacDecoderType);
+
+    Py_INCREF(&decoders_SHNDecoderType);
+    PyModule_AddObject(m, "SHNDecoder",
+		       (PyObject *)&decoders_SHNDecoderType);
 
 }
 

@@ -55,6 +55,7 @@ decodersmodule = Extension('audiotools.decoders',
                            sources = ['src/array.c',
                                       'src/bitstream_r.c',
                                       'src/decoders/flac.c',
+                                      'src/decoders/shn.c',
                                       'src/decoders.c'],
                            define_macros = [("VERSION",VERSION)])
 
