@@ -22,6 +22,18 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  *******************************************************/
 
+#define ENERGY_SIZE 3
+#define VERBATIM_CHUNK_SIZE 5
+#define VERBATIM_BYTE_SIZE 8
+enum {FN_DIFF0     = 0,
+      FN_DIFF1     = 1,
+      FN_DIFF2     = 2,
+      FN_DIFF3     = 3,
+      FN_QUIT      = 4,
+      FN_BLOCKSIZE = 5,
+      FN_ZERO      = 8,
+      FN_VERBATIM  = 9};
+
 typedef struct {
   PyObject_HEAD
 
@@ -144,5 +156,7 @@ PyTypeObject decoders_SHNDecoderType = {
 int SHNDecoder_read_header(decoders_SHNDecoder* self);
 
 unsigned int shn_read_uvar(Bitstream* bs, unsigned int count);
+
+int shn_read_var(Bitstream* bs, unsigned int count);
 
 unsigned int shn_read_long(Bitstream* bs);
