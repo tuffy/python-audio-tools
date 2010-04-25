@@ -176,6 +176,11 @@ PyObject *SHNDecoder_read(decoders_SHNDecoder* self,
 			   SHNDecoder_diff3);
       channel++;
       break;
+    case FN_ZERO:
+      SHNDecoder_read_zero(iaa_getitem(&(self->buffer),channel),
+			   self->block_size);
+      channel++;
+      break;
     case FN_BLOCKSIZE:
       self->block_size = shn_read_long(self->bitstream);
       break;
@@ -183,6 +188,7 @@ PyObject *SHNDecoder_read(decoders_SHNDecoder* self,
       self->read_finished = 1;
       goto finished;
     default:
+      fprintf(stderr,"%d\n",cmd);
       PyErr_SetString(PyExc_ValueError,"unknown command encountered in Shorten stream");
       goto error;
     }
@@ -286,8 +292,17 @@ PyObject *SHNDecoder_verbatim(decoders_SHNDecoder* self,
     case FN_DIFF3:
       residual_size = shn_read_uvar(self->bitstream, ENERGY_SIZE);
       for (i = 0; i < self->block_size; i++) {
-	shn_read_var(self->bitstream, residual_size);
+	shn_skip_var(self->bitstream, residual_size);
       }
+      if (!previous_is_none) {
+	Py_INCREF(Py_None);
+	if (PyList_Append(list,Py_None) == -1) {
+	  return NULL;
+	}
+      }
+      previous_is_none = 1;
+      break;
+    case FN_ZERO:
       if (!previous_is_none) {
 	Py_INCREF(Py_None);
 	if (PyList_Append(list,Py_None) == -1) {
@@ -310,6 +325,58 @@ PyObject *SHNDecoder_verbatim(decoders_SHNDecoder* self,
 
   return list;
 }
+
+static PyObject *SHNDecoder_total_frames(decoders_SHNDecoder* self,
+					 PyObject *args) {
+  int total_samples = 0;
+  unsigned int i;
+  unsigned int cmd;
+  unsigned int verbatim_length;
+  unsigned int residual_size;
+
+  /*rewind the stream and re-read the header*/
+  fseek(self->bitstream->file,0,SEEK_SET);
+  self->bitstream->state = 0;
+
+  SHNDecoder_read_header(self);
+
+  /*walk through the Shorten file,
+    counting the length of all audio data commands*/
+  for (cmd = shn_read_uvar(self->bitstream,2);
+       cmd != FN_QUIT;
+       cmd = shn_read_uvar(self->bitstream,2)) {
+    switch (cmd) {
+    case FN_VERBATIM:
+      verbatim_length = shn_read_uvar(self->bitstream, VERBATIM_CHUNK_SIZE);
+      for (i = 0; i < verbatim_length; i++) {
+	shn_skip_uvar(self->bitstream, VERBATIM_BYTE_SIZE);
+      }
+      break;
+    case FN_DIFF0:
+    case FN_DIFF1:
+    case FN_DIFF2:
+    case FN_DIFF3:
+      total_samples += self->block_size;
+      residual_size = shn_read_uvar(self->bitstream, ENERGY_SIZE);
+      for (i = 0; i < self->block_size; i++) {
+	shn_skip_var(self->bitstream, residual_size);
+      }
+      break;
+    case FN_ZERO:
+      total_samples += self->block_size;
+      break;
+    case FN_BLOCKSIZE:
+      self->block_size = shn_read_long(self->bitstream);
+      break;
+    default:
+      PyErr_SetString(PyExc_ValueError,"unknown command encountered in Shorten stream");
+      return NULL;
+    }
+  }
+
+  return Py_BuildValue("i",total_samples / self->channels);
+}
+
 
 int SHNDecoder_read_header(decoders_SHNDecoder* self) {
   Bitstream* bs = self->bitstream;
@@ -363,6 +430,14 @@ int SHNDecoder_diff3(int residual, struct i_array *buffer) {
 			  ia_getitem(buffer,-2))) + ia_getitem(buffer,-3);
 }
 
+void SHNDecoder_read_zero(struct i_array *buffer,
+			  unsigned int block_size) {
+  int i;
+
+  for (i = 0; i < block_size; i++) {
+    ia_append(buffer,0);
+  }
+}
 
 unsigned int shn_read_uvar(Bitstream* bs, unsigned int count) {
   unsigned int high_bits = read_unary(bs,1);
@@ -381,4 +456,14 @@ int shn_read_var(Bitstream* bs, unsigned int count) {
 
 unsigned int shn_read_long(Bitstream* bs) {
   return shn_read_uvar(bs,shn_read_uvar(bs,2));
+}
+
+void shn_skip_uvar(Bitstream* bs, unsigned int count) {
+  read_unary(bs,1);
+  read_bits(bs,count);
+}
+
+void shn_skip_var(Bitstream* bs, unsigned int count) {
+  read_unary(bs,1);
+  read_bits(bs,count + 1);
 }

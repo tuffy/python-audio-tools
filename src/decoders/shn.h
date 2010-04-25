@@ -66,6 +66,10 @@ PyObject *SHNDecoder_read(decoders_SHNDecoder* self,
 PyObject *SHNDecoder_verbatim(decoders_SHNDecoder* self,
 			      PyObject *args);
 
+/*the SHNDecoder.total_frames() method*/
+static PyObject *SHNDecoder_total_frames(decoders_SHNDecoder* self,
+					 PyObject *args);
+
 /*the SHNDecoder.close() method*/
 PyObject *SHNDecoder_close(decoders_SHNDecoder* self,
 			    PyObject *args);
@@ -120,6 +124,8 @@ PyMethodDef SHNDecoder_methods[] = {
    METH_VARARGS,"Reads a frame of data from the SHN file"},
   {"verbatim", (PyCFunction)SHNDecoder_verbatim,
    METH_NOARGS,"Returns a list of verbatim chunks from the SHN file"},
+  {"total_frames", (PyCFunction)SHNDecoder_total_frames,
+    METH_NOARGS,"Returns the total number of PCM frames from the SHN file"},
   {"close", (PyCFunction)SHNDecoder_close,
    METH_NOARGS,"Closes the SHN decoder stream"},
   {NULL}
@@ -183,6 +189,9 @@ void SHNDecoder_read_diff(struct i_array *buffer,
 			  int (*calculation)(int residual,
 					     struct i_array *buffer));
 
+void SHNDecoder_read_zero(struct i_array *buffer,
+			  unsigned int block_size);
+
 int SHNDecoder_diff0(int residual, struct i_array *buffer);
 int SHNDecoder_diff1(int residual, struct i_array *buffer);
 int SHNDecoder_diff2(int residual, struct i_array *buffer);
@@ -193,3 +202,6 @@ unsigned int shn_read_uvar(Bitstream* bs, unsigned int count);
 int shn_read_var(Bitstream* bs, unsigned int count);
 
 unsigned int shn_read_long(Bitstream* bs);
+
+void shn_skip_uvar(Bitstream* bs, unsigned int count);
+void shn_skip_var(Bitstream* bs, unsigned int count);
