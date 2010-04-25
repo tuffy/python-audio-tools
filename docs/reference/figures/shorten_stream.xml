@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<diagram>
+  <row>
+    <col start="0" end="31" width=".18">Magic (‘ajkg’)</col>
+    <col start="32" end="39" width=".18">Version</col>
+    <col start="40" width=".20" id="header">Header</col>
+    <col width=".1466666">Command₁</col>
+    <col width=".1466666">Command₂</col>
+    <col style="dashed" width=".1466666">...</col>
+  </row>
+  <row><blank/></row>
+  <row>
+    <col width=".333333" id="type" end="long">File Type</col>
+    <col width=".333333" id="channels" end="long">Channels</col>
+    <col width=".333333" end="long">Block Length</col>
+  </row>
+  <row>
+    <col width=".333333" end="long">Max LPC</col>
+    <col width=".333333" end="long">Mean</col>
+    <col width=".333333" end="long">Bytes to Skip</col>
+  </row>
+  <row>
+    <col width=".666666" style="dashed">Skipped Bytes</col>
+    <col width=".333333" end="long">Samples to Wrap</col>
+  </row>
+  <line s_id="header" s_corner="sw" e_id="type" e_corner="nw" style="dotted"/>
+  <line s_id="header" s_corner="se" e_id="channels" e_corner="ne" style="dotted"/>
+</diagram>

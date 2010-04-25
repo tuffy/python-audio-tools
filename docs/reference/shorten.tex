@@ -1,0 +1,68 @@
+\chapter{Shorten}
+Shorten is one of the earliest lossless audio compression formats.
+Though superceded by FLAC and other formats, it remains interesting
+from a historical perspective.
+
+\section{Shorten data types}
+Notably, almost nothing in the Shorten file format is byte-aligned.
+Instead, it uses its own set of variable-length types which I'll
+refer to as \texttt{unsigned}, \texttt{signed} and \texttt{long}.
+
+\begin{wrapfigure}[16]{r}{2in}
+\includegraphics{figures/shorten_unsigned.pdf}
+\caption{Unsigned}
+\includegraphics{figures/shorten_signed.pdf}
+\caption{Signed}
+\end{wrapfigure}
+An \texttt{unsigned} field of a certain ``size'' means we first
+take a unary-encoded\footnote{In this instance, unary-encoding is a simple
+matter of counting the number of 0 bits before the next 1 bit.
+The resulting sum is the value.}, number of high bits and combine
+the resulting value with ``size'' number of low bits.
+For example, given a ``size'' of 2 and the bits `\texttt{0 0 1 1 1}',
+the high unary value of `\texttt{0 0 1}' combines with the low
+raw value of `\texttt{1 1}' resulting in a decimal value of 11.
+
+A \texttt{signed} field is similar, but its low value contains
+one additional trailing bit for the sign value.
+{\relsize{-2}
+\begin{equation*}
+\text{signed value} =
+\begin{cases}
+\text{unsigned value} & \text{if sign bit} = 0 \\
+-\text{unsigned value} - 1 & \text{if sign bit} = 1
+\end{cases}
+\end{equation*}
+}
+For example, given a ``size'' of 3 and the bits `\texttt{0 1 1 0 1 1}',
+the high unary value of `\texttt{0 1}' combines with the low
+raw value of `\texttt{1 0 1}' and the sign bit `\texttt{1}'
+resulting in a decimal value of -14.
+Note that the sign bit is counted seperately, so we're
+actually reading 4 additional bits after the unary value in this case.
+
+Lastly, and most confusingly, a \texttt{long} field is the combination
+of two seperate \texttt{unsigned} fields.
+The first, of size 2, determines the size value of the second.
+For example, given the bits `\texttt{1 1 1 1 1 0 1}',
+the first \texttt{unsigned} field of `\texttt{1 1 1}' has the value
+of 3 (unary 0 combined with a raw value of 3) - which is the size
+of the next \texttt{unsigned} field.
+That field, in turn, consists of the bits `\texttt{1 1 0 1}'
+which is 5 (unary 0 combined with a raw value of 5).
+So, the value of the entire \texttt{long} field is 5.
+
+A Shorten file consists almost entirely of these three types
+in various sizes.
+Therefore, when one reads ``\texttt{unsigned(3)}'' in a Shorten field
+description, it means an \texttt{unsigned} field of size 3.
+
+\pagebreak
+
+\section{the Shorten file stream}
+\begin{figure}[h]
+\includegraphics{figures/shorten_stream.pdf}
+\end{figure}
+\par
+\noindent
+

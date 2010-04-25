@@ -44,12 +44,14 @@ figures/musepack_sv7_stream.pdf figures/musepack_sv8_stream.pdf \
 figures/musepack_sv8_sh.pdf figures/musepack_sv8_rg.pdf \
 figures/musepack_sv8_ei.pdf figures/musepack_sv8_nut.pdf \
 figures/freedb_sequence.pdf figures/freedb_discid.pdf \
-figures/musicbrainz_discid.pdf figures/musicbrainz_xml.pdf
+figures/musicbrainz_discid.pdf figures/musicbrainz_xml.pdf \
+figures/shorten_stream.pdf figures/shorten_unsigned.pdf \
+figures/shorten_signed.pdf
 
 CHAPTERS = basics.tex wav.tex flac.tex m4a.tex mp3.tex vorbis.tex \
 wavpack.tex ape.tex aiff.tex au.tex speex.tex oggflac.tex musepack.tex \
 freedb.tex musicbrainz.tex musicbrainz_mmd.tex replaygain.tex references.tex \
-license.tex introduction.tex
+license.tex introduction.tex shorten.tex
 
 all: audioformats-letter.pdf audioformats-a4.pdf
 
@@ -145,3 +147,9 @@ figures/m4a_meta.pdf: figures/m4a_meta.xml
 
 figures/m4a_data.pdf: figures/m4a_data.xml
 	./bitdiagram.py -w 306 -i $< -o $@
+
+figures/shorten_unsigned.pdf: figures/shorten_unsigned.fig
+	fig2dev -Z 2 -L pdf $< $@
+
+figures/shorten_signed.pdf: figures/shorten_signed.fig
+	fig2dev -Z 2 -L pdf $< $@

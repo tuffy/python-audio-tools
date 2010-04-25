@@ -45,6 +45,7 @@
 \include{wav}
 \include{aiff}
 \include{au}
+\include{shorten}
 \include{flac}
 \include{wavpack}
 \include{ape}
