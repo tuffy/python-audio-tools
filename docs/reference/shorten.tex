@@ -63,6 +63,129 @@ description, it means an \texttt{unsigned} field of size 3.
 \begin{figure}[h]
 \includegraphics{figures/shorten_stream.pdf}
 \end{figure}
+\begin{table}[h]
+\begin{tabular}{|r|l|}
+\hline
+file type & format \\
+\hline
+0 & lossless \textmu-Law \\
+1 & signed 8 bit \\
+2 & unsigned 8 bit \\
+3 & signed 16 bit, big-endian \\
+4 & unsigned 16 bit, big-endian \\
+5 & signed 16 bit, little-endian \\
+6 & unsigned 16 bit, little-endian \\
+7 & lossy \textmu-Law \\
+8 & new \textmu-Law with zero mapping \\
+9 & lossless a-Law \\
+10 & lossy a-Law \\
+11 & Microsoft .wav \\
+12 & Apple .aiff \\
+\hline
+\end{tabular}
+\end{table}
 \par
 \noindent
+``Channels'' is the number of channels in the audio stream.
+``Block Length'' is the length of each command block, in samples.
+``Max LPC'' is the maximum LPC value a block may have.
+``Samples to Wrap'' is the number of samples to be wrapped around
+from the top of an output block to the bottom.
+This will be explained in more detail in the decoding section.
+
+\section{Shorten Decoding}
+\begin{wrapfigure}[4]{r}{2.75in}
+\begin{tabular}{|r|l||r|l|}
+\hline
+value & command & value & command \\
+\hline
+0 & \texttt{DIFF0} & 5 & \texttt{BLOCKSIZE} \\
+1 & \texttt{DIFF1} & 6 & \texttt{BITSHIFT} \\
+2 & \texttt{DIFF2} & 7 & \texttt{QLPC} \\
+3 & \texttt{DIFF3} & 8 & \texttt{ZERO} \\
+4 & \texttt{QUIT} & 9 & \texttt{VERBATIM} \\
+\hline
+\end{tabular}
+\end{wrapfigure}
+Internally\marginpar{Interestingly, although
+Shorten's successor, FLAC, presents its input as frames and subframes,
+references to a FLAC virtual machine are still present in its source code.},
+a Shorten file acts as a list of commands to be executed by a tiny
+virtual machine.
+Each command is a \texttt{unsigned(2)} field followed by zero or more
+arguments.
+
+\subsection{the DIFF commands}
+All four \texttt{DIFF} commands are structured the same:
+\begin{figure}[h]
+\includegraphics{figures/shorten_diff.pdf}
+\end{figure}
+\par
+\noindent
+There are ``Block Size'' number of residuals per \texttt{DIFF}
+(whose initial value is determined by the Shorten header)
+and each one's size is determined by ``Energy Size''.
+The process of transforming these residuals into samples
+depends on the \texttt{DIFF} command and the values of
+previously decoded samples.
+\begin{table}[h]
+\begin{tabular}{|c| >{$}l<{$} |}
+\hline
+Command & \text{Calculation} \\
+\hline
+\texttt{DIFF0} & Sample_i = Residual_i  \\
+\texttt{DIFF1} & Sample_i = Sample_{i - 1} + Residual_i  \\
+\texttt{DIFF2} & Sample_i = (2 \times Sample_{i - 1}) - Sample_{i - 2} + Residual_i \\
+\texttt{DIFF3} & Sample_i = (3 \times (Sample_{i - 1} - Sample_{i - 2})) + Sample_{i - 3} + Residual_i \\
+\hline
+\end{tabular}
+\end{table}
+\par
+\noindent
+For example, given a \texttt{DIFF1} command at the stream's beginning
+and the residual values 10, 1, 2, -2, 1 and -1, samples are
+calculated as follows:
+\begin{table}[h]
+\begin{tabular}{|c|r|>{$}r<{$}|}
+\hline
+Index & Residual & \text{Sample} \\
+\hline
+-1 & (before stream) & \text{(not output) } \bf0 \\
+\hline
+0 & 10 & 0 + 10 = \bf10 \\
+1 & 1 & 10 + 1 = \bf11 \\
+2 & 2 & 11 + 2 = \bf13 \\
+3 & -2 & 13 - 2 = \bf11 \\
+4 & 1 & 11 + 1 = \bf12 \\
+5 & -1 & 12 - 1 = \bf11 \\
+\hline
+\end{tabular}
+\end{table}
+
+\section{Channels and wrapping}
+The audio commands \texttt{DIFF}, \texttt{QLPC} and \texttt{ZERO} send
+their samples to channels in order.
+For example, a stream of \texttt{DIFF} commands in a 2 channel stereo
+stream (a very typical configuration) sends $\texttt{DIFF}_1$ to
+the left channel, $\texttt{DIFF}_2$ to the right channel,
+$\texttt{DIFF}_3$ to left channel, $\texttt{DIFF}_4$ to the right channel
+and so on.
+
+However, recall that most of the \texttt{DIFF} commands require
+previously decoded samples as part of their calculation.
+What this means is that $\texttt{DIFF}_3$ takes the last
+few samples from $\texttt{DIFF}_1$ in order to apply its residuals
+(since both are on the left channel) and $\texttt{DIFF}_4$
+takes the last few samples from $\texttt{DIFF}_2$.
+
+This is where the header's ``Samples to Wrap'' field comes into play.
+Its value is the number of samples to be wrapped from the top of the buffer
+to its pre-zero values.
+For example, if ``Sample Count'' is 256 and ``Samples to Wrap'' is 3
+(another typical configuration),
+$\text{Buffer}_{-1}$ takes the value of $\text{Buffer}_{255}$,
+$\text{Buffer}_{-2}$ takes the value of $\text{Buffer}_{254}$, and
+$\text{Buffer}_{-3}$ takes the value of $\text{Buffer}_{253}$.
+However, these pre-zero starting-point values are obviously not
+re-output when the buffer is finally completed and returned.
 
