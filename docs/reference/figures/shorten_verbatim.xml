@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<diagram>
+  <row>
+    <col end="unsigned(5)" width=".20">Total Bytes</col>
+    <col end="unsigned(8)" width=".20">Byte₁</col>
+    <col end="unsigned(8)" width=".20">Byte₂</col>
+    <col style="dashed" width=".20">...</col>
+    <col end="unsigned(8)" width=".20">Byteₓ</col>
+  </row>
+</diagram>

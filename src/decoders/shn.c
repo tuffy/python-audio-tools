@@ -182,6 +182,9 @@ PyObject *SHNDecoder_read(decoders_SHNDecoder* self,
     case FN_QUIT:
       self->read_finished = 1;
       goto finished;
+    default:
+      PyErr_SetString(PyExc_ValueError,"unknown command encountered in Shorten stream");
+      goto error;
     }
   }
 
@@ -296,6 +299,10 @@ PyObject *SHNDecoder_verbatim(decoders_SHNDecoder* self,
     case FN_BLOCKSIZE:
       self->block_size = shn_read_long(self->bitstream);
       break;
+    default:
+      PyErr_SetString(PyExc_ValueError,"unknown command encountered in Shorten stream");
+      Py_XDECREF(list);
+      return NULL;
     }
   }
 

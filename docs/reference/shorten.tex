@@ -162,7 +162,7 @@ Index & Residual & \text{Sample} \\
 \end{tabular}
 \end{table}
 
-\section{Channels and wrapping}
+\subsection{Channels and wrapping}
 The audio commands \texttt{DIFF}, \texttt{QLPC} and \texttt{ZERO} send
 their samples to channels in order.
 For example, a stream of \texttt{DIFF} commands in a 2 channel stereo
@@ -188,4 +188,27 @@ $\text{Buffer}_{-2}$ takes the value of $\text{Buffer}_{254}$, and
 $\text{Buffer}_{-3}$ takes the value of $\text{Buffer}_{253}$.
 However, these pre-zero starting-point values are obviously not
 re-output when the buffer is finally completed and returned.
+
+\subsection{the QUIT command}
+
+This command takes no arguments.
+It indicates the Shorten stream is finished and decoding is completed.
+
+\subsection{the BLOCKSIZE command}
+
+This command takes a single \texttt{long} argument
+whose value is the new ``Block Size''.
+In effect, it modifies that variable in the Shorten virtual machine.
+
+\subsection{the VERBATIM command}
+
+This command is for generating raw, non-audio data such
+as .wav or .aiff chunks and is structured as follows:
+\begin{figure}[h]
+\includegraphics{figures/shorten_verbatim.pdf}
+\end{figure}
+\par
+\noindent
+These chunks of raw data are expected to be written in the order
+they appear in the Shorten file.
 
