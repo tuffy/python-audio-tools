@@ -108,6 +108,19 @@ static PyObject *SHNDecoder_sample_rate(decoders_SHNDecoder *self,
   return Py_BuildValue("i",self->sample_rate);
 }
 
+static PyObject *SHNDecoder_channel_mask(decoders_SHNDecoder *self,
+					 void *closure) {
+  /*FIXME - this should be able to take external channel mask values*/
+  switch (self->channels) {
+  case 1:
+    return Py_BuildValue("i",0x4);
+  case 2:
+    return Py_BuildValue("i",0x3);
+  default:
+    return Py_BuildValue("i",0);
+  }
+}
+
 static PyObject *SHNDecoder_block_size(decoders_SHNDecoder *self,
 				       void *closure) {
   return Py_BuildValue("i",self->block_size);
@@ -181,6 +194,12 @@ PyObject *SHNDecoder_read(decoders_SHNDecoder* self,
 			   self->block_size);
       channel++;
       break;
+    case FN_QLPC:
+      SHNDecoder_read_lpc(iaa_getitem(&(self->buffer),channel),
+			  self->bitstream,
+			  self->block_size);
+      channel++;
+      break;
     case FN_BLOCKSIZE:
       self->block_size = shn_read_long(self->bitstream);
       break;
@@ -188,7 +207,6 @@ PyObject *SHNDecoder_read(decoders_SHNDecoder* self,
       self->read_finished = 1;
       goto finished;
     default:
-      fprintf(stderr,"%d\n",cmd);
       PyErr_SetString(PyExc_ValueError,"unknown command encountered in Shorten stream");
       goto error;
     }
@@ -247,6 +265,7 @@ PyObject *SHNDecoder_verbatim(decoders_SHNDecoder* self,
 
   unsigned int verbatim_length;
   unsigned char* verbatim;
+  unsigned int lpc_count;
 
   int i;
   unsigned int residual_size;
@@ -311,6 +330,23 @@ PyObject *SHNDecoder_verbatim(decoders_SHNDecoder* self,
       }
       previous_is_none = 1;
       break;
+    case FN_QLPC:
+      residual_size = shn_read_uvar(self->bitstream, ENERGY_SIZE);
+      lpc_count = shn_read_uvar(self->bitstream, QLPC_SIZE);
+      for (i = 0; i < lpc_count; i++) {
+	shn_skip_var(self->bitstream, QLPC_QUANT);
+      }
+      for (i = 0; i < self->block_size; i++) {
+	shn_skip_var(self->bitstream, residual_size);
+      }
+      if (!previous_is_none) {
+	Py_INCREF(Py_None);
+	if (PyList_Append(list,Py_None) == -1) {
+	  return NULL;
+	}
+      }
+      previous_is_none = 1;
+      break;
     case FN_BLOCKSIZE:
       self->block_size = shn_read_long(self->bitstream);
       break;
@@ -333,6 +369,7 @@ static PyObject *SHNDecoder_total_frames(decoders_SHNDecoder* self,
   unsigned int cmd;
   unsigned int verbatim_length;
   unsigned int residual_size;
+  unsigned int lpc_count;
 
   /*rewind the stream and re-read the header*/
   fseek(self->bitstream->file,0,SEEK_SET);
@@ -364,6 +401,17 @@ static PyObject *SHNDecoder_total_frames(decoders_SHNDecoder* self,
       break;
     case FN_ZERO:
       total_samples += self->block_size;
+      break;
+    case FN_QLPC:
+      total_samples += self->block_size;
+      residual_size = shn_read_uvar(self->bitstream, ENERGY_SIZE);
+      lpc_count = shn_read_uvar(self->bitstream, QLPC_SIZE);
+      for (i = 0; i < lpc_count; i++) {
+	shn_skip_var(self->bitstream, QLPC_QUANT);
+      }
+      for (i = 0; i < self->block_size; i++) {
+	shn_skip_var(self->bitstream, residual_size);
+      }
       break;
     case FN_BLOCKSIZE:
       self->block_size = shn_read_long(self->bitstream);
@@ -437,6 +485,33 @@ void SHNDecoder_read_zero(struct i_array *buffer,
   for (i = 0; i < block_size; i++) {
     ia_append(buffer,0);
   }
+}
+
+void SHNDecoder_read_lpc(struct i_array *buffer,
+			 Bitstream* bs,
+			 unsigned int block_size) {
+  unsigned int residual_size = shn_read_uvar(bs, ENERGY_SIZE);
+  unsigned int i,j;
+  unsigned int lpc_count;
+  struct i_array lpc_coeffs;
+  struct i_array tail;
+  int32_t sum;
+
+  lpc_count = shn_read_uvar(bs, QLPC_SIZE);
+  ia_init(&lpc_coeffs,lpc_count);
+  for (i = 0; i < lpc_count; i++) {
+    ia_append(&lpc_coeffs,shn_read_var(bs,QLPC_QUANT));
+  }
+  ia_reverse(&lpc_coeffs);
+  for (i = 0; i < block_size; i++) {
+    sum = QLPC_OFFSET;
+    ia_tail(&tail,buffer,lpc_count);
+    for (j = 0; j < lpc_count; j++) {
+      sum += (int32_t)ia_getitem(&tail,j) * (int32_t)ia_getitem(&lpc_coeffs,j);
+    }
+    ia_append(buffer,shn_read_var(bs, residual_size) + (sum >> QLPC_QUANT));
+  }
+  ia_free(&lpc_coeffs);
 }
 
 unsigned int shn_read_uvar(Bitstream* bs, unsigned int count) {

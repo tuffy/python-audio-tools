@@ -25,12 +25,18 @@
 #define ENERGY_SIZE 3
 #define VERBATIM_CHUNK_SIZE 5
 #define VERBATIM_BYTE_SIZE 8
+
+#define QLPC_SIZE 2
+#define QLPC_QUANT 5
+#define QLPC_OFFSET (1 << QLPC_QUANT);
+
 enum {FN_DIFF0     = 0,
       FN_DIFF1     = 1,
       FN_DIFF2     = 2,
       FN_DIFF3     = 3,
       FN_QUIT      = 4,
       FN_BLOCKSIZE = 5,
+      FN_QLPC      = 7,
       FN_ZERO      = 8,
       FN_VERBATIM  = 9};
 
@@ -99,6 +105,10 @@ static PyObject *SHNDecoder_bits_per_sample(decoders_SHNDecoder *self,
 static PyObject *SHNDecoder_sample_rate(decoders_SHNDecoder *self,
 					void *closure);
 
+/*the SHNDecoder.channel_mask attribute getter*/
+static PyObject *SHNDecoder_channel_mask(decoders_SHNDecoder *self,
+					 void *closure);
+
 /*the SHNDecoder.block_size attribute getter*/
 static PyObject *SHNDecoder_block_size(decoders_SHNDecoder *self,
 				       void *closure);
@@ -114,6 +124,8 @@ PyGetSetDef SHNDecoder_getseters[] = {
    (getter)SHNDecoder_bits_per_sample, NULL, "bits_per_sample", NULL},
   {"sample_rate",
    (getter)SHNDecoder_sample_rate, NULL, "sample_rate", NULL},
+  {"channel_mask",
+   (getter)SHNDecoder_channel_mask, NULL, "channel_mask", NULL},
   {"block_size",
    (getter)SHNDecoder_block_size, NULL, "block_size", NULL},
   {NULL}
@@ -189,13 +201,17 @@ void SHNDecoder_read_diff(struct i_array *buffer,
 			  int (*calculation)(int residual,
 					     struct i_array *buffer));
 
-void SHNDecoder_read_zero(struct i_array *buffer,
-			  unsigned int block_size);
-
 int SHNDecoder_diff0(int residual, struct i_array *buffer);
 int SHNDecoder_diff1(int residual, struct i_array *buffer);
 int SHNDecoder_diff2(int residual, struct i_array *buffer);
 int SHNDecoder_diff3(int residual, struct i_array *buffer);
+
+void SHNDecoder_read_zero(struct i_array *buffer,
+			  unsigned int block_size);
+
+void SHNDecoder_read_lpc(struct i_array *buffer,
+			 Bitstream* bs,
+			 unsigned int block_size);
 
 unsigned int shn_read_uvar(Bitstream* bs, unsigned int count);
 
