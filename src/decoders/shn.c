@@ -174,8 +174,11 @@ PyObject *SHNDecoder_read(decoders_SHNDecoder* self,
       channel_data = iaa_getitem(&(self->buffer),channel);
       offset_data = iaa_getitem(&(self->offset),channel);
 
-      coffset = ((((ia_data_t)self->nmean / 2) + ia_sum(offset_data))
-		 / (ia_data_t)self->nmean) >> MIN(1,self->bitshift);
+      if (self->nmean > 0)
+	coffset = ((((ia_data_t)self->nmean / 2) + ia_sum(offset_data))
+		   / (ia_data_t)self->nmean) >> MIN(1,self->bitshift);
+      else
+	coffset = 0;
 
       switch (cmd) {  /*audio commands handled here*/
       case FN_DIFF0:

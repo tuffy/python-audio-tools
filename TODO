@@ -1006,4 +1006,30 @@
   fill in the proper XMCD/MusicBrainz fields
 
 * DONE Ensure add_replay_gain used on hi-def tracks doesn't raise errors
-
+* TODO Add Shorten support
+  I don't expect people have a lot of shn files lying around
+  and nobody should be using it for new data
+  (though I'll add a rudimentary encoder for completeness' sake)
+  but it's interesting to document for historical reasons.
+** TODO Build complete decoder
+   - [X] DIFF0
+   - [X] DIFF1
+   - [X] DIFF2
+   - [X] DIFF3
+   - [X] QUIT
+   - [X] BLOCKSIZE
+   - [ ] BITSHIFT
+   - [X] QLPC
+   - [X] ZERO
+   - [X] VERBATIM
+   I'll likely limit support to Shorten version2/3
+   since generating older versions will be a challenge
+   and this format is obscure enough as it is.
+** TODO Build partial encoder
+** TODO Add ShortenAudio type to audiotools Python core
+** TODO Add Shorten-specific unit tests
+** TODO Document Shorten
+   - [X] Shorten data types
+   - [X] the Shorten file stream
+   - [ ] the decoding process
+   - [ ] the encoding process
