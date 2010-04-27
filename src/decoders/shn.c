@@ -42,14 +42,19 @@ int SHNDecoder_init(decoders_SHNDecoder *self,
     return -1;
   } else {
     iaa_init(&(self->buffer),self->channels,self->block_size + self->wrap);
+    iaa_init(&(self->offset),self->channels,self->nmean);
     for (i = 0; i < self->channels; i++) {
       for (j = 0; j < self->wrap; j++) {
     	ia_append(iaa_getitem(&(self->buffer),i),0);
+      }
+      for (j = 0; j < self->nmean; j++) {
+	ia_append(iaa_getitem(&(self->offset),i),0);
       }
     }
   }
 
   self->filename = strdup(filename);
+  self->bitshift = 0;
 
   self->bits_per_sample = 16; /*FIXME - this must come from file type*/
   self->sample_rate = 44100;  /*FIXME - this must come externally*/
@@ -69,6 +74,7 @@ void SHNDecoder_dealloc(decoders_SHNDecoder *self) {
 
   bs_close(self->bitstream);
   iaa_free(&(self->buffer));
+  iaa_free(&(self->offset));
 
   self->ob_type->tp_free((PyObject*)self);
 }
@@ -137,6 +143,10 @@ PyObject *SHNDecoder_read(decoders_SHNDecoder* self,
   PyObject *pcm = NULL;
   pcm_FrameList *framelist;
   struct i_array* channel_data;
+  struct i_array* offset_data;
+  ia_data_t sum;
+
+  int coffset;
 
   if (!self->read_started) {
     fseek(self->bitstream->file,0,SEEK_SET);
@@ -154,51 +164,87 @@ PyObject *SHNDecoder_read(decoders_SHNDecoder* self,
   while (channel < self->channels) {
     cmd = shn_read_uvar(self->bitstream,2);
     switch (cmd) {
+    case FN_DIFF0:
+    case FN_DIFF1:
+    case FN_DIFF2:
+    case FN_DIFF3:
+    case FN_ZERO:
+    case FN_QLPC:
+      /*calculate current coffset as adjusted average of offsets*/
+      channel_data = iaa_getitem(&(self->buffer),channel);
+      offset_data = iaa_getitem(&(self->offset),channel);
+
+      coffset = ((((ia_data_t)self->nmean / 2) + ia_sum(offset_data))
+		 / (ia_data_t)self->nmean) >> MIN(1,self->bitshift);
+
+      switch (cmd) {  /*audio commands handled here*/
+      case FN_DIFF0:
+	SHNDecoder_read_diff(channel_data,
+			     self->bitstream,
+			     self->block_size,
+			     SHNDecoder_diff0);
+
+	/*DIFF0, and only DIFF0, also applies coffset*/
+	for (i = 0; i < channel_data->size; i++) {
+	  ia_setitem(channel_data,i,ia_getitem(channel_data,i) + coffset);
+	}
+	break;
+      case FN_DIFF1:
+	SHNDecoder_read_diff(channel_data,
+			     self->bitstream,
+			     self->block_size,
+			     SHNDecoder_diff1);
+	break;
+      case FN_DIFF2:
+	SHNDecoder_read_diff(channel_data,
+			     self->bitstream,
+			     self->block_size,
+			     SHNDecoder_diff2);
+	break;
+      case FN_DIFF3:
+	SHNDecoder_read_diff(channel_data,
+			     self->bitstream,
+			     self->block_size,
+			     SHNDecoder_diff3);
+	break;
+      case FN_ZERO:
+	SHNDecoder_read_zero(channel_data,
+			     self->block_size);
+	break;
+      case FN_QLPC:
+	SHNDecoder_read_lpc(channel_data,
+			    self->bitstream,
+			    self->block_size,
+			    coffset,
+			    self->wrap);
+	break;
+      }
+
+      /*add new value to offset queue*/
+      if (self->nmean > 0) {
+	/*calculate a fresh sum of samples*/
+	sum = (ia_data_t)self->block_size / 2;
+	for (i = 0; i < self->block_size; i++) {
+	  sum += ia_getitem(channel_data,i + self->wrap);
+	}
+
+	/*shift the old offsets down a notch*/
+	for (i = 1; i < self->nmean; i++)
+	  ia_setitem(offset_data,i - 1,ia_getitem(offset_data,i));
+
+	/*and append our new sum*/
+	ia_setitem(offset_data,self->nmean - 1,
+		   (sum / (ia_data_t)self->block_size) << self->bitshift);
+      }
+
+      channel++;
+      break;
     case FN_VERBATIM:
       /*skip VERBATIM chunks*/
       verbatim_length = shn_read_uvar(self->bitstream, VERBATIM_CHUNK_SIZE);
       for (i = 0; i < verbatim_length; i++) {
 	shn_read_uvar(self->bitstream, VERBATIM_BYTE_SIZE);
       }
-      break;
-    case FN_DIFF0:
-      SHNDecoder_read_diff(iaa_getitem(&(self->buffer),channel),
-			   self->bitstream,
-			   self->block_size,
-			   SHNDecoder_diff0);
-      channel++;
-      break;
-    case FN_DIFF1:
-      SHNDecoder_read_diff(iaa_getitem(&(self->buffer),channel),
-			   self->bitstream,
-			   self->block_size,
-			   SHNDecoder_diff1);
-      channel++;
-      break;
-    case FN_DIFF2:
-      SHNDecoder_read_diff(iaa_getitem(&(self->buffer),channel),
-			   self->bitstream,
-			   self->block_size,
-			   SHNDecoder_diff2);
-      channel++;
-      break;
-    case FN_DIFF3:
-      SHNDecoder_read_diff(iaa_getitem(&(self->buffer),channel),
-			   self->bitstream,
-			   self->block_size,
-			   SHNDecoder_diff3);
-      channel++;
-      break;
-    case FN_ZERO:
-      SHNDecoder_read_zero(iaa_getitem(&(self->buffer),channel),
-			   self->block_size);
-      channel++;
-      break;
-    case FN_QLPC:
-      SHNDecoder_read_lpc(iaa_getitem(&(self->buffer),channel),
-			  self->bitstream,
-			  self->block_size);
-      channel++;
       break;
     case FN_BLOCKSIZE:
       self->block_size = shn_read_long(self->bitstream);
@@ -489,7 +535,9 @@ void SHNDecoder_read_zero(struct i_array *buffer,
 
 void SHNDecoder_read_lpc(struct i_array *buffer,
 			 Bitstream* bs,
-			 unsigned int block_size) {
+			 unsigned int block_size,
+			 int coffset,
+			 int wrap) {
   unsigned int residual_size = shn_read_uvar(bs, ENERGY_SIZE);
   unsigned int i,j;
   unsigned int lpc_count;
@@ -503,6 +551,12 @@ void SHNDecoder_read_lpc(struct i_array *buffer,
     ia_append(&lpc_coeffs,shn_read_var(bs,QLPC_QUANT));
   }
   ia_reverse(&lpc_coeffs);
+
+  if (coffset != 0) {
+    for (i = 0; i < wrap; i++)
+      ia_setitem(buffer,i,ia_getitem(buffer,i) - coffset);
+  }
+
   for (i = 0; i < block_size; i++) {
     sum = QLPC_OFFSET;
     ia_tail(&tail,buffer,lpc_count);
@@ -512,6 +566,10 @@ void SHNDecoder_read_lpc(struct i_array *buffer,
     ia_append(buffer,shn_read_var(bs, residual_size) + (sum >> QLPC_QUANT));
   }
   ia_free(&lpc_coeffs);
+
+  if (coffset != 0)
+    for (i = 0; i < buffer->size; i++)
+      ia_setitem(buffer,i,ia_getitem(buffer,i) + coffset);
 }
 
 unsigned int shn_read_uvar(Bitstream* bs, unsigned int count) {

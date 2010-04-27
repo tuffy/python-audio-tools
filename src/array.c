@@ -196,6 +196,25 @@ void ia_sub(struct i_array *target,
   target->size = size;
 }
 
+ia_data_t ia_sum(struct i_array *source) {
+  ia_data_t accumulator = 0;
+  ia_size_t i;
+
+  for (i = 0; i < source->size; i++)
+    accumulator += source->data[i];
+
+  return accumulator;
+}
+
+ia_data_t ia_avg(struct i_array *source) {
+  ia_data_t accumulator = 0;
+  ia_size_t i;
+
+  for (i = 0; i < source->size; i++)
+    accumulator += source->data[i];
+
+  return accumulator / source->size;
+}
 
 void iaa_init(struct ia_array *array, ia_size_t total_arrays,
 	      ia_size_t initial_size) {

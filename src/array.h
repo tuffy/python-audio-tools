@@ -29,8 +29,12 @@
 
 /*FIXME - ensure the ia_* and fa_* functions have equivilents*/
 
+#ifndef MIN
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
+#endif
+#ifndef MAX
 #define MAX(x,y) ((x) > (y) ? (x) : (y))
+#endif
 
 /*an array of int32_t values which can grow as needed
   typically for storing PCM sample values*/
@@ -172,6 +176,10 @@ void ia_add(struct i_array *target,
 
 void ia_sub(struct i_array *target,
 	    struct i_array *source1, struct i_array *source2);
+
+ia_data_t ia_sum(struct i_array *source);
+
+ia_data_t ia_avg(struct i_array *source);
 
 /*this calls "function" over the elements in source
   and returns a single value

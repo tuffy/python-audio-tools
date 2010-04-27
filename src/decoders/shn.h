@@ -54,6 +54,7 @@ typedef struct {
   unsigned int nmean;
   unsigned int nskip;
   unsigned int wrap;
+  unsigned int bitshift;
 
   int read_started;
   int read_finished;
@@ -62,6 +63,7 @@ typedef struct {
   int sample_rate;
 
   struct ia_array buffer;
+  struct ia_array offset;
 } decoders_SHNDecoder;
 
 /*the SHNDecoder.read() method*/
@@ -211,7 +213,9 @@ void SHNDecoder_read_zero(struct i_array *buffer,
 
 void SHNDecoder_read_lpc(struct i_array *buffer,
 			 Bitstream* bs,
-			 unsigned int block_size);
+			 unsigned int block_size,
+			 int coffset,
+			 int wrap);
 
 unsigned int shn_read_uvar(Bitstream* bs, unsigned int count);
 
