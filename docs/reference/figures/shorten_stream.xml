@@ -16,7 +16,7 @@
   </row>
   <row>
     <col width=".333333" end="long">Max LPC</col>
-    <col width=".333333" end="long">Mean</col>
+    <col width=".333333" end="long">Number of Means</col>
     <col width=".333333" end="long">Bytes to Skip</col>
   </row>
   <row>

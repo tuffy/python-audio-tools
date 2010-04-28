@@ -276,12 +276,56 @@ $\text{Sample}_{0}$, $\text{Sample}_{1}$, $\text{Sample}_{2}$, ... ,
 $\text{Sample}_{255}$
 before returning those values.
 
-
+\pagebreak
 
 \label{shorten_coffset}
-\subsection{the Coffset}
+\subsection{the coffset}
 
+Calcuating the ``coffset'' value for a given command on a given channel
+requires a set of ``offset'' values
+(whose count equals the ``Number of Means'', from the Shorten header)
+and the ``Number of Means'' value itself.
+\begin{equation}
+\text{coffset} = \frac{\frac{\text{nmeans}}{2} +
+\overset{\text{nmeans} - 1}{\underset{i = 0}{\sum}} \text{offset}_i }{\text{nmeans}}
+\end{equation}
+For example, given a ``Number of Means'' value of 4 and offsets of:
+\begin{table}[h]
+\begin{tabular}{>{$}r<{$} r}
+\text{offset}_0 & 32 \\
+\text{offset}_1 & 28 \\
+\text{offset}_2 & 17 \\
+\text{offset}_3 & 14 \\
+\end{tabular}
+\end{table}
+\par
+\noindent
+\begin{equation}
+\text{coffset} = \frac{\frac{4}{2} + (32 + 28 + 17 + 14)}{4} = \frac{93}{4} = \bf23
+\end{equation}
+\par
+The next obvious question is where to those ``offset'' values come from?
+They're actually a queue of (mostly) sample value averages on the
+given channel.
+So once we've decoded offset for $\text{command}_5$ on channel 0,
+$\text{offset}_0$ takes the value of $\text{offset}_1$,
+$\text{offset}_1$ takes the value of $\text{offset}_2$,
+$\text{offset}_2$ takes the value of $\text{offset}_3$,
+and $\text{command}_5$'s offset becomes the new $\text{offset}_3$.
 
+However, the offset is not entirely a sample average.
+Its actual formula is as follows:
+\begin{equation}
+\text{offset} = \frac{\frac{\text{block size}}{2} +
+\overset{\text{block size} - 1}{\underset{i = 0}{\sum}} \text{sample}_i }{\text{block size}}
+\end{equation}
+\par
+\noindent
+For example, if a command with a ``block size'' of 256 has samples
+that total 1056, its offset value is:
+\begin{equation}
+\text{offset} = \frac{\frac{\text{256}}{2} + 1056}{\text{256}} = \frac{1184}{256} = \bf4
+\end{equation}
 
 \subsection{the VERBATIM command}
 
