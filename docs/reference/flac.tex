@@ -332,7 +332,7 @@ signed two's-complement integers.
 The number of Coefficients equals the `LPC Order'.
 \begin{equation}
 Sample_i = \left\lfloor \frac{\overset{Order - 1}{\underset{j = 0}{\sum}}
-  \text{QLP Coeffcient}_j \times \text{Sample}_{i - j - 1} } {2 ^ \text{QLP Shift Needed}}\right\rfloor + Residual_i
+  \text{QLP Coefficient}_j \times \text{Sample}_{i - j - 1} } {2 ^ \text{QLP Shift Needed}}\right\rfloor + Residual_i
 \end{equation}
 This simply means we're taking the sum of the calculated values from
 0 to Order - 1, bit-shifting that sum down and added the residual

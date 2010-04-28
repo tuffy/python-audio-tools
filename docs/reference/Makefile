@@ -47,7 +47,7 @@ figures/freedb_sequence.pdf figures/freedb_discid.pdf \
 figures/musicbrainz_discid.pdf figures/musicbrainz_xml.pdf \
 figures/shorten_stream.pdf figures/shorten_unsigned.pdf \
 figures/shorten_signed.pdf figures/shorten_diff.pdf \
-figures/shorten_verbatim.pdf
+figures/shorten_verbatim.pdf figures/shorten_qlpc.pdf
 
 CHAPTERS = basics.tex wav.tex flac.tex m4a.tex mp3.tex vorbis.tex \
 wavpack.tex ape.tex aiff.tex au.tex speex.tex oggflac.tex musepack.tex \

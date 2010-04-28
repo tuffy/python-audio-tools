@@ -93,6 +93,8 @@ file type & format \\
 from the top of an output block to the bottom.
 This will be explained in more detail in the decoding section.
 
+\pagebreak
+
 \section{Shorten Decoding}
 \begin{wrapfigure}[4]{r}{2.75in}
 \begin{tabular}{|r|l||r|l|}
@@ -128,18 +130,20 @@ and each one's size is determined by ``Energy Size''.
 The process of transforming these residuals into samples
 depends on the \texttt{DIFF} command and the values of
 previously decoded samples.
-\begin{table}[h]
+
+\begin{minipage}{\linewidth}
+\renewcommand\thefootnote{\thempfootnote}
 \begin{tabular}{|c| >{$}l<{$} |}
 \hline
 Command & \text{Calculation} \\
 \hline
-\texttt{DIFF0} & Sample_i = Residual_i  \\
+\texttt{DIFF0} & Sample_i = Residual_i + Coffset\footnote{See page \pageref{shorten_coffset}} \\
 \texttt{DIFF1} & Sample_i = Sample_{i - 1} + Residual_i  \\
 \texttt{DIFF2} & Sample_i = (2 \times Sample_{i - 1}) - Sample_{i - 2} + Residual_i \\
 \texttt{DIFF3} & Sample_i = (3 \times (Sample_{i - 1} - Sample_{i - 2})) + Sample_{i - 3} + Residual_i \\
 \hline
 \end{tabular}
-\end{table}
+\end{minipage}
 \par
 \noindent
 For example, given a \texttt{DIFF1} command at the stream's beginning
@@ -161,6 +165,8 @@ Index & Residual & \text{Sample} \\
 \hline
 \end{tabular}
 \end{table}
+
+\pagebreak
 
 \subsection{Channels and wrapping}
 The audio commands \texttt{DIFF}, \texttt{QLPC} and \texttt{ZERO} send
@@ -205,6 +211,77 @@ In effect, it modifies that variable in the Shorten virtual machine.
 This command takes no arguments.
 It simply generates ``Block Size'' number of zero samples
 into the current channel's output buffer.
+
+\pagebreak
+
+\subsection{the QLPC command}
+
+The \texttt{QLPC} command is structured as follows:
+
+\begin{figure}[h]
+\includegraphics{figures/shorten_qlpc.pdf}
+\end{figure}
+\par
+\noindent
+So, given a set of LPC coefficients and a set of residuals,
+samples are calculated using the following formula:
+\begin{equation}
+Sample_i = \left\lfloor \frac{2 ^ 5 + \overset{Count - 1}{\underset{j = 0}{\sum}}
+  \text{LPC Coefficient}_j \times \text{Sample}_{i - j - 1} } {2 ^ 5}\right\rfloor + Residual_i
+\end{equation}
+This simply means we're taking the sum of the calculated values from
+0 to LPC Count - 1, bit-shifting that sum down and added the residual
+when determining the current sample.
+As with the \texttt{DIFF} commands, previously encoded samples
+(possibly from previous commands) are used to calculate the current
+sample.
+
+For example, given the LPC Coefficients and previously encoded samples:
+\begin{table}[h]
+\begin{tabular}{>{$}r<{$} r || >{$}r<{$} r}
+\text{LPC Coefficient}_0 & 21 & \text{Sample}_1 & -2 \\
+\text{LPC Coefficient}_1 & 2 & \text{Sample}_2 & -3 \\
+\text{LPC Coefficient}_2 & 7 & \text{Sample}_3 & -2
+\end{tabular}
+\end{table}
+\begin{figure}[h]
+\begin{tabular}{|c|r|>{$}r<{$}|}
+\hline
+Index & Residual & \text{Sample} \\
+\hline
+1 & & \bf-2 \\
+2 & & \bf-3 \\
+3 & & \bf-2 \\
+\hline
+4 & 1 & \left \lfloor \frac{2 ^ 5 + (21 \times -2) + (2 \times -3) + (7 \times -2)}{2 ^ 5} \right \rfloor + 1 = \left \lfloor \frac{32 - 62}{32} \right \rfloor + 1 = -1 + 1 = \bf0 \\
+5 & -2 & \left \lfloor \frac{2 ^ 5 + (21 \times \textbf{0}) + (2 \times -2) + (7 \times -3)}{2 ^ 5} \right \rfloor - 2 = \left \lfloor \frac{32 - 25}{32} \right \rfloor - 2 = 0 - 2 = \bf-2 \\
+6 & -1 & \left \lfloor \frac{2 ^ 5 + (21 \times \textbf{-2}) + (2 \times \textbf{0}) + (7 \times -2)}{2 ^ 5} \right \rfloor - 1 = \left \lfloor \frac{32 - 56}{32} \right \rfloor - 1 = -1 - 1 = \bf-2 \\
+\hline
+\end{tabular}
+\end{figure}
+\par
+Unfortunately, there's one more wrinkle to consider for proper
+\texttt{QLPC} command decoding: the ``coffset''.
+How to calculate this value will be covered in the next section.
+But when a \texttt{QLPC} command is encountered, the coffset value
+is subtracted from the \texttt{QLPC}'s warm-up samples
+(taken from the top of the previous command, for the current channel).
+Then that coffset value is re-added to our output samples after
+calculation.
+
+For example, given a ``coffset'' value of 5, one would subtract 5 from
+$\text{Sample}_{-3}$, $\text{Sample}_{-2}$ and $\text{Sample}_{-1}$,
+perform the QLPC calculation and then add 5 to our
+$\text{Sample}_{0}$, $\text{Sample}_{1}$, $\text{Sample}_{2}$, ... ,
+$\text{Sample}_{255}$
+before returning those values.
+
+
+
+\label{shorten_coffset}
+\subsection{the Coffset}
+
+
 
 \subsection{the VERBATIM command}
 
