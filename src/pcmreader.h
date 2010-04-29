@@ -24,13 +24,13 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  *******************************************************/
 
-/************************************
+/***************************************************************
       PCM reading functions
 
  these wrap around a Python PCMReader
- and perform the low-level task of converting Python strings
+ and perform the low-level task of converting Python FrameLists
  returned by pcmreader.read() to an ia_array struct
-************************************************************/
+****************************************************************/
 
 struct pcmr_callback {
   void (*callback)(void*, unsigned char*, unsigned long);
@@ -70,6 +70,8 @@ struct pcm_reader {
 
 int pcmr_close(struct pcm_reader *reader);
 
+/*places "sample_count" number of samples from reader.read()
+  into the "samples" buffer, after resetting it*/
 int pcmr_read(struct pcm_reader *reader,
 	      long sample_count,
 	      struct ia_array *samples);

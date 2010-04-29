@@ -30,8 +30,12 @@ const static char* AUDIOTOOLS_VERSION = VERSION_STRING(VERSION);
 
 #define DEFAULT_PADDING_SIZE 1024
 
+#ifndef MIN
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
+#endif
+#ifndef MAX
 #define MAX(x,y) ((x) > (y) ? (x) : (y))
+#endif
 
 #ifndef STANDALONE
 PyObject* encoders_encode_flac(PyObject *dummy,
@@ -92,7 +96,7 @@ PyObject* encoders_encode_flac(PyObject *dummy,
     return NULL;
 
   if (streaminfo.options.block_size <= 0) {
-    PyErr_SetString(PyExc_ValueError,"blocksize must be positive");
+    PyErr_SetString(PyExc_ValueError,"block_size must be positive");
     return NULL;
   }
 
@@ -107,7 +111,6 @@ PyObject* encoders_encode_flac(PyObject *dummy,
   /*transform the Python PCMReader-compatible object to a pcm_reader struct*/
   if ((reader = pcmr_open(pcmreader_obj)) == NULL) {
     fclose(file);
-    Py_DECREF(pcmreader_obj);
     return NULL;
   }
 

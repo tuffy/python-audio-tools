@@ -32,6 +32,8 @@ PyObject *encoders_write_bits(PyObject *dummy, PyObject *args);
 PyObject *encoders_write_unary(PyObject *dummy, PyObject *args);
 PyObject *encoders_encode_flac(PyObject *dummy,
 			       PyObject *args, PyObject *keywds);
+PyObject *encoders_encode_shn(PyObject *dummy,
+			      PyObject *args, PyObject *keywds);
 
 PyMethodDef module_methods[] = {
   {"write_bits",(PyCFunction)encoders_write_bits,
@@ -40,5 +42,7 @@ PyMethodDef module_methods[] = {
    METH_VARARGS,""},
   {"encode_flac",(PyCFunction)encoders_encode_flac,
    METH_VARARGS | METH_KEYWORDS,"Encode FLAC file from PCMReader"},
+  {"encode_shn",(PyCFunction)encoders_encode_shn,
+   METH_VARARGS | METH_KEYWORDS,"Encode Shorten file from PCMReader"},
   {NULL}
 };
