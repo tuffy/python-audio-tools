@@ -40,24 +40,52 @@ int SHNDecoder_init(decoders_SHNDecoder *self,
   if (!SHNDecoder_read_header(self)) {
     PyErr_SetString(PyExc_ValueError,"not a SHN file");
     return -1;
-  } else {
-    iaa_init(&(self->buffer),self->channels,self->block_size + self->wrap);
-    iaa_init(&(self->offset),self->channels,self->nmean);
-    for (i = 0; i < self->channels; i++) {
-      for (j = 0; j < self->wrap; j++) {
-    	ia_append(iaa_getitem(&(self->buffer),i),0);
-      }
-      for (j = 0; j < self->nmean; j++) {
-	ia_append(iaa_getitem(&(self->offset),i),0);
-      }
+  }
+
+  switch (self->file_type) {
+  case 1:
+  case 2:
+    self->bits_per_sample = 8;
+    break;
+  case 3:
+  case 4:
+  case 5:
+  case 6:
+    self->bits_per_sample = 16;
+    break;
+    /*not sure if file types 11/12 for wav and aiff are used*/
+  default:
+    PyErr_SetString(PyExc_ValueError,"unsupported SHN file type");
+    return -1;
+  }
+
+  iaa_init(&(self->buffer),self->channels,self->block_size + self->wrap);
+  iaa_init(&(self->offset),self->channels,self->nmean);
+  for (i = 0; i < self->channels; i++) {
+    for (j = 0; j < self->wrap; j++) {
+      ia_append(iaa_getitem(&(self->buffer),i),0);
+    }
+    for (j = 0; j < self->nmean; j++) {
+      ia_append(iaa_getitem(&(self->offset),i),0);
     }
   }
+
 
   self->filename = strdup(filename);
   self->bitshift = 0;
 
-  self->bits_per_sample = 16; /*FIXME - this must come from file type*/
-  self->sample_rate = 44100;  /*FIXME - this must come externally*/
+  /*These are set to sensible defaults at init-time.
+
+    But due to the grubby nature of Shorten,
+    the decoder is expected to make one pass through the file
+    parse any wav/aiff/au headers found (there should be one)
+    and use that data to set these two fields
+    so that this works like a proper PCMReader.
+
+    Shorten simply wasn't designed for any sort of non-batch
+    file compression/decompression whatsoever.*/
+  self->sample_rate = 44100;
+  self->channel_mask = 0x3;
 
   return 0;
 }
@@ -109,6 +137,24 @@ static PyObject *SHNDecoder_bits_per_sample(decoders_SHNDecoder *self,
   return Py_BuildValue("i",self->bits_per_sample);
 }
 
+static int SHNDecoder_set_sample_rate(decoders_SHNDecoder *self,
+				      PyObject *value,
+				      void *closure) {
+  long long_value;
+
+  if (value == NULL) {
+    PyErr_SetString(PyExc_TypeError, "cannot delete the sample_rate attribute");
+    return -1;
+  }
+
+  if (((long_value = PyInt_AsLong(value)) == -1) && PyErr_Occurred())
+    return -1;
+
+  self->sample_rate = long_value;
+
+  return 0;
+}
+
 static PyObject *SHNDecoder_sample_rate(decoders_SHNDecoder *self,
 					void *closure) {
   return Py_BuildValue("i",self->sample_rate);
@@ -116,15 +162,25 @@ static PyObject *SHNDecoder_sample_rate(decoders_SHNDecoder *self,
 
 static PyObject *SHNDecoder_channel_mask(decoders_SHNDecoder *self,
 					 void *closure) {
-  /*FIXME - this should be able to take external channel mask values*/
-  switch (self->channels) {
-  case 1:
-    return Py_BuildValue("i",0x4);
-  case 2:
-    return Py_BuildValue("i",0x3);
-  default:
-    return Py_BuildValue("i",0);
+  return Py_BuildValue("i",self->channel_mask);
+}
+
+static int SHNDecoder_set_channel_mask(decoders_SHNDecoder *self,
+				       PyObject *value,
+				       void *closure) {
+  long long_value;
+
+  if (value == NULL) {
+    PyErr_SetString(PyExc_TypeError, "cannot delete the channel_mask attribute");
+    return -1;
   }
+
+  if (((long_value = PyInt_AsLong(value)) == -1) && PyErr_Occurred())
+    return -1;
+
+  self->channel_mask = long_value;
+
+  return 0;
 }
 
 static PyObject *SHNDecoder_block_size(decoders_SHNDecoder *self,

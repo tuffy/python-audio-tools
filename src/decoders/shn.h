@@ -61,6 +61,7 @@ typedef struct {
 
   int bits_per_sample;
   int sample_rate;
+  int channel_mask;
 
   struct ia_array buffer;
   struct ia_array offset;
@@ -107,9 +108,19 @@ static PyObject *SHNDecoder_bits_per_sample(decoders_SHNDecoder *self,
 static PyObject *SHNDecoder_sample_rate(decoders_SHNDecoder *self,
 					void *closure);
 
+/*the SHNDecoder.sample_rate attribute setter*/
+static int SHNDecoder_set_sample_rate(decoders_SHNDecoder *self,
+				      PyObject *value,
+				      void *closure);
+
 /*the SHNDecoder.channel_mask attribute getter*/
 static PyObject *SHNDecoder_channel_mask(decoders_SHNDecoder *self,
 					 void *closure);
+
+/*the SHNDecoder.channel_mask attribute setter*/
+static int SHNDecoder_set_channel_mask(decoders_SHNDecoder *self,
+				       PyObject *value,
+				       void *closure);
 
 /*the SHNDecoder.block_size attribute getter*/
 static PyObject *SHNDecoder_block_size(decoders_SHNDecoder *self,
@@ -125,9 +136,11 @@ PyGetSetDef SHNDecoder_getseters[] = {
   {"bits_per_sample",
    (getter)SHNDecoder_bits_per_sample, NULL, "bits_per_sample", NULL},
   {"sample_rate",
-   (getter)SHNDecoder_sample_rate, NULL, "sample_rate", NULL},
+   (getter)SHNDecoder_sample_rate, (setter)SHNDecoder_set_sample_rate,
+   "sample_rate", NULL},
   {"channel_mask",
-   (getter)SHNDecoder_channel_mask, NULL, "channel_mask", NULL},
+   (getter)SHNDecoder_channel_mask, (setter)SHNDecoder_set_channel_mask,
+   "channel_mask", NULL},
   {"block_size",
    (getter)SHNDecoder_block_size, NULL, "block_size", NULL},
   {NULL}
