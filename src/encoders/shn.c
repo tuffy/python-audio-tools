@@ -43,6 +43,7 @@ PyObject* encoders_encode_shn(PyObject *dummy,
   Py_ssize_t string_len;
 
   int encoding_performed = 0;
+  int bytes_written = 0;
 
   /*extract a filename, PCMReader-compatible object and encoding options*/
   if (!PyArg_ParseTupleAndKeywords(args,keywds,"sOiO",
@@ -86,6 +87,9 @@ PyObject* encoders_encode_shn(PyObject *dummy,
   /*write header*/
   stream->write_bits(stream,32,0x616A6B67); /*the magic number 'ajkg'*/
   stream->write_bits(stream,8,2);           /*the version number 2*/
+
+  /*start counting written bytes *after* writing the 5 byte header*/
+  bs_add_callback(stream,shn_byte_counter,&bytes_written);
 
   /*file type is either 2 (unsigned 8-bit) or 5 (signed 16-bit little-endian)*/
   if (reader->bits_per_sample == 8) {
@@ -131,8 +135,14 @@ PyObject* encoders_encode_shn(PyObject *dummy,
   /*send the FN_QUIT command*/
   shn_put_uvar(stream,2,FN_QUIT);
 
-  /*byte-align output before closing files*/
+  /*byte-align output*/
   stream->byte_align(stream);
+
+  /*then, due to Shorten's silly way of using bit buffers,
+    output (not counting the 5 bytes of magic + version)
+    must be padded to a multiple of 4 bytes
+    or its reference decoder explodes*/
+  stream->write_bits(stream,(bytes_written % 4) * 8,0);
 
   pcmr_close(reader);
   bs_close(stream);
@@ -152,14 +162,14 @@ int shn_encode_stream(Bitstream* bs, struct pcm_reader *reader,
 
   iaa_init(&samples,reader->channels,block_size);
 
-  if (!pcmr_read(reader,block_size * reader->channels,&samples))
+  if (!pcmr_read(reader,block_size,&samples))
     goto error;
 
   /*iterate through all the integer arrays returned by "reader"*/
   while (samples.arrays[0].size > 0) {
     if (samples.arrays[0].size != block_size) {
       /*send a FN_BLOCKSIZE command if our returned block size changes
-	(which should only happen at the end of the stream*/
+	(which should only happen at the end of the stream)*/
       block_size = samples.arrays[0].size;
       shn_put_uvar(bs,2,FN_BLOCKSIZE);
       shn_put_long(bs,block_size);
@@ -213,4 +223,9 @@ void shn_put_long(Bitstream* bs, int value) {
 
   shn_put_uvar(bs,2,long_size);
   shn_put_uvar(bs,long_size,value);
+}
+
+void shn_byte_counter(unsigned int byte, void* counter) {
+  int* i_counter = (int*)counter;
+  *i_counter += 1;
 }

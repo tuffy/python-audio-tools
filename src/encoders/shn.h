@@ -52,4 +52,6 @@ int shn_encode_stream(Bitstream* bs, struct pcm_reader *reader,
 
 int shn_encode_channel(Bitstream* bs, struct i_array* samples, int wrap);
 
+void shn_byte_counter(unsigned int byte, void* counter);
+
 #endif
