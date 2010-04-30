@@ -226,8 +226,8 @@ The \texttt{QLPC} command is structured as follows:
 So, given a set of LPC coefficients and a set of residuals,
 samples are calculated using the following formula:
 \begin{equation}
-Sample_i = \left\lfloor \frac{2 ^ 5 + \overset{Count - 1}{\underset{j = 0}{\sum}}
-  \text{LPC Coefficient}_j \times \text{Sample}_{i - j - 1} } {2 ^ 5}\right\rfloor + Residual_i
+\text{Sample}_i = \left\lfloor \frac{2 ^ 5 + \overset{Count - 1}{\underset{j = 0}{\sum}}
+  \text{LPC Coefficient}_j \times \text{Sample}_{i - j - 1} } {2 ^ 5}\right\rfloor + \text{Residual}_i
 \end{equation}
 This simply means we're taking the sum of the calculated values from
 0 to LPC Count - 1, bit-shifting that sum down and added the residual

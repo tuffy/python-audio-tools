@@ -70,8 +70,8 @@ PyObject* encoders_encode_shn(PyObject *dummy,
     stream = bs_open(file);
   }
 
-  bs->write_bits(bs,32,0x616A6B67); /*the magic number 'ajkg'*/
-  bs->write_bits(bs,8,2);           /*the version number 2*/
+  stream->write_bits(stream,32,0x616A6B67); /*the magic number 'ajkg'*/
+  stream->write_bits(stream,8,2);           /*the version number 2*/
 
 
   pcmr_close(reader);
