@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include "../bitstream_w.h"
 #include "../array.h"
+#include "../pcmreader.h"
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -26,13 +27,29 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  *******************************************************/
 
-typedef enum {SHN_FN_DIFF1,
-	      SHN_FN_DIFF2,
-	      SHN_FN_DIFF3,
-	      SHN_FN_ZERO,
-	      SHN_FN_BLOCKSIZE,
-	      SHN_FN_QUIT} flac_command_type;
+#define ENERGY_SIZE 3
+#define VERBATIM_CHUNK_SIZE 5
+#define VERBATIM_BYTE_SIZE 8
+
+enum {FN_DIFF0     = 0,
+      FN_DIFF1     = 1,
+      FN_DIFF2     = 2,
+      FN_DIFF3     = 3,
+      FN_QUIT      = 4,
+      FN_BLOCKSIZE = 5,
+      FN_QLPC      = 7,
+      FN_ZERO      = 8,
+      FN_VERBATIM  = 9};
 
 typedef enum {OK,ERROR} status;
+
+void shn_put_uvar(Bitstream* bs, int size, int value);
+void shn_put_var(Bitstream* bs, int size, int value);
+void shn_put_long(Bitstream* bs, int value);
+
+int shn_encode_stream(Bitstream* bs, struct pcm_reader *reader,
+		      int block_size, int wrap);
+
+int shn_encode_channel(Bitstream* bs, struct i_array* samples, int wrap);
 
 #endif
