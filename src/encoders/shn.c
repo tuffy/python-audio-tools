@@ -104,21 +104,21 @@ PyObject* encoders_encode_shn(PyObject *dummy,
   stream->write_bits(stream,8,2);           /*the version number 2*/
 
   /*start counting written bytes *after* writing the 5 byte header*/
-  bs_add_callback(stream,shn_byte_counter,&bytes_written);
+  bs_add_callback(stream,ShortenEncoder_byte_counter,&bytes_written);
 
   /*file type is either 2 (unsigned 8-bit) or 5 (signed 16-bit little-endian)*/
   if (reader->bits_per_sample == 8) {
-    shn_put_long(stream,2);
+    ShortenEncoder_put_long(stream,2);
   }
   if (reader->bits_per_sample == 16) {
-    shn_put_long(stream,5);
+    ShortenEncoder_put_long(stream,5);
   }
 
-  shn_put_long(stream,reader->channels);
-  shn_put_long(stream,block_size);
-  shn_put_long(stream,0);                /*max LPC = 0*/
-  shn_put_long(stream,0);                /*number of means = 0*/
-  shn_put_long(stream,0);                /*bytes to skip = 0*/
+  ShortenEncoder_put_long(stream,reader->channels);
+  ShortenEncoder_put_long(stream,block_size);
+  ShortenEncoder_put_long(stream,0);                /*max LPC = 0*/
+  ShortenEncoder_put_long(stream,0);                /*number of means = 0*/
+  ShortenEncoder_put_long(stream,0);                /*bytes to skip = 0*/
 
   /*iterate through verbatim_chunks*/
   for (i = 0; i < verbatim_chunks_len; i++) {
@@ -131,15 +131,15 @@ PyObject* encoders_encode_shn(PyObject *dummy,
 	Py_DECREF(verbatim_chunk);
 	goto error;
       }
-      shn_put_uvar(stream,2,FN_VERBATIM);
-      shn_put_uvar(stream,VERBATIM_CHUNK_SIZE,string_len);
+      ShortenEncoder_put_uvar(stream,2,FN_VERBATIM);
+      ShortenEncoder_put_uvar(stream,VERBATIM_CHUNK_SIZE,string_len);
       for (j = 0; j < string_len; j++)
-	shn_put_uvar(stream,VERBATIM_BYTE_SIZE,(unsigned char)string[j]);
+	ShortenEncoder_put_uvar(stream,VERBATIM_BYTE_SIZE,(unsigned char)string[j]);
 
     } else if (!encoding_performed) {
       /*once None is hit, perform full encoding of reader,
 	if it hasn't already*/
-      if (!shn_encode_stream(stream,reader,block_size,&wrapped_samples))
+      if (!ShortenEncoder_encode_stream(stream,reader,block_size,&wrapped_samples))
       	goto error;
       encoding_performed = 1;
     }
@@ -148,7 +148,7 @@ PyObject* encoders_encode_shn(PyObject *dummy,
   }
 
   /*send the FN_QUIT command*/
-  shn_put_uvar(stream,2,FN_QUIT);
+  ShortenEncoder_put_uvar(stream,2,FN_QUIT);
 
   /*byte-align output*/
   stream->byte_align(stream);
@@ -157,7 +157,7 @@ PyObject* encoders_encode_shn(PyObject *dummy,
     output (not counting the 5 bytes of magic + version)
     must be padded to a multiple of 4 bytes
     or its reference decoder explodes*/
-  stream->write_bits(stream,(bytes_written % 4) * 8,0);
+  stream->write_bits(stream,(4 - (bytes_written % 4)) * 8,0);
 
   iaa_free(&wrapped_samples);
   pcmr_close(reader);
@@ -171,7 +171,7 @@ PyObject* encoders_encode_shn(PyObject *dummy,
   return NULL;
 }
 
-int shn_encode_stream(Bitstream* bs,
+int ShortenEncoder_encode_stream(Bitstream* bs,
 		      struct pcm_reader *reader,
 		      int block_size,
 		      struct ia_array* wrapped_samples) {
@@ -189,13 +189,13 @@ int shn_encode_stream(Bitstream* bs,
       /*send a FN_BLOCKSIZE command if our returned block size changes
 	(which should only happen at the end of the stream)*/
       block_size = samples.arrays[0].size;
-      shn_put_uvar(bs,2,FN_BLOCKSIZE);
-      shn_put_long(bs,block_size);
+      ShortenEncoder_put_uvar(bs,2,FN_BLOCKSIZE);
+      ShortenEncoder_put_long(bs,block_size);
     }
 
     /*then send a separate command for each channel*/
     for (i = 0; i < samples.size; i++) {
-      if (!shn_encode_channel(bs,
+      if (!ShortenEncoder_encode_channel(bs,
 			      iaa_getitem(&samples,i),
 			      iaa_getitem(wrapped_samples,i)))
 	goto error;
@@ -213,83 +213,152 @@ int shn_encode_stream(Bitstream* bs,
   return 0;
 }
 
-int shn_encode_channel(Bitstream* bs,
+int ShortenEncoder_encode_channel(Bitstream* bs,
 		       struct i_array* samples,
 		       struct i_array* wrapped_samples) {
-  /*FIXME - for now, we'll just output DIFF1 commands*/
-  shn_put_uvar(bs,2,FN_DIFF3);
-  shn_encode_diff(bs,samples,wrapped_samples,shn_encode_diff3);
-
-  /* shn_put_uvar(bs,2,FN_ZERO); */
-  return 1;
-}
-
-int shn_encode_diff(Bitstream* bs,
-		    struct i_array* samples,
-		    struct i_array* wrapped_samples,
-		    ia_data_t (*calculator)(struct i_array* samples,
-					    ia_size_t i)) {
-  struct i_array residuals;
   struct i_array buffer;
-  struct i_array samples_tail;
-  ia_size_t i;
 
   /*combine "samples" and "wrapped_samples" into a unified sample buffer*/
   ia_init(&buffer,wrapped_samples->size + samples->size);
   ia_copy(&buffer,wrapped_samples);
   ia_extend(&buffer,samples);
 
+  switch (ShortenEncoder_compute_best_diff(&buffer,wrapped_samples->size)) {
+  case FN_DIFF1:
+    ShortenEncoder_put_uvar(bs,2,FN_DIFF1);
+    ShortenEncoder_encode_diff(bs,&buffer,wrapped_samples,
+			       ShortenEncoder_encode_diff1);
+    break;
+  case FN_DIFF2:
+    ShortenEncoder_put_uvar(bs,2,FN_DIFF2);
+    ShortenEncoder_encode_diff(bs,&buffer,wrapped_samples,
+			       ShortenEncoder_encode_diff2);
+    break;
+  case FN_DIFF3:
+    ShortenEncoder_put_uvar(bs,2,FN_DIFF3);
+    ShortenEncoder_encode_diff(bs,&buffer,wrapped_samples,
+			       ShortenEncoder_encode_diff3);
+    break;
+  }
+
+  /*free allocated buffer*/
+  ia_free(&buffer);
+
+  /* shn_put_uvar(bs,2,FN_ZERO); */
+  return 1;
+}
+
+int ShortenEncoder_compute_best_diff(struct i_array* buffer, int wrap) {
+  /*I'm not using DIFF0 commands at all, so no delta0_sum*/
+  uint64_t delta1_sum;
+  uint64_t delta2_sum;
+  uint64_t delta3_sum;
+
+  struct i_array delta0;
+  struct i_array delta1;
+  struct i_array delta2;
+  struct i_array delta3;
+  struct i_array subtract;
+
+  ia_size_t i;
+
+  if (buffer->size <= 3)
+    return FN_DIFF1;
+
+  delta0.data = subtract.data = NULL;
+
+  ia_tail(&delta0,buffer,buffer->size - wrap + 1);
+  ia_tail(&subtract,&delta0,delta0.size - 1);
+  ia_init(&delta1,buffer->size);
+  ia_sub(&delta1,&delta0,&subtract);
+  for (delta1_sum = 0,i = 0; i < delta1.size; i++)
+    delta1_sum += abs(ia_getitem(&delta1,i));
+
+  ia_tail(&subtract,&delta1,delta1.size - 1);
+  ia_init(&delta2,buffer->size);
+  ia_sub(&delta2,&delta1,&subtract);
+  for (delta2_sum = 0,i = 0; i < delta2.size; i++)
+    delta2_sum += abs(ia_getitem(&delta2,i));
+
+  ia_tail(&subtract,&delta2,delta2.size - 1);
+  ia_init(&delta3,buffer->size);
+  ia_sub(&delta3,&delta2,&subtract);
+  /*FIXME - not quite right
+    Shorten's delta3 offset is last1 - (buf[-2] - buf[-3])*/
+  for (delta3_sum = 0,i = 0; i < delta3.size; i++)
+    delta3_sum += abs(ia_getitem(&delta3,i));
+
+  ia_free(&delta1);
+  ia_free(&delta2);
+  ia_free(&delta3);
+
+  if (delta1_sum < MIN(delta2_sum,delta3_sum))
+    return FN_DIFF1;
+  else if (delta2_sum < delta3_sum)
+    return FN_DIFF2;
+  else
+    return FN_DIFF3;
+}
+
+int ShortenEncoder_encode_diff(Bitstream* bs,
+			       struct i_array* buffer,
+			       struct i_array* wrapped_samples,
+			       ia_data_t (*calculator)(struct i_array* samples,
+						       ia_size_t i)) {
+  struct i_array residuals;
+  struct i_array samples_tail;
+  ia_size_t i;
+
   /*initialize space for residuals*/
   ia_init(&residuals,wrapped_samples->size);
 
   /*transform samples into residuals*/
-  for (i = wrapped_samples->size; i < buffer.size; i++) {
-    ia_append(&residuals,calculator(&buffer,i));
+  for (i = wrapped_samples->size; i < buffer->size; i++) {
+    ia_append(&residuals,calculator(buffer,i));
   }
 
   /*write encoded residuals*/
-  shn_encode_residuals(bs,&residuals);
+  ShortenEncoder_encode_residuals(bs,&residuals);
 
   /*set new wrapped samples values*/
-  ia_tail(&samples_tail,samples,wrapped_samples->size);
+  ia_tail(&samples_tail,buffer,wrapped_samples->size);
   ia_copy(wrapped_samples,&samples_tail);
 
   /*free allocated space*/
   ia_free(&residuals);
-  ia_free(&buffer);
 
   return 1;
 }
 
-ia_data_t shn_encode_diff1(struct i_array* samples, ia_size_t i) {
+ia_data_t ShortenEncoder_encode_diff1(struct i_array* samples, ia_size_t i) {
   return ia_getitem(samples,i) - ia_getitem(samples,i - 1);
 }
 
-ia_data_t shn_encode_diff2(struct i_array* samples, ia_size_t i) {
+ia_data_t ShortenEncoder_encode_diff2(struct i_array* samples, ia_size_t i) {
   return ia_getitem(samples,i) - ((2 * ia_getitem(samples,i - 1)) -
 				  ia_getitem(samples,i - 2));
 }
 
-ia_data_t shn_encode_diff3(struct i_array* samples, ia_size_t i) {
+ia_data_t ShortenEncoder_encode_diff3(struct i_array* samples, ia_size_t i) {
   return ia_getitem(samples,i) - ((3 * ia_getitem(samples,i - 1)) -
 				  (3 * ia_getitem(samples,i - 2)) +
 				  ia_getitem(samples,i - 3));
 }
 
-int shn_encode_residuals(Bitstream* bs,
+int ShortenEncoder_encode_residuals(Bitstream* bs,
 			 struct i_array* residuals) {
-  int energy_size = 2; /*FIXME - make this dynamic*/
+  int energy_size = ShortenEncoder_compute_best_energysize(residuals);
   ia_size_t i;
 
-  shn_put_uvar(bs,ENERGY_SIZE,energy_size);
+  ShortenEncoder_put_uvar(bs,ENERGY_SIZE,energy_size);
   for (i = 0; i < residuals->size; i++) {
-    shn_put_var(bs,energy_size,ia_getitem(residuals,i));
+    ShortenEncoder_put_var(bs,energy_size,ia_getitem(residuals,i));
   }
 
   return 1;
 }
 
-void shn_put_uvar(Bitstream* bs, int size, int value) {
+void ShortenEncoder_put_uvar(Bitstream* bs, int size, int value) {
   register int32_t msb; /*most significant bits*/
   register int32_t lsb; /*least significant bits*/
 
@@ -299,25 +368,35 @@ void shn_put_uvar(Bitstream* bs, int size, int value) {
   bs->write_bits(bs,size,lsb);
 }
 
-void shn_put_var(Bitstream* bs, int size, int value) {
+void ShortenEncoder_put_var(Bitstream* bs, int size, int value) {
   if (value >= 0) {
-    shn_put_uvar(bs,size + 1,value << 1);
+    ShortenEncoder_put_uvar(bs,size + 1,value << 1);
   } else {
-    shn_put_uvar(bs,size + 1,((-value - 1) << 1) | 1);
+    ShortenEncoder_put_uvar(bs,size + 1,((-value - 1) << 1) | 1);
   }
 }
 
-void shn_put_long(Bitstream* bs, int value) {
+void ShortenEncoder_put_long(Bitstream* bs, int value) {
   int long_size = 3; /*FIXME - this is supposed to be computed dynamically
 		       but I'm not convinced it really matters
 		       considering how little longs are used
 		       in the Shorten stream*/
 
-  shn_put_uvar(bs,2,long_size);
-  shn_put_uvar(bs,long_size,value);
+  ShortenEncoder_put_uvar(bs,2,long_size);
+  ShortenEncoder_put_uvar(bs,long_size,value);
 }
 
-void shn_byte_counter(unsigned int byte, void* counter) {
+void ShortenEncoder_byte_counter(unsigned int byte, void* counter) {
   int* i_counter = (int*)counter;
   *i_counter += 1;
+}
+
+int ShortenEncoder_compute_best_energysize(struct i_array *residuals) {
+  uint64_t abs_residual_partition_sum = abs_sum(residuals);
+  int i;
+
+  for (i = 0; ((uint64_t)residuals->size * (uint64_t)(1 << i)) < abs_residual_partition_sum; i++)
+    /*do nothing*/;
+
+  return i;
 }

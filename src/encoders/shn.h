@@ -43,34 +43,50 @@ enum {FN_DIFF0     = 0,
 
 typedef enum {OK,ERROR} status;
 
-void shn_put_uvar(Bitstream* bs, int size, int value);
-void shn_put_var(Bitstream* bs, int size, int value);
-void shn_put_long(Bitstream* bs, int value);
+void ShortenEncoder_put_uvar(Bitstream* bs, int size, int value);
+void ShortenEncoder_put_var(Bitstream* bs, int size, int value);
+void ShortenEncoder_put_long(Bitstream* bs, int value);
 
-int shn_encode_stream(Bitstream* bs,
+int ShortenEncoder_encode_stream(Bitstream* bs,
 		      struct pcm_reader* reader,
 		      int block_size,
 		      struct ia_array* wrapped_samples);
 
-int shn_encode_channel(Bitstream* bs,
+int ShortenEncoder_encode_channel(Bitstream* bs,
 		       struct i_array* samples,
 		       struct i_array* wrapped_samples);
 
-int shn_encode_diff(Bitstream* bs,
-		    struct i_array* samples,
-		    struct i_array* wrapped_samples,
-		    ia_data_t (*calculator)(struct i_array* samples,
-					    ia_size_t i));
+int ShortenEncoder_compute_best_diff(struct i_array* buffer, int wrap);
 
-ia_data_t shn_encode_diff1(struct i_array* samples, ia_size_t i);
+int ShortenEncoder_encode_diff(Bitstream* bs,
+			       struct i_array* buffer,
+			       struct i_array* wrapped_samples,
+			       ia_data_t (*calculator)(struct i_array* samples,
+						       ia_size_t i));
 
-ia_data_t shn_encode_diff2(struct i_array* samples, ia_size_t i);
+ia_data_t ShortenEncoder_encode_diff1(struct i_array* samples, ia_size_t i);
 
-ia_data_t shn_encode_diff3(struct i_array* samples, ia_size_t i);
+ia_data_t ShortenEncoder_encode_diff2(struct i_array* samples, ia_size_t i);
 
-int shn_encode_residuals(Bitstream* bs,
+ia_data_t ShortenEncoder_encode_diff3(struct i_array* samples, ia_size_t i);
+
+int ShortenEncoder_encode_residuals(Bitstream* bs,
 			 struct i_array* residuals);
 
-void shn_byte_counter(unsigned int byte, void* counter);
+int ShortenEncoder_compute_best_energysize(struct i_array *resuduals);
+
+void ShortenEncoder_byte_counter(unsigned int byte, void* counter);
+
+static inline uint64_t abs_sum(struct i_array *a) {
+  register uint64_t sum = 0;
+  ia_size_t a_size = a->size;
+  ia_data_t *a_data = a->data;
+  ia_size_t i;
+
+  for (i = 0; i < a_size; i++)
+    sum += abs(a_data[i]);
+
+  return sum;
+}
 
 #endif
