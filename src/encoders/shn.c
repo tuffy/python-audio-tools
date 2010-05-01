@@ -217,16 +217,18 @@ int shn_encode_channel(Bitstream* bs,
 		       struct i_array* samples,
 		       struct i_array* wrapped_samples) {
   /*FIXME - for now, we'll just output DIFF1 commands*/
-  shn_put_uvar(bs,2,FN_DIFF1);
-  shn_encode_diff1(bs,samples,wrapped_samples);
+  shn_put_uvar(bs,2,FN_DIFF3);
+  shn_encode_diff(bs,samples,wrapped_samples,shn_encode_diff3);
 
   /* shn_put_uvar(bs,2,FN_ZERO); */
   return 1;
 }
 
-int shn_encode_diff1(Bitstream* bs,
-		     struct i_array* samples,
-		     struct i_array* wrapped_samples) {
+int shn_encode_diff(Bitstream* bs,
+		    struct i_array* samples,
+		    struct i_array* wrapped_samples,
+		    ia_data_t (*calculator)(struct i_array* samples,
+					    ia_size_t i)) {
   struct i_array residuals;
   struct i_array buffer;
   struct i_array samples_tail;
@@ -242,8 +244,7 @@ int shn_encode_diff1(Bitstream* bs,
 
   /*transform samples into residuals*/
   for (i = wrapped_samples->size; i < buffer.size; i++) {
-    ia_append(&residuals,
-	      ia_getitem(&buffer,i) - ia_getitem(&buffer,i - 1));
+    ia_append(&residuals,calculator(&buffer,i));
   }
 
   /*write encoded residuals*/
@@ -258,6 +259,21 @@ int shn_encode_diff1(Bitstream* bs,
   ia_free(&buffer);
 
   return 1;
+}
+
+ia_data_t shn_encode_diff1(struct i_array* samples, ia_size_t i) {
+  return ia_getitem(samples,i) - ia_getitem(samples,i - 1);
+}
+
+ia_data_t shn_encode_diff2(struct i_array* samples, ia_size_t i) {
+  return ia_getitem(samples,i) - ((2 * ia_getitem(samples,i - 1)) -
+				  ia_getitem(samples,i - 2));
+}
+
+ia_data_t shn_encode_diff3(struct i_array* samples, ia_size_t i) {
+  return ia_getitem(samples,i) - ((3 * ia_getitem(samples,i - 1)) -
+				  (3 * ia_getitem(samples,i - 2)) +
+				  ia_getitem(samples,i - 3));
 }
 
 int shn_encode_residuals(Bitstream* bs,

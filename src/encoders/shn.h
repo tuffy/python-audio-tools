@@ -56,9 +56,17 @@ int shn_encode_channel(Bitstream* bs,
 		       struct i_array* samples,
 		       struct i_array* wrapped_samples);
 
-int shn_encode_diff1(Bitstream* bs,
-		     struct i_array* samples,
-		     struct i_array* wrapped_samples);
+int shn_encode_diff(Bitstream* bs,
+		    struct i_array* samples,
+		    struct i_array* wrapped_samples,
+		    ia_data_t (*calculator)(struct i_array* samples,
+					    ia_size_t i));
+
+ia_data_t shn_encode_diff1(struct i_array* samples, ia_size_t i);
+
+ia_data_t shn_encode_diff2(struct i_array* samples, ia_size_t i);
+
+ia_data_t shn_encode_diff3(struct i_array* samples, ia_size_t i);
 
 int shn_encode_residuals(Bitstream* bs,
 			 struct i_array* residuals);
