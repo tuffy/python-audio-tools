@@ -32,17 +32,24 @@ PyObject* encoders_encode_shn(PyObject *dummy,
   Bitstream *stream;
   PyObject *pcmreader_obj;
   struct pcm_reader *reader;
+
   int block_size;
   int wrap = 3;
+
+  struct ia_array wrapped_samples;
+
+  /*verbatim chunk variables*/
   PyObject *verbatim_chunks;
   Py_ssize_t verbatim_chunks_len;
   PyObject *verbatim_chunk;
-  Py_ssize_t i,j;
-
   char *string;
   Py_ssize_t string_len;
 
+  /*whether we've hit "None" and performed encoding or not*/
   int encoding_performed = 0;
+
+  Py_ssize_t i,j;
+
   int bytes_written = 0;
 
   /*extract a filename, PCMReader-compatible object and encoding options*/
@@ -82,6 +89,14 @@ PyObject* encoders_encode_shn(PyObject *dummy,
     return NULL;
   } else {
     stream = bs_open(file);
+  }
+
+  /*initialize wrapped samples with 0s*/
+  iaa_init(&wrapped_samples,reader->channels,wrap);
+  for (i = 0; i < reader->channels; i++) {
+    for (j = 0; j < wrap; j++) {
+      ia_append(iaa_getitem(&wrapped_samples,i),0);
+    }
   }
 
   /*write header*/
@@ -124,7 +139,7 @@ PyObject* encoders_encode_shn(PyObject *dummy,
     } else if (!encoding_performed) {
       /*once None is hit, perform full encoding of reader,
 	if it hasn't already*/
-      if (!shn_encode_stream(stream, reader, block_size, wrap))
+      if (!shn_encode_stream(stream,reader,block_size,&wrapped_samples))
       	goto error;
       encoding_performed = 1;
     }
@@ -144,6 +159,7 @@ PyObject* encoders_encode_shn(PyObject *dummy,
     or its reference decoder explodes*/
   stream->write_bits(stream,(bytes_written % 4) * 8,0);
 
+  iaa_free(&wrapped_samples);
   pcmr_close(reader);
   bs_close(stream);
   Py_INCREF(Py_None);
@@ -155,8 +171,10 @@ PyObject* encoders_encode_shn(PyObject *dummy,
   return NULL;
 }
 
-int shn_encode_stream(Bitstream* bs, struct pcm_reader *reader,
-		      int block_size, int wrap) {
+int shn_encode_stream(Bitstream* bs,
+		      struct pcm_reader *reader,
+		      int block_size,
+		      struct ia_array* wrapped_samples) {
   struct ia_array samples;
   ia_size_t i;
 
@@ -177,9 +195,9 @@ int shn_encode_stream(Bitstream* bs, struct pcm_reader *reader,
 
     /*then send a separate command for each channel*/
     for (i = 0; i < samples.size; i++) {
-      /*FIXME - this will probably need to be adjusted
-	to accomodate sample wrapping*/
-      if (!shn_encode_channel(bs,iaa_getitem(&samples,i),wrap))
+      if (!shn_encode_channel(bs,
+			      iaa_getitem(&samples,i),
+			      iaa_getitem(wrapped_samples,i)))
 	goto error;
 
     }
@@ -195,9 +213,63 @@ int shn_encode_stream(Bitstream* bs, struct pcm_reader *reader,
   return 0;
 }
 
-int shn_encode_channel(Bitstream* bs, struct i_array* samples, int wrap) {
-  /*FIXME - for now, we'll just output ZERO commands*/
-  shn_put_uvar(bs,2,FN_ZERO);
+int shn_encode_channel(Bitstream* bs,
+		       struct i_array* samples,
+		       struct i_array* wrapped_samples) {
+  /*FIXME - for now, we'll just output DIFF1 commands*/
+  shn_put_uvar(bs,2,FN_DIFF1);
+  shn_encode_diff1(bs,samples,wrapped_samples);
+
+  /* shn_put_uvar(bs,2,FN_ZERO); */
+  return 1;
+}
+
+int shn_encode_diff1(Bitstream* bs,
+		     struct i_array* samples,
+		     struct i_array* wrapped_samples) {
+  struct i_array residuals;
+  struct i_array buffer;
+  struct i_array samples_tail;
+  ia_size_t i;
+
+  /*combine "samples" and "wrapped_samples" into a unified sample buffer*/
+  ia_init(&buffer,wrapped_samples->size + samples->size);
+  ia_copy(&buffer,wrapped_samples);
+  ia_extend(&buffer,samples);
+
+  /*initialize space for residuals*/
+  ia_init(&residuals,wrapped_samples->size);
+
+  /*transform samples into residuals*/
+  for (i = wrapped_samples->size; i < buffer.size; i++) {
+    ia_append(&residuals,
+	      ia_getitem(&buffer,i) - ia_getitem(&buffer,i - 1));
+  }
+
+  /*write encoded residuals*/
+  shn_encode_residuals(bs,&residuals);
+
+  /*set new wrapped samples values*/
+  ia_tail(&samples_tail,samples,wrapped_samples->size);
+  ia_copy(wrapped_samples,&samples_tail);
+
+  /*free allocated space*/
+  ia_free(&residuals);
+  ia_free(&buffer);
+
+  return 1;
+}
+
+int shn_encode_residuals(Bitstream* bs,
+			 struct i_array* residuals) {
+  int energy_size = 2; /*FIXME - make this dynamic*/
+  ia_size_t i;
+
+  shn_put_uvar(bs,ENERGY_SIZE,energy_size);
+  for (i = 0; i < residuals->size; i++) {
+    shn_put_var(bs,energy_size,ia_getitem(residuals,i));
+  }
+
   return 1;
 }
 
@@ -212,7 +284,11 @@ void shn_put_uvar(Bitstream* bs, int size, int value) {
 }
 
 void shn_put_var(Bitstream* bs, int size, int value) {
-  return;
+  if (value >= 0) {
+    shn_put_uvar(bs,size + 1,value << 1);
+  } else {
+    shn_put_uvar(bs,size + 1,((-value - 1) << 1) | 1);
+  }
 }
 
 void shn_put_long(Bitstream* bs, int value) {

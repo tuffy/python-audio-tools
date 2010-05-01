@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <diagram>
   <row>
-    <col end="unsigned(2)" width=".20">Energy Size</col>
+    <col end="unsigned(3)" width=".20">Energy Size</col>
     <col end="signed(energy)" width=".20">Residual₁</col>
     <col end="signed(energy)" width=".20">Residual₂</col>
     <col style="dashed" width=".20">...</col>

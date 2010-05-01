@@ -114,6 +114,12 @@ static inline void ia_copy(struct i_array *target, struct i_array *source) {
   target->size = source->size;
 }
 
+static inline void ia_extend(struct i_array *target, struct i_array *source) {
+  ia_resize(target,target->size + source->size);
+  memcpy(target->data + target->size,source->data,source->size * sizeof(ia_data_t));
+  target->size += source->size;
+}
+
 static inline void ia_head(struct i_array *target, struct i_array *source, ia_size_t size) {
   target->size = size;
   target->total_size = source->total_size;

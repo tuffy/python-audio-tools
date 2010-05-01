@@ -47,10 +47,21 @@ void shn_put_uvar(Bitstream* bs, int size, int value);
 void shn_put_var(Bitstream* bs, int size, int value);
 void shn_put_long(Bitstream* bs, int value);
 
-int shn_encode_stream(Bitstream* bs, struct pcm_reader *reader,
-		      int block_size, int wrap);
+int shn_encode_stream(Bitstream* bs,
+		      struct pcm_reader* reader,
+		      int block_size,
+		      struct ia_array* wrapped_samples);
 
-int shn_encode_channel(Bitstream* bs, struct i_array* samples, int wrap);
+int shn_encode_channel(Bitstream* bs,
+		       struct i_array* samples,
+		       struct i_array* wrapped_samples);
+
+int shn_encode_diff1(Bitstream* bs,
+		     struct i_array* samples,
+		     struct i_array* wrapped_samples);
+
+int shn_encode_residuals(Bitstream* bs,
+			 struct i_array* residuals);
 
 void shn_byte_counter(unsigned int byte, void* counter);
 
