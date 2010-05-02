@@ -1025,7 +1025,14 @@
    I'll likely limit support to Shorten version2/3
    since generating older versions will be a challenge
    and this format is obscure enough as it is.
-** TODO Build partial encoder
+** DONE Build partial encoder
+   - [X] DIFF0
+   - [X] DIFF1
+   - [X] DIFF2
+   - [X] QUIT
+   - [X] BLOCKSIZE
+   - [X] ZERO
+   - [X] VERBATIM
 ** TODO Add ShortenAudio type to audiotools Python core
 ** TODO Add Shorten-specific unit tests
 ** TODO Document Shorten

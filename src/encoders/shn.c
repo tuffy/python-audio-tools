@@ -224,6 +224,10 @@ int ShortenEncoder_encode_channel(Bitstream* bs,
   ia_extend(&buffer,samples);
 
   switch (ShortenEncoder_compute_best_diff(&buffer,wrapped_samples->size)) {
+  case FN_ZERO:
+    ShortenEncoder_put_uvar(bs,2,FN_ZERO);
+    ShortenEncoder_encode_zero(&buffer,wrapped_samples);
+    break;
   case FN_DIFF1:
     ShortenEncoder_put_uvar(bs,2,FN_DIFF1);
     ShortenEncoder_encode_diff(bs,&buffer,wrapped_samples,
@@ -244,7 +248,6 @@ int ShortenEncoder_encode_channel(Bitstream* bs,
   /*free allocated buffer*/
   ia_free(&buffer);
 
-  /* shn_put_uvar(bs,2,FN_ZERO); */
   return 1;
 }
 
@@ -264,6 +267,16 @@ int ShortenEncoder_compute_best_diff(struct i_array* buffer, int wrap) {
 
   if (buffer->size <= 3)
     return FN_DIFF1;
+
+  /*if buffer's non-wrapped samples are all 0,
+    return FN_ZERO instead*/
+  for (i = wrap; i < buffer->size; i++) {
+    if (ia_getitem(buffer,i) != 0)
+      break;
+  }
+  if (i == buffer->size) {
+    return FN_ZERO;
+  }
 
   delta0.data = subtract.data = NULL;
 
@@ -298,6 +311,18 @@ int ShortenEncoder_compute_best_diff(struct i_array* buffer, int wrap) {
     return FN_DIFF2;
   else
     return FN_DIFF3;
+}
+
+int ShortenEncoder_encode_zero(struct i_array* buffer,
+			       struct i_array* wrapped_samples) {
+  struct i_array samples_tail;
+  samples_tail.data = NULL;
+
+  /*set new wrapped samples values*/
+  ia_tail(&samples_tail,buffer,wrapped_samples->size);
+  ia_copy(wrapped_samples,&samples_tail);
+
+  return 1;
 }
 
 int ShortenEncoder_encode_diff(Bitstream* bs,

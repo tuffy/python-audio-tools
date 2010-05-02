@@ -58,6 +58,9 @@ int ShortenEncoder_encode_channel(Bitstream* bs,
 
 int ShortenEncoder_compute_best_diff(struct i_array* buffer, int wrap);
 
+int ShortenEncoder_encode_zero(struct i_array* buffer,
+			       struct i_array* wrapped_samples);
+
 int ShortenEncoder_encode_diff(Bitstream* bs,
 			       struct i_array* buffer,
 			       struct i_array* wrapped_samples,
@@ -71,7 +74,7 @@ ia_data_t ShortenEncoder_encode_diff2(struct i_array* samples, ia_size_t i);
 ia_data_t ShortenEncoder_encode_diff3(struct i_array* samples, ia_size_t i);
 
 int ShortenEncoder_encode_residuals(Bitstream* bs,
-			 struct i_array* residuals);
+				    struct i_array* residuals);
 
 int ShortenEncoder_compute_best_energysize(struct i_array *resuduals);
 
