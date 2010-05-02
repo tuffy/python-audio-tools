@@ -365,8 +365,8 @@ PyObject *SHNDecoder_read(decoders_SHNDecoder* self,
   return NULL;
 }
 
-PyObject *SHNDecoder_verbatim(decoders_SHNDecoder* self,
-			      PyObject *args) {
+static PyObject *SHNDecoder_metadata(decoders_SHNDecoder* self,
+				     PyObject *args) {
   unsigned int cmd;
 
   unsigned int verbatim_length;
@@ -379,6 +379,8 @@ PyObject *SHNDecoder_verbatim(decoders_SHNDecoder* self,
 
   int previous_is_none = 0;
 
+  int total_samples = 0;
+
   if ((list = PyList_New(0)) == NULL)
     return NULL;
 
@@ -389,8 +391,9 @@ PyObject *SHNDecoder_verbatim(decoders_SHNDecoder* self,
   SHNDecoder_read_header(self);
 
   /*walk through the Shorten file,
-    storing FN_VERBATIM instructions as strings
-    and blocks of non-FM_VERBATIM instructions as None*/
+    storing FN_VERBATIM instructions as strings,
+    storing blocks of non-FM_VERBATIM instructions as None,
+    and counting the length of all audio data commands*/
 
   for (cmd = shn_read_uvar(self->bitstream,2);
        cmd != FN_QUIT;
@@ -415,6 +418,7 @@ PyObject *SHNDecoder_verbatim(decoders_SHNDecoder* self,
     case FN_DIFF1:
     case FN_DIFF2:
     case FN_DIFF3:
+      total_samples += self->block_size;
       residual_size = shn_read_uvar(self->bitstream, ENERGY_SIZE);
       for (i = 0; i < self->block_size; i++) {
 	shn_skip_var(self->bitstream, residual_size);
@@ -428,6 +432,7 @@ PyObject *SHNDecoder_verbatim(decoders_SHNDecoder* self,
       previous_is_none = 1;
       break;
     case FN_ZERO:
+      total_samples += self->block_size;
       if (!previous_is_none) {
 	Py_INCREF(Py_None);
 	if (PyList_Append(list,Py_None) == -1) {
@@ -437,6 +442,7 @@ PyObject *SHNDecoder_verbatim(decoders_SHNDecoder* self,
       previous_is_none = 1;
       break;
     case FN_QLPC:
+      total_samples += self->block_size;
       residual_size = shn_read_uvar(self->bitstream, ENERGY_SIZE);
       lpc_count = shn_read_uvar(self->bitstream, QLPC_SIZE);
       for (i = 0; i < lpc_count; i++) {
@@ -465,70 +471,7 @@ PyObject *SHNDecoder_verbatim(decoders_SHNDecoder* self,
 
   self->read_started = 0;
 
-  return list;
-}
-
-static PyObject *SHNDecoder_total_frames(decoders_SHNDecoder* self,
-					 PyObject *args) {
-  int total_samples = 0;
-  unsigned int i;
-  unsigned int cmd;
-  unsigned int verbatim_length;
-  unsigned int residual_size;
-  unsigned int lpc_count;
-
-  /*rewind the stream and re-read the header*/
-  fseek(self->bitstream->file,0,SEEK_SET);
-  self->bitstream->state = 0;
-
-  SHNDecoder_read_header(self);
-
-  /*walk through the Shorten file,
-    counting the length of all audio data commands*/
-  for (cmd = shn_read_uvar(self->bitstream,2);
-       cmd != FN_QUIT;
-       cmd = shn_read_uvar(self->bitstream,2)) {
-    switch (cmd) {
-    case FN_VERBATIM:
-      verbatim_length = shn_read_uvar(self->bitstream, VERBATIM_CHUNK_SIZE);
-      for (i = 0; i < verbatim_length; i++) {
-	shn_skip_uvar(self->bitstream, VERBATIM_BYTE_SIZE);
-      }
-      break;
-    case FN_DIFF0:
-    case FN_DIFF1:
-    case FN_DIFF2:
-    case FN_DIFF3:
-      total_samples += self->block_size;
-      residual_size = shn_read_uvar(self->bitstream, ENERGY_SIZE);
-      for (i = 0; i < self->block_size; i++) {
-	shn_skip_var(self->bitstream, residual_size);
-      }
-      break;
-    case FN_ZERO:
-      total_samples += self->block_size;
-      break;
-    case FN_QLPC:
-      total_samples += self->block_size;
-      residual_size = shn_read_uvar(self->bitstream, ENERGY_SIZE);
-      lpc_count = shn_read_uvar(self->bitstream, QLPC_SIZE);
-      for (i = 0; i < lpc_count; i++) {
-	shn_skip_var(self->bitstream, QLPC_QUANT);
-      }
-      for (i = 0; i < self->block_size; i++) {
-	shn_skip_var(self->bitstream, residual_size);
-      }
-      break;
-    case FN_BLOCKSIZE:
-      self->block_size = shn_read_long(self->bitstream);
-      break;
-    default:
-      PyErr_SetString(PyExc_ValueError,"unknown command encountered in Shorten stream");
-      return NULL;
-    }
-  }
-
-  return Py_BuildValue("i",total_samples / self->channels);
+  return Py_BuildValue("(i,O)",total_samples / self->channels,list);
 }
 
 

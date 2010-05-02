@@ -71,13 +71,9 @@ typedef struct {
 PyObject *SHNDecoder_read(decoders_SHNDecoder* self,
 			  PyObject *args);
 
-/*the SHNDecoder.verbatim() method*/
-PyObject *SHNDecoder_verbatim(decoders_SHNDecoder* self,
-			      PyObject *args);
-
-/*the SHNDecoder.total_frames() method*/
-static PyObject *SHNDecoder_total_frames(decoders_SHNDecoder* self,
-					 PyObject *args);
+/*the SHNDecoder.metadata() method*/
+static PyObject *SHNDecoder_metadata(decoders_SHNDecoder* self,
+				     PyObject *args);
 
 /*the SHNDecoder.close() method*/
 PyObject *SHNDecoder_close(decoders_SHNDecoder* self,
@@ -149,10 +145,8 @@ PyGetSetDef SHNDecoder_getseters[] = {
 PyMethodDef SHNDecoder_methods[] = {
   {"read", (PyCFunction)SHNDecoder_read,
    METH_VARARGS,"Reads a frame of data from the SHN file"},
-  {"verbatim", (PyCFunction)SHNDecoder_verbatim,
-   METH_NOARGS,"Returns a list of verbatim chunks from the SHN file"},
-  {"total_frames", (PyCFunction)SHNDecoder_total_frames,
-    METH_NOARGS,"Returns the total number of PCM frames from the SHN file"},
+  {"metadata", (PyCFunction)SHNDecoder_metadata,
+   METH_NOARGS,"Returns a tuple of technical metadata"},
   {"close", (PyCFunction)SHNDecoder_close,
    METH_NOARGS,"Closes the SHN decoder stream"},
   {NULL}
