@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<diagram>
+  <row>
+    <col start="0" end="31" width=".1111111" id="riff">'RIFF'</col>
+    <col start="32" end="63" width=".1111111">Size</col>
+    <col start="64" end="95" width=".1111111">'WAVE'</col>
+    <col start="96" end="127" width=".1111111">'fmt '</col>
+    <col start="128" end="159" width=".1111111">Size</col>
+    <col start="160" end="287" width=".1111111">fmt</col>
+    <col start="288" end="319" width=".1111111">'data'</col>
+    <col start="320" end="351" width=".1111111" id="size">Size</col>
+    <col start="352" width=".1111111" style="dashed">data</col>
+  </row>
+  <spacer/>
+  <row>
+    <col start="0" end="31" width=".1666666">Magic</col>
+    <col start="32" end="39" width=".1666666">Version</col>
+    <col start="40" width=".1666666" id="header">Header</col>
+    <col width=".1666666" id="verbatim">VERBATIM₁</col>
+    <col width=".1666666">Command₂</col>
+    <col width=".1666666" style="dashed">...</col>
+  </row>
+  <spacer/>
+  <row>
+    <col end="unsigned(2)" width=".20" id="ID">VERBATIM (9)</col>
+    <col end="unsigned(5)" width=".20">Total Bytes (44)</col>
+    <col end="unsigned(8)" width=".15">Byte₁</col>
+    <col end="unsigned(8)" width=".15">Byte₂</col>
+    <col style="dashed" width=".15">...</col>
+    <col end="unsigned(8)" width=".15" id="last_byte">Byte₄₄</col>
+  </row>
+  <line s_id="riff" s_corner="sw" e_id="verbatim" e_corner="nw" style="dotted"/>
+  <line s_id="size" s_corner="se" e_id="verbatim" e_corner="ne" style="dotted"/>
+  <line s_id="verbatim" s_corner="sw" e_id="ID" e_corner="nw" style="dotted"/>
+  <line s_id="verbatim" s_corner="se" e_id="last_byte" e_corner="ne" style="dotted"/>
+</diagram>

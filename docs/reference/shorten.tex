@@ -60,6 +60,7 @@ description, it means an \texttt{unsigned} field of size 3.
 \pagebreak
 
 \section{the Shorten file stream}
+\label{shorten_stream}
 \begin{figure}[h]
 \includegraphics{figures/shorten_stream.pdf}
 \end{figure}
@@ -109,7 +110,7 @@ value & command & value & command \\
 \hline
 \end{tabular}
 \end{wrapfigure}
-Internally\marginpar{Interestingly, although
+Internally\footnote{Interestingly, although
 Shorten's successor, FLAC, presents its input as frames and subframes,
 references to a FLAC virtual machine are still present in its source code.},
 a Shorten file acts as a list of commands to be executed by a tiny
@@ -338,4 +339,79 @@ as .wav or .aiff chunks and is structured as follows:
 \noindent
 These chunks of raw data are expected to be written in the order
 they appear in the Shorten file.
+
+\pagebreak
+
+\section{Shorten encoding}
+
+For the purposes of Shorten encoding,
+one needs an entire PCM container file and its
+PCM values, number of channels and bits per sample.
+Recall that nearly the entire Shorten file format is made up
+of three variable-length data types with no byte-alignment of any sort.
+Because of that, there's no way to ``rewind'' the Shorten stream
+and replace values.
+Therefore, everything encoded to Shorten must be written in order.
+
+\begin{figure}[h]
+\includegraphics{figures/shorten_stream.pdf}
+\end{figure}
+\par
+\noindent
+A good set of header values to use are as follows:
+\begin{table}[h]
+\begin{tabular}{|r|l|}
+\hline
+field & value \\
+\hline
+& \textbf{2} for unsigned 8 bit input \\
+Field Type & \textbf{5} for signed, little-endian, 16 bit input \\
+& \textbf{3} for signed, big-endian, 16 bit input \\
+Channels & from input \\
+Block Length & \textbf{256} \\
+Max LPC & \textbf{0} \\
+Number of Means & \textbf{0} \\
+Bytes to Skip & \textbf{0} \\
+Samples to Wrap & \textbf{3} \\
+\hline
+\end{tabular}
+\end{table}
+\par
+\noindent
+The remainder of the stream is various Shorten commands.
+I'll be limiting this encoding documentation to the \texttt{DIFF1},
+\texttt{DIFF2}, \texttt{DIFF3}, \texttt{QUIT}, \texttt{BLOCKSIZE},
+\texttt{ZERO} and \texttt{VERBATIM} commands.
+\texttt{QLPC}'s implementation is actually broken in the reference
+decoder\footnote{By limiting its accumulator to a 32-bit integer,
+it's prone to overflow at high LPC counts.} and tends not to
+produce smaller files.
+And, by omitting \texttt{DIFF0} which is rarely used,
+we can avoid ``coffset'' calculation during encoding.
+
+\pagebreak
+
+\subsection{the VERBATIM commands}
+
+Recall that PCM containers such as Wave and AIFF consist of
+several blocks of data, one of which contains a large chunk of
+PCM data.
+Shorten encodes these files by turning non-audio data at
+the beginning and end of the container into \texttt{VERBATIM} commands,
+often in the following format:
+\begin{figure}[h]
+\includegraphics{figures/shorten_sandwich.pdf}
+\end{figure}
+\par
+\noindent
+These \texttt{VERBATIM} commands \textit{must} appear in
+the Shorten stream in the same order as they appear in the
+PCM container itself.
+
+\subsection{the BLOCKSIZE command}
+
+\subsection{the QUIT command}
+
+\subsection{the ZERO command}
+
 
