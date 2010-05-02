@@ -358,6 +358,13 @@ Therefore, everything encoded to Shorten must be written in order.
 \end{figure}
 \par
 \noindent
+Remember that \texttt{long} variables contain a size \texttt{unsigned(2)}
+field followed by its value.
+So what's the best size to use for a given value?
+Quite frankly, in my opinion, any small size will do.
+Most of a Shorten file is encoded residuals, so wasting a handful
+of bytes in the header won't make any difference.
+
 A good set of header values to use are as follows:
 \begin{table}[h]
 \begin{tabular}{|r|l|}
@@ -410,7 +417,28 @@ PCM container itself.
 
 \subsection{the BLOCKSIZE command}
 
+Most \texttt{DIFF} and \texttt{ZERO} commands should contain
+``Block Length'' number of samples, as indicated in the header.
+But when the end of the input stream is reached and a different
+number of samples are all that remain, a \texttt{BLOCKSIZE}
+is required.
+This is simply an \texttt{unsigned(2)} variable with a value of 5
+(undicating the \texttt{BLOCKSIZE} command)
+followed by a \texttt{long} variable containing the new ``Block Length''.
+
 \subsection{the QUIT command}
+
+When no more samples remain and all \texttt{VERBATIM} commands have
+been delivered (a Wave file may contain additional chunks after
+the `data' chunk, for example), the \texttt{QUIT} command indicates
+the end of the Shorten stream.
+This is an \texttt{unsigned(2)} variable with the value 4.
+
+However, the stream \textit{must} be padded such that the total
+stream length, minus 5 bytes for the magic number and version,
+is a multiple of 4 bytes.
+If this padding is not performed, the reference decoder's bit stream
+implementation will exit with an error.
 
 \subsection{the ZERO command}
 
