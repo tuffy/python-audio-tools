@@ -398,5 +398,5 @@ int ShortenEncoder_compute_best_energysize(struct i_array *residuals) {
   for (i = 0; ((uint64_t)residuals->size * (uint64_t)(1 << i)) < abs_residual_partition_sum; i++)
     /*do nothing*/;
 
-  return i;
+  return MAX(i - 1,0);
 }

@@ -219,6 +219,7 @@ PyObject *SHNDecoder_read(decoders_SHNDecoder* self,
     until FN_QUIT reached*/
   while (channel < self->channels) {
     cmd = shn_read_uvar(self->bitstream,2);
+
     switch (cmd) {
     case FN_DIFF0:
     case FN_DIFF1:
@@ -658,4 +659,29 @@ void shn_skip_uvar(Bitstream* bs, unsigned int count) {
 void shn_skip_var(Bitstream* bs, unsigned int count) {
   read_unary(bs,1);
   read_bits(bs,count + 1);
+}
+
+char* SHNDecoder_cmd_string(int cmd) {
+  switch (cmd) {
+  case FN_DIFF0:
+    return "DIFF0";
+  case FN_DIFF1:
+    return "DIFF1";
+  case FN_DIFF2:
+    return "DIFF2";
+  case FN_DIFF3:
+    return "DIFF3";
+  case FN_QUIT:
+    return "QUIT";
+  case FN_BLOCKSIZE:
+    return "BLOCKSIZE";
+  case FN_QLPC:
+    return "QLPC";
+  case FN_ZERO:
+    return "ZERO";
+  case FN_VERBATIM:
+    return "VERBATIM";
+  default:
+    return "UNKNOWN";
+  }
 }

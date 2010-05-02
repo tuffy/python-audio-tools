@@ -238,3 +238,9 @@ unsigned int shn_read_long(Bitstream* bs);
 
 void shn_skip_uvar(Bitstream* bs, unsigned int count);
 void shn_skip_var(Bitstream* bs, unsigned int count);
+
+/*a debugging function which takes a Shorten command value
+  and returns a human-readable string
+  which should not be deallocated*/
+char* SHNDecoder_cmd_string(int cmd);
+
