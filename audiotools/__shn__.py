@@ -62,8 +62,10 @@ class ShortenAudio(AudioFile):
                         if (fmt_chunk.compression == 0xFFFE):
                             self.__channel_mask__ = WaveAudio.fmt_chunk_to_channel_mask(fmt_chunk.channel_mask)
             elif (self.__format__ is AiffAudio):
-                #FIXME - parse this
-                pass
+                for (chunk_id,chunk_data) in self.__aiff_chunks__():
+                    if (chunk_id == 'COMM'):
+                        comm_chunk = AiffAudio.COMM_CHUNK.parse(chunk_data)
+                        self.__sample_rate__ = comm_chunk.sample_rate
             elif (self.__format__ is AuAudio):
                 #FIXME - parse this
                 pass
@@ -86,6 +88,29 @@ class ShortenAudio(AudioFile):
                 yield (header.chunk_id,wave_data.read(header.chunk_length))
                 total_size -= header.chunk_length
             else:
+                continue
+
+    def __aiff_chunks__(self):
+        total_size = sum([len(block) for block in self.__blocks__
+                          if block is not None])
+        aiff_data = cStringIO.StringIO("".join([block for block in
+                                                self.__blocks__
+                                                if block is not None]))
+
+        aiff_data.read(12) #skip the FORMxxxxAIFF header data
+        total_size -= 12
+
+        #iterate over all the non-ssnd chunks
+        while (total_size > 0):
+            header = AiffAudio.CHUNK_HEADER.parse_stream(aiff_data)
+            total_size -= 8
+            if (header.chunk_id != 'SSND'):
+                yield (header.chunk_id,aiff_data.read(header.chunk_length))
+                total_size -= header.chunk_length
+            else:
+                #not sure what Shorten does with the first 8 bytes
+                #of the SSND chunk
+                #it'll be a mess if it turns those into audio data
                 continue
 
     @classmethod
@@ -128,8 +153,16 @@ class ShortenAudio(AudioFile):
 
     @classmethod
     def from_pcm(cls, filename, pcmreader, compression=None):
-        #FIXME
-        pass
+        import tempfile
+
+        tempwavefile = tempfile.NamedTemporaryFile(suffix=".wav")
+        try:
+            tempwave = WaveAudio.from_pcm(tempwavefile.name,pcmreader)
+            return cls.from_wave(filename,
+                                 tempwavefile.name,
+                                 compression=compression)
+        finally:
+            tempwavefile.close()
 
     def to_wave(self, wave_filename):
         if (not hasattr(self,"__format__")):
@@ -151,8 +184,21 @@ class ShortenAudio(AudioFile):
 
     @classmethod
     def from_wave(cls, filename, wave_filename, compression=None):
-        #FIXME
-        pass
+        wave = WaveAudio(wave_filename)
+        (head,tail) = wave.pcm_split()
+        if (len(tail) > 0):
+            blocks = [head,None,tail]
+        else:
+            blocks = [head,None]
+
+        import audiotools.encoders
+
+        audiotools.encoders.encode_shn(filename=filename,
+                                       pcmreader=wave.to_pcm(),
+                                       block_size=256,
+                                       verbatim_chunks=blocks)
+
+        return cls(filename)
 
     @classmethod
     def supports_foreign_riff_chunks(cls):
@@ -169,5 +215,3 @@ class ShortenAudio(AudioFile):
                 return False
         else:
             return False
-
-
