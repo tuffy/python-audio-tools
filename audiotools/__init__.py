@@ -2083,6 +2083,7 @@ from __wavpack__ import *
 from __musepack__ import *
 from __speex__ import *
 from __aiff__ import *
+from __shn__ import *
 
 #######################
 #CD data
@@ -2599,7 +2600,7 @@ AVAILABLE_TYPES = (FlacAudio,OggFlacAudio,
                    MP3Audio,MP2Audio,WaveAudio,
                    VorbisAudio,SpeexAudio,
                    AiffAudio,AuAudio,M4AAudio,AACAudio,
-                   WavPackAudio)
+                   WavPackAudio,ShortenAudio)
 
 TYPE_MAP = dict([(track_type.NAME,track_type)
                  for track_type in AVAILABLE_TYPES
