@@ -638,6 +638,8 @@ class TestAiffAudio(TestTextOutput):
                                          channel_mask))
                 except audiotools.InvalidFormat:
                     continue
+                except audiotools.UnsupportedBitsPerSample:
+                    continue
 
 
                 if (new_file.lossless()):
@@ -3566,6 +3568,10 @@ class ApeTaggedAudio:
 class TestWavPackAudio(EmbeddedCuesheet,ApeTaggedAudio,TestForeignWaveChunks,APEv2Lint,TestAiffAudio):
     def setUp(self):
         self.audio_class = audiotools.WavPackAudio
+
+class TestShortenAudio(TestForeignWaveChunks,TestAiffAudio):
+    def setUp(self):
+        self.audio_class = audiotools.ShortenAudio
 
 class M4AMetadata:
     def DummyMetaData(self):

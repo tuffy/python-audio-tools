@@ -17,7 +17,7 @@
 #along with this program; if not, write to the Free Software
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-from audiotools import AudioFile,ChannelMask,PCMReader,transfer_framelist_data,WaveAudio,AiffAudio,cStringIO,EncodingError
+from audiotools import AudioFile,ChannelMask,PCMReader,transfer_framelist_data,WaveAudio,AiffAudio,cStringIO,EncodingError,UnsupportedBitsPerSample
 import audiotools.decoders
 
 class ShortenAudio(AudioFile):
@@ -152,6 +152,9 @@ class ShortenAudio(AudioFile):
     def from_pcm(cls, filename, pcmreader, compression=None):
         import tempfile
 
+        if (pcmreader.bits_per_sample not in (8,16)):
+            raise UnsupportedBitsPerSample()
+
         tempwavefile = tempfile.NamedTemporaryFile(suffix=".wav")
         try:
             tempwave = WaveAudio.from_pcm(tempwavefile.name,pcmreader)
@@ -182,6 +185,10 @@ class ShortenAudio(AudioFile):
     @classmethod
     def from_wave(cls, filename, wave_filename, compression=None):
         wave = WaveAudio(wave_filename)
+
+        if (wave.bits_per_sample() not in (8,16)):
+            raise UnsupportedBitsPerSample()
+
         (head,tail) = wave.pcm_split()
         if (len(tail) > 0):
             blocks = [head,None,tail]
@@ -190,12 +197,15 @@ class ShortenAudio(AudioFile):
 
         import audiotools.encoders
 
-        audiotools.encoders.encode_shn(filename=filename,
-                                       pcmreader=wave.to_pcm(),
-                                       block_size=256,
-                                       verbatim_chunks=blocks)
+        try:
+            audiotools.encoders.encode_shn(filename=filename,
+                                           pcmreader=wave.to_pcm(),
+                                           block_size=256,
+                                           verbatim_chunks=blocks)
 
-        return cls(filename)
+            return cls(filename)
+        except IOError:
+            raise EncodingError("shn")
 
     @classmethod
     def supports_foreign_riff_chunks(cls):

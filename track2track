@@ -95,6 +95,11 @@ def convert_file(destination_class, destination_filename,
                             {"target_filename":messenger.filename(destination_filename),
                              "source_filename":messenger.filename(source_audiofile.filename)})
         sys.exit(1)
+    except audiotools.UnsupportedBitsPerSample:
+        messenger.error(_(u"Unable to write \"%(target_filename)s\" with %(bps)d bits per sample") % \
+                            {"target_filename":messenger.filename(destination_filename),
+                             "bps":source_audiofile.bits_per_sample()})
+        sys.exit(1)
     except audiotools.EncodingError:
         messenger.error(_(u"Unable to write \"%s\"") % \
                             (messenger.filename(destination_filename)))

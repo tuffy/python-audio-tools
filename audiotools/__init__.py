@@ -334,6 +334,10 @@ class UnsupportedChannelMask(EncodingError):
     def __str__(self):
         return "unsupported channel mask during file encoding"
 
+class UnsupportedBitsPerSample(EncodingError):
+    def __str__(self):
+        return "unsupported bits per sample during file encoding"
+
 class DecodingError(IOError):
     def __str__(self):
         return "error during file decoding"
