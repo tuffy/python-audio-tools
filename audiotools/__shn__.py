@@ -17,7 +17,7 @@
 #along with this program; if not, write to the Free Software
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-from audiotools import AudioFile,ChannelMask,PCMReader,transfer_framelist_data,WaveAudio,AiffAudio,AuAudio,cStringIO,EncodingError
+from audiotools import AudioFile,ChannelMask,PCMReader,transfer_framelist_data,WaveAudio,AiffAudio,cStringIO,EncodingError
 import audiotools.decoders
 
 class ShortenAudio(AudioFile):
@@ -49,7 +49,7 @@ class ShortenAudio(AudioFile):
         #which may contain Wave, AIFF or Sun AU info
         if (self.__blocks__[0] is not None):
             header = cStringIO.StringIO(self.__blocks__[0])
-            for format in WaveAudio,AiffAudio,AuAudio:
+            for format in WaveAudio,AiffAudio:
                 header.seek(0,0)
                 if (format.is_type(header)):
                     self.__format__ = format
@@ -66,9 +66,6 @@ class ShortenAudio(AudioFile):
                     if (chunk_id == 'COMM'):
                         comm_chunk = AiffAudio.COMM_CHUNK.parse(chunk_data)
                         self.__sample_rate__ = comm_chunk.sample_rate
-            elif (self.__format__ is AuAudio):
-                #FIXME - parse this
-                pass
 
     def __wave_chunks__(self):
         total_size = sum([len(block) for block in self.__blocks__

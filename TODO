@@ -1033,7 +1033,7 @@
    - [X] BLOCKSIZE
    - [X] ZERO
    - [X] VERBATIM
-** TODO Add ShortenAudio type to audiotools Python core
+** DONE Add ShortenAudio type to audiotools Python core
 ** TODO Add Shorten-specific unit tests
 ** TODO Document Shorten
    - [X] Shorten data types
