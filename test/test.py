@@ -9514,6 +9514,65 @@ class TestShortenCodec(unittest.TestCase):
             self.__test_reader__(gen,len(gen.pcmreader.framelist),
                                  block_size=256)
 
+    @TEST_SHORTEN
+    def test_full_scale_deflection(self):
+        for (bps,fsd) in [(8,test_streams.fsd8),
+                          (16,test_streams.fsd16)]:
+            for pattern in [test_streams.PATTERN01,
+                            test_streams.PATTERN02,
+                            test_streams.PATTERN03,
+                            test_streams.PATTERN04,
+                            test_streams.PATTERN05,
+                            test_streams.PATTERN06,
+                            test_streams.PATTERN07]:
+                stream = test_streams.MD5Reader(fsd(pattern,100))
+                self.__test_reader__(
+                    stream,
+                    len(stream.pcmreader.framelist),
+                    block_size=256)
+
+    @TEST_SHORTEN
+    def test_sines(self):
+        for g in self.__stream_variations__():
+            self.__test_reader__(g,
+                                 len(g.wave),
+                                 block_size=256)
+
+    @TEST_SHORTEN
+    def test_blocksizes(self):
+        noise = audiotools.Con.GreedyRepeater(audiotools.Con.SBInt16(None)).parse(os.urandom(64))
+
+        for block_size in [4,5,6,7,8,9,10,11,12,13,14,15,16,256,1024]:
+            args = {"block_size":block_size}
+            self.__test_reader__(test_streams.MD5Reader(
+                    test_streams.FrameListReader(noise,44100,1,16)),
+                                 len(noise) / 2,
+                                 **args)
+
+    @TEST_SHORTEN
+    def test_noise(self):
+        for opts in self.encode_opts:
+            encode_opts = opts.copy()
+            for (channels,mask) in [
+                (1,audiotools.ChannelMask.from_channels(1)),
+                (2,audiotools.ChannelMask.from_channels(2)),
+                (4,audiotools.ChannelMask.from_fields(
+                        front_left=True,
+                        front_right=True,
+                        back_left=True,
+                        back_right=True)),
+                (8,audiotools.ChannelMask(0))]:
+                for bps in [8,16]:
+                    self.__test_reader__(
+                        EXACT_RANDOM_PCM_Reader(
+                            pcm_frames=65536,
+                            sample_rate=44100,
+                            channels=channels,
+                            channel_mask=mask,
+                            bits_per_sample=bps),
+                        65536 * channels,
+                        **encode_opts)
+
 class TestFrameList(unittest.TestCase):
     @classmethod
     def Bits8(cls):

@@ -1006,7 +1006,7 @@
   fill in the proper XMCD/MusicBrainz fields
 
 * DONE Ensure add_replay_gain used on hi-def tracks doesn't raise errors
-* TODO Add Shorten support
+* DONE Add Shorten support
   I don't expect people have a lot of shn files lying around
   and nobody should be using it for new data
   (though I'll add a rudimentary encoder for completeness' sake)
@@ -1034,7 +1034,7 @@
    - [X] ZERO
    - [X] VERBATIM
 ** DONE Add ShortenAudio type to audiotools Python core
-** TODO Add Shorten-specific unit tests
+** DONE Add Shorten-specific unit tests
 ** DONE Document Shorten
    - [X] Shorten data types
    - [X] the Shorten file stream
