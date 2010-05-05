@@ -65,6 +65,10 @@ class Bitbuffer(list):
     def copy(self):
         return Bitbuffer(list(self))
 
+    def pad(self, total_bits):
+        while (len(self) < total_bits):
+            self.append(0)
+
 
 #incoming context is:
 #4 bits - byte bank size (from 0 to 8)
@@ -83,7 +87,7 @@ class Bitbuffer(list):
 def next_read_bits_states(context):
     for bits_requested in xrange(1,9):
         byte_bank = Bitbuffer(context & 0xFF);
-        byte_bank += Bitbuffer([0] * ((context >> 8) - len(byte_bank)))
+        byte_bank.pad(context >> 8)
 
         #chop off the top "bits_requested" bits from the bank
         returned_bits = byte_bank[-bits_requested:]
@@ -133,7 +137,7 @@ def one_bits(total):
 def next_read_unary_states(context):
     for stop_bit in xrange(0,2):
         byte_bank = Bitbuffer(context & 0xFF);
-        byte_bank += Bitbuffer([0] * ((context >> 8) - len(byte_bank)))
+        byte_bank.pad(context >> 8)
 
         #why reversed?
         #remember, we're reading the bitstream from left to right
@@ -187,30 +191,29 @@ def next_write_bits_states(context):
         #unlike when reading, writing involves a byte-write call
         #every 8 bits, so the context need not be as large
 
-        bank_size = context >> 7
-        byte_bank = context & 0x7F
+        byte_bank = Bitbuffer(context & 0x7F)
+        byte_bank.pad(context >> 7)
 
         wrote_bits = wrote_context >> 8
-        wrote_bank = wrote_context & ((1 << wrote_bits) - 1)
+        wrote_bank = Bitbuffer(wrote_context & ((1 << wrote_bits) - 1))
+        wrote_bank.pad(wrote_bits)
 
         #add our newly wrote bits to the beginning of the byte bank
-        new_bank = wrote_bank | (byte_bank << wrote_bits)
-        new_bank_size = bank_size + wrote_bits
+        new_bank =  byte_bank + wrote_bank
 
         #if we have more than 8 bits in the bank,
         #generate a write request and new context
-        if (new_bank_size >= 8):
-            write_byte = new_bank >> (new_bank_size - 8)
-            new_bank -= (write_byte << (new_bank_size - 8))
-            new_bank_size -= 8
+        if (len(new_bank) >= 8):
+            write_byte = int(new_bank[-8:])
+            new_bank = new_bank[0:-8]
 
             yield (1 << 18) | \
                 (write_byte << 10) | \
-                (new_bank_size << 7) | \
-                (new_bank)
+                (len(new_bank) << 7) | \
+                (int(new_bank))
         else:
             #otherwise, just generate a new context
-            yield (new_bank_size << 7) | new_bank
+            yield (len(new_bank) << 7) | int(new_bank)
 
 
 #incoming context is the same as in next_write_bits_states:
