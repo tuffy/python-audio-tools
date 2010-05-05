@@ -470,6 +470,9 @@ static PyObject *SHNDecoder_metadata(decoders_SHNDecoder* self,
       }
       previous_is_none = 1;
       break;
+    case FN_BITSHIFT:
+      shn_skip_uvar(self->bitstream,2);
+      break;
     case FN_BLOCKSIZE:
       self->block_size = shn_read_long(self->bitstream);
       break;
