@@ -20,6 +20,52 @@
 import sys
 import optparse
 
+
+#this is a list-like class that stores the least significant bits
+#at position 0 in the array and most significant bits further up
+class Bitbuffer(list):
+    #takes a list of bits or an integer value
+    def __init__(self, args):
+        if (not hasattr(args,"__iter__")):
+            integer = int(args)
+            args = []
+            while (integer > 0):
+                args.append(integer & 1)
+                integer >>= 1
+            list.__init__(self,args)
+        else:
+            list.__init__(self,args)
+
+    #returns a representation with the least-significant bit on the right
+    #*this is the exact opposite of how list(Bitbuffer([1,1,0]))
+    # (for the value 3) will display data!*
+    #but is more in line with my expectations
+    def __repr__(self):
+        lsb_on_right = list(self)
+        lsb_on_right.reverse()
+        return "Bitbuffer(%s)" % \
+            (repr(lsb_on_right))
+
+    #returns the Bitbuffer's data as an integer
+    def __int__(self):
+        accumulator = 0
+        for (i,b) in enumerate(self):
+            accumulator |= (b << i)
+        return accumulator
+
+    #though this is deprecated,
+    #I want slices of Bitbuffers to return more Bitbuffers
+    def __getslice__(self, i, j):
+        return Bitbuffer(list.__getslice__(self,i,j))
+
+    #takes a set of lower-significance bits and appends our data to the end
+    def __add__(self,least_significant_bitbuffer):
+        return Bitbuffer(list(least_significant_bitbuffer) + list(self))
+
+    def copy(self):
+        return Bitbuffer(list(self))
+
+
 #incoming context is:
 #4 bits - byte bank size (from 0 to 8)
 #8 bits - byte bank value (from 0x00 to 0xFF)
@@ -36,23 +82,20 @@ import optparse
 #which means another call will be required to get the full result
 def next_read_bits_states(context):
     for bits_requested in xrange(1,9):
-        remaining_bits = context >> 8
-        byte_bank = context & 0xFF
+        byte_bank = Bitbuffer(context & 0xFF);
+        byte_bank += Bitbuffer([0] * ((context >> 8) - len(byte_bank)))
 
-        if (bits_requested >= remaining_bits):
-            yield (context << 12)
-        else:
-            #chop off the top "bits_requested" bits from the bank
-            returned_bits = byte_bank >> (remaining_bits - bits_requested)
+        #chop off the top "bits_requested" bits from the bank
+        returned_bits = byte_bank[-bits_requested:]
 
-            #use the remaining bits in the bank as our next state
-            byte_bank -= (returned_bits << (remaining_bits - bits_requested))
+        #use the remaining bits in the bank as our next state
+        byte_bank = byte_bank[0:-bits_requested]
 
-            #yield the combination of return value and next state
-            yield (bits_requested << 20) | \
-                (returned_bits << 12) | \
-                ((remaining_bits - bits_requested) << 8) | \
-                byte_bank
+        #yield the combination of return value and next state
+        yield (len(returned_bits) << 20) | \
+            (int(returned_bits) << 12) | \
+            (len(byte_bank) << 8) | \
+            int(byte_bank)
 
 def get_bit(bank,position):
     return (bank & (1 << position)) >> position
