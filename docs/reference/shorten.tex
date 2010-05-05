@@ -226,6 +226,9 @@ Setting a bitshift of 1 allows us to ignore that bit during
 calculation which, in turn, allows us to store those samples more
 efficiently.
 
+Note that bit shifting is applied \textit{after} channel wrapping
+and ``coffset'' calculation\footnote{See page \pageref{shorten_coffset}}.
+
 \pagebreak
 
 \subsection{the QLPC command}

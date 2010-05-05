@@ -297,6 +297,20 @@ PyObject *SHNDecoder_read(decoders_SHNDecoder* self,
 		   (sum / (ia_data_t)self->block_size) << self->bitshift);
       }
 
+      /*perform sample wrapping from the end of channel_data to the beginning*/
+      for (i = -self->wrap; i < 0; i++) {
+	ia_setitem(channel_data,self->wrap + i,ia_getitem(channel_data,i));
+      }
+
+      /*if bitshift is set, shift all samples in the framelist to the left
+	(analagous to FLAC's wasted-bits-per-sample)*/
+      if (self->bitshift > 0) {
+	for (i = self->wrap; i < channel_data->size; i++) {
+	  ia_setitem(channel_data,i,
+		     ia_getitem(channel_data,i) << self->bitshift);
+	}
+      }
+
       channel++;
       break;
     case FN_VERBATIM:
@@ -341,22 +355,9 @@ PyObject *SHNDecoder_read(decoders_SHNDecoder* self,
       framelist->samples[i] = ia_getitem(channel_data,j + self->wrap);
   }
 
-  /*wrap the last (usually 3) values back to the beginning
-    of the buffers and reset their lengths for the next run*/
+  /*reset channels for next run*/
   for (channel = 0; channel < self->channels; channel++) {
-    channel_data = iaa_getitem(&(self->buffer),channel);
-    for (i = -self->wrap; i < 0; i++) {
-      ia_setitem(channel_data,self->wrap + i,ia_getitem(channel_data,i));
-    }
-    channel_data->size = self->wrap;
-  }
-
-  /*if bitshift is set, shift all samples in the framelist to the left
-    (analagous to FLAC's wasted-bits-per-sample)*/
-  if (self->bitshift > 0) {
-    for (i = 0; i < framelist->samples_length; i++) {
-      framelist->samples[i] <<= self->bitshift;
-    }
+    iaa_getitem(&(self->buffer),channel)->size = self->wrap;
   }
 
   /*then return the pcm.FrameList*/
