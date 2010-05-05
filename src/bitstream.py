@@ -132,32 +132,34 @@ def one_bits(total):
 #the value 0x1408000 is returned
 def next_read_unary_states(context):
     for stop_bit in xrange(0,2):
-        remaining_bits = context >> 8
-        byte_bank = context & 0xFF
+        byte_bank = Bitbuffer(context & 0xFF);
+        byte_bank += Bitbuffer([0] * ((context >> 8) - len(byte_bank)))
 
-        for (i,position) in enumerate(reversed(range(remaining_bits))):
-            #print "got bit %d from 0x%X at %d" % \
-            #    (get_bit(byte_bank,position),byte_bank,position)
-            if (get_bit(byte_bank,position) == stop_bit):
+        #why reversed?
+        #remember, we're reading the bitstream from left to right
+        #or most-significant bit to least-significant bit
+        for (count,bit) in enumerate(reversed(byte_bank)):
+            if (bit == stop_bit):
                 #the total number bits we've skipped is the returned value
-                returned_bits = i
+                value = count
 
                 #what's left over is our next state
-                removed_bits = byte_bank >> (remaining_bits - returned_bits - 1)
-                byte_bank -= (removed_bits << (remaining_bits - returned_bits - 1))
+                byte_bank = byte_bank[:len(byte_bank) - count - 1]
 
-                continue_bit = 0
+                continue_reading = 0
 
-                yield (continue_bit << 24) | \
-                    (bit_count(returned_bits) << 20) | \
-                    (returned_bits << 12) | \
-                    ((remaining_bits - returned_bits - 1) << 8) | \
-                    byte_bank
+                yield (continue_reading << 24) | \
+                    (len(Bitbuffer(value)) << 20) | \
+                    (value << 12) | \
+                    (len(byte_bank) << 8) | \
+                    int(byte_bank)
                 break
         else:
-            continue_bit = 1
-            returned_bits = i + 1
-            yield (continue_bit << 24) | \
+            #unless we don't find the stop bit,
+            #in which case we need to send a continue
+            continue_reading = 1
+            returned_bits = count + 1
+            yield (continue_reading << 24) | \
                 (bit_count(returned_bits) << 20) | \
                 (returned_bits << 12)
 
