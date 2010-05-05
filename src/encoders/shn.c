@@ -296,8 +296,9 @@ int ShortenEncoder_compute_best_diff(struct i_array* buffer, int wrap) {
   ia_tail(&subtract,&delta2,delta2.size - 1);
   ia_init(&delta3,buffer->size);
   ia_sub(&delta3,&delta2,&subtract);
-  /*FIXME - not quite right
-    Shorten's delta3 offset is last1 - (buf[-2] - buf[-3])*/
+  /*not quite right
+    Shorten's delta3 offset is last1 - (buf[-2] - buf[-3])
+    but using this simpler scheme seems to have little impact*/
   for (delta3_sum = 0,i = 0; i < delta3.size; i++)
     delta3_sum += abs(ia_getitem(&delta3,i));
 
@@ -402,7 +403,7 @@ void ShortenEncoder_put_var(Bitstream* bs, int size, int value) {
 }
 
 void ShortenEncoder_put_long(Bitstream* bs, int value) {
-  int long_size = 3; /*FIXME - this is supposed to be computed dynamically
+  int long_size = 3; /*this is supposed to be computed dynamically
 		       but I'm not convinced it really matters
 		       considering how little longs are used
 		       in the Shorten stream*/

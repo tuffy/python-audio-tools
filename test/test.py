@@ -32,9 +32,10 @@ import time
 
 gettext.install("audiotools",unicode=True)
 
-(METADATA,PCM,FRAMELIST,EXECUTABLE,CUESHEET,IMAGE,FLAC,NETWORK,
- CUSTOM) = range(9)
-CASES = set([METADATA,PCM,FRAMELIST,EXECUTABLE,CUESHEET,IMAGE,FLAC,NETWORK])
+(METADATA,PCM,FRAMELIST,EXECUTABLE,CUESHEET,IMAGE,FLAC,SHORTEN,NETWORK,
+ CUSTOM) = range(10)
+CASES = set([METADATA,PCM,FRAMELIST,EXECUTABLE,CUESHEET,IMAGE,FLAC,SHORTEN,
+             NETWORK])
 
 def nothing(self):
     pass
@@ -77,6 +78,12 @@ def TEST_IMAGE(function):
 
 def TEST_FLAC(function):
     if (FLAC not in CASES):
+        return nothing
+    else:
+        return function
+
+def TEST_SHORTEN(function):
+    if (SHORTEN not in CASES):
         return nothing
     else:
         return function
@@ -9109,6 +9116,8 @@ class TestFlacCodec(unittest.TestCase):
         d.close()
         self.assertEqual(md5sum.digest(),pcmreader.digest())
 
+        temp_file.close()
+
     @TEST_FLAC
     def test_small_files(self):
         for g in [test_streams.Generate01,
@@ -9353,6 +9362,157 @@ class TestFlacCodec(unittest.TestCase):
     #multiple file handling is performed at the tool level
 
     #as is metadata handling
+
+#these are tests on our built-in Shorten encoder
+class TestShortenCodec(unittest.TestCase):
+    def __stream_variations__(self):
+        if (not hasattr(self,"__stream_variations_cache__")):
+            #this is a simpler variant of FLAC's variations
+            #since Shorten doesn't support 24bps
+            self.__class__.__stream_variations_cache__ = [
+                test_streams.Sine8_Mono(200000,48000,441.0,0.50,441.0,0.49),
+                test_streams.Sine8_Mono(200000,96000,441.0,0.61,661.5,0.37),
+                test_streams.Sine8_Mono(200000,44100,441.0,0.50,882.0,0.49),
+                test_streams.Sine8_Mono(200000,44100,441.0,0.50,4410.0,0.49),
+                test_streams.Sine8_Mono(200000,44100,8820.0,0.70,4410.0,0.29),
+
+                test_streams.Sine8_Stereo(200000,48000,441.0,0.50,441.0,0.49,1.0),
+                test_streams.Sine8_Stereo(200000,48000,441.0,0.61,661.5,0.37,1.0),
+                test_streams.Sine8_Stereo(200000,96000,441.0,0.50,882.0,0.49,1.0),
+                test_streams.Sine8_Stereo(200000,44100,441.0,0.50,4410.0,0.49,1.0),
+                test_streams.Sine8_Stereo(200000,44100,8820.0,0.70,4410.0,0.29,1.0),
+                test_streams.Sine8_Stereo(200000,44100,441.0,0.50,441.0,0.49,0.5),
+                test_streams.Sine8_Stereo(200000,44100,441.0,0.61,661.5,0.37,2.0),
+                test_streams.Sine8_Stereo(200000,44100,441.0,0.50,882.0,0.49,0.7),
+                test_streams.Sine8_Stereo(200000,44100,441.0,0.50,4410.0,0.49,1.3),
+                test_streams.Sine8_Stereo(200000,44100,8820.0,0.70,4410.0,0.29,0.1),
+
+                test_streams.Sine16_Mono(200000,48000,441.0,0.50,441.0,0.49),
+                test_streams.Sine16_Mono(200000,96000,441.0,0.61,661.5,0.37),
+                test_streams.Sine16_Mono(200000,44100,441.0,0.50,882.0,0.49),
+                test_streams.Sine16_Mono(200000,44100,441.0,0.50,4410.0,0.49),
+                test_streams.Sine16_Mono(200000,44100,8820.0,0.70,4410.0,0.29),
+
+                test_streams.Sine16_Stereo(200000,48000,441.0,0.50,441.0,0.49,1.0),
+                test_streams.Sine16_Stereo(200000,48000,441.0,0.61,661.5,0.37,1.0),
+                test_streams.Sine16_Stereo(200000,96000,441.0,0.50,882.0,0.49,1.0),
+                test_streams.Sine16_Stereo(200000,44100,441.0,0.50,4410.0,0.49,1.0),
+                test_streams.Sine16_Stereo(200000,44100,8820.0,0.70,4410.0,0.29,1.0),
+                test_streams.Sine16_Stereo(200000,44100,441.0,0.50,441.0,0.49,0.5),
+                test_streams.Sine16_Stereo(200000,44100,441.0,0.61,661.5,0.37,2.0),
+                test_streams.Sine16_Stereo(200000,44100,441.0,0.50,882.0,0.49,0.7),
+                test_streams.Sine16_Stereo(200000,44100,441.0,0.50,4410.0,0.49,1.3),
+                test_streams.Sine16_Stereo(200000,44100,8820.0,0.70,4410.0,0.29,0.1)]
+            for stream in self.__class__.__stream_variations_cache__:
+                stream.reset()
+                yield stream
+
+    @TEST_SHORTEN
+    def setUp(self):
+        import audiotools.decoders
+        import audiotools.encoders
+        self.audio_class = audiotools.ShortenAudio
+        self.decoder = audiotools.decoders.SHNDecoder
+        self.encode = audiotools.encoders.encode_shn
+        self.encode_opts = [{"block_size":4},
+                            {"block_size":256},
+                            {"block_size":1024}]
+
+    @TEST_SHORTEN
+    def test_streams(self):
+        for g in self.__stream_variations__():
+            md5sum = md5()
+            f = g.read(audiotools.BUFFER_SIZE)
+            while (len(f) > 0):
+                md5sum.update(f.to_bytes(False,True))
+                f = g.read(audiotools.BUFFER_SIZE)
+            self.assertEqual(md5sum.digest(),g.digest())
+            g.close()
+
+    def __test_reader__(self, pcmreader, sample_count, **encode_options):
+        if (not audiotools.BIN.can_execute(audiotools.BIN["shorten"])):
+            self.assert_(False,
+                         "reference Shorten binary shorten(1) required for this test")
+
+        temp_file = tempfile.NamedTemporaryFile(suffix=".shn")
+
+        options = encode_options.copy()
+
+        #construct a RIFF WAVE header string
+        #based on pmreader and sample_count
+        data_size = (sample_count *
+                     (pcmreader.bits_per_sample / 8) *
+                     pcmreader.channels)
+        options["verbatim_chunks"] = [
+            audiotools.WaveAudio.WAVE_HEADER.build(
+                audiotools.Con.Container(
+                    wave_id='RIFF',
+                    wave_size=data_size + 36,
+                    riff_type='WAVE')) +
+            audiotools.WaveAudio.CHUNK_HEADER.build(
+                audiotools.Con.Container(
+                    chunk_id='fmt ',
+                    chunk_length=16)) +
+            audiotools.WaveAudio.FMT_CHUNK.build(
+                audiotools.Con.Container(
+                    compression=1,
+                    channels=pcmreader.channels,
+                    sample_rate=pcmreader.sample_rate,
+                    bytes_per_second=((pcmreader.sample_rate *
+                                       pcmreader.channels *
+                                       pcmreader.bits_per_sample) / 8),
+                    block_align=((pcmreader.channels *
+                                  pcmreader.bits_per_sample) / 8),
+                    bits_per_sample=pcmreader.bits_per_sample)) +
+            audiotools.WaveAudio.CHUNK_HEADER.build(
+                audiotools.Con.Container(
+                    chunk_id='data',
+                    chunk_length=data_size)),None]
+
+        self.encode(temp_file.name,
+                    pcmreader,
+                    **options)
+
+        shn = audiotools.open(temp_file.name)
+        self.assert_(shn.total_frames() > 0)
+
+        temp_wav_file1 = tempfile.NamedTemporaryFile(suffix=".wav")
+        temp_wav_file2 = tempfile.NamedTemporaryFile(suffix=".wav")
+
+        #first, ensure the Shorten-encoded file
+        #has the same MD5 signature as pcmreader once decoded
+        md5sum = md5()
+        d = self.decoder(temp_file.name)
+        f = d.read(audiotools.BUFFER_SIZE)
+        while (len(f) > 0):
+            md5sum.update(f.to_bytes(False,True))
+            f = d.read(audiotools.BUFFER_SIZE)
+        d.close()
+        self.assertEqual(md5sum.digest(),pcmreader.digest())
+
+        #then compare our .to_wave() output
+        #with that of the Shorten reference decoder
+        shn.to_wave(temp_wav_file1.name)
+        subprocess.call([audiotools.BIN["shorten"],
+                         "-x",shn.filename,temp_wav_file2.name])
+
+        self.assert_(audiotools.pcm_cmp(
+                audiotools.WaveAudio(temp_wav_file1.name).to_pcm(),
+                audiotools.WaveAudio(temp_wav_file2.name).to_pcm()))
+
+        temp_file.close()
+        temp_wav_file1.close()
+        temp_wav_file2.close()
+
+    @TEST_SHORTEN
+    def test_small_files(self):
+        for g in [test_streams.Generate01,
+                  test_streams.Generate02,
+                  test_streams.Generate03,
+                  test_streams.Generate04]:
+            gen = g(44100)
+            self.__test_reader__(gen,len(gen.pcmreader.framelist),
+                                 block_size=256)
 
 class TestFrameList(unittest.TestCase):
     @classmethod
