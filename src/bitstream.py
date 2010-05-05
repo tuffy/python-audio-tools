@@ -237,8 +237,8 @@ def next_write_bits_states(context):
 #again, this is identical to write_bits' return value
 def next_write_unary_states(context):
     for wrote_array in xrange(0x1F + 1):
-        remaining_bits = context >> 7
-        byte_bank = context & 0x7F
+        byte_bank = Bitbuffer(context & 0x7F)
+        byte_bank.pad(context >> 7)
 
         stop_bit = wrote_array >> 4
         continue_bit = (wrote_array >> 3) & 0x01
@@ -246,49 +246,27 @@ def next_write_unary_states(context):
 
         #transform our straight bits into unary bits
         if (continue_bit == 0):
-            wrote_bits = wrote_value + 1
-            if (stop_bit == 1):
-                wrote_bank = 1
-            else:
-                wrote_bank = 1 ^ one_bits(wrote_bits)
+            wrote_bank = Bitbuffer([stop_bit] +
+                                   ([stop_bit ^ 1] * wrote_value))
         else:
-            wrote_bits = 8
-            if (stop_bit == 1):
-                wrote_bank = 0
-            else:
-                wrote_bank = 0xFF
-
-        # if (wrote_array == 0x15):
-        #     print "remaining bits %d" % (remaining_bits)
-        #     print "byte bank 0x%X" % (byte_bank)
-        #     print "stop bit %d" % (stop_bit)
-        #     print "continue bit %d" % (continue_bit)
-        #     print "wrote value %d" % (wrote_value)
-        #     print "wrote bank 0x%X" % (wrote_bank)
-        #     print "wrote_bits %d" % (wrote_bits)
+            wrote_bank = Bitbuffer([stop_bit ^ 1] * 8)
 
         #add our newly wrote bits to the beginning of the byte bank
-        new_bank = wrote_bank | (byte_bank << wrote_bits)
-        new_bank_size = remaining_bits + wrote_bits
+        new_bank = byte_bank + wrote_bank
 
         #if we have more than 8 bits in the bank,
         #generate a write request and new context
-        if (new_bank_size >= 8):
-            #write_byte = new_bank & 0xFF
-            #new_bank = new_bank >> 8
-
-            write_byte = new_bank >> (new_bank_size - 8)
-            new_bank -= write_byte << (new_bank_size - 8)
-
-            new_bank_size -= 8
+        if (len(new_bank) >= 8):
+            write_byte = int(new_bank[-8:])
+            new_bank = new_bank[0:-8]
 
             yield (1 << 18) | \
                 (write_byte << 10) | \
-                (new_bank_size << 7) | \
-                (new_bank)
+                (len(new_bank) << 7) | \
+                (int(new_bank))
         else:
             #otherwise, just generate a new context
-            yield (new_bank_size << 7) | new_bank
+            yield (len(new_bank) << 7) | int(new_bank)
 
 
 def states(minimum_bits=1,maximum_bits=8):
