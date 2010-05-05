@@ -1011,14 +1011,14 @@
   and nobody should be using it for new data
   (though I'll add a rudimentary encoder for completeness' sake)
   but it's interesting to document for historical reasons.
-** TODO Build complete decoder
+** DONE Build complete decoder
    - [X] DIFF0
    - [X] DIFF1
    - [X] DIFF2
    - [X] DIFF3
    - [X] QUIT
    - [X] BLOCKSIZE
-   - [ ] BITSHIFT
+   - [X] BITSHIFT
    - [X] QLPC
    - [X] ZERO
    - [X] VERBATIM
@@ -1035,8 +1035,8 @@
    - [X] VERBATIM
 ** DONE Add ShortenAudio type to audiotools Python core
 ** TODO Add Shorten-specific unit tests
-** TODO Document Shorten
+** DONE Document Shorten
    - [X] Shorten data types
    - [X] the Shorten file stream
-   - [ ] the decoding process
+   - [X] the decoding process
    - [X] the encoding process

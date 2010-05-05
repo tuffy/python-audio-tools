@@ -213,6 +213,19 @@ This command takes no arguments.
 It simply generates ``Block Size'' number of zero samples
 into the current channel's output buffer.
 
+\subsection{the BITSHIFT command}
+
+This commands takes a single \texttt{unsigned(2)} value
+and modifies the ``bitshift'' variable in the Shorten virtual machine.
+This value is how many bits to left-shift all output samples
+prior to returning them.
+
+For example, imagine a scenario in which all the samples in a set of
+blocks have 0 for their rightmost (least significant) bit.
+Setting a bitshift of 1 allows us to ignore that bit during
+calculation which, in turn, allows us to store those samples more
+efficiently.
+
 \pagebreak
 
 \subsection{the QLPC command}

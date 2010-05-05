@@ -36,6 +36,7 @@ enum {FN_DIFF0     = 0,
       FN_DIFF3     = 3,
       FN_QUIT      = 4,
       FN_BLOCKSIZE = 5,
+      FN_BITSHIFT  = 6,
       FN_QLPC      = 7,
       FN_ZERO      = 8,
       FN_VERBATIM  = 9};

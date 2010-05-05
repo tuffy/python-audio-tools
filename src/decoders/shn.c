@@ -78,7 +78,7 @@ int SHNDecoder_init(decoders_SHNDecoder *self,
 
     But due to the grubby nature of Shorten,
     the decoder is expected to make one pass through the file
-    parse any wav/aiff/au headers found (there should be one)
+    parse any wav/aiff headers found (there should be one)
     and use that data to set these two fields
     so that this works like a proper PCMReader.
 
@@ -309,6 +309,9 @@ PyObject *SHNDecoder_read(decoders_SHNDecoder* self,
     case FN_BLOCKSIZE:
       self->block_size = shn_read_long(self->bitstream);
       break;
+    case FN_BITSHIFT:
+      self->bitshift = shn_read_uvar(self->bitstream,2);
+      break;
     case FN_QUIT:
       self->read_finished = 1;
       goto finished;
@@ -346,6 +349,14 @@ PyObject *SHNDecoder_read(decoders_SHNDecoder* self,
       ia_setitem(channel_data,self->wrap + i,ia_getitem(channel_data,i));
     }
     channel_data->size = self->wrap;
+  }
+
+  /*if bitshift is set, shift all samples in the framelist to the left
+    (analagous to FLAC's wasted-bits-per-sample)*/
+  if (self->bitshift > 0) {
+    for (i = 0; i < framelist->samples_length; i++) {
+      framelist->samples[i] <<= self->bitshift;
+    }
   }
 
   /*then return the pcm.FrameList*/
