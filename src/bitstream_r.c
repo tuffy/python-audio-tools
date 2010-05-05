@@ -23,6 +23,10 @@ const unsigned int read_bits_table[0x900][8] =
 #include "read_bits_table.h"
   ;
 
+const unsigned int unread_bit_table[0x900][2] =
+#include "unread_bit_table.h"
+  ;
+
 const unsigned int read_unary_table[0x900][2] =
 #include "read_unary_table.h"
   ;

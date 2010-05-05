@@ -75,6 +75,7 @@ typedef struct {
 
 extern const unsigned int read_bits_table[0x900][8];
 extern const unsigned int read_unary_table[0x900][2];
+extern const unsigned int unread_bit_table[0x900][2];
 
 static inline unsigned int read_bits(Bitstream* bs, unsigned int count) {
   int context = bs->state;

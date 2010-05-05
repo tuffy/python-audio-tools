@@ -101,22 +101,35 @@ def next_read_bits_states(context):
             (len(byte_bank) << 8) | \
             int(byte_bank)
 
-def get_bit(bank,position):
-    return (bank & (1 << position)) >> position
+#incoming context is
+#4 bits - byte bank size (from 0 to 8)
+#8 bits - byte bank value (from 0x00 to 0xFF)
+#
+#returns an array of 2 integers
+#that array's index is bit we're un-reading, either 0 or 1
+#
+#the value in the array is a 13-bit, multiplexed set of items:
+#1 bit   - unable to unread any more bits
+#12 bits - next context
+#although we should always be able to unread at least 1 bit
+#(getting 1 bit from a 0x000 context results in reading a whole byte
+# before shifting the context to 0x7xx, for example, which means we
+# can unread 1 bit back to 0x8xx)
+#but more than 1 may not be possible
+def next_unread_bit_states(context):
+    for unread_bit in xrange(2):
+        byte_bank = Bitbuffer(context & 0xFF);
+        byte_bank.pad(context >> 8)
 
-def bit_count(b):
-    if (b == 0):
-        return 0
-    else:
-        return 1 + bit_count(b >> 1)
+        if (len(byte_bank) < 8):
+            byte_bank.append(unread_bit)
+            yield (len(byte_bank) << 8) | \
+                int(byte_bank)
+        else:
+            yield (1 << 12) | \
+                (len(byte_bank) << 8) | \
+                int(byte_bank)
 
-def one_bits(total):
-    value = 0
-
-    for p in xrange(total):
-        value = value | (1 << p)
-
-    return value
 
 #incoming context is the same as in next_read_bits_states:
 #4 bits - byte bank size (from 0 to 8)
@@ -164,7 +177,7 @@ def next_read_unary_states(context):
             continue_reading = 1
             returned_bits = count + 1
             yield (continue_reading << 24) | \
-                (bit_count(returned_bits) << 20) | \
+                (len(Bitbuffer(returned_bits)) << 20) | \
                 (returned_bits << 12)
 
 #incoming context is:
@@ -301,6 +314,12 @@ if (__name__ == '__main__'):
                       default=False,
                       help='create read bits jump table')
 
+    parser.add_option('--urb',
+                      dest='unread_bit',
+                      action='store_true',
+                      default=False,
+                      help='create unread bit jump table')
+
     parser.add_option('--wb',
                       dest='write_bits',
                       action='store_true',
@@ -324,6 +343,9 @@ if (__name__ == '__main__'):
     if (options.read_bits):
         (minimum_bits,maximum_bits,start_context,stat_function) = \
             (1,8,0,next_read_bits_states)
+    elif (options.unread_bit):
+        (minimum_bits,maximum_bits,start_context,stat_function) = \
+            (0,8,0,next_unread_bit_states)
     elif (options.read_unary):
         (minimum_bits,maximum_bits,start_context,stat_function) = \
             (1,8,0,next_read_unary_states)

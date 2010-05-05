@@ -2454,6 +2454,7 @@ class BitstreamReader:
 
         self.__read_bits__ = decoders.read_bits
         self.__read_unary__ = decoders.read_unary
+        self.__unread_bit__ = decoders.unread_bit
 
     def byte_align(self):
         self.context = 0
@@ -2477,6 +2478,9 @@ class BitstreamReader:
             bits -= ((result & 0xF00000) >> 20)
 
         return accumulator
+
+    def unread(self, bit):
+        self.context = self.__unread_bit__(self.context,bit)
 
     def read_signed(self, bits):
         if (self.read(1)):              #negative

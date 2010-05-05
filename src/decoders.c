@@ -58,6 +58,22 @@ PyObject *decoders_read_bits(PyObject *dummy, PyObject *args) {
   return Py_BuildValue("i",read_bits_table[context][bits - 1]);
 }
 
+PyObject *decoders_unread_bit(PyObject *dummy, PyObject *args) {
+  int context;
+  int bit;
+
+  if (!PyArg_ParseTuple(args,"ii",&context,&bit))
+    return NULL;
+
+  context = unread_bit_table[context][bit];
+  if (context >> 12) {
+    PyErr_SetString(PyExc_ValueError,"unable to unread bit");
+    return NULL;
+  } else {
+    return Py_BuildValue("i",context);
+  }
+}
+
 PyObject *decoders_read_unary(PyObject *dummy, PyObject *args) {
   int context;
   int stop_bit;
