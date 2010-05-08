@@ -177,32 +177,6 @@ class MusepackAudio(ApeTaggedAudio,AudioFile):
         finally:
             f.close()
 
-    def to_pcm(self):
-        ###Musepack SV7###
-        #sub = subprocess.Popen([BIN['mppdec'],'--silent',
-        #                        '--raw-le',
-        #                        self.filename,'-'],
-        #                       stdout=subprocess.PIPE)
-        #return PCMReader(sub.stdout,
-        #                 sample_rate=self.sample_rate(),
-        #                 channels=self.channels(),
-        #                 bits_per_sample=self.bits_per_sample(),
-        #                 process=sub)
-
-        ###Musepack SV8###
-        import tempfile
-
-        f = tempfile.NamedTemporaryFile(suffix=".wav")
-        try:
-            self.__to_wave__(f.name)
-            f.seek(0,0)
-            return TempWaveReader(f)
-        except DecodingError:
-            return PCMReaderError(None,
-                                  sample_rate=self.sample_rate(),
-                                  channels=self.channels(),
-                                  bits_per_sample=self.bits_per_sample())
-
     @classmethod
     def from_pcm(cls, filename, pcmreader, compression=None):
         import tempfile,bisect

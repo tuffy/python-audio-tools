@@ -476,18 +476,7 @@ class M4AAudio_nero(M4AAudio_faac):
             return ChannelMask(0)
 
     def to_pcm(self):
-        import tempfile
-        f = tempfile.NamedTemporaryFile(suffix=".wav")
-        try:
-            self.to_wave(f.name)
-            f.seek(0,0)
-            return TempWaveReader(f)
-        except EncodingError:
-            return PCMReaderError(None,
-                                  sample_rate=self.sample_rate(),
-                                  channels=self.channels(),
-                                  channel_mask=int(self.channel_mask()),
-                                  bits_per_sample=self.bits_per_sample())
+        return AudioFile.to_pcm(self)
 
     @classmethod
     def from_pcm(cls, filename, pcmreader, compression=None):

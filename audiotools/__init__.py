@@ -1801,7 +1801,24 @@ class AudioFile:
 
     #returns a PCMReader-compatible object
     def to_pcm(self):
-        raise NotImplementedError()
+        #if a subclass implements to_wave(),
+        #this doesn't need to be implemented
+        #if a subclass implements to_pcm(),
+        #to_wave() doesn't need to be implemented
+        #or, one can implement both
+
+        import tempfile
+        f = tempfile.NamedTemporaryFile(suffix=".wav")
+        try:
+            self.to_wave(f.name)
+            f.seek(0,0)
+            return TempWaveReader(f)
+        except EncodingError:
+            return PCMReaderError(None,
+                                  sample_rate=self.sample_rate(),
+                                  channels=self.channels(),
+                                  channel_mask=int(self.channel_mask()),
+                                  bits_per_sample=self.bits_per_sample())
 
     #takes a filename string
     #a PCMReader-compatible object
@@ -1810,7 +1827,20 @@ class AudioFile:
     #raises EncodingError if an error occurs during encoding
     @classmethod
     def from_pcm(cls, filename, pcmreader, compression=None):
-        raise NotImplementedError()
+        #if a subclass implements from_wave(),
+        #this doesn't need to be implemented
+        #if a subclass implements from_pcm(),
+        #from_wave() doesn't need to be implemented
+        #or, one can implement both
+
+        import tempfile
+
+        f = tempfile.NamedTemporaryFile(suffix=".wav")
+        w = WaveAudio.from_pcm(f.name, pcmreader)
+        try:
+            return cls.from_wave(filename,f.name,compression)
+        finally:
+            f.close()
 
     #writes the contents of this AudioFile to the given RIFF WAVE filename
     #raises EncodingError if an error occurs during decoding

@@ -150,19 +150,17 @@ class ShortenAudio(AudioFile):
 
     @classmethod
     def from_pcm(cls, filename, pcmreader, compression=None):
-        import tempfile
-
         if (pcmreader.bits_per_sample not in (8,16)):
             raise UnsupportedBitsPerSample()
 
-        tempwavefile = tempfile.NamedTemporaryFile(suffix=".wav")
+        import tempfile
+
+        f = tempfile.NamedTemporaryFile(suffix=".wav")
+        w = WaveAudio.from_pcm(f.name, pcmreader)
         try:
-            tempwave = WaveAudio.from_pcm(tempwavefile.name,pcmreader)
-            return cls.from_wave(filename,
-                                 tempwavefile.name,
-                                 compression=compression)
+            return cls.from_wave(filename,f.name,compression)
         finally:
-            tempwavefile.close()
+            f.close()
 
     def to_wave(self, wave_filename):
         if (not hasattr(self,"__format__")):

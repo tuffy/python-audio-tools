@@ -672,14 +672,6 @@ class ApeAudio(ApeTaggedAudio,AudioFile):
         finally:
             f.close()
 
-    def to_pcm(self):
-        import tempfile
-
-        f = tempfile.NamedTemporaryFile(suffix=".wav")
-        self.to_wave(f.name)
-        f.seek(0,0)
-        return TempWaveReader(f)
-
     def to_wave(self, wave_filename):
         if (self.filename.endswith(".ape")):
             devnull = file(os.devnull,"wb")
@@ -708,22 +700,6 @@ class ApeAudio(ApeTaggedAudio,AudioFile):
             sub.wait()
             ape.close()
             devnull.close()
-
-
-    @classmethod
-    def from_pcm(cls, filename, pcmreader, compression=None):
-        import tempfile
-
-        if (str(compression) not in cls.COMPRESSION_MODES):
-            compression = cls.DEFAULT_COMPRESSION
-
-        f = tempfile.NamedTemporaryFile(suffix=".wav")
-        w = WaveAudio.from_pcm(f.name, pcmreader)
-        try:
-            return cls.from_wave(filename,f.name,compression)
-        finally:
-            del(w)
-            f.close()
 
     @classmethod
     def from_wave(cls, filename, wave_filename, compression=None):
