@@ -863,7 +863,7 @@ With $m \geq 2$, the following recurive algorithm is performed:
 Let's run through an example in which $M = 4$, $r(0) = 11018$, $r(1) = 9690$,
 $r(2) = 8443$ and $r(3) = 7280$:
 {\relsize{-2}
-\begin{align}
+\begin{align*}
 E_0 &= r(0) = 11018 \\
 a_{11} &= \kappa_1 = \frac{r(1)}{E_0} = \frac{9690}{11018} = 0.8795 \\
 E_1 &= E_o(1 - {\kappa_1} ^ 2) = 11018(1 - 0.8795 ^ 2) = 2495 \\
@@ -878,16 +878,16 @@ a_{33} &= \kappa_3 = -0.0293 \\
 a_{13} &= a_{12} - \kappa_3 a_{22} = 0.9074 - (-0.0293)(-0.0318) = 0.9065 \\
 a_{23} &= a_{22} - \kappa_3 a_{12} = -0.0318 - (-0.0293)(0.9074) = -0.0052 \\
 E_3 &= E_2 (1 - {\kappa_3} ^ 2 ) = 2492(1 - {-0.0293 ^ 2}) = 2490
-\end{align}
+\end{align*}
 }
 Our final values are:
 {\relsize{-2}
-\begin{align}
+\begin{align*}
 a_{11} &= 0.8795 & & & & \\
 a_{12} &= 0.9074 & a_{22} &= -0.0318 & & \\
 a_{13} &= 0.9065 & a_{23} &= -0.0052 & a_{33} &= -0.0293 \\
 E_1 &= 2495 & E_2 &= 2492 & E_3 &= 2490
-\end{align}
+\end{align*}
 }
 \noindent
 These values have been rounded to the nearest significant digit
@@ -926,7 +926,7 @@ Continuing with our example, we have 20 samples and
 now have the error values of 2495, 2492 and 2490.
 This gives us an error scale of:
 $\frac{{\ln(2) ^ 2}}{2 \times 20} = \frac{.6931 ^ 2}{40} = .01201$
-\begin{align}
+\begin{align*}
 \intertext{At LPC order 1, our bits per residual are:}
 \frac{\ln(.01201 \times 2495)}{2 \times ln (2)} = \frac{\ln(29.96)}{1.386} &= 2.453 \\
 \intertext{And our total bits are:}
@@ -939,7 +939,7 @@ $\frac{{\ln(2) ^ 2}}{2 \times 20} = \frac{.6931 ^ 2}{40} = .01201$
 \frac{\ln(.01201 \times 2490)}{2 \times \ln(2)} = \frac{\ln(29.90)}{1.386} &= 2.451
 \intertext{And our total bits are:}
 (2.451 \times (20 - 3)) + (3 \times (16 + 5)) = 41.67 + 63 &= 104.7
-\end{align}
+\end{align*}
 \par
 \noindent
 Therefore, since the total bits for order 1 are the smallest,
@@ -1004,10 +1004,10 @@ block size:
 \par
 \noindent
 So in our example of a block of 20 samples,
-\begin{align}
+\begin{align*}
 \text{QLP Coefficient maximum} = 2 ^ {7 - 1} -1 = 64 - 1 &= 63 \\
 \text{QLP Coefficient minimum} = - 2 ^ {7 - 1} &= -64
-\end{align}
+\end{align*}
 \par
 \noindent
 Now we determine the initial QLP Shift Needed value:
@@ -1023,10 +1023,10 @@ are no-ops in the FLAC decoder.
 
 Continuing our ongoing example, let's assume we're quantizing the LP
 coefficients 0.9065, -0.0052 and -0.0293.  So our shift should be:
-\begin{equation}
+\begin{equation*}
 \text{shift} = 7 - \left \lceil \frac{\log(0.9065)}{\log(2)} \right \rceil - 1
 = 7 - \left \lceil \frac{-0.0981}{0.6931} \right \rceil - 1 = 7 - 0 - 1 = 6
-\end{equation}
+\end{equation*}
 \par
 \noindent
 Finally, we determine the QLP Coefficient values themselves via a small
@@ -1045,7 +1045,7 @@ $\text{QLP coefficient minimum} \leq \text{QLP Coefficient}_i \leq \text{QLP coe
 \pagebreak
 
 So to finish our LPC example:
-\begin{align}
+\begin{align*}
 X(1) &= E(0) + (0.9065 \times 2 ^ 6 ) = 0 + 58.016 = \textbf{58.016} \\
 \text{QLP Coefficient}_1 &= \text{round}(58.016) = \textbf{58} \\
 E(1) &= X(1) - \text{QLP Coefficient}_1 = 58.016 - 58 = \textbf{0.016} \\
@@ -1055,7 +1055,7 @@ E(2) &= X(2) - \text{QLP Coefficient}_2 = 0.3168 - 0 = \textbf{0.3168} \\
 X(3) &= E(2) + (-0.0293 \times 2 ^ 6 ) = 0.3168 + -1.875 = \textbf{-1.558} \\
 \text{QLP Coefficient}_3 &= \text{round}(-1.558) = \textbf{-2} \\
 E(3) &= X(3) - \text{QLP Coefficient}_3 = -1.558 - -2 = \textbf{0.4420}
-\end{align}
+\end{align*}
 \par
 \noindent
 Therefore, the LPC order is 3.
@@ -1249,7 +1249,7 @@ or 0 as an initial value, the current checksum can be calculated as follows:
 \par
 \noindent
 For example, given the header bytes: 0xFF, 0xF8, 0xCC, 0x1C, 0x00 and 0xC0:
-\begin{align}
+\begin{align*}
 \text{checksum}_0 &= \text{CRC8}(\texttt{0xFF}\xor\texttt{0x00}) = \text{CRC8}(\texttt{0xFF}) = \texttt{0xF3} \\
 \text{checksum}_1 &= \text{CRC8}(\texttt{0xF8}\xor\texttt{0xF3}) = \text{CRC8}(\texttt{0x0B}) = \texttt{0x31} \\
 \text{checksum}_2 &= \text{CRC8}(\texttt{0xCC}\xor\texttt{0x31}) = \text{CRC8}(\texttt{0xFD}) = \texttt{0xFD} \\
@@ -1260,7 +1260,7 @@ For example, given the header bytes: 0xFF, 0xF8, 0xCC, 0x1C, 0x00 and 0xC0:
 Furthermore, when the checksum byte itself is run through the
 checksumming procedure:}
 \text{checksum}_6 &= \text{CRC8}(\texttt{0xEB}\xor\texttt{0xEB}) = \text{CRC8}(\texttt{0x00}) = \texttt{0x00}
-\end{align}
+\end{align*}
 \par
 \noindent
 the result will always be 0.
@@ -1315,7 +1315,7 @@ For example, given the frame bytes:
 0x00, 0x00, 0x00 and 0x00, the frame's CRC-16 can be calculated as
 follows:
 {\relsize{-2}
-\begin{align}
+\begin{align*}
 \CRCSIXTEEN{0}{0xFF}{0x0000}{0xFF}{0x0000}{0x0202} \\
 \CRCSIXTEEN{1}{0xF8}{0x0202}{0xFA}{0x0200}{0x001C} \\
 \CRCSIXTEEN{2}{0xCC}{0x001C}{0xCC}{0x1C00}{0x1EA8} \\
@@ -1336,6 +1336,6 @@ follows:
 Again, when the checksum bytes are run through the checksumming procedure:}
 \CRCSIXTEEN{15}{0xF0}{0xF093}{0x00}{0x9300}{0x9300} \\
 \CRCSIXTEEN{16}{0x93}{0x9300}{0x00}{0x0000}{0x0000}
-\end{align}
+\end{align*}
 the result will also always be 0, just as in the CRC-8.
 }

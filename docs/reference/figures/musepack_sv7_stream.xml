@@ -10,9 +10,9 @@
   <row><blank/></row>
   <row>
     <col start="0" end="23" width=".40" id="signature">Signature (`MP+' 0x4D502B)</col>
-    <col start="24" end="31" width=".20" id="version">Version (0x07)</col>
+    <col start="24" end="31" width=".20">Version (0x07)</col>
     <col start="32" end="63" width=".2">Frame Count</col>
-    <col start="64" end="79" width=".2">Max Level</col>
+    <col start="64" end="79" width=".2" id="maxlevel">Max Level</col>
   </row>
   <row>
     <col start="80" end="83" width=".15">Profile</col>
@@ -45,5 +45,5 @@
     <col start="  216" end="223" width=".4">Encoder Version</col>
   </row>
   <line s_id="header" s_corner="sw" e_id="signature" e_corner="nw" style="dotted"/>
-  <line s_id="header" s_corner="se" e_id="version" e_corner="ne" style="dotted"/>
+  <line s_id="header" s_corner="se" e_id="maxlevel" e_corner="ne" style="dotted"/>
 </diagram>

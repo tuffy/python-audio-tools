@@ -25,14 +25,14 @@ All values in AIFF are stored as big-endian.
 \noindent
 The Sample Rate field is an 80-bit IEEE Standard 754 floating point value
 instead of the big-endian integers common to all the other fields.
-\begin{align}
+\begin{align*}
 \text{Value} &= (-) \frac{\text{Mantissa}}{2 ^ {63}} \times 2 ^ {\text{Exponent} - 16383}
 \intertext{For example, given a sign bit of 0, an exponent value of 0x400E
 and a mantissa value of 0xAC44000000000000:}
 \text{Value} &= \frac{12413046472939929600}{2 ^ {63}} \times 2 ^ {16398 - 16383} \\
 &= 1.3458251953125 \times 2 ^ {15} \\
 &= 44100.0
-\end{align}
+\end{align*}
 
 \section{the SSND chunk}
 \begin{figure}[h]
