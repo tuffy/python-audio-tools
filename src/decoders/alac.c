@@ -23,12 +23,30 @@
 int ALACDecoder_init(decoders_ALACDecoder *self,
 		     PyObject *args, PyObject *kwds) {
   char *filename;
+  static char *kwlist[] = {"filename",
+			   "sample_rate",
+			   "channels",
+			   "channel_mask",
+			   "bits_per_sample",
+			   "max_samples_per_frame",
+			   "history_mult",
+			   "initial_history",
+			   "kmodifier"};
 
   self->filename = NULL;
   self->file = NULL;
   self->bitstream = NULL;
 
-  if (!PyArg_ParseTuple(args,"s",&filename))
+  if (!PyArg_ParseTupleAndKeywords(args,kwds,"siiiiiiii",kwlist,
+				   &filename,
+				   &(self->sample_rate),
+				   &(self->channels),
+				   &(self->channel_mask),
+				   &(self->bits_per_sample),
+				   &(self->max_samples_per_frame),
+				   &(self->history_mult),
+				   &(self->initial_history),
+				   &(self->kmodifier)))
     return -1;
 
   /*open the alac file*/
@@ -65,6 +83,27 @@ PyObject *ALACDecoder_new(PyTypeObject *type,
 
   return (PyObject *)self;
 }
+
+static PyObject *ALACDecoder_sample_rate(decoders_ALACDecoder *self,
+					 void *closure) {
+  return Py_BuildValue("i",self->sample_rate);
+}
+
+static PyObject *ALACDecoder_bits_per_sample(decoders_ALACDecoder *self,
+					     void *closure) {
+  return Py_BuildValue("i",self->bits_per_sample);
+}
+
+static PyObject *ALACDecoder_channels(decoders_ALACDecoder *self,
+				      void *closure) {
+  return Py_BuildValue("i",self->channels);
+}
+
+static PyObject *ALACDecoder_channel_mask(decoders_ALACDecoder *self,
+					  void *closure) {
+  return Py_BuildValue("i",self->channel_mask);
+}
+
 
 PyObject *ALACDecoder_read(decoders_ALACDecoder* self,
 			   PyObject *args) {

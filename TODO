@@ -1042,7 +1042,7 @@
    - [X] the encoding process
 * TODO Add ALAC support
 ** TODO Build ALAC decoder
-*** TODO Add audiotools.decoders.AlacDecoder object
+*** DONE Add audiotools.decoders.AlacDecoder object
 *** TODO Add frame header parsing
 *** TODO Add subframe header parsing
 *** TODO Add residual decoding
@@ -1050,11 +1050,11 @@
 *** TODO Decode subframes
 *** TODO Perform channel decorrelation
 *** TODO Return pcm.FrameList objects on calls to read()
-*** TODO Ensure PCMReader-compatible fields are present
-    - [ ] sample_rate
-    - [ ] channels
-    - [ ] channel_mask
-    - [ ] bits_per_sample
+*** DONE Ensure PCMReader-compatible fields are present
+    - [X] sample_rate
+    - [X] channels
+    - [X] channel_mask
+    - [X] bits_per_sample
 *** TODO Ensure 8/16/24 bps streams work correctly
 *** TODO Ensure 1/2/3+ channel streams work correctly
 ** TODO Build ALAC encoder

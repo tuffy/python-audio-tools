@@ -29,12 +29,37 @@ typedef struct {
   FILE* file;
   Bitstream* bitstream;
 
-  /*FIXME more fields will be necessary*/
+  int sample_rate;
+  int channels;
+  int channel_mask;
+  int bits_per_sample;
+
+  /*a bunch of decoding fields pulled from the stream's 'alac' atom*/
+  int max_samples_per_frame;
+  int history_mult;
+  int initial_history;
+  int kmodifier;
 } decoders_ALACDecoder;
 
 typedef enum {OK,ERROR} status;
 
-/*the FlacDecoder.read() method*/
+/*the ALACDecoder.sample_rate attribute getter*/
+static PyObject *ALACDecoder_sample_rate(decoders_ALACDecoder *self,
+					 void *closure);
+
+/*the ALACDecoder.bits_per_sample attribute getter*/
+static PyObject *ALACDecoder_bits_per_sample(decoders_ALACDecoder *self,
+					     void *closure);
+
+/*the ALACDecoder.channels attribute getter*/
+static PyObject *ALACDecoder_channels(decoders_ALACDecoder *self,
+				      void *closure);
+
+/*the ALACDecoder.channel_mask attribute getter*/
+static PyObject *ALACDecoder_channel_mask(decoders_ALACDecoder *self,
+					  void *closure);
+
+/*the ALACDecoder.read() method*/
 PyObject *ALACDecoder_read(decoders_ALACDecoder* self,
 			   PyObject *args);
 
@@ -51,6 +76,14 @@ int ALACDecoder_init(decoders_ALACDecoder *self,
 status ALACDecoder_seek_mdat(decoders_ALACDecoder *self);
 
 PyGetSetDef ALACDecoder_getseters[] = {
+  {"sample_rate",
+   (getter)ALACDecoder_sample_rate, NULL, "sample rate", NULL},
+  {"bits_per_sample",
+   (getter)ALACDecoder_bits_per_sample, NULL, "bits per sample", NULL},
+  {"channels",
+   (getter)ALACDecoder_channels, NULL, "channels", NULL},
+  {"channel_mask",
+   (getter)ALACDecoder_channel_mask, NULL, "channel_mask", NULL},
   {NULL}
 };
 
