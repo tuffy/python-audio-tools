@@ -32,6 +32,8 @@ typedef struct {
   /*FIXME more fields will be necessary*/
 } decoders_ALACDecoder;
 
+typedef enum {OK,ERROR} status;
+
 /*the FlacDecoder.read() method*/
 PyObject *ALACDecoder_read(decoders_ALACDecoder* self,
 			   PyObject *args);
@@ -43,6 +45,10 @@ PyObject *ALACDecoder_close(decoders_ALACDecoder* self,
 /*the ALACDecoder.__init__() method*/
 int ALACDecoder_init(decoders_ALACDecoder *self,
 		     PyObject *args, PyObject *kwds);
+
+/*walks through the open QuickTime stream looking for the 'mdat' atom
+  or returns ERROR if one cannot be found*/
+status ALACDecoder_seek_mdat(decoders_ALACDecoder *self);
 
 PyGetSetDef ALACDecoder_getseters[] = {
   {NULL}
