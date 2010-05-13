@@ -1040,3 +1040,28 @@
    - [X] the Shorten file stream
    - [X] the decoding process
    - [X] the encoding process
+* TODO Add ALAC support
+** TODO Build ALAC decoder
+*** TODO Add audiotools.decoders.AlacDecoder object
+*** TODO Add frame header parsing
+*** TODO Add subframe header parsing
+*** TODO Add residual decoding
+*** TODO Ensure frame footer is checked
+*** TODO Decode subframes
+*** TODO Perform channel decorrelation
+*** TODO Return pcm.FrameList objects on calls to read()
+*** TODO Ensure PCMReader-compatible fields are present
+    - [ ] sample_rate
+    - [ ] channels
+    - [ ] channel_mask
+    - [ ] bits_per_sample
+*** TODO Ensure 8/16/24 bps streams work correctly
+*** TODO Ensure 1/2/3+ channel streams work correctly
+** TODO Build ALAC encoder
+*** TODO Add audiotools.encoders.encode_alac function
+** TODO Add ALACAudio type to audiotools Python core
+** TODO Add ALAC-specific unit tests
+** TODO Document ALAC
+*** TODO the ALAC file stream
+*** TODO ALAC decoding
+*** TODO ALAC encoding
