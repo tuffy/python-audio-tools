@@ -121,7 +121,7 @@ typedef struct {
 			 stored raw as doubles*/
   fa_size_t samples_length; /*the total number of samples
 			     which must be evenly distributable
-			     between channels and bits-per-sample*/
+			     between channels*/
 } pcm_FloatFrameList;
 
 void FloatFrameList_dealloc(pcm_FloatFrameList* self);

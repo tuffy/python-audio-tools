@@ -110,11 +110,11 @@ value & command & value & command \\
 \hline
 \end{tabular}
 \end{wrapfigure}
-Internally\footnote{Interestingly, although
-Shorten's successor, FLAC, presents its input as frames and subframes,
-references to a FLAC virtual machine are still present in its source code.},
+Internally,
 a Shorten file acts as a list of commands to be executed by a tiny
-virtual machine.
+virtual machine.\footnote{Interestingly, although
+Shorten's successor, FLAC, presents its input as frames and subframes,
+references to a FLAC virtual machine are still present in its source code.}
 Each command is a \texttt{unsigned(2)} field followed by zero or more
 arguments.
 
