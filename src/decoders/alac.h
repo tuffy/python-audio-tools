@@ -41,6 +41,16 @@ typedef struct {
   int kmodifier;
 } decoders_ALACDecoder;
 
+struct alac_frame_header {
+  uint8_t channels;
+  uint8_t has_size;
+  uint8_t uncompressed_bytes;
+  uint8_t is_not_compressed;
+  uint32_t output_samples;
+  uint8_t interlacing_shift;
+  uint8_t interlacing_leftweight;
+};
+
 typedef enum {OK,ERROR} status;
 
 /*the ALACDecoder.sample_rate attribute getter*/
@@ -74,6 +84,14 @@ int ALACDecoder_init(decoders_ALACDecoder *self,
 /*walks through the open QuickTime stream looking for the 'mdat' atom
   or returns ERROR if one cannot be found*/
 status ALACDecoder_seek_mdat(decoders_ALACDecoder *self);
+
+/*reads "frame_header" from the current bitstream*/
+status ALACDecoder_read_frame_header(Bitstream *bs,
+				     struct alac_frame_header *frame_header,
+				     int max_samples_per_frame);
+
+/*a simple debugging routine*/
+void ALACDecoder_print_frame_header(struct alac_frame_header *frame_header);
 
 PyGetSetDef ALACDecoder_getseters[] = {
   {"sample_rate",

@@ -1043,7 +1043,7 @@
 * TODO Add ALAC support
 ** TODO Build ALAC decoder
 *** DONE Add audiotools.decoders.AlacDecoder object
-*** TODO Add frame header parsing
+*** DONE Add frame header parsing
 *** TODO Add subframe header parsing
 *** TODO Add residual decoding
 *** TODO Ensure frame footer is checked

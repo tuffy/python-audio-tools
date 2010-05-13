@@ -107,6 +107,15 @@ static PyObject *ALACDecoder_channel_mask(decoders_ALACDecoder *self,
 
 PyObject *ALACDecoder_read(decoders_ALACDecoder* self,
 			   PyObject *args) {
+  struct alac_frame_header frame_header;
+
+  if (ALACDecoder_read_frame_header(self->bitstream,
+				    &frame_header,
+				    self->max_samples_per_frame) == ERROR)
+    return NULL;
+
+  ALACDecoder_print_frame_header(&frame_header);
+
   Py_INCREF(Py_None);
   return Py_None;
 }
@@ -137,4 +146,39 @@ status ALACDecoder_seek_mdat(decoders_ALACDecoder *self) {
   }
 
   return ERROR;
+}
+
+status ALACDecoder_read_frame_header(Bitstream *bs,
+				     struct alac_frame_header *frame_header,
+				     int max_samples_per_frame) {
+  frame_header->channels = read_bits(bs,3) + 1;
+  read_bits(bs,16); /*nobody seems to know what these are for*/
+  frame_header->has_size = read_bits(bs,1);
+  frame_header->uncompressed_bytes = read_bits(bs,2);
+  frame_header->is_not_compressed = read_bits(bs,1);
+  if (frame_header->has_size) {
+    /*for when we hit the end of the stream
+      and need a non-typical amount of samples*/
+    frame_header->output_samples = read_bits(bs,32);
+  } else {
+    frame_header->output_samples = max_samples_per_frame;
+  }
+  if (frame_header->is_not_compressed) {
+    PyErr_SetString(PyExc_ValueError,"TODO: uncompressed frames not yet supported");
+    return ERROR;
+  } else {
+    frame_header->interlacing_shift = read_bits(bs,8);
+    frame_header->interlacing_leftweight = read_bits(bs,8);
+  }
+  return OK;
+}
+
+void ALACDecoder_print_frame_header(struct alac_frame_header *frame_header) {
+  printf("channels : %d\n",frame_header->channels);
+  printf("has_size : %d\n",frame_header->has_size);
+  printf("uncompressed_bytes : %d\n",frame_header->uncompressed_bytes);
+  printf("is_not_compressed : %d\n",frame_header->is_not_compressed);
+  printf("output_samples : %d\n",frame_header->output_samples);
+  printf("interlacing_shift : %d\n",frame_header->interlacing_shift);
+  printf("interlacing_leftweight : %d\n",frame_header->interlacing_leftweight);
 }
