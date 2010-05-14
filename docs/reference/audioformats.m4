@@ -51,6 +51,7 @@
 \include{ape}
 \include{mp3}
 \include{m4a}
+\include{alac}
 \include{vorbis}
 \include{oggflac}
 \include{speex}
