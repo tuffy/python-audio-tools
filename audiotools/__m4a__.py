@@ -969,7 +969,24 @@ class ALACAudio(M4AAudio):
     def lossless(self):
         return True
 
+    def to_pcm(self):
+        import audiotools.decoders
 
+        f = file(self.filename,'rb')
+        qt = __Qt_Atom_Stream__(f)
+        alac = ALACAudio.ALAC_ATOM.parse(qt['moov']['trak']['mdia']['minf']['stbl']['stsd'].data[8:]).alac
+        f.close()
+
+        return audiotools.decoders.ALACDecoder(
+            filename=self.filename,
+            sample_rate=alac.sample_rate,
+            channels=alac.channels,
+            channel_mask=0, #FIXME
+            bits_per_sample=alac.sample_size,
+            max_samples_per_frame=alac.max_samples_per_frame,
+            history_mult=alac.history_mult,
+            initial_history=alac.initial_history,
+            kmodifier=alac.kmodifier)
 
 
 #######################
