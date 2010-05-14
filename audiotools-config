@@ -45,156 +45,317 @@ if (__name__ == '__main__'):
         print _(u"* audiotools Python module not found!")
         print _(u"Perhaps you should re-install the Python Audio Tools")
 
-    msg = audiotools.Messenger("audiotools-config",None)
+    parser = audiotools.OptionParser(
+        usage=_(u'%prog [options]'),
+        version="Python Audio Tools %s" % (audiotools.VERSION))
 
-    name_len = max([len(audiotype.NAME) for audiotype in
-                    audiotools.AVAILABLE_TYPES])
+    opt_map = {"system_cdrom":("System","cdrom"),
+               "system_cdrom_read_offset":("System","cdrom_read_offset"),
+               "system_fs_encoding":("System","fs_encoding"),
+               "system_io_encoding":("System","io_encoding"),
+               "system_maximum_jobs":("System","maximum_jobs"),
 
-    available = []
-    unavailable = []
-    available_binaries = set()
-    unavailable_binaries = set()
-    for audiotype in sorted(audiotools.AVAILABLE_TYPES,
-                            lambda x,y: cmp(x.NAME,y.NAME)):
-        if (audiotype.has_binaries(audiotools.BIN)):
-            available.append(audiotype.NAME)
-        else:
-            unavailable.append(audiotype.NAME)
-        for binary in audiotype.BINARIES:
-            if (audiotools.BIN.can_execute(binary)):
-                available_binaries.add(binary)
+               "thumbnail_format":("Thumbnail","format"),
+               "thumbnail_size":("Thumbnail","size"),
+
+               "freedb_server":("FreeDB","server"),
+               "freedb_port":("FreeDB","port"),
+
+               "musicbrainz_server":("MusicBrainz","server"),
+               "musicbrainz_port":("MusicBrainz","port"),
+
+               "filename_format":("Filenames","format")}
+
+    system = audiotools.OptionGroup(parser,_(u"System Options"))
+
+    system.add_option('-c','--cdrom',
+                      action='store',
+                      dest='system_cdrom',
+                      metavar='PATH',
+                      help=_(u'the CD-ROM drive to use'))
+
+    system.add_option('--cdrom-read-offset',
+                      action='store',
+                      type='int',
+                      metavar='INT',
+                      dest='system_cdrom_read_offset',
+                      help=_(u'the CD-ROM read offset to use'))
+
+    system.add_option('-j','--joint',
+                      action='store',
+                      type='int',
+                      metavar='MAX_PROCESSES',
+                      dest='system_maximum_jobs',
+                      help=_(u'the maximum number of processes to run at a time'))
+
+    system.add_option('--fs-encoding',
+                      action='store',
+                      metavar='ENCODING',
+                      dest='system_fs_encoding',
+                      help=_(u"the filesystem's text encoding"))
+
+    system.add_option('--io-encoding',
+                      action='store',
+                      metavar='ENCODING',
+                      dest='system_io_encoding',
+                      help=_(u"the system's text encoding"))
+
+    parser.add_option_group(system)
+
+    thumbnails = audiotools.OptionGroup(parser,_(u"Thumbnail Options"))
+
+    thumbnails.add_option('--thumbnail-format',
+                          action='store',
+                          metavar='TYPE',
+                          dest='thumbnail_format',
+                          help=_(u'the image format to use for thumbnails such as "jpeg" or "png"'))
+
+    thumbnails.add_option('--thumbnail-size',
+                          action='store',
+                          type='int',
+                          metavar='INT',
+                          dest='thumbnail_size',
+                          help=_(u'the maximum size of each thumbnail, in pixels squared'))
+
+    parser.add_option_group(thumbnails)
+
+    freedb = audiotools.OptionGroup(parser,_(u"FreeDB Options"))
+
+    freedb.add_option('--freedb-server',
+                      action='store',
+                      metavar='HOSTNAME',
+                      dest='freedb_server',
+                      help=_(u'the FreeDB server to use'))
+
+    freedb.add_option('--freedb-port',
+                      action='store',
+                      metavar='PORT',
+                      type='int',
+                      dest='freedb_port',
+                      help=_(u'the FreeDB port to use'))
+
+    parser.add_option_group(freedb)
+
+    musicbrainz = audiotools.OptionGroup(parser,_(u"MusicBrainz Options"))
+
+    musicbrainz.add_option('--musicbrainz-server',
+                      action='store',
+                      metavar='HOSTNAME',
+                      dest='musicbrainz_server',
+                      help=_(u'the MusicBrainz server to use'))
+
+    musicbrainz.add_option('--musicbrainz-port',
+                      action='store',
+                      metavar='PORT',
+                      type='int',
+                      dest='musicbrainz_port',
+                      help=_(u'the MusicBrainz port to use'))
+
+    parser.add_option_group(musicbrainz)
+
+    binaries = audiotools.OptionGroup(parser,_(u"Binaries Options"))
+
+    bins = set([])
+    for audioclass in audiotools.AVAILABLE_TYPES:
+        for binary in audioclass.BINARIES:
+            bins.add(binary)
+
+    for binary in sorted(list(bins)):
+        binaries.add_option('--' + binary,
+                            action='store',
+                            metavar='PATH',
+                            dest='binary_' + binary)
+        opt_map["binary_" + binary] = ("Binaries",binary)
+
+    parser.add_option_group(binaries)
+
+    parser.add_option('--format',
+                      action='store',
+                      metavar='FORMAT',
+                      dest='filename_format',
+                      help=_(u'the format string for new filenames'))
+
+    parser.add_option('-V','--verbose',
+                      action='store',
+                      dest='verbosity',
+                      choices=["quiet","normal","debug"],
+                      default="normal",
+                      help=_(u'the verbosity level to execute at'))
+
+    (options,args) = parser.parse_args()
+
+    msg = audiotools.Messenger("audiotools-config",options)
+
+    if (len(sys.argv) < 2):
+        #no arguments, so simply print current configuration
+        name_len = max([len(audiotype.NAME) for audiotype in
+                        audiotools.AVAILABLE_TYPES])
+
+        available = []
+        unavailable = []
+        available_binaries = set()
+        unavailable_binaries = set()
+        for audiotype in sorted(audiotools.AVAILABLE_TYPES,
+                                lambda x,y: cmp(x.NAME,y.NAME)):
+            if (audiotype.has_binaries(audiotools.BIN)):
+                available.append(audiotype.NAME)
             else:
-                unavailable_binaries.add(binary)
+                unavailable.append(audiotype.NAME)
+            for binary in audiotype.BINARIES:
+                if (audiotools.BIN.can_execute(binary)):
+                    available_binaries.add(binary)
+                else:
+                    unavailable_binaries.add(binary)
 
-    msg.new_row()
-    msg.output_column(_(u"available formats"),True)
-    msg.output_column(u" : ")
-    msg.output_column(u", ".join(sorted([s.decode('ascii')
-                                         for s in available])))
-    msg.new_row()
-    msg.output_column(_(u"unavailable formats"),True)
-    msg.output_column(u" : ")
-    msg.output_column(u", ".join(sorted([s.decode('ascii')
-                                         for s in unavailable])))
-    msg.output_rows()
-    check_binaries(msg,sorted(list(available_binaries) + \
-                                  list(unavailable_binaries)))
+        msg.new_row()
+        msg.output_column(_(u"available formats"),True)
+        msg.output_column(u" : ")
+        msg.output_column(u", ".join(sorted([s.decode('ascii')
+                                             for s in available])))
+        msg.new_row()
+        msg.output_column(_(u"unavailable formats"),True)
+        msg.output_column(u" : ")
+        msg.output_column(u", ".join(sorted([s.decode('ascii')
+                                             for s in unavailable])))
+        msg.output_rows()
+        check_binaries(msg,sorted(list(available_binaries) + \
+                                      list(unavailable_binaries)))
 
-    msg.output(u"-" * 30)
+        msg.output(u"-" * 30)
 
-    msg.new_row()
-    msg.output_column(_(u"CD Burning via track2cd"),True)
-    msg.output_column(u" : ")
-    burning_options = []
-    if (audiotools.BIN.can_execute(audiotools.BIN["cdrecord"])):
-        burning_options.append(_(u"without cue"))
-    if (audiotools.BIN.can_execute(audiotools.BIN["cdrdao"])):
-        burning_options.append(_(u"with cue"))
-    if (len(burning_options) == 0):
-        burning_options.append(_(u"no"))
-    msg.output_column(u", ".join([s.decode('ascii') for s in burning_options]))
-    msg.output_rows()
-    check_binaries(msg,["cdrecord","cdrdao"])
+        msg.new_row()
+        msg.output_column(_(u"CD Burning via track2cd"),True)
+        msg.output_column(u" : ")
+        burning_options = []
+        if (audiotools.BIN.can_execute(audiotools.BIN["cdrecord"])):
+            burning_options.append(_(u"without cue"))
+        if (audiotools.BIN.can_execute(audiotools.BIN["cdrdao"])):
+            burning_options.append(_(u"with cue"))
+        if (len(burning_options) == 0):
+            burning_options.append(_(u"no"))
+        msg.output_column(u", ".join([s.decode('ascii') for s in burning_options]))
+        msg.output_rows()
+        check_binaries(msg,["cdrecord","cdrdao"])
 
-    msg.output(u"-" * 30)
+        msg.output(u"-" * 30)
 
-    msg.new_row()
-    msg.output_column(_(u"tracklint undo capability"),True)
-    msg.output_column(u" : ")
-    if (audiotools.BIN.can_execute(audiotools.BIN["xdelta"])):
-        msg.output_column(_(u"yes"))
+        msg.new_row()
+        msg.output_column(_(u"tracklint undo capability"),True)
+        msg.output_column(u" : ")
+        if (audiotools.BIN.can_execute(audiotools.BIN["xdelta"])):
+            msg.output_column(_(u"yes"))
+        else:
+            msg.output_column(_(u"no"))
+        msg.output_rows()
+        check_binaries(msg,["xdelta"])
+
+        msg.output(u"-" * 30)
+
+        msg.output(_(u"System configuration:"))
+        msg.output(u"")
+
+        msg.new_row()
+        msg.output_column(_(u"Default MusicBrainz server"),True)
+        msg.output_column(u" : ")
+        msg.output_column(audiotools.MUSICBRAINZ_SERVER.decode('ascii','replace'))
+        msg.new_row()
+        msg.output_column(_(u"Default MusicBrainz port"),True)
+        msg.output_column(u" : ")
+        msg.output_column(unicode(audiotools.MUSICBRAINZ_PORT))
+
+        msg.new_row()
+        msg.output_column(_(u"Default FreeDB server"),True)
+        msg.output_column(u" : ")
+        msg.output_column(audiotools.FREEDB_SERVER.decode('ascii','replace'))
+        msg.new_row()
+        msg.output_column(_(u"Default FreeDB port"),True)
+        msg.output_column(u" : ")
+        msg.output_column(unicode(audiotools.FREEDB_PORT))
+
+        msg.blank_row()
+
+        msg.new_row()
+        msg.output_column(_(u"Default CD-ROM device"),True)
+        msg.output_column(u" : ")
+        msg.output_column(audiotools.DEFAULT_CDROM.decode(audiotools.FS_ENCODING))
+
+        msg.new_row()
+        msg.output_column(_(u"CD-ROM sample read offset"),True)
+        msg.output_column(u" : ")
+        msg.output_column(
+            unicode(audiotools.config.getint_default("System",
+                                                     "cdrom_read_offset",0)))
+
+        msg.blank_row()
+
+        msg.new_row()
+        msg.output_column(_(u"Default simultaneous jobs"),True)
+        msg.output_column(u" : ")
+        msg.output_column(unicode(audiotools.MAX_JOBS))
+
+        output_options = ["OSS"]
+        if (audiotools.BIN.can_execute(audiotools.BIN["pacat"]) and
+            audiotools.BIN.can_execute(audiotools.BIN["pactl"])):
+            output_options.append("PulseAudio")
+
+        msg.new_row()
+        msg.output_column(_(u"Audio output via trackplay"),True)
+        msg.output_column(u" : ")
+        msg.output_column(u", ".join([s.decode('ascii') for s in output_options]))
+
+        msg.new_row()
+        msg.output_column(_(u"Filesystem text encoding"),True)
+        msg.output_column(u" : ")
+        msg.output_column(audiotools.FS_ENCODING.decode('ascii'))
+
+        msg.new_row()
+        msg.output_column(_(u"TTY text encoding"),True)
+        msg.output_column(u" : ")
+        msg.output_column(audiotools.IO_ENCODING.decode('ascii'))
+
+        msg.blank_row()
+
+        msg.new_row()
+        msg.output_column(_(u"Can create thumbnails"),True)
+        msg.output_column(u" : ")
+        if (audiotools.can_thumbnail()):
+            msg.output_column(_(u"yes"))
+        else:
+            msg.output_column(_(u"no") + u" " + _(u"(Python Imaging Library not found)"))
+
+        msg.new_row()
+        msg.output_column(_(u"Default thumbnail format"),True)
+        msg.output_column(u" : ")
+        msg.output_column(audiotools.THUMBNAIL_FORMAT.decode('ascii'))
+
+        msg.new_row()
+        msg.output_column(_(u"Default thumbnail size"),True)
+        msg.output_column(u" : ")
+        msg.output_column(u"%d\u00D7%d" % (audiotools.THUMBNAIL_SIZE,
+                                           audiotools.THUMBNAIL_SIZE))
+
+        msg.blank_row()
+        msg.output_rows()
+
+        msg.output(_(u"File name format : %s") % \
+                       (audiotools.FILENAME_FORMAT.decode('ascii','replace')))
     else:
-        msg.output_column(_(u"no"))
-    msg.output_rows()
-    check_binaries(msg,["xdelta"])
+        import os.path
 
-    msg.output(u"-" * 30)
+        config = audiotools.config
+        for attr in dir(options):
+            if ((not attr.startswith('_')) and
+                (not callable(getattr(options,attr))) and
+                (getattr(options,attr) is not None)):
+                if (attr in opt_map):
+                    (section,option) = opt_map[attr]
+                    if (not config.has_section(section)):
+                        config.add_section(section)
+                    config.set(section,option,getattr(options,attr))
 
-    msg.output(_(u"System configuration:"))
-    msg.output(u"")
+        configpath = os.path.expanduser('~/.audiotools.cfg')
+        configfile = open(configpath,'w')
+        config.write(configfile)
+        configfile.close()
+        msg.info(_(u'* "%s" written') % (msg.filename(configpath)))
 
-    msg.new_row()
-    msg.output_column(_(u"Default MusicBrainz server"),True)
-    msg.output_column(u" : ")
-    msg.output_column(audiotools.MUSICBRAINZ_SERVER.decode('ascii','replace'))
-    msg.new_row()
-    msg.output_column(_(u"Default MusicBrainz port"),True)
-    msg.output_column(u" : ")
-    msg.output_column(unicode(audiotools.MUSICBRAINZ_PORT))
-
-    msg.new_row()
-    msg.output_column(_(u"Default FreeDB server"),True)
-    msg.output_column(u" : ")
-    msg.output_column(audiotools.FREEDB_SERVER.decode('ascii','replace'))
-    msg.new_row()
-    msg.output_column(_(u"Default FreeDB port"),True)
-    msg.output_column(u" : ")
-    msg.output_column(unicode(audiotools.FREEDB_PORT))
-
-    msg.blank_row()
-
-    msg.new_row()
-    msg.output_column(_(u"Default CD-ROM device"),True)
-    msg.output_column(u" : ")
-    msg.output_column(audiotools.DEFAULT_CDROM.decode(audiotools.FS_ENCODING))
-
-    msg.new_row()
-    msg.output_column(_(u"CD-ROM sample read offset"),True)
-    msg.output_column(u" : ")
-    msg.output_column(
-        unicode(audiotools.config.getint_default("System",
-                                                 "cdrom_read_offset",0)))
-
-    msg.blank_row()
-
-    msg.new_row()
-    msg.output_column(_(u"Default simultaneous jobs"),True)
-    msg.output_column(u" : ")
-    msg.output_column(unicode(audiotools.MAX_JOBS))
-
-    output_options = ["OSS"]
-    if (audiotools.BIN.can_execute(audiotools.BIN["pacat"]) and
-        audiotools.BIN.can_execute(audiotools.BIN["pactl"])):
-        output_options.append("PulseAudio")
-
-    msg.new_row()
-    msg.output_column(_(u"Audio output via trackplay"),True)
-    msg.output_column(u" : ")
-    msg.output_column(u", ".join([s.decode('ascii') for s in output_options]))
-
-    msg.new_row()
-    msg.output_column(_(u"Filesystem text encoding"),True)
-    msg.output_column(u" : ")
-    msg.output_column(audiotools.FS_ENCODING.decode('ascii'))
-
-    msg.new_row()
-    msg.output_column(_(u"TTY text encoding"),True)
-    msg.output_column(u" : ")
-    msg.output_column(audiotools.IO_ENCODING.decode('ascii'))
-
-    msg.blank_row()
-
-    msg.new_row()
-    msg.output_column(_(u"Can create thumbnails"),True)
-    msg.output_column(u" : ")
-    if (audiotools.can_thumbnail()):
-        msg.output_column(_(u"yes"))
-    else:
-        msg.output_column(_(u"no") + u" " + _(u"(Python Imaging Library not found)"))
-
-    msg.new_row()
-    msg.output_column(_(u"Default thumbnail format"),True)
-    msg.output_column(u" : ")
-    msg.output_column(audiotools.THUMBNAIL_FORMAT.decode('ascii'))
-
-    msg.new_row()
-    msg.output_column(_(u"Default thumbnail size"),True)
-    msg.output_column(u" : ")
-    msg.output_column(u"%d\u00D7%d" % (audiotools.THUMBNAIL_SIZE,
-                                       audiotools.THUMBNAIL_SIZE))
-
-    msg.blank_row()
-    msg.output_rows()
-
-    msg.output(_(u"File name format : %s") % \
-                   (audiotools.FILENAME_FORMAT.decode('ascii','replace')))
