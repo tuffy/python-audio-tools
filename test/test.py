@@ -10051,7 +10051,10 @@ class TestFrameList(unittest.TestCase):
                                    test_streams.Sine16_Stereo,
                                    test_streams.Sine24_Stereo]:
                     sine = sine_class(88200,44100,441.0,0.50,441.0,0.49,1.0)
-                    track = format.from_pcm(temp_track.name,sine)
+                    try:
+                        track = format.from_pcm(temp_track.name,sine)
+                    except audiotools.UnsupportedBitsPerSample:
+                        continue
                     if (track.lossless()):
                         md5sum = md5()
                         audiotools.transfer_framelist_data(track.to_pcm(),
@@ -10062,15 +10065,18 @@ class TestFrameList(unittest.TestCase):
                         for new_format in audiotools.AVAILABLE_TYPES:
                             temp_track2 = tempfile.NamedTemporaryFile(suffix="." + format.SUFFIX)
                             try:
-                                track2 = new_format.from_pcm(temp_track2.name,
-                                                             track.to_pcm())
-                                if (track2.lossless()):
-                                    md5sum2 = md5()
-                                    audiotools.transfer_framelist_data(track2.to_pcm(),
-                                                                       md5sum2.update)
-                                    self.assertEqual(md5sum.hexdigest(),sine.hexdigest(),
-                                         "MD5 mismatch for converting %s from %s to %s" % \
-                                             (repr(sine),track.NAME,track2.NAME))
+                                try:
+                                    track2 = new_format.from_pcm(temp_track2.name,
+                                                                 track.to_pcm())
+                                    if (track2.lossless()):
+                                        md5sum2 = md5()
+                                        audiotools.transfer_framelist_data(track2.to_pcm(),
+                                                                           md5sum2.update)
+                                        self.assertEqual(md5sum.hexdigest(),sine.hexdigest(),
+                                                         "MD5 mismatch for converting %s from %s to %s" % \
+                                                             (repr(sine),track.NAME,track2.NAME))
+                                except audiotools.UnsupportedBitsPerSample:
+                                    continue
                             finally:
                                 temp_track2.close()
             finally:
