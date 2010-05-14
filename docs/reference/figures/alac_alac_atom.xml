@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<diagram>
+  <row>
+    <col start="0" end="31" width=".5">alac Length</col>
+    <col start="32" end="63" width=".5">`alac' (0x616C6163)</col>
+  </row>
+  <row>
+    <col start="64" end="111" width=".5">Reserved (0x000000000000)</col>
+    <col start="112" end="127" width=".5">Reference Index</col>
+  </row>
+  <row>
+    <col start="128" end="143" width=".5">QuickTime Version</col>
+    <col start="144" end="159" width=".5">QuickTime Revision Level</col>
+  </row>
+  <row>
+    <col start="160" end="191">QuickTime Audio Encoding Vendor</col>
+  </row>
+  <row>
+    <col start="192" end="207" width=".5">Channels</col>
+    <col start="208" end="223" width=".5">Bits per Sample</col>
+  </row>
+  <row>
+    <col start="224" end="239" width=".5">QuickTime Compression ID</col>
+    <col start="240" end="255" width=".5">Audio Packet Size</col>
+  </row>
+  <row>
+     <col start="256" end="287" width=".5">Audio Sample Rate</col>
+     <col start="288" width=".5" id="alac">`alac' atom</col>
+  </row>
+  <row><blank/></row>
+  <row>
+    <col start="0" end="31" width=".5" id="alac_len">alac Length</col>
+    <col start="32" end="63" width=".5" id="alac_id">`alac' (0x616C6163)</col>
+  </row>
+  <row>
+    <col start="64" end="95" width=".5">Padding (0x00000000)</col>
+    <col start="96" end="127" width=".5">Max Samples Per Frame</col>
+  </row>
+  <row>
+    <col start="128" end="135" width=".20">Padding (0)</col>
+    <col start="136" end="143" width=".40">Bits per Sample</col>
+    <col start="144" end="151" width=".40">History Mult</col>
+  </row>
+  <row>
+    <col start="152" end="159" width=".25">Initial History</col>
+    <col start="160" end="167" width=".25">K Modifier</col>
+    <col start="168" end="177" width=".25">Channels</col>
+    <col start="178" end="193" width=".25">Unknown</col>
+  </row>
+  <row>
+    <col start="194" end="225" width=".4">Max Coded Frame Size</col>
+    <col start="226" end="257" width=".3">Bitrate</col>
+    <col start="258" end="289" width=".3">Sample Rate</col>
+  </row>
+  <line s_id="alac" s_corner="sw" e_id="alac_len" e_corner="nw" style="dotted"/>
+  <line s_id="alac" s_corner="se" e_id="alac_id" e_corner="ne" style="dotted"/>
+</diagram>

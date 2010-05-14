@@ -923,14 +923,36 @@ class M4ACovr(Image):
 class ALACAudio(M4AAudio):
     SUFFIX = "m4a"
     NAME = "alac"
-    DEFAULT_COMPRESSION = ""
-    COMPRESSION_MODES = ("",)
-    BINARIES = ("ffmpeg",)
 
-    BPS_MAP = {8:"u8",
-               16:"s16le",
-               24:"s24le"}
-
+    ALAC_ATOM = Con.Struct("stsd_alac",
+                           Con.UBInt32("length"),
+                           Con.String("type",4),
+                           Con.String("reserved",6),
+                           Con.UBInt16("reference_index"),
+                           Con.UBInt16("version"),
+                           Con.UBInt16("revision_level"),
+                           Con.String("vendor",4),
+                           Con.UBInt16("channels"),
+                           Con.UBInt16("bits_per_sample"),
+                           Con.UBInt16("compression_id"),
+                           Con.UBInt16("audio_packet_size"),
+                           Con.UBInt16("sample_rate"), #fixed point float?
+                           Con.Padding(2),
+                           Con.Struct("alac",
+                                      Con.UBInt32("length"),
+                                      Con.String("type",4),
+                                      Con.Padding(4),
+                                      Con.UBInt32("max_samples_per_frame"),
+                                      Con.Padding(1),
+                                      Con.UBInt8("sample_size"),
+                                      Con.UBInt8("history_mult"),
+                                      Con.UBInt8("initial_history"),
+                                      Con.UBInt8("kmodifier"),
+                                      Con.UBInt8("channels"),
+                                      Con.UBInt16("unknown"),
+                                      Con.UBInt32("max_coded_frame_size"),
+                                      Con.UBInt32("bitrate"),
+                                      Con.UBInt32("sample_rate")))
     @classmethod
     def is_type(cls, file):
         header = file.read(12)
@@ -947,93 +969,7 @@ class ALACAudio(M4AAudio):
     def lossless(self):
         return True
 
-    def to_pcm(self):
-        devnull = file(os.devnull,"ab")
 
-        sub = subprocess.Popen([BIN['ffmpeg'],
-                                "-i",self.filename,
-                                "-f",self.BPS_MAP[self.__bits_per_sample__],
-                                "-"],
-                               stdout=subprocess.PIPE,
-                               stderr=devnull,
-                               stdin=devnull)
-        return PCMReader(sub.stdout,
-                         sample_rate=self.__sample_rate__,
-                         channels=self.__channels__,
-                         bits_per_sample=self.__bits_per_sample__,
-                         process=sub)
-
-    @classmethod
-    def from_pcm(cls, filename, pcmreader, compression=""):
-        if (compression not in cls.COMPRESSION_MODES):
-            compression = cls.DEFAULT_COMPRESSION
-
-        #in a remarkable piece of half-assery,
-        #ALAC only supports 16bps and 2 channels
-        #anything else wouldn't be lossless,
-        #and must be rejected
-
-        if ((pcmreader.bits_per_sample != 16) or
-            (pcmreader.channels != 2)):
-            raise InvalidFormat(_(u"ALAC requires input files to be 16 bits-per-sample and have 2 channels"))
-
-        devnull = file(os.devnull,"ab")
-
-        if (not filename.endswith(".m4a")):
-            import tempfile
-            actual_filename = filename
-            tempfile = tempfile.NamedTemporaryFile(suffix=".m4a")
-            filename = tempfile.name
-        else:
-            actual_filename = tempfile = None
-
-        sub = subprocess.Popen([BIN['ffmpeg'],
-                                "-f",cls.BPS_MAP[pcmreader.bits_per_sample],
-                                "-ar",str(pcmreader.sample_rate),
-                                "-ac",str(pcmreader.channels),
-                                "-i","-",
-                                "-acodec","alac",
-                                "-title","placeholder",
-                                "-y",filename],
-                               stdin=subprocess.PIPE,
-                               stderr=devnull,
-                               stdout=devnull)
-
-        transfer_data(pcmreader.read,sub.stdin.write)
-        pcmreader.close()
-        sub.stdin.close()
-        sub.wait()
-
-        if (tempfile is not None):
-            filename = actual_filename
-            f = file(filename,'wb')
-            tempfile.seek(0,0)
-            transfer_data(tempfile.read,f.write)
-            f.close()
-            tempfile.close()
-
-        return ALACAudio(filename)
-
-    @classmethod
-    def has_binaries(cls, system_binaries):
-        if (set([True] + \
-                    [system_binaries.can_execute(system_binaries[command])
-                     for command in cls.BINARIES]) == set([True])):
-            #if we have the ffmpeg executable,
-            #ensure it has ALAC encode/decode capability
-
-            devnull = file(os.devnull,"ab")
-            ffmpeg_formats = subprocess.Popen([BIN["ffmpeg"],"-formats"],
-                                              stdout=subprocess.PIPE,
-                                              stderr=devnull)
-            alac_ok = False
-            for line in ffmpeg_formats.stdout.readlines():
-                if (("alac" in line) and ("DEA" in line)):
-                    alac_ok = True
-            ffmpeg_formats.stdout.close()
-            ffmpeg_formats.wait()
-
-            return alac_ok
 
 
 #######################
