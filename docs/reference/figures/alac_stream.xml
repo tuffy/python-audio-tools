@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<diagram>
+  <row>
+    <col width=".20" start="0">`ftyp' atom</col>
+    <col width=".20">atom₂</col>
+    <col style="dashed" width=".20">...</col>
+    <col width=".20" id="mdat">`mdat' atom</col>
+    <col style="dashed" width=".20">...</col>
+  </row>
+  <spacer/>
+  <row>
+    <col start="0" end="31" id="mdat_len" width=".15">mdat Length</col>
+    <col start="32" end="63" width=".26">`mdat' (0x6D646174)</col>
+    <col start="64" width=".19666666" id="frame">Frame₁</col>
+    <col width=".19666666">Frame₂</col>
+    <col style="dashed" width=".19666666" id="mdat_end">...</col>
+  </row>
+  <spacer/>
+  <row>
+    <col width=".333333" id="frame_s">Frame Header</col>
+    <col width=".333333">Subframe Header₁</col>
+    <col style="dashed" width=".333333" id="frame_e">Subframe Header₂</col>
+  </row>
+  <row>
+    <col width=".4">Residual₁</col>
+    <col style="dashed" width=".4">Residual₂</col>
+    <col width=".15" start="0" end="3">Footer (0x7)</col>
+    <col style="dashed" width=".05">Pad</col>
+  </row>
+  <line s_id="mdat" s_corner="sw" e_id="mdat_len" e_corner="nw" style="dotted"/>
+  <line s_id="mdat" s_corner="se" e_id="mdat_end" e_corner="ne" style="dotted"/>
+  <line s_id="frame" s_corner="sw" e_id="frame_s" e_corner="nw" style="dotted"/>
+  <line s_id="frame" s_corner="se" e_id="frame_e" e_corner="ne" style="dotted"/>
+</diagram>
