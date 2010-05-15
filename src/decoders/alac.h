@@ -51,8 +51,13 @@ struct alac_frame_header {
   uint8_t uncompressed_bytes;
   uint8_t is_not_compressed;
   uint32_t output_samples;
-  /* uint8_t interlacing_shift; */
-  /* uint8_t interlacing_leftweight; */
+};
+
+struct alac_subframe_header {
+  uint8_t prediction_type;
+  uint8_t prediction_quantitization;
+  uint8_t rice_modifier;
+  struct i_array predictor_coef_table;
 };
 
 typedef enum {OK,ERROR} status;
@@ -94,8 +99,20 @@ status ALACDecoder_read_frame_header(Bitstream *bs,
 				     struct alac_frame_header *frame_header,
 				     int max_samples_per_frame);
 
-/*a simple debugging routine*/
+/*reads "subframe header" from the current bitstream*/
+status ALACDecoder_read_subframe_header(Bitstream *bs,
+					struct alac_subframe_header *subframe_header);
+
+/*after a call to "read_subframe_header",
+  call "free_subframe_header" to deallocate the predictor_coef_tables*/
+static inline void ALACDecoder_free_subframe_header(struct alac_subframe_header *subframe_header) {
+  ia_free(&(subframe_header->predictor_coef_table));
+}
+
+/*simple routines*/
 void ALACDecoder_print_frame_header(struct alac_frame_header *frame_header);
+
+void ALACDecoder_print_subframe_header(struct alac_subframe_header *subframe_header);
 
 PyGetSetDef ALACDecoder_getseters[] = {
   {"sample_rate",

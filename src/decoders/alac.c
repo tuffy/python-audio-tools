@@ -115,8 +115,14 @@ static PyObject *ALACDecoder_channel_mask(decoders_ALACDecoder *self,
 PyObject *ALACDecoder_read(decoders_ALACDecoder* self,
 			   PyObject *args) {
   struct alac_frame_header frame_header;
+  struct alac_subframe_header *subframe_headers = NULL;
   PyObject *pcm = NULL;
   pcm_FrameList *framelist = NULL;
+
+  int interlacing_shift;
+  int interlacing_leftweight;
+
+
   struct i_array *channel_data;
   int channel;
   int i,j;
@@ -142,7 +148,21 @@ PyObject *ALACDecoder_read(decoders_ALACDecoder* self,
       }
     }
   } else {
+    interlacing_shift = read_bits(self->bitstream,8);
+    interlacing_leftweight = read_bits(self->bitstream,8);
+
     ALACDecoder_print_frame_header(&frame_header);
+
+    subframe_headers = malloc(sizeof(struct alac_subframe_header) *
+			      self->channels);
+    for (i = 0; i < self->channels; i++) {
+      ALACDecoder_read_subframe_header(self->bitstream,
+				       &(subframe_headers[i]));
+      ALACDecoder_print_subframe_header(&(subframe_headers[i]));
+    }
+
+    PyErr_SetString(PyExc_ValueError,"TODO: read residual data");
+    goto error;
   }
 
   /*each frame has a 3 byte '111' signature prior to byte alignment*/
@@ -175,8 +195,18 @@ PyObject *ALACDecoder_read(decoders_ALACDecoder* self,
 
   self->total_frames -= framelist->frames;
 
+  if (subframe_headers != NULL) {
+    for (i = 0; i < self->channels; i++)
+      ALACDecoder_free_subframe_header(&(subframe_headers[i]));
+    free(subframe_headers);
+  }
   return (PyObject*)framelist;
  error:
+  if (subframe_headers != NULL) {
+    for (i = 0; i < self->channels; i++)
+      ALACDecoder_free_subframe_header(&(subframe_headers[i]));
+    free(subframe_headers);
+  }
   return NULL;
 }
 
@@ -223,10 +253,26 @@ status ALACDecoder_read_frame_header(Bitstream *bs,
   } else {
     frame_header->output_samples = max_samples_per_frame;
   }
- /*  else { */
-  /*   frame_header->interlacing_shift = read_bits(bs,8); */
-  /*   frame_header->interlacing_leftweight = read_bits(bs,8); */
-  /* } */
+
+  return OK;
+}
+
+status ALACDecoder_read_subframe_header(Bitstream *bs,
+					struct alac_subframe_header *subframe_header) {
+  int predictor_coef_num;
+  int i;
+
+  subframe_header->prediction_type = read_bits(bs,4);
+  subframe_header->prediction_quantitization = read_bits(bs,4);
+  subframe_header->rice_modifier = read_bits(bs,3);
+  predictor_coef_num = read_bits(bs,5);
+  ia_init(&(subframe_header->predictor_coef_table),
+	  predictor_coef_num);
+  for (i = 0; i < predictor_coef_num; i++) {
+    ia_append(&(subframe_header->predictor_coef_table),
+	      read_signed_bits(bs,16));
+  }
+
   return OK;
 }
 
@@ -236,6 +282,13 @@ void ALACDecoder_print_frame_header(struct alac_frame_header *frame_header) {
   printf("uncompressed_bytes : %d\n",frame_header->uncompressed_bytes);
   printf("is_not_compressed : %d\n",frame_header->is_not_compressed);
   printf("output_samples : %d\n",frame_header->output_samples);
-  /* printf("interlacing_shift : %d\n",frame_header->interlacing_shift); */
-  /* printf("interlacing_leftweight : %d\n",frame_header->interlacing_leftweight); */
+}
+
+void ALACDecoder_print_subframe_header(struct alac_subframe_header *subframe_header) {
+  printf("prediction type : %d\n",subframe_header->prediction_type);
+  printf("prediction quantitization : %d\n",subframe_header->prediction_quantitization);
+  printf("rice modifier : %d\n",subframe_header->rice_modifier);
+  printf("predictor coefficients : ");
+  ia_print(stdout,&(subframe_header->predictor_coef_table));
+  printf("\n");
 }
