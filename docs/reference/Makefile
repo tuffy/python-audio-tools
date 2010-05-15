@@ -48,12 +48,13 @@ figures/musicbrainz_discid.pdf figures/musicbrainz_xml.pdf \
 figures/shorten_stream.pdf figures/shorten_unsigned.pdf \
 figures/shorten_signed.pdf figures/shorten_diff.pdf \
 figures/shorten_verbatim.pdf figures/shorten_qlpc.pdf \
-figures/shorten_sandwich.pdf
+figures/shorten_sandwich.pdf \
+figures/alac_stream.pdf figures/alac_atoms.pdf figures/alac_alac_atom.pdf
 
 CHAPTERS = basics.tex wav.tex flac.tex m4a.tex mp3.tex vorbis.tex \
 wavpack.tex ape.tex aiff.tex au.tex speex.tex oggflac.tex musepack.tex \
 freedb.tex musicbrainz.tex musicbrainz_mmd.tex replaygain.tex references.tex \
-license.tex introduction.tex shorten.tex
+license.tex introduction.tex shorten.tex alac.tex
 
 all: audioformats-letter.pdf audioformats-a4.pdf
 
@@ -133,6 +134,9 @@ figures/m4a_atoms.pdf: figures/m4a_atoms.fig
 figures/m4a_meta_atoms.pdf: figures/m4a_meta_atoms.fig
 	fig2dev -Z 3 -L pdf $< $@
 
+figures/alac_atoms.pdf: figures/alac_atoms.fig
+	fig2dev -Z 5 -L pdf $< $@
+
 .SUFFIXES: .pdf .xml
 
 .xml.pdf:
@@ -149,6 +153,9 @@ figures/m4a_meta.pdf: figures/m4a_meta.xml
 
 figures/m4a_data.pdf: figures/m4a_data.xml
 	./bitdiagram.py -w 306 -i $< -o $@
+
+figures/alac_alac_atom.pdf: figures/alac_alac_atom.xml
+	./bitdiagram.py -w 324 -i $< -o $@
 
 figures/shorten_unsigned.pdf: figures/shorten_unsigned.fig
 	fig2dev -Z 2 -L pdf $< $@

@@ -1,0 +1,26 @@
+\chapter{Apple Lossless}
+
+Apple's lossless audio codec, informally referred to as ``ALAC'',
+is lossless audio inside a QuickTime container - similar to M4A.
+Its stream is the same collection of atoms as covered on page
+\pageref{m4a}.
+The key difference is the contents of its \texttt{mdat} atom.
+
+\section{the ALAC file stream}
+\begin{wrapfigure}[6]{r}{1.5in}
+\includegraphics{figures/alac_atoms.pdf}
+\end{wrapfigure}
+
+This is the typical arrangements of ALAC atoms as encoded by iTunes.
+As you can see, it is almost identical to the layout of AAC audio.
+One of the key differences is that ALAC's \texttt{stsd} atom
+contains an \texttt{alac} description sub-atom rather than an
+\texttt{mp4a} description atom.
+
+Its layout is as follows:
+
+\begin{figure}[h]
+\includegraphics{figures/alac_alac_atom.pdf}
+\end{figure}
+
+\pagebreak
