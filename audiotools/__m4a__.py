@@ -966,6 +966,15 @@ class ALACAudio(M4AAudio):
             except KeyError:
                 return False
 
+    def total_frames(self):
+        return self.__length__
+
+    def cd_frames(self):
+        try:
+            return (self.total_frames() * 75) / self.sample_rate()
+        except ZeroDivisionError:
+            return 0
+
     def lossless(self):
         return True
 

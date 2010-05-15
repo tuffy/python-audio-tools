@@ -39,6 +39,8 @@ typedef struct {
   int history_mult;
   int initial_history;
   int kmodifier;
+
+  struct ia_array samples; /*a sample buffer for output*/
 } decoders_ALACDecoder;
 
 struct alac_frame_header {
@@ -47,8 +49,8 @@ struct alac_frame_header {
   uint8_t uncompressed_bytes;
   uint8_t is_not_compressed;
   uint32_t output_samples;
-  uint8_t interlacing_shift;
-  uint8_t interlacing_leftweight;
+  /* uint8_t interlacing_shift; */
+  /* uint8_t interlacing_leftweight; */
 };
 
 typedef enum {OK,ERROR} status;

@@ -49,6 +49,9 @@ int ALACDecoder_init(decoders_ALACDecoder *self,
 				   &(self->kmodifier)))
     return -1;
 
+  /*initialize buffer*/
+  iaa_init(&(self->samples),self->channels,self->max_samples_per_frame);
+
   /*open the alac file*/
   if ((self->file = fopen(filename,"rb")) == NULL) {
     PyErr_SetFromErrnoWithFilename(PyExc_IOError,filename);
@@ -68,6 +71,8 @@ int ALACDecoder_init(decoders_ALACDecoder *self,
 }
 
 void ALACDecoder_dealloc(decoders_ALACDecoder *self) {
+  iaa_free(&(self->samples));
+
   if (self->filename != NULL)
     free(self->filename);
   bs_close(self->bitstream); /*this closes self->file also*/
@@ -108,16 +113,62 @@ static PyObject *ALACDecoder_channel_mask(decoders_ALACDecoder *self,
 PyObject *ALACDecoder_read(decoders_ALACDecoder* self,
 			   PyObject *args) {
   struct alac_frame_header frame_header;
+  PyObject *pcm = NULL;
+  pcm_FrameList *framelist = NULL;
+  struct i_array *channel_data;
+  int channel;
+  int i,j;
+
+  iaa_reset(&(self->samples));
 
   if (ALACDecoder_read_frame_header(self->bitstream,
 				    &frame_header,
 				    self->max_samples_per_frame) == ERROR)
-    return NULL;
+    goto error;
 
-  ALACDecoder_print_frame_header(&frame_header);
+  if (frame_header.is_not_compressed) {
+    /*uncompressed samples are interlaced between channels*/
+    for (i = 0; i < frame_header.output_samples; i++) {
+      for (channel = 0; channel < self->channels; channel++) {
+	ia_append(iaa_getitem(&(self->samples),channel),
+		  read_signed_bits(self->bitstream,
+				   self->bits_per_sample));
+      }
+    }
+  } else {
+    ALACDecoder_print_frame_header(&frame_header);
+  }
 
-  Py_INCREF(Py_None);
-  return Py_None;
+  /*each frame has a 3 byte '111' signature prior to byte alignment*/
+  if (read_bits(self->bitstream,3) != 7) {
+    PyErr_SetString(PyExc_ValueError,"invalid signature at end of frame");
+    goto error;
+  } else {
+    byte_align_r(self->bitstream);
+  }
+
+  /*transform the contents of self->samples into a pcm.FrameList object*/
+  if ((pcm = PyImport_ImportModule("audiotools.pcm")) == NULL)
+    goto error;
+  framelist = (pcm_FrameList*)PyObject_CallMethod(pcm,"__blank__",NULL);
+  Py_DECREF(pcm);
+  framelist->frames = iaa_getitem(&(self->samples),0)->size;
+  framelist->channels = self->channels;
+  framelist->bits_per_sample = self->bits_per_sample;
+  framelist->samples_length = framelist->frames * framelist->channels;
+  framelist->samples = realloc(framelist->samples,
+			       sizeof(ia_data_t) * framelist->samples_length);
+
+  for (channel = 0; channel < self->channels; channel++) {
+    channel_data = iaa_getitem(&(self->samples),channel);
+    for (i = channel,j = 0; j < frame_header.output_samples;
+  	 i += self->channels,j++)
+      framelist->samples[i] = ia_getitem(channel_data,j);
+  }
+
+  return (PyObject*)framelist;
+ error:
+  return NULL;
 }
 
 PyObject *ALACDecoder_close(decoders_ALACDecoder* self,
@@ -163,13 +214,10 @@ status ALACDecoder_read_frame_header(Bitstream *bs,
   } else {
     frame_header->output_samples = max_samples_per_frame;
   }
-  if (frame_header->is_not_compressed) {
-    PyErr_SetString(PyExc_ValueError,"TODO: uncompressed frames not yet supported");
-    return ERROR;
-  } else {
-    frame_header->interlacing_shift = read_bits(bs,8);
-    frame_header->interlacing_leftweight = read_bits(bs,8);
-  }
+ /*  else { */
+  /*   frame_header->interlacing_shift = read_bits(bs,8); */
+  /*   frame_header->interlacing_leftweight = read_bits(bs,8); */
+  /* } */
   return OK;
 }
 
@@ -179,6 +227,6 @@ void ALACDecoder_print_frame_header(struct alac_frame_header *frame_header) {
   printf("uncompressed_bytes : %d\n",frame_header->uncompressed_bytes);
   printf("is_not_compressed : %d\n",frame_header->is_not_compressed);
   printf("output_samples : %d\n",frame_header->output_samples);
-  printf("interlacing_shift : %d\n",frame_header->interlacing_shift);
-  printf("interlacing_leftweight : %d\n",frame_header->interlacing_leftweight);
+  /* printf("interlacing_shift : %d\n",frame_header->interlacing_shift); */
+  /* printf("interlacing_leftweight : %d\n",frame_header->interlacing_leftweight); */
 }
