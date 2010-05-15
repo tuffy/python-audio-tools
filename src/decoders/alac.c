@@ -28,6 +28,7 @@ int ALACDecoder_init(decoders_ALACDecoder *self,
 			   "channels",
 			   "channel_mask",
 			   "bits_per_sample",
+			   "total_frames",
 			   "max_samples_per_frame",
 			   "history_mult",
 			   "initial_history",
@@ -37,12 +38,13 @@ int ALACDecoder_init(decoders_ALACDecoder *self,
   self->file = NULL;
   self->bitstream = NULL;
 
-  if (!PyArg_ParseTupleAndKeywords(args,kwds,"siiiiiiii",kwlist,
+  if (!PyArg_ParseTupleAndKeywords(args,kwds,"siiiiiiiii",kwlist,
 				   &filename,
 				   &(self->sample_rate),
 				   &(self->channels),
 				   &(self->channel_mask),
 				   &(self->bits_per_sample),
+				   &(self->total_frames),
 				   &(self->max_samples_per_frame),
 				   &(self->history_mult),
 				   &(self->initial_history),
@@ -120,6 +122,10 @@ PyObject *ALACDecoder_read(decoders_ALACDecoder* self,
   int i,j;
 
   iaa_reset(&(self->samples));
+  frame_header.output_samples = 0;
+
+  if (self->total_frames < 1)
+    goto write_frame;
 
   if (ALACDecoder_read_frame_header(self->bitstream,
 				    &frame_header,
@@ -148,6 +154,7 @@ PyObject *ALACDecoder_read(decoders_ALACDecoder* self,
   }
 
   /*transform the contents of self->samples into a pcm.FrameList object*/
+ write_frame:
   if ((pcm = PyImport_ImportModule("audiotools.pcm")) == NULL)
     goto error;
   framelist = (pcm_FrameList*)PyObject_CallMethod(pcm,"__blank__",NULL);
@@ -165,6 +172,8 @@ PyObject *ALACDecoder_read(decoders_ALACDecoder* self,
   	 i += self->channels,j++)
       framelist->samples[i] = ia_getitem(channel_data,j);
   }
+
+  self->total_frames -= framelist->frames;
 
   return (PyObject*)framelist;
  error:

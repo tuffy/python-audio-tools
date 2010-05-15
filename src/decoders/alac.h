@@ -34,6 +34,8 @@ typedef struct {
   int channel_mask;
   int bits_per_sample;
 
+  int total_frames;
+
   /*a bunch of decoding fields pulled from the stream's 'alac' atom*/
   int max_samples_per_frame;
   int history_mult;

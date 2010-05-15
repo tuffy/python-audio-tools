@@ -992,6 +992,7 @@ class ALACAudio(M4AAudio):
             channels=alac.channels,
             channel_mask=0, #FIXME
             bits_per_sample=alac.sample_size,
+            total_frames=self.total_frames(),
             max_samples_per_frame=alac.max_samples_per_frame,
             history_mult=alac.history_mult,
             initial_history=alac.initial_history,
