@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<diagram>
+  <row>
+    <col start="0" end="2" width=".5">Channel Count (+1)</col>
+    <col start="3" end="18" width=".5">Unknown</col>
+  </row>
+  <row>
+    <col start="19" end="19" width=".333333">Has Sample Size</col>
+    <col start="20" end="21" width=".333333">Uncompressed Bytes</col>
+    <col start="22" end="22" width=".333333">Is Not Compressed</col>
+  </row>
+  <row>
+    <col start="23" end="54" style="dashed">Sample Size</col>
+  </row>
+</diagram>

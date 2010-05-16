@@ -24,3 +24,56 @@ Its layout is as follows:
 \end{figure}
 
 \pagebreak
+
+\section{ALAC decoding}
+
+An ALAC stream is made up of individual frames within the \texttt{mdat}
+atom, as follows:
+
+\begin{figure}[h]
+\includegraphics{figures/alac_stream.pdf}
+\end{figure}
+\par
+\noindent
+ALAC frames come in two varieties: compressed and uncompressed,
+depending on the ``Is Not Compressed'' bit in the frame header.
+An uncompressed frame is laid out as follows:
+
+\begin{figure}[h]
+\includegraphics{figures/alac_uncompressed_frame.pdf}
+\end{figure}
+\par
+\noindent
+The number of PCM frames in an ALAC frame depends on the ``Has Sample Size''
+bit.
+If set, the number of PCM frames equals the 32-bit ``Sample Size''
+value.
+If not set, the total number of PCM frames equals the ``Max Coded Frame Size''
+value in the \texttt{alac} atom and the ``Sample Size'' value is omitted.
+ALAC streams typically use the same number of samples per frame
+until the end of the stream, at which point the leftover samples
+are placed in a different-sized frame.
+
+Uncompressed frames interleave samples between channels during decoding.
+For example, a 2 channel frame places $\text{Sample}_1$ on $\text{Channel}_1$,
+$\text{Sample}_2$ on $\text{Channel}_2$,
+$\text{Sample}_3$ on $\text{Channel}_1$,
+$\text{Sample}_4$ on $\text{Channel}_2$ and so on.
+
+Finally, note that all ALAC frames have a footer of the bits `\texttt{111}'
+and padding as needed such that each frame begins on an aligned byte boundary.
+
+\pagebreak
+
+A compressed frame is laid out as follows:
+
+\begin{figure}[h]
+\includegraphics{figures/alac_compressed_frame.pdf}
+\end{figure}
+\par
+\noindent
+There is one subframe header and one residual block per
+channel.
+If ``Wasted Bits'' is greater than 0, there is also
+one wasted bits block per channel.
+

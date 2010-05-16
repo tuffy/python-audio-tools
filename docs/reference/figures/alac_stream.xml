@@ -17,15 +17,10 @@
   </row>
   <spacer/>
   <row>
-    <col width=".333333" id="frame_s">Frame Header</col>
-    <col width=".333333">Subframe Header₁</col>
-    <col style="dashed" width=".333333" id="frame_e">Subframe Header₂</col>
-  </row>
-  <row>
-    <col width=".4">Residual₁</col>
-    <col style="dashed" width=".4">Residual₂</col>
+    <col width=".20" id="frame_s">Frame Header</col>
+    <col width=".6">Frame Data</col>
     <col width=".15" start="0" end="3">Footer (0x7)</col>
-    <col style="dashed" width=".05">Pad</col>
+    <col style="dashed" width=".05" id="frame_e">Pad</col>
   </row>
   <line s_id="mdat" s_corner="sw" e_id="mdat_len" e_corner="nw" style="dotted"/>
   <line s_id="mdat" s_corner="se" e_id="mdat_end" e_corner="ne" style="dotted"/>

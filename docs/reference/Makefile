@@ -49,7 +49,9 @@ figures/shorten_stream.pdf figures/shorten_unsigned.pdf \
 figures/shorten_signed.pdf figures/shorten_diff.pdf \
 figures/shorten_verbatim.pdf figures/shorten_qlpc.pdf \
 figures/shorten_sandwich.pdf \
-figures/alac_stream.pdf figures/alac_atoms.pdf figures/alac_alac_atom.pdf
+figures/alac_stream.pdf figures/alac_atoms.pdf figures/alac_alac_atom.pdf \
+figures/alac_frame_header.pdf figures/alac_subframe_header.pdf \
+figures/alac_uncompressed_frame.pdf figures/alac_compressed_frame.pdf
 
 CHAPTERS = basics.tex wav.tex flac.tex m4a.tex mp3.tex vorbis.tex \
 wavpack.tex ape.tex aiff.tex au.tex speex.tex oggflac.tex musepack.tex \
