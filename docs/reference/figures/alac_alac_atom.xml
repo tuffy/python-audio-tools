@@ -39,11 +39,11 @@
   <row>
     <col start="128" end="135" width=".20">Padding (0)</col>
     <col start="136" end="143" width=".40">Bits per Sample</col>
-    <col start="144" end="151" width=".40">History Mult</col>
+    <col start="144" end="151" width=".40">History Multiplier</col>
   </row>
   <row>
     <col start="152" end="159" width=".25">Initial History</col>
-    <col start="160" end="167" width=".25">K Modifier</col>
+    <col start="160" end="167" width=".25">Maximum K</col>
     <col start="168" end="177" width=".25">Channels</col>
     <col start="178" end="193" width=".25">Unknown</col>
   </row>

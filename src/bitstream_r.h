@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <assert.h>
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -137,6 +138,11 @@ static inline uint64_t read_bits64(Bitstream* bs, unsigned int count) {
 
   bs->state = context;
   return accumulator;
+}
+
+static inline void unread_bit(Bitstream* bs, int unread_bit) {
+  bs->state = unread_bit_table[bs->state][unread_bit];
+  assert((bs->state >> 12) == 0);
 }
 
 static inline unsigned int read_unary(Bitstream* bs, int stop_bit) {

@@ -38,12 +38,13 @@ typedef struct {
 
   /*a bunch of decoding fields pulled from the stream's 'alac' atom*/
   int max_samples_per_frame;
-  int history_mult;
+  int history_multiplier;
   int initial_history;
-  int kmodifier;
+  int maximum_k;
 
   struct ia_array samples; /*a sample buffer for output*/
   struct ia_array wasted_bits_samples;  /*a buffer for wasted-bits samples*/
+  struct ia_array residuals; /*a buffer for residual values*/
 } decoders_ALACDecoder;
 
 struct alac_frame_header {
@@ -104,11 +105,26 @@ status ALACDecoder_read_frame_header(Bitstream *bs,
 status ALACDecoder_read_subframe_header(Bitstream *bs,
 					struct alac_subframe_header *subframe_header);
 
+/*reads a block of "wasted_bits" samples from the current bitstream*/
 status ALACDecoder_read_wasted_bits(Bitstream *bs,
 				    struct ia_array *wasted_bits_samples,
 				    int sample_count,
 				    int channels,
 				    int wasted_bits_size);
+
+/*reads a block of residuals from the current bitstream*/
+status ALACDecoder_read_residuals(Bitstream *bs,
+				  struct i_array *residuals,
+				  int residual_count,
+				  int sample_size,
+				  int initial_history,
+				  int history_multiplier,
+				  int maximum_k);
+
+/*reads a signel residual from the current bitstream*/
+int ALACDecoder_read_residual(Bitstream *bs,
+			      int k,
+			      int sample_size);
 
 /*after a call to "read_subframe_header",
   call "free_subframe_header" to deallocate the predictor_coef_tables*/

@@ -72,6 +72,9 @@ A compressed frame is laid out as follows:
 \end{figure}
 \par
 \noindent
+``Interlacing Shift'' and ``Interlacing Leftweight'' are used
+for channel decorrelation after the subframes have been decoded.
+
 There is one subframe header and one residual block per
 channel.
 If ``Wasted Bits'' is greater than 0, there is also
@@ -97,3 +100,9 @@ Each subframe header is laid out as follows:
 \noindent
 There are ``Coefficient Count'' number of coefficients in each
 subframe header, each a 16-bit signed value.
+
+\pagebreak
+
+\subsection{Residual decoding}
+
+

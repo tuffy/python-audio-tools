@@ -945,9 +945,9 @@ class ALACAudio(M4AAudio):
                                       Con.UBInt32("max_samples_per_frame"),
                                       Con.Padding(1),
                                       Con.UBInt8("sample_size"),
-                                      Con.UBInt8("history_mult"),
+                                      Con.UBInt8("history_multiplier"),
                                       Con.UBInt8("initial_history"),
-                                      Con.UBInt8("kmodifier"),
+                                      Con.UBInt8("maximum_k"),
                                       Con.UBInt8("channels"),
                                       Con.UBInt16("unknown"),
                                       Con.UBInt32("max_coded_frame_size"),
@@ -994,9 +994,9 @@ class ALACAudio(M4AAudio):
             bits_per_sample=alac.sample_size,
             total_frames=self.total_frames(),
             max_samples_per_frame=alac.max_samples_per_frame,
-            history_mult=alac.history_mult,
+            history_multiplier=alac.history_multiplier,
             initial_history=alac.initial_history,
-            kmodifier=alac.kmodifier)
+            maximum_k=alac.maximum_k)
 
 
 #######################
