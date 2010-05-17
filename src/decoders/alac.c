@@ -52,7 +52,14 @@ int ALACDecoder_init(decoders_ALACDecoder *self,
     return -1;
 
   /*initialize buffer*/
-  iaa_init(&(self->samples),self->channels,self->max_samples_per_frame);
+  iaa_init(&(self->samples),
+	   self->channels,
+	   self->max_samples_per_frame);
+
+  /*initialize wasted-bits buffer, just in case*/
+  iaa_init(&(self->wasted_bits_samples),
+	   self->channels,
+	   self->max_samples_per_frame);
 
   /*open the alac file*/
   if ((self->file = fopen(filename,"rb")) == NULL) {
@@ -74,6 +81,7 @@ int ALACDecoder_init(decoders_ALACDecoder *self,
 
 void ALACDecoder_dealloc(decoders_ALACDecoder *self) {
   iaa_free(&(self->samples));
+  iaa_free(&(self->wasted_bits_samples));
 
   if (self->filename != NULL)
     free(self->filename);
@@ -153,12 +161,23 @@ PyObject *ALACDecoder_read(decoders_ALACDecoder* self,
 
     ALACDecoder_print_frame_header(&frame_header);
 
+    /*read the subframe headers*/
     subframe_headers = malloc(sizeof(struct alac_subframe_header) *
 			      self->channels);
     for (i = 0; i < self->channels; i++) {
       ALACDecoder_read_subframe_header(self->bitstream,
 				       &(subframe_headers[i]));
       ALACDecoder_print_subframe_header(&(subframe_headers[i]));
+    }
+
+    /*if there are wasted bits, read a block of interlaced
+      wasted-bits samples, each (wasted_bits * 8) large*/
+    if (frame_header.wasted_bits > 0) {
+      ALACDecoder_read_wasted_bits(self->bitstream,
+				   &(self->wasted_bits_samples),
+				   frame_header.output_samples,
+				   frame_header.channels,
+				   frame_header.wasted_bits * 8);
     }
 
     PyErr_SetString(PyExc_ValueError,"TODO: read residual data");
@@ -244,7 +263,7 @@ status ALACDecoder_read_frame_header(Bitstream *bs,
   frame_header->channels = read_bits(bs,3) + 1;
   read_bits(bs,16); /*nobody seems to know what these are for*/
   frame_header->has_size = read_bits(bs,1);
-  frame_header->uncompressed_bytes = read_bits(bs,2);
+  frame_header->wasted_bits = read_bits(bs,2);
   frame_header->is_not_compressed = read_bits(bs,1);
   if (frame_header->has_size) {
     /*for when we hit the end of the stream
@@ -276,10 +295,28 @@ status ALACDecoder_read_subframe_header(Bitstream *bs,
   return OK;
 }
 
+status ALACDecoder_read_wasted_bits(Bitstream *bs,
+				    struct ia_array *wasted_bits_samples,
+				    int sample_count,
+				    int channels,
+				    int wasted_bits_size) {
+  int i;
+  int channel;
+
+  for (i = 0; i < sample_count; i++) {
+    for (channel = 0; channel < channels; channel++) {
+      ia_append(iaa_getitem(wasted_bits_samples,channel),
+		read_bits(bs,wasted_bits_size));
+    }
+  }
+
+  return OK;
+}
+
 void ALACDecoder_print_frame_header(struct alac_frame_header *frame_header) {
   printf("channels : %d\n",frame_header->channels);
   printf("has_size : %d\n",frame_header->has_size);
-  printf("uncompressed_bytes : %d\n",frame_header->uncompressed_bytes);
+  printf("wasted bits : %d\n",frame_header->wasted_bits);
   printf("is_not_compressed : %d\n",frame_header->is_not_compressed);
   printf("output_samples : %d\n",frame_header->output_samples);
 }

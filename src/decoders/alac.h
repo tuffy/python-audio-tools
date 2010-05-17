@@ -43,12 +43,13 @@ typedef struct {
   int kmodifier;
 
   struct ia_array samples; /*a sample buffer for output*/
+  struct ia_array wasted_bits_samples;  /*a buffer for wasted-bits samples*/
 } decoders_ALACDecoder;
 
 struct alac_frame_header {
   uint8_t channels;
   uint8_t has_size;
-  uint8_t uncompressed_bytes;
+  uint8_t wasted_bits;
   uint8_t is_not_compressed;
   uint32_t output_samples;
 };
@@ -102,6 +103,12 @@ status ALACDecoder_read_frame_header(Bitstream *bs,
 /*reads "subframe header" from the current bitstream*/
 status ALACDecoder_read_subframe_header(Bitstream *bs,
 					struct alac_subframe_header *subframe_header);
+
+status ALACDecoder_read_wasted_bits(Bitstream *bs,
+				    struct ia_array *wasted_bits_samples,
+				    int sample_count,
+				    int channels,
+				    int wasted_bits_size);
 
 /*after a call to "read_subframe_header",
   call "free_subframe_header" to deallocate the predictor_coef_tables*/

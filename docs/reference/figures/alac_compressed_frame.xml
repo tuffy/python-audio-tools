@@ -22,9 +22,10 @@
     <col width=".333333" style="dashed">...</col>
   </row>
   <row>
-    <col width=".333333" style="dashed">Wasted Bits Block₁</col>
-    <col width=".333333" style="dashed">Wasted Bits Block₂</col>
-    <col width=".333333" style="dashed">...</col>
+    <col width=".25" style="dashed">Wasted Bits Sample₁</col>
+    <col width=".25" style="dashed">Wasted Bits Sample₂</col>
+    <col width=".25" style="dashed">Wasted Bits Sample₃</col>
+    <col width=".25" style="dashed">...</col>
   </row>
   <row>
     <col width=".333333">Residual₁</col>
