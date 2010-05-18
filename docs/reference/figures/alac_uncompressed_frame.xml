@@ -6,7 +6,7 @@
   </row>
   <row>
     <col start="19" end="19" width=".333333">Has Sample Size</col>
-    <col start="20" end="21" width=".333333">Wasted Bits</col>
+    <col start="20" end="21" width=".333333">Wasted Bits (0)</col>
     <col start="22" end="22" width=".333333">Is Not Compressed (1)</col>
   </row>
   <row>

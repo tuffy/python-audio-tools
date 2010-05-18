@@ -85,6 +85,7 @@ static inline void ia_setitem(struct i_array *array,
   }
 }
 
+/*reverses the elements of "array" in place*/
 static inline void ia_reverse(struct i_array *array) {
   ia_size_t start;
   ia_size_t end;
@@ -108,24 +109,57 @@ static inline void ia_link(struct i_array *target, struct i_array *source) {
   target->data = source->data;
 }
 
+/*places a copied version of "source" to "target"
+
+  its newly allocated data must be freed with ia_free()*/
 static inline void ia_copy(struct i_array *target, struct i_array *source) {
   ia_resize(target,source->size);
   memcpy(target->data,source->data,source->size * sizeof(ia_data_t));
   target->size = source->size;
 }
 
+/*appends the elements from "source" to the end of "target"*/
 static inline void ia_extend(struct i_array *target, struct i_array *source) {
   ia_resize(target,target->size + source->size);
   memcpy(target->data + target->size,source->data,source->size * sizeof(ia_data_t));
   target->size += source->size;
 }
 
+
+/*places the first "size" number of elements from "source" to "target"
+
+  "target" received a borrowed copy of "data"*/
 static inline void ia_head(struct i_array *target, struct i_array *source, ia_size_t size) {
   target->size = size;
   target->total_size = source->total_size;
   target->data = source->data;
 }
 
+/*This returns the 0th element of "source"
+  and removes that value from the array by shifting its data up one notch.
+  It's designed to be used in conjunction with ia_link()
+  to avoid losing allocated data.*/
+static inline ia_data_t ia_pop_head(struct i_array *source) {
+  ia_data_t val = source->data[0];
+  source->data++;
+  source->size--;
+  return val;
+}
+
+/*This returns the last element of "source"
+  and removes that value from the array by shifting its size down one notch.
+
+  Unline ia_pop_head, this will not lose allocated data.*/
+static inline ia_data_t ia_pop_tail(struct i_array *source) {
+  ia_data_t val = source->data[source->size - 1];
+  source->size--;
+  return val;
+}
+
+/*places the last "size" number of elements from "source" to "target"
+
+  "target" received a borrowed copy of "data" if different from "source"
+  otherwise, its data is shifted down appropriately*/
 static inline void ia_tail(struct i_array *target, struct i_array *source, ia_size_t size) {
   if (target != source) {
     target->data = source->data + (source->size - size);
@@ -140,7 +174,9 @@ static inline void ia_tail(struct i_array *target, struct i_array *source, ia_si
 
 /*splits source into two lists, "head" and "tail"
   where "head" contains "split" number of elements
-  and "tail" contains the rest*/
+  and "tail" contains the rest
+
+  both elements received the same borrowed data element*/
 static inline void ia_split(struct i_array *head, struct i_array *tail,
 			    struct i_array *source, ia_size_t split) {
   if (split > source->size)

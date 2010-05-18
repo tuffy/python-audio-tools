@@ -72,8 +72,37 @@ A compressed frame is laid out as follows:
 \end{figure}
 \par
 \noindent
+``Interlacing Shift'' and ``Interlacing Leftweight'' are used
+for channel decorrelation after the subframes have been decoded.
+
 There is one subframe header and one residual block per
 channel.
 If ``Wasted Bits'' is greater than 0, there is also
-one wasted bits block per channel.
+a block of wasted bits samples after the subframe headers but before
+the residuals.
+
+``Wasted Bits'' is an attempt to store the least significant bits
+of each sample more efficiently at high bits-per-sample, where
+that data will often be indistinguishable from random noise.
+In effect, it's a block of interlaced uncompressed samples
+(similar to an uncompressed ALAC frame) each $8 \times \text{``Wasted Bits''}$
+bits large.
+Those wasted bits are then prepended to each sample prior to channel
+decorrelation.
+I'll explain this process in more detail later.
+
+Each subframe header is laid out as follows:
+
+\begin{figure}[h]
+\includegraphics{figures/alac_subframe_header.pdf}
+\end{figure}
+\par
+\noindent
+There are ``Coefficient Count'' number of coefficients in each
+subframe header, each a 16-bit signed value.
+
+\pagebreak
+
+\subsection{Residual decoding}
+
 
