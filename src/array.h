@@ -109,9 +109,7 @@ static inline void ia_link(struct i_array *target, struct i_array *source) {
   target->data = source->data;
 }
 
-/*places a copied version of "source" to "target"
-
-  its newly allocated data must be freed with ia_free()*/
+/*places a copied version of "source" to "target"*/
 static inline void ia_copy(struct i_array *target, struct i_array *source) {
   ia_resize(target,source->size);
   memcpy(target->data,source->data,source->size * sizeof(ia_data_t));

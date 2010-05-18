@@ -51,10 +51,10 @@ int ALACDecoder_init(decoders_ALACDecoder *self,
 				   &(self->maximum_k)))
     return -1;
 
-  /*initialize buffer*/
+  /*initialize final buffer*/
   iaa_init(&(self->samples),
-	   self->channels,
-	   self->max_samples_per_frame);
+  	   self->channels,
+  	   self->max_samples_per_frame);
 
   /*initialize wasted-bits buffer, just in case*/
   iaa_init(&(self->wasted_bits_samples),
@@ -63,6 +63,12 @@ int ALACDecoder_init(decoders_ALACDecoder *self,
 
   /*initialize a residuals buffer*/
   iaa_init(&(self->residuals),
+	   self->channels,
+	   self->max_samples_per_frame);
+
+  /*initialize a subframe output buffer,
+    whose data is not yet decorrelated*/
+  iaa_init(&(self->subframe_samples),
 	   self->channels,
 	   self->max_samples_per_frame);
 
@@ -86,6 +92,7 @@ int ALACDecoder_init(decoders_ALACDecoder *self,
 
 void ALACDecoder_dealloc(decoders_ALACDecoder *self) {
   iaa_free(&(self->samples));
+  iaa_free(&(self->subframe_samples));
   iaa_free(&(self->wasted_bits_samples));
   iaa_free(&(self->residuals));
 
@@ -141,7 +148,6 @@ PyObject *ALACDecoder_read(decoders_ALACDecoder* self,
   int channel;
   int i,j;
 
-  iaa_reset(&(self->samples));
   frame_header.output_samples = 0;
 
   if (self->total_frames < 1)
@@ -153,6 +159,7 @@ PyObject *ALACDecoder_read(decoders_ALACDecoder* self,
     goto error;
 
   if (frame_header.is_not_compressed) {
+    iaa_reset(&(self->samples));
     /*uncompressed samples are interlaced between channels*/
     for (i = 0; i < frame_header.output_samples; i++) {
       for (channel = 0; channel < self->channels; channel++) {
@@ -198,6 +205,34 @@ PyObject *ALACDecoder_read(decoders_ALACDecoder* self,
 	goto error;
       }
     }
+
+    for (i = 0; i < self->channels; i++) {
+      if (ALACDecoder_decode_subframe(iaa_getitem(&(self->subframe_samples),i),
+				      iaa_getitem(&(self->residuals),i),
+				      &(subframe_headers[i].predictor_coef_table),
+				      subframe_headers[i].prediction_quantitization) == ERROR)
+	goto error;
+    }
+
+    if (self->channels == 1) {
+      if (ALACDecoder_decorrelate_mono(&(self->samples),
+				       &(self->subframe_samples)) == ERROR)
+	goto error;
+    } else if (self->channels == 2) {
+      if (self->bits_per_sample == 16) {
+	if (ALACDecoder_decorrelate_stereo_16(&(self->samples),
+					      &(self->subframe_samples),
+					      interlacing_shift,
+					      interlacing_leftweight) == ERROR)
+	  goto error;
+      } else {
+	PyErr_SetString(PyExc_ValueError,"TODO: handle non 16bps streams");
+	goto error;
+      }
+    } else {
+      PyErr_SetString(PyExc_ValueError,"TODO: handle 3+ channel streams");
+      goto error;
+    }
   }
 
   /*each frame has a 3 byte '111' signature prior to byte alignment*/
@@ -207,17 +242,6 @@ PyObject *ALACDecoder_read(decoders_ALACDecoder* self,
   } else {
     byte_align_r(self->bitstream);
   }
-
-  for (i = 0; i < self->channels; i++) {
-    if (ALACDecoder_decode_subframe(iaa_getitem(&(self->samples),i),
-				    iaa_getitem(&(self->residuals),i),
-				    &(subframe_headers[i].predictor_coef_table),
-				    subframe_headers[i].prediction_quantitization) == ERROR)
-      goto error;
-  }
-
-  PyErr_SetString(PyExc_ValueError,"TODO: handle channel decorrelaction");
-  goto error;
 
   /*transform the contents of self->samples into a pcm.FrameList object*/
  write_frame:
@@ -341,10 +365,27 @@ status ALACDecoder_read_wasted_bits(Bitstream *bs,
 }
 
 /*this is the slow version*/
+/*
 static inline int LOG2(int value) {
   double newvalue = trunc(log((double)value) / log((double)2));
 
   return (int)(newvalue);
+}
+*/
+
+/*the fast version used by ffmpeg and the "alac" decoder
+  subtracts MSB zero bits from total bit size - 1,
+  essentially counting the number of LSB non-zero bits, -1*/
+
+/*my version just counts the number of non-zero bits and subtracts 1
+  which is good enough for now*/
+static inline int LOG2(int value) {
+  int bits = -1;
+  while (value) {
+    bits++;
+    value >>= 1;
+  }
+  return bits;
 }
 
 status ALACDecoder_read_residuals(Bitstream *bs,
@@ -522,8 +563,7 @@ status ALACDecoder_decode_subframe(struct i_array *samples,
 	coefficients->data[i] -= sign; /*a minor cheat for brevity*/
 	/* ia_setitem(&coefficients,i, */
 	/* 	   ia_getitem(&coefficients,i) - sign); */
-	val *= sign;
-	residual -= ((val >> predictor_quantitization) * (i + 1));
+	residual -= ((abs(val) >> predictor_quantitization) * (i + 1));
       }
     } else if (residual < 0) {
       for (i = 0; (residual < 0) && (i < coefficients->size); i++) {
@@ -532,12 +572,56 @@ status ALACDecoder_decode_subframe(struct i_array *samples,
 	coefficients->data[i] -= sign; /*a minor cheat for brevity*/
 	/* ia_setitem(&coefficients,i, */
 	/* 	   ia_getitem(&coefficients,i) - sign); */
-	val *= sign;
-	residual -= ((val >> predictor_quantitization) * (i + 1));
+	residual += ((abs(val) >> predictor_quantitization) * (i + 1));
       }
     }
 
     ia_append(samples,output_value);
+  }
+
+  return OK;
+}
+
+status ALACDecoder_decorrelate_mono(struct ia_array *output,
+				    struct ia_array *subframes) {
+  ia_copy(iaa_getitem(output,0),iaa_getitem(subframes,0));
+  return OK;
+}
+
+status ALACDecoder_decorrelate_stereo_16(struct ia_array *output,
+					 struct ia_array *subframes,
+					 int interlacing_shift,
+					 int interlacing_leftweight) {
+  ia_data_t a;
+  ia_data_t b;
+  ia_size_t i;
+  struct i_array *channel0;
+  struct i_array *channel1;
+  struct i_array *output0;
+  struct i_array *output1;
+  ia_size_t size;
+
+  if (interlacing_shift > 0) {
+    channel0 = iaa_getitem(subframes,0);
+    channel1 = iaa_getitem(subframes,1);
+
+    output0 = iaa_getitem(output,0);
+    output1 = iaa_getitem(output,1);
+
+    size = iaa_getitem(subframes,0)->size;
+
+    for (i = 0; i < size; i++) {
+      a = ia_getitem(channel0,i);
+      b = ia_getitem(channel1,i);
+      a -= (b * interlacing_leftweight) >> interlacing_shift;
+      b += a;
+
+      ia_append(output0,b);
+      ia_append(output1,a);
+    }
+  } else {
+    ia_copy(iaa_getitem(output,0),iaa_getitem(subframes,0));
+    ia_copy(iaa_getitem(output,1),iaa_getitem(subframes,1));
   }
 
   return OK;

@@ -42,7 +42,8 @@ typedef struct {
   int initial_history;
   int maximum_k;
 
-  struct ia_array samples; /*a sample buffer for output*/
+  struct ia_array samples;
+  struct ia_array subframe_samples; /*a sample buffer for subframe output*/
   struct ia_array wasted_bits_samples;  /*a buffer for wasted-bits samples*/
   struct ia_array residuals; /*a buffer for residual values*/
 } decoders_ALACDecoder;
@@ -132,6 +133,14 @@ status ALACDecoder_decode_subframe(struct i_array *samples,
 				   struct i_array *residuals,
 				   struct i_array *coefficients,
 				   int predictor_quantitization);
+
+status ALACDecoder_decorrelate_mono(struct ia_array *output,
+				    struct ia_array *subframes);
+
+status ALACDecoder_decorrelate_stereo_16(struct ia_array *output,
+					 struct ia_array *subframes,
+					 int interlacing_shift,
+					 int interlacing_leftweight);
 
 /*after a call to "read_subframe_header",
   call "free_subframe_header" to deallocate the predictor_coef_tables*/
