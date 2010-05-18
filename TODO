@@ -1045,13 +1045,14 @@
 *** DONE Add audiotools.decoders.AlacDecoder object
 *** DONE Add frame header parsing
 *** DONE Add subframe header parsing
-*** TODO Add wasted-bits block parsing
+*** DONE Add wasted-bits block parsing
 *** TODO Add residual decoding
 *** DONE Ensure frame footer is checked
 *** TODO Decode subframes
 *** TODO Perform channel decorrelation
     - [ ] leftweight zero
     - [ ] leftweight nonzero
+*** TODO Handle wasted-bits samples
 *** TODO Return pcm.FrameList objects on calls to read()
 *** DONE Ensure PCMReader-compatible fields are present
     - [X] sample_rate

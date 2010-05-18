@@ -44,13 +44,13 @@
   <row>
     <col start="152" end="159" width=".25">Initial History</col>
     <col start="160" end="167" width=".25">Maximum K</col>
-    <col start="168" end="177" width=".25">Channels</col>
-    <col start="178" end="193" width=".25">Unknown</col>
+    <col start="168" end="175" width=".25">Channels</col>
+    <col start="176" end="191" width=".25">Unknown</col>
   </row>
   <row>
-    <col start="194" end="225" width=".4">Max Coded Frame Size</col>
-    <col start="226" end="257" width=".3">Bitrate</col>
-    <col start="258" end="289" width=".3">Sample Rate</col>
+    <col start="192" end="223" width=".4">Max Coded Frame Size</col>
+    <col start="224" end="255" width=".3">Bitrate</col>
+    <col start="256" end="287" width=".3">Sample Rate</col>
   </row>
   <line s_id="alac" s_corner="sw" e_id="alac_len" e_corner="nw" style="dotted"/>
   <line s_id="alac" s_corner="se" e_id="alac_id" e_corner="ne" style="dotted"/>

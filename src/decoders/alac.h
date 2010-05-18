@@ -126,6 +126,13 @@ int ALACDecoder_read_residual(Bitstream *bs,
 			      int k,
 			      int sample_size);
 
+/*takes a set of residuals, coefficients and a predictor_quantitization value
+  returns a set of decoded samples*/
+status ALACDecoder_decode_subframe(struct i_array *samples,
+				   struct i_array *residuals,
+				   struct i_array *coefficients,
+				   int predictor_quantitization);
+
 /*after a call to "read_subframe_header",
   call "free_subframe_header" to deallocate the predictor_coef_tables*/
 static inline void ALACDecoder_free_subframe_header(struct alac_subframe_header *subframe_header) {

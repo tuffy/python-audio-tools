@@ -208,7 +208,15 @@ PyObject *ALACDecoder_read(decoders_ALACDecoder* self,
     byte_align_r(self->bitstream);
   }
 
-  PyErr_SetString(PyExc_ValueError,"TODO: rebuild frame data properly");
+  for (i = 0; i < self->channels; i++) {
+    if (ALACDecoder_decode_subframe(iaa_getitem(&(self->samples),i),
+				    iaa_getitem(&(self->residuals),i),
+				    &(subframe_headers[i].predictor_coef_table),
+				    subframe_headers[i].prediction_quantitization) == ERROR)
+      goto error;
+  }
+
+  PyErr_SetString(PyExc_ValueError,"TODO: handle channel decorrelaction");
   goto error;
 
   /*transform the contents of self->samples into a pcm.FrameList object*/
@@ -385,6 +393,7 @@ status ALACDecoder_read_residuals(Bitstream *bs,
     /*if history gets too small, we may have a block of 0 samples
       which can be compressed more efficiently*/
     if ((history < 128) && ((i + 1) < residual_count)) {
+      /*FIXME - not sure about this whole chunk*/
       sign_modifier = 1;
       k = MIN(7 - LOG2(history) + ((history + 16) / 64),maximum_k);
       block_size = ALACDecoder_read_residual(bs,k,16);
@@ -440,6 +449,98 @@ int ALACDecoder_read_residual(Bitstream *bs,
   }
 
   return x;
+}
+
+static inline int SIGN_ONLY(int value) {
+  if (value > 0)
+    return 1;
+  else if (value < 0)
+    return -1;
+  else
+    return 0;
+}
+
+status ALACDecoder_decode_subframe(struct i_array *samples,
+				   struct i_array *residuals,
+				   struct i_array *coefficients,
+				   int predictor_quantitization) {
+  struct i_array remaining_residuals;
+  struct i_array samples_tail;
+  ia_data_t buffer0;
+  ia_data_t residual;
+  int64_t lpc_sum;
+  int32_t output_value;
+  int32_t val;
+  int sign;
+  int i;
+
+  ia_reset(samples);
+  ia_link(&remaining_residuals,residuals);
+  ia_reverse(coefficients);
+
+  /*first sample always copied verbatim*/
+  ia_append(samples,ia_pop_head(&remaining_residuals));
+
+  /*grab a number of warm-up samples equal to coefficients' length*/
+  for (i = 0; i < coefficients->size; i++) {
+    /*these are adjustments to the first sample
+      rather than copied verbatim*/
+    ia_append(samples,
+	      ia_pop_head(&remaining_residuals) +
+	      ia_getitem(samples,-1));
+  }
+
+  /*then calculate a new sample per remaining residual*/
+  while (remaining_residuals.size > 0) {
+    residual = ia_pop_head(&remaining_residuals);
+    lpc_sum = 0;
+
+    /*Note that buffer0 gets stripped from previously encoded samples
+      then re-added prior to adding the next sample.
+      It's a watermark sample, of sorts.*/
+    buffer0 = ia_getitem(samples,-(coefficients->size) - 1);
+    ia_tail(&samples_tail,samples,coefficients->size);
+    for (i = 0; i < samples_tail.size; i++) {
+      lpc_sum += ((ia_getitem(&samples_tail,i) - buffer0) *
+		  ia_getitem(coefficients,i));
+    }
+
+    /*sample = ((sum + 2 ^ (quant - 1)) / (2 ^ quant)) + residual + buffer0*/
+    output_value = (int32_t)(((int64_t)(1 << (predictor_quantitization - 1)) + lpc_sum) >> (int64_t)predictor_quantitization) + residual + buffer0;
+
+    /*At this point, except for buffer0, everything looks a lot like
+      a FLAC LPC subframe.
+      We're not done yet, though.
+      ALAC's adaptive algorithm then adjusts the coefficients
+      up or down 1 step based on previously decoded samples
+      and the residual*/
+
+    if (residual > 0) {
+      for (i = 0; (residual > 0) && (i < coefficients->size); i++) {
+	val = buffer0 - ia_getitem(samples,-(coefficients->size) + i);
+	sign = SIGN_ONLY(val);
+	coefficients->data[i] -= sign; /*a minor cheat for brevity*/
+	/* ia_setitem(&coefficients,i, */
+	/* 	   ia_getitem(&coefficients,i) - sign); */
+	val *= sign;
+	residual -= ((val >> predictor_quantitization) * (i + 1));
+      }
+    } else if (residual < 0) {
+      for (i = 0; (residual < 0) && (i < coefficients->size); i++) {
+      	val = buffer0 - ia_getitem(samples,-(coefficients->size) + i);
+	sign = -SIGN_ONLY(val);
+	coefficients->data[i] -= sign; /*a minor cheat for brevity*/
+	/* ia_setitem(&coefficients,i, */
+	/* 	   ia_getitem(&coefficients,i) - sign); */
+	val *= sign;
+	residual -= ((val >> predictor_quantitization) * (i + 1));
+      }
+    }
+
+    ia_append(samples,output_value);
+  }
+
+  return OK;
 }
 
 void ALACDecoder_print_frame_header(struct alac_frame_header *frame_header) {
