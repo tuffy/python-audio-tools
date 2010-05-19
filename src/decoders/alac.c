@@ -149,6 +149,7 @@ PyObject *ALACDecoder_read(decoders_ALACDecoder* self,
   int i,j;
 
   frame_header.output_samples = 0;
+  iaa_reset(&(self->samples));
 
   if (self->total_frames < 1)
     goto write_frame;
@@ -172,15 +173,12 @@ PyObject *ALACDecoder_read(decoders_ALACDecoder* self,
     interlacing_shift = read_bits(self->bitstream,8);
     interlacing_leftweight = read_bits(self->bitstream,8);
 
-    ALACDecoder_print_frame_header(&frame_header);
-
     /*read the subframe headers*/
     subframe_headers = malloc(sizeof(struct alac_subframe_header) *
 			      self->channels);
     for (i = 0; i < self->channels; i++) {
       ALACDecoder_read_subframe_header(self->bitstream,
 				       &(subframe_headers[i]));
-      ALACDecoder_print_subframe_header(&(subframe_headers[i]));
     }
 
     /*if there are wasted bits, read a block of interlaced

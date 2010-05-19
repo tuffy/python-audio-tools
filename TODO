@@ -1048,12 +1048,12 @@
 *** DONE Add wasted-bits block parsing
 *** TODO Add residual decoding
 *** DONE Ensure frame footer is checked
-*** TODO Decode subframes
-*** TODO Perform channel decorrelation
-    - [ ] leftweight zero
-    - [ ] leftweight nonzero
+*** DONE Decode subframes
+*** DONE Perform channel decorrelation
+    - [X] leftweight zero
+    - [X] leftweight nonzero
 *** TODO Handle wasted-bits samples
-*** TODO Return pcm.FrameList objects on calls to read()
+*** DONE Return pcm.FrameList objects on calls to read()
 *** DONE Ensure PCMReader-compatible fields are present
     - [X] sample_rate
     - [X] channels
@@ -1070,9 +1070,9 @@
    (not sure where to find multichannel ALAC
    since iTunes doesn't seem to generate them)
 *** TODO Ensure different sample rates work correctly
-    - [ ] 44100Hz
+    - [X] 44100Hz
     - [ ] 48000Hz
-    - [ ] 96000Hz
+    - [X] 96000Hz
     (need to figure out what other sample rates ALAC supports)
 ** TODO Build ALAC encoder
 *** TODO Add audiotools.encoders.encode_alac function
