@@ -541,9 +541,11 @@ status ALACDecoder_decode_subframe(struct i_array *samples,
       It's a watermark sample, of sorts.*/
     buffer0 = ia_getitem(samples,-(coefficients->size) - 1);
     ia_tail(&samples_tail,samples,coefficients->size);
+
     for (i = 0; i < samples_tail.size; i++) {
-      lpc_sum += ((ia_getitem(&samples_tail,i) - buffer0) *
-		  ia_getitem(coefficients,i));
+      lpc_sum += (((int64_t)ia_getitem(&samples_tail,i) -
+		   (int64_t)buffer0) *
+		  (int64_t)ia_getitem(coefficients,i));
     }
 
     /*sample = ((sum + 2 ^ (quant - 1)) / (2 ^ quant)) + residual + buffer0*/
@@ -563,7 +565,8 @@ status ALACDecoder_decode_subframe(struct i_array *samples,
 	coefficients->data[i] -= sign; /*a minor cheat for brevity*/
 	/* ia_setitem(&coefficients,i, */
 	/* 	   ia_getitem(&coefficients,i) - sign); */
-	residual -= ((abs(val) >> predictor_quantitization) * (i + 1));
+	val *= sign;
+	residual -= (val >> predictor_quantitization) * (i + 1);
       }
     } else if (residual < 0) {
       for (i = 0; (residual < 0) && (i < coefficients->size); i++) {
@@ -572,7 +575,8 @@ status ALACDecoder_decode_subframe(struct i_array *samples,
 	coefficients->data[i] -= sign; /*a minor cheat for brevity*/
 	/* ia_setitem(&coefficients,i, */
 	/* 	   ia_getitem(&coefficients,i) - sign); */
-	residual += ((abs(val) >> predictor_quantitization) * (i + 1));
+	val *= sign;
+	residual -= (val >> predictor_quantitization) * (i + 1);
       }
     }
 
