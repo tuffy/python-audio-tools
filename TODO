@@ -1046,7 +1046,7 @@
 *** DONE Add frame header parsing
 *** DONE Add subframe header parsing
 *** DONE Add wasted-bits block parsing
-*** TODO Add residual decoding
+*** DONE Add residual decoding
 *** DONE Ensure frame footer is checked
 *** DONE Decode subframes
 *** DONE Perform channel decorrelation
@@ -1059,8 +1059,7 @@
     - [X] channels
     - [X] channel_mask
     - [X] bits_per_sample
-*** TODO Ensure 8/16/24 bps streams work correctly
-    - [ ] 8bps
+*** TODO Ensure 16/24 bps streams work correctly
     - [ ] 16bps
     - [ ] 24bps
 *** TODO Ensure 1/2/3+ channel streams work correctly

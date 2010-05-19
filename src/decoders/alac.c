@@ -432,7 +432,6 @@ status ALACDecoder_read_residuals(Bitstream *bs,
     /*if history gets too small, we may have a block of 0 samples
       which can be compressed more efficiently*/
     if ((history < 128) && ((i + 1) < residual_count)) {
-      /*FIXME - not sure about this whole chunk*/
       sign_modifier = 1;
       k = MIN(7 - LOG2(history) + ((history + 16) / 64),maximum_k);
       block_size = ALACDecoder_read_residual(bs,k,16);
@@ -603,7 +602,7 @@ status ALACDecoder_decorrelate_stereo_16(struct ia_array *output,
   struct i_array *output1;
   ia_size_t size;
 
-  if (interlacing_shift > 0) {
+  if (interlacing_leftweight > 0) {
     channel0 = iaa_getitem(subframes,0);
     channel1 = iaa_getitem(subframes,1);
 
