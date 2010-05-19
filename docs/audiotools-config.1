@@ -1,0 +1,160 @@
+.TH "audiotools-config" 1 "May 19, 2010" "" "Audio Tools Configuration Manager"
+.SH NAME
+audiotools-config \- manage Python Audio Tools configuration
+.SH SYNOPSIS
+audiotools-config [OPTIONS]
+.SH DESCRIPTION
+.PP
+audiotools-config is the Python Audio Tools configuration manager.
+When called without arguments, it displays the system's current
+configuration.
+By specifying various configuration arguments, it modifies the user's
+\fC$(HOME)/.audiotools.cfg\fR file with new values.
+.SH OPTIONS
+.TP
+\fB-h, --help\fR
+Show a list of options and exit
+.TP
+\fB--version\fR
+Show the program's version and exit
+.TP
+\fB-V \fIVERBOSITY\fB, --verbose=\fIVERBOSITY\fR
+The level of output to display.
+Choose between `normal', `quiet' and `debug'.
+
+.SH SYSTEM OPTIONS
+.TP
+\fB-c \fIcdrom\fB, --cdrom=\fIcdrom\fR
+The default CD-ROM drive to use
+
+.TP
+\fB--cdrom-read-offset=\fIsamples\fR
+The CD-ROM read offset to use
+
+.TP
+\fB-j \fIprocesses\fB, --joint=\fIprocesses\fR
+The maximum number of tracks to convert at one time by default
+
+.TP
+\fB--fs-encoding=\fIencoding\fR
+The filesystem's text encoding, such as "UTF-8"
+
+.TP
+\fB--io-encoding=\fIencoding\fR
+The system's I/O text encoding, such as "UTF-8"
+
+.SH THUMBNAIL OPTIONS
+
+.TP
+\fB--thumbnail-format=\fItype\fR
+The format to use for thumbnails, such as "jpeg" or "png"
+
+.TP
+\fB--thumbnail-size=\fIpixels\fR
+The maximum size of each thumbnail, in pixels squared.
+For example, specifying 100 results in thumbnails a maximum of
+100\[mu]100 pixels large.
+
+.SH FREEDB OPTIONS
+
+.TP
+\fB--freedb-server=\fIhostname\fR
+The default FreeDB server to use
+
+.TP
+\fB--freedb-port=\fIport\fR
+The default FreeDB port number to use
+
+.SH MUSICBRAINZ OPTIONS
+
+.TP
+\fB--musicbrainz-server=\fIhostname\fR
+The default MusicBrainz server to use
+
+.TP
+\fB--musicbrainz-port=\fIport\fR
+The default MusicBrainz port number to use
+
+.SH BINARIES OPTIONS
+
+.TP
+\fB--faac=\fIpath\fR
+The path to the
+.BR faac (1)
+executable
+
+.TP
+\fB--faad=\fIpath\fR
+The path to the
+.BR faad (1)
+executable
+
+.TP
+\fB--flac=\fIpath\fR
+The path to the
+.BR flac (1)
+executable
+
+.TP
+\fB--oggdec=\fIpath\fR
+The path to the
+.BR oggdec (1)
+executable
+
+.TP
+\fB--oggenc=\fIpath\fR
+The path to the
+.BR oggenc (1)
+executable
+
+.TP
+\fB--speexdec=\fIpath\fR
+The path to the
+.BR speexdec (1)
+executable
+
+.TP
+\fB--speexenc=\fIpath\fR
+The path to the
+.BR speexenc (1)
+executable
+
+.TP
+\fB--twolame=\fIpath\fR
+The path to the
+.BR twolame (1)
+executable
+
+.TP
+\fB--wavpack=\fIpath\fR
+The path to the
+.BR wavpack (1)
+executable
+
+.TP
+\fB--wvunpack=\fIpath\fR
+The path to the
+.BR wvunpack (1)
+executable
+
+.SH SEE ALSO
+.BR cd2track (1),
+.BR cd2xmcd (1),
+.BR cdinfo (1),
+.BR coverdump (1),
+.BR coverview (1),
+.BR editxmcd (1),
+.BR record2track (1),
+.BR track2cd (1),
+.BR track2xmcd (1),
+.BR trackcat (1),
+.BR trackcmp (1),
+.BR trackinfo (1),
+.BR tracklength (1),
+.BR tracklint (1),
+.BR trackplay (1),
+.BR trackrename (1),
+.BR tracksplit (1),
+.BR tracktag (1)
+.SH AUTHOR
+Brian Langenberger
