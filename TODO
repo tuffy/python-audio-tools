@@ -1052,19 +1052,19 @@
 *** DONE Perform channel decorrelation
     - [X] leftweight zero
     - [X] leftweight nonzero
-*** TODO Handle wasted-bits samples
+*** DONE Handle wasted-bits samples
 *** DONE Return pcm.FrameList objects on calls to read()
 *** DONE Ensure PCMReader-compatible fields are present
     - [X] sample_rate
     - [X] channels
     - [X] channel_mask
     - [X] bits_per_sample
-*** TODO Ensure 16/24 bps streams work correctly
-    - [ ] 16bps
-    - [ ] 24bps
+*** DONE Ensure 16/24 bps streams work correctly
+    - [X] 16bps
+    - [X] 24bps
 *** TODO Ensure 1/2/3+ channel streams work correctly
-    - [ ] 1 channel
-    - [ ] 2 channels
+    - [X] 1 channel
+    - [X] 2 channels
     - [ ] 3+ channels
    (not sure where to find multichannel ALAC
    since iTunes doesn't seem to generate them)

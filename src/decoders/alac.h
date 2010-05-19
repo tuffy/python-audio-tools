@@ -134,11 +134,20 @@ status ALACDecoder_decode_subframe(struct i_array *samples,
 				   struct i_array *coefficients,
 				   int predictor_quantitization);
 
-status ALACDecoder_decorrelate_mono(struct ia_array *output,
-				    struct ia_array *subframes);
+status ALACDecoder_output_mono(struct ia_array *output,
+			       struct ia_array *subframes,
+			       struct ia_array *wasted_bits_buffer,
+			       int wasted_bits);
 
 status ALACDecoder_decorrelate_stereo_16(struct ia_array *output,
 					 struct ia_array *subframes,
+					 int interlacing_shift,
+					 int interlacing_leftweight);
+
+status ALACDecoder_decorrelate_stereo_24(struct ia_array *output,
+					 struct ia_array *subframes,
+					 struct ia_array *wasted_bits_buffer,
+					 int wasted_bits,
 					 int interlacing_shift,
 					 int interlacing_leftweight);
 

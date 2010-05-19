@@ -196,7 +196,7 @@ PyObject *ALACDecoder_read(decoders_ALACDecoder* self,
       if (ALACDecoder_read_residuals(self->bitstream,
 				     iaa_getitem(&(self->residuals),i),
 				     frame_header.output_samples,
-				     self->bits_per_sample + self->channels - 1,
+				     self->bits_per_sample - (frame_header.wasted_bits * 8) + self->channels - 1,
 				     self->initial_history,
 				     self->history_multiplier,
 				     self->maximum_k) == ERROR) {
@@ -213,13 +213,23 @@ PyObject *ALACDecoder_read(decoders_ALACDecoder* self,
     }
 
     if (self->channels == 1) {
-      if (ALACDecoder_decorrelate_mono(&(self->samples),
-				       &(self->subframe_samples)) == ERROR)
+      if (ALACDecoder_output_mono(&(self->samples),
+				  &(self->subframe_samples),
+				  &(self->wasted_bits_samples),
+				  frame_header.wasted_bits) == ERROR)
 	goto error;
     } else if (self->channels == 2) {
       if (self->bits_per_sample == 16) {
 	if (ALACDecoder_decorrelate_stereo_16(&(self->samples),
 					      &(self->subframe_samples),
+					      interlacing_shift,
+					      interlacing_leftweight) == ERROR)
+	  goto error;
+      } else if (self->bits_per_sample == 24) {
+	if (ALACDecoder_decorrelate_stereo_24(&(self->samples),
+					      &(self->subframe_samples),
+					      &(self->wasted_bits_samples),
+					      frame_header.wasted_bits,
 					      interlacing_shift,
 					      interlacing_leftweight) == ERROR)
 	  goto error;
@@ -583,9 +593,30 @@ status ALACDecoder_decode_subframe(struct i_array *samples,
   return OK;
 }
 
-status ALACDecoder_decorrelate_mono(struct ia_array *output,
-				    struct ia_array *subframes) {
-  ia_copy(iaa_getitem(output,0),iaa_getitem(subframes,0));
+status ALACDecoder_output_mono(struct ia_array *output,
+			       struct ia_array *subframes,
+			       struct ia_array *wasted_bits_buffer,
+			       int wasted_bits) {
+  struct i_array *channel0;
+  struct i_array *output0;
+  struct i_array *wasted0;
+  ia_size_t i;
+  ia_size_t size;
+
+  if (wasted_bits > 0) {
+    wasted_bits *= 8;
+    channel0 = iaa_getitem(subframes,0);
+    output0 = iaa_getitem(output,0);
+    wasted0 = iaa_getitem(wasted_bits_buffer,0);
+    size = channel0->size;
+
+    for (i = 0; i < size; i++) {
+      ia_append(output0,(ia_getitem(channel0,i) << 8) | ia_getitem(wasted0,i));
+    }
+  } else {
+    ia_copy(iaa_getitem(output,0),iaa_getitem(subframes,0));
+  }
+
   return OK;
 }
 
@@ -623,6 +654,71 @@ status ALACDecoder_decorrelate_stereo_16(struct ia_array *output,
   } else {
     ia_copy(iaa_getitem(output,0),iaa_getitem(subframes,0));
     ia_copy(iaa_getitem(output,1),iaa_getitem(subframes,1));
+  }
+
+  return OK;
+}
+
+status ALACDecoder_decorrelate_stereo_24(struct ia_array *output,
+					 struct ia_array *subframes,
+					 struct ia_array *wasted_bits_buffer,
+					 int wasted_bits,
+					 int interlacing_shift,
+					 int interlacing_leftweight) {
+  ia_data_t a;
+  ia_data_t b;
+  ia_size_t i;
+  struct i_array *channel0;
+  struct i_array *channel1;
+  struct i_array *output0;
+  struct i_array *output1;
+  struct i_array *wasted0;
+  struct i_array *wasted1;
+  ia_size_t size;
+
+  wasted_bits *= 8;
+
+  channel0 = iaa_getitem(subframes,0);
+  channel1 = iaa_getitem(subframes,1);
+
+  output0 = iaa_getitem(output,0);
+  output1 = iaa_getitem(output,1);
+
+  wasted0 = iaa_getitem(wasted_bits_buffer,0);
+  wasted1 = iaa_getitem(wasted_bits_buffer,1);
+
+  size = iaa_getitem(subframes,0)->size;
+
+  if (interlacing_leftweight > 0) {
+    for (i = 0; i < size; i++) {
+      a = ia_getitem(channel0,i);
+      b = ia_getitem(channel1,i);
+      a -= (b * interlacing_leftweight) >> interlacing_shift;
+      b += a;
+
+      if (wasted_bits > 0) {
+	b = (b << wasted_bits) | ia_getitem(wasted0,i);
+	a = (a << wasted_bits) | ia_getitem(wasted1,i);
+
+	ia_append(output0,b);
+	ia_append(output1,a);
+      } else {
+	ia_append(output0,b << 8);
+	ia_append(output1,a << 8);
+      }
+    }
+  } else {
+    for (i = 0; i < size; i++) {
+      if (wasted_bits > 0) {
+	ia_append(output0,
+		  (ia_getitem(channel0,i) << wasted_bits) | ia_getitem(wasted0,i));
+	ia_append(output1,
+		  (ia_getitem(channel1,i) << wasted_bits) | ia_getitem(wasted1,i));
+      } else {
+	ia_append(output0,ia_getitem(channel0,i) << 8);
+	ia_append(output1,ia_getitem(channel1,i) << 8);
+      }
+    }
   }
 
   return OK;
