@@ -113,4 +113,40 @@ Fortunately, most of these values are rarely used;
 we'll mostly be concerned with the \VAR{History} and \VAR{History Multiplier}.
 
 For each residual block, \VAR{History} starts with the value of
-\VAR{Initial History}.
+\VAR{Initial History} and will change during residual decoding.
+We use it to calculate $\kappa$ using the following formula:
+\begin{equation}
+\kappa = \left\lfloor\log_2 \left( \frac{\text{history}}{2 ^ 9} + 3 \right) \right\rfloor
+\end{equation}
+Note that if $\kappa$ exceeds the \VAR{Maximum K} value from the
+\texttt{alac} atom, \VAR{Maximum K} is used instead.
+
+We then need to know the \VAR{Bits per Sample} value of the residual
+block, which is equal to:
+\begin{equation}
+\text{Bits per Sample}_{Residual} = \text{Bits per Sample}_{ALAC} - (\text{Wasted Bits} \times 8) + \text{Channels} - 1
+\end{equation}
+For mono streams, this is typically equal to the stream's
+\VAR{Bits per Sample},
+while for stereo streams it's often the \VAR{Bits per Sample} plus 1.
+
+\begin{wrapfigure}[12]{r}{2in}
+\includegraphics{figures/alac_read_residual.pdf}
+\end{wrapfigure}
+The $\kappa$ and \VAR{Bits per Sample} values are used to read a
+single residual value in the following way:
+
+The initial bit reading portion of the process
+involves reading a unary value with a stop bit of `0'
+and a maximum value of 8.
+If the maximum value is exceeded, we read \VAR{Bits per Sample}
+number of bits as our final value
+(the only place \VAR{Bits per Sample} is used throughout the
+residual decoding process).
+
+Otherwise, we read $\kappa$ number of \VAR{extra} bits if $\kappa > 1$.
+If \VAR{extra} is greater than 1, we return
+$\text{\VAR{unary}} + (\text{\VAR{extra}} - 1)$.
+Otherwise, we push a single \VAR{extra} bit back on the stream and return our
+\VAR{unary} value outright.
+
