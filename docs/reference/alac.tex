@@ -36,7 +36,7 @@ atom, as follows:
 \par
 \noindent
 ALAC frames come in two varieties: compressed and uncompressed,
-depending on the ``Is Not Compressed'' bit in the frame header.
+depending on the \VAR{Is Not Compressed} bit in the frame header.
 An uncompressed frame is laid out as follows:
 
 \begin{figure}[h]
@@ -44,12 +44,12 @@ An uncompressed frame is laid out as follows:
 \end{figure}
 \par
 \noindent
-The number of PCM frames in an ALAC frame depends on the ``Has Sample Size''
+The number of PCM frames in an ALAC frame depends on the \VAR{Has Sample Size}
 bit.
-If set, the number of PCM frames equals the 32-bit ``Sample Size''
+If set, the number of PCM frames equals the 32-bit \VAR{Sample Size}
 value.
-If not set, the total number of PCM frames equals the ``Max Coded Frame Size''
-value in the \texttt{alac} atom and the ``Sample Size'' value is omitted.
+If not set, the total number of PCM frames equals the \VAR{Max Coded Frame Size}
+value in the \texttt{alac} atom and the \VAR{Sample Size} value is omitted.
 ALAC streams typically use the same number of samples per frame
 until the end of the stream, at which point the leftover samples
 are placed in a different-sized frame.
@@ -72,20 +72,20 @@ A compressed frame is laid out as follows:
 \end{figure}
 \par
 \noindent
-``Interlacing Shift'' and ``Interlacing Leftweight'' are used
+\VAR{Interlacing Shift} and \VAR{Interlacing Leftweight} are used
 for channel decorrelation after the subframes have been decoded.
 
 There is one subframe header and one residual block per
 channel.
-If ``Wasted Bits'' is greater than 0, there is also
+If \VAR{Wasted Bits} is greater than 0, there is also
 a block of wasted bits samples after the subframe headers but before
 the residuals.
 
-``Wasted Bits'' is an attempt to store the least significant bits
+\VAR{Wasted Bits} is an attempt to store the least significant bits
 of each sample more efficiently at high bits-per-sample, where
 that data will often be indistinguishable from random noise.
 In effect, it's a block of interlaced uncompressed samples
-(similar to an uncompressed ALAC frame) each $8 \times \text{``Wasted Bits''}$
+(similar to an uncompressed ALAC frame) each $8 \times \text{\VAR{Wasted Bits}}$
 bits large.
 Those wasted bits are then prepended to each sample prior to channel
 decorrelation.
@@ -98,11 +98,19 @@ Each subframe header is laid out as follows:
 \end{figure}
 \par
 \noindent
-There are ``Coefficient Count'' number of coefficients in each
+There are \VAR{Coefficient Count} number of coefficients in each
 subframe header, each a 16-bit signed value.
 
 \pagebreak
 
 \subsection{Residual decoding}
 
+There are \VAR{Sample Size} number of residuals per residual block.
+Decoding a residual block requires knowing the \VAR{Initial History},
+\VAR{History Multiplier}, \VAR{Maximum K}, \VAR{Channels}, \VAR{Wasted Bits} and
+\VAR{Bits per Sample} values, from the \texttt{alac} atom and frame header.
+Fortunately, most of these values are rarely used;
+we'll mostly be concerned with the \VAR{History} and \VAR{History Multiplier}.
 
+For each residual block, \VAR{History} starts with the value of
+\VAR{Initial History}.

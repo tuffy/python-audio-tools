@@ -23,7 +23,7 @@ All values in AIFF are stored as big-endian.
 \end{figure}
 \par
 \noindent
-The Sample Rate field is an 80-bit IEEE Standard 754 floating point value
+The \VAR{Sample Rate} field is an 80-bit IEEE Standard 754 floating point value
 instead of the big-endian integers common to all the other fields.
 \begin{align*}
 \text{Value} &= (-) \frac{\text{Mantissa}}{2 ^ {63}} \times 2 ^ {\text{Exponent} - 16383}

@@ -20,9 +20,9 @@ Except for the contents of the VORBIS\_COMMENT metadata block, everything in FLA
 \end{figure}
 \par
 \noindent
-``Last'' is 0 when there are no additional metadata blocks and 1 when
+\VAR{Last} is 0 when there are no additional metadata blocks and 1 when
 it is the final block before the the audio frames.
-``Block Length'' is the size of the metadata block data to follow,
+\VAR{Block Length} is the size of the metadata block data to follow,
 not including the header.
 \begin{figure}[h]
 \begin{tabular}{| r | l |}
@@ -229,7 +229,7 @@ If the blocking strategy is 1, it decodes to a 36-bit sample number.
 
 There is one Subframe per channel.
 
-`Wasted Bits Per Sample' is typically a single bit set to 0, indicating
+\VAR{Wasted Bits Per Sample} is typically a single bit set to 0, indicating
 no wasted bits per sample.  If set to 1, a unary-encoded value
 follows which indicates how many bits are wasted per sample.
 
@@ -242,7 +242,7 @@ in order to byte-align frames.
 
 This is the simplest possible subframe.
 It consists of a single value whose size is equal to the subframe's
-`Bits per Sample'.
+\VAR{Bits per Sample}.
 For instance, a 16-bit subframe would have CONSTANT subframes
 16 bits in length.
 The value of the subframe is the value of all samples the subframe
@@ -256,8 +256,8 @@ of digital silence (samples with a value of 0) very efficiently.
 \includegraphics{figures/flac_verbatim.pdf}
 \end{figure}
 \noindent
-This subframe's length is equal to the subframe's `Bits per Sample'
-multiplied by the frame's `Block Size'.
+This subframe's length is equal to the subframe's \VAR{Bits per Sample}
+multiplied by the frame's \VAR{Block Size}.
 Since it does no compression whatsoever and simply stores
 audio samples as-is, this subframe is only suitable for especially
 noisy portions of a track where no suitable predictor can be found.
@@ -268,9 +268,9 @@ noisy portions of a track where no suitable predictor can be found.
 \includegraphics{figures/flac_fixed.pdf}
 \end{figure}
 \noindent
-The number of warm-up samples equals the `Predictor Order'
-(which is encoded in the `Subframe Type').
-Each warm-up sample is the same size as the subframe's `Bits per Sample'.
+The number of warm-up samples equals the \VAR{Predictor Order}
+(which is encoded in the \VAR{Subframe Type}).
+Each warm-up sample is the same size as the subframe's \VAR{Bits per Sample}.
 These samples are sent out as-is; they are the subframe's
 `starting point' upon which further samples build when decompressing
 the stream.
@@ -323,13 +323,13 @@ How to extract the encoded residual will be covered in a later section.
 \end{figure}
 \par
 \noindent
-The number of warm-up samples equals the `LPC Order'
-(which is encoded in the `Subframe Type').
+The number of warm-up samples equals the \VAR{LPC Order}
+(which is encoded in the \VAR{Subframe Type}).
 The size of each QLP Coefficient is equal to
-`QLP Precision' number of bits, plus 1.
-`QLP Shift Needed' and the value of each Coefficient are
+\VAR{QLP Precision} number of bits, plus 1.
+\VAR{QLP Shift Needed} and the value of each Coefficient are
 signed two's-complement integers.
-The number of Coefficients equals the `LPC Order'.
+The number of Coefficients equals the \VAR{LPC Order}.
 \begin{equation}
 Sample_i = \left\lfloor \frac{\overset{Order - 1}{\underset{j = 0}{\sum}}
   \text{QLP Coefficient}_j \times \text{Sample}_{i - j - 1} } {2 ^ \text{QLP Shift Needed}}\right\rfloor + Residual_i
@@ -392,9 +392,9 @@ In this instance, division should always round down and \textit{not} towards zer
 Though the FLAC format allows for different forms of
 residual coding, two forms of partitioned Rice are the only ones
 currently supported.
-The difference between the two is that when `Coding Method' is 0,
+The difference between the two is that when \VAR{Coding Method} is 0,
 the Rice Parameter in each partition is 4 bits.
-When the `Coding Method' is 1, that parameter is 5 bits.
+When the \VAR{Coding Method} is 1, that parameter is 5 bits.
 \begin{figure}[h]
 \includegraphics{figures/flac_residual.pdf}
 \end{figure}
@@ -415,8 +415,8 @@ The first partition in the subframe contains:
 \noindent
 since there is only one partition which takes up the entire block.
 
-If all of the bits in `Rice Parameter' are set,
-the partition is unencoded binary using `Escape Code' number of bits per
+If all of the bits in \VAR{Rice Parameter} are set,
+the partition is unencoded binary using \VAR{Escape Code} number of bits per
 sample.
 
 \pagebreak
@@ -430,7 +430,7 @@ counting the number of 0 bits before the next 1 bit.
 The resulting sum is the value.}
 from the bit stream, which are our most
 significant bits (MSB).
-Then take `parameter' number of additional bits, which are our least
+Then take \VAR{parameter} number of additional bits, which are our least
 significant bits (LSB).
 Combine the two sets into our new value,
 making the MSB set as the high bits and the LSB set as the low bits.
@@ -638,7 +638,7 @@ bits & value \\
 
 If all the samples in a subframe are identical, one can encode them
 using a \texttt{CONSTANT} subframe, which is essentially a single sample value
-that gets duplicated `block size' number of times when decoded.
+that gets duplicated \VAR{block size} number of times when decoded.
 
 \subsection{the VERBATIM subframe}
 
@@ -649,7 +649,7 @@ data any smaller.
 
 \subsection{the FIXED subframe}
 
-This subframe consists of `predictor order' number of unencoded
+This subframe consists of \VAR{predictor order} number of unencoded
 warm-up samples followed by a residual.
 Determining which predictor order to use on a given set of input samples
 depends on their minimum delta sum.
@@ -821,7 +821,7 @@ we then compute the autocorrelation values from that signal.
 Each autocorrelation value is determined by multiplying the signal's
 samples by the samples of a lagged version of that same signal,
 and then taking the sum.
-The lagged signal is simply the original signal with `lag' number of
+The lagged signal is simply the original signal with \VAR{lag} number of
 samples removed from the beginning.
 
 \begin{figure}[h]
@@ -910,17 +910,17 @@ and an error scale constant in addition to the LPC error values:
 \end{equation}
 \noindent
 Once the error scale has been calculated, one can generate a
-`Bits per Residual' estimation function which, given an LPC Error value,
-returns what its name implies:
+\VAR{Bits per Residual} estimation function which, given an \VAR{LPC Error}
+value, returns what its name implies:
 \begin{equation}
 \text{Bits per Residual}(\text{LPC Error}) = \frac{\ln(\text{Error Scale} \times \text{LPC Error})}{2 \times \ln(2)}
 \end{equation}
 With this function, we can estimate how many bits the entire LPC subframe
-will take for each LPC Error value and its associated Order:
+will take for each \VAR{LPC Error} value and its associated \VAR{Order}:
 {\relsize{-2}
-\begin{equation}
+\begin{equation*}
 \text{Total Bits}(\text{LPC Error},\text{Order}) = \text{Bits per Residual}(\text{LPC Error}) \times (\text{Total Samples} - \text{Order}) + (\text{Order} \times \text{Overhead bits})
-\end{equation}
+\end{equation*}
 }
 Continuing with our example, we have 20 samples and
 now have the error values of 2495, 2492 and 2490.
@@ -1071,8 +1071,9 @@ QLP precision can be 6.
 
 \subsubsection{Calculating LPC residual}
 
-A number of warm-up samples equal to LPC Order are taken from the input PCM
-and the subframe's residuals are calculated according to the following formula:
+A number of warm-up samples equal to \VAR{LPC Order} are taken
+from the input PCM and the subframe's residuals are calculated
+according to the following formula:
 \begin{equation}
 \text{Residual}_i = \text{Sample}_i -
 \left \lfloor \frac{\overset{Order - 1}{\underset{j = 0}{\sum}}
@@ -1093,7 +1094,7 @@ the coefficients: 1241, -944, 14, 342, -147
 %% \end{tabular}
 %% }
 %% \end{table}
-and a QLP Shift Needed value of 9, our residuals are as follows:
+and a \VAR{QLP Shift Needed} value of 9, our residuals are as follows:
 \begin{table}[h]
 {\relsize{-2}
 \begin{tabular}{|c|r|>{$}r<{$}|}

@@ -27,10 +27,10 @@ bits & Header Type \\
 \hline
 \end{tabular}
 }
-`Granule position' is a time marker.
+\VAR{Granule position} is a time marker.
 In the case of Ogg Vorbis, it is the sample count.
 
-`Bitstream Serial Number' is an identifier for the given
+\VAR{Bitstream Serial Number} is an identifier for the given
 bitstream which is unique within the Ogg file.
 For instance, an Ogg file might contain both video and
 audio pages, interleaved.
@@ -38,13 +38,13 @@ The Ogg pages for the audio will have a different
 serial number from those of the video so that the decoder
 knows where to send the data of each.
 
-`Page Sequence Number' is an integer counter which starts from 0
+\VAR{Page Sequence Number} is an integer counter which starts from 0
 and increments 1 for each Ogg page.
 Multiple bitstreams will have separate sequence numbers.
 
-`Checksum' is a 32-bit checksum of the entire Ogg page.
+\VAR{Checksum} is a 32-bit checksum of the entire Ogg page.
 
-The `Page Segments' value indicates how many segments are in
+The \VAR{Page Segments} value indicates how many segments are in
 this Ogg page.
 Each segment will have an 8-bit length.
 If that length is 255, it indicates the next segment is
@@ -76,7 +76,7 @@ This contains the sample rate and number of channels.
 Vorbis does not have a bits-per-sample field, as samples
 are stored internally as floating point values and are
 converted into a certain number of bits in the decoding process.
-To find the total samples, use the `Granule Position' value
+To find the total samples, use the \VAR{Granule Position} value
 in the stream's final Ogg page.
 \begin{figure}[h]
 \includegraphics{figures/vorbis_identification.pdf}
@@ -93,7 +93,7 @@ The second packet within a Vorbis stream is the Comment packet.
 \end{figure}
 
 The length fields are all little-endian.
-The Vendor String and Comment Strings are all UTF-8 encoded.
+The \VAR{Vendor String} and \VAR{Comment Strings} are all UTF-8 encoded.
 Keys are not case-sensitive and may occur multiple times,
 indicating multiple values for the same field.
 For instance, a track with multiple artists may have

@@ -14,12 +14,12 @@ refer to as \texttt{unsigned}, \texttt{signed} and \texttt{long}.
 \includegraphics{figures/shorten_signed.pdf}
 \caption{Signed}
 \end{wrapfigure}
-An \texttt{unsigned} field of a certain ``size'' means we first
+An \texttt{unsigned} field of a certain \VAR{size} means we first
 take a unary-encoded\footnote{In this instance, unary-encoding is a simple
 matter of counting the number of 0 bits before the next 1 bit.
 The resulting sum is the value.}, number of high bits and combine
-the resulting value with ``size'' number of low bits.
-For example, given a ``size'' of 2 and the bits `\texttt{0 0 1 1 1}',
+the resulting value with \VAR{size} number of low bits.
+For example, given a \VAR{size} of 2 and the bits `\texttt{0 0 1 1 1}',
 the high unary value of `\texttt{0 0 1}' combines with the low
 raw value of `\texttt{1 1}' resulting in a decimal value of 11.
 
@@ -34,7 +34,7 @@ one additional trailing bit for the sign value.
 \end{cases}
 \end{equation*}
 }
-For example, given a ``size'' of 3 and the bits `\texttt{0 1 1 0 1 1}',
+For example, given a \VAR{size} of 3 and the bits `\texttt{0 1 1 0 1 1}',
 the high unary value of `\texttt{0 1}' combines with the low
 raw value of `\texttt{1 0 1}' and the sign bit `\texttt{1}'
 resulting in a decimal value of -14.
@@ -87,10 +87,10 @@ file type & format \\
 \end{table}
 \par
 \noindent
-``Channels'' is the number of channels in the audio stream.
-``Block Length'' is the length of each command block, in samples.
-``Max LPC'' is the maximum LPC value a block may have.
-``Samples to Wrap'' is the number of samples to be wrapped around
+\VAR{Channels} is the number of channels in the audio stream.
+\VAR{Block Length} is the length of each command block, in samples.
+\VAR{Max LPC} is the maximum LPC value a block may have.
+\VAR{Samples to Wrap} is the number of samples to be wrapped around
 from the top of an output block to the bottom.
 This will be explained in more detail in the decoding section.
 
@@ -125,9 +125,9 @@ All four \texttt{DIFF} commands are structured the same:
 \end{figure}
 \par
 \noindent
-There are ``Block Size'' number of residuals per \texttt{DIFF}
+There are \VAR{Block Size} number of residuals per \texttt{DIFF}
 (whose initial value is determined by the Shorten header)
-and each one's size is determined by ``Energy Size''.
+and each one's size is determined by \VAR{Energy Size}.
 The process of transforming these residuals into samples
 depends on the \texttt{DIFF} command and the values of
 previously decoded samples.
@@ -185,10 +185,10 @@ few samples from $\texttt{DIFF}_1$ in order to apply its residuals
 (since both are on the left channel) and $\texttt{DIFF}_4$
 takes the last few samples from $\texttt{DIFF}_2$.
 
-This is where the header's ``Samples to Wrap'' field comes into play.
+This is where the header's \VAR{Samples to Wrap} field comes into play.
 Its value is the number of samples to be wrapped from the top of the buffer
 to its pre-zero values.
-For example, if ``Sample Count'' is 256 and ``Samples to Wrap'' is 3
+For example, if \VAR{Sample Count} is 256 and \VAR{Samples to Wrap} is 3
 (another typical configuration),
 $\text{Buffer}_{-1}$ takes the value of $\text{Buffer}_{255}$,
 $\text{Buffer}_{-2}$ takes the value of $\text{Buffer}_{254}$, and
@@ -204,19 +204,19 @@ It indicates the Shorten stream is finished and decoding is completed.
 \subsection{the BLOCKSIZE command}
 
 This command takes a single \texttt{long} argument
-whose value is the new ``Block Size''.
+whose value is the new \VAR{Block Size}.
 In effect, it modifies that variable in the Shorten virtual machine.
 
 \subsection{the ZERO command}
 
 This command takes no arguments.
-It simply generates ``Block Size'' number of zero samples
+It simply generates \VAR{Block Size} number of zero samples
 into the current channel's output buffer.
 
 \subsection{the BITSHIFT command}
 
 This commands takes a single \texttt{unsigned(2)} value
-and modifies the ``bitshift'' variable in the Shorten virtual machine.
+and modifies the \VAR{bitshift} variable in the Shorten virtual machine.
 This value is how many bits to left-shift all output samples
 prior to returning them.
 
@@ -227,7 +227,7 @@ calculation which, in turn, allows us to store those samples more
 efficiently.
 
 Note that bit shifting is applied \textit{after} channel wrapping
-and ``coffset'' calculation\footnote{See page \pageref{shorten_coffset}}.
+and \VAR{coffset} calculation\footnote{See page \pageref{shorten_coffset}}.
 
 \pagebreak
 
@@ -278,7 +278,7 @@ Index & Residual & \text{Sample} \\
 \end{figure}
 \par
 Unfortunately, there's one more wrinkle to consider for proper
-\texttt{QLPC} command decoding: the ``coffset''.
+\texttt{QLPC} command decoding: the \VAR{coffset}.
 How to calculate this value will be covered in the next section.
 But when a \texttt{QLPC} command is encountered, the coffset value
 is subtracted from the \texttt{QLPC}'s warm-up samples
@@ -286,7 +286,7 @@ is subtracted from the \texttt{QLPC}'s warm-up samples
 Then that coffset value is re-added to our output samples after
 calculation.
 
-For example, given a ``coffset'' value of 5, one would subtract 5 from
+For example, given a \VAR{coffset} value of 5, one would subtract 5 from
 $\text{Sample}_{-3}$, $\text{Sample}_{-2}$ and $\text{Sample}_{-1}$,
 perform the QLPC calculation and then add 5 to our
 $\text{Sample}_{0}$, $\text{Sample}_{1}$, $\text{Sample}_{2}$, ... ,
@@ -298,15 +298,15 @@ before returning those values.
 \label{shorten_coffset}
 \subsection{the coffset}
 
-Calcuating the ``coffset'' value for a given command on a given channel
-requires a set of ``offset'' values
-(whose count equals the ``Number of Means'', from the Shorten header)
-and the ``Number of Means'' value itself.
+Calcuating the \VAR{coffset} value for a given command on a given channel
+requires a set of \VAR{offset} values
+(whose count equals the \VAR{Number of Means}, from the Shorten header)
+and the \VAR{Number of Means} value itself.
 \begin{equation}
 \text{coffset} = \frac{\frac{\text{nmeans}}{2} +
 \overset{\text{nmeans} - 1}{\underset{i = 0}{\sum}} \text{offset}_i }{\text{nmeans}}
 \end{equation}
-For example, given a ``Number of Means'' value of 4 and offsets of:
+For example, given a \VAR{Number of Means} value of 4 and offsets of:
 \begin{table}[h]
 \begin{tabular}{>{$}r<{$} r}
 \text{offset}_0 & 32 \\
@@ -321,7 +321,7 @@ For example, given a ``Number of Means'' value of 4 and offsets of:
 \text{coffset} = \frac{\frac{4}{2} + (32 + 28 + 17 + 14)}{4} = \frac{93}{4} = \bf23
 \end{equation}
 \par
-The next obvious question is where to those ``offset'' values come from?
+The next obvious question is where to those \VAR{offset} values come from?
 They're actually a queue of (mostly) sample value averages on the
 given channel.
 So once we've decoded offset for $\text{command}_5$ on channel 0,
@@ -338,7 +338,7 @@ Its actual formula is as follows:
 \end{equation}
 \par
 \noindent
-For example, if a command with a ``block size'' of 256 has samples
+For example, if a command with a \VAR{block size} of 256 has samples
 that total 1056, its offset value is:
 \begin{equation}
 \text{offset} = \frac{\frac{\text{256}}{2} + 1056}{\text{256}} = \frac{1184}{256} = \bf4
@@ -410,7 +410,7 @@ decoder\footnote{By limiting its accumulator to a 32-bit integer,
 it's prone to overflow at high LPC counts.} and tends not to
 produce smaller files.
 And, by omitting \texttt{DIFF0} which is rarely used,
-we can avoid ``coffset'' calculation during encoding.
+we can avoid \VAR{coffset} calculation during encoding.
 
 \pagebreak
 
@@ -434,13 +434,13 @@ PCM container itself.
 \subsection{the BLOCKSIZE command}
 
 Most \texttt{DIFF} and \texttt{ZERO} commands should contain
-``Block Length'' number of samples, as indicated in the header.
+\VAR{Block Length} number of samples, as indicated in the header.
 But when the end of the input stream is reached and a different
 number of samples are all that remain, a \texttt{BLOCKSIZE}
 is required.
 This is simply an \texttt{unsigned(2)} variable with a value of 5
 (indicating the \texttt{BLOCKSIZE} command)
-followed by a \texttt{long} variable containing the new ``Block Length''.
+followed by a \texttt{long} variable containing the new \VAR{Block Length}.
 
 \subsection{the QUIT command}
 
@@ -539,7 +539,7 @@ In this example, our residuals for \texttt{DIFF1} are:
 \pagebreak
 
 Finally, given a set of residual values, we need to determine
-their ``Energy Size''.
+their \VAR{Energy Size}.
 This is done by selecting the smallest value of `x' such that:
 \begin{equation}
 \text{sample count} \times 2 ^ x > \overset{\text{residual count} - 1}{\underset{i = 0}{\sum}} |\text{residual}_i|
@@ -584,5 +584,5 @@ index & \text{residual}_i & | \text{residual}_i | \\
 20 \times 2^1 & \leq 56 \\
 20 \times 2^2 & > 56
 \end{align*}
-Therefore, the best ``Energy Size'' for this set of residuals is 2.
+Therefore, the best \VAR{Energy Size} for this set of residuals is 2.
 

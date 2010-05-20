@@ -23,10 +23,10 @@ may be containers for other atoms.  All of its fields are big-endian.
 \begin{figure}[h]
 \includegraphics{figures/m4a_atom.pdf}
 \end{figure}
-Atom Type is an ASCII string.
-Atom Length is the length of the entire atom, including the header.
-If Atom Length is 0, the atom continues until the end of the file.
-If Atom Length is 1, the atom has an extended size.  This means
+\VAR{Atom Type} is an ASCII string.
+\VAR{Atom Length} is the length of the entire atom, including the header.
+If \VAR{Atom Length} is 0, the atom continues until the end of the file.
+If \VAR{Atom Length} is 1, the atom has an extended size.  This means
 there is a 64-bit length field immediately after the header which is
 the atom's actual size.
 \begin{figure}[h]
@@ -50,14 +50,14 @@ containing the song data itself.
 \subsection{the ftyp atom}
 \includegraphics{figures/m4a_ftyp.pdf}
 \par
-The `Major Brand' and `Compatible Brand' fields are ASCII strings.
-`Major Brand Version' is an integer.
+The \VAR{Major Brand} and \VAR{Compatible Brand} fields are ASCII strings.
+\VAR{Major Brand Version} is an integer.
 
 \subsection{the mvhd atom}
 \includegraphics{figures/m4a_mvhd.pdf}
 \par
-If `Version' is 0, `Created Mac UTC Date', `Modified Mac UTC Date' and
-`Duration' are 32-bit fields.  If it is 1, they are 64-bit fields.
+If \VAR{Version} is 0, \VAR{Created Mac UTC Date}, \VAR{Modified Mac UTC Date} and
+\VAR{Duration} are 32-bit fields.  If it is 1, they are 64-bit fields.
 \end{figure}
 
 \pagebreak
@@ -69,8 +69,8 @@ If `Version' is 0, `Created Mac UTC Date', `Modified Mac UTC Date' and
 \end{figure}
 \par
 \noindent
-As with `mvhd', if `Version' is 0, `Created Mac UTC Date',
-`Modified Mac UTC Date' and `Duration' are 32-bit fields.
+As with `mvhd', if \VAR{Version} is 0, \VAR{Created Mac UTC Date},
+\VAR{Modified Mac UTC Date} and \VAR{Duration} are 32-bit fields.
 If it is 1, they are 64-bit fields.
 
 \subsection{the mdhd atom}
@@ -83,8 +83,8 @@ track length and creation/modification times.
 \end{figure}
 \par
 \noindent
-As with `mvhd', if `Version' is 0, `Created Mac UTC Date',
-`Modified Mac UTC Date' and `Track Length' are 32-bit fields.
+As with `mvhd', if \VAR{Version} is 0, \VAR{Created Mac UTC Date},
+\VAR{Modified Mac UTC Date} and \VAR{Track Length} are 32-bit fields.
 If it is 1, they are 64-bit fields.
 
 \pagebreak
@@ -96,7 +96,7 @@ If it is 1, they are 64-bit fields.
 \end{figure}
 \par
 \noindent
-`QuickTime flags', `QuickTime flags mask' and `Component Name Length'
+\VAR{QuickTime flags}, \VAR{QuickTime flags mask} and \VAR{Component Name Length}
 are integers.  The rest are ASCII strings.
 
 \subsection{the smhd atom}
@@ -179,8 +179,8 @@ non-ASCII 0xA9 byte.
 \includegraphics{figures/m4a_data.pdf}
 \par
 \noindent
-Text data atoms have a type of 1.
-Binary data atoms typically have a type of 0.
+Text data atoms have a \VAR{Type} of 1.
+Binary data atoms typically have a \VAR{Type} of 0.
 \end{figure}
 \begin{table}[h]
 {\relsize{-1}

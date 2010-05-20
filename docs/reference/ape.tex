@@ -24,7 +24,7 @@ All of its fields are little-endian.
 \end{figure}
 \par
 \noindent
-Version is the encoding software's version times 1000.
+\VAR{Version} is the encoding software's version times 1000.
 i.e. Monkey's Audio 3.99 = 3990
 
 \section{the Monkey's Audio header}
@@ -45,8 +45,8 @@ Monkey's Audio files, among others.
 \end{figure}
 \par
 \noindent
-Item Key is an ASCII string from the range 0x20 to 0x7E.
-Item Value is typically a UTF-8 encoded string, but may
+\VAR{Item Key} is an ASCII string from the range 0x20 to 0x7E.
+\VAR{Item Value} is typically a UTF-8 encoded string, but may
 also be binary depending on the Flags.
 
 \begin{multicols}{2}
@@ -95,11 +95,11 @@ also be binary depending on the Flags.
 \par
 \noindent
 The format of the APEv2 header and footer are identical
-except for the `Is Header' tag.
-`Version' is typically 2000 (stored little-endian).
-`Tag Size' is the size of the entire APEv2 tag, including the
+except for the \VAR{Is Header} tag.
+\VAR{Version} is typically 2000 (stored little-endian).
+\VAR{Tag Size} is the size of the entire APEv2 tag, including the
 footer but excluding the header.
-`Item Count' is the number of individual tag items.
+\VAR{Item Count} is the number of individual tag items.
 
 \subsection{the APEv2 flags}
 \begin{figure}[h]
@@ -109,7 +109,7 @@ footer but excluding the header.
 \noindent
 This flags field is used by both the APEv2 header/footer and the
 individual tag items.
-The `Encoding' field indicates the encoding of its value:
+The \VAR{Encoding} field indicates the encoding of its value:
 
 \begin{inparaenum}
 \item[\texttt{00} = ] UTF-8,

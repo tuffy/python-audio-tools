@@ -35,6 +35,7 @@
 \newcommand{\CRCSIXTEEN}[6]{\text{checksum}_{#1} &= \text{CRC16}(\texttt{#2}\xor(\texttt{#3} \gg \texttt{8}))\xor(\texttt{#3} \ll \texttt{8}) = \text{CRC16}(\texttt{#4})\xor \texttt{#5} = \texttt{#6}}
 \newcommand{\LINK}[1]{\href{#1}{\texttt{#1}}}
 \newcommand{\REFERENCE}[2]{\item #1 \\ \LINK{#2}}
+\newcommand{\VAR}[1]{``{#1}''}
 \title{Audio Formats Reference}
 \author{Brian Langenberger}
 \begin{document}

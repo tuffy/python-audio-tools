@@ -52,15 +52,15 @@ value & sample rate \\
 \end{tabular}
 }
 }
-The `flags' field is stored as a little-endian 32-bit integer.
+The \VAR{flags} field is stored as a little-endian 32-bit integer.
 Since some fields cross byte boundaries, their high and low bits
 will be far apart when written in this format where the bits are
 ordered the way they appear in the file.
 
-`Block Size' is the length of everything past everything past the
+\VAR{Block Size} is the length of everything past everything past the
 block header, minus 24 bytes.
 
-`Bits per Sample' is one of 4 values:
+\VAR{Bits per Sample} is one of 4 values:
 
 \begin{inparaenum}
 \item[\texttt{00} = ] 8 bps,
@@ -70,11 +70,11 @@ block header, minus 24 bytes.
 \end{inparaenum}
 .
 
-`Mono Output' bit indicates the channel count.
+\VAR{Mono Output} bit indicates the channel count.
 If 1, this block has 1 channel.
 If 0, this block has 2 channels.
 For an audio stream with more than 2 channels,
-check the `Initial Block' and `Final Block' bits to indicate
+check the \VAR{Initial Block} and \VAR{Final Block} bits to indicate
 the start and end of the channels.  As an example:
 
 \begin{tabular}{c|c|c|c}
@@ -94,13 +94,13 @@ Initial Block & Final Block & Mono Output & Channels \\
 \end{figure}
 \par
 \noindent
-If the `Large Block' field is 0, the `Block Size' field is 8 bits long.
-If it is 1, the `Block Size' field is 24 bits long.
-The `Block Size' field is the length of `Block Data', in 16-bit
+If the \VAR{Large Block} field is 0, the \VAR{Block Size} field is 8 bits long.
+If it is 1, the \VAR{Block Size} field is 24 bits long.
+The \VAR{Block Size} field is the length of \VAR{Block Data}, in 16-bit
 words rather than bytes.
-If `Actual Size 1 Less' is set, that means `Block Data' doesn't contain
+If \VAR{Actual Size 1 Less} is set, that means \VAR{Block Data} doesn't contain
 an even number of bytes; it is padded with a single null byte at the
 end in order to fit.
-If `Nondecoder Data' is set, that means the decoder does not have
+If \VAR{Nondecoder Data} is set, that means the decoder does not have
 to understand the contents of this particular sub-block in
 order to decode the audio.

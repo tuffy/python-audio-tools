@@ -46,9 +46,9 @@ All of its fields are big-endian.
 \end{figure}
 \par
 \noindent
-`Key' is a two character uppercase ASCII string
+\VAR{Key} is a two character uppercase ASCII string
 (i.e. each digit must be between the characters 0x41 and 0x5A, inclusive).
-`Length' is a variable length field indicating the size of the entire packet,
+\VAR{Length} is a variable length field indicating the size of the entire packet,
 including the header.
 This is a Nut-encoded field whose total size depends on whether
 the eighth bit of each byte is 0 or 1.
@@ -66,19 +66,19 @@ audio packet in the file.
 \end{figure}
 \par
 \noindent
-`CRC32' is a checksum of everything in the header, not including the
+\VAR{CRC32} is a checksum of everything in the header, not including the
 checksum itself.
-`Sample Count' is the total number of samples, as a Nut-encoded value.
-`Beginning Silence' is the number of silence samples at the start
+\VAR{Sample Count} is the total number of samples, as a Nut-encoded value.
+\VAR{Beginning Silence} is the number of silence samples at the start
 of the stream, also as a Nut-encoded value.
-`Channels' is the total number of channels in the stream, minus 1.
-`Mid Side Used' indicates the channels are stored using mid-side stereo.
-`Frame Count' is used to calculate the total number of frames per
+\VAR{Channels} is the total number of channels in the stream, minus 1.
+\VAR{Mid Side Used} indicates the channels are stored using mid-side stereo.
+\VAR{Frame Count} is used to calculate the total number of frames per
 audio packet:
 \begin{equation}
 \text{Number of Frames} = 4 ^ \text{Frame Count}
 \end{equation}
-`Sample Rate' is one of four values:
+\VAR{Sample Rate} is one of four values:
 
 \begin{inparaenum}
 \item[\texttt{000} = ] 44100Hz,

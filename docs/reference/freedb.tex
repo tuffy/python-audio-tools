@@ -70,10 +70,10 @@ on disc from another.
 \end{figure}
 \par
 \noindent
-`Track Count' is self-explanatory.
-`Total Length' is the total length of all the tracks, not
+\VAR{Track Count} is self-explanatory.
+\VAR{Total Length} is the total length of all the tracks, not
 counting the initial 2 second lead-in.
-`Offset Seconds Digit Sum' is the sum of the digits of all
+\VAR{Offset Seconds Digit Sum} is the sum of the digits of all
 the disc's track offsets, in seconds, and truncated to 8 bits.
 Remember to count the initial 2 second/150 frame lead-in when calculating
 offsets.
@@ -92,15 +92,15 @@ Number & in M:SS & in seconds & in frames & in M:SS & in seconds & in frames \\
 \end{table}
 \par
 \noindent
-In this example, `Track Count' is \textbf{4}.
-`Total Length' is
+In this example, \VAR{Track Count} is \textbf{4}.
+\VAR{Total Length} is
 $\frac{16340 + 15294 + 16340 + 15045}{75} = \textbf{840}$
 
 There are 75 frames per second, and one must remember to count
 fractions of seconds when calculating the total disc length.
 
-The `Offset Seconds Digit Sum' is calculated by looking at the
-`Offset in Seconds' column.
+The \VAR{Offset Seconds Digit Sum} is calculated by looking at the
+\VAR{Offset in Seconds} column.
 Those values are 2, 219, 423 and 641.
 One must take all of those digits and add them, which works out to
 $2 + 2 + 1 + 9 + 4 + 2 + 3 + 6 + 4 + 1 = \textbf{34}$

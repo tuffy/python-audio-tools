@@ -17,7 +17,7 @@ is little-endian.
 \includegraphics{figures/wav_stream.pdf}
 \par
 \noindent
-`Chunk Size' is the total size of the chunk, minus
+\VAR{Chunk Size} is the total size of the chunk, minus
 8 bytes for the chunk header.
 \section{the Classic `fmt' Chunk}
 Wave files with 2 channels or less, and 16 bits-per-sample or less,
@@ -38,7 +38,7 @@ additional fields for channel assignment.
 \end{figure}
 \par
 \noindent
-Note that the `Average Bytes per Second' and `Block Align' fields
+Note that the \VAR{Average Bytes per Second} and \VAR{Block Align} fields
 are calculated the same as a classic fmt chunk.
 
 \section{the `data' Chunk}
@@ -47,7 +47,7 @@ are calculated the same as a classic fmt chunk.
 \end{figure}
 \par
 \noindent
-`PCM Data' is a stream of PCM samples stored in little-endian format.
+\VAR{PCM Data} is a stream of PCM samples stored in little-endian format.
 
 \pagebreak
 
