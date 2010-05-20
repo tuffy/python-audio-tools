@@ -171,3 +171,24 @@ before reading the next residual:
 65535 & \text{if unsigned} > 65535
 \end{cases}
 \end{equation*}
+
+Thus far, residual decoding isn't overly complex.
+We simply calculate $\kappa$ from \VAR{history}, read a residual,
+update \VAR{history} from its unsigned value and repeat the process
+until we've read an entire subframe's worth of residuals.
+The bulk of an ALAC file's residuals will be read in this way.
+However, ALAC also features an ``escape code'' for large chunks
+of 0 residuals (which may happen during a long stretch of
+digital silence, for example).
+
+If \VAR{history} ever falls below 128, this special case is triggered.
+First, we read a special \VAR{block size} residual value
+with a \VAR{Bits per Sample} value of 16 and a $\kappa$\footnote{Again, $\kappa$ cannot exceed \VAR{Maximum K} as encoded in the \texttt{alac} atom.} value of:
+\begin{equation}
+\kappa_{\text{blocksize}} = 7 - \log_2(\text{history}) + \frac{\text{history} + 16}{64}
+\end{equation}
+This \VAR{block size} is how many 0 residuals to send outright -
+which may be 0, indicating no 0 residuals to send.
+Either way, if $\text{\VAR{block size}} \leq 65535$,
+we add 1 to the unsigned value of the next residual in the block (if any).
+Finally, \VAR{history} is automatically set to 0.

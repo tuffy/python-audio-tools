@@ -18,7 +18,8 @@ coverview.1 \
 coverdump.1 \
 record2track.1 \
 tracksplit.1 \
-tracklint.1
+tracklint.1 \
+audiotools-config.1
 
 all: audioformats-letter.pdf audioformats-a4.pdf \
 audiotools-letter.pdf audiotools-a4.pdf

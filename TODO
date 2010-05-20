@@ -1084,4 +1084,12 @@
 ** TODO Document ALAC
 *** DONE the ALAC file stream
 *** TODO ALAC decoding
+**** DONE Frame header
+**** DONE Subframe header
+**** DONE Residual decoding
+**** TODO Residual decoding example
+**** TODO Subframe decoding
+**** TODO Subframe decoding example
+**** TODO Channel decorrelation
+**** TODO Channel decorrelation example
 *** TODO ALAC encoding
