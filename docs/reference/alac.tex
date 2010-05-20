@@ -146,9 +146,9 @@ residual decoding process).
 
 Otherwise, we read $\kappa$ number of \VAR{extra} bits if $\kappa > 1$.
 If \VAR{extra} is greater than 1, we return
-$\text{\VAR{unary}} + (\text{\VAR{extra}} - 1)$.
+$(\text{\VAR{unary}} \times (2^k - 1)) + (\text{\VAR{extra}} - 1)$.
 If not, we push a single \VAR{extra} bit back on the stream and return our
-\VAR{unary} value outright.
+$\text{\VAR{unary}} \times (2^k - 1)$ value.
 
 \clearpage
 
