@@ -130,11 +130,11 @@ For mono streams, this is typically equal to the stream's
 \VAR{Bits per Sample},
 while for stereo streams it's often the \VAR{Bits per Sample} plus 1.
 
-\begin{wrapfigure}[12]{r}{2in}
+\begin{wrapfigure}[14]{r}{2.5in}
 \includegraphics{figures/alac_read_residual.pdf}
 \end{wrapfigure}
 The $\kappa$ and \VAR{Bits per Sample} values are used to read a
-single residual value in the following way:
+single unsigned residual value in the following way:
 
 The initial bit reading portion of the process
 involves reading a unary value with a stop bit of `0'
@@ -147,6 +147,27 @@ residual decoding process).
 Otherwise, we read $\kappa$ number of \VAR{extra} bits if $\kappa > 1$.
 If \VAR{extra} is greater than 1, we return
 $\text{\VAR{unary}} + (\text{\VAR{extra}} - 1)$.
-Otherwise, we push a single \VAR{extra} bit back on the stream and return our
+If not, we push a single \VAR{extra} bit back on the stream and return our
 \VAR{unary} value outright.
 
+\clearpage
+
+We perform the following to convert unsigned residuals to signed residuals
+which are returned to the subframe decoder:
+\begin{equation}
+\text{signed} =
+\begin{cases}
+(\text{unsigned} + 1) \gg 1 & \text{if unsigned is even} \\
+-((\text{unsigned} + 1) \gg 1) & \text{if unsigned is odd}
+\end{cases}
+\end{equation}
+
+Finally, we use our unsigned value to update \VAR{history}
+before reading the next residual:
+\begin{equation*}
+\text{history} =
+\begin{cases}
+(\text{unsigned} \times \text{history multiplier}) - \left\lfloor\frac{\text{history} \times \text{history multiplier}}{2^9}\right\rfloor & \text{if unsigned} \leq 65535 \\
+65535 & \text{if unsigned} > 65535
+\end{cases}
+\end{equation*}

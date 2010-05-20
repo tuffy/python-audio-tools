@@ -141,7 +141,7 @@ figures/alac_atoms.pdf: figures/alac_atoms.fig
 	fig2dev -Z 5 -L pdf $< $@
 
 figures/alac_read_residual.pdf: figures/alac_read_residual.fig
-	fig2dev -Z 4 -L pdf $< $@
+	fig2dev -Z 5 -L pdf $< $@
 
 .SUFFIXES: .pdf .xml
 
