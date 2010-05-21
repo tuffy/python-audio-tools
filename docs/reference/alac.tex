@@ -250,3 +250,39 @@ but why that is so will be explained below.
 \end{itemize}
 Thus, our batch of signed residual values are 1, 4, -2 and 1.
 
+\clearpage
+
+\subsection{Subframe calculation}
+
+% example:
+% decode residuals [16, 1, 9, -1, -1, 1, -4, 7, -7, -1]
+% with starting coeffs [1122, -766, 107, 122]
+% and prediction_quantitization 9
+% to samples [16, 17, 26, 25, 24, 23, 20, 24, 23, 20]
+
+Given our list of decoded residual values;
+along with a list of coefficients,
+a \VAR{Coefficient Count} and a \VAR{Prediction Quantitization} value
+(all from the subframe header),
+we can now generate a list of signed subframe samples for a
+given channel.
+
+The first residual is always the first output sample:
+\begin{align*}
+\text{Sample}_0 &= \text{Residual}_0 \\
+\intertext{Then, for the next \VAR{Coefficient Count} number of residuals:}
+\text{Sample}_i &= \text{Residual}_i + \text{Sample}_{i - 1}
+\end{align*}
+
+For example, given that we have a \VAR{Coefficient Count} of 4
+and our first five residuals are 16, 1, 9, -1 and -1;
+our first five sample values are:
+\begin{align*}
+\text{Sample}_0 &= \textbf{16} \\
+\text{Sample}_1 = 16 + 1 &= \textbf{17} \\
+\text{Sample}_2 = 17 + 9 &= \textbf{26} \\
+\text{Sample}_3 = 26 - 1 &= \textbf{25} \\
+\text{Sample}_4 = 25 - 1 &= \textbf{24}
+\end{align*}
+These are our ``starting point'' samples upon which the remainder
+of the subframe will be built.
