@@ -1087,7 +1087,7 @@
 **** DONE Frame header
 **** DONE Subframe header
 **** DONE Residual decoding
-**** TODO Residual decoding example
+**** DONE Residual decoding example
 **** TODO Subframe decoding
 **** TODO Subframe decoding example
 **** TODO Channel decorrelation
