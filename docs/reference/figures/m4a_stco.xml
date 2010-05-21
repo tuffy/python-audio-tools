@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <diagram>
   <row>
-    <col start="0" end="31" width=".5">stsz Length</col>
-    <col start="32" end="63" width=".5">`stsz' (0x7374737A)</col>
+    <col start="0" end="31" width=".5">stco Length</col>
+    <col start="32" end="63" width=".5">`stco' (0x7374636F)</col>
   </row>
   <row>
     <col start="64" end="71" width=".25">Version</col>

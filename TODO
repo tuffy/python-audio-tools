@@ -1075,6 +1075,7 @@
     (need to figure out what other sample rates ALAC supports)
 ** TODO Build ALAC encoder
 *** TODO Add audiotools.encoders.encode_alac function
+*** TODO Ensure verbatim ALAC file is written correctly
 *** TODO Determine ALAC stream tunables
 *** TODO Discover the best approach to calculate ALAC tunables
     I *think* ffmpeg encodes alac, which gives me a reference encoder.

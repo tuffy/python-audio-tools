@@ -2,7 +2,7 @@
 <diagram>
   <row>
     <col start="0" end="3" width=".5">Prediction Type</col>
-    <col start="4" end="7" width=".5">Preduction Quantitization</col>
+    <col start="4" end="7" width=".5">Prediction Quantitization</col>
   </row>
   <row>
     <col start="8" end="10" width=".5">Rice Modifier</col>
