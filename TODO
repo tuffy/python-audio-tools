@@ -1073,6 +1073,7 @@
     - [ ] 48000Hz
     - [X] 96000Hz
     (need to figure out what other sample rates ALAC supports)
+*** TODO Optimize for speed
 ** TODO Build ALAC encoder
 *** TODO Add audiotools.encoders.encode_alac function
 *** TODO Ensure verbatim ALAC file is written correctly
@@ -1089,8 +1090,25 @@
 **** DONE Subframe header
 **** DONE Residual decoding
 **** DONE Residual decoding example
-**** TODO Subframe decoding
-**** TODO Subframe decoding example
+**** DONE Subframe decoding
+**** DONE Subframe decoding example
 **** TODO Channel decorrelation
 **** TODO Channel decorrelation example
 *** TODO ALAC encoding
+**** TODO Figure out compliant atom contents
+     - [ ] ftyp
+     - [ ] moov->mvhd
+     - [ ] moov->trak->tkhd
+     - [ ] moov->trak->mdia->mdhd
+     - [ ] moov->trak->mdia->hdlr
+     - [ ] moov->trak->mdia->minf->smhd
+     - [ ] moov->trak->mdia->dinf->dref
+     - [ ] moov->trak->mdia->stbl->stsd->alac
+     - [ ] moov->trak->mdia->stbl->stts
+     - [ ] moov->trak->mdia->stbl->stsz
+     - [ ] moov->trak->mdia->stbl->stco
+     - [ ] moov->udta->meta
+     - [ ] free
+     - [ ] mdat
+** TODO Update M4A metadata routines to exploit "free" atoms
+   As with FLAC, rewriting the entire file should be avoided
