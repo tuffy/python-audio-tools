@@ -419,6 +419,24 @@ $\text{Channel}_2$ is our right samples.
 If \VAR{Interlacing Leftweight} is greater than zero,
 we calculate samples as follows:
 \begin{align*}
-\text{Right}_i &= \text{Channel}_1 + \text{Left}_i \\
-\text{Left}_i &= \text{Channel}_0 - \left\lfloor\frac{\text{Channel}_1 \times \text{Interlacing Leftweight}}{2 ^ \text{Interlacing Shift}}\right\rfloor 
+\text{Right}_i &= \text{Channel}_0 - \left\lfloor\frac{\text{Channel}_1 \times \text{Interlacing Leftweight}}{2 ^ \text{Interlacing Shift}}\right\rfloor \\
+\text{Left}_i &= \text{Channel}_1 + \text{Right}_i
 \end{align*}
+
+For example, given the $\text{Channel}_0$ samples of 14, 15, 19, 17, 18;
+the $\text{Channel}_1$ samples of 16, 17, 26, 25, 24,
+an \VAR{Interlacing Shift} value of 2 and an \VAR{Interlacing Leftweight}
+values of 3, we calculate output samples as follows:
+\begin{table}[h]
+\begin{tabular}{|c||>{$}r<{$}|>{$}r<{$}||>{$}r<{$}|>{$}r<{$}|}
+\hline
+Sample & \text{Channel}_0 & \text{Channel}_1 & \text{Right}_i & \text{Left}_i \\
+\hline
+0 & 14 & 16 & 14 - \lfloor(16 \times 3) \div 2^2\rfloor = \textbf{2} & 16 + \textbf{2} = \textbf{18} \\
+1 & 15 & 17 & 15 - \lfloor(17 \times 3) \div 2^2\rfloor = \textbf{3} & 17 + \textbf{3} = \textbf{20} \\
+2 & 19 & 26 & 19 - \lfloor(26 \times 3) \div 2^2\rfloor = \textbf{0} & 26 + \textbf{0} = \textbf{26} \\
+3 & 17 & 25 & 17 - \lfloor(25 \times 3) \div 2^2\rfloor = \textbf{-1} & 25 + \textbf{-1} = \textbf{24} \\
+4 & 18 & 24 & 18 - \lfloor(24 \times 3) \div 2^2\rfloor = \textbf{0} & 24 + \textbf{0} = \textbf{24} \\
+\hline
+\end{tabular}
+\end{table}
