@@ -1085,7 +1085,7 @@
 ** TODO Add ALAC-specific unit tests
 ** TODO Document ALAC
 *** DONE the ALAC file stream
-*** TODO ALAC decoding
+*** DONE ALAC decoding
 **** DONE Frame header
 **** DONE Subframe header
 **** DONE Residual decoding
@@ -1094,8 +1094,8 @@
 **** DONE Subframe decoding example
 **** DONE Channel decorrelation
 **** DONE Channel decorrelation example
-**** TODO Wasted bits
-**** TODO Wasted bits example
+**** DONE Wasted bits
+**** DONE Wasted bits example
 *** TODO ALAC encoding
 **** TODO Figure out compliant atom contents
      - [ ] ftyp

@@ -89,6 +89,7 @@ If \VAR{Wasted Bits} is greater than 0, there is also
 a block of wasted bits samples after the subframe headers but before
 the residuals.
 
+\label{alac_wasted_bits}
 \VAR{Wasted Bits} is an attempt to store the least significant bits
 of each sample more efficiently at high bits-per-sample, where
 that data will often be indistinguishable from random noise.
@@ -419,18 +420,18 @@ $\text{Channel}_2$ is our right samples.
 If \VAR{Interlacing Leftweight} is greater than zero,
 we calculate samples as follows:
 \begin{align*}
-\text{Right}_i &= \text{Channel}_0 - \left\lfloor\frac{\text{Channel}_1 \times \text{Interlacing Leftweight}}{2 ^ \text{Interlacing Shift}}\right\rfloor \\
-\text{Left}_i &= \text{Channel}_1 + \text{Right}_i
+\text{Right}_i &= \text{Channel}_1 - \left\lfloor\frac{\text{Channel}_2 \times \text{Interlacing Leftweight}}{2 ^ \text{Interlacing Shift}}\right\rfloor \\
+\text{Left}_i &= \text{Channel}_2 + \text{Right}_i
 \end{align*}
 
-For example, given the $\text{Channel}_0$ samples of 14, 15, 19, 17, 18;
-the $\text{Channel}_1$ samples of 16, 17, 26, 25, 24,
+For example, given the $\text{Channel}_1$ samples of 14, 15, 19, 17, 18;
+the $\text{Channel}_2$ samples of 16, 17, 26, 25, 24,
 an \VAR{Interlacing Shift} value of 2 and an \VAR{Interlacing Leftweight}
 values of 3, we calculate output samples as follows:
 \begin{table}[h]
 \begin{tabular}{|c||>{$}r<{$}|>{$}r<{$}||>{$}r<{$}|>{$}r<{$}|}
 \hline
-Sample & \text{Channel}_0 & \text{Channel}_1 & \text{Right}_i & \text{Left}_i \\
+Sample & \text{Channel}_1 & \text{Channel}_2 & \text{Right}_i & \text{Left}_i \\
 \hline
 0 & 14 & 16 & 14 - \lfloor(16 \times 3) \div 2^2\rfloor = \textbf{2} & 16 + \textbf{2} = \textbf{18} \\
 1 & 15 & 17 & 15 - \lfloor(17 \times 3) \div 2^2\rfloor = \textbf{3} & 17 + \textbf{3} = \textbf{20} \\
@@ -440,3 +441,16 @@ Sample & \text{Channel}_0 & \text{Channel}_1 & \text{Right}_i & \text{Left}_i \\
 \hline
 \end{tabular}
 \end{table}
+
+\subsection{Wasted bits}
+
+As explained on page \pageref{alac_wasted_bits}, a compressed ALAC frame
+with \VAR{Wasted Bits} stores them interleaved between channels.
+Then, after channel decorrelation, these verbatim values are
+prepended to each sample.
+For example, given a 2 channel stream with 24 bits-per-sample and
+a \VAR{Wasted Bits} value of 1 (meaning our ``wasted'' samples
+are 8 bits large), our final output is as follows:
+\begin{figure}[h]
+\includegraphics{figures/alac_wasted.pdf}
+\end{figure}
