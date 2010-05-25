@@ -158,9 +158,11 @@ static inline void ALACDecoder_free_subframe_header(struct alac_subframe_header 
 }
 
 /*simple routines*/
-void ALACDecoder_print_frame_header(struct alac_frame_header *frame_header);
+void ALACDecoder_print_frame_header(FILE *output,
+				    struct alac_frame_header *frame_header);
 
-void ALACDecoder_print_subframe_header(struct alac_subframe_header *subframe_header);
+void ALACDecoder_print_subframe_header(FILE *output,
+				       struct alac_subframe_header *subframe_header);
 
 PyGetSetDef ALACDecoder_getseters[] = {
   {"sample_rate",

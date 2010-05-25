@@ -953,6 +953,26 @@ class ALACAudio(M4AAudio):
                                       Con.UBInt32("max_coded_frame_size"),
                                       Con.UBInt32("bitrate"),
                                       Con.UBInt32("sample_rate")))
+
+    def __init__(self, filename):
+        self.filename = filename
+        self.qt_stream = __Qt_Atom_Stream__(file(self.filename,"rb"))
+
+        try:
+            alac = ALACAudio.ALAC_ATOM.parse(
+                self.qt_stream['moov']['trak']['mdia']['minf']['stbl']['stsd'].data[8:])
+
+            self.__channels__ = alac.alac.channels
+            self.__bits_per_sample__ = alac.bits_per_sample
+            self.__sample_rate__ = alac.alac.sample_rate
+
+            mdhd = M4AAudio.MDHD_ATOM.parse(
+                self.qt_stream['moov']['trak']['mdia']['mdhd'].data)
+
+            self.__length__ = mdhd.track_length
+        except KeyError:
+            raise InvalidFile(_(u'Required moov atom not found'))
+
     @classmethod
     def is_type(cls, file):
         header = file.read(12)

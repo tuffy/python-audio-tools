@@ -188,7 +188,7 @@ PyObject *ALACDecoder_read(decoders_ALACDecoder* self,
       ALACDecoder_read_wasted_bits(self->bitstream,
 				   &(self->wasted_bits_samples),
 				   frame_header.output_samples,
-				   frame_header.channels,
+				   self->channels,
 				   frame_header.wasted_bits * 8);
     }
 
@@ -724,19 +724,21 @@ status ALACDecoder_decorrelate_stereo_24(struct ia_array *output,
   return OK;
 }
 
-void ALACDecoder_print_frame_header(struct alac_frame_header *frame_header) {
-  printf("channels : %d\n",frame_header->channels);
-  printf("has_size : %d\n",frame_header->has_size);
-  printf("wasted bits : %d\n",frame_header->wasted_bits);
-  printf("is_not_compressed : %d\n",frame_header->is_not_compressed);
-  printf("output_samples : %d\n",frame_header->output_samples);
+void ALACDecoder_print_frame_header(FILE *output,
+				    struct alac_frame_header *frame_header) {
+  fprintf(output,"channels : %d\n",frame_header->channels);
+  fprintf(output,"has_size : %d\n",frame_header->has_size);
+  fprintf(output,"wasted bits : %d\n",frame_header->wasted_bits);
+  fprintf(output,"is_not_compressed : %d\n",frame_header->is_not_compressed);
+  fprintf(output,"output_samples : %d\n",frame_header->output_samples);
 }
 
-void ALACDecoder_print_subframe_header(struct alac_subframe_header *subframe_header) {
-  printf("prediction type : %d\n",subframe_header->prediction_type);
-  printf("prediction quantitization : %d\n",subframe_header->prediction_quantitization);
-  printf("rice modifier : %d\n",subframe_header->rice_modifier);
-  printf("predictor coefficients : ");
+void ALACDecoder_print_subframe_header(FILE *output,
+				       struct alac_subframe_header *subframe_header) {
+  fprintf(output,"prediction type : %d\n",subframe_header->prediction_type);
+  fprintf(output,"prediction quantitization : %d\n",subframe_header->prediction_quantitization);
+  fprintf(output,"rice modifier : %d\n",subframe_header->rice_modifier);
+  fprintf(output,"predictor coefficients : ");
   ia_print(stdout,&(subframe_header->predictor_coef_table));
-  printf("\n");
+  fprintf(output,"\n");
 }
