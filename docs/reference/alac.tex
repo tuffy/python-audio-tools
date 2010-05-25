@@ -95,7 +95,7 @@ that data will often be indistinguishable from random noise.
 In effect, it's a block of interlaced uncompressed samples
 (similar to an uncompressed ALAC frame) each $8 \times \text{\VAR{Wasted Bits}}$
 bits large.
-Those wasted bits are then prepended to each sample prior to channel
+Those wasted bits are then prepended to each sample after channel
 decorrelation.
 I'll explain this process in more detail later.
 
@@ -326,16 +326,16 @@ our \VAR{Coefficient Count} is 4:
 j & & \text{Val}_j & \text{Sign}_j \\
 \hline
 0 & \text{Sample}_0 - \text{Sample}_1 = 16 - 17 =& \textbf{-1} &
-\frac{-1}{|-1|} \times \frac{1}{|1|} = -1 \times 1 = \textbf{-1} \\
+(-1 \div |-1|) \times (1 \div |1|) = -1 \times 1 = \textbf{-1} \\
 \hline
 1 & \text{Sample}_0 - \text{Sample}_2 = 16 - 26 =& \textbf{-10} &
-\frac{-10}{|-10|} \times \frac{1}{|1|} = -1 \times 1 = \textbf{-1} \\
+(-10 \div |-10|) \times (1 \div |1|) = -1 \times 1 = \textbf{-1} \\
 \hline
 2 & \text{Sample}_0 - \text{Sample}_3 = 16 - 25 =& \textbf{-9} &
-\frac{-9}{|-9|} \times \frac{1}{|1|} = -1 \times 1 = \textbf{-1} \\
+(-9 \div |-9|) \times (1 \div |1|) = -1 \times 1 = \textbf{-1} \\
 \hline
 3 & \text{Sample}_0 - \text{Sample}_4 = 16 - 24 =& \textbf{-8} &
-\frac{-8}{|-8|} \times \frac{1}{|1|} = -1 \times 1 = \textbf{-1} \\
+(-8 \div |-8|) \times (1 \div |1|) = -1 \times 1 = \textbf{-1} \\
 \hline
 \end{tabular}
 \end{table}
@@ -379,16 +379,16 @@ is as follows:
 j & & \text{Val}_j & \text{Sign}_j \\
 \hline
 0 & \text{Sample}_1 - \text{Sample}_2 = 17 - 26 =& \textbf{-9} &
-\frac{-9}{|-9|} \times \frac{-4}{|-4|} = -1 \times -1 = \textbf{1} \\
+(-9 \div |-9|) \times (-4 \div |-4|) = -1 \times -1 = \textbf{1} \\
 \hline
 1 & \text{Sample}_1 - \text{Sample}_3 = 17 - 25 =& \textbf{-8} &
-\frac{-8}{|-8|} \times \frac{-4}{|-4|} = -1 \times -1 = \textbf{1} \\
+(-8 \div |-8|) \times (-4 \div |-4|) = -1 \times -1 = \textbf{1} \\
 \hline
 2 & \text{Sample}_1 - \text{Sample}_4 = 17 - 24 =& \textbf{-7} &
-\frac{-7}{|-7|} \times \frac{-4}{|-4|} = -1 \times -1 = \textbf{1} \\
+(-7 \div |-7|) \times (-4 \div |-4|) = -1 \times -1 = \textbf{1} \\
 \hline
 3 & \text{Sample}_1 - \text{Sample}_5 = 17 - 23 =& \textbf{-6} &
-\frac{-6}{|-6|} \times \frac{-4}{|-4|} = -1 \times -1 = \textbf{1} \\
+(-6 \div |-6|) \times (-4 \div |-4|) = -1 \times -1 = \textbf{1} \\
 \hline
 \end{tabular}
 \end{table}
@@ -405,3 +405,20 @@ the calculation stops.  Therefore:}
 \end{align*}
 So, the coefficients for $\text{Sample}_7$ are 1123, -766, 107 and 122.
 
+\clearpage
+
+\subsection{Channel decorrelation}
+
+If we have more than one channel of output, the next step is
+performing channel decorrelation.
+If our \VAR{Interlacing Leftweight} value from the frame header is 0,
+our channels are stored independently.
+In that case, the $\text{Channel}_1$ is our left samples and
+$\text{Channel}_2$ is our right samples.
+
+If \VAR{Interlacing Leftweight} is greater than zero,
+we calculate samples as follows:
+\begin{align*}
+\text{Right}_i &= \text{Channel}_1 + \text{Left}_i \\
+\text{Left}_i &= \text{Channel}_0 - \left\lfloor\frac{\text{Channel}_1 \times \text{Interlacing Leftweight}}{2 ^ \text{Interlacing Shift}}\right\rfloor 
+\end{align*}

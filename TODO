@@ -1092,8 +1092,10 @@
 **** DONE Residual decoding example
 **** DONE Subframe decoding
 **** DONE Subframe decoding example
-**** TODO Channel decorrelation
+**** DONE Channel decorrelation
 **** TODO Channel decorrelation example
+**** TODO Wasted bits
+**** TODO Wasted bits example
 *** TODO ALAC encoding
 **** TODO Figure out compliant atom contents
      - [ ] ftyp
