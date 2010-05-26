@@ -1130,7 +1130,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 **** TODO Figure out compliant atom contents
      - [X] ftyp
      - [X] moov->mvhd
-     - [ ] moov->trak->tkhd
+     - [X] moov->trak->tkhd
      - [ ] moov->trak->mdia->mdhd
      - [ ] moov->trak->mdia->hdlr
      - [ ] moov->trak->mdia->minf->smhd

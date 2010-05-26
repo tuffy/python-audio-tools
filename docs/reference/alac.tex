@@ -542,15 +542,15 @@ duration & 32/64 & total PCM frames \\
 playback speed & 32 & 0x10000 \\
 user volume & 16 & 0x100 \\
 padding & 80 & \texttt{0x00000000000000000000} \\
-window geometry matrix a & 32 & 0x10000 \\
-window geometry matrix b & 32 & 0 \\
-window geometry matrix u & 32 & 0 \\
-window geometry matrix c & 32 & 0 \\
-window geometry matrix d & 32 & 0x10000 \\
-window geometry matrix v & 32 & 0 \\
-window geometry matrix x & 32 & 0 \\
-window geometry matrix y & 32 & 0 \\
-window geometry matrix x & 32 & 0x40000000 \\
+window geometry matrix a & 32 & \texttt{0x10000} \\
+window geometry matrix b & 32 & \texttt{0} \\
+window geometry matrix u & 32 & \texttt{0} \\
+window geometry matrix c & 32 & \texttt{0} \\
+window geometry matrix d & 32 & \texttt{0x10000} \\
+window geometry matrix v & 32 & \texttt{0} \\
+window geometry matrix x & 32 & \texttt{0} \\
+window geometry matrix y & 32 & \texttt{0} \\
+window geometry matrix x & 32 & \texttt{0x40000000} \\
 QuickTime preview & 64 & \texttt{0} \\
 QuickTime still poster & 32 & \texttt{0} \\
 QuickTime selection time & 64 & \texttt{0} \\
@@ -572,8 +572,6 @@ or \texttt{2082844800} seconds.
 \clearpage
 
 \subsubsection{the trak atom}
-
-\begin{table}[h]
 \begin{tabular}{|l|r|l|}
 \hline
 Field & Size & Value \\
@@ -583,6 +581,46 @@ atom type & 32 & `trak' (\texttt{0x7472616b}) \\
 \hline
 \ATOM{tkhd} atom & \ATOM{tkhd} size & \ATOM{tkhd} data \\
 \ATOM{mdia} atom & \ATOM{mdia} size & \ATOM{mdia} data \\
+\hline
+\end{tabular}
+
+\subsubsection{the tkhd atom}
+
+\begin{table}[h]
+\begin{tabular}{|l|r|l|}
+\hline
+Field & Size & Value \\
+\hline
+atom length & 32 & 92/104 \\
+atom type & 32 & `tkhd' (0x746b6864) \\
+\hline
+version & 8 & \texttt{0x00} \\
+padding & 20 & \texttt{0x000000} \\
+track in poster & 1 & \texttt{0} \\
+track in preview & 1 & \texttt{1} \\
+track in movie & 1 & \texttt{1} \\
+track enabled & 1 & \texttt{1} \\
+created date & 32/64 & creation date as Mac UTC \\
+modified date & 32/64 & modification date as Mac UTC \\
+track ID & 32 & \texttt{1} \\
+padding & 32 & \texttt{0x00000000} \\
+duration & 32/64 & total PCM frames \\
+padding & 64 & \texttt{0x0000000000000000} \\
+video layer & 16 & \texttt{0} \\
+QuickTime alternate & 16 & \texttt{0} \\
+volume & 16 & \texttt{0x1000} \\
+padding & 16 & \texttt{0x0000} \\
+video geometry matrix a & 32 & \texttt{0x10000} \\
+video geometry matrix b & 32 & \texttt{0} \\
+video geometry matrix u & 32 & \texttt{0} \\
+video geometry matrix c & 32 & \texttt{0} \\
+video geometry matrix d & 32 & \texttt{0x10000} \\
+video geometry matrix v & 32 & \texttt{0} \\
+video geometry matrix x & 32 & \texttt{0} \\
+video geometry matrix y & 32 & \texttt{0} \\
+video geometry matrix w & 32 & \texttt{0x40000000} \\
+video width & 32 & \texttt{0} \\
+video height & 32 & \texttt{0} \\
 \hline
 \end{tabular}
 \end{table}

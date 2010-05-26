@@ -44,6 +44,7 @@
   </row>
   <row>
     <col start="640/736" end="671/767" width=".25">VGM value W</col>
-    <col start="672/768" end="735/831" width=".75">Video Frame Size</col>
+    <col start="672/768" end="703/799" width=".375">Video Width</col>
+    <col start="704/800" end="735/831" width=".375">Video Height</col>
   </row>
 </diagram>
