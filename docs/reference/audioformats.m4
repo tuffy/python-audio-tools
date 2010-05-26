@@ -36,6 +36,7 @@
 \newcommand{\LINK}[1]{\href{#1}{\texttt{#1}}}
 \newcommand{\REFERENCE}[2]{\item #1 \\ \LINK{#2}}
 \newcommand{\VAR}[1]{``{#1}''}
+\newcommand{\ATOM}[1]{\texttt{#1}}
 \title{Audio Formats Reference}
 \author{Brian Langenberger}
 \begin{document}

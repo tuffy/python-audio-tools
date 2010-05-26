@@ -454,3 +454,52 @@ are 8 bits large), our final output is as follows:
 \begin{figure}[h]
 \includegraphics{figures/alac_wasted.pdf}
 \end{figure}
+
+\clearpage
+
+\section{ALAC encoding}
+
+To encode an ALAC file, we need a stream of PCM sample integers
+along with that stream's sample rate, bits-per-sample and number of
+channels.
+We'll start by encoding all of the non-audio M4A atoms,
+most of which are contained within the \ATOM{moov} atom.
+Remember, all of an M4A's fields are big-endian.
+
+\subsection{ALAC atoms}
+
+We'll encode our ALAC file in iTunes order, which means
+it contains the \ATOM{ftyp}, \ATOM{moov}, \ATOM{free} and
+\ATOM{mdat} atoms, in that order.
+
+%% \begin{table}[h]
+%% \begin{tabular}{|l|r|l|}
+%% \hline
+%% Field & Size & Value \\
+%% \hline
+%% atom length & 32 & ? \\
+%% atom type & 32 & ? \\
+%% \hline
+%% \hline
+%% \end{tabular}
+%% \end{table}
+
+\subsubsection{the ftyp atom}
+
+\begin{table}[h]
+\begin{tabular}{|l|r|l|}
+\hline
+Field & Size & Value \\
+\hline
+atom length & 32 & 32 \\
+atom type & 32 & `ftyp' (\texttt{0x66747970}) \\
+\hline
+major brand & 32 & `M4A ' (\texttt{0x4d344120}) \\
+major brand version & 32 & 0 \\
+compatible brand & 32 & `M4A ' (\texttt{0x4d344120}) \\
+compatible brand & 32 & `mp42' (\texttt{0x6d703432}) \\
+compatible brand & 32 & `isom' (\texttt{0x69736f6d}) \\
+compatible brand & 32 & \texttt{0x00000000} \\
+\hline
+\end{tabular}
+\end{table}

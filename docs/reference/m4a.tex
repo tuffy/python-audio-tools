@@ -75,7 +75,7 @@ If it is 1, they are 64-bit fields.
 
 \subsection{the mdhd atom}
 
-The \texttt{mdhd} atom contains track information such as samples-per-second,
+The \ATOM{mdhd} atom contains track information such as samples-per-second,
 track length and creation/modification times.
 
 \begin{figure}[h]
@@ -121,8 +121,8 @@ are integers.  The rest are ASCII strings.
 
 \subsection{the mp4a atom}
 
-The \texttt{mp4a} atom contains information such as the number of channels
-and bits-per-sample.  It can be found in the \texttt{stsd} atom.
+The \ATOM{mp4a} atom contains information such as the number of channels
+and bits-per-sample.  It can be found in the \ATOM{stsd} atom.
 
 \begin{figure}[h]
 \includegraphics{figures/m4a_mp4a.pdf}
@@ -158,11 +158,11 @@ and bits-per-sample.  It can be found in the \texttt{stsd} atom.
 \par
 \noindent
 Offsets point to an absolute position in the M4A file of AAC data in
-the \texttt{mdat} atom.  Therefore, if the \texttt{moov} atom size changes
-(which can happen by writing new metadata in its \texttt{meta} child atom)
-the \texttt{mdat} atom may move and these obsolute offsets will change.
+the \ATOM{mdat} atom.  Therefore, if the \ATOM{moov} atom size changes
+(which can happen by writing new metadata in its \ATOM{meta} child atom)
+the \ATOM{mdat} atom may move and these obsolute offsets will change.
 In that instance, they \textbf{must}
-be re-adjusted in the \texttt{stco} atom or the file may become unplayable.
+be re-adjusted in the \ATOM{stco} atom or the file may become unplayable.
 
 \subsection{the meta atom}
 
@@ -171,9 +171,9 @@ be re-adjusted in the \texttt{stco} atom or the file may become unplayable.
 \includegraphics{figures/m4a_meta_atoms.pdf}
 }
 \includegraphics{figures/m4a_meta.pdf}
-The atoms within the \texttt{ilst} container are all containers themselves,
-each with a \texttt{data} atom of its own.
-Notice that many of \texttt{ilst}'s sub-atoms begin with the
+The atoms within the \ATOM{ilst} container are all containers themselves,
+each with a \ATOM{data} atom of its own.
+Notice that many of \ATOM{ilst}'s sub-atoms begin with the
 non-ASCII 0xA9 byte.
 
 \includegraphics{figures/m4a_data.pdf}
@@ -188,41 +188,41 @@ Binary data atoms typically have a \VAR{Type} of 0.
 \hline
 Atom & Description & Atom & Description & Atom & Description \\
 \hline
-\texttt{alb} & Album Nam &
-\texttt{ART} & Track Artist &
-\texttt{cmt} & Comments \\
-\texttt{covr} & Cover Image &
-\texttt{cpil} & Compilation &
-\texttt{cprt} & Copyright \\
-\texttt{day} & Year &
-\texttt{disk} & Disc Number &
-\texttt{gnre} & Genre \\
-\texttt{grp} & Grouping &
-\texttt{----} & iTunes-specific &
-\texttt{nam} & Track Name \\
-\texttt{rtng} & Rating &
-\texttt{tmpo} & BMP &
-\texttt{too} & Encoder \\
-\texttt{trkn} & Track Number &
-\texttt{wrt} & Composer &
+\ATOM{alb} & Album Nam &
+\ATOM{ART} & Track Artist &
+\ATOM{cmt} & Comments \\
+\ATOM{covr} & Cover Image &
+\ATOM{cpil} & Compilation &
+\ATOM{cprt} & Copyright \\
+\ATOM{day} & Year &
+\ATOM{disk} & Disc Number &
+\ATOM{gnre} & Genre \\
+\ATOM{grp} & Grouping &
+\ATOM{----} & iTunes-specific &
+\ATOM{nam} & Track Name \\
+\ATOM{rtng} & Rating &
+\ATOM{tmpo} & BMP &
+\ATOM{too} & Encoder \\
+\ATOM{trkn} & Track Number &
+\ATOM{wrt} & Composer &
 & \\
 \hline
 \end{tabular}
-\caption{Known \texttt{ilst} sub-atoms}
+\caption{Known \ATOM{ilst} sub-atoms}
 }
 \end{table}
 
 \pagebreak
 
 \subsubsection{the trkn sub-atom}
-\texttt{trkn} is a binary sub-atom of \texttt{meta} which contains
+\ATOM{trkn} is a binary sub-atom of \ATOM{meta} which contains
 the track number.
 \begin{figure}[h]
 \includegraphics{figures/m4a_trkn.pdf}
 \end{figure}
 
 \subsubsection{the disk sub-atom}
-\texttt{disk} is a binary sub-atom of \texttt{meta} which contains
+\ATOM{disk} is a binary sub-atom of \ATOM{meta} which contains
 the disc number.
 For example, if the track belongs to the first disc in a set of
 two discs, the sub-atom will contain that information.
