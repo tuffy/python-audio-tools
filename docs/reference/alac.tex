@@ -503,3 +503,63 @@ compatible brand & 32 & \texttt{0x00000000} \\
 \hline
 \end{tabular}
 \end{table}
+
+\subsubsection{the moov atom}
+
+\begin{table}[h]
+\begin{tabular}{|l|r|l|}
+\hline
+Field & Size & Value \\
+\hline
+atom length & 32 & \ATOM{mvhd} size + \ATOM{trak} size + \ATOM{udta} size + 8 \\
+atom type & 32 & `moov' (\texttt{0x6d6f6f76}) \\
+\hline
+\ATOM{mvhd} atom & \ATOM{mvhd} size & \ATOM{mvhd} data \\
+\ATOM{trak} atom & \ATOM{trak} size & \ATOM{trak} data \\
+\ATOM{udta} atom & \ATOM{udta} size & \ATOM{udta} data \\
+\hline
+\end{tabular}
+\end{table}
+
+\clearpage
+
+\subsubsection{the mvhd atom}
+
+\begin{table}[h]
+\begin{tabular}{|l|r|l|}
+\hline
+Field & Size & Value \\
+\hline
+atom length & 32 & 108/120 \\
+atom type & 32 & `mvhd' (\texttt{0x6d766864}) \\
+\hline
+version & 8 & 0x00 \\
+flags & 24 & \texttt{0x000000} \\
+created date & 32/64 & creation date as Mac UTC \\
+modified date & 32/64 & modification date as Mac UTC \\
+time scale & 32 & sample rate \\
+duration & 32/64 & total PCM frames \\
+playback speed & 32 & 0x10000 \\
+user volume & 16 & 0x100 \\
+padding & 80 & \texttt{0x00000000000000000000} \\
+windows & 288 & \texttt{0x000100000000000000000000} \\
+& & \texttt{0x000000000001000000000000} \\
+& & \texttt{0x000000000000000040000000} \\
+QuickTime preview & 64 & \texttt{0} \\
+QuickTime still poster & 32 & \texttt{0} \\
+QuickTime selection time & 64 & \texttt{0} \\
+QuickTime current time & 32 & \texttt{0} \\
+next track ID & 32 & \texttt{2} \\
+\hline
+\end{tabular}
+\end{table}
+
+If \VAR{version} is 0, \VAR{created date}, \VAR{modified date} and
+\VAR{duration} are 32 bit fields.
+Otherwise, they are 64 bit fields.
+The \VAR{created date} and \VAR{modified date} are seconds
+since the Macintosh Epoch, which is 00:00:00, January 1st, 1904.\footnote{Why 1904?  It's the first leap year of the 20th century.}
+To convert a Unix Epoch timestamp (seconds since January 1st, 1970) to
+a Macintosh Epoch, one needs to add 24,107 days -
+or \texttt{2082844800} seconds.
+
