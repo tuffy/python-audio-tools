@@ -159,6 +159,12 @@ PyObject *ALACDecoder_read(decoders_ALACDecoder* self,
 				    self->max_samples_per_frame) == ERROR)
     goto error;
 
+  if (frame_header.channels != self->channels) {
+    PyErr_SetString(PyExc_ValueError,
+		    "frame header's channel count does not match file's channel count");
+    goto error;
+  }
+
   if (frame_header.is_not_compressed) {
     iaa_reset(&(self->samples));
     /*uncompressed samples are interlaced between channels*/
@@ -521,6 +527,13 @@ status ALACDecoder_decode_subframe(struct i_array *samples,
   int32_t val;
   int sign;
   int i;
+
+  if (coefficients->size < 1) {
+    PyErr_SetString(PyExc_ValueError,"coefficient count must be greater than 0");
+    return ERROR;
+  } else if ((coefficients->size != 4) && (coefficients->size != 8)) {
+    PyErr_WarnEx(PyExc_RuntimeWarning,"coefficient size not 4 or 8",1);
+  }
 
   ia_reset(samples);
   ia_link(&remaining_residuals,residuals);

@@ -1062,11 +1062,9 @@
 *** DONE Ensure 16/24 bps streams work correctly
     - [X] 16bps
     - [X] 24bps
-*** TODO Ensure 1/2/3+ channel streams work correctly
+*** DONE Ensure 1/2 channel streams work correctly
     - [X] 1 channel
     - [X] 2 channels
-    - [ ] 4 channels
-    - [ ] 6 channels
 *** TODO Ensure different sample rates work correctly
     - [X] 44100Hz
     - [ ] 48000Hz
