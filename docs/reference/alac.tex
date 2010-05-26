@@ -542,9 +542,15 @@ duration & 32/64 & total PCM frames \\
 playback speed & 32 & 0x10000 \\
 user volume & 16 & 0x100 \\
 padding & 80 & \texttt{0x00000000000000000000} \\
-windows & 288 & \texttt{0x000100000000000000000000} \\
-& & \texttt{0x000000000001000000000000} \\
-& & \texttt{0x000000000000000040000000} \\
+window geometry matrix a & 32 & 0x10000 \\
+window geometry matrix b & 32 & 0 \\
+window geometry matrix u & 32 & 0 \\
+window geometry matrix c & 32 & 0 \\
+window geometry matrix d & 32 & 0x10000 \\
+window geometry matrix v & 32 & 0 \\
+window geometry matrix x & 32 & 0 \\
+window geometry matrix y & 32 & 0 \\
+window geometry matrix x & 32 & 0x40000000 \\
 QuickTime preview & 64 & \texttt{0} \\
 QuickTime still poster & 32 & \texttt{0} \\
 QuickTime selection time & 64 & \texttt{0} \\
@@ -563,3 +569,20 @@ To convert a Unix Epoch timestamp (seconds since January 1st, 1970) to
 a Macintosh Epoch, one needs to add 24,107 days -
 or \texttt{2082844800} seconds.
 
+\clearpage
+
+\subsubsection{the trak atom}
+
+\begin{table}[h]
+\begin{tabular}{|l|r|l|}
+\hline
+Field & Size & Value \\
+\hline
+atom length & 32 & \ATOM{tkhd} size + \ATOM{mdia} size + 8 \\
+atom type & 32 & `trak' (\texttt{0x7472616b}) \\
+\hline
+\ATOM{tkhd} atom & \ATOM{tkhd} size & \ATOM{tkhd} data \\
+\ATOM{mdia} atom & \ATOM{mdia} size & \ATOM{mdia} data \\
+\hline
+\end{tabular}
+\end{table}

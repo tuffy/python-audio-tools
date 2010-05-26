@@ -1128,8 +1128,8 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 **** DONE Wasted bits example
 *** TODO ALAC encoding
 **** TODO Figure out compliant atom contents
-     - [ ] ftyp
-     - [ ] moov->mvhd
+     - [X] ftyp
+     - [X] moov->mvhd
      - [ ] moov->trak->tkhd
      - [ ] moov->trak->mdia->mdhd
      - [ ] moov->trak->mdia->hdlr
