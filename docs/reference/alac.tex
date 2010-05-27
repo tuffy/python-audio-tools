@@ -478,18 +478,6 @@ We'll encode our ALAC file in iTunes order, which means
 it contains the \ATOM{ftyp}, \ATOM{moov}, \ATOM{free} and
 \ATOM{mdat} atoms, in that order.
 
-%% \begin{table}[h]
-%% \begin{tabular}{|l|r|l|}
-%% \hline
-%% Field & Size & Value \\
-%% \hline
-%% atom length & 32 & ? \\
-%% atom type & 32 & ? \\
-%% \hline
-%% \hline
-%% \end{tabular}
-%% \end{table}
-
 \subsubsection{the ftyp atom}
 
 \begin{table}[h]
@@ -641,7 +629,7 @@ video height & 32 & \texttt{0} \\
 Field & Size & Value \\
 \hline
 atom length & 32 & \ATOM{mdhd} size + \ATOM{hdlr} size + \ATOM{minf} size + 8 \\
-atom type & 32 & `mdia' (0x6d646961) \\
+atom type & 32 & `mdia' (\texttt{0x6d646961}) \\
 \hline
 \ATOM{mdhd} atom & \ATOM{mdhd} size & \ATOM{mdhd} data \\
 \ATOM{hdlr} atom & \ATOM{hdlr} size & \ATOM{hdlr} data \\
@@ -658,7 +646,7 @@ atom type & 32 & `mdia' (0x6d646961) \\
 Field & Size & Value \\
 \hline
 atom length & 32 & 32/44 \\
-atom type & 32 & `mdhd' (0x6d646864) \\
+atom type & 32 & `mdhd' (\texttt{0x6d646864}) \\
 \hline
 version & 8 & \texttt{0x00} \\
 flags & 24 & \texttt{0x000000} \\
@@ -784,7 +772,7 @@ Field & Size & Value \\
 \hline
 atom length & 32 & \ATOM{stsd} size + \ATOM{stts} size + \ATOM{stsc} size + \\
 & & \ATOM{stsz} size + \ATOM{stco} size + 8 \\
-atom type & 32 & `stbl' (0x7374626c) \\
+atom type & 32 & `stbl' (\texttt{0x7374626c}) \\
 \hline
 \ATOM{stsd} atom & \ATOM{stsd} size & \ATOM{stsd} data \\
 \ATOM{stts} atom & \ATOM{stts} size & \ATOM{stts} data \\
@@ -934,7 +922,7 @@ description index & 32 & \texttt{1} \\
 \end{table}
 
 This atom stores how many ALAC frames are in a given ``chunk''.
-In this instance each ``chunk'' represents an entry in
+In this instance a ``chunk'' represents an entry in
 the \ATOM{stco} atom table, used for seeking backwards and forwards
 through the file.
 \VAR{First chunk} is the starting offset of its frames-per-chunk
@@ -943,7 +931,7 @@ value, beginning at 1.
 As an example, let's take a one minute, 44100Hz audio file
 that's been broken into 130 chunks
 (each with an entry in the \ATOM{stco} atom).
-Its \ATOM{stco} entries would typically be:
+Its \ATOM{stsc} entries would typically be:
 \begin{align*}
 \text{first chunk}_1 &= 1 \\
 \text{frames per chunk}_1 &= 5 \\
