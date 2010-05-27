@@ -865,3 +865,91 @@ we must fill those values with 0s for now and then
 return to this atom once encoding is completed
 and those values have been determined.
 
+\clearpage
+
+\subsubsection{the stts atom}
+
+\begin{table}[h]
+\begin{tabular}{|l|r|l|}
+\hline
+Field & Size & Value \\
+\hline
+atom length & 32 & number of times $\times$ 8 + 16\\
+atom type & 32 & `stts' (\texttt{0x73747473}) \\
+\hline
+version & 8 & \texttt{0x00} \\
+flags & 24 & \texttt{0x000000} \\
+number of times & 32 & \\
+\hline
+frame count 1 & 32 & number of occurrances \\
+frame duration 1 & 32 & PCM frame count \\
+\hline
+\multicolumn{3}{|c|}{...} \\
+\hline
+\end{tabular}
+\end{table}
+This atom keeps track of how many different sizes of ALAC frames
+occur in the ALAC file, in PCM frames.
+It will typically have only two ``times'', the block size we're
+using for most of our samples and the final block size for
+any remaining samples.
+
+For example, let's imagine encoding a 1 minute audio file
+at 44100Hz with a block size of 4096 frames.
+This file has a total of 2,646,000 PCM frames ($60 \times 44100 = 2646000$).
+2,646,000 PCM frames divided by a 4096 block size means
+we have 645 ALAC frames of size 4096, and 1 ALAC frame of size 4080.
+
+Therefore:
+\begin{align*}
+\text{number of times} &= 2 \\
+\text{frame count}_1 &= 645 \\
+\text{frame duration}_1 &= 4096 \\
+\text{frame count}_2 &= 1 \\
+\text{frame duration}_2 &= 4080
+\end{align*}
+
+\subsubsection{the stsc atom}
+
+\begin{table}[h]
+\begin{tabular}{|l|r|l|}
+\hline
+Field & Size & Value \\
+\hline
+atom length & 32 & entries $\times$ 12 + 16 \\
+atom type & 32 & `stsc' (\texttt{0x73747363}) \\
+\hline
+version & 8 & \texttt{0x00} \\
+flags & 24 & \texttt{0x000000} \\
+number of entries & 32 & \\
+\hline
+first chunk & 32 & \\
+ALAC frames per chunk & 32 & \\
+description index & 32 & \texttt{1} \\
+\hline
+\multicolumn{3}{|c|}{...} \\
+\hline
+\end{tabular}
+\end{table}
+
+This atom stores how many ALAC frames are in a given ``chunk''.
+In this instance each ``chunk'' represents an entry in
+the \ATOM{stco} atom table, used for seeking backwards and forwards
+through the file.
+\VAR{First chunk} is the starting offset of its frames-per-chunk
+value, beginning at 1.
+
+As an example, let's take a one minute, 44100Hz audio file
+that's been broken into 130 chunks
+(each with an entry in the \ATOM{stco} atom).
+Its \ATOM{stco} entries would typically be:
+\begin{align*}
+\text{first chunk}_1 &= 1 \\
+\text{frames per chunk}_1 &= 5 \\
+\text{first chunk}_2 &= 130 \\
+\text{frames per chunk}_2 &= 1
+\end{align*}
+What this means is that chunks 1 through 129 have 5 ALAC frames each
+while frame 130 has 1 ALAC frame.
+This is a total of 646 ALAC frames, which matches the contents of
+the \ATOM{stts} atom.
