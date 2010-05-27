@@ -1127,7 +1127,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 **** DONE Wasted bits
 **** DONE Wasted bits example
 *** TODO ALAC encoding
-**** TODO Figure out compliant atom contents
+**** DONE Figure out compliant atom contents
      - [X] ftyp
      - [X] moov->mvhd
      - [X] moov->trak->tkhd
@@ -1140,8 +1140,9 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [X] moov->trak->mdia->stbl->stsc
      - [X] moov->trak->mdia->stbl->stsz
      - [X] moov->trak->mdia->stbl->stco
-     - [ ] moov->udta->meta
-     - [ ] free
-     - [ ] mdat
+     - [X] moov->udta->meta
+     - [X] free
+**** TODO Add forward references in "alac" atom description
+**** TODO figure out if "meta" has required "----" sub-atoms
 ** TODO Update M4A metadata routines to exploit "free" atoms
    As with FLAC, rewriting the entire file should be avoided

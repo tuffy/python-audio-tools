@@ -689,6 +689,7 @@ Which is the code `\texttt{und}', meaning `undetermined' - which is typical.
 \clearpage
 
 \subsubsection{the hdlr atom}
+\label{alac_hdlr}
 \begin{tabular}{|l|r|l|}
 \hline
 Field & Size & Value \\
@@ -697,7 +698,7 @@ atom length & 32 & 33 + component \\
 atom type & 32 & `hdlr' (\texttt{0x68646c72}) \\
 \hline
 version & 8 & \texttt{0x00} \\
-flags & 24 & \text{0x000000} \\
+flags & 24 & \texttt{0x000000} \\
 QuickTime type & 32 & \texttt{0x00000000} \\
 QuickTime subtype & 32 & `soun' (\texttt{0x736f756e}) \\
 QuickTime manufacturer & 32 & \texttt{0x00000000} \\
@@ -998,4 +999,74 @@ frame offset & 32 & \\
 
 This atom is a list of absolute file offsets for each chunk, where
 each chunk is typically 5 ALAC frames large.
+
+\clearpage
+
+\subsubsection{the udta atom}
+
+\begin{tabular}{|l|r|l|}
+\hline
+Field & Size & Value \\
+\hline
+atom length & 32 & \ATOM{meta} size + 8 \\
+atom type & 32 & `udta' (\texttt{0x75647461}) \\
+\hline
+\ATOM{meta} atom & \ATOM{meta} size & \ATOM{meta} data \\
+\hline
+\end{tabular}
+
+\subsubsection{the meta atom}
+
+\begin{tabular}{|l|r|l|}
+\hline
+Field & Size & Value \\
+\hline
+atom length & 32 & \ATOM{ftyp} size + \ATOM{ilst} size + \ATOM{free} size + 12 \\
+atom type & 32 & `meta' (\texttt{0x6d657461}) \\
+\hline
+version & 8 & \texttt{0x00} \\
+flags & 24 & \texttt{0x000000} \\
+\hline
+\ATOM{ftyp} atom & \ATOM{ftyp} size & \ATOM{ftyp} data \\
+\ATOM{ilst} atom & \ATOM{ilst} size & \ATOM{ilst} data \\
+\ATOM{free} atom & \ATOM{free} size & \ATOM{free} data \\
+\hline
+\end{tabular}
+
+\subsubsection{the hdlr atom (revisited)}
+
+\begin{tabular}{|l|r|l|}
+\hline
+Field & Size & Value \\
+\hline
+atom length & 32 & 34 \\
+atom type & 32 & `hdlr' (\texttt{0x68646c72}) \\
+\hline
+version & 8 & \texttt{0x00} \\
+flags & 24 & \texttt{0x000000} \\
+QuickTime type & 32 & \texttt{0x00000000} \\
+QuickTime subtype & 32 & `mdir' (\texttt{0x6d646972}) \\
+QuickTime manufacturer & 32 & `appl' (\texttt{0x6170706c}) \\
+QuickTime component reserved flags & 32 & \texttt{0x00000000} \\
+QuickTime component reserved flags mask & 32 & \texttt{0x00000000} \\
+component name length & 8 & \texttt{0x00} \\
+component name & 0 & \\
+\hline
+\end{tabular}
+
+This atom is laid out identically to the ALAC file's primary
+\ATOM{hdlr} atom (described on page \pageref{alac_hdlr}).
+The only difference is the contents of its fields.
+
+\subsubsection{the ilst atom}
+
+This atom is a collection of \ATOM{data} sub-atoms
+and is described on page \pageref{m4a_meta}.
+%FIXME - ilst probably has required fields
+%which I need to figure out and explain here
+
+\subsubsection{the free atom}
+
+These atoms are simple collection of NULL bytes which can easily be
+resized to make room for other atoms without rewriting the entire file.
 
