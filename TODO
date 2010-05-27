@@ -1135,8 +1135,9 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [X] moov->trak->mdia->hdlr
      - [X] moov->trak->mdia->minf->smhd
      - [X] moov->trak->mdia->dinf->dref
-     - [ ] moov->trak->mdia->stbl->stsd->alac
+     - [X] moov->trak->mdia->stbl->stsd->alac
      - [ ] moov->trak->mdia->stbl->stts
+     - [ ] moov->trak->mdia->stbl->stsc
      - [ ] moov->trak->mdia->stbl->stsz
      - [ ] moov->trak->mdia->stbl->stco
      - [ ] moov->udta->meta

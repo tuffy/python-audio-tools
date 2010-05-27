@@ -766,6 +766,7 @@ version & 8 & \texttt{0x00} \\
 flags & 24 & \texttt{0x000000} \\
 number of references & 32 & \texttt{1} \\
 \hline
+\hline
 reference atom size & 32 & \texttt{12} \\
 reference atom type & 32 & `url ' (\texttt{0x75726c20}) \\
 reference atom data & 32 & \texttt{0x00000001} \\
@@ -811,3 +812,56 @@ number of descriptions & 32 & \texttt{1} \\
 \hline
 \end{tabular}
 \end{table}
+
+\clearpage
+
+\subsubsection{the alac atom}
+
+\begin{table}[h]
+\begin{tabular}{|l|r|l|}
+\hline
+Field & Size & Value \\
+\hline
+atom length & 32 & 72 \\
+atom type & 32 & `alac' (\texttt{0x616c6163}) \\
+\hline
+reserved & 48 & \texttt{0x000000000000} \\
+reference index & 16 & \texttt{1} \\
+version & 16 & \texttt{0} \\
+revision level & 16 & \texttt{0} \\
+vendor & 32 & \texttt{0x00000000} \\
+channels & 16 & channel count \\
+bits per sample & 16 & bits per sample \\
+compression ID & 16 & \texttt{0} \\
+audio packet size & 16 & \texttt{0} \\
+%FIXME
+%not entirely sure on this one.  it might be a float
+sample rate & 16 & sample rate \\
+padding & 16 & \texttt{0x0000} \\
+\hline
+\hline
+atom length & 32 & 36 \\
+atom type & 32 & `alac' (\texttt{0x616c6163}) \\
+\hline
+padding & 32 & \texttt{0x00000000} \\
+max samples per frame & 32 & largest number of PCM frames per ALAC frame \\
+padding & 8 & \texttt{0x00} \\
+sample size & 8 & bits per sample \\
+history multiplier & 8 & FIXME \\
+initial history & 8 & FIXME \\
+maximum K & 8 & FIXME \\
+channels & 8 & channel count \\
+unknown & 16 & \texttt{0x00FF} \\
+%FIXME - double check this
+max coded frame size & 32 & largest ALAC frame size, in bytes \\
+bitrate & 32 & $((\text{\ATOM{mdat} size} \times 8 ) \div (\text{total frames} \div \text{sample rate}))$ \\
+sample rate & 32 & sample rate \\
+\hline
+\end{tabular}
+\end{table}
+Note that the \VAR{history multiplier}, \VAR{initial history},
+\VAR{maximum K} and \VAR{bitrate} fields can't be known in advance;
+we must fill those values with 0s for now and then
+return to this atom once encoding is completed
+and those values have been determined.
+

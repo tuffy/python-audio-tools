@@ -925,8 +925,6 @@ class ALACAudio(M4AAudio):
     NAME = "alac"
 
     ALAC_ATOM = Con.Struct("stsd_alac",
-                           Con.UBInt32("length"),
-                           Con.String("type",4),
                            Con.String("reserved",6),
                            Con.UBInt16("reference_index"),
                            Con.UBInt16("version"),
@@ -960,7 +958,7 @@ class ALACAudio(M4AAudio):
 
         try:
             alac = ALACAudio.ALAC_ATOM.parse(
-                self.qt_stream['moov']['trak']['mdia']['minf']['stbl']['stsd'].data[8:])
+                ATOM_STSD.parse(self.qt_stream['moov']['trak']['mdia']['minf']['stbl']['stsd'].data).descriptions[0].data)
 
             self.__channels__ = alac.alac.channels
             self.__bits_per_sample__ = alac.bits_per_sample
@@ -982,6 +980,7 @@ class ALACAudio(M4AAudio):
             file.seek(0,0)
             atoms = __Qt_Atom_Stream__(file)
             try:
+                #FIXME - parse stsd atoms properly
                 return atoms['moov']['trak']['mdia']['minf']['stbl']['stsd'].data[12:16] == 'alac'
             except KeyError:
                 return False
@@ -1003,7 +1002,8 @@ class ALACAudio(M4AAudio):
 
         f = file(self.filename,'rb')
         qt = __Qt_Atom_Stream__(f)
-        alac = ALACAudio.ALAC_ATOM.parse(qt['moov']['trak']['mdia']['minf']['stbl']['stsd'].data[8:]).alac
+        alac = ALACAudio.ALAC_ATOM.parse(
+                ATOM_STSD.parse(self.qt_stream['moov']['trak']['mdia']['minf']['stbl']['stsd'].data).descriptions[0].data).alac
         f.close()
 
         return audiotools.decoders.ALACDecoder(
