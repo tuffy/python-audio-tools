@@ -953,3 +953,49 @@ What this means is that chunks 1 through 129 have 5 ALAC frames each
 while frame 130 has 1 ALAC frame.
 This is a total of 646 ALAC frames, which matches the contents of
 the \ATOM{stts} atom.
+
+\subsubsection{the stsz atom}
+
+\begin{tabular}{|l|r|l|}
+\hline
+Field & Size & Value \\
+\hline
+atom length & 32 & sizes $\times$ 4 + 16 \\
+atom type & 32 & `stsz' (\texttt{0x7374737a}) \\
+\hline
+version & 8 & \texttt{0x00} \\
+flags & 24 & \texttt{0x000000} \\
+number of sizes & 32 & \\
+\hline
+frame size & 32 & \\
+\hline
+\multicolumn{3}{|c|}{...} \\
+\hline
+\end{tabular}
+
+This atom is a list of ALAC frame sizes, each in bytes.
+For example, our 646 frame file would have 646 corresponding
+\ATOM{stsz} entries.
+
+\subsubsection{the stco atom}
+
+\begin{tabular}{|l|r|l|}
+\hline
+Field & Size & Value \\
+\hline
+atom length & 32 & offset $\times$ 4 + 16 \\
+atom type & 32 & `stco' (\texttt{0x7374636f}) \\
+\hline
+version & 8 & \texttt{0x00} \\
+flags & 24 & \texttt{0x000000} \\
+number of offsets & 32 & \\
+\hline
+frame offset & 32 & \\
+\hline
+\multicolumn{3}{|c|}{...} \\
+\hline
+\end{tabular}
+
+This atom is a list of absolute file offsets for each chunk, where
+each chunk is typically 5 ALAC frames large.
+

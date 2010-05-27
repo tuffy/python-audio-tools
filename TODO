@@ -1138,8 +1138,8 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [X] moov->trak->mdia->stbl->stsd->alac
      - [X] moov->trak->mdia->stbl->stts
      - [X] moov->trak->mdia->stbl->stsc
-     - [ ] moov->trak->mdia->stbl->stsz
-     - [ ] moov->trak->mdia->stbl->stco
+     - [X] moov->trak->mdia->stbl->stsz
+     - [X] moov->trak->mdia->stbl->stco
      - [ ] moov->udta->meta
      - [ ] free
      - [ ] mdat
