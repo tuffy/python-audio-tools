@@ -952,6 +952,16 @@ class ALACAudio(M4AAudio):
                                       Con.UBInt32("bitrate"),
                                       Con.UBInt32("sample_rate")))
 
+    ALAC_FTYP = AtomWrapper("ftyp",ATOM_FTYP)
+
+    ALAC_MOOV = AtomWrapper(
+        "moov",Con.Struct(
+            "moov",
+            AtomWrapper("mvhd",ATOM_MVHD),
+            AtomWrapper("trak",Con.Struct(
+                    "trak",
+                    AtomWrapper("tkhd",ATOM_TKHD)))))
+
     def __init__(self, filename):
         self.filename = filename
         self.qt_stream = __Qt_Atom_Stream__(file(self.filename,"rb"))
@@ -1026,6 +1036,7 @@ class ALACAudio(M4AAudio):
             raise UnsupportedChannelCount()
 
         from . import encoders
+        import time
 
         PAD_SIZE = 0x2000
         f = file(filename,"wb")
@@ -1046,23 +1057,78 @@ class ALACAudio(M4AAudio):
             block_size=4096)
 
         #use the fields from encode_alac() to populate our ALAC atoms
-        FTYP = Con.Container(major_brand='M4A ',
+        create_date = long(time.time()) + 2082844800
+        total_pcm_frames = sum(frame_sample_sizes)
+
+        ftyp = cls.ALAC_FTYP.build(
+            Con.Container(major_brand='M4A ',
                              major_brand_version=0,
                              compatible_brands=['M4A ',
                                                 'mp42',
                                                 'isom',
-                                                chr(0) * 4])
+                                                chr(0) * 4]))
 
-        ftyp = AtomWrapper('ftyp',ATOM_FTYP).build(FTYP)
+        moov = cls.ALAC_MOOV.build(
+            Con.Container(
+                mvhd=Con.Container(version=0,
+                                   flags=chr(0) * 3,
+                                   created_mac_UTC_date=create_date,
+                                   modified_mac_UTC_date=create_date,
+                                   time_scale=pcmreader.sample_rate,
+                                   duration=total_pcm_frames,
+                                   playback_speed=0x10000,
+                                   user_volume=0x100,
+                                   windows=Con.Container(
+                        geometry_matrix_a=0x100000,
+                        geometry_matrix_b=0,
+                        geometry_matrix_u=0,
+                        geometry_matrix_c=0,
+                        geometry_matrix_d=0x100000,
+                        geometry_matrix_v=0,
+                        geometry_matrix_x=0,
+                        geometry_matrix_y=0,
+                        geometry_matrix_w=0x40000000),
+                                   quicktime_preview=0,
+                                   quicktime_still_poster=0,
+                                   quicktime_selection_time=0,
+                                   quicktime_current_time=0,
+                                   next_track_id=2),
+                trak=Con.Container(
+                    tkhd=Con.Container(version=0,
+                                       flags=Con.Container(
+                            TrackInPoster=0,
+                            TrackInPreview=1,
+                            TrackInMovie=1,
+                            TrackEnabled=1),
+                                       created_mac_UTC_date=create_date,
+                                       modified_mac_UTC_date=create_date,
+                                       track_id=1,
+                                       duration=total_pcm_frames,
+                                       video_layer=0,
+                                       quicktime_alternate=0,
+                                       volume=0x1000,
+                                       video=Con.Container(
+                            geometry_matrix_a=0x10000,
+                            geometry_matrix_b=0,
+                            geometry_matrix_u=0,
+                            geometry_matrix_c=0,
+                            geometry_matrix_d=0x10000,
+                            geometry_matrix_v=0,
+                            geometry_matrix_x=0,
+                            geometry_matrix_y=0,
+                            geometry_matrix_w=0x40000000),
+                                       video_width=0,
+                                       video_height=0))))
 
         #adjust the "free" atom to fit our leftover padding, if possible
         free = Atom('free').build(Con.Container(
                 type='free',
-                data=chr(0) * (PAD_SIZE - (len(ftyp) + 8))))
+                data=chr(0) * (PAD_SIZE - (len(ftyp) + len(moov) + 8))))
 
         #rewind the stream and replace padding with proper metadata atoms
         f.seek(0,0)
         f.write(ftyp)
+        f.write(moov)
         f.write(free)
 
         f.close()

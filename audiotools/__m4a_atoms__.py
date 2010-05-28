@@ -141,7 +141,7 @@ ATOM_MVHD = Con.Struct("mvhd",
                        Con.UBInt32("quicktime_still_poster"),
                        Con.UBInt64("quicktime_selection_time"),
                        Con.UBInt32("quicktime_current_time"),
-                       Con.String("next_track_id",4))
+                       Con.UBInt32("next_track_id"))
 
 ATOM_IODS = Con.Struct("iods",
                        Con.Byte("version"),
