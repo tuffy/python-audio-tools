@@ -1037,9 +1037,9 @@ class ALACAudio(M4AAudio):
         #which returns a tuple of output values:
         #(framelist, - a list of (frame_samples,frame_size,frame_offset) tuples
         # various fields for the "alac" atom)
-        encoders.encode_alac(file=f,
-                             pcmreader=BufferedPCMReader(pcmreader),
-                             block_size=4096)
+        print repr(encoders.encode_alac(file=f,
+                                        pcmreader=BufferedPCMReader(pcmreader),
+                                        block_size=4096))
 
         #use the fields from encode_alac() to populate our ALAC atoms
 

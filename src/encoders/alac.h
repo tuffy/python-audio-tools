@@ -29,6 +29,16 @@
 
 typedef enum {OK,ERROR} status;
 
+/*this output log is a set of things Python-based ALAC atom writers will need
+  in order to populate metadata*/
+struct alac_encode_log {
+  int frame_byte_size;
+  int mdat_byte_size;
+  struct ia_array frame_log;
+};
 
+void alac_log_init(struct alac_encode_log *log);
+void alac_log_free(struct alac_encode_log *log);
+PyObject *alac_log_output(struct alac_encode_log *log);
 
 #endif

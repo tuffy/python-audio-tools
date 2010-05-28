@@ -27,14 +27,19 @@ PyObject* encoders_encode_alac(PyObject *dummy,
 			   "block_size",
 			   NULL};
 
-  PyObject *file_obj;
-  FILE *output_file;
-  Bitstream *stream = NULL;
-  PyObject *pcmreader_obj;
-  struct pcm_reader *reader;
-  struct ia_array samples;
+  PyObject *file_obj;       /*the Python object of our output file*/
+  FILE *output_file;        /*the FILE representation of our putput file*/
+  Bitstream *stream = NULL; /*the Bitstream representation of our output file*/
+  PyObject *pcmreader_obj;  /*the Python object of our input pcmreader*/
+  struct pcm_reader *reader; /*the pcm_reader struct of our input pcmreader*/
+  struct ia_array samples;  /*a buffer of input samples*/
 
-  int block_size;
+  int block_size;           /*the block size to use for output, in PCM frames*/
+
+  struct alac_encode_log encode_log; /*a log of encoded output*/
+  PyObject *encode_log_obj;          /*the Python object of encoded output*/
+
+  fpos_t starting_point;
 
   /*extract a file object, PCMReader-compatible object and encoding options*/
   if (!PyArg_ParseTupleAndKeywords(args,keywds,"OOi",
@@ -58,6 +63,9 @@ PyObject* encoders_encode_alac(PyObject *dummy,
   /*initialize a buffer for input samples*/
   iaa_init(&samples,reader->channels,block_size);
 
+  /*initialize the output log*/
+  alac_log_init(&encode_log);
+
   /*determine if the PCMReader is compatible with ALAC*/
   if ((reader->bits_per_sample != 16) &&
       (reader->bits_per_sample != 24)) {
@@ -77,6 +85,14 @@ PyObject* encoders_encode_alac(PyObject *dummy,
     stream = bs_open(output_file);
   }
 
+  /*write "mdat" atom header*/
+  if (fgetpos(output_file, &starting_point) != 0) {
+    PyErr_SetFromErrno(PyExc_IOError);
+    goto error;
+  }
+  stream->write_bits(stream,32,encode_log.mdat_byte_size);
+  stream->write_bits(stream,32,0x6D646174);  /*"mdat" type*/
+
   /*write frames from pcm_reader until empty*/
   if (!pcmr_read(reader,block_size,&samples))
     goto error;
@@ -87,18 +103,40 @@ PyObject* encoders_encode_alac(PyObject *dummy,
       goto error;
   }
 
+  /*rewind stream and rewrite "mdat" atom header*/
+  if (fsetpos(output_file, &starting_point) != 0) {
+    PyErr_SetFromErrno(PyExc_IOError);
+    goto error;
+  }
+  stream->write_bits(stream,32,encode_log.mdat_byte_size);
+
   /*close and free allocated files/buffers*/
   pcmr_close(reader);
   bs_free(stream);
   iaa_free(&samples);
 
-  /*return the accumulated log of output - FIXME*/
-  Py_INCREF(Py_None);
-  return Py_None;
+  /*return the accumulated log of output*/
+  encode_log_obj = alac_log_output(&encode_log);
+  alac_log_free(&encode_log);
+  return encode_log_obj;
 
  error:
   pcmr_close(reader);
   bs_free(stream);
   iaa_free(&samples);
+  alac_log_free(&encode_log);
   return NULL;
+}
+
+void alac_log_init(struct alac_encode_log *log) {
+  log->frame_byte_size = 0;
+  log->mdat_byte_size = 8;
+  iaa_init(&(log->frame_log),3,1024);
+}
+void alac_log_free(struct alac_encode_log *log) {
+  iaa_free(&(log->frame_log));
+}
+PyObject *alac_log_output(struct alac_encode_log *log) {
+  Py_INCREF(Py_None);
+  return Py_None;
 }
