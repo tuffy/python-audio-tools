@@ -960,7 +960,17 @@ class ALACAudio(M4AAudio):
             AtomWrapper("mvhd",ATOM_MVHD),
             AtomWrapper("trak",Con.Struct(
                     "trak",
-                    AtomWrapper("tkhd",ATOM_TKHD)))))
+                    AtomWrapper("tkhd",ATOM_TKHD),
+                    AtomWrapper("mdia",Con.Struct(
+                            "mdia",
+                            AtomWrapper("mdhd",ATOM_MDHD),
+                            AtomWrapper("hdlr",ATOM_HDLR),
+                            AtomWrapper("minf",Con.Struct(
+                                    "minf",
+                                    AtomWrapper("smhd",ATOM_SMHD),
+                                    AtomWrapper("dinf",Con.Struct(
+                                            "dinf",
+                                            AtomWrapper("dref",ATOM_DREF)))))))))))
 
     def __init__(self, filename):
         self.filename = filename
@@ -1118,7 +1128,35 @@ class ALACAudio(M4AAudio):
                             geometry_matrix_y=0,
                             geometry_matrix_w=0x40000000),
                                        video_width=0,
-                                       video_height=0))))
+                                       video_height=0),
+                    mdia=Con.Container(
+                        mdhd=Con.Container(version=0,
+                                           flags=chr(0) * 3,
+                                           created_mac_UTC_date=create_date,
+                                           modified_mac_UTC_date=create_date,
+                                           time_scale=pcmreader.sample_rate,
+                                           duration=total_pcm_frames,
+                                           languages=Con.Container(language=[0x15,0x0E,0x04]),
+                                           quicktime_quality=0),
+                        hdlr=Con.Container(version=0,
+                                           flags=chr(0) * 3,
+                                           quicktime_type=chr(0) * 4,
+                                           subtype='soun',
+                                           quicktime_manufacturer=chr(0) * 4,
+                                           quicktime_component_reserved_flags=0,
+                                           quicktime_component_reserved_flags_mask=0,
+                                           component_name=""),
+                        minf=Con.Container(
+                            smhd=Con.Container(version=0,
+                                               flags=chr(0) * 3,
+                                               audio_balance=chr(0) * 2),
+                            dinf=Con.Container(dref=Con.Container(
+                                    version=0,
+                                    flags=chr(0) * 3,
+                                    references=[Con.Container(size=12,
+                                                              type='url ',
+                                                              data="\x00\x00\x00\x01")]
+                                    )))))))
 
         #adjust the "free" atom to fit our leftover padding, if possible
         free = Atom('free').build(Con.Container(
