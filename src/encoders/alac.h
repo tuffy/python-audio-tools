@@ -37,6 +37,8 @@ struct alac_encode_log {
   struct ia_array frame_log;
 };
 
+enum {LOG_SAMPLE_SIZE,LOG_BYTE_SIZE,LOG_FILE_OFFSET};
+
 void alac_log_init(struct alac_encode_log *log);
 void alac_log_free(struct alac_encode_log *log);
 PyObject *alac_log_output(struct alac_encode_log *log);
@@ -45,6 +47,7 @@ void ALACEncoder_byte_counter(unsigned int byte, void* counter);
 
 status ALACEncoder_write_uncompressed_frame(Bitstream *bs,
 					    struct alac_encode_log *log,
+					    long starting_offset,
 					    int block_size,
 					    int bits_per_sample,
 					    struct ia_array *samples);

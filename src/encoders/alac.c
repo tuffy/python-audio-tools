@@ -102,6 +102,7 @@ PyObject* encoders_encode_alac(PyObject *dummy,
   while (iaa_getitem(&samples,0)->size > 0) {
     ALACEncoder_write_uncompressed_frame(stream,
 					 &encode_log,
+					 ftell(output_file),
 					 block_size,
 					 reader->bits_per_sample,
 					 &samples);
@@ -137,6 +138,7 @@ PyObject* encoders_encode_alac(PyObject *dummy,
 
 status ALACEncoder_write_uncompressed_frame(Bitstream *bs,
 					    struct alac_encode_log *log,
+					    long starting_offset,
 					    int block_size,
 					    int bits_per_sample,
 					    struct ia_array *samples) {
@@ -172,6 +174,12 @@ status ALACEncoder_write_uncompressed_frame(Bitstream *bs,
 
   /*update log*/
   log->mdat_byte_size += log->frame_byte_size;
+  ia_append(iaa_getitem(&(log->frame_log),LOG_SAMPLE_SIZE),
+	    pcm_frames);
+  ia_append(iaa_getitem(&(log->frame_log),LOG_BYTE_SIZE),
+	    log->frame_byte_size);
+  ia_append(iaa_getitem(&(log->frame_log),LOG_FILE_OFFSET),
+	    starting_offset);
 
   return OK;
 }
@@ -190,6 +198,40 @@ void alac_log_free(struct alac_encode_log *log) {
   iaa_free(&(log->frame_log));
 }
 PyObject *alac_log_output(struct alac_encode_log *log) {
-  Py_INCREF(Py_None);
-  return Py_None;
+  PyObject *log_sample_size;
+  PyObject *log_byte_size;
+  PyObject *log_file_offset;
+  struct i_array *log_array;
+  int i;
+
+  if ((log_sample_size = PyList_New(0)) == NULL)
+    return NULL;
+  if ((log_byte_size = PyList_New(0)) == NULL)
+    return NULL;
+  if ((log_file_offset = PyList_New(0)) == NULL)
+    return NULL;
+
+  log_array = iaa_getitem(&(log->frame_log),LOG_SAMPLE_SIZE);
+  for (i = 0; i < log_array->size; i++)
+    if (PyList_Append(log_sample_size,
+		      PyInt_FromLong(log_array->data[i])) == -1)
+      return NULL;
+
+  log_array = iaa_getitem(&(log->frame_log),LOG_BYTE_SIZE);
+  for (i = 0; i < log_array->size; i++)
+    if (PyList_Append(log_byte_size,
+		      PyInt_FromLong(log_array->data[i])) == -1)
+      return NULL;
+
+  log_array = iaa_getitem(&(log->frame_log),LOG_FILE_OFFSET);
+  for (i = 0; i < log_array->size; i++)
+    if (PyList_Append(log_file_offset,
+		      PyInt_FromLong(log_array->data[i])) == -1)
+      return NULL;
+
+  return Py_BuildValue("(O,O,O,i)",
+		       log_sample_size,
+		       log_byte_size,
+		       log_file_offset,
+		       log->mdat_byte_size);
 }
