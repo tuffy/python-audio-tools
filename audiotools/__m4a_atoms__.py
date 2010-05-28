@@ -85,9 +85,34 @@ class AtomListAdapter(Con.Adapter):
 def AtomContainer(name):
     return AtomListAdapter(Atom(name))
 
+#wraps around an existing sub_atom and automatically appends/removes header
+#during build/parse operations
+#this should probably be an adapter, but it does seem to work okay
+class AtomWrapper(Con.Struct):
+    def __init__(self, atom_name, sub_atom):
+        Con.Struct.__init__(self,atom_name)
+        self.atom_name = atom_name
+        self.sub_atom = sub_atom
+        self.header = Con.Struct(atom_name,
+                                 Con.UBInt32("size"),
+                                 Con.Const(Con.String("type",4),atom_name))
+
+    def _parse(self, stream, context):
+        header = self.header.parse_stream(stream)
+        return self.sub_atom.parse_stream(stream)
+
+    def _build(self, obj, stream, context):
+        data = self.sub_atom.build(obj)
+        stream.write(self.header.build(Con.Container(type=self.atom_name,
+                                                     size=len(data) + 8)))
+        stream.write(data)
+
+    def _sizeof(self, context):
+        return self.sub_atom.sizeof(context) + 8
 
 
-ATOM_FTYPE = Con.Struct("ftyp",
+
+ATOM_FTYP = Con.Struct("ftyp",
                         Con.String("major_brand",4),
                         Con.UBInt32("major_brand_version"),
                         Con.GreedyRepeater(Con.String("compatible_brands",4)))

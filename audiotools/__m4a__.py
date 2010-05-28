@@ -1030,22 +1030,40 @@ class ALACAudio(M4AAudio):
         PAD_SIZE = 0x2000
         f = file(filename,"wb")
 
-        #pad the start of our ALAC file will NULLs
+        #pad the start of our ALAC file with NULLs
         f.write(chr(0) * PAD_SIZE)
 
         #perform encode_alac() on pcmreader to our output file
         #which returns a tuple of output values:
         #(framelist, - a list of (frame_samples,frame_size,frame_offset) tuples
         # various fields for the "alac" atom)
-        print repr(encoders.encode_alac(file=f,
-                                        pcmreader=BufferedPCMReader(pcmreader),
-                                        block_size=4096))
+        (frame_sample_sizes,
+         frame_byte_sizes,
+         frame_file_offsets,
+         mdat_size) = encoders.encode_alac(
+            file=f,
+            pcmreader=BufferedPCMReader(pcmreader),
+            block_size=4096)
 
         #use the fields from encode_alac() to populate our ALAC atoms
+        FTYP = Con.Container(major_brand='M4A ',
+                             major_brand_version=0,
+                             compatible_brands=['M4A ',
+                                                'mp42',
+                                                'isom',
+                                                chr(0) * 4])
 
-        #adjust the "free" atom to fit our padding
+        ftyp = AtomWrapper('ftyp',ATOM_FTYP).build(FTYP)
+
+        #adjust the "free" atom to fit our leftover padding, if possible
+        free = Atom('free').build(Con.Container(
+                type='free',
+                data=chr(0) * (PAD_SIZE - (len(ftyp) + 8))))
 
         #rewind the stream and replace padding with proper metadata atoms
+        f.seek(0,0)
+        f.write(ftyp)
+        f.write(free)
 
         f.close()
 
