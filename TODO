@@ -1105,7 +1105,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
     (need to figure out what other sample rates ALAC supports)
 *** TODO Optimize for speed
 ** TODO Build ALAC encoder
-*** TODO Add audiotools.encoders.encode_alac function
+*** DONE Add audiotools.encoders.encode_alac function
 *** TODO Ensure verbatim ALAC file is written correctly
 *** TODO Determine ALAC stream tunables
 *** TODO Discover the best approach to calculate ALAC tunables

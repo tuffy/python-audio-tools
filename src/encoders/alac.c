@@ -83,6 +83,9 @@ PyObject* encoders_encode_alac(PyObject *dummy,
     goto error;
   } else {
     stream = bs_open(output_file);
+    bs_add_callback(stream,
+		    ALACEncoder_byte_counter,
+		    &(encode_log.frame_byte_size));
   }
 
   /*write "mdat" atom header*/
@@ -97,7 +100,11 @@ PyObject* encoders_encode_alac(PyObject *dummy,
   if (!pcmr_read(reader,block_size,&samples))
     goto error;
   while (iaa_getitem(&samples,0)->size > 0) {
-    printf("read frame of size %d\n",iaa_getitem(&samples,0)->size);
+    ALACEncoder_write_uncompressed_frame(stream,
+					 &encode_log,
+					 block_size,
+					 reader->bits_per_sample,
+					 &samples);
 
     if (!pcmr_read(reader,block_size,&samples))
       goto error;
@@ -126,6 +133,52 @@ PyObject* encoders_encode_alac(PyObject *dummy,
   iaa_free(&samples);
   alac_log_free(&encode_log);
   return NULL;
+}
+
+status ALACEncoder_write_uncompressed_frame(Bitstream *bs,
+					    struct alac_encode_log *log,
+					    int block_size,
+					    int bits_per_sample,
+					    struct ia_array *samples) {
+  int channels = samples->size;
+  int pcm_frames = samples->arrays[0].size;
+  int has_sample_size = (pcm_frames != block_size);
+  int i,j;
+
+  log->frame_byte_size = 0;
+
+  /*write frame header*/
+  bs->write_bits(bs,3,channels - 1); /*channel count, offset 1*/
+  bs->write_bits(bs,16,0);           /*unknown, all 0*/
+  if (has_sample_size)               /*"has sample size"" flag*/
+    bs->write_bits(bs,1,1);
+  else
+    bs->write_bits(bs,1,0);
+  bs->write_bits(bs,2,0);  /*uncompressed frames never have wasted bits*/
+  bs->write_bits(bs,1,1);  /*the "is not compressed flag" flag*/
+  if (has_sample_size)
+    bs->write_bits(bs,32,pcm_frames * channels);
+
+  /*write individual samples*/
+  for (i = 0; i < pcm_frames; i++)
+    for (j = 0; j < channels; j++)
+      bs->write_signed_bits(bs,
+			    bits_per_sample,
+			    samples->arrays[j].data[i]);
+
+  /*write footer and padding*/
+  bs->write_bits(bs,3,0x7);
+  bs->byte_align(bs);
+
+  /*update log*/
+  log->mdat_byte_size += log->frame_byte_size;
+
+  return OK;
+}
+
+void ALACEncoder_byte_counter(unsigned int byte, void* counter) {
+  int* i_counter = (int*)counter;
+  *i_counter += 1;
 }
 
 void alac_log_init(struct alac_encode_log *log) {
