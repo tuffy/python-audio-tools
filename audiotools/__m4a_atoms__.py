@@ -293,19 +293,19 @@ ATOM_ESDS = Con.Struct("esds",
 ATOM_STTS = Con.Struct('stts',
                        Con.Byte("version"),
                        Con.String("flags",3),
-                       Con.UBInt32("number_of_times"),
-                       Con.GreedyRepeater(
-        Con.Struct("time_per_frame",
-                   Con.UBInt32("frame_count"),
-                   Con.UBInt32("duration"))))
+                       Con.PrefixedArray(length_field=Con.UBInt32("total_counts"),
+                                     subcon=Con.Struct("frame_size_counts",
+                                                       Con.UBInt32("frame_count"),
+                                                       Con.UBInt32("duration"))))
 
 
 ATOM_STSZ = Con.Struct('stsz',
                        Con.Byte("version"),
                        Con.String("flags",3),
                        Con.UBInt32("block_byte_size"),
-                       Con.UBInt32("number_of_block_sizes"),
-                       Con.GreedyRepeater(Con.UBInt32("block_byte_sizes")))
+                       Con.PrefixedArray(length_field=Con.UBInt32("total_sizes"),
+                                         subcon=Con.UBInt32("block_byte_sizes")))
+
 
 ATOM_STSC = Con.Struct('stsc',
                        Con.Byte("version"),

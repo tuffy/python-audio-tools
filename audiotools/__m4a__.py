@@ -919,6 +919,15 @@ class M4ACovr(Image):
     def converted(cls, image):
         return M4ACovr(image.data)
 
+class __counter__:
+    def __init__(self):
+        self.val = 0
+
+    def incr(self):
+        self.val += 1
+
+    def __int__(self):
+        return self.val
 
 class ALACAudio(M4AAudio):
     SUFFIX = "m4a"
@@ -970,7 +979,16 @@ class ALACAudio(M4AAudio):
                                     AtomWrapper("smhd",ATOM_SMHD),
                                     AtomWrapper("dinf",Con.Struct(
                                             "dinf",
-                                            AtomWrapper("dref",ATOM_DREF)))))))))))
+                                            AtomWrapper("dref",ATOM_DREF))),
+                                    AtomWrapper("stbl",Con.Struct(
+                                            "stbl",
+                                            #FIXME - put stsd here
+                                            AtomWrapper("stts",ATOM_STTS),
+
+                                            #FIXME - put stsc here
+
+                                            AtomWrapper("stsz",ATOM_STSZ)
+                                            ))))))))))
 
     def __init__(self, filename):
         self.filename = filename
@@ -1070,6 +1088,10 @@ class ALACAudio(M4AAudio):
         create_date = long(time.time()) + 2082844800
         total_pcm_frames = sum(frame_sample_sizes)
 
+        stts_frame_counts = {}
+        for sample_size in frame_sample_sizes:
+            stts_frame_counts.setdefault(sample_size,__counter__()).incr()
+
         ftyp = cls.ALAC_FTYP.build(
             Con.Container(major_brand='M4A ',
                              major_brand_version=0,
@@ -1155,8 +1177,27 @@ class ALACAudio(M4AAudio):
                                     flags=chr(0) * 3,
                                     references=[Con.Container(size=12,
                                                               type='url ',
-                                                              data="\x00\x00\x00\x01")]
-                                    )))))))
+                                                              data="\x00\x00\x00\x01")])),
+                            stbl=Con.Container(
+                                #FIXME - put stsd here
+
+                                stts=Con.Container(
+                                    version=0,
+                                    flags=chr(0) * 3,
+                                    frame_size_counts=[
+                                        Con.Container(
+                                            frame_count=int(stts_frame_counts[samples]),
+                                            duration=samples)
+                                        for samples in
+                                        reversed(sorted(stts_frame_counts.keys()))]),
+
+                                #FIXME - put stsc here
+
+                                stsz=Con.Container(
+                                    version=0,
+                                    flags=chr(0) * 3,
+                                    block_byte_size=0,
+                                    block_byte_sizes=frame_byte_sizes)))))))
 
         #adjust the "free" atom to fit our leftover padding, if possible
         free = Atom('free').build(Con.Container(

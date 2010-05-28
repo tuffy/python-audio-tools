@@ -949,11 +949,12 @@ the \ATOM{stts} atom.
 \hline
 Field & Size & Value \\
 \hline
-atom length & 32 & sizes $\times$ 4 + 16 \\
+atom length & 32 & sizes $\times$ 4 + 20 \\
 atom type & 32 & `stsz' (\texttt{0x7374737a}) \\
 \hline
 version & 8 & \texttt{0x00} \\
 flags & 24 & \texttt{0x000000} \\
+block byte size & 32 & \texttt{0x00000000} \\
 number of sizes & 32 & \\
 \hline
 frame size & 32 & \\
