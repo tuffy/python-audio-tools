@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,InvalidFile,PCMReader,PCMConverter,Con,transfer_data,transfer_framelist_data,subprocess,BIN,cStringIO,MetaData,os,Image,InvalidImage,ignore_sigint,InvalidFormat,open,open_files,EncodingError,DecodingError,WaveAudio,TempWaveReader,PCMReaderError,ChannelMask,UnsupportedBitsPerSample,UnsupportedChannelCount
+from audiotools import AudioFile,InvalidFile,PCMReader,PCMConverter,Con,transfer_data,transfer_framelist_data,subprocess,BIN,cStringIO,MetaData,os,Image,InvalidImage,ignore_sigint,InvalidFormat,open,open_files,EncodingError,DecodingError,WaveAudio,TempWaveReader,PCMReaderError,ChannelMask,UnsupportedBitsPerSample,UnsupportedChannelCount,BufferedPCMReader
 from __m4a_atoms__ import *
 import gettext
 
@@ -1025,19 +1025,32 @@ class ALACAudio(M4AAudio):
         if (pcmreader.channels > 2):
             raise UnsupportedChannelCount()
 
+        from . import encoders
+
+        PAD_SIZE = 0x2000
+        f = file(filename,"wb")
+
         #pad the start of our ALAC file will NULLs
+        f.write(chr(0) * PAD_SIZE)
 
         #perform encode_alac() on pcmreader to our output file
         #which returns a tuple of output values:
         #(framelist, - a list of (frame_samples,frame_size,frame_offset) tuples
         # various fields for the "alac" atom)
+        encoders.encode_alac(file=f,
+                             pcmreader=BufferedPCMReader(pcmreader),
+                             block_size=4096)
 
         #use the fields from encode_alac() to populate our ALAC atoms
 
-        #adjust the "free" atom to fit pur padding
+        #adjust the "free" atom to fit our padding
 
         #rewind the stream and replace padding with proper metadata atoms
 
+        f.close()
+
+        #return cls(filename)
+        return None
 
 #######################
 #AAC File

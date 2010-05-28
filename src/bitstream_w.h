@@ -76,7 +76,15 @@ Bitstream* bs_open(FILE *f);
 Bitstream* bs_open_accumulator(void);
 Bitstream* bs_open_recorder(void);
 
+/*this closes bs's open file, if any,
+  deallocates any recorded output (for bs_open_accumulator Bitstreams)
+  and frees any callbacks before deallocating the bs struct*/
 void bs_close(Bitstream *bs);
+
+/*this deallocates any recorded output (for bs_open_accumulator Bitstreams)
+  and frees any callbacks before deallocating the bs struct
+  it does not close any open FILE object but does fflush output*/
+void bs_free(Bitstream *bs);
 
 void bs_add_callback(Bitstream *bs,
 		     void (*callback)(unsigned int, void*),

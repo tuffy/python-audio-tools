@@ -88,6 +88,22 @@ void bs_close(Bitstream *bs) {
   free(bs);
 }
 
+void bs_free(Bitstream *bs) {
+  struct bs_callback *node;
+  struct bs_callback *next;
+
+  if (bs == NULL) return;
+
+  if (bs->file != NULL) fflush(bs->file);
+  if (bs->records != NULL) free(bs->records);
+
+  for (node = bs->callback; node != NULL; node = next) {
+    next = node->next;
+    free(node);
+  }
+  free(bs);
+}
+
 void bs_add_callback(Bitstream *bs,
 		     void (*callback)(unsigned int, void*),
 		     void *data) {

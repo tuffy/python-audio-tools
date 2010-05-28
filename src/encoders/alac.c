@@ -28,11 +28,11 @@ PyObject* encoders_encode_alac(PyObject *dummy,
 			   NULL};
 
   PyObject *file_obj;
-  PyObject *fileno_obj;
-  int output_fd;
+  FILE *output_file;
   Bitstream *stream = NULL;
   PyObject *pcmreader_obj;
   struct pcm_reader *reader;
+  struct ia_array samples;
 
   int block_size;
 
@@ -55,6 +55,9 @@ PyObject* encoders_encode_alac(PyObject *dummy,
     return NULL;
   }
 
+  /*initialize a buffer for input samples*/
+  iaa_init(&samples,reader->channels,block_size);
+
   /*determine if the PCMReader is compatible with ALAC*/
   if ((reader->bits_per_sample != 16) &&
       (reader->bits_per_sample != 24)) {
@@ -66,28 +69,36 @@ PyObject* encoders_encode_alac(PyObject *dummy,
     goto error;
   }
 
-  /*convert file object with .fileno() method to bitstream writer*/
-  if ((fileno_obj = PyObject_CallMethod(file_obj,"fileno",NULL)) == NULL) {
+  /*convert file object to bitstream writer*/
+  if ((output_file = PyFile_AsFile(file_obj)) == NULL) {
+    PyErr_SetString(PyExc_TypeError,"file must by a concrete file object");
     goto error;
   } else {
-    if (((output_fd = PyInt_AsLong(fileno_obj)) == -1) && PyErr_Occurred()) {
-      Py_DECREF(fileno_obj);
-      goto error;
-    } else
-      Py_DECREF(fileno_obj);
+    stream = bs_open(output_file);
   }
 
   /*write frames from pcm_reader until empty*/
+  if (!pcmr_read(reader,block_size,&samples))
+    goto error;
+  while (iaa_getitem(&samples,0)->size > 0) {
+    printf("read frame of size %d\n",iaa_getitem(&samples,0)->size);
+
+    if (!pcmr_read(reader,block_size,&samples))
+      goto error;
+  }
 
   /*close and free allocated files/buffers*/
+  pcmr_close(reader);
+  bs_free(stream);
+  iaa_free(&samples);
 
-  /*return the accumulated log of output*/
-
+  /*return the accumulated log of output - FIXME*/
   Py_INCREF(Py_None);
   return Py_None;
 
  error:
   pcmr_close(reader);
-  bs_close(stream);
+  bs_free(stream);
+  iaa_free(&samples);
   return NULL;
 }
