@@ -9,7 +9,7 @@
     <col start="72" end="95" width=".75">Flags (0x000000)</col>
   </row>
   <row>
-    <col start="96" width=".25">`ftyp' atom</col>
+    <col start="96" width=".25">`hdlr' atom</col>
     <col width=".25">`ilst' atom</col>
     <col width=".25">`free' atom</col>
     <col style="dashed" width=".25">...</col>

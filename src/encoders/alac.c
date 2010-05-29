@@ -169,7 +169,7 @@ status ALACEncoder_write_uncompressed_frame(Bitstream *bs,
   bs->write_bits(bs,2,0);  /*uncompressed frames never have wasted bits*/
   bs->write_bits(bs,1,1);  /*the "is not compressed flag" flag*/
   if (has_sample_size)
-    bs->write_bits(bs,32,pcm_frames * channels);
+    bs->write_bits(bs,32,pcm_frames);
 
   /*write individual samples*/
   for (i = 0; i < pcm_frames; i++)

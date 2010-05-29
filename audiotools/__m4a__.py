@@ -987,7 +987,10 @@ class ALACAudio(M4AAudio):
                                             AtomWrapper("stsc",ATOM_STSC),
                                             AtomWrapper("stsz",ATOM_STSZ),
                                             AtomWrapper("stco",ATOM_STCO)
-                                            ))))))))))
+                                            )))))))),
+            AtomWrapper("udta",Con.Struct(
+                    "udta",
+                    AtomWrapper("meta",ATOM_META)))))
 
     BLOCK_SIZE = 4096
     INITIAL_HISTORY = 10
@@ -1256,7 +1259,29 @@ class ALACAudio(M4AAudio):
                                 stco=Con.Container(
                                     version=0,
                                     flags=chr(0) * 3,
-                                    offset=[chunk[0] for chunk in chunks])))))))
+                                    offset=[chunk[0] for chunk in chunks]))))),
+                udta=Con.Container(
+                    meta=Con.Container(
+                        version=0,
+                        flags=chr(0) * 3,
+                        atoms=[Con.Container(
+                                type='hdlr',
+                                data=ATOM_HDLR.build(
+                                    Con.Container(
+                                        version=0,
+                                        flags=chr(0) * 3,
+                                        quicktime_type=chr(0) * 4,
+                                        subtype='mdir',
+                                        quicktime_manufacturer='appl',
+                                        quicktime_component_reserved_flags=0,
+                                        quicktime_component_reserved_flags_mask=0,
+                                        component_name=""))),
+                               Con.Container(
+                                type='ilst',
+                                data=""),
+                               Con.Container(
+                                type='free',
+                                data=chr(0) * 1024)]))))
 
         #adjust the "free" atom to fit our leftover padding, if possible
         free = Atom('free').build(Con.Container(
