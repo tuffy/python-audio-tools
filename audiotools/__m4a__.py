@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,InvalidFile,PCMReader,PCMConverter,Con,transfer_data,transfer_framelist_data,subprocess,BIN,cStringIO,MetaData,os,Image,InvalidImage,ignore_sigint,InvalidFormat,open,open_files,EncodingError,DecodingError,WaveAudio,TempWaveReader,PCMReaderError,ChannelMask,UnsupportedBitsPerSample,UnsupportedChannelCount,BufferedPCMReader
+from audiotools import AudioFile,InvalidFile,PCMReader,PCMConverter,Con,transfer_data,transfer_framelist_data,subprocess,BIN,cStringIO,MetaData,os,Image,InvalidImage,ignore_sigint,InvalidFormat,open,open_files,EncodingError,DecodingError,WaveAudio,TempWaveReader,PCMReaderError,ChannelMask,UnsupportedBitsPerSample,UnsupportedChannelCount,BufferedPCMReader,at_a_time
 from __m4a_atoms__ import *
 import gettext
 
@@ -984,10 +984,9 @@ class ALACAudio(M4AAudio):
                                             "stbl",
                                             #FIXME - put stsd here
                                             AtomWrapper("stts",ATOM_STTS),
-
-                                            #FIXME - put stsc here
-
-                                            AtomWrapper("stsz",ATOM_STSZ)
+                                            AtomWrapper("stsc",ATOM_STSC),
+                                            AtomWrapper("stsz",ATOM_STSZ),
+                                            AtomWrapper("stco",ATOM_STCO)
                                             ))))))))))
 
     def __init__(self, filename):
@@ -1092,6 +1091,15 @@ class ALACAudio(M4AAudio):
         for sample_size in frame_sample_sizes:
             stts_frame_counts.setdefault(sample_size,__counter__()).incr()
 
+        offsets = frame_file_offsets[:]
+        chunks = []
+        for frames in at_a_time(len(frame_file_offsets),5):
+            if (frames > 0):
+                chunks.append(offsets[0:frames])
+                offsets = offsets[frames:]
+        del(offsets)
+        print repr(chunks)
+
         ftyp = cls.ALAC_FTYP.build(
             Con.Container(major_brand='M4A ',
                              major_brand_version=0,
@@ -1191,13 +1199,28 @@ class ALACAudio(M4AAudio):
                                         for samples in
                                         reversed(sorted(stts_frame_counts.keys()))]),
 
-                                #FIXME - put stsc here
+                                stsc=Con.Container(
+                                    version=0,
+                                    flags=chr(0) * 3,
+                                    block=[Con.Container(
+                                            first_chunk=i + 1,
+                                            samples_per_chunk=current,
+                                            sample_description_index=1)
+                                           for (i,(current,previous))
+                                           in enumerate(zip(map(len,chunks),
+                                                            [0] + map(len,chunks)))
+                                           if (current != previous)]),
 
                                 stsz=Con.Container(
                                     version=0,
                                     flags=chr(0) * 3,
                                     block_byte_size=0,
-                                    block_byte_sizes=frame_byte_sizes)))))))
+                                    block_byte_sizes=frame_byte_sizes),
+
+                                stco=Con.Container(
+                                    version=0,
+                                    flags=chr(0) * 3,
+                                    offset=[chunk[0] for chunk in chunks])))))))
 
         #adjust the "free" atom to fit our leftover padding, if possible
         free = Atom('free').build(Con.Container(

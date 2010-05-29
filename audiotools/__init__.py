@@ -2104,6 +2104,11 @@ def sheet_to_unicode(sheet,total_frames):
     else:
         return tracks
 
+def at_a_time(total,per):
+    for i in xrange(total / per):
+        yield per
+    yield total % per
+
 
 from __image__ import *
 
@@ -2176,11 +2181,6 @@ class RawCDDA:
 
     def last_sector(self):
         return self.cdda.last_sector()
-
-def at_a_time(total,per):
-    for i in xrange(total / per):
-        yield per
-    yield total % per
 
 #a RawCDDA-compatible class which automatically applies sample offsets
 #note that this blocks for a *long* time at instantiation time
