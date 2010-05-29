@@ -982,12 +982,17 @@ class ALACAudio(M4AAudio):
                                             AtomWrapper("dref",ATOM_DREF))),
                                     AtomWrapper("stbl",Con.Struct(
                                             "stbl",
-                                            #FIXME - put stsd here
+                                            AtomWrapper("stsd",ATOM_STSD),
                                             AtomWrapper("stts",ATOM_STTS),
                                             AtomWrapper("stsc",ATOM_STSC),
                                             AtomWrapper("stsz",ATOM_STSZ),
                                             AtomWrapper("stco",ATOM_STCO)
                                             ))))))))))
+
+    BLOCK_SIZE = 4096
+    INITIAL_HISTORY = 10
+    HISTORY_MULTIPLIER = 40
+    MAXIMUM_K = 14
 
     def __init__(self, filename):
         self.filename = filename
@@ -1081,7 +1086,10 @@ class ALACAudio(M4AAudio):
          mdat_size) = encoders.encode_alac(
             file=f,
             pcmreader=BufferedPCMReader(pcmreader),
-            block_size=4096)
+            block_size=cls.BLOCK_SIZE,
+            initial_history=cls.INITIAL_HISTORY,
+            history_multiplier=cls.HISTORY_MULTIPLIER,
+            maximum_k=cls.MAXIMUM_K)
 
         #use the fields from encode_alac() to populate our ALAC atoms
         create_date = long(time.time()) + 2082844800
@@ -1098,7 +1106,6 @@ class ALACAudio(M4AAudio):
                 chunks.append(offsets[0:frames])
                 offsets = offsets[frames:]
         del(offsets)
-        print repr(chunks)
 
         ftyp = cls.ALAC_FTYP.build(
             Con.Container(major_brand='M4A ',
@@ -1187,7 +1194,36 @@ class ALACAudio(M4AAudio):
                                                               type='url ',
                                                               data="\x00\x00\x00\x01")])),
                             stbl=Con.Container(
-                                #FIXME - put stsd here
+                                stsd=Con.Container(
+                                    version=0,
+                                    flags=chr(0) * 3,
+                                    descriptions=[Con.Container(
+                                        type="alac",
+                                        data=cls.ALAC_ATOM.build(
+                                            Con.Container(
+                                                reserved=chr(0) * 6,
+                                                reference_index=1,
+                                                version=0,
+                                                revision_level=0,
+                                                vendor=chr(0) * 4,
+                                                channels=pcmreader.channels,
+                                                bits_per_sample=pcmreader.bits_per_sample,
+                                                compression_id=0,
+                                                audio_packet_size=0,
+                                                sample_rate=pcmreader.sample_rate,
+                                                alac=Con.Container(
+                                                    length=36,
+                                                    type='alac',
+                                                    max_samples_per_frame=max(frame_sample_sizes),
+                                                    sample_size=pcmreader.bits_per_sample,
+                                                    history_multiplier=cls.HISTORY_MULTIPLIER,
+                                                    initial_history=cls.INITIAL_HISTORY,
+                                                    maximum_k=cls.MAXIMUM_K,
+                                                    channels=pcmreader.channels,
+                                                    unknown=0x00FF,
+                                                    max_coded_frame_size=max(frame_byte_sizes),
+                                                    bitrate=((mdat_size * 8 * pcmreader.sample_rate) / sum(frame_sample_sizes)),
+                                                    sample_rate=pcmreader.sample_rate))))]),
 
                                 stts=Con.Container(
                                     version=0,

@@ -836,23 +836,26 @@ padding & 32 & \texttt{0x00000000} \\
 max samples per frame & 32 & largest number of PCM frames per ALAC frame \\
 padding & 8 & \texttt{0x00} \\
 sample size & 8 & bits per sample \\
-history multiplier & 8 & FIXME \\
-initial history & 8 & FIXME \\
-maximum K & 8 & FIXME \\
+history multiplier & 8 & \texttt{40} \\
+initial history & 8 & \texttt{10} \\
+maximum K & 8 & \texttt{14} \\
 channels & 8 & channel count \\
 unknown & 16 & \texttt{0x00FF} \\
 %FIXME - double check this
 max coded frame size & 32 & largest ALAC frame size, in bytes \\
-bitrate & 32 & $((\text{\ATOM{mdat} size} \times 8 ) \div (\text{total frames} \div \text{sample rate}))$ \\
+bitrate & 32 & $((\text{\ATOM{mdat} size} \times 8 ) \div (\text{total PCM frames} \div \text{sample rate}))$ \\
 sample rate & 32 & sample rate \\
 \hline
 \end{tabular}
 \end{table}
-Note that the \VAR{history multiplier}, \VAR{initial history},
-\VAR{maximum K} and \VAR{bitrate} fields can't be known in advance;
-we must fill those values with 0s for now and then
+The \VAR{history multiplier}, \VAR{initial history} and \VAR{maximum K}
+values are encode-time options, typically set to 40, 10 and 14,
+respectively.
+
+Note that the \VAR{bitrate} field can't be known in advance;
+we must fill that value with 0 for now and then
 return to this atom once encoding is completed
-and those values have been determined.
+and its size has been determined.
 
 \clearpage
 

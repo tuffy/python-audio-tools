@@ -25,6 +25,9 @@ PyObject* encoders_encode_alac(PyObject *dummy,
   static char *kwlist[] = {"file",
 			   "pcmreader",
 			   "block_size",
+			   "initial_history",
+			   "history_multiplier",
+			   "maximum_k",
 			   NULL};
 
   PyObject *file_obj;       /*the Python object of our output file*/
@@ -34,7 +37,11 @@ PyObject* encoders_encode_alac(PyObject *dummy,
   struct pcm_reader *reader; /*the pcm_reader struct of our input pcmreader*/
   struct ia_array samples;  /*a buffer of input samples*/
 
+  /*FIXME - pack these into a struct*/
   int block_size;           /*the block size to use for output, in PCM frames*/
+  int initial_history;
+  int history_multiplier;
+  int maximum_k;
 
   struct alac_encode_log encode_log; /*a log of encoded output*/
   PyObject *encode_log_obj;          /*the Python object of encoded output*/
@@ -42,11 +49,14 @@ PyObject* encoders_encode_alac(PyObject *dummy,
   fpos_t starting_point;
 
   /*extract a file object, PCMReader-compatible object and encoding options*/
-  if (!PyArg_ParseTupleAndKeywords(args,keywds,"OOi",
+  if (!PyArg_ParseTupleAndKeywords(args,keywds,"OOiiii",
 				   kwlist,
 				   &file_obj,
 				   &pcmreader_obj,
-				   &block_size))
+				   &block_size,
+				   &initial_history,
+				   &history_multiplier,
+				   &maximum_k))
     return NULL;
 
   /*check for negative block_size*/
