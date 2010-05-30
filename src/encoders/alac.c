@@ -205,6 +205,76 @@ status ALACEncoder_write_uncompressed_frame(Bitstream *bs,
   return OK;
 }
 
+status ALACEncoder_write_compressed_frame(Bitstream *bs,
+					  struct alac_encoding_options *options,
+					  int bits_per_sample,
+					  struct ia_array *samples) {
+  int channels = samples->size;
+  int pcm_frames = samples->arrays[0].size;
+  int has_sample_size = (pcm_frames != options->block_size);
+  int has_wasted_bits = (bits_per_sample > 16);
+  struct i_array wasted_bits;
+  int i,j;
+
+  /*write frame header*/
+  bs->write_bits(bs,3,channels - 1); /*channel count, offset 1*/
+  bs->write_bits(bs,16,0);           /*unknown, all 0*/
+  if (has_sample_size)               /*"has sample size"" flag*/
+    bs->write_bits(bs,1,1);
+  else
+    bs->write_bits(bs,1,0);
+
+  if (has_wasted_bits)               /*"has wasted bits" value*/
+    bs->write_bits(bs,2,1);
+  else
+    bs->write_bits(bs,2,0);
+
+  bs->write_bits(bs,1,0);  /*the "is not compressed flag" flag*/
+  if (has_sample_size)
+    bs->write_bits(bs,32,pcm_frames);
+
+  /*if we have wasted bits, extract them from the front of each sample
+    we'll only support 8 wasted bits, for 24bps input*/
+  if (has_wasted_bits) {
+    ia_init(&wasted_bits,channels * pcm_frames);
+    for (i = 0; i < pcm_frames; i++)
+      for (j = 0; j < channels; j++) {
+	ia_append(&wasted_bits,samples->arrays[j].data[i] & 0xFF);
+	samples->arrays[j].data[i] >>= 8;
+      }
+  }
+
+  /*if stereo, determine "interlacing shift" and "interlacing leftweight"*/
+
+  /*if stereo, apply channel correlation to samples*/
+
+  /*calculate the best "prediction quantitization" and "coefficient" values
+    for each channel of audio*/
+
+  /*write 1 subframe header per channel*/
+
+  /*write wasted bits block, if any*/
+  if (has_wasted_bits) {
+    for (i = 0; i < wasted_bits.size; i++)
+      bs->write_bits(bs,8,wasted_bits.data[i]);
+  }
+
+  /*calculate residuals for each channel
+    based on "coefficients", "quantitization", encoding options and samples*/
+
+  /*write 1 residual block per channel*/
+
+  /*write frame footer and byte-align output*/
+  bs->write_bits(bs,3,0x7);
+  bs->byte_align(bs);
+
+  /*clear any temporary buffers*/
+  if (has_wasted_bits)
+    ia_free(&wasted_bits);
+
+  return OK;
+}
+
 void ALACEncoder_byte_counter(unsigned int byte, void* counter) {
   int* i_counter = (int*)counter;
   *i_counter += 1;

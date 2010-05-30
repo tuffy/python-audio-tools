@@ -64,4 +64,9 @@ status ALACEncoder_write_uncompressed_frame(Bitstream *bs,
 					    int bits_per_sample,
 					    struct ia_array *samples);
 
+status ALACEncoder_write_compressed_frame(Bitstream *bs,
+					  struct alac_encoding_options *options,
+					  int bits_per_sample,
+					  struct ia_array *samples);
+
 #endif
