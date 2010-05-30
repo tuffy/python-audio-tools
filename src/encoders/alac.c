@@ -37,11 +37,7 @@ PyObject* encoders_encode_alac(PyObject *dummy,
   struct pcm_reader *reader; /*the pcm_reader struct of our input pcmreader*/
   struct ia_array samples;  /*a buffer of input samples*/
 
-  /*FIXME - pack these into a struct*/
-  int block_size;           /*the block size to use for output, in PCM frames*/
-  int initial_history;
-  int history_multiplier;
-  int maximum_k;
+  struct alac_encoding_options options;
 
   struct alac_encode_log encode_log; /*a log of encoded output*/
   PyObject *encode_log_obj;          /*the Python object of encoded output*/
@@ -53,14 +49,14 @@ PyObject* encoders_encode_alac(PyObject *dummy,
 				   kwlist,
 				   &file_obj,
 				   &pcmreader_obj,
-				   &block_size,
-				   &initial_history,
-				   &history_multiplier,
-				   &maximum_k))
+				   &(options.block_size),
+				   &(options.initial_history),
+				   &(options.history_multiplier),
+				   &(options.maximum_k)))
     return NULL;
 
   /*check for negative block_size*/
-  if (block_size <= 0) {
+  if (options.block_size <= 0) {
     PyErr_SetString(PyExc_ValueError,"block_size must be positive");
     return NULL;
   }
@@ -71,7 +67,7 @@ PyObject* encoders_encode_alac(PyObject *dummy,
   }
 
   /*initialize a buffer for input samples*/
-  iaa_init(&samples,reader->channels,block_size);
+  iaa_init(&samples,reader->channels,options.block_size);
 
   /*initialize the output log*/
   alac_log_init(&encode_log);
@@ -107,17 +103,18 @@ PyObject* encoders_encode_alac(PyObject *dummy,
   stream->write_bits(stream,32,0x6D646174);  /*"mdat" type*/
 
   /*write frames from pcm_reader until empty*/
-  if (!pcmr_read(reader,block_size,&samples))
+  if (!pcmr_read(reader,options.block_size,&samples))
     goto error;
   while (iaa_getitem(&samples,0)->size > 0) {
-    ALACEncoder_write_uncompressed_frame(stream,
-					 &encode_log,
-					 ftell(output_file),
-					 block_size,
-					 reader->bits_per_sample,
-					 &samples);
+    if (ALACEncoder_write_frame(stream,
+				&encode_log,
+				ftell(output_file),
+				&options,
+				reader->bits_per_sample,
+				&samples) == ERROR)
+      goto error;
 
-    if (!pcmr_read(reader,block_size,&samples))
+    if (!pcmr_read(reader,options.block_size,&samples))
       goto error;
   }
 
@@ -146,9 +143,34 @@ PyObject* encoders_encode_alac(PyObject *dummy,
   return NULL;
 }
 
+status ALACEncoder_write_frame(Bitstream *bs,
+			       struct alac_encode_log *log,
+			       long starting_offset,
+			       struct alac_encoding_options *options,
+			       int bits_per_sample,
+			       struct ia_array *samples) {
+  log->frame_byte_size = 0;
+
+  /*write uncompressed frame*/
+  if (ALACEncoder_write_uncompressed_frame(bs,
+					   options->block_size,
+					   bits_per_sample,
+					   samples) == ERROR)
+    return ERROR;
+
+  /*update log*/
+  log->mdat_byte_size += log->frame_byte_size;
+  ia_append(iaa_getitem(&(log->frame_log),LOG_SAMPLE_SIZE),
+	    samples->arrays[0].size);
+  ia_append(iaa_getitem(&(log->frame_log),LOG_BYTE_SIZE),
+	    log->frame_byte_size);
+  ia_append(iaa_getitem(&(log->frame_log),LOG_FILE_OFFSET),
+	    starting_offset);
+
+  return OK;
+}
+
 status ALACEncoder_write_uncompressed_frame(Bitstream *bs,
-					    struct alac_encode_log *log,
-					    long starting_offset,
 					    int block_size,
 					    int bits_per_sample,
 					    struct ia_array *samples) {
@@ -156,8 +178,6 @@ status ALACEncoder_write_uncompressed_frame(Bitstream *bs,
   int pcm_frames = samples->arrays[0].size;
   int has_sample_size = (pcm_frames != block_size);
   int i,j;
-
-  log->frame_byte_size = 0;
 
   /*write frame header*/
   bs->write_bits(bs,3,channels - 1); /*channel count, offset 1*/
@@ -181,15 +201,6 @@ status ALACEncoder_write_uncompressed_frame(Bitstream *bs,
   /*write footer and padding*/
   bs->write_bits(bs,3,0x7);
   bs->byte_align(bs);
-
-  /*update log*/
-  log->mdat_byte_size += log->frame_byte_size;
-  ia_append(iaa_getitem(&(log->frame_log),LOG_SAMPLE_SIZE),
-	    pcm_frames);
-  ia_append(iaa_getitem(&(log->frame_log),LOG_BYTE_SIZE),
-	    log->frame_byte_size);
-  ia_append(iaa_getitem(&(log->frame_log),LOG_FILE_OFFSET),
-	    starting_offset);
 
   return OK;
 }
