@@ -46,7 +46,7 @@ atom, as follows:
 ALAC frames come in two varieties: compressed and uncompressed,
 depending on the \VAR{Is Not Compressed} bit in the frame header.
 An uncompressed frame is laid out as follows:
-
+\label{alac_uncompressed}
 \begin{figure}[h]
 \includegraphics{figures/alac_uncompressed_frame.pdf}
 \end{figure}
@@ -1061,4 +1061,130 @@ and is described on page \pageref{m4a_meta}.
 
 These atoms are simple collection of NULL bytes which can easily be
 resized to make room for other atoms without rewriting the entire file.
+
+\clearpage
+
+\subsection{Compressed and uncompressed frames}
+
+Now that we've built a set of ALAC atoms, the next step is to break
+our audio into a set of PCM frames of a certain block size -
+typically 4096.
+We then have to decide whether to turn them into a compressed
+or uncompressed frame.
+This is done by first attempting a compressed frame while keeping
+track of its size.
+If that compressed frame's size is greater than what an
+uncompressed frame would be
+($(\text{block size} \times \text{channels} \times \text{bits per sample} \div 8) + 7$), use an uncompressed frame instead.\footnote{See page \pageref{alac_uncompressed}}
+For any audio data that isn't random noise, compressed frames
+will be the better choice.
+
+As you'll recall, a compressed frame is laid out as follows:
+
+\begin{figure}[h]
+\includegraphics{figures/alac_compressed_frame.pdf}
+\end{figure}
+\par
+\noindent
+\VAR{Channel Count} will be consistent throughout the stream:
+0 for mono streams, 1 for stereo streams.
+\VAR{Has Sample Size} will be 0 so long as we have enough
+remaining samples to fill our consistent block size.
+But, at the end of the stream, this value will be 1 to cover any
+remaining samples whose size will be stored in the \VAR{Sample Size} field.
+Next, we use a \VAR{Wasted Bits} value of 1 if our stream's bits-per-sample
+is greater than 16.
+
+In the event we have wasted bits, we simply chop off the bottom 8 bits
+of each sample and store them as a block of wasted bits samples
+(whose values are typically random noise, which does not compress well)
+and then treat the stream as having 16 bits per sample
+throughout the remainder of compression.
+
+\clearpage
+
+\subsection{Channel correlation}
+
+For stereo streams, we must determine good \VAR{Interlacing Shift}
+and \VAR{Interlacing Leftweight} values to exploit similarities
+between the left and right channels.
+
+We'll do this by first calculating the second order residual
+for the samples of each channel\footnote{Since Apple doesn't provide
+any ALAC source code, this compression technique is based off of
+ffmpeg's implementation.}, as follows:
+\begin{equation*}
+\text{Residual}_i = (\text{Sample}_i - (2 \times \text{Sample}_{i - 1})) + \text{Sample}_{i - 2}
+\end{equation*}
+for each value of i from 2 to the ALAC frame's sample count.
+For example:
+\begin{table}[h]
+\begin{tabular}{|c||>{$}r<{$}|>{$}r<{$}||>{$}r<{$}|>{$}r<{$}|}
+\hline
+& \text{Left} & \text{Left} & \text{Right} & \text{Right} \\
+i & \text{Sample}_i & \text{Residual}_i & \text{Sample}_i & \text{Residual}_i \\
+\hline
+0 & 18 & & 2 & \\
+1 & 20 & & 3 & \\
+2 & 26 & (26 - (2 \times 20)) + 18 = \textbf{4} & 0 & (0 - (2 \times 3)) + 2 = \textbf{-4} \\
+3 & 24 & (24 - (2 \times 26)) + 20 = \textbf{-8} & -1 & (-1 - (2 \times 0)) + 3 = \textbf{2} \\
+4 & 24 & (24 - (2 \times 24)) + 26 = \textbf{2} & 0 & (0 - (2 \times -1)) + 0 = \textbf{2} \\
+5 & 23 & (23 - (2 \times 24)) + 24 = \textbf{-1} & 0 & (0 - (2 \times 0)) - 1 = \textbf{-1} \\
+6 & 21 & (21 - (2 \times 23)) + 24 = \textbf{-1} & 1 & (1 - (2 \times 0)) + 0 = \textbf{1} \\
+7 & 24 & (24 - (2 \times 21)) + 23 = \textbf{5} & 0 & (0 - (2 \times 1)) + 0 = \textbf{-2} \\
+8 & 23 & (23 - (2 \times 24)) + 21 = \textbf{-4} & 0 & (0 - (2 \times 0)) + 1 = \textbf{1} \\
+9 & 20 & (20 - (2 \times 23)) + 24 = \textbf{-2} & 0 & (0 - (2 \times 0)) + 0 = \textbf{0} \\
+\hline
+\end{tabular}
+\end{table}
+\par
+We then calculate the size of four different storage techniques:
+\begin{align*}
+\text{Left-Right} &= \sum_{i = 2}^{\text{sample count}} | \text{Left Residual}_i | + | \text{Right Residual}_i | \\
+\text{Left-Side} &= \sum_{i = 2}^{\text{sample count}} | \text{Left Residual}_i | + | \text{Left Residual}_i - \text{Right Residual}_i | \\
+\text{Right-Side} &= \sum_{i = 2}^{\text{sample count}} | \text{Right Residual}_i | + | \text{Left Residual}_i - \text{Right Residual}_i | \\
+\text{Mid-Side} &= \sum_{i = 2}^{\text{sample count}} \left\lvert \left\lfloor \frac{\text{Left Residual}_i + \text{Right Residual}_i}{2} \right\rfloor \right\rvert + | \text{Left Residual}_i - \text{Right Residual}_i |
+\end{align*}
+and use the storage technique which is the smallest.
+
+\clearpage
+
+So to complete our example in a slightly easier to visualize way,
+we'll break our input into \VAR{Left}, \VAR{Right}, \VAR{Side}
+and \VAR{Mid} values, as follows:
+\begin{align*}
+\text{Left} &= 4 + 8 + 2 + 1 + 1 + 5 + 4 + 2 = \textbf{27} \\
+\text{Right} &= 4 + 2 + 2 + 1 + 1 + 2 + 1 + 0 = \textbf{13} \\
+\text{Side} &= |4 - -4| + |-8 - 2| + |2 - 2| + |-1 - -1| + |-1 - 1| + |5 - -2| + |-4 - 1| + |-2 - 0| \\
+&= |8| + |-10| + |0| + |0| + |-2| + |7| + |-5| + |-2| \\
+&= 8 + 10 + 0 + 0 + 2 + 7 + 5 + 2 = \textbf{34} \\
+\text{Mid} &= \left\lvert\left\lfloor\frac{4 - 4}{2}\right\rfloor\right\rvert + \left\lvert\left\lfloor\frac{-8 + 2}{2}\right\rfloor\right\rvert + \left\lvert\left\lfloor\frac{2 + 2}{2}\right\rfloor\right\rvert + \left\lvert\left\lfloor\frac{-1 + -1}{2}\right\rfloor\right\rvert + \left\lvert\left\lfloor\frac{-1 + 1}{2}\right\rfloor\right\rvert + \\
+& \left\lvert\left\lfloor\frac{5 - 2}{2}\right\rfloor\right\rvert + \left\lvert\left\lfloor\frac{-4 + 1}{2}\right\rfloor\right\rvert + \left\lvert\left\lfloor\frac{-2 + 0}{2}\right\rfloor\right\rvert \\
+&= |0| + |-3| + |2| + |-1| + |0| + |1| + |-2| + |-1| \\
+&= 0 + 3 + 2 + 1 + 0 + 1 + 2 + 1 = \textbf{10}
+\end{align*}
+So, by combining these four, our final values are:
+\begin{align*}
+\text{Left-Right} &= \text{Left} + \text{Right} = 27 + 13 = \textbf{40} \\
+\text{Left-Side} &= \text{Left} + \text{Side} = 27 + 34 = \textbf{61} \\
+\text{Right-Side} &= \text{Right} + \text{Side} = 13 + 34 = \textbf{47} \\
+\text{Mid-Side} &= \text{Mid} + \text{Side} = 10 + 34 = \textbf{44}
+\end{align*}
+and since Left-Right's value of 40 is the smallest, the best
+correlation for these samples is Left-Right.
+
+The conversion from storage techniques to \VAR{Interlacing Shift} and
+\VAR{Interlacing Leftweight} is as follows:
+\begin{table}[h]
+\begin{tabular}{|l|r|r|}
+\hline
+technique & interlacing shift & interlacing leftweight \\
+\hline
+Left-Right & 0 & 0 \\
+Left-Side & 0 & 1 \\
+Right-Side & 31 & 1 \\
+Mid-Side & 1 & 1 \\
+\hline
+\end{tabular}
+\end{table}
 
