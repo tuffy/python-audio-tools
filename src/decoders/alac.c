@@ -544,7 +544,7 @@ status ALACDecoder_decode_subframe(struct i_array *samples,
 
   /*grab a number of warm-up samples equal to coefficients' length*/
   for (i = 0; i < coefficients->size; i++) {
-    /*these are adjustments to the first sample
+    /*these are adjustments to the previous sample
       rather than copied verbatim*/
     ia_append(samples,
 	      ia_pop_head(&remaining_residuals) +

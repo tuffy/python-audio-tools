@@ -74,4 +74,9 @@ status ALACEncoder_correlate_channels(struct ia_array *output,
 				      int interlacing_shift,
 				      int interlacing_leftweight);
 
+status ALACEncoder_encode_subframe(struct i_array *residuals,
+				   struct i_array *samples,
+				   struct i_array *coefficients,
+				   int predictor_quantitization);
+
 #endif
