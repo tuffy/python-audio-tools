@@ -1189,4 +1189,105 @@ Subsequent residuals are calculated in the following way:
 \text{Residual}_5 &= 23 - \left( \left\lfloor \frac{\textbf{3274} + 2^8}{2 ^ 9}\right\rfloor + 16 \right) =  23 - \left( \left\lfloor \frac{3530}{512} \right\rfloor + 16 \right) = 23 - (6 + 16) = \textbf{1}
 \end{align*}
 But before calculation $\text{Residual}_6$, we need to adjust
-our coefficient list.
+our coefficient list in the same way as residual decoding.
+
+\clearpage
+
+%this is largely a cut-&-paste from the decoding section
+
+Updating the coefficient list first requires calculating a set
+of temporary \VAR{Val} and \VAR{Sign} values, as follows:
+\begin{align}
+\text{Val}_j &= \text{Sample}_{i - coeffs - 1} - \text{Sample}_{i - coeffs + j} & \text{for j = 0 to } coeffs - 1 \\
+\text{Sign}_j &= \frac{\text{Val}_j}{|\text{Val}_j|} \times \frac{\text{Residual}_i}{|\text{Residual}_i|} & \text{for j = 0 to } coeffs - 1
+\end{align}
+Unless $\text{Residual}_i$ is 0, in which case our coefficient list
+remains unchanged.
+If $\text{Val}_j$ is 0, $\text{Sign}_j$ is also 0.
+So to continue our example in which $\text{Residual}_5$ is 1 and
+our \VAR{Coefficient Count} is 4:
+\begin{table}[h]
+\begin{tabular}{|c| >{$}l<{$} >{$}r<{$} | >{$}r<{$} |}
+\hline
+j & & \text{Val}_j & \text{Sign}_j \\
+\hline
+0 & \text{Sample}_0 - \text{Sample}_1 = 16 - 17 =& \textbf{-1} &
+(-1 \div |-1|) \times (1 \div |1|) = -1 \times 1 = \textbf{-1} \\
+\hline
+1 & \text{Sample}_0 - \text{Sample}_2 = 16 - 26 =& \textbf{-10} &
+(-10 \div |-10|) \times (1 \div |1|) = -1 \times 1 = \textbf{-1} \\
+\hline
+2 & \text{Sample}_0 - \text{Sample}_3 = 16 - 25 =& \textbf{-9} &
+(-9 \div |-9|) \times (1 \div |1|) = -1 \times 1 = \textbf{-1} \\
+\hline
+3 & \text{Sample}_0 - \text{Sample}_4 = 16 - 24 =& \textbf{-8} &
+(-8 \div |-8|) \times (1 \div |1|) = -1 \times 1 = \textbf{-1} \\
+\hline
+\end{tabular}
+\end{table}
+\par
+\noindent
+We then perform the following operations for each `j' from 0 to $coeffs - 1$
+\textit{or} until
+\linebreak
+$\frac{\text{Residual}_i}{|\text{Residual}_i|} \neq \frac{\text{Residual}_j}{|\text{Residual}_j|}$ where $\text{Residual}_j$'s initial value is $\text{Residual}_i$:
+\begin{align}
+\text{Step 1. } & \text{Coefficient}_{coeffs - j - 1} = \text{Coefficient}_{coeffs - j - 1} - \text{Sign}_j \\
+\text{Step 2. } & \text{Residual}_j = \text{Residual}_{j - 1} - \left\lfloor\frac{\text{Val}_j \times \text{Sign}_j}{2 ^ \text{Predictor Quantitization}}\right\rfloor \times (j + 1)
+\end{align}
+So to complete our example:
+\begin{align*}
+\text{Coefficient}_3 &= \text{Coefficient}_3 - \text{Sign}_0 = 122 - -1 =& 123 \\
+\text{Residual}_0 &= \text{Residual}_{-1} - \left\lfloor\frac{\text{Val}_0 \times \text{Sign}_0}{2 ^ 9}\right\rfloor \times (0 + 1) = 1 - \left\lfloor\frac{-1 \times -1}{2 ^ 9}\right\rfloor \times 1 =& 1 \\
+\text{Coefficient}_2 &= \text{Coefficient}_2 - \text{Sign}_1 = 107 - -1 =& 108 \\
+\text{Residual}_1 &= \text{Residual}_0 - \left\lfloor\frac{\text{Val}_1 \times \text{Sign}_1}{2 ^ 9}\right\rfloor \times (1 + 1) = 1 - \left\lfloor\frac{-10 \times -1}{2 ^ 9}\right\rfloor \times 2 =& 1 \\
+\text{Coefficient}_1 &= \text{Coefficient}_1 - \text{Sign}_2 = -766 - -1 =& -765 \\
+\text{Residual}_2 &= \text{Residual}_1 - \left\lfloor\frac{\text{Val}_2 \times \text{Sign}_2}{2 ^ 9}\right\rfloor \times (2 + 1) = 1 - \left\lfloor\frac{-9 \times -1}{2 ^ 9}\right\rfloor \times 3 =& 1 \\
+\text{Coefficient}_0 &= \text{Coefficient}_0 - \text{Sign}_3 = 1122 - -1 =& 1123 \\
+\text{Residual}_3 &= \text{Residual}_2 - \left\lfloor\frac{\text{Val}_3 \times \text{Sign}_3}{2 ^ 9}\right\rfloor \times (3 + 1) = 1 - \left\lfloor\frac{-8 \times -1}{2 ^ 9}\right\rfloor \times 4 =& 1
+\end{align*}
+Thus, our list of coefficients for $\text{Residual}_6$ are now
+1123, -765, 108 and 123.
+
+\clearpage
+
+Given that $\text{Sample}_6$ is 20, the calculation of $\text{Residual}_6$
+is as follows:
+\begin{align*}
+\text{LPC Sum}_6 &= (1123 \times (23 - 17)) + (-765 \times (24 - 17)) + (108 \times (25 - 17)) + (123 \times (26 - 17)) \\
+&= (1123 \times 6) + (-765 \times 7) + (108 \times 8) + (123 \times 9) \\
+&= 6738 + -5355 + 864 + 1107 = \textbf{3354} \\
+\text{Residual}_6 &= 20 - \left( \left\lfloor \frac{\textbf{3354} + 2^8}{2 ^ 9}\right\rfloor + 17 \right) =  20 - \left( \left\lfloor \frac{3610}{512} \right\rfloor + 17 \right) = 20 - (7 + 17) = \textbf{-4}
+\end{align*}
+%another cut-&-paste from the decoding section
+\begin{table}[h]
+\begin{tabular}{|c| >{$}l<{$} >{$}r<{$} | >{$}r<{$} |}
+\hline
+j & & \text{Val}_j & \text{Sign}_j \\
+\hline
+0 & \text{Sample}_1 - \text{Sample}_2 = 17 - 26 =& \textbf{-9} &
+(-9 \div |-9|) \times (-4 \div |-4|) = -1 \times -1 = \textbf{1} \\
+\hline
+1 & \text{Sample}_1 - \text{Sample}_3 = 17 - 25 =& \textbf{-8} &
+(-8 \div |-8|) \times (-4 \div |-4|) = -1 \times -1 = \textbf{1} \\
+\hline
+2 & \text{Sample}_1 - \text{Sample}_4 = 17 - 24 =& \textbf{-7} &
+(-7 \div |-7|) \times (-4 \div |-4|) = -1 \times -1 = \textbf{1} \\
+\hline
+3 & \text{Sample}_1 - \text{Sample}_5 = 17 - 23 =& \textbf{-6} &
+(-6 \div |-6|) \times (-4 \div |-4|) = -1 \times -1 = \textbf{1} \\
+\hline
+\end{tabular}
+\end{table}
+\begin{align*}
+\text{Coefficient}_3 &= \text{Coefficient}_3 - \text{Sign}_0 = 123 - 1 =& 122 \\
+\text{Residual}_0 &= \text{Residual}_{-1} - \left\lfloor\frac{\text{Val}_0 \times \text{Sign}_0}{2 ^ 9}\right\rfloor \times (0 + 1) = -4 - \left\lfloor\frac{-9 \times 1}{2 ^ 9}\right\rfloor \times 1 =& -3 \\
+\text{Coefficient}_2 &= \text{Coefficient}_2 - \text{Sign}_1 = 108 - 1 =& 107 \\
+\text{Residual}_1 &= \text{Residual}_0 - \left\lfloor\frac{\text{Val}_1 \times \text{Sign}_1}{2 ^ 9}\right\rfloor \times (1 + 1) = -3 - \left\lfloor\frac{-8 \times 1}{2 ^ 9}\right\rfloor \times 2 =& -1 \\
+\text{Coefficient}_1 &= \text{Coefficient}_1 - \text{Sign}_2 = -765 - 1 =& -766 \\
+\text{Residual}_2 &= \text{Residual}_1 - \left\lfloor\frac{\text{Val}_2 \times \text{Sign}_2}{2 ^ 9}\right\rfloor \times (2 + 1) = -1 - \left\lfloor\frac{-7 \times 1}{2 ^ 9}\right\rfloor \times 3 =& 2
+\intertext{Note that since $\text{Residual}_2$'s sign has changed,
+the calculation stops.  Therefore:}
+\text{Coefficient}_0 &= & 1123
+\end{align*}
+So, the coefficients for $\text{Residual}_7$ are 1123, -766, 107 and 122.
