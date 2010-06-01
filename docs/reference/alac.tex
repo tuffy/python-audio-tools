@@ -1139,3 +1139,54 @@ Sample & \text{Left}_i & \text{Right}_i & \text{Channel}_1 & \text{Channel}_2 \\
 \end{tabular}
 \end{table}
 
+\subsection{Coefficient calculation}
+
+TODO
+
+\clearpage
+
+\subsection{Residual calculation}
+
+Given our list of correlated samples; along with a list of
+coefficients, a \VAR{Coefficient Count} and a \VAR{Prediction Quantitization}
+value, we can now generate a list of signed residuals values
+for a given channel.
+
+The first residual is always the first input sample:
+\begin{align*}
+\text{Residual}_0 &= \text{Sample}_0 \\
+\intertext{Then, for the next \VAR{Coefficient Count} number of samples:}
+\text{Residual}_i &= \text{Sample}_i - \text{Sample}_{i - 1}
+\end{align*}
+
+For example, given that we have a \VAR{Coefficient Count} of 4
+and our first five samples are 16, 17, 26, 25 and 24;
+our first five residual values are:
+\begin{align*}
+\text{Residual}_0 &= \textbf{16} \\
+\text{Residual}_1 = 17 - 16 &= \textbf{1} \\
+\text{Residual}_2 = 26 - 17 &= \textbf{9} \\
+\text{Residual}_3 = 25 - 26 &= \textbf{-1} \\
+\text{Residual}_4 = 24 - 25 &= \textbf{-1}
+\end{align*}
+
+These are our ``starting point'' residuals upon which the
+remainder of the residuals will be calculated from.
+
+Subsequent residuals are calculated in the following way:
+\begin{align*}
+\text{LPC Sum}_i &= \overset{coeffs - 1}{\underset{j = 0}{\sum}}
+\text{Coefficient}_j \times (\text{Sample}_{i - j - 1} - \text{Sample}_{i - coeffs - 1}) \\
+\text{Residual}_i &= \text{Sample}_i - \left( \left\lfloor \frac{\text{LPC Sum}_i + 2^{\text{Predictor Quantitization - 1}}} {2 ^ \text{Predictor Quantitization}}\right\rfloor + \text{Sample}_{i - coeffs - 1} \right) \\
+\intertext{For example, given $\text{Sample}_5$ = 23,
+\VAR{Predictor Quantitization} = 9 and the coefficients
+1122, -766, 107 and 122:}
+\text{LPC Sum}_5 &=
+(1122 \times (24 - 16)) + (-766 \times (25 - 16)) +
+ (107 \times (26 - 16)) + (122 \times (17 - 16)) \\
+&= (1122 \times 8) + (-766 \times 9) + (107 \times 10) + (122 \times 1) \\
+&= 8976 + -6894 + 1070 + 122 = \textbf{3274} \\
+\text{Residual}_5 &= 23 - \left( \left\lfloor \frac{\textbf{3274} + 2^8}{2 ^ 9}\right\rfloor + 16 \right) =  23 - \left( \left\lfloor \frac{3530}{512} \right\rfloor + 16 \right) = 23 - (6 + 16) = \textbf{1}
+\end{align*}
+But before calculation $\text{Residual}_6$, we need to adjust
+our coefficient list.
