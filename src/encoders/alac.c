@@ -275,6 +275,40 @@ status ALACEncoder_write_compressed_frame(Bitstream *bs,
   return OK;
 }
 
+status ALACEncoder_correlate_channels(struct ia_array *output,
+				      struct ia_array *input,
+				      int interlacing_shift,
+				      int interlacing_leftweight) {
+  struct i_array *left_channel;
+  struct i_array *right_channel;
+  struct i_array *channel1;
+  struct i_array *channel2;
+  ia_data_t left;
+  ia_data_t right;
+  ia_size_t pcm_frames,i;
+
+  if ((input->size != 2) || (output->size != 2)) {
+    PyErr_SetString(PyExc_ValueError,"both input and output must be 2 channels");
+    return ERROR;
+  }
+
+  left_channel = iaa_getitem(input,0);
+  right_channel = iaa_getitem(input,1);
+  channel1 = iaa_getitem(output,0);
+  channel2 = iaa_getitem(output,1);
+  pcm_frames = left_channel->size;
+
+  for (i = 0; i < pcm_frames; i++) {
+    left = left_channel->data[i];
+    right = right_channel->data[i];
+    ia_append(channel1,right +
+	      (((left - right) * interlacing_leftweight) >> interlacing_shift));
+    ia_append(channel2,left - right);
+  }
+
+  return OK;
+}
+
 void ALACEncoder_byte_counter(unsigned int byte, void* counter) {
   int* i_counter = (int*)counter;
   *i_counter += 1;

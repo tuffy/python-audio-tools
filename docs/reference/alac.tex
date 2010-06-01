@@ -409,7 +409,7 @@ So, the coefficients for $\text{Sample}_7$ are 1123, -766, 107 and 122.
 \clearpage
 
 \subsection{Channel decorrelation}
-
+\label{alac_decorrelation}
 If we have more than one channel of output, the next step is
 performing channel decorrelation.
 If our \VAR{Interlacing Leftweight} value from the frame header is 0,
@@ -1109,81 +1109,32 @@ For stereo streams, we must determine good \VAR{Interlacing Shift}
 and \VAR{Interlacing Leftweight} values to exploit similarities
 between the left and right channels.
 
-We'll do this by first calculating the second order residual
-for the samples of each channel\footnote{Since Apple doesn't provide
-any ALAC source code, this compression technique is based off of
-ffmpeg's implementation.}, as follows:
-\begin{equation*}
-\text{Residual}_i = (\text{Sample}_i - (2 \times \text{Sample}_{i - 1})) + \text{Sample}_{i - 2}
-\end{equation*}
-for each value of i from 2 to the ALAC frame's sample count.
-For example:
+In this case, we'll use an \VAR{Interlacing Shift} value of 2
+and try all all \VAR{Interlacing Leftweight} values between 0 and 4
+(inclusive), using the one that generates the smallest subframes.
+
+Correlating our left and right channel samples using
+\VAR{Interlacing Shift} and \VAR{Interlacing Leftweight} is done
+using the inverse of decorrelation:
+\begin{align*}
+\text{Channel}_1 &= \text{Right}_i + \left\lfloor\frac{(\text{Left}_i - \text{Right}_i) \times \text{Interlacing Leftweight}}{2 ^ \text{Interlacing Shift}}\right\rfloor \\
+\text{Channel}_2 &= \text{Left}_i - \text{Right}_i
+\end{align*}
+\par
+For example, given the left channels 18, 20, 26, 24, 24;
+the right channels of 2, 3, 0, -1. 0; an \VAR{Interlacing Shift} value
+of 2 and an \VAR{Interlacing Leftweight} value of 3, we
+calculate ALAC channels as follows:
 \begin{table}[h]
 \begin{tabular}{|c||>{$}r<{$}|>{$}r<{$}||>{$}r<{$}|>{$}r<{$}|}
 \hline
-& \text{Left} & \text{Left} & \text{Right} & \text{Right} \\
-i & \text{Sample}_i & \text{Residual}_i & \text{Sample}_i & \text{Residual}_i \\
+Sample & \text{Left}_i & \text{Right}_i & \text{Channel}_1 & \text{Channel}_2 \\
 \hline
-0 & 18 & & 2 & \\
-1 & 20 & & 3 & \\
-2 & 26 & (26 - (2 \times 20)) + 18 = \textbf{4} & 0 & (0 - (2 \times 3)) + 2 = \textbf{-4} \\
-3 & 24 & (24 - (2 \times 26)) + 20 = \textbf{-8} & -1 & (-1 - (2 \times 0)) + 3 = \textbf{2} \\
-4 & 24 & (24 - (2 \times 24)) + 26 = \textbf{2} & 0 & (0 - (2 \times -1)) + 0 = \textbf{2} \\
-5 & 23 & (23 - (2 \times 24)) + 24 = \textbf{-1} & 0 & (0 - (2 \times 0)) - 1 = \textbf{-1} \\
-6 & 21 & (21 - (2 \times 23)) + 24 = \textbf{-1} & 1 & (1 - (2 \times 0)) + 0 = \textbf{1} \\
-7 & 24 & (24 - (2 \times 21)) + 23 = \textbf{5} & 0 & (0 - (2 \times 1)) + 0 = \textbf{-2} \\
-8 & 23 & (23 - (2 \times 24)) + 21 = \textbf{-4} & 0 & (0 - (2 \times 0)) + 1 = \textbf{1} \\
-9 & 20 & (20 - (2 \times 23)) + 24 = \textbf{-2} & 0 & (0 - (2 \times 0)) + 0 = \textbf{0} \\
-\hline
-\end{tabular}
-\end{table}
-\par
-We then calculate the size of four different storage techniques:
-\begin{align*}
-\text{Left-Right} &= \sum_{i = 2}^{\text{sample count}} | \text{Left Residual}_i | + | \text{Right Residual}_i | \\
-\text{Left-Side} &= \sum_{i = 2}^{\text{sample count}} | \text{Left Residual}_i | + | \text{Left Residual}_i - \text{Right Residual}_i | \\
-\text{Right-Side} &= \sum_{i = 2}^{\text{sample count}} | \text{Right Residual}_i | + | \text{Left Residual}_i - \text{Right Residual}_i | \\
-\text{Mid-Side} &= \sum_{i = 2}^{\text{sample count}} \left\lvert \left\lfloor \frac{\text{Left Residual}_i + \text{Right Residual}_i}{2} \right\rfloor \right\rvert + | \text{Left Residual}_i - \text{Right Residual}_i |
-\end{align*}
-and use the storage technique which is the smallest.
-
-\clearpage
-
-So to complete our example in a slightly easier to visualize way,
-we'll break our input into \VAR{Left}, \VAR{Right}, \VAR{Side}
-and \VAR{Mid} values, as follows:
-\begin{align*}
-\text{Left} &= 4 + 8 + 2 + 1 + 1 + 5 + 4 + 2 = \textbf{27} \\
-\text{Right} &= 4 + 2 + 2 + 1 + 1 + 2 + 1 + 0 = \textbf{13} \\
-\text{Side} &= |4 - -4| + |-8 - 2| + |2 - 2| + |-1 - -1| + |-1 - 1| + |5 - -2| + |-4 - 1| + |-2 - 0| \\
-&= |8| + |-10| + |0| + |0| + |-2| + |7| + |-5| + |-2| \\
-&= 8 + 10 + 0 + 0 + 2 + 7 + 5 + 2 = \textbf{34} \\
-\text{Mid} &= \left\lvert\left\lfloor\frac{4 - 4}{2}\right\rfloor\right\rvert + \left\lvert\left\lfloor\frac{-8 + 2}{2}\right\rfloor\right\rvert + \left\lvert\left\lfloor\frac{2 + 2}{2}\right\rfloor\right\rvert + \left\lvert\left\lfloor\frac{-1 + -1}{2}\right\rfloor\right\rvert + \left\lvert\left\lfloor\frac{-1 + 1}{2}\right\rfloor\right\rvert + \\
-& \left\lvert\left\lfloor\frac{5 - 2}{2}\right\rfloor\right\rvert + \left\lvert\left\lfloor\frac{-4 + 1}{2}\right\rfloor\right\rvert + \left\lvert\left\lfloor\frac{-2 + 0}{2}\right\rfloor\right\rvert \\
-&= |0| + |-3| + |2| + |-1| + |0| + |1| + |-2| + |-1| \\
-&= 0 + 3 + 2 + 1 + 0 + 1 + 2 + 1 = \textbf{10}
-\end{align*}
-So, by combining these four, our final values are:
-\begin{align*}
-\text{Left-Right} &= \text{Left} + \text{Right} = 27 + 13 = \textbf{40} \\
-\text{Left-Side} &= \text{Left} + \text{Side} = 27 + 34 = \textbf{61} \\
-\text{Right-Side} &= \text{Right} + \text{Side} = 13 + 34 = \textbf{47} \\
-\text{Mid-Side} &= \text{Mid} + \text{Side} = 10 + 34 = \textbf{44}
-\end{align*}
-and since Left-Right's value of 40 is the smallest, the best
-correlation for these samples is Left-Right.
-
-The conversion from storage techniques to \VAR{Interlacing Shift} and
-\VAR{Interlacing Leftweight} is as follows:
-\begin{table}[h]
-\begin{tabular}{|l|r|r|}
-\hline
-technique & interlacing shift & interlacing leftweight \\
-\hline
-Left-Right & 0 & 0 \\
-Left-Side & 0 & 1 \\
-Right-Side & 31 & 1 \\
-Mid-Side & 1 & 1 \\
+0 & 18 & 2 & 2 + \left\lfloor\frac{(18 - 2) \times 3}{2 ^ 2}\right\rfloor = 2 + 12 = \textbf{14} & 18 - 2 = \textbf{16} \\
+1 & 20 & 3 & 3 + \left\lfloor\frac{(20 - 3) \times 3}{2 ^ 2}\right\rfloor = 3 + 12 = \textbf{15} & 20 - 3 = \textbf{17} \\
+2 & 26 & 0 & 0 + \left\lfloor\frac{(26 - 0) \times 3}{2 ^ 2}\right\rfloor = 0 + 19 = \textbf{19} & 26 - 0 = \textbf{26} \\
+3 & 24 & -1 & -1 + \left\lfloor\frac{(24 + 1) \times 3}{2 ^ 2}\right\rfloor = -1 + 18 = \textbf{17} & 24 - -1 = \textbf{25} \\
+4 & 24 & 0 & 0 + \left\lfloor\frac{(24 - 0) \times 3}{2 ^ 2}\right\rfloor = 0 + 18 = \textbf{18} & 24 - 0 = \textbf{24} \\
 \hline
 \end{tabular}
 \end{table}

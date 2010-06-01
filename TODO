@@ -1153,7 +1153,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 **** DONE Add forward references in "alac" atom description
 **** DONE figure out if "meta" has required "----" sub-atoms
 **** DONE extracting wasted bits for 24bps streams
-**** TODO correlating stereo samples
+**** DONE correlating stereo samples
 **** TODO determining coefficients/quantitization
 **** TODO calculating residual values
 **** TODO writing residuals based on initial history/history multiplier/etc.
