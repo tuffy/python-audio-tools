@@ -1,4 +1,5 @@
 #include "alac.h"
+#include "alac_lpc.h"
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
