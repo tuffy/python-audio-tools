@@ -215,6 +215,13 @@ status ALACEncoder_write_compressed_frame(Bitstream *bs,
   int has_sample_size = (pcm_frames != options->block_size);
   int has_wasted_bits = (bits_per_sample > 16);
   struct i_array wasted_bits;
+  int interlacing_shift;
+  int interlacing_leftweight;
+  struct ia_array correlated_samples;
+  struct ia_array lpc_coefficients;
+  struct i_array *coefficients;
+  int *shift_needed;
+
   int i,j;
 
   /*write frame header*/
@@ -245,14 +252,43 @@ status ALACEncoder_write_compressed_frame(Bitstream *bs,
       }
   }
 
-  /*if stereo, determine "interlacing shift" and "interlacing leftweight"*/
+  iaa_init(&correlated_samples,channels,pcm_frames);
 
-  /*if stereo, apply channel correlation to samples*/
+  /*if stereo, determine "interlacing shift" and "interlacing leftweight"*/
+  /*FIXME - ultimately, these will be determined exhaustively
+    for now, store channels independently*/
+  interlacing_shift = 0;
+  interlacing_leftweight = 0;
+
+  /*apply channel correlation to samples*/
+  ALACEncoder_correlate_channels(&correlated_samples,
+				 samples,
+				 interlacing_shift,
+				 interlacing_leftweight);
 
   /*calculate the best "prediction quantitization" and "coefficient" values
     for each channel of audio*/
+  /*FIXME - for now, let's use a set of dummy coefficients*/
+  iaa_init(&lpc_coefficients,channels,MAX_LPC_ORDER);
+  shift_needed = malloc(sizeof(int) * channels);
+  for (i = 0; i < channels; i++) {
+    ia_append(iaa_getitem(&lpc_coefficients,i),160);
+    ia_append(iaa_getitem(&lpc_coefficients,i),-190);
+    ia_append(iaa_getitem(&lpc_coefficients,i),170);
+    ia_append(iaa_getitem(&lpc_coefficients,i),-130);
+    shift_needed[i] = 6;
+  }
 
   /*write 1 subframe header per channel*/
+  for (i = 0; i < channels; i++) {
+    bs->write_bits(bs,4,0);                /*prediction type of 0*/
+    bs->write_bits(bs,4,shift_needed[i]);  /*prediction quantitization*/
+    bs->write_bits(bs,3,4);                /*Rice modifier of 4 seems typical*/
+    coefficients = iaa_getitem(&lpc_coefficients,i);
+    bs->write_bits(bs,5,coefficients->size);
+    for (j = 0; j < coefficients->size; j++)
+      bs->write_signed_bits(bs,16,coefficients->data[j]);
+  }
 
   /*write wasted bits block, if any*/
   if (has_wasted_bits) {
@@ -272,6 +308,8 @@ status ALACEncoder_write_compressed_frame(Bitstream *bs,
   /*clear any temporary buffers*/
   if (has_wasted_bits)
     ia_free(&wasted_bits);
+  iaa_free(&correlated_samples);
+  iaa_free(&lpc_coefficients);
 
   return OK;
 }
@@ -288,23 +326,31 @@ status ALACEncoder_correlate_channels(struct ia_array *output,
   ia_data_t right;
   ia_size_t pcm_frames,i;
 
-  if ((input->size != 2) || (output->size != 2)) {
-    PyErr_SetString(PyExc_ValueError,"both input and output must be 2 channels");
-    return ERROR;
-  }
+  if (input->size != 2) {
+    for (i = 0; i < input->size; i++) {
+      ia_copy(iaa_getitem(output,i),iaa_getitem(input,i));
+    }
+  } else {
+    left_channel = iaa_getitem(input,0);
+    right_channel = iaa_getitem(input,1);
+    channel1 = iaa_getitem(output,0);
+    ia_reset(channel1);
+    channel2 = iaa_getitem(output,1);
+    ia_reset(channel2);
+    pcm_frames = left_channel->size;
 
-  left_channel = iaa_getitem(input,0);
-  right_channel = iaa_getitem(input,1);
-  channel1 = iaa_getitem(output,0);
-  channel2 = iaa_getitem(output,1);
-  pcm_frames = left_channel->size;
-
-  for (i = 0; i < pcm_frames; i++) {
-    left = left_channel->data[i];
-    right = right_channel->data[i];
-    ia_append(channel1,right +
-	      (((left - right) * interlacing_leftweight) >> interlacing_shift));
-    ia_append(channel2,left - right);
+    if (interlacing_leftweight == 0) {
+      ia_copy(channel1,left_channel);
+      ia_copy(channel2,right_channel);
+    } else {
+      for (i = 0; i < pcm_frames; i++) {
+	left = left_channel->data[i];
+	right = right_channel->data[i];
+	ia_append(channel1,right +
+		  (((left - right) * interlacing_leftweight) >> interlacing_shift));
+	ia_append(channel2,left - right);
+      }
+    }
   }
 
   return OK;

@@ -22,12 +22,21 @@
 
 #include "alac.h"
 
+#define MIN_LPC_ORDER 4
+#define MAX_LPC_ORDER 8
+#define QLP_COEFFICIENT_PRECISION 16
+
 /*given a set of samples and encoding options,
   returns as a set of LPC coefficients and a shift-needed value*/
 void ALACEncoder_compute_best_lpc_coeffs(struct i_array *coeffs,
 					 int *shift_needed,
 
+					 int bits_per_sample,
 					 struct alac_encoding_options *options,
 					 struct i_array *samples);
+
+int ALACEncoder_compute_best_order(struct f_array *error_values,
+				   int total_samples,
+				   int overhead_bits_per_order);
 
 #endif
