@@ -1355,3 +1355,60 @@ Finally, if $e$ is greater than 0, we write the value
 $e + 1$ using $\kappa$ of bits.
 Otherwise, we write the value 0 using $\kappa - 1$ number of bits.
 Assuming $\kappa$ is greater than 1, of course.
+
+\clearpage
+
+As with decoding, we then use our unsigned value to update \VAR{history}
+before encoding the next residual:
+{\relsize{-1}
+\begin{equation*}
+\text{history} =
+\begin{cases}
+\text{history} + (\text{unsigned} \times \text{history multiplier}) - \left\lfloor\frac{\text{history} \times \text{history multiplier}}{2^9}\right\rfloor & \text{if unsigned} \leq 65535 \\
+65535 & \text{if unsigned} > 65535
+\end{cases}
+\end{equation*}
+}
+Should history ever fall below 128, we generate a special
+residual value.
+That residual's \VAR{Bits per Sample} value is 16, its
+$\kappa$ value is:
+\begin{equation}
+\kappa_{\text{blocksize}} = 7 - \log_2(\text{history}) + \frac{\text{history} + 16}{64}
+\end{equation}
+and its value is how many consecutive `0' residuals follow -
+which may be 0 if the next residual is not `0'.
+Either way, if $\text{\VAR{block size}} \leq 65535$, we
+subtract 1 to the next unsigned value of the next residual in the block
+(if any).  Finally, \VAR{history} is automatically set to 0.
+
+\subsubsection{Residual encoding example}
+
+In this example, we'll encode a group of residuals in which our
+\VAR{Initial History} is 1290, our \VAR{History Multiplier} is 40
+and our signed residual values are 1, 9 and -1:
+\begin{itemize}
+\setlength{\itemsep}{0in}
+\setlength{\parskip}{0in}
+\item Residual 1
+\begin{itemize}
+\item $\kappa = \lfloor\log_2((1290 \div 2^9) + 3)\rfloor = \lfloor\log_2(5)\rfloor = 2$
+\item $\text{unsigned}_1 = 2 \times 1 = \textbf{2}$
+\item $\text{history} = 1290 + (2 \times 40) - \lfloor (1290 \times 40) \div 2^9 \rfloor = 1370 - 100 = 1270$
+\end{itemize}
+\item Residual 2
+\begin{itemize}
+\item $\kappa = \lfloor\log_2((1270 \div 2^9) + 3)\rfloor = \lfloor\log_2(5)\rfloor = 2$
+\item $\text{unsigned}_2 = 2 \times 9 = \textbf{18}$
+\item $\text{history} = 1270 + (18 \times 40) - \lfloor (1270 \times 40) \div 2^9 \rfloor = 1990 - 99 = 1891$
+\end{itemize}
+\item Residual 3
+\begin{itemize}
+\item $\kappa = \lfloor\log_2((1891 \div 2^9) + 3)\rfloor = \lfloor\log_2(6)\rfloor = 2$
+\item $\text{unsigned}_3 = (1 \times 2) - 1 = \textbf{1}$
+\item $\text{history} = 1891 + (1 \times 40) - \lfloor (1891 \times 40) \div 2^9 \rfloor = 1931 - 147 = 1784$
+\end{itemize}
+\end{itemize}
+\begin{figure}[h]
+\includegraphics{figures/alac_residual_w.pdf}
+\end{figure}
