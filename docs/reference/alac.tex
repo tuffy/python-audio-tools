@@ -166,8 +166,8 @@ which are returned to the subframe decoder:
 \begin{equation}
 \text{signed} =
 \begin{cases}
-(\text{unsigned} + 1) \gg 1 & \text{if unsigned is even} \\
--((\text{unsigned} + 1) \gg 1) & \text{if unsigned is odd}
+\lfloor (\text{unsigned} + 1) \div 2 \rfloor & \text{if unsigned is even} \\
+-\lfloor (\text{unsigned} + 1) \div 2 \rfloor & \text{if unsigned is odd}
 \end{cases}
 \end{equation}
 
@@ -224,28 +224,28 @@ but why that is so will be explained below.
 \begin{itemize}
 \item $\kappa = \lfloor\log_2((1130 \div 2^9) + 3)\rfloor = \lfloor\log_2(5)\rfloor = 2$
 \item $\text{unsigned}_1 = (\textbf{0} \times (2^2 - 1)) + (\textbf{3} - 1) = \textbf{2}$
-\item $\text{residual}_1 = (2 + 1) \gg 1 = 1$
+\item $\text{residual}_1 = \lfloor (2 + 1) \div 2 \rfloor = 1$
 \item $\text{history} = 1130 + (\textbf{2} \times 40) - \lfloor(1130 \times 40) \div 2^9\rfloor = 1130 + 80 - 88 = 1122$
 \end{itemize}
 \item Residual 2
 \begin{itemize}
 \item $\kappa = \lfloor\log_2((1122 \div 2^9) + 3)\rfloor = \lfloor\log_2(5)\rfloor = 2$
 \item $\text{unsigned}_2 = (\textbf{2} \times (2^2 - 1)) + (\textbf{3} - 1) = \textbf{8}$
-\item $\text{residual}_2 = (8 + 1) \gg 1 = 4$
+\item $\text{residual}_2 = \lfloor (8 + 1) \div 2 \rfloor = 4$
 \item $\text{history} = 1122 + (\textbf{8} \times 40) - \lfloor(1122 \times 40) \div 2^9\rfloor = 1122 + 320 - 87 = 1355$
 \end{itemize}
 \item Residual 3
 \begin{itemize}
 \item $\kappa = \lfloor\log_2((1355 \div 2^9) + 3)\rfloor = \lfloor\log_2(5)\rfloor = 2$
 \item $\text{unsigned}_3 = (\textbf{1} \times (2^2 - 1)) = \textbf{3}$\hfill (note that we ``unread'' one 0 bit here)
-\item $\text{residual}_3 = -((3 + 1) \gg 1) = -2$
+\item $\text{residual}_3 = -\lfloor (3 + 1) \div 2 \rfloor = -2$
 \item $\text{history} = 1355 + (\textbf{3} \times 40) - \lfloor(1355 \times 40) \div 2^9\rfloor = 1355 + 120 - 105 = 1370$
 \end{itemize}
 \item Residual 4
 \begin{itemize}
 \item $\kappa = \lfloor\log_2((1370 \div 2^9) + 3)\rfloor = \lfloor\log_2(5)\rfloor = 2$
 \item $\text{unsigned}_4 = (\textbf{0} \times (2^2 - 1)) + (\textbf{3} - 1) = \textbf{2}$
-\item $\text{residual}_4 = (2 + 1) \gg 1 = 1$
+\item $\text{residual}_4 = \lfloor (2 + 1) \div 2 \rfloor = 1$
 \item $\text{history} = 1370 + (\textbf{2} \times 40) - \lfloor(1370 \times 40) \div 2^9\rfloor = 1370 + 80 - 107 = 1343$
 \end{itemize}
 \end{itemize}
@@ -1321,14 +1321,23 @@ We use it to calculate $\kappa$ using the following formula:
 Note that if $\kappa$ exceeds the \VAR{Maximum K} value from the
 \texttt{alac} atom, \VAR{Maximum K} is used instead.
 
-\begin{wrapfigure}[15]{r}{2.17in}
+\begin{wrapfigure}[20]{r}{2.17in}
 \includegraphics{figures/alac_write_residual.pdf}
 \end{wrapfigure}
 
 The $\kappa$ and \VAR{Bits per Sample} values are used to write
 a single unsigned residual value $r$ in the following way:
 
-We start by dividing our residual into quotient and remainder value:
+First, we convert our signed residual to an unsigned value:
+\begin{equation*}
+\text{unsigned} =
+\begin{cases}
+\text{signed} \times 2 & \text{if signed} \geq 0 \\
+(-\text{signed} \times 2) - 1 & \text{if signed} < 0
+\end{cases}
+\end{equation*}
+
+We then divide our unsigned residual into quotient and remainder values:
 \begin{align*}
 q &= \lfloor r \div (2^k - 1) \rfloor \\
 e &= r - (q \times (2^k - 1))
