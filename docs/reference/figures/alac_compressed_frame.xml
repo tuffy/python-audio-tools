@@ -31,7 +31,7 @@
     <col width=".333333">Residual₁</col>
     <col width=".333333" style="dashed">Residual₂</col>
     <col width=".133333" style="dashed">...</col>
-    <col width=".15" start="0" end="3">Footer (0x7)</col>
+    <col width=".15" start="0" end="2">Footer (0x7)</col>
     <col style="dashed" width=".05" id="frame_e">Pad</col>
   </row>
 </diagram>

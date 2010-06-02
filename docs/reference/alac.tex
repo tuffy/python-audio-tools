@@ -1343,8 +1343,8 @@ q &= \lfloor r \div (2^k - 1) \rfloor \\
 e &= r - (q \times (2^k - 1))
 \end{align*}
 
-If $q$ is greater than 8, we write a unary 9 value
-(i.e. the bits `\texttt{1 1 1 1 1 1 1 1 1 0}')
+If $q$ is greater than 8, we write a 9 bit value \texttt{0x1FF}
+(i.e. the bits `\texttt{1 1 1 1 1 1 1 1 1 1}')
 before writing the value $r$ verbatim using \VAR{Bits per Sample}
 number of bits.
 

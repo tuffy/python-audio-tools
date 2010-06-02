@@ -153,10 +153,17 @@ status ALACEncoder_write_frame(Bitstream *bs,
   log->frame_byte_size = 0;
 
   /*write uncompressed frame*/
-  if (ALACEncoder_write_uncompressed_frame(bs,
-					   options->block_size,
-					   bits_per_sample,
-					   samples) == ERROR)
+  /* if (ALACEncoder_write_uncompressed_frame(bs, */
+  /* 					   options->block_size, */
+  /* 					   bits_per_sample, */
+  /* 					   samples) == ERROR) */
+  /*   return ERROR; */
+
+  /*write compressed frame*/
+  if (ALACEncoder_write_compressed_frame(bs,
+					 options,
+					 bits_per_sample,
+					 samples) == ERROR)
     return ERROR;
 
   /*update log*/
@@ -262,6 +269,9 @@ status ALACEncoder_write_compressed_frame(Bitstream *bs,
   interlacing_shift = 0;
   interlacing_leftweight = 0;
 
+  bs->write_bits(bs,8,interlacing_shift);
+  bs->write_bits(bs,8,interlacing_leftweight);
+
   /*apply channel correlation to samples*/
   ALACEncoder_correlate_channels(&correlated_samples,
 				 samples,
@@ -308,12 +318,13 @@ status ALACEncoder_write_compressed_frame(Bitstream *bs,
       goto error;
 
   /*write 1 residual block per channel*/
-  for (i = 0; i < channels; i++)
+  for (i = 0; i < channels; i++) {
     if (ALACEncoder_write_residuals(bs,
 				    &(residuals.arrays[i]),
 				    bits_per_sample - (has_wasted_bits * 8) + channels - 1,
 				    options) == ERROR)
       goto error;
+  }
 
   /*write frame footer and byte-align output*/
   bs->write_bits(bs,3,0x7);
@@ -477,7 +488,7 @@ void ALACEncoder_write_residual(Bitstream *bs,
   int q = residual / ((1 << k) - 1);
   int e = residual % ((1 << k) - 1);
   if (q > 8) {
-    bs->write_unary(bs,0,9);
+    bs->write_bits(bs,9,0x1FF);
     bs->write_bits(bs,bits_per_sample,residual);
   } else {
     if (q > 0)
@@ -535,9 +546,8 @@ status ALACEncoder_write_residuals(Bitstream *bs,
     /*the special case for handling blocks of 0 residuals*/
     if ((history < 128) && (i < residuals->size)) {
       zero_block_size = 0;
-      k = 7 - LOG2(history) + ((history + 16) >> 6);
-      while (((signed_residual = residuals->data[i]) == 0) &&
-	     (i < residuals->size)) {
+      k = MIN(7 - LOG2(history) + ((history + 16) >> 6),maximum_k);
+      while ((residuals->data[i] == 0) && (i < residuals->size)) {
 	zero_block_size++;
 	i++;
       }

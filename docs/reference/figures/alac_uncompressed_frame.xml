@@ -17,7 +17,7 @@
     <col width=".20" start="0" end="bits per sample">Sample₂</col>
     <col width=".20" start="0" end="bits per sample">Sample₃</col>
     <col width=".20" style="dashed">...</col>
-    <col width=".15" start="0" end="3">Footer (0x7)</col>
+    <col width=".15" start="0" end="2">Footer (0x7)</col>
     <col style="dashed" width=".05" id="frame_e">Pad</col>
   </row>
 </diagram>
