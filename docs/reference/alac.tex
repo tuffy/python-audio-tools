@@ -1145,7 +1145,7 @@ TODO
 
 \clearpage
 
-\subsection{Residual calculation}
+\subsection{Subframe calculation}
 
 Given our list of correlated samples; along with a list of
 coefficients, a \VAR{Coefficient Count} and a \VAR{Prediction Quantitization}
@@ -1291,3 +1291,58 @@ the calculation stops.  Therefore:}
 \text{Coefficient}_0 &= & 1123
 \end{align*}
 So, the coefficients for $\text{Residual}_7$ are 1123, -766, 107 and 122.
+
+\clearpage
+
+\subsection{Residual encoding}
+
+The final step of frame encoding is writing our list of residual values.
+As with decoding, this also requires knowing several additional
+values whose defaults are as follows:
+\begin{table}[h]
+\begin{tabular}{|r|l|}
+\hline
+value & default \\
+\hline
+Initial History & 10 \\
+History Multiplier & 40 \\
+Maximum K & 14 \\
+Bits per Sample & $\text{Stream's BPS} - (\text{Wasted Bits} \times 8) + \text{Channels} - 1$ \\
+\hline
+\end{tabular}
+\end{table}
+\par
+For each residual block, \VAR{History} starts with the value of
+\VAR{Initial History} and will change during residual encoding.
+We use it to calculate $\kappa$ using the following formula:
+\begin{equation}
+\kappa = \left\lfloor\log_2 \left( \frac{\text{history}}{2 ^ 9} + 3 \right) \right\rfloor
+\end{equation}
+Note that if $\kappa$ exceeds the \VAR{Maximum K} value from the
+\texttt{alac} atom, \VAR{Maximum K} is used instead.
+
+\begin{wrapfigure}[15]{r}{2.17in}
+\includegraphics{figures/alac_write_residual.pdf}
+\end{wrapfigure}
+
+The $\kappa$ and \VAR{Bits per Sample} values are used to write
+a single unsigned residual value $r$ in the following way:
+
+We start by dividing our residual into quotient and remainder value:
+\begin{align*}
+q &= \lfloor r \div (2^k - 1) \rfloor \\
+e &= r - (q \times (2^k - 1))
+\end{align*}
+
+If $q$ is greater than 8, we write a unary 9 value
+(i.e. the bits `\texttt{1 1 1 1 1 1 1 1 1 0}')
+before writing the value $r$ verbatim using \VAR{Bits per Sample}
+number of bits.
+
+If $q$ is greater than 0, we write its value in unary.
+Otherwise, we write a single \texttt{0} bit.
+
+Finally, if $e$ is greater than 0, we write the value
+$e + 1$ using $\kappa$ of bits.
+Otherwise, we write the value 0 using $\kappa - 1$ number of bits.
+Assuming $\kappa$ is greater than 1, of course.
