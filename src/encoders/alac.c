@@ -220,7 +220,8 @@ status ALACEncoder_write_compressed_frame(Bitstream *bs,
   struct ia_array correlated_samples;
   struct ia_array lpc_coefficients;
   struct i_array *coefficients;
-  int *shift_needed;
+  int *shift_needed = NULL;
+  struct ia_array residuals;
 
   int i,j;
 
@@ -253,6 +254,7 @@ status ALACEncoder_write_compressed_frame(Bitstream *bs,
   }
 
   iaa_init(&correlated_samples,channels,pcm_frames);
+  iaa_init(&residuals,channels,pcm_frames);
 
   /*if stereo, determine "interlacing shift" and "interlacing leftweight"*/
   /*FIXME - ultimately, these will be determined exhaustively
@@ -298,6 +300,12 @@ status ALACEncoder_write_compressed_frame(Bitstream *bs,
 
   /*calculate residuals for each channel
     based on "coefficients", "quantitization", and "samples"*/
+  for (i = 0; i < channels; i++)
+    if (ALACEncoder_encode_subframe(&(residuals.arrays[i]),
+				    &(correlated_samples.arrays[i]),
+				    &(lpc_coefficients.arrays[i]),
+				    shift_needed[i]) == ERROR)
+      goto error;
 
   /*write 1 residual block per channel*/
 
@@ -310,8 +318,22 @@ status ALACEncoder_write_compressed_frame(Bitstream *bs,
     ia_free(&wasted_bits);
   iaa_free(&correlated_samples);
   iaa_free(&lpc_coefficients);
+  if (shift_needed != NULL)
+    free(shift_needed);
+  iaa_free(&residuals);
 
   return OK;
+
+ error:
+  if (has_wasted_bits)
+    ia_free(&wasted_bits);
+  iaa_free(&correlated_samples);
+  iaa_free(&lpc_coefficients);
+  if (shift_needed != NULL)
+    free(shift_needed);
+  iaa_free(&residuals);
+
+  return ERROR;
 }
 
 status ALACEncoder_correlate_channels(struct ia_array *output,
