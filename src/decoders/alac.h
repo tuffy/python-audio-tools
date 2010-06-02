@@ -122,7 +122,7 @@ status ALACDecoder_read_residuals(Bitstream *bs,
 				  int history_multiplier,
 				  int maximum_k);
 
-/*reads a signel residual from the current bitstream*/
+/*reads an unsigned residual from the current bitstream*/
 int ALACDecoder_read_residual(Bitstream *bs,
 			      int k,
 			      int sample_size);

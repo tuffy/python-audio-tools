@@ -308,6 +308,12 @@ status ALACEncoder_write_compressed_frame(Bitstream *bs,
       goto error;
 
   /*write 1 residual block per channel*/
+  for (i = 0; i < channels; i++)
+    if (ALACEncoder_write_residuals(bs,
+				    &(residuals.arrays[i]),
+				    bits_per_sample - (has_wasted_bits * 8) + channels - 1,
+				    options) == ERROR)
+      goto error;
 
   /*write frame footer and byte-align output*/
   bs->write_bits(bs,3,0x7);
@@ -459,6 +465,88 @@ status ALACEncoder_encode_subframe(struct i_array *residuals,
   	residual -= (val >> predictor_quantitization) * (j + 1);
       }
     }
+  }
+
+  return OK;
+}
+
+void ALACEncoder_write_residual(Bitstream *bs,
+				int residual,
+				int k,
+				int bits_per_sample) {
+  int q = residual / ((1 << k) - 1);
+  int e = residual % ((1 << k) - 1);
+  if (q > 8) {
+    bs->write_unary(bs,0,9);
+    bs->write_bits(bs,bits_per_sample,residual);
+  } else {
+    if (q > 0)
+      bs->write_unary(bs,0,q);
+    else
+      bs->write_bits(bs,1,0);
+    if (e > 0)
+      bs->write_bits(bs,k,e + 1);
+    else
+      bs->write_bits(bs,k - 1,0);
+  }
+}
+
+static inline int LOG2(int value) {
+  int bits = -1;
+  while (value) {
+    bits++;
+    value >>= 1;
+  }
+  return bits;
+}
+
+status ALACEncoder_write_residuals(Bitstream *bs,
+				   struct i_array *residuals,
+				   int bits_per_sample,
+				   struct alac_encoding_options *options) {
+  int history = options->initial_history;
+  int history_multiplier = options->history_multiplier;
+  int maximum_k = options->maximum_k;
+  int sign_modifier = 0;
+  int i;
+  int k;
+  ia_data_t signed_residual;
+  ia_data_t unsigned_residual;
+  int zero_block_size;
+
+  for (i = 0; i < residuals->size;) {
+    k = MIN(LOG2((history >> 9) + 3),maximum_k);
+    signed_residual = residuals->data[i];
+    if (signed_residual >= 0)
+      unsigned_residual = (signed_residual * 2) - sign_modifier;
+    else
+      unsigned_residual = ((-signed_residual * 2) - 1) - sign_modifier;
+
+    ALACEncoder_write_residual(bs,unsigned_residual,k,bits_per_sample);
+
+    if (unsigned_residual <= 0xFFFF)
+      history += ((unsigned_residual * history_multiplier) -
+		  ((history * history_multiplier) >> 9));
+    else
+      history = 0xFFFF;
+    sign_modifier = 0;
+    i++;
+
+    /*the special case for handling blocks of 0 residuals*/
+    if ((history < 128) && (i < residuals->size)) {
+      zero_block_size = 0;
+      k = 7 - LOG2(history) + ((history + 16) >> 6);
+      while (((signed_residual = residuals->data[i]) == 0) &&
+	     (i < residuals->size)) {
+	zero_block_size++;
+	i++;
+      }
+      ALACEncoder_write_residual(bs,zero_block_size,k,16);
+      if (zero_block_size <= 0xFFFF)
+	sign_modifier = 1;
+      history = 0;
+    }
+
   }
 
   return OK;

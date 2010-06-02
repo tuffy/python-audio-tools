@@ -79,4 +79,15 @@ status ALACEncoder_encode_subframe(struct i_array *residuals,
 				   struct i_array *coefficients,
 				   int predictor_quantitization);
 
+/*writes a single unsigned residal to the current bitstream*/
+void ALACEncoder_write_residual(Bitstream *bs,
+				int residual,
+				int k,
+				int bits_per_sample);
+
+status ALACEncoder_write_residuals(Bitstream *bs,
+				   struct i_array *residuals,
+				   int bits_per_sample,
+				   struct alac_encoding_options *options);
+
 #endif
