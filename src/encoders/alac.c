@@ -246,6 +246,7 @@ status ALACEncoder_write_compressed_frame(Bitstream *bs,
     bs->write_bits(bs,2,0);
 
   bs->write_bits(bs,1,0);  /*the "is not compressed flag" flag*/
+
   if (has_sample_size)
     bs->write_bits(bs,32,pcm_frames);
 
@@ -408,14 +409,15 @@ status ALACEncoder_encode_subframe(struct i_array *residuals,
 				   struct i_array *samples,
 				   struct i_array *coefficients,
 				   int predictor_quantitization) {
-  struct i_array remaining_samples;
   int64_t lpc_sum;
   ia_data_t buffer0;
   ia_data_t sample;
   ia_data_t residual;
   int32_t val;
   int sign;
-  int i,j;
+  int i = 0;
+  int j;
+  int original_sign;
 
   if (coefficients->size < 1) {
     PyErr_SetString(PyExc_ValueError,"coefficient count must be greater than 0");
@@ -425,55 +427,57 @@ status ALACEncoder_encode_subframe(struct i_array *residuals,
   }
 
   ia_reset(residuals);
-  ia_link(&remaining_samples,samples);
 
   /*first sample always copied verbatim*/
-  ia_append(residuals,ia_pop_head(&remaining_samples));
+  ia_append(residuals,samples->data[i++]);
 
   /*grab a number of warm-up samples equal to coefficients' length*/
-  for (i = 0; i < coefficients->size; i++)
-    /*these are adjustments to the previous residual*/
-    ia_append(residuals,
-	      ia_pop_head(&remaining_samples) - ia_getitem(samples,i));
+  for (j = 0; j < coefficients->size; j++) {
+    /*these are adjustments to the previous sample*/
+    ia_append(residuals,samples->data[i] - samples->data[i - 1]);
+    i++;
+  }
 
   /*then calculate a new residual per remaining sample*/
-  for (i = coefficients->size + 1; remaining_samples.size > 0; i++) {
+  for (; i < samples->size; i++) {
     /*Note that buffer0 gets stripped from previously encoded samples
       then re-added prior to adding the next sample.
       It's a watermark sample, of sorts.*/
     buffer0 = samples->data[i - (coefficients->size + 1)];
 
-    sample = ia_pop_head(&remaining_samples);
-    lpc_sum = 0;
+    sample = samples->data[i];
+    lpc_sum = 1 << (predictor_quantitization - 1);
 
     for (j = 0; j < coefficients->size; j++) {
       lpc_sum += (int64_t)((int64_t)coefficients->data[j] *
 			   (int64_t)(samples->data[i - j - 1] - buffer0));
     }
 
+    lpc_sum >>= predictor_quantitization;
+    lpc_sum += buffer0;
     /*residual = sample - (((sum + 2 ^ (quant - 1)) / (2 ^ quant)) + buffer0)*/
-    residual = (int32_t)(sample - ((((int64_t)(1 << (predictor_quantitization - 1)) + lpc_sum) >> (int64_t)predictor_quantitization) + buffer0));
+    residual = (int32_t)(sample - lpc_sum);
 
     ia_append(residuals,residual);
 
     /*ALAC's adaptive algorithm then adjusts the coefficients
       up or down 1 step based on previously encoded samples
       and the residual*/
-    if (residual > 0) {
-      for (j = 0; (residual > 0) && (j < coefficients->size); j++) {
-  	val = buffer0 - samples->data[i - coefficients->size + j];
-  	sign = SIGN_ONLY(val);
-  	coefficients->data[j] -= sign;
-  	val *= sign;
-  	residual -= (val >> predictor_quantitization) * (j + 1);
-      }
-    } else if (residual < 0) {
-      for (j = 0; (residual < 0) && (j < coefficients->size); j++) {
+
+    /*FIXME - shift this into its own routine, perhaps*/
+    if (residual) {
+      original_sign = SIGN_ONLY(residual);
+
+      for (j = 0; j < coefficients->size; j++) {
 	val = buffer0 - samples->data[i - coefficients->size + j];
-  	sign = -SIGN_ONLY(val);
-  	coefficients->data[coefficients->size - j - 1] -= sign;
-  	val *= sign;
-  	residual -= (val >> predictor_quantitization) * (j + 1);
+	if (original_sign >= 0)
+	  sign = SIGN_ONLY(val);
+	else
+	  sign = -SIGN_ONLY(val);
+	coefficients->data[coefficients->size - j - 1] -= sign;
+	residual -= (((val * sign) >> predictor_quantitization) * (j + 1));
+	if (SIGN_ONLY(residual) != original_sign)
+	  break;
       }
     }
   }
