@@ -1,13 +1,17 @@
 #This makefile is for generating debug standalone executables
 
 VERSION = "2.15alpha3"
-OBJS = array.o pcm.o bitstream_w.o pcmreader.o md5.o
+OBJS = array.o pcm.o bitstream_w.o pcmreader.o
 FLAGS = -Wall -g
 
-flacenc: $(OBJS) encoders/flac.c encoders/flac.h flac_lpc.o
-	gcc $(FLAGS) -DVERSION=$(VERSION) -o flacenc encoders/flac.c $(OBJS) flac_lpc.o -DSTANDALONE -lssl -lm
+flacenc: $(OBJS) encoders/flac.c encoders/flac.h flac_lpc.o md5.o
+	gcc $(FLAGS) -DVERSION=$(VERSION) -o flacenc encoders/flac.c $(OBJS) flac_lpc.o md5.o -DSTANDALONE -lm
+
+alacenc: $(OBJS) encoders/alac.c encoders/alac.h
+	gcc $(FLAGS) -DVERSION=$(VERSION) -o alacenc encoders/alac.c $(OBJS) -DSTANDALONE -lm
+
 clean:
-	rm -f flacenc *.o
+	rm -f flacenc alacenc *.o
 
 array.o: array.c array.h
 	gcc $(FLAGS) -c array.c -DSTANDALONE
@@ -26,3 +30,6 @@ md5.o: md5.c md5.h
 
 flac_lpc.o: encoders/flac_lpc.c encoders/flac_lpc.h
 	gcc $(FLAGS) -c encoders/flac_lpc.c -DSTANDALONE
+
+alac_lpc.o: encoders/alac_lpc.c encoders/alac_lpc.h
+	gcc $(FLAGS) -c encoders/alac_lpc.c -DSTANDALONE

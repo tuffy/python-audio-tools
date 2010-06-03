@@ -20,6 +20,7 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  *******************************************************/
 
+#ifndef STANDALONE
 PyObject* encoders_encode_alac(PyObject *dummy,
 			       PyObject *args, PyObject *keywds) {
 
@@ -144,6 +145,93 @@ PyObject* encoders_encode_alac(PyObject *dummy,
   return NULL;
 }
 
+#else
+
+status ALACEncoder_encode_alac(char *filename,
+			       FILE *input,
+			       int block_size,
+			       int initial_history,
+			       int history_multiplier,
+			       int maximum_k) {
+  FILE *output_file;        /*the FILE representation of our putput file*/
+  Bitstream *stream = NULL; /*the Bitstream representation of our output file*/
+  struct pcm_reader *reader; /*the pcm_reader struct of our input pcmreader*/
+  struct ia_array samples;  /*a buffer of input samples*/
+
+  struct alac_encoding_options options;
+
+  struct alac_encode_log encode_log; /*a log of encoded output*/
+
+  options.block_size = block_size;
+  options.initial_history = initial_history;
+  options.history_multiplier = history_multiplier;
+  options.maximum_k = maximum_k;
+
+  output_file = fopen(filename,"wb");
+  /*assume CD quality for now*/
+  reader = pcmr_open(input,44100,2,16,0,1);
+
+  /*initialize a buffer for input samples*/
+  iaa_init(&samples,reader->channels,options.block_size);
+
+  /*initialize the output log*/
+  alac_log_init(&encode_log);
+
+  /*convert file object to bitstream writer*/
+  stream = bs_open(output_file);
+  bs_add_callback(stream,
+		  ALACEncoder_byte_counter,
+		  &(encode_log.frame_byte_size));
+
+  /*write frames from pcm_reader until empty*/
+  if (!pcmr_read(reader,options.block_size,&samples))
+    goto error;
+  while (iaa_getitem(&samples,0)->size > 0) {
+    if (ALACEncoder_write_frame(stream,
+				&encode_log,
+				ftell(output_file),
+				&options,
+				reader->bits_per_sample,
+				&samples) == ERROR)
+      goto error;
+
+    if (!pcmr_read(reader,options.block_size,&samples))
+      goto error;
+  }
+
+  /*close and free allocated files/buffers*/
+  pcmr_close(reader);
+  bs_close(stream);
+  iaa_free(&samples);
+  alac_log_free(&encode_log);
+
+  return OK;
+ error:
+  pcmr_close(reader);
+  bs_close(stream);
+  iaa_free(&samples);
+  alac_log_free(&encode_log);
+
+  return ERROR;
+}
+
+int main(int argc, char *argv[]) {
+  if (ALACEncoder_encode_alac(argv[1],
+			      stdin,
+			      4096,
+			      10,
+			      40,
+			      14) == ERROR) {
+    fprintf(stderr,"Error during encoding\n");
+    return 1;
+  } else {
+    return 0;
+  }
+}
+
+#endif
+
+
 status ALACEncoder_write_frame(Bitstream *bs,
 			       struct alac_encode_log *log,
 			       long starting_offset,
@@ -177,6 +265,7 @@ status ALACEncoder_write_frame(Bitstream *bs,
 
   return OK;
 }
+
 
 status ALACEncoder_write_uncompressed_frame(Bitstream *bs,
 					    int block_size,
@@ -420,10 +509,10 @@ status ALACEncoder_encode_subframe(struct i_array *residuals,
   int original_sign;
 
   if (coefficients->size < 1) {
-    PyErr_SetString(PyExc_ValueError,"coefficient count must be greater than 0");
+    ALACEncoder_error("coefficient count must be greater than 0");
     return ERROR;
   } else if ((coefficients->size != 4) && (coefficients->size != 8)) {
-    PyErr_WarnEx(PyExc_RuntimeWarning,"coefficient size not 4 or 8",1);
+    ALACEncoder_warning("coefficient size not 4 or 8");
   }
 
   ia_reset(residuals);
@@ -571,6 +660,22 @@ void ALACEncoder_byte_counter(unsigned int byte, void* counter) {
   *i_counter += 1;
 }
 
+void ALACEncoder_error(const char* message) {
+#ifndef STANDALONE
+  PyErr_SetString(PyExc_ValueError,message);
+#else
+  fprintf(stderr,"Error: %s\n",message);
+#endif
+}
+
+void ALACEncoder_warning(const char* message) {
+#ifndef STANDALONE
+  PyErr_WarnEx(PyExc_RuntimeWarning,message,1);
+#else
+  fprintf(stderr,"Warning: %s\n",message);
+#endif
+}
+
 void alac_log_init(struct alac_encode_log *log) {
   log->frame_byte_size = 0;
   log->mdat_byte_size = 8;
@@ -579,6 +684,8 @@ void alac_log_init(struct alac_encode_log *log) {
 void alac_log_free(struct alac_encode_log *log) {
   iaa_free(&(log->frame_log));
 }
+
+#ifndef STANDALONE
 PyObject *alac_log_output(struct alac_encode_log *log) {
   PyObject *log_sample_size;
   PyObject *log_byte_size;
@@ -617,3 +724,5 @@ PyObject *alac_log_output(struct alac_encode_log *log) {
 		       log_file_offset,
 		       log->mdat_byte_size);
 }
+#endif
+

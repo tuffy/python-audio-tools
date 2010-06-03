@@ -1,4 +1,5 @@
 #include "alac_lpc.h"
+#include <math.h>
 
 extern void FlacEncoder_tukey_window(struct f_array *window,
 				     int L,

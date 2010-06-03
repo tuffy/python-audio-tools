@@ -1,7 +1,8 @@
 #ifndef A_SHN_ENCODE
 #define A_SHN_ENCODE
-
+#ifndef STANDALONE
 #include <Python.h>
+#endif
 
 #include <stdint.h>
 #include "../bitstream_w.h"
@@ -48,7 +49,9 @@ enum {LOG_SAMPLE_SIZE,LOG_BYTE_SIZE,LOG_FILE_OFFSET};
 
 void alac_log_init(struct alac_encode_log *log);
 void alac_log_free(struct alac_encode_log *log);
+#ifndef STANDALONE
 PyObject *alac_log_output(struct alac_encode_log *log);
+#endif
 
 void ALACEncoder_byte_counter(unsigned int byte, void* counter);
 
@@ -89,5 +92,9 @@ status ALACEncoder_write_residuals(Bitstream *bs,
 				   struct i_array *residuals,
 				   int bits_per_sample,
 				   struct alac_encoding_options *options);
+
+void ALACEncoder_error(const char* message);
+
+void ALACEncoder_warning(const char* message);
 
 #endif
