@@ -1,5 +1,5 @@
 #include "alac.h"
-#include "alac_lpc.h"
+#include <assert.h>
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -277,6 +277,7 @@ status ALACEncoder_write_uncompressed_frame(Bitstream *bs,
   int i,j;
 
   /*write frame header*/
+  assert((channels - 1) < (1 << 3));
   bs->write_bits(bs,3,channels - 1); /*channel count, offset 1*/
   bs->write_bits(bs,16,0);           /*unknown, all 0*/
   if (has_sample_size)               /*"has sample size"" flag*/
@@ -359,6 +360,8 @@ status ALACEncoder_write_compressed_frame(Bitstream *bs,
   interlacing_shift = 0;
   interlacing_leftweight = 0;
 
+  assert(interlacing_shift < (1 << 8));
+  assert(interlacing_leftweight < (1 << 8));
   bs->write_bits(bs,8,interlacing_shift);
   bs->write_bits(bs,8,interlacing_leftweight);
 
@@ -371,7 +374,7 @@ status ALACEncoder_write_compressed_frame(Bitstream *bs,
   /*calculate the best "prediction quantitization" and "coefficient" values
     for each channel of audio*/
   /*FIXME - for now, let's use a set of dummy coefficients*/
-  iaa_init(&lpc_coefficients,channels,MAX_LPC_ORDER);
+  iaa_init(&lpc_coefficients,channels,4);
   shift_needed = malloc(sizeof(int) * channels);
   for (i = 0; i < channels; i++) {
     ia_append(iaa_getitem(&lpc_coefficients,i),160);
@@ -384,18 +387,25 @@ status ALACEncoder_write_compressed_frame(Bitstream *bs,
   /*write 1 subframe header per channel*/
   for (i = 0; i < channels; i++) {
     bs->write_bits(bs,4,0);                /*prediction type of 0*/
+    assert(shift_needed[i] < (1 << 4));
     bs->write_bits(bs,4,shift_needed[i]);  /*prediction quantitization*/
     bs->write_bits(bs,3,4);                /*Rice modifier of 4 seems typical*/
     coefficients = iaa_getitem(&lpc_coefficients,i);
+    assert(coefficients->size < (1 << 5));
     bs->write_bits(bs,5,coefficients->size);
-    for (j = 0; j < coefficients->size; j++)
+    for (j = 0; j < coefficients->size; j++) {
+      assert(coefficients->data[j] < (1 << (16 - 1)));
+      assert(coefficients->data[j] >= -(1 << (16 - 1)));
       bs->write_signed_bits(bs,16,coefficients->data[j]);
+    }
   }
 
   /*write wasted bits block, if any*/
   if (has_wasted_bits) {
-    for (i = 0; i < wasted_bits.size; i++)
+    for (i = 0; i < wasted_bits.size; i++) {
+      assert(wasted_bits.data[j] < (1 << 8));
       bs->write_bits(bs,8,wasted_bits.data[i]);
+    }
   }
 
   /*calculate residuals for each channel
@@ -455,6 +465,7 @@ status ALACEncoder_correlate_channels(struct ia_array *output,
   ia_data_t right;
   ia_size_t pcm_frames,i;
 
+  assert(input->size > 0);
   if (input->size != 2) {
     for (i = 0; i < input->size; i++) {
       ia_copy(iaa_getitem(output,i),iaa_getitem(input,i));
@@ -508,6 +519,7 @@ status ALACEncoder_encode_subframe(struct i_array *residuals,
   int j;
   int original_sign;
 
+  assert(samples->size > 5);
   if (coefficients->size < 1) {
     ALACEncoder_error("coefficient count must be greater than 0");
     return ERROR;
@@ -582,21 +594,28 @@ void ALACEncoder_write_residual(Bitstream *bs,
   int e = residual % ((1 << k) - 1);
   if (q > 8) {
     bs->write_bits(bs,9,0x1FF);
+    assert(residual < (1 << bits_per_sample));
     bs->write_bits(bs,bits_per_sample,residual);
   } else {
     if (q > 0)
       bs->write_unary(bs,0,q);
     else
       bs->write_bits(bs,1,0);
-    if (e > 0)
-      bs->write_bits(bs,k,e + 1);
-    else
-      bs->write_bits(bs,k - 1,0);
+    if (k > 1) {
+      if (e > 0) {
+	assert((e + 1) < (1 << k));
+	bs->write_bits(bs,k,e + 1);
+      } else {
+	assert((k - 1) > 0);
+	bs->write_bits(bs,k - 1,0);
+      }
+    }
   }
 }
 
 static inline int LOG2(int value) {
   int bits = -1;
+  assert(value >= 0);
   while (value) {
     bits++;
     value >>= 1;
@@ -620,6 +639,7 @@ status ALACEncoder_write_residuals(Bitstream *bs,
 
   for (i = 0; i < residuals->size;) {
     k = MIN(LOG2((history >> 9) + 3),maximum_k);
+    assert(k > 0);
     signed_residual = residuals->data[i];
     if (signed_residual >= 0)
       unsigned_residual = (signed_residual * 2) - sign_modifier;
