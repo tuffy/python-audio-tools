@@ -185,6 +185,10 @@ PyObject *ALACDecoder_read(decoders_ALACDecoder* self,
     for (i = 0; i < self->channels; i++) {
       ALACDecoder_read_subframe_header(self->bitstream,
 				       &(subframe_headers[i]));
+      if (subframe_headers[i].prediction_type != 0) {
+	PyErr_SetString(PyExc_ValueError,"unsupported prediction type");
+	goto error;
+      }
     }
 
     /*if there are wasted bits, read a block of interlaced

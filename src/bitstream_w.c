@@ -349,7 +349,7 @@ void byte_align_w_record(Bitstream* bs) {
   bs_record_resize(bs);
   bs->records[bs->records_written++] = record;
   if (bs->bits_written % 8)
-    bs->bits_written += (bs->bits_written % 8);
+    bs->bits_written += (8 - (bs->bits_written % 8));
 }
 
 void bs_dump_records(Bitstream* target, Bitstream* source) {
@@ -377,4 +377,21 @@ void bs_dump_records(Bitstream* target, Bitstream* source) {
       break;
     }
   }
+}
+
+void bs_swap_records(Bitstream* a, Bitstream* b) {
+  int bits_written = a->bits_written;
+  int records_written = a->records_written;
+  int records_total = a->records_total;
+  BitstreamRecord *records = a->records;
+
+  a->bits_written = b->bits_written;
+  a->records_written = b->records_written;
+  a->records_total = b->records_total;
+  a->records = b->records;
+
+  b->bits_written = bits_written;
+  b->records_written = records_written;
+  b->records_total = records_total;
+  b->records = records;
 }

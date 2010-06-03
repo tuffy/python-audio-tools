@@ -119,6 +119,7 @@ void write_unary_accumulator(Bitstream* bs, int stop_bit, int value);
 void byte_align_w_accumulator(Bitstream* bs);
 
 
+/*make room for at least one additional record*/
 static inline void bs_record_resize(Bitstream* bs) {
   if (bs->records_written >= bs->records_total) {
     bs->records_total *= 2;
@@ -140,5 +141,12 @@ void write_unary_record(Bitstream* bs, int stop_bit, int value);
 void byte_align_w_record(Bitstream* bs);
 
 void bs_dump_records(Bitstream* target, Bitstream* source);
+
+/*clear the recorded output and reset for new output*/
+static inline void bs_reset_recorder(Bitstream* bs) {
+  bs->bits_written = bs->records_written = 0;
+}
+
+void bs_swap_records(Bitstream* a, Bitstream* b);
 
 #endif
