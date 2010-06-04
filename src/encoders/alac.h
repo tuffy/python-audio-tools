@@ -72,6 +72,13 @@ status ALACEncoder_write_compressed_frame(Bitstream *bs,
 					  int bits_per_sample,
 					  struct ia_array *samples);
 
+status ALACEncoder_write_interlaced_frame(Bitstream *bs,
+					  struct alac_encoding_options *options,
+					  int interlacing_shift,
+					  int interlacing_leftweight,
+					  int bits_per_sample,
+					  struct ia_array *samples);
+
 status ALACEncoder_correlate_channels(struct ia_array *output,
 				      struct ia_array *input,
 				      int interlacing_shift,

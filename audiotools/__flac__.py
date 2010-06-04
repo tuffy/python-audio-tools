@@ -651,7 +651,7 @@ class FlacAudio(AudioFile):
 
     @classmethod
     def supports_foreign_riff_chunks(cls):
-        return '--keep-foreign-metadata' in cls.__help_output__()
+        return True
 
     #returns a MetaData-compatible VorbisComment for this FLAC files
     def get_metadata(self):

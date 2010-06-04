@@ -305,6 +305,55 @@ status ALACEncoder_write_uncompressed_frame(Bitstream *bs,
 
 status ALACEncoder_write_compressed_frame(Bitstream *bs,
 					  struct alac_encoding_options *options,
+
+					  int bits_per_sample,
+					  struct ia_array *samples) {
+  int interlacing_shift = 2;
+  int interlacing_leftweight;
+  Bitstream *best_frame;
+  Bitstream *current_frame;
+
+  if (samples->size != 2) {
+    return ALACEncoder_write_interlaced_frame(bs,
+					      options,
+					      0,0,
+					      bits_per_sample,
+					      samples);
+  } else {
+    best_frame = bs_open_recorder();
+    current_frame = bs_open_recorder();
+    best_frame->bits_written = INT_MAX;
+
+    for (interlacing_leftweight = 0;
+	 interlacing_leftweight <= 4;
+	 interlacing_leftweight++) {
+      bs_reset_recorder(current_frame);
+      if (ALACEncoder_write_interlaced_frame(current_frame,
+					     options,
+					     interlacing_shift,
+					     interlacing_leftweight,
+					     bits_per_sample,
+					     samples) == ERROR)
+	goto error;
+      if (current_frame->bits_written < best_frame->bits_written)
+	bs_swap_records(current_frame,best_frame);
+    }
+
+    bs_dump_records(bs,best_frame);
+    bs_close(best_frame);
+    bs_close(current_frame);
+    return OK;
+  error:
+    bs_close(best_frame);
+    bs_close(current_frame);
+    return ERROR;
+  }
+}
+
+status ALACEncoder_write_interlaced_frame(Bitstream *bs,
+					  struct alac_encoding_options *options,
+					  int interlacing_shift,
+					  int interlacing_leftweight,
 					  int bits_per_sample,
 					  struct ia_array *samples) {
   int channels = samples->size;
@@ -312,8 +361,6 @@ status ALACEncoder_write_compressed_frame(Bitstream *bs,
   int has_sample_size = (pcm_frames != options->block_size);
   int has_wasted_bits = (bits_per_sample > 16);
   struct i_array wasted_bits;
-  int interlacing_shift;
-  int interlacing_leftweight;
   struct ia_array correlated_samples;
   struct ia_array lpc_coefficients;
   struct i_array *coefficients;
@@ -347,18 +394,13 @@ status ALACEncoder_write_compressed_frame(Bitstream *bs,
     for (i = 0; i < pcm_frames; i++)
       for (j = 0; j < channels; j++) {
 	ia_append(&wasted_bits,samples->arrays[j].data[i] & 0xFF);
+	/*FIXME - don't modify input samples*/
 	samples->arrays[j].data[i] >>= 8;
       }
   }
 
   iaa_init(&correlated_samples,channels,pcm_frames);
   iaa_init(&residuals,channels,pcm_frames);
-
-  /*if stereo, determine "interlacing shift" and "interlacing leftweight"*/
-  /*FIXME - ultimately, these will be determined exhaustively
-    for now, store channels independently*/
-  interlacing_shift = 0;
-  interlacing_leftweight = 0;
 
   assert(interlacing_shift < (1 << 8));
   assert(interlacing_leftweight < (1 << 8));
