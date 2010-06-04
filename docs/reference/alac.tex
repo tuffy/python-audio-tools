@@ -330,10 +330,10 @@ values and go through the following routine if $\text{residual} \neq 0$:
 \hline
 Step 1. & \text{original sign} &=& \text{sign}(residual) \\
 Step 2. & j &=& 0 \\
-Step 3. & v &=& \text{samples}_{i - \text{count} - 1} - \text{samples}_{i - \text{count} + j} \\
+Step 3. & v &=& \text{Sample}_{i - \text{count} - 1} - \text{Sample}_{i - \text{count} + j} \\
 Step 4. & sign &=& \begin{cases}\text{sign}(v) & \text{if original sign} > 0 \\
 -\text{sign}(v) & \text{if original sign} \leq 0\end{cases} \\
-Step 5. & \text{coefficients}_{\text{count} - j - 1} &=& \text{coefficients}_{\text{count} - j - 1} - sign \\
+Step 5. & \text{Coefficient}_{\text{count} - j - 1} &=& \text{Coefficient}_{\text{count} - j - 1} - sign \\
 Step 6. & residual &=& residual - \left( \left\lfloor\frac{v \times sign}{2 ^ \text{Predictor Quantitization}}\right\rfloor \times (j + 1) \right) \\
 Step 7. & j &=& j + 1 \\
 Step 8. & \multicolumn{3}{l|}{if ($j < count$) and ($\text{sign}(residual) = \text{original sign}$), goto step 3} \\
@@ -347,24 +347,24 @@ To continue our example:
 \begin{align*}
 \text{original sign} &= \text{sign}(1) = \textbf{1} \\
 j &= 0 \\
-v &= \text{samples}_0 - \text{samples}_{1} = 16 - 17 = \textbf{-1} \\
+v &= \text{Sample}_0 - \text{Sample}_{1} = 16 - 17 = \textbf{-1} \\
 sign &= \text{sign}(-1) = \textbf{-1} \\
-\text{coefficients}_3 &= \text{coefficients}_3 - -1 = 122 + 1 = \textbf{123} \\
+\text{Coefficient}_3 &= \text{Coefficient}_3 - -1 = 122 + 1 = \textbf{123} \\
 residual &= residual - \left( \left\lfloor\frac{-1 \times -1}{2 ^ 9}\right\rfloor \times (0 + 1)\right) = 1 - (0 \times 1) = \textbf{1} \\
 j &= 1 \\
-v &= \text{samples}_0 - \text{samples}_{2} = 16 - 26 = \textbf{-10} \\
+v &= \text{Sample}_0 - \text{Sample}_{2} = 16 - 26 = \textbf{-10} \\
 sign &= \text{sign}(-10) = \textbf{-1} \\
-\text{coefficients}_2 &= \text{coefficients}_2 - -1 = 107 + 1 = \textbf{108} \\
+\text{Coefficient}_2 &= \text{Coefficient}_2 - -1 = 107 + 1 = \textbf{108} \\
 residual &= residual - \left( \left\lfloor\frac{-10 \times -1}{2 ^ 9}\right\rfloor \times (1 + 1)\right) = 1 - (0 \times 2) = \textbf{1} \\
 j &= 2 \\
-v &= \text{samples}_0 - \text{samples}_{3} = 16 - 25 = \textbf{-9} \\
+v &= \text{Sample}_0 - \text{Sample}_{3} = 16 - 25 = \textbf{-9} \\
 sign &= \text{sign}(-9) = \textbf{-1} \\
-\text{coefficients}_1 &= \text{coefficients}_1 - -1 = -766 + 1 = \textbf{-765} \\
+\text{Coefficient}_1 &= \text{Coefficient}_1 - -1 = -766 + 1 = \textbf{-765} \\
 residual &= residual - \left( \left\lfloor\frac{-9 \times -1}{2 ^ 9}\right\rfloor \times (2 + 1)\right) = 1 - (0 \times 3) = \textbf{1} \\
 j &= 3 \\
-v &= \text{samples}_0 - \text{samples}_{4} = 16 - 25 = \textbf{-8} \\
+v &= \text{Sample}_0 - \text{Sample}_{4} = 16 - 25 = \textbf{-8} \\
 sign &= \text{sign}(-8) = \textbf{-1} \\
-\text{coefficients}_0 &= \text{coefficients}_0 - -1 = 1122 + 1 = \textbf{1123} \\
+\text{Coefficient}_0 &= \text{Coefficient}_0 - -1 = 1122 + 1 = \textbf{1123} \\
 residual &= residual - \left( \left\lfloor\frac{-8 \times -1}{2 ^ 9}\right\rfloor \times (3 + 1)\right) = 1 - (0 \times 4) = \textbf{1} \\
 j &= 4\text{ and stop, since 4 equals our coefficient count} \\
 \end{align*}
@@ -378,38 +378,28 @@ is as follows:
 \text{LPC Sum}_6 &= (1123 \times (23 - 17)) + (-765 \times (24 - 17)) + (108 \times (25 - 17)) + (123 \times (26 - 17)) \\
 &= (1123 \times 6) + (-765 \times 7) + (108 \times 8) + (123 \times 9) \\
 &= 6738 + -5355 + 864 + 1107 = \textbf{3354} \\
-\text{Sample}_6 &= \left\lfloor\frac{\textbf{3354} + 2^8}{2^9}\right\rfloor + -4 + 17 = \left\lfloor\frac{3610}{512}\right\rfloor + -4 + 17 = \textbf{20}
+\text{Sample}_6 &= \left\lfloor\frac{\textbf{3354} + 2^8}{2^9}\right\rfloor + -4 + 17 = \left\lfloor\frac{3610}{512}\right\rfloor + -4 + 17 = \textbf{20} \\
+%% \end{align*}
+%% \begin{align*}
+\text{original sign} &= \text{sign}(-4) = -1 \\
+j &= 0 \\
+v &= \text{Sample}_1 - \text{Sample}_2 = 17 - 26 = \textbf{-9} \\
+sign &= -\text{sign}(-9) = \textbf{1} \\
+\text{Coefficient}_3 &= \text{Coefficient}_3 - 1 = 123 - 1 = \textbf{122} \\
+residual &= residual - \left( \left\lfloor\frac{-9 \times 1}{2 ^ 9}\right\rfloor \times (0 + 1)\right) = -4 - (-1 \times 1) = \textbf{-3} \\
+j &= 1 \\
+v &= \text{Sample}_1 - \text{Sample}_3 = 17 - 25 = \textbf{-8} \\
+sign &= -\text{sign}(-8) = \textbf{1} \\
+\text{Coefficient}_2 &= \text{Coefficient}_2 - 1 = 108 - 1 = \textbf{107} \\
+residual &= residual - \left( \left\lfloor\frac{-8 \times 1}{2 ^ 9}\right\rfloor \times (1 + 1)\right) = -3 - (-1 \times 2) = \textbf{-1} \\
+j &= 2 \\
+v &= \text{Sample}_1 - \text{Sample}_4 = 17 - 24 = \textbf{-7} \\
+sign &= -\text{sign}(-7) = \textbf{1} \\
+\text{Coefficient}_1 &= \text{Coefficient}_1 - 1 = -765 - 1 = \textbf{-766} \\
+residual &= residual - \left( \left\lfloor\frac{-7 \times 1}{2 ^ 9}\right\rfloor \times (2 + 1)\right) = -1 - (-1 \times 3) = \textbf{2} \\
+&\text{and stop, since sign}(2) \neq \text{sign}(-4) \text{ (our \VAR{original sign} value)}
 \end{align*}
-\begin{table}[h]
-\begin{tabular}{|c| >{$}l<{$} >{$}r<{$} | >{$}r<{$} |}
-\hline
-j & & \text{Val}_j & \text{Sign}_j \\
-\hline
-0 & \text{Sample}_1 - \text{Sample}_2 = 17 - 26 =& \textbf{-9} &
-(-9 \div |-9|) \times (-4 \div |-4|) = -1 \times -1 = \textbf{1} \\
-\hline
-1 & \text{Sample}_1 - \text{Sample}_3 = 17 - 25 =& \textbf{-8} &
-(-8 \div |-8|) \times (-4 \div |-4|) = -1 \times -1 = \textbf{1} \\
-\hline
-2 & \text{Sample}_1 - \text{Sample}_4 = 17 - 24 =& \textbf{-7} &
-(-7 \div |-7|) \times (-4 \div |-4|) = -1 \times -1 = \textbf{1} \\
-\hline
-3 & \text{Sample}_1 - \text{Sample}_5 = 17 - 23 =& \textbf{-6} &
-(-6 \div |-6|) \times (-4 \div |-4|) = -1 \times -1 = \textbf{1} \\
-\hline
-\end{tabular}
-\end{table}
-\begin{align*}
-\text{Coefficient}_3 &= \text{Coefficient}_3 - \text{Sign}_0 = 123 - 1 =& 122 \\
-\text{Residual}_0 &= \text{Residual}_{-1} - \left\lfloor\frac{\text{Val}_0 \times \text{Sign}_0}{2 ^ 9}\right\rfloor \times (0 + 1) = -4 - \left\lfloor\frac{-9 \times 1}{2 ^ 9}\right\rfloor \times 1 =& -3 \\
-\text{Coefficient}_2 &= \text{Coefficient}_2 - \text{Sign}_1 = 108 - 1 =& 107 \\
-\text{Residual}_1 &= \text{Residual}_0 - \left\lfloor\frac{\text{Val}_1 \times \text{Sign}_1}{2 ^ 9}\right\rfloor \times (1 + 1) = -3 - \left\lfloor\frac{-8 \times 1}{2 ^ 9}\right\rfloor \times 2 =& -1 \\
-\text{Coefficient}_1 &= \text{Coefficient}_1 - \text{Sign}_2 = -765 - 1 =& -766 \\
-\text{Residual}_2 &= \text{Residual}_1 - \left\lfloor\frac{\text{Val}_2 \times \text{Sign}_2}{2 ^ 9}\right\rfloor \times (2 + 1) = -1 - \left\lfloor\frac{-7 \times 1}{2 ^ 9}\right\rfloor \times 3 =& 2
-\intertext{Note that since $\text{Residual}_2$'s sign has changed,
-the calculation stops.  Therefore:}
-\text{Coefficient}_0 &= & 1123
-\end{align*}
+
 So, the coefficients for $\text{Sample}_7$ are 1123, -766, 107 and 122.
 
 \clearpage

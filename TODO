@@ -1125,14 +1125,14 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** TODO Add ALAC-specific unit tests
 ** TODO Document ALAC
 *** DONE the ALAC file stream
-*** TODO ALAC decoding
+*** DONE ALAC decoding
 **** DONE Frame header
 **** DONE Subframe header
 **** DONE Residual decoding
 **** DONE Residual decoding example
-**** TODO Subframe decoding
+**** DONE Subframe decoding
      Simplify this to make it easier to understand
-**** TODO Subframe decoding example
+**** DONE Subframe decoding example
 **** DONE Channel decorrelation
 **** DONE Channel decorrelation example
 **** DONE Wasted bits
