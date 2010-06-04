@@ -642,11 +642,12 @@ status ALACEncoder_write_residuals(Bitstream *bs,
     assert(k > 0);
     signed_residual = residuals->data[i];
     if (signed_residual >= 0)
-      unsigned_residual = (signed_residual * 2) - sign_modifier;
+      unsigned_residual = (signed_residual * 2);
     else
-      unsigned_residual = ((-signed_residual * 2) - 1) - sign_modifier;
+      unsigned_residual = ((-signed_residual * 2) - 1);
 
-    ALACEncoder_write_residual(bs,unsigned_residual,k,bits_per_sample);
+    ALACEncoder_write_residual(bs,unsigned_residual - sign_modifier,
+			       k,bits_per_sample);
 
     if (unsigned_residual <= 0xFFFF)
       history += ((unsigned_residual * history_multiplier) -
