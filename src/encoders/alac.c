@@ -361,6 +361,7 @@ status ALACEncoder_write_interlaced_frame(Bitstream *bs,
   int has_sample_size = (pcm_frames != options->block_size);
   int has_wasted_bits = (bits_per_sample > 16);
   struct i_array wasted_bits;
+  struct ia_array *cropped_samples = NULL;
   struct ia_array correlated_samples;
   struct ia_array lpc_coefficients;
   struct i_array *coefficients;
@@ -391,10 +392,13 @@ status ALACEncoder_write_interlaced_frame(Bitstream *bs,
     we'll only support 8 wasted bits, for 24bps input*/
   if (has_wasted_bits) {
     ia_init(&wasted_bits,channels * pcm_frames);
+    cropped_samples = malloc(sizeof(struct ia_array));
+    iaa_init(cropped_samples,channels,pcm_frames);
+    iaa_copy(cropped_samples,samples);
+    samples = cropped_samples;
     for (i = 0; i < pcm_frames; i++)
       for (j = 0; j < channels; j++) {
 	ia_append(&wasted_bits,samples->arrays[j].data[i] & 0xFF);
-	/*FIXME - don't modify input samples*/
 	samples->arrays[j].data[i] >>= 8;
       }
   }
@@ -473,8 +477,11 @@ status ALACEncoder_write_interlaced_frame(Bitstream *bs,
   bs->byte_align(bs);
 
   /*clear any temporary buffers*/
-  if (has_wasted_bits)
+  if (has_wasted_bits) {
     ia_free(&wasted_bits);
+    iaa_free(cropped_samples);
+    free(cropped_samples);
+  }
   iaa_free(&correlated_samples);
   iaa_free(&lpc_coefficients);
   if (shift_needed != NULL)
@@ -484,8 +491,11 @@ status ALACEncoder_write_interlaced_frame(Bitstream *bs,
   return OK;
 
  error:
-  if (has_wasted_bits)
+  if (has_wasted_bits) {
     ia_free(&wasted_bits);
+    iaa_free(cropped_samples);
+    free(cropped_samples);
+  }
   iaa_free(&correlated_samples);
   iaa_free(&lpc_coefficients);
   if (shift_needed != NULL)

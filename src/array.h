@@ -271,6 +271,8 @@ void iaa_init(struct ia_array *array, ia_size_t total_arrays,
 
 void iaa_free(struct ia_array *array);
 
+void iaa_copy(struct ia_array *target, struct ia_array *source);
+
 static inline struct i_array* iaa_getitem(struct ia_array *array, ia_offset_t index) {
   if (index >= 0) {
     return &(array->arrays[index]);

@@ -235,6 +235,14 @@ void iaa_free(struct ia_array *array) {
   free(array->arrays);
 }
 
+void iaa_copy(struct ia_array *target, struct ia_array *source) {
+  ia_size_t i;
+
+  for (i = 0; i < source->size; i++)
+    ia_copy(&(target->arrays[i]),&(source->arrays[i]));
+  target->size = source->size;
+}
+
 void fa_init(struct f_array *array, fa_size_t initial_size) {
   if (initial_size < 1)
     initial_size = 1;
