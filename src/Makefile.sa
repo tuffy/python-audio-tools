@@ -4,11 +4,13 @@ VERSION = "2.15alpha3"
 OBJS = array.o pcm.o bitstream_w.o pcmreader.o
 FLAGS = -Wall -g
 
+all: flacenc alacenc
+
 flacenc: $(OBJS) encoders/flac.c encoders/flac.h flac_lpc.o md5.o
 	gcc $(FLAGS) -DVERSION=$(VERSION) -o flacenc encoders/flac.c $(OBJS) flac_lpc.o md5.o -DSTANDALONE -lm
 
-alacenc: $(OBJS) encoders/alac.c encoders/alac.h
-	gcc $(FLAGS) -DVERSION=$(VERSION) -o alacenc encoders/alac.c $(OBJS) -DSTANDALONE -lm
+alacenc: $(OBJS) encoders/alac.c encoders/alac.h alac_lpc.o
+	gcc $(FLAGS) -DVERSION=$(VERSION) -o alacenc encoders/alac.c $(OBJS) alac_lpc.o -DSTANDALONE -lm
 
 clean:
 	rm -f flacenc alacenc *.o

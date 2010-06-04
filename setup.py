@@ -69,7 +69,7 @@ encodersmodule = Extension('audiotools.encoders',
                                       'src/encoders/flac_lpc.c',
                                       'src/encoders/shn.c',
                                       'src/encoders/alac.c',
-                                      #'src/encoders/alac_lpc.c',
+                                      'src/encoders/alac_lpc.c',
                                       'src/encoders.c'],
                            define_macros = [("VERSION",VERSION)])
 

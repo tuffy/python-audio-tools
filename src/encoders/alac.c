@@ -1,4 +1,5 @@
 #include "alac.h"
+#include "alac_lpc.h"
 #include <assert.h>
 
 /********************************************************
@@ -423,11 +424,16 @@ status ALACEncoder_write_interlaced_frame(Bitstream *bs,
   iaa_init(&lpc_coefficients,channels,4);
   shift_needed = malloc(sizeof(int) * channels);
   for (i = 0; i < channels; i++) {
-    ia_append(iaa_getitem(&lpc_coefficients,i),160);
-    ia_append(iaa_getitem(&lpc_coefficients,i),-190);
-    ia_append(iaa_getitem(&lpc_coefficients,i),170);
-    ia_append(iaa_getitem(&lpc_coefficients,i),-130);
-    shift_needed[i] = 6;
+    /* ia_append(iaa_getitem(&lpc_coefficients,i),160); */
+    /* ia_append(iaa_getitem(&lpc_coefficients,i),-190); */
+    /* ia_append(iaa_getitem(&lpc_coefficients,i),170); */
+    /* ia_append(iaa_getitem(&lpc_coefficients,i),-130); */
+    /* shift_needed[i] = 6; */
+    ALACEncoder_compute_best_lpc_coeffs(iaa_getitem(&lpc_coefficients,i),
+					&(shift_needed[i]),
+					bits_per_sample - (has_wasted_bits * 8),
+					options,
+					iaa_getitem(samples,i));
   }
 
   /*write 1 subframe header per channel*/

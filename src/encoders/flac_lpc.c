@@ -24,6 +24,11 @@
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
 #define MAX(x,y) ((x) > (y) ? (x) : (y))
 
+static fa_data_t f_abs_max(fa_data_t val, fa_data_t max) {
+  fa_data_t abs = fabs(val);
+  return MAX(abs,max);
+}
+
 void FlacEncoder_compute_best_lpc_coeffs(struct i_array *lpc_warm_up_samples,
 					 struct i_array *lpc_residual,
 					 struct i_array *lpc_rice_parameters,
@@ -390,7 +395,3 @@ void FlacEncoder_quantize_coefficients(struct f_array *lp_coefficients,
   }
 }
 
-fa_data_t f_abs_max(fa_data_t val, fa_data_t max) {
-  fa_data_t abs = fabs(val);
-  return MAX(abs,max);
-}

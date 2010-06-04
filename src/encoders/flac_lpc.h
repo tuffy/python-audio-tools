@@ -73,6 +73,4 @@ void FlacEncoder_quantize_coefficients(struct f_array *lp_coefficients,
 				       struct i_array *qlp_coefficients,
 				       int *shift_needed);
 
-fa_data_t f_abs_max(fa_data_t val, fa_data_t max);
-
 #endif

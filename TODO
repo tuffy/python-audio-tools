@@ -1115,7 +1115,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 **** coefficients
 *** DONE extract wasted bits for 24bps streams
 *** DONE correlate stereo samples
-*** TODO determine coefficients/quantitization
+*** DONE determine coefficients/quantitization
 *** DONE calculate residual values
 *** DONE write residuals based on initial history/history multiplier/etc.
 *** TODO optimize for speed
