@@ -310,59 +310,65 @@ we need to adjust our coefficient list.
 
 \clearpage
 
-Updating the coefficient list first requires calculating a set
-of temporary \VAR{Val} and \VAR{Sign} values, as follows:
-\begin{align}
-\text{Val}_j &= \text{Sample}_{i - coeffs - 1} - \text{Sample}_{i - coeffs + j} & \text{for j = 0 to } coeffs - 1 \\
-\text{Sign}_j &= \frac{\text{Val}_j}{|\text{Val}_j|} \times \frac{\text{Residual}_i}{|\text{Residual}_i|} & \text{for j = 0 to } coeffs - 1
-\end{align}
-Unless $\text{Residual}_i$ is 0, in which case our coefficient list
-remains unchanged.
-If $\text{Val}_j$ is 0, $\text{Sign}_j$ is also 0.
-So to continue our example in which $\text{Residual}_5$ is 1 and
-our \VAR{Coefficient Count} is 4:
-\begin{table}[h]
-\begin{tabular}{|c| >{$}l<{$} >{$}r<{$} | >{$}r<{$} |}
+Updating the coefficient list first requires the \VAR{sign} function:
+{\relsize{-2}
+\begin{equation}
+\text{sign}(x) =
+\begin{cases}
+1 & \text{if } x > 0 \\
+0 & \text{if } x = 0 \\
+-1 & \text{if } x < 0
+\end{cases}
+\end{equation}
+}
+We then take our \VAR{samples}, index $i$, \VAR{coefficients},
+coefficient \VAR{count}, \VAR{residual}, \VAR{predictor quantitization}
+values and go through the following routine if $\text{residual} \neq 0$:
+\par
+{\relsize{-1}
+\begin{tabular}{|l>{$}r<{$}c>{$}l<{$}|}
 \hline
-j & & \text{Val}_j & \text{Sign}_j \\
-\hline
-0 & \text{Sample}_0 - \text{Sample}_1 = 16 - 17 =& \textbf{-1} &
-(-1 \div |-1|) \times (1 \div |1|) = -1 \times 1 = \textbf{-1} \\
-\hline
-1 & \text{Sample}_0 - \text{Sample}_2 = 16 - 26 =& \textbf{-10} &
-(-10 \div |-10|) \times (1 \div |1|) = -1 \times 1 = \textbf{-1} \\
-\hline
-2 & \text{Sample}_0 - \text{Sample}_3 = 16 - 25 =& \textbf{-9} &
-(-9 \div |-9|) \times (1 \div |1|) = -1 \times 1 = \textbf{-1} \\
-\hline
-3 & \text{Sample}_0 - \text{Sample}_4 = 16 - 24 =& \textbf{-8} &
-(-8 \div |-8|) \times (1 \div |1|) = -1 \times 1 = \textbf{-1} \\
+Step 1. & \text{original sign} &=& \text{sign}(residual) \\
+Step 2. & j &=& 0 \\
+Step 3. & v &=& \text{samples}_{i - \text{count} - 1} - \text{samples}_{i - \text{count} + j} \\
+Step 4. & sign &=& \begin{cases}\text{sign}(v) & \text{if original sign} > 0 \\
+-\text{sign}(v) & \text{if original sign} \leq 0\end{cases} \\
+Step 5. & \text{coefficients}_{\text{count} - j - 1} &=& \text{coefficients}_{\text{count} - j - 1} - sign \\
+Step 6. & residual &=& residual - \left( \left\lfloor\frac{v \times sign}{2 ^ \text{Predictor Quantitization}}\right\rfloor \times (j + 1) \right) \\
+Step 7. & j &=& j + 1 \\
+Step 8. & \multicolumn{3}{l|}{if ($j < count$) and ($\text{sign}(residual) = \text{original sign}$), goto step 3} \\
 \hline
 \end{tabular}
-\end{table}
+}
 \par
 \noindent
-We then perform the following operations for each `j' from 0 to $coeffs - 1$
-\textit{or} until
-\linebreak
-$\frac{\text{Residual}_i}{|\text{Residual}_i|} \neq \frac{\text{Residual}_j}{|\text{Residual}_j|}$ where $\text{Residual}_j$'s initial value is $\text{Residual}_i$:
-\begin{align}
-\text{Step 1. } & \text{Coefficient}_{coeffs - j - 1} = \text{Coefficient}_{coeffs - j - 1} - \text{Sign}_j \\
-\text{Step 2. } & \text{Residual}_j = \text{Residual}_{j - 1} - \left\lfloor\frac{\text{Val}_j \times \text{Sign}_j}{2 ^ \text{Predictor Quantitization}}\right\rfloor \times (j + 1)
-\end{align}
-So to complete our example:
+To continue our example:
+{\relsize{-2}
 \begin{align*}
-\text{Coefficient}_3 &= \text{Coefficient}_3 - \text{Sign}_0 = 122 - -1 =& 123 \\
-\text{Residual}_0 &= \text{Residual}_{-1} - \left\lfloor\frac{\text{Val}_0 \times \text{Sign}_0}{2 ^ 9}\right\rfloor \times (0 + 1) = 1 - \left\lfloor\frac{-1 \times -1}{2 ^ 9}\right\rfloor \times 1 =& 1 \\
-\text{Coefficient}_2 &= \text{Coefficient}_2 - \text{Sign}_1 = 107 - -1 =& 108 \\
-\text{Residual}_1 &= \text{Residual}_0 - \left\lfloor\frac{\text{Val}_1 \times \text{Sign}_1}{2 ^ 9}\right\rfloor \times (1 + 1) = 1 - \left\lfloor\frac{-10 \times -1}{2 ^ 9}\right\rfloor \times 2 =& 1 \\
-\text{Coefficient}_1 &= \text{Coefficient}_1 - \text{Sign}_2 = -766 - -1 =& -765 \\
-\text{Residual}_2 &= \text{Residual}_1 - \left\lfloor\frac{\text{Val}_2 \times \text{Sign}_2}{2 ^ 9}\right\rfloor \times (2 + 1) = 1 - \left\lfloor\frac{-9 \times -1}{2 ^ 9}\right\rfloor \times 3 =& 1 \\
-\text{Coefficient}_0 &= \text{Coefficient}_0 - \text{Sign}_3 = 1122 - -1 =& 1123 \\
-\text{Residual}_3 &= \text{Residual}_2 - \left\lfloor\frac{\text{Val}_3 \times \text{Sign}_3}{2 ^ 9}\right\rfloor \times (3 + 1) = 1 - \left\lfloor\frac{-8 \times -1}{2 ^ 9}\right\rfloor \times 4 =& 1
+\text{original sign} &= \text{sign}(1) = \textbf{1} \\
+j &= 0 \\
+v &= \text{samples}_0 - \text{samples}_{1} = 16 - 17 = \textbf{-1} \\
+sign &= \text{sign}(-1) = \textbf{-1} \\
+\text{coefficients}_3 &= \text{coefficients}_3 - -1 = 122 + 1 = \textbf{123} \\
+residual &= residual - \left( \left\lfloor\frac{-1 \times -1}{2 ^ 9}\right\rfloor \times (0 + 1)\right) = 1 - (0 \times 1) = \textbf{1} \\
+j &= 1 \\
+v &= \text{samples}_0 - \text{samples}_{2} = 16 - 26 = \textbf{-10} \\
+sign &= \text{sign}(-10) = \textbf{-1} \\
+\text{coefficients}_2 &= \text{coefficients}_2 - -1 = 107 + 1 = \textbf{108} \\
+residual &= residual - \left( \left\lfloor\frac{-10 \times -1}{2 ^ 9}\right\rfloor \times (1 + 1)\right) = 1 - (0 \times 2) = \textbf{1} \\
+j &= 2 \\
+v &= \text{samples}_0 - \text{samples}_{3} = 16 - 25 = \textbf{-9} \\
+sign &= \text{sign}(-9) = \textbf{-1} \\
+\text{coefficients}_1 &= \text{coefficients}_1 - -1 = -766 + 1 = \textbf{-765} \\
+residual &= residual - \left( \left\lfloor\frac{-9 \times -1}{2 ^ 9}\right\rfloor \times (2 + 1)\right) = 1 - (0 \times 3) = \textbf{1} \\
+j &= 3 \\
+v &= \text{samples}_0 - \text{samples}_{4} = 16 - 25 = \textbf{-8} \\
+sign &= \text{sign}(-8) = \textbf{-1} \\
+\text{coefficients}_0 &= \text{coefficients}_0 - -1 = 1122 + 1 = \textbf{1123} \\
+residual &= residual - \left( \left\lfloor\frac{-8 \times -1}{2 ^ 9}\right\rfloor \times (3 + 1)\right) = 1 - (0 \times 4) = \textbf{1} \\
+j &= 4\text{ and stop, since 4 equals our coefficient count} \\
 \end{align*}
-Thus, our list of coefficients for $\text{Sample}_6$ are now
-1123, -765, 108 and 123.
+}
 
 \clearpage
 

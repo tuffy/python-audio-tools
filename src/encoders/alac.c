@@ -420,15 +420,9 @@ status ALACEncoder_write_interlaced_frame(Bitstream *bs,
 
   /*calculate the best "prediction quantitization" and "coefficient" values
     for each channel of audio*/
-  /*FIXME - for now, let's use a set of dummy coefficients*/
   iaa_init(&lpc_coefficients,channels,4);
   shift_needed = malloc(sizeof(int) * channels);
   for (i = 0; i < channels; i++) {
-    /* ia_append(iaa_getitem(&lpc_coefficients,i),160); */
-    /* ia_append(iaa_getitem(&lpc_coefficients,i),-190); */
-    /* ia_append(iaa_getitem(&lpc_coefficients,i),170); */
-    /* ia_append(iaa_getitem(&lpc_coefficients,i),-130); */
-    /* shift_needed[i] = 6; */
     ALACEncoder_compute_best_lpc_coeffs(iaa_getitem(&lpc_coefficients,i),
 					&(shift_needed[i]),
 					bits_per_sample - (has_wasted_bits * 8),
