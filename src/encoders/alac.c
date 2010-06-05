@@ -241,19 +241,20 @@ status ALACEncoder_write_frame(Bitstream *bs,
 			       struct ia_array *samples) {
   log->frame_byte_size = 0;
 
-  /*write uncompressed frame*/
-  /* if (ALACEncoder_write_uncompressed_frame(bs, */
-  /* 					   options->block_size, */
-  /* 					   bits_per_sample, */
-  /* 					   samples) == ERROR) */
-  /*   return ERROR; */
-
-  /*write compressed frame*/
-  if (ALACEncoder_write_compressed_frame(bs,
-					 options,
-					 bits_per_sample,
-					 samples) == ERROR)
-    return ERROR;
+  if (samples->arrays[0].size < 10) {
+    if (ALACEncoder_write_uncompressed_frame(bs,
+					     options->block_size,
+					     bits_per_sample,
+					     samples) == ERROR)
+      return ERROR;
+  } else {
+    /*write compressed frame*/
+    if (ALACEncoder_write_compressed_frame(bs,
+					   options,
+					   bits_per_sample,
+					   samples) == ERROR)
+      return ERROR;
+  }
 
   /*update log*/
   log->mdat_byte_size += log->frame_byte_size;
