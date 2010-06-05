@@ -1100,8 +1100,9 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
     - [X] 2 channels
 *** TODO Ensure different sample rates work correctly
     - [X] 44100Hz
-    - [ ] 48000Hz
+    - [X] 48000Hz
     - [X] 96000Hz
+    - [X] 192000Hz
     (need to figure out what other sample rates ALAC supports)
 *** TODO Update source to more closely match documentation
 *** TODO Optimize for speed
@@ -1119,8 +1120,8 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** DONE determine coefficients/quantitization
 *** DONE calculate residual values
 *** DONE write residuals based on initial history/history multiplier/etc.
+*** DONE handle random noise with uncompressed frames
 *** TODO Update source to more closely match documentation
-*** TODO handle random noise with uncompressed frames
 *** TODO optimize for speed
 ** DONE Add ALACAudio type to audiotools Python core
 ** TODO Add ALAC-specific unit tests

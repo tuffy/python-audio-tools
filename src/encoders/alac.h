@@ -28,7 +28,7 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  *******************************************************/
 
-typedef enum {OK,ERROR} status;
+typedef enum {OK,ERROR,RESIDUAL_OVERFLOW} status;
 
 /*this output log is a set of things Python-based ALAC atom writers will need
   in order to populate metadata*/
