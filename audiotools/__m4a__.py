@@ -1072,12 +1072,9 @@ class ALACAudio(M4AAudio):
 
         from . import encoders
         import time
+        import tempfile
 
-        PAD_SIZE = 0x2000
-        f = file(filename,"wb")
-
-        #pad the start of our ALAC file with NULLs
-        f.write(chr(0) * PAD_SIZE)
+        mdat_file = tempfile.TemporaryFile()
 
         #perform encode_alac() on pcmreader to our output file
         #which returns a tuple of output values:
@@ -1087,7 +1084,7 @@ class ALACAudio(M4AAudio):
          frame_byte_sizes,
          frame_file_offsets,
          mdat_size) = encoders.encode_alac(
-            file=f,
+            file=mdat_file,
             pcmreader=BufferedPCMReader(pcmreader),
             block_size=cls.BLOCK_SIZE,
             initial_history=cls.INITIAL_HISTORY,
@@ -1283,21 +1280,23 @@ class ALACAudio(M4AAudio):
                                 type='free',
                                 data=chr(0) * 1024)]))))
 
-        #adjust the "free" atom to fit our leftover padding, if possible
+        #build a "free" atom with some leftover padding
         free = Atom('free').build(Con.Container(
                 type='free',
-                data=chr(0) * (PAD_SIZE - (len(ftyp) + len(moov) + 8))))
+                data=chr(0) * 0x1000))
 
-        #rewind the stream and replace padding with proper metadata atoms
-        f.seek(0,0)
+        #build our complete output file
+        f = file(filename,'wb')
+        mdat_file.seek(0,0)
         f.write(ftyp)
         f.write(moov)
         f.write(free)
-
+        transfer_data(mdat_file.read,f.write)
         f.close()
+        mdat_file.close()
 
-        #return cls(filename)
-        return None
+        return cls(filename)
+
 
 #######################
 #AAC File
