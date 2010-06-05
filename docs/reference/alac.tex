@@ -837,7 +837,6 @@ initial history & 8 & \texttt{10} \\
 maximum K & 8 & \texttt{14} \\
 channels & 8 & channel count \\
 unknown & 16 & \texttt{0x00FF} \\
-%FIXME - double check this
 max coded frame size & 32 & largest ALAC frame size, in bytes \\
 bitrate & 32 & $((\text{\ATOM{mdat} size} \times 8 ) \div (\text{total PCM frames} \div \text{sample rate}))$ \\
 sample rate & 32 & sample rate \\
@@ -1050,8 +1049,6 @@ The only difference is the contents of its fields.
 
 This atom is a collection of \ATOM{data} sub-atoms
 and is described on page \pageref{m4a_meta}.
-%FIXME - ilst probably has required fields
-%which I need to figure out and explain here
 
 \subsubsection{the free atom}
 
@@ -1136,8 +1133,316 @@ Sample & \text{Left}_i & \text{Right}_i & \text{Channel}_1 & \text{Channel}_2 \\
 \end{table}
 
 \subsection{Coefficient calculation}
+%example samples: [14, 15, 19, 17, 18, 17, 16, 18, 17, 15,
+%                  13, 13, 12, 12, 15, 17, 16, 17, 16, 13]
 
-TODO
+Given a list of correlated samples, we need to generate
+one subframe header per channel by performing coefficient calculation
+to generate \VAR{Prediction Quantitization},
+\VAR{Coefficient Count} and a set of \VAR{Coefficient} values.
+We'll set \VAR{Prediction Type} to 0 and \VAR{Rice Modifier} to 4.
+\begin{figure}[h]
+\includegraphics{figures/alac_subframe_header.pdf}
+\end{figure}
+\par
+\noindent
+We'll adapt FLAC's LPC subframe calculation routine\footnote{See page \pageref{flac_lpc_encoding}} for this purpose.
+
+\clearpage
+
+\subsubsection{Windowing}
+%windowed to: [0.000000,2.196699,9.500000,14.510408,18.000000,
+%              17.000000,16.000000,18.000000,17.000000,15.000000,
+%              13.000000,13.000000,12.000000,12.000000,15.000000,
+%              17.000000,13.656854,8.500000,2.343146,0.000000]
+
+The first step in ALAC subframe encoding is `windowing' the input signal.
+Put simply, this is a process of multiplying each input sample by
+an equivalent value from the window, which are floats from 0.0 to 1.0.
+In this case, the default is a Tukey window with a ratio of 0.5.
+A Tukey window is a combination of the Hann and Rectangular windows.
+The ratio of 0.5 means there's 0.5 samples in the Hann window per
+sample in the Rectangular window.
+
+\begin{align}
+\text{hann}(n) &= \frac{1}{2} \left ( 1 - \cos \left ( \frac{2 \pi n}{\text{sample count} - 1} \right ) \right ) \\
+\text{rectangle}(n) &= 1.0
+\end{align}
+
+The Tukey window is defined by taking a Hann window, splitting it at
+the halfway point, and inserting a Rectangular window between the
+two.
+
+\begin{figure}[h]
+\subfloat{
+\includegraphics{figures/flac_hann.pdf}
+}
+\subfloat{
+\includegraphics{figures/flac_rectangular.pdf}
+}
+\subfloat{
+\includegraphics{figures/flac_tukey.pdf}
+}
+\end{figure}
+
+Let's run through a short example with 20 samples:
+
+{\relsize{-1}
+\begin{tabular}{|r|r >{$}c<{$} r >{$}c<{$} r|}
+\hline
+& input & & Tukey & & windowed \\
+index & sample & & window & & signal \\
+\hline
+0 & 14 & \times & 0.0000 & = & 0.00 \\
+1 & 15 & \times & 0.1464 & = & 2.20 \\
+2 & 19 & \times & 0.5000 & = & 9.50 \\
+3 & 17 & \times & 0.8536 & = & 14.51 \\
+4 & 18 & \times & 1.0000 & = & 18.00 \\
+5 & 17 & \times & 1.0000 & = & 17.00 \\
+6 & 16 & \times & 1.0000 & = & 16.00 \\
+7 & 18 & \times & 1.0000 & = & 18.00 \\
+8 & 17 & \times & 1.0000 & = & 17.00 \\
+9 & 15 & \times & 1.0000 & = & 15.00 \\
+10 & 13 & \times & 1.0000 & = & 13.00 \\
+11 & 13 & \times & 1.0000 & = & 13.00 \\
+12 & 12 & \times & 1.0000 & = & 12.00 \\
+13 & 12 & \times & 1.0000 & = & 12.00 \\
+14 & 15 & \times & 1.0000 & = & 15.00 \\
+15 & 17 & \times & 1.0000 & = & 17.00 \\
+16 & 16 & \times & 0.8536 & = & 13.66 \\
+17 & 17 & \times & 0.5000 & = & 8.50 \\
+18 & 16 & \times & 0.1464 & = & 2.34 \\
+19 & 13 & \times & 0.0000 & = & 0.00 \\
+\hline
+\end{tabular}
+}
+
+\subsubsection{Computing autocorrelation}
+%autocorrelated to: [3416.877417,3314.071374,3078.904744,2807.422836,
+%                    2554.560660,2325.480970,2107.853553,1903.292893,
+%                    1701.213203]
+
+Once our input samples have been converted to a windowed signal,
+we then compute the autocorrelation values from that signal.
+Each autocorrelation value is determined by multiplying the signal's
+samples by the samples of a lagged version of that same signal,
+and then taking the sum.
+The lagged signal is simply the original signal with \VAR{lag} number of
+samples removed from the beginning.
+
+\begin{figure}[h]
+\includegraphics{figures/alac_lag.pdf}
+\end{figure}
+
+In this example are autocorrelation values are:
+3416.9513, 3314.1450, 3078.9564, 2807.4600, 2554.6000,
+2325.5300, 2107.9100, 1903.3500 and 1701.2700.
+
+\clearpage
+
+\subsubsection{LP coefficient calculation}
+
+Calculating the LP coefficients uses the Levinson-Durbin recursive method.\footnote{This algorithm is taken from \LINK{http://www.engineer.tamuk.edu/SPark/chap7.pdf} }
+Our inputs are $M$, the maximum coefficient count, and $r$ autocorrelation
+values, from $r(0)$ to $r(M - 1)$.
+Our outputs are $a$, a list of LP coefficient lists from
+$a_{11}$ to $a_{(M - 1)(M - 1)}$, and $E$, a list
+of error values from $E_0$ to $E_{(M - 1)}$.
+$q_m$ and $\kappa_m$ are temporary values.
+\par
+\noindent
+Initial values:
+\begin{align}
+E_0 &= r(0) \\
+a_{11} &= \kappa_1 = \frac{r(1)}{E_0} \\
+E_1 &= E_0 {(1 - {{\kappa_1} ^ 2})}
+\end{align}
+\noindent
+With $m \geq 2$, the following recurive algorithm is performed:
+\begin{align}
+\text{Step 1. } && q_m &= r(m) - \overset{m - 1}{\underset{i = 1}{\sum}} a_{i(m - 1)}r(m - i) \\
+\text{Step 2. } && \kappa_m &= \frac{q_m}{E_{(m - 1)}} \\
+\text{Step 3. } && a_{mm} &= \kappa_m \\
+\text{Step 4. } && a_{im} &= a_{i(m - 1)} - \kappa_m a_{(m - i)(m - 1)} \text{ for $i = 1$, $i = 2$,...,$i = m - 1$} \\
+\text{Step 5. } && E_m &= E_{m - 1}(1 - {\kappa_m} ^ 2) \\
+\text{Step 6. } &&& \text{If $m < M$ then $m \leftarrow m + 1$ and goto step 1.  If $m = M$ then stop.}
+\end{align}
+
+Let's run through an example in which $M = 4$, $r(0) = 11018$, $r(1) = 9690$,
+$r(2) = 8443$ and $r(3) = 7280$:
+{\relsize{-2}
+\begin{align*}
+E_0 &= r(0) = 11018 \\
+a_{11} &= \kappa_1 = \frac{r(1)}{E_0} = \frac{9690}{11018} = 0.8795 \\
+E_1 &= E_o(1 - {\kappa_1} ^ 2) = 11018(1 - 0.8795 ^ 2) = 2495 \\
+q_2 &= r(2) - \overset{1}{\underset{i = 1}{\sum}} a_{i1}r(2 - i) = 8443 - (0.8795)(9690) = -79.35 \\
+\kappa_2 &= \frac{q_2}{E_1} = \frac{-79.35}{2495} = -0.0318 \\
+a_{22} &= \kappa_2 = -0.0318 \\
+a_{12} &= a_{11} - \kappa_2 a_{11} = 0.8795 - (-0.0318)(0.8795) = 0.9074 \\
+E_2 &= E_1 (1 - {\kappa_2} ^ 2 ) = 2495(1 - {-0.0318 ^ 2}) = 2492 \\
+q_3 &= r(3) - \overset{2}{\underset{i = 1}{\sum}} a_{i2} r(3 - i) = 7280 - ((0.9074)(8443) + (-0.0318)(9690)) = -73.04 \\
+\kappa_3 &= \frac{q_3}{E_2} = \frac{-73.04}{2492} = -0.0293 \\
+a_{33} &= \kappa_3 = -0.0293 \\
+a_{13} &= a_{12} - \kappa_3 a_{22} = 0.9074 - (-0.0293)(-0.0318) = 0.9065 \\
+a_{23} &= a_{22} - \kappa_3 a_{12} = -0.0318 - (-0.0293)(0.9074) = -0.0052 \\
+E_3 &= E_2 (1 - {\kappa_3} ^ 2 ) = 2492(1 - {-0.0293 ^ 2}) = 2490
+\end{align*}
+}
+Our final values are:
+{\relsize{-2}
+\begin{align*}
+a_{11} &= 0.8795 & & & & \\
+a_{12} &= 0.9074 & a_{22} &= -0.0318 & & \\
+a_{13} &= 0.9065 & a_{23} &= -0.0052 & a_{33} &= -0.0293 \\
+E_1 &= 2495 & E_2 &= 2492 & E_3 &= 2490
+\end{align*}
+}
+\noindent
+These values have been rounded to the nearest significant digit
+and will not be an exact match to those generated by a computer.
+
+\clearpage
+
+\subsubsection{Best order estimation}
+%FIXME - customize for ALAC
+At this point, we have an array of prospective LP coefficient lists,
+a list of error values and must decide which LPC order to use.
+Making an estimation requires the total number of samples
+in the subframe, the number of overhead bits per order (by default,
+this is the number of bits per sample in the subframe, plus 5),
+and an error scale constant in addition to the LPC error values:
+\begin{equation}
+\text{Error Scale} = \frac{\ln(2) ^ 2}{2 \times \text{Total Samples}}
+\end{equation}
+\noindent
+Once the error scale has been calculated, one can generate a
+\VAR{Bits per Residual} estimation function which, given an \VAR{LPC Error}
+value, returns what its name implies:
+\begin{equation}
+\text{Bits per Residual}(\text{LPC Error}) = \frac{\ln(\text{Error Scale} \times \text{LPC Error})}{2 \times \ln(2)}
+\end{equation}
+With this function, we can estimate how many bits the entire LPC subframe
+will take for each \VAR{LPC Error} value and its associated \VAR{Order}:
+{\relsize{-2}
+\begin{equation*}
+\text{Total Bits}(\text{LPC Error},\text{Order}) = \text{Bits per Residual}(\text{LPC Error}) \times (\text{Total Samples} - \text{Order}) + (\text{Order} \times \text{Overhead bits})
+\end{equation*}
+}
+Continuing with our example, we have 20 samples and
+now have the error values of 2495, 2492 and 2490.
+This gives us an error scale of:
+$\frac{{\ln(2) ^ 2}}{2 \times 20} = \frac{.6931 ^ 2}{40} = .01201$
+\begin{align*}
+\intertext{At LPC order 1, our bits per residual are:}
+\frac{\ln(.01201 \times 2495)}{2 \times ln (2)} = \frac{\ln(29.96)}{1.386} &= 2.453 \\
+\intertext{And our total bits are:}
+(2.453 \times (20 - 1)) + (1 \times (16 + 5)) = 46.61 + 21 &= 67.61 \\
+\intertext{At LPC order 2, our bits per residual are:}
+\frac{\ln(.01201 \times 2492)}{2 \times \ln(2)} = \frac{\ln(29.92)}{1.386} &= 2.452 \\
+\intertext{And our total bits are:}
+(2.452 \times (20 - 2)) + (2 \times (16 + 5)) = 44.14 + 42 &= 86.14 \\
+\intertext{At LPC order 3, our bits per residual are:}
+\frac{\ln(.01201 \times 2490)}{2 \times \ln(2)} = \frac{\ln(29.90)}{1.386} &= 2.451
+\intertext{And our total bits are:}
+(2.451 \times (20 - 3)) + (3 \times (16 + 5)) = 41.67 + 63 &= 104.7
+\end{align*}
+\par
+\noindent
+Therefore, since the total bits for order 1 are the smallest,
+the best order for this group of samples is 1.
+
+Though as you'll notice, the bits per residual for order 3 were the smallest.
+So if this group of samples was very large, it's likely that order 3
+would prevail since the residuals multiplied by a smaller bits per residual
+would counteract the relatively fixed overhead bits per order value.
+
+\subsubsection{Quantizing coefficients}
+
+Quantizing coefficients is a process of taking a list of LP Coefficients
+along with a QLP Coefficients Precision value and
+returning a list of QLP Coefficients and a QLP Shift Needed value.
+The first step is determining the upper and lower limits of the
+QLP Coefficients:
+\begin{align}
+\text{QLP coefficient maximum} &= 2 ^ {precision - 1} - 1 \\
+\text{QLP coefficient mininum} &= - 2 ^ {precision - 1}
+\end{align}
+The QLP Coefficients Precision value is typically based on the encoder's
+block size:
+\begin{table}[h]
+\begin{tabular}{|>{$}r<{$}|r||>{$}r<{$}|r|}
+\hline
+\text{Block Size} & Precision & \text{Block Size} & Precision \\
+\hline
+\text{Size} \leq 192 & 7 & \text{Size} \leq 384 & 8 \\
+\text{Size} \leq 576 & 9 & \text{Size} \leq 1152 & 10 \\
+\text{Size} \leq 2304 & 11 & \text{Size} \leq 4608 & 12 \\
+\text{Size} > 4608 & 13 & & \\
+\hline
+\end{tabular}
+\end{table}
+\par
+\noindent
+So in our example of a block of 20 samples,
+\begin{align*}
+\text{QLP Coefficient maximum} = 2 ^ {7 - 1} -1 = 64 - 1 &= 63 \\
+\text{QLP Coefficient minimum} = - 2 ^ {7 - 1} &= -64
+\end{align*}
+\par
+\noindent
+Now we determine the initial QLP Shift Needed value:
+\begin{equation}
+\text{shift} = \text{precision} - \left \lceil \frac{\log(\max(|\text{LP Coefficients}|))}{\log(2) } \right \rceil - 1
+\end{equation}
+\par
+\noindent
+where `shift' is adjusted if necessary such that:
+$0 \leq \text{shift} \leq \texttt{0xF }$
+, since it must fit into a 5-bit signed field and negative shifts
+are no-ops in the FLAC decoder.
+
+Continuing our ongoing example, let's assume we're quantizing the LP
+coefficients 0.9065, -0.0052 and -0.0293.  So our shift should be:
+\begin{equation*}
+\text{shift} = 7 - \left \lceil \frac{\log(0.9065)}{\log(2)} \right \rceil - 1
+= 7 - \left \lceil \frac{-0.0981}{0.6931} \right \rceil - 1 = 7 - 0 - 1 = 6
+\end{equation*}
+\par
+\noindent
+Finally, we determine the QLP Coefficient values themselves via a small
+recursive routine:
+\begin{align}
+X(i) &= E(i - 1) + (\text{LP Coefficient}_i \times 2 ^ {shift}) \\
+\text{QLP Coefficient}_i &= \text{round}(X(i)) \\
+E(i) &= X(i) - \text{QLP Coefficient}_i
+\end{align}
+\par
+\noindent
+where $E(0) = 0$ and each QLP Coefficient is adjusted
+prior to calculating the next $E(i)$ value such that:
+$\text{QLP coefficient minimum} \leq \text{QLP Coefficient}_i \leq \text{QLP coefficient maximum}$
+
+So to finish our LPC example:
+\begin{align*}
+X(1) &= E(0) + (0.9065 \times 2 ^ 6 ) = 0 + 58.016 = \textbf{58.016} \\
+\text{QLP Coefficient}_1 &= \text{round}(58.016) = \textbf{58} \\
+E(1) &= X(1) - \text{QLP Coefficient}_1 = 58.016 - 58 = \textbf{0.016} \\
+X(2) &= E(1) + (-0.0052 \times 2 ^ 6 ) = 0.016 + -0.3328 = \textbf{0.3168} \\
+\text{QLP Coefficient}_2 &= \text{round}(0.3168) = \textbf{0} \\
+E(2) &= X(2) - \text{QLP Coefficient}_2 = 0.3168 - 0 = \textbf{0.3168} \\
+X(3) &= E(2) + (-0.0293 \times 2 ^ 6 ) = 0.3168 + -1.875 = \textbf{-1.558} \\
+\text{QLP Coefficient}_3 &= \text{round}(-1.558) = \textbf{-2} \\
+E(3) &= X(3) - \text{QLP Coefficient}_3 = -1.558 - -2 = \textbf{0.4420}
+\end{align*}
+\par
+\noindent
+Therefore, the LPC order is 3.
+The QLP Coefficients are 58, 0 and -2.
+The QLP Shift Needed value is 6.
+And, the QLP precision value can be calculated from the bits required
+for the largest absolute QLP Coefficient value.
+In this case, 6 bits are required to hold the value 58 so
+QLP precision can be 6.
 
 \clearpage
 

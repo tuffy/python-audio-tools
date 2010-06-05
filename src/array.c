@@ -39,6 +39,14 @@ void ia_resize(struct i_array *array, ia_size_t maximum_size) {
   }
 }
 
+void ia_from_list(struct i_array *target, int count, int *list) {
+  int i;
+
+  ia_resize(target,count);
+  for (i = 0; i < count; i++)
+    ia_append(target,list[i]);
+}
+
 void ia_print(FILE *stream,struct i_array *array) {
   ia_size_t i;
 

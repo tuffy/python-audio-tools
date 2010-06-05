@@ -123,6 +123,7 @@ static inline void ia_extend(struct i_array *target, struct i_array *source) {
   target->size += source->size;
 }
 
+void ia_from_list(struct i_array *target, int count, int *list);
 
 /*places the first "size" number of elements from "source" to "target"
 
