@@ -1,7 +1,9 @@
 #ifndef A_SHN_ENCODE
 #define A_SHN_ENCODE
 
+#ifndef STANDALONE
 #include <Python.h>
+#endif
 
 #include <stdint.h>
 #include "../bitstream_w.h"

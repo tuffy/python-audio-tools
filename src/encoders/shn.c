@@ -19,6 +19,7 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  *******************************************************/
 
+#ifndef STANDALONE
 PyObject* encoders_encode_shn(PyObject *dummy,
 			      PyObject *args, PyObject *keywds) {
 
@@ -170,11 +171,65 @@ PyObject* encoders_encode_shn(PyObject *dummy,
   bs_close(stream);
   return NULL;
 }
+#else
+
+status encoders_encode_shn(char *filename,
+			   FILE *input,
+			   int block_size) {
+  FILE *output_file;        /*the FILE representation of our putput file*/
+  Bitstream *stream = NULL; /*the Bitstream representation of our output file*/
+  struct pcm_reader *reader; /*the pcm_reader struct of our input pcmreader*/
+  struct ia_array wrapped_samples;
+  int encode_ok;
+  int i,j;
+  int wrap = 3;
+
+  /*assume CD quality input*/
+  reader = pcmr_open(input,44100,2,16,0,1);
+
+  /*open the given filename for writing*/
+  if ((output_file = fopen(filename,"wb")) == NULL) {
+    return ERROR;
+  } else {
+    stream = bs_open(output_file);
+  }
+
+  /*initialize wrapped samples with 0s*/
+  iaa_init(&wrapped_samples,reader->channels,wrap);
+  for (i = 0; i < reader->channels; i++) {
+    for (j = 0; j < wrap; j++) {
+      ia_append(iaa_getitem(&wrapped_samples,i),0);
+    }
+  }
+
+  encode_ok = ShortenEncoder_encode_stream(stream,
+					   reader,
+					   block_size,
+					   &wrapped_samples);
+
+  iaa_free(&wrapped_samples);
+  pcmr_close(reader);
+  bs_close(stream);
+
+  if (encode_ok)
+    return OK;
+  else
+    return ERROR;
+}
+
+int main(int argc, char *argv[]) {
+  encoders_encode_shn(argv[1],stdin,256);
+
+  return 0;
+}
+
+#endif
+
 
 int ShortenEncoder_encode_stream(Bitstream* bs,
-		      struct pcm_reader *reader,
-		      int block_size,
-		      struct ia_array* wrapped_samples) {
+				 struct pcm_reader *reader,
+				 int block_size,
+				 struct ia_array* wrapped_samples) {
   struct ia_array samples;
   ia_size_t i;
 
