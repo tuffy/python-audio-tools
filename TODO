@@ -886,7 +886,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   Selecting a single disc image with embedded cuesheets should
   fill in the proper XMCD/MusicBrainz fields
 * DONE Ensure add_replay_gain used on hi-def tracks doesn't raise errors
-* DONE Add Shorten support
+* TODO Add Shorten support
   I don't expect people have a lot of shn files lying around
   and nobody should be using it for new data
   (though I'll add a rudimentary encoder for completeness' sake)
@@ -905,7 +905,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    I'll likely limit support to Shorten version2/3
    since generating older versions will be a challenge
    and this format is obscure enough as it is.
-** DONE Build partial encoder
+** TODO Build partial encoder
    - [X] DIFF0
    - [X] DIFF1
    - [X] DIFF2
@@ -913,6 +913,8 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    - [X] BLOCKSIZE
    - [X] ZERO
    - [X] VERBATIM
+*** TODO Convert partial encoder for standalone use
+    To ensure there aren't any memory leaks
 ** DONE Add ShortenAudio type to audiotools Python core
 ** DONE Add Shorten-specific unit tests
 ** DONE Document Shorten
@@ -1162,12 +1164,13 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 **** TODO determining coefficients/quantitization
 ***** DONE Windowing
 ***** DONE Computing autocorrelation
-***** TODO LP coefficient calculation
+***** DONE LP coefficient calculation
 ***** TODO Best order estimation
 ***** TODO Quantizing coefficients
 **** DONE calculating residual values
      Simplify this to make it easier to understand
 **** DONE writing residuals based on initial history/history multiplier/etc.
+*** TODO verify A4 layout is correct
 ** TODO Update M4A metadata routines to exploit "free" atoms
    As with FLAC, rewriting the entire file should be avoided
 * TODO Update documentation to cover concrete MetaData classes
