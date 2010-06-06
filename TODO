@@ -1165,7 +1165,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ***** DONE Windowing
 ***** DONE Computing autocorrelation
 ***** DONE LP coefficient calculation
-***** TODO Best order estimation
+***** DONE Best order estimation
 ***** TODO Quantizing coefficients
 **** DONE calculating residual values
      Simplify this to make it easier to understand
