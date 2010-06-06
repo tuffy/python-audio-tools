@@ -1141,7 +1141,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 **** DONE Channel decorrelation example
 **** DONE Wasted bits
 **** DONE Wasted bits example
-*** TODO ALAC encoding
+*** DONE ALAC encoding
 **** DONE Figure out compliant atom contents
      - [X] ftyp
      - [X] moov->mvhd
@@ -1161,12 +1161,12 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 **** DONE figure out if "meta" has required "----" sub-atoms
 **** DONE extracting wasted bits for 24bps streams
 **** DONE correlating stereo samples
-**** TODO determining coefficients/quantitization
+**** DONE determining coefficients/quantitization
 ***** DONE Windowing
 ***** DONE Computing autocorrelation
 ***** DONE LP coefficient calculation
 ***** DONE Best order estimation
-***** TODO Quantizing coefficients
+***** DONE Quantizing coefficients
 **** DONE calculating residual values
      Simplify this to make it easier to understand
 **** DONE writing residuals based on initial history/history multiplier/etc.

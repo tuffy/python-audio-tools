@@ -1369,89 +1369,69 @@ the best order for this group of samples is 4.
 
 Quantizing coefficients is a process of taking a list of LP Coefficients
 along with a QLP Coefficients Precision value and
-returning a list of QLP Coefficients and a QLP Shift Needed value.
+returning a list of Coefficients and a Prediction Quantitization value.
 The first step is determining the upper and lower limits of the
-QLP Coefficients:
+Coefficients:
 \begin{align}
-\text{QLP coefficient maximum} &= 2 ^ {precision - 1} - 1 \\
-\text{QLP coefficient mininum} &= - 2 ^ {precision - 1}
+\text{Coefficient Maximum} &= 2 ^ {16 - 1} - 1 = 32767\\
+\text{Coefficient Mininum} &= - 2 ^ {16 - 1} = -32768
 \end{align}
-The QLP Coefficients Precision value is typically based on the encoder's
-block size:
-\begin{table}[h]
-\begin{tabular}{|>{$}r<{$}|r||>{$}r<{$}|r|}
-\hline
-\text{Block Size} & Precision & \text{Block Size} & Precision \\
-\hline
-\text{Size} \leq 192 & 7 & \text{Size} \leq 384 & 8 \\
-\text{Size} \leq 576 & 9 & \text{Size} \leq 1152 & 10 \\
-\text{Size} \leq 2304 & 11 & \text{Size} \leq 4608 & 12 \\
-\text{Size} > 4608 & 13 & & \\
-\hline
-\end{tabular}
-\end{table}
 \par
 \noindent
-So in our example of a block of 20 samples,
-\begin{align*}
-\text{QLP Coefficient maximum} = 2 ^ {7 - 1} -1 = 64 - 1 &= 63 \\
-\text{QLP Coefficient minimum} = - 2 ^ {7 - 1} &= -64
-\end{align*}
-\par
-\noindent
-Now we determine the initial QLP Shift Needed value:
+Now we determine the initial Prediction Quantitization value:
 \begin{equation}
-\text{shift} = \text{precision} - \left \lceil \frac{\log(\max(|\text{LP Coefficients}|))}{\log(2) } \right \rceil - 1
+\text{quantitization} = 16 - \left \lceil \frac{\log(\max(|\text{LP Coefficients}|))}{\log(2) } \right \rceil - 1
 \end{equation}
 \par
 \noindent
-where `shift' is adjusted if necessary such that:
-$0 \leq \text{shift} \leq \texttt{0xF }$
-, since it must fit into a 5-bit signed field and negative shifts
-are no-ops in the FLAC decoder.
+where `quantitization' is adjusted if necessary such that:
+$0 \leq \text{quantitization} \leq \texttt{0xF}$
+, since it must fit into a 4-bit unsigned field.
 
 Continuing our ongoing example, let's assume we're quantizing the LP
-coefficients 0.9065, -0.0052 and -0.0293.  So our shift should be:
+coefficients 1.873, -1.29, 0.418 and -0.03.
+So our prediction quantitization should be:
 \begin{equation*}
-\text{shift} = 7 - \left \lceil \frac{\log(0.9065)}{\log(2)} \right \rceil - 1
-= 7 - \left \lceil \frac{-0.0981}{0.6931} \right \rceil - 1 = 7 - 0 - 1 = 6
+\text{shift} = 16 - \left \lceil \frac{\log(1.873)}{\log(2)} \right \rceil - 1
+= 16 - \left \lceil \frac{0.6275}{0.6931} \right \rceil - 1 = 16 - 1 - 1 = 14
 \end{equation*}
 \par
 \noindent
-Finally, we determine the QLP Coefficient values themselves via a small
+Finally, we determine the Coefficient values themselves via a small
 recursive routine:
 \begin{align}
-X(i) &= E(i - 1) + (\text{LP Coefficient}_i \times 2 ^ {shift}) \\
-\text{QLP Coefficient}_i &= \text{round}(X(i)) \\
-E(i) &= X(i) - \text{QLP Coefficient}_i
+X(i) &= E(i - 1) + (\text{LP Coefficient}_i \times 2 ^ {quantitization}) \\
+\text{Coefficient}_i &= \text{round}(X(i)) \\
+E(i) &= X(i) - \text{Coefficient}_i
 \end{align}
 \par
 \noindent
-where $E(0) = 0$ and each QLP Coefficient is adjusted
+where $E(0) = 0$ and each Coefficient is adjusted
 prior to calculating the next $E(i)$ value such that:
-$\text{QLP coefficient minimum} \leq \text{QLP Coefficient}_i \leq \text{QLP coefficient maximum}$
+$\text{Coefficient Minimum} \leq \text{Coefficient}_i \leq \text{Coefficient Maximum}$
 
-So to finish our LPC example:
+So to finish our example:
+{\relsize{-2}
 \begin{align*}
-X(1) &= E(0) + (0.9065 \times 2 ^ 6 ) = 0 + 58.016 = \textbf{58.016} \\
-\text{QLP Coefficient}_1 &= \text{round}(58.016) = \textbf{58} \\
-E(1) &= X(1) - \text{QLP Coefficient}_1 = 58.016 - 58 = \textbf{0.016} \\
-X(2) &= E(1) + (-0.0052 \times 2 ^ 6 ) = 0.016 + -0.3328 = \textbf{0.3168} \\
-\text{QLP Coefficient}_2 &= \text{round}(0.3168) = \textbf{0} \\
-E(2) &= X(2) - \text{QLP Coefficient}_2 = 0.3168 - 0 = \textbf{0.3168} \\
-X(3) &= E(2) + (-0.0293 \times 2 ^ 6 ) = 0.3168 + -1.875 = \textbf{-1.558} \\
-\text{QLP Coefficient}_3 &= \text{round}(-1.558) = \textbf{-2} \\
-E(3) &= X(3) - \text{QLP Coefficient}_3 = -1.558 - -2 = \textbf{0.4420}
+X(1) &= E(0) + (1.873 \times 2 ^ {14} ) = 0 + 30687.232 = \textbf{30687.232} \\
+\text{QLP Coefficient}_1 &= \text{round}(30687.232) = \textbf{30687} \\
+E(1) &= X(1) - \text{QLP Coefficient}_1 = 30687.232 - 30687= \textbf{0.232} \\
+X(2) &= E(1) + (-1.29 \times 2 ^ {14} ) = 0.232 + -21135.36 = \textbf{-21135.128} \\
+\text{QLP Coefficient}_2 &= \text{round}(-21135.128) = \textbf{-21135} \\
+E(2) &= X(2) - \text{QLP Coefficient}_2 = -21135.128 - -21135 = \textbf{-0.128} \\
+X(3) &= E(2) + (0.418 \times 2 ^ {14} ) = -0.128 + 6848.512 = \textbf{6848.384} \\
+\text{QLP Coefficient}_3 &= \text{round}(6848.384) = \textbf{6848} \\
+E(3) &= X(3) - \text{QLP Coefficient}_3 = 6848.384 - 6848 = \textbf{0.384} \\
+X(4) &= E(3) + (-0.03 \times 2 ^ {14} ) = 0.384 - 491.52 = \textbf{-491.136} \\
+\text{QLP Coefficient}_4 &= \text{round}(-491.136) = \textbf{-491} \\
 \end{align*}
+}
 \par
 \noindent
-Therefore, the LPC order is 3.
-The QLP Coefficients are 58, 0 and -2.
-The QLP Shift Needed value is 6.
-And, the QLP precision value can be calculated from the bits required
-for the largest absolute QLP Coefficient value.
-In this case, 6 bits are required to hold the value 58 so
-QLP precision can be 6.
+Therefore, the \VAR{Coefficient Count} is 4,
+the \VAR{Coefficient} values are 30687, -21135, 6848 and -491,
+and the \VAR{Prediction Qauntitization} value is 14.
+
 
 \clearpage
 
