@@ -32,10 +32,10 @@ import time
 
 gettext.install("audiotools",unicode=True)
 
-(METADATA,PCM,FRAMELIST,EXECUTABLE,CUESHEET,IMAGE,FLAC,SHORTEN,NETWORK,
- CUSTOM) = range(10)
-CASES = set([METADATA,PCM,FRAMELIST,EXECUTABLE,CUESHEET,IMAGE,FLAC,SHORTEN,
-             NETWORK])
+(METADATA,PCM,FRAMELIST,EXECUTABLE,CUESHEET,IMAGE,NETWORK,
+ FLAC,SHORTEN,ALAC,CUSTOM) = range(11)
+CASES = set([METADATA,PCM,FRAMELIST,EXECUTABLE,CUESHEET,IMAGE,NETWORK,
+             FLAC,SHORTEN])
 
 def nothing(self):
     pass
@@ -84,6 +84,12 @@ def TEST_FLAC(function):
 
 def TEST_SHORTEN(function):
     if (SHORTEN not in CASES):
+        return nothing
+    else:
+        return function
+
+def TEST_ALAC(function):
+    if (ALAC not in CASES):
         return nothing
     else:
         return function
@@ -9572,6 +9578,208 @@ class TestShortenCodec(unittest.TestCase):
                             bits_per_sample=bps),
                         65536 * channels,
                         **encode_opts)
+
+class TestAlacCodec(unittest.TestCase):
+    def __stream_variations__(self):
+        if (not hasattr(self,"__stream_variations_cache__")):
+            #this is another simpler variant of FLAC's variations
+            #since ALAC doesn't support 8bps
+            self.__class__.__stream_variations_cache__ = [
+                test_streams.Sine16_Mono(200000,48000,441.0,0.50,441.0,0.49),
+                test_streams.Sine16_Mono(200000,96000,441.0,0.61,661.5,0.37),
+                test_streams.Sine16_Mono(200000,44100,441.0,0.50,882.0,0.49),
+                test_streams.Sine16_Mono(200000,44100,441.0,0.50,4410.0,0.49),
+                test_streams.Sine16_Mono(200000,44100,8820.0,0.70,4410.0,0.29),
+
+                test_streams.Sine16_Stereo(200000,48000,441.0,0.50,441.0,0.49,1.0),
+                test_streams.Sine16_Stereo(200000,48000,441.0,0.61,661.5,0.37,1.0),
+                test_streams.Sine16_Stereo(200000,96000,441.0,0.50,882.0,0.49,1.0),
+                test_streams.Sine16_Stereo(200000,44100,441.0,0.50,4410.0,0.49,1.0),
+                test_streams.Sine16_Stereo(200000,44100,8820.0,0.70,4410.0,0.29,1.0),
+                test_streams.Sine16_Stereo(200000,44100,441.0,0.50,441.0,0.49,0.5),
+                test_streams.Sine16_Stereo(200000,44100,441.0,0.61,661.5,0.37,2.0),
+                test_streams.Sine16_Stereo(200000,44100,441.0,0.50,882.0,0.49,0.7),
+                test_streams.Sine16_Stereo(200000,44100,441.0,0.50,4410.0,0.49,1.3),
+                test_streams.Sine16_Stereo(200000,44100,8820.0,0.70,4410.0,0.29,0.1),
+
+                test_streams.Sine24_Mono(200000,48000,441.0,0.50,441.0,0.49),
+                test_streams.Sine24_Mono(200000,96000,441.0,0.61,661.5,0.37),
+                test_streams.Sine24_Mono(200000,44100,441.0,0.50,882.0,0.49),
+                test_streams.Sine24_Mono(200000,44100,441.0,0.50,4410.0,0.49),
+                test_streams.Sine24_Mono(200000,44100,8820.0,0.70,4410.0,0.29),
+
+                test_streams.Sine24_Stereo(200000,48000,441.0,0.50,441.0,0.49,1.0),
+                test_streams.Sine24_Stereo(200000,48000,441.0,0.61,661.5,0.37,1.0),
+                test_streams.Sine24_Stereo(200000,96000,441.0,0.50,882.0,0.49,1.0),
+                test_streams.Sine24_Stereo(200000,44100,441.0,0.50,4410.0,0.49,1.0),
+                test_streams.Sine24_Stereo(200000,44100,8820.0,0.70,4410.0,0.29,1.0),
+                test_streams.Sine24_Stereo(200000,44100,441.0,0.50,441.0,0.49,0.5),
+                test_streams.Sine24_Stereo(200000,44100,441.0,0.61,661.5,0.37,2.0),
+                test_streams.Sine24_Stereo(200000,44100,441.0,0.50,882.0,0.49,0.7),
+                test_streams.Sine24_Stereo(200000,44100,441.0,0.50,4410.0,0.49,1.3),
+                test_streams.Sine24_Stereo(200000,44100,8820.0,0.70,4410.0,0.29,0.1)]
+
+        for stream in self.__class__.__stream_variations_cache__:
+            stream.reset()
+            yield stream
+
+    @TEST_ALAC
+    def setUp(self):
+        import audiotools.decoders
+        import audiotools.encoders
+        self.audio_class = audiotools.ALACAudio
+        self.decoder = audiotools.decoders.ALACDecoder
+        self.encode = audiotools.encoders.encode_alac
+
+    def __test_reader__(self, pcmreader, block_size=4096):
+        if (not audiotools.BIN.can_execute(audiotools.BIN["alac"])):
+            self.assert_(False,
+                         "reference ALAC binary alac(1) required for this test")
+
+        temp_file = tempfile.NamedTemporaryFile(suffix=".alac")
+        self.audio_class.from_pcm(temp_file.name,
+                                  pcmreader,
+                                  block_size=block_size)
+
+        alac = audiotools.open(temp_file.name)
+        self.assert_(alac.total_frames() > 0)
+
+        #first, ensure the ALAC-encoded file
+        #has the same MD5 signature as pcmreader once decoded
+        md5sum_decoder = md5()
+        d = alac.to_pcm()
+        f = d.read(audiotools.BUFFER_SIZE)
+        while (len(f) > 0):
+            md5sum_decoder.update(f.to_bytes(False,True))
+            f = d.read(audiotools.BUFFER_SIZE)
+        d.close()
+        self.assertEqual(md5sum_decoder.digest(),pcmreader.digest())
+
+        #then compare our .to_pcm() output
+        #with that of the ALAC reference decoder
+        reference = subprocess.Popen([audiotools.BIN["alac"],
+                                      "-r",temp_file.name],
+                                     stdout=subprocess.PIPE)
+        md5sum_reference = md5()
+        audiotools.transfer_data(reference.stdout.read,md5sum_reference.update)
+        self.assertEqual(reference.wait(),0)
+        self.assertEqual(md5sum_reference.digest(),pcmreader.digest())
+
+    @TEST_ALAC
+    def test_streams(self):
+        for g in self.__stream_variations__():
+            md5sum = md5()
+            f = g.read(audiotools.BUFFER_SIZE)
+            while (len(f) > 0):
+                md5sum.update(f.to_bytes(False,True))
+                f = g.read(audiotools.BUFFER_SIZE)
+            self.assertEqual(md5sum.digest(),g.digest())
+            g.close()
+
+    @TEST_ALAC
+    def test_small_files(self):
+        for g in [test_streams.Generate01,
+                  test_streams.Generate02,
+                  test_streams.Generate03,
+                  test_streams.Generate04]:
+            self.__test_reader__(g(44100),block_size=1152)
+
+    @TEST_ALAC
+    def test_full_scale_deflection(self):
+        for (bps,fsd) in [(16,test_streams.fsd16),
+                          (24,test_streams.fsd24)]:
+            for pattern in [test_streams.PATTERN01,
+                            test_streams.PATTERN02,
+                            test_streams.PATTERN03,
+                            test_streams.PATTERN04,
+                            test_streams.PATTERN05,
+                            test_streams.PATTERN06,
+                            test_streams.PATTERN07]:
+                self.__test_reader__(
+                    test_streams.MD5Reader(fsd(pattern,100)),
+                    block_size=1152)
+
+    @TEST_ALAC
+    def test_sines(self):
+        for g in self.__stream_variations__():
+            self.__test_reader__(g,block_size=1152)
+
+    @TEST_ALAC
+    def test_wasted_bps(self):
+        self.__test_reader__(test_streams.WastedBPS16(1000),
+                             block_size=1152)
+
+    @TEST_ALAC
+    def test_blocksizes(self):
+        noise = audiotools.Con.GreedyRepeater(audiotools.Con.SBInt16(None)).parse(os.urandom(64))
+
+        for block_size in [16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33]:
+            self.__test_reader__(test_streams.MD5Reader(
+                    test_streams.FrameListReader(noise,
+                                                 44100,1,16)),
+                                 block_size=block_size)
+
+    @TEST_ALAC
+    def test_noise(self):
+        for (channels,mask) in [
+            (1,audiotools.ChannelMask.from_channels(1)),
+            (2,audiotools.ChannelMask.from_channels(2))]:
+            for bps in [16,24]:
+                #the reference decoder can't handle very large block sizes
+                for blocksize in [32,4096,8192]:
+                    self.__test_reader__(
+                        EXACT_RANDOM_PCM_Reader(
+                            pcm_frames=65536,
+                            sample_rate=44100,
+                            channels=channels,
+                            channel_mask=mask,
+                            bits_per_sample=bps),
+                        block_size=blocksize)
+
+    @TEST_ALAC
+    def test_fractional(self):
+        def __perform_test__(block_size,pcm_frames):
+            self.__test_reader__(
+                EXACT_RANDOM_PCM_Reader(
+                    pcm_frames=pcm_frames,
+                    sample_rate=44100,
+                    channels=2,
+                    bits_per_sample=16),
+                block_size=block_size)
+
+        for pcm_frames in [31,32,33,34,35,2046,2047,2048,2049,2050]:
+            __perform_test__(33,pcm_frames)
+
+        for pcm_frames in [254,255,256,257,258,510,511,512,513,514,1022,1023,1024,1025,1026,2046,2047,2048,2049,2050,4094,4095,4096,4097,4098]:
+            __perform_test__(256,pcm_frames)
+
+        for pcm_frames in [1022,1023,1024,1025,1026,2046,2047,2048,2049,2050,4094,4095,4096,4097,4098]:
+            __perform_test__(2048,pcm_frames)
+
+        for pcm_frames in [1022,1023,1024,1025,1026,2046,2047,2048,2049,2050,4094,4095,4096,4097,4098,4606,4607,4608,4609,4610,8190,8191,8192,8193,8194,16382,16383,16384,16385,16386]:
+            __perform_test__(4608,pcm_frames)
+
+    @TEST_ALAC
+    def frame_header_variations(self):
+        self.__test_reader__(test_streams.Sine16_Mono(200000,96000,
+                                                      441.0,0.61,661.5,0.37),
+                             block_size=16)
+
+        self.__test_reader__(test_streams.Sine16_Mono(200000,96000,
+                                                      441.0,0.61,661.5,0.37),
+                             block_size=65535)
+
+        self.__test_reader__(test_streams.Sine16_Mono(200000,9,
+                                                      441.0,0.61,661.5,0.37),
+                             block_size=1152)
+
+        self.__test_reader__(test_streams.Sine16_Mono(200000,90,
+                                                      441.0,0.61,661.5,0.37),
+                             block_size=1152)
+
+        self.__test_reader__(test_streams.Sine16_Mono(200000,90000,
+                                                      441.0,0.61,661.5,0.37),
+                             block_size=1152)
 
 class TestFrameList(unittest.TestCase):
     @classmethod

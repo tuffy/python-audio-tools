@@ -1064,7 +1064,8 @@ class ALACAudio(M4AAudio):
             maximum_k=alac.maximum_k)
 
     @classmethod
-    def from_pcm(cls, filename, pcmreader, compression=None):
+    def from_pcm(cls, filename, pcmreader, compression=None,
+                 block_size=4096):
         if (pcmreader.bits_per_sample not in (16,24)):
             raise UnsupportedBitsPerSample()
         if (pcmreader.channels > 2):
@@ -1086,7 +1087,7 @@ class ALACAudio(M4AAudio):
          mdat_size) = encoders.encode_alac(
             file=mdat_file,
             pcmreader=BufferedPCMReader(pcmreader),
-            block_size=cls.BLOCK_SIZE,
+            block_size=block_size,
             initial_history=cls.INITIAL_HISTORY,
             history_multiplier=cls.HISTORY_MULTIPLIER,
             maximum_k=cls.MAXIMUM_K)

@@ -1123,10 +1123,26 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** DONE calculate residual values
 *** DONE write residuals based on initial history/history multiplier/etc.
 *** DONE handle random noise with uncompressed frames
+*** TODO handle atypical sample rates properly
+    - [X] 48000Hz
+    - [ ] 96000Hz
+    - [ ] 192000Hz
 *** TODO Update source to more closely match documentation
 *** TODO optimize for speed
 ** DONE Add ALACAudio type to audiotools Python core
+** TODO Enable TestAlacAudio core tests
 ** TODO Add ALAC-specific unit tests
+*** DONE test_streams
+*** DONE test_small_files
+*** DONE test_full_scale_deflection
+*** TODO test_sines
+    eliminate DeprecationWarning at construct/core.py:541
+    which seems to be caused by 96000Hz input
+*** DONE test_wasted_bps
+*** DONE test_blocksizes
+*** DONE test_frame_header_variations
+*** DONE test_noise
+*** DONE test_fractional
 ** DONE Document ALAC
 *** DONE the ALAC file stream
 *** DONE ALAC decoding
@@ -1173,6 +1189,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** DONE verify A4 layout is correct
 ** TODO Update M4A metadata routines to exploit "free" atoms
    As with FLAC, rewriting the entire file should be avoided
+** TODO Fix InvalidImage exceptions when reading test ALACs
 * TODO Update documentation to cover concrete MetaData classes
   - [ ] ApeTag
   - [ ] FlacMetaData
