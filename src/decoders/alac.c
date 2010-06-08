@@ -143,7 +143,6 @@ PyObject *ALACDecoder_read(decoders_ALACDecoder* self,
   int interlacing_shift;
   int interlacing_leftweight;
 
-
   struct i_array *channel_data;
   int channel;
   int i,j;
@@ -222,39 +221,17 @@ PyObject *ALACDecoder_read(decoders_ALACDecoder* self,
 	goto error;
     }
 
-    if (self->channels == 1) {
-      if (ALACDecoder_output_mono(&(self->samples),
-				  &(self->subframe_samples),
-				  &(self->wasted_bits_samples),
-				  frame_header.wasted_bits) == ERROR)
-	goto error;
-    } else if (self->channels == 2) {
-      if (self->bits_per_sample == 16) {
-	if (ALACDecoder_decorrelate_stereo_16(&(self->samples),
-					      &(self->subframe_samples),
-					      interlacing_shift,
-					      interlacing_leftweight) == ERROR)
-	  goto error;
-      } else if (self->bits_per_sample == 24) {
-	if (ALACDecoder_decorrelate_stereo_24(&(self->samples),
-					      &(self->subframe_samples),
-					      &(self->wasted_bits_samples),
-					      frame_header.wasted_bits,
-					      interlacing_shift,
-					      interlacing_leftweight) == ERROR)
-	  goto error;
-      } else {
-	PyErr_SetString(PyExc_ValueError,"unable to handle non 16bps streams");
-	goto error;
-      }
-    } else {
-      /*theoretically, multi-channel ALACs should be possible
-	by using shift and leftweights of 0 and more than 2 channels
-	in the frame header,
-	but there's little point unless reference decoders or iTunes
-	can handle such files - which I haven't yet seen in nature*/
-      PyErr_SetString(PyExc_ValueError,"unable to handle 3+ channel streams");
+    if (ALACDecoder_decorrelate_channels(&(self->samples),
+					 &(self->subframe_samples),
+					 interlacing_shift,
+					 interlacing_leftweight) == ERROR)
       goto error;
+
+    if (frame_header.wasted_bits > 0) {
+      for (i = 0; i < self->channels; i++)
+	for (j = 0; j < frame_header.output_samples; j++)
+	  self->samples.arrays[i].data[j] =
+	    ((self->samples.arrays[i].data[j] <<= (frame_header.wasted_bits * 8)) | self->wasted_bits_samples.arrays[i].data[j]);
     }
   }
 
@@ -603,130 +580,40 @@ status ALACDecoder_decode_subframe(struct i_array *samples,
   return OK;
 }
 
-status ALACDecoder_output_mono(struct ia_array *output,
-			       struct ia_array *subframes,
-			       struct ia_array *wasted_bits_buffer,
-			       int wasted_bits) {
-  struct i_array *channel0;
-  struct i_array *output0;
-  struct i_array *wasted0;
-  ia_size_t i;
-  ia_size_t size;
-
-  if (wasted_bits > 0) {
-    wasted_bits *= 8;
-    channel0 = iaa_getitem(subframes,0);
-    output0 = iaa_getitem(output,0);
-    wasted0 = iaa_getitem(wasted_bits_buffer,0);
-    size = channel0->size;
-
-    for (i = 0; i < size; i++) {
-      ia_append(output0,(ia_getitem(channel0,i) << 8) | ia_getitem(wasted0,i));
-    }
-  } else {
-    ia_copy(iaa_getitem(output,0),iaa_getitem(subframes,0));
-  }
-
-  return OK;
-}
-
-status ALACDecoder_decorrelate_stereo_16(struct ia_array *output,
-					 struct ia_array *subframes,
-					 int interlacing_shift,
-					 int interlacing_leftweight) {
-  ia_data_t a;
-  ia_data_t b;
-  ia_size_t i;
-  struct i_array *channel0;
+status ALACDecoder_decorrelate_channels(struct ia_array *output,
+					struct ia_array *input,
+					int interlacing_shift,
+					int interlacing_leftweight) {
+  struct i_array *left_channel;
+  struct i_array *right_channel;
   struct i_array *channel1;
-  struct i_array *output0;
-  struct i_array *output1;
-  ia_size_t size;
+  struct i_array *channel2;
+  ia_size_t pcm_frames,i;
+  ia_data_t right_i;
 
-  if (interlacing_leftweight > 0) {
-    channel0 = iaa_getitem(subframes,0);
-    channel1 = iaa_getitem(subframes,1);
-
-    output0 = iaa_getitem(output,0);
-    output1 = iaa_getitem(output,1);
-
-    size = iaa_getitem(subframes,0)->size;
-
-    for (i = 0; i < size; i++) {
-      a = ia_getitem(channel0,i);
-      b = ia_getitem(channel1,i);
-      a -= (b * interlacing_leftweight) >> interlacing_shift;
-      b += a;
-
-      ia_append(output0,b);
-      ia_append(output1,a);
+  if (input->size != 2) {
+    for (i = 0; i < input->size; i++) {
+      ia_copy(iaa_getitem(output,i),iaa_getitem(input,i));
     }
   } else {
-    ia_copy(iaa_getitem(output,0),iaa_getitem(subframes,0));
-    ia_copy(iaa_getitem(output,1),iaa_getitem(subframes,1));
-  }
+    channel1 = iaa_getitem(input,0);
+    channel2 = iaa_getitem(input,1);
+    left_channel = iaa_getitem(output,0);
+    right_channel = iaa_getitem(output,1);
+    ia_reset(left_channel);
+    ia_reset(right_channel);
+    pcm_frames = channel1->size;
 
-  return OK;
-}
-
-status ALACDecoder_decorrelate_stereo_24(struct ia_array *output,
-					 struct ia_array *subframes,
-					 struct ia_array *wasted_bits_buffer,
-					 int wasted_bits,
-					 int interlacing_shift,
-					 int interlacing_leftweight) {
-  ia_data_t a;
-  ia_data_t b;
-  ia_size_t i;
-  struct i_array *channel0;
-  struct i_array *channel1;
-  struct i_array *output0;
-  struct i_array *output1;
-  struct i_array *wasted0;
-  struct i_array *wasted1;
-  ia_size_t size;
-
-  wasted_bits *= 8;
-
-  channel0 = iaa_getitem(subframes,0);
-  channel1 = iaa_getitem(subframes,1);
-
-  output0 = iaa_getitem(output,0);
-  output1 = iaa_getitem(output,1);
-
-  wasted0 = iaa_getitem(wasted_bits_buffer,0);
-  wasted1 = iaa_getitem(wasted_bits_buffer,1);
-
-  size = iaa_getitem(subframes,0)->size;
-
-  if (interlacing_leftweight > 0) {
-    for (i = 0; i < size; i++) {
-      a = ia_getitem(channel0,i);
-      b = ia_getitem(channel1,i);
-      a -= (b * interlacing_leftweight) >> interlacing_shift;
-      b += a;
-
-      if (wasted_bits > 0) {
-	b = (b << wasted_bits) | ia_getitem(wasted0,i);
-	a = (a << wasted_bits) | ia_getitem(wasted1,i);
-
-	ia_append(output0,b);
-	ia_append(output1,a);
-      } else {
-	ia_append(output0,b << 8);
-	ia_append(output1,a << 8);
-      }
-    }
-  } else {
-    for (i = 0; i < size; i++) {
-      if (wasted_bits > 0) {
-	ia_append(output0,
-		  (ia_getitem(channel0,i) << wasted_bits) | ia_getitem(wasted0,i));
-	ia_append(output1,
-		  (ia_getitem(channel1,i) << wasted_bits) | ia_getitem(wasted1,i));
-      } else {
-	ia_append(output0,ia_getitem(channel0,i) << 8);
-	ia_append(output1,ia_getitem(channel1,i) << 8);
+    if (interlacing_leftweight == 0) {
+      ia_copy(left_channel,channel1);
+      ia_copy(right_channel,channel2);
+    } else {
+      for (i = 0; i < pcm_frames; i++) {
+	ia_append(right_channel,
+		  (right_i = (channel1->data[i] -
+			      ((channel2->data[i] * interlacing_leftweight)
+			       >> interlacing_shift))));
+	ia_append(left_channel,channel2->data[i] + right_i);
       }
     }
   }
