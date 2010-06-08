@@ -1100,7 +1100,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** DONE Ensure 1/2 channel streams work correctly
     - [X] 1 channel
     - [X] 2 channels
-*** TODO Ensure different sample rates work correctly
+*** DONE Ensure different sample rates work correctly
     - [X] 44100Hz
     - [X] 48000Hz
     - [X] 96000Hz
@@ -1127,7 +1127,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** TODO Update source to more closely match documentation
 *** TODO optimize for speed
 ** DONE Add ALACAudio type to audiotools Python core
-** TODO Enable TestAlacAudio core tests
+** DONE Enable TestAlacAudio core tests
 ** DONE Add ALAC-specific unit tests
 *** DONE test_streams
 *** DONE test_small_files
@@ -1187,7 +1187,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** DONE verify A4 layout is correct
 ** TODO Update M4A metadata routines to exploit "free" atoms
    As with FLAC, rewriting the entire file should be avoided
-** TODO Fix InvalidImage exceptions when reading test ALACs
+** DONE Fix InvalidImage exceptions when reading test ALACs
 * TODO Update documentation to cover concrete MetaData classes
   - [ ] ApeTag
   - [ ] FlacMetaData

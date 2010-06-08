@@ -3699,9 +3699,9 @@ class M4AMetadata:
         pass
 
 
-# class TestAlacAudio(M4AMetadata,TestAiffAudio):
-#    def setUp(self):
-#        self.audio_class = audiotools.ALACAudio
+class TestAlacAudio(M4AMetadata,TestAiffAudio):
+   def setUp(self):
+       self.audio_class = audiotools.ALACAudio
 
 
 

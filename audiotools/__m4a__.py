@@ -780,7 +780,8 @@ class M4AMetaData(MetaData,dict):
 
     def images(self):
         try:
-            return [M4ACovr(str(i)[8:]) for i in self['covr']]
+            return [M4ACovr(str(i)[8:]) for i in self['covr']
+                    if (len(str(i)) > 8)]
         except KeyError:
             return list()
 
