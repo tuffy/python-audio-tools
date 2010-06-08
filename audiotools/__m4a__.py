@@ -932,6 +932,9 @@ class __counter__:
 class ALACAudio(M4AAudio):
     SUFFIX = "m4a"
     NAME = "alac"
+    DEFAULT_COMPRESSION = ""
+    COMPRESSION_MODES = ("",)
+    BINARIES = tuple()
 
     ALAC_ATOM = Con.Struct("stsd_alac",
                            Con.String("reserved",6),
@@ -943,8 +946,9 @@ class ALACAudio(M4AAudio):
                            Con.UBInt16("bits_per_sample"),
                            Con.UBInt16("compression_id"),
                            Con.UBInt16("audio_packet_size"),
-                           Con.UBInt16("sample_rate"), #fixed point float?
-                           Con.Padding(2),
+                           #this sample rate always seems to be 0xAC440000
+                           #no matter what the other sample rate fields are
+                           Con.Bytes("sample_rate",4),
                            Con.Struct("alac",
                                       Con.UBInt32("length"),
                                       Con.String("type",4),
@@ -1211,7 +1215,7 @@ class ALACAudio(M4AAudio):
                                                 bits_per_sample=pcmreader.bits_per_sample,
                                                 compression_id=0,
                                                 audio_packet_size=0,
-                                                sample_rate=pcmreader.sample_rate,
+                                                sample_rate=chr(0xAC) + chr(0x44) + chr(0x00) + chr(0x00),
                                                 alac=Con.Container(
                                                     length=36,
                                                     type='alac',
