@@ -244,11 +244,16 @@ PyObject *ALACDecoder_read(decoders_ALACDecoder* self,
 					      interlacing_leftweight) == ERROR)
 	  goto error;
       } else {
-	PyErr_SetString(PyExc_ValueError,"TODO: handle non 16bps streams");
+	PyErr_SetString(PyExc_ValueError,"unable to handle non 16bps streams");
 	goto error;
       }
     } else {
-      PyErr_SetString(PyExc_ValueError,"TODO: handle 3+ channel streams");
+      /*theoretically, multi-channel ALACs should be possible
+	by using shift and leftweights of 0 and more than 2 channels
+	in the frame header,
+	but there's little point unless reference decoders or iTunes
+	can handle such files - which I haven't yet seen in nature*/
+      PyErr_SetString(PyExc_ValueError,"unable to handle 3+ channel streams");
       goto error;
     }
   }
@@ -261,7 +266,8 @@ PyObject *ALACDecoder_read(decoders_ALACDecoder* self,
     byte_align_r(self->bitstream);
   }
 
-  /*transform the contents of self->samples into a pcm.FrameList object*/
+  /*transform the contents of self->samples into a pcm.FrameList object
+    FIXME - shift the ia_array->pcm.FrameList conversion to its own function*/
  write_frame:
   if ((pcm = PyImport_ImportModule("audiotools.pcm")) == NULL)
     goto error;
@@ -452,7 +458,6 @@ status ALACDecoder_read_residuals(Bitstream *bs,
     /*if history gets too small, we may have a block of 0 samples
       which can be compressed more efficiently*/
     if ((history < 128) && ((i + 1) < residual_count)) {
-      sign_modifier = 1;
       k = MIN(7 - LOG2(history) + ((history + 16) / 64),maximum_k);
       block_size = ALACDecoder_read_residual(bs,k,16);
       if (block_size > 0) {
@@ -462,9 +467,8 @@ status ALACDecoder_read_residuals(Bitstream *bs,
 	  i++;
 	}
       }
-      if (block_size > 0xFFFF) {
-	/*this un-sets the sign_modifier which we'd previously set*/
-	sign_modifier = 0;
+      if (block_size <= 0xFFFF) {
+	sign_modifier = 1;
       }
 
       history = 0;
@@ -522,15 +526,15 @@ status ALACDecoder_decode_subframe(struct i_array *samples,
 				   struct i_array *residuals,
 				   struct i_array *coefficients,
 				   int predictor_quantitization) {
-  struct i_array remaining_residuals;
-  struct i_array samples_tail;
   ia_data_t buffer0;
   ia_data_t residual;
   int64_t lpc_sum;
   int32_t output_value;
   int32_t val;
   int sign;
-  int i;
+  int original_sign;
+  int i = 0;
+  int j;
 
   if (coefficients->size < 1) {
     PyErr_SetString(PyExc_ValueError,"coefficient count must be greater than 0");
@@ -540,40 +544,38 @@ status ALACDecoder_decode_subframe(struct i_array *samples,
   }
 
   ia_reset(samples);
-  ia_link(&remaining_residuals,residuals);
-  ia_reverse(coefficients);
 
   /*first sample always copied verbatim*/
-  ia_append(samples,ia_pop_head(&remaining_residuals));
+  ia_append(samples,residuals->data[i++]);
 
   /*grab a number of warm-up samples equal to coefficients' length*/
-  for (i = 0; i < coefficients->size; i++) {
+  for (j = 0; j < coefficients->size; j++) {
     /*these are adjustments to the previous sample
       rather than copied verbatim*/
-    ia_append(samples,
-	      ia_pop_head(&remaining_residuals) +
-	      ia_getitem(samples,-1));
+    ia_append(samples,residuals->data[i] + samples->data[i - 1]);
+    i++;
   }
 
   /*then calculate a new sample per remaining residual*/
-  while (remaining_residuals.size > 0) {
-    residual = ia_pop_head(&remaining_residuals);
-    lpc_sum = 0;
+  for (;i < residuals->size; i++) {
+    residual = residuals->data[i];
+    lpc_sum = 1 << (predictor_quantitization - 1);
 
     /*Note that buffer0 gets stripped from previously encoded samples
       then re-added prior to adding the next sample.
       It's a watermark sample, of sorts.*/
-    buffer0 = ia_getitem(samples,-(coefficients->size) - 1);
-    ia_tail(&samples_tail,samples,coefficients->size);
+    buffer0 = samples->data[i - (coefficients->size + 1)];
 
-    for (i = 0; i < samples_tail.size; i++) {
-      lpc_sum += (((int64_t)ia_getitem(&samples_tail,i) -
-		   (int64_t)buffer0) *
-		  (int64_t)ia_getitem(coefficients,i));
+    for (j = 0; j < coefficients->size; j++) {
+      lpc_sum += ((int64_t)coefficients->data[j] *
+		  (int64_t)(samples->data[i - j - 1] - buffer0));
     }
 
     /*sample = ((sum + 2 ^ (quant - 1)) / (2 ^ quant)) + residual + buffer0*/
-    output_value = (int32_t)(((int64_t)(1 << (predictor_quantitization - 1)) + lpc_sum) >> (int64_t)predictor_quantitization) + residual + buffer0;
+    lpc_sum >>= predictor_quantitization;
+    lpc_sum += buffer0;
+    output_value = (int32_t)(residual + lpc_sum);
+    ia_append(samples,output_value);
 
     /*At this point, except for buffer0, everything looks a lot like
       a FLAC LPC subframe.
@@ -581,30 +583,21 @@ status ALACDecoder_decode_subframe(struct i_array *samples,
       ALAC's adaptive algorithm then adjusts the coefficients
       up or down 1 step based on previously decoded samples
       and the residual*/
+    if (residual) {
+      original_sign = SIGN_ONLY(residual);
 
-    if (residual > 0) {
-      for (i = 0; (residual > 0) && (i < coefficients->size); i++) {
-	val = buffer0 - ia_getitem(samples,-(coefficients->size) + i);
-	sign = SIGN_ONLY(val);
-	coefficients->data[i] -= sign; /*a minor cheat for brevity*/
-	/* ia_setitem(&coefficients,i, */
-	/* 	   ia_getitem(&coefficients,i) - sign); */
-	val *= sign;
-	residual -= (val >> predictor_quantitization) * (i + 1);
-      }
-    } else if (residual < 0) {
-      for (i = 0; (residual < 0) && (i < coefficients->size); i++) {
-      	val = buffer0 - ia_getitem(samples,-(coefficients->size) + i);
-	sign = -SIGN_ONLY(val);
-	coefficients->data[i] -= sign; /*a minor cheat for brevity*/
-	/* ia_setitem(&coefficients,i, */
-	/* 	   ia_getitem(&coefficients,i) - sign); */
-	val *= sign;
-	residual -= (val >> predictor_quantitization) * (i + 1);
+      for (j = 0; j < coefficients->size; j++) {
+	val = buffer0 - samples->data[i - coefficients->size + j];
+	if (original_sign >= 0)
+	  sign = SIGN_ONLY(val);
+	else
+	  sign = -SIGN_ONLY(val);
+	coefficients->data[coefficients->size - j - 1] -= sign;
+	residual -= (((val * sign) >> predictor_quantitization) * (j + 1));
+	if (SIGN_ONLY(residual) != original_sign)
+	  break;
       }
     }
-
-    ia_append(samples,output_value);
   }
 
   return OK;

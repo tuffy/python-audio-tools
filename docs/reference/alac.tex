@@ -293,7 +293,7 @@ Subsequent samples are calculated in the following way:
 \begin{align*}
 \text{LPC Sum}_i &= \overset{coeffs - 1}{\underset{j = 0}{\sum}}
 \text{Coefficient}_j \times (\text{Sample}_{i - j - 1} - \text{Sample}_{i - coeffs - 1}) \\
-\text{Sample}_i &= \left\lfloor \frac{\text{LPC Sum}_i + 2^{\text{Predictor Quantitization - 1}}} {2 ^ \text{Predictor Quantitization}}\right\rfloor + Residual_i + \text{Sample}_{i - coeffs - 1} \\
+\text{Sample}_i &= \left\lfloor \frac{\text{LPC Sum}_i + 2^{\text{Predictor Quantitization - 1}}} {2 ^ \text{Predictor Quantitization}}\right\rfloor + \text{Residual}_i + \text{Sample}_{i - coeffs - 1} \\
 \intertext{For example, given $\text{Residual}_5$ = 1,
 \VAR{Predictor Quantitization} = 9
 and the coefficients 1122, -766, 107 and 122:}
