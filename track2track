@@ -95,6 +95,11 @@ def convert_file(destination_class, destination_filename,
                             {"target_filename":messenger.filename(destination_filename),
                              "source_filename":messenger.filename(source_audiofile.filename)})
         sys.exit(1)
+    except audiotools.UnsupportedChannelCount:
+        messenger.error(_(u"Unable to write \"%(target_filename)s\" with %(channels)d channel input" % \
+                            {"target_filename":messenger.filename(destination_filename),
+                             "channels":source_audiofile.channels()}))
+        sys.exit(1)
     except audiotools.UnsupportedBitsPerSample:
         messenger.error(_(u"Unable to write \"%(target_filename)s\" with %(bps)d bits per sample") % \
                             {"target_filename":messenger.filename(destination_filename),
