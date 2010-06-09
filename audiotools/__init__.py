@@ -790,6 +790,34 @@ def stripped_pcm_cmp(pcmreader1, pcmreader2):
 
     return sum1.digest() == sum2.digest()
 
+#returns the PCM frame number of the first mismatch
+#or None if the two PCMReader objects match completely
+def pcm_frame_cmp(pcmreader1, pcmreader2):
+    if ((pcmreader1.sample_rate != pcmreader2.sample_rate) or
+        (pcmreader1.channels != pcmreader2.channels) or
+        (pcmreader1.bits_per_sample != pcmreader2.bits_per_sample)):
+        return 0
+
+    frame_number = 0
+    reader1 = BufferedPCMReader(pcmreader1)
+    reader2 = BufferedPCMReader(pcmreader2)
+
+    framelist1 = reader1.read(BUFFER_SIZE)
+    framelist2 = reader2.read(BUFFER_SIZE)
+
+    while ((len(framelist1) > 0) and (len(framelist2) > 0)):
+        if (framelist1 != framelist2):
+            for i in xrange(min(framelist1.frames,framelist2.frame)):
+                if (framelist1.frame(i) != framelist2.frame(i)):
+                    return frame_number + i
+            else:
+                return frame_number + i
+        else:
+            frame_number += framelist1.frames
+            framelist1 = reader1.read(BUFFER_SIZE)
+            framelist2 = reader2.read(BUFFER_SIZE)
+
+    return None
 
 class PCMCat(PCMReader):
     #takes an iterator of PCMReader objects
