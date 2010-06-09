@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,InvalidFile,PCMReader,PCMConverter,Con,transfer_data,transfer_framelist_data,subprocess,BIN,cStringIO,MetaData,os,Image,InvalidImage,ignore_sigint,InvalidFormat,open,open_files,EncodingError,DecodingError,WaveAudio,TempWaveReader,PCMReaderError,ChannelMask,UnsupportedBitsPerSample,UnsupportedChannelCount,BufferedPCMReader,at_a_time
+from audiotools import AudioFile,InvalidFile,PCMReader,PCMConverter,Con,transfer_data,transfer_framelist_data,subprocess,BIN,cStringIO,MetaData,os,Image,InvalidImage,ignore_sigint,InvalidFormat,open,open_files,EncodingError,DecodingError,WaveAudio,TempWaveReader,PCMReaderError,ChannelMask,UnsupportedBitsPerSample,UnsupportedChannelCount,BufferedPCMReader,at_a_time,VERSION
 from __m4a_atoms__ import *
 import gettext
 
@@ -1038,6 +1038,9 @@ class ALACAudio(M4AAudio):
     def total_frames(self):
         return self.__length__
 
+    def channel_mask(self):
+        return ChannelMask.from_channels(self.channels())
+
     def cd_frames(self):
         try:
             return (self.total_frames() * 75) / self.sample_rate()
@@ -1060,7 +1063,7 @@ class ALACAudio(M4AAudio):
             filename=self.filename,
             sample_rate=alac.sample_rate,
             channels=alac.channels,
-            channel_mask=0, #FIXME
+            channel_mask=ChannelMask.from_channels(alac.channels),
             bits_per_sample=alac.sample_size,
             total_frames=self.total_frames(),
             max_samples_per_frame=alac.max_samples_per_frame,
@@ -1112,6 +1115,10 @@ class ALACAudio(M4AAudio):
                 chunks.append(offsets[0:frames])
                 offsets = offsets[frames:]
         del(offsets)
+
+        version = (chr(0) * 3) + chr(1) + (chr(0) * 4) + ("Python Audio Tools %s" % (VERSION))
+
+        tool = Con.Struct('tool',Con.UBInt32('size'),Con.String('type',4),Con.Struct('data',Con.UBInt32('size'),Con.String('type',4),Con.String('data',lambda ctx: ctx["size"] - 8))).build(Con.Container(size=len(version) + 16,type=chr(0xa9) + 'too',data=Con.Container(size=len(version) + 8,type='data',data=version)))
 
         ftyp = cls.ALAC_FTYP.build(
             Con.Container(major_brand='M4A ',
@@ -1281,7 +1288,7 @@ class ALACAudio(M4AAudio):
                                         component_name=""))),
                                Con.Container(
                                 type='ilst',
-                                data=""),
+                                data=tool),
                                Con.Container(
                                 type='free',
                                 data=chr(0) * 1024)]))))
@@ -1292,7 +1299,11 @@ class ALACAudio(M4AAudio):
                 data=chr(0) * 0x1000))
 
         #build our complete output file
-        f = file(filename,'wb')
+        try:
+            f = file(filename,'wb')
+        except IOError:
+            mdat_file.close()
+            raise EncodingError(None)
         mdat_file.seek(0,0)
         f.write(ftyp)
         f.write(moov)
@@ -1302,6 +1313,14 @@ class ALACAudio(M4AAudio):
         mdat_file.close()
 
         return cls(filename)
+
+    def to_wave(self, wave_filename):
+        WaveAudio.from_pcm(wave_filename,self.to_pcm())
+
+    @classmethod
+    def from_wave(cls, filename, wave_filename, compression=None):
+        return cls.from_pcm(
+            filename, WaveAudio(wave_filename).to_pcm(),compression)
 
 
 #######################

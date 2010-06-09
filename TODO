@@ -1188,6 +1188,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** TODO Update M4A metadata routines to exploit "free" atoms
    As with FLAC, rewriting the entire file should be avoided
 ** DONE Fix InvalidImage exceptions when reading test ALACs
+** TODO Ensure UnsupportedChannels exception is handled by user-level tools
 * TODO Update documentation to cover concrete MetaData classes
   - [ ] ApeTag
   - [ ] FlacMetaData

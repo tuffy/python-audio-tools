@@ -35,7 +35,7 @@ gettext.install("audiotools",unicode=True)
 (METADATA,PCM,FRAMELIST,EXECUTABLE,CUESHEET,IMAGE,NETWORK,
  FLAC,SHORTEN,ALAC,CUSTOM) = range(11)
 CASES = set([METADATA,PCM,FRAMELIST,EXECUTABLE,CUESHEET,IMAGE,NETWORK,
-             FLAC,SHORTEN])
+             FLAC,SHORTEN,ALAC])
 
 def nothing(self):
     pass
@@ -652,6 +652,8 @@ class TestAiffAudio(TestTextOutput):
                 except audiotools.InvalidFormat:
                     continue
                 except audiotools.UnsupportedBitsPerSample:
+                    continue
+                except audiotools.UnsupportedChannelCount:
                     continue
 
 
@@ -3699,12 +3701,6 @@ class M4AMetadata:
         pass
 
 
-class TestAlacAudio(M4AMetadata,TestAiffAudio):
-   def setUp(self):
-       self.audio_class = audiotools.ALACAudio
-
-
-
 
 class ID3Lint:
     #tracklint is tricky to test since set_metadata()
@@ -4016,6 +4012,10 @@ class TestM4AAudio(M4AMetadata,TestAiffAudio):
             for f in os.listdir(tempdir):
                 os.unlink(os.path.join(tempdir,f))
             os.rmdir(tempdir)
+
+class TestAlacAudio(TestM4AAudio):
+   def setUp(self):
+       self.audio_class = audiotools.ALACAudio
 
 class TestAACAudio(TestAiffAudio):
     def setUp(self):

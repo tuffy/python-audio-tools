@@ -2636,7 +2636,7 @@ class BitstreamWriter:
 AVAILABLE_TYPES = (FlacAudio,OggFlacAudio,
                    MP3Audio,MP2Audio,WaveAudio,
                    VorbisAudio,SpeexAudio,
-                   AiffAudio,AuAudio,M4AAudio,AACAudio,#ALACAudio,
+                   AiffAudio,AuAudio,M4AAudio,AACAudio,ALACAudio,
                    WavPackAudio,ShortenAudio)
 
 TYPE_MAP = dict([(track_type.NAME,track_type)
