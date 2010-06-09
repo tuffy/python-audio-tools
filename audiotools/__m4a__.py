@@ -1170,19 +1170,83 @@ class ALACAudio(M4AAudio):
                 offsets = offsets[frames:]
         del(offsets)
 
+        #add the size of ftyp + moov + free to our absolute file offsets
+        pre_mdat_size = (len(cls.__build_ftyp_atom__()) +
+                         len(cls.__build_moov_atom__(pcmreader,
+                                                     create_date,
+                                                     mdat_size,
+                                                     total_pcm_frames,
+                                                     frame_sample_sizes,
+                                                     stts_frame_counts,
+                                                     chunks,
+                                                     frame_byte_sizes)) +
+                         len(cls.__build_free_atom__(0x1000)))
+        chunks = [[chunk + pre_mdat_size for chunk in chunk_list]
+                  for chunk_list in chunks]
+
+        #then regenerate our live ftyp, moov and free atoms
+        #with actual data
+        ftyp = cls.__build_ftyp_atom__()
+
+        moov = cls.__build_moov_atom__(pcmreader,
+                                       create_date,
+                                       mdat_size,
+                                       total_pcm_frames,
+                                       frame_sample_sizes,
+                                       stts_frame_counts,
+                                       chunks,
+                                       frame_byte_sizes)
+
+        free = cls.__build_free_atom__(0x1000)
+
+        #build our complete output file
+        try:
+            f = file(filename,'wb')
+        except IOError:
+            mdat_file.close()
+            raise EncodingError(None)
+        mdat_file.seek(0,0)
+        f.write(ftyp)
+        f.write(moov)
+        f.write(free)
+        transfer_data(mdat_file.read,f.write)
+        f.close()
+        mdat_file.close()
+
+        return cls(filename)
+
+    def to_wave(self, wave_filename):
+        WaveAudio.from_pcm(wave_filename,self.to_pcm())
+
+    @classmethod
+    def from_wave(cls, filename, wave_filename, compression=None):
+        return cls.from_pcm(
+            filename, WaveAudio(wave_filename).to_pcm(),compression)
+
+    @classmethod
+    def __build_ftyp_atom__(cls):
+        return cls.ALAC_FTYP.build(
+            Con.Container(major_brand='M4A ',
+                          major_brand_version=0,
+                          compatible_brands=['M4A ',
+                                             'mp42',
+                                             'isom',
+                                             chr(0) * 4]))
+
+    @classmethod
+    def __build_moov_atom__(cls, pcmreader,
+                            create_date,
+                            mdat_size,
+                            total_pcm_frames,
+                            frame_sample_sizes,
+                            stts_frame_counts,
+                            chunks,
+                            frame_byte_sizes):
         version = (chr(0) * 3) + chr(1) + (chr(0) * 4) + ("Python Audio Tools %s" % (VERSION))
 
         tool = Con.Struct('tool',Con.UBInt32('size'),Con.String('type',4),Con.Struct('data',Con.UBInt32('size'),Con.String('type',4),Con.String('data',lambda ctx: ctx["size"] - 8))).build(Con.Container(size=len(version) + 16,type=chr(0xa9) + 'too',data=Con.Container(size=len(version) + 8,type='data',data=version)))
 
-        ftyp = cls.ALAC_FTYP.build(
-            Con.Container(major_brand='M4A ',
-                             major_brand_version=0,
-                             compatible_brands=['M4A ',
-                                                'mp42',
-                                                'isom',
-                                                chr(0) * 4]))
-
-        moov = cls.ALAC_MOOV.build(
+        return cls.ALAC_MOOV.build(
             Con.Container(
                 mvhd=Con.Container(version=0,
                                    flags=chr(0) * 3,
@@ -1193,11 +1257,11 @@ class ALACAudio(M4AAudio):
                                    playback_speed=0x10000,
                                    user_volume=0x100,
                                    windows=Con.Container(
-                        geometry_matrix_a=0x100000,
+                        geometry_matrix_a=0x10000,
                         geometry_matrix_b=0,
                         geometry_matrix_u=0,
                         geometry_matrix_c=0,
-                        geometry_matrix_d=0x100000,
+                        geometry_matrix_d=0x10000,
                         geometry_matrix_v=0,
                         geometry_matrix_x=0,
                         geometry_matrix_y=0,
@@ -1220,7 +1284,7 @@ class ALACAudio(M4AAudio):
                                        duration=total_pcm_frames,
                                        video_layer=0,
                                        quicktime_alternate=0,
-                                       volume=0x1000,
+                                       volume=0x100,
                                        video=Con.Container(
                             geometry_matrix_a=0x10000,
                             geometry_matrix_b=0,
@@ -1347,35 +1411,11 @@ class ALACAudio(M4AAudio):
                                 type='free',
                                 data=chr(0) * 1024)]))))
 
-        #build a "free" atom with some leftover padding
-        free = Atom('free').build(Con.Container(
-                type='free',
-                data=chr(0) * 0x1000))
-
-        #build our complete output file
-        try:
-            f = file(filename,'wb')
-        except IOError:
-            mdat_file.close()
-            raise EncodingError(None)
-        mdat_file.seek(0,0)
-        f.write(ftyp)
-        f.write(moov)
-        f.write(free)
-        transfer_data(mdat_file.read,f.write)
-        f.close()
-        mdat_file.close()
-
-        return cls(filename)
-
-    def to_wave(self, wave_filename):
-        WaveAudio.from_pcm(wave_filename,self.to_pcm())
-
     @classmethod
-    def from_wave(cls, filename, wave_filename, compression=None):
-        return cls.from_pcm(
-            filename, WaveAudio(wave_filename).to_pcm(),compression)
-
+    def __build_free_atom__(cls, size):
+        return Atom('free').build(Con.Container(
+                type='free',
+                data=chr(0) * size))
 
 #######################
 #AAC File

@@ -218,7 +218,8 @@ ATOM_HDLR = Con.Struct("hdlr",
                        Con.String("quicktime_manufacturer",4),
                        Con.UBInt32("quicktime_component_reserved_flags"),
                        Con.UBInt32("quicktime_component_reserved_flags_mask"),
-                       Con.PascalString("component_name"))
+                       Con.PascalString("component_name"),
+                       Con.Padding(1))
 
 ATOM_SMHD = Con.Struct('smhd',
                        Con.Byte("version"),
