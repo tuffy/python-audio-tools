@@ -1185,10 +1185,12 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 **** DONE writing residuals based on initial history/history multiplier/etc.
 **** TODO Fix bitstream figs to be monospace font for binary digits
 *** DONE verify A4 layout is correct
-** TODO Update M4A metadata routines to exploit "free" atoms
+** DONE Update M4A metadata routines to exploit "free" atoms
    As with FLAC, rewriting the entire file should be avoided
 ** DONE Fix InvalidImage exceptions when reading test ALACs
 ** DONE Ensure UnsupportedChannels exception is handled by user-level tools
+** TODO Ensure new ALACs work in iTunes
+** TODO Ensure new ALACs work on iPods
 * TODO Update documentation to cover concrete MetaData classes
   - [ ] ApeTag
   - [ ] FlacMetaData

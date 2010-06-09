@@ -65,6 +65,9 @@ class __Qt_Atom__:
         header = cls.STRUCT.parse(header_data)
         return (header.type,header.size)
 
+    def build(self):
+        return __build_qt_atom__(self.type,self.data)
+
     #performs a search of all sub-atoms to find the one
     #with the given type, or None if one cannot be found
     def get_atom(self, type):
@@ -303,9 +306,46 @@ class M4AAudio_faac(AudioFile):
                 metadata['=A9too'.decode('quopri')] = \
                     old_metadata['=A9too'.decode('quopri')]
 
+        new_meta = metadata.to_atom(self.qt_stream['moov']['udta']['meta'])
+
+        #first, attempt to replace the meta atom by resizing free
+
+        #check to ensure our file is laid out correctly for that purpose
+        if (self.qt_stream.keys() == ['ftyp','moov','free','mdat']):
+            old_pre_mdat_size = sum([len(self.qt_stream[atom].data) + 8
+                                     for atom in 'ftyp','moov','free'])
+
+            #if so, replace moov's old meta atom with our new one
+            new_moov = __replace_qt_atom__(self.qt_stream['moov'],
+                                           new_meta)
+
+            #and see if we can shrink the free atom enough to fit
+            new_pre_mdat_size = (len(self.qt_stream['ftyp'].data) + 8 +
+                                   len(new_moov) + 8)
+
+            if (new_pre_mdat_size <= old_pre_mdat_size):
+                #if we can, replace the start of the file with a new set of
+                #ftyp, moov, free  atoms while leaving mdat alone
+                f = file(self.filename,'r+b')
+                f.write(self.qt_stream['ftyp'].build())
+                f.write(new_moov)
+                f.write(__build_qt_atom__('free',
+                                          chr(0) * (old_pre_mdat_size -
+                                                    new_pre_mdat_size)))
+                f.close()
+            else:
+                self.__set_meta_atom__(new_meta)
+        else:
+            #otherwise, run a traditional full file replacement
+            self.__set_meta_atom__(new_meta)
+
+
+    #this updates our old 'meta' atom with a new 'meta' atom
+    #where meta_atom is a __Qt_Atom__ object
+    def __set_meta_atom__(self, meta_atom):
         #this is a two-pass operation
         #first we replace the contents of the moov->udta->meta atom
-        #with our new metadata
+        #with our new 'meta' atom
         #this may move the 'mdat' atom, so we must go back
         #and update the contents of
         #moov->trak->mdia->minf->stbl->stco
@@ -317,9 +357,7 @@ class M4AAudio_faac(AudioFile):
         mdat_offset = stco.offset[0] - self.qt_stream['mdat'].offset
 
         new_file = __Qt_Atom_Stream__(cStringIO.StringIO(
-                __replace_qt_atom__(self.qt_stream,
-                                    metadata.to_atom(
-                        self.qt_stream['moov']['udta']['meta']))))
+                __replace_qt_atom__(self.qt_stream,meta_atom)))
 
         mdat_offset = new_file['mdat'].offset + mdat_offset
 
@@ -634,6 +672,20 @@ class __ILST_Atom__:
             return ""
 
 class M4AMetaData(MetaData,dict):
+    #meta atoms are typically laid out like:
+    #
+    #meta
+    #  |-hdlr
+    #  |-ilst
+    #  |   |- nam
+    #  |   |   \-data
+    #  |   \-trkn
+    #  |       \-data
+    #  \-free
+    #
+    #where the stuff we're interested in is in ilst
+    #and its data grandchild atoms
+
                                                    # iTunes ID:
     ATTRIBUTE_MAP = {
         'track_name':'=A9nam'.decode('quopri'),    # Name
@@ -859,6 +911,8 @@ class M4AMetaData(MetaData,dict):
                                 data=sub_atom.data)
                                                 for sub_atom in ilst_atom.data]))
 
+        #port the non-ilst atoms from old atom to new atom directly
+        #
         for sub_atom in previous_meta.atoms:
             if (sub_atom.type == 'ilst'):
                 new_meta.atoms.append(Con.Container(
