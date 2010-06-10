@@ -281,6 +281,106 @@ PyObject *ALACDecoder_read(decoders_ALACDecoder* self,
   return NULL;
 }
 
+static int set_int_field(PyObject *dict,char *key, int value) {
+  PyObject *x;
+  int return_ok;
+  x = PyInt_FromLong(value);
+
+  return_ok = (PyDict_SetItemString(dict,key,x) == 0);
+  Py_DECREF(x);
+  return return_ok;
+}
+
+static int set_list_field(PyObject *dict, char *key) {
+  PyObject *x;
+  int return_ok;
+  x = PyList_New(0);
+
+  return_ok = (PyDict_SetItemString(dict,key,x) == 0);
+  Py_DECREF(x);
+  return return_ok;
+}
+
+/*this is essentially a stripped-down read() method
+  which performs no actual frame calculation
+  but returns a tree of frame data instead*/
+PyObject *ALACDecoder_analyze_frame(decoders_ALACDecoder* self,
+				    PyObject *args) {
+  struct alac_frame_header frame_header;
+  PyObject *frame = NULL;
+  PyObject *x;
+  int i;
+  int channel;
+
+  if (self->total_frames < 1)
+    goto finished;
+
+  if ((frame = PyDict_New()) == NULL)
+    goto error;
+
+  if (ALACDecoder_read_frame_header(self->bitstream,
+				    &frame_header,
+				    self->max_samples_per_frame) == ERROR)
+    goto error;
+
+  if (!set_int_field(frame,
+		     "channels",
+		     frame_header.channels))
+    goto error;
+
+  if (!set_int_field(frame,
+		     "has_size",
+		     frame_header.has_size))
+    goto error;
+
+  if (!set_int_field(frame,
+		     "wasted_bits",
+		     frame_header.wasted_bits))
+    goto error;
+
+  if (!set_int_field(frame,
+		     "is_not_compressed",
+		     frame_header.is_not_compressed))
+    goto error;
+
+  if (!set_int_field(frame,
+		     "output_samples",
+		     frame_header.output_samples))
+    goto error;
+
+  if (frame_header.is_not_compressed) {
+    if (!set_list_field(frame,"samples"))
+      goto error;
+    for (i = 0; i < frame_header.output_samples; i++) {
+      for (channel = 0; channel < self->channels; channel++) {
+	x = PyDict_GetItemString(frame,"samples");
+	PyList_Append(x,
+		      PyInt_FromLong(read_signed_bits(self->bitstream,
+						      self->bits_per_sample)));
+      }
+      self->total_frames--;
+    }
+  } else {
+    /*FIXME - add compressed subframe decoding*/
+  }
+
+  /*each frame has a 3 byte '111' signature prior to byte alignment*/
+  if (read_bits(self->bitstream,3) != 7) {
+    PyErr_SetString(PyExc_ValueError,"invalid signature at end of frame");
+    goto error;
+  } else {
+    byte_align_r(self->bitstream);
+  }
+
+  return frame;
+ finished:
+  Py_INCREF(Py_None);
+  return Py_None;
+ error:
+  Py_XDECREF(frame);
+  return NULL;
+}
+
 PyObject *ALACDecoder_close(decoders_ALACDecoder* self,
 			    PyObject *args) {
   Py_INCREF(Py_None);

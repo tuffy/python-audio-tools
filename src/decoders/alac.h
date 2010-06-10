@@ -85,6 +85,10 @@ static PyObject *ALACDecoder_channel_mask(decoders_ALACDecoder *self,
 PyObject *ALACDecoder_read(decoders_ALACDecoder* self,
 			   PyObject *args);
 
+/*the ALACDecoder.analyze_frame() method*/
+PyObject *ALACDecoder_analyze_frame(decoders_ALACDecoder* self,
+				    PyObject *args);
+
 /*the ALACDecoder.close() method*/
 PyObject *ALACDecoder_close(decoders_ALACDecoder* self,
 			    PyObject *args);
@@ -167,6 +171,8 @@ PyGetSetDef ALACDecoder_getseters[] = {
 PyMethodDef ALACDecoder_methods[] = {
   {"read", (PyCFunction)ALACDecoder_read,
    METH_VARARGS,"Reads the given number of bytes from the ALAC file, if possible"},
+  {"analyze_frame", (PyCFunction)ALACDecoder_analyze_frame,
+   METH_NOARGS,"Reads a single frame of analysis"},
   {"close", (PyCFunction)ALACDecoder_close,
    METH_NOARGS,"Closes the ALAC decoder stream"},
   {NULL}

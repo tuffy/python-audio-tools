@@ -1200,3 +1200,14 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   - [ ] M4AMetaData
   - [ ] VorbisComment
 
+* TODO trackcmp should give exact PCM frame/byte of first mismatch
+* TODO Add analyzers for built-in decoders
+  Analagous to flac(1)'s --analyze option,
+  this will be an .analyze_frame() method that returns a Python dict
+  of ints/lists/dicts containing frame data on each pass,
+  or None at the stream's end.
+  This will provide both an easier way to visualize the file's internals,
+  and also a debugging aid.
+** TODO FlacDecoder
+** TODO SHNDecoder
+** TODO ALACDecoder
