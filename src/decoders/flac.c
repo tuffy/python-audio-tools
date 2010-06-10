@@ -298,6 +298,76 @@ PyObject *FLACDecoder_read(decoders_FlacDecoder* self,
   return NULL;
 }
 
+PyObject *FLACDecoder_analyze_frame(decoders_FlacDecoder* self,
+				    PyObject *args) {
+  struct flac_frame_header frame_header;
+  int channel;
+  int data_size;
+
+  /*if all samples have been read, return None*/
+  if (self->remaining_samples < 1) {
+    Py_INCREF(Py_None);
+    return Py_None;
+  }
+
+  self->crc8 = self->crc16 = 0;
+
+  if (FlacDecoder_read_frame_header(self,&frame_header) == ERROR) {
+    return NULL;
+  }
+
+  data_size = frame_header.block_size * frame_header.bits_per_sample *
+    frame_header.channel_count / 8;
+  if (data_size > self->data_size) {
+    self->data = realloc(self->data,data_size);
+    self->data_size = data_size;
+  }
+
+  for (channel = 0; channel < frame_header.channel_count; channel++) {
+    if (((frame_header.channel_assignment == 0x8) &&
+	 (channel == 1)) ||
+	((frame_header.channel_assignment == 0x9) &&
+	 (channel == 0)) ||
+	((frame_header.channel_assignment == 0xA) &&
+	 (channel == 1))) {
+      if (FlacDecoder_read_subframe(self,
+				    frame_header.block_size,
+				    frame_header.bits_per_sample + 1,
+				    &(self->subframe_data[channel])) == ERROR)
+	goto error;
+    } else {
+      if (FlacDecoder_read_subframe(self,
+				    frame_header.block_size,
+				    frame_header.bits_per_sample,
+				    &(self->subframe_data[channel])) == ERROR)
+	goto error;
+    }
+  }
+
+
+  /*check CRC-16*/
+  byte_align_r(self->bitstream);
+  read_bits(self->bitstream,16);
+  if (self->crc16 != 0) {
+    PyErr_SetString(PyExc_ValueError,"invalid checksum in frame");
+    goto error;
+  }
+
+  /*decrement remaining samples*/
+  self->remaining_samples -= frame_header.block_size;
+
+  /*return frame analysis*/
+  return Py_BuildValue("{si si si si si si}",
+		       "block_size",frame_header.block_size,
+		       "sample_rate",frame_header.sample_rate,
+		       "channel_assignment",frame_header.channel_assignment,
+		       "channel_count",frame_header.channel_count,
+		       "bits_per_sample",frame_header.bits_per_sample,
+		       "frame_number",frame_header.frame_number);
+ error:
+  return NULL;
+}
+
 PyObject *FLACDecoder_seekpoints(decoders_FlacDecoder* self,
 				 PyObject *args) {
   PyObject *seekpoints = PyList_New(0);

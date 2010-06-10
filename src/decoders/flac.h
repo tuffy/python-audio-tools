@@ -99,6 +99,10 @@ static PyObject *FlacDecoder_channel_mask(decoders_FlacDecoder *self,
 PyObject *FLACDecoder_read(decoders_FlacDecoder* self,
 			   PyObject *args);
 
+/*the FlacDecoder.analyze_frame() method*/
+PyObject *FLACDecoder_analyze_frame(decoders_FlacDecoder* self,
+				    PyObject *args);
+
 /*the FlacDecoder.seekpoints() method*/
 PyObject *FLACDecoder_seekpoints(decoders_FlacDecoder* self,
 				 PyObject *args);
@@ -126,6 +130,8 @@ PyGetSetDef FlacDecoder_getseters[] = {
 PyMethodDef FlacDecoder_methods[] = {
   {"read", (PyCFunction)FLACDecoder_read,
    METH_VARARGS,"Reads the given number of bytes from the FLAC file, if possible"},
+  {"analyze_frame", (PyCFunction)FLACDecoder_analyze_frame,
+   METH_NOARGS,"Returns the analysis of the next frame"},
   {"seekpoints", (PyCFunction)FLACDecoder_seekpoints,
    METH_NOARGS,"Returns a list of seekpoints to FLAC frames"},
   {"close", (PyCFunction)FLACDecoder_close,
