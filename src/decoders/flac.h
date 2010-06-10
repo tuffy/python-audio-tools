@@ -235,6 +235,32 @@ status FlacDecoder_skip_residual(decoders_FlacDecoder *self,
 				 uint8_t order,
 				 uint32_t block_size);
 
+PyObject* FlacDecoder_analyze_subframe(decoders_FlacDecoder *self,
+				       uint32_t block_size,
+				       uint8_t bits_per_sample);
+
+PyObject* FlacDecoder_analyze_constant_subframe(decoders_FlacDecoder *self,
+						uint32_t block_size,
+						uint8_t bits_per_sample);
+
+PyObject* FlacDecoder_analyze_verbatim_subframe(decoders_FlacDecoder *self,
+						uint32_t block_size,
+						uint8_t bits_per_sample);
+
+PyObject* FlacDecoder_analyze_fixed_subframe(decoders_FlacDecoder *self,
+					     uint8_t order,
+					     uint32_t block_size,
+					     uint8_t bits_per_sample);
+
+PyObject* FlacDecoder_analyze_lpc_subframe(decoders_FlacDecoder *self,
+					   uint8_t order,
+					   uint32_t block_size,
+					   uint8_t bits_per_sample);
+
+PyObject* FlacDecoder_analyze_residual(decoders_FlacDecoder *self,
+				       uint8_t order,
+				       uint32_t block_size);
+
 
 #include "flac_crc.h"
 

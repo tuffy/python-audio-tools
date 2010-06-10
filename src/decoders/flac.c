@@ -303,6 +303,8 @@ PyObject *FLACDecoder_analyze_frame(decoders_FlacDecoder* self,
   struct flac_frame_header frame_header;
   int channel;
   int data_size;
+  PyObject *subframe;
+  PyObject *subframes;
 
   /*if all samples have been read, return None*/
   if (self->remaining_samples < 1) {
@@ -323,6 +325,7 @@ PyObject *FLACDecoder_analyze_frame(decoders_FlacDecoder* self,
     self->data_size = data_size;
   }
 
+  subframes = PyList_New(0);
   for (channel = 0; channel < frame_header.channel_count; channel++) {
     if (((frame_header.channel_assignment == 0x8) &&
 	 (channel == 1)) ||
@@ -330,16 +333,22 @@ PyObject *FLACDecoder_analyze_frame(decoders_FlacDecoder* self,
 	 (channel == 0)) ||
 	((frame_header.channel_assignment == 0xA) &&
 	 (channel == 1))) {
-      if (FlacDecoder_read_subframe(self,
-				    frame_header.block_size,
-				    frame_header.bits_per_sample + 1,
-				    &(self->subframe_data[channel])) == ERROR)
+      subframe = FlacDecoder_analyze_subframe(self,
+					      frame_header.block_size,
+					      frame_header.bits_per_sample + 1);
+      if (subframe != NULL) {
+	PyList_Append(subframes,subframe);
+	Py_DECREF(subframe);
+      } else
 	goto error;
     } else {
-      if (FlacDecoder_read_subframe(self,
-				    frame_header.block_size,
-				    frame_header.bits_per_sample,
-				    &(self->subframe_data[channel])) == ERROR)
+      subframe = FlacDecoder_analyze_subframe(self,
+					      frame_header.block_size,
+					      frame_header.bits_per_sample);
+      if (subframe != NULL) {
+	PyList_Append(subframes,subframe);
+	Py_DECREF(subframe);
+      } else
 	goto error;
     }
   }
@@ -357,13 +366,14 @@ PyObject *FLACDecoder_analyze_frame(decoders_FlacDecoder* self,
   self->remaining_samples -= frame_header.block_size;
 
   /*return frame analysis*/
-  return Py_BuildValue("{si si si si si si}",
+  return Py_BuildValue("{si si si si si si sN}",
 		       "block_size",frame_header.block_size,
 		       "sample_rate",frame_header.sample_rate,
 		       "channel_assignment",frame_header.channel_assignment,
 		       "channel_count",frame_header.channel_count,
 		       "bits_per_sample",frame_header.bits_per_sample,
-		       "frame_number",frame_header.frame_number);
+		       "frame_number",frame_header.frame_number,
+		       "subframes",subframes);
  error:
   return NULL;
 }
@@ -1006,6 +1016,160 @@ status FlacDecoder_skip_residual(decoders_FlacDecoder *self,
   }
 
   return OK;
+}
+
+#include "analyzer.c"
+
+PyObject* FlacDecoder_analyze_subframe(decoders_FlacDecoder *self,
+				 uint32_t block_size,
+				 uint8_t bits_per_sample) {
+  struct flac_subframe_header subframe_header;
+  PyObject* subframe = NULL;
+
+  if (FlacDecoder_read_subframe_header(self,&subframe_header) == ERROR)
+    return NULL;
+
+  /*account for wasted bits-per-sample*/
+  if (subframe_header.wasted_bits_per_sample > 0)
+    bits_per_sample -= subframe_header.wasted_bits_per_sample;
+
+  switch (subframe_header.type) {
+  case FLAC_SUBFRAME_CONSTANT:
+    subframe = FlacDecoder_analyze_constant_subframe(self, block_size,
+						     bits_per_sample);
+    break;
+  case FLAC_SUBFRAME_VERBATIM:
+    subframe = FlacDecoder_analyze_verbatim_subframe(self, block_size,
+						     bits_per_sample);
+    break;
+  case FLAC_SUBFRAME_FIXED:
+    subframe = FlacDecoder_analyze_fixed_subframe(self, subframe_header.order,
+						  block_size,
+						  bits_per_sample);
+    break;
+  case FLAC_SUBFRAME_LPC:
+    subframe = FlacDecoder_analyze_lpc_subframe(self, subframe_header.order,
+						block_size,
+						bits_per_sample);
+    break;
+  }
+
+  return Py_BuildValue("{si si si sN}",
+		       "type",subframe_header.type,
+		       "order",subframe_header.order,
+		       "wasted_bps",subframe_header.wasted_bits_per_sample,
+		       "data",subframe);
+}
+
+PyObject* FlacDecoder_analyze_constant_subframe(decoders_FlacDecoder *self,
+						uint32_t block_size,
+						uint8_t bits_per_sample) {
+  return PyInt_FromLong(read_signed_bits(self->bitstream,bits_per_sample));
+}
+
+PyObject* FlacDecoder_analyze_verbatim_subframe(decoders_FlacDecoder *self,
+						uint32_t block_size,
+						uint8_t bits_per_sample) {
+  PyObject *toreturn;
+  struct i_array samples;
+  int32_t i;
+
+  ia_init(&samples,block_size);
+  for (i = 0; i < block_size; i++)
+    ia_append(&samples,read_signed_bits(self->bitstream,bits_per_sample));
+
+  toreturn = i_array_to_list(&samples);
+  ia_free(&samples);
+  return toreturn;
+}
+
+PyObject* FlacDecoder_analyze_fixed_subframe(decoders_FlacDecoder *self,
+					     uint8_t order,
+					     uint32_t block_size,
+					     uint8_t bits_per_sample) {
+  struct i_array warm_up_samples;
+  int32_t i;
+  PyObject *warm_up_obj;
+  PyObject *residual_obj;
+
+  /*read "order" number of warm-up samples*/
+  ia_init(&warm_up_samples,order);
+  for (i = 0; i < order; i++) {
+    ia_append(&warm_up_samples,
+	      read_signed_bits(self->bitstream,bits_per_sample));
+  }
+  warm_up_obj = i_array_to_list(&warm_up_samples);
+  ia_free(&warm_up_samples);
+
+  /*read the residual*/
+  residual_obj = FlacDecoder_analyze_residual(self,order,block_size);
+
+  return Py_BuildValue("{sN sN}",
+		       "warm_up",warm_up_obj,
+		       "residual",residual_obj);
+}
+
+PyObject* FlacDecoder_analyze_lpc_subframe(decoders_FlacDecoder *self,
+					   uint8_t order,
+					   uint32_t block_size,
+					   uint8_t bits_per_sample) {
+  int i;
+  uint32_t qlp_precision;
+  int32_t shift_needed;
+  struct i_array warm_up_samples;
+  struct i_array qlp_coefficients;
+  PyObject *warm_up_obj;
+  PyObject *coefficients_obj;
+  PyObject *residual_obj;
+
+  /*read order number of warm-up samples*/
+  ia_init(&warm_up_samples, order);
+  for (i = 0; i < order; i++) {
+    ia_append(&warm_up_samples,
+	      read_signed_bits(self->bitstream,bits_per_sample));
+  }
+  warm_up_obj = i_array_to_list(&warm_up_samples);
+  ia_free(&warm_up_samples);
+
+  /*read QLP precision*/
+  qlp_precision = read_bits(self->bitstream,4) + 1;
+
+  /*read QLP shift needed*/
+  shift_needed = read_signed_bits(self->bitstream,5);
+
+  /*read order number of QLP coefficients of size qlp_precision*/
+  ia_init(&qlp_coefficients, order);
+  for (i = 0; i < order; i++) {
+    ia_append(&qlp_coefficients,
+	      read_signed_bits(self->bitstream,qlp_precision));
+  }
+  coefficients_obj = i_array_to_list(&qlp_coefficients);
+
+  /*read the residual*/
+  residual_obj = FlacDecoder_analyze_residual(self,order,block_size);
+
+  return Py_BuildValue("{si si sN sN sN}",
+		       "qlp_precision",qlp_precision,
+		       "qlp_shift_needed",shift_needed,
+		       "warm_up",warm_up_obj,
+		       "coefficients",coefficients_obj,
+		       "residual",residual_obj);
+}
+
+PyObject* FlacDecoder_analyze_residual(decoders_FlacDecoder *self,
+				       uint8_t order,
+				       uint32_t block_size) {
+  struct i_array residuals;
+  PyObject *toreturn;
+
+  ia_init(&residuals,block_size);
+  if (FlacDecoder_read_residual(self,order,block_size,&residuals) == OK) {
+    toreturn = i_array_to_list(&residuals);
+    ia_free(&residuals);
+    return toreturn;
+  } else {
+    return NULL;
+  }
 }
 
 uint32_t read_utf8(Bitstream *stream) {
