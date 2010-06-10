@@ -354,7 +354,6 @@ PyObject *ALACDecoder_analyze_frame(decoders_ALACDecoder* self,
 	append_int(list,read_signed_bits(self->bitstream,
 				      self->bits_per_sample));
       }
-      self->total_frames--;
     }
   } else {
     set_int_field(frame,
@@ -433,6 +432,8 @@ PyObject *ALACDecoder_analyze_frame(decoders_ALACDecoder* self,
   } else {
     byte_align_r(self->bitstream);
   }
+
+  self->total_frames -= frame_header.output_samples;
 
   if (subframe_headers != NULL)
     free(subframe_headers);

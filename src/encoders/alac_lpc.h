@@ -25,7 +25,7 @@
 
 #define MIN_LPC_ORDER 4
 #define MAX_LPC_ORDER 8
-#define QLP_COEFFICIENT_PRECISION 16
+#define QLP_COEFFICIENT_PRECISION 12
 
 /*given a set of samples and encoding options,
   returns as a set of LPC coefficients and a shift-needed value*/

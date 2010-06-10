@@ -251,8 +251,7 @@ void ALACEncoder_quantize_coefficients(struct f_array *lp_coefficients,
 
   (void)frexp(fa_reduce(lp_coefficients,0.0,f_abs_max),&log2cmax);
 
-  /*FIXME - handle negative or overly-large shift-needed corretly*/
-  *shift_needed = MIN(MAX(precision - (log2cmax - 1) - 1,0),0xF);
+  *shift_needed = 9;
 
   qlp_coeff_max = (1 << precision) - 1;
   qlp_coeff_min = -(1 << precision);
