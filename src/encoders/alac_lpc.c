@@ -263,4 +263,3 @@ void ALACEncoder_quantize_coefficients(struct f_array *lp_coefficients,
     error -= qlp;
   }
 }
-

@@ -1371,33 +1371,21 @@ Quantizing coefficients is a process of taking a list of LP Coefficients
 along with a QLP Coefficients Precision value and
 returning a list of Coefficients and a Prediction Quantitization value.
 The first step is determining the upper and lower limits of the
-Coefficients:
+Coefficients, which well set to the upper and lower bounds that iTunes
+supports:
 \begin{align}
-\text{Coefficient Maximum} &= 2 ^ {16 - 1} - 1 = 32767\\
-\text{Coefficient Mininum} &= - 2 ^ {16 - 1} = -32768
+\text{Coefficient Maximum} &= 2 ^ {12 - 1} - 1 = 2047\\
+\text{Coefficient Mininum} &= - 2 ^ {12 - 1} = -2048
 \end{align}
 \par
 \noindent
-Now we determine the initial Prediction Quantitization value:
+Prediction Quantitization is always 9 in iTunes, so we'll use that value also:
 \begin{equation}
-\text{quantitization} = 16 - \left \lceil \frac{\log(\max(|\text{LP Coefficients}|))}{\log(2) } \right \rceil - 1
+\text{Prediction Quantitization} = 9
 \end{equation}
 \par
 \noindent
-where `quantitization' is adjusted if necessary such that:
-$0 \leq \text{quantitization} \leq \texttt{0xF}$
-, since it must fit into a 4-bit unsigned field.
-
-Continuing our ongoing example, let's assume we're quantizing the LP
-coefficients 1.873, -1.29, 0.418 and -0.03.
-So our prediction quantitization should be:
-\begin{equation*}
-\text{shift} = 16 - \left \lceil \frac{\log(1.873)}{\log(2)} \right \rceil - 1
-= 16 - \left \lceil \frac{0.6275}{0.6931} \right \rceil - 1 = 16 - 1 - 1 = 14
-\end{equation*}
-\par
-\noindent
-Finally, we determine the Coefficient values themselves via a small
+We determine the Coefficient values themselves via a small
 recursive routine:
 \begin{align}
 X(i) &= E(i - 1) + (\text{LP Coefficient}_i \times 2 ^ {quantitization}) \\
@@ -1408,29 +1396,30 @@ E(i) &= X(i) - \text{Coefficient}_i
 \noindent
 where $E(0) = 0$ and each Coefficient is adjusted
 prior to calculating the next $E(i)$ value such that:
-$\text{Coefficient Minimum} \leq \text{Coefficient}_i \leq \text{Coefficient Maximum}$
-
-So to finish our example:
-{\relsize{-2}
+\begin{equation}
+\text{Coefficient Minimum} \leq \text{Coefficient}_i \leq \text{Coefficient Maximum}
+\end{equation}
+\par
+So to finish our example in which we're quantizing the LP
+coefficients 1.873, -1.29, 0.418 and -0.03:
 \begin{align*}
-X(1) &= E(0) + (1.873 \times 2 ^ {14} ) = 0 + 30687.232 = \textbf{30687.232} \\
-\text{QLP Coefficient}_1 &= \text{round}(30687.232) = \textbf{30687} \\
-E(1) &= X(1) - \text{QLP Coefficient}_1 = 30687.232 - 30687= \textbf{0.232} \\
-X(2) &= E(1) + (-1.29 \times 2 ^ {14} ) = 0.232 + -21135.36 = \textbf{-21135.128} \\
-\text{QLP Coefficient}_2 &= \text{round}(-21135.128) = \textbf{-21135} \\
-E(2) &= X(2) - \text{QLP Coefficient}_2 = -21135.128 - -21135 = \textbf{-0.128} \\
-X(3) &= E(2) + (0.418 \times 2 ^ {14} ) = -0.128 + 6848.512 = \textbf{6848.384} \\
-\text{QLP Coefficient}_3 &= \text{round}(6848.384) = \textbf{6848} \\
-E(3) &= X(3) - \text{QLP Coefficient}_3 = 6848.384 - 6848 = \textbf{0.384} \\
-X(4) &= E(3) + (-0.03 \times 2 ^ {14} ) = 0.384 - 491.52 = \textbf{-491.136} \\
-\text{QLP Coefficient}_4 &= \text{round}(-491.136) = \textbf{-491} \\
+X(1) &= E(0) + (1.873 \times 2 ^ {9} ) = 0 + 958.976 = \textbf{958.976} \\
+\text{QLP Coefficient}_1 &= \text{round}(958.976) = \textbf{959} \\
+E(1) &= X(1) - \text{QLP Coefficient}_1 = 958.976 - 959 = \textbf{-0.024} \\
+X(2) &= E(1) + (-1.29 \times 2 ^ {9} ) = -0.024 + -660.48 = \textbf{-660.504} \\
+\text{QLP Coefficient}_2 &= \text{round}(-660.504) = \textbf{-661} \\
+E(2) &= X(2) - \text{QLP Coefficient}_2 = -660.504 - -661 = \textbf{0.496} \\
+X(3) &= E(2) + (0.418 \times 2 ^ {9} ) = 0.496 + 214.015 = \textbf{214.511} \\
+\text{QLP Coefficient}_3 &= \text{round}(214.511) = \textbf{215} \\
+E(3) &= X(3) - \text{QLP Coefficient}_3 = 214.511 - 215 = \textbf{-0.489} \\
+X(4) &= E(3) + (-0.03 \times 2 ^ {9} ) = -0.489 + -15.36 = \textbf{-15.849} \\
+\text{QLP Coefficient}_4 &= \text{round}(-15.849) = \textbf{-16} \\
 \end{align*}
-}
 \par
 \noindent
 Therefore, the \VAR{Coefficient Count} is 4,
-the \VAR{Coefficient} values are 30687, -21135, 6848 and -491,
-and the \VAR{Prediction Qauntitization} value is 14.
+the \VAR{Coefficient} values are 959, -661, 215, -16,
+and the \VAR{Prediction Qauntitization} value is 9.
 
 
 \clearpage
