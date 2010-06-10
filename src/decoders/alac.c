@@ -281,25 +281,37 @@ PyObject *ALACDecoder_read(decoders_ALACDecoder* self,
   return NULL;
 }
 
-static void set_int_field(PyObject *dict,char *key, int value) {
-  PyObject *x;
-  x = PyInt_FromLong(value);
-  PyDict_SetItemString(dict,key,x);
-  Py_DECREF(x);
-}
+#include "analyzer.c"
 
-static void set_list_field(PyObject *dict, char *key) {
-  PyObject *x;
-  x = PyList_New(0);
-  PyDict_SetItemString(dict,key,x);
-  Py_DECREF(x);
-}
+static PyObject* subframe_headers_list(struct alac_subframe_header *headers,
+				       int count) {
+  PyObject *list;
+  PyObject *header;
+  int i;
 
-static void append_int(PyObject *list, int value) {
-  PyObject *x;
-  x = PyInt_FromLong(value);
-  PyList_Append(list,x);
-  Py_DECREF(x);
+  if ((list = PyList_New(0)) == NULL)
+    return NULL;
+  else {
+    for (i = 0; i < count; i++) {
+      header = Py_BuildValue("{si si si sN}",
+			     "prediction_type",
+			     headers[i].prediction_type,
+			     "prediction_quantitization",
+			     headers[i].prediction_quantitization,
+			     "rice_modifier",
+			     headers[i].rice_modifier,
+			     "coefficients",
+			     i_array_to_list(&(headers[i].predictor_coef_table)));
+      if (header != NULL) {
+	PyList_Append(list,header);
+	Py_DECREF(header);
+      } else {
+	Py_DECREF(list);
+	return NULL;
+      }
+    }
+    return list;
+  }
 }
 
 /*this is essentially a stripped-down read() method
@@ -308,121 +320,86 @@ static void append_int(PyObject *list, int value) {
 PyObject *ALACDecoder_analyze_frame(decoders_ALACDecoder* self,
 				    PyObject *args) {
   struct alac_frame_header frame_header;
-  PyObject *frame = NULL;
-  PyObject *subframe_header;
-  PyObject *list;
-  int i,j;
+  int i;
   int channel;
-  struct i_array residuals;
+  int interlacing_shift;
+  int interlacing_leftweight;
   struct alac_subframe_header *subframe_headers = NULL;
+  PyObject *frame = NULL;
 
   if (self->total_frames < 1)
     goto finished;
 
-  ia_init(&residuals,4096);
-
-  if ((frame = PyDict_New()) == NULL)
-    goto error;
-
   if (ALACDecoder_read_frame_header(self->bitstream,
 				    &frame_header,
 				    self->max_samples_per_frame) == ERROR)
-    goto error;
-
-  set_int_field(frame,
-		"channels",
-		frame_header.channels);
-  set_int_field(frame,
-		"has_size",
-		frame_header.has_size);
-  set_int_field(frame,
-		"wasted_bits",
-		frame_header.wasted_bits);
-  set_int_field(frame,
-		"is_not_compressed",
-		frame_header.is_not_compressed);
-  set_int_field(frame,
-		"output_samples",
-		frame_header.output_samples);
+    return NULL;
 
   if (frame_header.is_not_compressed) {
-    set_list_field(frame,"samples");
-
+    iaa_reset(&(self->samples));
     for (i = 0; i < frame_header.output_samples; i++) {
       for (channel = 0; channel < self->channels; channel++) {
-	list = PyDict_GetItemString(frame,"samples");
-	append_int(list,read_signed_bits(self->bitstream,
-				      self->bits_per_sample));
+	ia_append(iaa_getitem(&(self->samples),channel),
+		  read_signed_bits(self->bitstream,
+				   self->bits_per_sample));
       }
     }
+
+    frame = Py_BuildValue("{si si si si si sN}",
+			  "channels",frame_header.channels,
+			  "has_size",frame_header.has_size,
+			  "wasted_bits",frame_header.wasted_bits,
+			  "is_not_compressed",frame_header.is_not_compressed,
+			  "output_samples",frame_header.output_samples,
+			  "samples",ia_array_to_list(&(self->samples)));
   } else {
-    set_int_field(frame,
-		  "interlacing_shift",
-		  read_bits(self->bitstream,8));
-    set_int_field(frame,
-		  "interlacing_leftweight",
-		  read_bits(self->bitstream,8));
+    interlacing_shift = read_bits(self->bitstream,8);
+    interlacing_leftweight = read_bits(self->bitstream,8);
 
     /*read the subframe headers*/
     subframe_headers = malloc(sizeof(struct alac_subframe_header) *
 			      self->channels);
-    set_list_field(frame,"subframe_headers");
-
     for (i = 0; i < self->channels; i++) {
-      if ((subframe_header = PyDict_New()) == NULL)
-	goto error;
       ALACDecoder_read_subframe_header(self->bitstream,
 				       &(subframe_headers[i]));
-      set_int_field(subframe_header,
-		    "prediction_type",
-		    subframe_headers[i].prediction_type);
-      set_int_field(subframe_header,
-		    "prediction_quantitization",
-		    subframe_headers[i].prediction_quantitization);
-      set_int_field(subframe_header,
-		    "rice_modifier",
-		    subframe_headers[i].rice_modifier);
-
-      set_list_field(subframe_header,"coefficients");
-      list = PyDict_GetItemString(subframe_header,"coefficients");
-      for (j = 0; j < subframe_headers[i].predictor_coef_table.size; j++) {
-	append_int(list,subframe_headers[i].predictor_coef_table.data[j]);
-      }
-
-      PyList_Append(PyDict_GetItemString(frame,"subframe_headers"),
-		    subframe_header);
-      Py_DECREF(subframe_header);
     }
 
     /*if there are wasted bits, read a block of interlaced
       wasted-bits samples, each (wasted_bits * 8) large*/
+    iaa_reset(&(self->wasted_bits_samples));
     if (frame_header.wasted_bits > 0) {
-      set_list_field(frame,"wasted_bits");
-      list = PyDict_GetItemString(frame,"wasted_bits");
-      for (i = 0; i < frame_header.output_samples; i++)
-	for (channel = 0; channel < self->channels; channel++)
-	  append_int(list,read_bits(self->bitstream,
-				    frame_header.wasted_bits * 8));
+      ALACDecoder_read_wasted_bits(self->bitstream,
+				   &(self->wasted_bits_samples),
+				   frame_header.output_samples,
+				   self->channels,
+				   frame_header.wasted_bits * 8);
     }
 
     /*read a block of residuals for each subframe*/
-    set_list_field(frame,"residuals");
-    for (channel = 0; channel < self->channels; channel++) {
-      list = PyList_New(0);
+    for (i = 0; i < self->channels; i++) {
       if (ALACDecoder_read_residuals(self->bitstream,
-				     &residuals,
+				     iaa_getitem(&(self->residuals),i),
 				     frame_header.output_samples,
 				     self->bits_per_sample - (frame_header.wasted_bits * 8) + self->channels - 1,
 				     self->initial_history,
 				     self->history_multiplier,
 				     self->maximum_k) == ERROR)
 	goto error;
-      for (i = 0; i < frame_header.output_samples; i++) {
-	append_int(list,residuals.data[i]);
-      }
-      PyList_Append(PyDict_GetItemString(frame,"residuals"),list);
-      Py_DECREF(list);
     }
+
+    frame = Py_BuildValue("{si si si si si si si sN sN sN}",
+    			  "channels",frame_header.channels,
+    			  "has_size",frame_header.has_size,
+    			  "wasted_bits",frame_header.wasted_bits,
+    			  "is_not_compressed",frame_header.is_not_compressed,
+    			  "output_samples",frame_header.output_samples,
+    			  "interlacing_shift",interlacing_shift,
+    			  "interlacing_leftweight",interlacing_leftweight,
+			  "subframe_headers",subframe_headers_list(subframe_headers,self->channels),
+    			  "wasted_bits",ia_array_to_list(&(self->wasted_bits_samples)),
+			  "residuals",ia_array_to_list(&(self->residuals)));
+
+    free(subframe_headers);
   }
 
   /*each frame has a 3 byte '111' signature prior to byte alignment*/
@@ -435,18 +412,12 @@ PyObject *ALACDecoder_analyze_frame(decoders_ALACDecoder* self,
 
   self->total_frames -= frame_header.output_samples;
 
-  if (subframe_headers != NULL)
-    free(subframe_headers);
-  ia_free(&residuals);
   return frame;
  finished:
   Py_INCREF(Py_None);
   return Py_None;
  error:
-  if (subframe_headers != NULL)
-    free(subframe_headers);
-  Py_XDECREF(frame);
-  ia_free(&residuals);
+  free(subframe_headers);
   return NULL;
 }
 
