@@ -435,7 +435,10 @@ class M4AAudio_faac(AudioFile):
         #so trying to ignore it doesn't work like on most other encoders.
 
         transfer_framelist_data(pcmreader,sub.stdin.write)
-        pcmreader.close()
+        try:
+            pcmreader.close()
+        except DecodingError:
+            raise EncodingError(None)
         sub.stdin.close()
 
         if (sub.wait() == 0):
