@@ -489,6 +489,115 @@ static PyObject *SHNDecoder_metadata(decoders_SHNDecoder* self,
   return Py_BuildValue("(i,O)",total_samples / self->channels,list);
 }
 
+static PyObject* i_array_to_list(struct i_array *list) {
+  PyObject* toreturn;
+  PyObject* item;
+  ia_size_t i;
+
+  if ((toreturn = PyList_New(0)) == NULL)
+    return NULL;
+  else {
+    for (i = 0; i < list->size; i++) {
+      item = PyInt_FromLong(list->data[i]);
+      PyList_Append(toreturn,item);
+      Py_DECREF(item);
+    }
+    return toreturn;
+  }
+}
+
+PyObject *SHNDecoder_analyze_frame(decoders_SHNDecoder* self,
+				   PyObject *args) {
+  unsigned int cmd;
+  PyObject *toreturn;
+  unsigned int residual_size;
+  unsigned int verbatim_length;
+  unsigned int lpc_count;
+  struct i_array buffer;
+  struct i_array coefficients;
+  int i;
+
+  if (!self->read_started) {
+    fseek(self->bitstream->file,0,SEEK_SET);
+    self->bitstream->state = 0;
+
+    SHNDecoder_read_header(self);
+  }
+
+  if (self->read_finished) {
+    goto finished;
+  }
+
+  switch (cmd = shn_read_uvar(self->bitstream,2)) {
+  case FN_DIFF0:
+  case FN_DIFF1:
+  case FN_DIFF2:
+  case FN_DIFF3:
+    residual_size = shn_read_uvar(self->bitstream,ENERGY_SIZE);
+    ia_init(&buffer,self->block_size);
+    for (i = 0; i < self->block_size; i++) {
+      ia_append(&buffer,shn_read_var(self->bitstream,residual_size));
+    }
+    toreturn = Py_BuildValue("{sI sI sN}",
+			     "command",cmd,
+			     "residual_size",residual_size,
+			     "residual",i_array_to_list(&buffer));
+    ia_free(&buffer);
+    return toreturn;
+  case FN_QUIT:
+    self->read_finished = 1;
+    return Py_BuildValue("{sI}","command",cmd);
+  case FN_BLOCKSIZE:
+    self->block_size = shn_read_long(self->bitstream);
+    return Py_BuildValue("{sI sI}",
+			 "command",cmd,
+			 "block_size",self->block_size);
+  case FN_BITSHIFT:
+    self->bitshift = shn_read_uvar(self->bitstream,2);
+    return Py_BuildValue("{sI sI}",
+			 "command",cmd,
+			 "bit_shift",self->bitshift);
+  case FN_QLPC:
+    residual_size = shn_read_uvar(self->bitstream, ENERGY_SIZE);
+    lpc_count = shn_read_uvar(self->bitstream, QLPC_SIZE);
+    ia_init(&coefficients,lpc_count);
+    for (i = 0; i < lpc_count; i++) {
+      ia_append(&coefficients,shn_read_var(self->bitstream, QLPC_QUANT));
+    }
+    ia_init(&buffer,self->block_size);
+    for (i = 0; i < self->block_size; i++) {
+      ia_append(&buffer,shn_read_var(self->bitstream, residual_size));
+    }
+    toreturn = Py_BuildValue("{sI sN sI sN}",
+			     "command",cmd,
+			     "coefficients",i_array_to_list(&coefficients),
+			     "residual_size",residual_size,
+			     "residual",i_array_to_list(&buffer));
+    ia_free(&coefficients);
+    ia_free(&buffer);
+    return toreturn;
+  case FN_ZERO:
+    return Py_BuildValue("{sI}","command",cmd);
+  case FN_VERBATIM:
+    verbatim_length = shn_read_uvar(self->bitstream, VERBATIM_CHUNK_SIZE);
+    ia_init(&buffer,verbatim_length);
+    for (i = 0; i < verbatim_length; i++) {
+      ia_append(&buffer,shn_read_uvar(self->bitstream, VERBATIM_BYTE_SIZE));
+    }
+    toreturn = Py_BuildValue("{sI sN}",
+			     "command",cmd,
+			     "data",i_array_to_list(&buffer));
+    ia_free(&buffer);
+    return toreturn;
+  default:
+    PyErr_SetString(PyExc_ValueError,"unknown command encountered in Shorten stream");
+    return NULL;
+  }
+
+ finished:
+  Py_INCREF(Py_None);
+  return Py_None;
+}
 
 int SHNDecoder_read_header(decoders_SHNDecoder* self) {
   Bitstream* bs = self->bitstream;

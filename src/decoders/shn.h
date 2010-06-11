@@ -76,6 +76,10 @@ PyObject *SHNDecoder_read(decoders_SHNDecoder* self,
 static PyObject *SHNDecoder_metadata(decoders_SHNDecoder* self,
 				     PyObject *args);
 
+/*the SHNDecoder.analyze_frame() method*/
+PyObject *SHNDecoder_analyze_frame(decoders_SHNDecoder* self,
+				   PyObject *args);
+
 /*the SHNDecoder.close() method*/
 PyObject *SHNDecoder_close(decoders_SHNDecoder* self,
 			    PyObject *args);
@@ -148,6 +152,8 @@ PyMethodDef SHNDecoder_methods[] = {
    METH_VARARGS,"Reads a frame of data from the SHN file"},
   {"metadata", (PyCFunction)SHNDecoder_metadata,
    METH_NOARGS,"Returns a tuple of technical metadata"},
+  {"analyze_frame",(PyCFunction)SHNDecoder_analyze_frame,
+   METH_NOARGS, "Returns the next analyzed frame"},
   {"close", (PyCFunction)SHNDecoder_close,
    METH_NOARGS,"Closes the SHN decoder stream"},
   {NULL}
