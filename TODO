@@ -1124,7 +1124,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** DONE write residuals based on initial history/history multiplier/etc.
 *** DONE handle random noise with uncompressed frames
 *** DONE handle atypical sample rates properly
-*** TODO Update source to more closely match documentation
+*** DONE Update source to more closely match documentation
 *** TODO optimize for speed
 ** DONE Add ALACAudio type to audiotools Python core
 ** DONE Enable TestAlacAudio core tests
@@ -1189,8 +1189,8 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    As with FLAC, rewriting the entire file should be avoided
 ** DONE Fix InvalidImage exceptions when reading test ALACs
 ** DONE Ensure UnsupportedChannels exception is handled by user-level tools
-** TODO Ensure new ALACs work in iTunes
-** TODO Ensure new ALACs work on iPods
+** DONE Ensure new ALACs work in iTunes
+** DONE Ensure new ALACs work on iPods
 * TODO Update documentation to cover concrete MetaData classes
   - [ ] ApeTag
   - [ ] FlacMetaData
@@ -1201,6 +1201,13 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   - [ ] VorbisComment
 
 * TODO trackcmp should give exact PCM frame/byte of first mismatch
+** TODO update unit tests to cover new behavior
+   - [ ] test_trackcmp
+   - [X] test_trackcmp1
+   - [X] test_trackcmp2
+   - [X] test_trackcmp3
+   - [X] test_trackcmp4
+** TODO update manual page to cover new behavior
 * DONE Add analyzers for built-in decoders
   Analagous to flac(1)'s --analyze option,
   this will be an .analyze_frame() method that returns a Python dict

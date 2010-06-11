@@ -29,6 +29,7 @@ import subprocess
 import filecmp
 import gettext
 import time
+import unicodedata
 
 gettext.install("audiotools",unicode=True)
 
@@ -484,29 +485,37 @@ class TestTextOutput(unittest.TestCase):
 
     def __check_output__(self,s):
         self.assertEqual(
-            self.stdout.readline().decode(audiotools.IO_ENCODING),
-            s + unicode(os.linesep))
+            unicodedata.normalize(
+                'NFC',
+                self.stdout.readline().decode(audiotools.IO_ENCODING)),
+            unicodedata.normalize('NFC',s) + unicode(os.linesep))
 
     def __check_info__(self,s):
         self.assertEqual(
-            self.stderr.readline().decode(audiotools.IO_ENCODING),
-            s + unicode(os.linesep))
+            unicodedata.normalize(
+                'NFC',
+                self.stderr.readline().decode(audiotools.IO_ENCODING)),
+            unicodedata.normalize('NFC',s) + unicode(os.linesep))
 
     def __check_error__(self,s):
         self.assertEqual(
             self.stderr.readline().decode(audiotools.IO_ENCODING),
-            u"*** Error: " + s + unicode(os.linesep))
+            u"*** Error: " + unicodedata.normalize('NFC',s) + unicode(os.linesep))
 
     def __check_warning__(self,s):
         self.assertEqual(
-            self.stderr.readline().decode(audiotools.IO_ENCODING),
-            u"*** Warning: " + s + unicode(os.linesep))
+            unicodedata.normalize(
+                'NFC',
+                self.stderr.readline().decode(audiotools.IO_ENCODING)),
+            u"*** Warning: " + unicodedata.normalize('NFC',s) + unicode(os.linesep))
 
     def __check_usage__(self,executable,s):
         self.assertEqual(
-            self.stderr.readline().decode(audiotools.IO_ENCODING),
-            u"*** Usage: " + executable.decode('ascii') + u" " + s +
-            unicode(os.linesep))
+            unicodedata.normalize(
+                'NFC',
+                self.stderr.readline().decode(audiotools.IO_ENCODING)),
+            u"*** Usage: " + executable.decode('ascii') + u" " + \
+                unicodedata.normalize('NFC',s) + unicode(os.linesep))
 
 class TestAiffAudio(TestTextOutput):
     def DummyMetaData(self):
@@ -6812,9 +6821,11 @@ class TestProgramOutput(TestTextOutput):
         self.assertEqual(self.__run_app__(
                 ["trackcmp",self.flac1.filename,self.flac2.filename]),1)
 
-        self.__check_output__(_(u"%(file1)s != %(file2)s") % \
+        self.__check_output__(_(u"%(file1)s <> %(file2)s :") % \
                                 {"file1":self.filename(self.flac1.filename),
-                                 "file2":self.filename(self.flac2.filename)})
+                                 "file2":self.filename(self.flac2.filename)}+\
+                                  _(u"differ at PCM frame %(frame_number)d") %\
+                                  {"frame_number":44100 * 4})
 
     @TEST_EXECUTABLE
     def test_trackcmp2(self):
@@ -6995,9 +7006,11 @@ class TestProgramOutput(TestTextOutput):
         self.assertEqual(self.__run_app__(
                 ["trackcmp",self.flac1.filename,flac4.filename]),1)
 
-        self.__check_output__(_(u"%(file1)s != %(file2)s") % \
+        self.__check_output__(_(u"%(file1)s <> %(file2)s :") % \
                        {"file1":self.filename(self.flac1.filename),
-                        "file2":self.filename(flac4.filename)})
+                        "file2":self.filename(flac4.filename)} + \
+                                  _(u"differ at PCM frame %(frame_number)d") %\
+                                  {"frame_number":1})
 
         self.assertEqual(self.__run_app__(
                 ["trackcmp",self.dir1,self.dir2]),1)
@@ -7005,7 +7018,8 @@ class TestProgramOutput(TestTextOutput):
         self.__check_output__((_(u"%(file1)s <> %(file2)s :") % \
                                    {"file1":self.filename(self.flac1.filename),
                                     "file2":self.filename(flac4.filename)})+\
-                                  _(u"differ"))
+                                  _(u"differ at PCM frame %(frame_number)d") %\
+                                  {"frame_number":1})
         self.__check_output__((_(u"%(file1)s <> %(file2)s :") % \
                                    {"file1":self.filename(self.flac2.filename),
                                     "file2":self.filename(flac5.filename)})+\
@@ -7025,9 +7039,13 @@ class TestProgramOutput(TestTextOutput):
         self.assertEqual(self.__run_app__(
                 ["trackcmp",self.flac2.filename,flac5.filename]),1)
 
-        self.__check_output__(_(u"%(file1)s != %(file2)s") % \
+        #due to randomness, it's possible (but very unlikely)
+        #that this check will fail if the first frames happen to match
+        self.__check_output__(_(u"%(file1)s <> %(file2)s :") % \
                        {"file1":self.filename(self.flac2.filename),
-                        "file2":self.filename(flac5.filename)})
+                        "file2":self.filename(flac5.filename)} + \
+                                  _(u"differ at PCM frame %(frame_number)d") % \
+                                  {"frame_number":1})
 
         self.assertEqual(self.__run_app__(
                 ["trackcmp",self.dir1,self.dir2]),1)
@@ -7035,11 +7053,13 @@ class TestProgramOutput(TestTextOutput):
         self.__check_output__((_(u"%(file1)s <> %(file2)s :") % \
                                    {"file1":self.filename(self.flac1.filename),
                                     "file2":self.filename(flac4.filename)})+\
-                                  _(u"differ"))
+                                  _(u"differ at PCM frame %(frame_number)d") % \
+                                  {"frame_number":1})
         self.__check_output__((_(u"%(file1)s <> %(file2)s :") % \
                                    {"file1":self.filename(self.flac2.filename),
                                     "file2":self.filename(flac5.filename)})+\
-                                  _(u"differ"))
+                                  _(u"differ at PCM frame %(frame_number)d") % \
+                                  {"frame_number":1})
         self.__check_output__((_(u"%(file1)s <> %(file2)s :") % \
                                    {"file1":self.filename(self.flac3.filename),
                                     "file2":self.filename(flac6.filename)})+\
@@ -7055,9 +7075,11 @@ class TestProgramOutput(TestTextOutput):
         self.assertEqual(self.__run_app__(
                 ["trackcmp",self.flac3.filename,flac6.filename]),1)
 
-        self.__check_output__(_(u"%(file1)s != %(file2)s") % \
+        self.__check_output__(_(u"%(file1)s <> %(file2)s :") % \
                        {"file1":self.filename(self.flac3.filename),
-                        "file2":self.filename(flac6.filename)})
+                        "file2":self.filename(flac6.filename)} + \
+                                  _("differ at PCM frame %(frame_number)d") % \
+                                  {"frame_number":1})
 
         self.assertEqual(self.__run_app__(
                 ["trackcmp",self.dir1,self.dir2]),1)
@@ -7065,15 +7087,18 @@ class TestProgramOutput(TestTextOutput):
         self.__check_output__((_(u"%(file1)s <> %(file2)s :") % \
                                    {"file1":self.filename(self.flac1.filename),
                                     "file2":self.filename(flac4.filename)})+\
-                                  _(u"differ"))
+                                  _(u"differ at PCM frame %(frame_number)d") % \
+                                  {"frame_number":1})
         self.__check_output__((_(u"%(file1)s <> %(file2)s :") % \
                                    {"file1":self.filename(self.flac2.filename),
                                     "file2":self.filename(flac5.filename)})+\
-                                  _(u"differ"))
+                                  _(u"differ at PCM frame %(frame_number)d") % \
+                                  {"frame_number":1})
         self.__check_output__((_(u"%(file1)s <> %(file2)s :") % \
                                    {"file1":self.filename(self.flac3.filename),
                                     "file2":self.filename(flac6.filename)})+\
-                                  _(u"differ"))
+                                  _(u"differ at PCM frame %(frame_number)d") % \
+                                  {"frame_number":1})
 
     @TEST_EXECUTABLE
     def test_trackinfo(self):

@@ -41,11 +41,6 @@ if (__name__ == '__main__'):
         usage=_(u'%prog <file 1> <file 2>'),
         version="Python Audio Tools %s" % (audiotools.VERSION))
 
-    parser.add_option('-i','--inexact',
-                      action='store_true',
-                      dest='inexact',
-                      default=False)
-
     parser.add_option('-V','--verbose',
                       action='store',
                       dest='verbosity',
@@ -60,20 +55,22 @@ if (__name__ == '__main__'):
         msg.usage(_(u"<path 1> <path 2>"))
         sys.exit(1)
 
-    if (not options.inexact):
-        check_function = operator.eq
-    else:
-        check_function = near_equal
+    check_function = audiotools.pcm_frame_cmp
 
     if (os.path.isfile(args[0]) and os.path.isfile(args[1])):
         audiofiles = audiotools.open_files(args,messenger=msg)
         try:
-            if (check_function(audiofiles[0],audiofiles[1])):
+            frame_mismatch = check_function(audiofiles[0].to_pcm(),
+                                            audiofiles[1].to_pcm())
+            if (frame_mismatch is None):
                 pass
             else:
-                msg.output(_(u"%(file1)s != %(file2)s") % \
-                            {"file1":msg.filename(audiofiles[0].filename),
-                             "file2":msg.filename(audiofiles[1].filename)})
+                msg.partial_output(
+                    _(u"%(file1)s <> %(file2)s :") % \
+                        {"file1":msg.filename(audiofiles[0].filename),
+                         "file2":msg.filename(audiofiles[1].filename)})
+                msg.output(_(u"differ at PCM frame %(frame_number)d") % \
+                               {"frame_number":frame_mismatch + 1})
                 sys.exit(1)
         except audiotools.DecodingError,err:
             msg.error(unicode(err))
@@ -138,11 +135,14 @@ if (__name__ == '__main__'):
                         files2_map[(album_number,track_number)].filename)})
 
             try:
-                if (check_function(files1_map[(album_number,track_number)],
-                                   files2_map[(album_number,track_number)])):
+                frame_mismatch = check_function(
+                    files1_map[(album_number,track_number)].to_pcm(),
+                    files2_map[(album_number,track_number)].to_pcm())
+                if (frame_mismatch is None):
                     msg.output(_(u"OK"))
                 else:
-                    msg.output(_(u"differ"))
+                    msg.output(_(u"differ at PCM frame %(frame_number)d") % \
+                                   {"frame_number":frame_mismatch + 1})
                     returnval = 1
             except audiotools.DecodingError,msg:
                 msg.output(_(u"error"))
