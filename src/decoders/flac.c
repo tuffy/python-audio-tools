@@ -1018,7 +1018,22 @@ status FlacDecoder_skip_residual(decoders_FlacDecoder *self,
   return OK;
 }
 
-#include "analyzer.c"
+static PyObject* i_array_to_list(struct i_array *list) {
+  PyObject* toreturn;
+  PyObject* item;
+  ia_size_t i;
+
+  if ((toreturn = PyList_New(0)) == NULL)
+    return NULL;
+  else {
+    for (i = 0; i < list->size; i++) {
+      item = PyInt_FromLong(list->data[i]);
+      PyList_Append(toreturn,item);
+      Py_DECREF(item);
+    }
+    return toreturn;
+  }
+}
 
 PyObject* FlacDecoder_analyze_subframe(decoders_FlacDecoder *self,
 				 uint32_t block_size,
