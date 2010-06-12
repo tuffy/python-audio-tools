@@ -1140,7 +1140,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** DONE test_frame_header_variations
 *** DONE test_noise
 *** DONE test_fractional
-** TODO Document ALAC
+** DONE Document ALAC
 *** DONE the ALAC file stream
 *** DONE ALAC decoding
 **** DONE Frame header
@@ -1154,7 +1154,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 **** DONE Channel decorrelation example
 **** DONE Wasted bits
 **** DONE Wasted bits example
-*** TODO ALAC encoding
+*** DONE ALAC encoding
 **** DONE Figure out compliant atom contents
      - [X] ftyp
      - [X] moov->mvhd
@@ -1183,7 +1183,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 **** DONE calculating residual values
      Simplify this to make it easier to understand
 **** DONE writing residuals based on initial history/history multiplier/etc.
-**** TODO Fix bitstream figs to be monospace font for binary digits
+**** DONE Fix bitstream figs to be monospace font for binary digits
 *** DONE verify A4 layout is correct
 ** DONE Update M4A metadata routines to exploit "free" atoms
    As with FLAC, rewriting the entire file should be avoided
@@ -1191,6 +1191,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** DONE Ensure UnsupportedChannels exception is handled by user-level tools
 ** DONE Ensure new ALACs work in iTunes
 ** DONE Ensure new ALACs work on iPods
+** TODO Have M4A files group properly on iTunes/iPods
 * TODO Update documentation to cover concrete MetaData classes
   - [ ] ApeTag
   - [ ] FlacMetaData
@@ -1217,3 +1218,100 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** DONE FlacDecoder
 ** DONE SHNDecoder
 ** DONE ALACDecoder
+* TODO Update Python code to support PEP 8
+  Following accepted Python style should make the code more
+  accessible and maintainable in the long run.
+  It's also a good opportunity to clean up and simplify code
+  without changing the actual API interface.
+** TODO Update core modules
+   - [ ] __aiff__.py
+   - [ ] __ape__.py
+   - [ ] __au__.py
+   - [ ] __flac__.py
+   - [ ] __freedb__.py
+   - [ ] __id3__.py
+   - [ ] __id3v1__.py
+   - [ ] __image__.py
+   - [ ] __init__.py
+   - [ ] __m4a_atoms__.py
+   - [ ] __m4a__.py
+   - [ ] __mp3__.py
+   - [ ] __musepack__.py
+   - [ ] __musicbrainz__.py
+   - [ ] __shn__.py
+   - [ ] __speex__.py
+   - [ ] __vorbiscomment__.py
+   - [ ] __vorbis__.py
+   - [ ] __wavpack__.py
+   - [ ] __wav__.py
+   - [ ] cue.py
+   - [ ] toc.py
+** TODO Update utilities
+   - [ ] audiotools-config
+   - [ ] cd2track
+   - [ ] cd2xmcd
+   - [ ] cdinfo
+   - [ ] coverdump
+   - [ ] coverview
+   - [ ] editxmcd
+   - [ ] record2track
+   - [ ] track2cd
+   - [ ] track2track
+   - [ ] track2xmcd
+   - [ ] trackcat
+   - [ ] trackcmp
+   - [ ] trackinfo
+   - [ ] tracklength
+   - [ ] tracklint
+   - [ ] trackplay
+   - [ ] trackrename
+   - [ ] tracksplit
+   - [ ] tracktag
+** TODO Update tests
+   - [ ] test.py
+   - [ ] test_streams.py
+* TODO Update C code to support PEP 7
+  - [ ] array.c
+  - [ ] array.h
+  - [ ] bitstream_r.c
+  - [ ] bitstream_r.h
+  - [ ] bitstream_w.c
+  - [ ] bitstream_w.h
+  - [ ] cdiomodule.c
+  - [ ] decoders.c
+  - [ ] decoders.h
+  - [ ] encoders.c
+  - [ ] encoders.h
+  - [ ] md5.c
+  - [ ] md5.h
+  - [ ] pcm.c
+  - [ ] pcm.h
+  - [ ] pcmreader.c
+  - [ ] pcmreader.h
+  - [ ] replaygain.c
+  - [ ] replaygain.h
+  - [ ] resample.c
+  - [ ] resample.h
+  - [ ] decoders/alac.c
+  - [ ] decoders/alac.h
+  - [ ] decoders/flac.c
+  - [ ] decoders/flac_crc.c
+  - [ ] decoders/flac_crc.h
+  - [ ] decoders/flac.h
+  - [ ] decoders/shn.c
+  - [ ] decoders/shn.h
+  - [ ] encoders/alac.c
+  - [ ] encoders/alac.h
+  - [ ] encoders/alac_lpc.c
+  - [ ] encoders/alac_lpc.h
+  - [ ] encoders/docs.c
+  - [ ] encoders/flac.c
+  - [ ] encoders/flac_crc.c
+  - [ ] encoders/flac_crc.h
+  - [ ] encoders/flac.h
+  - [ ] encoders/flac_lpc.c
+  - [ ] encoders/flac_lpc.h
+  - [ ] encoders/ordertest.c
+  - [ ] encoders/residuals.c
+  - [ ] encoders/shn.c
+  - [ ] encoders/shn.h
