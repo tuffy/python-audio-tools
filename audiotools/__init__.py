@@ -156,6 +156,13 @@ def Messenger(executable, options):
     else:
         return SilentMessenger(executable)
 
+__ANSI_SEQUENCE__ = re.compile(u"\u001B\[[0-9;]+m")
+
+def str_width(s):
+    import unicodedata
+
+    return len(unicodedata.normalize('NFC',__ANSI_SEQUENCE__.sub(u"",s)))
+
 class __MessengerRow__:
     def __init__(self):
         self.strings = []    #a list of unicode strings
@@ -167,10 +174,10 @@ class __MessengerRow__:
     def add_string(self,string,left_aligned):
         self.strings.append(string)
         self.alignments.append(left_aligned)
-        self.total_lengths.append(len(string))
+        self.total_lengths.append(str_width(string))
 
     def lengths(self):
-        return map(len,self.strings)
+        return map(str_width,self.strings)
 
     def set_total_lengths(self,total_lengths):
         self.total_lengths = total_lengths
@@ -180,12 +187,12 @@ class __MessengerRow__:
         for (string,right_aligned,length) in zip(self.strings,
                                                  self.alignments,
                                                  self.total_lengths):
-            if (len(string) < length):
+            if (str_width(string) < length):
                 if (not right_aligned):
                     output_string.append(string)
-                    output_string.append(u" " * (length - len(string)))
+                    output_string.append(u" " * (length - str_width(string)))
                 else:
-                    output_string.append(u" " * (length - len(string)))
+                    output_string.append(u" " * (length - str_width(string)))
                     output_string.append(string)
             else:
                 output_string.append(string)
