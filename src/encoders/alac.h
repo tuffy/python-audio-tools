@@ -43,6 +43,15 @@ struct alac_encoding_options {
   int initial_history;
   int history_multiplier;
   int maximum_k;
+  int minimum_interlacing_leftweight;
+  int maximum_interlacing_leftweight;
+  int minimum_interlacing_shift;
+  int maximum_interlacing_shift;
+
+  /*a couple of temporary buffers
+    so we don't have to allocate them all the time*/
+  Bitstream *best_frame;
+  Bitstream *current_frame;
 };
 
 enum {LOG_SAMPLE_SIZE,LOG_BYTE_SIZE,LOG_FILE_OFFSET};

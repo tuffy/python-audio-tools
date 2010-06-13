@@ -55,6 +55,8 @@ void ALACEncoder_compute_best_lpc_coeffs(struct i_array *coeffs,
 				    shift_needed);
 
   /*free temporary values*/
+  fa_free(&error_values);
+  faa_free(&lp_coefficients);
   fa_free(&tukey_window);
   fa_free(&windowed_signal);
   fa_free(&autocorrelation_values);

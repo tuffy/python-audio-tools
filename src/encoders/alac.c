@@ -31,6 +31,10 @@ PyObject* encoders_encode_alac(PyObject *dummy,
 			   "initial_history",
 			   "history_multiplier",
 			   "maximum_k",
+			   "minimum_interlacing_shift",
+			   "maximum_interlacing_shift",
+			   "minimum_interlacing_leftweight",
+			   "maximum_interlacing_leftweight",
 			   NULL};
 
   PyObject *file_obj;       /*the Python object of our output file*/
@@ -47,15 +51,24 @@ PyObject* encoders_encode_alac(PyObject *dummy,
 
   fpos_t starting_point;
 
+  options.minimum_interlacing_shift = 2;
+  options.maximum_interlacing_shift = 2;
+  options.minimum_interlacing_leftweight = 0;
+  options.maximum_interlacing_leftweight = 4;
+
   /*extract a file object, PCMReader-compatible object and encoding options*/
-  if (!PyArg_ParseTupleAndKeywords(args,keywds,"OOiiii",
+  if (!PyArg_ParseTupleAndKeywords(args,keywds,"OOiiii|iiii",
 				   kwlist,
 				   &file_obj,
 				   &pcmreader_obj,
 				   &(options.block_size),
 				   &(options.initial_history),
 				   &(options.history_multiplier),
-				   &(options.maximum_k)))
+				   &(options.maximum_k),
+				   &(options.minimum_interlacing_shift),
+				   &(options.maximum_interlacing_shift),
+				   &(options.minimum_interlacing_leftweight),
+				   &(options.maximum_interlacing_leftweight)))
     return NULL;
 
   /*check for negative block_size*/
@@ -68,6 +81,9 @@ PyObject* encoders_encode_alac(PyObject *dummy,
   if ((reader = pcmr_open(pcmreader_obj)) == NULL) {
     return NULL;
   }
+
+  options.best_frame = bs_open_recorder();
+  options.current_frame = bs_open_recorder();
 
   /*initialize a buffer for input samples*/
   iaa_init(&samples,reader->channels,options.block_size);
@@ -132,6 +148,8 @@ PyObject* encoders_encode_alac(PyObject *dummy,
   pcmr_close(reader);
   bs_free(stream);
   iaa_free(&samples);
+  bs_close(options.best_frame);
+  bs_close(options.current_frame);
 
   /*return the accumulated log of output*/
   encode_log_obj = alac_log_output(&encode_log);
@@ -139,6 +157,8 @@ PyObject* encoders_encode_alac(PyObject *dummy,
   return encode_log_obj;
 
  error:
+  bs_close(options.best_frame);
+  bs_close(options.current_frame);
   pcmr_close(reader);
   bs_free(stream);
   iaa_free(&samples);
@@ -167,6 +187,12 @@ status ALACEncoder_encode_alac(char *filename,
   options.initial_history = initial_history;
   options.history_multiplier = history_multiplier;
   options.maximum_k = maximum_k;
+  options.minimum_interlacing_shift = 2;
+  options.maximum_interlacing_shift = 2;
+  options.minimum_interlacing_leftweight = 0;
+  options.maximum_interlacing_leftweight = 4;
+  options.best_frame = bs_open_recorder();
+  options.current_frame = bs_open_recorder();
 
   output_file = fopen(filename,"wb");
   /*assume CD quality for now*/
@@ -205,6 +231,8 @@ status ALACEncoder_encode_alac(char *filename,
   bs_close(stream);
   iaa_free(&samples);
   alac_log_free(&encode_log);
+  bs_close(options.best_frame);
+  bs_close(options.current_frame);
 
   return OK;
  error:
@@ -212,6 +240,8 @@ status ALACEncoder_encode_alac(char *filename,
   bs_close(stream);
   iaa_free(&samples);
   alac_log_free(&encode_log);
+  bs_close(options.best_frame);
+  bs_close(options.current_frame);
 
   return ERROR;
 }
@@ -343,10 +373,10 @@ status ALACEncoder_write_compressed_frame(Bitstream *bs,
 
 					  int bits_per_sample,
 					  struct ia_array *samples) {
-  int interlacing_shift = 2;
+  int interlacing_shift;
   int interlacing_leftweight;
-  Bitstream *best_frame;
-  Bitstream *current_frame;
+  Bitstream *best_frame = options->best_frame;
+  Bitstream *current_frame = options->current_frame;
 
   if (samples->size != 2) {
     return ALACEncoder_write_interlaced_frame(bs,
@@ -355,42 +385,39 @@ status ALACEncoder_write_compressed_frame(Bitstream *bs,
 					      bits_per_sample,
 					      samples);
   } else {
-    best_frame = bs_open_recorder();
-    current_frame = bs_open_recorder();
+    bs_reset_recorder(best_frame);
     best_frame->bits_written = INT_MAX;
 
-    for (interlacing_leftweight = 0;
-	 interlacing_leftweight <= 4;
-	 interlacing_leftweight++) {
-      bs_reset_recorder(current_frame);
-      switch (ALACEncoder_write_interlaced_frame(current_frame,
-						 options,
-						 interlacing_shift,
-						 interlacing_leftweight,
-						 bits_per_sample,
-						 samples)) {
-      case ERROR:
-	goto error;
-      case RESIDUAL_OVERFLOW:
-	goto overflow;
-      case OK:
-	if (current_frame->bits_written < best_frame->bits_written)
-	  bs_swap_records(current_frame,best_frame);
-	break;
+    for (interlacing_shift = options->minimum_interlacing_shift;
+	 interlacing_shift <= options->maximum_interlacing_shift;
+	 interlacing_shift++) {
+      for (interlacing_leftweight = options->minimum_interlacing_leftweight;
+	   interlacing_leftweight <= options->maximum_interlacing_leftweight;
+	   interlacing_leftweight++) {
+	bs_reset_recorder(current_frame);
+	switch (ALACEncoder_write_interlaced_frame(current_frame,
+						   options,
+						   interlacing_shift,
+						   interlacing_leftweight,
+						   bits_per_sample,
+						   samples)) {
+	case ERROR:
+	  goto error;
+	case RESIDUAL_OVERFLOW:
+	  goto overflow;
+	case OK:
+	  if (current_frame->bits_written < best_frame->bits_written)
+	    bs_swap_records(current_frame,best_frame);
+	  break;
+	}
       }
     }
 
     bs_dump_records(bs,best_frame);
-    bs_close(best_frame);
-    bs_close(current_frame);
     return OK;
   error:
-    bs_close(best_frame);
-    bs_close(current_frame);
     return ERROR;
   overflow:
-    bs_close(best_frame);
-    bs_close(current_frame);
     return RESIDUAL_OVERFLOW;
   }
 }
