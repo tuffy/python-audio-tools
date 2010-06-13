@@ -178,8 +178,8 @@ class __MessengerRow__:
     def __unicode__(self):
         output_string = []
         for (string,right_aligned,length) in zip(self.strings,
-                                                self.alignments,
-                                                self.total_lengths):
+                                                 self.alignments,
+                                                 self.total_lengths):
             if (len(string) < length):
                 if (not right_aligned):
                     output_string.append(string)
@@ -191,7 +191,49 @@ class __MessengerRow__:
                 output_string.append(string)
         return u"".join(output_string)
 
+class __DividerRow__:
+    def __init__(self, dividers):
+        self.dividers = dividers
+        self.total_lengths = []
+
+    def lengths(self):
+        return [1 for x in self.dividers]
+
+    def set_total_lengths(self, total_lengths):
+        self.total_lengths = total_lengths
+
+    def __unicode__(self):
+        return u"".join([divider * length for (divider,length) in
+                         zip(self.dividers,self.total_lengths)])
+
 class VerboseMessenger:
+    #a set of ANSI SGR codes
+    RESET = 0
+    BOLD = 1
+    FAINT = 2
+    ITALIC = 3
+    UNDERLINE = 4
+    BLINK_SLOW = 5
+    BLINK_FAST = 6
+    REVERSE = 7
+    STRIKEOUT = 9
+    FG_BLACK = 30
+    FG_RED = 31
+    FG_GREEN = 32
+    FG_YELLOW = 33
+    FG_BLUE = 34
+    FG_MAGENTA = 35
+    FG_CYAN = 36
+    FG_WHITE = 37
+    BG_BLACK = 40
+    BG_RED = 41
+    BG_GREEN = 42
+    BG_YELLOW = 43
+    BG_BLUE = 44
+    BG_MAGENTA = 45
+    BG_CYAN = 46
+    BG_WHITE = 47
+
     def __init__(self, executable):
         self.executable = executable
         self.output_msg_rows = []  #a list of __MessengerRow__ objects
@@ -219,6 +261,9 @@ class VerboseMessenger:
             self.new_row()
             for i in xrange(len(self.output_msg_rows[0].lengths())):
                 self.output_column(u"")
+
+    def divider_row(self, dividers):
+        self.output_msg_rows.append(__DividerRow__(dividers))
 
     def output_column(self,string,right_aligned=False):
         if (len(self.output_msg_rows) > 0):
@@ -293,6 +338,25 @@ class VerboseMessenger:
     #decoded according to the system's encoding
     def filename(self,s):
         return s.decode(FS_ENCODING,'replace')
+
+    #takes a unicode string and list of ANSI SGR codes
+    #returns an ANSI-escape terminal string
+    #with those codes activated, followed by the unescape code
+    #if the Messenger's stdout to a terminal
+    #otherwise, the string is returned as-is
+    def ansi(self, s, codes):
+        if (sys.stdout.isatty()):
+            return u"\u001B[%sm%s\u001B[0m" % \
+                (";".join(map(unicode,codes)),s)
+        else:
+            return s
+
+    def ansi_err(self, s, codes):
+        if (sys.stderr.isatty()):
+            return u"\u001B[%sm%s\u001B[0m" % \
+                (";".join(map(unicode,codes)),s)
+        else:
+            return s
 
 class SilentMessenger(VerboseMessenger):
     def output(self,s):

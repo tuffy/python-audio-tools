@@ -1090,6 +1090,27 @@ Messenger Objects
    This method adds a completely blank row to its table data.
    Note that the first row within an output table cannot be blank.
 
+.. method:: Messenger.divider_row(dividers)
+
+   This method takes a list of vertical divider Unicode characters,
+   one per output column, and multiplies those characters by their
+   column width when displayed.
+
+   >>> m.new_row()
+   >>> m.output_column(u"foo")
+   >>> m.output_column(u" ")
+   >>> m.output_column(u"bar")
+   >>> m.divider_row([u"-",u" ",u"-"])
+   >>> m.new_row()
+   >>> m.output_column(u"test")
+   >>> m.output_column(u" ")
+   >>> m.output_column(u"column")
+   >>> m.output_rows()
+   foo  bar
+   ---- ------
+   test column
+
+
 .. method:: Messenger.output_rows()
 
    Formats and displays the entire table data through the
@@ -1113,3 +1134,48 @@ Messenger Objects
     ab : Another row of test data
    abc : The final row of test data
 
+.. method:: Messenger.ansi(string, codes)
+
+   Takes a Unicode string and list of ANSI SGR code integers.
+   If ``stdout`` is to a TTY, returns a Unicode string
+   formatted with those codes.
+   If not, the string is returned as is.
+   Codes can be taken from the many predefined values
+   in the :class:`Messenger` class.
+   Note that not all output terminals are guaranteed to support
+   all ANSI escape codes.
+
+.. method:: Messenger.ansi_err(string, codes)
+
+   This is identical to ``Messenger.ansi``, but it checks whether
+   ``stderr`` is a TTY instead of ``stdout``.
+
+    ======================== ====================
+    Code                     Effect
+    ------------------------ --------------------
+    ``Messenger.RESET``      resets current codes
+    ``Messenger.BOLD``       bold font
+    ``Messenger.FAINT``      faint font
+    ``Messenger.ITALIC``     italic font
+    ``Messenger.UNDERLINE``  underline text
+    ``Messenger.BLINK_SLOW`` blink slowly
+    ``Messenger.BLINK_FAST`` blink quickly
+    ``Messenger.REVERSE``    reverse text
+    ``Messenger.STRIKEOUT``  strikeout text
+    ``Messenger.FG_BLACK``   foreground black
+    ``Messenger.FG_RED``     foreground red
+    ``Messenger.FG_GREEN``   foreground green
+    ``Messenger.FG_YELLOW``  foreground yellow
+    ``Messenger.FG_BLUE``    foreground blue
+    ``Messenger.FG_MAGENTA`` foreground magenta
+    ``Messenger.FG_CYAN``    foreground cyan
+    ``Messenger.FG_WHITE``   foreground write
+    ``Messenger.BG_BLACK``   background black
+    ``Messenger.BG_RED``     background red
+    ``Messenger.BG_GREEN``   background green
+    ``Messenger.BG_YELLOW``  background yellow
+    ``Messenger.BG_BLUE``    background blue
+    ``Messenger.BG_MAGENTA`` background magenta
+    ``Messenger.BG_CYAN``    background cyan
+    ``Messenger.BG_WHITE``   background white
+    ======================== ====================
