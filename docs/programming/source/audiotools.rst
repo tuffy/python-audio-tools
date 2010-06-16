@@ -26,6 +26,7 @@ classes and functions upon which all of the other modules depend.
    ------------- ----------------------------------
    AACAudio      AAC in ADTS container
    AiffAudio     Audio Interchange File Format
+   ALACAudio     Apple Lossless
    AuAudio       Sun Au
    FlacAudio     Native Free Lossless Audio Codec
    M4AAudio      AAC in M4A container
