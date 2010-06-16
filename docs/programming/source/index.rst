@@ -18,6 +18,7 @@ Contents:
    audiotools_cdio.rst
    audiotools_cue.rst
    audiotools_toc.rst
+   metadata.rst
 
 Indices and tables
 ==================

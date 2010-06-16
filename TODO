@@ -1194,11 +1194,13 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** DONE Ensure new ALACs work on iPods
 ** TODO Have M4A files group properly on iTunes/iPods
 * TODO Update documentation to cover concrete MetaData classes
-  - [ ] ApeTag
+  - [X] ApeTag
   - [ ] FlacMetaData
+  - [ ] ID3v1Comment
   - [ ] ID3v22Comment
   - [ ] ID3v23Comment
   - [ ] ID3v24Comment
+  - [ ] ID3CommentPair
   - [ ] M4AMetaData
   - [ ] VorbisComment
 * DONE trackcmp should give exact PCM frame/byte of first mismatch
