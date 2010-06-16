@@ -132,7 +132,72 @@ ApeTag
 
 .. .. class:: M4AMetaData
 
-.. .. class:: VorbisComment
+Vorbis Comment
+--------------
 
+.. class:: VorbisComment(vorbis_data[, vendor_string])
+
+   This is a VorbisComment_ tag used by FLAC, Ogg FLAC, Ogg Vorbis,
+   Ogg Speex and other formats in the Ogg family.
+   During initialization ``vorbis_data`` is a dictionary
+   whose keys are unicode strings and whose values are lists
+   of unicode strings - since each key in a Vorbis Comment may
+   occur multiple times with different values.
+   The optional ``vendor_string`` unicode string is typically
+   handled by :func:`get_metadata` and :func:`set_metadata`
+   methods, but it can also be accessed via the ``vendor_string`` attribute.
+   Once initialized, :class:`VorbisComment` can be manipulated like a
+   regular Python dict in addition to its standard
+   :class:`audiotools.MetaData` methods.
+
+   For example:
+
+   >>> tag = VorbisComment({u'TITLE':[u'Track Title']})
+   >>> tag.track_name
+   u'Track Title'
+   >>> tag[u'TITLE']
+   [u'New Title']
+   >>> tag[u'TITLE'] = [u'New Title']
+   >>> tag.track_name
+   u'New Title'
+
+   Fields are mapped between :class:`VorbisComment` and
+   :class:`audiotools.MetaData` as follows:
+
+   ================= ==================
+   VorbisComment     Metadata
+   ----------------- ------------------
+   ``TITLE``         ``track_name``
+   ``TRACKNUMBER``   ``track_number``
+   ``TRACKTOTAL``    ``track_total``
+   ``DISCNUMBER``    ``album_number``
+   ``DISCTOTAL``     ``album_total``
+   ``ALBUM``         ``album_name``
+   ``ARTIST``        ``artist_name``
+   ``PERFORMER``     ``performer_name``
+   ``COMPOSER``      ``composer_name``
+   ``CONDUCTOR``     ``conductor_name``
+   ``SOURCE MEDIUM`` ``media``
+   ``ISRC``          ``ISRC``
+   ``CATALOG``       ``catalog``
+   ``COPYRIGHT``     ``copyright``
+   ``PUBLISHER``     ``publisher``
+   ``DATE``          ``year``
+   ``COMMENT``       ``comment``
+   ================= ==================
+
+   Note that if the same key is used multiple times,
+   the metadata attribute only indicates the first one:
+
+   >>> tag = VorbisComment({u'TITLE':[u'Title1',u'Title2']})
+   >>> tag.track_name
+   u'Title1'
+
+
+.. method:: build()
+
+   Returns this object's complete Vorbis Comment data as a string.
 
 .. _APEv2: http://wiki.hydrogenaudio.org/index.php?title=APEv2
+
+.. _VorbisComment: http://www.xiph.org/vorbis/doc/v-comment.html

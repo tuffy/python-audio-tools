@@ -1202,7 +1202,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   - [ ] ID3v24Comment
   - [ ] ID3CommentPair
   - [ ] M4AMetaData
-  - [ ] VorbisComment
+  - [X] VorbisComment
 * DONE trackcmp should give exact PCM frame/byte of first mismatch
 ** DONE update unit tests to cover new behavior
    - [X] test_trackcmp
