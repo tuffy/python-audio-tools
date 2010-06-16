@@ -1195,7 +1195,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** TODO Have M4A files group properly on iTunes/iPods
 * TODO Update documentation to cover concrete MetaData classes
   - [X] ApeTag
-  - [ ] FlacMetaData
+  - [X] FlacMetaData
   - [X] ID3v1Comment
   - [ ] ID3v22Comment
   - [ ] ID3v23Comment

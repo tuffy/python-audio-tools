@@ -118,7 +118,143 @@ ApeTag
    and returns a populated :class:`ApeTagItem` object of the
    appropriate type.
 
-.. .. class:: FlacMetaData
+FLAC
+----
+
+.. class:: FlacMetaData(blocks)
+
+   This is a FLAC_ tag which is prepended to FLAC and Ogg FLAC files.
+   It is initialized with a list of :class:`FlacMetaDataBlock`
+   objects which it stores internally in one of several fields.
+   It also supports all :class:`audiotools.MetaData` methods.
+
+   For example:
+
+   >>> tag = FlacMetaData([FlacMetaDataBlock(
+   ...                     type=4,
+   ...                     data=FlacVorbisComment({u'TITLE':[u'Track Title']}).build())])
+   >>> tag.track_name
+   u'Track Title'
+   >>> tag.vorbis_comment[u'TITLE']
+   [u'Track Title']
+   >>> tag.vorbis_comment = a.FlacVorbisComment({u'TITLE':[u'New Track Title']})
+   >>> tag.track_name
+   u'New Track Title'
+
+   Its fields are as follows:
+
+.. data:: FlacMetaData.streaminfo
+
+   A :class:`FlacMetaDataBlock` object containing raw ``STREAMINFO`` data.
+   Since FLAC's :func:`set_metadata` method will override this attribute
+   as necessary, one will rarely need to parse it or set it.
+
+.. data:: FlacMetaData.vorbis_comment
+
+   A :class:`FlacVorbisComment` object containing text data
+   such as track name and artist name.
+   If the FLAC file doesn't have a ``VORBISCOMMENT`` block,
+   :class:`FlacMetaData` will set an empty one at initialization time
+   which will then be written out by a call to :func:`set_metadata`.
+
+.. data:: FlacMetaData.cuesheet
+
+   A :class:`FlacCueSheet` object containing ``CUESHEET`` data, or ``None``.
+
+.. data:: FlacMetaData.image_blocks
+
+   A list of :class:`FlacPictureComment` objects, each representing
+   a ``PICTURE`` block.
+   The list may be empty.
+
+.. data:: FlacMetaData.extra_blocks
+
+   A list of raw :class:`FlacMetaDataBlock` objects containing
+   any unknown or unsupported FLAC metadata blocks.
+   Note that padding is not stored here.
+   ``PADDING`` blocks are discarded at initialization time
+   and then re-created as needed by calls to :func:`set_metadata`.
+
+.. method:: FlacMetaData.metadata_blocks()
+
+   Returns an iterator over all the current blocks as
+   :class:`FlacMetaDataBlock`-compatible objects and without
+   any padding block at the end.
+
+.. method:: FlacMetaData.build([padding_size])
+
+   Returns a string of this :class:`FlacMetaData` object's contents.
+
+.. class:: FlacMetaDataBlock(type, data)
+
+   This is a simple container for FLAC metadata block data.
+   ``type`` is one of the following block type integers:
+
+   = ==================
+   0 ``STREAMINFO``
+   1 ``PADDING``
+   2 ``APPLICATION``
+   3 ``SEEKTABLE``
+   4 ``VORBIS_COMMENT``
+   5 ``CUESHEET``
+   6 ``PICTURE``
+   = ==================
+
+   ``data`` is a string.
+
+.. method:: FlacMetaDataBlock.build_block([last])
+
+   Returns the entire metadata block as a string, including the header.
+   Set ``last`` to 1 to indicate this is the final metadata block in the stream.
+
+.. class:: FlacVorbisComment(vorbis_data[, vendor_string])
+
+   This is a subclass of :class:`VorbisComment` modified to be
+   FLAC-compatible.
+   It utilizes the same initialization information and field mappings.
+
+.. method:: FlacVorbisComment.build_block([last])
+
+   Returns the entire metadata block as a string, including the header.
+   Set ``last`` to 1 to indicate this is the final metadata block in the stream.
+.. class:: FlacPictureComment(type, mime_type, description, width, height, color_depth, color_count, data)
+
+   This is a subclass of :class:`audiotools.Image` with additional
+   methods to make it FLAC-compatible.
+
+.. method:: FlacPictureComment.build()
+
+   Returns this picture data as a block data string, without the metadata
+   block headers.
+   Raises :exc:`FlacMetaDataBlockTooLarge` if the size of its
+   picture data exceeds 16777216 bytes.
+
+.. method:: FlacPictureComment.build_block([last])
+
+   Returns the entire metadata block as a string, including the header.
+   Set ``last`` to 1 to indicate this is the final metadata block in the stream.
+
+.. class:: FlacCueSheet(container[, sample_rate])
+
+   This is a :class:`audiotools.cue.Cuesheet`-compatible object
+   with :func:`catalog`, :func:`ISRCs`, :func:`indexes` and
+   :func:`pcm_lengths` methods, in addition to those needed to make it
+   FLAC metadata block compatible.
+   Its ``container`` argument is an :class:`audiotools.Con.Container` object
+   which is returned by calling :func:`FlacCueSheet.CUESHEET.parse`
+   on a raw input data string.
+
+.. method:: FlacCueSheet.build_block([last])
+
+   Returns the entire metadata block as a string, including the header.
+   Set ``last`` to 1 to indicate this is the final metadata block in the stream.
+
+.. classmethod:: FlacCueSheet.converted(sheet, total_frames[, sample_rate])
+
+   Takes another :class:`audiotools.cue.Cuesheet`-compatible object
+   and returns a new :class:`FlacCueSheet` object.
+
+
 
 ID3v1
 -----
@@ -158,17 +294,17 @@ ID3v1
    5     ``track_number``
    ===== ================
 
-.. method:: build_tag()
+.. method:: ID3v1Comment.build_tag()
 
    Returns this tag as a string.
 
-.. classmethod:: build_id3v1(song_title, artist, album, year, comment, track_number)
+.. classmethod:: ID3v1Comment.build_id3v1(song_title, artist, album, year, comment, track_number)
 
    A convenience method which takes several unicode strings
    (except for ``track_number``, an integer) and returns
    a complete ID3v1 tag as a string.
 
-.. classmethod:: read_id3v1_comment(filename)
+.. classmethod:: ID3v1Comment.read_id3v1_comment(filename)
 
    Takes an MP3 filename string and returns a tuple of that file's
    ID3v1 tag data, or tag data with empty fields if no ID3v1 tag is found.
@@ -231,39 +367,39 @@ M4A
    Note that several of the 4 character keys are prefixed by
    the non-ASCII byte ``0xA9``.
 
-.. method:: to_atom(previous_meta)
+.. method:: M4AMetaData.to_atom(previous_meta)
 
    This takes the previous M4A ``meta`` atom as a string and returns
    a new :class:`__Qt_Atom__` object of our new ``meta`` atom
    with any non-``ilst`` atoms ported from the old atom to the new atom.
 
-.. classmethod:: binary_atom(key, value)
+.. classmethod:: M4AMetaData.binary_atom(key, value)
 
    Takes a 4 character atom name key and binary string value.
    Returns a 1 element :class:`ILST_Atom` list suitable
    for adding to our internal dictionary.
 
-.. classmethod:: text_atom(key, value)
+.. classmethod:: M4AMetaData.text_atom(key, value)
 
    Takes a 4 character atom name key and unicode value.
    Returns a 1 element :class:`ILST_Atom` list suitable
    for adding to our internal dictionary.
 
-.. classmethod:: trkn_atom(track_number, track_total)
+.. classmethod:: M4AMetaData.trkn_atom(track_number, track_total)
 
    Takes track number and track total integers
    (the ``trkn`` key is assumed).
    Returns a 1 element :class:`ILST_Atom` list suitable
    for adding to our internal dictionary.
 
-.. classmethod:: disk_atom(disk_number, disk_total)
+.. classmethod:: M4AMetaData.disk_atom(disk_number, disk_total)
 
    Takes album number and album total integers
    (the ``disk`` key is assumed).
    Returns a 1 element :class:`ILST_Atom` list suitable
    for adding to our internal dictionary.
 
-.. classmethod:: covr_atom(image_data)
+.. classmethod:: M4AMetaData.covr_atom(image_data)
 
    Takes a binary string of cover art data
    (the ``covr`` key is assumed).
@@ -345,12 +481,14 @@ Vorbis Comment
    u'Title1'
 
 
-.. method:: build()
+.. method:: VorbisComment.build()
 
    Returns this object's complete Vorbis Comment data as a string.
 
 .. _APEv2: http://wiki.hydrogenaudio.org/index.php?title=APEv2
 
 .. _ID3v1: http://www.id3.org/ID3v1
+
+.. _FLAC: http://flac.sourceforge.net/format.html#metadata_block
 
 .. _VorbisComment: http://www.xiph.org/vorbis/doc/v-comment.html
