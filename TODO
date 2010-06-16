@@ -1196,12 +1196,12 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 * TODO Update documentation to cover concrete MetaData classes
   - [X] ApeTag
   - [ ] FlacMetaData
-  - [ ] ID3v1Comment
+  - [X] ID3v1Comment
   - [ ] ID3v22Comment
   - [ ] ID3v23Comment
   - [ ] ID3v24Comment
   - [ ] ID3CommentPair
-  - [ ] M4AMetaData
+  - [X] M4AMetaData
   - [X] VorbisComment
 * DONE trackcmp should give exact PCM frame/byte of first mismatch
 ** DONE update unit tests to cover new behavior

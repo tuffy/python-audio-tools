@@ -282,7 +282,7 @@ class M4AAudio_faac(AudioFile):
             for atom in meta_atom.atoms:
                 if (atom.type == 'ilst'):
                     return M4AMetaData([
-                            __ILST_Atom__(
+                            ILST_Atom(
                                 type=ilst_atom.type,
                                 sub_atoms=[__Qt_Atom__(type=sub_atom.type,
                                                        data=sub_atom.data,
@@ -618,7 +618,7 @@ else:
 #        +-'data' atom
 #            |
 #            +-'\x00\x00\x00\x01\x00\x00\x00\x00Track Name' data
-class __ILST_Atom__:
+class ILST_Atom:
     #type is a string
     #sub_atoms is a list of __Qt_Atom__-compatible sub-atom objects
     def __init__(self, type, sub_atoms):
@@ -637,7 +637,7 @@ class __ILST_Atom__:
         return len(self.data)
 
     def __repr__(self):
-        return "__ILST_Atom__(%s,%s)" % (repr(self.type),
+        return "ILST_Atom(%s,%s)" % (repr(self.type),
                                          repr(self.data))
 
     def __unicode__(self):
@@ -714,11 +714,11 @@ class M4AMetaData(MetaData,dict):
 
     #takes an atom type string
     #and a binary string object
-    #returns an appropriate __ILST_Atom__ list
+    #returns an appropriate ILST_Atom list
     #suitable for adding to our internal dictionary
     @classmethod
     def binary_atom(cls, key, value):
-        return [__ILST_Atom__(key,
+        return [ILST_Atom(key,
                               [__Qt_Atom__(
                         "data",
                         value,
@@ -726,7 +726,7 @@ class M4AMetaData(MetaData,dict):
 
     #takes an atom type string
     #and a unicode text object
-    #returns an appropriate __ILST_Atom__ list
+    #returns an appropriate ILST_Atom list
     #suitable for adding to our internal dictionary
     @classmethod
     def text_atom(cls, key, text):

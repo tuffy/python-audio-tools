@@ -47,7 +47,7 @@ class ID3v1Comment(MetaData,list):
                   'comment',
                   'track_number']
 
-    #takes an open mp3 file object
+    #takes an MP3 filename
     #returns a (song title, artist, album, year, comment, track number) tuple
     #if no ID3v1 tag is present, returns a tuple with those fields blank
     #all text is in unicode
