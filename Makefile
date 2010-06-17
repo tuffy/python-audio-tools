@@ -3,20 +3,21 @@ export PYTHON = python
 all:
 	$(PYTHON) setup.py build
 
-install:
+install: .FORCE
 	$(PYTHON) setup.py install
 	cd docs && $(MAKE) install
 
-check:
+check: .FORCE
 	cd test && $(PYTHON) test.py
 
-clean:
+clean: .FORCE
 	rm -rfv build
 	rm -fv audiotools/*.pyc
-	cd docs && $(MAKE) clean
 
 distclean: clean
-	cd docs && $(MAKE) distclean
+	cd docs && $(MAKE) clean
+
+.FORCE:
 
 construct:
 	### This target is no longer required ###

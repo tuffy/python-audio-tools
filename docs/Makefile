@@ -21,12 +21,19 @@ tracksplit.1 \
 tracklint.1 \
 audiotools-config.1
 
-all: audioformats-letter.pdf audioformats-a4.pdf \
+TARGETS = audioformats-letter.pdf audioformats-a4.pdf \
 audiotools-letter.pdf audiotools-a4.pdf
 
+all: $(TARGETS)
+
+clean: .FORCE
+	rm -fv $(TARGETS)
+
+.FORCE:
+
 install: $(MAN_PAGES)
-	for m in $(MAN_PAGES); do install --mode=644 $$m $(MAN_PATH)/man1/$$m; done
-	install --mode=644 audiotools.cfg.5 $(MAN_PATH)/man5/audiotools.cfg.5
+	for m in $(MAN_PAGES); do install -m 644 $$m $(MAN_PATH)/man1/$$m; done
+	install -m 644 audiotools.cfg.5 $(MAN_PATH)/man5/audiotools.cfg.5
 
 audioformats-letter.pdf:
 	cd reference && make audioformats-letter.pdf
