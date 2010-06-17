@@ -878,7 +878,7 @@ def pcm_frame_cmp(pcmreader1, pcmreader2):
 
     while ((len(framelist1) > 0) and (len(framelist2) > 0)):
         if (framelist1 != framelist2):
-            for i in xrange(min(framelist1.frames,framelist2.frame)):
+            for i in xrange(min(framelist1.frames,framelist2.frames)):
                 if (framelist1.frame(i) != framelist2.frame(i)):
                     return frame_number + i
             else:
