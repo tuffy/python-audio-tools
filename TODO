@@ -1320,7 +1320,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   - [X] FlacMetaData
   - [X] ID3v1Comment
   - [X] ID3v22Comment
-  - [ ] ID3v23Comment
+  - [X] ID3v23Comment
   - [ ] ID3v24Comment
   - [ ] ID3CommentPair
   - [X] M4AMetaData
