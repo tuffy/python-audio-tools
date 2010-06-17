@@ -1326,3 +1326,5 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   - [X] M4AMetaData
   - [X] VorbisComment
 * TODO Ensure man pages install correctly on Mac OS X
+* TODO Remove xdelta requirement
+  It's doesn't compile well on some platforms and is only used by tracklint

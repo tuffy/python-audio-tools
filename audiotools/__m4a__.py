@@ -238,6 +238,34 @@ class M4AAudio_faac(AudioFile):
         except KeyError:
             raise InvalidFile(_(u'Required moov atom not found'))
 
+    def channel_mask(self):
+        #M4A seems to use the same channel assignment
+        #as old-style RIFF WAVE/FLAC
+        if (self.channels() == 1):
+            return ChannelMask.from_fields(
+                front_center=True)
+        elif (self.channels() == 2):
+            return ChannelMask.from_fields(
+                front_left=True,front_right=True)
+        elif (self.channels() == 3):
+            return ChannelMask.from_fields(
+                front_left=True,front_right=True,front_center=True)
+        elif (self.channels() == 4):
+            return ChannelMask.from_fields(
+                front_left=True,front_right=True,
+                back_left=True,back_right=True)
+        elif (self.channels() == 5):
+            return ChannelMask.from_fields(
+                front_left=True,front_right=True,front_center=True,
+                back_left=True,back_right=True)
+        elif (self.channels() == 6):
+            return ChannelMask.from_fields(
+                front_left=True,front_right=True,front_center=True,
+                back_left=True,back_right=True,
+                low_frequency=True)
+        else:
+            return ChannelMask(0)
+
     @classmethod
     def is_type(cls, file):
         header = file.read(12)
@@ -333,6 +361,9 @@ class M4AAudio_faac(AudioFile):
                                           chr(0) * (old_pre_mdat_size -
                                                     new_pre_mdat_size)))
                 f.close()
+
+                f = file(self.filename,"rb")
+                self.qt_stream = __Qt_Atom_Stream__(f)
             else:
                 self.__set_meta_atom__(new_meta)
         else:
@@ -391,7 +422,7 @@ class M4AAudio_faac(AudioFile):
             sub.stdout,
             sample_rate=self.sample_rate(),
             channels=self.channels(),
-            channel_mask=int(ChannelMask.from_channels(self.channels())),
+            channel_mask=self.channel_mask(),
             bits_per_sample=self.bits_per_sample(),
             process=sub)
 
@@ -487,34 +518,6 @@ class M4AAudio_nero(M4AAudio_faac):
     COMPRESSION_MODES = ("0.0","0.1","0.2","0.3","0.4","0.5",
                          "0.6","0.7","0.8","0.9","1.0")
     BINARIES = ("neroAacDec","neroAacEnc")
-
-    def channel_mask(self):
-        #M4A seems to use the same channel assignment
-        #as old-style RIFF WAVE/FLAC
-        if (self.channels() == 1):
-            return ChannelMask.from_fields(
-                front_center=True)
-        elif (self.channels() == 2):
-            return ChannelMask.from_fields(
-                front_left=True,front_right=True)
-        elif (self.channels() == 3):
-            return ChannelMask.from_fields(
-                front_left=True,front_right=True,front_center=True)
-        elif (self.channels() == 4):
-            return ChannelMask.from_fields(
-                front_left=True,front_right=True,
-                back_left=True,back_right=True)
-        elif (self.channels() == 5):
-            return ChannelMask.from_fields(
-                front_left=True,front_right=True,front_center=True,
-                back_left=True,back_right=True)
-        elif (self.channels() == 6):
-            return ChannelMask.from_fields(
-                front_left=True,front_right=True,front_center=True,
-                back_left=True,back_right=True,
-                low_frequency=True)
-        else:
-            return ChannelMask(0)
 
     def to_pcm(self):
         return AudioFile.to_pcm(self)
