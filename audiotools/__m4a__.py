@@ -882,6 +882,9 @@ class M4AMetaData(MetaData,dict):
             m4a['covr'] = [cls.covr_atom(i.data)[0]
                             for i in metadata.front_covers()]
 
+        m4a['cpil'] = cls.binary_atom('cpil',
+                                      '0000001500000000'.decode('hex') + chr(1))
+
         return m4a
 
     def merge(self, metadata):

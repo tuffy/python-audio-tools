@@ -692,6 +692,10 @@ class ID3v22Comment(MetaData):
         for image in metadata.images():
             frames.append(cls.PictureFrame.converted(image))
 
+        if (hasattr(cls,'ITUNES_COMPILATION')):
+            frames.append(cls.TextFrame.from_unicode(
+                    cls.ITUNES_COMPILATION,u'1'))
+
         return cls(frames)
 
     def merge(self, metadata):
@@ -1054,6 +1058,8 @@ class ID3v23Comment(ID3v22Comment):
     KEY_ORDER = ('TIT2','TALB','TRCK','TPOS','TPE1','TPE2','TCOM',
                  'TPE3','TPUB','TSRC','TMED','TYER','TRDA','TCOP',
                  None,'COMM','APIC')
+
+    ITUNES_COMPILATION = 'TCMP'
 
     def __comment_name__(self):
         return u'ID3v2.3'

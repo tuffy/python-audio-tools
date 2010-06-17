@@ -1316,7 +1316,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** DONE Ensure UnsupportedChannels exception is handled by user-level tools
 ** DONE Ensure new ALACs work in iTunes
 ** DONE Ensure new ALACs work on iPods
-** TODO Have M4A files group properly on iTunes/iPods
+** DONE Have M4A files group properly on iTunes/iPods
 * TODO indicate ReplayGain capabilities/binaries
   audiotools-config(1) should show what ReplayGain binaries are present
   and all audio classes that support it
