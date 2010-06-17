@@ -803,7 +803,41 @@ ID3v2.4
    Given an :class:`audiotools.Image` object,
    returns a new :class:`ID3v24PicFrame` object.
 
-.. .. class:: ID3CommentPair
+ID3 Comment Pair
+----------------
+
+Often, MP3 files are tagged with both an ID3v2 comment and an ID3v1 comment
+for maximum compatibility.
+This class encapsulates both comments into a single class.
+
+.. class:: ID3CommentPair(id3v2_comment, id3v1_comment)
+
+   ``id3v2_comment`` is an :class:`ID3v22Comment`, :class:`ID3v23Comment`
+   or :class:`ID3v24Comment`.
+   ``id3v1_comment`` is an :class:`ID3v1Comment`.
+   When getting :class:`audiotools.MetaData` attributes,
+   the ID3v2 comment is used by default.
+   Set attributes are propogated to both.
+   For example:
+
+   >>> tag = ID3CommentPair(ID3v23Comment([ID3v23TextFrame('TIT2',0,u'Title 1')]),
+   ...                      ID3v1Comment((u'Title 2',u'',u'',u'',u'',1)))
+   >>> tag.track_name
+   u'Title 1'
+   >>> tag.track_name = u'New Track Title'
+   >>> unicode(tag.id3v2['TIT2'][0])
+   u'New Track Title'
+   >>> tag.id3v1[0]
+   u'New Track Title'
+
+.. data:: ID3CommentPair.id3v2
+
+   The embedded :class:`ID3v22Comment`, :class:`ID3v23Comment`
+   or :class:`ID3v24Comment`
+
+.. data:: ID3CommentPair.id3v1
+
+   The embedded :class:`ID3v1Comment`
 
 M4A
 ---
