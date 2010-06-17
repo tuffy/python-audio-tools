@@ -1326,5 +1326,20 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   the %(basename)s attribute would be: "01 - track name"
   allowing one to ignore its internal metadata entirely
   and use original names.
+** DONE Update AudioFile.track_name to support attribute
+** TODO Update tools that call AudioFile.track_name
+   - [ ] cd2track
+   - [ ] track2track
+   - [ ] trackrename
+   - [ ] tracksplit
+** TODO Update man pages for tools that call AudioFile.track_name
+   - [ ] cd2track.1
+   - [ ] track2track.1
+   - [ ] trackrename.1
+   - [ ] tracksplit.1
+   - [ ] audiotools.cfg.5
+** TODO Add unit test support for new attribute
+** DONE Add documentation for new field to programming reference
+** TODO Add documentation for format strings to programming reference
 * TODO Remove xdelta requirement
   It's doesn't compile well on some platforms and is only used by tracklint

@@ -2014,7 +2014,8 @@ class AudioFile:
     @classmethod
     def track_name(cls, track_number, track_metadata,
                    album_number = 0,
-                   format = FILENAME_FORMAT):
+                   format = FILENAME_FORMAT,
+                   file_path = None):
         try:
             if ((track_metadata is not None) and
                 (cls not in (WaveAudio,AuAudio))):
@@ -2041,8 +2042,18 @@ class AudioFile:
                             track_metadata,
                             field).replace('/','-').replace(chr(0),' ')
 
+                if (file_path is not None):
+                    format_dict["basename"] = os.path.splitext(
+                        os.path.basename(file_path))[0]
+                else:
+                    format_dict["basename"] = "track%2.2d" % (track_number)
+
                 return (format % format_dict).encode(FS_ENCODING,'replace')
             else:
+                #FIXME - this special case is nonintuitive
+                #We don't want to generate a bunch of files named:
+                #"01 - .wav", "02 - .wav", etc.
+                #but this isn't the answer.
                 if (album_number == 0):
                     return "track%(track_number)2.2d.%(suffix)s" % \
                         {"track_number":track_number,
