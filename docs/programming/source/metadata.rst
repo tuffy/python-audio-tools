@@ -639,7 +639,169 @@ ID3v2.3
    Given an :class:`audiotools.Image` object,
    returns a new :class:`ID3v23PicFrame` object.
 
-.. .. class:: ID3v24Comment
+ID3v2.4
+-------
+
+.. class:: ID3v24Comment(frames)
+
+   This is an ID3v2.4_ tag, one of the three ID3v2 variants used by MP3 files.
+   During initialization, it takes a list of :class:`ID3v24Frame`-compatible
+   objects.
+   It can then be manipulated list a regular Python dict with keys
+   as 4 character frame identifiers and values as lists of :class:`ID3v24Frame`
+   objects - since each frame identifier may occur multiple times.
+
+   For example:
+
+   >>> import audiotools as a
+   >>> tag = ID3v24Comment([ID3v24TextFrame('TIT2',0,u'Track Title')])
+   >>> tag.track_name
+   u'Track Title'
+   >>> tag['TIT2']
+   [<audiotools.__id3__.ID3v24TextFrame instance at 0x1004c17a0>]
+   >>> tag['TIT2'] = [ID3v24TextFrame('TIT2',0,'New Track Title')]
+   >>> tag.track_name
+   u'New Track Title'
+
+   Fields are mapped between ID3v2.4 frame identifiers,
+   :class:`audiotools.MetaData` and :class:`ID3v24Frame` objects as follows:
+
+   ========== ================================ ========================
+   Identifier MetaData                         Object
+   ---------- -------------------------------- ------------------------
+   ``TIT2``   ``track_name``                   :class:`ID3v24TextFrame`
+   ``TRCK``   ``track_number``/``track_total`` :class:`ID3v24TextFrame`
+   ``TPOS``   ``album_number``/``album_total`` :class:`ID3v24TextFrame`
+   ``TALB``   ``album_name``                   :class:`ID3v24TextFrame`
+   ``TPE1``   ``artist_name``                  :class:`ID3v24TextFrame`
+   ``TPE2``   ``performer_name``               :class:`ID3v24TextFrame`
+   ``TPE3``   ``conductor_name``               :class:`ID3v24TextFrame`
+   ``TCOM``   ``composer_name``                :class:`ID3v24TextFrame`
+   ``TMED``   ``media``                        :class:`ID3v24TextFrame`
+   ``TSRC``   ``ISRC``                         :class:`ID3v24TextFrame`
+   ``TCOP``   ``copyright``                    :class:`ID3v24TextFrame`
+   ``TPUB``   ``publisher``                    :class:`ID3v24TextFrame`
+   ``TYER``   ``year``                         :class:`ID3v24TextFrame`
+   ``TRDA``   ``date``                         :class:`ID3v24TextFrame`
+   ``COMM``   ``comment``                      :class:`ID3v24ComFrame`
+   ``APIC``   ``images()``                     :class:`ID3v24PicFrame`
+   ========== ================================ ========================
+
+.. class:: ID3v24Frame(frame_id, data)
+
+   This is the base class for the various ID3v2.3 frames.
+   ``frame_id`` is a 4 character string and ``data`` is
+   the frame's contents as a string.
+
+.. method:: ID3v24Frame.build()
+
+   Returns the frame's contents as a string of binary data.
+
+.. classmethod:: ID3v24Frame.parse(container)
+
+   Given a :class:`audiotools.Con.Container` object with data
+   parsed from ``audiotools.ID3v24Frame.FRAME``,
+   returns an :class:`ID3v24Frame` or one of its subclasses,
+   depending on the frame identifier.
+
+.. class:: ID3v24TextFrame(frame_id, encoding, string)
+
+   This is a container for textual data.
+   ``frame_id`` is a 4 character string, ``string`` is a unicode string
+   and ``encoding`` is one of the following integers representing a
+   text encoding:
+
+   = ========
+   0 Latin-1
+   1 UTF-16
+   2 UTF-16BE
+   3 UTF-8
+   = ========
+
+.. method:: ID3v24TextFrame.__int__()
+
+   Returns the first integer portion of the frame data as an int.
+
+.. method:: ID3v24TextFrame.total()
+
+   Returns the integer portion of the frame data after the first slash
+   as an int.
+   For example:
+
+   >>> tag['TRAK'] = [ID3v24TextFrame('TRAK',0,u'5/6')]
+   >>> tag['TRAK']
+   [<audiotools.__id3__.ID3v24TextFrame instance at 0x1004c17a0>]
+   >>> int(tag['TRAK'][0])
+   5
+   >>> tag['TRAK'][0].total()
+   6
+
+.. classmethod:: ID3v24TextFrame.from_unicode(frame_id, s)
+
+   A convenience method for building :class:`ID3v24TextFrame` objects
+   from a frame identifier and unicode string.
+   Note that if ``frame_id`` is ``"COMM"``, this will build an
+   :class:`ID3v24ComFrame` object instead.
+
+.. class:: ID3v24ComFrame(encoding, language, short_description, content)
+
+   This frame is for holding a potentially large block of comment data.
+   ``encoding`` is the same as in text frames:
+
+   = ========
+   0 Latin-1
+   1 UTF-16
+   2 UTF-16BE
+   3 UTF-8
+   = ========
+
+   ``language`` is a 3 character string, such as ``"eng"`` for english.
+   ``short_description`` and ``content`` are unicode strings.
+
+.. classmethod:: ID3v24ComFrame.from_unicode(s)
+
+   A convenience method for building :class:`ID3v24ComFrame` objects
+   from a unicode string.
+
+.. class:: ID3v24PicFrame(data, mime_type, description, pic_type)
+
+   This is a subclass of :class:`audiotools.Image`, in addition
+   to being an ID3v2.4 frame.
+   ``data`` is a string of binary image data.
+   ``mime_type`` is a string of the image's MIME type, such as
+   ``"image/jpeg"``.
+
+   ``description`` is a unicode string.
+   ``pic_type`` is an integer representing one of the following:
+
+   == ======================================
+   0  Other
+   1  32x32 pixels 'file icon' (PNG only)
+   2  Other file icon
+   3  Cover (front)
+   4  Cover (back)
+   5  Leaflet page
+   6  Media (e.g. label side of CD)
+   7  Lead artist / Lead performer / Soloist
+   8  Artist / Performer
+   9  Conductor
+   10 Band / Orchestra
+   11 Composer
+   12 Lyricist / Text writer
+   13 Recording Location
+   14 During recording
+   15 During performance
+   16 Movie / Video screen capture
+   17 A bright coloured fish
+   18 Illustration
+   19 Band / Artist logotype
+   20 Publisher / Studio logotype
+   == ======================================
+
+.. classmethod:: ID3v23PicFrame.converted(image)
+
+   Given an :class:`audiotools.Image` object,
+   returns a new :class:`ID3v24PicFrame` object.
 
 .. .. class:: ID3CommentPair
 
