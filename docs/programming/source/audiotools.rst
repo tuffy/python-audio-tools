@@ -319,12 +319,40 @@ AudioFile Objects
 
 .. classmethod:: AudioFile.track_name(track_number, track_metadata[, album_number = 0[, format = FORMAT_STRING [, file_path]]])
 
-    Given a track number integer, :class:`MetaData`-compatible object
-    (or ``None``) and optional album number integer, optional
-    Python-formatted format string and optional path to the original file,
-    returns a filename string with the format string fields filled-in.
-    Raises :exc:`UnsupportedTracknameField` if the format string contains
-    unsupported fields.
+   Given a track number integer, :class:`MetaData`-compatible object
+   (or ``None``) and optional album number integer, optional
+   Python-formatted format string and optional path to the original file,
+   returns a filename string with the format string fields filled-in.
+   Raises :exc:`UnsupportedTracknameField` if the format string contains
+   unsupported fields.
+
+   Currently supported fields are:
+
+   ========================== ===============================================
+   Field                      Value
+   -------------------------- -----------------------------------------------
+   ``%(album_name)s``         ``track_metadata.album_name``
+   ``%(album_number)s``       ``track_metadata.album_number``
+   ``%(album_total)s``        ``track_metadata.album_total``
+   ``%(album_track_number)s`` ``album_number`` combined with ``track_number``
+   ``%(artist_name)s``        ``track_metadata.artist_name``
+   ``%(catalog)s``            ``track_metadata.catalog``
+   ``%(comment)s``            ``track_metadata.comment``
+   ``%(composer_name)s``      ``track_metadata.composer_name``
+   ``%(conductor_name)s``     ``track_metadata.conductor_name``
+   ``%(copyright)s``          ``track_metadata.copyright``
+   ``%(date)s``               ``track_metadata.date``
+   ``%(ISRC)s``               ``track_metadata.ISRC``
+   ``%(media)s``              ``track_metadata.year``
+   ``%(performer_name)s``     ``track_metadata.performer_name``
+   ``%(publisher)s``          ``track_metadata.publisher``
+   ``%(suffix)s``             the :class:`AudioFile` suffix
+   ``%(track_name)s``         ``track_metadata.track_name``
+   ``%(track_number)2.2d``    ``track_metadata.track_number``
+   ``%(track_total)s``        ``track_metadata.track_total``
+   ``%(year)s``               ``track_metadata.year``
+   ``%(basename)s``           ``file_path`` basename without suffix
+   ========================== ===============================================
 
 .. classmethod:: AudioFile.add_replay_gain(filenames)
 

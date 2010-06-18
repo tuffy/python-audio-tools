@@ -440,7 +440,6 @@ class DummyMetaData3(audiotools.MetaData):
             track_number=5,
             album_name=u"Album Name",
             artist_name=u"Artist Name",
-            performer_name=u"Performer",
             images=[audiotools.Image.new(TEST_COVER1,u'',0)])
 
     @classmethod

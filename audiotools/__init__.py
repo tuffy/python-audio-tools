@@ -1834,6 +1834,8 @@ class UnsupportedTracknameField(Exception):
             else:
                 messenger.info(u"%%(%s)s" % (field))
 
+        messenger.info(u"%(basename)s")
+
 
 class AudioFile:
     SUFFIX = ""

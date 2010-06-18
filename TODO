@@ -1338,6 +1338,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    - [X] audiotools.cfg.5
 ** TODO Add unit test support for new attribute
 ** DONE Add documentation for new field to programming reference
-** TODO Add documentation for format strings to programming reference
+** DONE Add documentation for format strings to programming reference
 * TODO Remove xdelta requirement
   It's doesn't compile well on some platforms and is only used by tracklint
