@@ -697,18 +697,14 @@ class M4AMetaData(MetaData,dict):
         'track_name':'=A9nam'.decode('quopri'),    # Name
         'artist_name':'=A9ART'.decode('quopri'),   # Artist
         'year':'=A9day'.decode('quopri'),          # Year
-        'performer_name':'aART',                   # Album Artist
         'track_number':'trkn',                     # Track Number
         'track_total':'trkn',
         'album_name':'=A9alb'.decode('quopri'),    # Album
         'album_number':'disk',                     # Disc Number
         'album_total':'disk',
-        #?:'=A9grp'.decode('quopri')               # Grouping
-        #?:'tmpo'                                  # BPM
         'composer_name':'=A9wrt'.decode('quopri'), # Composer
         'comment':'=A9cmt'.decode('quopri'),       # Comments
         'copyright':'cprt'}                        # (not listed)
-        #'artist_name':'=A9com'.decode('quopri')}
 
     def __init__(self, ilst_atoms):
         dict.__init__(self)

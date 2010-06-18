@@ -877,7 +877,6 @@ M4A
    ``"\xA9nam"`` ``track_name``                   Name
    ``"\xA9ART"`` ``artist_name``                  Artist
    ``"\xA9day"`` ``year``                         Year
-   ``"aART"``    ``performer_name``               Album Artist
    ``"trkn"``    ``track_number``/``track_total`` Track Number
    ``"disk"``    ``album_number``/``album_total`` Album Number
    ``"\xA9alb"`` ``album_name``                   Album

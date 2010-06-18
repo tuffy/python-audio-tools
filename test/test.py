@@ -3604,7 +3604,6 @@ class M4AMetadata:
                                    album_number=2,
                                    album_name=u"Album Name",
                                    artist_name=u"Artist Name",
-                                   performer_name=u"Performer",
                                    composer_name=u"Composer",
                                    copyright=u"Copyright Attribution",
                                    year=u"2008",
@@ -3618,7 +3617,6 @@ class M4AMetadata:
                                    album_total=4,
                                    album_name=u"New Album Name",
                                    artist_name=u"New Artist Name",
-                                   performer_name=u"New Performer",
                                    composer_name=u"New Composer",
                                    copyright=u"Copyright Attribution 2",
                                    year=u"2007",
@@ -3627,7 +3625,6 @@ class M4AMetadata:
     def flag_field_values(self):
         return zip(["--name",
                     "--artist",
-                    "--performer",
                     "--composer",
                     "--album",
                     "--number",
@@ -3639,7 +3636,6 @@ class M4AMetadata:
                     "--comment"],
                    ["track_name",
                     "artist_name",
-                    "performer_name",
                     "composer_name",
                     "album_name",
                     "track_number",
@@ -3651,7 +3647,6 @@ class M4AMetadata:
                     "comment"],
                    ["Track Name",
                     "Artist Name",
-                    "Performer Name",
                     "Composer Name",
                     "Album Name",
                     2,
@@ -3677,7 +3672,7 @@ class M4AMetadata:
 
             if ((new_file.get_metadata() is not None)
                 and (new_file.get_metadata().supports_images())):
-                metadata = SmallDummyMetaData()
+                metadata = self.DummyMetaData()
                 new_file.set_metadata(metadata)
                 self.assertEqual(metadata,new_file.get_metadata())
 
@@ -4776,7 +4771,6 @@ class TestM4AMetaData(unittest.TestCase):
             ["track_name",
              "artist_name",
              "year",
-             "performer_name",
              "album_name",
              "composer_name",
              "comment",
@@ -4784,7 +4778,6 @@ class TestM4AMetaData(unittest.TestCase):
             [u"Track Name\u03e8",
              u"Artist \u03e8Name",
              u"2009",
-             u"Performer\u03e8 Name",
              u"Albu\u03e8m Name",
              u"Composer N\u03e8ame",
              u"Some Comm\u03e8ent",
@@ -4792,7 +4785,6 @@ class TestM4AMetaData(unittest.TestCase):
             ["\xa9nam",
              "\xa9ART",
              "\xa9day",
-             "aART",
              "\xa9alb",
              "\xa9wrt",
              "\xa9cmt",
@@ -4800,7 +4792,6 @@ class TestM4AMetaData(unittest.TestCase):
             [u"Track Name\u03e8",
              u"Artist \u03e8Name",
              u"2009",
-             u"Performer\u03e8 Name",
              u"Albu\u03e8m Name",
              u"Composer N\u03e8ame",
              u"Some Comm\u03e8ent",
@@ -4839,7 +4830,6 @@ class TestM4AMetaData(unittest.TestCase):
             ["track_name",
              "artist_name",
              "year",
-             "performer_name",
              "album_name",
              "composer_name",
              "comment",
@@ -4847,7 +4837,6 @@ class TestM4AMetaData(unittest.TestCase):
             [u"Track Name\u03e8",
              u"Artist \u03e8Name",
              u"2009",
-             u"Performer\u03e8 Name",
              u"Albu\u03e8m Name",
              u"Composer N\u03e8ame",
              u"Some Comm\u03e8ent",
@@ -4855,7 +4844,6 @@ class TestM4AMetaData(unittest.TestCase):
             ["\xa9nam",
              "\xa9ART",
              "\xa9day",
-             "aART",
              "\xa9alb",
              "\xa9wrt",
              "\xa9cmt",
