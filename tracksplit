@@ -266,10 +266,11 @@ if (__name__ == '__main__'):
 
             filename = os.path.join(
                 base_directory,
-                AudioType.track_name(track_number,
-                                     metadata,
+                AudioType.track_name(track_number=track_number,
+                                     track_metadata=metadata,
                                      album_number=audiofile.album_number(),
-                                     format=options.format))
+                                     format=options.format,
+                                     file_path=None))
 
             audiotools.make_dirs(filename)
             encoded_filenames.append(filename)

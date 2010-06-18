@@ -196,7 +196,8 @@ if (__name__ == '__main__'):
                     AudioType.track_name(cd_track.track_number,
                                          track_metadata=metadata,
                                          album_number=options.album_number,
-                                         format=options.format))
+                                         format=options.format,
+                                         file_path=None))
 
                 audiotools.make_dirs(filename)
 
@@ -213,7 +214,8 @@ if (__name__ == '__main__'):
                     AudioType.track_name(cd_track.track_number,
                                          track_metadata=None,
                                          album_number=options.album_number,
-                                         format=options.format))
+                                         format=options.format,
+                                         file_path=None))
 
                 audiotools.make_dirs(filename)
 

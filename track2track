@@ -328,7 +328,8 @@ if (__name__ == '__main__'):
                             track_number,
                             metadata,
                             album_number=audiofile.album_number(),
-                            format=options.format))
+                            format=options.format,
+                            file_path=audiofile.filename))
 
                     try:
                         audiotools.make_dirs(filename)
@@ -354,7 +355,8 @@ if (__name__ == '__main__'):
                             track_number,
                             metadata,
                             album_number=audiofile.album_number(),
-                            format=options.format))
+                            format=options.format,
+                            file_path=audiofile.filename))
 
                     try:
                         audiotools.make_dirs(filename)

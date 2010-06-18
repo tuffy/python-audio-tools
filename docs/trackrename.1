@@ -26,6 +26,8 @@ The format string to use for new filenames.
 Template fields are replaced with metadata values during renaming.
 All other text is left as-is.
 If this option is omitted, a default format string is used.
+
+.SH FORMAT STRING FIELDS
 .TS
 tab(:);
 | c   s |
@@ -54,6 +56,7 @@ Key:Value
 \fC%(year)s\fR:the track's publication year
 \fC%(date)s\fR:the track's original recording date
 \fC%(suffix)s\fR:the track's suffix
+\fC%(basename)s\fR:the track's original name, without suffix
 _
 .TE
 .TP
