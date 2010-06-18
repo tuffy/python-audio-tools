@@ -2485,6 +2485,44 @@ uhhDdCiCwqg2Gw3lphgaGhoamR+mptKYNT/F3JFOFCQvKfgAwA==""".decode('base64').decode(
                 self.assertEqual(os.path.isfile(new_path),True)
                 track = audiotools.open(new_path)
 
+            self.assertEqual("foo",
+                             self.audio_class.track_name(
+                    track_number=1,
+                    track_metadata=metadata,
+                    album_number=0,
+                    format="%(basename)s",
+                    file_path=os.path.join(
+                        "dev",
+                        "null",
+                        "foo.%s" % (self.audio_class.SUFFIX))))
+
+            self.assertEqual("foo",
+                             self.audio_class.track_name(
+                    track_number=1,
+                    track_metadata=metadata,
+                    album_number=0,
+                    format="%(basename)s",
+                    file_path="foo.%s" % (self.audio_class.SUFFIX)))
+
+            self.assertEqual("foo",
+                             self.audio_class.track_name(
+                    track_number=1,
+                    track_metadata=metadata,
+                    album_number=0,
+                    format="%(basename)s",
+                    file_path="foo"))
+
+            old_filename = track.filename
+            new_filename = os.path.join(basedir,"foo.bar")
+            os.rename(track.filename,new_filename)
+            self.assertEqual(subprocess.call(["trackrename",
+                                              "--format=%(basename)s",
+                                              "-V","quiet",
+                                              new_filename]),0)
+            self.assertEqual(os.path.isfile(os.path.join(basedir,"foo")),True)
+            os.rename(os.path.join(basedir,"foo"),old_filename)
+            self.assertEqual(os.path.isfile(old_filename),True)
+
             os.rename(track.filename,
                       os.path.join(basedir,"track.%s" % \
                                        (self.audio_class.SUFFIX)))
