@@ -4054,6 +4054,82 @@ class TestM4AAudio(M4AMetadata,TestAiffAudio):
                 os.unlink(os.path.join(tempdir,f))
             os.rmdir(tempdir)
 
+    def __check_encoder__(self, audio_class, track):
+        encoders = {audiotools.ALACAudio:u"Python Audio Tools",
+                    audiotools.M4AAudio_nero:u"Nero AAC codec",
+                    audiotools.M4AAudio_faac:u"FAAC"}
+
+        self.assert_(audio_class in encoders.keys())
+        metadata = track.get_metadata()
+        self.assertNotEqual(metadata,None)
+        self.assert_((chr(0xA9) + 'too') in metadata.keys())
+        encoder = unicode(metadata[chr(0xA9) + 'too'][0])
+        self.assert_(encoder.startswith(encoders[audio_class]))
+
+
+    @TEST_METADATA
+    def test_too(self):
+        #test that the "too" meta atom is preserved
+        wave_file = tempfile.NamedTemporaryFile(
+            suffix=".wav")
+        track_file1 = tempfile.NamedTemporaryFile(
+            suffix="." + self.audio_class.SUFFIX)
+        track_file2 = tempfile.NamedTemporaryFile(
+            suffix="." + self.audio_class.SUFFIX)
+        track_file3 = tempfile.NamedTemporaryFile(
+            suffix="." + self.audio_class.SUFFIX)
+        track_file4 = tempfile.NamedTemporaryFile(
+            suffix="." + self.audio_class.SUFFIX)
+        try:
+            wave = audiotools.WaveAudio.from_pcm(wave_file.name,
+                                                 BLANK_PCM_Reader(5))
+
+            #first check from_pcm()
+            track1 = self.audio_class.from_pcm(track_file1.name,
+                                               wave.to_pcm())
+            self.__check_encoder__(self.audio_class, track1)
+
+            #then check from_wave()
+            track2 = self.audio_class.from_wave(track_file2.name,
+                                                wave.filename)
+            self.__check_encoder__(self.audio_class, track2)
+
+            #then check set_metadata()
+            track1.set_metadata(audiotools.MetaData(
+                    track_name=u"Some Fancy New Track Name"))
+            self.__check_encoder__(self.audio_class, track1)
+
+            #check track2track(1)
+            subprocess.call(["track2track","-V","quiet",
+                             "-t",self.audio_class.NAME,
+                             wave_file.name,
+                             "-o",track_file3.name])
+            track3 = audiotools.open(track_file3.name)
+            self.assertEqual(track3.__class__,self.audio_class)
+            self.__check_encoder__(self.audio_class, track3)
+
+            #then check conversion via track2track(1)
+            m4a_classes = {audiotools.M4AAudio:audiotools.ALACAudio,
+                           audiotools.ALACAudio:audiotools.M4AAudio}
+
+            subprocess.call(["track2track","-V","quiet",
+                             "-t",m4a_classes[self.audio_class].NAME,
+                             track1.filename,
+                             "-o",track_file4.name])
+            track4 = audiotools.open(track_file4.name)
+            self.assertEqual(track4.__class__,m4a_classes[self.audio_class])
+            self.assertEqual(track4.get_metadata().track_name,
+                             u"Some Fancy New Track Name")
+            self.__check_encoder__(m4a_classes[self.audio_class],track4)
+
+        finally:
+            wave_file.close()
+            track_file1.close()
+            track_file2.close()
+            track_file3.close()
+            track_file4.close()
+
+
 class TestAlacAudio(TestM4AAudio):
    def setUp(self):
        self.audio_class = audiotools.ALACAudio
