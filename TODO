@@ -1341,3 +1341,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   and all audio classes that support it
 * TODO Remove xdelta requirement
   It's doesn't compile well on some platforms and is only used by tracklint
+* TODO build track2cover/xmcd2cover utilities
+  it would be helpful to have tools that could query
+  online cover databases and retrieve images for tagging purposes

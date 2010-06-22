@@ -10976,13 +10976,15 @@ class TestMultiChannel(unittest.TestCase):
                                      back_right=True,
                                      back_left=True)]:
 
-                #FIXME -Encoding 6 channel audio with neroAacEnc
+                #Encoding 6 channel audio with neroAacEnc
                 #with this batch of tones causes Nero to essentially
-                #zero out the LFE channel.
-                #I'm not entirely certain if this is a Nero encoder bug
-                #or if it's being more lossy than usual when encoding,
-                #but I'm guessing the former.
-                if ((len(mask) == 6) and (audio_class is audiotools.M4AAudio_nero)):
+                #zero out the LFE channel,
+                #as does newer versions of oggenc.
+                #This is likely due to the characteristics of
+                #my input samples.
+                if ((len(mask) == 6) and
+                    ((audio_class is audiotools.M4AAudio_nero) or
+                     (audio_class is audiotools.VorbisAudio))):
                     continue
 
                 self.__test_assignment__(audio_class,
