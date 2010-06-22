@@ -83,12 +83,11 @@ if (__name__ == '__main__'):
 
         for (track,new_name) in [(
                 track,
-                track.track_name(track_number=track.track_number(),
-                                 track_metadata=xmcd.get(track.track_number(),
-                                                         track.get_metadata()),
-                                 album_number=track.album_number(),
-                                 format=options.format,
-                                 file_path=track.filename))
+                track.track_name(
+                    file_path=track.filename,
+                    track_metadata=xmcd.get(track.track_number(),
+                                            track.get_metadata()),
+                    format=options.format))
                                  for track in audiofiles]:
             (path,filename) = os.path.split(track.filename)
             if (filename != new_name):

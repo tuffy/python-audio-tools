@@ -180,6 +180,9 @@ if (__name__ == '__main__'):
         to_rip.sort(lambda x,y: cmp(x.track_number,y.track_number))
 
     for cd_track in to_rip:
+        basename = "track%2d%2.2d" % (options.album_number,
+                                      options.track_number)
+
         try:
             if (xmcd is not None):  #we have metadata
                 try:
@@ -193,11 +196,9 @@ if (__name__ == '__main__'):
 
                 filename = os.path.join(
                     base_directory,
-                    AudioType.track_name(cd_track.track_number,
+                    AudioType.track_name(file_path=basename,
                                          track_metadata=metadata,
-                                         album_number=options.album_number,
-                                         format=options.format,
-                                         file_path=None))
+                                         format=options.format))
 
                 audiotools.make_dirs(filename)
 
@@ -211,11 +212,9 @@ if (__name__ == '__main__'):
             else:               #no metadata
                 filename = os.path.join(
                     base_directory,
-                    AudioType.track_name(cd_track.track_number,
+                    AudioType.track_name(file_path=basename,
                                          track_metadata=None,
-                                         album_number=options.album_number,
-                                         format=options.format,
-                                         file_path=None))
+                                         format=options.format))
 
                 audiotools.make_dirs(filename)
 

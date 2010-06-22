@@ -2007,64 +2007,80 @@ class AudioFile:
             except IndexError:
                 return 0
 
-    #given a track number integer,
+
+    #given a plain file_path string
     #MetaData-compatible object (or None)
-    #and, optionally, a format string
+    #and plain UTF-8-encoded format string
     #returns a filename string with its fields filled-in
+    #encoded as FS_ENCODING
     #raises an UnsupportedTracknameField if the format string
     #contains invalid template fields
     @classmethod
-    def track_name(cls, track_number, track_metadata,
-                   album_number = 0,
-                   format = FILENAME_FORMAT,
-                   file_path = None):
+    def track_name(cls, file_path, track_metadata=None,
+                   format=FILENAME_FORMAT):
         try:
+            #prefer a track number from MetaData, if available
             if ((track_metadata is not None) and
-                (cls not in (WaveAudio,AuAudio))):
-                format_dict = {"track_number":track_number,
-                               "album_number":track_metadata.album_number,
-                               "track_total":track_metadata.track_total,
-                               "album_total":track_metadata.album_total,
-                               "suffix":cls.SUFFIX}
+                (track_metadata.track_number > 0)):
+                track_number = track_metadata.track_number
+            else:
+                try:
+                    track_number = int(re.findall(
+                            r'\d{2,4}',
+                            os.path.basename(file_path))[0]) % 100
+                except IndexError:
+                    track_number = 0
 
-                if (album_number == 0):
-                    format_dict["album_track_number"] = "%2.2d" % (track_number)
-                else:
-                    album_digits = len(str(track_metadata.album_total))
+            #prefer an album_number from MetaData, if available
+            if ((track_metadata is not None) and
+                (track_metadata.album_number > 0)):
+                album_number = track_metadata.album_number
+            else:
+                try:
+                    album_number = int(re.findall(
+                            r'\d{2,4}',
+                            os.path.basename(file_path))[0]) / 100
+                except IndexError:
+                    album_number = 0
 
-                    format_dict["album_track_number"] = (
-                        "%%%(album_digits)d.%(album_digits)dd%%2.2d" %
-                        {"album_digits":album_digits} %
-                        (album_number,track_number))
+            if (track_metadata is not None):
+                track_total = track_metadata.track_total
+                album_total = track_metadata.album_total
+            else:
+                track_total = 0
+                album_total = 0
 
+            format_dict = {u"track_number":track_number,
+                           u"album_number":album_number,
+                           u"track_total":track_total,
+                           u"album_total":album_total,
+                           u"suffix":cls.SUFFIX.decode('ascii')}
+
+            if (album_number == 0):
+                format_dict[u"album_track_number"] = u"%2.2d" % (track_number)
+            else:
+                album_digits = len(str(album_total))
+
+                format_dict[u"album_track_number"] = (
+                    u"%%%(album_digits)d.%(album_digits)dd%%2.2d" %
+                    {"album_digits":album_digits} %
+                    (album_number,track_number))
+
+            if (track_metadata is not None):
                 for field in track_metadata.__FIELDS__:
                     if ((field != "suffix") and
                         (field not in MetaData.__INTEGER_FIELDS__)):
-                        format_dict[field] = getattr(
+                        format_dict[field.decode('ascii')] = getattr(
                             track_metadata,
-                            field).replace('/','-').replace(chr(0),' ')
+                            field).replace(u'/',u'-').replace(unichr(0),u' ')
 
-                if (file_path is not None):
-                    format_dict["basename"] = os.path.splitext(
-                        os.path.basename(file_path))[0]
-                else:
-                    format_dict["basename"] = "track%2.2d" % (track_number)
 
-                return (format % format_dict).encode(FS_ENCODING,'replace')
-            else:
-                #FIXME - this special case is nonintuitive
-                #We don't want to generate a bunch of files named:
-                #"01 - .wav", "02 - .wav", etc.
-                #but this isn't the answer.
-                if (album_number == 0):
-                    return "track%(track_number)2.2d.%(suffix)s" % \
-                        {"track_number":track_number,
-                         "suffix":cls.SUFFIX}
-                else:
-                    return "track%(album_number)d%(track_number)2.2d.%(suffix)s" % \
-                        {"track_number":track_number,
-                         "album_number":album_number,
-                         "suffix":cls.SUFFIX}
+            format_dict[u"basename"] = os.path.splitext(
+                os.path.basename(file_path))[0].decode(FS_ENCODING,
+                                                       'replace')
+
+            return (format.decode('utf-8','replace') % format_dict).encode(
+                FS_ENCODING,'replace')
         except KeyError,error:
             raise UnsupportedTracknameField(unicode(error.args[0]))
 

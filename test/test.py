@@ -35,8 +35,10 @@ gettext.install("audiotools",unicode=True)
 
 (METADATA,PCM,FRAMELIST,EXECUTABLE,CUESHEET,IMAGE,NETWORK,
  FLAC,SHORTEN,ALAC,CUSTOM) = range(11)
-CASES = set([METADATA,PCM,FRAMELIST,EXECUTABLE,CUESHEET,IMAGE,NETWORK,
-             FLAC,SHORTEN,ALAC])
+# CASES = set([METADATA,PCM,FRAMELIST,EXECUTABLE,CUESHEET,IMAGE,NETWORK,
+#              FLAC,SHORTEN,ALAC])
+
+CASES = set([CUSTOM])
 
 def nothing(self):
     pass
@@ -2768,6 +2770,135 @@ uhhDdCiCwqg2Gw3lphgaGhoamR+mptKYNT/F3JFOFCQvKfgAwA==""".decode('base64').decode(
             pcm.close()
         finally:
             temp_file.close()
+
+    @TEST_CUSTOM
+    def test_track_name_unicode(self):
+        format_template = u"Fo\u00f3 %%(%(field)s)s"
+        #first, test the many unicode string fields
+        for field in audiotools.MetaData.__FIELDS__:
+            if (field not in audiotools.MetaData.__INTEGER_FIELDS__):
+                metadata = audiotools.MetaData()
+                value = u"\u00dcnicode value \u2ec1"
+                setattr(metadata,field,value)
+                format_string = format_template % {u"field":
+                                                       field.decode('ascii')}
+                track_name = self.audio_class.track_name(
+                    file_path="track",
+                    track_metadata=metadata,
+                    format=format_string.encode('utf-8'))
+                self.assert_(len(track_name) > 0)
+                self.assertEqual(
+                    track_name,
+                    (format_template % {u"field":u"foo"} % {u"foo":value}).encode(audiotools.FS_ENCODING))
+
+        #then, check integer fields
+        format_template = u"Fo\u00f3 %(album_number)d %(track_number)2.2d %(album_track_number)s"
+
+        #first, check integers pulled from track metadata
+        for (track_number,album_number,album_track_number) in [(0,0,u"00"),
+                                                               (1,0,u"01"),
+                                                               (25,0,u"25"),
+                                                               (0,1,u"100"),
+                                                               (1,1,u"101"),
+                                                               (25,1,u"125"),
+                                                               (0,36,u"3600"),
+                                                               (1,36,u"3601"),
+                                                               (25,36,u"3625")]:
+            for basepath in ["track",
+                             "/foo/bar/track",
+                             (u"/f\u00f3o/bar/tr\u00e1ck").encode(audiotools.FS_ENCODING)]:
+                metadata = audiotools.MetaData(track_number=track_number,
+                                               album_number=album_number)
+                self.assertEqual(self.audio_class.track_name(
+                        file_path=basepath,
+                        track_metadata=metadata,
+                        format=format_template.encode('utf-8')),
+                                 (format_template % {u"album_number":album_number,
+                                                     u"track_number":track_number,
+                                                     u"album_track_number":album_track_number}).encode('utf-8'))
+
+        #then, check integers pulled from the track filename
+        for metadata in [None,audiotools.MetaData()]:
+            for basepath in ["track",
+                             "/foo/bar/track",
+                             (u"/f\u00f3o/bar/tr\u00e1ck").encode(audiotools.FS_ENCODING)]:
+                self.assertEqual(self.audio_class.track_name(
+                        file_path=basepath + "01",
+                        track_metadata=metadata,
+                        format=format_template.encode('utf-8')),
+                                 (format_template % {u"album_number":0,
+                                                     u"track_number":1,
+                                                     u"album_track_number":u"01"}).encode('utf-8'))
+
+                self.assertEqual(self.audio_class.track_name(
+                        file_path=basepath + "track23",
+                        track_metadata=metadata,
+                        format=format_template.encode('utf-8')),
+                                 (format_template % {u"album_number":0,
+                                                     u"track_number":23,
+                                                     u"album_track_number":u"23"}).encode('utf-8'))
+
+                self.assertEqual(self.audio_class.track_name(
+                        file_path=basepath + "track123",
+                        track_metadata=metadata,
+                        format=format_template.encode('utf-8')),
+                                 (format_template % {u"album_number":1,
+                                                     u"track_number":23,
+                                                     u"album_track_number":u"123"}).encode('utf-8'))
+
+                self.assertEqual(self.audio_class.track_name(
+                        file_path=basepath + "4567",
+                        track_metadata=metadata,
+                        format=format_template.encode('utf-8')),
+                                 (format_template % {u"album_number":45,
+                                                     u"track_number":67,
+                                                     u"album_track_number":u"4567"}).encode('utf-8'))
+
+        #then, ensure metadata takes precedence over filename for integers
+        for (track_number,album_number,
+             album_track_number,incorrect) in [(1,0,u"01","10"),
+                                               (25,0,u"25","52"),
+                                               (1,1,u"101","210"),
+                                               (25,1,u"125","214"),
+                                               (1,36,u"3601","4710"),
+                                               (25,36,u"3625","4714")]:
+            for basepath in ["track",
+                             "/foo/bar/track",
+                             (u"/f\u00f3o/bar/tr\u00e1ck").encode(audiotools.FS_ENCODING)]:
+                metadata = audiotools.MetaData(track_number=track_number,
+                                               album_number=album_number)
+                self.assertEqual(self.audio_class.track_name(
+                        file_path=basepath + incorrect,
+                        track_metadata=metadata,
+                        format=format_template.encode('utf-8')),
+                                 (format_template % {u"album_number":album_number,
+                                                     u"track_number":track_number,
+                                                     u"album_track_number":album_track_number}).encode('utf-8'))
+
+        #also, check track_total/album_total from metadata
+        format_template = u"Fo\u00f3 %(track_total)d %(album_total)d"
+        for track_total in [0,1,25,99]:
+            for album_total in [0,1,25,99]:
+                metadata = audiotools.MetaData(track_total=track_total,
+                                               album_total=album_total)
+                self.assertEqual(self.audio_class.track_name(
+                        file_path=basepath + incorrect,
+                        track_metadata=metadata,
+                        format=format_template.encode('utf-8')),
+                                 (format_template % {u"track_total":track_total,
+                                                     u"album_total":album_total}).encode('utf-8'))
+
+        #finally, ensure %(basename)s is set properly
+        format_template = u"Fo\u00f3 %(basename)s"
+        for (path,base) in [("track","track"),
+                            ("/foo/bar/track","track"),
+                            ((u"/f\u00f3o/bar/tr\u00e1ck").encode(audiotools.FS_ENCODING),u"tr\u00e1ck")]:
+            for metadata in [None,audiotools.MetaData()]:
+                self.assertEqual(self.audio_class.track_name(
+                        file_path=path,
+                        track_metadata=metadata,
+                        format=format_template.encode('utf-8')),
+                                 (format_template % {u"basename":base}).encode('utf-8'))
 
 class TestForeignWaveChunks:
     @TEST_METADATA
@@ -11218,6 +11349,7 @@ class TestIOError(unittest.TestCase):
                               messenger=TestMessenger(
                 self,
                 [(WARNING,_(u"Unable to open \"%s\"") % ("/dev/null/bar"))]))
+
 
 ############
 #END TESTS
