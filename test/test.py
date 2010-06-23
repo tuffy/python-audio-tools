@@ -2878,7 +2878,7 @@ uhhDdCiCwqg2Gw3lphgaGhoamR+mptKYNT/F3JFOFCQvKfgAwA==""".decode('base64').decode(
                                  (format_template % {u"track_total":track_total,
                                                      u"album_total":album_total}).encode('utf-8'))
 
-        #finally, ensure %(basename)s is set properly
+        #ensure %(basename)s is set properly
         format_template = u"Fo\u00f3 %(basename)s"
         for (path,base) in [("track","track"),
                             ("/foo/bar/track","track"),
@@ -2889,6 +2889,18 @@ uhhDdCiCwqg2Gw3lphgaGhoamR+mptKYNT/F3JFOFCQvKfgAwA==""".decode('base64').decode(
                         track_metadata=metadata,
                         format=format_template.encode('utf-8')),
                                  (format_template % {u"basename":base}).encode('utf-8'))
+
+        #finally, ensure %(suffix)s is set properly
+        format_template = u"Fo\u00f3 %(suffix)s"
+        for path in ["track",
+                     "/foo/bar/track",
+                     (u"/f\u00f3o/bar/tr\u00e1ck").encode(audiotools.FS_ENCODING)]:
+            for metadata in [None,audiotools.MetaData()]:
+                self.assertEqual(self.audio_class.track_name(
+                        file_path=path,
+                        track_metadata=metadata,
+                        format=format_template.encode('utf-8')),
+                                 (format_template % {u"suffix":self.audio_class.SUFFIX.decode('ascii')}).encode('utf-8'))
 
 class TestForeignWaveChunks:
     @TEST_METADATA

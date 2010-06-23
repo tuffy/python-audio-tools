@@ -976,6 +976,20 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** DONE Add unit test support for new attribute
 ** DONE Add documentation for new field to programming reference
 ** DONE Add documentation for format strings to programming reference
+* DONE Update AudioFile.track_name classmethod
+  the previous behavior was a kludge cobbled together over time
+  Its new call method is:  track_name(file_path, metadata, format)
+  so that track_number and album_number can be pulled from file_path
+  directly instead of passed in from outside.
+** DONE Update tools to support new calling method
+   - [X] track2track
+   - [X] cd2track
+   - [X] trackrename
+   - [X] tracksplit
+** DONE Update programming documentation
+** DONE Add unit tests
+** DONE Update old unit tests with new behavior
+** DONE unit test suffix field
 * TODO More graceful handling of broken files
   A lot of the track handlers assume that once the start of the file is good,
   the rest of it is following the spec.  This is not always the case.
@@ -1344,17 +1358,3 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 * TODO build track2cover/xmcd2cover utilities
   it would be helpful to have tools that could query
   online cover databases and retrieve images for tagging purposes
-* TODO Update AudioFile.track_name classmethod
-  the previous behavior was a kludge cobbled together over time
-  Its new call method is:  track_name(file_path, metadata, format)
-  so that track_number and album_number can be pulled from file_path
-  directly instead of passed in from outside.
-** DONE Update tools to support new calling method
-   - [X] track2track
-   - [X] cd2track
-   - [X] trackrename
-   - [X] tracksplit
-** DONE Update programming documentation
-** DONE Add unit tests
-** TODO Update old unit tests with new behavior
-** TODO unit test suffix field

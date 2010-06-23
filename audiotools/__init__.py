@@ -2016,9 +2016,12 @@ class AudioFile:
     #raises an UnsupportedTracknameField if the format string
     #contains invalid template fields
     @classmethod
-    def track_name(cls, file_path, track_metadata=None, format=None):
+    def track_name(cls, file_path, track_metadata=None, format=None,
+                   suffix=None):
         if (format is None):
             format = FILENAME_FORMAT
+        if (suffix is None):
+            suffix = cls.SUFFIX
         try:
             #prefer a track number from MetaData, if available
             if ((track_metadata is not None) and
@@ -2055,7 +2058,7 @@ class AudioFile:
                            u"album_number":album_number,
                            u"track_total":track_total,
                            u"album_total":album_total,
-                           u"suffix":cls.SUFFIX.decode('ascii')}
+                           u"suffix":suffix.decode('ascii')}
 
             if (album_number == 0):
                 format_dict[u"album_track_number"] = u"%2.2d" % (track_number)
