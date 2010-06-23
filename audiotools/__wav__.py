@@ -490,6 +490,12 @@ class WaveAudio(AudioFile):
 
         devnull.close()
 
+    @classmethod
+    def track_name(cls, file_path, track_metadata=None, format=None):
+        if (format is None):
+            format = "track%(track_number)2.2d.wav"
+        return AudioFile.track_name(file_path, track_metadata, format)
+
     def __read_chunks__(self):
         wave_file = file(self.filename,"rb")
 

@@ -103,7 +103,7 @@ if (__name__ == '__main__'):
     conversion.add_option('--format',
                           action='store',
                           type='string',
-                          default=audiotools.FILENAME_FORMAT,
+                          default=None,
                           dest='format',
                           help=_(u'the format string for new filenames'))
 

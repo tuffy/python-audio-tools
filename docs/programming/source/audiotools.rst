@@ -317,12 +317,13 @@ AudioFile Objects
    from the track's filename.
    If that method is also unsuccessful, it returns 0.
 
-.. classmethod:: AudioFile.track_name(track_number, track_metadata[, album_number = 0[, format = FORMAT_STRING [, file_path]]])
+.. classmethod:: AudioFile.track_name(file_path[, track_metadata[, format]])
 
-   Given a track number integer, :class:`MetaData`-compatible object
-   (or ``None``) and optional album number integer, optional
-   Python-formatted format string and optional path to the original file,
+   Given a file path string and optional :class:`MetaData`-compatible object
+   and Python format string,
    returns a filename string with the format string fields filled-in.
+   If not provided by metadata, ``track_number`` and ``album_number``
+   will be determined from ``file_path``, if possible.
    Raises :exc:`UnsupportedTracknameField` if the format string contains
    unsupported fields.
 

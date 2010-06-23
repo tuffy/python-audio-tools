@@ -1354,6 +1354,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    - [X] cd2track
    - [X] trackrename
    - [X] tracksplit
-** TODO Update programming documentation
+** DONE Update programming documentation
 ** DONE Add unit tests
 ** TODO Update old unit tests with new behavior
+** TODO unit test suffix field

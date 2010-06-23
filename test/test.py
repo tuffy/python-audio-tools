@@ -35,10 +35,8 @@ gettext.install("audiotools",unicode=True)
 
 (METADATA,PCM,FRAMELIST,EXECUTABLE,CUESHEET,IMAGE,NETWORK,
  FLAC,SHORTEN,ALAC,CUSTOM) = range(11)
-# CASES = set([METADATA,PCM,FRAMELIST,EXECUTABLE,CUESHEET,IMAGE,NETWORK,
-#              FLAC,SHORTEN,ALAC])
-
-CASES = set([CUSTOM])
+CASES = set([METADATA,PCM,FRAMELIST,EXECUTABLE,CUESHEET,IMAGE,NETWORK,
+             FLAC,SHORTEN,ALAC])
 
 def nothing(self):
     pass
@@ -2474,10 +2472,9 @@ uhhDdCiCwqg2Gw3lphgaGhoamR+mptKYNT/F3JFOFCQvKfgAwA==""".decode('base64').decode(
 
                 new_path = os.path.join(basedir,
                                         self.audio_class.track_name(
-                        metadata.track_number,
-                        metadata,
-                        metadata.album_number,
-                        template))
+                        file_path=track.filename,
+                        track_metadata=metadata,
+                        format=template))
 
                 self.assertEqual(subprocess.call(["trackrename",
                                                   "-V","quiet",
@@ -2489,9 +2486,7 @@ uhhDdCiCwqg2Gw3lphgaGhoamR+mptKYNT/F3JFOFCQvKfgAwA==""".decode('base64').decode(
 
             self.assertEqual("foo",
                              self.audio_class.track_name(
-                    track_number=1,
                     track_metadata=metadata,
-                    album_number=0,
                     format="%(basename)s",
                     file_path=os.path.join(
                         "dev",
@@ -2500,17 +2495,13 @@ uhhDdCiCwqg2Gw3lphgaGhoamR+mptKYNT/F3JFOFCQvKfgAwA==""".decode('base64').decode(
 
             self.assertEqual("foo",
                              self.audio_class.track_name(
-                    track_number=1,
                     track_metadata=metadata,
-                    album_number=0,
                     format="%(basename)s",
                     file_path="foo.%s" % (self.audio_class.SUFFIX)))
 
             self.assertEqual("foo",
                              self.audio_class.track_name(
-                    track_number=1,
                     track_metadata=metadata,
-                    album_number=0,
                     format="%(basename)s",
                     file_path="foo"))
 
@@ -2547,10 +2538,9 @@ uhhDdCiCwqg2Gw3lphgaGhoamR+mptKYNT/F3JFOFCQvKfgAwA==""".decode('base64').decode(
 
                 new_path = os.path.join(basedir,
                                         self.audio_class.track_name(
-                        metadata.track_number,
-                        metadata,
-                        metadata.album_number,
-                        template))
+                        track_metadata=metadata,
+                        format=template,
+                        file_path=track.filename))
 
                 self.assertEqual(subprocess.call(["trackrename",
                                                   "-V","quiet",
@@ -2771,7 +2761,7 @@ uhhDdCiCwqg2Gw3lphgaGhoamR+mptKYNT/F3JFOFCQvKfgAwA==""".decode('base64').decode(
         finally:
             temp_file.close()
 
-    @TEST_CUSTOM
+    @TEST_METADATA
     def test_track_name_unicode(self):
         format_template = u"Fo\u00f3 %%(%(field)s)s"
         #first, test the many unicode string fields
@@ -6767,8 +6757,8 @@ class TestProgramOutput(TestTextOutput):
         self.flac1 = audiotools.FlacAudio.from_pcm(
             os.path.join(
                 self.dir1,
-                audiotools.FlacAudio.track_name(1,
-                                                metadata1,
+                audiotools.FlacAudio.track_name(file_path="track01",
+                                                track_metadata=metadata1,
                                                 format=self.format_string)),
             BLANK_PCM_Reader(4),
             compression="1")
@@ -6777,8 +6767,8 @@ class TestProgramOutput(TestTextOutput):
         self.flac2 = audiotools.FlacAudio.from_pcm(
             os.path.join(
                 self.dir1,
-                audiotools.FlacAudio.track_name(2,
-                                                metadata2,
+                audiotools.FlacAudio.track_name(file_path="track02",
+                                                track_metadata=metadata2,
                                                 format=self.format_string)),
             BLANK_PCM_Reader(5),
             compression="1")
@@ -6787,8 +6777,8 @@ class TestProgramOutput(TestTextOutput):
         self.flac3 = audiotools.FlacAudio.from_pcm(
             os.path.join(
                 self.dir1,
-                audiotools.FlacAudio.track_name(3,
-                                                metadata3,
+                audiotools.FlacAudio.track_name(file_path="track03",
+                                                track_metadata=metadata3,
                                                 format=self.format_string)),
             BLANK_PCM_Reader(6),
             compression="1")
@@ -7219,11 +7209,12 @@ class TestProgramOutput(TestTextOutput):
         flac4 = audiotools.FlacAudio.from_pcm(
             os.path.join(
                 self.dir2,
-                audiotools.FlacAudio.track_name(1,
-                                                audiotools.MetaData(
+                audiotools.FlacAudio.track_name(
+                    file_path="track01",
+                    track_metadata=audiotools.MetaData(
                         track_name=u"ASCII-only name",
                         track_number=1),
-                                                format=self.format_string)),
+                    format=self.format_string)),
             RANDOM_PCM_Reader(4),
             compression="1")
 
@@ -7523,8 +7514,8 @@ class TestTracklengthOutput(TestTextOutput):
         self.flac1 = audiotools.FlacAudio.from_pcm(
             os.path.join(
                 self.dir1,
-                audiotools.FlacAudio.track_name(1,
-                                                metadata1,
+                audiotools.FlacAudio.track_name(file_path="track01",
+                                                track_metadata=metadata1,
                                                 format=self.format_string)),
             BLANK_PCM_Reader(5),
             compression="1")
@@ -7533,8 +7524,8 @@ class TestTracklengthOutput(TestTextOutput):
         self.flac2 = audiotools.FlacAudio.from_pcm(
             os.path.join(
                 self.dir1,
-                audiotools.FlacAudio.track_name(2,
-                                                metadata2,
+                audiotools.FlacAudio.track_name(file_path="track02",
+                                                track_metadata=metadata2,
                                                 format=self.format_string)),
             BLANK_PCM_Reader(122,sample_rate=48000,bits_per_sample=24),
             compression="1")
@@ -7543,8 +7534,8 @@ class TestTracklengthOutput(TestTextOutput):
         self.flac3 = audiotools.FlacAudio.from_pcm(
             os.path.join(
                 self.dir1,
-                audiotools.FlacAudio.track_name(3,
-                                                metadata3,
+                audiotools.FlacAudio.track_name(file_path="track03",
+                                                track_metadata=metadata3,
                                                 format=self.format_string)),
             BLANK_PCM_Reader(3661,channels=1,sample_rate=22050),
             compression="1")
@@ -7742,9 +7733,10 @@ class TestTracksplitOutput(TestTextOutput):
                                     {"source":self.filename(self.flac.filename),
                                      "destination":self.filename(
                         os.path.join(self.dir2,
-                                     audiotools.WaveAudio.track_name(i + 1,
-                                                                     None,
-                                                                     format=self.format_string)))})
+                                     audiotools.WaveAudio.track_name(
+                                file_path="track%2.2d" % (i + 1),
+                                track_metadata=None,
+                                format=self.format_string)))})
 
         #FIXME? - check for broken cue sheet output?
 
@@ -7767,7 +7759,9 @@ class TestTracksplitOutput(TestTextOutput):
                                     {"source":self.filename(self.flac.filename),
                                      "destination":self.filename(os.path.join(
                             self.dir2,audiotools.MP3Audio.track_name(
-                                i+1,xmcd_metadata[i+1],format=format_string)))})
+                                file_path="track%d" % (i+1),
+                                track_metadata=xmcd_metadata[i+1],
+                                format=format_string)))})
 
         metadata = self.flac.get_metadata()
         metadata.album_number = 1
@@ -7785,9 +7779,8 @@ class TestTracksplitOutput(TestTextOutput):
                                     {"source":self.filename(self.flac.filename),
                                      "destination":self.filename(os.path.join(
                             self.dir2,audiotools.FlacAudio.track_name(
-                                i+1,
-                                xmcd_metadata[i+1],
-                                album_number=1,
+                                file_path="track1%2.2d" % (i+1),
+                                track_metadata=xmcd_metadata[i+1],
                                 format=format_string)))})
         self.__check_info__(_(u"Adding ReplayGain metadata.  This may take some time."))
 

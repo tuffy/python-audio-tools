@@ -143,7 +143,7 @@ if (__name__ == '__main__'):
     conversion.add_option('--format',
                       action='store',
                       type='string',
-                      default=audiotools.FILENAME_FORMAT,
+                      default=None,
                       dest='format',
                       help=_(u'the format string for new filenames'))
 
@@ -213,7 +213,7 @@ if (__name__ == '__main__'):
             msg.info(_(u"Please specify either -o or -d but not both"))
             sys.exit(1)
 
-        if (options.format != audiotools.FILENAME_FORMAT):
+        if (options.format is not None):
             msg.warning(_(u"--format has no effect when used with -o"))
 
     #get the AudioFile class we are converted to
@@ -350,7 +350,7 @@ if (__name__ == '__main__'):
                     filename = os.path.join(
                                 base_directory,
                                 AudioType.track_name(
-                            file_path=audiofile.filename
+                            file_path=audiofile.filename,
                             track_metadata=metadata,
                             format=options.format))
 
