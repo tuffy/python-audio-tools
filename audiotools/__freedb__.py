@@ -18,19 +18,23 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import VERSION,Con,cStringIO,sys,re,MetaData,AlbumMetaData,__most_numerous__,DummyAudioFile,MetaDataFileException
+from audiotools import (VERSION, Con, cStringIO, sys, re, MetaData,
+                        AlbumMetaData, __most_numerous__,
+                        DummyAudioFile, MetaDataFileException)
 
 import gettext
 
-gettext.install("audiotools",unicode=True)
+gettext.install("audiotools", unicode=True)
 
 #######################
 #XMCD
 #######################
 
+
 class XMCDException(MetaDataFileException):
     def __unicode__(self):
         return _(u"Invalid XMCD file")
+
 
 class XMCD:
     LINE_LIMIT = 78
@@ -39,7 +43,7 @@ class XMCD:
     #such as "TTITLE0":u"Track Name"
     #offsets is a list of track offset integers (in CD frames)
     #length is a total album length integer (in seconds)
-    def __init__(self,values,offsets,length):
+    def __init__(self, values, offsets, length):
         self.__values__ = values
         self.offsets = offsets
         self.length = length
@@ -49,13 +53,13 @@ class XMCD:
                                    repr(self.offsets),
                                    repr(self.length))
 
-    def __getitem__(self,key):
+    def __getitem__(self, key):
         return self.__values__[key]
 
-    def get(self,key,default):
-        return self.__values__.get(key,default)
+    def get(self, key, default):
+        return self.__values__.get(key, default)
 
-    def __setitem__(self,key,value):
+    def __setitem__(self, key, value):
         self.__values__[key] = value
 
     def __len__(self):
@@ -71,10 +75,10 @@ class XMCD:
         return self.__values__.items()
 
     @classmethod
-    def key_digits(cls,key):
+    def key_digits(cls, key):
         import re
 
-        d = re.search(r'\d+',key)
+        d = re.search(r'\d+', key)
         if (d is not None):
             return int(d.group(0))
         else:
@@ -83,10 +87,10 @@ class XMCD:
     def build(self):
         import string
 
-        key_order = ['DISCID','DTITLE','DYEAR','TTITLE','EXTDD','EXTT',
+        key_order = ['DISCID', 'DTITLE', 'DYEAR', 'TTITLE', 'EXTDD', 'EXTT',
                      'PLAYORDER']
 
-        def by_pair(p1,p2):
+        def by_pair(p1, p2):
             if (p1[0].rstrip(string.digits) in key_order):
                 p1 = (key_order.index(p1[0].rstrip(string.digits)),
                       self.key_digits(p1[0]),
@@ -105,46 +109,50 @@ class XMCD:
                       self.key_digits(p2[0]),
                       p2[0])
 
-            return cmp(p1,p2)
+            return cmp(p1, p2)
 
         def encode(u):
             return u.encode('utf-8')
 
-
         def split_fields(pairs):
             #returns index i which is less than l bytes from unicode string u
-            def max_chars(u,l):
+            def max_chars(u, l):
                 for i in xrange(len(u.encode('utf-8')) + 1):
                     if (len(u[0:i].encode('utf-8')) > l):
                         return i - 1
                 else:
                     return i
 
-            for (key,value) in pairs:
+            for (key, value) in pairs:
                 #line = u"%s=%s" % (key.decode('ascii'),value)
                 keylen = len(key) + len("=")
-                while ((keylen + len(value.encode('utf-8'))) > XMCD.LINE_LIMIT):
+                while ((keylen + len(value.encode('utf-8'))) >
+                       XMCD.LINE_LIMIT):
                     #latin-1 lines might be shorter, but shouldn't be longer
                     #UTF-8 assumes the worst case
-                    cut = max_chars(value,XMCD.LINE_LIMIT - len(key) - len('='))
+                    cut = max_chars(value, XMCD.LINE_LIMIT - len(key) -
+                                    len('='))
                     partial = value[0:cut]
                     value = value[cut:]
-                    yield u"%s=%s" % (key.decode('ascii'),partial)
+                    yield u"%s=%s" % (key.decode('ascii'), partial)
 
-                yield u"%s=%s" % (key.decode('ascii'),value)
+                yield u"%s=%s" % (key.decode('ascii'), value)
 
-        return encode(u"# xmcd\n#\n# Track frame offsets:\n%(offsets)s\n#\n# Disc length: %(length)s seconds\n#\n%(fields)s\n" % \
-            {"offsets":u"\n".join(["#\t%s" % (offset)
+        return encode((u"# xmcd\n#\n# Track frame offsets:\n" +
+                       u"%(offsets)s\n#\n# Disc length: %(length)s " +
+                       u"seconds\n#\n%(fields)s\n") % \
+            {"offsets": u"\n".join(["#\t%s" % (offset)
                                    for offset in self.offsets]),
-             "length":self.length,
-             "fields":"\n".join(split_fields(sorted(self.items(),by_pair)))})
+             "length": self.length,
+             "fields": "\n".join(split_fields(sorted(self.items(), by_pair)))})
 
     @classmethod
     def read(cls, filename):
-        import StringIO,re
+        import StringIO
+        import re
 
         try:
-            f = open(filename,'r')
+            f = open(filename, 'r')
         except IOError:
             raise XMCDException(filename)
 
@@ -165,23 +173,24 @@ class XMCD:
     #takes a unicode string of XMCD data
     #returns an XMCD object
     @classmethod
-    def read_data(cls,data):
+    def read_data(cls, data):
         if (not data.startswith(u"# xmcd")):
             raise XMCDException("")
 
-        disc_length = re.search(r'# Disc length: (\d+)',data)
+        disc_length = re.search(r'# Disc length: (\d+)', data)
         if (disc_length is not None):
             disc_length = int(disc_length.group(1))
 
         track_lengths = re.compile(r'# Track frame offsets:\s+[#\s\d]+',
                                    re.DOTALL).search(data)
         if (track_lengths is not None):
-            track_lengths = map(int,re.findall(r'\d+',track_lengths.group(0)))
+            track_lengths = map(int,
+                                re.findall(r'\d+', track_lengths.group(0)))
 
         fields = {}
 
-        for line in re.findall(r'.+=.*[\r\n]',data):
-            (field,value) = line.split(u'=',1)
+        for line in re.findall(r'.+=.*[\r\n]', data):
+            (field, value) = line.split(u'=', 1)
             field = field.encode('ascii')
             value = value.rstrip('\r\n')
             if (field in fields.keys()):
@@ -189,13 +198,13 @@ class XMCD:
             else:
                 fields[field] = value
 
-        return XMCD(values=fields,offsets=track_lengths,length=disc_length)
+        return XMCD(values=fields, offsets=track_lengths, length=disc_length)
 
     #audiofiles should be a list of AudioFile-compatible objects
     #from the same album, possibly with valid MetaData
     @classmethod
     def from_files(cls, audiofiles):
-        def track_string(track,album_artist,metadata):
+        def track_string(track, album_artist, metadata):
             if (track.track_number() in metadata.keys()):
                 metadata = metadata[track.track_number()]
                 if (metadata.artist_name == album_artist):
@@ -207,12 +216,12 @@ class XMCD:
                 return u""
 
         audiofiles = [f for f in audiofiles if f.track_number() != 0]
-        audiofiles.sort(lambda t1,t2: cmp(t1.track_number(),
-                                          t2.track_number()))
+        audiofiles.sort(lambda t1, t2: cmp(t1.track_number(),
+                                           t2.track_number()))
 
         discid = DiscID([track.cd_frames() for track in audiofiles])
 
-        metadata = dict([(t.track_number(),t.get_metadata())
+        metadata = dict([(t.track_number(), t.get_metadata())
                           for t in audiofiles
                          if (t.get_metadata() is not None)])
 
@@ -226,17 +235,17 @@ class XMCD:
         else:
             album_artist = __most_numerous__(artist_names)
 
-        return XMCD(dict([("DISCID",str(discid).decode('ascii')),
-                          ("DTITLE",u"%s / %s" % \
+        return XMCD(dict([("DISCID", str(discid).decode('ascii')),
+                          ("DTITLE", u"%s / %s" % \
                                (album_artist,
                                 __most_numerous__([m.album_name for m in
                                                    metadata.values()]))),
-                          ("DYEAR",__most_numerous__([m.year for m in
+                          ("DYEAR", __most_numerous__([m.year for m in
                                                       metadata.values()])),
-                          ("EXTDD",u""),
-                          ("PLAYORDER",u"")] + \
+                          ("EXTDD", u""),
+                          ("PLAYORDER", u"")] + \
                          [("TTITLE%d" % (track.track_number() - 1),
-                           track_string(track,album_artist,metadata))
+                           track_string(track, album_artist, metadata))
                           for track in audiofiles] + \
                          [("EXTT%d" % (track.track_number() - 1),
                            u"")
@@ -250,19 +259,19 @@ class XMCD:
             metadata = MetaData()
 
         return cls.from_files([DummyAudioFile(
-                    length = (pcm_frames * 75) / sample_rate,
-                    metadata = metadata,
-                    track_number = i + 1) for (i,pcm_frames) in enumerate(
+                    length=(pcm_frames * 75) / sample_rate,
+                    metadata=metadata,
+                    track_number=i + 1) for (i, pcm_frames) in enumerate(
                     cuesheet.pcm_lengths(total_frames))])
 
     def metadata(self):
-        dtitle = self.get('DTITLE',u'')
+        dtitle = self.get('DTITLE', u'')
         if (u' / ' in dtitle):
-            (album_artist,album_name) = dtitle.split(u' / ',1)
+            (album_artist, album_name) = dtitle.split(u' / ', 1)
         else:
-            (album_artist,album_name) = (dtitle,dtitle)
+            (album_artist, album_name) = (dtitle, dtitle)
 
-        dyear = self.get('DYEAR',u'')
+        dyear = self.get('DYEAR', u'')
 
         tracks = []
 
@@ -275,7 +284,7 @@ class XMCD:
                 ttitle = self[key]
 
                 if (u' / ' in ttitle):
-                    (track_artist,track_name) = ttitle.split(u' / ',1)
+                    (track_artist, track_name) = ttitle.split(u' / ', 1)
                 else:
                     track_name = ttitle
                     track_artist = album_artist
@@ -289,7 +298,7 @@ class XMCD:
         track_total = max([t.track_number for t in tracks])
         for t in tracks:
             t.track_total = track_total
-        tracks.sort(lambda t1,t2: cmp(t1.track_number,t2.track_number))
+        tracks.sort(lambda t1, t2: cmp(t1.track_number, t2.track_number))
         return AlbumMetaData(tracks)
 
 
@@ -368,10 +377,13 @@ class DiscID:
 
     def toxmcd(self, output):
         output.write(XMCD.from_files(
-            [DummyAudioFile(length,None,i + 1)
-             for (i,length) in enumerate(self.tracks)]).build())
+            [DummyAudioFile(length, None, i + 1)
+             for (i, length) in enumerate(self.tracks)]).build())
 
-class FreeDBException(Exception): pass
+
+class FreeDBException(Exception):
+    pass
+
 
 class FreeDB:
     LINE = re.compile(r'\d\d\d\s.+')
@@ -391,12 +403,12 @@ class FreeDB:
             self.messenger.info(_(u"Connecting to \"%s\"") % (self.server))
 
             self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.socket.connect((self.server,self.port))
+            self.socket.connect((self.server, self.port))
 
             self.r = self.socket.makefile("rb")
             self.w = self.socket.makefile("wb")
 
-            (code,msg) = self.read()  #the welcome message
+            (code, msg) = self.read()  # the welcome message
             if (code == 201):
                 self.messenger.info(_(u"Connected ... attempting to login"))
             else:
@@ -406,9 +418,9 @@ class FreeDB:
                 raise FreeDBException(_(u"Invalid hello message"))
 
             self.write("cddb hello user %s %s %s" % \
-                       (socket.getfqdn(),"audiotools",VERSION))
+                       (socket.getfqdn(), "audiotools", VERSION))
 
-            (code,msg) = self.read()  #the handshake successful message
+            (code, msg) = self.read()  # the handshake successful message
             if (code != 200):
                 self.r.close()
                 self.w.close()
@@ -417,21 +429,21 @@ class FreeDB:
 
             self.write("proto 6")
 
-            (code,msg) = self.read()  #the protocol successful message
+            (code, msg) = self.read()  # the protocol successful message
             if ((code != 200) and (code != 201)):
                 self.r.close()
                 self.w.close()
                 self.socket.close()
                 raise FreeDBException(_(u"Protocol change unsuccessful"))
 
-        except socket.error,err:
+        except socket.error, err:
             raise FreeDBException(err[1])
 
     def close(self):
         self.messenger.info(_(u"Closing connection"))
 
         self.write("quit")
-        (code,msg) = self.read()  #the quit successful message
+        (code, msg) = self.read()  # the quit successful message
 
         self.r.close()
         self.w.close()
@@ -446,25 +458,25 @@ class FreeDB:
     def read(self):
         line = self.r.readline()
         if (FreeDB.LINE.match(line)):
-            return (int(line[0:3]),line[4:].rstrip("\r\n"))
+            return (int(line[0:3]), line[4:].rstrip("\r\n"))
         else:
-            return (None,line.rstrip("\r\n"))
+            return (None, line.rstrip("\r\n"))
 
     def query(self, disc_id):
         matches = []
 
         self.messenger.info(
             _(u"Sending Disc ID \"%(disc_id)s\" to server \"%(server)s\"") % \
-                {"disc_id":str(disc_id).decode('ascii'),
-                 "server":self.server.decode('ascii','replace')})
+                {"disc_id": str(disc_id).decode('ascii'),
+                 "server": self.server.decode('ascii', 'replace')})
 
         self.write("cddb query " + disc_id.freedb_id())
-        (code,msg) = self.read()
+        (code, msg) = self.read()
         if (code == 200):
             matches.append(msg)
         elif ((code == 211) or (code == 210)):
             while (msg != "."):
-                (code,msg) = self.read()
+                (code, msg) = self.read()
                 if (msg != "."):
                     matches.append(msg)
 
@@ -473,21 +485,20 @@ class FreeDB:
         else:
             self.messenger.info(_(u"%s matches found") % (len(matches)))
 
-        return map(lambda m: m.split(" ",2), matches)
+        return map(lambda m: m.split(" ", 2), matches)
 
     #category and id are raw strings, as returned by query()
     #output is a file handle the output will be written to
     def read_data(self, category, id, output):
         self.write("cddb read " + category + " " + id)
-        (code,msg) = self.read()
+        (code, msg) = self.read()
         if (code == 210):
             line = self.r.readline()
             while (line.strip() != "."):
                 output.write(line)
                 line = self.r.readline()
         else:
-            print >>sys.stderr,(code,msg)
-
+            print >> sys.stderr, (code, msg)
 
 
 class FreeDBWeb(FreeDB):
@@ -500,30 +511,31 @@ class FreeDBWeb(FreeDB):
     def connect(self):
         import httplib
 
-        self.connection = httplib.HTTPConnection(self.server,self.port)
+        self.connection = httplib.HTTPConnection(self.server, self.port)
 
     def close(self):
         if (self.connection is not None):
             self.connection.close()
 
     def write(self, line):
-        import urllib,socket
+        import urllib
+        import socket
 
-        u = urllib.urlencode({"hello":"user %s %s %s" % \
+        u = urllib.urlencode({"hello": "user %s %s %s" % \
                                       (socket.getfqdn(),
                                        "audiotools",
                                        VERSION),
-                              "proto":str(6),
-                              "cmd":line})
+                              "proto": str(6),
+                              "cmd": line})
 
         try:
             self.connection.request(
                 "POST",
                 "/~cddb/cddb.cgi",
                 u,
-                {"Content-type":"application/x-www-form-urlencoded",
-                 "Accept": "text/plain"})
-        except socket.error,msg:
+                {"Content-type": "application/x-www-form-urlencoded",
+                 "Accept":  "text/plain"})
+        except socket.error, msg:
             raise FreeDBException(str(msg))
 
     def read(self):
@@ -532,26 +544,26 @@ class FreeDBWeb(FreeDB):
 
     def __parse_line__(self, line):
         if (FreeDB.LINE.match(line)):
-            return (int(line[0:3]),line[4:].rstrip("\r\n"))
+            return (int(line[0:3]), line[4:].rstrip("\r\n"))
         else:
-            return (None,line.rstrip("\r\n"))
+            return (None, line.rstrip("\r\n"))
 
     def query(self, disc_id):
         matches = []
 
         self.messenger.info(
             _(u"Sending Disc ID \"%(disc_id)s\" to server \"%(server)s\"") % \
-                {"disc_id":str(disc_id).decode('ascii'),
-                 "server":self.server.decode('ascii','replace')})
+                {"disc_id": str(disc_id).decode('ascii'),
+                 "server": self.server.decode('ascii', 'replace')})
 
         self.write("cddb query " + disc_id.freedb_id())
-        data =  cStringIO.StringIO(self.read())
-        (code,msg) = self.__parse_line__(data.readline())
+        data = cStringIO.StringIO(self.read())
+        (code, msg) = self.__parse_line__(data.readline())
         if (code == 200):
             matches.append(msg)
         elif ((code == 211) or (code == 210)):
             while (msg != "."):
-                (code,msg) = self.__parse_line__(data.readline())
+                (code, msg) = self.__parse_line__(data.readline())
                 if (msg != "."):
                     matches.append(msg)
 
@@ -560,21 +572,21 @@ class FreeDBWeb(FreeDB):
         else:
             self.messenger.info(_(u"%s matches found") % (len(matches)))
 
-        return map(lambda m: m.split(" ",2), matches)
+        return map(lambda m: m.split(" ", 2), matches)
 
     #category and id are raw strings, as returned by query()
     #output is a file handle the output will be written to
     def read_data(self, category, id, output):
         self.write("cddb read " + category + " " + id)
         data = cStringIO.StringIO(self.read())
-        (code,msg) = self.__parse_line__(data.readline())
+        (code, msg) = self.__parse_line__(data.readline())
         if (code == 210):
             line = data.readline()
             while (line.strip() != "."):
                 output.write(line)
                 line = data.readline()
         else:
-            print >>sys.stderr,(code,msg)
+            print >> sys.stderr, (code, msg)
 
 
 #matches is a list of (category,disc_id,title) tuples returned from
@@ -593,10 +605,10 @@ def __select_match__(matches, messenger):
         while ((selected < 1) or (selected > len(matches))):
             for i in range(len(matches)):
                 messenger.info(_(u"%(choice)s) [%(genre)s] %(name)s") % \
-                                   {"choice":i + 1,
-                                    "genre":matches[i][0],
-                                    "name":matches[i][2].decode('utf-8',
-                                                                'replace')})
+                                   {"choice": i + 1,
+                                    "genre": matches[i][0],
+                                    "name": matches[i][2].decode('utf-8',
+                                                                 'replace')})
             try:
                 messenger.partial_info(_(u"Your Selection [1-%s]:") % \
                                            (len(matches)))
@@ -605,6 +617,7 @@ def __select_match__(matches, messenger):
                 selected = 0
 
         return matches[selected - 1]
+
 
 def __select_default_match__(matches, selection):
     if (len(matches) < 1):
@@ -615,17 +628,18 @@ def __select_default_match__(matches, selection):
         except IndexError:
             return matches[0]
 
+
 #takes a DiscID value and a file handle for output
 #and runs the entire FreeDB querying sequence
 #the file handle is closed at the conclusion of this function
 #if at least one match is found
 #returns the number of matches
 def get_xmcd(disc_id, output, freedb_server, freedb_server_port,
-             messenger,default_selection=None):
+             messenger, default_selection=None):
     try:
-        freedb = FreeDBWeb(freedb_server,freedb_server_port,messenger)
+        freedb = FreeDBWeb(freedb_server, freedb_server_port, messenger)
         freedb.connect()
-    except FreeDBException,msg:
+    except FreeDBException, msg:
         #if an exception occurs during the opening,
         #freedb will auto-close its sockets
         raise IOError(str(msg))
@@ -635,17 +649,17 @@ def get_xmcd(disc_id, output, freedb_server, freedb_server_port,
         #HANDLE MULTIPLE MATCHES, or NO MATCHES
         if (len(matches) > 0):
             if (default_selection is None):
-                (category,idstring,title) = __select_match__(
-                    matches,messenger)
+                (category, idstring, title) = __select_match__(
+                    matches, messenger)
             else:
-                (category,idstring,title) = __select_default_match__(
-                    matches,default_selection)
+                (category, idstring, title) = __select_default_match__(
+                    matches, default_selection)
 
-            freedb.read_data(category,idstring,output)
+            freedb.read_data(category, idstring, output)
             output.close()
 
         freedb.close()
-    except FreeDBException,msg:
+    except FreeDBException, msg:
         #otherwise, close the sockets manually
         freedb.close()
         raise IOError(str(msg))
