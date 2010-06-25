@@ -19,8 +19,8 @@
 
 import sys
 
-if (sys.version_info < (2,5,0,'final',0)):
-    print >>sys.stderr,"*** Python 2.5.0 or better required"
+if (sys.version_info < (2, 5, 0, 'final', 0)):
+    print >> sys.stderr, "*** Python 2.5.0 or better required"
     sys.exit(1)
 
 
@@ -37,7 +37,7 @@ import struct
 from itertools import izip
 import gettext
 
-gettext.install("audiotools",unicode=True)
+gettext.install("audiotools", unicode=True)
 
 
 class RawConfigParser(ConfigParser.RawConfigParser):
@@ -58,11 +58,12 @@ class RawConfigParser(ConfigParser.RawConfigParser):
             return default
 
 config = RawConfigParser()
-config.read([os.path.join("/etc","audiotools.cfg"),
-             os.path.join(sys.prefix,"etc","audiotools.cfg"),
+config.read([os.path.join("/etc", "audiotools.cfg"),
+             os.path.join(sys.prefix, "etc", "audiotools.cfg"),
              os.path.expanduser('~/.audiotools.cfg')])
 
 BUFFER_SIZE = 0x100000
+
 
 class __system_binaries__:
     def __init__(self, config):
@@ -70,7 +71,7 @@ class __system_binaries__:
 
     def __getitem__(self, command):
         try:
-            return self.config.get("Binaries",command)
+            return self.config.get("Binaries", command)
         except ConfigParser.NoSectionError:
             return command
         except ConfigParser.NoOptionError:
@@ -78,38 +79,38 @@ class __system_binaries__:
 
     def can_execute(self, command):
         if (os.sep in command):
-            return os.access(command,os.X_OK)
+            return os.access(command, os.X_OK)
         else:
-            for path in os.environ.get('PATH',os.defpath).split(os.pathsep):
-                if (os.access(os.path.join(path,command),os.X_OK)):
+            for path in os.environ.get('PATH', os.defpath).split(os.pathsep):
+                if (os.access(os.path.join(path, command), os.X_OK)):
                     return True
             return False
 
 BIN = __system_binaries__(config)
 
-DEFAULT_CDROM = config.get_default("System","cdrom","/dev/cdrom")
+DEFAULT_CDROM = config.get_default("System", "cdrom", "/dev/cdrom")
 
-FREEDB_SERVER = config.get_default("FreeDB","server","us.freedb.org")
-FREEDB_PORT = config.getint_default("FreeDB","port",80)
-MUSICBRAINZ_SERVER = config.get_default("MusicBrainz","server",
+FREEDB_SERVER = config.get_default("FreeDB", "server", "us.freedb.org")
+FREEDB_PORT = config.getint_default("FreeDB", "port", 80)
+MUSICBRAINZ_SERVER = config.get_default("MusicBrainz", "server",
                                         "musicbrainz.org")
-MUSICBRAINZ_PORT = config.getint_default("MusicBrainz","port",80)
+MUSICBRAINZ_PORT = config.getint_default("MusicBrainz", "port", 80)
 
-THUMBNAIL_FORMAT = config.get_default("Thumbnail","format","jpeg")
-THUMBNAIL_SIZE = config.getint_default("Thumbnail","size",150)
+THUMBNAIL_FORMAT = config.get_default("Thumbnail", "format", "jpeg")
+THUMBNAIL_SIZE = config.getint_default("Thumbnail", "size", 150)
 
 VERSION = "2.15"
 
 FILENAME_FORMAT = config.get_default(
-    "Filenames","format",
+    "Filenames", "format",
     '%(track_number)2.2d - %(track_name)s.%(suffix)s')
 
-FS_ENCODING = config.get_default("System","fs_encoding",
+FS_ENCODING = config.get_default("System", "fs_encoding",
                                  sys.getfilesystemencoding())
 if (FS_ENCODING is None):
     FS_ENCODING = 'UTF-8'
 
-IO_ENCODING = config.get_default("System","io_encoding","UTF-8")
+IO_ENCODING = config.get_default("System", "io_encoding", "UTF-8")
 
 try:
     import cpucount
@@ -117,21 +118,22 @@ try:
 except ImportError:
     MAX_CPUS = 1
 
-if (config.has_option("System","maximum_jobs")):
-    MAX_JOBS = config.getint_default("System","maximum_jobs",1)
+if (config.has_option("System", "maximum_jobs")):
+    MAX_JOBS = config.getint_default("System", "maximum_jobs", 1)
 else:
     MAX_JOBS = MAX_CPUS
 
 BIG_ENDIAN = sys.byteorder == 'big'
 
+
 def find_glade_file(glade_filename):
     glade_paths = [".",
-                   os.path.join(sys.prefix,"share/audiotools"),
-                   os.path.join("/usr","share/audiotools"),
-                   os.path.join("/usr/local","share/audiotools")]
+                   os.path.join(sys.prefix, "share/audiotools"),
+                   os.path.join("/usr", "share/audiotools"),
+                   os.path.join("/usr/local", "share/audiotools")]
 
     for path in glade_paths:
-        filename = os.path.join(path,glade_filename)
+        filename = os.path.join(path, glade_filename)
         if (os.path.isfile(filename)):
             return filename
     else:
@@ -141,14 +143,16 @@ def find_glade_file(glade_filename):
 #Output Messaging
 #######################
 
+
 class OptionParser(optparse.OptionParser):
-    def _get_encoding(self,file):
+    def _get_encoding(self, file):
         return IO_ENCODING
 
 OptionGroup = optparse.OptionGroup
 
+
 def Messenger(executable, options):
-    if (not hasattr(options,"verbosity")):
+    if (not hasattr(options, "verbosity")):
         return VerboseMessenger(executable)
     elif ((options.verbosity == 'normal') or
           (options.verbosity == 'debug')):
@@ -158,35 +162,37 @@ def Messenger(executable, options):
 
 __ANSI_SEQUENCE__ = re.compile(u"\u001B\[[0-9;]+m")
 
+
 def str_width(s):
     import unicodedata
 
-    return len(unicodedata.normalize('NFC',__ANSI_SEQUENCE__.sub(u"",s)))
+    return len(unicodedata.normalize('NFC', __ANSI_SEQUENCE__.sub(u"", s)))
+
 
 class __MessengerRow__:
     def __init__(self):
-        self.strings = []    #a list of unicode strings
-        self.alignments = [] #a list of booleans
-                             #False if left-aligned, True if right-aligned
-        self.total_lengths = [] #a list of total length integers,
-                                #to be set at print-time
+        self.strings = []  # a list of unicode strings
+        self.alignments = []  # a list of booleans
+                              # False if left-aligned, True if right-aligned
+        self.total_lengths = []  # a list of total length integers,
+                                 # to be set at print-time
 
-    def add_string(self,string,left_aligned):
+    def add_string(self, string, left_aligned):
         self.strings.append(string)
         self.alignments.append(left_aligned)
         self.total_lengths.append(str_width(string))
 
     def lengths(self):
-        return map(str_width,self.strings)
+        return map(str_width, self.strings)
 
-    def set_total_lengths(self,total_lengths):
+    def set_total_lengths(self, total_lengths):
         self.total_lengths = total_lengths
 
     def __unicode__(self):
         output_string = []
-        for (string,right_aligned,length) in zip(self.strings,
-                                                 self.alignments,
-                                                 self.total_lengths):
+        for (string, right_aligned, length) in zip(self.strings,
+                                                   self.alignments,
+                                                   self.total_lengths):
             if (str_width(string) < length):
                 if (not right_aligned):
                     output_string.append(string)
@@ -197,6 +203,7 @@ class __MessengerRow__:
             else:
                 output_string.append(string)
         return u"".join(output_string)
+
 
 class __DividerRow__:
     def __init__(self, dividers):
@@ -210,8 +217,9 @@ class __DividerRow__:
         self.total_lengths = total_lengths
 
     def __unicode__(self):
-        return u"".join([divider * length for (divider,length) in
-                         zip(self.dividers,self.total_lengths)])
+        return u"".join([divider * length for (divider, length) in
+                         zip(self.dividers, self.total_lengths)])
+
 
 class VerboseMessenger:
     #a set of ANSI SGR codes
@@ -243,18 +251,18 @@ class VerboseMessenger:
 
     def __init__(self, executable):
         self.executable = executable
-        self.output_msg_rows = []  #a list of __MessengerRow__ objects
+        self.output_msg_rows = []  # a list of __MessengerRow__ objects
 
     #displays an output message unicode string to stdout
     #and adds a newline
-    def output(self,s):
-        sys.stdout.write(s.encode(IO_ENCODING,'replace'))
+    def output(self, s):
+        sys.stdout.write(s.encode(IO_ENCODING, 'replace'))
         sys.stdout.write(os.linesep)
 
     #displays a partial output message unicode string to stdout
     #and flushes output so it is displayed
-    def partial_output(self,s):
-        sys.stdout.write(s.encode(IO_ENCODING,'replace'))
+    def partial_output(self, s):
+        sys.stdout.write(s.encode(IO_ENCODING, 'replace'))
         sys.stdout.flush()
 
     #sets up a new tabbed row for outputting aligned text
@@ -272,18 +280,19 @@ class VerboseMessenger:
     def divider_row(self, dividers):
         self.output_msg_rows.append(__DividerRow__(dividers))
 
-    def output_column(self,string,right_aligned=False):
+    def output_column(self, string, right_aligned=False):
         if (len(self.output_msg_rows) > 0):
-            self.output_msg_rows[-1].add_string(string,right_aligned)
+            self.output_msg_rows[-1].add_string(string, right_aligned)
         else:
-            raise ValueError("you must perform \"new_row\" before adding columns")
+            raise ValueError(
+                "you must perform \"new_row\" before adding columns")
 
     #outputs all of our accumulated output rows as aligned output
     def output_rows(self):
         lengths = [row.lengths() for row in self.output_msg_rows]
         if (len(lengths) == 0):
             raise ValueError("you must generate at least one output row")
-        if (len(set(map(len,lengths))) != 1):
+        if (len(set(map(len, lengths))) != 1):
             raise ValueError("all output rows must be the same length")
 
         max_lengths = []
@@ -299,14 +308,14 @@ class VerboseMessenger:
 
     #displays an informative message unicode string to stderr
     #and adds a newline
-    def info(self,s):
-        sys.stderr.write(s.encode(IO_ENCODING,'replace'))
+    def info(self, s):
+        sys.stderr.write(s.encode(IO_ENCODING, 'replace'))
         sys.stderr.write(os.linesep)
 
     #displays a partial informative message unicode string to stderr
     #and flushes output so it is displayed
-    def partial_info(self,s):
-        sys.stderr.write(s.encode(IO_ENCODING,'replace'))
+    def partial_info(self, s):
+        sys.stderr.write(s.encode(IO_ENCODING, 'replace'))
         sys.stderr.flush()
 
     #what's the difference between output() and info() ?
@@ -320,31 +329,31 @@ class VerboseMessenger:
 
     #displays an error message unicode string
     #and adds a newline
-    def error(self,s):
+    def error(self, s):
         sys.stderr.write("*** Error: ")
-        sys.stderr.write(s.encode(IO_ENCODING,'replace'))
+        sys.stderr.write(s.encode(IO_ENCODING, 'replace'))
         sys.stderr.write(os.linesep)
 
     #displays an warning message unicode string
     #and adds a newline
-    def warning(self,s):
+    def warning(self, s):
         sys.stderr.write("*** Warning: ")
-        sys.stderr.write(s.encode(IO_ENCODING,'replace'))
+        sys.stderr.write(s.encode(IO_ENCODING, 'replace'))
         sys.stderr.write(os.linesep)
 
     #displays the program's usage string to stderr
     #and adds a newline
-    def usage(self,s):
+    def usage(self, s):
         sys.stderr.write("*** Usage: ")
         sys.stderr.write(self.executable.decode('ascii'))
         sys.stderr.write(" ")
-        sys.stderr.write(s.encode(IO_ENCODING,'replace'))
+        sys.stderr.write(s.encode(IO_ENCODING, 'replace'))
         sys.stderr.write(os.linesep)
 
     #takes a filename string and returns a unicode string
     #decoded according to the system's encoding
-    def filename(self,s):
-        return s.decode(FS_ENCODING,'replace')
+    def filename(self, s):
+        return s.decode(FS_ENCODING, 'replace')
 
     #takes a unicode string and list of ANSI SGR codes
     #returns an ANSI-escape terminal string
@@ -354,68 +363,80 @@ class VerboseMessenger:
     def ansi(self, s, codes):
         if (sys.stdout.isatty()):
             return u"\u001B[%sm%s\u001B[0m" % \
-                (";".join(map(unicode,codes)),s)
+                (";".join(map(unicode, codes)), s)
         else:
             return s
 
     def ansi_err(self, s, codes):
         if (sys.stderr.isatty()):
             return u"\u001B[%sm%s\u001B[0m" % \
-                (";".join(map(unicode,codes)),s)
+                (";".join(map(unicode, codes)), s)
         else:
             return s
 
+
 class SilentMessenger(VerboseMessenger):
-    def output(self,s):
+    def output(self, s):
         pass
 
-    def partial_output(self,s):
+    def partial_output(self, s):
         pass
 
-    def warning(self,s):
+    def warning(self, s):
         pass
 
-    def info(self,s):
+    def info(self, s):
         pass
 
-    def partial_info(self,s):
+    def partial_info(self, s):
         pass
 
 
 #raised by open() if the file cannot be identified or opened correctly
-class UnsupportedFile(Exception): pass
+class UnsupportedFile(Exception):
+    pass
+
 
 #raised if an audio file cannot be initialized correctly
-class InvalidFile(Exception): pass
+class InvalidFile(Exception):
+    pass
+
 
 #raised if an audio file cannot be created correctly from from_pcm()
 #due to having a PCM format unsupported by the output format
-class InvalidFormat(Exception): pass
+class InvalidFormat(Exception):
+    pass
+
 
 #raised if an audio file cannot be created correctly from from_pcm()
 #due to an error by the encoder
 class EncodingError(IOError):
-    def __init__(self,executable=None):
+    def __init__(self, executable=None):
         self.executable = executable
 
     def __str__(self):
         return "error during file encoding"
 
+
 class UnsupportedChannelMask(EncodingError):
     def __str__(self):
         return "unsupported channel mask during file encoding"
+
 
 class UnsupportedChannelCount(EncodingError):
     def __str__(self):
         return "unsupported channel count during file encoding"
 
+
 class UnsupportedBitsPerSample(EncodingError):
     def __str__(self):
         return "unsupported bits per sample during file encoding"
 
+
 class DecodingError(IOError):
     def __str__(self):
         return "error during file decoding"
+
 
 #takes a filename string
 #returns a valid AudioFile object based on the file data or extension
@@ -424,10 +445,10 @@ class DecodingError(IOError):
 def open(filename):
     available_types = frozenset(TYPE_MAP.values())
 
-    f = file(filename,"rb")
+    f = file(filename, "rb")
     try:
         for audioclass in TYPE_MAP.values():
-            f.seek(0,0)
+            f.seek(0, 0)
             if (audioclass.is_type(f)):
                 return audioclass(filename)
         else:
@@ -436,43 +457,46 @@ def open(filename):
     finally:
         f.close()
 
+
 #takes a list of filenames
 #returns a list of AudioFile objects, sorted by track_number()
 #any unsupported files are filtered out
 def open_files(filename_list, sorted=True, messenger=None):
     toreturn = []
     if (messenger is None):
-        messenger = Messenger("audiotools",None)
+        messenger = Messenger("audiotools", None)
 
     for filename in filename_list:
         try:
             toreturn.append(open(filename))
         except UnsupportedFile:
             pass
-        except IOError,err:
-            messenger.warning(_(u"Unable to open \"%s\"" % \
-                                    (messenger.filename(filename))))
-        except InvalidFile,err:
+        except IOError, err:
+            messenger.warning(
+                _(u"Unable to open \"%s\"" % (messenger.filename(filename))))
+        except InvalidFile, err:
             messenger.error(unicode(err))
 
     if (sorted):
-        toreturn.sort(lambda x,y: cmp((x.album_number(),x.track_number()),
-                                      (y.album_number(),y.track_number())))
+        toreturn.sort(lambda x, y: cmp((x.album_number(), x.track_number()),
+                                       (y.album_number(), y.track_number())))
     return toreturn
+
 
 #takes a root directory
 #iterates recursively over any and all audio files in it
 #optionally sorted by directory name and track_number()
 #any unsupported files are filtered out
 def open_directory(directory, sorted=True, messenger=None):
-    for (basedir,subdirs,filenames) in os.walk(directory):
+    for (basedir, subdirs, filenames) in os.walk(directory):
         if (sorted):
             subdirs.sort()
-        for audiofile in open_files([os.path.join(basedir,filename)
+        for audiofile in open_files([os.path.join(basedir, filename)
                                      for filename in filenames],
                                     sorted=sorted,
                                     messenger=messenger):
             yield audiofile
+
 
 #takes an iterable collection of tracks
 #yields list of tracks grouped by album
@@ -483,30 +507,33 @@ def group_tracks(tracks):
         metadata = track.get_metadata()
         if (metadata is not None):
             collection.setdefault((track.album_number(),
-                                   metadata.album_name),[]).append(track)
+                                   metadata.album_name), []).append(track)
         else:
             collection.setdefault((track.album_number(),
-                                   None),[]).append(track)
+                                   None), []).append(track)
     for tracks in collection.values():
         yield tracks
 
+
 class UnknownAudioType(Exception):
-    def __init__(self,suffix):
+    def __init__(self, suffix):
         self.suffix = suffix
 
-    def error_msg(self,messenger):
+    def error_msg(self, messenger):
         messenger.error(_(u"Unsupported audio type \"%s\"") % (self.suffix))
 
+
 class AmbiguousAudioType(UnknownAudioType):
-    def __init__(self,suffix,type_list):
+    def __init__(self, suffix, type_list):
         self.suffix = suffix
         self.type_list = type_list
 
-    def error_msg(self,messenger):
+    def error_msg(self, messenger):
         messenger.error(_(u"Ambiguious suffix type \"%s\"") % (self.suffix))
-        messenger.info(_(u"Please use the -t option to specify %s") % \
-                           (" or ".join(["\"%s\"" % (t.NAME)
-                                         for t in self.type_list])))
+        messenger.info((_(u"Please use the -t option to specify %s") %
+                        (u" or ".join([u"\"%s\"" % (t.NAME.decode('ascii'))
+                                       for t in self.type_list]))))
+
 
 #given a path string to a file,
 #try to guess its type based on suffix
@@ -514,21 +541,22 @@ class AmbiguousAudioType(UnknownAudioType):
 #raises an UnknownAudioType exception if the type is unknown
 #raise AmbiguousAudioType exception if the type is ambiguous
 def filename_to_type(path):
-    (path,ext) = os.path.splitext(path)
+    (path, ext) = os.path.splitext(path)
     if (len(ext) > 0):
-        ext = ext[1:]   #remove the "."
+        ext = ext[1:]   # remove the "."
         SUFFIX_MAP = {}
         for audio_type in TYPE_MAP.values():
-            SUFFIX_MAP.setdefault(audio_type.SUFFIX,[]).append(audio_type)
+            SUFFIX_MAP.setdefault(audio_type.SUFFIX, []).append(audio_type)
         if (ext in SUFFIX_MAP.keys()):
             if (len(SUFFIX_MAP[ext]) == 1):
                 return SUFFIX_MAP[ext][0]
             else:
-                raise AmbiguousAudioType(ext,SUFFIX_MAP[ext])
+                raise AmbiguousAudioType(ext, SUFFIX_MAP[ext])
         else:
             raise UnknownAudioType(ext)
     else:
         return TYPE_MAP['wav']
+
 
 #an integer-like class that abstracts a PCMReader's channel assignments
 #All channels in a FrameList will be in RIFF WAVE order
@@ -561,38 +589,38 @@ def filename_to_type(path):
 #any way it likes, and is under no obligation to keep them undefined
 #when passing back out to to_pcm()
 class ChannelMask:
-    SPEAKER_TO_MASK = {"front_left":0x1,
-                       "front_right":0x2,
-                       "front_center":0x4,
-                       "low_frequency":0x8,
-                       "back_left":0x10,
-                       "back_right":0x20,
-                       "front_left_of_center":0x40,
-                       "front_right_of_center":0x80,
-                       "back_center":0x100,
-                       "side_left":0x200,
-                       "side_right":0x400,
-                       "top_center":0x800,
-                       "top_front_left":0x1000,
-                       "top_front_center":0x2000,
-                       "top_front_right":0x4000,
-                       "top_back_left":0x8000,
-                       "top_back_center":0x10000,
-                       "top_back_right":0x20000}
+    SPEAKER_TO_MASK = {"front_left": 0x1,
+                       "front_right": 0x2,
+                       "front_center": 0x4,
+                       "low_frequency": 0x8,
+                       "back_left": 0x10,
+                       "back_right": 0x20,
+                       "front_left_of_center": 0x40,
+                       "front_right_of_center": 0x80,
+                       "back_center": 0x100,
+                       "side_left": 0x200,
+                       "side_right": 0x400,
+                       "top_center": 0x800,
+                       "top_front_left": 0x1000,
+                       "top_front_center": 0x2000,
+                       "top_front_right": 0x4000,
+                       "top_back_left": 0x8000,
+                       "top_back_center": 0x10000,
+                       "top_back_right": 0x20000}
 
-    MASK_TO_SPEAKER = dict(map(reversed,map(list,SPEAKER_TO_MASK.items())))
+    MASK_TO_SPEAKER = dict(map(reversed, map(list, SPEAKER_TO_MASK.items())))
 
     def __init__(self, mask):
         mask = int(mask)
 
-        for (speaker,speaker_mask) in self.SPEAKER_TO_MASK.items():
-            setattr(self,speaker,(mask & speaker_mask) != 0)
+        for (speaker, speaker_mask) in self.SPEAKER_TO_MASK.items():
+            setattr(self, speaker, (mask & speaker_mask) != 0)
 
     def __repr__(self):
         return "ChannelMask(%s)" % \
-            ",".join(["%s=%s" % (field,getattr(self,field))
+            ",".join(["%s=%s" % (field, getattr(self, field))
                       for field in self.SPEAKER_TO_MASK.keys()
-                      if (getattr(self,field))])
+                      if (getattr(self, field))])
 
     def __int__(self):
         import operator
@@ -600,7 +628,7 @@ class ChannelMask:
         return reduce(operator.or_,
                       [self.SPEAKER_TO_MASK[field] for field in
                        self.SPEAKER_TO_MASK.keys()
-                       if getattr(self,field)],
+                       if getattr(self, field)],
                       0)
 
     def __eq__(self, v):
@@ -611,7 +639,7 @@ class ChannelMask:
 
     def __len__(self):
         return sum([1 for field in self.SPEAKER_TO_MASK.keys()
-                    if getattr(self,field)])
+                    if getattr(self, field)])
 
     #returns True if this ChannelMask is defined, False if not
     def defined(self):
@@ -625,9 +653,9 @@ class ChannelMask:
     #in the order in which they should appear in the PCM stream
     def channels(self):
         c = []
-        for (mask,speaker) in sorted(self.MASK_TO_SPEAKER.items(),
-                                     lambda x,y: cmp(x[0],y[0])):
-            if (getattr(self,speaker)):
+        for (mask, speaker) in sorted(self.MASK_TO_SPEAKER.items(),
+                                      lambda x, y: cmp(x[0], y[0])):
+            if (getattr(self, speaker)):
                 c.append(speaker)
 
         return c
@@ -640,12 +668,12 @@ class ChannelMask:
         return self.channels().index(channel_name)
 
     @classmethod
-    def from_fields(cls,**fields):
+    def from_fields(cls, **fields):
         mask = cls(0)
 
-        for (key,value) in fields.items():
+        for (key, value) in fields.items():
             if (key in cls.SPEAKER_TO_MASK.keys()):
-                setattr(mask,key,bool(value))
+                setattr(mask, key, bool(value))
             else:
                 raise KeyError(key)
 
@@ -659,6 +687,7 @@ class ChannelMask:
             return cls(0x4)
         else:
             raise ValueError("ambiguous channel assignment")
+
 
 #a class that wraps around a file object and generates pcm.FrameList objects
 #sample rate, channels and bits per sample are integers
@@ -684,7 +713,7 @@ class PCMReader:
     def read(self, bytes):
         bytes -= (bytes % (self.channels * self.bits_per_sample / 8))
         return pcm.FrameList(self.file.read(max(
-                    bytes,self.channels * self.bits_per_sample / 8)),
+                    bytes, self.channels * self.bits_per_sample / 8)),
                              self.channels,
                              self.bits_per_sample,
                              self.big_endian,
@@ -697,12 +726,14 @@ class PCMReader:
             if (self.process.wait() != 0):
                 raise DecodingError()
 
+
 class PCMReaderError(PCMReader):
     def read(self, bytes):
         return ""
 
     def close(self):
         raise DecodingError()
+
 
 class ReorderedPCMReader:
     def __init__(self, pcmreader, channel_order):
@@ -718,7 +749,6 @@ class ReorderedPCMReader:
 
         return pcm.from_channels([framelist.channel(channel)
                                   for channel in self.channel_order])
-
 
     def close(self):
         self.pcmreader.close()
@@ -737,21 +767,24 @@ def transfer_data(from_function, to_function):
         #the data reader is closing down correctly
         pass
 
+
 def transfer_framelist_data(pcmreader, to_function,
-                            signed=True,big_endian=False):
+                            signed=True, big_endian=False):
     try:
         f = pcmreader.read(BUFFER_SIZE)
         while (len(f) > 0):
-            to_function(f.to_bytes(big_endian,signed))
+            to_function(f.to_bytes(big_endian, signed))
             f = pcmreader.read(BUFFER_SIZE)
     except IOError:
         #this usually means a broken pipe, so we can only hope
         #the data reader is closing down correctly
         pass
 
+
 def threaded_transfer_framelist_data(pcmreader, to_function,
-                                     signed=True,big_endian=False):
-    import threading,Queue
+                                     signed=True, big_endian=False):
+    import threading
+    import Queue
 
     def send_data(pcmreader, queue):
         s = pcmreader.read(BUFFER_SIZE)
@@ -763,13 +796,14 @@ def threaded_transfer_framelist_data(pcmreader, to_function,
     data_queue = Queue.Queue(10)
     #thread.start_new_thread(send_data,(from_function,data_queue))
     thread = threading.Thread(target=send_data,
-                              args=(pcmreader,data_queue))
+                              args=(pcmreader, data_queue))
     thread.setDaemon(True)
     thread.start()
     s = data_queue.get()
     while (s is not None):
         to_function(s)
         s = data_queue.get()
+
 
 #takes a wave-compatible object with a readframes() method
 #maps it to something PCMReader compatible
@@ -784,14 +818,15 @@ class FrameReader(PCMReader):
                            bits_per_sample=bits_per_sample,
                            process=process)
         self.framefile = framefile
-        self.bytes_per_sample = framefile.getnchannels() * \
-                                framefile.getsampwidth()
+        self.bytes_per_sample = (framefile.getnchannels() *
+                                 framefile.getsampwidth())
 
     def read(self, bytes):
         return self.framefile.readframes(bytes / self.bytes_per_sample)
 
     def close(self):
         self.framefile.close()
+
 
 class __capped_stream_reader__:
     #allows a maximum number of bytes "length" to
@@ -802,12 +837,13 @@ class __capped_stream_reader__:
         self.remaining = length
 
     def read(self, bytes):
-        data = self.stream.read(min(bytes,self.remaining))
+        data = self.stream.read(min(bytes, self.remaining))
         self.remaining -= len(data)
         return data
 
     def close(self):
         self.stream.close()
+
 
 #returns True if the PCM data in pcmreader1 equals pcmreader2
 #False if there is any data mismatch
@@ -826,14 +862,15 @@ def pcm_cmp(pcmreader1, pcmreader2):
 
     while ((len(s1) > 0) and (len(s2) > 0)):
         if (s1 != s2):
-            transfer_data(reader1.read,lambda x: x)
-            transfer_data(reader2.read,lambda x: x)
+            transfer_data(reader1.read, lambda x: x)
+            transfer_data(reader2.read, lambda x: x)
             return False
         else:
             s1 = reader1.read(BUFFER_SIZE)
             s2 = reader2.read(BUFFER_SIZE)
 
     return True
+
 
 #returns True if the PCM data in pcmreader1 equals pcmreader2
 #not counting any 0x00 bytes at the beginning and end
@@ -850,16 +887,17 @@ def stripped_pcm_cmp(pcmreader1, pcmreader2):
         from sha import new as sha
 
     data = cStringIO.StringIO()
-    transfer_framelist_data(pcmreader1,data.write)
+    transfer_framelist_data(pcmreader1, data.write)
     sum1 = sha(data.getvalue().strip(chr(0x00)))
 
     data = cStringIO.StringIO()
-    transfer_framelist_data(pcmreader2,data.write)
+    transfer_framelist_data(pcmreader2, data.write)
     sum2 = sha(data.getvalue().strip(chr(0x00)))
 
     del(data)
 
     return sum1.digest() == sum2.digest()
+
 
 #returns the PCM frame number of the first mismatch
 #or None if the two PCMReader objects match completely
@@ -878,7 +916,7 @@ def pcm_frame_cmp(pcmreader1, pcmreader2):
 
     while ((len(framelist1) > 0) and (len(framelist2) > 0)):
         if (framelist1 != framelist2):
-            for i in xrange(min(framelist1.frames,framelist2.frames)):
+            for i in xrange(min(framelist1.frames, framelist2.frames)):
                 if (framelist1.frame(i) != framelist2.frame(i)):
                     return frame_number + i
             else:
@@ -889,6 +927,7 @@ def pcm_frame_cmp(pcmreader1, pcmreader2):
             framelist2 = reader2.read(BUFFER_SIZE)
 
     return None
+
 
 class PCMCat(PCMReader):
     #takes an iterator of PCMReader objects
@@ -931,20 +970,20 @@ class __buffer__:
             self.buffer = []
         else:
             self.buffer = framelists
-        self.end_frame = pcm.from_list([],channels,bits_per_sample,True)
+        self.end_frame = pcm.from_list([], channels, bits_per_sample, True)
         self.bytes_per_sample = bits_per_sample / 8
 
     #returns the length of the entire buffer in bytes
     def __len__(self):
         if (len(self.buffer) > 0):
-            return sum(map(len,self.buffer)) * self.bytes_per_sample
+            return sum(map(len, self.buffer)) * self.bytes_per_sample
         else:
             return 0
 
     def framelist(self):
         import operator
 
-        return reduce(operator.concat,self.buffer,self.end_frame)
+        return reduce(operator.concat, self.buffer, self.end_frame)
 
     def push(self, s):
         self.buffer.append(s)
@@ -953,7 +992,8 @@ class __buffer__:
         return self.buffer.pop(0)
 
     def unpop(self, s):
-        self.buffer.insert(0,s)
+        self.buffer.insert(0, s)
+
 
 class BufferedPCMReader:
     def __init__(self, pcmreader):
@@ -962,7 +1002,7 @@ class BufferedPCMReader:
         self.channels = pcmreader.channels
         self.channel_mask = pcmreader.channel_mask
         self.bits_per_sample = pcmreader.bits_per_sample
-        self.buffer = __buffer__(self.channels,self.bits_per_sample)
+        self.buffer = __buffer__(self.channels, self.bits_per_sample)
         self.reader_finished = False
 
     def close(self):
@@ -973,7 +1013,8 @@ class BufferedPCMReader:
         #fill our buffer to at least "bytes", possibly more
         self.__fill__(bytes)
         output_framelist = self.buffer.framelist()
-        (output,remainder) = output_framelist.split(output_framelist.frame_count(bytes))
+        (output, remainder) = output_framelist.split(
+            output_framelist.frame_count(bytes))
         self.buffer.buffer = [remainder]
         return output
 
@@ -988,7 +1029,6 @@ class BufferedPCMReader:
                 self.reader_finished = True
 
 
-
 #takes a PCMReader and a list of reader lengths (in PCM samples)
 #returns an iterator of PCMReader-compatible objects, each limited
 #to the given lengths.
@@ -996,7 +1036,7 @@ class BufferedPCMReader:
 def pcm_split(reader, pcm_lengths):
     import tempfile
 
-    def chunk_sizes(total_size,chunk_size):
+    def chunk_sizes(total_size, chunk_size):
         while (total_size > chunk_size):
             total_size -= chunk_size
             yield chunk_size
@@ -1009,12 +1049,13 @@ def pcm_split(reader, pcm_lengths):
         if (byte_length > (BUFFER_SIZE * 10)):
             #if the sub-file length is somewhat large, use a temporary file
             sub_file = tempfile.TemporaryFile()
-            for size in chunk_sizes(byte_length,BUFFER_SIZE):
-                sub_file.write(full_data.read(size).to_bytes(False,True))
-            sub_file.seek(0,0)
+            for size in chunk_sizes(byte_length, BUFFER_SIZE):
+                sub_file.write(full_data.read(size).to_bytes(False, True))
+            sub_file.seek(0, 0)
         else:
             #if the sub-file length is very small, use StringIO
-            sub_file = cStringIO.StringIO(full_data.read(byte_length).to_bytes(False,True))
+            sub_file = cStringIO.StringIO(
+                full_data.read(byte_length).to_bytes(False, True))
 
         yield PCMReader(sub_file,
                         reader.sample_rate,
@@ -1023,6 +1064,7 @@ def pcm_split(reader, pcm_lengths):
                         reader.bits_per_sample)
 
     full_data.close()
+
 
 #going from many channels to less channels
 class __channel_remover__:
@@ -1037,6 +1079,7 @@ class __channel_remover__:
         return pcm.from_channels(
             [frame_list.channel(i) for i in self.channels_to_keep])
 
+
 class __channel_adder__:
     def __init__(self, channels):
         self.channels = channels
@@ -1049,15 +1092,17 @@ class __channel_adder__:
 
         return pcm.from_channels(current_channels)
 
+
 class __stereo_to_mono__:
     def __init__(self):
         pass
 
     def convert(self, frame_list):
         return pcm.from_list(
-            [(l + r) / 2 for l,r in izip(frame_list.channel(0),
-                                         frame_list.channel(1))],
-            1,frame_list.bits_per_sample,True)
+            [(l + r) / 2 for l, r in izip(frame_list.channel(0),
+                                          frame_list.channel(1))],
+            1, frame_list.bits_per_sample, True)
+
 
 #going from many channels to 2
 class __downmixer__:
@@ -1072,22 +1117,22 @@ class __downmixer__:
         if (int(old_channel_mask) == 0):
             #if the old_channel_mask is undefined
             #invent a channel mask based on the channel count
-            old_channel_mask = {1:ChannelMask.from_fields(front_center=True),
-                                2:ChannelMask.from_fields(front_left=True,
-                                                          front_right=True),
-                                3:ChannelMask.from_fields(front_left=True,
-                                                          front_right=True,
+            old_channel_mask = {1: ChannelMask.from_fields(front_center=True),
+                                2: ChannelMask.from_fields(front_left=True,
+                                                           front_right=True),
+                                3: ChannelMask.from_fields(front_left=True,
+                                                           front_right=True,
                                                           front_center=True),
-                                4:ChannelMask.from_fields(front_left=True,
-                                                          front_right=True,
-                                                          back_left=True,
-                                                          back_right=True),
-                                5:ChannelMask.from_fields(front_left=True,
-                                                          front_right=True,
-                                                          front_center=True,
-                                                          back_left=True,
-                                                          back_right=True)}[
-                min(old_channel_count,5)]
+                                4: ChannelMask.from_fields(front_left=True,
+                                                           front_right=True,
+                                                           back_left=True,
+                                                           back_right=True),
+                                5: ChannelMask.from_fields(front_left=True,
+                                                           front_right=True,
+                                                           front_center=True,
+                                                           back_left=True,
+                                                           back_right=True)}[
+                min(old_channel_count, 5)]
         else:
             old_channel_mask = ChannelMask(old_channel_mask)
 
@@ -1100,8 +1145,8 @@ class __downmixer__:
         #4 - back/side_right
         #if -1, the channel is blank
         self.channels_to_keep = []
-        for channel in ["front_left","front_right","front_center"]:
-            if (getattr(old_channel_mask,channel)):
+        for channel in ["front_left", "front_right", "front_center"]:
+            if (getattr(old_channel_mask, channel)):
                 self.channels_to_keep.append(old_channel_mask.index(channel))
             else:
                 self.channels_to_keep.append(-1)
@@ -1157,7 +1202,7 @@ class __downmixer__:
         else:
             Rr = empty_channel
 
-        mono_rear = [0.7 * (Lr_i + Rr_i) for Lr_i,Rr_i in izip(Lr,Rr)]
+        mono_rear = [0.7 * (Lr_i + Rr_i) for Lr_i, Rr_i in izip(Lr, Rr)]
 
         converter = lambda x: int(round(x))
 
@@ -1165,7 +1210,7 @@ class __downmixer__:
             [converter(Lf_i +
                        (REAR_GAIN * mono_rear_i) +
                        (CENTER_GAIN * C_i))
-             for Lf_i,mono_rear_i,C_i in izip(Lf,mono_rear,C)],
+             for Lf_i, mono_rear_i, C_i in izip(Lf, mono_rear, C)],
             1,
             frame_list.bits_per_sample,
             True)
@@ -1174,12 +1219,13 @@ class __downmixer__:
             [converter(Rf_i -
                        (REAR_GAIN * mono_rear_i) +
                        (CENTER_GAIN * C_i))
-             for Rf_i,mono_rear_i,C_i in izip(Rf,mono_rear,C)],
+             for Rf_i, mono_rear_i, C_i in izip(Rf, mono_rear, C)],
             1,
             frame_list.bits_per_sample,
             True)
 
-        return pcm.from_channels([left_channel,right_channel])
+        return pcm.from_channels([left_channel, right_channel])
+
 
 #going from many channels to 1
 class __downmix_to_mono__:
@@ -1190,6 +1236,7 @@ class __downmix_to_mono__:
     def convert(self, frame_list):
         return self.mono.convert(self.downmix.convert(frame_list))
 
+
 class __convert_sample_rate__:
     def __init__(self, old_sample_rate, new_sample_rate,
                  channels, bits_per_sample):
@@ -1199,7 +1246,7 @@ class __convert_sample_rate__:
                 channels,
                 float(new_sample_rate) / float(old_sample_rate),
                 0)
-        self.unresampled = pcm.FloatFrameList([],channels)
+        self.unresampled = pcm.FloatFrameList([], channels)
         self.bits_per_sample = bits_per_sample
 
     def convert(self, frame_list):
@@ -1210,26 +1257,30 @@ class __convert_sample_rate__:
         #Unfortunately, that'll require building a second pass
         #into the conversion process which will complicate PCMConverter
         #a lot.
-        (output,self.unresampled) = self.resampler.process(
+        (output, self.unresampled) = self.resampler.process(
             self.unresampled + frame_list.to_float(),
             (len(frame_list) == 0) and (len(self.unresampled) == 0))
 
         return output.to_int(self.bits_per_sample)
 
+
 class __convert_sample_rate_and_bits_per_sample__(__convert_sample_rate__):
     def convert(self, frame_list):
-        (output,self.unresampled) = self.resampler.process(
+        (output, self.unresampled) = self.resampler.process(
             self.unresampled + frame_list.to_float(),
             (len(frame_list) == 0) and (len(self.unresampled) == 0))
 
         return __add_dither__(output.to_int(self.bits_per_sample))
+
 
 class __convert_bits_per_sample__:
     def __init__(self, bits_per_sample):
         self.bits_per_sample = bits_per_sample
 
     def convert(self, frame_list):
-        return __add_dither__(frame_list.to_float().to_int(self.bits_per_sample))
+        return __add_dither__(
+            frame_list.to_float().to_int(self.bits_per_sample))
+
 
 def __add_dither__(frame_list):
     if (frame_list.bits_per_sample >= 16):
@@ -1239,11 +1290,12 @@ def __add_dither__(frame_list):
     else:
         white_noise = [0] * len(frame_list)
 
-    return pcm.from_list([i ^ w for (i,w) in izip(frame_list,
-                                                 white_noise)],
+    return pcm.from_list([i ^ w for (i, w) in izip(frame_list,
+                                                   white_noise)],
                          frame_list.channels,
                          frame_list.bits_per_sample,
                          True)
+
 
 class PCMConverter:
     def __init__(self, pcmreader,
@@ -1280,13 +1332,25 @@ class PCMConverter:
             #at the same time, short-circuit the conversion to do both at once
             #which can be sped up somewhat
             if (self.reader.bits_per_sample != self.bits_per_sample):
-                self.conversions.append(__convert_sample_rate_and_bits_per_sample__(self.reader.sample_rate,self.sample_rate,self.channels,self.bits_per_sample))
+                self.conversions.append(
+                    __convert_sample_rate_and_bits_per_sample__(
+                        self.reader.sample_rate,
+                        self.sample_rate,
+                        self.channels,
+                        self.bits_per_sample))
             else:
-                self.conversions.append(__convert_sample_rate__(self.reader.sample_rate,self.sample_rate,self.channels,self.bits_per_sample))
+                self.conversions.append(
+                    __convert_sample_rate__(
+                        self.reader.sample_rate,
+                        self.sample_rate,
+                        self.channels,
+                        self.bits_per_sample))
 
         else:
             if (self.reader.bits_per_sample != self.bits_per_sample):
-                self.conversions.append(__convert_bits_per_sample__(self.bits_per_sample))
+                self.conversions.append(
+                    __convert_bits_per_sample__(
+                        self.bits_per_sample))
 
     def read(self, bytes):
         frame_list = self.reader.read(bytes)
@@ -1336,8 +1400,8 @@ class ReplayGainReader:
             white_noise = [0] * len(samples)
 
         return pcm.from_list(
-            [(int(round(s * multiplier)) ^ w) for (s,w) in
-             izip(samples,white_noise)],
+            [(int(round(s * multiplier)) ^ w) for (s, w) in
+             izip(samples, white_noise)],
             samples.channels,
             samples.bits_per_sample,
             True)
@@ -1345,22 +1409,24 @@ class ReplayGainReader:
     def close(self):
         self.reader.close()
 
+
 #given a list of tracks,
 #returns True if ReplayGain can be applied to those tracks
 #False if not
 def applicable_replay_gain(tracks):
     sample_rates = set([track.sample_rate() for track in tracks])
     if ((len(sample_rates) > 1) or
-        (list(sample_rates)[0] not in (48000,44100,32000,24000,22050,
-                                       16000,12000,11025,8000))):
+        (list(sample_rates)[0] not in (48000, 44100, 32000, 24000, 22050,
+                                       16000, 12000, 11025, 8000))):
         return False
 
     channels = set([track.channels() for track in tracks])
     if ((len(channels) > 1) or
-        (list(channels)[0] not in (1,2))):
+        (list(channels)[0] not in (1, 2))):
         return False
 
     return True
+
 
 #given a list of tracks,
 #returns an iterator of (track,track_gain,track_peak,album_gain,album_peak)
@@ -1370,7 +1436,8 @@ def calculate_replay_gain(tracks):
 
     sample_rate = set([track.sample_rate() for track in tracks])
     if (len(sample_rate) != 1):
-        raise ValueError("at least one track is required and all must have the same sample rate")
+        raise ValueError(("at least one track is required " +
+                          "and all must have the same sample rate"))
     rg = replaygain.ReplayGain(list(sample_rate)[0])
     gains = []
     for track in tracks:
@@ -1380,18 +1447,21 @@ def calculate_replay_gain(tracks):
             rg.update(frame)
             frame = pcm.read(BUFFER_SIZE)
         pcm.close()
-        (track_gain,track_peak) = rg.title_gain()
-        gains.append((track,track_gain,track_peak))
-    (album_gain,album_peak) = rg.album_gain()
-    for (track,track_gain,track_peak) in gains:
-        yield (track,track_gain,track_peak,album_gain,album_peak)
+        (track_gain, track_peak) = rg.title_gain()
+        gains.append((track, track_gain, track_peak))
+    (album_gain, album_peak) = rg.album_gain()
+    for (track, track_gain, track_peak) in gains:
+        yield (track, track_gain, track_peak, album_gain, album_peak)
+
 
 #this is a wrapper around another PCMReader meant for audio recording
 #it runs read() continually in a separate thread
 #it also traps SIGINT and stops reading when caught
 class InterruptableReader(PCMReader):
     def __init__(self, pcmreader, verbose=True):
-        import threading,Queue,signal
+        import threading
+        import Queue
+        import signal
 
         PCMReader.__init__(self, pcmreader,
                            sample_rate=pcmreader.sample_rate,
@@ -1402,7 +1472,7 @@ class InterruptableReader(PCMReader):
         self.stop_reading = False
         self.data_queue = Queue.Queue()
 
-        self.old_sigint = signal.signal(signal.SIGINT,self.stop)
+        self.old_sigint = signal.signal(signal.SIGINT, self.stop)
 
         thread = threading.Thread(target=self.send_data)
         thread.setDaemon(True)
@@ -1414,7 +1484,7 @@ class InterruptableReader(PCMReader):
         import signal
 
         self.stop_reading = True
-        signal.signal(signal.SIGINT,self.old_sigint)
+        signal.signal(signal.SIGINT, self.old_sigint)
 
         if (self.verbose):
             print "Stopping..."
@@ -1434,10 +1504,11 @@ class InterruptableReader(PCMReader):
     def read(self, length):
         return self.data_queue.get()
 
+
 def ignore_sigint():
     import signal
 
-    signal.signal(signal.SIGINT,signal.SIG_IGN)
+    signal.signal(signal.SIGINT, signal.SIG_IGN)
 
 
 #ensures all the directories leading to "destination_path" are created
@@ -1448,43 +1519,45 @@ def make_dirs(destination_path):
     if ((dirname != '') and (not os.path.isdir(dirname))):
         os.makedirs(dirname)
 
+
 #######################
 #Generic MetaData
 #######################
 
+
 class MetaData:
-    __FIELDS__ = ("track_name","track_number","track_total",
-                  "album_name","artist_name",
-                  "performer_name","composer_name","conductor_name",
-                  "media","ISRC","catalog","copyright",
-                  "publisher","year","date","album_number","album_total",
+    __FIELDS__ = ("track_name", "track_number", "track_total",
+                  "album_name", "artist_name",
+                  "performer_name", "composer_name", "conductor_name",
+                  "media", "ISRC", "catalog", "copyright",
+                  "publisher", "year", "date", "album_number", "album_total",
                   "comment")
 
-    __INTEGER_FIELDS__ = ("track_number","track_total",
-                          "album_number","album_total")
+    __INTEGER_FIELDS__ = ("track_number", "track_total",
+                          "album_number", "album_total")
 
     #track_name, album_name, artist_name, performer_name, copyright and year
     #should be unicode strings
     #track_number should be an integer
     def __init__(self,
-                 track_name=u"",     #the name of this individual track
-                 track_number=0,     #the number of this track
-                 track_total=0,      #the total number of tracks
-                 album_name=u"",     #the name of this track's album
-                 artist_name=u"",    #the song's original creator/composer
-                 performer_name=u"", #the song's performing artist
-                 composer_name=u"",  #the song's composer name
-                 conductor_name=u"", #the song's conductor's name
-                 media=u"",          #the album's media type (CD,tape,LP,etc.)
-                 ISRC=u"",           #the song's ISRC
-                 catalog=u"",        #the album's catalog number
-                 copyright=u"",      #the song's copyright information
-                 publisher=u"",      #the song's publisher
-                 year=u"",           #the album's release year
-                 date=u"",           #the original recording date
-                 album_number=0,     #the disc's volume number, if any
-                 album_total=0,      #the total number of discs, if any
-                 comment=u"",        #the track's comment string
+                 track_name=u"",      # the name of this individual track
+                 track_number=0,      # the number of this track
+                 track_total=0,       # the total number of tracks
+                 album_name=u"",      # the name of this track's album
+                 artist_name=u"",     # the song's original creator/composer
+                 performer_name=u"",  # the song's performing artist
+                 composer_name=u"",   # the song's composer name
+                 conductor_name=u"",  # the song's conductor's name
+                 media=u"",           # the album's media type (CD,tape,etc.)
+                 ISRC=u"",            # the song's ISRC
+                 catalog=u"",         # the album's catalog number
+                 copyright=u"",       # the song's copyright information
+                 publisher=u"",       # the song's publisher
+                 year=u"",            # the album's release year
+                 date=u"",            # the original recording date
+                 album_number=0,      # the disc's volume number, if any
+                 album_total=0,       # the total number of discs, if any
+                 comment=u"",         # the track's comment string
                  images=None):
         #we're avoiding self.foo = foo because
         #__setattr__ might need to be redefined
@@ -1513,11 +1586,11 @@ class MetaData:
         else:
             self.__dict__['__images__'] = list()
 
-
     def __repr__(self):
-        return ("MetaData(%s)" % (",".join(["%s"] * (len(MetaData.__FIELDS__))))) %\
-            tuple(["%s=%s" % (field,repr(getattr(self,field)))
-                   for field in MetaData.__FIELDS__])
+        return ("MetaData(%s)" % (
+                ",".join(["%s"] * (len(MetaData.__FIELDS__))))) % \
+                tuple(["%s=%s" % (field, repr(getattr(self, field)))
+                       for field in MetaData.__FIELDS__])
 
     def __delattr__(self, field):
         if (field in self.__FIELDS__):
@@ -1537,11 +1610,11 @@ class MetaData:
 
     #returns a list of (key,value) tuples
     def __comment_pairs__(self):
-        return zip(("Title","Artist","Performer","Composer","Conductor",
-                    "Album","Catalog",
-                    "Track Number","Track Total",
-                    "Volume Number","Volume Total",
-                    "ISRC","Publisher","Media","Year","Date","Copyright",
+        return zip(("Title", "Artist", "Performer", "Composer", "Conductor",
+                    "Album", "Catalog",
+                    "Track Number", "Track Total",
+                    "Volume Number", "Volume Total",
+                    "ISRC", "Publisher", "Media", "Year", "Date", "Copyright",
                     "Comment"),
                    (self.track_name,
                     self.artist_name,
@@ -1567,12 +1640,12 @@ class MetaData:
         if (len(comment_pairs) > 0):
             max_key_length = max([len(pair[0]) for pair in comment_pairs])
             line_template = u"%%(key)%(length)d.%(length)ds : %%(value)s" % \
-                            {"length":max_key_length}
+                            {"length": max_key_length}
 
             base_comment = unicode(os.linesep.join(
                 [_(u"%s Comment:") % (self.__comment_name__())] + \
-                [line_template % {"key":key,"value":value} for
-                 (key,value) in comment_pairs]))
+                [line_template % {"key": key, "value": value} for
+                 (key, value) in comment_pairs]))
         else:
             base_comment = u""
 
@@ -1586,7 +1659,7 @@ class MetaData:
 
     def __eq__(self, metadata):
         if (metadata is not None):
-            return set([(getattr(self,attr) == getattr(metadata,attr))
+            return set([(getattr(self, attr) == getattr(metadata, attr))
                         for attr in MetaData.__FIELDS__]) == set([True])
         else:
             return False
@@ -1602,13 +1675,12 @@ class MetaData:
     @classmethod
     def converted(cls, metadata):
         if (metadata is not None):
-            fields = dict([(field,getattr(metadata,field))
+            fields = dict([(field, getattr(metadata, field))
                            for field in cls.__FIELDS__])
             fields["images"] = metadata.images()
             return MetaData(**fields)
         else:
             return None
-
 
     #returns True if this particular sort of metadata support images
     #returns False if not
@@ -1664,11 +1736,11 @@ class MetaData:
         fields = {}
         for field in self.__FIELDS__:
             if (field not in self.__INTEGER_FIELDS__):
-                if (len(getattr(self,field)) == 0):
-                    setattr(self,field,getattr(metadata,field))
+                if (len(getattr(self, field)) == 0):
+                    setattr(self, field, getattr(metadata, field))
             else:
-                if (getattr(self,field) == 0):
-                    setattr(self,field,getattr(metadata,field))
+                if (getattr(self, field) == 0):
+                    setattr(self, field, getattr(metadata, field))
 
         if ((len(self.images()) == 0) and self.supports_images()):
             for img in metadata.images():
@@ -1678,19 +1750,19 @@ class MetaData:
 class AlbumMetaData(dict):
     def __init__(self, metadata_iter):
         dict.__init__(self,
-                      dict([(m.track_number,m) for m in
-                            metadata_iter]))
+                      dict([(m.track_number, m) for m in metadata_iter]))
 
     #returns a single MetaData object containing all
     #the consistent fields contained in the album
     def metadata(self):
-        return MetaData(**dict([(field,list(items)[0])
-                                for (field,items) in
+        return MetaData(**dict([(field, list(items)[0])
+                                for (field, items) in
                                 [(field,
-                                  set([getattr(track,field) for track
+                                  set([getattr(track, field) for track
                                        in self.values()]))
                                  for field in MetaData.__FIELDS__]
                                 if (len(items) == 1)]))
+
 
 #a superclass of MetaData file exceptions
 #such as XMCDException and MBXMLException
@@ -1698,9 +1770,11 @@ class MetaDataFileException(Exception):
     def __unicode__(self):
         return _(u"Invalid XMCD or MusicBrainz XML file")
 
+
 #######################
 #Image MetaData
 #######################
+
 
 #A simple image data container
 class Image:
@@ -1729,30 +1803,31 @@ class Image:
         self.type = type
 
     def suffix(self):
-        return {"image/jpeg":"jpg",
-                "image/jpg":"jpg",
-                "image/gif":"gif",
-                "image/png":"png",
-                "image/x-ms-bmp":"bmp",
-                "image/tiff":"tiff"}.get(self.mime_type,"bin")
+        return {"image/jpeg": "jpg",
+                "image/jpg": "jpg",
+                "image/gif": "gif",
+                "image/png": "png",
+                "image/x-ms-bmp": "bmp",
+                "image/tiff": "tiff"}.get(self.mime_type, "bin")
 
     def type_string(self):
-        return {0:"Front Cover",
-                1:"Back Cover",
-                2:"Leaflet Page",
-                3:"Media",
-                4:"Other"}.get(self.type,"Other")
+        return {0: "Front Cover",
+                1: "Back Cover",
+                2: "Leaflet Page",
+                3: "Media",
+                4: "Other"}.get(self.type, "Other")
 
     def __repr__(self):
-        return "Image(mime_type=%s,width=%s,height=%s,color_depth=%s,color_count=%s,description=%s,type=%s,...)" % \
-               (repr(self.mime_type),repr(self.width),repr(self.height),
-                repr(self.color_depth),repr(self.color_count),
-                repr(self.description),repr(self.type))
+        return ("Image(mime_type=%s,width=%s,height=%s,color_depth=%s," +
+                "color_count=%s,description=%s,type=%s,...)") % \
+                (repr(self.mime_type), repr(self.width), repr(self.height),
+                 repr(self.color_depth), repr(self.color_count),
+                 repr(self.description), repr(self.type))
 
     def __unicode__(self):
         return u"Picture : %s (%d\u00D7%d,'%s')" % \
                (self.type_string(),
-                self.width,self.height,self.mime_type)
+                self.width, self.height, self.mime_type)
 
     #returns a new Image object from the data, description and type
     #raises InvalidImage if there is some error initializing
@@ -1772,14 +1847,14 @@ class Image:
     #returns a new Image object in the given width, height and format
     def thumbnail(self, width, height, format):
         return Image.new(thumbnail_image(self.data, width, height, format),
-                         self.description,self.type)
+                         self.description, self.type)
 
     def __eq__(self, image):
         if (image is not None):
-            return set([(getattr(self,attr) == getattr(image,attr))
+            return set([(getattr(self, attr) == getattr(image, attr))
                         for attr in
-                        ("data","mime_type","width","height",
-                         "color_depth","color_count","description",
+                        ("data", "mime_type", "width", "height",
+                         "color_depth", "color_count", "description",
                          "type")]) == set([True])
         else:
             return False
@@ -1791,6 +1866,7 @@ class Image:
 #ReplayGain Metadata
 #######################
 
+
 class ReplayGain:
     def __init__(self, track_gain, track_peak, album_gain, album_peak):
         self.track_gain = float(track_gain)
@@ -1800,8 +1876,8 @@ class ReplayGain:
 
     def __repr__(self):
         return "ReplayGain(%s,%s,%s,%s)" % \
-            (self.track_gain,self.track_peak,
-             self.album_gain,self.album_peak)
+            (self.track_gain, self.track_peak,
+             self.album_gain, self.album_peak)
 
     def __eq__(self, rg):
         return ((self.track_gain == rg.track_gain) and
@@ -1823,12 +1899,12 @@ class UnsupportedTracknameField(Exception):
     def __init__(self, field):
         self.field = field
 
-    def error_msg(self,messenger):
+    def error_msg(self, messenger):
         messenger.error(_(u"Unknown field \"%s\" in file format") % \
                             (self.field))
         messenger.info(_(u"Supported fields are:"))
         for field in sorted(MetaData.__FIELDS__ + \
-                            ("album_track_number","suffix")):
+                            ("album_track_number", "suffix")):
             if (field == 'track_number'):
                 messenger.info(u"%(track_number)2.2d")
             else:
@@ -1903,7 +1979,6 @@ class AudioFile:
     def sample_rate(self):
         raise NotImplementedError()
 
-
     #returns a PCMReader-compatible object
     def to_pcm(self):
         #if a subclass implements to_wave(),
@@ -1916,7 +1991,7 @@ class AudioFile:
         f = tempfile.NamedTemporaryFile(suffix=".wav")
         try:
             self.to_wave(f.name)
-            f.seek(0,0)
+            f.seek(0, 0)
             return TempWaveReader(f)
         except EncodingError:
             return PCMReaderError(None,
@@ -1943,14 +2018,14 @@ class AudioFile:
         f = tempfile.NamedTemporaryFile(suffix=".wav")
         w = WaveAudio.from_pcm(f.name, pcmreader)
         try:
-            return cls.from_wave(filename,f.name,compression)
+            return cls.from_wave(filename, f.name, compression)
         finally:
             f.close()
 
     #writes the contents of this AudioFile to the given RIFF WAVE filename
     #raises EncodingError if an error occurs during decoding
     def to_wave(self, wave_filename):
-        WaveAudio.from_pcm(wave_filename,self.to_pcm())
+        WaveAudio.from_pcm(wave_filename, self.to_pcm())
 
     #takes a filename string of our new file
     #a wave_filename string of an existing RIFF WAVE file
@@ -1960,7 +2035,7 @@ class AudioFile:
     @classmethod
     def from_wave(cls, filename, wave_filename, compression=None):
         return cls.from_pcm(
-            filename, WaveAudio(wave_filename).to_pcm(),compression)
+            filename, WaveAudio(wave_filename).to_pcm(), compression)
 
     #This method should return True if the format supports storing
     #non-audio RIFF chunks during compression/decompression.
@@ -1985,8 +2060,9 @@ class AudioFile:
             return metadata.track_number
         else:
             try:
-                return int(re.findall(r'\d{2,3}',
-                                      os.path.basename(self.filename))[0]) % 100
+                return int(re.findall(
+                        r'\d{2,3}',
+                        os.path.basename(self.filename))[0]) % 100
             except IndexError:
                 return 0
 
@@ -2006,7 +2082,6 @@ class AudioFile:
                 return long_track_number / 100
             except IndexError:
                 return 0
-
 
     #given a plain file_path string
     #MetaData-compatible object (or None)
@@ -2054,11 +2129,11 @@ class AudioFile:
                 track_total = 0
                 album_total = 0
 
-            format_dict = {u"track_number":track_number,
-                           u"album_number":album_number,
-                           u"track_total":track_total,
-                           u"album_total":album_total,
-                           u"suffix":suffix.decode('ascii')}
+            format_dict = {u"track_number": track_number,
+                           u"album_number": album_number,
+                           u"track_total": track_total,
+                           u"album_total": album_total,
+                           u"suffix": suffix.decode('ascii')}
 
             if (album_number == 0):
                 format_dict[u"album_track_number"] = u"%2.2d" % (track_number)
@@ -2067,8 +2142,8 @@ class AudioFile:
 
                 format_dict[u"album_track_number"] = (
                     u"%%%(album_digits)d.%(album_digits)dd%%2.2d" %
-                    {"album_digits":album_digits} %
-                    (album_number,track_number))
+                    {"album_digits": album_digits} %
+                    (album_number, track_number))
 
             if (track_metadata is not None):
                 for field in track_metadata.__FIELDS__:
@@ -2076,7 +2151,7 @@ class AudioFile:
                         (field not in MetaData.__INTEGER_FIELDS__)):
                         format_dict[field.decode('ascii')] = getattr(
                             track_metadata,
-                            field).replace(u'/',u'-').replace(unichr(0),u' ')
+                            field).replace(u'/', u'-').replace(unichr(0), u' ')
             else:
                 for field in MetaData.__FIELDS__:
                     if (field not in MetaData.__INTEGER_FIELDS__):
@@ -2086,9 +2161,9 @@ class AudioFile:
                 os.path.basename(file_path))[0].decode(FS_ENCODING,
                                                        'replace')
 
-            return (format.decode('utf-8','replace') % format_dict).encode(
-                FS_ENCODING,'replace')
-        except KeyError,error:
+            return (format.decode('utf-8', 'replace') % format_dict).encode(
+                FS_ENCODING, 'replace')
+        except KeyError, error:
             raise UnsupportedTracknameField(unicode(error.args[0]))
 
     #takes a list of filenames matching this AudioFile type
@@ -2098,7 +2173,7 @@ class AudioFile:
     def add_replay_gain(cls, filenames):
         track_names = [track.filename for track in
                        open_files(filenames) if
-                       isinstance(track,cls)]
+                       isinstance(track, cls)]
 
     #returns True if we have the necessary binaries to add ReplayGain
     #returns False if not
@@ -2122,7 +2197,7 @@ class AudioFile:
     #with catalog(), ISRCs(), indexes(), and pcm_lengths() methods
     #sets this AudioFile's embedded cuesheet to that data, if possible
     #raises IOError if an error occurs setting the cuesheet
-    def set_cuesheet(self,cuesheet):
+    def set_cuesheet(self, cuesheet):
         pass
 
     #returns a cuesheet-compatible object
@@ -2136,7 +2211,7 @@ class AudioFile:
             p1 = self.to_pcm()
             p2 = audiofile.to_pcm()
             try:
-                return pcm_cmp(p1,p2)
+                return pcm_cmp(p1, p2)
             finally:
                 p1.close()
                 p2.close()
@@ -2161,7 +2236,7 @@ class DummyAudioFile(AudioFile):
         self.__metadata__ = metadata
         self.__track_number__ = track_number
 
-        AudioFile.__init__(self,"")
+        AudioFile.__init__(self, "")
 
     def get_metadata(self):
         return self.__metadata__
@@ -2184,8 +2259,11 @@ class DummyAudioFile(AudioFile):
 
 #Cuesheets and TOC files are bundled into a unified Sheet interface
 
+
 #a parent exception for CueException and TOCException
-class SheetException(ValueError): pass
+class SheetException(ValueError):
+    pass
+
 
 def read_sheet(filename):
     import toc
@@ -2197,23 +2275,27 @@ def read_sheet(filename):
     except SheetException:
         return cue.read_cuesheet(filename)
 
+
 def parse_timestamp(s):
     if (":" in s):
-        (m,s,f) = map(int,s.split(":"))
+        (m, s, f) = map(int, s.split(":"))
         return (m * 60 * 75) + (s * 75) + f
     else:
         return int(s)
 
+
 def build_timestamp(i):
-    return "%2.2d:%2.2d:%2.2d" % ((i / 75) / 60,(i / 75) % 60,i % 75)
+    return "%2.2d:%2.2d:%2.2d" % ((i / 75) / 60, (i / 75) % 60, i % 75)
+
 
 #given a cuesheet-compatible object and a total_frames integer
 #return a unicode string formatted for use by MetaData's __unicode__ method
 #for eventual display by trackinfo
-def sheet_to_unicode(sheet,total_frames):
+def sheet_to_unicode(sheet, total_frames):
     #FIXME? - This (and pcm_lengths() in general) assumes all cuesheets
     #have a sample rate of 44100Hz.
-    #It's difficult to envision a scenario in which this assumption doesn't hold
+    #It's difficult to envision a scenario
+    #in which this assumption doesn't hold
     #The point of cuesheets is to manage disc-based data as
     #"solid" archives which can be rewritten identically to the original
     #yet this only works for CD audio, which must always be 44100Hz.
@@ -2227,19 +2309,20 @@ def sheet_to_unicode(sheet,total_frames):
              (i + 1,
               length / 44100 / 60,
               length / 44100 % 60,
-              (" (ISRC %s)" % (ISRCs[i + 1].decode('ascii','replace'))) if ((i + 1) in ISRCs.keys()) else u"")
-         for (i,length) in enumerate(sheet.pcm_lengths(total_frames))])
-
+              (" (ISRC %s)" % (ISRCs[i + 1].decode('ascii', 'replace'))) if
+                ((i + 1) in ISRCs.keys()) else u"")
+         for (i, length) in enumerate(sheet.pcm_lengths(total_frames))])
 
     if ((sheet.catalog() is not None) and
         (len(sheet.catalog()) > 0)):
         return u"  Catalog - %s%s%s" % \
-            (sheet.catalog().decode('ascii','replace'),
-             os.linesep,tracks)
+            (sheet.catalog().decode('ascii', 'replace'),
+             os.linesep, tracks)
     else:
         return tracks
 
-def at_a_time(total,per):
+
+def at_a_time(total, per):
     for i in xrange(total / per):
         yield per
     yield total % per
@@ -2263,6 +2346,7 @@ from __speex__ import *
 from __aiff__ import *
 from __shn__ import *
 
+
 #######################
 #CD data
 #######################
@@ -2273,12 +2357,13 @@ from __shn__ import *
 #is something code should avoid at all costs!
 #there's simply no way to accomplish that cleanly
 
-def CDDA(device_name,speed=None):
-    offset = config.getint_default("System","cdrom_read_offset",0)
+def CDDA(device_name, speed=None):
+    offset = config.getint_default("System", "cdrom_read_offset", 0)
     if (offset == 0):
-        return RawCDDA(device_name,speed)
+        return RawCDDA(device_name, speed)
     else:
-        return OffsetCDDA(device_name,offset,speed)
+        return OffsetCDDA(device_name, offset, speed)
+
 
 class RawCDDA:
     def __init__(self, device_name, speed=None):
@@ -2286,7 +2371,7 @@ class RawCDDA:
         self.cdda = cdio.CDDA(device_name)
         self.total_tracks = len([track_type for track_type in
                                  map(self.cdda.track_type,
-                                     xrange(1,self.cdda.total_tracks() + 1))
+                                     xrange(1, self.cdda.total_tracks() + 1))
                                  if (track_type == 0)])
         if (speed is not None):
             self.cdda.set_speed(speed)
@@ -2298,10 +2383,10 @@ class RawCDDA:
         if ((key < 1) or (key > self.total_tracks)):
             raise IndexError(key)
         else:
-            return CDTrackReader(self.cdda,int(key))
+            return CDTrackReader(self.cdda, int(key))
 
     def __iter__(self):
-        for i in range(1,self.total_tracks + 1):
+        for i in range(1, self.total_tracks + 1):
             yield self[i]
 
     def length(self):
@@ -2316,6 +2401,7 @@ class RawCDDA:
 
     def last_sector(self):
         return self.cdda.last_sector()
+
 
 #a RawCDDA-compatible class which automatically applies sample offsets
 #note that this blocks for a *long* time at instantiation time
@@ -2340,8 +2426,8 @@ class OffsetCDDA(RawCDDA):
         if (sample_offset < 0):
             self.__temp__.write(chr(0) * (-sample_offset * 4))
 
-        for tracknum in xrange(1,self.cdda.total_tracks() + 1):
-            (start,end) = self.cdda.track_offsets(tracknum)
+        for tracknum in xrange(1, self.cdda.total_tracks() + 1):
+            (start, end) = self.cdda.track_offsets(tracknum)
             trackreader = OffsetCDTrackReader(
                 tracknum,
                 self.__temp__,
@@ -2352,9 +2438,9 @@ class OffsetCDDA(RawCDDA):
             self.cdda.seek(start)
             cdio.set_read_callback(trackreader.log)
 
-            for sector_count in at_a_time(end - start,445):
+            for sector_count in at_a_time(end - start, 445):
                 self.__temp__.write(
-                    self.cdda.read_sectors(sector_count).to_bytes(False,True))
+                    self.cdda.read_sectors(sector_count).to_bytes(False, True))
 
             self.__tracks__[tracknum] = trackreader
 
@@ -2385,17 +2471,17 @@ class CDTrackLog(dict):
 
     #log format is similar to cdda2wav's
     def __str__(self):
-        return ", ".join(["%%(%s)d %s" % (field,field)
+        return ", ".join(["%%(%s)d %s" % (field, field)
                           for field in
-                          ("rderr","skip","atom","edge",
-                           "drop","dup","drift")]) % \
-                           {"edge":self.get(2,0),
-                            "atom":self.get(3,0),
-                            "skip":self.get(6,0),
-                            "drift":self.get(7,0),
-                            "drop":self.get(10,0),
-                            "dup":self.get(11,0),
-                            "rderr":self.get(12,0)}
+                          ("rderr", "skip", "atom", "edge",
+                           "drop", "dup", "drift")]) % \
+                           {"edge": self.get(2, 0),
+                            "atom": self.get(3, 0),
+                            "skip": self.get(6, 0),
+                            "drift": self.get(7, 0),
+                            "drop": self.get(10, 0),
+                            "dup": self.get(11, 0),
+                            "rderr": self.get(12, 0)}
 
 
 class CDTrackReader(PCMReader):
@@ -2413,8 +2499,7 @@ class CDTrackReader(PCMReader):
         self.cdda = cdda
         self.track_number = track_number
 
-        (self.__start__,self.__end__) = cdda.track_offsets(track_number)
-
+        (self.__start__, self.__end__) = cdda.track_offsets(track_number)
 
         self.__position__ = self.__start__
         self.__cursor_placed__ = False
@@ -2433,7 +2518,6 @@ class CDTrackReader(PCMReader):
         else:
             self.rip_log[v] = 1
 
-
     def __read_sectors__(self, sectors):
         #if we haven't moved CDDA to the track start yet, do it now
         if (not self.__cursor_placed__):
@@ -2444,22 +2528,22 @@ class CDTrackReader(PCMReader):
             self.__cursor_placed__ = True
 
         if (self.__position__ <= self.__end__):
-            s = self.cdda.read_sectors(min(sectors,
-                                           self.__end__ - self.__position__ + 1))
+            s = self.cdda.read_sectors(min(
+                    sectors, self.__end__ - self.__position__ + 1))
             self.__position__ += sectors
             return s
         else:
-            return pcm.from_list([],2,16,True)
+            return pcm.from_list([], 2, 16, True)
 
     def read(self, bytes):
         #returns a sector-aligned number of bytes
         #(divisible by 2352 bytes, basically)
         #or at least 1 sector's worth, if "bytes" is too small
-        return self.__read_sectors__(max(bytes / 2352,1))
-
+        return self.__read_sectors__(max(bytes / 2352, 1))
 
     def close(self):
         pass
+
 
 class OffsetCDTrackReader(PCMReader):
     def __init__(self, track_number, temp_file,
@@ -2499,19 +2583,20 @@ class OffsetCDTrackReader(PCMReader):
             bytes -= (bytes % 4)
 
         if (not self.__cursor_placed__):
-            self.__file__.seek(self.__byte_offset__,0)
+            self.__file__.seek(self.__byte_offset__, 0)
             self.__remaining_bytes__ = (self.__end__ - self.__start__) * 2352
             self.__cursor_placed__ = True
 
         if (self.__remaining_bytes__ > 0):
-            data = self.__file__.read(min(bytes,self.__remaining_bytes__))
+            data = self.__file__.read(min(bytes, self.__remaining_bytes__))
             self.__remaining_bytes__ -= len(data)
-            return pcm.FrameList(data,2,16,False,True)
+            return pcm.FrameList(data, 2, 16, False, True)
         else:
-            return pcm.FrameList("",2,16,False,True)
+            return pcm.FrameList("", 2, 16, False, True)
 
     def close(self):
         self.__cursor_placed__ = False
+
 
 #returns the value in item_list which occurs most often
 def __most_numerous__(item_list):
@@ -2521,13 +2606,15 @@ def __most_numerous__(item_list):
         return ""
 
     for item in item_list:
-        counts.setdefault(item,[]).append(item)
+        counts.setdefault(item, []).append(item)
 
-    return sorted([(item,len(counts[item])) for item in counts.keys()],
-                  lambda x,y: cmp(x[1],y[1]))[-1][0]
+    return sorted([(item, len(counts[item])) for item in counts.keys()],
+                  lambda x, y: cmp(x[1], y[1]))[-1][0]
+
 
 from __freedb__ import *
 from __musicbrainz__ import *
+
 
 #takes an XMCD or MusicBrainz XML file
 #returns an AlbumMetaData-compatible object
@@ -2548,9 +2635,11 @@ def read_metadata_file(filename):
     #otherwise, throw exception
     raise MetaDataFileException(filename)
 
+
 #######################
 #Multiple Jobs Handling
 #######################
+
 
 class ExecQueue:
     def __init__(self):
@@ -2558,15 +2647,15 @@ class ExecQueue:
         self.return_values = set([])
 
     def execute(self, function, args, kwargs=None):
-        self.todo.append((function,args,kwargs))
+        self.todo.append((function, args, kwargs))
 
     def __run__(self, function, args, kwargs):
         pid = os.fork()
-        if (pid > 0):  #parent
+        if (pid > 0):  # parent
             return pid
-        else:          #child
+        else:          # child
             if (kwargs is not None):
-                function(*args,**kwargs)
+                function(*args, **kwargs)
             else:
                 function(*args)
             sys.exit(0)
@@ -2578,8 +2667,8 @@ class ExecQueue:
 
         #fill the process_pool to the limit
         while ((len(self.todo) > 0) and (len(process_pool) < max_processes)):
-            (function,args,kwargs) = self.todo.pop(0)
-            process_pool.add(self.__run__(function,args,kwargs))
+            (function, args, kwargs) = self.todo.pop(0)
+            process_pool.add(self.__run__(function, args, kwargs))
             #print "Filling %s" % (repr(process_pool))
 
         #as processes end, keep adding new ones to the pool
@@ -2587,11 +2676,11 @@ class ExecQueue:
 
         while (len(self.todo) > 0):
             try:
-                (pid,return_value) = os.waitpid(0,0)
+                (pid, return_value) = os.waitpid(0, 0)
                 process_pool.remove(pid)
                 self.return_values.add(return_value)
-                (function,args,kwargs) = self.todo.pop(0)
-                process_pool.add(self.__run__(function,args,kwargs))
+                (function, args, kwargs) = self.todo.pop(0)
+                process_pool.add(self.__run__(function, args, kwargs))
                 #print "Resuming %s" % (repr(process_pool))
             except KeyError:
                 continue
@@ -2599,7 +2688,7 @@ class ExecQueue:
         #finally, wait for the running jobs to finish
         while (len(process_pool) > 0):
             try:
-                (pid,return_value) = os.waitpid(0,0)
+                (pid, return_value) = os.waitpid(0, 0)
                 process_pool.remove(pid)
                 self.return_values.add(return_value)
                 #print "Emptying %s" % (repr(process_pool))
@@ -2637,9 +2726,9 @@ class BitstreamReader:
                 self.context = 0x800 | ord(self.byte_source.read(1))
 
             if (bits > 8):
-                result = read_bits(self.context,8)
+                result = read_bits(self.context, 8)
             else:
-                result = read_bits(self.context,bits)
+                result = read_bits(self.context, bits)
 
             accumulator = (accumulator << ((result & 0xF00000) >> 20)) | \
               ((result & 0xFF000) >> 12)
@@ -2649,13 +2738,13 @@ class BitstreamReader:
         return accumulator
 
     def unread(self, bit):
-        self.context = self.__unread_bit__(self.context,bit)
+        self.context = self.__unread_bit__(self.context, bit)
 
     def read_signed(self, bits):
-        if (self.read(1)):              #negative
+        if (self.read(1)):              # negative
             return self.read(bits - 1) - (1 << (bits - 1))
         else:
-            return self.read(bits - 1)  #positive
+            return self.read(bits - 1)  # positive
 
     def unary(self, stop_bit):
         if ((stop_bit != 0) and (stop_bit != 1)):
@@ -2667,7 +2756,7 @@ class BitstreamReader:
         if (self.context == 0):
             self.context = 0x800 | ord(self.byte_source.read(1))
 
-        result = read_unary(self.context,stop_bit)
+        result = read_unary(self.context, stop_bit)
         accumulator += ((result & 0xFF000) >> 12)
         self.context = result & 0xFFF
 
@@ -2675,7 +2764,7 @@ class BitstreamReader:
             if (self.context == 0):
                 self.context = 0x800 | ord(self.byte_source.read(1))
 
-            result = read_unary(self.context,stop_bit)
+            result = read_unary(self.context, stop_bit)
             accumulator += ((result & 0xFF000) >> 12)
             self.context = result & 0xFFF
 
@@ -2687,6 +2776,7 @@ class BitstreamReader:
     def close(self):
         self.byte_source.close()
         self.context = 0
+
 
 class BitstreamWriter:
     #byte_sink should be a file-like object
@@ -2702,7 +2792,7 @@ class BitstreamWriter:
         self.__write_unary__ = encoders.write_unary
 
     def byte_align(self):
-        self.write(7,0)
+        self.write(7, 0)
         self.context = 0
 
     def write(self, bits, value):
@@ -2732,16 +2822,16 @@ class BitstreamWriter:
 
     def write_signed(self, bits, value):
         if (value >= 0):
-            self.write(1,0)
+            self.write(1, 0)
             self.write(bits - 1, value)
         else:
-            self.write(1,1)
+            self.write(1, 1)
             self.write(bits - 1, value + (1 << (bits - 1)))
 
     def unary(self, stop_bit, value):
         #send continuation blocks until we get to 7 bits or less
         while (value >= 8):
-            result = self.__write_unary__(self.context,(stop_bit << 4) | 0x08)
+            result = self.__write_unary__(self.context, (stop_bit << 4) | 0x08)
             if (result >> 18):
                 self.byte_sink.write(chr((result >> 10) & 0xFF))
 
@@ -2749,7 +2839,7 @@ class BitstreamWriter:
             value -= 8
 
         #finally, send the remaining value
-        result = self.__write_unary__(self.context,(stop_bit << 4) | value)
+        result = self.__write_unary__(self.context, (stop_bit << 4) | value)
         if (result >> 18):
             self.byte_sink.write(chr((result >> 10) & 0xFF))
 
@@ -2768,12 +2858,21 @@ class BitstreamWriter:
 #Monkey's Audio with my own code in order to make it available again.
 #Yet another reason to avoid that unpleasant file format...
 
-AVAILABLE_TYPES = (FlacAudio,OggFlacAudio,
-                   MP3Audio,MP2Audio,WaveAudio,
-                   VorbisAudio,SpeexAudio,
-                   AiffAudio,AuAudio,M4AAudio,AACAudio,ALACAudio,
-                   WavPackAudio,ShortenAudio)
+AVAILABLE_TYPES = (FlacAudio,
+                   OggFlacAudio,
+                   MP3Audio,
+                   MP2Audio,
+                   WaveAudio,
+                   VorbisAudio,
+                   SpeexAudio,
+                   AiffAudio,
+                   AuAudio,
+                   M4AAudio,
+                   AACAudio,
+                   ALACAudio,
+                   WavPackAudio,
+                   ShortenAudio)
 
-TYPE_MAP = dict([(track_type.NAME,track_type)
+TYPE_MAP = dict([(track_type.NAME, track_type)
                  for track_type in AVAILABLE_TYPES
-                 if track_type.has_binaries(BIN)]); del(track_type)
+                 if track_type.has_binaries(BIN)])
