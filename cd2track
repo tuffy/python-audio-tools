@@ -179,9 +179,9 @@ if (__name__ == '__main__'):
                 continue
         to_rip.sort(lambda x,y: cmp(x.track_number,y.track_number))
 
-    for cd_track in to_rip:
+    for (track_number,cd_track) in enumerate(to_rip):
         basename = "track%2d%2.2d" % (options.album_number,
-                                      options.track_number)
+                                      track_number + 1)
 
         try:
             if (xmcd is not None):  #we have metadata
