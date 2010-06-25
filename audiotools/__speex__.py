@@ -18,32 +18,38 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,InvalidFile,PCMReader,PCMConverter,Con,transfer_data,transfer_framelist_data,subprocess,BIN,cStringIO,os,ignore_sigint,EncodingError,DecodingError,ChannelMask
+from audiotools import (AudioFile, InvalidFile, PCMReader, PCMConverter,
+                        Con, transfer_data, transfer_framelist_data,
+                        subprocess, BIN, cStringIO, os, ignore_sigint,
+                        EncodingError, DecodingError, ChannelMask)
 from __vorbis__ import *
 
 #######################
 #Speex File
 #######################
 
+
 class UnframedVorbisComment(VorbisComment):
     VORBIS_COMMENT = Con.Struct("vorbis_comment",
-                                Con.PascalString("vendor_string",
-                                                 length_field=Con.ULInt32("length")),
+                                Con.PascalString(
+            "vendor_string",
+            length_field=Con.ULInt32("length")),
                                 Con.PrefixedArray(
         length_field=Con.ULInt32("length"),
         subcon=Con.PascalString("value",
                                 length_field=Con.ULInt32("length"))))
 
+
 class SpeexAudio(VorbisAudio):
     SUFFIX = "spx"
     NAME = SUFFIX
     DEFAULT_COMPRESSION = "8"
-    COMPRESSION_MODES = tuple([str(i) for i in range(0,11)])
-    BINARIES = ("speexenc","speexdec")
+    COMPRESSION_MODES = tuple([str(i) for i in range(0, 11)])
+    BINARIES = ("speexenc", "speexdec")
 
     SPEEX_HEADER = Con.Struct('speex_header',
-                              Con.String('speex_string',8),
-                              Con.String('speex_version',20),
+                              Con.String('speex_string', 8),
+                              Con.String('speex_version', 20),
                               Con.ULInt32('speex_version_id'),
                               Con.ULInt32('header_size'),
                               Con.ULInt32('sampling_rate'),
@@ -70,7 +76,7 @@ class SpeexAudio(VorbisAudio):
                 header[0x1C:0x23] == 'Speex  ')
 
     def __read_metadata__(self):
-        f = OggStreamReader(file(self.filename,"rb"))
+        f = OggStreamReader(file(self.filename, "rb"))
         packets = f.packets()
         try:
             #first read the Header packet
@@ -85,11 +91,13 @@ class SpeexAudio(VorbisAudio):
             self.comment = UnframedVorbisComment.VORBIS_COMMENT.parse(
                 comment_packet)
         finally:
-            del(packets); f.close(); del(f)
+            del(packets)
+            f.close()
+            del(f)
 
     def to_pcm(self):
-        devnull = file(os.devnull,'ab')
-        sub = subprocess.Popen([BIN['speexdec'],self.filename,'-'],
+        devnull = file(os.devnull, 'ab')
+        sub = subprocess.Popen([BIN['speexdec'], self.filename, '-'],
                                stdout=subprocess.PIPE,
                                stderr=devnull)
         return PCMReader(
@@ -107,37 +115,37 @@ class SpeexAudio(VorbisAudio):
         if (compression not in cls.COMPRESSION_MODES):
             compression = cls.DEFAULT_COMPRESSION
 
-        if ((pcmreader.bits_per_sample not in (8,16)) or
+        if ((pcmreader.bits_per_sample not in (8, 16)) or
             (pcmreader.channels > 2) or
-            (pcmreader.sample_rate not in (8000,16000,32000,44100))):
+            (pcmreader.sample_rate not in (8000, 16000, 32000, 44100))):
             pcmreader = PCMConverter(
                 pcmreader,
-                sample_rate=[8000,8000,16000,32000,44100][bisect.bisect(
-                    [8000,16000,32000,44100],pcmreader.sample_rate)],
-                channels=min(pcmreader.channels,2),
-                channel_mask=ChannelMask.from_channels(min(pcmreader.channels,2)),
-                bits_per_sample=min(pcmreader.bits_per_sample,16))
+                sample_rate=[8000, 8000, 16000, 32000, 44100][bisect.bisect(
+                    [8000, 16000, 32000, 44100], pcmreader.sample_rate)],
+                channels=min(pcmreader.channels, 2),
+                channel_mask=ChannelMask.from_channels(
+                    min(pcmreader.channels, 2)),
+                bits_per_sample=min(pcmreader.bits_per_sample, 16))
 
+        BITS_PER_SAMPLE = {8: ['--8bit'],
+                           16: ['--16bit']}[pcmreader.bits_per_sample]
 
-        BITS_PER_SAMPLE = {8:['--8bit'],
-                           16:['--16bit']}[pcmreader.bits_per_sample]
+        CHANNELS = {1: [], 2: ['--stereo']}[pcmreader.channels]
 
-        CHANNELS = {1:[],2:['--stereo']}[pcmreader.channels]
-
-        devnull = file(os.devnull,"ab")
+        devnull = file(os.devnull, "ab")
 
         sub = subprocess.Popen([BIN['speexenc'],
-                                '--quality',str(compression),
-                                '--rate',str(pcmreader.sample_rate),
+                                '--quality', str(compression),
+                                '--rate', str(pcmreader.sample_rate),
                                 '--le'] + \
                                BITS_PER_SAMPLE + \
                                CHANNELS + \
-                               ['-',filename],
+                               ['-', filename],
                                stdin=subprocess.PIPE,
                                stderr=devnull,
                                preexec_fn=ignore_sigint)
 
-        transfer_framelist_data(pcmreader,sub.stdin.write)
+        transfer_framelist_data(pcmreader, sub.stdin.write)
         try:
             pcmreader.close()
         except DecodingError:
@@ -154,22 +162,23 @@ class SpeexAudio(VorbisAudio):
     def set_metadata(self, metadata):
         comment = VorbisComment.converted(metadata)
 
-        if (comment is None): return
+        if (comment is None):
+            return
 
-        reader = OggStreamReader(file(self.filename,'rb'))
+        reader = OggStreamReader(file(self.filename, 'rb'))
         new_file = cStringIO.StringIO()
         writer = OggStreamWriter(new_file)
 
         pages = reader.pages()
 
         #transfer our old header
-        (header_page,header_data) = pages.next()
-        writer.write_page(header_page,header_data)
+        (header_page, header_data) = pages.next()
+        writer.write_page(header_page, header_data)
 
         #skip the existing comment packet
-        (page,data) = pages.next()
+        (page, data) = pages.next()
         while (page.segment_lengths[-1] == 255):
-            (page,data) = pages.next()
+            (page, data) = pages.next()
 
         #write the pages for our new comment packet
         comment_pages = OggStreamWriter.build_pages(
@@ -178,20 +187,20 @@ class SpeexAudio(VorbisAudio):
             header_page.page_sequence_number + 1,
             comment.build())
 
-        for (page,data) in comment_pages:
-            writer.write_page(page,data)
+        for (page, data) in comment_pages:
+            writer.write_page(page, data)
 
         #write the rest of the pages, re-sequenced and re-checksummed
         sequence_number = comment_pages[-1][0].page_sequence_number + 1
-        for (i,(page,data)) in enumerate(pages):
+        for (i, (page, data)) in enumerate(pages):
             page.page_sequence_number = i + sequence_number
-            page.checksum = OggStreamReader.calculate_ogg_checksum(page,data)
-            writer.write_page(page,data)
+            page.checksum = OggStreamReader.calculate_ogg_checksum(page, data)
+            writer.write_page(page, data)
 
         reader.close()
 
         #re-write the file with our new data in "new_file"
-        f = file(self.filename,"wb")
+        f = file(self.filename, "wb")
         f.write(new_file.getvalue())
         f.close()
         writer.close()

@@ -18,11 +18,14 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,InvalidFile,InvalidFormat,PCMReader,PCMConverter,Con,subprocess,BIN,ApeTaggedAudio,os,TempWaveReader,ignore_sigint,transfer_data,EncodingError,DecodingError,PCMReaderError
+from audiotools import (AudioFile, InvalidFile, InvalidFormat, PCMReader,
+                        PCMConverter, Con, subprocess, BIN, ApeTaggedAudio,
+                        os, TempWaveReader, ignore_sigint, transfer_data,
+                        EncodingError, DecodingError, PCMReaderError)
 from __wav__ import WaveAudio
 import gettext
 
-gettext.install("audiotools",unicode=True)
+gettext.install("audiotools", unicode=True)
 
 #######################
 #Musepack Audio
@@ -33,7 +36,7 @@ class NutValue(Con.Adapter):
     def __init__(self, name):
         Con.Adapter.__init__(
             self,
-            Con.RepeatUntil(lambda obj,ctx: (obj & 0x80) == 0x00,
+            Con.RepeatUntil(lambda obj, ctx: (obj & 0x80) == 0x00,
                             Con.UBInt8(name)))
 
     def _encode(self, value, context):
@@ -53,15 +56,16 @@ class NutValue(Con.Adapter):
             i = (i << 7) | (x & 0x7F)
         return i
 
+
 class Musepack8StreamReader:
     NUT_HEADER = Con.Struct('nut_header',
-                            Con.String('key',2),
+                            Con.String('key', 2),
                             NutValue('length'))
 
     def __init__(self, stream):
         self.stream = stream
 
-    #iterates over a bunch of (key,data) tuples
+    #iterates over a bunch of (key, data) tuples
     def packets(self):
         import string
 
@@ -81,17 +85,17 @@ class Musepack8StreamReader:
                                     len(self.NUT_HEADER.build(frame_header))))
 
 
-class MusepackAudio(ApeTaggedAudio,AudioFile):
+class MusepackAudio(ApeTaggedAudio, AudioFile):
     SUFFIX = "mpc"
     NAME = SUFFIX
     DEFAULT_COMPRESSION = "standard"
-    COMPRESSION_MODES = ("thumb","radio","standard","extreme","insane")
+    COMPRESSION_MODES = ("thumb", "radio", "standard", "extreme", "insane")
 
     ###Musepack SV7###
     #BINARIES = ('mppdec','mppenc')
 
     ###Musepack SV8###
-    BINARIES = ('mpcdec','mpcenc')
+    BINARIES = ('mpcdec', 'mpcenc')
 
     MUSEPACK8_HEADER = Con.Struct('musepack8_header',
                                   Con.UBInt32('crc32'),
@@ -100,54 +104,54 @@ class MusepackAudio(ApeTaggedAudio,AudioFile):
                                   NutValue('beginning_silence'),
                                   Con.Embed(Con.BitStruct(
         'flags',
-        Con.Bits('sample_frequency',3),
-        Con.Bits('max_used_bands',5),
-        Con.Bits('channel_count',4),
+        Con.Bits('sample_frequency', 3),
+        Con.Bits('max_used_bands', 5),
+        Con.Bits('channel_count', 4),
         Con.Flag('mid_side_used'),
-        Con.Bits('audio_block_frames',3))))
-
+        Con.Bits('audio_block_frames', 3))))
 
     #not sure about some of the flag locations
     #Musepack 7's header is very unusual
     MUSEPACK7_HEADER = Con.Struct('musepack7_header',
-                                 Con.Const(Con.String('signature',3),'MP+'),
+                                 Con.Const(Con.String('signature', 3), 'MP+'),
                                  Con.Byte('version'),
                                  Con.ULInt32('frame_count'),
                                  Con.ULInt16('max_level'),
                                  Con.Embed(
         Con.BitStruct('flags',
-                      Con.Bits('profile',4),
-                      Con.Bits('link',2),
-                      Con.Bits('sample_frequency',2),
+                      Con.Bits('profile', 4),
+                      Con.Bits('link', 2),
+                      Con.Bits('sample_frequency', 2),
                       Con.Flag('intensity_stereo'),
                       Con.Flag('midside_stereo'),
-                      Con.Bits('maxband',6))),
+                      Con.Bits('maxband', 6))),
                                  Con.ULInt16('title_gain'),
                                  Con.ULInt16('title_peak'),
                                  Con.ULInt16('album_gain'),
                                  Con.ULInt16('album_peak'),
                                  Con.Embed(
         Con.BitStruct('more_flags',
-                      Con.Bits('unused1',16),
-                      Con.Bits('last_frame_length_low',4),
+                      Con.Bits('unused1', 16),
+                      Con.Bits('last_frame_length_low', 4),
                       Con.Flag('true_gapless'),
-                      Con.Bits('unused2',3),
+                      Con.Bits('unused2', 3),
                       Con.Flag('fast_seeking'),
-                      Con.Bits('last_frame_length_high',7))),
-                                 Con.Bytes('unknown',3),
+                      Con.Bits('last_frame_length_high', 7))),
+                                 Con.Bytes('unknown', 3),
                                  Con.Byte('encoder_version'))
 
     def __init__(self, filename):
         AudioFile.__init__(self, filename)
-        f = file(filename,'rb')
+        f = file(filename, 'rb')
         try:
-            if (f.read(4) == 'MPCK'): #a Musepack 8 stream
-                for (key,packet) in Musepack8StreamReader(f).packets():
+            if (f.read(4) == 'MPCK'):  # a Musepack 8 stream
+                for (key, packet) in Musepack8StreamReader(f).packets():
                     if (key == 'SH'):
                         header = MusepackAudio.MUSEPACK8_HEADER.parse(packet)
 
-                        self.__sample_rate__ = (44100,48000,
-                                                37800,32000)[header.sample_frequency]
+                        self.__sample_rate__ = (44100, 48000,
+                                                37800, 32000)[
+                            header.sample_frequency]
 
                         self.__total_frames__ = header.sample_count
                         self.__channels__ = header.channel_count + 1
@@ -156,8 +160,8 @@ class MusepackAudio(ApeTaggedAudio,AudioFile):
                     elif (key == 'SE'):
                         raise InvalidFile(_(u'No Musepack header found'))
 
-            else:                     #a Musepack 7 stream
-                f.seek(0,0)
+            else:                      # a Musepack 7 stream
+                f.seek(0, 0)
 
                 try:
                     header = MusepackAudio.MUSEPACK7_HEADER.parse_stream(f)
@@ -168,10 +172,10 @@ class MusepackAudio(ApeTaggedAudio,AudioFile):
                                    (header.last_frame_length_high << 4) | \
                                    header.last_frame_length_low
 
-                self.__sample_rate__ = (44100,48000,
-                                        37800,32000)[header.sample_frequency]
-                self.__total_frames__ = ((header.frame_count - 1 ) * 1152) + \
-                    header.last_frame_length
+                self.__sample_rate__ = (44100, 48000,
+                                        37800, 32000)[header.sample_frequency]
+                self.__total_frames__ = (((header.frame_count - 1) * 1152) +
+                                         header.last_frame_length)
 
                 self.__channels__ = 2
         finally:
@@ -179,26 +183,26 @@ class MusepackAudio(ApeTaggedAudio,AudioFile):
 
     @classmethod
     def from_pcm(cls, filename, pcmreader, compression=None):
-        import tempfile,bisect
+        import tempfile
+        import bisect
 
         if (str(compression) not in cls.COMPRESSION_MODES):
             compression = cls.DEFAULT_COMPRESSION
 
         if ((pcmreader.channels > 2) or
-            (pcmreader.sample_rate not in (44100,48000,37800,32000)) or
+            (pcmreader.sample_rate not in (44100, 48000, 37800, 32000)) or
             (pcmreader.bits_per_sample != 16)):
             pcmreader = PCMConverter(
                 pcmreader,
-                sample_rate=[32000,32000,37800,44100,48000][bisect.bisect(
-                        [32000,37800,44100,48000],pcmreader.sample_rate)],
-                channels=min(pcmreader.channels,2),
+                sample_rate=[32000, 32000, 37800, 44100, 48000][bisect.bisect(
+                        [32000, 37800, 44100, 48000], pcmreader.sample_rate)],
+                channels=min(pcmreader.channels, 2),
                 bits_per_sample=16)
-
 
         f = tempfile.NamedTemporaryFile(suffix=".wav")
         w = WaveAudio.from_pcm(f.name, pcmreader)
         try:
-            return cls.__from_wave__(filename,f.name,compression)
+            return cls.__from_wave__(filename, f.name, compression)
         finally:
             del(w)
             f.close()
@@ -207,7 +211,7 @@ class MusepackAudio(ApeTaggedAudio,AudioFile):
     #not all WAVEs are acceptable.
     #Use the *_pcm() methods first.
     def __to_wave__(self, wave_filename):
-        devnull = file(os.devnull,"wb")
+        devnull = file(os.devnull, "wb")
         try:
             sub = subprocess.Popen([BIN['mpcdec'],
                                     self.filename,
@@ -218,7 +222,7 @@ class MusepackAudio(ApeTaggedAudio,AudioFile):
             #FIXME - small files (~5 seconds) result in an error by mpcdec,
             #even if they decode correctly.
             #Not much we can do except try to workaround its bugs.
-            if (sub.wait() not in [0,250]):
+            if (sub.wait() not in [0, 250]):
                 raise DecodingError()
         finally:
             devnull.close()
@@ -257,9 +261,9 @@ class MusepackAudio(ApeTaggedAudio,AudioFile):
         if (sub.wait() == 0):
             if (tempfile is not None):
                 filename = actual_filename
-                f = file(filename,'wb')
-                tempfile.seek(0,0)
-                transfer_data(tempfile.read,f.write)
+                f = file(filename, 'wb')
+                tempfile.seek(0, 0)
+                transfer_data(tempfile.read, f.write)
                 f.close()
                 tempfile.close()
 
