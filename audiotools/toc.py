@@ -18,16 +18,19 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 import re
-from audiotools import SheetException,parse_timestamp,build_timestamp
+from audiotools import SheetException, parse_timestamp, build_timestamp
 import gettext
 
-gettext.install("audiotools",unicode=True)
+gettext.install("audiotools", unicode=True)
 
 ###################
 #TOC Parsing
 ###################
 
-class TOCException(SheetException): pass
+
+class TOCException(SheetException):
+    pass
+
 
 #takes an iterator of lines
 #parses the TOCFile lines
@@ -66,13 +69,15 @@ def parse(lines):
                     if (line.startswith('FILE') or
                         line.startswith('AUDIOFILE')):
                         if ('"' in line):
-                            track.indexes = map(parse_timestamp,
-                                                re.findall(r'\d+:\d+:\d+|\d+',
-                                                           line[line.rindex('"') + 1:]))
+                            track.indexes = map(
+                                parse_timestamp,
+                                re.findall(r'\d+:\d+:\d+|\d+',
+                                           line[line.rindex('"') + 1:]))
                         else:
-                            track.indexes = map(parse_timestamp,
-                                                re.findall(r'\d+:\d+:\d+|\d+',
-                                                           line))
+                            track.indexes = map(
+                                parse_timestamp,
+                                re.findall(r'\d+:\d+:\d+|\d+',
+                                           line))
                     elif (line.startswith('START')):
                         track.start = parse_timestamp(line[len('START '):])
                 else:
@@ -81,6 +86,7 @@ def parse(lines):
         if (track is not None):
             toc.tracks[track.number] = track
         return toc
+
 
 class TOCFile:
     def __init__(self):
@@ -94,7 +100,7 @@ class TOCFile:
     def catalog(self):
         for line in self.lines:
             if (line.startswith('CATALOG')):
-                result = re.search(r'"(.+)"',line)
+                result = re.search(r'"(.+)"', line)
                 if (result is not None):
                     return result.group(1)
                 else:
@@ -105,7 +111,7 @@ class TOCFile:
     def indexes(self):
         for track in sorted(self.tracks.values()):
             if (track.start != 0):
-                yield (track.indexes[0],track.indexes[0] + track.start)
+                yield (track.indexes[0], track.indexes[0] + track.start)
             else:
                 yield (track.indexes[0],)
 
@@ -126,7 +132,7 @@ class TOCFile:
     #returns a track_number->ISRC dict
     #of all tracks whose ISRC is not empty
     def ISRCs(self):
-        return dict([(track.number,track.ISRC()) for track in
+        return dict([(track.number, track.ISRC()) for track in
                      self.tracks.values() if track.ISRC() is not None])
 
     #takes a sheet-compatible object with
@@ -134,12 +140,12 @@ class TOCFile:
     #along with a filename string
     #returns a string of a newly-generated TOC file
     @classmethod
-    def file(cls,sheet,filename):
+    def file(cls, sheet, filename):
         import cStringIO
 
-        catalog = sheet.catalog()       #a catalog string, or None
-        indexes = list(sheet.indexes()) #a list of index tuples
-        ISRCs = sheet.ISRCs()           #a track_number->ISRC dict
+        catalog = sheet.catalog()        # a catalog string, or None
+        indexes = list(sheet.indexes())  # a list of index tuples
+        ISRCs = sheet.ISRCs()            # a track_number->ISRC dict
 
         data = cStringIO.StringIO()
         data.write("CD_DA\n\n")
@@ -147,7 +153,8 @@ class TOCFile:
         if ((catalog is not None) and (len(catalog) > 0)):
             data.write("CATALOG \"%s\"\n\n" % (catalog))
 
-        for (i,(current,next)) in enumerate(zip(indexes,indexes[1:] + [None])):
+        for (i, (current, next)) in enumerate(zip(indexes,
+                                                  indexes[1:] + [None])):
             tracknum = i + 1
 
             data.write("TRACK AUDIO\n")
@@ -173,6 +180,7 @@ class TOCFile:
 
         return data.getvalue()
 
+
 class Track:
     def __init__(self, number):
         self.number = number
@@ -180,28 +188,29 @@ class Track:
         self.indexes = []
         self.start = 0
 
-    def __cmp__(self,t):
-        return cmp(self.number,t.number)
+    def __cmp__(self, t):
+        return cmp(self.number, t.number)
 
     def __repr__(self):
         return "Track(%s,lines=%s,indexes=%s,start=%s)" % \
-            (repr(self.number),repr(self.lines),
-             repr(self.indexes),repr(self.start))
+            (repr(self.number), repr(self.lines),
+             repr(self.indexes), repr(self.start))
 
     #returns the ISRC value of this track, or None if it cannot be found
     def ISRC(self):
         for line in self.lines:
             if (line.startswith('ISRC')):
-                match = re.search(r'"(.+)"',line)
+                match = re.search(r'"(.+)"', line)
                 if (match is not None):
                     return match.group(1)
         else:
             return None
 
+
 def read_tocfile(filename):
     try:
-        f = open(filename,'r')
-    except IOError,msg:
+        f = open(filename, 'r')
+    except IOError, msg:
         raise TOCException(str(msg))
     try:
         return parse(iter(f.readlines()))

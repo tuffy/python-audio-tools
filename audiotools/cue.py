@@ -18,10 +18,10 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 import re
-from audiotools import SheetException,parse_timestamp,build_timestamp
+from audiotools import SheetException, parse_timestamp, build_timestamp
 import gettext
 
-gettext.install("audiotools",unicode=True)
+gettext.install("audiotools", unicode=True)
 
 ###################
 #Cue Sheet Parsing
@@ -40,7 +40,10 @@ STRING = 0x8
 ISRC = 0x10
 TIMESTAMP = 0x20
 
-class CueException(SheetException): pass
+
+class CueException(SheetException):
+    pass
+
 
 def tokens(cuedata):
     full_length = len(cuedata)
@@ -49,40 +52,40 @@ def tokens(cuedata):
 
     #This isn't completely accurate since the whitespace requirements
     #between tokens aren't enforced.
-    TOKENS = [(re.compile("^(%s)" % (s)),element) for (s,element) in
-              [(r'[A-Z]{2}[A-Za-z0-9]{3}[0-9]{7}',ISRC),
-               (r'[0-9]{1,2}:[0-9]{1,2}:[0-9]{1,2}',TIMESTAMP),
-               (r'[0-9]+',NUMBER),
-               (r'[\r\n]+',EOL),
-               (r'".+?"',STRING),
-               (r'\S+',STRING),
-               (r'[ ]+',SPACE)]]
+    TOKENS = [(re.compile("^(%s)" % (s)), element) for (s, element) in
+              [(r'[A-Z]{2}[A-Za-z0-9]{3}[0-9]{7}', ISRC),
+               (r'[0-9]{1,2}:[0-9]{1,2}:[0-9]{1,2}', TIMESTAMP),
+               (r'[0-9]+', NUMBER),
+               (r'[\r\n]+', EOL),
+               (r'".+?"', STRING),
+               (r'\S+', STRING),
+               (r'[ ]+', SPACE)]]
 
     TAGMATCH = re.compile(r'^[A-Z]+$')
 
     while (True):
-        for (token,element) in TOKENS:
+        for (token, element) in TOKENS:
             t = token.search(cuedata)
             if (t is not None):
                 cuedata = cuedata[len(t.group()):]
                 if (element == SPACE):
                     break
                 elif (element == NUMBER):
-                    yield (int(t.group()),element,line_number)
+                    yield (int(t.group()), element, line_number)
                 elif (element == EOL):
                     line_number += 1
-                    yield (t.group(),element,line_number)
+                    yield (t.group(), element, line_number)
                 elif (element == STRING):
                     if (TAGMATCH.match(t.group())):
-                        yield (t.group(),TAG,line_number)
+                        yield (t.group(), TAG, line_number)
                     else:
-                        yield (t.group().strip('"'),element,line_number)
+                        yield (t.group().strip('"'), element, line_number)
                 elif (element == TIMESTAMP):
-                    (m,s,f) = map(int,t.group().split(":"))
+                    (m, s, f) = map(int, t.group().split(":"))
                     yield (((m * 60 * 75) + (s * 75) + f),
-                           element,line_number)
+                           element, line_number)
                 else:
-                    yield (t.group(),element,line_number)
+                    yield (t.group(), element, line_number)
                 break
         else:
             break
@@ -91,19 +94,21 @@ def tokens(cuedata):
         raise CueException(_(u"Invalid token at char %d") % \
                                  (full_length - len(cuedata)))
 
+
 #tokens is the token iterator
 #accept is an "or"ed list of all the tokens we'll accept
 #error is the string to prepend to the error message
 #returns the gotten value which matches
 #or throws ValueError if it does not
 def get_value(tokens, accept, error):
-    (token,element,line_number) = tokens.next()
+    (token, element, line_number) = tokens.next()
     if ((element & accept) != 0):
         return token
     else:
         raise CueException(_(u"%(error)s at line %(line)d") % \
-                                 {"error":error,
-                                  "line":line_number})
+                                 {"error": error,
+                                  "line": line_number})
+
 
 #takes an iterator of tokens
 #parses the cuesheet lines (usually <TAG> <DATA> ... <EOL> formatted)
@@ -111,16 +116,16 @@ def get_value(tokens, accept, error):
 #or raises CueException if we hit a parsing error
 def parse(tokens):
     def skip_to_eol(tokens):
-        (token,element,line_number) = tokens.next()
+        (token, element, line_number) = tokens.next()
         while (element != EOL):
-            (token,element,line_number) = tokens.next()
+            (token, element, line_number) = tokens.next()
 
     cuesheet = Cuesheet()
     track = None
 
     try:
         while (True):
-            (token,element,line_number) = tokens.next()
+            (token, element, line_number) = tokens.next()
             if (element == TAG):
 
                 #ignore comment lines
@@ -132,76 +137,76 @@ def parse(tokens):
                     if (track is not None):
                         cuesheet.tracks[track.number] = track
 
-                    track = Track(get_value(tokens,NUMBER,
+                    track = Track(get_value(tokens, NUMBER,
                                             _(u"Invalid track number")),
-                                  get_value(tokens,TAG | STRING,
+                                  get_value(tokens, TAG | STRING,
                                             _(u"Invalid track type")))
 
-                    get_value(tokens,EOL,"Excess data")
+                    get_value(tokens, EOL, "Excess data")
 
                 #if we haven't started on track data yet,
                 #add attributes to the main cue sheet
                 elif (track is None):
-                    if (token in ('CATALOG','CDTEXTFILE',
-                                  'PERFORMER','SONGWRITER',
+                    if (token in ('CATALOG', 'CDTEXTFILE',
+                                  'PERFORMER', 'SONGWRITER',
                                   'TITLE')):
                         cuesheet.attribs[token] = get_value(
                             tokens,
                             STRING | TAG | NUMBER | ISRC,
                             _(u"Missing value"))
 
-                        get_value(tokens,EOL,_(u"Excess data"))
+                        get_value(tokens, EOL, _(u"Excess data"))
 
                     elif (token == 'FILE'):
-                        filename = get_value(tokens,STRING,
+                        filename = get_value(tokens, STRING,
                                              _(u"Missing filename"))
-                        filetype = get_value(tokens,STRING | TAG,
+                        filetype = get_value(tokens, STRING | TAG,
                                              _(u"Missing file type"))
 
-                        cuesheet.attribs[token] = (filename,filetype)
+                        cuesheet.attribs[token] = (filename, filetype)
 
-                        get_value(tokens,EOL,_(u"Excess data"))
+                        get_value(tokens, EOL, _(u"Excess data"))
 
                     else:
                         raise CueException(
                             _(u"Invalid tag %(tag)s at line %(line)d") % \
-                                  {"tag":token,
-                                   "line":line_number})
+                                  {"tag": token,
+                                   "line": line_number})
                 #otherwise, we're adding data to the current track
                 else:
-                    if (token in ('ISRC','PERFORMER',
-                                  'SONGWRITER','TITLE')):
+                    if (token in ('ISRC', 'PERFORMER',
+                                  'SONGWRITER', 'TITLE')):
                         track.attribs[token] = get_value(
                             tokens,
                             STRING | TAG | NUMBER | ISRC,
                             "Missing value")
 
-                        get_value(tokens,EOL,_(u"Invalid data"))
+                        get_value(tokens, EOL, _(u"Invalid data"))
 
                     elif (token == 'FLAGS'):
                         flags = []
-                        s = get_value(tokens,STRING | TAG | EOL,
+                        s = get_value(tokens, STRING | TAG | EOL,
                                       _(u"Invalid flag"))
                         while (('\n' not in s) and ('\r' not in s)):
                             flags.append(s)
-                            s = get_value(tokens,STRING | TAG | EOL,
+                            s = get_value(tokens, STRING | TAG | EOL,
                                           _(u"Invalid flag"))
                         track.attribs[token] = ",".join(flags)
 
-                    elif (token in ('POSTGAP','PREGAP')):
+                    elif (token in ('POSTGAP', 'PREGAP')):
                         track.attribs[token] = get_value(
-                            tokens,TIMESTAMP,
+                            tokens, TIMESTAMP,
                             _(u"Invalid timestamp"))
-                        get_value(tokens,EOL,_(u"Excess data"))
+                        get_value(tokens, EOL, _(u"Excess data"))
 
                     elif (token == 'INDEX'):
-                        index_number = get_value(tokens,NUMBER,
+                        index_number = get_value(tokens, NUMBER,
                                                  _(u"Invalid index number"))
-                        index_timestamp = get_value(tokens,TIMESTAMP,
+                        index_timestamp = get_value(tokens, TIMESTAMP,
                                                     _(u"Invalid timestamp"))
                         track.indexes[index_number] = index_timestamp
 
-                        get_value(tokens,EOL,_(u"Excess data"))
+                        get_value(tokens, EOL, _(u"Excess data"))
 
                     elif (token in ('FILE',)):
                         skip_to_eol(tokens)
@@ -209,11 +214,12 @@ def parse(tokens):
                     else:
                         raise CueException(
                             _(u"Invalid tag %(tag)s at line %(line)d") % \
-                                  {"tag":token,
-                                   "line":line_number})
+                                  {"tag": token,
+                                   "line": line_number})
 
             else:
-                raise CueException(_(u"Missing tag at line %d") % (line_number))
+                raise CueException(_(u"Missing tag at line %d") % (
+                        line_number))
     except StopIteration:
         if (track is not None):
             cuesheet.tracks[track.number] = track
@@ -221,12 +227,13 @@ def parse(tokens):
 
 
 def __attrib_str__(attrib):
-    if (isinstance(attrib,tuple)):
+    if (isinstance(attrib, tuple)):
         return " ".join([__attrib_str__(a) for a in attrib])
-    elif (re.match(r'^[A-Z]+$',attrib) is not None):
+    elif (re.match(r'^[A-Z]+$', attrib) is not None):
         return attrib
     else:
         return "\"%s\"" % (attrib)
+
 
 class Cuesheet:
     def __init__(self):
@@ -235,12 +242,13 @@ class Cuesheet:
 
     def __repr__(self):
         return "Cuesheet(attribs=%s,tracks=%s)" % \
-            (repr(self.attribs),repr(self.tracks))
+            (repr(self.attribs), repr(self.tracks))
 
     def __str__(self):
-        return "\r\n".join(["%s %s" % (key,__attrib_str__(value))
-                            for key,value in self.attribs.items()] + \
-                           [str(track) for track in sorted(self.tracks.values())])
+        return "\r\n".join(["%s %s" % (key, __attrib_str__(value))
+                            for key, value in self.attribs.items()] + \
+                           [str(track) for track in
+                            sorted(self.tracks.values())])
 
     def catalog(self):
         if ('CATALOG' in self.attribs):
@@ -260,14 +268,12 @@ class Cuesheet:
         else:
             return True
 
-
     #returns an iterator of index lists
     def indexes(self):
         for key in sorted(self.tracks.keys()):
             yield tuple(
                 [self.tracks[key].indexes[k]
                  for k in sorted(self.tracks[key].indexes.keys())])
-
 
     #takes total_length of the entire file in PCM frames
     #returns a list of PCM lengths for all audio tracks within the cuesheet
@@ -279,8 +285,8 @@ class Cuesheet:
             if (previous is None):
                 previous = current
             else:
-                track_length = (current[max(current.keys())] - \
-                                    previous[max(previous.keys())]) * (44100 / 75)
+                track_length = (current[max(current.keys())] -
+                                previous[max(previous.keys())]) * (44100 / 75)
                 total_length -= track_length
                 yield track_length
                 previous = current
@@ -290,7 +296,7 @@ class Cuesheet:
     #returns a track_number->ISRC dict
     #of all tracks whose ISRC is not empty
     def ISRCs(self):
-        return dict([(track.number,track.ISRC()) for track in
+        return dict([(track.number, track.ISRC()) for track in
                      self.tracks.values() if track.ISRC() is not None])
 
     #takes a sheet-compatible object with
@@ -298,12 +304,12 @@ class Cuesheet:
     #along with a filename string
     #returns a string of a newly-generated CUE sheet
     @classmethod
-    def file(cls,sheet,filename):
+    def file(cls, sheet, filename):
         import cStringIO
 
-        catalog = sheet.catalog()       #a catalog string, or None
-        indexes = list(sheet.indexes()) #a list of index tuples
-        ISRCs = sheet.ISRCs()           #a track_number->ISRC dict
+        catalog = sheet.catalog()        # a catalog string, or None
+        indexes = list(sheet.indexes())  # a list of index tuples
+        ISRCs = sheet.ISRCs()            # a track_number->ISRC dict
 
         data = cStringIO.StringIO()
 
@@ -311,7 +317,7 @@ class Cuesheet:
             data.write("CATALOG %s\r\n" % (catalog))
         data.write("FILE \"%s\" WAVE\r\n" % (filename))
 
-        for (i,current) in enumerate(indexes):
+        for (i, current) in enumerate(indexes):
             tracknum = i + 1
 
             data.write("  TRACK %2.2d AUDIO\r\n" % (tracknum))
@@ -319,11 +325,12 @@ class Cuesheet:
             if (tracknum in ISRCs.keys()):
                 data.write("    ISRC %s\r\n" % (ISRCs[tracknum]))
 
-            for (j,index) in enumerate(current):
+            for (j, index) in enumerate(current):
                 data.write("    INDEX %2.2d %s\r\n" % (j,
                                                        build_timestamp(index)))
 
         return data.getvalue()
+
 
 class Track:
     def __init__(self, number, type):
@@ -332,21 +339,21 @@ class Track:
         self.attribs = {}
         self.indexes = {}
 
-    def __cmp__(self,t):
-        return cmp(self.number,t.number)
+    def __cmp__(self, t):
+        return cmp(self.number, t.number)
 
     def __repr__(self):
         return "Track(%s,%s,attribs=%s,indexes=%s)" % \
-            (repr(self.number),repr(self.type),
-             repr(self.attribs),repr(self.indexes))
+            (repr(self.number), repr(self.type),
+             repr(self.attribs), repr(self.indexes))
 
     def __str__(self):
-        return ("  TRACK %2.2d %s\r\n" % (self.number,self.type)) + \
-            "\r\n".join(["    %s %s" % (key,__attrib_str__(value))
-                         for key,value in self.attribs.items()] + \
+        return ("  TRACK %2.2d %s\r\n" % (self.number, self.type)) + \
+            "\r\n".join(["    %s %s" % (key, __attrib_str__(value))
+                         for key, value in self.attribs.items()] + \
                         ["    INDEX %2.2d %2.2d:%2.2d:%2.2d" % \
-                             (k,v / 75 / 60,v / 75 % 60,v % 75)
-                         for (k,v) in sorted(self.indexes.items())])
+                             (k, v / 75 / 60, v / 75 % 60, v % 75)
+                         for (k, v) in sorted(self.indexes.items())])
 
     def ISRC(self):
         if ('ISRC' in self.attribs.keys()):
@@ -357,8 +364,8 @@ class Track:
 
 def read_cuesheet(filename):
     try:
-        f = open(filename,'r')
-    except IOError,msg:
+        f = open(filename, 'r')
+    except IOError, msg:
         raise CueException(unicode(_(u"Unable to read cuesheet")))
     try:
         sheet = parse(tokens(f.read()))
