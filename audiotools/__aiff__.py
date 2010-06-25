@@ -17,22 +17,27 @@
 #along with this program; if not, write to the Free Software
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-from audiotools import AudioFile,InvalidFile,Con,PCMReader,__capped_stream_reader__,PCMReaderError,transfer_data,DecodingError,EncodingError,ID3v22Comment,BUFFER_SIZE,ChannelMask,UnsupportedChannelMask,ReorderedPCMReader
+from audiotools import (AudioFile, InvalidFile, Con, PCMReader,
+                        __capped_stream_reader__, PCMReaderError,
+                        transfer_data, DecodingError, EncodingError,
+                        ID3v22Comment, BUFFER_SIZE, ChannelMask,
+                        UnsupportedChannelMask, ReorderedPCMReader)
 
 import gettext
 
-gettext.install("audiotools",unicode=True)
+gettext.install("audiotools", unicode=True)
 
 _HUGE_VAL = 1.79769313486231e+308
 
+
 class IEEE_Extended(Con.Adapter):
-    def __init__(self,name):
+    def __init__(self, name):
         Con.Adapter.__init__(
             self,
             Con.Struct(name,
                        Con.Embed(Con.BitStruct(None,
                                                Con.Flag("signed"),
-                                               Con.Bits("exponent",15))),
+                                               Con.Bits("exponent", 15))),
                        Con.UBInt64("mantissa")))
 
     def _encode(self, value, context):
@@ -44,7 +49,7 @@ class IEEE_Extended(Con.Adapter):
         else:
             signed = False
 
-        (fmant,exponent) = math.frexp(value)
+        (fmant, exponent) = math.frexp(value)
         if ((exponent > 16384) or (fmant >= 1)):
             exponent = 0x7FFF
             mantissa = 0
@@ -70,19 +75,22 @@ class IEEE_Extended(Con.Adapter):
 #AIFF
 #######################
 
-class AiffException(Exception): pass
+
+class AiffException(Exception):
+    pass
+
 
 class AiffAudio(AudioFile):
     SUFFIX = "aiff"
     NAME = SUFFIX
 
     AIFF_HEADER = Con.Struct("aiff_header",
-                             Con.Const(Con.Bytes("aiff_id",4),"FORM"),
+                             Con.Const(Con.Bytes("aiff_id", 4), "FORM"),
                              Con.UBInt32("aiff_size"),
-                             Con.Const(Con.Bytes("aiff_type",4),"AIFF"))
+                             Con.Const(Con.Bytes("aiff_type", 4), "AIFF"))
 
     CHUNK_HEADER = Con.Struct("chunk_header",
-                              Con.Bytes("chunk_id",4),
+                              Con.Bytes("chunk_id", 4),
                               Con.UBInt32("chunk_length"))
 
     COMM_CHUNK = Con.Struct("comm",
@@ -114,16 +122,16 @@ class AiffAudio(AudioFile):
             return ChannelMask.from_channels(self.channels())
         elif (self.channels() == 3):
             return ChannelMask.from_fields(
-                front_left=True,front_right=True,front_center=True)
+                front_left=True, front_right=True, front_center=True)
         elif (self.channels() == 4):
             return ChannelMask.from_fields(
-                front_left=True,front_right=True,
-                back_left=True,back_right=True)
+                front_left=True, front_right=True,
+                back_left=True, back_right=True)
         elif (self.channels() == 6):
             return ChannelMask.from_fields(
-                front_left=True,side_left=True,
-                front_center=True,front_right=True,
-                side_right=True,back_center=True)
+                front_left=True, side_left=True,
+                front_center=True, front_right=True,
+                side_right=True, back_center=True)
         else:
             return ChannelMask(0)
 
@@ -144,7 +152,7 @@ class AiffAudio(AudioFile):
                 (header[8:12] == 'AIFF'))
 
     def chunks(self):
-        f = open(self.filename,'rb')
+        f = open(self.filename, 'rb')
         try:
             aiff_header = self.AIFF_HEADER.parse_stream(f)
         except Con.ConstError:
@@ -159,15 +167,15 @@ class AiffAudio(AudioFile):
             yield (chunk_header.chunk_id,
                    chunk_header.chunk_length,
                    f.tell())
-            f.seek(chunk_header.chunk_length,1)
+            f.seek(chunk_header.chunk_length, 1)
             total_size -= chunk_header.chunk_length
         f.close()
 
     def comm_chunk(self):
-        for (chunk_id,chunk_length,chunk_offset) in self.chunks():
+        for (chunk_id, chunk_length, chunk_offset) in self.chunks():
             if (chunk_id == 'COMM'):
-                f = open(self.filename,'rb')
-                f.seek(chunk_offset,0)
+                f = open(self.filename, 'rb')
+                f.seek(chunk_offset, 0)
                 comm = self.COMM_CHUNK.parse(f.read(chunk_length))
                 f.close()
                 return (comm.channels,
@@ -178,7 +186,7 @@ class AiffAudio(AudioFile):
             raise AiffException(_(u"COMM chunk not found"))
 
     def chunk_files(self):
-        f = open(self.filename,'rb')
+        f = open(self.filename, 'rb')
         try:
             aiff_header = self.AIFF_HEADER.parse_stream(f)
         except Con.ConstError:
@@ -192,15 +200,15 @@ class AiffAudio(AudioFile):
             total_size -= 8
             yield (chunk_header.chunk_id,
                    chunk_header.chunk_length,
-                   __capped_stream_reader__(f,chunk_header.chunk_length))
+                   __capped_stream_reader__(f, chunk_header.chunk_length))
             total_size -= chunk_header.chunk_length
         f.close()
 
     def get_metadata(self):
-        for (chunk_id,chunk_length,chunk_offset) in self.chunks():
+        for (chunk_id, chunk_length, chunk_offset) in self.chunks():
             if (chunk_id == 'ID3 '):
-                f = open(self.filename,'rb')
-                f.seek(chunk_offset,0)
+                f = open(self.filename, 'rb')
+                f.seek(chunk_offset, 0)
                 id3 = ID3v22Comment.parse(f)
                 f.close()
                 return id3
@@ -216,15 +224,15 @@ class AiffAudio(AudioFile):
         id3_chunk = ID3v22Comment.converted(metadata).build()
 
         new_aiff = tempfile.TemporaryFile()
-        new_aiff.seek(12,0)
+        new_aiff.seek(12, 0)
 
         id3_found = False
-        for (chunk_id,chunk_length,chunk_file) in self.chunk_files():
+        for (chunk_id, chunk_length, chunk_file) in self.chunk_files():
             if (chunk_id != 'ID3 '):
                 new_aiff.write(self.CHUNK_HEADER.build(
                         Con.Container(chunk_id=chunk_id,
                                       chunk_length=chunk_length)))
-                transfer_data(chunk_file.read,new_aiff.write)
+                transfer_data(chunk_file.read, new_aiff.write)
             else:
                 new_aiff.write(self.CHUNK_HEADER.build(
                         Con.Container(chunk_id='ID3 ',
@@ -242,11 +250,11 @@ class AiffAudio(AudioFile):
             aiff_id='FORM',
             aiff_size=new_aiff.tell() - 8,
             aiff_type='AIFF')
-        new_aiff.seek(0,0)
+        new_aiff.seek(0, 0)
         new_aiff.write(self.AIFF_HEADER.build(header))
-        new_aiff.seek(0,0)
-        f = open(self.filename,'wb')
-        transfer_data(new_aiff.read,f.write)
+        new_aiff.seek(0, 0)
+        f = open(self.filename, 'wb')
+        transfer_data(new_aiff.read, f.write)
         new_aiff.close()
         f.close()
 
@@ -254,37 +262,37 @@ class AiffAudio(AudioFile):
         import tempfile
 
         new_aiff = tempfile.TemporaryFile()
-        new_aiff.seek(12,0)
+        new_aiff.seek(12, 0)
 
-        for (chunk_id,chunk_length,chunk_file) in self.chunk_files():
+        for (chunk_id, chunk_length, chunk_file) in self.chunk_files():
             if (chunk_id != 'ID3 '):
                 new_aiff.write(self.CHUNK_HEADER.build(
                         Con.Container(chunk_id=chunk_id,
                                       chunk_length=chunk_length)))
-                transfer_data(chunk_file.read,new_aiff.write)
+                transfer_data(chunk_file.read, new_aiff.write)
 
         header = Con.Container(
             aiff_id='FORM',
             aiff_size=new_aiff.tell() - 8,
             aiff_type='AIFF')
-        new_aiff.seek(0,0)
+        new_aiff.seek(0, 0)
         new_aiff.write(self.AIFF_HEADER.build(header))
-        new_aiff.seek(0,0)
-        f = open(self.filename,'wb')
-        transfer_data(new_aiff.read,f.write)
+        new_aiff.seek(0, 0)
+        f = open(self.filename, 'wb')
+        transfer_data(new_aiff.read, f.write)
         new_aiff.close()
         f.close()
 
     def to_pcm(self):
-        for (chunk_id,chunk_length,chunk_offset) in self.chunks():
+        for (chunk_id, chunk_length, chunk_offset) in self.chunks():
             if (chunk_id == 'SSND'):
-                f = open(self.filename,'rb')
-                f.seek(chunk_offset,0)
+                f = open(self.filename, 'rb')
+                f.seek(chunk_offset, 0)
                 alignment = self.SSND_ALIGN.parse_stream(f)
                 #FIXME - handle different types of SSND alignment
                 pcmreader = PCMReader(
                     __capped_stream_reader__(
-                        f,chunk_length - self.SSND_ALIGN.sizeof()),
+                        f, chunk_length - self.SSND_ALIGN.sizeof()),
                     sample_rate=self.sample_rate(),
                     channels=self.channels(),
                     channel_mask=int(self.channel_mask()),
@@ -293,7 +301,7 @@ class AiffAudio(AudioFile):
                     big_endian=True)
                 if (self.channels() <= 2):
                     return pcmreader
-                elif (self.channels() in (3,4,6)):
+                elif (self.channels() in (3, 4, 6)):
                     #FIXME - handle undefined channel mask
                     standard_channel_mask = self.channel_mask()
                     aiff_channel_mask = AIFFChannelMask(self.channel_mask())
@@ -310,17 +318,16 @@ class AiffAudio(AudioFile):
     @classmethod
     def from_pcm(cls, filename, pcmreader, compression=None):
         try:
-            f = open(filename,'wb')
+            f = open(filename, 'wb')
         except IOError:
             raise EncodingError(None)
 
         if (int(pcmreader.channel_mask) in
-            (0x4,   #FC
-             0x3,   #FL, FR
-             0x7,   #FL, FR, FC
-             0x33,  #FL, FR, BL, BR
-             0x707) #FL, SL, FC, FR, SR, BC
-            ):
+            (0x4,      # FC
+             0x3,      # FL, FR
+             0x7,      # FL, FR, FC
+             0x33,     # FL, FR, BL, BR
+             0x707)):  # FL, SL, FC, FR, SR, BC
             standard_channel_mask = ChannelMask(pcmreader.channel_mask)
             aiff_channel_mask = AIFFChannelMask(standard_channel_mask)
             pcmreader = ReorderedPCMReader(
@@ -333,10 +340,11 @@ class AiffAudio(AudioFile):
                                         aiff_size=4,
                                         aiff_type='AIFF')
 
-            comm_chunk = Con.Container(channels=pcmreader.channels,
-                                       total_sample_frames=0,
-                                       sample_size=pcmreader.bits_per_sample,
-                                       sample_rate=float(pcmreader.sample_rate))
+            comm_chunk = Con.Container(
+                channels=pcmreader.channels,
+                total_sample_frames=0,
+                sample_size=pcmreader.bits_per_sample,
+                sample_rate=float(pcmreader.sample_rate))
 
             ssnd_header = Con.Container(chunk_id='SSND',
                                         chunk_length=0)
@@ -347,7 +355,7 @@ class AiffAudio(AudioFile):
             f.seek(cls.AIFF_HEADER.sizeof() +
                    cls.CHUNK_HEADER.sizeof() +
                    cls.COMM_CHUNK.sizeof() +
-                   cls.CHUNK_HEADER.sizeof(),0)
+                   cls.CHUNK_HEADER.sizeof(), 0)
 
             #write the SSND alignment info
             f.write(cls.SSND_ALIGN.build(ssnd_alignment))
@@ -356,13 +364,13 @@ class AiffAudio(AudioFile):
             framelist = pcmreader.read(BUFFER_SIZE)
             total_pcm_frames = 0
             while (len(framelist) > 0):
-                f.write(framelist.to_bytes(True,True))
+                f.write(framelist.to_bytes(True, True))
                 total_pcm_frames += framelist.frames
                 framelist = pcmreader.read(BUFFER_SIZE)
             total_size = f.tell()
 
             #return to the start of the file
-            f.seek(0,0)
+            f.seek(0, 0)
 
             #write AIFF header
             aiff_header.aiff_size = total_size - 8
@@ -392,26 +400,27 @@ class AiffAudio(AudioFile):
 
         return cls(filename)
 
+
 class AIFFChannelMask(ChannelMask):
     def __repr__(self):
         return "AIFFChannelMask(%s)" % \
-            ",".join(["%s=%s" % (field,getattr(self,field))
+            ",".join(["%s=%s" % (field, getattr(self, field))
                       for field in self.SPEAKER_TO_MASK.keys()
-                      if (getattr(self,field))])
+                      if (getattr(self, field))])
 
     def channels(self):
         count = len(self)
         if (count == 1):
             return ["front_center"]
         elif (count == 2):
-            return ["front_left","front_right"]
+            return ["front_left", "front_right"]
         elif (count == 3):
-            return ["front_left","front_right","front_center"]
+            return ["front_left", "front_right", "front_center"]
         elif (count == 4):
-            return ["front_left","front_right",
-                    "back_left","back_right"]
+            return ["front_left", "front_right",
+                    "back_left", "back_right"]
         elif (count == 6):
-            return ["front_left","side_left","front_center",
-                    "front_right","side_right","back_center"]
+            return ["front_left", "side_left", "front_center",
+                    "front_right", "side_right", "back_center"]
         else:
             return []

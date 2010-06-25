@@ -18,22 +18,27 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,InvalidFile,PCMReader,Con,transfer_data,InvalidFormat,__capped_stream_reader__,BUFFER_SIZE,FILENAME_FORMAT,EncodingError,DecodingError,ChannelMask
+from audiotools import (AudioFile, InvalidFile, PCMReader, Con,
+                        transfer_data, InvalidFormat,
+                        __capped_stream_reader__, BUFFER_SIZE,
+                        FILENAME_FORMAT, EncodingError, DecodingError,
+                        ChannelMask)
 import gettext
 
-gettext.install("audiotools",unicode=True)
+gettext.install("audiotools", unicode=True)
+
 
 #######################
 #Sun AU
 #######################
+
 
 class AuAudio(AudioFile):
     SUFFIX = "au"
     NAME = SUFFIX
 
     AU_HEADER = Con.Struct('header',
-                           Con.Const(Con.String('magic_number',4),
-                                     '.snd'),
+                           Con.Const(Con.String('magic_number', 4), '.snd'),
                            Con.UBInt32('data_offset'),
                            Con.UBInt32('data_size'),
                            Con.UBInt32('encoding_format'),
@@ -43,14 +48,15 @@ class AuAudio(AudioFile):
     def __init__(self, filename):
         AudioFile.__init__(self, filename)
 
-        f = file(filename,'rb')
+        f = file(filename, 'rb')
         try:
             header = AuAudio.AU_HEADER.parse_stream(f)
 
-            if (header.encoding_format not in (2,3,4)):
+            if (header.encoding_format not in (2, 3, 4)):
                 raise InvalidFile(_(u"Unsupported Sun AU encoding format"))
 
-            self.__bits_per_sample__ = {2:8,3:16,4:24}[header.encoding_format]
+            self.__bits_per_sample__ = {2: 8, 3: 16, 4: 24}[
+                header.encoding_format]
             self.__channels__ = header.channels
             self.__sample_rate__ = header.sample_rate
             self.__total_frames__ = header.data_size / \
@@ -86,10 +92,9 @@ class AuAudio(AudioFile):
     def total_frames(self):
         return self.__total_frames__
 
-
     def to_pcm(self):
-        f = file(self.filename,'rb')
-        f.seek(self.__data_offset__,0)
+        f = file(self.filename, 'rb')
+        f.seek(self.__data_offset__, 0)
 
         return PCMReader(f,
                          sample_rate=self.sample_rate(),
@@ -101,21 +106,23 @@ class AuAudio(AudioFile):
 
     @classmethod
     def from_pcm(cls, filename, pcmreader, compression=None):
-        if (pcmreader.bits_per_sample not in (8,16,24)):
+        if (pcmreader.bits_per_sample not in (8, 16, 24)):
             raise InvalidFormat(
-                _(u"Unsupported bits per sample %s") % (pcmreader.bits_per_sample))
+                _(u"Unsupported bits per sample %s") % (
+                    pcmreader.bits_per_sample))
 
         bytes_per_sample = pcmreader.bits_per_sample / 8
 
         header = Con.Container(magic_number='.snd',
                                data_offset=0,
                                data_size=0,
-                               encoding_format={8:2,16:3,24:4}[pcmreader.bits_per_sample],
+                               encoding_format={8: 2, 16: 3, 24: 4}[
+                pcmreader.bits_per_sample],
                                sample_rate=pcmreader.sample_rate,
                                channels=pcmreader.channels)
 
         try:
-            f = file(filename,'wb')
+            f = file(filename, 'wb')
         except IOError:
             raise EncodingError(None)
         try:
@@ -127,13 +134,13 @@ class AuAudio(AudioFile):
             #d will be a list of ints, so we can't use transfer_data
             framelist = pcmreader.read(BUFFER_SIZE)
             while (len(framelist) > 0):
-                bytes = framelist.to_bytes(True,True)
+                bytes = framelist.to_bytes(True, True)
                 f.write(bytes)
                 header.data_size += len(bytes)
                 framelist = pcmreader.read(BUFFER_SIZE)
 
             #send out a complete header
-            f.seek(0,0)
+            f.seek(0, 0)
             f.write(AuAudio.AU_HEADER.build(header))
         finally:
             f.close()
