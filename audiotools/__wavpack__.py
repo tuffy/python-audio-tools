@@ -18,12 +18,18 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,InvalidFile,Con,subprocess,BIN,open_files,os,ReplayGain,ignore_sigint,transfer_data,transfer_framelist_data,Image,MetaData,sheet_to_unicode,EncodingError,DecodingError,PCMReaderError,PCMReader,ChannelMask,UnsupportedChannelMask
-from __wav__ import WaveAudio,WaveReader
-from __ape__ import ApeTaggedAudio,ApeTag,__number_pair__
+from audiotools import (AudioFile, InvalidFile, Con, subprocess, BIN,
+                        open_files, os, ReplayGain, ignore_sigint,
+                        transfer_data, transfer_framelist_data,
+                        Image, MetaData, sheet_to_unicode, EncodingError,
+                        DecodingError, PCMReaderError, PCMReader,
+                        ChannelMask, UnsupportedChannelMask)
+from __wav__ import WaveAudio, WaveReader
+from __ape__ import ApeTaggedAudio, ApeTag, __number_pair__
 import gettext
 
-gettext.install("audiotools",unicode=True)
+gettext.install("audiotools", unicode=True)
+
 
 class __24BitsLE__(Con.Adapter):
     def _encode(self, value, context):
@@ -34,8 +40,10 @@ class __24BitsLE__(Con.Adapter):
     def _decode(self, obj, context):
         return (ord(obj[2]) << 16) | (ord(obj[1]) << 8) | ord(obj[0])
 
+
 def ULInt24(name):
-    return __24BitsLE__(Con.Bytes(name,3))
+    return __24BitsLE__(Con.Bytes(name, 3))
+
 
 def __riff_chunk_ids__(data):
     import cStringIO
@@ -49,8 +57,9 @@ def __riff_chunk_ids__(data):
         chunk_size = chunk_header.chunk_length
         if ((chunk_size & 1) == 1):
             chunk_size += 1
-        data.seek(chunk_size,1)
+        data.seek(chunk_size, 1)
         yield chunk_header.chunk_id
+
 
 def __riff_chunks__(data):
     import cStringIO
@@ -64,11 +73,12 @@ def __riff_chunks__(data):
         chunk_size = chunk_header.chunk_length
         if ((chunk_size & 1) == 1):
             chunk_size += 1
-        yield (chunk_header.chunk_id,data.read(chunk_size))
+        yield (chunk_header.chunk_id, data.read(chunk_size))
+
 
 class SymlinkPCMReader(PCMReader):
-    def __init__(self,reader,tempdir,symlink):
-        PCMReader.__init__(self,None,
+    def __init__(self, reader, tempdir, symlink):
+        PCMReader.__init__(self, None,
                            sample_rate=reader.sample_rate,
                            channels=reader.channels,
                            channel_mask=reader.channel_mask,
@@ -78,7 +88,7 @@ class SymlinkPCMReader(PCMReader):
         self.reader = reader
         self.closed = False
 
-    def read(self,bytes):
+    def read(self, bytes):
         return self.reader.read(bytes)
 
     def close(self):
@@ -96,17 +106,19 @@ class SymlinkPCMReader(PCMReader):
         import tempfile
 
         tempdir = tempfile.mkdtemp()
-        symlink = os.path.join(tempdir,os.path.basename(filename) + suffix)
-        os.symlink(os.path.abspath(filename),symlink)
-        return (tempdir,symlink)
+        symlink = os.path.join(tempdir, os.path.basename(filename) + suffix)
+        os.symlink(os.path.abspath(filename), symlink)
+        return (tempdir, symlink)
+
 
 #######################
 #WavPack APEv2
 #######################
 
+
 class WavePackAPEv2(ApeTag):
     def __init__(self, tags, tag_length=None, frame_count=0):
-        ApeTag.__init__(self,tags=tags,tag_length=tag_length)
+        ApeTag.__init__(self, tags=tags, tag_length=tag_length)
         self.frame_count = frame_count
 
     def __comment_pairs__(self):
@@ -126,35 +138,37 @@ class WavePackAPEv2(ApeTag):
                      sheet_to_unicode(
                             cue.parse(
                                 cue.tokens(unicode(self['Cuesheet']).encode(
-                                        'ascii','replace'))),
+                                        'ascii', 'replace'))),
                             self.frame_count))
             except cue.CueException:
                 return ApeTag.__unicode__(self)
 
     @classmethod
-    def converted(cls,metadata):
-        if ((metadata is None) or (isinstance(metadata,WavePackAPEv2))):
+    def converted(cls, metadata):
+        if ((metadata is None) or (isinstance(metadata, WavePackAPEv2))):
             return metadata
-        elif (isinstance(metadata,ApeTag)):
+        elif (isinstance(metadata, ApeTag)):
             return WavePackAPEv2(metadata.tags)
         else:
             return WavePackAPEv2(ApeTag.converted(metadata).tags)
+
 
 #######################
 #WavPack
 #######################
 
-class WavPackAudio(ApeTaggedAudio,AudioFile):
+
+class WavPackAudio(ApeTaggedAudio, AudioFile):
     SUFFIX = "wv"
     NAME = SUFFIX
     DEFAULT_COMPRESSION = "veryhigh"
-    COMPRESSION_MODES = ("fast","standard","high","veryhigh")
-    BINARIES = ("wavpack","wvunpack")
+    COMPRESSION_MODES = ("fast", "standard", "high", "veryhigh")
+    BINARIES = ("wavpack", "wvunpack")
 
     APE_TAG_CLASS = WavePackAPEv2
 
     HEADER = Con.Struct("wavpackheader",
-                        Con.Const(Con.String("id",4),'wvpk'),
+                        Con.Const(Con.String("id", 4), 'wvpk'),
                         Con.ULInt32("block_size"),
                         Con.ULInt16("version"),
                         Con.ULInt8("track_number"),
@@ -170,9 +184,9 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
                           Con.Flag("joint_stereo"),
                           Con.Flag("hybrid_mode"),
                           Con.Flag("mono_output"),
-                          Con.Bits("bits_per_sample",2),
+                          Con.Bits("bits_per_sample", 2),
 
-                          Con.Bits("left_shift_data_low",3),
+                          Con.Bits("left_shift_data_low", 3),
                           Con.Flag("final_block_in_sequence"),
                           Con.Flag("initial_block_in_sequence"),
                           Con.Flag("hybrid_noise_balanced"),
@@ -180,15 +194,14 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
                           Con.Flag("extended_size_integers"),
 
                           Con.Bit("sampling_rate_low"),
-                          Con.Bits("maximum_magnitude",5),
-                          Con.Bits("left_shift_data_high",2),
+                          Con.Bits("maximum_magnitude", 5),
+                          Con.Bits("left_shift_data_high", 2),
 
                           Con.Flag("reserved2"),
                           Con.Flag("false_stereo"),
                           Con.Flag("use_IIR"),
-                          Con.Bits("reserved1",2),
-                          Con.Bits("sampling_rate_high",3)
-                          )),
+                          Con.Bits("reserved1", 2),
+                          Con.Bits("sampling_rate_high", 3))),
                         Con.ULInt32("crc"))
 
     SUB_HEADER = Con.Struct("wavpacksubheader",
@@ -197,18 +210,17 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
                           Con.Flag("large_block"),
                           Con.Flag("actual_size_1_less"),
                           Con.Flag("nondecoder_data"),
-                          Con.Bits("metadata_function",5))),
+                          Con.Bits("metadata_function", 5))),
                             Con.IfThenElse('size',
                                            lambda ctx: ctx['large_block'],
                                            ULInt24('s'),
                                            Con.Byte('s')))
 
-    BITS_PER_SAMPLE = (8,16,24,32)
+    BITS_PER_SAMPLE = (8, 16, 24, 32)
     SAMPLING_RATE = (6000,  8000,  9600,   11025,
                      12000, 16000, 22050,  24000,
                      32000, 44100, 48000,  64000,
                      88200, 96000, 192000, 0)
-
 
     def __init__(self, filename):
         self.filename = filename
@@ -238,28 +250,28 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
                     front_center=True)
             elif (self.__channels__ == 2):
                 return ChannelMask.from_fields(
-                    front_left=True,front_right=True)
+                    front_left=True, front_right=True)
             #if we have a multi-channel WavPack file
             #that's not WAVEFORMATEXTENSIBLE,
             #assume the channels follow SMPTE/ITU-R recommendations
             #and hope for the best
             elif (self.__channels__ == 3):
                 return ChannelMask.from_fields(
-                    front_left=True,front_right=True,front_center=True)
+                    front_left=True, front_right=True, front_center=True)
             elif (self.__channels__ == 4):
                 return ChannelMask.from_fields(
-                    front_left=True,front_right=True,
-                    back_left=True,back_right=True)
+                    front_left=True, front_right=True,
+                    back_left=True, back_right=True)
             elif (self.__channels__ == 5):
                 return ChannelMask.from_fields(
-                    front_left=True,front_right=True,
-                    back_left=True,back_right=True,
+                    front_left=True, front_right=True,
+                    back_left=True, back_right=True,
                     front_center=True)
             elif (self.__channels__ == 6):
                 return ChannelMask.from_fields(
-                    front_left=True,front_right=True,
-                    back_left=True,back_right=True,
-                    front_center=True,low_frequency=True)
+                    front_left=True, front_right=True,
+                    back_left=True, back_right=True,
+                    front_center=True, low_frequency=True)
             else:
                 return ChannelMask(0)
         else:
@@ -272,16 +284,16 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
         return metadata
 
     def has_foreign_riff_chunks(self):
-        for (sub_header,nondecoder,data) in self.sub_frames():
+        for (sub_header, nondecoder, data) in self.sub_frames():
             if ((sub_header == 1) and nondecoder):
-                return set(__riff_chunk_ids__(data)) != set(['fmt ','data'])
+                return set(__riff_chunk_ids__(data)) != set(['fmt ', 'data'])
         else:
             return False
 
     def __fmt_chunk__(self):
-        for (sub_header,nondecoder,data) in self.sub_frames():
+        for (sub_header, nondecoder, data) in self.sub_frames():
             if ((sub_header == 1) and nondecoder):
-                for (chunk_id,chunk_data) in __riff_chunks__(data):
+                for (chunk_id, chunk_data) in __riff_chunks__(data):
                     if (chunk_id == 'fmt '):
                         return chunk_data
         else:
@@ -307,14 +319,14 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
 
                 data = f.read(header.block_size - 24)
 
-                yield (header,data)
+                yield (header, data)
         finally:
             f.close()
 
     def sub_frames(self):
         import cStringIO
 
-        for (header,data) in self.frames():
+        for (header, data) in self.frames():
             total_size = len(data)
             data = cStringIO.StringIO(data)
             while (data.tell() < total_size):
@@ -355,7 +367,7 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
                 self.__channels__ += 2
 
             while (not header.final_block_in_sequence):
-                f.seek(header.block_size - 24,1)
+                f.seek(header.block_size - 24, 1)
                 header = WavPackAudio.HEADER.parse(f.read(
                         WavPackAudio.HEADER.sizeof()))
                 if (header.mono_output):
@@ -379,39 +391,39 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
 
     @classmethod
     def from_pcm(cls, filename, pcmreader, compression=None):
-        compression_param = {"fast":["-f"],
-                             "standard":[],
-                             "high":["-h"],
-                             "veryhigh":["-hh"]}
+        compression_param = {"fast": ["-f"],
+                             "standard": [],
+                             "high": ["-h"],
+                             "veryhigh": ["-hh"]}
 
         if (str(compression) not in cls.COMPRESSION_MODES):
             compression = cls.DEFAULT_COMPRESSION
 
         if ('--raw-pcm' in cls.__wavpack_help__()):
             if (filename.endswith(".wv")):
-                devnull = file(os.devnull,'ab')
+                devnull = file(os.devnull, 'ab')
 
                 if (pcmreader.channels > 18):
                     raise UnsupportedChannelMask()
                 elif (pcmreader.channels > 2):
-                    order_map = {"front_left":"FL",
-                                 "front_right":"FR",
-                                 "front_center":"FC",
-                                 "low_frequency":"LFE",
-                                 "back_left":"BL",
-                                 "back_right":"BR",
-                                 "front_left_of_center":"FLC",
-                                 "front_right_of_center":"FRC",
-                                 "back_center":"BC",
-                                 "side_left":"SL",
-                                 "side_right":"SR",
-                                 "top_center":"TC",
-                                 "top_front_left":"TFL",
-                                 "top_front_center":"TFC",
-                                 "top_front_right":"TFR",
-                                 "top_back_left":"TBL",
-                                 "top_back_center":"TBC",
-                                 "top_back_right":"TBR"}
+                    order_map = {"front_left": "FL",
+                                 "front_right": "FR",
+                                 "front_center": "FC",
+                                 "low_frequency": "LFE",
+                                 "back_left": "BL",
+                                 "back_right": "BR",
+                                 "front_left_of_center": "FLC",
+                                 "front_right_of_center": "FRC",
+                                 "back_center": "BC",
+                                 "side_left": "SL",
+                                 "side_right": "SR",
+                                 "top_center": "TC",
+                                 "top_front_left": "TFL",
+                                 "top_front_center": "TFC",
+                                 "top_front_right": "TFR",
+                                 "top_back_left": "TBL",
+                                 "top_back_center": "TBC",
+                                 "top_back_right": "TBR"}
 
                     channel_order = ["--channel-order=%s" % (",".join([
                         order_map[channel]
@@ -420,21 +432,22 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
                 else:
                     channel_order = []
 
-                sub = subprocess.Popen([BIN['wavpack']] + \
-                                           compression_param[compression] + \
-                                           ['-q','-y',
-                                            "--raw-pcm=%(sr)s,%(bps)s,%(ch)s"%\
-                                              {"sr":pcmreader.sample_rate,
-                                               "bps":pcmreader.bits_per_sample,
-                                               "ch":pcmreader.channels}] + \
-                                           channel_order + \
-                                           ['-','-o',filename],
-                                       stdout=devnull,
-                                       stderr=devnull,
-                                       stdin=subprocess.PIPE,
-                                       preexec_fn=ignore_sigint)
+                sub = subprocess.Popen(
+                    [BIN['wavpack']] +
+                    compression_param[compression] +
+                    ['-q', '-y',
+                     "--raw-pcm=%(sr)s,%(bps)s,%(ch)s" % \
+                         {"sr": pcmreader.sample_rate,
+                          "bps": pcmreader.bits_per_sample,
+                          "ch": pcmreader.channels}] +
+                    channel_order +
+                    ['-', '-o', filename],
+                    stdout=devnull,
+                    stderr=devnull,
+                    stdin=subprocess.PIPE,
+                    preexec_fn=ignore_sigint)
 
-                transfer_framelist_data(pcmreader,sub.stdin.write)
+                transfer_framelist_data(pcmreader, sub.stdin.write)
                 devnull.close()
                 sub.stdin.close()
 
@@ -449,8 +462,8 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
                 symlink = os.path.join(tempdir,
                                        os.path.basename(filename) + ".wv")
                 try:
-                    os.symlink(os.path.abspath(filename),symlink)
-                    cls.from_pcm(symlink,pcmreader,compression)
+                    os.symlink(os.path.abspath(filename), symlink)
+                    cls.from_pcm(symlink, pcmreader, compression)
                     return WavPackAudio(filename)
                 finally:
                     os.unlink(symlink)
@@ -462,20 +475,20 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
             w = WaveAudio.from_pcm(f.name, pcmreader)
 
             try:
-                return cls.from_wave(filename,w.filename,compression)
+                return cls.from_wave(filename, w.filename, compression)
             finally:
                 del(w)
                 f.close()
 
     def to_wave(self, wave_filename):
-        devnull = file(os.devnull,'ab')
+        devnull = file(os.devnull, 'ab')
 
         #WavPack stupidly refuses to run if the filename doesn't end with .wv
         if (self.filename.endswith(".wv")):
             sub = subprocess.Popen([BIN['wvunpack'],
-                                    '-q','-y',
+                                    '-q', '-y',
                                     self.filename,
-                                    '-o',wave_filename],
+                                    '-o', wave_filename],
                                    stdout=devnull,
                                    stderr=devnull)
             if (sub.wait() != 0):
@@ -489,7 +502,7 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
             symlink = os.path.join(tempdir,
                                    os.path.basename(self.filename) + ".wv")
             try:
-                os.symlink(os.path.abspath(self.filename),symlink)
+                os.symlink(os.path.abspath(self.filename), symlink)
                 WavPackAudio(symlink).to_wave(wave_filename)
             finally:
                 os.unlink(symlink)
@@ -499,11 +512,11 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
         if (self.filename.endswith(".wv")):
             if ('-r' in WavPackAudio.__wvunpack_help__()):
                 sub = subprocess.Popen([BIN['wvunpack'],
-                                        '-q','-y',
+                                        '-q', '-y',
                                         self.filename,
-                                        '-r','-o','-'],
+                                        '-r', '-o', '-'],
                                        stdout=subprocess.PIPE,
-                                       stderr=file(os.devnull,'ab'))
+                                       stderr=file(os.devnull, 'ab'))
 
                 return PCMReader(sub.stdout,
                                  sample_rate=self.sample_rate(),
@@ -513,11 +526,11 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
                                  process=sub)
             else:
                 sub = subprocess.Popen([BIN['wvunpack'],
-                                        '-q','-y',
+                                        '-q', '-y',
                                         self.filename,
-                                        '-o','-'],
+                                        '-o', '-'],
                                        stdout=subprocess.PIPE,
-                                       stderr=file(os.devnull,'ab'))
+                                       stderr=file(os.devnull, 'ab'))
 
                 return WaveReader(sub.stdout,
                                   sample_rate=self.sample_rate(),
@@ -528,30 +541,29 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
         else:
             #create a temporary symlink to the current file
             #rather than rewrite the whole thing
-            (tempdir,symlink) = SymlinkPCMReader.new(self.filename,".wv")
+            (tempdir, symlink) = SymlinkPCMReader.new(self.filename, ".wv")
             return SymlinkPCMReader(WavPackAudio(symlink).to_pcm(),
-                                    tempdir,symlink)
-
+                                    tempdir, symlink)
 
     @classmethod
     def from_wave(cls, filename, wave_filename, compression=None):
         if (str(compression) not in cls.COMPRESSION_MODES):
             compression = cls.DEFAULT_COMPRESSION
 
-        compression_param = {"fast":["-f"],
-                             "standard":[],
-                             "high":["-h"],
-                             "veryhigh":["-hh"]}
+        compression_param = {"fast": ["-f"],
+                             "standard": [],
+                             "high": ["-h"],
+                             "veryhigh": ["-hh"]}
 
         #wavpack will add a .wv suffix if there isn't one
         #this isn't desired behavior
         if (filename.endswith(".wv")):
-            devnull = file(os.devnull,'ab')
+            devnull = file(os.devnull, 'ab')
 
             sub = subprocess.Popen([BIN['wavpack'],
                                     wave_filename] + \
                                    compression_param[compression] + \
-                                   ['-q','-y','-o',
+                                   ['-q', '-y', '-o',
                                     filename],
                                    stdout=devnull,
                                    stderr=devnull,
@@ -567,10 +579,10 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
             import tempfile
 
             tempdir = tempfile.mkdtemp()
-            symlink = os.path.join(tempdir,os.path.basename(filename) + ".wv")
+            symlink = os.path.join(tempdir, os.path.basename(filename) + ".wv")
             try:
-                os.symlink(os.path.abspath(filename),symlink)
-                cls.from_wave(symlink,wave_filename,compression)
+                os.symlink(os.path.abspath(filename), symlink)
+                cls.from_wave(symlink, wave_filename, compression)
                 return WavPackAudio(filename)
             finally:
                 os.unlink(symlink)
@@ -578,8 +590,8 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
 
     @classmethod
     def __wavpack_help__(cls):
-        devnull = open(os.devnull,"wb")
-        sub = subprocess.Popen([BIN["wavpack"],"--help"],
+        devnull = open(os.devnull, "wb")
+        sub = subprocess.Popen([BIN["wavpack"], "--help"],
                                stdout=subprocess.PIPE,
                                stderr=devnull)
         help_data = sub.stdout.read()
@@ -590,8 +602,8 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
 
     @classmethod
     def __wvunpack_help__(cls):
-        devnull = open(os.devnull,"wb")
-        sub = subprocess.Popen([BIN["wvunpack"],"--help"],
+        devnull = open(os.devnull, "wb")
+        sub = subprocess.Popen([BIN["wvunpack"], "--help"],
                                stdout=subprocess.PIPE,
                                stderr=devnull)
         help_data = sub.stdout.read()
@@ -604,14 +616,14 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
     def add_replay_gain(cls, filenames):
         track_names = [track.filename for track in
                        open_files(filenames) if
-                       isinstance(track,cls)]
+                       isinstance(track, cls)]
 
         if ((len(track_names) > 0) and
             BIN.can_execute(BIN['wvgain'])):
-            devnull = file(os.devnull,'ab')
+            devnull = file(os.devnull, 'ab')
 
             sub = subprocess.Popen([BIN['wvgain'],
-                                    '-q','-a'] + track_names,
+                                    '-q', '-a'] + track_names,
                                    stdout=devnull,
                                    stderr=devnull)
             sub.wait()
@@ -632,7 +644,7 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
 
         if (set(['replaygain_track_gain', 'replaygain_track_peak',
                  'replaygain_album_gain', 'replaygain_album_peak']).issubset(
-                metadata.keys())):  #we have ReplayGain data
+                metadata.keys())):  # we have ReplayGain data
             try:
                 return ReplayGain(
                     unicode(metadata['replaygain_track_gain'])[0:-len(" dB")],
@@ -652,7 +664,8 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
         if ((metadata is not None) and ('Cuesheet' in metadata.keys())):
             try:
                 return cue.parse(cue.tokens(
-                        unicode(metadata['Cuesheet']).encode('utf-8','replace')))
+                        unicode(metadata['Cuesheet']).encode('utf-8',
+                                                             'replace')))
             except cue.CueException:
                 #unlike FLAC, just because a cuesheet is embedded
                 #does not mean it is compliant
@@ -660,7 +673,7 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
         else:
             return None
 
-    def set_cuesheet(self,cuesheet):
+    def set_cuesheet(self, cuesheet):
         import os.path
         import cue
 
@@ -674,6 +687,5 @@ class WavPackAudio(ApeTaggedAudio,AudioFile):
         metadata['Cuesheet'] = WavePackAPEv2.ITEM.string('Cuesheet',
                                                          cue.Cuesheet.file(
                 cuesheet,
-                os.path.basename(self.filename)).decode('ascii','replace'))
+                os.path.basename(self.filename)).decode('ascii', 'replace'))
         self.set_metadata(metadata)
-

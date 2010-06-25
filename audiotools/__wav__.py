@@ -18,12 +18,16 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import AudioFile,InvalidFile,ChannelMask,PCMReader,Con,BUFFER_SIZE,transfer_data,__capped_stream_reader__,FILENAME_FORMAT,BIN,open_files,os,subprocess,cStringIO,EncodingError,DecodingError,UnsupportedChannelMask
+from audiotools import (AudioFile, InvalidFile, ChannelMask, PCMReader,
+                        Con, BUFFER_SIZE, transfer_data,
+                        __capped_stream_reader__, FILENAME_FORMAT,
+                        BIN, open_files, os, subprocess, cStringIO,
+                        EncodingError, DecodingError, UnsupportedChannelMask)
 import os.path
 import gettext
 from . import pcm
 
-gettext.install("audiotools",unicode=True)
+gettext.install("audiotools", unicode=True)
 
 #######################
 #RIFF WAVE
@@ -34,7 +38,7 @@ class WaveReader(PCMReader):
     #wave_file should be a file-like stream of wave data
     def __init__(self, wave_file,
                  sample_rate, channels, channel_mask, bits_per_sample,
-                 process = None):
+                 process=None):
 
         self.file = wave_file
         self.sample_rate = sample_rate
@@ -68,7 +72,7 @@ class WaveReader(PCMReader):
     def read(self, bytes):
         bytes -= (bytes % (self.channels * self.bits_per_sample / 8))
         return pcm.FrameList(self.wave.read(
-                max(bytes,self.channels * self.bits_per_sample / 8)),
+                max(bytes, self.channels * self.bits_per_sample / 8)),
                              self.channels,
                              self.bits_per_sample,
                              False,
@@ -80,15 +84,16 @@ class WaveReader(PCMReader):
             if (self.process.wait() != 0):
                 raise DecodingError()
 
+
 class TempWaveReader(WaveReader):
     def __init__(self, tempfile):
         wave = WaveAudio(tempfile.name)
         WaveReader.__init__(self,
                             tempfile,
-                            sample_rate = wave.sample_rate(),
-                            channels = wave.channels(),
-                            channel_mask = int(wave.channel_mask()),
-                            bits_per_sample = wave.bits_per_sample())
+                            sample_rate=wave.sample_rate(),
+                            channels=wave.channels(),
+                            channel_mask=int(wave.channel_mask()),
+                            bits_per_sample=wave.bits_per_sample())
         self.tempfile = tempfile
 
     def close(self):
@@ -96,10 +101,12 @@ class TempWaveReader(WaveReader):
         self.tempfile.close()
 
 
-class WavException(InvalidFile): pass
+class WavException(InvalidFile):
+    pass
+
 
 def __blank_channel_mask__():
-    c = Con.Container(undefined=0,undefined2=0)
+    c = Con.Container(undefined=0, undefined2=0)
 
     for attr in ('front_right_of_center',
                  'front_left_of_center',
@@ -119,36 +126,37 @@ def __blank_channel_mask__():
                  'rear_center',
                  'top_back_right',
                  'top_back_center'):
-        setattr(c,attr,False)
+        setattr(c, attr, False)
 
     return c
+
 
 def __channel_mask__(mask, channel_count):
     mask = ChannelMask(mask)
     c = __blank_channel_mask__()
 
     if (mask.defined()):
-        attr_map = {"front_left":'front_left',
-                    "front_right":'front_right',
-                    "front_center":'front_center',
-                    "low_frequency":'LFE',
-                    "back_left":'rear_left',
-                    "back_right":'rear_right',
-                    "front_left_of_center":'front_left_of_center',
-                    "front_right_of_center":'front_right_of_center',
-                    "back_center":'rear_center',
-                    "side_left":'side_left',
-                    "side_right":'side_right',
-                    "top_center":'top_center',
-                    "top_front_left":'top_front_left',
-                    "top_front_center":'top_front_center',
-                    "top_front_right":'top_front_right',
-                    "top_back_left":'top_back_left',
-                    "top_back_center":'top_back_center',
-                    "top_back_right":'top_back_right'}
+        attr_map = {"front_left": 'front_left',
+                    "front_right": 'front_right',
+                    "front_center": 'front_center',
+                    "low_frequency": 'LFE',
+                    "back_left": 'rear_left',
+                    "back_right": 'rear_right',
+                    "front_left_of_center": 'front_left_of_center',
+                    "front_right_of_center": 'front_right_of_center',
+                    "back_center": 'rear_center',
+                    "side_left": 'side_left',
+                    "side_right": 'side_right',
+                    "top_center": 'top_center',
+                    "top_front_left": 'top_front_left',
+                    "top_front_center": 'top_front_center',
+                    "top_front_right": 'top_front_right',
+                    "top_back_left": 'top_back_left',
+                    "top_back_center": 'top_back_center',
+                    "top_back_right": 'top_back_right'}
 
         for channel in mask.channels():
-            setattr(c,attr_map[channel],True)
+            setattr(c, attr_map[channel], True)
     else:
         attr_map = ['front_left',
                     'front_right',
@@ -170,23 +178,24 @@ def __channel_mask__(mask, channel_count):
                     'top_back_right']
         if (channel_count <= len(attr_map)):
             for channel in attr_map[0:channel_count]:
-                setattr(c,channel,True)
+                setattr(c, channel, True)
         else:
             raise UnsupportedChannelMask()
 
     return c
+
 
 class WaveAudio(AudioFile):
     SUFFIX = "wav"
     NAME = SUFFIX
 
     WAVE_HEADER = Con.Struct("wave_header",
-                             Con.Const(Con.Bytes("wave_id",4),'RIFF'),
+                             Con.Const(Con.Bytes("wave_id", 4), 'RIFF'),
                              Con.ULInt32("wave_size"),
-                             Con.Const(Con.Bytes("riff_type",4),'WAVE'))
+                             Con.Const(Con.Bytes("riff_type", 4), 'WAVE'))
 
     CHUNK_HEADER = Con.Struct("chunk_header",
-                              Con.Bytes("chunk_id",4),
+                              Con.Bytes("chunk_id", 4),
                               Con.ULInt32("chunk_length"))
 
     FMT_CHUNK = Con.Struct("fmt_chunk",
@@ -256,7 +265,7 @@ class WaveAudio(AudioFile):
                                          #0x100000
                                          #0x80000
                                          #0x40000
-                                         Con.Bits('undefined',6),
+                                         Con.Bits('undefined', 6),
 
                                          #0x20000
                                          Con.Flag('top_back_right'),
@@ -264,12 +273,8 @@ class WaveAudio(AudioFile):
                                          #0x10000
                                          Con.Flag('top_back_center'),
 
-                                         Con.Bits('undefined2',8)
-                                         ),
-                           Con.String('sub_format',16)))
-                                  )
-                           )
-
+                                         Con.Bits('undefined2', 8)),
+                           Con.String('sub_format', 16)))))
 
     def __init__(self, filename):
         AudioFile.__init__(self, filename)
@@ -287,7 +292,7 @@ class WaveAudio(AudioFile):
 
         try:
             self.__read_chunks__()
-        except WavException,msg:
+        except WavException, msg:
             raise InvalidFile(str(msg))
 
     @classmethod
@@ -304,25 +309,25 @@ class WaveAudio(AudioFile):
         return True
 
     def has_foreign_riff_chunks(self):
-        return set(['fmt ','data']) != set(self.__chunk_ids__)
+        return set(['fmt ', 'data']) != set(self.__chunk_ids__)
 
     def channel_mask(self):
         return self.__channel_mask__
 
     #Returns the PCMReader object for this WAV's data
     def to_pcm(self):
-        return WaveReader(file(self.filename,'rb'),
-                          sample_rate = self.sample_rate(),
-                          channels = self.channels(),
-                          bits_per_sample = self.bits_per_sample(),
-                          channel_mask = int(self.channel_mask()))
+        return WaveReader(file(self.filename, 'rb'),
+                          sample_rate=self.sample_rate(),
+                          channels=self.channels(),
+                          bits_per_sample=self.bits_per_sample(),
+                          channel_mask=int(self.channel_mask()))
 
     #Takes a filename and PCMReader containing WAV data
     #builds a WAV from that data and returns a new WaveAudio object
     @classmethod
     def from_pcm(cls, filename, pcmreader, compression=None):
         try:
-            f = file(filename,"wb")
+            f = file(filename, "wb")
         except IOError:
             raise EncodingError(None)
         try:
@@ -365,7 +370,6 @@ class WaveAudio(AudioFile):
             else:
                 fmt.channel_mask = __blank_channel_mask__()
 
-
             data_header = Con.Container()
             data_header.chunk_id = 'data'
             data_header.chunk_length = 0
@@ -381,9 +385,9 @@ class WaveAudio(AudioFile):
             framelist = pcmreader.read(BUFFER_SIZE)
             while (len(framelist) > 0):
                 if (framelist.bits_per_sample > 8):
-                    bytes = framelist.to_bytes(False,True)
+                    bytes = framelist.to_bytes(False, True)
                 else:
-                    bytes = framelist.to_bytes(False,False)
+                    bytes = framelist.to_bytes(False, False)
 
                 f.write(bytes)
                 data_header.chunk_length += len(bytes)
@@ -397,7 +401,7 @@ class WaveAudio(AudioFile):
             f.flush()
 
             #go back to the beginning the re-write the header
-            f.seek(0,0)
+            f.seek(0, 0)
             header.wave_size = 4 + \
                 WaveAudio.CHUNK_HEADER.sizeof() + \
                 fmt_header.chunk_length + \
@@ -416,12 +420,12 @@ class WaveAudio(AudioFile):
 
     def to_wave(self, wave_filename):
         try:
-            output = file(wave_filename,'wb')
-            input = file(self.filename,'rb')
+            output = file(wave_filename, 'wb')
+            input = file(self.filename, 'rb')
         except IOError:
             raise EncodingError()
         try:
-            transfer_data(input.read,output.write)
+            transfer_data(input.read, output.write)
         finally:
             input.close()
             output.close()
@@ -429,12 +433,12 @@ class WaveAudio(AudioFile):
     @classmethod
     def from_wave(cls, filename, wave_filename, compression=None):
         try:
-            output = file(filename,'wb')
-            input = file(wave_filename,'rb')
+            output = file(filename, 'wb')
+            input = file(wave_filename, 'rb')
         except IOError:
             raise EncodingError(None)
         try:
-            transfer_data(input.read,output.write)
+            transfer_data(input.read, output.write)
             return WaveAudio(filename)
         finally:
             input.close()
@@ -469,10 +473,10 @@ class WaveAudio(AudioFile):
         if (not BIN.can_execute(BIN['wavegain'])):
             return
 
-        devnull = file(os.devnull,'ab')
+        devnull = file(os.devnull, 'ab')
         for track_name in [track.filename for track in
                            open_files(filenames) if
-                           isinstance(track,cls)]:
+                           isinstance(track, cls)]:
             #wavegain's -y option fails spectacularly
             #if the wave file is on a different filesystem than
             #its current working directory
@@ -481,7 +485,7 @@ class WaveAudio(AudioFile):
             try:
                 if (os.path.dirname(track_name) != ""):
                     os.chdir(os.path.dirname(track_name))
-                sub = subprocess.Popen([BIN['wavegain'],"-y",track_name],
+                sub = subprocess.Popen([BIN['wavegain'], "-y", track_name],
                                        stdout=devnull,
                                        stderr=devnull)
                 sub.wait()
@@ -498,26 +502,27 @@ class WaveAudio(AudioFile):
                                     suffix=cls.SUFFIX)
 
     def __read_chunks__(self):
-        wave_file = file(self.filename,"rb")
+        wave_file = file(self.filename, "rb")
 
         __chunklist__ = []
 
         totalsize = self.__read_wave_header__(wave_file) - 4
 
         while (totalsize > 0):
-            (chunk_format,chunk_size) = self.__read_chunk_header__(wave_file)
+            (chunk_format, chunk_size) = self.__read_chunk_header__(wave_file)
             self.__chunk_ids__.append(chunk_format)
 
             __chunklist__.append(chunk_format)
             #Fix odd-sized chunk sizes to be even
-            if ((chunk_size & 1) == 1): chunk_size += 1
+            if ((chunk_size & 1) == 1):
+                chunk_size += 1
 
             if (chunk_format == "fmt "):
                 self.__read_format_chunk__(wave_file, chunk_size)
             elif (chunk_format == "data"):
                 self.__read_data_chunk__(wave_file, chunk_size)
             else:
-                wave_file.seek(chunk_size,1)
+                wave_file.seek(chunk_size, 1)
             totalsize -= (chunk_size + 8)
 
     def __read_wave_header__(self, wave_file):
@@ -532,7 +537,7 @@ class WaveAudio(AudioFile):
     def __read_chunk_header__(self, wave_file):
         try:
             chunk = WaveAudio.CHUNK_HEADER.parse(wave_file.read(8))
-            return (chunk.chunk_id,chunk.chunk_length)
+            return (chunk.chunk_id, chunk.chunk_length)
         except Con.core.FieldError:
             raise WavException(_(u"Invalid RIFF WAVE file"))
 
@@ -541,29 +546,29 @@ class WaveAudio(AudioFile):
     @classmethod
     def fmt_chunk_to_channel_mask(cls, fmt_channel_mask):
         channel_mask = ChannelMask(0)
-        attr_map = {'front_left':"front_left",
-                    'front_right':"front_right",
-                    'front_center':"front_center",
-                    'LFE':"low_frequency",
-                    'rear_left':"back_left",
-                    'rear_right':"back_right",
-                    'front_left_of_center':"front_left_of_center",
-                    'front_right_of_center':"front_right_of_center",
-                    'rear_center':"back_center",
-                    'side_left':"side_left",
-                    'side_right':"side_right",
-                    'top_center':"top_center",
-                    'top_front_left':"top_front_left",
-                    'top_front_center':"top_front_center",
-                    'top_front_right':"top_front_right",
-                    'top_back_left':"top_back_left",
-                    'top_back_center':"top_back_center",
-                    'top_back_right':"top_back_right"}
-        for (key,value) in attr_map.items():
-            if (getattr(fmt_channel_mask,key)):
-                setattr(channel_mask,value,True)
+        attr_map = {'front_left': "front_left",
+                    'front_right': "front_right",
+                    'front_center': "front_center",
+                    'LFE': "low_frequency",
+                    'rear_left': "back_left",
+                    'rear_right': "back_right",
+                    'front_left_of_center': "front_left_of_center",
+                    'front_right_of_center': "front_right_of_center",
+                    'rear_center': "back_center",
+                    'side_left': "side_left",
+                    'side_right': "side_right",
+                    'top_center': "top_center",
+                    'top_front_left': "top_front_left",
+                    'top_front_center': "top_front_center",
+                    'top_front_right': "top_front_right",
+                    'top_back_left': "top_back_left",
+                    'top_back_center': "top_back_center",
+                    'top_back_right': "top_back_right"}
+        for (key, value) in attr_map.items():
+            if (getattr(fmt_channel_mask, key)):
+                setattr(channel_mask, value, True)
             else:
-                setattr(channel_mask,value,False)
+                setattr(channel_mask, value, False)
 
         return channel_mask
 
@@ -581,35 +586,36 @@ class WaveAudio(AudioFile):
         self.__bitspersample__ = fmt.bits_per_sample
 
         if (self.__wavtype__ == 0xFFFE):
-            self.__channel_mask__ = WaveAudio.fmt_chunk_to_channel_mask(fmt.channel_mask)
+            self.__channel_mask__ = WaveAudio.fmt_chunk_to_channel_mask(
+                fmt.channel_mask)
         else:
             if (self.__channels__ == 1):
                 self.__channel_mask__ = ChannelMask.from_fields(
                     front_center=True)
             elif (self.__channels__ == 2):
                 self.__channel_mask__ = ChannelMask.from_fields(
-                    front_left=True,front_right=True)
+                    front_left=True, front_right=True)
             #if we have a multi-channel WAVE file
             #that's not WAVEFORMATEXTENSIBLE,
             #assume the channels follow SMPTE/ITU-R recommendations
             #and hope for the best
             elif (self.__channels__ == 3):
                 self.__channel_mask__ = ChannelMask.from_fields(
-                    front_left=True,front_right=True,front_center=True)
+                    front_left=True, front_right=True, front_center=True)
             elif (self.__channels__ == 4):
                 self.__channel_mask__ = ChannelMask.from_fields(
-                    front_left=True,front_right=True,
-                    back_left=True,back_right=True)
+                    front_left=True, front_right=True,
+                    back_left=True, back_right=True)
             elif (self.__channels__ == 5):
                 self.__channel_mask__ = ChannelMask.from_fields(
-                    front_left=True,front_right=True,
-                    back_left=True,back_right=True,
+                    front_left=True, front_right=True,
+                    back_left=True, back_right=True,
                     front_center=True)
             elif (self.__channels__ == 6):
                 self.__channel_mask__ = ChannelMask.from_fields(
-                    front_left=True,front_right=True,
-                    back_left=True,back_right=True,
-                    front_center=True,low_frequency=True)
+                    front_left=True, front_right=True,
+                    back_left=True, back_right=True,
+                    front_center=True, low_frequency=True)
             else:
                 self.__channel_mask__ = ChannelMask(0)
 
@@ -618,7 +624,7 @@ class WaveAudio(AudioFile):
 
     def __read_data_chunk__(self, wave_file, chunk_size):
         self.__data_size__ = chunk_size
-        wave_file.seek(chunk_size,1)
+        wave_file.seek(chunk_size, 1)
 
     def chunk_ids(self):
         return self.__chunk_ids__[:]
@@ -626,26 +632,26 @@ class WaveAudio(AudioFile):
     #iterates over the file's RIFF chunks,
     #returning a (chunk_id,chunk_data) tuple on each pass
     def chunks(self):
-        wave_file = file(self.filename,'rb')
+        wave_file = file(self.filename, 'rb')
         total_size = self.__read_wave_header__(wave_file) - 4
 
         while (total_size > 0):
-            (chunk_id,chunk_size) = self.__read_chunk_header__(wave_file)
+            (chunk_id, chunk_size) = self.__read_chunk_header__(wave_file)
 
             #Fix odd-sized chunks to have 16-bit boundaries
-            if ((chunk_size & 1) == 1): chunk_size += 1
+            if ((chunk_size & 1) == 1):
+                chunk_size += 1
 
-            yield (chunk_id,wave_file.read(chunk_size))
+            yield (chunk_id, wave_file.read(chunk_size))
 
             total_size -= (chunk_size + 8)
-
 
     #takes our new RIFF WAVE filename
     #and an iterator of (chunk_id,chunk_data) tuples
     #builds a RIFF WAVE file from those chunks
     @classmethod
     def wave_from_chunks(cls, filename, chunk_iter):
-        f = file(filename,'wb')
+        f = file(filename, 'wb')
 
         header = Con.Container()
         header.wave_id = 'RIFF'
@@ -655,10 +661,11 @@ class WaveAudio(AudioFile):
         #write an unfinished header with an invalid size (for now)
         f.write(cls.WAVE_HEADER.build(header))
 
-        for (chunk_id,chunk_data) in chunk_iter:
+        for (chunk_id, chunk_data) in chunk_iter:
 
             #fix odd-sized chunks to fall on 16-bit boundaries
-            if ((len(chunk_data) & 1) == 1): chunk_data += chr(0)
+            if ((len(chunk_data) & 1) == 1):
+                chunk_data += chr(0)
 
             chunk_header = cls.CHUNK_HEADER.build(
                 Con.Container(chunk_id=chunk_id,
@@ -670,7 +677,7 @@ class WaveAudio(AudioFile):
             header.wave_size += len(chunk_data)
 
         #now that the chunks are done, go back and re-write the header
-        f.seek(0,0)
+        f.seek(0, 0)
         f.write(cls.WAVE_HEADER.build(header))
         f.close()
 
@@ -693,7 +700,7 @@ class WaveAudio(AudioFile):
         tail = cStringIO.StringIO()
         current_block = head
 
-        wave_file = open(self.filename,'rb')
+        wave_file = open(self.filename, 'rb')
         try:
             #transfer the 12-byte "RIFFsizeWAVE" header to head
             header = WaveAudio.WAVE_HEADER.parse(wave_file.read(12))
@@ -717,13 +724,9 @@ class WaveAudio(AudioFile):
             if (chunk_header.chunk_id != "data"):
                 current_block.write(wave_file.read(chunk_header.chunk_length))
             else:
-                wave_file.seek(chunk_header.chunk_length,os.SEEK_CUR)
+                wave_file.seek(chunk_header.chunk_length, os.SEEK_CUR)
                 current_block = tail
 
             total_size -= chunk_header.chunk_length
 
-        return (head.getvalue(),tail.getvalue())
-
-
-
-
+        return (head.getvalue(), tail.getvalue())
