@@ -22,13 +22,15 @@ import imghdr
 import cStringIO
 import gettext
 
-gettext.install("audiotools",unicode=True)
+gettext.install("audiotools", unicode=True)
+
 
 def __jpeg__(h, f):
     if (h[0:3] == "FFD8FF".decode('hex')):
         return 'jpeg'
     else:
         return None
+
 
 imghdr.tests.append(__jpeg__)
 
@@ -37,7 +39,7 @@ imghdr.tests.append(__jpeg__)
 #returns an ImageMetrics class if the file can be identified
 #raises InvalidImage if there is an error or the file is unknown
 def image_metrics(file_data):
-    header = imghdr.what(None,file_data)
+    header = imghdr.what(None, file_data)
 
     file = cStringIO.StringIO(file_data)
     try:
@@ -56,9 +58,11 @@ def image_metrics(file_data):
     finally:
         file.close()
 
+
 #######################
 #JPEG
 #######################
+
 
 class ImageMetrics:
     def __init__(self, width, height, bits_per_pixel, color_count, mime_type):
@@ -76,25 +80,29 @@ class ImageMetrics:
                 repr(self.color_count),
                 repr(self.mime_type))
 
+
 class InvalidImage(Exception):
-    def __init__(self,err):
+    def __init__(self, err):
         self.err = unicode(err)
 
     def __unicode__(self):
         return self.err
 
-class InvalidJPEG(InvalidImage): pass
+
+class InvalidJPEG(InvalidImage):
+    pass
+
 
 class __JPEG__(ImageMetrics):
     SEGMENT_HEADER = Con.Struct('segment_header',
-                                Con.Const(Con.Byte('header'),0xFF),
+                                Con.Const(Con.Byte('header'), 0xFF),
                                 Con.Byte('type'),
                                 Con.If(
-        lambda ctx: ctx['type'] not in (0xD8,0xD9),
+        lambda ctx: ctx['type'] not in (0xD8, 0xD9),
         Con.UBInt16('length')))
 
     APP0 = Con.Struct('JFIF_segment_marker',
-                      Con.String('identifier',5),
+                      Con.String('identifier', 5),
                       Con.Byte('major_version'),
                       Con.Byte('minor_version'),
                       Con.Byte('density_units'),
@@ -125,24 +133,23 @@ class __JPEG__(ImageMetrics):
                 if (segment.type == 0xDA):
                     break
 
-                if (segment.type in (0xC0,0xC1,0xC2,0xC3,
-                                     0xC5,0XC5,0xC6,0xC7,
-                                     0xC9,0xCA,0xCB,0xCD,
-                                     0xCE,0xCF)): #start of frame
+                if (segment.type in (0xC0, 0xC1, 0xC2, 0xC3,
+                                     0xC5, 0XC5, 0xC6, 0xC7,
+                                     0xC9, 0xCA, 0xCB, 0xCD,
+                                     0xCE, 0xCF)):  # start of frame
                     segment_data = cStringIO.StringIO(
                         file.read(segment.length - 2))
                     frame0 = cls.SOF.parse_stream(segment_data)
                     segment_data.close()
 
-                    return __JPEG__(width = frame0.image_width,
-                                    height = frame0.image_height,
-                                    bits_per_pixel = (frame0.data_precision * \
-                                                      frame0.components))
+                    return __JPEG__(width=frame0.image_width,
+                                    height=frame0.image_height,
+                                    bits_per_pixel=(frame0.data_precision *
+                                                    frame0.components))
                 else:
-                    file.seek(segment.length - 2,1)
+                    file.seek(segment.length - 2, 1)
 
                 segment = cls.SEGMENT_HEADER.parse_stream(file)
-
 
             raise InvalidJPEG(_(u'Start of frame not found'))
         except Con.ConstError:
@@ -154,14 +161,17 @@ class __JPEG__(ImageMetrics):
 #PNG
 #######################
 
-class InvalidPNG(InvalidImage): pass
+
+class InvalidPNG(InvalidImage):
+    pass
+
 
 class __PNG__(ImageMetrics):
-    HEADER = Con.Const(Con.String('header',8),
+    HEADER = Con.Const(Con.String('header', 8),
                        '89504e470d0a1a0a'.decode('hex'))
     CHUNK_HEADER = Con.Struct('chunk',
                               Con.UBInt32('length'),
-                              Con.String('type',4))
+                              Con.String('type', 4))
     CHUNK_FOOTER = Con.Struct('crc32',
                               Con.UBInt32('crc'))
 
@@ -199,38 +209,43 @@ class __PNG__(ImageMetrics):
                 data = file.read(chunk_header.length)
                 chunk_footer = cls.CHUNK_FOOTER.parse_stream(file)
 
-            if (ihdr.color_type == 0):   #grayscale
+            if (ihdr.color_type == 0):    # grayscale
                 bits_per_pixel = ihdr.bit_depth
                 color_count = 0
-            elif (ihdr.color_type == 2): #RGB
+            elif (ihdr.color_type == 2):  # RGB
                 bits_per_pixel = ihdr.bit_depth * 3
                 color_count = 0
-            elif (ihdr.color_type == 3): #palette
+            elif (ihdr.color_type == 3):  # palette
                 bits_per_pixel = 8
                 if ((len(plte) % 3) != 0):
                     raise InvalidPNG(_(u'Invalid PLTE chunk length'))
                 else:
                     color_count = len(plte) / 3
-            elif (ihdr.color_type == 4): #grayscale + alpha
+            elif (ihdr.color_type == 4):  # grayscale + alpha
                 bits_per_pixel = ihdr.bit_depth * 2
                 color_count = 0
-            elif (ihdr.color_type == 6): #RGB + alpha
+            elif (ihdr.color_type == 6):  # RGB + alpha
                 bits_per_pixel = ihdr.bit_depth * 4
                 color_count = 0
 
-            return __PNG__(ihdr.width,ihdr.height,bits_per_pixel,color_count)
+            return __PNG__(ihdr.width, ihdr.height, bits_per_pixel,
+                           color_count)
         except Con.ConstError:
             raise InvalidPNG(_(u'Invalid PNG'))
+
 
 #######################
 #BMP
 #######################
 
-class InvalidBMP(InvalidImage): pass
+
+class InvalidBMP(InvalidImage):
+    pass
+
 
 class __BMP__(ImageMetrics):
     HEADER = Con.Struct('bmp_header',
-                        Con.Const(Con.String('magic_number',2),'BM'),
+                        Con.Const(Con.String('magic_number', 2), 'BM'),
                         Con.ULInt32('file_size'),
                         Con.ULInt16('reserved1'),
                         Con.ULInt16('reserved2'),
@@ -266,16 +281,20 @@ class __BMP__(ImageMetrics):
         except Con.ConstError:
             raise InvalidBMP(_(u'Invalid BMP'))
 
+
 #######################
 #GIF
 #######################
 
-class InvalidGIF(InvalidImage): pass
+
+class InvalidGIF(InvalidImage):
+    pass
+
 
 class __GIF__(ImageMetrics):
     HEADER = Con.Struct('header',
-                        Con.Const(Con.String('gif',3),'GIF'),
-                        Con.String('version',3))
+                        Con.Const(Con.String('gif', 3), 'GIF'),
+                        Con.String('version', 3))
 
     SCREEN_DESCRIPTOR = Con.Struct('logical_screen_descriptor',
                                    Con.ULInt16('width'),
@@ -283,14 +302,15 @@ class __GIF__(ImageMetrics):
                                    Con.Embed(
         Con.BitStruct('packed_fields',
                       Con.Flag('global_color_table'),
-                      Con.Bits('color_resolution',3),
+                      Con.Bits('color_resolution', 3),
                       Con.Flag('sort'),
-                      Con.Bits('global_color_table_size',3))),
+                      Con.Bits('global_color_table_size', 3))),
                                    Con.Byte('background_color_index'),
                                    Con.Byte('pixel_aspect_ratio'))
 
     def __init__(self, width, height, color_count):
-        ImageMetrics.__init__(self, width, height, 8, color_count, u'image/gif')
+        ImageMetrics.__init__(self, width, height, 8, color_count,
+                              u'image/gif')
 
     @classmethod
     def parse(cls, file):
@@ -303,24 +323,28 @@ class __GIF__(ImageMetrics):
         except Con.ConstError:
             raise InvalidGIF(_(u'Invalid GIF'))
 
+
 #######################
 #TIFF
 #######################
 
-class InvalidTIFF(InvalidImage): pass
+
+class InvalidTIFF(InvalidImage):
+    pass
+
 
 class __TIFF__(ImageMetrics):
     HEADER = Con.Struct('header',
-                        Con.String('byte_order',2),
+                        Con.String('byte_order', 2),
                         Con.Switch('order',
                                    lambda ctx: ctx['byte_order'],
-                                   {"II":Con.Embed(
+                                   {"II": Con.Embed(
         Con.Struct('little_endian',
-                   Con.Const(Con.ULInt16('version'),42),
+                   Con.Const(Con.ULInt16('version'), 42),
                    Con.ULInt32('offset'))),
-                                    "MM":Con.Embed(
+                                    "MM": Con.Embed(
         Con.Struct('big_endian',
-                   Con.Const(Con.UBInt16('version'),42),
+                   Con.Const(Con.UBInt16('version'), 42),
                    Con.UBInt32('offset')))}))
 
     L_IFD = Con.Struct('ifd',
@@ -350,40 +374,38 @@ class __TIFF__(ImageMetrics):
 
     @classmethod
     def b_tag_value(cls, file, tag):
-        subtype = {1:Con.Byte("data"),
-                   2:Con.CString("data"),
-                   3:Con.UBInt16("data"),
-                   4:Con.UBInt32("data"),
-                   5:Con.Struct("data",
-                                Con.UBInt32("high"),
-                                Con.UBInt32("low"))}[tag.type]
-
+        subtype = {1: Con.Byte("data"),
+                   2: Con.CString("data"),
+                   3: Con.UBInt16("data"),
+                   4: Con.UBInt32("data"),
+                   5: Con.Struct("data",
+                                 Con.UBInt32("high"),
+                                 Con.UBInt32("low"))}[tag.type]
 
         data = Con.StrictRepeater(tag.count,
                                   subtype)
         if ((tag.type != 2) and (data.sizeof() <= 4)):
             return tag.offset
         else:
-            file.seek(tag.offset,0)
+            file.seek(tag.offset, 0)
             return data.parse_stream(file)
 
     @classmethod
     def l_tag_value(cls, file, tag):
-        subtype = {1:Con.Byte("data"),
-                   2:Con.CString("data"),
-                   3:Con.ULInt16("data"),
-                   4:Con.ULInt32("data"),
-                   5:Con.Struct("data",
-                                Con.ULInt32("high"),
-                                Con.ULInt32("low"))}[tag.type]
-
+        subtype = {1: Con.Byte("data"),
+                   2: Con.CString("data"),
+                   3: Con.ULInt16("data"),
+                   4: Con.ULInt32("data"),
+                   5: Con.Struct("data",
+                                 Con.ULInt32("high"),
+                                 Con.ULInt32("low"))}[tag.type]
 
         data = Con.StrictRepeater(tag.count,
                                   subtype)
         if ((tag.type != 2) and (data.sizeof() <= 4)):
             return tag.offset
         else:
-            file.seek(tag.offset,0)
+            file.seek(tag.offset, 0)
             return data.parse_stream(file)
 
     @classmethod
@@ -404,21 +426,21 @@ class __TIFF__(ImageMetrics):
             else:
                 raise InvalidTIFF(_(u'Invalid byte order'))
 
-            file.seek(header.offset,0)
+            file.seek(header.offset, 0)
 
             ifd = IFD.parse_stream(file)
 
             while (True):
                 for tag in ifd.tags:
                     if (tag.id == 0x0100):
-                        width = tag_value(file,tag)
+                        width = tag_value(file, tag)
                     elif (tag.id == 0x0101):
-                        height = tag_value(file,tag)
+                        height = tag_value(file, tag)
                     elif (tag.id == 0x0102):
                         try:
-                            bits_per_sample = sum(tag_value(file,tag))
+                            bits_per_sample = sum(tag_value(file, tag))
                         except TypeError:
-                            bits_per_sample = tag_value(file,tag)
+                            bits_per_sample = tag_value(file, tag)
                     elif (tag.id == 0x0140):
                         color_count = tag.count / 3
                     else:
@@ -427,10 +449,10 @@ class __TIFF__(ImageMetrics):
                 if (ifd.next == 0x00):
                     break
                 else:
-                    file.seek(ifd.next,0)
+                    file.seek(ifd.next, 0)
                     ifd = IFD.parse_stream(file)
 
-            return __TIFF__(width,height,bits_per_sample,color_count)
+            return __TIFF__(width, height, bits_per_sample, color_count)
         except Con.ConstError:
             raise InvalidTIFF(_(u'Invalid TIFF'))
 
@@ -444,15 +466,17 @@ def can_thumbnail():
     except ImportError:
         return False
 
+
 #returns a list of available thumbnail image formats
 def thumbnail_formats():
     import Image as PIL_Image
     import cStringIO
 
     #performing a dummy save seeds PIL_Image.SAVE with possible save types
-    PIL_Image.new("RGB",(1,1)).save(cStringIO.StringIO(),"bmp")
+    PIL_Image.new("RGB", (1, 1)).save(cStringIO.StringIO(), "bmp")
 
     return PIL_Image.SAVE.keys()
+
 
 #takes a string of raw image data
 #along with width and height integers
@@ -467,16 +491,15 @@ def thumbnail_image(image_data, width, height, format):
     PIL_ImageFile.MAXBLOCK = 0x100000
 
     img = PIL_Image.open(cStringIO.StringIO(image_data))
-    img.thumbnail((width,height),PIL_Image.ANTIALIAS)
+    img.thumbnail((width, height), PIL_Image.ANTIALIAS)
     output = cStringIO.StringIO()
 
     if (format.upper() == 'JPEG'):
         #PIL's default JPEG save quality isn't too great
         #so it's best to add a couple of optimizing parameters
         #since this is a common case
-        img.save(output,'JPEG',quality=90,optimize=True)
+        img.save(output, 'JPEG', quality=90, optimize=True)
     else:
-        img.save(output,format)
+        img.save(output, format)
 
     return output.getvalue()
-
