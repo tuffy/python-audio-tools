@@ -299,11 +299,17 @@ class VorbisAudio(AudioFile):
         Con.String("vorbis", 6))
 
     def __init__(self, filename):
+        """filename is a plain string."""
+
         AudioFile.__init__(self, filename)
         self.__read_metadata__()
 
     @classmethod
     def is_type(cls, file):
+        """Returns True if the given file object describes this format.
+
+        Takes a seekable file pointer rewound to the start of the file."""
+
         header = file.read(0x23)
 
         return (header.startswith('OggS') and
@@ -345,15 +351,23 @@ class VorbisAudio(AudioFile):
             del(f)
 
     def lossless(self):
+        """Returns False."""
+
         return False
 
     def bits_per_sample(self):
+        """Returns an integer number of bits-per-sample this track contains."""
+
         return 16
 
     def channels(self):
+        """Returns an integer number of channels this track contains."""
+
         return self.__channels__
 
     def channel_mask(self):
+        """Returns a ChannelMask object of this track's channel layout."""
+
         if (self.channels() == 1):
             return ChannelMask.from_fields(
                 front_center=True)
@@ -395,6 +409,8 @@ class VorbisAudio(AudioFile):
             return ChannelMask(0)
 
     def total_frames(self):
+        """Returns the total PCM frames of the track as an integer."""
+
         pcm_samples = 0
         f = file(self.filename, "rb")
         try:
@@ -413,9 +429,13 @@ class VorbisAudio(AudioFile):
             f.close()
 
     def sample_rate(self):
+        """Returns the rate of the track's audio as an integer number of Hz."""
+
         return self.__sample_rate__
 
     def to_pcm(self):
+        """Returns a PCMReader object containing the track's PCM data."""
+
         sub = subprocess.Popen([BIN['oggdec'], '-Q',
                                 '-b', str(16),
                                 '-e', str(0),
@@ -448,6 +468,8 @@ class VorbisAudio(AudioFile):
 
     @classmethod
     def from_pcm(cls, filename, pcmreader, compression=None):
+        """Returns a PCMReader object containing the track's PCM data."""
+
         if (compression not in cls.COMPRESSION_MODES):
             compression = cls.DEFAULT_COMPRESSION
 
@@ -504,6 +526,11 @@ class VorbisAudio(AudioFile):
             raise EncodingError(BIN['oggenc'])
 
     def set_metadata(self, metadata):
+        """Takes a MetaData object and sets this track's metadata.
+
+        This metadata includes track name, album name, and so on.
+        Raises IOError if unable to write the file."""
+
         metadata = VorbisComment.converted(metadata)
 
         if (metadata is None):
@@ -571,6 +598,10 @@ class VorbisAudio(AudioFile):
         self.__read_metadata__()
 
     def get_metadata(self):
+        """Returns a MetaData object, or None.
+
+        Raises IOError if unable to read the file."""
+
         self.__read_metadata__()
         data = {}
         for pair in self.comment.value:
@@ -583,10 +614,21 @@ class VorbisAudio(AudioFile):
         return VorbisComment(data)
 
     def delete_metadata(self):
+        """Deletes the track's MetaData.
+
+        This removes or unsets tags as necessary in order to remove all data.
+        Raises IOError if unable to write the file."""
+
         self.set_metadata(MetaData())
 
     @classmethod
     def add_replay_gain(cls, filenames):
+        """Adds ReplayGain values to a list of filename strings.
+
+        All the filenames must be of this AudioFile type.
+        Raises ValueError if some problem occurs during ReplayGain application.
+        """
+
         track_names = [track.filename for track in
                        open_files(filenames) if
                        isinstance(track, cls)]
@@ -604,13 +646,21 @@ class VorbisAudio(AudioFile):
 
     @classmethod
     def can_add_replay_gain(cls):
+        """Returns True if we have the necessary binaries to add ReplayGain."""
+
         return BIN.can_execute(BIN['vorbisgain'])
 
     @classmethod
     def lossless_replay_gain(cls):
+        """Returns True."""
+
         return True
 
     def replay_gain(self):
+        """Returns a ReplayGain object of our ReplayGain values.
+
+        Returns None if we have no values."""
+
         vorbis_metadata = self.get_metadata()
 
         if (set(['REPLAYGAIN_TRACK_PEAK', 'REPLAYGAIN_TRACK_GAIN',

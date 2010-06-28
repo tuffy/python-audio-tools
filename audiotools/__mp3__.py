@@ -98,6 +98,8 @@ class MP3Audio(AudioFile):
                              Con.UBInt32("quality"))
 
     def __init__(self, filename):
+        """filename is a plain string."""
+
         AudioFile.__init__(self, filename)
 
         mp3file = file(filename, "rb")
@@ -112,6 +114,10 @@ class MP3Audio(AudioFile):
 
     @classmethod
     def is_type(cls, file):
+        """Returns True if the given file object describes this format.
+
+        Takes a seekable file pointer rewound to the start of the file."""
+
         ID3v2Comment.skip(file)
 
         try:
@@ -134,9 +140,13 @@ class MP3Audio(AudioFile):
             return False
 
     def lossless(self):
+        """Returns False."""
+
         return False
 
     def to_pcm(self):
+        """Returns a PCMReader object containing the track's PCM data."""
+
         #if mpg123 is available, use that for decoding
         if (BIN.can_execute(BIN["mpg123"])):
             sub = subprocess.Popen([BIN["mpg123"], "-qs", self.filename],
@@ -216,8 +226,15 @@ class MP3Audio(AudioFile):
             return (0, 0)
 
     @classmethod
-    def from_pcm(cls, filename, pcmreader,
-                 compression="2"):
+    def from_pcm(cls, filename, pcmreader, compression="2"):
+        """Encodes a new file from PCM data.
+
+        Takes a filename string, PCMReader object
+        and optional compression level string.
+        Encodes a new audio file from pcmreader's data
+        at the given filename with the specified compression level
+        and returns a new MP3Audio object."""
+
         import decimal
         import bisect
 
@@ -280,15 +297,25 @@ class MP3Audio(AudioFile):
             raise EncodingError(BIN['lame'])
 
     def bits_per_sample(self):
+        """Returns an integer number of bits-per-sample this track contains."""
+
         return 16
 
     def channels(self):
+        """Returns an integer number of channels this track contains."""
+
         return self.__channels__
 
     def sample_rate(self):
+        """Returns the rate of the track's audio as an integer number of Hz."""
+
         return self.__samplerate__
 
     def get_metadata(self):
+        """Returns a MetaData object, or None.
+
+        Raises IOError if unable to read the file."""
+
         f = file(self.filename, "rb")
         try:
             if (f.read(3) != "ID3"):      # no ID3v2 tag, try ID3v1
@@ -311,6 +338,11 @@ class MP3Audio(AudioFile):
             f.close()
 
     def set_metadata(self, metadata):
+        """Takes a MetaData object and sets this track's metadata.
+
+        This metadata includes track name, album name, and so on.
+        Raises IOError if unable to write the file."""
+
         if (metadata is None):
             return
 
@@ -348,6 +380,11 @@ class MP3Audio(AudioFile):
         f.close()
 
     def delete_metadata(self):
+        """Deletes the track's MetaData.
+
+        This removes or unsets tags as necessary in order to remove all data.
+        Raises IOError if unable to write the file."""
+
         #get the original MP3 data
         f = file(self.filename, "rb")
         MP3Audio.__find_mp3_start__(f)
@@ -485,6 +522,10 @@ class MP3Audio(AudioFile):
             raise MP3Exception(_(u"Invalid bit rate"))
 
     def cd_frames(self):
+        """Returns the total length of the track in CD frames.
+
+        Each CD frame is 1/75th of a second."""
+
         #calculate length at create-time so that we can
         #throw MP3Exception as soon as possible
         return self.__framelength__
@@ -551,18 +592,30 @@ class MP3Audio(AudioFile):
             mp3file.close()
 
     def total_frames(self):
+        """Returns the total PCM frames of the track as an integer."""
+
         return self.cd_frames() * self.sample_rate() / 75
 
     @classmethod
     def can_add_replay_gain(cls):
+        """Returns True if we have the necessary binaries to add ReplayGain."""
+
         return BIN.can_execute(BIN['mp3gain'])
 
     @classmethod
     def lossless_replay_gain(cls):
+        """Returns False."""
+
         return False
 
     @classmethod
     def add_replay_gain(cls, filenames):
+        """Adds ReplayGain values to a list of filename strings.
+
+        All the filenames must be of this AudioFile type.
+        Raises ValueError if some problem occurs during ReplayGain application.
+        """
+
         track_names = [track.filename for track in
                        open_files(filenames) if
                        isinstance(track, cls)]
@@ -592,6 +645,10 @@ class MP2Audio(MP3Audio):
 
     @classmethod
     def is_type(cls, file):
+        """Returns True if the given file object describes this format.
+
+        Takes a seekable file pointer rewound to the start of the file."""
+
         ID3v2Comment.skip(file)
 
         try:
@@ -604,8 +661,15 @@ class MP2Audio(MP3Audio):
             return False
 
     @classmethod
-    def from_pcm(cls, filename, pcmreader,
-                 compression="192"):
+    def from_pcm(cls, filename, pcmreader, compression="192"):
+        """Encodes a new file from PCM data.
+
+        Takes a filename string, PCMReader object
+        and optional compression level string.
+        Encodes a new audio file from pcmreader's data
+        at the given filename with the specified compression level
+        and returns a new MP2Audio object."""
+
         import decimal
         import bisect
 

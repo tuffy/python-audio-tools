@@ -1137,21 +1137,21 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [ ] IEEE_Extended
      - [ ] AiffException
      - [ ] AiffAudio
-     - [ ] AiffAudio.bits_per_sample
-     - [ ] AiffAudio.channels
-     - [ ] AiffAudio.channel_mask
-     - [ ] AiffAudio.lossless
-     - [ ] AiffAudio.total_frames
-     - [ ] AiffAudio.sample_rate
-     - [ ] AiffAudio.is_type
+     - [X] AiffAudio.bits_per_sample
+     - [X] AiffAudio.channels
+     - [X] AiffAudio.channel_mask
+     - [X] AiffAudio.lossless
+     - [X] AiffAudio.total_frames
+     - [X] AiffAudio.sample_rate
+     - [X] AiffAudio.is_type
      - [ ] AiffAudio.chunks
      - [ ] AiffAudio.comm_chunk
      - [ ] AiffAudio.chunk_files
-     - [ ] AiffAudio.get_metadata
-     - [ ] AiffAudio.set_metadata
-     - [ ] AiffAudio.delete_metadata
-     - [ ] AiffAudio.to_pcm
-     - [ ] AiffAudio.from_pcm
+     - [X] AiffAudio.get_metadata
+     - [X] AiffAudio.set_metadata
+     - [X] AiffAudio.delete_metadata
+     - [X] AiffAudio.to_pcm
+     - [X] AiffAudio.from_pcm
      - [ ] AIFFChannelMask
      - [ ] AIFFChannelMask.channels
 *** TODO __ape__.py
@@ -1176,30 +1176,30 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [ ] ApeTaggedAudio.set_metadata
      - [ ] ApeTaggedAudio.delete_metadata
      - [ ] ApeAudio
-     - [ ] ApeAudio.is_type
-     - [ ] ApeAudio.lossless
-     - [ ] ApeAudio.supports_foreign_riff_chunks
+     - [X] ApeAudio.is_type
+     - [X] ApeAudio.lossless
+     - [X] ApeAudio.supports_foreign_riff_chunks
      - [ ] ApeAudio.has_foreign_riff_chunks
-     - [ ] ApeAudio.bits_per_sample
-     - [ ] ApeAudio.channels
-     - [ ] ApeAudio.total_frames
-     - [ ] ApeAudio.sample_rate
-     - [ ] ApeAudio.to_wave
-     - [ ] ApeAudio.from_wave
+     - [X] ApeAudio.bits_per_sample
+     - [X] ApeAudio.channels
+     - [X] ApeAudio.total_frames
+     - [X] ApeAudio.sample_rate
+     - [X] ApeAudio.to_wave
+     - [X] ApeAudio.from_wave
 *** TODO __au__.py
 **** DONE adjust syntax
 **** TODO add docstrings
      - [ ] AuAudio
-     - [ ] AuAudio.is_type
-     - [ ] AuAudio.lossless
-     - [ ] AuAudio.bits_per_sample
-     - [ ] AuAudio.channels
-     - [ ] AuAudio.channel_mask
-     - [ ] AuAudio.sample_rate
-     - [ ] AuAudio.total_frames
-     - [ ] AuAudio.to_pcm
-     - [ ] AuAudio.from_pcm
-     - [ ] AuAudio.track_name
+     - [X] AuAudio.is_type
+     - [X] AuAudio.lossless
+     - [X] AuAudio.bits_per_sample
+     - [X] AuAudio.channels
+     - [X] AuAudio.channel_mask
+     - [X] AuAudio.sample_rate
+     - [X] AuAudio.total_frames
+     - [X] AuAudio.to_pcm
+     - [X] AuAudio.from_pcm
+     - [X] AuAudio.track_name
 *** TODO __flac__.py
 **** DONE adjust syntax
 **** TODO add docstrings
@@ -1232,40 +1232,40 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [ ] FlacCueSheet.indexes
      - [ ] FlacCueSheet.pcm_lengths
      - [ ] FlacAudio
-     - [ ] FlacAudio.is_type
-     - [ ] FlacAudio.channel_mask
-     - [ ] FlacAudio.lossless
-     - [ ] FlacAudio.supports_foreign_riff_chunks
-     - [ ] FlacAudio.get_metadata
-     - [ ] FlacAudio.set_metadata
-     - [ ] FlacAudio.metadata_length
-     - [ ] FlacAudio.delete_metadata
-     - [ ] FlacAudio.set_cuesheet
-     - [ ] FlacAudio.get_cuesheet
-     - [ ] FlacAudio.to_pcm
-     - [ ] FlacAudio.from_pcm
-     - [ ] FlacAudio.has_foreign_riff_chunks
-     - [ ] FlacAudio.riff_wave_chunks
-     - [ ] FlacAudio.to_wave
-     - [ ] FlacAudio.from_wave
-     - [ ] FlacAudio.bits_per_sample
-     - [ ] FlacAudio.channels
-     - [ ] FlacAudio.total_frames
-     - [ ] FlacAudio.sample_rate
-     - [ ] FlacAudio.add_replay_gain
-     - [ ] FlacAudio.can_add_replay_gain
-     - [ ] FlacAudio.lossless_replay_gain
-     - [ ] FlacAudio.replay_gain
+     - [X] FlacAudio.is_type
+     - [X] FlacAudio.channel_mask
+     - [X] FlacAudio.lossless
+     - [X] FlacAudio.supports_foreign_riff_chunks
+     - [X] FlacAudio.get_metadata
+     - [X] FlacAudio.set_metadata
+     - [X] FlacAudio.metadata_length
+     - [X] FlacAudio.delete_metadata
+     - [X] FlacAudio.set_cuesheet
+     - [X] FlacAudio.get_cuesheet
+     - [X] FlacAudio.to_pcm
+     - [X] FlacAudio.from_pcm
+     - [X] FlacAudio.has_foreign_riff_chunks
+     - [X] FlacAudio.riff_wave_chunks
+     - [X] FlacAudio.to_wave
+     - [X] FlacAudio.from_wave
+     - [X] FlacAudio.bits_per_sample
+     - [X] FlacAudio.channels
+     - [X] FlacAudio.total_frames
+     - [X] FlacAudio.sample_rate
+     - [X] FlacAudio.add_replay_gain
+     - [X] FlacAudio.can_add_replay_gain
+     - [X] FlacAudio.lossless_replay_gain
+     - [X] FlacAudio.replay_gain
      - [ ] FlacAudio.sub_pcm_tracks
      - [ ] OggFlacAudio
-     - [ ] OggFlacAudio.is_type
-     - [ ] OggFlacAudio.get_metadata
-     - [ ] OggFlacAudio.set_metadata
+     - [X] OggFlacAudio.is_type
+     - [X] OggFlacAudio.get_metadata
+     - [X] OggFlacAudio.set_metadata
      - [ ] OggFlacAudio.metadata_length
-     - [ ] OggFlacAudio.to_pcm
-     - [ ] OggFlacAudio.from_pcm
+     - [X] OggFlacAudio.to_pcm
+     - [X] OggFlacAudio.from_pcm
      - [ ] OggFlacAudio.sub_pcm_tracks
-     - [ ] OggFlacAudio.supports_foreign_riff_chunks
+     - [X] OggFlacAudio.supports_foreign_riff_chunks
 *** TODO __freedb__.py
 **** DONE adjust syntax
 **** TODO add docstrings
@@ -1419,9 +1419,12 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** TODO __init__.py
 **** DONE adjust syntax
 **** TODO add docstrings
+     - [ ] __init__.py
      - [ ] RawConfigParser
      - [ ] RawConfigParser.get_default
      - [ ] RawConfigParser.getint_default
+     - [ ] __system_binaries__
+     - [ ] __system_binaries__.can_execute
      - [ ] find_glade_file
      - [ ] OptionParser
      - [ ] Messenger
@@ -1555,34 +1558,34 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [ ] Image.thumbnail
      - [ ] ReplayGain
      - [ ] UnsupportedTracknameField
-     - [ ] AudioFile
-     - [ ] AudioFile.is_type
-     - [ ] AudioFile.bits_per_sample
-     - [ ] AudioFile.channels
-     - [ ] AudioFile.channel_mask
-     - [ ] AudioFile.lossless
-     - [ ] AudioFile.set_metadata
-     - [ ] AudioFile.get_metadata
-     - [ ] AudioFile.delete_metadata
-     - [ ] AudioFile.total_frames
-     - [ ] AudioFile.cd_frames
-     - [ ] AudioFile.sample_rate
-     - [ ] AudioFile.to_pcm
-     - [ ] AudioFile.from_pcm
-     - [ ] AudioFile.to_wave
-     - [ ] AudioFile.from_wave
-     - [ ] AudioFile.supports_foreign_riff_chunks
-     - [ ] AudioFile.has_foreign_riff_chunks
-     - [ ] AudioFile.track_number
-     - [ ] AudioFile.album_number
-     - [ ] AudioFile.track_name
-     - [ ] AudioFile.add_replay_gain
-     - [ ] AudioFile.can_add_replay_gain
-     - [ ] AudioFile.lossless_replay_gain
-     - [ ] AudioFile.replay_gain
-     - [ ] AudioFile.set_cuesheet
-     - [ ] AudioFile.get_cuesheet
-     - [ ] AudioFile.has_binaries
+     - [X] AudioFile
+     - [X] AudioFile.is_type
+     - [X] AudioFile.bits_per_sample
+     - [X] AudioFile.channels
+     - [X] AudioFile.channel_mask
+     - [X] AudioFile.lossless
+     - [X] AudioFile.set_metadata
+     - [X] AudioFile.get_metadata
+     - [X] AudioFile.delete_metadata
+     - [X] AudioFile.total_frames
+     - [X] AudioFile.cd_frames
+     - [X] AudioFile.sample_rate
+     - [X] AudioFile.to_pcm
+     - [X] AudioFile.from_pcm
+     - [X] AudioFile.to_wave
+     - [X] AudioFile.from_wave
+     - [X] AudioFile.supports_foreign_riff_chunks
+     - [X] AudioFile.has_foreign_riff_chunks
+     - [X] AudioFile.track_number
+     - [X] AudioFile.album_number
+     - [X] AudioFile.track_name
+     - [X] AudioFile.add_replay_gain
+     - [X] AudioFile.can_add_replay_gain
+     - [X] AudioFile.lossless_replay_gain
+     - [X] AudioFile.replay_gain
+     - [X] AudioFile.set_cuesheet
+     - [X] AudioFile.get_cuesheet
+     - [X] AudioFile.has_binaries
      - [ ] DummyAudioFile
      - [ ] DummyAudioFile.get_metadata
      - [ ] DummyAudioFile.cd_frames
@@ -1659,28 +1662,28 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [ ] __replace_qt_atom__
      - [ ] __remove_qt_atom__
      - [ ] M4AAudio_faac
-     - [ ] M4AAudio_faac.channel_mask
-     - [ ] M4AAudio_faac.is_type
-     - [ ] M4AAudio_faac.lossless
-     - [ ] M4AAudio_faac.channels
-     - [ ] M4AAudio_faac.bits_per_sample
-     - [ ] M4AAudio_faac.sample_rate
-     - [ ] M4AAudio_faac.cd_frames
-     - [ ] M4AAudio_faac.total_frames
-     - [ ] M4AAudio_faac.get_metadata
-     - [ ] M4AAudio_faac.set_metadata
+     - [X] M4AAudio_faac.channel_mask
+     - [X] M4AAudio_faac.is_type
+     - [X] M4AAudio_faac.lossless
+     - [X] M4AAudio_faac.channels
+     - [X] M4AAudio_faac.bits_per_sample
+     - [X] M4AAudio_faac.sample_rate
+     - [X] M4AAudio_faac.cd_frames
+     - [X] M4AAudio_faac.total_frames
+     - [X] M4AAudio_faac.get_metadata
+     - [X] M4AAudio_faac.set_metadata
      - [ ] M4AAudio_faac.__set_meta_atom__
      - [ ] M4AAudio_faac.delete_metadata
-     - [ ] M4AAudio_faac.to_pcm
-     - [ ] M4AAudio_faac.from_pcm
-     - [ ] M4AAudio_faac.can_add_replay_gain
-     - [ ] M4AAudio_faac.lossless_replay_gain
-     - [ ] M4AAudio_faac.add_replay_gain
+     - [X] M4AAudio_faac.to_pcm
+     - [X] M4AAudio_faac.from_pcm
+     - [X] M4AAudio_faac.can_add_replay_gain
+     - [X] M4AAudio_faac.lossless_replay_gain
+     - [X] M4AAudio_faac.add_replay_gain
      - [ ] M4AAudio_nero
-     - [ ] M4AAudio_nero.to_pcm
-     - [ ] M4AAudio_nero.from_pcm
-     - [ ] M4AAudio_nero.to_wave
-     - [ ] M4AAudio_nero.from_wave
+     - [X] M4AAudio_nero.to_pcm
+     - [X] M4AAudio_nero.from_pcm
+     - [X] M4AAudio_nero.to_wave
+     - [X] M4AAudio_nero.from_wave
      - [ ] ILST_Atom
      - [ ] M4AMetaData
      - [ ] M4AMetaData.binary_atom
@@ -1698,25 +1701,25 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [ ] M4ACovr
      - [ ] M4ACovr.converted
      - [ ] ALACAudio
-     - [ ] ALACAudio.is_type
-     - [ ] ALACAudio.total_frames
-     - [ ] ALACAudio.channel_mask
-     - [ ] ALACAudio.cd_frames
-     - [ ] ALACAudio.lossless
-     - [ ] ALACAudio.to_pcm
-     - [ ] ALACAudio.from_pcm
-     - [ ] ALACAudio.to_wave
-     - [ ] ALACAudio.from_wave
+     - [X] ALACAudio.is_type
+     - [X] ALACAudio.total_frames
+     - [X] ALACAudio.channel_mask
+     - [X] ALACAudio.cd_frames
+     - [X] ALACAudio.lossless
+     - [X] ALACAudio.to_pcm
+     - [X] ALACAudio.from_pcm
+     - [X] ALACAudio.to_wave
+     - [X] ALACAudio.from_wave
      - [ ] ADTSException
      - [ ] AACAudio
-     - [ ] AACAudio.is_type
-     - [ ] AACAudio.bits_per_sample
-     - [ ] AACAudio.channels
-     - [ ] AACAudio.lossless
-     - [ ] AACAudio.total_frames
-     - [ ] AACAudio.sample_rate
-     - [ ] AACAudio.to_pcm
-     - [ ] AACAudio.from_pcm
+     - [X] AACAudio.is_type
+     - [X] AACAudio.bits_per_sample
+     - [X] AACAudio.channels
+     - [X] AACAudio.lossless
+     - [X] AACAudio.total_frames
+     - [X] AACAudio.sample_rate
+     - [X] AACAudio.to_pcm
+     - [X] AACAudio.from_pcm
      - [ ] AACAudio.aac_frames
      - [ ] AACAudio.aac_frame_count
 *** TODO __mp3__.py
@@ -1724,16 +1727,16 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 **** TODO add docstrings
      - [ ] MP3Exception
      - [ ] MP3Audio
-     - [ ] MP3Audio.is_type
-     - [ ] MP3Audio.lossless
-     - [ ] MP3Audio.to_pcm
-     - [ ] MP3Audio.from_pcm
-     - [ ] MP3Audio.bits_per_sample
-     - [ ] MP3Audio.channels
-     - [ ] MP3Audio.sample_rate
-     - [ ] MP3Audio.get_metadata
-     - [ ] MP3Audio.set_metadata
-     - [ ] MP3Audio.delete_metadata
+     - [X] MP3Audio.is_type
+     - [X] MP3Audio.lossless
+     - [X] MP3Audio.to_pcm
+     - [X] MP3Audio.from_pcm
+     - [X] MP3Audio.bits_per_sample
+     - [X] MP3Audio.channels
+     - [X] MP3Audio.sample_rate
+     - [X] MP3Audio.get_metadata
+     - [X] MP3Audio.set_metadata
+     - [X] MP3Audio.delete_metadata
      - [ ] MP3Audio.__find_next_mp3_frame__
      - [ ] MP3Audio.__find_mp3_start__
      - [ ] MP3Audio.__find_last_mp3_frame__
@@ -1741,15 +1744,15 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [ ] MP3Audio.__get_mp3_frame_sample_rate__
      - [ ] MP3Audio.__get_mp3_frame_channels__
      - [ ] MP3Audio.__get_mp3_frame_bitrate__
-     - [ ] MP3Audio.cd_frames
+     - [X] MP3Audio.cd_frames
      - [ ] MP3Audio.__length__
-     - [ ] MP3Audio.total_frames
-     - [ ] MP3Audio.can_add_replay_gain
-     - [ ] MP3Audio.lossless_replay_gain
-     - [ ] MP3Audio.add_replay_gain
+     - [X] MP3Audio.total_frames
+     - [X] MP3Audio.can_add_replay_gain
+     - [X] MP3Audio.lossless_replay_gain
+     - [X] MP3Audio.add_replay_gain
      - [ ] MP2Audio
-     - [ ] MP2Audio.is_type
-     - [ ] MP2Audio.from_pcm
+     - [X] MP2Audio.is_type
+     - [X] MP2Audio.from_pcm
 *** TODO __musepack__.py
 **** DONE adjust syntax
 **** TODO add docstrings
@@ -1757,15 +1760,15 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [ ] Musepack8StreamReader
      - [ ] Musepack8StreamReader.packets
      - [ ] MusepackAudio
-     - [ ] MusepackAudio.from_pcm
+     - [X] MusepackAudio.from_pcm
      - [ ] MusepackAudio.__to_wave__
      - [ ] MusepackAudio.__from_wave__
-     - [ ] MusepackAudio.is_type
-     - [ ] MusepackAudio.sample_rate
-     - [ ] MusepackAudio.total_frames
-     - [ ] MusepackAudio.channels
-     - [ ] MusepackAudio.bits_per_sample
-     - [ ] MusepackAudio.lossless
+     - [X] MusepackAudio.is_type
+     - [X] MusepackAudio.sample_rate
+     - [X] MusepackAudio.total_frames
+     - [X] MusepackAudio.channels
+     - [X] MusepackAudio.bits_per_sample
+     - [X] MusepackAudio.lossless
 *** TODO __musicbrainz__.py
 **** DONE adjust syntax
 **** TODO add docstrings
@@ -1797,30 +1800,30 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [ ] ShortenAudio.__populate_metadata__
      - [ ] ShortenAudio.__wave_chunks__
      - [ ] ShortenAudio.__aiff_chunks__
-     - [ ] ShortenAudio.is_type
-     - [ ] ShortenAudio.bits_per_sample
-     - [ ] ShortenAudio.channels
-     - [ ] ShortenAudio.channel_mask
-     - [ ] ShortenAudio.lossless
-     - [ ] ShortenAudio.total_frames
-     - [ ] ShortenAudio.sample_rate
-     - [ ] ShortenAudio.to_pcm
-     - [ ] ShortenAudio.from_pcm
-     - [ ] ShortenAudio.to_wave
-     - [ ] ShortenAudio.from_wave
-     - [ ] ShortenAudio.supports_foreign_riff_chunks
-     - [ ] ShortenAudio.has_foreign_riff_chunks
+     - [X] ShortenAudio.is_type
+     - [X] ShortenAudio.bits_per_sample
+     - [X] ShortenAudio.channels
+     - [X] ShortenAudio.channel_mask
+     - [X] ShortenAudio.lossless
+     - [X] ShortenAudio.total_frames
+     - [X] ShortenAudio.sample_rate
+     - [X] ShortenAudio.to_pcm
+     - [X] ShortenAudio.from_pcm
+     - [X] ShortenAudio.to_wave
+     - [X] ShortenAudio.from_wave
+     - [X] ShortenAudio.supports_foreign_riff_chunks
+     - [X] ShortenAudio.has_foreign_riff_chunks
 *** TODO __speex__.py
 **** DONE adjust syntax
 **** TODO add docstrings
      - [ ] UnframedVorbisComment
      - [ ] SpeexAudio
-     - [ ] SpeexAudio.is_type
+     - [X] SpeexAudio.is_type
      - [ ] SpeexAudio.__read_metadata__
-     - [ ] SpeexAudio.to_pcm
-     - [ ] SpeexAudio.from_pcm
-     - [ ] SpeexAudio.set_metadata
-     - [ ] SpeexAudio.can_add_replay_gain
+     - [X] SpeexAudio.to_pcm
+     - [X] SpeexAudio.from_pcm
+     - [X] SpeexAudio.set_metadata
+     - [X] SpeexAudio.can_add_replay_gain
 *** TODO __vorbiscomment__.py
 **** DONE adjust syntax
 **** TODO add docstrings
@@ -1844,23 +1847,23 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [ ] OggStreamWriter.write_page
      - [ ] OggStreamWriter.build_pages
      - [ ] VorbisAudio
-     - [ ] VorbisAudio.is_type
+     - [X] VorbisAudio.is_type
      - [ ] VorbisAudio.__read_metadata__
-     - [ ] VorbisAudio.lossless
-     - [ ] VorbisAudio.bits_per_sample
-     - [ ] VorbisAudio.channels
-     - [ ] VorbisAudio.channel_mask
-     - [ ] VorbisAudio.total_frames
-     - [ ] VorbisAudio.sample_rate
-     - [ ] VorbisAudio.to_pcm
-     - [ ] VorbisAudio.from_pcm
-     - [ ] VorbisAudio.set_metadata
-     - [ ] VorbisAudio.get_metadata
-     - [ ] VorbisAudio.delete_metadata
-     - [ ] VorbisAudio.add_replay_gain
-     - [ ] VorbisAudio.can_add_replay_gain
-     - [ ] VorbisAudio.lossless_replay_gain
-     - [ ] VorbisAudio.replay_gain
+     - [X] VorbisAudio.lossless
+     - [X] VorbisAudio.bits_per_sample
+     - [X] VorbisAudio.channels
+     - [X] VorbisAudio.channel_mask
+     - [X] VorbisAudio.total_frames
+     - [X] VorbisAudio.sample_rate
+     - [X] VorbisAudio.to_pcm
+     - [X] VorbisAudio.from_pcm
+     - [X] VorbisAudio.set_metadata
+     - [X] VorbisAudio.get_metadata
+     - [X] VorbisAudio.delete_metadata
+     - [X] VorbisAudio.add_replay_gain
+     - [X] VorbisAudio.can_add_replay_gain
+     - [X] VorbisAudio.lossless_replay_gain
+     - [X] VorbisAudio.replay_gain
      - [ ] VorbisChannelMask
      - [ ] VorbisChannelMask.channels
 *** TODO __wavpack__.py
@@ -1873,29 +1876,29 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [ ] WavePackAPEv2
      - [ ] WavePackAPEv2.converted
      - [ ] WavPackAudio
-     - [ ] WavPackAudio.is_type
-     - [ ] WavPackAudio.lossless
-     - [ ] WavPackAudio.supports_foreign_riff_chunks
-     - [ ] WavPackAudio.channel_mask
-     - [ ] WavPackAudio.get_metadata
-     - [ ] WavPackAudio.has_foreign_riff_chunks
+     - [X] WavPackAudio.is_type
+     - [X] WavPackAudio.lossless
+     - [X] WavPackAudio.supports_foreign_riff_chunks
+     - [X] WavPackAudio.channel_mask
+     - [X] WavPackAudio.get_metadata
+     - [X] WavPackAudio.has_foreign_riff_chunks
      - [ ] WavPackAudio.__fmt_chunk__
      - [ ] WavPackAudio.frames
      - [ ] WavPackAudio.sub_frames
      - [ ] WavPackAudio.__read_info__
-     - [ ] WavPackAudio.bits_per_sample
-     - [ ] WavPackAudio.channels
-     - [ ] WavPackAudio.total_frames
-     - [ ] WavPackAudio.sample_rate
-     - [ ] WavPackAudio.from_pcm
-     - [ ] WavPackAudio.to_wave
-     - [ ] WavPackAudio.to_pcm
-     - [ ] WavPackAudio.from_wave
-     - [ ] WavPackAudio.add_replay_gain
-     - [ ] WavPackAudio.can_add_replay_gain
-     - [ ] WavPackAudio.replay_gain
-     - [ ] WavPackAudio.get_cuesheet
-     - [ ] WavPackAudio.set_cuesheet
+     - [X] WavPackAudio.bits_per_sample
+     - [X] WavPackAudio.channels
+     - [X] WavPackAudio.total_frames
+     - [X] WavPackAudio.sample_rate
+     - [X] WavPackAudio.from_pcm
+     - [X] WavPackAudio.to_wave
+     - [X] WavPackAudio.to_pcm
+     - [X] WavPackAudio.from_wave
+     - [X] WavPackAudio.add_replay_gain
+     - [X] WavPackAudio.can_add_replay_gain
+     - [X] WavPackAudio.replay_gain
+     - [X] WavPackAudio.get_cuesheet
+     - [X] WavPackAudio.set_cuesheet
 *** TODO __wav__.py
 **** DONE adjust syntax
 **** TODO add docstrings
@@ -1906,23 +1909,23 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [ ] TempWaveReader.close
      - [ ] WavException
      - [ ] WaveAudio
-     - [ ] WaveAudio.is_type
-     - [ ] WaveAudio.lossless
-     - [ ] WaveAudio.supports_foreign_riff_chunks
-     - [ ] WaveAudio.has_foreign_riff_chunks
-     - [ ] WaveAudio.channel_mask
-     - [ ] WaveAudio.to_pcm
-     - [ ] WaveAudio.from_pcm
-     - [ ] WaveAudio.to_wave
-     - [ ] WaveAudio.from_wave
-     - [ ] WaveAudio.total_frames
-     - [ ] WaveAudio.sample_rate
-     - [ ] WaveAudio.channels
-     - [ ] WaveAudio.bits_per_sample
-     - [ ] WaveAudio.can_add_replay_gain
-     - [ ] WaveAudio.lossless_replay_gain
-     - [ ] WaveAudio.add_replay_gain
-     - [ ] WaveAudio.track_name
+     - [X] WaveAudio.is_type
+     - [X] WaveAudio.lossless
+     - [X] WaveAudio.supports_foreign_riff_chunks
+     - [X] WaveAudio.has_foreign_riff_chunks
+     - [X] WaveAudio.channel_mask
+     - [X] WaveAudio.to_pcm
+     - [X] WaveAudio.from_pcm
+     - [X] WaveAudio.to_wave
+     - [X] WaveAudio.from_wave
+     - [X] WaveAudio.total_frames
+     - [X] WaveAudio.sample_rate
+     - [X] WaveAudio.channels
+     - [X] WaveAudio.bits_per_sample
+     - [X] WaveAudio.can_add_replay_gain
+     - [X] WaveAudio.lossless_replay_gain
+     - [X] WaveAudio.add_replay_gain
+     - [X] WaveAudio.track_name
      - [ ] WaveAudio.__read_chunks__
      - [ ] WaveAudio.__read_wave_header__
      - [ ] WaveAudio.__read_chunk_header__

@@ -69,30 +69,48 @@ class AuAudio(AudioFile):
 
     @classmethod
     def is_type(cls, file):
+        """Returns True if the given file object describes this format.
+
+        Takes a seekable file pointer rewound to the start of the file."""
+
         return file.read(4) == ".snd"
 
     def lossless(self):
+        """Returns True."""
+
         return True
 
     def bits_per_sample(self):
+        """Returns an integer number of bits-per-sample this track contains."""
+
         return self.__bits_per_sample__
 
     def channels(self):
+        """Returns an integer number of channels this track contains."""
+
         return self.__channels__
 
     def channel_mask(self):
+        """Returns a ChannelMask object of this track's channel layout."""
+
         if (self.channels() <= 2):
             return ChannelMask.from_channels(self.channels())
         else:
             return ChannelMask(0)
 
     def sample_rate(self):
+        """Returns the rate of the track's audio as an integer number of Hz."""
+
         return self.__sample_rate__
 
     def total_frames(self):
+        """Returns the total PCM frames of the track as an integer."""
+
         return self.__total_frames__
 
     def to_pcm(self):
+        """Returns a PCMReader object containing the track's PCM data."""
+
         f = file(self.filename, 'rb')
         f.seek(self.__data_offset__, 0)
 
@@ -106,6 +124,14 @@ class AuAudio(AudioFile):
 
     @classmethod
     def from_pcm(cls, filename, pcmreader, compression=None):
+        """Encodes a new file from PCM data.
+
+        Takes a filename string, PCMReader object
+        and optional compression level string.
+        Encodes a new audio file from pcmreader's data
+        at the given filename with the specified compression level
+        and returns a new AuAudio object."""
+
         if (pcmreader.bits_per_sample not in (8, 16, 24)):
             raise InvalidFormat(
                 _(u"Unsupported bits per sample %s") % (
@@ -154,6 +180,17 @@ class AuAudio(AudioFile):
 
     @classmethod
     def track_name(cls, file_path, track_metadata=None, format=None):
+        """Constructs a new filename string.
+
+        Given a plain string to an existing path,
+        a MetaData-compatible object (or None),
+        a UTF-8-encoded Python format string
+        and an ASCII-encoded suffix string (such as "mp3")
+        returns a plain string of a new filename with format's
+        fields filled-in and encoded as FS_ENCODING.
+        Raises UnsupportedTracknameField if the format string
+        contains invalid template fields."""
+
         if (format is None):
             format = "track%(track_number)2.2d.au"
         return AudioFile.track_name(file_path, track_metadata, format,

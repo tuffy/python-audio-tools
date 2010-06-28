@@ -1914,6 +1914,11 @@ class UnsupportedTracknameField(Exception):
 
 
 class AudioFile:
+    """An abstract class representing audio files on disk.
+
+    This class should be extended to handle different audio
+    file formats."""
+
     SUFFIX = ""
     NAME = ""
     DEFAULT_COMPRESSION = ""
@@ -1921,25 +1926,31 @@ class AudioFile:
     BINARIES = tuple()
 
     def __init__(self, filename):
+        """filename is a plain string."""
+
         self.filename = filename
 
-    #takes a seekable file pointer rewound to the start of the file
-    #returns True if that header describes this format
-    #returns False if not
     @classmethod
     def is_type(cls, file):
+        """Returns True if the given file object describes this format.
+
+        Takes a seekable file pointer rewound to the start of the file."""
+
         return False
 
-    #returns an integer number of bits per sample in this track
     def bits_per_sample(self):
+        """Returns an integer number of bits-per-sample this track contains."""
+
         raise NotImplementedError()
 
-    #returns an integer number of channels this track contains
     def channels(self):
+        """Returns an integer number of channels this track contains."""
+
         raise NotImplementedError()
 
-    #returns a ChannelMask-compatible object
     def channel_mask(self):
+        """Returns a ChannelMask object of this track's channel layout."""
+
         #WARNING - This only returns valid masks for 1 and 2 channel audio
         #anything over 2 channels raises a ValueError
         #since there isn't any standard on what those channels should be.
@@ -1947,40 +1958,57 @@ class AudioFile:
         #this method with one that returns the proper mask.
         return ChannelMask.from_channels(self.channels())
 
-    #returns True if this track is lossless, False if not
     def lossless(self):
+        """Returns True if this track's data is stored losslessly."""
+
         raise NotImplementedError()
 
-    #takes a MetaData-compatible object and sets this track's metadata
-    #raises IOError if there's some problem writing the file
     def set_metadata(self, metadata):
+        """Takes a MetaData object and sets this track's metadata.
+
+        This metadata includes track name, album name, and so on.
+        Raises IOError if unable to write the file."""
+
         pass
 
-    #returns a MetaData-compatible object, or None
-    #raises IOError if there's some problem reading the file
     def get_metadata(self):
+        """Returns a MetaData object, or None.
+
+        Raises IOError if unable to read the file."""
+
         return None
 
-    #deletes the track's MetaData, removing or unsetting tags as necessary
-    #raises IOError if there's some problem writing the file
     def delete_metadata(self):
+        """Deletes the track's MetaData.
+
+        This removes or unsets tags as necessary in order to remove all data.
+        Raises IOError if unable to write the file."""
+
         pass
 
     def total_frames(self):
+        """Returns the total PCM frames of the track as an integer."""
+
         raise NotImplementedError()
 
-    #returns the length of the audio in CD frames (1/75 of a second)
     def cd_frames(self):
+        """Returns the total length of the track in CD frames.
+
+        Each CD frame is 1/75th of a second."""
+
         try:
             return (self.total_frames() * 75) / self.sample_rate()
         except ZeroDivisionError:
             return 0
 
     def sample_rate(self):
+        """Returns the rate of the track's audio as an integer number of Hz."""
+
         raise NotImplementedError()
 
-    #returns a PCMReader-compatible object
     def to_pcm(self):
+        """Returns a PCMReader object containing the track's PCM data."""
+
         #if a subclass implements to_wave(),
         #this doesn't need to be implemented
         #if a subclass implements to_pcm(),
@@ -2000,13 +2028,24 @@ class AudioFile:
                                   channel_mask=int(self.channel_mask()),
                                   bits_per_sample=self.bits_per_sample())
 
-    #takes a filename string
-    #a PCMReader-compatible object
-    #and an optional compression level string
-    #returns a new object of this class
-    #raises EncodingError if an error occurs during encoding
     @classmethod
     def from_pcm(cls, filename, pcmreader, compression=None):
+        """Encodes a new file from PCM data.
+
+        Takes a filename string, PCMReader object
+        and optional compression level string.
+        Encodes a new audio file from pcmreader's data
+        at the given filename with the specified compression level
+        and returns a new AudioFile-compatible object.
+
+        For example, to encode the FlacAudio file "file.flac" from "file.wav"
+        at compression level "5":
+
+        >>> flac = FlacAudio.from_pcm("file.flac",
+        ...                           WaveAudio("file.wav").to_pcm(),
+        ...                           "5")
+        """
+
         #if a subclass implements from_wave(),
         #this doesn't need to be implemented
         #if a subclass implements from_pcm(),
@@ -2022,9 +2061,11 @@ class AudioFile:
         finally:
             f.close()
 
-    #writes the contents of this AudioFile to the given RIFF WAVE filename
-    #raises EncodingError if an error occurs during decoding
     def to_wave(self, wave_filename):
+        """Writes the contents of this file to the given .wav filename string.
+
+        Raises EncodingError if some error occurs during decoding."""
+
         WaveAudio.from_pcm(wave_filename, self.to_pcm())
 
     #takes a filename string of our new file
@@ -2034,27 +2075,46 @@ class AudioFile:
     #raises EncodingError if an error occurs during encoding
     @classmethod
     def from_wave(cls, filename, wave_filename, compression=None):
+        """Encodes a new AudioFile from an existing .wav file.
+
+        Takes a filename string, wave_filename string
+        of an existing WaveAudio file
+        and an optional compression level string.
+        Encodes a new audio file from the wave's data
+        at the given filename with the specified compression level
+        and returns a new AudioFile compatible object.
+
+        For example, to encode FlacAudio file "flac.flac" from "file.wav"
+        at compression level "5":
+
+        >>> flac = FlacAudio.from_wave("file.flac","file.wav","5")
+        """
+
         return cls.from_pcm(
             filename, WaveAudio(wave_filename).to_pcm(), compression)
 
-    #This method should return True if the format supports storing
-    #non-audio RIFF chunks during compression/decompression.
-    #If this returns True on both ends of a track conversion,
-    #we should route our data though a WAVE file so that such
-    #foreign chunks are not lost in the process.
     @classmethod
     def supports_foreign_riff_chunks(cls):
+        """Returns True if format supports storing non-audio RIFF chunks."""
+
         return False
 
-    #returns True if our file contains any foreign RIFF chunks
     def has_foreign_riff_chunks(self):
+        """Returns True if the audio file contains non-audio RIFF chunks.
+
+        During transcoding, if the source audio file has foreign RIFF chunks
+        and the target audio format supports foreign RIFF chunks,
+        conversion should be routed through .wav conversion
+        to avoid losing those chunks."""
+
         return False
 
-    #returns this track's number
-    #first checking metadata
-    #and then making our best-guess from the filename
-    #if we come up empty, returns 0
     def track_number(self):
+        """Returns this track's number as an integer.
+
+        This first checks MetaData and then makes a guess from the filename.
+        If neither yields a good result, returns 0."""
+
         metadata = self.get_metadata()
         if ((metadata is not None) and (metadata.track_number > 0)):
             return metadata.track_number
@@ -2066,11 +2126,12 @@ class AudioFile:
             except IndexError:
                 return 0
 
-    #return this track's album number
-    #first checking metadata
-    #and then making our best-guess from the filename
-    #if we come up empty, returns 0
     def album_number(self):
+        """Returns this track's album number as an integer.
+
+        This first checks MetaData and then makes a guess from the filename.
+        If neither yields a good result, returns 0."""
+
         metadata = self.get_metadata()
         if (metadata is not None):
             return metadata.album_number
@@ -2083,16 +2144,20 @@ class AudioFile:
             except IndexError:
                 return 0
 
-    #given a plain file_path string
-    #MetaData-compatible object (or None)
-    #and plain UTF-8-encoded format string
-    #returns a filename string with its fields filled-in
-    #encoded as FS_ENCODING
-    #raises an UnsupportedTracknameField if the format string
-    #contains invalid template fields
     @classmethod
     def track_name(cls, file_path, track_metadata=None, format=None,
                    suffix=None):
+        """Constructs a new filename string.
+
+        Given a plain string to an existing path,
+        a MetaData-compatible object (or None),
+        a UTF-8-encoded Python format string
+        and an ASCII-encoded suffix string (such as "mp3")
+        returns a plain string of a new filename with format's
+        fields filled-in and encoded as FS_ENCODING.
+        Raises UnsupportedTracknameField if the format string
+        contains invalid template fields."""
+
         if (format is None):
             format = FILENAME_FORMAT
         if (suffix is None):
@@ -2166,44 +2231,55 @@ class AudioFile:
         except KeyError, error:
             raise UnsupportedTracknameField(unicode(error.args[0]))
 
-    #takes a list of filenames matching this AudioFile type
-    #and adds the proper ReplayGain values to them
-    #raises ValueError if some problem occurs during ReplayGain application
     @classmethod
     def add_replay_gain(cls, filenames):
+        """Adds ReplayGain values to a list of filename strings.
+
+        All the filenames must be of this AudioFile type.
+        Raises ValueError if some problem occurs during ReplayGain application.
+        """
+
         track_names = [track.filename for track in
                        open_files(filenames) if
                        isinstance(track, cls)]
 
-    #returns True if we have the necessary binaries to add ReplayGain
-    #returns False if not
     @classmethod
     def can_add_replay_gain(cls):
+        """Returns True if we have the necessary binaries to add ReplayGain."""
+
         return False
 
-    #returns True if applying ReplayGain is a lossless process
-    #(i.e. the file itself is unmodified by the procedure)
-    #returns False if not
     @classmethod
     def lossless_replay_gain(cls):
+        """Returns True of applying ReplayGain is a lossless process.
+
+        For example, if it is applied by adding metadata tags
+        rather than altering the file's data itself."""
+
         return True
 
-    #returns a ReplayGain-compatible object of our ReplayGain values
-    #or None if we have no values
     def replay_gain(self):
+        """Returns a ReplayGain object of our ReplayGain values.
+
+        Returns None if we have no values.
+        Note that if applying ReplayGain is a lossy process,
+        this will typically also return None."""
+
         return None
 
-    #takes a cuesheet-compatible object
-    #with catalog(), ISRCs(), indexes(), and pcm_lengths() methods
-    #sets this AudioFile's embedded cuesheet to that data, if possible
-    #raises IOError if an error occurs setting the cuesheet
     def set_cuesheet(self, cuesheet):
+        """Imports cuesheet data from a Cuesheet-compatible object.
+
+        This are objects with catalog(), ISRCs(), indexes(), and pcm_lengths()
+        methods.  Raises IOError if an error occurs setting the cuesheet."""
+
         pass
 
-    #returns a cuesheet-compatible object
-    #or None if no cuesheet is embedded
-    #raises IOError if an error occurs reading the file
     def get_cuesheet(self):
+        """Returns the embedded Cuesheet-compatible object, or None.
+
+        Raises IOError if a problem occurs when reading the file."""
+
         return None
 
     def __eq__(self, audiofile):
@@ -2221,10 +2297,12 @@ class AudioFile:
     def __ne__(self, audiofile):
         return not self.__eq__(audiofile)
 
-    #returns True if all of this AudioFile's required binaries are present
-    #checks the __system_binaries__ class for which path to check on
     @classmethod
     def has_binaries(cls, system_binaries):
+        """Returns True if all the required binaries can be found.
+
+        Checks the __system_binaries__ class for which path to check."""
+
         return set([True] + \
                    [system_binaries.can_execute(system_binaries[command])
                     for command in cls.BINARIES]) == set([True])

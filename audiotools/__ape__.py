@@ -604,16 +604,25 @@ class ApeAudio(ApeTaggedAudio, AudioFile):
 
     @classmethod
     def is_type(cls, file):
+        """Returns True if the given file object describes this format.
+
+        Takes a seekable file pointer rewound to the start of the file."""
+
         return file.read(4) == "MAC "
 
     def lossless(self):
+        """Returns True."""
+
         return True
 
     @classmethod
     def supports_foreign_riff_chunks(cls):
+        """Returns True."""
+
         return True
 
     def has_foreign_riff_chunks(self):
+
         #FIXME - this isn't strictly true
         #I'll need a way to detect foreign chunks in APE's stream
         #without decoding it first,
@@ -621,15 +630,23 @@ class ApeAudio(ApeTaggedAudio, AudioFile):
         return True
 
     def bits_per_sample(self):
+        """Returns an integer number of bits-per-sample this track contains."""
+
         return self.__bitspersample__
 
     def channels(self):
+        """Returns an integer number of channels this track contains."""
+
         return self.__channels__
 
     def total_frames(self):
+        """Returns the total PCM frames of the track as an integer."""
+
         return self.__totalsamples__
 
     def sample_rate(self):
+        """Returns the rate of the track's audio as an integer number of Hz."""
+
         return self.__samplespersec__
 
     @classmethod
@@ -681,6 +698,10 @@ class ApeAudio(ApeTaggedAudio, AudioFile):
             f.close()
 
     def to_wave(self, wave_filename):
+        """Writes the contents of this file to the given .wav filename string.
+
+        Raises EncodingError if some error occurs during decoding."""
+
         if (self.filename.endswith(".ape")):
             devnull = file(os.devnull, "wb")
             sub = subprocess.Popen([BIN['mac'],
@@ -711,6 +732,15 @@ class ApeAudio(ApeTaggedAudio, AudioFile):
 
     @classmethod
     def from_wave(cls, filename, wave_filename, compression=None):
+        """Encodes a new AudioFile from an existing .wav file.
+
+        Takes a filename string, wave_filename string
+        of an existing WaveAudio file
+        and an optional compression level string.
+        Encodes a new audio file from the wave's data
+        at the given filename with the specified compression level
+        and returns a new ApeAudio object."""
+
         if (str(compression) not in cls.COMPRESSION_MODES):
             compression = cls.DEFAULT_COMPRESSION
 

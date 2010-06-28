@@ -65,11 +65,17 @@ class SpeexAudio(VorbisAudio):
                               Con.ULInt32('reserved2'))
 
     def __init__(self, filename):
+        """filename is a plain string."""
+
         AudioFile.__init__(self, filename)
         self.__read_metadata__()
 
     @classmethod
     def is_type(cls, file):
+        """Returns True if the given file object describes this format.
+
+        Takes a seekable file pointer rewound to the start of the file."""
+
         header = file.read(0x23)
 
         return (header.startswith('OggS') and
@@ -96,6 +102,8 @@ class SpeexAudio(VorbisAudio):
             del(f)
 
     def to_pcm(self):
+        """Returns a PCMReader object containing the track's PCM data."""
+
         devnull = file(os.devnull, 'ab')
         sub = subprocess.Popen([BIN['speexdec'], self.filename, '-'],
                                stdout=subprocess.PIPE,
@@ -110,6 +118,14 @@ class SpeexAudio(VorbisAudio):
 
     @classmethod
     def from_pcm(cls, filename, pcmreader, compression=None):
+        """Encodes a new file from PCM data.
+
+        Takes a filename string, PCMReader object
+        and optional compression level string.
+        Encodes a new audio file from pcmreader's data
+        at the given filename with the specified compression level
+        and returns a new SpeexAudio object."""
+
         import bisect
 
         if (compression not in cls.COMPRESSION_MODES):
@@ -160,6 +176,11 @@ class SpeexAudio(VorbisAudio):
             raise EncodingError(BIN['speexenc'])
 
     def set_metadata(self, metadata):
+        """Takes a MetaData object and sets this track's metadata.
+
+        This metadata includes track name, album name, and so on.
+        Raises IOError if unable to write the file."""
+
         comment = VorbisComment.converted(metadata)
 
         if (comment is None):
@@ -209,4 +230,6 @@ class SpeexAudio(VorbisAudio):
 
     @classmethod
     def can_add_replay_gain(cls):
+        """Returns False."""
+
         return False

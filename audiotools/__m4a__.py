@@ -235,6 +235,8 @@ class M4AAudio_faac(AudioFile):
                            Con.UBInt32("track_length"))
 
     def __init__(self, filename):
+        """filename is a plain string."""
+
         self.filename = filename
         self.qt_stream = __Qt_Atom_Stream__(file(self.filename, "rb"))
 
@@ -255,6 +257,8 @@ class M4AAudio_faac(AudioFile):
             raise InvalidFile(_(u'Required moov atom not found'))
 
     def channel_mask(self):
+        """Returns a ChannelMask object of this track's channel layout."""
+
         #M4A seems to use the same channel assignment
         #as old-style RIFF WAVE/FLAC
         if (self.channels() == 1):
@@ -284,6 +288,10 @@ class M4AAudio_faac(AudioFile):
 
     @classmethod
     def is_type(cls, file):
+        """Returns True if the given file object describes this format.
+
+        Takes a seekable file pointer rewound to the start of the file."""
+
         header = file.read(12)
 
         if ((header[4:8] == 'ftyp') and
@@ -297,24 +305,42 @@ class M4AAudio_faac(AudioFile):
                 return False
 
     def lossless(self):
+        """Returns False."""
+
         return False
 
     def channels(self):
+        """Returns an integer number of channels this track contains."""
+
         return self.__channels__
 
     def bits_per_sample(self):
+        """Returns an integer number of bits-per-sample this track contains."""
+
         return self.__bits_per_sample__
 
     def sample_rate(self):
+        """Returns the rate of the track's audio as an integer number of Hz."""
+
         return self.__sample_rate__
 
     def cd_frames(self):
+        """Returns the total length of the track in CD frames.
+
+        Each CD frame is 1/75th of a second."""
+
         return (self.__length__ - 1024) / self.__sample_rate__ * 75
 
     def total_frames(self):
+        """Returns the total PCM frames of the track as an integer."""
+
         return self.__length__ - 1024
 
     def get_metadata(self):
+        """Returns a MetaData object, or None.
+
+        Raises IOError if unable to read the file."""
+
         f = file(self.filename, 'rb')
         try:
             qt_stream = __Qt_Atom_Stream__(f)
@@ -340,6 +366,11 @@ class M4AAudio_faac(AudioFile):
             f.close()
 
     def set_metadata(self, metadata):
+        """Takes a MetaData object and sets this track's metadata.
+
+        This metadata includes track name, album name, and so on.
+        Raises IOError if unable to write the file."""
+
         metadata = M4AMetaData.converted(metadata)
         if (metadata is None):
             return
@@ -425,9 +456,16 @@ class M4AAudio_faac(AudioFile):
         self.qt_stream = __Qt_Atom_Stream__(f)
 
     def delete_metadata(self):
+        """Deletes the track's MetaData.
+
+        This removes or unsets tags as necessary in order to remove all data.
+        Raises IOError if unable to write the file."""
+
         self.set_metadata(MetaData())
 
     def to_pcm(self):
+        """Returns a PCMReader object containing the track's PCM data."""
+
         devnull = file(os.devnull, "ab")
 
         sub = subprocess.Popen([BIN['faad'], "-f", str(2), "-w",
@@ -444,6 +482,14 @@ class M4AAudio_faac(AudioFile):
 
     @classmethod
     def from_pcm(cls, filename, pcmreader, compression="100"):
+        """Encodes a new file from PCM data.
+
+        Takes a filename string, PCMReader object
+        and optional compression level string.
+        Encodes a new audio file from pcmreader's data
+        at the given filename with the specified compression level
+        and returns a new M4AAudio object."""
+
         if (compression not in cls.COMPRESSION_MODES):
             compression = cls.DEFAULT_COMPRESSION
 
@@ -505,15 +551,24 @@ class M4AAudio_faac(AudioFile):
 
     @classmethod
     def can_add_replay_gain(cls):
-        #return BIN.can_execute(BIN['aacgain'])
+        """Returns False."""
+
         return False
 
     @classmethod
     def lossless_replay_gain(cls):
+        """Returns False."""
+
         return False
 
     @classmethod
     def add_replay_gain(cls, filenames):
+        """Adds ReplayGain values to a list of filename strings.
+
+        All the filenames must be of this AudioFile type.
+        Raises ValueError if some problem occurs during ReplayGain application.
+        """
+
         track_names = [track.filename for track in
                        open_files(filenames) if
                        isinstance(track, cls)]
@@ -537,10 +592,22 @@ class M4AAudio_nero(M4AAudio_faac):
     BINARIES = ("neroAacDec", "neroAacEnc")
 
     def to_pcm(self):
+        """Returns a PCMReader object containing the track's PCM data."""
+
+        #note that AudioFile.to_pcm() calls the to_wave() method
+        #as implemented below
         return AudioFile.to_pcm(self)
 
     @classmethod
     def from_pcm(cls, filename, pcmreader, compression=None):
+        """Encodes a new file from PCM data.
+
+        Takes a filename string, PCMReader object
+        and optional compression level string.
+        Encodes a new audio file from pcmreader's data
+        at the given filename with the specified compression level
+        and returns a new M4AAudio object."""
+
         if (compression not in cls.COMPRESSION_MODES):
             compression = cls.DEFAULT_COMPRESSION
 
@@ -564,6 +631,10 @@ class M4AAudio_nero(M4AAudio_faac):
         return cls(filename)
 
     def to_wave(self, wave_file):
+        """Writes the contents of this file to the given .wav filename string.
+
+        Raises EncodingError if some error occurs during decoding."""
+
         devnull = file(os.devnull, "w")
         try:
             sub = subprocess.Popen([BIN["neroAacDec"],
@@ -578,6 +649,15 @@ class M4AAudio_nero(M4AAudio_faac):
 
     @classmethod
     def from_wave(cls, filename, wave_filename, compression=None):
+        """Encodes a new AudioFile from an existing .wav file.
+
+        Takes a filename string, wave_filename string
+        of an existing WaveAudio file
+        and an optional compression level string.
+        Encodes a new audio file from the wave's data
+        at the given filename with the specified compression level
+        and returns a new M4AAudio object."""
+
         if (compression not in cls.COMPRESSION_MODES):
             compression = cls.DEFAULT_COMPRESSION
 
@@ -1085,6 +1165,8 @@ class ALACAudio(M4AAudio):
     MAXIMUM_K = 14
 
     def __init__(self, filename):
+        """filename is a plain string."""
+
         self.filename = filename
         self.qt_stream = __Qt_Atom_Stream__(file(self.filename, "rb"))
 
@@ -1106,6 +1188,10 @@ class ALACAudio(M4AAudio):
 
     @classmethod
     def is_type(cls, file):
+        """Returns True if the given file object describes this format.
+
+        Takes a seekable file pointer rewound to the start of the file."""
+
         header = file.read(12)
 
         if ((header[4:8] == 'ftyp') and
@@ -1120,21 +1206,33 @@ class ALACAudio(M4AAudio):
                 return False
 
     def total_frames(self):
+        """Returns the total PCM frames of the track as an integer."""
+
         return self.__length__
 
     def channel_mask(self):
+        """Returns a ChannelMask object of this track's channel layout."""
+
         return ChannelMask.from_channels(self.channels())
 
     def cd_frames(self):
+        """Returns the total length of the track in CD frames.
+
+        Each CD frame is 1/75th of a second."""
+
         try:
             return (self.total_frames() * 75) / self.sample_rate()
         except ZeroDivisionError:
             return 0
 
     def lossless(self):
+        """Returns True."""
+
         return True
 
     def to_pcm(self):
+        """Returns a PCMReader object containing the track's PCM data."""
+
         import audiotools.decoders
 
         f = file(self.filename, 'rb')
@@ -1159,6 +1257,14 @@ class ALACAudio(M4AAudio):
     @classmethod
     def from_pcm(cls, filename, pcmreader, compression=None,
                  block_size=4096):
+        """Encodes a new file from PCM data.
+
+        Takes a filename string, PCMReader object
+        and optional compression level string.
+        Encodes a new audio file from pcmreader's data
+        at the given filename with the specified compression level
+        and returns a new ALACAudio object."""
+
         if (pcmreader.bits_per_sample not in (16, 24)):
             raise UnsupportedBitsPerSample()
         if (pcmreader.channels > 2):
@@ -1247,10 +1353,23 @@ class ALACAudio(M4AAudio):
         return cls(filename)
 
     def to_wave(self, wave_filename):
+        """Writes the contents of this file to the given .wav filename string.
+
+        Raises EncodingError if some error occurs during decoding."""
+
         WaveAudio.from_pcm(wave_filename, self.to_pcm())
 
     @classmethod
     def from_wave(cls, filename, wave_filename, compression=None):
+        """Encodes a new AudioFile from an existing .wav file.
+
+        Takes a filename string, wave_filename string
+        of an existing WaveAudio file
+        and an optional compression level string.
+        Encodes a new audio file from the wave's data
+        at the given filename with the specified compression level
+        and returns a new ALACAudio compatible object."""
+
         return cls.from_pcm(
             filename, WaveAudio(wave_filename).to_pcm(), compression)
 
@@ -1505,6 +1624,8 @@ class AACAudio(AudioFile):
                     16000, 12000, 11025,  8000]
 
     def __init__(self, filename):
+        """filename is a plain string."""
+
         self.filename = filename
 
         f = file(self.filename, "rb")
@@ -1521,6 +1642,10 @@ class AACAudio(AudioFile):
 
     @classmethod
     def is_type(cls, file):
+        """Returns True if the given file object describes this format.
+
+        Takes a seekable file pointer rewound to the start of the file."""
+
         try:
             header = AACAudio.AAC_FRAME_HEADER.parse_stream(file)
             return ((header.sync == 0xFFF) and
@@ -1530,21 +1655,33 @@ class AACAudio(AudioFile):
             return False
 
     def bits_per_sample(self):
+        """Returns an integer number of bits-per-sample this track contains."""
+
         return self.__bits_per_sample__
 
     def channels(self):
+        """Returns an integer number of channels this track contains."""
+
         return self.__channels__
 
     def lossless(self):
+        """Returns False."""
+
         return False
 
     def total_frames(self):
+        """Returns the total PCM frames of the track as an integer."""
+
         return self.__frame_count__ * 1024
 
     def sample_rate(self):
+        """Returns the rate of the track's audio as an integer number of Hz."""
+
         return self.__sample_rate__
 
     def to_pcm(self):
+        """Returns a PCMReader object containing the track's PCM data."""
+
         devnull = file(os.devnull, "ab")
 
         sub = subprocess.Popen([BIN['faad'], "-t", "-f", str(2), "-w",
@@ -1560,6 +1697,14 @@ class AACAudio(AudioFile):
 
     @classmethod
     def from_pcm(cls, filename, pcmreader, compression="100"):
+        """Encodes a new file from PCM data.
+
+        Takes a filename string, PCMReader object
+        and optional compression level string.
+        Encodes a new audio file from pcmreader's data
+        at the given filename with the specified compression level
+        and returns a new AACAudio object."""
+
         import bisect
 
         if (compression not in cls.COMPRESSION_MODES):

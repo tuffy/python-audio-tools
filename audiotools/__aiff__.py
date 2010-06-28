@@ -104,6 +104,8 @@ class AiffAudio(AudioFile):
                             Con.UBInt32("blocksize"))
 
     def __init__(self, filename):
+        """filename is a plain string."""
+
         self.filename = filename
         (self.__channels__,
          self.__total_sample_frames__,
@@ -111,12 +113,18 @@ class AiffAudio(AudioFile):
          self.__sample_rate__) = self.comm_chunk()
 
     def bits_per_sample(self):
+        """Returns an integer number of bits-per-sample this track contains."""
+
         return self.__sample_size__
 
     def channels(self):
+        """Returns an integer number of channels this track contains."""
+
         return self.__channels__
 
     def channel_mask(self):
+        """Returns a ChannelMask object of this track's channel layout."""
+
         #this unusual arrangement is taken from the AIFF specification
         if (self.channels() <= 2):
             return ChannelMask.from_channels(self.channels())
@@ -136,16 +144,26 @@ class AiffAudio(AudioFile):
             return ChannelMask(0)
 
     def lossless(self):
+        """Returns True."""
+
         return True
 
     def total_frames(self):
+        """Returns the total PCM frames of the track as an integer."""
+
         return self.__total_sample_frames__
 
     def sample_rate(self):
+        """Returns the rate of the track's audio as an integer number of Hz."""
+
         return self.__sample_rate__
 
     @classmethod
     def is_type(cls, file):
+        """Returns True if the given file object describes this format.
+
+        Takes a seekable file pointer rewound to the start of the file."""
+
         header = file.read(12)
 
         return ((header[0:4] == 'FORM') and
@@ -205,6 +223,10 @@ class AiffAudio(AudioFile):
         f.close()
 
     def get_metadata(self):
+        """Returns a MetaData object, or None.
+
+        Raises IOError if unable to read the file."""
+
         for (chunk_id, chunk_length, chunk_offset) in self.chunks():
             if (chunk_id == 'ID3 '):
                 f = open(self.filename, 'rb')
@@ -216,6 +238,11 @@ class AiffAudio(AudioFile):
             return None
 
     def set_metadata(self, metadata):
+        """Takes a MetaData object and sets this track's metadata.
+
+        This metadata includes track name, album name, and so on.
+        Raises IOError if unable to write the file."""
+
         if (metadata is None):
             return
 
@@ -259,6 +286,11 @@ class AiffAudio(AudioFile):
         f.close()
 
     def delete_metadata(self):
+        """Deletes the track's MetaData.
+
+        This removes or unsets tags as necessary in order to remove all data.
+        Raises IOError if unable to write the file."""
+
         import tempfile
 
         new_aiff = tempfile.TemporaryFile()
@@ -284,6 +316,8 @@ class AiffAudio(AudioFile):
         f.close()
 
     def to_pcm(self):
+        """Returns a PCMReader object containing the track's PCM data."""
+
         for (chunk_id, chunk_length, chunk_offset) in self.chunks():
             if (chunk_id == 'SSND'):
                 f = open(self.filename, 'rb')
@@ -317,6 +351,14 @@ class AiffAudio(AudioFile):
 
     @classmethod
     def from_pcm(cls, filename, pcmreader, compression=None):
+        """Encodes a new file from PCM data.
+
+        Takes a filename string, PCMReader object
+        and optional compression level string.
+        Encodes a new audio file from pcmreader's data
+        at the given filename with the specified compression level
+        and returns a new AiffAudio object."""
+
         try:
             f = open(filename, 'wb')
         except IOError:

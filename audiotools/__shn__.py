@@ -30,6 +30,8 @@ class ShortenAudio(AudioFile):
     NAME = SUFFIX
 
     def __init__(self, filename):
+        """filename is a plain string."""
+
         AudioFile.__init__(self, filename)
 
     def __populate_metadata__(self):
@@ -120,37 +122,55 @@ class ShortenAudio(AudioFile):
 
     @classmethod
     def is_type(cls, file):
+        """Returns True if the given file object describes this format.
+
+        Takes a seekable file pointer rewound to the start of the file."""
+
         return (file.read(4) == 'ajkg') and (ord(file.read(1)) == 2)
 
     def bits_per_sample(self):
+        """Returns an integer number of bits-per-sample this track contains."""
+
         if (not hasattr(self, "__bits_per_sample__")):
             self.__populate_metadata__()
         return self.__bits_per_sample__
 
     def channels(self):
+        """Returns an integer number of channels this track contains."""
+
         if (not hasattr(self, "__channels__")):
             self.__populate_metadata__()
         return self.__channels__
 
     def channel_mask(self):
+        """Returns a ChannelMask object of this track's channel layout."""
+
         if (not hasattr(self, "__channel_mask__")):
             self.__populate_metadata__()
         return self.__channel_mask__
 
     def lossless(self):
+        """Returns True."""
+
         return True
 
     def total_frames(self):
+        """Returns the total PCM frames of the track as an integer."""
+
         if (not hasattr(self, "__total_frames__")):
             self.__populate_metadata__()
         return self.__total_frames__
 
     def sample_rate(self):
+        """Returns the rate of the track's audio as an integer number of Hz."""
+
         if (not hasattr(self, "__sample_rate__")):
             self.__populate_metadata__()
         return self.__sample_rate__
 
     def to_pcm(self):
+        """Returns a PCMReader object containing the track's PCM data."""
+
         decoder = audiotools.decoders.SHNDecoder(self.filename)
         decoder.sample_rate = self.sample_rate()
         decoder.channel_mask = int(self.channel_mask())
@@ -158,6 +178,14 @@ class ShortenAudio(AudioFile):
 
     @classmethod
     def from_pcm(cls, filename, pcmreader, compression=None):
+        """Encodes a new file from PCM data.
+
+        Takes a filename string, PCMReader object
+        and optional compression level string.
+        Encodes a new audio file from pcmreader's data
+        at the given filename with the specified compression level
+        and returns a new ShortenAudio object."""
+
         if (pcmreader.bits_per_sample not in (8, 16)):
             raise UnsupportedBitsPerSample()
 
@@ -171,6 +199,10 @@ class ShortenAudio(AudioFile):
             f.close()
 
     def to_wave(self, wave_filename):
+        """Writes the contents of this file to the given .wav filename string.
+
+        Raises EncodingError if some error occurs during decoding."""
+
         if (not hasattr(self, "__format__")):
             self.__populate_metadata__()
         if (self.__format__ is WaveAudio):
@@ -190,6 +222,15 @@ class ShortenAudio(AudioFile):
 
     @classmethod
     def from_wave(cls, filename, wave_filename, compression=None):
+        """Encodes a new AudioFile from an existing .wav file.
+
+        Takes a filename string, wave_filename string
+        of an existing WaveAudio file
+        and an optional compression level string.
+        Encodes a new audio file from the wave's data
+        at the given filename with the specified compression level
+        and returns a new ShortenAudio object."""
+
         wave = WaveAudio(wave_filename)
 
         if (wave.bits_per_sample() not in (8, 16)):
@@ -215,9 +256,18 @@ class ShortenAudio(AudioFile):
 
     @classmethod
     def supports_foreign_riff_chunks(cls):
+        """Returns True."""
+
         return True
 
     def has_foreign_riff_chunks(self):
+        """Returns True if the audio file contains non-audio RIFF chunks.
+
+        During transcoding, if the source audio file has foreign RIFF chunks
+        and the target audio format supports foreign RIFF chunks,
+        conversion should be routed through .wav conversion
+        to avoid losing those chunks."""
+
         if (not hasattr(self, "__format__")):
             self.__populate_metadata__()
         if (self.__format__ is WaveAudio):

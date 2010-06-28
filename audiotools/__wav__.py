@@ -277,6 +277,8 @@ class WaveAudio(AudioFile):
                            Con.String('sub_format', 16)))))
 
     def __init__(self, filename):
+        """filename is a plain string."""
+
         AudioFile.__init__(self, filename)
 
         self.__wavtype__ = 0
@@ -297,25 +299,44 @@ class WaveAudio(AudioFile):
 
     @classmethod
     def is_type(cls, file):
+        """Returns True if the given file object describes this format.
+
+        Takes a seekable file pointer rewound to the start of the file."""
+
         header = file.read(12)
         return ((header[0:4] == 'RIFF') and
                 (header[8:12] == 'WAVE'))
 
     def lossless(self):
+        """Returns True."""
+
         return True
 
     @classmethod
     def supports_foreign_riff_chunks(cls):
+        """Returns True."""
+
         return True
 
     def has_foreign_riff_chunks(self):
+        """Returns True if the audio file contains non-audio RIFF chunks.
+
+        During transcoding, if the source audio file has foreign RIFF chunks
+        and the target audio format supports foreign RIFF chunks,
+        conversion should be routed through .wav conversion
+        to avoid losing those chunks."""
+
         return set(['fmt ', 'data']) != set(self.__chunk_ids__)
 
     def channel_mask(self):
+        """Returns a ChannelMask object of this track's channel layout."""
+
         return self.__channel_mask__
 
     #Returns the PCMReader object for this WAV's data
     def to_pcm(self):
+        """Returns a PCMReader object containing the track's PCM data."""
+
         return WaveReader(file(self.filename, 'rb'),
                           sample_rate=self.sample_rate(),
                           channels=self.channels(),
@@ -326,6 +347,14 @@ class WaveAudio(AudioFile):
     #builds a WAV from that data and returns a new WaveAudio object
     @classmethod
     def from_pcm(cls, filename, pcmreader, compression=None):
+        """Encodes a new file from PCM data.
+
+        Takes a filename string, PCMReader object
+        and optional compression level string.
+        Encodes a new audio file from pcmreader's data
+        at the given filename with the specified compression level
+        and returns a new WaveAudio object."""
+
         try:
             f = file(filename, "wb")
         except IOError:
@@ -419,6 +448,10 @@ class WaveAudio(AudioFile):
         return WaveAudio(filename)
 
     def to_wave(self, wave_filename):
+        """Writes the contents of this file to the given .wav filename string.
+
+        Raises EncodingError if some error occurs during decoding."""
+
         try:
             output = file(wave_filename, 'wb')
             input = file(self.filename, 'rb')
@@ -432,6 +465,15 @@ class WaveAudio(AudioFile):
 
     @classmethod
     def from_wave(cls, filename, wave_filename, compression=None):
+        """Encodes a new AudioFile from an existing .wav file.
+
+        Takes a filename string, wave_filename string
+        of an existing WaveAudio file
+        and an optional compression level string.
+        Encodes a new audio file from the wave's data
+        at the given filename with the specified compression level
+        and returns a new WaveAudio object."""
+
         try:
             output = file(filename, 'wb')
             input = file(wave_filename, 'rb')
@@ -445,31 +487,46 @@ class WaveAudio(AudioFile):
             output.close()
 
     def total_frames(self):
+        """Returns the total PCM frames of the track as an integer."""
+
         return self.__data_size__ / (self.__bitspersample__ / 8) / \
                self.__channels__
 
-    #returns the rate of samples per second (44100 for CD audio)
     def sample_rate(self):
+        """Returns the rate of the track's audio as an integer number of Hz."""
+
         return self.__samplespersec__
 
-    #returns the number of channels (2 for CD audio)
     def channels(self):
+        """Returns an integer number of channels this track contains."""
+
         return self.__channels__
 
-    #returns the total bits per sample (16 for CD audio)
     def bits_per_sample(self):
+        """Returns an integer number of bits-per-sample this track contains."""
+
         return self.__bitspersample__
 
     @classmethod
     def can_add_replay_gain(cls):
+        """Returns True if we have the necessary binaries to add ReplayGain."""
+
         return BIN.can_execute(BIN['wavegain'])
 
     @classmethod
     def lossless_replay_gain(cls):
+        """Returns False."""
+
         return False
 
     @classmethod
     def add_replay_gain(cls, filenames):
+        """Adds ReplayGain values to a list of filename strings.
+
+        All the filenames must be of this AudioFile type.
+        Raises ValueError if some problem occurs during ReplayGain application.
+        """
+
         if (not BIN.can_execute(BIN['wavegain'])):
             return
 
@@ -496,6 +553,17 @@ class WaveAudio(AudioFile):
 
     @classmethod
     def track_name(cls, file_path, track_metadata=None, format=None):
+        """Constructs a new filename string.
+
+        Given a plain string to an existing path,
+        a MetaData-compatible object (or None),
+        a UTF-8-encoded Python format string
+        and an ASCII-encoded suffix string (such as "mp3")
+        returns a plain string of a new filename with format's
+        fields filled-in and encoded as FS_ENCODING.
+        Raises UnsupportedTracknameField if the format string
+        contains invalid template fields."""
+
         if (format is None):
             format = "track%(track_number)2.2d.wav"
         return AudioFile.track_name(file_path, track_metadata, format,

@@ -562,7 +562,6 @@ class FlacAudio(AudioFile):
     NAME = SUFFIX
     DEFAULT_COMPRESSION = "8"
     COMPRESSION_MODES = tuple(map(str, range(0, 9)))
-    #BINARIES = ("flac","metaflac")
 
     METADATA_BLOCK_HEADER = Con.BitStruct("metadata_block_header",
                                           Con.Bit("last_block"),
@@ -598,6 +597,8 @@ class FlacAudio(AudioFile):
             length_field=Con.UBInt32("data_length")))
 
     def __init__(self, filename):
+        """filename is a plain string."""
+
         AudioFile.__init__(self, filename)
         self.__samplerate__ = 0
         self.__channels__ = 0
@@ -608,6 +609,10 @@ class FlacAudio(AudioFile):
 
     @classmethod
     def is_type(cls, file):
+        """Returns True if the given file object describes this format.
+
+        Takes a seekable file pointer rewound to the start of the file."""
+
         if (file.read(4) == 'fLaC'):
             block_ids = list(cls.__block_ids__(file))
             if ((len(block_ids) == 0) or (0 not in block_ids)):
@@ -634,6 +639,8 @@ class FlacAudio(AudioFile):
             return False
 
     def channel_mask(self):
+        """Returns a ChannelMask object of this track's channel layout."""
+
         if (self.channels() <= 2):
             return ChannelMask.from_channels(self.channels())
         else:
@@ -668,6 +675,8 @@ class FlacAudio(AudioFile):
                 return ChannelMask(0)
 
     def lossless(self):
+        """Returns True."""
+
         return True
 
     @classmethod
@@ -681,10 +690,15 @@ class FlacAudio(AudioFile):
 
     @classmethod
     def supports_foreign_riff_chunks(cls):
+        """Returns True."""
+
         return True
 
-    #returns a MetaData-compatible VorbisComment for this FLAC files
     def get_metadata(self):
+        """Returns a MetaData object, or None.
+
+        Raises IOError if unable to read the file."""
+
         f = file(self.filename, 'rb')
         try:
             if (f.read(4) != 'fLaC'):
@@ -705,6 +719,11 @@ class FlacAudio(AudioFile):
             f.close()
 
     def set_metadata(self, metadata):
+        """Takes a MetaData object and sets this track's metadata.
+
+        This metadata includes track name, album name, and so on.
+        Raises IOError if unable to write the file."""
+
         metadata = FlacMetaData.converted(metadata)
 
         if (metadata is None):
@@ -793,9 +812,11 @@ class FlacAudio(AudioFile):
             file_data.close()
             stream.close()
 
-    #returns the length of all the FLAC metadata blocks,
-    #including the 4 byte "fLaC" file header
     def metadata_length(self):
+        """Returns the length of all FLAC metadata blocks as an integer.
+
+        This includes the 4 byte "fLaC" file header."""
+
         f = file(self.filename, 'rb')
         try:
             if (f.read(4) != 'fLaC'):
@@ -811,6 +832,11 @@ class FlacAudio(AudioFile):
             f.close()
 
     def delete_metadata(self):
+        """Deletes the track's MetaData.
+
+        This removes or unsets tags as necessary in order to remove all data.
+        Raises IOError if unable to write the file."""
+
         self.set_metadata(MetaData())
 
     @classmethod
@@ -830,6 +856,11 @@ class FlacAudio(AudioFile):
             flacfile.seek(p.block_length, 1)
 
     def set_cuesheet(self, cuesheet):
+        """Imports cuesheet data from a Cuesheet-compatible object.
+
+        This are objects with catalog(), ISRCs(), indexes(), and pcm_lengths()
+        methods.  Raises IOError if an error occurs setting the cuesheet."""
+
         if (cuesheet is None):
             return
 
@@ -842,6 +873,10 @@ class FlacAudio(AudioFile):
         self.set_metadata(metadata)
 
     def get_cuesheet(self):
+        """Returns the embedded Cuesheet-compatible object, or None.
+
+        Raises IOError if a problem occurs when reading the file."""
+
         metadata = self.get_metadata()
         if (metadata is not None):
             return metadata.cuesheet
@@ -849,6 +884,8 @@ class FlacAudio(AudioFile):
             return None
 
     def to_pcm(self):
+        """Returns a PCMReader object containing the track's PCM data."""
+
         from . import decoders
 
         return decoders.FlacDecoder(self.filename,
@@ -856,6 +893,14 @@ class FlacAudio(AudioFile):
 
     @classmethod
     def from_pcm(cls, filename, pcmreader, compression="8"):
+        """Encodes a new file from PCM data.
+
+        Takes a filename string, PCMReader object
+        and optional compression level string.
+        Encodes a new audio file from pcmreader's data
+        at the given filename with the specified compression level
+        and returns a new FlacAudio object."""
+
         from . import encoders
 
         if (compression not in cls.COMPRESSION_MODES):
@@ -955,6 +1000,13 @@ class FlacAudio(AudioFile):
             raise EncodingError("flac")
 
     def has_foreign_riff_chunks(self):
+        """Returns True if the audio file contains non-audio RIFF chunks.
+
+        During transcoding, if the source audio file has foreign RIFF chunks
+        and the target audio format supports foreign RIFF chunks,
+        conversion should be routed through .wav conversion
+        to avoid losing those chunks."""
+
         return 'riff' in [block.data[0:4] for block in
                           self.get_metadata().extra_blocks
                           if block.type == 2]
@@ -964,6 +1016,12 @@ class FlacAudio(AudioFile):
     #these chunks are taken from "riff" APPLICATION blocks
     #or generated from our PCM data
     def riff_wave_chunks(self):
+        """Generate a set of (chunk_id,chunk_data tuples)
+
+        These are for use by WaveAudio.from_chunks
+        and are taken from "riff" APPLICATION blocks
+        or generated from our PCM data."""
+
         for application_block in [block.data for block in
                                   self.get_metadata().extra_blocks
                                   if (block.data.startswith("riff"))]:
@@ -986,6 +1044,10 @@ class FlacAudio(AudioFile):
                 yield (chunk_id, chunk_data)
 
     def to_wave(self, wave_filename):
+        """Writes the contents of this file to the given .wav filename string.
+
+        Raises EncodingError if some error occurs during decoding."""
+
         if (self.has_foreign_riff_chunks()):
             WaveAudio.wave_from_chunks(wave_filename,
                                        self.riff_wave_chunks())
@@ -994,6 +1056,15 @@ class FlacAudio(AudioFile):
 
     @classmethod
     def from_wave(cls, filename, wave_filename, compression="8"):
+        """Encodes a new AudioFile from an existing .wav file.
+
+        Takes a filename string, wave_filename string
+        of an existing WaveAudio file
+        and an optional compression level string.
+        Encodes a new audio file from the wave's data
+        at the given filename with the specified compression level
+        and returns a new FlacAudio object."""
+
         if (compression not in cls.COMPRESSION_MODES):
             compression = cls.DEFAULT_COMPRESSION
 
@@ -1042,15 +1113,23 @@ class FlacAudio(AudioFile):
                                 compression=compression)
 
     def bits_per_sample(self):
+        """Returns an integer number of bits-per-sample this track contains."""
+
         return self.__bitspersample__
 
     def channels(self):
+        """Returns an integer number of channels this track contains."""
+
         return self.__channels__
 
     def total_frames(self):
+        """Returns the total PCM frames of the track as an integer."""
+
         return self.__total_frames__
 
     def sample_rate(self):
+        """Returns the rate of the track's audio as an integer number of Hz."""
+
         return self.__samplerate__
 
     def __read_streaminfo__(self):
@@ -1075,6 +1154,12 @@ class FlacAudio(AudioFile):
 
     @classmethod
     def add_replay_gain(cls, filenames):
+        """Adds ReplayGain values to a list of filename strings.
+
+        All the filenames must be of this AudioFile type.
+        Raises ValueError if some problem occurs during ReplayGain application.
+        """
+
         tracks = [track for track in open_files(filenames) if
                   isinstance(track, cls)]
 
@@ -1099,13 +1184,21 @@ class FlacAudio(AudioFile):
 
     @classmethod
     def can_add_replay_gain(cls):
+        """Returns True."""
+
         return True
 
     @classmethod
     def lossless_replay_gain(cls):
+        """Returns True."""
+
         return True
 
     def replay_gain(self):
+        """Returns a ReplayGain object of our ReplayGain values.
+
+        Returns None if we have no values."""
+
         vorbis_metadata = self.get_metadata().vorbis_comment
 
         if (set(['REPLAYGAIN_TRACK_PEAK', 'REPLAYGAIN_TRACK_GAIN',
@@ -1211,12 +1304,20 @@ class OggFlacAudio(FlacAudio):
 
     @classmethod
     def is_type(cls, file):
+        """Returns True if the given file object describes this format.
+
+        Takes a seekable file pointer rewound to the start of the file."""
+
         header = file.read(0x23)
 
         return (header.startswith('OggS') and
                 header[0x1C:0x21] == '\x7FFLAC')
 
     def get_metadata(self):
+        """Returns a MetaData object, or None.
+
+        Raises IOError if unable to read the file."""
+
         stream = OggStreamReader(file(self.filename, "rb"))
         try:
             packets = stream.packets()
@@ -1242,6 +1343,11 @@ class OggFlacAudio(FlacAudio):
             stream.close()
 
     def set_metadata(self, metadata):
+        """Takes a MetaData object and sets this track's metadata.
+
+        This metadata includes track name, album name, and so on.
+        Raises IOError if unable to write the file."""
+
         import tempfile
 
         comment = FlacMetaData.converted(metadata)
@@ -1386,6 +1492,8 @@ class OggFlacAudio(FlacAudio):
             stream.close()
 
     def to_pcm(self):
+        """Returns a PCMReader object containing the track's PCM data."""
+
         sub = subprocess.Popen([BIN['flac'], "-s", "--ogg", "-d", "-c",
                                 "--force-raw-format",
                                 "--endian=little",
@@ -1405,6 +1513,14 @@ class OggFlacAudio(FlacAudio):
     @classmethod
     def from_pcm(cls, filename, pcmreader,
                  compression="8"):
+        """Encodes a new file from PCM data.
+
+        Takes a filename string, PCMReader object
+        and optional compression level string.
+        Encodes a new audio file from pcmreader's data
+        at the given filename with the specified compression level
+        and returns a new OggFlacAudio object."""
+
         SUBSTREAM_SAMPLE_RATES = frozenset([
                 8000,  16000, 22050, 24000, 32000,
                 44100, 48000, 96000])
@@ -1492,6 +1608,8 @@ class OggFlacAudio(FlacAudio):
 
     @classmethod
     def supports_foreign_riff_chunks(cls):
+        """Returns False."""
+
         #the --keep-foreign-metadata flag fails
         #when used with --ogg
         return False

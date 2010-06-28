@@ -141,6 +141,8 @@ class MusepackAudio(ApeTaggedAudio, AudioFile):
                                  Con.Byte('encoder_version'))
 
     def __init__(self, filename):
+        """filename is a plain string."""
+
         AudioFile.__init__(self, filename)
         f = file(filename, 'rb')
         try:
@@ -183,6 +185,14 @@ class MusepackAudio(ApeTaggedAudio, AudioFile):
 
     @classmethod
     def from_pcm(cls, filename, pcmreader, compression=None):
+        """Encodes a new file from PCM data.
+
+        Takes a filename string, PCMReader object
+        and optional compression level string.
+        Encodes a new audio file from pcmreader's data
+        at the given filename with the specified compression level
+        and returns a new MusepackAudio object."""
+
         import tempfile
         import bisect
 
@@ -275,6 +285,10 @@ class MusepackAudio(ApeTaggedAudio, AudioFile):
 
     @classmethod
     def is_type(cls, file):
+        """Returns True if the given file object describes this format.
+
+        Takes a seekable file pointer rewound to the start of the file."""
+
         header = file.read(4)
 
         ###Musepack SV7###
@@ -284,16 +298,26 @@ class MusepackAudio(ApeTaggedAudio, AudioFile):
         return (header == 'MP+\x07') or (header == 'MPCK')
 
     def sample_rate(self):
+        """Returns the rate of the track's audio as an integer number of Hz."""
+
         return self.__sample_rate__
 
     def total_frames(self):
+        """Returns the total PCM frames of the track as an integer."""
+
         return self.__total_frames__
 
     def channels(self):
+        """Returns an integer number of channels this track contains."""
+
         return self.__channels__
 
     def bits_per_sample(self):
+        """Returns an integer number of bits-per-sample this track contains."""
+
         return 16
 
     def lossless(self):
+        """Returns False."""
+
         return False
