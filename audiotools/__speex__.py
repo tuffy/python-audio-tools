@@ -30,6 +30,8 @@ from __vorbis__ import *
 
 
 class UnframedVorbisComment(VorbisComment):
+    """An implementation of VorbisComment without the framing bit."""
+
     VORBIS_COMMENT = Con.Struct("vorbis_comment",
                                 Con.PascalString(
             "vendor_string",
@@ -41,6 +43,8 @@ class UnframedVorbisComment(VorbisComment):
 
 
 class SpeexAudio(VorbisAudio):
+    """An Ogg Speex audio file."""
+
     SUFFIX = "spx"
     NAME = SUFFIX
     DEFAULT_COMPRESSION = "8"

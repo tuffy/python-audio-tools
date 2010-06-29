@@ -77,7 +77,19 @@ def __riff_chunks__(data):
 
 
 class SymlinkPCMReader(PCMReader):
+    """A PCMReader wrapper which handles symlinks.
+
+    The purpose of this class is to provide a wrapper
+    for to ensure files to be read by PCMReader have a specific
+    file suffix via symlinking.
+    """
+
+    #This is a bit of a hack for wvunpack until I build my own
+    #WavPack codec without filename limitations.
+
     def __init__(self, reader, tempdir, symlink):
+        """Initialized with a PCMReader, dir path and symlink path."""
+
         PCMReader.__init__(self, None,
                            sample_rate=reader.sample_rate,
                            channels=reader.channels,
@@ -89,9 +101,13 @@ class SymlinkPCMReader(PCMReader):
         self.closed = False
 
     def read(self, bytes):
+        """Try to read a pcm.FrameList of size "bytes"."""
+
         return self.reader.read(bytes)
 
     def close(self):
+        """Closes our PCMReader, unlinks symlink and removes dir."""
+
         self.reader.close()
         os.unlink(self.symlink)
         os.rmdir(self.tempdir)
@@ -103,6 +119,14 @@ class SymlinkPCMReader(PCMReader):
 
     @classmethod
     def new(cls, filename, suffix):
+        """Creates a new temporary dir and symlink from filename and suffix.
+
+        Both should be regular strings.
+        Creates a temporary directory and symlink to the original
+        file in that directory with the given suffix.
+        Returns a (tempdir, symlink) tuple.
+        """
+
         import tempfile
 
         tempdir = tempfile.mkdtemp()
@@ -116,8 +140,16 @@ class SymlinkPCMReader(PCMReader):
 #######################
 
 
-class WavePackAPEv2(ApeTag):
+class WavPackAPEv2(ApeTag):
+    """A WavPack-specific APEv2 implementation with minor differences."""
+
     def __init__(self, tags, tag_length=None, frame_count=0):
+        """Constructs an ApeTag from a list of ApeTagItem objects.
+
+        tag_length is an optional total length integer.
+        frame_count is an optional number of PCM frames
+        to be used by cuesheets."""
+
         ApeTag.__init__(self, tags=tags, tag_length=tag_length)
         self.frame_count = frame_count
 
@@ -145,13 +177,16 @@ class WavePackAPEv2(ApeTag):
 
     @classmethod
     def converted(cls, metadata):
-        if ((metadata is None) or (isinstance(metadata, WavePackAPEv2))):
+        """Converts a MetaData object to a WavPackAPEv2 object."""
+
+        if ((metadata is None) or (isinstance(metadata, WavPackAPEv2))):
             return metadata
         elif (isinstance(metadata, ApeTag)):
-            return WavePackAPEv2(metadata.tags)
+            return WavPackAPEv2(metadata.tags)
         else:
-            return WavePackAPEv2(ApeTag.converted(metadata).tags)
+            return WavPackAPEv2(ApeTag.converted(metadata).tags)
 
+WavePackAPEv2 = WavPackAPEv2
 
 #######################
 #WavPack
@@ -159,13 +194,15 @@ class WavePackAPEv2(ApeTag):
 
 
 class WavPackAudio(ApeTaggedAudio, AudioFile):
+    """A WavPack audio file."""
+
     SUFFIX = "wv"
     NAME = SUFFIX
     DEFAULT_COMPRESSION = "veryhigh"
     COMPRESSION_MODES = ("fast", "standard", "high", "veryhigh")
     BINARIES = ("wavpack", "wvunpack")
 
-    APE_TAG_CLASS = WavePackAPEv2
+    APE_TAG_CLASS = WavPackAPEv2
 
     HEADER = Con.Struct("wavpackheader",
                         Con.Const(Con.String("id", 4), 'wvpk'),
@@ -323,6 +360,12 @@ class WavPackAudio(ApeTaggedAudio, AudioFile):
             return None
 
     def frames(self):
+        """Yields (header, data) tuples of WavPack frames.
+
+        header is a Container parsed from WavPackAudio.HEADER.
+        data is a binary string.
+        """
+
         f = file(self.filename)
         remaining_samples = None
         try:
@@ -347,6 +390,13 @@ class WavPackAudio(ApeTaggedAudio, AudioFile):
             f.close()
 
     def sub_frames(self):
+        """Yields (function,nondecoder,data) tuples.
+
+        function is an integer.
+        nondecoder is a boolean indicating non-decoder data.
+        data is a binary string.
+        """
+
         import cStringIO
 
         for (header, data) in self.frames():
@@ -759,10 +809,10 @@ class WavPackAudio(ApeTaggedAudio, AudioFile):
 
         metadata = self.get_metadata()
         if (metadata is None):
-            metadata = WavePackAPEv2.converted(MetaData())
+            metadata = WavPackAPEv2.converted(MetaData())
 
-        metadata['Cuesheet'] = WavePackAPEv2.ITEM.string('Cuesheet',
-                                                         cue.Cuesheet.file(
+        metadata['Cuesheet'] = WavPackAPEv2.ITEM.string('Cuesheet',
+                                                        cue.Cuesheet.file(
                 cuesheet,
                 os.path.basename(self.filename)).decode('ascii', 'replace'))
         self.set_metadata(metadata)

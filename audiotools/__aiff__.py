@@ -85,7 +85,7 @@ class AiffException(Exception):
 
 
 class AiffAudio(AudioFile):
-    """An implementation of AIFF audio."""
+    """An AIFF audio file."""
 
     SUFFIX = "aiff"
     NAME = SUFFIX

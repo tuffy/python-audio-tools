@@ -30,6 +30,8 @@ gettext.install("audiotools", unicode=True)
 
 
 class OggStreamReader:
+    """A class for walking through an Ogg stream."""
+
     OGGS = Con.Struct(
         "oggs",
         Con.Const(Con.String("magic_number", 4), "OggS"),
@@ -43,15 +45,21 @@ class OggStreamReader:
         Con.MetaRepeater(lambda ctx: ctx["segments"],
                          Con.Byte("segment_lengths")))
 
-    #stream is a file-like object with read() and close() methods
     def __init__(self, stream):
+        """stream is a file-like object with read() and close() methods."""
+
         self.stream = stream
 
     def close(self):
+        """Closes the sub-stream."""
+
         self.stream.close()
 
-    #an iterator which yields one fully-reassembled Ogg packet per pass
     def packets(self, from_beginning=True):
+        """Yields one fully reassembled Ogg packet per pass.
+
+        Packets are returned as binary strings."""
+
         if (from_beginning):
             self.stream.seek(0, 0)
 
@@ -74,11 +82,13 @@ class OggStreamReader:
             except Con.ConstError:
                 break
 
-    #an iterator which yields (Container,data string) tuples per pass
-    #Container is parsed from OGGS
-    #data string is a collection of segments as a string
-    #(it may not be a complete packet)
     def pages(self, from_beginning=True):
+        """Yields a (Container,string) tuple per pass.
+
+        Container is parsed from OggStreamReader.OGGS.
+        string is a binary string of combined segments
+        (which may not be a complete packet)."""
+
         if (from_beginning):
             self.stream.seek(0, 0)
 
@@ -91,11 +101,14 @@ class OggStreamReader:
             except Con.ConstError:
                 break
 
-    #takes a page iterator (such as pages(), above)
-    #returns a list of (Container,data string) tuples
-    #which form a complete packet
     @classmethod
     def pages_to_packet(cls, pages_iter):
+        """Returns a complete packet as a list of (Container,string) tuples.
+
+        pages_iter should be an iterator of (Container,string) tuples
+        as returned from the pages() method.
+        """
+
         packet = [pages_iter.next()]
         while (packet[-1][0].segment_lengths[-1] == 255):
             packet.append(pages_iter.next())
@@ -166,11 +179,14 @@ class OggStreamReader:
                   0xafb010b1, 0xab710d06, 0xa6322bdf, 0xa2f33668,
                   0xbcb4666d, 0xb8757bda, 0xb5365d03, 0xb1f740b4)
 
-    #page_header is a Container object parsed through OGGS, above
-    #page_data is a string of data contained by the page
-    #returns an integer of the page's checksum
     @classmethod
     def calculate_ogg_checksum(cls, page_header, page_data):
+        """Calculates an Ogg checksum integer.
+
+        page_header is a Container object parsed through OGGS.
+        page_data is a string of data contained by the page.
+        """
+
         old_checksum = page_header.checksum
         try:
             page_header.checksum = 0
@@ -185,29 +201,40 @@ class OggStreamReader:
 
 
 class OggStreamWriter:
-    #stream is a file-like object with write() and close() methods
+    """A class for building an Ogg stream."""
+
     def __init__(self, stream):
+        """stream is a file-like object with read() and close() methods."""
+
         self.stream = stream
 
     def close(self):
+        """Closes the sub-stream."""
+
         self.stream.close()
 
-    #page_header is an OGGS-generated Container with all of the
-    #fields properly set
-    #page_data is a string containing all of the page's segment data
-    #this builds the entire page and sends it to stream
     def write_page(self, page_header, page_data):
+        """Writes a complete Ogg page to the stream.
+
+        page_header is an OGGS-generated Container with all of the
+        fields properly set.
+        page_data is a string containing all of the page's segment data.
+        """
+
         self.stream.write(OggStreamReader.OGGS.build(page_header))
         self.stream.write(page_data)
 
-    #takes serial_number, granule_position and starting_sequence_number
-    #integers and a packet_data string
-    #returns a list of (page_header,page_data) tuples containing
-    #all of the Ogg pages necessary to contain the packet
     @classmethod
     def build_pages(cls, granule_position, serial_number,
                     starting_sequence_number, packet_data,
                     header_type=0):
+        """Constructs an Ogg packet for page data.
+
+         takes serial_number, granule_position and starting_sequence_number
+         integers and a packet_data string.
+         Returns a list of (page_header,page_data) tuples containing
+         all of the Ogg pages necessary to contain the packet.
+        """
 
         page = Con.Container(magic_number='OggS',
                              version=0,
@@ -274,6 +301,8 @@ class OggStreamWriter:
 #######################
 
 class VorbisAudio(AudioFile):
+    """An Ogg Vorbis file."""
+
     SUFFIX = "ogg"
     NAME = SUFFIX
     DEFAULT_COMPRESSION = "3"
@@ -679,6 +708,8 @@ class VorbisAudio(AudioFile):
 
 
 class VorbisChannelMask(ChannelMask):
+    """The Vorbis-specific channel mapping."""
+
     def __repr__(self):
         return "VorbisChannelMask(%s)" % \
             ",".join(["%s=%s" % (field, getattr(self, field))
@@ -686,6 +717,12 @@ class VorbisChannelMask(ChannelMask):
                       if (getattr(self, field))])
 
     def channels(self):
+        """Returns a list of speaker strings this mask contains.
+
+        Returned in the order in which they should appear
+        in the PCM stream.
+        """
+
         count = len(self)
         if (count == 1):
             return ["front_center"]

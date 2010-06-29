@@ -1186,10 +1186,10 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [X] ApeAudio.sample_rate
      - [X] ApeAudio.to_wave
      - [X] ApeAudio.from_wave
-*** TODO __au__.py
+*** DONE __au__.py
 **** DONE adjust syntax
-**** TODO add docstrings
-     - [ ] AuAudio
+**** DONE add docstrings
+     - [X] AuAudio
      - [X] AuAudio.is_type
      - [X] AuAudio.lossless
      - [X] AuAudio.bits_per_sample
@@ -1399,20 +1399,10 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [ ] ImageMetrics
      - [ ] InvalidImage
      - [ ] InvalidJPEG
-     - [ ] __JPEG__
-     - [ ] __JPEG__.parse
      - [ ] InvalidPNG
-     - [ ] __PNG__
-     - [ ] __PNG__.parse
      - [ ] InvalidBMP
-     - [ ] __BMP__
-     - [ ] __BMP__.parse
      - [ ] InvalidGIF
-     - [ ] __GIF__
-     - [ ] __GIF__.parse
      - [ ] InvalidTIFF
-     - [ ] __TIFF__
-     - [ ] __TIFF__.parse
      - [ ] can_thumbnail
      - [ ] thumbnail_formats
      - [ ] thumbnail_image
@@ -1423,19 +1413,10 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [ ] RawConfigParser
      - [ ] RawConfigParser.get_default
      - [ ] RawConfigParser.getint_default
-     - [ ] __system_binaries__
-     - [ ] __system_binaries__.can_execute
      - [ ] find_glade_file
      - [ ] OptionParser
      - [ ] Messenger
      - [ ] str_width
-     - [ ] __MessengerRow__
-     - [ ] __MessengerRow__.add_string
-     - [ ] __MessengerRow__.lengths
-     - [ ] __MessengerRow__.set_total_lengths
-     - [ ] __DividerRow__
-     - [ ] __DividerRow__.lengths
-     - [ ] __DividerRow__.set_total_lengths
      - [ ] VerboseMessenger
      - [X] VerboseMessenger.output
      - [X] VerboseMessenger.partial_output
@@ -1493,40 +1474,17 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [ ] FrameReader
      - [ ] FrameReader.read
      - [ ] FrameReader.close
-     - [ ] __capped_stream_reader__
-     - [ ] __capped_stream_reader__.read
-     - [ ] __capped_stream_reader__.close
      - [ ] pcm_cmp
      - [ ] stripped_pcm_cmp
      - [ ] pcm_frame_cmp
      - [ ] PCMCat
      - [ ] PCMCat.read
      - [ ] PCMCat.close
-     - [ ] __buffer__
-     - [ ] __buffer__.framelist
-     - [ ] __buffer__.push
-     - [ ] __buffer__.pop
-     - [ ] __buffer__.unpop
      - [ ] BufferedPCMReader
      - [ ] BufferedPCMReader.close
      - [ ] BufferedPCMReader.read
      - [ ] BufferedPCMReader.__fill__
      - [ ] pcm_split
-     - [ ] __channel_remover__
-     - [ ] __channel_remover__.convert
-     - [ ] __channel_adder__
-     - [ ] __channel_adder__.convert
-     - [ ] __stereo_to_mono__
-     - [ ] __stereo_to_mono__.convert
-     - [ ] __downmixer__
-     - [ ] __downmixer__.convert
-     - [ ] __downmix_to_mono__
-     - [ ] __downmix_to_mono__.convert
-     - [ ] __convert_sample_rate__
-     - [ ] __convert_sample_rate__.convert
-     - [ ] __convert_sample_rate_and_bits_per_sample__
-     - [ ] __convert_bits_per_sample__
-     - [ ] __add_dither__
      - [ ] PCMConverter
      - [ ] PCMConverter.read
      - [ ] PCMConverter.close
@@ -1651,17 +1609,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** TODO __m4a__.py
 **** TODO adjust syntax
 **** TODO add docstrings
-     - [ ] __Qt_Atom__
-     - [ ] __Qt_Atom__.parse
-     - [ ] __Qt_Atom__.build
-     - [ ] __Qt_Atom__.get_atom
-     - [ ] __Qt_Atom__.is_container
-     - [ ] __Qt_Atom_Stream__
-     - [ ] __Qt_Atom_Stream__.is_container
-     - [ ] __parse_qt_atoms__
-     - [ ] __build_qt_atom__
-     - [ ] __replace_qt_atom__
-     - [ ] __remove_qt_atom__
      - [ ] M4AAudio_faac
      - [X] M4AAudio_faac.channel_mask
      - [X] M4AAudio_faac.is_type
@@ -1673,7 +1620,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [X] M4AAudio_faac.total_frames
      - [X] M4AAudio_faac.get_metadata
      - [X] M4AAudio_faac.set_metadata
-     - [ ] M4AAudio_faac.__set_meta_atom__
      - [ ] M4AAudio_faac.delete_metadata
      - [X] M4AAudio_faac.to_pcm
      - [X] M4AAudio_faac.from_pcm
@@ -1738,15 +1684,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [X] MP3Audio.get_metadata
      - [X] MP3Audio.set_metadata
      - [X] MP3Audio.delete_metadata
-     - [ ] MP3Audio.__find_next_mp3_frame__
-     - [ ] MP3Audio.__find_mp3_start__
-     - [ ] MP3Audio.__find_last_mp3_frame__
-     - [ ] MP3Audio.__mp3_frame_length__
-     - [ ] MP3Audio.__get_mp3_frame_sample_rate__
-     - [ ] MP3Audio.__get_mp3_frame_channels__
-     - [ ] MP3Audio.__get_mp3_frame_bitrate__
      - [X] MP3Audio.cd_frames
-     - [ ] MP3Audio.__length__
      - [X] MP3Audio.total_frames
      - [X] MP3Audio.can_add_replay_gain
      - [X] MP3Audio.lossless_replay_gain
@@ -1754,16 +1692,14 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [ ] MP2Audio
      - [X] MP2Audio.is_type
      - [X] MP2Audio.from_pcm
-*** TODO __musepack__.py
+*** DONE __musepack__.py
 **** DONE adjust syntax
-**** TODO add docstrings
-     - [ ] NutValue
-     - [ ] Musepack8StreamReader
-     - [ ] Musepack8StreamReader.packets
-     - [ ] MusepackAudio
+**** DONE add docstrings
+     - [X] NutValue
+     - [X] Musepack8StreamReader
+     - [X] Musepack8StreamReader.packets
+     - [X] MusepackAudio
      - [X] MusepackAudio.from_pcm
-     - [ ] MusepackAudio.__to_wave__
-     - [ ] MusepackAudio.__from_wave__
      - [X] MusepackAudio.is_type
      - [X] MusepackAudio.sample_rate
      - [X] MusepackAudio.total_frames
@@ -1794,13 +1730,10 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [ ] __select_match__
      - [ ] __select_default_match__
      - [ ] get_mbxml
-*** TODO __shn__.py
+*** DONE __shn__.py
 **** DONE adjust syntax
-**** TODO add docstrings
-     - [ ] ShortenAudio
-     - [ ] ShortenAudio.__populate_metadata__
-     - [ ] ShortenAudio.__wave_chunks__
-     - [ ] ShortenAudio.__aiff_chunks__
+**** DONE add docstrings
+     - [X] ShortenAudio
      - [X] ShortenAudio.is_type
      - [X] ShortenAudio.bits_per_sample
      - [X] ShortenAudio.channels
@@ -1814,13 +1747,12 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [X] ShortenAudio.from_wave
      - [X] ShortenAudio.supports_foreign_riff_chunks
      - [X] ShortenAudio.has_foreign_riff_chunks
-*** TODO __speex__.py
+*** DONE __speex__.py
 **** DONE adjust syntax
-**** TODO add docstrings
-     - [ ] UnframedVorbisComment
-     - [ ] SpeexAudio
+**** DONE add docstrings
+     - [X] UnframedVorbisComment
+     - [X] SpeexAudio
      - [X] SpeexAudio.is_type
-     - [ ] SpeexAudio.__read_metadata__
      - [X] SpeexAudio.to_pcm
      - [X] SpeexAudio.from_pcm
      - [X] SpeexAudio.set_metadata
@@ -1834,22 +1766,21 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [X] VorbisComment.converted
      - [X] VorbisComment.merge
      - [X] VorbisComment.build
-*** TODO __vorbis__.py
+*** DONE __vorbis__.py
 **** DONE adjust syntax
-**** TODO add docstrings
-     - [ ] OggStreamReader
-     - [ ] OggStreamReader.close
-     - [ ] OggStreamReader.packets
-     - [ ] OggStreamReader.pages
-     - [ ] OggStreamReader.pages_to_packets
-     - [ ] OggStreamReader.calculate_ogg_checksum
-     - [ ] OggStreamWriter
-     - [ ] OggStreamWriter.close
-     - [ ] OggStreamWriter.write_page
-     - [ ] OggStreamWriter.build_pages
-     - [ ] VorbisAudio
+**** DONE add docstrings
+     - [X] OggStreamReader
+     - [X] OggStreamReader.close
+     - [X] OggStreamReader.packets
+     - [X] OggStreamReader.pages
+     - [X] OggStreamReader.pages_to_packets
+     - [X] OggStreamReader.calculate_ogg_checksum
+     - [X] OggStreamWriter
+     - [X] OggStreamWriter.close
+     - [X] OggStreamWriter.write_page
+     - [X] OggStreamWriter.build_pages
+     - [X] VorbisAudio
      - [X] VorbisAudio.is_type
-     - [ ] VorbisAudio.__read_metadata__
      - [X] VorbisAudio.lossless
      - [X] VorbisAudio.bits_per_sample
      - [X] VorbisAudio.channels
@@ -1865,28 +1796,26 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [X] VorbisAudio.can_add_replay_gain
      - [X] VorbisAudio.lossless_replay_gain
      - [X] VorbisAudio.replay_gain
-     - [ ] VorbisChannelMask
-     - [ ] VorbisChannelMask.channels
-*** TODO __wavpack__.py
+     - [X] VorbisChannelMask
+     - [X] VorbisChannelMask.channels
+*** DONE __wavpack__.py
 **** DONE adjust syntax
-**** TODO add docstrings
-     - [ ] SymlinkPCMReader
-     - [ ] SymlinkPCMReader.read
-     - [ ] SymlinkPCMReader.close
-     - [ ] SymlinkPCMReader.new
-     - [ ] WavePackAPEv2
-     - [ ] WavePackAPEv2.converted
-     - [ ] WavPackAudio
+**** DONE add docstrings
+     - [X] SymlinkPCMReader
+     - [X] SymlinkPCMReader.read
+     - [X] SymlinkPCMReader.close
+     - [X] SymlinkPCMReader.new
+     - [X] WavePackAPEv2
+     - [X] WavePackAPEv2.converted
+     - [X] WavPackAudio
      - [X] WavPackAudio.is_type
      - [X] WavPackAudio.lossless
      - [X] WavPackAudio.supports_foreign_riff_chunks
      - [X] WavPackAudio.channel_mask
      - [X] WavPackAudio.get_metadata
      - [X] WavPackAudio.has_foreign_riff_chunks
-     - [ ] WavPackAudio.__fmt_chunk__
-     - [ ] WavPackAudio.frames
-     - [ ] WavPackAudio.sub_frames
-     - [ ] WavPackAudio.__read_info__
+     - [X] WavPackAudio.frames
+     - [X] WavPackAudio.sub_frames
      - [X] WavPackAudio.bits_per_sample
      - [X] WavPackAudio.channels
      - [X] WavPackAudio.total_frames
@@ -1927,12 +1856,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [X] WaveAudio.lossless_replay_gain
      - [X] WaveAudio.add_replay_gain
      - [X] WaveAudio.track_name
-     - [ ] WaveAudio.__read_chunks__
-     - [ ] WaveAudio.__read_wave_header__
-     - [ ] WaveAudio.__read_chunk_header__
      - [ ] WaveAudio.fmt_chunk_to_channel_mask
-     - [ ] WaveAudio.__read_format_chunk__
-     - [ ] WaveAudio.__read_data_chunk__
      - [ ] WaveAudio.chunk_ids
      - [ ] WaveAudio.chunks
      - [ ] WaveAudio.wave_from_chunks

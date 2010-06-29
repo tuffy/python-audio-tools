@@ -33,6 +33,8 @@ gettext.install("audiotools", unicode=True)
 
 
 class NutValue(Con.Adapter):
+    """A construct for Musepack Nut-encoded integer fields."""
+
     def __init__(self, name):
         Con.Adapter.__init__(
             self,
@@ -58,15 +60,20 @@ class NutValue(Con.Adapter):
 
 
 class Musepack8StreamReader:
+    """An object for parsing Musepack SV8 streams."""
+
     NUT_HEADER = Con.Struct('nut_header',
                             Con.String('key', 2),
                             NutValue('length'))
 
     def __init__(self, stream):
+        """Initialized with a file object."""
+
         self.stream = stream
 
-    #iterates over a bunch of (key, data) tuples
     def packets(self):
+        """Yields a set of (key, data) tuples."""
+
         import string
 
         UPPERCASE = frozenset(string.ascii_uppercase)
@@ -86,6 +93,8 @@ class Musepack8StreamReader:
 
 
 class MusepackAudio(ApeTaggedAudio, AudioFile):
+    """A Musepack audio file."""
+
     SUFFIX = "mpc"
     NAME = SUFFIX
     DEFAULT_COMPRESSION = "standard"

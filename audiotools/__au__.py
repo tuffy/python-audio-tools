@@ -34,6 +34,8 @@ gettext.install("audiotools", unicode=True)
 
 
 class AuAudio(AudioFile):
+    """A Sun AU audio file."""
+
     SUFFIX = "au"
     NAME = SUFFIX
 

@@ -26,6 +26,8 @@ import audiotools.decoders
 
 
 class ShortenAudio(AudioFile):
+    """A Shorten audio file."""
+
     SUFFIX = "shn"
     NAME = SUFFIX
 
