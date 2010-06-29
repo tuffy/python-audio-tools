@@ -933,6 +933,8 @@ class M4AMetaData(MetaData, dict):
                 raise AttributeError(key)
 
     def images(self):
+        """Returns a list of embedded Image objects."""
+
         try:
             return [M4ACovr(str(i)[8:]) for i in self['covr']
                     if (len(str(i)) > 8)]
@@ -940,11 +942,15 @@ class M4AMetaData(MetaData, dict):
             return list()
 
     def add_image(self, image):
+        """Embeds an Image object in this metadata."""
+
         if (image.type == 0):
             self.setdefault('covr', []).append(self.__class__.covr_atom(
                     image.data)[0])
 
     def delete_image(self, image):
+        """Deletes an Image object from this metadata."""
+
         i = 0
         for image_atom in self.get('covr', []):
             if (str(image_atom)[8:] == image.data):
@@ -953,6 +959,8 @@ class M4AMetaData(MetaData, dict):
 
     @classmethod
     def converted(cls, metadata):
+        """Converts a MetaData object to a M4AMetaData object."""
+
         if ((metadata is None) or (isinstance(metadata, M4AMetaData))):
             return metadata
 
@@ -985,6 +993,8 @@ class M4AMetaData(MetaData, dict):
         return m4a
 
     def merge(self, metadata):
+        """Updates any currently empty entries from metadata's values."""
+
         metadata = self.__class__.converted(metadata)
         if (metadata is None):
             return
@@ -1037,6 +1047,8 @@ class M4AMetaData(MetaData, dict):
 
     @classmethod
     def supports_images(self):
+        """Returns True."""
+
         return True
 
     @classmethod

@@ -183,6 +183,8 @@ class FlacMetaData(MetaData):
 
     @classmethod
     def converted(cls, metadata):
+        """Takes a MetaData object and returns a FlacMetaData object."""
+
         if ((metadata is None) or (isinstance(metadata, FlacMetaData))):
             return metadata
         else:
@@ -205,19 +207,27 @@ class FlacMetaData(MetaData):
             return FlacMetaData(blocks)
 
     def merge(self, metadata):
+        """Updates any currently empty entries from metadata's values."""
+
         self.vorbis_comment.merge(metadata)
 
     def add_image(self, image):
+        """Embeds an Image object in this metadata."""
+
         self.__dict__['image_blocks'].append(
             FlacPictureComment.converted(image))
 
     def delete_image(self, image):
+        """Deletes an Image object from this metadata."""
+
         image_blocks = self.__dict__['image_blocks']
 
         if (image in image_blocks):
             image_blocks.pop(image_blocks.index(image))
 
     def images(self):
+        """Returns a list of embedded Image objects."""
+
         return self.__dict__['image_blocks'][:]
 
     #returns an iterator over all the current blocks as

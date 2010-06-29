@@ -43,6 +43,8 @@ def __number_pair__(current, total):
 
 
 class ApeTagItem:
+    """A container for APEv2 tag items."""
+
     APEv2_FLAGS = Con.BitStruct("APEv2_FLAGS",
       Con.Bits("undefined1", 5),
       Con.Flag("read_only"),
@@ -60,11 +62,16 @@ class ApeTagItem:
       Con.MetaField("value",
         lambda ctx: ctx["length"]))
 
-    #item_type is an int (0 = UTF-8, 1 = binary, 2 = external, 3 = reserved)
-    #read_only is a boolean, True if the item is read only
-    #key is an ASCII string
-    #data is a binary string of the data itself
+
     def __init__(self, item_type, read_only, key, data):
+        """Fields are as follows:
+
+        item_type is 0 = UTF-8, 1 = binary, 2 = external, 3 = reserved.
+        read_only is True if the item is read only.
+        key is an ASCII string.
+        data is a binary string of the data itself.
+        """
+
         self.type = item_type
         self.read_only = read_only
         self.key = key
@@ -84,6 +91,8 @@ class ApeTagItem:
         return self.data.rstrip(chr(0)).decode('utf-8', 'replace')
 
     def build(self):
+        """Returns this tag as a binary string of data."""
+
         return self.APEv2_TAG.build(
             Con.Container(key=self.key,
                           value=self.data,
@@ -97,26 +106,35 @@ class ApeTagItem:
                           contains_no_footer=False,
                           is_header=False))
 
-    #takes an ASCII key and string of binary data
-    #returns an ApeTagItem of that data
+
     @classmethod
     def binary(cls, key, data):
+        """Returns an ApeTagItem of binary data.
+
+        key is an ASCII string, data is a binary string."""
+
         return cls(1, False, key, data)
 
-    #takes an ASCII key and string of binary data
-    #returns an ApeTagItem of that data
     @classmethod
     def external(cls, key, data):
+        """Returns an ApeTagItem of external data.
+
+        key is an ASCII string, data is a binary string."""
+
         return cls(2, False, key, data)
 
-    #takes an ASCII key and a unicode string of data
-    #returns an ApeTagItem of that data
     @classmethod
     def string(cls, key, data):
+        """Returns an ApeTagItem of text data.
+
+        key is an ASCII string, data is a UTF-8 binary string."""
+
         return cls(0, False, key, data.encode('utf-8', 'replace'))
 
 
 class ApeTag(MetaData):
+    """A complete APEv2 tag."""
+
     ITEM = ApeTagItem
 
     APEv2_FLAGS = Con.BitStruct("APEv2_FLAGS",
@@ -163,9 +181,12 @@ class ApeTag(MetaData):
 
     INTEGER_ITEMS = ('Track', 'Media')
 
-    #tags is a list of ApeTagItem objects
-    #tag_length is an optional total length integer
+
     def __init__(self, tags, tag_length=None):
+        """Constructs an ApeTag from a list of ApeTagItem objects.
+
+        tag_length is an optional total length integer."""
+
         for tag in tags:
             if (not isinstance(tag, ApeTagItem)):
                 raise ValueError("%s is not ApeTag" % (repr(tag)))
@@ -316,6 +337,8 @@ class ApeTag(MetaData):
 
     @classmethod
     def converted(cls, metadata):
+        """Converts a MetaData object to an ApeTag object."""
+
         if ((metadata is None) or (isinstance(metadata, ApeTag))):
             return metadata
         else:
@@ -344,6 +367,8 @@ class ApeTag(MetaData):
             return tags
 
     def merge(self, metadata):
+        """Updates any currently empty entries from metadata's values."""
+
         metadata = self.__class__.converted(metadata)
         if (metadata is None):
             return
@@ -406,6 +431,8 @@ class ApeTag(MetaData):
 
     @classmethod
     def supports_images(cls):
+        """Returns True."""
+
         return True
 
     def __parse_image__(self, key, type):
@@ -416,6 +443,8 @@ class ApeTag(MetaData):
         return Image.new(data, description, type)
 
     def add_image(self, image):
+        """Embeds an Image object in this metadata."""
+
         if (image.type == 0):
             self['Cover Art (front)'] = self.ITEM.external(
                 'Cover Art (front)',
@@ -428,12 +457,16 @@ class ApeTag(MetaData):
                         'utf-8', 'replace')) + image.data)
 
     def delete_image(self, image):
+        """Deletes an Image object from this metadata."""
+
         if ((image.type == 0) and 'Cover Art (front)' in self.keys()):
             del(self['Cover Art (front)'])
         elif ((image.type == 1) and 'Cover Art (back)' in self.keys()):
             del(self['Cover Art (back)'])
 
     def images(self):
+        """Returns a list of embedded Image objects."""
+
         #APEv2 supports only one value per key
         #so a single front and back cover are all that is possible
         img = []
@@ -443,10 +476,12 @@ class ApeTag(MetaData):
             img.append(self.__parse_image__('Cover Art (back)', 1))
         return img
 
-    #takes a file object of a APEv2 tagged file
-    #returns an ApeTag object or None
     @classmethod
     def read(cls, apefile):
+        """Returns an ApeTag object from an APEv2 tagged file object.
+
+        May return None if the file object has no tag."""
+
         apefile.seek(-32, 2)
         footer = cls.APEv2_FOOTER.parse(apefile.read(32))
 
@@ -467,6 +502,8 @@ class ApeTag(MetaData):
                      footer.tag_size)
 
     def build(self):
+        """Returns an APEv2 tag as a binary string."""
+
         header = Con.Container(preamble='APETAGEX',
                                version_number=2000,
                                tag_size=0,
@@ -505,14 +542,19 @@ class ApeTag(MetaData):
                ApeTag.APEv2_FOOTER.build(footer)
 
 
-#This is a split-off version of get_metadata() and set_metadata()
-#for formats with an appended APEv2 tag.
-#This class presumes there will be a filename attribute which
-#can be opened and checked for tags, or written if necessary.
 class ApeTaggedAudio:
+    """A class for handling audio formats with APEv2 tags.
+
+    This class presumes there will be a filename attribute which
+    can be opened and checked for tags, or written if necessary."""
+
     APE_TAG_CLASS = ApeTag
 
     def get_metadata(self):
+        """Returns an ApeTag object, or None.
+
+        Raises IOError if unable to read the file."""
+
         f = file(self.filename, 'rb')
         try:
             return self.APE_TAG_CLASS.read(f)
@@ -520,6 +562,10 @@ class ApeTaggedAudio:
             f.close()
 
     def set_metadata(self, metadata):
+        """Takes a MetaData object and sets this track's metadata.
+
+        Raises IOError if unable to write the file."""
+
         apetag = self.APE_TAG_CLASS.converted(metadata)
 
         if (apetag is None):
@@ -540,6 +586,10 @@ class ApeTaggedAudio:
             f.close()
 
     def delete_metadata(self):
+        """Deletes the track's MetaData.
+
+        Raises IOError if unable to write the file."""
+
         current_metadata = self.get_metadata()
         if (current_metadata is not None):  # there's existing tags to delete
             f = file(self.filename, "rb")
@@ -551,6 +601,8 @@ class ApeTaggedAudio:
 
 
 class ApeAudio(ApeTaggedAudio, AudioFile):
+    """A Monkey's Audio file."""
+
     SUFFIX = "ape"
     NAME = SUFFIX
     DEFAULT_COMPRESSION = "5000"
@@ -595,6 +647,8 @@ class ApeAudio(ApeTaggedAudio, AudioFile):
                                 Con.ULInt32('final_frame_blocks'))
 
     def __init__(self, filename):
+        """filename is a plain string."""
+
         AudioFile.__init__(self, filename)
 
         (self.__samplespersec__,
@@ -622,6 +676,7 @@ class ApeAudio(ApeTaggedAudio, AudioFile):
         return True
 
     def has_foreign_riff_chunks(self):
+        """Returns True."""
 
         #FIXME - this isn't strictly true
         #I'll need a way to detect foreign chunks in APE's stream

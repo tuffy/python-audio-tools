@@ -22,6 +22,8 @@ from audiotools import MetaData, Con, VERSION, re
 
 
 class VorbisComment(MetaData, dict):
+    """A complete Vorbis Comment tag."""
+
     VORBIS_COMMENT = Con.Struct(
         "vorbis_comment",
         Con.PascalString("vendor_string",
@@ -52,9 +54,13 @@ class VorbisComment(MetaData, dict):
 
     ITEM_MAP = dict(map(reversed, ATTRIBUTE_MAP.items()))
 
-    #vorbis_data is a key->[value1,value2,...] dict of the original
-    #Vorbis comment data.  keys are generally upper case
     def __init__(self, vorbis_data, vendor_string=u""):
+        """Initialized with a key->[value1,value2] dict.
+
+        keys are generally upper case.
+        values are unicode string.
+        vendor_string is an optional unicode string."""
+
         dict.__init__(self, [(key.upper(), values)
                             for (key, values) in vorbis_data.items()])
         self.vendor_string = vendor_string
@@ -163,9 +169,20 @@ class VorbisComment(MetaData, dict):
 
     @classmethod
     def supports_images(cls):
+        """Returns False."""
+
+        #There's actually a (proposed?) standard to add embedded covers
+        #to Vorbis Comments by base64 encoding them.
+        #This strikes me as messy and convoluted.
+        #In addition, I'd have to perform a special case of
+        #image extraction and re-insertion whenever converting
+        #to FlacMetaData.  The whole thought gives me a headache.
+
         return False
 
     def images(self):
+        """Returns an empty list of Image objects."""
+
         return list()
 
     #if an attribute is updated (e.g. self.track_name)
@@ -181,6 +198,8 @@ class VorbisComment(MetaData, dict):
 
     @classmethod
     def converted(cls, metadata):
+        """Converts a MetaData object to a VorbisComment object."""
+
         if ((metadata is None) or (isinstance(metadata, VorbisComment))):
             return metadata
         elif (metadata.__class__.__name__ == 'FlacMetaData'):
@@ -200,6 +219,8 @@ class VorbisComment(MetaData, dict):
             return VorbisComment(values)
 
     def merge(self, metadata):
+        """Updates any currently empty entries from metadata's values."""
+
         metadata = self.__class__.converted(metadata)
         if (metadata is None):
             return
@@ -255,8 +276,9 @@ class VorbisComment(MetaData, dict):
         pairs.sort(VorbisComment.__by_pair__)
         return pairs
 
-    #returns this VorbisComment as a binary string
     def build(self):
+        """Returns this VorbisComment as a binary string."""
+
         comment = Con.Container(vendor_string=self.vendor_string,
                                 framing=1,
                                 value=[])

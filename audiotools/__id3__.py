@@ -606,13 +606,19 @@ class ID3v22Comment(MetaData):
             raise AttributeError(key)
 
     def add_image(self, image):
+        """Embeds an Image object in this metadata."""
+
         image = self.PictureFrame.converted(image)
         self.frames.setdefault('PIC', []).append(image)
 
     def delete_image(self, image):
+        """Deletes an Image object from this metadata."""
+
         del(self.frames['PIC'][self['PIC'].index(image)])
 
     def images(self):
+        """Returns a list of embedded Image objects."""
+
         if ('PIC' in self.frames.keys()):
             return self.frames['PIC'][:]
         else:
@@ -717,6 +723,8 @@ class ID3v22Comment(MetaData):
         return cls(frames)
 
     def merge(self, metadata):
+        """Updates any currently empty entries from metadata's values."""
+
         metadata = self.__class__.converted(metadata)
         if (metadata is None):
             return
@@ -1115,13 +1123,19 @@ class ID3v23Comment(ID3v22Comment):
         return pairs
 
     def add_image(self,  image):
+        """Embeds an Image object in this metadata."""
+
         image = self.PictureFrame.converted(image)
         self.frames.setdefault('APIC', []).append(image)
 
     def delete_image(self, image):
+        """Deletes an Image object from this metadata."""
+
         del(self.frames['APIC'][self['APIC'].index(image)])
 
     def images(self):
+        """Returns a list of embedded Image objects."""
+
         if ('APIC' in self.frames.keys()):
             return self.frames['APIC'][:]
         else:
@@ -1468,6 +1482,8 @@ class ID3CommentPair(MetaData):
 
     @classmethod
     def converted(cls, metadata):
+        """Takes a MetaData object and returns an ID3CommentPair object."""
+
         if ((metadata is None) or (isinstance(metadata, ID3CommentPair))):
             return metadata
 
@@ -1480,6 +1496,8 @@ class ID3CommentPair(MetaData):
                 ID3v1Comment.converted(metadata))
 
     def merge(self, metadata):
+        """Updates any currently empty entries from metadata's values."""
+
         self.id3v2.merge(metadata)
         self.id3v1.merge(metadata)
 
@@ -1500,19 +1518,27 @@ class ID3CommentPair(MetaData):
 
     #ImageMetaData passthroughs
     def images(self):
+        """Returns a list of embedded Image objects."""
+
         if (self.id3v2 is not None):
             return self.id3v2.images()
         else:
             return []
 
     def add_image(self, image):
+        """Embeds an Image object in this metadata."""
+
         if (self.id3v2 is not None):
             self.id3v2.add_image(image)
 
     def delete_image(self, image):
+        """Deletes an Image object from this metadata."""
+
         if (self.id3v2 is not None):
             self.id3v2.delete_image(image)
 
     @classmethod
     def supports_images(cls):
+        """Returns True."""
+
         return True

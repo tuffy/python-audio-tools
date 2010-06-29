@@ -250,26 +250,41 @@ class VerboseMessenger:
     BG_WHITE = 47
 
     def __init__(self, executable):
+        """executable is a plain string of what script is being run.
+
+        This is typically for use by the usage() method."""
+
         self.executable = executable
         self.output_msg_rows = []  # a list of __MessengerRow__ objects
 
-    #displays an output message unicode string to stdout
-    #and adds a newline
     def output(self, s):
+        """Displays an output message unicode string to stdout.
+
+        This appends a newline to that message."""
+
         sys.stdout.write(s.encode(IO_ENCODING, 'replace'))
         sys.stdout.write(os.linesep)
 
-    #displays a partial output message unicode string to stdout
-    #and flushes output so it is displayed
     def partial_output(self, s):
+        """Displays a partial output message unicode string to stdout.
+
+        This flushes output so that message is displayed"""
+
         sys.stdout.write(s.encode(IO_ENCODING, 'replace'))
         sys.stdout.flush()
 
-    #sets up a new tabbed row for outputting aligned text
     def new_row(self):
+        """Sets up a new tabbed row for outputting aligned text.
+
+        This must be called prior to calling output_column()."""
+
         self.output_msg_rows.append(__MessengerRow__())
 
     def blank_row(self):
+        """Generates a completely blank row of aligned text.
+
+        This cannot be the first row of aligned text."""
+
         if (len(self.output_msg_rows) == 0):
             raise ValueError("first output row cannot be blank")
         else:
@@ -278,17 +293,41 @@ class VerboseMessenger:
                 self.output_column(u"")
 
     def divider_row(self, dividers):
+        """Adds a row of unicode divider characters.
+
+        There should be one character in dividers per output column.
+        For example:
+        >>> m = VerboseMessenger("audiotools")
+        >>> m.new_row()
+        >>> m.output_column(u'Foo')
+        >>> m.output_column(u' ')
+        >>> m.output_column(u'Bar')
+        >>> m.divider_row([u'-',u' ',u'-'])
+        >>> m.output_rows()
+        Foo Bar
+        --- ---
+
+        """
+
         self.output_msg_rows.append(__DividerRow__(dividers))
 
     def output_column(self, string, right_aligned=False):
+        """Adds a column of aligned unicode data."""
+
         if (len(self.output_msg_rows) > 0):
             self.output_msg_rows[-1].add_string(string, right_aligned)
         else:
             raise ValueError(
                 "you must perform \"new_row\" before adding columns")
 
-    #outputs all of our accumulated output rows as aligned output
     def output_rows(self):
+        """Outputs all of our accumulated output rows as aligned output.
+
+        This operates by calling our output() method.
+        Therefore, subclasses that have overridden output() to noops
+        (silent messengers) will also have silent output_rows() methods.
+        """
+
         lengths = [row.lengths() for row in self.output_msg_rows]
         if (len(lengths) == 0):
             raise ValueError("you must generate at least one output row")
@@ -306,15 +345,19 @@ class VerboseMessenger:
             self.output(unicode(row))
         self.output_msg_rows = []
 
-    #displays an informative message unicode string to stderr
-    #and adds a newline
     def info(self, s):
+        """Displays an informative message unicode string to stderr.
+
+        This appends a newline to that message."""
+
         sys.stderr.write(s.encode(IO_ENCODING, 'replace'))
         sys.stderr.write(os.linesep)
 
-    #displays a partial informative message unicode string to stderr
-    #and flushes output so it is displayed
     def partial_info(self, s):
+        """Displays a partial informative message unicode string to stdout.
+
+        This flushes output so that message is displayed"""
+
         sys.stderr.write(s.encode(IO_ENCODING, 'replace'))
         sys.stderr.flush()
 
@@ -327,40 +370,58 @@ class VerboseMessenger:
     #since its primary function is converting audio
     #and tty output is purely incidental
 
-    #displays an error message unicode string
-    #and adds a newline
     def error(self, s):
+        """Displays an error message unicode string to stderr.
+
+        This appends a newline to that message."""
+
         sys.stderr.write("*** Error: ")
         sys.stderr.write(s.encode(IO_ENCODING, 'replace'))
         sys.stderr.write(os.linesep)
 
-    #displays an warning message unicode string
-    #and adds a newline
     def warning(self, s):
+        """Displays a warning message unicode string to stderr.
+
+        This appends a newline to that message."""
+
         sys.stderr.write("*** Warning: ")
         sys.stderr.write(s.encode(IO_ENCODING, 'replace'))
         sys.stderr.write(os.linesep)
 
-    #displays the program's usage string to stderr
-    #and adds a newline
     def usage(self, s):
+        """Displays the program's usage unicode string to stderr.
+
+        This appends a newline to that message."""
+
         sys.stderr.write("*** Usage: ")
         sys.stderr.write(self.executable.decode('ascii'))
         sys.stderr.write(" ")
         sys.stderr.write(s.encode(IO_ENCODING, 'replace'))
         sys.stderr.write(os.linesep)
 
-    #takes a filename string and returns a unicode string
-    #decoded according to the system's encoding
     def filename(self, s):
+        """Decodes a filename string to unicode.
+
+        This uses the system's encoding to perform translation."""
+
         return s.decode(FS_ENCODING, 'replace')
 
-    #takes a unicode string and list of ANSI SGR codes
-    #returns an ANSI-escape terminal string
-    #with those codes activated, followed by the unescape code
-    #if the Messenger's stdout to a terminal
-    #otherwise, the string is returned as-is
     def ansi(self, s, codes):
+        """Generates an ANSI code as a unicode string.
+
+        Takes a unicode string to be escaped
+        and a list of ANSI SGR codes.
+        Returns an ANSI-escaped unicode terminal string
+        with those codes activated followed by the unescapde code
+        if the Messenger's stdout is to a tty terminal.
+        Otherwise, the string is returned unmodified.
+
+        For example:
+        >>> VerboseMessenger("audiotools").ansi(u"foo",
+        ...                                     [VerboseMessenger.BOLD])
+        u'\x1b[1mfoo\x1b[0m'
+        """
+
         if (sys.stdout.isatty()):
             return u"\u001B[%sm%s\u001B[0m" % \
                 (";".join(map(unicode, codes)), s)
@@ -368,6 +429,15 @@ class VerboseMessenger:
             return s
 
     def ansi_err(self, s, codes):
+        """Generates an ANSI code as a unicode string.
+
+        Takes a unicode string to be escaped
+        and a list of ANSI SGR codes.
+        Returns an ANSI-escaped unicode terminal string
+        with those codes activated followed by the unescapde code
+        if the Messenger's stderr is to a tty terminal.
+        Otherwise, the string is returned unmodified."""
+
         if (sys.stderr.isatty()):
             return u"\u001B[%sm%s\u001B[0m" % \
                 (";".join(map(unicode, codes)), s)
@@ -377,18 +447,28 @@ class VerboseMessenger:
 
 class SilentMessenger(VerboseMessenger):
     def output(self, s):
+        """Performs no output, resulting in silence."""
+
         pass
 
     def partial_output(self, s):
+        """Performs no output, resulting in silence."""
+
         pass
 
     def warning(self, s):
+        """Performs no output, resulting in silence."""
+
         pass
 
     def info(self, s):
+        """Performs no output, resulting in silence."""
+
         pass
 
     def partial_info(self, s):
+        """Performs no output, resulting in silence."""
+
         pass
 
 
@@ -558,37 +638,43 @@ def filename_to_type(path):
         return TYPE_MAP['wav']
 
 
-#an integer-like class that abstracts a PCMReader's channel assignments
-#All channels in a FrameList will be in RIFF WAVE order
-#as a sensible convention.
-#But which channel corresponds to which speaker is decided by this mask.
-#For example, a 4 channel PCMReader with the channel mask 0x33
-#corresponds to the bits 00110011
-#reading those bits from right to left (least significant first)
-#the "front_left", "front_right", "back_left", "back_right" speakers are set.
-#Therefore, the PCMReader's 4 channel FrameLists are laid out as follows:
-#
-# channel 0 -> front_left
-# channel 1 -> front_right
-# channel 2 -> back_left
-# channel 3 -> back_right
-#
-#since the "front_center" and "low_frequency" bits are not set,
-#those channels are skipped in the returned FrameLists.
-#
-#Many formats store their channels internally in a different order.
-#Their PCMReaders will be expected to reorder channels
-#and set a ChannelMask matching this convention.
-#And, their from_pcm() functions will be expected to reverse the process.
-#
-#A ChannelMask of 0 is "undefined",
-#which means that channels aren't assigned to *any* speaker.
-#This is an ugly last resort for handling formats
-#where multi-channel assignments aren't properly defined.
-#In this case, a from_pcm() method is free to assign the undefined channels
-#any way it likes, and is under no obligation to keep them undefined
-#when passing back out to to_pcm()
+
 class ChannelMask:
+    """An integer-like class that abstracts a PCMReader's channel assignments
+
+    All channels in a FrameList will be in RIFF WAVE order
+    as a sensible convention.
+    But which channel corresponds to which speaker is decided by this mask.
+    For example, a 4 channel PCMReader with the channel mask 0x33
+    corresponds to the bits 00110011
+    reading those bits from right to left (least significant first)
+    the "front_left", "front_right", "back_left", "back_right"
+    speakers are set.
+
+    Therefore, the PCMReader's 4 channel FrameLists are laid out as follows:
+
+    channel 0 -> front_left
+    channel 1 -> front_right
+    channel 2 -> back_left
+    channel 3 -> back_right
+
+    since the "front_center" and "low_frequency" bits are not set,
+    those channels are skipped in the returned FrameLists.
+
+    Many formats store their channels internally in a different order.
+    Their PCMReaders will be expected to reorder channels
+    and set a ChannelMask matching this convention.
+    And, their from_pcm() functions will be expected to reverse the process.
+
+    A ChannelMask of 0 is "undefined",
+    which means that channels aren't assigned to *any* speaker.
+    This is an ugly last resort for handling formats
+    where multi-channel assignments aren't properly defined.
+    In this case, a from_pcm() method is free to assign the undefined channels
+    any way it likes, and is under no obligation to keep them undefined
+    when passing back out to to_pcm()
+    """
+
     SPEAKER_TO_MASK = {"front_left": 0x1,
                        "front_right": 0x2,
                        "front_center": 0x4,
@@ -611,6 +697,8 @@ class ChannelMask:
     MASK_TO_SPEAKER = dict(map(reversed, map(list, SPEAKER_TO_MASK.items())))
 
     def __init__(self, mask):
+        """mask should be an integer channel mask value."""
+
         mask = int(mask)
 
         for (speaker, speaker_mask) in self.SPEAKER_TO_MASK.items():
@@ -641,17 +729,23 @@ class ChannelMask:
         return sum([1 for field in self.SPEAKER_TO_MASK.keys()
                     if getattr(self, field)])
 
-    #returns True if this ChannelMask is defined, False if not
     def defined(self):
+        """Returns True if this ChannelMask is defined."""
+
         return int(self) != 0
 
-    #returns True if this ChannelMask is undefined, False if not
     def undefined(self):
+        """Returns True if this ChannelMask is undefined."""
+
         return int(self) == 0
 
-    #returns a list of speakers this mask contains
-    #in the order in which they should appear in the PCM stream
     def channels(self):
+        """Returns a list of speaker strings this mask contains.
+
+        Returned in the order in which they should appear
+        in the PCM stream.
+        """
+
         c = []
         for (mask, speaker) in sorted(self.MASK_TO_SPEAKER.items(),
                                       lambda x, y: cmp(x[0], y[0])):
@@ -660,15 +754,25 @@ class ChannelMask:
 
         return c
 
-    #returns the index of the given channel name within this mask
-    #for example, given the mask 0xB (fL, fR, LFE, but no fC)
-    #index("low_frequency") will return 2
-    #if the channel is not in this mask, raises ValueError
+
     def index(self, channel_name):
+        """Returns the index of the given channel name within this mask.
+
+        For example, given the mask 0xB (fL, fR, LFE, but no fC)
+        index("low_frequency") will return 2.
+        If the channel is not in this mask, raises ValueError."""
+
         return self.channels().index(channel_name)
 
     @classmethod
     def from_fields(cls, **fields):
+        """Given a set of channel arguments, returns a new ChannelMask.
+
+        For example:
+        >>> ChannelMask.from_fields(front_left=True,front_right=True)
+        ChannelMask(front_right=True,front_left=True)
+        """
+
         mask = cls(0)
 
         for (key, value) in fields.items():
@@ -681,6 +785,11 @@ class ChannelMask:
 
     @classmethod
     def from_channels(cls, channel_count):
+        """Given a channel count, returns a new ChannelMask.
+
+        This is only valid for channel counts 1 and 2.
+        All other values trigger a ValueError."""
+
         if (channel_count == 2):
             return cls(0x3)
         elif (channel_count == 1):
@@ -689,12 +798,31 @@ class ChannelMask:
             raise ValueError("ambiguous channel assignment")
 
 
-#a class that wraps around a file object and generates pcm.FrameList objects
+#
 #sample rate, channels and bits per sample are integers
 class PCMReader:
+    """A class that wraps around a file object and generates pcm.FrameLists"""
+
     def __init__(self, file,
                  sample_rate, channels, channel_mask, bits_per_sample,
                  process=None, signed=True, big_endian=False):
+        """Fields are as follows:
+
+        file            - a file-like object with read() and close() methods
+        sample_rate     - an integer number of Hz
+        channels        - an integer number of channels
+        channel_mask    - an integer channel mask value
+        bits_per_sample - an integer number of bits per sample
+        process         - an optional subprocess object
+        signed          - True if the file's samples are signed integers
+        big_endian      - True if the file's samples are stored big-endian
+
+        The process, signed and big_endian arguments are optional.
+        PCMReader-compatible objects need only expose the
+        sample_rate, channels, channel_mask and bits_per_sample fields
+        along with the read() and close() methods.
+        """
+
         self.file = file
         self.sample_rate = sample_rate
         self.channels = channels
@@ -704,13 +832,17 @@ class PCMReader:
         self.signed = signed
         self.big_endian = big_endian
 
-    #Try to read a FrameList of size "bytes".
-    #This is *not* guaranteed to read exactly that number of bytes.
-    #It may return less (at the end of the stream, especially).
-    #It may return more.
-    #However, it must always return a non-empty FrameList until the
-    #end of the PCM stream is reached.
+
     def read(self, bytes):
+        """Try to read a pcm.FrameList of size "bytes".
+
+        This is *not* guaranteed to read exactly that number of bytes.
+        It may return less (at the end of the stream, especially).
+        It may return more.
+        However, it must always return a non-empty FrameList until the
+        end of the PCM stream is reached.
+        """
+
         bytes -= (bytes % (self.channels * self.bits_per_sample / 8))
         return pcm.FrameList(self.file.read(max(
                     bytes, self.channels * self.bits_per_sample / 8)),
@@ -720,6 +852,10 @@ class PCMReader:
                              self.signed)
 
     def close(self):
+        """Closes the stream for reading.
+
+        Any subprocess is waited for also so for proper cleanup."""
+
         self.file.close()
 
         if (self.process is not None):
@@ -1540,25 +1676,52 @@ class MetaData:
     #should be unicode strings
     #track_number should be an integer
     def __init__(self,
-                 track_name=u"",      # the name of this individual track
-                 track_number=0,      # the number of this track
-                 track_total=0,       # the total number of tracks
-                 album_name=u"",      # the name of this track's album
-                 artist_name=u"",     # the song's original creator/composer
-                 performer_name=u"",  # the song's performing artist
-                 composer_name=u"",   # the song's composer name
-                 conductor_name=u"",  # the song's conductor's name
-                 media=u"",           # the album's media type (CD,tape,etc.)
-                 ISRC=u"",            # the song's ISRC
-                 catalog=u"",         # the album's catalog number
-                 copyright=u"",       # the song's copyright information
-                 publisher=u"",       # the song's publisher
-                 year=u"",            # the album's release year
-                 date=u"",            # the original recording date
-                 album_number=0,      # the disc's volume number, if any
-                 album_total=0,       # the total number of discs, if any
-                 comment=u"",         # the track's comment string
+                 track_name=u"",
+                 track_number=0,
+                 track_total=0,
+                 album_name=u"",
+                 artist_name=u"",
+                 performer_name=u"",
+                 composer_name=u"",
+                 conductor_name=u"",
+                 media=u"",
+                 ISRC=u"",
+                 catalog=u"",
+                 copyright=u"",
+                 publisher=u"",
+                 year=u"",
+                 date=u"",
+                 album_number=0,
+                 album_total=0,
+                 comment=u"",
                  images=None):
+        """Fields are as follows:
+
+        track_name     - the name of this individual track
+        track_number   - the number of this track
+        track_total    - the total number of tracks
+        album_name     - the name of this track's album
+        artist_name    - the song's original creator/composer
+        performer_name - the song's performing artist
+        composer_name  - the song's composer name
+        conductor_name - the song's conductor's name
+        media          - the album's media type (CD,tape,etc.)
+        ISRC           - the song's ISRC
+        catalog        - the album's catalog number
+        copyright      - the song's copyright information
+        publisher      - the song's publisher
+        year           - the album's release year
+        date           - the original recording date
+        album_number   - the disc's volume number, if any
+        album_total    - the total number of discs, if any
+        comment        - the track's comment string
+        images         - a list of Image objects
+
+        track_number, track_total, album_number and album_total are ints.
+        images is an optional list of Image objects.
+        The rest are unicode strings.
+        """
+
         #we're avoiding self.foo = foo because
         #__setattr__ might need to be redefined
         #which could lead to unwelcome side-effects
@@ -1667,13 +1830,18 @@ class MetaData:
     def __ne__(self, metadata):
         return not self.__eq__(metadata)
 
-    #takes a MetaData-compatible object (or None)
-    #returns a new MetaData subclass with the data fields converted
-    #or None if metadata is None or conversion isn't possible
-    #For instance, VorbisComment.converted() returns a VorbisComment
-    #class.  This way, AudioFiles can offload metadata conversions.
+
     @classmethod
     def converted(cls, metadata):
+        """Converts metadata from another class to this one, if necessary.
+
+        Takes a MetaData-compatible object (or None)
+        and returns a new MetaData subclass with the data fields converted
+        or None if metadata is None or conversion isn't possible.
+        For instance, VorbisComment.converted() returns a VorbisComment
+        class.  This way, AudioFiles can offload metadata conversions.
+        """
+
         if (metadata is not None):
             fields = dict([(field, getattr(metadata, field))
                            for field in cls.__FIELDS__])
@@ -1682,54 +1850,89 @@ class MetaData:
         else:
             return None
 
-    #returns True if this particular sort of metadata support images
-    #returns False if not
     @classmethod
     def supports_images(cls):
+        """Returns True if this MetaData class supports embedded images."""
+
         return True
 
     def images(self):
+        """Returns a list of embedded Image objects."""
+
         #must return a copy of our internal array
         #otherwise this will likely not act as expected when deleting
         return self.__images__[:]
 
     def front_covers(self):
+        """Returns a subset of images() which are front covers."""
+
         return [i for i in self.images() if i.type == 0]
 
     def back_covers(self):
+        """Returns a subset of images() which are back covers."""
+
         return [i for i in self.images() if i.type == 1]
 
     def leaflet_pages(self):
+        """Returns a subset of images() which are leaflet pages."""
+
         return [i for i in self.images() if i.type == 2]
 
     def media_images(self):
+        """Returns a subset of images() which are media images."""
+
         return [i for i in self.images() if i.type == 3]
 
     def other_images(self):
+        """Returns a subset of images() which are other images."""
+
         return [i for i in self.images() if i.type == 4]
 
-    #image should be an Image object
-    #this method should also affect the underlying metadata value
-    #(e.g. adding a new Image to FlacMetaData should add another
-    # METADATA_BLOCK_PICTURE block to the metadata)
     def add_image(self, image):
+        """Embeds an Image object in this metadata.
+
+        Implementations of this method should also affect
+        the underlying metadata value
+        (e.g. adding a new Image to FlacMetaData should add another
+        METADATA_BLOCK_PICTURE block to the metadata).
+        """
+
         if (self.supports_images()):
             self.__images__.append(image)
         else:
             raise ValueError(_(u"This MetaData type does not support images"))
 
-    #image should be an existing Image object
-    #this method should also affect the underlying metadata value
-    #(e.g. removing an existing Image from FlacMetaData should
-    # remove that same METADATA_BLOCK_PICTURE block from the metadata)
     def delete_image(self, image):
+        """Deletes an Image object from this metadata.
+
+        Implementations of this method should also affect
+        the underlying metadata value
+        (e.g. removing an existing Image from FlacMetaData should
+        remove that same METADATA_BLOCK_PICTURE block from the metadata).
+        """
+
         if (self.supports_images()):
             self.__images__.pop(self.__images__.index(image))
         else:
             raise ValueError(_(u"This MetaData type does not support images"))
 
-    #updates any currectly empty entries from values taken from "metadata"
     def merge(self, metadata):
+        """Updates any currently empty entries from metadata's values.
+
+        >>> m = MetaData(track_name=u"Track 1",artist_name=u"Artist")
+        >>> m2 = MetaData(track_name=u"Track 2",album_name=u"Album")
+        >>> m.merge(m2)
+        >>> m.track_name
+        u'Track 1'
+        >>> m.artist_name
+        u'Artist'
+        >>> m.album_name
+        u'Album'
+
+        Subclasses of MetaData should implement this method
+        to handle any empty fields their format supports.
+        """
+
         if (metadata is None):
             return
 
@@ -1778,21 +1981,25 @@ class MetaDataFileException(Exception):
 
 #A simple image data container
 class Image:
-    #data is a string of the actual image data file
-    #mime_type is a unicode string of the image's MIME type
-    #width and height are integers of the images' dimensions
-    #color_depth is the full depth of the image in bits
-    #(24 for JPEG, 8 for GIF, etc.)
-    #color_count is the number of colors used for palette images, or 0
-    #description is a unicode string
-    #type is an int
-    #0 = front cover
-    #1 = back cover
-    #2 = leaflet page
-    #3 = media
-    #4 = other
     def __init__(self, data, mime_type, width, height,
                  color_depth, color_count, description, type):
+        """Fields are as follows:
+
+        data - plain string of the actual binary image data
+        mime_type - unicode string of the image's MIME type
+        width - width of image, as integer number of pixels
+        height - height of image, as integer number of pixels
+        color_depth - color depth of image (24 for JPEG, 8 for GIF, etc.)
+        color_count - number of palette colors, or 0
+        description - a unicode string
+        type - an integer type whose values are:
+               0 - front cover
+               1 - back cover
+               2 - leaflet page
+               3 - media
+               4 - other
+        """
+
         self.data = data
         self.mime_type = mime_type
         self.width = width
@@ -1803,6 +2010,11 @@ class Image:
         self.type = type
 
     def suffix(self):
+        """Returns the image's recommended suffix as a plain string.
+
+        For example, an image with mime_type "image/jpeg" return "jpg".
+        """
+
         return {"image/jpeg": "jpg",
                 "image/jpg": "jpg",
                 "image/gif": "gif",
@@ -1811,6 +2023,11 @@ class Image:
                 "image/tiff": "tiff"}.get(self.mime_type, "bin")
 
     def type_string(self):
+        """Returns the image's type as a human readable plain string.
+
+        For example, an image of type 0 returns "Front Cover".
+        """
+
         return {0: "Front Cover",
                 1: "Back Cover",
                 2: "Leaflet Page",
@@ -1829,10 +2046,19 @@ class Image:
                (self.type_string(),
                 self.width, self.height, self.mime_type)
 
-    #returns a new Image object from the data, description and type
-    #raises InvalidImage if there is some error initializing
     @classmethod
     def new(cls, image_data, description, type):
+        """Builds a new Image object from raw data.
+
+        image_data is a plain string of binary image data.
+        description is a unicode string.
+        type as an image type integer.
+
+        The width, height, color_depth and color_count fields
+        are determined by parsing the binary image data.
+        Raises InvalidImage if some error occurs during parsing.
+        """
+
         img = image_metrics(image_data)
 
         return Image(data=image_data,
@@ -1844,8 +2070,13 @@ class Image:
                      description=description,
                      type=type)
 
-    #returns a new Image object in the given width, height and format
     def thumbnail(self, width, height, format):
+        """Returns a new Image object with the given attributes.
+
+        width and height are integers.
+        format is a string such as "JPEG".
+        """
+
         return Image.new(thumbnail_image(self.data, width, height, format),
                          self.description, self.type)
 

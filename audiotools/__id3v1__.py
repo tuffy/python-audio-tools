@@ -21,6 +21,8 @@ from audiotools import MetaData, Con, os
 
 
 class ID3v1Comment(MetaData, list):
+    """A complete ID3v1 tag."""
+
     ID3v1 = Con.Struct("id3v1",
       Con.Const(Con.String("identifier", 3), 'TAG'),
       Con.String("song_title", 30),
@@ -48,13 +50,17 @@ class ID3v1Comment(MetaData, list):
                   'comment',
                   'track_number']
 
-    #takes an MP3 filename
-    #returns a (song title, artist, album, year, comment, track number) tuple
-    #if no ID3v1 tag is present, returns a tuple with those fields blank
-    #all text is in unicode
-    #if track number is -1, the id3v1 comment could not be found
     @classmethod
     def read_id3v1_comment(cls, mp3filename):
+        """Reads a ID3v1Comment data from an MP3 filename.
+
+        Returns a (song title, artist, album, year, comment, track number)
+        tuple.
+        If no ID3v1 tag is present, returns a tuple with those fields blank.
+        All text is in unicode.
+        If track number is -1, the id3v1 comment could not be found.
+        """
+
         mp3file = file(mp3filename, "rb")
         try:
             mp3file.seek(-128, 2)
@@ -79,11 +85,13 @@ class ID3v1Comment(MetaData, list):
         finally:
             mp3file.close()
 
-    #takes several unicode strings (except for track_number, an int)
-    #pads them with nulls and returns a complete ID3v1 tag
     @classmethod
     def build_id3v1(cls, song_title, artist, album, year, comment,
                     track_number):
+        """Turns fields into a complete ID3v1 binary tag string.
+
+        All fields are unicode except for track_number, an int."""
+
         def __s_pad__(s, length):
             if (len(s) < length):
                 return s + chr(0) * (length - len(s))
@@ -103,12 +111,16 @@ class ID3v1Comment(MetaData, list):
 
         return ID3v1Comment.ID3v1.build(c)
 
-    #metadata is the title,artist,album,year,comment,tracknum tuple returned by
-    #read_id3v1_comment
     def __init__(self, metadata):
+        """Initialized with a read_id3v1_comment tuple.
+
+        Fields are (title,artist,album,year,comment,tracknum)"""
+
         list.__init__(self, metadata)
 
     def supports_images(self):
+        """Returns False."""
+
         return False
 
     #if an attribute is updated (e.g. self.track_name)
@@ -142,6 +154,8 @@ class ID3v1Comment(MetaData, list):
 
     @classmethod
     def converted(cls, metadata):
+        """Converts a MetaData object to an ID3v1Comment object."""
+
         if ((metadata is None) or (isinstance(metadata, ID3v1Comment))):
             return metadata
 
@@ -160,6 +174,8 @@ class ID3v1Comment(MetaData, list):
                    self)
 
     def build_tag(self):
+        """Returns a binary string of this tag's data."""
+
         return self.build_id3v1(self.track_name,
                                 self.artist_name,
                                 self.album_name,
@@ -168,4 +184,6 @@ class ID3v1Comment(MetaData, list):
                                 self.track_number)
 
     def images(self):
+        """Returns an empty list of Image objects."""
+
         return []

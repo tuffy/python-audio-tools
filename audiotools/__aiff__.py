@@ -31,6 +31,8 @@ _HUGE_VAL = 1.79769313486231e+308
 
 
 class IEEE_Extended(Con.Adapter):
+    """A construct for handling 80-bit IEEE-extended values."""
+
     def __init__(self, name):
         Con.Adapter.__init__(
             self,
@@ -77,10 +79,14 @@ class IEEE_Extended(Con.Adapter):
 
 
 class AiffException(Exception):
+    """Raised if some problem occurs parsing AIFF chunks."""
+
     pass
 
 
 class AiffAudio(AudioFile):
+    """An implementation of AIFF audio."""
+
     SUFFIX = "aiff"
     NAME = SUFFIX
 
@@ -170,6 +176,8 @@ class AiffAudio(AudioFile):
                 (header[8:12] == 'AIFF'))
 
     def chunks(self):
+        """Yields a (chunk_id,length,offset) per AIFF chunk."""
+
         f = open(self.filename, 'rb')
         try:
             aiff_header = self.AIFF_HEADER.parse_stream(f)
@@ -190,6 +198,8 @@ class AiffAudio(AudioFile):
         f.close()
 
     def comm_chunk(self):
+        """Returns (channels,pcm_frames,bits_per_sample,sample_rate) ."""
+
         for (chunk_id, chunk_length, chunk_offset) in self.chunks():
             if (chunk_id == 'COMM'):
                 f = open(self.filename, 'rb')
@@ -204,6 +214,10 @@ class AiffAudio(AudioFile):
             raise AiffException(_(u"COMM chunk not found"))
 
     def chunk_files(self):
+        """Yields a (chunk_id,length,file) per AIFF chunk.
+
+        The file object is capped to read only its chunk data."""
+
         f = open(self.filename, 'rb')
         try:
             aiff_header = self.AIFF_HEADER.parse_stream(f)
@@ -444,6 +458,8 @@ class AiffAudio(AudioFile):
 
 
 class AIFFChannelMask(ChannelMask):
+    """The AIFF-specific channel mapping."""
+
     def __repr__(self):
         return "AIFFChannelMask(%s)" % \
             ",".join(["%s=%s" % (field, getattr(self, field))
@@ -451,6 +467,12 @@ class AIFFChannelMask(ChannelMask):
                       if (getattr(self, field))])
 
     def channels(self):
+        """Returns a list of speaker strings this mask contains.
+
+        Returned in the order in which they should appear
+        in the PCM stream.
+        """
+
         count = len(self)
         if (count == 1):
             return ["front_center"]
