@@ -1266,42 +1266,42 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [X] OggFlacAudio.from_pcm
      - [X] OggFlacAudio.sub_pcm_tracks
      - [X] OggFlacAudio.supports_foreign_riff_chunks
-*** TODO __freedb__.py
+*** DONE __freedb__.py
 **** DONE adjust syntax
-**** TODO add docstrings
-     - [ ] XMCDException
-     - [ ] XMCD
-     - [ ] XMCD.key_digits
-     - [ ] XMCD.build
-     - [ ] XMCD.read
-     - [ ] XMCD.read_data
-     - [ ] XMCD.from_files
-     - [ ] XMCD.from_cuesheet
-     - [ ] XMCD.metadata
-     - [ ] DiscID
-     - [ ] DiscID.from_cdda
-     - [ ] DiscID.add
-     - [ ] DiscID.offsets
-     - [ ] DiscID.length
-     - [ ] DiscID.idsuffix
-     - [ ] DiscID.freedb_id
-     - [ ] DiscID.toxmcd
-     - [ ] FreeDBException
-     - [ ] FreeDB
-     - [ ] FreeDB.connect
-     - [ ] FreeDB.close
-     - [ ] FreeDB.write
-     - [ ] FreeDB.read
-     - [ ] FreeDB.query
-     - [ ] FreeDB.read_data
-     - [ ] FreeDBWeb
-     - [ ] FreeDBWeb.connect
-     - [ ] FreeDBWeb.close
-     - [ ] FreeDBWeb.write
-     - [ ] FreeDBWeb.read
-     - [ ] FreeDBWeb.query
-     - [ ] FreeDBWeb.read_data
-     - [ ] get_xmcd
+**** DONE add docstrings
+     - [X] XMCDException
+     - [X] XMCD
+     - [X] XMCD.key_digits
+     - [X] XMCD.build
+     - [X] XMCD.read
+     - [X] XMCD.read_data
+     - [X] XMCD.from_files
+     - [X] XMCD.from_cuesheet
+     - [X] XMCD.metadata
+     - [X] DiscID
+     - [X] DiscID.from_cdda
+     - [X] DiscID.add
+     - [X] DiscID.offsets
+     - [X] DiscID.length
+     - [X] DiscID.idsuffix
+     - [X] DiscID.freedb_id
+     - [X] DiscID.toxmcd
+     - [X] FreeDBException
+     - [X] FreeDB
+     - [X] FreeDB.connect
+     - [X] FreeDB.close
+     - [X] FreeDB.write
+     - [X] FreeDB.read
+     - [X] FreeDB.query
+     - [X] FreeDB.read_data
+     - [X] FreeDBWeb
+     - [X] FreeDBWeb.connect
+     - [X] FreeDBWeb.close
+     - [X] FreeDBWeb.write
+     - [X] FreeDBWeb.read
+     - [X] FreeDBWeb.query
+     - [X] FreeDBWeb.read_data
+     - [X] get_xmcd
 *** DONE __id3__.py
 **** DONE adjust syntax
 **** DONE add docstrings
@@ -1704,28 +1704,28 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [X] MusepackAudio.channels
      - [X] MusepackAudio.bits_per_sample
      - [X] MusepackAudio.lossless
-*** TODO __musicbrainz__.py
+*** DONE __musicbrainz__.py
 **** DONE adjust syntax
-**** TODO add docstrings
-     - [ ] get_xml_nodes
-     - [ ] get_xml_text_node
-     - [ ] reorder_xml_children
-     - [ ] MBDiscID
-     - [ ] MBDiscID.from_cdda
-     - [ ] MBDiscID.offsets
-     - [ ] MusicBrainz
-     - [ ] MusicBrainz.connect
-     - [ ] MusicBrainz.close
-     - [ ] MusicBrainz.read_data
-     - [ ] MBXMLException
-     - [ ] MusicBrainzReleaseXML
-     - [ ] MusicBrainzReleaseXML.read
-     - [ ] MusicBrainzReleaseXML.read_data
-     - [ ] MusicBrainzReleaseXML.metadata
-     - [ ] MusicBrainzReleaseXML.from_files
-     - [ ] MusicBrainzReleaseXML.from_cuesheet
-     - [ ] MusicBrainzReleaseXML.build
-     - [ ] get_mbxml
+**** DONE add docstrings
+     - [X] get_xml_nodes
+     - [X] get_xml_text_node
+     - [X] reorder_xml_children
+     - [X] MBDiscID
+     - [X] MBDiscID.from_cdda
+     - [X] MBDiscID.offsets
+     - [X] MusicBrainz
+     - [X] MusicBrainz.connect
+     - [X] MusicBrainz.close
+     - [X] MusicBrainz.read_data
+     - [X] MBXMLException
+     - [X] MusicBrainzReleaseXML
+     - [X] MusicBrainzReleaseXML.read
+     - [X] MusicBrainzReleaseXML.read_data
+     - [X] MusicBrainzReleaseXML.metadata
+     - [X] MusicBrainzReleaseXML.from_files
+     - [X] MusicBrainzReleaseXML.from_cuesheet
+     - [X] MusicBrainzReleaseXML.build
+     - [X] get_mbxml
 *** DONE __shn__.py
 **** DONE adjust syntax
 **** DONE add docstrings

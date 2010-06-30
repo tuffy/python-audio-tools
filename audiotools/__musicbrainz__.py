@@ -26,22 +26,28 @@ gettext.install("audiotools", unicode=True)
 
 
 def get_xml_nodes(parent, child_tag):
+    """A helper routine for returning all children with the given XML tag."""
+
     return [node for node in parent.childNodes
             if (hasattr(node, "tagName") and
                 (node.tagName == child_tag))]
 
 
 def get_xml_text_node(parent, child_tag):
+    """A helper routine for returning the first text child XML node."""
+
     try:
         return get_xml_nodes(parent, child_tag)[0].childNodes[0].data.strip()
     except IndexError:
         return u''
 
 
-#parent is an element with childNodes
-#child_order is a list of unicode tag name strings
-#alters parent's childNodes to match the given order
 def reorder_xml_children(parent, child_order):
+    """Given an XML element with childNodes, reorders them to child_order.
+
+    child_order should be a list of unicode tag strings.
+    """
+
     if (parent.childNodes is None):
         return
 
@@ -74,14 +80,26 @@ def reorder_xml_children(parent, child_order):
 
 
 class MBDiscID:
-    #tracks is a list of track lengths in CD frames
-    #offsets, if present, is a list of track offsets in CD frames
-    #length, if present, is the length of the entire disc in CD frames
-    #lead_in is the location of the first track on the CD, in frames
-    #first_track_number, last_track_number and lead_out_track_offset are ints
+    """A MusicBrainz disc ID."""
+
+
     def __init__(self, tracks=[], offsets=None, length=None, lead_in=150,
                  first_track_number=None, last_track_number=None,
                  lead_out_track_offset=None):
+        """Fields are as follows:
+
+        tracks  - a list of track lengths in CD frames
+        offsets -  a list of track offsets in CD frames
+        length  - the length of the entire disc in CD frames
+        lead_in - the location of the first track on the CD, in frames
+
+        first_track_number, last_track_number and lead_out_track_offset
+        are integer values.
+
+        All fields are optional.
+        One will presumably fill them with data later in that event.
+        """
+
         self.tracks = tracks
         self.__offsets__ = offsets
         self.__length__ = length
@@ -92,6 +110,8 @@ class MBDiscID:
 
     @classmethod
     def from_cdda(cls, cdda):
+        """Given a CDDA object, returns a populated MBDiscID."""
+
         tracks = list(cdda)
 
         return cls(
@@ -102,6 +122,8 @@ class MBDiscID:
             lead_out_track_offset=cdda.last_sector() + 150 + 1)
 
     def offsets(self):
+        """Returns a list of calculated offset integers, from track lengths."""
+
         if (self.__offsets__ is None):
             offsets = [self.__lead_in__]
 
@@ -158,6 +180,8 @@ class MBDiscID:
                         digest.digest().encode('base64').rstrip('\n')])
 
     def toxml(self, output):
+        """Writes an XML file to the output file object."""
+
         output.write(MusicBrainzReleaseXML.from_files(
                 [DummyAudioFile(length, None, i + 1)
                  for (i, length) in enumerate(self.tracks)]).build())
@@ -205,13 +229,16 @@ class MusicBrainz:
             return (0, None)
 
 
-#thrown if MusicBrainzReleaseXML.read() encounters an error
 class MBXMLException(MetaDataFileException):
+    """Raised if MusicBrainzReleaseXML.read() encounters an error."""
+
     def __unicode__(self):
         return _(u"Invalid MusicBrainz XML file")
 
 
 class MusicBrainzReleaseXML:
+    """An XML file as returned by MusicBrainz."""
+
     TAG_ORDER = {u"release": [u"title",
                               u"text-representation",
                               u"asin",
@@ -249,13 +276,18 @@ class MusicBrainzReleaseXML:
                             u"rating",
                             u"user-rating"]}
 
-    #dom should be a DOM object such as xml.dom.minidom.Document
-    #of a MusicBrainz Release entry
+
     def __init__(self, dom):
+        """dom should be a DOM object such as xml.dom.minidom.Document."""
+
         self.dom = dom
 
     @classmethod
     def read(cls, filename):
+        """Given an XML filename, returns a MusicBrainzReleaseXML object.
+
+        May raise MBXMLException."""
+
         from xml.dom.minidom import parse
         from xml.parsers.expat import ExpatError
 
@@ -266,6 +298,10 @@ class MusicBrainzReleaseXML:
 
     @classmethod
     def read_data(cls, data):
+        """Given a file object, returns a MusicBrainzReleaseXML object.
+
+        May raise MBXMLException."""
+
         from xml.dom.minidom import parseString
         from xml.parsers.expat import ExpatError
 
@@ -275,6 +311,8 @@ class MusicBrainzReleaseXML:
             raise MBXMLException("")
 
     def metadata(self):
+        """Returns an AlbumMetaData object."""
+
         def get_track_metadata(track_node,
                                album_metadata,
                                track_number):
@@ -330,11 +368,14 @@ class MusicBrainzReleaseXML:
                                                  track_number=i + 1)
                               for (i, node) in enumerate(tracks)])
 
-    #audiofiles should be a list of AudioFile-compatible objects
-    #from the same album, possibly with valid MetaData
-    #returns a MusicBrainzReleaseXML object with populated DOM
     @classmethod
     def from_files(cls, audiofiles):
+        """Returns a MusicBrainzReleaseXML from a list of AudioFile objects.
+
+        These objects are presumably from the same album.
+        If not, these heuristics may generate something unexpected.
+        """
+
         from xml.dom.minidom import parseString
 
         def make_text_node(document, tagname, text):
@@ -432,6 +473,15 @@ class MusicBrainzReleaseXML:
 
     @classmethod
     def from_cuesheet(cls, cuesheet, total_frames, sample_rate, metadata=None):
+        """Generates a MusicBrainzReleaseXML object from a cuesheet.
+
+        This must also include a total_frames and sample_rate integer.
+        This works by generating a set of empty tracks and calling
+        the from_tracks() method to build an XMCD file with
+        the proper placeholders.
+        metadata, if present, is applied to all tracks.
+        """
+
         if (metadata is None):
             metadata = MetaData()
 
@@ -442,6 +492,8 @@ class MusicBrainzReleaseXML:
                     cuesheet.pcm_lengths(total_frames))])
 
     def build(self):
+        """Returns the entire MusicBrainzReleaseXML file as a string."""
+
         for (tag, order) in MusicBrainzReleaseXML.TAG_ORDER.items():
             for parent in self.dom.getElementsByTagName(tag):
                 reorder_xml_children(parent, order)
@@ -487,13 +539,19 @@ def __select_default_match__(dom, selection):
     return dom
 
 
-#takes a MBDiscID value and a file handle for output
-#and runs the entire MusicBrainz querying sequence
-#the file handle is closed at the conclusion of this function
-#if at least one match is found
-#returns the number of matches
 def get_mbxml(disc_id, output, musicbrainz_server, musicbrainz_port,
               messenger, default_selection=None):
+    """Runs through the entire MusicBrainz querying sequence.
+
+    Fields are as follows:
+    disc_id            - an MBDiscID object
+    output             - an open file object for writing
+    musicbrainz_server - a server name string
+    musicbrainz_port   - a server port int
+    messenger          - a Messenger object
+    default_selection  - if given, the default match to choose
+    """
+
     mb = MusicBrainz(musicbrainz_server, musicbrainz_port, messenger)
 
     mb.connect()
