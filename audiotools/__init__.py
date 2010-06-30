@@ -796,8 +796,6 @@ class ChannelMask:
             raise ValueError("ambiguous channel assignment")
 
 
-#
-#sample rate, channels and bits per sample are integers
 class PCMReader:
     """A class that wraps around a file object and generates pcm.FrameLists"""
 
@@ -937,6 +935,9 @@ def threaded_transfer_framelist_data(pcmreader, to_function,
         to_function(s)
         s = data_queue.get()
 
+
+
+#FIXME - delete this if no one is using it
 
 #takes a wave-compatible object with a readframes() method
 #maps it to something PCMReader compatible
@@ -1129,7 +1130,11 @@ class __buffer__:
 
 
 class BufferedPCMReader:
+    """A PCMReader which reads exact counts of bytes."""
+
     def __init__(self, pcmreader):
+        """pcmreader is a regular PCMReader object."""
+
         self.pcmreader = pcmreader
         self.sample_rate = pcmreader.sample_rate
         self.channels = pcmreader.channels
@@ -1139,10 +1144,18 @@ class BufferedPCMReader:
         self.reader_finished = False
 
     def close(self):
+        """Closes the sub-pcmreader and frees our internal buffer."""
+
         del(self.buffer)
         self.pcmreader.close()
 
     def read(self, bytes):
+        """Reads as close to "bytes" number of bytes without going over.
+
+        This uses an internal buffer to ensure reading the proper
+        number of bytes on each call.
+        """
+
         #fill our buffer to at least "bytes", possibly more
         self.__fill__(bytes)
         output_framelist = self.buffer.framelist()
@@ -2536,7 +2549,16 @@ class AudioFile:
 
 
 class DummyAudioFile(AudioFile):
+    """A placeholder AudioFile object with external data."""
+
     def __init__(self, length, metadata, track_number=0):
+        """Fields are as follows:
+
+        length       - the dummy track's length, in CD frames
+        metadata     - a MetaData object
+        track_number - the track's number on CD, starting from 1
+        """
+
         self.__length__ = length
         self.__metadata__ = metadata
         self.__track_number__ = track_number
@@ -2544,18 +2566,30 @@ class DummyAudioFile(AudioFile):
         AudioFile.__init__(self, "")
 
     def get_metadata(self):
+        """Returns a MetaData object, or None."""
+
         return self.__metadata__
 
     def cd_frames(self):
+        """Returns the total length of the track in CD frames.
+
+        Each CD frame is 1/75th of a second."""
+
         return self.__length__
 
     def track_number(self):
+        """Returns this track's number as an integer."""
+
         return self.__track_number__
 
     def sample_rate(self):
+        """Returns 44100."""
+
         return 44100
 
     def total_frames(self):
+        """Returns the total PCM frames of the track as an integer."""
+
         return (self.cd_frames() * self.sample_rate()) / 75
 
 ###########################
@@ -2663,6 +2697,14 @@ from __shn__ import *
 #there's simply no way to accomplish that cleanly
 
 def CDDA(device_name, speed=None):
+    """Given a device name string and speed int, returns a CDDA object.
+
+    This object depends on whether the user has specified
+    a CDDA read offset or not.
+    If not, this returns a RawCDDA.
+    Otherwise, it returns an OffsetCDTrackReader.
+    """
+
     offset = config.getint_default("System", "cdrom_read_offset", 0)
     if (offset == 0):
         return RawCDDA(device_name, speed)
@@ -2671,7 +2713,11 @@ def CDDA(device_name, speed=None):
 
 
 class RawCDDA:
+    """A CDDA device which contains CDTrackReader objects."""
+
     def __init__(self, device_name, speed=None):
+        """device_name is a string, speed is an optional int."""
+
         import cdio
         self.cdda = cdio.CDDA(device_name)
         self.total_tracks = len([track_type for track_type in
@@ -2695,24 +2741,37 @@ class RawCDDA:
             yield self[i]
 
     def length(self):
+        """Returns the length of the CD in CD frames."""
+
         #lead-in should always be 150
         return self.last_sector() + 150 + 1
 
     def close(self):
+        """Closes the CDDA device."""
+
         pass
 
     def first_sector(self):
+        """Returns the first sector's location, in CD frames."""
+
         return self.cdda.first_sector()
 
     def last_sector(self):
+        """Returns the last sector's location, in CD frames."""
+
         return self.cdda.last_sector()
 
 
-#a RawCDDA-compatible class which automatically applies sample offsets
-#note that this blocks for a *long* time at instantiation time
-#as it reads the whole CD to a temp file and applies the proper offset
 class OffsetCDDA(RawCDDA):
+    """A CDDA device which automatically applies sample offsets.
+
+    Note that this blocks for a *long* time at instantiation time
+    as it reads the whole CD to a temp file and applies the proper offset.
+    """
+
     def __init__(self, device_name, sample_offset, speed=None):
+        """device_name is a string, sample_offset is a PCM frames value."""
+
         import cdio
         import tempfile
 
@@ -2756,10 +2815,16 @@ class OffsetCDDA(RawCDDA):
         return self.__tracks__[key]
 
     def close(self):
+        """Closes the CDDA device.
+
+        In the case of OffsetCDDA, this closes the temporary space also."""
+
         self.__temp__.close()
 
 
 class CDTrackLog(dict):
+    """A container for CD reading log information, implemented as a dict."""
+
     #PARANOIA_CB_READ           Read off adjust ???
     #PARANOIA_CB_VERIFY         Verifying jitter
     #PARANOIA_CB_FIXUP_EDGE     Fixed edge jitter
@@ -2790,9 +2855,11 @@ class CDTrackLog(dict):
 
 
 class CDTrackReader(PCMReader):
-    #cdda is a cdio.CDDA object
-    #track_number is which track this is from the disc, starting from 1
+    """A PCMReader-compatible object which reads from CDDA."""
+
     def __init__(self, cdda, track_number):
+        """cdda is a cdio.CDDA object.  track_number is offset from 1."""
+
         PCMReader.__init__(
             self, None,
             sample_rate=44100,
@@ -2812,12 +2879,20 @@ class CDTrackReader(PCMReader):
         self.rip_log = CDTrackLog()
 
     def offset(self):
+        """Returns this track's CD offset, in CD frames."""
+
         return self.__start__ + 150
 
     def length(self):
+        """Returns this track's length, in CD frames."""
+
         return self.__end__ - self.__start__ + 1
 
     def log(self, i, v):
+        """Adds a log entry to the track's rip_log.
+
+        This is meant to be called from CD reading callbacks."""
+
         if v in self.rip_log:
             self.rip_log[v] += 1
         else:
@@ -2841,18 +2916,37 @@ class CDTrackReader(PCMReader):
             return pcm.from_list([], 2, 16, True)
 
     def read(self, bytes):
+        """Try to read a pcm.FrameList of size "bytes".
+
+        For CD reading, this will be a sector-aligned number."""
+
         #returns a sector-aligned number of bytes
         #(divisible by 2352 bytes, basically)
         #or at least 1 sector's worth, if "bytes" is too small
         return self.__read_sectors__(max(bytes / 2352, 1))
 
     def close(self):
+        """Closes the CD track for reading."""
+
         pass
 
 
 class OffsetCDTrackReader(PCMReader):
+    """A PCMReader-compatible object which reads from CDDA.
+
+    This version automatically applies read sector offsets."""
+
     def __init__(self, track_number, temp_file,
                  byte_offset, sector_start, sector_end):
+        """Fields are:
+
+        track_number - an integer starting from 1
+        temp_file    - a temporary file to read CDDA data from
+        byte_offset  - the offset to start from, in bytes
+        sector_start - the starting CD sector
+        sector_end   - the ending CD sector
+        """
+
         PCMReader.__init__(
             self, None,
             sample_rate=44100,
@@ -2872,18 +2966,30 @@ class OffsetCDTrackReader(PCMReader):
         self.__cursor_placed__ = False
 
     def offset(self):
+        """Returns this track's CD offset, in CD frames."""
+
         return self.__start__ + 150
 
     def length(self):
+        """Returns this track's length, in CD frames."""
+
         return self.__end__ - self.__start__ + 1
 
     def log(self, i, v):
+        """Adds a log entry to the track's rip_log.
+
+        This is meant to be called from CD reading callbacks."""
+
         if v in self.rip_log:
             self.rip_log[v] += 1
         else:
             self.rip_log[v] = 1
 
     def read(self, bytes):
+        """Try to read a pcm.FrameList of size "bytes".
+
+        For CD reading, this will be a sector-aligned number."""
+
         if (bytes % 4):
             bytes -= (bytes % 4)
 
@@ -2900,6 +3006,8 @@ class OffsetCDTrackReader(PCMReader):
             return pcm.FrameList("", 2, 16, False, True)
 
     def close(self):
+        """Closes the CD track for reading."""
+
         self.__cursor_placed__ = False
 
 
@@ -2947,11 +3055,15 @@ def read_metadata_file(filename):
 
 
 class ExecQueue:
+    """A class for running multiple jobs in parallel."""
+
     def __init__(self):
         self.todo = []
         self.return_values = set([])
 
     def execute(self, function, args, kwargs=None):
+        """Queues the given function with argument list and kwargs dict."""
+
         self.todo.append((function, args, kwargs))
 
     def __run__(self, function, args, kwargs):
@@ -2965,9 +3077,15 @@ class ExecQueue:
                 function(*args)
             sys.exit(0)
 
-    #performs the queued actions in seperate subprocesses
-    #"max_processes" number of times until the todo list is empty
     def run(self, max_processes=1):
+        """Performs the queued functions in separate subprocesses.
+
+        This runs "max_processes" number of functions at a time.
+        It works by spawning a new child process for each function,
+        executing it and spawning a new child as each one exits.
+        Therefore, any side effects beyond altering files on
+        disk do not propogate back to the parent."""
+
         process_pool = set([])
 
         #fill the process_pool to the limit

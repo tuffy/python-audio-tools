@@ -1478,10 +1478,9 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [ ] PCMCat
      - [ ] PCMCat.read
      - [ ] PCMCat.close
-     - [ ] BufferedPCMReader
-     - [ ] BufferedPCMReader.close
-     - [ ] BufferedPCMReader.read
-     - [ ] BufferedPCMReader.__fill__
+     - [X] BufferedPCMReader
+     - [X] BufferedPCMReader.close
+     - [X] BufferedPCMReader.read
      - [ ] pcm_split
      - [ ] PCMConverter
      - [ ] PCMConverter.read
@@ -1543,43 +1542,43 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [X] AudioFile.set_cuesheet
      - [X] AudioFile.get_cuesheet
      - [X] AudioFile.has_binaries
-     - [ ] DummyAudioFile
-     - [ ] DummyAudioFile.get_metadata
-     - [ ] DummyAudioFile.cd_frames
-     - [ ] DummyAudioFile.track_number
-     - [ ] DummyAudioFile.sample_rate
-     - [ ] DummyAudioFile.total_frames
+     - [X] DummyAudioFile
+     - [X] DummyAudioFile.get_metadata
+     - [X] DummyAudioFile.cd_frames
+     - [X] DummyAudioFile.track_number
+     - [X] DummyAudioFile.sample_rate
+     - [X] DummyAudioFile.total_frames
      - [ ] SheetException
      - [ ] read_sheet
      - [ ] parse_timestamp
      - [ ] build_timestamp
      - [ ] sheet_to_unicode
      - [ ] at_a_time
-     - [ ] CDDA
-     - [ ] RawCDDA
-     - [ ] RawCDDA.length
-     - [ ] RawCDDA.close
-     - [ ] RawCDDA.first_sector
-     - [ ] RawCDDA.last_sector
-     - [ ] OffsetCDDA
-     - [ ] OffsetCDDA.close
-     - [ ] CDTrackLog
-     - [ ] CDTrackReader
-     - [ ] CDTrackReader.offset
-     - [ ] CDTrackReader.length
-     - [ ] CDTrackReader.log
-     - [ ] CDTrackReader.read
-     - [ ] CDTrackReader.close
-     - [ ] OffsetCDTrackReader
-     - [ ] OffsetCDTrackReader.offset
-     - [ ] OffsetCDTrackReader.length
-     - [ ] OffsetCDTrackReader.log
-     - [ ] OffsetCDTrackReader.read
-     - [ ] OffsetCDTrackReader.close
+     - [X] CDDA
+     - [X] RawCDDA
+     - [X] RawCDDA.length
+     - [X] RawCDDA.close
+     - [X] RawCDDA.first_sector
+     - [X] RawCDDA.last_sector
+     - [X] OffsetCDDA
+     - [X] OffsetCDDA.close
+     - [X] CDTrackLog
+     - [X] CDTrackReader
+     - [X] CDTrackReader.offset
+     - [X] CDTrackReader.length
+     - [X] CDTrackReader.log
+     - [X] CDTrackReader.read
+     - [X] CDTrackReader.close
+     - [X] OffsetCDTrackReader
+     - [X] OffsetCDTrackReader.offset
+     - [X] OffsetCDTrackReader.length
+     - [X] OffsetCDTrackReader.log
+     - [X] OffsetCDTrackReader.read
+     - [X] OffsetCDTrackReader.close
      - [ ] read_metadata_file
-     - [ ] ExecQueue
-     - [ ] ExecQueue.execute
-     - [ ] ExecQueue.run
+     - [X] ExecQueue
+     - [X] ExecQueue.execute
+     - [X] ExecQueue.run
      - [ ] BitstreamReader
      - [ ] BitstreamReader.byte_align
      - [ ] BitstreamReader.read
@@ -1861,35 +1860,35 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 **** DONE adjust syntax
 **** TODO add docstrings
      - [ ] cue.py
-     - [ ] CueException
-     - [ ] tokens
-     - [ ] get_value
-     - [ ] parse
-     - [ ] Cuesheet
-     - [ ] Cuesheet.catalog
-     - [ ] Cuesheet.single_file_type
-     - [ ] Cuesheet.indexes
-     - [ ] Cuesheet.pcm_lengths
-     - [ ] Cuesheet.ISRCs
-     - [ ] Cuesheet.file
-     - [ ] Track
-     - [ ] Track.ISRC
-     - [ ] read_cuesheet
+     - [X] CueException
+     - [X] tokens
+     - [X] get_value
+     - [X] parse
+     - [X] Cuesheet
+     - [X] Cuesheet.catalog
+     - [X] Cuesheet.single_file_type
+     - [X] Cuesheet.indexes
+     - [X] Cuesheet.pcm_lengths
+     - [X] Cuesheet.ISRCs
+     - [X] Cuesheet.file
+     - [X] Track
+     - [X] Track.ISRC
+     - [X] read_cuesheet
 *** TODO toc.py
 **** DONE adjust syntax
 **** TODO add docstrings
      - [ ] toc.py
-     - [ ] TOCException
-     - [ ] parse
-     - [ ] TOCFile
-     - [ ] TOCFile.catalog
-     - [ ] TOCFile.indexes
-     - [ ] TOCFile.pcm_lengths
-     - [ ] TOCFile.ISRCs
-     - [ ] TOCFile.file
-     - [ ] Track
-     - [ ] Track.ISRC
-     - [ ] read_tocfile
+     - [X] TOCException
+     - [X] parse
+     - [X] TOCFile
+     - [X] TOCFile.catalog
+     - [X] TOCFile.indexes
+     - [X] TOCFile.pcm_lengths
+     - [X] TOCFile.ISRCs
+     - [X] TOCFile.file
+     - [X] Track
+     - [X] Track.ISRC
+     - [X] read_tocfile
 ** TODO Update utilities
    - [ ] audiotools-config
    - [ ] cd2track
