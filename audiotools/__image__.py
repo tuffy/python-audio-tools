@@ -35,10 +35,12 @@ def __jpeg__(h, f):
 imghdr.tests.append(__jpeg__)
 
 
-#takes a string of file data
-#returns an ImageMetrics class if the file can be identified
-#raises InvalidImage if there is an error or the file is unknown
 def image_metrics(file_data):
+    """Returns an ImageMetrics subclass from a string of file data.
+
+    Raises InvalidImage if there is an error parsing the file
+    or its type is unknown."""
+
     header = imghdr.what(None, file_data)
 
     file = cStringIO.StringIO(file_data)
@@ -65,7 +67,23 @@ def image_metrics(file_data):
 
 
 class ImageMetrics:
+    """A container for image data."""
+
     def __init__(self, width, height, bits_per_pixel, color_count, mime_type):
+        """Fields are as follows:
+
+        width          - image width as an integer number of pixels
+        height         - image height as an integer number of pixels
+        bits_per_pixel - the number of bits per pixel as an integer
+        color_count    - for palette-based images, the total number of colors
+        mime_type      - the image's MIME type, as a string
+
+        All of the ImageMetrics subclasses implement these fields.
+        In addition, they all implement a parse() classmethod
+        used to parse binary string data and return something
+        ImageMetrics compatible.
+        """
+
         self.width = width
         self.height = height
         self.bits_per_pixel = bits_per_pixel
@@ -82,6 +100,8 @@ class ImageMetrics:
 
 
 class InvalidImage(Exception):
+    """Raised if an image cannot be parsed correctly."""
+
     def __init__(self, err):
         self.err = unicode(err)
 
@@ -90,6 +110,8 @@ class InvalidImage(Exception):
 
 
 class InvalidJPEG(InvalidImage):
+    """Raised if a JPEG cannot be parsed correctly."""
+
     pass
 
 
@@ -163,6 +185,8 @@ class __JPEG__(ImageMetrics):
 
 
 class InvalidPNG(InvalidImage):
+    """Raised if a PNG cannot be parsed correctly."""
+
     pass
 
 
@@ -240,6 +264,8 @@ class __PNG__(ImageMetrics):
 
 
 class InvalidBMP(InvalidImage):
+    """Raised if a BMP cannot be parsed correctly."""
+
     pass
 
 
@@ -288,6 +314,8 @@ class __BMP__(ImageMetrics):
 
 
 class InvalidGIF(InvalidImage):
+    """Raised if a GIF cannot be parsed correctly."""
+
     pass
 
 
@@ -330,6 +358,8 @@ class __GIF__(ImageMetrics):
 
 
 class InvalidTIFF(InvalidImage):
+    """Raised if a TIFF cannot be parsed correctly."""
+
     pass
 
 
@@ -457,9 +487,9 @@ class __TIFF__(ImageMetrics):
             raise InvalidTIFF(_(u'Invalid TIFF'))
 
 
-#returns True if we have the capability to thumbnail images
-#False if not
 def can_thumbnail():
+    """Returns True if we have the capability to thumbnail images."""
+
     try:
         import Image as PIL_Image
         return True
@@ -467,8 +497,9 @@ def can_thumbnail():
         return False
 
 
-#returns a list of available thumbnail image formats
 def thumbnail_formats():
+    """Returns a list of available thumbnail image formats."""
+
     import Image as PIL_Image
     import cStringIO
 
@@ -478,12 +509,14 @@ def thumbnail_formats():
     return PIL_Image.SAVE.keys()
 
 
-#takes a string of raw image data
-#along with width and height integers
-#and an image format string
-#returns a new image data string in the given format
-#no larger than the given width and height
 def thumbnail_image(image_data, width, height, format):
+    """Generates a new, smaller image from a larger one.
+
+    image_data is a binary string.
+    width and height are the requested maximum values.
+    format as a binary string, such as 'JPEG'.
+    """
+
     import cStringIO
     import Image as PIL_Image
     import ImageFile as PIL_ImageFile

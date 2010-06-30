@@ -209,6 +209,8 @@ def __remove_qt_atom__(qt_atom, atom_name):
 
 
 class M4AAudio_faac(AudioFile):
+    """An M4A audio file using faac/faad binaries for I/O."""
+
     SUFFIX = "m4a"
     NAME = SUFFIX
     DEFAULT_COMPRESSION = "100"
@@ -586,6 +588,8 @@ class M4AAudio_faac(AudioFile):
 
 
 class M4AAudio_nero(M4AAudio_faac):
+    """An M4A audio file using neroAacEnc/neroAacDec binaries for I/O."""
+
     DEFAULT_COMPRESSION = "0.5"
     COMPRESSION_MODES = ("0.0", "0.1", "0.2", "0.3", "0.4", "0.5",
                          "0.6", "0.7", "0.8", "0.9", "1.0")
@@ -707,19 +711,22 @@ else:
     M4AAudio = M4AAudio_faac
 
 
-#This is an ILST sub-atom, which itself is a container for other atoms.
-#For human-readable fields, those will contain a single DATA sub-atom
-#containing the data itself.
-#For instance:
-#
-#'ilst' atom
-#  |
-#  +-'\xa9nam' atom
-#        |
-#        +-'data' atom
-#            |
-#            +-'\x00\x00\x00\x01\x00\x00\x00\x00Track Name' data
 class ILST_Atom:
+    """An ILST sub-atom, which itself is a container for other atoms.
+
+    For human-readable fields, those will contain a single DATA sub-atom
+    containing the data itself.
+    For instance:
+
+    'ilst' atom
+      |
+      +-'\xa9nam' atom
+            |
+            +-'data' atom
+               |
+               +-'\x00\x00\x00\x01\x00\x00\x00\x00Track Name' data
+    """
+
     #type is a string
     #sub_atoms is a list of __Qt_Atom__-compatible sub-atom objects
     def __init__(self, type, sub_atoms):
@@ -778,19 +785,21 @@ class ILST_Atom:
 
 
 class M4AMetaData(MetaData, dict):
-    #meta atoms are typically laid out like:
-    #
-    #meta
-    #  |-hdlr
-    #  |-ilst
-    #  |   |- nam
-    #  |   |   \-data
-    #  |   \-trkn
-    #  |       \-data
-    #  \-free
-    #
-    #where the stuff we're interested in is in ilst
-    #and its data grandchild atoms
+    """meta atoms are typically laid out like:
+
+    meta
+      |-hdlr
+      |-ilst
+      |   |- nam
+      |   |   \-data
+      |   \-trkn
+      |       \-data
+      \-free
+
+    where the stuff we're interested in is in ilst
+    and its data grandchild atoms.
+    """
+
 
                                                     # iTunes ID:
     ATTRIBUTE_MAP = {
@@ -811,29 +820,32 @@ class M4AMetaData(MetaData, dict):
         for ilst_atom in ilst_atoms:
             self.setdefault(ilst_atom.type, []).append(ilst_atom)
 
-    #takes an atom type string
-    #and a binary string object
-    #returns an appropriate ILST_Atom list
-    #suitable for adding to our internal dictionary
     @classmethod
     def binary_atom(cls, key, value):
+        """Generates a binary ILST_Atom list from key and value strings.
+
+        The returned list is suitable for adding to our internal dict."""
+
         return [ILST_Atom(key,
                               [__Qt_Atom__(
                         "data",
                         value,
                         0)])]
 
-    #takes an atom type string
-    #and a unicode text object
-    #returns an appropriate ILST_Atom list
-    #suitable for adding to our internal dictionary
     @classmethod
     def text_atom(cls, key, text):
+        """Generates a text ILST_Atom list from key and text values.
+
+        key is a binary string, text is a unicode string.
+        The returned list is suitable for adding to our internal dict."""
+
         return cls.binary_atom(key, '0000000100000000'.decode('hex') + \
                                    text.encode('utf-8'))
 
     @classmethod
     def trkn_atom(cls, track_number, track_total):
+        """Generates a trkn ILST_Atom list from integer values."""
+
         return cls.binary_atom('trkn',
                                '0000000000000000'.decode('hex') + \
                                    ATOM_TRKN.build(
@@ -843,6 +855,8 @@ class M4AMetaData(MetaData, dict):
 
     @classmethod
     def disk_atom(cls, disk_number, disk_total):
+        """Generates a disk ILST_Atom list from integer values."""
+
         return cls.binary_atom('disk',
                                '0000000000000000'.decode('hex') + \
                                    ATOM_DISK.build(
@@ -852,6 +866,8 @@ class M4AMetaData(MetaData, dict):
 
     @classmethod
     def covr_atom(cls, image_data):
+        """Generates a covr ILST_Atom list from raw image binary data."""
+
         return cls.binary_atom('covr',
                                '0000000000000000'.decode('hex') + \
                                    image_data)
@@ -1010,8 +1026,9 @@ class M4AMetaData(MetaData, dict):
                 (getattr(metadata, attr) != 0)):
                 setattr(self, attr, getattr(metadata, attr))
 
-    #returns the contents of this M4AMetaData as a 'meta' __Qt_Atom__ object
     def to_atom(self, previous_meta):
+        """Returns a 'meta' __Qt_Atom__ object from this M4AMetaData."""
+
         previous_meta = ATOM_META.parse(previous_meta.data)
 
         new_meta = Con.Container(version=previous_meta.version,
@@ -1074,6 +1091,8 @@ class M4AMetaData(MetaData, dict):
 
 
 class M4ACovr(Image):
+    """A subclass of Image to store M4A 'covr' atoms."""
+
     def __init__(self, image_data):
         self.image_data = image_data
 
@@ -1091,6 +1110,8 @@ class M4ACovr(Image):
 
     @classmethod
     def converted(cls, image):
+        """Given an Image object, returns an M4ACovr object."""
+
         return M4ACovr(image.data)
 
 
@@ -1106,6 +1127,8 @@ class __counter__:
 
 
 class ALACAudio(M4AAudio):
+    """An Apple Lossless audio file."""
+
     SUFFIX = "m4a"
     NAME = "alac"
     DEFAULT_COMPRESSION = ""
@@ -1601,10 +1624,16 @@ class ALACAudio(M4AAudio):
 
 
 class ADTSException(Exception):
+    """Raised if some error occurs parsing AAC audio files."""
+
     pass
 
 
 class AACAudio(AudioFile):
+    """An AAC audio file.
+
+    This is AAC data inside an ADTS container."""
+
     SUFFIX = "aac"
     NAME = SUFFIX
     DEFAULT_COMPRESSION = "100"
@@ -1791,6 +1820,11 @@ class AACAudio(AudioFile):
 
     @classmethod
     def aac_frames(cls, stream):
+        """Takes an open file stream and yields (header, data) tuples.
+
+        header is a Container parsed from AACAudio.AAC_FRAME_HEADER.
+        data is a binary string of frame data."""
+
         while (True):
             try:
                 header = AACAudio.AAC_FRAME_HEADER.parse_stream(stream)
@@ -1807,6 +1841,8 @@ class AACAudio(AudioFile):
 
     @classmethod
     def aac_frame_count(cls, stream):
+        """Takes an open file stream and returns the total ADTS frames."""
+
         import sys
         total = 0
         while (True):

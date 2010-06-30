@@ -35,10 +35,16 @@ gettext.install("audiotools", unicode=True)
 
 
 class WaveReader(PCMReader):
-    #wave_file should be a file-like stream of wave data
+    """A subclass of PCMReader for reading wave file contents."""
+
     def __init__(self, wave_file,
                  sample_rate, channels, channel_mask, bits_per_sample,
                  process=None):
+        """wave_file should be a file-like stream of wave data.
+
+        sample_rate, channels, channel_mask and bits_per_sample are ints.
+        If present, process is waited for when close() is called.
+        """
 
         self.file = wave_file
         self.sample_rate = sample_rate
@@ -70,6 +76,8 @@ class WaveReader(PCMReader):
                                              chunk_header.chunk_length)
 
     def read(self, bytes):
+        """Try to read a pcm.FrameList of size "bytes"."""
+
         bytes -= (bytes % (self.channels * self.bits_per_sample / 8))
         return pcm.FrameList(self.wave.read(
                 max(bytes, self.channels * self.bits_per_sample / 8)),
@@ -79,6 +87,10 @@ class WaveReader(PCMReader):
                              self.bits_per_sample != 8)
 
     def close(self):
+        """Closes the stream for reading.
+
+        Any subprocess is waited for also so for proper cleanup."""
+
         self.wave.close()
         if (self.process is not None):
             if (self.process.wait() != 0):
@@ -86,7 +98,13 @@ class WaveReader(PCMReader):
 
 
 class TempWaveReader(WaveReader):
+    """A subclass of WaveReader for reading wave data from temporary files."""
+
     def __init__(self, tempfile):
+        """tempfile should be a NamedTemporaryFile.
+
+        Its contents are used to populate the rest of the fields."""
+
         wave = WaveAudio(tempfile.name)
         WaveReader.__init__(self,
                             tempfile,
@@ -97,11 +115,15 @@ class TempWaveReader(WaveReader):
         self.tempfile = tempfile
 
     def close(self):
+        """Closes the input stream and temporary file."""
+
         WaveReader.close(self)
         self.tempfile.close()
 
 
 class WavException(InvalidFile):
+    """Raises during initialization time if a wave file is invalid."""
+
     pass
 
 
@@ -186,6 +208,8 @@ def __channel_mask__(mask, channel_count):
 
 
 class WaveAudio(AudioFile):
+    """A waveform audio file."""
+
     SUFFIX = "wav"
     NAME = SUFFIX
 
@@ -609,10 +633,12 @@ class WaveAudio(AudioFile):
         except Con.core.FieldError:
             raise WavException(_(u"Invalid RIFF WAVE file"))
 
-    #takes a Container object parsed from the fmt_chunk.channel_mask
-    #returns a proper ChannelMask object
     @classmethod
     def fmt_chunk_to_channel_mask(cls, fmt_channel_mask):
+        """Builds a ChannelMask object from Container data.
+
+        The Container is parsed from fmt_chunk.channel_mask."""
+
         channel_mask = ChannelMask(0)
         attr_map = {'front_left': "front_left",
                     'front_right': "front_right",
@@ -695,11 +721,15 @@ class WaveAudio(AudioFile):
         wave_file.seek(chunk_size, 1)
 
     def chunk_ids(self):
+        """Returns a list of RIFF WAVE chunk ID strings."""
+
         return self.__chunk_ids__[:]
 
-    #iterates over the file's RIFF chunks,
-    #returning a (chunk_id,chunk_data) tuple on each pass
     def chunks(self):
+        """Yields (chunk_id, chunk_data) tuples.
+
+        chunk_id and chunk_data are both binary strings."""
+
         wave_file = file(self.filename, 'rb')
         total_size = self.__read_wave_header__(wave_file) - 4
 
@@ -714,11 +744,14 @@ class WaveAudio(AudioFile):
 
             total_size -= (chunk_size + 8)
 
-    #takes our new RIFF WAVE filename
-    #and an iterator of (chunk_id,chunk_data) tuples
-    #builds a RIFF WAVE file from those chunks
     @classmethod
     def wave_from_chunks(cls, filename, chunk_iter):
+        """Builds a new RIFF WAVE file from a chunk data iterator.
+
+        filename is the path to the wave file to build.
+        chunk_iter should yield (chunk_id, chunk_data) tuples.
+        """
+
         f = file(filename, 'wb')
 
         header = Con.Container()
@@ -749,21 +782,24 @@ class WaveAudio(AudioFile):
         f.write(cls.WAVE_HEADER.build(header))
         f.close()
 
-    #returns a pair of strings
-    #the first containing all data before the PCM content of the data chunk
-    #the second containing all data after the data chunk
-    #For example:
-    #
-    # >>> w = audiotools.open("input.wav")
-    # >>> (head,tail) = w.pcm_split()
-    # >>> f = open("output.wav","wb")
-    # >>> f.write(head)
-    # >>> audiotools.transfer_framelist_data(w.to_pcm(),f.write)
-    # >>> f.write(tail)
-    # >>> f.close()
-    #
-    #should result in "output.wav" being identical to "input.wav"
     def pcm_split(self):
+        """Returns a pair of data strings before and after PCM data.
+
+        The first contains all data before the PCM content of the data chunk.
+        The second containing all data after the data chunk.
+        For example:
+
+        >>> w = audiotools.open("input.wav")
+        >>> (head,tail) = w.pcm_split()
+        >>> f = open("output.wav","wb")
+        >>> f.write(head)
+        >>> audiotools.transfer_framelist_data(w.to_pcm(),f.write)
+        >>> f.write(tail)
+        >>> f.close()
+
+        should result in "output.wav" being identical to "input.wav".
+        """
+
         head = cStringIO.StringIO()
         tail = cStringIO.StringIO()
         current_block = head

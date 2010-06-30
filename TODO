@@ -1392,20 +1392,20 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [X] ID3v1Comment.converted
      - [X] ID3v1Comment.build_tag
      - [X] ID3v1Comment.images
-*** TODO __image__.py
+*** DONE __image__.py
 **** DONE adjust syntax
-**** TODO add docstrings
-     - [ ] image_metrics
-     - [ ] ImageMetrics
-     - [ ] InvalidImage
-     - [ ] InvalidJPEG
-     - [ ] InvalidPNG
-     - [ ] InvalidBMP
-     - [ ] InvalidGIF
-     - [ ] InvalidTIFF
-     - [ ] can_thumbnail
-     - [ ] thumbnail_formats
-     - [ ] thumbnail_image
+**** DONE add docstrings
+     - [X] image_metrics
+     - [X] ImageMetrics
+     - [X] InvalidImage
+     - [X] InvalidJPEG
+     - [X] InvalidPNG
+     - [X] InvalidBMP
+     - [X] InvalidGIF
+     - [X] InvalidTIFF
+     - [X] can_thumbnail
+     - [X] thumbnail_formats
+     - [X] thumbnail_image
 *** TODO __init__.py
 **** DONE adjust syntax
 **** TODO add docstrings
@@ -1608,8 +1608,8 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [ ] AtomWrapper
 *** TODO __m4a__.py
 **** TODO adjust syntax
-**** TODO add docstrings
-     - [ ] M4AAudio_faac
+**** DONE add docstrings
+     - [X] M4AAudio_faac
      - [X] M4AAudio_faac.channel_mask
      - [X] M4AAudio_faac.is_type
      - [X] M4AAudio_faac.lossless
@@ -1620,34 +1620,34 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [X] M4AAudio_faac.total_frames
      - [X] M4AAudio_faac.get_metadata
      - [X] M4AAudio_faac.set_metadata
-     - [ ] M4AAudio_faac.delete_metadata
+     - [X] M4AAudio_faac.delete_metadata
      - [X] M4AAudio_faac.to_pcm
      - [X] M4AAudio_faac.from_pcm
      - [X] M4AAudio_faac.can_add_replay_gain
      - [X] M4AAudio_faac.lossless_replay_gain
      - [X] M4AAudio_faac.add_replay_gain
-     - [ ] M4AAudio_nero
+     - [X] M4AAudio_nero
      - [X] M4AAudio_nero.to_pcm
      - [X] M4AAudio_nero.from_pcm
      - [X] M4AAudio_nero.to_wave
      - [X] M4AAudio_nero.from_wave
-     - [ ] ILST_Atom
-     - [ ] M4AMetaData
-     - [ ] M4AMetaData.binary_atom
-     - [ ] M4AMetaData.text_atom
-     - [ ] M4AMetaData.trkn_atom
-     - [ ] M4AMetaData.disk_atom
-     - [ ] M4AMetaData.covr_atom
+     - [X] ILST_Atom
+     - [X] M4AMetaData
+     - [X] M4AMetaData.binary_atom
+     - [X] M4AMetaData.text_atom
+     - [X] M4AMetaData.trkn_atom
+     - [X] M4AMetaData.disk_atom
+     - [X] M4AMetaData.covr_atom
      - [X] M4AMetaData.images
      - [X] M4AMetaData.add_image
      - [X] M4AMetaData.delete_image
      - [X] M4AMetaData.converted
      - [X] M4AMetaData.merge
-     - [ ] M4AMetaData.to_atom
+     - [X] M4AMetaData.to_atom
      - [X] M4AMetaData.supports_images
-     - [ ] M4ACovr
-     - [ ] M4ACovr.converted
-     - [ ] ALACAudio
+     - [X] M4ACovr
+     - [X] M4ACovr.converted
+     - [X] ALACAudio
      - [X] ALACAudio.is_type
      - [X] ALACAudio.total_frames
      - [X] ALACAudio.channel_mask
@@ -1657,8 +1657,8 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [X] ALACAudio.from_pcm
      - [X] ALACAudio.to_wave
      - [X] ALACAudio.from_wave
-     - [ ] ADTSException
-     - [ ] AACAudio
+     - [X] ADTSException
+     - [X] AACAudio
      - [X] AACAudio.is_type
      - [X] AACAudio.bits_per_sample
      - [X] AACAudio.channels
@@ -1667,13 +1667,13 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [X] AACAudio.sample_rate
      - [X] AACAudio.to_pcm
      - [X] AACAudio.from_pcm
-     - [ ] AACAudio.aac_frames
-     - [ ] AACAudio.aac_frame_count
-*** TODO __mp3__.py
+     - [X] AACAudio.aac_frames
+     - [X] AACAudio.aac_frame_count
+*** DONE __mp3__.py
 **** DONE adjust syntax
-**** TODO add docstrings
-     - [ ] MP3Exception
-     - [ ] MP3Audio
+**** DONE add docstrings
+     - [X] MP3Exception
+     - [X] MP3Audio
      - [X] MP3Audio.is_type
      - [X] MP3Audio.lossless
      - [X] MP3Audio.to_pcm
@@ -1689,7 +1689,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [X] MP3Audio.can_add_replay_gain
      - [X] MP3Audio.lossless_replay_gain
      - [X] MP3Audio.add_replay_gain
-     - [ ] MP2Audio
+     - [X] MP2Audio
      - [X] MP2Audio.is_type
      - [X] MP2Audio.from_pcm
 *** DONE __musepack__.py
@@ -1727,8 +1727,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [ ] MusicBrainzReleaseXML.from_files
      - [ ] MusicBrainzReleaseXML.from_cuesheet
      - [ ] MusicBrainzReleaseXML.build
-     - [ ] __select_match__
-     - [ ] __select_default_match__
      - [ ] get_mbxml
 *** DONE __shn__.py
 **** DONE adjust syntax
@@ -1829,16 +1827,16 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [X] WavPackAudio.replay_gain
      - [X] WavPackAudio.get_cuesheet
      - [X] WavPackAudio.set_cuesheet
-*** TODO __wav__.py
+*** DONE __wav__.py
 **** DONE adjust syntax
-**** TODO add docstrings
-     - [ ] WaveReader
-     - [ ] WaveReader.read
-     - [ ] WaveReader.close
-     - [ ] TempWaveReader
-     - [ ] TempWaveReader.close
-     - [ ] WavException
-     - [ ] WaveAudio
+**** DONE add docstrings
+     - [X] WaveReader
+     - [X] WaveReader.read
+     - [X] WaveReader.close
+     - [X] TempWaveReader
+     - [X] TempWaveReader.close
+     - [X] WavException
+     - [X] WaveAudio
      - [X] WaveAudio.is_type
      - [X] WaveAudio.lossless
      - [X] WaveAudio.supports_foreign_riff_chunks
@@ -1856,11 +1854,11 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [X] WaveAudio.lossless_replay_gain
      - [X] WaveAudio.add_replay_gain
      - [X] WaveAudio.track_name
-     - [ ] WaveAudio.fmt_chunk_to_channel_mask
-     - [ ] WaveAudio.chunk_ids
-     - [ ] WaveAudio.chunks
-     - [ ] WaveAudio.wave_from_chunks
-     - [ ] WaveAudio.pcm_split
+     - [X] WaveAudio.fmt_chunk_to_channel_mask
+     - [X] WaveAudio.chunk_ids
+     - [X] WaveAudio.chunks
+     - [X] WaveAudio.wave_from_chunks
+     - [X] WaveAudio.pcm_split
 *** TODO cue.py
 **** DONE adjust syntax
 **** TODO add docstrings

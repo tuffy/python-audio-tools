@@ -35,10 +35,14 @@ gettext.install("audiotools", unicode=True)
 
 
 class MP3Exception(InvalidFile):
+    """Raised by invalid files during MP3 initialization."""
+
     pass
 
 
 class MP3Audio(AudioFile):
+    """An MP3 audio file."""
+
     SUFFIX = "mp3"
     NAME = SUFFIX
     DEFAULT_COMPRESSION = "2"
@@ -636,6 +640,8 @@ class MP3Audio(AudioFile):
 #######################
 
 class MP2Audio(MP3Audio):
+    """An MP2 audio file."""
+
     SUFFIX = "mp2"
     NAME = SUFFIX
     DEFAULT_COMPRESSION = str(192)
