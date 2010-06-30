@@ -638,7 +638,6 @@ def filename_to_type(path):
         return TYPE_MAP['wav']
 
 
-
 class ChannelMask:
     """An integer-like class that abstracts a PCMReader's channel assignments
 
@@ -754,7 +753,6 @@ class ChannelMask:
 
         return c
 
-
     def index(self, channel_name):
         """Returns the index of the given channel name within this mask.
 
@@ -831,7 +829,6 @@ class PCMReader:
         self.process = process
         self.signed = signed
         self.big_endian = big_endian
-
 
     def read(self, bytes):
         """Try to read a pcm.FrameList of size "bytes".
@@ -1829,7 +1826,6 @@ class MetaData:
 
     def __ne__(self, metadata):
         return not self.__eq__(metadata)
-
 
     @classmethod
     def converted(cls, metadata):

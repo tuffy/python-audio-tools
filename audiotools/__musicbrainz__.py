@@ -82,7 +82,6 @@ def reorder_xml_children(parent, child_order):
 class MBDiscID:
     """A MusicBrainz disc ID."""
 
-
     def __init__(self, tracks=[], offsets=None, length=None, lead_in=150,
                  first_track_number=None, last_track_number=None,
                  lead_out_track_offset=None):
@@ -188,6 +187,8 @@ class MBDiscID:
 
 
 class MusicBrainz:
+    """A class for performing queries on a MusicBrainz or compatible server."""
+
     def __init__(self, server, port, messenger):
         self.server = server
         self.port = port
@@ -195,19 +196,24 @@ class MusicBrainz:
         self.messenger = messenger
 
     def connect(self):
+        """Performs the initial connection."""
+
         import httplib
 
         self.connection = httplib.HTTPConnection(self.server, self.port)
 
     def close(self):
+        """Closes an open connection."""
+
         if (self.connection is not None):
             self.connection.close()
 
-    #disc_id is a MBDiscID object
-    #returns a (matches,dom) tuple
-    #where matches is an integer
-    #and dom is a minidom Document object or None
     def read_data(self, disc_id, output):
+        """Returns a (matches,dom) tuple from a MBDiscID object.
+
+        matches is an integer
+        and dom is a minidom Document object or None."""
+
         from xml.dom.minidom import parseString
         from xml.parsers.expat import ExpatError
 
@@ -275,7 +281,6 @@ class MusicBrainzReleaseXML:
                             u"user-tag-list",
                             u"rating",
                             u"user-rating"]}
-
 
     def __init__(self, dom):
         """dom should be a DOM object such as xml.dom.minidom.Document."""

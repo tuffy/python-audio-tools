@@ -799,8 +799,6 @@ class M4AMetaData(MetaData, dict):
     where the stuff we're interested in is in ilst
     and its data grandchild atoms.
     """
-
-
                                                     # iTunes ID:
     ATTRIBUTE_MAP = {
         'track_name': '=A9nam'.decode('quopri'),     # Name

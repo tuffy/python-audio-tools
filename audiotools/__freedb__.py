@@ -43,7 +43,7 @@ class XMCD:
 
     LINE_LIMIT = 78
 
-        def __init__(self, values, offsets, length):
+    def __init__(self, values, offsets, length):
         """Fields are as follows:
 
         values  - a dict of key->value pairs such as "TTITLE0":u"Track Name"
@@ -348,7 +348,6 @@ class DiscID:
                         Con.UBInt8('digit_sum'),
                         Con.UBInt16('length'),
                         Con.UBInt8('track_count'))
-
 
     def __init__(self, tracks=[], offsets=None, length=None, lead_in=150):
         """Fields are as follows:

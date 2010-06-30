@@ -62,7 +62,6 @@ class ApeTagItem:
       Con.MetaField("value",
         lambda ctx: ctx["length"]))
 
-
     def __init__(self, item_type, read_only, key, data):
         """Fields are as follows:
 
@@ -105,7 +104,6 @@ class ApeTagItem:
                           contains_header=False,
                           contains_no_footer=False,
                           is_header=False))
-
 
     @classmethod
     def binary(cls, key, data):
@@ -180,7 +178,6 @@ class ApeTag(MetaData):
                      'comment': 'Comment'}
 
     INTEGER_ITEMS = ('Track', 'Media')
-
 
     def __init__(self, tags, tag_length=None):
         """Constructs an ApeTag from a list of ApeTagItem objects.
