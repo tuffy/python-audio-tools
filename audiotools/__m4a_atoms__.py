@@ -50,6 +50,8 @@ from audiotools import Con
 
 
 def VersionLength(name):
+    """A struct for 32 or 64 bit fields, depending on version field."""
+
     return Con.IfThenElse(name,
                           lambda ctx: ctx["version"] == 0,
                           Con.UBInt32(None),
@@ -57,6 +59,8 @@ def VersionLength(name):
 
 
 class AtomAdapter(Con.Adapter):
+    """An adapter which manages a proper size field."""
+
     def _encode(self, obj, context):
         obj.size = len(obj.data) + 8
         return obj
@@ -67,6 +71,8 @@ class AtomAdapter(Con.Adapter):
 
 
 def Atom(name):
+    """A basic QuickTime atom struct."""
+
     return AtomAdapter(Con.Struct(
             name,
             Con.UBInt32("size"),
@@ -75,6 +81,10 @@ def Atom(name):
 
 
 class AtomListAdapter(Con.Adapter):
+    """An adapter for turning an Atom into a list of atoms.
+
+    This works by parsing its data contents with Atom."""
+
     ATOM_LIST = Con.GreedyRepeater(Atom("atoms"))
 
     def _encode(self, obj, context):
@@ -87,13 +97,14 @@ class AtomListAdapter(Con.Adapter):
 
 
 def AtomContainer(name):
+    """An instantiation of AtomListAdapter."""
+
     return AtomListAdapter(Atom(name))
 
 
-#wraps around an existing sub_atom and automatically appends/removes header
-#during build/parse operations
-#this should probably be an adapter, but it does seem to work okay
 class AtomWrapper(Con.Struct):
+    """Wraps around an existing sub_atom and automatically handles headers."""
+
     def __init__(self, atom_name, sub_atom):
         Con.Struct.__init__(self, atom_name)
         self.atom_name = atom_name

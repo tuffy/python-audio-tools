@@ -44,19 +44,27 @@ class FlacException(InvalidFile):
 
 
 class FlacMetaDataBlockTooLarge(Exception):
+    """Raised if one attempts to build a FlacMetaDataBlock too large."""
+
     pass
 
 
 class FlacMetaDataBlock:
-    #type is an int
-    #data is a string of metadata
+    """A container for FLAC metadata blocks."""
+
     def __init__(self, type, data):
+        """Initialized with a type integer and data binary string."""
+
         self.type = type
         self.data = data
 
-    #returns the entire metadata block as a string, including the header
-    #raises FlacMetaDataBlockTooLarge if self.data is too large to fit
     def build_block(self, last=0):
+        """Returns the entire block as a string, including header.
+
+        last is a bit indicating this is the last block before audio data.
+        Raises FlacMetaDataBlockTooLarge if data is too large to fit
+        in a single FLAC metadata block."""
+
         if (len(self.data) > (1 << 24)):
             raise FlacMetaDataBlockTooLarge()
 
@@ -67,9 +75,15 @@ class FlacMetaDataBlock:
 
 
 class FlacMetaData(MetaData):
-    #blocks is a list of FlacMetaDataBlock objects
-    #these get converted internally into MetaData/ImageMetaData fields
+    """A container for a FLAC file's list of metadata blocks."""
+
     def __init__(self, blocks):
+        """blocks is a list of plain FlacMetaDataBlock objects.
+
+        These are converted internally into MetaData/ImageMetaData fields
+        as needed, depending on the type.
+        """
+
         #IMPORTANT!
         #Externally converted FlacMetaData likely won't have a valid STREAMINFO
         #so set_metadata() must override this value with the current
@@ -230,9 +244,12 @@ class FlacMetaData(MetaData):
 
         return self.__dict__['image_blocks'][:]
 
-    #returns an iterator over all the current blocks as
-    #FlacMetaDataBlock-compatible objects and without padding at the end
     def metadata_blocks(self):
+        """Yields all current blocks as FlacMetaDataBlock-compatible objects.
+
+        Note that any padding block is not returned.
+        """
+
         yield self.streaminfo
         yield self.vorbis_comment
 
@@ -249,6 +266,12 @@ class FlacMetaData(MetaData):
             yield extra
 
     def build(self, padding_size=4096):
+        """Returns all of a FLAC file's metadata as a binary string.
+
+        padding_size indicates the side of the PADDING block to append
+        (not counting its 32 bit header).
+        """
+
         built_blocks = []
         blocks = self.metadata_blocks()
 
@@ -278,12 +301,17 @@ class FlacMetaData(MetaData):
 
     @classmethod
     def supports_images(cls):
+        """Returns True."""
+
         return True
 
 
-#a slight variation of VorbisComment without the framing bit
-#and with a build_block() method
 class FlacVorbisComment(VorbisComment):
+    """A slight variation of VorbisComment without the framing bit.
+
+    Also includes a build_block() method for FlacMetaDataBlock
+    compatiblity."""
+
     VORBIS_COMMENT = Con.Struct("vorbis_comment",
                                 Con.PascalString(
             "vendor_string",
@@ -294,6 +322,12 @@ class FlacVorbisComment(VorbisComment):
                                 length_field=Con.ULInt32("length"))))
 
     def build_block(self, last=0):
+        """Returns the entire block as a string, including header.
+
+        last is a bit indicating this is the last block before audio data.
+        Raises FlacMetaDataBlockTooLarge if data is too large to fit
+        in a single FLAC metadata block."""
+
         block = self.build()
         if (len(block) > (1 << 24)):
             raise FlacMetaDataBlockTooLarge()
@@ -305,6 +339,8 @@ class FlacVorbisComment(VorbisComment):
 
     @classmethod
     def converted(cls, metadata):
+        """Converts metadata from another class to FlacVorbisComment."""
+
         if ((metadata is None) or (isinstance(metadata, FlacVorbisComment))):
             return metadata
         elif (isinstance(metadata, FlacMetaData)):
@@ -325,13 +361,28 @@ class FlacVorbisComment(VorbisComment):
             return FlacVorbisComment(values)
 
 
-#this is a container for FLAC's PICTURE metadata blocks
-#type, width, height, color_depth and color_count are ints
-#mime_type and description are unicode strings
-#data is a string
 class FlacPictureComment(Image):
+    """This is a container for FLAC's PICTURE metadata blocks."""
+
     def __init__(self, type, mime_type, description,
                  width, height, color_depth, color_count, data):
+        """Initialization fields are as follows:
+
+        type - an integer type whose values are:
+               0 - front cover
+               1 - back cover
+               2 - leaflet page
+               3 - media
+               4 - other
+        mime_type   - unicode string of the image's MIME type
+        description - a unicode string
+        width       - width of image, as integer number of pixels
+        height      - height of image, as integer number of pixels
+        color_depth - color depth of image (24 for JPEG, 8 for GIF, etc.)
+        color_count - number of palette colors, or 0
+        data        - plain string of the actual binary image data
+        """
+
         Image.__init__(self,
                        data=data,
                        mime_type=mime_type,
@@ -343,10 +394,10 @@ class FlacPictureComment(Image):
                        type={3: 0, 4: 1, 5: 2, 6: 3}.get(type, 4))
         self.flac_type = type
 
-    #takes an Image object
-    #returns a FlacPictureComment
     @classmethod
     def converted(cls, image):
+        """Converts an Image object to a FlacPictureComment."""
+
         return FlacPictureComment(
             type={0: 3, 1: 4, 2: 5, 3: 6}.get(image.type, 0),
             mime_type=image.mime_type,
@@ -358,7 +409,11 @@ class FlacPictureComment(Image):
             data=image.data)
 
     def type_string(self):
-        #FIXME - these should probably be internationalized
+        """Returns the image's type as a human readable plain string.
+
+        For example, an image of type 0 returns "Front Cover".
+        """
+
         return {0: "Other",
                 1: "32x32 pixels 'file icon' (PNG only)",
                 2: "Other file icon",
@@ -389,6 +444,10 @@ class FlacPictureComment(Image):
                  repr(self.width), repr(self.height))
 
     def build(self):
+        """Returns a PICTURE comment as a raw string.
+
+        This does not include the 32 bit header."""
+
         if (len(self.data) > (1 << 24)):
             raise FlacMetaDataBlockTooLarge()
 
@@ -403,6 +462,12 @@ class FlacPictureComment(Image):
                           data=self.data))
 
     def build_block(self, last=0):
+        """Returns the entire block as a string, including header.
+
+        last is a bit indicating this is the last block before audio data.
+        Raises FlacMetaDataBlockTooLarge if data is too large to fit
+        in a single FLAC metadata block."""
+
         block = self.build()
         if (len(block) > (1 << 24)):
             #why check both here and in build()?
@@ -418,6 +483,8 @@ class FlacPictureComment(Image):
 
 
 class FlacCueSheet:
+    """A container for FLAC CUESHEET metadata blocks."""
+
     CUESHEET = Con.Struct(
         "flac_cuesheet",
         Con.String("catalog_number", 128),
@@ -444,13 +511,18 @@ class FlacCueSheet:
                                       Con.Byte("point_number"),
                                       Con.Padding(3))))))  # reserved
 
-    #container is a compliant Container object returned by CUESHEET.parse()
     def __init__(self, container, sample_rate=44100):
+        """container is a Container object returned by CUESHEET.parse()."""
+
         self.type = 5
         self.container = container
         self.sample_rate = sample_rate
 
     def build_block(self, last=0):
+        """Returns the entire block as a string, including header.
+
+        last is a bit indicating this is the last block before audio data."""
+
         #the largest possible CUESHEET cannot exceed the metadata block size
         #so no need to test for it
         block = self.CUESHEET.build(self.container)
@@ -460,12 +532,13 @@ class FlacCueSheet:
                           block_type=5,
                           block_length=len(block))) + block
 
-    #takes a cuesheet-compatible object
-    #with a pcm_lengths() and ISRCs() method
-    #and a total_frames integer (in PCM frames)
-    #returns a new FlacCueSheet object
     @classmethod
     def converted(cls, sheet, total_frames, sample_rate=44100):
+        """Converts a cuesheet compatible object to FlacCueSheet objects.
+
+        A total_frames integer (in PCM frames) is also required.
+        """
+
         #number is the track number integer
         #ISRC is a 12 byte string, or None
         #indexes is a list of indexes()-compatible index points
@@ -517,31 +590,42 @@ class FlacCueSheet:
                    sample_rate)
 
     def catalog(self):
+        """Returns the cuesheet's catalog number as a plain string."""
+
         if (len(self.container.catalog_number.rstrip(chr(0))) > 0):
             return self.container.catalog_number.rstrip(chr(0))
         else:
             return None
 
     def ISRCs(self):
+        """Returns a list of ISRC values as plain strings."""
+
         return dict([(track.track_number, track.ISRC) for track in
                      self.container.cuesheet_tracks
                      if ((track.track_number != 170) and
                          (len(track.ISRC.strip(chr(0))) > 0))])
 
     def indexes(self):
+        """Returns a list of (start, end) integer tuples."""
+
         return [tuple([(index.offset + track.track_offset) * 75 / \
                            self.sample_rate
                        for index in
                        sorted(track.cuesheet_track_index,
                               lambda i1, i2: cmp(i1.point_number,
-                                                i2.point_number))])
+                                                 i2.point_number))])
                 for track in
                 sorted(self.container.cuesheet_tracks,
                        lambda t1, t2: cmp(t1.track_number,
-                                         t2.track_number))
+                                          t2.track_number))
                 if (track.track_number != 170)]
 
-    def pcm_lengths(self, total_lengths):
+    def pcm_lengths(self, total_length):
+        """Returns a list of PCM lengths for all cuesheet audio tracks.
+
+        Note that the total length variable is only for compatibility.
+        It is not necessary for FlacCueSheets.
+        """
         if (len(self.container.cuesheet_tracks) > 0):
             return [(current.track_offset +
                      max([i.offset for i in
@@ -560,6 +644,9 @@ class FlacCueSheet:
 
 
 class FlacSeektable:
+
+    #FIXME - should start using this
+
     SEEKTABLE = Con.GreedyRepeater(
             Con.Struct("seekpoint",
                        Con.UBInt64("first_sample_number"),
@@ -568,6 +655,8 @@ class FlacSeektable:
 
 
 class FlacAudio(AudioFile):
+    """A Free Lossless Audio Codec file."""
+
     SUFFIX = "flac"
     NAME = SUFFIX
     DEFAULT_COMPRESSION = "8"
@@ -1245,8 +1334,9 @@ class FlacAudio(AudioFile):
         else:
             return False
 
-    #generates a PCMReader object per cue point
     def sub_pcm_tracks(self):
+        """Yields a PCMReader object per cuesheet track."""
+
         metadata = self.get_metadata()
         if ((metadata is not None) and (metadata.cuesheet is not None)):
             indexes = [(track.track_number,
@@ -1291,6 +1381,8 @@ class FlacAudio(AudioFile):
 
 
 class OggFlacAudio(FlacAudio):
+    """A Free Lossless Audio Codec file inside an Ogg container."""
+
     SUFFIX = "oga"
     NAME = SUFFIX
     DEFAULT_COMPRESSION = "8"
@@ -1478,6 +1570,8 @@ class OggFlacAudio(FlacAudio):
         writer.close()
 
     def metadata_length(self):
+        """Returns None."""
+
         return None
 
     def __read_streaminfo__(self):
@@ -1611,9 +1705,13 @@ class OggFlacAudio(FlacAudio):
         else:
             raise EncodingError(BIN['flac'])
 
-    #FIXME - this needs to be adjusted to support
-    #Ogg FLACs with embedded cuesheets
     def sub_pcm_tracks(self):
+        """Yields a PCMReader object per cuesheet track.
+
+        This currently does nothing since the FLAC reference
+        decoder has limited support for Ogg FLAC.
+        """
+
         return iter([])
 
     @classmethod

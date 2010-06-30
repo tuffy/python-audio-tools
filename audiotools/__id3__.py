@@ -25,18 +25,29 @@ gettext.install("audiotools", unicode=True)
 
 
 class UCS2Codec(codecs.Codec):
+    """A special unicode codec for UCS-2.
+
+    This is a subset of UTF-16 with no support for surrogate pairs,
+    limiting it to U+0000-U+FFFF."""
+
     @classmethod
     def fix_char(cls, c):
+        """A filter which changes overly large c values to "unknown"."""
+
         if (ord(c) <= 0xFFFF):
             return c
         else:
             return u"\ufffd"
 
     def encode(self, input, errors='strict'):
+        """Encodes unicode input to plain UCS-2 strings."""
+
         return codecs.utf_16_encode(u"".join(map(self.fix_char, input)),
                                     errors)
 
     def decode(self, input, errors='strict'):
+        """Decodes plain UCS-2 strings to unicode."""
+
         (chars, size) = codecs.utf_16_decode(input, errors, True)
         return (u"".join(map(self.fix_char, chars)), size)
 
@@ -62,10 +73,14 @@ codecs.register(__reg_ucs2__)
 
 
 class UnsupportedID3v2Version(Exception):
+    """Raised if one encounters an ID3v2 tag not version .2, .3 or .4."""
+
     pass
 
 
 class Syncsafe32(Con.Adapter):
+    """An adapter for padding 24 bit values to 32 bits."""
+
     def __init__(self, name):
         Con.Adapter.__init__(self,
                              Con.StrictRepeater(4, Con.UBInt8(name)))
@@ -96,6 +111,8 @@ class __24BitsBE__(Con.Adapter):
 
 
 def UBInt24(name):
+    """An unsigned, big-endian, 24-bit struct."""
+
     return __24BitsBE__(Con.Bytes(name, 3))
 
 
@@ -109,6 +126,8 @@ def UBInt24(name):
 #to UCS-2 encoding.
 
 class WidecharCStringAdapter(Con.Adapter):
+    """An adapter for handling NULL-terminated UTF-16/UCS-2 strings."""
+
     def __init__(self, obj, encoding):
         Con.Adapter.__init__(self, obj)
         self.encoding = encoding
@@ -124,18 +143,24 @@ class WidecharCStringAdapter(Con.Adapter):
 
 
 def UCS2CString(name):
+    """A UCS-2 encoded, NULL-terminated string."""
+
     return WidecharCStringAdapter(Con.RepeatUntil(lambda obj, ctx: obj == 0x0,
                                                   Con.UBInt16(name)),
                                   encoding='ucs2')
 
 
 def UTF16CString(name):
+    """A UTF-16 encoded, NULL-terminated string."""
+
     return WidecharCStringAdapter(Con.RepeatUntil(lambda obj, ctx: obj == 0x0,
                                                   Con.UBInt16(name)),
                                   encoding='utf-16')
 
 
 def UTF16BECString(name):
+    """A UTF-16BE encoded, NULL-terminated string."""
+
     return WidecharCStringAdapter(Con.RepeatUntil(lambda obj, ctx: obj == 0x0,
                                                   Con.UBInt16(name)),
                                   encoding='utf-16be')
@@ -169,6 +194,8 @@ def __number_pair__(current, total):
 
 
 class ID3v22Frame:
+    """A container for individual ID3v2.2 frames."""
+
     FRAME = Con.Struct("id3v22_frame",
                        Con.Bytes("frame_id", 3),
                        Con.PascalString("data", length_field=UBInt24("size")))
@@ -178,6 +205,8 @@ class ID3v22Frame:
     TEXT_TYPE = False
 
     def __init__(self, frame_id, data):
+        """frame_id is the 3 byte ID.  data is a binary string."""
+
         self.id = frame_id
         self.data = data
 
@@ -188,6 +217,8 @@ class ID3v22Frame:
         return __attrib_equals__(["frame_id", "data"], self, o)
 
     def build(self):
+        """Returns a binary string of ID3v2.2 frame data."""
+
         return self.FRAME.build(Con.Container(frame_id=self.id,
                                               data=self.data))
 
@@ -203,6 +234,12 @@ class ID3v22Frame:
 
     @classmethod
     def parse(cls, container):
+        """Returns the appropriate ID3v22Frame subclass from a Container.
+
+        Container is parsed from ID3v22Frame.FRAME
+        and contains "frame_id and "data" attributes.
+        """
+
         if (container.frame_id.startswith('T')):
             try:
                 encoding_byte = ord(container.data[0])
@@ -242,14 +279,16 @@ class ID3v22Frame:
 
 
 class ID3v22TextFrame(ID3v22Frame):
+    """A container for individual ID3v2.2 text frames."""
+
     ENCODING = {0x00: "latin-1",
                 0x01: "ucs2"}
 
     TEXT_TYPE = True
 
-    #encoding is an encoding byte
-    #s is a unicode string
     def __init__(self, frame_id, encoding, s):
+        """frame_id is a 3 byte ID, encoding is 0/1, s is a unicode string."""
+
         self.id = frame_id
         self.encoding = encoding
         self.string = s
@@ -270,6 +309,8 @@ class ID3v22TextFrame(ID3v22Frame):
             return 0
 
     def total(self):
+        """If the frame is number/total formatted, return the "total" int."""
+
         try:
             return int(re.findall(r'\d+/(\d+)', self.string)[0])
         except IndexError:
@@ -277,6 +318,8 @@ class ID3v22TextFrame(ID3v22Frame):
 
     @classmethod
     def from_unicode(cls, frame_id, s):
+        """Builds an ID3v22TextFrame from 3 byte frame_id and unicode s."""
+
         if (frame_id == 'COM'):
             return ID3v22ComFrame.from_unicode(s)
 
@@ -288,6 +331,8 @@ class ID3v22TextFrame(ID3v22Frame):
                 continue
 
     def build(self):
+        """Returns a binary string of ID3v2.2 frame data."""
+
         return self.FRAME.build(Con.Container(
                 frame_id=self.id,
                 data=chr(self.encoding) + \
@@ -296,6 +341,8 @@ class ID3v22TextFrame(ID3v22Frame):
 
 
 class ID3v22ComFrame(ID3v22TextFrame):
+    """A container for ID3v2.2 comment (COM) frames."""
+
     COMMENT_HEADER = Con.Struct(
         "com_frame",
         Con.Byte("encoding"),
@@ -307,10 +354,12 @@ class ID3v22ComFrame(ID3v22TextFrame):
 
     TEXT_TYPE = True
 
-    #encoding should be an integer
-    #language should be a standard string
-    #short_description and content should be unicode strings
     def __init__(self, encoding, language, short_description, content):
+        """encoding is 0/1, language is a string, the rest are unicode.
+
+        We're mostly interested in encoding and content.
+        The language and short_description fields are rarely used."""
+
         self.encoding = encoding
         self.language = language
         self.short_description = short_description
@@ -332,6 +381,8 @@ class ID3v22ComFrame(ID3v22TextFrame):
 
     @classmethod
     def from_unicode(cls, s):
+        """Builds an ID3v22ComFrame from a unicode string."""
+
         for encoding in 0x00, 0x01:
             try:
                 s.encode(cls.ENCODING[encoding])
@@ -340,6 +391,8 @@ class ID3v22ComFrame(ID3v22TextFrame):
                 continue
 
     def build(self):
+        """Returns a binary string of ID3v2.2 frame data."""
+
         return self.FRAME.build(Con.Container(
                 frame_id=self.id,
                 data=self.COMMENT_HEADER.build(Con.Container(
@@ -351,6 +404,8 @@ class ID3v22ComFrame(ID3v22TextFrame):
 
 
 class ID3v22PicFrame(ID3v22Frame, Image):
+    """A container for ID3v2.2 image (PIC) frames."""
+
     FRAME_HEADER = Con.Struct('pic_frame',
                               Con.Byte('text_encoding'),
                               Con.String('format', 3),
@@ -361,10 +416,15 @@ class ID3v22PicFrame(ID3v22Frame, Image):
                     "s",  encoding='latin-1'),
                                           0x01: UCS2CString("s")}))
 
-    #format and description are unicode strings
-    #pic_type is an int
-    #data is a string
     def __init__(self, data, format, description, pic_type):
+        """Fields are as follows:
+
+        data        - a binary string of raw image data
+        format      - a unicode string
+        description - a unicode string
+        pic_type    - an integer
+        """
+
         ID3v22Frame.__init__(self, 'PIC', None)
 
         try:
@@ -387,6 +447,10 @@ class ID3v22PicFrame(ID3v22Frame, Image):
                        type={3: 0, 4: 1, 5: 2, 6: 3}.get(pic_type, 4))
 
     def type_string(self):
+        """Returns the image's type as a human readable plain string.
+
+        For example, an image of type 0 returns "Front Cover"""
+
         #FIXME - these should be internationalized
         return {0: "Other",
                 1: "32x32 pixels 'file icon' (PNG only)",
@@ -419,6 +483,8 @@ class ID3v22PicFrame(ID3v22Frame, Image):
         return Image.__eq__(self, i)
 
     def build(self):
+        """Returns a binary string of ID3v2.2 frame data."""
+
         try:
             self.description.encode('latin-1')
             text_encoding = 0
@@ -435,6 +501,8 @@ class ID3v22PicFrame(ID3v22Frame, Image):
 
     @classmethod
     def converted(cls, image):
+        """Given an Image object, returns an ID3v22PicFrame object."""
+
         return cls(data=image.data,
                    format={u"image/png": u"PNG",
                            u"image/jpeg": u"JPG",
@@ -448,6 +516,8 @@ class ID3v22PicFrame(ID3v22Frame, Image):
 
 
 class ID3v22Comment(MetaData):
+    """A complete ID3v2.2 comment."""
+
     Frame = ID3v22Frame
     TextFrame = ID3v22TextFrame
     PictureFrame = ID3v22PicFrame
@@ -486,8 +556,9 @@ class ID3v22Comment(MetaData):
     KEY_ORDER = ('TT2', 'TAL', 'TRK', 'TPA', 'TP1', 'TP2', 'TCM', 'TP3',
                  'TPB', 'TRC', 'TYE', 'TRD', None, 'COM', 'PIC')
 
-    #frames should be a list of ID3v22Frame-compatible objects
     def __init__(self, frames):
+        """frame should be a list of ID3v2?Frame-compatible objects."""
+
         self.__dict__["frames"] = {}  # a frame_id->[frame list] mapping
 
         for frame in frames:
@@ -660,6 +731,8 @@ class ID3v22Comment(MetaData):
 
     @classmethod
     def parse(cls, stream):
+        """Given a file stream, returns an ID3v22Comment object."""
+
         header = cls.TAG_HEADER.parse_stream(stream)
 
         #read in the whole tag
@@ -688,6 +761,8 @@ class ID3v22Comment(MetaData):
 
     @classmethod
     def converted(cls, metadata):
+        """Converts a MetaData object to an ID3v22Comment object."""
+
         if ((metadata is None) or
             (isinstance(metadata, cls) and
              (cls.Frame is metadata.Frame))):
@@ -743,6 +818,8 @@ class ID3v22Comment(MetaData):
                 setattr(self, attr, getattr(metadata, attr))
 
     def build(self):
+        """Returns an ID3v2.2 comment as a binary string."""
+
         subframes = "".join(["".join([value.build() for value in values])
                              for values in self.frames.values()])
 
@@ -754,12 +831,12 @@ class ID3v22Comment(MetaData):
                           compression=False,
                           length=len(subframes))) + subframes
 
-    #takes a file stream
-    #checks that stream for an ID3v2 comment
-    #if found, repositions the stream past it
-    #if not, leaves the stream in the current location
     @classmethod
     def skip(cls, file):
+        """Seeks past an ID3v2 comment if found in the file stream.
+
+        The stream must be seekable, obviously."""
+
         if (file.read(3) == 'ID3'):
             file.seek(0, 0)
             #parse the header
@@ -777,10 +854,14 @@ class ID3v22Comment(MetaData):
             except IOError:
                 pass
 
-    #takes a filename
-    #returns an ID3v2Comment-based object
     @classmethod
     def read_id3v2_comment(cls, filename):
+        """Given a filename, returns an ID3v22Comment or a subclass.
+
+        For example, if the file is ID3v2.3 tagged,
+        this returns an ID3v23Comment.
+        """
+
         import cStringIO
 
         f = file(filename, "rb")
@@ -812,6 +893,8 @@ class ID3v22Comment(MetaData):
 
 
 class ID3v23Frame(ID3v22Frame):
+    """A container for individual ID3v2.3 frames."""
+
     FRAME = Con.Struct("id3v23_frame",
                        Con.Bytes("frame_id", 4),
                        Con.UBInt32("size"),
@@ -827,6 +910,8 @@ class ID3v23Frame(ID3v22Frame):
                        Con.String("data", length=lambda ctx: ctx["size"]))
 
     def build(self, data=None):
+        """Returns a binary string of ID3v2.3 frame data."""
+
         if (data is None):
             data = self.data
 
@@ -842,6 +927,12 @@ class ID3v23Frame(ID3v22Frame):
 
     @classmethod
     def parse(cls, container):
+        """Returns the appropriate ID3v23Frame subclass from a Container.
+
+        Container is parsed from ID3v23Frame.FRAME
+        and contains "frame_id and "data" attributes.
+        """
+
         if (container.frame_id.startswith('T')):
             try:
                 encoding_byte = ord(container.data[0])
@@ -891,14 +982,16 @@ class ID3v23Frame(ID3v22Frame):
 
 
 class ID3v23TextFrame(ID3v23Frame):
+    """A container for individual ID3v2.3 text frames."""
+
     ENCODING = {0x00: "latin-1",
                 0x01: "ucs2"}
 
     TEXT_TYPE = True
 
-    #encoding is an encoding byte
-    #s is a unicode string
     def __init__(self, frame_id, encoding, s):
+        """frame_id is a 4 byte ID, encoding is 0/1, s is a unicode string."""
+
         self.id = frame_id
         self.encoding = encoding
         self.string = s
@@ -919,6 +1012,8 @@ class ID3v23TextFrame(ID3v23Frame):
             return 0
 
     def total(self):
+        """If the frame is number/total formatted, return the "total" int."""
+
         try:
             return int(re.findall(r'\d+/(\d+)', self.string)[0])
         except IndexError:
@@ -926,6 +1021,8 @@ class ID3v23TextFrame(ID3v23Frame):
 
     @classmethod
     def from_unicode(cls, frame_id, s):
+        """Builds an ID3v23TextFrame from 4 byte frame_id and unicode s."""
+
         if (frame_id == 'COMM'):
             return ID3v23ComFrame.from_unicode(s)
 
@@ -937,6 +1034,8 @@ class ID3v23TextFrame(ID3v23Frame):
                 continue
 
     def build(self):
+        """Returns a binary string of ID3v2.3 frame data."""
+
         return ID3v23Frame.build(
             self,
             chr(self.encoding) + \
@@ -945,6 +1044,8 @@ class ID3v23TextFrame(ID3v23Frame):
 
 
 class ID3v23PicFrame(ID3v23Frame, Image):
+    """A container for ID3v2.3 image (APIC) frames."""
+
     FRAME_HEADER = Con.Struct('apic_frame',
                               Con.Byte('text_encoding'),
                               Con.CString('mime_type'),
@@ -956,6 +1057,14 @@ class ID3v23PicFrame(ID3v23Frame, Image):
                                           0x01: UCS2CString("s")}))
 
     def __init__(self, data, mime_type, description, pic_type):
+        """Fields are as follows:
+
+        data        - a binary string of raw image data
+        mime_type   - a unicode string
+        description - a unicode string
+        pic_type    - an integer
+        """
+
         ID3v23Frame.__init__(self, 'APIC', None)
 
         try:
@@ -985,6 +1094,8 @@ class ID3v23PicFrame(ID3v23Frame, Image):
                 self.width, self.height, self.mime_type)
 
     def build(self):
+        """Returns a binary string of ID3v2.3 frame data."""
+
         try:
             self.description.encode('latin-1')
             text_encoding = 0
@@ -1000,6 +1111,8 @@ class ID3v23PicFrame(ID3v23Frame, Image):
 
     @classmethod
     def converted(cls, image):
+        """Given an Image object, returns an ID3v23PicFrame object."""
+
         return cls(data=image.data,
                    mime_type=image.mime_type,
                    description=image.description,
@@ -1007,11 +1120,21 @@ class ID3v23PicFrame(ID3v23Frame, Image):
 
 
 class ID3v23ComFrame(ID3v23TextFrame):
+    """A container for ID3v2.3 comment (COMM) frames."""
+
     COMMENT_HEADER = ID3v22ComFrame.COMMENT_HEADER
 
     TEXT_TYPE = True
 
     def __init__(self, encoding, language, short_description, content):
+        """Fields are as follows:
+
+        encoding          - a text encoding integer 0/1
+        language          - a 3 byte language field
+        short_description - a unicode string
+        contenxt          - a unicode string
+        """
+
         self.encoding = encoding
         self.language = language
         self.short_description = short_description
@@ -1033,6 +1156,8 @@ class ID3v23ComFrame(ID3v23TextFrame):
 
     @classmethod
     def from_unicode(cls, s):
+        """Builds an ID3v23ComFrame from a unicode string."""
+
         for encoding in 0x00, 0x01:
             try:
                 s.encode(cls.ENCODING[encoding])
@@ -1041,6 +1166,8 @@ class ID3v23ComFrame(ID3v23TextFrame):
                 continue
 
     def build(self):
+        """Returns a binary string of ID3v2.3 frame data."""
+
         return ID3v23Frame.build(
             self,
             self.COMMENT_HEADER.build(Con.Container(
@@ -1051,6 +1178,8 @@ class ID3v23ComFrame(ID3v23TextFrame):
 
 
 class ID3v23Comment(ID3v22Comment):
+    """A complete ID3v2.3 comment."""
+
     Frame = ID3v23Frame
     TextFrame = ID3v23TextFrame
     PictureFrame = ID3v23PicFrame
@@ -1142,6 +1271,8 @@ class ID3v23Comment(ID3v22Comment):
             return []
 
     def build(self):
+        """Returns an ID3v2.3 comment as a binary string."""
+
         subframes = "".join(["".join([value.build() for value in values])
                              for values in self.frames.values()])
 
@@ -1162,6 +1293,8 @@ class ID3v23Comment(ID3v22Comment):
 
 
 class ID3v24Frame(ID3v23Frame):
+    """A container for individual ID3v2.4 frames."""
+
     FRAME = Con.Struct("id3v24_frame",
                        Con.Bytes("frame_id", 4),
                        Syncsafe32("size"),
@@ -1180,6 +1313,8 @@ class ID3v24Frame(ID3v23Frame):
                        Con.String("data", length=lambda ctx: ctx["size"]))
 
     def build(self, data=None):
+        """Returns a binary string of ID3v2.4 frame data."""
+
         if (data is None):
             data = self.data
 
@@ -1197,6 +1332,12 @@ class ID3v24Frame(ID3v23Frame):
 
     @classmethod
     def parse(cls, container):
+        """Returns the appropriate ID3v24Frame subclass from a Container.
+
+        Container is parsed from ID3v24Frame.FRAME
+        and contains "frame_id and "data" attributes.
+        """
+
         if (container.frame_id.startswith('T')):
             try:
                 encoding_byte = ord(container.data[0])
@@ -1246,6 +1387,8 @@ class ID3v24Frame(ID3v23Frame):
 
 
 class ID3v24TextFrame(ID3v24Frame):
+    """A container for individual ID3v2.4 text frames."""
+
     ENCODING = {0x00: "latin-1",
                 0x01: "utf-16",
                 0x02: "utf-16be",
@@ -1256,6 +1399,8 @@ class ID3v24TextFrame(ID3v24Frame):
     #encoding is an encoding byte
     #s is a unicode string
     def __init__(self, frame_id, encoding, s):
+        """frame_id is a 4 byte ID, encoding is 0-3, s is a unicode string."""
+
         self.id = frame_id
         self.encoding = encoding
         self.string = s
@@ -1276,6 +1421,8 @@ class ID3v24TextFrame(ID3v24Frame):
             return 0
 
     def total(self):
+        """If the frame is number/total formatted, return the "total" int."""
+
         try:
             return int(re.findall(r'\d+/(\d+)', self.string)[0])
         except IndexError:
@@ -1283,6 +1430,8 @@ class ID3v24TextFrame(ID3v24Frame):
 
     @classmethod
     def from_unicode(cls, frame_id, s):
+        """Builds an ID3v24TextFrame from 4 byte frame_id and unicode s."""
+
         if (frame_id == 'COMM'):
             return ID3v24ComFrame.from_unicode(s)
 
@@ -1294,6 +1443,8 @@ class ID3v24TextFrame(ID3v24Frame):
                 continue
 
     def build(self):
+        """Returns a binary string of ID3v2.4 frame data."""
+
         return ID3v24Frame.build(
             self,
             chr(self.encoding) + \
@@ -1302,6 +1453,8 @@ class ID3v24TextFrame(ID3v24Frame):
 
 
 class ID3v24PicFrame(ID3v24Frame, Image):
+    """A container for ID3v2.4 image (APIC) frames."""
+
     FRAME_HEADER = Con.Struct('apic_frame',
                               Con.Byte('text_encoding'),
                               Con.CString('mime_type'),
@@ -1316,6 +1469,14 @@ class ID3v24PicFrame(ID3v24Frame, Image):
                     "s", encoding='utf-8')}))
 
     def __init__(self, data, mime_type, description, pic_type):
+        """Fields are as follows:
+
+        data        - a binary string of raw image data
+        mime_type   - a unicode string
+        description - a unicode string
+        pic_type    - an integer
+        """
+
         ID3v24Frame.__init__(self, 'APIC', None)
 
         try:
@@ -1345,6 +1506,8 @@ class ID3v24PicFrame(ID3v24Frame, Image):
                 self.width, self.height, self.mime_type)
 
     def build(self):
+        """Returns a binary string of ID3v2.4 frame data."""
+
         try:
             self.description.encode('latin-1')
             text_encoding = 0
@@ -1360,6 +1523,8 @@ class ID3v24PicFrame(ID3v24Frame, Image):
 
     @classmethod
     def converted(cls, image):
+        """Given an Image object, returns an ID3v24PicFrame object."""
+
         return cls(data=image.data,
                    mime_type=image.mime_type,
                    description=image.description,
@@ -1367,6 +1532,8 @@ class ID3v24PicFrame(ID3v24Frame, Image):
 
 
 class ID3v24ComFrame(ID3v24TextFrame):
+    """A container for ID3v2.4 comment (COMM) frames."""
+
     COMMENT_HEADER = Con.Struct(
         "com_frame",
         Con.Byte("encoding"),
@@ -1381,6 +1548,14 @@ class ID3v24ComFrame(ID3v24TextFrame):
     TEXT_TYPE = True
 
     def __init__(self, encoding, language, short_description, content):
+        """Fields are as follows:
+
+        encoding          - a text encoding integer 0-3
+        language          - a 3 byte language field
+        short_description - a unicode string
+        contenxt          - a unicode string
+        """
+
         self.encoding = encoding
         self.language = language
         self.short_description = short_description
@@ -1399,6 +1574,8 @@ class ID3v24ComFrame(ID3v24TextFrame):
 
     @classmethod
     def from_unicode(cls, s):
+        """Builds an ID3v24ComFrame from a unicode string."""
+
         for encoding in 0x00, 0x03, 0x01, 0x02:
             try:
                 s.encode(cls.ENCODING[encoding])
@@ -1407,6 +1584,8 @@ class ID3v24ComFrame(ID3v24TextFrame):
                 continue
 
     def build(self):
+        """Returns a binary string of ID3v2.4 frame data."""
+
         return ID3v24Frame.build(
             self,
             self.COMMENT_HEADER.build(Con.Container(
@@ -1417,6 +1596,8 @@ class ID3v24ComFrame(ID3v24TextFrame):
 
 
 class ID3v24Comment(ID3v23Comment):
+    """A complete ID3v2.4 comment."""
+
     Frame = ID3v24Frame
     TextFrame = ID3v24TextFrame
     PictureFrame = ID3v24PicFrame
@@ -1428,6 +1609,8 @@ class ID3v24Comment(ID3v23Comment):
         return u'ID3v2.4'
 
     def build(self):
+        """Returns an ID3v2.4 comment as a binary string."""
+
         subframes = "".join(["".join([value.build() for value in values])
                              for values in self.frames.values()])
 
@@ -1448,9 +1631,15 @@ from __id3v1__ import *
 
 
 class ID3CommentPair(MetaData):
-    #id3v2 and id3v1 are ID3v2Comment and ID3v1Comment objects or None
-    #values in ID3v2 take precendence over ID3v1, if present
+    """A pair of ID3v2/ID3v1 comments.
+
+    These can be manipulated as a set."""
+
     def __init__(self, id3v2_comment, id3v1_comment):
+        """id3v2 and id3v1 are ID3v2Comment and ID3v1Comment objects or None.
+
+        Values in ID3v2 take precendence over ID3v1, if present."""
+
         self.__dict__['id3v2'] = id3v2_comment
         self.__dict__['id3v1'] = id3v1_comment
 

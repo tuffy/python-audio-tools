@@ -1985,10 +1985,10 @@ class Image:
                  color_depth, color_count, description, type):
         """Fields are as follows:
 
-        data - plain string of the actual binary image data
-        mime_type - unicode string of the image's MIME type
-        width - width of image, as integer number of pixels
-        height - height of image, as integer number of pixels
+        data        - plain string of the actual binary image data
+        mime_type   - unicode string of the image's MIME type
+        width       - width of image, as integer number of pixels
+        height      - height of image, as integer number of pixels
         color_depth - color depth of image (24 for JPEG, 8 for GIF, etc.)
         color_count - number of palette colors, or 0
         description - a unicode string

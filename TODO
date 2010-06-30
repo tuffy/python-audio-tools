@@ -1200,38 +1200,38 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [X] AuAudio.to_pcm
      - [X] AuAudio.from_pcm
      - [X] AuAudio.track_name
-*** TODO __flac__.py
+*** DONE __flac__.py
 **** DONE adjust syntax
-**** TODO add docstrings
+**** DONE add docstrings
      - [ ] FlacException
-     - [ ] FlacMetaDataBlockTooLarge
-     - [ ] FlacMetaDataBlock
-     - [ ] FlacMetaDataBlock.build_block
-     - [ ] FlacMetaData
+     - [X] FlacMetaDataBlockTooLarge
+     - [X] FlacMetaDataBlock
+     - [X] FlacMetaDataBlock.build_block
+     - [X] FlacMetaData
      - [X] FlacMetaData.converted
      - [X] FlacMetaData.merge
      - [X] FlacMetaData.add_image
      - [X] FlacMetaData.delete_image
      - [X] FlacMetaData.images
-     - [ ] FlacMetaData.metadata_blocks
-     - [ ] FlacMetaData.build
-     - [ ] FlacMetaData.supports_images
-     - [ ] FlacVorbisComment
-     - [ ] FlacVorbisComment.build_block
-     - [ ] FlacVorbisComment.converted
-     - [ ] FlacPictureComment
-     - [ ] FlacPictureComment.converted
-     - [ ] FlacPictureComment.type_string
-     - [ ] FlacPictureComment.build
-     - [ ] FlacPictureComment.build_block
-     - [ ] FlacCueSheet
-     - [ ] FlacCueSheet.build_block
-     - [ ] FlacCueSheet.converted
-     - [ ] FlacCueSheet.catalog
-     - [ ] FlacCueSheet.ISRCs
-     - [ ] FlacCueSheet.indexes
-     - [ ] FlacCueSheet.pcm_lengths
-     - [ ] FlacAudio
+     - [X] FlacMetaData.metadata_blocks
+     - [X] FlacMetaData.build
+     - [X] FlacMetaData.supports_images
+     - [X] FlacVorbisComment
+     - [X] FlacVorbisComment.build_block
+     - [X] FlacVorbisComment.converted
+     - [X] FlacPictureComment
+     - [X] FlacPictureComment.converted
+     - [X] FlacPictureComment.type_string
+     - [X] FlacPictureComment.build
+     - [X] FlacPictureComment.build_block
+     - [X] FlacCueSheet
+     - [X] FlacCueSheet.build_block
+     - [X] FlacCueSheet.converted
+     - [X] FlacCueSheet.catalog
+     - [X] FlacCueSheet.ISRCs
+     - [X] FlacCueSheet.indexes
+     - [X] FlacCueSheet.pcm_lengths
+     - [X] FlacAudio
      - [X] FlacAudio.is_type
      - [X] FlacAudio.channel_mask
      - [X] FlacAudio.lossless
@@ -1256,15 +1256,15 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [X] FlacAudio.can_add_replay_gain
      - [X] FlacAudio.lossless_replay_gain
      - [X] FlacAudio.replay_gain
-     - [ ] FlacAudio.sub_pcm_tracks
-     - [ ] OggFlacAudio
+     - [X] FlacAudio.sub_pcm_tracks
+     - [X] OggFlacAudio
      - [X] OggFlacAudio.is_type
      - [X] OggFlacAudio.get_metadata
      - [X] OggFlacAudio.set_metadata
-     - [ ] OggFlacAudio.metadata_length
+     - [X] OggFlacAudio.metadata_length
      - [X] OggFlacAudio.to_pcm
      - [X] OggFlacAudio.from_pcm
-     - [ ] OggFlacAudio.sub_pcm_tracks
+     - [X] OggFlacAudio.sub_pcm_tracks
      - [X] OggFlacAudio.supports_foreign_riff_chunks
 *** TODO __freedb__.py
 **** DONE adjust syntax
@@ -1302,80 +1302,78 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [ ] FreeDBWeb.query
      - [ ] FreeDBWeb.read_data
      - [ ] get_xmcd
-*** TODO __id3__.py
+*** DONE __id3__.py
 **** DONE adjust syntax
-**** TODO add docstrings
-     - [ ] UCS2Codec
-     - [ ] UCS2Codec.fix_char
-     - [ ] UCS2Codec.encode
-     - [ ] UCS2Codec.decode
-     - [ ] UCS2CodecStreamWriter
-     - [ ] UCS2CodecStreamReader
-     - [ ] UnsupportedID3v2Version
-     - [ ] Syncsafe32
-     - [ ] UBInt24
-     - [ ] WidecharCStringAdapter
-     - [ ] UCS2CString
-     - [ ] UTF16CString
-     - [ ] UTF16BECString
-     - [ ] ID3v22Frame
-     - [ ] ID3v22Frame.build
-     - [ ] ID3v22Frame.parse
-     - [ ] ID3v22TextFrame
-     - [ ] ID3v22TextFrame.total
-     - [ ] ID3v22TextFrame.from_unicode
-     - [ ] ID3v22TextFrame.build
-     - [ ] ID3v22ComFrame
-     - [ ] ID3v22ComFrame.from_unicode
-     - [ ] ID3v22ComFrame.build
-     - [ ] ID3v22PicFrame
-     - [ ] ID3v22PicFrame.type_string
-     - [ ] ID3v22PicFrame.build
-     - [ ] ID3v22PicFrame.converted
-     - [ ] ID3v22Comment
+**** DONE add docstrings
+     - [X] UCS2Codec
+     - [X] UCS2Codec.fix_char
+     - [X] UCS2Codec.encode
+     - [X] UCS2Codec.decode
+     - [X] UnsupportedID3v2Version
+     - [X] Syncsafe32
+     - [X] UBInt24
+     - [X] WidecharCStringAdapter
+     - [X] UCS2CString
+     - [X] UTF16CString
+     - [X] UTF16BECString
+     - [X] ID3v22Frame
+     - [X] ID3v22Frame.build
+     - [X] ID3v22Frame.parse
+     - [X] ID3v22TextFrame
+     - [X] ID3v22TextFrame.total
+     - [X] ID3v22TextFrame.from_unicode
+     - [X] ID3v22TextFrame.build
+     - [X] ID3v22ComFrame
+     - [X] ID3v22ComFrame.from_unicode
+     - [X] ID3v22ComFrame.build
+     - [X] ID3v22PicFrame
+     - [X] ID3v22PicFrame.type_string
+     - [X] ID3v22PicFrame.build
+     - [X] ID3v22PicFrame.converted
+     - [X] ID3v22Comment
      - [X] ID3v22Comment.add_image
      - [X] ID3v22Comment.delete_image
      - [X] ID3v22Comment.images
-     - [ ] ID3v22Comment.parse
-     - [ ] ID3v22Comment.converted
+     - [X] ID3v22Comment.parse
+     - [X] ID3v22Comment.converted
      - [X] ID3v22Comment.merge
-     - [ ] ID3v22Comment.build
-     - [ ] ID3v22Comment.skip
-     - [ ] ID3v22Comment.read_id3v2_comment
-     - [ ] ID3v23Frame
-     - [ ] ID3v23Frame.build
-     - [ ] ID3v23Frame.parse
-     - [ ] ID3v23TextFrame
-     - [ ] ID3v23TextFrame.total
-     - [ ] ID3v23TextFrame.from_unicode
-     - [ ] ID3v23TextFrame.build
-     - [ ] ID3v23PicFrame
-     - [ ] ID3v23PicFrame.build
-     - [ ] ID3v23PicFrame.converted
-     - [ ] ID3v23ComFrame
-     - [ ] ID3v23ComFrame.from_unicode
-     - [ ] ID3v23ComFrame.build
-     - [ ] ID3v23Comment
+     - [X] ID3v22Comment.build
+     - [X] ID3v22Comment.skip
+     - [X] ID3v22Comment.read_id3v2_comment
+     - [X] ID3v23Frame
+     - [X] ID3v23Frame.build
+     - [X] ID3v23Frame.parse
+     - [X] ID3v23TextFrame
+     - [X] ID3v23TextFrame.total
+     - [X] ID3v23TextFrame.from_unicode
+     - [X] ID3v23TextFrame.build
+     - [X] ID3v23PicFrame
+     - [X] ID3v23PicFrame.build
+     - [X] ID3v23PicFrame.converted
+     - [X] ID3v23ComFrame
+     - [X] ID3v23ComFrame.from_unicode
+     - [X] ID3v23ComFrame.build
+     - [X] ID3v23Comment
      - [X] ID3v23Comment.add_image
      - [X] ID3v23Comment.delete_image
      - [X] ID3v23Comment.images
-     - [ ] ID3v23Comment.build
-     - [ ] ID3v24Frame
-     - [ ] ID3v24Frame.build
-     - [ ] ID3v24Frame.parse
-     - [ ] ID3v24TextFrame
-     - [ ] ID3v24TextFrame.total
-     - [ ] ID3v24TextFrame.from_unicode
-     - [ ] ID3v24TextFrame.build
-     - [ ] ID3v24PicFrame
-     - [ ] ID3v24PicFrame.build
-     - [ ] ID3v24PicFrame.converted
-     - [ ] ID3v24ComFrame
-     - [ ] ID3v24ComFrame.from_unicode
-     - [ ] ID3v24ComFrame.build
-     - [ ] ID3v24Comment
-     - [ ] ID3v24Comment.build
-     - [ ] ID3CommentPair
+     - [X] ID3v23Comment.build
+     - [X] ID3v24Frame
+     - [X] ID3v24Frame.build
+     - [X] ID3v24Frame.parse
+     - [X] ID3v24TextFrame
+     - [X] ID3v24TextFrame.total
+     - [X] ID3v24TextFrame.from_unicode
+     - [X] ID3v24TextFrame.build
+     - [X] ID3v24PicFrame
+     - [X] ID3v24PicFrame.build
+     - [X] ID3v24PicFrame.converted
+     - [X] ID3v24ComFrame
+     - [X] ID3v24ComFrame.from_unicode
+     - [X] ID3v24ComFrame.build
+     - [X] ID3v24Comment
+     - [X] ID3v24Comment.build
+     - [X] ID3CommentPair
      - [X] ID3CommentPair.converted
      - [X] ID3CommentPair.merge
      - [X] ID3CommentPair.images
@@ -1597,15 +1595,15 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [ ] BitstreamWriter.unary
      - [ ] BitstreamWriter.tell
      - [ ] BitstreamWriter.close
-*** TODO __m4a_atoms__.py
+*** DONE __m4a_atoms__.py
 **** DONE adjust syntax
-**** TODO add docstrings
-     - [ ] VersionLength
-     - [ ] AtomAdapter
-     - [ ] Atom
-     - [ ] AtomListAdapter
-     - [ ] AtomContainer
-     - [ ] AtomWrapper
+**** DONE add docstrings
+     - [X] VersionLength
+     - [X] AtomAdapter
+     - [X] Atom
+     - [X] AtomListAdapter
+     - [X] AtomContainer
+     - [X] AtomWrapper
 *** TODO __m4a__.py
 **** TODO adjust syntax
 **** DONE add docstrings
