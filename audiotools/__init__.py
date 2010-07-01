@@ -562,11 +562,17 @@ class DecodingError(IOError):
         return "error during file decoding"
 
 
-#takes a filename string
-#returns a valid AudioFile object based on the file data or extension
-#raises UnsupportedFile if it's not a file we support
-#raise IOError if some problem occurs opening the file
 def open(filename):
+    """Returns an AudioFile located at the given filename path.
+
+    This works solely by examining the file's contents
+    after opening it.
+    Raises UnsupportedFile if it's not a file we support based on its headers.
+    Raises InvalidFile if the file appears to be something we support,
+    but has errors of some sort.
+    Raises IOError if some problem occurs attempting to open the file.
+    """
+
     available_types = frozenset(TYPE_MAP.values())
 
     f = file(filename, "rb")
@@ -586,6 +592,13 @@ def open(filename):
 #returns a list of AudioFile objects, sorted by track_number()
 #any unsupported files are filtered out
 def open_files(filename_list, sorted=True, messenger=None):
+    """Returns a list of AudioFile objects from a list of filenames.
+
+    Files are sorted by album number then track number, by default.
+    Unsupported files are filtered out.
+    Error messages are sent to messenger, if given.
+    """
+
     toreturn = []
     if (messenger is None):
         messenger = Messenger("audiotools", None)
@@ -612,6 +625,14 @@ def open_files(filename_list, sorted=True, messenger=None):
 #optionally sorted by directory name and track_number()
 #any unsupported files are filtered out
 def open_directory(directory, sorted=True, messenger=None):
+    """Yields an AudioFile via a recursive search of directory.
+
+    Files are sorted by album number/track number by default,
+    on a per-directory basis.
+    Any unsupported files are filtered out.
+    Error messages are sent to messenger, if given.
+    """
+
     for (basedir, subdirs, filenames) in os.walk(directory):
         if (sorted):
             subdirs.sort()
@@ -926,7 +947,15 @@ class PCMReaderError(PCMReader):
 
 
 class ReorderedPCMReader:
+    """A PCMReader wrapper which reorders its output channels."""
+
     def __init__(self, pcmreader, channel_order):
+        """Initialized with a PCMReader and list of channel number integers.
+
+        For example, to swap the channels of a stereo stream:
+        >>> ReorderedPCMReader(reader,[1,0])
+        """
+
         self.pcmreader = pcmreader
         self.sample_rate = pcmreader.sample_rate
         self.channels = pcmreader.channels
@@ -935,18 +964,24 @@ class ReorderedPCMReader:
         self.channel_order = channel_order
 
     def read(self, bytes):
+        """Try to read a pcm.FrameList of size "bytes"."""
+
         framelist = self.pcmreader.read(bytes)
 
         return pcm.from_channels([framelist.channel(channel)
                                   for channel in self.channel_order])
 
     def close(self):
+        """Closes the stream."""
+
         self.pcmreader.close()
 
 
-#sends BUFFER_SIZE strings from from_function to to_function
-#until the string is empty
 def transfer_data(from_function, to_function):
+    """Sends BUFFER_SIZE strings from from_function to to_function.
+
+    This continues until an empty string is returned from from_function."""
+
     try:
         s = from_function(BUFFER_SIZE)
         while (len(s) > 0):
@@ -960,6 +995,13 @@ def transfer_data(from_function, to_function):
 
 def transfer_framelist_data(pcmreader, to_function,
                             signed=True, big_endian=False):
+    """Sends pcm.FrameLists from pcmreader to to_function.
+
+    FrameLists are converted to strings using the signed and big_endian
+    arguments.  This continues until an empty FrameLists is returned
+    from pcmreader.
+    """
+
     try:
         f = pcmreader.read(BUFFER_SIZE)
         while (len(f) > 0):
@@ -973,6 +1015,15 @@ def transfer_framelist_data(pcmreader, to_function,
 
 def threaded_transfer_framelist_data(pcmreader, to_function,
                                      signed=True, big_endian=False):
+    """Sends pcm.FrameLists from pcmreader to to_function via threads.
+
+    FrameLists are converted to strings using the signed and big_endian
+    arguments.  This continues until an empty FrameLists is returned
+    from pcmreader.  It operates by splitting reading and writing
+    into threads in the hopes that an intermittant reader
+    will not disrupt the writer.
+    """
+
     import threading
     import Queue
 
@@ -1038,10 +1089,12 @@ class __capped_stream_reader__:
         self.stream.close()
 
 
-#returns True if the PCM data in pcmreader1 equals pcmreader2
-#False if there is any data mismatch
-#the readers must be closed independently of this checker
 def pcm_cmp(pcmreader1, pcmreader2):
+    """Returns True if the PCM data in pcmreader1 equals pcmreader2.
+
+    The readers must be closed separately.
+    """
+
     if ((pcmreader1.sample_rate != pcmreader2.sample_rate) or
         (pcmreader1.channels != pcmreader2.channels) or
         (pcmreader1.bits_per_sample != pcmreader2.bits_per_sample)):
@@ -1065,10 +1118,14 @@ def pcm_cmp(pcmreader1, pcmreader2):
     return True
 
 
-#returns True if the PCM data in pcmreader1 equals pcmreader2
-#not counting any 0x00 bytes at the beginning and end
-#of each reader
 def stripped_pcm_cmp(pcmreader1, pcmreader2):
+    """Returns True if the stripped PCM data of pcmreader1 equals pcmreader2.
+
+    This operates by reading each PCM streams entirely to memory,
+    performing strip() on their output and comparing checksums
+    (which permits us to store just one big blob of memory at a time).
+    """
+
     if ((pcmreader1.sample_rate != pcmreader2.sample_rate) or
         (pcmreader1.channels != pcmreader2.channels) or
         (pcmreader1.bits_per_sample != pcmreader2.bits_per_sample)):
@@ -1092,9 +1149,11 @@ def stripped_pcm_cmp(pcmreader1, pcmreader2):
     return sum1.digest() == sum2.digest()
 
 
-#returns the PCM frame number of the first mismatch
-#or None if the two PCMReader objects match completely
 def pcm_frame_cmp(pcmreader1, pcmreader2):
+    """Returns the PCM Frame number of the first mismatch.
+
+    If the two streams match completely, returns None."""
+
     if ((pcmreader1.sample_rate != pcmreader2.sample_rate) or
         (pcmreader1.channels != pcmreader2.channels) or
         (pcmreader1.bits_per_sample != pcmreader2.bits_per_sample)):
@@ -1123,9 +1182,17 @@ def pcm_frame_cmp(pcmreader1, pcmreader2):
 
 
 class PCMCat(PCMReader):
-    #takes an iterator of PCMReader objects
-    #returns their data concatted together
+    """A PCMReader for concatenating several PCMReaders."""
+
     def __init__(self, pcmreaders):
+        """pcmreaders is an iterator of PCMReader objects.
+
+        Note that this currently does no error checking
+        to ensure reads have the same sample_rate, channels,
+        bits_per_sample or channel mask!
+        One must perform that check prior to building a PCMCat.
+        """
+
         self.reader_queue = pcmreaders
 
         try:
@@ -1139,6 +1206,8 @@ class PCMCat(PCMReader):
         self.bits_per_sample = self.first.bits_per_sample
 
     def read(self, bytes):
+        """Try to read a pcm.FrameList of size "bytes"."""
+
         try:
             s = self.first.read(bytes)
             if (len(s) > 0):
@@ -1154,6 +1223,8 @@ class PCMCat(PCMReader):
                                  True)
 
     def close(self):
+        """Closes the stream for reading."""
+
         pass
 
 
@@ -1234,11 +1305,14 @@ class BufferedPCMReader:
                 self.reader_finished = True
 
 
-#takes a PCMReader and a list of reader lengths (in PCM samples)
-#returns an iterator of PCMReader-compatible objects, each limited
-#to the given lengths.
-#The reader is closed upon completion
 def pcm_split(reader, pcm_lengths):
+    """Yields a PCMReader object from reader for each pcm_length (in frames).
+
+    Each sub-reader is pcm_length PCM frames long with the same
+    channels, bits_per_sample, sample_rate and channel_mask
+    as the full stream.  reader is closed upon completion.
+    """
+
     import tempfile
 
     def chunk_sizes(total_size, chunk_size):
@@ -1503,11 +1577,21 @@ def __add_dither__(frame_list):
 
 
 class PCMConverter:
+    """A PCMReader wrapper for converting attributes.
+
+    For example, this can be used to alter sample_rate, bits_per_sample,
+    channel_mask, channel count, or any combination of those
+    attributes.  It resamples, downsamples, etc. to achieve the proper
+    output.
+    """
+
     def __init__(self, pcmreader,
                  sample_rate,
                  channels,
                  channel_mask,
                  bits_per_sample):
+        """Takes a PCMReader input and the attributes of the new stream."""
+
         self.sample_rate = sample_rate
         self.channels = channels
         self.bits_per_sample = bits_per_sample
@@ -1558,6 +1642,8 @@ class PCMConverter:
                         self.bits_per_sample))
 
     def read(self, bytes):
+        """Try to read a pcm.FrameList of size "bytes"."""
+
         frame_list = self.reader.read(bytes)
 
         for converter in self.conversions:
@@ -1566,16 +1652,26 @@ class PCMConverter:
         return frame_list
 
     def close(self):
+        """Closes the stream for reading."""
+
         self.reader.close()
 
 
-#wraps around an existing PCMReader
-#and applies ReplayGain upon calling the read() method
 class ReplayGainReader:
-    #pcmreader is a PCMReader-compatible object
-    #replaygain is a floating point dB value
-    #peak is a floating point value
+    """A PCMReader which applies ReplayGain on its output."""
+
     def __init__(self, pcmreader, replaygain, peak):
+        """Fields are:
+
+        pcmreader  - a PCMReader object
+        replaygain - a floating point dB value
+        peak       - the maximum absolute value PCM sample, as a float
+
+        The latter two are typically stored with the file,
+        split into album gain and track gain pairs
+        which the user can apply based on preference.
+        """
+
         self.reader = pcmreader
         self.sample_rate = pcmreader.sample_rate
         self.channels = pcmreader.channels
@@ -1594,6 +1690,8 @@ class ReplayGainReader:
             self.multiplier = 1.0 / self.peak
 
     def read(self, bytes):
+        """Try to read a pcm.FrameList of size "bytes"."""
+
         multiplier = self.multiplier
         samples = self.reader.read(bytes)
 
@@ -1612,13 +1710,17 @@ class ReplayGainReader:
             True)
 
     def close(self):
+        """Closes the stream for reading."""
+
         self.reader.close()
 
 
-#given a list of tracks,
-#returns True if ReplayGain can be applied to those tracks
-#False if not
 def applicable_replay_gain(tracks):
+    """Returns True if ReplayGain can be applied to a list of AudioFiles.
+
+    This checks their sample rate and channel count to determine
+    applicability."""
+
     sample_rates = set([track.sample_rate() for track in tracks])
     if ((len(sample_rates) > 1) or
         (list(sample_rates)[0] not in (48000, 44100, 32000, 24000, 22050,
@@ -1633,10 +1735,12 @@ def applicable_replay_gain(tracks):
     return True
 
 
-#given a list of tracks,
-#returns an iterator of (track,track_gain,track_peak,album_gain,album_peak)
-#tuples or raises ValueError if a problem occurs during calculation
 def calculate_replay_gain(tracks):
+    """Yields (track,track_gain,track_peak,album_gain,album_peak)
+    for each AudioFile in the list of tracks.
+
+    Raises ValueError if a problem occurs during calculation."""
+
     from . import replaygain as replaygain
 
     sample_rate = set([track.sample_rate() for track in tracks])
@@ -1659,11 +1763,18 @@ def calculate_replay_gain(tracks):
         yield (track, track_gain, track_peak, album_gain, album_peak)
 
 
-#this is a wrapper around another PCMReader meant for audio recording
-#it runs read() continually in a separate thread
-#it also traps SIGINT and stops reading when caught
 class InterruptableReader(PCMReader):
+    """A PCMReader meant for audio recording.
+
+    It runs read() in a separate thread and stops recording
+    when SIGINT is caught.
+    """
+
     def __init__(self, pcmreader, verbose=True):
+        """Takes PCMReader object and verbosity flag."""
+
+        #FIXME - update this for Messenger support
+
         import threading
         import Queue
         import signal
@@ -1686,6 +1797,8 @@ class InterruptableReader(PCMReader):
         self.verbose = verbose
 
     def stop(self, *args):
+        """The SIGINT signal handler which stops recording."""
+
         import signal
 
         self.stop_reading = True
@@ -1695,6 +1808,8 @@ class InterruptableReader(PCMReader):
             print "Stopping..."
 
     def send_data(self):
+        """The thread for outputting PCM data from reader."""
+
         #try to use a half second long buffer
         BUFFER_SIZE = self.sample_rate * (self.bits_per_sample / 8) * \
                       self.channels / 2
@@ -1707,19 +1822,30 @@ class InterruptableReader(PCMReader):
         self.data_queue.put("")
 
     def read(self, length):
+        """Try to read a pcm.FrameList of size "bytes"."""
+
         return self.data_queue.get()
 
 
 def ignore_sigint():
+    """Sets the SIGINT signal to SIG_IGN.
+
+    Some encoder executables require this in order for
+    InterruptableReader to work correctly since we
+    want to catch SIGINT ourselves in that case and perform
+    a proper shutdown."""
+
     import signal
 
     signal.signal(signal.SIGINT, signal.SIG_IGN)
 
 
-#ensures all the directories leading to "destination_path" are created
-#if necessary
-#raises OSError if a problem occurs during directory creation
 def make_dirs(destination_path):
+    """Ensures all directories leading to destination_path are created.
+
+    Raises OSError if a problem occurs during directory creation.
+    """
+
     dirname = os.path.dirname(destination_path)
     if ((dirname != '') and (not os.path.isdir(dirname))):
         os.makedirs(dirname)
@@ -1731,6 +1857,19 @@ def make_dirs(destination_path):
 
 
 class MetaData:
+    """The base class for storing textual AudioFile metadata.
+
+    This includes things like track name, track number, album name
+    and so forth.  It also includes embedded images, if present.
+
+    Fields are stored with the same name they are initialized with.
+    Except for images, they can all be manipulated directly
+    (images have dedicated set/get/delete methods instead).
+    Subclasses are expected to override getattr/setattr
+    so that updating attributes will adjust the low-level attributes
+    accordingly.
+    """
+
     __FIELDS__ = ("track_name", "track_number", "track_total",
                   "album_name", "artist_name",
                   "performer_name", "composer_name", "conductor_name",
@@ -1741,9 +1880,6 @@ class MetaData:
     __INTEGER_FIELDS__ = ("track_number", "track_total",
                           "album_number", "album_total")
 
-    #track_name, album_name, artist_name, performer_name, copyright and year
-    #should be unicode strings
-    #track_number should be an integer
     def __init__(self,
                  track_name=u"",
                  track_number=0,
@@ -2019,13 +2155,25 @@ class MetaData:
 
 
 class AlbumMetaData(dict):
+    """A container for several MetaData objects.
+
+    They can be retrieved by track number."""
+
     def __init__(self, metadata_iter):
+        """metadata_iter is an iterator of MetaData objects."""
+
         dict.__init__(self,
                       dict([(m.track_number, m) for m in metadata_iter]))
 
-    #returns a single MetaData object containing all
-    #the consistent fields contained in the album
     def metadata(self):
+        """Returns a single MetaData object of all consistent fields.
+
+        For example, if album_name is the same in all MetaData objects,
+        the returned object will have that album_name value.
+        If track_name differs, the returned object will not
+        have a track_name field.
+        """
+
         return MetaData(**dict([(field, list(items)[0])
                                 for (field, items) in
                                 [(field,
@@ -2035,9 +2183,12 @@ class AlbumMetaData(dict):
                                 if (len(items) == 1)]))
 
 
-#a superclass of MetaData file exceptions
-#such as XMCDException and MBXMLException
 class MetaDataFileException(Exception):
+    """A superclass of XMCDException and MBXMLException.
+
+    This allows one to handle any sort of metadata file exception
+    consistently."""
+
     def __unicode__(self):
         return _(u"Invalid XMCD or MusicBrainz XML file")
 
@@ -2047,8 +2198,9 @@ class MetaDataFileException(Exception):
 #######################
 
 
-#A simple image data container
 class Image:
+    """An image data container."""
+
     def __init__(self, data, mime_type, width, height,
                  color_depth, color_count, description, type):
         """Fields are as follows:
@@ -2167,7 +2319,19 @@ class Image:
 
 
 class ReplayGain:
+    """A container for ReplayGain data."""
+
     def __init__(self, track_gain, track_peak, album_gain, album_peak):
+        """Values are:
+
+        track_gain - a dB float value
+        track_peak - the highest absolute value PCM sample, as a float
+        album_gain - a dB float value
+        album_peak - the highest absolute value PCM sample, as a float
+
+        They are also attributes.
+        """
+
         self.track_gain = float(track_gain)
         self.track_peak = float(track_peak)
         self.album_gain = float(album_gain)
@@ -2192,9 +2356,10 @@ class ReplayGain:
 #Generic Audio File
 #######################
 
-#raised by AudioFile.track_name()
-#if its format string contains unknown fields
 class UnsupportedTracknameField(Exception):
+    """Raised by AudioFile.track_name()
+    if its format string contains unknown fields."""
+
     def __init__(self, field):
         self.field = field
 
@@ -2658,12 +2823,17 @@ class DummyAudioFile(AudioFile):
 #Cuesheets and TOC files are bundled into a unified Sheet interface
 
 
-#a parent exception for CueException and TOCException
 class SheetException(ValueError):
+    """A parent exception for CueException and TOCException."""
+
     pass
 
 
 def read_sheet(filename):
+    """Returns a TOCFile or Cuesheet object from filename.
+
+    May raise a SheetException if the file cannot be parsed correctly."""
+
     import toc
     import cue
 
@@ -2675,6 +2845,15 @@ def read_sheet(filename):
 
 
 def parse_timestamp(s):
+    """Parses a timestamp string into an integer.
+
+    This presumes the stamp is stored: "hours:minutes:frames"
+    where each CD frame is 1/75th of a second.
+    Or, if the stamp is a plain integer, it is returned directly.
+    This does no error checking.  Presumably a regex will ensure
+    the stamp is formatted correctly before parsing it to an int.
+    """
+
     if (":" in s):
         (m, s, f) = map(int, s.split(":"))
         return (m * 60 * 75) + (s * 75) + f
@@ -2683,13 +2862,20 @@ def parse_timestamp(s):
 
 
 def build_timestamp(i):
+    """Returns a timestamp string from an integer number of CD frames.
+
+    Each CD frame is 1/75th of a second.
+    """
+
     return "%2.2d:%2.2d:%2.2d" % ((i / 75) / 60, (i / 75) % 60, i % 75)
 
 
-#given a cuesheet-compatible object and a total_frames integer
-#return a unicode string formatted for use by MetaData's __unicode__ method
-#for eventual display by trackinfo
 def sheet_to_unicode(sheet, total_frames):
+    """Returns formatted unicode from a cuesheet object and total PCM frames.
+
+    Its output is pretty-printed for eventual display by trackinfo.
+    """
+
     #FIXME? - This (and pcm_lengths() in general) assumes all cuesheets
     #have a sample rate of 44100Hz.
     #It's difficult to envision a scenario
@@ -2721,6 +2907,13 @@ def sheet_to_unicode(sheet, total_frames):
 
 
 def at_a_time(total, per):
+    """Yields "per" integers from "total" until exhausted.
+
+    For example:
+    >>> list(at_a_time(10, 3))
+    [3, 3, 3, 1]
+    """
+
     for i in xrange(total / per):
         yield per
     yield total % per
@@ -3088,10 +3281,13 @@ from __freedb__ import *
 from __musicbrainz__ import *
 
 
-#takes an XMCD or MusicBrainz XML file
-#returns an AlbumMetaData-compatible object
-#or throws a MetaDataFileException exception subclass if an error occurs
 def read_metadata_file(filename):
+    """Returns an AlbumMetaData from an XMCD or MusicBrainz XML file.
+
+    Raises a MetaDataFileException exception if an error occurs
+    during reading.
+    """
+
     #try XMCD first
     try:
         return XMCD.read(filename).metadata()

@@ -1444,13 +1444,13 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [X] UnsupportedChannelMask
      - [X] UnsupportedChannelCount
      - [X] DecodingError
-     - [ ] open
-     - [ ] open_files
-     - [ ] open_directory
+     - [X] open
+     - [X] open_files
+     - [X] open_directory
      - [X] UnknownAudioType
      - [X] AmbiguousAudioType
      - [X] filename_to_type
-     - [ ] ChannelMask
+     - [X] ChannelMask
      - [X] ChannelMask.defined
      - [X] ChannelMask.undefined
      - [X] ChannelMask.channels
@@ -1463,36 +1463,37 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [X] PCMReaderError
      - [X] PCMReaderError.read
      - [X] PCMReaderError.close
-     - [ ] ReorderedPCMReader
-     - [ ] ReorderedPCMReader.read
-     - [ ] ReorderedPCMReader.close
-     - [ ] transfer_data
-     - [ ] transfer_framelist_data
-     - [ ] threaded_transfer_framelist_data
+     - [X] ReorderedPCMReader
+     - [X] ReorderedPCMReader.read
+     - [X] ReorderedPCMReader.close
+     - [X] transfer_data
+     - [X] transfer_framelist_data
+     - [X] threaded_transfer_framelist_data
      - [ ] FrameReader
      - [ ] FrameReader.read
      - [ ] FrameReader.close
-     - [ ] pcm_cmp
-     - [ ] stripped_pcm_cmp
-     - [ ] pcm_frame_cmp
-     - [ ] PCMCat
-     - [ ] PCMCat.read
-     - [ ] PCMCat.close
+     - [X] pcm_cmp
+     - [X] stripped_pcm_cmp
+     - [X] pcm_frame_cmp
+     - [X] PCMCat
+     - [X] PCMCat.read
+     - [X] PCMCat.close
      - [X] BufferedPCMReader
      - [X] BufferedPCMReader.close
      - [X] BufferedPCMReader.read
-     - [ ] pcm_split
-     - [ ] PCMConverter
-     - [ ] PCMConverter.read
-     - [ ] PCMConverter.close
-     - [ ] applicable_replay_gain
-     - [ ] calculate_replay_gain
-     - [ ] InterruptableReader
-     - [ ] InterruptableReader.stop
-     - [ ] InterruptableReader.send_data
-     - [ ] InterruptableReader.read
-     - [ ] make_dirs
-     - [ ] MetaData
+     - [X] pcm_split
+     - [X] PCMConverter
+     - [X] PCMConverter.read
+     - [X] PCMConverter.close
+     - [X] applicable_replay_gain
+     - [X] calculate_replay_gain
+     - [X] InterruptableReader
+     - [X] InterruptableReader.stop
+     - [X] InterruptableReader.send_data
+     - [X] InterruptableReader.read
+     - [X] ignore_sigint
+     - [X] make_dirs
+     - [X] MetaData
      - [X] MetaData.converted
      - [X] MetaData.supports_images
      - [X] MetaData.images
@@ -1504,16 +1505,16 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [X] MetaData.add_image
      - [X] MetaData.delete_image
      - [X] MetaData.merge
-     - [ ] AlbumMetaData
-     - [ ] AlbumMetaData.metadata
-     - [ ] MetaDataFileException
+     - [X] AlbumMetaData
+     - [X] AlbumMetaData.metadata
+     - [X] MetaDataFileException
      - [X] Image
      - [X] Image.suffix
      - [X] Image.type_string
      - [X] Image.new
      - [X] Image.thumbnail
-     - [ ] ReplayGain
-     - [ ] UnsupportedTracknameField
+     - [X] ReplayGain
+     - [X] UnsupportedTracknameField
      - [X] AudioFile
      - [X] AudioFile.is_type
      - [X] AudioFile.bits_per_sample
@@ -1548,12 +1549,12 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [X] DummyAudioFile.track_number
      - [X] DummyAudioFile.sample_rate
      - [X] DummyAudioFile.total_frames
-     - [ ] SheetException
-     - [ ] read_sheet
-     - [ ] parse_timestamp
-     - [ ] build_timestamp
-     - [ ] sheet_to_unicode
-     - [ ] at_a_time
+     - [X] SheetException
+     - [X] read_sheet
+     - [X] parse_timestamp
+     - [X] build_timestamp
+     - [X] sheet_to_unicode
+     - [X] at_a_time
      - [X] CDDA
      - [X] RawCDDA
      - [X] RawCDDA.length
@@ -1575,7 +1576,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [X] OffsetCDTrackReader.log
      - [X] OffsetCDTrackReader.read
      - [X] OffsetCDTrackReader.close
-     - [ ] read_metadata_file
+     - [X] read_metadata_file
      - [X] ExecQueue
      - [X] ExecQueue.execute
      - [X] ExecQueue.run
