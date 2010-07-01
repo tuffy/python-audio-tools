@@ -41,7 +41,11 @@ gettext.install("audiotools", unicode=True)
 
 
 class RawConfigParser(ConfigParser.RawConfigParser):
+    """Extends RawConfigParser to provide additional methods."""
+
     def get_default(self, section, option, default):
+        """Returns a default if option is not found in section."""
+
         try:
             return self.get(section, option)
         except ConfigParser.NoSectionError:
@@ -50,6 +54,8 @@ class RawConfigParser(ConfigParser.RawConfigParser):
             return default
 
     def getint_default(self, section, option, default):
+        """Returns a default int if option is not found in section."""
+
         try:
             return self.getint(section, option)
         except ConfigParser.NoSectionError:
@@ -127,6 +133,8 @@ BIG_ENDIAN = sys.byteorder == 'big'
 
 
 def find_glade_file(glade_filename):
+    """Returns the full path to glade_filename, if found."""
+
     glade_paths = [".",
                    os.path.join(sys.prefix, "share/audiotools"),
                    os.path.join("/usr", "share/audiotools"),
@@ -145,6 +153,12 @@ def find_glade_file(glade_filename):
 
 
 class OptionParser(optparse.OptionParser):
+    """Extends OptionParser to use IO_ENCODING as text encoding.
+
+    This ensures the encoding remains consistent if --help
+    output is piped to a pager vs. sent to a tty.
+    """
+
     def _get_encoding(self, file):
         return IO_ENCODING
 
@@ -152,6 +166,8 @@ OptionGroup = optparse.OptionGroup
 
 
 def Messenger(executable, options):
+    """Returns a Messenger object based on set verbosity level in options."""
+
     if (not hasattr(options, "verbosity")):
         return VerboseMessenger(executable)
     elif ((options.verbosity == 'normal') or
@@ -164,6 +180,12 @@ __ANSI_SEQUENCE__ = re.compile(u"\u001B\[[0-9;]+m")
 
 
 def str_width(s):
+    """Returns the width of unicode string s, in characters.
+
+    This accounts for multi-code Unicode characters
+    as well as embedded ANSI sequences.
+    """
+
     import unicodedata
 
     return len(unicodedata.normalize('NFC', __ANSI_SEQUENCE__.sub(u"", s)))
@@ -222,6 +244,13 @@ class __DividerRow__:
 
 
 class VerboseMessenger:
+    """This class is for displaying formatted output in a consistent way.
+
+    It performs proper unicode string encoding based on IO_ENCODING,
+    but can also display tabular data and ANSI-escaped data
+    with less effort.
+    """
+
     #a set of ANSI SGR codes
     RESET = 0
     BOLD = 1
@@ -472,25 +501,29 @@ class SilentMessenger(VerboseMessenger):
         pass
 
 
-#raised by open() if the file cannot be identified or opened correctly
 class UnsupportedFile(Exception):
+    """Raised by open() if the file can be opened but not identified."""
+
     pass
 
 
-#raised if an audio file cannot be initialized correctly
 class InvalidFile(Exception):
+    """Raised during initialization if the file is invalid in some way."""
+
     pass
 
 
-#raised if an audio file cannot be created correctly from from_pcm()
-#due to having a PCM format unsupported by the output format
 class InvalidFormat(Exception):
+    """Raised if an audio file cannot be created correctly from from_pcm()
+    due to having a PCM format unsupported by the output format."""
+
     pass
 
 
-#raised if an audio file cannot be created correctly from from_pcm()
-#due to an error by the encoder
 class EncodingError(IOError):
+    """Raised if an audio file cannot be created correctly from from_pcm()
+    due to an error by the encoder."""
+
     def __init__(self, executable=None):
         self.executable = executable
 
@@ -499,21 +532,32 @@ class EncodingError(IOError):
 
 
 class UnsupportedChannelMask(EncodingError):
+    """Raised if the encoder does not support the file's channel mask."""
+
     def __str__(self):
         return "unsupported channel mask during file encoding"
 
 
 class UnsupportedChannelCount(EncodingError):
+    """Raised if the encoder does not support the file's channel count."""
+
     def __str__(self):
         return "unsupported channel count during file encoding"
 
 
 class UnsupportedBitsPerSample(EncodingError):
+    """Raised if the encoder does not support the file's bits-per-sample."""
+
     def __str__(self):
         return "unsupported bits per sample during file encoding"
 
 
 class DecodingError(IOError):
+    """Raised if the decoder exits with an error.
+
+    Typically, a from_pcm() method will catch this error
+    and raise EncodingError."""
+
     def __str__(self):
         return "error during file decoding"
 
@@ -596,6 +640,8 @@ def group_tracks(tracks):
 
 
 class UnknownAudioType(Exception):
+    """Raised if filename_to_type finds no possibilities.."""
+
     def __init__(self, suffix):
         self.suffix = suffix
 
@@ -604,6 +650,8 @@ class UnknownAudioType(Exception):
 
 
 class AmbiguousAudioType(UnknownAudioType):
+    """Raised if filename_to_type finds more than one possibility."""
+
     def __init__(self, suffix, type_list):
         self.suffix = suffix
         self.type_list = type_list
@@ -615,12 +663,17 @@ class AmbiguousAudioType(UnknownAudioType):
                                        for t in self.type_list]))))
 
 
-#given a path string to a file,
-#try to guess its type based on suffix
-#returns an available AudioFile
-#raises an UnknownAudioType exception if the type is unknown
-#raise AmbiguousAudioType exception if the type is ambiguous
 def filename_to_type(path):
+    """Given a path to a file, return its audio type based on suffix.
+
+    For example:
+    >>> filename_to_type("/foo/file.flac")
+    <class audiotools.__flac__.FlacAudio at 0x7fc8456d55f0>
+
+    Raises an UnknownAudioType exception if the type is unknown.
+    Raise AmbiguousAudioType exception if the type is ambiguous.
+    """
+
     (path, ext) = os.path.splitext(path)
     if (len(ext) > 0):
         ext = ext[1:]   # remove the "."
@@ -859,10 +912,16 @@ class PCMReader:
 
 
 class PCMReaderError(PCMReader):
+    """A dummy PCMReader which automatically raises DecodingError."""
+
     def read(self, bytes):
+        """Always returns empty output."""
+
         return ""
 
     def close(self):
+        """Always raises DecodingError."""
+
         raise DecodingError()
 
 

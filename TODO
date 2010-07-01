@@ -1408,14 +1408,14 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 **** DONE adjust syntax
 **** TODO add docstrings
      - [ ] __init__.py
-     - [ ] RawConfigParser
-     - [ ] RawConfigParser.get_default
-     - [ ] RawConfigParser.getint_default
-     - [ ] find_glade_file
-     - [ ] OptionParser
-     - [ ] Messenger
-     - [ ] str_width
-     - [ ] VerboseMessenger
+     - [X] RawConfigParser
+     - [X] RawConfigParser.get_default
+     - [X] RawConfigParser.getint_default
+     - [X] find_glade_file
+     - [X] OptionParser
+     - [X] Messenger
+     - [X] str_width
+     - [X] VerboseMessenger
      - [X] VerboseMessenger.output
      - [X] VerboseMessenger.partial_output
      - [X] VerboseMessenger.new_row
@@ -1437,19 +1437,19 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [X] SilentMessenger.warning
      - [X] SilentMessenger.info
      - [X] SilentMessenger.partial_info
-     - [ ] UnsupportedFile
-     - [ ] InvalidFile
-     - [ ] InvalidFormat
-     - [ ] EncodingError
-     - [ ] UnsupportedChannelMask
-     - [ ] UnsupportedChannelCount
-     - [ ] DecodingError
+     - [X] UnsupportedFile
+     - [X] InvalidFile
+     - [X] InvalidFormat
+     - [X] EncodingError
+     - [X] UnsupportedChannelMask
+     - [X] UnsupportedChannelCount
+     - [X] DecodingError
      - [ ] open
      - [ ] open_files
      - [ ] open_directory
-     - [ ] UnknownAudioType
-     - [ ] AmbiguousAudioType
-     - [ ] filename_to_type
+     - [X] UnknownAudioType
+     - [X] AmbiguousAudioType
+     - [X] filename_to_type
      - [ ] ChannelMask
      - [X] ChannelMask.defined
      - [X] ChannelMask.undefined
@@ -1460,9 +1460,9 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [X] PCMReader
      - [X] PCMReader.read
      - [X] PCMReader.close
-     - [ ] PCMReaderError
-     - [ ] PCMReaderError.read
-     - [ ] PCMReaderError.close
+     - [X] PCMReaderError
+     - [X] PCMReaderError.read
+     - [X] PCMReaderError.close
      - [ ] ReorderedPCMReader
      - [ ] ReorderedPCMReader.read
      - [ ] ReorderedPCMReader.close
