@@ -25,15 +25,16 @@ import os
 import os.path
 import gettext
 
-gettext.install("audiotools",unicode=True)
+gettext.install("audiotools", unicode=True)
 
 MAX_CPUS = audiotools.MAX_JOBS
+
 
 def extract_part(input_filename, input_pcm, output_filename, quality, metadata,
                  messenger):
     messenger.info(_(u"%(source)s -> %(destination)s") % \
-                       {"source":messenger.filename(input_filename),
-                        "destination":messenger.filename(output_filename)})
+                       {"source": messenger.filename(input_filename),
+                        "destination": messenger.filename(output_filename)})
 
     try:
         destination_audiofile = AudioType.from_pcm(
@@ -50,10 +51,10 @@ def extract_part(input_filename, input_pcm, output_filename, quality, metadata,
         messenger.error(_(u"Unable to write \"%s\"") % \
                             (messenger.filename(output_filename)))
         sys.exit(1)
-    except audiotools.InvalidFormat,msg:
+    except audiotools.InvalidFormat, msg:
         messenger.error(u"%(filename)s: %(error)s" % \
-                            {"filename":messenger.filename(output_filename),
-                             "error":unicode(msg)})
+                            {"filename": messenger.filename(output_filename),
+                             "error": unicode(msg)})
         sys.exit(1)
 
 
@@ -65,85 +66,95 @@ if (__name__ == '__main__'):
         _(u'%prog [options] [-d directory] <track>'),
         version="Python Audio Tools %s" % (audiotools.VERSION))
 
-    parser.add_option('-V','--verbose',
-                      action='store',
-                      dest='verbosity',
-                      choices=["quiet","normal","debug"],
-                      default="normal",
-                      help=_(u'the verbosity level to execute at'))
+    parser.add_option(
+        '-V', '--verbose',
+        action='store',
+        dest='verbosity',
+        choices=["quiet", "normal", "debug"],
+        default="normal",
+        help=_(u'the verbosity level to execute at'))
 
-    parser.add_option('--cue',
-                      action='store',
-                      type='string',
-                      dest='cuesheet',
-                      metavar='FILENAME',
-                      help=_(u'the cuesheet to use for splitting track'))
+    parser.add_option(
+        '--cue',
+        action='store',
+        type='string',
+        dest='cuesheet',
+        metavar='FILENAME',
+        help=_(u'the cuesheet to use for splitting track'))
 
-    conversion = audiotools.OptionGroup(parser,_(u"Conversion Options"))
+    conversion = audiotools.OptionGroup(parser, _(u"Conversion Options"))
 
-    conversion.add_option('-t','--type',
-                          action='store',
-                          dest='type',
-                          choices=audiotools.TYPE_MAP.keys(),
-                          help=_(u'the type of audio track to convert to'))
+    conversion.add_option(
+        '-t', '--type',
+        action='store',
+        dest='type',
+        choices=audiotools.TYPE_MAP.keys(),
+        help=_(u'the type of audio track to convert to'))
 
-    conversion.add_option('-q','--quality',
-                          action='store',
-                          type='string',
-                          dest='quality',
-                          help=_(u'the quality to store audio tracks at'))
+    conversion.add_option(
+        '-q', '--quality',
+        action='store',
+        type='string',
+        dest='quality',
+        help=_(u'the quality to store audio tracks at'))
 
-    conversion.add_option('-d','--dir',
-                          action='store',
-                          type='string',
-                          dest='dir',
-                          default='.',
-                          help=_(u'the directory to store converted audio tracks'))
+    conversion.add_option(
+        '-d', '--dir',
+        action='store',
+        type='string',
+        dest='dir',
+        default='.',
+        help=_(u'the directory to store converted audio tracks'))
 
-    conversion.add_option('--format',
-                          action='store',
-                          type='string',
-                          default=None,
-                          dest='format',
-                          help=_(u'the format string for new filenames'))
+    conversion.add_option(
+        '--format',
+        action='store',
+        type='string',
+        default=None,
+        dest='format',
+        help=_(u'the format string for new filenames'))
 
-    conversion.add_option('-j','--joint',
-                          action='store',
-                          type='int',
-                          default=MAX_CPUS,
-                          dest='max_processes',
-                          help=_(u'the maximum number of processes to run at a time'))
+    conversion.add_option(
+        '-j', '--joint',
+        action='store',
+        type='int',
+        default=MAX_CPUS,
+        dest='max_processes',
+        help=_(u'the maximum number of processes to run at a time'))
 
     parser.add_option_group(conversion)
 
-    metadata = audiotools.OptionGroup(parser,_(u"Metadata Options"))
+    metadata = audiotools.OptionGroup(parser, _(u"Metadata Options"))
 
-    metadata.add_option('-x','--xmcd',
-                          action='store',
-                          type='string',
-                          dest='xmcd',
-                          metavar='FILENAME',
-                          help=_(u'FreeDB XMCD file or MusicBrainz XML file'))
+    metadata.add_option(
+        '-x', '--xmcd',
+        action='store',
+        type='string',
+        dest='xmcd',
+        metavar='FILENAME',
+        help=_(u'FreeDB XMCD file or MusicBrainz XML file'))
 
     #if adding ReplayGain is a lossless process
     #(i.e. added as tags rather than modifying track data)
     #add_replay_gain should default to True
     #if not, add_replay_gain should default to False
     #which is which depends on the track type
-    metadata.add_option('--replay-gain',
-                        action='store_true',
-                        dest='add_replay_gain',
-                        help=_(u'add ReplayGain metadata to newly created tracks'))
+    metadata.add_option(
+        '--replay-gain',
+        action='store_true',
+        dest='add_replay_gain',
+        help=_(u'add ReplayGain metadata to newly created tracks'))
 
-    metadata.add_option('--no-replay-gain',
-                      action='store_false',
-                      dest='add_replay_gain',
-                      help=_(u'do not add ReplayGain metadata to newly extracted tracks'))
+    metadata.add_option(
+        '--no-replay-gain',
+        action='store_false',
+        dest='add_replay_gain',
+        help=_(u'do not add ReplayGain metadata to newly extracted tracks'))
 
     parser.add_option_group(metadata)
 
-    (options,args) = parser.parse_args()
-    msg = audiotools.Messenger("tracksplit",options)
+    (options, args) = parser.parse_args()
+    msg = audiotools.Messenger("tracksplit", options)
 
     #get the AudioFile class we are converted to
     if (options.type is not None):
@@ -165,9 +176,10 @@ if (__name__ == '__main__'):
     elif (options.quality is None):
         options.quality = AudioType.DEFAULT_COMPRESSION
     elif (options.quality not in AudioType.COMPRESSION_MODES):
-        msg.error(_(u"\"%(quality)s\" is not a supported compression mode for type \"%(type)s\"") % \
-                      {"quality":options.quality,
-                       "type":AudioType.NAME})
+        msg.error(_(u"\"%(quality)s\" is not a supported " +
+                    u"compression mode for type \"%(type)s\"") %
+                  {"quality": options.quality,
+                   "type": AudioType.NAME})
         sys.exit(1)
 
     if (len(args) != 1):
@@ -184,8 +196,9 @@ if (__name__ == '__main__'):
         sys.exit(1)
 
     if (options.add_replay_gain is None):
-        options.add_replay_gain = (AudioType.lossless_replay_gain() and
-                                   audiotools.applicable_replay_gain([audiofile]))
+        options.add_replay_gain = (
+            AudioType.lossless_replay_gain() and
+            audiotools.applicable_replay_gain([audiofile]))
 
     if ((options.cuesheet is None) and (not has_embedded_cuesheet(audiofile))):
         msg.error(_(u"You must specify a cuesheet to split audio file"))
@@ -204,7 +217,7 @@ if (__name__ == '__main__'):
         #(this overrides an embedded cuesheet)
         try:
             cuesheet = audiotools.read_sheet(options.cuesheet)
-        except audiotools.SheetException,err:
+        except audiotools.SheetException, err:
             msg.error(unicode(err))
             sys.exit(1)
     else:
@@ -214,55 +227,53 @@ if (__name__ == '__main__'):
         msg.error(_(u"Cuesheet too long for track being split"))
         sys.exit(1)
 
-
     #pull initial metadata from the base file, where appropriate
     base_metadata = audiofile.get_metadata()
     if (base_metadata is not None):
         base = audiotools.AlbumMetaData([])
         ISRCs = cuesheet.ISRCs()
-        for (i,indexes) in enumerate(cuesheet.indexes()):
+        for (i, indexes) in enumerate(cuesheet.indexes()):
             track_metadata = audiotools.MetaData.converted(base_metadata)
             track_metadata.track_name = u""
             track_metadata.track_number = i + 1
             track_metadata.track_total = len(list(cuesheet.indexes()))
-            track_metadata.ISRC = ISRCs.get(i + 1,u"")
+            track_metadata.ISRC = ISRCs.get(i + 1, u"")
 
             base[i + 1] = track_metadata
     else:
         base = audiotools.AlbumMetaData(
-            [audiotools.MetaData(track_number=i+1)
-                  for (i,indexes) in enumerate(cuesheet.indexes())])
+            [audiotools.MetaData(track_number=i + 1)
+                  for (i, indexes) in enumerate(cuesheet.indexes())])
 
     #if we're using an XMCD file, use that file for track MetaData
     if (options.xmcd is not None):
         try:
             xmcd = audiotools.read_metadata_file(options.xmcd)
-        except audiotools.MetaDataFileException,err:
+        except audiotools.MetaDataFileException, err:
             msg.error(unicode(err))
             sys.exit(1)
     else:
         xmcd = audiotools.AlbumMetaData(
-            [audiotools.MetaData(track_number=i+1)
-                  for (i,indexes) in enumerate(cuesheet.indexes())])
-
+            [audiotools.MetaData(track_number=i + 1)
+                  for (i, indexes) in enumerate(cuesheet.indexes())])
 
     try:
         split_pcm = audiotools.pcm_split(
             audiofile.to_pcm(),
             cuesheet.pcm_lengths(audiofile.total_frames()))
-    except audiotools.DecodingError,err:
+    except audiotools.DecodingError, err:
         msg.error(unicode(err))
         sys.exit(1)
 
     try:
-        for (i,pcmreader) in enumerate(split_pcm):
+        for (i, pcmreader) in enumerate(split_pcm):
             track_number = i + 1
 
-            metadata = xmcd.get(track_number,None)
+            metadata = xmcd.get(track_number, None)
             if (metadata is not None):
-                metadata.merge(base.get(track_number,None))
+                metadata.merge(base.get(track_number, None))
             else:
-                metadata = base.get(track_number,None)
+                metadata = base.get(track_number, None)
 
             filename = os.path.join(
                 base_directory,
@@ -280,7 +291,7 @@ if (__name__ == '__main__'):
                            options.quality,
                            metadata,
                            msg))
-    except audiotools.UnsupportedTracknameField,err:
+    except audiotools.UnsupportedTracknameField, err:
         err.error_msg(msg)
         sys.exit(1)
 
@@ -290,11 +301,13 @@ if (__name__ == '__main__'):
 
     if (options.add_replay_gain and AudioType.can_add_replay_gain()):
         if (AudioType.lossless_replay_gain()):
-            msg.info(_(u"Adding ReplayGain metadata.  This may take some time."))
+            msg.info(
+                _(u"Adding ReplayGain metadata.  This may take some time."))
         else:
-            msg.info(_(u"Applying ReplayGain.  This may take some time."))
+            msg.info(
+                _(u"Applying ReplayGain.  This may take some time."))
         try:
             AudioType.add_replay_gain(encoded_filenames)
-        except ValueError,err:
+        except ValueError, err:
             msg.error(unicode(err))
             sys.exit(1)

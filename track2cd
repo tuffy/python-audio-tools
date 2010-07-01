@@ -27,64 +27,71 @@ import tempfile
 import subprocess
 import gettext
 
-gettext.install("audiotools",unicode=True)
+gettext.install("audiotools", unicode=True)
 
 MAX_CPUS = audiotools.MAX_JOBS
 
-def convert_to_wave(audiofile,wave_filename,messenger):
+
+def convert_to_wave(audiofile, wave_filename, messenger):
     if ((audiofile.sample_rate() == 44100) and
         (audiofile.channels() == 2) and
-        (audiofile.bits_per_sample() == 16)):  #already CD quality
+        (audiofile.bits_per_sample() == 16)):  # already CD quality
         audiofile.to_wave(wave_filename)
-    else:                                      #convert to CD quality
+    else:                                      # convert to CD quality
         pcm = audiotools.PCMConverter(
             audiofile.to_pcm(),
             sample_rate=44100,
             channels=2,
             channel_mask=audiotools.ChannelMask.from_channels(2),
             bits_per_sample=16)
-        audiotools.WaveAudio.from_pcm(wave_filename,pcm)
+        audiotools.WaveAudio.from_pcm(wave_filename, pcm)
         pcm.close()
 
     messenger.info(u"* %s" % (messenger.filename(audiofile.filename)))
+
 
 if (__name__ == '__main__'):
     parser = audiotools.OptionParser(
         usage=_(u"%prog [options] <track 1> [track 2] ..."),
         version="Python Audio Tools %s" % (audiotools.VERSION))
 
-    parser.add_option("-c","--cdrom",dest="dev",
-                      default=audiotools.DEFAULT_CDROM,
-                      help=_(u"cdrom device to use"))
+    parser.add_option(
+        "-c", "--cdrom", dest="dev",
+        default=audiotools.DEFAULT_CDROM,
+        help=_(u"cdrom device to use"))
 
-    parser.add_option("-s","--speed",dest="speed",
-                      default=20,
-                      type="int",
-                      help=_(u"the speed to burn the CD at"))
+    parser.add_option(
+        "-s", "--speed", dest="speed",
+        default=20,
+        type="int",
+        help=_(u"the speed to burn the CD at"))
 
-    parser.add_option('--cue',
-                      action='store',
-                      type='string',
-                      dest='cuesheet',
-                      metavar='FILENAME',
-                      help=_(u'the cuesheet to use for writing tracks'))
+    parser.add_option(
+        '--cue',
+        action='store',
+        type='string',
+        dest='cuesheet',
+        metavar='FILENAME',
+        help=_(u'the cuesheet to use for writing tracks'))
 
-    parser.add_option('-j','--joint',
-                      action='store',
-                      type='int',
-                      default=MAX_CPUS,
-                      dest='max_processes',
-                      help=_(u'the maximum number of processes to run at a time'))
+    parser.add_option(
+        '-j', '--joint',
+        action='store',
+        type='int',
+        default=MAX_CPUS,
+        dest='max_processes',
+        help=_(u'the maximum number of processes to run at a time'))
 
-    parser.add_option('-V','--verbose',
-                      action='store',
-                      dest='verbosity',
-                      choices=["quiet","normal","debug"],
-                      default="normal",
-                      help=_(u'the verbosity level to execute at'))
+    parser.add_option(
+        '-V', '--verbose',
+        action='store',
+        dest='verbosity',
+        choices=["quiet", "normal", "debug"],
+        default="normal",
+        help=_(u'the verbosity level to execute at'))
 
-    (options,args) = parser.parse_args()
-    msg = audiotools.Messenger("track2cd",options)
+    (options, args) = parser.parse_args()
+    msg = audiotools.Messenger("track2cd", options)
 
     if (options.max_processes < 1):
         msg.error(_(u'You must run at least 1 process at a time'))
@@ -92,7 +99,7 @@ if (__name__ == '__main__'):
     else:
         max_processes = options.max_processes
 
-    audiofiles = audiotools.open_files(args,sorted=False,messenger=msg)
+    audiofiles = audiotools.open_files(args, sorted=False, messenger=msg)
 
     if (len(audiofiles) < 1):
         msg.error(_(u"You must specify at least 1 supported audio file"))
@@ -114,7 +121,7 @@ if (__name__ == '__main__'):
         tempwav = tempfile.NamedTemporaryFile(suffix='.wav')
 
         temptoc.write(audiotools.toc.TOCFile.file(
-                cuesheet,os.path.basename(tempwav.name)))
+                cuesheet, os.path.basename(tempwav.name)))
         temptoc.flush()
 
         msg.info(_(u"Converting audio file"))
@@ -129,10 +136,10 @@ if (__name__ == '__main__'):
             temptrack = audiotools.WaveAudio.from_pcm(
                     tempwav.name,
                     audiotools.PCMConverter(audiofiles[0].to_pcm(),
-                                            44100,2,16))
+                                            44100, 2, 16))
 
         os.chdir(os.path.dirname(tempwav.name))
-        cdrdao_args = [audiotools.BIN["cdrdao"],"write"]
+        cdrdao_args = [audiotools.BIN["cdrdao"], "write"]
 
         cdrdao_args.append("--device")
         cdrdao_args.append(options.dev)
@@ -145,7 +152,7 @@ if (__name__ == '__main__'):
         if (options.verbosity != 'quiet'):
             subprocess.call(cdrdao_args)
         else:
-            devnull = open(os.devnull,'wb')
+            devnull = open(os.devnull, 'wb')
             sub = subprocess.Popen(cdrdao_args,
                                    stdout=devnull,
                                    stderr=devnull)
@@ -178,7 +185,7 @@ if (__name__ == '__main__'):
 
         try:
             toc = audiotools.read_sheet(options.cuesheet)
-        except audiotools.SheetException,err:
+        except audiotools.SheetException, err:
             msg.error(unicode(err))
             sys.exit(1)
 
@@ -186,7 +193,7 @@ if (__name__ == '__main__'):
         tempwav = tempfile.NamedTemporaryFile(suffix='.wav')
 
         temptoc.write(audiotools.toc.TOCFile.file(
-                toc,os.path.basename(tempwav.name)))
+                toc, os.path.basename(tempwav.name)))
         temptoc.flush()
 
         msg.info(_(u"Converting audio files"))
@@ -205,10 +212,10 @@ if (__name__ == '__main__'):
                     tempwav.name,
                     audiotools.PCMConverter(audiotools.PCMCat(
                         iter([af.to_pcm() for af in audiofiles])),
-                                            44100,2,16))
+                                            44100, 2, 16))
 
         os.chdir(os.path.dirname(tempwav.name))
-        cdrdao_args = [audiotools.BIN["cdrdao"],"write"]
+        cdrdao_args = [audiotools.BIN["cdrdao"], "write"]
 
         cdrdao_args.append("--device")
         cdrdao_args.append(options.dev)
@@ -221,7 +228,7 @@ if (__name__ == '__main__'):
         if (options.verbosity != 'quiet'):
             subprocess.call(cdrdao_args)
         else:
-            devnull = open(os.devnull,'wb')
+            devnull = open(os.devnull, 'wb')
             sub = subprocess.Popen(cdrdao_args,
                                    stdout=devnull,
                                    stderr=devnull)
@@ -257,7 +264,7 @@ if (__name__ == '__main__'):
 
         msg.info(_(u"Converting audio files"))
         for audiofile in audiofiles:
-            if (isinstance(audiofile,audiotools.WaveAudio)):
+            if (isinstance(audiofile, audiotools.WaveAudio)):
                 wave_files.append(audiofile.filename)
             else:
                 f = tempfile.mkstemp(suffix='.wav')
@@ -275,14 +282,14 @@ if (__name__ == '__main__'):
         if (options.verbosity != 'quiet'):
             subprocess.call(exec_args)
         else:
-            devnull = open(os.devnull,'wb')
+            devnull = open(os.devnull, 'wb')
             sub = subprocess.Popen(exec_args,
                                    stdout=devnull,
                                    stderr=devnull)
             sub.wait()
             devnull.close()
 
-        for (fd,f) in temp_pool:
+        for (fd, f) in temp_pool:
             os.close(fd)
             os.unlink(f)
         del(temp_pool)

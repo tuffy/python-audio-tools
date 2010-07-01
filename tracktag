@@ -23,7 +23,8 @@ import audiotools
 import os.path
 import gettext
 
-gettext.install("audiotools",unicode=True)
+gettext.install("audiotools", unicode=True)
+
 
 #--replace-metadata, no XMCD file given
 #completely wipe out existing metadata
@@ -31,11 +32,13 @@ gettext.install("audiotools",unicode=True)
 def blank_metadata(track, xmcd):
     return audiotools.MetaData()
 
+
 #no --replace-metadata, no XMCD file given
 #use metadata from existing tracks as base
 #and merge with tags given on command-line
 def track_metadata(track, xmcd):
     return track.get_metadata()
+
 
 #--replace-metadata, XMCD file given
 #completely wipe out existing metadata
@@ -49,6 +52,7 @@ def xmcd_metadata(track, xmcd):
         else:
             return None
 
+
 #no --replace metadata, XMCD file given
 #replace with command-line tags merged with XMCD metadata
 #*and* existing metadata
@@ -57,7 +61,7 @@ def xmcd_track_metadata(track, xmcd):
 
     if (track_metadata is not None):
         xmcd_md = track_metadata.__class__.converted(
-            xmcd_metadata(track,xmcd))
+            xmcd_metadata(track, xmcd))
     else:
         if (len(xmcd) > 0):
             try:
@@ -72,9 +76,11 @@ def xmcd_track_metadata(track, xmcd):
 
     return xmcd_md
 
+
 #--replace-metadata
 def replace_cuesheet(track, import_cuesheet):
     return import_cuesheet
+
 
 #no --replace-metadata
 def noreplace_cuesheet(track, import_cuesheet):
@@ -83,30 +89,34 @@ def noreplace_cuesheet(track, import_cuesheet):
     else:
         return import_cuesheet
 
+
 #tries to return a populated Image object of the appropriate type
 #raises InvalidImage if something goes wrong during opening or parsing
 def get_image(filename, type):
     try:
-        f = open(filename,'rb')
+        f = open(filename, 'rb')
         data = f.read()
         f.close()
 
-        return audiotools.Image.new(data,u'',type)
+        return audiotools.Image.new(data, u'', type)
     except IOError:
         raise audiotools.InvalidImage(_(u"Unable to open file"))
+
 
 #given a comment filename
 #returns the comment as a unicode string
 #or exits with an error if the file cannot be read
 #or is not UTF-8 text
-def read_comment(filename,messenger):
+def read_comment(filename, messenger):
     try:
-        f = open(filename,'rb')
-        data = f.read().decode('utf-8','replace')
+        f = open(filename, 'rb')
+        data = f.read().decode('utf-8', 'replace')
         f.close()
 
         if (((data.count(u"\uFFFD") * 100) / len(data)) >= 10):
-            messenger.error(_(u"Comment file \"%s\" does not appear to be UTF-8 text") % (messenger.filename(filename)))
+            messenger.error(
+                _(u"Comment file \"%s\" does not appear to be UTF-8 text") %
+                (messenger.filename(filename)))
             sys.exit(1)
         else:
             return data
@@ -121,212 +131,242 @@ if (__name__ == '__main__'):
         usage=_(u"%prog [options] [-x XMCD file] <track 1> [track 2] ..."),
         version="Python Audio Tools %s" % (audiotools.VERSION))
 
-    text_group = audiotools.OptionGroup(parser,_(u"Text Options"))
+    text_group = audiotools.OptionGroup(parser, _(u"Text Options"))
 
-    text_group.add_option('--name',
-                          action='store',
-                          type='string',
-                          dest='track_name',
-                          help=_(u"the name of the track"))
+    text_group.add_option(
+        '--name',
+        action='store',
+        type='string',
+        dest='track_name',
+        help=_(u"the name of the track"))
 
-    text_group.add_option('--artist',
-                      action='store',
-                      type='string',
-                      dest='artist_name',
-                      help=_(u'the name of the artist'))
+    text_group.add_option(
+        '--artist',
+        action='store',
+        type='string',
+        dest='artist_name',
+        help=_(u'the name of the artist'))
 
-    text_group.add_option('--performer',
-                      action='store',
-                      type='string',
-                      dest='performer_name',
-                      help=_(u'the name of the performer'))
+    text_group.add_option(
+        '--performer',
+        action='store',
+        type='string',
+        dest='performer_name',
+        help=_(u'the name of the performer'))
 
-    text_group.add_option('--composer',
-                      action='store',
-                      type='string',
-                      dest='composer_name',
-                      help=_(u'the name of the composer'))
+    text_group.add_option(
+        '--composer',
+        action='store',
+        type='string',
+        dest='composer_name',
+        help=_(u'the name of the composer'))
 
-    text_group.add_option('--conductor',
-                      action='store',
-                      type='string',
-                      dest='conductor_name',
-                      help=_(u'the name of the conductor'))
+    text_group.add_option(
+        '--conductor',
+        action='store',
+        type='string',
+        dest='conductor_name',
+        help=_(u'the name of the conductor'))
 
-    text_group.add_option('--album',
-                      action='store',
-                      type='string',
-                      dest='album_name',
-                      help=_(u'the name of the album'))
+    text_group.add_option(
+        '--album',
+        action='store',
+        type='string',
+        dest='album_name',
+        help=_(u'the name of the album'))
 
-    text_group.add_option('--catalog',
-                      action='store',
-                      type='string',
-                      dest='catalog',
-                      help=_(u'the catalog number of the album'))
+    text_group.add_option(
+        '--catalog',
+        action='store',
+        type='string',
+        dest='catalog',
+        help=_(u'the catalog number of the album'))
 
-    text_group.add_option('--number',
-                      action='store',
-                      type='int',
-                      dest='track_number',
-                      help=_(u"the number of the track in the album"))
+    text_group.add_option(
+        '--number',
+        action='store',
+        type='int',
+        dest='track_number',
+        help=_(u"the number of the track in the album"))
 
-    text_group.add_option('--track-total',
-                       action='store',
-                      type='int',
-                      dest='track_total',
-                      help=_(u"the total number of tracks in the album"))
+    text_group.add_option(
+        '--track-total',
+        action='store',
+        type='int',
+        dest='track_total',
+        help=_(u"the total number of tracks in the album"))
 
-    text_group.add_option('--album-number',
-                      action='store',
-                      type='int',
-                      dest='album_number',
-                      help=_(u'the number of the album in a set of albums'))
+    text_group.add_option(
+        '--album-number',
+        action='store',
+        type='int',
+        dest='album_number',
+        help=_(u'the number of the album in a set of albums'))
 
-    text_group.add_option('--album-total',
-                       action='store',
-                      type='int',
-                      dest='album_total',
-                      help=_(u"the total number of albums in a set of albums"))
+    text_group.add_option(
+        '--album-total',
+        action='store',
+        type='int',
+        dest='album_total',
+        help=_(u"the total number of albums in a set of albums"))
 
-    text_group.add_option('--ISRC',
-                      action='store',
-                      type='string',
-                      dest='ISRC',
-                      help=_(u'the ISRC of the track'))
+    text_group.add_option(
+        '--ISRC',
+        action='store',
+        type='string',
+        dest='ISRC',
+        help=_(u'the ISRC of the track'))
 
-    text_group.add_option('--publisher',
-                      action='store',
-                      type='string',
-                      dest='publisher',
-                      help=_(u'the publisher of the album'))
+    text_group.add_option(
+        '--publisher',
+        action='store',
+        type='string',
+        dest='publisher',
+        help=_(u'the publisher of the album'))
 
-    text_group.add_option('--media-type',
-                      action='store',
-                      type='string',
-                      dest='media_type',
-                      help=_(u'the media type of the album, such as "CD"'))
+    text_group.add_option(
+        '--media-type',
+        action='store',
+        type='string',
+        dest='media_type',
+        help=_(u'the media type of the album, such as "CD"'))
 
-    text_group.add_option('--year',
-                      action='store',
-                      type='string',
-                      dest='year',
-                      help=_(u'the year of release'))
+    text_group.add_option(
+        '--year',
+        action='store',
+        type='string',
+        dest='year',
+        help=_(u'the year of release'))
 
-    text_group.add_option('--date',
-                      action='store',
-                      type='string',
-                      dest='date',
-                      help=_(u'the date of recording'))
+    text_group.add_option(
+        '--date',
+        action='store',
+        type='string',
+        dest='date',
+        help=_(u'the date of recording'))
 
-    text_group.add_option('--copyright',
-                      action='store',
-                      type='string',
-                      dest='copyright',
-                      help=_(u'copyright information'))
+    text_group.add_option(
+        '--copyright',
+        action='store',
+        type='string',
+        dest='copyright',
+        help=_(u'copyright information'))
 
-    text_group.add_option('--comment',
-                      action='store',
-                      type='string',
-                      dest='comment',
-                      help=_(u'a text comment'))
+    text_group.add_option(
+        '--comment',
+        action='store',
+        type='string',
+        dest='comment',
+        help=_(u'a text comment'))
 
-    text_group.add_option('--comment-file',
-                      action='store',
-                      type='string',
-                      dest='comment_file',
-                      metavar='FILENAME',
-                      help=_(u'a file containing comment text'))
+    text_group.add_option(
+        '--comment-file',
+        action='store',
+        type='string',
+        dest='comment_file',
+        metavar='FILENAME',
+        help=_(u'a file containing comment text'))
 
     parser.add_option_group(text_group)
 
-    parser.add_option('-r','--replace',
-                      action='store_true',
-                      default=False,
-                      dest='replace',
-                      help=_(u'completely replace all metadata'))
+    parser.add_option(
+        '-r', '--replace',
+        action='store_true',
+        default=False,
+        dest='replace',
+        help=_(u'completely replace all metadata'))
 
-    parser.add_option('-x','--xmcd',
-                      action='store',
-                      type='string',
-                      dest='xmcd',
-                      metavar='FILENAME',
-                      help=_(u'FreeDB XMCD file or MusicBrainz XML file'))
+    parser.add_option(
+        '-x', '--xmcd',
+        action='store',
+        type='string',
+        dest='xmcd',
+        metavar='FILENAME',
+        help=_(u'FreeDB XMCD file or MusicBrainz XML file'))
 
-    parser.add_option('--cue',
-                      action='store',
-                      type='string',
-                      dest='cue',
-                      metavar='FILENAME',
-                      help=_(u'a cuesheet to import or get audio metadata from'))
+    parser.add_option(
+        '--cue',
+        action='store',
+        type='string',
+        dest='cue',
+        metavar='FILENAME',
+        help=_(u'a cuesheet to import or get audio metadata from'))
 
-    img_group = audiotools.OptionGroup(parser,_(u"Image Options"))
+    img_group = audiotools.OptionGroup(parser, _(u"Image Options"))
 
-    img_group.add_option('--remove-images',
-                         action='store_true',
-                         default=False,
-                         dest='remove_images',
-                         help=_(u'remove existing images prior to adding new ones'))
+    img_group.add_option(
+        '--remove-images',
+        action='store_true',
+        default=False,
+        dest='remove_images',
+        help=_(u'remove existing images prior to adding new ones'))
 
-    img_group.add_option('--front-cover',
-                         action='append',
-                         type='string',
-                         dest='front_cover',
-                         metavar='FILENAME',
-                         help=_(u'an image file of the front cover'))
+    img_group.add_option(
+        '--front-cover',
+        action='append',
+        type='string',
+        dest='front_cover',
+        metavar='FILENAME',
+        help=_(u'an image file of the front cover'))
 
-    img_group.add_option('--back-cover',
-                         action='append',
-                         type='string',
-                         dest='back_cover',
-                         metavar='FILENAME',
-                         help=_(u'an image file of the back cover'))
+    img_group.add_option(
+        '--back-cover',
+        action='append',
+        type='string',
+        dest='back_cover',
+        metavar='FILENAME',
+        help=_(u'an image file of the back cover'))
 
-    img_group.add_option('--leaflet',
-                         action='append',
-                         type='string',
-                         dest='leaflet',
-                         metavar='FILENAME',
-                         help=_(u'an image file of a leaflet page'))
+    img_group.add_option(
+        '--leaflet',
+        action='append',
+        type='string',
+        dest='leaflet',
+        metavar='FILENAME',
+        help=_(u'an image file of a leaflet page'))
 
-    img_group.add_option('--media',
-                         action='append',
-                         type='string',
-                         dest='media',
-                         metavar='FILENAME',
-                         help=_(u'an image file of the media'))
+    img_group.add_option(
+        '--media',
+        action='append',
+        type='string',
+        dest='media',
+        metavar='FILENAME',
+        help=_(u'an image file of the media'))
 
-    img_group.add_option('--other-image',
-                         action='append',
-                         type='string',
-                         dest='other_image',
-                         metavar='FILENAME',
-                         help=_(u'an image file related to the track'))
+    img_group.add_option(
+        '--other-image',
+        action='append',
+        type='string',
+        dest='other_image',
+        metavar='FILENAME',
+        help=_(u'an image file related to the track'))
 
     parser.add_option_group(img_group)
 
-    parser.add_option('--replay-gain',
-                      action='store_true',
-                      default=False,
-                      dest='add_replay_gain',
-                      help=_(u'add ReplayGain metadata to track(s)'))
+    parser.add_option(
+        '--replay-gain',
+        action='store_true',
+        default=False,
+        dest='add_replay_gain',
+        help=_(u'add ReplayGain metadata to track(s)'))
 
-    parser.add_option('-V','--verbose',
-                      action='store',
-                      dest='verbosity',
-                      choices=["quiet","normal","debug"],
-                      default="normal",
-                      help=_(u'the verbosity level to execute at'))
+    parser.add_option(
+        '-V', '--verbose',
+        action='store',
+        dest='verbosity',
+        choices=["quiet", "normal", "debug"],
+        default="normal",
+        help=_(u'the verbosity level to execute at'))
 
-    (options,args) = parser.parse_args()
-    msg = audiotools.Messenger("tracktag",options)
+    (options, args) = parser.parse_args()
+    msg = audiotools.Messenger("tracktag", options)
 
-    audiofiles = audiotools.open_files(args,messenger=msg)
+    audiofiles = audiotools.open_files(args, messenger=msg)
 
     if (options.xmcd is not None):
         try:
             xmcd = audiotools.read_metadata_file(options.xmcd)
-        except audiotools.MetaDataFileException,err:
+        except audiotools.MetaDataFileException, err:
             msg.error(unicode(err))
             sys.exit(1)
     else:
@@ -342,14 +382,15 @@ if (__name__ == '__main__'):
             #and the cuesheet is sized to fit that file
             #attempt to embed the cuesheet in the file
             if ((len(audiofiles) == 1) and
-                (list(cuesheet.pcm_lengths(audiofiles[0].total_frames()))[-1] > 0)):
+                (list(cuesheet.pcm_lengths(
+                            audiofiles[0].total_frames()))[-1] > 0)):
                 import_cuesheet = cuesheet
             else:
                 #otherwise, treat the cuesheet is a source of ISRC data
-                isrcs = dict([(k,v.decode('ascii','replace'))
-                              for (k,v) in
+                isrcs = dict([(k, v.decode('ascii', 'replace'))
+                              for (k, v) in
                               cuesheet.ISRCs().items()])
-        except audiotools.SheetException,err:
+        except audiotools.SheetException, err:
             msg.error(unicode(err))
             sys.exit(1)
 
@@ -366,23 +407,22 @@ if (__name__ == '__main__'):
             metadata_function = xmcd_track_metadata
         cuesheet_function = noreplace_cuesheet
 
-
     for file in audiofiles:
         #our command-line built MetaData block,
         #which takes precedence over the others
         metadata = audiotools.MetaData()
 
-        for field in ('track_name','artist_name','performer_name',
-                      'composer_name','conductor_name',
-                      'album_name','catalog','track_number',
-                      'ISRC','publisher',
-                      'year','date','copyright','comment'):
-            if (getattr(options,field) is not None):
-                attr = getattr(options,field)
-                if (isinstance(attr,str)):
+        for field in ('track_name', 'artist_name', 'performer_name',
+                      'composer_name', 'conductor_name',
+                      'album_name', 'catalog', 'track_number',
+                      'ISRC', 'publisher',
+                      'year', 'date', 'copyright', 'comment'):
+            if (getattr(options, field) is not None):
+                attr = getattr(options, field)
+                if (isinstance(attr, str)):
                     attr = attr.decode(audiotools.IO_ENCODING,
                                        'replace')
-                setattr(metadata,field,attr)
+                setattr(metadata, field, attr)
 
         if (options.media_type is not None):
             metadata.media = options.media_type.decode(
@@ -401,7 +441,7 @@ if (__name__ == '__main__'):
             metadata.album_total = options.album_total
 
         if (options.comment_file is not None):
-            metadata.comment = read_comment(options.comment_file,msg)
+            metadata.comment = read_comment(options.comment_file, msg)
 
         track_metadata = metadata_function(file, xmcd)
         track_cuesheet = cuesheet_function(file, import_cuesheet)
@@ -418,27 +458,27 @@ if (__name__ == '__main__'):
 
                 if (options.front_cover is not None):
                     for path in options.front_cover:
-                        metadata.add_image(get_image(path,0))
+                        metadata.add_image(get_image(path, 0))
 
                 if (options.leaflet is not None):
                     for path in options.leaflet:
-                        metadata.add_image(get_image(path,2))
+                        metadata.add_image(get_image(path, 2))
 
                 if (options.back_cover is not None):
                     for path in options.back_cover:
-                        metadata.add_image(get_image(path,1))
+                        metadata.add_image(get_image(path, 1))
 
                 if (options.media is not None):
                     for path in options.media:
-                        metadata.add_image(get_image(path,3))
+                        metadata.add_image(get_image(path, 3))
 
                 if (options.other_image is not None):
                     for path in options.other_image:
-                        metadata.add_image(get_image(path,4))
-        except audiotools.InvalidImage,err:
+                        metadata.add_image(get_image(path, 4))
+        except audiotools.InvalidImage, err:
             msg.error(_(u"%(filename)s: %(message)s") % \
-                          {"filename":msg.filename(file.filename),
-                           "message":unicode(err)})
+                          {"filename": msg.filename(file.filename),
+                           "message": unicode(err)})
             sys.exit(1)
 
         if (track_metadata is not None):
@@ -461,12 +501,13 @@ if (__name__ == '__main__'):
         (audiofiles[0].can_add_replay_gain())):
 
         if (audiofiles[0].lossless_replay_gain()):
-            msg.info(_(u"Adding ReplayGain metadata.  This may take some time."))
+            msg.info(
+                _(u"Adding ReplayGain metadata.  This may take some time."))
         else:
-            msg.info(_(u"Applying ReplayGain.  This may take some time."))
+            msg.info(
+                _(u"Applying ReplayGain.  This may take some time."))
         try:
             audiofiles[0].add_replay_gain([f.filename for f in audiofiles])
-        except ValueError,err:
+        except ValueError, err:
             msg.error(unicode(err))
             sys.exit(1)
-

@@ -24,38 +24,37 @@ import os
 import os.path
 import gettext
 
-gettext.install("audiotools",unicode=True)
+gettext.install("audiotools", unicode=True)
 
-FILENAME_TYPES = ("front_cover","back_cover","leaflet","media","other")
+FILENAME_TYPES = ("front_cover", "back_cover", "leaflet", "media", "other")
 
 if (__name__ == '__main__'):
     parser = audiotools.OptionParser(
         usage=_(u'%prog [-d directory] <track>'),
         version="Python Audio Tools %s" % (audiotools.VERSION))
 
-    parser.add_option('-d','--dir',
+    parser.add_option('-d', '--dir',
                       action='store',
                       type='string',
                       dest='dir',
                       default='.',
                       help=_(u'the directory to store extracted images'))
 
-    parser.add_option('-V','--verbose',
+    parser.add_option('-V', '--verbose',
                       action='store',
                       dest='verbosity',
-                      choices=["quiet","normal","debug"],
+                      choices=["quiet", "normal", "debug"],
                       default="normal",
                       help=_(u'the verbosity level to execute at'))
 
-    parser.add_option('-p','--prefix',
+    parser.add_option('-p', '--prefix',
                       action='store',
                       dest='prefix',
                       default="",
                       help=_(u'add a prefix to the output image'))
 
-
-    (options,args) = parser.parse_args()
-    msg = audiotools.Messenger("coverdump",options)
+    (options, args) = parser.parse_args()
+    msg = audiotools.Messenger("coverdump", options)
 
     if (len(args) != 1):
         msg.error(_(u"You must specify exactly 1 supported audio file"))
@@ -74,28 +73,29 @@ if (__name__ == '__main__'):
     if (metadata is not None):
         image_types = {}
         for image in metadata.images():
-            image_types.setdefault(image.type,[]).append(image)
+            image_types.setdefault(image.type, []).append(image)
 
-        for (type,images) in image_types.items():
+        for (type, images) in image_types.items():
             if (len(images) != 1):
-                FILE_TEMPLATE = "%(prefix)s%(filename)s%(filenum)2.2d.%(suffix)s"
+                FILE_TEMPLATE = \
+                    "%(prefix)s%(filename)s%(filenum)2.2d.%(suffix)s"
             else:
-                FILE_TEMPLATE = "%(prefix)s%(filename)s.%(suffix)s"
+                FILE_TEMPLATE = \
+                    "%(prefix)s%(filename)s.%(suffix)s"
 
-            for (i,image) in enumerate(images):
+            for (i, image) in enumerate(images):
                 output_filename = os.path.join(
                     options.dir,
-                    FILE_TEMPLATE % {"prefix":options.prefix,
-                                     "filename":FILENAME_TYPES[image.type],
-                                     "filenum":i + 1,
-                                     "suffix":image.suffix()})
+                    FILE_TEMPLATE % {"prefix": options.prefix,
+                                     "filename": FILENAME_TYPES[image.type],
+                                     "filenum": i + 1,
+                                     "suffix": image.suffix()})
                 try:
-                    f = open(output_filename,"wb")
+                    f = open(output_filename, "wb")
                     f.write(image.data)
                     f.close()
                     msg.info(msg.filename(output_filename))
-                except IOError,e:
+                except IOError, e:
                     msg.error(_(u"Unable to write \"%s\"") % \
                                   msg.filename(output_filename))
                     sys.exit(1)
-

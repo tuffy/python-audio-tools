@@ -24,14 +24,14 @@ import os.path
 import subprocess
 import gettext
 
-gettext.install("audiotools",unicode=True)
+gettext.install("audiotools", unicode=True)
 
 if (__name__ == '__main__'):
     parser = audiotools.OptionParser(
         _(u"%prog [options] [-x XMCD file] <track 1> [track 2] ..."),
         version="Python Audio Tools %s" % (audiotools.VERSION))
 
-    parser.add_option('-x','--xmcd',
+    parser.add_option('-x', '--xmcd',
                       action='store',
                       type='string',
                       dest='xmcd',
@@ -45,17 +45,17 @@ if (__name__ == '__main__'):
                       dest='format',
                       help=_(u'the format string for new filenames'))
 
-    parser.add_option('-V','--verbose',
+    parser.add_option('-V', '--verbose',
                       action='store',
                       dest='verbosity',
-                      choices=["quiet","normal","debug"],
+                      choices=["quiet", "normal", "debug"],
                       default="normal",
                       help=_(u'the verbosity level to execute at'))
 
-    (options,args) = parser.parse_args()
-    msg = audiotools.Messenger("trackrename",options)
+    (options, args) = parser.parse_args()
+    msg = audiotools.Messenger("trackrename", options)
 
-    audiofiles = audiotools.open_files(args,messenger=msg)
+    audiofiles = audiotools.open_files(args, messenger=msg)
 
     if (len(audiofiles) < 1):
         msg.error(_(u"You must specify at least 1 supported audio file"))
@@ -70,7 +70,7 @@ if (__name__ == '__main__'):
         #try to set the metadata and track name from the XMCD metadata
         try:
             xmcd = audiotools.read_metadata_file(options.xmcd)
-        except audiotools.MetaDataFileException,err:
+        except audiotools.MetaDataFileException, err:
             msg.error(unicode(err))
             sys.exit(1)
     else:
@@ -81,7 +81,7 @@ if (__name__ == '__main__'):
             if (track.track_number() in xmcd):
                 xmcd[track.track_number()].merge(track.get_metadata())
 
-        for (track,new_name) in [(
+        for (track, new_name) in [(
                 track,
                 track.track_name(
                     file_path=track.filename,
@@ -89,10 +89,10 @@ if (__name__ == '__main__'):
                                             track.get_metadata()),
                     format=options.format))
                                  for track in audiofiles]:
-            (path,filename) = os.path.split(track.filename)
+            (path, filename) = os.path.split(track.filename)
             if (filename != new_name):
                 try:
-                    audiotools.make_dirs(os.path.join(path,new_name))
+                    audiotools.make_dirs(os.path.join(path, new_name))
                 except OSError:
                     msg.error(_(u"Unable to write \"%s\"") % \
                                       (new_name))
@@ -101,9 +101,8 @@ if (__name__ == '__main__'):
                 if (subprocess.call([audiotools.BIN['mv'],
                                      mv_flags,
                                      track.filename,
-                                     os.path.join(path,new_name)]) != 0):
+                                     os.path.join(path, new_name)]) != 0):
                     sys.exit(1)
-    except audiotools.UnsupportedTracknameField,err:
+    except audiotools.UnsupportedTracknameField, err:
         err.error_msg(msg)
         sys.exit(1)
-

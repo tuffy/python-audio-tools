@@ -23,7 +23,8 @@ import sys
 import os
 import gettext
 
-gettext.install("audiotools",unicode=True)
+gettext.install("audiotools", unicode=True)
+
 
 class OSSReader(audiotools.PCMReader):
     NAME = "oss"
@@ -51,6 +52,7 @@ class OSSReader(audiotools.PCMReader):
     def available(cls):
         return True
 
+
 class PulseAudioReader(audiotools.PCMReader):
     NAME = "pulse"
 
@@ -58,10 +60,10 @@ class PulseAudioReader(audiotools.PCMReader):
         import subprocess
 
         proc = subprocess.Popen([audiotools.BIN["pacat"],
-                                 "-r","-n","record2track",
+                                 "-r", "-n", "record2track",
                                  "--rate=%d" % (sample_rate),
-                                 "--format=%s" % {8:"u8",16:"s16le"}.get(
-                    bits_per_sample,"float32le"),
+                                 "--format=%s" % {8: "u8", 16: "s16le"}.get(
+                    bits_per_sample, "float32le"),
                                  "--channels=%d" % (channels)],
                                 stdout=subprocess.PIPE)
         audiotools.PCMReader.__init__(
@@ -77,7 +79,7 @@ class PulseAudioReader(audiotools.PCMReader):
     def server_alive(cls):
         import subprocess
 
-        dev = subprocess.Popen([audiotools.BIN["pactl"],"stat"],
+        dev = subprocess.Popen([audiotools.BIN["pactl"], "stat"],
                                stdout=subprocess.PIPE,
                                stderr=subprocess.PIPE)
         dev.stdout.read()
@@ -90,69 +92,79 @@ class PulseAudioReader(audiotools.PCMReader):
                 audiotools.BIN.can_execute(audiotools.BIN["pactl"]) and
                 cls.server_alive())
 
+
 if (__name__ == '__main__'):
     parser = audiotools.OptionParser(
         _(u"%prog [options] [-o track]"),
         version="Python Audio Tools %s" % (audiotools.VERSION))
 
-    inputs = [r for r in [OSSReader,PulseAudioReader] if r.available()]
-    inputs_map = dict([(r.NAME,r) for r in inputs])
+    inputs = [r for r in [OSSReader, PulseAudioReader] if r.available()]
+    inputs_map = dict([(r.NAME, r) for r in inputs])
 
-    parser.add_option('-t','--type',
-                      action='store',
-                      dest='type',
-                      choices=audiotools.TYPE_MAP.keys(),
-                      help=_(u'the type of audio value to convert to'))
+    parser.add_option(
+        '-t', '--type',
+        action='store',
+        dest='type',
+        choices=audiotools.TYPE_MAP.keys(),
+        help=_(u'the type of audio value to convert to'))
 
-    parser.add_option('-q','--quality',
-                      action='store',
-                      type='string',
-                      dest='quality',
-                      help=_(u'the quality to store audio values at'))
+    parser.add_option(
+        '-q', '--quality',
+        action='store',
+        type='string',
+        dest='quality',
+        help=_(u'the quality to store audio values at'))
 
-    parser.add_option('-i','--input',
-                      action='store',
-                      dest='input',
-                      choices=inputs_map.keys(),
-                      default=inputs[-1].NAME,
-                      help=_(u"the method to record audio (choose from: %s)")%\
-                          ", ".join(["\"%s\"" % (k) for k in
-                                     inputs_map.keys()]))
+    parser.add_option(
+        '-i', '--input',
+        action='store',
+        dest='input',
+        choices=inputs_map.keys(),
+        default=inputs[-1].NAME,
+        help=_(u"the method to record audio (choose from: %s)") % \
+            ", ".join(["\"%s\"" % (k) for k in
+                       inputs_map.keys()]))
 
-    parser.add_option('-o','--output',
-                      action='store',
-                      dest='output',
-                      help=_(u'output filename to use'))
+    parser.add_option(
+        '-o', '--output',
+        action='store',
+        dest='output',
+        help=_(u'output filename to use'))
 
-    parser.add_option('--sample-rate',
-                      action='store',
-                      dest='sample_rate',
-                      type='int',
-                      default=44100,
-                      help=_(u'the sample rate to use when recording'))
+    parser.add_option(
+        '--sample-rate',
+        action='store',
+        dest='sample_rate',
+        type='int',
+        default=44100,
+        help=_(u'the sample rate to use when recording'))
 
-    parser.add_option('--bits-per-sample',
-                      action='store',
-                      dest='bits_per_sample',
-                      type='int',
-                      default=16,
-                      help=_(u'the number of bits-per-sample to use when recording'))
-    parser.add_option('--channels',
-                      action='store',
-                      dest='channels',
-                      type='int',
-                      default=2,
-                      help=_(u'the number of channels to use when recording'))
+    parser.add_option(
+        '--bits-per-sample',
+        action='store',
+        dest='bits_per_sample',
+        type='int',
+        default=16,
+        help=_(u'the number of bits-per-sample to use when recording'))
 
-    parser.add_option('-V','--verbose',
-                      action='store',
-                      dest='verbosity',
-                      choices=["quiet","normal","debug"],
-                      default="normal",
-                      help=_(u'the verbosity level to execute at'))
+    parser.add_option(
+        '--channels',
+        action='store',
+        dest='channels',
+        type='int',
+        default=2,
+        help=_(u'the number of channels to use when recording'))
 
-    (options,args) = parser.parse_args()
-    msg = audiotools.Messenger("record2track",options)
+    parser.add_option(
+        '-V', '--verbose',
+        action='store',
+        dest='verbosity',
+        choices=["quiet", "normal", "debug"],
+        default="normal",
+        help=_(u'the verbosity level to execute at'))
+
+    (options, args) = parser.parse_args()
+    msg = audiotools.Messenger("record2track", options)
 
     if (options.output is None):
         msg.error(_(u"You must specify an output file"))
@@ -164,7 +176,7 @@ if (__name__ == '__main__'):
     else:
         try:
             AudioType = audiotools.filename_to_type(options.output)
-        except audiotools.UnknownAudioType,exp:
+        except audiotools.UnknownAudioType, exp:
             exp.error_msg(msg)
             sys.exit(1)
 
@@ -182,9 +194,10 @@ if (__name__ == '__main__'):
     elif (options.quality is None):
         options.quality = AudioType.DEFAULT_COMPRESSION
     elif (options.quality not in AudioType.COMPRESSION_MODES):
-        msg.error(_(u"\"%(quality)s\" is not a supported compression mode for type \"%(type)s\"") % \
-                        {"quality":options.quality,
-                         "type":AudioType.NAME})
+        msg.error(_(u"\"%(quality)s\" is not a supported " +
+                    u"compression mode for type \"%(type)s\"") % \
+                      {"quality": options.quality,
+                       "type": AudioType.NAME})
         sys.exit(1)
 
     #ensure we have an output file to write to
@@ -207,13 +220,13 @@ if (__name__ == '__main__'):
                                            options.verbosity != 'quiet')
 
     try:
-        audiofile = AudioType.from_pcm(options.output,input,options.quality)
+        audiofile = AudioType.from_pcm(options.output, input, options.quality)
 
         msg.info(_(u"Done"))
-    except audiotools.InvalidFormat,err:
+    except audiotools.InvalidFormat, err:
         msg.error(unicode(err))
         sys.exit(1)
-    except audiotools.EncodingError,err:
-        msg.error(_(u"Unable to write \"%s\"") % (msg.filename(options.output)))
+    except audiotools.EncodingError, err:
+        msg.error(_(u"Unable to write \"%s\"") %
+                  (msg.filename(options.output)))
         sys.exit(1)
-

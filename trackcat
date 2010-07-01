@@ -25,26 +25,26 @@ import os.path
 import subprocess
 import gettext
 
-gettext.install("audiotools",unicode=True)
+gettext.install("audiotools", unicode=True)
 
 if (__name__ == '__main__'):
     parser = audiotools.OptionParser(
         usage=_(u'%prog [options] [-o output] <track 1> [track 2] ...'),
         version="Python Audio Tools %s" % (audiotools.VERSION))
 
-    parser.add_option('-q','--quality',
+    parser.add_option('-q', '--quality',
                       action='store',
                       type='string',
                       dest='quality',
                       help=_(u'the quality to store audio values at'))
 
-    parser.add_option('-t','--type',
+    parser.add_option('-t', '--type',
                       action='store',
                       dest='type',
                       choices=audiotools.TYPE_MAP.keys(),
                       help=_(u'the type of audio value to convert to'))
 
-    parser.add_option('-o','--output',dest='filename',
+    parser.add_option('-o', '--output', dest='filename',
                       metavar='FILE',
                       help=_(u'the output file'))
 
@@ -55,8 +55,8 @@ if (__name__ == '__main__'):
                       metavar='FILENAME',
                       help=_(u'a cuesheet to embed in the output file'))
 
-    (options,args) = parser.parse_args()
-    msg = audiotools.Messenger("trackcat",options)
+    (options, args) = parser.parse_args()
+    msg = audiotools.Messenger("trackcat", options)
 
     if (options.filename is None):
         msg.error(_(u'You must specify an output file'))
@@ -68,7 +68,7 @@ if (__name__ == '__main__'):
     else:
         try:
             AudioType = audiotools.filename_to_type(options.filename)
-        except audiotools.UnknownAudioType,exp:
+        except audiotools.UnknownAudioType, exp:
             exp.error_msg(msg)
             sys.exit(1)
 
@@ -86,13 +86,14 @@ if (__name__ == '__main__'):
     elif (options.quality is None):
         options.quality = AudioType.DEFAULT_COMPRESSION
     elif (options.quality not in AudioType.COMPRESSION_MODES):
-        msg.error(_(u"\"%(quality)s\" is not a supported compression mode for type \"%(type)s\"") % \
-                        {"quality":options.quality,
-                         "type":AudioType.NAME})
+        msg.error(_(u"\"%(quality)s\" is not a supported " +
+                    u"compression mode for type \"%(type)s\"") %
+                  {"quality": options.quality,
+                   "type": AudioType.NAME})
         sys.exit(1)
 
     #grab the list of AudioFile objects we are converting from
-    audiofiles = audiotools.open_files(args,messenger=msg)
+    audiofiles = audiotools.open_files(args, messenger=msg)
     if (len(audiofiles) < 1):
         msg.error(_(u"You must specify at least 1 supported audio file"))
         sys.exit(1)
@@ -117,7 +118,7 @@ if (__name__ == '__main__'):
     if (options.cuesheet is not None):
         try:
             cuesheet = audiotools.read_sheet(options.cuesheet)
-        except audiotools.SheetException,err:
+        except audiotools.SheetException, err:
             msg.error(unicode(err))
             sys.exit(1)
     else:
@@ -129,11 +130,12 @@ if (__name__ == '__main__'):
 
     if (len(track_metadatas) > 0):
         track_fields = dict([(field,
-                              set([getattr(m,field) for m in track_metadatas]))
+                              set([getattr(m, field)
+                                   for m in track_metadatas]))
                              for field in audiotools.MetaData.__FIELDS__])
 
-        metadata = audiotools.MetaData(**dict([(field,list(values)[0])
-                                               for (field,values) in
+        metadata = audiotools.MetaData(**dict([(field, list(values)[0])
+                                               for (field, values) in
                                                track_fields.items()
                                                if (len(values) == 1)]))
 
@@ -170,6 +172,6 @@ if (__name__ == '__main__'):
         msg.error(_(u"Unable to write \"%s\"") % \
                       (msg.filename(options.filename)))
         sys.exit(1)
-    except audiotools.InvalidFormat,err:
+    except audiotools.InvalidFormat, err:
         msg.error(unicode(err))
         sys.exit(1)

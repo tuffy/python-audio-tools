@@ -21,9 +21,9 @@ import audiotools
 import sys
 import os.path
 import gettext
-from audiotools import get_xml_nodes,get_xml_text_node
+from audiotools import get_xml_nodes, get_xml_text_node
 
-gettext.install("audiotools",unicode=True)
+gettext.install("audiotools", unicode=True)
 
 try:
     import gtk
@@ -32,20 +32,19 @@ try:
     import gobject
     import pango
 except ImportError:
-    audiotools.Messenger("editxmcd",None).error(_(u"PyGTK2 is required"))
+    audiotools.Messenger("editxmcd", None).error(_(u"PyGTK2 is required"))
     sys.exit(1)
 
 
 #   columns
-(
-  COLUMN_NUMBER,
-  COLUMN_NAME,
-  COLUMN_EDITABLE
-) = range(3)
+(COLUMN_NUMBER,
+ COLUMN_NAME,
+ COLUMN_EDITABLE) = range(3)
+
 
 class EditXMCD:
     #track_data is a track_id->(name,artist,extra) dict
-    def __init__(self,xml,messenger):
+    def __init__(self, xml, messenger):
         self.xml = xml
         self.msg = messenger
 
@@ -55,21 +54,21 @@ class EditXMCD:
         treeview.set_model(self.track_model)
         treeview.set_rules_hint(True)
         treeview.get_selection().set_mode(gtk.SELECTION_SINGLE)
-        self.__add_columns(treeview,_(u"Name"),self.on_field_edited)
+        self.__add_columns(treeview, _(u"Name"), self.on_field_edited)
 
         self.artist_model = self.__create_model()
         treeview = xml.get_widget("track_artists")
         treeview.set_model(self.artist_model)
         treeview.set_rules_hint(True)
         treeview.get_selection().set_mode(gtk.SELECTION_SINGLE)
-        self.__add_columns(treeview,_(u"Artist"),self.on_field_edited)
+        self.__add_columns(treeview, _(u"Artist"), self.on_field_edited)
 
         self.extra_model = self.__create_model()
         treeview = xml.get_widget("track_extras")
         treeview.set_model(self.extra_model)
         treeview.set_rules_hint(True)
         treeview.get_selection().set_mode(gtk.SELECTION_SINGLE)
-        self.__add_columns(treeview,_(u"Extra"),self.on_field_edited)
+        self.__add_columns(treeview, _(u"Extra"), self.on_field_edited)
 
         self.xmcd = None
         self.filename = None
@@ -98,8 +97,8 @@ class EditXMCD:
     #album_name,artist_name,album_year,album_extra should be unicode strings
     #tracks,artists,extras should be [track_number,unicode] pairs
     def set_data(self,
-                 album_name,artist_name,album_year,album_extra,catalog,
-                 tracks,artists,extras):
+                 album_name, artist_name, album_year, album_extra, catalog,
+                 tracks, artists, extras):
         self.undo_stack = []
         self.redo_Stack = []
         self.current_fields = {}
@@ -109,10 +108,10 @@ class EditXMCD:
         self.xml.get_widget("album_extra").set_text(album_extra)
         self.xml.get_widget("catalog").set_text(catalog)
 
-        for (model,data) in zip([self.track_model,
-                                 self.artist_model,
-                                 self.extra_model],
-                                [tracks,artists,extras]):
+        for (model, data) in zip([self.track_model,
+                                  self.artist_model,
+                                  self.extra_model],
+                                 [tracks, artists, extras]):
             model.clear()
             for item in data:
                 iter = model.append()
@@ -127,10 +126,10 @@ class EditXMCD:
 
         # number column
         renderer = gtk.CellRendererText()
-        renderer.set_property('xalign',1.0)
-        renderer.set_property('alignment',pango.ALIGN_RIGHT)
-        renderer.set_property('family','Monospace')
-        renderer.set_property('weight',800)
+        renderer.set_property('xalign', 1.0)
+        renderer.set_property('alignment', pango.ALIGN_RIGHT)
+        renderer.set_property('family', 'Monospace')
+        renderer.set_property('weight', 800)
         renderer.set_data("column", COLUMN_NUMBER)
         column = gtk.TreeViewColumn("#", renderer, text=COLUMN_NUMBER)
         treeview.append_column(column)
@@ -143,7 +142,7 @@ class EditXMCD:
                                     editable=COLUMN_EDITABLE)
         treeview.append_column(column)
 
-    def file_error(self,error_message,error_title):
+    def file_error(self, error_message, error_title):
         self.xml.get_widget("fileerrormessage").set_text(error_message)
         error_dialog = self.xml.get_widget("fileerror")
         error_dialog.set_title(error_title)
@@ -155,35 +154,35 @@ class EditXMCD:
         column = cell.get_data("column")
 
         if column == COLUMN_NAME:
-            old_text = model.get(iter,column)[0]
+            old_text = model.get(iter, column)[0]
             model.set(iter, column, new_text)
 
         if (old_text != new_text):
             self.undo_stack.append((model.set,
-                                    [iter,column,old_text],
+                                    [iter, column, old_text],
                                     model.set,
-                                    [iter,column,new_text]))
+                                    [iter, column, new_text]))
             self.edited = True
             self.set_title()
 
-    def cut(self,caller):
+    def cut(self, caller):
         widget = self.xml.get_widget("window").get_focus()
-        if (hasattr(widget,"cut_clipboard")):
+        if (hasattr(widget, "cut_clipboard")):
             widget.cut_clipboard()
 
-    def copy(self,caller):
+    def copy(self, caller):
         widget = self.xml.get_widget("window").get_focus()
-        if (hasattr(widget,"copy_clipboard")):
+        if (hasattr(widget, "copy_clipboard")):
             widget.copy_clipboard()
 
-    def paste(self,caller):
+    def paste(self, caller):
         widget = self.xml.get_widget("window").get_focus()
-        if (hasattr(widget,"paste_clipboard")):
+        if (hasattr(widget, "paste_clipboard")):
             widget.paste_clipboard()
 
-    def clear(self,caller):
+    def clear(self, caller):
         widget = self.xml.get_widget("window").get_focus()
-        if (hasattr(widget,"delete_selection")):
+        if (hasattr(widget, "delete_selection")):
             widget.delete_selection()
 
     def xmcd_update(self):
@@ -193,8 +192,10 @@ class EditXMCD:
         self.xmcd['DTITLE'] = u"%s / %s" % \
             (self.xml.get_widget("artist_name").get_text().decode('utf-8'),
              self.xml.get_widget("album_name").get_text().decode('utf-8'))
-        self.xmcd['DYEAR'] = self.xml.get_widget("album_year").get_text().decode('utf-8')
-        self.xmcd['EXTDD'] = self.xml.get_widget("album_extra").get_text().decode('utf-8')
+        self.xmcd['DYEAR'] = self.xml.get_widget(
+            "album_year").get_text().decode('utf-8')
+        self.xmcd['EXTDD'] = self.xml.get_widget(
+            "album_extra").get_text().decode('utf-8')
 
         for i in xrange(len(self.track_model)):
             track_name = self.track_model[i][1].decode('utf-8')
@@ -211,7 +212,7 @@ class EditXMCD:
     def mbxml_update(self):
         def update_text_node(document, parent, child_tag, new_value):
             for child_node in parent.childNodes:
-                if (hasattr(child_node,"tagName") and
+                if (hasattr(child_node, "tagName") and
                     (child_node.tagName == child_tag)):
                     if (child_node.firstChild is not None):
                         child_node.replaceChild(
@@ -242,28 +243,29 @@ class EditXMCD:
             self.xml.get_widget("album_name").get_text().decode('utf-8'))
 
         try:
-            old_artist_node = get_xml_nodes(release,u'artist')[0]
+            old_artist_node = get_xml_nodes(release, u'artist')[0]
         except IndexError:
             old_artist_node = dom.createElement(u'artist')
             release.appendChild(old_artist_node)
 
-        artist_name_string = self.xml.get_widget("artist_name").get_text().decode('utf-8')
-        if (get_xml_text_node(old_artist_node,u'name') != artist_name_string):
+        artist_name_string = self.xml.get_widget(
+            "artist_name").get_text().decode('utf-8')
+        if (get_xml_text_node(old_artist_node, u'name') != artist_name_string):
             artist_name_text = dom.createTextNode(artist_name_string)
             artist_name = dom.createElement(u'name')
             artist_name.appendChild(artist_name_text)
             new_artist_node = dom.createElement(u'artist')
             new_artist_node.appendChild(artist_name)
-            release.replaceChild(new_artist_node,old_artist_node)
+            release.replaceChild(new_artist_node, old_artist_node)
 
         try:
-            release_events = get_xml_nodes(release,u'release-event-list')[0]
+            release_events = get_xml_nodes(release, u'release-event-list')[0]
         except IndexError:
             release_events = dom.createElement(u'release-event-list')
             release.appendChild(release_events)
 
         try:
-            event = get_xml_nodes(release_events,u'event')[-1]
+            event = get_xml_nodes(release_events, u'event')[-1]
         except IndexError:
             event = dom.createElement('event')
             release_events.appendChild(event)
@@ -275,10 +277,9 @@ class EditXMCD:
             'catalog-number',
             self.xml.get_widget("catalog").get_text().decode('utf-8'))
 
-
         try:
-            for (i,track_node) in enumerate(get_xml_nodes(
-                    get_xml_nodes(release,u'track-list')[0],u'track')):
+            for (i, track_node) in enumerate(get_xml_nodes(
+                    get_xml_nodes(release, u'track-list')[0], u'track')):
                 track_name = self.track_model[i][1].decode('utf-8')
                 artist_name = self.artist_model[i][1].decode('utf-8')
 
@@ -294,14 +295,14 @@ class EditXMCD:
                     try:
                         track_node.replaceChild(
                             new_artist_node,
-                            get_xml_nodes(track_node,u'artist')[0])
+                            get_xml_nodes(track_node, u'artist')[0])
                     except IndexError:
                         track_node.appendChild(new_artist_node)
                 else:
                     #if <track> has an <artist> child, delete it
                     try:
                         track_node.removeChild(
-                            get_xml_nodes(track_node,u'artist')[0])
+                            get_xml_nodes(track_node, u'artist')[0])
                     except IndexError:
                         pass
 
@@ -310,13 +311,13 @@ class EditXMCD:
 
     metadata_update = xmcd_update
 
-    def new_xmcd(self,caller):
+    def new_xmcd(self, caller):
         self.xml.get_widget("select_xmcd_tracks").run()
 
-    def new_mbxml(self,caller):
+    def new_mbxml(self, caller):
         self.xml.get_widget("select_mbxml_tracks").run()
 
-    def from_xmcd_tracks(self,dialog,signal):
+    def from_xmcd_tracks(self, dialog, signal):
         dialog.hide()
         if (signal == -5):
             audiofiles = audiotools.open_files(dialog.get_filenames())
@@ -333,7 +334,7 @@ class EditXMCD:
             self.filename = None
             self.set_title()
 
-    def from_mbxml_tracks(self,dialog,signal):
+    def from_mbxml_tracks(self, dialog, signal):
         dialog.hide()
         if (signal == -5):
             audiofiles = audiotools.open_files(dialog.get_filenames())
@@ -351,7 +352,7 @@ class EditXMCD:
             self.filename = None
             self.set_title()
 
-    def save(self,caller):
+    def save(self, caller):
         if (self.xmcd is None):
             return
         elif (self.filename is None):
@@ -359,7 +360,7 @@ class EditXMCD:
 
         self.metadata_update()
         try:
-            f = open(self.filename,'wb')
+            f = open(self.filename, 'wb')
             f.write(self.xmcd.build())
             f.close()
             self.edited = False
@@ -369,17 +370,17 @@ class EditXMCD:
                                 (self.msg.filename(self.filename)),
                             _(u"Write Error"))
 
-    def saveas(self,caller):
+    def saveas(self, caller):
         if (self.xmcd is not None):
             self.xml.get_widget("filesaver").run()
 
-    def file_savedas(self,dialog,signal):
+    def file_savedas(self, dialog, signal):
         dialog.hide()
         if (signal == -5):
             self.filename = dialog.get_filename()
             self.metadata_update()
             try:
-                f = open(self.filename,'wb')
+                f = open(self.filename, 'wb')
                 f.write(self.xmcd.build())
                 f.close()
                 self.edited = False
@@ -391,15 +392,15 @@ class EditXMCD:
                 self.filename = None
                 self.set_title()
 
-    def open(self,caller):
+    def open(self, caller):
         self.xml.get_widget("filechooser").run()
 
-    def opened(self,dialog,signal):
+    def opened(self, dialog, signal):
         dialog.hide()
         if (signal == -5):
             self.read_file(dialog.get_filename())
 
-    def read_file(self,filename):
+    def read_file(self, filename):
         self.filename = filename
         try:
             try:
@@ -408,36 +409,37 @@ class EditXMCD:
             except audiotools.XMCDException:
                 pass
             try:
-                self.read_mbxml(audiotools.MusicBrainzReleaseXML.read(filename))
+                self.read_mbxml(
+                    audiotools.MusicBrainzReleaseXML.read(filename))
                 return
             except audiotools.MBXMLException:
                 pass
 
             raise audiotools.MetaDataFileException(filename)
 
-        except audiotools.MetaDataFileException,err:
-            self.file_error(_(u"Error opening \"%s\"") % \
-                                (self.msg.filename(filename)),
+        except audiotools.MetaDataFileException, err:
+            self.file_error(_(u"Error opening \"%s\"") %
+                            (self.msg.filename(filename)),
                             _(u"Read Error"))
         except IOError:
-            self.file_error(_(u"Error opening \"%s\"") % \
-                                (self.msg.filename(filename)),
+            self.file_error(_(u"Error opening \"%s\"") %
+                            (self.msg.filename(filename)),
                             _(u"Read Error"))
 
-    def read_xmcd(self,xmcd):
+    def read_xmcd(self, xmcd):
         self.xmcd = xmcd
         self.metadata_update = self.xmcd_update
         self.xml.get_widget("album_extra").set_sensitive(True)
         self.xml.get_widget("catalog").set_sensitive(False)
 
-        ttitle = self.xmcd.get('DTITLE',u'')
+        ttitle = self.xmcd.get('DTITLE', u'')
         if (u' / ' in ttitle):
-            (album_artist,album_name) = ttitle.split(u' / ',1)
+            (album_artist, album_name) = ttitle.split(u' / ', 1)
         else:
             album_name = ttitle
             album_artist = u''
-        year = self.xmcd.get('DYEAR',u'')
-        extra = self.xmcd.get('EXTD',u'')
+        year = self.xmcd.get('DYEAR', u'')
+        extra = self.xmcd.get('EXTD', u'')
 
         tracks = []
         artists = []
@@ -452,12 +454,12 @@ class EditXMCD:
                 else:
                     tracknum += 1
                 if (u' / ' in ttitle):
-                    (artist_name,track_name) = ttitle.split(u' / ',1)
-                    tracks.append([tracknum,track_name])
-                    artists.append([tracknum,artist_name])
+                    (artist_name, track_name) = ttitle.split(u' / ', 1)
+                    tracks.append([tracknum, track_name])
+                    artists.append([tracknum, artist_name])
                 else:
-                    tracks.append([tracknum,ttitle])
-                    artists.append([tracknum,u''])
+                    tracks.append([tracknum, ttitle])
+                    artists.append([tracknum, u''])
             elif (key.startswith('EXTT')):
                 extt = self.xmcd[key]
                 tracknum = audiotools.XMCD.key_digits(key)
@@ -465,7 +467,7 @@ class EditXMCD:
                     continue
                 else:
                     tracknum += 1
-                extras.append([tracknum,extt])
+                extras.append([tracknum, extt])
 
         tracks.sort()
         artists.sort()
@@ -483,7 +485,7 @@ class EditXMCD:
         self.edited = False
         self.set_title()
 
-    def read_mbxml(self,mbxml):
+    def read_mbxml(self, mbxml):
         self.xmcd = mbxml
         self.metadata_update = self.mbxml_update
         self.xml.get_widget("album_extra").set_sensitive(False)
@@ -504,17 +506,18 @@ class EditXMCD:
             self.set_title()
             return
 
-        album_name = get_xml_text_node(release,u'title')
+        album_name = get_xml_text_node(release, u'title')
         try:
             #FIXME - not sure if name or sort-name should take precendence
-            album_artist = get_xml_text_node(get_xml_nodes(release,u'artist')[0],
-                                             u'name')
+            album_artist = get_xml_text_node(
+                get_xml_nodes(release, u'artist')[0],
+                u'name')
         except IndexError:
             album_artist = u""
 
         try:
-            release_events = get_xml_nodes(release,u'release-event-list')[0]
-            event = get_xml_nodes(release_events,u'event')[-1]
+            release_events = get_xml_nodes(release, u'release-event-list')[0]
+            event = get_xml_nodes(release_events, u'event')[-1]
             year = event.getAttribute('date')[0:4]
             catalog = event.getAttribute('catalog-number')
         except IndexError:
@@ -524,17 +527,19 @@ class EditXMCD:
         tracks = []
         track_artists = []
         try:
-            for (i,track_node) in enumerate(
-                get_xml_nodes(get_xml_nodes(release,u'track-list')[0],u'track')):
+            for (i, track_node) in enumerate(
+                get_xml_nodes(get_xml_nodes(release, u'track-list')[0],
+                              u'track')):
                 tracks.append([i + 1,
-                               get_xml_text_node(track_node,u'title')])
+                               get_xml_text_node(track_node, u'title')])
                 try:
                     track_artists.append([
                             i + 1,
                             get_xml_text_node(
-                                get_xml_nodes(track_node,u'artist')[0],u'name')])
+                                get_xml_nodes(track_node, u'artist')[0],
+                                u'name')])
                 except IndexError:
-                    track_artists.append([i + 1,u""])
+                    track_artists.append([i + 1, u""])
         except IndexError:
             pass
 
@@ -559,15 +564,15 @@ class EditXMCD:
             self.xml.get_widget("window").set_title(
                 "%s<unnamed> - editxmcd" % (edited))
         else:
-            (directory,filename) = os.path.split(self.filename)
+            (directory, filename) = os.path.split(self.filename)
             if (len(directory) > 0):
                 self.xml.get_widget("window").set_title(
-                    "%s%s (%s) - editxmcd" % (edited,filename,directory))
+                    "%s%s (%s) - editxmcd" % (edited, filename, directory))
             else:
                 self.xml.get_widget("window").set_title(
-                    "%s%s - editxmcd" % (edited,filename))
+                    "%s%s - editxmcd" % (edited, filename))
 
-    def field_changed(self,widget):
+    def field_changed(self, widget):
         try:
             self.undo_stack.append((self.__undo_widget__,
                                     [widget.name,
@@ -587,7 +592,7 @@ class EditXMCD:
         self.xml.get_widget(widget_name).set_text(value)
         self.undo_stack.pop()
 
-    def undo(self,widget):
+    def undo(self, widget):
         if (len(self.undo_stack) == 0):
             return
 
@@ -605,7 +610,7 @@ class EditXMCD:
         self.edited = True
         self.set_title()
 
-    def redo(self,widget):
+    def redo(self, widget):
         # print repr(self.undo_stack)
         # print repr(self.redo_stack)
         if (len(self.redo_stack) == 0):
@@ -625,21 +630,21 @@ class EditXMCD:
         self.edited = True
         self.set_title()
 
-    def error_closed(self,dialog,response):
+    def error_closed(self, dialog, response):
         dialog.hide()
 
-    def quit(self,caller):
+    def quit(self, caller):
         if (self.edited):
             self.xml.get_widget("confirmquit").run()
         else:
             gtk.main_quit()
 
-    def confirm_quit(self,dialog,response):
+    def confirm_quit(self, dialog, response):
         dialog.hide()
         if (response == -5):
             gtk.main_quit()
 
-    def display_about(self,caller):
+    def display_about(self, caller):
         self.xml.get_widget("about").run()
 
 if (__name__ == '__main__'):
@@ -647,12 +652,12 @@ if (__name__ == '__main__'):
         usage=_(u'%prog [-x XMCD file] [track 1] [track 2] ...'),
         version="Python Audio Tools %s" % (audiotools.VERSION))
 
-    parser.add_option('-x','--xmcd',action='store',
-                      type='string',dest='xmcd',
+    parser.add_option('-x', '--xmcd', action='store',
+                      type='string', dest='xmcd',
                       metavar='FILENAME',
                       help=_(u'FreeDB XMCD file or MusicBrainz XML file'))
-    (options,args) = parser.parse_args()
-    msg = audiotools.Messenger("editxmcd",options)
+    (options, args) = parser.parse_args()
+    msg = audiotools.Messenger("editxmcd", options)
 
     try:
         xml = gtk.glade.XML(audiotools.find_glade_file("editxmcd.glade"),
@@ -661,31 +666,31 @@ if (__name__ == '__main__'):
         msg.error(_(u"editxmcd.glade not found"))
         sys.exit(1)
 
-    editxmcd = EditXMCD(xml,msg)
+    editxmcd = EditXMCD(xml, msg)
 
-    xml.signal_connect("gtk_main_quit",editxmcd.quit)
-    xml.signal_connect("on_cut1_activate",editxmcd.cut)
-    xml.signal_connect("on_copy1_activate",editxmcd.copy)
-    xml.signal_connect("on_paste1_activate",editxmcd.paste)
-    xml.signal_connect("on_delete1_activate",editxmcd.clear)
+    xml.signal_connect("gtk_main_quit", editxmcd.quit)
+    xml.signal_connect("on_cut1_activate", editxmcd.cut)
+    xml.signal_connect("on_copy1_activate", editxmcd.copy)
+    xml.signal_connect("on_paste1_activate", editxmcd.paste)
+    xml.signal_connect("on_delete1_activate", editxmcd.clear)
 
-    xml.signal_connect("on_new1_activate",editxmcd.new_xmcd)
-    xml.signal_connect("on_new2_activate",editxmcd.new_mbxml)
-    xml.signal_connect("xmcd_tracks_selected",editxmcd.from_xmcd_tracks)
-    xml.signal_connect("mbxml_tracks_selected",editxmcd.from_mbxml_tracks)
-    xml.signal_connect("on_save_as1_activate",editxmcd.saveas)
+    xml.signal_connect("on_new1_activate", editxmcd.new_xmcd)
+    xml.signal_connect("on_new2_activate", editxmcd.new_mbxml)
+    xml.signal_connect("xmcd_tracks_selected", editxmcd.from_xmcd_tracks)
+    xml.signal_connect("mbxml_tracks_selected", editxmcd.from_mbxml_tracks)
+    xml.signal_connect("on_save_as1_activate", editxmcd.saveas)
 
-    xml.signal_connect("save_file",editxmcd.save)
-    xml.signal_connect("open_file",editxmcd.open)
-    xml.signal_connect("file_opened",editxmcd.opened)
-    xml.signal_connect("file_saved_as",editxmcd.file_savedas)
-    xml.signal_connect("field_changed",editxmcd.field_changed)
-    xml.signal_connect("on_undo_activate",editxmcd.undo)
-    xml.signal_connect("on_redo_activate",editxmcd.redo)
+    xml.signal_connect("save_file", editxmcd.save)
+    xml.signal_connect("open_file", editxmcd.open)
+    xml.signal_connect("file_opened", editxmcd.opened)
+    xml.signal_connect("file_saved_as", editxmcd.file_savedas)
+    xml.signal_connect("field_changed", editxmcd.field_changed)
+    xml.signal_connect("on_undo_activate", editxmcd.undo)
+    xml.signal_connect("on_redo_activate", editxmcd.redo)
 
-    xml.signal_connect("filerror_done",editxmcd.error_closed)
-    xml.signal_connect("confirmquit",editxmcd.confirm_quit)
-    xml.signal_connect("display_about",editxmcd.display_about)
+    xml.signal_connect("filerror_done", editxmcd.error_closed)
+    xml.signal_connect("confirmquit", editxmcd.confirm_quit)
+    xml.signal_connect("display_about", editxmcd.display_about)
 
     if (options.xmcd is not None):
         editxmcd.read_file(options.xmcd)
@@ -694,4 +699,3 @@ if (__name__ == '__main__'):
                 audiotools.open_files(args)))
 
     gtk.main()
-

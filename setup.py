@@ -21,57 +21,60 @@ VERSION = '2.16alpha1'
 
 import sys
 
-if (sys.version_info < (2,5,0,'final',0)):
-    print >>sys.stderr,"*** Python 2.5.0 or better required"
+if (sys.version_info < (2, 5, 0, 'final', 0)):
+    print >> sys.stderr, "*** Python 2.5.0 or better required"
     sys.exit(1)
 
 from distutils.core import setup, Extension
-import subprocess,re
+import subprocess
+import re
+
 
 def pkg_config(package, option):
-    sub = subprocess.Popen(["pkg-config",option,package],
+    sub = subprocess.Popen(["pkg-config", option, package],
                            stdout=subprocess.PIPE)
-    spaces = re.compile('\s+',re.DOTALL)
+    spaces = re.compile('\s+', re.DOTALL)
     args = spaces.split(sub.stdout.read().strip())
     sub.stdout.close()
     sub.wait()
     return args
 
+
 cdiomodule = Extension('audiotools.cdio',
-                    sources = ['src/cdiomodule.c'],
-                    libraries = ['cdio','cdio_paranoia',
-                                 'cdio_cdda','m'])
+                       sources=['src/cdiomodule.c'],
+                       libraries=['cdio', 'cdio_paranoia',
+                                  'cdio_cdda', 'm'])
 
 resamplemodule = Extension('audiotools.resample',
-                            sources = ['src/resample.c'])
+                           sources=['src/resample.c'])
 
 pcmmodule = Extension('audiotools.pcm',
-                      sources = ['src/pcm.c'])
+                      sources=['src/pcm.c'])
 
 replaygainmodule = Extension('audiotools.replaygain',
-                             sources = ['src/replaygain.c'])
+                             sources=['src/replaygain.c'])
 
 decodersmodule = Extension('audiotools.decoders',
-                           sources = ['src/array.c',
-                                      'src/bitstream_r.c',
-                                      'src/decoders/flac.c',
-                                      'src/decoders/shn.c',
-                                      'src/decoders/alac.c',
-                                      'src/decoders.c'],
-                           define_macros = [("VERSION",VERSION)])
+                           sources=['src/array.c',
+                                    'src/bitstream_r.c',
+                                    'src/decoders/flac.c',
+                                    'src/decoders/shn.c',
+                                    'src/decoders/alac.c',
+                                    'src/decoders.c'],
+                           define_macros=[("VERSION", VERSION)])
 
 encodersmodule = Extension('audiotools.encoders',
-                           sources = ['src/array.c',
-                                      'src/bitstream_w.c',
-                                      'src/pcmreader.c',
-                                      'src/md5.c',
-                                      'src/encoders/flac.c',
-                                      'src/encoders/flac_lpc.c',
-                                      'src/encoders/shn.c',
-                                      'src/encoders/alac.c',
-                                      'src/encoders/alac_lpc.c',
-                                      'src/encoders.c'],
-                           define_macros = [("VERSION",VERSION)])
+                           sources=['src/array.c',
+                                    'src/bitstream_w.c',
+                                    'src/pcmreader.c',
+                                    'src/md5.c',
+                                    'src/encoders/flac.c',
+                                    'src/encoders/flac_lpc.c',
+                                    'src/encoders/shn.c',
+                                    'src/encoders/alac.c',
+                                    'src/encoders/alac_lpc.c',
+                                    'src/encoders.c'],
+                           define_macros=[("VERSION", VERSION)])
 
 extensions = [cdiomodule,
               resamplemodule,
@@ -120,23 +123,23 @@ extensions = [cdiomodule,
 # except OSError:
 #     pass #pkg-config not available
 
-setup (name = 'Python Audio Tools',
-       version = VERSION,
-       description = 'A collection of audio handling utilities',
-       author = 'Brian Langenberger',
-       author_email = 'tuffy@users.sourceforge.net',
-       url='http://audiotools.sourceforge.net',
-       packages = ["audiotools",
-                   "audiotools.construct",
-                   "audiotools.construct.lib"],
-       ext_modules = extensions,
-       data_files = [("/etc",["audiotools.cfg"]),
-                     ("share/audiotools",["glade/coverview.glade"]),
-                     ("share/audiotools",["glade/editxmcd.glade"])],
-       scripts = ["cd2track","cd2xmcd","cdinfo",
-                  "track2track","track2xmcd","trackrename","trackinfo",
-                  "tracklength","track2cd","trackcmp","trackplay",
-                  "tracktag","editxmcd","audiotools-config",
-                  "trackcat","tracksplit",
-                  "tracklint",
-                  "coverdump","coverview","record2track"])
+setup(name='Python Audio Tools',
+      version=VERSION,
+      description='A collection of audio handling utilities',
+      author='Brian Langenberger',
+      author_email='tuffy@users.sourceforge.net',
+      url='http://audiotools.sourceforge.net',
+      packages=["audiotools",
+                "audiotools.construct",
+                "audiotools.construct.lib"],
+      ext_modules=extensions,
+      data_files=[("/etc", ["audiotools.cfg"]),
+                  ("share/audiotools", ["glade/coverview.glade"]),
+                  ("share/audiotools", ["glade/editxmcd.glade"])],
+      scripts=["cd2track", "cd2xmcd", "cdinfo",
+               "track2track", "track2xmcd", "trackrename", "trackinfo",
+               "tracklength", "track2cd", "trackcmp", "trackplay",
+               "tracktag", "editxmcd", "audiotools-config",
+               "trackcat", "tracksplit",
+               "tracklint",
+               "coverdump", "coverview", "record2track"])

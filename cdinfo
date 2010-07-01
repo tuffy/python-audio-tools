@@ -23,46 +23,46 @@ import audiotools
 import sys
 import gettext
 
-gettext.install("audiotools",unicode=True)
+gettext.install("audiotools", unicode=True)
 
 if (__name__ == '__main__'):
     parser = audiotools.OptionParser(
         usage=_(u"%prog [options]"),
         version="Python Audio Tools %s" % (audiotools.VERSION))
 
-    parser.add_option('-c','--cdrom',action='store',
-                      type='string',dest='cdrom',
+    parser.add_option('-c', '--cdrom', action='store',
+                      type='string', dest='cdrom',
                       default=audiotools.DEFAULT_CDROM)
 
-    (options,args) = parser.parse_args()
-    msg = audiotools.Messenger("cd2xmcd",options)
+    (options, args) = parser.parse_args()
+    msg = audiotools.Messenger("cd2xmcd", options)
 
     cdda = audiotools.RawCDDA(options.cdrom)
     tracks = list(cdda)
 
     if (len(cdda) == 0):
-         msg.error(_(u"No CD in drive"))
-         sys.exit(1)
+        msg.error(_(u"No CD in drive"))
+        sys.exit(1)
 
     msg.new_row()
-    msg.output_column(_(u"Total Tracks"),True)
+    msg.output_column(_(u"Total Tracks"), True)
     msg.output_column(_(u" : "))
     msg.output_column(unicode(len(cdda)))
 
     msg.new_row()
-    msg.output_column(_(u"Total Length"),True)
+    msg.output_column(_(u"Total Length"), True)
     msg.output_column(_(u" : "))
     msg.output_column(_(u"%2d:%2.2d (%d frames)" % (cdda.length() / 75 / 60,
                                                     cdda.length() / 75 % 60,
                                                     cdda.length())))
 
     msg.new_row()
-    msg.output_column(_(u"FreeDB disc ID"),True)
+    msg.output_column(_(u"FreeDB disc ID"), True)
     msg.output_column(_(u" : "))
     msg.output_column(unicode(str(audiotools.DiscID.from_cdda(cdda))))
 
     msg.new_row()
-    msg.output_column(_(u"MusicBrainz disc ID"),True)
+    msg.output_column(_(u"MusicBrainz disc ID"), True)
     msg.output_column(_(u" : "))
 
     msg.output_column(unicode(str(audiotools.MBDiscID.from_cdda(cdda))))
@@ -71,7 +71,7 @@ if (__name__ == '__main__'):
     msg.output_rows()
 
     msg.new_row()
-    msg.output_column(_(u"#"),True)
+    msg.output_column(_(u"#"), True)
     msg.output_column(u" ")
     msg.output_column(_(u"Length"))
     msg.output_column(u" ")
@@ -90,10 +90,10 @@ if (__name__ == '__main__'):
 
     for track in tracks:
         msg.new_row()
-        msg.output_column(unicode(track.track_number),True)
+        msg.output_column(unicode(track.track_number), True)
         msg.output_column(u" ")
         msg.output_column(u"%d:%2.2d" % (track.length() / 75 / 60,
-                                         track.length() / 75 % 60),True)
+                                         track.length() / 75 % 60), True)
         msg.output_column(u" ")
         msg.output_column(unicode(track.length()))
         msg.output_column(u" ")
@@ -101,6 +101,4 @@ if (__name__ == '__main__'):
 
     msg.output_rows()
 
-
     cdda.close()
-

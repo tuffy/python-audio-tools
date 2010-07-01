@@ -24,74 +24,85 @@ import os.path
 import audiotools
 import gettext
 
-gettext.install("audiotools",unicode=True)
+gettext.install("audiotools", unicode=True)
 
 if (__name__ == '__main__'):
     parser = audiotools.OptionParser(
         usage=_(u'%prog [options] [-x filename] <track 1> [track 2] ...'),
         version="Python Audio Tools %s" % (audiotools.VERSION))
 
-    parser.add_option('-V','--verbose',
-                      action='store',
-                      dest='verbosity',
-                      choices=["quiet","normal","debug"],
-                      default="normal",
-                      help=_(u'the verbosity level to execute at'))
+    parser.add_option(
+        '-V', '--verbose',
+        action='store',
+        dest='verbosity',
+        choices=["quiet", "normal", "debug"],
+        default="normal",
+        help=_(u'the verbosity level to execute at'))
 
-    parser.add_option('-x','--xmcd',action='store',
-                      type='string',dest='xmcd',default='-',
-                      metavar='FILENAME',
-                      help=_(u'FreeDB XMCD file or MusicBrainz XML output file'))
+    parser.add_option(
+        '-x', '--xmcd', action='store',
+        type='string', dest='xmcd', default='-',
+        metavar='FILENAME',
+        help=_(u'FreeDB XMCD file or MusicBrainz XML output file'))
 
-    server = audiotools.OptionGroup(parser,_(u"Server Options"))
+    server = audiotools.OptionGroup(parser, _(u"Server Options"))
 
-    server.add_option('--musicbrainz-server',action='store',
-                      type='string',dest='musicbrainz_server',
-                      default=audiotools.MUSICBRAINZ_SERVER,
-                      metavar='HOSTNAME')
-    server.add_option('--musicbrainz-port',action='store',
-                      type='int',dest='musicbrainz_port',
-                      default=audiotools.MUSICBRAINZ_PORT,
-                      metavar='PORT')
+    server.add_option(
+        '--musicbrainz-server', action='store',
+        type='string', dest='musicbrainz_server',
+        default=audiotools.MUSICBRAINZ_SERVER,
+        metavar='HOSTNAME')
+    server.add_option(
+        '--musicbrainz-port', action='store',
+        type='int', dest='musicbrainz_port',
+        default=audiotools.MUSICBRAINZ_PORT,
+        metavar='PORT')
 
-    server.add_option('--freedb-server',action='store',
-                      type='string',dest='freedb_server',
-                      default=audiotools.FREEDB_SERVER,
-                      metavar='HOSTNAME')
-    server.add_option('--freedb-port',action='store',
-                      type='int',dest='freedb_port',
-                      default=audiotools.FREEDB_PORT,
-                      metavar='PORT')
+    server.add_option(
+        '--freedb-server', action='store',
+        type='string', dest='freedb_server',
+        default=audiotools.FREEDB_SERVER,
+        metavar='HOSTNAME')
+    server.add_option(
+        '--freedb-port', action='store',
+        type='int', dest='freedb_port',
+        default=audiotools.FREEDB_PORT,
+        metavar='PORT')
 
-    server.add_option('--no-musicbrainz',action='store_false',
-                      dest='use_musicbrainz',default=True,
-                      help='do not query MusicBrainz for metadata')
-    server.add_option('--no-freedb',action='store_false',
-                      dest='use_freedb',default=True,
-                      help='do not query FreeDB for metadata')
+    server.add_option(
+        '--no-musicbrainz', action='store_false',
+        dest='use_musicbrainz', default=True,
+        help='do not query MusicBrainz for metadata')
+    server.add_option(
+        '--no-freedb', action='store_false',
+        dest='use_freedb', default=True,
+        help='do not query FreeDB for metadata')
 
-    server.add_option('-D','--default',
-                      action='store_const',const=1,default=None,
-                      help=_(u'when multiple choices are available, select the first one automatically'))
+    server.add_option(
+        '-D', '--default',
+        action='store_const', const=1, default=None,
+        help=_(u'when multiple choices are available, ' +
+               u'select the first one automatically'))
 
     parser.add_option_group(server)
 
-    parser.add_option('-m','--metadata',action='store_true',
-                      dest='metadata',default=False,
-                      help=_(u'pull metadata from tracks rather than from server'))
+    parser.add_option(
+        '-m', '--metadata', action='store_true',
+        dest='metadata', default=False,
+        help=_(u'pull metadata from tracks rather than from server'))
 
-    parser.add_option('--cue',
-                      action='store',
-                      type='string',
-                      dest='cuesheet',
-                      metavar='FILENAME',
-                      help=_(u'the cuesheet to use for track boundaries'))
+    parser.add_option(
+        '--cue',
+        action='store',
+        type='string',
+        dest='cuesheet',
+        metavar='FILENAME',
+        help=_(u'the cuesheet to use for track boundaries'))
 
+    (options, args) = parser.parse_args()
+    msg = audiotools.Messenger("track2xmcd", options)
 
-    (options,args) = parser.parse_args()
-    msg = audiotools.Messenger("track2xmcd",options)
-
-    audiofiles = audiotools.open_files(args,messenger=msg)
+    audiofiles = audiotools.open_files(args, messenger=msg)
 
     if (len(audiofiles) < 1):
         msg.error(_(u"You must specify at least 1 supported audio file"))
@@ -102,17 +113,17 @@ if (__name__ == '__main__'):
     else:
         try:
             if (not os.path.isfile(options.xmcd)):
-                outfile = file(options.xmcd,"w")
+                outfile = file(options.xmcd, "w")
             else:
                 msg.error(_(u"Refusing to overwrite \"%s\"") % \
                               (msg.filename(options.xmcd)))
                 sys.exit(1)
-        except IOError,e:
+        except IOError, e:
             msg.error(_(u"Unable to write \"%s\"") % \
                           (msg.filename(options.xmcd)))
             sys.exit(1)
 
-    if (options.metadata):   #pull XML/XMCD data from AudioFile metadata
+    if (options.metadata):   # pull XML/XMCD data from AudioFile metadata
         returnval = 0
 
         if (options.use_musicbrainz):
@@ -128,7 +139,7 @@ if (__name__ == '__main__'):
                             audiofiles[0].total_frames(),
                             audiofiles[0].sample_rate(),
                             audiofiles[0].get_metadata()).build())
-                except audiotools.SheetException,err:
+                except audiotools.SheetException, err:
                     msg.error(unicode(err))
                     sys.exit(1)
             elif (audiofiles[0].get_cuesheet() is not None):
@@ -141,7 +152,7 @@ if (__name__ == '__main__'):
                 outfile.write(output_class.from_files(audiofiles).build())
         else:
             outfile.write(output_class.from_files(audiofiles).build())
-    else:                     #grab XML/XMCD data from MusicBrainz/FreeDB
+    else:                     # grab XML/XMCD data from MusicBrainz/FreeDB
         if (len(audiofiles) == 1):
             file = audiofiles[0]
             if (file.get_cuesheet() is not None):
@@ -155,7 +166,7 @@ if (__name__ == '__main__'):
             elif (options.cuesheet is not None):
                 try:
                     cuesheet = audiotools.read_sheet(options.cuesheet)
-                except audiotools.SheetException,err:
+                except audiotools.SheetException, err:
                     msg.error(unicode(err))
                     sys.exit(1)
 
@@ -192,7 +203,7 @@ if (__name__ == '__main__'):
                     msg,
                     options.default)
                 returnval = 0
-            except IOError,e:
+            except IOError, e:
                 msg.error(unicode(e))
                 returnval = 1
 
@@ -206,7 +217,7 @@ if (__name__ == '__main__'):
                     msg,
                     options.default)
                 returnval = 0
-            except IOError,e:
+            except IOError, e:
                 msg.error(unicode(e))
                 returnval = 1
 
@@ -224,4 +235,3 @@ if (__name__ == '__main__'):
 
     if (returnval != 0):
         sys.exit(1)
-

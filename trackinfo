@@ -22,52 +22,60 @@ import os.path
 import audiotools
 import gettext
 
-gettext.install("audiotools",unicode=True)
+gettext.install("audiotools", unicode=True)
 
 if (__name__ == '__main__'):
     parser = audiotools.OptionParser(
         usage=_(u"%prog [options] <track 1> [track 2] ..."),
         version="Python Audio Tools %s" % (audiotools.VERSION))
-    parser.add_option("-n","--no-metadata",
-                      action="store_true",dest="no_metadata",
+    parser.add_option("-n", "--no-metadata",
+                      action="store_true", dest="no_metadata",
                       default=False)
 
-    parser.add_option("-b","--bitrate",
-                      action="store_true",dest="show_bitrate")
+    parser.add_option("-b", "--bitrate",
+                      action="store_true", dest="show_bitrate")
 
-    parser.add_option("-%","--percentage",
-                      action="store_true",dest="show_percentage")
+    parser.add_option("-%", "--percentage",
+                      action="store_true", dest="show_percentage")
 
-    parser.add_option("-C","--channel-assignment",
-                      action="store_true",dest="channel_assignment")
+    parser.add_option("-C", "--channel-assignment",
+                      action="store_true", dest="channel_assignment")
 
-    (options,args) = parser.parse_args()
-    msg = audiotools.Messenger("trackinfo",options)
+    (options, args) = parser.parse_args()
+    msg = audiotools.Messenger("trackinfo", options)
 
-    for file in audiotools.open_files(args,messenger=msg):
+    for file in audiotools.open_files(args, messenger=msg):
         length = file.cd_frames() / 75
         if (options.show_bitrate):
-            msg.output(_(u"%(bitrate)4.4s kbps: %(filename)s") % \
-                           {'bitrate': ((os.path.getsize(file.filename) * 8) / 2 ** 10) / length,
-                            'filename':msg.filename(file.filename)})
+            msg.output(
+                _(u"%(bitrate)4.4s kbps: %(filename)s") %
+                {'bitrate': ((os.path.getsize(file.filename) * 8) /
+                             2 ** 10) / length,
+                 'filename': msg.filename(file.filename)})
         elif (options.show_percentage):
             try:
-                msg.output(_(u"%(percentage)3.3s%%: %(filename)s") % \
-                               {'percentage':
-                                    int(round(float(os.path.getsize(file.filename) * 100) / (file.total_frames() * file.channels() * (file.bits_per_sample() / 8)))),
-                                'filename':msg.filename(file.filename)})
+                msg.output(
+                    _(u"%(percentage)3.3s%%: %(filename)s") %
+                    {'percentage':
+                         int(round(float(
+                           os.path.getsize(file.filename) * 100) /
+                                   (file.total_frames() * file.channels() *
+                                    (file.bits_per_sample() / 8)))),
+                     'filename': msg.filename(file.filename)})
             except ZeroDivisionError:
                 msg.output(_(u"%(percentage)3.3s%%: %(filename)s") % \
-                               {'percentage':"0",
-                                'filenam':msg.filename(file.filename)})
+                               {'percentage': "0",
+                                'filenam': msg.filename(file.filename)})
         else:
-            msg.output(_(u"%(minutes)2.2d:%(seconds)2.2d %(channels)dch %(rate)dHz %(bits)d-bit: %(filename)s") % \
-                           {"minutes":length / 60,
-                            "seconds":length % 60,
-                            "channels":file.channels(),
-                            "rate":file.sample_rate(),
-                            "bits":file.bits_per_sample(),
-                            "filename":msg.filename(file.filename)})
+            msg.output(
+                _(u"%(minutes)2.2d:%(seconds)2.2d " +
+                  u"%(channels)dch %(rate)dHz %(bits)d-bit: %(filename)s") %
+                {"minutes": length / 60,
+                 "seconds": length % 60,
+                 "channels": file.channels(),
+                 "rate": file.sample_rate(),
+                 "bits": file.bits_per_sample(),
+                 "filename": msg.filename(file.filename)})
         if (not options.no_metadata):
             metadata = file.get_metadata()
             if (metadata is not None):
@@ -75,29 +83,33 @@ if (__name__ == '__main__'):
                 msg.output(u"")
         if (options.channel_assignment):
             msg.output(_("Assigned Channels:"))
-            channel_names = {"front_left":_(u"Front Left"),
-                             "front_right":_(u"Front Right"),
-                             "front_center":_(u"Front Center"),
-                             "low_frequency":_(u"Low Frequency"),
-                             "back_left":_(u"Back Left"),
-                             "back_right":_(u"Back Right"),
-                             "front_left_of_center":_(u"Front Left of Center"),
-                             "front_right_of_center":_(u"Front Right of Center"),
-                             "back_center":_(u"Back Center"),
-                             "side_left":_(u"Side Left"),
-                             "side_right":_(u"Side Right"),
-                             "top_center":_(u"Top Center"),
-                             "top_front_left":_(u"Top Front Left"),
-                             "top_front_center":_(u"Top Front Center"),
-                             "top_front_right":_(u"Top Front Right"),
-                             "top_back_left":_(u"Top Back Left"),
-                             "top_back_center":_(u"Top Back Center"),
-                             "top_back_right":_(u"Top Back Right")}
+            channel_names = {
+                "front_left": _(u"Front Left"),
+                "front_right": _(u"Front Right"),
+                "front_center": _(u"Front Center"),
+                "low_frequency": _(u"Low Frequency"),
+                "back_left": _(u"Back Left"),
+                "back_right": _(u"Back Right"),
+                "front_left_of_center": _(u"Front Left of Center"),
+                "front_right_of_center": _(u"Front Right of Center"),
+                "back_center": _(u"Back Center"),
+                "side_left": _(u"Side Left"),
+                "side_right": _(u"Side Right"),
+                "top_center": _(u"Top Center"),
+                "top_front_left": _(u"Top Front Left"),
+                "top_front_center": _(u"Top Front Center"),
+                "top_front_right": _(u"Top Front Right"),
+                "top_back_left": _(u"Top Back Left"),
+                "top_back_center": _(u"Top Back Center"),
+                "top_back_right": _(u"Top Back Right")}
 
             if (file.channel_mask().defined()):
-                for (i,channel) in enumerate(file.channel_mask().channels()):
-                    msg.output(_(u"channel %(channel_number)d - %(channel_name)s") % {"channel_number":i + 1,"channel_name":channel_names[channel]})
+                for (i, channel) in enumerate(file.channel_mask().channels()):
+                    msg.output(
+                        _(u"channel %(channel_number)d - %(channel_name)s") %
+                        {"channel_number": i + 1,
+                         "channel_name": channel_names[channel]})
             else:
                 for i in xrange(file.channels()):
-                    msg.output(_(u"channel %(channel_number)d - undefined") % {"channel_number":i + 1})
-
+                    msg.output(_(u"channel %(channel_number)d - undefined") %
+                               {"channel_number": i + 1})
