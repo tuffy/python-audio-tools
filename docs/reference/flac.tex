@@ -291,47 +291,47 @@ Predictor Order) and adding the residual.
 
 \begin{align*}
 \intertext{For Order 0:}
-Sample_i &= Residual_i \text{ for } i = 0 \text{ to Block Size} - 1 \\
+\SAMPLE_i &= \RESIDUAL_i \text{ for } i = 0 \text{ to Block Size} - 1 \\
 \intertext{For Order 1:}
-Sample_i &=
+\SAMPLE_i &=
 \begin{cases}
-Warmup_i & \text{ for } i = 0 \\
-Sample_{i - 1} + Residual_{i - 1} & \text{ for } i = 1 \text{ to Block Size} - 1
+\WARMUP_i & \text{ for } i = 0 \\
+\SAMPLE_{i - 1} + \RESIDUAL_{i - 1} & \text{ for } i = 1 \text{ to Block Size} - 1
 \end{cases} \\
 \intertext{For Order 2:}
-Sample_i &=
+\SAMPLE_i &=
 \begin{cases}
-Warmup_i & \text{ for } i = 0 \text{ to } 1 \\
-( 2 \times Sample_{i - 1} ) - Sample_{i - 2} + Residual_{i - 2} & \text{ for } i = 2 \text{ to Block Size} - 1
+\WARMUP_i & \text{ for } i = 0 \text{ to } 1 \\
+( 2 \times \SAMPLE_{i - 1} ) - \SAMPLE_{i - 2} + \RESIDUAL_{i - 2} & \text{ for } i = 2 \text{ to Block Size} - 1
 \end{cases} \\
 \intertext{For Order 3:}
-Sample_i &=
+\SAMPLE_i &=
 \begin{cases}
-Warmup_i \\
+\WARMUP_i \\
 \text{ for } i = 0 \text{ to } 2 \\
-( 3 \times Sample_{i - 1} ) - ( 3 \times Sample_{i - 2} ) + Sample_{i - 3} + Residual_{i - 3} \\
+( 3 \times \SAMPLE_{i - 1} ) - ( 3 \times \SAMPLE_{i - 2} ) + \SAMPLE_{i - 3} + \RESIDUAL_{i - 3} \\
 \text{ for } i = 3 \text{ to Block Size} - 1
 \end{cases} \\
 \intertext{For Order 4:}
-Sample_i &=
+\SAMPLE_i &=
 \begin{cases}
-Warmup_i \\
+\WARMUP_i \\
 \text{ for } i = 0 \text{ to } 3 \\
-( 4 \times Sample_{i - 1} ) - ( 6 \times Sample_{i - 2} ) + (4 \times Sample_{i - 3} ) - Sample_{i - 4} + Residual_{i - 4} \\
+( 4 \times \SAMPLE_{i - 1} ) - ( 6 \times \SAMPLE_{i - 2} ) + (4 \times \SAMPLE_{i - 3} ) - \SAMPLE_{i - 4} + \RESIDUAL_{i - 4} \\
 \text{ for } i = 4 \text{ to Block Size} - 1
 \end{cases}
 \end{align*}
 
-For example, given a FIXED order of 1, a $\text{Warmup}_0$ sample of 10,
+For example, given a FIXED order of 1, a $\WARMUP_0$ of 10,
 the residuals 1, 2, -2, 1 -1, and a \VAR{Block Size} of 6, we calculate
 samples as follows:
 \begin{align*}
-Sample_0 &= Warmup_0 = \textbf{10} \\
-Sample_1 &= Sample_0 + Resisual_0 = 10 + 1 = \textbf{11} \\
-Sample_2 &= Sample_1 + Residual_1 = 11 + 2 = \textbf{13} \\
-Sample_3 &= Sample_2 + Residual_2 = 13 - 2 = \textbf{11} \\
-Sample_4 &= Sample_3 + Residual_3 = 11 + 1 = \textbf{12} \\
-Sample_5 &= Sample_4 + Residual_4 = 12 - 1 = \textbf{11}
+\SAMPLE_0 &= \WARMUP_0 = \textbf{10} \\
+\SAMPLE_1 &= \SAMPLE_0 + \RESIDUAL_0 = 10 + 1 = \textbf{11} \\
+\SAMPLE_2 &= \SAMPLE_1 + \RESIDUAL_1 = 11 + 2 = \textbf{13} \\
+\SAMPLE_3 &= \SAMPLE_2 + \RESIDUAL_2 = 13 - 2 = \textbf{11} \\
+\SAMPLE_4 &= \SAMPLE_3 + \RESIDUAL_3 = 11 + 1 = \textbf{12} \\
+\SAMPLE_5 &= \SAMPLE_4 + \RESIDUAL_4 = 12 - 1 = \textbf{11}
 \end{align*}
 \par
 \noindent
@@ -348,68 +348,82 @@ How to extract the encoded residual is explained on page
 \noindent
 The number of warm-up samples equals the \VAR{LPC Order}
 (which is encoded in the \VAR{Subframe Type}).
+The size if each warm-up sample equals the subframe's \VAR{Bits per Sample}.
 The size of each QLP Coefficient is equal to
 \VAR{QLP Precision} number of bits, plus 1.
 \VAR{QLP Shift Needed} and the value of each Coefficient are
 signed two's-complement integers.
 The number of Coefficients equals the \VAR{LPC Order}.
-\begin{equation}
-Sample_i = \left\lfloor \frac{\overset{Order - 1}{\underset{j = 0}{\sum}}
-  \text{QLP Coefficient}_j \times \text{Sample}_{i - j - 1} } {2 ^ \text{QLP Shift Needed}}\right\rfloor + Residual_i
-\end{equation}
+\begin{align*}
+\intertext{For $i = 0$ to $Order - 1$:}
+\SAMPLE_i &= \WARMUP_i \\
+\intertext{For $i = Order$ to Block Size - 1:}
+\SAMPLE_i &= \left\lfloor \frac{\overset{Order - 1}{\underset{j = 0}{\sum}}
+  \COEFF_j \times \SAMPLE_{i - j - 1} } {2 ^ \text{QLP Shift Needed}}\right\rfloor + \RESIDUAL_{i - Order}
+\end{align*}
 This simply means we're taking the sum of the calculated values from
 0 to Order - 1, bit-shifting that sum down and added the residual
 when determining the current sample.
 Much like the FIXED subframe, LPC subframes also contain warm-up
 samples which serve as our calculation's starting point.
 
-In this example, the LPC Order is 5, the QLP Shift Needed is 9
-and the encoded Coefficients are as follows:
+In this example, the \VAR{LPC Order} is 5, the \VAR{QLP Shift Needed} is 9,
+the \VAR{Block Size} is 10
+and the remaining subframe values are as follows:
 
-\begin{figure}[h]
-{\relsize{-2}
-\begin{tabular}{>{$}r<{$} r}
-\text{QLP Coefficient}_0 & 1241 \\
-\text{QLP Coefficient}_1 & -944 \\
-\text{QLP Coefficient}_2 & 14 \\
-\text{QLP Coefficient}_3 & 342 \\
-\text{QLP Coefficient}_4 & -147 \\
+\begin{table}[h]
+\begin{tabular}{r r | r r | r r }
+$\WARMUP_0$ & 1053 &
+$\COEFF_0$ & 1241 &
+$\RESIDUAL_0$ & 11 \\
+$\WARMUP_1$ & 1116 &
+$\COEFF_1$ & -944 &
+$\RESIDUAL_1$ & 79 \\
+$\WARMUP_2$ & 1257 &
+$\COEFF_2$ & 14 &
+$\RESIDUAL_2$ & 24 \\
+$\WARMUP_3$ & 1423 &
+$\COEFF_3$ & 342 &
+$\RESIDUAL_3$ & -81 \\
+$\WARMUP_4$ & 1529 &
+$\COEFF_4$ & -147 &
+$\RESIDUAL_4$ & -72 \\
 \end{tabular}
-}
-\end{figure}
-
-\begin{figure}[h]
-{\relsize{-2}
-\begin{tabular}{|c|r|>{$}r<{$}|}
-\hline
-Index & Residual & \text{Sample} \\
-\hline
-0 & & \text{(warm-up)} \thickspace \bf1053 \\
-1 & & \text{(warm-up)} \thickspace \bf1116 \\
-2 & & \text{(warm-up)} \thickspace \bf1257 \\
-3 & & \text{(warm-up)} \thickspace \bf1423 \\
-4 & & \text{(warm-up)} \thickspace \bf1529 \\
-\hline
-5 & 11 & (1241 \times 1529) + (-944 \times 1423) + (14 \times 1257) + (342 \times 1116) + (-147 \times 1053) = 798656 \\
-& & \lfloor 798656 \div 2 ^ 9 \rfloor = 1559 + 11 = \bf1570 \\
-\hline
-6 & 79 & (1241 \times 1570) + (-944 \times 1529) + (14 \times 1423) + (342 \times 1257) + (-147 \times 1116) = 790758 \\
-& & \lfloor 790758 \div 2 ^ 9 \rfloor = 1544 + 79 = \bf1623 \\
-\hline
-7 & 24 & (1241 \times 1623) + (-944 \times 1570) + (14 \times 1529) + (342 \times 1423) + (-147 \times 1257) = 855356 \\
-& & \lfloor 855356 \div 2 ^ 9 \rfloor = 1670 + 24 = \bf1694 \\
-\hline
-8 & -81 & (1241 \times 1694) + (-944 \times 1623) + (14 \times 1570) + (342 \times 1529) + (-147 \times 1423) = 905859 \\
-& & \lfloor 905859 \div 2 ^ 9 \rfloor = 1769 - 81 = \bf1688 \\
-\hline
-9 & -72 & (1241 \times 1688) + (-944 \times 1694) + (14 \times 1623) + (342 \times 1570) + (-147 \times 1529) = 830571 \\
-& & \lfloor 830571 \div 2 ^ 9 \rfloor = 1622 - 72 = \bf1550 \\
-\hline
-\end{tabular}
-}
-\end{figure}
+\end{table}
+\par
 \noindent
-In this instance, division should always round down and \textit{not} towards zero.
+Note that the number is residuals equals Block Size minus Order
+which happens to be 5 in this simple example ($10 - 5 = 5$).
+Most of the time it will be much larger.
+
+For the sake of brevity, in this example we'll abbreviate
+\VAR{QLP Coefficient} as \VAR{C} and \VAR{Sample} as \VAR{S}.
+
+\clearpage
+\begin{align*}
+\SAMPLE_0 &= \WARMUP_0 = \textbf{1053} \\
+\SAMPLE_1 &= \WARMUP_1 = \textbf{1116} \\
+\SAMPLE_2 &= \WARMUP_2 = \textbf{1257} \\
+\SAMPLE_3 &= \WARMUP_3 = \textbf{1423} \\
+\SAMPLE_4 &= \WARMUP_4 = \textbf{1529} \\
+\SAMPLE_5 &= \left\lfloor \frac{(\SCOEFF_0 \times \SSAMPLE_4) + (\SCOEFF_1 \times \SSAMPLE_3) + (\SCOEFF_2 \times \SSAMPLE_2) + (\SCOEFF_3 \times \SSAMPLE_1) + (\SCOEFF_4 \times \SSAMPLE_0)}{2 ^ 9}\right\rfloor + \RESIDUAL_0 \\
+&= \left\lfloor \frac{(1241 \times 1529) + (-944 \times 1423) + (14 \times 1257) + (342 \times 1116) + (-147 \times 1053)}{512}\right\rfloor + 11 \\
+&= \left\lfloor \frac{798656}{512} \right\rfloor + 11 = 1559 + 11 = \textbf{1570} \\
+\SAMPLE_6 &= \left\lfloor \frac{(\SCOEFF_0 \times \SSAMPLE_5) + (\SCOEFF_1 \times \SSAMPLE_4) + (\SCOEFF_2 \times \SSAMPLE_3) + (\SCOEFF_3 \times \SSAMPLE_2) + (\SCOEFF_4 \times \SSAMPLE_1)}{2 ^ 9}\right\rfloor + \RESIDUAL_1 \\
+&= \left\lfloor \frac{(1241 \times 1570) + (-944 \times 1529) + (14 \times 1423) + (342 \times 1257) + (-147 \times 1116)}{512}\right\rfloor + 79 \\
+&= \left\lfloor \frac{790758}{512} \right\rfloor + 79 = 1544 + 79 = \textbf{1623} \\
+\SAMPLE_7 &= \left\lfloor \frac{(\SCOEFF_0 \times \SSAMPLE_6) + (\SCOEFF_1 \times \SSAMPLE_5) + (\SCOEFF_2 \times \SSAMPLE_4) + (\SCOEFF_3 \times \SSAMPLE_3) + (\SCOEFF_4 \times \SSAMPLE_2)}{2 ^ 9}\right\rfloor + \RESIDUAL_2 \\
+&= \left\lfloor \frac{(1241 \times 1623) + (-944 \times 1570) + (14 \times 1529) + (342 \times 1423) + (-147 \times 1257)}{512}\right\rfloor + 24 \\
+&= \left\lfloor \frac{855356}{512} \right\rfloor + 24 = 1670 + 24 = \textbf{1694} \\
+\SAMPLE_8 &= \left\lfloor \frac{(\SCOEFF_0 \times \SSAMPLE_7) + (\SCOEFF_1 \times \SSAMPLE_6) + (\SCOEFF_2 \times \SSAMPLE_5) + (\SCOEFF_3 \times \SSAMPLE_4) + (\SCOEFF_4 \times \SSAMPLE_3)}{2 ^ 9}\right\rfloor + \RESIDUAL_3 \\
+&= \left\lfloor \frac{(1241 \times 1694) + (-944 \times 1623) + (14 \times 1570) + (342 \times 1529) + (-147 \times 1423)}{512}\right\rfloor - 81 \\
+&= \left\lfloor \frac{1769}{512} \right\rfloor - 81 = 1769 - 81 = \textbf{1688} \\
+\SAMPLE_9 &= \left\lfloor \frac{(\SCOEFF_0 \times \SSAMPLE_8) + (\SCOEFF_1 \times \SSAMPLE_7) + (\SCOEFF_2 \times \SSAMPLE_6) + (\SCOEFF_3 \times \SSAMPLE_5) + (\SCOEFF_4 \times \SSAMPLE_4)}{2 ^ 9}\right\rfloor + \RESIDUAL_4 \\
+&= \left\lfloor \frac{(1241 \times 1688) + (-944 \times 1694) + (14 \times 1623) + (342 \times 1570) + (-147 \times 1529)}{512}\right\rfloor - 72 \\
+&= \left\lfloor \frac{830571}{512} \right\rfloor - 72 = 1622 - 72 = \textbf{1550} \\
+\end{align*}
+
+\clearpage
 
 \subsection{the Residual}
 \label{flac_residual}

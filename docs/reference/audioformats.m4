@@ -37,6 +37,12 @@
 \newcommand{\REFERENCE}[2]{\item #1 \\ \LINK{#2}}
 \newcommand{\VAR}[1]{``{#1}''}
 \newcommand{\ATOM}[1]{\texttt{#1}}
+\newcommand{\SAMPLE}[0]{\text{Sample}}
+\newcommand{\RESIDUAL}[0]{\text{Residual}}
+\newcommand{\WARMUP}[0]{\text{Warm Up}}
+\newcommand{\COEFF}[0]{\text{LPC Coefficient}}
+\newcommand{\SCOEFF}[0]{C}
+\newcommand{\SSAMPLE}[0]{S}
 \title{Audio Formats Reference}
 \author{Brian Langenberger}
 \begin{document}
