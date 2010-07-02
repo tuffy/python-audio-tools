@@ -18,35 +18,41 @@
  You should have received a copy of the GNU General Public License
  along with this program; if not, write to the Free Software
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
- *******************************************************/
+*******************************************************/
 
-PyMODINIT_FUNC initencoders(void) {
-  PyObject* m;
+PyMODINIT_FUNC
+initencoders(void)
+{
+    PyObject* m;
 
-  m = Py_InitModule3("encoders", module_methods,
-		     "Low-level audio format encoders");
+    m = Py_InitModule3("encoders", module_methods,
+                       "Low-level audio format encoders");
 
 }
 
-PyObject *encoders_write_bits(PyObject *dummy, PyObject *args) {
-  int context;
-  int value;
+PyObject*
+encoders_write_bits(PyObject *dummy, PyObject *args)
+{
+    int context;
+    int value;
 
-  if (!PyArg_ParseTuple(args,"ii",&context,&value))
-    return NULL;
+    if (!PyArg_ParseTuple(args, "ii", &context, &value))
+        return NULL;
 
-  return Py_BuildValue("i",write_bits_table[context][value]);
+    return Py_BuildValue("i", write_bits_table[context][value]);
 }
 
 
-PyObject *encoders_write_unary(PyObject *dummy, PyObject *args) {
-  int context;
-  int value;
+PyObject*
+encoders_write_unary(PyObject *dummy, PyObject *args)
+{
+    int context;
+    int value;
 
-  if (!PyArg_ParseTuple(args,"ii",&context,&value))
-    return NULL;
+    if (!PyArg_ParseTuple(args, "ii", &context, &value))
+        return NULL;
 
-  return Py_BuildValue("i",write_unary_table[context][value]);
+    return Py_BuildValue("i", write_unary_table[context][value]);
 }
 
 

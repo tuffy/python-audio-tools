@@ -1921,11 +1921,11 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   - [X] bitstream_r.h
   - [X] bitstream_w.c
   - [X] bitstream_w.h
-  - [ ] cdiomodule.c
-  - [ ] decoders.c
-  - [ ] decoders.h
-  - [ ] encoders.c
-  - [ ] encoders.h
+  - [X] cdiomodule.c
+  - [X] decoders.c
+  - [X] decoders.h
+  - [X] encoders.c
+  - [X] encoders.h
   - [ ] md5.c
   - [ ] md5.h
   - [ ] pcm.c
@@ -1955,7 +1955,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   - [ ] encoders/flac.h
   - [ ] encoders/flac_lpc.c
   - [ ] encoders/flac_lpc.h
-  - [ ] encoders/ordertest.c
   - [ ] encoders/residuals.c
   - [ ] encoders/shn.c
   - [ ] encoders/shn.h
