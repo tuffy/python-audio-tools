@@ -2095,3 +2095,16 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 * TODO build track2cover/xmcd2cover utilities
   it would be helpful to have tools that could query
   online cover databases and retrieve images for tagging purposes
+* TODO Tweak documentation
+** TODO Update indexes to account for warm-up samples
+   The i index on the left and right hand sides must match.
+   - [ ] Shorten DIFF decoding
+   - [ ] Shorten QLPC decoding
+   - [ ] Shorten DIFF encoding
+   - [X] FLAC FIXED decoding
+   - [ ] FLAC LPC decoding
+   - [ ] FLAC FIXED encoding
+   - [ ] FLAC LPC encoding
+** TODO Rewrite the FLAC channel assignment section
+   Reference the side channel extra bit and add examples.
+
