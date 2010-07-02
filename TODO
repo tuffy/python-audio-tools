@@ -1917,10 +1917,10 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 * TODO Update C code to support PEP 7
   - [X] array.c
   - [X] array.h
-  - [ ] bitstream_r.c
-  - [ ] bitstream_r.h
-  - [ ] bitstream_w.c
-  - [ ] bitstream_w.h
+  - [X] bitstream_r.c
+  - [X] bitstream_r.h
+  - [X] bitstream_w.c
+  - [X] bitstream_w.h
   - [ ] cdiomodule.c
   - [ ] decoders.c
   - [ ] decoders.h
