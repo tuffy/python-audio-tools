@@ -1138,55 +1138,53 @@ QLP precision can be 6.
 
 \subsubsection{Calculating LPC residual}
 
-A number of warm-up samples equal to \VAR{LPC Order} are taken
-from the input PCM and the subframe's residuals are calculated
-according to the following formula:
-\begin{equation}
-\text{Residual}_i = \text{Sample}_i -
+Warm-up samples and residuals are calculated as follows:
+\begin{align*}
+\intertext{For $i = 0$ to $Order - 1$:}
+\WARMUP_i &= \SAMPLE_i \\
+\intertext{For $i = Order$ to Block Size - 1:}
+\text{Residual}_{i - Order} &= \text{Sample}_i -
 \left \lfloor \frac{\overset{Order - 1}{\underset{j = 0}{\sum}}
   \text{QLP Coeffcient}_j \times \text{Sample}_{i - j - 1} }{
 2 ^ \text{QLP Shift Needed}} \right \rfloor
-\end{equation}
-For example, given the samples
-1053, 1116, 1257, 1423, 1529, 1570, 1623, 1694, 1688, 1550,
-the coefficients: 1241, -944, 14, 342, -147
-%% \begin{table}[h]
-%% {\relsize{-2}
-%% \begin{tabular}{>{$}r<{$} r}
-%% \text{QLP Coefficient}_0 & 1241 \\
-%% \text{QLP Coefficient}_1 & -944 \\
-%% \text{QLP Coefficient}_2 & 14 \\
-%% \text{QLP Coefficient}_3 & 342 \\
-%% \text{QLP Coefficient}_4 & -147 \\
-%% \end{tabular}
-%% }
-%% \end{table}
-and a \VAR{QLP Shift Needed} value of 9, our residuals are as follows:
-\begin{table}[h]
-{\relsize{-2}
-\begin{tabular}{|c|r|>{$}r<{$}|}
-\hline
-Index & Sample & \text{Residual} \\
-\hline
-0 & (warm-up) 1053 & \\
-1 & (warm-up) 1116 & \\
-2 & (warm-up) 1257 & \\
-3 & (warm-up) 1423 & \\
-4 & (warm-up) 1529 & \\
-\hline
-5 & 1570 & 1570 - \left \lfloor \frac{(1241 \times 1529) + (-944 \times 1423) + (14 \times 1257) + (342 \times 1116) + (-147 \times 1053)}{2 ^ 9} \right \rfloor = 1570 - \left \lfloor \frac{798656}{512} \right \rfloor = \textbf{11} \\
-\hline
-6 & 1623 & 1623 - \left \lfloor \frac{(1241 \times 1570) + (-944 \times 1529) + (14 \times 1423) + (342 \times 1257) + (-147 \times 1116)}{2 ^ 9} \right \rfloor = 1623 - \left \lfloor \frac{790758}{512} \right \rfloor = \textbf{79} \\
-\hline
-7 & 1694 & 1694 -  \left \lfloor \frac{(1241 \times 1623) + (-944 \times 1570) + (14 \times 1529) + (342 \times 1423) + (-147 \times 1257)}{2 ^ 9} \right \rfloor = 1694 - \left \lfloor \frac{855356}{512} \right \rfloor = \textbf{24} \\
-\hline
-8 & 1688 & 1688 - \left \lfloor \frac{(1241 \times 1694) + (-944 \times 1623) + (14 \times 1570) + (342 \times 1529) + (-147 \times 1423)}{2 ^ 9} \right \rfloor = 1688 - \left \lfloor \frac{905859}{512} \right \rfloor  = \textbf{-81} \\
-\hline
-9 & 1550 & 1550 - \left \lfloor \frac{(1241 \times 1688) + (-944 \times 1694) + (14 \times 1623) + (342 \times 1570) + (-147 \times 1529)}{2 ^ 9} \right \rfloor = 1550 - \left \lfloor \frac{830571}{512} \right \rfloor = \textbf{-72} \\
-\hline
+\end{align*}
+\par
+\noindent
+Therefore, if \VAR{LPC Order} is 3, \VAR{QLP Shift Needed} is 6,
+and we have the following values:
+\begin{tabular}{r r | r r}
+$\SAMPLE_0$ & -37 & $\COEFF_0$ & 58 \\
+$\SAMPLE_1$ & -33 & $\COEFF_1$ & 0 \\
+$\SAMPLE_2$ & -36 & $\COEFF_2$ & -2 \\
+$\SAMPLE_3$ & -35 & & \\
+$\SAMPLE_4$ & -31 & & \\
+$\SAMPLE_5$ & -32 & & \\
+$\SAMPLE_6$ & -33 & & \\
 \end{tabular}
-}
-\end{table}
+
+\clearpage
+
+\begin{align*}
+\WARMUP_0 &= \SAMPLE_0 = \textbf{-37} \\
+\WARMUP_1 &= \SAMPLE_1 = \textbf{-33} \\
+\WARMUP_2 &= \SAMPLE_2 = \textbf{-36} \\
+\RESIDUAL_0 &= \SAMPLE_3 - \left\lfloor\frac{(C_0 \times S_2) + (C_1 \times S_1) + (C_2 \times S_2)}{2 ^ 6}\right\rfloor \\
+&= -35 - \left\lfloor\frac{(58 \times -36) + (0 \times -33) + (-2 \times -37)}{64}\right\rfloor \\
+&= -35 - \left\lfloor\frac{-2014}{64}\right\rfloor = -35 - -32 = \textbf{-3} \\
+\RESIDUAL_1 &= \SAMPLE_4 - \left\lfloor\frac{(C_0 \times S_3) + (C_1 \times S_2) + (C_2 \times S_1)}{2 ^ 6}\right\rfloor \\
+&= -31 - \left\lfloor\frac{(58 \times -35) + (0 \times -36) + (-2 \times -33)}{64}\right\rfloor \\
+&= -31 - \left\lfloor\frac{-1964}{64}\right\rfloor = -31 - -31 = \textbf{0} \\
+\RESIDUAL_2 &= \SAMPLE_5 - \left\lfloor\frac{(C_0 \times S_4) + (C_1 \times S_3) + (C_2 \times S_2)}{2 ^ 6}\right\rfloor \\
+&= -32 - \left\lfloor\frac{(58 \times -31) + (0 \times -35) + (-2 \times -36)}{64}\right\rfloor \\
+&= -32 - \left\lfloor\frac{-1726}{64}\right\rfloor = -32 - -27 = \textbf{-5} \\
+\RESIDUAL_3 &= \SAMPLE_6 - \left\lfloor\frac{(C_0 \times S_5) + (C_1 \times S_4) + (C_2 \times S_3)}{2 ^ 6}\right\rfloor \\
+&= -33 - \left\lfloor\frac{(58 \times -32) + (0 \times -31) + (-2 \times -35)}{64}\right\rfloor \\
+&= -33 - \left\lfloor\frac{-1786}{64}\right\rfloor = -33 - -28 = \textbf{-5} \\
+\end{align*}
+Therefore, our warm-up samples are -37, -33 and -36; and our
+residual values are -3, 0, -5 and -5.
+
+\clearpage
 
 \subsection{the Residual}
 
