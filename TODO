@@ -1915,8 +1915,8 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    - [ ] test.py
    - [ ] test_streams.py
 * TODO Update C code to support PEP 7
-  - [ ] array.c
-  - [ ] array.h
+  - [X] array.c
+  - [X] array.h
   - [ ] bitstream_r.c
   - [ ] bitstream_r.h
   - [ ] bitstream_w.c
