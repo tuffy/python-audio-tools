@@ -604,8 +604,7 @@ Instead, one must keep track of those values during encoding and then
 rewrite the STREAMINFO block when finished.
 
 \subsection{Frame header}
-\begin{minipage}{\linewidth}
-\renewcommand\thefootnote{\thempfootnote}
+
 \begin{tabular}{|r|l|}
 \hline
 bits & value \\
@@ -613,10 +612,10 @@ bits & value \\
 14 & \texttt{0x3FFE} sync code \\
 1 & \texttt{0} reserved \\
 1 & \texttt{0} if the header encodes the frame number, \texttt{1} if it encodes the sample number \\
-4 & this frame's block size, as encoded PCM frames\footnote{See table on page \pageref{flac_encoded_fields} } \\
-4 & this frame's encoded sample rate\footnotemark[\value{mpfootnote}] \\
-4 & this frame's encoded channel assignment\footnotemark[\value{mpfootnote}] \\
-3 & this frame's encoded bits per sample\footnotemark[\value{mpfootnote}] \\
+4 & this frame's block size, as encoded PCM frames \\
+4 & this frame's encoded sample rate \\
+4 & this frame's encoded channel assignment \\
+3 & this frame's encoded bits per sample \\
 1 & \texttt{0} padding \\
 8-56 & the frame number, or sample number, UTF-8 encoded and starting from 0 \\
 0/8/16 & the number of PCM frames (minus one) in this FLAC frame \\
@@ -626,9 +625,7 @@ bits & value \\
 8 & the CRC-8 of all data from the beginning of the frame header \\
 \hline
 \end{tabular}
-\end{minipage}
 
-\vspace{2ex}
 %% The FLAC frame's block size in PCM frames
 %% (called ``channel independent samples'' in FLAC's documentation)
 %% is typically encoded in the 4 bit `block size' field.
@@ -655,7 +652,6 @@ assignments (left-difference, difference-right, mid-side and
 independent) and use the one which takes the least amount of space.
 
 \subsection{Subframe header}
-\begin{figure}[h]
 \begin{tabular}{|r|l|}
 \hline
 bits & value \\
@@ -669,22 +665,20 @@ bits & value \\
 0+ & the number of wasted bits per sample (minus one) encoded as unary \\
 \hline
 \end{tabular}
-\end{figure}
-
-\pagebreak
 
 \subsection{the CONSTANT subframe}
 
 If all the samples in a subframe are identical, one can encode them
-using a \texttt{CONSTANT} subframe, which is essentially a single sample value
-that gets duplicated \VAR{block size} number of times when decoded.
+using a \texttt{CONSTANT} subframe.
 
 \subsection{the VERBATIM subframe}
 
 This subframe simply stores all the samples as-is,
 with no compression whatsoever.
-It is a fallback encoding method for when no other subframe makes one's
-data any smaller.
+
+\pagebreak
+
+
 
 \subsection{the FIXED subframe}
 
@@ -694,9 +688,7 @@ Determining which predictor order to use on a given set of input samples
 depends on their minimum delta sum.
 This process is best explained by example:
 
-
-\begin{wrapfigure}{r}{3in}
-{\relsize{-2}
+\begin{table}[h]
 \begin{tabular}{|c|r|r|r|r|r|r|}
 \hline
 index & sample & $\Delta ^ 0$ & $\Delta ^ 1$ & $\Delta ^ 2$ & $\Delta ^ 3$ & $\Delta ^ 4$ \\
@@ -725,8 +717,9 @@ index & sample & $\Delta ^ 0$ & $\Delta ^ 1$ & $\Delta ^ 2$ & $\Delta ^ 3$ & $\D
 $| sum |$ &  & 579 & 26 & 38 & 60 & 111 \\
 \hline
 \end{tabular}
-}
-\end{wrapfigure}
+\end{table}
+\par
+\noindent
 Note that the numbers in italics play a part in the delta
 calculation to their right, but do \textbf{not} figure into the
 delta's absolute value sum, below.
@@ -741,24 +734,60 @@ Determining the residual values can then be done automatically
 based on the current $\text{Sample}_i$ and previously encoded samples, or
 warm-up samples.
 
-In this example, warm-up sample is -40 and the residual values are: -1 1 1 1 0 3 0 -4 -1 0 1 1 1 4 -3 1 4 -1 -1
-\begin{figure}[h]
-{\relsize{-1}
-\begin{tabular}{|c|>{$}l<{$}|}
-\hline
-Order & \text{Calculation} \\
-\hline
-0 & \text{Residual}_i = \text{Sample}_i \\
-1 & \text{Residual}_i = \text{Sample}_i - \text{Sample}_{i - 1} \\
-2 & \text{Residual}_i = \text{Sample}_i - ((2 \times \text{Sample}_{i - 1}) - \text{Sample}_{i - 2}) \\
-3 & \text{Residual}_i = \text{Sample}_i - ((3 \times \text{Sample}_{i - 1}) - (3 \times \text{Sample}_{i - 2}) + \text{Sample}_{i - 3}) \\
-4 & \text{Residual}_i = \text{Sample}_i - ((4 \times \text{Sample}_{i - 1}) - (6 \times \text{Sample}_{i - 2}) + (4 \times \text{Sample}_{i - 3}) - \text{Sample}_{i - 4}) \\
-\hline
-\end{tabular}
-}
-\end{figure}
+\clearpage
 
-\pagebreak
+The residual encoding process is then the simple inverse of the
+decoding process, as follows:
+
+\begin{align*}
+\WARMUP_i &= \SAMPLE_i \\
+& \text{ for } i = 0 \text{ to } Order - 1 \text{ if } Order > 0\\
+\intertext{For Order 0:}
+\RESIDUAL_i &= \SAMPLE_i \\
+& \text{ for } i = 0 \text{ to Block Size} - 1 \\
+\intertext{For Order 1:}
+\RESIDUAL_{i - 1} &= \SAMPLE_i - \SAMPLE_{i - 1} \\
+& \text{ for } i = 1 \text{ to Block Size} - 1 \\
+\intertext{For Order 2:}
+\RESIDUAL_{i - 2} &= \SAMPLE_i - ((2 \times \SAMPLE_{i - 1}) - \SAMPLE_{i - 2}) \\
+& \text{ for } i = 2 \text{ to Block Size} - 1 \\
+\intertext{For Order 3:}
+\RESIDUAL_{i - 3} &= \SAMPLE_i - ((3 \times \SAMPLE_{i - 1}) - (3 \times \SAMPLE_{i - 2}) + \SAMPLE_{i - 3}) \\
+& \text{ for } i = 3 \text{ to Block Size} - 1 \\
+\intertext{For Order 4:}
+\RESIDUAL_{i - 4} &= \SAMPLE_i - ((4 \times \SAMPLE_{i - 1}) - (6 \times \SAMPLE_{i - 2}) + (4 \times \SAMPLE_{i - 3}) - \SAMPLE_{i - 4}) \\
+& \text{ for } i = 4 \text{ to Block Size} - 1 \\
+\end{align*}
+
+\clearpage
+
+So to complete our FIXED subframe encoding example in which the
+predictor order is 1:
+
+\begin{align*}
+\WARMUP_0 &= \SAMPLE_0 = \textbf{-40} \\
+\RESIDUAL_0 &= \SAMPLE_1 - \SAMPLE_0 = -41 - -40 = \textbf{-1} \\
+\RESIDUAL_1 &= \SAMPLE_2 - \SAMPLE_1 = -40 - -41 = \textbf{1} \\
+\RESIDUAL_2 &= \SAMPLE_3 - \SAMPLE_2 = -39 - -40 = \textbf{1} \\
+\RESIDUAL_3 &= \SAMPLE_4 - \SAMPLE_3 = -38 - -39 = \textbf{1} \\
+\RESIDUAL_4 &= \SAMPLE_5 - \SAMPLE_4 = -38 - -38 = \textbf{0} \\
+\RESIDUAL_5 &= \SAMPLE_6 - \SAMPLE_5 = -35 - -38 = \textbf{3} \\
+\RESIDUAL_6 &= \SAMPLE_7 - \SAMPLE_6 = -35 - -35 = \textbf{0} \\
+\RESIDUAL_7 &= \SAMPLE_8 - \SAMPLE_7 = -39 - -35 = \textbf{-4} \\
+\RESIDUAL_8 &= \SAMPLE_9 - \SAMPLE_8 = -40 - -39 = \textbf{-1} \\
+\RESIDUAL_9 &= \SAMPLE_{10} - \SAMPLE_9 = -40 - -40 = \textbf{0} \\
+\RESIDUAL_{10} &= \SAMPLE_{11} - \SAMPLE_{10} = -39 - -40 = \textbf{1} \\
+\RESIDUAL_{11} &= \SAMPLE_{12} - \SAMPLE_{11} = -38 - -39 = \textbf{1} \\
+\RESIDUAL_{12} &= \SAMPLE_{13} - \SAMPLE_{12} = -37 - -38 = \textbf{1} \\
+\RESIDUAL_{13} &= \SAMPLE_{14} - \SAMPLE_{13} = -33 - -37 = \textbf{4} \\
+\RESIDUAL_{14} &= \SAMPLE_{15} - \SAMPLE_{14} = -36 - -33 = \textbf{-3} \\
+\RESIDUAL_{15} &= \SAMPLE_{16} - \SAMPLE_{15} = -35 - -36 = \textbf{1} \\
+\RESIDUAL_{16} &= \SAMPLE_{17} - \SAMPLE_{16} = -31 - -35 = \textbf{4} \\
+\RESIDUAL_{17} &= \SAMPLE_{18} - \SAMPLE_{17} = -32 - -31 = \textbf{-1} \\
+\RESIDUAL_{18} &= \SAMPLE_{19} - \SAMPLE_{18} = -33 - -32 = \textbf{-1} \\
+\end{align*}
+
+\clearpage
 
 \subsection{the LPC subframe}
 \label{flac_lpc_encoding}
