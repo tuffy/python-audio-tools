@@ -19,28 +19,33 @@
  You should have received a copy of the GNU General Public License
  along with this program; if not, write to the Free Software
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
- *******************************************************/
+*******************************************************/
 
 #include "pcm.h"
 
 #ifndef STANDALONE
 
 PyMethodDef module_methods[] = {
-  {"from_list",(PyCFunction)FrameList_from_list,
-   METH_VARARGS,"from_list(int_list, channels, bits_per_sample, is_signed) -> FrameList"},
-  {"from_frames",(PyCFunction)FrameList_from_frames,
-   METH_VARARGS,"from_frames(framelist_list) -> FrameList"},
-  {"from_channels",(PyCFunction)FrameList_from_channels,
-   METH_VARARGS,"from_channels(framelist_list) -> FrameList"},
-  {"from_float_frames",(PyCFunction)FloatFrameList_from_frames,
-   METH_VARARGS,"from_float_frames(floatframelist_list) -> FloatFrameList"},
-  {"from_float_channels",(PyCFunction)FloatFrameList_from_channels,
-   METH_VARARGS,"from_float_channels(floatframelist_list) -> FloatFrameList"},
-  {"__blank__",(PyCFunction)FrameList_blank,
-   METH_NOARGS,"Creates an empty FrameList"},
-  {"__blank_float__",(PyCFunction)FloatFrameList_blank,
-   METH_NOARGS,"Creates an empty FloatFrameList"},
-  {NULL}
+    {"from_list", (PyCFunction)FrameList_from_list,
+     METH_VARARGS,
+     "from_list(int_list, channels, bits_per_sample, is_signed) -> FrameList"},
+    {"from_frames", (PyCFunction)FrameList_from_frames,
+     METH_VARARGS,
+     "from_frames(framelist_list) -> FrameList"},
+    {"from_channels", (PyCFunction)FrameList_from_channels,
+     METH_VARARGS,
+     "from_channels(framelist_list) -> FrameList"},
+    {"from_float_frames", (PyCFunction)FloatFrameList_from_frames,
+     METH_VARARGS,
+     "from_float_frames(floatframelist_list) -> FloatFrameList"},
+    {"from_float_channels", (PyCFunction)FloatFrameList_from_channels,
+     METH_VARARGS,
+     "from_float_channels(floatframelist_list) -> FloatFrameList"},
+    {"__blank__", (PyCFunction)FrameList_blank,
+     METH_NOARGS, "Creates an empty FrameList"},
+    {"__blank_float__", (PyCFunction)FloatFrameList_blank,
+     METH_NOARGS, "Creates an empty FloatFrameList"},
+    {NULL}
 };
 
 /******************
@@ -56,32 +61,41 @@ PyGetSetDef FrameList_getseters[] = {
 };
 
 PyMethodDef FrameList_methods[] = {
-  {"frame", (PyCFunction)FrameList_frame,
-   METH_VARARGS,"F.frame(i) -> FrameList -- return the given PCM frame"},
-  {"channel", (PyCFunction)FrameList_channel,
-   METH_VARARGS,"F.channel(i) -> FrameList -- return the given channel"},
-  {"to_bytes", (PyCFunction)FrameList_to_bytes,
-   METH_VARARGS,"F.to_bytes(is_big_endian, is_signed) -> string"},
-  {"split", (PyCFunction)FrameList_split,
-   METH_VARARGS,"F.split(i) -> (FrameList,FrameList) -- splits the FrameList at the given index"},
-  {"to_float", (PyCFunction)FrameList_to_float,
-   METH_NOARGS,"F.to_float() -> FloatFrameList"},
-  {"frame_count", (PyCFunction)FrameList_frame_count,
-   METH_VARARGS,"F.frame_count(bytes) -> int -- given a number of bytes, returns the maximum number of frames that would fit or a minimum of 1"},
-  {NULL}
+    {"frame", (PyCFunction)FrameList_frame,
+     METH_VARARGS,
+     "F.frame(i) -> FrameList -- return the given PCM frame"},
+    {"channel", (PyCFunction)FrameList_channel,
+     METH_VARARGS,
+     "F.channel(i) -> FrameList -- return the given channel"},
+    {"to_bytes", (PyCFunction)FrameList_to_bytes,
+     METH_VARARGS,
+     "F.to_bytes(is_big_endian, is_signed) -> string"},
+    {"split", (PyCFunction)FrameList_split,
+     METH_VARARGS,
+     "F.split(i) -> (FrameList,FrameList) -- "
+     "splits the FrameList at the given index"},
+    {"to_float", (PyCFunction)FrameList_to_float,
+     METH_NOARGS,
+     "F.to_float() -> FloatFrameList"},
+    {"frame_count", (PyCFunction)FrameList_frame_count,
+     METH_VARARGS,
+     "F.frame_count(bytes) -> int -- "
+     "given a number of bytes, returns the maximum number of frames "
+     "that would fit or a minimum of 1"},
+    {NULL}
 };
 
 static PySequenceMethods pcm_FrameListType_as_sequence = {
-	(lenfunc)FrameList_len,		/* sq_length */
-	(binaryfunc)FrameList_concat,	/* sq_concat */
-	(ssizeargfunc)NULL,		/* sq_repeat */
-	(ssizeargfunc)FrameList_GetItem, /* sq_item */
-	(ssizessizeargfunc)NULL,        /* sq_slice */
-	(ssizeobjargproc)NULL,		/* sq_ass_item */
-	(ssizessizeobjargproc)NULL,	/* sq_ass_slice */
-	(objobjproc)NULL,		/* sq_contains */
-	(binaryfunc)NULL,               /* sq_inplace_concat */
-	(ssizeargfunc)NULL,             /* sq_inplace_repeat */
+    (lenfunc)FrameList_len,		/* sq_length */
+    (binaryfunc)FrameList_concat,	/* sq_concat */
+    (ssizeargfunc)NULL,		/* sq_repeat */
+    (ssizeargfunc)FrameList_GetItem, /* sq_item */
+    (ssizessizeargfunc)NULL,        /* sq_slice */
+    (ssizeobjargproc)NULL,		/* sq_ass_item */
+    (ssizessizeobjargproc)NULL,	/* sq_ass_slice */
+    (objobjproc)NULL,		/* sq_contains */
+    (binaryfunc)NULL,               /* sq_inplace_concat */
+    (ssizeargfunc)NULL,             /* sq_inplace_repeat */
 };
 
 PyTypeObject pcm_FrameListType = {
@@ -106,7 +120,8 @@ PyTypeObject pcm_FrameListType = {
     0,                         /*tp_setattro*/
     0,                         /*tp_as_buffer*/
     Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE, /*tp_flags*/
-    "FrameList(string, channels, bits_per_sample, is_big_endian, is_signed)", /* tp_doc */
+    "FrameList(string, channels, bits_per_sample, is_big_endian, is_signed)",
+    /* tp_doc */
     0,		               /* tp_traverse */
     0,		               /* tp_clear */
     (richcmpfunc)FrameList_richcompare, /* tp_richcompare */
@@ -127,608 +142,668 @@ PyTypeObject pcm_FrameListType = {
 };
 
 
-void FrameList_dealloc(pcm_FrameList* self) {
-  free(self->samples);
-  self->ob_type->tp_free((PyObject*)self);
+void
+FrameList_dealloc(pcm_FrameList* self)
+{
+    free(self->samples);
+    self->ob_type->tp_free((PyObject*)self);
 }
 
-PyObject *FrameList_new(PyTypeObject *type, PyObject *args, PyObject *kwds) {
-  pcm_FrameList *self;
+PyObject*
+FrameList_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
+{
+    pcm_FrameList *self;
 
-  self = (pcm_FrameList *)type->tp_alloc(type, 0);
+    self = (pcm_FrameList *)type->tp_alloc(type, 0);
 
-  return (PyObject *)self;
+    return (PyObject *)self;
 }
 
-int FrameList_init(pcm_FrameList *self, PyObject *args, PyObject *kwds) {
-  unsigned char *data;
+int
+FrameList_init(pcm_FrameList *self, PyObject *args, PyObject *kwds)
+{
+    unsigned char *data;
 #ifdef PY_SSIZE_T_CLEAN
-  Py_ssize_t data_size;
+    Py_ssize_t data_size;
 #else
-  int data_size;
+    int data_size;
 #endif
-  int is_big_endian;
-  int is_signed;
-  FrameList_char_to_int_converter converter;
+    int is_big_endian;
+    int is_signed;
+    FrameList_char_to_int_converter converter;
 
-  if (!PyArg_ParseTuple(args, "s#iiii",
-			&data,&data_size,
-			&(self->channels),
-			&(self->bits_per_sample),
-			&(is_big_endian),
-			&is_signed))
-    return -1;
+    if (!PyArg_ParseTuple(args, "s#iiii",
+                          &data, &data_size,
+                          &(self->channels),
+                          &(self->bits_per_sample),
+                          &(is_big_endian),
+                          &is_signed))
+        return -1;
 
-  if (data_size % (self->channels * self->bits_per_sample / 8)) {
-    PyErr_SetString(PyExc_ValueError,
-		    "number of samples must be divisible by bits-per-sample and number of channels");
-    return -1;
-  } else {
-    self->samples_length = data_size / (self->bits_per_sample / 8);
-    self->frames = self->samples_length / self->channels;
-    self->samples = malloc(sizeof(ia_data_t) * self->samples_length);
-    converter = FrameList_get_char_to_int_converter(self->bits_per_sample,
-						    is_big_endian,
-						    is_signed);
-    if (converter) {
-      FrameList_char_to_samples(self->samples,
-				data,
-				converter,
-				self->samples_length,
-				self->bits_per_sample);
+    if (data_size % (self->channels * self->bits_per_sample / 8)) {
+        PyErr_SetString(PyExc_ValueError,
+                        "number of samples must be divisible by "
+                        "bits-per-sample and number of channels");
+        return -1;
     } else {
-      PyErr_SetString(PyExc_ValueError,
-		      "unsupported number of bits per sample");
-      return -1;
+        self->samples_length = data_size / (self->bits_per_sample / 8);
+        self->frames = self->samples_length / self->channels;
+        self->samples = malloc(sizeof(ia_data_t) * self->samples_length);
+        converter = FrameList_get_char_to_int_converter(self->bits_per_sample,
+                                                        is_big_endian,
+                                                        is_signed);
+        if (converter) {
+            FrameList_char_to_samples(self->samples,
+                                      data,
+                                      converter,
+                                      self->samples_length,
+                                      self->bits_per_sample);
+        } else {
+            PyErr_SetString(PyExc_ValueError,
+                            "unsupported number of bits per sample");
+            return -1;
+        }
     }
-  }
 
-  return 0;
-}
-
-PyObject* FrameList_blank(PyObject *dummy, PyObject *args) {
-  pcm_FrameList *framelist = FrameList_create();
-  framelist->frames = framelist->channels = 0;
-  framelist->bits_per_sample = 8;
-  framelist->samples_length = 0;
-  framelist->samples = malloc(0);
-  return (PyObject*)framelist;
-}
-
-pcm_FrameList* FrameList_create(void) {
-  return (pcm_FrameList*)_PyObject_New(&pcm_FrameListType);
-}
-
-int FrameList_CheckExact(PyObject *o) {
-  return o->ob_type == &pcm_FrameListType;
-}
-
-PyObject* FrameList_frames(pcm_FrameList *self, void* closure) {
-  return Py_BuildValue("i",self->frames);
-}
-
-PyObject* FrameList_channels(pcm_FrameList *self, void* closure) {
-  return Py_BuildValue("i",self->channels);
-}
-
-PyObject* FrameList_bits_per_sample(pcm_FrameList *self, void* closure) {
-  return Py_BuildValue("i",self->bits_per_sample);
-}
-
-Py_ssize_t FrameList_len(pcm_FrameList *o) {
-  return o->samples_length;
-}
-
-PyObject *FrameList_richcompare(PyObject *a, PyObject *b, int op) {
-  switch (op) {
-  case Py_EQ:
-    if (FrameList_CheckExact(a) && FrameList_CheckExact(b) &&
-	FrameList_equals((pcm_FrameList*)a,(pcm_FrameList*)b)) {
-      Py_INCREF(Py_True);
-      return Py_True;
-    } else {
-      Py_INCREF(Py_False);
-      return Py_False;
-    }
-  case Py_NE:
-    if (FrameList_CheckExact(a) && FrameList_CheckExact(b) &&
-	FrameList_equals((pcm_FrameList*)a,(pcm_FrameList*)b)) {
-      Py_INCREF(Py_False);
-      return Py_False;
-    } else {
-      Py_INCREF(Py_True);
-      return Py_True;
-    }
-  default:
-    PyErr_SetString(PyExc_TypeError,"unsupported comparison");
-    return NULL;
-  }
-}
-
-int FrameList_equals(pcm_FrameList *a, pcm_FrameList *b) {
-  ia_size_t i;
-
-  if ((a->frames == b->frames) &&
-      (a->channels == b->channels) &&
-      (a->bits_per_sample == b->bits_per_sample) &&
-      (a->samples_length == b->samples_length)) {
-    for (i = 0; i < a->samples_length; i++) {
-      if (a->samples[i] != b->samples[i])
-	return 0;
-    }
-    return 1;
-  } else {
     return 0;
-  }
 }
 
-PyObject* FrameList_GetItem(pcm_FrameList *o, Py_ssize_t i) {
-  if ((i >= o->samples_length) || (i < 0)) {
-    PyErr_SetString(PyExc_IndexError,"index out of range");
-    return NULL;
-  } else {
-    return Py_BuildValue("i",o->samples[i]);
-  }
+PyObject*
+FrameList_blank(PyObject *dummy, PyObject *args)
+{
+    pcm_FrameList *framelist = FrameList_create();
+    framelist->frames = framelist->channels = 0;
+    framelist->bits_per_sample = 8;
+    framelist->samples_length = 0;
+    framelist->samples = malloc(0);
+    return (PyObject*)framelist;
 }
 
-PyObject* FrameList_frame(pcm_FrameList *self, PyObject *args) {
-  int frame_number;
-  pcm_FrameList *frame;
-
-  if (!PyArg_ParseTuple(args,"i",&frame_number))
-    return NULL;
-  if ((frame_number < 0) || (frame_number >= self->frames)) {
-    PyErr_SetString(PyExc_IndexError,"frame number out of range");
-    return NULL;
-  }
-
-  frame = FrameList_create();
-  frame->frames = 1;
-  frame->channels = self->channels;
-  frame->bits_per_sample = self->bits_per_sample;
-  frame->samples = malloc(sizeof(ia_data_t) * self->channels);
-  frame->samples_length = self->channels;
-  memcpy(frame->samples,
-	 self->samples + (frame_number * self->channels),
-	 sizeof(ia_data_t) * self->channels);
-  return (PyObject*)frame;
+pcm_FrameList*
+FrameList_create(void)
+{
+    return (pcm_FrameList*)_PyObject_New(&pcm_FrameListType);
 }
 
-PyObject* FrameList_channel(pcm_FrameList *self, PyObject *args) {
-  int channel_number;
-  pcm_FrameList *channel;
-  ia_size_t i,j;
-  ia_size_t samples_length;
-  int total_channels;
-
-  if (!PyArg_ParseTuple(args,"i",&channel_number))
-    return NULL;
-  if ((channel_number < 0) || (channel_number >= self->channels)) {
-    PyErr_SetString(PyExc_IndexError,"channel number out of range");
-    return NULL;
-  }
-
-  channel = FrameList_create();
-  channel->frames = self->frames;
-  channel->channels = 1;
-  channel->bits_per_sample = self->bits_per_sample;
-  channel->samples = malloc(sizeof(ia_data_t) * self->frames);
-  channel->samples_length = self->frames;
-
-  samples_length = self->samples_length;
-  total_channels = self->channels;
-  for (j=0,i = channel_number; i < samples_length; j++,i += total_channels) {
-    channel->samples[j] = self->samples[i];
-  }
-
-  return (PyObject*)channel;
+int
+FrameList_CheckExact(PyObject *o)
+{
+    return o->ob_type == &pcm_FrameListType;
 }
 
-PyObject* FrameList_to_bytes(pcm_FrameList *self, PyObject *args) {
-  int is_big_endian;
-  int is_signed;
-  unsigned char *bytes;
-  Py_ssize_t bytes_size;
-  PyObject *bytes_obj;
-
-  if (!PyArg_ParseTuple(args,"ii",&is_big_endian,&is_signed))
-    return NULL;
-
-  bytes_size = (self->bits_per_sample / 8) * self->samples_length;
-  bytes = malloc(bytes_size);
-
-  if (bytes_size > 0) {
-    FrameList_samples_to_char(bytes, self->samples,
-			      FrameList_get_int_to_char_converter(
-					    self->bits_per_sample,
-					    is_big_endian,
-					    is_signed),
-			      self->samples_length,
-			      self->bits_per_sample);
-  }
-
-  bytes_obj = PyString_FromStringAndSize((char*)bytes,bytes_size);
-  free(bytes);
-  return bytes_obj;
+PyObject*
+FrameList_frames(pcm_FrameList *self, void* closure)
+{
+    return Py_BuildValue("i", self->frames);
 }
 
-PyObject* FrameList_split(pcm_FrameList *self, PyObject *args){
-  pcm_FrameList *head = NULL;
-  pcm_FrameList *tail = NULL;
-  PyObject* tuple;
-  int split_point;
+PyObject*
+FrameList_channels(pcm_FrameList *self, void* closure)
+{
+    return Py_BuildValue("i", self->channels);
+}
 
-  if (!PyArg_ParseTuple(args,"i",&split_point))
-    goto error;
+PyObject*
+FrameList_bits_per_sample(pcm_FrameList *self, void* closure)
+{
+    return Py_BuildValue("i", self->bits_per_sample);
+}
 
-  if (split_point < 0) {
-    PyErr_SetString(PyExc_IndexError,"split point must be positive");
-    goto error;
-  } else if (split_point >= self->frames) {
-    head = self;
-    Py_INCREF(head);
-    tail = FrameList_create();
-    tail->frames = 0;
-    tail->channels = self->channels;
-    tail->bits_per_sample = self->bits_per_sample;
-    tail->samples_length = 0;
-    tail->samples = malloc(0);
-  } else if (split_point == 0) {
-    head = FrameList_create();
-    head->frames = 0;
-    head->channels = self->channels;
-    head->bits_per_sample = self->bits_per_sample;
-    head->samples_length = 0;
-    head->samples = malloc(0);
-    tail = self;
-    Py_INCREF(tail);
-  } else {
-    head = FrameList_create();
-    head->frames = split_point;
-    head->samples_length = (head->frames * self->channels);
-    head->samples = malloc(head->samples_length * sizeof(ia_data_t));
-    memcpy(head->samples,
-	   self->samples,
-	   head->samples_length * sizeof(ia_data_t));
+Py_ssize_t
+FrameList_len(pcm_FrameList *o)
+{
+    return o->samples_length;
+}
 
-    tail = FrameList_create();
-    tail->frames = (self->frames - split_point);
-    tail->samples_length = (tail->frames * self->channels);
-    tail->samples = malloc(tail->samples_length * sizeof(ia_data_t));
-    memcpy(tail->samples,
-	   self->samples + head->samples_length,
-	   tail->samples_length * sizeof(ia_data_t));
+PyObject
+*FrameList_richcompare(PyObject *a, PyObject *b, int op)
+{
+    switch (op) {
+    case Py_EQ:
+        if (FrameList_CheckExact(a) && FrameList_CheckExact(b) &&
+            FrameList_equals((pcm_FrameList*)a, (pcm_FrameList*)b)) {
+            Py_INCREF(Py_True);
+            return Py_True;
+        } else {
+            Py_INCREF(Py_False);
+            return Py_False;
+        }
+    case Py_NE:
+        if (FrameList_CheckExact(a) && FrameList_CheckExact(b) &&
+            FrameList_equals((pcm_FrameList*)a, (pcm_FrameList*)b)) {
+            Py_INCREF(Py_False);
+            return Py_False;
+        } else {
+            Py_INCREF(Py_True);
+            return Py_True;
+        }
+    default:
+        PyErr_SetString(PyExc_TypeError, "unsupported comparison");
+        return NULL;
+    }
+}
 
-    head->channels = tail->channels = self->channels;
-    head->bits_per_sample = tail->bits_per_sample = self->bits_per_sample;
-  }
+int
+FrameList_equals(pcm_FrameList *a, pcm_FrameList *b)
+{
+    ia_size_t i;
 
-  tuple = Py_BuildValue("(O,O)",head,tail);
-  Py_DECREF(head);
-  Py_DECREF(tail);
-  return tuple;
+    if ((a->frames == b->frames) &&
+        (a->channels == b->channels) &&
+        (a->bits_per_sample == b->bits_per_sample) &&
+        (a->samples_length == b->samples_length)) {
+        for (i = 0; i < a->samples_length; i++) {
+            if (a->samples[i] != b->samples[i])
+                return 0;
+        }
+        return 1;
+    } else {
+        return 0;
+    }
+}
+
+PyObject*
+FrameList_GetItem(pcm_FrameList *o, Py_ssize_t i)
+{
+    if ((i >= o->samples_length) || (i < 0)) {
+        PyErr_SetString(PyExc_IndexError, "index out of range");
+        return NULL;
+    } else {
+        return Py_BuildValue("i", o->samples[i]);
+    }
+}
+
+PyObject*
+FrameList_frame(pcm_FrameList *self, PyObject *args)
+{
+    int frame_number;
+    pcm_FrameList *frame;
+
+    if (!PyArg_ParseTuple(args, "i", &frame_number))
+        return NULL;
+    if ((frame_number < 0) || (frame_number >= self->frames)) {
+        PyErr_SetString(PyExc_IndexError, "frame number out of range");
+        return NULL;
+    }
+
+    frame = FrameList_create();
+    frame->frames = 1;
+    frame->channels = self->channels;
+    frame->bits_per_sample = self->bits_per_sample;
+    frame->samples = malloc(sizeof(ia_data_t) * self->channels);
+    frame->samples_length = self->channels;
+    memcpy(frame->samples,
+           self->samples + (frame_number * self->channels),
+           sizeof(ia_data_t) * self->channels);
+    return (PyObject*)frame;
+}
+
+PyObject*
+FrameList_channel(pcm_FrameList *self, PyObject *args)
+{
+    int channel_number;
+    pcm_FrameList *channel;
+    ia_size_t i, j;
+    ia_size_t samples_length;
+    int total_channels;
+
+    if (!PyArg_ParseTuple(args, "i", &channel_number))
+        return NULL;
+    if ((channel_number < 0) || (channel_number >= self->channels)) {
+        PyErr_SetString(PyExc_IndexError, "channel number out of range");
+        return NULL;
+    }
+
+    channel = FrameList_create();
+    channel->frames = self->frames;
+    channel->channels = 1;
+    channel->bits_per_sample = self->bits_per_sample;
+    channel->samples = malloc(sizeof(ia_data_t) * self->frames);
+    channel->samples_length = self->frames;
+
+    samples_length = self->samples_length;
+    total_channels = self->channels;
+    for (j=0, i = channel_number;
+         i < samples_length;
+         j++, i += total_channels) {
+        channel->samples[j] = self->samples[i];
+    }
+
+    return (PyObject*)channel;
+}
+
+PyObject*
+FrameList_to_bytes(pcm_FrameList *self, PyObject *args)
+{
+    int is_big_endian;
+    int is_signed;
+    unsigned char *bytes;
+    Py_ssize_t bytes_size;
+    PyObject *bytes_obj;
+
+    if (!PyArg_ParseTuple(args, "ii", &is_big_endian, &is_signed))
+        return NULL;
+
+    bytes_size = (self->bits_per_sample / 8) * self->samples_length;
+    bytes = malloc(bytes_size);
+
+    if (bytes_size > 0) {
+        FrameList_samples_to_char(
+             bytes, self->samples,
+             FrameList_get_int_to_char_converter(self->bits_per_sample,
+                                                 is_big_endian,
+                                                 is_signed),
+             self->samples_length,
+             self->bits_per_sample);
+    }
+
+    bytes_obj = PyString_FromStringAndSize((char*)bytes, bytes_size);
+    free(bytes);
+    return bytes_obj;
+}
+
+PyObject*
+FrameList_split(pcm_FrameList *self, PyObject *args)
+{
+    pcm_FrameList *head = NULL;
+    pcm_FrameList *tail = NULL;
+    PyObject* tuple;
+    int split_point;
+
+    if (!PyArg_ParseTuple(args, "i", &split_point))
+        goto error;
+
+    if (split_point < 0) {
+        PyErr_SetString(PyExc_IndexError, "split point must be positive");
+        goto error;
+    } else if (split_point >= self->frames) {
+        head = self;
+        Py_INCREF(head);
+        tail = FrameList_create();
+        tail->frames = 0;
+        tail->channels = self->channels;
+        tail->bits_per_sample = self->bits_per_sample;
+        tail->samples_length = 0;
+        tail->samples = malloc(0);
+    } else if (split_point == 0) {
+        head = FrameList_create();
+        head->frames = 0;
+        head->channels = self->channels;
+        head->bits_per_sample = self->bits_per_sample;
+        head->samples_length = 0;
+        head->samples = malloc(0);
+        tail = self;
+        Py_INCREF(tail);
+    } else {
+        head = FrameList_create();
+        head->frames = split_point;
+        head->samples_length = (head->frames * self->channels);
+        head->samples = malloc(head->samples_length * sizeof(ia_data_t));
+        memcpy(head->samples,
+               self->samples,
+               head->samples_length * sizeof(ia_data_t));
+
+        tail = FrameList_create();
+        tail->frames = (self->frames - split_point);
+        tail->samples_length = (tail->frames * self->channels);
+        tail->samples = malloc(tail->samples_length * sizeof(ia_data_t));
+        memcpy(tail->samples,
+               self->samples + head->samples_length,
+               tail->samples_length * sizeof(ia_data_t));
+
+        head->channels = tail->channels = self->channels;
+        head->bits_per_sample = tail->bits_per_sample = self->bits_per_sample;
+    }
+
+    tuple = Py_BuildValue("(O,O)", head, tail);
+    Py_DECREF(head);
+    Py_DECREF(tail);
+    return tuple;
  error:
-  Py_XDECREF(head);
-  Py_XDECREF(tail);
-  return NULL;
-}
-
-PyObject* FrameList_concat(pcm_FrameList *a, PyObject *bb) {
-  pcm_FrameList *concat = NULL;
-  pcm_FrameList *b;
-
-  if (!FrameList_CheckExact(bb)) {
-    PyErr_SetString(PyExc_TypeError,
-		    "can only concatenate FrameList with other FrameLists");
-    goto error;
-  } else {
-    b = (pcm_FrameList*)bb;
-  }
-
-  if (a->channels != b->channels) {
-    PyErr_SetString(PyExc_ValueError,
-		    "both FrameLists must have the same number of channels");
-    goto error;
-  }
-  if (a->bits_per_sample != b->bits_per_sample) {
-    PyErr_SetString(PyExc_ValueError,
-		    "both FrameLists must have the same number of bits per sample");
-    goto error;
-  }
-
-  concat = FrameList_create();
-  concat->frames = a->frames + b->frames;
-  concat->channels = a->channels;
-  concat->bits_per_sample = a->bits_per_sample;
-  concat->samples_length = a->samples_length + b->samples_length;
-  concat->samples = malloc(concat->samples_length * sizeof(ia_data_t));
-  memcpy(concat->samples,a->samples,a->samples_length * sizeof(ia_data_t));
-  memcpy(concat->samples + a->samples_length,
-	 b->samples,
-	 b->samples_length * sizeof(ia_data_t));
-
-  return (PyObject*)concat;
- error:
-  Py_XDECREF(concat);
-  return NULL;
-}
-
-PyObject* FrameList_to_float(pcm_FrameList *self, PyObject *args) {
-  ia_size_t i;
-  ia_data_t adjustment;
-  pcm_FloatFrameList *framelist = FloatFrameList_create();
-  framelist->frames = self->frames;
-  framelist->channels = self->channels;
-  framelist->samples_length = self->samples_length;
-  framelist->samples = malloc(sizeof(fa_data_t) * framelist->samples_length);
-
-  adjustment = 1 << (self->bits_per_sample - 1);
-  for (i = 0; i < self->samples_length; i++) {
-    framelist->samples[i] = ((fa_data_t)self->samples[i]) / adjustment;
-  }
-
-  return (PyObject*)framelist;
-}
-
-PyObject* FrameList_frame_count(pcm_FrameList *self, PyObject *args) {
-  int byte_count;
-  int bytes_per_frame = self->channels * (self->bits_per_sample / 8);
-
-  if (!PyArg_ParseTuple(args,"i",&byte_count))
+    Py_XDECREF(head);
+    Py_XDECREF(tail);
     return NULL;
-  else {
-    byte_count -= (byte_count % bytes_per_frame);
-    return Py_BuildValue("i",byte_count ? byte_count / bytes_per_frame : 1);
-  }
+}
+
+PyObject*
+FrameList_concat(pcm_FrameList *a, PyObject *bb)
+{
+    pcm_FrameList *concat = NULL;
+    pcm_FrameList *b;
+
+    if (!FrameList_CheckExact(bb)) {
+        PyErr_SetString(PyExc_TypeError,
+                        "can only concatenate FrameList with other FrameLists"
+                        );
+        goto error;
+    } else {
+        b = (pcm_FrameList*)bb;
+    }
+
+    if (a->channels != b->channels) {
+        PyErr_SetString(PyExc_ValueError,
+                        "both FrameLists must have the same number of channels"
+                        );
+        goto error;
+    }
+    if (a->bits_per_sample != b->bits_per_sample) {
+        PyErr_SetString(PyExc_ValueError,
+                        "both FrameLists must have the same number "
+                        "of bits per sample");
+        goto error;
+    }
+
+    concat = FrameList_create();
+    concat->frames = a->frames + b->frames;
+    concat->channels = a->channels;
+    concat->bits_per_sample = a->bits_per_sample;
+    concat->samples_length = a->samples_length + b->samples_length;
+    concat->samples = malloc(concat->samples_length * sizeof(ia_data_t));
+    memcpy(concat->samples, a->samples, a->samples_length * sizeof(ia_data_t));
+    memcpy(concat->samples + a->samples_length,
+           b->samples,
+           b->samples_length * sizeof(ia_data_t));
+
+    return (PyObject*)concat;
+ error:
+    Py_XDECREF(concat);
+    return NULL;
+}
+
+PyObject*
+FrameList_to_float(pcm_FrameList *self, PyObject *args)
+{
+    ia_size_t i;
+    ia_data_t adjustment;
+    pcm_FloatFrameList *framelist = FloatFrameList_create();
+    framelist->frames = self->frames;
+    framelist->channels = self->channels;
+    framelist->samples_length = self->samples_length;
+    framelist->samples = malloc(sizeof(fa_data_t) * framelist->samples_length);
+
+    adjustment = 1 << (self->bits_per_sample - 1);
+    for (i = 0; i < self->samples_length; i++) {
+        framelist->samples[i] = ((fa_data_t)self->samples[i]) / adjustment;
+    }
+
+    return (PyObject*)framelist;
+}
+
+PyObject*
+FrameList_frame_count(pcm_FrameList *self, PyObject *args)
+{
+    int byte_count;
+    int bytes_per_frame = self->channels * (self->bits_per_sample / 8);
+
+    if (!PyArg_ParseTuple(args, "i", &byte_count))
+        return NULL;
+    else {
+        byte_count -= (byte_count % bytes_per_frame);
+        return Py_BuildValue("i",
+                             byte_count ? byte_count / bytes_per_frame : 1);
+    }
 }
 
 #endif
 
-void FrameList_char_to_samples(ia_data_t *samples,
-			       unsigned char *data,
-			       FrameList_char_to_int_converter converter,
-			       ia_size_t samples_length,
-			       int bits_per_sample) {
-  int bytes_per_sample = bits_per_sample / 8;
-  int i;
+void
+FrameList_char_to_samples(ia_data_t *samples,
+                          unsigned char *data,
+                          FrameList_char_to_int_converter converter,
+                          ia_size_t samples_length,
+                          int bits_per_sample)
+{
+    int bytes_per_sample = bits_per_sample / 8;
+    int i;
 
-  for (i = 0; i < samples_length; i++, data += bytes_per_sample) {
-    samples[i] = converter(data);
-  }
+    for (i = 0; i < samples_length; i++, data += bytes_per_sample) {
+        samples[i] = converter(data);
+    }
 }
 
 #ifndef STANDALONE
-PyObject *FrameList_from_list(PyObject *dummy, PyObject *args) {
-  pcm_FrameList *framelist = NULL;
-  PyObject *list;
-  PyObject *integer = NULL;
-  Py_ssize_t list_len,i;
-  long integer_val;
-  int adjustment;
-  int channels;
-  int bits_per_sample;
-  int is_signed;
+PyObject*
+FrameList_from_list(PyObject *dummy, PyObject *args)
+{
+    pcm_FrameList *framelist = NULL;
+    PyObject *list;
+    PyObject *integer = NULL;
+    Py_ssize_t list_len, i;
+    long integer_val;
+    int adjustment;
+    int channels;
+    int bits_per_sample;
+    int is_signed;
 
-  if (!PyArg_ParseTuple(args,"Oiii",&list,
-			&channels,
-			&bits_per_sample,
-			&is_signed))
-    goto error;
+    if (!PyArg_ParseTuple(args, "Oiii", &list,
+                          &channels,
+                          &bits_per_sample,
+                          &is_signed))
+        goto error;
 
-  if ((list_len = PySequence_Size(list)) == -1)
-    goto error;
+    if ((list_len = PySequence_Size(list)) == -1)
+        goto error;
 
-  if (list_len % channels) {
-    PyErr_SetString(PyExc_ValueError,
-		    "number of samples must be divisible by number of channels");
-    goto error;
-  }
-
-  switch (bits_per_sample) {
-  case 8:
-  case 16:
-  case 24:
-    break;
-  default:
-    PyErr_SetString(PyExc_ValueError,
-		    "unsupported number of bits per sample");
-    goto error;
-  }
-
-  if (is_signed) {
-    adjustment = 0;
-  } else {
-    adjustment = (1 << (bits_per_sample - 1));
-  }
-
-  framelist = FrameList_create();
-  framelist->channels = channels;
-  framelist->bits_per_sample = bits_per_sample;
-  framelist->samples = malloc(sizeof(ia_data_t) * list_len);
-  framelist->samples_length = list_len;
-  framelist->frames = list_len / framelist->channels;
-  for (i = 0; i < list_len; i++) {
-    if ((integer = PySequence_GetItem(list,i)) == NULL)
-      goto error;
-    if (((integer_val = PyInt_AsLong(integer)) == -1) &&
-	PyErr_Occurred())
-      goto error;
-    else {
-      framelist->samples[i] = integer_val - adjustment;
-      Py_DECREF(integer);
+    if (list_len % channels) {
+        PyErr_SetString(PyExc_ValueError,
+                        "number of samples must be divisible by "
+                        "number of channels");
+        goto error;
     }
-  }
 
-  return (PyObject*)framelist;
+    switch (bits_per_sample) {
+    case 8:
+    case 16:
+    case 24:
+        break;
+    default:
+        PyErr_SetString(PyExc_ValueError,
+                        "unsupported number of bits per sample");
+        goto error;
+    }
+
+    if (is_signed) {
+        adjustment = 0;
+    } else {
+        adjustment = (1 << (bits_per_sample - 1));
+    }
+
+    framelist = FrameList_create();
+    framelist->channels = channels;
+    framelist->bits_per_sample = bits_per_sample;
+    framelist->samples = malloc(sizeof(ia_data_t) * list_len);
+    framelist->samples_length = list_len;
+    framelist->frames = list_len / framelist->channels;
+    for (i = 0; i < list_len; i++) {
+        if ((integer = PySequence_GetItem(list, i)) == NULL)
+            goto error;
+        if (((integer_val = PyInt_AsLong(integer)) == -1) &&
+            PyErr_Occurred())
+            goto error;
+        else {
+            framelist->samples[i] = integer_val - adjustment;
+            Py_DECREF(integer);
+        }
+    }
+
+    return (PyObject*)framelist;
  error:
-  Py_XDECREF(framelist);
-  Py_XDECREF(integer);
-  return NULL;
+    Py_XDECREF(framelist);
+    Py_XDECREF(integer);
+    return NULL;
 }
 
-PyObject *FrameList_from_frames(PyObject *dummy, PyObject *args) {
-  PyObject *framelist_obj = NULL;
-  pcm_FrameList *framelist = NULL;
-  PyObject *list;
-  PyObject *list_item = NULL;
-  Py_ssize_t list_len,i;
-  pcm_FrameList *frame;
+PyObject*
+FrameList_from_frames(PyObject *dummy, PyObject *args)
+{
+    PyObject *framelist_obj = NULL;
+    pcm_FrameList *framelist = NULL;
+    PyObject *list;
+    PyObject *list_item = NULL;
+    Py_ssize_t list_len, i;
+    pcm_FrameList *frame;
 
-  if (!PyArg_ParseTuple(args,"O",&list))
-    goto error;
+    if (!PyArg_ParseTuple(args, "O", &list))
+        goto error;
 
-  if ((list_len = PySequence_Size(list)) == -1)
-    goto error;
+    if ((list_len = PySequence_Size(list)) == -1)
+        goto error;
 
-  if ((framelist_obj = PySequence_GetItem(list,0)) == NULL)
-    goto error;
+    if ((framelist_obj = PySequence_GetItem(list, 0)) == NULL)
+        goto error;
 
-  if (!FrameList_CheckExact(framelist_obj)) {
-    PyErr_SetString(PyExc_TypeError,
-		    "frames must be of type FrameList");
-    goto error;
-  }
-
-  frame = (pcm_FrameList*)framelist_obj;
-  if (frame->frames != 1) {
-    PyErr_SetString(PyExc_ValueError,
-		    "all subframes must be 1 frame long");
-    goto error;
-  }
-
-  framelist = FrameList_create();
-  framelist->frames = list_len;
-  framelist->channels = frame->channels;
-  framelist->bits_per_sample = frame->bits_per_sample;
-  framelist->samples_length = list_len * frame->channels;
-  framelist->samples = malloc(sizeof(ia_data_t) * framelist->samples_length);
-
-  memcpy(framelist->samples,frame->samples,
-	 sizeof(ia_data_t) * frame->samples_length);
-
-  for (i = 1; i < list_len; i++) {
-    if ((list_item = PySequence_GetItem(list,i)) == NULL)
-      goto error;
-    if (!FrameList_CheckExact(list_item)) {
-      PyErr_SetString(PyExc_TypeError,
-		      "frames must be of type FrameList");
-      goto error;
-    }
-    frame = (pcm_FrameList*)list_item;
-    if (frame->channels != framelist->channels) {
-      PyErr_SetString(PyExc_ValueError,
-		      "all subframes must have the same number of channels");
-      goto error;
-    }
-    if (frame->bits_per_sample != framelist->bits_per_sample) {
-      PyErr_SetString(PyExc_ValueError,
-		      "all subframes must have the same number of bits per sample");
-      goto error;
+    if (!FrameList_CheckExact(framelist_obj)) {
+        PyErr_SetString(PyExc_TypeError,
+                        "frames must be of type FrameList");
+        goto error;
     }
 
+    frame = (pcm_FrameList*)framelist_obj;
     if (frame->frames != 1) {
-      PyErr_SetString(PyExc_ValueError,
-		      "all subframes must be 1 frame long");
-      goto error;
+        PyErr_SetString(PyExc_ValueError,
+                        "all subframes must be 1 frame long");
+        goto error;
     }
 
-    memcpy(framelist->samples + (i * framelist->channels),
-	   frame->samples,
-	   sizeof(ia_data_t) * frame->samples_length);
-    Py_DECREF(list_item);
-  }
+    framelist = FrameList_create();
+    framelist->frames = list_len;
+    framelist->channels = frame->channels;
+    framelist->bits_per_sample = frame->bits_per_sample;
+    framelist->samples_length = list_len * frame->channels;
+    framelist->samples = malloc(sizeof(ia_data_t) * framelist->samples_length);
 
-  Py_DECREF(framelist_obj);
-  return (PyObject*)framelist;
+    memcpy(framelist->samples, frame->samples,
+           sizeof(ia_data_t) * frame->samples_length);
+
+    for (i = 1; i < list_len; i++) {
+        if ((list_item = PySequence_GetItem(list, i)) == NULL)
+            goto error;
+        if (!FrameList_CheckExact(list_item)) {
+            PyErr_SetString(PyExc_TypeError,
+                            "frames must be of type FrameList");
+            goto error;
+        }
+        frame = (pcm_FrameList*)list_item;
+        if (frame->channels != framelist->channels) {
+            PyErr_SetString(PyExc_ValueError,
+                            "all subframes must have the same "
+                            "number of channels");
+            goto error;
+        }
+        if (frame->bits_per_sample != framelist->bits_per_sample) {
+            PyErr_SetString(PyExc_ValueError,
+                            "all subframes must have the same "
+                            "number of bits per sample");
+            goto error;
+        }
+
+        if (frame->frames != 1) {
+            PyErr_SetString(PyExc_ValueError,
+                            "all subframes must be 1 frame long");
+            goto error;
+        }
+
+        memcpy(framelist->samples + (i * framelist->channels),
+               frame->samples,
+               sizeof(ia_data_t) * frame->samples_length);
+        Py_DECREF(list_item);
+    }
+
+    Py_DECREF(framelist_obj);
+    return (PyObject*)framelist;
  error:
-  Py_XDECREF(list_item);
-  Py_XDECREF(framelist);
-  Py_XDECREF(framelist_obj);
-  return NULL;
+    Py_XDECREF(list_item);
+    Py_XDECREF(framelist);
+    Py_XDECREF(framelist_obj);
+    return NULL;
 }
 
-PyObject *FrameList_from_channels(PyObject *dummy, PyObject *args) {
-  PyObject *framelist_obj = NULL;
-  pcm_FrameList *framelist = NULL;
-  PyObject *list;
-  PyObject *list_item = NULL;
-  Py_ssize_t list_len,i;
-  pcm_FrameList *channel;
-  ia_size_t j;
+PyObject*
+FrameList_from_channels(PyObject *dummy, PyObject *args)
+{
+    PyObject *framelist_obj = NULL;
+    pcm_FrameList *framelist = NULL;
+    PyObject *list;
+    PyObject *list_item = NULL;
+    Py_ssize_t list_len, i;
+    pcm_FrameList *channel;
+    ia_size_t j;
 
-  if (!PyArg_ParseTuple(args,"O",&list))
-    goto error;
+    if (!PyArg_ParseTuple(args, "O", &list))
+        goto error;
 
-  if ((list_len = PySequence_Size(list)) == -1)
-    goto error;
+    if ((list_len = PySequence_Size(list)) == -1)
+        goto error;
 
-  if ((framelist_obj = PySequence_GetItem(list,0)) == NULL)
-    goto error;
+    if ((framelist_obj = PySequence_GetItem(list, 0)) == NULL)
+        goto error;
 
-  if (!FrameList_CheckExact(framelist_obj)) {
-    PyErr_SetString(PyExc_TypeError,
-		    "channels must be of type FrameList");
-    goto error;
-  }
-
-  channel = (pcm_FrameList*)framelist_obj;
-  if (channel->channels != 1) {
-    PyErr_SetString(PyExc_ValueError,
-		    "all channels must be 1 channel wide");
-    goto error;
-  }
-
-  framelist = FrameList_create();
-  framelist->frames = channel->frames;
-  framelist->channels = list_len;
-  framelist->bits_per_sample = channel->bits_per_sample;
-  framelist->samples_length = framelist->frames * list_len;
-  framelist->samples = malloc(sizeof(ia_data_t) * framelist->samples_length);
-
-  for (j = 0; j < channel->samples_length; j++) {
-    framelist->samples[j * list_len] = channel->samples[j];
-  }
-
-  for (i = 1; i < list_len; i++) {
-    if ((list_item = PySequence_GetItem(list,i)) == NULL)
-      goto error;
-    if (!FrameList_CheckExact(list_item)) {
-      PyErr_SetString(PyExc_TypeError,
-		      "channels must be of type FrameList");
-      goto error;
-    }
-    channel = (pcm_FrameList*)list_item;
-    if (channel->frames != framelist->frames) {
-      PyErr_SetString(PyExc_ValueError,
-		      "all channels must have the same number of frames");
-      goto error;
-    }
-    if (channel->bits_per_sample != framelist->bits_per_sample) {
-      PyErr_SetString(PyExc_ValueError,
-		      "all channels must have the same number of bits per sample");
-      goto error;
+    if (!FrameList_CheckExact(framelist_obj)) {
+        PyErr_SetString(PyExc_TypeError,
+                        "channels must be of type FrameList");
+        goto error;
     }
 
+    channel = (pcm_FrameList*)framelist_obj;
     if (channel->channels != 1) {
-      PyErr_SetString(PyExc_ValueError,
-		      "all channels must be 1 channel wide");
-      goto error;
+        PyErr_SetString(PyExc_ValueError,
+                        "all channels must be 1 channel wide");
+        goto error;
     }
+
+    framelist = FrameList_create();
+    framelist->frames = channel->frames;
+    framelist->channels = list_len;
+    framelist->bits_per_sample = channel->bits_per_sample;
+    framelist->samples_length = framelist->frames * list_len;
+    framelist->samples = malloc(sizeof(ia_data_t) * framelist->samples_length);
 
     for (j = 0; j < channel->samples_length; j++) {
-      framelist->samples[(j * list_len) + i] = channel->samples[j];
+        framelist->samples[j * list_len] = channel->samples[j];
     }
-    Py_DECREF(list_item);
-  }
 
-  Py_DECREF(framelist_obj);
+    for (i = 1; i < list_len; i++) {
+        if ((list_item = PySequence_GetItem(list, i)) == NULL)
+            goto error;
+        if (!FrameList_CheckExact(list_item)) {
+            PyErr_SetString(PyExc_TypeError,
+                            "channels must be of type FrameList");
+            goto error;
+        }
+        channel = (pcm_FrameList*)list_item;
+        if (channel->frames != framelist->frames) {
+            PyErr_SetString(PyExc_ValueError,
+                            "all channels must have the same "
+                            "number of frames");
+            goto error;
+        }
+        if (channel->bits_per_sample != framelist->bits_per_sample) {
+            PyErr_SetString(PyExc_ValueError,
+                            "all channels must have the same "
+                            "number of bits per sample");
+            goto error;
+        }
 
-  return (PyObject*)framelist;
+        if (channel->channels != 1) {
+            PyErr_SetString(PyExc_ValueError,
+                            "all channels must be 1 channel wide");
+            goto error;
+        }
+
+        for (j = 0; j < channel->samples_length; j++) {
+            framelist->samples[(j * list_len) + i] = channel->samples[j];
+        }
+        Py_DECREF(list_item);
+    }
+
+    Py_DECREF(framelist_obj);
+
+    return (PyObject*)framelist;
  error:
-  Py_XDECREF(framelist);
-  Py_XDECREF(framelist_obj);
-  Py_XDECREF(list_item);
-  return NULL;
+    Py_XDECREF(framelist);
+    Py_XDECREF(framelist_obj);
+    Py_XDECREF(list_item);
+    return NULL;
 }
 
 
@@ -744,28 +819,33 @@ PyGetSetDef FloatFrameList_getseters[] = {
 };
 
 PyMethodDef FloatFrameList_methods[] = {
-  {"frame", (PyCFunction)FloatFrameList_frame,
-   METH_VARARGS,"FF.frame(i) -> FloatFrameList -- return the given PCM frame"},
-  {"channel", (PyCFunction)FloatFrameList_channel,
-   METH_VARARGS,"FF.channel(i) -> FloatFrameList -- return the given channel"},
-  {"split", (PyCFunction)FloatFrameList_split,
-   METH_VARARGS,"FF.split(i) -> (FloatFrameList,FloatFrameList) -- splits the FloatFrameList at the given index"},
-  {"to_int", (PyCFunction)FloatFrameList_to_int,
-   METH_VARARGS,"FF.to_int(bits_per_sample) -> FrameList"},
-  {NULL}
+    {"frame", (PyCFunction)FloatFrameList_frame,
+     METH_VARARGS,
+     "FF.frame(i) -> FloatFrameList -- return the given PCM frame"},
+    {"channel", (PyCFunction)FloatFrameList_channel,
+     METH_VARARGS,
+     "FF.channel(i) -> FloatFrameList -- return the given channel"},
+    {"split", (PyCFunction)FloatFrameList_split,
+     METH_VARARGS,
+     "FF.split(i) -> (FloatFrameList,FloatFrameList) -- "
+     "splits the FloatFrameList at the given index"},
+    {"to_int", (PyCFunction)FloatFrameList_to_int,
+     METH_VARARGS,
+     "FF.to_int(bits_per_sample) -> FrameList"},
+    {NULL}
 };
 
 static PySequenceMethods pcm_FloatFrameListType_as_sequence = {
-	(lenfunc)FloatFrameList_len,		/* sq_length */
-	(binaryfunc)FloatFrameList_concat,	/* sq_concat */
-	(ssizeargfunc)NULL,		/* sq_repeat */
-	(ssizeargfunc)FloatFrameList_GetItem, /* sq_item */
-	(ssizessizeargfunc)NULL,        /* sq_slice */
-	(ssizeobjargproc)NULL,		/* sq_ass_item */
-	(ssizessizeobjargproc)NULL,	/* sq_ass_slice */
-	(objobjproc)NULL,		/* sq_contains */
-	(binaryfunc)NULL,               /* sq_inplace_concat */
-	(ssizeargfunc)NULL,             /* sq_inplace_repeat */
+    (lenfunc)FloatFrameList_len,		/* sq_length */
+    (binaryfunc)FloatFrameList_concat,	/* sq_concat */
+    (ssizeargfunc)NULL,		/* sq_repeat */
+    (ssizeargfunc)FloatFrameList_GetItem, /* sq_item */
+    (ssizessizeargfunc)NULL,        /* sq_slice */
+    (ssizeobjargproc)NULL,		/* sq_ass_item */
+    (ssizessizeobjargproc)NULL,	/* sq_ass_slice */
+    (objobjproc)NULL,		/* sq_contains */
+    (binaryfunc)NULL,               /* sq_inplace_concat */
+    (ssizeargfunc)NULL,             /* sq_inplace_repeat */
 };
 
 PyTypeObject pcm_FloatFrameListType = {
@@ -810,749 +890,839 @@ PyTypeObject pcm_FloatFrameListType = {
     FloatFrameList_new,        /* tp_new */
 };
 
-void FloatFrameList_dealloc(pcm_FloatFrameList* self) {
-  free(self->samples);
-  self->ob_type->tp_free((PyObject*)self);
+void
+FloatFrameList_dealloc(pcm_FloatFrameList* self)
+{
+    free(self->samples);
+    self->ob_type->tp_free((PyObject*)self);
 }
 
-PyObject *FloatFrameList_new(PyTypeObject *type, PyObject *args, PyObject *kwds) {
-  pcm_FloatFrameList *self;
+PyObject*
+FloatFrameList_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
+{
+    pcm_FloatFrameList *self;
 
-  self = (pcm_FloatFrameList *)type->tp_alloc(type, 0);
+    self = (pcm_FloatFrameList *)type->tp_alloc(type, 0);
 
-  return (PyObject *)self;
+    return (PyObject *)self;
 }
 
-int FloatFrameList_init(pcm_FloatFrameList *self, PyObject *args, PyObject *kwds) {
-  PyObject *data;
-  PyObject *data_item;
-  Py_ssize_t data_size;
-  Py_ssize_t i;
+int
+FloatFrameList_init(pcm_FloatFrameList *self, PyObject *args, PyObject *kwds)
+{
+    PyObject *data;
+    PyObject *data_item;
+    Py_ssize_t data_size;
+    Py_ssize_t i;
 
-  if (!PyArg_ParseTuple(args, "Oi",
-			&data,
-			&(self->channels)))
-    return -1;
+    if (!PyArg_ParseTuple(args, "Oi",
+                          &data,
+                          &(self->channels)))
+        return -1;
 
-  if ((data_size = PySequence_Size(data)) == -1) {
-    return -1;
-  } else if (data_size % (self->channels)) {
-    PyErr_SetString(PyExc_ValueError,
-		    "number of samples must be divisible by number of channels");
-    return -1;
-  } else {
-    self->samples_length = data_size;
-    self->frames = (self->samples_length / self->channels);
-    self->samples = malloc(sizeof(fa_data_t) * self->samples_length);
-  }
-
-  for (i = 0; i < data_size; i++) {
-    if ((data_item = PySequence_GetItem(data,i)) == NULL)
-      /*this shouldn't happen unless "data" changes mid-function*/
-      return -1;
-
-    if (((self->samples[i] = PyFloat_AsDouble(data_item)) == -1) &&
-	PyErr_Occurred()) {
-      Py_DECREF(data_item);
-      return -1;
+    if ((data_size = PySequence_Size(data)) == -1) {
+        return -1;
+    } else if (data_size % (self->channels)) {
+        PyErr_SetString(PyExc_ValueError,
+                        "number of samples must be divisible by "
+                        "number of channels");
+        return -1;
+    } else {
+        self->samples_length = data_size;
+        self->frames = (self->samples_length / self->channels);
+        self->samples = malloc(sizeof(fa_data_t) * self->samples_length);
     }
-    Py_DECREF(data_item);
-  }
 
-  return 0;
+    for (i = 0; i < data_size; i++) {
+        if ((data_item = PySequence_GetItem(data, i)) == NULL)
+            /*this shouldn't happen unless "data" changes mid-function*/
+            return -1;
+
+        if (((self->samples[i] = PyFloat_AsDouble(data_item)) == -1) &&
+            PyErr_Occurred()) {
+            Py_DECREF(data_item);
+            return -1;
+        }
+        Py_DECREF(data_item);
+    }
+
+    return 0;
 }
 
-pcm_FloatFrameList* FloatFrameList_create(void) {
-  return (pcm_FloatFrameList*)_PyObject_New(&pcm_FloatFrameListType);
+pcm_FloatFrameList*
+FloatFrameList_create(void)
+{
+    return (pcm_FloatFrameList*)_PyObject_New(&pcm_FloatFrameListType);
 }
 
-int FloatFrameList_CheckExact(PyObject *o) {
-  return o->ob_type == &pcm_FloatFrameListType;
+int
+FloatFrameList_CheckExact(PyObject *o)
+{
+    return o->ob_type == &pcm_FloatFrameListType;
 }
 
-PyObject* FloatFrameList_blank(PyObject *dummy, PyObject *args) {
-  pcm_FloatFrameList *framelist = FloatFrameList_create();
-  framelist->frames = framelist->channels = 0;
-  framelist->samples_length = 0;
-  framelist->samples = malloc(0);
-  return (PyObject*)framelist;
+PyObject*
+FloatFrameList_blank(PyObject *dummy, PyObject *args)
+{
+    pcm_FloatFrameList *framelist = FloatFrameList_create();
+    framelist->frames = framelist->channels = 0;
+    framelist->samples_length = 0;
+    framelist->samples = malloc(0);
+    return (PyObject*)framelist;
 }
 
-PyObject* FloatFrameList_frames(pcm_FloatFrameList *self, void* closure) {
-  return Py_BuildValue("i",self->frames);
+PyObject*
+FloatFrameList_frames(pcm_FloatFrameList *self, void* closure)
+{
+    return Py_BuildValue("i", self->frames);
 }
 
-PyObject* FloatFrameList_channels(pcm_FloatFrameList *self, void* closure) {
-  return Py_BuildValue("i",self->channels);
+PyObject*
+FloatFrameList_channels(pcm_FloatFrameList *self, void* closure)
+{
+    return Py_BuildValue("i", self->channels);
 }
 
-Py_ssize_t FloatFrameList_len(pcm_FloatFrameList *o) {
-  return o->samples_length;
+Py_ssize_t
+FloatFrameList_len(pcm_FloatFrameList *o)
+{
+    return o->samples_length;
 }
 
-PyObject* FloatFrameList_GetItem(pcm_FloatFrameList *o, Py_ssize_t i) {
-  if ((i >= o->samples_length) || (i < 0)) {
-    PyErr_SetString(PyExc_IndexError,"index out of range");
-    return NULL;
-  } else {
-    return Py_BuildValue("d",o->samples[i]);
-  }
+PyObject*
+FloatFrameList_GetItem(pcm_FloatFrameList *o, Py_ssize_t i)
+{
+    if ((i >= o->samples_length) || (i < 0)) {
+        PyErr_SetString(PyExc_IndexError, "index out of range");
+        return NULL;
+    } else {
+        return Py_BuildValue("d", o->samples[i]);
+    }
 }
 
-PyObject* FloatFrameList_frame(pcm_FloatFrameList *self, PyObject *args) {
-  int frame_number;
-  pcm_FloatFrameList *frame;
+PyObject*
+FloatFrameList_frame(pcm_FloatFrameList *self, PyObject *args)
+{
+    int frame_number;
+    pcm_FloatFrameList *frame;
 
-  if (!PyArg_ParseTuple(args,"i",&frame_number))
-    return NULL;
-  if ((frame_number < 0) || (frame_number >= self->frames)) {
-    PyErr_SetString(PyExc_IndexError,"frame number out of range");
-    return NULL;
-  }
+    if (!PyArg_ParseTuple(args, "i", &frame_number))
+        return NULL;
+    if ((frame_number < 0) || (frame_number >= self->frames)) {
+        PyErr_SetString(PyExc_IndexError, "frame number out of range");
+        return NULL;
+    }
 
-  frame = FloatFrameList_create();
-  frame->frames = 1;
-  frame->channels = self->channels;
-  frame->samples = malloc(sizeof(fa_data_t) * self->channels);
-  frame->samples_length = self->channels;
-  memcpy(frame->samples,
-	 self->samples + (frame_number * self->channels),
-	 sizeof(fa_data_t) * self->channels);
-  return (PyObject*)frame;
+    frame = FloatFrameList_create();
+    frame->frames = 1;
+    frame->channels = self->channels;
+    frame->samples = malloc(sizeof(fa_data_t) * self->channels);
+    frame->samples_length = self->channels;
+    memcpy(frame->samples,
+           self->samples + (frame_number * self->channels),
+           sizeof(fa_data_t) * self->channels);
+    return (PyObject*)frame;
 }
 
-PyObject* FloatFrameList_channel(pcm_FloatFrameList *self, PyObject *args) {
-  int channel_number;
-  pcm_FloatFrameList *channel;
-  ia_size_t i,j;
-  ia_size_t samples_length;
-  int total_channels;
+PyObject*
+FloatFrameList_channel(pcm_FloatFrameList *self, PyObject *args)
+{
+    int channel_number;
+    pcm_FloatFrameList *channel;
+    ia_size_t i, j;
+    ia_size_t samples_length;
+    int total_channels;
 
-  if (!PyArg_ParseTuple(args,"i",&channel_number))
-    return NULL;
-  if ((channel_number < 0) || (channel_number >= self->channels)) {
-    PyErr_SetString(PyExc_IndexError,"channel number out of range");
-    return NULL;
-  }
+    if (!PyArg_ParseTuple(args, "i", &channel_number))
+        return NULL;
+    if ((channel_number < 0) || (channel_number >= self->channels)) {
+        PyErr_SetString(PyExc_IndexError, "channel number out of range");
+        return NULL;
+    }
 
-  channel = FloatFrameList_create();
-  channel->frames = self->frames;
-  channel->channels = 1;
-  channel->samples = malloc(sizeof(fa_data_t) * self->frames);
-  channel->samples_length = self->frames;
+    channel = FloatFrameList_create();
+    channel->frames = self->frames;
+    channel->channels = 1;
+    channel->samples = malloc(sizeof(fa_data_t) * self->frames);
+    channel->samples_length = self->frames;
 
-  samples_length = self->samples_length;
-  total_channels = self->channels;
-  for (j=0,i = channel_number; i < samples_length; j++,i += total_channels) {
-    channel->samples[j] = self->samples[i];
-  }
+    samples_length = self->samples_length;
+    total_channels = self->channels;
+    for (j=0, i = channel_number;
+         i < samples_length;
+         j++, i += total_channels) {
+        channel->samples[j] = self->samples[i];
+    }
 
-  return (PyObject*)channel;
+    return (PyObject*)channel;
 }
 
-PyObject* FloatFrameList_to_int(pcm_FloatFrameList *self, PyObject *args) {
-  ia_size_t i;
-  ia_data_t adjustment;
-  ia_data_t sample_min;
-  ia_data_t sample_max;
-  pcm_FrameList *framelist;
-  int bits_per_sample;
+PyObject*
+FloatFrameList_to_int(pcm_FloatFrameList *self, PyObject *args)
+{
+    ia_size_t i;
+    ia_data_t adjustment;
+    ia_data_t sample_min;
+    ia_data_t sample_max;
+    pcm_FrameList *framelist;
+    int bits_per_sample;
 
-  if (!PyArg_ParseTuple(args,"i",&bits_per_sample))
-    return NULL;
+    if (!PyArg_ParseTuple(args, "i", &bits_per_sample))
+        return NULL;
 
-  framelist = FrameList_create();
-  framelist->frames = self->frames;
-  framelist->channels = self->channels;
-  framelist->bits_per_sample = bits_per_sample;
-  framelist->samples_length = self->samples_length;
-  framelist->samples = malloc(sizeof(ia_data_t) * framelist->samples_length);
+    framelist = FrameList_create();
+    framelist->frames = self->frames;
+    framelist->channels = self->channels;
+    framelist->bits_per_sample = bits_per_sample;
+    framelist->samples_length = self->samples_length;
+    framelist->samples = malloc(sizeof(ia_data_t) * framelist->samples_length);
 
-  adjustment = 1 << (bits_per_sample - 1);
-  sample_min = -adjustment;
-  sample_max = adjustment - 1;
-  for (i = 0; i < self->samples_length; i++) {
-    framelist->samples[i] =  MAX(MIN((ia_data_t)(self->samples[i] * adjustment),sample_max),sample_min);
-  }
+    adjustment = 1 << (bits_per_sample - 1);
+    sample_min = -adjustment;
+    sample_max = adjustment - 1;
+    for (i = 0; i < self->samples_length; i++) {
+        framelist->samples[i] =  MAX(MIN((ia_data_t)(
+                                         self->samples[i] * adjustment),
+                                         sample_max),
+                                     sample_min);
+    }
 
-  return (PyObject*)framelist;
+    return (PyObject*)framelist;
 }
 
-PyObject* FloatFrameList_split(pcm_FloatFrameList *self, PyObject *args) {
-  pcm_FloatFrameList *head = NULL;
-  pcm_FloatFrameList *tail = NULL;
-  PyObject* tuple;
-  int split_point;
+PyObject*
+FloatFrameList_split(pcm_FloatFrameList *self, PyObject *args)
+{
+    pcm_FloatFrameList *head = NULL;
+    pcm_FloatFrameList *tail = NULL;
+    PyObject* tuple;
+    int split_point;
 
-  if (!PyArg_ParseTuple(args,"i",&split_point))
-    goto error;
+    if (!PyArg_ParseTuple(args, "i", &split_point))
+        goto error;
 
-  if (split_point < 0) {
-    PyErr_SetString(PyExc_IndexError,"split point must be positive");
-    goto error;
-  } else if (split_point >= self->frames) {
-    head = self;
-    Py_INCREF(head);
-    tail = FloatFrameList_create();
-    tail->frames = 0;
-    tail->channels = self->channels;
-    tail->samples_length = 0;
-    tail->samples = malloc(0);
-  } else if (split_point == 0) {
-    head = FloatFrameList_create();
-    head->frames = 0;
-    head->channels = self->channels;
-    head->samples_length = 0;
-    head->samples = malloc(0);
-    tail = self;
-    Py_INCREF(tail);
-  } else {
-    head = FloatFrameList_create();
-    head->frames = split_point;
-    head->samples_length = (head->frames * self->channels);
-    head->samples = malloc(head->samples_length * sizeof(fa_data_t));
-    memcpy(head->samples,
-	   self->samples,
-	   head->samples_length * sizeof(fa_data_t));
+    if (split_point < 0) {
+        PyErr_SetString(PyExc_IndexError, "split point must be positive");
+        goto error;
+    } else if (split_point >= self->frames) {
+        head = self;
+        Py_INCREF(head);
+        tail = FloatFrameList_create();
+        tail->frames = 0;
+        tail->channels = self->channels;
+        tail->samples_length = 0;
+        tail->samples = malloc(0);
+    } else if (split_point == 0) {
+        head = FloatFrameList_create();
+        head->frames = 0;
+        head->channels = self->channels;
+        head->samples_length = 0;
+        head->samples = malloc(0);
+        tail = self;
+        Py_INCREF(tail);
+    } else {
+        head = FloatFrameList_create();
+        head->frames = split_point;
+        head->samples_length = (head->frames * self->channels);
+        head->samples = malloc(head->samples_length * sizeof(fa_data_t));
+        memcpy(head->samples,
+               self->samples,
+               head->samples_length * sizeof(fa_data_t));
 
-    tail = FloatFrameList_create();
-    tail->frames = (self->frames - split_point);
-    tail->samples_length = (tail->frames * self->channels);
-    tail->samples = malloc(tail->samples_length * sizeof(fa_data_t));
-    memcpy(tail->samples,
-	   self->samples + head->samples_length,
-	   tail->samples_length * sizeof(fa_data_t));
+        tail = FloatFrameList_create();
+        tail->frames = (self->frames - split_point);
+        tail->samples_length = (tail->frames * self->channels);
+        tail->samples = malloc(tail->samples_length * sizeof(fa_data_t));
+        memcpy(tail->samples,
+               self->samples + head->samples_length,
+               tail->samples_length * sizeof(fa_data_t));
 
-    head->channels = tail->channels = self->channels;
-  }
+        head->channels = tail->channels = self->channels;
+    }
 
-  tuple = Py_BuildValue("(O,O)",head,tail);
-  Py_DECREF(head);
-  Py_DECREF(tail);
-  return tuple;
+    tuple = Py_BuildValue("(O,O)", head, tail);
+    Py_DECREF(head);
+    Py_DECREF(tail);
+    return tuple;
  error:
-  Py_XDECREF(head);
-  Py_XDECREF(tail);
-  return NULL;
+    Py_XDECREF(head);
+    Py_XDECREF(tail);
+    return NULL;
 }
 
-PyObject* FloatFrameList_concat(pcm_FloatFrameList *a, PyObject *bb) {
-  pcm_FloatFrameList *concat = NULL;
-  pcm_FloatFrameList *b;
+PyObject*
+FloatFrameList_concat(pcm_FloatFrameList *a, PyObject *bb)
+{
+    pcm_FloatFrameList *concat = NULL;
+    pcm_FloatFrameList *b;
 
-  if (!FloatFrameList_CheckExact(bb)) {
-    PyErr_SetString(PyExc_TypeError,
-		    "can only concatenate FloatFrameList with other FloatFrameLists");
-    goto error;
-  } else {
-    b = (pcm_FloatFrameList*)bb;
-  }
+    if (!FloatFrameList_CheckExact(bb)) {
+        PyErr_SetString(PyExc_TypeError,
+                        "can only concatenate FloatFrameList "
+                        "with other FloatFrameLists");
+        goto error;
+    } else {
+        b = (pcm_FloatFrameList*)bb;
+    }
 
-  if (a->channels != b->channels) {
-    PyErr_SetString(PyExc_ValueError,
-		    "both FloatFrameLists must have the same number of channels");
-    goto error;
-  }
+    if (a->channels != b->channels) {
+        PyErr_SetString(PyExc_ValueError,
+                        "both FloatFrameLists must have the same "
+                        "number of channels");
+        goto error;
+    }
 
-  concat = FloatFrameList_create();
-  concat->frames = a->frames + b->frames;
-  concat->channels = a->channels;
-  concat->samples_length = a->samples_length + b->samples_length;
-  concat->samples = malloc(concat->samples_length * sizeof(fa_data_t));
-  memcpy(concat->samples,a->samples,a->samples_length * sizeof(fa_data_t));
-  memcpy(concat->samples + a->samples_length,
-	 b->samples,
-	 b->samples_length * sizeof(fa_data_t));
+    concat = FloatFrameList_create();
+    concat->frames = a->frames + b->frames;
+    concat->channels = a->channels;
+    concat->samples_length = a->samples_length + b->samples_length;
+    concat->samples = malloc(concat->samples_length * sizeof(fa_data_t));
+    memcpy(concat->samples, a->samples, a->samples_length * sizeof(fa_data_t));
+    memcpy(concat->samples + a->samples_length,
+           b->samples,
+           b->samples_length * sizeof(fa_data_t));
 
-  return (PyObject*)concat;
+    return (PyObject*)concat;
  error:
-  Py_XDECREF(concat);
-  return NULL;
+    Py_XDECREF(concat);
+    return NULL;
 }
 
-PyObject* FloatFrameList_from_frames(PyObject *dummy, PyObject *args) {
-  PyObject *framelist_obj = NULL;
-  pcm_FloatFrameList *framelist = NULL;
-  PyObject *list;
-  PyObject *list_item = NULL;
-  Py_ssize_t list_len,i;
-  pcm_FloatFrameList *frame;
+PyObject*
+FloatFrameList_from_frames(PyObject *dummy, PyObject *args)
+{
+    PyObject *framelist_obj = NULL;
+    pcm_FloatFrameList *framelist = NULL;
+    PyObject *list;
+    PyObject *list_item = NULL;
+    Py_ssize_t list_len, i;
+    pcm_FloatFrameList *frame;
 
-  if (!PyArg_ParseTuple(args,"O",&list))
-    goto error;
+    if (!PyArg_ParseTuple(args, "O", &list))
+        goto error;
 
-  if ((list_len = PySequence_Size(list)) == -1)
-    goto error;
+    if ((list_len = PySequence_Size(list)) == -1)
+        goto error;
 
-  if ((framelist_obj = PySequence_GetItem(list,0)) == NULL)
-    goto error;
+    if ((framelist_obj = PySequence_GetItem(list, 0)) == NULL)
+        goto error;
 
-  if (!FloatFrameList_CheckExact(framelist_obj)) {
-    PyErr_SetString(PyExc_TypeError,
-		    "frames must be of type FloatFrameList");
-    goto error;
-  }
-
-  frame = (pcm_FloatFrameList*)framelist_obj;
-  if (frame->frames != 1) {
-    PyErr_SetString(PyExc_ValueError,
-		    "all subframes must be 1 frame long");
-    goto error;
-  }
-
-  framelist = FloatFrameList_create();
-  framelist->frames = list_len;
-  framelist->channels = frame->channels;
-  framelist->samples_length = list_len * frame->channels;
-  framelist->samples = malloc(sizeof(fa_data_t) * framelist->samples_length);
-
-  memcpy(framelist->samples,frame->samples,
-	 sizeof(fa_data_t) * frame->samples_length);
-
-  for (i = 1; i < list_len; i++) {
-    if ((list_item = PySequence_GetItem(list,i)) == NULL)
-      goto error;
-    if (!FloatFrameList_CheckExact(list_item)) {
-      PyErr_SetString(PyExc_TypeError,
-		      "frames must be of type FloatFrameList");
-      goto error;
-    }
-    frame = (pcm_FloatFrameList*)list_item;
-    if (frame->channels != framelist->channels) {
-      PyErr_SetString(PyExc_ValueError,
-		      "all subframes must have the same number of channels");
-      goto error;
+    if (!FloatFrameList_CheckExact(framelist_obj)) {
+        PyErr_SetString(PyExc_TypeError,
+                        "frames must be of type FloatFrameList");
+        goto error;
     }
 
+    frame = (pcm_FloatFrameList*)framelist_obj;
     if (frame->frames != 1) {
-      PyErr_SetString(PyExc_ValueError,
-		      "all subframes must be 1 frame long");
-      goto error;
+        PyErr_SetString(PyExc_ValueError,
+                        "all subframes must be 1 frame long");
+        goto error;
     }
 
-    memcpy(framelist->samples + (i * framelist->channels),
-	   frame->samples,
-	   sizeof(fa_data_t) * frame->samples_length);
-    Py_DECREF(list_item);
-  }
+    framelist = FloatFrameList_create();
+    framelist->frames = list_len;
+    framelist->channels = frame->channels;
+    framelist->samples_length = list_len * frame->channels;
+    framelist->samples = malloc(sizeof(fa_data_t) * framelist->samples_length);
 
-  Py_DECREF(framelist_obj);
-  return (PyObject*)framelist;
+    memcpy(framelist->samples, frame->samples,
+           sizeof(fa_data_t) * frame->samples_length);
+
+    for (i = 1; i < list_len; i++) {
+        if ((list_item = PySequence_GetItem(list, i)) == NULL)
+            goto error;
+        if (!FloatFrameList_CheckExact(list_item)) {
+            PyErr_SetString(PyExc_TypeError,
+                            "frames must be of type FloatFrameList");
+            goto error;
+        }
+        frame = (pcm_FloatFrameList*)list_item;
+        if (frame->channels != framelist->channels) {
+            PyErr_SetString(PyExc_ValueError,
+                            "all subframes must have the same "
+                            "number of channels");
+            goto error;
+        }
+
+        if (frame->frames != 1) {
+            PyErr_SetString(PyExc_ValueError,
+                            "all subframes must be 1 frame long");
+            goto error;
+        }
+
+        memcpy(framelist->samples + (i * framelist->channels),
+               frame->samples,
+               sizeof(fa_data_t) * frame->samples_length);
+        Py_DECREF(list_item);
+    }
+
+    Py_DECREF(framelist_obj);
+    return (PyObject*)framelist;
  error:
-  Py_XDECREF(framelist);
-  Py_XDECREF(framelist_obj);
-  Py_XDECREF(list_item);
-  return NULL;
+    Py_XDECREF(framelist);
+    Py_XDECREF(framelist_obj);
+    Py_XDECREF(list_item);
+    return NULL;
 }
 
-PyObject* FloatFrameList_from_channels(PyObject *dummy, PyObject *args) {
-  PyObject *framelist_obj = NULL;
-  pcm_FloatFrameList *framelist = NULL;
-  PyObject *list;
-  PyObject *list_item = NULL;
-  Py_ssize_t list_len,i;
-  pcm_FloatFrameList *channel;
-  ia_size_t j;
+PyObject*
+FloatFrameList_from_channels(PyObject *dummy, PyObject *args)
+{
+    PyObject *framelist_obj = NULL;
+    pcm_FloatFrameList *framelist = NULL;
+    PyObject *list;
+    PyObject *list_item = NULL;
+    Py_ssize_t list_len, i;
+    pcm_FloatFrameList *channel;
+    ia_size_t j;
 
-  if (!PyArg_ParseTuple(args,"O",&list))
-    goto error;
+    if (!PyArg_ParseTuple(args, "O", &list))
+        goto error;
 
-  if ((list_len = PySequence_Size(list)) == -1)
-    goto error;
+    if ((list_len = PySequence_Size(list)) == -1)
+        goto error;
 
-  if ((framelist_obj = PySequence_GetItem(list,0)) == NULL)
-    goto error;
+    if ((framelist_obj = PySequence_GetItem(list, 0)) == NULL)
+        goto error;
 
-  if (!FloatFrameList_CheckExact(framelist_obj)) {
-    PyErr_SetString(PyExc_TypeError,
-		    "channels must be of type FloatFrameList");
-    goto error;
-  }
-
-  channel = (pcm_FloatFrameList*)framelist_obj;
-  if (channel->channels != 1) {
-    PyErr_SetString(PyExc_ValueError,
-		    "all channels must be 1 channel wide");
-    goto error;
-  }
-
-  framelist = FloatFrameList_create();
-  framelist->frames = channel->frames;
-  framelist->channels = list_len;
-  framelist->samples_length = framelist->frames * list_len;
-  framelist->samples = malloc(sizeof(fa_data_t) * framelist->samples_length);
-
-  for (j = 0; j < channel->samples_length; j++) {
-    framelist->samples[j * list_len] = channel->samples[j];
-  }
-
-  for (i = 1; i < list_len; i++) {
-    if ((list_item = PySequence_GetItem(list,i)) == NULL)
-      goto error;
-    if (!FloatFrameList_CheckExact(list_item)) {
-      PyErr_SetString(PyExc_TypeError,
-		      "channels must be of type FloatFrameList");
-      goto error;
-    }
-    channel = (pcm_FloatFrameList*)list_item;
-    if (channel->frames != framelist->frames) {
-      PyErr_SetString(PyExc_ValueError,
-		      "all channels must have the same number of frames");
-      goto error;
+    if (!FloatFrameList_CheckExact(framelist_obj)) {
+        PyErr_SetString(PyExc_TypeError,
+                        "channels must be of type FloatFrameList");
+        goto error;
     }
 
+    channel = (pcm_FloatFrameList*)framelist_obj;
     if (channel->channels != 1) {
-      PyErr_SetString(PyExc_ValueError,
-		      "all channels must be 1 channel wide");
-      goto error;
+        PyErr_SetString(PyExc_ValueError,
+                        "all channels must be 1 channel wide");
+        goto error;
     }
+
+    framelist = FloatFrameList_create();
+    framelist->frames = channel->frames;
+    framelist->channels = list_len;
+    framelist->samples_length = framelist->frames * list_len;
+    framelist->samples = malloc(sizeof(fa_data_t) * framelist->samples_length);
 
     for (j = 0; j < channel->samples_length; j++) {
-      framelist->samples[(j * list_len) + i] = channel->samples[j];
+        framelist->samples[j * list_len] = channel->samples[j];
     }
-    Py_DECREF(list_item);
-  }
 
-  Py_DECREF(framelist_obj);
+    for (i = 1; i < list_len; i++) {
+        if ((list_item = PySequence_GetItem(list, i)) == NULL)
+            goto error;
+        if (!FloatFrameList_CheckExact(list_item)) {
+            PyErr_SetString(PyExc_TypeError,
+                            "channels must be of type FloatFrameList");
+            goto error;
+        }
+        channel = (pcm_FloatFrameList*)list_item;
+        if (channel->frames != framelist->frames) {
+            PyErr_SetString(PyExc_ValueError,
+                            "all channels must have the same "
+                            "number of frames");
+            goto error;
+        }
 
-  return (PyObject*)framelist;
+        if (channel->channels != 1) {
+            PyErr_SetString(PyExc_ValueError,
+                            "all channels must be 1 channel wide");
+            goto error;
+        }
+
+        for (j = 0; j < channel->samples_length; j++) {
+            framelist->samples[(j * list_len) + i] = channel->samples[j];
+        }
+        Py_DECREF(list_item);
+    }
+
+    Py_DECREF(framelist_obj);
+
+    return (PyObject*)framelist;
  error:
-  Py_XDECREF(framelist_obj);
-  Py_XDECREF(framelist);
-  Py_XDECREF(list_item);
-  return NULL;
+    Py_XDECREF(framelist_obj);
+    Py_XDECREF(framelist);
+    Py_XDECREF(list_item);
+    return NULL;
 }
 
 
-PyMODINIT_FUNC initpcm(void) {
+PyMODINIT_FUNC
+initpcm(void)
+{
     PyObject* m;
 
     pcm_FrameListType.tp_new = PyType_GenericNew;
     if (PyType_Ready(&pcm_FrameListType) < 0)
-      return;
+        return;
 
     pcm_FloatFrameListType.tp_new = PyType_GenericNew;
     if (PyType_Ready(&pcm_FloatFrameListType) < 0)
-      return;
+        return;
 
     m = Py_InitModule3("pcm", module_methods,
                        "A PCM FrameList handling module.");
 
     Py_INCREF(&pcm_FrameListType);
     PyModule_AddObject(m, "FrameList",
-		       (PyObject *)&pcm_FrameListType);
+                       (PyObject *)&pcm_FrameListType);
     Py_INCREF(&pcm_FloatFrameListType);
     PyModule_AddObject(m, "FloatFrameList",
-		       (PyObject *)&pcm_FloatFrameListType);
+                       (PyObject *)&pcm_FloatFrameListType);
 }
 
 #endif
 
-FrameList_char_to_int_converter FrameList_get_char_to_int_converter(
-                                              int bits_per_sample,
-			         	      int is_big_endian,
-				              int is_signed) {
-  switch (bits_per_sample) {
-  case 8:
-    switch (is_big_endian) {
-    case 0:
-      switch (is_signed) {
-      case 0:  /*8 bits-per-sample, little-endian, unsigned*/
-	return FrameList_U8_char_to_int;
-      default: /*8 bits-per-sample, little-endian, signed*/
-	return FrameList_S8_char_to_int;
-      }
+FrameList_char_to_int_converter
+FrameList_get_char_to_int_converter(int bits_per_sample,
+                                    int is_big_endian,
+                                    int is_signed)
+{
+    switch (bits_per_sample) {
+    case 8:
+        switch (is_big_endian) {
+        case 0:
+            switch (is_signed) {
+            case 0:  /*8 bits-per-sample, little-endian, unsigned*/
+                return FrameList_U8_char_to_int;
+            default: /*8 bits-per-sample, little-endian, signed*/
+                return FrameList_S8_char_to_int;
+            }
+        default:
+            switch (is_signed) {
+            case 0:  /*8 bits-per-sample, big-endian, unsigned*/
+                return FrameList_U8_char_to_int;
+            default: /*8 bits-per-sample, big-endian, signed*/
+                return FrameList_S8_char_to_int;
+            }
+        }
+    case 16:
+        switch (is_big_endian) {
+        case 0:
+            switch (is_signed) {
+            case 0:  /*16 bits-per-sample, little-endian, unsigned*/
+                return FrameList_UL16_char_to_int;
+            default: /*16 bits-per-sample, little-endian, signed*/
+                return FrameList_SL16_char_to_int;
+            }
+        default:
+            switch (is_signed) {
+            case 0:  /*16 bits-per-sample, big-endian, unsigned*/
+                return FrameList_UB16_char_to_int;
+            default: /*16 bits-per-sample, big-endian, signed*/
+                return FrameList_SB16_char_to_int;
+            }
+        }
+    case 24:
+        switch (is_big_endian) {
+        case 0:
+            switch (is_signed) {
+            case 0:  /*24 bits-per-sample, little-endian, unsigned*/
+                return FrameList_UL24_char_to_int;
+            default: /*24 bits-per-sample, little-endian, signed*/
+                return FrameList_SL24_char_to_int;
+            }
+        default:
+            switch (is_signed) {
+            case 0:  /*24 bits-per-sample, big-endian, unsigned*/
+                return FrameList_UB24_char_to_int;
+            default: /*24 bits-per-sample, big-endian, signed*/
+                return FrameList_SB24_char_to_int;
+            }
+        }
     default:
-      switch (is_signed) {
-      case 0:  /*8 bits-per-sample, big-endian, unsigned*/
-	return FrameList_U8_char_to_int;
-      default: /*8 bits-per-sample, big-endian, signed*/
-	return FrameList_S8_char_to_int;
-      }
+        return NULL;
     }
-  case 16:
-    switch (is_big_endian) {
-    case 0:
-      switch (is_signed) {
-      case 0:  /*16 bits-per-sample, little-endian, unsigned*/
-	return FrameList_UL16_char_to_int;
-      default: /*16 bits-per-sample, little-endian, signed*/
-	return FrameList_SL16_char_to_int;
-      }
+}
+
+ia_data_t
+FrameList_U8_char_to_int(unsigned char *s)
+{
+    return ((ia_data_t)s[0]) - (1 << 7);
+}
+
+ia_data_t
+FrameList_S8_char_to_int(unsigned char *s)
+{
+    if (s[0] & 0x80) {
+        /*negative*/
+        return -(ia_data_t)(0x100 - s[0]);
+    } else {
+        /*positive*/
+        return (ia_data_t)s[0];
+    }
+}
+
+ia_data_t
+FrameList_UB16_char_to_int(unsigned char *s)
+{
+    return ((ia_data_t)(s[0] << 8) | s[1]) - (1 << 15);
+}
+
+ia_data_t
+FrameList_UL16_char_to_int(unsigned char *s)
+{
+    return ((ia_data_t)(s[1] << 8) | s[0]) - (1 << 15);
+}
+
+ia_data_t
+FrameList_SL16_char_to_int(unsigned char *s)
+{
+    if (s[1] & 0x80) {
+        /*negative*/
+        return -(ia_data_t)(0x10000 - ((s[1] << 8) | s[0]));
+    } else {
+        /*positive*/
+        return (ia_data_t)(s[1] << 8) | s[0];
+    }
+}
+
+ia_data_t
+FrameList_SB16_char_to_int(unsigned char *s)
+{
+    if (s[0] & 0x80) {
+        /*negative*/
+        return -(ia_data_t)(0x10000 - ((s[0] << 8) | s[1]));
+    } else {
+        /*positive*/
+        return (ia_data_t)(s[0] << 8) | s[1];
+    }
+}
+
+ia_data_t
+FrameList_UL24_char_to_int(unsigned char *s)
+{
+    return ((ia_data_t)((s[2] << 16) | (s[1] << 8) | s[0])) - (1 << 23);
+}
+
+ia_data_t
+FrameList_UB24_char_to_int(unsigned char *s)
+{
+    return ((ia_data_t)((s[0] << 16) | (s[1] << 8) | s[2])) - (1 << 23);
+}
+
+ia_data_t
+FrameList_SL24_char_to_int(unsigned char *s)
+{
+    if (s[2] & 0x80) {
+        /*negative*/
+        return -(ia_data_t)(0x1000000 - ((s[2] << 16) | (s[1] << 8) | s[0]));
+    } else {
+        /*positive*/
+        return (ia_data_t)((s[2] << 16) | (s[1] << 8) | s[0]);
+    }
+}
+
+ia_data_t
+FrameList_SB24_char_to_int(unsigned char *s)
+{
+    if (s[0] & 0x80) {
+        /*negative*/
+        return -(ia_data_t)(0x1000000 - ((s[0] << 16) | (s[1] << 8) | s[2]));
+    } else {
+        /*positive*/
+        return (ia_data_t)((s[0] << 16) | (s[1] << 8) | s[2]);
+    }
+}
+
+void
+FrameList_samples_to_char(unsigned char *data,
+                          ia_data_t *samples,
+                          FrameList_int_to_char_converter converter,
+                          ia_size_t samples_length,
+                          int bits_per_sample)
+{
+    int bytes_per_sample = bits_per_sample / 8;
+    int i;
+
+    for (i = 0; i < samples_length; i++, data += bytes_per_sample) {
+        converter(samples[i], data);
+    }
+}
+
+FrameList_int_to_char_converter
+FrameList_get_int_to_char_converter(int bits_per_sample,
+                                    int is_big_endian,
+                                    int is_signed)
+{
+    switch (bits_per_sample) {
+    case 8:
+        switch (is_big_endian) {
+        case 0:
+            switch (is_signed) {
+            case 0:  /*8 bits-per-sample, little-endian, unsigned*/
+                return FrameList_int_to_U8_char;
+            default: /*8 bits-per-sample, little-endian, signed*/
+                return FrameList_int_to_S8_char;
+            }
+        default:
+            switch (is_signed) {
+            case 0:  /*8 bits-per-sample, big-endian, unsigned*/
+                return FrameList_int_to_U8_char;
+            default: /*8 bits-per-sample, big-endian, signed*/
+                return FrameList_int_to_S8_char;
+            }
+        }
+    case 16:
+        switch (is_big_endian) {
+        case 0:
+            switch (is_signed) {
+            case 0:  /*16 bits-per-sample, little-endian, unsigned*/
+                return FrameList_int_to_UL16_char;
+            default: /*16 bits-per-sample, little-endian, signed*/
+                return FrameList_int_to_SL16_char;
+            }
+        default:
+            switch (is_signed) {
+            case 0:  /*16 bits-per-sample, big-endian, unsigned*/
+                return FrameList_int_to_UB16_char;
+            default: /*16 bits-per-sample, big-endian, signed*/
+                return FrameList_int_to_SB16_char;
+            }
+        }
+    case 24:
+        switch (is_big_endian) {
+        case 0:
+            switch (is_signed) {
+            case 0:  /*24 bits-per-sample, little-endian, unsigned*/
+                return FrameList_int_to_UL24_char;
+            default: /*24 bits-per-sample, little-endian, signed*/
+                return FrameList_int_to_SL24_char;
+            }
+        default:
+            switch (is_signed) {
+            case 0:  /*24 bits-per-sample, big-endian, unsigned*/
+                return FrameList_int_to_UB24_char;
+            default: /*24 bits-per-sample, big-endian, signed*/
+                return FrameList_int_to_SB24_char;
+            }
+        }
     default:
-      switch (is_signed) {
-      case 0:  /*16 bits-per-sample, big-endian, unsigned*/
-	return FrameList_UB16_char_to_int;
-      default: /*16 bits-per-sample, big-endian, signed*/
-	return FrameList_SB16_char_to_int;
-      }
+        return NULL;
     }
-  case 24:
-    switch (is_big_endian) {
-    case 0:
-      switch (is_signed) {
-      case 0:  /*24 bits-per-sample, little-endian, unsigned*/
-	return FrameList_UL24_char_to_int;
-      default: /*24 bits-per-sample, little-endian, signed*/
-	return FrameList_SL24_char_to_int;
-      }
-    default:
-      switch (is_signed) {
-      case 0:  /*24 bits-per-sample, big-endian, unsigned*/
-	return FrameList_UB24_char_to_int;
-      default: /*24 bits-per-sample, big-endian, signed*/
-	return FrameList_SB24_char_to_int;
-      }
+}
+
+void
+FrameList_int_to_S8_char(ia_data_t i, unsigned char *s)
+{
+    if (i > 0x7F)
+        i = 0x7F;  /*avoid overflow*/
+    else if (i < -0x80)
+        i = -0x80; /*avoid underflow*/
+
+    if (i >= 0) {
+        /*positive*/
+        s[0] = i;
+    } else {
+        /*negative*/
+        s[0] = (1 << 8) - (-i);
     }
-  default:
-    return NULL;
-  }
 }
 
-ia_data_t FrameList_U8_char_to_int(unsigned char *s) {
-  return ((ia_data_t)s[0]) - (1 << 7);
+void
+FrameList_int_to_U8_char(ia_data_t i, unsigned char *s)
+{
+    i += (1 << 7);
+    s[0] = i & 0xFF;
 }
 
-ia_data_t FrameList_S8_char_to_int(unsigned char *s) {
-  if (s[0] & 0x80) {
-    /*negative*/
-    return -(ia_data_t)(0x100 - s[0]);
-  } else {
-    /*positive*/
-    return (ia_data_t)s[0];
-  }
+void
+FrameList_int_to_UB16_char(ia_data_t i, unsigned char *s)
+{
+    i += (1 << 15);
+    s[0] = (i >> 8) & 0xFF;
+    s[1] = i & 0xFF;
 }
 
-ia_data_t FrameList_UB16_char_to_int(unsigned char *s) {
-  return ((ia_data_t)(s[0] << 8) | s[1]) - (1 << 15);
-}
+void
+FrameList_int_to_SB16_char(ia_data_t i, unsigned char *s)
+{
+    if (i > 0x7FFF)
+        i = 0x7FFF;
+    else if (i < -0x8000)
+        i = -0x8000;
 
-ia_data_t FrameList_UL16_char_to_int(unsigned char *s) {
-  return ((ia_data_t)(s[1] << 8) | s[0]) - (1 << 15);
-}
-
-ia_data_t FrameList_SL16_char_to_int(unsigned char *s) {
-  if (s[1] & 0x80) {
-    /*negative*/
-    return -(ia_data_t)(0x10000 - ((s[1] << 8) | s[0]));
-  } else {
-    /*positive*/
-    return (ia_data_t)(s[1] << 8) | s[0];
-  }
-}
-
-ia_data_t FrameList_SB16_char_to_int(unsigned char *s) {
-  if (s[0] & 0x80) {
-    /*negative*/
-    return -(ia_data_t)(0x10000 - ((s[0] << 8) | s[1]));
-  } else {
-    /*positive*/
-    return (ia_data_t)(s[0] << 8) | s[1];
-  }
-}
-
-ia_data_t FrameList_UL24_char_to_int(unsigned char *s) {
-  return ((ia_data_t)((s[2] << 16) | (s[1] << 8) | s[0])) - (1 << 23);
-}
-
-ia_data_t FrameList_UB24_char_to_int(unsigned char *s) {
-  return ((ia_data_t)((s[0] << 16) | (s[1] << 8) | s[2])) - (1 << 23);
-}
-
-ia_data_t FrameList_SL24_char_to_int(unsigned char *s) {
-  if (s[2] & 0x80) {
-    /*negative*/
-    return -(ia_data_t)(0x1000000 - ((s[2] << 16) | (s[1] << 8) | s[0]));
-  } else {
-    /*positive*/
-    return (ia_data_t)((s[2] << 16) | (s[1] << 8) | s[0]);
-  }
-}
-
-ia_data_t FrameList_SB24_char_to_int(unsigned char *s) {
-  if (s[0] & 0x80) {
-    /*negative*/
-    return -(ia_data_t)(0x1000000 - ((s[0] << 16) | (s[1] << 8) | s[2]));
-  } else {
-    /*positive*/
-    return (ia_data_t)((s[0] << 16) | (s[1] << 8) | s[2]);
-  }
-}
-
-void FrameList_samples_to_char(unsigned char *data,
-			       ia_data_t *samples,
-			       FrameList_int_to_char_converter converter,
-			       ia_size_t samples_length,
-			       int bits_per_sample) {
-  int bytes_per_sample = bits_per_sample / 8;
-  int i;
-
-  for (i = 0; i < samples_length; i++, data += bytes_per_sample) {
-    converter(samples[i],data);
-  }
-}
-
-FrameList_int_to_char_converter FrameList_get_int_to_char_converter(
-                                              int bits_per_sample,
-			         	      int is_big_endian,
-				              int is_signed) {
-  switch (bits_per_sample) {
-  case 8:
-    switch (is_big_endian) {
-    case 0:
-      switch (is_signed) {
-      case 0:  /*8 bits-per-sample, little-endian, unsigned*/
-	return FrameList_int_to_U8_char;
-      default: /*8 bits-per-sample, little-endian, signed*/
-	return FrameList_int_to_S8_char;
-      }
-    default:
-      switch (is_signed) {
-      case 0:  /*8 bits-per-sample, big-endian, unsigned*/
-	return FrameList_int_to_U8_char;
-      default: /*8 bits-per-sample, big-endian, signed*/
-	return FrameList_int_to_S8_char;
-      }
+    if (i < 0) {
+        i = (1 << 16) - (-i);
     }
-  case 16:
-    switch (is_big_endian) {
-    case 0:
-      switch (is_signed) {
-      case 0:  /*16 bits-per-sample, little-endian, unsigned*/
-	return FrameList_int_to_UL16_char;
-      default: /*16 bits-per-sample, little-endian, signed*/
-	return FrameList_int_to_SL16_char;
-      }
-    default:
-      switch (is_signed) {
-      case 0:  /*16 bits-per-sample, big-endian, unsigned*/
-	return FrameList_int_to_UB16_char;
-      default: /*16 bits-per-sample, big-endian, signed*/
-	return FrameList_int_to_SB16_char;
-      }
+
+    s[0] = i >> 8;
+    s[1] = i & 0xFF;
+}
+
+void
+FrameList_int_to_UL16_char(ia_data_t i, unsigned char *s)
+{
+    i += (1 << 15);
+    s[1] = (i >> 8) & 0xFF;
+    s[0] = i & 0xFF;
+}
+
+void
+FrameList_int_to_SL16_char(ia_data_t i, unsigned char *s)
+{
+    if (i > 0x7FFF)
+        i = 0x7FFF;
+    else if (i < -0x8000)
+        i = -0x8000;
+
+    if (i < 0) {
+        i = (1 << 16) - (-i);
     }
-  case 24:
-    switch (is_big_endian) {
-    case 0:
-      switch (is_signed) {
-      case 0:  /*24 bits-per-sample, little-endian, unsigned*/
-  	return FrameList_int_to_UL24_char;
-      default: /*24 bits-per-sample, little-endian, signed*/
-  	return FrameList_int_to_SL24_char;
-      }
-    default:
-      switch (is_signed) {
-      case 0:  /*24 bits-per-sample, big-endian, unsigned*/
-  	return FrameList_int_to_UB24_char;
-      default: /*24 bits-per-sample, big-endian, signed*/
-  	return FrameList_int_to_SB24_char;
-      }
+
+    s[1] = i >> 8;
+    s[0] = i & 0xFF;
+}
+
+void
+FrameList_int_to_UB24_char(ia_data_t i, unsigned char *s)
+{
+    i += (1 << 23);
+    s[0] = (i >> 16) & 0xFF;
+    s[1] = (i >> 8) & 0xFF;
+    s[2] = i & 0xFF;
+}
+
+void
+FrameList_int_to_SB24_char(ia_data_t i, unsigned char *s)
+{
+    if (i > 0x7FFFFF)
+        i = 0x7FFFFF;
+    else if (i < -0x800000)
+        i = -0x800000;
+
+    if (i < 0) {
+        i = (1 << 24) - (-i);
     }
-  default:
-    return NULL;
-  }
+
+    s[0] = i >> 16;
+    s[1] = (i >> 8) & 0xFF;
+    s[2] = i & 0xFF;
 }
 
-void FrameList_int_to_S8_char(ia_data_t i, unsigned char *s) {
-  if (i > 0x7F)
-    i = 0x7F;  /*avoid overflow*/
-  else if (i < -0x80)
-    i = -0x80; /*avoid underflow*/
-
-  if (i >= 0) {
-    /*positive*/
-    s[0] = i;
-  } else {
-    /*negative*/
-    s[0] = (1 << 8) - (-i);
-  }
+void
+FrameList_int_to_UL24_char(ia_data_t i, unsigned char *s)
+{
+    i += (1 << 23);
+    s[2] = (i >> 16) & 0xFF;
+    s[1] = (i >> 8) & 0xFF;
+    s[0] = i & 0xFF;
 }
 
-void FrameList_int_to_U8_char(ia_data_t i, unsigned char *s) {
-  i += (1 << 7);
-  s[0] = i & 0xFF;
-}
+void
+FrameList_int_to_SL24_char(ia_data_t i, unsigned char *s)
+{
+    if (i > 0x7FFFFF)
+        i = 0x7FFFFF;
+    else if (i < -0x800000)
+        i = -0x800000;
 
-void FrameList_int_to_UB16_char(ia_data_t i, unsigned char *s) {
-  i += (1 << 15);
-  s[0] = (i >> 8) & 0xFF;
-  s[1] = i & 0xFF;
-}
+    if (i < 0) {
+        i = (1 << 24) - (-i);
+    }
 
-void FrameList_int_to_SB16_char(ia_data_t i, unsigned char *s) {
-  if (i > 0x7FFF)
-    i = 0x7FFF;
-  else if (i < -0x8000)
-    i = -0x8000;
-
-  if (i < 0) {
-    i = (1 << 16) - (-i);
-  }
-
-  s[0] = i >> 8;
-  s[1] = i & 0xFF;
-}
-
-void FrameList_int_to_UL16_char(ia_data_t i, unsigned char *s) {
-  i += (1 << 15);
-  s[1] = (i >> 8) & 0xFF;
-  s[0] = i & 0xFF;
-}
-
-void FrameList_int_to_SL16_char(ia_data_t i, unsigned char *s) {
-  if (i > 0x7FFF)
-    i = 0x7FFF;
-  else if (i < -0x8000)
-    i = -0x8000;
-
-  if (i < 0) {
-    i = (1 << 16) - (-i);
-  }
-
-  s[1] = i >> 8;
-  s[0] = i & 0xFF;
-}
-
-void FrameList_int_to_UB24_char(ia_data_t i, unsigned char *s) {
-  i += (1 << 23);
-  s[0] = (i >> 16) & 0xFF;
-  s[1] = (i >> 8) & 0xFF;
-  s[2] = i & 0xFF;
-}
-
-void FrameList_int_to_SB24_char(ia_data_t i, unsigned char *s) {
-  if (i > 0x7FFFFF)
-    i = 0x7FFFFF;
-  else if (i < -0x800000)
-    i = -0x800000;
-
-  if (i < 0) {
-    i = (1 << 24) - (-i);
-  }
-
-  s[0] = i >> 16;
-  s[1] = (i >> 8) & 0xFF;
-  s[2] = i & 0xFF;
-}
-
-void FrameList_int_to_UL24_char(ia_data_t i, unsigned char *s) {
-  i += (1 << 23);
-  s[2] = (i >> 16) & 0xFF;
-  s[1] = (i >> 8) & 0xFF;
-  s[0] = i & 0xFF;
-}
-
-void FrameList_int_to_SL24_char(ia_data_t i, unsigned char *s) {
-  if (i > 0x7FFFFF)
-    i = 0x7FFFFF;
-  else if (i < -0x800000)
-    i = -0x800000;
-
-  if (i < 0) {
-    i = (1 << 24) - (-i);
-  }
-
-  s[2] = i >> 16;
-  s[1] = (i >> 8) & 0xFF;
-  s[0] = i & 0xFF;
+    s[2] = i >> 16;
+    s[1] = (i >> 8) & 0xFF;
+    s[0] = i & 0xFF;
 }

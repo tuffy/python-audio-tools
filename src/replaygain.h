@@ -41,62 +41,71 @@
 #define STEPS_per_dB      100.          /* Table entries per dB */
 #define MAX_dB            120.          /* Table entries for 0...MAX_dB (normal max. values are 70...80 dB) */
 
-#define MAX_ORDER               (BUTTER_ORDER > YULE_ORDER ? BUTTER_ORDER : YULE_ORDER)
+#define MAX_ORDER    (BUTTER_ORDER > YULE_ORDER ? BUTTER_ORDER : YULE_ORDER)
 #define MAX_SAMPLES_PER_WINDOW  (size_t) (MAX_SAMP_FREQ * RMS_WINDOW_TIME)      /* max. Samples per Time slice */
 #define PINK_REF                64.82 /* calibration value */
 
-typedef enum {GAIN_ANALYSIS_ERROR,GAIN_ANALYSIS_OK} gain_calc_status;
+typedef enum {GAIN_ANALYSIS_ERROR, GAIN_ANALYSIS_OK} gain_calc_status;
 
 typedef struct {
-  PyObject_HEAD;
+    PyObject_HEAD;
 
-  double          linprebuf [MAX_ORDER * 2];
-  double*         linpre;  /* left input samples, with pre-buffer */
-  double          lstepbuf  [MAX_SAMPLES_PER_WINDOW + MAX_ORDER];
-  double*         lstep;   /* left "first step" (i.e. post first filter) samples */
-  double          loutbuf   [MAX_SAMPLES_PER_WINDOW + MAX_ORDER];
-  double*         lout;    /* left "out" (i.e. post second filter) samples */
-  double          rinprebuf [MAX_ORDER * 2];
-  double*         rinpre;  /* right input samples ... */
-  double          rstepbuf  [MAX_SAMPLES_PER_WINDOW + MAX_ORDER];
-  double*         rstep;
-  double          routbuf   [MAX_SAMPLES_PER_WINDOW + MAX_ORDER];
-  double*         rout;
-  long            sampleWindow; /* number of samples required to reach number of milliseconds required for RMS window */
-  long            totsamp;
-  double          lsum;
-  double          rsum;
-  int             freqindex;
-  int             first;
-  uint32_t  A [(size_t)(STEPS_per_dB * MAX_dB)];
-  uint32_t  B [(size_t)(STEPS_per_dB * MAX_dB)];
+    double          linprebuf [MAX_ORDER * 2];
+    double*         linpre;  /* left input samples, with pre-buffer */
+    double          lstepbuf  [MAX_SAMPLES_PER_WINDOW + MAX_ORDER];
+    double*         lstep;   /* left "first step" (i.e. post first filter) samples */
+    double          loutbuf   [MAX_SAMPLES_PER_WINDOW + MAX_ORDER];
+    double*         lout;    /* left "out" (i.e. post second filter) samples */
+    double          rinprebuf [MAX_ORDER * 2];
+    double*         rinpre;  /* right input samples ... */
+    double          rstepbuf  [MAX_SAMPLES_PER_WINDOW + MAX_ORDER];
+    double*         rstep;
+    double          routbuf   [MAX_SAMPLES_PER_WINDOW + MAX_ORDER];
+    double*         rout;
+    long            sampleWindow; /* number of samples required to reach number of milliseconds required for RMS window */
+    long            totsamp;
+    double          lsum;
+    double          rsum;
+    int             freqindex;
+    int             first;
+    uint32_t  A [(size_t)(STEPS_per_dB * MAX_dB)];
+    uint32_t  B [(size_t)(STEPS_per_dB * MAX_dB)];
 
-  double title_peak;
-  double album_peak;
+    double title_peak;
+    double album_peak;
 
-  PyObject *pcm_module;
+    PyObject *pcm_module;
 } replaygain_ReplayGain;
 
-void ReplayGain_dealloc(replaygain_ReplayGain* self);
+void
+ReplayGain_dealloc(replaygain_ReplayGain* self);
 
-PyObject *ReplayGain_new(PyTypeObject *type, PyObject *args, PyObject *kwds);
+PyObject*
+ReplayGain_new(PyTypeObject *type, PyObject *args, PyObject *kwds);
 
-int ReplayGain_init(replaygain_ReplayGain *self, PyObject *args, PyObject *kwds);
+int
+ReplayGain_init(replaygain_ReplayGain *self, PyObject *args, PyObject *kwds);
 
-PyObject* ReplayGain_update(replaygain_ReplayGain *self, PyObject *args);
+PyObject*
+ReplayGain_update(replaygain_ReplayGain *self, PyObject *args);
 
-PyObject* ReplayGain_title_gain(replaygain_ReplayGain *self);
+PyObject*
+ReplayGain_title_gain(replaygain_ReplayGain *self);
 
-PyObject* ReplayGain_album_gain(replaygain_ReplayGain *self);
+PyObject*
+ReplayGain_album_gain(replaygain_ReplayGain *self);
 
-gain_calc_status ReplayGain_analyze_samples(replaygain_ReplayGain* self,
-					    const double* left_samples,
-					    const double* right_samples,
-					    size_t num_samples,
-					    int num_channels);
+gain_calc_status
+ReplayGain_analyze_samples(replaygain_ReplayGain* self,
+                           const double* left_samples,
+                           const double* right_samples,
+                           size_t num_samples,
+                           int num_channels);
 
-double ReplayGain_get_title_gain(replaygain_ReplayGain *self);
-double ReplayGain_get_album_gain(replaygain_ReplayGain *self);
+double
+ReplayGain_get_title_gain(replaygain_ReplayGain *self);
 
+double
+ReplayGain_get_album_gain(replaygain_ReplayGain *self);
 
 #endif

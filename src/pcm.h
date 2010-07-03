@@ -25,7 +25,7 @@ typedef int Py_ssize_t;
  You should have received a copy of the GNU General Public License
  along with this program; if not, write to the Free Software
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
- *******************************************************/
+*******************************************************/
 
 #if PY_MAJOR_VERSION >= 3
 #define IS_PY3K
@@ -41,68 +41,90 @@ typedef int Py_ssize_t;
 
 #ifndef STANDALONE
 typedef struct {
-  PyObject_HEAD;
+    PyObject_HEAD;
 
-  int frames;          /*the total number of PCM frames in this FrameList
-			 aka the total number of rows in the "samples" array*/
-  int channels;        /*the total number of channels in this FrameList
-			 aka the total number of columns in "samples*/
-  int bits_per_sample; /*the maximum size of each sample, in bits*/
+    int frames;          /*the total number of PCM frames in this FrameList
+                           aka the total number of rows in the "samples" array*/
+    int channels;        /*the total number of channels in this FrameList
+                           aka the total number of columns in "samples*/
+    int bits_per_sample; /*the maximum size of each sample, in bits*/
 
-  ia_data_t* samples;    /*the actual sample data itself,
-			   stored raw as 32-bit signed integers*/
-  ia_size_t samples_length; /*the total number of samples
-			     which must be evenly distributable
-			     between channels and bits-per-sample*/
+    ia_data_t* samples;    /*the actual sample data itself,
+                             stored raw as 32-bit signed integers*/
+    ia_size_t samples_length; /*the total number of samples
+                                which must be evenly distributable
+                                between channels and bits-per-sample*/
 } pcm_FrameList;
 
-void FrameList_dealloc(pcm_FrameList* self);
+void
+FrameList_dealloc(pcm_FrameList* self);
 
-PyObject *FrameList_new(PyTypeObject *type, PyObject *args, PyObject *kwds);
+PyObject*
+FrameList_new(PyTypeObject *type, PyObject *args, PyObject *kwds);
 
 int FrameList_init(pcm_FrameList *self, PyObject *args, PyObject *kwds);
 
 /*generates a new pcm_FrameList object via _PyObject_New
   whose fields *must* be populated by additional C code*/
-pcm_FrameList* FrameList_create(void);
+pcm_FrameList*
+FrameList_create(void);
 
-PyObject* FrameList_blank(PyObject *dummy, PyObject *args);
+PyObject*
+FrameList_blank(PyObject *dummy, PyObject *args);
 
-int FrameList_CheckExact(PyObject *o);
+int
+FrameList_CheckExact(PyObject *o);
 
-PyObject* FrameList_frames(pcm_FrameList *self, void* closure);
+PyObject*
+FrameList_frames(pcm_FrameList *self, void* closure);
 
-PyObject* FrameList_channels(pcm_FrameList *self, void* closure);
+PyObject*
+FrameList_channels(pcm_FrameList *self, void* closure);
 
-PyObject* FrameList_bits_per_sample(pcm_FrameList *self, void* closure);
+PyObject*
+FrameList_bits_per_sample(pcm_FrameList *self, void* closure);
 
-Py_ssize_t FrameList_len(pcm_FrameList *o);
+Py_ssize_t
+FrameList_len(pcm_FrameList *o);
 
-PyObject *FrameList_richcompare(PyObject *a, PyObject *b, int op);
+PyObject*
+FrameList_richcompare(PyObject *a, PyObject *b, int op);
 
-int FrameList_equals(pcm_FrameList *a, pcm_FrameList *b);
+int
+FrameList_equals(pcm_FrameList *a, pcm_FrameList *b);
 
-PyObject* FrameList_GetItem(pcm_FrameList *o, Py_ssize_t i);
+PyObject*
+FrameList_GetItem(pcm_FrameList *o, Py_ssize_t i);
 
-PyObject* FrameList_frame(pcm_FrameList *self, PyObject *args);
+PyObject*
+FrameList_frame(pcm_FrameList *self, PyObject *args);
 
-PyObject* FrameList_channel(pcm_FrameList *self, PyObject *args);
+PyObject*
+FrameList_channel(pcm_FrameList *self, PyObject *args);
 
-PyObject* FrameList_to_bytes(pcm_FrameList *self, PyObject *args);
+PyObject*
+FrameList_to_bytes(pcm_FrameList *self, PyObject *args);
 
-PyObject* FrameList_to_float(pcm_FrameList *self, PyObject *args);
+PyObject*
+FrameList_to_float(pcm_FrameList *self, PyObject *args);
 
-PyObject* FrameList_frame_count(pcm_FrameList *self, PyObject *args);
+PyObject*
+FrameList_frame_count(pcm_FrameList *self, PyObject *args);
 
-PyObject* FrameList_split(pcm_FrameList *self, PyObject *args);
+PyObject*
+FrameList_split(pcm_FrameList *self, PyObject *args);
 
-PyObject* FrameList_concat(pcm_FrameList *a, PyObject *bb);
+PyObject*
+FrameList_concat(pcm_FrameList *a, PyObject *bb);
 
-PyObject* FrameList_from_list(PyObject *dummy, PyObject *args);
+PyObject*
+FrameList_from_list(PyObject *dummy, PyObject *args);
 
-PyObject* FrameList_from_frames(PyObject *dummy, PyObject *args);
+PyObject*
+FrameList_from_frames(PyObject *dummy, PyObject *args);
 
-PyObject* FrameList_from_channels(PyObject *dummy, PyObject *args);
+PyObject*
+FrameList_from_channels(PyObject *dummy, PyObject *args);
 
 
 /***********************
@@ -110,107 +132,160 @@ PyObject* FrameList_from_channels(PyObject *dummy, PyObject *args);
 ************************/
 
 typedef struct {
-  PyObject_HEAD;
+    PyObject_HEAD;
 
-  int frames;          /*the total number of PCM frames in this FrameList
-			 aka the total number of rows in the "samples" array*/
-  int channels;        /*the total number of channels in this FrameList
-			 aka the total number of columns in "samples*/
+    int frames;          /*the total number of PCM frames in this FrameList
+                           aka the total number of rows in the "samples" array*/
+    int channels;        /*the total number of channels in this FrameList
+                           aka the total number of columns in "samples*/
 
-  fa_data_t *samples;  /*the actual sample data itself,
-			 stored raw as doubles*/
-  fa_size_t samples_length; /*the total number of samples
-			     which must be evenly distributable
-			     between channels*/
+    fa_data_t *samples;  /*the actual sample data itself,
+                           stored raw as doubles*/
+    fa_size_t samples_length; /*the total number of samples
+                                which must be evenly distributable
+                                between channels*/
 } pcm_FloatFrameList;
 
-void FloatFrameList_dealloc(pcm_FloatFrameList* self);
+void
+FloatFrameList_dealloc(pcm_FloatFrameList* self);
 
-PyObject *FloatFrameList_new(PyTypeObject *type, PyObject *args, PyObject *kwds);
+PyObject*
+FloatFrameList_new(PyTypeObject *type, PyObject *args, PyObject *kwds);
 
-int FloatFrameList_init(pcm_FloatFrameList *self, PyObject *args, PyObject *kwds);
+int
+FloatFrameList_init(pcm_FloatFrameList *self, PyObject *args, PyObject *kwds);
 
-int FloatFrameList_CheckExact(PyObject *o);
+int
+FloatFrameList_CheckExact(PyObject *o);
 
-PyObject* FloatFrameList_blank(PyObject *dummy, PyObject *args);
+PyObject*
+FloatFrameList_blank(PyObject *dummy, PyObject *args);
 
-pcm_FloatFrameList* FloatFrameList_create(void);
+pcm_FloatFrameList*
+FloatFrameList_create(void);
 
-PyObject* FloatFrameList_frames(pcm_FloatFrameList *self, void* closure);
+PyObject*
+FloatFrameList_frames(pcm_FloatFrameList *self, void* closure);
 
-PyObject* FloatFrameList_channels(pcm_FloatFrameList *self, void* closure);
+PyObject*
+FloatFrameList_channels(pcm_FloatFrameList *self, void* closure);
 
-Py_ssize_t FloatFrameList_len(pcm_FloatFrameList *o);
+Py_ssize_t
+FloatFrameList_len(pcm_FloatFrameList *o);
 
-PyObject* FloatFrameList_GetItem(pcm_FloatFrameList *o, Py_ssize_t i);
+PyObject*
+FloatFrameList_GetItem(pcm_FloatFrameList *o, Py_ssize_t i);
 
-PyObject* FloatFrameList_frame(pcm_FloatFrameList *self, PyObject *args);
+PyObject*
+FloatFrameList_frame(pcm_FloatFrameList *self, PyObject *args);
 
-PyObject* FloatFrameList_channel(pcm_FloatFrameList *self, PyObject *args);
+PyObject*
+FloatFrameList_channel(pcm_FloatFrameList *self, PyObject *args);
 
-PyObject* FloatFrameList_to_int(pcm_FloatFrameList *self, PyObject *args);
+PyObject*
+FloatFrameList_to_int(pcm_FloatFrameList *self, PyObject *args);
 
-PyObject* FloatFrameList_split(pcm_FloatFrameList *self, PyObject *args);
+PyObject*
+FloatFrameList_split(pcm_FloatFrameList *self, PyObject *args);
 
-PyObject* FloatFrameList_concat(pcm_FloatFrameList *a, PyObject *bb);
+PyObject*
+FloatFrameList_concat(pcm_FloatFrameList *a, PyObject *bb);
 
-PyObject* FloatFrameList_from_frames(PyObject *dummy, PyObject *args);
+PyObject*
+FloatFrameList_from_frames(PyObject *dummy, PyObject *args);
 
-PyObject* FloatFrameList_from_channels(PyObject *dummy, PyObject *args);
+PyObject*
+FloatFrameList_from_channels(PyObject *dummy, PyObject *args);
 
 #endif
 
 typedef ia_data_t (*FrameList_char_to_int_converter)(unsigned char *s);
 
-void FrameList_char_to_samples(ia_data_t *samples,
-			       unsigned char *data,
-			       FrameList_char_to_int_converter converter,
-			       ia_size_t samples_length,
-			       int bits_per_sample);
+void
+FrameList_char_to_samples(ia_data_t *samples,
+                          unsigned char *data,
+                          FrameList_char_to_int_converter converter,
+                          ia_size_t samples_length,
+                          int bits_per_sample);
 
-FrameList_char_to_int_converter FrameList_get_char_to_int_converter(
-					      int bits_per_sample,
-					      int is_big_endian,
-					      int is_signed);
+FrameList_char_to_int_converter
+FrameList_get_char_to_int_converter(int bits_per_sample,
+                                    int is_big_endian,
+                                    int is_signed);
 
-ia_data_t FrameList_S8_char_to_int(unsigned char *s);
-ia_data_t FrameList_U8_char_to_int(unsigned char *s);
+ia_data_t
+FrameList_S8_char_to_int(unsigned char *s);
 
-ia_data_t FrameList_SL16_char_to_int(unsigned char *s);
-ia_data_t FrameList_SB16_char_to_int(unsigned char *s);
-ia_data_t FrameList_UL16_char_to_int(unsigned char *s);
-ia_data_t FrameList_UB16_char_to_int(unsigned char *s);
+ia_data_t
+FrameList_U8_char_to_int(unsigned char *s);
 
-ia_data_t FrameList_SL24_char_to_int(unsigned char *s);
-ia_data_t FrameList_SB24_char_to_int(unsigned char *s);
-ia_data_t FrameList_UL24_char_to_int(unsigned char *s);
-ia_data_t FrameList_UB24_char_to_int(unsigned char *s);
+ia_data_t
+FrameList_SL16_char_to_int(unsigned char *s);
+
+ia_data_t
+FrameList_SB16_char_to_int(unsigned char *s);
+
+ia_data_t
+FrameList_UL16_char_to_int(unsigned char *s);
+
+ia_data_t
+FrameList_UB16_char_to_int(unsigned char *s);
+
+ia_data_t
+FrameList_SL24_char_to_int(unsigned char *s);
+
+ia_data_t
+FrameList_SB24_char_to_int(unsigned char *s);
+
+ia_data_t
+FrameList_UL24_char_to_int(unsigned char *s);
+
+ia_data_t
+FrameList_UB24_char_to_int(unsigned char *s);
 
 
 typedef void (*FrameList_int_to_char_converter)(ia_data_t i, unsigned char *s);
 
-void FrameList_samples_to_char(unsigned char *data,
-			       ia_data_t *samples,
-			       FrameList_int_to_char_converter converter,
-			       ia_size_t samples_length,
-			       int bits_per_sample);
+void
+FrameList_samples_to_char(unsigned char *data,
+                          ia_data_t *samples,
+                          FrameList_int_to_char_converter converter,
+                          ia_size_t samples_length,
+                          int bits_per_sample);
 
-FrameList_int_to_char_converter FrameList_get_int_to_char_converter(
-                                              int bits_per_sample,
-                                              int is_big_endian,
-                                              int is_signed);
+FrameList_int_to_char_converter
+FrameList_get_int_to_char_converter(int bits_per_sample,
+                                    int is_big_endian,
+                                    int is_signed);
 
-void FrameList_int_to_S8_char(ia_data_t i, unsigned char *s);
-void FrameList_int_to_U8_char(ia_data_t i, unsigned char *s);
+void
+FrameList_int_to_S8_char(ia_data_t i, unsigned char *s);
 
-void FrameList_int_to_UB16_char(ia_data_t i, unsigned char *s);
-void FrameList_int_to_SB16_char(ia_data_t i, unsigned char *s);
-void FrameList_int_to_UL16_char(ia_data_t i, unsigned char *s);
-void FrameList_int_to_SL16_char(ia_data_t i, unsigned char *s);
+void
+FrameList_int_to_U8_char(ia_data_t i, unsigned char *s);
 
-void FrameList_int_to_UB24_char(ia_data_t i, unsigned char *s);
-void FrameList_int_to_SB24_char(ia_data_t i, unsigned char *s);
-void FrameList_int_to_UL24_char(ia_data_t i, unsigned char *s);
-void FrameList_int_to_SL24_char(ia_data_t i, unsigned char *s);
+void
+FrameList_int_to_UB16_char(ia_data_t i, unsigned char *s);
+
+void
+FrameList_int_to_SB16_char(ia_data_t i, unsigned char *s);
+
+void
+FrameList_int_to_UL16_char(ia_data_t i, unsigned char *s);
+
+void
+FrameList_int_to_SL16_char(ia_data_t i, unsigned char *s);
+
+void
+FrameList_int_to_UB24_char(ia_data_t i, unsigned char *s);
+
+void
+FrameList_int_to_SB24_char(ia_data_t i, unsigned char *s);
+
+void
+FrameList_int_to_UL24_char(ia_data_t i, unsigned char *s);
+
+void
+FrameList_int_to_SL24_char(ia_data_t i, unsigned char *s);
 
 #endif

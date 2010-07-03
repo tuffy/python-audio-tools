@@ -22,7 +22,7 @@
  You should have received a copy of the GNU General Public License
  along with this program; if not, write to the Free Software
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
- *******************************************************/
+*******************************************************/
 
 /***************************************************************
       PCM reading functions
@@ -33,49 +33,54 @@
 ****************************************************************/
 
 struct pcmr_callback {
-  void (*callback)(void*, unsigned char*, unsigned long);
-  void *data;
-  struct pcmr_callback *next;
+    void (*callback)(void*, unsigned char*, unsigned long);
+    void *data;
+    struct pcmr_callback *next;
 };
 
 struct pcm_reader {
 #ifndef STANDALONE
-  PyObject *read;
-  PyObject *close;
-  PyObject *pcm_module;
+    PyObject *read;
+    PyObject *close;
+    PyObject *pcm_module;
 #else
-  FILE *read;
+    FILE *read;
 #endif
-  long sample_rate;
-  long channels;
-  long bits_per_sample;
-  long big_endian;
-  long is_signed;
+    long sample_rate;
+    long channels;
+    long bits_per_sample;
+    long big_endian;
+    long is_signed;
 
-  struct pcmr_callback *callback;
+    struct pcmr_callback *callback;
 };
 
 /*given a Python object PCMReader
   return a pcm_reader struct, or NULL (with exception set) if an error occurs*/
 #ifndef STANDALONE
-  struct pcm_reader* pcmr_open(PyObject *pcmreader);
+struct pcm_reader*
+pcmr_open(PyObject *pcmreader);
 #else
-  struct pcm_reader* pcmr_open(FILE *pcmreader,
-                               long sample_rate,
-                               long channels,
-                               long bits_per_sample,
-			       long big_endian,
-			       long is_signed);
+struct pcm_reader*
+pcmr_open(FILE *pcmreader,
+          long sample_rate,
+          long channels,
+          long bits_per_sample,
+          long big_endian,
+          long is_signed);
 #endif
 
-int pcmr_close(struct pcm_reader *reader);
+int
+pcmr_close(struct pcm_reader *reader);
 
 /*places "sample_count" number of samples from reader.read()
   into the "samples" buffer, after resetting it*/
-int pcmr_read(struct pcm_reader *reader,
-	      long sample_count,
-	      struct ia_array *samples);
+int
+pcmr_read(struct pcm_reader *reader,
+          long sample_count,
+          struct ia_array *samples);
 
-void pcmr_add_callback(struct pcm_reader *reader,
-		       void (*callback)(void*, unsigned char*, unsigned long),
-		       void *data);
+void
+pcmr_add_callback(struct pcm_reader *reader,
+                  void (*callback)(void*, unsigned char*, unsigned long),
+                  void *data);

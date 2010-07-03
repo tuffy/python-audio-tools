@@ -1926,16 +1926,16 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   - [X] decoders.h
   - [X] encoders.c
   - [X] encoders.h
-  - [ ] md5.c
-  - [ ] md5.h
-  - [ ] pcm.c
-  - [ ] pcm.h
-  - [ ] pcmreader.c
-  - [ ] pcmreader.h
+  - [X] md5.c
+  - [X] md5.h
+  - [X] pcm.c
+  - [X] pcm.h
+  - [X] pcmreader.c
+  - [X] pcmreader.h
   - [ ] replaygain.c
-  - [ ] replaygain.h
-  - [ ] resample.c
-  - [ ] resample.h
+  - [X] replaygain.h
+  - [X] resample.c
+  - [X] resample.h
   - [ ] decoders/alac.c
   - [ ] decoders/alac.h
   - [ ] decoders/flac.c
@@ -1948,14 +1948,12 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   - [ ] encoders/alac.h
   - [ ] encoders/alac_lpc.c
   - [ ] encoders/alac_lpc.h
-  - [ ] encoders/docs.c
   - [ ] encoders/flac.c
   - [ ] encoders/flac_crc.c
   - [ ] encoders/flac_crc.h
   - [ ] encoders/flac.h
   - [ ] encoders/flac_lpc.c
   - [ ] encoders/flac_lpc.h
-  - [ ] encoders/residuals.c
   - [ ] encoders/shn.c
   - [ ] encoders/shn.h
 * TODO Support disc metadata submission

@@ -21,14 +21,14 @@ typedef int Py_ssize_t;
  You should have received a copy of the GNU General Public License
  along with this program; if not, write to the Free Software
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
- *******************************************************/
+*******************************************************/
 
 #if PY_MAJOR_VERSION >= 3
 #define IS_PY3K
 #endif
 
 PyMethodDef module_methods[] = {
-  {NULL}
+    {NULL}
 };
 
 /***********************/
@@ -36,30 +36,32 @@ PyMethodDef module_methods[] = {
 /***********************/
 
 typedef struct {
-  PyObject_HEAD
-  SRC_STATE *src_state;
-  int channels;
-  double ratio;
-  PyObject *pcm_module;
+    PyObject_HEAD
+    SRC_STATE *src_state;
+    int channels;
+    double ratio;
+    PyObject *pcm_module;
 } resample_Resampler;
 
-void Resampler_dealloc(resample_Resampler* self);
+void
+Resampler_dealloc(resample_Resampler* self);
 
-PyObject *Resampler_new(PyTypeObject *type,
-			PyObject *args, PyObject *kwds);
+PyObject*
+Resampler_new(PyTypeObject *type,
+              PyObject *args, PyObject *kwds);
 
-int Resampler_init(resample_Resampler *self,
-		   PyObject *args, PyObject *kwds);
+int
+Resampler_init(resample_Resampler *self,
+               PyObject *args, PyObject *kwds);
 
-PyObject *Resampler_process(resample_Resampler* self,
-			    PyObject *args);
+PyObject*
+Resampler_process(resample_Resampler* self, PyObject *args);
 
 PyMethodDef Resampler_methods[] = {
-  {"process", (PyCFunction)Resampler_process,
-   METH_VARARGS,"Processes PCM samples into the new sample rate"},
-  {NULL}
+    {"process", (PyCFunction)Resampler_process,
+     METH_VARARGS, "Processes PCM samples into the new sample rate"},
+    {NULL}
 };
-
 
 #ifdef IS_PY3K
 
@@ -84,7 +86,7 @@ static PyTypeObject resample_ResamplerType = {
     0,                         /* tp_setattro */
     0,                         /* tp_as_buffer */
     Py_TPFLAGS_DEFAULT |
-        Py_TPFLAGS_BASETYPE,   /* tp_flags */
+    Py_TPFLAGS_BASETYPE,   /* tp_flags */
     "Resampler objects",        /* tp_doc */
     0,		               /* tp_traverse */
     0,		               /* tp_clear */

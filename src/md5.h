@@ -30,20 +30,23 @@
  */
 
 typedef struct {
-	uint32_t in[16];
-	uint32_t buf[4];
-	uint32_t bytes[2];
-	unsigned char *internal_buf;
-	size_t capacity;
+    uint32_t in[16];
+    uint32_t buf[4];
+    uint32_t bytes[2];
+    unsigned char *internal_buf;
+    size_t capacity;
 } audiotools__MD5Context;
 
-void audiotools__MD5Init(audiotools__MD5Context *context);
+void
+audiotools__MD5Init(audiotools__MD5Context *context);
 
-void audiotools__MD5Final(unsigned char *digest,
-			  audiotools__MD5Context *ctx);
+void
+audiotools__MD5Final(unsigned char *digest,
+                     audiotools__MD5Context *ctx);
 
-void audiotools__MD5Update(audiotools__MD5Context *ctx,
-			   const void *buf,
-			   unsigned long len);
+void
+audiotools__MD5Update(audiotools__MD5Context *ctx,
+                      const void *buf,
+                      unsigned long len);
 
 #endif

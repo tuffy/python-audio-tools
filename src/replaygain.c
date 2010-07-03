@@ -31,17 +31,17 @@
  */
 
 PyMethodDef module_methods[] = {
-  {NULL}
+    {NULL}
 };
 
 PyMethodDef ReplayGain_methods[] = {
-  {"update",(PyCFunction)ReplayGain_update,
-   METH_VARARGS,"Updates the ReplayGain object with a FloatFrameList"},
-  {"title_gain",(PyCFunction)ReplayGain_title_gain,
-   METH_NOARGS,"Returns a (title gain,title peak) tuple and resets"},
-  {"album_gain",(PyCFunction)ReplayGain_album_gain,
-   METH_NOARGS,"Returns an (album gain,album peak) tuple"},
-  {NULL}
+    {"update",(PyCFunction)ReplayGain_update,
+     METH_VARARGS,"Updates the ReplayGain object with a FloatFrameList"},
+    {"title_gain",(PyCFunction)ReplayGain_title_gain,
+     METH_NOARGS,"Returns a (title gain,title peak) tuple and resets"},
+    {"album_gain",(PyCFunction)ReplayGain_album_gain,
+     METH_NOARGS,"Returns an (album gain,album peak) tuple"},
+    {NULL}
 };
 
 PyTypeObject replaygain_ReplayGainType = {
@@ -86,250 +86,264 @@ PyTypeObject replaygain_ReplayGainType = {
     ReplayGain_new,            /* tp_new */
 };
 
-void ReplayGain_dealloc(replaygain_ReplayGain* self) {
-  Py_XDECREF(self->pcm_module);
-  self->ob_type->tp_free((PyObject*)self);
+void
+ReplayGain_dealloc(replaygain_ReplayGain* self)
+{
+    Py_XDECREF(self->pcm_module);
+    self->ob_type->tp_free((PyObject*)self);
 }
 
-PyObject *ReplayGain_new(PyTypeObject *type, PyObject *args, PyObject *kwds) {
-  replaygain_ReplayGain *self;
+PyObject*
+ReplayGain_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
+{
+    replaygain_ReplayGain *self;
 
-  self = (replaygain_ReplayGain *)type->tp_alloc(type, 0);
-  self->pcm_module = NULL;
+    self = (replaygain_ReplayGain *)type->tp_alloc(type, 0);
+    self->pcm_module = NULL;
 
-  return (PyObject *)self;
+    return (PyObject *)self;
 }
 
-int ReplayGain_init(replaygain_ReplayGain *self, PyObject *args, PyObject *kwds) {
-  long sample_rate;
-  int  i;
+int
+ReplayGain_init(replaygain_ReplayGain *self, PyObject *args, PyObject *kwds)
+{
+    long sample_rate;
+    int  i;
 
-  if (!PyArg_ParseTuple(args,"l",&sample_rate))
-    return -1;
+    if (!PyArg_ParseTuple(args,"l",&sample_rate))
+        return -1;
 
-  if ((self->pcm_module = PyImport_ImportModule("audiotools.pcm")) == NULL)
-    return -1;
+    if ((self->pcm_module = PyImport_ImportModule("audiotools.pcm")) == NULL)
+        return -1;
 
-  /* zero out initial values*/
-  for (i = 0; i < MAX_ORDER; i++ )
-    self->linprebuf[i] =
-      self->lstepbuf[i] =
-      self->loutbuf[i] =
-      self->rinprebuf[i] =
-      self->rstepbuf[i] =
-      self->routbuf[i] = 0.;
+    /* zero out initial values*/
+    for (i = 0; i < MAX_ORDER; i++ )
+        self->linprebuf[i] =
+            self->lstepbuf[i] =
+            self->loutbuf[i] =
+            self->rinprebuf[i] =
+            self->rstepbuf[i] =
+            self->routbuf[i] = 0.;
 
-  switch (sample_rate) {
-  case 48000: self->freqindex = 0; break;
-  case 44100: self->freqindex = 1; break;
-  case 32000: self->freqindex = 2; break;
-  case 24000: self->freqindex = 3; break;
-  case 22050: self->freqindex = 4; break;
-  case 16000: self->freqindex = 5; break;
-  case 12000: self->freqindex = 6; break;
-  case 11025: self->freqindex = 7; break;
-  case  8000: self->freqindex = 8; break;
-  default:
-    PyErr_SetString(PyExc_ValueError,"unsupported sample rate");
-    return -1;
-  }
+    switch (sample_rate) {
+    case 48000: self->freqindex = 0; break;
+    case 44100: self->freqindex = 1; break;
+    case 32000: self->freqindex = 2; break;
+    case 24000: self->freqindex = 3; break;
+    case 22050: self->freqindex = 4; break;
+    case 16000: self->freqindex = 5; break;
+    case 12000: self->freqindex = 6; break;
+    case 11025: self->freqindex = 7; break;
+    case  8000: self->freqindex = 8; break;
+    default:
+        PyErr_SetString(PyExc_ValueError,"unsupported sample rate");
+        return -1;
+    }
 
-  self->sampleWindow = (int)ceil(sample_rate * RMS_WINDOW_TIME);
+    self->sampleWindow = (int)ceil(sample_rate * RMS_WINDOW_TIME);
 
-  self->lsum         = 0.;
-  self->rsum         = 0.;
-  self->totsamp      = 0;
+    self->lsum         = 0.;
+    self->rsum         = 0.;
+    self->totsamp      = 0;
 
-  memset (self->A, 0, sizeof(self->A));
+    memset (self->A, 0, sizeof(self->A));
 
-  self->linpre       = self->linprebuf + MAX_ORDER;
-  self->rinpre       = self->rinprebuf + MAX_ORDER;
-  self->lstep        = self->lstepbuf  + MAX_ORDER;
-  self->rstep        = self->rstepbuf  + MAX_ORDER;
-  self->lout         = self->loutbuf   + MAX_ORDER;
-  self->rout         = self->routbuf   + MAX_ORDER;
+    self->linpre       = self->linprebuf + MAX_ORDER;
+    self->rinpre       = self->rinprebuf + MAX_ORDER;
+    self->lstep        = self->lstepbuf  + MAX_ORDER;
+    self->rstep        = self->rstepbuf  + MAX_ORDER;
+    self->lout         = self->loutbuf   + MAX_ORDER;
+    self->rout         = self->routbuf   + MAX_ORDER;
 
-  memset (self->B, 0, sizeof(self->B));
+    memset (self->B, 0, sizeof(self->B));
 
-  self->title_peak = self->album_peak = 0.0;
+    self->title_peak = self->album_peak = 0.0;
 
-  return 0;
+    return 0;
 }
 
-PyObject* ReplayGain_update(replaygain_ReplayGain *self, PyObject *args) {
-  PyObject *framelist_obj = NULL;
-  PyObject *channels_obj = NULL;
-  PyObject *channel_l_obj = NULL;
-  PyObject *channel_r_obj = NULL;
-  PyObject *framelist_type_obj = NULL;
-  pcm_FrameList *channel_l;
-  pcm_FrameList *channel_r;
-  long channel_count;
-  double *channel_l_buffer = NULL;
-  double *channel_r_buffer = NULL;
-  fa_size_t sample;
-  double peak;
-  int32_t peak_shift;
+PyObject*
+ReplayGain_update(replaygain_ReplayGain *self, PyObject *args)
+{
+    PyObject *framelist_obj = NULL;
+    PyObject *channels_obj = NULL;
+    PyObject *channel_l_obj = NULL;
+    PyObject *channel_r_obj = NULL;
+    PyObject *framelist_type_obj = NULL;
+    pcm_FrameList *channel_l;
+    pcm_FrameList *channel_r;
+    long channel_count;
+    double *channel_l_buffer = NULL;
+    double *channel_r_buffer = NULL;
+    fa_size_t sample;
+    double peak;
+    int32_t peak_shift;
 
-  /*receive a (presumably) FrameList from our arguments*/
-  if (!PyArg_ParseTuple(args,"O",&framelist_obj))
-    return NULL;
+    /*receive a (presumably) FrameList from our arguments*/
+    if (!PyArg_ParseTuple(args,"O",&framelist_obj))
+        return NULL;
 
-  /*get framelist.channels attrib and convert it to an integer*/
-  if ((channels_obj = PyObject_GetAttrString(framelist_obj,"channels")) == NULL)
-    goto error;
-  if (((channel_count = PyInt_AsLong(channels_obj)) == -1) && PyErr_Occurred())
-    goto error;
+    /*get framelist.channels attrib and convert it to an integer*/
+    if ((channels_obj = PyObject_GetAttrString(framelist_obj,"channels")) == NULL)
+        goto error;
+    if (((channel_count = PyInt_AsLong(channels_obj)) == -1) && PyErr_Occurred())
+        goto error;
 
-  /*call framelist.channel(0) and framelist.channel(1)*/
-  switch (channel_count) {
-  case 1:
-     if ((channel_l_obj = PyObject_CallMethod(framelist_obj,"channel","(i)",0)) == NULL)
-      goto error;
-     if ((channel_r_obj = PyObject_CallMethod(framelist_obj,"channel","(i)",0)) == NULL)
-       goto error;
-     break;
-  case 2:
-    if ((channel_l_obj = PyObject_CallMethod(framelist_obj,"channel","(i)",0)) == NULL)
-      goto error;
-    if ((channel_r_obj = PyObject_CallMethod(framelist_obj,"channel","(i)",1)) == NULL)
-      goto error;
-    break;
-  default:
-    PyErr_SetString(PyExc_ValueError,"channel count must be 1 or 2");
-    goto error;
-  }
-
-  /*ensure channel_l_obj and channel_r_obj are FrameLists*/
-  if ((framelist_type_obj = PyObject_GetAttrString(self->pcm_module,"FrameList")) == NULL)
-    goto error;
-  if (channel_l_obj->ob_type != (PyTypeObject*)framelist_type_obj) {
-    PyErr_SetString(PyExc_TypeError,"channel 0 must be a FrameList");
-    goto error;
-  }
-  if (channel_r_obj->ob_type != (PyTypeObject*)framelist_type_obj) {
-    PyErr_SetString(PyExc_TypeError,"channel 1 must be a FrameList");
-    goto error;
-  }
-
-  channel_l = (pcm_FrameList*)channel_l_obj;
-  channel_r = (pcm_FrameList*)channel_r_obj;
-
-  /*convert channel_l and channel_r to doubles,
-    but *not* doubles between -1.0 and 1.0*/
-  channel_l_buffer = malloc(channel_l->frames * sizeof(double));
-  channel_r_buffer = malloc(channel_r->frames * sizeof(double));
-
-  peak_shift = 1 << (channel_l->bits_per_sample - 1);
-
-  switch (channel_l->bits_per_sample) {
-  case 8:
-    for (sample = 0; sample < channel_l->frames; sample++) {
-      channel_l_buffer[sample] = (double)(channel_l->samples[sample] << 8);
-      channel_r_buffer[sample] = (double)(channel_r->samples[sample] << 8);
-
-      peak = (double)(MAX(abs(channel_l->samples[sample]),
-			  abs(channel_r->samples[sample]))) / peak_shift;
-      self->title_peak = MAX(self->title_peak,peak);
-      self->album_peak = MAX(self->album_peak,peak);
+    /*call framelist.channel(0) and framelist.channel(1)*/
+    switch (channel_count) {
+    case 1:
+        if ((channel_l_obj = PyObject_CallMethod(framelist_obj,"channel","(i)",0)) == NULL)
+            goto error;
+        if ((channel_r_obj = PyObject_CallMethod(framelist_obj,"channel","(i)",0)) == NULL)
+            goto error;
+        break;
+    case 2:
+        if ((channel_l_obj = PyObject_CallMethod(framelist_obj,"channel","(i)",0)) == NULL)
+            goto error;
+        if ((channel_r_obj = PyObject_CallMethod(framelist_obj,"channel","(i)",1)) == NULL)
+            goto error;
+        break;
+    default:
+        PyErr_SetString(PyExc_ValueError,"channel count must be 1 or 2");
+        goto error;
     }
-    break;
-  case 16:
-    for (sample = 0; sample < channel_l->frames; sample++) {
-      channel_l_buffer[sample] = (double)(channel_l->samples[sample]);
-      channel_r_buffer[sample] = (double)(channel_r->samples[sample]);
 
-      peak = (double)(MAX(abs(channel_l->samples[sample]),
-			  abs(channel_r->samples[sample]))) / peak_shift;
-      self->title_peak = MAX(self->title_peak,peak);
-      self->album_peak = MAX(self->album_peak,peak);
+    /*ensure channel_l_obj and channel_r_obj are FrameLists*/
+    if ((framelist_type_obj = PyObject_GetAttrString(self->pcm_module,"FrameList")) == NULL)
+        goto error;
+    if (channel_l_obj->ob_type != (PyTypeObject*)framelist_type_obj) {
+        PyErr_SetString(PyExc_TypeError,"channel 0 must be a FrameList");
+        goto error;
     }
-    break;
-  case 24:
-    for (sample = 0; sample < channel_l->frames; sample++) {
-      channel_l_buffer[sample] = (double)(channel_l->samples[sample] >> 8);
-      channel_r_buffer[sample] = (double)(channel_r->samples[sample] >> 8);
-
-      peak = (double)(MAX(abs(channel_l->samples[sample]),
-			  abs(channel_r->samples[sample]))) / peak_shift;
-      self->title_peak = MAX(self->title_peak,peak);
-      self->album_peak = MAX(self->album_peak,peak);
+    if (channel_r_obj->ob_type != (PyTypeObject*)framelist_type_obj) {
+        PyErr_SetString(PyExc_TypeError,"channel 1 must be a FrameList");
+        goto error;
     }
-    break;
-  default:
-    PyErr_SetString(PyExc_ValueError,"unsupported bits per sample");
-    goto error;
-  }
 
-  /*perform actual gain analysis on channels*/
-  if (ReplayGain_analyze_samples(self,
-				 channel_l_buffer,
-				 channel_r_buffer,
-				 channel_l->frames,
-				 2) == GAIN_ANALYSIS_ERROR) {
-    PyErr_SetString(PyExc_ValueError,"ReplayGain calculation error");
-    goto error;
-  }
+    channel_l = (pcm_FrameList*)channel_l_obj;
+    channel_r = (pcm_FrameList*)channel_r_obj;
 
-  /*clean up Python objects and return None*/
-  Py_XDECREF(channels_obj);
-  Py_XDECREF(channel_l_obj);
-  Py_XDECREF(channel_r_obj);
-  Py_XDECREF(framelist_type_obj);
-  if (channel_l_buffer != NULL)
-    free(channel_l_buffer);
-  if (channel_r_buffer != NULL)
-    free(channel_r_buffer);
-  Py_INCREF(Py_None);
-  return Py_None;
+    /*convert channel_l and channel_r to doubles,
+      but *not* doubles between -1.0 and 1.0*/
+    channel_l_buffer = malloc(channel_l->frames * sizeof(double));
+    channel_r_buffer = malloc(channel_r->frames * sizeof(double));
+
+    peak_shift = 1 << (channel_l->bits_per_sample - 1);
+
+    switch (channel_l->bits_per_sample) {
+    case 8:
+        for (sample = 0; sample < channel_l->frames; sample++) {
+            channel_l_buffer[sample] = (double)(channel_l->samples[sample] << 8);
+            channel_r_buffer[sample] = (double)(channel_r->samples[sample] << 8);
+
+            peak = (double)(MAX(abs(channel_l->samples[sample]),
+                                abs(channel_r->samples[sample]))) / peak_shift;
+            self->title_peak = MAX(self->title_peak,peak);
+            self->album_peak = MAX(self->album_peak,peak);
+        }
+        break;
+    case 16:
+        for (sample = 0; sample < channel_l->frames; sample++) {
+            channel_l_buffer[sample] = (double)(channel_l->samples[sample]);
+            channel_r_buffer[sample] = (double)(channel_r->samples[sample]);
+
+            peak = (double)(MAX(abs(channel_l->samples[sample]),
+                                abs(channel_r->samples[sample]))) / peak_shift;
+            self->title_peak = MAX(self->title_peak,peak);
+            self->album_peak = MAX(self->album_peak,peak);
+        }
+        break;
+    case 24:
+        for (sample = 0; sample < channel_l->frames; sample++) {
+            channel_l_buffer[sample] = (double)(channel_l->samples[sample] >> 8);
+            channel_r_buffer[sample] = (double)(channel_r->samples[sample] >> 8);
+
+            peak = (double)(MAX(abs(channel_l->samples[sample]),
+                                abs(channel_r->samples[sample]))) / peak_shift;
+            self->title_peak = MAX(self->title_peak,peak);
+            self->album_peak = MAX(self->album_peak,peak);
+        }
+        break;
+    default:
+        PyErr_SetString(PyExc_ValueError,"unsupported bits per sample");
+        goto error;
+    }
+
+    /*perform actual gain analysis on channels*/
+    if (ReplayGain_analyze_samples(self,
+                                   channel_l_buffer,
+                                   channel_r_buffer,
+                                   channel_l->frames,
+                                   2) == GAIN_ANALYSIS_ERROR) {
+        PyErr_SetString(PyExc_ValueError,"ReplayGain calculation error");
+        goto error;
+    }
+
+    /*clean up Python objects and return None*/
+    Py_XDECREF(channels_obj);
+    Py_XDECREF(channel_l_obj);
+    Py_XDECREF(channel_r_obj);
+    Py_XDECREF(framelist_type_obj);
+    if (channel_l_buffer != NULL)
+        free(channel_l_buffer);
+    if (channel_r_buffer != NULL)
+        free(channel_r_buffer);
+    Py_INCREF(Py_None);
+    return Py_None;
  error:
-  Py_XDECREF(channels_obj);
-  Py_XDECREF(channel_l_obj);
-  Py_XDECREF(channel_r_obj);
-  Py_XDECREF(framelist_type_obj);
-  if (channel_l_buffer != NULL)
-    free(channel_l_buffer);
-  if (channel_r_buffer != NULL)
-    free(channel_r_buffer);
-  return NULL;
-}
-
-PyObject* ReplayGain_title_gain(replaygain_ReplayGain *self) {
-  double gain_value = ReplayGain_get_title_gain(self);
-  double peak_value = self->title_peak;
-  if (gain_value != GAIN_NOT_ENOUGH_SAMPLES) {
-    self->title_peak = 0.0;
-    return Py_BuildValue("(d,d)",gain_value,peak_value);
-  } else {
-    PyErr_SetString(PyExc_ValueError,"Not enough samples to perform calculation");
+    Py_XDECREF(channels_obj);
+    Py_XDECREF(channel_l_obj);
+    Py_XDECREF(channel_r_obj);
+    Py_XDECREF(framelist_type_obj);
+    if (channel_l_buffer != NULL)
+        free(channel_l_buffer);
+    if (channel_r_buffer != NULL)
+        free(channel_r_buffer);
     return NULL;
-  }
 }
 
-PyObject* ReplayGain_album_gain(replaygain_ReplayGain *self) {
-  double gain_value = ReplayGain_get_album_gain(self);
-  if (gain_value != GAIN_NOT_ENOUGH_SAMPLES) {
-    return Py_BuildValue("(d,d)",gain_value,self->album_peak);
-  } else {
-    PyErr_SetString(PyExc_ValueError,"Not enough samples to perform calculation");
-    return NULL;
-  }
+PyObject*
+ReplayGain_title_gain(replaygain_ReplayGain *self)
+{
+    double gain_value = ReplayGain_get_title_gain(self);
+    double peak_value = self->title_peak;
+    if (gain_value != GAIN_NOT_ENOUGH_SAMPLES) {
+        self->title_peak = 0.0;
+        return Py_BuildValue("(d,d)",gain_value,peak_value);
+    } else {
+        PyErr_SetString(PyExc_ValueError,"Not enough samples to perform calculation");
+        return NULL;
+    }
+}
+
+PyObject*
+ReplayGain_album_gain(replaygain_ReplayGain *self)
+{
+    double gain_value = ReplayGain_get_album_gain(self);
+    if (gain_value != GAIN_NOT_ENOUGH_SAMPLES) {
+        return Py_BuildValue("(d,d)",gain_value,self->album_peak);
+    } else {
+        PyErr_SetString(PyExc_ValueError,"Not enough samples to perform calculation");
+        return NULL;
+    }
 }
 
 
-PyMODINIT_FUNC initreplaygain(void) {
-  PyObject* m;
+PyMODINIT_FUNC
+initreplaygain(void)
+{
+    PyObject* m;
 
-  replaygain_ReplayGainType.tp_new = PyType_GenericNew;
-  if (PyType_Ready(&replaygain_ReplayGainType) < 0)
-    return;
+    replaygain_ReplayGainType.tp_new = PyType_GenericNew;
+    if (PyType_Ready(&replaygain_ReplayGainType) < 0)
+        return;
 
-  m = Py_InitModule3("replaygain", module_methods,
-		     "A ReplayGain calculation module.");
+    m = Py_InitModule3("replaygain", module_methods,
+                       "A ReplayGain calculation module.");
 
-  Py_INCREF(&replaygain_ReplayGainType);
-  PyModule_AddObject(m, "ReplayGain",
-		     (PyObject *)&replaygain_ReplayGainType);
+    Py_INCREF(&replaygain_ReplayGainType);
+    PyModule_AddObject(m, "ReplayGain",
+                       (PyObject *)&replaygain_ReplayGainType);
 }
 
 
@@ -368,58 +382,67 @@ static const double ABButter[9][2*BUTTER_ORDER + 1] = {
 /* If your compiler complains that "'operation on 'output' may be undefined", you can */
 /* either ignore the warnings or uncomment the three "y" lines (and comment out the indicated line) */
 
-static void filterYule (const double* input, double* output, size_t nSamples, const double* kernel) {
+static void
+filterYule (const double* input, double* output, size_t nSamples,
+            const double* kernel)
+{
     while (nSamples--) {
-       *output =  1e-10  /* 1e-10 is a hack to avoid slowdown because of denormals */
-         + input [0]  * kernel[0]
-         - output[-1] * kernel[1]
-         + input [-1] * kernel[2]
-         - output[-2] * kernel[3]
-         + input [-2] * kernel[4]
-         - output[-3] * kernel[5]
-         + input [-3] * kernel[6]
-         - output[-4] * kernel[7]
-         + input [-4] * kernel[8]
-         - output[-5] * kernel[9]
-         + input [-5] * kernel[10]
-         - output[-6] * kernel[11]
-         + input [-6] * kernel[12]
-         - output[-7] * kernel[13]
-         + input [-7] * kernel[14]
-         - output[-8] * kernel[15]
-         + input [-8] * kernel[16]
-         - output[-9] * kernel[17]
-         + input [-9] * kernel[18]
-         - output[-10]* kernel[19]
-         + input [-10]* kernel[20];
+        *output =  1e-10  /* 1e-10 is a hack to avoid slowdown because of denormals */
+            + input [0]  * kernel[0]
+            - output[-1] * kernel[1]
+            + input [-1] * kernel[2]
+            - output[-2] * kernel[3]
+            + input [-2] * kernel[4]
+            - output[-3] * kernel[5]
+            + input [-3] * kernel[6]
+            - output[-4] * kernel[7]
+            + input [-4] * kernel[8]
+            - output[-5] * kernel[9]
+            + input [-5] * kernel[10]
+            - output[-6] * kernel[11]
+            + input [-6] * kernel[12]
+            - output[-7] * kernel[13]
+            + input [-7] * kernel[14]
+            - output[-8] * kernel[15]
+            + input [-8] * kernel[16]
+            - output[-9] * kernel[17]
+            + input [-9] * kernel[18]
+            - output[-10]* kernel[19]
+            + input [-10]* kernel[20];
         ++output;
         ++input;
     }
 }
 
-static void filterButter (const double* input, double* output, size_t nSamples, const double* kernel) {
+static void
+filterButter (const double* input, double* output, size_t nSamples, const double* kernel)
+{
     while (nSamples--) {
         *output =
-           input [0]  * kernel[0]
-         - output[-1] * kernel[1]
-         + input [-1] * kernel[2]
-         - output[-2] * kernel[3]
-         + input [-2] * kernel[4];
+            input [0]  * kernel[0]
+            - output[-1] * kernel[1]
+            + input [-1] * kernel[2]
+            - output[-2] * kernel[3]
+            + input [-2] * kernel[4];
         ++output;
         ++input;
     }
 }
 
-static inline double fsqr(const double d) {
-  return d * d;
+static inline double
+fsqr(const double d)
+{
+    return d * d;
 }
 
 /* returns GAIN_ANALYSIS_OK if successful, GAIN_ANALYSIS_ERROR if not */
-gain_calc_status ReplayGain_analyze_samples(replaygain_ReplayGain* self,
-					    const double* left_samples,
-					    const double* right_samples,
-					    size_t num_samples,
-					    int num_channels) {
+gain_calc_status
+ReplayGain_analyze_samples(replaygain_ReplayGain* self,
+                           const double* left_samples,
+                           const double* right_samples,
+                           size_t num_samples,
+                           int num_channels)
+{
     const double*  curleft;
     const double*  curright;
     long            batchsamples;
@@ -428,7 +451,7 @@ gain_calc_status ReplayGain_analyze_samples(replaygain_ReplayGain* self,
     int             i;
 
     if ( num_samples == 0 )
-      return GAIN_ANALYSIS_OK;
+        return GAIN_ANALYSIS_OK;
 
     cursamplepos = 0;
     batchsamples = num_samples;
@@ -472,46 +495,46 @@ gain_calc_status ReplayGain_analyze_samples(replaygain_ReplayGain* self,
 
         i = cursamples % 16;
         while (i--)
-        {   self->lsum += fsqr(*curleft++);
-            self->rsum += fsqr(*curright++);
-        }
+            {   self->lsum += fsqr(*curleft++);
+                self->rsum += fsqr(*curright++);
+            }
         i = cursamples / 16;
         while (i--)
-        {   self->lsum += fsqr(curleft[0])
-                  + fsqr(curleft[1])
-                  + fsqr(curleft[2])
-                  + fsqr(curleft[3])
-                  + fsqr(curleft[4])
-                  + fsqr(curleft[5])
-                  + fsqr(curleft[6])
-                  + fsqr(curleft[7])
-                  + fsqr(curleft[8])
-                  + fsqr(curleft[9])
-                  + fsqr(curleft[10])
-                  + fsqr(curleft[11])
-                  + fsqr(curleft[12])
-                  + fsqr(curleft[13])
-                  + fsqr(curleft[14])
-                  + fsqr(curleft[15]);
-            curleft += 16;
-            self->rsum += fsqr(curright[0])
-                  + fsqr(curright[1])
-                  + fsqr(curright[2])
-                  + fsqr(curright[3])
-                  + fsqr(curright[4])
-                  + fsqr(curright[5])
-                  + fsqr(curright[6])
-                  + fsqr(curright[7])
-                  + fsqr(curright[8])
-                  + fsqr(curright[9])
-                  + fsqr(curright[10])
-                  + fsqr(curright[11])
-                  + fsqr(curright[12])
-                  + fsqr(curright[13])
-                  + fsqr(curright[14])
-                  + fsqr(curright[15]);
-            curright += 16;
-        }
+            {   self->lsum += fsqr(curleft[0])
+                    + fsqr(curleft[1])
+                    + fsqr(curleft[2])
+                    + fsqr(curleft[3])
+                    + fsqr(curleft[4])
+                    + fsqr(curleft[5])
+                    + fsqr(curleft[6])
+                    + fsqr(curleft[7])
+                    + fsqr(curleft[8])
+                    + fsqr(curleft[9])
+                    + fsqr(curleft[10])
+                    + fsqr(curleft[11])
+                    + fsqr(curleft[12])
+                    + fsqr(curleft[13])
+                    + fsqr(curleft[14])
+                    + fsqr(curleft[15]);
+                curleft += 16;
+                self->rsum += fsqr(curright[0])
+                    + fsqr(curright[1])
+                    + fsqr(curright[2])
+                    + fsqr(curright[3])
+                    + fsqr(curright[4])
+                    + fsqr(curright[5])
+                    + fsqr(curright[6])
+                    + fsqr(curright[7])
+                    + fsqr(curright[8])
+                    + fsqr(curright[9])
+                    + fsqr(curright[10])
+                    + fsqr(curright[11])
+                    + fsqr(curright[12])
+                    + fsqr(curright[13])
+                    + fsqr(curright[14])
+                    + fsqr(curright[15]);
+                curright += 16;
+            }
 
         batchsamples -= cursamples;
         cursamplepos += cursamples;
@@ -547,7 +570,9 @@ gain_calc_status ReplayGain_analyze_samples(replaygain_ReplayGain* self,
 }
 
 
-static double analyzeResult(uint32_t* Array, size_t len) {
+static double
+analyzeResult(uint32_t* Array, size_t len)
+{
     uint32_t  elems;
     int32_t   upper;
     size_t    i;
@@ -568,7 +593,9 @@ static double analyzeResult(uint32_t* Array, size_t len) {
 }
 
 
-double ReplayGain_get_title_gain(replaygain_ReplayGain *self) {
+double
+ReplayGain_get_title_gain(replaygain_ReplayGain *self)
+{
     double  retval;
     int    i;
 
@@ -581,11 +608,11 @@ double ReplayGain_get_title_gain(replaygain_ReplayGain *self) {
 
     for ( i = 0; i < MAX_ORDER; i++ )
         self->linprebuf[i] =
-	  self->lstepbuf[i] =
-	  self->loutbuf[i] =
-	  self->rinprebuf[i] =
-	  self->rstepbuf[i] =
-	  self->routbuf[i] = 0.f;
+            self->lstepbuf[i] =
+            self->loutbuf[i] =
+            self->rinprebuf[i] =
+            self->rstepbuf[i] =
+            self->routbuf[i] = 0.f;
 
     self->totsamp = 0;
     self->lsum    = self->rsum = 0.;
@@ -593,7 +620,9 @@ double ReplayGain_get_title_gain(replaygain_ReplayGain *self) {
 }
 
 
-double ReplayGain_get_album_gain(replaygain_ReplayGain *self) {
-  return analyzeResult(self->B, sizeof(self->B)/sizeof(*(self->B)) );
+double
+ReplayGain_get_album_gain(replaygain_ReplayGain *self)
+{
+    return analyzeResult(self->B, sizeof(self->B)/sizeof(*(self->B)) );
 }
 
