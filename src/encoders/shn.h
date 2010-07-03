@@ -27,7 +27,7 @@
  You should have received a copy of the GNU General Public License
  along with this program; if not, write to the Free Software
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
- *******************************************************/
+*******************************************************/
 
 #define ENERGY_SIZE 3
 #define VERBATIM_CHUNK_SIZE 5
@@ -43,55 +43,71 @@ enum {FN_DIFF0     = 0,
       FN_ZERO      = 8,
       FN_VERBATIM  = 9};
 
-typedef enum {OK,ERROR} status;
+typedef enum {OK, ERROR} status;
 
-void ShortenEncoder_put_uvar(Bitstream* bs, int size, int value);
-void ShortenEncoder_put_var(Bitstream* bs, int size, int value);
-void ShortenEncoder_put_long(Bitstream* bs, int value);
+void
+ShortenEncoder_put_uvar(Bitstream* bs, int size, int value);
 
-int ShortenEncoder_encode_stream(Bitstream* bs,
-		      struct pcm_reader* reader,
-		      int block_size,
-		      struct ia_array* wrapped_samples);
+void
+ShortenEncoder_put_var(Bitstream* bs, int size, int value);
 
-int ShortenEncoder_encode_channel(Bitstream* bs,
-		       struct i_array* samples,
-		       struct i_array* wrapped_samples);
+void
+ShortenEncoder_put_long(Bitstream* bs, int value);
 
-int ShortenEncoder_compute_best_diff(struct i_array* buffer, int wrap);
+int
+ShortenEncoder_encode_stream(Bitstream* bs,
+                             struct pcm_reader* reader,
+                             int block_size,
+                             struct ia_array* wrapped_samples);
 
-int ShortenEncoder_encode_zero(struct i_array* buffer,
-			       struct i_array* wrapped_samples);
+int
+ShortenEncoder_encode_channel(Bitstream* bs,
+                              struct i_array* samples,
+                              struct i_array* wrapped_samples);
 
-int ShortenEncoder_encode_diff(Bitstream* bs,
-			       struct i_array* buffer,
-			       struct i_array* wrapped_samples,
-			       ia_data_t (*calculator)(struct i_array* samples,
+int
+ShortenEncoder_compute_best_diff(struct i_array* buffer, int wrap);
+
+int
+ShortenEncoder_encode_zero(struct i_array* buffer,
+                           struct i_array* wrapped_samples);
+
+int
+ShortenEncoder_encode_diff(Bitstream* bs,
+                           struct i_array* buffer,
+                           struct i_array* wrapped_samples,
+                           ia_data_t (*calculator)(struct i_array* samples,
 						       ia_size_t i));
 
-ia_data_t ShortenEncoder_encode_diff1(struct i_array* samples, ia_size_t i);
+ia_data_t
+ShortenEncoder_encode_diff1(struct i_array* samples, ia_size_t i);
 
-ia_data_t ShortenEncoder_encode_diff2(struct i_array* samples, ia_size_t i);
+ia_data_t
+ShortenEncoder_encode_diff2(struct i_array* samples, ia_size_t i);
 
-ia_data_t ShortenEncoder_encode_diff3(struct i_array* samples, ia_size_t i);
+ia_data_t
+ShortenEncoder_encode_diff3(struct i_array* samples, ia_size_t i);
 
-int ShortenEncoder_encode_residuals(Bitstream* bs,
-				    struct i_array* residuals);
+int
+ShortenEncoder_encode_residuals(Bitstream* bs, struct i_array* residuals);
 
-int ShortenEncoder_compute_best_energysize(struct i_array *resuduals);
+int
+ShortenEncoder_compute_best_energysize(struct i_array *resuduals);
 
-void ShortenEncoder_byte_counter(unsigned int byte, void* counter);
+void
+ShortenEncoder_byte_counter(unsigned int byte, void* counter);
 
-static inline uint64_t abs_sum(struct i_array *a) {
-  register uint64_t sum = 0;
-  ia_size_t a_size = a->size;
-  ia_data_t *a_data = a->data;
-  ia_size_t i;
+static inline uint64_t
+abs_sum(struct i_array *a) {
+    register uint64_t sum = 0;
+    ia_size_t a_size = a->size;
+    ia_data_t *a_data = a->data;
+    ia_size_t i;
 
-  for (i = 0; i < a_size; i++)
-    sum += abs(a_data[i]);
+    for (i = 0; i < a_size; i++)
+        sum += abs(a_data[i]);
 
-  return sum;
+    return sum;
 }
 
 #endif

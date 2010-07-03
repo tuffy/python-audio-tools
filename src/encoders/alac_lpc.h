@@ -18,7 +18,7 @@
  You should have received a copy of the GNU General Public License
  along with this program; if not, write to the Free Software
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
- *******************************************************/
+*******************************************************/
 
 #include "alac.h"
 #include <math.h>
@@ -29,43 +29,48 @@
 
 /*given a set of samples and encoding options,
   returns as a set of LPC coefficients and a shift-needed value*/
-void ALACEncoder_compute_best_lpc_coeffs(struct i_array *coeffs,
-					 int *shift_needed,
+void
+ALACEncoder_compute_best_lpc_coeffs(struct i_array *coeffs,
+                                    int *shift_needed,
 
-					 int bits_per_sample,
-					 struct alac_encoding_options *options,
-					 struct i_array *samples);
+                                    int bits_per_sample,
+                                    struct alac_encoding_options *options,
+                                    struct i_array *samples);
 
-int ALACEncoder_compute_best_order(struct f_array *error_values,
-				   int total_samples,
-				   int overhead_bits_per_order);
+int
+ALACEncoder_compute_best_order(struct f_array *error_values,
+                               int total_samples,
+                               int overhead_bits_per_order);
 
 
-void ALACEncoder_rectangular_window(struct f_array *window,
-				    int L);
+void
+ALACEncoder_rectangular_window(struct f_array *window, int L);
 
-void ALACEncoder_hann_window(struct f_array *window,
-			     int L);
+void
+ALACEncoder_hann_window(struct f_array *window, int L);
 
-void ALACEncoder_tukey_window(struct f_array *window,
-			      int L,
-			      double p);
+void
+ALACEncoder_tukey_window(struct f_array *window, int L, double p);
 
-void ALACEncoder_compute_autocorrelation(struct f_array *values,
-					 struct f_array *windowed_signal,
-					 int max_lpc_order);
+void
+ALACEncoder_compute_autocorrelation(struct f_array *values,
+                                    struct f_array *windowed_signal,
+                                    int max_lpc_order);
 
-void ALACEncoder_compute_lp_coefficients(struct fa_array *lp_coefficients,
-					 struct f_array *error_values,
-					 struct f_array *autocorrelation_values,
-					 int max_lpc_order);
+void
+ALACEncoder_compute_lp_coefficients(struct fa_array *lp_coefficients,
+                                    struct f_array *error_values,
+                                    struct f_array *autocorrelation_values,
+                                    int max_lpc_order);
 
-double ALACEncoder_compute_expected_bits_per_residual_sample(double lpc_error,
-							     double error_scale);
+double
+ALACEncoder_compute_expected_bits_per_residual_sample(double lpc_error,
+                                                      double error_scale);
 
-void ALACEncoder_quantize_coefficients(struct f_array *lp_coefficients,
-				       int precision,
-				       struct i_array *qlp_coefficients,
-				       int *shift_needed);
+void
+ALACEncoder_quantize_coefficients(struct f_array *lp_coefficients,
+                                  int precision,
+                                  struct i_array *qlp_coefficients,
+                                  int *shift_needed);
 
 #endif

@@ -1914,7 +1914,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** TODO Update tests
    - [ ] test.py
    - [ ] test_streams.py
-* TODO Update C code to support PEP 7
+* DONE Update C code to support PEP 7
   - [X] array.c
   - [X] array.h
   - [X] bitstream_r.c
@@ -1932,11 +1932,11 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   - [X] pcm.h
   - [X] pcmreader.c
   - [X] pcmreader.h
-  - [ ] replaygain.c
+  - [X] replaygain.c
   - [X] replaygain.h
   - [X] resample.c
   - [X] resample.h
-  - [X] decoders/alac.c
+  - [X] decoders/alaac.c
   - [X] decoders/alac.h
   - [X] decoders/flac.c
   - [X] decoders/flac_crc.c
@@ -1944,18 +1944,16 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   - [X] decoders/flac.h
   - [X] decoders/shn.c
   - [X] decoders/shn.h
-  - [ ] encoders/alac.c
-  - [ ] encoders/alac.h
-  - [ ] encoders/alac_lpc.c
-  - [ ] encoders/alac_lpc.h
-  - [ ] encoders/flac.c
-  - [ ] encoders/flac_crc.c
-  - [ ] encoders/flac_crc.h
-  - [ ] encoders/flac.h
-  - [ ] encoders/flac_lpc.c
-  - [ ] encoders/flac_lpc.h
-  - [ ] encoders/shn.c
-  - [ ] encoders/shn.h
+  - [X] encoders/alac.c
+  - [X] encoders/alac.h
+  - [X] encoders/alac_lpc.c
+  - [X] encoders/alac_lpc.h
+  - [X] encoders/flac.c
+  - [X] encoders/flac.h
+  - [X] encoders/flac_lpc.c
+  - [X] encoders/flac_lpc.h
+  - [X] encoders/shn.c
+  - [X] encoders/shn.h
 * TODO Support disc metadata submission
   If a disc is not found on FreeDB or MusicBrainz,
   there should be some mechanism to submit user-defined data
