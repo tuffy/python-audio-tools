@@ -490,7 +490,7 @@ Now, let's run through another example in which the Rice parameter is 4:
 
 \pagebreak
 
-\subsection{Channels}
+\subsection{Channel assignment}
 \label{flac_channels}
 Since most audio has more than one channel, it is important to
 understand how FLAC handles putting it back together.
@@ -521,25 +521,31 @@ Adding that 1 additional bit doubles our range of values
 and that's just enough to cover any possible difference between
 two samples.
 
-\begin{figure}[h]
-{\relsize{-2}
-\begin{tabular}{|c||l|l||>{$}l<{$}|>{$}l<{$}|}
-\hline
-Assignment & Channel 0 & Channel 1 & \text{Left Channel} & \text{Right Channel} \\
-\hline
-\texttt{1000} & left & difference & \text{left} & \text{left} - \text{difference} \\
-\texttt{1001} & difference & right & \text{right} + \text{difference} & \text{right} \\
-\texttt{1010} & mid & side & (((\text{mid} \ll 1) | (\text{side} \& 1)) + \text{side}) \gg 1 & (((\text{mid} \ll 1) | (\text{side} \& 1)) - \text{side}) \gg 1 \\
-\hline
-\end{tabular}
-}
-\end{figure}
+Performing the actual channel decorrelation is as follows:
+\begin{align*}
+\intertext{Left-Difference (assignment \texttt{0x8}):}
+\text{Left}_i &= \text{Subframe}_{0i} \\
+\text{Right}_i &= \text{Subframe}_{0i} - \text{Subframe}_{1i} \\
+\intertext{Difference-Right (assignment \texttt{0x9}):}
+\text{Left}_i &= \text{Subframe}_{0i} + \text{Subframe}_{1i} \\
+\text{Right}_i &= \text{Subframe}_{1i} \\
+\intertext{Mid-Side (assignment \texttt{0xA}):}
+\text{Left}_i &= \lfloor (((\text{Subframe}_{0i} \times 2) + (\text{Subframe}_{1i} \bmod{2})) + \text{Subframe}_{1i}) \div 2 \rfloor \\
+\text{Right}_i &= \lfloor (((\text{Subframe}_{0i} \times 2) + (\text{Subframe}_{1i} \bmod{2})) - \text{Subframe}_{1i}) \div 2 \rfloor
+\end{align*}
 
-The mid channel case is another unusual exception.
-We're prepending the mid channel with bit 0 from the
-side channel, performing the addition/subtraction and then
-discarding that bit before assigning the results to the left and
-right channels.
+\clearpage
+
+Let's take an example of two Mid-Side encoded samples: 1533 and 3039
+for $\text{Subframe}_0$ and $\text{Subframe}_1$, respectively:
+\begin{align*}
+\text{Left} &= \lfloor (((1533 \times 2) + (3039 \bmod{2})) + 3039) \div 2 \rfloor \\
+&= \lfloor ((3066 + 1) + 3039) \div 2 \rfloor \\
+&= \lfloor 6106 \div 2 \rfloor = \textbf{3053} \\
+\text{Right} &= \lfloor (((1533 \times 2) + (3039 \bmod{2})) - 3039) \div 2 \rfloor \\
+&= \lfloor ((3066 + 1) - 3039) \div 2 \rfloor \\
+&= \lfloor 28 \div 2 \rfloor = \textbf{14}
+\end{align*}
 
 \subsection{Wasted Bits per Sample}
 Though rare in practice, FLAC subframes support `wasted bits per sample'.
@@ -552,6 +558,8 @@ warm-up samples and then all through the rest of the subframe
 calculation.
 That wasted zero bit is then prepended to each sample prior to returning
 the subframe.
+
+\clearpage
 
 \section{FLAC Encoding}
 For the purposes of discussing FLAC encoding,
