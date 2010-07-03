@@ -20,7 +20,7 @@
  You should have received a copy of the GNU General Public License
  along with this program; if not, write to the Free Software
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
- *******************************************************/
+*******************************************************/
 
 #define ENERGY_SIZE 3
 #define VERBATIM_CHUNK_SIZE 5
@@ -42,127 +42,129 @@ enum {FN_DIFF0     = 0,
       FN_VERBATIM  = 9};
 
 typedef struct {
-  PyObject_HEAD
+    PyObject_HEAD
 
-  char* filename;
-  Bitstream* bitstream;
+    char* filename;
+    Bitstream* bitstream;
 
-  unsigned int version;
-  unsigned int file_type;
-  unsigned int channels;
-  unsigned int block_size;
-  unsigned int maxnlpc;
-  unsigned int nmean;
-  unsigned int nskip;
-  unsigned int wrap;
-  unsigned int bitshift;
+    unsigned int version;
+    unsigned int file_type;
+    unsigned int channels;
+    unsigned int block_size;
+    unsigned int maxnlpc;
+    unsigned int nmean;
+    unsigned int nskip;
+    unsigned int wrap;
+    unsigned int bitshift;
 
-  int read_started;
-  int read_finished;
+    int read_started;
+    int read_finished;
 
-  int bits_per_sample;
-  int sample_rate;
-  int channel_mask;
+    int bits_per_sample;
+    int sample_rate;
+    int channel_mask;
 
-  struct ia_array buffer;
-  struct ia_array offset;
+    struct ia_array buffer;
+    struct ia_array offset;
 } decoders_SHNDecoder;
 
 /*the SHNDecoder.read() method*/
-PyObject *SHNDecoder_read(decoders_SHNDecoder* self,
-			  PyObject *args);
+static PyObject*
+SHNDecoder_read(decoders_SHNDecoder* self, PyObject *args);
 
 /*the SHNDecoder.metadata() method*/
-static PyObject *SHNDecoder_metadata(decoders_SHNDecoder* self,
-				     PyObject *args);
+static PyObject*
+SHNDecoder_metadata(decoders_SHNDecoder* self, PyObject *args);
 
 /*the SHNDecoder.analyze_frame() method*/
-PyObject *SHNDecoder_analyze_frame(decoders_SHNDecoder* self,
-				   PyObject *args);
+static PyObject*
+SHNDecoder_analyze_frame(decoders_SHNDecoder* self, PyObject *args);
 
 /*the SHNDecoder.close() method*/
-PyObject *SHNDecoder_close(decoders_SHNDecoder* self,
-			    PyObject *args);
+static PyObject*
+SHNDecoder_close(decoders_SHNDecoder* self, PyObject *args);
 
 /*the SHNDecoder.__init__() method*/
-int SHNDecoder_init(decoders_SHNDecoder *self,
-		    PyObject *args, PyObject *kwds);
+int
+SHNDecoder_init(decoders_SHNDecoder *self, PyObject *args, PyObject *kwds);
 
 
 /*the SHNDecoder.version attribute getter*/
-static PyObject *SHNDecoder_version(decoders_SHNDecoder *self,
-				    void *closure);
+static PyObject*
+SHNDecoder_version(decoders_SHNDecoder *self, void *closure);
 
 /*the SHNDecoder.file_type attribute getter*/
-static PyObject *SHNDecoder_file_type(decoders_SHNDecoder *self,
-				      void *closure);
+static PyObject*
+SHNDecoder_file_type(decoders_SHNDecoder *self, void *closure);
 
 /*the SHNDecoder.channels attribute getter*/
-static PyObject *SHNDecoder_channels(decoders_SHNDecoder *self,
-				     void *closure);
+static PyObject*
+SHNDecoder_channels(decoders_SHNDecoder *self, void *closure);
 
 /*the SHNDecoder.bits_per_sample attribute getter*/
-static PyObject *SHNDecoder_bits_per_sample(decoders_SHNDecoder *self,
-					    void *closure);
+static PyObject*
+SHNDecoder_bits_per_sample(decoders_SHNDecoder *self, void *closure);
 
 /*the SHNDecoder.sample_rate attribute getter*/
-static PyObject *SHNDecoder_sample_rate(decoders_SHNDecoder *self,
-					void *closure);
+static PyObject*
+SHNDecoder_sample_rate(decoders_SHNDecoder *self, void *closure);
 
 /*the SHNDecoder.sample_rate attribute setter*/
-static int SHNDecoder_set_sample_rate(decoders_SHNDecoder *self,
-				      PyObject *value,
-				      void *closure);
+static int
+SHNDecoder_set_sample_rate(decoders_SHNDecoder *self,
+                           PyObject *value,
+                           void *closure);
 
 /*the SHNDecoder.channel_mask attribute getter*/
-static PyObject *SHNDecoder_channel_mask(decoders_SHNDecoder *self,
-					 void *closure);
+static PyObject*
+SHNDecoder_channel_mask(decoders_SHNDecoder *self, void *closure);
 
 /*the SHNDecoder.channel_mask attribute setter*/
-static int SHNDecoder_set_channel_mask(decoders_SHNDecoder *self,
-				       PyObject *value,
-				       void *closure);
+static int
+SHNDecoder_set_channel_mask(decoders_SHNDecoder *self,
+                            PyObject *value,
+                            void *closure);
 
 /*the SHNDecoder.block_size attribute getter*/
-static PyObject *SHNDecoder_block_size(decoders_SHNDecoder *self,
-				       void *closure);
+static PyObject*
+SHNDecoder_block_size(decoders_SHNDecoder *self, void *closure);
 
 PyGetSetDef SHNDecoder_getseters[] = {
-  {"version",
-   (getter)SHNDecoder_version, NULL, "version", NULL},
-  {"file_type",
-   (getter)SHNDecoder_file_type, NULL, "file_type", NULL},
-  {"channels",
-   (getter)SHNDecoder_channels, NULL, "channels", NULL},
-  {"bits_per_sample",
-   (getter)SHNDecoder_bits_per_sample, NULL, "bits_per_sample", NULL},
-  {"sample_rate",
-   (getter)SHNDecoder_sample_rate, (setter)SHNDecoder_set_sample_rate,
-   "sample_rate", NULL},
-  {"channel_mask",
-   (getter)SHNDecoder_channel_mask, (setter)SHNDecoder_set_channel_mask,
-   "channel_mask", NULL},
-  {"block_size",
-   (getter)SHNDecoder_block_size, NULL, "block_size", NULL},
-  {NULL}
+    {"version",
+     (getter)SHNDecoder_version, NULL, "version", NULL},
+    {"file_type",
+     (getter)SHNDecoder_file_type, NULL, "file_type", NULL},
+    {"channels",
+     (getter)SHNDecoder_channels, NULL, "channels", NULL},
+    {"bits_per_sample",
+     (getter)SHNDecoder_bits_per_sample, NULL, "bits_per_sample", NULL},
+    {"sample_rate",
+     (getter)SHNDecoder_sample_rate, (setter)SHNDecoder_set_sample_rate,
+     "sample_rate", NULL},
+    {"channel_mask",
+     (getter)SHNDecoder_channel_mask, (setter)SHNDecoder_set_channel_mask,
+     "channel_mask", NULL},
+    {"block_size",
+     (getter)SHNDecoder_block_size, NULL, "block_size", NULL},
+    {NULL}
 };
 
 PyMethodDef SHNDecoder_methods[] = {
-  {"read", (PyCFunction)SHNDecoder_read,
-   METH_VARARGS,"Reads a frame of data from the SHN file"},
-  {"metadata", (PyCFunction)SHNDecoder_metadata,
-   METH_NOARGS,"Returns a tuple of technical metadata"},
-  {"analyze_frame",(PyCFunction)SHNDecoder_analyze_frame,
-   METH_NOARGS, "Returns the next analyzed frame"},
-  {"close", (PyCFunction)SHNDecoder_close,
-   METH_NOARGS,"Closes the SHN decoder stream"},
-  {NULL}
+    {"read", (PyCFunction)SHNDecoder_read,
+     METH_VARARGS, "Reads a frame of data from the SHN file"},
+    {"metadata", (PyCFunction)SHNDecoder_metadata,
+     METH_NOARGS, "Returns a tuple of technical metadata"},
+    {"analyze_frame", (PyCFunction)SHNDecoder_analyze_frame,
+     METH_NOARGS, "Returns the next analyzed frame"},
+    {"close", (PyCFunction)SHNDecoder_close,
+     METH_NOARGS, "Closes the SHN decoder stream"},
+    {NULL}
 };
 
 void SHNDecoder_dealloc(decoders_SHNDecoder *self);
 
-PyObject *SHNDecoder_new(PyTypeObject *type,
-			 PyObject *args, PyObject *kwds);
+PyObject*
+SHNDecoder_new(PyTypeObject *type, PyObject *args, PyObject *kwds);
 
 
 PyTypeObject decoders_SHNDecoderType = {
@@ -209,39 +211,56 @@ PyTypeObject decoders_SHNDecoderType = {
 
 
 
-int SHNDecoder_read_header(decoders_SHNDecoder* self);
+int
+SHNDecoder_read_header(decoders_SHNDecoder* self);
 
-void SHNDecoder_read_diff(struct i_array *buffer,
-			  Bitstream* bs,
-			  unsigned int block_size,
-			  int (*calculation)(int residual,
-					     struct i_array *buffer));
+void
+SHNDecoder_read_diff(struct i_array *buffer,
+                     Bitstream* bs,
+                     unsigned int block_size,
+                     int (*calculation)(int residual,
+                                        struct i_array *buffer));
 
-int SHNDecoder_diff0(int residual, struct i_array *buffer);
-int SHNDecoder_diff1(int residual, struct i_array *buffer);
-int SHNDecoder_diff2(int residual, struct i_array *buffer);
-int SHNDecoder_diff3(int residual, struct i_array *buffer);
+int
+SHNDecoder_diff0(int residual, struct i_array *buffer);
 
-void SHNDecoder_read_zero(struct i_array *buffer,
-			  unsigned int block_size);
+int
+SHNDecoder_diff1(int residual, struct i_array *buffer);
 
-void SHNDecoder_read_lpc(struct i_array *buffer,
-			 Bitstream* bs,
-			 unsigned int block_size,
-			 int coffset,
-			 int wrap);
+int
+SHNDecoder_diff2(int residual, struct i_array *buffer);
 
-unsigned int shn_read_uvar(Bitstream* bs, unsigned int count);
+int
+SHNDecoder_diff3(int residual, struct i_array *buffer);
 
-int shn_read_var(Bitstream* bs, unsigned int count);
+void
+SHNDecoder_read_zero(struct i_array *buffer, unsigned int block_size);
 
-unsigned int shn_read_long(Bitstream* bs);
+void
+SHNDecoder_read_lpc(struct i_array *buffer,
+                    Bitstream* bs,
+                    unsigned int block_size,
+                    int coffset,
+                    int wrap);
 
-void shn_skip_uvar(Bitstream* bs, unsigned int count);
-void shn_skip_var(Bitstream* bs, unsigned int count);
+unsigned int
+shn_read_uvar(Bitstream* bs, unsigned int count);
+
+int
+shn_read_var(Bitstream* bs, unsigned int count);
+
+unsigned int
+shn_read_long(Bitstream* bs);
+
+void
+shn_skip_uvar(Bitstream* bs, unsigned int count);
+
+void
+shn_skip_var(Bitstream* bs, unsigned int count);
 
 /*a debugging function which takes a Shorten command value
   and returns a human-readable string
   which should not be deallocated*/
-char* SHNDecoder_cmd_string(int cmd);
+char*
+SHNDecoder_cmd_string(int cmd);
 

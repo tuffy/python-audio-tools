@@ -20,168 +20,183 @@
  You should have received a copy of the GNU General Public License
  along with this program; if not, write to the Free Software
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
- *******************************************************/
+*******************************************************/
 
 typedef struct {
-  PyObject_HEAD
+    PyObject_HEAD
 
-  char* filename;
-  FILE* file;
-  Bitstream* bitstream;
+    char* filename;
+    FILE* file;
+    Bitstream* bitstream;
 
-  int sample_rate;
-  int channels;
-  int channel_mask;
-  int bits_per_sample;
+    int sample_rate;
+    int channels;
+    int channel_mask;
+    int bits_per_sample;
 
-  int total_frames;
+    int total_frames;
 
-  /*a bunch of decoding fields pulled from the stream's 'alac' atom*/
-  int max_samples_per_frame;
-  int history_multiplier;
-  int initial_history;
-  int maximum_k;
+    /*a bunch of decoding fields pulled from the stream's 'alac' atom*/
+    int max_samples_per_frame;
+    int history_multiplier;
+    int initial_history;
+    int maximum_k;
 
-  struct ia_array samples;
-  struct ia_array subframe_samples; /*a sample buffer for subframe output*/
-  struct ia_array wasted_bits_samples;  /*a buffer for wasted-bits samples*/
-  struct ia_array residuals; /*a buffer for residual values*/
+    struct ia_array samples;
+    struct ia_array subframe_samples; /*a sample buffer for subframe output*/
+    struct ia_array wasted_bits_samples;  /*a buffer for wasted-bits samples*/
+    struct ia_array residuals; /*a buffer for residual values*/
 } decoders_ALACDecoder;
 
 struct alac_frame_header {
-  uint8_t channels;
-  uint8_t has_size;
-  uint8_t wasted_bits;
-  uint8_t is_not_compressed;
-  uint32_t output_samples;
+    uint8_t channels;
+    uint8_t has_size;
+    uint8_t wasted_bits;
+    uint8_t is_not_compressed;
+    uint32_t output_samples;
 };
 
 struct alac_subframe_header {
-  uint8_t prediction_type;
-  uint8_t prediction_quantitization;
-  uint8_t rice_modifier;
-  struct i_array predictor_coef_table;
+    uint8_t prediction_type;
+    uint8_t prediction_quantitization;
+    uint8_t rice_modifier;
+    struct i_array predictor_coef_table;
 };
 
-typedef enum {OK,ERROR} status;
+typedef enum {OK, ERROR} status;
 
 /*the ALACDecoder.sample_rate attribute getter*/
-static PyObject *ALACDecoder_sample_rate(decoders_ALACDecoder *self,
-					 void *closure);
+static PyObject*
+ALACDecoder_sample_rate(decoders_ALACDecoder *self, void *closure);
 
 /*the ALACDecoder.bits_per_sample attribute getter*/
-static PyObject *ALACDecoder_bits_per_sample(decoders_ALACDecoder *self,
-					     void *closure);
+static PyObject*
+ALACDecoder_bits_per_sample(decoders_ALACDecoder *self, void *closure);
 
 /*the ALACDecoder.channels attribute getter*/
-static PyObject *ALACDecoder_channels(decoders_ALACDecoder *self,
-				      void *closure);
+static PyObject*
+ALACDecoder_channels(decoders_ALACDecoder *self, void *closure);
 
 /*the ALACDecoder.channel_mask attribute getter*/
-static PyObject *ALACDecoder_channel_mask(decoders_ALACDecoder *self,
-					  void *closure);
+static PyObject*
+ALACDecoder_channel_mask(decoders_ALACDecoder *self, void *closure);
 
 /*the ALACDecoder.read() method*/
-PyObject *ALACDecoder_read(decoders_ALACDecoder* self,
-			   PyObject *args);
+static PyObject*
+ALACDecoder_read(decoders_ALACDecoder* self, PyObject *args);
 
 /*the ALACDecoder.analyze_frame() method*/
-PyObject *ALACDecoder_analyze_frame(decoders_ALACDecoder* self,
-				    PyObject *args);
+static PyObject*
+ALACDecoder_analyze_frame(decoders_ALACDecoder* self, PyObject *args);
 
 /*the ALACDecoder.close() method*/
-PyObject *ALACDecoder_close(decoders_ALACDecoder* self,
-			    PyObject *args);
+static PyObject*
+ALACDecoder_close(decoders_ALACDecoder* self, PyObject *args);
 
 /*the ALACDecoder.__init__() method*/
-int ALACDecoder_init(decoders_ALACDecoder *self,
-		     PyObject *args, PyObject *kwds);
+int
+ALACDecoder_init(decoders_ALACDecoder *self,
+                 PyObject *args, PyObject *kwds);
 
 /*walks through the open QuickTime stream looking for the 'mdat' atom
   or returns ERROR if one cannot be found*/
-status ALACDecoder_seek_mdat(decoders_ALACDecoder *self);
+status
+ALACDecoder_seek_mdat(decoders_ALACDecoder *self);
 
 /*reads "frame_header" from the current bitstream*/
-status ALACDecoder_read_frame_header(Bitstream *bs,
-				     struct alac_frame_header *frame_header,
-				     int max_samples_per_frame);
+status
+ALACDecoder_read_frame_header(Bitstream *bs,
+                              struct alac_frame_header *frame_header,
+                              int max_samples_per_frame);
 
 /*reads "subframe header" from the current bitstream*/
-status ALACDecoder_read_subframe_header(Bitstream *bs,
-					struct alac_subframe_header *subframe_header);
+status
+ALACDecoder_read_subframe_header(Bitstream *bs,
+                                 struct alac_subframe_header *subframe_header);
 
 /*reads a block of "wasted_bits" samples from the current bitstream*/
-status ALACDecoder_read_wasted_bits(Bitstream *bs,
-				    struct ia_array *wasted_bits_samples,
-				    int sample_count,
-				    int channels,
-				    int wasted_bits_size);
+status
+ALACDecoder_read_wasted_bits(Bitstream *bs,
+                             struct ia_array *wasted_bits_samples,
+                             int sample_count,
+                             int channels,
+                             int wasted_bits_size);
 
 /*reads a block of residuals from the current bitstream*/
-status ALACDecoder_read_residuals(Bitstream *bs,
-				  struct i_array *residuals,
-				  int residual_count,
-				  int sample_size,
-				  int initial_history,
-				  int history_multiplier,
-				  int maximum_k);
+status
+ALACDecoder_read_residuals(Bitstream *bs,
+                           struct i_array *residuals,
+                           int residual_count,
+                           int sample_size,
+                           int initial_history,
+                           int history_multiplier,
+                           int maximum_k);
 
 /*reads an unsigned residual from the current bitstream*/
-int ALACDecoder_read_residual(Bitstream *bs,
-			      int k,
-			      int sample_size);
+int
+ALACDecoder_read_residual(Bitstream *bs,
+                          int k,
+                          int sample_size);
 
 /*takes a set of residuals, coefficients and a predictor_quantitization value
   returns a set of decoded samples*/
-status ALACDecoder_decode_subframe(struct i_array *samples,
-				   struct i_array *residuals,
-				   struct i_array *coefficients,
-				   int predictor_quantitization);
+status
+ALACDecoder_decode_subframe(struct i_array *samples,
+                            struct i_array *residuals,
+                            struct i_array *coefficients,
+                            int predictor_quantitization);
 
-status ALACDecoder_decorrelate_channels(struct ia_array *output,
-					struct ia_array *input,
-					int interlacing_shift,
-					int interlacing_leftweight);
+status
+ALACDecoder_decorrelate_channels(struct ia_array *output,
+                                 struct ia_array *input,
+                                 int interlacing_shift,
+                                 int interlacing_leftweight);
 
 /*after a call to "read_subframe_header",
   call "free_subframe_header" to deallocate the predictor_coef_tables*/
-static inline void ALACDecoder_free_subframe_header(struct alac_subframe_header *subframe_header) {
-  ia_free(&(subframe_header->predictor_coef_table));
+static inline void
+ALACDecoder_free_subframe_header(struct alac_subframe_header *subframe_header)
+{
+    ia_free(&(subframe_header->predictor_coef_table));
 }
 
 /*simple routines*/
-void ALACDecoder_print_frame_header(FILE *output,
-				    struct alac_frame_header *frame_header);
+void
+ALACDecoder_print_frame_header(FILE *output,
+                               struct alac_frame_header *frame_header);
 
-void ALACDecoder_print_subframe_header(FILE *output,
-				       struct alac_subframe_header *subframe_header);
+void
+ALACDecoder_print_subframe_header(FILE *output,
+                                struct alac_subframe_header *subframe_header);
 
 PyGetSetDef ALACDecoder_getseters[] = {
-  {"sample_rate",
-   (getter)ALACDecoder_sample_rate, NULL, "sample rate", NULL},
-  {"bits_per_sample",
-   (getter)ALACDecoder_bits_per_sample, NULL, "bits per sample", NULL},
-  {"channels",
-   (getter)ALACDecoder_channels, NULL, "channels", NULL},
-  {"channel_mask",
-   (getter)ALACDecoder_channel_mask, NULL, "channel_mask", NULL},
-  {NULL}
+    {"sample_rate",
+     (getter)ALACDecoder_sample_rate, NULL, "sample rate", NULL},
+    {"bits_per_sample",
+     (getter)ALACDecoder_bits_per_sample, NULL, "bits per sample", NULL},
+    {"channels",
+     (getter)ALACDecoder_channels, NULL, "channels", NULL},
+    {"channel_mask",
+     (getter)ALACDecoder_channel_mask, NULL, "channel_mask", NULL},
+    {NULL}
 };
 
 PyMethodDef ALACDecoder_methods[] = {
-  {"read", (PyCFunction)ALACDecoder_read,
-   METH_VARARGS,"Reads the given number of bytes from the ALAC file, if possible"},
-  {"analyze_frame", (PyCFunction)ALACDecoder_analyze_frame,
-   METH_NOARGS,"Reads a single frame of analysis"},
-  {"close", (PyCFunction)ALACDecoder_close,
-   METH_NOARGS,"Closes the ALAC decoder stream"},
-  {NULL}
+    {"read", (PyCFunction)ALACDecoder_read,
+     METH_VARARGS,
+     "Reads the given number of bytes from the ALAC file, if possible"},
+    {"analyze_frame", (PyCFunction)ALACDecoder_analyze_frame,
+     METH_NOARGS, "Reads a single frame of analysis"},
+    {"close", (PyCFunction)ALACDecoder_close,
+     METH_NOARGS, "Closes the ALAC decoder stream"},
+    {NULL}
 };
 
-void ALACDecoder_dealloc(decoders_ALACDecoder *self);
+void
+ALACDecoder_dealloc(decoders_ALACDecoder *self);
 
-PyObject *ALACDecoder_new(PyTypeObject *type,
-			  PyObject *args, PyObject *kwds);
+PyObject*
+ALACDecoder_new(PyTypeObject *type, PyObject *args, PyObject *kwds);
 
 PyTypeObject decoders_ALACDecoderType = {
     PyObject_HEAD_INIT(NULL)

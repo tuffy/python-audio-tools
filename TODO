@@ -1936,14 +1936,14 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   - [X] replaygain.h
   - [X] resample.c
   - [X] resample.h
-  - [ ] decoders/alac.c
-  - [ ] decoders/alac.h
-  - [ ] decoders/flac.c
-  - [ ] decoders/flac_crc.c
-  - [ ] decoders/flac_crc.h
-  - [ ] decoders/flac.h
-  - [ ] decoders/shn.c
-  - [ ] decoders/shn.h
+  - [X] decoders/alac.c
+  - [X] decoders/alac.h
+  - [X] decoders/flac.c
+  - [X] decoders/flac_crc.c
+  - [X] decoders/flac_crc.h
+  - [X] decoders/flac.h
+  - [X] decoders/shn.c
+  - [X] decoders/shn.h
   - [ ] encoders/alac.c
   - [ ] encoders/alac.h
   - [ ] encoders/alac_lpc.c
