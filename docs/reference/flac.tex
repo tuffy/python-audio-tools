@@ -612,7 +612,7 @@ Instead, one must keep track of those values during encoding and then
 rewrite the STREAMINFO block when finished.
 
 \subsection{Frame header}
-
+\begin{table}[h]
 \begin{tabular}{|r|l|}
 \hline
 bits & value \\
@@ -633,31 +633,52 @@ bits & value \\
 8 & the CRC-8 of all data from the beginning of the frame header \\
 \hline
 \end{tabular}
+\end{table}
+\par
+\noindent
+The FLAC frame's block size in PCM frames
+(called ``channel independent samples'' in FLAC's documentation)
+is typically encoded in the 4 bit `block size' field.
+But for odd-sized frames - which often occur at the end of the stream -
+that value is stored as an 8 or 16 bit integer following the UTF-8 encoded
+frame number.
 
-%% The FLAC frame's block size in PCM frames
-%% (called ``channel independent samples'' in FLAC's documentation)
-%% is typically encoded in the 4 bit `block size' field.
-%% But for odd-sized frames - which often occur at the end of the stream -
-%% that value is stored as an 8 or 16 bit integer following the UTF-8 encoded
-%% frame number.
+In addition, odd sample rate values are stored as 8 bit (in kHz),
+16 bit (in Hz) or 16 bit (in 10s of Hz) prior to the CRC-8,
+should a predefined value not be available.
 
-%% In addition, odd sample rate values are stored as 8 bit (in kHz),
-%% 16 bit (in Hz) or 16 bit (in 10s of Hz) prior to the CRC-8,
-%% should a predefined value not be available.
+Up until this point, nearly all of these fields can be filled from
+the PCM stream data.
+Unless you're writing a variable block size encoder,
+one should encode the frame number starting from 0 in the frame header
+and choose a predefined block size for as many FLAC frames as possible.
 
-%% Up until this point, nearly all of these fields can be filled from
-%% the PCM stream data.
-%% Unless you're writing a variable block size encoder,
-%% one should encode the frame number starting from 0 in the frame header
-%% and choose a predefined block size for as many FLAC frames as possible.
+\clearpage
 
 \subsection{Channel assignment}
 
 If the input stream has a number of channels other than 2,
 one has no choice but to store them independently.
 If the number of channels equals 2, one can try all four possible
-assignments (left-difference, difference-right, mid-side and
-independent) and use the one which takes the least amount of space.
+assignments and use the one which takes the least amount of space.
+
+\begin{align*}
+\intertext{Left-Difference (assignment \texttt{0x8}):}
+\text{Subframe}_{0i} &= \text{Left}_i \\
+\text{Subframe}_{1i} &= \text{Left}_i - \text{Right}_i \\
+\intertext{Difference-Right (assignment \texttt{0x9}):}
+\text{Subframe}_{0i} &= \text{Left}_i - \text{Right}_i \\
+\text{Subframe}_{1i} &= \text{Right}_i \\
+\intertext{Mid-Side (assignment \texttt{0xA}):}
+\text{Subframe}_{0i} &= \lfloor (\text{Left}_i + \text{Right}_i) \div 2 \rfloor \\
+\text{Subframe}_{1i} &= \text{Left}_i - \text{Right}_i \\
+\end{align*}
+\par
+\noindent
+Remember that the difference and side channels are treated as having
+1 additional bit during encoding.
+Thus, a 16 bit frame would have a 17 bit difference subframe
+when calculating warm-up samples.
 
 \subsection{Subframe header}
 \begin{tabular}{|r|l|}
@@ -683,10 +704,6 @@ using a \texttt{CONSTANT} subframe.
 
 This subframe simply stores all the samples as-is,
 with no compression whatsoever.
-
-\pagebreak
-
-
 
 \subsection{the FIXED subframe}
 
