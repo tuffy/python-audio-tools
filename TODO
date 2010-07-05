@@ -2087,6 +2087,15 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   and all audio classes that support it
 * TODO Remove xdelta requirement
   It's doesn't compile well on some platforms and is only used by tracklint
+** TODO Update ID3v2 to generate padding
+** TODO Update ID3v2 to exploit existing padding
+** TODO Build trivial binary delta routine
+   Since most metadata formats make use of padding,
+   we can use a simple XOR over their contents to generate
+   a bidirectional patch that's optimized for tracklint's behavior.
+   Since the bulk of such a patch should be NULLs,
+   we can compress it with zlib/bz2 and achieve
+   excellent compression.
 * TODO build track2cover/xmcd2cover utilities
   it would be helpful to have tools that could query
   online cover databases and retrieve images for tagging purposes

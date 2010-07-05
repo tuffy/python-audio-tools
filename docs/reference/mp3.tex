@@ -162,8 +162,10 @@ All of its fields are big-endian.
 \par
 \noindent
 The single Size field is split by NULL (0x00) bytes in order to make
-it `sync-safe'.  That is, no possible size value will result in a false
+it `sync-safe'.
+That is, no possible size value will result in a false
 MP3 frame sync (11 bits set in a row).
+This size field is the length of the entire tag, not including the header.
 
 \subsubsection{ID3v2.2 frame}
 
@@ -317,6 +319,7 @@ value & type & value & type \\
 \noindent
 The single Size field is split by NULL (0x00) bytes in order to make
 it `sync-safe'.
+This size field is the length of the entire tag, not including the header.
 
 \subsubsection{ID3v2.3 frame}
 \begin{figure}[h]
