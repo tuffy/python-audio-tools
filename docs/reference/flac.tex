@@ -1161,6 +1161,8 @@ QLP precision can be 6.
 %% The LPC Order, QLP Precision, QLP Shift Needed, and QLP Coefficients
 %% make up the LPC subframe.
 
+\clearpage
+
 \subsubsection{Calculating LPC residual}
 
 Warm-up samples and residuals are calculated as follows:
@@ -1234,12 +1236,7 @@ value of `x' such that:
 \begin{equation}
 \text{sample count} \times 2 ^ x > \overset{\text{residual count} - 1}{\underset{i = 0}{\sum}} |\text{residual}_i|
 \end{equation}
-\par
-\noindent
-Again, this is easier to understand with a block of example residuals,
-19 in total:
-\begin{table}[h]
-{\relsize{-2}
+\begin{wrapfigure}[10]{r}{2in}
 \begin{tabular}{|c|r|r|}
 \hline
 index & $\text{residual}_i$ & $|\text{residual}_i|$ \\
@@ -1267,15 +1264,22 @@ index & $\text{residual}_i$ & $|\text{residual}_i|$ \\
 $|\text{sum}|$ & & \textbf{29} \\
 \hline
 \end{tabular}
-}
-\end{table}
+\end{wrapfigure}
+\par
+Again, this is easier to understand with a block of example residuals,
+19 in total:
 \par
 \noindent
 $19 \times {2 ^ 0}$ is not larger than 29.
+\par
+\noindent
 $19 \times {2 ^ 1}$ is larger than 29, so the best Rice parameter
 for this block of residuals is 1.
+\par
 Remember that the Rice parameter's maximum value is limited to
 $2 ^ 4$ using coding method 0, or $2 ^ 5$ using coding method 1.
+
+\clearpage
 
 \subsubsection{Residual values}
 
@@ -1297,7 +1301,7 @@ a parameter of 3 and encoding the residual values 18, -25 and 12:
 \includegraphics{figures/flac_rice3.pdf}
 \end{figure}
 
-\pagebreak
+\clearpage
 
 \subsection{Checksums}
 
