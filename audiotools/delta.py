@@ -23,7 +23,6 @@ import bz2
 import sqlite3
 from hashlib import sha1
 import base64
-import mmap
 import anydbm
 import subprocess
 import tempfile
@@ -65,6 +64,12 @@ class UndoDB:
 
     @classmethod
     def build_patch(cls, s1, s2):
+        """Given two strings, returns a transformation patch.
+
+        This function presumes the two strings will be largely
+        equal and similar in length.  It operates by performing an
+        XOR operation across both and BZ2 compressing the result."""
+
         if (len(s1) < len(s2)):
             s1 += (chr(0) * (len(s2) - len(s1)))
         elif (len(s2) < len(s1)):
@@ -76,6 +81,12 @@ class UndoDB:
 
     @classmethod
     def apply_patch(cls, s, patch, new_length):
+        """Given a string, patch and new length, restores string.
+
+        patch is the same BZ2 compressed output from build_patch().
+        new_length is the size of the string originally,
+        which must be stored externally from the patch itself."""
+
         if (len(s) > new_length):
             s = s[0:new_length]
         elif (len(s) < new_length):
@@ -137,46 +148,52 @@ source_file, patch WHERE ((source_checksum = ?) AND
         old_f = open(old_file, 'rb')
         new_f = open(new_file, 'rb')
         try:
-            map1 = mmap.mmap(old_f.fileno(), 0, prot=mmap.PROT_READ)
-            map2 = mmap.mmap(new_f.fileno(), 0, prot=mmap.PROT_READ)
-            try:
-                self.__add__(map1, map2)
-            finally:
-                map1.close()
-                map2.close()
+            self.__add__(old_f.read(), new_f.read())
         finally:
             old_f.close()
             new_f.close()
 
     def undo(self, new_file):
         """Updates new_file to its original state,
-        if present in the undo database."""
+        if present in the undo database.
+
+        Returns True if undo performed, False if not."""
 
         new_f = open(new_file, 'rb')
         try:
-            map_f = mmap.mmap(new_f.fileno(), 0, prot=mmap.PROT_READ)
-            try:
-                old_data = self.__undo__(map_f)
-            finally:
-                map_f.close()
+            old_data = self.__undo__(new_f.read())
         finally:
             new_f.close()
         if (old_data is not None):
             old_f = open(new_file, 'wb')
             old_f.write(old_data)
             old_f.close()
+            return True
+        else:
+            return False
 
 
 class OldUndoDB:
+    """A class for performing legacy undo operations on files.
+
+    This implementation is based on xdelta and requires it to be
+    installed to function.
+    """
 
     def __init__(self, filename):
+        """filename is the location on disk for this undo database."""
+
         self.db = anydbm.open(filename, 'c')
 
     def close(self):
+        """Closes any open database handles."""
+
         self.db.close()
 
     @classmethod
     def checksum(cls, filename):
+        """Returns the SHA1 checksum of the filename's contents."""
+
         f = open(filename, "rb")
         c = sha1("")
         try:
@@ -186,6 +203,10 @@ class OldUndoDB:
             f.close()
 
     def add(self, old_file, new_file):
+        """Adds an undo entry for transforming new_file to old_file.
+
+        Both are filename strings."""
+
         #perform xdelta between old and new track to temporary file
         delta_f = tempfile.NamedTemporaryFile(suffix=".delta")
 
@@ -206,6 +227,9 @@ class OldUndoDB:
             delta_f.close()
 
     def undo(self, new_file):
+        """Updates new_file to its original state,
+        if present in the undo database."""
+
         undo_checksum = OldUndoDB.checksum(new_file)
         if (undo_checksum in self.db.keys()):
             #copy the xdelta to a temporary file
@@ -227,14 +251,22 @@ class OldUndoDB:
                     transfer_data(f1.read, f2.write)
                     f1.close()
                     f2.close()
+                    return True
                 else:
                     raise IOError("error performing xdelta operation")
             finally:
                 old_track.close()
                 xdelta_f.close()
+        else:
+            return False
 
 
 def open_db(filename):
+    """Given a filename string, returns UndoDB or OldUndoDB.
+
+    If the file doesn't exist, this uses UndoDB by default.
+    Otherwise, detect OldUndoDB if xdelta is installed."""
+
     if (BIN.can_execute(BIN["xdelta"])):
         db = whichdb.whichdb(filename)
         if ((db is not None) and (db != '')):

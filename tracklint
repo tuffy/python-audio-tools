@@ -18,6 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 import audiotools
+import audiotools.delta
 import sys
 import os
 import os.path
@@ -269,59 +270,23 @@ def update_and_backup(track, undo_db, messenger):
         temp_track.set_metadata(metadata)
 
     if (changes_made):
-        #perform xdelta between the old and new track
-        delta_f = tempfile.NamedTemporaryFile(suffix=".delta")
-        if (subprocess.call([audiotools.BIN["xdelta"],
-                             "delta",
-                             temp_track.filename,
-                             track.filename,
-                             delta_f.name]) != 2):
-            #store the xdelta in our undo DB
-            f = open(delta_f.name, 'rb')
-            data = cStringIO.StringIO()
-            audiotools.transfer_data(f.read, data.write)
-            f.close()
-            delta_f.close()
+        #store undo information between old and new track
+        undo_db.add(track.filename, temp_track_f.name)
 
-            undo_db[checksum(temp_track_f.name)] = data.getvalue()
-
-            #copy the temporary track over the original
-            f1 = open(temp_track_f.name, 'rb')
-            f2 = open(track.filename, 'wb')
-            audiotools.transfer_data(f1.read, f2.write)
-            f1.close()
-            f2.close()
+        #copy the temporary track over the original
+        f1 = open(temp_track_f.name, 'rb')
+        f2 = open(track.filename, 'wb')
+        audiotools.transfer_data(f1.read, f2.write)
+        f1.close()
+        f2.close()
 
     temp_track_f.close()
 
 
 def undo_from_backup(track, undo_db, messenger):
-    undo_checksum = checksum(track.filename)
-
-    if (undo_checksum in undo_db.keys()):
-        #copy the xdelta to a temporary file
-        xdelta_f = tempfile.NamedTemporaryFile(suffix=".delta")
-        xdelta_f.write(undo_db[undo_checksum])
-        xdelta_f.flush()
-
-        #patch the existing track to a temporary track
-        old_track = tempfile.NamedTemporaryFile(suffix="." + track.SUFFIX)
-        if (subprocess.call([audiotools.BIN["xdelta"],
-                             "patch",
-                             xdelta_f.name,
-                             track.filename,
-                             old_track.name]) == 0):
-            #copy the temporary track over the existing file
-            f1 = open(old_track.name, 'rb')
-            f2 = open(track.filename, 'wb')
-            audiotools.transfer_data(f1.read, f2.write)
-            f1.close()
-            f2.close()
-            old_track.close()
-            xdelta_f.close()
-
-            messenger.info(_(u"Restored: %s") % \
-                               (messenger.filename(track.filename)))
+    if (undo_db.undo(track.filename)):
+        messenger.info(_(u"Restored: %s") % \
+                           (messenger.filename(track.filename)))
 
 
 #a FlacAudio Track prepended with ID3v2 tags
@@ -529,17 +494,17 @@ if (__name__ == '__main__'):
         msg.error(_(u"Cannot perform undo without undo db"))
         sys.exit(1)
 
-    if ((options.db is not None) and
-        (not audiotools.BIN.can_execute(audiotools.BIN["xdelta"]))):
-        msg.error(_(u"xdelta must be installed for undo support"))
-        sys.exit(1)
+    # if ((options.db is not None) and
+    #     (not audiotools.BIN.can_execute(audiotools.BIN["xdelta"]))):
+    #     msg.error(_(u"xdelta must be installed for undo support"))
+    #     sys.exit(1)
 
     if (options.fix):
         if (options.db is not None):
             #if we're fixing tracks and have an undo DB,
             #save undo information to it during the fixing process
             try:
-                undo_db = anydbm.open(options.db, "c")
+                undo_db = audiotools.delta.open_db(options.db)
             except:
                 msg.error(_(u"Unable to open \"%s\"") %
                           (msg.filename(options.db)))
@@ -570,8 +535,8 @@ if (__name__ == '__main__'):
                     sys.exit(1)
     elif (options.undo):
         try:
-            undo_db = anydbm.open(options.db, "r")
-        except anydbm.error:
+            undo_db = audiotools.delta.open_db(options.db)
+        except:
             msg.error(_(u"Unable to open \"%s\"") % (msg.filename(options.db)))
             sys.exit(1)
         try:

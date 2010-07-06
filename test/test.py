@@ -3624,7 +3624,7 @@ class APEv2Lint:
     #tracklint is tricky to test since set_metadata()
     #usually won't write anything that needs fixing.
     #For instance, it won't generate empty fields or leading zeroes in numbers.
-    #So, bogus ID3 tags must be generated at a lower level.
+    #So, bogus tags must be generated at a lower level.
     @TEST_METADATA
     def test_tracklint(self):
         bad_apev2 = audiotools.ApeTag(
@@ -11362,4 +11362,3 @@ class TestIOError(unittest.TestCase):
 
 if (__name__ == '__main__'):
     unittest.main()
-
