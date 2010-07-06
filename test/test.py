@@ -31,15 +31,17 @@ import gettext
 import time
 import unicodedata
 
-gettext.install("audiotools",unicode=True)
+gettext.install("audiotools", unicode=True)
 
-(METADATA,PCM,FRAMELIST,EXECUTABLE,CUESHEET,IMAGE,NETWORK,
- FLAC,SHORTEN,ALAC,CUSTOM) = range(11)
-CASES = set([METADATA,PCM,FRAMELIST,EXECUTABLE,CUESHEET,IMAGE,NETWORK,
-             FLAC,SHORTEN,ALAC])
+(METADATA, PCM, FRAMELIST, EXECUTABLE, CUESHEET, IMAGE, NETWORK,
+ FLAC, SHORTEN, ALAC, CUSTOM) = range(11)
+CASES = set([METADATA, PCM, FRAMELIST, EXECUTABLE, CUESHEET, IMAGE, NETWORK,
+             FLAC, SHORTEN, ALAC])
+
 
 def nothing(self):
     pass
+
 
 def TEST_METADATA(function):
     if (METADATA not in CASES):
@@ -47,11 +49,13 @@ def TEST_METADATA(function):
     else:
         return function
 
+
 def TEST_PCM(function):
     if (PCM not in CASES):
         return nothing
     else:
         return function
+
 
 def TEST_FRAMELIST(function):
     if (FRAMELIST not in CASES):
@@ -59,11 +63,13 @@ def TEST_FRAMELIST(function):
     else:
         return function
 
+
 def TEST_EXECUTABLE(function):
     if (EXECUTABLE not in CASES):
         return nothing
     else:
         return function
+
 
 def TEST_CUESHEET(function):
     if (CUESHEET not in CASES):
@@ -71,11 +77,13 @@ def TEST_CUESHEET(function):
     else:
         return function
 
+
 def TEST_IMAGE(function):
     if (IMAGE not in CASES):
         return nothing
     else:
         return function
+
 
 def TEST_FLAC(function):
     if (FLAC not in CASES):
@@ -83,11 +91,13 @@ def TEST_FLAC(function):
     else:
         return function
 
+
 def TEST_SHORTEN(function):
     if (SHORTEN not in CASES):
         return nothing
     else:
         return function
+
 
 def TEST_ALAC(function):
     if (ALAC not in CASES):
@@ -95,11 +105,13 @@ def TEST_ALAC(function):
     else:
         return function
 
+
 def TEST_NETWORK(function):
     if (NETWORK not in CASES):
         return nothing
     else:
         return function
+
 
 def TEST_CUSTOM(function):
     if (CUSTOM not in CASES):
@@ -115,6 +127,7 @@ except ImportError:
 
 Con = audiotools.Con
 
+
 #probstat does this better, but I don't want to require that
 #for something used only rarely
 def Combinations(items, n):
@@ -125,10 +138,11 @@ def Combinations(items, n):
             for combos in Combinations(items[i + 1:], n - 1):
                 yield [items[i]] + combos
 
+
 class BLANK_PCM_Reader:
     #length is the total length of this PCM stream, in seconds
     def __init__(self, length,
-                 sample_rate=44100,channels=2,bits_per_sample=16,
+                 sample_rate=44100, channels=2, bits_per_sample=16,
                  channel_mask=None):
         self.length = length
         self.sample_rate = sample_rate
@@ -147,19 +161,20 @@ class BLANK_PCM_Reader:
                 [1] * self.channels * min(
                     bytes / (self.channels * (self.bits_per_sample / 8)),
                     self.total_frames),
-                self.channels,self.bits_per_sample,True)
+                self.channels, self.bits_per_sample, True)
             self.total_frames -= frame_list.frames
             return frame_list
         else:
             return audiotools.pcm.from_list(
-                [],self.channels,self.bits_per_sample,True)
+                [], self.channels, self.bits_per_sample, True)
 
     def close(self):
         pass
 
+
 class EXACT_BLANK_PCM_Reader(BLANK_PCM_Reader):
     def __init__(self, pcm_frames,
-                 sample_rate=44100,channels=2,bits_per_sample=16,
+                 sample_rate=44100, channels=2, bits_per_sample=16,
                  channel_mask=None):
         self.length = pcm_frames * sample_rate
         self.sample_rate = sample_rate
@@ -172,13 +187,14 @@ class EXACT_BLANK_PCM_Reader(BLANK_PCM_Reader):
 
         self.total_frames = pcm_frames
 
+
 #this sends out random samples instead of a bunch of identical ones
 class RANDOM_PCM_Reader(BLANK_PCM_Reader):
     def __init__(self, length,
-                 sample_rate=44100,channels=2,bits_per_sample=16,
+                 sample_rate=44100, channels=2, bits_per_sample=16,
                  channel_mask=None):
-        BLANK_PCM_Reader.__init__(self,length,
-                                  sample_rate,channels,bits_per_sample,
+        BLANK_PCM_Reader.__init__(self, length,
+                                  sample_rate, channels, bits_per_sample,
                                   channel_mask)
         self.md5 = md5()
 
@@ -187,11 +203,11 @@ class RANDOM_PCM_Reader(BLANK_PCM_Reader):
 
         if (self.total_frames > 0):
             framelist = audiotools.pcm.FrameList(
-                os.urandom(min(bytes,self.total_frames * self.channels * self.bits_per_sample / 8)),
+                os.urandom(min(bytes, self.total_frames * self.channels * self.bits_per_sample / 8)),
                 self.channels,
                 self.bits_per_sample,
-                True,True)
-            s = framelist.to_bytes(False,True)
+                True, True)
+            s = framelist.to_bytes(False, True)
             self.md5.update(s)
             self.total_frames -= framelist.frames
             return framelist
@@ -199,7 +215,7 @@ class RANDOM_PCM_Reader(BLANK_PCM_Reader):
             return audiotools.pcm.FrameList("",
                                             self.channels,
                                             self.bits_per_sample,
-                                            True,True)
+                                            True, True)
 
     def digest(self):
         return self.md5.digest()
@@ -207,9 +223,10 @@ class RANDOM_PCM_Reader(BLANK_PCM_Reader):
     def hexdigest(self):
         return self.md5.hexdigest()
 
+
 class EXACT_RANDOM_PCM_Reader(RANDOM_PCM_Reader):
     def __init__(self, pcm_frames,
-                 sample_rate=44100,channels=2,bits_per_sample=16,
+                 sample_rate=44100, channels=2, bits_per_sample=16,
                  channel_mask=None):
         self.length = pcm_frames * sample_rate
         self.sample_rate = sample_rate
@@ -230,6 +247,7 @@ class EXACT_RANDOM_PCM_Reader(RANDOM_PCM_Reader):
              self.channels,
              self.bits_per_sample)
 
+
 #this not only sends out random samples,
 #but the amount sent on each read() is also random
 #between 1 and audiotools.BUFFER_SIZE * 2
@@ -237,8 +255,9 @@ class VARIABLE_PCM_Reader(RANDOM_PCM_Reader):
     def read(self, bytes):
         return RANDOM_PCM_Reader.read(self,
                                       os.urandom(min(
-                    random.randint(1,audiotools.BUFFER_SIZE * 2),
+                    random.randint(1, audiotools.BUFFER_SIZE * 2),
                     self.total_frames * self.channels * (self.bits_per_sample / 8))))
+
 
 class PCM_Count:
     def __init__(self):
@@ -249,6 +268,7 @@ class PCM_Count:
 
     def __len__(self):
         return self.count
+
 
 class DummyMetaData(audiotools.MetaData):
     def __init__(self):
@@ -273,6 +293,7 @@ class DummyMetaData(audiotools.MetaData):
     def supports_images(cls):
         return True
 
+
 class SmallDummyMetaData(audiotools.MetaData):
     def __init__(self):
         audiotools.MetaData.__init__(self,
@@ -289,6 +310,7 @@ class SmallDummyMetaData(audiotools.MetaData):
     @classmethod
     def supports_images(cls):
         return True
+
 
 class DummyMetaData2(audiotools.MetaData):
     def __init__(self):
@@ -401,17 +423,17 @@ PCM_COMBINATIONS = (
     (22050,  2, 8), (32000,  2, 8), (44100,  2, 8), (48000,  2, 8),
     (96000,  2, 8), (192000, 2, 8), (11025,  6, 8), (22050,  6, 8),
     (32000,  6, 8), (44100,  6, 8), (48000,  6, 8), (96000,  6, 8),
-    (192000, 6, 8), (11025,  1, 16),(22050,  1, 16),(32000,  1, 16),
-    (44100,  1, 16),(48000,  1, 16),(96000,  1, 16),(192000, 1, 16),
-    (11025,  2, 16),(22050,  2, 16),(32000,  2, 16),(44100,  2, 16),
-    (48000,  2, 16),(96000,  2, 16),(192000, 2, 16),(11025,  6, 16),
-    (22050,  6, 16),(32000,  6, 16),(44100,  6, 16),(48000,  6, 16),
-    (96000,  6, 16),(192000, 6, 16),(11025,  1, 24),(22050,  1, 24),
-    (32000,  1, 24),(44100,  1, 24),(48000,  1, 24),(96000,  1, 24),
-    (192000, 1, 24),(11025,  2, 24),(22050,  2, 24),(32000,  2, 24),
-    (44100,  2, 24),(48000,  2, 24),(96000,  2, 24),(192000, 2, 24),
-    (11025,  6, 24),(22050,  6, 24),(32000,  6, 24),(44100,  6, 24),
-    (48000,  6, 24),(96000,  6, 24),(192000, 6, 24))
+    (192000, 6, 8), (11025,  1, 16), (22050,  1, 16), (32000,  1, 16),
+    (44100,  1, 16), (48000,  1, 16), (96000,  1, 16), (192000, 1, 16),
+    (11025,  2, 16), (22050,  2, 16), (32000,  2, 16), (44100,  2, 16),
+    (48000,  2, 16), (96000,  2, 16), (192000, 2, 16), (11025,  6, 16),
+    (22050,  6, 16), (32000,  6, 16), (44100,  6, 16), (48000,  6, 16),
+    (96000,  6, 16), (192000, 6, 16), (11025,  1, 24), (22050,  1, 24),
+    (32000,  1, 24), (44100,  1, 24), (48000,  1, 24), (96000,  1, 24),
+    (192000, 1, 24), (11025,  2, 24), (22050,  2, 24), (32000,  2, 24),
+    (44100,  2, 24), (48000,  2, 24), (96000,  2, 24), (192000, 2, 24),
+    (11025,  6, 24), (22050,  6, 24), (32000,  6, 24), (44100,  6, 24),
+    (48000,  6, 24), (96000,  6, 24), (192000, 6, 24))
 
 #these are combinations that tend to occur in nature
 SHORT_PCM_COMBINATIONS = ((11025,  1, from_channels(1), 8),
@@ -423,14 +445,15 @@ SHORT_PCM_COMBINATIONS = ((11025,  1, from_channels(1), 8),
                           (48000,  1, from_channels(1), 16),
                           (48000,  2, from_channels(2), 16),
                           (48000,  6, audiotools.ChannelMask.from_fields(
-            front_left=True,front_right=True,
-            front_center=True,low_frequency=True,
-            back_left=True,back_right=True), 16),
+            front_left=True, front_right=True,
+            front_center=True, low_frequency=True,
+            back_left=True, back_right=True), 16),
                           (192000, 2, from_channels(2), 24),
                           (96000,  6, audiotools.ChannelMask.from_fields(
-            front_left=True,front_right=True,
-            front_center=True,low_frequency=True,
-            back_left=True,back_right=True), 24))
+            front_left=True, front_right=True,
+            front_center=True, low_frequency=True,
+            back_left=True, back_right=True), 24))
+
 
 class DummyMetaData3(audiotools.MetaData):
     def __init__(self):
@@ -440,34 +463,37 @@ class DummyMetaData3(audiotools.MetaData):
             track_number=5,
             album_name=u"Album Name",
             artist_name=u"Artist Name",
-            images=[audiotools.Image.new(TEST_COVER1,u'',0)])
+            images=[audiotools.Image.new(TEST_COVER1, u'', 0)])
 
     @classmethod
     def supports_images(cls):
         return True
 
+
 ############
 #BEGIN TESTS
 ############
 
+
 class TestPCMCombinations(unittest.TestCase):
     @TEST_PCM
     def testpcmcombinations(self):
-        for (sample_rate,channels,channel_mask,bits_per_sample) in SHORT_PCM_COMBINATIONS:
+        for (sample_rate, channels, channel_mask, bits_per_sample) in SHORT_PCM_COMBINATIONS:
             reader = BLANK_PCM_Reader(SHORT_LENGTH,
                                       sample_rate, channels,
                                       bits_per_sample,
                                       channel_mask)
             total_frames = reader.total_frames
             counter = PCM_Count()
-            audiotools.transfer_framelist_data(reader,counter.write)
-            self.assertEqual(len(counter),total_frames * channels * (bits_per_sample / 8))
+            audiotools.transfer_framelist_data(reader, counter.write)
+            self.assertEqual(len(counter), total_frames * channels * (bits_per_sample / 8))
+
 
 class TestTextOutput(unittest.TestCase):
     #takes a list of argument strings
     #returns a returnval integer
     #self.stdout and self.stderr are set to file-like cStringIO objects
-    def __run_app__(self,arguments):
+    def __run_app__(self, arguments):
         sub = subprocess.Popen(arguments,
                                stdout=subprocess.PIPE,
                                stderr=subprocess.PIPE)
@@ -479,42 +505,43 @@ class TestTextOutput(unittest.TestCase):
         returnval = sub.wait()
         return returnval
 
-    def filename(self,s):
-        return s.decode(audiotools.FS_ENCODING,'replace')
+    def filename(self, s):
+        return s.decode(audiotools.FS_ENCODING, 'replace')
 
-    def __check_output__(self,s):
+    def __check_output__(self, s):
         self.assertEqual(
             unicodedata.normalize(
                 'NFC',
                 self.stdout.readline().decode(audiotools.IO_ENCODING)),
-            unicodedata.normalize('NFC',s) + unicode(os.linesep))
+            unicodedata.normalize('NFC', s) + unicode(os.linesep))
 
-    def __check_info__(self,s):
+    def __check_info__(self, s):
         self.assertEqual(
             unicodedata.normalize(
                 'NFC',
                 self.stderr.readline().decode(audiotools.IO_ENCODING)),
-            unicodedata.normalize('NFC',s) + unicode(os.linesep))
+            unicodedata.normalize('NFC', s) + unicode(os.linesep))
 
-    def __check_error__(self,s):
+    def __check_error__(self, s):
         self.assertEqual(
             self.stderr.readline().decode(audiotools.IO_ENCODING),
-            u"*** Error: " + unicodedata.normalize('NFC',s) + unicode(os.linesep))
+            u"*** Error: " + unicodedata.normalize('NFC', s) + unicode(os.linesep))
 
-    def __check_warning__(self,s):
+    def __check_warning__(self, s):
         self.assertEqual(
             unicodedata.normalize(
                 'NFC',
                 self.stderr.readline().decode(audiotools.IO_ENCODING)),
-            u"*** Warning: " + unicodedata.normalize('NFC',s) + unicode(os.linesep))
+            u"*** Warning: " + unicodedata.normalize('NFC', s) + unicode(os.linesep))
 
-    def __check_usage__(self,executable,s):
+    def __check_usage__(self, executable, s):
         self.assertEqual(
             unicodedata.normalize(
                 'NFC',
                 self.stderr.readline().decode(audiotools.IO_ENCODING)),
             u"*** Usage: " + executable.decode('ascii') + u" " + \
-                unicodedata.normalize('NFC',s) + unicode(os.linesep))
+                unicodedata.normalize('NFC', s) + unicode(os.linesep))
+
 
 class TestAiffAudio(TestTextOutput):
     def DummyMetaData(self):
@@ -594,18 +621,18 @@ class TestAiffAudio(TestTextOutput):
             new_file = self.audio_class.from_pcm(temp.name,
                                                  BLANK_PCM_Reader(TEST_LENGTH))
 
-            self.assertEqual(new_file.channels(),2)
-            self.assertEqual(new_file.bits_per_sample(),16)
-            self.assertEqual(new_file.sample_rate(),44100)
+            self.assertEqual(new_file.channels(), 2)
+            self.assertEqual(new_file.bits_per_sample(), 16)
+            self.assertEqual(new_file.sample_rate(), 44100)
 
             if (new_file.lossless()):
                 self.assertEqual(audiotools.pcm_cmp(
                     new_file.to_pcm(),
-                    BLANK_PCM_Reader(TEST_LENGTH)),True)
+                    BLANK_PCM_Reader(TEST_LENGTH)), True)
             else:
                 counter = PCM_Count()
                 pcm = new_file.to_pcm()
-                audiotools.transfer_framelist_data(pcm,counter.write)
+                audiotools.transfer_framelist_data(pcm, counter.write)
                 self.assertEqual(
                     (D.Decimal(len(counter) / 4) / 44100).to_integral(),
                     TEST_LENGTH)
@@ -620,22 +647,22 @@ class TestAiffAudio(TestTextOutput):
             reader = VARIABLE_PCM_Reader(TEST_LENGTH)
 
             new_file = self.audio_class.from_pcm(
-                temp.name,reader)
+                temp.name, reader)
 
-            self.assertEqual(new_file.channels(),2)
-            self.assertEqual(new_file.bits_per_sample(),16)
-            self.assertEqual(new_file.sample_rate(),44100)
+            self.assertEqual(new_file.channels(), 2)
+            self.assertEqual(new_file.bits_per_sample(), 16)
+            self.assertEqual(new_file.sample_rate(), 44100)
 
             if (new_file.lossless()):
                 md5sum = md5()
                 pcm = new_file.to_pcm()
-                audiotools.transfer_framelist_data(pcm,md5sum.update)
+                audiotools.transfer_framelist_data(pcm, md5sum.update)
                 pcm.close()
-                self.assertEqual(md5sum.hexdigest(),reader.hexdigest())
+                self.assertEqual(md5sum.hexdigest(), reader.hexdigest())
             else:
                 counter = PCM_Count()
                 pcm = new_file.to_pcm()
-                audiotools.transfer_framelist_data(pcm,counter.write)
+                audiotools.transfer_framelist_data(pcm, counter.write)
                 self.assertEqual(
                     (D.Decimal(len(counter) / 4) / 44100).to_integral(),
                     TEST_LENGTH)
@@ -643,13 +670,12 @@ class TestAiffAudio(TestTextOutput):
         finally:
             temp.close()
 
-
     @TEST_PCM
     def testunusualaudio(self):
         temp = tempfile.NamedTemporaryFile(suffix="." + self.audio_class.SUFFIX)
         try:
             #not all of these combinations will be supported by all formats
-            for (sample_rate,channels,channel_mask,bits_per_sample) in SHORT_PCM_COMBINATIONS:
+            for (sample_rate, channels, channel_mask, bits_per_sample) in SHORT_PCM_COMBINATIONS:
                 try:
                     new_file = self.audio_class.from_pcm(
                         temp.name,
@@ -663,7 +689,6 @@ class TestAiffAudio(TestTextOutput):
                     continue
                 except audiotools.UnsupportedChannelCount:
                     continue
-
 
                 if (new_file.lossless()):
                     self.assertEqual(audiotools.pcm_cmp(
@@ -681,7 +706,7 @@ class TestAiffAudio(TestTextOutput):
                                      bits_per_sample)
                     self.assertEqual(new_file.channels(),
                                      channels)
-                    self.assertEqual(new_file.sample_rate(),sample_rate)
+                    self.assertEqual(new_file.sample_rate(), sample_rate)
                 else:
                     #If files are lossy,
                     #only be sure the lengths are the same.
@@ -689,14 +714,14 @@ class TestAiffAudio(TestTextOutput):
 
                     counter = PCM_Count()
                     pcm = new_file.to_pcm()
-                    audiotools.transfer_data(pcm.read,counter.write)
+                    audiotools.transfer_data(pcm.read, counter.write)
                     pcm.close()
                     self.assertEqual(
                         (D.Decimal(new_file.total_frames()) / \
                          new_file.sample_rate()).to_integral(),
                         SHORT_LENGTH,
                         "conversion mismatch on %sHz, %s channels, %s bps" % \
-                            (sample_rate,channels,bits_per_sample))
+                            (sample_rate, channels, bits_per_sample))
 
         finally:
             temp.close()
@@ -713,11 +738,11 @@ class TestAiffAudio(TestTextOutput):
             if (new_file.lossless()):
                 self.assertEqual(audiotools.pcm_cmp(
                     new_file.to_pcm(),
-                    audiotools.WaveAudio(tempwav.name).to_pcm()),True)
+                    audiotools.WaveAudio(tempwav.name).to_pcm()), True)
             else:
                 counter = PCM_Count()
                 pcm = new_file.to_pcm()
-                audiotools.transfer_framelist_data(pcm,counter.write)
+                audiotools.transfer_framelist_data(pcm, counter.write)
                 self.assertEqual(
                     (D.Decimal(len(counter) / 4) / 44100).to_integral(),
                     TEST_LENGTH)
@@ -728,18 +753,17 @@ class TestAiffAudio(TestTextOutput):
             if (new_file2.lossless()):
                 self.assertEqual(audiotools.pcm_cmp(
                     new_file2.to_pcm(),
-                    new_file.to_pcm()),True)
+                    new_file.to_pcm()), True)
             else:
                 counter = PCM_Count()
                 pcm = new_file2.to_pcm()
-                audiotools.transfer_data(pcm.read,counter.write)
+                audiotools.transfer_data(pcm.read, counter.write)
                 self.assert_(len(counter) > 0)
                 pcm.close()
         finally:
             tempwav.close()
             temp.close()
             temp2.close()
-
 
     @TEST_PCM
     def testmassencode(self):
@@ -751,7 +775,7 @@ class TestAiffAudio(TestTextOutput):
 
         other_files = [audio_class.from_pcm(temp_file.name,
                                             BLANK_PCM_Reader(SHORT_LENGTH))
-                       for (temp_file,audio_class) in tempfiles]
+                       for (temp_file, audio_class) in tempfiles]
         for audio_file in other_files:
             audio_file.set_metadata(DummyMetaData3())
 
@@ -770,13 +794,13 @@ class TestAiffAudio(TestTextOutput):
                 if (new_file.lossless() and f.lossless()):
                     self.assertEqual(audiotools.pcm_cmp(
                         new_file.to_pcm(),
-                        f.to_pcm()),True,
+                        f.to_pcm()), True,
                                      "PCM mismatch converting %s to %s" % \
-                                     (repr(f),repr(new_file)))
+                                     (repr(f), repr(new_file)))
                 else:
                     counter = PCM_Count()
                     pcm = new_file.to_pcm()
-                    audiotools.transfer_data(pcm.read,counter.write)
+                    audiotools.transfer_data(pcm.read, counter.write)
                     pcm.close()
                     self.assert_(len(counter) > 0)
 
@@ -789,7 +813,7 @@ class TestAiffAudio(TestTextOutput):
                         new_file_metadata,
                         f_metadata,
                         "metadata mismatch converting %s to %s (%s != %s)" % \
-                        (repr(f),repr(new_file),
+                        (repr(f), repr(new_file),
                          repr(f_metadata),
                          repr(new_file_metadata)))
 
@@ -799,9 +823,8 @@ class TestAiffAudio(TestTextOutput):
                                          f_metadata.images())
         finally:
             temp.close()
-            for (temp_file,audio_class) in tempfiles:
+            for (temp_file, audio_class) in tempfiles:
                 temp_file.close()
-
 
     #just like testmassencode, but without file suffixes
     @TEST_PCM
@@ -814,7 +837,7 @@ class TestAiffAudio(TestTextOutput):
 
         other_files = [audio_class.from_pcm(temp_file.name,
                                             BLANK_PCM_Reader(SHORT_LENGTH))
-                       for (temp_file,audio_class) in tempfiles]
+                       for (temp_file, audio_class) in tempfiles]
         for audio_file in other_files:
             audio_file.set_metadata(DummyMetaData3())
 
@@ -829,17 +852,17 @@ class TestAiffAudio(TestTextOutput):
                 if (new_file.lossless() and f.lossless()):
                     self.assertEqual(audiotools.pcm_cmp(
                         new_file.to_pcm(),
-                        f.to_pcm()),True,
+                        f.to_pcm()), True,
                                      "PCM mismatch converting %s to %s" % \
-                                     (repr(f),repr(new_file)))
+                                     (repr(f), repr(new_file)))
                 else:
                     counter = PCM_Count()
                     pcm = new_file.to_pcm()
-                    audiotools.transfer_data(pcm.read,counter.write)
+                    audiotools.transfer_data(pcm.read, counter.write)
                     pcm.close()
                     self.assert_(len(counter) > 0,
                                  "error converting %s to %s without suffix" % \
-                                     (repr(f),repr(new_file)))
+                                     (repr(f), repr(new_file)))
 
                 new_file_metadata = new_file.get_metadata()
                 f_metadata = f.get_metadata()
@@ -850,7 +873,7 @@ class TestAiffAudio(TestTextOutput):
                         new_file_metadata,
                         f_metadata,
                         "metadata mismatch converting %s to %s (%s != %s)" % \
-                        (repr(f),repr(new_file),
+                        (repr(f), repr(new_file),
                          repr(f_metadata),
                          repr(new_file_metadata)))
 
@@ -860,7 +883,7 @@ class TestAiffAudio(TestTextOutput):
                                          f_metadata.images())
         finally:
             temp.close()
-            for (temp_file,audio_class) in tempfiles:
+            for (temp_file, audio_class) in tempfiles:
                 temp_file.close()
 
     @TEST_PCM
@@ -896,7 +919,6 @@ class TestAiffAudio(TestTextOutput):
             temp_track_file.close()
             temp_wave_file.close()
 
-
     @TEST_METADATA
     def testmetadata(self):
         temp = tempfile.NamedTemporaryFile(suffix="." + self.audio_class.SUFFIX)
@@ -907,32 +929,32 @@ class TestAiffAudio(TestTextOutput):
             metadata = self.DummyMetaData()
             new_file.set_metadata(metadata)
             if (new_file.get_metadata() is not None):
-                self.assertEqual(metadata,new_file.get_metadata())
+                self.assertEqual(metadata, new_file.get_metadata())
                 new_file = audiotools.open(temp.name)
-                self.assertEqual(metadata,new_file.get_metadata())
+                self.assertEqual(metadata, new_file.get_metadata())
 
                 #ensure that setting data from external sources works
                 #(this tests the convert() method, mostly)
                 metadata2 = self.DummyMetaData2()
                 new_file.set_metadata(metadata2)
                 new_file = audiotools.open(temp.name)
-                self.assertEqual(metadata2,new_file.get_metadata())
+                self.assertEqual(metadata2, new_file.get_metadata())
 
                 for field in metadata2.__FIELDS__:
-                    if (isinstance(getattr(metadata2,field),int)):
-                        new_field = getattr(metadata2,field) + 1
-                        setattr(metadata2,field,new_field)
-                        self.assertEqual(getattr(metadata2,field),new_field)
-                    elif (len(getattr(metadata2,field)) > 0):
-                        new_field = getattr(metadata2,field) + u"+1"
-                        setattr(metadata2,field,new_field)
-                        self.assertEqual(getattr(metadata2,field),new_field)
+                    if (isinstance(getattr(metadata2, field), int)):
+                        new_field = getattr(metadata2, field) + 1
+                        setattr(metadata2, field, new_field)
+                        self.assertEqual(getattr(metadata2, field), new_field)
+                    elif (len(getattr(metadata2, field)) > 0):
+                        new_field = getattr(metadata2, field) + u"+1"
+                        setattr(metadata2, field, new_field)
+                        self.assertEqual(getattr(metadata2, field), new_field)
                     else:
                         continue
 
                     new_file.set_metadata(metadata2)
                     new_file = audiotools.open(temp.name)
-                    self.assertEqual(metadata2,new_file.get_metadata())
+                    self.assertEqual(metadata2, new_file.get_metadata())
 
                 #ensure that setting data from the actual format works
                 #(this tests that __setattr__/__getattr__ works, mostly)
@@ -940,20 +962,20 @@ class TestAiffAudio(TestTextOutput):
                 new_file = audiotools.open(temp.name)
                 metadata2 = new_file.get_metadata()
                 for field in metadata2.__FIELDS__:
-                    if (isinstance(getattr(metadata2,field),int)):
-                        new_field = getattr(metadata2,field) + 1
-                        setattr(metadata2,field,new_field)
-                        self.assertEqual(getattr(metadata2,field),new_field)
-                    elif (len(getattr(metadata2,field)) > 0):
-                        new_field = getattr(metadata2,field) + u"+1"
-                        setattr(metadata2,field,new_field)
-                        self.assertEqual(getattr(metadata2,field),new_field)
+                    if (isinstance(getattr(metadata2, field), int)):
+                        new_field = getattr(metadata2, field) + 1
+                        setattr(metadata2, field, new_field)
+                        self.assertEqual(getattr(metadata2, field), new_field)
+                    elif (len(getattr(metadata2, field)) > 0):
+                        new_field = getattr(metadata2, field) + u"+1"
+                        setattr(metadata2, field, new_field)
+                        self.assertEqual(getattr(metadata2, field), new_field)
                     else:
                         continue
 
                     new_file.set_metadata(metadata2)
                     new_file = audiotools.open(temp.name)
-                    self.assertEqual(metadata2,new_file.get_metadata())
+                    self.assertEqual(metadata2, new_file.get_metadata())
         finally:
             temp.close()
 
@@ -971,15 +993,15 @@ class TestAiffAudio(TestTextOutput):
                 temp_track.delete_metadata()
                 metadata = temp_track.get_metadata()
                 if (metadata is None):
-                    self.assertEqual(metadata,None) #a formality
+                    self.assertEqual(metadata, None)  # a formality
                 else:
-                    self.assertEqual(metadata,audiotools.MetaData())
+                    self.assertEqual(metadata, audiotools.MetaData())
                 temp_track = audiotools.open(temp_track_file.name)
                 metadata = temp_track.get_metadata()
                 if (metadata is None):
-                    self.assertEqual(metadata,None) #another formality
+                    self.assertEqual(metadata, None)  # another formality
                 else:
-                    self.assertEqual(metadata,audiotools.MetaData())
+                    self.assertEqual(metadata, audiotools.MetaData())
         finally:
             temp_track_file.close()
 
@@ -997,19 +1019,20 @@ class TestAiffAudio(TestTextOutput):
                     temp_track = audiotools.open(temp_track_file.name)
                     metadata = temp_track.get_metadata()
                     if (field in audiotools.MetaData.__INTEGER_FIELDS__):
-                        if (getattr(metadata,field) != 0):
-                            delattr(metadata,field)
+                        if (getattr(metadata, field) != 0):
+                            delattr(metadata, field)
                             temp_track.set_metadata(metadata)
                             metadata = temp_track.get_metadata()
-                            self.assertEqual(getattr(metadata,field),0)
+                            self.assertEqual(getattr(metadata, field), 0)
                     else:
-                        if (getattr(metadata,field) != u''):
-                            delattr(metadata,field)
+                        if (getattr(metadata, field) != u''):
+                            delattr(metadata, field)
                             temp_track.set_metadata(metadata)
                             metadata = temp_track.get_metadata()
-                            self.assertEqual(getattr(metadata,field),u'')
+                            self.assertEqual(getattr(metadata, field), u'')
 
-                    delattr(metadata,field) #multiple deletion should be okay
+                    #multiple deletion should be okay
+                    delattr(metadata, field)
         finally:
             temp_track_file.close()
 
@@ -1026,18 +1049,18 @@ class TestAiffAudio(TestTextOutput):
         try:
             temp_track.set_metadata(DummyMetaData2())
             if (temp_track.get_metadata() is not None):
-                os.chmod(temp_track_file.name,0)
+                os.chmod(temp_track_file.name, 0)
                 self.assertRaises(IOError,
                                   temp_track.set_metadata,
                                   DummyMetaData())
-                os.chmod(temp_track_file.name,orig_stat)
+                os.chmod(temp_track_file.name, orig_stat)
                 temp_track.set_metadata(DummyMetaData())
-                os.chmod(temp_track_file.name,0)
+                os.chmod(temp_track_file.name, 0)
                 self.assertRaises(IOError,
                                   temp_track.get_metadata)
-                os.chmod(temp_track_file.name,orig_stat)
+                os.chmod(temp_track_file.name, orig_stat)
         finally:
-            os.chmod(temp_track_file.name,orig_stat)
+            os.chmod(temp_track_file.name, orig_stat)
             temp_track_file.close()
 
     @TEST_METADATA
@@ -1051,30 +1074,30 @@ class TestAiffAudio(TestTextOutput):
                 and (new_file.get_metadata().supports_images())):
                 metadata = self.DummyMetaData()
                 new_file.set_metadata(metadata)
-                self.assertEqual(metadata,new_file.get_metadata())
+                self.assertEqual(metadata, new_file.get_metadata())
 
-                image1 = audiotools.Image.new(TEST_COVER1,u'',0)
-                image2 = audiotools.Image.new(TEST_COVER2,u'',0)
+                image1 = audiotools.Image.new(TEST_COVER1, u'', 0)
+                image2 = audiotools.Image.new(TEST_COVER2, u'', 0)
 
                 metadata.add_image(image1)
-                self.assertEqual(metadata.images()[0],image1)
-                self.assertEqual(metadata.front_covers()[0],image1)
+                self.assertEqual(metadata.images()[0], image1)
+                self.assertEqual(metadata.front_covers()[0], image1)
 
                 new_file.set_metadata(metadata)
                 metadata = new_file.get_metadata()
-                self.assertEqual(metadata.images()[0],image1)
-                self.assertEqual(metadata.front_covers()[0],image1)
+                self.assertEqual(metadata.images()[0], image1)
+                self.assertEqual(metadata.front_covers()[0], image1)
                 metadata.delete_image(metadata.images()[0])
 
                 new_file.set_metadata(metadata)
                 metadata = new_file.get_metadata()
-                self.assertEqual(len(metadata.images()),0)
+                self.assertEqual(len(metadata.images()), 0)
                 metadata.add_image(image2)
 
                 new_file.set_metadata(metadata)
                 metadata = new_file.get_metadata()
-                self.assertEqual(metadata.images()[0],image2)
-                self.assertEqual(metadata.front_covers()[0],image2)
+                self.assertEqual(metadata.images()[0], image2)
+                self.assertEqual(metadata.front_covers()[0], image2)
         finally:
             temp.close()
 
@@ -1122,26 +1145,26 @@ class TestAiffAudio(TestTextOutput):
         try:
             temp_tracks.append(self.audio_class.from_pcm(
                     temp_files[0].name,
-                    test_streams.Sine16_Stereo(44100,44100,441.0,0.50,4410.0,0.49,1.0)))
+                    test_streams.Sine16_Stereo(44100, 44100, 441.0, 0.50, 4410.0, 0.49, 1.0)))
 
             temp_tracks.append(self.audio_class.from_pcm(
                     temp_files[1].name,
-                    test_streams.Sine16_Stereo(66150,44100,8820.0,0.70,4410.0,0.29,1.0)))
+                    test_streams.Sine16_Stereo(66150, 44100, 8820.0, 0.70, 4410.0, 0.29, 1.0)))
             temp_tracks.append(self.audio_class.from_pcm(
                     temp_files[2].name,
-                    test_streams.Sine16_Stereo(52920,44100,441.0,0.50,441.0,0.49,0.5)))
+                    test_streams.Sine16_Stereo(52920, 44100, 441.0, 0.50, 441.0, 0.49, 0.5)))
             temp_tracks.append(self.audio_class.from_pcm(
                     temp_files[3].name,
-                    test_streams.Sine16_Stereo(61740,44100,441.0,0.61,661.5,0.37,2.0)))
+                    test_streams.Sine16_Stereo(61740, 44100, 441.0, 0.61, 661.5, 0.37, 2.0)))
             temp_tracks.append(self.audio_class.from_pcm(
                     temp_files[4].name,
-                    test_streams.Sine16_Stereo(26460,44100,441.0,0.50,882.0,0.49,0.7)))
+                    test_streams.Sine16_Stereo(26460, 44100, 441.0, 0.50, 882.0, 0.49, 0.7)))
             temp_tracks.append(self.audio_class.from_pcm(
                     temp_files[5].name,
-                    test_streams.Sine16_Stereo(61740,44100,441.0,0.50,4410.0,0.49,1.3)))
+                    test_streams.Sine16_Stereo(61740, 44100, 441.0, 0.50, 4410.0, 0.49, 1.3)))
             temp_tracks.append(self.audio_class.from_pcm(
                     temp_files[6].name,
-                    test_streams.Sine16_Stereo(79380,44100,8820.0,0.70,4410.0,0.29,0.1)))
+                    test_streams.Sine16_Stereo(79380, 44100, 8820.0, 0.70, 4410.0, 0.29, 0.1)))
 
             temp_tracks[0].set_metadata(audiotools.MetaData(
                     track_name=u"Track 3",
@@ -1181,20 +1204,20 @@ class TestAiffAudio(TestTextOutput):
                 if (new_class.can_add_replay_gain() and
                     new_class.lossless_replay_gain()):
                     subprocess.call(["track2track",
-                                     "-d",temp_dir,
+                                     "-d", temp_dir,
                                      "--format=%(track_name)s.%(suffix)s",
-                                     "-t",new_class.NAME,
+                                     "-t", new_class.NAME,
                                      "--replay-gain",
-                                     "-V","quiet"] + \
+                                     "-V", "quiet"] + \
                                         [f.filename for f in temp_tracks])
 
                     converted_tracks = audiotools.open_files(
-                        [os.path.join(temp_dir,f) for f in
-                         os.listdir(temp_dir)],sorted=True)
+                        [os.path.join(temp_dir, f) for f in
+                         os.listdir(temp_dir)], sorted=True)
 
-                    self.assertEqual(len(converted_tracks),7)
+                    self.assertEqual(len(converted_tracks), 7)
 
-                    for (i,track) in enumerate(converted_tracks):
+                    for (i, track) in enumerate(converted_tracks):
                         self.assertEqual(track.get_metadata().track_name,
                                          u"Track %d" % (i + 1))
                         self.assert_(track.replay_gain() is not None)
@@ -1213,7 +1236,6 @@ class TestAiffAudio(TestTextOutput):
                     self.assertNotEqual(replay_gains[0].album_gain,
                                         replay_gains[4].album_gain)
 
-
                     #tracks 2 and 3 should be on the same album
                     self.assertEqual(replay_gains[2].album_gain,
                                      replay_gains[3].album_gain)
@@ -1222,7 +1244,6 @@ class TestAiffAudio(TestTextOutput):
                                         replay_gains[0].album_gain)
                     self.assertNotEqual(replay_gains[3].album_gain,
                                         replay_gains[5].album_gain)
-
 
                     #tracks 4, 5 and 6 should be on the same album
                     self.assertEqual(replay_gains[4].album_gain,
@@ -1238,12 +1259,12 @@ class TestAiffAudio(TestTextOutput):
                                         replay_gains[2].album_gain)
 
                     for f in os.listdir(temp_dir):
-                       os.unlink(os.path.join(temp_dir,f))
+                        os.unlink(os.path.join(temp_dir, f))
         finally:
             for t in temp_files:
                 t.close()
             for f in os.listdir(temp_dir):
-                os.unlink(os.path.join(temp_dir,f))
+                os.unlink(os.path.join(temp_dir, f))
             os.rmdir(temp_dir)
 
     @TEST_PCM
@@ -1254,12 +1275,12 @@ class TestAiffAudio(TestTextOutput):
                                                  BLANK_PCM_Reader(60))
 
             if (new_file.lossless()):
-                PCM_LENGTHS = [s * 44100 for s in (5,10,15,4,16,10)]
+                PCM_LENGTHS = [s * 44100 for s in (5, 10, 15, 4, 16, 10)]
 
                 self.assertEqual(sum(PCM_LENGTHS),
                                  new_file.total_frames())
 
-                for (sub_pcm,pcm_length) in zip(audiotools.pcm_split(
+                for (sub_pcm, pcm_length) in zip(audiotools.pcm_split(
                         new_file.to_pcm(),
                         PCM_LENGTHS),
                                                 PCM_LENGTHS):
@@ -1276,12 +1297,11 @@ class TestAiffAudio(TestTextOutput):
                 self.assertEqual(audiotools.pcm_cmp(
                     new_file.to_pcm(),
                     audiotools.PCMCat(
-                    audiotools.pcm_split(new_file.to_pcm(),PCM_LENGTHS))),
+                    audiotools.pcm_split(new_file.to_pcm(), PCM_LENGTHS))),
                                  True)
 
         finally:
             temp.close()
-
 
     #much like testmassencode, but using track2track
     @TEST_EXECUTABLE
@@ -1301,24 +1321,24 @@ class TestAiffAudio(TestTextOutput):
                 try:
                     subprocess.call(["track2track",
                                      '--no-replay-gain',
-                                     "-t",new_audio_class.NAME,
-                                     "-o",temp_file.name,
+                                     "-t", new_audio_class.NAME,
+                                     "-o", temp_file.name,
                                      base_file.name])
 
                     new_file = audiotools.open(temp_file.name)
-                    self.assertEqual(new_file.NAME,new_audio_class.NAME)
+                    self.assertEqual(new_file.NAME, new_audio_class.NAME)
 
                     if (base.lossless() and new_file.lossless()):
                         self.assertEqual(audiotools.pcm_cmp(
                                 base.to_pcm(),
-                                new_file.to_pcm()),True,
+                                new_file.to_pcm()), True,
                                          "PCM mismatch converting %s to %s" % \
                                              (repr(base.NAME),
                                               repr(new_audio_class.NAME)))
                     else:
                         counter = PCM_Count()
                         pcm = new_file.to_pcm()
-                        audiotools.transfer_data(pcm.read,counter.write)
+                        audiotools.transfer_data(pcm.read, counter.write)
                         self.assert_(len(counter) > 0)
 
                     new_metadata = new_file.get_metadata()
@@ -1461,12 +1481,12 @@ class TestAiffAudio(TestTextOutput):
         if (lossless):
             #test musicbrainz, no --metadata
             time.sleep(2)
-            sub = subprocess.Popen(["track2xmcd","-V","quiet","-D",
+            sub = subprocess.Popen(["track2xmcd", "-V", "quiet", "-D",
                                     "--musicbrainz-server=musicbrainz.org",
                                     "--no-freedb"] + arguments,
                                    stdout=subprocess.PIPE)
             xml = sub.stdout.read()
-            self.assertEqual(sub.wait(),0)
+            self.assertEqual(sub.wait(), 0)
             self.assert_(len(xml) > 0)
             mbxml = audiotools.MusicBrainzReleaseXML.read_data(xml).metadata()
 
@@ -1475,44 +1495,44 @@ class TestAiffAudio(TestTextOutput):
             #an album that returns 1 match may return 0 later on
             #even with a lengthy delay between checks
             #this may only be a temporary problem
-            self.assertEqual(mbxml,MUSICBRAINZ_METADATA)
+            self.assertEqual(mbxml, MUSICBRAINZ_METADATA)
 
             #test freedb, no --metadata
-            sub = subprocess.Popen(["track2xmcd","-V","quiet","-D",
+            sub = subprocess.Popen(["track2xmcd", "-V", "quiet", "-D",
                                     "--freedb-server=us.freedb.org",
                                     "--no-musicbrainz"] + arguments,
                                    stdout=subprocess.PIPE,
-                                   stderr=open(os.devnull,"ab"))
-            xmcd = sub.stdout.read().decode('utf-8','replace')
-            self.assertEqual(sub.wait(),0)
+                                   stderr=open(os.devnull, "ab"))
+            xmcd = sub.stdout.read().decode('utf-8', 'replace')
+            self.assertEqual(sub.wait(), 0)
             self.assert_(len(xmcd) > 0)
             xmcd = audiotools.XMCD.read_data(xmcd).metadata()
-            self.assertEqual(xmcd,FREEDB_METADATA)
+            self.assertEqual(xmcd, FREEDB_METADATA)
 
         if (has_metadata):
             #test musicbrainz, with --metadata
-            sub = subprocess.Popen(["track2xmcd","-V","quiet",
+            sub = subprocess.Popen(["track2xmcd", "-V", "quiet",
                                     "--metadata",
                                     "--no-freedb"] + arguments,
                                    stdout=subprocess.PIPE,
-                                   stderr=open(os.devnull,"ab"))
+                                   stderr=open(os.devnull, "ab"))
             xml = sub.stdout.read()
-            self.assertEqual(sub.wait(),0)
+            self.assertEqual(sub.wait(), 0)
             self.assert_(len(xml) > 0)
             mbxml = audiotools.MusicBrainzReleaseXML.read_data(xml).metadata()
-            self.assertEqual(mbxml,album_metadata)
+            self.assertEqual(mbxml, album_metadata)
 
             #test freedb, with --metadata
-            sub = subprocess.Popen(["track2xmcd","-V","quiet",
+            sub = subprocess.Popen(["track2xmcd", "-V", "quiet",
                                     "--metadata",
                                     "--no-musicbrainz"] + arguments,
                                    stdout=subprocess.PIPE,
-                                   stderr=open(os.devnull,"ab"))
-            xmcd = sub.stdout.read().decode('utf-8','replace')
-            self.assertEqual(sub.wait(),0)
+                                   stderr=open(os.devnull, "ab"))
+            xmcd = sub.stdout.read().decode('utf-8', 'replace')
+            self.assertEqual(sub.wait(), 0)
             self.assert_(len(xmcd) > 0)
             xmcd = audiotools.XMCD.read_data(xmcd).metadata()
-            self.assertEqual(xmcd,album_metadata)
+            self.assertEqual(xmcd, album_metadata)
 
     #test individual tracks run through track2xmcd
     @TEST_EXECUTABLE
@@ -1521,43 +1541,43 @@ class TestAiffAudio(TestTextOutput):
         album_metadata = audiotools.AlbumMetaData(
             [audiotools.MetaData(
                     track_name=u'To the Stage of a New Adventure',
-                    track_number=1,track_total=7,
+                    track_number=1, track_total=7,
                     album_name=u'Sekaiju no MeiQ\xb2 *syoou no seihai* sound track : Piano sketch version',
                     artist_name=u'Yuzo Koshiro & Yuji Himukai',
                     year=u'2008'),
              audiotools.MetaData(
                     track_name=u'Echoes of a Fierce Battle that Separates Life and Death',
-                    track_number=2,track_total=7,
+                    track_number=2, track_total=7,
                     album_name=u'Sekaiju no MeiQ\xb2 *syoou no seihai* sound track : Piano sketch version',
                     artist_name=u'Yuzo Koshiro & Yuji Himukai',
                     year=u'2008'),
              audiotools.MetaData(
                     track_name=u'That is the Depths of a Crimson Labyrinth',
-                    track_number=3,track_total=7,
+                    track_number=3, track_total=7,
                     album_name=u'Sekaiju no MeiQ\xb2 *syoou no seihai* sound track : Piano sketch version',
                     artist_name=u'Yuzo Koshiro & Yuji Himukai',
                     year=u'2008'),
              audiotools.MetaData(
                     track_name=u'The Sons of God Meeting in the Sky',
-                    track_number=4,track_total=7,
+                    track_number=4, track_total=7,
                     album_name=u'Sekaiju no MeiQ\xb2 *syoou no seihai* sound track : Piano sketch version',
                     artist_name=u'Yuzo Koshiro & Yuji Himukai',
                     year=u'2008'),
              audiotools.MetaData(
                     track_name=u'To a Sorrowful Future of Snow and Ice',
-                    track_number=5,track_total=7,
+                    track_number=5, track_total=7,
                     album_name=u'Sekaiju no MeiQ\xb2 *syoou no seihai* sound track : Piano sketch version',
                     artist_name=u'Yuzo Koshiro & Yuji Himukai',
                     year=u'2008'),
              audiotools.MetaData(
                     track_name=u'***Secret Sound***',
-                    track_number=6,track_total=7,
+                    track_number=6, track_total=7,
                     album_name=u'Sekaiju no MeiQ\xb2 *syoou no seihai* sound track : Piano sketch version',
                     artist_name=u'Yuzo Koshiro & Yuji Himukai',
-                    year=u'2008',date=u''),
+                    year=u'2008', date=u''),
               audiotools.MetaData(
                     track_name=u'A Restful Place for the Adventurers',
-                    track_number=7,track_total=7,
+                    track_number=7, track_total=7,
                     album_name=u'Sekaiju no MeiQ\xb2 *syoou no seihai* sound track : Piano sketch version',
                     artist_name=u'Yuzo Koshiro & Yuji Himukai',
                     year=u'2008')])
@@ -1569,14 +1589,14 @@ class TestAiffAudio(TestTextOutput):
                        xrange(5)]
         try:
             tracks = [self.audio_class.from_pcm(
-                    os.path.join(trackdir,"track %2.2d.%s" % \
-                                     (i,self.audio_class.SUFFIX)),
+                    os.path.join(trackdir, "track %2.2d.%s" % \
+                                     (i, self.audio_class.SUFFIX)),
                     EXACT_BLANK_PCM_Reader(frames))
-                      for (i,frames) in
+                      for (i, frames) in
                       enumerate([7939176, 4799256, 6297480, 5383140,
                                  5246136, 5052684, 5013876])]
 
-            for (i,track) in enumerate(tracks):
+            for (i, track) in enumerate(tracks):
                 track.set_metadata(album_metadata[i + 1])
             self.__test_track2xmcd__(
                 [track.filename for track in tracks],
@@ -1585,7 +1605,7 @@ class TestAiffAudio(TestTextOutput):
                 None not in [track.get_metadata() for track in tracks])
         finally:
             for f in os.listdir(trackdir):
-                os.unlink(os.path.join(trackdir,f))
+                os.unlink(os.path.join(trackdir, f))
             os.rmdir(trackdir)
 
     #test CD image and cuesheet run through track2xmcd
@@ -1616,7 +1636,7 @@ zbRFFkTFETNfdPx1Pk9ISZmJvoOJSUdoProZFRcWFZ2Opug5lRkdILi8tgqgpgrMzMxOZ4l5dC0k
 uhhDdCiCwqg2Gw3lphgaGhoamR+mptKYNT/F3JFOFCQvKfgAwA==""".decode('base64').decode('bz2'))
             cue_file.flush()
             self.__test_track2xmcd__(
-                ["--cue",cue_file.name,track.filename],
+                ["--cue", cue_file.name, track.filename],
                 audiotools.AlbumMetaData([
                         audiotools.MetaData(
                             track_number=1,
@@ -1653,7 +1673,8 @@ uhhDdCiCwqg2Gw3lphgaGhoamR+mptKYNT/F3JFOFCQvKfgAwA==""".decode('base64').decode(
                             track_total=7,
                             album_name=u'Sekaiju no MeiQ\xb2 *syoou no seihai* sound track : Piano sketch version',
                             artist_name=u'Yuzo Koshiro & Yuji Himukai',
-                            year=u'2008'),audiotools.MetaData(
+                            year=u'2008'),
+                        audiotools.MetaData(
                             track_number=7,
                             track_total=7,
                             album_name=u'Sekaiju no MeiQ\xb2 *syoou no seihai* sound track : Piano sketch version',
@@ -1732,7 +1753,7 @@ uhhDdCiCwqg2Gw3lphgaGhoamR+mptKYNT/F3JFOFCQvKfgAwA==""".decode('base64').decode(
                             track_total=7,
                             album_name=u'Sekaiju no MeiQ\xb2 *syoou no seihai* sound track : Piano sketch version',
                             artist_name=u'Yuzo Koshiro & Yuji Himukai',
-                            year=u'2008'),audiotools.MetaData(
+                            year=u'2008'), audiotools.MetaData(
                             track_number=7,
                             track_total=7,
                             album_name=u'Sekaiju no MeiQ\xb2 *syoou no seihai* sound track : Piano sketch version',
@@ -1743,7 +1764,6 @@ uhhDdCiCwqg2Gw3lphgaGhoamR+mptKYNT/F3JFOFCQvKfgAwA==""".decode('base64').decode(
         finally:
             track_file.close()
 
-
     @TEST_EXECUTABLE
     def test_track2track_invalid(self):
         basedir_src = tempfile.mkdtemp()
@@ -1753,95 +1773,95 @@ uhhDdCiCwqg2Gw3lphgaGhoamR+mptKYNT/F3JFOFCQvKfgAwA==""".decode('base64').decode(
 
         try:
             track = self.audio_class.from_pcm(
-                os.path.join(basedir_src,"track01.%s" % \
+                os.path.join(basedir_src, "track01.%s" % \
                                  (self.audio_class.SUFFIX)),
                 BLANK_PCM_Reader(5))
 
             #try to use track2track with an invalid XMCD file
             self.assertEqual(self.__run_app__(
                     ["track2track",
-                     "-t","wav",
-                     "-x","/dev/null/foo.xmcd",
-                     track.filename]),1)
+                     "-t", "wav",
+                     "-x", "/dev/null/foo.xmcd",
+                     track.filename]), 1)
 
             self.__check_error__(_(u"Invalid XMCD or MusicBrainz XML file"))
 
             #try to use track2track -d on an un-writable directory
-            os.chmod(basedir_tar,basedir_tar_stat & 07555)
+            os.chmod(basedir_tar, basedir_tar_stat & 07555)
 
             self.assertEqual(self.__run_app__(
                     ["track2track",
-                     "-t","wav",
-                     "-j",str(1),
+                     "-t", "wav",
+                     "-j", str(1),
                      track.filename,
                      "-d",
-                     os.path.join(basedir_tar,"foo")]),1)
+                     os.path.join(basedir_tar, "foo")]), 1)
 
             self.__check_error__(_(u"Unable to write \"%s\"") % \
                                      (self.filename(
-                        os.path.join(basedir_tar,"foo","track01.wav"))))
+                        os.path.join(basedir_tar, "foo", "track01.wav"))))
 
             #try to use track2track -o on an un-writable directory
             self.assertEqual(self.__run_app__(
                     ["track2track",
-                     "-t","wav",
+                     "-t", "wav",
                      track.filename,
                      "-o",
-                     os.path.join(basedir_tar,"foo","track01.wav")]),1)
+                     os.path.join(basedir_tar, "foo", "track01.wav")]), 1)
 
             self.__check_error__(_(u"Unable to write \"%s\"") % \
                                      (self.filename(
-                        os.path.join(basedir_tar,"foo","track01.wav"))))
+                        os.path.join(basedir_tar, "foo", "track01.wav"))))
 
-            os.chmod(basedir_tar,basedir_tar_stat)
+            os.chmod(basedir_tar, basedir_tar_stat)
 
             #try to use track2track -d on an un-writable file
-            f = open(os.path.join(basedir_tar,"track01.wav"),"wb")
+            f = open(os.path.join(basedir_tar, "track01.wav"), "wb")
             f.write("")
             f.close()
-            f_stat = os.stat(os.path.join(basedir_tar,"track01.wav"))[0]
-            os.chmod(os.path.join(basedir_tar,"track01.wav"),
+            f_stat = os.stat(os.path.join(basedir_tar, "track01.wav"))[0]
+            os.chmod(os.path.join(basedir_tar, "track01.wav"),
                      f_stat & 07555)
             try:
                 self.assertEqual(self.__run_app__(
                     ["track2track",
-                     "-t","wav",
-                     "-j",str(1),
+                     "-t", "wav",
+                     "-j", str(1),
                      track.filename,
                      "-d",
-                     basedir_tar]),1)
+                     basedir_tar]), 1)
 
                 self.__check_info__(_(u"%s -> %s") % \
                                         (self.filename(track.filename),
-                                         self.filename(os.path.join(basedir_tar,"track01.wav"))))
+                                         self.filename(os.path.join(basedir_tar, "track01.wav"))))
 
                 self.__check_error__(_(u"Unable to write \"%s\"") % \
                                          (self.filename(
-                            os.path.join(basedir_tar,"track01.wav"))))
+                            os.path.join(basedir_tar, "track01.wav"))))
 
                 #try to use track2track -o on an un-writable file
                 self.assertEqual(self.__run_app__(
                     ["track2track",
-                     "-t","wav",
+                     "-t", "wav",
                      track.filename,
                      "-o",
-                     os.path.join(basedir_tar,"track01.wav")]),1)
+                     os.path.join(basedir_tar, "track01.wav")]), 1)
 
                 self.__check_error__(_(u"Unable to write \"%s\"") % \
                                          (self.filename(
-                            os.path.join(basedir_tar,"track01.wav"))))
+                            os.path.join(basedir_tar, "track01.wav"))))
             finally:
-                os.chmod(os.path.join(basedir_tar,"track01.wav"),f_stat)
-            os.unlink(os.path.join(basedir_tar,"track01.wav"))
+                os.chmod(os.path.join(basedir_tar, "track01.wav"), f_stat)
+            os.unlink(os.path.join(basedir_tar, "track01.wav"))
 
         finally:
             for f in os.listdir(basedir_src):
-                os.unlink(os.path.join(basedir_src,f))
+                os.unlink(os.path.join(basedir_src, f))
             os.rmdir(basedir_src)
 
-            os.chmod(basedir_tar,basedir_tar_stat)
+            os.chmod(basedir_tar, basedir_tar_stat)
             for f in os.listdir(basedir_tar):
-                os.unlink(os.path.join(basedir_tar,f))
+                os.unlink(os.path.join(basedir_tar, f))
             os.rmdir(basedir_tar)
 
     @TEST_EXECUTABLE
@@ -1867,18 +1887,18 @@ uhhDdCiCwqg2Gw3lphgaGhoamR+mptKYNT/F3JFOFCQvKfgAwA==""".decode('base64').decode(
                      temp_track1.filename,
                      temp_track2.filename,
                      temp_track3.filename,
-                     "-o","/dev/null/foo.wav"]),1)
+                     "-o", "/dev/null/foo.wav"]), 1)
 
             self.__check_error__(_(u"Unable to write \"%s\"") % \
                                          ("/dev/null/foo.wav"))
 
             self.assertEqual(self.__run_app__(
                     ["trackcat",
-                     "--cue","/dev/null/foo.cue",
+                     "--cue", "/dev/null/foo.cue",
                      temp_track1.filename,
                      temp_track2.filename,
                      temp_track3.filename,
-                     "-o","foo.wav"]),1)
+                     "-o", "foo.wav"]), 1)
 
             self.__check_error__(_(u"Unable to read cuesheet"))
         finally:
@@ -1906,11 +1926,11 @@ uhhDdCiCwqg2Gw3lphgaGhoamR+mptKYNT/F3JFOFCQvKfgAwA==""".decode('base64').decode(
                      "--freedb-server=foo.bar",
                      "--freedb-port=9001",
                      temp_track1.filename,
-                     temp_track2.filename]),1)
+                     temp_track2.filename]), 1)
 
             self.__check_info__(_(u"Sending Disc ID \"%(disc_id)s\" to server \"%(server)s\"") % \
-                                   {"disc_id":u"0a000c02",
-                                    "server":u"foo.bar"})
+                                   {"disc_id": u"0a000c02",
+                                    "server": u"foo.bar"})
 
             #an invalid freedb-server will generate one of the following
             #depending on whether DNS is spoofing bogus hostnames or not
@@ -1921,7 +1941,7 @@ uhhDdCiCwqg2Gw3lphgaGhoamR+mptKYNT/F3JFOFCQvKfgAwA==""".decode('base64').decode(
                     ["track2xmcd",
                      temp_track1.filename,
                      temp_track2.filename,
-                     "-x","/dev/null/foo.xmcd"]),1)
+                     "-x", "/dev/null/foo.xmcd"]), 1)
             self.__check_error__(_(u"Unable to write \"%s\"") % \
                                      (self.filename("/dev/null/foo.xmcd")))
         finally:
@@ -1940,24 +1960,24 @@ uhhDdCiCwqg2Gw3lphgaGhoamR+mptKYNT/F3JFOFCQvKfgAwA==""".decode('base64').decode(
             temp_track.set_metadata(DummyMetaData())
             if (temp_track.get_metadata() is not None):
                 self.assertEqual(self.__run_app__(
-                        ["tracktag","--xmcd=/dev/null/foo.xmcd",
-                         self.filename(temp_track.filename)]),1)
+                        ["tracktag", "--xmcd=/dev/null/foo.xmcd",
+                         self.filename(temp_track.filename)]), 1)
                 self.__check_error__(_(u"Invalid XMCD or MusicBrainz XML file"))
 
                 self.assertEqual(self.__run_app__(
-                        ["tracktag","--comment-file=/dev/null/foo.txt",
-                         self.filename(temp_track.filename)]),1)
+                        ["tracktag", "--comment-file=/dev/null/foo.txt",
+                         self.filename(temp_track.filename)]), 1)
                 self.__check_error__(_(u"Unable to open comment file \"%s\"") % \
                                          (self.filename("/dev/null/foo.txt")))
 
-                os.chmod(temp_track_file.name,temp_track_stat & 07555)
+                os.chmod(temp_track_file.name, temp_track_stat & 07555)
                 self.assertEqual(self.__run_app__(
-                        ["tracktag","--name=Foo",
-                         self.filename(temp_track.filename)]),1)
+                        ["tracktag", "--name=Foo",
+                         self.filename(temp_track.filename)]), 1)
                 self.__check_error__(_(u"Unable to modify \"%s\"") % \
                                          (self.filename(temp_track.filename)))
         finally:
-            os.chmod(temp_track_file.name,temp_track_stat)
+            os.chmod(temp_track_file.name, temp_track_stat)
             temp_track_file.close()
 
     @TEST_EXECUTABLE
@@ -1982,37 +2002,38 @@ uhhDdCiCwqg2Gw3lphgaGhoamR+mptKYNT/F3JFOFCQvKfgAwA==""".decode('base64').decode(
             cue_file.flush()
 
             self.assertEqual(self.__run_app__(
-                    ["tracksplit","--xmcd=/dev/null/foo.xmcd",
-                     "--cue",cue_file.name,
-                     "-d",tempdir,self.filename(track.filename)]),1)
+                    ["tracksplit", "--xmcd=/dev/null/foo.xmcd",
+                     "--cue", cue_file.name,
+                     "-d", tempdir, self.filename(track.filename)]), 1)
 
             self.__check_error__(_(u"Invalid XMCD or MusicBrainz XML file"))
 
             self.assertEqual(self.__run_app__(
                     ["tracksplit",
-                     "--cue","/dev/null/foo.cue",
-                     "-d",tempdir,track.filename]),1)
+                     "--cue", "/dev/null/foo.cue",
+                     "-d", tempdir, track.filename]), 1)
             self.__check_error__(_(u"Unable to read cuesheet"))
 
-            os.chmod(tempdir,tempdir_stat & 0x7555)
+            os.chmod(tempdir, tempdir_stat & 0x7555)
             self.assertEqual(self.__run_app__(
                     ["tracksplit",
-                     "--cue",cue_file.name,
-                     "-d",tempdir,
-                     "-j",str(1),
-                     "-t","wav",
-                     track.filename]),1)
+                     "--cue", cue_file.name,
+                     "-d", tempdir,
+                     "-j", str(1),
+                     "-t", "wav",
+                     track.filename]), 1)
 
             self.__check_info__(_(u"%s -> %s") % \
                                         (self.filename(track.filename),
-                                         self.filename(os.path.join(tempdir,"track01.wav"))))
+                                         self.filename(os.path.join(tempdir,
+                                                                    "track01.wav"))))
 
             self.__check_error__(_(u"Unable to write \"%s\"") % \
                                      (self.filename(
-                        os.path.join(tempdir,"track01.wav"))))
+                        os.path.join(tempdir, "track01.wav"))))
 
         finally:
-            os.chmod(tempdir,tempdir_stat)
+            os.chmod(tempdir, tempdir_stat)
             os.rmdir(tempdir)
             cue_file.close()
             base_file.close()
@@ -2022,38 +2043,38 @@ uhhDdCiCwqg2Gw3lphgaGhoamR+mptKYNT/F3JFOFCQvKfgAwA==""".decode('base64').decode(
         tempdir = tempfile.mkdtemp()
         tempdir_stat = os.stat(tempdir)[0]
         track = self.audio_class.from_pcm(
-            os.path.join(tempdir,"01 - track.%s" % (self.audio_class.SUFFIX)),
+            os.path.join(tempdir, "01 - track.%s" % (self.audio_class.SUFFIX)),
             BLANK_PCM_Reader(5))
         track.set_metadata(audiotools.MetaData(track_name=u"Name",
                                                track_number=1,
                                                album_name=u"Album"))
         try:
             if (track.get_metadata() is not None):
-                os.chmod(tempdir,tempdir_stat & 0x7555)
+                os.chmod(tempdir, tempdir_stat & 0x7555)
 
                 self.assertEqual(self.__run_app__(
                         ["trackrename",
                          '--format=%(album_name)s/%(track_number)2.2d - %(track_name)s.%(suffix)s',
-                         track.filename]),1)
+                         track.filename]), 1)
 
                 self.__check_error__(_(u"Unable to write \"%s\"") % \
                                          self.filename(
                         os.path.join(
                             "Album",
                             "%(track_number)2.2d - %(track_name)s.%(suffix)s" % \
-                                {"track_number":1,
-                                 "track_name":"Name",
-                                 "suffix":self.audio_class.SUFFIX})))
+                                {"track_number": 1,
+                                 "track_name": "Name",
+                                 "suffix": self.audio_class.SUFFIX})))
 
                 self.assertEqual(self.__run_app__(
                         ["trackrename",
                          '--format=%(track_number)2.2d - %(track_name)s.%(suffix)s',
-                         track.filename]),1)
+                         track.filename]), 1)
 
                  #mv(1)'s output is system-specific and not something
                  #that should be tested against directly
         finally:
-            os.chmod(tempdir,tempdir_stat)
+            os.chmod(tempdir, tempdir_stat)
             os.unlink(track.filename)
             os.rmdir(tempdir)
 
@@ -2064,7 +2085,7 @@ uhhDdCiCwqg2Gw3lphgaGhoamR+mptKYNT/F3JFOFCQvKfgAwA==""".decode('base64').decode(
         track_file_stat = os.stat(track_file.name)[0]
 
         undo_db_dir = tempfile.mkdtemp()
-        undo_db = os.path.join(undo_db_dir,"undo.db")
+        undo_db = os.path.join(undo_db_dir, "undo.db")
 
         try:
             track = self.audio_class.from_pcm(track_file.name,
@@ -2075,14 +2096,14 @@ uhhDdCiCwqg2Gw3lphgaGhoamR+mptKYNT/F3JFOFCQvKfgAwA==""".decode('base64').decode(
             if (track.get_metadata() is not None):
                 #unwritable undo DB, writable file
                 self.assertEqual(self.__run_app__(
-                        ["tracklint","--fix","--db","/dev/null/undo.db",
-                         track.filename]),1)
+                        ["tracklint", "--fix", "--db", "/dev/null/undo.db",
+                         track.filename]), 1)
                 self.__check_error__(_(u"Unable to open \"%s\"") % \
                                          (self.filename("/dev/null/undo.db")))
 
                 self.assertEqual(self.__run_app__(
-                        ["tracklint","--undo","--db","/dev/null/undo.db",
-                         track.filename]),1)
+                        ["tracklint", "--undo", "--db", "/dev/null/undo.db",
+                         track.filename]), 1)
                 self.__check_error__(_(u"Unable to open \"%s\"") % \
                                          (self.filename("/dev/null/undo.db")))
 
@@ -2090,33 +2111,33 @@ uhhDdCiCwqg2Gw3lphgaGhoamR+mptKYNT/F3JFOFCQvKfgAwA==""".decode('base64').decode(
                 os.chmod(track.filename, track_file_stat & 0x7555)
 
                 self.assertEqual(self.__run_app__(
-                        ["tracklint","--fix","--db","/dev/null/undo.db",
-                         track.filename]),1)
+                        ["tracklint", "--fix", "--db", "/dev/null/undo.db",
+                         track.filename]), 1)
                 self.__check_error__(_(u"Unable to open \"%s\"") % \
                                          (self.filename("/dev/null/undo.db")))
 
                 self.assertEqual(self.__run_app__(
-                        ["tracklint","--undo","--db","/dev/null/undo.db",
-                         track.filename]),1)
+                        ["tracklint", "--undo", "--db", "/dev/null/undo.db",
+                         track.filename]), 1)
                 self.__check_error__(_(u"Unable to open \"%s\"") % \
                                          (self.filename("/dev/null/undo.db")))
 
                 #restore from DB to unwritable file
-                os.chmod(track.filename,track_file_stat)
+                os.chmod(track.filename, track_file_stat)
                 self.assertEqual(self.__run_app__(
-                        ["tracklint","--fix","--db",undo_db,
-                         track.filename]),0)
-                os.chmod(track.filename,track_file_stat & 0x7555)
+                        ["tracklint", "--fix", "--db", undo_db,
+                         track.filename]), 0)
+                os.chmod(track.filename, track_file_stat & 0x7555)
                 self.assertEqual(self.__run_app__(
-                        ["tracklint","--undo","--db",undo_db,
-                         track.filename]),1)
+                        ["tracklint", "--undo", "--db", undo_db,
+                         track.filename]), 1)
                 self.__check_error__(_(u"Unable to write \"%s\"") % \
                                          (self.filename(track.filename)))
 
         finally:
-            os.chmod(track_file.name,track_file_stat)
+            os.chmod(track_file.name, track_file_stat)
             track_file.close()
-            for p in [os.path.join(undo_db_dir,f) for f in
+            for p in [os.path.join(undo_db_dir, f) for f in
                       os.listdir(undo_db_dir)]:
                 os.unlink(p)
             os.rmdir(undo_db_dir)
@@ -2128,7 +2149,7 @@ uhhDdCiCwqg2Gw3lphgaGhoamR+mptKYNT/F3JFOFCQvKfgAwA==""".decode('base64').decode(
         track_file_stat = os.stat(track_file.name)[0]
 
         undo_db_dir = tempfile.mkdtemp()
-        undo_db = os.path.join(undo_db_dir,"undo.db")
+        undo_db = os.path.join(undo_db_dir, "undo.db")
 
         try:
             track = self.audio_class.from_pcm(track_file.name,
@@ -2142,26 +2163,26 @@ uhhDdCiCwqg2Gw3lphgaGhoamR+mptKYNT/F3JFOFCQvKfgAwA==""".decode('base64').decode(
                          track_file_stat & 0x7555)
 
                 self.assertEqual(self.__run_app__(
-                        ["tracklint","--fix","--db",undo_db,
-                         track.filename]),1)
+                        ["tracklint", "--fix", "--db", undo_db,
+                         track.filename]), 1)
                 self.__check_info__(_(u"* %(filename)s: %(message)s") % \
-                           {"filename":self.filename(track.filename),
-                            "message":_(u"Stripped whitespace from track_name field")})
+                           {"filename": self.filename(track.filename),
+                            "message": _(u"Stripped whitespace from track_name field")})
                 self.__check_error__(_(u"Unable to write \"%s\"") % \
                                          (self.filename(track.filename)))
 
                 #no undo DB, unwritable file
                 self.assertEqual(self.__run_app__(
-                        ["tracklint","--fix",track.filename]),1)
+                        ["tracklint", "--fix", track.filename]), 1)
                 self.__check_info__(_(u"* %(filename)s: %(message)s") % \
-                           {"filename":self.filename(track.filename),
-                            "message":_(u"Stripped whitespace from track_name field")})
+                           {"filename": self.filename(track.filename),
+                            "message": _(u"Stripped whitespace from track_name field")})
                 self.__check_error__(_(u"Unable to write \"%s\"") % \
                                          (self.filename(track.filename)))
         finally:
-            os.chmod(track_file.name,track_file_stat)
+            os.chmod(track_file.name, track_file_stat)
             track_file.close()
-            for p in [os.path.join(undo_db_dir,f) for f in
+            for p in [os.path.join(undo_db_dir, f) for f in
                       os.listdir(undo_db_dir)]:
                 os.unlink(p)
             os.rmdir(undo_db_dir)
@@ -2178,16 +2199,16 @@ uhhDdCiCwqg2Gw3lphgaGhoamR+mptKYNT/F3JFOFCQvKfgAwA==""".decode('base64').decode(
             track.set_metadata(DummyMetaData3())
             if ((track.get_metadata() is not None) and
                 (len(track.get_metadata().images()) == 1)):
-                os.chmod(temp_dir,temp_dir_stat & 0x7555)
+                os.chmod(temp_dir, temp_dir_stat & 0x7555)
                 self.assertEqual(self.__run_app__(
-                        ["coverdump","-d",temp_dir,track.filename]),1)
+                        ["coverdump", "-d", temp_dir, track.filename]), 1)
                 self.__check_error__(_(u"Unable to write \"%s\"") % \
                                          (self.filename(
-                            os.path.join(temp_dir,"front_cover.jpg"))))
+                            os.path.join(temp_dir, "front_cover.jpg"))))
         finally:
             track_file.close()
-            os.chmod(temp_dir,temp_dir_stat)
-            for p in [os.path.join(temp_dir,f) for f in
+            os.chmod(temp_dir, temp_dir_stat)
+            for p in [os.path.join(temp_dir, f) for f in
                       os.listdir(temp_dir)]:
                 os.unlink(p)
             os.rmdir(temp_dir)
@@ -2200,15 +2221,15 @@ uhhDdCiCwqg2Gw3lphgaGhoamR+mptKYNT/F3JFOFCQvKfgAwA==""".decode('base64').decode(
             return
 
         TOTAL_FRAMES = 24725400
-        FILE_FRAMES = [8742384,7204176,8778840]
+        FILE_FRAMES = [8742384, 7204176, 8778840]
         CUE_SHEET = 'FILE "data.wav" BINARY\n  TRACK 01 AUDIO\n    INDEX 01 00:00:00\n  TRACK 02 AUDIO\n    INDEX 00 03:16:55\n    INDEX 01 03:18:18\n  TRACK 03 AUDIO\n    INDEX 00 05:55:12\n    INDEX 01 06:01:45\n'
 
         TOC_SHEET = 'CD_DA\n\nTRACK AUDIO\n    AUDIOFILE "data.wav" 00:00:00 03:16:55\n\nTRACK AUDIO\n    AUDIOFILE "data.wav" 03:16:55 02:38:32\n    START 00:01:38\n\nTRACK AUDIO\n    AUDIOFILE "data.wav" 05:55:12\n    START 00:06:33\n'
 
         TOC_SHEET2 = 'CD_DA\n\nCATALOG "0000000000000"\n\n// Track 1\nTRACK AUDIO\nNO COPY\nNO PRE_EMPHASIS\nTWO_CHANNEL_AUDIO\nISRC "JPVI00213050"\nFILE "data.wav" 0 03:16:55\n\n\n// Track 2\nTRACK AUDIO\nNO COPY\nNO PRE_EMPHASIS\nTWO_CHANNEL_AUDIO\nISRC "JPVI00213170"\nFILE "data.wav" 03:16:55 02:38:32\nSTART 00:01:38\n\n\n// Track 3\nTRACK AUDIO\nNO COPY\nNO PRE_EMPHASIS\nTWO_CHANNEL_AUDIO\nISRC "JPVI00213200"\nFILE "data.wav" 05:55:12 03:25:38\nSTART 00:06:33\n\n'
 
-        for (sheet,suffix) in zip([CUE_SHEET,TOC_SHEET,TOC_SHEET2],
-                                  ['.cue','.toc','.toc']):
+        for (sheet, suffix) in zip([CUE_SHEET, TOC_SHEET, TOC_SHEET2],
+                                  ['.cue', '.toc', '.toc']):
             base_file = tempfile.NamedTemporaryFile(suffix="." + self.audio_class.SUFFIX)
 
             cue_file = tempfile.NamedTemporaryFile(suffix=suffix)
@@ -2225,26 +2246,26 @@ uhhDdCiCwqg2Gw3lphgaGhoamR+mptKYNT/F3JFOFCQvKfgAwA==""".decode('base64').decode(
                 if (not base.lossless()):
                     return
 
-                self.assertEqual(base.total_frames(),TOTAL_FRAMES)
+                self.assertEqual(base.total_frames(), TOTAL_FRAMES)
 
                 tempdir = tempfile.mkdtemp()
 
                 subprocess.call(["tracksplit",
-                                 "-V","quiet","-j",str(1),
-                                 "-t",self.audio_class.NAME,
+                                 "-V", "quiet", "-j", str(1),
+                                 "-t", self.audio_class.NAME,
                                  "--cue=%s" % (cue_file.name),
                                  "--no-replay-gain",
-                                 "-d",tempdir,
+                                 "-d", tempdir,
                                  base.filename])
 
                 split_files = list(audiotools.open_directory(tempdir))
 
-                for (f,length) in zip(split_files,FILE_FRAMES):
-                    self.assertEqual(f.total_frames(),length)
+                for (f, length) in zip(split_files, FILE_FRAMES):
+                    self.assertEqual(f.total_frames(), length)
 
                 subprocess.call(["trackcat",
-                                 "-t",self.audio_class.NAME,
-                                 "-o",joined_file.name] + \
+                                 "-t", self.audio_class.NAME,
+                                 "-o", joined_file.name] + \
                                 [f.filename for f in split_files])
 
                 self.assertEqual(audiotools.pcm_cmp(
@@ -2252,16 +2273,15 @@ uhhDdCiCwqg2Gw3lphgaGhoamR+mptKYNT/F3JFOFCQvKfgAwA==""".decode('base64').decode(
                         audiotools.open(joined_file.name).to_pcm()),
                                  True)
 
+                self.assertEqual(subprocess.call(["trackcmp",
+                                                  "-V", "quiet",
+                                                  base.filename,
+                                                  joined_file.name]), 0)
 
                 self.assertEqual(subprocess.call(["trackcmp",
-                                                  "-V","quiet",
+                                                  "-V", "quiet",
                                                   base.filename,
-                                                  joined_file.name]),0)
-
-                self.assertEqual(subprocess.call(["trackcmp",
-                                                  "-V","quiet",
-                                                  base.filename,
-                                                  split_files[0].filename]),1)
+                                                  split_files[0].filename]), 1)
 
                 for f in split_files:
                     os.unlink(f.filename)
@@ -2275,36 +2295,36 @@ uhhDdCiCwqg2Gw3lphgaGhoamR+mptKYNT/F3JFOFCQvKfgAwA==""".decode('base64').decode(
     def test_trackcmp(self):
         basedir = tempfile.mkdtemp()
         try:
-            subdir1 = os.path.join(basedir,"subdir1")
-            subdir2 = os.path.join(basedir,"subdir2")
+            subdir1 = os.path.join(basedir, "subdir1")
+            subdir2 = os.path.join(basedir, "subdir2")
             os.mkdir(subdir1)
             os.mkdir(subdir2)
             try:
                 tempfile1 = self.audio_class.from_pcm(
-                    os.path.join(subdir1,"track01.%s" % \
+                    os.path.join(subdir1, "track01.%s" % \
                                      (self.audio_class.SUFFIX)),
                     RANDOM_PCM_Reader(10))
                 tempfile1.set_metadata(audiotools.MetaData(
                         track_number=1))
 
                 tempfile2 = self.audio_class.from_pcm(
-                    os.path.join(subdir1,"track02.%s" % \
+                    os.path.join(subdir1, "track02.%s" % \
                                      (self.audio_class.SUFFIX)),
                     RANDOM_PCM_Reader(5))
                 tempfile2.set_metadata(audiotools.MetaData(
                         track_number=2))
 
                 tempfile3 = self.audio_class.from_pcm(
-                    os.path.join(subdir1,"track03.%s" % \
+                    os.path.join(subdir1, "track03.%s" % \
                                      (self.audio_class.SUFFIX)),
                     RANDOM_PCM_Reader(15))
                 tempfile3.set_metadata(audiotools.MetaData(
                         track_number=3))
                 try:
                     self.assertEqual(subprocess.call(["trackcmp",
-                                                      "-V","quiet",
+                                                      "-V", "quiet",
                                                       subdir1,
-                                                      subdir2]),1)
+                                                      subdir2]), 1)
                     os.link(tempfile1.filename,
                             os.path.join(subdir2,
                                          "track01.%s" % \
@@ -2319,9 +2339,9 @@ uhhDdCiCwqg2Gw3lphgaGhoamR+mptKYNT/F3JFOFCQvKfgAwA==""".decode('base64').decode(
                                      True)
 
                     self.assertEqual(subprocess.call(["trackcmp",
-                                                      "-V","quiet",
+                                                      "-V", "quiet",
                                                       subdir1,
-                                                      subdir2]),1)
+                                                      subdir2]), 1)
 
                     os.link(tempfile2.filename,
                             os.path.join(subdir2,
@@ -2337,9 +2357,9 @@ uhhDdCiCwqg2Gw3lphgaGhoamR+mptKYNT/F3JFOFCQvKfgAwA==""".decode('base64').decode(
                                      True)
 
                     self.assertEqual(subprocess.call(["trackcmp",
-                                                      "-V","quiet",
+                                                      "-V", "quiet",
                                                       subdir1,
-                                                      subdir2]),1)
+                                                      subdir2]), 1)
 
                     os.link(tempfile3.filename,
                             os.path.join(subdir2,
@@ -2355,33 +2375,33 @@ uhhDdCiCwqg2Gw3lphgaGhoamR+mptKYNT/F3JFOFCQvKfgAwA==""".decode('base64').decode(
                                      True)
 
                     self.assertEqual(subprocess.call(["trackcmp",
-                                                      "-V","quiet",
+                                                      "-V", "quiet",
                                                       subdir1,
-                                                      subdir2]),0)
+                                                      subdir2]), 0)
 
                     os.unlink(tempfile2.filename)
 
                     self.assertEqual(subprocess.call(["trackcmp",
-                                                      "-V","quiet",
+                                                      "-V", "quiet",
                                                       subdir1,
-                                                      subdir2]),1)
+                                                      subdir2]), 1)
 
                     os.unlink(tempfile3.filename)
 
                     self.assertEqual(subprocess.call(["trackcmp",
-                                                      "-V","quiet",
+                                                      "-V", "quiet",
                                                       subdir1,
-                                                      subdir2]),1)
+                                                      subdir2]), 1)
 
                     os.unlink(tempfile1.filename)
 
                     self.assertEqual(subprocess.call(["trackcmp",
-                                                      "-V","quiet",
+                                                      "-V", "quiet",
                                                       subdir1,
-                                                      subdir2]),1)
+                                                      subdir2]), 1)
                 finally:
-                    for temp in (tempfile1,tempfile2,tempfile3,
-                                 tempfile4,tempfile5,tempfile6):
+                    for temp in (tempfile1, tempfile2, tempfile3,
+                                 tempfile4, tempfile5, tempfile6):
                         if (os.path.isfile(temp.filename)):
                             os.unlink(temp.filename)
             finally:
@@ -2395,12 +2415,12 @@ uhhDdCiCwqg2Gw3lphgaGhoamR+mptKYNT/F3JFOFCQvKfgAwA==""".decode('base64').decode(
         basedir = tempfile.mkdtemp()
         try:
             tempfile1 = self.audio_class.from_pcm(
-                    os.path.join(basedir,"track01.%s" % \
+                    os.path.join(basedir, "track01.%s" % \
                                      (self.audio_class.SUFFIX)),
                     RANDOM_PCM_Reader(10))
 
             tempfile2 = self.audio_class.from_pcm(
-                    os.path.join(basedir,"track02.%s" % \
+                    os.path.join(basedir, "track02.%s" % \
                                      (self.audio_class.SUFFIX)),
                     RANDOM_PCM_Reader(5))
 
@@ -2423,9 +2443,9 @@ uhhDdCiCwqg2Gw3lphgaGhoamR+mptKYNT/F3JFOFCQvKfgAwA==""".decode('base64').decode(
                 len3_result = len3.stdout.read()
                 len3.wait()
 
-                self.assertEqual(len1_result,'0:00:10\n')
-                self.assertEqual(len2_result,'0:00:05\n')
-                self.assertEqual(len3_result,'0:00:15\n')
+                self.assertEqual(len1_result, '0:00:10\n')
+                self.assertEqual(len2_result, '0:00:05\n')
+                self.assertEqual(len3_result, '0:00:15\n')
             finally:
                 os.unlink(tempfile1.filename)
                 os.unlink(tempfile2.filename)
@@ -2440,7 +2460,7 @@ uhhDdCiCwqg2Gw3lphgaGhoamR+mptKYNT/F3JFOFCQvKfgAwA==""".decode('base64').decode(
         basedir = tempfile.mkdtemp()
         try:
             track = self.audio_class.from_pcm(
-                os.path.join(basedir,"track.%s" % (self.audio_class.SUFFIX)),
+                os.path.join(basedir, "track.%s" % (self.audio_class.SUFFIX)),
                 BLANK_PCM_Reader(5))
             metadata = audiotools.MetaData(track_name="Name")
             track.set_metadata(metadata)
@@ -2448,27 +2468,27 @@ uhhDdCiCwqg2Gw3lphgaGhoamR+mptKYNT/F3JFOFCQvKfgAwA==""".decode('base64').decode(
             if (metadata is None):
                 return
 
-            jpeg = os.path.join(basedir,"image1.jpg")
-            png = os.path.join(basedir,"image2.png")
+            jpeg = os.path.join(basedir, "image1.jpg")
+            png = os.path.join(basedir, "image2.png")
 
-            f = open(jpeg,"wb")
+            f = open(jpeg, "wb")
             f.write(TEST_COVER1)
             f.close()
-            f = open(png,"wb")
+            f = open(png, "wb")
             f.write(TEST_COVER2)
             f.close()
 
-            self.assertEqual(metadata.track_name,"Name")
+            self.assertEqual(metadata.track_name, "Name")
 
-            for (flag,field,value) in self.flag_field_values():
+            for (flag, field, value) in self.flag_field_values():
                 self.assertEqual(subprocess.call(["tracktag",
-                                                  flag,str(value),
-                                                  track.filename]),0)
-                setattr(metadata,field,value)
-                self.assertEqual(getattr(metadata,field),value,
+                                                  flag, str(value),
+                                                  track.filename]), 0)
+                setattr(metadata, field, value)
+                self.assertEqual(getattr(metadata, field), value,
                                  "metadata.%s = %s, should be %s" % \
-                                     (field,getattr(metadata,field),value))
-                self.assertEqual(metadata,track.get_metadata())
+                                     (field, getattr(metadata, field), value))
+                self.assertEqual(metadata, track.get_metadata())
 
                 new_path = os.path.join(basedir,
                                         self.audio_class.track_name(
@@ -2477,11 +2497,11 @@ uhhDdCiCwqg2Gw3lphgaGhoamR+mptKYNT/F3JFOFCQvKfgAwA==""".decode('base64').decode(
                         format=template))
 
                 self.assertEqual(subprocess.call(["trackrename",
-                                                  "-V","quiet",
-                                                  "--format",template,
-                                                  track.filename]),0)
+                                                  "-V", "quiet",
+                                                  "--format", template,
+                                                  track.filename]), 0)
 
-                self.assertEqual(os.path.isfile(new_path),True)
+                self.assertEqual(os.path.isfile(new_path), True)
                 track = audiotools.open(new_path)
 
             self.assertEqual("foo",
@@ -2506,34 +2526,34 @@ uhhDdCiCwqg2Gw3lphgaGhoamR+mptKYNT/F3JFOFCQvKfgAwA==""".decode('base64').decode(
                     file_path="foo"))
 
             old_filename = track.filename
-            new_filename = os.path.join(basedir,"foo.bar")
-            os.rename(track.filename,new_filename)
+            new_filename = os.path.join(basedir, "foo.bar")
+            os.rename(track.filename, new_filename)
             self.assertEqual(subprocess.call(["trackrename",
                                               "--format=%(basename)s",
-                                              "-V","quiet",
-                                              new_filename]),0)
-            self.assertEqual(os.path.isfile(os.path.join(basedir,"foo")),True)
-            os.rename(os.path.join(basedir,"foo"),old_filename)
-            self.assertEqual(os.path.isfile(old_filename),True)
+                                              "-V", "quiet",
+                                              new_filename]), 0)
+            self.assertEqual(os.path.isfile(os.path.join(basedir, "foo")), True)
+            os.rename(os.path.join(basedir, "foo"), old_filename)
+            self.assertEqual(os.path.isfile(old_filename), True)
 
             os.rename(track.filename,
-                      os.path.join(basedir,"track.%s" % \
+                      os.path.join(basedir, "track.%s" % \
                                        (self.audio_class.SUFFIX)))
-            track = audiotools.open(os.path.join(basedir,"track.%s" % \
+            track = audiotools.open(os.path.join(basedir, "track.%s" % \
                                                      (self.audio_class.SUFFIX)))
 
-            for (flag,field,value) in self.flag_field_values():
+            for (flag, field, value) in self.flag_field_values():
                 self.assertEqual(subprocess.call(["tracktag",
                                                   "--replace",
-                                                  flag,str(value),
-                                                  track.filename]),0)
-                metadata = audiotools.MetaData(**{field:value})
-                self.assertEqual(metadata,track.get_metadata())
+                                                  flag, str(value),
+                                                  track.filename]), 0)
+                metadata = audiotools.MetaData(**{field: value})
+                self.assertEqual(metadata, track.get_metadata())
 
                 os.rename(track.filename,
-                          os.path.join(basedir,"track.%s" % \
+                          os.path.join(basedir, "track.%s" % \
                                            (self.audio_class.SUFFIX)))
-                track = audiotools.open(os.path.join(basedir,"track.%s" % \
+                track = audiotools.open(os.path.join(basedir, "track.%s" % \
                                                          (self.audio_class.SUFFIX)))
 
                 new_path = os.path.join(basedir,
@@ -2543,55 +2563,55 @@ uhhDdCiCwqg2Gw3lphgaGhoamR+mptKYNT/F3JFOFCQvKfgAwA==""".decode('base64').decode(
                         file_path=track.filename))
 
                 self.assertEqual(subprocess.call(["trackrename",
-                                                  "-V","quiet",
-                                                  "--format",template,
-                                                  track.filename]),0)
+                                                  "-V", "quiet",
+                                                  "--format", template,
+                                                  track.filename]), 0)
 
-                self.assertEqual(os.path.isfile(new_path),True)
+                self.assertEqual(os.path.isfile(new_path), True)
                 track = audiotools.open(new_path)
                 metadata = track.get_metadata()
 
             if (metadata.supports_images()):
                 metadata = audiotools.MetaData(track_name='Images')
                 track.set_metadata(metadata)
-                self.assertEqual(metadata,track.get_metadata())
+                self.assertEqual(metadata, track.get_metadata())
 
                 flag_type_images_data = self.__flag_type_images_data__(
-                    jpeg,png,TEST_COVER1,TEST_COVER2)
+                    jpeg, png, TEST_COVER1, TEST_COVER2)
 
-                for (flag,img_type,value,data) in flag_type_images_data:
+                for (flag, img_type, value, data) in flag_type_images_data:
                     self.assertEqual(subprocess.call(["tracktag",
-                                                      flag,str(value),
-                                                      track.filename]),0)
+                                                      flag, str(value),
+                                                      track.filename]), 0)
                     metadata.add_image(audiotools.Image.new(
-                            data,u"",img_type))
+                            data, u"", img_type))
                     self.assertEqual(metadata.images(),
                                      track.get_metadata().images())
 
-                for (flag,img_type,value,data) in flag_type_images_data:
+                for (flag, img_type, value, data) in flag_type_images_data:
                     self.assertEqual(subprocess.call(["tracktag",
                                                       "--remove-images",
-                                                      flag,str(value),
-                                                      track.filename]),0)
+                                                      flag, str(value),
+                                                      track.filename]), 0)
                     metadata = audiotools.MetaData(track_name='Images')
                     metadata.add_image(audiotools.Image.new(
-                            data,u"",img_type))
+                            data, u"", img_type))
                     self.assertEqual(metadata.images(),
                                      track.get_metadata().images())
         finally:
             for f in os.listdir(basedir):
-                os.unlink(os.path.join(basedir,f))
+                os.unlink(os.path.join(basedir, f))
             os.rmdir(basedir)
 
-    def __flag_type_images_data__(self,jpeg,png,test_cover1,test_cover2):
+    def __flag_type_images_data__(self, jpeg, png, test_cover1, test_cover2):
         return zip(["--front-cover",
                     "--back-cover",
                     "--leaflet",
                     "--leaflet",
                     "--media",
-                    "--other-image",],
-                   [0,1,2,2,3,4],
-                   [jpeg,jpeg,png,jpeg,png,jpeg],
+                    "--other-image"],
+                   [0, 1, 2, 2, 3, 4],
+                   [jpeg, jpeg, png, jpeg, png, jpeg],
                    [test_cover1,
                     test_cover1,
                     test_cover2,
@@ -2614,63 +2634,63 @@ uhhDdCiCwqg2Gw3lphgaGhoamR+mptKYNT/F3JFOFCQvKfgAwA==""".decode('base64').decode(
                 return
 
             metadata.add_image(audiotools.Image.new(
-                    TEST_COVER1,u"",0))
+                    TEST_COVER1, u"", 0))
             metadata.add_image(audiotools.Image.new(
-                    TEST_COVER2,u"",2))
+                    TEST_COVER2, u"", 2))
             metadata.add_image(audiotools.Image.new(
-                    TEST_COVER3,u"",1))
+                    TEST_COVER3, u"", 1))
 
             track.set_metadata(metadata)
 
             subprocess.call(["coverdump",
-                             "-V","quiet",
-                             "-d",imgdir,
+                             "-V", "quiet",
+                             "-d", imgdir,
                              track.filename])
 
-            f = open(os.path.join(imgdir,"front_cover.jpg"),"rb")
-            self.assertEqual(f.read(),TEST_COVER1)
+            f = open(os.path.join(imgdir, "front_cover.jpg"), "rb")
+            self.assertEqual(f.read(), TEST_COVER1)
             f.close()
-            f = open(os.path.join(imgdir,"leaflet.png"),"rb")
-            self.assertEqual(f.read(),TEST_COVER2)
+            f = open(os.path.join(imgdir, "leaflet.png"), "rb")
+            self.assertEqual(f.read(), TEST_COVER2)
             f.close()
-            f = open(os.path.join(imgdir,"back_cover.jpg"),"rb")
-            self.assertEqual(f.read(),TEST_COVER3)
+            f = open(os.path.join(imgdir, "back_cover.jpg"), "rb")
+            self.assertEqual(f.read(), TEST_COVER3)
             f.close()
 
             for f in os.listdir(imgdir):
-                os.unlink(os.path.join(imgdir,f))
+                os.unlink(os.path.join(imgdir, f))
 
             metadata = audiotools.MetaData(track_name=u"Name")
             track.set_metadata(metadata)
             metadata = track.get_metadata()
 
             metadata.add_image(audiotools.Image.new(
-                    TEST_COVER3,u"",2))
+                    TEST_COVER3, u"", 2))
             metadata.add_image(audiotools.Image.new(
-                    TEST_COVER2,u"",2))
+                    TEST_COVER2, u"", 2))
             metadata.add_image(audiotools.Image.new(
-                    TEST_COVER1,u"",2))
+                    TEST_COVER1, u"", 2))
 
             track.set_metadata(metadata)
 
             subprocess.call(["coverdump",
-                             "-V","quiet",
-                             "-d",imgdir,
+                             "-V", "quiet",
+                             "-d", imgdir,
                              track.filename])
 
-            f = open(os.path.join(imgdir,"leaflet01.jpg"),"rb")
-            self.assertEqual(f.read(),TEST_COVER3)
+            f = open(os.path.join(imgdir, "leaflet01.jpg"), "rb")
+            self.assertEqual(f.read(), TEST_COVER3)
             f.close()
-            f = open(os.path.join(imgdir,"leaflet02.png"),"rb")
-            self.assertEqual(f.read(),TEST_COVER2)
+            f = open(os.path.join(imgdir, "leaflet02.png"), "rb")
+            self.assertEqual(f.read(), TEST_COVER2)
             f.close()
-            f = open(os.path.join(imgdir,"leaflet03.jpg"),"rb")
-            self.assertEqual(f.read(),TEST_COVER1)
+            f = open(os.path.join(imgdir, "leaflet03.jpg"), "rb")
+            self.assertEqual(f.read(), TEST_COVER1)
             f.close()
         finally:
             basefile.close()
             for f in os.listdir(imgdir):
-                os.unlink(os.path.join(imgdir,f))
+                os.unlink(os.path.join(imgdir, f))
             os.rmdir(imgdir)
 
     @TEST_EXECUTABLE
@@ -2695,7 +2715,7 @@ uhhDdCiCwqg2Gw3lphgaGhoamR+mptKYNT/F3JFOFCQvKfgAwA==""".decode('base64').decode(
         if (not audiotools.config.has_section("Binaries")):
             audiotools.config.add_section("Binaries")
 
-        old_settings = [(bin,audiotools.config.get_default("Binaries",bin,bin))
+        old_settings = [(bin, audiotools.config.get_default("Binaries", bin, bin))
                         for bin in self.audio_class.BINARIES]
         if (self.audio_class in (audiotools.MP3Audio,
                                  audiotools.MP2Audio)):
@@ -2705,13 +2725,13 @@ uhhDdCiCwqg2Gw3lphgaGhoamR+mptKYNT/F3JFOFCQvKfgAwA==""".decode('base64').decode(
                                                                "mpg123")))
         try:
             for bin in self.audio_class.BINARIES:
-                audiotools.config.set("Binaries",bin,"./error.py")
+                audiotools.config.set("Binaries", bin, "./error.py")
 
             #FIXME - there should be some automatic way to specify
             #optional binaries attached to a given class
             if (self.audio_class in (audiotools.MP3Audio,
                                      audiotools.MP2Audio)):
-                audiotools.config.set("Binaries","mpg123","./error.py")
+                audiotools.config.set("Binaries", "mpg123", "./error.py")
 
             self.assertRaises(audiotools.EncodingError,
                               self.audio_class.from_wave,
@@ -2735,8 +2755,8 @@ uhhDdCiCwqg2Gw3lphgaGhoamR+mptKYNT/F3JFOFCQvKfgAwA==""".decode('base64').decode(
                                       temp_track.to_pcm())
 
         finally:
-            for (bin,setting) in old_settings:
-                audiotools.config.set("Binaries",bin,setting)
+            for (bin, setting) in old_settings:
+                audiotools.config.set("Binaries", bin, setting)
             wave_temp_file.close()
             temp_track_file.close()
 
@@ -2751,12 +2771,12 @@ uhhDdCiCwqg2Gw3lphgaGhoamR+mptKYNT/F3JFOFCQvKfgAwA==""".decode('base64').decode(
                                                    BLANK_PCM_Reader(3))
             self.assertEqual(temp_track.channel_mask(),
                              audiotools.ChannelMask.from_fields(
-                    front_left=True,front_right=True))
+                    front_left=True, front_right=True))
 
             pcm = temp_track.to_pcm()
             self.assertEqual(int(temp_track.channel_mask()),
                              int(pcm.channel_mask))
-            audiotools.transfer_framelist_data(pcm,lambda x: x)
+            audiotools.transfer_framelist_data(pcm, lambda x: x)
             pcm.close()
         finally:
             temp_file.close()
@@ -2769,7 +2789,7 @@ uhhDdCiCwqg2Gw3lphgaGhoamR+mptKYNT/F3JFOFCQvKfgAwA==""".decode('base64').decode(
             if (field not in audiotools.MetaData.__INTEGER_FIELDS__):
                 metadata = audiotools.MetaData()
                 value = u"\u00dcnicode value \u2ec1"
-                setattr(metadata,field,value)
+                setattr(metadata, field, value)
                 format_string = format_template % {u"field":
                                                        field.decode('ascii')}
                 track_name = self.audio_class.track_name(
@@ -2779,21 +2799,22 @@ uhhDdCiCwqg2Gw3lphgaGhoamR+mptKYNT/F3JFOFCQvKfgAwA==""".decode('base64').decode(
                 self.assert_(len(track_name) > 0)
                 self.assertEqual(
                     track_name,
-                    (format_template % {u"field":u"foo"} % {u"foo":value}).encode(audiotools.FS_ENCODING))
+                    (format_template % {u"field": u"foo"} % {u"foo": value}).encode(audiotools.FS_ENCODING))
 
         #then, check integer fields
         format_template = u"Fo\u00f3 %(album_number)d %(track_number)2.2d %(album_track_number)s"
 
         #first, check integers pulled from track metadata
-        for (track_number,album_number,album_track_number) in [(0,0,u"00"),
-                                                               (1,0,u"01"),
-                                                               (25,0,u"25"),
-                                                               (0,1,u"100"),
-                                                               (1,1,u"101"),
-                                                               (25,1,u"125"),
-                                                               (0,36,u"3600"),
-                                                               (1,36,u"3601"),
-                                                               (25,36,u"3625")]:
+        for (track_number, album_number, album_track_number) in [
+            (0, 0, u"00"),
+            (1, 0, u"01"),
+            (25, 0, u"25"),
+            (0, 1, u"100"),
+            (1, 1, u"101"),
+            (25, 1, u"125"),
+            (0, 36, u"3600"),
+            (1, 36, u"3601"),
+            (25, 36, u"3625")]:
             for basepath in ["track",
                              "/foo/bar/track",
                              (u"/f\u00f3o/bar/tr\u00e1ck").encode(audiotools.FS_ENCODING)]:
@@ -2803,12 +2824,12 @@ uhhDdCiCwqg2Gw3lphgaGhoamR+mptKYNT/F3JFOFCQvKfgAwA==""".decode('base64').decode(
                         file_path=basepath,
                         track_metadata=metadata,
                         format=format_template.encode('utf-8')),
-                                 (format_template % {u"album_number":album_number,
-                                                     u"track_number":track_number,
-                                                     u"album_track_number":album_track_number}).encode('utf-8'))
+                                 (format_template % {u"album_number": album_number,
+                                                     u"track_number": track_number,
+                                                     u"album_track_number": album_track_number}).encode('utf-8'))
 
         #then, check integers pulled from the track filename
-        for metadata in [None,audiotools.MetaData()]:
+        for metadata in [None, audiotools.MetaData()]:
             for basepath in ["track",
                              "/foo/bar/track",
                              (u"/f\u00f3o/bar/tr\u00e1ck").encode(audiotools.FS_ENCODING)]:
@@ -2816,42 +2837,42 @@ uhhDdCiCwqg2Gw3lphgaGhoamR+mptKYNT/F3JFOFCQvKfgAwA==""".decode('base64').decode(
                         file_path=basepath + "01",
                         track_metadata=metadata,
                         format=format_template.encode('utf-8')),
-                                 (format_template % {u"album_number":0,
-                                                     u"track_number":1,
-                                                     u"album_track_number":u"01"}).encode('utf-8'))
+                                 (format_template % {u"album_number": 0,
+                                                     u"track_number": 1,
+                                                     u"album_track_number": u"01"}).encode('utf-8'))
 
                 self.assertEqual(self.audio_class.track_name(
                         file_path=basepath + "track23",
                         track_metadata=metadata,
                         format=format_template.encode('utf-8')),
-                                 (format_template % {u"album_number":0,
-                                                     u"track_number":23,
-                                                     u"album_track_number":u"23"}).encode('utf-8'))
+                                 (format_template % {u"album_number": 0,
+                                                     u"track_number": 23,
+                                                     u"album_track_number": u"23"}).encode('utf-8'))
 
                 self.assertEqual(self.audio_class.track_name(
                         file_path=basepath + "track123",
                         track_metadata=metadata,
                         format=format_template.encode('utf-8')),
-                                 (format_template % {u"album_number":1,
-                                                     u"track_number":23,
-                                                     u"album_track_number":u"123"}).encode('utf-8'))
+                                 (format_template % {u"album_number": 1,
+                                                     u"track_number": 23,
+                                                     u"album_track_number": u"123"}).encode('utf-8'))
 
                 self.assertEqual(self.audio_class.track_name(
                         file_path=basepath + "4567",
                         track_metadata=metadata,
                         format=format_template.encode('utf-8')),
-                                 (format_template % {u"album_number":45,
-                                                     u"track_number":67,
-                                                     u"album_track_number":u"4567"}).encode('utf-8'))
+                                 (format_template % {u"album_number": 45,
+                                                     u"track_number": 67,
+                                                     u"album_track_number": u"4567"}).encode('utf-8'))
 
         #then, ensure metadata takes precedence over filename for integers
-        for (track_number,album_number,
-             album_track_number,incorrect) in [(1,0,u"01","10"),
-                                               (25,0,u"25","52"),
-                                               (1,1,u"101","210"),
-                                               (25,1,u"125","214"),
-                                               (1,36,u"3601","4710"),
-                                               (25,36,u"3625","4714")]:
+        for (track_number, album_number,
+             album_track_number, incorrect) in [(1, 0, u"01", "10"),
+                                               (25, 0, u"25", "52"),
+                                               (1, 1, u"101", "210"),
+                                               (25, 1, u"125", "214"),
+                                               (1, 36, u"3601", "4710"),
+                                               (25, 36, u"3625", "4714")]:
             for basepath in ["track",
                              "/foo/bar/track",
                              (u"/f\u00f3o/bar/tr\u00e1ck").encode(audiotools.FS_ENCODING)]:
@@ -2861,72 +2882,73 @@ uhhDdCiCwqg2Gw3lphgaGhoamR+mptKYNT/F3JFOFCQvKfgAwA==""".decode('base64').decode(
                         file_path=basepath + incorrect,
                         track_metadata=metadata,
                         format=format_template.encode('utf-8')),
-                                 (format_template % {u"album_number":album_number,
-                                                     u"track_number":track_number,
-                                                     u"album_track_number":album_track_number}).encode('utf-8'))
+                                 (format_template % {u"album_number": album_number,
+                                                     u"track_number": track_number,
+                                                     u"album_track_number": album_track_number}).encode('utf-8'))
 
         #also, check track_total/album_total from metadata
         format_template = u"Fo\u00f3 %(track_total)d %(album_total)d"
-        for track_total in [0,1,25,99]:
-            for album_total in [0,1,25,99]:
+        for track_total in [0, 1, 25, 99]:
+            for album_total in [0, 1, 25, 99]:
                 metadata = audiotools.MetaData(track_total=track_total,
                                                album_total=album_total)
                 self.assertEqual(self.audio_class.track_name(
                         file_path=basepath + incorrect,
                         track_metadata=metadata,
                         format=format_template.encode('utf-8')),
-                                 (format_template % {u"track_total":track_total,
-                                                     u"album_total":album_total}).encode('utf-8'))
+                                 (format_template % {u"track_total": track_total,
+                                                     u"album_total": album_total}).encode('utf-8'))
 
         #ensure %(basename)s is set properly
         format_template = u"Fo\u00f3 %(basename)s"
-        for (path,base) in [("track","track"),
-                            ("/foo/bar/track","track"),
-                            ((u"/f\u00f3o/bar/tr\u00e1ck").encode(audiotools.FS_ENCODING),u"tr\u00e1ck")]:
-            for metadata in [None,audiotools.MetaData()]:
+        for (path, base) in [("track", "track"),
+                            ("/foo/bar/track", "track"),
+                            ((u"/f\u00f3o/bar/tr\u00e1ck").encode(audiotools.FS_ENCODING), u"tr\u00e1ck")]:
+            for metadata in [None, audiotools.MetaData()]:
                 self.assertEqual(self.audio_class.track_name(
                         file_path=path,
                         track_metadata=metadata,
                         format=format_template.encode('utf-8')),
-                                 (format_template % {u"basename":base}).encode('utf-8'))
+                                 (format_template % {u"basename": base}).encode('utf-8'))
 
         #finally, ensure %(suffix)s is set properly
         format_template = u"Fo\u00f3 %(suffix)s"
         for path in ["track",
                      "/foo/bar/track",
                      (u"/f\u00f3o/bar/tr\u00e1ck").encode(audiotools.FS_ENCODING)]:
-            for metadata in [None,audiotools.MetaData()]:
+            for metadata in [None, audiotools.MetaData()]:
                 self.assertEqual(self.audio_class.track_name(
                         file_path=path,
                         track_metadata=metadata,
                         format=format_template.encode('utf-8')),
-                                 (format_template % {u"suffix":self.audio_class.SUFFIX.decode('ascii')}).encode('utf-8'))
+                                 (format_template % {u"suffix": self.audio_class.SUFFIX.decode('ascii')}).encode('utf-8'))
+
 
 class TestForeignWaveChunks:
     @TEST_METADATA
     def testforeignwavechunks(self):
         import filecmp
 
-        self.assertEqual(self.audio_class.supports_foreign_riff_chunks(),True)
+        self.assertEqual(self.audio_class.supports_foreign_riff_chunks(), True)
 
         tempwav1 = tempfile.NamedTemporaryFile(suffix=".wav")
         tempwav2 = tempfile.NamedTemporaryFile(suffix=".wav")
-        audio = tempfile.NamedTemporaryFile(suffix='.'+self.audio_class.SUFFIX)
+        audio = tempfile.NamedTemporaryFile(suffix='.' + self.audio_class.SUFFIX)
         try:
             #build a WAVE with some oddball chunks
             audiotools.WaveAudio.wave_from_chunks(
                 tempwav1.name,
-                [('fmt ','\x01\x00\x02\x00D\xac\x00\x00\x10\xb1\x02\x00\x04\x00\x10\x00'),
-                 ('fooz','testtext'),
-                 ('barz','somemoretesttext'),
-                 ('bazz',chr(0) * 1024),
-                 ('data','BZh91AY&SY\xdc\xd5\xc2\x8d\x06\xba\xa7\xc0\x00`\x00 \x000\x80MF\xa9$\x84\x9a\xa4\x92\x12qw$S\x85\t\r\xcd\\(\xd0'.decode('bz2'))])
+                [('fmt ', '\x01\x00\x02\x00D\xac\x00\x00\x10\xb1\x02\x00\x04\x00\x10\x00'),
+                 ('fooz', 'testtext'),
+                 ('barz', 'somemoretesttext'),
+                 ('bazz', chr(0) * 1024),
+                 ('data', 'BZh91AY&SY\xdc\xd5\xc2\x8d\x06\xba\xa7\xc0\x00`\x00 \x000\x80MF\xa9$\x84\x9a\xa4\x92\x12qw$S\x85\t\r\xcd\\(\xd0'.decode('bz2'))])
 
             #convert it to our audio type
             wav = self.audio_class.from_wave(audio.name,
                                              tempwav1.name)
 
-            self.assertEqual(wav.has_foreign_riff_chunks(),True)
+            self.assertEqual(wav.has_foreign_riff_chunks(), True)
 
             #then convert it back to a WAVE
             wav.to_wave(tempwav2.name)
@@ -2934,25 +2956,27 @@ class TestForeignWaveChunks:
             #check that the two WAVEs are byte-for-byte identical
             self.assertEqual(filecmp.cmp(tempwav1.name,
                                          tempwav2.name,
-                                         False),True)
+                                         False), True)
 
             #finally, ensure that setting metadata doesn't erase the chunks
             wav.set_metadata(self.DummyMetaData())
             wav = audiotools.open(wav.filename)
-            self.assertEqual(wav.has_foreign_riff_chunks(),True)
+            self.assertEqual(wav.has_foreign_riff_chunks(), True)
         finally:
             tempwav1.close()
             tempwav2.close()
             audio.close()
 
 
-class TestWaveAudio(TestForeignWaveChunks,TestAiffAudio):
+class TestWaveAudio(TestForeignWaveChunks, TestAiffAudio):
     def setUp(self):
         self.audio_class = audiotools.WaveAudio
+
 
 class TestAuAudio(TestAiffAudio):
     def setUp(self):
         self.audio_class = audiotools.AuAudio
+
 
 class VorbisLint:
     #tracklint is tricky to test since set_metadata()
@@ -2962,14 +2986,14 @@ class VorbisLint:
     @TEST_EXECUTABLE
     def test_tracklint(self):
         bad_vorbiscomment = audiotools.VorbisComment(
-            {"TITLE":[u"Track Name  "],
-             "TRACKNUMBER":[u"02"],
-             "DISCNUMBER":[u"003"],
-             "ARTIST":[u"  Some Artist"],
-             "PERFORMER":[u"Some Artist"],
-             "CATALOG":[u""],
-             "YEAR":[u"  "],
-             "COMMENT":[u"  Some Comment  "]})
+            {"TITLE": [u"Track Name  "],
+             "TRACKNUMBER": [u"02"],
+             "DISCNUMBER": [u"003"],
+             "ARTIST": [u"  Some Artist"],
+             "PERFORMER": [u"Some Artist"],
+             "CATALOG": [u""],
+             "YEAR": [u"  "],
+             "COMMENT": [u"  Some Comment  "]})
 
         fixed = audiotools.MetaData(
             track_name=u"Track Name",
@@ -2978,11 +3002,11 @@ class VorbisLint:
             artist_name=u"Some Artist",
             comment=u"Some Comment")
 
-        self.assertNotEqual(fixed,bad_vorbiscomment)
+        self.assertNotEqual(fixed, bad_vorbiscomment)
 
         tempdir = tempfile.mkdtemp()
-        tempmp = os.path.join(tempdir,"track.%s" % (self.audio_class.SUFFIX))
-        undo = os.path.join(tempdir,"undo.db")
+        tempmp = os.path.join(tempdir, "track.%s" % (self.audio_class.SUFFIX))
+        undo = os.path.join(tempdir, "undo.db")
         try:
             track = self.audio_class.from_pcm(
                 tempmp,
@@ -2990,47 +3014,48 @@ class VorbisLint:
 
             track.set_metadata(bad_vorbiscomment)
             metadata = track.get_metadata()
-            if (isinstance(metadata,audiotools.FlacMetaData)):
+            if (isinstance(metadata, audiotools.FlacMetaData)):
                 metadata = metadata.vorbis_comment
-            self.assertEqual(metadata,bad_vorbiscomment)
-            for (key,value) in metadata.items():
-                self.assertEqual(value,bad_vorbiscomment[key])
+            self.assertEqual(metadata, bad_vorbiscomment)
+            for (key, value) in metadata.items():
+                self.assertEqual(value, bad_vorbiscomment[key])
 
             original_checksum = md5()
-            f = open(track.filename,'rb')
-            audiotools.transfer_data(f.read,original_checksum.update)
+            f = open(track.filename, 'rb')
+            audiotools.transfer_data(f.read, original_checksum.update)
             f.close()
 
             subprocess.call(["tracklint",
-                             "-V","quiet",
-                             "--fix","--db=%s" % (undo),
+                             "-V", "quiet",
+                             "--fix", "--db=%s" % (undo),
                              track.filename])
 
             metadata = track.get_metadata()
-            self.assertNotEqual(metadata,bad_vorbiscomment)
-            self.assertEqual(metadata,fixed)
+            self.assertNotEqual(metadata, bad_vorbiscomment)
+            self.assertEqual(metadata, fixed)
 
             subprocess.call(["tracklint",
-                             "-V","quiet",
-                             "--undo","--db=%s" % (undo),
+                             "-V", "quiet",
+                             "--undo", "--db=%s" % (undo),
                              track.filename])
 
             metadata = track.get_metadata()
-            if (isinstance(metadata,audiotools.FlacMetaData)):
+            if (isinstance(metadata, audiotools.FlacMetaData)):
                 metadata = metadata.vorbis_comment
-            self.assertEqual(metadata,bad_vorbiscomment)
-            self.assertNotEqual(metadata,fixed)
-            for (key,value) in metadata.items():
-                self.assertEqual(value,bad_vorbiscomment[key])
+            self.assertEqual(metadata, bad_vorbiscomment)
+            self.assertNotEqual(metadata, fixed)
+            for (key, value) in metadata.items():
+                self.assertEqual(value, bad_vorbiscomment[key])
         finally:
             for f in os.listdir(tempdir):
-                os.unlink(os.path.join(tempdir,f))
+                os.unlink(os.path.join(tempdir, f))
             os.rmdir(tempdir)
+
 
 class EmbeddedCuesheet:
     @TEST_CUESHEET
     def testembeddedcuesheet(self):
-        for (suffix,data) in zip([".cue",".toc"],
+        for (suffix, data) in zip([".cue", ".toc"],
                                  [
 """eJydkF1LwzAUQN8L/Q+X/oBxk6YfyVtoM4mu68iy6WudQ8qkHbNu+u9NneCc1IdCnk649xyuUQXk
 epnpHGiOMU2Q+Z5xMCuLQs0tBOq92nTy7alus3b/AUeccL5/ZIHvZdLKWXkDjKcpIg2RszjxvYUy
@@ -3058,7 +3083,7 @@ oR0PqdlolvbqIS27sAWbI8BKqb0BpGd7+TsgNSwdy+0AirUD+AUsDYSu""".decode('base64').dec
 
                     #ensure the cuesheet embeds correctly
                     #in our current album
-                    self.assertNotEqual(album_sheet,None)
+                    self.assertNotEqual(album_sheet, None)
                     self.assertEqual(sheet.catalog(),
                                      album_sheet.catalog())
                     self.assertEqual(sorted(sheet.ISRCs().items()),
@@ -3082,7 +3107,7 @@ oR0PqdlolvbqIS27sAWbI8BKqb0BpGd7+TsgNSwdy+0AirUD+AUsDYSu""".decode('base64').dec
                             new_album.set_cuesheet(album.get_cuesheet())
                             new_cuesheet = new_album.get_cuesheet()
 
-                            self.assertNotEqual(new_cuesheet,None)
+                            self.assertNotEqual(new_cuesheet, None)
                             self.assertEqual(
                                 new_cuesheet.catalog(),
                                 album_sheet.catalog())
@@ -3124,18 +3149,18 @@ Fy3hYEs4qiXB6wOQULBQkOhCygalbISUUvrnACQVERfIr1scI4K5lk9od5+/""".decode('base64')
                     basefile.name,
                     EXACT_BLANK_PCM_Reader(69470436))
 
-                os.chmod(basefile.name,0)
+                os.chmod(basefile.name, 0)
                 self.assertRaises(IOError,
                                   album.set_cuesheet,
                                   sheet)
-                os.chmod(basefile.name,basefile_stat)
+                os.chmod(basefile.name, basefile_stat)
                 album.set_cuesheet(sheet)
-                os.chmod(basefile.name,0)
+                os.chmod(basefile.name, 0)
                 self.assertRaises(IOError,
                                   album.get_cuesheet)
-                os.chmod(basefile.name,basefile_stat)
+                os.chmod(basefile.name, basefile_stat)
             finally:
-                os.chmod(basefile.name,basefile_stat)
+                os.chmod(basefile.name, basefile_stat)
                 basefile.close()
         finally:
             sheet_file.close()
@@ -3163,11 +3188,11 @@ Fy3hYEs4qiXB6wOQULBQkOhCygalbISUUvrnACQVERfIr1scI4K5lk9od5+/""".decode('base64')
 
             #add metadata
             self.assertEqual(subprocess.call(["tracktag",
-                                              "--album","Album Name",
-                                              "--artist","Artist Name",
-                                              "--album-number","2",
-                                              "--album-total","3",
-                                              temp_track.name]),0)
+                                              "--album", "Album Name",
+                                              "--artist", "Artist Name",
+                                              "--album-number", "2",
+                                              "--album-total", "3",
+                                              temp_track.name]), 0)
 
             metadata = audiotools.MetaData(
                 album_name=u"Album Name",
@@ -3177,16 +3202,16 @@ Fy3hYEs4qiXB6wOQULBQkOhCygalbISUUvrnACQVERfIr1scI4K5lk9od5+/""".decode('base64')
 
             #add cuesheet
             self.assertEqual(
-                subprocess.call(["tracktag","--cue",temp_sheet.name,
-                                 temp_track.name]),0)
+                subprocess.call(["tracktag", "--cue", temp_sheet.name,
+                                 temp_track.name]), 0)
 
             #ensure metadata matches
-            self.assertEqual(album.get_metadata(),metadata)
+            self.assertEqual(album.get_metadata(), metadata)
 
             #ensure cuesheet matches
             sheet2 = album.get_cuesheet()
 
-            self.assertNotEqual(sheet2,None)
+            self.assertNotEqual(sheet2, None)
             self.assertEqual(sheet.catalog(),
                              sheet2.catalog())
             self.assertEqual(sorted(sheet.ISRCs().items()),
@@ -3222,16 +3247,16 @@ Fy3hYEs4qiXB6wOQULBQkOhCygalbISUUvrnACQVERfIr1scI4K5lk9od5+/""".decode('base64')
 
             #add cuesheet
             self.assertEqual(
-                subprocess.call(["tracktag","--cue",temp_sheet.name,
-                                 temp_track.name]),0)
+                subprocess.call(["tracktag", "--cue", temp_sheet.name,
+                                 temp_track.name]), 0)
 
             #add metadata
             self.assertEqual(subprocess.call(["tracktag",
-                                              "--album","Album Name",
-                                              "--artist","Artist Name",
-                                              "--album-number","2",
-                                              "--album-total","3",
-                                              temp_track.name]),0)
+                                              "--album", "Album Name",
+                                              "--artist", "Artist Name",
+                                              "--album-number", "2",
+                                              "--album-total", "3",
+                                              temp_track.name]), 0)
 
             metadata = audiotools.MetaData(
                 album_name=u"Album Name",
@@ -3240,12 +3265,12 @@ Fy3hYEs4qiXB6wOQULBQkOhCygalbISUUvrnACQVERfIr1scI4K5lk9od5+/""".decode('base64')
                 album_total=3)
 
             #ensure metadata matches
-            self.assertEqual(album.get_metadata(),metadata)
+            self.assertEqual(album.get_metadata(), metadata)
 
             #ensure cuesheet matches
             sheet2 = album.get_cuesheet()
 
-            self.assertNotEqual(sheet2,None)
+            self.assertNotEqual(sheet2, None)
             self.assertEqual(sheet.catalog(),
                              sheet2.catalog())
             self.assertEqual(sorted(sheet.ISRCs().items()),
@@ -3268,23 +3293,23 @@ class LCVorbisComment:
                                               BLANK_PCM_Reader(5))
 
             lc_metadata = audiotools.VorbisComment(
-                    {"title":[u"track name"],
-                     "tracknumber":[u"1"],
-                     "tracktotal":[u"3"],
-                     "album":[u"album name"],
-                     "artist":[u"artist name"],
-                     "performer":[u"performer name"],
-                     "composer":[u"composer name"],
-                     "conductor":[u"conductor name"],
-                     "source medium":[u"media"],
-                     "isrc":[u"isrc"],
-                     "catalog":[u"catalog"],
-                     "copyright":[u"copyright"],
-                     "publisher":[u"publisher"],
-                     "date":[u"2009"],
-                     "discnumber":[u"2"],
-                     "disctotal":[u"4"],
-                     "comment":[u"some comment"]},
+                    {"title": [u"track name"],
+                     "tracknumber": [u"1"],
+                     "tracktotal": [u"3"],
+                     "album": [u"album name"],
+                     "artist": [u"artist name"],
+                     "performer": [u"performer name"],
+                     "composer": [u"composer name"],
+                     "conductor": [u"conductor name"],
+                     "source medium": [u"media"],
+                     "isrc": [u"isrc"],
+                     "catalog": [u"catalog"],
+                     "copyright": [u"copyright"],
+                     "publisher": [u"publisher"],
+                     "date": [u"2009"],
+                     "discnumber": [u"2"],
+                     "disctotal": [u"4"],
+                     "comment": [u"some comment"]},
                     u"vendor string")
 
             metadata = audiotools.MetaData(
@@ -3308,7 +3333,7 @@ class LCVorbisComment:
 
             track.set_metadata(lc_metadata)
             track = audiotools.open(track_file.name)
-            self.assertEqual(metadata,lc_metadata)
+            self.assertEqual(metadata, lc_metadata)
         finally:
             track_file.close()
 
@@ -3322,38 +3347,39 @@ class LCVorbisComment:
                     track_name=u"Track Name",
                     track_number=1))
             metadata = track.get_metadata()
-            if (hasattr(metadata,"vorbis_comment")):
+            if (hasattr(metadata, "vorbis_comment")):
                 metadata = metadata.vorbis_comment
-            self.assertEqual(metadata["TITLE"],[u"Track Name"])
-            self.assertEqual(metadata["TRACKNUMBER"],[u"1"])
-            self.assertEqual(metadata.track_name,u"Track Name")
-            self.assertEqual(metadata.track_number,1)
+            self.assertEqual(metadata["TITLE"], [u"Track Name"])
+            self.assertEqual(metadata["TRACKNUMBER"], [u"1"])
+            self.assertEqual(metadata.track_name, u"Track Name")
+            self.assertEqual(metadata.track_number, 1)
 
             metadata["title"] = [u"New Track Name"]
             metadata["tracknumber"] = [u"2"]
             track.set_metadata(metadata)
             metadata = track.get_metadata()
-            if (hasattr(metadata,"vorbis_comment")):
+            if (hasattr(metadata, "vorbis_comment")):
                 metadata = metadata.vorbis_comment
-            self.assertEqual(metadata["TITLE"],[u"New Track Name"])
-            self.assertEqual(metadata["TRACKNUMBER"],[u"2"])
-            self.assertEqual(metadata.track_name,u"New Track Name")
-            self.assertEqual(metadata.track_number,2)
+            self.assertEqual(metadata["TITLE"], [u"New Track Name"])
+            self.assertEqual(metadata["TRACKNUMBER"], [u"2"])
+            self.assertEqual(metadata.track_name, u"New Track Name")
+            self.assertEqual(metadata.track_number, 2)
 
             metadata.track_name = "New Track Name 2"
             metadata.track_number = 3
             track.set_metadata(metadata)
             metadata = track.get_metadata()
-            if (hasattr(metadata,"vorbis_comment")):
+            if (hasattr(metadata, "vorbis_comment")):
                 metadata = metadata.vorbis_comment
-            self.assertEqual(metadata["TITLE"],[u"New Track Name 2"])
-            self.assertEqual(metadata["TRACKNUMBER"],[u"3"])
-            self.assertEqual(metadata.track_name,u"New Track Name 2")
-            self.assertEqual(metadata.track_number,3)
+            self.assertEqual(metadata["TITLE"], [u"New Track Name 2"])
+            self.assertEqual(metadata["TRACKNUMBER"], [u"3"])
+            self.assertEqual(metadata.track_name, u"New Track Name 2")
+            self.assertEqual(metadata.track_number, 3)
         finally:
             track_file.close()
 
-class TestOggFlacAudio(EmbeddedCuesheet,VorbisLint,TestAiffAudio,LCVorbisComment):
+
+class TestOggFlacAudio(EmbeddedCuesheet, VorbisLint, TestAiffAudio, LCVorbisComment):
     def setUp(self):
         self.audio_class = audiotools.OggFlacAudio
 
@@ -3393,20 +3419,20 @@ class TestOggFlacAudio(EmbeddedCuesheet,VorbisLint,TestAiffAudio,LCVorbisComment
 
             orig_md5 = md5()
             pcm = flac.to_pcm()
-            audiotools.transfer_framelist_data(pcm,orig_md5.update)
+            audiotools.transfer_framelist_data(pcm, orig_md5.update)
             pcm.close()
 
             #add an image too large to fit into a FLAC metadata chunk
             metadata = flac.get_metadata()
             metadata.add_image(
-                audiotools.Image.new(HUGE_BMP.decode('bz2'),u'',0))
+                audiotools.Image.new(HUGE_BMP.decode('bz2'), u'', 0))
 
             flac.set_metadata(metadata)
 
             #ensure that setting the metadata doesn't break the file
             new_md5 = md5()
             pcm = flac.to_pcm()
-            audiotools.transfer_framelist_data(pcm,new_md5.update)
+            audiotools.transfer_framelist_data(pcm, new_md5.update)
             pcm.close()
 
             self.assertEqual(orig_md5.hexdigest(),
@@ -3415,13 +3441,13 @@ class TestOggFlacAudio(EmbeddedCuesheet,VorbisLint,TestAiffAudio,LCVorbisComment
             #ensure that setting fresh oversized metadata doesn't break the file
             metadata = audiotools.MetaData()
             metadata.add_image(
-                audiotools.Image.new(HUGE_BMP.decode('bz2'),u'',0))
+                audiotools.Image.new(HUGE_BMP.decode('bz2'), u'', 0))
 
             flac.set_metadata(metadata)
 
             new_md5 = md5()
             pcm = flac.to_pcm()
-            audiotools.transfer_framelist_data(pcm,new_md5.update)
+            audiotools.transfer_framelist_data(pcm, new_md5.update)
             pcm.close()
 
             self.assertEqual(orig_md5.hexdigest(),
@@ -3443,7 +3469,7 @@ class TestOggFlacAudio(EmbeddedCuesheet,VorbisLint,TestAiffAudio,LCVorbisComment
 
             orig_md5 = md5()
             pcm = flac.to_pcm()
-            audiotools.transfer_framelist_data(pcm,orig_md5.update)
+            audiotools.transfer_framelist_data(pcm, orig_md5.update)
             pcm.close()
 
             #add a COMMENT block too large to fit into a FLAC metadata chunk
@@ -3455,7 +3481,7 @@ class TestOggFlacAudio(EmbeddedCuesheet,VorbisLint,TestAiffAudio,LCVorbisComment
             #ensure that setting the metadata doesn't break the file
             new_md5 = md5()
             pcm = flac.to_pcm()
-            audiotools.transfer_framelist_data(pcm,new_md5.update)
+            audiotools.transfer_framelist_data(pcm, new_md5.update)
             pcm.close()
 
             self.assertEqual(orig_md5.hexdigest(),
@@ -3463,13 +3489,13 @@ class TestOggFlacAudio(EmbeddedCuesheet,VorbisLint,TestAiffAudio,LCVorbisComment
 
             #ensure that setting fresh oversized metadata doesn't break the file
             metadata = audiotools.MetaData(
-                comment = "QlpoOTFBWSZTWYmtEk8AgICBAKAAAAggADCAKRoBANIBAOLuSKcKEhE1okng".decode('base64').decode('bz2').decode('ascii'))
+                comment="QlpoOTFBWSZTWYmtEk8AgICBAKAAAAggADCAKRoBANIBAOLuSKcKEhE1okng".decode('base64').decode('bz2').decode('ascii'))
 
             flac.set_metadata(metadata)
 
             new_md5 = md5()
             pcm = flac.to_pcm()
-            audiotools.transfer_framelist_data(pcm,new_md5.update)
+            audiotools.transfer_framelist_data(pcm, new_md5.update)
             pcm.close()
 
             self.assertEqual(orig_md5.hexdigest(),
@@ -3500,53 +3526,53 @@ class TestOggFlacAudio(EmbeddedCuesheet,VorbisLint,TestAiffAudio,LCVorbisComment
 
             orig_md5 = md5()
             pcm = flac.to_pcm()
-            audiotools.transfer_framelist_data(pcm,orig_md5.update)
+            audiotools.transfer_framelist_data(pcm, orig_md5.update)
             pcm.close()
 
             #ensure that setting a big image via tracktag doesn't break the file
-            subprocess.call(["tracktag","-V","quiet",
+            subprocess.call(["tracktag", "-V", "quiet",
                              "--front-cover=%s" % (big_bmp.name),
                              flac.filename])
             new_md5 = md5()
             pcm = flac.to_pcm()
-            audiotools.transfer_framelist_data(pcm,new_md5.update)
+            audiotools.transfer_framelist_data(pcm, new_md5.update)
             pcm.close()
             self.assertEqual(orig_md5.hexdigest(),
                              new_md5.hexdigest())
 
             #ensure that setting big text via tracktag doesn't break the file
-            subprocess.call(["tracktag","-V","quiet",
+            subprocess.call(["tracktag", "-V", "quiet",
                              "--comment-file=%s" % (big_text.name),
                              flac.filename])
             new_md5 = md5()
             pcm = flac.to_pcm()
-            audiotools.transfer_framelist_data(pcm,new_md5.update)
+            audiotools.transfer_framelist_data(pcm, new_md5.update)
             pcm.close()
             self.assertEqual(orig_md5.hexdigest(),
                              new_md5.hexdigest())
 
-            subprocess.call(["track2track","-V","quiet","-t","wv",
-                             "-o",tempwv.name,
+            subprocess.call(["track2track", "-V", "quiet", "-t", "wv",
+                             "-o", tempwv.name,
                              flac.filename])
 
             wv = audiotools.open(tempwv.name)
 
-            self.assertEqual(flac,wv)
+            self.assertEqual(flac, wv)
 
             self.assertEqual(subprocess.call(
-                    ["tracktag","-V","quiet",
+                    ["tracktag", "-V", "quiet",
                      "--front-cover=%s" % (big_bmp.name),
                      "--comment-file=%s" % (big_text.name),
-                     wv.filename]),0)
+                     wv.filename]), 0)
 
-            self.assertEqual(len(wv.get_metadata().images()),1)
+            self.assertEqual(len(wv.get_metadata().images()), 1)
             self.assert_(len(wv.get_metadata().comment) > 0)
 
-            subprocess.call(["track2track","-t",self.audio_class.NAME,"-o",
-                             flac.filename,wv.filename])
+            subprocess.call(["track2track", "-t", self.audio_class.NAME, "-o",
+                             flac.filename, wv.filename])
 
             flac = audiotools.open(tempflac.name)
-            self.assertEqual(flac,wv)
+            self.assertEqual(flac, wv)
         finally:
             tempflac.close()
             tempwv.close()
@@ -3554,8 +3580,7 @@ class TestOggFlacAudio(EmbeddedCuesheet,VorbisLint,TestAiffAudio,LCVorbisComment
             big_text.close()
 
 
-
-class TestFlacAudio(TestOggFlacAudio,TestForeignWaveChunks):
+class TestFlacAudio(TestOggFlacAudio, TestForeignWaveChunks):
     def setUp(self):
         self.audio_class = audiotools.FlacAudio
 
@@ -3564,26 +3589,26 @@ class TestFlacAudio(TestOggFlacAudio,TestForeignWaveChunks):
         #copy the test track to a temporary location
         tempflac = tempfile.NamedTemporaryFile(suffix=".flac")
         try:
-            f = open("flac-id3.flac","rb")
-            audiotools.transfer_data(f.read,tempflac.write)
+            f = open("flac-id3.flac", "rb")
+            audiotools.transfer_data(f.read, tempflac.write)
             f.close()
             tempflac.flush()
 
-            tempflac.seek(0,0)
-            self.assertEqual(tempflac.read(3),"ID3")
-            tempflac.seek(-0x80,2)
-            self.assertEqual(tempflac.read(3),"TAG")
+            tempflac.seek(0, 0)
+            self.assertEqual(tempflac.read(3), "ID3")
+            tempflac.seek(-0x80, 2)
+            self.assertEqual(tempflac.read(3), "TAG")
 
-            self.assertEqual(self.__run_app__(["trackinfo",tempflac.name]),0)
+            self.assertEqual(self.__run_app__(["trackinfo", tempflac.name]), 0)
             self.__check_error__(_(u"ID3v2 tag found at start of FLAC file.  Please remove with tracklint(1)"))
 
             #ensure that FLACs tagged with ID3v2/ID3v1 comments are scrubbed
             self.assertEqual(self.__run_app__(
-                    ["tracklint","-V","quiet","--fix",tempflac.name]),0)
+                    ["tracklint", "-V", "quiet", "--fix", tempflac.name]), 0)
             flac = audiotools.open(tempflac.name)
             md5sum = md5()
             pcm = flac.to_pcm()
-            audiotools.transfer_framelist_data(pcm,md5sum.update)
+            audiotools.transfer_framelist_data(pcm, md5sum.update)
             pcm.close()
             self.assertEqual(md5sum.hexdigest(),
                              "9a0ab096c517a627b0ab5a0b959e5f36")
@@ -3595,30 +3620,31 @@ class TestFlacAudio(TestOggFlacAudio,TestForeignWaveChunks):
         #copy the test track to a temporary location
         tempflac = tempfile.NamedTemporaryFile(suffix=".flac")
         try:
-            f = open("flac-disordered.flac","rb")
-            audiotools.transfer_data(f.read,tempflac.write)
+            f = open("flac-disordered.flac", "rb")
+            audiotools.transfer_data(f.read, tempflac.write)
             f.close()
             tempflac.flush()
 
-            tempflac.seek(0,0)
-            self.assertEqual(tempflac.read(4),'fLaC')
-            self.assertNotEqual(ord(tempflac.read(1)) & 0x07,0)
+            tempflac.seek(0, 0)
+            self.assertEqual(tempflac.read(4), 'fLaC')
+            self.assertNotEqual(ord(tempflac.read(1)) & 0x07, 0)
 
-            self.assertEqual(self.__run_app__(["trackinfo",tempflac.name]),0)
+            self.assertEqual(self.__run_app__(["trackinfo", tempflac.name]), 0)
             self.__check_error__(_(u"STREAMINFO not first metadata block.  Please fix with tracklint(1)"))
 
             #ensure that FLACs with improper metadata ordering are reordered
             self.assertEqual(self.__run_app__(
-                    ["tracklint","-V","quiet","--fix",tempflac.name]),0)
+                    ["tracklint", "-V", "quiet", "--fix", tempflac.name]), 0)
             flac = audiotools.open(tempflac.name)
             md5sum = md5()
             pcm = flac.to_pcm()
-            audiotools.transfer_framelist_data(pcm,md5sum.update)
+            audiotools.transfer_framelist_data(pcm, md5sum.update)
             pcm.close()
             self.assertEqual(md5sum.hexdigest(),
                              "9a0ab096c517a627b0ab5a0b959e5f36")
         finally:
             tempflac.close()
+
 
 class APEv2Lint:
     #tracklint is tricky to test since set_metadata()
@@ -3628,13 +3654,13 @@ class APEv2Lint:
     @TEST_METADATA
     def test_tracklint(self):
         bad_apev2 = audiotools.ApeTag(
-            [audiotools.ApeTagItem(0,False,"Title","Track Name  "),
-             audiotools.ApeTagItem(0,False,"Track","02"),
-             audiotools.ApeTagItem(0,False,"Artist","  Some Artist"),
-             audiotools.ApeTagItem(0,False,"Performer","Some Artist"),
-             audiotools.ApeTagItem(0,False,"Catalog",""),
-             audiotools.ApeTagItem(0,False,"Year","  "),
-             audiotools.ApeTagItem(0,False,"Comment","  Some Comment  ")])
+            [audiotools.ApeTagItem(0, False, "Title", "Track Name  "),
+             audiotools.ApeTagItem(0, False, "Track", "02"),
+             audiotools.ApeTagItem(0, False, "Artist", "  Some Artist"),
+             audiotools.ApeTagItem(0, False, "Performer", "Some Artist"),
+             audiotools.ApeTagItem(0, False, "Catalog", ""),
+             audiotools.ApeTagItem(0, False, "Year", "  "),
+             audiotools.ApeTagItem(0, False, "Comment", "  Some Comment  ")])
 
         fixed = audiotools.MetaData(
             track_name=u"Track Name",
@@ -3642,11 +3668,11 @@ class APEv2Lint:
             artist_name=u"Some Artist",
             comment=u"Some Comment")
 
-        self.assertNotEqual(fixed,bad_apev2)
+        self.assertNotEqual(fixed, bad_apev2)
 
         tempdir = tempfile.mkdtemp()
-        tempmp = os.path.join(tempdir,"track.%s" % (self.audio_class.SUFFIX))
-        undo = os.path.join(tempdir,"undo.db")
+        tempmp = os.path.join(tempdir, "track.%s" % (self.audio_class.SUFFIX))
+        undo = os.path.join(tempdir, "undo.db")
         try:
             track = self.audio_class.from_pcm(
                 tempmp,
@@ -3654,38 +3680,39 @@ class APEv2Lint:
 
             track.set_metadata(bad_apev2)
             metadata = track.get_metadata()
-            self.assertEqual(metadata,bad_apev2)
+            self.assertEqual(metadata, bad_apev2)
             for key in metadata.keys():
-                self.assertEqual(metadata[key].data,bad_apev2[key].data)
+                self.assertEqual(metadata[key].data, bad_apev2[key].data)
 
             original_checksum = md5()
-            f = open(track.filename,'rb')
-            audiotools.transfer_data(f.read,original_checksum.update)
+            f = open(track.filename, 'rb')
+            audiotools.transfer_data(f.read, original_checksum.update)
             f.close()
 
             subprocess.call(["tracklint",
-                             "-V","quiet",
-                             "--fix","--db=%s" % (undo),
+                             "-V", "quiet",
+                             "--fix", "--db=%s" % (undo),
                              track.filename])
 
             metadata = track.get_metadata()
-            self.assertNotEqual(metadata,bad_apev2)
-            self.assertEqual(metadata,fixed)
+            self.assertNotEqual(metadata, bad_apev2)
+            self.assertEqual(metadata, fixed)
 
             subprocess.call(["tracklint",
-                             "-V","quiet",
-                             "--undo","--db=%s" % (undo),
+                             "-V", "quiet",
+                             "--undo", "--db=%s" % (undo),
                              track.filename])
 
             metadata = track.get_metadata()
-            self.assertEqual(metadata,bad_apev2)
-            self.assertNotEqual(metadata,fixed)
+            self.assertEqual(metadata, bad_apev2)
+            self.assertNotEqual(metadata, fixed)
             for tag in metadata.tags:
-                self.assertEqual(tag.data,bad_apev2[tag.key].data)
+                self.assertEqual(tag.data, bad_apev2[tag.key].data)
         finally:
             for f in os.listdir(tempdir):
-                os.unlink(os.path.join(tempdir,f))
+                os.unlink(os.path.join(tempdir, f))
             os.rmdir(tempdir)
+
 
 class ApeTaggedAudio:
     @TEST_METADATA
@@ -3702,70 +3729,73 @@ class ApeTaggedAudio:
                 return
 
             metadata.add_image(audiotools.Image.new(
-                    TEST_COVER1,u"",0))
+                    TEST_COVER1, u"", 0))
             metadata.add_image(audiotools.Image.new(
-                    TEST_COVER3,u"",1))
+                    TEST_COVER3, u"", 1))
 
             track.set_metadata(metadata)
 
             subprocess.call(["coverdump",
-                             "-V","quiet",
-                             "-d",imgdir,
+                             "-V", "quiet",
+                             "-d", imgdir,
                              track.filename])
 
-            f = open(os.path.join(imgdir,"front_cover.jpg"),"rb")
-            self.assertEqual(f.read(),TEST_COVER1)
+            f = open(os.path.join(imgdir, "front_cover.jpg"), "rb")
+            self.assertEqual(f.read(), TEST_COVER1)
             f.close()
-            f = open(os.path.join(imgdir,"back_cover.jpg"),"rb")
-            self.assertEqual(f.read(),TEST_COVER3)
+            f = open(os.path.join(imgdir, "back_cover.jpg"), "rb")
+            self.assertEqual(f.read(), TEST_COVER3)
             f.close()
 
             for f in os.listdir(imgdir):
-                os.unlink(os.path.join(imgdir,f))
+                os.unlink(os.path.join(imgdir, f))
 
             metadata = audiotools.MetaData(track_name=u"Name")
             track.set_metadata(metadata)
             metadata = track.get_metadata()
 
             metadata.add_image(audiotools.Image.new(
-                    TEST_COVER3,u"",0))
+                    TEST_COVER3, u"", 0))
             metadata.add_image(audiotools.Image.new(
-                    TEST_COVER1,u"",1))
+                    TEST_COVER1, u"", 1))
 
             track.set_metadata(metadata)
 
             subprocess.call(["coverdump",
-                             "-V","quiet",
-                             "-d",imgdir,
+                             "-V", "quiet",
+                             "-d", imgdir,
                              track.filename])
 
-            f = open(os.path.join(imgdir,"front_cover.jpg"),"rb")
-            self.assertEqual(f.read(),TEST_COVER3)
+            f = open(os.path.join(imgdir, "front_cover.jpg"), "rb")
+            self.assertEqual(f.read(), TEST_COVER3)
             f.close()
-            f = open(os.path.join(imgdir,"back_cover.jpg"),"rb")
-            self.assertEqual(f.read(),TEST_COVER1)
+            f = open(os.path.join(imgdir, "back_cover.jpg"), "rb")
+            self.assertEqual(f.read(), TEST_COVER1)
             f.close()
         finally:
             basefile.close()
             for f in os.listdir(imgdir):
-                os.unlink(os.path.join(imgdir,f))
+                os.unlink(os.path.join(imgdir, f))
             os.rmdir(imgdir)
 
-    def __flag_type_images_data__(self,jpeg,png,test_cover1,test_cover2):
+    def __flag_type_images_data__(self, jpeg, png, test_cover1, test_cover2):
         return zip(["--front-cover",
                     "--back-cover"],
-                   [0,1],
-                   [jpeg,png],
+                   [0, 1],
+                   [jpeg, png],
                    [test_cover1,
                     test_cover2])
 
-class TestWavPackAudio(EmbeddedCuesheet,ApeTaggedAudio,TestForeignWaveChunks,APEv2Lint,TestAiffAudio):
+
+class TestWavPackAudio(EmbeddedCuesheet, ApeTaggedAudio, TestForeignWaveChunks, APEv2Lint, TestAiffAudio):
     def setUp(self):
         self.audio_class = audiotools.WavPackAudio
 
-class TestShortenAudio(TestForeignWaveChunks,TestAiffAudio):
+
+class TestShortenAudio(TestForeignWaveChunks, TestAiffAudio):
     def setUp(self):
         self.audio_class = audiotools.ShortenAudio
+
 
 class M4AMetadata:
     def DummyMetaData(self):
@@ -3827,7 +3857,7 @@ class M4AMetadata:
                     "Copyright Text",
                     "Some Lengthy Text Comment"])
 
-    def __flag_type_images_data__(self,jpeg,png,test_cover1,test_cover2):
+    def __flag_type_images_data__(self, jpeg, png, test_cover1, test_cover2):
         return zip(["--front-cover"],
                    [0],
                    [jpeg],
@@ -3844,36 +3874,35 @@ class M4AMetadata:
                 and (new_file.get_metadata().supports_images())):
                 metadata = self.DummyMetaData()
                 new_file.set_metadata(metadata)
-                self.assertEqual(metadata,new_file.get_metadata())
+                self.assertEqual(metadata, new_file.get_metadata())
 
-                image1 = audiotools.Image.new(TEST_COVER1,u'',0)
-                image2 = audiotools.Image.new(TEST_COVER2,u'',0)
+                image1 = audiotools.Image.new(TEST_COVER1, u'', 0)
+                image2 = audiotools.Image.new(TEST_COVER2, u'', 0)
 
                 metadata.add_image(image1)
-                self.assertEqual(metadata.images()[0],image1)
-                self.assertEqual(metadata.front_covers()[0],image1)
+                self.assertEqual(metadata.images()[0], image1)
+                self.assertEqual(metadata.front_covers()[0], image1)
 
                 new_file.set_metadata(metadata)
                 metadata = new_file.get_metadata()
-                self.assertEqual(metadata.images()[0],image1)
-                self.assertEqual(metadata.front_covers()[0],image1)
+                self.assertEqual(metadata.images()[0], image1)
+                self.assertEqual(metadata.front_covers()[0], image1)
                 metadata.delete_image(metadata.images()[0])
 
                 new_file.set_metadata(metadata)
                 metadata = new_file.get_metadata()
-                self.assertEqual(len(metadata.images()),0)
+                self.assertEqual(len(metadata.images()), 0)
                 metadata.add_image(image2)
 
                 new_file.set_metadata(metadata)
                 metadata = new_file.get_metadata()
-                self.assertEqual(metadata.images()[0],image2)
-                self.assertEqual(metadata.front_covers()[0],image2)
+                self.assertEqual(metadata.images()[0], image2)
+                self.assertEqual(metadata.front_covers()[0], image2)
         finally:
             temp.close()
 
     def test_coverdump(self):
         pass
-
 
 
 class ID3Lint:
@@ -3890,11 +3919,11 @@ class ID3Lint:
             artist_name=u"Some Artist",
             comment=u"Some Comment")
 
-        self.assertNotEqual(fixed,bad_id3v2)
+        self.assertNotEqual(fixed, bad_id3v2)
 
         tempdir = tempfile.mkdtemp()
-        tempmp = os.path.join(tempdir,"track.%s" % (self.audio_class.SUFFIX))
-        undo = os.path.join(tempdir,"undo.db")
+        tempmp = os.path.join(tempdir, "track.%s" % (self.audio_class.SUFFIX))
+        undo = os.path.join(tempdir, "undo.db")
         try:
             track = self.audio_class.from_pcm(
                 tempmp,
@@ -3902,79 +3931,80 @@ class ID3Lint:
 
             track.set_metadata(bad_id3v2)
             metadata = track.get_metadata()
-            self.assertEqual(metadata,bad_id3v2)
-            for (key,value) in metadata.items():
-                self.assertEqual(value,bad_id3v2[key])
+            self.assertEqual(metadata, bad_id3v2)
+            for (key, value) in metadata.items():
+                self.assertEqual(value, bad_id3v2[key])
 
             original_checksum = md5()
-            f = open(track.filename,'rb')
-            audiotools.transfer_data(f.read,original_checksum.update)
+            f = open(track.filename, 'rb')
+            audiotools.transfer_data(f.read, original_checksum.update)
             f.close()
 
             subprocess.call(["tracklint",
-                             "-V","quiet",
-                             "--fix","--db=%s" % (undo),
+                             "-V", "quiet",
+                             "--fix", "--db=%s" % (undo),
                              track.filename])
 
             metadata = track.get_metadata()
-            self.assertNotEqual(metadata,bad_id3v2)
-            self.assertEqual(metadata,fixed)
+            self.assertNotEqual(metadata, bad_id3v2)
+            self.assertEqual(metadata, fixed)
 
             subprocess.call(["tracklint",
-                             "-V","quiet",
-                             "--undo","--db=%s" % (undo),
+                             "-V", "quiet",
+                             "--undo", "--db=%s" % (undo),
                              track.filename])
 
             metadata = track.get_metadata()
-            self.assertEqual(metadata,bad_id3v2)
-            self.assertNotEqual(metadata,fixed)
-            for (key,value) in metadata.items():
-                self.assertEqual(value,bad_id3v2[key])
+            self.assertEqual(metadata, bad_id3v2)
+            self.assertNotEqual(metadata, fixed)
+            for (key, value) in metadata.items():
+                self.assertEqual(value, bad_id3v2[key])
         finally:
             for f in os.listdir(tempdir):
-                os.unlink(os.path.join(tempdir,f))
+                os.unlink(os.path.join(tempdir, f))
             os.rmdir(tempdir)
 
     @TEST_EXECUTABLE
     def test_tracklint_id3v22(self):
         return self.__test_tracklint__(
             audiotools.ID3v22Comment(
-                [audiotools.ID3v22TextFrame.from_unicode("TT2",u"Track Name  "),
-                 audiotools.ID3v22TextFrame.from_unicode("TRK",u"02"),
-                 audiotools.ID3v22TextFrame.from_unicode("TPA",u"003"),
-                 audiotools.ID3v22TextFrame.from_unicode("TP1",u"  Some Artist\u0000"),
-                 audiotools.ID3v22TextFrame.from_unicode("TP2",u"Some Artist"),
-                 audiotools.ID3v22TextFrame.from_unicode("TRC",u""),
-                 audiotools.ID3v22TextFrame.from_unicode("TYE",u""),
-                 audiotools.ID3v22TextFrame.from_unicode("COM",u"  Some Comment  ")]))
+                [audiotools.ID3v22TextFrame.from_unicode("TT2", u"Track Name  "),
+                 audiotools.ID3v22TextFrame.from_unicode("TRK", u"02"),
+                 audiotools.ID3v22TextFrame.from_unicode("TPA", u"003"),
+                 audiotools.ID3v22TextFrame.from_unicode("TP1", u"  Some Artist\u0000"),
+                 audiotools.ID3v22TextFrame.from_unicode("TP2", u"Some Artist"),
+                 audiotools.ID3v22TextFrame.from_unicode("TRC", u""),
+                 audiotools.ID3v22TextFrame.from_unicode("TYE", u""),
+                 audiotools.ID3v22TextFrame.from_unicode("COM", u"  Some Comment  ")]))
 
     @TEST_EXECUTABLE
     def test_tracklint_id3v23(self):
         return self.__test_tracklint__(
             audiotools.ID3v23Comment(
-                [audiotools.ID3v23TextFrame.from_unicode("TIT2",u"Track Name  "),
-                 audiotools.ID3v23TextFrame.from_unicode("TRCK",u"02"),
-                 audiotools.ID3v23TextFrame.from_unicode("TPOS",u"003"),
-                 audiotools.ID3v23TextFrame.from_unicode("TPE1",u"  Some Artist\u0000"),
-                 audiotools.ID3v23TextFrame.from_unicode("TPE2",u"Some Artist"),
-                 audiotools.ID3v23TextFrame.from_unicode("TYER",u""),
-                 audiotools.ID3v23TextFrame.from_unicode("TCOP",u""),
-                 audiotools.ID3v23TextFrame.from_unicode("COMM",u"  Some Comment  ")]))
+                [audiotools.ID3v23TextFrame.from_unicode("TIT2", u"Track Name  "),
+                 audiotools.ID3v23TextFrame.from_unicode("TRCK", u"02"),
+                 audiotools.ID3v23TextFrame.from_unicode("TPOS", u"003"),
+                 audiotools.ID3v23TextFrame.from_unicode("TPE1", u"  Some Artist\u0000"),
+                 audiotools.ID3v23TextFrame.from_unicode("TPE2", u"Some Artist"),
+                 audiotools.ID3v23TextFrame.from_unicode("TYER", u""),
+                 audiotools.ID3v23TextFrame.from_unicode("TCOP", u""),
+                 audiotools.ID3v23TextFrame.from_unicode("COMM", u"  Some Comment  ")]))
 
     @TEST_EXECUTABLE
     def test_tracklint_id3v24(self):
         return self.__test_tracklint__(
             audiotools.ID3v24Comment(
-                [audiotools.ID3v24TextFrame.from_unicode("TIT2",u"Track Name  "),
-                 audiotools.ID3v24TextFrame.from_unicode("TRCK",u"02"),
-                 audiotools.ID3v24TextFrame.from_unicode("TPOS",u"003"),
-                 audiotools.ID3v24TextFrame.from_unicode("TPE1",u"  Some Artist\u0000"),
-                 audiotools.ID3v24TextFrame.from_unicode("TPE2",u"Some Artist"),
-                 audiotools.ID3v24TextFrame.from_unicode("TYER",u""),
-                 audiotools.ID3v24TextFrame.from_unicode("TCOP",u""),
-                 audiotools.ID3v24TextFrame.from_unicode("COMM",u"  Some Comment  ")]))
+                [audiotools.ID3v24TextFrame.from_unicode("TIT2", u"Track Name  "),
+                 audiotools.ID3v24TextFrame.from_unicode("TRCK", u"02"),
+                 audiotools.ID3v24TextFrame.from_unicode("TPOS", u"003"),
+                 audiotools.ID3v24TextFrame.from_unicode("TPE1", u"  Some Artist\u0000"),
+                 audiotools.ID3v24TextFrame.from_unicode("TPE2", u"Some Artist"),
+                 audiotools.ID3v24TextFrame.from_unicode("TYER", u""),
+                 audiotools.ID3v24TextFrame.from_unicode("TCOP", u""),
+                 audiotools.ID3v24TextFrame.from_unicode("COMM", u"  Some Comment  ")]))
 
-class TestMP3Audio(ID3Lint,TestAiffAudio):
+
+class TestMP3Audio(ID3Lint, TestAiffAudio):
     def setUp(self):
         self.audio_class = audiotools.MP3Audio
 
@@ -3985,7 +4015,7 @@ class TestMP3Audio(ID3Lint,TestAiffAudio):
         track_file_stat = os.stat(track_file.name)[0]
 
         undo_db_dir = tempfile.mkdtemp()
-        undo_db = os.path.join(undo_db_dir,"undo.db")
+        undo_db = os.path.join(undo_db_dir, "undo.db")
 
         try:
             track = self.audio_class.from_pcm(track_file.name,
@@ -3999,32 +4029,32 @@ class TestMP3Audio(ID3Lint,TestAiffAudio):
                          track_file_stat & 0x7555)
 
                 self.assertEqual(self.__run_app__(
-                        ["tracklint","--fix","--db",undo_db,
-                         track.filename]),1)
+                        ["tracklint", "--fix", "--db", undo_db,
+                         track.filename]), 1)
                 self.__check_info__(_(u"* %(filename)s: %(message)s") % \
-                           {"filename":self.filename(track.filename),
-                            "message":_(u"Stripped whitespace from track_name field")})
+                           {"filename": self.filename(track.filename),
+                            "message": _(u"Stripped whitespace from track_name field")})
                 self.__check_info__(_(u"* %(filename)s: %(message)s") % \
-                           {"filename":self.filename(track.filename),
-                            "message":_(u"Stripped whitespace from track_name field")})
+                           {"filename": self.filename(track.filename),
+                            "message": _(u"Stripped whitespace from track_name field")})
                 self.__check_error__(_(u"Unable to write \"%s\"") % \
                                          (self.filename(track.filename)))
 
                 #no undo DB, unwritable file
                 self.assertEqual(self.__run_app__(
-                        ["tracklint","--fix",track.filename]),1)
+                        ["tracklint", "--fix", track.filename]), 1)
                 self.__check_info__(_(u"* %(filename)s: %(message)s") % \
-                           {"filename":self.filename(track.filename),
-                            "message":_(u"Stripped whitespace from track_name field")})
+                           {"filename": self.filename(track.filename),
+                            "message": _(u"Stripped whitespace from track_name field")})
                 self.__check_info__(_(u"* %(filename)s: %(message)s") % \
-                           {"filename":self.filename(track.filename),
-                            "message":_(u"Stripped whitespace from track_name field")})
+                           {"filename": self.filename(track.filename),
+                            "message": _(u"Stripped whitespace from track_name field")})
                 self.__check_error__(_(u"Unable to write \"%s\"") % \
                                          (self.filename(track.filename)))
         finally:
-            os.chmod(track_file.name,track_file_stat)
+            os.chmod(track_file.name, track_file_stat)
             track_file.close()
-            for p in [os.path.join(undo_db_dir,f) for f in
+            for p in [os.path.join(undo_db_dir, f) for f in
                       os.listdir(undo_db_dir)]:
                 os.unlink(p)
             os.rmdir(undo_db_dir)
@@ -4054,12 +4084,12 @@ class TestMP2Audio(TestMP3Audio):
                      "--freedb-server=foo.bar",
                      "--freedb-port=9001",
                      temp_track1.filename,
-                     temp_track2.filename]),1)
+                     temp_track2.filename]), 1)
 
             #Disc ID is different in MP2 because of its lossy length
             self.__check_info__(_(u"Sending Disc ID \"%(disc_id)s\" to server \"%(server)s\"") % \
-                                   {"disc_id":u"09000b02",
-                                    "server":u"foo.bar"})
+                                   {"disc_id": u"09000b02",
+                                    "server": u"foo.bar"})
 
             #an invalid freedb-server will generate one of the following
             #depending on whether DNS is spoofing bogus hostnames or not
@@ -4070,14 +4100,15 @@ class TestMP2Audio(TestMP3Audio):
                     ["track2xmcd",
                      temp_track1.filename,
                      temp_track2.filename,
-                     "-x","/dev/null/foo.xmcd"]),1)
+                     "-x", "/dev/null/foo.xmcd"]), 1)
             self.__check_error__(_(u"Unable to write \"%s\"") % \
                                      (self.filename("/dev/null/foo.xmcd")))
         finally:
             temp_track_file1.close()
             temp_track_file2.close()
 
-class TestVorbisAudio(VorbisLint,TestAiffAudio,LCVorbisComment):
+
+class TestVorbisAudio(VorbisLint, TestAiffAudio, LCVorbisComment):
     def setUp(self):
         self.audio_class = audiotools.VorbisAudio
 
@@ -4089,7 +4120,7 @@ class TestVorbisAudio(VorbisLint,TestAiffAudio,LCVorbisComment):
                                               BLANK_PCM_Reader(5))
             pcm = track.to_pcm()
             original_pcm_sum = md5()
-            audiotools.transfer_framelist_data(pcm,original_pcm_sum.update)
+            audiotools.transfer_framelist_data(pcm, original_pcm_sum.update)
             pcm.close()
 
             comment = audiotools.MetaData(
@@ -4098,11 +4129,11 @@ class TestVorbisAudio(VorbisLint,TestAiffAudio,LCVorbisComment):
                 comment=u"abcdefghij" * 13005)
             track.set_metadata(comment)
             track = audiotools.open(track_file.name)
-            self.assertEqual(comment,track.get_metadata())
+            self.assertEqual(comment, track.get_metadata())
 
             pcm = track.to_pcm()
             new_pcm_sum = md5()
-            audiotools.transfer_framelist_data(pcm,new_pcm_sum.update)
+            audiotools.transfer_framelist_data(pcm, new_pcm_sum.update)
             pcm.close()
 
             self.assertEqual(original_pcm_sum.hexdigest(),
@@ -4111,9 +4142,7 @@ class TestVorbisAudio(VorbisLint,TestAiffAudio,LCVorbisComment):
             track_file.close()
 
 
-
-
-class TestM4AAudio(M4AMetadata,TestAiffAudio):
+class TestM4AAudio(M4AMetadata, TestAiffAudio):
     def setUp(self):
         self.audio_class = audiotools.M4AAudio
 
@@ -4121,19 +4150,19 @@ class TestM4AAudio(M4AMetadata,TestAiffAudio):
     def test_tracklint(self):
         bad_m4a = audiotools.M4AMetaData([])
         bad_m4a['\xa9nam'] = audiotools.M4AMetaData.text_atom(
-            '\xa9nam',u"Track Name  ")
+            '\xa9nam', u"Track Name  ")
         bad_m4a['\xa9ART'] = audiotools.M4AMetaData.text_atom(
-            '\xa9ART',u"  Some Artist")
+            '\xa9ART', u"  Some Artist")
         bad_m4a['aART'] = audiotools.M4AMetaData.text_atom(
-            'aART',u"Some Artist")
+            'aART', u"Some Artist")
         bad_m4a['cprt'] = audiotools.M4AMetaData.text_atom(
-            'cprt',u"")
+            'cprt', u"")
         bad_m4a['\xa9day'] = audiotools.M4AMetaData.text_atom(
-            '\xa9day',u"  ")
+            '\xa9day', u"  ")
         bad_m4a['\xa9cmt'] = audiotools.M4AMetaData.text_atom(
-            '\xa9cmt',u"  Some Comment  ")
-        bad_m4a['trkn'] = audiotools.M4AMetaData.trkn_atom(2,0)
-        bad_m4a['disk'] = audiotools.M4AMetaData.disk_atom(3,0)
+            '\xa9cmt', u"  Some Comment  ")
+        bad_m4a['trkn'] = audiotools.M4AMetaData.trkn_atom(2, 0)
+        bad_m4a['disk'] = audiotools.M4AMetaData.disk_atom(3, 0)
 
         fixed = audiotools.MetaData(
             track_name=u"Track Name",
@@ -4142,11 +4171,11 @@ class TestM4AAudio(M4AMetadata,TestAiffAudio):
             artist_name=u"Some Artist",
             comment=u"Some Comment")
 
-        self.assertNotEqual(fixed,bad_m4a)
+        self.assertNotEqual(fixed, bad_m4a)
 
         tempdir = tempfile.mkdtemp()
-        tempmp = os.path.join(tempdir,"track.%s" % (self.audio_class.SUFFIX))
-        undo = os.path.join(tempdir,"undo.db")
+        tempmp = os.path.join(tempdir, "track.%s" % (self.audio_class.SUFFIX))
+        undo = os.path.join(tempdir, "undo.db")
         try:
             track = self.audio_class.from_pcm(
                 tempmp,
@@ -4154,51 +4183,50 @@ class TestM4AAudio(M4AMetadata,TestAiffAudio):
 
             track.set_metadata(bad_m4a)
             metadata = track.get_metadata()
-            self.assertEqual(metadata,bad_m4a)
-            for (key,value) in metadata.items():
-                self.assertEqual(value,bad_m4a[key])
+            self.assertEqual(metadata, bad_m4a)
+            for (key, value) in metadata.items():
+                self.assertEqual(value, bad_m4a[key])
 
             original_checksum = md5()
-            f = open(track.filename,'rb')
-            audiotools.transfer_data(f.read,original_checksum.update)
+            f = open(track.filename, 'rb')
+            audiotools.transfer_data(f.read, original_checksum.update)
             f.close()
 
             subprocess.call(["tracklint",
-                             "-V","quiet",
-                             "--fix","--db=%s" % (undo),
+                             "-V", "quiet",
+                             "--fix", "--db=%s" % (undo),
                              track.filename])
 
             metadata = track.get_metadata()
-            self.assertNotEqual(metadata,bad_m4a)
-            self.assertEqual(metadata,fixed)
+            self.assertNotEqual(metadata, bad_m4a)
+            self.assertEqual(metadata, fixed)
 
             subprocess.call(["tracklint",
-                             "-V","quiet",
-                             "--undo","--db=%s" % (undo),
+                             "-V", "quiet",
+                             "--undo", "--db=%s" % (undo),
                              track.filename])
 
             metadata = track.get_metadata()
-            self.assertEqual(metadata,bad_m4a)
-            self.assertNotEqual(metadata,fixed)
-            for (key,value) in metadata.items():
-                self.assertEqual(value,bad_m4a[key])
+            self.assertEqual(metadata, bad_m4a)
+            self.assertNotEqual(metadata, fixed)
+            for (key, value) in metadata.items():
+                self.assertEqual(value, bad_m4a[key])
         finally:
             for f in os.listdir(tempdir):
-                os.unlink(os.path.join(tempdir,f))
+                os.unlink(os.path.join(tempdir, f))
             os.rmdir(tempdir)
 
     def __check_encoder__(self, audio_class, track):
-        encoders = {audiotools.ALACAudio:u"Python Audio Tools",
-                    audiotools.M4AAudio_nero:u"Nero AAC codec",
-                    audiotools.M4AAudio_faac:u"FAAC"}
+        encoders = {audiotools.ALACAudio: u"Python Audio Tools",
+                    audiotools.M4AAudio_nero: u"Nero AAC codec",
+                    audiotools.M4AAudio_faac: u"FAAC"}
 
         self.assert_(audio_class in encoders.keys())
         metadata = track.get_metadata()
-        self.assertNotEqual(metadata,None)
+        self.assertNotEqual(metadata, None)
         self.assert_((chr(0xA9) + 'too') in metadata.keys())
         encoder = unicode(metadata[chr(0xA9) + 'too'][0])
         self.assert_(encoder.startswith(encoders[audio_class]))
-
 
     @TEST_METADATA
     def test_too(self):
@@ -4233,27 +4261,27 @@ class TestM4AAudio(M4AMetadata,TestAiffAudio):
             self.__check_encoder__(self.audio_class, track1)
 
             #check track2track(1)
-            subprocess.call(["track2track","-V","quiet",
-                             "-t",self.audio_class.NAME,
+            subprocess.call(["track2track", "-V", "quiet",
+                             "-t", self.audio_class.NAME,
                              wave_file.name,
-                             "-o",track_file3.name])
+                             "-o", track_file3.name])
             track3 = audiotools.open(track_file3.name)
-            self.assertEqual(track3.__class__,self.audio_class)
+            self.assertEqual(track3.__class__, self.audio_class)
             self.__check_encoder__(self.audio_class, track3)
 
             #then check conversion via track2track(1)
-            m4a_classes = {audiotools.M4AAudio:audiotools.ALACAudio,
-                           audiotools.ALACAudio:audiotools.M4AAudio}
+            m4a_classes = {audiotools.M4AAudio: audiotools.ALACAudio,
+                           audiotools.ALACAudio: audiotools.M4AAudio}
 
-            subprocess.call(["track2track","-V","quiet",
-                             "-t",m4a_classes[self.audio_class].NAME,
+            subprocess.call(["track2track", "-V", "quiet",
+                             "-t", m4a_classes[self.audio_class].NAME,
                              track1.filename,
-                             "-o",track_file4.name])
+                             "-o", track_file4.name])
             track4 = audiotools.open(track_file4.name)
-            self.assertEqual(track4.__class__,m4a_classes[self.audio_class])
+            self.assertEqual(track4.__class__, m4a_classes[self.audio_class])
             self.assertEqual(track4.get_metadata().track_name,
                              u"Some Fancy New Track Name")
-            self.__check_encoder__(m4a_classes[self.audio_class],track4)
+            self.__check_encoder__(m4a_classes[self.audio_class], track4)
 
         finally:
             wave_file.close()
@@ -4264,24 +4292,29 @@ class TestM4AAudio(M4AMetadata,TestAiffAudio):
 
 
 class TestAlacAudio(TestM4AAudio):
-   def setUp(self):
-       self.audio_class = audiotools.ALACAudio
+    def setUp(self):
+        self.audio_class = audiotools.ALACAudio
+
 
 class TestAACAudio(TestAiffAudio):
     def setUp(self):
         self.audio_class = audiotools.AACAudio
 
+
 # class TestMusepackAudio(ApeTaggedAudio,APEv2Lint,TestAiffAudio):
 #     def setUp(self):
 #         self.audio_class = audiotools.MusepackAudio
 
-class TestSpeexAudio(VorbisLint,TestAiffAudio,LCVorbisComment):
+
+class TestSpeexAudio(VorbisLint, TestAiffAudio, LCVorbisComment):
     def setUp(self):
         self.audio_class = audiotools.SpeexAudio
+
 
 # class TestApeAudio(TestForeignWaveChunks,APEv2Lint,TestAiffAudio):
 #    def setUp(self):
 #        self.audio_class = audiotools.ApeAudio
+
 
 class TestID3v2(unittest.TestCase):
     @TEST_METADATA
@@ -4289,38 +4322,38 @@ class TestID3v2(unittest.TestCase):
         self.file = tempfile.NamedTemporaryFile(suffix=".mp3")
 
         self.mp3_file = audiotools.MP3Audio.from_pcm(
-            self.file.name,BLANK_PCM_Reader(TEST_LENGTH))
+            self.file.name, BLANK_PCM_Reader(TEST_LENGTH))
 
-    def __comment_test__(self,id3_class):
+    def __comment_test__(self, id3_class):
         self.mp3_file.set_metadata(
             id3_class.converted(DummyMetaData()))
         metadata = self.mp3_file.get_metadata()
-        self.assertEqual(isinstance(metadata,id3_class),True)
+        self.assertEqual(isinstance(metadata, id3_class), True)
 
         metadata.track_name = u"New Track Name"
-        self.assertEqual(metadata.track_name,u"New Track Name")
+        self.assertEqual(metadata.track_name, u"New Track Name")
         self.mp3_file.set_metadata(metadata)
         metadata2 = self.mp3_file.get_metadata()
-        self.assertEqual(isinstance(metadata2,id3_class),True)
-        self.assertEqual(metadata,metadata2)
+        self.assertEqual(isinstance(metadata2, id3_class), True)
+        self.assertEqual(metadata, metadata2)
 
         metadata = id3_class.converted(DummyMetaData3())
         for new_class in (audiotools.ID3v22Comment,
                           audiotools.ID3v23Comment,
                           audiotools.ID3v24Comment):
-            self.assertEqual(metadata,new_class.converted(metadata))
+            self.assertEqual(metadata, new_class.converted(metadata))
             self.assertEqual(metadata.images(),
                              new_class.converted(metadata).images())
 
-    def __dict_test__(self,id3_class):
+    def __dict_test__(self, id3_class):
         INTEGER_ATTRIBS = ('track_number',
                            'track_total',
                            'album_number',
                            'album_total')
 
-        attribs1 = {}  #a dict of attribute -> value pairs ("track_name":u"foo")
-        attribs2 = {}  #a dict of ID3v2 -> value pairs     ("TT2":u"foo")
-        for (i,(attribute,key)) in enumerate(id3_class.ATTRIBUTE_MAP.items()):
+        attribs1 = {}  # a dict of attribute -> value pairs ("track_name":u"foo")
+        attribs2 = {}  # a dict of ID3v2 -> value pairs     ("TT2":u"foo")
+        for (i, (attribute, key)) in enumerate(id3_class.ATTRIBUTE_MAP.items()):
             if (attribute not in INTEGER_ATTRIBS):
                 attribs1[attribute] = attribs2[key] = u"value %d" % (i)
         attribs1["track_number"] = 2
@@ -4331,16 +4364,16 @@ class TestID3v2(unittest.TestCase):
         id3 = id3_class.converted(audiotools.MetaData(**attribs1))
 
         self.mp3_file.set_metadata(id3)
-        self.assertEqual(self.mp3_file.get_metadata(),id3)
+        self.assertEqual(self.mp3_file.get_metadata(), id3)
         id3 = self.mp3_file.get_metadata()
 
         #ensure that all the attributes match up
-        for (attribute,value) in attribs1.items():
-            self.assertEqual(getattr(id3,attribute),value)
+        for (attribute, value) in attribs1.items():
+            self.assertEqual(getattr(id3, attribute), value)
 
         #ensure that all the keys for non-integer items match up
-        for (key,value) in attribs2.items():
-            self.assertEqual(unicode(id3[key][0]),value)
+        for (key, value) in attribs2.items():
+            self.assertEqual(unicode(id3[key][0]), value)
 
         #ensure the keys for integer items match up
         self.assertEqual(int(id3[id3_class.INTEGER_ITEMS[0]][0]),
@@ -4355,88 +4388,87 @@ class TestID3v2(unittest.TestCase):
         #ensure that changing attributes changes the underlying frame
         #>>> id3.track_name = u"bar"
         #>>> id3['TT2'][0] == u"bar"
-        for (i,(attribute,key)) in enumerate(id3_class.ATTRIBUTE_MAP.items()):
+        for (i, (attribute, key)) in enumerate(id3_class.ATTRIBUTE_MAP.items()):
             if (key not in id3_class.INTEGER_ITEMS):
-                setattr(id3,attribute,u"new value %d" % (i))
-                self.assertEqual(unicode(id3[key][0]),u"new value %d" % (i))
+                setattr(id3, attribute, u"new value %d" % (i))
+                self.assertEqual(unicode(id3[key][0]), u"new value %d" % (i))
 
         #ensure that changing integer attributes changes the underlying frame
         #>>> id3.track_number = 2
         #>>> id3['TRK'][0] == u"2"
         id3.track_number = 3
         id3.track_total = 0
-        self.assertEqual(unicode(id3[id3_class.INTEGER_ITEMS[0]][0]),u"3")
+        self.assertEqual(unicode(id3[id3_class.INTEGER_ITEMS[0]][0]), u"3")
 
         id3.track_total = 8
-        self.assertEqual(unicode(id3[id3_class.INTEGER_ITEMS[0]][0]),u"3/8")
+        self.assertEqual(unicode(id3[id3_class.INTEGER_ITEMS[0]][0]), u"3/8")
 
         id3.album_number = 2
         id3.album_total = 0
-        self.assertEqual(unicode(id3[id3_class.INTEGER_ITEMS[1]][0]),u"2")
+        self.assertEqual(unicode(id3[id3_class.INTEGER_ITEMS[1]][0]), u"2")
 
         id3.album_total = 4
-        self.assertEqual(unicode(id3[id3_class.INTEGER_ITEMS[1]][0]),u"2/4")
-
+        self.assertEqual(unicode(id3[id3_class.INTEGER_ITEMS[1]][0]), u"2/4")
 
         #reset and re-check everything for the next round
         id3 = id3_class.converted(audiotools.MetaData(**attribs1))
         self.mp3_file.set_metadata(id3)
-        self.assertEqual(self.mp3_file.get_metadata(),id3)
+        self.assertEqual(self.mp3_file.get_metadata(), id3)
         id3 = self.mp3_file.get_metadata()
 
         #ensure that all the attributes match up
-        for (attribute,value) in attribs1.items():
-            self.assertEqual(getattr(id3,attribute),value)
+        for (attribute, value) in attribs1.items():
+            self.assertEqual(getattr(id3, attribute), value)
 
-        for (key,value) in attribs2.items():
+        for (key, value) in attribs2.items():
             if (key not in id3_class.INTEGER_ITEMS):
-                self.assertEqual(unicode(id3[key][0]),value)
+                self.assertEqual(unicode(id3[key][0]), value)
             else:
-                self.assertEqual(int(id3[key][0]),value)
+                self.assertEqual(int(id3[key][0]), value)
 
         #ensure that changing the underlying frames changes attributes
         #>>> id3['TT2'] = [u"bar"]
         #>>> id3.track_name == u"bar"
-        for (i,(attribute,key)) in enumerate(id3_class.ATTRIBUTE_MAP.items()):
+        for (i, (attribute, key)) in enumerate(id3_class.ATTRIBUTE_MAP.items()):
             if (attribute not in INTEGER_ATTRIBS):
                 id3[key] = [u"new value %d" % (i)]
                 self.mp3_file.set_metadata(id3)
                 id3 = self.mp3_file.get_metadata()
-                self.assertEqual(getattr(id3,attribute),u"new value %d" % (i))
+                self.assertEqual(getattr(id3, attribute), u"new value %d" % (i))
 
         #ensure that changing the underlying integer frames changes attributes
         id3[id3_class.INTEGER_ITEMS[0]] = [7]
         self.mp3_file.set_metadata(id3)
         id3 = self.mp3_file.get_metadata()
-        self.assertEqual(id3.track_number,7)
+        self.assertEqual(id3.track_number, 7)
 
         id3[id3_class.INTEGER_ITEMS[0]] = [u"8/9"]
         self.mp3_file.set_metadata(id3)
         id3 = self.mp3_file.get_metadata()
-        self.assertEqual(id3.track_number,8)
-        self.assertEqual(id3.track_total,9)
+        self.assertEqual(id3.track_number, 8)
+        self.assertEqual(id3.track_total, 9)
 
         id3[id3_class.INTEGER_ITEMS[1]] = [4]
         self.mp3_file.set_metadata(id3)
         id3 = self.mp3_file.get_metadata()
-        self.assertEqual(id3.album_number,4)
+        self.assertEqual(id3.album_number, 4)
 
         id3[id3_class.INTEGER_ITEMS[1]] = [u"5/6"]
         self.mp3_file.set_metadata(id3)
         id3 = self.mp3_file.get_metadata()
-        self.assertEqual(id3.album_number,5)
-        self.assertEqual(id3.album_total,6)
+        self.assertEqual(id3.album_number, 5)
+        self.assertEqual(id3.album_total, 6)
 
         #finally, just for kicks, ensure that explicitly setting
         #frames also changes attributes
         #>>> id3['TT2'] = [id3_class.TextFrame.from_unicode('TT2',u"foo")]
         #>>> id3.track_name = u"foo"
-        for (i,(attribute,key)) in enumerate(id3_class.ATTRIBUTE_MAP.items()):
+        for (i, (attribute, key)) in enumerate(id3_class.ATTRIBUTE_MAP.items()):
             if (attribute not in INTEGER_ATTRIBS):
-                id3[key] = [id3_class.TextFrame.from_unicode(key,unicode(i))]
+                id3[key] = [id3_class.TextFrame.from_unicode(key, unicode(i))]
                 self.mp3_file.set_metadata(id3)
                 id3 = self.mp3_file.get_metadata()
-                self.assertEqual(getattr(id3,attribute),unicode(i))
+                self.assertEqual(getattr(id3, attribute), unicode(i))
 
         #and ensure explicitly setting integer frames also changes attribs
         id3[id3_class.INTEGER_ITEMS[0]] = [
@@ -4444,32 +4476,32 @@ class TestID3v2(unittest.TestCase):
                                              u"4")]
         self.mp3_file.set_metadata(id3)
         id3 = self.mp3_file.get_metadata()
-        self.assertEqual(id3.track_number,4)
-        self.assertEqual(id3.track_total,0)
+        self.assertEqual(id3.track_number, 4)
+        self.assertEqual(id3.track_total, 0)
 
         id3[id3_class.INTEGER_ITEMS[0]] = [
             id3_class.TextFrame.from_unicode(id3_class.INTEGER_ITEMS[0],
                                              u"2/10")]
         self.mp3_file.set_metadata(id3)
         id3 = self.mp3_file.get_metadata()
-        self.assertEqual(id3.track_number,2)
-        self.assertEqual(id3.track_total,10)
+        self.assertEqual(id3.track_number, 2)
+        self.assertEqual(id3.track_total, 10)
 
         id3[id3_class.INTEGER_ITEMS[1]] = [
             id3_class.TextFrame.from_unicode(id3_class.INTEGER_ITEMS[1],
                                              u"3")]
         self.mp3_file.set_metadata(id3)
         id3 = self.mp3_file.get_metadata()
-        self.assertEqual(id3.album_number,3)
-        self.assertEqual(id3.album_total,0)
+        self.assertEqual(id3.album_number, 3)
+        self.assertEqual(id3.album_total, 0)
 
         id3[id3_class.INTEGER_ITEMS[1]] = [
             id3_class.TextFrame.from_unicode(id3_class.INTEGER_ITEMS[1],
                                              u"5/7")]
         self.mp3_file.set_metadata(id3)
         id3 = self.mp3_file.get_metadata()
-        self.assertEqual(id3.album_number,5)
-        self.assertEqual(id3.album_total,7)
+        self.assertEqual(id3.album_number, 5)
+        self.assertEqual(id3.album_total, 7)
 
     @TEST_METADATA
     def testid3v2_2(self):
@@ -4497,11 +4529,11 @@ class TestID3v2(unittest.TestCase):
             metadata = new_class.converted(self.mp3_file.get_metadata())
             self.mp3_file.set_metadata(metadata)
             metadata = self.mp3_file.get_metadata()
-            self.assertEqual(isinstance(metadata,new_class),True)
+            self.assertEqual(isinstance(metadata, new_class), True)
             self.assertEqual(metadata.__comment_name__(),
                              new_class([]).__comment_name__())
-            self.assertEqual(metadata,DummyMetaData3())
-            self.assertEqual(metadata.images(),DummyMetaData3().images())
+            self.assertEqual(metadata, DummyMetaData3())
+            self.assertEqual(metadata.images(), DummyMetaData3().images())
 
     @TEST_METADATA
     def testsetpicture(self):
@@ -4514,8 +4546,8 @@ class TestID3v2(unittest.TestCase):
         new_mp3_file = audiotools.open(self.file.name)
         m2 = new_mp3_file.get_metadata()
 
-        self.assertEqual(m.images()[0].data,m2.images()[0].data)
-        self.assertEqual(m.images()[0],m2.images()[0])
+        self.assertEqual(m.images()[0].data, m2.images()[0].data)
+        self.assertEqual(m.images()[0], m2.images()[0])
 
     @TEST_METADATA
     def testconvertedpicture(self):
@@ -4523,7 +4555,7 @@ class TestID3v2(unittest.TestCase):
 
         try:
             flac_file = audiotools.FlacAudio.from_pcm(
-                flac_tempfile.name,BLANK_PCM_Reader(TEST_LENGTH))
+                flac_tempfile.name, BLANK_PCM_Reader(TEST_LENGTH))
 
             m = DummyMetaData()
             m.add_image(audiotools.Image.new(
@@ -4563,18 +4595,18 @@ class TestID3v2(unittest.TestCase):
             metadata = audiotools.ID3v24Comment.converted(DummyMetaData())
             self.mp3_file.set_metadata(metadata)
             id3 = self.mp3_file.get_metadata()
-            self.assertEqual(id3,metadata)
+            self.assertEqual(id3, metadata)
 
             metadata.track_name = test_string
 
             self.mp3_file.set_metadata(metadata)
             id3 = self.mp3_file.get_metadata()
-            self.assertEqual(id3,metadata)
+            self.assertEqual(id3, metadata)
 
             metadata.comment = test_string
             self.mp3_file.set_metadata(metadata)
             id3 = self.mp3_file.get_metadata()
-            self.assertEqual(id3,metadata)
+            self.assertEqual(id3, metadata)
 
             metadata.add_image(audiotools.ID3v24Comment.PictureFrame.converted(
                     audiotools.Image.new(TEST_COVER1,
@@ -4582,8 +4614,7 @@ class TestID3v2(unittest.TestCase):
                                          0)))
             self.mp3_file.set_metadata(metadata)
             id3 = self.mp3_file.get_metadata()
-            self.assertEqual(id3.images()[0].description,test_string)
-
+            self.assertEqual(id3.images()[0].description, test_string)
 
             #ID3v2.3 and ID3v2.2 only support UCS-2
             for id3_class in (audiotools.ID3v23Comment,
@@ -4591,7 +4622,7 @@ class TestID3v2(unittest.TestCase):
                 metadata = audiotools.ID3v23Comment.converted(DummyMetaData())
                 self.mp3_file.set_metadata(metadata)
                 id3 = self.mp3_file.get_metadata()
-                self.assertEqual(id3,metadata)
+                self.assertEqual(id3, metadata)
 
                 #ensure that text fields round-trip correctly
                 #(i.e. the extra-wide char gets replaced)
@@ -4599,13 +4630,13 @@ class TestID3v2(unittest.TestCase):
 
                 self.mp3_file.set_metadata(metadata)
                 id3 = self.mp3_file.get_metadata()
-                self.assertEqual(id3.track_name,test_string_out)
+                self.assertEqual(id3.track_name, test_string_out)
 
                 #ensure that comment blocks round-trip correctly
                 metadata.comment = test_string
                 self.mp3_file.set_metadata(metadata)
                 id3 = self.mp3_file.get_metadata()
-                self.assertEqual(id3.track_name,test_string_out)
+                self.assertEqual(id3.track_name, test_string_out)
 
                 #ensure that image comment fields round-trip correctly
                 metadata.add_image(id3_class.PictureFrame.converted(
@@ -4614,11 +4645,12 @@ class TestID3v2(unittest.TestCase):
                                              0)))
                 self.mp3_file.set_metadata(metadata)
                 id3 = self.mp3_file.get_metadata()
-                self.assertEqual(id3.images()[0].description,test_string_out)
+                self.assertEqual(id3.images()[0].description, test_string_out)
 
     @TEST_METADATA
     def tearDown(self):
         self.file.close()
+
 
 class TestID3v1(unittest.TestCase):
     @TEST_METADATA
@@ -4626,7 +4658,7 @@ class TestID3v1(unittest.TestCase):
         self.file = tempfile.NamedTemporaryFile(suffix=".mp3")
 
         self.mp3_file = audiotools.MP3Audio.from_pcm(
-            self.file.name,BLANK_PCM_Reader(TEST_LENGTH))
+            self.file.name, BLANK_PCM_Reader(TEST_LENGTH))
 
     @TEST_METADATA
     def test_comment(self):
@@ -4638,46 +4670,47 @@ class TestID3v1(unittest.TestCase):
                                 year=u"2009",
                                 comment=u"Comment 1"))
 
-        self.assertEqual(self.mp3_file.get_metadata(),None)
+        self.assertEqual(self.mp3_file.get_metadata(), None)
         self.mp3_file.set_metadata(id3v1_1)
-        self.assertEqual(self.mp3_file.get_metadata(),id3v1_1)
+        self.assertEqual(self.mp3_file.get_metadata(), id3v1_1)
         self.assert_(isinstance(self.mp3_file.get_metadata(),
                                 audiotools.ID3v1Comment))
 
         m = self.mp3_file.get_metadata()
-        for field in ("track_name","track_number","album_name",
-                      "artist_name","year","comment"):
-            self.assertEqual(getattr(id3v1_1,field),
-                             getattr(m,field))
+        for field in ("track_name", "track_number", "album_name",
+                      "artist_name", "year", "comment"):
+            self.assertEqual(getattr(id3v1_1, field),
+                             getattr(m, field))
 
-        for (field,new_value) in zip(("track_name","track_number","album_name",
-                                      "artist_name","year","comment"),
-                                     (u"Name 2",2,u"Album 2",
-                                      u"Artist 2",u"2008",u"Comment 2")):
+        for (field, new_value) in zip(("track_name", "track_number", "album_name",
+                                      "artist_name", "year", "comment"),
+                                     (u"Name 2", 2, u"Album 2",
+                                      u"Artist 2", u"2008", u"Comment 2")):
             m = self.mp3_file.get_metadata()
-            setattr(m,field,new_value)
+            setattr(m, field, new_value)
             self.mp3_file.set_metadata(m)
             m = self.mp3_file.get_metadata()
-            self.assertEqual(getattr(m,field),new_value)
+            self.assertEqual(getattr(m, field), new_value)
 
-        for field in ("track_name","album_name","artist_name","year","comment"):
+        for field in ("track_name", "album_name", "artist_name", "year", "comment"):
             m = self.mp3_file.get_metadata()
-            delattr(m,field)
-            self.assertEqual(getattr(m,field),u"")
+            delattr(m, field)
+            self.assertEqual(getattr(m, field), u"")
             self.mp3_file.set_metadata(m)
             m = self.mp3_file.get_metadata()
-            self.assertEqual(getattr(m,field),u"")
+            self.assertEqual(getattr(m, field), u"")
 
         m = self.mp3_file.get_metadata()
-        delattr(m,"track_number")
-        self.assertEqual(getattr(m,"track_number"),0)
+        delattr(m, "track_number")
+        self.assertEqual(getattr(m, "track_number"), 0)
         self.mp3_file.set_metadata(m)
         m = self.mp3_file.get_metadata()
-        self.assertEqual(getattr(m,"track_number"),0)
+        self.assertEqual(getattr(m, "track_number"), 0)
 
     @TEST_METADATA
     def tearDown(self):
         self.file.close()
+
 
 class TestFlacComment(unittest.TestCase):
     @TEST_METADATA
@@ -4685,7 +4718,7 @@ class TestFlacComment(unittest.TestCase):
         self.file = tempfile.NamedTemporaryFile(suffix=".flac")
 
         self.flac_file = audiotools.FlacAudio.from_pcm(
-            self.file.name,BLANK_PCM_Reader(TEST_LENGTH))
+            self.file.name, BLANK_PCM_Reader(TEST_LENGTH))
 
     @TEST_METADATA
     def testsetpicture(self):
@@ -4698,7 +4731,7 @@ class TestFlacComment(unittest.TestCase):
         new_flac_file = audiotools.open(self.file.name)
         m2 = new_flac_file.get_metadata()
 
-        self.assertEqual(m.images()[0],m2.images()[0])
+        self.assertEqual(m.images()[0], m2.images()[0])
 
     @TEST_METADATA
     def testconvertedpicture(self):
@@ -4706,7 +4739,7 @@ class TestFlacComment(unittest.TestCase):
 
         try:
             mp3_file = audiotools.MP3Audio.from_pcm(
-                mp3_tempfile.name,BLANK_PCM_Reader(TEST_LENGTH))
+                mp3_tempfile.name, BLANK_PCM_Reader(TEST_LENGTH))
 
             m = DummyMetaData()
             m.add_image(audiotools.Image.new(
@@ -4736,7 +4769,7 @@ class TestWavPackAPEv2MetaData(unittest.TestCase):
         self.file = tempfile.NamedTemporaryFile(suffix=".wv")
 
         self.ape_file = audiotools.WavPackAudio.from_pcm(
-            self.file.name,BLANK_PCM_Reader(TEST_LENGTH))
+            self.file.name, BLANK_PCM_Reader(TEST_LENGTH))
 
         self.tag_class = audiotools.WavePackAPEv2
 
@@ -4748,37 +4781,37 @@ class TestWavPackAPEv2MetaData(unittest.TestCase):
     def test_comment(self):
         self.ape_file.set_metadata(DummyMetaData())
         metadata = self.ape_file.get_metadata()
-        self.assert_(isinstance(metadata,self.tag_class))
-        self.assertEqual(metadata,DummyMetaData())
+        self.assert_(isinstance(metadata, self.tag_class))
+        self.assertEqual(metadata, DummyMetaData())
 
         metadata.track_name = u"New Track Name"
-        self.assertEqual(metadata.track_name,u"New Track Name")
+        self.assertEqual(metadata.track_name, u"New Track Name")
         self.ape_file.set_metadata(metadata)
         metadata2 = self.ape_file.get_metadata()
-        self.assert_(isinstance(metadata,self.tag_class))
-        self.assertEqual(metadata,metadata2)
+        self.assert_(isinstance(metadata, self.tag_class))
+        self.assertEqual(metadata, metadata2)
 
         #handle unknown fields correctly
-        metadata['Foo'] = audiotools.ApeTagItem.string('Foo',u'Bar')
-        self.assertEqual(metadata['Foo'].data,'Bar')
+        metadata['Foo'] = audiotools.ApeTagItem.string('Foo', u'Bar')
+        self.assertEqual(metadata['Foo'].data, 'Bar')
         self.ape_file.set_metadata(metadata)
         metadata2 = self.ape_file.get_metadata()
-        self.assertEqual(metadata2['Foo'].data,'Bar')
-        self.assertEqual(metadata,metadata2)
+        self.assertEqual(metadata2['Foo'].data, 'Bar')
+        self.assertEqual(metadata, metadata2)
 
-        metadata2['Foo'] = audiotools.ApeTagItem.string('Foo',u'Baz')
-        self.assertNotEqual(metadata,metadata2)
+        metadata2['Foo'] = audiotools.ApeTagItem.string('Foo', u'Baz')
+        self.assertNotEqual(metadata, metadata2)
         metadata2['Foo'] = metadata['Foo']
-        self.assertEqual(metadata,metadata2)
-        metadata2['Bar'] = audiotools.ApeTagItem.string('Bar',u'Blah')
-        self.assertNotEqual(metadata,metadata2)
+        self.assertEqual(metadata, metadata2)
+        metadata2['Bar'] = audiotools.ApeTagItem.string('Bar', u'Blah')
+        self.assertNotEqual(metadata, metadata2)
         metadata['Bar'] = metadata2['Bar']
-        self.assertEqual(metadata,metadata2)
+        self.assertEqual(metadata, metadata2)
         del(metadata2['Bar'])
         self.assertRaises(KeyError,
                           metadata2.__getitem__,
                           'Bar')
-        self.assertNotEqual(metadata,metadata2)
+        self.assertNotEqual(metadata, metadata2)
 
     @TEST_METADATA
     def test_dict(self):
@@ -4787,9 +4820,9 @@ class TestWavPackAPEv2MetaData(unittest.TestCase):
                            'album_number',
                            'album_total')
 
-        attribs1 = {}  #a dict of attribute -> value pairs ("track_name":u"foo")
-        attribs2 = {}  #a dict of APEv2 -> value pairs     ("Title":u"foo")
-        for (i,(attribute,key)) in enumerate(self.tag_class.ATTRIBUTE_MAP.items()):
+        attribs1 = {}  # a dict of attribute -> value pairs ("track_name":u"foo")
+        attribs2 = {}  # a dict of APEv2 -> value pairs     ("Title":u"foo")
+        for (i, (attribute, key)) in enumerate(self.tag_class.ATTRIBUTE_MAP.items()):
             if (attribute not in INTEGER_ATTRIBS):
                 attribs1[attribute] = attribs2[key] = u"value %d" % (i)
         attribs1["track_number"] = 2
@@ -4799,95 +4832,95 @@ class TestWavPackAPEv2MetaData(unittest.TestCase):
 
         apev2 = self.tag_class.converted(audiotools.MetaData(**attribs1))
         self.ape_file.set_metadata(apev2)
-        self.assertEqual(self.ape_file.get_metadata(),apev2)
+        self.assertEqual(self.ape_file.get_metadata(), apev2)
         apev2 = self.ape_file.get_metadata()
 
         #ensure that all the attributes match up
-        for (attribute,value) in attribs1.items():
-            self.assertEqual(getattr(apev2,attribute),value)
+        for (attribute, value) in attribs1.items():
+            self.assertEqual(getattr(apev2, attribute), value)
 
         #ensure that all the keys for non-integer items match up
-        for (key,value) in attribs2.items():
-            self.assertEqual(unicode(apev2[key]),value)
+        for (key, value) in attribs2.items():
+            self.assertEqual(unicode(apev2[key]), value)
 
         #ensure the keys for integer items match up
-        self.assertEqual(unicode(apev2['Track']),u'2/10')
-        self.assertEqual(unicode(apev2['Media']),u'1/3')
+        self.assertEqual(unicode(apev2['Track']), u'2/10')
+        self.assertEqual(unicode(apev2['Media']), u'1/3')
 
         #ensure that changing attributes changes the underlying frame
         #>>> apev2.track_name = u"bar"
         #>>> unicode(apev2['Title']) == u"bar"
-        for (i,(attribute,key)) in enumerate(self.tag_class.ATTRIBUTE_MAP.items()):
+        for (i, (attribute, key)) in enumerate(self.tag_class.ATTRIBUTE_MAP.items()):
             if (key not in self.tag_class.INTEGER_ITEMS):
-                setattr(apev2,attribute,u"new value %d" % (i))
-                self.assertEqual(unicode(apev2[key]),u"new value %d" % (i))
+                setattr(apev2, attribute, u"new value %d" % (i))
+                self.assertEqual(unicode(apev2[key]), u"new value %d" % (i))
 
         #ensure that changing integer attributes changes the underlying frame
         #>>> apev2.track_number = 2
         #>>> unicode(apev2['Track']) == u"2"
         apev2.track_number = 3
         apev2.track_total = 0
-        self.assertEqual(unicode(apev2['Track']),u"3")
+        self.assertEqual(unicode(apev2['Track']), u"3")
 
         apev2.track_total = 8
-        self.assertEqual(unicode(apev2['Track']),u"3/8")
+        self.assertEqual(unicode(apev2['Track']), u"3/8")
 
         apev2.album_number = 2
         apev2.album_total = 0
-        self.assertEqual(unicode(apev2['Media']),u"2")
+        self.assertEqual(unicode(apev2['Media']), u"2")
 
         apev2.album_total = 4
-        self.assertEqual(unicode(apev2['Media']),u"2/4")
+        self.assertEqual(unicode(apev2['Media']), u"2/4")
 
         #reset and re-check everything for the next round
         apev2 = self.tag_class.converted(audiotools.MetaData(**attribs1))
         self.ape_file.set_metadata(apev2)
-        self.assertEqual(self.ape_file.get_metadata(),apev2)
+        self.assertEqual(self.ape_file.get_metadata(), apev2)
         apev2 = self.ape_file.get_metadata()
 
         #ensure that all the attributes match up
-        for (attribute,value) in attribs1.items():
-            self.assertEqual(getattr(apev2,attribute),value)
+        for (attribute, value) in attribs1.items():
+            self.assertEqual(getattr(apev2, attribute), value)
 
-        for (key,value) in attribs2.items():
+        for (key, value) in attribs2.items():
             if (key not in self.tag_class.INTEGER_ITEMS):
-                self.assertEqual(unicode(apev2[key]),value)
-        self.assertEqual(unicode(apev2['Track']),u"2/10")
-        self.assertEqual(unicode(apev2['Media']),u"1/3")
+                self.assertEqual(unicode(apev2[key]), value)
+        self.assertEqual(unicode(apev2['Track']), u"2/10")
+        self.assertEqual(unicode(apev2['Media']), u"1/3")
 
         #ensure that changing the underlying frames changes attributes
         #>>> apev2['Title'] = ApeTag.string('Title',u"bar")
         #>>> apev2.track_name == u"bar"
-        for (i,(attribute,key)) in enumerate(self.tag_class.ATTRIBUTE_MAP.items()):
+        for (i, (attribute, key)) in enumerate(self.tag_class.ATTRIBUTE_MAP.items()):
             if (attribute not in INTEGER_ATTRIBS):
                 apev2[key] = self.tag_class.ITEM.string(key,
                                                         u"new value %d" % (i))
                 self.ape_file.set_metadata(apev2)
                 apev2 = self.ape_file.get_metadata()
-                self.assertEqual(getattr(apev2,attribute),u"new value %d" % (i))
+                self.assertEqual(getattr(apev2, attribute), u"new value %d" % (i))
 
         #ensure that changing the underlying integer frames changes attributes
-        apev2['Track'] = self.tag_class.ITEM.string('Track',u'7')
+        apev2['Track'] = self.tag_class.ITEM.string('Track', u'7')
         self.ape_file.set_metadata(apev2)
         apev2 = self.ape_file.get_metadata()
-        self.assertEqual(apev2.track_number,7)
+        self.assertEqual(apev2.track_number, 7)
 
-        apev2['Track'] = self.tag_class.ITEM.string('Track',u'8/9')
+        apev2['Track'] = self.tag_class.ITEM.string('Track', u'8/9')
         self.ape_file.set_metadata(apev2)
         apev2 = self.ape_file.get_metadata()
-        self.assertEqual(apev2.track_number,8)
-        self.assertEqual(apev2.track_total,9)
+        self.assertEqual(apev2.track_number, 8)
+        self.assertEqual(apev2.track_total, 9)
 
-        apev2['Media'] = self.tag_class.ITEM.string('Media',u'4')
+        apev2['Media'] = self.tag_class.ITEM.string('Media', u'4')
         self.ape_file.set_metadata(apev2)
         apev2 = self.ape_file.get_metadata()
-        self.assertEqual(apev2.album_number,4)
+        self.assertEqual(apev2.album_number, 4)
 
-        apev2['Media'] = self.tag_class.ITEM.string('Media',u'5/6')
+        apev2['Media'] = self.tag_class.ITEM.string('Media', u'5/6')
         self.ape_file.set_metadata(apev2)
         apev2 = self.ape_file.get_metadata()
-        self.assertEqual(apev2.album_number,5)
-        self.assertEqual(apev2.album_total,6)
+        self.assertEqual(apev2.album_number, 5)
+        self.assertEqual(apev2.album_total, 6)
 
     @TEST_METADATA
     def testimages(self):
@@ -4895,50 +4928,50 @@ class TestWavPackAPEv2MetaData(unittest.TestCase):
                 track_name=u'Images Track'))
         apev2 = self.ape_file.get_metadata()
         apev2.add_image(audiotools.Image.new(
-                TEST_COVER1,u'',0))
+                TEST_COVER1, u'', 0))
         self.ape_file.set_metadata(apev2)
         apev2 = self.ape_file.get_metadata()
         img = apev2.front_covers()[0]
-        self.assertEqual(img.data,TEST_COVER1)
-        self.assertEqual(img.mime_type,u"image/jpeg")
-        self.assertEqual(img.width,500)
-        self.assertEqual(img.height,500)
-        self.assertEqual(img.color_depth,24)
-        self.assertEqual(img.color_count,0)
-        self.assertEqual(img.description,u'')
-        self.assertEqual(img.type,0)
+        self.assertEqual(img.data, TEST_COVER1)
+        self.assertEqual(img.mime_type, u"image/jpeg")
+        self.assertEqual(img.width, 500)
+        self.assertEqual(img.height, 500)
+        self.assertEqual(img.color_depth, 24)
+        self.assertEqual(img.color_count, 0)
+        self.assertEqual(img.description, u'')
+        self.assertEqual(img.type, 0)
 
         apev2.add_image(audiotools.Image.new(
-                TEST_COVER2,u'',1))
+                TEST_COVER2, u'', 1))
         self.ape_file.set_metadata(apev2)
         apev2 = self.ape_file.get_metadata()
         img = apev2.back_covers()[0]
-        self.assertEqual(img.data,TEST_COVER2)
-        self.assertEqual(img.mime_type,u"image/png")
-        self.assertEqual(img.width,500)
-        self.assertEqual(img.height,500)
-        self.assertEqual(img.color_depth,24)
-        self.assertEqual(img.color_count,0)
-        self.assertEqual(img.description,u'')
-        self.assertEqual(img.type,1)
+        self.assertEqual(img.data, TEST_COVER2)
+        self.assertEqual(img.mime_type, u"image/png")
+        self.assertEqual(img.width, 500)
+        self.assertEqual(img.height, 500)
+        self.assertEqual(img.color_depth, 24)
+        self.assertEqual(img.color_count, 0)
+        self.assertEqual(img.description, u'')
+        self.assertEqual(img.type, 1)
 
         apev2.add_image(audiotools.Image.new(
-                TEST_COVER1,u'',2))
+                TEST_COVER1, u'', 2))
         self.ape_file.set_metadata(apev2)
         apev2 = self.ape_file.get_metadata()
-        self.assertEqual(apev2.leaflet_pages(),[])
+        self.assertEqual(apev2.leaflet_pages(), [])
 
-        self.assertEqual(len(apev2.images()),2)
+        self.assertEqual(len(apev2.images()), 2)
         apev2.delete_image(audiotools.Image.new(
-                TEST_COVER1,u'',0))
+                TEST_COVER1, u'', 0))
         self.ape_file.set_metadata(apev2)
         apev2 = self.ape_file.get_metadata()
-        self.assertEqual(len(apev2.images()),1)
+        self.assertEqual(len(apev2.images()), 1)
         apev2.delete_image(audiotools.Image.new(
-                TEST_COVER2,u'',1))
+                TEST_COVER2, u'', 1))
         self.ape_file.set_metadata(apev2)
         apev2 = self.ape_file.get_metadata()
-        self.assertEqual(len(apev2.images()),0)
+        self.assertEqual(len(apev2.images()), 0)
 
     @TEST_METADATA
     def test_wvunpack(self):
@@ -4947,7 +4980,7 @@ class TestWavPackAPEv2MetaData(unittest.TestCase):
         self.ape_file.set_metadata(SmallDummyMetaData())
         metadata = self.ape_file.get_metadata()
         sub = subprocess.Popen([audiotools.BIN["wvunpack"],
-                                "-ss",self.ape_file.filename],
+                                "-ss", self.ape_file.filename],
                                stdout=subprocess.PIPE,
                                stderr=subprocess.PIPE)
         sub.stderr.read()
@@ -4955,20 +4988,20 @@ class TestWavPackAPEv2MetaData(unittest.TestCase):
         sub.wait()
         self.assert_(len(data) > 0)
         #this assumes wvunpack -ss always outputs UTF-8
-        fields = dict([(key,value.decode('utf-8')) for (key,value) in
-                       re.findall(r'(.+) = (.+)',data)] + \
-                      [(key,value.decode('utf-8')) for (key,value) in
-                       re.findall(r'(.+):\s+(.+)',data)])
+        fields = dict([(key, value.decode('utf-8')) for (key, value) in
+                       re.findall(r'(.+) = (.+)', data)] + \
+                      [(key, value.decode('utf-8')) for (key, value) in
+                       re.findall(r'(.+):\s+(.+)', data)])
         self.assert_(len(fields) > 0)
-        self.assertEqual(metadata.track_name,fields['Title'])
-        self.assertEqual(metadata.artist_name,fields['Artist'])
-        self.assertEqual(metadata.year,fields['Year'])
-        self.assertEqual(metadata.performer_name,fields['Performer'])
-        self.assertEqual(unicode(metadata.track_number),fields['Track'])
-        self.assertEqual(metadata.album_name,fields['Album'])
-        self.assertEqual(metadata.composer_name,fields['Composer'])
-        self.assertEqual(unicode(metadata.album_number),fields['Media'])
-        self.assertEqual(metadata.comment,fields['Comment'])
+        self.assertEqual(metadata.track_name, fields['Title'])
+        self.assertEqual(metadata.artist_name, fields['Artist'])
+        self.assertEqual(metadata.year, fields['Year'])
+        self.assertEqual(metadata.performer_name, fields['Performer'])
+        self.assertEqual(unicode(metadata.track_number), fields['Track'])
+        self.assertEqual(metadata.album_name, fields['Album'])
+        self.assertEqual(metadata.composer_name, fields['Composer'])
+        self.assertEqual(unicode(metadata.album_number), fields['Media'])
+        self.assertEqual(metadata.comment, fields['Comment'])
 
 
 class TestM4AMetaData(unittest.TestCase):
@@ -4977,7 +5010,7 @@ class TestM4AMetaData(unittest.TestCase):
         self.file = tempfile.NamedTemporaryFile(suffix=".m4a")
 
         self.m4a_file = audiotools.M4AAudio.from_pcm(
-            self.file.name,BLANK_PCM_Reader(TEST_LENGTH))
+            self.file.name, BLANK_PCM_Reader(TEST_LENGTH))
 
     @TEST_METADATA
     def tearDown(self):
@@ -4991,10 +5024,10 @@ class TestM4AMetaData(unittest.TestCase):
         try:
             self.m4a_file.to_wave(tempfile1.name)
             wave1 = audiotools.open(tempfile1.name)
-            self.assertEqual(wave1.sample_rate(),44100)
-            self.assertEqual(wave1.bits_per_sample(),16)
-            self.assertEqual(wave1.channels(),2)
-            self.assertEqual(wave1.total_frames(),TEST_LENGTH * 44100)
+            self.assertEqual(wave1.sample_rate(), 44100)
+            self.assertEqual(wave1.bits_per_sample(), 16)
+            self.assertEqual(wave1.channels(), 2)
+            self.assertEqual(wave1.total_frames(), TEST_LENGTH * 44100)
 
             self.m4a_file.set_metadata(
                 audiotools.MetaData(track_name=u"Track Name",
@@ -5003,17 +5036,17 @@ class TestM4AMetaData(unittest.TestCase):
 
             self.m4a_file.to_wave(tempfile2.name)
             wave2 = audiotools.open(tempfile2.name)
-            self.assertEqual(wave2.sample_rate(),44100)
-            self.assertEqual(wave2.bits_per_sample(),16)
-            self.assertEqual(wave2.channels(),2)
-            self.assertEqual(wave2.total_frames(),TEST_LENGTH * 44100)
+            self.assertEqual(wave2.sample_rate(), 44100)
+            self.assertEqual(wave2.bits_per_sample(), 16)
+            self.assertEqual(wave2.channels(), 2)
+            self.assertEqual(wave2.total_frames(), TEST_LENGTH * 44100)
         finally:
             tempfile1.close()
             tempfile2.close()
 
     @TEST_METADATA
     def testcomment1(self):
-        for (attribute,value,key,result) in zip(
+        for (attribute, value, key, result) in zip(
             ["track_name",
              "artist_name",
              "year",
@@ -5043,11 +5076,11 @@ class TestM4AMetaData(unittest.TestCase):
              u"Some Comm\u03e8ent",
              u"Copyright T\u03e8ext"]):
             metadata = self.m4a_file.get_metadata()
-            setattr(metadata,attribute,value)
+            setattr(metadata, attribute, value)
             self.m4a_file.set_metadata(metadata)
             metadata = self.m4a_file.get_metadata()
-            self.assertEqual(unicode(metadata[key][0]),result)
-        for (attribute,value,key,result) in zip(
+            self.assertEqual(unicode(metadata[key][0]), result)
+        for (attribute, value, key, result) in zip(
             ["track_number",
              "track_total",
              "album_number",
@@ -5065,14 +5098,14 @@ class TestM4AMetaData(unittest.TestCase):
              "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x02\x00\x00",
              "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x02\x00\x04"]):
             metadata = self.m4a_file.get_metadata()
-            setattr(metadata,attribute,value)
+            setattr(metadata, attribute, value)
             self.m4a_file.set_metadata(metadata)
             metadata = self.m4a_file.get_metadata()
-            self.assertEqual(str(metadata[key][0]),result)
+            self.assertEqual(str(metadata[key][0]), result)
 
     @TEST_METADATA
     def testcomment2(self):
-        for (attribute,value,key) in zip(
+        for (attribute, value, key) in zip(
             ["track_name",
              "artist_name",
              "year",
@@ -5095,11 +5128,11 @@ class TestM4AMetaData(unittest.TestCase):
              "\xa9cmt",
              "cprt"]):
             metadata = self.m4a_file.get_metadata()
-            metadata[key] = audiotools.M4AMetaData.text_atom(key,value)
+            metadata[key] = audiotools.M4AMetaData.text_atom(key, value)
             self.m4a_file.set_metadata(metadata)
             metadata = self.m4a_file.get_metadata()
-            self.assertEqual(unicode(metadata[key][0]),value)
-        for (attribute,value,key,result) in zip(
+            self.assertEqual(unicode(metadata[key][0]), value)
+        for (attribute, value, key, result) in zip(
             ["track_number",
              "track_total",
              "album_number",
@@ -5117,15 +5150,15 @@ class TestM4AMetaData(unittest.TestCase):
              "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x02\x00\x00",
              "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x02\x00\x04"]):
             metadata = self.m4a_file.get_metadata()
-            metadata[key] = audiotools.M4AMetaData.binary_atom(key,result)
+            metadata[key] = audiotools.M4AMetaData.binary_atom(key, result)
             self.m4a_file.set_metadata(metadata)
             metadata = self.m4a_file.get_metadata()
-            self.assertEqual(str(metadata[key][0]),result)
+            self.assertEqual(str(metadata[key][0]), result)
 
     @TEST_METADATA
     def testsetpicture(self):
         #setting 1 front cover is okay
-        self.assertEqual(len(self.m4a_file.get_metadata().images()),0)
+        self.assertEqual(len(self.m4a_file.get_metadata().images()), 0)
         m = DummyMetaData()
         m.add_image(audiotools.Image.new(TEST_COVER1,
                                          u'Unicode \u3057\u3066\u307f\u308b',
@@ -5135,16 +5168,16 @@ class TestM4AMetaData(unittest.TestCase):
         new_m4a_file = audiotools.open(self.file.name)
         m2 = new_m4a_file.get_metadata()
 
-        self.assertEqual(len(m2.images()),1)
+        self.assertEqual(len(m2.images()), 1)
         image2 = m2.images()[0]
-        self.assertEqual(image2.data,TEST_COVER1)
-        self.assertEqual(image2.mime_type,"image/jpeg")
-        self.assertEqual(image2.width,500)
-        self.assertEqual(image2.height,500)
-        self.assertEqual(image2.color_depth,24)
-        self.assertEqual(image2.color_count,0)
-        self.assertEqual(image2.description,u"")
-        self.assertEqual(image2.type,0)
+        self.assertEqual(image2.data, TEST_COVER1)
+        self.assertEqual(image2.mime_type, "image/jpeg")
+        self.assertEqual(image2.width, 500)
+        self.assertEqual(image2.height, 500)
+        self.assertEqual(image2.color_depth, 24)
+        self.assertEqual(image2.color_count, 0)
+        self.assertEqual(image2.description, u"")
+        self.assertEqual(image2.type, 0)
 
         #setting 2 front covers is also okay
         m = m2
@@ -5156,30 +5189,30 @@ class TestM4AMetaData(unittest.TestCase):
         new_m4a_file = audiotools.open(self.file.name)
         m2 = new_m4a_file.get_metadata()
 
-        self.assertEqual(len(m2.images()),2)
+        self.assertEqual(len(m2.images()), 2)
         image1 = m2.images()[0]
         image2 = m2.images()[1]
 
         if (image2.mime_type == "image/jpeg"):
-            (image1,image2) = (image2,image1)
+            (image1, image2) = (image2, image1)
 
-        self.assertEqual(image1.data,TEST_COVER1)
-        self.assertEqual(image1.mime_type,"image/jpeg")
-        self.assertEqual(image1.width,500)
-        self.assertEqual(image1.height,500)
-        self.assertEqual(image1.color_depth,24)
-        self.assertEqual(image1.color_count,0)
-        self.assertEqual(image1.description,u"")
-        self.assertEqual(image1.type,0)
+        self.assertEqual(image1.data, TEST_COVER1)
+        self.assertEqual(image1.mime_type, "image/jpeg")
+        self.assertEqual(image1.width, 500)
+        self.assertEqual(image1.height, 500)
+        self.assertEqual(image1.color_depth, 24)
+        self.assertEqual(image1.color_count, 0)
+        self.assertEqual(image1.description, u"")
+        self.assertEqual(image1.type, 0)
 
-        self.assertEqual(image2.data,TEST_COVER2)
-        self.assertEqual(image2.mime_type,"image/png")
-        self.assertEqual(image2.width,500)
-        self.assertEqual(image2.height,500)
-        self.assertEqual(image2.color_depth,24)
-        self.assertEqual(image2.color_count,0)
-        self.assertEqual(image2.description,u"")
-        self.assertEqual(image2.type,0)
+        self.assertEqual(image2.data, TEST_COVER2)
+        self.assertEqual(image2.mime_type, "image/png")
+        self.assertEqual(image2.width, 500)
+        self.assertEqual(image2.height, 500)
+        self.assertEqual(image2.color_depth, 24)
+        self.assertEqual(image2.color_count, 0)
+        self.assertEqual(image2.description, u"")
+        self.assertEqual(image2.type, 0)
 
         #however, setting back covers are dropped
         #M4AMetaData currently supports only 1 type of cover
@@ -5191,30 +5224,30 @@ class TestM4AMetaData(unittest.TestCase):
         new_m4a_file = audiotools.open(self.file.name)
         m2 = new_m4a_file.get_metadata()
 
-        self.assertEqual(len(m2.images()),2)
+        self.assertEqual(len(m2.images()), 2)
         image1 = m2.images()[0]
         image2 = m2.images()[1]
 
         if (image2.mime_type == "image/jpeg"):
-            (image1,image2) = (image2,image1)
+            (image1, image2) = (image2, image1)
 
-        self.assertEqual(image1.data,TEST_COVER1)
-        self.assertEqual(image1.mime_type,"image/jpeg")
-        self.assertEqual(image1.width,500)
-        self.assertEqual(image1.height,500)
-        self.assertEqual(image1.color_depth,24)
-        self.assertEqual(image1.color_count,0)
-        self.assertEqual(image1.description,u"")
-        self.assertEqual(image1.type,0)
+        self.assertEqual(image1.data, TEST_COVER1)
+        self.assertEqual(image1.mime_type, "image/jpeg")
+        self.assertEqual(image1.width, 500)
+        self.assertEqual(image1.height, 500)
+        self.assertEqual(image1.color_depth, 24)
+        self.assertEqual(image1.color_count, 0)
+        self.assertEqual(image1.description, u"")
+        self.assertEqual(image1.type, 0)
 
-        self.assertEqual(image2.data,TEST_COVER2)
-        self.assertEqual(image2.mime_type,"image/png")
-        self.assertEqual(image2.width,500)
-        self.assertEqual(image2.height,500)
-        self.assertEqual(image2.color_depth,24)
-        self.assertEqual(image2.color_count,0)
-        self.assertEqual(image2.description,u"")
-        self.assertEqual(image2.type,0)
+        self.assertEqual(image2.data, TEST_COVER2)
+        self.assertEqual(image2.mime_type, "image/png")
+        self.assertEqual(image2.width, 500)
+        self.assertEqual(image2.height, 500)
+        self.assertEqual(image2.color_depth, 24)
+        self.assertEqual(image2.color_count, 0)
+        self.assertEqual(image2.description, u"")
+        self.assertEqual(image2.type, 0)
 
     @TEST_METADATA
     def testconvertedpicture(self):
@@ -5222,7 +5255,7 @@ class TestM4AMetaData(unittest.TestCase):
 
         try:
             m4a_file = audiotools.M4AAudio.from_pcm(
-                m4a_tempfile.name,BLANK_PCM_Reader(TEST_LENGTH))
+                m4a_tempfile.name, BLANK_PCM_Reader(TEST_LENGTH))
 
             m = DummyMetaData()
             m.add_image(audiotools.Image.new(
@@ -5245,21 +5278,21 @@ class TestM4AMetaData(unittest.TestCase):
                          sample_rate=44100,
                          bits_per_sample=16,
                          channels=2):
-        f = open("m4a-%s.m4a" % (encoder),'rb')
+        f = open("m4a-%s.m4a" % (encoder), 'rb')
         temp_file = tempfile.NamedTemporaryFile(suffix=".m4a")
         try:
-            audiotools.transfer_data(f.read,temp_file.write)
+            audiotools.transfer_data(f.read, temp_file.write)
             temp_file.flush()
             track = audiotools.open(temp_file.name)
-            self.assertEqual(track.sample_rate(),sample_rate)
-            self.assertEqual(track.bits_per_sample(),bits_per_sample)
-            self.assertEqual(track.channels(),channels)
+            self.assertEqual(track.sample_rate(), sample_rate)
+            self.assertEqual(track.bits_per_sample(), bits_per_sample)
+            self.assertEqual(track.channels(), channels)
 
             original_mdat_data = md5(track.qt_stream['mdat'].data).hexdigest()
 
             pcm = track.to_pcm()
             pcm_count = PCM_Count()
-            audiotools.transfer_data(pcm.read,pcm_count.write)
+            audiotools.transfer_data(pcm.read, pcm_count.write)
             pcm.close()
 
             original_pcm_count = len(pcm_count)
@@ -5268,35 +5301,35 @@ class TestM4AMetaData(unittest.TestCase):
                     track_name=u"Foo",
                     album_name=u"Bar",
                     images=[audiotools.Image(
-                            TEST_COVER1,"image/jpeg",
-                            500,500,24,0,u"",0)]))
+                            TEST_COVER1, "image/jpeg",
+                            500, 500, 24, 0, u"", 0)]))
 
             track = audiotools.open(temp_file.name)
-            self.assertEqual(track.get_metadata().track_name,u"Foo")
-            self.assertEqual(track.get_metadata().album_name,u"Bar")
-            self.assertEqual(track.sample_rate(),sample_rate)
-            self.assertEqual(track.bits_per_sample(),bits_per_sample)
-            self.assertEqual(track.channels(),channels)
+            self.assertEqual(track.get_metadata().track_name, u"Foo")
+            self.assertEqual(track.get_metadata().album_name, u"Bar")
+            self.assertEqual(track.sample_rate(), sample_rate)
+            self.assertEqual(track.bits_per_sample(), bits_per_sample)
+            self.assertEqual(track.channels(), channels)
 
             self.assertEqual(md5(track.qt_stream['mdat'].data).hexdigest(),
                              original_mdat_data)
 
             pcm = track.to_pcm()
             pcm_count = PCM_Count()
-            audiotools.transfer_data(pcm.read,pcm_count.write)
+            audiotools.transfer_data(pcm.read, pcm_count.write)
             pcm.close()
 
-            self.assertEqual(len(pcm_count),original_pcm_count)
+            self.assertEqual(len(pcm_count), original_pcm_count)
 
         finally:
             f.close()
             temp_file.close()
 
     def __test_roundtrip__(self, encoder):
-        f = open("m4a-%s.m4a" % (encoder),'rb')
+        f = open("m4a-%s.m4a" % (encoder), 'rb')
         temp_file = tempfile.NamedTemporaryFile(suffix=".m4a")
         try:
-            audiotools.transfer_data(f.read,temp_file.write)
+            audiotools.transfer_data(f.read, temp_file.write)
             temp_file.flush()
             track = audiotools.open(temp_file.name)
 
@@ -5313,11 +5346,11 @@ class TestM4AMetaData(unittest.TestCase):
 
             for key in new_metadata.keys():
                 self.assertEqual(sorted(original_metadata[key],
-                                        lambda x,y: cmp(len(x),len(y))),
+                                        lambda x, y: cmp(len(x), len(y))),
                                  sorted(new_metadata[key],
-                                        lambda x,y: cmp(len(x),len(y))))
+                                        lambda x, y: cmp(len(x), len(y))))
 
-            self.assertEqual(original_size,os.path.getsize(temp_file.name))
+            self.assertEqual(original_size, os.path.getsize(temp_file.name))
 
         finally:
             f.close()
@@ -5333,7 +5366,7 @@ class TestM4AMetaData(unittest.TestCase):
 
     @TEST_METADATA
     def test_faac_encoder2(self):
-        self.__test_encoder__("faac2",48000,16,2)
+        self.__test_encoder__("faac2", 48000, 16, 2)
 
     @TEST_METADATA
     def test_faac_roundtrip2(self):
@@ -5341,7 +5374,7 @@ class TestM4AMetaData(unittest.TestCase):
 
     @TEST_METADATA
     def test_faac_encoder3(self):
-        self.__test_encoder__("faac3",96000,16,2)
+        self.__test_encoder__("faac3", 96000, 16, 2)
 
     @TEST_METADATA
     def test_faac_roundtrip3(self):
@@ -5357,7 +5390,7 @@ class TestM4AMetaData(unittest.TestCase):
 
     @TEST_METADATA
     def test_nero_encoder2(self):
-        self.__test_encoder__("nero2",48000,16,1)
+        self.__test_encoder__("nero2", 48000, 16, 1)
 
     @TEST_METADATA
     def test_nero_roundtrip2(self):
@@ -5365,7 +5398,7 @@ class TestM4AMetaData(unittest.TestCase):
 
     @TEST_METADATA
     def test_nero_encoder3(self):
-        self.__test_encoder__("nero3",96000,16,6)
+        self.__test_encoder__("nero3", 96000, 16, 6)
 
     @TEST_METADATA
     def test_nero_roundtrip3(self):
@@ -5379,13 +5412,14 @@ class TestM4AMetaData(unittest.TestCase):
     def test_itunes_roundtrip(self):
         self.__test_roundtrip__("itunes")
 
+
 class TestVorbisMetaData(unittest.TestCase):
     @TEST_METADATA
     def setUp(self):
         self.file = tempfile.NamedTemporaryFile(suffix=".ogg")
 
         self.track = audiotools.VorbisAudio.from_pcm(
-            self.file.name,BLANK_PCM_Reader(TEST_LENGTH))
+            self.file.name, BLANK_PCM_Reader(TEST_LENGTH))
 
     @TEST_METADATA
     def tearDown(self):
@@ -5467,43 +5501,44 @@ class TestVorbisMetaData(unittest.TestCase):
 
     @TEST_METADATA
     def testcomment1(self):
-        for (attribute,value,key,result) in self.__attribute_value_key_result__():
+        for (attribute, value, key, result) in self.__attribute_value_key_result__():
             metadata = self.__track_metadata__()
-            setattr(metadata,attribute,value)
+            setattr(metadata, attribute, value)
             self.track.set_metadata(metadata)
             metadata = self.__track_metadata__()
-            self.assertEqual(metadata[key][0],result)
+            self.assertEqual(metadata[key][0], result)
 
     @TEST_METADATA
     def testcomment2(self):
-        for (attribute,value,key,result) in self.__attribute_value_key_result__():
+        for (attribute, value, key, result) in self.__attribute_value_key_result__():
             metadata = self.__track_metadata__()
             metadata[key] = [result]
             self.track.set_metadata(metadata)
             metadata = self.__track_metadata__()
-            self.assertEqual(getattr(metadata,attribute),value)
+            self.assertEqual(getattr(metadata, attribute), value)
 
     @TEST_METADATA
     def testtracktotal(self):
         metadata = self.__track_metadata__()
         metadata["TRACKNUMBER"] = [u"2/4"]
-        self.assertEqual(metadata.track_number,2)
-        self.assertEqual(metadata.track_total,4)
+        self.assertEqual(metadata.track_number, 2)
+        self.assertEqual(metadata.track_total, 4)
         self.track.set_metadata(metadata)
         metadata = self.__track_metadata__()
-        self.assertEqual(metadata.track_number,2)
-        self.assertEqual(metadata.track_total,4)
+        self.assertEqual(metadata.track_number, 2)
+        self.assertEqual(metadata.track_total, 4)
 
     @TEST_METADATA
     def testalbumtotal(self):
         metadata = self.__track_metadata__()
         metadata["DISCNUMBER"] = [u"1/3"]
-        self.assertEqual(metadata.album_number,1)
-        self.assertEqual(metadata.album_total,3)
+        self.assertEqual(metadata.album_number, 1)
+        self.assertEqual(metadata.album_total, 3)
         self.track.set_metadata(metadata)
         metadata = self.__track_metadata__()
-        self.assertEqual(metadata.album_number,1)
-        self.assertEqual(metadata.album_total,3)
+        self.assertEqual(metadata.album_number, 1)
+        self.assertEqual(metadata.album_total, 3)
+
 
 class TestFLACMetaData(TestVorbisMetaData):
     @TEST_METADATA
@@ -5511,10 +5546,11 @@ class TestFLACMetaData(TestVorbisMetaData):
         self.file = tempfile.NamedTemporaryFile(suffix=".flac")
 
         self.track = audiotools.FlacAudio.from_pcm(
-            self.file.name,BLANK_PCM_Reader(TEST_LENGTH))
+            self.file.name, BLANK_PCM_Reader(TEST_LENGTH))
 
     def __track_metadata__(self):
         return self.track.get_metadata().vorbis_comment
+
 
 class TestPCMConversion(unittest.TestCase):
     @TEST_PCM
@@ -5534,7 +5570,7 @@ class TestPCMConversion(unittest.TestCase):
              (o_sample_rate,
               o_channels,
               o_channel_mask,
-              o_bits_per_sample)) in Combinations(SHORT_PCM_COMBINATIONS,2):
+              o_bits_per_sample)) in Combinations(SHORT_PCM_COMBINATIONS, 2):
 
             # print "(%s,%s,%s,%s) -> (%s,%s,%s,%s)" % \
             #     (i_sample_rate,
@@ -5556,15 +5592,16 @@ class TestPCMConversion(unittest.TestCase):
                                                 channels=o_channels,
                                                 bits_per_sample=o_bits_per_sample,
                                                 channel_mask=o_channel_mask)
-            wave = audiotools.WaveAudio.from_pcm(self.tempwav.name,converter)
+            wave = audiotools.WaveAudio.from_pcm(self.tempwav.name, converter)
             converter.close()
 
-            self.assertEqual(wave.sample_rate(),o_sample_rate)
-            self.assertEqual(wave.channels(),o_channels)
-            self.assertEqual(wave.bits_per_sample(),o_bits_per_sample)
-            self.assertEqual(wave.channel_mask(),o_channel_mask)
+            self.assertEqual(wave.sample_rate(), o_sample_rate)
+            self.assertEqual(wave.channels(), o_channels)
+            self.assertEqual(wave.bits_per_sample(), o_bits_per_sample)
+            self.assertEqual(wave.channel_mask(), o_channel_mask)
             self.assertEqual((D.Decimal(wave.cd_frames()) / 75).to_integral(),
                              5)
+
 
 class testbufferedstream(unittest.TestCase):
     @TEST_PCM
@@ -5577,10 +5614,10 @@ class testbufferedstream(unittest.TestCase):
         s = bufferedreader.read(4096)
         while (len(s) > 0):
             self.assert_(len(s) <= 4096)
-            output.update(s.to_bytes(False,True))
+            output.update(s.to_bytes(False, True))
             s = bufferedreader.read(4096)
 
-        self.assertEqual(output.hexdigest(),reader.hexdigest())
+        self.assertEqual(output.hexdigest(), reader.hexdigest())
 
     @TEST_PCM
     def testrandombuffer(self):
@@ -5591,14 +5628,15 @@ class testbufferedstream(unittest.TestCase):
         output = md5()
 
         while (size > 0):
-            buffer_length = min(size,random.randint(4,10000))
-            s = bufferedreader.read(buffer_length).to_bytes(False,True)
+            buffer_length = min(size, random.randint(4, 10000))
+            s = bufferedreader.read(buffer_length).to_bytes(False, True)
             self.assert_(len(s) <= buffer_length,
-                         "%s > %s" % (len(s),buffer_length))
+                         "%s > %s" % (len(s), buffer_length))
             output.update(s)
             size -= len(s)
 
-        self.assertEqual(output.hexdigest(),reader.hexdigest())
+        self.assertEqual(output.hexdigest(), reader.hexdigest())
+
 
 class testtracknumber(unittest.TestCase):
     @TEST_METADATA
@@ -5608,19 +5646,19 @@ class testtracknumber(unittest.TestCase):
         dir03 = tempfile.mkdtemp(suffix="03")
         try:
             file01 = audiotools.WaveAudio.from_pcm(
-                os.path.join(dir03,"track01.wav"),
+                os.path.join(dir03, "track01.wav"),
                 BLANK_PCM_Reader(10))
             file02 = audiotools.WaveAudio.from_pcm(
-                os.path.join(dir01,"track02.wav"),
+                os.path.join(dir01, "track02.wav"),
                 BLANK_PCM_Reader(10))
             file03 = audiotools.WaveAudio.from_pcm(
-                os.path.join(dir02,"track03.wav"),
+                os.path.join(dir02, "track03.wav"),
                 BLANK_PCM_Reader(10))
 
             try:
-                self.assertEqual(file01.track_number(),1)
-                self.assertEqual(file02.track_number(),2)
-                self.assertEqual(file03.track_number(),3)
+                self.assertEqual(file01.track_number(), 1)
+                self.assertEqual(file02.track_number(), 2)
+                self.assertEqual(file03.track_number(), 3)
             finally:
                 os.unlink(file01.filename)
                 os.unlink(file02.filename)
@@ -5629,6 +5667,7 @@ class testtracknumber(unittest.TestCase):
             os.rmdir(dir01)
             os.rmdir(dir02)
             os.rmdir(dir03)
+
 
 class testcuesheet(unittest.TestCase):
     @TEST_CUESHEET
@@ -5665,8 +5704,8 @@ IqWzFUixmyqeumDRdlhpO+C2s3Eocdn5wUixIZt3KdoOK20HindxcShxI3mX+IDg3b8MLEoQ6yTo
     @TEST_CUESHEET
     def testreadsheet(self):
         for sheet in self.sheets():
-            self.assertEqual(isinstance(sheet,self.sheet_class),True)
-            self.assertEqual(sheet.catalog(),'4580226563955')
+            self.assertEqual(isinstance(sheet, self.sheet_class), True)
+            self.assertEqual(sheet.catalog(), '4580226563955')
             self.assertEqual(sorted(sheet.ISRCs().items()),
                              [(1, 'JPG750800183'),
                               (2, 'JPG750800212'),
@@ -5691,13 +5730,13 @@ IqWzFUixmyqeumDRdlhpO+C2s3Eocdn5wUixIZt3KdoOK20HindxcShxI3mX+IDg3b8MLEoQ6yTo
                               (21, 'JPG750800713'),
                               (22, 'JPG750800714')])
             self.assertEqual(list(sheet.indexes()),
-                             [(0,),(20885,),(42189, 42411),(49242, 49473),
-                              (52754,),(69656,),(95428,),(118271, 118430),
-                              (136968,),(138433, 138567),(156412,),
-                              (168864,),(187716,),(192245, 192373),
-                              (200347,),(204985,),(227336,),
-                              (243382, 243549),(265893, 266032),
-                              (292606, 292942),(302893, 303123),(321611,)])
+                             [(0, ), (20885, ), (42189,  42411), (49242,  49473),
+                              (52754, ), (69656, ), (95428, ), (118271,  118430),
+                              (136968, ), (138433,  138567), (156412, ),
+                              (168864, ), (187716, ), (192245, 192373),
+                              (200347, ), (204985, ), (227336, ),
+                              (243382, 243549), (265893,  266032),
+                              (292606, 292942), (302893, 303123), (321611, )])
             self.assertEqual(list(sheet.pcm_lengths(191795016)),
                              [12280380, 12657288, 4152456, 1929228,
                               9938376, 15153936, 13525176, 10900344,
@@ -5716,12 +5755,12 @@ IqWzFUixmyqeumDRdlhpO+C2s3Eocdn5wUixIZt3KdoOK20HindxcShxI3mX+IDg3b8MLEoQ6yTo
             temp_cue_file = tempfile.NamedTemporaryFile(suffix='.cue')
             try:
                 temp_cue_file.write(audiotools.cue.Cuesheet.file(
-                        sheet,os.path.basename(temp_cue_file.name)))
+                        sheet, os.path.basename(temp_cue_file.name)))
                 temp_cue_file.flush()
 
                 cue_sheet = audiotools.read_sheet(temp_cue_file.name)
 
-                self.assertEqual(sheet.catalog(),cue_sheet.catalog())
+                self.assertEqual(sheet.catalog(), cue_sheet.catalog())
                 self.assertEqual(list(sheet.indexes()),
                                  list(cue_sheet.indexes()))
                 self.assertEqual(list(sheet.pcm_lengths(191795016)),
@@ -5735,12 +5774,12 @@ IqWzFUixmyqeumDRdlhpO+C2s3Eocdn5wUixIZt3KdoOK20HindxcShxI3mX+IDg3b8MLEoQ6yTo
             temp_toc_file = tempfile.NamedTemporaryFile(suffix='.toc')
             try:
                 temp_toc_file.write(audiotools.toc.TOCFile.file(
-                        sheet,os.path.basename(temp_toc_file.name)))
+                        sheet, os.path.basename(temp_toc_file.name)))
                 temp_toc_file.flush()
 
                 toc_sheet = audiotools.read_sheet(temp_toc_file.name)
 
-                self.assertEqual(sheet.catalog(),toc_sheet.catalog())
+                self.assertEqual(sheet.catalog(), toc_sheet.catalog())
                 self.assertEqual(list(sheet.indexes()),
                                  list(toc_sheet.indexes()))
                 self.assertEqual(list(sheet.pcm_lengths(191795016)),
@@ -5762,9 +5801,9 @@ IqWzFUixmyqeumDRdlhpO+C2s3Eocdn5wUixIZt3KdoOK20HindxcShxI3mX+IDg3b8MLEoQ6yTo
                         EXACT_BLANK_PCM_Reader(191795016))
                     f.set_cuesheet(sheet)
                     f_sheet = audiotools.open(temp_file.name).get_cuesheet()
-                    self.assertNotEqual(f_sheet,None)
+                    self.assertNotEqual(f_sheet, None)
 
-                    self.assertEqual(sheet.catalog(),f_sheet.catalog())
+                    self.assertEqual(sheet.catalog(), f_sheet.catalog())
                     self.assertEqual(list(sheet.indexes()),
                                      list(f_sheet.indexes()))
                     self.assertEqual(list(sheet.pcm_lengths(191795016)),
@@ -5808,161 +5847,162 @@ c0X3z/cu+lUE0ySfNZ5QgQgq82S0R8+9OWBChth3PkyTfJaJC/a+3YCk97Xn+b7/NdBFv1thmjB0
 
         self.suffix = '.toc'
 
+
 class testflaccuesheet(testcuesheet):
     @TEST_CUESHEET
     def setUp(self):
         self.sheet_class = audiotools.FlacCueSheet
         self.suffix = '.flac'
         self.test_sheets = [
-            Con.Container(catalog_number = '4580226563955\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00',
-                      cuesheet_tracks = [
-                    Con.Container(ISRC = 'JPG750800183',
-                              cuesheet_track_index = [Con.Container(offset = 0, point_number = 1)],
-                              non_audio = False,
-                              pre_emphasis = False,
-                              track_number = 1,
-                              track_offset = 0),
-                    Con.Container(ISRC = 'JPG750800212',
-                              cuesheet_track_index = [Con.Container(offset = 0, point_number = 1)],
-                              non_audio = False,
-                              pre_emphasis = False,
-                              track_number = 2,
-                              track_offset = 12280380),
-                    Con.Container(ISRC = 'JPG750800214',
-                              cuesheet_track_index = [Con.Container(offset = 0, point_number = 0), Con.Container(offset = 130536, point_number = 1)],
-                              non_audio = False,
-                              pre_emphasis = False,
-                              track_number = 3,
-                              track_offset = 24807132),
-                    Con.Container(ISRC = 'JPG750800704',
-                              cuesheet_track_index = [Con.Container(offset = 0, point_number = 0), Con.Container(offset = 135828, point_number = 1)],
-                              non_audio = False,
-                              pre_emphasis = False,
-                              track_number = 4,
-                              track_offset = 28954296),
-                    Con.Container(ISRC = 'JPG750800705',
-                              cuesheet_track_index = [Con.Container(offset = 0, point_number = 1)],
-                              non_audio = False,
-                              pre_emphasis = False,
-                              track_number = 5,
-                              track_offset = 31019352),
-                    Con.Container(ISRC = 'JPG750800706',
-                              cuesheet_track_index = [Con.Container(offset = 0, point_number = 1)],
-                              non_audio = False,
-                              pre_emphasis = False,
-                              track_number = 6,
-                              track_offset = 40957728),
-                    Con.Container(ISRC = 'JPG750800707',
-                              cuesheet_track_index = [Con.Container(offset = 0, point_number = 1)],
-                              non_audio = False,
-                              pre_emphasis = False,
-                              track_number = 7,
-                              track_offset = 56111664),
-                    Con.Container(ISRC = 'JPG750800708',
-                              cuesheet_track_index = [Con.Container(offset = 0, point_number = 0),
-                                                      Con.Container(offset = 93492, point_number = 1)],
-                              non_audio = False,
-                              pre_emphasis = False,
-                              track_number = 8,
-                              track_offset = 69543348),
-                    Con.Container(ISRC = 'JPG750800219',
-                              cuesheet_track_index = [Con.Container(offset = 0, point_number = 1)],
-                              non_audio = False,
-                              pre_emphasis = False,
-                              track_number = 9,
-                              track_offset = 80537184),
-                    Con.Container(ISRC = 'JPG750800722',
-                              cuesheet_track_index = [Con.Container(offset = 0, point_number = 0),
-                                                      Con.Container(offset = 78792, point_number = 1)],
-                              non_audio = False,
-                              pre_emphasis = False,
-                              track_number = 10,
-                              track_offset = 81398604),
-                    Con.Container(ISRC = 'JPG750800709',
-                              cuesheet_track_index = [Con.Container(offset = 0, point_number = 1)],
-                              non_audio = False,
-                              pre_emphasis = False,
-                              track_number = 11,
-                              track_offset = 91970256),
-                    Con.Container(ISRC = 'JPG750800290',
-                              cuesheet_track_index = [Con.Container(offset = 0, point_number = 1)],
-                              non_audio = False,
-                              pre_emphasis = False,
-                              track_number = 12,
-                              track_offset = 99292032),
-                    Con.Container(ISRC = 'JPG750800218',
-                              cuesheet_track_index = [Con.Container(offset = 0, point_number = 1)],
-                              non_audio = False,
-                              pre_emphasis = False,
-                              track_number = 13,
-                              track_offset = 110377008),
-                    Con.Container(ISRC = 'JPG750800710',
-                              cuesheet_track_index = [Con.Container(offset = 0, point_number = 0),
-                                                      Con.Container(offset = 75264, point_number = 1)],
-                              non_audio = False,
-                              pre_emphasis = False,
-                              track_number = 14,
-                              track_offset = 113040060),
-                    Con.Container(ISRC = 'JPG750800217',
-                              cuesheet_track_index = [Con.Container(offset = 0, point_number = 1)],
-                              non_audio = False,
-                              pre_emphasis = False,
-                              track_number = 15,
-                              track_offset = 117804036),
-                    Con.Container(ISRC = 'JPG750800531',
-                              cuesheet_track_index = [Con.Container(offset = 0, point_number = 1)],
-                              non_audio = False,
-                              pre_emphasis = False,
-                              track_number = 16,
-                              track_offset = 120531180),
-                    Con.Container(ISRC = 'JPG750800225',
-                              cuesheet_track_index = [Con.Container(offset = 0, point_number = 1)],
-                              non_audio = False,
-                              pre_emphasis = False,
-                              track_number = 17,
-                              track_offset = 133673568),
-                    Con.Container(ISRC = 'JPG750800711',
-                              cuesheet_track_index = [Con.Container(offset = 0, point_number = 0),
-                                                      Con.Container(offset = 98196, point_number = 1)],
-                              non_audio = False,
-                              pre_emphasis = False,
-                              track_number = 18,
-                              track_offset = 143108616),
-                    Con.Container(ISRC = 'JPG750800180',
-                              cuesheet_track_index = [Con.Container(offset = 0, point_number = 0),
-                                                      Con.Container(offset = 81732, point_number = 1)],
-                              non_audio = False,
-                              pre_emphasis = False,
-                              track_number = 19,
-                              track_offset = 156345084),
-                    Con.Container(ISRC = 'JPG750800712',
-                              cuesheet_track_index = [Con.Container(offset = 0, point_number = 0),
-                                                      Con.Container(offset = 197568, point_number = 1)],
-                              non_audio = False,
-                              pre_emphasis = False,
-                              track_number = 20,
-                              track_offset = 172052328),
-                    Con.Container(ISRC = 'JPG750800713',
-                              cuesheet_track_index = [Con.Container(offset = 0, point_number = 0),
-                                                      Con.Container(offset = 135240, point_number = 1)
-],
-                              non_audio = False,
-                              pre_emphasis = False,
-                              track_number = 21,
-                              track_offset = 178101084),
-                    Con.Container(ISRC = 'JPG750800714',
-                              cuesheet_track_index = [Con.Container(offset = 0, point_number = 1)],
-                              non_audio = False,
-                              pre_emphasis = False,
-                              track_number = 22,
-                              track_offset = 189107268),
-                    Con.Container(ISRC = '\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00',
-                              cuesheet_track_index = [],
-                              non_audio = False,
-                              pre_emphasis = False,
-                              track_number = 170,
-                              track_offset = 191795016)],
-                      is_cd = True, lead_in_samples = 88200)]
+            Con.Container(catalog_number='4580226563955\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00',
+                      cuesheet_tracks=[
+                    Con.Container(ISRC='JPG750800183',
+                              cuesheet_track_index=[Con.Container(offset=0, point_number=1)],
+                              non_audio=False,
+                              pre_emphasis=False,
+                              track_number=1,
+                              track_offset=0),
+                    Con.Container(ISRC='JPG750800212',
+                              cuesheet_track_index=[Con.Container(offset=0, point_number=1)],
+                              non_audio=False,
+                              pre_emphasis=False,
+                              track_number=2,
+                              track_offset=12280380),
+                    Con.Container(ISRC='JPG750800214',
+                              cuesheet_track_index=[Con.Container(offset=0, point_number=0), Con.Container(offset=130536, point_number=1)],
+                              non_audio=False,
+                              pre_emphasis=False,
+                              track_number=3,
+                              track_offset=24807132),
+                    Con.Container(ISRC='JPG750800704',
+                              cuesheet_track_index=[Con.Container(offset=0, point_number=0), Con.Container(offset=135828, point_number=1)],
+                              non_audio=False,
+                              pre_emphasis=False,
+                              track_number=4,
+                              track_offset=28954296),
+                    Con.Container(ISRC='JPG750800705',
+                              cuesheet_track_index=[Con.Container(offset=0, point_number=1)],
+                              non_audio=False,
+                              pre_emphasis=False,
+                              track_number=5,
+                              track_offset=31019352),
+                    Con.Container(ISRC='JPG750800706',
+                              cuesheet_track_index=[Con.Container(offset=0, point_number=1)],
+                              non_audio=False,
+                              pre_emphasis=False,
+                              track_number=6,
+                              track_offset=40957728),
+                    Con.Container(ISRC='JPG750800707',
+                              cuesheet_track_index=[Con.Container(offset=0, point_number=1)],
+                              non_audio=False,
+                              pre_emphasis=False,
+                              track_number=7,
+                              track_offset=56111664),
+                    Con.Container(ISRC='JPG750800708',
+                              cuesheet_track_index=[Con.Container(offset=0, point_number=0),
+                                                      Con.Container(offset=93492, point_number=1)],
+                              non_audio=False,
+                              pre_emphasis=False,
+                              track_number=8,
+                              track_offset=69543348),
+                    Con.Container(ISRC='JPG750800219',
+                              cuesheet_track_index=[Con.Container(offset=0, point_number=1)],
+                              non_audio=False,
+                              pre_emphasis=False,
+                              track_number=9,
+                              track_offset=80537184),
+                    Con.Container(ISRC='JPG750800722',
+                              cuesheet_track_index=[Con.Container(offset=0, point_number=0),
+                                                      Con.Container(offset=78792, point_number=1)],
+                              non_audio=False,
+                              pre_emphasis=False,
+                              track_number=10,
+                              track_offset=81398604),
+                    Con.Container(ISRC='JPG750800709',
+                              cuesheet_track_index=[Con.Container(offset=0, point_number=1)],
+                              non_audio=False,
+                              pre_emphasis=False,
+                              track_number=11,
+                              track_offset=91970256),
+                    Con.Container(ISRC='JPG750800290',
+                              cuesheet_track_index=[Con.Container(offset=0, point_number=1)],
+                              non_audio=False,
+                              pre_emphasis=False,
+                              track_number=12,
+                              track_offset=99292032),
+                    Con.Container(ISRC='JPG750800218',
+                              cuesheet_track_index=[Con.Container(offset=0, point_number=1)],
+                              non_audio=False,
+                              pre_emphasis=False,
+                              track_number=13,
+                              track_offset=110377008),
+                    Con.Container(ISRC='JPG750800710',
+                              cuesheet_track_index=[Con.Container(offset=0, point_number=0),
+                                                      Con.Container(offset=75264, point_number=1)],
+                              non_audio=False,
+                              pre_emphasis=False,
+                              track_number=14,
+                              track_offset=113040060),
+                    Con.Container(ISRC='JPG750800217',
+                              cuesheet_track_index=[Con.Container(offset=0, point_number=1)],
+                              non_audio=False,
+                              pre_emphasis=False,
+                              track_number=15,
+                              track_offset=117804036),
+                    Con.Container(ISRC='JPG750800531',
+                              cuesheet_track_index=[Con.Container(offset=0, point_number=1)],
+                              non_audio=False,
+                              pre_emphasis=False,
+                              track_number=16,
+                              track_offset=120531180),
+                    Con.Container(ISRC='JPG750800225',
+                              cuesheet_track_index=[Con.Container(offset=0, point_number=1)],
+                              non_audio=False,
+                              pre_emphasis=False,
+                              track_number=17,
+                              track_offset=133673568),
+                    Con.Container(ISRC='JPG750800711',
+                              cuesheet_track_index=[Con.Container(offset=0, point_number=0),
+                                                      Con.Container(offset=98196, point_number=1)],
+                              non_audio=False,
+                              pre_emphasis=False,
+                              track_number=18,
+                              track_offset=143108616),
+                    Con.Container(ISRC='JPG750800180',
+                              cuesheet_track_index=[Con.Container(offset=0, point_number=0),
+                                                      Con.Container(offset=81732, point_number=1)],
+                              non_audio=False,
+                              pre_emphasis=False,
+                              track_number=19,
+                              track_offset=156345084),
+                    Con.Container(ISRC='JPG750800712',
+                              cuesheet_track_index=[Con.Container(offset=0, point_number=0),
+                                                      Con.Container(offset=197568, point_number=1)],
+                              non_audio=False,
+                              pre_emphasis=False,
+                              track_number=20,
+                              track_offset=172052328),
+                    Con.Container(ISRC='JPG750800713',
+                              cuesheet_track_index=[
+                            Con.Container(offset=0, point_number=0),
+                            Con.Container(offset=135240, point_number=1)],
+                              non_audio=False,
+                              pre_emphasis=False,
+                              track_number=21,
+                              track_offset=178101084),
+                    Con.Container(ISRC='JPG750800714',
+                              cuesheet_track_index=[Con.Container(offset=0, point_number=1)],
+                              non_audio=False,
+                              pre_emphasis=False,
+                              track_number=22,
+                              track_offset=189107268),
+                    Con.Container(ISRC='\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00',
+                              cuesheet_track_index=[],
+                              non_audio=False,
+                              pre_emphasis=False,
+                              track_number=170,
+                              track_offset=191795016)],
+                      is_cd=True, lead_in_samples=88200)]
 
     def sheets(self):
         for test_sheet in self.test_sheets:
@@ -5980,6 +6020,7 @@ class testflaccuesheet(testcuesheet):
             finally:
                 tempflacfile.close()
             yield sheet
+
 
 class TestXMCD(unittest.TestCase):
     XMCD_FILES = [(
@@ -6000,7 +6041,7 @@ MJNDGkXYHe5FTBoc0uBe/8GTi4NtbsbiJ7li2L+wbbiBObfteNBxV6DjWFVeLCKZ8dGX8dFOvLYa
 iKLBHzQ44C6a2V/dxRGmAcbEd29g/2mwipNMgx0abHJH/V2jxD2Nt6JiqYY8DLyOvwha+LwK/9tr
 +LzmV5PxaLu2Vff4DfKuKv/rYu7TYtaE5CdMw+gvREtRMEeSjKU4ltJYymOpjKU6ltpY6mNpMA4H
 MiJhSMKYhEEJoxKGJYxLGJgwssjIYkJemrtxazGfzeVx/w8vFHIR""".decode('base64').decode('zlib'),
-                   4351,[150, 21035, 42561, 49623, 52904, 69806, 95578,
+                   4351, [150, 21035, 42561, 49623, 52904, 69806, 95578,
                          118580, 137118, 138717, 156562, 169014, 187866,
                          192523, 200497, 205135, 227486, 243699, 266182,
                          293092, 303273, 321761],
@@ -6073,10 +6114,10 @@ YIW3Up+/550y8r2iroWc5mWBrcqIuD1rs53MS5KwaVQHC9ND0cFP6JD/IHXxSjgk9P9lXyh9w0V0
 UJS0etojANlY9Ju9+N3HdYLGdoB5dSp7ud5rPIopm/B10ylY0rdpRNWLdn+3/JWlHMwVz6A/Y4pk
 Du8tG6w7WG+w/mCDwYaDjQYbDzYZeSbCkZGNlGzkZCMpG1nZSMtGXjYSM8O8eZn/ft+myy35/wHM
 D3PD""".decode('base64').decode('zlib'),
-                   4455,[150, 14731, 31177, 48245, 60099, 78289, 94077,
-                         110960, 125007, 138376, 156374, 172087, 194466,
-                         211820, 227485, 242784, 266168, 287790, 301276,
-                         320091],
+                   4455, [150, 14731, 31177, 48245, 60099, 78289, 94077,
+                          110960, 125007, 138376, 156374, 172087, 194466,
+                          211820, 227485, 242784, 266168, 287790, 301276,
+                          320091],
                    [('EXTT0', u''), ('EXTT1', u''), ('EXTT2', u''),
                     ('EXTT3', u''), ('EXTT4', u''), ('EXTT5', u''),
                     ('EXTT6', u''), ('EXTT7', u''), ('EXTT8', u''),
@@ -6127,8 +6168,8 @@ XFFB+tjzZuC5oHtTPPDsJVWOzNlsOcPebFJYCWhX3dkF07WhTQOjD41uq6tR8e/v989XJyQ6PT/+
 nKtF1N9X03bV20qek5A+d3V6jfqhE4zSepKXJH5Lkhe0MTqxXFdFdUU2oKHt63QUmk6VRreTnnnr
 PyzmyyASPaCNkTimdZDoMYkekTjteVfuyHW1ELIovaD4A0kikryh6+1uT+1sbKyvKXeNJtJ7dxpb
 Is+xl9xg0BWyGXIZljPkM6xkKGQoZihlWM19CsPUca8l97sa7ZDGfwEBGThn""".decode('base64').decode('zlib'),
-                   2888,[150, 19307, 41897, 60903, 78413, 93069, 109879,
-                         126468, 144667, 164597, 177250, 197178],
+                   2888, [150, 19307, 41897, 60903, 78413, 93069, 109879,
+                          126468, 144667, 164597, 177250, 197178],
                    [('EXTT0', u''), ('EXTT1', u''), ('EXTT2', u''),
                     ('EXTT3', u''), ('EXTT4', u''), ('EXTT5', u''),
                     ('EXTT6', u''), ('EXTT7', u''), ('EXTT8', u''),
@@ -6152,12 +6193,11 @@ Is+xl9xg0BWyGXIZljPkM6xkKGQoZihlWM19CsPUca8l97sa7ZDGfwEBGThn""".decode('base64')
                     ('TTITLE10', u'\u3044\u304d\u3082\u306e\u304c\u304b\u308a / HANABI'),
                     ('PLAYORDER', u'')],
                    [11264316, 13282920, 11175528, 10295880, 8617728, 9884280,
-                    9754332, 10701012, 11718840, 7439964, 11717664, 11446596])
-                  ]
+                    9754332, 10701012, 11718840, 7439964, 11717664, 11446596])]
 
     @TEST_METADATA
     def testroundtrip(self):
-        for (data,length,offsets,items,track_lengths) in self.XMCD_FILES:
+        for (data, length, offsets, items, track_lengths) in self.XMCD_FILES:
             f = tempfile.NamedTemporaryFile(suffix=".xmcd")
             try:
                 f.write(data)
@@ -6166,11 +6206,11 @@ Is+xl9xg0BWyGXIZljPkM6xkKGQoZihlWM19CsPUca8l97sa7ZDGfwEBGThn""".decode('base64')
                 #check that reading in an XMCD file matches
                 #its expected values
                 xmcd = audiotools.XMCD.read(f.name)
-                self.assertEqual(length,xmcd.length)
-                self.assertEqual(offsets,xmcd.offsets)
-                for (pair1,pair2) in zip(sorted(items),
+                self.assertEqual(length, xmcd.length)
+                self.assertEqual(offsets, xmcd.offsets)
+                for (pair1, pair2) in zip(sorted(items),
                                          sorted(xmcd.items())):
-                    self.assertEqual(pair1,pair2)
+                    self.assertEqual(pair1, pair2)
                 #self.assertEqual(dict(items),dict(xmcd.items()))
 
                 #check that building an XMCD file from values
@@ -6181,14 +6221,14 @@ Is+xl9xg0BWyGXIZljPkM6xkKGQoZihlWM19CsPUca8l97sa7ZDGfwEBGThn""".decode('base64')
                     f2.flush()
 
                     xmcd2 = audiotools.XMCD.read(f2.name)
-                    self.assertEqual(length,xmcd2.length)
-                    self.assertEqual(offsets,xmcd2.offsets)
-                    for (pair1,pair2) in zip(sorted(items),
+                    self.assertEqual(length, xmcd2.length)
+                    self.assertEqual(offsets, xmcd2.offsets)
+                    for (pair1, pair2) in zip(sorted(items),
                                              sorted(xmcd2.items())):
-                        self.assertEqual(pair1,pair2)
-                    self.assertEqual(xmcd.length,xmcd2.length)
-                    self.assertEqual(xmcd.offsets,xmcd2.offsets)
-                    self.assertEqual(dict(xmcd.items()),dict(xmcd2.items()))
+                        self.assertEqual(pair1, pair2)
+                    self.assertEqual(xmcd.length, xmcd2.length)
+                    self.assertEqual(xmcd.offsets, xmcd2.offsets)
+                    self.assertEqual(dict(xmcd.items()), dict(xmcd2.items()))
                 finally:
                     f2.close()
             finally:
@@ -6196,7 +6236,7 @@ Is+xl9xg0BWyGXIZljPkM6xkKGQoZihlWM19CsPUca8l97sa7ZDGfwEBGThn""".decode('base64')
 
     @TEST_METADATA
     def testtracktagging(self):
-        for (data,length,offsets,items,track_lengths) in self.XMCD_FILES:
+        for (data, length, offsets, items, track_lengths) in self.XMCD_FILES:
             f = tempfile.NamedTemporaryFile(suffix=".xmcd")
             try:
                 f.write(data)
@@ -6212,8 +6252,8 @@ Is+xl9xg0BWyGXIZljPkM6xkKGQoZihlWM19CsPUca8l97sa7ZDGfwEBGThn""".decode('base64')
                             temp_file.name,
                             EXACT_BLANK_PCM_Reader(track_length),
                             "1")
-                                   for (track_length,temp_file) in
-                                   zip(track_lengths,temp_files)]
+                                   for (track_length, temp_file) in
+                                   zip(track_lengths, temp_files)]
 
                     for i in xrange(len(track_lengths)):
                         temp_tracks[i].set_metadata(
@@ -6229,23 +6269,23 @@ Is+xl9xg0BWyGXIZljPkM6xkKGQoZihlWM19CsPUca8l97sa7ZDGfwEBGThn""".decode('base64')
                     xmcd2 = audiotools.XMCD.from_files(temp_tracks)
 
                     #check that the original XMCD values match the track ones
-                    self.assertEqual(xmcd.length,xmcd2.length)
-                    self.assertEqual(xmcd.offsets,xmcd2.offsets)
-                    self.assertEqual(xmcd['DISCID'],xmcd2['DISCID'])
+                    self.assertEqual(xmcd.length, xmcd2.length)
+                    self.assertEqual(xmcd.offsets, xmcd2.offsets)
+                    self.assertEqual(xmcd['DISCID'], xmcd2['DISCID'])
                     if (len([pair for pair in xmcd.items()
                              if (pair[0].startswith('TTITLE') and
                                  (u" / " in pair[1]))]) > 0):
-                        self.assertEqual(xmcd['DTITLE'].split(' / ',1)[1],
-                                         xmcd2['DTITLE'].split(' / ',1)[1])
+                        self.assertEqual(xmcd['DTITLE'].split(' / ', 1)[1],
+                                         xmcd2['DTITLE'].split(' / ', 1)[1])
                     else:
-                        self.assertEqual(xmcd['DTITLE'],xmcd2['DTITLE'])
-                    self.assertEqual(xmcd['DYEAR'],xmcd2['DYEAR'])
-                    for (pair1,pair2) in zip(
+                        self.assertEqual(xmcd['DTITLE'], xmcd2['DTITLE'])
+                    self.assertEqual(xmcd['DYEAR'], xmcd2['DYEAR'])
+                    for (pair1, pair2) in zip(
                         sorted([pair for pair in xmcd.items()
                                 if (pair[0].startswith('TTITLE'))]),
                         sorted([pair for pair in xmcd2.items()
                                 if (pair[0].startswith('TTITLE'))])):
-                        self.assertEqual(pair1,pair2)
+                        self.assertEqual(pair1, pair2)
                 finally:
                     for t in temp_files:
                         t.close()
@@ -6258,7 +6298,7 @@ Is+xl9xg0BWyGXIZljPkM6xkKGQoZihlWM19CsPUca8l97sa7ZDGfwEBGThn""".decode('base64')
         OFFSETS = [150, 18740, 40778, 44676, 63267]
 
         #ensure that latin-1 and UTF-8 encodings are handled properly
-        for (encoding,data) in zip(["ISO-8859-1","UTF-8","UTF-8"],
+        for (encoding, data) in zip(["ISO-8859-1", "UTF-8", "UTF-8"],
                                    [{"TTITLE0":u"track one",
                                      "TTITLE1":u"track two",
                                      "TTITLE2":u"track three",
@@ -6274,58 +6314,58 @@ Is+xl9xg0BWyGXIZljPkM6xkKGQoZihlWM19CsPUca8l97sa7ZDGfwEBGThn""".decode('base64')
                                      "TTITLE2":u"track three",
                                      "TTITLE4":u"track four",
                                      "TTITLE5":u"track five"}]):
-            xmcd = audiotools.XMCD(data,OFFSETS,LENGTH)
+            xmcd = audiotools.XMCD(data, OFFSETS, LENGTH)
             xmcd2 = audiotools.XMCD.read_data(xmcd.build().decode(encoding))
-            self.assertEqual(dict(xmcd.items()),dict(xmcd2.items()))
+            self.assertEqual(dict(xmcd.items()), dict(xmcd2.items()))
 
             xmcdfile = tempfile.NamedTemporaryFile(suffix='.xmcd')
             try:
                 xmcdfile.write(xmcd.build())
                 xmcdfile.flush()
                 xmcd2 = audiotools.XMCD.read(xmcdfile.name)
-                self.assertEqual(dict(xmcd.items()),dict(xmcd2.items()))
+                self.assertEqual(dict(xmcd.items()), dict(xmcd2.items()))
             finally:
                 xmcdfile.close()
 
         #ensure that excessively long XMCD lines are wrapped properly
-        xmcd = audiotools.XMCD({"TTITLE0":u"l" + (u"o" * 512) + u"ng title",
-                                "TTITLE1":u"track two",
-                                "TTITLE2":u"track three",
-                                "TTITLE4":u"track four",
-                                "TTITLE5":u"track five"},
-                               OFFSETS,LENGTH)
+        xmcd = audiotools.XMCD({"TTITLE0": u"l" + (u"o" * 512) + u"ng title",
+                                "TTITLE1": u"track two",
+                                "TTITLE2": u"track three",
+                                "TTITLE4": u"track four",
+                                "TTITLE5": u"track five"},
+                               OFFSETS, LENGTH)
         xmcd2 = audiotools.XMCD.read_data(xmcd.build().decode('ISO-8859-1'))
-        self.assertEqual(dict(xmcd.items()),dict(xmcd2.items()))
-        self.assert_(max(map(len,cStringIO.StringIO(xmcd.build()).readlines())) < 80)
+        self.assertEqual(dict(xmcd.items()), dict(xmcd2.items()))
+        self.assert_(max(map(len, cStringIO.StringIO(xmcd.build()).readlines())) < 80)
 
         #ensure that UTF-8 multi-byte characters aren't split
-        xmcd = audiotools.XMCD({"TTITLE0":u'\u30de\u30af\u30ed\u30b9' * 100,
-                                "TTITLE1":u"a" + (u'\u30de\u30af\u30ed\u30b9' * 100),
-                                "TTITLE2":u"ab" + (u'\u30de\u30af\u30ed\u30b9' * 100),
-                                "TTITLE4":u"abc" + (u'\u30de\u30af\u30ed\u30b9' * 100),
-                                "TTITLE5":u"track tw\xf3"},
-                               OFFSETS,LENGTH)
+        xmcd = audiotools.XMCD({"TTITLE0": u'\u30de\u30af\u30ed\u30b9' * 100,
+                                "TTITLE1": u"a" + (u'\u30de\u30af\u30ed\u30b9' * 100),
+                                "TTITLE2": u"ab" + (u'\u30de\u30af\u30ed\u30b9' * 100),
+                                "TTITLE4": u"abc" + (u'\u30de\u30af\u30ed\u30b9' * 100),
+                                "TTITLE5": u"track tw\xf3"},
+                               OFFSETS, LENGTH)
 
         xmcd2 = audiotools.XMCD.read_data(xmcd.build().decode('UTF-8'))
-        self.assertEqual(dict(xmcd.items()),dict(xmcd2.items()))
-        self.assert_(max(map(len,cStringIO.StringIO(xmcd.build()))) < 80)
+        self.assertEqual(dict(xmcd.items()), dict(xmcd2.items()))
+        self.assert_(max(map(len, cStringIO.StringIO(xmcd.build()))) < 80)
 
     @TEST_EXECUTABLE
     def testtracktag(self):
         LENGTH = 1134
         OFFSETS = [150, 18740, 40778, 44676, 63267]
-        TRACK_LENGTHS = [y - x for x,y in zip(OFFSETS + [LENGTH * 75],
+        TRACK_LENGTHS = [y - x for x, y in zip(OFFSETS + [LENGTH * 75],
                                               (OFFSETS + [LENGTH * 75])[1:])]
-        data = {"DTITLE":"Artist / Album",
-                "TTITLE0":u"track one",
-                "TTITLE1":u"track two",
-                "TTITLE2":u"track three",
-                "TTITLE3":u"track four",
-                "TTITLE4":u"track five"}
+        data = {"DTITLE": "Artist / Album",
+                "TTITLE0": u"track one",
+                "TTITLE1": u"track two",
+                "TTITLE2": u"track three",
+                "TTITLE3": u"track four",
+                "TTITLE4": u"track five"}
 
         #construct our XMCD file
         xmcd_file = tempfile.NamedTemporaryFile(suffix=".xmcd")
-        xmcd_file.write(audiotools.XMCD(data,OFFSETS,LENGTH).build())
+        xmcd_file.write(audiotools.XMCD(data, OFFSETS, LENGTH).build())
         xmcd_file.flush()
 
         #construct a batch of temporary tracks
@@ -6335,26 +6375,26 @@ Is+xl9xg0BWyGXIZljPkM6xkKGQoZihlWM19CsPUca8l97sa7ZDGfwEBGThn""".decode('base64')
             tracks = [audiotools.FlacAudio.from_pcm(
                     track.name,
                     EXACT_BLANK_PCM_Reader(length * 44100 / 75))
-                      for (track,length) in zip(temp_tracks,TRACK_LENGTHS)]
-            for (i,track) in enumerate(tracks):
+                      for (track, length) in zip(temp_tracks, TRACK_LENGTHS)]
+            for (i, track) in enumerate(tracks):
                 track.set_metadata(audiotools.MetaData(track_number=i + 1))
 
             #tag them with tracktag
-            subprocess.call(["tracktag","-x",xmcd_file.name] + \
+            subprocess.call(["tracktag", "-x", xmcd_file.name] + \
                             [track.filename for track in tracks])
 
             #ensure the metadata values are correct
-            for (track,name,i) in zip(tracks,[u"track one",
-                                              u"track two",
-                                              u"track three",
-                                              u"track four",
-                                              u"track five"],
+            for (track, name, i) in zip(tracks, [u"track one",
+                                                 u"track two",
+                                                 u"track three",
+                                                 u"track four",
+                                                 u"track five"],
                                       range(len(tracks))):
                 metadata = track.get_metadata()
-                self.assertEqual(metadata.track_name,name)
-                self.assertEqual(metadata.track_number,i + 1)
-                self.assertEqual(metadata.album_name,u"Album")
-                self.assertEqual(metadata.artist_name,u"Artist")
+                self.assertEqual(metadata.track_name, name)
+                self.assertEqual(metadata.track_number, i + 1)
+                self.assertEqual(metadata.album_name, u"Album")
+                self.assertEqual(metadata.artist_name, u"Artist")
         finally:
             xmcd_file.close()
             for track in temp_tracks:
@@ -6362,7 +6402,7 @@ Is+xl9xg0BWyGXIZljPkM6xkKGQoZihlWM19CsPUca8l97sa7ZDGfwEBGThn""".decode('base64')
 
         #construct a fresh XMCD file
         xmcd_file = tempfile.NamedTemporaryFile(suffix=".xmcd")
-        xmcd_file.write(audiotools.XMCD(data,OFFSETS,LENGTH).build())
+        xmcd_file.write(audiotools.XMCD(data, OFFSETS, LENGTH).build())
         xmcd_file.flush()
 
         #construct a batch of temporary tracks with a file missing
@@ -6372,27 +6412,27 @@ Is+xl9xg0BWyGXIZljPkM6xkKGQoZihlWM19CsPUca8l97sa7ZDGfwEBGThn""".decode('base64')
             tracks = [audiotools.FlacAudio.from_pcm(
                     track.name,
                     EXACT_BLANK_PCM_Reader(length * 44100 / 75))
-                      for (track,length) in zip(temp_tracks,TRACK_LENGTHS)]
-            for (i,track) in enumerate(tracks):
+                      for (track, length) in zip(temp_tracks, TRACK_LENGTHS)]
+            for (i, track) in enumerate(tracks):
                 track.set_metadata(audiotools.MetaData(track_number=i + 1))
 
             del(tracks[2])
 
             #tag them with tracktag
-            subprocess.call(["tracktag","-x",xmcd_file.name] + \
+            subprocess.call(["tracktag", "-x", xmcd_file.name] + \
                             [track.filename for track in tracks])
 
             #ensure the metadata values are correct
-            for (track,name,i) in zip(tracks,[u"track one",
-                                              u"track two",
-                                              u"track four",
-                                              u"track five"],
-                                      [0,1,3,4]):
+            for (track, name, i) in zip(tracks, [u"track one",
+                                                 u"track two",
+                                                 u"track four",
+                                                 u"track five"],
+                                      [0, 1, 3, 4]):
                 metadata = track.get_metadata()
-                self.assertEqual(metadata.track_name,name)
-                self.assertEqual(metadata.track_number,i + 1)
-                self.assertEqual(metadata.album_name,u"Album")
-                self.assertEqual(metadata.artist_name,u"Artist")
+                self.assertEqual(metadata.track_name, name)
+                self.assertEqual(metadata.track_number, i + 1)
+                self.assertEqual(metadata.album_name, u"Album")
+                self.assertEqual(metadata.artist_name, u"Artist")
         finally:
             xmcd_file.close()
             for track in temp_tracks:
@@ -6401,7 +6441,7 @@ Is+xl9xg0BWyGXIZljPkM6xkKGQoZihlWM19CsPUca8l97sa7ZDGfwEBGThn""".decode('base64')
         #construct a fresh XMCD file with a track missing
         del(data["TTITLE2"])
         xmcd_file = tempfile.NamedTemporaryFile(suffix=".xmcd")
-        xmcd_file.write(audiotools.XMCD(data,OFFSETS,LENGTH).build())
+        xmcd_file.write(audiotools.XMCD(data, OFFSETS, LENGTH).build())
         xmcd_file.flush()
 
         #construct a batch of temporary tracks
@@ -6411,30 +6451,31 @@ Is+xl9xg0BWyGXIZljPkM6xkKGQoZihlWM19CsPUca8l97sa7ZDGfwEBGThn""".decode('base64')
             tracks = [audiotools.FlacAudio.from_pcm(
                     track.name,
                     EXACT_BLANK_PCM_Reader(length * 44100 / 75))
-                      for (track,length) in zip(temp_tracks,TRACK_LENGTHS)]
-            for (i,track) in enumerate(tracks):
+                      for (track, length) in zip(temp_tracks, TRACK_LENGTHS)]
+            for (i, track) in enumerate(tracks):
                 track.set_metadata(audiotools.MetaData(track_number=i + 1))
 
             #tag them with tracktag
-            subprocess.call(["tracktag","-x",xmcd_file.name] + \
+            subprocess.call(["tracktag", "-x", xmcd_file.name] + \
                             [track.filename for track in tracks])
 
             #ensure the metadata values are correct
-            for (track,name,i) in zip(tracks,[u"track one",
-                                              u"track two",
-                                              u"",
-                                              u"track four",
-                                              u"track five"],
+            for (track, name, i) in zip(tracks, [u"track one",
+                                                 u"track two",
+                                                 u"",
+                                                 u"track four",
+                                                 u"track five"],
                                       range(len(tracks))):
                 metadata = track.get_metadata()
-                self.assertEqual(metadata.track_name,name)
-                self.assertEqual(metadata.track_number,i + 1)
-                self.assertEqual(metadata.album_name,u"Album")
-                self.assertEqual(metadata.artist_name,u"Artist")
+                self.assertEqual(metadata.track_name, name)
+                self.assertEqual(metadata.track_number, i + 1)
+                self.assertEqual(metadata.album_name, u"Album")
+                self.assertEqual(metadata.artist_name, u"Artist")
         finally:
             xmcd_file.close()
             for track in temp_tracks:
                 track.close()
+
 
 class TestMusicBrainzXML(unittest.TestCase):
     XML_FILES = [(
@@ -6468,30 +6509,30 @@ MtObIBUNgKrAYjJmroiHYrAFpInfXsaslxwIhxXKlioaeIvH8L22A95Axja5zmMYBGtr7nuSPgzD
 pJ2S4PmcbHewcGzhpNLMPDwegzwwZJv3YYmNDcmg7NePApT/5islCQ6AgfA5DIyGyBoEjCQUPU0A
 hH8l+2x+drf3W9tm9uRe0f3AX6G7Yj2oRM3vtHvb04qlt26OazBgWgqZ98kSXP8lwRPWSuppyEWI
 vCUDDrZiT4cevVmI9LRpPw/7DgctthGdx4P+LuSKcKEhI7Nhwg==""".decode('base64').decode('bz2'),
-                  {1:audiotools.MetaData(track_name=u'Frontier 2059',track_number=1,track_total=24,album_name=u'\u30de\u30af\u30ed\u30b9\u30d5\u30ed\u30f3\u30c6\u30a3\u30a2: \u5a18\u30d5\u30ed',artist_name=u'\u83c5\u91ce\u3088\u3046\u5b50',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'VTCL-60060',copyright=u'',publisher=u'',year=u'2008',date=u'',album_number=0,album_total=0,comment=u''),
-                   2:audiotools.MetaData(track_name=u"Welcome To My FanClub's Night! (Sheryl On Stage)",track_number=2,track_total=24,album_name=u'\u30de\u30af\u30ed\u30b9\u30d5\u30ed\u30f3\u30c6\u30a3\u30a2: \u5a18\u30d5\u30ed',artist_name=u'\u83c5\u91ce\u3088\u3046\u5b50',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'VTCL-60060',copyright=u'',publisher=u'',year=u'2008',date=u'',album_number=0,album_total=0,comment=u''),
-                   3:audiotools.MetaData(track_name=u"What 'bout my star? (Sheryl On Stage)",track_number=3,track_total=24,album_name=u'\u30de\u30af\u30ed\u30b9\u30d5\u30ed\u30f3\u30c6\u30a3\u30a2: \u5a18\u30d5\u30ed',artist_name=u'\u83c5\u91ce\u3088\u3046\u5b50',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'VTCL-60060',copyright=u'',publisher=u'',year=u'2008',date=u'',album_number=0,album_total=0,comment=u''),
-                   4:audiotools.MetaData(track_name=u"\u5c04\u624b\u5ea7\u2606\u5348\u5f8c\u4e5d\u6642Don't be late (Sheryl On Stage)",track_number=4,track_total=24,album_name=u'\u30de\u30af\u30ed\u30b9\u30d5\u30ed\u30f3\u30c6\u30a3\u30a2: \u5a18\u30d5\u30ed',artist_name=u'\u83c5\u91ce\u3088\u3046\u5b50',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'VTCL-60060',copyright=u'',publisher=u'',year=u'2008',date=u'',album_number=0,album_total=0,comment=u''),
-                   5:audiotools.MetaData(track_name=u'Vital Force',track_number=5,track_total=24,album_name=u'\u30de\u30af\u30ed\u30b9\u30d5\u30ed\u30f3\u30c6\u30a3\u30a2: \u5a18\u30d5\u30ed',artist_name=u'\u83c5\u91ce\u3088\u3046\u5b50',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'VTCL-60060',copyright=u'',publisher=u'',year=u'2008',date=u'',album_number=0,album_total=0,comment=u''),
-                   6:audiotools.MetaData(track_name=u'\u30c8\u30e9\u30a4\u30a2\u30f3\u30b0\u30e9\u30fc',track_number=6,track_total=24,album_name=u'\u30de\u30af\u30ed\u30b9\u30d5\u30ed\u30f3\u30c6\u30a3\u30a2: \u5a18\u30d5\u30ed',artist_name=u'\u83c5\u91ce\u3088\u3046\u5b50',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'VTCL-60060',copyright=u'',publisher=u'',year=u'2008',date=u'',album_number=0,album_total=0,comment=u''),
-                   7:audiotools.MetaData(track_name=u'Zero Hour',track_number=7,track_total=24,album_name=u'\u30de\u30af\u30ed\u30b9\u30d5\u30ed\u30f3\u30c6\u30a3\u30a2: \u5a18\u30d5\u30ed',artist_name=u'\u83c5\u91ce\u3088\u3046\u5b50',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'VTCL-60060',copyright=u'',publisher=u'',year=u'2008',date=u'',album_number=0,album_total=0,comment=u''),
-                   8:audiotools.MetaData(track_name=u"What 'bout my star? @Formo",track_number=8,track_total=24,album_name=u'\u30de\u30af\u30ed\u30b9\u30d5\u30ed\u30f3\u30c6\u30a3\u30a2: \u5a18\u30d5\u30ed',artist_name=u'\u83c5\u91ce\u3088\u3046\u5b50',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'VTCL-60060',copyright=u'',publisher=u'',year=u'2008',date=u'',album_number=0,album_total=0,comment=u''),
-                   9:audiotools.MetaData(track_name=u'Innocent green',track_number=9,track_total=24,album_name=u'\u30de\u30af\u30ed\u30b9\u30d5\u30ed\u30f3\u30c6\u30a3\u30a2: \u5a18\u30d5\u30ed',artist_name=u'\u83c5\u91ce\u3088\u3046\u5b50',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'VTCL-60060',copyright=u'',publisher=u'',year=u'2008',date=u'',album_number=0,album_total=0,comment=u''),
-                   10:audiotools.MetaData(track_name=u'\u30a2\u30a4\u30e2',track_number=10,track_total=24,album_name=u'\u30de\u30af\u30ed\u30b9\u30d5\u30ed\u30f3\u30c6\u30a3\u30a2: \u5a18\u30d5\u30ed',artist_name=u'\u83c5\u91ce\u3088\u3046\u5b50',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'VTCL-60060',copyright=u'',publisher=u'',year=u'2008',date=u'',album_number=0,album_total=0,comment=u''),
-                   11:audiotools.MetaData(track_name=u'\u30d3\u30c3\u30b0\u30fb\u30dc\u30fc\u30a4\u30ba',track_number=11,track_total=24,album_name=u'\u30de\u30af\u30ed\u30b9\u30d5\u30ed\u30f3\u30c6\u30a3\u30a2: \u5a18\u30d5\u30ed',artist_name=u'\u83c5\u91ce\u3088\u3046\u5b50',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'VTCL-60060',copyright=u'',publisher=u'',year=u'2008',date=u'',album_number=0,album_total=0,comment=u''),
-                   12:audiotools.MetaData(track_name=u'Private Army',track_number=12,track_total=24,album_name=u'\u30de\u30af\u30ed\u30b9\u30d5\u30ed\u30f3\u30c6\u30a3\u30a2: \u5a18\u30d5\u30ed',artist_name=u'\u83c5\u91ce\u3088\u3046\u5b50',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'VTCL-60060',copyright=u'',publisher=u'',year=u'2008',date=u'',album_number=0,album_total=0,comment=u''),
-                   13:audiotools.MetaData(track_name=u'SMS\u5c0f\u968a\u306e\u6b4c\u301c\u3042\u306e\u5a18\u306f\u30a8\u30a4\u30ea\u30a2\u30f3',track_number=13,track_total=24,album_name=u'\u30de\u30af\u30ed\u30b9\u30d5\u30ed\u30f3\u30c6\u30a3\u30a2: \u5a18\u30d5\u30ed',artist_name=u'\u83c5\u91ce\u3088\u3046\u5b50',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'VTCL-60060',copyright=u'',publisher=u'',year=u'2008',date=u'',album_number=0,album_total=0,comment=u''),
-                   14:audiotools.MetaData(track_name=u'\u30cb\u30f3\u30b8\u30fc\u30f3 Loves you yeah!',track_number=14,track_total=24,album_name=u'\u30de\u30af\u30ed\u30b9\u30d5\u30ed\u30f3\u30c6\u30a3\u30a2: \u5a18\u30d5\u30ed',artist_name=u'\u83c5\u91ce\u3088\u3046\u5b50',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'VTCL-60060',copyright=u'',publisher=u'',year=u'2008',date=u'',album_number=0,album_total=0,comment=u''),
-                   15:audiotools.MetaData(track_name=u'\u8d85\u6642\u7a7a\u98ef\u5e97 \u5a18\u3005: CM\u30bd\u30f3\u30b0(Ranka Version)',track_number=15,track_total=24,album_name=u'\u30de\u30af\u30ed\u30b9\u30d5\u30ed\u30f3\u30c6\u30a3\u30a2: \u5a18\u30d5\u30ed',artist_name=u'\u83c5\u91ce\u3088\u3046\u5b50',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'VTCL-60060',copyright=u'',publisher=u'',year=u'2008',date=u'',album_number=0,album_total=0,comment=u''),
-                   16:audiotools.MetaData(track_name=u"Alto's Theme",track_number=16,track_total=24,album_name=u'\u30de\u30af\u30ed\u30b9\u30d5\u30ed\u30f3\u30c6\u30a3\u30a2: \u5a18\u30d5\u30ed',artist_name=u'\u83c5\u91ce\u3088\u3046\u5b50',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'VTCL-60060',copyright=u'',publisher=u'',year=u'2008',date=u'',album_number=0,album_total=0,comment=u''),
-                   17:audiotools.MetaData(track_name=u'Tally Ho!',track_number=17,track_total=24,album_name=u'\u30de\u30af\u30ed\u30b9\u30d5\u30ed\u30f3\u30c6\u30a3\u30a2: \u5a18\u30d5\u30ed',artist_name=u'\u83c5\u91ce\u3088\u3046\u5b50',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'VTCL-60060',copyright=u'',publisher=u'',year=u'2008',date=u'',album_number=0,album_total=0,comment=u''),
-                   18:audiotools.MetaData(track_name=u'The Target',track_number=18,track_total=24,album_name=u'\u30de\u30af\u30ed\u30b9\u30d5\u30ed\u30f3\u30c6\u30a3\u30a2: \u5a18\u30d5\u30ed',artist_name=u'\u83c5\u91ce\u3088\u3046\u5b50',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'VTCL-60060',copyright=u'',publisher=u'',year=u'2008',date=u'',album_number=0,album_total=0,comment=u''),
-                   19:audiotools.MetaData(track_name=u'Bajura',track_number=19,track_total=24,album_name=u'\u30de\u30af\u30ed\u30b9\u30d5\u30ed\u30f3\u30c6\u30a3\u30a2: \u5a18\u30d5\u30ed',artist_name=u'\u83c5\u91ce\u3088\u3046\u5b50',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'VTCL-60060',copyright=u'',publisher=u'',year=u'2008',date=u'',album_number=0,album_total=0,comment=u''),
-                   20:audiotools.MetaData(track_name=u'\u30ad\u30e9\u30ad\u30e9',track_number=20,track_total=24,album_name=u'\u30de\u30af\u30ed\u30b9\u30d5\u30ed\u30f3\u30c6\u30a3\u30a2: \u5a18\u30d5\u30ed',artist_name=u'\u83c5\u91ce\u3088\u3046\u5b50',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'VTCL-60060',copyright=u'',publisher=u'',year=u'2008',date=u'',album_number=0,album_total=0,comment=u''),
-                   21:audiotools.MetaData(track_name=u'\u30a2\u30a4\u30e2\u301c\u9ce5\u306e\u3072\u3068',track_number=21,track_total=24,album_name=u'\u30de\u30af\u30ed\u30b9\u30d5\u30ed\u30f3\u30c6\u30a3\u30a2: \u5a18\u30d5\u30ed',artist_name=u'\u83c5\u91ce\u3088\u3046\u5b50',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'VTCL-60060',copyright=u'',publisher=u'',year=u'2008',date=u'',album_number=0,album_total=0,comment=u''),
-                   22:audiotools.MetaData(track_name=u'Take Off',track_number=22,track_total=24,album_name=u'\u30de\u30af\u30ed\u30b9\u30d5\u30ed\u30f3\u30c6\u30a3\u30a2: \u5a18\u30d5\u30ed',artist_name=u'\u83c5\u91ce\u3088\u3046\u5b50',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'VTCL-60060',copyright=u'',publisher=u'',year=u'2008',date=u'',album_number=0,album_total=0,comment=u''),
-                   23:audiotools.MetaData(track_name=u'\u30a4\u30f3\u30d5\u30a3\u30cb\u30c6\u30a3',track_number=23,track_total=24,album_name=u'\u30de\u30af\u30ed\u30b9\u30d5\u30ed\u30f3\u30c6\u30a3\u30a2: \u5a18\u30d5\u30ed',artist_name=u'\u83c5\u91ce\u3088\u3046\u5b50',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'VTCL-60060',copyright=u'',publisher=u'',year=u'2008',date=u'',album_number=0,album_total=0,comment=u''),
-                   24:audiotools.MetaData(track_name=u'\u30c0\u30a4\u30a2\u30e2\u30f3\u30c9 \u30af\u30ec\u30d0\u30b9',track_number=24,track_total=24,album_name=u'\u30de\u30af\u30ed\u30b9\u30d5\u30ed\u30f3\u30c6\u30a3\u30a2: \u5a18\u30d5\u30ed',artist_name=u'\u83c5\u91ce\u3088\u3046\u5b50',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'VTCL-60060',copyright=u'',publisher=u'',year=u'2008',date=u'',album_number=0,album_total=0,comment=u'')}),
+                  {1:audiotools.MetaData(track_name=u'Frontier 2059', track_number=1, track_total=24, album_name=u'\u30de\u30af\u30ed\u30b9\u30d5\u30ed\u30f3\u30c6\u30a3\u30a2: \u5a18\u30d5\u30ed', artist_name=u'\u83c5\u91ce\u3088\u3046\u5b50', performer_name=u'', composer_name=u'', conductor_name=u'', media=u'', ISRC=u'', catalog=u'VTCL-60060', copyright=u'', publisher=u'', year=u'2008', date=u'', album_number=0, album_total=0, comment=u''),
+                   2:audiotools.MetaData(track_name=u"Welcome To My FanClub's Night! (Sheryl On Stage)", track_number=2, track_total=24, album_name=u'\u30de\u30af\u30ed\u30b9\u30d5\u30ed\u30f3\u30c6\u30a3\u30a2: \u5a18\u30d5\u30ed', artist_name=u'\u83c5\u91ce\u3088\u3046\u5b50', performer_name=u'', composer_name=u'', conductor_name=u'', media=u'', ISRC=u'', catalog=u'VTCL-60060', copyright=u'', publisher=u'', year=u'2008', date=u'', album_number=0, album_total=0, comment=u''),
+                   3:audiotools.MetaData(track_name=u"What 'bout my star? (Sheryl On Stage)", track_number=3, track_total=24, album_name=u'\u30de\u30af\u30ed\u30b9\u30d5\u30ed\u30f3\u30c6\u30a3\u30a2: \u5a18\u30d5\u30ed', artist_name=u'\u83c5\u91ce\u3088\u3046\u5b50', performer_name=u'', composer_name=u'', conductor_name=u'', media=u'', ISRC=u'', catalog=u'VTCL-60060', copyright=u'', publisher=u'', year=u'2008', date=u'', album_number=0, album_total=0, comment=u''),
+                   4:audiotools.MetaData(track_name=u"\u5c04\u624b\u5ea7\u2606\u5348\u5f8c\u4e5d\u6642Don't be late (Sheryl On Stage)", track_number=4, track_total=24, album_name=u'\u30de\u30af\u30ed\u30b9\u30d5\u30ed\u30f3\u30c6\u30a3\u30a2: \u5a18\u30d5\u30ed', artist_name=u'\u83c5\u91ce\u3088\u3046\u5b50', performer_name=u'', composer_name=u'', conductor_name=u'', media=u'', ISRC=u'', catalog=u'VTCL-60060', copyright=u'', publisher=u'', year=u'2008', date=u'', album_number=0, album_total=0, comment=u''),
+                   5:audiotools.MetaData(track_name=u'Vital Force', track_number=5, track_total=24, album_name=u'\u30de\u30af\u30ed\u30b9\u30d5\u30ed\u30f3\u30c6\u30a3\u30a2: \u5a18\u30d5\u30ed', artist_name=u'\u83c5\u91ce\u3088\u3046\u5b50', performer_name=u'', composer_name=u'', conductor_name=u'', media=u'', ISRC=u'', catalog=u'VTCL-60060', copyright=u'', publisher=u'', year=u'2008', date=u'', album_number=0, album_total=0, comment=u''),
+                   6:audiotools.MetaData(track_name=u'\u30c8\u30e9\u30a4\u30a2\u30f3\u30b0\u30e9\u30fc', track_number=6, track_total=24, album_name=u'\u30de\u30af\u30ed\u30b9\u30d5\u30ed\u30f3\u30c6\u30a3\u30a2: \u5a18\u30d5\u30ed', artist_name=u'\u83c5\u91ce\u3088\u3046\u5b50', performer_name=u'', composer_name=u'', conductor_name=u'', media=u'', ISRC=u'', catalog=u'VTCL-60060', copyright=u'', publisher=u'', year=u'2008', date=u'', album_number=0, album_total=0, comment=u''),
+                   7:audiotools.MetaData(track_name=u'Zero Hour', track_number=7, track_total=24, album_name=u'\u30de\u30af\u30ed\u30b9\u30d5\u30ed\u30f3\u30c6\u30a3\u30a2: \u5a18\u30d5\u30ed', artist_name=u'\u83c5\u91ce\u3088\u3046\u5b50', performer_name=u'', composer_name=u'', conductor_name=u'', media=u'', ISRC=u'', catalog=u'VTCL-60060', copyright=u'', publisher=u'', year=u'2008', date=u'', album_number=0, album_total=0, comment=u''),
+                   8:audiotools.MetaData(track_name=u"What 'bout my star? @Formo", track_number=8, track_total=24, album_name=u'\u30de\u30af\u30ed\u30b9\u30d5\u30ed\u30f3\u30c6\u30a3\u30a2: \u5a18\u30d5\u30ed', artist_name=u'\u83c5\u91ce\u3088\u3046\u5b50', performer_name=u'', composer_name=u'', conductor_name=u'', media=u'', ISRC=u'', catalog=u'VTCL-60060', copyright=u'', publisher=u'', year=u'2008', date=u'', album_number=0, album_total=0, comment=u''),
+                   9:audiotools.MetaData(track_name=u'Innocent green', track_number=9, track_total=24, album_name=u'\u30de\u30af\u30ed\u30b9\u30d5\u30ed\u30f3\u30c6\u30a3\u30a2: \u5a18\u30d5\u30ed', artist_name=u'\u83c5\u91ce\u3088\u3046\u5b50', performer_name=u'', composer_name=u'', conductor_name=u'', media=u'', ISRC=u'', catalog=u'VTCL-60060', copyright=u'', publisher=u'', year=u'2008', date=u'', album_number=0, album_total=0, comment=u''),
+                   10:audiotools.MetaData(track_name=u'\u30a2\u30a4\u30e2', track_number=10, track_total=24, album_name=u'\u30de\u30af\u30ed\u30b9\u30d5\u30ed\u30f3\u30c6\u30a3\u30a2: \u5a18\u30d5\u30ed', artist_name=u'\u83c5\u91ce\u3088\u3046\u5b50', performer_name=u'', composer_name=u'', conductor_name=u'', media=u'', ISRC=u'', catalog=u'VTCL-60060', copyright=u'', publisher=u'', year=u'2008', date=u'', album_number=0, album_total=0, comment=u''),
+                   11:audiotools.MetaData(track_name=u'\u30d3\u30c3\u30b0\u30fb\u30dc\u30fc\u30a4\u30ba', track_number=11, track_total=24, album_name=u'\u30de\u30af\u30ed\u30b9\u30d5\u30ed\u30f3\u30c6\u30a3\u30a2: \u5a18\u30d5\u30ed', artist_name=u'\u83c5\u91ce\u3088\u3046\u5b50', performer_name=u'', composer_name=u'', conductor_name=u'', media=u'', ISRC=u'', catalog=u'VTCL-60060', copyright=u'', publisher=u'', year=u'2008', date=u'', album_number=0, album_total=0, comment=u''),
+                   12:audiotools.MetaData(track_name=u'Private Army', track_number=12, track_total=24, album_name=u'\u30de\u30af\u30ed\u30b9\u30d5\u30ed\u30f3\u30c6\u30a3\u30a2: \u5a18\u30d5\u30ed', artist_name=u'\u83c5\u91ce\u3088\u3046\u5b50', performer_name=u'', composer_name=u'', conductor_name=u'', media=u'', ISRC=u'', catalog=u'VTCL-60060', copyright=u'', publisher=u'', year=u'2008', date=u'', album_number=0, album_total=0, comment=u''),
+                   13:audiotools.MetaData(track_name=u'SMS\u5c0f\u968a\u306e\u6b4c\u301c\u3042\u306e\u5a18\u306f\u30a8\u30a4\u30ea\u30a2\u30f3', track_number=13, track_total=24, album_name=u'\u30de\u30af\u30ed\u30b9\u30d5\u30ed\u30f3\u30c6\u30a3\u30a2: \u5a18\u30d5\u30ed', artist_name=u'\u83c5\u91ce\u3088\u3046\u5b50', performer_name=u'', composer_name=u'', conductor_name=u'', media=u'', ISRC=u'', catalog=u'VTCL-60060', copyright=u'', publisher=u'', year=u'2008', date=u'', album_number=0, album_total=0, comment=u''),
+                   14:audiotools.MetaData(track_name=u'\u30cb\u30f3\u30b8\u30fc\u30f3 Loves you yeah!', track_number=14, track_total=24, album_name=u'\u30de\u30af\u30ed\u30b9\u30d5\u30ed\u30f3\u30c6\u30a3\u30a2: \u5a18\u30d5\u30ed', artist_name=u'\u83c5\u91ce\u3088\u3046\u5b50', performer_name=u'', composer_name=u'', conductor_name=u'', media=u'', ISRC=u'', catalog=u'VTCL-60060', copyright=u'', publisher=u'', year=u'2008', date=u'', album_number=0, album_total=0, comment=u''),
+                   15:audiotools.MetaData(track_name=u'\u8d85\u6642\u7a7a\u98ef\u5e97 \u5a18\u3005: CM\u30bd\u30f3\u30b0(Ranka Version)', track_number=15, track_total=24, album_name=u'\u30de\u30af\u30ed\u30b9\u30d5\u30ed\u30f3\u30c6\u30a3\u30a2: \u5a18\u30d5\u30ed', artist_name=u'\u83c5\u91ce\u3088\u3046\u5b50', performer_name=u'', composer_name=u'', conductor_name=u'', media=u'', ISRC=u'', catalog=u'VTCL-60060', copyright=u'', publisher=u'', year=u'2008', date=u'', album_number=0, album_total=0, comment=u''),
+                   16:audiotools.MetaData(track_name=u"Alto's Theme", track_number=16, track_total=24, album_name=u'\u30de\u30af\u30ed\u30b9\u30d5\u30ed\u30f3\u30c6\u30a3\u30a2: \u5a18\u30d5\u30ed', artist_name=u'\u83c5\u91ce\u3088\u3046\u5b50', performer_name=u'', composer_name=u'', conductor_name=u'', media=u'', ISRC=u'', catalog=u'VTCL-60060', copyright=u'', publisher=u'', year=u'2008', date=u'', album_number=0, album_total=0, comment=u''),
+                   17:audiotools.MetaData(track_name=u'Tally Ho!', track_number=17, track_total=24, album_name=u'\u30de\u30af\u30ed\u30b9\u30d5\u30ed\u30f3\u30c6\u30a3\u30a2: \u5a18\u30d5\u30ed', artist_name=u'\u83c5\u91ce\u3088\u3046\u5b50', performer_name=u'', composer_name=u'', conductor_name=u'', media=u'', ISRC=u'', catalog=u'VTCL-60060', copyright=u'', publisher=u'', year=u'2008', date=u'', album_number=0, album_total=0, comment=u''),
+                   18:audiotools.MetaData(track_name=u'The Target', track_number=18, track_total=24, album_name=u'\u30de\u30af\u30ed\u30b9\u30d5\u30ed\u30f3\u30c6\u30a3\u30a2: \u5a18\u30d5\u30ed', artist_name=u'\u83c5\u91ce\u3088\u3046\u5b50', performer_name=u'', composer_name=u'', conductor_name=u'', media=u'', ISRC=u'', catalog=u'VTCL-60060', copyright=u'', publisher=u'', year=u'2008', date=u'', album_number=0, album_total=0, comment=u''),
+                   19:audiotools.MetaData(track_name=u'Bajura', track_number=19, track_total=24, album_name=u'\u30de\u30af\u30ed\u30b9\u30d5\u30ed\u30f3\u30c6\u30a3\u30a2: \u5a18\u30d5\u30ed', artist_name=u'\u83c5\u91ce\u3088\u3046\u5b50', performer_name=u'', composer_name=u'', conductor_name=u'', media=u'', ISRC=u'', catalog=u'VTCL-60060', copyright=u'', publisher=u'', year=u'2008', date=u'', album_number=0, album_total=0, comment=u''),
+                   20:audiotools.MetaData(track_name=u'\u30ad\u30e9\u30ad\u30e9', track_number=20, track_total=24, album_name=u'\u30de\u30af\u30ed\u30b9\u30d5\u30ed\u30f3\u30c6\u30a3\u30a2: \u5a18\u30d5\u30ed', artist_name=u'\u83c5\u91ce\u3088\u3046\u5b50', performer_name=u'', composer_name=u'', conductor_name=u'', media=u'', ISRC=u'', catalog=u'VTCL-60060', copyright=u'', publisher=u'', year=u'2008', date=u'', album_number=0, album_total=0, comment=u''),
+                   21:audiotools.MetaData(track_name=u'\u30a2\u30a4\u30e2\u301c\u9ce5\u306e\u3072\u3068', track_number=21, track_total=24, album_name=u'\u30de\u30af\u30ed\u30b9\u30d5\u30ed\u30f3\u30c6\u30a3\u30a2: \u5a18\u30d5\u30ed', artist_name=u'\u83c5\u91ce\u3088\u3046\u5b50', performer_name=u'', composer_name=u'', conductor_name=u'', media=u'', ISRC=u'', catalog=u'VTCL-60060', copyright=u'', publisher=u'', year=u'2008', date=u'', album_number=0, album_total=0, comment=u''),
+                   22:audiotools.MetaData(track_name=u'Take Off', track_number=22, track_total=24, album_name=u'\u30de\u30af\u30ed\u30b9\u30d5\u30ed\u30f3\u30c6\u30a3\u30a2: \u5a18\u30d5\u30ed', artist_name=u'\u83c5\u91ce\u3088\u3046\u5b50', performer_name=u'', composer_name=u'', conductor_name=u'', media=u'', ISRC=u'', catalog=u'VTCL-60060', copyright=u'', publisher=u'', year=u'2008', date=u'', album_number=0, album_total=0, comment=u''),
+                   23:audiotools.MetaData(track_name=u'\u30a4\u30f3\u30d5\u30a3\u30cb\u30c6\u30a3', track_number=23, track_total=24, album_name=u'\u30de\u30af\u30ed\u30b9\u30d5\u30ed\u30f3\u30c6\u30a3\u30a2: \u5a18\u30d5\u30ed', artist_name=u'\u83c5\u91ce\u3088\u3046\u5b50', performer_name=u'', composer_name=u'', conductor_name=u'', media=u'', ISRC=u'', catalog=u'VTCL-60060', copyright=u'', publisher=u'', year=u'2008', date=u'', album_number=0, album_total=0, comment=u''),
+                   24:audiotools.MetaData(track_name=u'\u30c0\u30a4\u30a2\u30e2\u30f3\u30c9 \u30af\u30ec\u30d0\u30b9', track_number=24, track_total=24, album_name=u'\u30de\u30af\u30ed\u30b9\u30d5\u30ed\u30f3\u30c6\u30a3\u30a2: \u5a18\u30d5\u30ed', artist_name=u'\u83c5\u91ce\u3088\u3046\u5b50', performer_name=u'', composer_name=u'', conductor_name=u'', media=u'', ISRC=u'', catalog=u'VTCL-60060', copyright=u'', publisher=u'', year=u'2008', date=u'', album_number=0, album_total=0, comment=u'')}),
                  (
 """QlpoOTFBWSZTWeDENZEAAz5fgAAQeef//7/f36A/799xYAcrsz7YABzkbI43Y2qaoDJCGTU2iZMm
 NU0TMNJMjQepoGmgepggyEDQBJTUADyjTQABkAANNBzAEYJiAYBME0ZDQwCYIxMJCkamTJNqjaT0
@@ -6524,24 +6565,24 @@ QwX9ABOznbOweXBfpbYNR22fwAX6WjNFiFCUcCQMgp4BBAF/8y2cvHEcvzLQ5OL03nDC5mZw6LaT
 W9FZCg9QjtrHm+PNp5Zn2bw8qlCnfPkpA2E5xUKZkBwJAxJCxEpCpQIMbsZB7dYJ6sRQioEUZ11T
 sVKGBzFcZXXrlOQBq14B8sRQoAmahcoY5ihS8xKCFYgQreW2rhgZYAcGy7y0RK484IQbjqDn69OU
 Qav7keYLy1lhvaQNZW37i7kinChIcGIayIA=""".decode('base64').decode('bz2'),
-                  {1:audiotools.MetaData(track_name=u'Scars Left by Time (feat. Dale North)',track_number=1,track_total=18,album_name=u'OneUp Studios presents Time & Space ~ A Tribute to Yasunori Mitsuda',artist_name=u'Ailsean',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'',copyright=u'',publisher=u'',year=u'',date=u'',album_number=0,album_total=0,comment=u''),
-                   2:audiotools.MetaData(track_name=u'Star Stealing Girl (feat. Miss Sara Broome)',track_number=2,track_total=18,album_name=u'OneUp Studios presents Time & Space ~ A Tribute to Yasunori Mitsuda',artist_name=u'The OneUps',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'',copyright=u'',publisher=u'',year=u'',date=u'',album_number=0,album_total=0,comment=u''),
-                   3:audiotools.MetaData(track_name=u"A Hero's Judgement (feat. Ailsean, Dale North & Roy McClanahan)",track_number=3,track_total=18,album_name=u'OneUp Studios presents Time & Space ~ A Tribute to Yasunori Mitsuda',artist_name=u'Matt Pollard',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'',copyright=u'',publisher=u'',year=u'',date=u'',album_number=0,album_total=0,comment=u''),
-                   4:audiotools.MetaData(track_name=u'Parallelism (The Frozen Flame)',track_number=4,track_total=18,album_name=u'OneUp Studios presents Time & Space ~ A Tribute to Yasunori Mitsuda',artist_name=u'Matt Pollard',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'',copyright=u'',publisher=u'',year=u'',date=u'',album_number=0,album_total=0,comment=u''),
-                   5:audiotools.MetaData(track_name=u'Guardian of Time (feat. Greg Kennedy)',track_number=5,track_total=18,album_name=u'OneUp Studios presents Time & Space ~ A Tribute to Yasunori Mitsuda',artist_name=u'Mustin',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'',copyright=u'',publisher=u'',year=u'',date=u'',album_number=0,album_total=0,comment=u''),
-                   6:audiotools.MetaData(track_name=u'The Boy Feared by Time',track_number=6,track_total=18,album_name=u'OneUp Studios presents Time & Space ~ A Tribute to Yasunori Mitsuda',artist_name=u'Ailsean',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'',copyright=u'',publisher=u'',year=u'',date=u'',album_number=0,album_total=0,comment=u''),
-                   7:audiotools.MetaData(track_name=u'The Girl Forgotten by Time',track_number=7,track_total=18,album_name=u'OneUp Studios presents Time & Space ~ A Tribute to Yasunori Mitsuda',artist_name=u'Mark Porter',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'',copyright=u'',publisher=u'',year=u'',date=u'',album_number=0,album_total=0,comment=u''),
-                   8:audiotools.MetaData(track_name=u'Wings of Time',track_number=8,track_total=18,album_name=u'OneUp Studios presents Time & Space ~ A Tribute to Yasunori Mitsuda',artist_name=u'Dale North',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'',copyright=u'',publisher=u'',year=u'',date=u'',album_number=0,album_total=0,comment=u''),
-                   9:audiotools.MetaData(track_name=u'Good to be Home',track_number=9,track_total=18,album_name=u'OneUp Studios presents Time & Space ~ A Tribute to Yasunori Mitsuda',artist_name=u'Dale North',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'',copyright=u'',publisher=u'',year=u'',date=u'',album_number=0,album_total=0,comment=u''),
-                   10:audiotools.MetaData(track_name=u'Dream of Another Time',track_number=10,track_total=18,album_name=u'OneUp Studios presents Time & Space ~ A Tribute to Yasunori Mitsuda',artist_name=u'Mustin',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'',copyright=u'',publisher=u'',year=u'',date=u'',album_number=0,album_total=0,comment=u''),
-                   11:audiotools.MetaData(track_name=u'Fields of Time',track_number=11,track_total=18,album_name=u'OneUp Studios presents Time & Space ~ A Tribute to Yasunori Mitsuda',artist_name=u'Mellogear vs. Mark Porter',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'',copyright=u'',publisher=u'',year=u'',date=u'',album_number=0,album_total=0,comment=u''),
-                   12:audiotools.MetaData(track_name=u'To Good Friends (feat. Tim Sheehy)',track_number=12,track_total=18,album_name=u'OneUp Studios presents Time & Space ~ A Tribute to Yasunori Mitsuda',artist_name=u'Dale North',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'',copyright=u'',publisher=u'',year=u'',date=u'',album_number=0,album_total=0,comment=u''),
-                   13:audiotools.MetaData(track_name=u'The Fighting Priest',track_number=13,track_total=18,album_name=u'OneUp Studios presents Time & Space ~ A Tribute to Yasunori Mitsuda',artist_name=u'Ailsean',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'',copyright=u'',publisher=u'',year=u'',date=u'',album_number=0,album_total=0,comment=u''),
-                   14:audiotools.MetaData(track_name=u'June Mermaid',track_number=14,track_total=18,album_name=u'OneUp Studios presents Time & Space ~ A Tribute to Yasunori Mitsuda',artist_name=u'Dale North',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'',copyright=u'',publisher=u'',year=u'',date=u'',album_number=0,album_total=0,comment=u''),
-                   15:audiotools.MetaData(track_name=u'Navigation is Key! (feat. Dale North)',track_number=15,track_total=18,album_name=u'OneUp Studios presents Time & Space ~ A Tribute to Yasunori Mitsuda',artist_name=u'Matt Pollard',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'',copyright=u'',publisher=u'',year=u'',date=u'',album_number=0,album_total=0,comment=u''),
-                   16:audiotools.MetaData(track_name=u'Gentle Wind',track_number=16,track_total=18,album_name=u'OneUp Studios presents Time & Space ~ A Tribute to Yasunori Mitsuda',artist_name=u'Dale North',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'',copyright=u'',publisher=u'',year=u'',date=u'',album_number=0,album_total=0,comment=u''),
-                   17:audiotools.MetaData(track_name=u'Star of Hope (feat. Mark Porter)',track_number=17,track_total=18,album_name=u'OneUp Studios presents Time & Space ~ A Tribute to Yasunori Mitsuda',artist_name=u'Dale North',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'',copyright=u'',publisher=u'',year=u'',date=u'',album_number=0,album_total=0,comment=u''),
-                   18:audiotools.MetaData(track_name=u'Shake the Heavens (feat. Matt Pollard & Dale North)',track_number=18,track_total=18,album_name=u'OneUp Studios presents Time & Space ~ A Tribute to Yasunori Mitsuda',artist_name=u'Mark Porter',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'',copyright=u'',publisher=u'',year=u'',date=u'',album_number=0,album_total=0,comment=u'')}),
+                  {1:audiotools.MetaData(track_name=u'Scars Left by Time (feat. Dale North)', track_number=1, track_total=18, album_name=u'OneUp Studios presents Time & Space ~ A Tribute to Yasunori Mitsuda', artist_name=u'Ailsean', performer_name=u'', composer_name=u'', conductor_name=u'', media=u'', ISRC=u'', catalog=u'', copyright=u'', publisher=u'', year=u'', date=u'', album_number=0, album_total=0, comment=u''),
+                   2:audiotools.MetaData(track_name=u'Star Stealing Girl (feat. Miss Sara Broome)', track_number=2, track_total=18, album_name=u'OneUp Studios presents Time & Space ~ A Tribute to Yasunori Mitsuda', artist_name=u'The OneUps', performer_name=u'', composer_name=u'', conductor_name=u'', media=u'', ISRC=u'', catalog=u'', copyright=u'', publisher=u'', year=u'', date=u'', album_number=0, album_total=0, comment=u''),
+                   3:audiotools.MetaData(track_name=u"A Hero's Judgement (feat. Ailsean,  Dale North & Roy McClanahan)", track_number=3, track_total=18, album_name=u'OneUp Studios presents Time & Space ~ A Tribute to Yasunori Mitsuda', artist_name=u'Matt Pollard', performer_name=u'', composer_name=u'', conductor_name=u'', media=u'', ISRC=u'', catalog=u'', copyright=u'', publisher=u'', year=u'', date=u'', album_number=0, album_total=0, comment=u''),
+                   4:audiotools.MetaData(track_name=u'Parallelism (The Frozen Flame)', track_number=4, track_total=18, album_name=u'OneUp Studios presents Time & Space ~ A Tribute to Yasunori Mitsuda', artist_name=u'Matt Pollard', performer_name=u'', composer_name=u'', conductor_name=u'', media=u'', ISRC=u'', catalog=u'', copyright=u'', publisher=u'', year=u'', date=u'', album_number=0, album_total=0, comment=u''),
+                   5:audiotools.MetaData(track_name=u'Guardian of Time (feat. Greg Kennedy)', track_number=5, track_total=18, album_name=u'OneUp Studios presents Time & Space ~ A Tribute to Yasunori Mitsuda', artist_name=u'Mustin', performer_name=u'', composer_name=u'', conductor_name=u'', media=u'', ISRC=u'', catalog=u'', copyright=u'', publisher=u'', year=u'', date=u'', album_number=0, album_total=0, comment=u''),
+                   6:audiotools.MetaData(track_name=u'The Boy Feared by Time', track_number=6, track_total=18, album_name=u'OneUp Studios presents Time & Space ~ A Tribute to Yasunori Mitsuda', artist_name=u'Ailsean', performer_name=u'', composer_name=u'', conductor_name=u'', media=u'', ISRC=u'', catalog=u'', copyright=u'', publisher=u'', year=u'', date=u'', album_number=0, album_total=0, comment=u''),
+                   7:audiotools.MetaData(track_name=u'The Girl Forgotten by Time', track_number=7, track_total=18, album_name=u'OneUp Studios presents Time & Space ~ A Tribute to Yasunori Mitsuda', artist_name=u'Mark Porter', performer_name=u'', composer_name=u'', conductor_name=u'', media=u'', ISRC=u'', catalog=u'', copyright=u'', publisher=u'', year=u'', date=u'', album_number=0, album_total=0, comment=u''),
+                   8:audiotools.MetaData(track_name=u'Wings of Time', track_number=8, track_total=18, album_name=u'OneUp Studios presents Time & Space ~ A Tribute to Yasunori Mitsuda', artist_name=u'Dale North', performer_name=u'', composer_name=u'', conductor_name=u'', media=u'', ISRC=u'', catalog=u'', copyright=u'', publisher=u'', year=u'', date=u'', album_number=0, album_total=0, comment=u''),
+                   9:audiotools.MetaData(track_name=u'Good to be Home', track_number=9, track_total=18, album_name=u'OneUp Studios presents Time & Space ~ A Tribute to Yasunori Mitsuda', artist_name=u'Dale North', performer_name=u'', composer_name=u'', conductor_name=u'', media=u'', ISRC=u'', catalog=u'', copyright=u'', publisher=u'', year=u'', date=u'', album_number=0, album_total=0, comment=u''),
+                   10:audiotools.MetaData(track_name=u'Dream of Another Time', track_number=10, track_total=18, album_name=u'OneUp Studios presents Time & Space ~ A Tribute to Yasunori Mitsuda', artist_name=u'Mustin', performer_name=u'', composer_name=u'', conductor_name=u'', media=u'', ISRC=u'', catalog=u'', copyright=u'', publisher=u'', year=u'', date=u'', album_number=0, album_total=0, comment=u''),
+                   11:audiotools.MetaData(track_name=u'Fields of Time', track_number=11, track_total=18, album_name=u'OneUp Studios presents Time & Space ~ A Tribute to Yasunori Mitsuda', artist_name=u'Mellogear vs. Mark Porter', performer_name=u'', composer_name=u'', conductor_name=u'', media=u'', ISRC=u'', catalog=u'', copyright=u'', publisher=u'', year=u'', date=u'', album_number=0, album_total=0, comment=u''),
+                   12:audiotools.MetaData(track_name=u'To Good Friends (feat. Tim Sheehy)', track_number=12, track_total=18, album_name=u'OneUp Studios presents Time & Space ~ A Tribute to Yasunori Mitsuda', artist_name=u'Dale North', performer_name=u'', composer_name=u'', conductor_name=u'', media=u'', ISRC=u'', catalog=u'', copyright=u'', publisher=u'', year=u'', date=u'', album_number=0, album_total=0, comment=u''),
+                   13:audiotools.MetaData(track_name=u'The Fighting Priest', track_number=13, track_total=18, album_name=u'OneUp Studios presents Time & Space ~ A Tribute to Yasunori Mitsuda', artist_name=u'Ailsean', performer_name=u'', composer_name=u'', conductor_name=u'', media=u'', ISRC=u'', catalog=u'', copyright=u'', publisher=u'', year=u'', date=u'', album_number=0, album_total=0, comment=u''),
+                   14:audiotools.MetaData(track_name=u'June Mermaid', track_number=14, track_total=18, album_name=u'OneUp Studios presents Time & Space ~ A Tribute to Yasunori Mitsuda', artist_name=u'Dale North', performer_name=u'', composer_name=u'', conductor_name=u'', media=u'', ISRC=u'', catalog=u'', copyright=u'', publisher=u'', year=u'', date=u'', album_number=0, album_total=0, comment=u''),
+                   15:audiotools.MetaData(track_name=u'Navigation is Key! (feat. Dale North)', track_number=15, track_total=18, album_name=u'OneUp Studios presents Time & Space ~ A Tribute to Yasunori Mitsuda', artist_name=u'Matt Pollard', performer_name=u'', composer_name=u'', conductor_name=u'', media=u'', ISRC=u'', catalog=u'', copyright=u'', publisher=u'', year=u'', date=u'', album_number=0, album_total=0, comment=u''),
+                   16:audiotools.MetaData(track_name=u'Gentle Wind', track_number=16, track_total=18, album_name=u'OneUp Studios presents Time & Space ~ A Tribute to Yasunori Mitsuda', artist_name=u'Dale North', performer_name=u'', composer_name=u'', conductor_name=u'', media=u'', ISRC=u'', catalog=u'', copyright=u'', publisher=u'', year=u'', date=u'', album_number=0, album_total=0, comment=u''),
+                   17:audiotools.MetaData(track_name=u'Star of Hope (feat. Mark Porter)', track_number=17, track_total=18, album_name=u'OneUp Studios presents Time & Space ~ A Tribute to Yasunori Mitsuda', artist_name=u'Dale North', performer_name=u'', composer_name=u'', conductor_name=u'', media=u'', ISRC=u'', catalog=u'', copyright=u'', publisher=u'', year=u'', date=u'', album_number=0, album_total=0, comment=u''),
+                   18:audiotools.MetaData(track_name=u'Shake the Heavens (feat. Matt Pollard & Dale North)', track_number=18, track_total=18, album_name=u'OneUp Studios presents Time & Space ~ A Tribute to Yasunori Mitsuda', artist_name=u'Mark Porter', performer_name=u'', composer_name=u'', conductor_name=u'', media=u'', ISRC=u'', catalog=u'', copyright=u'', publisher=u'', year=u'', date=u'', album_number=0, album_total=0, comment=u'')}),
                  (
 """QlpoOTFBWSZTWborpk4AAb9f+QAQWIf/97//36A/79/xPeXqji45Q1ILwFAFBPIAg1bPdjQMGpkT
 RGgmg9CbSZNGhpoaAMJ6EBoAAAaGgGj0hFPTRoyaBSjEaGmg0AaAAAAAAAAAAA4aAaAA0BoDQAAA
@@ -6567,38 +6608,38 @@ yMhFVM08w8wtlqiXpkgh2GfuREHPEsRMeiWI0EyOfpQarp2kINnCPKADwG5uYMzNhvQMTPQ8qQ4H
 CCAgoK8CsxTxre/rnFTMagyoLkFyKECvGKtIjW4nEDh1V74pJ5WTPHyamvNlgCKgRYgkgoEERwD2
 YCegjsMqDdN+VaW+AMYnBcp4HS4eFxdcgYpDyj+gF8PwDf3+jv5/z6YwvHbaV4nbSO9CzD7BoJQg
 nbvdly53/Ea4Pe78RYPpd/V9AYf/k/36b75h+9/i7kinChIXRXTJwA==""".decode('base64').decode('bz2'),
-                  {1:audiotools.MetaData(track_name=u'\u30e1\u30ea\u30c3\u30b5',track_number=1,track_total=8,album_name=u'FULLMETAL ALCHEMIST COMPLETE BEST',artist_name=u'\u30dd\u30eb\u30ce\u30b0\u30e9\u30d5\u30a3\u30c6\u30a3',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'SVWC-7218',copyright=u'',publisher=u'',year=u'2005',date=u'',album_number=0,album_total=0,comment=u''),
-                   2:audiotools.MetaData(track_name=u'\u6d88\u305b\u306a\u3044\u7f6a',track_number=2,track_total=8,album_name=u'FULLMETAL ALCHEMIST COMPLETE BEST',artist_name=u'\u5317\u51fa\u83dc\u5948',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'SVWC-7218',copyright=u'',publisher=u'',year=u'2005',date=u'',album_number=0,album_total=0,comment=u''),
-                   3:audiotools.MetaData(track_name=u'READY STEADY GO',track_number=3,track_total=8,album_name=u'FULLMETAL ALCHEMIST COMPLETE BEST',artist_name=u"L'Arc~en~Ciel",performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'SVWC-7218',copyright=u'',publisher=u'',year=u'2005',date=u'',album_number=0,album_total=0,comment=u''),
-                   4:audiotools.MetaData(track_name=u'\u6249\u306e\u5411\u3053\u3046\u3078',track_number=4,track_total=8,album_name=u'FULLMETAL ALCHEMIST COMPLETE BEST',artist_name=u'YeLLOW Generation',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'SVWC-7218',copyright=u'',publisher=u'',year=u'2005',date=u'',album_number=0,album_total=0,comment=u''),
-                   5:audiotools.MetaData(track_name=u'UNDO',track_number=5,track_total=8,album_name=u'FULLMETAL ALCHEMIST COMPLETE BEST',artist_name=u'COOL JOKE',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'SVWC-7218',copyright=u'',publisher=u'',year=u'2005',date=u'',album_number=0,album_total=0,comment=u''),
-                   6:audiotools.MetaData(track_name=u'Motherland',track_number=6,track_total=8,album_name=u'FULLMETAL ALCHEMIST COMPLETE BEST',artist_name=u'Crystal Kay',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'SVWC-7218',copyright=u'',publisher=u'',year=u'2005',date=u'',album_number=0,album_total=0,comment=u''),
-                   7:audiotools.MetaData(track_name=u'\u30ea\u30e9\u30a4\u30c8',track_number=7,track_total=8,album_name=u'FULLMETAL ALCHEMIST COMPLETE BEST',artist_name=u'ASIAN KUNG-FU GENERATION',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'SVWC-7218',copyright=u'',publisher=u'',year=u'2005',date=u'',album_number=0,album_total=0,comment=u''),
-                   8:audiotools.MetaData(track_name=u'I Will',track_number=8,track_total=8,album_name=u'FULLMETAL ALCHEMIST COMPLETE BEST',artist_name=u'Sowelu',performer_name=u'',composer_name=u'',conductor_name=u'',media=u'',ISRC=u'',catalog=u'SVWC-7218',copyright=u'',publisher=u'',year=u'2005',date=u'',album_number=0,album_total=0,comment=u'')})]
+                  {1:audiotools.MetaData(track_name=u'\u30e1\u30ea\u30c3\u30b5', track_number=1, track_total=8, album_name=u'FULLMETAL ALCHEMIST COMPLETE BEST', artist_name=u'\u30dd\u30eb\u30ce\u30b0\u30e9\u30d5\u30a3\u30c6\u30a3', performer_name=u'', composer_name=u'', conductor_name=u'', media=u'', ISRC=u'', catalog=u'SVWC-7218', copyright=u'', publisher=u'', year=u'2005', date=u'', album_number=0, album_total=0, comment=u''),
+                   2:audiotools.MetaData(track_name=u'\u6d88\u305b\u306a\u3044\u7f6a', track_number=2, track_total=8, album_name=u'FULLMETAL ALCHEMIST COMPLETE BEST', artist_name=u'\u5317\u51fa\u83dc\u5948', performer_name=u'', composer_name=u'', conductor_name=u'', media=u'', ISRC=u'', catalog=u'SVWC-7218', copyright=u'', publisher=u'', year=u'2005', date=u'', album_number=0, album_total=0, comment=u''),
+                   3:audiotools.MetaData(track_name=u'READY STEADY GO', track_number=3, track_total=8, album_name=u'FULLMETAL ALCHEMIST COMPLETE BEST', artist_name=u"L'Arc~en~Ciel", performer_name=u'', composer_name=u'', conductor_name=u'', media=u'', ISRC=u'', catalog=u'SVWC-7218', copyright=u'', publisher=u'', year=u'2005', date=u'', album_number=0, album_total=0, comment=u''),
+                   4:audiotools.MetaData(track_name=u'\u6249\u306e\u5411\u3053\u3046\u3078', track_number=4, track_total=8, album_name=u'FULLMETAL ALCHEMIST COMPLETE BEST', artist_name=u'YeLLOW Generation', performer_name=u'', composer_name=u'', conductor_name=u'', media=u'', ISRC=u'', catalog=u'SVWC-7218', copyright=u'', publisher=u'', year=u'2005', date=u'', album_number=0, album_total=0, comment=u''),
+                   5:audiotools.MetaData(track_name=u'UNDO', track_number=5, track_total=8, album_name=u'FULLMETAL ALCHEMIST COMPLETE BEST', artist_name=u'COOL JOKE', performer_name=u'', composer_name=u'', conductor_name=u'', media=u'', ISRC=u'', catalog=u'SVWC-7218', copyright=u'', publisher=u'', year=u'2005', date=u'', album_number=0, album_total=0, comment=u''),
+                   6:audiotools.MetaData(track_name=u'Motherland', track_number=6, track_total=8, album_name=u'FULLMETAL ALCHEMIST COMPLETE BEST', artist_name=u'Crystal Kay', performer_name=u'', composer_name=u'', conductor_name=u'', media=u'', ISRC=u'', catalog=u'SVWC-7218', copyright=u'', publisher=u'', year=u'2005', date=u'', album_number=0, album_total=0, comment=u''),
+                   7:audiotools.MetaData(track_name=u'\u30ea\u30e9\u30a4\u30c8', track_number=7, track_total=8, album_name=u'FULLMETAL ALCHEMIST COMPLETE BEST', artist_name=u'ASIAN KUNG-FU GENERATION', performer_name=u'', composer_name=u'', conductor_name=u'', media=u'', ISRC=u'', catalog=u'SVWC-7218', copyright=u'', publisher=u'', year=u'2005', date=u'', album_number=0, album_total=0, comment=u''),
+                   8:audiotools.MetaData(track_name=u'I Will', track_number=8, track_total=8, album_name=u'FULLMETAL ALCHEMIST COMPLETE BEST', artist_name=u'Sowelu', performer_name=u'', composer_name=u'', conductor_name=u'', media=u'', ISRC=u'', catalog=u'SVWC-7218', copyright=u'', publisher=u'', year=u'2005', date=u'', album_number=0, album_total=0, comment=u'')})]
 
     @TEST_METADATA
     def testreading(self):
         #check that reading in XML file data matches
         #its expected values
-        for (xml,metadata) in self.XML_FILES:
+        for (xml, metadata) in self.XML_FILES:
             self.assertEqual(audiotools.MusicBrainzReleaseXML.read_data(
-                    xml).metadata(),metadata)
+                    xml).metadata(), metadata)
 
         #check that reading in an XML file matches
         #its expected values
-        for (xml,metadata) in self.XML_FILES:
+        for (xml, metadata) in self.XML_FILES:
             f = tempfile.NamedTemporaryFile(suffix=".xml")
             try:
                 f.write(xml)
                 f.flush()
                 self.assertEqual(audiotools.MusicBrainzReleaseXML.read(
-                        f.name).metadata(),metadata)
+                        f.name).metadata(), metadata)
             finally:
                 f.close()
 
     @TEST_METADATA
     def testtracktagging(self):
-        for (xml,metadata) in self.XML_FILES:
+        for (xml, metadata) in self.XML_FILES:
             #build a bunch of temporary FLAC files
             temp_files = [tempfile.NamedTemporaryFile(suffix=".flac")
                           for i in metadata.keys()]
@@ -6607,7 +6648,7 @@ nbvdly53/Ea4Pe78RYPpd/V9AYf/k/36b75h+9/i7kinChIXRXTJwA==""".decode('base64').dec
                         temp_file.name,
                         BLANK_PCM_Reader(5),
                         "1") for temp_file in temp_files]
-                for (i,track) in enumerate(temp_tracks):
+                for (i, track) in enumerate(temp_tracks):
                     track.set_metadata(audiotools.MetaData(track_number=i + 1))
 
                 #tag them with metadata from XML
@@ -6620,14 +6661,14 @@ nbvdly53/Ea4Pe78RYPpd/V9AYf/k/36b75h+9/i7kinChIXRXTJwA==""".decode('base64').dec
                     temp_tracks)
 
                 #check that the original XML values match the track ones
-                self.assertEqual(metadata,new_xml.metadata())
+                self.assertEqual(metadata, new_xml.metadata())
             finally:
                 for t in temp_files:
                     t.close()
 
     @TEST_METADATA
     def testtracktag(self):
-        for (xml,metadata) in self.XML_FILES:
+        for (xml, metadata) in self.XML_FILES:
             #construct our XML file
             xml_file = tempfile.NamedTemporaryFile(suffix=".xml")
             xml_file.write(xml)
@@ -6644,11 +6685,11 @@ nbvdly53/Ea4Pe78RYPpd/V9AYf/k/36b75h+9/i7kinChIXRXTJwA==""".decode('base64').dec
                     "1")
                           for track in temp_tracks]
 
-                for (i,track) in enumerate(tracks):
+                for (i, track) in enumerate(tracks):
                     track.set_metadata(audiotools.MetaData(track_number=i + 1))
 
                 #tag them with tracktag
-                subprocess.call(["tracktag","-x",xml_file.name] + \
+                subprocess.call(["tracktag", "-x", xml_file.name] + \
                                     [track.filename for track in tracks])
 
                 #ensure the metadata values are correct
@@ -6662,7 +6703,7 @@ nbvdly53/Ea4Pe78RYPpd/V9AYf/k/36b75h+9/i7kinChIXRXTJwA==""".decode('base64').dec
 
     @TEST_EXECUTABLE
     def testtracktag(self):
-        for (xml,metadata) in self.XML_FILES:
+        for (xml, metadata) in self.XML_FILES:
             #construct our XML file
             xml_file = tempfile.NamedTemporaryFile(suffix=".xml")
             xml_file.write(xml)
@@ -6679,7 +6720,7 @@ nbvdly53/Ea4Pe78RYPpd/V9AYf/k/36b75h+9/i7kinChIXRXTJwA==""".decode('base64').dec
                     "1")
                           for track in temp_tracks]
 
-                for (i,track) in enumerate(tracks):
+                for (i, track) in enumerate(tracks):
                     track.set_metadata(audiotools.MetaData(track_number=i + 1))
 
                 #remove one of the tracks from consideration
@@ -6687,7 +6728,7 @@ nbvdly53/Ea4Pe78RYPpd/V9AYf/k/36b75h+9/i7kinChIXRXTJwA==""".decode('base64').dec
                           track.track_number() != 2]
 
                 #tag them with tracktag
-                subprocess.call(["tracktag","-x",xml_file.name] + \
+                subprocess.call(["tracktag", "-x", xml_file.name] + \
                                     [track.filename for track in tracks])
 
                 #ensure the metadata values are correct
@@ -6739,12 +6780,13 @@ xgc9dasZmA0qsKdVxQWEfGIfIyv5/a66+X9X/i7kinChICe+4J4=""".decode('base64').decode(
                 INVALID_ORDER).metadata())
 
         self.assertEqual(audiotools.MusicBrainzReleaseXML.read_data(
-                VALID_ORDER).build().replace('\n',''),
-                         VALID_ORDER.replace('\n',''))
+                VALID_ORDER).build().replace('\n', ''),
+                         VALID_ORDER.replace('\n', ''))
 
         self.assertEqual(audiotools.MusicBrainzReleaseXML.read_data(
-                INVALID_ORDER).build().replace('\n',''),
-                         VALID_ORDER.replace('\n',''))
+                INVALID_ORDER).build().replace('\n', ''),
+                         VALID_ORDER.replace('\n', ''))
+
 
 class TestProgramOutput(TestTextOutput):
     @TEST_EXECUTABLE
@@ -6763,7 +6805,7 @@ class TestProgramOutput(TestTextOutput):
 
         metadata3 = audiotools.MetaData(
             track_name=u"Unicode %s" % \
-                (u"".join(map(unichr,range(0x30a1,0x30b2 + 1)))),
+                (u"".join(map(unichr, range(0x30a1, 0x30b2 + 1)))),
             track_number=3)
 
         self.flac1 = audiotools.FlacAudio.from_pcm(
@@ -6802,103 +6844,102 @@ class TestProgramOutput(TestTextOutput):
     @TEST_EXECUTABLE
     def tearDown(self):
         for f in os.listdir(self.dir1):
-            os.unlink(os.path.join(self.dir1,f))
+            os.unlink(os.path.join(self.dir1, f))
         os.rmdir(self.dir1)
 
         for f in os.listdir(self.dir2):
-            os.unlink(os.path.join(self.dir2,f))
+            os.unlink(os.path.join(self.dir2, f))
         os.rmdir(self.dir2)
-
 
     @TEST_EXECUTABLE
     def test_track2track1(self):
         returnval = self.__run_app__(
-            ["track2track","-j",str(1),"-t","flac","-d",self.dir2,
-             self.flac1.filename,self.flac2.filename,self.flac3.filename])
+            ["track2track", "-j", str(1), "-t", "flac", "-d", self.dir2,
+             self.flac1.filename, self.flac2.filename, self.flac3.filename])
 
-        self.assertEqual(returnval,0)
+        self.assertEqual(returnval, 0)
         self.__check_info__(_(u"%s -> %s" % \
                                   (self.filename(self.flac1.filename),
                                    self.filename(os.path.join(
-                            self.dir2,os.path.basename(self.flac1.filename))))))
+                            self.dir2, os.path.basename(self.flac1.filename))))))
         self.__check_info__(_(u"%s -> %s" % \
                                   (self.filename(self.flac2.filename),
                                    self.filename(os.path.join(
-                            self.dir2,os.path.basename(self.flac2.filename))))))
+                            self.dir2, os.path.basename(self.flac2.filename))))))
         self.__check_info__(_(u"%s -> %s" % \
                                   (self.filename(self.flac3.filename),
                                    self.filename(os.path.join(
-                            self.dir2,os.path.basename(self.flac3.filename))))))
+                            self.dir2, os.path.basename(self.flac3.filename))))))
         self.__check_info__(_(u"Adding ReplayGain metadata.  This may take some time."))
 
     @TEST_EXECUTABLE
     def test_track2track2(self):
         self.assertEqual(self.__run_app__(
-                ["track2track","-d",self.dir2,"-o","fail.flac",
-                 self.flac1.filename]),1)
+                ["track2track", "-d", self.dir2, "-o", "fail.flac",
+                 self.flac1.filename]), 1)
         self.__check_error__(_(u"-o and -d options are not compatible"))
         self.__check_info__(_(u"Please specify either -o or -d but not both"))
 
         self.assertEqual(self.__run_app__(
-                ["track2track","--format=%(track_name)s",
-                 "-o",os.path.join(self.dir2,"warn.flac"),
-                 self.flac1.filename]),0)
+                ["track2track", "--format=%(track_name)s",
+                 "-o", os.path.join(self.dir2, "warn.flac"),
+                 self.flac1.filename]), 0)
         self.__check_warning__(_(u"--format has no effect when used with -o"))
 
         self.assertEqual(self.__run_app__(
-                ["track2track","-t","flac","-q","help"]),0)
+                ["track2track", "-t", "flac", "-q", "help"]), 0)
         self.__check_info__(_(u"Available compression types for %s:") % \
                                 (audiotools.FlacAudio.NAME))
         for m in audiotools.FlacAudio.COMPRESSION_MODES:
             self.__check_info__(m.decode('ascii'))
 
         self.assertEqual(self.__run_app__(
-                ["track2track","-t","wav","-q","help"]),0)
+                ["track2track", "-t", "wav", "-q", "help"]), 0)
 
         self.__check_error__(_(u"Audio type %s has no compression modes") % \
                                  (audiotools.WaveAudio.NAME))
 
         self.assertEqual(self.__run_app__(
-                ["track2track","-t","flac","-q","foobar"]),1)
+                ["track2track", "-t", "flac", "-q", "foobar"]), 1)
 
         self.__check_error__(_(u"\"%(quality)s\" is not a supported compression mode for type \"%(type)s\"") % \
-                                 {"quality":"foobar",
-                                  "type":audiotools.FlacAudio.NAME})
+                                 {"quality": "foobar",
+                                  "type": audiotools.FlacAudio.NAME})
 
         self.assertEqual(self.__run_app__(
-                ["track2track","-t","flac","-d",self.dir2]),1)
+                ["track2track", "-t", "flac", "-d", self.dir2]), 1)
 
         self.__check_error__(_(u"You must specify at least 1 supported audio file"))
 
         self.assertEqual(self.__run_app__(
-                ["track2track","-j",str(0),"-t","flac","-d",self.dir2,
-                 self.flac1.filename]),1)
+                ["track2track", "-j", str(0), "-t", "flac", "-d", self.dir2,
+                 self.flac1.filename]), 1)
 
         self.__check_error__(_(u'You must run at least 1 process at a time'))
 
         self.assertEqual(self.__run_app__(
-                ["track2track","-o","fail.flac",
-                 self.flac1.filename,self.flac2.filename,self.flac3.filename]),1)
+                ["track2track", "-o", "fail.flac",
+                 self.flac1.filename, self.flac2.filename, self.flac3.filename]), 1)
 
         self.__check_error__(_(u'You may specify only 1 input file for use with -o'))
 
         self.assertEqual(self.__run_app__(
-                ["track2track","-t","flac","-d",self.dir2,
-                 "-x","/dev/null",
-                 self.flac1.filename,self.flac2.filename,self.flac3.filename]),
+                ["track2track", "-t", "flac", "-d", self.dir2,
+                 "-x", "/dev/null",
+                 self.flac1.filename, self.flac2.filename, self.flac3.filename]),
                          1)
 
         self.__check_error__(_(u"Invalid XMCD or MusicBrainz XML file"))
 
         self.assertEqual(self.__run_app__(
-                ["track2track","--format=%(foo)s","-t","flac","-d",self.dir2,
-                 self.flac1.filename]),1)
+                ["track2track", "--format=%(foo)s", "-t", "flac", "-d", self.dir2,
+                 self.flac1.filename]), 1)
 
         self.__check_error__(_(u"Unknown field \"%s\" in file format") % \
                             ("foo"))
         self.__check_info__(_(u"Supported fields are:"))
         for field in sorted(audiotools.MetaData.__FIELDS__ + \
-                                ("album_track_number","suffix")):
+                                ("album_track_number", "suffix")):
             if (field == 'track_number'):
                 self.__check_info__(u"%(track_number)2.2d")
             else:
@@ -6909,163 +6950,164 @@ class TestProgramOutput(TestTextOutput):
     @TEST_EXECUTABLE
     def test_track2track3(self):
         self.assertEqual(self.__run_app__(
-                ["track2track","-j",str(1),"-t","mp3","--replay-gain",
-                 "-d",self.dir2,self.flac1.filename]),0)
+                ["track2track", "-j", str(1), "-t", "mp3", "--replay-gain",
+                 "-d", self.dir2, self.flac1.filename]), 0)
 
         self.__check_info__(_(u"%s -> %s" % \
                                   (self.filename(self.flac1.filename),
                                    self.filename(os.path.join(
-                            self.dir2,self.format_string % \
-                                {"track_number":1,
-                                 "track_name":"ASCII-only name",
-                                 "suffix":"mp3"})))))
+                            self.dir2, self.format_string % \
+                                {"track_number": 1,
+                                 "track_name": "ASCII-only name",
+                                 "suffix": "mp3"})))))
 
         self.__check_info__(_(u"Applying ReplayGain.  This may take some time."))
 
     @TEST_EXECUTABLE
     def test_coverdump1(self):
         m1 = self.flac1.get_metadata()
-        m1.add_image(audiotools.Image.new(TEST_COVER1,u'',0))
+        m1.add_image(audiotools.Image.new(TEST_COVER1, u'', 0))
         self.flac1.set_metadata(m1)
 
         self.assertEqual(self.__run_app__(
-                ["coverdump","-d",self.dir2]),1)
+                ["coverdump", "-d", self.dir2]), 1)
 
         self.__check_error__(_(u"You must specify exactly 1 supported audio file"))
 
         self.assertEqual(self.__run_app__(
-                ["coverdump","-d",self.dir2,"/dev/null/foo"]),1)
+                ["coverdump", "-d", self.dir2, "/dev/null/foo"]), 1)
 
         self.__check_error__(_(u"Unable to open \"%s\"") % ("/dev/null/foo"))
 
         self.assertEqual(self.__run_app__(
-                ["coverdump","-d",self.dir2,self.flac1.filename]),0)
+                ["coverdump", "-d", self.dir2, self.flac1.filename]), 0)
 
         self.__check_info__(
-            self.filename(os.path.join(self.dir2,"front_cover.jpg")))
+            self.filename(os.path.join(self.dir2, "front_cover.jpg")))
 
     @TEST_EXECUTABLE
     def test_coverdump2(self):
         m1 = self.flac1.get_metadata()
-        m1.add_image(audiotools.Image.new(TEST_COVER1,u'',0))
-        m1.add_image(audiotools.Image.new(TEST_COVER2,u'',2))
-        m1.add_image(audiotools.Image.new(TEST_COVER3,u'',2))
+        m1.add_image(audiotools.Image.new(TEST_COVER1, u'', 0))
+        m1.add_image(audiotools.Image.new(TEST_COVER2, u'', 2))
+        m1.add_image(audiotools.Image.new(TEST_COVER3, u'', 2))
         self.flac1.set_metadata(m1)
 
         self.assertEqual(self.__run_app__(
-                ["coverdump","-d",self.dir2,self.flac1.filename]),0)
+                ["coverdump", "-d", self.dir2, self.flac1.filename]), 0)
 
         self.__check_info__(
-            self.filename(os.path.join(self.dir2,"front_cover.jpg")))
+            self.filename(os.path.join(self.dir2, "front_cover.jpg")))
         self.__check_info__(
-            self.filename(os.path.join(self.dir2,"leaflet01.png")))
+            self.filename(os.path.join(self.dir2, "leaflet01.png")))
         self.__check_info__(
-            self.filename(os.path.join(self.dir2,"leaflet02.jpg")))
+            self.filename(os.path.join(self.dir2, "leaflet02.jpg")))
 
     @TEST_EXECUTABLE
     def test_trackcat1(self):
         self.assertEqual(self.__run_app__(
-                ["trackcat",self.flac1.filename,self.flac2.filename,
-                 self.flac3.filename]),1)
+                ["trackcat", self.flac1.filename, self.flac2.filename,
+                 self.flac3.filename]), 1)
         self.__check_error__(_(u'You must specify an output file'))
 
         self.assertEqual(self.__run_app__(
-                ["trackcat","-o","fail.flac","-t","flac","-q","help"]),0)
+                ["trackcat", "-o", "fail.flac", "-t", "flac", "-q", "help"]), 0)
         self.__check_info__(_(u"Available compression types for %s:") % \
                          (audiotools.FlacAudio.NAME))
         for m in audiotools.FlacAudio.COMPRESSION_MODES:
             self.__check_info__(m.decode('ascii'))
 
         self.assertEqual(self.__run_app__(
-                ["trackcat","-o","fail.flac","-t","wav","-q","help"]),0)
+                ["trackcat", "-o", "fail.flac", "-t", "wav", "-q", "help"]), 0)
 
         self.__check_error__(_(u"Audio type %s has no compression modes") % \
                                  (audiotools.WaveAudio.NAME))
 
         self.assertEqual(self.__run_app__(
-                ["trackcat","-o","fail.flac","-t","flac","-q","foobar",
-                 self.flac1.filename,self.flac2.filename,self.flac3.filename]),
+                ["trackcat", "-o", "fail.flac", "-t", "flac", "-q", "foobar",
+                 self.flac1.filename, self.flac2.filename, self.flac3.filename]),
                          1)
 
         self.__check_error__(_(u"\"%(quality)s\" is not a supported compression mode for type \"%(type)s\"") % \
-                                 {"quality":"foobar",
-                                  "type":audiotools.FlacAudio.NAME})
+                                 {"quality": "foobar",
+                                  "type": audiotools.FlacAudio.NAME})
 
     @TEST_EXECUTABLE
     def test_trackcat2(self):
         self.assertEqual(self.__run_app__(
-                ["trackcat","-o","fail.flac","-t","flac"]),1)
+                ["trackcat", "-o", "fail.flac", "-t", "flac"]), 1)
 
         self.__check_error__(_(u"You must specify at least 1 supported audio file"))
 
         flac4 = audiotools.FlacAudio.from_pcm(
-            os.path.join(self.dir1,"test4.flac"),
-            BLANK_PCM_Reader(4,sample_rate=48000))
+            os.path.join(self.dir1, "test4.flac"),
+            BLANK_PCM_Reader(4, sample_rate=48000))
 
         flac5 = audiotools.FlacAudio.from_pcm(
-            os.path.join(self.dir1,"test5.flac"),
-            BLANK_PCM_Reader(4,channels=6,
+            os.path.join(self.dir1, "test5.flac"),
+            BLANK_PCM_Reader(4, channels=6,
                              channel_mask=audiotools.ChannelMask(0)))
 
         flac6 = audiotools.FlacAudio.from_pcm(
-            os.path.join(self.dir1,"test6.flac"),
-            BLANK_PCM_Reader(4,bits_per_sample=24))
+            os.path.join(self.dir1, "test6.flac"),
+            BLANK_PCM_Reader(4, bits_per_sample=24))
 
         self.assertEqual(self.__run_app__(
-                ["trackcat","-o","fail.flac","-t","flac",
-                 self.flac1.filename,self.flac2.filename,
-                 self.flac3.filename,flac4.filename]),1)
+                ["trackcat", "-o", "fail.flac", "-t", "flac",
+                 self.flac1.filename, self.flac2.filename,
+                 self.flac3.filename, flac4.filename]), 1)
 
         self.__check_error__(_(u"All audio files must have the same sample rate"))
 
         self.assertEqual(self.__run_app__(
-                ["trackcat","-o","fail.flac","-t","flac",
-                 self.flac1.filename,self.flac2.filename,
-                 self.flac3.filename,flac5.filename]),1)
+                ["trackcat", "-o", "fail.flac", "-t", "flac",
+                 self.flac1.filename, self.flac2.filename,
+                 self.flac3.filename, flac5.filename]), 1)
 
         self.__check_error__(_(u"All audio files must have the same channel count"))
 
         self.assertEqual(self.__run_app__(
-                ["trackcat","-o","fail.flac","-t","flac",
-                 self.flac1.filename,self.flac2.filename,
-                 self.flac3.filename,flac6.filename]),1)
+                ["trackcat", "-o", "fail.flac", "-t", "flac",
+                 self.flac1.filename, self.flac2.filename,
+                 self.flac3.filename, flac6.filename]), 1)
 
         self.__check_error__(_(u"All audio files must have the same bits per sample"))
 
     @TEST_EXECUTABLE
     def test_trackcmp1(self):
         self.assertEqual(self.__run_app__(
-                ["trackcmp",self.flac1.filename]),1)
+                ["trackcmp", self.flac1.filename]), 1)
 
-        self.__check_usage__("trackcmp",_(u"<path 1> <path 2>"))
+        self.__check_usage__("trackcmp", _(u"<path 1> <path 2>"))
 
         self.assertEqual(self.__run_app__(
-                ["trackcmp",self.flac1.filename,self.dir2]),1)
+                ["trackcmp", self.flac1.filename, self.dir2]), 1)
 
         self.__check_output__(_(u"%(file1)s %(file2)s differ") % \
-                                  {"file1":self.filename(self.flac1.filename),
-                                   "file2":self.filename(self.dir2)})
+                                  {"file1": self.filename(self.flac1.filename),
+                                   "file2": self.filename(self.dir2)})
 
         self.assertEqual(self.__run_app__(
-                ["trackcmp",self.flac1.filename,self.flac2.filename,
-                 self.flac3.filename]),1)
+                ["trackcmp", self.flac1.filename, self.flac2.filename,
+                 self.flac3.filename]), 1)
 
-        self.__check_usage__("trackcmp",_(u"<path 1> <path 2>"))
+        self.__check_usage__("trackcmp", _(u"<path 1> <path 2>"))
 
         self.assertEqual(self.__run_app__(
-                ["trackcmp",self.flac1.filename,self.flac2.filename]),1)
+                ["trackcmp", self.flac1.filename, self.flac2.filename]), 1)
 
-        self.__check_output__(_(u"%(file1)s <> %(file2)s :") % \
-                                {"file1":self.filename(self.flac1.filename),
-                                 "file2":self.filename(self.flac2.filename)}+\
-                                  _(u"differ at PCM frame %(frame_number)d") %\
-                                  {"frame_number":44100 * 4})
+        self.__check_output__(
+            _(u"%(file1)s <> %(file2)s :") %
+            {"file1": self.filename(self.flac1.filename),
+             "file2": self.filename(self.flac2.filename)} +
+            _(u"differ at PCM frame %(frame_number)d") %
+            {"frame_number": 44100 * 4})
 
     @TEST_EXECUTABLE
     def test_trackcmp2(self):
-        subprocess.call(["cp","-f",self.flac1.filename,self.dir2])
-        subprocess.call(["cp","-f",self.flac2.filename,self.dir2])
-        subprocess.call(["cp","-f",self.flac3.filename,self.dir2])
+        subprocess.call(["cp", "-f", self.flac1.filename, self.dir2])
+        subprocess.call(["cp", "-f", self.flac2.filename, self.dir2])
+        subprocess.call(["cp", "-f", self.flac3.filename, self.dir2])
 
         flac4 = audiotools.open(os.path.join(
                 self.dir2,
@@ -7080,57 +7122,63 @@ class TestProgramOutput(TestTextOutput):
                 os.path.basename(self.flac3.filename)))
 
         self.assertEqual(self.__run_app__(
-                ["trackcmp",self.dir1,self.dir2]),0)
-        self.__check_output__((_(u"%(file1)s <> %(file2)s :") % \
-                                   {"file1":self.filename(self.flac1.filename),
-                                    "file2":self.filename(flac4.filename)})+\
-                                  _(u"OK"))
-        self.__check_output__((_(u"%(file1)s <> %(file2)s :") % \
-                                   {"file1":self.filename(self.flac2.filename),
-                                    "file2":self.filename(flac5.filename)})+\
-                                  _(u"OK"))
-        self.__check_output__((_(u"%(file1)s <> %(file2)s :") % \
-                                   {"file1":self.filename(self.flac3.filename),
-                                    "file2":self.filename(flac6.filename)})+\
-                                  _(u"OK"))
+                ["trackcmp", self.dir1, self.dir2]), 0)
+        self.__check_output__(
+            (_(u"%(file1)s <> %(file2)s :") %
+             {"file1": self.filename(self.flac1.filename),
+              "file2": self.filename(flac4.filename)}) +
+                _(u"OK"))
+        self.__check_output__(
+            (_(u"%(file1)s <> %(file2)s :") %
+             {"file1": self.filename(self.flac2.filename),
+              "file2": self.filename(flac5.filename)}) +
+            _(u"OK"))
+        self.__check_output__(
+            (_(u"%(file1)s <> %(file2)s :") %
+             {"file1": self.filename(self.flac3.filename),
+              "file2": self.filename(flac6.filename)}) +
+            _(u"OK"))
 
-        subprocess.call(["rm","-f",flac6.filename])
+        subprocess.call(["rm", "-f", flac6.filename])
 
         self.assertEqual(self.__run_app__(
-                ["trackcmp",self.dir1,self.dir2]),1)
+                ["trackcmp", self.dir1, self.dir2]), 1)
 
         #FIXME - the "track %2.2d" and "album %d track %2.2d" templates
         #should be internationalized
-        self.__check_output__(_(u"%s: missing") % \
-                                  (self.filename(
-                    os.path.join(self.dir2,
-                                 "track %2.2d" % (3)))))
-        self.__check_output__((_(u"%(file1)s <> %(file2)s :") % \
-                                   {"file1":self.filename(self.flac1.filename),
-                                    "file2":self.filename(flac4.filename)})+\
-                                  _(u"OK"))
-        self.__check_output__((_(u"%(file1)s <> %(file2)s :") % \
-                                   {"file1":self.filename(self.flac2.filename),
-                                    "file2":self.filename(flac5.filename)})+\
-                                  _(u"OK"))
+        self.__check_output__(
+            _(u"%s: missing") %
+                (self.filename(os.path.join(self.dir2,
+                                            "track %2.2d" % (3)))))
+        self.__check_output__(
+            (_(u"%(file1)s <> %(file2)s :") %
+             {"file1": self.filename(self.flac1.filename),
+              "file2": self.filename(flac4.filename)}) +
+            _(u"OK"))
+        self.__check_output__(
+            (_(u"%(file1)s <> %(file2)s :") %
+             {"file1": self.filename(self.flac2.filename),
+              "file2": self.filename(flac5.filename)}) +
+            _(u"OK"))
 
-        subprocess.call(["mv","-f",self.flac3.filename,flac6.filename])
+        subprocess.call(["mv", "-f", self.flac3.filename, flac6.filename])
 
         self.assertEqual(self.__run_app__(
-                ["trackcmp",self.dir1,self.dir2]),1)
+                ["trackcmp", self.dir1, self.dir2]), 1)
 
-        self.__check_output__(_(u"%s: missing") % \
-                                  (self.filename(
-                    os.path.join(self.dir1,
-                                 "track %2.2d" % (3)))))
-        self.__check_output__((_(u"%(file1)s <> %(file2)s :") % \
-                                   {"file1":self.filename(self.flac1.filename),
-                                    "file2":self.filename(flac4.filename)})+\
-                                  _(u"OK"))
-        self.__check_output__((_(u"%(file1)s <> %(file2)s :") % \
-                                   {"file1":self.filename(self.flac2.filename),
-                                    "file2":self.filename(flac5.filename)})+\
-                                  _(u"OK"))
+        self.__check_output__(
+            _(u"%s: missing") % (self.filename(
+                    os.path.join(self.dir1, "track %2.2d" % (3)))))
+        self.__check_output__(
+            (_(u"%(file1)s <> %(file2)s :") %
+             {"file1": self.filename(self.flac1.filename),
+              "file2": self.filename(flac4.filename)}) +
+            _(u"OK"))
+        self.__check_output__(
+            (_(u"%(file1)s <> %(file2)s :") %
+             {"file1": self.filename(self.flac2.filename),
+              "file2": self.filename(flac5.filename)}) +
+            _(u"OK"))
 
     @TEST_EXECUTABLE
     def test_trackcmp3(self):
@@ -7146,9 +7194,9 @@ class TestProgramOutput(TestTextOutput):
         m.album_number = 1
         self.flac3.set_metadata(m)
 
-        subprocess.call(["cp","-f",self.flac1.filename,self.dir2])
-        subprocess.call(["cp","-f",self.flac2.filename,self.dir2])
-        subprocess.call(["cp","-f",self.flac3.filename,self.dir2])
+        subprocess.call(["cp", "-f", self.flac1.filename, self.dir2])
+        subprocess.call(["cp", "-f", self.flac2.filename, self.dir2])
+        subprocess.call(["cp", "-f", self.flac3.filename, self.dir2])
 
         flac4 = audiotools.open(os.path.join(
                 self.dir2,
@@ -7163,60 +7211,67 @@ class TestProgramOutput(TestTextOutput):
                 os.path.basename(self.flac3.filename)))
 
         self.assertEqual(self.__run_app__(
-                ["trackcmp",self.dir1,self.dir2]),0)
-        self.__check_output__((_(u"%(file1)s <> %(file2)s :") % \
-                                   {"file1":self.filename(self.flac1.filename),
-                                    "file2":self.filename(flac4.filename)})+\
-                                  _(u"OK"))
-        self.__check_output__((_(u"%(file1)s <> %(file2)s :") % \
-                                   {"file1":self.filename(self.flac2.filename),
-                                    "file2":self.filename(flac5.filename)})+\
-                                  _(u"OK"))
-        self.__check_output__((_(u"%(file1)s <> %(file2)s :") % \
-                                   {"file1":self.filename(self.flac3.filename),
-                                    "file2":self.filename(flac6.filename)})+\
-                                  _(u"OK"))
+                ["trackcmp", self.dir1, self.dir2]), 0)
+        self.__check_output__(
+            (_(u"%(file1)s <> %(file2)s :") %
+             {"file1": self.filename(self.flac1.filename),
+              "file2": self.filename(flac4.filename)}) +
+            _(u"OK"))
+        self.__check_output__(
+            (_(u"%(file1)s <> %(file2)s :") %
+             {"file1": self.filename(self.flac2.filename),
+              "file2": self.filename(flac5.filename)}) +
+            _(u"OK"))
+        self.__check_output__(
+            (_(u"%(file1)s <> %(file2)s :") %
+             {"file1": self.filename(self.flac3.filename),
+              "file2": self.filename(flac6.filename)}) +
+            _(u"OK"))
 
-        subprocess.call(["rm","-f",flac6.filename])
-
-        self.assertEqual(self.__run_app__(
-                ["trackcmp",self.dir1,self.dir2]),1)
-
-        self.__check_output__(_(u"%s: missing") % \
-                                  (self.filename(
-                    os.path.join(self.dir2,
-                                 "album %d track %2.2d" % (1,3)))))
-        self.__check_output__((_(u"%(file1)s <> %(file2)s :") % \
-                                   {"file1":self.filename(self.flac1.filename),
-                                    "file2":self.filename(flac4.filename)})+\
-                                  _(u"OK"))
-        self.__check_output__((_(u"%(file1)s <> %(file2)s :") % \
-                                   {"file1":self.filename(self.flac2.filename),
-                                    "file2":self.filename(flac5.filename)})+\
-                                  _(u"OK"))
-
-        subprocess.call(["mv","-f",self.flac3.filename,flac6.filename])
+        subprocess.call(["rm", "-f", flac6.filename])
 
         self.assertEqual(self.__run_app__(
-                ["trackcmp",self.dir1,self.dir2]),1)
+                ["trackcmp", self.dir1, self.dir2]), 1)
 
-        self.__check_output__(_(u"%s: missing") % \
-                                  (self.filename(
-                    os.path.join(self.dir1,
-                                 "album %d track %2.2d" % (1,3)))))
-        self.__check_output__((_(u"%(file1)s <> %(file2)s :") % \
-                                   {"file1":self.filename(self.flac1.filename),
-                                    "file2":self.filename(flac4.filename)})+\
-                                  _(u"OK"))
-        self.__check_output__((_(u"%(file1)s <> %(file2)s :") % \
-                                   {"file1":self.filename(self.flac2.filename),
-                                    "file2":self.filename(flac5.filename)})+\
-                                  _(u"OK"))
+        self.__check_output__(
+            _(u"%s: missing") %
+            (self.filename(os.path.join(self.dir2,
+                                        "album %d track %2.2d" % (1, 3)))))
+        self.__check_output__(
+            (_(u"%(file1)s <> %(file2)s :") %
+             {"file1": self.filename(self.flac1.filename),
+              "file2": self.filename(flac4.filename)}) +
+            _(u"OK"))
+        self.__check_output__(
+            (_(u"%(file1)s <> %(file2)s :") %
+             {"file1": self.filename(self.flac2.filename),
+              "file2": self.filename(flac5.filename)}) +
+            _(u"OK"))
+
+        subprocess.call(["mv", "-f", self.flac3.filename, flac6.filename])
+
+        self.assertEqual(self.__run_app__(
+                ["trackcmp", self.dir1, self.dir2]), 1)
+
+        self.__check_output__(
+            _(u"%s: missing") %
+            (self.filename(os.path.join(self.dir1,
+                                        "album %d track %2.2d" % (1, 3)))))
+        self.__check_output__(
+            (_(u"%(file1)s <> %(file2)s :") %
+             {"file1": self.filename(self.flac1.filename),
+              "file2": self.filename(flac4.filename)}) +
+            _(u"OK"))
+        self.__check_output__(
+            (_(u"%(file1)s <> %(file2)s :") %
+             {"file1": self.filename(self.flac2.filename),
+              "file2": self.filename(flac5.filename)}) +
+            _(u"OK"))
 
     @TEST_EXECUTABLE
     def test_trackcmp4(self):
-        subprocess.call(["cp","-f",self.flac2.filename,self.dir2])
-        subprocess.call(["cp","-f",self.flac3.filename,self.dir2])
+        subprocess.call(["cp", "-f", self.flac2.filename, self.dir2])
+        subprocess.call(["cp", "-f", self.flac3.filename, self.dir2])
 
         flac4 = audiotools.FlacAudio.from_pcm(
             os.path.join(
@@ -7239,30 +7294,33 @@ class TestProgramOutput(TestTextOutput):
                 os.path.basename(self.flac3.filename)))
 
         self.assertEqual(self.__run_app__(
-                ["trackcmp",self.flac1.filename,flac4.filename]),1)
+                ["trackcmp", self.flac1.filename, flac4.filename]), 1)
 
         self.__check_output__(_(u"%(file1)s <> %(file2)s :") % \
-                       {"file1":self.filename(self.flac1.filename),
-                        "file2":self.filename(flac4.filename)} + \
+                       {"file1": self.filename(self.flac1.filename),
+                        "file2": self.filename(flac4.filename)} + \
                                   _(u"differ at PCM frame %(frame_number)d") %\
-                                  {"frame_number":1})
+                                  {"frame_number": 1})
 
         self.assertEqual(self.__run_app__(
-                ["trackcmp",self.dir1,self.dir2]),1)
+                ["trackcmp", self.dir1, self.dir2]), 1)
 
-        self.__check_output__((_(u"%(file1)s <> %(file2)s :") % \
-                                   {"file1":self.filename(self.flac1.filename),
-                                    "file2":self.filename(flac4.filename)})+\
-                                  _(u"differ at PCM frame %(frame_number)d") %\
-                                  {"frame_number":1})
-        self.__check_output__((_(u"%(file1)s <> %(file2)s :") % \
-                                   {"file1":self.filename(self.flac2.filename),
-                                    "file2":self.filename(flac5.filename)})+\
-                                  _(u"OK"))
-        self.__check_output__((_(u"%(file1)s <> %(file2)s :") % \
-                                   {"file1":self.filename(self.flac3.filename),
-                                    "file2":self.filename(flac6.filename)})+\
-                                  _(u"OK"))
+        self.__check_output__(
+            (_(u"%(file1)s <> %(file2)s :") %
+             {"file1": self.filename(self.flac1.filename),
+              "file2": self.filename(flac4.filename)}) +
+            _(u"differ at PCM frame %(frame_number)d") %
+            {"frame_number": 1})
+        self.__check_output__(
+            (_(u"%(file1)s <> %(file2)s :") %
+             {"file1": self.filename(self.flac2.filename),
+              "file2": self.filename(flac5.filename)}) +
+            _(u"OK"))
+        self.__check_output__(
+            (_(u"%(file1)s <> %(file2)s :") %
+             {"file1": self.filename(self.flac3.filename),
+              "file2": self.filename(flac6.filename)}) +
+            _(u"OK"))
 
         m = flac5.get_metadata()
         flac5 = audiotools.FlacAudio.from_pcm(
@@ -7272,33 +7330,37 @@ class TestProgramOutput(TestTextOutput):
         flac5.set_metadata(m)
 
         self.assertEqual(self.__run_app__(
-                ["trackcmp",self.flac2.filename,flac5.filename]),1)
+                ["trackcmp", self.flac2.filename, flac5.filename]), 1)
 
         #due to randomness, it's possible (but very unlikely)
         #that this check will fail if the first frames happen to match
-        self.__check_output__(_(u"%(file1)s <> %(file2)s :") % \
-                       {"file1":self.filename(self.flac2.filename),
-                        "file2":self.filename(flac5.filename)} + \
-                                  _(u"differ at PCM frame %(frame_number)d") % \
-                                  {"frame_number":1})
+        self.__check_output__(
+            _(u"%(file1)s <> %(file2)s :") %
+            {"file1": self.filename(self.flac2.filename),
+             "file2": self.filename(flac5.filename)} +
+            _(u"differ at PCM frame %(frame_number)d") %
+                {"frame_number": 1})
 
         self.assertEqual(self.__run_app__(
-                ["trackcmp",self.dir1,self.dir2]),1)
+                ["trackcmp", self.dir1, self.dir2]), 1)
 
-        self.__check_output__((_(u"%(file1)s <> %(file2)s :") % \
-                                   {"file1":self.filename(self.flac1.filename),
-                                    "file2":self.filename(flac4.filename)})+\
-                                  _(u"differ at PCM frame %(frame_number)d") % \
-                                  {"frame_number":1})
-        self.__check_output__((_(u"%(file1)s <> %(file2)s :") % \
-                                   {"file1":self.filename(self.flac2.filename),
-                                    "file2":self.filename(flac5.filename)})+\
-                                  _(u"differ at PCM frame %(frame_number)d") % \
-                                  {"frame_number":1})
-        self.__check_output__((_(u"%(file1)s <> %(file2)s :") % \
-                                   {"file1":self.filename(self.flac3.filename),
-                                    "file2":self.filename(flac6.filename)})+\
-                                  _(u"OK"))
+        self.__check_output__(
+            (_(u"%(file1)s <> %(file2)s :") %
+             {"file1": self.filename(self.flac1.filename),
+              "file2": self.filename(flac4.filename)}) +
+            _(u"differ at PCM frame %(frame_number)d") %
+            {"frame_number": 1})
+        self.__check_output__(
+            (_(u"%(file1)s <> %(file2)s :") %
+             {"file1": self.filename(self.flac2.filename),
+              "file2": self.filename(flac5.filename)}) +
+                _(u"differ at PCM frame %(frame_number)d") %
+            {"frame_number": 1})
+        self.__check_output__(
+            (_(u"%(file1)s <> %(file2)s :") %
+             {"file1": self.filename(self.flac3.filename),
+              "file2": self.filename(flac6.filename)}) +
+            _(u"OK"))
 
         m = flac6.get_metadata()
         flac6 = audiotools.FlacAudio.from_pcm(
@@ -7308,45 +7370,49 @@ class TestProgramOutput(TestTextOutput):
         flac6.set_metadata(m)
 
         self.assertEqual(self.__run_app__(
-                ["trackcmp",self.flac3.filename,flac6.filename]),1)
+                ["trackcmp", self.flac3.filename, flac6.filename]), 1)
 
-        self.__check_output__(_(u"%(file1)s <> %(file2)s :") % \
-                       {"file1":self.filename(self.flac3.filename),
-                        "file2":self.filename(flac6.filename)} + \
-                                  _("differ at PCM frame %(frame_number)d") % \
-                                  {"frame_number":1})
+        self.__check_output__(
+            _(u"%(file1)s <> %(file2)s :") %
+            {"file1": self.filename(self.flac3.filename),
+             "file2": self.filename(flac6.filename)} +
+            _("differ at PCM frame %(frame_number)d") %
+            {"frame_number": 1})
 
         self.assertEqual(self.__run_app__(
-                ["trackcmp",self.dir1,self.dir2]),1)
+                ["trackcmp", self.dir1, self.dir2]), 1)
 
-        self.__check_output__((_(u"%(file1)s <> %(file2)s :") % \
-                                   {"file1":self.filename(self.flac1.filename),
-                                    "file2":self.filename(flac4.filename)})+\
-                                  _(u"differ at PCM frame %(frame_number)d") % \
-                                  {"frame_number":1})
-        self.__check_output__((_(u"%(file1)s <> %(file2)s :") % \
-                                   {"file1":self.filename(self.flac2.filename),
-                                    "file2":self.filename(flac5.filename)})+\
-                                  _(u"differ at PCM frame %(frame_number)d") % \
-                                  {"frame_number":1})
-        self.__check_output__((_(u"%(file1)s <> %(file2)s :") % \
-                                   {"file1":self.filename(self.flac3.filename),
-                                    "file2":self.filename(flac6.filename)})+\
-                                  _(u"differ at PCM frame %(frame_number)d") % \
-                                  {"frame_number":1})
+        self.__check_output__(
+            (_(u"%(file1)s <> %(file2)s :") %
+             {"file1": self.filename(self.flac1.filename),
+              "file2": self.filename(flac4.filename)}) +
+                _(u"differ at PCM frame %(frame_number)d") %
+            {"frame_number": 1})
+        self.__check_output__(
+            (_(u"%(file1)s <> %(file2)s :") %
+             {"file1": self.filename(self.flac2.filename),
+              "file2": self.filename(flac5.filename)}) +
+            _(u"differ at PCM frame %(frame_number)d") %
+            {"frame_number": 1})
+        self.__check_output__(
+            (_(u"%(file1)s <> %(file2)s :") %
+             {"file1": self.filename(self.flac3.filename),
+              "file2": self.filename(flac6.filename)}) +
+                _(u"differ at PCM frame %(frame_number)d") %
+            {"frame_number": 1})
 
     @TEST_EXECUTABLE
     def test_trackinfo(self):
-        for flac in [self.flac1,self.flac2,self.flac3]:
+        for flac in [self.flac1, self.flac2, self.flac3]:
             self.assertEqual(self.__run_app__(
-                    ["trackinfo",flac.filename]),0)
+                    ["trackinfo", flac.filename]), 0)
             self.__check_output__(_(u"%(minutes)2.2d:%(seconds)2.2d %(channels)dch %(rate)dHz %(bits)d-bit: %(filename)s") % \
-                                      {"minutes":flac.cd_frames() / 75 / 60,
-                                       "seconds":flac.cd_frames() / 75 % 60,
-                                       "channels":flac.channels(),
-                                       "rate":flac.sample_rate(),
-                                       "bits":flac.bits_per_sample(),
-                                       "filename":self.filename(flac.filename)})
+                                      {"minutes": flac.cd_frames() / 75 / 60,
+                                       "seconds": flac.cd_frames() / 75 % 60,
+                                       "channels": flac.channels(),
+                                       "rate": flac.sample_rate(),
+                                       "bits": flac.bits_per_sample(),
+                                       "filename": self.filename(flac.filename)})
 
             self.__check_output__(_(u"%s Comment:") % ("FLAC"))
             self.__check_output__(u"      TITLE : %s" % \
@@ -7355,24 +7421,24 @@ class TestProgramOutput(TestTextOutput):
                                       (flac.get_metadata().track_number))
 
             self.assertEqual(self.__run_app__(
-                    ["trackinfo","-n",flac.filename]),0)
+                    ["trackinfo", "-n", flac.filename]), 0)
 
             self.__check_output__(_(u"%(minutes)2.2d:%(seconds)2.2d %(channels)dch %(rate)dHz %(bits)d-bit: %(filename)s") % \
-                                      {"minutes":flac.cd_frames() / 75 / 60,
-                                       "seconds":flac.cd_frames() / 75 % 60,
-                                       "channels":flac.channels(),
-                                       "rate":flac.sample_rate(),
-                                       "bits":flac.bits_per_sample(),
-                                       "filename":self.filename(flac.filename)})
+                                      {"minutes": flac.cd_frames() / 75 / 60,
+                                       "seconds": flac.cd_frames() / 75 % 60,
+                                       "channels": flac.channels(),
+                                       "rate": flac.sample_rate(),
+                                       "bits": flac.bits_per_sample(),
+                                       "filename": self.filename(flac.filename)})
 
-            self.assertEqual(self.stdout.read(),"")
+            self.assertEqual(self.stdout.read(), "")
 
             self.assertEqual(self.__run_app__(
-                    ["trackinfo","-b",flac.filename]),0)
+                    ["trackinfo", "-b", flac.filename]), 0)
 
             self.__check_output__(_(u"%(bitrate)4.4s kbps: %(filename)s") % \
                                {'bitrate': ((os.path.getsize(flac.filename) * 8) / 2 ** 10) / (flac.cd_frames() / 75),
-                                'filename':self.filename(flac.filename)})
+                                'filename': self.filename(flac.filename)})
             self.__check_output__(_(u"%s Comment:") % ("FLAC"))
             self.__check_output__(u"      TITLE : %s" % \
                                       (flac.get_metadata().track_name))
@@ -7380,22 +7446,22 @@ class TestProgramOutput(TestTextOutput):
                                       (flac.get_metadata().track_number))
 
             self.assertEqual(self.__run_app__(
-                    ["trackinfo","-nb",flac.filename]),0)
+                    ["trackinfo", "-nb", flac.filename]), 0)
 
             self.__check_output__(_(u"%(bitrate)4.4s kbps: %(filename)s") % \
                                {'bitrate': ((os.path.getsize(flac.filename) * 8) / 2 ** 10) / (flac.cd_frames() / 75),
-                                'filename':self.filename(flac.filename)})
+                                'filename': self.filename(flac.filename)})
 
-            self.assertEqual(self.stdout.read(),"")
+            self.assertEqual(self.stdout.read(), "")
 
             self.assertEqual(self.__run_app__(
-                    ["trackinfo","-%",flac.filename]),0)
+                    ["trackinfo", "-%", flac.filename]), 0)
 
             self.__check_output__(_(u"%(percentage)3.3s%%: %(filename)s") % \
                            {'percentage':
                                 int(round(float(os.path.getsize(flac.filename) * 100) / (flac.total_frames() * flac.channels() * \
                                                                                              (flac.bits_per_sample() / 8)))),
-                            'filename':self.filename(flac.filename)})
+                            'filename': self.filename(flac.filename)})
 
             self.__check_output__(_(u"%s Comment:") % ("FLAC"))
             self.__check_output__(u"      TITLE : %s" % \
@@ -7404,77 +7470,77 @@ class TestProgramOutput(TestTextOutput):
                                       (flac.get_metadata().track_number))
 
             self.assertEqual(self.__run_app__(
-                    ["trackinfo","-%n",flac.filename]),0)
+                    ["trackinfo", "-%n", flac.filename]), 0)
 
             self.__check_output__(_(u"%(percentage)3.3s%%: %(filename)s") % \
                            {'percentage':
                                 int(round(float(os.path.getsize(flac.filename) * 100) / (flac.total_frames() * flac.channels() * \
                                                                                              (flac.bits_per_sample() / 8)))),
-                            'filename':self.filename(flac.filename)})
+                            'filename': self.filename(flac.filename)})
 
-            self.assertEqual(self.stdout.read(),"")
+            self.assertEqual(self.stdout.read(), "")
 
     @TEST_EXECUTABLE
     def test_tracktag1(self):
         self.assertEqual(self.__run_app__(
-                ["tracktag","-x","/dev/null",self.flac1.filename]),1)
+                ["tracktag", "-x", "/dev/null", self.flac1.filename]), 1)
         self.__check_error__(_(u"Invalid XMCD or MusicBrainz XML file"))
 
         self.assertEqual(self.__run_app__(
-                ["tracktag","--front-cover=/dev/null/foo.jpg",
-                 self.flac1.filename]),1)
+                ["tracktag", "--front-cover=/dev/null/foo.jpg",
+                 self.flac1.filename]), 1)
         self.__check_error__(_(u"%(filename)s: %(message)s") % \
-                              {"filename":self.filename(self.flac1.filename),
-                               "message":_(u"Unable to open file")})
+                              {"filename": self.filename(self.flac1.filename),
+                               "message": _(u"Unable to open file")})
 
         self.assertEqual(self.__run_app__(
-                ["tracktag","--comment-file=/dev/null/file.txt",
-                 self.flac1.filename]),1)
+                ["tracktag", "--comment-file=/dev/null/file.txt",
+                 self.flac1.filename]), 1)
         self.__check_error__(_(u"Unable to open comment file \"%s\"") % \
                                  (self.filename("/dev/null/file.txt")))
 
-        f = open(os.path.join(self.dir1,"comment.txt"),"w")
+        f = open(os.path.join(self.dir1, "comment.txt"), "w")
         f.write(os.urandom(1024) + ((u"\uFFFD".encode('utf-8')) * 103))
         f.close()
 
         self.assertEqual(self.__run_app__(
-                ["tracktag","--comment-file=%s" % \
-                     (os.path.join(self.dir1,"comment.txt")),
-                 self.flac1.filename]),1)
+                ["tracktag", "--comment-file=%s" % \
+                     (os.path.join(self.dir1, "comment.txt")),
+                 self.flac1.filename]), 1)
         self.__check_error__(_(u"Comment file \"%s\" does not appear to be UTF-8 text") % \
-                                 (os.path.join(self.dir1,"comment.txt")))
+                                 (os.path.join(self.dir1, "comment.txt")))
 
         self.assertEqual(self.__run_app__(
-                ["tracktag","--replay-gain",
-                 self.flac1.filename,self.flac2.filename,self.flac3.filename]),0)
+                ["tracktag", "--replay-gain",
+                 self.flac1.filename, self.flac2.filename, self.flac3.filename]), 0)
         self.__check_info__(_(u"Adding ReplayGain metadata.  This may take some time."))
 
         self.assertEqual(self.__run_app__(
-                ["track2track","-t","mp3","-d",self.dir2,
-                 self.flac1.filename,self.flac2.filename,self.flac3.filename]),0)
+                ["track2track", "-t", "mp3", "-d", self.dir2,
+                 self.flac1.filename, self.flac2.filename, self.flac3.filename]), 0)
 
-        mp3_files = [os.path.join(self.dir2,f) for f in os.listdir(self.dir2)]
+        mp3_files = [os.path.join(self.dir2, f) for f in os.listdir(self.dir2)]
 
         self.assertEqual(self.__run_app__(
-                ["tracktag","--replay-gain"] + mp3_files),0)
+                ["tracktag", "--replay-gain"] + mp3_files), 0)
 
         self.__check_info__(_(u"Applying ReplayGain.  This may take some time."))
 
     @TEST_EXECUTABLE
     def test_tracklint1(self):
         self.assertEqual(self.__run_app__(
-                ["tracklint","--undo",self.flac1.filename]),1)
+                ["tracklint", "--undo", self.flac1.filename]), 1)
         self.__check_error__(_(u"Cannot perform undo without undo db"))
 
         self.assertEqual(self.__run_app__(
-                ["tracklint","--fix","--db","/dev/null/foo.db",
-                 self.flac1.filename]),1)
+                ["tracklint", "--fix", "--db", "/dev/null/foo.db",
+                 self.flac1.filename]), 1)
         self.__check_error__(_(u"Unable to open \"%s\"") % \
                                  (self.filename("/dev/null/foo.db")))
 
         self.assertEqual(self.__run_app__(
-                ["tracklint","--undo","--db","/dev/null/foo.db",
-                 self.flac1.filename]),1)
+                ["tracklint", "--undo", "--db", "/dev/null/foo.db",
+                 self.flac1.filename]), 1)
         self.__check_error__(_(u"Unable to open \"%s\"") % \
                                  (self.filename("/dev/null/foo.db")))
 
@@ -7483,25 +7549,26 @@ class TestProgramOutput(TestTextOutput):
 
     @TEST_EXECUTABLE
     def test_trackrename(self):
-        self.assertEqual(self.__run_app__(["trackrename"]),1)
+        self.assertEqual(self.__run_app__(["trackrename"]), 1)
         self.__check_error__(_(u"You must specify at least 1 supported audio file"))
 
         self.assertEqual(self.__run_app__(
-                ["trackrename","-x","/dev/null",self.flac1.filename]),1)
+                ["trackrename", "-x", "/dev/null", self.flac1.filename]), 1)
         self.__check_error__(_(u"Invalid XMCD or MusicBrainz XML file"))
 
         self.assertEqual(self.__run_app__(
-                ["trackrename","--format=%(foo)s",self.flac1.filename]),1)
+                ["trackrename", "--format=%(foo)s", self.flac1.filename]), 1)
 
         self.__check_error__(_(u"Unknown field \"%s\" in file format") % \
                             ("foo"))
         self.__check_info__(_(u"Supported fields are:"))
         for field in sorted(audiotools.MetaData.__FIELDS__ + \
-                                ("album_track_number","suffix")):
+                                ("album_track_number", "suffix")):
             if (field == 'track_number'):
                 self.__check_info__(u"%(track_number)2.2d")
             else:
                 self.__check_info__(u"%%(%s)s" % (field))
+
 
 class TestTracklengthOutput(TestTextOutput):
     @TEST_EXECUTABLE
@@ -7520,7 +7587,7 @@ class TestTracklengthOutput(TestTextOutput):
 
         metadata3 = audiotools.MetaData(
             track_name=u"Unicode %s" % \
-                (u"".join(map(unichr,range(0x30a1,0x30b2 + 1)))),
+                (u"".join(map(unichr, range(0x30a1, 0x30b2 + 1)))),
             track_number=3)
 
         self.flac1 = audiotools.FlacAudio.from_pcm(
@@ -7539,7 +7606,7 @@ class TestTracklengthOutput(TestTextOutput):
                 audiotools.FlacAudio.track_name(file_path="track02",
                                                 track_metadata=metadata2,
                                                 format=self.format_string)),
-            BLANK_PCM_Reader(122,sample_rate=48000,bits_per_sample=24),
+            BLANK_PCM_Reader(122, sample_rate=48000, bits_per_sample=24),
             compression="1")
         self.flac2.set_metadata(metadata2)
 
@@ -7549,53 +7616,54 @@ class TestTracklengthOutput(TestTextOutput):
                 audiotools.FlacAudio.track_name(file_path="track03",
                                                 track_metadata=metadata3,
                                                 format=self.format_string)),
-            BLANK_PCM_Reader(3661,channels=1,sample_rate=22050),
+            BLANK_PCM_Reader(3661, channels=1, sample_rate=22050),
             compression="1")
         self.flac3.set_metadata(metadata3)
 
     @TEST_EXECUTABLE
     def tearDown(self):
         for f in os.listdir(self.dir1):
-            os.unlink(os.path.join(self.dir1,f))
+            os.unlink(os.path.join(self.dir1, f))
         os.rmdir(self.dir1)
 
         for f in os.listdir(self.dir2):
-            os.unlink(os.path.join(self.dir2,f))
+            os.unlink(os.path.join(self.dir2, f))
         os.rmdir(self.dir2)
 
     @TEST_EXECUTABLE
     def test_tracklength(self):
         self.assertEqual(self.__run_app__(
-                ["tracklength",self.flac1.filename]),0)
+                ["tracklength", self.flac1.filename]), 0)
         total_length = self.flac1.cd_frames()
 
         self.__check_output__(_(u"%(hours)d:%(minutes)2.2d:%(seconds)2.2d") % \
-                                  {"hours":total_length / (75 * 60 * 60),
-                                   "minutes":total_length / (75 * 60) % 60,
-                                   "seconds":int(round(total_length) / 75.0) % 60})
+                                  {"hours": total_length / (75 * 60 * 60),
+                                   "minutes": total_length / (75 * 60) % 60,
+                                   "seconds": int(round(total_length) / 75.0) % 60})
 
         self.assertEqual(self.__run_app__(
-                ["tracklength",self.flac1.filename,
-                 self.flac2.filename]),0)
+                ["tracklength", self.flac1.filename,
+                 self.flac2.filename]), 0)
         total_length = sum([self.flac1.cd_frames(),
                             self.flac2.cd_frames()])
 
         self.__check_output__(_(u"%(hours)d:%(minutes)2.2d:%(seconds)2.2d") % \
-                                  {"hours":total_length / (75 * 60 * 60),
-                                   "minutes":total_length / (75 * 60) % 60,
-                                   "seconds":int(round(total_length) / 75.0) % 60})
+                                  {"hours": total_length / (75 * 60 * 60),
+                                   "minutes": total_length / (75 * 60) % 60,
+                                   "seconds": int(round(total_length) / 75.0) % 60})
 
         self.assertEqual(self.__run_app__(
-                ["tracklength",self.flac1.filename,
-                 self.flac2.filename,self.flac3.filename]),0)
+                ["tracklength", self.flac1.filename,
+                 self.flac2.filename, self.flac3.filename]), 0)
         total_length = sum([self.flac1.cd_frames(),
                             self.flac2.cd_frames(),
                             self.flac3.cd_frames()])
 
         self.__check_output__(_(u"%(hours)d:%(minutes)2.2d:%(seconds)2.2d") % \
-                                  {"hours":total_length / (75 * 60 * 60),
-                                   "minutes":total_length / (75 * 60) % 60,
-                                   "seconds":int(round(total_length) / 75.0) % 60})
+                                  {"hours": total_length / (75 * 60 * 60),
+                                   "minutes": total_length / (75 * 60) % 60,
+                                   "seconds": int(round(total_length) / 75.0) % 60})
+
 
 class TestTracksplitOutput(TestTextOutput):
     @TEST_EXECUTABLE
@@ -7603,18 +7671,18 @@ class TestTracksplitOutput(TestTextOutput):
         self.dir1 = tempfile.mkdtemp()
         self.dir2 = tempfile.mkdtemp()
 
-        self.cue_path = os.path.join(self.dir1,"album.cue")
-        f = open(self.cue_path,"w")
+        self.cue_path = os.path.join(self.dir1, "album.cue")
+        f = open(self.cue_path, "w")
         f.write('FILE "data.wav" BINARY\n  TRACK 01 AUDIO\n    INDEX 01 00:00:00\n  TRACK 02 AUDIO\n    INDEX 00 03:16:55\n    INDEX 01 03:18:18\n  TRACK 03 AUDIO\n    INDEX 00 05:55:12\n    INDEX 01 06:01:45\n')
         f.close()
 
-        self.bad_cue_path = os.path.join(self.dir1,"album2.cue")
-        f = open(self.bad_cue_path,"w")
+        self.bad_cue_path = os.path.join(self.dir1, "album2.cue")
+        f = open(self.bad_cue_path, "w")
         f.write('FILE "data.wav" BINARY\n  TRACK 01 AUDIO\n    INDEX 01 00:00:00\n  TRACK 02 AUDIO\n    INDEX 00 03:16:55\n    INDEX 01 03:18:18\n  TRACK 03 AUDIO\n    INDEX 00 05:55:12\n    INDEX 01 06:01:45\n  TRACK 04 AUDIO\n    INDEX 00 06:03:45\n    INDEX 01 20:00:00\n')
         f.close()
 
-        self.xmcd_path = os.path.join(self.dir1,"album.xmcd")
-        f = open(self.xmcd_path,"w")
+        self.xmcd_path = os.path.join(self.dir1, "album.xmcd")
+        f = open(self.xmcd_path, "w")
         f.write("""eJyFk0tv20YQgO8B8h+m8MHJReXyTQFEm0pyYcAvSELTHCmKigRLYiHSanUTSdt1agd9BGnsOo3R
 # uGmcNn60AYrakfNjsqVinfwXOpS0KwRtEQKL2Zmd/WZ2ZjgFXzTs8tUrU5CsYsuyl6HSshoOuJWK
 # 5/heOrEnH1EEthWJIClMkUVFJVwxVFFiiiIagswU1dAFlSmGomg6BxNd0TmbSBoaJpquEW2Sgqqo
@@ -7635,115 +7703,114 @@ class TestTracksplitOutput(TestTextOutput):
         f.close()
 
         self.flac = audiotools.FlacAudio.from_pcm(
-            os.path.join(self.dir1,"album.flac"),
+            os.path.join(self.dir1, "album.flac"),
             EXACT_BLANK_PCM_Reader(24725400),
             compression="1")
 
         self.flac2 = audiotools.FlacAudio.from_pcm(
-            os.path.join(self.dir1,"extra.flac"),
+            os.path.join(self.dir1, "extra.flac"),
             BLANK_PCM_Reader(5),
             compression="1")
 
         self.format_string = "%(track_number)2.2d - %(track_name)s.%(suffix)s"
 
-
     @TEST_EXECUTABLE
     def tearDown(self):
         for f in os.listdir(self.dir1):
-            os.unlink(os.path.join(self.dir1,f))
+            os.unlink(os.path.join(self.dir1, f))
         os.rmdir(self.dir1)
 
         for f in os.listdir(self.dir2):
-            os.unlink(os.path.join(self.dir2,f))
+            os.unlink(os.path.join(self.dir2, f))
         os.rmdir(self.dir2)
 
     @TEST_EXECUTABLE
     @TEST_CUESHEET
     def test_tracksplit1(self):
         self.assertEqual(self.__run_app__(
-                ["tracksplit","-t","flac","-q","help"]),0)
+                ["tracksplit", "-t", "flac", "-q", "help"]), 0)
         self.__check_info__(_(u"Available compression types for %s:") % \
                                 (audiotools.FlacAudio.NAME))
         for m in audiotools.FlacAudio.COMPRESSION_MODES:
             self.__check_info__(m.decode('ascii'))
 
         self.assertEqual(self.__run_app__(
-                ["tracksplit","-t","wav","-q","help"]),0)
+                ["tracksplit", "-t", "wav", "-q", "help"]), 0)
 
         self.__check_error__(_(u"Audio type %s has no compression modes") % \
                                  (audiotools.WaveAudio.NAME))
 
         self.assertEqual(self.__run_app__(
-                ["tracksplit","-t","flac","-q","foobar"]),1)
+                ["tracksplit", "-t", "flac", "-q", "foobar"]), 1)
 
         self.__check_error__(_(u"\"%(quality)s\" is not a supported compression mode for type \"%(type)s\"") % \
-                                 {"quality":"foobar",
-                                  "type":audiotools.FlacAudio.NAME})
+                                 {"quality": "foobar",
+                                  "type": audiotools.FlacAudio.NAME})
 
         self.assertEqual(self.__run_app__(
-                ["tracksplit","-t","flac","-d",self.dir2,"/dev/null/foo"]),1)
+                ["tracksplit", "-t", "flac", "-d", self.dir2, "/dev/null/foo"]), 1)
 
         self.__check_error__(_(u"Unable to open \"%s\"") % (u"/dev/null/foo"))
 
         self.assertEqual(self.__run_app__(
-                ["tracksplit","-t","flac","-d",self.dir2]),1)
+                ["tracksplit", "-t", "flac", "-d", self.dir2]), 1)
 
         self.__check_error__(_(u"You must specify exactly 1 supported audio file"))
 
         self.assertEqual(self.__run_app__(
-                ["tracksplit","-t","flac","-d",self.dir2,
-                 self.flac.filename,self.flac2.filename]),1)
+                ["tracksplit", "-t", "flac", "-d", self.dir2,
+                 self.flac.filename, self.flac2.filename]), 1)
 
         self.__check_error__(_(u"You must specify exactly 1 supported audio file"))
 
         self.assertEqual(self.__run_app__(
-                ["tracksplit","-j",str(0),"-t","flac","-d",self.dir2,
-                 "--cue",self.cue_path,self.flac.filename]),1)
+                ["tracksplit", "-j", str(0), "-t", "flac", "-d", self.dir2,
+                 "--cue", self.cue_path, self.flac.filename]), 1)
 
         self.__check_error__(_(u'You must run at least 1 process at a time'))
 
         self.assertEqual(self.__run_app__(
-                ["tracksplit","-t","flac","-d",self.dir2,
-                 "--cue",self.cue_path,"-x","/dev/null",self.flac.filename]),1)
+                ["tracksplit", "-t", "flac", "-d", self.dir2,
+                 "--cue", self.cue_path, "-x", "/dev/null", self.flac.filename]), 1)
 
         self.__check_error__(_(u"Invalid XMCD or MusicBrainz XML file"))
 
         self.assertEqual(self.__run_app__(
-                ["tracksplit","-t","flac","-d",self.dir2,
-                 self.flac.filename]),1)
+                ["tracksplit", "-t", "flac", "-d", self.dir2,
+                 self.flac.filename]), 1)
 
         self.__check_error__(_(u"You must specify a cuesheet to split audio file"))
 
         self.assertEqual(self.__run_app__(
-                ["tracksplit","-t","flac","-d",self.dir2,
-                 "--cue",self.bad_cue_path,self.flac.filename]),1)
+                ["tracksplit", "-t", "flac", "-d", self.dir2,
+                 "--cue", self.bad_cue_path, self.flac.filename]), 1)
 
         self.__check_error__(_(u"Cuesheet too long for track being split"))
 
         self.assertEqual(self.__run_app__(
-                ["tracksplit","-j",str(1),"-t","flac","--format=%(foo)s","-d",
-                 self.dir2,"--cue",self.cue_path,"-x",self.xmcd_path,
-                 self.flac.filename]),1)
+                ["tracksplit", "-j", str(1), "-t", "flac", "--format=%(foo)s", "-d",
+                 self.dir2, "--cue", self.cue_path, "-x", self.xmcd_path,
+                 self.flac.filename]), 1)
 
         self.__check_error__(_(u"Unknown field \"%s\" in file format") % \
                             ("foo"))
         self.__check_info__(_(u"Supported fields are:"))
         for field in sorted(audiotools.MetaData.__FIELDS__ + \
-                                ("album_track_number","suffix")):
+                                ("album_track_number", "suffix")):
             if (field == 'track_number'):
                 self.__check_info__(u"%(track_number)2.2d")
             else:
                 self.__check_info__(u"%%(%s)s" % (field))
 
         self.assertEqual(self.__run_app__(
-                ["tracksplit","-j",str(1),"-t","wav","-d",self.dir2,
+                ["tracksplit", "-j", str(1), "-t", "wav", "-d", self.dir2,
                  "--format=%s" % (self.format_string),
-                 "--cue",self.cue_path,self.flac.filename]),0)
+                 "--cue", self.cue_path, self.flac.filename]), 0)
 
         for i in range(3):
             self.__check_info__(_(u"%(source)s -> %(destination)s") % \
-                                    {"source":self.filename(self.flac.filename),
-                                     "destination":self.filename(
+                                    {"source": self.filename(self.flac.filename),
+                                     "destination": self.filename(
                         os.path.join(self.dir2,
                                      audiotools.WaveAudio.track_name(
                                 file_path="track%2.2d" % (i + 1),
@@ -7761,18 +7828,19 @@ class TestTracksplitOutput(TestTextOutput):
         xmcd_metadata = xmcd.metadata()
 
         self.assertEqual(self.__run_app__(
-                ["tracksplit","-j",str(1),"-t","mp3","-d",self.dir2,
-                 "-x",self.xmcd_path,
+                ["tracksplit", "-j", str(1), "-t", "mp3", "-d", self.dir2,
+                 "-x", self.xmcd_path,
                  "--format=%s" % (format_string),
-                 "--cue",self.cue_path,self.flac.filename]),0)
+                 "--cue", self.cue_path, self.flac.filename]), 0)
 
         for i in xrange(3):
-            self.__check_info__(_(u"%(source)s -> %(destination)s") % \
-                                    {"source":self.filename(self.flac.filename),
-                                     "destination":self.filename(os.path.join(
-                            self.dir2,audiotools.MP3Audio.track_name(
-                                file_path="track%d" % (i+1),
-                                track_metadata=xmcd_metadata[i+1],
+            self.__check_info__(
+                _(u"%(source)s -> %(destination)s") %
+                {"source": self.filename(self.flac.filename),
+                 "destination": self.filename(os.path.join(
+                            self.dir2, audiotools.MP3Audio.track_name(
+                                file_path="track%d" % (i + 1),
+                                track_metadata=xmcd_metadata[i + 1],
                                 format=format_string)))})
 
         metadata = self.flac.get_metadata()
@@ -7780,21 +7848,23 @@ class TestTracksplitOutput(TestTextOutput):
         self.flac.set_metadata(metadata)
 
         self.assertEqual(self.__run_app__(
-                ["tracksplit","-t","flac","-d",self.dir2,
-                 "-j",str(1),
-                 "-x",self.xmcd_path,
+                ["tracksplit", "-t", "flac", "-d", self.dir2,
+                 "-j", str(1),
+                 "-x", self.xmcd_path,
                  "--format=%s" % (format_string),
-                 "--cue",self.cue_path,self.flac.filename]),0)
+                 "--cue", self.cue_path, self.flac.filename]), 0)
 
         for i in xrange(3):
-            self.__check_info__(_(u"%(source)s -> %(destination)s") % \
-                                    {"source":self.filename(self.flac.filename),
-                                     "destination":self.filename(os.path.join(
-                            self.dir2,audiotools.FlacAudio.track_name(
-                                file_path="track1%2.2d" % (i+1),
-                                track_metadata=xmcd_metadata[i+1],
+            self.__check_info__(
+                _(u"%(source)s -> %(destination)s") %
+                {"source": self.filename(self.flac.filename),
+                 "destination": self.filename(os.path.join(
+                            self.dir2, audiotools.FlacAudio.track_name(
+                                file_path="track1%2.2d" % (i + 1),
+                                track_metadata=xmcd_metadata[i + 1],
                                 format=format_string)))})
         self.__check_info__(_(u"Adding ReplayGain metadata.  This may take some time."))
+
 
 class TestTrack2XMCDFreeDB(TestTextOutput):
     @TEST_EXECUTABLE
@@ -7804,27 +7874,27 @@ class TestTrack2XMCDFreeDB(TestTextOutput):
         self.xmcd_filename = os.path.join(
             self.dir,
             (u"Unicode %s.xmcd" % \
-                 (u"".join(map(unichr,range(0x30a1,0x30b2 + 1))))).encode(
-                        audiotools.FS_ENCODING,"replace"))
+                 (u"".join(map(unichr, range(0x30a1, 0x30b2 + 1))))).encode(
+                        audiotools.FS_ENCODING, "replace"))
         self.existing_filename = os.path.join(
             self.dir,
             (u"Unicode2 %s.xmcd" % \
-                 (u"".join(map(unichr,range(0x30a1,0x30b2 + 1))))).encode(
-                        audiotools.FS_ENCODING,"replace"))
+                 (u"".join(map(unichr, range(0x30a1, 0x30b2 + 1))))).encode(
+                        audiotools.FS_ENCODING, "replace"))
 
-        f = open(self.existing_filename,"w")
+        f = open(self.existing_filename, "w")
         f.write("Hello World")
         f.close()
 
         self.flac_files = [audiotools.FlacAudio.from_pcm(
-                os.path.join(self.dir,"file%2.2d.flac" % (i + 1)),
+                os.path.join(self.dir, "file%2.2d.flac" % (i + 1)),
                 EXACT_BLANK_PCM_Reader(sample_length),
                 compression="1")
-                           for (i,sample_length) in
+                           for (i, sample_length) in
                            enumerate([12280380, 12657288, 4152456, 1929228,
-                                      9938376,15153936, 13525176, 10900344,
-                                      940212, 10492860,7321776, 11084976,
-                                      2738316, 4688712, 2727144,13142388,
+                                      9938376, 15153936, 13525176, 10900344,
+                                      940212, 10492860, 7321776, 11084976,
+                                      2738316, 4688712, 2727144, 13142388,
                                       9533244, 13220004, 15823080, 5986428,
                                       10870944, 2687748])]
 
@@ -7832,32 +7902,32 @@ class TestTrack2XMCDFreeDB(TestTextOutput):
     @TEST_NETWORK
     def tearDown(self):
         for f in os.listdir(self.dir):
-            os.unlink(os.path.join(self.dir,f))
+            os.unlink(os.path.join(self.dir, f))
         os.rmdir(self.dir)
 
     @TEST_EXECUTABLE
     @TEST_NETWORK
     def test_track2xmcd(self):
-        self.assertEqual(self.__run_app__(["track2xmcd"]),1)
+        self.assertEqual(self.__run_app__(["track2xmcd"]), 1)
         self.__check_error__(_(u"You must specify at least 1 supported audio file"))
 
         self.assertEqual(self.__run_app__(
-                ["track2xmcd","-x",self.existing_filename] + \
+                ["track2xmcd", "-x", self.existing_filename] + \
                 [flac.filename for flac in self.flac_files]),
                          1)
         self.__check_error__(_(u"Refusing to overwrite \"%s\"") % \
                                  (self.filename(self.existing_filename)))
 
         self.assertEqual(self.__run_app__(
-                ["track2xmcd","--no-musicbrainz",
+                ["track2xmcd", "--no-musicbrainz",
                  "--freedb-server=us.freedb.org",
-                 "-D","-x",self.xmcd_filename] + \
+                 "-D", "-x", self.xmcd_filename] + \
                 [flac.filename for flac in self.flac_files]),
                          0)
 
         self.__check_info__(_(u"Sending Disc ID \"%(disc_id)s\" to server \"%(server)s\"") % \
-                                {"disc_id":u"4510fd16",
-                                 "server":u"us.freedb.org"})
+                                {"disc_id": u"4510fd16",
+                                 "server": u"us.freedb.org"})
 
         #NOTE - This particular batch of tracks has 3 matches
         #on FreeDB's servers right now.
@@ -7878,27 +7948,27 @@ class TestTrack2XMLMusicBrainz(TestTextOutput):
         self.xml_filename = os.path.join(
             self.dir,
             (u"Unicode %s.xml" % \
-                 (u"".join(map(unichr,range(0x30a1,0x30b2 + 1))))).encode(
-                        audiotools.FS_ENCODING,"replace"))
+                 (u"".join(map(unichr, range(0x30a1, 0x30b2 + 1))))).encode(
+                        audiotools.FS_ENCODING, "replace"))
         self.existing_filename = os.path.join(
             self.dir,
             (u"Unicode2 %s.xml" % \
-                 (u"".join(map(unichr,range(0x30a1,0x30b2 + 1))))).encode(
-                        audiotools.FS_ENCODING,"replace"))
+                 (u"".join(map(unichr, range(0x30a1, 0x30b2 + 1))))).encode(
+                        audiotools.FS_ENCODING, "replace"))
 
-        f = open(self.existing_filename,"w")
+        f = open(self.existing_filename, "w")
         f.write("Hello World")
         f.close()
 
         self.flac_files = [audiotools.FlacAudio.from_pcm(
-                os.path.join(self.dir,"file%2.2d.flac" % (i + 1)),
+                os.path.join(self.dir, "file%2.2d.flac" % (i + 1)),
                 EXACT_BLANK_PCM_Reader(sample_length),
                 compression="1")
-                           for (i,sample_length) in
+                           for (i, sample_length) in
                            enumerate([12280380, 12657288, 4152456, 1929228,
-                                      9938376,15153936, 13525176, 10900344,
-                                      940212, 10492860,7321776, 11084976,
-                                      2738316, 4688712, 2727144,13142388,
+                                      9938376, 15153936, 13525176, 10900344,
+                                      940212, 10492860, 7321776, 11084976,
+                                      2738316, 4688712, 2727144, 13142388,
                                       9533244, 13220004, 15823080, 5986428,
                                       10870944, 2687748])]
 
@@ -7906,17 +7976,17 @@ class TestTrack2XMLMusicBrainz(TestTextOutput):
     @TEST_NETWORK
     def tearDown(self):
         for f in os.listdir(self.dir):
-            os.unlink(os.path.join(self.dir,f))
+            os.unlink(os.path.join(self.dir, f))
         os.rmdir(self.dir)
 
     @TEST_EXECUTABLE
     @TEST_NETWORK
     def test_track2xmcd(self):
-        self.assertEqual(self.__run_app__(["track2xmcd"]),1)
+        self.assertEqual(self.__run_app__(["track2xmcd"]), 1)
         self.__check_error__(_(u"You must specify at least 1 supported audio file"))
 
         self.assertEqual(self.__run_app__(
-                ["track2xmcd","-x",self.existing_filename] + \
+                ["track2xmcd", "-x", self.existing_filename] + \
                 [flac.filename for flac in self.flac_files]),
                          1)
         self.__check_error__(_(u"Refusing to overwrite \"%s\"") % \
@@ -7926,15 +7996,15 @@ class TestTrack2XMLMusicBrainz(TestTextOutput):
         time.sleep(1)
 
         self.assertEqual(self.__run_app__(
-                ["track2xmcd","--no-freedb",
+                ["track2xmcd", "--no-freedb",
                  "--musicbrainz-server=musicbrainz.org",
-                 "-D","-x",self.xml_filename] + \
+                 "-D", "-x", self.xml_filename] + \
                 [flac.filename for flac in self.flac_files]),
                          0)
 
         self.__check_info__(_(u"Sending Disc ID \"%(disc_id)s\" to server \"%(server)s\"") % \
-                                {"disc_id":u"I6V9tQ_QttDWJ0YffInP9pu57RY-",
-                                 "server":u"musicbrainz.org"})
+                                {"disc_id": u"I6V9tQ_QttDWJ0YffInP9pu57RY-",
+                                 "server": u"musicbrainz.org"})
 
         #NOTE - This particular batch of tracks has 1 match
         #on MusicBrainz's servers right now.
@@ -7946,12 +8016,13 @@ class TestTrack2XMLMusicBrainz(TestTextOutput):
         self.__check_info__(_(u"%s written") % \
                                 (self.filename(self.xml_filename)))
 
+
 class TestTrackTag(unittest.TestCase):
-    def __run_tag__(self,arguments):
+    def __run_tag__(self, arguments):
         return subprocess.call(["tracktag",
                                 self.track.filename] + \
                                list(arguments) + \
-                               ["-V","quiet"])
+                               ["-V", "quiet"])
 
     @TEST_METADATA
     @TEST_EXECUTABLE
@@ -7980,7 +8051,7 @@ class TestTrackTag(unittest.TestCase):
                                             track_number=2,
                                             track_total=4)
 
-    def __metadata_fields__(self,metadata):
+    def __metadata_fields__(self, metadata):
         return ["--name",
                 metadata.track_name.encode('ascii'),
                 "--album",
@@ -8013,40 +8084,40 @@ class TestTrackTag(unittest.TestCase):
     def test_tag_noxmcd_noreplace(self):
         #test a standard command-line tag
         self.assertEqual(self.__run_tag__(
-                self.__metadata_fields__(self.metadata)),0)
-        self.assertEqual(self.metadata,self.track.get_metadata())
+                self.__metadata_fields__(self.metadata)), 0)
+        self.assertEqual(self.metadata, self.track.get_metadata())
 
         #then test a command-line re-tag
         self.metadata.track_name = u"Metadata Track 2"
         self.assertEqual(self.__run_tag__(
-                ["--name","Metadata Track 2"]),0)
-        self.assertEqual(self.metadata,self.track.get_metadata())
+                ["--name", "Metadata Track 2"]), 0)
+        self.assertEqual(self.metadata, self.track.get_metadata())
 
     @TEST_METADATA
     @TEST_EXECUTABLE
     def test_notag_xmcd_noreplace(self):
         #test an XMCD file
         self.assertEqual(self.__run_tag__(
-                ["-x",self.xmcd1_file.name]),0)
+                ["-x", self.xmcd1_file.name]), 0)
 
-        self.assertEqual(self.xmcd1.metadata()[1],self.track.get_metadata())
+        self.assertEqual(self.xmcd1.metadata()[1], self.track.get_metadata())
 
         #then test overwriting it with another XMCD file
         self.assertEqual(self.__run_tag__(
-                ["-x",self.xmcd2_file.name]),0)
+                ["-x", self.xmcd2_file.name]), 0)
 
-        self.assertEqual(self.xmcd2.metadata()[1],self.track.get_metadata())
+        self.assertEqual(self.xmcd2.metadata()[1], self.track.get_metadata())
 
     @TEST_METADATA
     @TEST_EXECUTABLE
     def test_tag_xmcd_noreplace1(self):
         #test a command-line tag followed by an XMCD tag
         self.assertEqual(self.__run_tag__(
-                ["--name","Tagged Name",
-                 "--composer","Composer Name"]),0)
+                ["--name", "Tagged Name",
+                 "--composer", "Composer Name"]), 0)
 
         self.assertEqual(self.__run_tag__(
-                ["-x",self.xmcd1_file.name]),0)
+                ["-x", self.xmcd1_file.name]), 0)
 
         self.assertEqual(audiotools.MetaData(
                 track_name=u"XMCD Track 1",
@@ -8063,11 +8134,11 @@ class TestTrackTag(unittest.TestCase):
     def test_tag_xmcd_noreplace2(self):
         #test an XMCD tag followed by a command-line tag
         self.assertEqual(self.__run_tag__(
-                ["-x",self.xmcd1_file.name]),0)
+                ["-x", self.xmcd1_file.name]), 0)
 
         self.assertEqual(self.__run_tag__(
-                ["--name","Tagged Name",
-                 "--composer","Composer Name"]),0)
+                ["--name", "Tagged Name",
+                 "--composer", "Composer Name"]), 0)
 
         self.assertEqual(audiotools.MetaData(
                 track_name=u"Tagged Name",
@@ -8084,9 +8155,9 @@ class TestTrackTag(unittest.TestCase):
     def test_tag_xmcd_noreplace3(self):
         #test simultaneous command-line and XMCD tag
         self.assertEqual(self.__run_tag__(
-                ["-x",self.xmcd1_file.name,
-                 "--name","Tagged Name",
-                 "--composer","Composer Name"]),0)
+                ["-x", self.xmcd1_file.name,
+                 "--name", "Tagged Name",
+                 "--composer", "Composer Name"]), 0)
 
         self.assertEqual(audiotools.MetaData(
                 track_name=u"Tagged Name",
@@ -8098,7 +8169,6 @@ class TestTrackTag(unittest.TestCase):
                 composer_name=u"Composer Name"),
                          self.track.get_metadata())
 
-
     def test_notag_noxmcd_replace(self):
         #does nothing
         pass
@@ -8108,12 +8178,12 @@ class TestTrackTag(unittest.TestCase):
     def test_tag_noxmcd_replace(self):
         #test a standard command-line tag
         self.assertEqual(self.__run_tag__(
-                self.__metadata_fields__(self.metadata) + ["--replace"]),0)
-        self.assertEqual(self.metadata,self.track.get_metadata())
+                self.__metadata_fields__(self.metadata) + ["--replace"]), 0)
+        self.assertEqual(self.metadata, self.track.get_metadata())
 
         #then test a command-line re-tag
         self.assertEqual(self.__run_tag__(
-                ["--name","New Track Name","--number",str(2),"--replace"]),0)
+                ["--name", "New Track Name", "--number", str(2), "--replace"]), 0)
         self.assertEqual(audiotools.MetaData(track_name=u"New Track Name",
                                              track_number=2),
                          self.track.get_metadata())
@@ -8123,25 +8193,25 @@ class TestTrackTag(unittest.TestCase):
     def test_notag_xmcd_replace(self):
         #test an XMCD file
         self.assertEqual(self.__run_tag__(
-                ["-x",self.xmcd1_file.name,"--replace"]),0)
+                ["-x", self.xmcd1_file.name, "--replace"]), 0)
 
-        self.assertEqual(self.xmcd1.metadata()[1],self.track.get_metadata())
+        self.assertEqual(self.xmcd1.metadata()[1], self.track.get_metadata())
 
         #then test overwriting it with another XMCD file
         self.assertEqual(self.__run_tag__(
-                ["-x",self.xmcd2_file.name,"--replace"]),0)
+                ["-x", self.xmcd2_file.name, "--replace"]), 0)
 
     @TEST_METADATA
     @TEST_EXECUTABLE
     def test_tag_xmcd_replace1(self):
         #test a command-line tag followed by an XMCD tag
         self.assertEqual(self.__run_tag__(
-                ["--name","Tagged Name",
-                 "--composer","Composer Name",
-                 "--number",str(1),"--replace"]),0)
+                ["--name", "Tagged Name",
+                 "--composer", "Composer Name",
+                 "--number", str(1), "--replace"]), 0)
 
         self.assertEqual(self.__run_tag__(
-                ["-x",self.xmcd1_file.name,"--replace"]),0)
+                ["-x", self.xmcd1_file.name, "--replace"]), 0)
 
         self.assertEqual(audiotools.MetaData(
                 track_name=u"XMCD Track 1",
@@ -8157,12 +8227,12 @@ class TestTrackTag(unittest.TestCase):
     def test_tag_xmcd_replace2(self):
         #test an XMCD tag followed by a command-line tag
         self.assertEqual(self.__run_tag__(
-                ["-x",self.xmcd1_file.name,"--replace"]),0)
+                ["-x", self.xmcd1_file.name, "--replace"]), 0)
 
         self.assertEqual(self.__run_tag__(
-                ["--name","Tagged Name",
-                 "--composer","Composer Name",
-                 "--number",str(1),"--replace"]),0)
+                ["--name", "Tagged Name",
+                 "--composer", "Composer Name",
+                 "--number", str(1), "--replace"]), 0)
 
         self.assertEqual(audiotools.MetaData(
                 track_name=u"Tagged Name",
@@ -8175,9 +8245,9 @@ class TestTrackTag(unittest.TestCase):
     def test_tag_xmcd_replace3(self):
         #test simultaneous command-line and XMCD tag
         self.assertEqual(self.__run_tag__(
-                ["-x",self.xmcd1_file.name,
-                 "--name","Tagged Name",
-                 "--composer","Composer Name"]),0)
+                ["-x", self.xmcd1_file.name,
+                 "--name", "Tagged Name",
+                 "--composer", "Composer Name"]), 0)
 
         self.assertEqual(audiotools.MetaData(
                 track_name=u"Tagged Name",
@@ -8196,78 +8266,79 @@ class TestTrackTag(unittest.TestCase):
         png_file = tempfile.NamedTemporaryFile(suffix=".png")
         jpeg2_file = tempfile.NamedTemporaryFile(suffix=".jpg")
         try:
-            jpeg_file.write(TEST_COVER1);
+            jpeg_file.write(TEST_COVER1)
             jpeg_file.flush()
             png_file.write(TEST_COVER2)
             png_file.flush()
             jpeg2_file.write(TEST_COVER3)
             jpeg2_file.flush()
 
-            self.assertEqual(self.__run_tag__(["--name","Track Name"]),0)
+            self.assertEqual(self.__run_tag__(["--name", "Track Name"]), 0)
 
             self.assertEqual(audiotools.MetaData(track_name=u"Track Name",
                                                  track_number=1),
                              self.track.get_metadata())
 
-            self.assertEqual([],self.track.get_metadata().images())
+            self.assertEqual([], self.track.get_metadata().images())
 
             self.assertEqual(self.__run_tag__(
-                    ["--front-cover",jpeg_file.name]),0)
+                    ["--front-cover", jpeg_file.name]), 0)
 
             self.assertEqual(audiotools.MetaData(track_name=u"Track Name",
                                                  track_number=1),
                              self.track.get_metadata())
 
-            self.assertEqual([audiotools.Image.new(TEST_COVER1,u"",0)],
+            self.assertEqual([audiotools.Image.new(TEST_COVER1, u"", 0)],
                              self.track.get_metadata().images())
 
             self.assertEqual(self.__run_tag__(
-                    ["--back-cover",png_file.name]),0)
+                    ["--back-cover", png_file.name]), 0)
 
-            self.assertEqual([audiotools.Image.new(TEST_COVER1,u"",0),
-                              audiotools.Image.new(TEST_COVER2,u"",1)],
+            self.assertEqual([audiotools.Image.new(TEST_COVER1, u"", 0),
+                              audiotools.Image.new(TEST_COVER2, u"", 1)],
                              self.track.get_metadata().images())
 
             self.assertEqual(self.__run_tag__(
-                    ["--replace","--name","New Name","--number",str(1)]),0)
+                    ["--replace", "--name", "New Name", "--number", str(1)]), 0)
 
             self.assertEqual(audiotools.MetaData(track_name=u"New Name",
                                                  track_number=1),
                              self.track.get_metadata())
 
-            self.assertEqual([],self.track.get_metadata().images())
+            self.assertEqual([], self.track.get_metadata().images())
 
             self.assertEqual(self.__run_tag__(
-                    ["--front-cover",jpeg_file.name,
-                     "--back-cover",png_file.name]),0)
+                    ["--front-cover", jpeg_file.name,
+                     "--back-cover", png_file.name]), 0)
 
-            self.assertEqual([audiotools.Image.new(TEST_COVER1,u"",0),
-                              audiotools.Image.new(TEST_COVER2,u"",1)],
+            self.assertEqual([audiotools.Image.new(TEST_COVER1, u"", 0),
+                              audiotools.Image.new(TEST_COVER2, u"", 1)],
                              self.track.get_metadata().images())
 
             self.assertEqual(self.__run_tag__(
-                    ["--front-cover",jpeg2_file.name,
-                     "--remove-images"]),0)
+                    ["--front-cover", jpeg2_file.name,
+                     "--remove-images"]), 0)
 
             self.assertEqual(audiotools.MetaData(track_name=u"New Name",
                                                  track_number=1),
                              self.track.get_metadata())
 
-            self.assertEqual([audiotools.Image.new(TEST_COVER3,u"",0)],
+            self.assertEqual([audiotools.Image.new(TEST_COVER3, u"", 0)],
                              self.track.get_metadata().images())
 
             self.assertEqual(self.__run_tag__(
-                    ["--remove-images"]),0)
+                    ["--remove-images"]), 0)
 
             self.assertEqual(audiotools.MetaData(track_name=u"New Name",
                                                  track_number=1),
                              self.track.get_metadata())
 
-            self.assertEqual([],self.track.get_metadata().images())
+            self.assertEqual([], self.track.get_metadata().images())
         finally:
             jpeg2_file.close()
             jpeg_file.close()
             png_file.close()
+
 
 class TestTrackTagXML(TestTrackTag):
     @TEST_METADATA
@@ -8301,17 +8372,17 @@ class TestTrackTagXML(TestTrackTag):
 
 
 class TestTrack2Track(unittest.TestCase):
-    def __run_convert__(self,arguments):
+    def __run_convert__(self, arguments):
         return subprocess.call(["track2track",
                                 self.track.filename] + \
                                list(arguments) + \
-                               ["-o",self.output_file.name,"-V","quiet"])
+                               ["-o", self.output_file.name, "-V", "quiet"])
 
-    def __run_convert2__(self,arguments):
+    def __run_convert2__(self, arguments):
         return subprocess.call(["track2track",
                                 self.track.filename] + \
                                list(arguments) + \
-                               ["-d",self.output_dir,"-t","flac","-V","quiet"])
+                               ["-d", self.output_dir, "-t", "flac", "-V", "quiet"])
 
     def output_dir_track(self):
         return audiotools.open(os.path.join(self.output_dir,
@@ -8352,14 +8423,14 @@ class TestTrack2Track(unittest.TestCase):
         self.xmcd_file.close()
         self.xml_file.close()
         for f in os.listdir(self.output_dir):
-            os.unlink(os.path.join(self.output_dir,f))
+            os.unlink(os.path.join(self.output_dir, f))
         os.rmdir(self.output_dir)
 
     @TEST_METADATA
     @TEST_EXECUTABLE
     def test_nonxmcd1(self):
         self.track.set_metadata(self.metadata)
-        self.assertEqual(self.__run_convert__([]),0)
+        self.assertEqual(self.__run_convert__([]), 0)
         self.assertEqual(self.metadata,
                          audiotools.open(self.output_file.name).get_metadata())
 
@@ -8367,7 +8438,7 @@ class TestTrack2Track(unittest.TestCase):
     @TEST_EXECUTABLE
     def test_nonxmcd2(self):
         self.track.set_metadata(self.metadata)
-        self.assertEqual(self.__run_convert2__([]),0)
+        self.assertEqual(self.__run_convert2__([]), 0)
         self.assertEqual(self.metadata,
                          self.output_dir_track().get_metadata())
 
@@ -8375,7 +8446,7 @@ class TestTrack2Track(unittest.TestCase):
     @TEST_EXECUTABLE
     def test_xmcd1(self):
         self.track.set_metadata(self.metadata)
-        self.assertEqual(self.__run_convert__(["-x",self.xmcd_file.name]),0)
+        self.assertEqual(self.__run_convert__(["-x", self.xmcd_file.name]), 0)
 
         self.assertEqual(audiotools.open(self.output_file.name).get_metadata(),
                          audiotools.MetaData(track_name=u"XMCD Track 1",
@@ -8390,7 +8461,7 @@ class TestTrack2Track(unittest.TestCase):
     @TEST_EXECUTABLE
     def test_xmcd2(self):
         self.track.set_metadata(self.metadata)
-        self.assertEqual(self.__run_convert2__(["-x",self.xmcd_file.name]),0)
+        self.assertEqual(self.__run_convert2__(["-x", self.xmcd_file.name]), 0)
 
         self.assertEqual(self.output_dir_track().get_metadata(),
                          audiotools.MetaData(track_name=u"XMCD Track 1",
@@ -8405,7 +8476,7 @@ class TestTrack2Track(unittest.TestCase):
     @TEST_EXECUTABLE
     def test_xml1(self):
         self.track.set_metadata(self.metadata)
-        self.assertEqual(self.__run_convert__(["-x",self.xml_file.name]),0)
+        self.assertEqual(self.__run_convert__(["-x", self.xml_file.name]), 0)
 
         self.assertEqual(audiotools.open(self.output_file.name).get_metadata(),
                          audiotools.MetaData(track_name=u"XML Track 1",
@@ -8420,7 +8491,7 @@ class TestTrack2Track(unittest.TestCase):
     @TEST_EXECUTABLE
     def test_xml2(self):
         self.track.set_metadata(self.metadata)
-        self.assertEqual(self.__run_convert2__(["-x",self.xml_file.name]),0)
+        self.assertEqual(self.__run_convert2__(["-x", self.xml_file.name]), 0)
 
         self.assertEqual(self.output_dir_track().get_metadata(),
                          audiotools.MetaData(track_name=u"XML Track 1",
@@ -8431,9 +8502,10 @@ class TestTrack2Track(unittest.TestCase):
                                              year=u"2009",
                                              composer_name=u"Composer"))
 
+
 class TestTrackSplit(unittest.TestCase):
     def dir_files(self):
-        return audiotools.open_files([os.path.join(self.output_dir,f)
+        return audiotools.open_files([os.path.join(self.output_dir, f)
                                       for f in os.listdir(self.output_dir)])
 
     def dir_metadata(self):
@@ -8459,7 +8531,7 @@ class TestTrackSplit(unittest.TestCase):
         self.flac_file.close()
         self.cue_file.close()
         for f in os.listdir(self.output_dir):
-            os.unlink(os.path.join(self.output_dir,f))
+            os.unlink(os.path.join(self.output_dir, f))
         os.rmdir(self.output_dir)
 
     @TEST_METADATA
@@ -8473,10 +8545,10 @@ class TestTrackSplit(unittest.TestCase):
                                           self.track.filename,
                                           "-d",
                                           self.output_dir,
-                                          "-t","flac",
-                                          "-q","0",
-                                          "--cue",self.cue_file.name,
-                                          "-V","quiet"]),0)
+                                          "-t", "flac",
+                                          "-q", "0",
+                                          "--cue", self.cue_file.name,
+                                          "-V", "quiet"]), 0)
         metadata = self.dir_metadata()
 
         self.assertEqual(metadata[0],
@@ -8516,11 +8588,11 @@ class TestTrackSplit(unittest.TestCase):
                                               self.track.filename,
                                               "-d",
                                               self.output_dir,
-                                              "-x",xmcd_file.name,
-                                              "-t","flac",
-                                              "-q","0",
-                                              "--cue",self.cue_file.name,
-                                              "-V","quiet"]),0)
+                                              "-x", xmcd_file.name,
+                                              "-t", "flac",
+                                              "-q", "0",
+                                              "--cue", self.cue_file.name,
+                                              "-V", "quiet"]), 0)
 
             metadata = self.dir_metadata()
 
@@ -8573,11 +8645,11 @@ class TestTrackSplit(unittest.TestCase):
                                               self.track.filename,
                                               "-d",
                                               self.output_dir,
-                                              "-x",xml_file.name,
-                                              "-t","flac",
-                                              "-q","0",
-                                              "--cue",self.cue_file.name,
-                                              "-V","quiet"]),0)
+                                              "-x", xml_file.name,
+                                              "-t", "flac",
+                                              "-q", "0",
+                                              "--cue", self.cue_file.name,
+                                              "-V", "quiet"]), 0)
 
             metadata = self.dir_metadata()
 
@@ -8613,13 +8685,14 @@ class TestTrackSplit(unittest.TestCase):
         finally:
             xml_file.close()
 
+
 class TestTrackrename(unittest.TestCase):
     @TEST_METADATA
     @TEST_EXECUTABLE
     def setUp(self):
         self.output_dir = tempfile.mkdtemp()
         self.track = audiotools.FlacAudio.from_pcm(
-            os.path.join(self.output_dir,"test.flac"),
+            os.path.join(self.output_dir, "test.flac"),
             BLANK_PCM_Reader(5))
 
         self.format = "%(track_number)2.2d - %(track_name)s - %(album_name)s - %(composer_name)s.%(suffix)s"
@@ -8628,7 +8701,7 @@ class TestTrackrename(unittest.TestCase):
     @TEST_EXECUTABLE
     def tearDown(self):
         for f in os.listdir(self.output_dir):
-            os.unlink(os.path.join(self.output_dir,f))
+            os.unlink(os.path.join(self.output_dir, f))
         os.rmdir(self.output_dir)
 
     @TEST_METADATA
@@ -8640,9 +8713,9 @@ class TestTrackrename(unittest.TestCase):
                 album_name=u"Album Name",
                 composer_name=u"Composer Name"))
         self.assertEqual(subprocess.call(["trackrename",
-                                          "--format",self.format,
+                                          "--format", self.format,
                                           self.track.filename,
-                                          "-V","quiet"]),0)
+                                          "-V", "quiet"]), 0)
         self.assertEqual(os.listdir(self.output_dir)[0],
                          "01 - Track Name - Album Name - Composer Name.flac")
 
@@ -8655,7 +8728,7 @@ class TestTrackrename(unittest.TestCase):
                 album_name=u"Album Name",
                 composer_name=u"Composer Name"))
         track2 = audiotools.FlacAudio.from_pcm(
-            os.path.join(self.output_dir,"test2.flac"),
+            os.path.join(self.output_dir, "test2.flac"),
             BLANK_PCM_Reader(5))
         track2.set_metadata(audiotools.MetaData(
                 track_number=1,
@@ -8663,10 +8736,10 @@ class TestTrackrename(unittest.TestCase):
                 album_name=u"Album Name 2",
                 composer_name=u"Composer Name 2"))
         self.assertEqual(subprocess.call(["trackrename",
-                                          "--format",self.format,
+                                          "--format", self.format,
                                           self.track.filename,
                                           track2.filename,
-                                          "-V","quiet"]),0)
+                                          "-V", "quiet"]), 0)
         self.assertEqual(set(os.listdir(self.output_dir)),
                          set([
                     "01 - Track Name - Album Name - Composer Name.flac",
@@ -8687,10 +8760,10 @@ class TestTrackrename(unittest.TestCase):
                     composer_name=u"Composer Name"))
 
             self.assertEqual(subprocess.call(["trackrename",
-                                              "--format",self.format,
+                                              "--format", self.format,
                                               self.track.filename,
-                                              "-x",xmcd_file.name,
-                                              "-V","quiet"]),0)
+                                              "-x", xmcd_file.name,
+                                              "-V", "quiet"]), 0)
             self.assertEqual(os.listdir(self.output_dir)[0],
                              "01 - XMCD Track 1 - XMCD Album - Composer Name.flac")
         finally:
@@ -8711,15 +8784,16 @@ class TestTrackrename(unittest.TestCase):
                     composer_name=u"Composer Name"))
 
             self.assertEqual(subprocess.call(["trackrename",
-                                              "--format",self.format,
+                                              "--format", self.format,
                                               self.track.filename,
-                                              "-x",xml_file.name,
-                                              "-V","quiet"]),0)
+                                              "-x", xml_file.name,
+                                              "-V", "quiet"]), 0)
 
             self.assertEqual(os.listdir(self.output_dir)[0],
                              "01 - XML Track 1 - XML Album - Composer Name.flac")
         finally:
             xml_file.close()
+
 
 class TestImageJPEG(unittest.TestCase):
     @TEST_IMAGE
@@ -8746,19 +8820,20 @@ eO/02mVjy4qMeLpYXONsnb+Pe131ehvCws+2vm53hPE2SB1c1aMw1RvVJemSn5Brh1jIQNJyq32q
 
     @TEST_IMAGE
     def test_checksum(self):
-        self.assertEqual(md5(self.image).hexdigest(),self.md5sum)
+        self.assertEqual(md5(self.image).hexdigest(), self.md5sum)
 
     @TEST_IMAGE
     def test_image(self):
-        img = audiotools.Image.new(self.image,u"Description",1)
-        self.assertEqual(img.data,self.image)
-        self.assertEqual(img.mime_type,self.mime_type)
-        self.assertEqual(img.width,self.width)
-        self.assertEqual(img.height,self.height)
-        self.assertEqual(img.color_depth,self.bpp)
-        self.assertEqual(img.color_count,self.colors)
-        self.assertEqual(img.description,u"Description")
-        self.assertEqual(img.type,1)
+        img = audiotools.Image.new(self.image, u"Description", 1)
+        self.assertEqual(img.data, self.image)
+        self.assertEqual(img.mime_type, self.mime_type)
+        self.assertEqual(img.width, self.width)
+        self.assertEqual(img.height, self.height)
+        self.assertEqual(img.color_depth, self.bpp)
+        self.assertEqual(img.color_count, self.colors)
+        self.assertEqual(img.description, u"Description")
+        self.assertEqual(img.type, 1)
+
 
 class TestImagePNG(TestImageJPEG):
     @TEST_IMAGE
@@ -8776,6 +8851,7 @@ ZTpExHuf8jsROefmec7Wwsx1XXvvAVCa+H7B9Of/9DPQAzSV43jVGYrtAAAAAElFTkSuQmCC""".deco
         self.colors = 0
         self.mime_type = "image/png"
 
+
 class TestImageCover1(TestImageJPEG):
     @TEST_IMAGE
     def setUp(self):
@@ -8787,6 +8863,7 @@ class TestImageCover1(TestImageJPEG):
         self.colors = 0
         self.mime_type = "image/jpeg"
 
+
 class TestImageCover2(TestImageJPEG):
     @TEST_IMAGE
     def setUp(self):
@@ -8797,6 +8874,7 @@ class TestImageCover2(TestImageJPEG):
         self.bpp = 24
         self.colors = 0
         self.mime_type = "image/png"
+
 
 class TestImageCover3(TestImageJPEG):
     @TEST_IMAGE
@@ -8824,6 +8902,7 @@ loqSZ3JMLpvNIQA7""".decode('base64')
         self.colors = 32
         self.mime_type = "image/gif"
 
+
 class TestImageBMP(TestImageJPEG):
     @TEST_IMAGE
     def setUp(self):
@@ -8848,6 +8927,7 @@ gICA////////////////////////////////AAAA////AAAA////////////////////////////
         self.bpp = 24
         self.colors = 0
         self.mime_type = "image/x-ms-bmp"
+
 
 class TestImageTIFF(TestImageJPEG):
     @TEST_IMAGE
@@ -8878,6 +8958,7 @@ AAEAAABIAAAAAQ==""".decode('base64')
         self.colors = 0
         self.mime_type = "image/tiff"
 
+
 class TestHugeBMP(TestImageJPEG):
     @TEST_IMAGE
     def setUp(self):
@@ -8889,23 +8970,24 @@ class TestHugeBMP(TestImageJPEG):
         self.colors = 0
         self.mime_type = "image/x-ms-bmp"
 
+
 #tests to ensure that unsupported chunks of MetaData
 #aren't blown away improperly by MetaData modifying tools
 class TestForeignMetaData_WavPackAPE(unittest.TestCase):
     AUDIO_CLASS = audiotools.WavPackAudio
     METADATA_CLASS = audiotools.WavePackAPEv2
     BASE_CLASS_METADATA = audiotools.WavePackAPEv2(
-        [audiotools.ApeTagItem(0,False,"Title",'Track Name'),
-         audiotools.ApeTagItem(0,False,"Album",'Album Name'),
-         audiotools.ApeTagItem(0,False,"Track","1/3"),
-         audiotools.ApeTagItem(0,False,"Media","2/4"),
-         audiotools.ApeTagItem(0,False,"Foo","Bar")])
+        [audiotools.ApeTagItem(0, False, "Title", 'Track Name'),
+         audiotools.ApeTagItem(0, False, "Album", 'Album Name'),
+         audiotools.ApeTagItem(0, False, "Track", "1/3"),
+         audiotools.ApeTagItem(0, False, "Media", "2/4"),
+         audiotools.ApeTagItem(0, False, "Foo", "Bar")])
 
     def __verify_foreign_field__(self, track=None):
         if (track is None):
             track = self.track
         self.assert_("Foo" in track.get_metadata().keys())
-        self.assertEqual(unicode(track.get_metadata()["Foo"]),u"Bar")
+        self.assertEqual(unicode(track.get_metadata()["Foo"]), u"Bar")
 
     def __verify_no_foreign_field__(self, track=None):
         if (track is None):
@@ -8946,8 +9028,8 @@ class TestForeignMetaData_WavPackAPE(unittest.TestCase):
         tempfile2 = tempfile.NamedTemporaryFile(
             suffix="." + self.AUDIO_CLASS.SUFFIX)
         try:
-            subprocess.call(["track2track","-t",self.AUDIO_CLASS.NAME,
-                             "-o",tempfile2.name,self.track.filename])
+            subprocess.call(["track2track", "-t", self.AUDIO_CLASS.NAME,
+                             "-o", tempfile2.name, self.track.filename])
             track2 = audiotools.open(tempfile2.name)
             self.assertEqual(self.track.get_metadata(),
                              track2.get_metadata())
@@ -8961,9 +9043,9 @@ class TestForeignMetaData_WavPackAPE(unittest.TestCase):
         tempfile2 = tempfile.NamedTemporaryFile(
             suffix="." + self.AUDIO_CLASS.SUFFIX)
         try:
-            subprocess.call(["track2track","-t",self.AUDIO_CLASS.NAME,
-                             "-x",self.xmcd_file.name,
-                             "-o",tempfile2.name,self.track.filename])
+            subprocess.call(["track2track", "-t", self.AUDIO_CLASS.NAME,
+                             "-x", self.xmcd_file.name,
+                             "-o", tempfile2.name, self.track.filename])
             track2 = audiotools.open(tempfile2.name)
             self.assertEqual(track2.get_metadata().track_name,
                              u"XMCD Track 1")
@@ -8981,12 +9063,12 @@ class TestForeignMetaData_WavPackAPE(unittest.TestCase):
         self.assertEqual(self.BASE_METADATA,
                          self.track.get_metadata())
         self.__verify_foreign_field__()
-        subprocess.call(["tracktag","--name=New Name",self.track.filename])
-        self.assertEqual(self.track.get_metadata().track_name,u"New Name")
-        self.assertEqual(self.track.get_metadata().track_number,1)
-        self.assertEqual(self.track.get_metadata().track_total,3)
-        self.assertEqual(self.track.get_metadata().album_number,2)
-        self.assertEqual(self.track.get_metadata().album_total,4)
+        subprocess.call(["tracktag", "--name=New Name", self.track.filename])
+        self.assertEqual(self.track.get_metadata().track_name, u"New Name")
+        self.assertEqual(self.track.get_metadata().track_number, 1)
+        self.assertEqual(self.track.get_metadata().track_total, 3)
+        self.assertEqual(self.track.get_metadata().album_number, 2)
+        self.assertEqual(self.track.get_metadata().album_total, 4)
         self.__verify_foreign_field__()
 
     @TEST_METADATA
@@ -8995,13 +9077,13 @@ class TestForeignMetaData_WavPackAPE(unittest.TestCase):
         self.assertEqual(self.BASE_METADATA,
                          self.track.get_metadata())
         self.__verify_foreign_field__()
-        subprocess.call(["tracktag","-x",self.xmcd_file.name,
+        subprocess.call(["tracktag", "-x", self.xmcd_file.name,
                          self.track.filename])
-        self.assertEqual(self.track.get_metadata().track_name,u"XMCD Track 1")
-        self.assertEqual(self.track.get_metadata().track_number,1)
-        self.assertEqual(self.track.get_metadata().track_total,3)
-        self.assertEqual(self.track.get_metadata().album_number,2)
-        self.assertEqual(self.track.get_metadata().album_total,4)
+        self.assertEqual(self.track.get_metadata().track_name, u"XMCD Track 1")
+        self.assertEqual(self.track.get_metadata().track_number, 1)
+        self.assertEqual(self.track.get_metadata().track_total, 3)
+        self.assertEqual(self.track.get_metadata().album_number, 2)
+        self.assertEqual(self.track.get_metadata().album_total, 4)
         self.__verify_foreign_field__()
 
     @TEST_METADATA
@@ -9010,9 +9092,9 @@ class TestForeignMetaData_WavPackAPE(unittest.TestCase):
         self.assertEqual(self.BASE_METADATA,
                          self.track.get_metadata())
         self.__verify_foreign_field__()
-        subprocess.call(["tracktag","--replace",
-                         "--name=New Name",self.track.filename])
-        self.assertEqual(self.track.get_metadata().track_name,u"New Name")
+        subprocess.call(["tracktag", "--replace",
+                         "--name=New Name", self.track.filename])
+        self.assertEqual(self.track.get_metadata().track_name, u"New Name")
         self.__verify_no_foreign_field__()
 
     @TEST_METADATA
@@ -9021,9 +9103,9 @@ class TestForeignMetaData_WavPackAPE(unittest.TestCase):
         self.assertEqual(self.BASE_METADATA,
                          self.track.get_metadata())
         self.__verify_foreign_field__()
-        subprocess.call(["tracktag","--replace","-x",self.xmcd_file.name,
+        subprocess.call(["tracktag", "--replace", "-x", self.xmcd_file.name,
                          self.track.filename])
-        self.assertEqual(self.track.get_metadata().track_name,u"XMCD Track 1")
+        self.assertEqual(self.track.get_metadata().track_name, u"XMCD Track 1")
         self.__verify_no_foreign_field__()
 
     @TEST_METADATA
@@ -9035,12 +9117,12 @@ class TestForeignMetaData_WavPackAPE(unittest.TestCase):
             temp_img.flush()
 
             self.__verify_foreign_field__()
-            subprocess.call(["tracktag","--front-cover",temp_img.name,
+            subprocess.call(["tracktag", "--front-cover", temp_img.name,
                              self.track.filename])
-            self.assertEqual(self.track.get_metadata().track_number,1)
-            self.assertEqual(self.track.get_metadata().track_total,3)
-            self.assertEqual(self.track.get_metadata().album_number,2)
-            self.assertEqual(self.track.get_metadata().album_total,4)
+            self.assertEqual(self.track.get_metadata().track_number, 1)
+            self.assertEqual(self.track.get_metadata().track_total, 3)
+            self.assertEqual(self.track.get_metadata().album_number, 2)
+            self.assertEqual(self.track.get_metadata().album_total, 4)
             self.__verify_foreign_field__()
         finally:
             temp_img.close()
@@ -9054,8 +9136,8 @@ class TestForeignMetaData_WavPackAPE(unittest.TestCase):
             temp_img.flush()
 
             self.__verify_foreign_field__()
-            subprocess.call(["tracktag","--remove-images",
-                             "--front-cover",temp_img.name,
+            subprocess.call(["tracktag", "--remove-images",
+                             "--front-cover", temp_img.name,
                              self.track.filename])
             self.__verify_foreign_field__()
         finally:
@@ -9082,28 +9164,30 @@ class TestForeignMetaData_WavPackAPE(unittest.TestCase):
 #             track = self.track
 #         self.assert_("Foo" not in track.get_metadata().keys())
 
+
 class TestForeignMetaData_VorbisComment(TestForeignMetaData_WavPackAPE):
     AUDIO_CLASS = audiotools.VorbisAudio
     METADATA_CLASS = audiotools.VorbisComment
     BASE_CLASS_METADATA = audiotools.VorbisComment(
-        {"TITLE":[u'Track Name'],
-         "ALBUM":[u'Album Name'],
-         "TRACKNUMBER":[u"1"],
-         "TRACKTOTAL":[u"3"],
-         "DISCNUMBER":[u"2"],
-         "DISCTOTAL":[u"4"],
-         "FOO":[u"Bar"]})
+        {"TITLE": [u'Track Name'],
+         "ALBUM": [u'Album Name'],
+         "TRACKNUMBER": [u"1"],
+         "TRACKTOTAL": [u"3"],
+         "DISCNUMBER": [u"2"],
+         "DISCTOTAL": [u"4"],
+         "FOO": [u"Bar"]})
 
     def __verify_foreign_field__(self, track=None):
         if (track is None):
             track = self.track
         self.assert_("FOO" in track.get_metadata().keys())
-        self.assertEqual(track.get_metadata()["FOO"],[u"Bar"])
+        self.assertEqual(track.get_metadata()["FOO"], [u"Bar"])
 
     def __verify_no_foreign_field__(self, track=None):
         if (track is None):
             track = self.track
         self.assert_("FOO" not in track.get_metadata().keys())
+
 
 class TestForeignMetaData_FLACComment(TestForeignMetaData_WavPackAPE):
     AUDIO_CLASS = audiotools.FlacAudio
@@ -9112,181 +9196,188 @@ class TestForeignMetaData_FLACComment(TestForeignMetaData_WavPackAPE):
             audiotools.FlacMetaDataBlock(
                 type=4,
                 data=audiotools.FlacVorbisComment(
-                    {"TITLE":[u'Track Name'],
-                     "ALBUM":[u'Album Name'],
-                     "TRACKNUMBER":[u"1"],
-                     "TRACKTOTAL":[u"3"],
-                     "DISCNUMBER":[u"2"],
-                     "DISCTOTAL":[u"4"],
-                     "FOO":[u"Bar"]}).build())])
+                    {"TITLE": [u'Track Name'],
+                     "ALBUM": [u'Album Name'],
+                     "TRACKNUMBER": [u"1"],
+                     "TRACKTOTAL": [u"3"],
+                     "DISCNUMBER": [u"2"],
+                     "DISCTOTAL": [u"4"],
+                     "FOO": [u"Bar"]}).build())])
 
     def __verify_foreign_field__(self, track=None):
         if (track is None):
             track = self.track
         self.assert_("FOO" in track.get_metadata().vorbis_comment.keys())
-        self.assertEqual(track.get_metadata().vorbis_comment["FOO"],[u"Bar"])
+        self.assertEqual(track.get_metadata().vorbis_comment["FOO"], [u"Bar"])
 
     def __verify_no_foreign_field__(self, track=None):
         if (track is None):
             track = self.track
         self.assert_("FOO" not in track.get_metadata().vorbis_comment.keys())
 
+
 class TestForeignMetaData_ID3v22(TestForeignMetaData_WavPackAPE):
     AUDIO_CLASS = audiotools.MP3Audio
     METADATA_CLASS = audiotools.ID3v22Comment
     BASE_CLASS_METADATA = audiotools.ID3v22Comment(
-        [audiotools.ID3v22TextFrame("TT2",0,"Track Name"),
-         audiotools.ID3v22TextFrame("TAL",0,"Album Name"),
-         audiotools.ID3v22TextFrame("TRK",0,"1/3"),
-         audiotools.ID3v22TextFrame("TPA",0,"2/4"),
-         audiotools.ID3v22TextFrame("TFO",0,"Bar")])
+        [audiotools.ID3v22TextFrame("TT2", 0, "Track Name"),
+         audiotools.ID3v22TextFrame("TAL", 0, "Album Name"),
+         audiotools.ID3v22TextFrame("TRK", 0, "1/3"),
+         audiotools.ID3v22TextFrame("TPA", 0, "2/4"),
+         audiotools.ID3v22TextFrame("TFO", 0, "Bar")])
 
     def __verify_foreign_field__(self, track=None):
         if (track is None):
             track = self.track
         metadata = track.get_metadata()
-        if (hasattr(metadata,"id3v2")):
+        if (hasattr(metadata, "id3v2")):
             metadata = metadata.id3v2
 
         self.assert_("TFO" in metadata.keys())
-        self.assertEqual(metadata["TFO"][0].string,"Bar")
+        self.assertEqual(metadata["TFO"][0].string, "Bar")
 
     def __verify_no_foreign_field__(self, track=None):
         if (track is None):
             track = self.track
         metadata = track.get_metadata()
-        if (hasattr(metadata,"id3v2")):
+        if (hasattr(metadata, "id3v2")):
             metadata = metadata.id3v2
         self.assert_("TFO" not in metadata.keys())
+
 
 class TestForeignMetaData_ID3v23(TestForeignMetaData_WavPackAPE):
     AUDIO_CLASS = audiotools.MP3Audio
     METADATA_CLASS = audiotools.ID3v23Comment
     BASE_CLASS_METADATA = audiotools.ID3v23Comment(
-        [audiotools.ID3v23TextFrame("TIT2",0,"Track Name"),
-         audiotools.ID3v23TextFrame("TALB",0,"Album Name"),
-         audiotools.ID3v23TextFrame("TRCK",0,"1/3"),
-         audiotools.ID3v23TextFrame("TPOS",0,"2/4"),
-         audiotools.ID3v23TextFrame("TFOO",0,"Bar")])
+        [audiotools.ID3v23TextFrame("TIT2", 0, "Track Name"),
+         audiotools.ID3v23TextFrame("TALB", 0, "Album Name"),
+         audiotools.ID3v23TextFrame("TRCK", 0, "1/3"),
+         audiotools.ID3v23TextFrame("TPOS", 0, "2/4"),
+         audiotools.ID3v23TextFrame("TFOO", 0, "Bar")])
 
     def __verify_foreign_field__(self, track=None):
         if (track is None):
             track = self.track
         metadata = track.get_metadata()
-        if (hasattr(metadata,"id3v2")):
+        if (hasattr(metadata, "id3v2")):
             metadata = metadata.id3v2
 
         self.assert_("TFOO" in metadata.keys())
-        self.assertEqual(metadata["TFOO"][0].string,"Bar")
+        self.assertEqual(metadata["TFOO"][0].string, "Bar")
 
     def __verify_no_foreign_field__(self, track=None):
         if (track is None):
             track = self.track
         metadata = track.get_metadata()
-        if (hasattr(metadata,"id3v2")):
+        if (hasattr(metadata, "id3v2")):
             metadata = metadata.id3v2
         self.assert_("TFOO" not in metadata.keys())
+
 
 class TestForeignMetaData_ID3v24(TestForeignMetaData_ID3v23):
     AUDIO_CLASS = audiotools.MP3Audio
     METADATA_CLASS = audiotools.ID3v24Comment
     BASE_CLASS_METADATA = audiotools.ID3v24Comment(
-        [audiotools.ID3v24TextFrame("TIT2",0,"Track Name"),
-         audiotools.ID3v24TextFrame("TALB",0,"Album Name"),
-         audiotools.ID3v24TextFrame("TRCK",0,"1/3"),
-         audiotools.ID3v24TextFrame("TPOS",0,"2/4"),
-         audiotools.ID3v24TextFrame("TFOO",0,"Bar")])
+        [audiotools.ID3v24TextFrame("TIT2", 0, "Track Name"),
+         audiotools.ID3v24TextFrame("TALB", 0, "Album Name"),
+         audiotools.ID3v24TextFrame("TRCK", 0, "1/3"),
+         audiotools.ID3v24TextFrame("TPOS", 0, "2/4"),
+         audiotools.ID3v24TextFrame("TFOO", 0, "Bar")])
+
 
 class TestForeignMetaData_M4A(TestForeignMetaData_WavPackAPE):
     AUDIO_CLASS = audiotools.M4AAudio
     METADATA_CLASS = audiotools.M4AMetaData
     BASE_CLASS_METADATA = audiotools.M4AMetaData([])
     BASE_CLASS_METADATA["\xa9nam"] = audiotools.M4AMetaData.text_atom(
-        "\xa9nam",u'Track Name')
+        "\xa9nam", u'Track Name')
     BASE_CLASS_METADATA["\xa9alb"] = audiotools.M4AMetaData.text_atom(
-        "\xa9alb",u'Album Name')
+        "\xa9alb", u'Album Name')
     BASE_CLASS_METADATA["trkn"] = audiotools.M4AMetaData.trkn_atom(
-        1,3)
+        1, 3)
     BASE_CLASS_METADATA["disk"] = audiotools.M4AMetaData.disk_atom(
-        2,4)
+        2, 4)
     BASE_CLASS_METADATA["\xa9foo"] = audiotools.M4AMetaData.text_atom(
-        "\xa9foo",u'Bar')
+        "\xa9foo", u'Bar')
 
     def __verify_foreign_field__(self, track=None):
         if (track is None):
             track = self.track
         self.assert_("\xa9foo" in track.get_metadata().keys())
-        self.assertEqual(unicode(track.get_metadata()["\xa9foo"][0]),u"Bar")
+        self.assertEqual(unicode(track.get_metadata()["\xa9foo"][0]), u"Bar")
 
     def __verify_no_foreign_field__(self, track=None):
         if (track is None):
             track = self.track
         self.assert_("\xa9foo" not in track.get_metadata().keys())
 
+
 class Test_IEEEExtended(unittest.TestCase):
     @TEST_PCM
     def testroundtrip(self):
         ieee = audiotools.IEEE_Extended("i")
-        for i in xrange(0,192000 + 1):
+        for i in xrange(0, 192000 + 1):
             assert(i == int(ieee.parse(ieee.build(float(i)))))
 
+
 import test_streams
+
 
 #these are tests on our built-in FLAC encoder
 class TestFlacCodec(unittest.TestCase):
     def __stream_variations__(self):
-        if (not hasattr(self,"__stream_variations_cache__")):
+        if (not hasattr(self, "__stream_variations_cache__")):
             self.__class__.__stream_variations_cache__ = [
-                test_streams.Sine8_Mono(200000,48000,441.0,0.50,441.0,0.49),
-                test_streams.Sine8_Mono(200000,96000,441.0,0.61,661.5,0.37),
-                test_streams.Sine8_Mono(200000,44100,441.0,0.50,882.0,0.49),
-                test_streams.Sine8_Mono(200000,44100,441.0,0.50,4410.0,0.49),
-                test_streams.Sine8_Mono(200000,44100,8820.0,0.70,4410.0,0.29),
+                test_streams.Sine8_Mono(200000, 48000, 441.0, 0.50, 441.0, 0.49),
+                test_streams.Sine8_Mono(200000, 96000, 441.0, 0.61, 661.5, 0.37),
+                test_streams.Sine8_Mono(200000, 44100, 441.0, 0.50, 882.0, 0.49),
+                test_streams.Sine8_Mono(200000, 44100, 441.0, 0.50, 4410.0, 0.49),
+                test_streams.Sine8_Mono(200000, 44100, 8820.0, 0.70, 4410.0, 0.29),
 
-                test_streams.Sine8_Stereo(200000,48000,441.0,0.50,441.0,0.49,1.0),
-                test_streams.Sine8_Stereo(200000,48000,441.0,0.61,661.5,0.37,1.0),
-                test_streams.Sine8_Stereo(200000,96000,441.0,0.50,882.0,0.49,1.0),
-                test_streams.Sine8_Stereo(200000,44100,441.0,0.50,4410.0,0.49,1.0),
-                test_streams.Sine8_Stereo(200000,44100,8820.0,0.70,4410.0,0.29,1.0),
-                test_streams.Sine8_Stereo(200000,44100,441.0,0.50,441.0,0.49,0.5),
-                test_streams.Sine8_Stereo(200000,44100,441.0,0.61,661.5,0.37,2.0),
-                test_streams.Sine8_Stereo(200000,44100,441.0,0.50,882.0,0.49,0.7),
-                test_streams.Sine8_Stereo(200000,44100,441.0,0.50,4410.0,0.49,1.3),
-                test_streams.Sine8_Stereo(200000,44100,8820.0,0.70,4410.0,0.29,0.1),
+                test_streams.Sine8_Stereo(200000, 48000, 441.0, 0.50, 441.0, 0.49, 1.0),
+                test_streams.Sine8_Stereo(200000, 48000, 441.0, 0.61, 661.5, 0.37, 1.0),
+                test_streams.Sine8_Stereo(200000, 96000, 441.0, 0.50, 882.0, 0.49, 1.0),
+                test_streams.Sine8_Stereo(200000, 44100, 441.0, 0.50, 4410.0, 0.49, 1.0),
+                test_streams.Sine8_Stereo(200000, 44100, 8820.0, 0.70, 4410.0, 0.29, 1.0),
+                test_streams.Sine8_Stereo(200000, 44100, 441.0, 0.50, 441.0, 0.49, 0.5),
+                test_streams.Sine8_Stereo(200000, 44100, 441.0, 0.61, 661.5, 0.37, 2.0),
+                test_streams.Sine8_Stereo(200000, 44100, 441.0, 0.50, 882.0, 0.49, 0.7),
+                test_streams.Sine8_Stereo(200000, 44100, 441.0, 0.50, 4410.0, 0.49, 1.3),
+                test_streams.Sine8_Stereo(200000, 44100, 8820.0, 0.70, 4410.0, 0.29, 0.1),
 
-                test_streams.Sine16_Mono(200000,48000,441.0,0.50,441.0,0.49),
-                test_streams.Sine16_Mono(200000,96000,441.0,0.61,661.5,0.37),
-                test_streams.Sine16_Mono(200000,44100,441.0,0.50,882.0,0.49),
-                test_streams.Sine16_Mono(200000,44100,441.0,0.50,4410.0,0.49),
-                test_streams.Sine16_Mono(200000,44100,8820.0,0.70,4410.0,0.29),
+                test_streams.Sine16_Mono(200000, 48000, 441.0, 0.50, 441.0, 0.49),
+                test_streams.Sine16_Mono(200000, 96000, 441.0, 0.61, 661.5, 0.37),
+                test_streams.Sine16_Mono(200000, 44100, 441.0, 0.50, 882.0, 0.49),
+                test_streams.Sine16_Mono(200000, 44100, 441.0, 0.50, 4410.0, 0.49),
+                test_streams.Sine16_Mono(200000, 44100, 8820.0, 0.70, 4410.0, 0.29),
 
-                test_streams.Sine16_Stereo(200000,48000,441.0,0.50,441.0,0.49,1.0),
-                test_streams.Sine16_Stereo(200000,48000,441.0,0.61,661.5,0.37,1.0),
-                test_streams.Sine16_Stereo(200000,96000,441.0,0.50,882.0,0.49,1.0),
-                test_streams.Sine16_Stereo(200000,44100,441.0,0.50,4410.0,0.49,1.0),
-                test_streams.Sine16_Stereo(200000,44100,8820.0,0.70,4410.0,0.29,1.0),
-                test_streams.Sine16_Stereo(200000,44100,441.0,0.50,441.0,0.49,0.5),
-                test_streams.Sine16_Stereo(200000,44100,441.0,0.61,661.5,0.37,2.0),
-                test_streams.Sine16_Stereo(200000,44100,441.0,0.50,882.0,0.49,0.7),
-                test_streams.Sine16_Stereo(200000,44100,441.0,0.50,4410.0,0.49,1.3),
-                test_streams.Sine16_Stereo(200000,44100,8820.0,0.70,4410.0,0.29,0.1),
+                test_streams.Sine16_Stereo(200000, 48000, 441.0, 0.50, 441.0, 0.49, 1.0),
+                test_streams.Sine16_Stereo(200000, 48000, 441.0, 0.61, 661.5, 0.37, 1.0),
+                test_streams.Sine16_Stereo(200000, 96000, 441.0, 0.50, 882.0, 0.49, 1.0),
+                test_streams.Sine16_Stereo(200000, 44100, 441.0, 0.50, 4410.0, 0.49, 1.0),
+                test_streams.Sine16_Stereo(200000, 44100, 8820.0, 0.70, 4410.0, 0.29, 1.0),
+                test_streams.Sine16_Stereo(200000, 44100, 441.0, 0.50, 441.0, 0.49, 0.5),
+                test_streams.Sine16_Stereo(200000, 44100, 441.0, 0.61, 661.5, 0.37, 2.0),
+                test_streams.Sine16_Stereo(200000, 44100, 441.0, 0.50, 882.0, 0.49, 0.7),
+                test_streams.Sine16_Stereo(200000, 44100, 441.0, 0.50, 4410.0, 0.49, 1.3),
+                test_streams.Sine16_Stereo(200000, 44100, 8820.0, 0.70, 4410.0, 0.29, 0.1),
 
-                test_streams.Sine24_Mono(200000,48000,441.0,0.50,441.0,0.49),
-                test_streams.Sine24_Mono(200000,96000,441.0,0.61,661.5,0.37),
-                test_streams.Sine24_Mono(200000,44100,441.0,0.50,882.0,0.49),
-                test_streams.Sine24_Mono(200000,44100,441.0,0.50,4410.0,0.49),
-                test_streams.Sine24_Mono(200000,44100,8820.0,0.70,4410.0,0.29),
+                test_streams.Sine24_Mono(200000, 48000, 441.0, 0.50, 441.0, 0.49),
+                test_streams.Sine24_Mono(200000, 96000, 441.0, 0.61, 661.5, 0.37),
+                test_streams.Sine24_Mono(200000, 44100, 441.0, 0.50, 882.0, 0.49),
+                test_streams.Sine24_Mono(200000, 44100, 441.0, 0.50, 4410.0, 0.49),
+                test_streams.Sine24_Mono(200000, 44100, 8820.0, 0.70, 4410.0, 0.29),
 
-                test_streams.Sine24_Stereo(200000,48000,441.0,0.50,441.0,0.49,1.0),
-                test_streams.Sine24_Stereo(200000,48000,441.0,0.61,661.5,0.37,1.0),
-                test_streams.Sine24_Stereo(200000,96000,441.0,0.50,882.0,0.49,1.0),
-                test_streams.Sine24_Stereo(200000,44100,441.0,0.50,4410.0,0.49,1.0),
-                test_streams.Sine24_Stereo(200000,44100,8820.0,0.70,4410.0,0.29,1.0),
-                test_streams.Sine24_Stereo(200000,44100,441.0,0.50,441.0,0.49,0.5),
-                test_streams.Sine24_Stereo(200000,44100,441.0,0.61,661.5,0.37,2.0),
-                test_streams.Sine24_Stereo(200000,44100,441.0,0.50,882.0,0.49,0.7),
-                test_streams.Sine24_Stereo(200000,44100,441.0,0.50,4410.0,0.49,1.3),
-                test_streams.Sine24_Stereo(200000,44100,8820.0,0.70,4410.0,0.29,0.1)]
+                test_streams.Sine24_Stereo(200000, 48000, 441.0, 0.50, 441.0, 0.49, 1.0),
+                test_streams.Sine24_Stereo(200000, 48000, 441.0, 0.61, 661.5, 0.37, 1.0),
+                test_streams.Sine24_Stereo(200000, 96000, 441.0, 0.50, 882.0, 0.49, 1.0),
+                test_streams.Sine24_Stereo(200000, 44100, 441.0, 0.50, 4410.0, 0.49, 1.0),
+                test_streams.Sine24_Stereo(200000, 44100, 8820.0, 0.70, 4410.0, 0.29, 1.0),
+                test_streams.Sine24_Stereo(200000, 44100, 441.0, 0.50, 441.0, 0.49, 0.5),
+                test_streams.Sine24_Stereo(200000, 44100, 441.0, 0.61, 661.5, 0.37, 2.0),
+                test_streams.Sine24_Stereo(200000, 44100, 441.0, 0.50, 882.0, 0.49, 0.7),
+                test_streams.Sine24_Stereo(200000, 44100, 441.0, 0.50, 4410.0, 0.49, 1.3),
+                test_streams.Sine24_Stereo(200000, 44100, 8820.0, 0.70, 4410.0, 0.29, 0.1)]
         for stream in self.__class__.__stream_variations_cache__:
             stream.reset()
             yield stream
@@ -9352,9 +9443,9 @@ class TestFlacCodec(unittest.TestCase):
             md5sum = md5()
             f = g.read(audiotools.BUFFER_SIZE)
             while (len(f) > 0):
-                md5sum.update(f.to_bytes(False,True))
+                md5sum.update(f.to_bytes(False, True))
                 f = g.read(audiotools.BUFFER_SIZE)
-            self.assertEqual(md5sum.digest(),g.digest())
+            self.assertEqual(md5sum.digest(), g.digest())
             g.close()
 
     def __test_reader__(self, pcmreader, **encode_options):
@@ -9363,7 +9454,7 @@ class TestFlacCodec(unittest.TestCase):
                     pcmreader,
                     **encode_options)
 
-        self.assertEqual(subprocess.call([audiotools.BIN["flac"],"-ts",
+        self.assertEqual(subprocess.call([audiotools.BIN["flac"], "-ts",
                                           temp_file.name]),
                          0,
                          "flac decode error on %s with options %s" % \
@@ -9372,17 +9463,17 @@ class TestFlacCodec(unittest.TestCase):
 
         flac = audiotools.open(temp_file.name)
         self.assert_(flac.total_frames() > 0)
-        if (hasattr(pcmreader,"digest")):
-            self.assertEqual(flac.__md5__,pcmreader.digest())
+        if (hasattr(pcmreader, "digest")):
+            self.assertEqual(flac.__md5__, pcmreader.digest())
 
         md5sum = md5()
-        d = self.decoder(temp_file.name,pcmreader.channel_mask)
+        d = self.decoder(temp_file.name, pcmreader.channel_mask)
         f = d.read(audiotools.BUFFER_SIZE)
         while (len(f) > 0):
-            md5sum.update(f.to_bytes(False,True))
+            md5sum.update(f.to_bytes(False, True))
             f = d.read(audiotools.BUFFER_SIZE)
         d.close()
-        self.assertEqual(md5sum.digest(),pcmreader.digest())
+        self.assertEqual(md5sum.digest(), pcmreader.digest())
 
         temp_file.close()
 
@@ -9403,9 +9494,9 @@ class TestFlacCodec(unittest.TestCase):
 
     @TEST_FLAC
     def test_full_scale_deflection(self):
-        for (bps,fsd) in [(8,test_streams.fsd8),
-                          (16,test_streams.fsd16),
-                          (24,test_streams.fsd24)]:
+        for (bps, fsd) in [(8, test_streams.fsd8),
+                           (16, test_streams.fsd16),
+                           (24, test_streams.fsd24)]:
             for pattern in [test_streams.PATTERN01,
                             test_streams.PATTERN02,
                             test_streams.PATTERN03,
@@ -9414,7 +9505,7 @@ class TestFlacCodec(unittest.TestCase):
                             test_streams.PATTERN06,
                             test_streams.PATTERN07]:
                 self.__test_reader__(
-                    test_streams.MD5Reader(fsd(pattern,100)),
+                    test_streams.MD5Reader(fsd(pattern, 100)),
                     block_size=1152,
                     max_lpc_order=16,
                     min_residual_partition_order=0,
@@ -9450,19 +9541,21 @@ class TestFlacCodec(unittest.TestCase):
     def test_blocksizes(self):
         #FIXME - handle 8bps/24bps also
         noise = audiotools.Con.GreedyRepeater(audiotools.Con.SBInt16(None)).parse(os.urandom(64))
-        encoding_args = {"min_residual_partition_order":0,
-                         "max_residual_partition_order":6,
-                         "mid_side":True,
-                         "adaptive_mid_side":True,
-                         "exhaustive_model_search":True}
+        encoding_args = {"min_residual_partition_order": 0,
+                         "max_residual_partition_order": 6,
+                         "mid_side": True,
+                         "adaptive_mid_side": True,
+                         "exhaustive_model_search": True}
         for to_disable in [[],
                            ["disable_verbatim_subframes",
                             "disable_constant_subframes"],
                            ["disable_verbatim_subframes",
                             "disable_constant_subframes",
                             "disable_fixed_subframes"]]:
-            for block_size in [16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33]:
-                for lpc_order in [0,1,2,3,4,5,7,8,9,15,16,17,31,32]:
+            for block_size in [16, 17, 18, 19, 20, 21, 22, 23,
+                               24, 25, 26, 27, 28, 29, 30, 31, 32, 33]:
+                for lpc_order in [0, 1, 2, 3, 4, 5, 7, 8, 9, 15, 16, 17,
+                                  31, 32]:
                     args = encoding_args.copy()
                     for disable in to_disable:
                         args[disable] = True
@@ -9470,15 +9563,15 @@ class TestFlacCodec(unittest.TestCase):
                     args["max_lpc_order"] = lpc_order
                     self.__test_reader__(test_streams.MD5Reader(
                             test_streams.FrameListReader(noise,
-                                                         44100,1,16)),
+                                                         44100, 1, 16)),
                                          **args)
 
     @TEST_FLAC
     def test_frame_header_variations(self):
         max_lpc_order = 16
 
-        self.__test_reader__(test_streams.Sine16_Mono(200000,96000,
-                                                      441.0,0.61,661.5,0.37),
+        self.__test_reader__(test_streams.Sine16_Mono(200000, 96000,
+                                                      441.0, 0.61, 661.5, 0.37),
                              block_size=max_lpc_order,
                              max_lpc_order=max_lpc_order,
                              min_residual_partition_order=0,
@@ -9487,8 +9580,8 @@ class TestFlacCodec(unittest.TestCase):
                              adaptive_mid_side=True,
                              exhaustive_model_search=True)
 
-        self.__test_reader__(test_streams.Sine16_Mono(200000,96000,
-                                                      441.0,0.61,661.5,0.37),
+        self.__test_reader__(test_streams.Sine16_Mono(200000, 96000,
+                                                      441.0, 0.61, 661.5, 0.37),
                              block_size=65535,
                              max_lpc_order=max_lpc_order,
                              min_residual_partition_order=0,
@@ -9497,8 +9590,8 @@ class TestFlacCodec(unittest.TestCase):
                              adaptive_mid_side=True,
                              exhaustive_model_search=True)
 
-        self.__test_reader__(test_streams.Sine16_Mono(200000,9,
-                                                      441.0,0.61,661.5,0.37),
+        self.__test_reader__(test_streams.Sine16_Mono(200000, 9,
+                                                      441.0, 0.61, 661.5, 0.37),
                              block_size=1152,
                              max_lpc_order=max_lpc_order,
                              min_residual_partition_order=0,
@@ -9507,8 +9600,8 @@ class TestFlacCodec(unittest.TestCase):
                              adaptive_mid_side=True,
                              exhaustive_model_search=True)
 
-        self.__test_reader__(test_streams.Sine16_Mono(200000,90,
-                                                      441.0,0.61,661.5,0.37),
+        self.__test_reader__(test_streams.Sine16_Mono(200000, 90,
+                                                      441.0, 0.61, 661.5, 0.37),
                              block_size=1152,
                              max_lpc_order=max_lpc_order,
                              min_residual_partition_order=0,
@@ -9517,8 +9610,8 @@ class TestFlacCodec(unittest.TestCase):
                              adaptive_mid_side=True,
                              exhaustive_model_search=True)
 
-        self.__test_reader__(test_streams.Sine16_Mono(200000,90000,
-                                                      441.0,0.61,661.5,0.37),
+        self.__test_reader__(test_streams.Sine16_Mono(200000, 90000,
+                                                      441.0, 0.61, 661.5, 0.37),
                              block_size=1152,
                              max_lpc_order=max_lpc_order,
                              min_residual_partition_order=0,
@@ -9549,7 +9642,7 @@ class TestFlacCodec(unittest.TestCase):
                     for e in extra:
                         encode_opts[e] = True
                     for g in self.__stream_variations__():
-                        self.__test_reader__(g,**encode_opts)
+                        self.__test_reader__(g, **encode_opts)
 
     @TEST_FLAC
     def test_noise(self):
@@ -9561,20 +9654,20 @@ class TestFlacCodec(unittest.TestCase):
                             ["disable_verbatim_subframes",
                              "disable_constant_subframes",
                              "disable_fixed_subframes"]]:
-                for (channels,mask) in [
-                    (1,audiotools.ChannelMask.from_channels(1)),
-                    (2,audiotools.ChannelMask.from_channels(2)),
-                    (4,audiotools.ChannelMask.from_fields(
+                for (channels, mask) in [
+                    (1, audiotools.ChannelMask.from_channels(1)),
+                    (2, audiotools.ChannelMask.from_channels(2)),
+                    (4, audiotools.ChannelMask.from_fields(
                             front_left=True,
                             front_right=True,
                             back_left=True,
                             back_right=True)),
-                    (8,audiotools.ChannelMask(0))]:
-                    for bps in [8,16,24]:
+                    (8, audiotools.ChannelMask(0))]:
+                    for bps in [8, 16, 24]:
                         for extra in  [[],
                                        #FIXME - no analogue for -p option
                                        ["exhaustive_model_search"]]:
-                            for blocksize in [None,32,32768,65535]:
+                            for blocksize in [None, 32, 32768, 65535]:
                                 for d in disable:
                                     encode_opts[d] = True
                                 for e in extra:
@@ -9594,7 +9687,7 @@ class TestFlacCodec(unittest.TestCase):
 
     @TEST_FLAC
     def test_fractional(self):
-        def __perform_test__(block_size,pcm_frames):
+        def __perform_test__(block_size, pcm_frames):
             self.__test_reader__(
                 EXACT_RANDOM_PCM_Reader(
                     pcm_frames=pcm_frames,
@@ -9606,17 +9699,24 @@ class TestFlacCodec(unittest.TestCase):
                 min_residual_partition_order=0,
                 max_residual_partition_order=6)
 
-        for pcm_frames in [31,32,33,34,35,2046,2047,2048,2049,2050]:
-            __perform_test__(33,pcm_frames)
+        for pcm_frames in [31, 32, 33, 34, 35, 2046, 2047, 2048, 2049, 2050]:
+            __perform_test__(33, pcm_frames)
 
-        for pcm_frames in [254,255,256,257,258,510,511,512,513,514,1022,1023,1024,1025,1026,2046,2047,2048,2049,2050,4094,4095,4096,4097,4098]:
-            __perform_test__(256,pcm_frames)
+        for pcm_frames in [254, 255, 256, 257, 258, 510, 511, 512, 513,
+                           514, 1022, 1023, 1024, 1025, 1026, 2046, 2047,
+                           2048, 2049, 2050, 4094, 4095, 4096, 4097, 4098]:
+            __perform_test__(256, pcm_frames)
 
-        for pcm_frames in [1022,1023,1024,1025,1026,2046,2047,2048,2049,2050,4094,4095,4096,4097,4098]:
-            __perform_test__(2048,pcm_frames)
+        for pcm_frames in [1022, 1023, 1024, 1025, 1026, 2046, 2047,
+                           2048, 2049, 2050, 4094, 4095, 4096, 4097, 4098]:
+            __perform_test__(2048, pcm_frames)
 
-        for pcm_frames in [1022,1023,1024,1025,1026,2046,2047,2048,2049,2050,4094,4095,4096,4097,4098,4606,4607,4608,4609,4610,8190,8191,8192,8193,8194,16382,16383,16384,16385,16386]:
-            __perform_test__(4608,pcm_frames)
+        for pcm_frames in [1022, 1023, 1024, 1025, 1026, 2046, 2047,
+                           2048, 2049, 2050, 4094, 4095, 4096, 4097,
+                           4098, 4606, 4607, 4608, 4609, 4610, 8190,
+                           8191, 8192, 8193, 8194, 16382, 16383, 16384,
+                           16385, 16386]:
+            __perform_test__(4608, pcm_frames)
 
     #PCMReaders don't yet support seeking,
     #so the seek tests can be skipped
@@ -9631,46 +9731,46 @@ class TestFlacCodec(unittest.TestCase):
 
     #as is metadata handling
 
+
 #these are tests on our built-in Shorten encoder
 class TestShortenCodec(unittest.TestCase):
     def __stream_variations__(self):
-        if (not hasattr(self,"__stream_variations_cache__")):
+        if (not hasattr(self, "__stream_variations_cache__")):
             #this is a simpler variant of FLAC's variations
             #since Shorten doesn't support 24bps
             self.__class__.__stream_variations_cache__ = [
-                test_streams.Sine8_Mono(200000,48000,441.0,0.50,441.0,0.49),
-                test_streams.Sine8_Mono(200000,96000,441.0,0.61,661.5,0.37),
-                test_streams.Sine8_Mono(200000,44100,441.0,0.50,882.0,0.49),
-                test_streams.Sine8_Mono(200000,44100,441.0,0.50,4410.0,0.49),
-                test_streams.Sine8_Mono(200000,44100,8820.0,0.70,4410.0,0.29),
+                test_streams.Sine8_Mono(200000, 48000, 441.0, 0.50, 441.0, 0.49),
+                test_streams.Sine8_Mono(200000, 96000, 441.0, 0.61, 661.5, 0.37),
+                test_streams.Sine8_Mono(200000, 44100, 441.0, 0.50, 882.0, 0.49),
+                test_streams.Sine8_Mono(200000, 44100, 441.0, 0.50, 4410.0, 0.49),
+                test_streams.Sine8_Mono(200000, 44100, 8820.0, 0.70, 4410.0, 0.29),
 
-                test_streams.Sine8_Stereo(200000,48000,441.0,0.50,441.0,0.49,1.0),
-                test_streams.Sine8_Stereo(200000,48000,441.0,0.61,661.5,0.37,1.0),
-                test_streams.Sine8_Stereo(200000,96000,441.0,0.50,882.0,0.49,1.0),
-                test_streams.Sine8_Stereo(200000,44100,441.0,0.50,4410.0,0.49,1.0),
-                test_streams.Sine8_Stereo(200000,44100,8820.0,0.70,4410.0,0.29,1.0),
-                test_streams.Sine8_Stereo(200000,44100,441.0,0.50,441.0,0.49,0.5),
-                test_streams.Sine8_Stereo(200000,44100,441.0,0.61,661.5,0.37,2.0),
-                test_streams.Sine8_Stereo(200000,44100,441.0,0.50,882.0,0.49,0.7),
-                test_streams.Sine8_Stereo(200000,44100,441.0,0.50,4410.0,0.49,1.3),
-                test_streams.Sine8_Stereo(200000,44100,8820.0,0.70,4410.0,0.29,0.1),
+                test_streams.Sine8_Stereo(200000, 48000, 441.0, 0.50, 441.0, 0.49, 1.0),
+                test_streams.Sine8_Stereo(200000, 48000, 441.0, 0.61, 661.5, 0.37, 1.0),
+                test_streams.Sine8_Stereo(200000, 96000, 441.0, 0.50, 882.0, 0.49, 1.0),
+                test_streams.Sine8_Stereo(200000, 44100, 441.0, 0.50, 4410.0, 0.49, 1.0),
+                test_streams.Sine8_Stereo(200000, 44100, 8820.0, 0.70, 4410.0, 0.29, 1.0),
+                test_streams.Sine8_Stereo(200000, 44100, 441.0, 0.50, 441.0, 0.49, 0.5),
+                test_streams.Sine8_Stereo(200000, 44100, 441.0, 0.61, 661.5, 0.37, 2.0),
+                test_streams.Sine8_Stereo(200000, 44100, 441.0, 0.50, 882.0, 0.49, 0.7),
+                test_streams.Sine8_Stereo(200000, 44100, 441.0, 0.50, 4410.0, 0.49, 1.3),
+                test_streams.Sine8_Stereo(200000, 44100, 8820.0, 0.70, 4410.0, 0.29, 0.1),
 
-                test_streams.Sine16_Mono(200000,48000,441.0,0.50,441.0,0.49),
-                test_streams.Sine16_Mono(200000,96000,441.0,0.61,661.5,0.37),
-                test_streams.Sine16_Mono(200000,44100,441.0,0.50,882.0,0.49),
-                test_streams.Sine16_Mono(200000,44100,441.0,0.50,4410.0,0.49),
-                test_streams.Sine16_Mono(200000,44100,8820.0,0.70,4410.0,0.29),
-
-                test_streams.Sine16_Stereo(200000,48000,441.0,0.50,441.0,0.49,1.0),
-                test_streams.Sine16_Stereo(200000,48000,441.0,0.61,661.5,0.37,1.0),
-                test_streams.Sine16_Stereo(200000,96000,441.0,0.50,882.0,0.49,1.0),
-                test_streams.Sine16_Stereo(200000,44100,441.0,0.50,4410.0,0.49,1.0),
-                test_streams.Sine16_Stereo(200000,44100,8820.0,0.70,4410.0,0.29,1.0),
-                test_streams.Sine16_Stereo(200000,44100,441.0,0.50,441.0,0.49,0.5),
-                test_streams.Sine16_Stereo(200000,44100,441.0,0.61,661.5,0.37,2.0),
-                test_streams.Sine16_Stereo(200000,44100,441.0,0.50,882.0,0.49,0.7),
-                test_streams.Sine16_Stereo(200000,44100,441.0,0.50,4410.0,0.49,1.3),
-                test_streams.Sine16_Stereo(200000,44100,8820.0,0.70,4410.0,0.29,0.1)]
+                test_streams.Sine16_Mono(200000, 48000, 441.0, 0.50, 441.0, 0.49),
+                test_streams.Sine16_Mono(200000, 96000, 441.0, 0.61, 661.5, 0.37),
+                test_streams.Sine16_Mono(200000, 44100, 441.0, 0.50, 882.0, 0.49),
+                test_streams.Sine16_Mono(200000, 44100, 441.0, 0.50, 4410.0, 0.49),
+                test_streams.Sine16_Mono(200000, 44100, 8820.0, 0.70, 4410.0, 0.29),
+                test_streams.Sine16_Stereo(200000, 48000, 441.0, 0.50, 441.0, 0.49, 1.0),
+                test_streams.Sine16_Stereo(200000, 48000, 441.0, 0.61, 661.5, 0.37, 1.0),
+                test_streams.Sine16_Stereo(200000, 96000, 441.0, 0.50, 882.0, 0.49, 1.0),
+                test_streams.Sine16_Stereo(200000, 44100, 441.0, 0.50, 4410.0, 0.49, 1.0),
+                test_streams.Sine16_Stereo(200000, 44100, 8820.0, 0.70, 4410.0, 0.29, 1.0),
+                test_streams.Sine16_Stereo(200000, 44100, 441.0, 0.50, 441.0, 0.49, 0.5),
+                test_streams.Sine16_Stereo(200000, 44100, 441.0, 0.61, 661.5, 0.37, 2.0),
+                test_streams.Sine16_Stereo(200000, 44100, 441.0, 0.50, 882.0, 0.49, 0.7),
+                test_streams.Sine16_Stereo(200000, 44100, 441.0, 0.50, 4410.0, 0.49, 1.3),
+                test_streams.Sine16_Stereo(200000, 44100, 8820.0, 0.70, 4410.0, 0.29, 0.1)]
             for stream in self.__class__.__stream_variations_cache__:
                 stream.reset()
                 yield stream
@@ -9682,9 +9782,9 @@ class TestShortenCodec(unittest.TestCase):
         self.audio_class = audiotools.ShortenAudio
         self.decoder = audiotools.decoders.SHNDecoder
         self.encode = audiotools.encoders.encode_shn
-        self.encode_opts = [{"block_size":4},
-                            {"block_size":256},
-                            {"block_size":1024}]
+        self.encode_opts = [{"block_size": 4},
+                            {"block_size": 256},
+                            {"block_size": 1024}]
 
     @TEST_SHORTEN
     def test_streams(self):
@@ -9692,9 +9792,9 @@ class TestShortenCodec(unittest.TestCase):
             md5sum = md5()
             f = g.read(audiotools.BUFFER_SIZE)
             while (len(f) > 0):
-                md5sum.update(f.to_bytes(False,True))
+                md5sum.update(f.to_bytes(False, True))
                 f = g.read(audiotools.BUFFER_SIZE)
-            self.assertEqual(md5sum.digest(),g.digest())
+            self.assertEqual(md5sum.digest(), g.digest())
             g.close()
 
     def __test_reader__(self, pcmreader, sample_count, **encode_options):
@@ -9735,7 +9835,7 @@ class TestShortenCodec(unittest.TestCase):
             audiotools.WaveAudio.CHUNK_HEADER.build(
                 audiotools.Con.Container(
                     chunk_id='data',
-                    chunk_length=data_size)),None]
+                    chunk_length=data_size)), None]
 
         self.encode(temp_file.name,
                     pcmreader,
@@ -9753,16 +9853,16 @@ class TestShortenCodec(unittest.TestCase):
         d = self.decoder(temp_file.name)
         f = d.read(audiotools.BUFFER_SIZE)
         while (len(f) > 0):
-            md5sum.update(f.to_bytes(False,True))
+            md5sum.update(f.to_bytes(False, True))
             f = d.read(audiotools.BUFFER_SIZE)
         d.close()
-        self.assertEqual(md5sum.digest(),pcmreader.digest())
+        self.assertEqual(md5sum.digest(), pcmreader.digest())
 
         #then compare our .to_wave() output
         #with that of the Shorten reference decoder
         shn.to_wave(temp_wav_file1.name)
         subprocess.call([audiotools.BIN["shorten"],
-                         "-x",shn.filename,temp_wav_file2.name])
+                         "-x", shn.filename, temp_wav_file2.name])
 
         self.assert_(audiotools.pcm_cmp(
                 audiotools.WaveAudio(temp_wav_file1.name).to_pcm(),
@@ -9779,13 +9879,13 @@ class TestShortenCodec(unittest.TestCase):
                   test_streams.Generate03,
                   test_streams.Generate04]:
             gen = g(44100)
-            self.__test_reader__(gen,len(gen.pcmreader.framelist),
+            self.__test_reader__(gen, len(gen.pcmreader.framelist),
                                  block_size=256)
 
     @TEST_SHORTEN
     def test_full_scale_deflection(self):
-        for (bps,fsd) in [(8,test_streams.fsd8),
-                          (16,test_streams.fsd16)]:
+        for (bps, fsd) in [(8, test_streams.fsd8),
+                           (16, test_streams.fsd16)]:
             for pattern in [test_streams.PATTERN01,
                             test_streams.PATTERN02,
                             test_streams.PATTERN03,
@@ -9793,7 +9893,7 @@ class TestShortenCodec(unittest.TestCase):
                             test_streams.PATTERN05,
                             test_streams.PATTERN06,
                             test_streams.PATTERN07]:
-                stream = test_streams.MD5Reader(fsd(pattern,100))
+                stream = test_streams.MD5Reader(fsd(pattern, 100))
                 self.__test_reader__(
                     stream,
                     len(stream.pcmreader.framelist),
@@ -9810,10 +9910,11 @@ class TestShortenCodec(unittest.TestCase):
     def test_blocksizes(self):
         noise = audiotools.Con.GreedyRepeater(audiotools.Con.SBInt16(None)).parse(os.urandom(64))
 
-        for block_size in [4,5,6,7,8,9,10,11,12,13,14,15,16,256,1024]:
-            args = {"block_size":block_size}
+        for block_size in [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
+                           256, 1024]:
+            args = {"block_size": block_size}
             self.__test_reader__(test_streams.MD5Reader(
-                    test_streams.FrameListReader(noise,44100,1,16)),
+                    test_streams.FrameListReader(noise, 44100, 1, 16)),
                                  len(noise) / 2,
                                  **args)
 
@@ -9821,16 +9922,16 @@ class TestShortenCodec(unittest.TestCase):
     def test_noise(self):
         for opts in self.encode_opts:
             encode_opts = opts.copy()
-            for (channels,mask) in [
-                (1,audiotools.ChannelMask.from_channels(1)),
-                (2,audiotools.ChannelMask.from_channels(2)),
-                (4,audiotools.ChannelMask.from_fields(
+            for (channels, mask) in [
+                (1, audiotools.ChannelMask.from_channels(1)),
+                (2, audiotools.ChannelMask.from_channels(2)),
+                (4, audiotools.ChannelMask.from_fields(
                         front_left=True,
                         front_right=True,
                         back_left=True,
                         back_right=True)),
-                (8,audiotools.ChannelMask(0))]:
-                for bps in [8,16]:
+                (8, audiotools.ChannelMask(0))]:
+                for bps in [8, 16]:
                     self.__test_reader__(
                         EXACT_RANDOM_PCM_Reader(
                             pcm_frames=65536,
@@ -9841,45 +9942,46 @@ class TestShortenCodec(unittest.TestCase):
                         65536 * channels,
                         **encode_opts)
 
+
 class TestAlacCodec(unittest.TestCase):
     def __stream_variations__(self):
-        if (not hasattr(self,"__stream_variations_cache__")):
+        if (not hasattr(self, "__stream_variations_cache__")):
             #this is another simpler variant of FLAC's variations
             #since ALAC doesn't support 8bps
             self.__class__.__stream_variations_cache__ = [
-                test_streams.Sine16_Mono(200000,48000,441.0,0.50,441.0,0.49),
-                test_streams.Sine16_Mono(200000,96000,441.0,0.61,661.5,0.37),
-                test_streams.Sine16_Mono(200000,44100,441.0,0.50,882.0,0.49),
-                test_streams.Sine16_Mono(200000,44100,441.0,0.50,4410.0,0.49),
-                test_streams.Sine16_Mono(200000,44100,8820.0,0.70,4410.0,0.29),
+                test_streams.Sine16_Mono(200000, 48000, 441.0, 0.50, 441.0, 0.49),
+                test_streams.Sine16_Mono(200000, 96000, 441.0, 0.61, 661.5, 0.37),
+                test_streams.Sine16_Mono(200000, 44100, 441.0, 0.50, 882.0, 0.49),
+                test_streams.Sine16_Mono(200000, 44100, 441.0, 0.50, 4410.0, 0.49),
+                test_streams.Sine16_Mono(200000, 44100, 8820.0, 0.70, 4410.0, 0.29),
 
-                test_streams.Sine16_Stereo(200000,48000,441.0,0.50,441.0,0.49,1.0),
-                test_streams.Sine16_Stereo(200000,48000,441.0,0.61,661.5,0.37,1.0),
-                test_streams.Sine16_Stereo(200000,96000,441.0,0.50,882.0,0.49,1.0),
-                test_streams.Sine16_Stereo(200000,44100,441.0,0.50,4410.0,0.49,1.0),
-                test_streams.Sine16_Stereo(200000,44100,8820.0,0.70,4410.0,0.29,1.0),
-                test_streams.Sine16_Stereo(200000,44100,441.0,0.50,441.0,0.49,0.5),
-                test_streams.Sine16_Stereo(200000,44100,441.0,0.61,661.5,0.37,2.0),
-                test_streams.Sine16_Stereo(200000,44100,441.0,0.50,882.0,0.49,0.7),
-                test_streams.Sine16_Stereo(200000,44100,441.0,0.50,4410.0,0.49,1.3),
-                test_streams.Sine16_Stereo(200000,44100,8820.0,0.70,4410.0,0.29,0.1),
+                test_streams.Sine16_Stereo(200000, 48000, 441.0, 0.50, 441.0, 0.49, 1.0),
+                test_streams.Sine16_Stereo(200000, 48000, 441.0, 0.61, 661.5, 0.37, 1.0),
+                test_streams.Sine16_Stereo(200000, 96000, 441.0, 0.50, 882.0, 0.49, 1.0),
+                test_streams.Sine16_Stereo(200000, 44100, 441.0, 0.50, 4410.0, 0.49, 1.0),
+                test_streams.Sine16_Stereo(200000, 44100, 8820.0, 0.70, 4410.0, 0.29, 1.0),
+                test_streams.Sine16_Stereo(200000, 44100, 441.0, 0.50, 441.0, 0.49, 0.5),
+                test_streams.Sine16_Stereo(200000, 44100, 441.0, 0.61, 661.5, 0.37, 2.0),
+                test_streams.Sine16_Stereo(200000, 44100, 441.0, 0.50, 882.0, 0.49, 0.7),
+                test_streams.Sine16_Stereo(200000, 44100, 441.0, 0.50, 4410.0, 0.49, 1.3),
+                test_streams.Sine16_Stereo(200000, 44100, 8820.0, 0.70, 4410.0, 0.29, 0.1),
 
-                test_streams.Sine24_Mono(200000,48000,441.0,0.50,441.0,0.49),
-                test_streams.Sine24_Mono(200000,96000,441.0,0.61,661.5,0.37),
-                test_streams.Sine24_Mono(200000,44100,441.0,0.50,882.0,0.49),
-                test_streams.Sine24_Mono(200000,44100,441.0,0.50,4410.0,0.49),
-                test_streams.Sine24_Mono(200000,44100,8820.0,0.70,4410.0,0.29),
+                test_streams.Sine24_Mono(200000, 48000, 441.0, 0.50, 441.0, 0.49),
+                test_streams.Sine24_Mono(200000, 96000, 441.0, 0.61, 661.5, 0.37),
+                test_streams.Sine24_Mono(200000, 44100, 441.0, 0.50, 882.0, 0.49),
+                test_streams.Sine24_Mono(200000, 44100, 441.0, 0.50, 4410.0, 0.49),
+                test_streams.Sine24_Mono(200000, 44100, 8820.0, 0.70, 4410.0, 0.29),
 
-                test_streams.Sine24_Stereo(200000,48000,441.0,0.50,441.0,0.49,1.0),
-                test_streams.Sine24_Stereo(200000,48000,441.0,0.61,661.5,0.37,1.0),
-                test_streams.Sine24_Stereo(200000,96000,441.0,0.50,882.0,0.49,1.0),
-                test_streams.Sine24_Stereo(200000,44100,441.0,0.50,4410.0,0.49,1.0),
-                test_streams.Sine24_Stereo(200000,44100,8820.0,0.70,4410.0,0.29,1.0),
-                test_streams.Sine24_Stereo(200000,44100,441.0,0.50,441.0,0.49,0.5),
-                test_streams.Sine24_Stereo(200000,44100,441.0,0.61,661.5,0.37,2.0),
-                test_streams.Sine24_Stereo(200000,44100,441.0,0.50,882.0,0.49,0.7),
-                test_streams.Sine24_Stereo(200000,44100,441.0,0.50,4410.0,0.49,1.3),
-                test_streams.Sine24_Stereo(200000,44100,8820.0,0.70,4410.0,0.29,0.1)]
+                test_streams.Sine24_Stereo(200000, 48000, 441.0, 0.50, 441.0, 0.49, 1.0),
+                test_streams.Sine24_Stereo(200000, 48000, 441.0, 0.61, 661.5, 0.37, 1.0),
+                test_streams.Sine24_Stereo(200000, 96000, 441.0, 0.50, 882.0, 0.49, 1.0),
+                test_streams.Sine24_Stereo(200000, 44100, 441.0, 0.50, 4410.0, 0.49, 1.0),
+                test_streams.Sine24_Stereo(200000, 44100, 8820.0, 0.70, 4410.0, 0.29, 1.0),
+                test_streams.Sine24_Stereo(200000, 44100, 441.0, 0.50, 441.0, 0.49, 0.5),
+                test_streams.Sine24_Stereo(200000, 44100, 441.0, 0.61, 661.5, 0.37, 2.0),
+                test_streams.Sine24_Stereo(200000, 44100, 441.0, 0.50, 882.0, 0.49, 0.7),
+                test_streams.Sine24_Stereo(200000, 44100, 441.0, 0.50, 4410.0, 0.49, 1.3),
+                test_streams.Sine24_Stereo(200000, 44100, 8820.0, 0.70, 4410.0, 0.29, 0.1)]
 
         for stream in self.__class__.__stream_variations_cache__:
             stream.reset()
@@ -9912,20 +10014,20 @@ class TestAlacCodec(unittest.TestCase):
         d = alac.to_pcm()
         f = d.read(audiotools.BUFFER_SIZE)
         while (len(f) > 0):
-            md5sum_decoder.update(f.to_bytes(False,True))
+            md5sum_decoder.update(f.to_bytes(False, True))
             f = d.read(audiotools.BUFFER_SIZE)
         d.close()
-        self.assertEqual(md5sum_decoder.digest(),pcmreader.digest())
+        self.assertEqual(md5sum_decoder.digest(), pcmreader.digest())
 
         #then compare our .to_pcm() output
         #with that of the ALAC reference decoder
         reference = subprocess.Popen([audiotools.BIN["alac"],
-                                      "-r",temp_file.name],
+                                      "-r", temp_file.name],
                                      stdout=subprocess.PIPE)
         md5sum_reference = md5()
-        audiotools.transfer_data(reference.stdout.read,md5sum_reference.update)
-        self.assertEqual(reference.wait(),0)
-        self.assertEqual(md5sum_reference.digest(),pcmreader.digest())
+        audiotools.transfer_data(reference.stdout.read, md5sum_reference.update)
+        self.assertEqual(reference.wait(), 0)
+        self.assertEqual(md5sum_reference.digest(), pcmreader.digest())
 
     @TEST_ALAC
     def test_streams(self):
@@ -9933,9 +10035,9 @@ class TestAlacCodec(unittest.TestCase):
             md5sum = md5()
             f = g.read(audiotools.BUFFER_SIZE)
             while (len(f) > 0):
-                md5sum.update(f.to_bytes(False,True))
+                md5sum.update(f.to_bytes(False, True))
                 f = g.read(audiotools.BUFFER_SIZE)
-            self.assertEqual(md5sum.digest(),g.digest())
+            self.assertEqual(md5sum.digest(), g.digest())
             g.close()
 
     @TEST_ALAC
@@ -9944,12 +10046,12 @@ class TestAlacCodec(unittest.TestCase):
                   test_streams.Generate02,
                   test_streams.Generate03,
                   test_streams.Generate04]:
-            self.__test_reader__(g(44100),block_size=1152)
+            self.__test_reader__(g(44100), block_size=1152)
 
     @TEST_ALAC
     def test_full_scale_deflection(self):
-        for (bps,fsd) in [(16,test_streams.fsd16),
-                          (24,test_streams.fsd24)]:
+        for (bps, fsd) in [(16, test_streams.fsd16),
+                           (24, test_streams.fsd24)]:
             for pattern in [test_streams.PATTERN01,
                             test_streams.PATTERN02,
                             test_streams.PATTERN03,
@@ -9958,13 +10060,13 @@ class TestAlacCodec(unittest.TestCase):
                             test_streams.PATTERN06,
                             test_streams.PATTERN07]:
                 self.__test_reader__(
-                    test_streams.MD5Reader(fsd(pattern,100)),
+                    test_streams.MD5Reader(fsd(pattern, 100)),
                     block_size=1152)
 
     @TEST_ALAC
     def test_sines(self):
         for g in self.__stream_variations__():
-            self.__test_reader__(g,block_size=1152)
+            self.__test_reader__(g, block_size=1152)
 
     @TEST_ALAC
     def test_wasted_bps(self):
@@ -9975,20 +10077,21 @@ class TestAlacCodec(unittest.TestCase):
     def test_blocksizes(self):
         noise = audiotools.Con.GreedyRepeater(audiotools.Con.SBInt16(None)).parse(os.urandom(64))
 
-        for block_size in [16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33]:
+        for block_size in [16, 17, 18, 19, 20, 21, 22, 23, 24,
+                           25, 26, 27, 28, 29, 30, 31, 32, 33]:
             self.__test_reader__(test_streams.MD5Reader(
                     test_streams.FrameListReader(noise,
-                                                 44100,1,16)),
+                                                 44100, 1, 16)),
                                  block_size=block_size)
 
     @TEST_ALAC
     def test_noise(self):
-        for (channels,mask) in [
-            (1,audiotools.ChannelMask.from_channels(1)),
-            (2,audiotools.ChannelMask.from_channels(2))]:
-            for bps in [16,24]:
+        for (channels, mask) in [
+            (1, audiotools.ChannelMask.from_channels(1)),
+            (2, audiotools.ChannelMask.from_channels(2))]:
+            for bps in [16, 24]:
                 #the reference decoder can't handle very large block sizes
-                for blocksize in [32,4096,8192]:
+                for blocksize in [32, 4096, 8192]:
                     self.__test_reader__(
                         EXACT_RANDOM_PCM_Reader(
                             pcm_frames=65536,
@@ -10000,7 +10103,7 @@ class TestAlacCodec(unittest.TestCase):
 
     @TEST_ALAC
     def test_fractional(self):
-        def __perform_test__(block_size,pcm_frames):
+        def __perform_test__(block_size, pcm_frames):
             self.__test_reader__(
                 EXACT_RANDOM_PCM_Reader(
                     pcm_frames=pcm_frames,
@@ -10009,57 +10112,65 @@ class TestAlacCodec(unittest.TestCase):
                     bits_per_sample=16),
                 block_size=block_size)
 
-        for pcm_frames in [31,32,33,34,35,2046,2047,2048,2049,2050]:
-            __perform_test__(33,pcm_frames)
+        for pcm_frames in [31, 32, 33, 34, 35, 2046, 2047, 2048, 2049, 2050]:
+            __perform_test__(33, pcm_frames)
 
-        for pcm_frames in [254,255,256,257,258,510,511,512,513,514,1022,1023,1024,1025,1026,2046,2047,2048,2049,2050,4094,4095,4096,4097,4098]:
-            __perform_test__(256,pcm_frames)
+        for pcm_frames in [254, 255, 256, 257, 258, 510, 511, 512,
+                           513, 514, 1022, 1023, 1024, 1025, 1026,
+                           2046, 2047, 2048, 2049, 2050, 4094, 4095,
+                           4096, 4097, 4098]:
+            __perform_test__(256, pcm_frames)
 
-        for pcm_frames in [1022,1023,1024,1025,1026,2046,2047,2048,2049,2050,4094,4095,4096,4097,4098]:
-            __perform_test__(2048,pcm_frames)
+        for pcm_frames in [1022, 1023, 1024, 1025, 1026, 2046, 2047,
+                           2048, 2049, 2050, 4094, 4095, 4096, 4097, 4098]:
+            __perform_test__(2048, pcm_frames)
 
-        for pcm_frames in [1022,1023,1024,1025,1026,2046,2047,2048,2049,2050,4094,4095,4096,4097,4098,4606,4607,4608,4609,4610,8190,8191,8192,8193,8194,16382,16383,16384,16385,16386]:
-            __perform_test__(4608,pcm_frames)
+        for pcm_frames in [1022, 1023, 1024, 1025, 1026, 2046, 2047, 2048,
+                           2049, 2050, 4094, 4095, 4096, 4097, 4098, 4606,
+                           4607, 4608, 4609, 4610, 8190, 8191, 8192, 8193,
+                           8194, 16382, 16383, 16384, 16385, 16386]:
+            __perform_test__(4608, pcm_frames)
 
     @TEST_ALAC
     def frame_header_variations(self):
-        self.__test_reader__(test_streams.Sine16_Mono(200000,96000,
-                                                      441.0,0.61,661.5,0.37),
+        self.__test_reader__(test_streams.Sine16_Mono(200000, 96000,
+                                                      441.0, 0.61, 661.5, 0.37),
                              block_size=16)
 
-        self.__test_reader__(test_streams.Sine16_Mono(200000,96000,
-                                                      441.0,0.61,661.5,0.37),
+        self.__test_reader__(test_streams.Sine16_Mono(200000, 96000,
+                                                      441.0, 0.61, 661.5, 0.37),
                              block_size=65535)
 
-        self.__test_reader__(test_streams.Sine16_Mono(200000,9,
-                                                      441.0,0.61,661.5,0.37),
+        self.__test_reader__(test_streams.Sine16_Mono(200000, 9,
+                                                      441.0, 0.61, 661.5, 0.37),
                              block_size=1152)
 
-        self.__test_reader__(test_streams.Sine16_Mono(200000,90,
-                                                      441.0,0.61,661.5,0.37),
+        self.__test_reader__(test_streams.Sine16_Mono(200000, 90,
+                                                      441.0, 0.61, 661.5, 0.37),
                              block_size=1152)
 
-        self.__test_reader__(test_streams.Sine16_Mono(200000,90000,
-                                                      441.0,0.61,661.5,0.37),
+        self.__test_reader__(test_streams.Sine16_Mono(200000, 90000,
+                                                      441.0, 0.61, 661.5, 0.37),
                              block_size=1152)
+
 
 class TestFrameList(unittest.TestCase):
     @classmethod
     def Bits8(cls):
-        for i in xrange(0,0xFF + 1):
+        for i in xrange(0, 0xFF + 1):
             yield chr(i)
 
     @classmethod
     def Bits16(cls):
-        for i in xrange(0,0xFF + 1):
-            for j in xrange(0,0xFF + 1):
+        for i in xrange(0, 0xFF + 1):
+            for j in xrange(0, 0xFF + 1):
                 yield chr(i) + chr(j)
 
     @classmethod
     def Bits24(cls):
-        for i in xrange(0,0xFF + 1):
-            for j in xrange(0,0xFF + 1):
-                for k in xrange(0,0xFF + 1):
+        for i in xrange(0, 0xFF + 1):
+            for j in xrange(0, 0xFF + 1):
+                for k in xrange(0, 0xFF + 1):
                     yield chr(i) + chr(j) + chr(k)
 
     @TEST_FRAMELIST
@@ -10068,73 +10179,73 @@ class TestFrameList(unittest.TestCase):
 
         self.assertRaises(TypeError,
                           audiotools.pcm.FrameList,
-                          0,2,16,0,1)
+                          0, 2, 16, 0, 1)
 
         self.assertRaises(TypeError,
                           audiotools.pcm.FrameList,
-                          [1,2,3],2,16,0,1)
+                          [1, 2, 3], 2, 16, 0, 1)
 
         self.assertRaises(ValueError,
                           audiotools.pcm.FrameList,
-                          "abc",2,16,0,1)
+                          "abc", 2, 16, 0, 1)
 
         self.assertRaises(ValueError,
                           audiotools.pcm.FrameList,
-                          "abc",4,8,0,1)
+                          "abc", 4, 8, 0, 1)
 
         self.assertRaises(ValueError,
                           audiotools.pcm.FrameList,
-                          "abcd",1,15,0,1)
+                          "abcd", 1, 15, 0, 1)
 
-        f = audiotools.pcm.FrameList("".join(map(chr,range(16))),
-                                     2,16,True,True)
-        self.assertEqual(len(f),8)
-        self.assertEqual(f.channels,2)
-        self.assertEqual(f.frames,4)
-        self.assertEqual(f.bits_per_sample,16)
-        self.assertRaises(IndexError,f.__getitem__,9)
+        f = audiotools.pcm.FrameList("".join(map(chr, range(16))),
+                                     2, 16, True, True)
+        self.assertEqual(len(f), 8)
+        self.assertEqual(f.channels, 2)
+        self.assertEqual(f.frames, 4)
+        self.assertEqual(f.bits_per_sample, 16)
+        self.assertRaises(IndexError, f.__getitem__, 9)
 
         self.assertEqual(list(f.frame(0)),
-                         [0x0001,0x0203])
+                         [0x0001, 0x0203])
         self.assertEqual(list(f.frame(1)),
-                         [0x0405,0x0607])
+                         [0x0405, 0x0607])
         self.assertEqual(list(f.frame(2)),
-                         [0x0809,0x0A0B])
+                         [0x0809, 0x0A0B])
         self.assertEqual(list(f.frame(3)),
-                         [0x0C0D,0x0E0F])
-        self.assertRaises(IndexError,f.frame,4)
-        self.assertRaises(IndexError,f.frame,-1)
+                         [0x0C0D, 0x0E0F])
+        self.assertRaises(IndexError, f.frame, 4)
+        self.assertRaises(IndexError, f.frame, -1)
 
         self.assertEqual(list(f.channel(0)),
-                         [0x0001,0x0405,0x0809,0x0C0D])
+                         [0x0001, 0x0405, 0x0809, 0x0C0D])
         self.assertEqual(list(f.channel(1)),
-                         [0x0203,0x0607,0x0A0B,0x0E0F])
-        self.assertRaises(IndexError,f.channel,2)
-        self.assertRaises(IndexError,f.channel,-1)
+                         [0x0203, 0x0607, 0x0A0B, 0x0E0F])
+        self.assertRaises(IndexError, f.channel, 2)
+        self.assertRaises(IndexError, f.channel, -1)
 
-        for bps in [8,16,24]:
+        for bps in [8, 16, 24]:
             self.assertEqual(list(audiotools.pcm.from_list(
-                        range(-40,40),1,bps,True)),
-                             range(-40,40))
+                        range(-40, 40), 1, bps, True)),
+                             range(-40, 40))
 
-        for bps in [8,16,24]:
+        for bps in [8, 16, 24]:
             self.assertEqual(list(audiotools.pcm.from_list(
                         range((1 << (bps - 1)) - 40,
-                              (1 << (bps - 1)) + 40),1,bps,False)),
-                             range(-40,40))
+                              (1 << (bps - 1)) + 40), 1, bps, False)),
+                             range(-40, 40))
 
-        for channels in range(1,9):
-            for bps in [8,16,24]:
-                for signed in [True,False]:
+        for channels in range(1, 9):
+            for bps in [8, 16, 24]:
+                for signed in [True, False]:
                     if (signed):
-                        l = [random.choice(range(-40,40)) for i in
+                        l = [random.choice(range(-40, 40)) for i in
                              xrange(16 * channels)]
                     else:
-                        l = [random.choice(range(0,80)) for i in
+                        l = [random.choice(range(0, 80)) for i in
                              xrange(16 * channels)]
-                    f2 = audiotools.pcm.from_list(l,channels,bps,signed)
+                    f2 = audiotools.pcm.from_list(l, channels, bps, signed)
                     if (signed):
-                        self.assertEqual(list(f2),l)
+                        self.assertEqual(list(f2), l)
                         for channel in range(channels):
                             self.assertEqual(list(f2.channel(channel)),
                                              l[channel::channels])
@@ -10147,9 +10258,9 @@ class TestFrameList(unittest.TestCase):
                                              [i - (1 << (bps - 1))
                                               for i in l[channel::channels]])
 
-        self.assertEqual(f.to_bytes(True,True),
+        self.assertEqual(f.to_bytes(True, True),
                          '\x00\x01\x02\x03\x04\x05\x06\x07\x08\t\n\x0b\x0c\r\x0e\x0f')
-        self.assertEqual(f.to_bytes(False,True),
+        self.assertEqual(f.to_bytes(False, True),
                          '\x01\x00\x03\x02\x05\x04\x07\x06\t\x08\x0b\n\r\x0c\x0f\x0e')
         #FIXME - check signed
 
@@ -10163,130 +10274,134 @@ class TestFrameList(unittest.TestCase):
                                                             f.channel(1)])))
 
         self.assertEqual(list(audiotools.pcm.from_list(
-                    [0x0001,0x0203,0x0405,0x0607,
-                     0x0809,0x0A0B,0x0C0D,0x0E0F],2,16,True)),
+                    [0x0001, 0x0203, 0x0405, 0x0607,
+                     0x0809, 0x0A0B, 0x0C0D, 0x0E0F], 2, 16, True)),
                          list(f))
 
         self.assertRaises(ValueError,
                           audiotools.pcm.from_list,
-                          [0x0001,0x0203,0x0405,0x0607,
-                           0x0809,0x0A0B,0x0C0D],2,16,True)
+                          [0x0001, 0x0203, 0x0405, 0x0607,
+                           0x0809, 0x0A0B, 0x0C0D], 2, 16, True)
 
         self.assertRaises(ValueError,
                           audiotools.pcm.from_list,
-                          [0x0001,0x0203,0x0405,0x0607,
-                           0x0809,0x0A0B,0x0C0D,0x0E0F],2,15,True)
-
+                          [0x0001, 0x0203, 0x0405, 0x0607,
+                           0x0809, 0x0A0B, 0x0C0D, 0x0E0F], 2, 15, True)
 
         self.assertRaises(TypeError,
                           audiotools.pcm.from_frames,
-                          [audiotools.pcm.from_list(range(2),2,16,False),
+                          [audiotools.pcm.from_list(range(2), 2, 16, False),
                            range(2)])
 
         self.assertRaises(ValueError,
                           audiotools.pcm.from_frames,
-                          [audiotools.pcm.from_list(range(2),2,16,False),
-                           audiotools.pcm.from_list(range(4),2,16,False)])
+                          [audiotools.pcm.from_list(range(2), 2, 16, False),
+                           audiotools.pcm.from_list(range(4), 2, 16, False)])
 
         self.assertRaises(ValueError,
                           audiotools.pcm.from_frames,
-                          [audiotools.pcm.from_list(range(2),2,16,False),
-                           audiotools.pcm.from_list(range(2),1,16,False)])
+                          [audiotools.pcm.from_list(range(2), 2, 16, False),
+                           audiotools.pcm.from_list(range(2), 1, 16, False)])
 
         self.assertRaises(ValueError,
                           audiotools.pcm.from_frames,
-                          [audiotools.pcm.from_list(range(2),2,16,False),
-                           audiotools.pcm.from_list(range(2),2,8,False)])
+                          [audiotools.pcm.from_list(range(2), 2, 16, False),
+                           audiotools.pcm.from_list(range(2), 2, 8, False)])
 
         self.assertEqual(list(audiotools.pcm.from_frames(
-                    [audiotools.pcm.from_list(range(2),2,16,True),
-                     audiotools.pcm.from_list(range(2,4),2,16,True)])),
+                    [audiotools.pcm.from_list(range(2), 2, 16, True),
+                     audiotools.pcm.from_list(range(2, 4), 2, 16, True)])),
                          range(4))
 
         self.assertRaises(TypeError,
                           audiotools.pcm.from_channels,
-                          [audiotools.pcm.from_list(range(2),1,16,False),
+                          [audiotools.pcm.from_list(range(2), 1, 16, False),
                            range(2)])
 
         self.assertRaises(ValueError,
                           audiotools.pcm.from_channels,
-                          [audiotools.pcm.from_list(range(1),1,16,False),
-                           audiotools.pcm.from_list(range(2),2,16,False)])
+                          [audiotools.pcm.from_list(range(1), 1, 16, False),
+                           audiotools.pcm.from_list(range(2), 2, 16, False)])
 
         self.assertRaises(ValueError,
                           audiotools.pcm.from_channels,
-                          [audiotools.pcm.from_list(range(2),1,16,False),
-                           audiotools.pcm.from_list(range(3),1,16,False)])
+                          [audiotools.pcm.from_list(range(2), 1, 16, False),
+                           audiotools.pcm.from_list(range(3), 1, 16, False)])
 
         self.assertRaises(ValueError,
                           audiotools.pcm.from_channels,
-                          [audiotools.pcm.from_list(range(2),1,16,False),
-                           audiotools.pcm.from_list(range(2),1,8,False)])
+                          [audiotools.pcm.from_list(range(2), 1, 16, False),
+                           audiotools.pcm.from_list(range(2), 1, 8, False)])
 
         self.assertEqual(list(audiotools.pcm.from_channels(
-                    [audiotools.pcm.from_list(range(2),1,16,True),
-                     audiotools.pcm.from_list(range(2,4),1,16,True)])),
-                         [0,2,1,3])
+                    [audiotools.pcm.from_list(range(2), 1, 16, True),
+                     audiotools.pcm.from_list(range(2, 4), 1, 16, True)])),
+                         [0, 2, 1, 3])
 
-        self.assertRaises(IndexError,f.split,-1)
+        self.assertRaises(IndexError, f.split, -1)
 
-        (f1,f2) = f.split(2)
+        (f1, f2) = f.split(2)
         self.assertEqual(list(f1),
-                         [0x0001,0x0203,
-                          0x0405,0x0607])
+                         [0x0001, 0x0203,
+                          0x0405, 0x0607])
         self.assertEqual(list(f2),
-                         [0x0809,0x0A0B,
-                          0x0C0D,0x0E0F])
+                         [0x0809, 0x0A0B,
+                          0x0C0D, 0x0E0F])
 
-        (f1,f2) = f.split(0)
+        (f1, f2) = f.split(0)
         self.assertEqual(list(f1),
                          [])
         self.assertEqual(list(f2),
-                         [0x0001,0x0203,
-                          0x0405,0x0607,
-                          0x0809,0x0A0B,
-                          0x0C0D,0x0E0F])
+                         [0x0001, 0x0203,
+                          0x0405, 0x0607,
+                          0x0809, 0x0A0B,
+                          0x0C0D, 0x0E0F])
 
-        (f1,f2) = f.split(20)
+        (f1, f2) = f.split(20)
         self.assertEqual(list(f1),
-                         [0x0001,0x0203,
-                          0x0405,0x0607,
-                          0x0809,0x0A0B,
-                          0x0C0D,0x0E0F])
+                         [0x0001, 0x0203,
+                          0x0405, 0x0607,
+                          0x0809, 0x0A0B,
+                          0x0C0D, 0x0E0F])
         self.assertEqual(list(f2),
                          [])
 
         for i in xrange(f.frames):
-            (f1,f2) = f.split(i)
-            self.assertEqual(len(f1),i * f.channels)
-            self.assertEqual(len(f2),(len(f) - (i * f.channels)))
-            self.assertEqual(list(f1 + f2),list(f))
+            (f1, f2) = f.split(i)
+            self.assertEqual(len(f1), i * f.channels)
+            self.assertEqual(len(f2), (len(f) - (i * f.channels)))
+            self.assertEqual(list(f1 + f2), list(f))
 
         import operator
 
-        f1 = audiotools.pcm.from_list(range(10),2,16,False)
-        self.assertRaises(TypeError,operator.concat,f1,[1,2,3])
-        f2 = audiotools.pcm.from_list(range(10,20),1,16,False)
-        self.assertRaises(ValueError,operator.concat,f1,f2)
-        f2 = audiotools.pcm.from_list(range(10,20),2,8,False)
-        self.assertRaises(ValueError,operator.concat,f1,f2)
+        f1 = audiotools.pcm.from_list(range(10), 2, 16, False)
+        self.assertRaises(TypeError, operator.concat, f1, [1, 2, 3])
+        f2 = audiotools.pcm.from_list(range(10, 20), 1, 16, False)
+        self.assertRaises(ValueError, operator.concat, f1, f2)
+        f2 = audiotools.pcm.from_list(range(10, 20), 2, 8, False)
+        self.assertRaises(ValueError, operator.concat, f1, f2)
 
-        f1 = audiotools.pcm.from_list(range(10),2,16,False)
-        self.assertEqual(f1,audiotools.pcm.from_list(range(10),2,16,False))
-        self.assertNotEqual(f1,10)
-        self.assertNotEqual(f1,range(10))
-        self.assertNotEqual(f1,audiotools.pcm.from_list(range(10),1,16,False))
-        self.assertNotEqual(f1,audiotools.pcm.from_list(range(10),2,8,False))
-        self.assertNotEqual(f1,audiotools.pcm.from_list(range(10),1,8,False))
-        self.assertNotEqual(f1,audiotools.pcm.from_list(range(8),2,16,False))
-        self.assertNotEqual(f1,audiotools.pcm.from_list(range(12),2,8,False))
+        f1 = audiotools.pcm.from_list(range(10), 2, 16, False)
+        self.assertEqual(f1, audiotools.pcm.from_list(range(10), 2, 16, False))
+        self.assertNotEqual(f1, 10)
+        self.assertNotEqual(f1, range(10))
+        self.assertNotEqual(f1,
+                            audiotools.pcm.from_list(range(10), 1, 16, False))
+        self.assertNotEqual(f1,
+                            audiotools.pcm.from_list(range(10), 2, 8, False))
+        self.assertNotEqual(f1,
+                            audiotools.pcm.from_list(range(10), 1, 8, False))
+        self.assertNotEqual(f1,
+                            audiotools.pcm.from_list(range(8), 2, 16, False))
+        self.assertNotEqual(f1,
+                            audiotools.pcm.from_list(range(12), 2, 8, False))
 
     @TEST_FRAMELIST
     def test_8bit_roundtrip(self):
         import audiotools.pcm
 
-        unsigned_ints = range(0,0xFF + 1)
-        signed_ints = range(-0x80,0x7F + 1)
+        unsigned_ints = range(0, 0xFF + 1)
+        signed_ints = range(-0x80, 0x7F + 1)
 
         UB8Int = audiotools.Con.GreedyRepeater(audiotools.Con.UBInt8(None))
         UL8Int = audiotools.Con.GreedyRepeater(audiotools.Con.ULInt8(None))
@@ -10297,19 +10412,19 @@ class TestFrameList(unittest.TestCase):
         self.assertEqual([i - (1 << 7) for i in unsigned_ints],
                          list(audiotools.pcm.FrameList(
                     UB8Int.build(unsigned_ints),
-                    1,8,True,False)))
+                    1, 8, True, False)))
 
         #unsigned, little-endian
         self.assertEqual([i - (1 << 7) for i in unsigned_ints],
                          list(audiotools.pcm.FrameList(
                     UL8Int.build(unsigned_ints),
-                    1,8,False,False)))
+                    1, 8, False, False)))
 
         #signed, big-endian
         self.assertEqual(signed_ints,
                          list(audiotools.pcm.FrameList(
                     SB8Int.build(signed_ints),
-                    1,8,True,True)))
+                    1, 8, True, True)))
 
         #this test triggers a DeprecationWarning
         #which is odd since signed little-endian 8 bit
@@ -10327,30 +10442,30 @@ class TestFrameList(unittest.TestCase):
 
         #big endian, unsigned
         self.assertEqual(
-            audiotools.pcm.FrameList(s,1,8,
-                                     True,False).to_bytes(True,False),s)
+            audiotools.pcm.FrameList(s, 1, 8,
+                                     True, False).to_bytes(True, False), s)
 
         #big-endian, signed
         self.assertEqual(
-            audiotools.pcm.FrameList(s,1,8,
-                                     True,True).to_bytes(True,True),s)
+            audiotools.pcm.FrameList(s, 1, 8,
+                                     True, True).to_bytes(True, True), s)
 
         #little-endian, unsigned
         self.assertEqual(
-            audiotools.pcm.FrameList(s,1,8,
-                                     False,False).to_bytes(False,False),s)
+            audiotools.pcm.FrameList(s, 1, 8,
+                                     False, False).to_bytes(False, False), s)
 
         #little-endian, signed
         self.assertEqual(
-            audiotools.pcm.FrameList(s,1,8,
-                                     False,True).to_bytes(False,True),s)
+            audiotools.pcm.FrameList(s, 1, 8,
+                                     False, True).to_bytes(False, True), s)
 
     @TEST_FRAMELIST
     def test_16bit_roundtrip(self):
         import audiotools.pcm
 
-        unsigned_ints = range(0,0xFFFF + 1)
-        signed_ints = range(-0x8000,0x7FFF + 1)
+        unsigned_ints = range(0, 0xFFFF + 1)
+        signed_ints = range(-0x8000, 0x7FFF + 1)
 
         UB16Int = audiotools.Con.GreedyRepeater(audiotools.Con.UBInt16(None))
         UL16Int = audiotools.Con.GreedyRepeater(audiotools.Con.ULInt16(None))
@@ -10361,25 +10476,25 @@ class TestFrameList(unittest.TestCase):
         self.assertEqual([i - (1 << 15) for i in unsigned_ints],
                          list(audiotools.pcm.FrameList(
                     UB16Int.build(unsigned_ints),
-                    1,16,True,False)))
+                    1, 16, True, False)))
 
         #unsigned, little-endian
         self.assertEqual([i - (1 << 15) for i in unsigned_ints],
                          list(audiotools.pcm.FrameList(
                     UL16Int.build(unsigned_ints),
-                    1,16,False,False)))
+                    1, 16, False, False)))
 
         #signed, big-endian
         self.assertEqual(signed_ints,
                          list(audiotools.pcm.FrameList(
                     SB16Int.build(signed_ints),
-                    1,16,True,True)))
+                    1, 16, True, True)))
 
         #signed, little-endian
         self.assertEqual(signed_ints,
                          list(audiotools.pcm.FrameList(
                     SL16Int.build(signed_ints),
-                    1,16,False,True)))
+                    1, 16, False, True)))
 
     @TEST_FRAMELIST
     def test_16bit_roundtrip_str(self):
@@ -10389,29 +10504,29 @@ class TestFrameList(unittest.TestCase):
 
         #big-endian, unsigned
         self.assertEqual(
-            audiotools.pcm.FrameList(s,1,16,
-                                     True,False).to_bytes(True,False),
+            audiotools.pcm.FrameList(s, 1, 16,
+                                     True, False).to_bytes(True, False),
             s,
             "data mismatch converting UBInt16 through string")
 
         #big-endian, signed
         self.assertEqual(
-            audiotools.pcm.FrameList(s,1,16,
-                                     True,True).to_bytes(True,True),
+            audiotools.pcm.FrameList(s, 1, 16,
+                                     True, True).to_bytes(True, True),
             s,
             "data mismatch converting SBInt16 through string")
 
         #little-endian, unsigned
         self.assertEqual(
-            audiotools.pcm.FrameList(s,1,16,
-                                     False,False).to_bytes(False,False),
+            audiotools.pcm.FrameList(s, 1, 16,
+                                     False, False).to_bytes(False, False),
             s,
             "data mismatch converting ULInt16 through string")
 
         #little-endian, signed
         self.assertEqual(
-            audiotools.pcm.FrameList(s,1,16,
-                                     False,True).to_bytes(False,True),
+            audiotools.pcm.FrameList(s, 1, 16,
+                                     False, True).to_bytes(False, True),
             s,
             "data mismatch converting USInt16 through string")
 
@@ -10424,8 +10539,8 @@ class TestFrameList(unittest.TestCase):
         #since testing the whole range takes a very, very long time
         RANGE = 8
 
-        unsigned_ints_high = [r << 8 for r in xrange(0,0xFFFF + 1)]
-        signed_ints_high = [r << 8 for r in xrange(-0x8000,0x7FFF + 1)]
+        unsigned_ints_high = [r << 8 for r in xrange(0, 0xFFFF + 1)]
+        signed_ints_high = [r << 8 for r in xrange(-0x8000, 0x7FFF + 1)]
 
         UB24Int = audiotools.Con.BitStruct(
             None,
@@ -10455,21 +10570,21 @@ class TestFrameList(unittest.TestCase):
                                                               swapped=True,
                                                               signed=True)))
 
-        for low_bits in xrange(0,0xFF + 1,RANGE):
+        for low_bits in xrange(0, 0xFF + 1, RANGE):
             unsigned_values = [high_bits | low_bits for high_bits in
                                unsigned_ints_high]
 
             self.assertEqual([i - (1 << 23) for i in unsigned_values],
                              list(audiotools.pcm.FrameList(
                         UB24Int.build(Con.Container(i=unsigned_values)),
-                        1,24,True,False)))
+                        1, 24, True, False)))
 
             self.assertEqual([i - (1 << 23) for i in unsigned_values],
                              list(audiotools.pcm.FrameList(
                         UL24Int.build(Con.Container(i=unsigned_values)),
-                        1,24,False,False)))
+                        1, 24, False, False)))
 
-        for low_bits in xrange(0,0xFF + 1,RANGE):
+        for low_bits in xrange(0, 0xFF + 1, RANGE):
             if (high_bits < 0):
                 signed_values = [high_bits - low_bits for high_bits in
                                  signed_ints_high]
@@ -10480,12 +10595,12 @@ class TestFrameList(unittest.TestCase):
             self.assertEqual(signed_values,
                              list(audiotools.pcm.FrameList(
                         SB24Int.build(Con.Container(i=signed_values)),
-                        1,24,True,True)))
+                        1, 24, True, True)))
 
             self.assertEqual(signed_values,
                              list(audiotools.pcm.FrameList(
                         SL24Int.build(Con.Container(i=signed_values)),
-                        1,24,False,True)))
+                        1, 24, False, True)))
 
     @TEST_FRAMELIST
     def test_24bit_roundtrip_str(self):
@@ -10494,23 +10609,23 @@ class TestFrameList(unittest.TestCase):
         s = "".join(TestFrameList.Bits24())
         #big-endian, unsigned
         self.assertEqual(
-            audiotools.pcm.FrameList(s,1,24,
-                                     True,False).to_bytes(True,False),s)
+            audiotools.pcm.FrameList(s, 1, 24,
+                                     True, False).to_bytes(True, False), s)
 
         #big-endian, signed
         self.assertEqual(
-            audiotools.pcm.FrameList(s,1,24,
-                                     True,True).to_bytes(True,True),s)
+            audiotools.pcm.FrameList(s, 1, 24,
+                                     True, True).to_bytes(True, True), s)
 
         #little-endian, unsigned
         self.assertEqual(
-            audiotools.pcm.FrameList(s,1,24,
-                                     False,False).to_bytes(False,False),s)
+            audiotools.pcm.FrameList(s, 1, 24,
+                                     False, False).to_bytes(False, False), s)
 
         #little-endian, signed
         self.assertEqual(
-            audiotools.pcm.FrameList(s,1,24,
-                                     False,True).to_bytes(False,True),s)
+            audiotools.pcm.FrameList(s, 1, 24,
+                                     False, True).to_bytes(False, True), s)
 
     @TEST_FRAMELIST
     def test_conversion(self):
@@ -10520,18 +10635,18 @@ class TestFrameList(unittest.TestCase):
                 for sine_class in [test_streams.Sine8_Stereo,
                                    test_streams.Sine16_Stereo,
                                    test_streams.Sine24_Stereo]:
-                    sine = sine_class(88200,44100,441.0,0.50,441.0,0.49,1.0)
+                    sine = sine_class(88200, 44100, 441.0, 0.50, 441.0, 0.49, 1.0)
                     try:
-                        track = format.from_pcm(temp_track.name,sine)
+                        track = format.from_pcm(temp_track.name, sine)
                     except audiotools.UnsupportedBitsPerSample:
                         continue
                     if (track.lossless()):
                         md5sum = md5()
                         audiotools.transfer_framelist_data(track.to_pcm(),
                                                            md5sum.update)
-                        self.assertEqual(md5sum.hexdigest(),sine.hexdigest(),
+                        self.assertEqual(md5sum.hexdigest(), sine.hexdigest(),
                                          "MD5 mismatch for %s using %s" % \
-                                             (track.NAME,repr(sine)))
+                                             (track.NAME, repr(sine)))
                         for new_format in audiotools.AVAILABLE_TYPES:
                             temp_track2 = tempfile.NamedTemporaryFile(suffix="." + format.SUFFIX)
                             try:
@@ -10542,17 +10657,15 @@ class TestFrameList(unittest.TestCase):
                                         md5sum2 = md5()
                                         audiotools.transfer_framelist_data(track2.to_pcm(),
                                                                            md5sum2.update)
-                                        self.assertEqual(md5sum.hexdigest(),sine.hexdigest(),
+                                        self.assertEqual(md5sum.hexdigest(), sine.hexdigest(),
                                                          "MD5 mismatch for converting %s from %s to %s" % \
-                                                             (repr(sine),track.NAME,track2.NAME))
+                                                             (repr(sine), track.NAME, track2.NAME))
                                 except audiotools.UnsupportedBitsPerSample:
                                     continue
                             finally:
                                 temp_track2.close()
             finally:
                 temp_track.close()
-
-
 
 
 class TestFloatFrameList(unittest.TestCase):
@@ -10562,39 +10675,39 @@ class TestFloatFrameList(unittest.TestCase):
 
         self.assertRaises(ValueError,
                           audiotools.pcm.FloatFrameList,
-                          [1.0,2.0,3.0],2)
+                          [1.0, 2.0, 3.0], 2)
 
         self.assertRaises(TypeError,
                           audiotools.pcm.FloatFrameList,
-                          0,1)
+                          0, 1)
 
         self.assertRaises(TypeError,
                           audiotools.pcm.FloatFrameList,
-                          [1.0,2.0,"a"],1)
+                          [1.0, 2.0, "a"], 1)
 
-        f = audiotools.pcm.FloatFrameList(map(float,range(8)),2)
-        self.assertEqual(len(f),8)
-        self.assertEqual(f.channels,2)
-        self.assertEqual(f.frames,4)
-        self.assertRaises(IndexError,f.__getitem__,9)
+        f = audiotools.pcm.FloatFrameList(map(float, range(8)), 2)
+        self.assertEqual(len(f), 8)
+        self.assertEqual(f.channels, 2)
+        self.assertEqual(f.frames, 4)
+        self.assertRaises(IndexError, f.__getitem__, 9)
 
         self.assertEqual(list(f.frame(0)),
-                         [0.0,1.0])
+                         [0.0, 1.0])
         self.assertEqual(list(f.frame(1)),
-                         [2.0,3.0])
+                         [2.0, 3.0])
         self.assertEqual(list(f.frame(2)),
-                         [4.0,5.0])
+                         [4.0, 5.0])
         self.assertEqual(list(f.frame(3)),
-                         [6.0,7.0])
-        self.assertRaises(IndexError,f.frame,4)
-        self.assertRaises(IndexError,f.frame,-1)
+                         [6.0, 7.0])
+        self.assertRaises(IndexError, f.frame, 4)
+        self.assertRaises(IndexError, f.frame, -1)
 
         self.assertEqual(list(f.channel(0)),
-                         [0.0,2.0,4.0,6.0])
+                         [0.0, 2.0, 4.0, 6.0])
         self.assertEqual(list(f.channel(1)),
-                         [1.0,3.0,5.0,7.0])
-        self.assertRaises(IndexError,f.channel,2)
-        self.assertRaises(IndexError,f.channel,-1)
+                         [1.0, 3.0, 5.0, 7.0])
+        self.assertRaises(IndexError, f.channel, 2)
+        self.assertRaises(IndexError, f.channel, -1)
 
         self.assertEqual(list(f),
                          list(audiotools.pcm.from_float_frames([f.frame(0),
@@ -10608,64 +10721,64 @@ class TestFloatFrameList(unittest.TestCase):
         #FIXME - check from_frames
         #FIXME - check from_channels
 
-        self.assertRaises(IndexError,f.split,-1)
+        self.assertRaises(IndexError, f.split, -1)
 
-        (f1,f2) = f.split(2)
+        (f1, f2) = f.split(2)
         self.assertEqual(list(f1),
-                         [0.0,1.0,
-                          2.0,3.0])
+                         [0.0, 1.0,
+                          2.0, 3.0])
         self.assertEqual(list(f2),
-                         [4.0,5.0,
-                          6.0,7.0])
+                         [4.0, 5.0,
+                          6.0, 7.0])
 
-        (f1,f2) = f.split(0)
+        (f1, f2) = f.split(0)
         self.assertEqual(list(f1),
                          [])
         self.assertEqual(list(f2),
-                         [0.0,1.0,
-                          2.0,3.0,
-                          4.0,5.0,
-                          6.0,7.0])
+                         [0.0, 1.0,
+                          2.0, 3.0,
+                          4.0, 5.0,
+                          6.0, 7.0])
 
-        (f1,f2) = f.split(20)
+        (f1, f2) = f.split(20)
         self.assertEqual(list(f1),
-                         [0.0,1.0,
-                          2.0,3.0,
-                          4.0,5.0,
-                          6.0,7.0])
+                         [0.0, 1.0,
+                          2.0, 3.0,
+                          4.0, 5.0,
+                          6.0, 7.0])
         self.assertEqual(list(f2),
                          [])
 
         for i in xrange(f.frames):
-            (f1,f2) = f.split(i)
-            self.assertEqual(len(f1),i * f.channels)
-            self.assertEqual(len(f2),(len(f) - (i * f.channels)))
-            self.assertEqual(list(f1 + f2),list(f))
+            (f1, f2) = f.split(i)
+            self.assertEqual(len(f1), i * f.channels)
+            self.assertEqual(len(f2), (len(f) - (i * f.channels)))
+            self.assertEqual(list(f1 + f2), list(f))
 
         import operator
 
-        f1 = audiotools.pcm.FloatFrameList(map(float,range(10)),2)
-        self.assertRaises(TypeError,operator.concat,f1,[1,2,3])
+        f1 = audiotools.pcm.FloatFrameList(map(float, range(10)), 2)
+        self.assertRaises(TypeError, operator.concat, f1, [1, 2, 3])
 
         #check round-trip from float->int->float
-        l = [float(i - 128) / (1 << 7) for i in range(0,1 << 8)]
-        for bps in [8,16,24]:
-            for signed in [True,False]:
+        l = [float(i - 128) / (1 << 7) for i in range(0, 1 << 8)]
+        for bps in [8, 16, 24]:
+            for signed in [True, False]:
                 self.assertEqual(
                     l,
-                    list(audiotools.pcm.FloatFrameList(l,1).to_int(bps).to_float()))
+                    list(audiotools.pcm.FloatFrameList(l, 1).to_int(bps).to_float()))
 
         #check round-trip from int->float->int
-        for bps in [8,16,24]:
-            l = range(0,1 << bps,4)
+        for bps in [8, 16, 24]:
+            l = range(0, 1 << bps, 4)
             self.assertEqual(
                 [i - (1 << (bps - 1)) for i in l],
-                list(audiotools.pcm.from_list(l,1,bps,False).to_float().to_int(bps)))
+                list(audiotools.pcm.from_list(l, 1, bps, False).to_float().to_int(bps)))
 
-            l = range(-(1 << (bps - 1)),(1 << (bps - 1)) - 1,4)
+            l = range(-(1 << (bps - 1)), (1 << (bps - 1)) - 1, 4)
             self.assertEqual(
                 l,
-                list(audiotools.pcm.from_list(l,1,bps,True).to_float().to_int(bps)))
+                list(audiotools.pcm.from_list(l, 1, bps, True).to_float().to_int(bps)))
 
 
 class TestReplayGain(unittest.TestCase):
@@ -10683,16 +10796,16 @@ class TestReplayGain(unittest.TestCase):
         rg = audiotools.replaygain.ReplayGain(44100)
         self.assertRaises(ValueError,
                           rg.update,
-                          audiotools.pcm.from_list(range(20),4,16,True))
+                          audiotools.pcm.from_list(range(20), 4, 16, True))
 
         #check for not enough samples
-        rg.update(audiotools.pcm.from_list([1,2],2,16,True))
-        self.assertRaises(ValueError,rg.title_gain)
-        self.assertRaises(ValueError,rg.album_gain)
+        rg.update(audiotools.pcm.from_list([1, 2], 2, 16, True))
+        self.assertRaises(ValueError, rg.title_gain)
+        self.assertRaises(ValueError, rg.album_gain)
 
         #check for no tracks
         gain = audiotools.calculate_replay_gain([])
-        self.assertRaises(ValueError,list,gain)
+        self.assertRaises(ValueError, list, gain)
 
         #check for lots of invalid combinations for calculate_replay_gain
         track_file1 = tempfile.NamedTemporaryFile(suffix=".wav")
@@ -10705,10 +10818,10 @@ class TestReplayGain(unittest.TestCase):
                                                    BLANK_PCM_Reader(3))
             track3 = audiotools.WaveAudio.from_pcm(
                 track_file3.name,
-                BLANK_PCM_Reader(2,sample_rate=48000))
+                BLANK_PCM_Reader(2, sample_rate=48000))
 
-            gain = audiotools.calculate_replay_gain([track1,track2,track3])
-            self.assertRaises(ValueError,list,gain)
+            gain = audiotools.calculate_replay_gain([track1, track2, track3])
+            self.assertRaises(ValueError, list, gain)
 
             track3 = audiotools.WaveAudio.from_pcm(
                 track_file3.name,
@@ -10721,8 +10834,8 @@ class TestReplayGain(unittest.TestCase):
                         back_left=True,
                         back_right=True)))
 
-            gain = audiotools.calculate_replay_gain([track1,track2,track3])
-            self.assertRaises(ValueError,list,gain)
+            gain = audiotools.calculate_replay_gain([track1, track2, track3])
+            self.assertRaises(ValueError, list, gain)
 
             track3 = audiotools.WaveAudio.from_pcm(
                 track_file3.name,
@@ -10735,15 +10848,15 @@ class TestReplayGain(unittest.TestCase):
                         front_right=True,
                         front_center=True)))
 
-            gain = audiotools.calculate_replay_gain([track1,track2,track3])
-            self.assertRaises(ValueError,list,gain)
+            gain = audiotools.calculate_replay_gain([track1, track2, track3])
+            self.assertRaises(ValueError, list, gain)
 
             track3 = audiotools.WaveAudio.from_pcm(
                 track_file3.name,
                 BLANK_PCM_Reader(2))
 
-            gain = list(audiotools.calculate_replay_gain([track1,track2,track3]))
-            self.assertEqual(len(gain),3)
+            gain = list(audiotools.calculate_replay_gain([track1, track2, track3]))
+            self.assertEqual(len(gain), 3)
             self.assert_(gain[0][0] is track1)
             self.assert_(gain[1][0] is track2)
             self.assert_(gain[2][0] is track3)
@@ -10753,11 +10866,10 @@ class TestReplayGain(unittest.TestCase):
             track_file3.close()
 
 
-
 #takes several 1-channel PCMReaders and combines them into a single PCMReader
 class PCM_Reader_Multiplexer:
     def __init__(self, pcm_readers, channel_mask):
-        self.buffers = map(audiotools.BufferedPCMReader,pcm_readers)
+        self.buffers = map(audiotools.BufferedPCMReader, pcm_readers)
         self.sample_rate = pcm_readers[0].sample_rate
         self.channels = len(pcm_readers)
         self.channel_mask = channel_mask
@@ -10770,6 +10882,7 @@ class PCM_Reader_Multiplexer:
     def close(self):
         for reader in self.buffers:
             reader.close()
+
 
 class TestMultiChannel(unittest.TestCase):
     def setUp(self):
@@ -10793,14 +10906,14 @@ class TestMultiChannel(unittest.TestCase):
             temp_track = audio_class.from_pcm(
                 temp_file.name,
                 PCM_Reader_Multiplexer(
-                    [BLANK_PCM_Reader(2,channels=1)
+                    [BLANK_PCM_Reader(2, channels=1)
                      for i in xrange(len(channel_mask))],
                     channel_mask))
-            self.assertEqual(temp_track.channel_mask(),channel_mask)
+            self.assertEqual(temp_track.channel_mask(), channel_mask)
 
             pcm = temp_track.to_pcm()
-            self.assertEqual(int(pcm.channel_mask),int(channel_mask))
-            audiotools.transfer_framelist_data(pcm,lambda x: x)
+            self.assertEqual(int(pcm.channel_mask), int(channel_mask))
+            audiotools.transfer_framelist_data(pcm, lambda x: x)
             pcm.close()
         finally:
             temp_file.close()
@@ -10812,22 +10925,22 @@ class TestMultiChannel(unittest.TestCase):
             temp_track = audio_class.from_pcm(
                 temp_file.name,
                 PCM_Reader_Multiplexer(
-                    [BLANK_PCM_Reader(2,channels=1)
+                    [BLANK_PCM_Reader(2, channels=1)
                      for i in xrange(channels)],
                     audiotools.ChannelMask(0)))
-            self.assertEqual(temp_track.channels(),channels)
+            self.assertEqual(temp_track.channels(), channels)
             if (should_be_blank):
-                self.assertEqual(int(temp_track.channel_mask()),0)
+                self.assertEqual(int(temp_track.channel_mask()), 0)
                 pcm = temp_track.to_pcm()
-                self.assertEqual(int(pcm.channel_mask),0)
-                audiotools.transfer_framelist_data(pcm,lambda x: x)
+                self.assertEqual(int(pcm.channel_mask), 0)
+                audiotools.transfer_framelist_data(pcm, lambda x: x)
                 pcm.close()
             else:
-                self.assertNotEqual(int(temp_track.channel_mask()),0)
+                self.assertNotEqual(int(temp_track.channel_mask()), 0)
                 pcm = temp_track.to_pcm()
                 self.assertEqual(int(pcm.channel_mask),
                                  int(temp_track.channel_mask()))
-                audiotools.transfer_framelist_data(pcm,lambda x: x)
+                audiotools.transfer_framelist_data(pcm, lambda x: x)
                 pcm.close()
         finally:
             temp_file.close()
@@ -10840,12 +10953,11 @@ class TestMultiChannel(unittest.TestCase):
                               audio_class.from_pcm,
                               temp_file.name,
                               PCM_Reader_Multiplexer(
-                    [BLANK_PCM_Reader(2,channels=1)
+                    [BLANK_PCM_Reader(2, channels=1)
                      for i in xrange(channels)],
                     channel_mask))
         finally:
             temp_file.close()
-
 
     def __test_pcm_conversion__(self,
                                 source_audio_class,
@@ -10858,14 +10970,14 @@ class TestMultiChannel(unittest.TestCase):
             source_track = source_audio_class.from_pcm(
                 source_file.name,
                 PCM_Reader_Multiplexer(
-                    [BLANK_PCM_Reader(2,channels=1)
+                    [BLANK_PCM_Reader(2, channels=1)
                      for i in xrange(len(channel_mask))],
                     channel_mask))
-            self.assertEqual(source_track.channel_mask(),channel_mask)
+            self.assertEqual(source_track.channel_mask(), channel_mask)
 
             source_pcm = source_track.to_pcm()
 
-            self.assertEqual(isinstance(source_pcm.channel_mask,int),
+            self.assertEqual(isinstance(source_pcm.channel_mask, int),
                              True,
                              "%s's to_pcm() PCMReader is not an int" % \
                                  (source_audio_class.NAME))
@@ -10874,7 +10986,7 @@ class TestMultiChannel(unittest.TestCase):
                 target_file.name,
                 source_pcm)
 
-            self.assertEqual(target_track.channel_mask(),channel_mask)
+            self.assertEqual(target_track.channel_mask(), channel_mask)
             self.assertEqual(source_track.channel_mask(),
                              target_track.channel_mask())
 
@@ -10883,8 +10995,8 @@ class TestMultiChannel(unittest.TestCase):
             self.assertEqual(source_track.channel_mask(),
                              wav.channel_mask())
             target_track = target_audio_class.from_wave(
-                target_file.name,wav_file.name)
-            self.assertEqual(target_track.channel_mask(),channel_mask)
+                target_file.name, wav_file.name)
+            self.assertEqual(target_track.channel_mask(), channel_mask)
             self.assertEqual(source_track.channel_mask(),
                              target_track.channel_mask())
         finally:
@@ -10895,7 +11007,7 @@ class TestMultiChannel(unittest.TestCase):
     def __test_assignment__(self, audio_class, tone_tracks, channel_mask):
         from audiotools import replaygain as replaygain
 
-        self.assertEqual(len(tone_tracks),len(channel_mask))
+        self.assertEqual(len(tone_tracks), len(channel_mask))
         temp_file = tempfile.NamedTemporaryFile(suffix="." + audio_class.SUFFIX)
         gain_calcs = [replaygain.ReplayGain(44100) for t in tone_tracks]
         try:
@@ -10915,16 +11027,16 @@ class TestMultiChannel(unittest.TestCase):
             self.assertEqual(set([True]),
                              set([prev.replay_gain().track_gain >
                                   curr.replay_gain().track_gain
-                                  for (prev,curr) in
-                                  zip(tone_tracks,tone_tracks[1:])]))
+                                  for (prev, curr) in
+                                  zip(tone_tracks, tone_tracks[1:])]))
 
             gain_values = [gain_calc.title_gain()[0]
                            for gain_calc in gain_calcs]
 
             self.assertEqual(set([True]),
-                             set([prev > curr for (prev,curr) in
-                                  zip(gain_values,gain_values[1:])]),
-                             "channel mismatch for mask %s with format %s (gain values %s)" % (channel_mask,audio_class.NAME,gain_values))
+                             set([prev > curr for (prev, curr) in
+                                  zip(gain_values, gain_values[1:])]),
+                             "channel mismatch for mask %s with format %s (gain values %s)" % (channel_mask, audio_class.NAME, gain_values))
 
         finally:
             temp_file.close()
@@ -10957,40 +11069,40 @@ class TestMultiChannel(unittest.TestCase):
                                      front_left=True,
                                      back_right=True,
                                      back_left=True)]:
-                self.__test_mask_blank__(audio_class,mask)
+                self.__test_mask_blank__(audio_class, mask)
 
         for audio_class in (self.wav_channel_masks +
                             self.vorbis_channel_masks):
-            for mask in [from_fields(front_left=True,front_right=True,
+            for mask in [from_fields(front_left=True, front_right=True,
                                      front_center=True,
-                                     side_left=True,side_right=True,
-                                     back_center=True,low_frequency=True),
-                         from_fields(front_left=True,front_right=True,
-                                     side_left=True,side_right=True,
-                                     back_left=True,back_right=True,
-                                     front_center=True,low_frequency=True)]:
-                self.__test_mask_blank__(audio_class,mask)
+                                     side_left=True, side_right=True,
+                                     back_center=True, low_frequency=True),
+                         from_fields(front_left=True, front_right=True,
+                                     side_left=True, side_right=True,
+                                     back_left=True, back_right=True,
+                                     front_center=True, low_frequency=True)]:
+                self.__test_mask_blank__(audio_class, mask)
 
         for audio_class in self.wav_channel_masks:
-            for mask in [from_fields(front_left=True,front_right=True,
-                                     side_left=True,side_right=True,
-                                     back_left=True,back_right=True,
-                                     front_center=True,back_center=True,
+            for mask in [from_fields(front_left=True, front_right=True,
+                                     side_left=True, side_right=True,
+                                     back_left=True, back_right=True,
+                                     front_center=True, back_center=True,
                                      low_frequency=True),
-                         from_fields(front_left=True,front_right=True,
-                                     side_left=True,side_right=True,
-                                     back_left=True,back_right=True,
-                                     front_center=True,back_center=True)]:
-                self.__test_mask_blank__(audio_class,mask)
+                         from_fields(front_left=True, front_right=True,
+                                     side_left=True, side_right=True,
+                                     back_left=True, back_right=True,
+                                     front_center=True, back_center=True)]:
+                self.__test_mask_blank__(audio_class, mask)
 
         for mask in [from_fields(front_center=True),
-                     from_fields(front_left=True,front_right=True),
-                     from_fields(front_left=True,front_right=True,
-                                 back_left=True,back_right=True),
-                     from_fields(front_left=True,side_left=True,
-                                 front_center=True,front_right=True,
-                                 side_right=True,back_center=True)]:
-            self.__test_mask_blank__(audiotools.AiffAudio,mask)
+                     from_fields(front_left=True, front_right=True),
+                     from_fields(front_left=True, front_right=True,
+                                 back_left=True, back_right=True),
+                     from_fields(front_left=True, side_left=True,
+                                 front_center=True, front_right=True,
+                                 side_right=True, back_center=True)]:
+            self.__test_mask_blank__(audiotools.AiffAudio, mask)
 
     @TEST_PCM
     def test_channel_mask_conversion(self):
@@ -11038,41 +11150,41 @@ class TestMultiChannel(unittest.TestCase):
                                    self.vorbis_channel_masks):
             for target_audio_class in (self.wav_channel_masks +
                                        self.vorbis_channel_masks):
-                for mask in [from_fields(front_left=True,front_right=True,
+                for mask in [from_fields(front_left=True, front_right=True,
                                          front_center=True,
-                                         side_left=True,side_right=True,
-                                         back_center=True,low_frequency=True),
-                             from_fields(front_left=True,front_right=True,
-                                         side_left=True,side_right=True,
-                                         back_left=True,back_right=True,
-                                         front_center=True,low_frequency=True)]:
+                                         side_left=True, side_right=True,
+                                         back_center=True, low_frequency=True),
+                             from_fields(front_left=True, front_right=True,
+                                         side_left=True, side_right=True,
+                                         back_left=True, back_right=True,
+                                         front_center=True, low_frequency=True)]:
                     self.__test_pcm_conversion__(source_audio_class,
                                                  target_audio_class,
                                                  mask)
 
         for source_audio_class in self.wav_channel_masks:
             for target_audio_class in self.wav_channel_masks:
-                for mask in [from_fields(front_left=True,front_right=True,
-                                         side_left=True,side_right=True,
-                                         back_left=True,back_right=True,
-                                         front_center=True,back_center=True,
+                for mask in [from_fields(front_left=True, front_right=True,
+                                         side_left=True, side_right=True,
+                                         back_left=True, back_right=True,
+                                         front_center=True, back_center=True,
                                          low_frequency=True),
-                             from_fields(front_left=True,front_right=True,
-                                         side_left=True,side_right=True,
-                                         back_left=True,back_right=True,
-                                         front_center=True,back_center=True)]:
+                             from_fields(front_left=True, front_right=True,
+                                         side_left=True, side_right=True,
+                                         back_left=True, back_right=True,
+                                         front_center=True, back_center=True)]:
                     self.__test_pcm_conversion__(source_audio_class,
                                                  target_audio_class,
                                                  mask)
 
         for target_audio_class in self.wav_channel_masks:
             for mask in [from_fields(front_center=True),
-                         from_fields(front_left=True,front_right=True),
-                         from_fields(front_left=True,front_right=True,
-                                     back_left=True,back_right=True),
-                         from_fields(front_left=True,side_left=True,
-                                     front_center=True,front_right=True,
-                                     side_right=True,back_center=True)]:
+                         from_fields(front_left=True, front_right=True),
+                         from_fields(front_left=True, front_right=True,
+                                     back_left=True, back_right=True),
+                         from_fields(front_left=True, side_left=True,
+                                     front_center=True, front_right=True,
+                                     side_right=True, back_center=True)]:
                 self.__test_pcm_conversion__(audiotools.AiffAudio,
                                              target_audio_class,
                                              mask)
@@ -11129,33 +11241,33 @@ class TestMultiChannel(unittest.TestCase):
 
         for audio_class in (self.wav_channel_masks +
                             self.vorbis_channel_masks):
-            for mask in [from_fields(front_left=True,front_right=True,
+            for mask in [from_fields(front_left=True, front_right=True,
                                      front_center=True,
-                                     side_left=True,side_right=True,
-                                     back_center=True,low_frequency=True),
-                         from_fields(front_left=True,front_right=True,
-                                     side_left=True,side_right=True,
-                                     back_left=True,back_right=True,
-                                     front_center=True,low_frequency=True)]:
+                                     side_left=True, side_right=True,
+                                     back_center=True, low_frequency=True),
+                         from_fields(front_left=True, front_right=True,
+                                     side_left=True, side_right=True,
+                                     back_left=True, back_right=True,
+                                     front_center=True, low_frequency=True)]:
                 self.__test_assignment__(audio_class,
                                          TONE_TRACKS[0:len(mask)],
                                          mask)
 
         for audio_class in self.wav_channel_masks:
-            for mask in [from_fields(front_left=True,front_right=True,
-                                     side_left=True,side_right=True,
-                                     back_left=True,back_right=True,
-                                     front_center=True,back_center=True)]:
+            for mask in [from_fields(front_left=True, front_right=True,
+                                     side_left=True, side_right=True,
+                                     back_left=True, back_right=True,
+                                     front_center=True, back_center=True)]:
                 self.__test_assignment__(audio_class,
                                          TONE_TRACKS[0:len(mask)],
                                          mask)
 
-        for mask in [from_fields(front_left=True,front_right=True),
-                     from_fields(front_left=True,front_right=True,
-                                 back_left=True,back_right=True),
-                     from_fields(front_left=True,side_left=True,
-                                 front_center=True,front_right=True,
-                                 side_right=True,back_center=True)]:
+        for mask in [from_fields(front_left=True, front_right=True),
+                     from_fields(front_left=True, front_right=True,
+                                 back_left=True, back_right=True),
+                     from_fields(front_left=True, side_left=True,
+                                 front_center=True, front_right=True,
+                                 side_right=True, back_center=True)]:
             self.__test_assignment__(audiotools.AiffAudio,
                                      TONE_TRACKS[0:len(mask)],
                                      mask)
@@ -11164,28 +11276,28 @@ class TestMultiChannel(unittest.TestCase):
     def test_unsupported_channel_mask_from_pcm(self):
         for audio_class in [audiotools.WaveAudio,
                             audiotools.WavPackAudio]:
-            for channels in xrange(1,19):
+            for channels in xrange(1, 19):
                 self.__test_undefined_mask_blank__(audio_class,
                                                    channels,
                                                    False)
                 self.__test_error_mask_blank__(audio_class,
-                                               19,audiotools.ChannelMask(0))
+                                               19, audiotools.ChannelMask(0))
                 self.__test_error_mask_blank__(audio_class,
-                                               20,audiotools.ChannelMask(0))
+                                               20, audiotools.ChannelMask(0))
 
-        for audio_class in [audiotools.FlacAudio,audiotools.OggFlacAudio]:
-            for channels in xrange(1,7):
+        for audio_class in [audiotools.FlacAudio, audiotools.OggFlacAudio]:
+            for channels in xrange(1, 7):
                 self.__test_undefined_mask_blank__(audio_class,
                                                    channels,
                                                    False)
-            for channels in xrange(7,9):
+            for channels in xrange(7, 9):
                 self.__test_undefined_mask_blank__(audio_class,
                                                    channels,
                                                    True)
             self.__test_error_mask_blank__(audio_class,
-                                           9,audiotools.ChannelMask(0))
+                                           9, audiotools.ChannelMask(0))
             self.__test_error_mask_blank__(audio_class,
-                                           10,audiotools.ChannelMask(0))
+                                           10, audiotools.ChannelMask(0))
 
         for stereo_audio_class in [audiotools.MP3Audio,
                                    audiotools.MP2Audio,
@@ -11194,64 +11306,65 @@ class TestMultiChannel(unittest.TestCase):
                                    audiotools.M4AAudio_faac]:
 
             self.__test_undefined_mask_blank__(stereo_audio_class,
-                                               2,False)
-            for channels in xrange(3,20):
+                                               2, False)
+            for channels in xrange(3, 20):
                 temp_file = tempfile.NamedTemporaryFile(suffix="." + stereo_audio_class.SUFFIX)
                 try:
                     temp_track = stereo_audio_class.from_pcm(
                         temp_file.name,
                         PCM_Reader_Multiplexer(
-                            [BLANK_PCM_Reader(2,channels=1)
+                            [BLANK_PCM_Reader(2, channels=1)
                              for i in xrange(channels)],
                             audiotools.ChannelMask(0)))
-                    self.assertEqual(temp_track.channels(),2)
+                    self.assertEqual(temp_track.channels(), 2)
                     self.assertEqual(int(temp_track.channel_mask()),
                                      int(audiotools.ChannelMask.from_fields(
-                                front_left=True,front_right=True)))
+                                front_left=True, front_right=True)))
                     pcm = temp_track.to_pcm()
                     self.assertEqual(int(pcm.channel_mask),
                                      int(temp_track.channel_mask()))
-                    audiotools.transfer_framelist_data(pcm,lambda x: x)
+                    audiotools.transfer_framelist_data(pcm, lambda x: x)
                     pcm.close()
                 finally:
                     temp_file.close()
 
-        for channels in xrange(1,9):
+        for channels in xrange(1, 9):
             self.__test_undefined_mask_blank__(audiotools.VorbisAudio,
                                                channels,
                                                False)
 
-        for channels in xrange(9,20):
+        for channels in xrange(9, 20):
             self.__test_undefined_mask_blank__(audiotools.VorbisAudio,
                                                channels,
                                                True)
 
-        for channels in [1,2,3,4,6]:
+        for channels in [1, 2, 3, 4, 6]:
             self.__test_undefined_mask_blank__(audiotools.AiffAudio,
                                                channels,
                                                False)
 
-        for channels in [5,7,8,9,10]:
+        for channels in [5, 7, 8, 9, 10]:
             self.__test_undefined_mask_blank__(audiotools.AiffAudio,
                                                channels,
                                                True)
 
-        for channels in [1,2]:
+        for channels in [1, 2]:
             self.__test_undefined_mask_blank__(audiotools.AuAudio,
                                                channels,
                                                False)
-        for channels in xrange(3,11):
+        for channels in xrange(3, 11):
             self.__test_undefined_mask_blank__(audiotools.AuAudio,
                                                channels,
                                                True)
 
-        for channels in xrange(1,7):
+        for channels in xrange(1, 7):
             self.__test_undefined_mask_blank__(audiotools.M4AAudio_nero,
                                                channels,
                                                False)
 
 #these are Messenger output classes
-(OUTPUT,PARTIAL_OUTPUT,INFO,PARTIAL_INFO,ERROR,WARNING) = range(6)
+(OUTPUT, PARTIAL_OUTPUT, INFO, PARTIAL_INFO, ERROR, WARNING) = range(6)
+
 
 class TestMessenger(audiotools.VerboseMessenger):
     #test should be a unittest.TestCase of some sort
@@ -11262,34 +11375,34 @@ class TestMessenger(audiotools.VerboseMessenger):
         self.test = test
 
     def output(self, s):
-        (o_c,o_s) = self.outputs.pop(0)
-        self.test.assertEqual(o_c,OUTPUT)
-        self.test.assertEqual(o_s,s)
+        (o_c, o_s) = self.outputs.pop(0)
+        self.test.assertEqual(o_c, OUTPUT)
+        self.test.assertEqual(o_s, s)
 
     def partial_output(self, s):
-        (o_c,o_s) = self.outputs.pop(0)
-        self.test.assertEqual(o_c,PARTIAL_OUTPUT)
-        self.test.assertEqual(o_s,s)
+        (o_c, o_s) = self.outputs.pop(0)
+        self.test.assertEqual(o_c, PARTIAL_OUTPUT)
+        self.test.assertEqual(o_s, s)
 
     def info(self, s):
-        (o_c,o_s) = self.outputs.pop(0)
-        self.test.assertEqual(o_c,INFO)
-        self.test.assertEqual(o_s,s)
+        (o_c, o_s) = self.outputs.pop(0)
+        self.test.assertEqual(o_c, INFO)
+        self.test.assertEqual(o_s, s)
 
     def partial_info(self, s):
-        (o_c,o_s) = self.outputs.pop(0)
-        self.test.assertEqual(o_c,PARTIAL_INFO)
-        self.test.assertEqual(o_s,s)
+        (o_c, o_s) = self.outputs.pop(0)
+        self.test.assertEqual(o_c, PARTIAL_INFO)
+        self.test.assertEqual(o_s, s)
 
     def error(self, s):
-        (o_c,o_s) = self.outputs.pop(0)
-        self.test.assertEqual(o_c,ERROR)
-        self.test.assertEqual(o_s,s)
+        (o_c, o_s) = self.outputs.pop(0)
+        self.test.assertEqual(o_c, ERROR)
+        self.test.assertEqual(o_s, s)
 
     def warning(self, s):
-        (o_c,o_s) = self.outputs.pop(0)
-        self.test.assertEqual(o_c,WARNING)
-        self.test.assertEqual(o_s,s)
+        (o_c, o_s) = self.outputs.pop(0)
+        self.test.assertEqual(o_c, WARNING)
+        self.test.assertEqual(o_s, s)
 
 
 class TestIOError(unittest.TestCase):
@@ -11323,37 +11436,37 @@ class TestIOError(unittest.TestCase):
                           "/")
 
         #ensure open on unreadable file raises IOError
-        os.chmod(self.dummy1.name,0)
+        os.chmod(self.dummy1.name, 0)
         try:
             self.assertRaises(IOError,
                               audiotools.open,
                               self.dummy1.name)
         finally:
-            os.chmod(self.dummy1.name,0600)
+            os.chmod(self.dummy1.name, 0600)
 
     @TEST_PCM
     def test_open_files(self):
-        audiotools.open_files(["/dev/null/foo","/foo/bar"],sorted=True,
+        audiotools.open_files(["/dev/null/foo", "/foo/bar"], sorted=True,
                               messenger=TestMessenger(
                 self,
-                [(WARNING,_(u"Unable to open \"%s\"") % ("/dev/null/foo")),
-                 (WARNING,_(u"Unable to open \"%s\"") % ("/foo/bar"))]))
+                [(WARNING, _(u"Unable to open \"%s\"") % ("/dev/null/foo")),
+                 (WARNING, _(u"Unable to open \"%s\"") % ("/foo/bar"))]))
 
-        audiotools.open_files([self.dummy1.name,"/foo/bar"],sorted=True,
+        audiotools.open_files([self.dummy1.name, "/foo/bar"], sorted=True,
                               messenger=TestMessenger(
                 self,
-                [(WARNING,_(u"Unable to open \"%s\"") % ("/foo/bar"))]))
+                [(WARNING, _(u"Unable to open \"%s\"") % ("/foo/bar"))]))
 
-        audiotools.open_files(["/foo/bar",self.dummy2.name],sorted=True,
+        audiotools.open_files(["/foo/bar", self.dummy2.name], sorted=True,
                               messenger=TestMessenger(
                 self,
-                [(WARNING,_(u"Unable to open \"%s\"") % ("/foo/bar"))]))
+                [(WARNING, _(u"Unable to open \"%s\"") % ("/foo/bar"))]))
 
-        audiotools.open_files([self.dummy1.name,"/dev/null/bar",
-                               self.dummy2.name],sorted=True,
+        audiotools.open_files([self.dummy1.name, "/dev/null/bar",
+                               self.dummy2.name], sorted=True,
                               messenger=TestMessenger(
                 self,
-                [(WARNING,_(u"Unable to open \"%s\"") % ("/dev/null/bar"))]))
+                [(WARNING, _(u"Unable to open \"%s\"") % ("/dev/null/bar"))]))
 
 
 ############

@@ -1911,9 +1911,9 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    - [X] trackrename
    - [X] tracksplit
    - [X] tracktag
-** TODO Update tests
-   - [ ] test.py
-   - [ ] test_streams.py
+** DONE Update tests
+   - [X] test.py
+   - [X] test_streams.py
 * DONE Update C code to support PEP 7
   - [X] array.c
   - [X] array.h
