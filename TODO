@@ -1125,12 +1125,12 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 * TODO Replace magic numbers with named constants
   There's still a few instances of magic numbers in use,
   in the __flac__.py module, for instance.
-* TODO Update Python code to support PEP 8
+* DONE Update Python code to support PEP 8
   Following accepted Python style should make the code more
   accessible and maintainable in the long run.
   It's also a good opportunity to clean up and simplify code
   without changing the actual API interface.
-** TODO Update core modules
+** DONE Update core modules
 *** DONE __aiff__.py
 **** DONE adjust syntax
 **** DONE add docstrings
@@ -1404,10 +1404,10 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [X] can_thumbnail
      - [X] thumbnail_formats
      - [X] thumbnail_image
-*** TODO __init__.py
+*** DONE __init__.py
 **** DONE adjust syntax
-**** TODO add docstrings
-     - [ ] __init__.py
+**** DONE add docstrings
+     - [X] __init__.py
      - [X] RawConfigParser
      - [X] RawConfigParser.get_default
      - [X] RawConfigParser.getint_default
@@ -1469,9 +1469,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [X] transfer_data
      - [X] transfer_framelist_data
      - [X] threaded_transfer_framelist_data
-     - [ ] FrameReader
-     - [ ] FrameReader.read
-     - [ ] FrameReader.close
      - [X] pcm_cmp
      - [X] stripped_pcm_cmp
      - [X] pcm_frame_cmp
@@ -1580,21 +1577,21 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [X] ExecQueue
      - [X] ExecQueue.execute
      - [X] ExecQueue.run
-     - [ ] BitstreamReader
-     - [ ] BitstreamReader.byte_align
-     - [ ] BitstreamReader.read
-     - [ ] BitstreamReader.unread
-     - [ ] BitstreamReader.read_signed
-     - [ ] BitstreamReader.unary
-     - [ ] BitstreamReader.tell
-     - [ ] BitstreamReader.close
-     - [ ] BitstreamWriter
-     - [ ] BitstreamWriter.byte_align
-     - [ ] BitstreamWriter.write
-     - [ ] BitstreamWriter.write_signed
-     - [ ] BitstreamWriter.unary
-     - [ ] BitstreamWriter.tell
-     - [ ] BitstreamWriter.close
+     - [X] BitstreamReader
+     - [X] BitstreamReader.byte_align
+     - [X] BitstreamReader.read
+     - [X] BitstreamReader.unread
+     - [X] BitstreamReader.read_signed
+     - [X] BitstreamReader.unary
+     - [X] BitstreamReader.tell
+     - [X] BitstreamReader.close
+     - [X] BitstreamWriter
+     - [X] BitstreamWriter.byte_align
+     - [X] BitstreamWriter.write
+     - [X] BitstreamWriter.write_signed
+     - [X] BitstreamWriter.unary
+     - [X] BitstreamWriter.tell
+     - [X] BitstreamWriter.close
 *** DONE __m4a_atoms__.py
 **** DONE adjust syntax
 **** DONE add docstrings
@@ -1604,8 +1601,8 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [X] AtomListAdapter
      - [X] AtomContainer
      - [X] AtomWrapper
-*** TODO __m4a__.py
-**** TODO adjust syntax
+*** DONE __m4a__.py
+**** DONE adjust syntax
 **** DONE add docstrings
      - [X] M4AAudio_faac
      - [X] M4AAudio_faac.channel_mask
@@ -1857,10 +1854,10 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [X] WaveAudio.chunks
      - [X] WaveAudio.wave_from_chunks
      - [X] WaveAudio.pcm_split
-*** TODO cue.py
+*** DONE cue.py
 **** DONE adjust syntax
-**** TODO add docstrings
-     - [ ] cue.py
+**** DONE add docstrings
+     - [X] cue.py
      - [X] CueException
      - [X] tokens
      - [X] get_value
@@ -1875,10 +1872,10 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [X] Track
      - [X] Track.ISRC
      - [X] read_cuesheet
-*** TODO toc.py
+*** DONE toc.py
 **** DONE adjust syntax
-**** TODO add docstrings
-     - [ ] toc.py
+**** DONE add docstrings
+     - [X] toc.py
      - [X] TOCException
      - [X] parse
      - [X] TOCFile

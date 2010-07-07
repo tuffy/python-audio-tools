@@ -17,6 +17,8 @@
 #along with this program; if not, write to the Free Software
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
+"""The cuesheet handling module."""
+
 import re
 from audiotools import SheetException, parse_timestamp, build_timestamp
 import gettext

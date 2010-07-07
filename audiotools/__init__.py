@@ -17,6 +17,8 @@
 #along with this program; if not, write to the Free Software
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
+"""The core Python Audio Tools module."""
+
 import sys
 
 if (sys.version_info < (2, 5, 0, 'final', 0)):
@@ -1044,32 +1046,6 @@ def threaded_transfer_framelist_data(pcmreader, to_function,
     while (s is not None):
         to_function(s)
         s = data_queue.get()
-
-
-
-#FIXME - delete this if no one is using it
-
-#takes a wave-compatible object with a readframes() method
-#maps it to something PCMReader compatible
-class FrameReader(PCMReader):
-    def __init__(self, framefile,
-                 sample_rate, channels, bits_per_sample,
-                 process=None):
-        PCMReader.__init__(self,
-                           file=framefile,
-                           sample_rate=sample_rate,
-                           channels=channels,
-                           bits_per_sample=bits_per_sample,
-                           process=process)
-        self.framefile = framefile
-        self.bytes_per_sample = (framefile.getnchannels() *
-                                 framefile.getsampwidth())
-
-    def read(self, bytes):
-        return self.framefile.readframes(bytes / self.bytes_per_sample)
-
-    def close(self):
-        self.framefile.close()
 
 
 class __capped_stream_reader__:
@@ -3379,10 +3355,19 @@ class ExecQueue:
 #######################
 
 class BitstreamReader:
-    #byte_source should be a standard file-like object
-    #with a read() method that returns strings of bytes
-    #and a close() method
+    """An object for reading individual bits from a stream.
+
+    Note that this object is largely intended for testing purposes
+    as it has not yet been fully hardened for general purpose use;
+    operations like reading off the end of the stream are likely
+    to trigger exceptions."""
+
     def __init__(self, byte_source):
+        """byte_source should be a standard file-like object.
+
+        It must have a read() method that returns strings of bytes
+        a close() method and a tell() method."""
+
         from . import decoders
 
         self.byte_source = byte_source
@@ -3393,9 +3378,20 @@ class BitstreamReader:
         self.__unread_bit__ = decoders.unread_bit
 
     def byte_align(self):
+        """Discards any partially read bytes."""
+
         self.context = 0
 
     def read(self, bits):
+        """Reads "bits" number of bits from the stream.
+
+        This returns the most-significant bits first
+        and makes read() calls to its sub-stream
+        only when a new byte is required.
+        In other words, it performs only a single byte of lookahead
+        so one can interleave calls to substream.read()
+        as long as the BitstreamReader is byte-aligned."""
+
         read_bits = self.__read_bits__
         accumulator = 0
 
@@ -3416,15 +3412,28 @@ class BitstreamReader:
         return accumulator
 
     def unread(self, bit):
+        """Pushes a single 0 or 1 bit back onto the stream.
+
+        This method is guaranteed to be able to unread one bit."""
+
         self.context = self.__unread_bit__(self.context, bit)
 
     def read_signed(self, bits):
+        """Reads a signed, twos-complement "bits" value from the stream."""
+
         if (self.read(1)):              # negative
             return self.read(bits - 1) - (1 << (bits - 1))
         else:
             return self.read(bits - 1)  # positive
 
     def unary(self, stop_bit):
+        """Reads a unary value from the stream.
+
+        stop_bit indicates whether we should stop reading at a 1 or 0 bit.
+        For example, if the stop bit is 1, we keep reading 0 bits
+        until the next 1 bit is reached.  If 0, we keep reading 1 bits
+        until the next 0 bit is reached."""
+
         if ((stop_bit != 0) and (stop_bit != 1)):
             raise ValueError("stop_bit must be 0 or 1")
 
@@ -3449,18 +3458,26 @@ class BitstreamReader:
         return accumulator
 
     def tell(self):
+        """Returns the result of the sub-stream's tell() method."""
+
         return self.byte_source.tell()
 
     def close(self):
+        """Closes the sub-stream and discards unread bits."""
+
         self.byte_source.close()
         self.context = 0
 
 
 class BitstreamWriter:
-    #byte_sink should be a file-like object
-    #with a write() method that takes a string of bytes
-    #and a close() method
+    """An object for writing individual bits to a stream."""
+
     def __init__(self, byte_sink):
+        """byte_sink should be a standard file-like object.
+
+        It must have a write() method that takes a string of bytes
+        a close() method and a tell() method."""
+
         from . import encoders
 
         self.byte_sink = byte_sink
@@ -3470,10 +3487,17 @@ class BitstreamWriter:
         self.__write_unary__ = encoders.write_unary
 
     def byte_align(self):
+        """Generates as many 0 bits as necessary to fill the current byte."""
+
         self.write(7, 0)
         self.context = 0
 
     def write(self, bits, value):
+        """Writes the unsigned integer value, of size bits.
+
+        This performs calls to sub-stream's write() method
+        every time a single byte is filled."""
+
         while (bits > 0):
             #chop off up to 8 bits to write at a time
             if (bits > 8):
@@ -3499,6 +3523,8 @@ class BitstreamWriter:
             bits -= bits_to_write
 
     def write_signed(self, bits, value):
+        """Writes a signed, twos-complement value of size bits."""
+
         if (value >= 0):
             self.write(1, 0)
             self.write(bits - 1, value)
@@ -3507,6 +3533,11 @@ class BitstreamWriter:
             self.write(bits - 1, value + (1 << (bits - 1)))
 
     def unary(self, stop_bit, value):
+        """Writes a unary value with the given stop bit.
+
+        For example, a value of 3 and stop bit of 1 writes the bits:
+        0001 to the stream."""
+
         #send continuation blocks until we get to 7 bits or less
         while (value >= 8):
             result = self.__write_unary__(self.context, (stop_bit << 4) | 0x08)
@@ -3524,9 +3555,13 @@ class BitstreamWriter:
         self.context = result & 0x3FF
 
     def tell(self):
+        """Returns the result of the sub-stream's tell() method."""
+
         return self.byte_sink.tell()
 
     def close(self):
+        """Closes the sub-stream and discards unwritten bits."""
+
         self.byte_sink.close()
         self.context = 0
 
