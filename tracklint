@@ -494,11 +494,6 @@ if (__name__ == '__main__'):
         msg.error(_(u"Cannot perform undo without undo db"))
         sys.exit(1)
 
-    # if ((options.db is not None) and
-    #     (not audiotools.BIN.can_execute(audiotools.BIN["xdelta"]))):
-    #     msg.error(_(u"xdelta must be installed for undo support"))
-    #     sys.exit(1)
-
     if (options.fix):
         if (options.db is not None):
             #if we're fixing tracks and have an undo DB,

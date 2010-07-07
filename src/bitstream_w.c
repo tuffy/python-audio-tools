@@ -406,32 +406,54 @@ void
 bs_dump_records(Bitstream* target, Bitstream* source)
 {
     int records_written = source->records_written;
+    int new_records_total;
     int i;
     BitstreamRecord record;
 
-    for (i = 0; i < records_written; i++) {
-        record = source->records[i];
-        switch (record.type) {
-        case BS_WRITE_BITS:
-            target->write_bits(target, record.key.count,
-                               record.value.value);
-            break;
-        case BS_WRITE_SIGNED_BITS:
-            target->write_signed_bits(target, record.key.count,
-                                      record.value.value);
-            break;
-        case BS_WRITE_BITS64:
-            target->write_bits64(target, record.key.count,
-                                 record.value.value64);
-            break;
-        case BS_WRITE_UNARY:
-            target->write_unary(target, record.key.stop_bit,
-                                record.value.value);
-            break;
-        case BS_BYTE_ALIGN:
-            target->byte_align(target);
-            break;
+    if (target->write_bits != write_bits_record) {
+        for (i = 0; i < records_written; i++) {
+            record = source->records[i];
+            switch (record.type) {
+            case BS_WRITE_BITS:
+                target->write_bits(target, record.key.count,
+                                   record.value.value);
+                break;
+            case BS_WRITE_SIGNED_BITS:
+                target->write_signed_bits(target, record.key.count,
+                                          record.value.value);
+                break;
+            case BS_WRITE_BITS64:
+                target->write_bits64(target, record.key.count,
+                                     record.value.value64);
+                break;
+            case BS_WRITE_UNARY:
+                target->write_unary(target, record.key.stop_bit,
+                                    record.value.value);
+                break;
+            case BS_BYTE_ALIGN:
+                target->byte_align(target);
+                break;
+            }
         }
+    } else {
+        /*when dumping from one accumulator to another,
+          use memcpy instead of looping through the records*/
+
+        for (new_records_total = target->records_total;
+             (new_records_total - target->records_written) <
+                 records_written;)
+            new_records_total *= 2;
+
+        if (new_records_total != target->records_total)
+            target->records = realloc(target->records,
+                                      sizeof(BitstreamRecord) *
+                                      new_records_total);
+
+        memcpy(target->records + target->records_written,
+               source->records,
+               sizeof(BitstreamRecord) * source->records_written);
+
+        target->records_written += source->records_written;
     }
 }
 

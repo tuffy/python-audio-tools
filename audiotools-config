@@ -254,18 +254,6 @@ if (__name__ == '__main__'):
 
         msg.output(u"-" * 30)
 
-        msg.new_row()
-        msg.output_column(_(u"tracklint undo capability"), True)
-        msg.output_column(u" : ")
-        if (audiotools.BIN.can_execute(audiotools.BIN["xdelta"])):
-            msg.output_column(_(u"yes"))
-        else:
-            msg.output_column(_(u"no"))
-        msg.output_rows()
-        check_binaries(msg, ["xdelta"])
-
-        msg.output(u"-" * 30)
-
         msg.output(_(u"System configuration:"))
         msg.output(u"")
 
