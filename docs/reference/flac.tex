@@ -771,17 +771,17 @@ decoding process, as follows:
 \RESIDUAL_i &= \SAMPLE_i \\
 & \text{ for } i = 0 \text{ to Block Size} - 1 \\
 \intertext{For Order 1:}
-\RESIDUAL_{i - 1} &= \SAMPLE_i - \SAMPLE_{i - 1} \\
-& \text{ for } i = 1 \text{ to Block Size} - 1 \\
+\RESIDUAL_i &= \SAMPLE_{i + 1} - \SAMPLE_i \\
+& \text{ for } i = 0 \text{ to Block Size} - 2 \\
 \intertext{For Order 2:}
-\RESIDUAL_{i - 2} &= \SAMPLE_i - ((2 \times \SAMPLE_{i - 1}) - \SAMPLE_{i - 2}) \\
-& \text{ for } i = 2 \text{ to Block Size} - 1 \\
+\RESIDUAL_i &= \SAMPLE_{i + 2} - ((2 \times \SAMPLE_{i + 1}) - \SAMPLE_i) \\
+& \text{ for } i = 0 \text{ to Block Size} - 3 \\
 \intertext{For Order 3:}
-\RESIDUAL_{i - 3} &= \SAMPLE_i - ((3 \times \SAMPLE_{i - 1}) - (3 \times \SAMPLE_{i - 2}) + \SAMPLE_{i - 3}) \\
-& \text{ for } i = 3 \text{ to Block Size} - 1 \\
+\RESIDUAL_i &= \SAMPLE_{i + 3} - ((3 \times \SAMPLE_{i + 2}) - (3 \times \SAMPLE_{i + 1}) + \SAMPLE_i) \\
+& \text{ for } i = 0 \text{ to Block Size} - 4 \\
 \intertext{For Order 4:}
-\RESIDUAL_{i - 4} &= \SAMPLE_i - ((4 \times \SAMPLE_{i - 1}) - (6 \times \SAMPLE_{i - 2}) + (4 \times \SAMPLE_{i - 3}) - \SAMPLE_{i - 4}) \\
-& \text{ for } i = 4 \text{ to Block Size} - 1 \\
+\RESIDUAL_i &= \SAMPLE_{i + 4} - ((4 \times \SAMPLE_{i + 3}) - (6 \times \SAMPLE_{i + 2}) + (4 \times \SAMPLE_{i + 1}) - \SAMPLE_i) \\
+& \text{ for } i = 0 \text{ to Block Size} - 5 \\
 \end{align*}
 
 \clearpage
