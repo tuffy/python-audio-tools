@@ -78,7 +78,7 @@ class IEEE_Extended(Con.Adapter):
 #######################
 
 
-class AiffException(Exception):
+class InvalidAIFF(InvalidFile):
     """Raised if some problem occurs parsing AIFF chunks."""
 
     pass
@@ -182,9 +182,9 @@ class AiffAudio(AudioFile):
         try:
             aiff_header = self.AIFF_HEADER.parse_stream(f)
         except Con.ConstError:
-            raise AiffException(_(u"Not an AIFF file"))
+            raise InvalidAIFF(_(u"Not an AIFF file"))
         except Con.core.FieldError:
-            raise AiffException(_(u"Invalid AIFF file"))
+            raise InvalidAIFF(_(u"Invalid AIFF file"))
 
         total_size = aiff_header.aiff_size - 4
         while (total_size > 0):
@@ -200,18 +200,21 @@ class AiffAudio(AudioFile):
     def comm_chunk(self):
         """Returns (channels,pcm_frames,bits_per_sample,sample_rate) ."""
 
-        for (chunk_id, chunk_length, chunk_offset) in self.chunks():
-            if (chunk_id == 'COMM'):
-                f = open(self.filename, 'rb')
-                f.seek(chunk_offset, 0)
-                comm = self.COMM_CHUNK.parse(f.read(chunk_length))
-                f.close()
-                return (comm.channels,
-                        comm.total_sample_frames,
-                        comm.sample_size,
-                        int(comm.sample_rate))
-        else:
-            raise AiffException(_(u"COMM chunk not found"))
+        try:
+            for (chunk_id, chunk_length, chunk_offset) in self.chunks():
+                if (chunk_id == 'COMM'):
+                    f = open(self.filename, 'rb')
+                    f.seek(chunk_offset, 0)
+                    comm = self.COMM_CHUNK.parse(f.read(chunk_length))
+                    f.close()
+                    return (comm.channels,
+                            comm.total_sample_frames,
+                            comm.sample_size,
+                            int(comm.sample_rate))
+            else:
+                raise InvalidAIFF(_(u"COMM chunk not found"))
+        except IOError, msg:
+            raise InvalidAIFF(str(msg))
 
     def chunk_files(self):
         """Yields a (chunk_id,length,file) per AIFF chunk.
@@ -222,9 +225,9 @@ class AiffAudio(AudioFile):
         try:
             aiff_header = self.AIFF_HEADER.parse_stream(f)
         except Con.ConstError:
-            raise AiffException(_(u"Not an AIFF file"))
+            raise InvalidAIFF(_(u"Not an AIFF file"))
         except Con.core.FieldError:
-            raise AiffException(_(u"Invalid AIFF file"))
+            raise InvalidAIFF(_(u"Invalid AIFF file"))
 
         total_size = aiff_header.aiff_size - 4
         while (total_size > 0):

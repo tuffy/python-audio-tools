@@ -20,9 +20,13 @@
 from audiotools import (AudioFile, ChannelMask, PCMReader,
                         transfer_framelist_data, WaveAudio,
                         AiffAudio, cStringIO, EncodingError,
-                        UnsupportedBitsPerSample)
+                        UnsupportedBitsPerSample, InvalidFile)
 
 import audiotools.decoders
+
+
+class InvalidShorten(InvalidFile):
+    pass
 
 
 class ShortenAudio(AudioFile):
@@ -35,6 +39,15 @@ class ShortenAudio(AudioFile):
         """filename is a plain string."""
 
         AudioFile.__init__(self, filename)
+        try:
+            f = open(filename, 'rb')
+        except IOError, msg:
+            raise InvalidShorten(str(msg))
+        try:
+            if (not ShortenAudio.is_type(f)):
+                raise InvalidShorten(_(u'Shorten header not detected'))
+        finally:
+            f.close()
 
     def __populate_metadata__(self):
         #grab a few pieces of technical metadata from the Shorten file itself

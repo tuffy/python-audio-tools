@@ -39,7 +39,7 @@ gettext.install("audiotools", unicode=True)
 #######################
 
 
-class FlacException(InvalidFile):
+class InvalidFLAC(InvalidFile):
     pass
 
 
@@ -704,7 +704,10 @@ class FlacAudio(AudioFile):
         self.__bitspersample__ = 0
         self.__total_frames__ = 0
 
-        self.__read_streaminfo__()
+        try:
+            self.__read_streaminfo__()
+        except IOError, msg:
+            raise InvalidFLAC(str(msg))
 
     @classmethod
     def is_type(cls, file):
@@ -801,7 +804,7 @@ class FlacAudio(AudioFile):
         f = file(self.filename, 'rb')
         try:
             if (f.read(4) != 'fLaC'):
-                raise FlacException(_(u'Invalid FLAC file'))
+                raise InvalidFLAC(_(u'Invalid FLAC file'))
 
             blocks = []
 
@@ -892,7 +895,7 @@ class FlacAudio(AudioFile):
             stream = file(self.filename, 'rb')
 
             if (stream.read(4) != 'fLaC'):
-                raise FlacException(_(u'Invalid FLAC file'))
+                raise InvalidFLAC(_(u'Invalid FLAC file'))
 
             block = FlacAudio.METADATA_BLOCK_HEADER.parse_stream(stream)
             while (block.last_block == 0):
@@ -919,7 +922,7 @@ class FlacAudio(AudioFile):
         f = file(self.filename, 'rb')
         try:
             if (f.read(4) != 'fLaC'):
-                raise FlacException(_(u'Invalid FLAC file'))
+                raise InvalidFLAC(_(u'Invalid FLAC file'))
 
             header = FlacAudio.METADATA_BLOCK_HEADER.parse_stream(f)
             f.seek(header.block_length, 1)
@@ -1234,11 +1237,11 @@ class FlacAudio(AudioFile):
     def __read_streaminfo__(self):
         f = file(self.filename, "rb")
         if (f.read(4) != "fLaC"):
-            raise FlacException(_(u"Not a FLAC file"))
+            raise InvalidFLAC(_(u"Not a FLAC file"))
 
         (stop, header_type, length) = FlacAudio.__read_flac_header__(f)
         if (header_type != 0):
-            raise FlacException(_(u"STREAMINFO not first metadata block"))
+            raise InvalidFLAC(_(u"STREAMINFO not first metadata block"))
 
         p = FlacAudio.STREAMINFO.parse(f.read(length))
 
@@ -1581,7 +1584,9 @@ class OggFlacAudio(FlacAudio):
             try:
                 header = self.OGGFLAC_STREAMINFO.parse(packets.next())
             except Con.ConstError:
-                raise FlacException(_(u'Invalid Ogg FLAC streaminfo'))
+                raise InvalidFLAC(_(u'Invalid Ogg FLAC streaminfo'))
+            except StopIteration:
+                raise InvalidFLAC(_(u'Invalid Ogg FLAC streaminfo'))
 
             self.__samplerate__ = header.samplerate
             self.__channels__ = header.channels + 1

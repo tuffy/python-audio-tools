@@ -33,10 +33,10 @@ import unicodedata
 
 gettext.install("audiotools", unicode=True)
 
-(METADATA, PCM, FRAMELIST, EXECUTABLE, CUESHEET, IMAGE, NETWORK,
- FLAC, SHORTEN, ALAC, CUSTOM) = range(11)
+(METADATA, PCM, FRAMELIST, EXECUTABLE, CUESHEET, IMAGE, NETWORK, INVALIDFILE,
+ FLAC, SHORTEN, ALAC, CUSTOM) = range(12)
 CASES = set([METADATA, PCM, FRAMELIST, EXECUTABLE, CUESHEET, IMAGE, NETWORK,
-             FLAC, SHORTEN, ALAC])
+             INVALIDFILE, FLAC, SHORTEN, ALAC])
 
 
 def nothing(self):
@@ -108,6 +108,13 @@ def TEST_ALAC(function):
 
 def TEST_NETWORK(function):
     if (NETWORK not in CASES):
+        return nothing
+    else:
+        return function
+
+
+def TEST_INVALIDFILE(function):
+    if (INVALIDFILE not in CASES):
         return nothing
     else:
         return function
@@ -2922,6 +2929,35 @@ uhhDdCiCwqg2Gw3lphgaGhoamR+mptKYNT/F3JFOFCQvKfgAwA==""".decode('base64').decode(
                         track_metadata=metadata,
                         format=format_template.encode('utf-8')),
                                  (format_template % {u"suffix": self.audio_class.SUFFIX.decode('ascii')}).encode('utf-8'))
+
+    @TEST_INVALIDFILE
+    def test_invalidfile(self):
+        #first check nonexistent files
+        self.assertRaises(audiotools.InvalidFile,
+                          self.audio_class,
+                          "/dev/null/foo.%s" % (self.audio_class.SUFFIX))
+
+        f = tempfile.NamedTemporaryFile(suffix="." + self.audio_class.SUFFIX)
+        try:
+            #then check empty files
+            f.write("")
+            f.flush()
+            self.assertEqual(os.path.isfile(f.name), True)
+            self.assertRaises(audiotools.InvalidFile,
+                              self.audio_class,
+                              f.name)
+
+            #then check files with a bit of junk at the beginning
+            f.write("".join(map(chr,
+                                [26, 83, 201, 240, 73, 178, 34, 67, 87, 214])))
+            f.flush()
+            self.assert_(os.path.getsize(f.name) > 0)
+            self.assertRaises(audiotools.InvalidFile,
+                              self.audio_class,
+                              f.name)
+
+        finally:
+            f.close()
 
 
 class TestForeignWaveChunks:

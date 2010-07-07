@@ -29,6 +29,10 @@ import gettext
 gettext.install("audiotools", unicode=True)
 
 
+class InvalidVorbis(InvalidFile):
+    pass
+
+
 class OggStreamReader:
     """A class for walking through an Ogg stream."""
 
@@ -331,7 +335,10 @@ class VorbisAudio(AudioFile):
         """filename is a plain string."""
 
         AudioFile.__init__(self, filename)
-        self.__read_metadata__()
+        try:
+            self.__read_metadata__()
+        except IOError, msg:
+            raise InvalidVorbis(str(msg))
 
     @classmethod
     def is_type(cls, file):
@@ -353,7 +360,11 @@ class VorbisAudio(AudioFile):
             #with any other Ogg stream
 
             #the Identification packet comes first
-            id_packet = packets.next()
+            try:
+                id_packet = packets.next()
+            except StopIteration:
+                raise InvalidVorbis("Vorbis identification packet not found")
+
             header = VorbisAudio.COMMENT_HEADER.parse(
                 id_packet[0:VorbisAudio.COMMENT_HEADER.sizeof()])
             if ((header.packet_type == 0x01) and
@@ -363,7 +374,7 @@ class VorbisAudio(AudioFile):
                 self.__sample_rate__ = identification.sample_rate
                 self.__channels__ = identification.channels
             else:
-                raise InvalidFile(_(u'First packet is not Vorbis'))
+                raise InvalidVorbis(_(u'First packet is not Vorbis'))
 
             #the Comment packet comes next
             comment_packet = packets.next()

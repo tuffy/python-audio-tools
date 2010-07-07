@@ -38,6 +38,10 @@ gettext.install("audiotools", unicode=True)
 #######################
 
 
+class InvalidM4A(InvalidFile):
+    pass
+
+
 #M4A files are made up of QuickTime Atoms
 #some of those Atoms are containers for sub-Atoms
 class __Qt_Atom__:
@@ -240,7 +244,10 @@ class M4AAudio_faac(AudioFile):
         """filename is a plain string."""
 
         self.filename = filename
-        self.qt_stream = __Qt_Atom_Stream__(file(self.filename, "rb"))
+        try:
+            self.qt_stream = __Qt_Atom_Stream__(file(self.filename, "rb"))
+        except IOError, msg:
+            raise InvalidM4A(str(msg))
 
         try:
             mp4a = M4AAudio.MP4A_ATOM.parse(
@@ -256,7 +263,7 @@ class M4AAudio_faac(AudioFile):
             self.__sample_rate__ = mdhd.sample_rate
             self.__length__ = mdhd.track_length
         except KeyError:
-            raise InvalidFile(_(u'Required moov atom not found'))
+            raise InvalidM4A(_(u'Required moov atom not found'))
 
     def channel_mask(self):
         """Returns a ChannelMask object of this track's channel layout."""
@@ -1124,6 +1131,10 @@ class __counter__:
         return self.val
 
 
+class InvalidALAC(InvalidFile):
+    pass
+
+
 class ALACAudio(M4AAudio):
     """An Apple Lossless audio file."""
 
@@ -1201,7 +1212,10 @@ class ALACAudio(M4AAudio):
         """filename is a plain string."""
 
         self.filename = filename
-        self.qt_stream = __Qt_Atom_Stream__(file(self.filename, "rb"))
+        try:
+            self.qt_stream = __Qt_Atom_Stream__(file(self.filename, "rb"))
+        except IOError, msg:
+            raise InvalidALAC(str(msg))
 
         try:
             alac = ALACAudio.ALAC_ATOM.parse(
@@ -1217,7 +1231,7 @@ class ALACAudio(M4AAudio):
 
             self.__length__ = mdhd.track_length
         except KeyError:
-            raise InvalidFile(_(u'Required moov atom not found'))
+            raise InvalidALAC(_(u'Required moov atom not found'))
 
     @classmethod
     def is_type(cls, file):
@@ -1621,7 +1635,7 @@ class ALACAudio(M4AAudio):
 #######################
 
 
-class ADTSException(Exception):
+class InvalidAAC(InvalidFile):
     """Raised if some error occurs parsing AAC audio files."""
 
     pass
@@ -1639,7 +1653,8 @@ class AACAudio(AudioFile):
     BINARIES = ("faac", "faad")
 
     AAC_FRAME_HEADER = Con.BitStruct("aac_header",
-                                 Con.Bits("sync", 12),
+                                 Con.Const(Con.Bits("sync", 12),
+                                           0xFFF),
                                  Con.Bits("mpeg_id", 1),
                                  Con.Bits("mpeg_layer", 2),
                                  Con.Flag("protection_absent"),
@@ -1667,9 +1682,17 @@ class AACAudio(AudioFile):
 
         self.filename = filename
 
-        f = file(self.filename, "rb")
         try:
-            header = AACAudio.AAC_FRAME_HEADER.parse_stream(f)
+            f = file(self.filename, "rb")
+        except IOError, msg:
+            raise InvalidAAC(str(msg))
+        try:
+            try:
+                header = AACAudio.AAC_FRAME_HEADER.parse_stream(f)
+            except Con.FieldError:
+                raise InvalidAAC(_(u"Invalid ADTS frame header"))
+            except Con.ConstError:
+                raise InvalidAAC(_(u"Invalid ADTS frame header"))
             f.seek(0, 0)
             self.__channels__ = header.channel_configuration
             self.__bits_per_sample__ = 16  # floating point samples
@@ -1830,7 +1853,7 @@ class AACAudio(AudioFile):
                 break
 
             if (header.sync != 0xFFF):
-                raise ADTSException(_(u"Invalid frame sync"))
+                raise InvalidAAC(_(u"Invalid frame sync"))
 
             if (header.protection_absent):
                 yield (header, stream.read(header.aac_frame_length - 7))

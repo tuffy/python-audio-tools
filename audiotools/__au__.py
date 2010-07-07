@@ -28,6 +28,10 @@ import gettext
 gettext.install("audiotools", unicode=True)
 
 
+class InvalidAU(InvalidFile):
+    pass
+
+
 #######################
 #Sun AU
 #######################
@@ -50,7 +54,10 @@ class AuAudio(AudioFile):
     def __init__(self, filename):
         AudioFile.__init__(self, filename)
 
-        f = file(filename, 'rb')
+        try:
+            f = file(filename, 'rb')
+        except IOError, msg:
+            raise InvalidAU(str(msg))
         try:
             header = AuAudio.AU_HEADER.parse_stream(f)
 
@@ -67,7 +74,9 @@ class AuAudio(AudioFile):
             self.__data_offset__ = header.data_offset
             self.__data_size__ = header.data_size
         except Con.ConstError:
-            raise InvalidFile(str(msg))
+            raise InvalidFile(_(u"Invalid Sun AU header"))
+        except Con.FieldError:
+                raise InvalidAU(_(u"Invalid Sun AU header"))
 
     @classmethod
     def is_type(cls, file):

@@ -320,6 +320,8 @@ class WaveAudio(AudioFile):
             self.__read_chunks__()
         except WavException, msg:
             raise InvalidFile(str(msg))
+        except IOError, msg:
+            raise InvalidFile(str(msg))
 
     @classmethod
     def is_type(cls, file):

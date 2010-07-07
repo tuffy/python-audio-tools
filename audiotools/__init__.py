@@ -2366,7 +2366,9 @@ class AudioFile:
     BINARIES = tuple()
 
     def __init__(self, filename):
-        """filename is a plain string."""
+        """filename is a plain string.
+
+        Raises InvalidFile or subclass if the file is invalid in some way."""
 
         self.filename = filename
 

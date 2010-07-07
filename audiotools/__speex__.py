@@ -29,6 +29,10 @@ from __vorbis__ import *
 #######################
 
 
+class InvalidSpeex(InvalidFile):
+    pass
+
+
 class UnframedVorbisComment(VorbisComment):
     """An implementation of VorbisComment without the framing bit."""
 
@@ -72,7 +76,10 @@ class SpeexAudio(VorbisAudio):
         """filename is a plain string."""
 
         AudioFile.__init__(self, filename)
-        self.__read_metadata__()
+        try:
+            self.__read_metadata__()
+        except IOError, msg:
+            raise InvalidSpeex(str(msg))
 
     @classmethod
     def is_type(cls, file):
@@ -90,7 +97,10 @@ class SpeexAudio(VorbisAudio):
         packets = f.packets()
         try:
             #first read the Header packet
-            header = SpeexAudio.SPEEX_HEADER.parse(packets.next())
+            try:
+                header = SpeexAudio.SPEEX_HEADER.parse(packets.next())
+            except StopIteration:
+                raise InvalidSpeex(_(u"Header packet not found"))
 
             self.__sample_rate__ = header.sampling_rate
             self.__channels__ = header.channels

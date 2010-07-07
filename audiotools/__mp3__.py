@@ -34,7 +34,7 @@ gettext.install("audiotools", unicode=True)
 #######################
 
 
-class MP3Exception(InvalidFile):
+class InvalidMP3(InvalidFile):
     """Raised by invalid files during MP3 initialization."""
 
     pass
@@ -106,9 +106,16 @@ class MP3Audio(AudioFile):
 
         AudioFile.__init__(self, filename)
 
-        mp3file = file(filename, "rb")
         try:
-            MP3Audio.__find_next_mp3_frame__(mp3file)
+            mp3file = file(filename, "rb")
+        except IOError, msg:
+            raise InvalidMP3(str(msg))
+
+        try:
+            try:
+                MP3Audio.__find_next_mp3_frame__(mp3file)
+            except ValueError:
+                raise InvalidMP3(_(u"MP3 frame not found"))
             fr = MP3Audio.MP3_FRAME_HEADER.parse(mp3file.read(4))
             self.__samplerate__ = MP3Audio.__get_mp3_frame_sample_rate__(fr)
             self.__channels__ = MP3Audio.__get_mp3_frame_channels__(fr)
@@ -478,7 +485,7 @@ class MP3Audio(AudioFile):
 
         bit_rate = MP3Audio.__get_mp3_frame_bitrate__(header)
         if (bit_rate is None):
-            raise MP3Exception(_(u"Invalid bit rate"))
+            raise InvalidMP3(_(u"Invalid bit rate"))
 
         sample_rate = MP3Audio.__get_mp3_frame_sample_rate__(header)
 
@@ -500,7 +507,7 @@ class MP3Audio(AudioFile):
             else:                               # MPEG 1
                 return MP3Audio.MP3_SAMPLERATE[frame.sampling_rate][0]
         except IndexError:
-            raise MP3Exception(_(u"Invalid sampling rate"))
+            raise InvalidMP3(_(u"Invalid sampling rate"))
 
     @classmethod
     def __get_mp3_frame_channels__(cls, frame):
@@ -523,7 +530,7 @@ class MP3Audio(AudioFile):
             else:
                 return 0
         except IndexError:
-            raise MP3Exception(_(u"Invalid bit rate"))
+            raise InvalidMP3(_(u"Invalid bit rate"))
 
     def cd_frames(self):
         """Returns the total length of the track in CD frames.
@@ -531,11 +538,11 @@ class MP3Audio(AudioFile):
         Each CD frame is 1/75th of a second."""
 
         #calculate length at create-time so that we can
-        #throw MP3Exception as soon as possible
+        #throw InvalidMP3 as soon as possible
         return self.__framelength__
 
     #returns the length of this file in CD frame
-    #raises MP3Exception if any portion of the frame is invalid
+    #raises InvalidMP3 if any portion of the frame is invalid
     def __length__(self):
         mp3file = file(self.filename, "rb")
 
@@ -568,9 +575,9 @@ class MP3Audio(AudioFile):
                     frames_per_sample = 1152
                     bit_rate = MP3Audio.MP3_BITRATE[fr.bitrate][version + 2]
                 else:
-                    raise MP3Exception(_(u"Unsupported MPEG layer"))
+                    raise InvalidMP3(_(u"Unsupported MPEG layer"))
             except IndexError:
-                raise MP3Exception(_(u"Invalid bit rate"))
+                raise InvalidMP3(_(u"Invalid bit rate"))
 
             if ('Xing' in first_frame):
                 #the first frame has a Xing header,

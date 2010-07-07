@@ -31,6 +31,10 @@ import gettext
 gettext.install("audiotools", unicode=True)
 
 
+class InvalidWavPack(InvalidFile):
+    pass
+
+
 class __24BitsLE__(Con.Adapter):
     def _encode(self, value, context):
         return  chr(value & 0x0000FF) + \
@@ -268,7 +272,10 @@ class WavPackAudio(ApeTaggedAudio, AudioFile):
         self.__bitspersample__ = 0
         self.__total_frames__ = 0
 
-        self.__read_info__()
+        try:
+            self.__read_info__()
+        except IOError, msg:
+            raise InvalidWavPack(str(msg))
 
     @classmethod
     def is_type(cls, file):
@@ -375,7 +382,7 @@ class WavPackAudio(ApeTaggedAudio, AudioFile):
                     header = WavPackAudio.HEADER.parse(f.read(
                             WavPackAudio.HEADER.sizeof()))
                 except Con.ConstError:
-                    raise InvalidFile(_(u'WavPack header ID invalid'))
+                    raise InvalidWavPack(_(u'WavPack header ID invalid'))
 
                 if (remaining_samples is None):
                     remaining_samples = (header.total_samples - \
@@ -421,7 +428,9 @@ class WavPackAudio(ApeTaggedAudio, AudioFile):
                 header = WavPackAudio.HEADER.parse(f.read(
                     WavPackAudio.HEADER.sizeof()))
             except Con.ConstError:
-                raise InvalidFile(_(u'WavPack header ID invalid'))
+                raise InvalidWavPack(_(u'WavPack header ID invalid'))
+            except Con.FieldError:
+                raise InvalidWavPack(_(u'WavPack header ID invalid'))
 
             self.__samplerate__ = WavPackAudio.SAMPLING_RATE[
                 (header.sampling_rate_high << 1) |
