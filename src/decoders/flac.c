@@ -117,44 +117,65 @@ FlacDecoder_read_metadata(decoders_FlacDecoder *self)
     unsigned int block_type;
     unsigned int block_length;
 
-    if (read_bits(self->bitstream, 32) != 0x664C6143u) {
-        PyErr_SetString(PyExc_ValueError, "not a FLAC file");
-        return ERROR;
-    }
-
-    last_block = read_bits(self->bitstream, 1);
-    block_type = read_bits(self->bitstream, 7);
-    block_length = read_bits(self->bitstream, 24);
-
-    if (block_type == 0) {
-        self->streaminfo.minimum_block_size = read_bits(self->bitstream, 16);
-        self->streaminfo.maximum_block_size = read_bits(self->bitstream, 16);
-        self->streaminfo.minimum_frame_size = read_bits(self->bitstream, 24);
-        self->streaminfo.maximum_frame_size = read_bits(self->bitstream, 24);
-        self->streaminfo.sample_rate = read_bits(self->bitstream, 20);
-        self->streaminfo.channels = read_bits(self->bitstream, 3) + 1;
-        self->streaminfo.bits_per_sample = read_bits(self->bitstream, 5) + 1;
-        self->streaminfo.total_samples = read_bits64(self->bitstream, 36);
-        if (fread(self->streaminfo.md5sum, sizeof(unsigned char), 16,
-                  self->file)
-            != 16) {
-            PyErr_SetString(PyExc_ValueError, "unable to read md5sum");
-            return ERROR;
+    if (!setjmp(*bs_try(self->bitstream))) {
+        if (read_bits(self->bitstream, 32) != 0x664C6143u) {
+            PyErr_SetString(PyExc_ValueError, "not a FLAC file");
+            goto error;
         }
-    } else {
-        PyErr_SetString(PyExc_ValueError,
-                        "STREAMINFO not first metadata block");
-        return ERROR;
-    }
 
-    while (!last_block) {
         last_block = read_bits(self->bitstream, 1);
         block_type = read_bits(self->bitstream, 7);
         block_length = read_bits(self->bitstream, 24);
-        fseek(self->file, block_length, SEEK_CUR);
+
+        if (block_type == 0) {
+            self->streaminfo.minimum_block_size = read_bits(self->bitstream,
+                                                            16);
+            self->streaminfo.maximum_block_size = read_bits(self->bitstream,
+                                                            16);
+            self->streaminfo.minimum_frame_size = read_bits(self->bitstream,
+                                                            24);
+            self->streaminfo.maximum_frame_size = read_bits(self->bitstream,
+                                                            24);
+            self->streaminfo.sample_rate = read_bits(self->bitstream,
+                                                     20);
+            self->streaminfo.channels = read_bits(self->bitstream,
+                                                  3) + 1;
+            self->streaminfo.bits_per_sample = read_bits(self->bitstream,
+                                                         5) + 1;
+            self->streaminfo.total_samples = read_bits64(self->bitstream,
+                                                         36);
+            if (fread(self->streaminfo.md5sum, sizeof(unsigned char),
+                      16, self->file) != 16) {
+                PyErr_SetString(PyExc_ValueError, "unable to read md5sum");
+                goto error;
+            }
+        } else {
+            PyErr_SetString(PyExc_ValueError,
+                            "STREAMINFO not first metadata block");
+            goto error;
+        }
+
+        while (!last_block) {
+            last_block = read_bits(self->bitstream, 1);
+            block_type = read_bits(self->bitstream, 7);
+            block_length = read_bits(self->bitstream, 24);
+            if (fseek(self->file, block_length, SEEK_CUR) == -1) {
+                PyErr_SetFromErrno(PyExc_ValueError);
+                goto error;
+            }
+        }
+
+        bs_etry(self->bitstream);
+        return OK;
+    } else {
+        PyErr_SetString(PyExc_ValueError,
+                        "EOF while reading STREAMINFO block");
+        goto error;
     }
 
-    return OK;
+ error:
+    bs_etry(self->bitstream);
+    return ERROR;
 }
 
 static PyObject*
