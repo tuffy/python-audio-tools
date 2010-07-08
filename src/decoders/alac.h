@@ -46,6 +46,7 @@ typedef struct {
     struct ia_array subframe_samples; /*a sample buffer for subframe output*/
     struct ia_array wasted_bits_samples;  /*a buffer for wasted-bits samples*/
     struct ia_array residuals; /*a buffer for residual values*/
+    struct alac_subframe_header *subframe_headers;
 } decoders_ALACDecoder;
 
 struct alac_frame_header {
@@ -152,13 +153,6 @@ ALACDecoder_decorrelate_channels(struct ia_array *output,
                                  int interlacing_shift,
                                  int interlacing_leftweight);
 
-/*after a call to "read_subframe_header",
-  call "free_subframe_header" to deallocate the predictor_coef_tables*/
-static inline void
-ALACDecoder_free_subframe_header(struct alac_subframe_header *subframe_header)
-{
-    ia_free(&(subframe_header->predictor_coef_table));
-}
 
 /*simple routines*/
 void

@@ -4474,6 +4474,27 @@ class TestAlacAudio(TestM4AAudio):
     def setUp(self):
         self.audio_class = audiotools.ALACAudio
 
+    @TEST_INVALIDFILE
+    def test_truncated_mdat(self):
+        f = open("alac-allframes.m4a", "rb")
+        alac_data = f.read()
+        f.close()
+
+        temp = tempfile.NamedTemporaryFile(suffix='.m4a')
+
+        for i in xrange(0x16CD, len(alac_data)):
+            temp.seek(0, 0)
+            temp.write(alac_data[0:i])
+            temp.flush()
+            self.assertEqual(os.path.getsize(temp.name), i)
+            decoder = audiotools.open(temp.name).to_pcm()
+            self.assertNotEqual(decoder, None)
+            self.assertRaises(ValueError,
+                              audiotools.transfer_framelist_data,
+                              decoder, lambda x: x)
+
+        temp.close()
+
 
 class TestAACAudio(TestAiffAudio):
     def setUp(self):

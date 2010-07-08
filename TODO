@@ -1005,10 +1005,10 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    - [ ] check for premature EOF
 ** TODO ALACAudio
    - [ ] sanity check ALAC atom
-   - [ ] check for invalid footer bytes
+   - [X] check for invalid footer bytes
    - [ ] ensure frame header matches ALAC atom
          (channel count is about all we can check, though)
-   - [ ] check for premature EOF
+   - [X] check for premature EOF
          (including if mdat isn't long enough,
          both in number of samples and number of bytes)
 ** TODO AuAudio
