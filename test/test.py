@@ -3705,6 +3705,11 @@ class TestFlacAudio(TestOggFlacAudio, TestForeignWaveChunks):
 
     @TEST_INVALIDFILE
     def test_truncated_frames(self):
+        def run_analysis(pcmreader):
+            f = pcmreader.analyze_frame()
+            while (f is not None):
+                f = pcmreader.analyze_frame()
+
         self.assertEqual(audiotools.open("flac-allframes.flac").__md5__,
                          'f53f86876dcd7783225c93ba8a938c7d'.decode('hex'))
 
@@ -3724,6 +3729,10 @@ class TestFlacAudio(TestOggFlacAudio, TestForeignWaveChunks):
             self.assertRaises(ValueError,
                               audiotools.transfer_framelist_data,
                               decoder, lambda x: x)
+
+            decoder = audiotools.open(temp.name).to_pcm()
+            self.assertNotEqual(decoder, None)
+            self.assertRaises(ValueError, run_analysis, decoder)
 
         temp.close()
 
