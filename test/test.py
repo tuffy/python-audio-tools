@@ -4476,6 +4476,11 @@ class TestAlacAudio(TestM4AAudio):
 
     @TEST_INVALIDFILE
     def test_truncated_mdat(self):
+        def run_analysis(pcmreader):
+            f = pcmreader.analyze_frame()
+            while (f is not None):
+                f = pcmreader.analyze_frame()
+
         f = open("alac-allframes.m4a", "rb")
         alac_data = f.read()
         f.close()
@@ -4492,6 +4497,10 @@ class TestAlacAudio(TestM4AAudio):
             self.assertRaises(ValueError,
                               audiotools.transfer_framelist_data,
                               decoder, lambda x: x)
+
+            decoder = audiotools.open(temp.name).to_pcm()
+            self.assertNotEqual(decoder, None)
+            self.assertRaises(ValueError, run_analysis, decoder)
 
         temp.close()
 
