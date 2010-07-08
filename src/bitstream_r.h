@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <setjmp.h>
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -31,10 +32,16 @@ struct bs_callback {
     struct bs_callback *next;
 };
 
+struct bs_exception {
+    jmp_buf env;
+    struct bs_exception *next;
+};
+
 typedef struct {
     FILE *file;
     int state;
     struct bs_callback *callback;
+    struct bs_exception *exceptions;
 } Bitstream;
 
 Bitstream*
@@ -47,12 +54,44 @@ void
 bs_add_callback(Bitstream *bs, void (*callback)(int, void*),
                 void *data);
 
+/*Returns true if the stream is at EOF.*/
 int
 bs_eof(Bitstream *bs);
 
 
+/*Called by the read functions if one attempts to read past
+  the end of the stream.
+  If an exception stack is available (with bs_try),
+  this jumps to that location via longjmp(3).
+  If not, this prints an error message and performs an unconditional exit.
+*/
 void
 bs_abort(Bitstream *bs);
+
+
+
+/*Sets up an exception stack for use by setjmp(3).
+  The basic call procudure is as follows:
+
+  if (!setjmp(*bs_try(bs))) {
+    - perform reads here -
+  } else {
+    - catch read exception here -
+  }
+  bs_etry(bs);  - either way, pop handler off exception stack -
+
+  The idea being to avoid cluttering our read code with lots
+  and lots of error checking tests, but rather assign a spot
+  for errors to go if/when they do occur.
+ */
+jmp_buf*
+bs_try(Bitstream *bs);
+
+
+/*Pops an entry off the current exception stack.
+ (ends a try, essentially)*/
+void
+bs_etry(Bitstream *bs);
 
 
 typedef enum {BBW_WRITE_BITS,

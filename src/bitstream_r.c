@@ -38,22 +38,29 @@ bs_open(FILE *f)
     bs->file = f;
     bs->state = 0;
     bs->callback = NULL;
+    bs->exceptions = NULL;
     return bs;
 }
 
 void
 bs_close(Bitstream *bs)
 {
-    struct bs_callback *node;
-    struct bs_callback *next;
+    struct bs_callback *c_node;
+    struct bs_callback *c_next;
+    struct bs_exception *e_node;
+    struct bs_exception *e_next;
 
     if (bs == NULL) return;
 
     if (bs->file != NULL) fclose(bs->file);
 
-    for (node = bs->callback; node != NULL; node = next) {
-        next = node->next;
-        free(node);
+    for (c_node = bs->callback; c_node != NULL; c_node = c_next) {
+        c_next = c_node->next;
+        free(c_node);
+    }
+    for (e_node = bs->exceptions; e_node != NULL; e_node = e_next) {
+        e_next = e_node->next;
+        free(e_node);
     }
     free(bs);
 }
@@ -78,6 +85,28 @@ bs_eof(Bitstream *bs)
 
 void
 bs_abort(Bitstream *bs) {
-    fprintf(stderr, "EOF encountered, aborting\n");
-    exit(1);
+    if (bs->exceptions != NULL) {
+        longjmp(bs->exceptions->env, 1);
+    } else {
+        fprintf(stderr, "EOF encountered, aborting\n");
+        exit(1);
+    }
+}
+
+
+jmp_buf*
+bs_try(Bitstream *bs) {
+    struct bs_exception *node = malloc(sizeof(struct bs_exception));
+    node->next = bs->exceptions;
+    bs->exceptions = node;
+    return &(node->env);
+}
+
+void
+bs_etry(Bitstream *bs) {
+    struct bs_exception *node = bs->exceptions;
+    if (node != NULL) {
+        bs->exceptions = node->next;
+        free(node);
+    }
 }
