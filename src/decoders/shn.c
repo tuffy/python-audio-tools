@@ -39,7 +39,7 @@ SHNDecoder_init(decoders_SHNDecoder *self,
         self->bitstream = bs_open(fp);
     }
 
-    if (!SHNDecoder_read_header(self)) {
+    if (SHNDecoder_read_header(self) == ERROR) {
         PyErr_SetString(PyExc_ValueError, "not a SHN file");
         return -1;
     }
@@ -230,7 +230,8 @@ SHNDecoder_read(decoders_SHNDecoder* self, PyObject *args)
         fseek(self->bitstream->file, 0, SEEK_SET);
         self->bitstream->state = 0;
 
-        SHNDecoder_read_header(self);
+        if (SHNDecoder_read_header(self) == ERROR)
+            goto error;
     }
 
     if (self->read_finished) {
@@ -429,7 +430,11 @@ SHNDecoder_metadata(decoders_SHNDecoder* self, PyObject *args)
     fseek(self->bitstream->file, 0, SEEK_SET);
     self->bitstream->state = 0;
 
-    SHNDecoder_read_header(self);
+    if (SHNDecoder_read_header(self) == ERROR) {
+        PyErr_SetString(PyExc_ValueError,
+                        "error reading SHN header");
+        return NULL;
+    }
 
     /*walk through the Shorten file,
       storing FN_VERBATIM instructions as strings,
@@ -557,7 +562,10 @@ SHNDecoder_analyze_frame(decoders_SHNDecoder* self, PyObject *args)
         fseek(self->bitstream->file, 0, SEEK_SET);
         self->bitstream->state = 0;
 
-        SHNDecoder_read_header(self);
+        if (SHNDecoder_read_header(self) == ERROR) {
+            PyErr_SetString(PyExc_ValueError, "EOF reading SHN header");
+            return NULL;
+        }
     }
 
     if (self->read_finished) {
@@ -639,28 +647,35 @@ SHNDecoder_analyze_frame(decoders_SHNDecoder* self, PyObject *args)
     return Py_None;
 }
 
-int
+status
 SHNDecoder_read_header(decoders_SHNDecoder* self)
 {
     Bitstream* bs = self->bitstream;
 
-    if (read_bits(bs, 32) != 0x616A6B67)
-        return 0;
+    if (!setjmp(*bs_try(bs))) {
+        if (read_bits(bs, 32) != 0x616A6B67) {
+            bs_etry(bs);
+            return ERROR;
+        }
 
-    self->version = read_bits(bs, 8);
-    self->file_type = shn_read_long(bs);
-    self->channels = shn_read_long(bs);
-    self->block_size = shn_read_long(bs);
-    self->maxnlpc = shn_read_long(bs);
-    self->nmean = shn_read_long(bs);
-    self->nskip = shn_read_long(bs);
-    /*FIXME - perform writing if bytes skipped*/
-    self->wrap = self->maxnlpc > 3 ? self->maxnlpc : 3;
+        self->version = read_bits(bs, 8);
+        self->file_type = shn_read_long(bs);
+        self->channels = shn_read_long(bs);
+        self->block_size = shn_read_long(bs);
+        self->maxnlpc = shn_read_long(bs);
+        self->nmean = shn_read_long(bs);
+        self->nskip = shn_read_long(bs);
+        /*FIXME - perform writing if bytes skipped*/
+        self->wrap = self->maxnlpc > 3 ? self->maxnlpc : 3;
 
-    self->read_started = 1;
-    self->read_finished = 0;
+        self->read_started = 1;
+        self->read_finished = 0;
 
-    return 1;
+        return OK;
+    } else {
+        bs_etry(bs);
+        return ERROR;
+    }
 }
 
 void
@@ -758,8 +773,8 @@ SHNDecoder_read_lpc(struct i_array *buffer,
             ia_setitem(buffer, i, ia_getitem(buffer, i) + coffset);
 }
 
-unsigned
-int shn_read_uvar(Bitstream* bs, unsigned int count)
+unsigned int
+shn_read_uvar(Bitstream* bs, unsigned int count)
 {
     unsigned int high_bits = read_unary(bs, 1);
     unsigned int low_bits = read_bits(bs, count);
@@ -777,8 +792,8 @@ shn_read_var(Bitstream* bs, unsigned int count)
         return uvar >> 1;
 }
 
-unsigned
-int shn_read_long(Bitstream* bs)
+unsigned int
+shn_read_long(Bitstream* bs)
 {
     return shn_read_uvar(bs, shn_read_uvar(bs, 2));
 }

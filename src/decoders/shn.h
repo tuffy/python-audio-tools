@@ -22,6 +22,8 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 *******************************************************/
 
+typedef enum {OK, ERROR} status;
+
 #define ENERGY_SIZE 3
 #define VERBATIM_CHUNK_SIZE 5
 #define VERBATIM_BYTE_SIZE 8
@@ -211,7 +213,7 @@ PyTypeObject decoders_SHNDecoderType = {
 
 
 
-int
+status
 SHNDecoder_read_header(decoders_SHNDecoder* self);
 
 void
