@@ -225,117 +225,123 @@ FLACDecoder_read(decoders_FlacDecoder* self, PyObject *args)
         return NULL;
     }
 
-    /*if all samples have been read, return an empty FrameList*/
-    if (self->remaining_samples < 1) {
+    if (!setjmp(*bs_try(self->bitstream))) {
+        /*if all samples have been read, return an empty FrameList*/
+        if (self->remaining_samples < 1) {
+            if ((pcm = PyImport_ImportModule("audiotools.pcm")) == NULL)
+                goto error;
+            framelist = (pcm_FrameList*)PyObject_CallMethod(pcm, "__blank__",
+                                                            NULL);
+            framelist->channels = self->streaminfo.channels;
+            framelist->bits_per_sample = self->streaminfo.bits_per_sample;
+            Py_DECREF(pcm);
+            return (PyObject*)framelist;
+        }
+
+        self->crc8 = self->crc16 = 0;
+
+        if (FlacDecoder_read_frame_header(self, &frame_header) == ERROR) {
+            goto error;
+        }
+
+        data_size = frame_header.block_size * frame_header.bits_per_sample *
+            frame_header.channel_count / 8;
+        if (data_size > self->data_size) {
+            self->data = realloc(self->data, data_size);
+            self->data_size = data_size;
+        }
+
+        for (channel = 0; channel < frame_header.channel_count; channel++) {
+            if (((frame_header.channel_assignment == 0x8) &&
+                 (channel == 1)) ||
+                ((frame_header.channel_assignment == 0x9) &&
+                 (channel == 0)) ||
+                ((frame_header.channel_assignment == 0xA) &&
+                 (channel == 1))) {
+                if (FlacDecoder_read_subframe(
+                                self,
+                                frame_header.block_size,
+                                frame_header.bits_per_sample + 1,
+                                &(self->subframe_data[channel])) == ERROR)
+                    goto error;
+            } else {
+                if (FlacDecoder_read_subframe(
+                                self,
+                                frame_header.block_size,
+                                frame_header.bits_per_sample,
+                                &(self->subframe_data[channel])) == ERROR)
+                    goto error;
+            }
+        }
+
+        /*handle difference channels, if any*/
+        switch (frame_header.channel_assignment) {
+        case 0x8:
+            /*left-difference*/
+            ia_sub(&(self->subframe_data[1]),
+                   &(self->subframe_data[0]), &(self->subframe_data[1]));
+            break;
+        case 0x9:
+            /*difference-right*/
+            ia_add(&(self->subframe_data[0]),
+                   &(self->subframe_data[0]), &(self->subframe_data[1]));
+            break;
+        case 0xA:
+            /*mid-side*/
+            for (i = 0; i < frame_header.block_size; i++) {
+                mid = ia_getitem(&(self->subframe_data[0]), i);
+                side = ia_getitem(&(self->subframe_data[1]), i);
+                mid = (mid << 1) | (side & 1);
+                ia_setitem(&(self->subframe_data[0]), i, (mid + side) >> 1);
+                ia_setitem(&(self->subframe_data[1]), i, (mid - side) >> 1);
+            }
+            break;
+        default:
+            /*do nothing for independent channels*/
+            break;
+        }
+
+        /*check CRC-16*/
+        byte_align_r(self->bitstream);
+        read_bits(self->bitstream, 16);
+        if (self->crc16 != 0) {
+            PyErr_SetString(PyExc_ValueError, "invalid checksum in frame");
+            goto error;
+        }
+
+        /*transform subframe data into a pcm_FrameList object*/
         if ((pcm = PyImport_ImportModule("audiotools.pcm")) == NULL)
             goto error;
         framelist = (pcm_FrameList*)PyObject_CallMethod(pcm, "__blank__",
                                                         NULL);
-        framelist->channels = self->streaminfo.channels;
-        framelist->bits_per_sample = self->streaminfo.bits_per_sample;
         Py_DECREF(pcm);
-        return (PyObject*)framelist;
-    }
 
-    self->crc8 = self->crc16 = 0;
+        framelist->frames = frame_header.block_size;
+        framelist->channels = frame_header.channel_count;
+        framelist->bits_per_sample = frame_header.bits_per_sample;
+        framelist->samples_length = framelist->frames * framelist->channels;
+        framelist->samples = realloc(framelist->samples,
+                                     sizeof(ia_data_t) *
+                                     framelist->samples_length);
 
-    if (FlacDecoder_read_frame_header(self, &frame_header) == ERROR) {
-        Py_DECREF(pcm);
-        return NULL;
-    }
-
-    data_size = frame_header.block_size * frame_header.bits_per_sample *
-        frame_header.channel_count / 8;
-    if (data_size > self->data_size) {
-        self->data = realloc(self->data, data_size);
-        self->data_size = data_size;
-    }
-
-    for (channel = 0; channel < frame_header.channel_count; channel++) {
-        if (((frame_header.channel_assignment == 0x8) &&
-             (channel == 1)) ||
-            ((frame_header.channel_assignment == 0x9) &&
-             (channel == 0)) ||
-            ((frame_header.channel_assignment == 0xA) &&
-             (channel == 1))) {
-            if (FlacDecoder_read_subframe(
-                    self,
-                    frame_header.block_size,
-                    frame_header.bits_per_sample + 1,
-                    &(self->subframe_data[channel])) == ERROR)
-                goto error;
-        } else {
-            if (FlacDecoder_read_subframe(
-                    self,
-                    frame_header.block_size,
-                    frame_header.bits_per_sample,
-                    &(self->subframe_data[channel])) == ERROR)
-                goto error;
+        for (channel = 0; channel < frame_header.channel_count; channel++) {
+            channel_data = self->subframe_data[channel];
+            for (i = channel, j = 0; j < channel_data.size;
+                 i += frame_header.channel_count, j++)
+                framelist->samples[i] = ia_getitem(&channel_data, j);
         }
-    }
 
-    /*handle difference channels, if any*/
-    switch (frame_header.channel_assignment) {
-    case 0x8:
-        /*left-difference*/
-        ia_sub(&(self->subframe_data[1]),
-               &(self->subframe_data[0]), &(self->subframe_data[1]));
-        break;
-    case 0x9:
-        /*difference-right*/
-        ia_add(&(self->subframe_data[0]),
-               &(self->subframe_data[0]), &(self->subframe_data[1]));
-        break;
-    case 0xA:
-        /*mid-side*/
-        for (i = 0; i < frame_header.block_size; i++) {
-            mid = ia_getitem(&(self->subframe_data[0]), i);
-            side = ia_getitem(&(self->subframe_data[1]), i);
-            mid = (mid << 1) | (side & 1);
-            ia_setitem(&(self->subframe_data[0]), i, (mid + side) >> 1);
-            ia_setitem(&(self->subframe_data[1]), i, (mid - side) >> 1);
-        }
-        break;
-    default:
-        /*do nothing for independent channels*/
-        break;
-    }
-
-    /*check CRC-16*/
-    byte_align_r(self->bitstream);
-    read_bits(self->bitstream, 16);
-    if (self->crc16 != 0) {
-        PyErr_SetString(PyExc_ValueError, "invalid checksum in frame");
+        /*decrement remaining samples*/
+        self->remaining_samples -= frame_header.block_size;
+    } else {
+        PyErr_SetString(PyExc_ValueError, "EOF reading frame");
         goto error;
     }
 
-    /*transform subframe data into a pcm_FrameList object*/
-    if ((pcm = PyImport_ImportModule("audiotools.pcm")) == NULL)
-        goto error;
-    framelist = (pcm_FrameList*)PyObject_CallMethod(pcm, "__blank__", NULL);
-    Py_DECREF(pcm);
-
-    framelist->frames = frame_header.block_size;
-    framelist->channels = frame_header.channel_count;
-    framelist->bits_per_sample = frame_header.bits_per_sample;
-    framelist->samples_length = framelist->frames * framelist->channels;
-    framelist->samples = realloc(framelist->samples,
-                                 sizeof(ia_data_t) *
-                                 framelist->samples_length);
-
-    for (channel = 0; channel < frame_header.channel_count; channel++) {
-        channel_data = self->subframe_data[channel];
-        for (i = channel, j = 0; j < channel_data.size;
-             i += frame_header.channel_count, j++)
-            framelist->samples[i] = ia_getitem(&channel_data, j);
-    }
-
-    /*decrement remaining samples*/
-    self->remaining_samples -= frame_header.block_size;
-
-    /*return pcm_FrameList*/
+    bs_etry(self->bitstream);
     return (PyObject*)framelist;
  error:
+    bs_etry(self->bitstream);
     Py_XDECREF(pcm);
     return NULL;
 }
