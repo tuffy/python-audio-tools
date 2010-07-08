@@ -498,7 +498,7 @@ ShortenEncoder_put_long(Bitstream* bs, int value)
 }
 
 void
-ShortenEncoder_byte_counter(unsigned int byte, void* counter)
+ShortenEncoder_byte_counter(int byte, void* counter)
 {
     int* i_counter = (int*)counter;
     *i_counter += 1;

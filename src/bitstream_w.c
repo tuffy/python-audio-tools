@@ -115,7 +115,7 @@ bs_free(Bitstream *bs)
 }
 
 void
-bs_add_callback(Bitstream *bs, void (*callback)(unsigned int, void*),
+bs_add_callback(Bitstream *bs, void (*callback)(int, void*),
                 void *data)
 {
     struct bs_callback *callback_node = malloc(sizeof(struct bs_callback));

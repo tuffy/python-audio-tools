@@ -95,7 +95,7 @@ int
 ShortenEncoder_compute_best_energysize(struct i_array *resuduals);
 
 void
-ShortenEncoder_byte_counter(unsigned int byte, void* counter);
+ShortenEncoder_byte_counter(int byte, void* counter);
 
 static inline uint64_t
 abs_sum(struct i_array *a) {

@@ -59,7 +59,7 @@ bs_close(Bitstream *bs)
 }
 
 void
-bs_add_callback(Bitstream *bs, void (*callback)(unsigned int, void*),
+bs_add_callback(Bitstream *bs, void (*callback)(int, void*),
                 void *data)
 {
     struct bs_callback *callback_node = malloc(sizeof(struct bs_callback));
@@ -73,4 +73,11 @@ int
 bs_eof(Bitstream *bs)
 {
     return feof(bs->file);
+}
+
+
+void
+bs_abort(Bitstream *bs) {
+    fprintf(stderr, "EOF encountered, aborting\n");
+    exit(1);
 }

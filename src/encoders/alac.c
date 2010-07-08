@@ -826,7 +826,7 @@ ALACEncoder_write_residuals(Bitstream *bs,
 }
 
 void
-ALACEncoder_byte_counter(unsigned int byte, void* counter)
+ALACEncoder_byte_counter(int byte, void* counter)
 {
     int* i_counter = (int*)counter;
     *i_counter += 1;

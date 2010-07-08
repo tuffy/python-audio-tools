@@ -68,7 +68,7 @@ PyObject
 #endif
 
 void
-ALACEncoder_byte_counter(unsigned int byte, void* counter);
+ALACEncoder_byte_counter(int byte, void* counter);
 
 status
 ALACEncoder_write_frame(Bitstream *bs,

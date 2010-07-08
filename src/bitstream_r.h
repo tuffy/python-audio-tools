@@ -26,7 +26,7 @@
 *******************************************************/
 
 struct bs_callback {
-    void (*callback)(unsigned int, void*);
+    void (*callback)(int, void*);
     void *data;
     struct bs_callback *next;
 };
@@ -44,11 +44,15 @@ void
 bs_close(Bitstream *bs);
 
 void
-bs_add_callback(Bitstream *bs, void (*callback)(unsigned int, void*),
+bs_add_callback(Bitstream *bs, void (*callback)(int, void*),
                 void *data);
 
 int
 bs_eof(Bitstream *bs);
+
+
+void
+bs_abort(Bitstream *bs);
 
 
 typedef enum {BBW_WRITE_BITS,
@@ -85,13 +89,14 @@ read_bits(Bitstream* bs, unsigned int count)
 {
     int context = bs->state;
     unsigned int result;
-    unsigned int byte;
+    int byte;
     struct bs_callback* callback;
     unsigned int accumulator = 0;
 
     while (count > 0) {
         if (context == 0) {
-            byte = (unsigned int)fgetc(bs->file);
+            if ((byte = fgetc(bs->file)) == EOF)
+                bs_abort(bs);
             context = 0x800 | byte;
             for (callback = bs->callback;
                  callback != NULL;
@@ -126,13 +131,14 @@ read_bits64(Bitstream* bs, unsigned int count)
 {
     int context = bs->state;
     unsigned int result;
-    unsigned int byte;
+    int byte;
     struct bs_callback* callback;
     uint64_t accumulator = 0;
 
     while (count > 0) {
         if (context == 0) {
-            byte = (unsigned int)fgetc(bs->file);
+            if ((byte = fgetc(bs->file)) == EOF)
+                bs_abort(bs);
             context = 0x800 | byte;
             for (callback = bs->callback;
                  callback != NULL;
@@ -165,12 +171,13 @@ read_unary(Bitstream* bs, int stop_bit)
     int context = bs->state;
     unsigned int result;
     struct bs_callback* callback;
-    unsigned int byte;
+    int byte;
     unsigned int accumulator = 0;
 
     do {
         if (context == 0) {
-            byte = (unsigned int)fgetc(bs->file);
+            if ((byte = fgetc(bs->file)) == EOF)
+                bs_abort(bs);
             for (callback = bs->callback;
                  callback != NULL;
                  callback = callback->next)

@@ -2,7 +2,7 @@
   assigns a new checksum to that value*/
 
 void
-flac_crc8(unsigned int byte, void *checksum);
+flac_crc8(int byte, void *checksum);
 
 void
-flac_crc16(unsigned int byte, void *checksum);
+flac_crc16(int byte, void *checksum);

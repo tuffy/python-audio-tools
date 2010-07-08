@@ -25,7 +25,7 @@
 *******************************************************/
 
 struct bs_callback {
-    void (*callback)(unsigned int, void*);
+    void (*callback)(int, void*);
     void *data;
     struct bs_callback *next;
 };
@@ -94,7 +94,7 @@ void
 bs_free(Bitstream *bs);
 
 void
-bs_add_callback(Bitstream *bs, void (*callback)(unsigned int, void*),
+bs_add_callback(Bitstream *bs, void (*callback)(int, void*),
                 void *data);
 
 int bs_eof(Bitstream *bs);
