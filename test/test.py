@@ -3745,7 +3745,7 @@ class TestFlacAudio(TestOggFlacAudio, TestForeignWaveChunks):
         temp = tempfile.NamedTemporaryFile(suffix=".flac")
         for i in xrange(0x2A, len(flac_data)):
             bytes = flac_data[:]
-            bytes[i] ^= 0xFF  #swap a byte
+            bytes[i] ^= 0xFF  # swap a byte
             temp.seek(0, 0)
             temp.write("".join(map(chr, bytes)))
             temp.flush()
@@ -3754,6 +3754,76 @@ class TestFlacAudio(TestOggFlacAudio, TestForeignWaveChunks):
             self.assertRaises(ValueError,
                               audiotools.transfer_framelist_data,
                               decoders, lambda x: x)
+
+    @TEST_INVALIDFILE
+    def test_bad_streaminfo(self):
+        f = open("flac-allframes.flac", "rb")
+        flac_data = f.read()
+        f.close()
+
+        mismatch_streaminfos = [
+            Con.Container(minimum_blocksize=4096,
+                          maximum_blocksize=4096,
+                          minimum_framesize=12,
+                          maximum_framesize=12,
+                          samplerate=44101,
+                          channels=0,
+                          bits_per_sample=15,
+                          total_samples=80,
+                          md5=[245, 63, 134, 135, 109, 205, 119,
+                               131, 34, 92, 147, 186, 138, 147,
+                               140, 125]),
+            Con.Container(minimum_blocksize=4096,
+                          maximum_blocksize=4096,
+                          minimum_framesize=12,
+                          maximum_framesize=12,
+                          samplerate=44100,
+                          channels=1,
+                          bits_per_sample=15,
+                          total_samples=80,
+                          md5=[245, 63, 134, 135, 109, 205, 119,
+                               131, 34, 92, 147, 186, 138, 147,
+                               140, 125]),
+            Con.Container(minimum_blocksize=4096,
+                          maximum_blocksize=4096,
+                          minimum_framesize=12,
+                          maximum_framesize=12,
+                          samplerate=44100,
+                          channels=0,
+                          bits_per_sample=7,
+                          total_samples=80,
+                          md5=[245, 63, 134, 135, 109, 205, 119,
+                               131, 34, 92, 147, 186, 138, 147,
+                               140, 125]),
+            Con.Container(minimum_blocksize=4096,
+                          maximum_blocksize=1,
+                          minimum_framesize=12,
+                          maximum_framesize=12,
+                          samplerate=44100,
+                          channels=0,
+                          bits_per_sample=15,
+                          total_samples=80,
+                          md5=[245, 63, 134, 135, 109, 205, 119,
+                               131, 34, 92, 147, 186, 138, 147,
+                               140, 125])]
+
+        #FIXME - add MD5 check here too
+
+        header = flac_data[0:8]
+        data = flac_data[0x2A:]
+
+        for streaminfo in mismatch_streaminfos:
+            temp = tempfile.NamedTemporaryFile(suffix=".flac")
+            temp.seek(0, 0)
+            temp.write(header)
+            temp.write(audiotools.FlacAudio.STREAMINFO.build(streaminfo)),
+            temp.write(data)
+            temp.flush()
+            decoders = audiotools.open(temp.name).to_pcm()
+            self.assertRaises(ValueError,
+                              audiotools.transfer_framelist_data,
+                              decoders, lambda x: x)
+
 
 class APEv2Lint:
     #tracklint is tricky to test since set_metadata()

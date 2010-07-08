@@ -205,7 +205,6 @@ FlacDecoder_channel_mask(decoders_FlacDecoder *self, void *closure)
 PyObject*
 FLACDecoder_read(decoders_FlacDecoder* self, PyObject *args)
 {
-    int bytes;
     struct flac_frame_header frame_header;
     int channel;
     int data_size;
@@ -218,26 +217,19 @@ FLACDecoder_read(decoders_FlacDecoder* self, PyObject *args)
     int64_t mid;
     int32_t side;
 
-    if (!PyArg_ParseTuple(args, "i", &bytes))
-        return NULL;
-    if (bytes < 0) {
-        PyErr_SetString(PyExc_ValueError, "number of bytes must be positive");
-        return NULL;
+    /*if all samples have been read, return an empty FrameList*/
+    if (self->remaining_samples < 1) {
+        if ((pcm = PyImport_ImportModule("audiotools.pcm")) == NULL)
+            return NULL;
+        framelist = (pcm_FrameList*)PyObject_CallMethod(pcm, "__blank__",
+                                                        NULL);
+        framelist->channels = self->streaminfo.channels;
+        framelist->bits_per_sample = self->streaminfo.bits_per_sample;
+        Py_DECREF(pcm);
+        return (PyObject*)framelist;
     }
 
     if (!setjmp(*bs_try(self->bitstream))) {
-        /*if all samples have been read, return an empty FrameList*/
-        if (self->remaining_samples < 1) {
-            if ((pcm = PyImport_ImportModule("audiotools.pcm")) == NULL)
-                goto error;
-            framelist = (pcm_FrameList*)PyObject_CallMethod(pcm, "__blank__",
-                                                            NULL);
-            framelist->channels = self->streaminfo.channels;
-            framelist->bits_per_sample = self->streaminfo.bits_per_sample;
-            Py_DECREF(pcm);
-            return (PyObject*)framelist;
-        }
-
         self->crc8 = self->crc16 = 0;
 
         if (FlacDecoder_read_frame_header(self, &frame_header) == ERROR) {
@@ -539,6 +531,34 @@ FlacDecoder_read_frame_header(decoders_FlacDecoder *self,
     read_bits(bitstream, 8);
     if (self->crc8 != 0) {
         PyErr_SetString(PyExc_ValueError, "invalid checksum in frame header");
+        return ERROR;
+    }
+
+    /*Once we've read everything,
+      ensure the values are compatible with STREAMINFO.*/
+
+    if (self->streaminfo.sample_rate != header->sample_rate) {
+        PyErr_SetString(
+            PyExc_ValueError,
+            "frame sample rate does not match STREAMINFO sample rate");
+        return ERROR;
+    }
+    if (self->streaminfo.channels != header->channel_count) {
+        PyErr_SetString(
+            PyExc_ValueError,
+            "frame channel count does not match STREAMINFO channel count");
+        return ERROR;
+    }
+    if (self->streaminfo.bits_per_sample != header->bits_per_sample) {
+        PyErr_SetString(
+            PyExc_ValueError,
+            "frame bits-per-sample does not match STREAMINFO bits per sample");
+        return ERROR;
+    }
+    if (header->block_size > self->streaminfo.maximum_block_size) {
+        PyErr_SetString(
+            PyExc_ValueError,
+            "frame block size exceeds STREAMINFO's maximum block size");
         return ERROR;
     }
 

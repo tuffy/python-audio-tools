@@ -1013,10 +1013,9 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
          both in number of samples and number of bytes)
 ** TODO AuAudio
 ** TODO FlacAudio
-   - [ ] sanity check STREAMINFO
    - [X] check subframe CRC-8
    - [X] check frame CRC-16
-   - [ ] ensure frame header matches streaminfo
+   - [X] ensure frame header matches streaminfo
    - [ ] check stream MD5 at end-of-stream time
    - [X] check for premature EOF
          (this includes the file dying mid-header/mid-frame/end of frame)
@@ -1026,6 +1025,9 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** TODO OggFlacAudio
 ** TODO SpeexAudio
 ** TODO ShortenAudio
+   - [ ] sanity check header
+   - [ ] sanity check command ID
+   - [ ] check each command for premature EOF
 ** TODO VorbisAudio
 ** TODO WaveAudio
    - [ ] sanity check fmt chunk
@@ -1033,6 +1035,9 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    - [ ] check for premature EOF
 ** TODO WavPackAudio
 ** TODO Unit test all checks with example files
+** TODO Ensure a failed from_pcm() deletes partial file
+** TODO Ensure a failed to_wave() deletes partial file
+** TODO Ensure a failed from_wave() deletes partial file
 * TODO Ensure non-image cuesheets are handled properly
   There are 4 different types of cuesheets,
   1 single file type and 3 different multiple file variants.
