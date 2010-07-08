@@ -3736,6 +3736,25 @@ class TestFlacAudio(TestOggFlacAudio, TestForeignWaveChunks):
 
         temp.close()
 
+    @TEST_INVALIDFILE
+    def test_swapped_byte(self):
+        f = open("flac-allframes.flac", "rb")
+        flac_data = map(ord, f.read())
+        f.close()
+
+        temp = tempfile.NamedTemporaryFile(suffix=".flac")
+        for i in xrange(0x2A, len(flac_data)):
+            bytes = flac_data[:]
+            bytes[i] ^= 0xFF  #swap a byte
+            temp.seek(0, 0)
+            temp.write("".join(map(chr, bytes)))
+            temp.flush()
+
+            decoders = audiotools.open(temp.name).to_pcm()
+            self.assertRaises(ValueError,
+                              audiotools.transfer_framelist_data,
+                              decoders, lambda x: x)
+
 class APEv2Lint:
     #tracklint is tricky to test since set_metadata()
     #usually won't write anything that needs fixing.

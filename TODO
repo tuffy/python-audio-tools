@@ -1014,11 +1014,11 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** TODO AuAudio
 ** TODO FlacAudio
    - [ ] sanity check STREAMINFO
-   - [ ] check subframe CRC-8
-   - [ ] check frame CRC-16
+   - [X] check subframe CRC-8
+   - [X] check frame CRC-16
    - [ ] ensure frame header matches streaminfo
    - [ ] check stream MD5 at end-of-stream time
-   - [ ] check for premature EOF
+   - [X] check for premature EOF
          (this includes the file dying mid-header/mid-frame/end of frame)
 ** TODO M4AAudio
 ** TODO MP3Audio
