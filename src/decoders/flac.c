@@ -30,6 +30,11 @@ FlacDecoder_init(decoders_FlacDecoder *self,
     self->filename = NULL;
     self->file = NULL;
     self->bitstream = NULL;
+    self->residuals = ia_blank();
+    self->qlp_coeffs = ia_blank();
+    self->data = NULL;
+    self->data_size = 0;
+    self->remaining_samples = 0;
 
     if (!PyArg_ParseTuple(args, "si", &filename, &(self->channel_mask)))
         return -1;
@@ -47,6 +52,7 @@ FlacDecoder_init(decoders_FlacDecoder *self,
 
     /*read the STREAMINFO block and setup the total number of samples to read*/
     if (FlacDecoder_read_metadata(self) == ERROR) {
+        self->streaminfo.channels = 0;
         return -1;
     }
 
@@ -63,8 +69,6 @@ FlacDecoder_init(decoders_FlacDecoder *self,
     }
     ia_init(&(self->residuals), self->streaminfo.maximum_block_size);
     ia_init(&(self->qlp_coeffs), 1);
-    self->data = NULL;
-    self->data_size = 0;
 
     return 0;
 }

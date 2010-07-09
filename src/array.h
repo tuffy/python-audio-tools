@@ -51,6 +51,9 @@ struct i_array {
 void
 ia_init(struct i_array *array, ia_size_t initial_size);
 
+struct i_array
+ia_blank(void);
+
 void
 ia_free(struct i_array *array);
 
@@ -318,6 +321,10 @@ struct ia_array {
 void
 iaa_init(struct ia_array *array, ia_size_t total_arrays,
          ia_size_t initial_size);
+
+struct ia_array
+iaa_blank(void);
+
 
 void
 iaa_free(struct ia_array *array);

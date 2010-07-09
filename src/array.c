@@ -30,9 +30,18 @@ ia_init(struct i_array *array, ia_size_t initial_size)
     array->size = 0;
 }
 
+struct i_array
+ia_blank(void) {
+    struct i_array a;
+    a.data = NULL;
+    a.size = a.total_size = 0;
+    return a;
+}
+
 void ia_free(struct i_array *array)
 {
-    free(array->data);
+    if (array->data != NULL)
+        free(array->data);
 }
 
 void
@@ -272,6 +281,16 @@ iaa_init(struct ia_array *array, ia_size_t total_arrays,
         ia_init(&(array->arrays[i]), initial_size);
 }
 
+
+struct ia_array
+iaa_blank(void) {
+    struct ia_array a;
+    a.size = 0;
+    a.arrays = NULL;
+    return a;
+}
+
+
 void
 iaa_free(struct ia_array *array)
 {
@@ -280,7 +299,8 @@ iaa_free(struct ia_array *array)
     for (i = 0; i < array->size; i++)
         ia_free(&(array->arrays[i]));
 
-    free(array->arrays);
+    if (array->arrays != NULL)
+        free(array->arrays);
 }
 
 void
