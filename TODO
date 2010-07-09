@@ -1035,6 +1035,9 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    - [ ] check for premature EOF
 ** TODO WavPackAudio
 ** TODO Unit test all checks with example files
+** TODO Check for truncation during from_pcm()
+** TODO Check for truncation during to_wave()
+** TODO Check for truncation during from_wave()
 ** TODO Ensure a failed from_pcm() deletes partial file
 ** TODO Ensure a failed to_wave() deletes partial file
 ** TODO Ensure a failed from_wave() deletes partial file

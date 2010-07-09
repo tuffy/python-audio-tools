@@ -38,6 +38,7 @@ gettext.install("audiotools", unicode=True)
 CASES = set([METADATA, PCM, FRAMELIST, EXECUTABLE, CUESHEET, IMAGE, NETWORK,
              INVALIDFILE, FLAC, SHORTEN, ALAC])
 
+
 def nothing(self):
     pass
 
@@ -3989,6 +3990,11 @@ class TestShortenAudio(TestForeignWaveChunks, TestAiffAudio):
             else:
                 return frame['offset']
 
+        def run_analysis(pcmreader):
+            f = pcmreader.analyze_frame()
+            while (f is not None):
+                f = pcmreader.analyze_frame()
+
         for filename in ["shorten-frames.shn", "shorten-lpc.shn"]:
             first = first_non_header(filename)
             last = last_byte(filename) + 1
@@ -4018,13 +4024,18 @@ class TestShortenAudio(TestForeignWaveChunks, TestAiffAudio):
                                   decoder.metadata)
 
                 decoder = audiotools.decoders.SHNDecoder(temp.name)
+                self.assertNotEqual(decoder, None)
                 decoder.sample_rate = 44100
                 decoder.channel_mask = 1
                 self.assertRaises(ValueError,
                                   audiotools.transfer_framelist_data,
                                   decoder, lambda x: x)
 
-                #FIXME - add analyze_frame() check here
+                decoder = audiotools.decoders.SHNDecoder(temp.name)
+                decoder.sample_rate = 44100
+                decoder.channel_mask = 1
+                self.assertNotEqual(decoder, None)
+                self.assertRaises(ValueError, run_analysis, decoder)
 
             temp.close()
 
