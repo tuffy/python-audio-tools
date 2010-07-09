@@ -1026,7 +1026,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** TODO SpeexAudio
 ** TODO ShortenAudio
    - [ ] sanity check header
-   - [ ] sanity check command ID
+   - [X] sanity check command ID
    - [ ] check each command for premature EOF
 ** TODO VorbisAudio
 ** TODO WaveAudio

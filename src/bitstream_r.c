@@ -61,7 +61,6 @@ bs_close(Bitstream *bs)
     for (e_node = bs->exceptions; e_node != NULL; e_node = e_next) {
         e_next = e_node->next;
         free(e_node);
-        fprintf(stderr, "deallocating exception\n");
     }
     free(bs);
 }

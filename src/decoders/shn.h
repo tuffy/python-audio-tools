@@ -68,6 +68,7 @@ typedef struct {
 
     struct ia_array buffer;
     struct ia_array offset;
+    struct i_array lpc_coeffs;
     unsigned char *verbatim;
 } decoders_SHNDecoder;
 
@@ -240,11 +241,9 @@ void
 SHNDecoder_read_zero(struct i_array *buffer, unsigned int block_size);
 
 void
-SHNDecoder_read_lpc(struct i_array *buffer,
-                    Bitstream* bs,
-                    unsigned int block_size,
-                    int coffset,
-                    int wrap);
+SHNDecoder_read_lpc(decoders_SHNDecoder *decoder,
+                    struct i_array *buffer,
+                    int coffset);
 
 unsigned int
 shn_read_uvar(Bitstream* bs, unsigned int count);

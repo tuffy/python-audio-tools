@@ -38,7 +38,6 @@ gettext.install("audiotools", unicode=True)
 CASES = set([METADATA, PCM, FRAMELIST, EXECUTABLE, CUESHEET, IMAGE, NETWORK,
              INVALIDFILE, FLAC, SHORTEN, ALAC])
 
-
 def nothing(self):
     pass
 
@@ -3978,35 +3977,56 @@ class TestShortenAudio(TestForeignWaveChunks, TestAiffAudio):
 
     @TEST_INVALIDFILE
     def test_truncated_file(self):
-        f = open("shorten-frames.shn", "rb")
-        shn_data = f.read()
-        f.close()
+        def first_non_header(filename):
+            d = audiotools.open(filename).to_pcm()
+            return d.analyze_frame()['offset']
 
-        temp = tempfile.NamedTemporaryFile(suffix=".shn")
-        for i in xrange(0, 11):
-            temp.seek(0, 0)
-            temp.write(shn_data[0:i])
-            temp.flush()
-            self.assertEqual(os.path.getsize(temp.name), i)
-            self.assertRaises(ValueError,
-                              audiotools.decoders.SHNDecoder,
-                              temp.name)
+        def last_byte(filename):
+            d = audiotools.open(filename).to_pcm()
+            frame = d.analyze_frame()
+            while (frame['command'] != 4):
+                frame = d.analyze_frame()
+            else:
+                return frame['offset']
 
-        for i in xrange(11, len(shn_data.rstrip(chr(0))) + 1):
-            temp.seek(0, 0)
-            temp.write(shn_data[0:i])
-            temp.flush()
-            self.assertEqual(os.path.getsize(temp.name), i)
-            decoder = audiotools.decoders.SHNDecoder(temp.name)
-            self.assertNotEqual(decoder, None)
-            self.assertRaises(ValueError,
-                              decoder.metadata)
+        for filename in ["shorten-frames.shn", "shorten-lpc.shn"]:
+            first = first_non_header(filename)
+            last = last_byte(filename) + 1
 
-            decoder.sample_rate = 44100
-            decoder.channel_mask = 1
-            self.assertRaises(ValueError,
-                              audiotools.transfer_framelist_data,
-                              decoder, lambda x: x)
+            f = open(filename, "rb")
+            shn_data = f.read()
+            f.close()
+
+            temp = tempfile.NamedTemporaryFile(suffix=".shn")
+            for i in xrange(0, first):
+                temp.seek(0, 0)
+                temp.write(shn_data[0:i])
+                temp.flush()
+                self.assertEqual(os.path.getsize(temp.name), i)
+                self.assertRaises(ValueError,
+                                  audiotools.decoders.SHNDecoder,
+                                  temp.name)
+
+            for i in xrange(first, len(shn_data[0:last].rstrip(chr(0)))):
+                temp.seek(0, 0)
+                temp.write(shn_data[0:i])
+                temp.flush()
+                self.assertEqual(os.path.getsize(temp.name), i)
+                decoder = audiotools.decoders.SHNDecoder(temp.name)
+                self.assertNotEqual(decoder, None)
+                self.assertRaises(ValueError,
+                                  decoder.metadata)
+
+                decoder = audiotools.decoders.SHNDecoder(temp.name)
+                decoder.sample_rate = 44100
+                decoder.channel_mask = 1
+                self.assertRaises(ValueError,
+                                  audiotools.transfer_framelist_data,
+                                  decoder, lambda x: x)
+
+                #FIXME - add analyze_frame() check here
+
+            temp.close()
 
 
 class M4AMetadata:
