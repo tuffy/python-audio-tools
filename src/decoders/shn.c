@@ -110,8 +110,6 @@ SHNDecoder_dealloc(decoders_SHNDecoder *self)
     if (self->filename != NULL)
         free(self->filename);
 
-    bs_close(self->bitstream);
-
     if (self->bits_per_sample != 0) {
         iaa_free(&(self->buffer));
         iaa_free(&(self->offset));
@@ -119,6 +117,8 @@ SHNDecoder_dealloc(decoders_SHNDecoder *self)
     }
     if (self->verbatim != NULL)
         free(self->verbatim);
+
+    bs_close(self->bitstream);
 
     self->ob_type->tp_free((PyObject*)self);
 }
@@ -585,14 +585,10 @@ SHNDecoder_analyze_frame(decoders_SHNDecoder* self, PyObject *args)
     unsigned int residual_size;
     unsigned int verbatim_length;
     unsigned int lpc_count;
-    struct i_array buffer = self->buffer.arrays[0];
+    struct i_array *buffer = &(self->buffer.arrays[0]);
     struct i_array coefficients = self->lpc_coeffs;
     int byte_offset;
     int i;
-
-    if (self->read_finished) {
-        goto stream_finished;
-    }
 
     if (!self->read_started) {
         fseek(self->bitstream->file, 0, SEEK_SET);
@@ -604,6 +600,10 @@ SHNDecoder_analyze_frame(decoders_SHNDecoder* self, PyObject *args)
         }
     }
 
+    if (self->read_finished) {
+        goto stream_finished;
+    }
+
     byte_offset = ftell(self->bitstream->file);
 
     if (!setjmp(*bs_try(self->bitstream))) {
@@ -613,15 +613,15 @@ SHNDecoder_analyze_frame(decoders_SHNDecoder* self, PyObject *args)
         case FN_DIFF2:
         case FN_DIFF3:
             residual_size = shn_read_uvar(self->bitstream, ENERGY_SIZE);
-            ia_reset(&buffer);
+            ia_reset(buffer);
             for (i = 0; i < self->block_size; i++) {
-                ia_append(&buffer, shn_read_var(self->bitstream, residual_size));
+                ia_append(buffer, shn_read_var(self->bitstream, residual_size));
             }
             toreturn = Py_BuildValue("{sI si sI sN}",
                                      "command", cmd,
                                      "offset", byte_offset,
                                      "residual_size", residual_size,
-                                     "residual", i_array_to_list(&buffer));
+                                     "residual", i_array_to_list(buffer));
             break;
         case FN_QUIT:
             self->read_finished = 1;
@@ -651,9 +651,9 @@ SHNDecoder_analyze_frame(decoders_SHNDecoder* self, PyObject *args)
                 ia_append(&coefficients,
                           shn_read_var(self->bitstream, QLPC_QUANT));
             }
-            ia_reset(&buffer);
+            ia_reset(buffer);
             for (i = 0; i < self->block_size; i++) {
-                ia_append(&buffer, shn_read_var(self->bitstream,
+                ia_append(buffer, shn_read_var(self->bitstream,
                                                 residual_size));
             }
             toreturn = Py_BuildValue("{sI si sN sI sN}",
@@ -662,7 +662,7 @@ SHNDecoder_analyze_frame(decoders_SHNDecoder* self, PyObject *args)
                                      "coefficients",
                                      i_array_to_list(&coefficients),
                                      "residual_size", residual_size,
-                                     "residual", i_array_to_list(&buffer));
+                                     "residual", i_array_to_list(buffer));
             break;
         case FN_ZERO:
             toreturn = Py_BuildValue("{sI si}",
@@ -672,15 +672,15 @@ SHNDecoder_analyze_frame(decoders_SHNDecoder* self, PyObject *args)
         case FN_VERBATIM:
             verbatim_length = shn_read_uvar(self->bitstream,
                                             VERBATIM_CHUNK_SIZE);
-            ia_reset(&buffer);
+            ia_reset(buffer);
             for (i = 0; i < verbatim_length; i++) {
-                ia_append(&buffer, shn_read_uvar(self->bitstream,
+                ia_append(buffer, shn_read_uvar(self->bitstream,
                                                  VERBATIM_BYTE_SIZE));
             }
             toreturn = Py_BuildValue("{sI si sN}",
                                      "command", cmd,
                                      "offset", byte_offset,
-                                     "data", i_array_to_list(&buffer));
+                                     "data", i_array_to_list(buffer));
             break;
         default:
             PyErr_SetString(PyExc_ValueError,

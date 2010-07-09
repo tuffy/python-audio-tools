@@ -58,6 +58,9 @@ bs_close(Bitstream *bs)
         c_next = c_node->next;
         free(c_node);
     }
+    if (bs->exceptions != NULL) {
+        fprintf(stderr, "Warning: leftover etry entries on stack\n");
+    }
     for (e_node = bs->exceptions; e_node != NULL; e_node = e_next) {
         e_next = e_node->next;
         free(e_node);
@@ -108,5 +111,7 @@ bs_etry(Bitstream *bs) {
     if (node != NULL) {
         bs->exceptions = node->next;
         free(node);
+    } else {
+        fprintf(stderr,"Warning: trying to pop from empty etry stack\n");
     }
 }
