@@ -75,6 +75,7 @@ SHNDecoder_init(decoders_SHNDecoder *self,
 
     self->filename = strdup(filename);
     self->bitshift = 0;
+    self->verbatim = NULL;
 
     /*These are set to sensible defaults at init-time.
 
@@ -108,6 +109,8 @@ SHNDecoder_dealloc(decoders_SHNDecoder *self)
     bs_close(self->bitstream);
     iaa_free(&(self->buffer));
     iaa_free(&(self->offset));
+    if (self->verbatim != NULL)
+        free(self->verbatim);
 
     self->ob_type->tp_free((PyObject*)self);
 }
@@ -412,7 +415,6 @@ SHNDecoder_metadata(decoders_SHNDecoder* self, PyObject *args)
     unsigned int cmd;
 
     unsigned int verbatim_length;
-    unsigned char* verbatim;
     unsigned int lpc_count;
 
     int i;
@@ -433,7 +435,7 @@ SHNDecoder_metadata(decoders_SHNDecoder* self, PyObject *args)
     if (SHNDecoder_read_header(self) == ERROR) {
         PyErr_SetString(PyExc_ValueError,
                         "error reading SHN header");
-        return NULL;
+        goto error;
     }
 
     /*walk through the Shorten file,
@@ -441,90 +443,100 @@ SHNDecoder_metadata(decoders_SHNDecoder* self, PyObject *args)
       storing blocks of non-FM_VERBATIM instructions as None,
       and counting the length of all audio data commands*/
 
-    for (cmd = shn_read_uvar(self->bitstream, 2);
-         cmd != FN_QUIT;
-         cmd = shn_read_uvar(self->bitstream, 2)) {
-        switch (cmd) {
-        case FN_VERBATIM:
-            verbatim_length = shn_read_uvar(self->bitstream,
-                                            VERBATIM_CHUNK_SIZE);
-            verbatim = malloc(verbatim_length);
-            for (i = 0; i < verbatim_length; i++) {
-                verbatim[i] = (shn_read_uvar(self->bitstream,
-                                             VERBATIM_BYTE_SIZE) & 0xFF);
-            }
-            if (PyList_Append(
-                    list,
-                    PyString_FromStringAndSize((char *)verbatim,
-                                               verbatim_length)) == -1) {
-                return NULL;
-            } else {
-                free(verbatim);
-                previous_is_none = 0;
-            }
-            break;
-        case FN_DIFF0:
-        case FN_DIFF1:
-        case FN_DIFF2:
-        case FN_DIFF3:
-            total_samples += self->block_size;
-            residual_size = shn_read_uvar(self->bitstream, ENERGY_SIZE);
-            for (i = 0; i < self->block_size; i++) {
-                shn_skip_var(self->bitstream, residual_size);
-            }
-            if (!previous_is_none) {
-                Py_INCREF(Py_None);
-                if (PyList_Append(list, Py_None) == -1) {
-                    return NULL;
+    if (!setjmp(*bs_try(self->bitstream))) {
+        for (cmd = shn_read_uvar(self->bitstream, 2);
+             cmd != FN_QUIT;
+             cmd = shn_read_uvar(self->bitstream, 2)) {
+            switch (cmd) {
+            case FN_VERBATIM:
+                verbatim_length = shn_read_uvar(self->bitstream,
+                                                VERBATIM_CHUNK_SIZE);
+                self->verbatim = realloc(self->verbatim, verbatim_length);
+                for (i = 0; i < verbatim_length; i++) {
+                    self->verbatim[i] = (shn_read_uvar(
+                                self->bitstream,
+                                VERBATIM_BYTE_SIZE) & 0xFF);
                 }
-            }
-            previous_is_none = 1;
-            break;
-        case FN_ZERO:
-            total_samples += self->block_size;
-            if (!previous_is_none) {
-                Py_INCREF(Py_None);
-                if (PyList_Append(list, Py_None) == -1) {
-                    return NULL;
+                if (PyList_Append(
+                        list,
+                        PyString_FromStringAndSize((char *)self->verbatim,
+                                                   verbatim_length)) == -1) {
+                    goto error;
+                } else {
+                    previous_is_none = 0;
                 }
-            }
-            previous_is_none = 1;
-            break;
-        case FN_QLPC:
-            total_samples += self->block_size;
-            residual_size = shn_read_uvar(self->bitstream, ENERGY_SIZE);
-            lpc_count = shn_read_uvar(self->bitstream, QLPC_SIZE);
-            for (i = 0; i < lpc_count; i++) {
-                shn_skip_var(self->bitstream, QLPC_QUANT);
-            }
-            for (i = 0; i < self->block_size; i++) {
-                shn_skip_var(self->bitstream, residual_size);
-            }
-            if (!previous_is_none) {
-                Py_INCREF(Py_None);
-                if (PyList_Append(list, Py_None) == -1) {
-                    return NULL;
+                break;
+            case FN_DIFF0:
+            case FN_DIFF1:
+            case FN_DIFF2:
+            case FN_DIFF3:
+                total_samples += self->block_size;
+                residual_size = shn_read_uvar(self->bitstream, ENERGY_SIZE);
+                for (i = 0; i < self->block_size; i++) {
+                    shn_skip_var(self->bitstream, residual_size);
                 }
+                if (!previous_is_none) {
+                    Py_INCREF(Py_None);
+                    if (PyList_Append(list, Py_None) == -1) {
+                        goto error;
+                    }
+                }
+                previous_is_none = 1;
+                break;
+            case FN_ZERO:
+                total_samples += self->block_size;
+                if (!previous_is_none) {
+                    Py_INCREF(Py_None);
+                    if (PyList_Append(list, Py_None) == -1) {
+                        goto error;
+                    }
+                }
+                previous_is_none = 1;
+                break;
+            case FN_QLPC:
+                total_samples += self->block_size;
+                residual_size = shn_read_uvar(self->bitstream, ENERGY_SIZE);
+                lpc_count = shn_read_uvar(self->bitstream, QLPC_SIZE);
+                for (i = 0; i < lpc_count; i++) {
+                    shn_skip_var(self->bitstream, QLPC_QUANT);
+                }
+                for (i = 0; i < self->block_size; i++) {
+                    shn_skip_var(self->bitstream, residual_size);
+                }
+                if (!previous_is_none) {
+                    Py_INCREF(Py_None);
+                    if (PyList_Append(list, Py_None) == -1) {
+                        goto error;
+                    }
+                }
+                previous_is_none = 1;
+                break;
+            case FN_BITSHIFT:
+                shn_skip_uvar(self->bitstream, 2);
+                break;
+            case FN_BLOCKSIZE:
+                self->block_size = shn_read_long(self->bitstream);
+                break;
+            default:
+                PyErr_SetString(PyExc_ValueError,
+                        "unknown command encountered in Shorten stream");
+                goto error;
             }
-            previous_is_none = 1;
-            break;
-        case FN_BITSHIFT:
-            shn_skip_uvar(self->bitstream, 2);
-            break;
-        case FN_BLOCKSIZE:
-            self->block_size = shn_read_long(self->bitstream);
-            break;
-        default:
-            PyErr_SetString(PyExc_ValueError,
-                            "unknown command encountered in Shorten stream");
-            Py_XDECREF(list);
-            return NULL;
         }
+    } else {
+        PyErr_SetString(PyExc_ValueError, "EOF while reading Shorten stream");
+        goto error;
     }
 
     self->read_started = 0;
 
+    bs_etry(self->bitstream);
     return Py_BuildValue("(i,O)", total_samples / self->channels, list);
+
+ error:
+    bs_etry(self->bitstream);
+    Py_XDECREF(list);
+    return NULL;
 }
 
 static PyObject*
@@ -554,6 +566,7 @@ SHNDecoder_analyze_frame(decoders_SHNDecoder* self, PyObject *args)
     unsigned int residual_size;
     unsigned int verbatim_length;
     unsigned int lpc_count;
+    int byte_offset;
     struct i_array buffer;
     struct i_array coefficients;
     int i;
@@ -572,6 +585,8 @@ SHNDecoder_analyze_frame(decoders_SHNDecoder* self, PyObject *args)
         goto finished;
     }
 
+    byte_offset = ftell(self->bitstream->file);
+
     switch (cmd = shn_read_uvar(self->bitstream, 2)) {
     case FN_DIFF0:
     case FN_DIFF1:
@@ -582,24 +597,29 @@ SHNDecoder_analyze_frame(decoders_SHNDecoder* self, PyObject *args)
         for (i = 0; i < self->block_size; i++) {
             ia_append(&buffer, shn_read_var(self->bitstream, residual_size));
         }
-        toreturn = Py_BuildValue("{sI sI sN}",
+        toreturn = Py_BuildValue("{sI si sI sN}",
                                  "command", cmd,
+                                 "offset", byte_offset,
                                  "residual_size", residual_size,
                                  "residual", i_array_to_list(&buffer));
         ia_free(&buffer);
         return toreturn;
     case FN_QUIT:
         self->read_finished = 1;
-        return Py_BuildValue("{sI}","command", cmd);
+        return Py_BuildValue("{sI si}",
+                             "command", cmd,
+                             "offset", byte_offset);
     case FN_BLOCKSIZE:
         self->block_size = shn_read_long(self->bitstream);
-        return Py_BuildValue("{sI sI}",
+        return Py_BuildValue("{sI si sI}",
                              "command", cmd,
+                             "offset", byte_offset,
                              "block_size", self->block_size);
     case FN_BITSHIFT:
         self->bitshift = shn_read_uvar(self->bitstream, 2);
-        return Py_BuildValue("{sI sI}",
+        return Py_BuildValue("{sI si sI}",
                              "command", cmd,
+                             "offset", byte_offset,
                              "bit_shift", self->bitshift);
     case FN_QLPC:
         residual_size = shn_read_uvar(self->bitstream, ENERGY_SIZE);
@@ -613,8 +633,9 @@ SHNDecoder_analyze_frame(decoders_SHNDecoder* self, PyObject *args)
         for (i = 0; i < self->block_size; i++) {
             ia_append(&buffer, shn_read_var(self->bitstream, residual_size));
         }
-        toreturn = Py_BuildValue("{sI sN sI sN}",
+        toreturn = Py_BuildValue("{sI si sN sI sN}",
                                  "command", cmd,
+                                 "offset", byte_offset,
                                  "coefficients",
                                  i_array_to_list(&coefficients),
                                  "residual_size", residual_size,
@@ -623,7 +644,9 @@ SHNDecoder_analyze_frame(decoders_SHNDecoder* self, PyObject *args)
         ia_free(&buffer);
         return toreturn;
     case FN_ZERO:
-        return Py_BuildValue("{sI}", "command", cmd);
+        return Py_BuildValue("{sI si}",
+                             "command", cmd,
+                             "offset", byte_offset);
     case FN_VERBATIM:
         verbatim_length = shn_read_uvar(self->bitstream, VERBATIM_CHUNK_SIZE);
         ia_init(&buffer, verbatim_length);
@@ -631,8 +654,9 @@ SHNDecoder_analyze_frame(decoders_SHNDecoder* self, PyObject *args)
             ia_append(&buffer, shn_read_uvar(self->bitstream,
                                              VERBATIM_BYTE_SIZE));
         }
-        toreturn = Py_BuildValue("{sI sN}",
+        toreturn = Py_BuildValue("{sI si sN}",
                                  "command", cmd,
+                                 "offset", byte_offset,
                                  "data", i_array_to_list(&buffer));
         ia_free(&buffer);
         return toreturn;
@@ -671,6 +695,7 @@ SHNDecoder_read_header(decoders_SHNDecoder* self)
         self->read_started = 1;
         self->read_finished = 0;
 
+        bs_etry(bs);
         return OK;
     } else {
         bs_etry(bs);

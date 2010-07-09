@@ -192,7 +192,8 @@ class ShortenAudio(AudioFile):
         return decoder
 
     @classmethod
-    def from_pcm(cls, filename, pcmreader, compression=None):
+    def from_pcm(cls, filename, pcmreader, compression=None,
+                 block_size=256):
         """Encodes a new file from PCM data.
 
         Takes a filename string, PCMReader object
@@ -209,7 +210,7 @@ class ShortenAudio(AudioFile):
         f = tempfile.NamedTemporaryFile(suffix=".wav")
         w = WaveAudio.from_pcm(f.name, pcmreader)
         try:
-            return cls.from_wave(filename, f.name, compression)
+            return cls.from_wave(filename, f.name, compression, block_size)
         finally:
             f.close()
 
@@ -236,7 +237,8 @@ class ShortenAudio(AudioFile):
             WaveAudio.from_pcm(wave_filename, self.to_pcm())
 
     @classmethod
-    def from_wave(cls, filename, wave_filename, compression=None):
+    def from_wave(cls, filename, wave_filename, compression=None,
+                  block_size=256):
         """Encodes a new AudioFile from an existing .wav file.
 
         Takes a filename string, wave_filename string
@@ -262,7 +264,7 @@ class ShortenAudio(AudioFile):
         try:
             audiotools.encoders.encode_shn(filename=filename,
                                            pcmreader=wave.to_pcm(),
-                                           block_size=256,
+                                           block_size=block_size,
                                            verbatim_chunks=blocks)
 
             return cls(filename)

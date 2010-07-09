@@ -68,6 +68,7 @@ typedef struct {
 
     struct ia_array buffer;
     struct ia_array offset;
+    unsigned char *verbatim;
 } decoders_SHNDecoder;
 
 /*the SHNDecoder.read() method*/

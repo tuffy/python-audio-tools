@@ -3737,23 +3737,24 @@ class TestFlacAudio(TestOggFlacAudio, TestForeignWaveChunks):
         temp.close()
 
     @TEST_INVALIDFILE
-    def test_swapped_byte(self):
+    def test_swapped_bit(self):
         f = open("flac-allframes.flac", "rb")
         flac_data = map(ord, f.read())
         f.close()
 
         temp = tempfile.NamedTemporaryFile(suffix=".flac")
         for i in xrange(0x2A, len(flac_data)):
-            bytes = flac_data[:]
-            bytes[i] ^= 0xFF  # swap a byte
-            temp.seek(0, 0)
-            temp.write("".join(map(chr, bytes)))
-            temp.flush()
+            for j in xrange(0, 7):
+                bytes = flac_data[:]
+                bytes[i] ^= (1 << j)
+                temp.seek(0, 0)
+                temp.write("".join(map(chr, bytes)))
+                temp.flush()
 
-            decoders = audiotools.open(temp.name).to_pcm()
-            self.assertRaises(ValueError,
-                              audiotools.transfer_framelist_data,
-                              decoders, lambda x: x)
+                decoders = audiotools.open(temp.name).to_pcm()
+                self.assertRaises(ValueError,
+                                  audiotools.transfer_framelist_data,
+                                  decoders, lambda x: x)
 
     @TEST_INVALIDFILE
     def test_bad_streaminfo(self):
@@ -3974,6 +3975,38 @@ class TestWavPackAudio(EmbeddedCuesheet, ApeTaggedAudio, TestForeignWaveChunks, 
 class TestShortenAudio(TestForeignWaveChunks, TestAiffAudio):
     def setUp(self):
         self.audio_class = audiotools.ShortenAudio
+
+    @TEST_INVALIDFILE
+    def test_truncated_file(self):
+        f = open("shorten-frames.shn", "rb")
+        shn_data = f.read()
+        f.close()
+
+        temp = tempfile.NamedTemporaryFile(suffix=".shn")
+        for i in xrange(0, 11):
+            temp.seek(0, 0)
+            temp.write(shn_data[0:i])
+            temp.flush()
+            self.assertEqual(os.path.getsize(temp.name), i)
+            self.assertRaises(ValueError,
+                              audiotools.decoders.SHNDecoder,
+                              temp.name)
+
+        for i in xrange(11, len(shn_data.rstrip(chr(0))) + 1):
+            temp.seek(0, 0)
+            temp.write(shn_data[0:i])
+            temp.flush()
+            self.assertEqual(os.path.getsize(temp.name), i)
+            decoder = audiotools.decoders.SHNDecoder(temp.name)
+            self.assertNotEqual(decoder, None)
+            self.assertRaises(ValueError,
+                              decoder.metadata)
+
+            decoder.sample_rate = 44100
+            decoder.channel_mask = 1
+            self.assertRaises(ValueError,
+                              audiotools.transfer_framelist_data,
+                              decoder, lambda x: x)
 
 
 class M4AMetadata:
