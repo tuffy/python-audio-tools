@@ -3726,13 +3726,13 @@ class TestFlacAudio(TestOggFlacAudio, TestForeignWaveChunks):
             self.assertEqual(os.path.getsize(temp.name), i)
             decoder = audiotools.open(temp.name).to_pcm()
             self.assertNotEqual(decoder, None)
-            self.assertRaises(ValueError,
+            self.assertRaises(IOError,
                               audiotools.transfer_framelist_data,
                               decoder, lambda x: x)
 
             decoder = audiotools.open(temp.name).to_pcm()
             self.assertNotEqual(decoder, None)
-            self.assertRaises(ValueError, run_analysis, decoder)
+            self.assertRaises(IOError, run_analysis, decoder)
 
         temp.close()
 

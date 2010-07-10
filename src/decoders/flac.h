@@ -72,11 +72,9 @@ typedef struct {
     uint32_t crc16;
 
     /*temporary buffers we don't want to reallocate each time*/
-    struct i_array subframe_data[8];
+    struct ia_array subframe_data;
     struct i_array residuals;
     struct i_array qlp_coeffs;
-    unsigned char *data;
-    ssize_t data_size;
 } decoders_FlacDecoder;
 
 /*the FlacDecoder.sample_rate attribute getter*/
@@ -164,6 +162,10 @@ status
 FlacDecoder_read_subframe_header(decoders_FlacDecoder *self,
                                  struct flac_subframe_header *subframe_header);
 
+int
+FlacDecoder_subframe_bits_per_sample(struct flac_frame_header *frame_header,
+                                     int channel_number);
+
 /*reads a FLAC subframe
   with "block_size" and "bits_per_sample" (determined from the frame header)
   and places the result in "samples"*/
@@ -212,6 +214,10 @@ FlacDecoder_read_residual(decoders_FlacDecoder *self,
                           uint32_t block_size,
                           struct i_array *residuals);
 
+
+void
+FlacDecoder_decorrelate_channels(struct flac_frame_header *frame_header,
+                                 struct ia_array *subframe_data);
 
 PyObject*
 FlacDecoder_analyze_subframe(decoders_FlacDecoder *self,
