@@ -278,7 +278,7 @@ ALACDecoder_read(decoders_ALACDecoder* self, PyObject *args)
             byte_align_r(self->bitstream);
         }
     } else {
-        PyErr_SetString(PyExc_ValueError,
+        PyErr_SetString(PyExc_IOError,
                         "EOF during frame reading");
         goto error;
     }
@@ -488,7 +488,7 @@ ALACDecoder_analyze_frame(decoders_ALACDecoder* self, PyObject *args)
             byte_align_r(self->bitstream);
         }
     } else {
-        PyErr_SetString(PyExc_ValueError,
+        PyErr_SetString(PyExc_IOError,
                         "EOF during frame reading");
         goto error;
     }

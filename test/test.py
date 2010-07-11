@@ -4035,14 +4035,14 @@ class TestShortenAudio(TestForeignWaveChunks, TestAiffAudio):
                 self.assertEqual(os.path.getsize(temp.name), i)
                 decoder = audiotools.decoders.SHNDecoder(temp.name)
                 self.assertNotEqual(decoder, None)
-                self.assertRaises(ValueError,
+                self.assertRaises(IOError,
                                   decoder.metadata)
 
                 decoder = audiotools.decoders.SHNDecoder(temp.name)
                 self.assertNotEqual(decoder, None)
                 decoder.sample_rate = 44100
                 decoder.channel_mask = 1
-                self.assertRaises(ValueError,
+                self.assertRaises(IOError,
                                   transfer_framelist_data,
                                   decoder, lambda x: x)
 
@@ -4050,7 +4050,7 @@ class TestShortenAudio(TestForeignWaveChunks, TestAiffAudio):
                 decoder.sample_rate = 44100
                 decoder.channel_mask = 1
                 self.assertNotEqual(decoder, None)
-                self.assertRaises(ValueError, run_analysis, decoder)
+                self.assertRaises(IOError, run_analysis, decoder)
 
             temp.close()
 
@@ -4573,13 +4573,13 @@ class TestAlacAudio(TestM4AAudio):
             self.assertEqual(os.path.getsize(temp.name), i)
             decoder = audiotools.open(temp.name).to_pcm()
             self.assertNotEqual(decoder, None)
-            self.assertRaises(ValueError,
+            self.assertRaises(IOError,
                               transfer_framelist_data,
                               decoder, lambda x: x)
 
             decoder = audiotools.open(temp.name).to_pcm()
             self.assertNotEqual(decoder, None)
-            self.assertRaises(ValueError, run_analysis, decoder)
+            self.assertRaises(IOError, run_analysis, decoder)
 
         temp.close()
 

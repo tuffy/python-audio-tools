@@ -374,7 +374,7 @@ SHNDecoder_read(decoders_SHNDecoder* self, PyObject *args)
             }
         }
     } else {
-        PyErr_SetString(PyExc_ValueError, "EOF reading Shorten stream");
+        PyErr_SetString(PyExc_IOError, "EOF reading Shorten stream");
         goto error;
     }
 
@@ -543,7 +543,7 @@ SHNDecoder_metadata(decoders_SHNDecoder* self, PyObject *args)
             }
         }
     } else {
-        PyErr_SetString(PyExc_ValueError, "EOF while reading Shorten stream");
+        PyErr_SetString(PyExc_IOError, "EOF while reading Shorten stream");
         goto error;
     }
 
@@ -688,7 +688,7 @@ SHNDecoder_analyze_frame(decoders_SHNDecoder* self, PyObject *args)
             goto error;
         }
     } else {
-        PyErr_SetString(PyExc_ValueError, "EOF while reading Shorten stream");
+        PyErr_SetString(PyExc_IOError, "EOF while reading Shorten stream");
         goto error;
     }
 
