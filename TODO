@@ -1030,9 +1030,9 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    - [X] check each command for premature EOF
 ** TODO VorbisAudio
 ** TODO WaveAudio
-   - [ ] sanity check fmt chunk
+   - [ ] sanity check fmt chunk (including WAVEFORMATEXTENSIBLE)
    - [ ] sanity check chunk headers (all should be ASCII)
-   - [ ] check for premature EOF
+   - [X] check for premature EOF
 ** TODO WavPackAudio
 ** TODO Unit test all checks with example files
 ** TODO Check for truncation during from_pcm()
@@ -1041,6 +1041,21 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** TODO Ensure a failed from_pcm() deletes partial file
 ** TODO Ensure a failed to_wave() deletes partial file
 ** TODO Ensure a failed from_wave() deletes partial file
+** TODO Check for invalid files at the tool level
+*** TODO coverdump
+*** TODO coverview
+*** TODO track2cd
+*** TODO track2track
+*** TODO track2xmcd
+*** TODO trackcat
+*** TODO trackcmp
+*** TODO trackinfo
+*** TODO tracklength
+*** TODO tracklint
+*** TODO trackplay
+*** TODO trackrename
+*** TODO tracksplit
+*** TODO tracktag
 ** TODO Document ValueError/IOError behavior
    Both in docstrings and in the rst documentation.
 * TODO Ensure non-image cuesheets are handled properly

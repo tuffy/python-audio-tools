@@ -74,17 +74,28 @@ class WaveReader(PCMReader):
         #build a reader which reads no further than the 'data' chunk
         self.wave = __capped_stream_reader__(self.file,
                                              chunk_header.chunk_length)
+        self.data_chunk_length = chunk_header.chunk_length
 
     def read(self, bytes):
         """Try to read a pcm.FrameList of size "bytes"."""
 
+        #align bytes downard if an odd number is read in
         bytes -= (bytes % (self.channels * self.bits_per_sample / 8))
-        return pcm.FrameList(self.wave.read(
-                max(bytes, self.channels * self.bits_per_sample / 8)),
-                             self.channels,
-                             self.bits_per_sample,
-                             False,
-                             self.bits_per_sample != 8)
+        pcm_data = self.wave.read(
+            max(bytes, self.channels * self.bits_per_sample / 8))
+        if ((len(pcm_data) == 0) and (self.data_chunk_length > 0)):
+            raise IOError("data chunk ends prematurely")
+        else:
+            self.data_chunk_length -= len(pcm_data)
+
+        try:
+            return pcm.FrameList(pcm_data,
+                                 self.channels,
+                                 self.bits_per_sample,
+                                 False,
+                                 self.bits_per_sample != 8)
+        except ValueError:
+            raise IOError("data chunk ends prematurely")
 
     def close(self):
         """Closes the stream for reading.
@@ -672,7 +683,10 @@ class WaveAudio(AudioFile):
         if (chunk_size < 16):
             raise WavException(_(u"fmt chunk is too short"))
 
-        fmt = WaveAudio.FMT_CHUNK.parse(wave_file.read(chunk_size))
+        try:
+            fmt = WaveAudio.FMT_CHUNK.parse(wave_file.read(chunk_size))
+        except Con.FieldError:
+            raise WavException(_(u"fmt chunk is too short"))
 
         self.__wavtype__ = fmt.compression
         self.__channels__ = fmt.channels

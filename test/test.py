@@ -3015,6 +3015,42 @@ class TestWaveAudio(TestForeignWaveChunks, TestAiffAudio):
     def setUp(self):
         self.audio_class = audiotools.WaveAudio
 
+    @TEST_INVALIDFILE
+    def test_truncated_file(self):
+        for (fmt_size,wav_file) in [(0x24, "wav-8bit.wav"),
+                                    (0x24, "wav-1ch.wav"),
+                                    (0x24, "wav-2ch.wav"),
+                                    (0x3C, "wav-6ch.wav")]:
+            f = open(wav_file, 'rb')
+            wav_data = f.read()
+            f.close()
+
+            temp = tempfile.NamedTemporaryFile(suffix=".wav")
+
+            #first, check that a truncated fmt chunk raises an exception
+            #at init-time
+            for i in xrange(0, fmt_size + 8):
+                temp.seek(0, 0)
+                temp.write(wav_data[0:i])
+                temp.flush()
+                self.assertEqual(os.path.getsize(temp.name), i)
+
+                self.assertRaises(audiotools.InvalidFile,
+                                  audiotools.WaveAudio,
+                                  temp.name)
+
+            #then, check that a truncated data chunk raises an exception
+            #at read-time
+            for i in xrange(fmt_size + 8, len(wav_data)):
+                temp.seek(0, 0)
+                temp.write(wav_data[0:i])
+                temp.flush()
+                reader = audiotools.WaveAudio(temp.name).to_pcm()
+                self.assertNotEqual(reader, None)
+                self.assertRaises(IOError,
+                                  transfer_framelist_data,
+                                  reader, lambda x: x)
+
 
 class TestAuAudio(TestAiffAudio):
     def setUp(self):
