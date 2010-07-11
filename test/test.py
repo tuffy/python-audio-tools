@@ -145,6 +145,13 @@ def Combinations(items, n):
             for combos in Combinations(items[i + 1:], n - 1):
                 yield [items[i]] + combos
 
+def transfer_framelist_data(pcmreader, to_function,
+                            signed=True, big_endian=False):
+    f = pcmreader.read(audiotools.BUFFER_SIZE)
+    while (len(f) > 0):
+        to_function(f.to_bytes(big_endian, signed))
+        f = pcmreader.read(audiotools.BUFFER_SIZE)
+
 
 class BLANK_PCM_Reader:
     #length is the total length of this PCM stream, in seconds
@@ -3697,7 +3704,7 @@ class TestFlacAudio(TestOggFlacAudio, TestForeignWaveChunks):
             temp.write(flac_data[0:i])
             temp.flush()
             self.assertEqual(os.path.getsize(temp.name), i)
-            self.assertRaises(ValueError,
+            self.assertRaises(IOError,
                               audiotools.decoders.FlacDecoder,
                               temp.name, 1)
 
@@ -3727,7 +3734,7 @@ class TestFlacAudio(TestOggFlacAudio, TestForeignWaveChunks):
             decoder = audiotools.open(temp.name).to_pcm()
             self.assertNotEqual(decoder, None)
             self.assertRaises(IOError,
-                              audiotools.transfer_framelist_data,
+                              transfer_framelist_data,
                               decoder, lambda x: x)
 
             decoder = audiotools.open(temp.name).to_pcm()
@@ -3750,11 +3757,19 @@ class TestFlacAudio(TestOggFlacAudio, TestForeignWaveChunks):
                 temp.seek(0, 0)
                 temp.write("".join(map(chr, bytes)))
                 temp.flush()
+                self.assertEqual(len(flac_data), os.path.getsize(temp.name))
 
                 decoders = audiotools.open(temp.name).to_pcm()
-                self.assertRaises(ValueError,
-                                  audiotools.transfer_framelist_data,
-                                  decoders, lambda x: x)
+                try:
+                    self.assertRaises(ValueError,
+                                      transfer_framelist_data,
+                                      decoders, lambda x: x)
+                except IOError:
+                    #Randomly swapping bits may send the decoder
+                    #off the end of the stream before triggering
+                    #a CRC-16 error.
+                    #We simply need to catch that case and continue on.
+                    continue
 
     @TEST_INVALIDFILE
     def test_bad_streaminfo(self):
@@ -3822,7 +3837,7 @@ class TestFlacAudio(TestOggFlacAudio, TestForeignWaveChunks):
             temp.flush()
             decoders = audiotools.open(temp.name).to_pcm()
             self.assertRaises(ValueError,
-                              audiotools.transfer_framelist_data,
+                              transfer_framelist_data,
                               decoders, lambda x: x)
 
 
@@ -4028,7 +4043,7 @@ class TestShortenAudio(TestForeignWaveChunks, TestAiffAudio):
                 decoder.sample_rate = 44100
                 decoder.channel_mask = 1
                 self.assertRaises(ValueError,
-                                  audiotools.transfer_framelist_data,
+                                  transfer_framelist_data,
                                   decoder, lambda x: x)
 
                 decoder = audiotools.decoders.SHNDecoder(temp.name)
@@ -4559,7 +4574,7 @@ class TestAlacAudio(TestM4AAudio):
             decoder = audiotools.open(temp.name).to_pcm()
             self.assertNotEqual(decoder, None)
             self.assertRaises(ValueError,
-                              audiotools.transfer_framelist_data,
+                              transfer_framelist_data,
                               decoder, lambda x: x)
 
             decoder = audiotools.open(temp.name).to_pcm()

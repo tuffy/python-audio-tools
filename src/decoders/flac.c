@@ -141,7 +141,7 @@ FlacDecoder_read_metadata(decoders_FlacDecoder *self)
                                                          36);
             if (fread(self->streaminfo.md5sum, sizeof(unsigned char),
                       16, self->file) != 16) {
-                PyErr_SetString(PyExc_ValueError, "unable to read md5sum");
+                PyErr_SetString(PyExc_IOError, "unable to read md5sum");
                 goto error;
             }
         } else {
@@ -163,7 +163,7 @@ FlacDecoder_read_metadata(decoders_FlacDecoder *self)
         bs_etry(self->bitstream);
         return OK;
     } else {
-        PyErr_SetString(PyExc_ValueError,
+        PyErr_SetString(PyExc_IOError,
                         "EOF while reading STREAMINFO block");
         goto error;
     }
@@ -221,7 +221,8 @@ FLACDecoder_read(decoders_FlacDecoder* self, PyObject *args)
         for (channel = 0; channel < frame_header.channel_count; channel++)
             if (FlacDecoder_read_subframe(
                         self,
-                        frame_header.block_size,
+                        MIN(frame_header.block_size,
+                            self->remaining_samples),
                         FlacDecoder_subframe_bits_per_sample(&frame_header,
                                                              channel),
                         &(self->subframe_data.arrays[channel])) == ERROR)
