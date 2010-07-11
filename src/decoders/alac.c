@@ -1,5 +1,6 @@
 #include "alac.h"
 #include "../pcm.h"
+#include "pcm.h"
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -161,21 +162,20 @@ static PyObject*
 ALACDecoder_read(decoders_ALACDecoder* self, PyObject *args)
 {
     struct alac_frame_header frame_header;
-    PyObject *pcm = NULL;
-    pcm_FrameList *framelist = NULL;
 
     int interlacing_shift;
     int interlacing_leftweight;
 
-    struct i_array *channel_data;
     int channel;
     int i, j;
 
     frame_header.output_samples = 0;
     iaa_reset(&(self->samples));
 
-    if (self->total_frames < 1)
+    if (self->total_frames < 1) {
+        iaa_reset(&(self->samples));
         goto write_frame;
+    }
 
     if (!setjmp(*bs_try(self->bitstream))) {
         if (ALACDecoder_read_frame_header(self->bitstream,
@@ -284,32 +284,12 @@ ALACDecoder_read(decoders_ALACDecoder* self, PyObject *args)
     }
 
     bs_etry(self->bitstream);
+    self->total_frames -= frame_header.output_samples;
 
-    /*transform the contents of self->samples into a pcm.FrameList object
-      FIXME - shift the ia_array->pcm.FrameList conversion to its own function*/
  write_frame:
-    if ((pcm = PyImport_ImportModule("audiotools.pcm")) == NULL)
-        return NULL;
-    framelist = (pcm_FrameList*)PyObject_CallMethod(pcm, "__blank__", NULL);
-    Py_DECREF(pcm);
-    framelist->frames = iaa_getitem(&(self->samples), 0)->size;
-    framelist->channels = self->channels;
-    framelist->bits_per_sample = self->bits_per_sample;
-    framelist->samples_length = framelist->frames * framelist->channels;
-    framelist->samples = realloc(framelist->samples,
-                                 sizeof(ia_data_t) *
-                                 framelist->samples_length);
-
-    for (channel = 0; channel < self->channels; channel++) {
-        channel_data = iaa_getitem(&(self->samples), channel);
-        for (i = channel, j = 0; j < frame_header.output_samples;
-             i += self->channels, j++)
-            framelist->samples[i] = ia_getitem(channel_data, j);
-    }
-
-    self->total_frames -= framelist->frames;
-
-    return (PyObject*)framelist;
+    /*transform the contents of self->samples into a pcm.FrameList object*/
+    return ia_array_to_framelist(&(self->samples),
+                                 self->bits_per_sample);
  error:
     bs_etry(self->bitstream);
     return NULL;
@@ -901,3 +881,5 @@ ALACDecoder_print_subframe_header(FILE *output,
              &(subframe_header->predictor_coef_table));
     fprintf(output, "\n");
 }
+
+#include "pcm.c"

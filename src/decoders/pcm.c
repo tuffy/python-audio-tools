@@ -1,6 +1,17 @@
 static PyObject*
 ia_array_to_framelist(struct ia_array *data,
                       int bits_per_sample) {
+    return ia_array_slice_to_framelist(data,
+                                       bits_per_sample,
+                                       0,
+                                       data->arrays[0].size);
+}
+
+static PyObject*
+ia_array_slice_to_framelist(struct ia_array *data,
+                            int bits_per_sample,
+                            int start_frame,
+                            int end_frame) {
     PyObject *pcm = NULL;
     pcm_FrameList *framelist;
     struct i_array channel_data;
@@ -14,7 +25,7 @@ ia_array_to_framelist(struct ia_array *data,
     if (framelist == NULL)
         return NULL;
 
-    framelist->frames = data->arrays[0].size;
+    framelist->frames = end_frame - start_frame;
     framelist->channels = data->size;
     framelist->bits_per_sample = bits_per_sample;
     framelist->samples_length = framelist->frames * framelist->channels;
@@ -24,11 +35,12 @@ ia_array_to_framelist(struct ia_array *data,
 
     for (channel = 0; channel < data->size; channel++) {
         channel_data = data->arrays[channel];
-        for (i = channel, j = 0;
-             j < channel_data.size;
+        for (i = channel, j = start_frame;
+             j < end_frame;
              i += data->size, j++)
             framelist->samples[i] = channel_data.data[j];
     }
 
     return (PyObject*)framelist;
 }
+

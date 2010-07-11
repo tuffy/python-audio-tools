@@ -1,5 +1,6 @@
 #include "shn.h"
 #include "../pcm.h"
+#include "pcm.h"
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -225,12 +226,11 @@ PyObject*
 SHNDecoder_read(decoders_SHNDecoder* self, PyObject *args)
 {
     int channel = 0;
-    int i, j;
+    int i;
     unsigned int cmd;
     unsigned int verbatim_length;
 
-    PyObject *pcm = NULL;
-    pcm_FrameList *framelist;
+    PyObject *framelist;
     struct i_array* channel_data;
     struct i_array* offset_data;
     ia_data_t sum;
@@ -238,6 +238,7 @@ SHNDecoder_read(decoders_SHNDecoder* self, PyObject *args)
     int coffset;
 
     if (self->read_finished) {
+        iaa_reset(&(self->buffer));
         goto finished;
     }
 
@@ -332,13 +333,15 @@ SHNDecoder_read(decoders_SHNDecoder* self, PyObject *args)
                                self->bitshift);
                 }
 
-                /*perform sample wrapping from the end of channel_data to the beginning*/
+                /*perform sample wrapping from the end of channel_data
+                  to the beginning*/
                 for (i = -self->wrap; i < 0; i++) {
                     ia_setitem(channel_data, self->wrap + i,
                                ia_getitem(channel_data, i));
                 }
 
-                /*if bitshift is set, shift all samples in the framelist to the left
+                /*if bitshift is set, shift all samples in the framelist
+                  to the left
                   (analagous to FLAC's wasted-bits-per-sample)*/
                 if (self->bitshift > 0) {
                     for (i = self->wrap; i < channel_data->size; i++) {
@@ -366,10 +369,12 @@ SHNDecoder_read(decoders_SHNDecoder* self, PyObject *args)
             case FN_QUIT:
                 self->read_finished = 1;
                 bs_etry(self->bitstream);
+                iaa_reset(&(self->buffer));
                 goto finished;
             default:
                 PyErr_SetString(PyExc_ValueError,
-                                "unknown command encountered in Shorten stream");
+                                "unknown command encountered"
+                                "in Shorten stream");
                 goto error;
             }
         }
@@ -382,24 +387,10 @@ SHNDecoder_read(decoders_SHNDecoder* self, PyObject *args)
 
     /*once self->buffer is full of PCM data on each channel,
       convert the integer values to a pcm.FrameList object*/
-    if ((pcm = PyImport_ImportModule("audiotools.pcm")) == NULL)
-        goto error;
-    framelist = (pcm_FrameList*)PyObject_CallMethod(pcm, "__blank__", NULL);
-    Py_DECREF(pcm);
-    framelist->frames = self->block_size;
-    framelist->channels = self->channels;
-    framelist->bits_per_sample = self->bits_per_sample;
-    framelist->samples_length = framelist->frames * framelist->channels;
-    framelist->samples = realloc(framelist->samples,
-                                 sizeof(ia_data_t) *
-                                 framelist->samples_length);
-
-    for (channel = 0; channel < self->channels; channel++) {
-        channel_data = iaa_getitem(&(self->buffer), channel);
-        for (i = channel, j = 0; j < self->block_size;
-             i += self->channels, j++)
-            framelist->samples[i] = ia_getitem(channel_data, j + self->wrap);
-    }
+    framelist = ia_array_slice_to_framelist(&(self->buffer),
+                                            self->bits_per_sample,
+                                            self->wrap,
+                                            self->block_size + self->wrap);
 
     /*reset channels for next run*/
     for (channel = 0; channel < self->channels; channel++) {
@@ -407,18 +398,11 @@ SHNDecoder_read(decoders_SHNDecoder* self, PyObject *args)
     }
 
     /*then return the pcm.FrameList*/
-    return (PyObject*)framelist;
+    return framelist;
 
  finished:
-    if ((pcm = PyImport_ImportModule("audiotools.pcm")) == NULL)
-        goto error;
-    framelist = (pcm_FrameList*)PyObject_CallMethod(pcm, "__blank__", NULL);
-    Py_DECREF(pcm);
-    framelist->frames = 0;
-    framelist->channels = self->channels;
-    framelist->bits_per_sample = self->bits_per_sample;
-    framelist->samples_length = framelist->frames * framelist->channels;
-    return (PyObject*)framelist;
+    return ia_array_to_framelist(&(self->buffer),
+                                 self->bits_per_sample);
  error:
     bs_etry(self->bitstream);
     return NULL;
@@ -894,3 +878,5 @@ SHNDecoder_cmd_string(int cmd)
         return "UNKNOWN";
     }
 }
+
+#include "pcm.c"
