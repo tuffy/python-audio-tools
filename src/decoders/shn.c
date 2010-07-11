@@ -588,7 +588,7 @@ SHNDecoder_analyze_frame(decoders_SHNDecoder* self, PyObject *args)
         goto stream_finished;
     }
 
-    byte_offset = ftell(self->bitstream->file);
+    byte_offset = bs_ftell(self->bitstream);
 
     if (!setjmp(*bs_try(self->bitstream))) {
         switch (cmd = shn_read_uvar(self->bitstream, 2)) {

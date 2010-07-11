@@ -377,10 +377,13 @@ ALACDecoder_analyze_frame(decoders_ALACDecoder* self, PyObject *args)
     int channel;
     int interlacing_shift;
     int interlacing_leftweight;
+    int offset;
     PyObject *frame = NULL;
 
     if (self->total_frames < 1)
         goto finished;
+
+    offset = bs_ftell(self->bitstream);
 
     if (!setjmp(*bs_try(self->bitstream))) {
         if (ALACDecoder_read_frame_header(self->bitstream,
@@ -400,13 +403,14 @@ ALACDecoder_analyze_frame(decoders_ALACDecoder* self, PyObject *args)
             }
 
             frame = Py_BuildValue(
-                        "{si si si si si sN}",
+                        "{si si si si si sN si}",
                         "channels", frame_header.channels,
                         "has_size", frame_header.has_size,
                         "wasted_bits", frame_header.wasted_bits,
                         "is_not_compressed", frame_header.is_not_compressed,
                         "output_samples", frame_header.output_samples,
-                        "samples", ia_array_to_list(&(self->samples)));
+                        "samples", ia_array_to_list(&(self->samples)),
+                        "offset", offset);
         } else {
             interlacing_shift = read_bits(self->bitstream, 8);
             interlacing_leftweight = read_bits(self->bitstream, 8);
@@ -444,7 +448,7 @@ ALACDecoder_analyze_frame(decoders_ALACDecoder* self, PyObject *args)
             }
 
             frame = Py_BuildValue(
-                        "{si si si si si si si sN sN sN}",
+                        "{si si si si si si si sN sN sN si}",
                         "channels", frame_header.channels,
                         "has_size", frame_header.has_size,
                         "wasted_bits", frame_header.wasted_bits,
@@ -456,7 +460,8 @@ ALACDecoder_analyze_frame(decoders_ALACDecoder* self, PyObject *args)
                                 self->subframe_headers, self->channels),
                         "wasted_bits", ia_array_to_list(
                                 &(self->wasted_bits_samples)),
-                        "residuals", ia_array_to_list(&(self->residuals)));
+                        "residuals", ia_array_to_list(&(self->residuals)),
+                        "offset", offset);
         }
 
         /*each frame has a 3 byte '111' signature prior to byte alignment*/

@@ -3282,6 +3282,16 @@ def read_metadata_file(filename):
     raise MetaDataFileException(filename)
 
 
+def analyze_frames(pcmreader):
+    """Iterates over a PCMReader's analyze_frame() results."""
+
+    frame = pcmreader.analyze_frame()
+    while (frame is not None):
+        yield frame
+        frame = pcmreader.analyze_frame()
+    pcmreader.close()
+
+
 #######################
 #Multiple Jobs Handling
 #######################

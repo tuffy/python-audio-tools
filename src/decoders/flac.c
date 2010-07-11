@@ -260,6 +260,7 @@ FLACDecoder_analyze_frame(decoders_FlacDecoder* self, PyObject *args)
 {
     struct flac_frame_header frame_header;
     int channel;
+    int offset;
     PyObject *subframe;
     PyObject *subframes;
 
@@ -268,6 +269,8 @@ FLACDecoder_analyze_frame(decoders_FlacDecoder* self, PyObject *args)
         Py_INCREF(Py_None);
         return Py_None;
     }
+
+    offset = bs_ftell(self->bitstream);
 
     self->crc8 = self->crc16 = 0;
 
@@ -308,14 +311,15 @@ FLACDecoder_analyze_frame(decoders_FlacDecoder* self, PyObject *args)
     bs_etry(self->bitstream);
 
     /*return frame analysis*/
-    return Py_BuildValue("{si si si si si si sN}",
+    return Py_BuildValue("{si si si si si si sN si}",
                          "block_size", frame_header.block_size,
                          "sample_rate", frame_header.sample_rate,
                          "channel_assignment", frame_header.channel_assignment,
                          "channel_count", frame_header.channel_count,
                          "bits_per_sample", frame_header.bits_per_sample,
                          "frame_number", frame_header.frame_number,
-                         "subframes", subframes);
+                         "subframes", subframes,
+                         "offset", offset);
  error:
     bs_etry(self->bitstream);
     return NULL;

@@ -54,6 +54,12 @@ void
 bs_add_callback(Bitstream *bs, void (*callback)(int, void*),
                 void *data);
 
+
+static inline long
+bs_ftell(Bitstream *bs) {
+    return ftell(bs->file);
+}
+
 /*Returns true if the stream is at EOF.*/
 int
 bs_eof(Bitstream *bs);
@@ -67,7 +73,6 @@ bs_eof(Bitstream *bs);
 */
 void
 bs_abort(Bitstream *bs);
-
 
 
 /*Sets up an exception stack for use by setjmp(3).
