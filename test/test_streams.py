@@ -74,17 +74,20 @@ class ShortStream(MD5Reader):
 
 class Generate01(ShortStream):
     def __init__(self, sample_rate):
-        ShortStream.__init__(self, [-32768], sample_rate, 1, 16)
+        ShortStream.__init__(self, [-32768],
+                             sample_rate, 1, 16)
 
 
 class Generate02(ShortStream):
     def __init__(self, sample_rate):
-        ShortStream.__init__(self, [-32768, 32767], sample_rate, 2, 16)
+        ShortStream.__init__(self, [-32768, 32767],
+                             sample_rate, 2, 16)
 
 
 class Generate03(ShortStream):
     def __init__(self, sample_rate):
-        ShortStream.__init__(self, [-25, 0, 25, 50, 100], sample_rate, 1, 16)
+        ShortStream.__init__(self, [-25, 0, 25, 50, 100],
+                             sample_rate, 1, 16)
 
 
 class Generate04(ShortStream):

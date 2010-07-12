@@ -81,8 +81,8 @@ class WaveReader(PCMReader):
 
         #align bytes downward if an odd number is read in
         bytes -= (bytes % (self.channels * self.bits_per_sample / 8))
-        pcm_data = self.wave.read(
-            max(bytes, self.channels * self.bits_per_sample / 8))
+        bytes = max(bytes, self.channels * self.bits_per_sample / 8)
+        pcm_data = self.wave.read(bytes)
         if ((len(pcm_data) == 0) and (self.data_chunk_length > 0)):
             raise IOError("data chunk ends prematurely")
         else:

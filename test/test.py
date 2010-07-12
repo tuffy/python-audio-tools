@@ -10276,7 +10276,8 @@ class TestShortenCodec(unittest.TestCase):
                   test_streams.Generate03,
                   test_streams.Generate04]:
             gen = g(44100)
-            self.__test_reader__(gen, len(gen.pcmreader.framelist),
+            self.__test_reader__(gen,
+                                 gen.pcmreader.framelist.frames,
                                  block_size=256)
 
     @TEST_SHORTEN
@@ -10293,14 +10294,14 @@ class TestShortenCodec(unittest.TestCase):
                 stream = test_streams.MD5Reader(fsd(pattern, 100))
                 self.__test_reader__(
                     stream,
-                    len(stream.pcmreader.framelist),
+                    stream.pcmreader.framelist.frames,
                     block_size=256)
 
     @TEST_SHORTEN
     def test_sines(self):
         for g in self.__stream_variations__():
             self.__test_reader__(g,
-                                 len(g.wave),
+                                 len(g.wave) / 2,
                                  block_size=256)
 
     @TEST_SHORTEN
@@ -10336,7 +10337,7 @@ class TestShortenCodec(unittest.TestCase):
                             channels=channels,
                             channel_mask=mask,
                             bits_per_sample=bps),
-                        65536 * channels,
+                        65536,
                         **encode_opts)
 
 
