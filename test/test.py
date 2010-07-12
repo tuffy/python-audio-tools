@@ -3051,6 +3051,79 @@ class TestWaveAudio(TestForeignWaveChunks, TestAiffAudio):
                                   transfer_framelist_data,
                                   reader, lambda x: x)
 
+    @TEST_INVALIDFILE
+    def test_nonascii_chunk_id(self):
+        #this usually indicates something's gone wrong in a wav file
+
+        chunks = list(audiotools.open("wav-2ch.wav").chunks()) + \
+            [("fooz", chr(0) * 10)]
+        temp = tempfile.NamedTemporaryFile(suffix=".wav")
+        audiotools.WaveAudio.wave_from_chunks(temp.name,
+                                              iter(chunks))
+        f = open(temp.name, 'rb')
+        wav_data = list(f.read())
+        f.close()
+        wav_data[-15] = chr(0)
+        temp.seek(0, 0)
+        temp.write("".join(wav_data))
+        temp.flush()
+        self.assertRaises(audiotools.InvalidFile,
+                          audiotools.open,
+                          temp.name)
+
+class TestInvalidAIFF(unittest.TestCase):
+    @TEST_INVALIDFILE
+    def test_truncated_file(self):
+        for (comm_size,aiff_file) in [(0x25, "aiff-8bit.aiff"),
+                                      (0x25, "aiff-1ch.aiff"),
+                                      (0x25, "aiff-2ch.aiff"),
+                                      (0x25, "aiff-6ch.aiff")]:
+            f = open(aiff_file, 'rb')
+            aiff_data = f.read()
+            f.close()
+
+            temp = tempfile.NamedTemporaryFile(suffix=".aiff")
+
+            #first, check that a truncated comm chunk raises an exception
+            #at init-time
+            for i in xrange(0, comm_size + 17):
+                temp.seek(0, 0)
+                temp.write(aiff_data[0:i])
+                temp.flush()
+                self.assertEqual(os.path.getsize(temp.name), i)
+
+                self.assertRaises(audiotools.InvalidFile,
+                                  audiotools.AiffAudio,
+                                  temp.name)
+
+            #then, check that a truncated ssnd chunk raises an exception
+            #at read-time
+            for i in xrange(comm_size + 17, len(aiff_data)):
+                temp.seek(0, 0)
+                temp.write(aiff_data[0:i])
+                temp.flush()
+                reader = audiotools.AiffAudio(temp.name).to_pcm()
+                self.assertNotEqual(reader, None)
+                self.assertRaises(IOError,
+                                  transfer_framelist_data,
+                                  reader, lambda x: x)
+
+    @TEST_INVALIDFILE
+    def test_nonascii_chunk_id(self):
+        #this usually indicates something's gone wrong in a aiff file
+
+        temp = tempfile.NamedTemporaryFile(suffix=".aiff")
+        f = open("aiff-metadata.aiff")
+        aiff_data = list(f.read())
+        f.close()
+        aiff_data[0x89] = chr(0)
+        temp.seek(0, 0)
+        temp.write("".join(aiff_data))
+        temp.flush()
+        self.assertRaises(audiotools.InvalidFile,
+                          audiotools.open,
+                          temp.name)
+
 
 class TestAuAudio(TestAiffAudio):
     def setUp(self):
@@ -11681,10 +11754,11 @@ class TestMultiChannel(unittest.TestCase):
                                                channels,
                                                True)
 
-        for channels in xrange(1, 7):
-            self.__test_undefined_mask_blank__(audiotools.M4AAudio_nero,
-                                               channels,
-                                               False)
+        if (audiotools.M4AAudio_nero.has_binaries(audiotools.BIN)):
+            for channels in xrange(1, 7):
+                self.__test_undefined_mask_blank__(audiotools.M4AAudio_nero,
+                                                   channels,
+                                                   False)
 
 #these are Messenger output classes
 (OUTPUT, PARTIAL_OUTPUT, INFO, PARTIAL_INFO, ERROR, WARNING) = range(6)

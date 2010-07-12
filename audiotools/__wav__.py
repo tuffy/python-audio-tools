@@ -79,7 +79,7 @@ class WaveReader(PCMReader):
     def read(self, bytes):
         """Try to read a pcm.FrameList of size "bytes"."""
 
-        #align bytes downard if an odd number is read in
+        #align bytes downward if an odd number is read in
         bytes -= (bytes % (self.channels * self.bits_per_sample / 8))
         pcm_data = self.wave.read(
             max(bytes, self.channels * self.bits_per_sample / 8))
@@ -218,6 +218,15 @@ def __channel_mask__(mask, channel_count):
     return c
 
 
+class __ASCII_String__(Con.Validator):
+    """Validates that its data string is printable ASCII."""
+
+    PRINTABLE_ASCII = set([chr(i) for i in xrange(0x20, 0x7E + 1)])
+
+    def _validate(self, obj, context):
+        return set(obj).issubset(self.PRINTABLE_ASCII)
+
+
 class WaveAudio(AudioFile):
     """A waveform audio file."""
 
@@ -230,7 +239,7 @@ class WaveAudio(AudioFile):
                              Con.Const(Con.Bytes("riff_type", 4), 'WAVE'))
 
     CHUNK_HEADER = Con.Struct("chunk_header",
-                              Con.Bytes("chunk_id", 4),
+                              __ASCII_String__(Con.Bytes("chunk_id", 4)),
                               Con.ULInt32("chunk_length"))
 
     FMT_CHUNK = Con.Struct("fmt_chunk",
@@ -329,6 +338,8 @@ class WaveAudio(AudioFile):
 
         try:
             self.__read_chunks__()
+        except Con.ValidationError:
+            raise InvalidFile
         except WavException, msg:
             raise InvalidFile(str(msg))
         except IOError, msg:

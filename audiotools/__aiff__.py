@@ -21,7 +21,7 @@ from audiotools import (AudioFile, InvalidFile, Con, PCMReader,
                         __capped_stream_reader__, PCMReaderError,
                         transfer_data, DecodingError, EncodingError,
                         ID3v22Comment, BUFFER_SIZE, ChannelMask,
-                        UnsupportedChannelMask, ReorderedPCMReader)
+                        UnsupportedChannelMask, ReorderedPCMReader, pcm)
 
 import gettext
 
@@ -78,6 +78,62 @@ class IEEE_Extended(Con.Adapter):
 #######################
 
 
+class AiffReader(PCMReader):
+    """A subclass of PCMReader for reading AIFF file contents."""
+
+    def __init__(self, aiff_file,
+                 sample_rate, channels, channel_mask, bits_per_sample,
+                 chunk_length, process=None):
+        """aiff_file should be rewound to the start of the SSND chunk."""
+
+        alignment = AiffAudio.SSND_ALIGN.parse_stream(aiff_file)
+        PCMReader.__init__(self,
+                           file=__capped_stream_reader__(
+                aiff_file,
+                chunk_length - AiffAudio.SSND_ALIGN.sizeof()),
+                           sample_rate=sample_rate,
+                           channels=channels,
+                           channel_mask=channel_mask,
+                           bits_per_sample=bits_per_sample,
+                           process=process,
+                           signed=True,
+                           big_endian=True)
+        self.ssnd_chunk_length = chunk_length - 8
+        standard_channel_mask = ChannelMask(self.channel_mask)
+        aiff_channel_mask = AIFFChannelMask(standard_channel_mask)
+        if (channels in (3, 4, 6)):
+            self.channel_order = [aiff_channel_mask.channels().index(channel)
+                                  for channel in
+                                  standard_channel_mask.channels()]
+        else:
+            self.channel_order = None
+
+    def read(self, bytes):
+        """Try to read a pcm.FrameList of size "bytes"."""
+
+        #align bytes downward if an odd number is read in
+        bytes -= (bytes % (self.channels * self.bits_per_sample / 8))
+        pcm_data = self.file.read(
+            max(bytes, self.channels * self.bits_per_sample / 8))
+        if ((len(pcm_data) == 0) and (self.ssnd_chunk_length > 0)):
+            raise IOError("ssnd chunk ends prematurely")
+        else:
+            self.ssnd_chunk_length -= len(pcm_data)
+
+        try:
+            framelist = pcm.FrameList(pcm_data,
+                                      self.channels,
+                                      self.bits_per_sample,
+                                      True, True)
+            if (self.channel_order is not None):
+                return pcm.from_channels([framelist.channel(channel)
+                                          for channel in self.channel_order])
+            else:
+                return framelist
+        except ValueError:
+            raise IOError("ssnd chunk ends prematurely")
+
+
 class InvalidAIFF(InvalidFile):
     """Raised if some problem occurs parsing AIFF chunks."""
 
@@ -109,14 +165,42 @@ class AiffAudio(AudioFile):
                             Con.UBInt32("offset"),
                             Con.UBInt32("blocksize"))
 
+    PRINTABLE_ASCII = set([chr(i) for i in xrange(0x20, 0x7E + 1)])
+
     def __init__(self, filename):
         """filename is a plain string."""
 
         self.filename = filename
-        (self.__channels__,
-         self.__total_sample_frames__,
-         self.__sample_size__,
-         self.__sample_rate__) = self.comm_chunk()
+
+        comm_found = False
+        ssnd_found = False
+        try:
+            f = open(self.filename, 'rb')
+            for (chunk_id, chunk_length, chunk_offset) in self.chunks():
+                if (chunk_id == 'COMM'):
+                    f.seek(chunk_offset, 0)
+                    comm = self.COMM_CHUNK.parse(f.read(chunk_length))
+                    self.__channels__ = comm.channels
+                    self.__total_sample_frames__ = comm.total_sample_frames
+                    self.__sample_size__ = comm.sample_size
+                    self.__sample_rate__ = int(comm.sample_rate)
+                    comm_found = True
+                elif (chunk_id == 'SSND'):
+                    f.seek(chunk_offset, 0)
+                    ssnd = self.SSND_ALIGN.parse_stream(f)
+                    ssnd_found = True
+                elif (not set(chunk_id).issubset(self.PRINTABLE_ASCII)):
+                    raise InvalidAIFF(_("chunk header not ASCII"))
+
+            if (not comm_found):
+                raise InvalidAIFF(_("no COMM chunk found"))
+            if (not ssnd_found):
+                raise InvalidAIFF(_("no SSND chunk found"))
+            f.close()
+        except IOError, msg:
+            raise InvalidAIFF(str(msg))
+        except Con.FieldError:
+            raise InvalidAIFF(_("invalid COMM or SSND chunk"))
 
     def bits_per_sample(self):
         """Returns an integer number of bits-per-sample this track contains."""
@@ -176,7 +260,7 @@ class AiffAudio(AudioFile):
                 (header[8:12] == 'AIFF'))
 
     def chunks(self):
-        """Yields a (chunk_id,length,offset) per AIFF chunk."""
+        """Yields a (chunk_id, length, offset) per AIFF chunk."""
 
         f = open(self.filename, 'rb')
         try:
@@ -198,7 +282,7 @@ class AiffAudio(AudioFile):
         f.close()
 
     def comm_chunk(self):
-        """Returns (channels,pcm_frames,bits_per_sample,sample_rate) ."""
+        """Returns (channels, pcm_frames, bits_per_sample, sample_rate) ."""
 
         try:
             for (chunk_id, chunk_length, chunk_offset) in self.chunks():
@@ -215,6 +299,8 @@ class AiffAudio(AudioFile):
                 raise InvalidAIFF(_(u"COMM chunk not found"))
         except IOError, msg:
             raise InvalidAIFF(str(msg))
+        except Con.FieldError:
+            raise InvalidAIFF(_(u"invalid COMM chunk"))
 
     def chunk_files(self):
         """Yields a (chunk_id,length,file) per AIFF chunk.
@@ -339,30 +425,12 @@ class AiffAudio(AudioFile):
             if (chunk_id == 'SSND'):
                 f = open(self.filename, 'rb')
                 f.seek(chunk_offset, 0)
-                alignment = self.SSND_ALIGN.parse_stream(f)
-                #FIXME - handle different types of SSND alignment
-                pcmreader = PCMReader(
-                    __capped_stream_reader__(
-                        f, chunk_length - self.SSND_ALIGN.sizeof()),
-                    sample_rate=self.sample_rate(),
-                    channels=self.channels(),
-                    channel_mask=int(self.channel_mask()),
-                    bits_per_sample=self.bits_per_sample(),
-                    signed=True,
-                    big_endian=True)
-                if (self.channels() <= 2):
-                    return pcmreader
-                elif (self.channels() in (3, 4, 6)):
-                    #FIXME - handle undefined channel mask
-                    standard_channel_mask = self.channel_mask()
-                    aiff_channel_mask = AIFFChannelMask(self.channel_mask())
-                    return ReorderedPCMReader(
-                        pcmreader,
-                        [aiff_channel_mask.channels().index(channel)
-                         for channel in
-                         standard_channel_mask.channels()])
-                else:
-                    return pcmreader
+                return AiffReader(f,
+                                  self.sample_rate(),
+                                  self.channels(),
+                                  int(self.channel_mask()),
+                                  self.bits_per_sample(),
+                                  chunk_length)
         else:
             return PCMReaderError()
 
