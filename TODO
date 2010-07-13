@@ -1011,6 +1011,8 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    - [X] check for premature EOF
          (including if mdat isn't long enough,
          both in number of samples and number of bytes)
+   - [ ] unit test to_pcm() raising IOError/ValueError
+         (both at FlacDecoder init-time and at read() time)
 ** TODO AuAudio
 ** TODO FlacAudio
    - [X] check subframe CRC-8
@@ -1019,6 +1021,8 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    - [ ] check stream MD5 at end-of-stream time
    - [X] check for premature EOF
          (this includes the file dying mid-header/mid-frame/end of frame)
+   - [ ] unit test to_pcm() raising IOError/ValueError
+         (both at FlacDecoder init-time and at read() time)
 ** TODO M4AAudio
 ** TODO MP3Audio
 ** TODO MP2Audio
@@ -1028,6 +1032,8 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    - [ ] sanity check header
    - [X] sanity check command ID
    - [X] check each command for premature EOF
+   - [ ] unit test to_pcm() raising IOError/ValueError
+         (both at FlacDecoder init-time and at read() time)
 ** TODO VorbisAudio
 ** TODO WaveAudio
    - [ ] sanity check fmt chunk (including WAVEFORMATEXTENSIBLE)

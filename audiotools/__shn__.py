@@ -186,10 +186,17 @@ class ShortenAudio(AudioFile):
     def to_pcm(self):
         """Returns a PCMReader object containing the track's PCM data."""
 
-        decoder = audiotools.decoders.SHNDecoder(self.filename)
-        decoder.sample_rate = self.sample_rate()
-        decoder.channel_mask = int(self.channel_mask())
-        return decoder
+        try:
+            decoder = audiotools.decoders.SHNDecoder(self.filename)
+            decoder.sample_rate = self.sample_rate()
+            decoder.channel_mask = int(self.channel_mask())
+            return decoder
+        except (IOError, ValueError), msg:
+            return PCMReaderError(error_message=str(msg),
+                                  sample_rate=self.sample_rate(),
+                                  channels=self.channels(),
+                                  channel_mask=int(self.channel_mask()),
+                                  bits_per_sample=self.bits_per_sample())
 
     @classmethod
     def from_pcm(cls, filename, pcmreader, compression=None,
@@ -224,8 +231,8 @@ class ShortenAudio(AudioFile):
         if (self.__format__ is WaveAudio):
             try:
                 f = open(wave_filename, 'wb')
-            except IOError:
-                raise EncodingError()
+            except IOError, msg:
+                raise EncodingError(str(msg))
             for block in self.__blocks__:
                 if (block is not None):
                     f.write(block)
@@ -268,8 +275,8 @@ class ShortenAudio(AudioFile):
                                            verbatim_chunks=blocks)
 
             return cls(filename)
-        except IOError:
-            raise EncodingError("shn")
+        except IOError, err:
+            raise EncodingError(str(err))
 
     @classmethod
     def supports_foreign_riff_chunks(cls):

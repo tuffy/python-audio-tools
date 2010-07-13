@@ -553,7 +553,7 @@ class WavPackAudio(ApeTaggedAudio, AudioFile):
                 if (sub.wait() == 0):
                     return WavPackAudio(filename)
                 else:
-                    raise EncodingError(BIN['wavpack'])
+                    raise EncodingError(u"unable to encode file with wavpack")
             else:
                 import tempfile
 
@@ -595,7 +595,7 @@ class WavPackAudio(ApeTaggedAudio, AudioFile):
                                    stdout=devnull,
                                    stderr=devnull)
             if (sub.wait() != 0):
-                raise EncodingError()
+                raise EncodingError(u"unable to decode file with wvunpack")
         else:
             #create a temporary symlink to the current file
             #rather than rewrite the whole thing
@@ -646,7 +646,7 @@ class WavPackAudio(ApeTaggedAudio, AudioFile):
                                       process=sub)
                 except WavException:
                     return PCMReaderError(
-                        file=None,
+                        error_message=u"wvunpack failed to generate wav file",
                         sample_rate=self.sample_rate(),
                         channels=self.channels(),
                         channel_mask=int(self.channel_mask()),
@@ -696,7 +696,7 @@ class WavPackAudio(ApeTaggedAudio, AudioFile):
             if (sub.wait() == 0):
                 return WavPackAudio(filename)
             else:
-                raise EncodingError(BIN['wavpack'])
+                raise EncodingError(u"unable to encode file with wavpack")
         else:
             import tempfile
 

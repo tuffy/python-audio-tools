@@ -554,8 +554,8 @@ class VorbisAudio(AudioFile):
 
         try:
             pcmreader.close()
-        except DecodingError:
-            raise EncodingError()
+        except DecodingError, err:
+            raise EncodingError(err.error_message)
         sub.stdin.close()
 
         devnull.close()
@@ -563,7 +563,7 @@ class VorbisAudio(AudioFile):
         if (sub.wait() == 0):
             return VorbisAudio(filename)
         else:
-            raise EncodingError(BIN['oggenc'])
+            raise EncodingError(u"unable to encode file with oggenc")
 
     def set_metadata(self, metadata):
         """Takes a MetaData object and sets this track's metadata.

@@ -404,8 +404,8 @@ class WaveAudio(AudioFile):
 
         try:
             f = file(filename, "wb")
-        except IOError:
-            raise EncodingError(None)
+        except IOError, err:
+            raise EncodingError(str(err))
         try:
             header = Con.Container()
             header.wave_id = 'RIFF'
@@ -472,8 +472,8 @@ class WaveAudio(AudioFile):
             #close up the PCM reader and flush our output
             try:
                 pcmreader.close()
-            except DecodingError:
-                raise EncodingError()
+            except DecodingError, err:
+                raise EncodingError(err.error_message)
             f.flush()
 
             #go back to the beginning the re-write the header
@@ -502,8 +502,8 @@ class WaveAudio(AudioFile):
         try:
             output = file(wave_filename, 'wb')
             input = file(self.filename, 'rb')
-        except IOError:
-            raise EncodingError()
+        except IOError, msg:
+            raise EncodingError(str(msg))
         try:
             transfer_data(input.read, output.write)
         finally:
@@ -524,8 +524,8 @@ class WaveAudio(AudioFile):
         try:
             output = file(filename, 'wb')
             input = file(wave_filename, 'rb')
-        except IOError:
-            raise EncodingError(None)
+        except IOError, err:
+            raise EncodingError(str(err))
         try:
             transfer_data(input.read, output.write)
             return WaveAudio(filename)

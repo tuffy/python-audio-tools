@@ -178,8 +178,8 @@ class SpeexAudio(VorbisAudio):
         transfer_framelist_data(pcmreader, sub.stdin.write)
         try:
             pcmreader.close()
-        except DecodingError:
-            raise EncodingError()
+        except DecodingError, err:
+            raise EncodingError(err.error_message)
         sub.stdin.close()
         result = sub.wait()
         devnull.close()
@@ -187,7 +187,7 @@ class SpeexAudio(VorbisAudio):
         if (result == 0):
             return SpeexAudio(filename)
         else:
-            raise EncodingError(BIN['speexenc'])
+            raise EncodingError(u"unable to encode file with speexenc")
 
     def set_metadata(self, metadata):
         """Takes a MetaData object and sets this track's metadata.

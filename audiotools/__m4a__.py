@@ -23,10 +23,10 @@ from audiotools import (AudioFile, InvalidFile, PCMReader, PCMConverter,
                         subprocess, BIN, cStringIO, MetaData, os,
                         Image, InvalidImage, ignore_sigint, InvalidFormat,
                         open, open_files, EncodingError, DecodingError,
-                        WaveAudio, TempWaveReader, PCMReaderError,
+                        WaveAudio, TempWaveReader,
                         ChannelMask, UnsupportedBitsPerSample,
                         UnsupportedChannelCount, BufferedPCMReader,
-                        at_a_time, VERSION)
+                        at_a_time, VERSION, PCMReaderError)
 from __m4a_atoms__ import *
 import gettext
 
@@ -539,8 +539,8 @@ class M4AAudio_faac(AudioFile):
         transfer_framelist_data(pcmreader, sub.stdin.write)
         try:
             pcmreader.close()
-        except DecodingError:
-            raise EncodingError(None)
+        except DecodingError, msg:
+            raise EncodingError(msg.error_message)
         sub.stdin.close()
 
         if (sub.wait() == 0):
@@ -556,7 +556,7 @@ class M4AAudio_faac(AudioFile):
         else:
             if (tempfile is not None):
                 tempfile.close()
-            raise EncodingError(BIN['faac'])
+            raise EncodingError(u"unable to write file with faac")
 
     @classmethod
     def can_add_replay_gain(cls):
@@ -654,7 +654,7 @@ class M4AAudio_nero(M4AAudio_faac):
                                    stdout=devnull,
                                    stderr=devnull)
             if (sub.wait() != 0):
-                raise EncodingError()
+                raise EncodingError(u"unable to write file with neroAacDec")
         finally:
             devnull.close()
 
@@ -675,7 +675,7 @@ class M4AAudio_nero(M4AAudio_faac):
         try:
             wave = WaveAudio(wave_filename)
         except InvalidFile:
-            raise EncodingError()
+            raise EncodingError(u"invalid wave file")
 
         if (wave.sample_rate > 96000):
             #convert through PCMConverter if sample rate is too high
@@ -705,7 +705,7 @@ class M4AAudio_nero(M4AAudio_faac):
                                    stderr=devnull)
 
             if (sub.wait() != 0):
-                raise EncodingError(BIN['neroAacEnc'])
+                raise EncodingError(u"neroAacEnc unable to write file")
             else:
                 return cls(filename)
         finally:
@@ -1282,24 +1282,32 @@ class ALACAudio(M4AAudio):
 
         import audiotools.decoders
 
-        f = file(self.filename, 'rb')
-        qt = __Qt_Atom_Stream__(f)
-        alac = ALACAudio.ALAC_ATOM.parse(
-                ATOM_STSD.parse(self.qt_stream['moov']['trak']['mdia'][
-                    'minf']['stbl']['stsd'].data).descriptions[0].data).alac
-        f.close()
+        try:
+            f = file(self.filename, 'rb')
+            qt = __Qt_Atom_Stream__(f)
+            alac = ALACAudio.ALAC_ATOM.parse(
+                ATOM_STSD.parse(
+                    self.qt_stream['moov']['trak']['mdia']['minf']['stbl'][
+                        'stsd'].data).descriptions[0].data).alac
+            f.close()
 
-        return audiotools.decoders.ALACDecoder(
-            filename=self.filename,
-            sample_rate=alac.sample_rate,
-            channels=alac.channels,
-            channel_mask=ChannelMask.from_channels(alac.channels),
-            bits_per_sample=alac.sample_size,
-            total_frames=self.total_frames(),
-            max_samples_per_frame=alac.max_samples_per_frame,
-            history_multiplier=alac.history_multiplier,
-            initial_history=alac.initial_history,
-            maximum_k=alac.maximum_k)
+            return audiotools.decoders.ALACDecoder(
+                filename=self.filename,
+                sample_rate=alac.sample_rate,
+                channels=alac.channels,
+                channel_mask=ChannelMask.from_channels(alac.channels),
+                bits_per_sample=alac.sample_size,
+                total_frames=self.total_frames(),
+                max_samples_per_frame=alac.max_samples_per_frame,
+                history_multiplier=alac.history_multiplier,
+                initial_history=alac.initial_history,
+                maximum_k=alac.maximum_k)
+        except (IOError, ValueError), msg:
+            return PCMReaderError(error_message=str(msg),
+                                  sample_rate=self.sample_rate(),
+                                  channels=self.channels(),
+                                  channel_mask=int(self.channel_mask()),
+                                  bits_per_sample=self.bits_per_sample())
 
     @classmethod
     def from_pcm(cls, filename, pcmreader, compression=None,
@@ -1386,9 +1394,9 @@ class ALACAudio(M4AAudio):
         #build our complete output file
         try:
             f = file(filename, 'wb')
-        except IOError:
+        except IOError, msg:
             mdat_file.close()
-            raise EncodingError(None)
+            raise EncodingError(str(msg))
         mdat_file.seek(0, 0)
         f.write(ftyp)
         f.write(moov)
@@ -1820,8 +1828,8 @@ class AACAudio(AudioFile):
         transfer_framelist_data(pcmreader, sub.stdin.write)
         try:
             pcmreader.close()
-        except DecodingError:
-            raise EncodingError()
+        except DecodingError, msg:
+            raise EncodingError(msg.error_message)
         sub.stdin.close()
 
         if (sub.wait() == 0):
@@ -1837,7 +1845,7 @@ class AACAudio(AudioFile):
         else:
             if (tempfile is not None):
                 tempfile.close()
-            raise EncodingError(BIN['faac'])
+            raise EncodingError(u"error writing file with faac")
 
     @classmethod
     def aac_frames(cls, stream):

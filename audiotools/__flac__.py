@@ -24,7 +24,8 @@ from audiotools import (AudioFile, MetaData, InvalidFile, PCMReader,
                         os, open_files, Image, sys, WaveAudio, ReplayGain,
                         ignore_sigint, sheet_to_unicode, EncodingError,
                         UnsupportedChannelMask, DecodingError, Messenger,
-                        BufferedPCMReader, calculate_replay_gain, ChannelMask)
+                        BufferedPCMReader, calculate_replay_gain, ChannelMask,
+                        PCMReaderError)
 from __vorbiscomment__ import *
 from __id3__ import ID3v2Comment
 from __vorbis__ import OggStreamReader, OggStreamWriter
@@ -708,6 +709,8 @@ class FlacAudio(AudioFile):
             self.__read_streaminfo__()
         except IOError, msg:
             raise InvalidFLAC(str(msg))
+        except (Con.FieldError, Con.ArrayError):
+            raise InvalidFLAC("invalid STREAMINFO block")
 
     @classmethod
     def is_type(cls, file):
@@ -990,8 +993,18 @@ class FlacAudio(AudioFile):
 
         from . import decoders
 
-        return decoders.FlacDecoder(self.filename,
-                                    self.channel_mask())
+        try:
+            return decoders.FlacDecoder(self.filename,
+                                        self.channel_mask())
+        except (IOError, ValueError), msg:
+            #The only time this is likely to occur is
+            #if the FLAC is modified between when FlacAudio
+            #is initialized and when to_pcm() is called.
+            return PCMReaderError(error_message=str(msg),
+                                  sample_rate=self.sample_rate(),
+                                  channels=self.channels(),
+                                  channel_mask=int(self.channel_mask()),
+                                  bits_per_sample=self.bits_per_sample())
 
     @classmethod
     def from_pcm(cls, filename, pcmreader, compression="8"):
@@ -1098,8 +1111,8 @@ class FlacAudio(AudioFile):
                 flac.set_metadata(metadata)
 
             return flac
-        except IOError:
-            raise EncodingError("flac")
+        except IOError, msg:
+            raise EncodingError(str(msg))
 
     def has_foreign_riff_chunks(self):
         """Returns True if the audio file contains non-audio RIFF chunks.
@@ -1691,8 +1704,8 @@ class OggFlacAudio(FlacAudio):
         transfer_framelist_data(pcmreader, sub.stdin.write)
         try:
             pcmreader.close()
-        except DecodingError:
-            raise EncodingError()
+        except DecodingError, err:
+            raise EncodingError(err.error_message)
         sub.stdin.close()
         devnull.close()
 
@@ -1708,7 +1721,7 @@ class OggFlacAudio(FlacAudio):
                 oggflac.set_metadata(metadata)
             return oggflac
         else:
-            raise EncodingError(BIN['flac'])
+            raise EncodingError(u"error encoding file with flac")
 
     def sub_pcm_tracks(self):
         """Yields a PCMReader object per cuesheet track.

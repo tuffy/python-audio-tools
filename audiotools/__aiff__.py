@@ -432,7 +432,11 @@ class AiffAudio(AudioFile):
                                   self.bits_per_sample(),
                                   chunk_length)
         else:
-            return PCMReaderError()
+            return PCMReaderError(u"no SSND chunk found",
+                                  self.sample_rate(),
+                                  self.channels(),
+                                  int(self.channel_mask()),
+                                  self.bits_per_sample)
 
     @classmethod
     def from_pcm(cls, filename, pcmreader, compression=None):
@@ -446,8 +450,8 @@ class AiffAudio(AudioFile):
 
         try:
             f = open(filename, 'wb')
-        except IOError:
-            raise EncodingError(None)
+        except IOError, msg:
+            raise EncodingError(str(msg))
 
         if (int(pcmreader.channel_mask) in
             (0x4,      # FC
@@ -520,8 +524,8 @@ class AiffAudio(AudioFile):
                         cls.SSND_ALIGN.sizeof())))
             try:
                 pcmreader.close()
-            except DecodingError:
-                raise EncodingError()
+            except DecodingError, err:
+                raise EncodingError(err.error_message)
         finally:
             f.close()
 

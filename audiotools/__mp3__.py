@@ -183,13 +183,13 @@ class MP3Audio(AudioFile):
                                            ["--decode", "-t", "--quiet",
                                             self.filename, "-"],
                                        stdout=subprocess.PIPE)
-                return PCMReader(sub.stdout,
-                                 sample_rate=self.sample_rate(),
-                                 channels=self.channels(),
-                                 bits_per_sample=16,
-                                 channel_mask=int(ChannelMask.from_channels(
-                            self.channels())),
-                                 process=sub)
+                return PCMReader(
+                    sub.stdout,
+                    sample_rate=self.sample_rate(),
+                    channels=self.channels(),
+                    bits_per_sample=16,
+                    channel_mask=int(self.channel_mask()),
+                    process=sub)
             else:
                 import tempfile
                 from audiotools import TempWaveReader
@@ -212,10 +212,12 @@ class MP3Audio(AudioFile):
                     wave.seek(0, 0)
                     return TempWaveReader(wave)
                 else:
-                    return PCMReaderError(None,
-                                          sample_rate=self.sample_rate(),
-                                          channels=self.channels(),
-                                          bits_per_sample=16)
+                    return PCMReaderError(
+                        error_message=u"lame exited with error",
+                        sample_rate=self.sample_rate(),
+                        channels=self.channels(),
+                        channel_mask=int(self.channel_mask()),
+                        bits_per_sample=16)
 
     @classmethod
     def __help_output__(cls):
@@ -296,8 +298,8 @@ class MP3Audio(AudioFile):
         transfer_framelist_data(pcmreader, sub.stdin.write)
         try:
             pcmreader.close()
-        except DecodingError:
-            raise EncodingError()
+        except DecodingError, err:
+            raise EncodingError(err.error_message)
         sub.stdin.close()
 
         devnull.close()
@@ -305,7 +307,7 @@ class MP3Audio(AudioFile):
         if (sub.wait() == 0):
             return MP3Audio(filename)
         else:
-            raise EncodingError(BIN['lame'])
+            raise EncodingError(u"error encoding file with lame")
 
     def bits_per_sample(self):
         """Returns an integer number of bits-per-sample this track contains."""
@@ -719,8 +721,8 @@ class MP2Audio(MP3Audio):
         transfer_framelist_data(pcmreader, sub.stdin.write)
         try:
             pcmreader.close()
-        except DecodingError:
-            raise EncodingError()
+        except DecodingError, err:
+            raise EncodingError(err.error_message)
         sub.stdin.close()
 
         devnull.close()

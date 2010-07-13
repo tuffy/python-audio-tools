@@ -526,32 +526,42 @@ class EncodingError(IOError):
     """Raised if an audio file cannot be created correctly from from_pcm()
     due to an error by the encoder."""
 
-    def __init__(self, executable=None):
-        self.executable = executable
+    def __init__(self, error_message):
+        IOError.__init__(self)
+        self.error_message = u"error during file encoding"
 
     def __str__(self):
-        return "error during file encoding"
+        if (isinstance(self.error_message, unicode)):
+            return self.error_message.encode('ascii', 'replace')
+        else:
+            return str(self.error_message)
+
+    def __unicode__(self):
+        return unicode(self.error_message)
 
 
 class UnsupportedChannelMask(EncodingError):
     """Raised if the encoder does not support the file's channel mask."""
 
-    def __str__(self):
-        return "unsupported channel mask during file encoding"
+    def __init__(self):
+        EncodingError.__init__(self,
+            u"unsupported channel mask during file encoding")
 
 
 class UnsupportedChannelCount(EncodingError):
     """Raised if the encoder does not support the file's channel count."""
 
-    def __str__(self):
-        return "unsupported channel count during file encoding"
+    def __init__(self):
+        EncodingError.__init__(self,
+            u"unsupported channel count during file encoding")
 
 
 class UnsupportedBitsPerSample(EncodingError):
     """Raised if the encoder does not support the file's bits-per-sample."""
 
-    def __str__(self):
-        return "unsupported bits per sample during file encoding"
+    def __init__(self):
+        EncodingError.__init__(self,
+            u"unsupported bits per sample during file encoding")
 
 
 class DecodingError(IOError):
@@ -560,8 +570,9 @@ class DecodingError(IOError):
     Typically, a from_pcm() method will catch this error
     and raise EncodingError."""
 
-    def __str__(self):
-        return "error during file decoding"
+    def __init__(self, error_message):
+        IOError.__init__(self)
+        self.error_message = error_message
 
 
 def open(filename):
@@ -931,21 +942,30 @@ class PCMReader:
 
         if (self.process is not None):
             if (self.process.wait() != 0):
-                raise DecodingError()
+                raise DecodingError(u"subprocess exited with error")
 
 
 class PCMReaderError(PCMReader):
     """A dummy PCMReader which automatically raises DecodingError."""
 
-    def read(self, bytes):
-        """Always returns empty output."""
+    def __init__(self, error_message,
+                 sample_rate, channels, channel_mask, bits_per_sample):
+        PCMReader.__init__(self, None, sample_rate, channels, channel_mask,
+                           bits_per_sample)
+        self.error_message = error_message
 
-        return ""
+    def read(self, bytes):
+        """Always returns an empty framelist."""
+
+        return pcm.from_list([],
+                             self.channels,
+                             self.bits_per_sample,
+                             True)
 
     def close(self):
         """Always raises DecodingError."""
 
-        raise DecodingError()
+        raise DecodingError(self.error_message)
 
 
 class ReorderedPCMReader:
@@ -2463,8 +2483,8 @@ class AudioFile:
             self.to_wave(f.name)
             f.seek(0, 0)
             return TempWaveReader(f)
-        except EncodingError:
-            return PCMReaderError(None,
+        except EncodingError, err:
+            return PCMReaderError(error_message=err.error_message,
                                   sample_rate=self.sample_rate(),
                                   channels=self.channels(),
                                   channel_mask=int(self.channel_mask()),
@@ -2510,11 +2530,6 @@ class AudioFile:
 
         WaveAudio.from_pcm(wave_filename, self.to_pcm())
 
-    #takes a filename string of our new file
-    #a wave_filename string of an existing RIFF WAVE file
-    #and an optional compression level string
-    #returns a new object of this class
-    #raises EncodingError if an error occurs during encoding
     @classmethod
     def from_wave(cls, filename, wave_filename, compression=None):
         """Encodes a new AudioFile from an existing .wav file.

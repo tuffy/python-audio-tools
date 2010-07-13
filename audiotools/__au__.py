@@ -160,8 +160,8 @@ class AuAudio(AudioFile):
 
         try:
             f = file(filename, 'wb')
-        except IOError:
-            raise EncodingError(None)
+        except IOError, err:
+            raise EncodingError(str(err))
         try:
             #send out a dummy header
             f.write(AuAudio.AU_HEADER.build(header))
@@ -184,8 +184,8 @@ class AuAudio(AudioFile):
 
         try:
             pcmreader.close()
-        except DecodingError:
-            raise EncodingError()
+        except DecodingError, err:
+            raise EncodingError(err.error_message)
 
         return AuAudio(filename)
 

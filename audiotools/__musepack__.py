@@ -21,7 +21,7 @@
 from audiotools import (AudioFile, InvalidFile, InvalidFormat, PCMReader,
                         PCMConverter, Con, subprocess, BIN, ApeTaggedAudio,
                         os, TempWaveReader, ignore_sigint, transfer_data,
-                        EncodingError, DecodingError, PCMReaderError)
+                        EncodingError, DecodingError)
 from __wav__ import WaveAudio
 import gettext
 
@@ -290,7 +290,7 @@ class MusepackAudio(ApeTaggedAudio, AudioFile):
         else:
             if (tempfile is not None):
                 tempfile.close()
-            raise EncodingError(BIN['mpcenc'])
+            raise EncodingError(u"error encoding file with mpcenc")
 
     @classmethod
     def is_type(cls, file):
