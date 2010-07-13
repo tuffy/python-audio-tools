@@ -266,7 +266,7 @@ ID3v1
    in the same order as returned by :func:`ID3v1Comment.read_id3v1_comment`.
    It can then be manipulated like a regular Python list,
    in addition to the regular :class:`audiotools.MetaData` methods.
-   However, since ID3v1 is a near completely subset
+   However, since ID3v1 is a nearly complete subset
    of :class:`audiotools.MetaData`
    (the genre integer is the only field not represented),
    there's little need to reference its items by index directly.
@@ -317,7 +317,7 @@ ID3v2.2
    This is an ID3v2.2_ tag, one of the three ID3v2 variants used by MP3 files.
    During initialization, it takes a list of :class:`ID3v22Frame`-compatible
    objects.
-   It can then be manipulated list a regular Python dict with keys
+   It can then be manipulated like a regular Python dict with keys
    as 3 character frame identifiers and values as lists of :class:`ID3v22Frame`
    objects - since each frame identifier may occur multiple times.
 
@@ -380,10 +380,10 @@ ID3v2.2
    and ``encoding`` is one of the following integers representing a
    text encoding:
 
-   = =======
-   0 Latin-1
-   1 UCS-2
-   = =======
+   = ========
+   0 Latin-1_
+   1 UCS-2_
+   = ========
 
 .. method:: ID3v22TextFrame.__int__()
 
@@ -415,10 +415,10 @@ ID3v2.2
    This frame is for holding a potentially large block of comment data.
    ``encoding`` is the same as in text frames:
 
-   = =======
-   0 Latin-1
-   1 UCS-2
-   = =======
+   = ========
+   0 Latin-1_
+   1 UCS-2_
+   = ========
 
    ``language`` is a 3 character string, such as ``"eng"`` for english.
    ``short_description`` and ``content`` are unicode strings.
@@ -487,7 +487,7 @@ ID3v2.3
    This is an ID3v2.3_ tag, one of the three ID3v2 variants used by MP3 files.
    During initialization, it takes a list of :class:`ID3v23Frame`-compatible
    objects.
-   It can then be manipulated list a regular Python dict with keys
+   It can then be manipulated like a regular Python dict with keys
    as 4 character frame identifiers and values as lists of :class:`ID3v23Frame`
    objects - since each frame identifier may occur multiple times.
 
@@ -551,10 +551,10 @@ ID3v2.3
    and ``encoding`` is one of the following integers representing a
    text encoding:
 
-   = =======
-   0 Latin-1
-   1 UCS-2
-   = =======
+   = ========
+   0 Latin-1_
+   1 UCS-2_
+   = ========
 
 .. method:: ID3v23TextFrame.__int__()
 
@@ -586,10 +586,10 @@ ID3v2.3
    This frame is for holding a potentially large block of comment data.
    ``encoding`` is the same as in text frames:
 
-   = =======
-   0 Latin-1
-   1 UCS-2
-   = =======
+   = ========
+   0 Latin-1_
+   1 UCS-2_
+   = ========
 
    ``language`` is a 3 character string, such as ``"eng"`` for english.
    ``short_description`` and ``content`` are unicode strings.
@@ -647,7 +647,7 @@ ID3v2.4
    This is an ID3v2.4_ tag, one of the three ID3v2 variants used by MP3 files.
    During initialization, it takes a list of :class:`ID3v24Frame`-compatible
    objects.
-   It can then be manipulated list a regular Python dict with keys
+   It can then be manipulated like a regular Python dict with keys
    as 4 character frame identifiers and values as lists of :class:`ID3v24Frame`
    objects - since each frame identifier may occur multiple times.
 
@@ -711,12 +711,12 @@ ID3v2.4
    and ``encoding`` is one of the following integers representing a
    text encoding:
 
-   = ========
-   0 Latin-1
-   1 UTF-16
-   2 UTF-16BE
-   3 UTF-8
-   = ========
+   = =========
+   0 Latin-1_
+   1 UTF-16_
+   2 UTF-16BE_
+   3 UTF-8_
+   = =========
 
 .. method:: ID3v24TextFrame.__int__()
 
@@ -748,12 +748,12 @@ ID3v2.4
    This frame is for holding a potentially large block of comment data.
    ``encoding`` is the same as in text frames:
 
-   = ========
-   0 Latin-1
-   1 UTF-16
-   2 UTF-16BE
-   3 UTF-8
-   = ========
+   = =========
+   0 Latin-1_
+   1 UTF-16_
+   2 UTF-16BE_
+   3 UTF-8_
+   = =========
 
    ``language`` is a 3 character string, such as ``"eng"`` for english.
    ``short_description`` and ``content`` are unicode strings.
@@ -1019,4 +1019,14 @@ Vorbis Comment
 .. _ID3v2.3: http://www.id3.org/d3v2.3.0
 
 .. _ID3v2.4: http://www.id3.org/id3v2.4.0-structure
+
+.. _Latin-1: http://en.wikipedia.org/wiki/Latin-1
+
+.. _UCS-2: http://en.wikipedia.org/wiki/UTF-16
+
+.. _UTF-16: http://en.wikipedia.org/wiki/UTF-16
+
+.. _UTF-16BE: http://en.wikipedia.org/wiki/UTF-16
+
+.. _UTF-8: http://en.wikipedia.org/wiki/UTF-8
 
