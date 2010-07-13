@@ -60,8 +60,7 @@ class WaveReader(PCMReader):
         except Con.ConstError:
             raise WavException(_(u'Invalid WAVE file'))
         except Con.core.FieldError:
-            self.wave = cStringIO.StringIO("")
-            return
+            raise WavException(_(u'Invalid WAVE file'))
 
         #this won't be pretty for a WAVE file missing a 'data' chunk
         #but those are seriously invalid anyway

@@ -23,7 +23,8 @@ from audiotools import (AudioFile, InvalidFile, Con, subprocess, BIN,
                         transfer_data, transfer_framelist_data,
                         Image, MetaData, sheet_to_unicode, EncodingError,
                         DecodingError, PCMReaderError, PCMReader,
-                        ChannelMask, UnsupportedChannelMask)
+                        ChannelMask, UnsupportedChannelMask,
+                        WavException)
 from __wav__ import WaveAudio, WaveReader
 from __ape__ import ApeTaggedAudio, ApeTag, __number_pair__
 import gettext
@@ -636,12 +637,20 @@ class WavPackAudio(ApeTaggedAudio, AudioFile):
                                        stdout=subprocess.PIPE,
                                        stderr=file(os.devnull, 'ab'))
 
-                return WaveReader(sub.stdout,
-                                  sample_rate=self.sample_rate(),
-                                  channels=self.channels(),
-                                  channel_mask=int(self.channel_mask()),
-                                  bits_per_sample=self.bits_per_sample(),
-                                  process=sub)
+                try:
+                    return WaveReader(sub.stdout,
+                                      sample_rate=self.sample_rate(),
+                                      channels=self.channels(),
+                                      channel_mask=int(self.channel_mask()),
+                                      bits_per_sample=self.bits_per_sample(),
+                                      process=sub)
+                except WavException:
+                    return PCMReaderError(
+                        file=None,
+                        sample_rate=self.sample_rate(),
+                        channels=self.channels(),
+                        channel_mask=int(self.channel_mask()),
+                        bits_per_sample=self.bits_per_sample())
         else:
             #create a temporary symlink to the current file
             #rather than rewrite the whole thing
