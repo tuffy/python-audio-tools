@@ -1146,7 +1146,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** TODO trackrename
 *** TODO tracksplit
 *** TODO tracktag
-** TODO Document ValueError/IOError behavior
+** DONE Document ValueError/IOError behavior
    Both in docstrings and in the rst documentation.
 * TODO Ensure non-image cuesheets are handled properly
   There are 4 different types of cuesheets,

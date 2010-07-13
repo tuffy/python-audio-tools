@@ -923,6 +923,9 @@ class PCMReader:
         It may return more.
         However, it must always return a non-empty FrameList until the
         end of the PCM stream is reached.
+
+        May raise IOError if unable to read the input file,
+        or ValueError if the input file has some sort of error.
         """
 
         bytes -= (bytes % (self.channels * self.bits_per_sample / 8))
@@ -936,7 +939,9 @@ class PCMReader:
     def close(self):
         """Closes the stream for reading.
 
-        Any subprocess is waited for also so for proper cleanup."""
+        Any subprocess is waited for also so for proper cleanup.
+        May return DecodingError if a helper subprocess exits
+        with an error status."""
 
         self.file.close()
 
@@ -946,7 +951,12 @@ class PCMReader:
 
 
 class PCMReaderError(PCMReader):
-    """A dummy PCMReader which automatically raises DecodingError."""
+    """A dummy PCMReader which automatically raises DecodingError.
+
+    This is to be returned by an AudioFile's to_pcm() method
+    if some error occurs when initializing a decoder.
+    An encoder's from_pcm() method will then catch the DecodingError
+    at close()-time and propogate an EncodingError."""
 
     def __init__(self, error_message,
                  sample_rate, channels, channel_mask, bits_per_sample):
@@ -2465,7 +2475,10 @@ class AudioFile:
         raise NotImplementedError()
 
     def to_pcm(self):
-        """Returns a PCMReader object containing the track's PCM data."""
+        """Returns a PCMReader object containing the track's PCM data.
+
+        If an error occurs initializing a decoder, this should
+        return a PCMReaderError with an appropriate error message."""
 
         #if a subclass implements to_wave(),
         #this doesn't need to be implemented
@@ -2502,6 +2515,13 @@ class AudioFile:
         >>> flac = FlacAudio.from_pcm("file.flac",
         ...                           WaveAudio("file.wav").to_pcm(),
         ...                           "5")
+
+        May raise EncodingError if some problem occurs when
+        encoding the input file.  This includes an error
+        in the input stream, a problem writing the output file,
+        or even an EncodingError subclass such as
+        "UnsupportedBitsPerSample" if the input stream
+        is formatted in a way this class is unable to support.
         """
 
         #if a subclass implements from_wave(),

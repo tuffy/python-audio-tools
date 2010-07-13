@@ -262,6 +262,8 @@ AudioFile Objects
 
    Returns this audio file's PCM data as a :class:`PCMReader`-compatible
    object.
+   May return a :class:`PCMReaderError` if an error occurs
+   initializing the decoder.
 
 .. classmethod:: AudioFile.from_pcm(filename, pcmreader[, compression=None])
 
@@ -717,12 +719,31 @@ PCMReader Objects
    It may even return FrameLists larger than requested.
    However, it must always return a non-empty FrameList until the
    end of the PCM stream is reached.
+   May raise :exc:`IOError` if there is a problem reading the
+   source file, or :exc:`ValueError` if the source file has
+   some sort of error.
 
 .. method:: PCMReader.close()
 
    Closes the audio stream.
    If any subprocesses were used for audio decoding, they will also be
    closed and waited for their process to finish.
+   May raise a :exc:`DecodingError`, typically indicating that
+   a helper subprocess used for decoding has exited with an error.
+
+PCMReaderError Objects
+^^^^^^^^^^^^^^^^^^^^^^
+
+.. class:: PCMReaderError(error_message, sample_rate, channels, channel_mask, bits_per_sample)
+
+   This is a subclass of :class:`PCMReader` which always returns empty
+   :class:`pcm.FrameList` objects and always raises a :class:`DecodingError`
+   with the given ``error_message`` when closed.
+   The purpose of this is to postpone error generation so that
+   all encoding errors, even those caused by unsuccessful decoding,
+   are restricted to the :meth:`from_pcm` classmethod
+   which can then propogate the :class:`DecodingError` error message
+   to the user.
 
 PCMConverter Objects
 ^^^^^^^^^^^^^^^^^^^^
