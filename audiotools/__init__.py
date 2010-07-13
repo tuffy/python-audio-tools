@@ -1024,15 +1024,11 @@ def transfer_framelist_data(pcmreader, to_function,
     from pcmreader.
     """
 
-    try:
+    f = pcmreader.read(BUFFER_SIZE)
+    while (len(f) > 0):
+        to_function(f.to_bytes(big_endian, signed))
         f = pcmreader.read(BUFFER_SIZE)
-        while (len(f) > 0):
-            to_function(f.to_bytes(big_endian, signed))
-            f = pcmreader.read(BUFFER_SIZE)
-    except IOError:
-        #this usually means a broken pipe, so we can only hope
-        #the data reader is closing down correctly
-        pass
+
 
 
 def threaded_transfer_framelist_data(pcmreader, to_function,

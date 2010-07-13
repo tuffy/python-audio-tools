@@ -546,7 +546,10 @@ class WavPackAudio(ApeTaggedAudio, AudioFile):
                     stdin=subprocess.PIPE,
                     preexec_fn=ignore_sigint)
 
-                transfer_framelist_data(pcmreader, sub.stdin.write)
+                try:
+                    transfer_framelist_data(pcmreader, sub.stdin.write)
+                except (IOError, ValueError), err:
+                    raise EncodingError(str(err))
                 devnull.close()
                 sub.stdin.close()
 

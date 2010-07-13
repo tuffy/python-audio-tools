@@ -273,6 +273,40 @@ class VARIABLE_PCM_Reader(RANDOM_PCM_Reader):
                     self.total_frames * self.channels * (self.bits_per_sample / 8))))
 
 
+class ERROR_PCM_Reader(audiotools.PCMReader):
+    def __init__(self, error,
+                 sample_rate=44100, channels=2, bits_per_sample=16,
+                 channel_mask=None, failure_chance=.2):
+        if (channel_mask is None):
+            channel_mask = audiotools.ChannelMask.from_channels(channels)
+        audiotools.PCMReader.__init__(
+            self,
+            file=None,
+            sample_rate=sample_rate,
+            channels=channels,
+            bits_per_sample=bits_per_sample,
+            channel_mask=channel_mask)
+        self.error = error
+
+        #this is so we can generate some "live" PCM data
+        #before erroring out due to our error
+        self.failure_chance = failure_chance
+
+        self.frame = audiotools.pcm.from_list([0] * self.channels,
+                                              self.channels,
+                                              self.bits_per_sample,
+                                              True)
+
+    def read(self, bytes):
+        if (random.random() <= self.failure_chance):
+            raise self.error
+        else:
+            return audiotools.pcm.from_frames(
+                [self.frame for i in xrange(self.frame.frame_count(bytes))])
+
+    def close(self):
+        pass
+
 class PCM_Count:
     def __init__(self):
         self.count = 0
@@ -2965,6 +2999,69 @@ uhhDdCiCwqg2Gw3lphgaGhoamR+mptKYNT/F3JFOFCQvKfgAwA==""".decode('base64').decode(
 
         finally:
             f.close()
+
+    @TEST_INVALIDFILE
+    def test_invalid_from_pcm(self):
+        #test our ERROR_PCM_Reader works
+        self.assertRaises(ValueError,
+                          ERROR_PCM_Reader(ValueError("error"),
+                                           failure_chance=1.0).read,
+                          1)
+        self.assertRaises(IOError,
+                          ERROR_PCM_Reader(IOError("error"),
+                                           failure_chance=1.0).read,
+                          1)
+
+        temp = tempfile.NamedTemporaryFile(
+            suffix="." + self.audio_class.SUFFIX)
+
+        try:
+            #a decoder that raises IOError on to_pcm()
+            #should trigger an EncodingError
+            self.assertRaises(audiotools.EncodingError,
+                              self.audio_class.from_pcm,
+                              temp.name,
+                              ERROR_PCM_Reader(IOError("I/O Error")))
+        finally:
+            temp.close()
+
+
+        temp = tempfile.NamedTemporaryFile(
+            suffix="." + self.audio_class.SUFFIX)
+
+        try:
+            #a decoder that raises ValueError on to_pcm()
+            #should trigger an EncodingError
+            self.assertRaises(audiotools.EncodingError,
+                              self.audio_class.from_pcm,
+                              temp.name,
+                              ERROR_PCM_Reader(ValueError("Value Error")))
+        finally:
+            temp.close()
+
+    @TEST_INVALIDFILE
+    def test_invalid_from_wave(self):
+        #this should trigger an IOError when read
+        temp_wav = tempfile.NamedTemporaryFile(suffix=".wav")
+        wav = open("wav-2ch.wav", "rb").read()
+        temp_wav.write(wav[0:-4])
+        temp_wav.flush()
+
+        temp = tempfile.NamedTemporaryFile(
+            suffix="." + self.audio_class.SUFFIX)
+
+        try:
+            self.assertRaises(audiotools.EncodingError,
+                              self.audio_class.from_wave,
+                              temp.name,
+                              temp_wav.name)
+        finally:
+            try:
+                temp.close()
+            except OSError:
+                #wavpack like to delete an invalid wave by default
+                pass
+            temp_wav.close()
 
 
 class TestForeignWaveChunks:

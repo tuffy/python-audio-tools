@@ -536,11 +536,14 @@ class M4AAudio_faac(AudioFile):
         #Note: faac handles SIGINT on its own,
         #so trying to ignore it doesn't work like on most other encoders.
 
-        transfer_framelist_data(pcmreader, sub.stdin.write)
+        try:
+            transfer_framelist_data(pcmreader, sub.stdin.write)
+        except (ValueError, IOError), err:
+            raise EncodingError(str(err))
         try:
             pcmreader.close()
-        except DecodingError, msg:
-            raise EncodingError(msg.error_message)
+        except DecodingError, err:
+            raise EncodingError(err.error_message)
         sub.stdin.close()
 
         if (sub.wait() == 0):
@@ -1335,16 +1338,19 @@ class ALACAudio(M4AAudio):
         #which returns a tuple of output values:
         #(framelist, - a list of (frame_samples,frame_size,frame_offset) tuples
         # various fields for the "alac" atom)
-        (frame_sample_sizes,
-         frame_byte_sizes,
-         frame_file_offsets,
-         mdat_size) = encoders.encode_alac(
-            file=mdat_file,
-            pcmreader=BufferedPCMReader(pcmreader),
-            block_size=block_size,
-            initial_history=cls.INITIAL_HISTORY,
-            history_multiplier=cls.HISTORY_MULTIPLIER,
-            maximum_k=cls.MAXIMUM_K)
+        try:
+            (frame_sample_sizes,
+             frame_byte_sizes,
+             frame_file_offsets,
+             mdat_size) = encoders.encode_alac(
+                file=mdat_file,
+                pcmreader=BufferedPCMReader(pcmreader),
+                block_size=block_size,
+                initial_history=cls.INITIAL_HISTORY,
+                history_multiplier=cls.HISTORY_MULTIPLIER,
+                maximum_k=cls.MAXIMUM_K)
+        except (IOError, ValueError), err:
+            raise EncodingError(str(err))
 
         #use the fields from encode_alac() to populate our ALAC atoms
         create_date = long(time.time()) + 2082844800
@@ -1394,16 +1400,17 @@ class ALACAudio(M4AAudio):
         #build our complete output file
         try:
             f = file(filename, 'wb')
-        except IOError, msg:
+
+            mdat_file.seek(0, 0)
+            f.write(ftyp)
+            f.write(moov)
+            f.write(free)
+            transfer_data(mdat_file.read, f.write)
+            f.close()
             mdat_file.close()
-            raise EncodingError(str(msg))
-        mdat_file.seek(0, 0)
-        f.write(ftyp)
-        f.write(moov)
-        f.write(free)
-        transfer_data(mdat_file.read, f.write)
-        f.close()
-        mdat_file.close()
+        except (IOError), err:
+            mdat_file.close()
+            raise EncodingError(str(err))
 
         return cls(filename)
 
@@ -1825,11 +1832,13 @@ class AACAudio(AudioFile):
         #Note: faac handles SIGINT on its own,
         #so trying to ignore it doesn't work like on most other encoders.
 
-        transfer_framelist_data(pcmreader, sub.stdin.write)
         try:
+            transfer_framelist_data(pcmreader, sub.stdin.write)
             pcmreader.close()
-        except DecodingError, msg:
-            raise EncodingError(msg.error_message)
+        except (IOError, ValueError), err:
+            raise EncodingError(str(err))
+        except DecodingError, err:
+            raise EncodingError(err.error_message)
         sub.stdin.close()
 
         if (sub.wait() == 0):

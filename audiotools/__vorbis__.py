@@ -529,7 +529,10 @@ class VorbisAudio(AudioFile):
                                preexec_fn=ignore_sigint)
 
         if ((pcmreader.channels <= 2) or (int(pcmreader.channel_mask) == 0)):
-            transfer_framelist_data(pcmreader, sub.stdin.write)
+            try:
+                transfer_framelist_data(pcmreader, sub.stdin.write)
+            except (IOError, ValueError), err:
+                raise EncodingError(str(err))
         elif (pcmreader.channels <= 8):
             if (int(pcmreader.channel_mask) in
                 (0x7,      # FR, FC, FL
@@ -544,11 +547,14 @@ class VorbisAudio(AudioFile):
             else:
                 raise UnsupportedChannelMask()
 
-            transfer_framelist_data(ReorderedPCMReader(
+            try:
+                transfer_framelist_data(ReorderedPCMReader(
                         pcmreader,
                         [standard_channel_mask.channels().index(channel)
                          for channel in vorbis_channel_mask.channels()]),
                                         sub.stdin.write)
+            except (IOError, ValueError), err:
+                raise EncodingError(str(err))
         else:
             raise UnsupportedChannelMask()
 

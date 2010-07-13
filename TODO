@@ -1041,12 +1041,96 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    - [X] check for premature EOF
 ** TODO WavPackAudio
 ** TODO Unit test all checks with example files
-** TODO Check for truncation during from_pcm()
-** TODO Check for truncation during to_wave()
-** TODO Check for truncation during from_wave()
+** DONE Check for IOError/ValueError during from_pcm()
+   - [X] AiffAudio
+   - [X] AuAudio
+   - [X] AACAudio
+   - [X] ALACAudio
+   - [X] FlacAudio
+   - [X] M4AAudio
+   - [X] MP2Audio
+   - [X] MP3Audio
+   - [X] OggFlacAudio
+   - [X] ShortenAudio
+   - [X] SpeexAudio
+   - [X] VorbisAudio
+   - [X] WaveAudio
+   - [X] WavPackAudio
+** TODO Check for IOError/ValueError during to_wave()
+   - [ ] AiffAudio
+   - [ ] AuAudio
+   - [ ] AACAudio
+   - [ ] ALACAudio
+   - [ ] FlacAudio
+   - [ ] M4AAudio
+   - [ ] MP2Audio
+   - [ ] MP3Audio
+   - [ ] OggFlacAudio
+   - [ ] ShortenAudio
+   - [ ] SpeexAudio
+   - [ ] VorbisAudio
+   - [ ] WaveAudio
+   - [ ] WavPackAudio
+** DONE Check for IOError/ValueError during from_wave()
+   - [X] AiffAudio
+   - [X] AuAudio
+   - [X] AACAudio
+   - [X] ALACAudio
+   - [X] FlacAudio
+   - [X] M4AAudio
+   - [X] MP2Audio
+   - [X] MP3Audio
+   - [X] OggFlacAudio
+   - [X] ShortenAudio
+   - [X] SpeexAudio
+   - [X] VorbisAudio
+   - [X] WaveAudio
+   - [X] WavPackAudio
 ** TODO Ensure a failed from_pcm() deletes partial file
+   - [ ] AiffAudio
+   - [ ] AuAudio
+   - [ ] AACAudio
+   - [ ] ALACAudio
+   - [ ] FlacAudio
+   - [ ] M4AAudio
+   - [ ] MP2Audio
+   - [ ] MP3Audio
+   - [ ] OggFlacAudio
+   - [ ] ShortenAudio
+   - [ ] SpeexAudio
+   - [ ] VorbisAudio
+   - [ ] WaveAudio
+   - [ ] WavPackAudio
 ** TODO Ensure a failed to_wave() deletes partial file
+   - [ ] AiffAudio
+   - [ ] AuAudio
+   - [ ] AACAudio
+   - [ ] ALACAudio
+   - [ ] FlacAudio
+   - [ ] M4AAudio
+   - [ ] MP2Audio
+   - [ ] MP3Audio
+   - [ ] OggFlacAudio
+   - [ ] ShortenAudio
+   - [ ] SpeexAudio
+   - [ ] VorbisAudio
+   - [ ] WaveAudio
+   - [ ] WavPackAudio
 ** TODO Ensure a failed from_wave() deletes partial file
+   - [ ] AiffAudio
+   - [ ] AuAudio
+   - [ ] AACAudio
+   - [ ] ALACAudio
+   - [ ] FlacAudio
+   - [ ] M4AAudio
+   - [ ] MP2Audio
+   - [ ] MP3Audio
+   - [ ] OggFlacAudio
+   - [ ] ShortenAudio
+   - [ ] SpeexAudio
+   - [ ] VorbisAudio
+   - [ ] WaveAudio
+   - [ ] WavPackAudio
 ** TODO Check for invalid files at the tool level
 *** TODO coverdump
 *** TODO coverview

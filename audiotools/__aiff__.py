@@ -492,12 +492,18 @@ class AiffAudio(AudioFile):
             f.write(cls.SSND_ALIGN.build(ssnd_alignment))
 
             #write big-endian samples to SSND chunk from pcmreader
-            framelist = pcmreader.read(BUFFER_SIZE)
+            try:
+                framelist = pcmreader.read(BUFFER_SIZE)
+            except (ValueError, IOError), err:
+                raise EncodingError(str(err))
             total_pcm_frames = 0
             while (len(framelist) > 0):
                 f.write(framelist.to_bytes(True, True))
                 total_pcm_frames += framelist.frames
-                framelist = pcmreader.read(BUFFER_SIZE)
+                try:
+                    framelist = pcmreader.read(BUFFER_SIZE)
+                except (ValueError, IOError), err:
+                    raise EncodingError(str(err))
             total_size = f.tell()
 
             #return to the start of the file

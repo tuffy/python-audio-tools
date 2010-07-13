@@ -1111,8 +1111,8 @@ class FlacAudio(AudioFile):
                 flac.set_metadata(metadata)
 
             return flac
-        except IOError, msg:
-            raise EncodingError(str(msg))
+        except (IOError, ValueError), err:
+            raise EncodingError(str(err))
 
     def has_foreign_riff_chunks(self):
         """Returns True if the audio file contains non-audio RIFF chunks.
@@ -1701,7 +1701,10 @@ class OggFlacAudio(FlacAudio):
                                stderr=devnull,
                                preexec_fn=ignore_sigint)
 
-        transfer_framelist_data(pcmreader, sub.stdin.write)
+        try:
+            transfer_framelist_data(pcmreader, sub.stdin.write)
+        except (ValueError, IOError), err:
+            raise EncodingError(str(err))
         try:
             pcmreader.close()
         except DecodingError, err:

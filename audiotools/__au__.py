@@ -169,12 +169,15 @@ class AuAudio(AudioFile):
 
             #send our big-endian PCM data
             #d will be a list of ints, so we can't use transfer_data
-            framelist = pcmreader.read(BUFFER_SIZE)
-            while (len(framelist) > 0):
-                bytes = framelist.to_bytes(True, True)
-                f.write(bytes)
-                header.data_size += len(bytes)
+            try:
                 framelist = pcmreader.read(BUFFER_SIZE)
+                while (len(framelist) > 0):
+                    bytes = framelist.to_bytes(True, True)
+                    f.write(bytes)
+                    header.data_size += len(bytes)
+                    framelist = pcmreader.read(BUFFER_SIZE)
+            except (IOError, ValueError), err:
+                raise EncodingError(str(err))
 
             #send out a complete header
             f.seek(0, 0)

@@ -458,16 +458,19 @@ class WaveAudio(AudioFile):
             f.write(WaveAudio.CHUNK_HEADER.build(data_header))
 
             #dump pcmreader's FrameLists into the file as little-endian
-            framelist = pcmreader.read(BUFFER_SIZE)
-            while (len(framelist) > 0):
-                if (framelist.bits_per_sample > 8):
-                    bytes = framelist.to_bytes(False, True)
-                else:
-                    bytes = framelist.to_bytes(False, False)
-
-                f.write(bytes)
-                data_header.chunk_length += len(bytes)
+            try:
                 framelist = pcmreader.read(BUFFER_SIZE)
+                while (len(framelist) > 0):
+                    if (framelist.bits_per_sample > 8):
+                        bytes = framelist.to_bytes(False, True)
+                    else:
+                        bytes = framelist.to_bytes(False, False)
+
+                    f.write(bytes)
+                    data_header.chunk_length += len(bytes)
+                    framelist = pcmreader.read(BUFFER_SIZE)
+            except (IOError, ValueError), err:
+                raise EncodingError(str(err))
 
             #close up the PCM reader and flush our output
             try:
@@ -528,7 +531,10 @@ class WaveAudio(AudioFile):
             raise EncodingError(str(err))
         try:
             transfer_data(input.read, output.write)
-            return WaveAudio(filename)
+            try:
+                return WaveAudio(filename)
+            except InvalidFile:
+                raise EncodingError(u"invalid RIFF WAVE source file")
         finally:
             input.close()
             output.close()
