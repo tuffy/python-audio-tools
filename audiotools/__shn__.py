@@ -23,6 +23,7 @@ from audiotools import (AudioFile, ChannelMask, PCMReader,
                         UnsupportedBitsPerSample, InvalidFile)
 
 import audiotools.decoders
+import os.path
 
 
 class InvalidShorten(InvalidFile):
@@ -215,11 +216,14 @@ class ShortenAudio(AudioFile):
         import tempfile
 
         f = tempfile.NamedTemporaryFile(suffix=".wav")
-        w = WaveAudio.from_pcm(f.name, pcmreader)
         try:
+            w = WaveAudio.from_pcm(f.name, pcmreader)
             return cls.from_wave(filename, f.name, compression, block_size)
         finally:
-            f.close()
+            if (os.path.isfile(f.name)):
+                f.close()
+            else:
+                f.close_called = True
 
     def to_wave(self, wave_filename):
         """Writes the contents of this file to the given .wav filename string.
@@ -276,7 +280,11 @@ class ShortenAudio(AudioFile):
 
             return cls(filename)
         except IOError, err:
+            cls.__unlink__(filename)
             raise EncodingError(str(err))
+        except Exception, err:
+            cls.__unlink__(filename)
+            raise err
 
     @classmethod
     def supports_foreign_riff_chunks(cls):

@@ -532,7 +532,16 @@ class VorbisAudio(AudioFile):
             try:
                 transfer_framelist_data(pcmreader, sub.stdin.write)
             except (IOError, ValueError), err:
+                sub.stdin.close()
+                sub.wait()
+                cls.__unlink__(filename)
                 raise EncodingError(str(err))
+            except Exception, err:
+                sub.stdin.close()
+                sub.wait()
+                cls.__unlink__(filename)
+                raise err
+
         elif (pcmreader.channels <= 8):
             if (int(pcmreader.channel_mask) in
                 (0x7,      # FR, FC, FL
@@ -554,7 +563,16 @@ class VorbisAudio(AudioFile):
                          for channel in vorbis_channel_mask.channels()]),
                                         sub.stdin.write)
             except (IOError, ValueError), err:
+                sub.stdin.close()
+                sub.wait()
+                cls.__unlink__(filename)
                 raise EncodingError(str(err))
+            except Exception, err:
+                sub.stdin.close()
+                sub.wait()
+                cls.__unlink__(filename)
+                raise err
+
         else:
             raise UnsupportedChannelMask()
 
@@ -562,8 +580,8 @@ class VorbisAudio(AudioFile):
             pcmreader.close()
         except DecodingError, err:
             raise EncodingError(err.error_message)
-        sub.stdin.close()
 
+        sub.stdin.close()
         devnull.close()
 
         if (sub.wait() == 0):

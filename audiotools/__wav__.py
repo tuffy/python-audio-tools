@@ -406,6 +406,7 @@ class WaveAudio(AudioFile):
             f = file(filename, "wb")
         except IOError, err:
             raise EncodingError(str(err))
+
         try:
             header = Con.Container()
             header.wave_id = 'RIFF'
@@ -470,7 +471,11 @@ class WaveAudio(AudioFile):
                     data_header.chunk_length += len(bytes)
                     framelist = pcmreader.read(BUFFER_SIZE)
             except (IOError, ValueError), err:
+                cls.__unlink__(filename)
                 raise EncodingError(str(err))
+            except Exception, err:
+                cls.__unlink__(filename)
+                raise err
 
             #close up the PCM reader and flush our output
             try:
@@ -525,8 +530,8 @@ class WaveAudio(AudioFile):
         and returns a new WaveAudio object."""
 
         try:
-            output = file(filename, 'wb')
             input = file(wave_filename, 'rb')
+            output = file(filename, 'wb')
         except IOError, err:
             raise EncodingError(str(err))
         try:
@@ -534,6 +539,7 @@ class WaveAudio(AudioFile):
             try:
                 return WaveAudio(filename)
             except InvalidFile:
+                cls.__unlink__(filename)
                 raise EncodingError(u"invalid RIFF WAVE source file")
         finally:
             input.close()

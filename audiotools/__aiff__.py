@@ -495,7 +495,11 @@ class AiffAudio(AudioFile):
             try:
                 framelist = pcmreader.read(BUFFER_SIZE)
             except (ValueError, IOError), err:
+                cls.__unlink__(filename)
                 raise EncodingError(str(err))
+            except Exception, err:
+                cls.__unlink__(filename)
+                raise err
             total_pcm_frames = 0
             while (len(framelist) > 0):
                 f.write(framelist.to_bytes(True, True))
@@ -503,7 +507,11 @@ class AiffAudio(AudioFile):
                 try:
                     framelist = pcmreader.read(BUFFER_SIZE)
                 except (ValueError, IOError), err:
+                    cls.__unlink__(filename)
                     raise EncodingError(str(err))
+                except Exception, err:
+                    cls.__unlink__(filename)
+                    raise err
             total_size = f.tell()
 
             #return to the start of the file

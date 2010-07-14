@@ -539,7 +539,16 @@ class M4AAudio_faac(AudioFile):
         try:
             transfer_framelist_data(pcmreader, sub.stdin.write)
         except (ValueError, IOError), err:
+            sub.stdin.close()
+            sub.wait()
+            cls.__unlink__(filename)
             raise EncodingError(str(err))
+        except Exception, err:
+            sub.stdin.close()
+            sub.wait()
+            cls.__unlink__(filename)
+            raise err
+
         try:
             pcmreader.close()
         except DecodingError, err:
@@ -1835,9 +1844,20 @@ class AACAudio(AudioFile):
 
         try:
             transfer_framelist_data(pcmreader, sub.stdin.write)
-            pcmreader.close()
         except (IOError, ValueError), err:
+            sub.stdin.close()
+            sub.wait()
+            cls.__unlink__(filename)
             raise EncodingError(str(err))
+        except Exception, err:
+            sub.stdin.close()
+            sub.wait()
+            cls.__unlink__(filename)
+            raise err
+
+
+        try:
+            pcmreader.close()
         except DecodingError, err:
             raise EncodingError(err.error_message)
         sub.stdin.close()

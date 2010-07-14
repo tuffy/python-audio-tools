@@ -177,7 +177,11 @@ class AuAudio(AudioFile):
                     header.data_size += len(bytes)
                     framelist = pcmreader.read(BUFFER_SIZE)
             except (IOError, ValueError), err:
+                cls.__unlink__(filename)
                 raise EncodingError(str(err))
+            except Exception, err:
+                cls.__unlink__(filename)
+                raise err
 
             #send out a complete header
             f.seek(0, 0)

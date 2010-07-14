@@ -2533,11 +2533,14 @@ class AudioFile:
         import tempfile
 
         f = tempfile.NamedTemporaryFile(suffix=".wav")
-        w = WaveAudio.from_pcm(f.name, pcmreader)
         try:
+            w = WaveAudio.from_pcm(f.name, pcmreader)
             return cls.from_wave(filename, f.name, compression)
         finally:
-            f.close()
+            if (os.path.isfile(f.name)):
+                f.close()
+            else:
+                f.close_called = True
 
     def to_wave(self, wave_filename):
         """Writes the contents of this file to the given .wav filename string.
@@ -2565,6 +2568,13 @@ class AudioFile:
 
         return cls.from_pcm(
             filename, WaveAudio(wave_filename).to_pcm(), compression)
+
+    @classmethod
+    def __unlink__(cls, filename):
+        try:
+            os.unlink(filename)
+        except OSError:
+            pass
 
     @classmethod
     def supports_foreign_riff_chunks(cls):

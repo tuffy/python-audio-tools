@@ -276,7 +276,7 @@ class VARIABLE_PCM_Reader(RANDOM_PCM_Reader):
 class ERROR_PCM_Reader(audiotools.PCMReader):
     def __init__(self, error,
                  sample_rate=44100, channels=2, bits_per_sample=16,
-                 channel_mask=None, failure_chance=.2):
+                 channel_mask=None, failure_chance=.2, minimum_successes=0):
         if (channel_mask is None):
             channel_mask = audiotools.ChannelMask.from_channels(channels)
         audiotools.PCMReader.__init__(
@@ -292,17 +292,24 @@ class ERROR_PCM_Reader(audiotools.PCMReader):
         #before erroring out due to our error
         self.failure_chance = failure_chance
 
+        self.minimum_successes = minimum_successes
+
         self.frame = audiotools.pcm.from_list([0] * self.channels,
                                               self.channels,
                                               self.bits_per_sample,
                                               True)
 
     def read(self, bytes):
-        if (random.random() <= self.failure_chance):
-            raise self.error
-        else:
+        if (self.minimum_successes > 0):
+            self.minimum_successes -= 1
             return audiotools.pcm.from_frames(
                 [self.frame for i in xrange(self.frame.frame_count(bytes))])
+        else:
+            if (random.random() <= self.failure_chance):
+                raise self.error
+            else:
+                return audiotools.pcm.from_frames(
+                    [self.frame for i in xrange(self.frame.frame_count(bytes))])
 
     def close(self):
         pass
@@ -3012,32 +3019,27 @@ uhhDdCiCwqg2Gw3lphgaGhoamR+mptKYNT/F3JFOFCQvKfgAwA==""".decode('base64').decode(
                                            failure_chance=1.0).read,
                           1)
 
-        temp = tempfile.NamedTemporaryFile(
-            suffix="." + self.audio_class.SUFFIX)
-
+        temp_dir = tempfile.mkdtemp()
         try:
+            temp = os.path.join(temp_dir, "invalid." + self.audio_class.SUFFIX)
+
             #a decoder that raises IOError on to_pcm()
             #should trigger an EncodingError
             self.assertRaises(audiotools.EncodingError,
                               self.audio_class.from_pcm,
-                              temp.name,
+                              temp,
                               ERROR_PCM_Reader(IOError("I/O Error")))
-        finally:
-            temp.close()
 
-
-        temp = tempfile.NamedTemporaryFile(
-            suffix="." + self.audio_class.SUFFIX)
-
-        try:
             #a decoder that raises ValueError on to_pcm()
             #should trigger an EncodingError
             self.assertRaises(audiotools.EncodingError,
                               self.audio_class.from_pcm,
-                              temp.name,
+                              temp,
                               ERROR_PCM_Reader(ValueError("Value Error")))
         finally:
-            temp.close()
+            for f in os.listdir(temp_dir):
+                os.unlink(os.path.join(temp_dir, f))
+            os.rmdir(temp_dir)
 
     @TEST_INVALIDFILE
     def test_invalid_from_wave(self):
@@ -3063,6 +3065,49 @@ uhhDdCiCwqg2Gw3lphgaGhoamR+mptKYNT/F3JFOFCQvKfgAwA==""".decode('base64').decode(
                 pass
             temp_wav.close()
 
+    @TEST_INVALIDFILE
+    def test_from_pcm_deletion(self):
+        temp_dir = tempfile.mkdtemp()
+        try:
+            bad_path = os.path.join(temp_dir, "bad." + self.audio_class.SUFFIX)
+            self.assertEqual(os.path.isfile(bad_path), False)
+            self.assertRaises(audiotools.EncodingError,
+                              self.audio_class.from_pcm,
+                              bad_path,
+                              ERROR_PCM_Reader(IOError("I/O Error"),
+                                               minimum_successes=1))
+            self.assertEqual(os.path.isfile(bad_path), False)
+            self.assertRaises(audiotools.EncodingError,
+                              self.audio_class.from_pcm,
+                              bad_path,
+                              ERROR_PCM_Reader(ValueError("I/O Error"),
+                                               minimum_successes=1))
+            self.assertEqual(os.path.isfile(bad_path), False)
+        finally:
+            for f in os.listdir(temp_dir):
+                os.unlink(os.path.join(temp_dir, f))
+            os.rmdir(temp_dir)
+
+    @TEST_INVALIDFILE
+    def test_from_wave_deletion(self):
+        temp_dir = tempfile.mkdtemp()
+        try:
+            bad_wave = os.path.join(temp_dir, "truncated.wav")
+            f = open(bad_wave, "wb")
+            f.write(open("wav-2ch.wav", "rb").read()[0:-4])
+            f.close()
+            bad_path = os.path.join(temp_dir, "bad." + self.audio_class.SUFFIX)
+            self.assertEqual(os.path.isfile(bad_path), False)
+            self.assertEqual(os.path.isfile(bad_wave), True)
+            self.assertRaises(audiotools.EncodingError,
+                              self.audio_class.from_wave,
+                              bad_path,
+                              bad_wave)
+            self.assertEqual(os.path.isfile(bad_path), False)
+        finally:
+            for f in os.listdir(temp_dir):
+                os.unlink(os.path.join(temp_dir, f))
+            os.rmdir(temp_dir)
 
 class TestForeignWaveChunks:
     @TEST_METADATA
@@ -3123,30 +3168,32 @@ class TestWaveAudio(TestForeignWaveChunks, TestAiffAudio):
             f.close()
 
             temp = tempfile.NamedTemporaryFile(suffix=".wav")
+            try:
+                #first, check that a truncated fmt chunk raises an exception
+                #at init-time
+                for i in xrange(0, fmt_size + 8):
+                    temp.seek(0, 0)
+                    temp.write(wav_data[0:i])
+                    temp.flush()
+                    self.assertEqual(os.path.getsize(temp.name), i)
 
-            #first, check that a truncated fmt chunk raises an exception
-            #at init-time
-            for i in xrange(0, fmt_size + 8):
-                temp.seek(0, 0)
-                temp.write(wav_data[0:i])
-                temp.flush()
-                self.assertEqual(os.path.getsize(temp.name), i)
+                    self.assertRaises(audiotools.InvalidFile,
+                                      audiotools.WaveAudio,
+                                      temp.name)
 
-                self.assertRaises(audiotools.InvalidFile,
-                                  audiotools.WaveAudio,
-                                  temp.name)
-
-            #then, check that a truncated data chunk raises an exception
-            #at read-time
-            for i in xrange(fmt_size + 8, len(wav_data)):
-                temp.seek(0, 0)
-                temp.write(wav_data[0:i])
-                temp.flush()
-                reader = audiotools.WaveAudio(temp.name).to_pcm()
-                self.assertNotEqual(reader, None)
-                self.assertRaises(IOError,
-                                  transfer_framelist_data,
-                                  reader, lambda x: x)
+                #then, check that a truncated data chunk raises an exception
+                #at read-time
+                for i in xrange(fmt_size + 8, len(wav_data)):
+                    temp.seek(0, 0)
+                    temp.write(wav_data[0:i])
+                    temp.flush()
+                    reader = audiotools.WaveAudio(temp.name).to_pcm()
+                    self.assertNotEqual(reader, None)
+                    self.assertRaises(IOError,
+                                      transfer_framelist_data,
+                                      reader, lambda x: x)
+            finally:
+                temp.close()
 
     @TEST_INVALIDFILE
     def test_nonascii_chunk_id(self):
@@ -3155,21 +3202,24 @@ class TestWaveAudio(TestForeignWaveChunks, TestAiffAudio):
         chunks = list(audiotools.open("wav-2ch.wav").chunks()) + \
             [("fooz", chr(0) * 10)]
         temp = tempfile.NamedTemporaryFile(suffix=".wav")
-        audiotools.WaveAudio.wave_from_chunks(temp.name,
-                                              iter(chunks))
-        f = open(temp.name, 'rb')
-        wav_data = list(f.read())
-        f.close()
-        wav_data[-15] = chr(0)
-        temp.seek(0, 0)
-        temp.write("".join(wav_data))
-        temp.flush()
-        self.assertRaises(audiotools.InvalidFile,
-                          audiotools.open,
-                          temp.name)
+        try:
+            audiotools.WaveAudio.wave_from_chunks(temp.name,
+                                                  iter(chunks))
+            f = open(temp.name, 'rb')
+            wav_data = list(f.read())
+            f.close()
+            wav_data[-15] = chr(0)
+            temp.seek(0, 0)
+            temp.write("".join(wav_data))
+            temp.flush()
+            self.assertRaises(audiotools.InvalidFile,
+                              audiotools.open,
+                              temp.name)
+        finally:
+            temp.close()
 
     @TEST_INVALIDFILE
-    def test_varify(self):
+    def test_verify(self):
         for wav_file in ["wav-8bit.wav",
                          "wav-1ch.wav",
                          "wav-2ch.wav",
@@ -3205,45 +3255,51 @@ class TestInvalidAIFF(unittest.TestCase):
 
             temp = tempfile.NamedTemporaryFile(suffix=".aiff")
 
-            #first, check that a truncated comm chunk raises an exception
-            #at init-time
-            for i in xrange(0, comm_size + 17):
-                temp.seek(0, 0)
-                temp.write(aiff_data[0:i])
-                temp.flush()
-                self.assertEqual(os.path.getsize(temp.name), i)
+            try:
+                #first, check that a truncated comm chunk raises an exception
+                #at init-time
+                for i in xrange(0, comm_size + 17):
+                    temp.seek(0, 0)
+                    temp.write(aiff_data[0:i])
+                    temp.flush()
+                    self.assertEqual(os.path.getsize(temp.name), i)
 
-                self.assertRaises(audiotools.InvalidFile,
-                                  audiotools.AiffAudio,
-                                  temp.name)
+                    self.assertRaises(audiotools.InvalidFile,
+                                      audiotools.AiffAudio,
+                                      temp.name)
 
-            #then, check that a truncated ssnd chunk raises an exception
-            #at read-time
-            for i in xrange(comm_size + 17, len(aiff_data)):
-                temp.seek(0, 0)
-                temp.write(aiff_data[0:i])
-                temp.flush()
-                reader = audiotools.AiffAudio(temp.name).to_pcm()
-                self.assertNotEqual(reader, None)
-                self.assertRaises(IOError,
-                                  transfer_framelist_data,
-                                  reader, lambda x: x)
+                #then, check that a truncated ssnd chunk raises an exception
+                #at read-time
+                for i in xrange(comm_size + 17, len(aiff_data)):
+                    temp.seek(0, 0)
+                    temp.write(aiff_data[0:i])
+                    temp.flush()
+                    reader = audiotools.AiffAudio(temp.name).to_pcm()
+                    self.assertNotEqual(reader, None)
+                    self.assertRaises(IOError,
+                                      transfer_framelist_data,
+                                      reader, lambda x: x)
+            finally:
+                temp.close()
 
     @TEST_INVALIDFILE
     def test_nonascii_chunk_id(self):
         #this usually indicates something's gone wrong in a aiff file
 
         temp = tempfile.NamedTemporaryFile(suffix=".aiff")
-        f = open("aiff-metadata.aiff")
-        aiff_data = list(f.read())
-        f.close()
-        aiff_data[0x89] = chr(0)
-        temp.seek(0, 0)
-        temp.write("".join(aiff_data))
-        temp.flush()
-        self.assertRaises(audiotools.InvalidFile,
-                          audiotools.open,
-                          temp.name)
+        try:
+            f = open("aiff-metadata.aiff")
+            aiff_data = list(f.read())
+            f.close()
+            aiff_data[0x89] = chr(0)
+            temp.seek(0, 0)
+            temp.write("".join(aiff_data))
+            temp.flush()
+            self.assertRaises(audiotools.InvalidFile,
+                              audiotools.open,
+                              temp.name)
+        finally:
+            temp.close()
 
 
 class TestAuAudio(TestAiffAudio):
@@ -3929,16 +3985,17 @@ class TestFlacAudio(TestOggFlacAudio, TestForeignWaveChunks):
 
         temp = tempfile.NamedTemporaryFile(suffix=".flac")
 
-        for i in xrange(0, 0x2A):
-            temp.seek(0, 0)
-            temp.write(flac_data[0:i])
-            temp.flush()
-            self.assertEqual(os.path.getsize(temp.name), i)
-            self.assertRaises(IOError,
-                              audiotools.decoders.FlacDecoder,
-                              temp.name, 1)
-
-        temp.close()
+        try:
+            for i in xrange(0, 0x2A):
+                temp.seek(0, 0)
+                temp.write(flac_data[0:i])
+                temp.flush()
+                self.assertEqual(os.path.getsize(temp.name), i)
+                self.assertRaises(IOError,
+                                  audiotools.decoders.FlacDecoder,
+                                  temp.name, 1)
+        finally:
+            temp.close()
 
     @TEST_INVALIDFILE
     def test_truncated_frames(self):
@@ -3956,22 +4013,23 @@ class TestFlacAudio(TestOggFlacAudio, TestForeignWaveChunks):
 
         temp = tempfile.NamedTemporaryFile(suffix=".flac")
 
-        for i in xrange(0x2A, len(flac_data)):
-            temp.seek(0, 0)
-            temp.write(flac_data[0:i])
-            temp.flush()
-            self.assertEqual(os.path.getsize(temp.name), i)
-            decoder = audiotools.open(temp.name).to_pcm()
-            self.assertNotEqual(decoder, None)
-            self.assertRaises(IOError,
-                              transfer_framelist_data,
-                              decoder, lambda x: x)
+        try:
+            for i in xrange(0x2A, len(flac_data)):
+                temp.seek(0, 0)
+                temp.write(flac_data[0:i])
+                temp.flush()
+                self.assertEqual(os.path.getsize(temp.name), i)
+                decoder = audiotools.open(temp.name).to_pcm()
+                self.assertNotEqual(decoder, None)
+                self.assertRaises(IOError,
+                                  transfer_framelist_data,
+                                  decoder, lambda x: x)
 
-            decoder = audiotools.open(temp.name).to_pcm()
-            self.assertNotEqual(decoder, None)
-            self.assertRaises(IOError, run_analysis, decoder)
-
-        temp.close()
+                decoder = audiotools.open(temp.name).to_pcm()
+                self.assertNotEqual(decoder, None)
+                self.assertRaises(IOError, run_analysis, decoder)
+        finally:
+            temp.close()
 
     @TEST_INVALIDFILE
     def test_swapped_bit(self):
@@ -3980,26 +4038,30 @@ class TestFlacAudio(TestOggFlacAudio, TestForeignWaveChunks):
         f.close()
 
         temp = tempfile.NamedTemporaryFile(suffix=".flac")
-        for i in xrange(0x2A, len(flac_data)):
-            for j in xrange(0, 7):
-                bytes = flac_data[:]
-                bytes[i] ^= (1 << j)
-                temp.seek(0, 0)
-                temp.write("".join(map(chr, bytes)))
-                temp.flush()
-                self.assertEqual(len(flac_data), os.path.getsize(temp.name))
+        try:
+            for i in xrange(0x2A, len(flac_data)):
+                for j in xrange(0, 7):
+                    bytes = flac_data[:]
+                    bytes[i] ^= (1 << j)
+                    temp.seek(0, 0)
+                    temp.write("".join(map(chr, bytes)))
+                    temp.flush()
+                    self.assertEqual(len(flac_data),
+                                     os.path.getsize(temp.name))
 
-                decoders = audiotools.open(temp.name).to_pcm()
-                try:
-                    self.assertRaises(ValueError,
-                                      transfer_framelist_data,
-                                      decoders, lambda x: x)
-                except IOError:
-                    #Randomly swapping bits may send the decoder
-                    #off the end of the stream before triggering
-                    #a CRC-16 error.
-                    #We simply need to catch that case and continue on.
-                    continue
+                    decoders = audiotools.open(temp.name).to_pcm()
+                    try:
+                        self.assertRaises(ValueError,
+                                          transfer_framelist_data,
+                                          decoders, lambda x: x)
+                    except IOError:
+                        #Randomly swapping bits may send the decoder
+                        #off the end of the stream before triggering
+                        #a CRC-16 error.
+                        #We simply need to catch that case and continue on.
+                        continue
+        finally:
+            temp.close()
 
     @TEST_INVALIDFILE
     def test_bad_streaminfo(self):
@@ -4060,15 +4122,18 @@ class TestFlacAudio(TestOggFlacAudio, TestForeignWaveChunks):
 
         for streaminfo in mismatch_streaminfos:
             temp = tempfile.NamedTemporaryFile(suffix=".flac")
-            temp.seek(0, 0)
-            temp.write(header)
-            temp.write(audiotools.FlacAudio.STREAMINFO.build(streaminfo)),
-            temp.write(data)
-            temp.flush()
-            decoders = audiotools.open(temp.name).to_pcm()
-            self.assertRaises(ValueError,
-                              transfer_framelist_data,
-                              decoders, lambda x: x)
+            try:
+                temp.seek(0, 0)
+                temp.write(header)
+                temp.write(audiotools.FlacAudio.STREAMINFO.build(streaminfo)),
+                temp.write(data)
+                temp.flush()
+                decoders = audiotools.open(temp.name).to_pcm()
+                self.assertRaises(ValueError,
+                                  transfer_framelist_data,
+                                  decoders, lambda x: x)
+            finally:
+                temp.close()
 
 
 class APEv2Lint:
@@ -4249,40 +4314,41 @@ class TestShortenAudio(TestForeignWaveChunks, TestAiffAudio):
             f.close()
 
             temp = tempfile.NamedTemporaryFile(suffix=".shn")
-            for i in xrange(0, first):
-                temp.seek(0, 0)
-                temp.write(shn_data[0:i])
-                temp.flush()
-                self.assertEqual(os.path.getsize(temp.name), i)
-                self.assertRaises(ValueError,
-                                  audiotools.decoders.SHNDecoder,
-                                  temp.name)
+            try:
+                for i in xrange(0, first):
+                    temp.seek(0, 0)
+                    temp.write(shn_data[0:i])
+                    temp.flush()
+                    self.assertEqual(os.path.getsize(temp.name), i)
+                    self.assertRaises(ValueError,
+                                      audiotools.decoders.SHNDecoder,
+                                      temp.name)
 
-            for i in xrange(first, len(shn_data[0:last].rstrip(chr(0)))):
-                temp.seek(0, 0)
-                temp.write(shn_data[0:i])
-                temp.flush()
-                self.assertEqual(os.path.getsize(temp.name), i)
-                decoder = audiotools.decoders.SHNDecoder(temp.name)
-                self.assertNotEqual(decoder, None)
-                self.assertRaises(IOError,
-                                  decoder.metadata)
+                for i in xrange(first, len(shn_data[0:last].rstrip(chr(0)))):
+                    temp.seek(0, 0)
+                    temp.write(shn_data[0:i])
+                    temp.flush()
+                    self.assertEqual(os.path.getsize(temp.name), i)
+                    decoder = audiotools.decoders.SHNDecoder(temp.name)
+                    self.assertNotEqual(decoder, None)
+                    self.assertRaises(IOError,
+                                      decoder.metadata)
 
-                decoder = audiotools.decoders.SHNDecoder(temp.name)
-                self.assertNotEqual(decoder, None)
-                decoder.sample_rate = 44100
-                decoder.channel_mask = 1
-                self.assertRaises(IOError,
-                                  transfer_framelist_data,
-                                  decoder, lambda x: x)
+                    decoder = audiotools.decoders.SHNDecoder(temp.name)
+                    self.assertNotEqual(decoder, None)
+                    decoder.sample_rate = 44100
+                    decoder.channel_mask = 1
+                    self.assertRaises(IOError,
+                                      transfer_framelist_data,
+                                      decoder, lambda x: x)
 
-                decoder = audiotools.decoders.SHNDecoder(temp.name)
-                decoder.sample_rate = 44100
-                decoder.channel_mask = 1
-                self.assertNotEqual(decoder, None)
-                self.assertRaises(IOError, run_analysis, decoder)
-
-            temp.close()
+                    decoder = audiotools.decoders.SHNDecoder(temp.name)
+                    decoder.sample_rate = 44100
+                    decoder.channel_mask = 1
+                    self.assertNotEqual(decoder, None)
+                    self.assertRaises(IOError, run_analysis, decoder)
+            finally:
+                temp.close()
 
 
 class M4AMetadata:
@@ -4795,23 +4861,23 @@ class TestAlacAudio(TestM4AAudio):
         f.close()
 
         temp = tempfile.NamedTemporaryFile(suffix='.m4a')
+        try:
+            for i in xrange(0x16CD, len(alac_data)):
+                temp.seek(0, 0)
+                temp.write(alac_data[0:i])
+                temp.flush()
+                self.assertEqual(os.path.getsize(temp.name), i)
+                decoder = audiotools.open(temp.name).to_pcm()
+                self.assertNotEqual(decoder, None)
+                self.assertRaises(IOError,
+                                  transfer_framelist_data,
+                                  decoder, lambda x: x)
 
-        for i in xrange(0x16CD, len(alac_data)):
-            temp.seek(0, 0)
-            temp.write(alac_data[0:i])
-            temp.flush()
-            self.assertEqual(os.path.getsize(temp.name), i)
-            decoder = audiotools.open(temp.name).to_pcm()
-            self.assertNotEqual(decoder, None)
-            self.assertRaises(IOError,
-                              transfer_framelist_data,
-                              decoder, lambda x: x)
-
-            decoder = audiotools.open(temp.name).to_pcm()
-            self.assertNotEqual(decoder, None)
-            self.assertRaises(IOError, run_analysis, decoder)
-
-        temp.close()
+                decoder = audiotools.open(temp.name).to_pcm()
+                self.assertNotEqual(decoder, None)
+                self.assertRaises(IOError, run_analysis, decoder)
+        finally:
+            temp.close()
 
 
 class TestAACAudio(TestAiffAudio):

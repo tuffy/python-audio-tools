@@ -298,10 +298,20 @@ class MP3Audio(AudioFile):
         try:
             transfer_framelist_data(pcmreader, sub.stdin.write)
         except (IOError, ValueError), err:
+            sub.stdin.close()
+            sub.wait()
+            cls.__unlink__(filename)
             raise EncodingError(str(err))
+        except Exception, err:
+            sub.stdin.close()
+            sub.wait()
+            cls.__unlink__(filename)
+            raise err
+
         try:
             pcmreader.close()
         except DecodingError, err:
+            cls.__unlink__(filename)
             raise EncodingError(err.error_message)
         sub.stdin.close()
 
@@ -310,6 +320,7 @@ class MP3Audio(AudioFile):
         if (sub.wait() == 0):
             return MP3Audio(filename)
         else:
+            cls.__unlink__(filename)
             raise EncodingError(u"error encoding file with lame")
 
     def bits_per_sample(self):
@@ -724,16 +735,27 @@ class MP2Audio(MP3Audio):
         try:
             transfer_framelist_data(pcmreader, sub.stdin.write)
         except (ValueError, IOError), err:
+            sub.stdin.close()
+            sub.wait()
+            cls.__unlink__(filename)
             raise EncodingError(str(err))
+        except Exception, err:
+            sub.stdin.close()
+            sub.wait()
+            cls.__unlink__(filename)
+            raise err
+
         try:
             pcmreader.close()
         except DecodingError, err:
+            cls.__unlink__(filename)
             raise EncodingError(err.error_message)
-        sub.stdin.close()
 
+        sub.stdin.close()
         devnull.close()
 
         if (sub.wait() == 0):
             return MP2Audio(filename)
         else:
-            raise EncodingError(BIN['twolame'])
+            cls.__unlink__(filename)
+            raise EncodingError(u"twolame exited with error")
