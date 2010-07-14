@@ -58,9 +58,9 @@ class WaveReader(PCMReader):
         try:
             header = WaveAudio.WAVE_HEADER.parse_stream(self.file)
         except Con.ConstError:
-            raise WavException(_(u'Invalid WAVE file'))
+            raise InvalidWave(_(u'Invalid WAVE file'))
         except Con.core.FieldError:
-            raise WavException(_(u'Invalid WAVE file'))
+            raise InvalidWave(_(u'Invalid WAVE file'))
 
         #this won't be pretty for a WAVE file missing a 'data' chunk
         #but those are seriously invalid anyway
@@ -131,7 +131,7 @@ class TempWaveReader(WaveReader):
         self.tempfile.close()
 
 
-class WavException(InvalidFile):
+class InvalidWave(InvalidFile):
     """Raises during initialization time if a wave file is invalid."""
 
     pass
@@ -339,7 +339,7 @@ class WaveAudio(AudioFile):
             self.__read_chunks__()
         except Con.ValidationError:
             raise InvalidFile
-        except WavException, msg:
+        except InvalidWave, msg:
             raise InvalidFile(str(msg))
         except IOError, msg:
             raise InvalidFile(str(msg))
@@ -651,16 +651,16 @@ class WaveAudio(AudioFile):
             header = WaveAudio.WAVE_HEADER.parse(wave_file.read(12))
             return header.wave_size
         except Con.ConstError:
-            raise WavException(_(u"Not a RIFF WAVE file"))
+            raise InvalidWave(_(u"Not a RIFF WAVE file"))
         except Con.core.FieldError:
-            raise WavException(_(u"Invalid RIFF WAVE file"))
+            raise InvalidWave(_(u"Invalid RIFF WAVE file"))
 
     def __read_chunk_header__(self, wave_file):
         try:
             chunk = WaveAudio.CHUNK_HEADER.parse(wave_file.read(8))
             return (chunk.chunk_id, chunk.chunk_length)
         except Con.core.FieldError:
-            raise WavException(_(u"Invalid RIFF WAVE file"))
+            raise InvalidWave(_(u"Invalid RIFF WAVE file"))
 
     @classmethod
     def fmt_chunk_to_channel_mask(cls, fmt_channel_mask):
@@ -697,12 +697,12 @@ class WaveAudio(AudioFile):
 
     def __read_format_chunk__(self, wave_file, chunk_size):
         if (chunk_size < 16):
-            raise WavException(_(u"fmt chunk is too short"))
+            raise InvalidWave(_(u"fmt chunk is too short"))
 
         try:
             fmt = WaveAudio.FMT_CHUNK.parse(wave_file.read(chunk_size))
         except Con.FieldError:
-            raise WavException(_(u"fmt chunk is too short"))
+            raise InvalidWave(_(u"fmt chunk is too short"))
 
         self.__wavtype__ = fmt.compression
         self.__channels__ = fmt.channels
@@ -746,7 +746,7 @@ class WaveAudio(AudioFile):
                 self.__channel_mask__ = ChannelMask(0)
 
         if ((self.__wavtype__ != 1) and (self.__wavtype__ != 0xFFFE)):
-            raise WavException(_(u"No support for compressed WAVE files"))
+            raise InvalidWave(_(u"No support for compressed WAVE files"))
 
     def __read_data_chunk__(self, wave_file, chunk_size):
         self.__data_size__ = chunk_size
@@ -843,9 +843,9 @@ class WaveAudio(AudioFile):
             total_size = header.wave_size - 4
             current_block.write(WaveAudio.WAVE_HEADER.build(header))
         except Con.ConstError:
-            raise WavException(_(u"Not a RIFF WAVE file"))
+            raise InvalidWave(_(u"Not a RIFF WAVE file"))
         except Con.core.FieldError:
-            raise WavException(_(u"Invalid RIFF WAVE file"))
+            raise InvalidWave(_(u"Invalid RIFF WAVE file"))
 
         while (total_size > 0):
             try:
@@ -854,7 +854,7 @@ class WaveAudio(AudioFile):
                 current_block.write(WaveAudio.CHUNK_HEADER.build(chunk_header))
                 total_size -= 8
             except Con.core.FieldError:
-                raise WavException(_(u"Invalid RIFF WAVE file"))
+                raise InvalidWave(_(u"Invalid RIFF WAVE file"))
 
             #and transfer the full content of non-data chunks
             if (chunk_header.chunk_id != "data"):
@@ -866,3 +866,62 @@ class WaveAudio(AudioFile):
             total_size -= chunk_header.chunk_length
 
         return (head.getvalue(), tail.getvalue())
+
+    def verify(self):
+        """Verifies the current file for correctness.
+
+        Returns True if the file is okay.
+        Raises an InvalidFile with an error message if there is
+        some problem with the file."""
+
+        try:
+            f = open(self.filename, 'rb')
+        except IOError, msg:
+            raise InvalidWave(str(msg))
+
+        try:
+            #check the RIFF WAVE header is correct
+            try:
+                wave_header = self.WAVE_HEADER.parse_stream(f)
+            except (Con.ConstError, Con.FieldError):
+                raise InvalidWave(u"error parsing RIFF WAVE header")
+
+            if (os.path.getsize(self.filename) != (wave_header.wave_size + 8)):
+                raise InvalidWave(u"wave file appears truncated")
+
+            bytes_remaining = wave_header.wave_size - 4
+
+            fmt_chunk_found = data_chunk_found = False
+
+            #bounce through all the chunks
+            while (bytes_remaining > 0):
+                try:
+                    chunk_header = self.CHUNK_HEADER.parse_stream(f)
+                except (Con.FieldError, Con.ValidationError):
+                    raise InvalidWave(u"error parsing chunk header")
+                bytes_remaining -= 8
+
+                if (chunk_header.chunk_id == 'fmt '):
+                    #verify the fmt chunk is sane
+                    try:
+                        fmt_chunk = self.FMT_CHUNK.parse_stream(f)
+                        fmt_chunk_found = True
+                        fmt_chunk_size = len(self.FMT_CHUNK.build(fmt_chunk))
+                        bytes_remaining -= fmt_chunk_size
+                    except Con.FieldError:
+                        raise InvalidWave(u"invalid fmt chunk")
+                else:
+                    if (chunk_header.chunk_id == 'data'):
+                        data_chunk_found = True
+                    #verify all other chunks are the correct size
+                    f.seek(chunk_header.chunk_length, 1)
+                    bytes_remaining -= chunk_header.chunk_length
+
+            if (fmt_chunk_found and data_chunk_found):
+                return True
+            elif (not fmt_chunk_found):
+                raise InvalidWave(u"fmt chunk not found")
+            else:
+                raise InvalidWave(u"data chunk not found")
+        finally:
+            f.close()

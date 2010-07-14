@@ -3168,6 +3168,30 @@ class TestWaveAudio(TestForeignWaveChunks, TestAiffAudio):
                           audiotools.open,
                           temp.name)
 
+    @TEST_INVALIDFILE
+    def test_varify(self):
+        for wav_file in ["wav-8bit.wav",
+                         "wav-1ch.wav",
+                         "wav-2ch.wav",
+                         "wav-6ch.wav"]:
+            temp = tempfile.NamedTemporaryFile(suffix=".wav")
+            try:
+                wav_data = open(wav_file, 'rb').read()
+                temp.write(wav_data)
+                temp.flush()
+                wave = audiotools.open(temp.name)
+
+                #try changing the file out from under it
+                for i in xrange(0, len(wav_data)):
+                    f = open(temp.name, 'wb')
+                    f.write(wav_data[0:i])
+                    f.close()
+                    self.assertEqual(os.path.getsize(temp.name), i)
+                    self.assertRaises(audiotools.InvalidFile,
+                                      wave.verify)
+            finally:
+                temp.close()
+
 class TestInvalidAIFF(unittest.TestCase):
     @TEST_INVALIDFILE
     def test_truncated_file(self):

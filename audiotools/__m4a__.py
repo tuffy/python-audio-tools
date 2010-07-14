@@ -677,6 +677,7 @@ class M4AAudio_nero(M4AAudio_faac):
 
         try:
             wave = WaveAudio(wave_filename)
+            wave.verify()
         except InvalidFile:
             raise EncodingError(u"invalid wave file")
 

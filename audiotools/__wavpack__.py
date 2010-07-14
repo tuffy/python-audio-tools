@@ -24,7 +24,7 @@ from audiotools import (AudioFile, InvalidFile, Con, subprocess, BIN,
                         Image, MetaData, sheet_to_unicode, EncodingError,
                         DecodingError, PCMReaderError, PCMReader,
                         ChannelMask, UnsupportedChannelMask,
-                        WavException)
+                        InvalidWave)
 from __wav__ import WaveAudio, WaveReader
 from __ape__ import ApeTaggedAudio, ApeTag, __number_pair__
 import gettext
@@ -647,7 +647,7 @@ class WavPackAudio(ApeTaggedAudio, AudioFile):
                                       channel_mask=int(self.channel_mask()),
                                       bits_per_sample=self.bits_per_sample(),
                                       process=sub)
-                except WavException:
+                except InvalidWave:
                     return PCMReaderError(
                         error_message=u"wvunpack failed to generate wav file",
                         sample_rate=self.sample_rate(),
