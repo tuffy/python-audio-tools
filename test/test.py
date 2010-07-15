@@ -2093,9 +2093,11 @@ uhhDdCiCwqg2Gw3lphgaGhoamR+mptKYNT/F3JFOFCQvKfgAwA==""".decode('base64').decode(
                                          self.filename(os.path.join(tempdir,
                                                                     "track01.wav"))))
 
-            self.__check_error__(_(u"Unable to write \"%s\"") % \
-                                     (self.filename(
-                        os.path.join(tempdir, "track01.wav"))))
+            f = self.filename(os.path.join(tempdir, "track01.wav"))
+            self.__check_error__(
+                _(u"%(filename)s: %(error)s") %
+                {"filename":f,
+                 "error":u"[Errno 13] Permission denied: '%s'" % (f)})
 
         finally:
             os.chmod(tempdir, tempdir_stat)

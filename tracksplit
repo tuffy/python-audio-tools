@@ -47,14 +47,10 @@ def extract_part(input_filename, input_pcm, output_filename, quality, metadata,
         if (metadata is not None):
             destination_audiofile.set_metadata(metadata)
 
-    except audiotools.EncodingError:
-        messenger.error(_(u"Unable to write \"%s\"") % \
-                            (messenger.filename(output_filename)))
-        sys.exit(1)
-    except audiotools.InvalidFormat, msg:
+    except (audiotools.EncodingError, audiotools.InvalidFormat), err:
         messenger.error(u"%(filename)s: %(error)s" % \
-                            {"filename": messenger.filename(output_filename),
-                             "error": unicode(msg)})
+                            {"filename":messenger.filename(output_filename),
+                             "error":err})
         sys.exit(1)
 
 

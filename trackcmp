@@ -74,7 +74,7 @@ if (__name__ == '__main__'):
                 msg.output(_(u"differ at PCM frame %(frame_number)d") % \
                                {"frame_number": frame_mismatch + 1})
                 sys.exit(1)
-        except audiotools.DecodingError, err:
+        except (IOError, ValueError, audiotools.DecodingError), err:
             msg.error(unicode(err))
             sys.exit(1)
 
@@ -144,7 +144,7 @@ if (__name__ == '__main__'):
                     msg.output(_(u"differ at PCM frame %(frame_number)d") %
                                {"frame_number": frame_mismatch + 1})
                     returnval = 1
-            except audiotools.DecodingError, msg:
+            except (IOError, ValueError, audiotools.DecodingError), msg:
                 msg.output(_(u"error"))
                 msg.error(unicode(msg))
                 returnval = 2
