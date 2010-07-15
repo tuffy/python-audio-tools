@@ -1855,7 +1855,6 @@ class AACAudio(AudioFile):
             cls.__unlink__(filename)
             raise err
 
-
         try:
             pcmreader.close()
         except DecodingError, err:

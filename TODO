@@ -2275,7 +2275,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    - [ ] AiffAudio
    - [ ] ALACAudio
    - [ ] AuAudio
-   - [ ] FlacAudio,
+   - [X] FlacAudio,
    - [ ] M4AAudio
    - [ ] MP2Audio
    - [ ] MP3Audio

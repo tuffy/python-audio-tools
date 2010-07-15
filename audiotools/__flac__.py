@@ -1395,6 +1395,27 @@ class FlacAudio(AudioFile):
                                     bits_per_sample=self.__bitspersample__,
                                     process=sub)
 
+    def verify(self):
+        """Verifies the current file for correctness.
+
+        Returns True if the file is okay.
+        Raises an InvalidFile with an error message if there is
+        some problem with the file."""
+
+        decoder = self.to_pcm()
+        try:
+            transfer_framelist_data(decoder, lambda x: x)
+        except (IOError, ValueError), err:
+            raise InvalidFLAC(str(err))
+
+        try:
+            decoder.close()
+        except DecodingError, err:
+            raise InvalidFLAC(err.error_message)
+
+        return True
+
+
 #######################
 #Ogg FLAC
 #######################

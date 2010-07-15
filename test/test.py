@@ -145,6 +145,7 @@ def Combinations(items, n):
             for combos in Combinations(items[i + 1:], n - 1):
                 yield [items[i]] + combos
 
+
 def transfer_framelist_data(pcmreader, to_function,
                             signed=True, big_endian=False):
     f = pcmreader.read(audiotools.BUFFER_SIZE)
@@ -313,6 +314,7 @@ class ERROR_PCM_Reader(audiotools.PCMReader):
 
     def close(self):
         pass
+
 
 class PCM_Count:
     def __init__(self):
@@ -3109,6 +3111,7 @@ uhhDdCiCwqg2Gw3lphgaGhoamR+mptKYNT/F3JFOFCQvKfgAwA==""".decode('base64').decode(
                 os.unlink(os.path.join(temp_dir, f))
             os.rmdir(temp_dir)
 
+
 class TestForeignWaveChunks:
     @TEST_METADATA
     def testforeignwavechunks(self):
@@ -3159,10 +3162,10 @@ class TestWaveAudio(TestForeignWaveChunks, TestAiffAudio):
 
     @TEST_INVALIDFILE
     def test_truncated_file(self):
-        for (fmt_size,wav_file) in [(0x24, "wav-8bit.wav"),
-                                    (0x24, "wav-1ch.wav"),
-                                    (0x24, "wav-2ch.wav"),
-                                    (0x3C, "wav-6ch.wav")]:
+        for (fmt_size, wav_file) in [(0x24, "wav-8bit.wav"),
+                                     (0x24, "wav-1ch.wav"),
+                                     (0x24, "wav-2ch.wav"),
+                                     (0x3C, "wav-6ch.wav")]:
             f = open(wav_file, 'rb')
             wav_data = f.read()
             f.close()
@@ -3242,13 +3245,14 @@ class TestWaveAudio(TestForeignWaveChunks, TestAiffAudio):
             finally:
                 temp.close()
 
+
 class TestInvalidAIFF(unittest.TestCase):
     @TEST_INVALIDFILE
     def test_truncated_file(self):
-        for (comm_size,aiff_file) in [(0x25, "aiff-8bit.aiff"),
-                                      (0x25, "aiff-1ch.aiff"),
-                                      (0x25, "aiff-2ch.aiff"),
-                                      (0x25, "aiff-6ch.aiff")]:
+        for (comm_size, aiff_file) in [(0x25, "aiff-8bit.aiff"),
+                                       (0x25, "aiff-1ch.aiff"),
+                                       (0x25, "aiff-2ch.aiff"),
+                                       (0x25, "aiff-6ch.aiff")]:
             f = open(aiff_file, 'rb')
             aiff_data = f.read()
             f.close()
@@ -4143,6 +4147,36 @@ class TestFlacAudio(TestOggFlacAudio, TestForeignWaveChunks):
                                   decoders, lambda x: x)
             finally:
                 temp.close()
+
+    @TEST_INVALIDFILE
+    def test_verify(self):
+        temp = tempfile.NamedTemporaryFile(suffix=".flac")
+        try:
+            flac_data = open("flac-allframes.flac", "rb").read()
+            temp.write(flac_data)
+            temp.flush()
+            flac_file = audiotools.open(temp.name)
+            self.assertEqual(flac_file.verify(), True)
+
+            #try changing the file underfoot
+            for i in xrange(0, len(flac_data)):
+                f = open(temp.name, "wb")
+                f.write(flac_data[0:i])
+                f.close()
+                self.assertRaises(audiotools.InvalidFile,
+                                  flac_file.verify)
+
+            for i in xrange(0x2A, len(flac_data)):
+                for j in xrange(8):
+                    new_data = list(flac_data)
+                    new_data[i] = chr(ord(new_data[i]) ^ (1 << j))
+                    f = open(temp.name, "wb")
+                    f.write("".join(new_data))
+                    f.close()
+                    self.assertRaises(audiotools.InvalidFile,
+                                      flac_file.verify)
+        finally:
+            temp.close()
 
 
 class APEv2Lint:

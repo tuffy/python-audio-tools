@@ -1040,7 +1040,6 @@ def transfer_framelist_data(pcmreader, to_function,
         f = pcmreader.read(BUFFER_SIZE)
 
 
-
 def threaded_transfer_framelist_data(pcmreader, to_function,
                                      signed=True, big_endian=False):
     """Sends pcm.FrameLists from pcmreader to to_function via threads.
