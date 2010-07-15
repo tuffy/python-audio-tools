@@ -112,10 +112,10 @@ def convert_file(destination_class, destination_filename,
             {"target_filename": messenger.filename(destination_filename),
              "bps": source_audiofile.bits_per_sample()})
         sys.exit(1)
-    except audiotools.EncodingError:
+    except audiotools.EncodingError, msg:
         messenger.error(
-            _(u"Unable to write \"%s\"") %
-            (messenger.filename(destination_filename)))
+            _(u"%s: %s") %
+            (messenger.filename(destination_filename), msg))
         sys.exit(1)
     except audiotools.InvalidFormat, msg:
         messenger.error(unicode(msg))

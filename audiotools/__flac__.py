@@ -719,7 +719,10 @@ class FlacAudio(AudioFile):
         Takes a seekable file pointer rewound to the start of the file."""
 
         if (file.read(4) == 'fLaC'):
-            block_ids = list(cls.__block_ids__(file))
+            try:
+                block_ids = list(cls.__block_ids__(file))
+            except Con.FieldError:
+                return False
             if ((len(block_ids) == 0) or (0 not in block_ids)):
                 messenger = Messenger("audiotools", None)
                 messenger.error(_(u"STREAMINFO block not found"))
@@ -735,7 +738,11 @@ class FlacAudio(AudioFile):
             #such tags are unnecessary and outside the specification
             #so I will encourage people to remove them.
 
-            file.seek(-4, 1)
+            try:
+                file.seek(-4, 1)
+            except IOError:
+                return False
+
             ID3v2Comment.skip(file)
             if (file.read(4) == 'fLaC'):
                 messenger = Messenger("audiotools", None)

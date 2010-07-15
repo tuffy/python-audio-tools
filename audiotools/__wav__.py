@@ -508,6 +508,11 @@ class WaveAudio(AudioFile):
         Raises EncodingError if some error occurs during decoding."""
 
         try:
+            self.verify()
+        except InvalidWave, err:
+            raise EncodingError(str(err))
+
+        try:
             output = file(wave_filename, 'wb')
             input = file(self.filename, 'rb')
         except IOError, msg:
@@ -528,6 +533,11 @@ class WaveAudio(AudioFile):
         Encodes a new audio file from the wave's data
         at the given filename with the specified compression level
         and returns a new WaveAudio object."""
+
+        try:
+            cls(wave_filename).verify()
+        except InvalidWave, err:
+            raise EncodingError(unicode(err))
 
         try:
             input = file(wave_filename, 'rb')

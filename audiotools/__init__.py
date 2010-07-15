@@ -528,7 +528,7 @@ class EncodingError(IOError):
 
     def __init__(self, error_message):
         IOError.__init__(self)
-        self.error_message = u"error during file encoding"
+        self.error_message = error_message
 
     def __str__(self):
         if (isinstance(self.error_message, unicode)):
