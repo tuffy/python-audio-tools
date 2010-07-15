@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include "../bitstream_r.h"
 #include "../array.h"
+#include "../md5.h"
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -70,6 +71,8 @@ typedef struct {
 
     uint32_t crc8;
     uint32_t crc16;
+    audiotools__MD5Context md5;
+    int stream_finalized;
 
     /*temporary buffers we don't want to reallocate each time*/
     struct ia_array subframe_data;
@@ -95,15 +98,15 @@ FlacDecoder_channel_mask(decoders_FlacDecoder *self, void *closure);
 
 /*the FlacDecoder.read() method*/
 static PyObject*
-FLACDecoder_read(decoders_FlacDecoder* self, PyObject *args);
+FlacDecoder_read(decoders_FlacDecoder* self, PyObject *args);
 
 /*the FlacDecoder.analyze_frame() method*/
 static PyObject*
-FLACDecoder_analyze_frame(decoders_FlacDecoder* self, PyObject *args);
+FlacDecoder_analyze_frame(decoders_FlacDecoder* self, PyObject *args);
 
 /*the FlacDecoder.close() method*/
 static PyObject*
-FLACDecoder_close(decoders_FlacDecoder* self, PyObject *args);
+FlacDecoder_close(decoders_FlacDecoder* self, PyObject *args);
 
 /*the FlacDecoder.__init__() method*/
 int
@@ -123,12 +126,12 @@ PyGetSetDef FlacDecoder_getseters[] = {
 };
 
 PyMethodDef FlacDecoder_methods[] = {
-    {"read", (PyCFunction)FLACDecoder_read,
+    {"read", (PyCFunction)FlacDecoder_read,
      METH_VARARGS,
      "Reads the given number of bytes from the FLAC file, if possible"},
-    {"analyze_frame", (PyCFunction)FLACDecoder_analyze_frame,
+    {"analyze_frame", (PyCFunction)FlacDecoder_analyze_frame,
      METH_NOARGS, "Returns the analysis of the next frame"},
-    {"close", (PyCFunction)FLACDecoder_close,
+    {"close", (PyCFunction)FlacDecoder_close,
      METH_NOARGS, "Closes the FLAC decoder stream"},
     {NULL}
 };
@@ -143,7 +146,7 @@ FlacDecoder_new(PyTypeObject *type,
 /*all of the "status" returning functions
   return OK upon success and ERROR upon failure
   if ERROR is returned, a Python exception has been set
-  which should bubble up to the original caller (probably FLACDecoder_read)*/
+  which should bubble up to the original caller (probably FlacDecoder_read)*/
 
 /*reads the STREAMINFO block and skips any other metadata blocks,
   placing our internal stream at the first FLAC frame*/
@@ -251,6 +254,12 @@ FlacDecoder_analyze_residual(decoders_FlacDecoder *self,
                              uint8_t order,
                              uint32_t block_size);
 
+status
+FlacDecoder_update_md5sum(decoders_FlacDecoder *self,
+                          PyObject *framelist);
+
+int
+FlacDecoder_verify_okay(decoders_FlacDecoder *self);
 
 #include "flac_crc.h"
 

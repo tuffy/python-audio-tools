@@ -4113,9 +4113,18 @@ class TestFlacAudio(TestOggFlacAudio, TestForeignWaveChunks):
                           total_samples=80,
                           md5=[245, 63, 134, 135, 109, 205, 119,
                                131, 34, 92, 147, 186, 138, 147,
+                               140, 125]),
+            Con.Container(minimum_blocksize=4096,
+                          maximum_blocksize=1,
+                          minimum_framesize=12,
+                          maximum_framesize=12,
+                          samplerate=44100,
+                          channels=0,
+                          bits_per_sample=15,
+                          total_samples=80,
+                          md5=[246, 63, 134, 135, 109, 205, 119,
+                               131, 34, 92, 147, 186, 138, 147,
                                140, 125])]
-
-        #FIXME - add MD5 check here too
 
         header = flac_data[0:8]
         data = flac_data[0x2A:]

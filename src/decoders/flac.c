@@ -56,6 +56,10 @@ FlacDecoder_init(decoders_FlacDecoder *self,
 
     self->remaining_samples = self->streaminfo.total_samples;
 
+    /*initialize the output MD5 sum*/
+    audiotools__MD5Init(&(self->md5));
+    self->stream_finalized = 0;
+
     /*add callbacks for CRC8 and CRC16 calculation*/
     bs_add_callback(self->bitstream, flac_crc8, &(self->crc8));
     bs_add_callback(self->bitstream, flac_crc16, &(self->crc16));
@@ -71,7 +75,7 @@ FlacDecoder_init(decoders_FlacDecoder *self,
 }
 
 PyObject*
-FLACDecoder_close(decoders_FlacDecoder* self,
+FlacDecoder_close(decoders_FlacDecoder* self,
                   PyObject *args)
 {
     self->remaining_samples = 0;
@@ -198,17 +202,31 @@ FlacDecoder_channel_mask(decoders_FlacDecoder *self, void *closure)
 }
 
 PyObject*
-FLACDecoder_read(decoders_FlacDecoder* self, PyObject *args)
+FlacDecoder_read(decoders_FlacDecoder* self, PyObject *args)
 {
     int channel;
     struct flac_frame_header frame_header;
+    PyObject *framelist;
 
     iaa_reset(&(self->subframe_data));
 
     /*if all samples have been read, return an empty FrameList*/
-    if (self->remaining_samples < 1) {
+    if (self->stream_finalized) {
         return ia_array_to_framelist(&(self->subframe_data),
                                      self->streaminfo.bits_per_sample);
+    }
+
+    if (self->remaining_samples < 1) {
+        self->stream_finalized = 1;
+
+        if (FlacDecoder_verify_okay(self))
+            return ia_array_to_framelist(&(self->subframe_data),
+                                         self->streaminfo.bits_per_sample);
+        else {
+            PyErr_SetString(PyExc_ValueError,
+                            "MD5 mismatch at end of stream");
+            return NULL;
+        }
     }
 
     self->crc8 = self->crc16 = 0;
@@ -248,15 +266,25 @@ FLACDecoder_read(decoders_FlacDecoder* self, PyObject *args)
     }
 
     bs_etry(self->bitstream);
-    return ia_array_to_framelist(&(self->subframe_data),
-                                 frame_header.bits_per_sample);
+
+    framelist = ia_array_to_framelist(&(self->subframe_data),
+                                      frame_header.bits_per_sample);
+
+    /*update MD5 sum*/
+    if (FlacDecoder_update_md5sum(self, framelist) == OK)
+        /*return pcm.FrameList Python object*/
+        return framelist;
+    else {
+        Py_DECREF(framelist);
+        return NULL;
+    }
  error:
     bs_etry(self->bitstream);
     return NULL;
 }
 
 PyObject*
-FLACDecoder_analyze_frame(decoders_FlacDecoder* self, PyObject *args)
+FlacDecoder_analyze_frame(decoders_FlacDecoder* self, PyObject *args)
 {
     struct flac_frame_header frame_header;
     int channel;
@@ -1029,6 +1057,42 @@ FlacDecoder_analyze_residual(decoders_FlacDecoder *self,
     }
 }
 
+status
+FlacDecoder_update_md5sum(decoders_FlacDecoder *self,
+                          PyObject *framelist) {
+    PyObject *string = PyObject_CallMethod(
+                                framelist,
+                                "to_bytes","ii",
+                                0,
+                                self->streaminfo.bits_per_sample >= 16);
+    char *string_buffer;
+    Py_ssize_t length;
+
+    if (string != NULL) {
+        if (PyString_AsStringAndSize(string, &string_buffer, &length) == 0) {
+            audiotools__MD5Update(&(self->md5),
+                                  (unsigned char *)string_buffer,
+                                  length);
+            Py_DECREF(string);
+            return OK;
+        } else {
+            Py_DECREF(string);
+            return ERROR;
+        }
+    } else {
+        return ERROR;
+    }
+}
+
+int
+FlacDecoder_verify_okay(decoders_FlacDecoder *self) {
+    unsigned char stream_md5sum[16];
+
+    audiotools__MD5Final(stream_md5sum, &(self->md5));
+
+    return (memcmp(stream_md5sum, self->streaminfo.md5sum, 16) == 0);
+}
+
 uint32_t
 read_utf8(Bitstream *stream)
 {
@@ -1043,3 +1107,4 @@ read_utf8(Bitstream *stream)
 
 #include "flac_crc.c"
 #include "pcm.c"
+#include "../md5.c"
