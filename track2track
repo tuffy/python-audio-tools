@@ -114,8 +114,9 @@ def convert_file(destination_class, destination_filename,
         sys.exit(1)
     except audiotools.EncodingError, msg:
         messenger.error(
-            _(u"%s: %s") %
-            (messenger.filename(destination_filename), msg))
+            _(u"%(filename)s: %(error)s") %
+            {"filename":messenger.filename(destination_filename),
+             "error":msg})
         sys.exit(1)
     except audiotools.InvalidFormat, msg:
         messenger.error(unicode(msg))

@@ -1866,11 +1866,11 @@ uhhDdCiCwqg2Gw3lphgaGhoamR+mptKYNT/F3JFOFCQvKfgAwA==""".decode('base64').decode(
                      "-o",
                      os.path.join(basedir_tar, "foo", "track01.wav")]), 1)
 
+            f = self.filename(os.path.join(basedir_tar, "foo", "track01.wav"))
             self.__check_error__(
-                _(u"%(filename)s: %(message)s: '%(filename)s'") %
-                {"filename":self.filename(
-                        os.path.join(basedir_tar, "foo", "track01.wav")),
-                 "message":u"[Errno 2] No such file or directory"})
+                _(u"%(filename)s: %(error)s") %
+                {"filename":f,
+                 "error":u"[Errno 2] No such file or directory: '%s'" % (f)})
 
             os.chmod(basedir_tar, basedir_tar_stat)
 
@@ -1894,11 +1894,11 @@ uhhDdCiCwqg2Gw3lphgaGhoamR+mptKYNT/F3JFOFCQvKfgAwA==""".decode('base64').decode(
                                         (self.filename(track.filename),
                                          self.filename(os.path.join(basedir_tar, "track01.wav"))))
 
+                f = self.filename(os.path.join(basedir_tar, "track01.wav"))
                 self.__check_error__(
-                    _(u"%(filename)s: %(message)s: '%(filename)s'" %
-                      {"filename":self.filename(
-                                os.path.join(basedir_tar, "track01.wav")),
-                       "message":u"[Errno 13] Permission denied"}))
+                    _(u"%(filename)s: %(error)s" %
+                      {"filename":f,
+                       "error":u"[Errno 13] Permission denied: '%s'" % (f)}))
 
                 #try to use track2track -o on an un-writable file
                 self.assertEqual(self.__run_app__(
@@ -1908,11 +1908,11 @@ uhhDdCiCwqg2Gw3lphgaGhoamR+mptKYNT/F3JFOFCQvKfgAwA==""".decode('base64').decode(
                      "-o",
                      os.path.join(basedir_tar, "track01.wav")]), 1)
 
+                f = self.filename(os.path.join(basedir_tar, "track01.wav"))
                 self.__check_error__(
-                    _(u"%(filename)s: %(message)s: '%(filename)s'") %
-                    {"filename":self.filename(
-                            os.path.join(basedir_tar, "track01.wav")),
-                     "message":u"[Errno 13] Permission denied"})
+                    _(u"%(filename)s: %(error)s") %
+                    {"filename":f,
+                     "error":u"[Errno 13] Permission denied: '%s'" % (f)})
             finally:
                 os.chmod(os.path.join(basedir_tar, "track01.wav"), f_stat)
             os.unlink(os.path.join(basedir_tar, "track01.wav"))
@@ -1952,8 +1952,10 @@ uhhDdCiCwqg2Gw3lphgaGhoamR+mptKYNT/F3JFOFCQvKfgAwA==""".decode('base64').decode(
                      temp_track3.filename,
                      "-o", "/dev/null/foo.wav"]), 1)
 
-            self.__check_error__(_(u"Unable to write \"%s\"") % \
-                                         ("/dev/null/foo.wav"))
+            self.__check_error__(
+                _(u"%(filename)s: %(error)s") %
+                {"filename":u"/dev/null/foo.wav",
+                 "error":u"[Errno 20] Not a directory: '/dev/null/foo.wav'"})
 
             self.assertEqual(self.__run_app__(
                     ["trackcat",
@@ -4391,9 +4393,10 @@ class TestWavPackAudio(EmbeddedCuesheet, ApeTaggedAudio, TestForeignWaveChunks, 
                      os.path.join(basedir_tar, "foo", "track01.wav")]), 1)
 
             self.__check_error__(
-                _(u"%(filename)s: unable to decode file with wvunpack") %
+                _(u"%(filename)s: %(error)s") %
                 {"filename":self.filename(
-                        os.path.join(basedir_tar, "foo", "track01.wav"))})
+                        os.path.join(basedir_tar, "foo", "track01.wav")),
+                 "error":u"unable to decode file with wvunpack"})
 
             os.chmod(basedir_tar, basedir_tar_stat)
 
@@ -4418,9 +4421,10 @@ class TestWavPackAudio(EmbeddedCuesheet, ApeTaggedAudio, TestForeignWaveChunks, 
                                          self.filename(os.path.join(basedir_tar, "track01.wav"))))
 
                 self.__check_error__(
-                    _(u"%(filename)s: unable to decode file with wvunpack") %
+                    _(u"%(filename)s: %(error)s") %
                     {"filename":self.filename(
-                            os.path.join(basedir_tar, "track01.wav"))})
+                            os.path.join(basedir_tar, "track01.wav")),
+                     "error":u"unable to decode file with wvunpack"})
 
                 #try to use track2track -o on an un-writable file
                 self.assertEqual(self.__run_app__(
@@ -4431,9 +4435,11 @@ class TestWavPackAudio(EmbeddedCuesheet, ApeTaggedAudio, TestForeignWaveChunks, 
                      os.path.join(basedir_tar, "track01.wav")]), 1)
 
                 self.__check_error__(
-                    _(u"%(filename)s: unable to decode file with wvunpack") %
+                    _(u"%(filename)s: %(error)s") %
                     {"filename":self.filename(
-                            os.path.join(basedir_tar, "track01.wav"))})
+                            os.path.join(basedir_tar, "track01.wav")),
+                     "error":u"unable to decode file with wvunpack"})
+
             finally:
                 os.chmod(os.path.join(basedir_tar, "track01.wav"), f_stat)
             os.unlink(os.path.join(basedir_tar, "track01.wav"))
