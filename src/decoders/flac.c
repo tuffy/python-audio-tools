@@ -1064,7 +1064,7 @@ FlacDecoder_update_md5sum(decoders_FlacDecoder *self,
                                 framelist,
                                 "to_bytes","ii",
                                 0,
-                                self->streaminfo.bits_per_sample >= 16);
+                                1);
     char *string_buffer;
     Py_ssize_t length;
 
