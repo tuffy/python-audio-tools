@@ -636,22 +636,27 @@ class M4AAudio_nero(M4AAudio_faac):
 
         import tempfile
         tempwavefile = tempfile.NamedTemporaryFile(suffix=".wav")
-        if (pcmreader.sample_rate > 96000):
-            tempwave = WaveAudio.from_pcm(
-                tempwavefile.name,
-                PCMConverter(pcmreader,
-                             sample_rate=96000,
-                             channels=pcmreader.channels,
-                             channel_mask=pcmreader.channel_mask,
-                             bits_per_sample=pcmreader.bits_per_sample))
-        else:
-            tempwave = WaveAudio.from_pcm(
-                tempwavefile.name,
-                pcmreader)
+        try:
+            if (pcmreader.sample_rate > 96000):
+                tempwave = WaveAudio.from_pcm(
+                    tempwavefile.name,
+                    PCMConverter(pcmreader,
+                                 sample_rate=96000,
+                                 channels=pcmreader.channels,
+                                 channel_mask=pcmreader.channel_mask,
+                                 bits_per_sample=pcmreader.bits_per_sample))
+            else:
+                tempwave = WaveAudio.from_pcm(
+                    tempwavefile.name,
+                    pcmreader)
 
-        cls.__from_wave__(filename, tempwave.filename, compression)
-        tempwavefile.close()
-        return cls(filename)
+            cls.__from_wave__(filename, tempwave.filename, compression)
+            return cls(filename)
+        finally:
+            if (os.path.isfile(tempwavefile.name)):
+                tempwavefile.close()
+            else:
+                tempwavefile.close_called = True
 
     def to_wave(self, wave_file):
         """Writes the contents of this file to the given .wav filename string.
@@ -694,15 +699,21 @@ class M4AAudio_nero(M4AAudio_faac):
             #convert through PCMConverter if sample rate is too high
             import tempfile
             tempwavefile = tempfile.NamedTemporaryFile(suffix=".wav")
-            tempwave = WaveAudio.from_pcm(
-                tempwavefile.name,
-                PCMConverter(wave.to_pcm(),
-                             sample_rate=96000,
-                             channels=wave.channels(),
-                             channel_mask=wave.channel_mask(),
-                             bits_per_sample=wave.bits_per_sample()))
-            return cls.__from_wave__(filename, tempwave.filename, compression)
-            tempwavefile.close()
+            try:
+                tempwave = WaveAudio.from_pcm(
+                    tempwavefile.name,
+                    PCMConverter(wave.to_pcm(),
+                                 sample_rate=96000,
+                                 channels=wave.channels(),
+                                 channel_mask=wave.channel_mask(),
+                                 bits_per_sample=wave.bits_per_sample()))
+                return cls.__from_wave__(filename, tempwave.filename,
+                                         compression)
+            finally:
+                if (os.path.isfile(tempwavefile.name)):
+                    tempwavefile.close()
+                else:
+                    tempwavefile.close_called = True
         else:
             return cls.__from_wave__(filename, wave_filename, compression)
 
