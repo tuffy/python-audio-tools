@@ -37,6 +37,46 @@ class InvalidAU(InvalidFile):
 #######################
 
 
+class AuReader(PCMReader):
+    """A subclass of PCMReader for reading Sun AU file contents."""
+
+    def __init__(self, au_file, data_size,
+                 sample_rate, channels, channel_mask, bits_per_sample):
+        """au_file is a file, data_size is an integer byte count.
+
+        sample_rate, channels, channel_mask and bits_per_sample are ints.
+        """
+
+        PCMReader.__init__(self,
+                           file=au_file,
+                           sample_rate=sample_rate,
+                           channels=channels,
+                           channel_mask=channel_mask,
+                           bits_per_sample=bits_per_sample)
+        self.data_size = data_size
+
+    def read(self, bytes):
+        """Try to read a pcm.FrameList of size "bytes"."""
+
+        #align bytes downward if an odd number is read in
+        bytes -= (bytes % (self.channels * self.bits_per_sample / 8))
+        bytes = max(bytes, self.channels * self.bits_per_sample / 8)
+        pcm_data = self.file.read(bytes)
+        if ((len(pcm_data) == 0) and (self.data_size > 0)):
+            raise IOError("data ends prematurely")
+        else:
+            self.data_size -= len(pcm_data)
+
+        try:
+            return pcm.FrameList(pcm_data,
+                                 self.channels,
+                                 self.bits_per_sample,
+                                 True,
+                                 True)
+        except ValueError:
+            raise IOError("data ends prematurely")
+
+
 class AuAudio(AudioFile):
     """A Sun AU audio file."""
 

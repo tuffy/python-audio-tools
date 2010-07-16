@@ -3361,6 +3361,28 @@ class TestAuAudio(TestAiffAudio):
     def setUp(self):
         self.audio_class = audiotools.AuAudio
 
+    @TEST_INVALIDFILE
+    def test_invalid_to_wave(self):
+        temp = tempfile.NamedTemporaryFile(
+            suffix="." + self.audio_class.SUFFIX)
+        try:
+            track = self.audio_class.from_pcm(
+                temp.name,
+                BLANK_PCM_Reader(1))
+            good_data = open(temp.name, 'rb').read()
+            f = open(temp.name, 'wb')
+            f.write(good_data[0:-10])
+            f.close()
+            if (os.path.isfile("dummy.wav")):
+                os.unlink("dummy.wav")
+            self.assertEqual(os.path.isfile("dummy.wav"), False)
+            self.assertRaises(audiotools.EncodingError,
+                              track.to_wave,
+                              "dummy.wav")
+            self.assertEqual(os.path.isfile("dummy.wav"), False)
+        finally:
+            temp.close()
+
 
 class VorbisLint:
     #tracklint is tricky to test since set_metadata()
@@ -4582,6 +4604,28 @@ class TestWavPackAudio(EmbeddedCuesheet, ApeTaggedAudio, TestForeignWaveChunks, 
                 os.unlink(os.path.join(basedir_tar, f))
             os.rmdir(basedir_tar)
 
+    @TEST_INVALIDFILE
+    def test_invalid_to_wave(self):
+        temp = tempfile.NamedTemporaryFile(
+            suffix="." + self.audio_class.SUFFIX)
+        try:
+            track = self.audio_class.from_pcm(
+                temp.name,
+                BLANK_PCM_Reader(1))
+            good_data = open(temp.name, 'rb').read()
+            f = open(temp.name, 'wb')
+            f.write(good_data[0:-20])
+            f.close()
+            if (os.path.isfile("dummy.wav")):
+                os.unlink("dummy.wav")
+            self.assertEqual(os.path.isfile("dummy.wav"), False)
+            self.assertRaises(audiotools.EncodingError,
+                              track.to_wave,
+                              "dummy.wav")
+            self.assertEqual(os.path.isfile("dummy.wav"), False)
+        finally:
+            temp.close()
+
 
 class TestShortenAudio(TestForeignWaveChunks, TestAiffAudio):
     def setUp(self):
@@ -4930,6 +4974,27 @@ class TestMP3Audio(ID3Lint, TestAiffAudio):
                 os.unlink(p)
             os.rmdir(undo_db_dir)
 
+    @TEST_INVALIDFILE
+    def test_invalid_to_wave(self):
+        temp = tempfile.NamedTemporaryFile(
+            suffix="." + self.audio_class.SUFFIX)
+        try:
+            track = self.audio_class.from_pcm(
+                temp.name,
+                BLANK_PCM_Reader(1))
+            good_data = open(temp.name, 'rb').read()
+            f = open(temp.name, 'wb')
+            f.write(good_data[0:100])
+            f.close()
+            if (os.path.isfile("dummy.wav")):
+                os.unlink("dummy.wav")
+            self.assertEqual(os.path.isfile("dummy.wav"), False)
+            self.assertRaises(audiotools.EncodingError,
+                              track.to_wave,
+                              "dummy.wav")
+            self.assertEqual(os.path.isfile("dummy.wav"), False)
+        finally:
+            temp.close()
 
 class TestMP2Audio(TestMP3Audio):
     def setUp(self):
@@ -4977,6 +5042,28 @@ class TestMP2Audio(TestMP3Audio):
         finally:
             temp_track_file1.close()
             temp_track_file2.close()
+
+    @TEST_INVALIDFILE
+    def test_invalid_to_wave(self):
+        temp = tempfile.NamedTemporaryFile(
+            suffix="." + self.audio_class.SUFFIX)
+        try:
+            track = self.audio_class.from_pcm(
+                temp.name,
+                BLANK_PCM_Reader(1))
+            good_data = open(temp.name, 'rb').read()
+            f = open(temp.name, 'wb')
+            f.write(good_data[0:100])
+            f.close()
+            if (os.path.isfile("dummy.wav")):
+                os.unlink("dummy.wav")
+            self.assertEqual(os.path.isfile("dummy.wav"), False)
+            self.assertRaises(audiotools.EncodingError,
+                              track.to_wave,
+                              "dummy.wav")
+            self.assertEqual(os.path.isfile("dummy.wav"), False)
+        finally:
+            temp.close()
 
 
 class TestVorbisAudio(VorbisLint, TestAiffAudio, LCVorbisComment,
@@ -5184,6 +5271,29 @@ class TestM4AAudio(M4AMetadata, TestAiffAudio):
             track_file3.close()
             track_file4.close()
 
+    @TEST_INVALIDFILE
+    def test_invalid_to_wave(self):
+        temp = tempfile.NamedTemporaryFile(
+            suffix="." + self.audio_class.SUFFIX)
+        try:
+            track = self.audio_class.from_pcm(
+                temp.name,
+                BLANK_PCM_Reader(1))
+            if (isinstance(track, audiotools.M4AAudio_nero)):
+                good_data = open(temp.name, 'rb').read()
+                f = open(temp.name, 'wb')
+                f.write(good_data[0:100])
+                f.close()
+                if (os.path.isfile("dummy.wav")):
+                    os.unlink("dummy.wav")
+                self.assertEqual(os.path.isfile("dummy.wav"), False)
+                self.assertRaises(audiotools.EncodingError,
+                                  track.to_wave,
+                                  "dummy.wav")
+                self.assertEqual(os.path.isfile("dummy.wav"), False)
+        finally:
+            temp.close()
+
 
 class TestAlacAudio(TestM4AAudio):
     def setUp(self):
@@ -5240,6 +5350,12 @@ class TestAlacAudio(TestM4AAudio):
 class TestAACAudio(TestAiffAudio):
     def setUp(self):
         self.audio_class = audiotools.AACAudio
+
+    @TEST_INVALIDFILE
+    def test_invalid_to_wave(self):
+        #faad doesn't exit with errors on bad files either
+
+        pass
 
 
 # class TestMusepackAudio(ApeTaggedAudio,APEv2Lint,TestAiffAudio):
