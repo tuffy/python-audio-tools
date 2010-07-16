@@ -3263,6 +3263,23 @@ class TestWaveAudio(TestForeignWaveChunks, TestAiffAudio):
             finally:
                 temp.close()
 
+    @TEST_INVALIDFILE
+    def test_invalid_to_wave(self):
+        temp = tempfile.NamedTemporaryFile(suffix=".flac")
+        try:
+            temp.write(open("wav-2ch.wav", "rb").read()[0:-10])
+            temp.flush()
+            flac = audiotools.open(temp.name)
+            if (os.path.isfile("dummy.wav")):
+                os.unlink("dummy.wav")
+            self.assertEqual(os.path.isfile("dummy.wav"), False)
+            self.assertRaises(audiotools.EncodingError,
+                              flac.to_wave,
+                              "dummy.wav")
+            self.assertEqual(os.path.isfile("dummy.wav"), False)
+        finally:
+            temp.close()
+
 
 class TestInvalidAIFF(unittest.TestCase):
     @TEST_INVALIDFILE
@@ -3323,6 +3340,22 @@ class TestInvalidAIFF(unittest.TestCase):
         finally:
             temp.close()
 
+    @TEST_INVALIDFILE
+    def test_invalid_to_wave(self):
+        temp = tempfile.NamedTemporaryFile(suffix=".aiff")
+        try:
+            temp.write(open("aiff-2ch.aiff", "rb").read()[0:-10])
+            temp.flush()
+            flac = audiotools.open(temp.name)
+            if (os.path.isfile("dummy.wav")):
+                os.unlink("dummy.wav")
+            self.assertEqual(os.path.isfile("dummy.wav"), False)
+            self.assertRaises(audiotools.EncodingError,
+                              flac.to_wave,
+                              "dummy.wav")
+            self.assertEqual(os.path.isfile("dummy.wav"), False)
+        finally:
+            temp.close()
 
 class TestAuAudio(TestAiffAudio):
     def setUp(self):
@@ -4200,6 +4233,22 @@ class TestFlacAudio(TestOggFlacAudio, TestForeignWaveChunks):
         finally:
             temp.close()
 
+    @TEST_INVALIDFILE
+    def test_invalid_to_wave(self):
+        temp = tempfile.NamedTemporaryFile(suffix=".flac")
+        try:
+            temp.write(open("flac-allframes.flac", "rb").read()[0:-10])
+            temp.flush()
+            flac = audiotools.open(temp.name)
+            if (os.path.isfile("dummy.wav")):
+                os.unlink("dummy.wav")
+            self.assertEqual(os.path.isfile("dummy.wav"), False)
+            self.assertRaises(audiotools.EncodingError,
+                              flac.to_wave,
+                              "dummy.wav")
+            self.assertEqual(os.path.isfile("dummy.wav"), False)
+        finally:
+            temp.close()
 
 class APEv2Lint:
     #tracklint is tricky to test since set_metadata()
@@ -4525,6 +4574,22 @@ class TestShortenAudio(TestForeignWaveChunks, TestAiffAudio):
             finally:
                 temp.close()
 
+    @TEST_INVALIDFILE
+    def test_invalid_to_wave(self):
+        temp = tempfile.NamedTemporaryFile(suffix=".shn")
+        try:
+            temp.write(open("shorten-frames.shn", "rb").read()[0:-10])
+            temp.flush()
+            flac = audiotools.open(temp.name)
+            if (os.path.isfile("dummy.wav")):
+                os.unlink("dummy.wav")
+            self.assertEqual(os.path.isfile("dummy.wav"), False)
+            self.assertRaises(audiotools.EncodingError,
+                              flac.to_wave,
+                              "dummy.wav")
+            self.assertEqual(os.path.isfile("dummy.wav"), False)
+        finally:
+            temp.close()
 
 class M4AMetadata:
     def DummyMetaData(self):
@@ -5051,6 +5116,23 @@ class TestAlacAudio(TestM4AAudio):
                 decoder = audiotools.open(temp.name).to_pcm()
                 self.assertNotEqual(decoder, None)
                 self.assertRaises(IOError, run_analysis, decoder)
+        finally:
+            temp.close()
+
+    @TEST_INVALIDFILE
+    def test_invalid_to_wave(self):
+        temp = tempfile.NamedTemporaryFile(suffix=".m4a")
+        try:
+            temp.write(open("alac-allframes.m4a", "rb").read()[0:-10])
+            temp.flush()
+            flac = audiotools.open(temp.name)
+            if (os.path.isfile("dummy.wav")):
+                os.unlink("dummy.wav")
+            self.assertEqual(os.path.isfile("dummy.wav"), False)
+            self.assertRaises(audiotools.EncodingError,
+                              flac.to_wave,
+                              "dummy.wav")
+            self.assertEqual(os.path.isfile("dummy.wav"), False)
         finally:
             temp.close()
 

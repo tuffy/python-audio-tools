@@ -231,7 +231,10 @@ class ShortenAudio(AudioFile):
         Raises EncodingError if some error occurs during decoding."""
 
         if (not hasattr(self, "__format__")):
-            self.__populate_metadata__()
+            try:
+                self.__populate_metadata__()
+            except IOError, msg:
+                raise EncodingError(str(msg))
         if (self.__format__ is WaveAudio):
             try:
                 f = open(wave_filename, 'wb')
@@ -241,9 +244,12 @@ class ShortenAudio(AudioFile):
                 if (block is not None):
                     f.write(block)
                 else:
-                    transfer_framelist_data(
-                        audiotools.decoders.SHNDecoder(self.filename),
-                        f.write)
+                    try:
+                        transfer_framelist_data(
+                            audiotools.decoders.SHNDecoder(self.filename),
+                            f.write)
+                    except IOError, msg:
+                        raise EncodingError(str(msg))
         else:
             WaveAudio.from_pcm(wave_filename, self.to_pcm())
 

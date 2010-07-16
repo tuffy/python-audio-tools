@@ -33,21 +33,26 @@ MAX_CPUS = audiotools.MAX_JOBS
 
 
 def convert_to_wave(audiofile, wave_filename, messenger):
-    if ((audiofile.sample_rate() == 44100) and
-        (audiofile.channels() == 2) and
-        (audiofile.bits_per_sample() == 16)):  # already CD quality
-        audiofile.to_wave(wave_filename)
-    else:                                      # convert to CD quality
-        pcm = audiotools.PCMConverter(
-            audiofile.to_pcm(),
-            sample_rate=44100,
-            channels=2,
-            channel_mask=audiotools.ChannelMask.from_channels(2),
-            bits_per_sample=16)
-        audiotools.WaveAudio.from_pcm(wave_filename, pcm)
-        pcm.close()
+    try:
+        if ((audiofile.sample_rate() == 44100) and
+            (audiofile.channels() == 2) and
+            (audiofile.bits_per_sample() == 16)):  # already CD quality
+            audiofile.to_wave(wave_filename)
+        else:                                      # convert to CD quality
+            pcm = audiotools.PCMConverter(
+                audiofile.to_pcm(),
+                sample_rate=44100,
+                channels=2,
+                channel_mask=audiotools.ChannelMask.from_channels(2),
+                bits_per_sample=16)
+            audiotools.WaveAudio.from_pcm(wave_filename, pcm)
+            pcm.close()
 
-    messenger.info(u"* %s" % (messenger.filename(audiofile.filename)))
+        messenger.info(u"* %s" % (messenger.filename(audiofile.filename)))
+    except audiotools.EncodingError, err:
+        messenger.error(_(u"%(filename): %(message)s") %
+                        {"filename":audiofile.filename,
+                         "message":err})
 
 
 if (__name__ == '__main__'):
@@ -276,6 +281,14 @@ if (__name__ == '__main__'):
                                msg))
 
         queue.run(max_processes)
+        try:
+            for wave in wave_files:
+                audiotools.open(wave).verify()
+        except (audiotools.UnsupportedFile,
+                audiotools.InvalidFile,
+                IOError):
+            msg.error(_(u"Not all files are valid.  Unable to write CD"))
+            sys.exit(1)
 
         exec_args += wave_files
 

@@ -1071,19 +1071,19 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    - [X] WaveAudio
    - [X] WavPackAudio
 ** TODO Check for IOError/ValueError during to_wave()
-   - [ ] AiffAudio
+   - [X] AiffAudio
    - [ ] AuAudio
    - [ ] AACAudio
-   - [ ] ALACAudio
-   - [ ] FlacAudio
+   - [X] ALACAudio
+   - [X] FlacAudio
    - [ ] M4AAudio
    - [ ] MP2Audio
    - [ ] MP3Audio
    - [ ] OggFlacAudio
-   - [ ] ShortenAudio
+   - [X] ShortenAudio
    - [ ] SpeexAudio
    - [ ] VorbisAudio
-   - [ ] WaveAudio
+   - [X] WaveAudio
    - [ ] WavPackAudio
 ** DONE Check for IOError/ValueError during from_wave()
    - [X] AiffAudio
@@ -1116,19 +1116,19 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    - [X] WaveAudio
    - [X] WavPackAudio
 ** TODO Ensure a failed to_wave() deletes partial file
-   - [ ] AiffAudio
+   - [X] AiffAudio
    - [ ] AuAudio
    - [ ] AACAudio
-   - [ ] ALACAudio
-   - [ ] FlacAudio
+   - [X] ALACAudio
+   - [X] FlacAudio
    - [ ] M4AAudio
    - [ ] MP2Audio
    - [ ] MP3Audio
    - [ ] OggFlacAudio
-   - [ ] ShortenAudio
+   - [X] ShortenAudio
    - [ ] SpeexAudio
    - [ ] VorbisAudio
-   - [ ] WaveAudio
+   - [X] WaveAudio
    - [ ] WavPackAudio
 ** DONE Ensure a failed from_wave() deletes partial file
    - [X] AiffAudio
@@ -1149,20 +1149,12 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    If an invalid file is encountered, display a proper
    user-readable error message explaining what's wrong
    with the file.
-*** TODO coverdump
-*** TODO coverview
-*** TODO track2cd
+*** DONE track2cd
 *** DONE track2track
-*** TODO track2xmcd
 *** DONE trackcat
 *** DONE trackcmp
-*** TODO trackinfo
-*** TODO tracklength
-*** TODO tracklint
 *** TODO trackplay
-*** TODO trackrename
 *** DONE tracksplit
-*** TODO tracktag
 ** DONE Document ValueError/IOError behavior
    Both in docstrings and in the rst documentation.
 * TODO Ensure non-image cuesheets are handled properly
@@ -2285,6 +2277,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   May work recursively to check a user's entire collection.
 ** TODO add a .verify() method to AudioFile classes
    Returns True if the file is okay.  Raises InvalidFile if not.
+   Include unit test.
    - [ ] AACAudio
    - [ ] AiffAudio
    - [ ] ALACAudio
