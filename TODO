@@ -1079,10 +1079,10 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    - [ ] M4AAudio
    - [ ] MP2Audio
    - [ ] MP3Audio
-   - [ ] OggFlacAudio
+   - [X] OggFlacAudio
    - [X] ShortenAudio
-   - [ ] SpeexAudio
-   - [ ] VorbisAudio
+   - [X] SpeexAudio
+   - [X] VorbisAudio
    - [X] WaveAudio
    - [ ] WavPackAudio
 ** DONE Check for IOError/ValueError during from_wave()
@@ -1124,10 +1124,10 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    - [ ] M4AAudio
    - [ ] MP2Audio
    - [ ] MP3Audio
-   - [ ] OggFlacAudio
+   - [X] OggFlacAudio
    - [X] ShortenAudio
-   - [ ] SpeexAudio
-   - [ ] VorbisAudio
+   - [X] SpeexAudio
+   - [X] VorbisAudio
    - [X] WaveAudio
    - [ ] WavPackAudio
 ** DONE Ensure a failed from_wave() deletes partial file

@@ -4012,6 +4012,28 @@ class TestOggErrors:
             good_file.close()
             bad_file.close()
 
+    @TEST_INVALIDFILE
+    def test_invalid_to_wave(self):
+        temp = tempfile.NamedTemporaryFile(
+            suffix="." + self.audio_class.SUFFIX)
+        try:
+            track = self.audio_class.from_pcm(
+                temp.name,
+                BLANK_PCM_Reader(1))
+            good_data = open(temp.name, 'rb').read()
+            f = open(temp.name, 'wb')
+            f.write(good_data[0:-20])
+            f.close()
+            if (os.path.isfile("dummy.wav")):
+                os.unlink("dummy.wav")
+            self.assertEqual(os.path.isfile("dummy.wav"), False)
+            self.assertRaises(audiotools.EncodingError,
+                              track.to_wave,
+                              "dummy.wav")
+            self.assertEqual(os.path.isfile("dummy.wav"), False)
+        finally:
+            temp.close()
+
 
 class TestOggFlacErrors(unittest.TestCase, TestOggErrors):
     def setUp(self):
@@ -4991,6 +5013,28 @@ class TestVorbisAudio(VorbisLint, TestAiffAudio, LCVorbisComment,
         finally:
             track_file.close()
 
+    @TEST_INVALIDFILE
+    def test_invalid_to_wave(self):
+        temp = tempfile.NamedTemporaryFile(
+            suffix="." + self.audio_class.SUFFIX)
+        try:
+            track = self.audio_class.from_pcm(
+                temp.name,
+                BLANK_PCM_Reader(1))
+            good_data = open(temp.name, 'rb').read()
+            f = open(temp.name, 'wb')
+            f.write(good_data[0:100])
+            f.close()
+            if (os.path.isfile("dummy.wav")):
+                os.unlink("dummy.wav")
+            self.assertEqual(os.path.isfile("dummy.wav"), False)
+            self.assertRaises(audiotools.EncodingError,
+                              track.to_wave,
+                              "dummy.wav")
+            self.assertEqual(os.path.isfile("dummy.wav"), False)
+        finally:
+            temp.close()
+
 
 class TestM4AAudio(M4AMetadata, TestAiffAudio):
     def setUp(self):
@@ -5207,6 +5251,13 @@ class TestSpeexAudio(VorbisLint, TestAiffAudio, LCVorbisComment,
                      TestOggErrors):
     def setUp(self):
         self.audio_class = audiotools.SpeexAudio
+
+    @TEST_INVALIDFILE
+    def test_invalid_to_wave(self):
+        #An unfortunate hack, since Speex doesn't error out properly
+        #when given non-Speex input.
+
+        pass
 
 
 # class TestApeAudio(TestForeignWaveChunks,APEv2Lint,TestAiffAudio):

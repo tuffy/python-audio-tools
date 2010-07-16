@@ -2546,7 +2546,9 @@ class AudioFile:
 
         Raises EncodingError if some error occurs during decoding."""
 
-        WaveAudio.from_pcm(wave_filename, self.to_pcm())
+        pcmreader = self.to_pcm()
+        WaveAudio.from_pcm(wave_filename, pcmreader)
+        pcmreader.close()
 
     @classmethod
     def from_wave(cls, filename, wave_filename, compression=None):

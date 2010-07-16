@@ -481,6 +481,7 @@ class WaveAudio(AudioFile):
             try:
                 pcmreader.close()
             except DecodingError, err:
+                cls.__unlink__(filename)
                 raise EncodingError(err.error_message)
             f.flush()
 
