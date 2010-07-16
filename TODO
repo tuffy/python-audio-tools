@@ -999,12 +999,10 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   which is caught by from_pcm() and propogated upward as some form
   of encoding error.
 ** TODO AACAudio
-   - [ ] unit check is_type() for errors
 ** TODO AiffAudio
    - [ ] handle the offset argument correctly
    - [X] sanity check chunk headers (all should be ASCII)
    - [X] check for premature EOF
-   - [ ] unit check is_type() for errors
 ** TODO ALACAudio
    - [ ] sanity check ALAC atom
    - [X] check for invalid footer bytes
@@ -1017,7 +1015,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
          (both at FlacDecoder init-time and at read() time)
    - [ ] unit check is_type() for errors
 ** TODO AuAudio
-   - [ ] unit check is_type() for errors
 ** DONE FlacAudio
    - [X] check subframe CRC-8
    - [X] check frame CRC-16
@@ -1031,13 +1028,9 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** TODO M4AAudio
    - [ ] unit check is_type() for errors
 ** TODO MP3Audio
-   - [ ] unit check is_type() for errors
 ** TODO MP2Audio
-   - [ ] unit check is_type() for errors
 ** TODO OggFlacAudio
-   - [ ] unit check is_type() for errors
 ** TODO SpeexAudio
-   - [ ] unit check is_type() for errors
 ** TODO ShortenAudio
    - [ ] sanity check header
    - [X] sanity check command ID
@@ -1046,14 +1039,11 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
          (both at FlacDecoder init-time and at read() time)
    - [ ] unit check is_type() for errors
 ** TODO VorbisAudio
-   - [ ] unit check is_type() for errors
 ** TODO WaveAudio
    - [ ] sanity check fmt chunk (including WAVEFORMATEXTENSIBLE)
    - [X] sanity check chunk headers (all should be ASCII)
    - [X] check for premature EOF
-   - [ ] unit check is_type() for errors
 ** TODO WavPackAudio
-   - [ ] unit check is_type() for errors
 ** TODO Unit test all checks with example files
 ** DONE Check for IOError/ValueError during from_pcm()
    - [X] AiffAudio
@@ -2295,3 +2285,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** TODO add trackverify unit tests for all known verifiable problems
 ** TODO add trackverify man page
 ** TODO link trackverify man page to others
+* TODO get trackplay working on Mac OS X
+  There must be some way to pipe PCM data to its audio system
+  without the need for additional libraries.
+
