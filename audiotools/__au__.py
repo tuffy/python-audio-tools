@@ -237,7 +237,8 @@ class AuAudio(AudioFile):
         return AuAudio(filename)
 
     @classmethod
-    def track_name(cls, file_path, track_metadata=None, format=None):
+    def track_name(cls, file_path, track_metadata=None, format=None,
+                   suffix=None):
         """Constructs a new filename string.
 
         Given a plain string to an existing path,
