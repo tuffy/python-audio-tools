@@ -1783,3 +1783,24 @@ class OggFlacAudio(FlacAudio):
         #the --keep-foreign-metadata flag fails
         #when used with --ogg
         return False
+
+    def verify(self):
+        """Verifies the current file for correctness.
+
+        Returns True if the file is okay.
+        Raises an InvalidFile with an error message if there is
+        some problem with the file."""
+
+        from audiotools import verify_ogg_stream
+
+        try:
+            f = open(self.filename, 'rb')
+        except IOError, err:
+            raise InvalidFLAC(str(err))
+        try:
+            try:
+                return verify_ogg_stream(f)
+            except (IOError, ValueError), err:
+                raise InvalidFLAC(str(err))
+        finally:
+            f.close()

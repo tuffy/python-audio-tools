@@ -33,6 +33,42 @@ class InvalidVorbis(InvalidFile):
     pass
 
 
+def verify_ogg_stream(stream):
+    """Verifies an Ogg stream file object.
+
+    This file must be rewound to the start of a page.
+    Returns True if the file is valid.
+    Raises IOError or ValueError if there is some problem with the file.
+    """
+
+    try:
+        header = OggStreamReader.OGGS.parse_stream(stream)
+    except Con.ConstError:
+        raise ValueError("invalid Ogg checksum in header")
+    except (Con.FieldError, Con.ArrayError):
+        raise IOError("I/O error reading stream")
+    data = stream.read(sum(header.segment_lengths))
+    if (len(data) != sum(header.segment_lengths)):
+        raise IOError("I/O error reading stream")
+    if (header.checksum !=
+        OggStreamReader.calculate_ogg_checksum(header, data)):
+        raise ValueError("incorrect Ogg checksum in stream")
+    while ((header.header_type & 0x4) == 0):
+        try:
+            header = OggStreamReader.OGGS.parse_stream(stream)
+        except Con.ConstError:
+            raise ValueError("invalid Ogg checksum in header")
+        except (Con.FieldError, Con.ArrayError):
+            raise IOError("I/O error reading stream")
+        data = stream.read(sum(header.segment_lengths))
+        if (len(data) != sum(header.segment_lengths)):
+            raise IOError("I/O error reading stream")
+        if (header.checksum !=
+            OggStreamReader.calculate_ogg_checksum(header, data)):
+            raise ValueError("incorrect Ogg checksum in stream")
+    else:
+        return True
+
 class OggStreamReader:
     """A class for walking through an Ogg stream."""
 
@@ -740,6 +776,25 @@ class VorbisAudio(AudioFile):
                 return None
         else:
             return None
+
+    def verify(self):
+        """Verifies the current file for correctness.
+
+        Returns True if the file is okay.
+        Raises an InvalidFile with an error message if there is
+        some problem with the file."""
+
+        try:
+            f = open(self.filename, 'rb')
+        except IOError, err:
+            raise InvalidVorbis(str(err))
+        try:
+            try:
+                return verify_ogg_stream(f)
+            except (IOError, ValueError), err:
+                raise InvalidVorbis(str(err))
+        finally:
+            f.close()
 
 
 class VorbisChannelMask(ChannelMask):

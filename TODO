@@ -2282,14 +2282,14 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    - [ ] AiffAudio
    - [ ] ALACAudio
    - [ ] AuAudio
-   - [X] FlacAudio,
+   - [X] FlacAudio
    - [ ] M4AAudio
    - [ ] MP2Audio
    - [ ] MP3Audio
-   - [ ] OggFlacAudio
-   - [ ] SpeexAudio
+   - [X] OggFlacAudio
+   - [X] SpeexAudio
    - [ ] ShortenAudio
-   - [ ] VorbisAudio
+   - [X] VorbisAudio
    - [X] WaveAudio
    - [ ] WavPackAudio
 ** TODO add trackverify unit tests for all known verifiable problems

@@ -3964,6 +3964,61 @@ class TestOggFlacAudio(EmbeddedCuesheet, VorbisLint, TestAiffAudio, LCVorbisComm
             big_text.close()
 
 
+class TestOggErrors:
+    """A test for general purpose Ogg stream errors."""
+
+    @TEST_INVALIDFILE
+    def test_invalid_stream(self):
+        good_file = tempfile.NamedTemporaryFile(
+            suffix="." + self.audio_class.SUFFIX)
+        bad_file = tempfile.NamedTemporaryFile(
+            suffix="." + self.audio_class.SUFFIX)
+        try:
+            good_track = self.audio_class.from_pcm(
+                good_file.name,
+                BLANK_PCM_Reader(1))
+            good_file.seek(0, 0)
+            good_file_data = good_file.read()
+            self.assertEqual(len(good_file_data),
+                             os.path.getsize(good_file.name))
+            bad_file.write(good_file_data)
+            bad_file.flush()
+
+            track = audiotools.open(bad_file.name)
+            self.assertEqual(track.verify(), True)
+
+            #first, try truncating the file
+            for i in xrange(len(good_file_data)):
+                f = open(bad_file.name, "wb")
+                f.write(good_file_data[0:i])
+                f.flush()
+                self.assertEqual(os.path.getsize(bad_file.name), i)
+                self.assertRaises(audiotools.InvalidFile,
+                                  track.verify)
+
+            #then, try flipping a bit
+            for i in xrange(len(good_file_data)):
+                for j in xrange(8):
+                    bad_file_data = list(good_file_data)
+                    bad_file_data[i] = chr(ord(bad_file_data[i]) ^ (1 << j))
+                    f = open(bad_file.name, "wb")
+                    f.write("".join(bad_file_data))
+                    f.close()
+                    self.assertEqual(os.path.getsize(bad_file.name),
+                                     len(good_file_data))
+                    self.assertRaises(audiotools.InvalidFile,
+                                      track.verify)
+        finally:
+            good_file.close()
+            bad_file.close()
+
+
+class TestOggFlacErrors(unittest.TestCase, TestOggErrors):
+    def setUp(self):
+        self.audio_class = audiotools.OggFlacAudio
+
+
+
 class TestFlacAudio(TestOggFlacAudio, TestForeignWaveChunks):
     def setUp(self):
         self.audio_class = audiotools.FlacAudio
@@ -4099,7 +4154,7 @@ class TestFlacAudio(TestOggFlacAudio, TestForeignWaveChunks):
         temp = tempfile.NamedTemporaryFile(suffix=".flac")
         try:
             for i in xrange(0x2A, len(flac_data)):
-                for j in xrange(0, 7):
+                for j in xrange(8):
                     bytes = flac_data[:]
                     bytes[i] ^= (1 << j)
                     temp.seek(0, 0)
@@ -4902,7 +4957,8 @@ class TestMP2Audio(TestMP3Audio):
             temp_track_file2.close()
 
 
-class TestVorbisAudio(VorbisLint, TestAiffAudio, LCVorbisComment):
+class TestVorbisAudio(VorbisLint, TestAiffAudio, LCVorbisComment,
+                      TestOggErrors):
     def setUp(self):
         self.audio_class = audiotools.VorbisAudio
 
@@ -5147,7 +5203,8 @@ class TestAACAudio(TestAiffAudio):
 #         self.audio_class = audiotools.MusepackAudio
 
 
-class TestSpeexAudio(VorbisLint, TestAiffAudio, LCVorbisComment):
+class TestSpeexAudio(VorbisLint, TestAiffAudio, LCVorbisComment,
+                     TestOggErrors):
     def setUp(self):
         self.audio_class = audiotools.SpeexAudio
 
