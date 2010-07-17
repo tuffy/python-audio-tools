@@ -1821,7 +1821,8 @@ uhhDdCiCwqg2Gw3lphgaGhoamR+mptKYNT/F3JFOFCQvKfgAwA==""".decode('base64').decode(
         finally:
             track_file.close()
 
-    @TEST_EXECUTABLE
+    # @TEST_EXECUTABLE
+    @TEST_CUSTOM
     def test_track2track_invalid(self):
         basedir_src = tempfile.mkdtemp()
 
@@ -1867,10 +1868,16 @@ uhhDdCiCwqg2Gw3lphgaGhoamR+mptKYNT/F3JFOFCQvKfgAwA==""".decode('base64').decode(
                      os.path.join(basedir_tar, "foo", "track01.wav")]), 1)
 
             f = self.filename(os.path.join(basedir_tar, "foo", "track01.wav"))
-            self.__check_error__(
-                _(u"%(filename)s: %(error)s") %
-                {"filename":f,
-                 "error":u"[Errno 2] No such file or directory: '%s'" % (f)})
+            if (self.audio_class == audiotools.M4AAudio_nero):
+                self.__check_error__(
+                    _(u"%(filename)s: %(error)s") %
+                    {"filename":f,
+                     "error":u"unable to write file with neroAacDec"})
+            else:
+                self.__check_error__(
+                    _(u"%(filename)s: %(error)s") %
+                    {"filename":f,
+                     "error":u"[Errno 2] No such file or directory: '%s'" % (f)})
 
             os.chmod(basedir_tar, basedir_tar_stat)
 
@@ -1895,10 +1902,17 @@ uhhDdCiCwqg2Gw3lphgaGhoamR+mptKYNT/F3JFOFCQvKfgAwA==""".decode('base64').decode(
                                          self.filename(os.path.join(basedir_tar, "track01.wav"))))
 
                 f = self.filename(os.path.join(basedir_tar, "track01.wav"))
-                self.__check_error__(
-                    _(u"%(filename)s: %(error)s" %
-                      {"filename":f,
-                       "error":u"[Errno 13] Permission denied: '%s'" % (f)}))
+
+                if (self.audio_class == audiotools.M4AAudio_nero):
+                    self.__check_error__(
+                        _(u"%(filename)s: %(error)s") %
+                        {"filename":f,
+                         "error":u"unable to write file with neroAacDec"})
+                else:
+                    self.__check_error__(
+                        _(u"%(filename)s: %(error)s" %
+                          {"filename":f,
+                           "error":u"[Errno 13] Permission denied: '%s'" % (f)}))
 
                 #try to use track2track -o on an un-writable file
                 self.assertEqual(self.__run_app__(
@@ -1909,10 +1923,17 @@ uhhDdCiCwqg2Gw3lphgaGhoamR+mptKYNT/F3JFOFCQvKfgAwA==""".decode('base64').decode(
                      os.path.join(basedir_tar, "track01.wav")]), 1)
 
                 f = self.filename(os.path.join(basedir_tar, "track01.wav"))
-                self.__check_error__(
-                    _(u"%(filename)s: %(error)s") %
-                    {"filename":f,
-                     "error":u"[Errno 13] Permission denied: '%s'" % (f)})
+                if (self.audio_class == audiotools.M4AAudio_nero):
+                    self.__check_error__(
+                        _(u"%(filename)s: %(error)s") %
+                        {"filename":f,
+                         "error":u"unable to write file with neroAacDec"})
+                else:
+                    self.__check_error__(
+                        _(u"%(filename)s: %(error)s") %
+                        {"filename":f,
+                         "error":u"[Errno 13] Permission denied: '%s'" % (f)})
+
             finally:
                 os.chmod(os.path.join(basedir_tar, "track01.wav"), f_stat)
             os.unlink(os.path.join(basedir_tar, "track01.wav"))
@@ -3016,6 +3037,15 @@ uhhDdCiCwqg2Gw3lphgaGhoamR+mptKYNT/F3JFOFCQvKfgAwA==""".decode('base64').decode(
                               self.audio_class,
                               f.name)
 
+            #finally, check unreadable files
+            original_stat = os.stat(f.name)[0]
+            try:
+                os.chmod(f.name, 0)
+                self.assertRaises(audiotools.InvalidFile,
+                                  self.audio_class,
+                                  f.name)
+            finally:
+                os.chmod(f.name, original_stat)
         finally:
             f.close()
 
@@ -3355,6 +3385,12 @@ class TestInvalidAIFF(unittest.TestCase):
             temp.close()
 
     @TEST_INVALIDFILE
+    def test_no_ssnd_chunk(self):
+        self.assertRaises(audiotools.InvalidFile,
+                          audiotools.AiffAudio,
+                          "aiff-nossnd.aiff")
+
+    @TEST_INVALIDFILE
     def test_invalid_to_wave(self):
         temp = tempfile.NamedTemporaryFile(suffix=".aiff")
         try:
@@ -3374,6 +3410,26 @@ class TestInvalidAIFF(unittest.TestCase):
 class TestAuAudio(TestAiffAudio):
     def setUp(self):
         self.audio_class = audiotools.AuAudio
+
+    @TEST_INVALIDFILE
+    def test_truncated_file(self):
+        temp = tempfile.NamedTemporaryFile(
+            suffix="." + self.audio_class.SUFFIX)
+        try:
+            track = self.audio_class.from_pcm(
+                temp.name,
+                BLANK_PCM_Reader(1))
+            good_data = open(temp.name, 'rb').read()
+            f = open(temp.name, 'wb')
+            f.write(good_data[0:-10])
+            f.close()
+            reader = track.to_pcm()
+            self.assertNotEqual(reader, None)
+            self.assertRaises(IOError,
+                              transfer_framelist_data,
+                              reader, lambda x: x)
+        finally:
+            temp.close()
 
     @TEST_INVALIDFILE
     def test_invalid_to_wave(self):
@@ -4075,6 +4131,24 @@ class TestOggFlacErrors(unittest.TestCase, TestOggErrors):
     def setUp(self):
         self.audio_class = audiotools.OggFlacAudio
 
+    @TEST_INVALIDFILE
+    def test_invalid_to_pcm(self):
+        temp = tempfile.NamedTemporaryFile(
+            suffix="." + self.audio_class.SUFFIX)
+        try:
+            track = self.audio_class.from_pcm(
+                temp.name,
+                BLANK_PCM_Reader(1))
+            good_data = open(temp.name, 'rb').read()
+            f = open(temp.name, 'wb')
+            f.write(good_data[0:-20])
+            f.close()
+            reader = track.to_pcm()
+            transfer_framelist_data(reader, lambda x: x)
+            self.assertRaises(audiotools.DecodingError,
+                              reader.close)
+        finally:
+            temp.close()
 
 
 class TestFlacAudio(TestOggFlacAudio, TestForeignWaveChunks):
@@ -4619,6 +4693,25 @@ class TestWavPackAudio(EmbeddedCuesheet, ApeTaggedAudio, TestForeignWaveChunks, 
             os.rmdir(basedir_tar)
 
     @TEST_INVALIDFILE
+    def test_invalid_to_pcm(self):
+        temp = tempfile.NamedTemporaryFile(
+            suffix="." + self.audio_class.SUFFIX)
+        try:
+            track = self.audio_class.from_pcm(
+                temp.name,
+                BLANK_PCM_Reader(1))
+            good_data = open(temp.name, 'rb').read()
+            f = open(temp.name, 'wb')
+            f.write(good_data[0:-20])
+            f.close()
+            reader = track.to_pcm()
+            transfer_framelist_data(reader, lambda x: x)
+            self.assertRaises(audiotools.DecodingError,
+                              reader.close)
+        finally:
+            temp.close()
+
+    @TEST_INVALIDFILE
     def test_invalid_to_wave(self):
         temp = tempfile.NamedTemporaryFile(
             suffix="." + self.audio_class.SUFFIX)
@@ -4988,6 +5081,25 @@ class TestMP3Audio(ID3Lint, TestAiffAudio):
                 os.unlink(p)
             os.rmdir(undo_db_dir)
 
+    @TEST_CUSTOM
+    def test_invalid_to_pcm(self):
+        temp = tempfile.NamedTemporaryFile(
+            suffix="." + self.audio_class.SUFFIX)
+        try:
+            track = self.audio_class.from_pcm(
+                temp.name,
+                BLANK_PCM_Reader(1))
+            good_data = open(temp.name, 'rb').read()
+            f = open(temp.name, 'wb')
+            f.write(good_data[0:100])
+            f.close()
+            reader = track.to_pcm()
+            transfer_framelist_data(reader, lambda x: x)
+            self.assertRaises(audiotools.DecodingError,
+                              reader.close)
+        finally:
+            temp.close()
+
     @TEST_INVALIDFILE
     def test_invalid_to_wave(self):
         temp = tempfile.NamedTemporaryFile(
@@ -5057,28 +5169,6 @@ class TestMP2Audio(TestMP3Audio):
             temp_track_file1.close()
             temp_track_file2.close()
 
-    @TEST_INVALIDFILE
-    def test_invalid_to_wave(self):
-        temp = tempfile.NamedTemporaryFile(
-            suffix="." + self.audio_class.SUFFIX)
-        try:
-            track = self.audio_class.from_pcm(
-                temp.name,
-                BLANK_PCM_Reader(1))
-            good_data = open(temp.name, 'rb').read()
-            f = open(temp.name, 'wb')
-            f.write(good_data[0:100])
-            f.close()
-            if (os.path.isfile("dummy.wav")):
-                os.unlink("dummy.wav")
-            self.assertEqual(os.path.isfile("dummy.wav"), False)
-            self.assertRaises(audiotools.EncodingError,
-                              track.to_wave,
-                              "dummy.wav")
-            self.assertEqual(os.path.isfile("dummy.wav"), False)
-        finally:
-            temp.close()
-
 
 class TestVorbisAudio(VorbisLint, TestAiffAudio, LCVorbisComment,
                       TestOggErrors):
@@ -5113,6 +5203,25 @@ class TestVorbisAudio(VorbisLint, TestAiffAudio, LCVorbisComment,
                              new_pcm_sum.hexdigest())
         finally:
             track_file.close()
+
+    @TEST_INVALIDFILE
+    def test_invalid_to_pcm(self):
+        temp = tempfile.NamedTemporaryFile(
+            suffix="." + self.audio_class.SUFFIX)
+        try:
+            track = self.audio_class.from_pcm(
+                temp.name,
+                BLANK_PCM_Reader(1))
+            good_data = open(temp.name, 'rb').read()
+            f = open(temp.name, 'wb')
+            f.write(good_data[0:100])
+            f.close()
+            reader = track.to_pcm()
+            transfer_framelist_data(reader, lambda x: x)
+            self.assertRaises(audiotools.DecodingError,
+                              reader.close)
+        finally:
+            temp.close()
 
     @TEST_INVALIDFILE
     def test_invalid_to_wave(self):
@@ -5284,6 +5393,26 @@ class TestM4AAudio(M4AMetadata, TestAiffAudio):
             track_file2.close()
             track_file3.close()
             track_file4.close()
+
+    @TEST_INVALIDFILE
+    def test_invalid_to_pcm(self):
+        temp = tempfile.NamedTemporaryFile(
+            suffix="." + self.audio_class.SUFFIX)
+        try:
+            track = self.audio_class.from_pcm(
+                temp.name,
+                BLANK_PCM_Reader(1))
+            if (isinstance(track, audiotools.M4AAudio_nero)):
+                good_data = open(temp.name, 'rb').read()
+                f = open(temp.name, 'wb')
+                f.write(good_data[0:100])
+                f.close()
+                reader = track.to_pcm()
+                transfer_framelist_data(reader, lambda x: x)
+                self.assertRaises(audiotools.DecodingError,
+                                  reader.close)
+        finally:
+            temp.close()
 
     @TEST_INVALIDFILE
     def test_invalid_to_wave(self):

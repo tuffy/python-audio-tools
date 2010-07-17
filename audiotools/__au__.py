@@ -23,6 +23,7 @@ from audiotools import (AudioFile, InvalidFile, PCMReader, Con,
                         __capped_stream_reader__, BUFFER_SIZE,
                         FILENAME_FORMAT, EncodingError, DecodingError,
                         ChannelMask)
+import audiotools.pcm
 import gettext
 
 gettext.install("audiotools", unicode=True)
@@ -68,11 +69,11 @@ class AuReader(PCMReader):
             self.data_size -= len(pcm_data)
 
         try:
-            return pcm.FrameList(pcm_data,
-                                 self.channels,
-                                 self.bits_per_sample,
-                                 True,
-                                 True)
+            return audiotools.pcm.FrameList(pcm_data,
+                                            self.channels,
+                                            self.bits_per_sample,
+                                            True,
+                                            True)
         except ValueError:
             raise IOError("data ends prematurely")
 
@@ -165,13 +166,12 @@ class AuAudio(AudioFile):
         f = file(self.filename, 'rb')
         f.seek(self.__data_offset__, 0)
 
-        return PCMReader(f,
-                         sample_rate=self.sample_rate(),
-                         channels=self.channels(),
-                         channel_mask=int(self.channel_mask()),
-                         bits_per_sample=self.bits_per_sample(),
-                         signed=True,
-                         big_endian=True)
+        return AuReader(au_file=f,
+                        data_size=self.__data_size__,
+                        sample_rate=self.sample_rate(),
+                        channels=self.channels(),
+                        channel_mask=int(self.channel_mask()),
+                        bits_per_sample=self.bits_per_sample())
 
     @classmethod
     def from_pcm(cls, filename, pcmreader, compression=None):

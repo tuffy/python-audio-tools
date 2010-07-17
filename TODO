@@ -1006,187 +1006,174 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    a failed from_pcm() mustn't leave a partially encoded file behind
    PCMReaders may raise IOError and ValueError on read()
    PCMReaders may raise DecodingError on close()
-*** TODO AACAudio
+*** DONE AACAudio
     - [X] is_type() doesn't error
-    - [ ] __init__() raises InvalidFile
-    - [ ] to_pcm() returns PCMReaderError on decoder error
-    - [ ] from_pcm() raises EncodingError on encoder error
-    - [ ] to_wave() raises EncodingError on decoder error
-    - [ ] from_wave() raises EncodingError on encoder error
-    - [ ] failed to_wave() deletes partial file
-    - [ ] failed from_wave() deletes partial file
-    - [ ] failed from_pcm() deletes partial file
-    - [ ] PCMReader raises IOError/ValueError on read() if necessary
-    - [ ] PCMReader raises DecodingError on close() if necessary
+    - [X] __init__() raises InvalidFile
+    - [X] to_pcm() returns PCMReaderError on decoder error
+    - [X] from_pcm() raises EncodingError on encoder error
+    - [X] from_wave() raises EncodingError on encoder error
+    - [X] failed from_wave() deletes partial file
+    - [X] failed from_pcm() deletes partial file
+    - [X] PCMReader raises IOError/ValueError on read() if necessary
+    - [X] PCMReader raises DecodingError on close() if necessary
 *** TODO AiffAudio
     - [X] is_type() doesn't error
-    - [ ] __init__() raises InvalidFile
-    - [ ] to_pcm() returns PCMReaderError on decoder error
-    - [ ] from_pcm() raises EncodingError on encoder error
-    - [ ] to_wave() raises EncodingError on decoder error
-    - [ ] from_wave() raises EncodingError on encoder error
-    - [ ] failed to_wave() deletes partial file
-    - [ ] failed from_wave() deletes partial file
-    - [ ] failed from_pcm() deletes partial file
-    - [ ] PCMReader raises IOError/ValueError on read() if necessary
-    - [ ] PCMReader raises DecodingError on close() if necessary
-*** TODO ALACAudio
+    - [X] __init__() raises InvalidFile
+    - [X] to_pcm() returns PCMReaderError on decoder error
+    - [X] from_pcm() raises EncodingError on encoder error
+    - [X] to_wave() raises EncodingError on decoder error
+    - [X] from_wave() raises EncodingError on encoder error
+    - [X] failed to_wave() deletes partial file
+    - [X] failed from_wave() deletes partial file
+    - [X] failed from_pcm() deletes partial file
+    - [X] PCMReader raises IOError/ValueError on read() if necessary
+    - [X] PCMReader raises DecodingError on close() if necessary
+    - [ ] handle offset in ssnd chunk correctly
+*** DONE ALACAudio
     - [X] is_type() doesn't error
-    - [ ] __init__() raises InvalidFile
-    - [ ] to_pcm() returns PCMReaderError on decoder error
-    - [ ] from_pcm() raises EncodingError on encoder error
-    - [ ] to_wave() raises EncodingError on decoder error
-    - [ ] from_wave() raises EncodingError on encoder error
-    - [ ] failed to_wave() deletes partial file
-    - [ ] failed from_wave() deletes partial file
-    - [ ] failed from_pcm() deletes partial file
-    - [ ] PCMReader raises IOError/ValueError on read() if necessary
-    - [ ] PCMReader raises DecodingError on close() if necessary
-*** TODO AuAudio
+    - [X] __init__() raises InvalidFile
+    - [X] to_pcm() returns PCMReaderError on decoder error
+    - [X] from_pcm() raises EncodingError on encoder error
+    - [X] to_wave() raises EncodingError on decoder error
+    - [X] from_wave() raises EncodingError on encoder error
+    - [X] failed to_wave() deletes partial file
+    - [X] failed from_wave() deletes partial file
+    - [X] failed from_pcm() deletes partial file
+    - [X] PCMReader raises IOError/ValueError on read() if necessary
+    - [X] PCMReader raises DecodingError on close() if necessary
+*** DONE AuAudio
     - [X] is_type() doesn't error
-    - [ ] __init__() raises InvalidFile
-    - [ ] to_pcm() returns PCMReaderError on decoder error
-    - [ ] from_pcm() raises EncodingError on encoder error
-    - [ ] to_wave() raises EncodingError on decoder error
-    - [ ] from_wave() raises EncodingError on encoder error
-    - [ ] failed to_wave() deletes partial file
-    - [ ] failed from_wave() deletes partial file
-    - [ ] failed from_pcm() deletes partial file
-    - [ ] PCMReader raises IOError/ValueError on read() if necessary
-    - [ ] PCMReader raises DecodingError on close() if necessary
-*** TODO FlacAudio
+    - [X] __init__() raises InvalidFile
+    - [X] to_pcm() returns PCMReaderError on decoder error
+    - [X] from_pcm() raises EncodingError on encoder error
+    - [X] to_wave() raises EncodingError on decoder error
+    - [X] from_wave() raises EncodingError on encoder error
+    - [X] failed to_wave() deletes partial file
+    - [X] failed from_wave() deletes partial file
+    - [X] failed from_pcm() deletes partial file
+    - [X] PCMReader raises IOError/ValueError on read() if necessary
+    - [X] PCMReader raises DecodingError on close() if necessary
+*** DONE FlacAudio
     - [X] is_type() doesn't error
-    - [ ] __init__() raises InvalidFile
-    - [ ] to_pcm() returns PCMReaderError on decoder error
-    - [ ] from_pcm() raises EncodingError on encoder error
-    - [ ] to_wave() raises EncodingError on decoder error
-    - [ ] from_wave() raises EncodingError on encoder error
-    - [ ] failed to_wave() deletes partial file
-    - [ ] failed from_wave() deletes partial file
-    - [ ] failed from_pcm() deletes partial file
-    - [ ] PCMReader raises IOError/ValueError on read() if necessary
-    - [ ] PCMReader raises DecodingError on close() if necessary
-*** TODO M4AAudio_faac
+    - [X] __init__() raises InvalidFile
+    - [X] to_pcm() returns PCMReaderError on decoder error
+    - [X] from_pcm() raises EncodingError on encoder error
+    - [X] to_wave() raises EncodingError on decoder error
+    - [X] from_wave() raises EncodingError on encoder error
+    - [X] failed to_wave() deletes partial file
+    - [X] failed from_wave() deletes partial file
+    - [X] failed from_pcm() deletes partial file
+    - [X] PCMReader raises IOError/ValueError on read() if necessary
+    - [X] PCMReader raises DecodingError on close() if necessary
+*** DONE M4AAudio_faac
     - [X] is_type() doesn't error
-    - [ ] __init__() raises InvalidFile
-    - [ ] to_pcm() returns PCMReaderError on decoder error
-    - [ ] from_pcm() raises EncodingError on encoder error
-    - [ ] to_wave() raises EncodingError on decoder error
-    - [ ] from_wave() raises EncodingError on encoder error
-    - [ ] failed to_wave() deletes partial file
-    - [ ] failed from_wave() deletes partial file
-    - [ ] failed from_pcm() deletes partial file
-    - [ ] PCMReader raises IOError/ValueError on read() if necessary
-    - [ ] PCMReader raises DecodingError on close() if necessary
-*** TODO M4AAudio_nero
+    - [X] __init__() raises InvalidFile
+    - [X] from_pcm() raises EncodingError on encoder error
+    - [X] from_wave() raises EncodingError on encoder error
+    - [X] failed from_wave() deletes partial file
+    - [X] failed from_pcm() deletes partial file
+*** DONE M4AAudio_nero
     - [X] is_type() doesn't error
-    - [ ] __init__() raises InvalidFile
-    - [ ] to_pcm() returns PCMReaderError on decoder error
-    - [ ] from_pcm() raises EncodingError on encoder error
-    - [ ] to_wave() raises EncodingError on decoder error
-    - [ ] from_wave() raises EncodingError on encoder error
-    - [ ] failed to_wave() deletes partial file
-    - [ ] failed from_wave() deletes partial file
-    - [ ] failed from_pcm() deletes partial file
-    - [ ] PCMReader raises IOError/ValueError on read() if necessary
-    - [ ] PCMReader raises DecodingError on close() if necessary
-*** TODO MP2Audio
+    - [X] __init__() raises InvalidFile
+    - [X] to_pcm() returns PCMReaderError on decoder error
+    - [X] from_pcm() raises EncodingError on encoder error
+    - [X] to_wave() raises EncodingError on decoder error
+    - [X] from_wave() raises EncodingError on encoder error
+    - [X] failed to_wave() deletes partial file
+    - [X] failed from_wave() deletes partial file
+    - [X] failed from_pcm() deletes partial file
+    - [X] PCMReader raises IOError/ValueError on read() if necessary
+    - [X] PCMReader raises DecodingError on close() if necessary
+*** DONE MP2Audio
     - [X] is_type() doesn't error
-    - [ ] __init__() raises InvalidFile
-    - [ ] to_pcm() returns PCMReaderError on decoder error
-    - [ ] from_pcm() raises EncodingError on encoder error
-    - [ ] to_wave() raises EncodingError on decoder error
-    - [ ] from_wave() raises EncodingError on encoder error
-    - [ ] failed to_wave() deletes partial file
-    - [ ] failed from_wave() deletes partial file
-    - [ ] failed from_pcm() deletes partial file
-    - [ ] PCMReader raises IOError/ValueError on read() if necessary
-    - [ ] PCMReader raises DecodingError on close() if necessary
-*** TODO MP3Audio
+    - [X] __init__() raises InvalidFile
+    - [X] to_pcm() returns PCMReaderError on decoder error
+    - [X] from_pcm() raises EncodingError on encoder error
+    - [X] to_wave() raises EncodingError on decoder error
+    - [X] from_wave() raises EncodingError on encoder error
+    - [X] failed to_wave() deletes partial file
+    - [X] failed from_wave() deletes partial file
+    - [X] failed from_pcm() deletes partial file
+    - [X] PCMReader raises IOError/ValueError on read() if necessary
+    - [X] PCMReader raises DecodingError on close() if necessary
+*** DONE MP3Audio
     - [X] is_type() doesn't error
-    - [ ] __init__() raises InvalidFile
-    - [ ] to_pcm() returns PCMReaderError on decoder error
-    - [ ] from_pcm() raises EncodingError on encoder error
-    - [ ] to_wave() raises EncodingError on decoder error
-    - [ ] from_wave() raises EncodingError on encoder error
-    - [ ] failed to_wave() deletes partial file
-    - [ ] failed from_wave() deletes partial file
-    - [ ] failed from_pcm() deletes partial file
-    - [ ] PCMReader raises IOError/ValueError on read() if necessary
-    - [ ] PCMReader raises DecodingError on close() if necessary
-*** TODO OggFlacAudio
+    - [X] __init__() raises InvalidFile
+    - [X] to_pcm() returns PCMReaderError on decoder error
+    - [X] from_pcm() raises EncodingError on encoder error
+    - [X] to_wave() raises EncodingError on decoder error
+    - [X] from_wave() raises EncodingError on encoder error
+    - [X] failed to_wave() deletes partial file
+    - [X] failed from_wave() deletes partial file
+    - [X] failed from_pcm() deletes partial file
+    - [X] PCMReader raises IOError/ValueError on read() if necessary
+    - [X] PCMReader raises DecodingError on close() if necessary
+*** DONE OggFlacAudio
     - [X] is_type() doesn't error
-    - [ ] __init__() raises InvalidFile
-    - [ ] to_pcm() returns PCMReaderError on decoder error
-    - [ ] from_pcm() raises EncodingError on encoder error
-    - [ ] to_wave() raises EncodingError on decoder error
-    - [ ] from_wave() raises EncodingError on encoder error
-    - [ ] failed to_wave() deletes partial file
-    - [ ] failed from_wave() deletes partial file
-    - [ ] failed from_pcm() deletes partial file
-    - [ ] PCMReader raises IOError/ValueError on read() if necessary
-    - [ ] PCMReader raises DecodingError on close() if necessary
-*** TODO ShortenAudio
+    - [X] __init__() raises InvalidFile
+    - [X] to_pcm() returns PCMReaderError on decoder error
+    - [X] from_pcm() raises EncodingError on encoder error
+    - [X] to_wave() raises EncodingError on decoder error
+    - [X] from_wave() raises EncodingError on encoder error
+    - [X] failed to_wave() deletes partial file
+    - [X] failed from_wave() deletes partial file
+    - [X] failed from_pcm() deletes partial file
+    - [X] PCMReader raises IOError/ValueError on read() if necessary
+    - [X] PCMReader raises DecodingError on close() if necessary
+*** DONE ShortenAudio
     - [X] is_type() doesn't error
-    - [ ] __init__() raises InvalidFile
-    - [ ] to_pcm() returns PCMReaderError on decoder error
-    - [ ] from_pcm() raises EncodingError on encoder error
-    - [ ] to_wave() raises EncodingError on decoder error
-    - [ ] from_wave() raises EncodingError on encoder error
-    - [ ] failed to_wave() deletes partial file
-    - [ ] failed from_wave() deletes partial file
-    - [ ] failed from_pcm() deletes partial file
-    - [ ] PCMReader raises IOError/ValueError on read() if necessary
-    - [ ] PCMReader raises DecodingError on close() if necessary
-*** TODO SpeexAudio
+    - [X] __init__() raises InvalidFile
+    - [X] to_pcm() returns PCMReaderError on decoder error
+    - [X] from_pcm() raises EncodingError on encoder error
+    - [X] to_wave() raises EncodingError on decoder error
+    - [X] from_wave() raises EncodingError on encoder error
+    - [X] failed to_wave() deletes partial file
+    - [X] failed from_wave() deletes partial file
+    - [X] failed from_pcm() deletes partial file
+    - [X] PCMReader raises IOError/ValueError on read() if necessary
+    - [X] PCMReader raises DecodingError on close() if necessary
+*** DONE SpeexAudio
     - [X] is_type() doesn't error
-    - [ ] __init__() raises InvalidFile
-    - [ ] to_pcm() returns PCMReaderError on decoder error
-    - [ ] from_pcm() raises EncodingError on encoder error
-    - [ ] to_wave() raises EncodingError on decoder error
-    - [ ] from_wave() raises EncodingError on encoder error
-    - [ ] failed to_wave() deletes partial file
-    - [ ] failed from_wave() deletes partial file
-    - [ ] failed from_pcm() deletes partial file
-    - [ ] PCMReader raises IOError/ValueError on read() if necessary
-    - [ ] PCMReader raises DecodingError on close() if necessary
-*** TODO VorbisAudio
+    - [X] __init__() raises InvalidFile
+    - [X] from_pcm() raises EncodingError on encoder error
+    - [X] failed from_wave() deletes partial file
+    - [X] failed from_pcm() deletes partial file
+*** DONE VorbisAudio
     - [X] is_type() doesn't error
-    - [ ] __init__() raises InvalidFile
-    - [ ] to_pcm() returns PCMReaderError on decoder error
-    - [ ] from_pcm() raises EncodingError on encoder error
-    - [ ] to_wave() raises EncodingError on decoder error
-    - [ ] from_wave() raises EncodingError on encoder error
-    - [ ] failed to_wave() deletes partial file
-    - [ ] failed from_wave() deletes partial file
-    - [ ] failed from_pcm() deletes partial file
-    - [ ] PCMReader raises IOError/ValueError on read() if necessary
-    - [ ] PCMReader raises DecodingError on close() if necessary
-*** TODO WaveAudio
+    - [X] __init__() raises InvalidFile
+    - [X] to_pcm() returns PCMReaderError on decoder error
+    - [X] from_pcm() raises EncodingError on encoder error
+    - [X] to_wave() raises EncodingError on decoder error
+    - [X] from_wave() raises EncodingError on encoder error
+    - [X] failed to_wave() deletes partial file
+    - [X] failed from_wave() deletes partial file
+    - [X] failed from_pcm() deletes partial file
+    - [X] PCMReader raises IOError/ValueError on read() if necessary
+    - [X] PCMReader raises DecodingError on close() if necessary
+*** DONE WaveAudio
     - [X] is_type() doesn't error
-    - [ ] __init__() raises InvalidFile
-    - [ ] to_pcm() returns PCMReaderError on decoder error
-    - [ ] from_pcm() raises EncodingError on encoder error
-    - [ ] to_wave() raises EncodingError on decoder error
-    - [ ] from_wave() raises EncodingError on encoder error
-    - [ ] failed to_wave() deletes partial file
-    - [ ] failed from_wave() deletes partial file
-    - [ ] failed from_pcm() deletes partial file
-    - [ ] PCMReader raises IOError/ValueError on read() if necessary
-    - [ ] PCMReader raises DecodingError on close() if necessary
-*** TODO WavPackAudio
+    - [X] __init__() raises InvalidFile
+    - [X] to_pcm() returns PCMReaderError on decoder error
+    - [X] from_pcm() raises EncodingError on encoder error
+    - [X] to_wave() raises EncodingError on decoder error
+    - [X] from_wave() raises EncodingError on encoder error
+    - [X] failed to_wave() deletes partial file
+    - [X] failed from_wave() deletes partial file
+    - [X] failed from_pcm() deletes partial file
+    - [X] PCMReader raises IOError/ValueError on read() if necessary
+    - [X] PCMReader raises DecodingError on close() if necessary
+*** DONE WavPackAudio
     - [X] is_type() doesn't error
-    - [ ] __init__() raises InvalidFile
-    - [ ] to_pcm() returns PCMReaderError on decoder error
-    - [ ] from_pcm() raises EncodingError on encoder error
-    - [ ] to_wave() raises EncodingError on decoder error
-    - [ ] from_wave() raises EncodingError on encoder error
-    - [ ] failed to_wave() deletes partial file
-    - [ ] failed from_wave() deletes partial file
-    - [ ] failed from_pcm() deletes partial file
-    - [ ] PCMReader raises IOError/ValueError on read() if necessary
-    - [ ] PCMReader raises DecodingError on close() if necessary
-** TODO Unit test all checks with example files
+    - [X] __init__() raises InvalidFile
+    - [X] to_pcm() returns PCMReaderError on decoder error
+    - [X] from_pcm() raises EncodingError on encoder error
+    - [X] to_wave() raises EncodingError on decoder error
+    - [X] from_wave() raises EncodingError on encoder error
+    - [X] failed to_wave() deletes partial file
+    - [X] failed from_wave() deletes partial file
+    - [X] failed from_pcm() deletes partial file
+    - [X] PCMReader raises IOError/ValueError on read() if necessary
+    - [X] PCMReader raises DecodingError on close() if necessary
 ** TODO Check for invalid files at the tool level
    If an invalid file is encountered, display a proper
    user-readable error message explaining what's wrong

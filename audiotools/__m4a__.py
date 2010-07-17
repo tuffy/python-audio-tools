@@ -1330,7 +1330,7 @@ class ALACAudio(M4AAudio):
                 history_multiplier=alac.history_multiplier,
                 initial_history=alac.initial_history,
                 maximum_k=alac.maximum_k)
-        except (IOError, ValueError), msg:
+        except (Con.FieldError, Con.ArrayError, IOError, ValueError), msg:
             return PCMReaderError(error_message=str(msg),
                                   sample_rate=self.sample_rate(),
                                   channels=self.channels(),
