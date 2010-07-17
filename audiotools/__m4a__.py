@@ -308,10 +308,12 @@ class M4AAudio_faac(AudioFile):
             file.seek(0, 0)
             atoms = __Qt_Atom_Stream__(file)
             try:
-                return atoms['moov']['trak']['mdia']['minf']['stbl'][
-                    'stsd'].data[12:16] == 'mp4a'
-            except KeyError:
+                return (ATOM_STSD.parse(atoms['moov']['trak']['mdia']['minf']['stbl']['stsd'].data).descriptions[0].type == 'mp4a')
+            except (Con.ConstError, Con.FieldError, Con.ArrayError, KeyError,
+                    IndexError):
                 return False
+        else:
+            return False
 
     def lossless(self):
         """Returns False."""
@@ -1183,7 +1185,8 @@ class ALACAudio(M4AAudio):
                            Con.Bytes("sample_rate", 4),
                            Con.Struct("alac",
                                       Con.UBInt32("length"),
-                                      Con.String("type", 4),
+                                      Con.Const(Con.String("type", 4),
+                                                'alac'),
                                       Con.Padding(4),
                                       Con.UBInt32("max_samples_per_frame"),
                                       Con.Padding(1),
@@ -1270,11 +1273,12 @@ class ALACAudio(M4AAudio):
             file.seek(0, 0)
             atoms = __Qt_Atom_Stream__(file)
             try:
-                #FIXME - parse stsd atoms properly
-                return atoms['moov']['trak']['mdia']['minf']['stbl'][
-                    'stsd'].data[12:16] == 'alac'
-            except KeyError:
+                return (ATOM_STSD.parse(atoms['moov']['trak']['mdia']['minf']['stbl']['stsd'].data).descriptions[0].type == 'alac')
+            except (Con.ConstError, Con.FieldError, Con.ArrayError, KeyError,
+                    IndexError):
                 return False
+        else:
+            return False
 
     def total_frames(self):
         """Returns the total PCM frames of the track as an integer."""

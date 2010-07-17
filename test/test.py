@@ -3121,6 +3121,20 @@ uhhDdCiCwqg2Gw3lphgaGhoamR+mptKYNT/F3JFOFCQvKfgAwA==""".decode('base64').decode(
                 os.unlink(os.path.join(temp_dir, f))
             os.rmdir(temp_dir)
 
+    @TEST_INVALIDFILE
+    def test_invalid_is_type(self):
+        temp = tempfile.NamedTemporaryFile(
+            suffix="." + self.audio_class.SUFFIX)
+        try:
+            for i in xrange(256):
+                self.assertEqual(os.path.getsize(temp.name), i)
+                f = open(temp.name, 'rb')
+                self.assertEqual(self.audio_class.is_type(f), False)
+                f.close()
+                temp.write(os.urandom(1))
+                temp.flush()
+        finally:
+            temp.close()
 
 class TestForeignWaveChunks:
     @TEST_METADATA
