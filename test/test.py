@@ -4732,6 +4732,49 @@ class TestWavPackAudio(EmbeddedCuesheet, ApeTaggedAudio, TestForeignWaveChunks, 
         finally:
             temp.close()
 
+    @TEST_INVALIDFILE
+    def test_verify(self):
+        temp = tempfile.NamedTemporaryFile(
+            suffix="." + self.audio_class.SUFFIX)
+        wavpackdata = open("silence.wv", "rb").read()
+        try:
+            self.assertEqual(audiotools.open("silence.wv").verify(), True)
+            temp.write(wavpackdata)
+            temp.flush()
+            test_wavpack = audiotools.open(temp.name)
+            for i in xrange(len(wavpackdata)):
+                f = open(temp.name, "wb")
+                f.write(wavpackdata[0:i])
+                f.close()
+                self.assertEqual(os.path.getsize(temp.name), i)
+                self.assertRaises(audiotools.InvalidFile,
+                                  test_wavpack.verify)
+
+            #Swapping random bits doesn't seem to trigger wvunpack's
+            #--verify routine in many instances.
+            #The format carries a checksum in each frame,
+            #so I'm not sure why it's not catching.
+            #Either the checksum doesn't cover the whole frame
+            #(which would be stupid) or wvunpack is ignoring
+            #something during testing and not returning a non-0 result.
+            #I'll know more once I assimilate wavpack
+            #into the built-in decoders.
+
+            # for i in xrange(10, len(wavpackdata)):
+            #     for j in xrange(8):
+            #         new_data = map(ord, wavpackdata)
+            #         new_data[i] ^= (1 << j)
+            #         f = open(temp.name, "wb")
+            #         f.write("".join(map(chr, new_data)))
+            #         f.close()
+            #         self.assertEqual(os.path.getsize(temp.name),
+            #                          os.path.getsize("silence.wv"))
+            #         print "checking byte 0x%X, bit %d" % (i, j)
+            #         self.assertRaises(audiotools.InvalidFile,
+            #                           test_wavpack.verify)
+        finally:
+            temp.close()
+
 
 class TestShortenAudio(TestForeignWaveChunks, TestAiffAudio):
     def setUp(self):

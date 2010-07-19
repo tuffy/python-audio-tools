@@ -856,3 +856,15 @@ class WavPackAudio(ApeTaggedAudio, AudioFile):
                 cuesheet,
                 os.path.basename(self.filename)).decode('ascii', 'replace'))
         self.set_metadata(metadata)
+
+    def verify(self):
+        devnull = open(os.devnull, "w")
+        sub = subprocess.Popen([BIN["wvunpack"], "-v", self.filename],
+                               stdout=devnull,
+                               stderr=devnull)
+        result = sub.wait()
+        devnull.close()
+        if (result == 0):
+            return True
+        else:
+            raise InvalidWavPack(u"wvunpack returned error")
