@@ -583,13 +583,23 @@ class WavPackAudio(ApeTaggedAudio, AudioFile):
             import tempfile
 
             f = tempfile.NamedTemporaryFile(suffix=".wav")
-            w = WaveAudio.from_pcm(f.name, pcmreader)
+
+            try:
+                w = WaveAudio.from_pcm(f.name, pcmreader)
+            except EncodingError, err:
+                if (os.path.isfile(f.name)):
+                    f.close()
+                else:
+                    f.close_called = True
+                raise err
 
             try:
                 return cls.from_wave(filename, w.filename, compression)
             finally:
-                del(w)
-                f.close()
+                if (os.path.isfile(f.name)):
+                    f.close()
+                else:
+                    f.close_called = True
 
     def to_wave(self, wave_filename):
         """Writes the contents of this file to the given .wav filename string.

@@ -1821,8 +1821,7 @@ uhhDdCiCwqg2Gw3lphgaGhoamR+mptKYNT/F3JFOFCQvKfgAwA==""".decode('base64').decode(
         finally:
             track_file.close()
 
-    # @TEST_EXECUTABLE
-    @TEST_CUSTOM
+    @TEST_EXECUTABLE
     def test_track2track_invalid(self):
         basedir_src = tempfile.mkdtemp()
 
