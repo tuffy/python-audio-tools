@@ -5103,7 +5103,7 @@ class TestMP3Audio(ID3Lint, TestAiffAudio):
                 os.unlink(p)
             os.rmdir(undo_db_dir)
 
-    @TEST_CUSTOM
+    @TEST_INVALIDFILE
     def test_invalid_to_pcm(self):
         temp = tempfile.NamedTemporaryFile(
             suffix="." + self.audio_class.SUFFIX)
@@ -5141,6 +5141,38 @@ class TestMP3Audio(ID3Lint, TestAiffAudio):
                               track.to_wave,
                               "dummy.wav")
             self.assertEqual(os.path.isfile("dummy.wav"), False)
+        finally:
+            temp.close()
+
+    @TEST_INVALIDFILE
+    def test_verify(self):
+        temp = tempfile.NamedTemporaryFile(
+            suffix="." + self.audio_class.SUFFIX)
+        frame_header = audiotools.MPEG_Frame_Header("header")
+        try:
+            mpx_file = audiotools.open("sine." + self.audio_class.SUFFIX)
+            self.assertEqual(mpx_file.verify(), True)
+            temp.seek(0, 0)
+            for (header, data) in mpx_file.mpeg_frames():
+                temp.write(frame_header.build(header))
+                temp.write(data)
+            temp.flush()
+
+            for (field, value) in [("sample_rate", 48000),
+                                   ("channel", 3)]:
+                temp.seek(0, 0)
+                for (i, (header, data)) in enumerate(mpx_file.mpeg_frames()):
+                    if (i == 1):
+                        setattr(header, field, value)
+                        temp.write(frame_header.build(header))
+                        temp.write(data)
+                    else:
+                        temp.write(frame_header.build(header))
+                        temp.write(data)
+                temp.flush()
+                new_file = audiotools.open(temp.name)
+                self.assertRaises(audiotools.InvalidFile,
+                                  new_file.verify)
         finally:
             temp.close()
 
