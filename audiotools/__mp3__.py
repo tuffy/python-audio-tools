@@ -34,6 +34,116 @@ gettext.install("audiotools", unicode=True)
 #######################
 
 
+class MPEG_Frame_Header(Con.Adapter):
+    #mpeg_version->sample_rate bits->Hz
+    SAMPLE_RATE = [[11025, 12000, 8000,  None],
+                   [None,  None,  None,  None],
+                   [22050, 24000, 16000, None],
+                   [44100, 48000, 32000, None]]
+
+    #(mpeg_version, layer)->bitrate bits->bits per second
+    BIT_RATE = {(3, 3):[0,      32000,  64000,  96000,
+                        128000, 160000, 192000, 224000,
+                        256000, 288000, 320000, 352000,
+                        384000, 416000, 448000, None],
+                (3, 2):[0,      32000,  48000,  56000,
+                        64000,  80000,  96000,  112000,
+                        128000, 160000, 192000, 224000,
+                        256000, 320000, 384000, None],
+                (3, 1):[0,      32000,  40000,  48000,
+                        56000,  64000,  80000,  96000,
+                        112000, 128000, 160000, 192000,
+                        224000, 256000, 320000, None],
+                (2, 3):[0,      32000,  48000,  56000,
+                        64000,  80000,  96000,  112000,
+                        128000, 144000, 160000, 176000,
+                        192000, 224000, 256000, None],
+                (2, 2):[0,      8000,   16000,  24000,
+                        32000,  40000,  48000,  56000,
+                        64000,  80000,  96000,  112000,
+                        128000, 144000, 160000, None]}
+
+    #mpeg_version->Hz->sample_rate bits
+    SAMPLE_RATE_REVERSE = {0:{11025:0,
+                              12000:1,
+                              8000:2},
+                           1:{None:0},
+                           2:{22050:0,
+                              24000:1,
+                              16000:2,
+                              None:3},
+                           3:{44100:0,
+                              48000:1,
+                              32000:2,
+                              None:3}}
+
+    BIT_RATE_REVERSE = dict([(key, dict([(rate, i) for (i, rate) in
+                                         enumerate(values)]))
+                             for (key, values) in BIT_RATE.items()])
+
+    def __init__(self, name):
+        Con.Adapter.__init__(
+            self,
+            Con.BitStruct("mp3_header",
+                          Con.Const(Con.Bits("sync", 11), 0x7FF),
+                          Con.Bits("mpeg_version", 2),
+                          Con.Bits("layer", 2),
+                          Con.Flag("no_crc16", 1),
+                          Con.Bits("bitrate", 4),
+                          Con.Bits("sample_rate", 2),
+                          Con.Bits("pad", 1),
+                          Con.Bits("private", 1),
+                          Con.Bits("channel", 2),
+                          Con.Bits("mode_extension", 2),
+                          Con.Flag("copyright", 1),
+                          Con.Flag("original", 1),
+                          Con.Bits("emphasis", 2)))
+
+    def _encode(self, obj, content):
+        obj.sample_rate = self.SAMPLE_RATE_REVERSE[obj.mpeg_version][
+            obj.sample_rate]
+        obj.bitrate = self.BIT_RATE_REVERSE[(obj.mpeg_version, obj.layer)][
+            obj.bitrate]
+        return obj
+
+    def _decode(self, obj, content):
+        obj.sample_rate = self.SAMPLE_RATE[obj.mpeg_version][obj.sample_rate]
+        obj.channel_count = [2,2,2,1][obj.channel]
+        obj.bitrate = self.BIT_RATE[(obj.mpeg_version, obj.layer)][obj.bitrate]
+
+        if (obj.layer == 3):
+            obj.byte_length = (((12 * obj.bitrate) / obj.sample_rate) +
+                              obj.pad) * 4
+        else:
+            obj.byte_length = ((144 * obj.bitrate) / obj.sample_rate) + obj.pad
+
+        return obj
+
+
+def MPEG_crc16(data, total_bits):
+    def crc16_val(value, crc, total_bits):
+        value <<= 8
+        for i in xrange(total_bits):
+            value <<= 1
+            crc <<= 1
+
+            if (((crc ^ value) & 0x10000)):
+                crc ^= 0x8005
+
+        return crc & 0xFFFF
+
+    checksum = 0xFFFF
+    data = map(ord, data)
+    while (total_bits >= 8):
+        checksum = crc16_val(data.pop(0), checksum, 8)
+        total_bits -= 8
+
+    if (total_bits > 0):
+        return crc16_val(data.pop(0), checksum, total_bits)
+    else:
+        return checksum
+
+
 class InvalidMP3(InvalidFile):
     """Raised by invalid files during MP3 initialization."""
 
@@ -79,18 +189,18 @@ class MP3Audio(AudioFile):
                       (32000, 16000, 8000))
 
     MP3_FRAME_HEADER = Con.BitStruct("mp3_header",
-                                  Con.Bits("sync", 11),
+                                  Con.Const(Con.Bits("sync", 11), 0x7FF),
                                   Con.Bits("mpeg_version", 2),
                                   Con.Bits("layer", 2),
-                                  Con.Bits("protection", 1),
+                                  Con.Flag("protection", 1),
                                   Con.Bits("bitrate", 4),
                                   Con.Bits("sampling_rate", 2),
                                   Con.Bits("padding", 1),
                                   Con.Bits("private", 1),
                                   Con.Bits("channel", 2),
                                   Con.Bits("mode_extension", 2),
-                                  Con.Bits("copyright", 1),
-                                  Con.Bits("original", 1),
+                                  Con.Flag("copyright", 1),
+                                  Con.Flag("original", 1),
                                   Con.Bits("emphasis", 2))
 
     XING_HEADER = Con.Struct("xing_header",
@@ -656,6 +766,57 @@ class MP3Audio(AudioFile):
             sub.wait()
 
             devnull.close()
+
+    def mpeg_frames(self):
+        """Yields (header, data) tuples of the file's contents.
+
+        header is an MPEG_Frame_Header Construct.
+        data is a string of MP3 data."""
+
+        header_struct = MPEG_Frame_Header("header")
+        f = open(self.filename, 'rb')
+        try:
+            #FIXME - this won't handle RIFF RMP3 well
+            #perhaps I should use tracklint to clean those up
+            MP3Audio.__find_last_mp3_frame__(f)
+            stop_position = f.tell()
+            f.seek(0, 0)
+            MP3Audio.__find_mp3_start__(f)
+            while (f.tell() < stop_position):
+                header = header_struct.parse_stream(f)
+                data = f.read(header.byte_length - 4)
+                yield (header, data)
+        finally:
+            f.close()
+
+    def verify(self):
+        mpeg_version = set([])
+        mpeg_layer = set([])
+        sample_rate = set([])
+        channels = set([])
+        try:
+            for (header, data) in self.mpeg_frames():
+                mpeg_version.add(header.mpeg_version)
+                mpeg_layer.add(header.layer)
+                sample_rate.add(header.sample_rate)
+                channels.add(header.channel_count)
+
+                if (len(mpeg_version) > 1):
+                    raise InvalidMP3(u"MPEG version mismatch in stream")
+                if (len(mpeg_layer) > 1):
+                    raise InvalidMP3(u"MPEG layer mismatch in stream")
+                if (len(sample_rate) > 1):
+                    raise InvalidMP3(u"sample rate mismatch in stream")
+                if (len(channels) > 1):
+                    raise InvalidMP3(u"channel count mismatch in stream")
+
+                #FIXME - check CRC16 here, if present in stream
+            else:
+                return True
+        except Con.ConstError:
+            raise InvalidMP3(u"invalid MPEG frame sync")
+        except Con.FieldError:
+            raise InvalidMP3(u"invalid MPEG frame header")
 
 
 #######################
