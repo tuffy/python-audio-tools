@@ -2781,6 +2781,33 @@ class AudioFile:
     def __ne__(self, audiofile):
         return not self.__eq__(audiofile)
 
+    def verify(self):
+        """Verifies the current file for correctness.
+
+        Returns True if the file is okay.
+        Raises an InvalidFile with an error message if there is
+        some problem with the file."""
+
+        decoder = self.to_pcm()
+        pcm_frame_count = 0
+        try:
+            framelist = decoder.read(BUFFER_SIZE)
+            while (len(framelist) > 0):
+                pcm_frame_count += framelist.frames
+                framelist = decoder.read(BUFFER_SIZE)
+        except (IOError, ValueError), err:
+            raise InvalidFile(str(err))
+
+        try:
+            decoder.close()
+        except DecodingError, err:
+            raise InvalidFile(err.error_message)
+
+        if (pcm_frame_count == self.total_frames()):
+            return True
+        else:
+            raise InvalidFile("incorrect PCM frame count")
+
     @classmethod
     def has_binaries(cls, system_binaries):
         """Returns True if all the required binaries can be found.

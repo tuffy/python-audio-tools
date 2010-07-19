@@ -20,7 +20,8 @@
 from audiotools import (AudioFile, ChannelMask, PCMReader,
                         transfer_framelist_data, WaveAudio,
                         AiffAudio, cStringIO, EncodingError,
-                        UnsupportedBitsPerSample, InvalidFile)
+                        UnsupportedBitsPerSample, InvalidFile,
+                        PCMReaderError)
 
 import audiotools.decoders
 import os.path
@@ -50,24 +51,46 @@ class ShortenAudio(AudioFile):
         finally:
             f.close()
 
+        #Why not call __populate_metadata__ here and raise InvalidShorten
+        #if it errors out?
+        #The problem is that __populate_metadata__ needs to walk
+        #through the *entire* file in order to calculate total PCM frames
+        #and so on.
+        #That's an expensive operation to perform at init-time
+        #so it's better to postpone it to an on-demand fetch.
+
     def __populate_metadata__(self):
+        #set up some default values
+        self.__bits_per_sample__ = 16
+        self.__channels__ = 2
+        self.__channel_mask__ = 0x3
+        self.__sample_rate__ = 44100
+        self.__total_frames__ = 0
+        self.__blocks__ = []
+        self.__format__ = None
+
         #grab a few pieces of technical metadata from the Shorten file itself
         #which requires a dry-run through the decoder
-        decoder = audiotools.decoders.SHNDecoder(self.filename)
-        self.__bits_per_sample__ = decoder.bits_per_sample
-        self.__channels__ = decoder.channels
-        (self.__total_frames__,
-         self.__blocks__) = decoder.metadata()
-        decoder.close()
-
-        #set up some default values
-        self.__sample_rate__ = 44100
         try:
-            self.__channel_mask__ = ChannelMask.from_channels(
-                self.__channels__)
-        except ValueError:
-            self.__channel_mask__ = 0
-        self.__format__ = None
+            decoder = audiotools.decoders.SHNDecoder(self.filename)
+            try:
+
+                self.__bits_per_sample__ = decoder.bits_per_sample
+                self.__channels__ = decoder.channels
+                (self.__total_frames__,
+                 self.__blocks__) = decoder.metadata()
+            finally:
+                decoder.close()
+
+            try:
+                self.__channel_mask__ = ChannelMask.from_channels(
+                    self.__channels__)
+            except ValueError:
+                self.__channel_mask__ = 0
+        except (ValueError, IOError):
+            #if we hit an error in SHNDecoder while reading
+            #technical metadata, the default values will have to do
+            return
 
         #the remainder requires parsing the file's VERBATIM blocks
         #which may contain Wave, AIFF or Sun AU info
@@ -188,16 +211,24 @@ class ShortenAudio(AudioFile):
         """Returns a PCMReader object containing the track's PCM data."""
 
         try:
+            sample_rate = self.sample_rate()
+            channels = self.channels()
+            channel_mask = int(self.channel_mask())
+            bits_per_sample = self.bits_per_sample()
+
             decoder = audiotools.decoders.SHNDecoder(self.filename)
-            decoder.sample_rate = self.sample_rate()
-            decoder.channel_mask = int(self.channel_mask())
+            decoder.sample_rate = sample_rate
+            decoder.channel_mask = channel_mask
             return decoder
         except (IOError, ValueError), msg:
+            #these may not be accurate if the Shorten file is broken
+            #but if it is broken, there'll be no way to
+            #cross-check the results anyway
             return PCMReaderError(error_message=str(msg),
-                                  sample_rate=self.sample_rate(),
-                                  channels=self.channels(),
-                                  channel_mask=int(self.channel_mask()),
-                                  bits_per_sample=self.bits_per_sample())
+                                  sample_rate=44100,
+                                  channels=2,
+                                  channel_mask=0x3,
+                                  bits_per_sample=16)
 
     @classmethod
     def from_pcm(cls, filename, pcmreader, compression=None,

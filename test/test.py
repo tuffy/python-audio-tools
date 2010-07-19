@@ -4059,7 +4059,7 @@ class TestOggErrors:
     """A test for general purpose Ogg stream errors."""
 
     @TEST_INVALIDFILE
-    def test_invalid_stream(self):
+    def test_verify(self):
         good_file = tempfile.NamedTemporaryFile(
             suffix="." + self.audio_class.SUFFIX)
         bad_file = tempfile.NamedTemporaryFile(
@@ -4815,6 +4815,29 @@ class TestShortenAudio(TestForeignWaveChunks, TestAiffAudio):
                               flac.to_wave,
                               "dummy.wav")
             self.assertEqual(os.path.isfile("dummy.wav"), False)
+        finally:
+            temp.close()
+
+    @TEST_INVALIDFILE
+    def test_verify(self):
+        temp = tempfile.NamedTemporaryFile(suffix=".shn")
+        try:
+            shn_data = open("shorten-frames.shn", "rb").read()
+            temp.write(shn_data)
+            temp.flush()
+            shn_file = audiotools.open(temp.name)
+            self.assertEqual(shn_file.verify(), True)
+
+            #change the file underfoot
+            for i in xrange(0, len(shn_data.rstrip(chr(0)))):
+                f = open(temp.name, "wb")
+                f.write(shn_data[0:i])
+                f.close()
+                self.assertRaises(audiotools.InvalidFile,
+                                  shn_file.verify)
+
+            #unfortunately, Shorten doesn't have any checksumming
+            #or other ways to reliably detect swapped bits
         finally:
             temp.close()
 
