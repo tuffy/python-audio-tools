@@ -2320,8 +2320,8 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    - [X] WaveAudio
    - [X] WavPackAudio
 ** TODO add trackverify unit tests for all known verifiable problems
-** TODO add trackverify man page
-** TODO link trackverify man page to others
+** DONE add trackverify man page
+** DONE link trackverify man page to others
 * TODO get trackplay working on Mac OS X
   There must be some way to pipe PCM data to its audio system
   without the need for additional libraries.

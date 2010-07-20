@@ -19,6 +19,7 @@ coverdump.1 \
 record2track.1 \
 tracksplit.1 \
 tracklint.1 \
+trackverify.1 \
 audiotools-config.1
 
 TARGETS = audioformats-letter.pdf audioformats-a4.pdf \

@@ -117,11 +117,11 @@ if (__name__ == '__main__'):
         msg.partial_output(u"%s : " % (msg.filename(track.filename)))
         try:
             track.verify()
-            msg.output(_("OK"))
+            msg.output(msg.ansi(_(u"OK"), [msg.FG_GREEN]))
             summary_success.setdefault(track.NAME, Counter()).increment()
         except audiotools.InvalidFile, err:
             #InvalidFile should return Unicode errors at some point
-            msg.output(unicode(err))
+            msg.output(msg.ansi(unicode(err), [msg.FG_RED]))
             summary_failure.setdefault(track.NAME, Counter()).increment()
 
     formats = sorted(list(set(summary_success.keys()) |

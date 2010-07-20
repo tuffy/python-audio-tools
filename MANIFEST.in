@@ -29,3 +29,4 @@ include trackplay
 include trackrename
 include tracksplit
 include tracktag
+include trackverify
