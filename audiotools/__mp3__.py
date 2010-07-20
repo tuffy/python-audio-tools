@@ -817,6 +817,10 @@ class MP3Audio(AudioFile):
             raise InvalidMP3(u"invalid MPEG frame sync")
         except Con.FieldError:
             raise InvalidMP3(u"invalid MPEG frame header")
+        except KeyError:
+            raise InvalidMP3(u"invalid MPEG version")
+        except TypeError:
+            raise InvalidMP3(u"invalid bitrate")
 
 
 #######################
