@@ -34,10 +34,57 @@ class Counter:
         self.value += 1
 
 
-def get_tracks(args):
-    for track in audiotools.open_files([path for path in
-                                        args if os.path.isfile(path)]):
-        yield track
+class FailedAudioFile:
+    def __init__(self, class_name, path, err):
+        self.NAME = class_name
+        self.filename = path
+        self.err = err
+
+    def verify(self):
+        raise self.err
+
+
+def open_file(filename):
+    f = open(filename, "rb")
+    try:
+        for audioclass in audiotools.TYPE_MAP.values():
+            f.seek(0, 0)
+            if (audioclass.is_type(f)):
+                class_name = audioclass.NAME
+                try:
+                    return audioclass(filename)
+                except audiotools.InvalidFile, err:
+                    return FailedAudioFile(class_name, filename, err)
+        else:
+            raise audiotools.UnsupportedFile(filename)
+    finally:
+        f.close()
+
+
+def get_tracks(args, accept_list):
+    if (accept_list is not None):
+        accept_list = set(accept_list)
+
+    for path in args:
+        if (os.path.isfile(path)):
+            try:
+                track = open_file(path)
+                if not ((accept_list is not None) and
+                        (track.NAME not in accept_list)):
+                    yield track
+            except (audiotools.UnsupportedFile, IOError):
+                continue
+        elif (os.path.isdir(path)):
+            for (d, ds, fs) in os.walk(path):
+                for f in fs:
+                    try:
+                        track = open_file(os.path.join(d, f))
+                        if not ((accept_list is not None) and
+                                (track.NAME not in accept_list)):
+                            yield track
+                    except (audiotools.UnsupportedFile, IOError):
+                        continue
+
 
 gettext.install("audiotools", unicode=True)
 
@@ -45,6 +92,13 @@ if (__name__ == '__main__'):
     parser = audiotools.OptionParser(
         usage=_(u"%prog <track 1> [track 2] ..."),
         version="Python Audio Tools %s" % (audiotools.VERSION))
+
+    parser.add_option('-t', '--type',
+                      action='append',
+                      dest='accept_list',
+                      metavar='type',
+                      choices=audiotools.TYPE_MAP.keys(),
+                      help=_(u'a type of audio to accept'))
 
     parser.add_option('-V', '--verbose',
                       action='store',
@@ -59,7 +113,7 @@ if (__name__ == '__main__'):
     summary_success = {}
     summary_failure = {}
 
-    for track in get_tracks(args):
+    for track in get_tracks(args, options.accept_list):
         msg.partial_output(u"%s : " % (msg.filename(track.filename)))
         try:
             track.verify()
@@ -76,7 +130,7 @@ if (__name__ == '__main__'):
     failure_total = sum(map(int, summary_failure.values()))
 
     if (len(formats) > 0):
-        msg.output(_(u"Summary:"))
+        msg.output(_(u"Results:"))
         msg.output(u"")
         msg.new_row()
         msg.output_column(_(u"format"), True)
