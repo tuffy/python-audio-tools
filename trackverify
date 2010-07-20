@@ -1,0 +1,116 @@
+#!/usr/bin/python
+
+#Audio Tools, a module and set of tools for manipulating audio data
+#Copyright (C) 2007-2010  Brian Langenberger
+
+#This program is free software; you can redistribute it and/or modify
+#it under the terms of the GNU General Public License as published by
+#the Free Software Foundation; either version 2 of the License, or
+#(at your option) any later version.
+
+#This program is distributed in the hope that it will be useful,
+#but WITHOUT ANY WARRANTY; without even the implied warranty of
+#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#GNU General Public License for more details.
+
+#You should have received a copy of the GNU General Public License
+#along with this program; if not, write to the Free Software
+#Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+
+import sys
+import os.path
+import audiotools
+import gettext
+
+
+class Counter:
+    def __init__(self):
+        self.value = 0
+
+    def __int__(self):
+        return self.value
+
+    def increment(self):
+        self.value += 1
+
+
+def get_tracks(args):
+    for track in audiotools.open_files([path for path in
+                                        args if os.path.isfile(path)]):
+        yield track
+
+gettext.install("audiotools", unicode=True)
+
+if (__name__ == '__main__'):
+    parser = audiotools.OptionParser(
+        usage=_(u"%prog <track 1> [track 2] ..."),
+        version="Python Audio Tools %s" % (audiotools.VERSION))
+
+    parser.add_option('-V', '--verbose',
+                      action='store',
+                      dest='verbosity',
+                      choices=["quiet", "normal", "debug"],
+                      default="normal",
+                      help=_(u'the verbosity level to execute at'))
+
+    (options, args) = parser.parse_args()
+    msg = audiotools.Messenger("trackverify", options)
+
+    summary_success = {}
+    summary_failure = {}
+
+    for track in get_tracks(args):
+        msg.partial_output(u"%s : " % (msg.filename(track.filename)))
+        try:
+            track.verify()
+            msg.output(_("OK"))
+            summary_success.setdefault(track.NAME, Counter()).increment()
+        except audiotools.InvalidFile, err:
+            #InvalidFile should return Unicode errors at some point
+            msg.output(unicode(err))
+            summary_failure.setdefault(track.NAME, Counter()).increment()
+
+    formats = sorted(list(set(summary_success.keys()) |
+                          set(summary_failure.keys())))
+    success_total = sum(map(int, summary_success.values()))
+    failure_total = sum(map(int, summary_failure.values()))
+
+    if (len(formats) > 0):
+        msg.output(_(u"Summary:"))
+        msg.output(u"")
+        msg.new_row()
+        msg.output_column(_(u"format"), True)
+        msg.output_column(u" ")
+        msg.output_column(_(u"success"), True)
+        msg.output_column(u" ")
+        msg.output_column(_(u"failure"), True)
+        msg.output_column(u" ")
+        msg.output_column(_(u"total"), True)
+        msg.divider_row([u"-", u" ", u"-", u" ", u"-", u" ", u"-"])
+
+        for format in formats:
+            success = int(summary_success.get(format, 0))
+            failure = int(summary_failure.get(format, 0))
+            msg.new_row()
+            msg.output_column(format.decode('ascii'), True)
+            msg.output_column(u" ")
+            msg.output_column(unicode(success), True)
+            msg.output_column(u" ")
+            msg.output_column(unicode(failure), True)
+            msg.output_column(u" ")
+            msg.output_column(unicode(success + failure), True)
+
+        msg.divider_row([u"-", u" ", u"-", u" ", u"-", u" ", u"-"])
+        msg.new_row()
+        msg.output_column(u"summary", True)
+        msg.output_column(u" ")
+        msg.output_column(unicode(success_total), True)
+        msg.output_column(u" ")
+        msg.output_column(unicode(failure_total), True)
+        msg.output_column(u" ")
+        msg.output_column(unicode(success_total + failure_total), True)
+
+        msg.output_rows()
+
+    if (failure_total > 0):
+        sys.exit(1)
