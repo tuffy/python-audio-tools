@@ -2326,3 +2326,4 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   There must be some way to pipe PCM data to its audio system
   without the need for additional libraries.
 * TODO handle AIFF offset/block size in SSND chunk
+* TODO update trackcmp to share trackverify's output interface
