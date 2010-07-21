@@ -41,33 +41,9 @@ def verify_ogg_stream(stream):
     Raises IOError or ValueError if there is some problem with the file.
     """
 
-    try:
-        header = OggStreamReader.OGGS.parse_stream(stream)
-    except Con.ConstError:
-        raise ValueError("invalid Ogg checksum in header")
-    except (Con.FieldError, Con.ArrayError):
-        raise IOError("I/O error reading stream")
-    data = stream.read(sum(header.segment_lengths))
-    if (len(data) != sum(header.segment_lengths)):
-        raise IOError("I/O error reading stream")
-    if (header.checksum !=
-        OggStreamReader.calculate_ogg_checksum(header, data)):
-        raise ValueError("incorrect Ogg checksum in stream")
-    while ((header.header_type & 0x4) == 0):
-        try:
-            header = OggStreamReader.OGGS.parse_stream(stream)
-        except Con.ConstError:
-            raise ValueError("invalid Ogg checksum in header")
-        except (Con.FieldError, Con.ArrayError):
-            raise IOError("I/O error reading stream")
-        data = stream.read(sum(header.segment_lengths))
-        if (len(data) != sum(header.segment_lengths)):
-            raise IOError("I/O error reading stream")
-        if (header.checksum !=
-            OggStreamReader.calculate_ogg_checksum(header, data)):
-            raise ValueError("incorrect Ogg checksum in stream")
-    else:
-        return True
+    from . import verify
+    verify.ogg(stream)
+    return True
 
 class OggStreamReader:
     """A class for walking through an Ogg stream."""

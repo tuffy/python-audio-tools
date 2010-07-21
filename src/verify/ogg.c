@@ -25,64 +25,71 @@ verifymodule_ogg(PyObject *dummy, PyObject *args) {
         bitstream = bs_open(PyFile_AsFile(file_obj));
         bs_add_callback(bitstream, verifymodule_ogg_checksum, &checksum);
     }
+ 
+    if (!setjmp(*bs_try(bitstream))) {
+        do {
+            checksum = 0;
+            if (verifymodule_read_ogg_header(bitstream, &header) == OK) {
+                /* verifymodule_print_ogg_header(&header); */
 
-    do {
-        checksum = 0;
-        if (verifymodule_read_ogg_header(bitstream, &header) == OK) {
-            /* verifymodule_print_ogg_header(&header); */
-
-            if (data_buffer_size < header.segment_length_total) {
-                data_buffer = realloc(data_buffer,
-                                      header.segment_length_total);
-                data_buffer_size = header.segment_length_total;
-            }
-            if (fread(data_buffer,
-                      sizeof(uint8_t),
-                      header.segment_length_total,
-                      bitstream->file) != header.segment_length_total) {
-                PyErr_SetString(PyExc_IOError, "I/O error reading stream");
-                goto error;
-            }
-
-            for (i = 0; i < header.segment_length_total; i++)
-                verifymodule_ogg_checksum(data_buffer[i], &checksum);
-            if (header.checksum != checksum) {
-                PyErr_SetString(PyExc_ValueError,
-                                "checksum mismatch in stream");
-                goto error;
-            }
-
-            /* printf("calculated checksum : 0x%8.8X\n", checksum); */
-
-            if (has_previous_header) {
-                if (header.bitstream_serial_number !=
-                    previous_header.bitstream_serial_number) {
-                    PyErr_SetString(PyExc_ValueError,
-                                    "differing serial numbers in stream");
+                if (data_buffer_size < header.segment_length_total) {
+                    data_buffer = realloc(data_buffer,
+                                          header.segment_length_total);
+                    data_buffer_size = header.segment_length_total;
+                }
+                if (fread(data_buffer,
+                          sizeof(uint8_t),
+                          header.segment_length_total,
+                          bitstream->file) != header.segment_length_total) {
+                    PyErr_SetString(PyExc_IOError, "I/O error reading stream");
                     goto error;
                 }
-                if (header.page_sequence_number !=
-                    (previous_header.page_sequence_number + 1)) {
+
+                for (i = 0; i < header.segment_length_total; i++)
+                    verifymodule_ogg_checksum(data_buffer[i], &checksum);
+                if (header.checksum != checksum) {
                     PyErr_SetString(PyExc_ValueError,
-                                    "page sequence number not incrementing");
+                                    "checksum mismatch in stream");
                     goto error;
                 }
-                previous_header = header;
+
+                /* printf("calculated checksum : 0x%8.8X\n", checksum); */
+
+                if (has_previous_header) {
+                    if (header.bitstream_serial_number !=
+                        previous_header.bitstream_serial_number) {
+                        PyErr_SetString(PyExc_ValueError,
+                                        "differing serial numbers in stream");
+                        goto error;
+                    }
+                    if (header.page_sequence_number !=
+                        (previous_header.page_sequence_number + 1)) {
+                        PyErr_SetString(PyExc_ValueError,
+                                        "page sequence number not incrementing");
+                        goto error;
+                    }
+                    previous_header = header;
+                } else {
+                    previous_header = header;
+                    has_previous_header = 1;
+                }
             } else {
-                previous_header = header;
-                has_previous_header = 1;
+                goto error;
             }
-        } else {
-            goto error;
-        }
-    } while (!(header.type & 0x4));
+        } while (!(header.type & 0x4));
+    } else {
+        PyErr_SetString(PyExc_IOError, "I/O error reading stream");
+        goto error;
+    }
 
+    bs_etry(bitstream);
     free(data_buffer);
     bitstream->file = NULL;
     bs_close(bitstream);
     Py_INCREF(Py_None);
     return Py_None;
  error:
+    bs_etry(bitstream);
     if (data_buffer != NULL)
         free(data_buffer);
     bitstream->file = NULL;
