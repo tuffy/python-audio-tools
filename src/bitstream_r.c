@@ -79,6 +79,15 @@ bs_add_callback(Bitstream *bs, void (*callback)(int, void*),
     bs->callback = callback_node;
 }
 
+void
+bs_call_callbacks(Bitstream *bs, int byte) {
+    struct bs_callback *callback;
+    for (callback = bs->callback;
+         callback != NULL;
+         callback = callback->next)
+        callback->callback(byte, callback->data);
+}
+
 int
 bs_eof(Bitstream *bs)
 {

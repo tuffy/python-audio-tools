@@ -54,6 +54,10 @@ void
 bs_add_callback(Bitstream *bs, void (*callback)(int, void*),
                 void *data);
 
+/*explicitly passes "byte" to the set callbacks,
+  as if the byte were read from the input stream*/
+void
+bs_call_callbacks(Bitstream *bs, int byte);
 
 static inline long
 bs_ftell(Bitstream *bs) {

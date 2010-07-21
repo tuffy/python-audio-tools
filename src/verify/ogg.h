@@ -24,3 +24,6 @@ verifymodule_ulint32(uint32_t i);
 /*transforms an unsigned, big-endian, 64-bit int to a little-endian one*/
 uint64_t
 verifymodule_ulint64(uint64_t i);
+
+void
+verifymodule_ogg_checksum(int byte, void *checksum);
