@@ -39,8 +39,14 @@ verifymodule_mpeg(PyObject *dummy, PyObject *args) {
     int remaining_bytes;
     int frame_size;
     struct mpeg_header header;
+    struct mpeg_header first_header;
+    int first_header_read = 0;
     uint8_t *data_buffer = NULL;
     int data_buffer_size = 0;
+
+    /*fixes a "may be used unitialized" warning*/
+    first_header.mpeg_id = first_header.layer_description =
+        first_header.sample_rate = first_header.channel_assignment = 0;
 
     if (!PyArg_ParseTuple(args, "Oii", &file_obj, &start_byte, &end_byte))
         return NULL;
@@ -59,6 +65,34 @@ verifymodule_mpeg(PyObject *dummy, PyObject *args) {
         while (remaining_bytes > 0) {
             if (verifymodule_read_mpeg_header(bitstream, &header) == OK) {
                 remaining_bytes -= 4;  /*decrement the header size*/
+
+                if (!first_header_read) {
+                    first_header = header;
+                    first_header_read = 1;
+                } else {
+                    if (first_header.mpeg_id != header.mpeg_id) {
+                        PyErr_SetString(PyExc_ValueError,
+                                "MPEG IDs not consistent in stream");
+                        goto error;
+                    }
+                    if (first_header.layer_description !=
+                        header.layer_description) {
+                        PyErr_SetString(PyExc_ValueError,
+                                "MPEG layers not consistent in stream");
+                        goto error;
+                    }
+                    if (first_header.sample_rate != header.sample_rate) {
+                        PyErr_SetString(PyExc_ValueError,
+                                "sample rates not consistent in stream");
+                        goto error;
+                    }
+                    if (verifymodule_mpeg_channel_count(&first_header) !=
+                        verifymodule_mpeg_channel_count(&header)) {
+                        PyErr_SetString(PyExc_ValueError,
+                                "channel counts not consistent in stream");
+                        goto error;
+                    }
+                }
 
                 /* verifymodule_print_mpeg_header(&header); */
 

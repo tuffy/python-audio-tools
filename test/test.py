@@ -5191,16 +5191,41 @@ class TestMP3Audio(ID3Lint, TestAiffAudio):
     def test_verify(self):
         temp = tempfile.NamedTemporaryFile(
             suffix="." + self.audio_class.SUFFIX)
+        mpeg_data = cStringIO.StringIO()
         frame_header = audiotools.MPEG_Frame_Header("header")
         try:
             mpx_file = audiotools.open("sine." + self.audio_class.SUFFIX)
             self.assertEqual(mpx_file.verify(), True)
-            temp.seek(0, 0)
+
             for (header, data) in mpx_file.mpeg_frames():
-                temp.write(frame_header.build(header))
-                temp.write(data)
+                mpeg_data.write(frame_header.build(header))
+                mpeg_data.write(data)
+            mpeg_data = mpeg_data.getvalue()
+
+            temp.seek(0, 0)
+            temp.write(mpeg_data)
             temp.flush()
 
+            #first, try truncating the file underfoot
+            bad_mpx_file = audiotools.open(temp.name)
+            for i in xrange(len(mpeg_data)):
+                try:
+                    if ((mpeg_data[i] == chr(0xFF)) and
+                        (ord(mpeg_data[i + 1]) & 0xE0)):
+                        #skip sizes that may be the end of a frame
+                        continue
+                except IndexError:
+                    continue
+
+                f = open(temp.name, "wb")
+                f.write(mpeg_data[0:i])
+                f.close()
+                self.assertEqual(os.path.getsize(temp.name), i)
+                self.assertRaises(audiotools.InvalidFile,
+                                  bad_mpx_file.verify)
+
+
+            #then try swapping some of the header bits
             for (field, value) in [("sample_rate", 48000),
                                    ("channel", 3)]:
                 temp.seek(0, 0)

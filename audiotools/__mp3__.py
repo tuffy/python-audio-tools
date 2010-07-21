@@ -790,37 +790,27 @@ class MP3Audio(AudioFile):
             f.close()
 
     def verify(self):
-        mpeg_version = set([])
-        mpeg_layer = set([])
-        sample_rate = set([])
-        channels = set([])
+        from . import verify
         try:
-            for (header, data) in self.mpeg_frames():
-                mpeg_version.add(header.mpeg_version)
-                mpeg_layer.add(header.layer)
-                sample_rate.add(header.sample_rate)
-                channels.add(header.channel_count)
+            f = open(self.filename, 'rb')
+        except IOError, err:
+            raise InvalidMP3(str(err))
 
-                if (len(mpeg_version) > 1):
-                    raise InvalidMP3(u"MPEG version mismatch in stream")
-                if (len(mpeg_layer) > 1):
-                    raise InvalidMP3(u"MPEG layer mismatch in stream")
-                if (len(sample_rate) > 1):
-                    raise InvalidMP3(u"sample rate mismatch in stream")
-                if (len(channels) > 1):
-                    raise InvalidMP3(u"channel count mismatch in stream")
+        try:
+            try:
+                #skip ID3v2/ID3v1 tags during verification
+                self.__find_mp3_start__(f)
+                start = f.tell()
+                self.__find_last_mp3_frame__(f)
+                end = f.tell()
+                f.seek(start, 0)
 
-                #FIXME - check CRC16 here, if present in stream
-            else:
+                verify.mpeg(f, start, end)
                 return True
-        except Con.ConstError:
-            raise InvalidMP3(u"invalid MPEG frame sync")
-        except Con.FieldError:
-            raise InvalidMP3(u"invalid MPEG frame header")
-        except KeyError:
-            raise InvalidMP3(u"invalid MPEG version")
-        except TypeError:
-            raise InvalidMP3(u"invalid bitrate")
+            except (IOError, ValueError), err:
+                raise InvalidMP3(str(err))
+        finally:
+            f.close()
 
 
 #######################
