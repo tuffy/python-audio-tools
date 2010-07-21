@@ -76,12 +76,17 @@ encodersmodule = Extension('audiotools.encoders',
                                     'src/encoders.c'],
                            define_macros=[("VERSION", VERSION)])
 
+verifymodule = Extension('audiotools.verify',
+                         sources=['src/verify.c',
+                                  'src/bitstream_r.c'])
+
 extensions = [cdiomodule,
               resamplemodule,
               pcmmodule,
               replaygainmodule,
               decodersmodule,
-              encodersmodule]
+              encodersmodule,
+              verifymodule]
 
 
 #This is an ALSA extension module, not quite ready for use.
