@@ -25,7 +25,7 @@ verifymodule_ogg(PyObject *dummy, PyObject *args) {
         bitstream = bs_open(PyFile_AsFile(file_obj));
         bs_add_callback(bitstream, verifymodule_ogg_checksum, &checksum);
     }
- 
+
     if (!setjmp(*bs_try(bitstream))) {
         do {
             checksum = 0;

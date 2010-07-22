@@ -100,6 +100,11 @@ if (__name__ == '__main__'):
                       choices=audiotools.TYPE_MAP.keys(),
                       help=_(u'a type of audio to accept'))
 
+    parser.add_option('-R', '--no-summary',
+                      action='store_true',
+                      dest='no_summary',
+                      help=_(u'suppress summary output'))
+
     parser.add_option('-V', '--verbose',
                       action='store',
                       dest='verbosity',
@@ -129,7 +134,7 @@ if (__name__ == '__main__'):
     success_total = sum(map(int, summary_success.values()))
     failure_total = sum(map(int, summary_failure.values()))
 
-    if (len(formats) > 0):
+    if ((len(formats) > 0) and (not options.no_summary)):
         msg.output(_(u"Results:"))
         msg.output(u"")
         msg.new_row()

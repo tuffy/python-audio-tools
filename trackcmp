@@ -43,6 +43,11 @@ if (__name__ == '__main__'):
         usage=_(u'%prog <file 1> <file 2>'),
         version="Python Audio Tools %s" % (audiotools.VERSION))
 
+    parser.add_option('-R', '--no-summary',
+                      action='store_true',
+                      dest='no_summary',
+                      help=_(u'suppress summary output'))
+
     parser.add_option('-V', '--verbose',
                       action='store',
                       dest='verbosity',
@@ -61,6 +66,9 @@ if (__name__ == '__main__'):
 
     if (os.path.isfile(args[0]) and os.path.isfile(args[1])):
         audiofiles = audiotools.open_files(args, messenger=msg)
+        if (len(audiofiles) != 2):
+            msg.error(_(u"Both files to be compared must be audio files"))
+            sys.exit(1)
         try:
             frame_mismatch = check_function(audiofiles[0].to_pcm(),
                                             audiofiles[1].to_pcm())
@@ -68,18 +76,20 @@ if (__name__ == '__main__'):
                 pass
             else:
                 msg.partial_output(
-                    _(u"%(file1)s <> %(file2)s :") % \
+                    _(u"%(file1)s <> %(file2)s : ") % \
                         {"file1": msg.filename(audiofiles[0].filename),
                          "file2": msg.filename(audiofiles[1].filename)})
-                msg.output(_(u"differ at PCM frame %(frame_number)d") % \
-                               {"frame_number": frame_mismatch + 1})
+                msg.output(msg.ansi(
+                        _(u"differ at PCM frame %(frame_number)d") %
+                        {"frame_number": frame_mismatch + 1}, [msg.FG_RED]))
                 sys.exit(1)
         except (IOError, ValueError, audiotools.DecodingError), err:
             msg.error(unicode(err))
             sys.exit(1)
 
     elif (os.path.isdir(args[0]) and os.path.isdir(args[1])):
-        returnval = 0
+        successes = 0
+        failures = 0
 
         files1 = audiotools.open_files(
             [os.path.join(args[0], f) for f in os.listdir(args[0])
@@ -101,34 +111,39 @@ if (__name__ == '__main__'):
         for (album_number, track_number) in sorted(
             list(files1_tracknumbers - files2_tracknumbers)):
             if (album_number == 0):
-                msg.output(_(u"%s: missing") % \
-                               (msg.filename(
+                msg.partial_output(
+                    _(u"%s : ") % (msg.filename(
                             os.path.join(args[1],
                                          "track %2.2d" % (track_number)))))
-                returnval = 1
             else:
-                msg.output(_(u"%s: missing") % (msg.filename(os.path.join(
-                    args[1],
-                    "album %d track %2.2d" % (album_number, track_number)))))
-                returnval = 1
+                msg.partial_output(
+                    _(u"%s : ") % (msg.filename(os.path.join(
+                                args[1],
+                                "album %d track %2.2d" % (album_number,
+                                                          track_number)))))
+            failures += 1
+            msg.output(msg.ansi(_(u"missing"), [msg.FG_RED]))
 
         for (album_number, track_number) in sorted(
             list(files2_tracknumbers - files1_tracknumbers)):
             if (album_number == 0):
-                msg.output(_(u"%s: missing") % \
-                               (msg.filename(
+                msg.partial_output(
+                    _(u"%s : ") % (msg.filename(
                             os.path.join(args[0],
                                          "track %2.2d" % (track_number)))))
-                returnval = 1
             else:
-                msg.output(_(u"%s: missing") % (msg.filename(os.path.join(
-                    args[0],
-                    "album %d track %2.2d" % (album_number, track_number)))))
-                returnval = 1
+                msg.partial_output(
+                    _(u"%s : ") % (msg.filename(os.path.join(
+                                args[0],
+                                "album %d track %2.2d" % (album_number,
+                                                          track_number)))))
+
+            failures += 1
+            msg.output(msg.ansi(_(u"missing"), [msg.FG_RED]))
 
         for (album_number, track_number) in sorted(
             list(files1_tracknumbers & files2_tracknumbers)):
-            msg.partial_output(_(u"%(file1)s <> %(file2)s :") % \
+            msg.partial_output(_(u"%(file1)s <> %(file2)s : ") % \
                          {"file1": msg.filename(
                         files1_map[(album_number, track_number)].filename),
                           "file2": msg.filename(
@@ -139,20 +154,42 @@ if (__name__ == '__main__'):
                     files1_map[(album_number, track_number)].to_pcm(),
                     files2_map[(album_number, track_number)].to_pcm())
                 if (frame_mismatch is None):
-                    msg.output(_(u"OK"))
+                    msg.output(msg.ansi(_(u"OK"), [msg.FG_GREEN]))
+                    successes += 1
                 else:
-                    msg.output(_(u"differ at PCM frame %(frame_number)d") %
-                               {"frame_number": frame_mismatch + 1})
-                    returnval = 1
+                    msg.output(msg.ansi(
+                            _(u"differ at PCM frame %(frame_number)d") %
+                            {"frame_number": frame_mismatch + 1},
+                            [msg.FG_RED]))
+                    failures += 1
             except (IOError, ValueError, audiotools.DecodingError), msg:
-                msg.output(_(u"error"))
+                msg.output(msg.ansi(_(u"error"), [msg.FG_RED]))
                 msg.error(unicode(msg))
-                returnval = 2
+                failures += 1
 
-        if (returnval != 0):
-            sys.exit(returnval)
+        if (not options.no_summary):
+            msg.output(_(u"Results:"))
+            msg.output(u"")
+            msg.new_row()
+            msg.output_column(_(u"success"), True)
+            msg.output_column(u" ")
+            msg.output_column(_(u"failure"), True)
+            msg.output_column(u" ")
+            msg.output_column(_(u"total"), True)
+            msg.divider_row([u"-", u" ", u"-", u" ", u"-"])
+            msg.new_row()
+            msg.output_column(unicode(successes), True)
+            msg.output_column(u" ")
+            msg.output_column(unicode(failures), True)
+            msg.output_column(u" ")
+            msg.output_column(unicode(successes + failures), True)
+            msg.output_rows()
+
+        if (failures > 0):
+            sys.exit(1)
     else:
-        msg.output(_(u"%(file1)s %(file2)s differ") %
-                   {"file1": msg.filename(args[0]),
-                    "file2": msg.filename(args[1])})
+        msg.partial_output(_(u"%(file1)s <> %(file2)s : ") %
+                           {"file1": msg.filename(args[0]),
+                            "file2": msg.filename(args[1])})
+        msg.output(msg.ansi(_(u"differ in type"), [msg.FG_RED]))
         sys.exit(1)

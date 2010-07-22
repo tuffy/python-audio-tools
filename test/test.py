@@ -8413,7 +8413,7 @@ class TestProgramOutput(TestTextOutput):
         self.assertEqual(self.__run_app__(
                 ["trackcmp", self.flac1.filename, self.dir2]), 1)
 
-        self.__check_output__(_(u"%(file1)s %(file2)s differ") % \
+        self.__check_output__(_(u"%(file1)s <> %(file2)s : differ in type") % \
                                   {"file1": self.filename(self.flac1.filename),
                                    "file2": self.filename(self.dir2)})
 
@@ -8427,7 +8427,7 @@ class TestProgramOutput(TestTextOutput):
                 ["trackcmp", self.flac1.filename, self.flac2.filename]), 1)
 
         self.__check_output__(
-            _(u"%(file1)s <> %(file2)s :") %
+            _(u"%(file1)s <> %(file2)s : ") %
             {"file1": self.filename(self.flac1.filename),
              "file2": self.filename(self.flac2.filename)} +
             _(u"differ at PCM frame %(frame_number)d") %
@@ -8454,17 +8454,17 @@ class TestProgramOutput(TestTextOutput):
         self.assertEqual(self.__run_app__(
                 ["trackcmp", self.dir1, self.dir2]), 0)
         self.__check_output__(
-            (_(u"%(file1)s <> %(file2)s :") %
+            (_(u"%(file1)s <> %(file2)s : ") %
              {"file1": self.filename(self.flac1.filename),
               "file2": self.filename(flac4.filename)}) +
                 _(u"OK"))
         self.__check_output__(
-            (_(u"%(file1)s <> %(file2)s :") %
+            (_(u"%(file1)s <> %(file2)s : ") %
              {"file1": self.filename(self.flac2.filename),
               "file2": self.filename(flac5.filename)}) +
             _(u"OK"))
         self.__check_output__(
-            (_(u"%(file1)s <> %(file2)s :") %
+            (_(u"%(file1)s <> %(file2)s : ") %
              {"file1": self.filename(self.flac3.filename),
               "file2": self.filename(flac6.filename)}) +
             _(u"OK"))
@@ -8477,16 +8477,16 @@ class TestProgramOutput(TestTextOutput):
         #FIXME - the "track %2.2d" and "album %d track %2.2d" templates
         #should be internationalized
         self.__check_output__(
-            _(u"%s: missing") %
+            _(u"%s : missing") %
                 (self.filename(os.path.join(self.dir2,
                                             "track %2.2d" % (3)))))
         self.__check_output__(
-            (_(u"%(file1)s <> %(file2)s :") %
+            (_(u"%(file1)s <> %(file2)s : ") %
              {"file1": self.filename(self.flac1.filename),
               "file2": self.filename(flac4.filename)}) +
             _(u"OK"))
         self.__check_output__(
-            (_(u"%(file1)s <> %(file2)s :") %
+            (_(u"%(file1)s <> %(file2)s : ") %
              {"file1": self.filename(self.flac2.filename),
               "file2": self.filename(flac5.filename)}) +
             _(u"OK"))
@@ -8497,15 +8497,15 @@ class TestProgramOutput(TestTextOutput):
                 ["trackcmp", self.dir1, self.dir2]), 1)
 
         self.__check_output__(
-            _(u"%s: missing") % (self.filename(
+            _(u"%s : missing") % (self.filename(
                     os.path.join(self.dir1, "track %2.2d" % (3)))))
         self.__check_output__(
-            (_(u"%(file1)s <> %(file2)s :") %
+            (_(u"%(file1)s <> %(file2)s : ") %
              {"file1": self.filename(self.flac1.filename),
               "file2": self.filename(flac4.filename)}) +
             _(u"OK"))
         self.__check_output__(
-            (_(u"%(file1)s <> %(file2)s :") %
+            (_(u"%(file1)s <> %(file2)s : ") %
              {"file1": self.filename(self.flac2.filename),
               "file2": self.filename(flac5.filename)}) +
             _(u"OK"))
@@ -8543,17 +8543,17 @@ class TestProgramOutput(TestTextOutput):
         self.assertEqual(self.__run_app__(
                 ["trackcmp", self.dir1, self.dir2]), 0)
         self.__check_output__(
-            (_(u"%(file1)s <> %(file2)s :") %
+            (_(u"%(file1)s <> %(file2)s : ") %
              {"file1": self.filename(self.flac1.filename),
               "file2": self.filename(flac4.filename)}) +
             _(u"OK"))
         self.__check_output__(
-            (_(u"%(file1)s <> %(file2)s :") %
+            (_(u"%(file1)s <> %(file2)s : ") %
              {"file1": self.filename(self.flac2.filename),
               "file2": self.filename(flac5.filename)}) +
             _(u"OK"))
         self.__check_output__(
-            (_(u"%(file1)s <> %(file2)s :") %
+            (_(u"%(file1)s <> %(file2)s : ") %
              {"file1": self.filename(self.flac3.filename),
               "file2": self.filename(flac6.filename)}) +
             _(u"OK"))
@@ -8564,16 +8564,16 @@ class TestProgramOutput(TestTextOutput):
                 ["trackcmp", self.dir1, self.dir2]), 1)
 
         self.__check_output__(
-            _(u"%s: missing") %
+            _(u"%s : missing") %
             (self.filename(os.path.join(self.dir2,
                                         "album %d track %2.2d" % (1, 3)))))
         self.__check_output__(
-            (_(u"%(file1)s <> %(file2)s :") %
+            (_(u"%(file1)s <> %(file2)s : ") %
              {"file1": self.filename(self.flac1.filename),
               "file2": self.filename(flac4.filename)}) +
             _(u"OK"))
         self.__check_output__(
-            (_(u"%(file1)s <> %(file2)s :") %
+            (_(u"%(file1)s <> %(file2)s : ") %
              {"file1": self.filename(self.flac2.filename),
               "file2": self.filename(flac5.filename)}) +
             _(u"OK"))
@@ -8584,16 +8584,16 @@ class TestProgramOutput(TestTextOutput):
                 ["trackcmp", self.dir1, self.dir2]), 1)
 
         self.__check_output__(
-            _(u"%s: missing") %
+            _(u"%s : missing") %
             (self.filename(os.path.join(self.dir1,
                                         "album %d track %2.2d" % (1, 3)))))
         self.__check_output__(
-            (_(u"%(file1)s <> %(file2)s :") %
+            (_(u"%(file1)s <> %(file2)s : ") %
              {"file1": self.filename(self.flac1.filename),
               "file2": self.filename(flac4.filename)}) +
             _(u"OK"))
         self.__check_output__(
-            (_(u"%(file1)s <> %(file2)s :") %
+            (_(u"%(file1)s <> %(file2)s : ") %
              {"file1": self.filename(self.flac2.filename),
               "file2": self.filename(flac5.filename)}) +
             _(u"OK"))
@@ -8626,7 +8626,7 @@ class TestProgramOutput(TestTextOutput):
         self.assertEqual(self.__run_app__(
                 ["trackcmp", self.flac1.filename, flac4.filename]), 1)
 
-        self.__check_output__(_(u"%(file1)s <> %(file2)s :") % \
+        self.__check_output__(_(u"%(file1)s <> %(file2)s : ") % \
                        {"file1": self.filename(self.flac1.filename),
                         "file2": self.filename(flac4.filename)} + \
                                   _(u"differ at PCM frame %(frame_number)d") %\
@@ -8636,18 +8636,18 @@ class TestProgramOutput(TestTextOutput):
                 ["trackcmp", self.dir1, self.dir2]), 1)
 
         self.__check_output__(
-            (_(u"%(file1)s <> %(file2)s :") %
+            (_(u"%(file1)s <> %(file2)s : ") %
              {"file1": self.filename(self.flac1.filename),
               "file2": self.filename(flac4.filename)}) +
             _(u"differ at PCM frame %(frame_number)d") %
             {"frame_number": 1})
         self.__check_output__(
-            (_(u"%(file1)s <> %(file2)s :") %
+            (_(u"%(file1)s <> %(file2)s : ") %
              {"file1": self.filename(self.flac2.filename),
               "file2": self.filename(flac5.filename)}) +
             _(u"OK"))
         self.__check_output__(
-            (_(u"%(file1)s <> %(file2)s :") %
+            (_(u"%(file1)s <> %(file2)s : ") %
              {"file1": self.filename(self.flac3.filename),
               "file2": self.filename(flac6.filename)}) +
             _(u"OK"))
@@ -8665,7 +8665,7 @@ class TestProgramOutput(TestTextOutput):
         #due to randomness, it's possible (but very unlikely)
         #that this check will fail if the first frames happen to match
         self.__check_output__(
-            _(u"%(file1)s <> %(file2)s :") %
+            _(u"%(file1)s <> %(file2)s : ") %
             {"file1": self.filename(self.flac2.filename),
              "file2": self.filename(flac5.filename)} +
             _(u"differ at PCM frame %(frame_number)d") %
@@ -8675,19 +8675,19 @@ class TestProgramOutput(TestTextOutput):
                 ["trackcmp", self.dir1, self.dir2]), 1)
 
         self.__check_output__(
-            (_(u"%(file1)s <> %(file2)s :") %
+            (_(u"%(file1)s <> %(file2)s : ") %
              {"file1": self.filename(self.flac1.filename),
               "file2": self.filename(flac4.filename)}) +
             _(u"differ at PCM frame %(frame_number)d") %
             {"frame_number": 1})
         self.__check_output__(
-            (_(u"%(file1)s <> %(file2)s :") %
+            (_(u"%(file1)s <> %(file2)s : ") %
              {"file1": self.filename(self.flac2.filename),
               "file2": self.filename(flac5.filename)}) +
                 _(u"differ at PCM frame %(frame_number)d") %
             {"frame_number": 1})
         self.__check_output__(
-            (_(u"%(file1)s <> %(file2)s :") %
+            (_(u"%(file1)s <> %(file2)s : ") %
              {"file1": self.filename(self.flac3.filename),
               "file2": self.filename(flac6.filename)}) +
             _(u"OK"))
@@ -8703,7 +8703,7 @@ class TestProgramOutput(TestTextOutput):
                 ["trackcmp", self.flac3.filename, flac6.filename]), 1)
 
         self.__check_output__(
-            _(u"%(file1)s <> %(file2)s :") %
+            _(u"%(file1)s <> %(file2)s : ") %
             {"file1": self.filename(self.flac3.filename),
              "file2": self.filename(flac6.filename)} +
             _("differ at PCM frame %(frame_number)d") %
@@ -8713,19 +8713,19 @@ class TestProgramOutput(TestTextOutput):
                 ["trackcmp", self.dir1, self.dir2]), 1)
 
         self.__check_output__(
-            (_(u"%(file1)s <> %(file2)s :") %
+            (_(u"%(file1)s <> %(file2)s : ") %
              {"file1": self.filename(self.flac1.filename),
               "file2": self.filename(flac4.filename)}) +
                 _(u"differ at PCM frame %(frame_number)d") %
             {"frame_number": 1})
         self.__check_output__(
-            (_(u"%(file1)s <> %(file2)s :") %
+            (_(u"%(file1)s <> %(file2)s : ") %
              {"file1": self.filename(self.flac2.filename),
               "file2": self.filename(flac5.filename)}) +
             _(u"differ at PCM frame %(frame_number)d") %
             {"frame_number": 1})
         self.__check_output__(
-            (_(u"%(file1)s <> %(file2)s :") %
+            (_(u"%(file1)s <> %(file2)s : ") %
              {"file1": self.filename(self.flac3.filename),
               "file2": self.filename(flac6.filename)}) +
                 _(u"differ at PCM frame %(frame_number)d") %
