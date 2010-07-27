@@ -138,15 +138,14 @@ def next_unread_bit_states(context):
 #returns an array of 2 integers
 #that array's index is whether we stop at a 0 bit, or a 1 bit (in that order)
 #
-#the value in the array is a 25-bit, multiplexed triple of items:
+#the value in the array is a 17-bit, multiplexed triple of items:
 #1 bit   - continue reading
-#4 bit   - returned value size (from 0 to 4)
-#8 bit   - returned value (from 0x00 to 0xFF)
+#4 bits  - returned value (from 0 to 8)
 #12 bits - next context
 #if the topmost bit is set, it means we've exhausted the bank
 #without hitting a stop bit, and must continue to another byte
 #for example, if our bank is 0x800 (8, zero bits) and we stop at 1,
-#the value 0x1408000 is returned
+#the value 0x18000 is returned
 def next_read_unary_states(context):
     for stop_bit in xrange(0,2):
         byte_bank = Bitbuffer(context & 0xFF);
@@ -158,27 +157,19 @@ def next_read_unary_states(context):
         for (count,bit) in enumerate(reversed(byte_bank)):
             if (bit == stop_bit):
                 #the total number bits we've skipped is the returned value
-                value = count
 
                 #what's left over is our next state
                 byte_bank = byte_bank[:len(byte_bank) - count - 1]
 
-                continue_reading = 0
-
-                yield (continue_reading << 24) | \
-                    (len(Bitbuffer(value)) << 20) | \
-                    (value << 12) | \
-                    (len(byte_bank) << 8) | \
-                    int(byte_bank)
+                yield ((count << 12) |
+                       (len(byte_bank) << 8) |
+                       int(byte_bank))
                 break
         else:
             #unless we don't find the stop bit,
             #in which case we need to send a continue
-            continue_reading = 1
-            returned_bits = count + 1
-            yield (continue_reading << 24) | \
-                (len(Bitbuffer(returned_bits)) << 20) | \
-                (returned_bits << 12)
+            yield ((1 << 16) |
+                   ((count + 1) << 12))
 
 #incoming context is the same as in next_read_bits_states:
 #4 bits - byte bank size (from 0 to 8)
@@ -188,7 +179,7 @@ def next_read_unary_states(context):
 #the first 9 are when we stop at a 0 bit, and a maximum of 0-8 bits
 #the next 9 are when we stop at a 1 bit, and a maximum of 0-8 bits
 #
-#the value in the array is a 26-bit, multiplexed list of items:
+#the value in the array is an 18-bit, multiplexed quad of items:
 #1 bit   - maximum value reached
 #1 bit   - continue reading
 #4 bits  - returned value (from 0 to 8)

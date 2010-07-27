@@ -243,10 +243,10 @@ read_unary(Bitstream* bs, int stop_bit)
 
         result = read_unary_table[context][stop_bit];
 
-        accumulator += ((result & 0xFF000) >> 12);
+        accumulator += ((result & 0xF000) >> 12);
 
         context = result & 0xFFF;
-    } while (result >> 24);
+    } while (result >> 16);
 
     bs->state = context;
     return accumulator;

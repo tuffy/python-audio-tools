@@ -3528,12 +3528,12 @@ class BitstreamReader:
         accumulator += ((result & 0xFF000) >> 12)
         self.context = result & 0xFFF
 
-        while (result >> 24):
+        while (result >> 16):
             if (self.context == 0):
                 self.context = 0x800 | ord(self.byte_source.read(1))
 
             result = read_unary(self.context, stop_bit)
-            accumulator += ((result & 0xFF000) >> 12)
+            accumulator += ((result & 0xF000) >> 12)
             self.context = result & 0xFFF
 
         return accumulator
