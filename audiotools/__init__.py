@@ -3456,6 +3456,7 @@ class BitstreamReader:
 
         self.__read_bits__ = decoders.read_bits
         self.__read_unary__ = decoders.read_unary
+        self.__read_limited_unary__ = decoders.read_limited_unary
         self.__unread_bit__ = decoders.unread_bit
 
     def byte_align(self):
@@ -3537,6 +3538,46 @@ class BitstreamReader:
             self.context = result & 0xFFF
 
         return accumulator
+
+    def limited_unary(self, stop_bit, maximum_bits):
+        """Reads a unary value from the stream with a maximum upper limit.
+
+        stop_bit indicates whether we should stop reading at a 1 or 0 bit.
+        maximum_bits indicates the maximum number of bits to be read.
+        If that maximum is reached before the stop bit, this returns None.
+        """
+
+        if ((stop_bit != 0) and (stop_bit != 1)):
+            raise ValueError("stop bit must be 0 or 1")
+
+        read_limited_unary = self.__read_limited_unary__
+        accumulator = 0
+
+        if (self.context == 0):
+            self.context = 0x800 | ord(self.byte_source.read(1))
+
+        result = read_limited_unary(self.context,
+                                    stop_bit,
+                                    min(maximum_bits, 8))
+        accumulator += ((result & 0xF000) >> 12)
+        maximum_bits -= ((result & 0xF000) >> 12)
+        self.context = result & 0xFFF
+
+        while ((result >> 16) == 1):
+            if (self.context == 0):
+                self.context = 0x800 | ord(self.byte_source.read(1))
+
+            result = read_limited_unary(self.context,
+                                        stop_bit,
+                                        min(maximum_bits, 8))
+            accumulator += ((result & 0xF000) >> 12)
+            maximum_bits -= ((result & 0xF000) >> 12)
+            self.context = result & 0xFFF
+
+        if (result >> 17):
+            return None
+        else:
+            return accumulator
 
     def tell(self):
         """Returns the result of the sub-stream's tell() method."""

@@ -36,12 +36,17 @@ decoders_unread_bit(PyObject *dummy, PyObject *args);
 PyObject*
 decoders_read_unary(PyObject *dummy, PyObject *args);
 
+PyObject*
+decoders_read_limited_unary(PyObject *dummy, PyObject *args);
+
 PyMethodDef module_methods[] = {
     {"read_bits", (PyCFunction)decoders_read_bits,
      METH_VARARGS, ""},
     {"unread_bit", (PyCFunction)decoders_unread_bit,
      METH_VARARGS, ""},
     {"read_unary", (PyCFunction)decoders_read_unary,
+     METH_VARARGS, ""},
+    {"read_limited_unary", (PyCFunction)decoders_read_limited_unary,
      METH_VARARGS, ""},
     {NULL}
 };

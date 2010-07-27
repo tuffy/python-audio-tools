@@ -100,3 +100,20 @@ decoders_read_unary(PyObject *dummy, PyObject *args)
 
     return Py_BuildValue("i", read_unary_table[context][stop_bit]);
 }
+
+PyObject*
+decoders_read_limited_unary(PyObject *dummy, PyObject *args)
+{
+    int context;
+    int stop_bit;
+    int maximum_bits;
+
+    if (!PyArg_ParseTuple(args, "iii", &context, &stop_bit, &maximum_bits))
+        return NULL;
+
+    stop_bit *= 9;
+
+    return Py_BuildValue("i",
+                         read_limited_unary_table[context][stop_bit +
+                                                           maximum_bits]);
+}
