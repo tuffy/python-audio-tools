@@ -31,6 +31,10 @@ const unsigned int read_unary_table[0x900][2] =
 #include "read_unary_table.h"
     ;
 
+const unsigned int read_limited_unary_table[0x900][18] =
+#include "read_limited_unary_table.h"
+    ;
+
 Bitstream*
 bs_open(FILE *f)
 {

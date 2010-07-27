@@ -2381,3 +2381,15 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** TODO Add WavPack-specific unit tests
 ** TODO Add more WavPack INVALIDFILE .verify() tests
 ** TODO Remove wvgain for ReplayGain application
+* TODO Add unary jump tables with a max value
+  Since both Apple Lossless *and* WavPack have unary reading
+  with a maximum upper limit of read bits, it makes sense
+  to build a proper jump table for it.
+  The size of our state limits the maximum to 8 bits,
+  so larger maximums will be supported at a read_limited_unary() level.
+
+  The trouble is, we need to differentiate between normal exits
+  (we've hit the stop bit) and exits that hit the maximum value.
+  So, the jump table itself must have a different syntax
+  (probably an extra bit for "maximum value reached")
+  and read_limited_unary() will likely return -1 in that event.

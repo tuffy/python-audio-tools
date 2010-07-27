@@ -140,7 +140,7 @@ def next_unread_bit_states(context):
 #
 #the value in the array is a 25-bit, multiplexed triple of items:
 #1 bit   - continue reading
-#4 bit   - returned value size (from 0 to 4) FIXME - is this needed?
+#4 bit   - returned value size (from 0 to 4)
 #8 bit   - returned value (from 0x00 to 0xFF)
 #12 bits - next context
 #if the topmost bit is set, it means we've exhausted the bank
@@ -179,6 +179,59 @@ def next_read_unary_states(context):
             yield (continue_reading << 24) | \
                 (len(Bitbuffer(returned_bits)) << 20) | \
                 (returned_bits << 12)
+
+#incoming context is the same as in next_read_bits_states:
+#4 bits - byte bank size (from 0 to 8)
+#8 bits - byte bank value (from 0x00 to 0xFF)
+#
+#returns an array of 18 integers
+#the first 9 are when we stop at a 0 bit, and a maximum of 0-8 bits
+#the next 9 are when we stop at a 1 bit, and a maximum of 0-8 bits
+#
+#the value in the array is a 26-bit, multiplexed list of items:
+#1 bit   - maximum value reached
+#1 bit   - continue reading
+#4 bits  - returned value (from 0 to 8)
+#12 bits - next context
+#if the "continue reading" bit is set, it means we've exhausted the bank
+#without hitting a stop bit, and must continue to another byte
+#if the "maximum value reached" bit is set, it means we've hit the
+#maximum number of bits to read
+def next_read_limited_unary_states(context):
+    for state in xrange(0, 18):
+        stop_bit = state / 9
+        maximum_value = state % 9
+        byte_bank = Bitbuffer(context & 0xFF)
+        byte_bank.pad(context >> 8)
+
+        #read the bitstream from left to right
+        #or most-significant to least-significant
+        for (count, bit) in enumerate(reversed(byte_bank)):
+            if (count >= maximum_value):
+                #what's left is our next state
+                byte_bank = byte_bank[:len(byte_bank) - count]
+
+                yield ((1 << 17) |
+                       (len(byte_bank) << 8) |
+                       int(byte_bank))
+                break
+            elif (bit == stop_bit):
+                #the total number of bits skipped is the return value
+                value = count
+
+                #what's left is our next state
+                byte_bank = byte_bank[:len(byte_bank) - count - 1]
+
+                yield ((count << 12) |
+                       (len(byte_bank) << 8) |
+                       int(byte_bank))
+                break
+        else:
+            #unless we don't find the stop bit,
+            #in which case we need to send a continue
+            returned_bits = count + 1
+            yield ((1 << 16) |
+                   ((count + 1) << 12))
 
 #incoming context is:
 #3 bits - byte bank size (from 0 to 7)
@@ -332,6 +385,12 @@ if (__name__ == '__main__'):
                       default=False,
                       help='create read unary jump table')
 
+    parser.add_option('--rlu',
+                      dest='read_limited_unary',
+                      action='store_true',
+                      default=False,
+                      help='created read limited unary jump table')
+
     parser.add_option('--wu',
                       dest='write_unary',
                       action='store_true',
@@ -349,6 +408,9 @@ if (__name__ == '__main__'):
     elif (options.read_unary):
         (minimum_bits,maximum_bits,start_context,stat_function) = \
             (1,8,0,next_read_unary_states)
+    elif (options.read_limited_unary):
+        (minimum_bits,maximum_bits,start_context,stat_function) = \
+            (1,8,0,next_read_limited_unary_states)
     elif (options.write_bits):
         (minimum_bits,maximum_bits,start_context,stat_function) = \
             (0,7,0,next_write_bits_states)

@@ -689,12 +689,11 @@ ALACDecoder_read_residual(Bitstream *bs,
     int extrabits;
 
     /*read a unary 0 value to a maximum of RICE_THRESHOLD (8)*/
-    while ((x <= RICE_THRESHOLD) && (read_bits(bs, 1) == 1))
-        x++;
+    x = read_limited_unary(bs, 0, RICE_THRESHOLD + 1);
 
-    if (x > RICE_THRESHOLD)
+    if (x == -1) {
         x = read_bits(bs, sample_size);
-    else {
+    } else {
         if (k > 1) {
             /*x = x * ((2 ** k) - 1)*/
             x *= ((1 << k) - 1);

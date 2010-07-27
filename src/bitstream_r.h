@@ -26,6 +26,13 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 *******************************************************/
 
+#ifndef MIN
+#define MIN(x, y) ((x) < (y) ? (x) : (y))
+#endif
+#ifndef MAX
+#define MAX(x, y) ((x) > (y) ? (x) : (y))
+#endif
+
 struct bs_callback {
     void (*callback)(int, void*);
     void *data;
@@ -130,6 +137,7 @@ typedef struct {
 
 extern const unsigned int read_bits_table[0x900][8];
 extern const unsigned int read_unary_table[0x900][2];
+extern const unsigned int read_limited_unary_table[0x900][18];
 extern const unsigned int unread_bit_table[0x900][2];
 
 static inline unsigned int
@@ -242,6 +250,50 @@ read_unary(Bitstream* bs, int stop_bit)
 
     bs->state = context;
     return accumulator;
+}
+
+static inline int
+read_limited_unary(Bitstream* bs, int stop_bit, int maximum_bits)
+{
+    int context = bs->state;
+    unsigned int result;
+    unsigned int value;
+    struct bs_callback* callback;
+    int byte;
+    int accumulator = 0;
+    stop_bit *= 9;
+
+    do {
+        if (context == 0) {
+            if ((byte = fgetc(bs->file)) == EOF)
+                bs_abort(bs);
+            for (callback = bs->callback;
+                 callback != NULL;
+                 callback = callback->next)
+                callback->callback(byte, callback->data);
+            context = 0x800 | byte;
+        }
+
+        result = read_limited_unary_table[context][stop_bit +
+                                                   MIN(maximum_bits, 8)];
+
+        value = ((result & 0xF000) >> 12);
+
+        accumulator += value;
+        maximum_bits -= value;
+
+        context = result & 0xFFF;
+    } while ((result >> 16) == 1);
+
+    bs->state = context;
+
+    if (result >> 17) {
+        /*maximum_bits reached*/
+        return -1;
+    } else {
+        /*stop bit reached*/
+        return accumulator;
+    }
 }
 
 static inline void
