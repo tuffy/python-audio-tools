@@ -248,7 +248,7 @@ Many formats are broken up into pieces smaller than an individual byte.
 As an example, let's take a 32-bit structure of data broken up into 5
 fields as follows:
 \begin{figure}[h]
-\includegraphics{figures/demo.pdf}
+\includegraphics{figures/bitstream_struct.pdf}
 \end{figure}
 \par
 \noindent
@@ -260,7 +260,7 @@ how we place those bytes within our structure depends
 whether or not our stream is big-endian or little-endian.
 For big-endian, the breakdown is largely intuitive:
 \begin{figure}[h]
-\includegraphics{figures/demo_bigendian.pdf}
+\includegraphics{figures/bitstream_bigendian.pdf}
 \end{figure}
 \par
 \noindent
@@ -277,7 +277,7 @@ E & \texttt{101 0011 1011 1100 0001} & \texttt{53BC1} & \texttt{342977} \\
 \noindent
 However, for little-endian streams, the same bits are read quite differently:
 \begin{figure}[h]
-\includegraphics{figures/demo_littleendian.pdf}
+\includegraphics{figures/bitstream_littleendian.pdf}
 \end{figure}
 \par
 \noindent
@@ -317,7 +317,7 @@ Hex & Binary & Decimal & Hex & Binary & Decimal \\
 The bytes \texttt{B1 ED 3B C1} are then laid out differently also
 and can now be read in a linear fashion:
 \begin{figure}[h]
-\includegraphics{figures/demo_littleendian_alt.pdf}
+\includegraphics{figures/bitstream_littleendian_alt.pdf}
 \end{figure}
 \par
 \noindent
