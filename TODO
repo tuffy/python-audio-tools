@@ -2437,4 +2437,3 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 
 
 ** TODO add some basic Bitstream writer unit testing
-

@@ -51,3 +51,108 @@ PyMethodDef module_methods[] = {
     {NULL}
 };
 
+/*the BitstreamReader object
+  a simple wrapper around our Bitstream reading struct*/
+
+typedef struct {
+    PyObject_HEAD
+
+    PyObject* file_obj;
+    Bitstream* bitstream;
+} decoders_BitstreamReader;
+
+static PyObject*
+BitstreamReader_read(decoders_BitstreamReader *self, PyObject *args);
+
+static PyObject*
+BitstreamReader_byte_align(decoders_BitstreamReader *self, PyObject *args);
+
+static PyObject*
+BitstreamReader_unread(decoders_BitstreamReader *self, PyObject *args);
+
+static PyObject*
+BitstreamReader_read_signed(decoders_BitstreamReader *self, PyObject *args);
+
+static PyObject*
+BitstreamReader_unary(decoders_BitstreamReader *self, PyObject *args);
+
+static PyObject*
+BitstreamReader_limited_unary(decoders_BitstreamReader *self, PyObject *args);
+
+static PyObject*
+BitstreamReader_tell(decoders_BitstreamReader *self, PyObject *args);
+
+static PyObject*
+BitstreamReader_close(decoders_BitstreamReader *self, PyObject *args);
+
+int
+BitstreamReader_init(decoders_BitstreamReader *self, PyObject *args);
+
+PyMethodDef BitstreamReader_methods[] = {
+    {"read", (PyCFunction)BitstreamReader_read,
+     METH_VARARGS, ""},
+    {"byte_align", (PyCFunction)BitstreamReader_byte_align,
+     METH_NOARGS, ""},
+    {"unread", (PyCFunction)BitstreamReader_unread,
+     METH_VARARGS, ""},
+    {"read_signed", (PyCFunction)BitstreamReader_read_signed,
+     METH_VARARGS, ""},
+    {"unary", (PyCFunction)BitstreamReader_unary,
+     METH_VARARGS, ""},
+    {"limited_unary", (PyCFunction)BitstreamReader_limited_unary,
+     METH_VARARGS, ""},
+    {"tell", (PyCFunction)BitstreamReader_tell,
+     METH_NOARGS, ""},
+    {"close", (PyCFunction)BitstreamReader_close,
+     METH_NOARGS, ""},
+    {NULL}
+};
+
+void
+BitstreamReader_dealloc(decoders_BitstreamReader *self);
+
+static PyObject*
+BitstreamReader_new(PyTypeObject *type, PyObject *args,
+                    PyObject *kwds);
+
+PyTypeObject decoders_BitstreamReaderType = {
+    PyObject_HEAD_INIT(NULL)
+    0,                         /*ob_size*/
+    "decoders.BitstreamReader",    /*tp_name*/
+    sizeof(decoders_BitstreamReader), /*tp_basicsize*/
+    0,                         /*tp_itemsize*/
+    (destructor)BitstreamReader_dealloc, /*tp_dealloc*/
+    0,                         /*tp_print*/
+    0,                         /*tp_getattr*/
+    0,                         /*tp_setattr*/
+    0,                         /*tp_compare*/
+    0,                         /*tp_repr*/
+    0,                         /*tp_as_number*/
+    0,                         /*tp_as_sequence*/
+    0,                         /*tp_as_mapping*/
+    0,                         /*tp_hash */
+    0,                         /*tp_call*/
+    0,                         /*tp_str*/
+    0,                         /*tp_getattro*/
+    0,                         /*tp_setattro*/
+    0,                         /*tp_as_buffer*/
+    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE, /*tp_flags*/
+    "BitstreamReader objects", /* tp_doc */
+    0,		               /* tp_traverse */
+    0,		               /* tp_clear */
+    0,		               /* tp_richcompare */
+    0,		               /* tp_weaklistoffset */
+    0,		               /* tp_iter */
+    0,		               /* tp_iternext */
+    BitstreamReader_methods,   /* tp_methods */
+    0,                         /* tp_members */
+    0,                         /* tp_getset */
+    0,                         /* tp_base */
+    0,                         /* tp_dict */
+    0,                         /* tp_descr_get */
+    0,                         /* tp_descr_set */
+    0,                         /* tp_dictoffset */
+    (initproc)BitstreamReader_init,/* tp_init */
+    0,                         /* tp_alloc */
+    BitstreamReader_new,       /* tp_new */
+};
