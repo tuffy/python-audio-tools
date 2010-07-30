@@ -45,7 +45,7 @@ SHNDecoder_init(decoders_SHNDecoder *self,
         PyErr_SetFromErrnoWithFilename(PyExc_IOError, filename);
         return -1;
     } else {
-        self->bitstream = bs_open(fp);
+        self->bitstream = bs_open(fp, BS_BIG_ENDIAN);
     }
 
     if (SHNDecoder_read_header(self) == ERROR) {
@@ -694,12 +694,12 @@ SHNDecoder_read_header(decoders_SHNDecoder* self)
     Bitstream* bs = self->bitstream;
 
     if (!setjmp(*bs_try(bs))) {
-        if (read_bits(bs, 32) != 0x616A6B67) {
+        if (bs->read(bs, 32) != 0x616A6B67) {
             bs_etry(bs);
             return ERROR;
         }
 
-        self->version = read_bits(bs, 8);
+        self->version = bs->read(bs, 8);
         self->file_type = shn_read_long(bs);
         self->channels = shn_read_long(bs);
         self->block_size = shn_read_long(bs);
@@ -816,8 +816,8 @@ SHNDecoder_read_lpc(decoders_SHNDecoder *decoder,
 unsigned int
 shn_read_uvar(Bitstream* bs, unsigned int count)
 {
-    unsigned int high_bits = read_unary(bs, 1);
-    unsigned int low_bits = read_bits(bs, count);
+    unsigned int high_bits = bs->read_unary(bs, 1);
+    unsigned int low_bits = bs->read(bs, count);
 
     return (high_bits << count) | low_bits;
 }
@@ -841,15 +841,15 @@ shn_read_long(Bitstream* bs)
 void
 shn_skip_uvar(Bitstream* bs, unsigned int count)
 {
-    read_unary(bs, 1);
-    read_bits(bs, count);
+    bs->read_unary(bs, 1);
+    bs->read(bs, count);
 }
 
 void
 shn_skip_var(Bitstream* bs, unsigned int count)
 {
-    read_unary(bs, 1);
-    read_bits(bs, count + 1);
+    bs->read_unary(bs, 1);
+    bs->read(bs, count + 1);
 }
 
 char*

@@ -24,7 +24,7 @@ verifymodule_mpeg(PyObject *dummy, PyObject *args) {
                         "first argument must be an actual file object");
         return NULL;
     } else {
-        bitstream = bs_open(PyFile_AsFile(file_obj));
+        bitstream = bs_open(PyFile_AsFile(file_obj), BS_BIG_ENDIAN);
     }
 
     remaining_bytes = end_byte - start_byte;
@@ -114,40 +114,40 @@ verifymodule_mpeg(PyObject *dummy, PyObject *args) {
 
 status
 verifymodule_read_mpeg_header(Bitstream *bs, struct mpeg_header *header) {
-    if ((header->frame_sync = read_bits(bs, 11)) != 0x7FF) {
+    if ((header->frame_sync = bs->read(bs, 11)) != 0x7FF) {
         PyErr_SetString(PyExc_ValueError, "invalid frame sync");
         return ERROR;
     }
 
-    if ((header->mpeg_id = read_bits(bs, 2)) == 1) {
+    if ((header->mpeg_id = bs->read(bs, 2)) == 1) {
         PyErr_SetString(PyExc_ValueError, "invalid MPEG ID");
         return ERROR;
     }
 
-    if ((header->layer_description = read_bits(bs, 2)) == 0) {
+    if ((header->layer_description = bs->read(bs, 2)) == 0) {
         PyErr_SetString(PyExc_ValueError, "invalid layer description");
         return ERROR;
     }
 
-    header->protection = read_bits(bs, 1);
+    header->protection = bs->read(bs, 1);
 
-    if ((header->bitrate = read_bits(bs, 4)) == 0xF) {
+    if ((header->bitrate = bs->read(bs, 4)) == 0xF) {
         PyErr_SetString(PyExc_ValueError, "invalid bitrate");
         return ERROR;
     }
 
-    if ((header->sample_rate = read_bits(bs, 2)) == 3) {
+    if ((header->sample_rate = bs->read(bs, 2)) == 3) {
         PyErr_SetString(PyExc_ValueError, "invalid sample rate");
         return ERROR;
     }
 
-    header->pad = read_bits(bs, 1);
-    header->private = read_bits(bs, 1);
-    header->channel_assignment = read_bits(bs, 2);
-    header->mode_extension = read_bits(bs, 2);
-    header->copyright = read_bits(bs, 1);
-    header->original = read_bits(bs, 1);
-    header->emphasis = read_bits(bs, 2);
+    header->pad = bs->read(bs, 1);
+    header->private = bs->read(bs, 1);
+    header->channel_assignment = bs->read(bs, 2);
+    header->mode_extension = bs->read(bs, 2);
+    header->copyright = bs->read(bs, 1);
+    header->original = bs->read(bs, 1);
+    header->emphasis = bs->read(bs, 2);
 
     return OK;
 }

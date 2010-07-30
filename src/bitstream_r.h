@@ -44,15 +44,26 @@ struct bs_exception {
     struct bs_exception *next;
 };
 
-typedef struct {
+typedef struct Bitstream_s {
     FILE *file;
     int state;
     struct bs_callback *callback;
     struct bs_exception *exceptions;
+
+    unsigned int (*read)(struct Bitstream_s* bs, unsigned int count);
+    int (*read_signed)(struct Bitstream_s* bs, unsigned int count);
+    uint64_t (*read_64)(struct Bitstream_s* bs, unsigned int count);
+    void (*unread)(struct Bitstream_s* bs, int unread_bit);
+    unsigned int (*read_unary)(struct Bitstream_s* bs, int stop_bit);
+    int (*read_limited_unary)(struct Bitstream_s* bs, int stop_bit,
+                              int maximum_bits);
+    void (*byte_align)(struct Bitstream_s* bs);
 } Bitstream;
 
+typedef enum {BS_BIG_ENDIAN, BS_LITTLE_ENDIAN} bs_alignment;
+
 Bitstream*
-bs_open(FILE *f);
+bs_open(FILE *f, bs_alignment alignment);
 
 void
 bs_close(Bitstream *bs);
@@ -140,168 +151,30 @@ extern const unsigned int read_unary_table[0x900][2];
 extern const unsigned int read_limited_unary_table[0x900][18];
 extern const unsigned int unread_bit_table[0x900][2];
 
-static inline unsigned int
-read_bits(Bitstream* bs, unsigned int count)
-{
-    int context = bs->state;
-    unsigned int result;
-    int byte;
-    struct bs_callback* callback;
-    unsigned int accumulator = 0;
-    int bit_size;
+/*_be signifies the big-endian readers*/
+unsigned int
+bs_read_bits_be(Bitstream* bs, unsigned int count);
 
-    while (count > 0) {
-        if (context == 0) {
-            if ((byte = fgetc(bs->file)) == EOF)
-                bs_abort(bs);
-            context = 0x800 | byte;
-            for (callback = bs->callback;
-                 callback != NULL;
-                 callback = callback->next)
-                callback->callback(byte, callback->data);
-        }
+int
+bs_read_signed_bits(Bitstream* bs, unsigned int count);
 
-        result = read_bits_table[context][(count > 8 ? 8 : count) - 1];
+uint64_t
+bs_read_bits64_be(Bitstream* bs, unsigned int count);
 
-        bit_size = (result & 0xF00000) >> 20;
-        accumulator = (accumulator << bit_size) | ((result & 0xFF000) >> 12);
-        count -= bit_size;
-        context = (result & 0xFFF);
-    }
+void
+bs_unread_bit_be(Bitstream* bs, int unread_bit);
 
-    bs->state = context;
-    return accumulator;
-}
+unsigned int
+bs_read_unary_be(Bitstream* bs, int stop_bit);
 
-static inline int
-read_signed_bits(Bitstream* bs, unsigned int count)
-{
-    if (!read_bits(bs, 1)) {
-        return read_bits(bs, count - 1);
-    } else {
-        return read_bits(bs, count - 1) - (1 << (count - 1));
-    }
-}
+int
+bs_read_limited_unary_be(Bitstream* bs, int stop_bit, int maximum_bits);
 
-static inline uint64_t
-read_bits64(Bitstream* bs, unsigned int count)
-{
-    int context = bs->state;
-    unsigned int result;
-    int byte;
-    struct bs_callback* callback;
-    uint64_t accumulator = 0;
-    int bit_size;
+void
+bs_byte_align_r(Bitstream* bs);
 
-    while (count > 0) {
-        if (context == 0) {
-            if ((byte = fgetc(bs->file)) == EOF)
-                bs_abort(bs);
-            context = 0x800 | byte;
-            for (callback = bs->callback;
-                 callback != NULL;
-                 callback = callback->next)
-                callback->callback(byte, callback->data);
-        }
+/*_le signifies the little-endian readers*/
 
-        result = read_bits_table[context][(count > 8 ? 8 : count) - 1];
-
-        bit_size = (result & 0xF00000) >> 20;
-        accumulator = (accumulator << bit_size) | ((result & 0xFF000) >> 12);
-        count -= bit_size;
-        context = (result & 0xFFF);
-    }
-
-    bs->state = context;
-    return accumulator;
-}
-
-static inline void
-unread_bit(Bitstream* bs, int unread_bit)
-{
-    bs->state = unread_bit_table[bs->state][unread_bit];
-    assert((bs->state >> 12) == 0);
-}
-
-static inline unsigned int
-read_unary(Bitstream* bs, int stop_bit)
-{
-    int context = bs->state;
-    unsigned int result;
-    struct bs_callback* callback;
-    int byte;
-    unsigned int accumulator = 0;
-
-    do {
-        if (context == 0) {
-            if ((byte = fgetc(bs->file)) == EOF)
-                bs_abort(bs);
-            for (callback = bs->callback;
-                 callback != NULL;
-                 callback = callback->next)
-                callback->callback(byte, callback->data);
-            context = 0x800 | byte;
-        }
-
-        result = read_unary_table[context][stop_bit];
-
-        accumulator += ((result & 0xF000) >> 12);
-
-        context = result & 0xFFF;
-    } while (result >> 16);
-
-    bs->state = context;
-    return accumulator;
-}
-
-static inline int
-read_limited_unary(Bitstream* bs, int stop_bit, int maximum_bits)
-{
-    int context = bs->state;
-    unsigned int result;
-    unsigned int value;
-    struct bs_callback* callback;
-    int byte;
-    int accumulator = 0;
-    stop_bit *= 9;
-
-    do {
-        if (context == 0) {
-            if ((byte = fgetc(bs->file)) == EOF)
-                bs_abort(bs);
-            for (callback = bs->callback;
-                 callback != NULL;
-                 callback = callback->next)
-                callback->callback(byte, callback->data);
-            context = 0x800 | byte;
-        }
-
-        result = read_limited_unary_table[context][stop_bit +
-                                                   MIN(maximum_bits, 8)];
-
-        value = ((result & 0xF000) >> 12);
-
-        accumulator += value;
-        maximum_bits -= value;
-
-        context = result & 0xFFF;
-    } while ((result >> 16) == 1);
-
-    bs->state = context;
-
-    if (result >> 17) {
-        /*maximum_bits reached*/
-        return -1;
-    } else {
-        /*stop bit reached*/
-        return accumulator;
-    }
-}
-
-static inline void
-byte_align_r(Bitstream* bs)
-{
-    bs->state = 0;
-}
+/*FIXME - add little endian reader defs here*/
 
 #endif

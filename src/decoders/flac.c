@@ -43,7 +43,7 @@ FlacDecoder_init(decoders_FlacDecoder *self,
         PyErr_SetFromErrnoWithFilename(PyExc_IOError, filename);
         return -1;
     } else {
-        self->bitstream = bs_open(self->file);
+        self->bitstream = bs_open(self->file, BS_BIG_ENDIAN);
     }
 
     self->filename = strdup(filename);
@@ -117,32 +117,32 @@ FlacDecoder_read_metadata(decoders_FlacDecoder *self)
     unsigned int block_length;
 
     if (!setjmp(*bs_try(self->bitstream))) {
-        if (read_bits(self->bitstream, 32) != 0x664C6143u) {
+        if (self->bitstream->read(self->bitstream, 32) != 0x664C6143u) {
             PyErr_SetString(PyExc_ValueError, "not a FLAC file");
             goto error;
         }
 
-        last_block = read_bits(self->bitstream, 1);
-        block_type = read_bits(self->bitstream, 7);
-        block_length = read_bits(self->bitstream, 24);
+        last_block = self->bitstream->read(self->bitstream, 1);
+        block_type = self->bitstream->read(self->bitstream, 7);
+        block_length = self->bitstream->read(self->bitstream, 24);
 
         if (block_type == 0) {
-            self->streaminfo.minimum_block_size = read_bits(self->bitstream,
-                                                            16);
-            self->streaminfo.maximum_block_size = read_bits(self->bitstream,
-                                                            16);
-            self->streaminfo.minimum_frame_size = read_bits(self->bitstream,
-                                                            24);
-            self->streaminfo.maximum_frame_size = read_bits(self->bitstream,
-                                                            24);
-            self->streaminfo.sample_rate = read_bits(self->bitstream,
-                                                     20);
-            self->streaminfo.channels = read_bits(self->bitstream,
-                                                  3) + 1;
-            self->streaminfo.bits_per_sample = read_bits(self->bitstream,
-                                                         5) + 1;
-            self->streaminfo.total_samples = read_bits64(self->bitstream,
-                                                         36);
+            self->streaminfo.minimum_block_size = self->bitstream->read(
+                                        self->bitstream, 16);
+            self->streaminfo.maximum_block_size = self->bitstream->read(
+                                        self->bitstream, 16);
+            self->streaminfo.minimum_frame_size = self->bitstream->read(
+                                        self->bitstream, 24);
+            self->streaminfo.maximum_frame_size = self->bitstream->read(
+                                        self->bitstream, 24);
+            self->streaminfo.sample_rate = self->bitstream->read(
+                                        self->bitstream, 20);
+            self->streaminfo.channels = self->bitstream->read(
+                                        self->bitstream, 3) + 1;
+            self->streaminfo.bits_per_sample = self->bitstream->read(
+                                        self->bitstream, 5) + 1;
+            self->streaminfo.total_samples = self->bitstream->read_64(
+                                        self->bitstream, 36);
             if (fread(self->streaminfo.md5sum, sizeof(unsigned char),
                       16, self->file) != 16) {
                 PyErr_SetString(PyExc_IOError, "unable to read md5sum");
@@ -155,9 +155,9 @@ FlacDecoder_read_metadata(decoders_FlacDecoder *self)
         }
 
         while (!last_block) {
-            last_block = read_bits(self->bitstream, 1);
-            block_type = read_bits(self->bitstream, 7);
-            block_length = read_bits(self->bitstream, 24);
+            last_block = self->bitstream->read(self->bitstream, 1);
+            block_type = self->bitstream->read(self->bitstream, 7);
+            block_length = self->bitstream->read(self->bitstream, 24);
             if (fseek(self->file, block_length, SEEK_CUR) == -1) {
                 PyErr_SetFromErrno(PyExc_ValueError);
                 goto error;
@@ -251,8 +251,8 @@ FlacDecoder_read(decoders_FlacDecoder* self, PyObject *args)
                                          &(self->subframe_data));
 
         /*check CRC-16*/
-        byte_align_r(self->bitstream);
-        read_bits(self->bitstream, 16);
+        self->bitstream->byte_align(self->bitstream);
+        self->bitstream->read(self->bitstream, 16);
         if (self->crc16 != 0) {
             PyErr_SetString(PyExc_ValueError, "invalid checksum in frame");
             goto error;
@@ -322,8 +322,8 @@ FlacDecoder_analyze_frame(decoders_FlacDecoder* self, PyObject *args)
         }
 
         /*check CRC-16*/
-        byte_align_r(self->bitstream);
-        read_bits(self->bitstream, 16);
+        self->bitstream->byte_align(self->bitstream);
+        self->bitstream->read(self->bitstream, 16);
         if (self->crc16 != 0) {
             PyErr_SetString(PyExc_ValueError, "invalid checksum in frame");
             goto error;
@@ -363,22 +363,22 @@ FlacDecoder_read_frame_header(decoders_FlacDecoder *self,
     uint32_t sample_rate_bits;
 
     /*read and verify sync code*/
-    if (read_bits(bitstream, 14) != 0x3FFE) {
+    if (bitstream->read(bitstream, 14) != 0x3FFE) {
         PyErr_SetString(PyExc_ValueError, "invalid sync code");
         return ERROR;
     }
 
     /*read and verify reserved bit*/
-    if (read_bits(bitstream, 1) != 0) {
+    if (bitstream->read(bitstream, 1) != 0) {
         PyErr_SetString(PyExc_ValueError, "invalid reserved bit");
         return ERROR;
     }
 
-    header->blocking_strategy = read_bits(bitstream, 1);
+    header->blocking_strategy = bitstream->read(bitstream, 1);
 
-    block_size_bits = read_bits(bitstream, 4);
-    sample_rate_bits = read_bits(bitstream, 4);
-    header->channel_assignment = read_bits(bitstream, 4);
+    block_size_bits = bitstream->read(bitstream, 4);
+    sample_rate_bits = bitstream->read(bitstream, 4);
+    header->channel_assignment = bitstream->read(bitstream, 4);
     switch (header->channel_assignment) {
     case 0x8:
     case 0x9:
@@ -390,7 +390,7 @@ FlacDecoder_read_frame_header(decoders_FlacDecoder *self,
         break;
     }
 
-    switch (read_bits(bitstream, 3)) {
+    switch (bitstream->read(bitstream, 3)) {
     case 0:
         header->bits_per_sample = self->streaminfo.bits_per_sample; break;
     case 1:
@@ -407,7 +407,7 @@ FlacDecoder_read_frame_header(decoders_FlacDecoder *self,
         PyErr_SetString(PyExc_ValueError, "invalid bits per sample");
         return ERROR;
     }
-    read_bits(bitstream, 1); /*padding*/
+    bitstream->read(bitstream, 1); /*padding*/
 
     header->frame_number = read_utf8(bitstream);
 
@@ -418,8 +418,8 @@ FlacDecoder_read_frame_header(decoders_FlacDecoder *self,
     case 0x3: header->block_size = 1152; break;
     case 0x4: header->block_size = 2304; break;
     case 0x5: header->block_size = 4608; break;
-    case 0x6: header->block_size = read_bits(bitstream, 8) + 1; break;
-    case 0x7: header->block_size = read_bits(bitstream, 16) + 1; break;
+    case 0x6: header->block_size = bitstream->read(bitstream, 8) + 1; break;
+    case 0x7: header->block_size = bitstream->read(bitstream, 16) + 1; break;
     case 0x8: header->block_size = 256; break;
     case 0x9: header->block_size = 512; break;
     case 0xA: header->block_size = 1024; break;
@@ -443,16 +443,16 @@ FlacDecoder_read_frame_header(decoders_FlacDecoder *self,
     case 0x9: header->sample_rate = 44100; break;
     case 0xA: header->sample_rate = 48000; break;
     case 0xB: header->sample_rate = 96000; break;
-    case 0xC: header->sample_rate = read_bits(bitstream, 8) * 1000; break;
-    case 0xD: header->sample_rate = read_bits(bitstream, 16); break;
-    case 0xE: header->sample_rate = read_bits(bitstream, 16) * 10; break;
+    case 0xC: header->sample_rate = bitstream->read(bitstream, 8) * 1000; break;
+    case 0xD: header->sample_rate = bitstream->read(bitstream, 16); break;
+    case 0xE: header->sample_rate = bitstream->read(bitstream, 16) * 10; break;
     case 0xF:
         PyErr_SetString(PyExc_ValueError, "invalid sample rate");
         return ERROR;
     }
 
     /*check for valid CRC-8 value*/
-    read_bits(bitstream, 8);
+    bitstream->read(bitstream, 8);
     if (self->crc8 != 0) {
         PyErr_SetString(PyExc_ValueError, "invalid checksum in frame header");
         return ERROR;
@@ -554,8 +554,8 @@ FlacDecoder_read_subframe_header(decoders_FlacDecoder *self,
     Bitstream *bitstream = self->bitstream;
     uint8_t subframe_type;
 
-    read_bits(bitstream, 1);  /*padding*/
-    subframe_type = read_bits(bitstream, 6);
+    bitstream->read(bitstream, 1);  /*padding*/
+    subframe_type = bitstream->read(bitstream, 6);
     if (subframe_type == 0) {
         subframe_header->type = FLAC_SUBFRAME_CONSTANT;
         subframe_header->order = 0;
@@ -573,10 +573,11 @@ FlacDecoder_read_subframe_header(decoders_FlacDecoder *self,
         return ERROR;
     }
 
-    if (read_bits(bitstream, 1) == 0) {
+    if (bitstream->read(bitstream, 1) == 0) {
         subframe_header->wasted_bits_per_sample = 0;
     } else {
-        subframe_header->wasted_bits_per_sample = read_unary(bitstream, 1) + 1;
+        subframe_header->wasted_bits_per_sample = bitstream->read_unary(
+                                                      bitstream, 1) + 1;
     }
 
     return OK;
@@ -603,7 +604,8 @@ FlacDecoder_read_constant_subframe(decoders_FlacDecoder *self,
                                    uint8_t bits_per_sample,
                                    struct i_array *samples)
 {
-    int32_t value = read_signed_bits(self->bitstream, bits_per_sample);
+    int32_t value = self->bitstream->read_signed(self->bitstream,
+                                                 bits_per_sample);
     int32_t i;
 
     ia_reset(samples);
@@ -624,7 +626,8 @@ FlacDecoder_read_verbatim_subframe(decoders_FlacDecoder *self,
 
     ia_reset(samples);
     for (i = 0; i < block_size; i++)
-        ia_append(samples, read_signed_bits(self->bitstream, bits_per_sample));
+        ia_append(samples, self->bitstream->read_signed(self->bitstream,
+                                                        bits_per_sample));
 
     return OK;
 }
@@ -645,7 +648,7 @@ FlacDecoder_read_fixed_subframe(decoders_FlacDecoder *self,
 
     /*read "order" number of warm-up samples*/
     for (i = 0; i < order; i++) {
-        ia_append(samples, read_signed_bits(bitstream, bits_per_sample));
+        ia_append(samples, bitstream->read_signed(bitstream, bits_per_sample));
     }
 
     /*read the residual*/
@@ -725,18 +728,19 @@ FlacDecoder_read_lpc_subframe(decoders_FlacDecoder *self,
 
     /*read order number of warm-up samples*/
     for (i = 0; i < order; i++) {
-        ia_append(samples, read_signed_bits(bitstream, bits_per_sample));
+        ia_append(samples, bitstream->read_signed(bitstream, bits_per_sample));
     }
 
     /*read QLP precision*/
-    qlp_precision = read_bits(bitstream, 4) + 1;
+    qlp_precision = bitstream->read(bitstream, 4) + 1;
 
     /*read QLP shift needed*/
-    qlp_shift_needed = read_signed_bits(bitstream, 5);
+    qlp_shift_needed = bitstream->read_signed(bitstream, 5);
 
     /*read order number of QLP coefficients of size qlp_precision*/
     for (i = 0; i < order; i++) {
-        ia_append(qlp_coeffs, read_signed_bits(bitstream, qlp_precision));
+        ia_append(qlp_coeffs, bitstream->read_signed(bitstream,
+                                                     qlp_precision));
     }
     ia_reverse(qlp_coeffs);
 
@@ -767,8 +771,8 @@ FlacDecoder_read_residual(decoders_FlacDecoder *self,
                           struct i_array *residuals)
 {
     Bitstream *bitstream = self->bitstream;
-    uint32_t coding_method = read_bits(bitstream, 2);
-    uint32_t partition_order = read_bits(bitstream, 4);
+    uint32_t coding_method = bitstream->read(bitstream, 2);
+    uint32_t partition_order = bitstream->read(bitstream, 4);
     int total_partitions = 1 << partition_order;
     int partition;
     uint32_t rice_parameter;
@@ -779,6 +783,12 @@ FlacDecoder_read_residual(decoders_FlacDecoder *self,
     int32_t lsb;
     int32_t value;
     ia_data_t *residuals_data;
+
+    unsigned int (*read)(struct Bitstream_s* bs, unsigned int count);
+    unsigned int (*read_unary)(struct Bitstream_s* bs, int stop_bit);
+
+    read = bitstream->read;
+    read_unary = bitstream->read_unary;
 
     ia_resize(residuals, block_size - order);
     residuals->size = block_size - order;
@@ -797,16 +807,16 @@ FlacDecoder_read_residual(decoders_FlacDecoder *self,
 
         switch (coding_method) {
         case 0:
-            rice_parameter = read_bits(bitstream, 4);
+            rice_parameter = bitstream->read(bitstream, 4);
             if (rice_parameter == 0xF)
-                escape_code = read_bits(bitstream, 5);
+                escape_code = bitstream->read(bitstream, 5);
             else
                 escape_code = 0;
             break;
         case 1:
-            rice_parameter = read_bits(bitstream, 5);
+            rice_parameter = bitstream->read(bitstream, 5);
             if (rice_parameter == 0x1F)
-                escape_code = read_bits(bitstream, 5);
+                escape_code = bitstream->read(bitstream, 5);
             else
                 escape_code = 0;
             break;
@@ -819,7 +829,7 @@ FlacDecoder_read_residual(decoders_FlacDecoder *self,
         if (!escape_code) {
             for (;partition_samples; partition_samples--) {
                 msb = read_unary(bitstream, 1);
-                lsb = read_bits(bitstream, rice_parameter);
+                lsb = read(bitstream, rice_parameter);
                 value = (msb << rice_parameter) | lsb;
                 if (value & 1) {
                     residuals_data[sample++] = -(value >> 1) - 1;
@@ -829,8 +839,8 @@ FlacDecoder_read_residual(decoders_FlacDecoder *self,
             }
         } else {
             for (;partition_samples; partition_samples--) {
-                residuals_data[sample++] = read_signed_bits(bitstream,
-                                                            escape_code);
+                residuals_data[sample++] = bitstream->read_signed(bitstream,
+                                                                  escape_code);
             }
         }
     }
@@ -943,7 +953,8 @@ FlacDecoder_analyze_constant_subframe(decoders_FlacDecoder *self,
                                       uint32_t block_size,
                                       uint8_t bits_per_sample)
 {
-    return PyInt_FromLong(read_signed_bits(self->bitstream, bits_per_sample));
+    return PyInt_FromLong(self->bitstream->read_signed(self->bitstream,
+                                                       bits_per_sample));
 }
 
 PyObject*
@@ -958,7 +969,8 @@ FlacDecoder_analyze_verbatim_subframe(decoders_FlacDecoder *self,
     ia_init(&samples, block_size);
     for (i = 0; i < block_size; i++)
         ia_append(&samples,
-                  read_signed_bits(self->bitstream, bits_per_sample));
+                  self->bitstream->read_signed(self->bitstream,
+                                               bits_per_sample));
 
     toreturn = i_array_to_list(&samples);
     ia_free(&samples);
@@ -980,7 +992,8 @@ FlacDecoder_analyze_fixed_subframe(decoders_FlacDecoder *self,
     ia_init(&warm_up_samples, order);
     for (i = 0; i < order; i++) {
         ia_append(&warm_up_samples,
-                  read_signed_bits(self->bitstream, bits_per_sample));
+                  self->bitstream->read_signed(self->bitstream,
+                                               bits_per_sample));
     }
     warm_up_obj = i_array_to_list(&warm_up_samples);
     ia_free(&warm_up_samples);
@@ -1012,22 +1025,24 @@ FlacDecoder_analyze_lpc_subframe(decoders_FlacDecoder *self,
     ia_init(&warm_up_samples, order);
     for (i = 0; i < order; i++) {
         ia_append(&warm_up_samples,
-                  read_signed_bits(self->bitstream, bits_per_sample));
+                  self->bitstream->read_signed(self->bitstream,
+                                               bits_per_sample));
     }
     warm_up_obj = i_array_to_list(&warm_up_samples);
     ia_free(&warm_up_samples);
 
     /*read QLP precision*/
-    qlp_precision = read_bits(self->bitstream, 4) + 1;
+    qlp_precision = self->bitstream->read(self->bitstream, 4) + 1;
 
     /*read QLP shift needed*/
-    shift_needed = read_signed_bits(self->bitstream, 5);
+    shift_needed = self->bitstream->read_signed(self->bitstream, 5);
 
     /*read order number of QLP coefficients of size qlp_precision*/
     ia_init(&qlp_coefficients, order);
     for (i = 0; i < order; i++) {
         ia_append(&qlp_coefficients,
-                  read_signed_bits(self->bitstream, qlp_precision));
+                  self->bitstream->read_signed(self->bitstream,
+                                               qlp_precision));
     }
     coefficients_obj = i_array_to_list(&qlp_coefficients);
 
@@ -1099,10 +1114,10 @@ FlacDecoder_verify_okay(decoders_FlacDecoder *self) {
 uint32_t
 read_utf8(Bitstream *stream)
 {
-    uint32_t total_bytes = read_unary(stream, 0);
-    uint32_t value = read_bits(stream, 7 - total_bytes);
+    uint32_t total_bytes = stream->read_unary(stream, 0);
+    uint32_t value = stream->read(stream, 7 - total_bytes);
     for (;total_bytes > 1;total_bytes--) {
-        value = (value << 6) | (read_bits(stream, 8) & 0x3F);
+        value = (value << 6) | (stream->read(stream, 8) & 0x3F);
     }
 
     return value;

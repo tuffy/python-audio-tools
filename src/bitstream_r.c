@@ -36,13 +36,25 @@ const unsigned int read_limited_unary_table[0x900][18] =
     ;
 
 Bitstream*
-bs_open(FILE *f)
+bs_open(FILE *f, bs_alignment alignment)
 {
     Bitstream *bs = malloc(sizeof(Bitstream));
     bs->file = f;
     bs->state = 0;
     bs->callback = NULL;
     bs->exceptions = NULL;
+
+    /*FIXME - attach different reading functions
+      based on little-endian or big-endian alignment*/
+
+    bs->read = bs_read_bits_be;
+    bs->read_signed = bs_read_signed_bits;
+    bs->read_64 = bs_read_bits64_be;
+    bs->unread = bs_unread_bit_be;
+    bs->read_unary = bs_read_unary_be;
+    bs->read_limited_unary = bs_read_limited_unary_be;
+    bs->byte_align = bs_byte_align_r;
+
     return bs;
 }
 
@@ -127,4 +139,169 @@ bs_etry(Bitstream *bs) {
     } else {
         fprintf(stderr,"Warning: trying to pop from empty etry stack\n");
     }
+}
+
+unsigned int
+bs_read_bits_be(Bitstream* bs, unsigned int count)
+{
+    int context = bs->state;
+    unsigned int result;
+    int byte;
+    struct bs_callback* callback;
+    unsigned int accumulator = 0;
+    int bit_size;
+
+    while (count > 0) {
+        if (context == 0) {
+            if ((byte = fgetc(bs->file)) == EOF)
+                bs_abort(bs);
+            context = 0x800 | byte;
+            for (callback = bs->callback;
+                 callback != NULL;
+                 callback = callback->next)
+                callback->callback(byte, callback->data);
+        }
+
+        result = read_bits_table[context][(count > 8 ? 8 : count) - 1];
+
+        bit_size = (result & 0xF00000) >> 20;
+        accumulator = (accumulator << bit_size) | ((result & 0xFF000) >> 12);
+        count -= bit_size;
+        context = (result & 0xFFF);
+    }
+
+    bs->state = context;
+    return accumulator;
+}
+
+int
+bs_read_signed_bits(Bitstream* bs, unsigned int count)
+{
+    if (!bs->read(bs, 1)) {
+        return bs->read(bs, count - 1);
+    } else {
+        return bs->read(bs, count - 1) - (1 << (count - 1));
+    }
+}
+
+uint64_t
+bs_read_bits64_be(Bitstream* bs, unsigned int count)
+{
+    int context = bs->state;
+    unsigned int result;
+    int byte;
+    struct bs_callback* callback;
+    uint64_t accumulator = 0;
+    int bit_size;
+
+    while (count > 0) {
+        if (context == 0) {
+            if ((byte = fgetc(bs->file)) == EOF)
+                bs_abort(bs);
+            context = 0x800 | byte;
+            for (callback = bs->callback;
+                 callback != NULL;
+                 callback = callback->next)
+                callback->callback(byte, callback->data);
+        }
+
+        result = read_bits_table[context][(count > 8 ? 8 : count) - 1];
+
+        bit_size = (result & 0xF00000) >> 20;
+        accumulator = (accumulator << bit_size) | ((result & 0xFF000) >> 12);
+        count -= bit_size;
+        context = (result & 0xFFF);
+    }
+
+    bs->state = context;
+    return accumulator;
+}
+
+void
+bs_unread_bit_be(Bitstream* bs, int unread_bit)
+{
+    bs->state = unread_bit_table[bs->state][unread_bit];
+    assert((bs->state >> 12) == 0);
+}
+
+unsigned int
+bs_read_unary_be(Bitstream* bs, int stop_bit)
+{
+    int context = bs->state;
+    unsigned int result;
+    struct bs_callback* callback;
+    int byte;
+    unsigned int accumulator = 0;
+
+    do {
+        if (context == 0) {
+            if ((byte = fgetc(bs->file)) == EOF)
+                bs_abort(bs);
+            for (callback = bs->callback;
+                 callback != NULL;
+                 callback = callback->next)
+                callback->callback(byte, callback->data);
+            context = 0x800 | byte;
+        }
+
+        result = read_unary_table[context][stop_bit];
+
+        accumulator += ((result & 0xF000) >> 12);
+
+        context = result & 0xFFF;
+    } while (result >> 16);
+
+    bs->state = context;
+    return accumulator;
+}
+
+/*returns -1 on error, so cannot be unsigned*/
+int
+bs_read_limited_unary_be(Bitstream* bs, int stop_bit, int maximum_bits)
+{
+    int context = bs->state;
+    unsigned int result;
+    unsigned int value;
+    struct bs_callback* callback;
+    int byte;
+    int accumulator = 0;
+    stop_bit *= 9;
+
+    do {
+        if (context == 0) {
+            if ((byte = fgetc(bs->file)) == EOF)
+                bs_abort(bs);
+            for (callback = bs->callback;
+                 callback != NULL;
+                 callback = callback->next)
+                callback->callback(byte, callback->data);
+            context = 0x800 | byte;
+        }
+
+        result = read_limited_unary_table[context][stop_bit +
+                                                   MIN(maximum_bits, 8)];
+
+        value = ((result & 0xF000) >> 12);
+
+        accumulator += value;
+        maximum_bits -= value;
+
+        context = result & 0xFFF;
+    } while ((result >> 16) == 1);
+
+    bs->state = context;
+
+    if (result >> 17) {
+        /*maximum_bits reached*/
+        return -1;
+    } else {
+        /*stop bit reached*/
+        return accumulator;
+    }
+}
+
+void
+bs_byte_align_r(Bitstream* bs)
+{
+    bs->state = 0;
 }

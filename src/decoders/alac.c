@@ -88,7 +88,7 @@ ALACDecoder_init(decoders_ALACDecoder *self,
         PyErr_SetFromErrnoWithFilename(PyExc_IOError, filename);
         return -1;
     } else {
-        self->bitstream = bs_open(self->file);
+        self->bitstream = bs_open(self->file, BS_BIG_ENDIAN);
     }
     self->filename = strdup(filename);
 
@@ -197,13 +197,14 @@ ALACDecoder_read(decoders_ALACDecoder* self, PyObject *args)
             for (i = 0; i < frame_header.output_samples; i++) {
                 for (channel = 0; channel < self->channels; channel++) {
                     ia_append(iaa_getitem(&(self->samples), channel),
-                              read_signed_bits(self->bitstream,
-                                               self->bits_per_sample));
+                              self->bitstream->read_signed(
+                                            self->bitstream,
+                                            self->bits_per_sample));
                 }
             }
         } else {
-            interlacing_shift = read_bits(self->bitstream, 8);
-            interlacing_leftweight = read_bits(self->bitstream, 8);
+            interlacing_shift = self->bitstream->read(self->bitstream, 8);
+            interlacing_leftweight = self->bitstream->read(self->bitstream, 8);
 
             /*read the subframe headers*/
             for (i = 0; i < self->channels; i++) {
@@ -270,12 +271,12 @@ ALACDecoder_read(decoders_ALACDecoder* self, PyObject *args)
         }
 
         /*each frame has a 3 byte '111' signature prior to byte alignment*/
-        if (read_bits(self->bitstream, 3) != 7) {
+        if (self->bitstream->read(self->bitstream, 3) != 7) {
             PyErr_SetString(PyExc_ValueError,
                             "invalid signature at end of frame");
             goto error;
         } else {
-            byte_align_r(self->bitstream);
+            self->bitstream->byte_align(self->bitstream);
         }
     } else {
         PyErr_SetString(PyExc_IOError,
@@ -397,8 +398,9 @@ ALACDecoder_analyze_frame(decoders_ALACDecoder* self, PyObject *args)
             for (i = 0; i < frame_header.output_samples; i++) {
                 for (channel = 0; channel < self->channels; channel++) {
                     ia_append(iaa_getitem(&(self->samples), channel),
-                              read_signed_bits(self->bitstream,
-                                               self->bits_per_sample));
+                              self->bitstream->read_signed(
+                                            self->bitstream,
+                                            self->bits_per_sample));
                 }
             }
 
@@ -412,8 +414,8 @@ ALACDecoder_analyze_frame(decoders_ALACDecoder* self, PyObject *args)
                         "samples", ia_array_to_list(&(self->samples)),
                         "offset", offset);
         } else {
-            interlacing_shift = read_bits(self->bitstream, 8);
-            interlacing_leftweight = read_bits(self->bitstream, 8);
+            interlacing_shift = self->bitstream->read(self->bitstream, 8);
+            interlacing_leftweight = self->bitstream->read(self->bitstream, 8);
 
             /*read the subframe headers*/
             for (i = 0; i < self->channels; i++) {
@@ -465,12 +467,12 @@ ALACDecoder_analyze_frame(decoders_ALACDecoder* self, PyObject *args)
         }
 
         /*each frame has a 3 byte '111' signature prior to byte alignment*/
-        if (read_bits(self->bitstream, 3) != 7) {
+        if (self->bitstream->read(self->bitstream, 3) != 7) {
             PyErr_SetString(PyExc_ValueError,
                             "invalid signature at end of frame");
             goto error;
         } else {
-            byte_align_r(self->bitstream);
+            self->bitstream->byte_align(self->bitstream);
         }
     } else {
         PyErr_SetString(PyExc_IOError,
@@ -510,8 +512,8 @@ ALACDecoder_seek_mdat(decoders_ALACDecoder *self)
         return ERROR;
 
     while (i < file_stat.st_size) {
-        atom_size = read_bits(self->bitstream, 32);
-        atom_type = read_bits(self->bitstream, 32);
+        atom_size = self->bitstream->read(self->bitstream, 32);
+        atom_type = self->bitstream->read(self->bitstream, 32);
         if (atom_type == 0x6D646174)
             return OK;
         if (fseek(self->file, atom_size - 8, SEEK_CUR) == -1)
@@ -527,15 +529,15 @@ ALACDecoder_read_frame_header(Bitstream *bs,
                               struct alac_frame_header *frame_header,
                               int max_samples_per_frame)
 {
-    frame_header->channels = read_bits(bs, 3) + 1;
-    read_bits(bs, 16); /*nobody seems to know what these are for*/
-    frame_header->has_size = read_bits(bs, 1);
-    frame_header->wasted_bits = read_bits(bs, 2);
-    frame_header->is_not_compressed = read_bits(bs, 1);
+    frame_header->channels = bs->read(bs, 3) + 1;
+    bs->read(bs, 16); /*nobody seems to know what these are for*/
+    frame_header->has_size = bs->read(bs, 1);
+    frame_header->wasted_bits = bs->read(bs, 2);
+    frame_header->is_not_compressed = bs->read(bs, 1);
     if (frame_header->has_size) {
         /*for when we hit the end of the stream
           and need a non-typical amount of samples*/
-        frame_header->output_samples = read_bits(bs, 32);
+        frame_header->output_samples = bs->read(bs, 32);
     } else {
         frame_header->output_samples = max_samples_per_frame;
     }
@@ -550,14 +552,14 @@ ALACDecoder_read_subframe_header(Bitstream *bs,
     int predictor_coef_num;
     int i;
 
-    subframe_header->prediction_type = read_bits(bs, 4);
-    subframe_header->prediction_quantitization = read_bits(bs, 4);
-    subframe_header->rice_modifier = read_bits(bs, 3);
-    predictor_coef_num = read_bits(bs, 5);
+    subframe_header->prediction_type = bs->read(bs, 4);
+    subframe_header->prediction_quantitization = bs->read(bs, 4);
+    subframe_header->rice_modifier = bs->read(bs, 3);
+    predictor_coef_num = bs->read(bs, 5);
     ia_reset(&(subframe_header->predictor_coef_table));
     for (i = 0; i < predictor_coef_num; i++) {
         ia_append(&(subframe_header->predictor_coef_table),
-                  read_signed_bits(bs, 16));
+                  bs->read_signed(bs, 16));
     }
 
     return OK;
@@ -576,7 +578,7 @@ ALACDecoder_read_wasted_bits(Bitstream *bs,
     for (i = 0; i < sample_count; i++) {
         for (channel = 0; channel < channels; channel++) {
             ia_append(iaa_getitem(wasted_bits_samples, channel),
-                      read_bits(bs, wasted_bits_size));
+                      bs->read(bs, wasted_bits_size));
         }
     }
 
@@ -689,23 +691,23 @@ ALACDecoder_read_residual(Bitstream *bs,
     int extrabits;
 
     /*read a unary 0 value to a maximum of RICE_THRESHOLD (8)*/
-    x = read_limited_unary(bs, 0, RICE_THRESHOLD + 1);
+    x = bs->read_limited_unary(bs, 0, RICE_THRESHOLD + 1);
 
     if (x == -1) {
-        x = read_bits(bs, sample_size);
+        x = bs->read(bs, sample_size);
     } else {
         if (k > 1) {
             /*x = x * ((2 ** k) - 1)*/
             x *= ((1 << k) - 1);
 
-            extrabits = read_bits(bs, k);
+            extrabits = bs->read(bs, k);
             if (extrabits > 1)
                 x += (extrabits - 1);
             else {
                 if (extrabits == 1) {
-                    unread_bit(bs, 1);
+                    bs->unread(bs, 1);
                 } else {
-                    unread_bit(bs, 0);
+                    bs->unread(bs, 0);
                 }
             }
         }

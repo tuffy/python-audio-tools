@@ -22,7 +22,8 @@ verifymodule_ogg(PyObject *dummy, PyObject *args) {
                         "first argument must be an actual file object");
         return NULL;
     } else {
-        bitstream = bs_open(PyFile_AsFile(file_obj));
+        /*FIXME - swap this to little-endian*/
+        bitstream = bs_open(PyFile_AsFile(file_obj), BS_BIG_ENDIAN);
         bs_add_callback(bitstream, verifymodule_ogg_checksum, &checksum);
     }
 
@@ -102,20 +103,20 @@ verifymodule_read_ogg_header(Bitstream *bs, struct ogg_header *header) {
     int i;
     uint8_t checksum[4];
 
-    if ((header->magic_number = read_bits(bs, 32)) != 0x4F676753) {
+    if ((header->magic_number = bs->read(bs, 32)) != 0x4F676753) {
         PyErr_SetString(PyExc_ValueError, "invalid magic number");
         return ERROR;
     }
 
-    if ((header->version = read_bits(bs, 8)) != 0) {
+    if ((header->version = bs->read(bs, 8)) != 0) {
         PyErr_SetString(PyExc_ValueError, "invalid stream version");
         return ERROR;
     }
 
-    header->type = read_bits(bs, 8);
-    header->granule_position = verifymodule_ulint64(read_bits64(bs, 64));
-    header->bitstream_serial_number = verifymodule_ulint32(read_bits(bs, 32));
-    header->page_sequence_number = verifymodule_ulint32(read_bits(bs, 32));
+    header->type = bs->read(bs, 8);
+    header->granule_position = verifymodule_ulint64(bs->read_64(bs, 64));
+    header->bitstream_serial_number = verifymodule_ulint32(bs->read(bs, 32));
+    header->page_sequence_number = verifymodule_ulint32(bs->read(bs, 32));
 
     if (fread(checksum, sizeof(uint8_t), 4, bs->file) == 4) {
         header->checksum = checksum[0] |
@@ -129,10 +130,10 @@ verifymodule_read_ogg_header(Bitstream *bs, struct ogg_header *header) {
         return ERROR;
     }
 
-    header->page_segment_count = read_bits(bs, 8);
+    header->page_segment_count = bs->read(bs, 8);
     header->segment_length_total = 0;
     for (i = 0; i < header->page_segment_count; i++) {
-        header->page_segment_lengths[i] = read_bits(bs, 8);
+        header->page_segment_lengths[i] = bs->read(bs, 8);
         header->segment_length_total += header->page_segment_lengths[i];
     }
 
