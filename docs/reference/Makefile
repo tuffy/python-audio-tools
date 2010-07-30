@@ -54,7 +54,8 @@ figures/alac_frame_header.pdf figures/alac_subframe_header.pdf \
 figures/alac_uncompressed_frame.pdf figures/alac_compressed_frame.pdf \
 figures/alac_read_residual.pdf figures/alac_residual.pdf \
 figures/alac_wasted.pdf figures/alac_write_residual.pdf \
-figures/alac_residual_w.pdf figures/alac_lag.pdf
+figures/alac_residual_w.pdf figures/alac_lag.pdf \
+figures/demo.pdf figures/demo_bigendian.pdf figures/demo_littleendian.pdf
 
 CHAPTERS = basics.tex wav.tex flac.tex m4a.tex mp3.tex vorbis.tex \
 wavpack.tex ape.tex aiff.tex au.tex speex.tex oggflac.tex musepack.tex \
@@ -155,6 +156,12 @@ figures/alac_residual_w.pdf: figures/alac_residual_w.fig
 	fig2dev -Z 5 -L pdf $< $@
 
 figures/alac_lag.pdf: figures/alac_lag.fig
+	fig2dev -Z 6 -L pdf $< $@
+
+figures/demo_bigendian.pdf: figures/demo_bigendian.fig
+	fig2dev -Z 6 -L pdf $< $@
+
+figures/demo_littleendian.pdf: figures/demo_littleendian.fig
 	fig2dev -Z 6 -L pdf $< $@
 
 .SUFFIXES: .pdf .xml

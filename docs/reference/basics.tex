@@ -153,6 +153,9 @@ Conversely, when converting a signed integer to a little-endian value,
 the endian reversing comes \textit{after} one performs the
 2's-complement encoding.
 
+This is covered in more depth in the bitstreams section
+on page \pageref{bitstreams}.
+
 \section{Character Encodings}
 
 Many audio formats store metadata, which contains information about
@@ -236,3 +239,54 @@ However, the term `frame' appears a lot in digital audio.
 It is important not to confuse a PCM frame with a CD frame
 (a block of audio 1/75th of a second long), an MP3 frame,
 a FLAC frame or any other sort of frame.
+
+\clearpage
+
+\section{Bitstreams}
+\label{bitstreams}
+Many formats are broken up into pieces smaller than an individual byte.
+As an example, let's take a 32-bit structure of data broken up into 5
+fields as follows:
+\begin{figure}[h]
+\includegraphics{figures/demo.pdf}
+\end{figure}
+\par
+\noindent
+Note that field A is 2 bits, B is 3 bits, C is 5 bits, D is 3 bits
+and E is 19 bits.
+\par
+Given the bytes \texttt{B1 ED 3B C1} in hexadecimal,
+how we place those bytes within our structure depends
+whether or not our stream is big-endian or little-endian.
+For big-endian, the breakdown is largely intuitive:
+\begin{figure}[h]
+\includegraphics{figures/demo_bigendian.pdf}
+\end{figure}
+\par
+\noindent
+\begin{tabular}{c r r r}
+field & base-2 & base-16 & base-10 \\
+\hline
+A & \texttt{10} & \texttt{2} & \texttt{2} \\
+B & \texttt{110} & \texttt{6} & \texttt{6} \\
+C & \texttt{0 0111} & \texttt{07} & \texttt{7} \\
+D & \texttt{101} & \texttt{5} & \texttt{5} \\
+E & \texttt{101 0011 1011 1100 0001} & \texttt{53BC1} & \texttt{342977} \\
+\end{tabular}
+\par
+\noindent
+However, for little-endian streams, the same bits are read quite differently:
+\begin{figure}[h]
+\includegraphics{figures/demo_littleendian.pdf}
+\end{figure}
+\par
+\noindent
+\begin{tabular}{c r r r}
+field & base-2 & base-16 & base-10 \\
+\hline
+A & \texttt{01} & \texttt{1} & \texttt{1} \\
+B & \texttt{100} & \texttt{4} & \texttt{4} \\
+C & \texttt{0 1101} & \texttt{0D} & \texttt{13} \\
+D & \texttt{011} & \texttt{3} & \texttt{3} \\
+E & \texttt{110 0000 1001 1101 1111} & \texttt{609DF} & \texttt{395743} \\
+\end{tabular}
