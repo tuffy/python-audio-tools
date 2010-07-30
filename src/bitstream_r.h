@@ -148,6 +148,7 @@ read_bits(Bitstream* bs, unsigned int count)
     int byte;
     struct bs_callback* callback;
     unsigned int accumulator = 0;
+    int bit_size;
 
     while (count > 0) {
         if (context == 0) {
@@ -162,9 +163,9 @@ read_bits(Bitstream* bs, unsigned int count)
 
         result = read_bits_table[context][(count > 8 ? 8 : count) - 1];
 
-        accumulator = (accumulator << ((result & 0xF00000) >> 20)) |
-            ((result & 0xFF000) >> 12);
-        count -= ((result & 0xF00000) >> 20);
+        bit_size = (result & 0xF00000) >> 20;
+        accumulator = (accumulator << bit_size) | ((result & 0xFF000) >> 12);
+        count -= bit_size;
         context = (result & 0xFFF);
     }
 
@@ -190,6 +191,7 @@ read_bits64(Bitstream* bs, unsigned int count)
     int byte;
     struct bs_callback* callback;
     uint64_t accumulator = 0;
+    int bit_size;
 
     while (count > 0) {
         if (context == 0) {
@@ -204,9 +206,9 @@ read_bits64(Bitstream* bs, unsigned int count)
 
         result = read_bits_table[context][(count > 8 ? 8 : count) - 1];
 
-        accumulator = (accumulator << ((result & 0xF00000) >> 20)) |
-            ((result & 0xFF000) >> 12);
-        count -= ((result & 0xF00000) >> 20);
+        bit_size = (result & 0xF00000) >> 20;
+        accumulator = (accumulator << bit_size) | ((result & 0xFF000) >> 12);
+        count -= bit_size;
         context = (result & 0xFFF);
     }
 
