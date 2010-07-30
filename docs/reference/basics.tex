@@ -53,7 +53,7 @@ and binary.  For instance, let's take the byte 6A:
 \hline
 Hex & Binary & Decimal & Hex & Binary & Decimal \\
 \hline
-0 & 0 0 0 0  & 0 & 8 &  1 0 0 0  & 8 \\
+0 & 0 0 0 0 & 0 & 8 & 1 0 0 0 & 8 \\
 1 & 0 0 0 1 & 1 & 9 & 1 0 0 1 & 9 \\
 2 & 0 0 1 0 & 2 & A & 1 0 1 0 & 10 \\
 3 & 0 0 1 1 & 3 & B & 1 0 1 1 & 11 \\
@@ -290,3 +290,49 @@ C & \texttt{0 1101} & \texttt{0D} & \texttt{13} \\
 D & \texttt{011} & \texttt{3} & \texttt{3} \\
 E & \texttt{110 0000 1001 1101 1111} & \texttt{609DF} & \texttt{395743} \\
 \end{tabular}
+\clearpage
+This arrangement seems bizarre and counterintuitive when using
+the same hexadecimal-to-binary conversion we've been using
+thus far.
+However, if we \textit{reverse} our conversion process
+and place the least-significant bits on the left, as follows:
+\par
+\noindent
+\begin{tabular}{| c | c | c || c | c | c |}
+\hline
+Hex & Binary & Decimal & Hex & Binary & Decimal \\
+\hline
+0 & 0 0 0 0 & 0 & 8 & 0 0 0 1 & 8 \\
+1 & 1 0 0 0 & 1 & 9 & 1 0 0 1 & 9 \\
+2 & 0 1 0 0 & 2 & A & 0 1 0 1 & 10 \\
+3 & 1 1 0 0 & 3 & B & 1 1 0 1 & 11 \\
+4 & 0 0 1 0 & 4 & C & 0 0 1 1 & 12 \\
+5 & 1 0 1 0 & 5 & D & 1 0 1 1 & 13 \\
+6 & 0 1 1 0 & 6 & E & 0 1 1 1 & 14 \\
+7 & 1 1 1 0 & 7 & F & 1 1 1 1 & 15 \\
+\hline
+\end{tabular}
+\par
+\noindent
+The bytes \texttt{B1 ED 3B C1} are then laid out differently also
+and can now be read in a linear fashion:
+\begin{figure}[h]
+\includegraphics{figures/demo_littleendian_alt.pdf}
+\end{figure}
+\par
+\noindent
+As a futher example of how this works, we'll convert the first
+four fields' binary digits to base-10:
+\begin{align*}
+\text{A} &= (1 \times 2^0) + (0 \times 2^1) = 1 \\
+\text{B} &= (0 \times 2^0) + (0 \times 2^1) + (1 \times 2^2) = 4 \\
+\text{C} &= (1 \times 2^0) + (0 \times 2^1) + (1 \times 2^2) + (1 \times 2^3) + (0 \times 2^4) = 13 \\
+\text{D} &= (1 \times 2^0) + (1 \times 2^1) + (0 \times 2^2) = 3
+\end{align*}
+\par
+\noindent
+Computing field E is left as an exercise for the reader.
+\par
+Naturally, these fields from the same bytes have the same values as before;
+only our way of visualizing them has changed.
+
