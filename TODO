@@ -2381,7 +2381,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** TODO Add WavPack-specific unit tests
 ** TODO Add more WavPack INVALIDFILE .verify() tests
 ** TODO Remove wvgain for ReplayGain application
-* TODO Add unary jump tables with a max value
+* DONE Add unary jump tables with a max value
   Since both Apple Lossless *and* WavPack have unary reading
   with a maximum upper limit of read bits, it makes sense
   to build a proper jump table for it.
@@ -2393,3 +2393,48 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   So, the jump table itself must have a different syntax
   (probably an extra bit for "maximum value reached")
   and read_limited_unary() will likely return -1 in that event.
+
+* TODO Add little-endian bitstream readers
+** DONE integrate read functions into Bitstream struct
+** DONE add bitstream.py jump tables for little-endian reading
+   - [X] read_bits_table_le.h
+   - [X] read_unary_table_le.h
+   - [X] read_limited_unary_table_le.h
+   - [X] unread_bit_table_le.h
+** TODO add little-endian Bitstream functions
+   - [ ] bs_read_bits_le
+   - [ ] bs_read_bits64_le
+   - [ ] bs_unread_bit_le
+   - [ ] bs_read_unary_le
+   - [ ] bs_read_limited_unary_le
+** TODO have bs_open() attach the proper endian functions
+** TODO update Python BitstreamReader for little-endian operation
+   This should function similar to the C one,
+   with alignment specified at init-time.
+   Or, perhaps replace Python reader with C-based one altogether.
+*** TODO add little-endian-specific table functions to decoders.h/.c
+    - [ ] read_bits_le
+    - [ ] unread_bit_le
+    - [ ] read_unary_le
+    - [ ] read_limited_unary_le
+** TODO add some basic Bitstream reader unit testing
+* TODO Add little-endian bitstream writers
+** TODO add bitstream.py jump tables for little-endian writing
+   - [ ] write_bits_table_le.h
+   - [ ] write_unary_table_le.h
+** TODO Add little-endian Bitstream functions
+   - [ ] write_bits_actual_le
+   - [ ] write_bits64_actual_le
+   - [ ] write_unary_actual_le
+** TODO have bs_open() attach the proper endian functions
+** TODO update Python BitstreamWriter for little-endian operation
+   This should be similar to the C one,
+   with alignment specified at init-time.
+*** TODO add little-endian specific table functions to encoders.h/.c
+    - [ ] write_bits_le
+    - [ ] write_unary_le
+
+
+
+** TODO add some basic Bitstream writer unit testing
+
