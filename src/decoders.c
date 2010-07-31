@@ -271,17 +271,7 @@ BitstreamReader_init(decoders_BitstreamReader *self,
 void
 BitstreamReader_dealloc(decoders_BitstreamReader *self)
 {
-    struct bs_callback* callback;
-    PyObject* function;
-
     if (self->file_obj != NULL) {
-        for (callback = self->bitstream->callback;
-             callback != NULL;
-             callback = callback->next) {
-            function = (PyObject*)callback->data;
-            Py_DECREF(function);
-        }
-
         self->bitstream->file = NULL;
         bs_close(self->bitstream);
         Py_DECREF(self->file_obj);

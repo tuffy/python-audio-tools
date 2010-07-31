@@ -1,5 +1,6 @@
-#include "encoders.h"
+#include <Python.h>
 #include "bitstream_w.h"
+#include "encoders.h"
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -25,34 +26,135 @@ initencoders(void)
 {
     PyObject* m;
 
+    encoders_BitstreamWriterType.tp_new = PyType_GenericNew;
+    if (PyType_Ready(&encoders_BitstreamWriterType) < 0)
+        return;
+
     m = Py_InitModule3("encoders", module_methods,
                        "Low-level audio format encoders");
 
+    Py_INCREF(&encoders_BitstreamWriterType);
+    PyModule_AddObject(m, "BitstreamWriter",
+                       (PyObject *)&encoders_BitstreamWriterType);
+
 }
 
-PyObject*
-encoders_write_bits(PyObject *dummy, PyObject *args)
-{
-    int context;
+int
+BitstreamWriter_init(encoders_BitstreamWriter *self, PyObject *args) {
+    PyObject *file_obj;
+    int little_endian;
+
+    self->file_obj = NULL;
+
+    if (!PyArg_ParseTuple(args, "Oi", &file_obj, &little_endian))
+        return -1;
+
+    if (!PyFile_CheckExact(file_obj)) {
+        PyErr_SetString(PyExc_TypeError,
+                        "first argument must be an actual file object");
+        return -1;
+    }
+
+    Py_INCREF(file_obj);
+    self->file_obj = file_obj;
+
+    self->bitstream = bs_open(PyFile_AsFile(self->file_obj));
+
+    return 0;
+}
+
+void
+BitstreamWriter_dealloc(encoders_BitstreamWriter *self) {
+    if (self->file_obj != NULL) {
+        self->bitstream->file = NULL;
+        bs_close(self->bitstream);
+        Py_DECREF(self->file_obj);
+    }
+
+    self->ob_type->tp_free((PyObject*)self);
+}
+
+static PyObject*
+BitstreamWriter_new(PyTypeObject *type, PyObject *args,
+                    PyObject *kwds) {
+    encoders_BitstreamWriter *self;
+
+    self = (encoders_BitstreamWriter *)type->tp_alloc(type, 0);
+
+    return (PyObject *)self;
+}
+
+static PyObject*
+BitstreamWriter_write(encoders_BitstreamWriter *self, PyObject *args) {
+    unsigned int count;
     int value;
 
-    if (!PyArg_ParseTuple(args, "ii", &context, &value))
+    if (!PyArg_ParseTuple(args, "Ii", &count, &value))
         return NULL;
 
-    return Py_BuildValue("i", write_bits_table[context][value]);
+    self->bitstream->write_bits(self->bitstream, count, value);
+
+    Py_INCREF(Py_None);
+    return Py_None;
 }
 
-
-PyObject*
-encoders_write_unary(PyObject *dummy, PyObject *args)
-{
-    int context;
+static PyObject*
+BitstreamWriter_write_signed(encoders_BitstreamWriter *self, PyObject *args) {
+    unsigned int count;
     int value;
 
-    if (!PyArg_ParseTuple(args, "ii", &context, &value))
+    if (!PyArg_ParseTuple(args, "Ii", &count, &value))
         return NULL;
 
-    return Py_BuildValue("i", write_unary_table[context][value]);
+    self->bitstream->write_signed_bits(self->bitstream, count, value);
+
+    Py_INCREF(Py_None);
+    return Py_None;
 }
 
+static PyObject*
+BitstreamWriter_write64(encoders_BitstreamWriter *self, PyObject *args) {
+    unsigned int count;
+    uint64_t value;
 
+    if (!PyArg_ParseTuple(args, "IL", &count, &value))
+        return NULL;
+
+    self->bitstream->write_bits64(self->bitstream, count, value);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+static PyObject*
+BitstreamWriter_unary(encoders_BitstreamWriter *self, PyObject *args) {
+    int stop_bit;
+    int value;
+
+    if (!PyArg_ParseTuple(args, "ii", &stop_bit, &value))
+        return NULL;
+
+    if ((stop_bit != 0) && (stop_bit != 1)) {
+        PyErr_SetString(PyExc_ValueError, "stop bit must be 0 or 1");
+        return NULL;
+    }
+
+    self->bitstream->write_unary(self->bitstream, stop_bit, value);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+static PyObject*
+BitstreamWriter_byte_align(encoders_BitstreamWriter *self, PyObject *args) {
+    self->bitstream->byte_align(self->bitstream);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+static PyObject*
+BitstreamWriter_close(encoders_BitstreamWriter *self, PyObject *args) {
+    Py_INCREF(Py_None);
+    return Py_None;
+}

@@ -12945,7 +12945,106 @@ class Bitstream(unittest.TestCase):
         finally:
             temp.close()
 
-    #then, have the bitstream writer generate a set of known values
+    @TEST_PCM
+    def test_simple_writer(self):
+        from audiotools.encoders import BitstreamWriter
+
+        self.assertRaises(TypeError, BitstreamWriter, None, 0)
+        self.assertRaises(TypeError, BitstreamWriter, 1, 0)
+        self.assertRaises(TypeError, BitstreamWriter, "foo", 0)
+        self.assertRaises(TypeError, BitstreamWriter,
+                          cStringIO.StringIO("foo"), 0)
+
+        temp = tempfile.NamedTemporaryFile()
+        try:
+            #first, have the bitstream writer generate
+            #a set of known big-endian values
+
+            f = open(temp.name, "wb")
+            bitstream = BitstreamWriter(f, 0)
+            bitstream.write(2, 2)
+            bitstream.write(3, 6)
+            bitstream.write(5, 7)
+            bitstream.write(3, 5)
+            bitstream.write(19, 342977)
+            f.close()
+            del(bitstream)
+            self.assertEqual(map(ord, open(temp.name, "rb").read()),
+                             [0xB1, 0xED, 0x3B, 0xC1])
+
+            f = open(temp.name, "wb")
+            bitstream = BitstreamWriter(f, 0)
+            bitstream.write64(2, 2)
+            bitstream.write64(3, 6)
+            bitstream.write64(5, 7)
+            bitstream.write64(3, 5)
+            bitstream.write64(19, 342977)
+            f.close()
+            del(bitstream)
+            self.assertEqual(map(ord, open(temp.name, "rb").read()),
+                             [0xB1, 0xED, 0x3B, 0xC1])
+
+            f = open(temp.name, "wb")
+            bitstream = BitstreamWriter(f, 0)
+            bitstream.write_signed(2, -2)
+            bitstream.write_signed(3, -2)
+            bitstream.write_signed(5, 7)
+            bitstream.write_signed(3, -3)
+            bitstream.write_signed(19, -181311)
+            f.close()
+            del(bitstream)
+            self.assertEqual(map(ord, open(temp.name, "rb").read()),
+                             [0xB1, 0xED, 0x3B, 0xC1])
+
+            f = open(temp.name, "wb")
+            bitstream = BitstreamWriter(f, 0)
+            bitstream.unary(0, 1)
+            bitstream.unary(0, 2)
+            bitstream.unary(0, 0)
+            bitstream.unary(0, 0)
+            bitstream.unary(0, 4)
+            bitstream.unary(0, 2)
+            bitstream.unary(0, 1)
+            bitstream.unary(0, 0)
+            bitstream.unary(0, 3)
+            bitstream.unary(0, 4)
+            bitstream.unary(0, 0)
+            bitstream.unary(0, 0)
+            bitstream.unary(0, 0)
+            bitstream.unary(0, 0)
+            bitstream.write(1, 1)
+            f.close()
+            del(bitstream)
+            self.assertEqual(map(ord, open(temp.name, "rb").read()),
+                             [0xB1, 0xED, 0x3B, 0xC1])
+
+            f = open(temp.name, "wb")
+            bitstream = BitstreamWriter(f, 0)
+            bitstream.unary(1, 0)
+            bitstream.unary(1, 1)
+            bitstream.unary(1, 0)
+            bitstream.unary(1, 3)
+            bitstream.unary(1, 0)
+            bitstream.unary(1, 0)
+            bitstream.unary(1, 0)
+            bitstream.unary(1, 1)
+            bitstream.unary(1, 0)
+            bitstream.unary(1, 1)
+            bitstream.unary(1, 2)
+            bitstream.unary(1, 0)
+            bitstream.unary(1, 0)
+            bitstream.unary(1, 1)
+            bitstream.unary(1, 0)
+            bitstream.unary(1, 0)
+            bitstream.unary(1, 0)
+            bitstream.unary(1, 5)
+            f.close()
+            del(bitstream)
+            self.assertEqual(map(ord, open(temp.name, "rb").read()),
+                             [0xB1, 0xED, 0x3B, 0xC1])
+
+        finally:
+            temp.close()
 
     #and have the bitstream reader check those values are accurate
 

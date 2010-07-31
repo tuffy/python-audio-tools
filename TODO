@@ -2419,13 +2419,11 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    - [ ] write_unary_table_le.h
 ** TODO Add little-endian Bitstream functions
    - [ ] write_bits_actual_le
+   - [ ] write_signed_bits_actual_le
    - [ ] write_bits64_actual_le
    - [ ] write_unary_actual_le
 ** TODO have bs_open() attach the proper endian functions
 ** TODO update Python BitstreamWriter for little-endian operation
-   This should be similar to the C one,
-   with alignment specified at init-time.
-*** TODO add little-endian specific table functions to encoders.h/.c
-    - [ ] write_bits_le
-    - [ ] write_unary_le
+   Convert to a C type, similar to BitstreamReader
 ** TODO add some basic Bitstream writer unit testing
+* TODO Convert Ogg verifier to proper little-endian operation
