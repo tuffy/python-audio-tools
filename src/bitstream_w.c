@@ -22,7 +22,7 @@
 *******************************************************/
 
 Bitstream*
-bs_open(FILE *f, bs_alignment alignment)
+bs_open(FILE *f, bs_endianness endianness)
 {
     Bitstream *bs = malloc(sizeof(Bitstream));
     bs->file = f;
@@ -30,7 +30,7 @@ bs_open(FILE *f, bs_alignment alignment)
     bs->callback = NULL;
     bs->records = NULL;
 
-    switch (alignment) {
+    switch (endianness) {
     case BS_BIG_ENDIAN:
         bs->write_bits = write_bits_actual_be;
         bs->write_signed_bits = write_signed_bits_actual_be;
@@ -87,6 +87,33 @@ bs_open_recorder(void)
     bs->byte_align = byte_align_w_record;
 
     return bs;
+}
+
+void
+bs_set_endianness(Bitstream *bs, bs_endianness endianness) {
+    /*only swap endianness if the bitstream is open
+      for actual file writing*/
+    if ((bs->write_bits == write_bits_actual_be) ||
+        (bs->write_bits == write_bits_actual_le)) {
+        bs->state = 0;
+
+        switch (endianness) {
+        case BS_BIG_ENDIAN:
+            bs->write_bits = write_bits_actual_be;
+            bs->write_signed_bits = write_signed_bits_actual_be;
+            bs->write_bits64 = write_bits64_actual_be;
+            bs->write_unary = write_unary_actual_be;
+            bs->byte_align = byte_align_w_actual_be;
+            break;
+        case BS_LITTLE_ENDIAN:
+            bs->write_bits = write_bits_actual_le;
+            bs->write_signed_bits = write_signed_bits_actual_le;
+            bs->write_bits64 = write_bits64_actual_le;
+            bs->write_unary = write_unary_actual_le;
+            bs->byte_align = byte_align_w_actual_le;
+            break;
+        }
+    }
 }
 
 void

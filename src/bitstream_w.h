@@ -74,16 +74,19 @@ extern const unsigned int write_bits_table_le[0x400][0x900];
 extern const unsigned int write_unary_table[0x400][0x20];
 extern const unsigned int write_unary_table_le[0x400][0x20];
 
-typedef enum {BS_BIG_ENDIAN, BS_LITTLE_ENDIAN} bs_alignment;
+typedef enum {BS_BIG_ENDIAN, BS_LITTLE_ENDIAN} bs_endianness;
 
 Bitstream*
-bs_open(FILE *f, bs_alignment alignment);
+bs_open(FILE *f, bs_endianness endianness);
 
 Bitstream*
 bs_open_accumulator(void);
 
 Bitstream*
 bs_open_recorder(void);
+
+void
+bs_set_endianness(Bitstream *bs, bs_endianness endianness);
 
 /*this closes bs's open file, if any,
   deallocates any recorded output (for bs_open_accumulator Bitstreams)

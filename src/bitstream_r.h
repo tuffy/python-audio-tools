@@ -60,13 +60,20 @@ typedef struct Bitstream_s {
     void (*byte_align)(struct Bitstream_s* bs);
 } Bitstream;
 
-typedef enum {BS_BIG_ENDIAN, BS_LITTLE_ENDIAN} bs_alignment;
+typedef enum {BS_BIG_ENDIAN, BS_LITTLE_ENDIAN} bs_endianness;
 
 Bitstream*
-bs_open(FILE *f, bs_alignment alignment);
+bs_open(FILE *f, bs_endianness endianness);
 
 void
 bs_close(Bitstream *bs);
+
+/*sets the bitstream to little or big-endian operation
+
+  This automatically flushes any current state,
+  so make sure to call it while byte-aligned!*/
+void
+bs_set_endianness(Bitstream *bs, bs_endianness endianness);
 
 void
 bs_add_callback(Bitstream *bs, void (*callback)(int, void*),

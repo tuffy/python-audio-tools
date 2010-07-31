@@ -66,6 +66,9 @@ static PyObject*
 BitstreamReader_tell(decoders_BitstreamReader *self, PyObject *args);
 
 static PyObject*
+BitstreamReader_set_endianness(decoders_BitstreamReader *self, PyObject *args);
+
+static PyObject*
 BitstreamReader_close(decoders_BitstreamReader *self, PyObject *args);
 
 int
@@ -88,6 +91,8 @@ PyMethodDef BitstreamReader_methods[] = {
      METH_VARARGS, ""},
     {"tell", (PyCFunction)BitstreamReader_tell,
      METH_NOARGS, ""},
+    {"set_endianness", (PyCFunction)BitstreamReader_set_endianness,
+     METH_VARARGS, ""},
     {"close", (PyCFunction)BitstreamReader_close,
      METH_NOARGS, ""},
     {NULL}

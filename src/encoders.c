@@ -155,6 +155,27 @@ BitstreamWriter_byte_align(encoders_BitstreamWriter *self, PyObject *args) {
 }
 
 static PyObject*
+BitstreamWriter_set_endianness(encoders_BitstreamWriter *self,
+                               PyObject *args) {
+    int little_endian;
+
+    if (!PyArg_ParseTuple(args, "i", &little_endian))
+        return NULL;
+
+    if ((little_endian != 0) && (little_endian != 1)) {
+        PyErr_SetString(PyExc_ValueError,
+                    "endianness must be 0 (big-endian) or 1 (little-endian)");
+        return NULL;
+    }
+
+    bs_set_endianness(self->bitstream,
+                      little_endian ? BS_LITTLE_ENDIAN : BS_BIG_ENDIAN);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+static PyObject*
 BitstreamWriter_close(encoders_BitstreamWriter *self, PyObject *args) {
     Py_INCREF(Py_None);
     return Py_None;

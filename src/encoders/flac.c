@@ -208,11 +208,12 @@ encoders_encode_flac(char *filename,
     stream->write_bits(stream, 7, 4);
     stream->write_bits(stream, 24, 4 + strlen(version_string) + 4);
 
-    /*this is a hack to fake little-endian output*/
-    stream->write_bits(stream, 8, strlen(version_string));
-    stream->write_bits(stream, 24, 0);
+    /*write VORBIS_COMMENT fields as little-endian output*/
+    bs_set_endianness(stream, 1);
+    stream->write_bits(stream, 32, strlen(version_string));
     fputs(version_string, file);
     stream->write_bits(stream, 32, 0);
+    bs_set_endianness(stream, 0);
 
     /*write PADDING*/
     stream->write_bits(stream, 1, 1);

@@ -72,6 +72,10 @@ static PyObject*
 BitstreamWriter_byte_align(encoders_BitstreamWriter *self, PyObject *args);
 
 static PyObject*
+BitstreamWriter_set_endianness(encoders_BitstreamWriter *self,
+                               PyObject *args);
+
+static PyObject*
 BitstreamWriter_close(encoders_BitstreamWriter *self, PyObject *args);
 
 int
@@ -89,6 +93,8 @@ PyMethodDef BitstreamWriter_methods[] = {
     {"close", (PyCFunction)BitstreamWriter_close,
      METH_NOARGS, ""},
     {"write64", (PyCFunction)BitstreamWriter_write64,
+     METH_VARARGS, ""},
+    {"set_endianness", (PyCFunction)BitstreamWriter_set_endianness,
      METH_VARARGS, ""},
     {NULL}
 };

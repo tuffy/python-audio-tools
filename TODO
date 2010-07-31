@@ -2394,7 +2394,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   (probably an extra bit for "maximum value reached")
   and read_limited_unary() will likely return -1 in that event.
 
-* TODO Add little-endian bitstream readers
+* DONE Add little-endian bitstream readers
 ** DONE integrate read functions into Bitstream struct
 ** DONE add bitstream.py jump tables for little-endian reading
    - [X] read_bits_table_le.h
@@ -2413,8 +2413,8 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    with alignment specified at init-time.
    Or, perhaps replace Python reader with C-based one altogether.
 ** DONE add some basic Bitstream reader unit testing
-** TODO allow endianness swapping
-* TODO Add little-endian bitstream writers
+** DONE allow endianness swapping
+* DONE Add little-endian bitstream writers
 ** DONE add bitstream.py jump tables for little-endian writing
    - [X] write_bits_table_le.h
    - [X] write_unary_table_le.h
@@ -2428,7 +2428,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** DONE update Python BitstreamWriter for little-endian operation
    Convert to a C type, similar to BitstreamReader
 ** DONE add some basic Bitstream writer unit testing
-** TODO allow endianness swapping
+** DONE allow endianness swapping
 * TODO integrate new endianness routines into existing routines
 ** TODO Convert Ogg verifier to proper little-endian operation
-** TODO Swap endianness for proper FLAC VORBISCOMMENT writing
+** DONE Swap endianness for proper FLAC VORBISCOMMENT writing

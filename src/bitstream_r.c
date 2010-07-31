@@ -52,7 +52,7 @@ const unsigned int read_limited_unary_table_le[0x900][18] =
     ;
 
 Bitstream*
-bs_open(FILE *f, bs_alignment alignment)
+bs_open(FILE *f, bs_endianness endianness)
 {
     Bitstream *bs = malloc(sizeof(Bitstream));
     bs->file = f;
@@ -60,7 +60,7 @@ bs_open(FILE *f, bs_alignment alignment)
     bs->callback = NULL;
     bs->exceptions = NULL;
 
-    switch (alignment) {
+    switch (endianness) {
     case BS_BIG_ENDIAN:
         bs->read = bs_read_bits_be;
         bs->read_signed = bs_read_signed_bits_be;
@@ -108,6 +108,31 @@ bs_close(Bitstream *bs)
         free(e_node);
     }
     free(bs);
+}
+
+void
+bs_set_endianness(Bitstream *bs, bs_endianness endianness) {
+    bs->state = 0;
+    switch (endianness) {
+    case BS_BIG_ENDIAN:
+        bs->read = bs_read_bits_be;
+        bs->read_signed = bs_read_signed_bits_be;
+        bs->read_64 = bs_read_bits64_be;
+        bs->unread = bs_unread_bit_be;
+        bs->read_unary = bs_read_unary_be;
+        bs->read_limited_unary = bs_read_limited_unary_be;
+        bs->byte_align = bs_byte_align_r;
+        break;
+    case BS_LITTLE_ENDIAN:
+        bs->read = bs_read_bits_le;
+        bs->read_signed = bs_read_signed_bits_le;
+        bs->read_64 = bs_read_bits64_le;
+        bs->unread = bs_unread_bit_le;
+        bs->read_unary = bs_read_unary_le;
+        bs->read_limited_unary = bs_read_limited_unary_le;
+        bs->byte_align = bs_byte_align_r;
+        break;
+    }
 }
 
 void
