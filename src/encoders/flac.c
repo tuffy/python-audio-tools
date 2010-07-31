@@ -170,7 +170,7 @@ encoders_encode_flac(char *filename,
     audiotools__MD5Init(&md5sum);
     pcmr_add_callback(reader, md5_update, &md5sum);
 
-    stream = bs_open(file);
+    stream = bs_open(file, BS_BIG_ENDIAN);
     bs_add_callback(stream, flac_crc8, &(streaminfo.crc8));
     bs_add_callback(stream, flac_crc16, &(streaminfo.crc16));
 

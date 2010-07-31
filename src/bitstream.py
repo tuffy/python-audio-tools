@@ -365,6 +365,38 @@ def next_write_bits_states(context):
             #otherwise, just generate a new context
             yield (len(new_bank) << 7) | int(new_bank)
 
+#same as above, but wrote bits are sent to the opposite side
+def next_write_bits_states_le(context):
+    for wrote_context in xrange(0x8FF + 1):
+        #note that the vertical context is only 10 bits wide
+        #3 for bank_size
+        #7 for the byte_bank
+        #unlike when reading, writing involves a byte-write call
+        #every 8 bits, so the context need not be as large
+
+        byte_bank = Bitbuffer(context & 0x7F)
+        byte_bank.pad(context >> 7)
+
+        wrote_bits = wrote_context >> 8
+        wrote_bank = Bitbuffer(wrote_context & ((1 << wrote_bits) - 1))
+        wrote_bank.pad(wrote_bits)
+
+        #add our newly wrote bits to the end of the byte bank
+        new_bank = wrote_bank + byte_bank
+
+        #if we have more than 8 bits in the bank,
+        #generate a write request and new context
+        if (len(new_bank) >= 8):
+            write_byte = int(new_bank[0:8])
+            new_bank = new_bank[8:]
+
+            yield (1 << 18) | \
+                (write_byte << 10) | \
+                (len(new_bank) << 7) | \
+                (int(new_bank))
+        else:
+            #otherwise, just generate a new context
+            yield (len(new_bank) << 7) | int(new_bank)
 
 #incoming context is the same as in next_write_bits_states:
 #3 bits - byte bank size (from 0 to 7)
@@ -409,6 +441,40 @@ def next_write_unary_states(context):
         if (len(new_bank) >= 8):
             write_byte = int(new_bank[-8:])
             new_bank = new_bank[0:-8]
+
+            yield (1 << 18) | \
+                (write_byte << 10) | \
+                (len(new_bank) << 7) | \
+                (int(new_bank))
+        else:
+            #otherwise, just generate a new context
+            yield (len(new_bank) << 7) | int(new_bank)
+
+#same as previous, but new bytes go on the other end of the bank
+def next_write_unary_states_le(context):
+    for wrote_array in xrange(0x1F + 1):
+        byte_bank = Bitbuffer(context & 0x7F)
+        byte_bank.pad(context >> 7)
+
+        stop_bit = wrote_array >> 4
+        continue_bit = (wrote_array >> 3) & 0x01
+        wrote_value = wrote_array & 0x07
+
+        #transform our straight bits into unary bits
+        if (continue_bit == 0):
+            wrote_bank = Bitbuffer(([stop_bit ^ 1] * wrote_value) +
+                                   [stop_bit])
+        else:
+            wrote_bank = Bitbuffer([stop_bit ^ 1] * 8)
+
+        #add our newly wrote bits to the end of the byte bank
+        new_bank = wrote_bank + byte_bank
+
+        #if we have more than 8 bits in the bank,
+        #generate a write request and new context
+        if (len(new_bank) >= 8):
+            write_byte = int(new_bank[:8])
+            new_bank = new_bank[8:]
 
             yield (1 << 18) | \
                 (write_byte << 10) | \
@@ -518,11 +584,19 @@ if (__name__ == '__main__'):
             (minimum_bits,maximum_bits,start_context,stat_function) = \
                 (1,8,0,next_read_limited_unary_states_le)
     elif (options.write_bits):
-        (minimum_bits,maximum_bits,start_context,stat_function) = \
-            (0,7,0,next_write_bits_states)
+        if (not options.little_endian):
+            (minimum_bits,maximum_bits,start_context,stat_function) = \
+                (0,7,0,next_write_bits_states)
+        else:
+            (minimum_bits,maximum_bits,start_context,stat_function) = \
+                (0,7,0,next_write_bits_states_le)
     elif (options.write_unary):
-        (minimum_bits,maximum_bits,start_context,stat_function) = \
-            (0,7,0,next_write_unary_states)
+        if (not options.little_endian):
+            (minimum_bits,maximum_bits,start_context,stat_function) = \
+                (0,7,0,next_write_unary_states)
+        else:
+            (minimum_bits,maximum_bits,start_context,stat_function) = \
+                (0,7,0,next_write_unary_states_le)
     else:
         sys.exit(0)
 

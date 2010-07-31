@@ -110,7 +110,7 @@ encoders_encode_alac(PyObject *dummy, PyObject *args, PyObject *keywds)
                         "file must by a concrete file object");
         goto error;
     } else {
-        stream = bs_open(output_file);
+        stream = bs_open(output_file, BS_BIG_ENDIAN);
         bs_add_callback(stream,
                         ALACEncoder_byte_counter,
                         &(encode_log.frame_byte_size));

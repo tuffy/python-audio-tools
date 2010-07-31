@@ -2394,7 +2394,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   (probably an extra bit for "maximum value reached")
   and read_limited_unary() will likely return -1 in that event.
 
-* DONE Add little-endian bitstream readers
+* TODO Add little-endian bitstream readers
 ** DONE integrate read functions into Bitstream struct
 ** DONE add bitstream.py jump tables for little-endian reading
    - [X] read_bits_table_le.h
@@ -2413,17 +2413,22 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    with alignment specified at init-time.
    Or, perhaps replace Python reader with C-based one altogether.
 ** DONE add some basic Bitstream reader unit testing
+** TODO allow endianness swapping
 * TODO Add little-endian bitstream writers
-** TODO add bitstream.py jump tables for little-endian writing
-   - [ ] write_bits_table_le.h
-   - [ ] write_unary_table_le.h
-** TODO Add little-endian Bitstream functions
-   - [ ] write_bits_actual_le
-   - [ ] write_signed_bits_actual_le
-   - [ ] write_bits64_actual_le
-   - [ ] write_unary_actual_le
-** TODO have bs_open() attach the proper endian functions
-** TODO update Python BitstreamWriter for little-endian operation
+** DONE add bitstream.py jump tables for little-endian writing
+   - [X] write_bits_table_le.h
+   - [X] write_unary_table_le.h
+** DONE Add little-endian Bitstream functions
+   - [X] write_bits_actual_le
+   - [X] write_signed_bits_actual_le
+   - [X] write_bits64_actual_le
+   - [X] write_unary_actual_le
+   - [X] byte_align_w_actual_le
+** DONE have bs_open() attach the proper endian functions
+** DONE update Python BitstreamWriter for little-endian operation
    Convert to a C type, similar to BitstreamReader
-** TODO add some basic Bitstream writer unit testing
-* TODO Convert Ogg verifier to proper little-endian operation
+** DONE add some basic Bitstream writer unit testing
+** TODO allow endianness swapping
+* TODO integrate new endianness routines into existing routines
+** TODO Convert Ogg verifier to proper little-endian operation
+** TODO Swap endianness for proper FLAC VORBISCOMMENT writing

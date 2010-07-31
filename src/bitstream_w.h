@@ -70,10 +70,14 @@ typedef struct Bitstream_s {
 } Bitstream;
 
 extern const unsigned int write_bits_table[0x400][0x900];
+extern const unsigned int write_bits_table_le[0x400][0x900];
 extern const unsigned int write_unary_table[0x400][0x20];
+extern const unsigned int write_unary_table_le[0x400][0x20];
+
+typedef enum {BS_BIG_ENDIAN, BS_LITTLE_ENDIAN} bs_alignment;
 
 Bitstream*
-bs_open(FILE *f);
+bs_open(FILE *f, bs_alignment alignment);
 
 Bitstream*
 bs_open_accumulator(void);
@@ -101,20 +105,34 @@ int bs_eof(Bitstream *bs);
 
 
 void
-write_bits_actual(Bitstream* bs, unsigned int count, int value);
+write_bits_actual_be(Bitstream* bs, unsigned int count, int value);
 
 void
-write_signed_bits_actual(Bitstream* bs, unsigned int count, int value);
+write_signed_bits_actual_be(Bitstream* bs, unsigned int count, int value);
 
 void
-write_bits64_actual(Bitstream* bs, unsigned int count, uint64_t value);
+write_bits64_actual_be(Bitstream* bs, unsigned int count, uint64_t value);
 
 void
-write_unary_actual(Bitstream* bs, int stop_bit, int value);
+write_unary_actual_be(Bitstream* bs, int stop_bit, int value);
 
 void
-byte_align_w_actual(Bitstream* bs);
+byte_align_w_actual_be(Bitstream* bs);
 
+void
+write_bits_actual_le(Bitstream* bs, unsigned int count, int value);
+
+void
+write_signed_bits_actual_le(Bitstream* bs, unsigned int count, int value);
+
+void
+write_bits64_actual_le(Bitstream* bs, unsigned int count, uint64_t value);
+
+void
+write_unary_actual_le(Bitstream* bs, int stop_bit, int value);
+
+void
+byte_align_w_actual_le(Bitstream* bs);
 
 void
 write_bits_accumulator(Bitstream* bs, unsigned int count, int value);

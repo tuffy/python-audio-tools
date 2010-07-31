@@ -90,7 +90,7 @@ encoders_encode_shn(PyObject *dummy,
         PyErr_SetFromErrnoWithFilename(PyExc_IOError, filename);
         return NULL;
     } else {
-        stream = bs_open(file);
+        stream = bs_open(file, BS_BIG_ENDIAN);
     }
 
     /*initialize wrapped samples with 0s*/

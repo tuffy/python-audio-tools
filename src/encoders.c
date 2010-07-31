@@ -58,7 +58,8 @@ BitstreamWriter_init(encoders_BitstreamWriter *self, PyObject *args) {
     Py_INCREF(file_obj);
     self->file_obj = file_obj;
 
-    self->bitstream = bs_open(PyFile_AsFile(self->file_obj));
+    self->bitstream = bs_open(PyFile_AsFile(self->file_obj),
+                        little_endian ? BS_LITTLE_ENDIAN : BS_BIG_ENDIAN);
 
     return 0;
 }
