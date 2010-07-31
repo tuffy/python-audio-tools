@@ -2429,6 +2429,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    Convert to a C type, similar to BitstreamReader
 ** DONE add some basic Bitstream writer unit testing
 ** DONE allow endianness swapping
-* TODO integrate new endianness routines into existing routines
-** TODO Convert Ogg verifier to proper little-endian operation
+* DONE integrate new endianness routines into existing routines
+** DONE Convert Ogg verifier to proper little-endian operation
 ** DONE Swap endianness for proper FLAC VORBISCOMMENT writing

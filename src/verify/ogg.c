@@ -22,8 +22,7 @@ verifymodule_ogg(PyObject *dummy, PyObject *args) {
                         "first argument must be an actual file object");
         return NULL;
     } else {
-        /*FIXME - swap this to little-endian*/
-        bitstream = bs_open(PyFile_AsFile(file_obj), BS_BIG_ENDIAN);
+        bitstream = bs_open(PyFile_AsFile(file_obj), BS_LITTLE_ENDIAN);
         bs_add_callback(bitstream, verifymodule_ogg_checksum, &checksum);
     }
 
@@ -103,7 +102,7 @@ verifymodule_read_ogg_header(Bitstream *bs, struct ogg_header *header) {
     int i;
     uint8_t checksum[4];
 
-    if ((header->magic_number = bs->read(bs, 32)) != 0x4F676753) {
+    if ((header->magic_number = bs->read(bs, 32)) != 0x5367674F) {
         PyErr_SetString(PyExc_ValueError, "invalid magic number");
         return ERROR;
     }
@@ -114,9 +113,9 @@ verifymodule_read_ogg_header(Bitstream *bs, struct ogg_header *header) {
     }
 
     header->type = bs->read(bs, 8);
-    header->granule_position = verifymodule_ulint64(bs->read_64(bs, 64));
-    header->bitstream_serial_number = verifymodule_ulint32(bs->read(bs, 32));
-    header->page_sequence_number = verifymodule_ulint32(bs->read(bs, 32));
+    header->granule_position = bs->read_64(bs, 64);
+    header->bitstream_serial_number = bs->read(bs, 32);
+    header->page_sequence_number = bs->read(bs, 32);
 
     if (fread(checksum, sizeof(uint8_t), 4, bs->file) == 4) {
         header->checksum = checksum[0] |
@@ -145,37 +144,11 @@ verifymodule_print_ogg_header(struct ogg_header *header) {
     printf("magic number         : 0x%X\n", header->magic_number);
     printf("version              : 0x%X\n", header->version);
     printf("type                 : 0x%X\n", header->type);
-    printf("granule position     : 0x%llX\n", header->granule_position);
+    printf("granule position     : 0x%lX\n", header->granule_position);
     printf("bitstream serial #   : 0x%X\n", header->bitstream_serial_number);
     printf("page sequence number : 0x%X\n", header->page_sequence_number);
     printf("checksum             : 0x%8.8X\n", header->checksum);
     printf("page segment count   : 0x%X\n", header->page_segment_count);
-}
-
-uint32_t
-verifymodule_ulint32(uint32_t i) {
-    uint32_t x = 0;
-    int j;
-
-    for (j = 0; j < 4; j++) {
-        x = (x << 8) | (i & 0xFF);
-        i >>= 8;
-    }
-
-    return x;
-}
-
-uint64_t
-verifymodule_ulint64(uint64_t i) {
-    uint64_t x = 0;
-    int j;
-
-    for (j = 0; j < 8; j++) {
-        x = (x << 8) | (i & 0xFF);
-        i >>= 8;
-    }
-
-    return x;
 }
 
 void
