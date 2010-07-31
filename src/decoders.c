@@ -39,7 +39,6 @@ initdecoders(void)
     if (PyType_Ready(&decoders_BitstreamReaderType) < 0)
         return;
 
-
     decoders_FlacDecoderType.tp_new = PyType_GenericNew;
     if (PyType_Ready(&decoders_FlacDecoderType) < 0)
         return;
@@ -71,65 +70,6 @@ initdecoders(void)
     PyModule_AddObject(m, "ALACDecoder",
                        (PyObject *)&decoders_ALACDecoderType);
 
-}
-
-PyObject*
-decoders_read_bits(PyObject *dummy, PyObject *args)
-{
-    int context;
-    int bits;
-
-    if (!PyArg_ParseTuple(args, "ii", &context, &bits))
-        return NULL;
-
-    return Py_BuildValue("i", read_bits_table[context][bits - 1]);
-}
-
-PyObject*
-decoders_unread_bit(PyObject *dummy, PyObject *args)
-{
-    int context;
-    int bit;
-
-    if (!PyArg_ParseTuple(args, "ii", &context, &bit))
-        return NULL;
-
-    context = unread_bit_table[context][bit];
-    if (context >> 12) {
-        PyErr_SetString(PyExc_ValueError, "unable to unread bit");
-        return NULL;
-    } else {
-        return Py_BuildValue("i", context);
-    }
-}
-
-PyObject*
-decoders_read_unary(PyObject *dummy, PyObject *args)
-{
-    int context;
-    int stop_bit;
-
-    if (!PyArg_ParseTuple(args, "ii", &context, &stop_bit))
-        return NULL;
-
-    return Py_BuildValue("i", read_unary_table[context][stop_bit]);
-}
-
-PyObject*
-decoders_read_limited_unary(PyObject *dummy, PyObject *args)
-{
-    int context;
-    int stop_bit;
-    int maximum_bits;
-
-    if (!PyArg_ParseTuple(args, "iii", &context, &stop_bit, &maximum_bits))
-        return NULL;
-
-    stop_bit *= 9;
-
-    return Py_BuildValue("i",
-                         read_limited_unary_table[context][stop_bit +
-                                                           maximum_bits]);
 }
 
 static PyObject*
@@ -289,8 +229,6 @@ BitstreamReader_close(decoders_BitstreamReader *self, PyObject *args) {
     return Py_None;
 }
 
-/*FIXME - add a Python callback handler, if possible*/
-
 PyObject*
 BitstreamReader_new(PyTypeObject *type,
                     PyObject *args, PyObject *kwds)
@@ -333,7 +271,17 @@ BitstreamReader_init(decoders_BitstreamReader *self,
 void
 BitstreamReader_dealloc(decoders_BitstreamReader *self)
 {
+    struct bs_callback* callback;
+    PyObject* function;
+
     if (self->file_obj != NULL) {
+        for (callback = self->bitstream->callback;
+             callback != NULL;
+             callback = callback->next) {
+            function = (PyObject*)callback->data;
+            Py_DECREF(function);
+        }
+
         self->bitstream->file = NULL;
         bs_close(self->bitstream);
         Py_DECREF(self->file_obj);

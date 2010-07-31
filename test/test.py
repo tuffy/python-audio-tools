@@ -12800,6 +12800,155 @@ class TestIOError(unittest.TestCase):
                 self,
                 [(WARNING, _(u"Unable to open \"%s\"") % ("/dev/null/bar"))]))
 
+class Bitstream(unittest.TestCase):
+    @TEST_PCM
+    def test_simple_reader(self):
+        from audiotools.decoders import BitstreamReader
+
+        self.assertRaises(TypeError, BitstreamReader, None, 0)
+        self.assertRaises(TypeError, BitstreamReader, 1, 0)
+        self.assertRaises(TypeError, BitstreamReader, "foo", 0)
+        self.assertRaises(TypeError, BitstreamReader,
+                          cStringIO.StringIO("foo"), 0)
+
+        temp = tempfile.TemporaryFile()
+        try:
+            temp.write(chr(0xB1))
+            temp.write(chr(0xED))
+            temp.write(chr(0x3B))
+            temp.write(chr(0xC1))
+            temp.seek(0, 0)
+
+            #first, check the bitstream reader
+            #against some simple known big-endian values
+            bitstream = BitstreamReader(temp, 0)
+
+            self.assertEqual(bitstream.read(2), 2)
+            self.assertEqual(bitstream.read(3), 6)
+            self.assertEqual(bitstream.read(5), 7)
+            self.assertEqual(bitstream.read(3), 5)
+            self.assertEqual(bitstream.read(19), 342977)
+            self.assertEqual(bitstream.tell(), 4)
+
+            temp.seek(0, 0)
+            self.assertEqual(bitstream.read64(2), 2)
+            self.assertEqual(bitstream.read64(3), 6)
+            self.assertEqual(bitstream.read64(5), 7)
+            self.assertEqual(bitstream.read64(3), 5)
+            self.assertEqual(bitstream.read64(19), 342977)
+            self.assertEqual(bitstream.tell(), 4)
+
+            temp.seek(0, 0)
+            self.assertEqual(bitstream.read_signed(2), -2)
+            self.assertEqual(bitstream.read_signed(3), -2)
+            self.assertEqual(bitstream.read_signed(5), 7)
+            self.assertEqual(bitstream.read_signed(3), -3)
+            self.assertEqual(bitstream.read_signed(19), -181311)
+            self.assertEqual(bitstream.tell(), 4)
+
+            temp.seek(0, 0)
+            self.assertEqual(bitstream.unary(0), 1)
+            self.assertEqual(bitstream.unary(0), 2)
+            self.assertEqual(bitstream.unary(0), 0)
+            self.assertEqual(bitstream.unary(0), 0)
+            self.assertEqual(bitstream.unary(0), 4)
+            bitstream.byte_align()
+            temp.seek(0, 0)
+            self.assertEqual(bitstream.unary(1), 0)
+            self.assertEqual(bitstream.unary(1), 1)
+            self.assertEqual(bitstream.unary(1), 0)
+            self.assertEqual(bitstream.unary(1), 3)
+            self.assertEqual(bitstream.unary(1), 0)
+            bitstream.byte_align()
+
+            temp.seek(0, 0)
+            self.assertEqual(bitstream.read(1), 1)
+            bit = bitstream.read(1)
+            self.assertEqual(bit, 0)
+            bitstream.unread(bit)
+            self.assertEqual(bitstream.read(2), 1)
+            bitstream.byte_align()
+
+            temp.seek(0, 0)
+            self.assertEqual(bitstream.limited_unary(0, 2), 1)
+            self.assertEqual(bitstream.limited_unary(0, 2), None)
+            bitstream.byte_align()
+            temp.seek(0, 0)
+            self.assertEqual(bitstream.limited_unary(1, 2), 0)
+            self.assertEqual(bitstream.limited_unary(1, 2), 1)
+            self.assertEqual(bitstream.limited_unary(1, 2), 0)
+            self.assertEqual(bitstream.limited_unary(1, 2), None)
+
+            del(bitstream)
+            temp.seek(0, 0)
+
+            #then, check the bitstream reader
+            #against some simple known little-endian values
+            bitstream = BitstreamReader(temp, 1)
+
+            self.assertEqual(bitstream.read(2), 1)
+            self.assertEqual(bitstream.read(3), 4)
+            self.assertEqual(bitstream.read(5), 13)
+            self.assertEqual(bitstream.read(3), 3)
+            self.assertEqual(bitstream.read(19), 395743)
+            self.assertEqual(bitstream.tell(), 4)
+
+            temp.seek(0, 0)
+            self.assertEqual(bitstream.read64(2), 1)
+            self.assertEqual(bitstream.read64(3), 4)
+            self.assertEqual(bitstream.read64(5), 13)
+            self.assertEqual(bitstream.read64(3), 3)
+            self.assertEqual(bitstream.read64(19), 395743)
+            self.assertEqual(bitstream.tell(), 4)
+
+            temp.seek(0, 0)
+            self.assertEqual(bitstream.read_signed(2), 1)
+            self.assertEqual(bitstream.read_signed(3), -4)
+            self.assertEqual(bitstream.read_signed(5), 13)
+            self.assertEqual(bitstream.read_signed(3), 3)
+            self.assertEqual(bitstream.read_signed(19), -128545)
+            self.assertEqual(bitstream.tell(), 4)
+
+            temp.seek(0, 0)
+            self.assertEqual(bitstream.unary(0), 1)
+            self.assertEqual(bitstream.unary(0), 0)
+            self.assertEqual(bitstream.unary(0), 0)
+            self.assertEqual(bitstream.unary(0), 2)
+            self.assertEqual(bitstream.unary(0), 2)
+            bitstream.byte_align()
+            temp.seek(0, 0)
+            self.assertEqual(bitstream.unary(1), 0)
+            self.assertEqual(bitstream.unary(1), 3)
+            self.assertEqual(bitstream.unary(1), 0)
+            self.assertEqual(bitstream.unary(1), 1)
+            self.assertEqual(bitstream.unary(1), 0)
+            bitstream.byte_align()
+
+            temp.seek(0, 0)
+            self.assertEqual(bitstream.read(1), 1)
+            bit = bitstream.read(1)
+            self.assertEqual(bit, 0)
+            bitstream.unread(bit)
+            self.assertEqual(bitstream.read(4), 8)
+            bitstream.byte_align()
+
+            temp.seek(0, 0)
+            self.assertEqual(bitstream.limited_unary(0, 2), 1)
+            self.assertEqual(bitstream.limited_unary(0, 2), 0)
+            self.assertEqual(bitstream.limited_unary(0, 2), 0)
+            self.assertEqual(bitstream.limited_unary(0, 2), None)
+            bitstream.byte_align()
+            temp.seek(0, 0)
+            self.assertEqual(bitstream.limited_unary(1, 2), 0)
+            self.assertEqual(bitstream.limited_unary(1, 2), None)
+
+        finally:
+            temp.close()
+
+    #then, have the bitstream writer generate a set of known values
+
+    #and have the bitstream reader check those values are accurate
+
 
 ############
 #END TESTS

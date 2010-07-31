@@ -125,7 +125,7 @@ unsigned int
 bs_read_bits_be(Bitstream* bs, unsigned int count);
 
 int
-bs_read_signed_bits(Bitstream* bs, unsigned int count);
+bs_read_signed_bits_be(Bitstream* bs, unsigned int count);
 
 uint64_t
 bs_read_bits64_be(Bitstream* bs, unsigned int count);
@@ -143,7 +143,22 @@ void
 bs_byte_align_r(Bitstream* bs);
 
 /*_le signifies the little-endian readers*/
+unsigned int
+bs_read_bits_le(Bitstream* bs, unsigned int count);
 
-/*FIXME - add little endian reader defs here*/
+uint64_t
+bs_read_bits64_le(Bitstream* bs, unsigned int count);
+
+int
+bs_read_signed_bits_le(Bitstream* bs, unsigned int count);
+
+void
+bs_unread_bit_le(Bitstream* bs, int unread_bit);
+
+unsigned int
+bs_read_unary_le(Bitstream* bs, int stop_bit);
+
+int
+bs_read_limited_unary_le(Bitstream* bs, int stop_bit, int maximum_bits);
 
 #endif
