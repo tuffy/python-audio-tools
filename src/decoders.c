@@ -25,6 +25,11 @@ extern PyTypeObject decoders_FlacDecoderType;
 extern PyTypeObject decoders_SHNDecoderType;
 extern PyTypeObject decoders_ALACDecoderType;
 
+extern const unsigned int read_bits_table[0x900][8];
+extern const unsigned int read_unary_table[0x900][2];
+extern const unsigned int read_limited_unary_table[0x900][18];
+extern const unsigned int unread_bit_table[0x900][2];
+
 PyMODINIT_FUNC
 initdecoders(void)
 {
@@ -146,7 +151,24 @@ BitstreamReader_read(decoders_BitstreamReader *self, PyObject *args) {
     }
 }
 
-/*FIXME - add read64 */
+static PyObject*
+BitstreamReader_read64(decoders_BitstreamReader *self, PyObject *args) {
+    unsigned int count;
+    uint64_t result;
+
+    if (!PyArg_ParseTuple(args, "I", &count))
+        return NULL;
+
+    if (!setjmp(*bs_try(self->bitstream))) {
+        result = self->bitstream->read_64(self->bitstream, count);
+        bs_etry(self->bitstream);
+        return Py_BuildValue("L", result);
+    } else {
+        bs_etry(self->bitstream);
+        PyErr_SetString(PyExc_IOError, "I/O error reading stream");
+        return NULL;
+    }
+}
 
 static PyObject*
 BitstreamReader_byte_align(decoders_BitstreamReader *self, PyObject *args) {
@@ -285,9 +307,11 @@ BitstreamReader_init(decoders_BitstreamReader *self,
                      PyObject *args)
 {
     PyObject *file_obj;
+    int little_endian;
+
     self->file_obj = NULL;
 
-    if (!PyArg_ParseTuple(args, "O", &file_obj))
+    if (!PyArg_ParseTuple(args, "Oi", &file_obj, &little_endian))
         return -1;
 
     if (!PyFile_CheckExact(file_obj)) {
@@ -298,9 +322,10 @@ BitstreamReader_init(decoders_BitstreamReader *self,
 
     Py_INCREF(file_obj);
     self->file_obj = file_obj;
-    /*FIXME - make endianness selectable in init*/
-    self->bitstream = bs_open(PyFile_AsFile(self->file_obj),
-                              BS_BIG_ENDIAN);
+
+    self->bitstream = bs_open(
+                    PyFile_AsFile(self->file_obj),
+                    little_endian ? BS_LITTLE_ENDIAN : BS_BIG_ENDIAN);
 
     return 0;
 }

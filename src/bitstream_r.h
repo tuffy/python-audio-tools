@@ -120,37 +120,6 @@ bs_try(Bitstream *bs);
 void
 bs_etry(Bitstream *bs);
 
-
-typedef enum {BBW_WRITE_BITS,
-              BBW_WRITE_SIGNED_BITS,
-              BBW_WRITE_BITS64,
-              BBW_WRITE_UNARY,
-              BBW_BYTE_ALIGN} bbw_action;
-
-typedef union {
-    unsigned int count;
-    int stop_bit;
-} bbw_key;
-
-typedef union {
-    int value;
-    uint64_t value64;
-} bbw_value;
-
-typedef struct {
-    bbw_action *actions;
-    bbw_key *keys;
-    bbw_value *values;
-    unsigned int size;
-    unsigned int total_size;
-    unsigned int bits_written;
-} BitbufferW;
-
-extern const unsigned int read_bits_table[0x900][8];
-extern const unsigned int read_unary_table[0x900][2];
-extern const unsigned int read_limited_unary_table[0x900][18];
-extern const unsigned int unread_bit_table[0x900][2];
-
 /*_be signifies the big-endian readers*/
 unsigned int
 bs_read_bits_be(Bitstream* bs, unsigned int count);
