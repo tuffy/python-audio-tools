@@ -129,44 +129,136 @@ decoders_read_limited_unary(PyObject *dummy, PyObject *args)
 
 static PyObject*
 BitstreamReader_read(decoders_BitstreamReader *self, PyObject *args) {
-    Py_INCREF(Py_None);
-    return Py_None;
+    unsigned int count;
+    unsigned int result;
+
+    if (!PyArg_ParseTuple(args, "I", &count))
+        return NULL;
+
+    if (!setjmp(*bs_try(self->bitstream))) {
+        result = self->bitstream->read(self->bitstream, count);
+        bs_etry(self->bitstream);
+        return Py_BuildValue("I", result);
+    } else {
+        bs_etry(self->bitstream);
+        PyErr_SetString(PyExc_IOError, "I/O error reading stream");
+        return NULL;
+    }
 }
+
+/*FIXME - add read64 */
 
 static PyObject*
 BitstreamReader_byte_align(decoders_BitstreamReader *self, PyObject *args) {
+    self->bitstream->byte_align(self->bitstream);
+
     Py_INCREF(Py_None);
     return Py_None;
 }
 
 static PyObject*
 BitstreamReader_unread(decoders_BitstreamReader *self, PyObject *args) {
+    int unread_bit;
+
+    if (!PyArg_ParseTuple(args, "i", &unread_bit))
+        return NULL;
+
+    if ((unread_bit != 0) && (unread_bit != 1)) {
+        PyErr_SetString(PyExc_ValueError, "unread bit must be 0 or 1");
+        return NULL;
+    }
+
+    self->bitstream->unread(self->bitstream, unread_bit);
+
     Py_INCREF(Py_None);
     return Py_None;
 }
 
 static PyObject*
 BitstreamReader_read_signed(decoders_BitstreamReader *self, PyObject *args) {
-    Py_INCREF(Py_None);
-    return Py_None;
+    unsigned int count;
+    int result;
+
+    if (!PyArg_ParseTuple(args, "I", &count))
+        return NULL;
+
+    if (!setjmp(*bs_try(self->bitstream))) {
+        result = self->bitstream->read_signed(self->bitstream, count);
+        bs_etry(self->bitstream);
+        return Py_BuildValue("i", result);
+    } else {
+        bs_etry(self->bitstream);
+        PyErr_SetString(PyExc_IOError, "I/O error reading stream");
+        return NULL;
+    }
 }
 
 static PyObject*
 BitstreamReader_unary(decoders_BitstreamReader *self, PyObject *args) {
-    Py_INCREF(Py_None);
-    return Py_None;
+    int stop_bit;
+    int result;
+
+    if (!PyArg_ParseTuple(args, "i", &stop_bit))
+        return NULL;
+
+    if ((stop_bit != 0) && (stop_bit != 1)) {
+        PyErr_SetString(PyExc_ValueError, "stop bit must be 0 or 1");
+        return NULL;
+    }
+
+    if (!setjmp(*bs_try(self->bitstream))) {
+        result = self->bitstream->read_unary(self->bitstream, stop_bit);
+        bs_etry(self->bitstream);
+        return Py_BuildValue("I", result);
+    } else {
+        bs_etry(self->bitstream);
+        PyErr_SetString(PyExc_IOError, "I/O error reading stream");
+        return NULL;
+    }
 }
 
 static PyObject*
 BitstreamReader_limited_unary(decoders_BitstreamReader *self, PyObject *args) {
-    Py_INCREF(Py_None);
-    return Py_None;
+    int stop_bit;
+    int maximum_bits;
+    int result;
+
+    if (!PyArg_ParseTuple(args, "ii", &stop_bit, &maximum_bits))
+        return NULL;
+
+    if ((stop_bit != 0) && (stop_bit != 1)) {
+        PyErr_SetString(PyExc_ValueError, "stop bit must be 0 or 1");
+        return NULL;
+    }
+    if (maximum_bits < 1) {
+        PyErr_SetString(PyExc_ValueError,
+                        "maximum bits must be greater than 0");
+        return NULL;
+    }
+
+    if (!setjmp(*bs_try(self->bitstream))) {
+        result = self->bitstream->read_limited_unary(self->bitstream,
+                                                     stop_bit,
+                                                     maximum_bits);
+        bs_etry(self->bitstream);
+        if (result >= 0)
+            return Py_BuildValue("i", result);
+        else {
+            Py_INCREF(Py_None);
+            return Py_None;
+        }
+    } else {
+        bs_etry(self->bitstream);
+        PyErr_SetString(PyExc_IOError, "I/O error reading stream");
+        return NULL;
+    }
+
+
 }
 
 static PyObject*
 BitstreamReader_tell(decoders_BitstreamReader *self, PyObject *args) {
-    Py_INCREF(Py_None);
-    return Py_None;
+    return Py_BuildValue("i", bs_ftell(self->bitstream));
 }
 
 static PyObject*
@@ -174,6 +266,8 @@ BitstreamReader_close(decoders_BitstreamReader *self, PyObject *args) {
     Py_INCREF(Py_None);
     return Py_None;
 }
+
+/*FIXME - add a Python callback handler, if possible*/
 
 PyObject*
 BitstreamReader_new(PyTypeObject *type,
@@ -204,7 +298,7 @@ BitstreamReader_init(decoders_BitstreamReader *self,
 
     Py_INCREF(file_obj);
     self->file_obj = file_obj;
-    /*FIXME - make this selectable in init*/
+    /*FIXME - make endianness selectable in init*/
     self->bitstream = bs_open(PyFile_AsFile(self->file_obj),
                               BS_BIG_ENDIAN);
 
@@ -222,4 +316,3 @@ BitstreamReader_dealloc(decoders_BitstreamReader *self)
 
     self->ob_type->tp_free((PyObject*)self);
 }
-
