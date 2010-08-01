@@ -37,6 +37,7 @@ bs_open(FILE *f, bs_endianness endianness)
         bs->write_bits64 = write_bits64_actual_be;
         bs->write_unary = write_unary_actual_be;
         bs->byte_align = byte_align_w_actual_be;
+        bs->set_endianness = set_endianness_actual_be;
         break;
     case BS_LITTLE_ENDIAN:
         bs->write_bits = write_bits_actual_le;
@@ -44,6 +45,7 @@ bs_open(FILE *f, bs_endianness endianness)
         bs->write_bits64 = write_bits64_actual_le;
         bs->write_unary = write_unary_actual_le;
         bs->byte_align = byte_align_w_actual_le;
+        bs->set_endianness = set_endianness_actual_le;
         break;
     }
 
@@ -64,6 +66,7 @@ bs_open_accumulator(void)
     bs->write_bits64 = write_bits64_accumulator;
     bs->write_unary = write_unary_accumulator;
     bs->byte_align = byte_align_w_accumulator;
+    bs->set_endianness = set_endianness_accumulator;
 
     return bs;
 }
@@ -85,35 +88,9 @@ bs_open_recorder(void)
     bs->write_bits64 = write_bits64_record;
     bs->write_unary = write_unary_record;
     bs->byte_align = byte_align_w_record;
+    bs->set_endianness = set_endianness_record;
 
     return bs;
-}
-
-void
-bs_set_endianness(Bitstream *bs, bs_endianness endianness) {
-    /*only swap endianness if the bitstream is open
-      for actual file writing*/
-    if ((bs->write_bits == write_bits_actual_be) ||
-        (bs->write_bits == write_bits_actual_le)) {
-        bs->state = 0;
-
-        switch (endianness) {
-        case BS_BIG_ENDIAN:
-            bs->write_bits = write_bits_actual_be;
-            bs->write_signed_bits = write_signed_bits_actual_be;
-            bs->write_bits64 = write_bits64_actual_be;
-            bs->write_unary = write_unary_actual_be;
-            bs->byte_align = byte_align_w_actual_be;
-            break;
-        case BS_LITTLE_ENDIAN:
-            bs->write_bits = write_bits_actual_le;
-            bs->write_signed_bits = write_signed_bits_actual_le;
-            bs->write_bits64 = write_bits64_actual_le;
-            bs->write_unary = write_unary_actual_le;
-            bs->byte_align = byte_align_w_actual_le;
-            break;
-        }
-    }
 }
 
 void
@@ -466,6 +443,32 @@ byte_align_w_actual_le(Bitstream* bs)
     bs->state = 0;
 }
 
+void
+set_endianness_actual_be(Bitstream* bs, bs_endianness endianness) {
+    bs->state = 0;
+    if (endianness == BS_LITTLE_ENDIAN) {
+        bs->write_bits = write_bits_actual_le;
+        bs->write_signed_bits = write_signed_bits_actual_le;
+        bs->write_bits64 = write_bits64_actual_le;
+        bs->write_unary = write_unary_actual_le;
+        bs->byte_align = byte_align_w_actual_le;
+        bs->set_endianness = set_endianness_actual_le;
+    }
+}
+
+void
+set_endianness_actual_le(Bitstream* bs, bs_endianness endianness) {
+    bs->state = 0;
+    if (endianness == BS_BIG_ENDIAN) {
+        bs->write_bits = write_bits_actual_be;
+        bs->write_signed_bits = write_signed_bits_actual_be;
+        bs->write_bits64 = write_bits64_actual_be;
+        bs->write_unary = write_unary_actual_be;
+        bs->byte_align = byte_align_w_actual_be;
+        bs->set_endianness = set_endianness_actual_be;
+    }
+}
+
 const unsigned int write_bits_table[0x400][0x900] =
 #include "write_bits_table.h"
     ;
@@ -521,6 +524,11 @@ byte_align_w_accumulator(Bitstream* bs)
         bs->bits_written += (bs->bits_written % 8);
 }
 
+void
+set_endianness_accumulator(Bitstream* bs, bs_endianness endianness) {
+    /*swapping endianness results in a byte alignment*/
+    byte_align_w_accumulator(bs);
+}
 
 void
 write_bits_record(Bitstream* bs, unsigned int count, int value)
@@ -594,6 +602,18 @@ byte_align_w_record(Bitstream* bs)
 }
 
 void
+set_endianness_record(Bitstream* bs, bs_endianness endianness) {
+    BitstreamRecord record;
+
+    record.type = BS_SET_ENDIANNESS;
+    record.value.endianness = endianness;
+    bs_record_resize(bs);
+    bs->records[bs->records_written++] = record;
+    if (bs->bits_written % 8)
+        bs->bits_written += (8 - (bs->bits_written % 8));
+}
+
+void
 bs_dump_records(Bitstream* target, Bitstream* source)
 {
     int records_written = source->records_written;
@@ -623,6 +643,10 @@ bs_dump_records(Bitstream* target, Bitstream* source)
                 break;
             case BS_BYTE_ALIGN:
                 target->byte_align(target);
+                break;
+            case BS_SET_ENDIANNESS:
+                target->set_endianness(target,
+                                       record.value.endianness);
                 break;
             }
         }

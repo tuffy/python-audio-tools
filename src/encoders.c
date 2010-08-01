@@ -168,8 +168,9 @@ BitstreamWriter_set_endianness(encoders_BitstreamWriter *self,
         return NULL;
     }
 
-    bs_set_endianness(self->bitstream,
-                      little_endian ? BS_LITTLE_ENDIAN : BS_BIG_ENDIAN);
+    self->bitstream->set_endianness(
+                    self->bitstream,
+                    little_endian ? BS_LITTLE_ENDIAN : BS_BIG_ENDIAN);
 
     Py_INCREF(Py_None);
     return Py_None;

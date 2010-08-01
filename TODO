@@ -2429,6 +2429,11 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    Convert to a C type, similar to BitstreamReader
 ** DONE add some basic Bitstream writer unit testing
 ** DONE allow endianness swapping
-* DONE integrate new endianness routines into existing routines
+* TODO integrate new endianness routines into existing routines
 ** DONE Convert Ogg verifier to proper little-endian operation
 ** DONE Swap endianness for proper FLAC VORBISCOMMENT writing
+** TODO have bs_set_endianness create instruction in recorder-mode
+   So that if we're recording an endianness shift,
+   it gets set properly when "played back" to an actual writer.
+   In fact, it may be a good idea to attach the set_endianness()
+   function to the bitstream writer itself.

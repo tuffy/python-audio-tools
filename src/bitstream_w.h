@@ -30,12 +30,15 @@ struct bs_callback {
     struct bs_callback *next;
 };
 
+typedef enum {BS_BIG_ENDIAN, BS_LITTLE_ENDIAN} bs_endianness;
+
 typedef enum {
     BS_WRITE_BITS,
     BS_WRITE_SIGNED_BITS,
     BS_WRITE_BITS64,
     BS_WRITE_UNARY,
-    BS_BYTE_ALIGN
+    BS_BYTE_ALIGN,
+    BS_SET_ENDIANNESS
 } BitstreamRecordType;
 
 typedef struct {
@@ -47,6 +50,7 @@ typedef struct {
     union {
         int value;
         uint64_t value64;
+        bs_endianness endianness;
     } value;
 } BitstreamRecord;
 
@@ -67,14 +71,14 @@ typedef struct Bitstream_s {
                          uint64_t value);
     void (*write_unary)(struct Bitstream_s* bs, int stop_bit, int value);
     void (*byte_align)(struct Bitstream_s* bs);
+    void (*set_endianness)(struct Bitstream_s* bs,
+                           bs_endianness endianness);
 } Bitstream;
 
 extern const unsigned int write_bits_table[0x400][0x900];
 extern const unsigned int write_bits_table_le[0x400][0x900];
 extern const unsigned int write_unary_table[0x400][0x20];
 extern const unsigned int write_unary_table_le[0x400][0x20];
-
-typedef enum {BS_BIG_ENDIAN, BS_LITTLE_ENDIAN} bs_endianness;
 
 Bitstream*
 bs_open(FILE *f, bs_endianness endianness);
@@ -84,9 +88,6 @@ bs_open_accumulator(void);
 
 Bitstream*
 bs_open_recorder(void);
-
-void
-bs_set_endianness(Bitstream *bs, bs_endianness endianness);
 
 /*this closes bs's open file, if any,
   deallocates any recorded output (for bs_open_accumulator Bitstreams)
@@ -123,6 +124,9 @@ void
 byte_align_w_actual_be(Bitstream* bs);
 
 void
+set_endianness_actual_be(Bitstream* bs, bs_endianness endianness);
+
+void
 write_bits_actual_le(Bitstream* bs, unsigned int count, int value);
 
 void
@@ -138,6 +142,10 @@ void
 byte_align_w_actual_le(Bitstream* bs);
 
 void
+set_endianness_actual_le(Bitstream* bs, bs_endianness endianness);
+
+
+void
 write_bits_accumulator(Bitstream* bs, unsigned int count, int value);
 
 void
@@ -151,6 +159,9 @@ write_unary_accumulator(Bitstream* bs, int stop_bit, int value);
 
 void
 byte_align_w_accumulator(Bitstream* bs);
+
+void
+set_endianness_accumulator(Bitstream* bs, bs_endianness endianness);
 
 
 /*make room for at least one additional record*/
@@ -178,6 +189,10 @@ write_unary_record(Bitstream* bs, int stop_bit, int value);
 
 void
 byte_align_w_record(Bitstream* bs);
+
+void
+set_endianness_record(Bitstream* bs, bs_endianness endianness);
+
 
 void
 bs_dump_records(Bitstream* target, Bitstream* source);

@@ -44,6 +44,8 @@ struct bs_exception {
     struct bs_exception *next;
 };
 
+typedef enum {BS_BIG_ENDIAN, BS_LITTLE_ENDIAN} bs_endianness;
+
 typedef struct Bitstream_s {
     FILE *file;
     int state;
@@ -58,22 +60,15 @@ typedef struct Bitstream_s {
     int (*read_limited_unary)(struct Bitstream_s* bs, int stop_bit,
                               int maximum_bits);
     void (*byte_align)(struct Bitstream_s* bs);
+    void (*set_endianness)(struct Bitstream_s* bs,
+                           bs_endianness endianness);
 } Bitstream;
-
-typedef enum {BS_BIG_ENDIAN, BS_LITTLE_ENDIAN} bs_endianness;
 
 Bitstream*
 bs_open(FILE *f, bs_endianness endianness);
 
 void
 bs_close(Bitstream *bs);
-
-/*sets the bitstream to little or big-endian operation
-
-  This automatically flushes any current state,
-  so make sure to call it while byte-aligned!*/
-void
-bs_set_endianness(Bitstream *bs, bs_endianness endianness);
 
 void
 bs_add_callback(Bitstream *bs, void (*callback)(int, void*),
@@ -149,6 +144,11 @@ bs_read_limited_unary_be(Bitstream* bs, int stop_bit, int maximum_bits);
 void
 bs_byte_align_r(Bitstream* bs);
 
+/*This automatically flushes any current state,
+  so make sure to call it while byte-aligned!*/
+void
+bs_set_endianness_be(Bitstream *bs, bs_endianness endianness);
+
 /*_le signifies the little-endian readers*/
 unsigned int
 bs_read_bits_le(Bitstream* bs, unsigned int count);
@@ -167,5 +167,8 @@ bs_read_unary_le(Bitstream* bs, int stop_bit);
 
 int
 bs_read_limited_unary_le(Bitstream* bs, int stop_bit, int maximum_bits);
+
+void
+bs_set_endianness_le(Bitstream *bs, bs_endianness endianness);
 
 #endif
