@@ -13,7 +13,8 @@ the `correction' file to be separated from a lossy core.
 
 Metadata is stored as an APEv2 tag, which is described on page \pageref{apev2}.
 
-All of its fields are little-endian.
+Its stream of data is stored little-endian, as described on page
+\pageref{bitstreams}.
 
 \section{the WavPack file stream}
 \begin{figure}[h]
@@ -26,8 +27,7 @@ All of its fields are little-endian.
 \begin{figure}[h]
 \includegraphics{figures/wavpack_block_header.pdf}
 \end{figure}
-\parpic[r]{
-{\relsize{-1}
+\begin{wrapfigure}[10]{r}{1.5in}
 \begin{tabular}{|c|r|}
 \hline
 value & sample rate \\
@@ -50,15 +50,11 @@ value & sample rate \\
 \texttt{1111} & reserved \\
 \hline
 \end{tabular}
-}
-}
-The \VAR{flags} field is stored as a little-endian 32-bit integer.
-Since some fields cross byte boundaries, their high and low bits
-will be far apart when written in this format where the bits are
-ordered the way they appear in the file.
+\end{wrapfigure}
 
-\VAR{Block Size} is the length of everything past everything past the
-block header, minus 24 bytes.
+\VAR{Block Size} is the length of everything in the block past
+the \VAR{Block Size} field itself -
+or everything in the block past the CRC, minus 24 bytes.
 
 \VAR{Bits per Sample} is one of 4 values:
 
@@ -87,6 +83,8 @@ Initial Block & Final Block & Mono Output & Channels \\
 \hline
 \multicolumn{3}{r|}{Total} & 6
 \end{tabular}
+
+\clearpage
 
 \subsection{WavPack sub-block header}
 \begin{figure}[h]

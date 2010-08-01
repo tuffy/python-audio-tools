@@ -2328,7 +2328,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 * TODO handle AIFF offset/block size in SSND chunk
 * DONE update trackcmp to share trackverify's output interface
 * TODO Integrate WavPack
-** TODO update WavPack documentation to little-endian reading order
+** DONE update WavPack documentation to little-endian reading order
 ** TODO Add WavPack decoder
 *** TODO Add audiotools.decoders.WavPackDecoder object
     Must include the following attributes:
