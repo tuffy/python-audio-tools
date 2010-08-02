@@ -38,11 +38,15 @@ if (__name__ == '__main__'):
     msg = audiotools.Messenger("cd2xmcd", options)
 
     cdda = audiotools.RawCDDA(options.cdrom)
-    tracks = list(cdda)
 
-    if (len(cdda) == 0):
+    if (len(cdda) == 255):
         msg.error(_(u"No CD in drive"))
         sys.exit(1)
+    elif (len(cdda) < 1):
+        msg.error(_(u"No audio tracks found on CD"))
+        sys.exit(1)
+
+    tracks = list(cdda)
 
     msg.new_row()
     msg.output_column(_(u"Total Tracks"), True)

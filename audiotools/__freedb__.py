@@ -368,9 +368,13 @@ class DiscID:
 
     @classmethod
     def from_cdda(cls, cdda):
-        """Given a CDDA object, returns a populated DiscID."""
+        """Given a CDDA object, returns a populated DiscID.
+
+        May raise ValueError if there are no audio tracks on the CD."""
 
         tracks = list(cdda)
+        if (len(tracks) < 1):
+            raise ValueError(_(u"no audio tracks in CDDA object"))
 
         return cls(tracks=[t.length() for t in tracks],
                    offsets=[t.offset() for t in tracks],

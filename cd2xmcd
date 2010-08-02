@@ -107,6 +107,9 @@ if (__name__ == '__main__'):
     if (len(cdda) == 255):
         msg.error(_(u"No CD in drive"))
         sys.exit(1)
+    elif (len(cdda) < 1):
+        msg.error(_(u"No audio tracks found on CD"))
+        sys.exit(1)
 
     tracks = list(cdda)
 
