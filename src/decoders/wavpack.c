@@ -22,11 +22,62 @@
 int
 WavPackDecoder_init(decoders_WavPackDecoder *self,
                     PyObject *args, PyObject *kwds) {
+    char* filename;
+    struct wavpack_block_header block_header;
+
+    self->filename = NULL;
+    self->bitstream = NULL;
+    self->file = NULL;
+
+    if (!PyArg_ParseTuple(args, "s", &filename))
+        return -1;
+
+    /*open the WavPack file*/
+    self->file = fopen(filename, "rb");
+    if (self->file == NULL) {
+        PyErr_SetFromErrnoWithFilename(PyExc_IOError, filename);
+        return -1;
+    } else {
+        self->bitstream = bs_open(self->file, BS_LITTLE_ENDIAN);
+    }
+
+    self->filename = strdup(filename);
+
+    /*read as many block headers as necessary
+      to determine channel count and channel mask*/
+    self->sample_rate = 0;
+    self->bits_per_sample = 0;
+    self->channels = 0;
+    self->channel_mask = 0;
+
+    /*FIXME - check for EOF here*/
+    do {
+        if (WavPackDecoder_read_block_header(self->bitstream,
+                                             &block_header) == ERROR)
+            return -1;
+        else {
+            self->sample_rate = block_header.sample_rate;
+            self->bits_per_sample = block_header.bits_per_sample;
+            self->channels += (block_header.mono_output ? 1 : 2);
+            fseek(self->file, block_header.block_size - 24, SEEK_CUR);
+            /*FIXME - determining channel mask requires sub-block parsing*/
+        }
+    } while (block_header.final_block_in_sequence == 0);
+
+    fseek(self->file, 0, SEEK_SET);
+
+    /*setup a bunch of temporary buffers*/
+
     return 0;
 }
 
 void
 WavPackDecoder_dealloc(decoders_WavPackDecoder *self) {
+    if (self->filename != NULL)
+        free(self->filename);
+
+    bs_close(self->bitstream);
+
     self->ob_type->tp_free((PyObject*)self);
 }
 
@@ -38,4 +89,96 @@ WavPackDecoder_new(PyTypeObject *type,
     self = (decoders_WavPackDecoder *)type->tp_alloc(type, 0);
 
     return (PyObject *)self;
+}
+
+static PyObject*
+WavPackDecoder_sample_rate(decoders_WavPackDecoder *self, void *closure) {
+    return Py_BuildValue("i", self->sample_rate);
+}
+
+static PyObject*
+WavPackDecoder_bits_per_sample(decoders_WavPackDecoder *self, void *closure) {
+    return Py_BuildValue("i", self->bits_per_sample);
+}
+
+static PyObject*
+WavPackDecoder_channels(decoders_WavPackDecoder *self, void *closure) {
+    return Py_BuildValue("i", self->channels);
+}
+
+static PyObject*
+WavPackDecoder_channel_mask(decoders_WavPackDecoder *self, void *closure) {
+    return Py_BuildValue("i", self->channel_mask);
+}
+
+status
+WavPackDecoder_read_block_header(Bitstream* bitstream,
+                                 struct wavpack_block_header* header) {
+    /*read and verify block ID*/
+    if (bitstream->read(bitstream, 32) != 0x6B707677) {
+        PyErr_SetString(PyExc_ValueError, "invalid block ID");
+        return ERROR;
+    }
+
+    header->block_size = bitstream->read(bitstream, 32);
+    header->version = bitstream->read(bitstream, 16);
+    header->track_number = bitstream->read(bitstream, 8);
+    header->index_number = bitstream->read(bitstream, 8);
+    header->total_samples = bitstream->read(bitstream, 32);
+    header->block_index = bitstream->read(bitstream, 32);
+    header->block_samples = bitstream->read(bitstream, 32);
+
+    switch (bitstream->read(bitstream, 2)) {
+    case 0: header->bits_per_sample = 8; break;
+    case 1: header->bits_per_sample = 16; break;
+    case 2: header->bits_per_sample = 24; break;
+    case 3: header->bits_per_sample = 32; break;
+    default: break; /*can't happen*/
+    }
+
+    header->mono_output = bitstream->read(bitstream, 1);
+    header->hybrid_mode = bitstream->read(bitstream, 1);
+    header->joint_stereo = bitstream->read(bitstream, 1);
+    header->cross_channel_decorrelation = bitstream->read(bitstream, 1);
+    header->hybrid_noise_shaping = bitstream->read(bitstream, 1);
+    header->floating_point_data = bitstream->read(bitstream, 1);
+    header->extended_size_integers = bitstream->read(bitstream, 1);
+    header->hybrid_parameters_control_bitrate = bitstream->read(bitstream, 1);
+    header->hybrid_noise_balanced = bitstream->read(bitstream, 1);
+    header->initial_block_in_sequence = bitstream->read(bitstream, 1);
+    header->final_block_in_sequence = bitstream->read(bitstream, 1);
+    header->left_shift = bitstream->read(bitstream, 5);
+    header->maximum_data_magnitude = bitstream->read(bitstream, 5);
+
+    switch (bitstream->read(bitstream, 4)) {
+    case 0x0: header->sample_rate =   6000; break;
+    case 0x1: header->sample_rate =   8000; break;
+    case 0x2: header->sample_rate =   9600; break;
+    case 0x3: header->sample_rate =  11025; break;
+    case 0x4: header->sample_rate =  12000; break;
+    case 0x5: header->sample_rate =  16000; break;
+    case 0x6: header->sample_rate =  22050; break;
+    case 0x7: header->sample_rate =  24000; break;
+    case 0x8: header->sample_rate =  32000; break;
+    case 0x9: header->sample_rate =  41000; break;
+    case 0xA: header->sample_rate =  48000; break;
+    case 0xB: header->sample_rate =  64000; break;
+    case 0xC: header->sample_rate =  88200; break;
+    case 0xD: header->sample_rate =  96000; break;
+    case 0xE: header->sample_rate = 192000; break;
+    case 0xF: header->sample_rate =      0; break; /*reserved*/
+    }
+
+    bitstream->read(bitstream, 2);
+    header->use_IIR = bitstream->read(bitstream, 1);
+    header->false_stereo = bitstream->read(bitstream, 1);
+
+    if (bitstream->read(bitstream, 1) != 0) {
+        PyErr_SetString(PyExc_ValueError, "invalid reserved bit");
+        return ERROR;
+    }
+
+    header->crc = bitstream->read(bitstream, 32);
+
+    return OK;
 }

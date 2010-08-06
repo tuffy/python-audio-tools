@@ -1,4 +1,6 @@
 #include <Python.h>
+#include <stdint.h>
+#include "../bitstream_r.h"
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -19,17 +21,84 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 *******************************************************/
 
+typedef enum {OK, ERROR} status;
+
 typedef struct {
     PyObject_HEAD
 
+    FILE* file;
+    char* filename;
+    Bitstream* bitstream;
+
+    int sample_rate;
+    int bits_per_sample;
+    int channels;
+    int channel_mask;
 } decoders_WavPackDecoder;
+
+struct wavpack_block_header {
+    /*block ID                                   32 bits*/
+    uint32_t block_size;                       /*32 bits*/
+    uint16_t version;                          /*16 bits*/
+    uint8_t track_number;                      /*8 bits*/
+    uint8_t index_number;                      /*8 bits*/
+    uint32_t total_samples;                    /*32 bits*/
+    uint32_t block_index;                      /*32 bits*/
+    uint32_t block_samples;                    /*32 bits*/
+
+    uint8_t bits_per_sample;                   /*2 bits*/
+    uint8_t mono_output;                       /*1 bit*/
+    uint8_t hybrid_mode;                       /*1 bit*/
+    uint8_t joint_stereo;                      /*1 bit*/
+    uint8_t cross_channel_decorrelation;       /*1 bit*/
+    uint8_t hybrid_noise_shaping;              /*1 bit*/
+    uint8_t floating_point_data;               /*1 bit*/
+    uint8_t extended_size_integers;            /*1 bit*/
+    uint8_t hybrid_parameters_control_bitrate; /*1 bit*/
+    uint8_t hybrid_noise_balanced;             /*1 bit*/
+    uint8_t initial_block_in_sequence;         /*1 bit*/
+    uint8_t final_block_in_sequence;           /*1 bit*/
+    uint8_t left_shift;                        /*5 bits*/
+    uint8_t maximum_data_magnitude;            /*5 bits*/
+    uint32_t sample_rate;                      /*4 bits*/
+    /*reserved                                   2 bits*/
+    uint8_t use_IIR;                           /*1 bit*/
+    uint8_t false_stereo;                      /*1 bit*/
+    /*reserved                                   1 bit*/
+
+    uint32_t crc;                              /*32 bits*/
+};
 
 /*the WavPackDecoder.__init__() method*/
 int
 WavPackDecoder_init(decoders_WavPackDecoder *self,
                     PyObject *args, PyObject *kwds);
 
+/*the WavPackDecoder.sample_rate attribute getter*/
+static PyObject*
+WavPackDecoder_sample_rate(decoders_WavPackDecoder *self, void *closure);
+
+/*the WavPackDecoder.bits_per_sample attribute getter*/
+static PyObject*
+WavPackDecoder_bits_per_sample(decoders_WavPackDecoder *self, void *closure);
+
+/*the WavPackDecoder.channels attribute getter*/
+static PyObject*
+WavPackDecoder_channels(decoders_WavPackDecoder *self, void *closure);
+
+/*the WavPackDecoder.channel_mask attribute getter*/
+static PyObject*
+WavPackDecoder_channel_mask(decoders_WavPackDecoder *self, void *closure);
+
 PyGetSetDef WavPackDecoder_getseters[] = {
+    {"sample_rate",
+     (getter)WavPackDecoder_sample_rate, NULL, "sample rate", NULL},
+    {"bits_per_sample",
+     (getter)WavPackDecoder_bits_per_sample, NULL, "bits per sample", NULL},
+    {"channels",
+     (getter)WavPackDecoder_channels, NULL, "channels", NULL},
+    {"channel_mask",
+     (getter)WavPackDecoder_channel_mask, NULL, "channel_mask", NULL},
     {NULL}
 };
 
@@ -43,6 +112,10 @@ WavPackDecoder_dealloc(decoders_WavPackDecoder *self);
 static PyObject*
 WavPackDecoder_new(PyTypeObject *type,
                    PyObject *args, PyObject *kwds);
+
+status
+WavPackDecoder_read_block_header(Bitstream* bitstream,
+                                 struct wavpack_block_header* header);
 
 PyTypeObject decoders_WavPackDecoderType = {
     PyObject_HEAD_INIT(NULL)

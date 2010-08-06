@@ -2332,16 +2332,16 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** TODO Add WavPack decoder
 *** TODO Add audiotools.decoders.WavPackDecoder object
     Must include the following attributes:
-    - [ ] sample_rate
-    - [ ] bits_per_sample
-    - [ ] channels
+    - [X] sample_rate
+    - [X] bits_per_sample
+    - [X] channels
     - [ ] channel_mask
     And the following methods:
     - [ ] __init__
     - [ ] read()
     - [ ] analyze_frame()
     - [ ] close()
-*** TODO Add block header parsing
+*** DONE Add block header parsing
 *** TODO Add sub-block header parsing
 *** TODO Decode block
 *** TODO Check for EOFs during decoding
