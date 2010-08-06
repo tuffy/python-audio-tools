@@ -24,6 +24,7 @@
 extern PyTypeObject decoders_FlacDecoderType;
 extern PyTypeObject decoders_SHNDecoderType;
 extern PyTypeObject decoders_ALACDecoderType;
+extern PyTypeObject decoders_WavPackDecoderType;
 
 extern const unsigned int read_bits_table[0x900][8];
 extern const unsigned int read_unary_table[0x900][2];
@@ -51,6 +52,10 @@ initdecoders(void)
     if (PyType_Ready(&decoders_ALACDecoderType) < 0)
         return;
 
+    decoders_ALACDecoderType.tp_new = PyType_GenericNew;
+    if (PyType_Ready(&decoders_WavPackDecoderType) < 0)
+        return;
+
     m = Py_InitModule3("decoders", module_methods,
                        "Low-level audio format decoders");
 
@@ -69,6 +74,10 @@ initdecoders(void)
     Py_INCREF(&decoders_ALACDecoderType);
     PyModule_AddObject(m, "ALACDecoder",
                        (PyObject *)&decoders_ALACDecoderType);
+
+    Py_INCREF(&decoders_WavPackDecoderType);
+    PyModule_AddObject(m, "WavPackDecoder",
+                       (PyObject *)&decoders_WavPackDecoderType);
 
 }
 
