@@ -49,6 +49,7 @@ WavPackDecoder_init(decoders_WavPackDecoder *self,
     self->bits_per_sample = 0;
     self->channels = 0;
     self->channel_mask = 0;
+    self->remaining_samples = -1;
 
     /*FIXME - check for EOF here*/
     do {
@@ -56,6 +57,9 @@ WavPackDecoder_init(decoders_WavPackDecoder *self,
                                              &block_header) == ERROR)
             return -1;
         else {
+            if (self->remaining_samples == -1)
+                self->remaining_samples = block_header.total_samples;
+
             self->sample_rate = block_header.sample_rate;
             self->bits_per_sample = block_header.bits_per_sample;
             self->channels += (block_header.mono_output ? 1 : 2);
@@ -124,7 +128,7 @@ WavPackDecoder_read_block_header(Bitstream* bitstream,
     header->version = bitstream->read(bitstream, 16);
     header->track_number = bitstream->read(bitstream, 8);
     header->index_number = bitstream->read(bitstream, 8);
-    header->total_samples = bitstream->read(bitstream, 32);
+    header->total_samples = bitstream->read_signed(bitstream, 32);
     header->block_index = bitstream->read(bitstream, 32);
     header->block_samples = bitstream->read(bitstream, 32);
 
@@ -181,4 +185,71 @@ WavPackDecoder_read_block_header(Bitstream* bitstream,
     header->crc = bitstream->read(bitstream, 32);
 
     return OK;
+}
+
+/*as with Shorten, whose analyze_frame() returns the next command
+  (likely only part of a total collection of PCM frames),
+  this returns a single block which may be only one of several
+  needed to reconstruct a multichannel set of audio*/
+
+static PyObject*
+WavPackDecoder_analyze_frame(decoders_WavPackDecoder* self, PyObject *args) {
+    struct wavpack_block_header block_header;
+
+    if (self->remaining_samples > 0) {
+        /*FIXME - check for EOFs here*/
+        if (WavPackDecoder_read_block_header(self->bitstream,
+                                             &block_header) == OK) {
+            /*FIXME - parse sub-blocks here*/
+            fseek(self->file, block_header.block_size - 24, SEEK_CUR);
+
+            self->remaining_samples -= block_header.block_samples;
+            return Py_BuildValue(
+                    "{sI sI si si si sI sI "
+                    "si si si si si si si si si si si si si si si "
+                    "si si sI}",
+                    "block_size", block_header.block_size,
+                    "version", block_header.version,
+                    "track_number", block_header.track_number,
+                    "index_number", block_header.index_number,
+                    "total_samples", block_header.total_samples,
+                    "block_index", block_header.block_index,
+                    "block_samples", block_header.block_samples,
+
+                    "bits_per_sample", block_header.bits_per_sample,
+                    "mono_output", block_header.mono_output,
+                    "hybrid_mode", block_header.hybrid_mode,
+                    "joint_stereo", block_header.joint_stereo,
+                    "cross_channel_decorrelation",
+                    block_header.cross_channel_decorrelation,
+                    "hybrid_noise_shaping",
+                    block_header.hybrid_noise_shaping,
+                    "floating_point_data",
+                    block_header.floating_point_data,
+                    "extended_size_integers",
+                    block_header.extended_size_integers,
+                    "hybrid_parameters_control_bitrate",
+                    block_header.hybrid_parameters_control_bitrate,
+                    "hybrid_noise_balanced",
+                    block_header.hybrid_noise_balanced,
+                    "initial_block_in_sequence",
+                    block_header.initial_block_in_sequence,
+                    "final_block_in_sequence",
+                    block_header.final_block_in_sequence,
+                    "left_shift", block_header.left_shift,
+                    "maximum_data_magnitude",
+                    block_header.maximum_data_magnitude,
+                    "sample_rate", block_header.sample_rate,
+
+                    "use_IIR", block_header.use_IIR,
+                    "false_stereo", block_header.false_stereo,
+                    "crc", block_header.crc);
+
+        } else {
+            return NULL;
+        }
+    } else {
+        Py_INCREF(Py_None);
+        return Py_None;
+    }
 }

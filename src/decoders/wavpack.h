@@ -34,6 +34,7 @@ typedef struct {
     int bits_per_sample;
     int channels;
     int channel_mask;
+    int remaining_samples;
 } decoders_WavPackDecoder;
 
 struct wavpack_block_header {
@@ -102,7 +103,13 @@ PyGetSetDef WavPackDecoder_getseters[] = {
     {NULL}
 };
 
+/*the WavPackDecoder.analyze_frame() method*/
+static PyObject*
+WavPackDecoder_analyze_frame(decoders_WavPackDecoder* self, PyObject *args);
+
 PyMethodDef WavPackDecoder_methods[] = {
+    {"analyze_frame", (PyCFunction)WavPackDecoder_analyze_frame,
+     METH_NOARGS, "Returns the analysis of the next frame"},
     {NULL}
 };
 
