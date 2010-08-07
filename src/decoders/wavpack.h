@@ -70,6 +70,14 @@ struct wavpack_block_header {
     uint32_t crc;                              /*32 bits*/
 };
 
+struct wavpack_subblock_header {
+    uint8_t metadata_function;                 /*5 bits*/
+    uint8_t nondecoder_data;                   /*1 bit*/
+    uint8_t actual_size_1_less;                /*1 bit*/
+    uint8_t large_block;                       /*1 bit*/
+    uint32_t block_size;                       /*8 bits/24 bits*/
+};
+
 /*the WavPackDecoder.__init__() method*/
 int
 WavPackDecoder_init(decoders_WavPackDecoder *self,
@@ -107,6 +115,9 @@ PyGetSetDef WavPackDecoder_getseters[] = {
 static PyObject*
 WavPackDecoder_analyze_frame(decoders_WavPackDecoder* self, PyObject *args);
 
+PyObject*
+WavPackDecoder_analyze_subblock(Bitstream* bitstream);
+
 PyMethodDef WavPackDecoder_methods[] = {
     {"analyze_frame", (PyCFunction)WavPackDecoder_analyze_frame,
      METH_NOARGS, "Returns the analysis of the next frame"},
@@ -123,6 +134,10 @@ WavPackDecoder_new(PyTypeObject *type,
 status
 WavPackDecoder_read_block_header(Bitstream* bitstream,
                                  struct wavpack_block_header* header);
+
+void
+WavPackDecoder_read_subblock_header(Bitstream* bitstream,
+                                    struct wavpack_subblock_header* header);
 
 PyTypeObject decoders_WavPackDecoderType = {
     PyObject_HEAD_INIT(NULL)

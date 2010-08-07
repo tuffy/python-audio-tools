@@ -187,6 +187,17 @@ WavPackDecoder_read_block_header(Bitstream* bitstream,
     return OK;
 }
 
+void
+WavPackDecoder_read_subblock_header(Bitstream* bitstream,
+                                    struct wavpack_subblock_header* header) {
+    header->metadata_function = bitstream->read(bitstream, 5);
+    header->nondecoder_data = bitstream->read(bitstream, 1);
+    header->actual_size_1_less = bitstream->read(bitstream, 1);
+    header->large_block = bitstream->read(bitstream, 1);
+    header->block_size = bitstream->read(bitstream,
+                                         header->large_block ? 24 : 8);
+}
+
 /*as with Shorten, whose analyze_frame() returns the next command
   (likely only part of a total collection of PCM frames),
   this returns a single block which may be only one of several
@@ -195,19 +206,25 @@ WavPackDecoder_read_block_header(Bitstream* bitstream,
 static PyObject*
 WavPackDecoder_analyze_frame(decoders_WavPackDecoder* self, PyObject *args) {
     struct wavpack_block_header block_header;
+    long block_end;
+    PyObject* subblocks = PyList_New(0);
 
     if (self->remaining_samples > 0) {
         /*FIXME - check for EOFs here*/
         if (WavPackDecoder_read_block_header(self->bitstream,
                                              &block_header) == OK) {
-            /*FIXME - parse sub-blocks here*/
-            fseek(self->file, block_header.block_size - 24, SEEK_CUR);
+            block_end = ftell(self->bitstream->file) +
+                block_header.block_size - 24;
+            while (ftell(self->bitstream->file) < block_end) {
+                PyList_Append(subblocks,
+                        WavPackDecoder_analyze_subblock(self->bitstream));
+            }
 
             self->remaining_samples -= block_header.block_samples;
             return Py_BuildValue(
                     "{sI sI si si si sI sI "
                     "si si si si si si si si si si si si si si si "
-                    "si si sI}",
+                    "si si sI sO}",
                     "block_size", block_header.block_size,
                     "version", block_header.version,
                     "track_number", block_header.track_number,
@@ -243,7 +260,8 @@ WavPackDecoder_analyze_frame(decoders_WavPackDecoder* self, PyObject *args) {
 
                     "use_IIR", block_header.use_IIR,
                     "false_stereo", block_header.false_stereo,
-                    "crc", block_header.crc);
+                    "crc", block_header.crc,
+                    "sub_blocks", subblocks);
 
         } else {
             return NULL;
@@ -252,4 +270,41 @@ WavPackDecoder_analyze_frame(decoders_WavPackDecoder* self, PyObject *args) {
         Py_INCREF(Py_None);
         return Py_None;
     }
+}
+
+PyObject*
+WavPackDecoder_analyze_subblock(Bitstream* bitstream) {
+    struct wavpack_subblock_header header;
+    unsigned char* subblock_data;
+    size_t data_size;
+    PyObject* subblock_data_obj;
+
+    /*FIXME - catch EOF here*/
+    WavPackDecoder_read_subblock_header(bitstream, &header);
+
+    /*FIXME - parse different subblock types here*/
+
+    /*return a binary string for unknown subblock types*/
+    data_size = header.block_size * 2;
+    subblock_data = malloc(data_size);
+    if (fread(subblock_data, sizeof(unsigned char), data_size,
+              bitstream->file) != data_size) {
+        PyErr_SetString(PyExc_IOError, "I/O error reading stream");
+        free(subblock_data);
+        return NULL;
+    } else {
+        subblock_data_obj = PyString_FromStringAndSize(
+                    (char*)subblock_data,
+                    data_size - (header.actual_size_1_less ? 1 : 0));
+        free(subblock_data);
+    }
+
+
+    return Py_BuildValue("{sI sI sI sI sI sO}",
+                         "metadata_function", header.metadata_function,
+                         "nondecoder_data", header.nondecoder_data,
+                         "actual_size_1_less", header.actual_size_1_less,
+                         "large_block", header.large_block,
+                         "sub_block_size", header.block_size,
+                         "sub_block_data", subblock_data_obj);
 }
