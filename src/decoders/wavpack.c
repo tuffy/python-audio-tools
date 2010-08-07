@@ -28,6 +28,8 @@ WavPackDecoder_init(decoders_WavPackDecoder *self,
     self->filename = NULL;
     self->bitstream = NULL;
     self->file = NULL;
+    ia_init(&(self->decorr_terms), 8);
+    ia_init(&(self->decorr_deltas), 8);
 
     if (!PyArg_ParseTuple(args, "s", &filename))
         return -1;
@@ -77,6 +79,9 @@ WavPackDecoder_init(decoders_WavPackDecoder *self,
 
 void
 WavPackDecoder_dealloc(decoders_WavPackDecoder *self) {
+    ia_free(&(self->decorr_terms));
+    ia_free(&(self->decorr_deltas));
+
     if (self->filename != NULL)
         free(self->filename);
 
@@ -113,6 +118,13 @@ WavPackDecoder_channels(decoders_WavPackDecoder *self, void *closure) {
 static PyObject*
 WavPackDecoder_channel_mask(decoders_WavPackDecoder *self, void *closure) {
     return Py_BuildValue("i", self->channel_mask);
+}
+
+static PyObject*
+WavPackDecoder_close(decoders_WavPackDecoder* self, PyObject *args) {
+    self->remaining_samples = 0;
+    Py_INCREF(Py_None);
+    return Py_None;
 }
 
 status
@@ -198,6 +210,78 @@ WavPackDecoder_read_subblock_header(Bitstream* bitstream,
                                          header->large_block ? 24 : 8);
 }
 
+status
+WavPackDecoder_read_decorr_terms(Bitstream* bitstream,
+                                 struct wavpack_subblock_header* header,
+                                 struct i_array* decorr_terms,
+                                 struct i_array* decorr_deltas) {
+    int term_count = (header->block_size * 2) -
+        (header->actual_size_1_less ? 1 : 0);
+    int decorr_term;
+
+    if (term_count > MAXIMUM_TERM_COUNT) {
+        PyErr_SetString(PyExc_ValueError, "excessive term count");
+        return ERROR;
+    }
+
+    ia_reset(decorr_terms);
+    ia_reset(decorr_deltas);
+
+    for (; term_count > 0; term_count--) {
+        decorr_term = bitstream->read(bitstream, 5) - 5;
+        switch (decorr_term) {
+        case 1:
+        case 2:
+        case 3:
+        case 4:
+        case 5:
+        case 6:
+        case 7:
+        case 8:
+        case 17:
+        case 18:
+        case -1:
+        case -2:
+        case -3:
+            /* valid terms */
+            break;
+        default:
+            /* anything else is invalid*/
+            PyErr_SetString(PyExc_ValueError, "invalid decorrelation term");
+            return ERROR;
+        }
+        ia_append(decorr_terms, decorr_term);
+        ia_append(decorr_deltas, bitstream->read(bitstream, 3));
+    }
+
+    if (header->actual_size_1_less)
+        bitstream->read(bitstream, 8);
+
+    ia_reverse(decorr_terms);
+    ia_reverse(decorr_deltas);
+
+    return OK;
+}
+
+static PyObject*
+i_array_to_list(struct i_array *list)
+{
+    PyObject* toreturn;
+    PyObject* item;
+    ia_size_t i;
+
+    if ((toreturn = PyList_New(0)) == NULL)
+        return NULL;
+    else {
+        for (i = 0; i < list->size; i++) {
+            item = PyInt_FromLong(list->data[i]);
+            PyList_Append(toreturn, item);
+            Py_DECREF(item);
+        }
+        return toreturn;
+    }
+}
+
 /*as with Shorten, whose analyze_frame() returns the next command
   (likely only part of a total collection of PCM frames),
   this returns a single block which may be only one of several
@@ -217,7 +301,7 @@ WavPackDecoder_analyze_frame(decoders_WavPackDecoder* self, PyObject *args) {
                 block_header.block_size - 24;
             while (ftell(self->bitstream->file) < block_end) {
                 PyList_Append(subblocks,
-                        WavPackDecoder_analyze_subblock(self->bitstream));
+                        WavPackDecoder_analyze_subblock(self));
             }
 
             self->remaining_samples -= block_header.block_samples;
@@ -273,30 +357,48 @@ WavPackDecoder_analyze_frame(decoders_WavPackDecoder* self, PyObject *args) {
 }
 
 PyObject*
-WavPackDecoder_analyze_subblock(Bitstream* bitstream) {
+WavPackDecoder_analyze_subblock(decoders_WavPackDecoder* self) {
+    Bitstream* bitstream = self->bitstream;
     struct wavpack_subblock_header header;
-    unsigned char* subblock_data;
+    unsigned char* subblock_data = NULL;
     size_t data_size;
     PyObject* subblock_data_obj;
 
     /*FIXME - catch EOF here*/
     WavPackDecoder_read_subblock_header(bitstream, &header);
 
-    /*FIXME - parse different subblock types here*/
-
-    /*return a binary string for unknown subblock types*/
-    data_size = header.block_size * 2;
-    subblock_data = malloc(data_size);
-    if (fread(subblock_data, sizeof(unsigned char), data_size,
-              bitstream->file) != data_size) {
-        PyErr_SetString(PyExc_IOError, "I/O error reading stream");
-        free(subblock_data);
-        return NULL;
-    } else {
-        subblock_data_obj = PyString_FromStringAndSize(
-                    (char*)subblock_data,
-                    data_size - (header.actual_size_1_less ? 1 : 0));
-        free(subblock_data);
+    switch (header.metadata_function | (header.nondecoder_data << 5)) {
+    case 2:
+        if (WavPackDecoder_read_decorr_terms(bitstream,
+                                             &header,
+                                             &(self->decorr_terms),
+                                             &(self->decorr_deltas)) == OK) {
+            subblock_data_obj = Py_BuildValue(
+                                    "{sO sO}",
+                                    "decorr_terms",
+                                    i_array_to_list(&(self->decorr_terms)),
+                                    "decorr_deltas",
+                                    i_array_to_list(&(self->decorr_deltas)));
+        } else
+            return NULL;
+        break;
+    default:
+        /*return a binary string for unknown subblock types*/
+        data_size = header.block_size * 2;
+        subblock_data = malloc(data_size);
+        if (fread(subblock_data,
+                  sizeof(unsigned char),
+                  data_size,
+                  bitstream->file) != data_size) {
+            PyErr_SetString(PyExc_IOError, "I/O error reading stream");
+            free(subblock_data);
+            return NULL;
+        } else {
+            subblock_data_obj = PyString_FromStringAndSize(
+                        (char*)subblock_data,
+                        data_size - (header.actual_size_1_less ? 1 : 0));
+            free(subblock_data);
+        }
     }
 
 

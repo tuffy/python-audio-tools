@@ -107,13 +107,14 @@ ia_reverse(struct i_array *array)
     ia_size_t end;
     ia_data_t val;
 
-    for (start = 0, end = array->size - 1;
-         start < end;
-         start++, end--) {
-        val = array->data[start];
-        array->data[start] = array->data[end];
-        array->data[end] = val;
-    }
+    if (array->size > 0)
+        for (start = 0, end = array->size - 1;
+             start < end;
+             start++, end--) {
+            val = array->data[start];
+            array->data[start] = array->data[end];
+            array->data[end] = val;
+        }
 }
 
 /*duplicates the attributes of source in target,
@@ -177,7 +178,7 @@ ia_pop_head(struct i_array *source)
 /*This returns the last element of "source"
   and removes that value from the array by shifting its size down one notch.
 
-  Unline ia_pop_head, this will not lose allocated data.*/
+  Unlike ia_pop_head, this will not lose allocated data.*/
 static inline ia_data_t
 ia_pop_tail(struct i_array *source)
 {

@@ -1,6 +1,7 @@
 #include <Python.h>
 #include <stdint.h>
 #include "../bitstream_r.h"
+#include "../array.h"
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -35,6 +36,9 @@ typedef struct {
     int channels;
     int channel_mask;
     int remaining_samples;
+
+    struct i_array decorr_terms;
+    struct i_array decorr_deltas;
 } decoders_WavPackDecoder;
 
 struct wavpack_block_header {
@@ -78,6 +82,8 @@ struct wavpack_subblock_header {
     uint32_t block_size;                       /*8 bits/24 bits*/
 };
 
+#define MAXIMUM_TERM_COUNT 16
+
 /*the WavPackDecoder.__init__() method*/
 int
 WavPackDecoder_init(decoders_WavPackDecoder *self,
@@ -115,12 +121,18 @@ PyGetSetDef WavPackDecoder_getseters[] = {
 static PyObject*
 WavPackDecoder_analyze_frame(decoders_WavPackDecoder* self, PyObject *args);
 
+/*the WavPackDecoder.close() method*/
+static PyObject*
+WavPackDecoder_close(decoders_WavPackDecoder* self, PyObject *args);
+
 PyObject*
-WavPackDecoder_analyze_subblock(Bitstream* bitstream);
+WavPackDecoder_analyze_subblock(decoders_WavPackDecoder* self);
 
 PyMethodDef WavPackDecoder_methods[] = {
     {"analyze_frame", (PyCFunction)WavPackDecoder_analyze_frame,
      METH_NOARGS, "Returns the analysis of the next frame"},
+    {"close", (PyCFunction)WavPackDecoder_close,
+     METH_NOARGS, "Closes the stream"},
     {NULL}
 };
 
@@ -138,6 +150,15 @@ WavPackDecoder_read_block_header(Bitstream* bitstream,
 void
 WavPackDecoder_read_subblock_header(Bitstream* bitstream,
                                     struct wavpack_subblock_header* header);
+
+/*Places the interleaved decorrelation terms and decorrelation deltas
+  from the bitstream to the given arrays.
+  May return an error if any of the terms are invalid.*/
+status
+WavPackDecoder_read_decorr_terms(Bitstream* bitstream,
+                                 struct wavpack_subblock_header* header,
+                                 struct i_array* decorr_terms,
+                                 struct i_array* decorr_deltas);
 
 PyTypeObject decoders_WavPackDecoderType = {
     PyObject_HEAD_INIT(NULL)
