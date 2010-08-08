@@ -37,7 +37,7 @@ figures/ogg_stream.pdf figures/ogg_packets.pdf \
 figures/vorbis_identification.pdf figures/vorbis_comment.pdf \
 figures/wavpack_stream.pdf figures/wavpack_block_header.pdf \
 figures/wavpack_subblock_header.pdf \
-figures/wavpack_decorr_terms.pdf \
+figures/wavpack_decorr_terms.pdf figures/wavpack_decorr_weights.pdf \
 figures/ape_stream.pdf figures/ape_descriptor.pdf figures/ape_header.pdf \
 figures/apev2_tag.pdf figures/apev2_tagheader.pdf figures/apev2_flags.pdf \
 figures/speex_header.pdf \

@@ -24,6 +24,9 @@
 
 typedef enum {OK, ERROR} status;
 
+typedef enum {WV_DECORR_TERMS = 2,
+              WV_DECORR_WEIGHTS = 3} wv_metadata_function;
+
 typedef struct {
     PyObject_HEAD
 
@@ -39,6 +42,8 @@ typedef struct {
 
     struct i_array decorr_terms;
     struct i_array decorr_deltas;
+    struct i_array decorr_weights_A;
+    struct i_array decorr_weights_B;
 } decoders_WavPackDecoder;
 
 struct wavpack_block_header {
@@ -126,7 +131,8 @@ static PyObject*
 WavPackDecoder_close(decoders_WavPackDecoder* self, PyObject *args);
 
 PyObject*
-WavPackDecoder_analyze_subblock(decoders_WavPackDecoder* self);
+WavPackDecoder_analyze_subblock(decoders_WavPackDecoder* self,
+                                struct wavpack_block_header* block_header);
 
 PyMethodDef WavPackDecoder_methods[] = {
     {"analyze_frame", (PyCFunction)WavPackDecoder_analyze_frame,
@@ -151,7 +157,7 @@ void
 WavPackDecoder_read_subblock_header(Bitstream* bitstream,
                                     struct wavpack_subblock_header* header);
 
-/*Places the interleaved decorrelation terms and decorrelation deltas
+/*Reads the interleaved decorrelation terms and decorrelation deltas
   from the bitstream to the given arrays.
   May return an error if any of the terms are invalid.*/
 status
@@ -159,6 +165,19 @@ WavPackDecoder_read_decorr_terms(Bitstream* bitstream,
                                  struct wavpack_subblock_header* header,
                                  struct i_array* decorr_terms,
                                  struct i_array* decorr_deltas);
+
+int
+WavPackDecoder_restore_weight(int weight);
+
+/*Reads the interleaved decorrelation weights
+  from the bitstream to the given arrays.*/
+status
+WavPackDecoder_read_decorr_weights(Bitstream* bitstream,
+                                   struct wavpack_subblock_header* header,
+                                   int block_channel_count,
+                                   int term_count,
+                                   struct i_array *weights_A,
+                                   struct i_array *weights_B);
 
 PyTypeObject decoders_WavPackDecoderType = {
     PyObject_HEAD_INIT(NULL)

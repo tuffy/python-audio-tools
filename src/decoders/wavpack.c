@@ -30,6 +30,8 @@ WavPackDecoder_init(decoders_WavPackDecoder *self,
     self->file = NULL;
     ia_init(&(self->decorr_terms), 8);
     ia_init(&(self->decorr_deltas), 8);
+    ia_init(&(self->decorr_weights_A), 8);
+    ia_init(&(self->decorr_weights_B), 8);
 
     if (!PyArg_ParseTuple(args, "s", &filename))
         return -1;
@@ -81,6 +83,8 @@ void
 WavPackDecoder_dealloc(decoders_WavPackDecoder *self) {
     ia_free(&(self->decorr_terms));
     ia_free(&(self->decorr_deltas));
+    ia_free(&(self->decorr_weights_A));
+    ia_free(&(self->decorr_weights_B));
 
     if (self->filename != NULL)
         free(self->filename);
@@ -263,6 +267,55 @@ WavPackDecoder_read_decorr_terms(Bitstream* bitstream,
     return OK;
 }
 
+int
+WavPackDecoder_restore_weight(int weight) {
+    if (weight > 0) {
+        return (weight << 3) + (((weight << 3) + 64) >> 7);
+    } else {
+        return weight << 3;
+    }
+}
+
+status
+WavPackDecoder_read_decorr_weights(Bitstream* bitstream,
+                                   struct wavpack_subblock_header* header,
+                                   int block_channel_count,
+                                   int term_count,
+                                   struct i_array *weights_A,
+                                   struct i_array *weights_B) {
+    int weight_pairs = (((header->block_size * 2) -
+                         (header->actual_size_1_less ? 1 : 0)) /
+                        block_channel_count);
+
+    ia_reset(weights_A);
+    ia_reset(weights_B);
+
+    for(; weight_pairs > 0; weight_pairs--, term_count--) {
+        ia_append(weights_A,
+                  WavPackDecoder_restore_weight(
+                        bitstream->read_signed(bitstream, 8)));
+        if (block_channel_count > 1)
+            ia_append(weights_B,
+                      WavPackDecoder_restore_weight(
+                            bitstream->read_signed(bitstream, 8)));
+        else
+            ia_append(weights_B, 0);
+    }
+
+    if (header->actual_size_1_less)
+        bitstream->read(bitstream, 8);
+
+    for(; term_count > 0; term_count--) {
+        ia_append(weights_A, 0);
+        ia_append(weights_B, 0);
+    }
+
+    ia_reverse(weights_A);
+    ia_reverse(weights_B);
+
+    return OK;
+}
+
 static PyObject*
 i_array_to_list(struct i_array *list)
 {
@@ -292,8 +345,11 @@ WavPackDecoder_analyze_frame(decoders_WavPackDecoder* self, PyObject *args) {
     struct wavpack_block_header block_header;
     long block_end;
     PyObject* subblocks = PyList_New(0);
+    long position;
 
     if (self->remaining_samples > 0) {
+        position = ftell(self->bitstream->file);
+
         /*FIXME - check for EOFs here*/
         if (WavPackDecoder_read_block_header(self->bitstream,
                                              &block_header) == OK) {
@@ -301,14 +357,16 @@ WavPackDecoder_analyze_frame(decoders_WavPackDecoder* self, PyObject *args) {
                 block_header.block_size - 24;
             while (ftell(self->bitstream->file) < block_end) {
                 PyList_Append(subblocks,
-                        WavPackDecoder_analyze_subblock(self));
+                              WavPackDecoder_analyze_subblock(self,
+                                                              &block_header));
             }
 
             self->remaining_samples -= block_header.block_samples;
             return Py_BuildValue(
-                    "{sI sI si si si sI sI "
+                    "{sl sI sI si si si sI sI "
                     "si si si si si si si si si si si si si si si "
                     "si si sI sO}",
+                    "offset", position,
                     "block_size", block_header.block_size,
                     "version", block_header.version,
                     "track_number", block_header.track_number,
@@ -357,7 +415,8 @@ WavPackDecoder_analyze_frame(decoders_WavPackDecoder* self, PyObject *args) {
 }
 
 PyObject*
-WavPackDecoder_analyze_subblock(decoders_WavPackDecoder* self) {
+WavPackDecoder_analyze_subblock(decoders_WavPackDecoder* self,
+                                struct wavpack_block_header* block_header) {
     Bitstream* bitstream = self->bitstream;
     struct wavpack_subblock_header header;
     unsigned char* subblock_data = NULL;
@@ -368,7 +427,7 @@ WavPackDecoder_analyze_subblock(decoders_WavPackDecoder* self) {
     WavPackDecoder_read_subblock_header(bitstream, &header);
 
     switch (header.metadata_function | (header.nondecoder_data << 5)) {
-    case 2:
+    case WV_DECORR_TERMS:
         if (WavPackDecoder_read_decorr_terms(bitstream,
                                              &header,
                                              &(self->decorr_terms),
@@ -379,6 +438,23 @@ WavPackDecoder_analyze_subblock(decoders_WavPackDecoder* self) {
                                     i_array_to_list(&(self->decorr_terms)),
                                     "decorr_deltas",
                                     i_array_to_list(&(self->decorr_deltas)));
+        } else
+            return NULL;
+        break;
+    case WV_DECORR_WEIGHTS:
+        if (WavPackDecoder_read_decorr_weights(
+                                bitstream,
+                                &header,
+                                block_header->mono_output ? 1 : 2,
+                                self->decorr_terms.size,
+                                &(self->decorr_weights_A),
+                                &(self->decorr_weights_B)) == OK) {
+            subblock_data_obj = Py_BuildValue(
+                                "{sO sO}",
+                                "decorr_weights_A",
+                                i_array_to_list(&(self->decorr_weights_A)),
+                                "decorr_weights_B",
+                                i_array_to_list(&(self->decorr_weights_B)));
         } else
             return NULL;
         break;

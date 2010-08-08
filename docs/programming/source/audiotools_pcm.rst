@@ -180,7 +180,7 @@ FloatFrameList Objects
    returns the samples at the given frame as a new :class:`FloatFrameList`
    object.
    This new FloatFrameList will be a single frame long, but have the same
-   number of channels and bits_per_sample as the original.
+   number of channels as the original.
    Raises :exc:`IndexError` if one tries to get a frame number outside
    this FloatFrameList's boundaries.
 
@@ -190,7 +190,7 @@ FloatFrameList Objects
    returns the samples at the given channel as a new :class:`FloatFrameList`
    object.
    This new FloatFrameList will be a single channel wide, but have the same
-   number of frames and bits_per_sample as the original.
+   number of frames as the original.
    Raises :exc:`IndexError` if one tries to get a channel number outside
    this FloatFrameList's boundaries.
 
