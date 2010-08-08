@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<diagram>
+  <row>
+    <col start="0" end="4" width=".32">Metadata Function (4)</col>
+    <col start="5" end="5" width=".05">0</col>
+    <col start="6" end="6" width=".22">Actual Size 1 Less</col>
+    <col start="7" end="7" width=".18">Large Block</col>
+    <col start="8" end="15/31" width=".23">Block Size</col>
+  </row>
+  <row>
+    <col width=".333333" start="0" end="15">Decorrelation Sample₁</col>
+    <col width=".333333" start="16" end="31">Decorrelation Sample₂</col>
+    <col width=".333333">...</col>
+  </row>
+</diagram>

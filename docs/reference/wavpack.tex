@@ -201,3 +201,51 @@ number of \VAR{Decorrelation Weight} values, per channel, as
 However, this block may contain less.
 In that event, those low weight values are set to 0.
 
+\clearpage
+
+\subsection{the Decorrelation Samples sub-block}
+\begin{figure}[h]
+\includegraphics{figures/wavpack_decorr_samples.pdf}
+\end{figure}
+\par
+\noindent
+The decorrelation samples values are stored as signed, 16-bit values.
+Converting them to sample values requires the following formula:
+\begin{equation*}
+\text{Sample} =
+\begin{cases}
+\lfloor \text{wv\_exp2}(value \bmod{256}) \div 2 ^ {9 - \lfloor value \div 2 ^ 8 \rfloor} \rfloor & \text{if } 0 \leq value \leq 2304 \\
+\text{wv\_exp2}(value \bmod{256}) \times 2 ^ {\lfloor value \div 2 ^ 8 \rfloor - 9} & \text{if } 2304 < value \leq 32767 \\
+-\lfloor \text{wv\_exp2}(-value \bmod{256}) \div 2 ^ {9 - \lfloor -value \div 2 ^ 8 \rfloor} \rfloor & \text{if } -2304 \leq value < 0 \\
+-(\text{wv\_exp2}(-value \bmod{256}) \times 2 ^ {\lfloor -value \div 2 ^ 8 \rfloor - 9}) & \text{if } -32768 \leq value < -2304
+\end{cases}
+\end{equation*}
+\par
+\noindent
+where \VAR{wv\_exp2} is defined from the following base-16 table:
+\par
+\noindent
+{\relsize{-3}\ttfamily
+\begin{tabular}{| c | c | c | c | c | c | c | c | c | c | c | c | c | c | c | c | c |}
+\hline
+& 0x?0 & 0x?1 & 0x?2 & 0x?3 & 0x?4 & 0x?5 & 0x?6 & 0x?7 & 0x?8 & 0x?9 & 0x?A & 0x?B & 0x?C & 0x?D & 0x?E & 0x?F \\
+\hline
+0x0? & 100 & 101 & 101 & 102 & 103 & 103 & 104 & 105 & 106 & 106 & 107 & 108 & 108 & 109 & 10A & 10B \\
+0x1? & 10B & 10C & 10D & 10E & 10E & 10F & 110 & 110 & 111 & 112 & 113 & 113 & 114 & 115 & 116 & 116 \\
+0x2? & 117 & 118 & 119 & 119 & 11A & 11B & 11C & 11D & 11D & 11E & 11F & 120 & 120 & 121 & 122 & 123 \\
+0x3? & 124 & 124 & 125 & 126 & 127 & 128 & 128 & 129 & 12A & 12B & 12C & 12C & 12D & 12E & 12F & 130 \\
+0x4? & 130 & 131 & 132 & 133 & 134 & 135 & 135 & 136 & 137 & 138 & 139 & 13A & 13A & 13B & 13C & 13D \\
+0x5? & 13E & 13F & 140 & 141 & 141 & 142 & 143 & 144 & 145 & 146 & 147 & 148 & 148 & 149 & 14A & 14B \\
+0x6? & 14C & 14D & 14E & 14F & 150 & 151 & 151 & 152 & 153 & 154 & 155 & 156 & 157 & 158 & 159 & 15A \\
+0x7? & 15B & 15C & 15D & 15E & 15E & 15F & 160 & 161 & 162 & 163 & 164 & 165 & 166 & 167 & 168 & 169 \\
+0x8? & 16A & 16B & 16C & 16D & 16E & 16F & 170 & 171 & 172 & 173 & 174 & 175 & 176 & 177 & 178 & 179 \\
+0x9? & 17A & 17B & 17C & 17D & 17E & 17F & 180 & 181 & 182 & 183 & 184 & 185 & 187 & 188 & 189 & 18A \\
+0xA? & 18B & 18C & 18D & 18E & 18F & 190 & 191 & 192 & 193 & 195 & 196 & 197 & 198 & 199 & 19A & 19B \\
+0xB? & 19C & 19D & 19F & 1A0 & 1A1 & 1A2 & 1A3 & 1A4 & 1A5 & 1A6 & 1A8 & 1A9 & 1AA & 1AB & 1AC & 1AD \\
+0xC? & 1AF & 1B0 & 1B1 & 1B2 & 1B3 & 1B4 & 1B6 & 1B7 & 1B8 & 1B9 & 1BA & 1BC & 1BD & 1BE & 1BF & 1C0 \\
+0xD? & 1C2 & 1C3 & 1C4 & 1C5 & 1C6 & 1C8 & 1C9 & 1CA & 1CB & 1CD & 1CE & 1CF & 1D0 & 1D2 & 1D3 & 1D4 \\
+0xE? & 1D6 & 1D7 & 1D8 & 1D9 & 1DB & 1DC & 1DD & 1DE & 1E0 & 1E1 & 1E2 & 1E4 & 1E5 & 1E6 & 1E8 & 1E9 \\
+0xF? & 1EA & 1EC & 1ED & 1EE & 1F0 & 1F1 & 1F2 & 1F4 & 1F5 & 1F6 & 1F8 & 1F9 & 1FA & 1FC & 1FD & 1FF \\
+\hline
+\end{tabular}
+}
