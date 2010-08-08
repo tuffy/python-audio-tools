@@ -326,7 +326,6 @@ iaa_init(struct ia_array *array, ia_size_t total_arrays,
 struct ia_array
 iaa_blank(void);
 
-
 void
 iaa_free(struct ia_array *array);
 
