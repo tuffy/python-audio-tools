@@ -113,6 +113,7 @@ If the file contains more than two channels, we combine the output
 of several blocks into a single chunk of output data.
 
 \subsection{the Decorrelation Terms sub-block}
+\label{wavpack_decorr_terms}
 \begin{figure}[h]
 \includegraphics{figures/wavpack_decorr_terms.pdf}
 \end{figure}
@@ -249,3 +250,34 @@ where \VAR{wv\_exp2} is defined from the following base-16 table:
 \hline
 \end{tabular}
 }
+\par
+\noindent
+For example, given the sub-frame bytes:
+\begin{Verbatim}
+04 04 CF F8 B7 F8 CF 05 B3 05
+\end{Verbatim}
+our \VAR{Decorrelation Sample} values are:
+\begin{align*}
+\text{Sample}_1 &= \texttt{0xF8CF} = -1841
+ = -\lfloor \text{wv\_exp2}(1841 \bmod{256}) \div 2 ^ {9 - \lfloor 1841 \div 2 ^ 8 \rfloor} \rfloor \\
+&= -\lfloor \text{wv\_exp2}(49) \div 2 ^ {9 - 7} \rfloor
+ = -\lfloor 292 \div 4 \rfloor = \textbf{-73} \\
+\text{Sample}_2 &= \texttt{0xF8B7} = -1865
+ = -\lfloor \text{wv\_exp2}(1865 \bmod{256}) \div 2 ^ {9 - \lfloor 1865 \div 2 ^ 8 \rfloor} \rfloor \\
+&= -\lfloor \text{wv\_exp2}(73) \div 2 ^ {9 - 7} \rfloor
+ =  -\lfloor 312 \div 4 \rfloor = \textbf{-78} \\
+\text{Sample}_3 &= \texttt{0x05CF} = 1487
+ = \lfloor \text{wv\_exp2}(1487 \bmod{256}) \div 2 ^ {9 - \lfloor 1487 \div 2 ^ 8 \rfloor} \rfloor \\
+&= \lfloor \text{wv\_exp2}(207) \div 2 ^ {9 - 5} \rfloor
+ = \lfloor 448 \div 16 \rfloor = \textbf{28} \\
+\text{Sample}_4 &= \texttt{0x05B3} = 1459
+ = \lfloor \text{wv\_exp2}(1459 \bmod{256}) \div 2 ^ {9 - \lfloor 1459 \div 2 ^ 8 \rfloor} \rfloor \\
+&= \lfloor \text{wv\_exp2}(179) \div 2 ^ {9 - 5} \rfloor
+ = \lfloor 416 \div 16 \rfloor = \textbf{26}
+\end{align*}
+We're not done yet, however.
+The next step is to determine which \VAR{Decorrelation Sample}
+values correspond to which \VAR{Decorrelation Term}\footnote{As
+extracted on page \pageref{wavpack_decorr_terms}}.
+
+
