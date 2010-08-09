@@ -1,0 +1,40 @@
+digraph read_alac_residual {
+  size="2.5,5";
+  ratio=fill;
+  margin=0;
+  init [shape=record,label="{input k|input bps|r = 0}"];
+  unary_escape_test [shape=diamond,label="is\nr < 9?"];
+  read_next_bit [shape=parallelogram,label="bit = read 1"];
+  unary_finish_test [shape=diamond,label="is\nbit = 1?"];
+  increment_r [shape=rect,label="r = r + 1"];
+  k_test [shape=diamond,label="is\nk > 1?"];
+  shift_r [shape=rect,label="r = r × (2 ^ k - 1)"];
+  read_extra [shape=parallelogram,label="extra = read k"];
+  extra_gt_1 [shape=diamond,label="is\nextra > 1?"];
+  extra_eq_1 [shape=diamond,label="is\nextra = 1?"];
+  update_r [shape=rect,label="r = r + (extra - 1)"];
+  unread_1 [shape=parallelogram,label="unread 1"];
+  unread_0 [shape=parallelogram,label="unread 0"];
+  read_escape [shape=parallelogram,label="r = read bps"];
+  return_r [shape=rect,label="return r"];
+
+  init -> unary_escape_test;
+  unary_escape_test -> read_escape [label="NO"];
+  unary_escape_test -> read_next_bit [label="YES"];
+  read_next_bit -> unary_finish_test;
+  read_escape -> return_r;
+  unary_finish_test -> increment_r [label="YES"];
+  unary_finish_test -> k_test [label="NO"];
+  increment_r -> unary_escape_test;
+  k_test -> return_r [label="NO"];
+  k_test -> shift_r [label="YES"];
+  shift_r -> read_extra;
+  read_extra -> extra_gt_1;
+  extra_gt_1 -> extra_eq_1 [label="NO"];
+  extra_gt_1 -> update_r [label="YES"];
+  extra_eq_1 -> unread_1 [label="YES"];
+  extra_eq_1 -> unread_0 [label="NO"];
+  update_r -> return_r;
+  unread_1 -> return_r;
+  unread_0 -> return_r;
+}

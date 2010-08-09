@@ -1584,7 +1584,7 @@ We use it to calculate $\kappa$ using the following formula:
 Note that if $\kappa$ exceeds the \VAR{Maximum K} value from the
 \texttt{alac} atom, \VAR{Maximum K} is used instead.
 
-\begin{wrapfigure}[20]{r}{2.17in}
+\begin{wrapfigure}[22]{r}{2.5in}
 \includegraphics{figures/alac_write_residual.pdf}
 \end{wrapfigure}
 
@@ -1603,7 +1603,8 @@ First, we convert our signed residual to an unsigned value:
 We then divide our unsigned residual into quotient and remainder values:
 \begin{align*}
 q &= \lfloor r \div (2^k - 1) \rfloor \\
-e &= r - (q \times (2^k - 1))
+%% e &= r - (q \times (2^k - 1))
+e &= r\mod{2^k - 1}
 \end{align*}
 
 If $q$ is greater than 8, we write a 9 bit value \texttt{0x1FF}

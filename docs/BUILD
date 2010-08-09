@@ -13,5 +13,7 @@ Building the documentation PDFs requires the following:
   http://www.xfig.org/
 * gnuplot
   http://www.gnuplot.info/
+* graphviz
+  http://www.graphviz.org
 * pdftk
   http://www.pdfhacks.com/pdftk/

@@ -146,11 +146,17 @@ figures/m4a_meta_atoms.pdf: figures/m4a_meta_atoms.fig
 figures/alac_atoms.pdf: figures/alac_atoms.fig
 	fig2dev -Z 5 -L pdf $< $@
 
-figures/alac_read_residual.pdf: figures/alac_read_residual.fig
-	fig2dev -Z 5 -L pdf $< $@
+# figures/alac_read_residual.pdf: figures/alac_read_residual.fig
+# 	fig2dev -Z 5 -L pdf $< $@
 
-figures/alac_write_residual.pdf: figures/alac_write_residual.fig
-	fig2dev -Z 5 -L pdf $< $@
+figures/alac_read_residual.pdf: figures/alac_read_residual.dot
+	dot -Tpdf $< -o $@
+
+# figures/alac_write_residual.pdf: figures/alac_write_residual.fig
+# 	fig2dev -Z 5 -L pdf $< $@
+
+figures/alac_write_residual.pdf: figures/alac_write_residual.dot
+	dot -Tpdf $< -o $@
 
 figures/alac_residual.pdf: figures/alac_residual.fig
 	fig2dev -Z 5 -L pdf $< $@
