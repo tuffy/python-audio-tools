@@ -34,6 +34,8 @@ WavPackDecoder_init(decoders_WavPackDecoder *self,
     ia_init(&(self->decorr_weights_B), 8);
     iaa_init(&(self->decorr_samples_A), 16, 8);
     iaa_init(&(self->decorr_samples_B), 16, 8);
+    ia_init(&(self->entropy_variables_A), 3);
+    ia_init(&(self->entropy_variables_B), 3);
 
     if (!PyArg_ParseTuple(args, "s", &filename))
         return -1;
@@ -89,6 +91,8 @@ WavPackDecoder_dealloc(decoders_WavPackDecoder *self) {
     ia_free(&(self->decorr_weights_B));
     iaa_free(&(self->decorr_samples_A));
     iaa_free(&(self->decorr_samples_B));
+    ia_free(&(self->entropy_variables_A));
+    ia_free(&(self->entropy_variables_B));
 
     if (self->filename != NULL)
         free(self->filename);
@@ -465,6 +469,33 @@ WavPackDecoder_read_decorr_samples(Bitstream* bitstream,
     return OK;
 }
 
+status
+WavPackDecoder_read_entropy_variables(Bitstream* bitstream,
+                                      int block_channel_count,
+                                      struct i_array* variables_A,
+                                      struct i_array* variables_B) {
+    ia_reset(variables_A);
+    ia_reset(variables_B);
+
+    ia_append(variables_A,
+              wavpack_exp2(bitstream->read_signed(bitstream, 16)));
+    ia_append(variables_A,
+              wavpack_exp2(bitstream->read_signed(bitstream, 16)));
+    ia_append(variables_A,
+              wavpack_exp2(bitstream->read_signed(bitstream, 16)));
+    if (block_channel_count > 1) {
+        ia_append(variables_B,
+                  wavpack_exp2(bitstream->read_signed(bitstream, 16)));
+        ia_append(variables_B,
+                  wavpack_exp2(bitstream->read_signed(bitstream, 16)));
+        ia_append(variables_B,
+                  wavpack_exp2(bitstream->read_signed(bitstream, 16)));
+    }
+
+    return OK;
+}
+
+
 static PyObject*
 i_array_to_list(struct i_array *list)
 {
@@ -640,6 +671,21 @@ WavPackDecoder_analyze_subblock(decoders_WavPackDecoder* self,
                                 ia_array_to_list(&(self->decorr_samples_A)),
                                 "decorr_samples_B",
                                 ia_array_to_list(&(self->decorr_samples_B)));
+        } else
+            return NULL;
+        break;
+    case WV_ENTROPY_VARIABLES:
+        if (WavPackDecoder_read_entropy_variables(
+                                bitstream,
+                                block_header->mono_output ? 1  : 2,
+                                &(self->entropy_variables_A),
+                                &(self->entropy_variables_B)) == OK) {
+            subblock_data_obj = Py_BuildValue(
+                                "{sO sO}",
+                                "entropy_variables_A",
+                                i_array_to_list(&(self->entropy_variables_A)),
+                                "entropy_variables_B",
+                                i_array_to_list(&(self->entropy_variables_B)));
         } else
             return NULL;
         break;

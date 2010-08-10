@@ -26,7 +26,8 @@ typedef enum {OK, ERROR} status;
 
 typedef enum {WV_DECORR_TERMS = 2,
               WV_DECORR_WEIGHTS = 3,
-              WV_DECORR_SAMPLES = 4} wv_metadata_function;
+              WV_DECORR_SAMPLES = 4,
+              WV_ENTROPY_VARIABLES = 5} wv_metadata_function;
 
 typedef struct {
     PyObject_HEAD
@@ -47,6 +48,8 @@ typedef struct {
     struct i_array decorr_weights_B;
     struct ia_array decorr_samples_A;
     struct ia_array decorr_samples_B;
+    struct i_array entropy_variables_A;
+    struct i_array entropy_variables_B;
 } decoders_WavPackDecoder;
 
 struct wavpack_block_header {
@@ -189,6 +192,12 @@ WavPackDecoder_read_decorr_samples(Bitstream* bitstream,
                                    struct i_array* decorr_terms,
                                    struct ia_array* samples_A,
                                    struct ia_array* samples_B);
+
+status
+WavPackDecoder_read_entropy_variables(Bitstream* bitstream,
+                                      int block_channel_count,
+                                      struct i_array* variables_A,
+                                      struct i_array* variables_B);
 
 PyTypeObject decoders_WavPackDecoderType = {
     PyObject_HEAD_INIT(NULL)
