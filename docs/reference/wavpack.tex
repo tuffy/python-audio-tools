@@ -205,6 +205,7 @@ In that event, those low weight values are set to 0.
 \clearpage
 
 \subsection{the Decorrelation Samples sub-block}
+\label{wavpack_decorr_samples}
 \begin{figure}[h]
 \includegraphics{figures/wavpack_decorr_samples.pdf}
 \end{figure}
@@ -253,7 +254,7 @@ where \VAR{wv\_exp2} is defined from the following base-16 table:
 \par
 \noindent
 For example, given the sub-frame bytes:
-\begin{Verbatim}
+\begin{Verbatim}[frame=single]
 04 04 CF F8 B7 F8 CF 05 B3 05
 \end{Verbatim}
 our \VAR{Decorrelation Sample} values are:
@@ -275,8 +276,55 @@ our \VAR{Decorrelation Sample} values are:
 &= \lfloor \text{wv\_exp2}(179) \div 2 ^ {9 - 5} \rfloor
  = \lfloor 416 \div 16 \rfloor = \textbf{26}
 \end{align*}
+
+\clearpage
+
 We're not done yet, however.
 The next step is to determine which \VAR{Decorrelation Sample}
 values correspond to which \VAR{Decorrelation Term}\footnote{As
 extracted on page \pageref{wavpack_decorr_terms}}.
 
+TODO
+
+%% This portion is on-hold until I sort out how the decorrelation samples
+%% are used in the decoding process.  Although the unpacker treats them
+%% as lists of lists, WavPack's decorrelation passes seem to treat them
+%% like Shorten-style wrapped samples.  If so, this will affect how
+%% I describe their assignment process.
+
+\clearpage
+
+\subsection{the Entropy Variables sub-block}
+\begin{figure}[h]
+\includegraphics{figures/wavpack_entropy_vars.pdf}
+\end{figure}
+\par
+\noindent
+If a block is mono, this sub-block contains 3 \VAR{Entropy Variables}.
+If a block is stereo, this sub-block contains 6.
+Each is stored as a signed, 16-bit value which is packed in
+the same fashion as \VAR{Decorrelation Samples}\footnote{As described
+on page \pageref{wavpack_decorr_samples}.}.
+For example, given a 2 channel block with the sub-block bytes:
+\begin{Verbatim}[frame=single]
+05 06 e2 07 9b 08 55 09 e2 07 76 08 ba 08
+\end{Verbatim}
+our \VAR{Entropy Variables} are:
+\begin{align*}
+\text{Entropy Variable A}_1 &= \texttt{0x07E2} = 2018 = \lfloor \text{wv\_exp2}(2018 \bmod{256}) \div 2 ^ {9 - \lfloor 2018 \div 2 ^ 8 \rfloor} \rfloor \\
+&= \lfloor \text{wv\_exp2}(226) \div 2 ^ {9 - 7} \rfloor
+ = \lfloor 472 \div 4 \rfloor = \textbf{118} \\
+\text{Entropy Variable A}_2 &= \texttt{0x089B} = 2203 = \lfloor \text{wv\_exp2}(2203 \bmod{256}) \div 2 ^ {9 - \lfloor 2203 \div 2 ^ 8 \rfloor} \rfloor \\
+&= \lfloor \text{wv\_exp2}(155) \div 2 ^ {9 - 8} \rfloor
+ = \lfloor 389 \div 2 \rfloor = \textbf{194} \\
+\text{Entropy Variable A}_3 &= \texttt{0x0955} = 2389 = \text{wv\_exp2}(2389 \bmod{256}) \times 2 ^ {\lfloor 2389 \div 2 ^ 8 \rfloor - 9} \\
+&= \text{wv\_exp2}(85) \times 2 ^ {9 - 9} = 322 \times 1 = \textbf{322} \\
+\text{Entropy Variable B}_1 &= \texttt{0x07E2} = 2018 = \lfloor \text{wv\_exp2}(2018 \bmod{256}) \div 2 ^ {9 - \lfloor 2018 \div 2 ^ 8 \rfloor} \rfloor \\
+&= \lfloor \text{wv\_exp2}(226) \div 2 ^ {9 - 7} \rfloor
+ = \lfloor 472 \div 4 \rfloor = \textbf{118} \\
+\text{Entropy Variable B}_2 &= \texttt{0x0876} = 2166 = \lfloor \text{wv\_exp2}(2166 \bmod{256}) \div 2 ^ {9 - \lfloor 2166 \div 2 ^ 8 \rfloor} \rfloor \\
+&= \lfloor \text{wv\_exp2}(118) \div 2 ^ {9 - 8} \rfloor = \lfloor 352 \div 2 \rfloor = \textbf{176} \\
+\text{Entropy Variable B}_3 &= \texttt{0x08BA} = 2234 = \lfloor \text{wv\_exp2}(2234 \bmod{256}) \div 2 ^ {9 - \lfloor 2234 \div 2 ^ 8 \rfloor} \rfloor \\
+&= \lfloor \text{wv\_exp2}(186) \div 2 ^ {9 - 8} \rfloor
+ = \lfloor 424 \div 2 \rfloor = \textbf{212}
+\end{align*}
