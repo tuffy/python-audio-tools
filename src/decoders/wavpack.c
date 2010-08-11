@@ -28,6 +28,7 @@ WavPackDecoder_init(decoders_WavPackDecoder *self,
     self->filename = NULL;
     self->bitstream = NULL;
     self->file = NULL;
+
     ia_init(&(self->decorr_terms), 8);
     ia_init(&(self->decorr_deltas), 8);
     ia_init(&(self->decorr_weights_A), 8);
@@ -36,6 +37,7 @@ WavPackDecoder_init(decoders_WavPackDecoder *self,
     iaa_init(&(self->decorr_samples_B), 16, 8);
     ia_init(&(self->entropy_variables_A), 3);
     ia_init(&(self->entropy_variables_B), 3);
+    ia_init(&(self->values), 128);
 
     if (!PyArg_ParseTuple(args, "s", &filename))
         return -1;
@@ -93,6 +95,7 @@ WavPackDecoder_dealloc(decoders_WavPackDecoder *self) {
     iaa_free(&(self->decorr_samples_B));
     ia_free(&(self->entropy_variables_A));
     ia_free(&(self->entropy_variables_B));
+    ia_free(&(self->values));
 
     if (self->filename != NULL)
         free(self->filename);
@@ -495,6 +498,149 @@ WavPackDecoder_read_entropy_variables(Bitstream* bitstream,
     return OK;
 }
 
+status
+WavPackDecoder_read_wv_bitstream(Bitstream* bitstream,
+                                 struct wavpack_subblock_header* header,
+                                 struct i_array* entropy_variables_A,
+                                 struct i_array* entropy_variables_B,
+                                 int block_channel_count,
+                                 int block_samples,
+                                 struct i_array* values) {
+    int value_count;
+    int channel;
+    int holding_one = 0;
+    int holding_zero = 0;
+    struct i_array* entropy_variables[] = {entropy_variables_A,
+                                           entropy_variables_B};
+
+    ia_reset(values);
+
+    for (value_count = block_channel_count * block_samples,
+             channel = 0;
+         value_count > 0;
+         value_count--,
+             channel = (channel + 1) % block_channel_count) {
+        /*FIXME - check for 0s here*/
+
+        ia_append(values,
+                  wavpack_get_value(bitstream,
+                                    entropy_variables[channel],
+                                    &holding_one,
+                                    &holding_zero));
+    }
+
+    bitstream->byte_align(bitstream);
+    if (header->actual_size_1_less)
+        bitstream->read(bitstream, 8);
+
+    return OK;
+}
+
+static inline int
+LOG2(int value)
+{
+    int bits = -1;
+    while (value) {
+        bits++;
+        value >>= 1;
+    }
+    return bits;
+}
+
+int wavpack_get_value(Bitstream* bitstream,
+                      struct i_array* entropy_variables,
+                      int* holding_one,
+                      int* holding_zero) {
+    int t;
+    int t2;
+    int base;
+    int add;
+    int p;
+    int e;
+    int result;
+    ia_data_t *medians = entropy_variables->data;
+
+    /*The first phase is to calculate "t"
+      which determines how to use/adjust our "entropy_variables".*/
+    if (*holding_zero) {
+        t = 0;
+        *holding_zero = 0;
+    } else {
+        t = bitstream->read_limited_unary(bitstream, 0, 34);
+        if (t == 16) {
+            /*an escape code for large residuals, it seems*/
+            t2 = bitstream->read_limited_unary(bitstream, 0, 34);
+            if (t2 < 2)
+                t += t2;
+            else
+                t += bitstream->read(bitstream, t2 - 1) | (1 << (t2 - 1));
+        }
+
+        if (*holding_one) {
+            *holding_one = t & 1;
+            *holding_zero = !*holding_one;
+            t = (t >> 1) + 1;
+        } else {
+            *holding_one = t & 1;
+            *holding_zero = !*holding_one;
+            t = (t >> 1);
+        }
+    }
+
+    /*The second stage is to use our "entropy_variables"
+      to calculate "base" and "add".*/
+    switch (t) {
+    case 0:
+        base = 0;
+        add = medians[0] >> 4;
+        medians[0] -= ((medians[0] + 126) / 128) * 2;
+        break;
+    case 1:
+        base = (medians[0] >> 4) + 1;
+        add = medians[1] >> 4;
+        medians[0] += ((medians[0] + 128) / 128) * 5;
+        medians[1] -= ((medians[1] + 62) / 64) * 2;
+        break;
+    case 2:
+        base = ((medians[0] >> 4) + 1) + ((medians[1] >> 4) + 1);
+        add = medians[2] >> 4;
+        medians[0] += ((medians[0] + 128) / 128) * 5;
+        medians[1] += ((medians[1] + 64) / 64) * 5;
+        medians[2] -= ((medians[2] + 30) / 32) * 2;
+        break;
+    default:
+        base = ((medians[0] >> 4) + 1) + (((medians[1] >> 4) + 1) +
+             (((medians[2] >> 4) + 1) * (t - 2)));
+        add = medians[2] >> 4;
+        medians[0] += ((medians[0] + 128) / 128) * 5;
+        medians[1] += ((medians[1] + 64) / 64) * 5;
+        medians[2] += ((medians[2] + 32) / 32) * 5;
+        break;
+    }
+
+    /*The third stage is to use "base" and "add" to calculate
+      our final value.*/
+    if (add < 1) {
+        if (bitstream->read(bitstream, 1))
+            return ~base; /*negative*/
+        else
+            return base;  /*positive*/
+    } else {
+        p = LOG2(add);
+        e = (1 << (p + 1)) - add - 1;
+        if (p > 0)
+            result = bitstream->read(bitstream, p);
+        else
+            result = 0;
+        if (result >= e)
+            result = (result << 1) - e + bitstream->read(bitstream, 1);
+
+        if (bitstream->read(bitstream, 1))
+            return ~(base + result);  /*negative*/
+        else
+            return base + result;     /*positive*/
+    }
+}
 
 static PyObject*
 i_array_to_list(struct i_array *list)
@@ -548,12 +694,13 @@ WavPackDecoder_analyze_frame(decoders_WavPackDecoder* self, PyObject *args) {
 
     if (self->remaining_samples > 0) {
         position = ftell(self->bitstream->file);
+        self->got_entropy_variables = 0;
 
         /*FIXME - check for EOFs here*/
         if (WavPackDecoder_read_block_header(self->bitstream,
                                              &block_header) == OK) {
             block_end = ftell(self->bitstream->file) +
-                block_header.block_size - 24;
+                block_header.block_size - 24 - 1;
             while (ftell(self->bitstream->file) < block_end) {
                 PyList_Append(subblocks,
                               WavPackDecoder_analyze_subblock(self,
@@ -677,7 +824,7 @@ WavPackDecoder_analyze_subblock(decoders_WavPackDecoder* self,
     case WV_ENTROPY_VARIABLES:
         if (WavPackDecoder_read_entropy_variables(
                                 bitstream,
-                                block_header->mono_output ? 1  : 2,
+                                block_header->mono_output ? 1 : 2,
                                 &(self->entropy_variables_A),
                                 &(self->entropy_variables_B)) == OK) {
             subblock_data_obj = Py_BuildValue(
@@ -686,6 +833,19 @@ WavPackDecoder_analyze_subblock(decoders_WavPackDecoder* self,
                                 i_array_to_list(&(self->entropy_variables_A)),
                                 "entropy_variables_B",
                                 i_array_to_list(&(self->entropy_variables_B)));
+        } else
+            return NULL;
+        break;
+    case WV_BITSTREAM:
+        if (WavPackDecoder_read_wv_bitstream(
+                                   bitstream,
+                                   &header,
+                                   &(self->entropy_variables_A),
+                                   &(self->entropy_variables_B),
+                                   block_header->mono_output ? 1 : 2,
+                                   block_header->block_samples,
+                                   &(self->values)) == OK) {
+            subblock_data_obj = i_array_to_list(&(self->values));
         } else
             return NULL;
         break;

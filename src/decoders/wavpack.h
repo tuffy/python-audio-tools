@@ -24,10 +24,11 @@
 
 typedef enum {OK, ERROR} status;
 
-typedef enum {WV_DECORR_TERMS = 2,
-              WV_DECORR_WEIGHTS = 3,
-              WV_DECORR_SAMPLES = 4,
-              WV_ENTROPY_VARIABLES = 5} wv_metadata_function;
+typedef enum {WV_DECORR_TERMS      = 0x2,
+              WV_DECORR_WEIGHTS    = 0x3,
+              WV_DECORR_SAMPLES    = 0x4,
+              WV_ENTROPY_VARIABLES = 0x5,
+              WV_BITSTREAM         = 0xA} wv_metadata_function;
 
 typedef struct {
     PyObject_HEAD
@@ -42,6 +43,7 @@ typedef struct {
     int channel_mask;
     int remaining_samples;
 
+    /*a bunch of buffers to hold our sub-block data*/
     struct i_array decorr_terms;
     struct i_array decorr_deltas;
     struct i_array decorr_weights_A;
@@ -50,6 +52,13 @@ typedef struct {
     struct ia_array decorr_samples_B;
     struct i_array entropy_variables_A;
     struct i_array entropy_variables_B;
+    struct i_array values;
+
+    /*boolean indicators as to whether certain sub-blocks have been found*/
+    int got_decorr_terms;
+    int got_decorr_weights;
+    int got_decorr_samples;
+    int got_entropy_variables;
 } decoders_WavPackDecoder;
 
 struct wavpack_block_header {
@@ -196,8 +205,24 @@ WavPackDecoder_read_decorr_samples(Bitstream* bitstream,
 status
 WavPackDecoder_read_entropy_variables(Bitstream* bitstream,
                                       int block_channel_count,
-                                      struct i_array* variables_A,
-                                      struct i_array* variables_B);
+                                      struct i_array* entropy_variables_A,
+                                      struct i_array* entropy_variables_B);
+
+/*Reads the WV_BITSTREAM sub-block and returns
+  channel_count * samples number of values to the given array.*/
+status
+WavPackDecoder_read_wv_bitstream(Bitstream* bitstream,
+                                 struct wavpack_subblock_header* header,
+                                 struct i_array* entropy_variables_A,
+                                 struct i_array* entropy_variables_B,
+                                 int block_channel_count,
+                                 int block_samples,
+                                 struct i_array* values);
+
+int wavpack_get_value(Bitstream* bitstream,
+                      struct i_array* entropy_variables,
+                      int* holding_one,
+                      int* holding_zero);
 
 PyTypeObject decoders_WavPackDecoderType = {
     PyObject_HEAD_INIT(NULL)
