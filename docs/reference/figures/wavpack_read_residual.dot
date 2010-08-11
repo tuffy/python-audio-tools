@@ -1,0 +1,139 @@
+digraph wavpack_residual {
+  node [fontname="DejaVuSans"];
+  edge [fontname="DejaVuSans"];
+  size="8.5,11";
+  margin=0;
+  init1 [shape=record,label="input holding_one|input holding_zero"];
+
+  init1 -> test_holding_zero;
+  test_holding_zero -> yes_holding_zero [label="YES"];
+  test_holding_zero -> read_t [label="NO"];
+  read_t -> test_t_16;
+  test_t_16 -> test_holding_one [label="NO"];
+
+  test_holding_one -> y_h_o_test_t [label="YES"];
+  test_holding_one -> n_h_o_test_t [label="NO"];
+
+  y_h_o_test_t -> y_h_o_yes_t_odd_update_holding [label="YES"];
+  y_h_o_test_t -> y_h_o_yes_t_even_update_holding [label="NO"];
+  y_h_o_yes_t_odd_update_holding -> y_h_o_update_t;
+  y_h_o_yes_t_even_update_holding -> y_h_o_update_t;
+
+  n_h_o_test_t -> n_h_o_yes_t_odd_update_holding [label="YES"];
+  n_h_o_test_t -> n_h_o_yes_t_even_update_holding [label="NO"];
+  n_h_o_yes_t_odd_update_holding -> n_h_o_update_t;
+  n_h_o_yes_t_even_update_holding -> n_h_o_update_t;
+
+  test_t_16 -> read_t2 [label="YES"];
+  read_t2 -> test_t2;
+  test_t2 -> t_inc_t2 [label="YES"];
+  test_t2 -> t_inc_read [label="NO"];
+  t_inc_t2 -> test_holding_one;
+  t_inc_read -> test_holding_one;
+
+  subgraph cluster_t {
+    label="Read t";
+    test_holding_zero [shape=diamond,label="is\nholding_zero?"];
+    yes_holding_zero [shape=box,label="t = 0\nholding_zero = false"];
+    read_t [shape=parallelogram,label="t = limited unary"];
+    test_t_16 [shape=diamond,label="is\nt = 16?"];
+
+    read_t2 [shape=parallelogram,label="t2 = limited unary"];
+    test_t2 [shape=diamond,label="is\nt2 < 2?"];
+    t_inc_t2 [shape=box,label="t = t + t2"];
+    t_inc_read [shape=parallelogram,label="t = t + ((read t2 - 1) | (2 ^ t2 - 1))"];
+
+    test_holding_one [shape=diamond,label="is\nholding_one?"];
+
+    y_h_o_test_t [shape=diamond,label="is\nt odd?"];
+    y_h_o_yes_t_odd_update_holding [shape=box,label="holding_one=true\nholding_zero=false"];
+    y_h_o_yes_t_even_update_holding [shape=box,label="holding_one=false\nholding_zero=true"];
+    y_h_o_update_t [shape=box,label="t = (t / 2) + 1"];
+
+    n_h_o_test_t [shape=diamond,label="is\nt odd?"];
+    n_h_o_yes_t_odd_update_holding [shape=box,label="holding_one=true\nholding_zero=false"];
+    n_h_o_yes_t_even_update_holding [shape=box,label="holding_one=false\nholding_zero=true"];
+    n_h_o_update_t [shape=box,label="t = t / 2"];
+  }
+
+  y_h_o_update_t -> init2;
+  n_h_o_update_t -> init2;
+  yes_holding_zero -> init2;
+
+  init2 [shape=record,label="input t|input median₁|input median₂|input median₃|return holding_one|return holding_two"];
+
+  subgraph cluster_t2 {
+    label="Calculate base and add";
+
+    test_t_0 [shape=diamond,label="is\nt = 0?"];
+    test_t_1 [shape=diamond,label="is\nt = 1?"];
+    test_t_2 [shape=diamond,label="is\nt = 2?"];
+
+    t_0 [shape=record,label="{base = 0|add = median₁ ÷ 16|median₁ = median₁ - ((median₁ + 126) ÷ 128) × 2}"];
+    t_1 [shape=record,label="{base = (median₁ ÷ 16) + 1|add = median₂ ÷ 16|median₁ = median₁ + ((median₁ + 128) ÷ 128) × 5|median₂ = median₂ - ((median₂ + 62) ÷ 64) × 2}"];
+    t_2 [shape=record,label="{base = ((median₁ ÷ 16) + 1) + ((median₂ ÷ 16) + 1)|add = median₃ ÷ 16|median₁ = median₁ + ((median₁ + 128) ÷ 128) × 5|median₂ = median₂ + ((median₂ + 64) ÷ 64) × 5|median₃ = median₃ - ((median₃ + 30) ÷ 32) × 2}"];
+
+    t_default [shape=record,label="{base = ((median₁ ÷ 16) + 1) + (((median₂ ÷ 16) + 1) +\n(((median₃ ÷ 16) + 1) × (t - 2)))|add = median₃ ÷ 16|median₁ = median₁ + ((median₁ + 128) ÷ 128) × 5|median₂ = median₂ + ((median₂ + 64) ÷ 64) × 5|median₃ = median₃ + ((median₃ + 32) ÷ 32) × 5}"];
+  }
+
+  init2 -> test_t_0;
+  test_t_0 -> test_t_1 [label="NO"];
+  test_t_1 -> test_t_2 [label="NO"];
+  test_t_2 -> t_default [label="NO"];
+  test_t_0 -> t_0 [label="YES"];
+  test_t_1 -> t_1 [label="YES"];
+  test_t_2 -> t_2 [label="YES"];
+
+  t_0 -> init3;
+  t_1 -> init3;
+  t_2 -> init3;
+  t_default -> init3;
+
+  init3 [shape=record,label="input base|input add|return median₁|return median₂|return median₃"];
+  done3 [shape=record,label="{return value}"];
+
+  subgraph cluster_residual3 {
+    label="Calculate value";
+
+    test_add [shape=diamond,label="is\nadd < 1?"];
+    sign1 [shape=parallelogram,label="sign = read 1"];
+    test_sign_1 [shape=diamond,label="is\nsign = 1?"];
+    test_sign_1_yes [shape=box,label="value = -base - 1"];
+    test_sign_1_no [shape=box,label="value = base"];
+
+    calc_p_e [shape=record,label="{p = log₂(add)|e = (2 ^ (p + 1)) - add - 1}"];
+    test_p [shape=diamond,label="is\np > 0?"];
+    result1_read [shape=parallelogram,label="result = read p"];
+    result1_assign [shape=box,label="result = 0"];
+
+    test_result [shape=diamond,label="is\nresult ≥ e?"];
+    test_result_yes [shape=parallelogram,label="result = (result × 2) - e + read 1"];
+    sign2 [shape=parallelogram,label="sign = read 1"];
+    test_sign_2 [shape=diamond,label="is\nsign = 1?"];
+    test_sign_2_yes [shape=box,label="value = -(base + result) - 1"];
+    test_sign_2_no [shape=box,label="value = base + result"];
+  }
+
+  init3 -> test_add;
+  test_add -> sign1 [label="YES"];
+  sign1 -> test_sign_1;
+  test_sign_1 -> test_sign_1_yes [label="YES"];
+  test_sign_1 -> test_sign_1_no [label="NO"];
+  test_sign_1_yes -> done3;
+  test_sign_1_no -> done3;
+  test_add -> calc_p_e [label="NO"];
+  calc_p_e -> test_p;
+  test_p -> result1_read [label="YES"];
+  test_p -> result1_assign [label="NO"];
+  result1_read -> test_result;
+  result1_assign -> test_result;
+  test_result -> test_result_yes [label="YES"];
+  test_result -> sign2 [label="NO"];
+  test_result_yes -> sign2;
+  sign2 -> test_sign_2;
+  test_sign_2 -> test_sign_2_yes [label="YES"];
+  test_sign_2 -> test_sign_2_no [label="NO"];
+  test_sign_2_yes -> done3;
+  test_sign_2_no -> done3;
+
+}
