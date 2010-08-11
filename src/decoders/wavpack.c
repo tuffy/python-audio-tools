@@ -632,6 +632,7 @@ int wavpack_get_value(Bitstream* bitstream,
             result = bitstream->read(bitstream, p);
         else
             result = 0;
+
         if (result >= e)
             result = (result << 1) - e + bitstream->read(bitstream, 1);
 

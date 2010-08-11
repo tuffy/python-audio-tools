@@ -1,0 +1,34 @@
+digraph wavpack_residual2 {
+  node [fontname="DejaVuSans"];
+  edge [fontname="DejaVuSans"];
+  init [shape=record,label="{input t|input median₁|input median₂|input median₃}"];
+  done [shape=record,label="{return base|return add|return median₁|return median₂|return median₃}"];
+
+  subgraph cluster_t {
+    label="Calculate base and add";
+
+    test_t_0 [shape=diamond,label="is\nt = 0?"];
+    test_t_1 [shape=diamond,label="is\nt = 1?"];
+    test_t_2 [shape=diamond,label="is\nt = 2?"];
+
+    t_0 [shape=record,label="{base = 0|add = median₁ ÷ 16|median₁ = median₁ - ((median₁ + 126) ÷ 128) × 2}"];
+    t_1 [shape=record,label="{base = (median₁ ÷ 16) + 1|add = median₂ ÷ 16|median₁ = median₁ + ((median₁ + 128) ÷ 128) × 5|median₂ = median₂ - ((median₂ + 62) ÷ 64) × 2}"];
+    t_2 [shape=record,label="{base = ((median₁ ÷ 16) + 1) + ((median₂ ÷ 16) + 1)|add = median₃ ÷ 16|median₁ = median₁ + ((median₁ + 128) ÷ 128) × 5|median₂ = median₂ + ((median₂ + 64) ÷ 64) × 5|median₃ = median₃ - ((median₃ + 30) ÷ 32) × 2}"];
+
+    t_default [shape=record,label="{base = ((median₁ ÷ 16) + 1) + (((median₂ ÷ 16) + 1) +\n(((median₃ ÷ 16) + 1) × (t - 2)))|add = median₃ ÷ 16|median₁ = median₁ + ((median₁ + 128) ÷ 128) × 5|median₂ = median₂ + ((median₂ + 64) ÷ 64) × 5|median₃ = median₃ + ((median₃ + 32) ÷ 32) × 5}"];
+  }
+
+  init -> test_t_0;
+  test_t_0 -> test_t_1 [label="NO"];
+  test_t_1 -> test_t_2 [label="NO"];
+  test_t_2 -> t_default [label="NO"];
+  test_t_0 -> t_0 [label="YES"];
+  test_t_1 -> t_1 [label="YES"];
+  test_t_2 -> t_2 [label="YES"];
+
+  t_0 -> done;
+  t_1 -> done;
+  t_2 -> done;
+  t_default -> done;
+}
+

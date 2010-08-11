@@ -1,0 +1,61 @@
+digraph wavpack_residual {
+  node [fontname="DejaVuSans"];
+  edge [fontname="DejaVuSans"];
+  init [shape=record,label="{input holding_one|input holding_zero}"];
+  done [shape=record,label="{return t|return holding_one|return holding_zero}"];
+
+  init -> test_holding_zero;
+  test_holding_zero -> yes_holding_zero [label="YES"];
+  test_holding_zero -> read_t [label="NO"];
+  read_t -> test_t_16;
+  test_t_16 -> test_holding_one [label="NO"];
+
+  test_holding_one -> y_h_o_test_t [label="YES"];
+  test_holding_one -> n_h_o_test_t [label="NO"];
+
+  y_h_o_test_t -> y_h_o_yes_t_odd_update_holding [label="YES"];
+  y_h_o_test_t -> y_h_o_yes_t_even_update_holding [label="NO"];
+  y_h_o_yes_t_odd_update_holding -> y_h_o_update_t;
+  y_h_o_yes_t_even_update_holding -> y_h_o_update_t;
+
+  n_h_o_test_t -> n_h_o_yes_t_odd_update_holding [label="YES"];
+  n_h_o_test_t -> n_h_o_yes_t_even_update_holding [label="NO"];
+  n_h_o_yes_t_odd_update_holding -> n_h_o_update_t;
+  n_h_o_yes_t_even_update_holding -> n_h_o_update_t;
+
+  test_t_16 -> read_t2 [label="YES"];
+  read_t2 -> test_t2;
+  test_t2 -> t_inc_t2 [label="YES"];
+  test_t2 -> t_inc_read [label="NO"];
+  t_inc_t2 -> test_holding_one;
+  t_inc_read -> test_holding_one;
+
+  subgraph cluster_t {
+    label="Read t";
+    test_holding_zero [shape=diamond,label="is\nholding_zero?"];
+    yes_holding_zero [shape=box,label="t = 0\nholding_zero = false"];
+    read_t [shape=parallelogram,label="t = limited unary"];
+    test_t_16 [shape=diamond,label="is\nt = 16?"];
+
+    read_t2 [shape=parallelogram,label="t2 = limited unary"];
+    test_t2 [shape=diamond,label="is\nt2 < 2?"];
+    t_inc_t2 [shape=box,label="t = t + t2"];
+    t_inc_read [shape=parallelogram,label="t = t + ((read t2 - 1) | (2 ^ t2 - 1))"];
+
+    test_holding_one [shape=diamond,label="is\nholding_one?"];
+
+    y_h_o_test_t [shape=diamond,label="is\nt odd?"];
+    y_h_o_yes_t_odd_update_holding [shape=box,label="holding_one=true\nholding_zero=false"];
+    y_h_o_yes_t_even_update_holding [shape=box,label="holding_one=false\nholding_zero=true"];
+    y_h_o_update_t [shape=box,label="t = (t / 2) + 1"];
+
+    n_h_o_test_t [shape=diamond,label="is\nt odd?"];
+    n_h_o_yes_t_odd_update_holding [shape=box,label="holding_one=true\nholding_zero=false"];
+    n_h_o_yes_t_even_update_holding [shape=box,label="holding_one=false\nholding_zero=true"];
+    n_h_o_update_t [shape=box,label="t = t / 2"];
+  }
+
+  y_h_o_update_t -> done;
+  n_h_o_update_t -> done;
+  yes_holding_zero -> done;
+}
