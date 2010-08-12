@@ -132,6 +132,15 @@ bs_call_callbacks(Bitstream *bs, int byte) {
         callback->callback(byte, callback->data);
 }
 
+void
+bs_pop_callback(Bitstream *bs) {
+    struct bs_callback *c_node = bs->callback;
+    if (c_node != NULL) {
+        bs->callback = c_node->next;
+        free(c_node);
+    }
+}
+
 int
 bs_eof(Bitstream *bs)
 {

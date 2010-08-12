@@ -125,6 +125,9 @@ WavPackDecoder_channels(decoders_WavPackDecoder *self, void *closure);
 static PyObject*
 WavPackDecoder_channel_mask(decoders_WavPackDecoder *self, void *closure);
 
+static PyObject*
+WavPackDecoder_offset(decoders_WavPackDecoder *self, void *closure);
+
 PyGetSetDef WavPackDecoder_getseters[] = {
     {"sample_rate",
      (getter)WavPackDecoder_sample_rate, NULL, "sample rate", NULL},
@@ -134,6 +137,8 @@ PyGetSetDef WavPackDecoder_getseters[] = {
      (getter)WavPackDecoder_channels, NULL, "channels", NULL},
     {"channel_mask",
      (getter)WavPackDecoder_channel_mask, NULL, "channel_mask", NULL},
+    {"offset",
+     (getter)WavPackDecoder_offset, NULL, "offset", NULL},
     {NULL}
 };
 
@@ -223,6 +228,15 @@ int wavpack_get_value(Bitstream* bitstream,
                       struct i_array* entropy_variables,
                       int* holding_one,
                       int* holding_zero);
+
+int wavpack_get_zero(Bitstream* bitstream,
+                     int* zeroes,
+                     struct i_array** entropy_variables,
+                     int* holding_one,
+                     int* holding_zero,
+                     int channel);
+
+void wavpack_decrement_counter(int byte, void* counter);
 
 PyTypeObject decoders_WavPackDecoderType = {
     PyObject_HEAD_INIT(NULL)

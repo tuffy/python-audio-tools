@@ -29,6 +29,7 @@ WavPackDecoder_init(decoders_WavPackDecoder *self,
     self->bitstream = NULL;
     self->file = NULL;
 
+    /*setup a bunch of temporary buffers*/
     ia_init(&(self->decorr_terms), 8);
     ia_init(&(self->decorr_deltas), 8);
     ia_init(&(self->decorr_weights_A), 8);
@@ -79,8 +80,6 @@ WavPackDecoder_init(decoders_WavPackDecoder *self,
     } while (block_header.final_block_in_sequence == 0);
 
     fseek(self->file, 0, SEEK_SET);
-
-    /*setup a bunch of temporary buffers*/
 
     return 0;
 }
@@ -140,6 +139,11 @@ WavPackDecoder_close(decoders_WavPackDecoder* self, PyObject *args) {
     self->remaining_samples = 0;
     Py_INCREF(Py_None);
     return Py_None;
+}
+
+static PyObject*
+WavPackDecoder_offset(decoders_WavPackDecoder *self, void *closure) {
+    return Py_BuildValue("i", ftell(self->bitstream->file));
 }
 
 status
@@ -493,6 +497,10 @@ WavPackDecoder_read_entropy_variables(Bitstream* bitstream,
                   wavpack_exp2(bitstream->read_signed(bitstream, 16)));
         ia_append(variables_B,
                   wavpack_exp2(bitstream->read_signed(bitstream, 16)));
+    } else {
+        ia_append(variables_B, 0);
+        ia_append(variables_B, 0);
+        ia_append(variables_B, 0);
     }
 
     return OK;
@@ -510,28 +518,46 @@ WavPackDecoder_read_wv_bitstream(Bitstream* bitstream,
     int channel;
     int holding_one = 0;
     int holding_zero = 0;
+    int zeroes = 0;
     struct i_array* entropy_variables[] = {entropy_variables_A,
                                            entropy_variables_B};
+    int byte_block_size = header->block_size * 2;
 
+    bs_add_callback(bitstream, wavpack_decrement_counter, &byte_block_size);
     ia_reset(values);
+
+    /*FIXME - make sure callback is popped even if we hit an error*/
 
     for (value_count = block_channel_count * block_samples,
              channel = 0;
          value_count > 0;
          value_count--,
              channel = (channel + 1) % block_channel_count) {
-        /*FIXME - check for 0s here*/
-
-        ia_append(values,
-                  wavpack_get_value(bitstream,
-                                    entropy_variables[channel],
-                                    &holding_one,
-                                    &holding_zero));
+        if ((!holding_zero) &&
+            (!holding_one) &&
+            (entropy_variables_A->data[0] < 2) &&
+            (entropy_variables_B->data[0] < 2)) {
+            /*possibly get a chunk of 0 samples*/
+            ia_append(values,
+                      wavpack_get_zero(bitstream,
+                                       &zeroes,
+                                       entropy_variables,
+                                       &holding_one,
+                                       &holding_zero,
+                                       channel));
+        } else {
+            ia_append(values,
+                      wavpack_get_value(bitstream,
+                                        entropy_variables[channel],
+                                        &holding_one,
+                                        &holding_zero));
+        }
     }
 
     bitstream->byte_align(bitstream);
-    if (header->actual_size_1_less)
+    while (byte_block_size > 0)
         bitstream->read(bitstream, 8);
+    bs_pop_callback(bitstream);
 
     return OK;
 }
@@ -641,6 +667,50 @@ int wavpack_get_value(Bitstream* bitstream,
         else
             return base + result;     /*positive*/
     }
+}
+
+int wavpack_get_zero(Bitstream* bitstream,
+                     int* zeroes,
+                     struct i_array** entropy_variables,
+                     int* holding_one,
+                     int* holding_zero,
+                     int channel) {
+    int t;
+
+    if (*zeroes > 0) {
+        *zeroes -= 1;
+        if (*zeroes > 0)
+            return 0;
+        else
+            return wavpack_get_value(bitstream,
+                                     entropy_variables[channel],
+                                     holding_one,
+                                     holding_zero);
+    } else {
+        t = bitstream->read_limited_unary(bitstream, 0, 34);
+        if (t >= 2)
+            t = bitstream->read(bitstream, t - 1) | (1 << (t - 1));
+
+        *zeroes = t;
+        if (t > 0) {
+            entropy_variables[0]->data[0] = 0;
+            entropy_variables[0]->data[1] = 0;
+            entropy_variables[0]->data[2] = 0;
+            entropy_variables[1]->data[0] = 0;
+            entropy_variables[1]->data[1] = 0;
+            entropy_variables[1]->data[2] = 0;
+            return 0;
+        } else
+            return wavpack_get_value(bitstream,
+                                     entropy_variables[channel],
+                                     holding_one,
+                                     holding_zero);
+    }
+}
+
+void wavpack_decrement_counter(int byte, void* counter) {
+    int* int_counter = (int*)counter;
+    *int_counter -= 1;
 }
 
 static PyObject*

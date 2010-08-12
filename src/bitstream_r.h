@@ -79,6 +79,10 @@ bs_add_callback(Bitstream *bs, void (*callback)(int, void*),
 void
 bs_call_callbacks(Bitstream *bs, int byte);
 
+/*removes the most recently added callback, if any*/
+void
+bs_pop_callback(Bitstream *bs);
+
 static inline long
 bs_ftell(Bitstream *bs) {
     return ftell(bs->file);
