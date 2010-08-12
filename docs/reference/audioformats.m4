@@ -23,6 +23,7 @@
 \usepackage{textcomp}
 \usepackage{fancyvrb}
 \usepackage{multirow}
+\usepackage{rotating}
 \usepackage[toc,page]{appendix}
 \usepackage{hyperref}
 \newcommand{\xor}{\textbf{ xor }}
