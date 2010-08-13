@@ -357,7 +357,7 @@ and we'll use the partial sub-block bytes:
 The first four bytes are the header and block size values.
 The remaining three are as follows as a little-endian stream:
 \begin{Verbatim}[frame=single]
-1 0 0 0 0 0 1 0  0 1 1 1 0 1 1 1  1 0 0 1 0 1 1 1
+1 0 0 0 0 1 0 1  1 1 1 0 1 1 1 0  1 0 0 1 0 1 1 1
 \end{Verbatim}
 
 \clearpage
@@ -382,7 +382,7 @@ of 33, \texttt{1} bits in a row.
 In our example, to decode the first \VAR{t} value:
 \begin{description}
 \item[$\bullet$ is holding\_zero?] no
-\item[$\bullet$ t = limited\_unary] = `\texttt{1 0}' = 1.
+\item[$\bullet$ t = limited\_unary] = `\texttt{1 0}' = 1
 \item[$\bullet$ is t = 16?] no
 \item[$\bullet$ is holding\_one?] no
 \item[$\bullet$ is t odd?] yes
@@ -441,13 +441,46 @@ three steps again, with our freshly updated \VAR{Holding One},
 
 Note that in a 2 channel (non-mono) block,
 the \VAR{Entropy} values alternate between residuals.
-For example, 
+For example,
 $\text{Residual}_0$ uses $\text{Entropy A}$,
 $\text{Residual}_1$ uses $\text{Entropy B}$,
 $\text{Residual}_3$ uses $\text{Entropy A}$, and so forth.
 However, \VAR{Holding One} and \VAR{Holding Zero} are shared
 between channels.
 
+\clearpage
+
+Now, let's run through the next residual on our remaining bits:
+\begin{Verbatim}[frame=single]
+1 0 1  1 1 1 0 1 1 1 0  1 0 0 1 0 1 1 1
+\end{Verbatim}
+\begin{description}
+\item[$\bullet$ is holding\_zero?] no
+\item[$\bullet$ t = limited\_unary] = `\texttt{1 0}' = 1
+\item[$\bullet$ is t = 16?] no
+\item[$\bullet$ is holding\_one?] yes
+\item[$\bullet$ is t odd?] yes
+\item[$\bullet$ holding\_one = true]
+\item[$\bullet$ holding\_zero = false]
+\item[$\bullet$ t = (t $\div$ 2) + 1] = (1 $\div$ 2) + 1 = 1
+\item[$\bullet$ is t = 0?] no
+\item[$\bullet$ is t = 1?] yes
+\item[$\bullet$ base = $(\text{Entropy}_1 \div 16) + 1$] = $(109 \div 16) + 1 = 7$
+\item[$\bullet$ add = $\text{Entropy}_2 \div 16$] = $159 \div 16 = 9$
+\item[$\bullet$ $\text{Entropy}_1 = \text{Entropy}_1 + ((\text{Entropy}_1 + 128) \div 128) \times 5$] = 114
+\item[$\bullet$ $\text{Entropy}_2 = \text{Entropy}_2 - ((\text{Entropy}_2 + 62) \div 64) \times 2$] = 153
+\item[$\bullet$ is $\text{add} < 1$?] no
+\item[$\bullet$ p = $\text{log}_2(\text{add})$] = $\text{log}_2(9)$ = 3
+\item[$\bullet$ e = $2 ^ {p + 1} - \text{add} - 1$] = $2 ^ 4 - 9 - 1 = 6$
+\item[$\bullet$ is $\text{p} > 0$?] yes
+\item[$\bullet$ result = read 3] = `\texttt{1 1 1}' = 7
+\item[$\bullet$ is $\text{result} > \text{e}$?] yes
+\item[$\bullet$ result = $(\text{result} \times 2) - \text{e} + 1$] = $(7 \times 2) - 6 + 1 = 9$
+\item[$\bullet$ sign = read 1] = 0
+\item[$\bullet$ is sign = 1?] no
+\item[$\bullet$ value = base + result] = 7 + 9 = 16
+\end{description}
+Which returns the value 16 and consumes 7 bits in total.
 %% \begin{sidewaysfigure}[h]
 %% \includegraphics{figures/wavpack_read_residual.pdf}
 %% \caption{the WavPack residual reading sequence}
