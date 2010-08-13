@@ -38,6 +38,7 @@ figures/vorbis_identification.pdf figures/vorbis_comment.pdf \
 figures/wavpack_stream.pdf figures/wavpack_block_header.pdf \
 figures/wavpack_subblock_header.pdf \
 figures/wavpack_decorr_terms.pdf figures/wavpack_decorr_weights.pdf \
+figures/wavpack_bitstream.pdf \
 figures/wavpack_decorr_samples.pdf figures/wavpack_entropy_vars.pdf\
 figures/wavpack_read_residual1.pdf figures/wavpack_read_residual2.pdf \
 figures/wavpack_read_residual3.pdf figures/wavpack_read_residual.pdf \

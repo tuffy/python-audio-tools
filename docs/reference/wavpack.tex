@@ -331,9 +331,124 @@ our \VAR{Entropy Variables} are:
 
 \clearpage
 \subsection{the Bitstream sub-block}
-TODO
+\begin{figure}[h]
+\includegraphics{figures/wavpack_bitstream.pdf}
+\end{figure}
+\par
+\noindent
+
+Decoding the \VAR{Bitstream} sub-block requires the \VAR{Entropy Variables}
+data which it combines with this sub-block's bitstream to yield a set of signed
+values totalling \VAR{Block Samples}, times 2 if the block is stereo.
+
+Decoding each value is a complex process which I'll divide into
+three separate phases.
+
+As an example, we'll use a 1-channel block with the entropy variables:
+\begin{itemize}
+\item $\text{Entropy Variable A}_1$ = 111
+\item $\text{Entropy Variable A}_1$ = 159
+\item $\text{Entropy Variable A}_1$ = 299
+\end{itemize}
+and we'll use the partial sub-block bytes:
+\begin{Verbatim}[frame=single]
+8a 0e 00 00 a1 77 e9
+\end{Verbatim}
+The first four bytes are the header and block size values.
+The remaining three are as follows as a little-endian stream:
+\begin{Verbatim}[frame=single]
+1 0 0 0 0 0 1 0  0 1 1 1 0 1 1 1  1 0 0 1 0 1 1 1
+\end{Verbatim}
+
 \clearpage
-\begin{sidewaysfigure}[h]
-\includegraphics{figures/wavpack_read_residual.pdf}
-\caption{the WavPack residual reading sequence}
-\end{sidewaysfigure}
+\subsubsection{Determining t}
+\begin{wrapfigure}[37]{r}{3in}
+\includegraphics{figures/wavpack_read_residual1.pdf}
+\caption{Step 1: determining t}
+\end{wrapfigure}
+The first stage is taking two boolean values called
+\VAR{Holding One} and \VAR{Holding Zero} and determining \VAR{t}
+via the following process:
+
+These can be thought of as registers in a sort of
+WavPack bitstream virtual machine whose values will
+change over the course of decoding.
+Their initial values are both false.
+
+\VAR{limited unary} means reading the number
+of \texttt{1} bits until the next \texttt{0} bit, to a maximum
+of 33, \texttt{1} bits in a row.
+
+In our example, to decode the first \VAR{t} value:
+\begin{description}
+\item[$\bullet$ is holding\_zero?] no
+\item[$\bullet$ t = limited\_unary] = `\texttt{1 0}' = 1.
+\item[$\bullet$ is t = 16?] no
+\item[$\bullet$ is holding\_one?] no
+\item[$\bullet$ is t odd?] yes
+\item[$\bullet$ holding\_one = true]
+\item[$\bullet$ holding\_zero = false]
+\item[$\bullet$ t = t $\div$ 2] = 1 $\div$ 2 = 0
+\end{description}
+So our \VAR{t} value is 0, our \VAR{Holding One} value is true,
+our \VAR{Holding Zero} value is false and we've
+consumed 2 bits from the sub-block's bitstream.
+
+\clearpage
+
+\subsubsection{Calculating base/add}
+\begin{figure}[h]
+\includegraphics{figures/wavpack_read_residual2.pdf}
+\caption{Step 2: determining base/add}
+\end{figure}
+\par
+\noindent
+So to continue our example:
+\begin{description}
+\item[$\bullet$ is t = 0?] yes
+\item[$\bullet$ base] = 0
+\item[$\bullet$ add = $\text{Entropy}_1 \div 16$] = $111 \div 16 = 6$
+\item[$\bullet$ $\text{Entropy}_1$ = $\text{Entropy}_1 - ((\text{Entropy}_1 + 126) \div 128) \times 2$] = $111 - 2 = 109$
+\end{description}
+Note that $\text{Entropy}_2$ remains 159 and $\text{Entropy}_3$ remains 299.
+
+\clearpage
+
+\subsubsection{Determining value}
+\begin{wrapfigure}[30]{r}{3in}
+\includegraphics{figures/wavpack_read_residual3.pdf}
+\caption{Step 3: determining value}
+\end{wrapfigure}
+Finally, given our \VAR{Base} and \VAR{Add} values, we
+determine the final residual value as follows:
+\begin{description}
+\item[$\bullet$ is $\text{add} < 1$?] no
+\item[$\bullet$ p = $\text{log}_2(\text{add})$] = $\text{log}_2(6)$ = 2
+\item[$\bullet$ e = $2 ^ {p + 1} - \text{add} - 1$] = $2 ^ 3 - 6 - 1 = 1$
+\item[$\bullet$ is $\text{p} > 0$?] yes
+\item[$\bullet$ result = read 2] = `\texttt{0 0}' = 0
+\item[$\bullet$ is $\text{result} > \text{e}$?] no
+\item[$\bullet$ sign = read 1] = `\texttt{0}' = 0
+\item[$\bullet$ is $\text{sign} = 1$?] no
+\item[$\bullet$ value = $\text{base} + \text{result}$] = 0 + 0 = 0
+\end{description}
+Thus, this stage consumes an additional 3 bits and our first residual
+value is 0.
+
+Determining the second residual value requires going through all
+three steps again, with our freshly updated \VAR{Holding One},
+\VAR{Holding Zero} and \VAR{Entropy} values.
+
+Note that in a 2 channel (non-mono) block,
+the \VAR{Entropy} values alternate between residuals.
+For example, 
+$\text{Residual}_0$ uses $\text{Entropy A}$,
+$\text{Residual}_1$ uses $\text{Entropy B}$,
+$\text{Residual}_3$ uses $\text{Entropy A}$, and so forth.
+However, \VAR{Holding One} and \VAR{Holding Zero} are shared
+between channels.
+
+%% \begin{sidewaysfigure}[h]
+%% \includegraphics{figures/wavpack_read_residual.pdf}
+%% \caption{the WavPack residual reading sequence}
+%% \end{sidewaysfigure}

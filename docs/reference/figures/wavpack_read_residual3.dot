@@ -1,31 +1,32 @@
 digraph wavpack_residual3 {
   node [fontname="DejaVuSans"];
   edge [fontname="DejaVuSans"];
-
+  size = "3,9";
+  margin = "0";
   init [shape=record,label="{input base|input add}"];
   done [shape=record,label="{return value}"];
 
-  subgraph cluster_residual3 {
-    label="Calculate value";
+  /*subgraph cluster_residual3 {
+    label="Calculate value";*/
 
-    test_add [shape=diamond,label="is\nadd < 1?"];
-    sign1 [shape=parallelogram,label="sign = read 1"];
-    test_sign_1 [shape=diamond,label="is\nsign = 1?"];
-    test_sign_1_yes [shape=box,label="value = -base - 1"];
-    test_sign_1_no [shape=box,label="value = base"];
+  test_add [shape=diamond,label="is\nadd < 1?"];
+  sign1 [shape=parallelogram,label="sign = read 1"];
+  test_sign_1 [shape=diamond,label="is\nsign = 1?"];
+  test_sign_1_yes [shape=box,label="value = -base - 1"];
+  test_sign_1_no [shape=box,label="value = base"];
 
-    calc_p_e [shape=record,label="{p = log₂(add)|e = (2 ^ (p + 1)) - add - 1}"];
-    test_p [shape=diamond,label="is\np > 0?"];
-    result1_read [shape=parallelogram,label="result = read p"];
-    result1_assign [shape=box,label="result = 0"];
+  calc_p_e [shape=record,label="{p = log₂(add)|e = (2 ^ (p + 1)) - add - 1}"];
+  test_p [shape=diamond,label="is\np > 0?"];
+  result1_read [shape=parallelogram,label="result = read p"];
+  result1_assign [shape=box,label="result = 0"];
 
-    test_result [shape=diamond,label="is\nresult ≥ e?"];
-    test_result_yes [shape=parallelogram,label="result = (result × 2) - e + read 1"];
-    sign2 [shape=parallelogram,label="sign = read 1"];
-    test_sign_2 [shape=diamond,label="is\nsign = 1?"];
-    test_sign_2_yes [shape=box,label="value = -(base + result) - 1"];
-    test_sign_2_no [shape=box,label="value = base + result"];
-  }
+  test_result [shape=diamond,label="is\nresult ≥ e?"];
+  test_result_yes [shape=parallelogram,label="result = (result × 2) - e + read 1"];
+  sign2 [shape=parallelogram,label="sign = read 1"];
+  test_sign_2 [shape=diamond,label="is\nsign = 1?"];
+  test_sign_2_yes [shape=box,label="value = -(base + result) - 1"];
+  test_sign_2_no [shape=box,label="value = base + result"];
+  /*}*/
 
   init -> test_add;
   test_add -> sign1 [label="YES"];

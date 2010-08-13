@@ -1,22 +1,20 @@
 digraph wavpack_residual2 {
   node [fontname="DejaVuSans"];
   edge [fontname="DejaVuSans"];
-  init [shape=record,label="{input t|input median₁|input median₂|input median₃}"];
-  done [shape=record,label="{return base|return add|return median₁|return median₂|return median₃}"];
+  size = "6,9";
+  margin="0";
+  init [shape=record,label="{input t|input entropy₁|input entropy₂|input entropy₃}"];
+  done [shape=record,label="{return base|return add|return entropy₁|return entropy₂|return entropy₃}"];
 
-  subgraph cluster_t {
-    label="Calculate base and add";
+  test_t_0 [shape=diamond,label="is\nt = 0?"];
+  test_t_1 [shape=diamond,label="is\nt = 1?"];
+  test_t_2 [shape=diamond,label="is\nt = 2?"];
 
-    test_t_0 [shape=diamond,label="is\nt = 0?"];
-    test_t_1 [shape=diamond,label="is\nt = 1?"];
-    test_t_2 [shape=diamond,label="is\nt = 2?"];
+  t_0 [shape=record,label="{base = 0|add = entropy₁ ÷ 16|entropy₁ = entropy₁ - ((entropy₁ + 126) ÷ 128) × 2}"];
+  t_1 [shape=record,label="{base = (entropy₁ ÷ 16) + 1|add = entropy₂ ÷ 16|entropy₁ = entropy₁ + ((entropy₁ + 128) ÷ 128) × 5|entropy₂ = entropy₂ - ((entropy₂ + 62) ÷ 64) × 2}"];
+  t_2 [shape=record,label="{base = ((entropy₁ ÷ 16) + 1) + ((entropy₂ ÷ 16) + 1)|add = entropy₃ ÷ 16|entropy₁ = entropy₁ + ((entropy₁ + 128) ÷ 128) × 5|entropy₂ = entropy₂ + ((entropy₂ + 64) ÷ 64) × 5|entropy₃ = entropy₃ - ((entropy₃ + 30) ÷ 32) × 2}"];
 
-    t_0 [shape=record,label="{base = 0|add = median₁ ÷ 16|median₁ = median₁ - ((median₁ + 126) ÷ 128) × 2}"];
-    t_1 [shape=record,label="{base = (median₁ ÷ 16) + 1|add = median₂ ÷ 16|median₁ = median₁ + ((median₁ + 128) ÷ 128) × 5|median₂ = median₂ - ((median₂ + 62) ÷ 64) × 2}"];
-    t_2 [shape=record,label="{base = ((median₁ ÷ 16) + 1) + ((median₂ ÷ 16) + 1)|add = median₃ ÷ 16|median₁ = median₁ + ((median₁ + 128) ÷ 128) × 5|median₂ = median₂ + ((median₂ + 64) ÷ 64) × 5|median₃ = median₃ - ((median₃ + 30) ÷ 32) × 2}"];
-
-    t_default [shape=record,label="{base = ((median₁ ÷ 16) + 1) + (((median₂ ÷ 16) + 1) +\n(((median₃ ÷ 16) + 1) × (t - 2)))|add = median₃ ÷ 16|median₁ = median₁ + ((median₁ + 128) ÷ 128) × 5|median₂ = median₂ + ((median₂ + 64) ÷ 64) × 5|median₃ = median₃ + ((median₃ + 32) ÷ 32) × 5}"];
-  }
+  t_default [shape=record,label="{base = ((entropy₁ ÷ 16) + 1) + (((entropy₂ ÷ 16) + 1) +\n(((entropy₃ ÷ 16) + 1) × (t - 2)))|add = entropy₃ ÷ 16|entropy₁ = entropy₁ + ((entropy₁ + 128) ÷ 128) × 5|entropy₂ = entropy₂ + ((entropy₂ + 64) ÷ 64) × 5|entropy₃ = entropy₃ + ((entropy₃ + 32) ÷ 32) × 5}"];
 
   init -> test_t_0;
   test_t_0 -> test_t_1 [label="NO"];
@@ -31,4 +29,3 @@ digraph wavpack_residual2 {
   t_2 -> done;
   t_default -> done;
 }
-
