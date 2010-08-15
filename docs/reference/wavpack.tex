@@ -342,7 +342,7 @@ data which it combines with this sub-block's bitstream to yield a set of signed
 values totalling \VAR{Block Samples}, times 2 if the block is stereo.
 
 Decoding each value is a complex process which I'll divide into
-three separate phases.
+three separate steps.
 
 As an example, we'll use a 1-channel block with the entropy variables:
 \begin{itemize}
@@ -350,7 +350,7 @@ As an example, we'll use a 1-channel block with the entropy variables:
 \item $\text{Entropy Variable A}_1$ = 159
 \item $\text{Entropy Variable A}_1$ = 299
 \end{itemize}
-and we'll use the partial sub-block bytes:
+and the partial bitstream sub-block bytes:
 \begin{Verbatim}[frame=single]
 8a 0e 00 00 a1 77 e9
 \end{Verbatim}
@@ -366,10 +366,8 @@ The remaining three are as follows as a little-endian stream:
 \includegraphics{figures/wavpack_read_residual1.pdf}
 \caption{Step 1: determining t}
 \end{wrapfigure}
-The first stage is taking two boolean values called
-\VAR{Holding One} and \VAR{Holding Zero} and determining \VAR{t}
-via the following process:
-
+The first step is taking two boolean values called
+\VAR{Holding One} and \VAR{Holding Zero} and determining \VAR{t}.
 These can be thought of as registers in a sort of
 WavPack bitstream virtual machine whose values will
 change over the course of decoding.
@@ -397,6 +395,8 @@ consumed 2 bits from the sub-block's bitstream.
 \clearpage
 
 \subsubsection{Calculating base/add}
+The next step is taking \VAR{t} and calcuting \VAR{Base} and \VAR{Add}
+from our entropy variables, updating our entropy variables in the process.
 \begin{figure}[h]
 \includegraphics{figures/wavpack_read_residual2.pdf}
 \caption{Step 2: determining base/add}
@@ -475,7 +475,7 @@ Now, let's run through the next residual on our remaining bits:
 \item[$\bullet$ is $\text{p} > 0$?] yes
 \item[$\bullet$ result = read 3] = `\texttt{1 1 1}' = 7
 \item[$\bullet$ is $\text{result} > \text{e}$?] yes
-\item[$\bullet$ result = $(\text{result} \times 2) - \text{e} + 1$] = $(7 \times 2) - 6 + 1 = 9$
+\item[$\bullet$ result = $(\text{result} \times 2) - \text{e} + $ read 1] = $(7 \times 2) - 6 + \texttt{1} = 9$
 \item[$\bullet$ sign = read 1] = 0
 \item[$\bullet$ is sign = 1?] no
 \item[$\bullet$ value = base + result] = 7 + 9 = 16
