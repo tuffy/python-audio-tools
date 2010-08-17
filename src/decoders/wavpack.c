@@ -514,8 +514,8 @@ WavPackDecoder_read_wv_bitstream(Bitstream* bitstream,
                                  int block_channel_count,
                                  int block_samples,
                                  struct i_array* values) {
-    int value_count;
-    int channel;
+    int value_count = block_channel_count * block_samples;
+    int channel = 0;
     int holding_one = 0;
     int holding_zero = 0;
     int zeroes = 0;
@@ -528,29 +528,37 @@ WavPackDecoder_read_wv_bitstream(Bitstream* bitstream,
 
     /*FIXME - make sure callback is popped even if we hit an error*/
 
-    for (value_count = block_channel_count * block_samples,
-             channel = 0;
-         value_count > 0;
-         value_count--,
-             channel = (channel + 1) % block_channel_count) {
+    while (value_count > 0) {
         if ((!holding_zero) &&
             (!holding_one) &&
             (entropy_variables_A->data[0] < 2) &&
             (entropy_variables_B->data[0] < 2)) {
             /*possibly get a chunk of 0 samples*/
-            ia_append(values,
-                      wavpack_get_zero(bitstream,
-                                       &zeroes,
-                                       entropy_variables,
-                                       &holding_one,
-                                       &holding_zero,
-                                       channel));
-        } else {
+            zeroes = wavpack_get_zero_count(bitstream);
+            if (zeroes > 0) {
+                entropy_variables_A->data[0] = 0;
+                entropy_variables_A->data[1] = 0;
+                entropy_variables_A->data[2] = 0;
+                entropy_variables_B->data[0] = 0;
+                entropy_variables_B->data[1] = 0;
+                entropy_variables_B->data[2] = 0;
+
+                for (; zeroes > 0; zeroes--) {
+                    ia_append(values, 0);
+                    value_count--;
+                    channel = (channel + 1) % block_channel_count;
+                }
+            }
+        }
+
+        if (value_count > 0) {
             ia_append(values,
                       wavpack_get_value(bitstream,
                                         entropy_variables[channel],
                                         &holding_one,
                                         &holding_zero));
+            value_count--;
+            channel = (channel + 1) % block_channel_count;
         }
     }
 
@@ -669,43 +677,12 @@ int wavpack_get_value(Bitstream* bitstream,
     }
 }
 
-int wavpack_get_zero(Bitstream* bitstream,
-                     int* zeroes,
-                     struct i_array** entropy_variables,
-                     int* holding_one,
-                     int* holding_zero,
-                     int channel) {
+int wavpack_get_zero_count(Bitstream* bitstream) {
     int t;
-
-    if (*zeroes > 0) {
-        *zeroes -= 1;
-        if (*zeroes > 0)
-            return 0;
-        else
-            return wavpack_get_value(bitstream,
-                                     entropy_variables[channel],
-                                     holding_one,
-                                     holding_zero);
-    } else {
-        t = bitstream->read_limited_unary(bitstream, 0, 34);
-        if (t >= 2)
-            t = bitstream->read(bitstream, t - 1) | (1 << (t - 1));
-
-        *zeroes = t;
-        if (t > 0) {
-            entropy_variables[0]->data[0] = 0;
-            entropy_variables[0]->data[1] = 0;
-            entropy_variables[0]->data[2] = 0;
-            entropy_variables[1]->data[0] = 0;
-            entropy_variables[1]->data[1] = 0;
-            entropy_variables[1]->data[2] = 0;
-            return 0;
-        } else
-            return wavpack_get_value(bitstream,
-                                     entropy_variables[channel],
-                                     holding_one,
-                                     holding_zero);
-    }
+    t = bitstream->read_limited_unary(bitstream, 0, 34);
+    if (t >= 2)
+        t = bitstream->read(bitstream, t - 1) | (1 << (t - 1));
+    return t;
 }
 
 void wavpack_decrement_counter(int byte, void* counter) {
@@ -760,7 +737,8 @@ static PyObject*
 WavPackDecoder_analyze_frame(decoders_WavPackDecoder* self, PyObject *args) {
     struct wavpack_block_header block_header;
     long block_end;
-    PyObject* subblocks = PyList_New(0);
+    PyObject* subblocks;
+    PyObject* subblock;
     long position;
 
     if (self->remaining_samples > 0) {
@@ -770,19 +748,26 @@ WavPackDecoder_analyze_frame(decoders_WavPackDecoder* self, PyObject *args) {
         /*FIXME - check for EOFs here*/
         if (WavPackDecoder_read_block_header(self->bitstream,
                                              &block_header) == OK) {
+            subblocks = PyList_New(0);
             block_end = ftell(self->bitstream->file) +
                 block_header.block_size - 24 - 1;
             while (ftell(self->bitstream->file) < block_end) {
-                PyList_Append(subblocks,
-                              WavPackDecoder_analyze_subblock(self,
-                                                              &block_header));
+                subblock = WavPackDecoder_analyze_subblock(self,
+                                                           &block_header);
+                if (subblock != NULL) {
+                    PyList_Append(subblocks, subblock);
+                    Py_DECREF(subblock);
+                } else {
+                    Py_DECREF(subblocks);
+                    return NULL;
+                }
             }
 
             self->remaining_samples -= block_header.block_samples;
             return Py_BuildValue(
                     "{sl sI sI si si si sI sI "
                     "si si si si si si si si si si si si si si si "
-                    "si si sI sO}",
+                    "si si sI sN}",
                     "offset", position,
                     "block_size", block_header.block_size,
                     "version", block_header.version,
@@ -838,7 +823,7 @@ WavPackDecoder_analyze_subblock(decoders_WavPackDecoder* self,
     struct wavpack_subblock_header header;
     unsigned char* subblock_data = NULL;
     size_t data_size;
-    PyObject* subblock_data_obj;
+    PyObject* subblock_data_obj = NULL;
 
     /*FIXME - catch EOF here*/
     WavPackDecoder_read_subblock_header(bitstream, &header);
@@ -850,7 +835,7 @@ WavPackDecoder_analyze_subblock(decoders_WavPackDecoder* self,
                                              &(self->decorr_terms),
                                              &(self->decorr_deltas)) == OK) {
             subblock_data_obj = Py_BuildValue(
-                                    "{sO sO}",
+                                    "{sN sN}",
                                     "decorr_terms",
                                     i_array_to_list(&(self->decorr_terms)),
                                     "decorr_deltas",
@@ -867,7 +852,7 @@ WavPackDecoder_analyze_subblock(decoders_WavPackDecoder* self,
                                 &(self->decorr_weights_A),
                                 &(self->decorr_weights_B)) == OK) {
             subblock_data_obj = Py_BuildValue(
-                                "{sO sO}",
+                                "{sN sN}",
                                 "decorr_weights_A",
                                 i_array_to_list(&(self->decorr_weights_A)),
                                 "decorr_weights_B",
@@ -884,7 +869,7 @@ WavPackDecoder_analyze_subblock(decoders_WavPackDecoder* self,
                                 &(self->decorr_samples_A),
                                 &(self->decorr_samples_B)) == OK) {
             subblock_data_obj = Py_BuildValue(
-                                "{sO sO}",
+                                "{sN sN}",
                                 "decorr_samples_A",
                                 ia_array_to_list(&(self->decorr_samples_A)),
                                 "decorr_samples_B",
@@ -899,7 +884,7 @@ WavPackDecoder_analyze_subblock(decoders_WavPackDecoder* self,
                                 &(self->entropy_variables_A),
                                 &(self->entropy_variables_B)) == OK) {
             subblock_data_obj = Py_BuildValue(
-                                "{sO sO}",
+                                "{sN sN}",
                                 "entropy_variables_A",
                                 i_array_to_list(&(self->entropy_variables_A)),
                                 "entropy_variables_B",
@@ -940,7 +925,7 @@ WavPackDecoder_analyze_subblock(decoders_WavPackDecoder* self,
     }
 
 
-    return Py_BuildValue("{sI sI sI sI sI sO}",
+    return Py_BuildValue("{sI sI sI sI sI sN}",
                          "metadata_function", header.metadata_function,
                          "nondecoder_data", header.nondecoder_data,
                          "actual_size_1_less", header.actual_size_1_less,

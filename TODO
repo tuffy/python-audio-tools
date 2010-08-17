@@ -2442,6 +2442,8 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [X] decorr_samples
      - [X] entropy_vars
      - [ ] wv_bitstream
+**** TODO decorrelation passes
+**** TODO joint stereo
 *** TODO WavPack encoding
 *** TODO Verify A4 layout is correct
 ** TODO Test encoder/decoder against reference

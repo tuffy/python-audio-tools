@@ -229,12 +229,7 @@ int wavpack_get_value(Bitstream* bitstream,
                       int* holding_one,
                       int* holding_zero);
 
-int wavpack_get_zero(Bitstream* bitstream,
-                     int* zeroes,
-                     struct i_array** entropy_variables,
-                     int* holding_one,
-                     int* holding_zero,
-                     int channel);
+int wavpack_get_zero_count(Bitstream* bitstream);
 
 void wavpack_decrement_counter(int byte, void* counter);
 
