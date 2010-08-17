@@ -50,12 +50,12 @@ digraph wavpack_residual {
   y_h_o_test_t [shape=diamond,label="is\nt odd?"];
   y_h_o_yes_t_odd_update_holding [shape=record,label="{holding_one=true|holding_zero=false}"];
   y_h_o_yes_t_even_update_holding [shape=record,label="{holding_one=false|holding_zero=true}"];
-  y_h_o_update_t [shape=box,label="t = (t ÷ 2) + 1"];
+  y_h_o_update_t [shape=box,label="t = ⌊t ÷ 2⌋ + 1"];
 
   n_h_o_test_t [shape=diamond,label="is\nt odd?"];
   n_h_o_yes_t_odd_update_holding [shape=record,label="{holding_one=true|holding_zero=false}"];
   n_h_o_yes_t_even_update_holding [shape=record,label="{holding_one=false|holding_zero=true}"];
-  n_h_o_update_t [shape=box,label="t = t ÷ 2"];
+  n_h_o_update_t [shape=box,label="t = ⌊t ÷ 2⌋"];
 
   y_h_o_update_t -> done;
   n_h_o_update_t -> done;

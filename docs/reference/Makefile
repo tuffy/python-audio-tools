@@ -42,6 +42,7 @@ figures/wavpack_bitstream.pdf \
 figures/wavpack_decorr_samples.pdf figures/wavpack_entropy_vars.pdf\
 figures/wavpack_read_residual1.pdf figures/wavpack_read_residual2.pdf \
 figures/wavpack_read_residual3.pdf figures/wavpack_read_residual.pdf \
+figures/wavpack_read_zeroes.dot \
 figures/ape_stream.pdf figures/ape_descriptor.pdf figures/ape_header.pdf \
 figures/apev2_tag.pdf figures/apev2_tagheader.pdf figures/apev2_flags.pdf \
 figures/speex_header.pdf \
@@ -215,4 +216,7 @@ figures/wavpack_read_residual3.pdf: figures/wavpack_read_residual3.dot
 	dot -Tpdf $< -o $@
 
 figures/wavpack_read_residual.pdf: figures/wavpack_read_residual.dot
+	dot -Tpdf $< -o $@
+
+figures/wavpack_read_zeroes.pdf: figures/wavpack_read_zeroes.dot
 	dot -Tpdf $< -o $@

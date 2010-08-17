@@ -368,12 +368,12 @@ The remaining three are as follows as a little-endian stream:
 \end{wrapfigure}
 The first step is taking two boolean values called
 \VAR{Holding One} and \VAR{Holding Zero} and determining \VAR{t}.
-These can be thought of as registers in a sort of
+These holding values can be thought of as registers in a sort of
 WavPack bitstream virtual machine whose values will
 change over the course of decoding.
 Their initial values are both false.
 
-\VAR{limited unary} means reading the number
+\VAR{limited unary} means counting the number
 of \texttt{1} bits until the next \texttt{0} bit, to a maximum
 of 33, \texttt{1} bits in a row.
 
@@ -386,7 +386,7 @@ In our example, to decode the first \VAR{t} value:
 \item[$\bullet$ is t odd?] yes
 \item[$\bullet$ holding\_one = true]
 \item[$\bullet$ holding\_zero = false]
-\item[$\bullet$ t = t $\div$ 2] = 1 $\div$ 2 = 0
+\item[$\bullet$ t = $\lfloor$ t $\div$ 2 $\rfloor$] = $\lfloor 1 \div 2 \rfloor$ = 0
 \end{description}
 So our \VAR{t} value is 0, our \VAR{Holding One} value is true,
 our \VAR{Holding Zero} value is false and we've
@@ -405,12 +405,13 @@ from our entropy variables, updating our entropy variables in the process.
 \noindent
 So to continue our example:
 \begin{description}
+\setlength{\itemsep}{0pt}
 \item[$\bullet$ is t = 0?] yes
 \item[$\bullet$ base] = 0
-\item[$\bullet$ add = $\text{Entropy}_1 \div 16$] = $111 \div 16 = 6$
-\item[$\bullet$ $\text{Entropy}_1$ = $\text{Entropy}_1 - ((\text{Entropy}_1 + 126) \div 128) \times 2$] = $111 - 2 = 109$
+\item[$\bullet$ add = $\lfloor \text{Entropy}_1 \div 16 \rfloor$] = $\lfloor 111 \div 16 \rfloor = 6$
+\item[$\bullet$ $\text{Entropy}_1$ = $\text{Entropy}_1 - \lfloor(\text{Entropy}_1 + 126) \div 128\rfloor \times 2$] = $111 - 2 = 109$
 \end{description}
-Note that $\text{Entropy}_2$ remains 159 and $\text{Entropy}_3$ remains 299.
+%% Note that $\text{Entropy}_2$ remains 159 and $\text{Entropy}_3$ remains 299.
 
 \clearpage
 
@@ -462,13 +463,13 @@ Now, let's run through the next residual on our remaining bits:
 \item[$\bullet$ is t odd?] yes
 \item[$\bullet$ holding\_one = true]
 \item[$\bullet$ holding\_zero = false]
-\item[$\bullet$ t = (t $\div$ 2) + 1] = (1 $\div$ 2) + 1 = 1
+\item[$\bullet$ t = $\lfloor$ t $\div$ 2 $\rfloor$ + 1] = $\lfloor 1 \div 2 \rfloor$ + 1 = 1
 \item[$\bullet$ is t = 0?] no
 \item[$\bullet$ is t = 1?] yes
-\item[$\bullet$ base = $(\text{Entropy}_1 \div 16) + 1$] = $(109 \div 16) + 1 = 7$
-\item[$\bullet$ add = $\text{Entropy}_2 \div 16$] = $159 \div 16 = 9$
-\item[$\bullet$ $\text{Entropy}_1 = \text{Entropy}_1 + ((\text{Entropy}_1 + 128) \div 128) \times 5$] = 114
-\item[$\bullet$ $\text{Entropy}_2 = \text{Entropy}_2 - ((\text{Entropy}_2 + 62) \div 64) \times 2$] = 153
+\item[$\bullet$ base = $\lfloor\text{Entropy}_1 \div 16\rfloor + 1$] = $\lfloor 109 \div 16\rfloor + 1 = 7$
+\item[$\bullet$ add = $\lfloor\text{Entropy}_2 \div 16\rfloor$] = $\lfloor 159 \div 16\rfloor = 9$
+\item[$\bullet$ $\text{Entropy}_1 = \text{Entropy}_1 + \lfloor (\text{Entropy}_1 + 128) \div 128\rfloor \times 5$] = 114
+\item[$\bullet$ $\text{Entropy}_2 = \text{Entropy}_2 - \lfloor (\text{Entropy}_2 + 62) \div 64\rfloor \times 2$] = 153
 \item[$\bullet$ is $\text{add} < 1$?] no
 \item[$\bullet$ p = $\text{log}_2(\text{add})$] = $\text{log}_2(9)$ = 3
 \item[$\bullet$ e = $2 ^ {p + 1} - \text{add} - 1$] = $2 ^ 4 - 9 - 1 = 6$
@@ -485,3 +486,31 @@ Which returns the value 16 and consumes 7 bits in total.
 %% \includegraphics{figures/wavpack_read_residual.pdf}
 %% \caption{the WavPack residual reading sequence}
 %% \end{sidewaysfigure}
+
+\clearpage
+
+\subsubsection{Zero blocks}
+
+As with most other lossless codecs, WavPack features a special
+case to handle a large number of \texttt{0} samples in a row.
+This is triggered when $\text{Entropy A}_1$ is less than 2,
+$\text{Entropy B}_1$ is less than 2 (for non-mono blocks),
+and \VAR{Holding One} and \VAR{Holding Zero} are both false.
+
+\begin{wrapfigure}[14]{r}{3in}
+\includegraphics{figures/wavpack_read_zeroes.pdf}
+\end{wrapfigure}
+
+In that instance, we read a residual-like value to determine
+how many \texttt{0} values follow.
+If any, we set the block's six \VAR{Entropy} variables to 0
+and output the necessary number of \texttt{0} values just as
+regular residuals.
+
+Therefore, for non-mono blocks, these values alternative between channels
+just as regular residual values do.
+In addition, they also count against the block's total number of samples.
+
+Once all of the \texttt{0} values have been output, if any
+\VAR{Block Samples} remain, we return to the regular residual
+reading process.

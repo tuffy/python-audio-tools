@@ -2439,9 +2439,9 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 **** TODO WavPack sub-blocks
      - [X] decorr_terms
      - [X] decorr_weights
-     - [X] decorr_samples
+     - [ ] decorr_samples
      - [X] entropy_vars
-     - [ ] wv_bitstream
+     - [X] wv_bitstream
 **** TODO decorrelation passes
 **** TODO joint stereo
 *** TODO WavPack encoding
