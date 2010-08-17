@@ -165,7 +165,7 @@ $\text{Decorrelation Weight}_2$ is for channel
 Since a block may be only two channels out of many,
 it makes sense not to number them to avoid ambiguity.},
 $\text{Decorrelation Weight}_3$ is for channel \VAR{B} and so on
-such that the first value will be for the highest
+such that the first weight value in the sub-block will be for the highest
 \VAR{Decorrelation Weight A}.
 Converting the 8-bit values to the actual decorrelation weights
 requires the following formula:
@@ -182,7 +182,7 @@ requires the following formula:
 For example, given a 2 channel block with 5 decorrelation terms and the
 sub-block bytes:
 \begin{Verbatim}[frame=single]
-06 06 06 06 04 04 06 06 02 03
+03 05 06 06 06 06 04 04 06 06 02 03
 \end{Verbatim}
 our \VAR{Decorrelation Weights} are as follows:
 \begin{table}[h]
@@ -280,7 +280,7 @@ our \VAR{Decorrelation Sample} values are:
 \clearpage
 
 We're not done yet, however.
-The next step is to determine which \VAR{Decorrelation Sample}
+The next step is to determine which set of \VAR{Decorrelation Sample}
 values correspond to which \VAR{Decorrelation Term}\footnote{As
 extracted on page \pageref{wavpack_decorr_terms}}.
 
@@ -514,3 +514,54 @@ In addition, they also count against the block's total number of samples.
 Once all of the \texttt{0} values have been output, if any
 \VAR{Block Samples} remain, we return to the regular residual
 reading process.
+
+\clearpage
+
+\subsection{Sample decorrelation}
+
+Once the bitstream sub-block has been decoded into a set of
+samples values (alternating between \VAR{Channel A} and \VAR{Channel B}
+if the block is not mono), we then apply decorrelation passes
+to those samples - one pass per decorrelation term value.\footnote{As
+decoded on page \pageref{wavpack_decorr_terms}.}
+
+Each decorrelation pass requires a \VAR{Decorrelation Term},
+a \VAR{Decorrelation Delta}, one \VAR{Decorrelation Weight} per channel,
+and one or more \VAR{Decorrelation Sample} values - in addition
+to our set of samples we're running the pass over.
+These passes are applied in \textit{incrementing} order
+(i.e. $\text{Term}_1$ first, $\text{Term}_2$ next, and so on).
+The function for each pass depends on its \VAR{Decorrelation Term}:
+\begin{align*}
+\intertext{Decorrelation Term = 18:}
+\text{Temp}_i &= \lfloor ((3 \times \text{Output}_{i - 1}) - \text{Output}_{i - 2}) \div 2 \rfloor \\
+\text{Output}_i &= \lfloor ((\text{Weight}_{i - 1} \times \text{Temp}_i) + 512) \div 10 \rfloor + \text{Input}_i \\
+\text{Weight}_i &=
+\begin{cases}
+\text{Weight}_{i - 1} & \text{if } \text{Temp}_i = 0 \text{ or } \text{Input}_i = 0 \\
+\text{Weight}_{i - 1} + \text{Delta} & \text{if } (\text{Temp}_i \xor \text{Input}_i) \geq 0 \\
+\text{Weight}_{i - 1} - \text{Delta} & \text{if } (\text{Temp}_i \xor \text{Input}_i) < 0
+\end{cases}
+\intertext{Decorrelation Term = 17:}
+\text{Temp}_i &= (2 \times \text{Output}_{i - 1}) - \text{Output}_{i - 2} \\
+\text{Output}_i &= \lfloor ((\text{Weight}_{i - 1} \times \text{Temp}_i) + 512) \div 10 \rfloor + \text{Input}_i \\
+\text{Weight}_i &=
+\begin{cases}
+\text{Weight}_{i - 1} & \text{if } \text{Temp}_i = 0 \text{ or } \text{Input}_i = 0 \\
+\text{Weight}_{i - 1} + \text{Delta} & \text{if } (\text{Temp}_i \xor \text{Input}_i) \geq 0 \\
+\text{Weight}_{i - 1} - \text{Delta} & \text{if } (\text{Temp}_i \xor \text{Input}_i) < 0
+\end{cases}
+\intertext{1 $\leq$ Decorrelation Term $\leq 8$:}
+\text{Temp}_i &= \text{Output}_{i - \text{term}} \\
+\text{Output}_i &= \lfloor ((\text{Weight}_{i - 1} \times \text{Temp}_i) + 512) \div 10 \rfloor + \text{Input}_i \\
+\text{Weight}_i &=
+\begin{cases}
+\text{Weight}_{i - 1} & \text{if } \text{Temp}_i = 0 \text{ or } \text{Input}_i = 0 \\
+\text{Weight}_{i - 1} + \text{Delta} & \text{if } (\text{Temp}_i \xor \text{Input}_i) \geq 0 \\
+\text{Weight}_{i - 1} - \text{Delta} & \text{if } (\text{Temp}_i \xor \text{Input}_i) < 0
+\end{cases}
+\end{align*}
+Note that each function uses previously output samples for its calculation.
+This is where \VAR{Decorrelation Samples} are used;
+those are our $\text{Output}_{-1}$, $\text{Output}_{-2}$, etc.
+which are used for decorrelation but not actually output.
