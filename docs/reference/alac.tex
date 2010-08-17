@@ -89,7 +89,6 @@ If \VAR{Wasted Bits} is greater than 0, there is also
 a block of wasted bits samples after the subframe headers but before
 the residuals.
 
-\label{alac_wasted_bits}
 \VAR{Wasted Bits} is an attempt to store the least significant bits
 of each sample more efficiently at high bits-per-sample, where
 that data will often be indistinguishable from random noise.
@@ -98,7 +97,7 @@ In effect, it's a block of interlaced uncompressed samples
 bits large.
 Those wasted bits are then prepended to each sample after channel
 decorrelation.
-I'll explain this process in more detail later.
+This process is explained in more detail on page \pageref{alac_wasted_bits}.
 
 Each subframe header is laid out as follows:
 
@@ -439,8 +438,8 @@ Sample & \text{Channel}_1 & \text{Channel}_2 & \text{Right}_i & \text{Left}_i \\
 \end{table}
 
 \subsection{Wasted bits}
-
-As explained on page \pageref{alac_wasted_bits}, a compressed ALAC frame
+\label{alac_wasted_bits}
+A compressed ALAC frame
 with \VAR{Wasted Bits} stores them interleaved between channels.
 Then, after channel decorrelation, these verbatim values are
 prepended to each sample.

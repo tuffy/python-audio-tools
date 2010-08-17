@@ -765,21 +765,28 @@ The residual encoding process is then the simple inverse of the
 decoding process, as follows:
 
 \begin{align*}
-\WARMUP_i &= \SAMPLE_i \\
-& \text{ for } i = 0 \text{ to } Order - 1 \text{ if } Order > 0\\
+%% \WARMUP_i &= \SAMPLE_i \\
+%% & \text{ for } i = 0 \text{ to } Order - 1 \text{ if } Order > 0\\
 \intertext{For Order 0:}
 \RESIDUAL_i &= \SAMPLE_i \\
 & \text{ for } i = 0 \text{ to Block Size} - 1 \\
 \intertext{For Order 1:}
+\WARMUP_0 &= \SAMPLE_0 \\
 \RESIDUAL_i &= \SAMPLE_{i + 1} - \SAMPLE_i \\
 & \text{ for } i = 0 \text{ to Block Size} - 2 \\
 \intertext{For Order 2:}
+\WARMUP_j &= \SAMPLE_j \\
+& \text{ for } j = 0 \text{ to } 1 \\
 \RESIDUAL_i &= \SAMPLE_{i + 2} - ((2 \times \SAMPLE_{i + 1}) - \SAMPLE_i) \\
 & \text{ for } i = 0 \text{ to Block Size} - 3 \\
 \intertext{For Order 3:}
+\WARMUP_j &= \SAMPLE_j \\
+& \text{ for } j = 0 \text{ to } 2 \\
 \RESIDUAL_i &= \SAMPLE_{i + 3} - ((3 \times \SAMPLE_{i + 2}) - (3 \times \SAMPLE_{i + 1}) + \SAMPLE_i) \\
 & \text{ for } i = 0 \text{ to Block Size} - 4 \\
 \intertext{For Order 4:}
+\WARMUP_j &= \SAMPLE_j \\
+& \text{ for } j = 0 \text{ to } 3 \\
 \RESIDUAL_i &= \SAMPLE_{i + 4} - ((4 \times \SAMPLE_{i + 3}) - (6 \times \SAMPLE_{i + 2}) + (4 \times \SAMPLE_{i + 1}) - \SAMPLE_i) \\
 & \text{ for } i = 0 \text{ to Block Size} - 5 \\
 \end{align*}
