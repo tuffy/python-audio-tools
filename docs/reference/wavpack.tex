@@ -284,13 +284,18 @@ The next step is to determine which set of \VAR{Decorrelation Sample}
 values correspond to which \VAR{Decorrelation Term}\footnote{As
 extracted on page \pageref{wavpack_decorr_terms}}.
 
-TODO
-
-%% This portion is on-hold until I sort out how the decorrelation samples
-%% are used in the decoding process.  Although the unpacker treats them
-%% as lists of lists, WavPack's decorrelation passes seem to treat them
-%% like Shorten-style wrapped samples.  If so, this will affect how
-%% I describe their assignment process.
+As with \VAR{Decorrelation Weights},
+\VAR{Decorrelation Sample} values are stored in reverse order,
+alternate between channels and depend on the corresponding
+\VAR{Decorrelation Term} values.
+For $i = \text{\VAR{Term Count}} - 1$ to 0, and $j = 0$ to
+$\text{\VAR{Block Size}} - 1$,
+our \VAR{Decorrelation Sample} values are divided as follows:
+\begin{align*}
+\intertext{Decorrelation Term = 17 or 18:}
+\text{Decorrelation Sample A}_{i1} &= \text{Sample}_j \\
+\text{Decorrelation Sample A}_{i0} &= \text{Sample}_{j + 1}
+\end{align*}
 
 \clearpage
 
@@ -635,3 +640,22 @@ for 2 channel blocks.
 \text{ to a minimum of -1024}
 \end{cases}
 \end{align*}
+
+\clearpage
+
+Now it's time to put all this together into an example.
+Given a 2 channel block with the sub-block decorrelation values:
+\begin{table}[h]
+\begin{tabular}{r r|r r|r r|r r}
+$\text{Term}_1$ & 3 & $\text{Delta}_1$ & 2 &
+$\text{Weight A}_1$ & 16 & $\text{Weight B}_1$ & 24 \\
+$\text{Term}_2$ & 17 & $\text{Delta}_2$ & 2 &
+$\text{Weight A}_2$ & 48 & $\text{Weight B}_2$ & 48 \\
+$\text{Term}_3$ & 2 & $\text{Delta}_3$ & 2 &
+$\text{Weight A}_3$ & 32 & $\text{Weight B}_3$ & 32 \\
+$\text{Term}_4$ & 18 & $\text{Delta}_4$ & 2 &
+$\text{Weight A}_4$ & 48 & $\text{Weight B}_4$ & 48 \\
+$\text{Term}_5$ & 18 & $\text{Delta}_5$ & 2 &
+$\text{Weight A}_5$ & 48 & $\text{Weight B}_5$ & 48 \\
+\end{tabular}
+\end{table}
