@@ -535,7 +535,7 @@ The function for each pass depends on its \VAR{Decorrelation Term}:
 \begin{align*}
 \intertext{Decorrelation Term = 18:}
 \text{Temp}_i &= \lfloor ((3 \times \text{Output}_{i - 1}) - \text{Output}_{i - 2}) \div 2 \rfloor \\
-\text{Output}_i &= \lfloor ((\text{Weight}_{i - 1} \times \text{Temp}_i) + 512) \div 10 \rfloor + \text{Input}_i \\
+\text{Output}_i &= \lfloor ((\text{Weight}_{i - 1} \times \text{Temp}_i) + 512) \div 1024 \rfloor + \text{Input}_i \\
 \text{Weight}_i &=
 \begin{cases}
 \text{Weight}_{i - 1} & \text{if } \text{Temp}_i = 0 \text{ or } \text{Input}_i = 0 \\
@@ -544,7 +544,7 @@ The function for each pass depends on its \VAR{Decorrelation Term}:
 \end{cases}
 \intertext{Decorrelation Term = 17:}
 \text{Temp}_i &= (2 \times \text{Output}_{i - 1}) - \text{Output}_{i - 2} \\
-\text{Output}_i &= \lfloor ((\text{Weight}_{i - 1} \times \text{Temp}_i) + 512) \div 10 \rfloor + \text{Input}_i \\
+\text{Output}_i &= \lfloor ((\text{Weight}_{i - 1} \times \text{Temp}_i) + 512) \div 1024 \rfloor + \text{Input}_i \\
 \text{Weight}_i &=
 \begin{cases}
 \text{Weight}_{i - 1} & \text{if } \text{Temp}_i = 0 \text{ or } \text{Input}_i = 0 \\
@@ -553,7 +553,7 @@ The function for each pass depends on its \VAR{Decorrelation Term}:
 \end{cases}
 \intertext{1 $\leq$ Decorrelation Term $\leq 8$:}
 \text{Temp}_i &= \text{Output}_{i - \text{term}} \\
-\text{Output}_i &= \lfloor ((\text{Weight}_{i - 1} \times \text{Temp}_i) + 512) \div 10 \rfloor + \text{Input}_i \\
+\text{Output}_i &= \lfloor ((\text{Weight}_{i - 1} \times \text{Temp}_i) + 512) \div 1024 \rfloor + \text{Input}_i \\
 \text{Weight}_i &=
 \begin{cases}
 \text{Weight}_{i - 1} & \text{if } \text{Temp}_i = 0 \text{ or } \text{Input}_i = 0 \\
@@ -565,3 +565,31 @@ Note that each function uses previously output samples for its calculation.
 This is where \VAR{Decorrelation Samples} are used;
 those are our $\text{Output}_{-1}$, $\text{Output}_{-2}$, etc.
 which are used for decorrelation but not actually output.
+
+\clearpage
+
+For 1 or 2 channel blocks, positive decorrelation terms are applied
+on a per-channel basis with the weight A values being applied
+to channel A and the weight B values being applied to channel B
+(if present).
+However, the three negative correlation terms are only valid
+for 2 channel blocks.
+\begin{align*}
+\intertext{Decorrelation Term = -1:}
+\text{Temp A}_i &= \lfloor ((\text{Weight A}_{i - 1} \times \text{Output}_{i - 1}) + 512) \div 1024 \rfloor + \text{Input A}_i \\
+\text{Weight}_i &=
+\begin{cases}
+\text{Weight A}_{i - 1} & \text{if } \text{Output}_{i - 1} = 0 \text{ or } \text{Input A}_i = 0 \\
+\text{Weight A}_{i - 1} + \text{Delta} & \text{if } (\text{Output}_{i - 1} \xor \text{Input A}_i) \geq 0 \\
+\text{Weight A}_{i - 1} - \text{Delta} & \text{if } (\text{Output}_{i - 1} \xor \text{Input A}_i) < 0
+\end{cases} \\
+\text{Ouput A}_i &= \text{Temp A}_i \\
+\text{Temp B}_i &= \lfloor ((\text{Weight B}_{i - 1} \times \text{Temp A}_i) + 512) \div 1024 \rfloor + \text{Input B}_i \\
+\text{Weight B}_i &=
+\begin{cases}
+\text{Weight B}_{i - 1} & \text{if } \text{Temp A}_i = 0 \text{ or } \text{Input B}_i = 0 \\
+\text{Weight B}_{i - 1} + \text{Delta} & \text{if } (\text{Temp A}_i \xor \text{Input B}_i) \geq 0 \\
+\text{Weight B}_{i - 1} - \text{Delta} & \text{if } (\text{Temp A}_i \xor \text{Input B}_i) < 0
+\end{cases} \\
+\text{Output B}_i &= \text{Temp B}_i
+\end{align*}
