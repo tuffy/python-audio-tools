@@ -522,13 +522,13 @@ reading process.
 Once the bitstream sub-block has been decoded into a set of
 samples values (alternating between \VAR{Channel A} and \VAR{Channel B}
 if the block is not mono), we then apply decorrelation passes
-to those samples - one pass per decorrelation term value.\footnote{As
-decoded on page \pageref{wavpack_decorr_terms}.}
+to those samples - one pass per decorrelation term value,\footnote{As
+decoded on page \pageref{wavpack_decorr_terms}.} per channel.
 
 Each decorrelation pass requires a \VAR{Decorrelation Term},
 a \VAR{Decorrelation Delta}, one \VAR{Decorrelation Weight} per channel,
 and one or more \VAR{Decorrelation Sample} values - in addition
-to our set of samples we're running the pass over.
+to our set of input samples we're running the pass over.
 These passes are applied in \textit{incrementing} order
 (i.e. $\text{Term}_1$ first, $\text{Term}_2$ next, and so on).
 The function for each pass depends on its \VAR{Decorrelation Term}:
@@ -608,6 +608,30 @@ for 2 channel blocks.
 \text{Weight A}_{i - 1} + \text{Delta} & \text{if } (\text{Output B}_i \xor \text{Input A}_i) \geq 0 \\
 \text{ to a maximum of 1024} \\
 \text{Weight A}_{i - 1} - \text{Delta} & \text{if } (\text{Output B}_i \xor \text{Input A}_i) < 0 \\
+\text{ to a minimum of -1024}
+\end{cases}
+\end{align*}
+
+\clearpage
+
+\begin{align*}
+\intertext{Decorrelation Term = -3:}
+\text{Output A}_i &= \lfloor ((\text{Weight A}_{i - 1} \times \text{Output B}_{i - 1}) + 512) \div 1024 \rfloor \\
+\text{Weight A}_i &=
+\begin{cases}
+\text{Weight A}_{i - 1} & \text{if } \text{Output B}_{i - 1} = 0 \text{ or } \text{Input A}_i = 0 \\
+\text{Weight A}_{i - 1} + \text{Delta} & \text{if } (\text{Output B}_{i - 1} \xor \text{Input A}_i) \geq 0 \\
+\text{ to a maximum of 1024} \\
+\text{Weight A}_{i - 1} - \text{Delta} & \text{if } (\text{Output B}_{i - 1} \xor \text{Input A}_i) < 0 \\
+\text{ to a minimum of -1024}
+\end{cases} \\
+\text{Output B}_i &= \lfloor ((\text{Weight B}_{i - 1} \times \text{Output A}_{i - 1}) + 512) \div 1024 \rfloor \\
+\text{Weight B}_i &=
+\begin{cases}
+\text{Weight B}_{i - 1} & \text{if } \text{Output A}_{i - 1} = 0 \text{ or } \text{Input B}_i = 0 \\
+\text{Weight B}_{i - 1} + \text{Delta} & \text{if } (\text{Output A}_{i - 1} \xor \text{Input B}_i) \geq 0 \\
+\text{ to a maximum of 1024} \\
+\text{Weight B}_{i - 1} - \text{Delta} & \text{if } (\text{Output A}_{i - 1} \xor \text{Input B}_i) < 0 \\
 \text{ to a minimum of -1024}
 \end{cases}
 \end{align*}
