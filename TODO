@@ -2436,14 +2436,16 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** TODO Document WavPack
 *** TODO the WavPack file stream
 *** TODO WavPack decoding
-**** TODO WavPack sub-blocks
+**** DONE WavPack sub-blocks
      - [X] decorr_terms
      - [X] decorr_weights
-     - [ ] decorr_samples
+     - [X] decorr_samples
      - [X] entropy_vars
      - [X] wv_bitstream
-**** TODO decorrelation passes
+**** DONE decorrelation passes
 **** TODO joint stereo
+**** TODO checksum
+**** TODO left shift
 *** TODO WavPack encoding
 *** TODO Verify A4 layout is correct
 ** TODO Test encoder/decoder against reference
