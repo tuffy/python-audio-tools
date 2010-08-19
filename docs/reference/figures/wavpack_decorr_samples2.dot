@@ -4,7 +4,7 @@ digraph read_wavpack_samples {
   size = "6,6";
   margin ="0";
   init [shape=record,label="{input samples|input terms|input terms_count|input channel_count}"];
-  init_i [shape=box,label="i = terms_count - 1\nj = 0"];
+  init_i [shape=box,label="i = terms_count\nj = 0"];
 
   init -> init_i -> check_stereo;
 
@@ -12,7 +12,7 @@ digraph read_wavpack_samples {
   check_stereo -> mono_check_i [label="NO"];
   check_stereo -> stereo_check_i [label="YES"];
 
-  mono_check_i [shape=diamond,label="is\ni ≥ 0?"];
+  mono_check_i [shape=diamond,label="is\ni > 0?"];
   mono_check_i -> mono_check_term_17_18 [label="YES"];
   mono_check_i -> mono_done [label="NO"];
 
@@ -45,7 +45,7 @@ digraph read_wavpack_samples {
   mono_update_neg [shape=record,label="{decorr. samples A[i][0] = samples[j]|j = j + 1|i = i - 1}"];
   mono_update_neg -> mono_check_i;
 
-  stereo_check_i [shape=diamond,label="is\ni ≥ 0?"];
+  stereo_check_i [shape=diamond,label="is\ni > 0?"];
   stereo_check_i -> stereo_check_term_17_18 [label="YES"];
   stereo_check_i -> mono_done [label="NO"];
 
