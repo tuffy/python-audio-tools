@@ -223,3 +223,21 @@ figures/wavpack_read_zeroes.pdf: figures/wavpack_read_zeroes.dot
 
 figures/wavpack_decorr_samples2.pdf: figures/wavpack_decorr_samples2.dot
 	dot -Tpdf $< -o $@
+
+figures/wavpack_decorrelation1.fig: figures/wavpack_decorrelation1.plot
+	./figures/wavpack_decorrelation1.plot > $@
+
+figures/wavpack_decorrelation1.pdf: figures/wavpack_decorrelation1.fig
+	fig2dev -Z 2 -L pdf $< $@
+
+figures/wavpack_decorrelation2.fig: figures/wavpack_decorrelation2.plot
+	./figures/wavpack_decorrelation2.plot > $@
+
+figures/wavpack_decorrelation2.pdf: figures/wavpack_decorrelation2.fig
+	fig2dev -Z 2 -L pdf $< $@
+
+figures/wavpack_decorrelation3.fig: figures/wavpack_decorrelation3.plot
+	./figures/wavpack_decorrelation3.plot > $@
+
+figures/wavpack_decorrelation3.pdf: figures/wavpack_decorrelation3.fig
+	fig2dev -Z 2 -L pdf $< $@
