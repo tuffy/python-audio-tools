@@ -1,8 +1,84 @@
 digraph read_wavpack_samples {
-  init [shape=record,label="{input samples|input samples_count|input terms|input terms_count|input channel_count}"];
+  node [fontname="DejaVuSans"];
+  edge [fontname="DejaVuSans"];
+  size = "6,6";
+  margin ="0";
+  init [shape=record,label="{input samples|input terms|input terms_count|input channel_count}"];
   init_i [shape=box,label="i = terms_count - 1\nj = 0"];
 
-  init -> init_i -> check_i;
+  init -> init_i -> check_stereo;
+
+  check_stereo [shape=diamond,label="is\nchannel_count > 1?"];
+  check_stereo -> mono_check_i [label="NO"];
+  check_stereo -> stereo_check_i [label="YES"];
+
+  mono_check_i [shape=diamond,label="is\ni ≥ 0?"];
+  mono_check_i -> mono_check_term_17_18 [label="YES"];
+  mono_check_i -> mono_done [label="NO"];
+
+  mono_decrement_i [shape=record,label="i = i - 1"];
+  mono_decrement_i -> mono_check_i;
+
+  mono_check_term_17_18 [shape=diamond,label="is\n17 ≤ term[i] ≤ 18?"];
+  mono_check_term_1_8 [shape=diamond,label="is\n1 ≤ term[i] ≤ 8?"];
+  mono_check_term_neg [shape=diamond,label="is\n-3 ≤ term[i] ≤ -1"];
+
+  mono_check_term_17_18 -> mono_check_term_1_8 [label="NO"];
+  mono_check_term_17_18 -> mono_update_17_18 [label="YES"];
+  mono_check_term_1_8 -> mono_check_term_neg [label="NO"];
+  mono_check_term_1_8 -> mono_init_k [label="YES"];
+  mono_check_term_neg -> mono_error [label="NO"];
+  mono_check_term_neg -> mono_update_neg [label="YES"];
+
+  mono_update_17_18 [shape=record,label="{decorr. samples A[i][0] = samples[j + 1]|decorr. samples A[i][1] = samples[j]|j = j + 2|i = i - 1}"];
+  mono_update_17_18 -> mono_check_i;
+
+  mono_init_k [shape=record,label="k = term[i]"];
+  mono_check_k [shape=diamond,label="is\nk > 0?"];
+  mono_update_k [shape=record,label="{decorr. samples A[i][k] = samples[j]|j = j + 1|k = k - 1}"];
+
+  mono_init_k -> mono_check_k;
+  mono_check_k -> mono_update_k [label="YES"];
+  mono_check_k -> mono_decrement_i [label="NO"];
+  mono_update_k -> mono_check_k;
+
+  mono_update_neg [shape=record,label="{decorr. samples A[i][0] = samples[j]|j = j + 1|i = i - 1}"];
+  mono_update_neg -> mono_check_i;
+
+  stereo_check_i [shape=diamond,label="is\ni ≥ 0?"];
+  stereo_check_i -> stereo_check_term_17_18 [label="YES"];
+  stereo_check_i -> mono_done [label="NO"];
+
+  stereo_decrement_i [shape=record,label="i = i - 1"];
+  stereo_decrement_i -> stereo_check_i;
+
+  stereo_check_term_17_18 [shape=diamond,label="is\n17 ≤ term[i] ≤ 18?"];
+  stereo_check_term_1_8 [shape=diamond,label="is\n1 ≤ term[i] ≤ 8?"];
+  stereo_check_term_neg [shape=diamond,label="is\n-3 ≤ term[i] ≤ -1"];
+
+  stereo_check_term_17_18 -> stereo_check_term_1_8 [label="NO"];
+  stereo_check_term_17_18 -> stereo_update_17_18 [label="YES"];
+  stereo_check_term_1_8 -> stereo_check_term_neg [label="NO"];
+  stereo_check_term_1_8 -> stereo_init_k [label="YES"];
+  stereo_check_term_neg -> stereo_error [label="NO"];
+  stereo_check_term_neg -> stereo_update_neg [label="YES"];
+
+  stereo_update_17_18 [shape=record,label="{decorr. samples A[i][0] = samples[j + 1]|decorr. samples A[i][1] = samples[j]|decorr. samples B[i][0] = samples[j + 3]|decorr. samples B[i][1] = samples[j + 2]|j = j + 4|i = i - 1}"];
+  stereo_update_17_18 -> stereo_check_i;
+
+  stereo_init_k [shape=record,label="k = term[i]"];
+  stereo_check_k [shape=diamond,label="is\nk > 0?"];
+  stereo_update_k [shape=record,label="{decorr. samples A[i][k] = samples[j]|decorr. samples B[i][k] = samples[j + 1]|j = j + 2|k = k - 1}"];
+
+  stereo_init_k -> stereo_check_k;
+  stereo_check_k -> stereo_update_k [label="YES"];
+  stereo_check_k -> stereo_decrement_i [label="NO"];
+  stereo_update_k -> stereo_check_k;
+
+  stereo_update_neg [shape=record,label="{decorr. samples A[i][0] = samples[j]|decorr. samples B[i][0] = samples[j + 1]|j = j + 2|i = i - 1}"];
+  stereo_update_neg -> stereo_check_i;
+
+/*
   check_i [shape=diamond,label="is\ni >= 0?"];
 
   check_i -> done [label="NO"];
@@ -57,8 +133,11 @@ digraph read_wavpack_samples {
   check_neg_stereo -> update_neg_stereo [label="YES"];
   check_neg_stereo -> decrement_i [label="NO"];
   update_neg_stereo -> decrement_i;
+*/
 
-  error [shape=box,label="unsupported term"];
+  mono_error [shape=box,label="unsupported term"];
+  stereo_error [shape=box,label="unsupported term"];
 
-  done [shape=box,label="done"];
+  mono_done [shape=box,label="done"];
+  /*stereo_done [shape=box,label="done"];*/
 }

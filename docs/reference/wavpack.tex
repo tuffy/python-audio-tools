@@ -288,14 +288,14 @@ As with \VAR{Decorrelation Weights},
 \VAR{Decorrelation Sample} values are stored in reverse order,
 alternate between channels and depend on the corresponding
 \VAR{Decorrelation Term} values.
-For $i = \text{\VAR{Term Count}} - 1$ to 0, and $j = 0$ to
-$\text{\VAR{Block Size}} - 1$,
-our \VAR{Decorrelation Sample} values are divided as follows:
-\begin{align*}
-\intertext{Decorrelation Term = 17 or 18:}
-\text{Decorrelation Sample A}_{i1} &= \text{Sample}_j \\
-\text{Decorrelation Sample A}_{i0} &= \text{Sample}_{j + 1}
-\end{align*}
+\begin{figure}[h]
+\includegraphics{figures/wavpack_decorr_samples2.pdf}
+\end{figure}
+\par
+\noindent
+It's likely that the decorrelation sample assignment process will
+request more samples than this sub-block contains.
+In that event, treat those samples as 0.
 
 \clearpage
 
