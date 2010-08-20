@@ -2443,7 +2443,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [X] entropy_vars
      - [X] wv_bitstream
 **** DONE decorrelation passes
-**** TODO joint stereo
+**** DONE joint stereo
 **** TODO checksum
 **** TODO left shift
 *** TODO WavPack encoding

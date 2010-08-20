@@ -766,3 +766,29 @@ $\text{Sample}_{5~2}$).
 So, after running through all five passes, our samples are now
 -64 and -46.
 
+\clearpage
+
+\subsection{Joint stereo}
+
+If the block is not mono and the \VAR{Joint Stereo} bit is set
+in the block header, our channels require one more stage of processing
+to transform their mid-side values back into left and right sample
+values.\footnote{In the case of multi-channel audio, these aren't
+necessarily \textit{front} left and right; they might be
+side left and right or rear left and right channels.}
+\begin{align*}
+\text{Left}_i &= \left\lceil\frac{\text{Channel A}_i + (\text{Channel B}_i \times 2)}{2}\right\rceil \\
+\text{Right}_i &= (\text{Channel B}_i \times 2) - \left\lfloor\frac{\text{Channel A}_i + (\text{Channel B}_i \times 2)}{2}\right\rfloor
+\end{align*}
+For example, given the \text{Channel A} samples of -64 and -46, and the
+\text{Channel B} samples of 32 and 39, we convert them to left
+and right samples as follows:
+\begin{align*}
+\text{Left}_1 &= \left\lceil\frac{\text{Channel A}_1 + (\text{Channel B}_1 \times 2)}{2}\right\rceil = \left\lceil\frac{-64 + (32 \times 2)}{2}\right\rceil = \textbf{0} \\
+\text{Right}_1 &= (\text{Channel B}_1 \times 2) - \left\lfloor\frac{\text{Channel A}_1 + (\text{Channel B}_1 \times 2)}{2}\right\rfloor \\
+&= (32 \times 2) - \left\lfloor\frac{-64 + (32 \times 2)}{2}\right\rfloor = 64 - 0 = \textbf{64} \\
+\text{Left}_2 &= \left\lceil\frac{-46 + (39 \times 2)}{2}\right\rceil = \textbf{16} \\
+\text{Right}_2 &= (\text{Channel B}_2 \times 2) - \left\lfloor\frac{\text{Channel A}_2 + (\text{Channel B}_2 \times 2)}{2}\right\rfloor \\
+&= (39 \times 2) - \left\lfloor\frac{-46 + (39 \times 2)}{2}\right\rfloor = 78 - 16 = \textbf{62}
+\end{align*}
+Thus, our left samples are 0 and 16, and our right samples are 64 and 62.
