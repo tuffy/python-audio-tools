@@ -168,7 +168,7 @@ WavPackDecoder_read_block_header(Bitstream* bitstream,
     case 1: header->bits_per_sample = 16; break;
     case 2: header->bits_per_sample = 24; break;
     case 3: header->bits_per_sample = 32; break;
-    default: break; /*can't happen*/
+    default: break; /*can't happen since it's a 4-bit field*/
     }
 
     header->mono_output = bitstream->read(bitstream, 1);
@@ -380,6 +380,14 @@ static int wavpack_exp2(int log) {
     }
 }
 
+static inline ia_data_t
+ia_getdefault(struct i_array *data, ia_size_t index, ia_data_t default_) {
+    if (index >= data->size)
+        return default_;
+    else
+        return data->data[index];
+}
+
 status
 WavPackDecoder_read_decorr_samples(Bitstream* bitstream,
                                    struct wavpack_subblock_header* header,
@@ -388,93 +396,101 @@ WavPackDecoder_read_decorr_samples(Bitstream* bitstream,
                                    struct ia_array* samples_A,
                                    struct ia_array* samples_B) {
     int i;
-    int values_remaining;
-    int term;
     int j;
+    int k;
+    int term;
+    struct i_array samples;
+    struct i_array *term_samples_A;
+    struct i_array *term_samples_B;
+
+    /*first, grab and decode a pile of decorrelation samples
+      from the sub-block*/
+    /*FIXME - catch EOF here and free samples before raising exception*/
+    ia_init(&samples, decorr_terms->size);
+    for (i = 0; i < header->block_size; i++) {
+        ia_append(&samples,
+                  wavpack_exp2(bitstream->read_signed(bitstream, 16)));
+    }
 
     iaa_reset(samples_A);
     iaa_reset(samples_B);
+    j = 0;
 
-    for (i = decorr_terms->size - 1, values_remaining = header->block_size;
-         (i >= 0) && (values_remaining > 0);
-         i--) {
-        switch (term = decorr_terms->data[i]) {
-        case 18:
-        case 17:
-            ia_append(&(samples_A->arrays[i]),
-                      wavpack_exp2(bitstream->read_signed(bitstream, 16)));
-            ia_append(&(samples_A->arrays[i]),
-                      wavpack_exp2(bitstream->read_signed(bitstream, 16)));
-            values_remaining -= 2;
-            if (block_channel_count > 1) {
-                ia_append(&(samples_B->arrays[i]),
-                      wavpack_exp2(bitstream->read_signed(bitstream, 16)));
-                ia_append(&(samples_B->arrays[i]),
-                          wavpack_exp2(bitstream->read_signed(bitstream, 16)));
-                values_remaining -= 2;
-            } else {
-                ia_append(&(samples_B->arrays[i]), 0);
-                ia_append(&(samples_B->arrays[i]), 0);
-            }
-            for (j = 2; j < 8; j++) {
-                /*pad samples_A and samples_B with 0s*/
-                ia_append(&(samples_A->arrays[i]), 0);
-                ia_append(&(samples_B->arrays[i]), 0);
-            }
-            break;
-        case 1:
-        case 2:
-        case 3:
-        case 4:
-        case 5:
-        case 6:
-        case 7:
-        case 8:
-            for (j = 0; j < term; j++) {
-                ia_append(&(samples_A->arrays[i]),
-                          wavpack_exp2(bitstream->read_signed(bitstream, 16)));
-                values_remaining--;
-                if (block_channel_count > 1) {
-                    ia_append(&(samples_B->arrays[i]),
-                          wavpack_exp2(bitstream->read_signed(bitstream, 16)));
-                    values_remaining--;
+    if (block_channel_count > 1) {  /*2 channel block*/
+        for (i = decorr_terms->size - 1; i >= 0; i--) {
+            term = decorr_terms->data[i];
+            term_samples_A = &(samples_A->arrays[i]);
+            term_samples_B = &(samples_B->arrays[i]);
+
+            if ((17 <= term) && (term <= 18)) {
+                ia_append(term_samples_A,
+                          ia_getdefault(&samples, j + 1, 0));
+                ia_append(term_samples_A,
+                          ia_getdefault(&samples, j, 0));
+                ia_append(term_samples_B,
+                          ia_getdefault(&samples, j + 3, 0));
+                ia_append(term_samples_B,
+                          ia_getdefault(&samples, j + 2, 0));
+                j += 4;
+            } else if ((1 <= term) && (term <= 8)) {
+                for (k = 0; k < term; k++) {
+                    ia_append(term_samples_A,
+                              ia_getdefault(&samples, j, 0));
+                    ia_append(term_samples_B,
+                              ia_getdefault(&samples, j + 1, 0));
+                    j += 2;
                 }
+                ia_reverse(term_samples_A);
+                ia_reverse(term_samples_B);
+            } else if ((-3 <= term) && (term <= -1)) {
+                ia_append(term_samples_A,
+                          ia_getdefault(&samples, j, 0));
+                ia_append(term_samples_B,
+                          ia_getdefault(&samples, j + 1, 0));
+                j += 2;
+            } else {
+                PyErr_SetString(PyExc_ValueError,
+                                "unsupported decorrelation term");
+                goto error;
             }
-            for (;j < 8; j++) {
-                ia_append(&(samples_A->arrays[i]), 0);
-                ia_append(&(samples_B->arrays[i]), 0);
+        }
+    } else {                        /*1 channel block*/
+        for (i = decorr_terms->size - 1; i >= 0; i--) {
+            term = decorr_terms->data[i];
+            term_samples_A = &(samples_A->arrays[i]);
+
+            if ((17 <= term) && (term <= 18)) {
+                ia_append(term_samples_A,
+                          ia_getdefault(&samples, j + 1, 0));
+                ia_append(term_samples_A,
+                          ia_getdefault(&samples, j, 0));
+                j += 2;
+            } else if ((1 <= term) && (term <= 8)) {
+                for (k = 0; k < term; k++) {
+                    ia_append(term_samples_A,
+                              ia_getdefault(&samples, j, 0));
+                    j++;
+                }
+                ia_reverse(term_samples_A);
+            } else if ((-3 <= term) && (term <= -1)) {
+                ia_append(term_samples_A,
+                          ia_getdefault(&samples, j, 0));
+                j++;
+            } else {
+                PyErr_SetString(PyExc_ValueError,
+                                "unsupported decorrelation term");
+                goto error;
             }
-            break;
-        case -1:
-        case -2:
-        case -3:
-            ia_append(&(samples_A->arrays[i]),
-                      wavpack_exp2(bitstream->read_signed(bitstream, 16)));
-            ia_append(&(samples_B->arrays[i]),
-                      wavpack_exp2(bitstream->read_signed(bitstream, 16)));
-            values_remaining -= 2;
-            for (j = 1; j < 8; j++) {
-                /*pad samples_A and samples_B with 0s*/
-                ia_append(&(samples_A->arrays[i]), 0);
-                ia_append(&(samples_B->arrays[i]), 0);
-            }
-            break;
-        default:
-            PyErr_SetString(PyExc_ValueError, "invalid decorrelation term");
-            return ERROR;
         }
     }
 
-    /*pad remaining terms with 0s*/
-    for (; i >= 0; i--) {
-        for (j = 0; j < 8; j++) {
-            ia_append(&(samples_A->arrays[i]), 0);
-            ia_append(&(samples_B->arrays[i]), 0);
-        }
-    }
-
+    ia_free(&samples);
     return OK;
+ error:
+    ia_free(&samples);
+    return ERROR;
 }
+
 
 status
 WavPackDecoder_read_entropy_variables(Bitstream* bitstream,
