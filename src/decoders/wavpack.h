@@ -60,6 +60,7 @@ typedef struct {
     int got_decorr_weights;
     int got_decorr_samples;
     int got_entropy_variables;
+    int got_bitstream;
 } decoders_WavPackDecoder;
 
 struct wavpack_block_header {
@@ -246,11 +247,15 @@ void wavpack_decrement_counter(int byte, void* counter);
   "final_block" indicates whether this is the final block to read
   before decoding channels into a final pcm.FrameList object.*/
 status
-WavPackDecoder_decode_block(Bitstream* bitstream,
+WavPackDecoder_decode_block(decoders_WavPackDecoder* self,
                             struct i_array* channel_A,
                             struct i_array* channel_B,
                             int* channel_count,
                             int* final_block);
+
+status
+WavPackDecoder_decode_subblock(decoders_WavPackDecoder* self,
+                               struct wavpack_block_header* block_header);
 
 PyTypeObject decoders_WavPackDecoderType = {
     PyObject_HEAD_INIT(NULL)
