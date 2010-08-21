@@ -105,6 +105,8 @@ struct wavpack_subblock_header {
 };
 
 #define MAXIMUM_TERM_COUNT 16
+#define WEIGHT_MAXIMUM 1024
+#define WEIGHT_MINIMUM -1024
 
 /*the WavPackDecoder.__init__() method*/
 int
@@ -278,6 +280,9 @@ void wavpack_perform_decorrelation_pass_1ch(
                                     int decorrelation_delta,
                                     int decorrelation_weight,
                                     struct i_array* decorrelation_samples);
+
+void wavpack_undo_joint_stereo(struct i_array* channel_A,
+                               struct i_array* channel_B);
 
 PyTypeObject decoders_WavPackDecoderType = {
     PyObject_HEAD_INIT(NULL)

@@ -621,7 +621,7 @@ for 2 channel blocks.
 
 \begin{align*}
 \intertext{Decorrelation Term = -3:}
-\text{Output A}_i &= \lfloor ((\text{Weight A}_{i - 1} \times \text{Output B}_{i - 1}) + 512) \div 1024 \rfloor \\
+\text{Output A}_i &= \lfloor ((\text{Weight A}_{i - 1} \times \text{Output B}_{i - 1}) + 512) \div 1024 \rfloor + \text{Input A}_i \\
 \text{Weight A}_i &=
 \begin{cases}
 \text{Weight A}_{i - 1} & \text{if } \text{Output B}_{i - 1} = 0 \text{ or } \text{Input A}_i = 0 \\
@@ -630,7 +630,7 @@ for 2 channel blocks.
 \text{Weight A}_{i - 1} - \text{Delta} & \text{if } (\text{Output B}_{i - 1} \xor \text{Input A}_i) < 0 \\
 \text{ to a minimum of -1024}
 \end{cases} \\
-\text{Output B}_i &= \lfloor ((\text{Weight B}_{i - 1} \times \text{Output A}_{i - 1}) + 512) \div 1024 \rfloor \\
+\text{Output B}_i &= \lfloor ((\text{Weight B}_{i - 1} \times \text{Output A}_{i - 1}) + 512) \div 1024 \rfloor + \text{Input B}_i \\
 \text{Weight B}_i &=
 \begin{cases}
 \text{Weight B}_{i - 1} & \text{if } \text{Output A}_{i - 1} = 0 \text{ or } \text{Input B}_i = 0 \\
