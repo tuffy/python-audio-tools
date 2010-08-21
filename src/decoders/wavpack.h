@@ -257,6 +257,28 @@ status
 WavPackDecoder_decode_subblock(decoders_WavPackDecoder* self,
                                struct wavpack_block_header* block_header);
 
+/*Performs a decorrelation pass over channel_A and (optionally) channel_B,
+  altering their values in the process.
+  If "channel_count" is 1, only channel_A and weight_A are used.
+  Otherwise, channel_B is also used.*/
+void wavpack_perform_decorrelation_pass(
+                                    struct i_array* channel_A,
+                                    struct i_array* channel_B,
+                                    int decorrelation_term,
+                                    int decorrelation_delta,
+                                    int decorrelation_weight_A,
+                                    int decorrelation_weight_B,
+                                    struct i_array* decorrelation_samples_A,
+                                    struct i_array* decorrelation_samples_B,
+                                    int channel_count);
+
+void wavpack_perform_decorrelation_pass_1ch(
+                                    struct i_array* channel,
+                                    int decorrelation_term,
+                                    int decorrelation_delta,
+                                    int decorrelation_weight,
+                                    struct i_array* decorrelation_samples);
+
 PyTypeObject decoders_WavPackDecoderType = {
     PyObject_HEAD_INIT(NULL)
     0,                         /*ob_size*/

@@ -1118,6 +1118,22 @@ WavPackDecoder_decode_block(decoders_WavPackDecoder* self,
 
         /*If we have decorrelation passes, run them over
          channel_A and channel_B as many times as necessary.*/
+        if (self->got_decorr_terms) {
+            /*FIXME - sanity check all decorrelation pass inputs here*/
+
+            for (i = 0; i < self->decorr_terms.size; i++) {
+                wavpack_perform_decorrelation_pass(
+                                channel_A,
+                                channel_B,
+                                self->decorr_terms.data[i],
+                                self->decorr_deltas.data[i],
+                                self->decorr_weights_A.data[i],
+                                self->decorr_weights_B.data[i],
+                                &(self->decorr_samples_A.arrays[i]),
+                                &(self->decorr_samples_B.arrays[i]),
+                                available_channels);
+            }
+        }
 
         /*Finally, undo joint stereo if necessary.*/
 
@@ -1215,6 +1231,114 @@ WavPackDecoder_decode_subblock(decoders_WavPackDecoder* self,
     }
 
     return OK;
+}
+
+void wavpack_perform_decorrelation_pass(
+                                    struct i_array* channel_A,
+                                    struct i_array* channel_B,
+                                    int decorrelation_term,
+                                    int decorrelation_delta,
+                                    int decorrelation_weight_A,
+                                    int decorrelation_weight_B,
+                                    struct i_array* decorrelation_samples_A,
+                                    struct i_array* decorrelation_samples_B,
+                                    int channel_count) {
+    if (channel_count == 1) {
+        wavpack_perform_decorrelation_pass_1ch(channel_A,
+                                               decorrelation_term,
+                                               decorrelation_delta,
+                                               decorrelation_weight_A,
+                                               decorrelation_samples_A);
+    } else if (decorrelation_term >= 1) {
+        wavpack_perform_decorrelation_pass_1ch(channel_A,
+                                               decorrelation_term,
+                                               decorrelation_delta,
+                                               decorrelation_weight_A,
+                                               decorrelation_samples_A);
+        wavpack_perform_decorrelation_pass_1ch(channel_B,
+                                               decorrelation_term,
+                                               decorrelation_delta,
+                                               decorrelation_weight_B,
+                                               decorrelation_samples_B);
+    } else {
+        /*FIXME - perform negative decorrelations here*/
+        return;
+    }
+}
+
+void wavpack_perform_decorrelation_pass_1ch(
+                                    struct i_array* channel,
+                                    int decorrelation_term,
+                                    int decorrelation_delta,
+                                    int decorrelation_weight,
+                                    struct i_array* decorrelation_samples) {
+    struct i_array output;
+    struct i_array output_tail;
+    ia_data_t temp;
+    ia_data_t input_i;
+    ia_size_t i;
+
+    ia_init(&output, channel->size + decorrelation_samples->size);
+    ia_extend(&output, decorrelation_samples);
+
+    switch (decorrelation_term) {
+    case 18:
+        for (i = 0; i < channel->size; i++) {
+            input_i = channel->data[i];
+            temp = ((3 * ia_getitem(&output, -1)) -
+                    ia_getitem(&output, -2)) >> 1;
+            ia_append(&output, (((decorrelation_weight * temp) + 512) >> 10) +
+                      input_i);
+            if ((temp != 0) && (input_i != 0)) {
+                if ((temp ^ input_i) >= 0)
+                    decorrelation_weight += decorrelation_delta;
+                else
+                    decorrelation_weight -= decorrelation_delta;
+            }
+        }
+        break;
+    case 17:
+        for (i = 0; i < channel->size; i++) {
+            input_i = channel->data[i];
+            temp = (2 * ia_getitem(&output, -1)) - ia_getitem(&output, -2);
+            ia_append(&output, (((decorrelation_weight * temp) + 512) >> 10) +
+                      input_i);
+            if ((temp != 0) && (input_i != 0)) {
+                if ((temp ^ input_i) >= 0)
+                    decorrelation_weight += decorrelation_delta;
+                else
+                    decorrelation_weight -= decorrelation_delta;
+            }
+        }
+        break;
+    case 1:
+    case 2:
+    case 3:
+    case 4:
+    case 5:
+    case 6:
+    case 7:
+    case 8:
+        for (i = 0; i < channel->size; i++) {
+            input_i = channel->data[i];
+            temp = ia_getitem(&output, -decorrelation_term);
+            ia_append(&output,
+                      (((decorrelation_weight * temp) + 512) >> 10) +
+                      input_i);
+            if ((temp != 0) && (input_i != 0)) {
+                if ((temp ^ input_i) >= 0)
+                    decorrelation_weight += decorrelation_delta;
+                else
+                    decorrelation_weight -= decorrelation_delta;
+            }
+        }
+        break;
+    }
+
+    ia_tail(&output_tail, &output, channel->size);
+
+    ia_copy(channel, &output_tail);
+    ia_free(&output);
 }
 
 #include "pcm.c"
