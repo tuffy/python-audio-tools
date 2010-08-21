@@ -1,4 +1,6 @@
 #include "wavpack.h"
+#include "../pcm.h"
+#include "pcm.h"
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -78,6 +80,7 @@ WavPackDecoder_init(decoders_WavPackDecoder *self,
         }
     } while (block_header.final_block_in_sequence == 0);
 
+    iaa_init(&(self->decoded_samples), self->channels, 44100);
     fseek(self->file, 0, SEEK_SET);
 
     return 0;
@@ -97,6 +100,8 @@ WavPackDecoder_dealloc(decoders_WavPackDecoder *self) {
 
     if (self->filename != NULL)
         free(self->filename);
+    if (self->channels > 0)
+        iaa_free(&(self->decoded_samples));
 
     bs_close(self->bitstream);
 
@@ -768,6 +773,42 @@ ia_array_to_list(struct ia_array *list)
     }
 }
 
+PyObject*
+WavPackDecoder_read(decoders_WavPackDecoder* self,
+                    struct wavpack_block_header* block_header) {
+    int channels_read;
+    int final_block = 0;
+    int current_channel = 0;
+    iaa_reset(&(self->decoded_samples));
+
+    if (self->remaining_samples < 1)
+        return ia_array_to_framelist(&(self->decoded_samples),
+                                     self->bits_per_sample);
+
+    do {
+        if (WavPackDecoder_decode_block(
+                    self->bitstream,
+                    current_channel < self->channels ?
+                    &(self->decoded_samples.arrays[current_channel]) :
+                    NULL,
+                    (current_channel + 1) < self->channels ?
+                    &(self->decoded_samples.arrays[current_channel + 1]) :
+                    NULL,
+                    &channels_read,
+                    &final_block) == OK) {
+            current_channel += channels_read;
+        } else
+            goto error;
+    } while (!final_block);
+
+    self->remaining_samples -= self->decoded_samples.arrays[0].size;
+
+    return ia_array_to_framelist(&(self->decoded_samples),
+                                 self->bits_per_sample);
+ error:
+    return NULL;
+}
+
 /*as with Shorten, whose analyze_frame() returns the next command
   (likely only part of a total collection of PCM frames),
   this returns a single block which may be only one of several
@@ -983,3 +1024,34 @@ WavPackDecoder_analyze_subblock(decoders_WavPackDecoder* self,
                          "sub_block_size", header.block_size,
                          "sub_block_data", subblock_data_obj);
 }
+
+status
+WavPackDecoder_decode_block(Bitstream* bitstream,
+                            struct i_array* channel_A,
+                            struct i_array* channel_B,
+                            int* channel_count,
+                            int* final_block) {
+    int available_channels = 0;
+
+    if (channel_A != NULL) {
+        ia_reset(channel_A);
+        available_channels++;
+    }
+    if (channel_B != NULL) {
+        ia_reset(channel_B);
+        available_channels++;
+    }
+
+    /*FIXME - some dummy data for now*/
+    *channel_count = 1;
+    *final_block = 1;
+
+    if (available_channels > 0)
+        ia_append(channel_A, 0);
+    if (available_channels > 1)
+        ia_append(channel_B, 0);
+
+    return OK;
+}
+
+#include "pcm.c"
