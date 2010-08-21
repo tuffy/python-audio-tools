@@ -62,7 +62,6 @@ WavPackDecoder_init(decoders_WavPackDecoder *self,
     self->channel_mask = 0;
     self->remaining_samples = -1;
 
-    /*FIXME - check for EOF here*/
     do {
         if (WavPackDecoder_read_block_header(self->bitstream,
                                              &block_header) == ERROR)
@@ -149,73 +148,83 @@ WavPackDecoder_offset(decoders_WavPackDecoder *self, void *closure) {
 status
 WavPackDecoder_read_block_header(Bitstream* bitstream,
                                  struct wavpack_block_header* header) {
-    /*read and verify block ID*/
-    if (bitstream->read(bitstream, 32) != 0x6B707677) {
-        PyErr_SetString(PyExc_ValueError, "invalid block ID");
-        return ERROR;
+    if (!setjmp(*bs_try(bitstream))) {
+        /*read and verify block ID*/
+        if (bitstream->read(bitstream, 32) != 0x6B707677) {
+            PyErr_SetString(PyExc_ValueError, "invalid block ID");
+            goto error;
+        }
+
+        header->block_size = bitstream->read(bitstream, 32);
+        header->version = bitstream->read(bitstream, 16);
+        header->track_number = bitstream->read(bitstream, 8);
+        header->index_number = bitstream->read(bitstream, 8);
+        header->total_samples = bitstream->read_signed(bitstream, 32);
+        header->block_index = bitstream->read(bitstream, 32);
+        header->block_samples = bitstream->read(bitstream, 32);
+
+        switch (bitstream->read(bitstream, 2)) {
+        case 0: header->bits_per_sample = 8; break;
+        case 1: header->bits_per_sample = 16; break;
+        case 2: header->bits_per_sample = 24; break;
+        case 3: header->bits_per_sample = 32; break;
+        default: break; /*can't happen since it's a 4-bit field*/
+        }
+
+        header->mono_output = bitstream->read(bitstream, 1);
+        header->hybrid_mode = bitstream->read(bitstream, 1);
+        header->joint_stereo = bitstream->read(bitstream, 1);
+        header->cross_channel_decorrelation = bitstream->read(bitstream, 1);
+        header->hybrid_noise_shaping = bitstream->read(bitstream, 1);
+        header->floating_point_data = bitstream->read(bitstream, 1);
+        header->extended_size_integers = bitstream->read(bitstream, 1);
+        header->hybrid_parameters_control_bitrate = bitstream->read(bitstream,
+                                                                    1);
+        header->hybrid_noise_balanced = bitstream->read(bitstream, 1);
+        header->initial_block_in_sequence = bitstream->read(bitstream, 1);
+        header->final_block_in_sequence = bitstream->read(bitstream, 1);
+        header->left_shift = bitstream->read(bitstream, 5);
+        header->maximum_data_magnitude = bitstream->read(bitstream, 5);
+
+        switch (bitstream->read(bitstream, 4)) {
+        case 0x0: header->sample_rate =   6000; break;
+        case 0x1: header->sample_rate =   8000; break;
+        case 0x2: header->sample_rate =   9600; break;
+        case 0x3: header->sample_rate =  11025; break;
+        case 0x4: header->sample_rate =  12000; break;
+        case 0x5: header->sample_rate =  16000; break;
+        case 0x6: header->sample_rate =  22050; break;
+        case 0x7: header->sample_rate =  24000; break;
+        case 0x8: header->sample_rate =  32000; break;
+        case 0x9: header->sample_rate =  41000; break;
+        case 0xA: header->sample_rate =  48000; break;
+        case 0xB: header->sample_rate =  64000; break;
+        case 0xC: header->sample_rate =  88200; break;
+        case 0xD: header->sample_rate =  96000; break;
+        case 0xE: header->sample_rate = 192000; break;
+        case 0xF: header->sample_rate =      0; break; /*reserved*/
+        }
+
+        bitstream->read(bitstream, 2);
+        header->use_IIR = bitstream->read(bitstream, 1);
+        header->false_stereo = bitstream->read(bitstream, 1);
+
+        if (bitstream->read(bitstream, 1) != 0) {
+            PyErr_SetString(PyExc_ValueError, "invalid reserved bit");
+            goto error;
+        }
+
+        header->crc = bitstream->read(bitstream, 32);
+
+        bs_etry(bitstream);
+        return OK;
+    } else {
+        PyErr_SetString(PyExc_IOError, "I/O error reading block header");
+        goto error;
     }
-
-    header->block_size = bitstream->read(bitstream, 32);
-    header->version = bitstream->read(bitstream, 16);
-    header->track_number = bitstream->read(bitstream, 8);
-    header->index_number = bitstream->read(bitstream, 8);
-    header->total_samples = bitstream->read_signed(bitstream, 32);
-    header->block_index = bitstream->read(bitstream, 32);
-    header->block_samples = bitstream->read(bitstream, 32);
-
-    switch (bitstream->read(bitstream, 2)) {
-    case 0: header->bits_per_sample = 8; break;
-    case 1: header->bits_per_sample = 16; break;
-    case 2: header->bits_per_sample = 24; break;
-    case 3: header->bits_per_sample = 32; break;
-    default: break; /*can't happen since it's a 4-bit field*/
-    }
-
-    header->mono_output = bitstream->read(bitstream, 1);
-    header->hybrid_mode = bitstream->read(bitstream, 1);
-    header->joint_stereo = bitstream->read(bitstream, 1);
-    header->cross_channel_decorrelation = bitstream->read(bitstream, 1);
-    header->hybrid_noise_shaping = bitstream->read(bitstream, 1);
-    header->floating_point_data = bitstream->read(bitstream, 1);
-    header->extended_size_integers = bitstream->read(bitstream, 1);
-    header->hybrid_parameters_control_bitrate = bitstream->read(bitstream, 1);
-    header->hybrid_noise_balanced = bitstream->read(bitstream, 1);
-    header->initial_block_in_sequence = bitstream->read(bitstream, 1);
-    header->final_block_in_sequence = bitstream->read(bitstream, 1);
-    header->left_shift = bitstream->read(bitstream, 5);
-    header->maximum_data_magnitude = bitstream->read(bitstream, 5);
-
-    switch (bitstream->read(bitstream, 4)) {
-    case 0x0: header->sample_rate =   6000; break;
-    case 0x1: header->sample_rate =   8000; break;
-    case 0x2: header->sample_rate =   9600; break;
-    case 0x3: header->sample_rate =  11025; break;
-    case 0x4: header->sample_rate =  12000; break;
-    case 0x5: header->sample_rate =  16000; break;
-    case 0x6: header->sample_rate =  22050; break;
-    case 0x7: header->sample_rate =  24000; break;
-    case 0x8: header->sample_rate =  32000; break;
-    case 0x9: header->sample_rate =  41000; break;
-    case 0xA: header->sample_rate =  48000; break;
-    case 0xB: header->sample_rate =  64000; break;
-    case 0xC: header->sample_rate =  88200; break;
-    case 0xD: header->sample_rate =  96000; break;
-    case 0xE: header->sample_rate = 192000; break;
-    case 0xF: header->sample_rate =      0; break; /*reserved*/
-    }
-
-    bitstream->read(bitstream, 2);
-    header->use_IIR = bitstream->read(bitstream, 1);
-    header->false_stereo = bitstream->read(bitstream, 1);
-
-    if (bitstream->read(bitstream, 1) != 0) {
-        PyErr_SetString(PyExc_ValueError, "invalid reserved bit");
-        return ERROR;
-    }
-
-    header->crc = bitstream->read(bitstream, 32);
-
-    return OK;
+ error:
+    bs_etry(bitstream);
+    return ERROR;
 }
 
 void
@@ -405,11 +414,19 @@ WavPackDecoder_read_decorr_samples(Bitstream* bitstream,
 
     /*first, grab and decode a pile of decorrelation samples
       from the sub-block*/
-    /*FIXME - catch EOF here and free samples before raising exception*/
     ia_init(&samples, decorr_terms->size);
-    for (i = 0; i < header->block_size; i++) {
-        ia_append(&samples,
-                  wavpack_exp2(bitstream->read_signed(bitstream, 16)));
+
+    if (!setjmp(*bs_try(bitstream))) {
+        for (i = 0; i < header->block_size; i++) {
+            ia_append(&samples,
+                      wavpack_exp2(bitstream->read_signed(bitstream, 16)));
+        }
+        bs_etry(bitstream);
+    } else {
+        bs_etry(bitstream);
+        PyErr_SetString(PyExc_IOError,
+                        "I/O error reading decorrelation samples");
+        goto error;
     }
 
     iaa_reset(samples_A);
@@ -542,48 +559,55 @@ WavPackDecoder_read_wv_bitstream(Bitstream* bitstream,
     bs_add_callback(bitstream, wavpack_decrement_counter, &byte_block_size);
     ia_reset(values);
 
-    /*FIXME - make sure callback is popped even if we hit an error*/
+    if (!setjmp(*bs_try(bitstream))) {
+        while (value_count > 0) {
+            if ((!holding_zero) &&
+                (!holding_one) &&
+                (entropy_variables_A->data[0] < 2) &&
+                (entropy_variables_B->data[0] < 2)) {
+                /*possibly get a chunk of 0 samples*/
+                zeroes = wavpack_get_zero_count(bitstream);
+                if (zeroes > 0) {
+                    entropy_variables_A->data[0] = 0;
+                    entropy_variables_A->data[1] = 0;
+                    entropy_variables_A->data[2] = 0;
+                    entropy_variables_B->data[0] = 0;
+                    entropy_variables_B->data[1] = 0;
+                    entropy_variables_B->data[2] = 0;
 
-    while (value_count > 0) {
-        if ((!holding_zero) &&
-            (!holding_one) &&
-            (entropy_variables_A->data[0] < 2) &&
-            (entropy_variables_B->data[0] < 2)) {
-            /*possibly get a chunk of 0 samples*/
-            zeroes = wavpack_get_zero_count(bitstream);
-            if (zeroes > 0) {
-                entropy_variables_A->data[0] = 0;
-                entropy_variables_A->data[1] = 0;
-                entropy_variables_A->data[2] = 0;
-                entropy_variables_B->data[0] = 0;
-                entropy_variables_B->data[1] = 0;
-                entropy_variables_B->data[2] = 0;
-
-                for (; zeroes > 0; zeroes--) {
-                    ia_append(values, 0);
-                    value_count--;
-                    channel = (channel + 1) % block_channel_count;
+                    for (; zeroes > 0; zeroes--) {
+                        ia_append(values, 0);
+                        value_count--;
+                        channel = (channel + 1) % block_channel_count;
+                    }
                 }
+            }
+
+            if (value_count > 0) {
+                ia_append(values,
+                          wavpack_get_value(bitstream,
+                                            entropy_variables[channel],
+                                            &holding_one,
+                                            &holding_zero));
+                value_count--;
+                channel = (channel + 1) % block_channel_count;
             }
         }
 
-        if (value_count > 0) {
-            ia_append(values,
-                      wavpack_get_value(bitstream,
-                                        entropy_variables[channel],
-                                        &holding_one,
-                                        &holding_zero));
-            value_count--;
-            channel = (channel + 1) % block_channel_count;
-        }
+        bitstream->byte_align(bitstream);
+        while (byte_block_size > 0)
+            bitstream->read(bitstream, 8);
+        bs_pop_callback(bitstream);
+        bs_etry(bitstream);
+
+        return OK;
+    } else {
+        PyErr_SetString(PyExc_IOError, "I/O error reading bitstream");
+        bs_pop_callback(bitstream);
+        bs_etry(bitstream);
+
+        return ERROR;
     }
-
-    bitstream->byte_align(bitstream);
-    while (byte_block_size > 0)
-        bitstream->read(bitstream, 8);
-    bs_pop_callback(bitstream);
-
-    return OK;
 }
 
 static inline int
@@ -761,22 +785,32 @@ WavPackDecoder_analyze_frame(decoders_WavPackDecoder* self, PyObject *args) {
         position = ftell(self->bitstream->file);
         self->got_entropy_variables = 0;
 
-        /*FIXME - check for EOFs here*/
         if (WavPackDecoder_read_block_header(self->bitstream,
                                              &block_header) == OK) {
             subblocks = PyList_New(0);
             block_end = ftell(self->bitstream->file) +
                 block_header.block_size - 24 - 1;
-            while (ftell(self->bitstream->file) < block_end) {
-                subblock = WavPackDecoder_analyze_subblock(self,
-                                                           &block_header);
-                if (subblock != NULL) {
-                    PyList_Append(subblocks, subblock);
-                    Py_DECREF(subblock);
-                } else {
-                    Py_DECREF(subblocks);
-                    return NULL;
+
+            if (!setjmp(*bs_try(self->bitstream))) {
+                while (ftell(self->bitstream->file) < block_end) {
+                    subblock = WavPackDecoder_analyze_subblock(self,
+                                                               &block_header);
+                    if (subblock != NULL) {
+                        PyList_Append(subblocks, subblock);
+                        Py_DECREF(subblock);
+                    } else {
+                        Py_DECREF(subblocks);
+                        bs_etry(self->bitstream);
+                        return NULL;
+                    }
                 }
+                bs_etry(self->bitstream);
+            } else {
+                Py_DECREF(subblocks);
+                bs_etry(self->bitstream);
+                PyErr_SetString(PyExc_IOError,
+                                "I/O error reading sub-blocks");
+                return NULL;
             }
 
             self->remaining_samples -= block_header.block_samples;
@@ -841,7 +875,7 @@ WavPackDecoder_analyze_subblock(decoders_WavPackDecoder* self,
     size_t data_size;
     PyObject* subblock_data_obj = NULL;
 
-    /*FIXME - catch EOF here*/
+    /*FIXME - check for EOFs here*/
     WavPackDecoder_read_subblock_header(bitstream, &header);
 
     switch (header.metadata_function | (header.nondecoder_data << 5)) {

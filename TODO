@@ -2395,7 +2395,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
     And the following methods:
     - [ ] __init__
     - [ ] read()
-    - [ ] analyze_frame()
+    - [X] analyze_frame()
     - [X] close()
 *** DONE Add block header parsing
 *** DONE Add sub-block header parsing
@@ -2428,8 +2428,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** TODO Ensure block CRC is checked
 ** TODO Add WavPack encoder
 *** TODO Add audiotools.encoders.encode_wavpack function
-*** TODO Ensure uncompressed WavPacks are written correctly
-    If possible.  There's usually some sort of escape code for it.
 *** TODO Determine WavPack stream tunables
 *** TODO Handle atypical sample rates properly
 *** TODO Optimize for speed

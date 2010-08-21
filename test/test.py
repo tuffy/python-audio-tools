@@ -4775,6 +4775,42 @@ class TestWavPackAudio(EmbeddedCuesheet, ApeTaggedAudio, TestForeignWaveChunks, 
         finally:
             temp.close()
 
+    @TEST_INVALIDFILE
+    def test_truncated_file(self):
+        def run_analysis(pcmreader):
+            f = pcmreader.analyze_frame()
+            while (f is not None):
+                f = pcmreader.analyze_frame()
+
+        #FIXME - replace this with audiotools.open().to_pcm()
+        import audiotools.decoders
+
+        f = open("silence.wv")
+        wavpack_data = f.read()
+        f.close()
+
+        temp = tempfile.NamedTemporaryFile(suffix=".wv")
+
+        try:
+            for i in xrange(0, len(wavpack_data)):
+                temp.seek(0, 0)
+                temp.write(wavpack_data[0:i])
+                temp.flush()
+                self.assertEqual(os.path.getsize(temp.name), i)
+                try:
+                    decoder = audiotools.decoders.WavPackDecoder(temp.name)
+                except IOError:
+                    #chopping off the first few bytes might trigger
+                    #an IOError at init-time, which is ok
+                    continue
+                self.assertNotEqual(decoder, None)
+                #FIXME - add transfer_framelist_data check here
+
+                decoder = audiotools.decoders.WavPackDecoder(temp.name)
+                self.assertNotEqual(decoder, None)
+                self.assertRaises(IOError, run_analysis, decoder)
+        finally:
+            temp.close()
 
 class TestShortenAudio(TestForeignWaveChunks, TestAiffAudio):
     def setUp(self):
