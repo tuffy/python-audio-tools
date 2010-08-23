@@ -462,8 +462,6 @@ WavPackDecoder_read_decorr_samples(Bitstream* bitstream,
                               ia_getdefault(&samples, j + 1, 0));
                     j += 2;
                 }
-                ia_reverse(term_samples_A);
-                ia_reverse(term_samples_B);
             } else if ((-3 <= term) && (term <= -1)) {
                 ia_append(term_samples_A,
                           ia_getdefault(&samples, j, 0));
@@ -672,28 +670,28 @@ int wavpack_get_value(Bitstream* bitstream,
     case 0:
         base = 0;
         add = medians[0] >> 4;
-        medians[0] -= ((medians[0] + 126) / 128) * 2;
+        medians[0] -= ((medians[0] + 126) >> 7) * 2;
         break;
     case 1:
         base = (medians[0] >> 4) + 1;
         add = medians[1] >> 4;
-        medians[0] += ((medians[0] + 128) / 128) * 5;
-        medians[1] -= ((medians[1] + 62) / 64) * 2;
+        medians[0] += ((medians[0] + 128) >> 7) * 5;
+        medians[1] -= ((medians[1] + 62) >> 6) * 2;
         break;
     case 2:
         base = ((medians[0] >> 4) + 1) + ((medians[1] >> 4) + 1);
         add = medians[2] >> 4;
-        medians[0] += ((medians[0] + 128) / 128) * 5;
-        medians[1] += ((medians[1] + 64) / 64) * 5;
-        medians[2] -= ((medians[2] + 30) / 32) * 2;
+        medians[0] += ((medians[0] + 128) >> 7) * 5;
+        medians[1] += ((medians[1] + 64) >> 6) * 5;
+        medians[2] -= ((medians[2] + 30) >> 5) * 2;
         break;
     default:
         base = ((medians[0] >> 4) + 1) + (((medians[1] >> 4) + 1) +
              (((medians[2] >> 4) + 1) * (t - 2)));
         add = medians[2] >> 4;
-        medians[0] += ((medians[0] + 128) / 128) * 5;
-        medians[1] += ((medians[1] + 64) / 64) * 5;
-        medians[2] += ((medians[2] + 32) / 32) * 5;
+        medians[0] += ((medians[0] + 128) >> 7) * 5;
+        medians[1] += ((medians[1] + 64) >> 6) * 5;
+        medians[2] += ((medians[2] + 32) >> 5) * 5;
         break;
     }
 

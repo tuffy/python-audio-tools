@@ -351,6 +351,7 @@ iaa_reset(struct ia_array *array)
         ia_reset(&(array->arrays[i]));
 }
 
+void iaa_print(FILE *stream, struct ia_array *array);
 
 /*an array of double values which can grow as needed*/
 typedef double fa_data_t;

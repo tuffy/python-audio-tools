@@ -69,22 +69,10 @@ ia_print(FILE *stream, struct i_array *array)
     ia_size_t i;
 
     fprintf(stream, "[");
-    if (array->size <= 20) {
-        for (i = 0; i < array->size; i++) {
-            fprintf(stream, "%d", array->data[i]);
-            if ((i + 1) < array->size)
-                fprintf(stream, ",");
-        }
-    } else {
-        for (i = 0; i < 5; i++) {
-            fprintf(stream, "%d, ", ia_getitem(array, i));
-        }
-        fprintf(stream, "...,");
-        for (i = -5; i < 0; i++) {
-            fprintf(stream, "%d", ia_getitem(array, i));
-            if ((i + 1) < 0)
-                fprintf(stream, ",");
-        }
+    for (i = 0; i < array->size; i++) {
+        fprintf(stream, "%d", ia_getitem(array, i));
+        if ((i + 1) < array->size)
+            fprintf(stream, ",");
     }
     fprintf(stream, "]");
 }
@@ -311,6 +299,18 @@ iaa_copy(struct ia_array *target, struct ia_array *source)
     for (i = 0; i < source->size; i++)
         ia_copy(&(target->arrays[i]), &(source->arrays[i]));
     target->size = source->size;
+}
+
+void iaa_print(FILE *stream, struct ia_array *array) {
+    ia_size_t i;
+
+    fprintf(stream, "[");
+    for (i = 0; i < array->size; i++) {
+        ia_print(stream, iaa_getitem(array, i));
+        if ((i + 1) < array->size)
+            fprintf(stream, ",");
+    }
+    fprintf(stream, "]");
 }
 
 void

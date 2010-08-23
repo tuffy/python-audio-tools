@@ -33,9 +33,9 @@ digraph read_wavpack_samples {
   mono_update_17_18 [shape=record,label="{decorr. samples A[i][0] = samples[j + 1]|decorr. samples A[i][1] = samples[j]|j = j + 2|i = i - 1}"];
   mono_update_17_18 -> mono_check_i;
 
-  mono_init_k [shape=record,label="k = term[i]"];
-  mono_check_k [shape=diamond,label="is\nk > 0?"];
-  mono_update_k [shape=record,label="{decorr. samples A[i][k] = samples[j]|j = j + 1|k = k - 1}"];
+  mono_init_k [shape=record,label="k = 0"];
+  mono_check_k [shape=diamond,label="is\nk < term[i]?"];
+  mono_update_k [shape=record,label="{decorr. samples A[i][k] = samples[j]|j = j + 1|k = k + 1}"];
 
   mono_init_k -> mono_check_k;
   mono_check_k -> mono_update_k [label="YES"];
@@ -66,9 +66,9 @@ digraph read_wavpack_samples {
   stereo_update_17_18 [shape=record,label="{decorr. samples A[i][0] = samples[j + 1]|decorr. samples A[i][1] = samples[j]|decorr. samples B[i][0] = samples[j + 3]|decorr. samples B[i][1] = samples[j + 2]|j = j + 4|i = i - 1}"];
   stereo_update_17_18 -> stereo_check_i;
 
-  stereo_init_k [shape=record,label="k = term[i]"];
-  stereo_check_k [shape=diamond,label="is\nk > 0?"];
-  stereo_update_k [shape=record,label="{decorr. samples A[i][k] = samples[j]|decorr. samples B[i][k] = samples[j + 1]|j = j + 2|k = k - 1}"];
+  stereo_init_k [shape=record,label="k = 0"];
+  stereo_check_k [shape=diamond,label="is\nk < term[i]?"];
+  stereo_update_k [shape=record,label="{decorr. samples A[i][k] = samples[j]|decorr. samples B[i][k] = samples[j + 1]|j = j + 2|k = k + 1}"];
 
   stereo_init_k -> stereo_check_k;
   stereo_check_k -> stereo_update_k [label="YES"];
