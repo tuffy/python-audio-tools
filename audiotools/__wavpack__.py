@@ -375,21 +375,14 @@ class WavPackAudio(ApeTaggedAudio, AudioFile):
         """
 
         f = file(self.filename)
-        remaining_samples = None
+        total_size = os.path.getsize(self.filename)
         try:
-            while ((remaining_samples is None) or
-                   (remaining_samples > 0)):
+            while (f.tell() < total_size):
                 try:
                     header = WavPackAudio.HEADER.parse(f.read(
                             WavPackAudio.HEADER.sizeof()))
                 except Con.ConstError:
-                    raise InvalidWavPack(_(u'WavPack header ID invalid'))
-
-                if (remaining_samples is None):
-                    remaining_samples = (header.total_samples - \
-                                         header.block_samples)
-                else:
-                    remaining_samples -= header.block_samples
+                    break
 
                 data = f.read(header.block_size - 24)
 

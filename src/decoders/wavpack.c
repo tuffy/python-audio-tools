@@ -201,7 +201,7 @@ WavPackDecoder_read_block_header(Bitstream* bitstream,
         case 0x6: header->sample_rate =  22050; break;
         case 0x7: header->sample_rate =  24000; break;
         case 0x8: header->sample_rate =  32000; break;
-        case 0x9: header->sample_rate =  41000; break;
+        case 0x9: header->sample_rate =  44100; break;
         case 0xA: header->sample_rate =  48000; break;
         case 0xB: header->sample_rate =  64000; break;
         case 0xC: header->sample_rate =  88200; break;

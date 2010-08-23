@@ -2425,6 +2425,56 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
     - [ ] 48000Hz
     - [ ] 96000Hz
     - [ ] 192000Hz
+*** TODO Ensure test files decode correctly
+**** TODO bit_depths
+     - [ ] 8bit.wv
+     - [ ] 12bit.wv
+     - [X] 16bit.wv
+     - [ ] 20bit.wv
+     - [ ] 24bit.wv
+     - [ ] 32bit_int.wv
+     - [ ] 32bit_int_p.wv
+     - [ ] 32bit_float_p.wv
+     - [ ] 32bit_float.wv
+     (I may omit the odd bit depths in the short term)
+**** TODO hybrid_bitrates
+     - [ ] 24kbps.wv
+     - [ ] 32kbps.wv
+     - [ ] 48kbps.wv
+     - [ ] 64kbps.wv
+     - [ ] 128kbps.wv
+     - [ ] 160kbps.wv
+     - [ ] 256kbps.wv
+     - [ ] 320kbps.wv
+     - [ ] 384kbps.wv
+     - [ ] 512kbps.wv
+     - [ ] 1024kbps.wv
+**** TODO hybrid_bitrates/wvc_files
+     - [ ] 24kbps.wvc
+     - [ ] 32kbps.wvc
+     - [ ] 48kbps.wvc
+     - [ ] 64kbps.wvc
+     - [ ] 128kbps.wvc
+     - [ ] 160kbps.wvc
+     - [ ] 256kbps.wvc
+     - [ ] 320kbps.wvc
+     - [ ] 384kbps.wvc
+     - [ ] 512kbps.wvc
+     - [ ] 1024kbps.wvc
+**** DONE num_channels
+     - [X] mono-1.wv
+     - [X] stereo-2.wv
+**** TODO special_cases
+     - [ ] cue_sheet.wv
+     - [ ] cue_sheet.wvc
+     - [ ] false_stereo.wv
+     - [ ] win_executable.wv
+     - [ ] zero_lsbs.wv
+**** TODO speed_modes
+     - [ ] default.wv
+     - [X] fast.wv
+     - [X] high.wv
+     - [X] vhigh.wv
 *** TODO Ensure block CRC is checked
 ** TODO Add WavPack encoder
 *** TODO Add audiotools.encoders.encode_wavpack function
@@ -2444,6 +2494,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 **** DONE joint stereo
 **** TODO checksum
 **** TODO left shift
+**** TODO false stereo
 *** TODO WavPack encoding
 *** TODO Verify A4 layout is correct
 ** TODO Test encoder/decoder against reference
