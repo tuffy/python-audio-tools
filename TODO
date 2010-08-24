@@ -2427,11 +2427,11 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
     - [ ] 192000Hz
 *** TODO Ensure test files decode correctly
 **** TODO bit_depths
-     - [ ] 8bit.wv
+     - [X] 8bit.wv
      - [ ] 12bit.wv
      - [X] 16bit.wv
      - [ ] 20bit.wv
-     - [ ] 24bit.wv
+     - [X] 24bit.wv
      - [ ] 32bit_int.wv
      - [ ] 32bit_int_p.wv
      - [ ] 32bit_float_p.wv

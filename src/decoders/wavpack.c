@@ -1401,7 +1401,7 @@ void wavpack_perform_decorrelation_pass_1ch(
                                     struct i_array* decorrelation_samples) {
     struct i_array output;
     struct i_array output_tail;
-    ia_data_t temp;
+    int64_t temp;
     ia_data_t input_i;
     ia_size_t i;
 
