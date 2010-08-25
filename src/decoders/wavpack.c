@@ -544,8 +544,8 @@ WavPackDecoder_read_entropy_variables(Bitstream* bitstream,
 
 status
 WavPackDecoder_read_int32_info(Bitstream* bitstream,
-                               int8_t* sent_bits, int8_t* zeroes,
-                               int8_t* ones, int8_t* dupes) {
+                               uint8_t* sent_bits, uint8_t* zeroes,
+                               uint8_t* ones, uint8_t* dupes) {
     *sent_bits = bitstream->read(bitstream, 8);
     *zeroes = bitstream->read(bitstream, 8);
     *ones = bitstream->read(bitstream, 8);
@@ -1166,9 +1166,18 @@ WavPackDecoder_decode_block(decoders_WavPackDecoder* self,
             }
         }
 
-        /*Finally, undo joint stereo if necessary.*/
+        /*Undo joint stereo, if necessary.*/
         if (block_header.joint_stereo) {
             wavpack_undo_joint_stereo(channel_A, channel_B);
+        }
+
+        /*Handle extended integers, if necessary.*/
+        if (block_header.extended_size_integers) {
+            wavpack_undo_extended_integers(channel_A, channel_B,
+                                           self->int32_info.sent_bits,
+                                           self->int32_info.zeroes,
+                                           self->int32_info.ones,
+                                           self->int32_info.dupes);
         }
 
         return OK;
@@ -1508,6 +1517,52 @@ void wavpack_perform_decorrelation_pass_1ch(
     ia_tail(&output_tail, &output, channel->size);
     ia_copy(channel, &output_tail);
     ia_free(&output);
+}
+
+void wavpack_undo_extended_integers(struct i_array* channel_A,
+                                    struct i_array* channel_B,
+                                    uint8_t sent_bits, uint8_t zeroes,
+                                    uint8_t ones, uint8_t dupes) {
+    ia_size_t i;
+    int32_t pad;
+
+    if (zeroes) {
+        /*pad the least-significant bits of each sample with 0*/
+        for (i = 0; i < channel_A->size; i++) {
+            channel_A->data[i] <<= zeroes;
+        }
+        for (i = 0; i < channel_B->size; i++) {
+            channel_B->data[i] <<= zeroes;
+        }
+    } else if (ones) {
+        /*pad the least-significant bits of each sample with 1*/
+        pad = (1 << ones) - 1;
+        for (i = 0; i < channel_A->size; i++) {
+            channel_A->data[i] = (channel_A->data[i] << ones) | pad;
+        }
+        for (i = 0; i < channel_B->size; i++) {
+            channel_B->data[i] = (channel_B->data[i] << ones) | pad;
+
+        }
+    } else if (dupes) {
+        /*pad the least-significant bits of each sample
+          with its own least-significant bit*/
+        pad = (1 << dupes) - 1;
+        for (i = 0; i < channel_A->size; i++) {
+            if (channel_A->data[i] & 1)
+                channel_A->data[i] = (channel_A->data[i] << dupes) | dupes;
+            else
+                channel_A->data[i] <<= dupes;
+        }
+        for (i = 0; i < channel_B->size; i++) {
+            if (channel_B->data[i] & 1)
+                channel_B->data[i] = (channel_B->data[i] << dupes) | dupes;
+            else
+                channel_B->data[i] <<= dupes;
+        }
+    }
+
+    return;
 }
 
 void wavpack_undo_joint_stereo(struct i_array* channel_A,

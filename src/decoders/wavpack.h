@@ -56,10 +56,10 @@ typedef struct {
     struct i_array values;
     struct ia_array decoded_samples;
     struct {
-        int8_t sent_bits;
-        int8_t zeroes;
-        int8_t ones;
-        int8_t dupes;
+        uint8_t sent_bits;
+        uint8_t zeroes;
+        uint8_t ones;
+        uint8_t dupes;
     } int32_info;
 
     /*boolean indicators as to whether certain sub-blocks have been found*/
@@ -233,8 +233,8 @@ WavPackDecoder_read_entropy_variables(Bitstream* bitstream,
 
 status
 WavPackDecoder_read_int32_info(Bitstream* bitstream,
-                               int8_t* sent_bits, int8_t* zeroes,
-                               int8_t* ones, int8_t* dupes);
+                               uint8_t* sent_bits, uint8_t* zeroes,
+                               uint8_t* ones, uint8_t* dupes);
 
 /*Reads the WV_BITSTREAM sub-block and returns
   channel_count * samples number of values to the given array.*/
@@ -293,6 +293,11 @@ void wavpack_perform_decorrelation_pass_1ch(
                                     int decorrelation_delta,
                                     int decorrelation_weight,
                                     struct i_array* decorrelation_samples);
+
+void wavpack_undo_extended_integers(struct i_array* channel_A,
+                                    struct i_array* channel_B,
+                                    uint8_t sent_bits, uint8_t zeroes,
+                                    uint8_t ones, uint8_t dupes);
 
 void wavpack_undo_joint_stereo(struct i_array* channel_A,
                                struct i_array* channel_B);

@@ -2469,7 +2469,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [ ] cue_sheet.wvc
      - [ ] false_stereo.wv
      - [ ] win_executable.wv
-     - [ ] zero_lsbs.wv
+     - [X] zero_lsbs.wv
 **** DONE speed_modes
      - [X] default.wv
      - [X] fast.wv
@@ -2494,11 +2494,12 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 **** DONE joint stereo
 **** TODO checksum
 **** TODO left shift
+     (not sure if this actually gets used anywhere)
 **** TODO false stereo
 **** TODO int32_info
-     - [ ] zeroes
-     - [ ] ones
-     - [ ] dupes
+     - [X] zeroes
+     - [X] ones
+     - [X] dupes
      - [ ] shift
 *** TODO WavPack encoding
 *** TODO Verify A4 layout is correct

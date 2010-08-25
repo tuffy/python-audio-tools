@@ -768,6 +768,39 @@ So, after running through all five passes, our samples are now
 
 \clearpage
 
+\subsection{Extended/Shifted integers}
+
+If \VAR{Extended Size Integers} is set in the block header,
+there should be an \VAR{Int32 Info} sub-block present whose layout
+is as follows:
+
+\begin{figure}[h]
+\includegraphics{figures/wavpack_extended_integers.pdf}
+\end{figure}
+
+Curiously, these values are exclusive; if \VAR{Zero Bits} is present,
+\VAR{One Bits} is ignored and so forth.
+If \VAR{Zero Bits} is non-zero, we pad each sample's least-significant
+bits with that many \texttt{0} bits.
+If \VAR{One Bits} is non-zero, we pad each sample's least-significant
+bits with that many \texttt{1} bits.
+If \VAR{Duplicate Bits} is non-zero, we pad each sample's least-significant
+bits with that sample's own least-significant bit,
+\VAR{Duplicate Bits} number of times.
+
+This can be summarized as follows:
+\begin{equation*}
+\text{Extended}_i =
+\begin{cases}
+\text{Original}_i \times 2 ^ {\text{Zero Bits}} & \text{if \VAR{Zero Bits} } > 0 \\
+\text{Original}_i \times 2 ^ {\text{One Bits}} + (2 ^ {\text{One Bits}} - 1) & \text{if \VAR{One Bits} } > 0 \\
+\text{Original}_i \times 2 ^ {\text{Duplicate Bits}} \\
+\text{ if \VAR{Duplicate Bits} } > 0 \text{ and }\text{Original}_i \bmod{2} = 0 \\
+\text{Original}_i \times 2 ^ {\text{Duplicate Bits}} + (2 ^ {\text{Duplicate Bits}} - 1) \\
+\text{ if \VAR{Duplicate Bits} } > 0 \text{ and }\text{Original}_i \bmod{2} = 1
+\end{cases}
+\end{equation*}
+
 \subsection{Joint stereo}
 
 If the block is not mono and the \VAR{Joint Stereo} bit is set
