@@ -883,7 +883,6 @@ WavPackDecoder_analyze_frame(decoders_WavPackDecoder* self, PyObject *args) {
                     "total_samples", block_header.total_samples,
                     "block_index", block_header.block_index,
                     "block_samples", block_header.block_samples,
-
                     "bits_per_sample", block_header.bits_per_sample,
                     "mono_output", block_header.mono_output,
                     "hybrid_mode", block_header.hybrid_mode,
@@ -908,7 +907,6 @@ WavPackDecoder_analyze_frame(decoders_WavPackDecoder* self, PyObject *args) {
                     "maximum_data_magnitude",
                     block_header.maximum_data_magnitude,
                     "sample_rate", block_header.sample_rate,
-
                     "use_IIR", block_header.use_IIR,
                     "false_stereo", block_header.false_stereo,
                     "crc", block_header.crc,
@@ -959,7 +957,8 @@ WavPackDecoder_analyze_subblock(decoders_WavPackDecoder* self,
         if (WavPackDecoder_read_decorr_weights(
                                 bitstream,
                                 &header,
-                                block_header->mono_output ? 1 : 2,
+                                (block_header->mono_output |
+                                 block_header->false_stereo) ? 1 : 2,
                                 self->decorr_terms.size,
                                 &(self->decorr_weights_A),
                                 &(self->decorr_weights_B)) == OK) {
@@ -982,7 +981,8 @@ WavPackDecoder_analyze_subblock(decoders_WavPackDecoder* self,
         if (WavPackDecoder_read_decorr_samples(
                                 bitstream,
                                 &header,
-                                block_header->mono_output ? 1 : 2,
+                                (block_header->mono_output |
+                                 block_header->false_stereo) ? 1 : 2,
                                 &(self->decorr_terms),
                                 &(self->decorr_samples_A),
                                 &(self->decorr_samples_B)) == OK) {
@@ -999,7 +999,8 @@ WavPackDecoder_analyze_subblock(decoders_WavPackDecoder* self,
     case WV_ENTROPY_VARIABLES:
         if (WavPackDecoder_read_entropy_variables(
                                 bitstream,
-                                block_header->mono_output ? 1 : 2,
+                                (block_header->mono_output |
+                                 block_header->false_stereo) ? 1 : 2,
                                 &(self->entropy_variables_A),
                                 &(self->entropy_variables_B)) == OK) {
             subblock_data_obj = Py_BuildValue(
@@ -1042,7 +1043,8 @@ WavPackDecoder_analyze_subblock(decoders_WavPackDecoder* self,
                                    &header,
                                    &(self->entropy_variables_A),
                                    &(self->entropy_variables_B),
-                                   block_header->mono_output ? 1 : 2,
+                                   (block_header->mono_output |
+                                    block_header->false_stereo) ? 1 : 2,
                                    block_header->block_samples,
                                    &(self->values)) == OK) {
             subblock_data_obj = i_array_to_list(&(self->values));
@@ -1088,7 +1090,9 @@ WavPackDecoder_decode_block(decoders_WavPackDecoder* self,
                             int* final_block) {
     Bitstream* bitstream = self->bitstream;
     struct wavpack_block_header block_header;
-    int available_channels = 0;
+    int block_channels = 0;  /*how many channels are actually in the block
+                               which depends on the block header's
+                               "is_mono" and "false_stereo" flags*/
     long block_end;
     ia_size_t i;
     struct i_array* channels[] = {channel_A, channel_B};
@@ -1102,20 +1106,23 @@ WavPackDecoder_decode_block(decoders_WavPackDecoder* self,
 
     if (channel_A != NULL) {
         ia_reset(channel_A);
-        available_channels++;
+        block_channels++;
     }
     if (channel_B != NULL) {
         ia_reset(channel_B);
-        available_channels++;
+        block_channels++;
     }
 
     if (WavPackDecoder_read_block_header(bitstream, &block_header) == OK) {
         *channel_count = block_header.mono_output ? 1 : 2;
         *final_block = block_header.final_block_in_sequence;
-        if (*channel_count > available_channels) {
+        if (*channel_count > block_channels) {
             PyErr_SetString(PyExc_ValueError,
                             "too many channels requested in block header");
             goto error;
+        } else {
+            block_channels = (block_header.mono_output |
+                              block_header.false_stereo) ? 1 : 2;
         }
 
         /*First, read in all the sub-block data.
@@ -1143,7 +1150,7 @@ WavPackDecoder_decode_block(decoders_WavPackDecoder* self,
 
         /*Place the bitstream contents in channel_A and channel_B.*/
         for (i = 0; i < self->values.size; i++) {
-            ia_append(channels[i % available_channels],
+            ia_append(channels[i % block_channels],
                       self->values.data[i]);
         }
 
@@ -1162,7 +1169,7 @@ WavPackDecoder_decode_block(decoders_WavPackDecoder* self,
                                 self->decorr_weights_B.data[i],
                                 &(self->decorr_samples_A.arrays[i]),
                                 &(self->decorr_samples_B.arrays[i]),
-                                available_channels);
+                                block_channels);
             }
         }
 
@@ -1178,6 +1185,11 @@ WavPackDecoder_decode_block(decoders_WavPackDecoder* self,
                                            self->int32_info.zeroes,
                                            self->int32_info.ones,
                                            self->int32_info.dupes);
+        }
+
+        /*Fix false stereo, if present*/
+        if (block_header.false_stereo) {
+            ia_copy(channel_B, channel_A);
         }
 
         return OK;
@@ -1214,7 +1226,8 @@ WavPackDecoder_decode_subblock(decoders_WavPackDecoder* self,
         if (WavPackDecoder_read_decorr_weights(
                                 bitstream,
                                 &header,
-                                block_header->mono_output ? 1 : 2,
+                                (block_header->mono_output |
+                                 block_header->false_stereo) ? 1 : 2,
                                 self->decorr_terms.size,
                                 &(self->decorr_weights_A),
                                 &(self->decorr_weights_B)) == OK) {
@@ -1231,7 +1244,8 @@ WavPackDecoder_decode_subblock(decoders_WavPackDecoder* self,
         if (WavPackDecoder_read_decorr_samples(
                                 bitstream,
                                 &header,
-                                block_header->mono_output ? 1 : 2,
+                                (block_header->mono_output |
+                                 block_header->false_stereo) ? 1 : 2,
                                 &(self->decorr_terms),
                                 &(self->decorr_samples_A),
                                 &(self->decorr_samples_B)) == OK) {
@@ -1242,7 +1256,8 @@ WavPackDecoder_decode_subblock(decoders_WavPackDecoder* self,
     case WV_ENTROPY_VARIABLES:
         if (WavPackDecoder_read_entropy_variables(
                                 bitstream,
-                                block_header->mono_output ? 1 : 2,
+                                (block_header->mono_output |
+                                 block_header->false_stereo) ? 1 : 2,
                                 &(self->entropy_variables_A),
                                 &(self->entropy_variables_B)) == OK) {
             self->got_entropy_variables = 1;
@@ -1270,7 +1285,8 @@ WavPackDecoder_decode_subblock(decoders_WavPackDecoder* self,
                                    &header,
                                    &(self->entropy_variables_A),
                                    &(self->entropy_variables_B),
-                                   block_header->mono_output ? 1 : 2,
+                                   (block_header->mono_output |
+                                    block_header->false_stereo) ? 1 : 2,
                                    block_header->block_samples,
                                    &(self->values)) == OK) {
             self->got_bitstream = 1;
