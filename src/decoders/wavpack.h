@@ -28,6 +28,7 @@ typedef enum {WV_DECORR_TERMS      = 0x2,
               WV_DECORR_WEIGHTS    = 0x3,
               WV_DECORR_SAMPLES    = 0x4,
               WV_ENTROPY_VARIABLES = 0x5,
+              WV_INT32_INFO        = 0x9,
               WV_BITSTREAM         = 0xA} wv_metadata_function;
 
 typedef struct {
@@ -54,6 +55,12 @@ typedef struct {
     struct i_array entropy_variables_B;
     struct i_array values;
     struct ia_array decoded_samples;
+    struct {
+        int8_t sent_bits;
+        int8_t zeroes;
+        int8_t ones;
+        int8_t dupes;
+    } int32_info;
 
     /*boolean indicators as to whether certain sub-blocks have been found*/
     int got_decorr_terms;
@@ -61,6 +68,7 @@ typedef struct {
     int got_decorr_samples;
     int got_entropy_variables;
     int got_bitstream;
+    int got_int32_info;
 } decoders_WavPackDecoder;
 
 struct wavpack_block_header {
@@ -222,6 +230,11 @@ WavPackDecoder_read_entropy_variables(Bitstream* bitstream,
                                       int block_channel_count,
                                       struct i_array* entropy_variables_A,
                                       struct i_array* entropy_variables_B);
+
+status
+WavPackDecoder_read_int32_info(Bitstream* bitstream,
+                               int8_t* sent_bits, int8_t* zeroes,
+                               int8_t* ones, int8_t* dupes);
 
 /*Reads the WV_BITSTREAM sub-block and returns
   channel_count * samples number of values to the given array.*/

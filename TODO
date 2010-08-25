@@ -2495,6 +2495,11 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 **** TODO checksum
 **** TODO left shift
 **** TODO false stereo
+**** TODO int32_info
+     - [ ] zeroes
+     - [ ] ones
+     - [ ] dupes
+     - [ ] shift
 *** TODO WavPack encoding
 *** TODO Verify A4 layout is correct
 ** TODO Test encoder/decoder against reference

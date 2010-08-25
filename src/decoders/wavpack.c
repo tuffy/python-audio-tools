@@ -543,6 +543,18 @@ WavPackDecoder_read_entropy_variables(Bitstream* bitstream,
 }
 
 status
+WavPackDecoder_read_int32_info(Bitstream* bitstream,
+                               int8_t* sent_bits, int8_t* zeroes,
+                               int8_t* ones, int8_t* dupes) {
+    *sent_bits = bitstream->read(bitstream, 8);
+    *zeroes = bitstream->read(bitstream, 8);
+    *ones = bitstream->read(bitstream, 8);
+    *dupes = bitstream->read(bitstream, 8);
+
+    return OK;
+}
+
+status
 WavPackDecoder_read_wv_bitstream(Bitstream* bitstream,
                                  struct wavpack_subblock_header* header,
                                  struct i_array* entropy_variables_A,
@@ -828,6 +840,7 @@ WavPackDecoder_analyze_frame(decoders_WavPackDecoder* self, PyObject *args) {
         self->got_decorr_samples = 0;
         self->got_entropy_variables = 0;
         self->got_bitstream = 0;
+        self->got_int32_info = 0;
 
         if (WavPackDecoder_read_block_header(self->bitstream,
                                              &block_header) == OK) {
@@ -999,6 +1012,25 @@ WavPackDecoder_analyze_subblock(decoders_WavPackDecoder* self,
         } else
             return NULL;
         break;
+    case WV_INT32_INFO:
+        if (WavPackDecoder_read_int32_info(bitstream,
+                                           &(self->int32_info.sent_bits),
+                                           &(self->int32_info.zeroes),
+                                           &(self->int32_info.ones),
+                                           &(self->int32_info.dupes)) == OK) {
+            subblock_data_obj = Py_BuildValue("{si si si si}",
+                                              "sent_bits",
+                                              self->int32_info.sent_bits,
+                                              "zeroes",
+                                              self->int32_info.zeroes,
+                                              "ones",
+                                              self->int32_info.ones,
+                                              "dupes",
+                                              self->int32_info.dupes);
+            self->got_int32_info = 1;
+        } else
+            return NULL;
+        break;
     case WV_BITSTREAM:
         if (!self->got_entropy_variables) {
             PyErr_SetString(PyExc_ValueError,
@@ -1066,6 +1098,7 @@ WavPackDecoder_decode_block(decoders_WavPackDecoder* self,
     self->got_decorr_samples = 0;
     self->got_entropy_variables = 0;
     self->got_bitstream = 0;
+    self->got_int32_info = 0;
 
     if (channel_A != NULL) {
         ia_reset(channel_A);
@@ -1204,6 +1237,16 @@ WavPackDecoder_decode_subblock(decoders_WavPackDecoder* self,
                                 &(self->entropy_variables_A),
                                 &(self->entropy_variables_B)) == OK) {
             self->got_entropy_variables = 1;
+            break;
+        } else
+            return ERROR;
+    case WV_INT32_INFO:
+        if (WavPackDecoder_read_int32_info(bitstream,
+                                           &(self->int32_info.sent_bits),
+                                           &(self->int32_info.zeroes),
+                                           &(self->int32_info.ones),
+                                           &(self->int32_info.dupes)) == OK) {
+            self->got_int32_info = 1;
             break;
         } else
             return ERROR;
