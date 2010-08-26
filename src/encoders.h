@@ -39,6 +39,10 @@ PyObject*
 encoders_encode_alac(PyObject *dummy,
                      PyObject *args, PyObject *keywds);
 
+PyObject*
+encoders_encode_wavpack(PyObject *dummy,
+                        PyObject *args, PyObject *keywds);
+
 PyMethodDef module_methods[] = {
     {"encode_flac", (PyCFunction)encoders_encode_flac,
      METH_VARARGS | METH_KEYWORDS, "Encode FLAC file from PCMReader"},
@@ -46,6 +50,8 @@ PyMethodDef module_methods[] = {
      METH_VARARGS | METH_KEYWORDS, "Encode Shorten file from PCMReader"},
     {"encode_alac", (PyCFunction)encoders_encode_alac,
      METH_VARARGS | METH_KEYWORDS, "Encode ALAC file from PCMReader"},
+    {"encode_wavpack", (PyCFunction)encoders_encode_wavpack,
+     METH_VARARGS | METH_KEYWORDS, "Encode WavPack file from PCMReader"},
     {NULL}
 };
 

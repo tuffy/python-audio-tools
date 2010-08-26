@@ -2479,9 +2479,30 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [X] vhigh.wv
 *** TODO Ensure block CRC is checked
 ** TODO Add WavPack encoder
-*** TODO Add audiotools.encoders.encode_wavpack function
-*** TODO Determine WavPack stream tunables
-*** TODO Handle atypical sample rates properly
+*** DONE Add audiotools.encoders.encode_wavpack function
+*** TODO Split samples into blocks based on channel count
+*** TODO Write one block per block-size number of channels, per channel pair
+**** TODO Calculate block CRC
+**** TODO Write placeholder block header
+**** TODO Determine tunable data per block
+     - [ ] joint stereo
+     - [ ] decorrelation terms
+     - [ ] decorrelation deltas
+     - [ ] decorrelation weights
+     - [ ] decorrelation samples
+     - [ ] entropy variables (medians)
+**** TODO Write sub-blocks containing tunables data
+***** TODO decorrelation terms/deltas
+***** TODO decorrelation weights
+***** TODO decorrelation samples
+***** TODO entropy variables
+**** TODO Calculate bitstream values from entropy variables and PCM data
+**** TODO Write bitstream sub-block
+*** TODO Rewrite block headers with final "total samples" data
+    Using from_pcm(), this data won't be known in advance
+*** TODO Rewrite RIFF WAVE data block header with final size
+    If we're building the file with from_pcm(), this header
+    will need to be built and then filled-in at finalize-time.
 *** TODO Optimize for speed
 ** TODO Document WavPack
 *** TODO the WavPack file stream
