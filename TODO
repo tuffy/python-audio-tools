@@ -2409,22 +2409,24 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** TODO Check for EOFs during decoding
 *** DONE Return pcm.FrameList objects on calls to read()
 *** DONE Return dict objects on calls to analyze_frame()
-*** TODO Ensure different bits-per-sample work correctly
-    - [ ] 8 bps
-    - [ ] 16 bps
-    - [ ] 24 bps
+*** DONE Ensure different bits-per-sample work correctly
+    - [X] 8 bps
+    - [X] 16 bps
+    - [X] 24 bps
 *** TODO Ensure different number of channels work correctly
-    - [ ] 1 channel
-    - [ ] 2 channels
+    - [X] 1 channel
+    - [X] 2 channels
     - [ ] 3 channels
-    - [ ] 4 channels
+    - [X] 4 channels
     - [ ] 5 channels
-    - [ ] 6 channels
-*** TODO Ensure different sample rates work correctly
-    - [ ] 44100Hz
-    - [ ] 48000Hz
-    - [ ] 96000Hz
-    - [ ] 192000Hz
+    - [X] 6 channels
+    - [ ] 7 channels
+    - [X] 8 channels
+*** DONE Ensure different sample rates work correctly
+    - [X] 44100Hz
+    - [X] 48000Hz
+    - [X] 96000Hz
+    - [X] 192000Hz
 *** TODO Ensure test files decode correctly
 **** TODO bit_depths
      - [X] 8bit.wv
@@ -2501,6 +2503,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [X] ones
      - [X] dupes
      - [ ] shift
+**** TODO hybrid mode
 *** TODO WavPack encoding
 *** TODO Verify A4 layout is correct
 ** TODO Test encoder/decoder against reference

@@ -843,6 +843,13 @@ WavPackDecoder_analyze_frame(decoders_WavPackDecoder* self, PyObject *args) {
 
         if (WavPackDecoder_read_block_header(self->bitstream,
                                              &block_header) == OK) {
+            if (block_header.hybrid_mode) {
+                /*FIXME - this should actually be implemented at some point*/
+                PyErr_SetString(PyExc_ValueError,
+                                "hybrid mode not yet supported");
+                return NULL;
+            }
+
             subblocks = PyList_New(0);
             block_end = ftell(self->bitstream->file) +
                 block_header.block_size - 24 - 1;
@@ -1113,6 +1120,13 @@ WavPackDecoder_decode_block(decoders_WavPackDecoder* self,
     }
 
     if (WavPackDecoder_read_block_header(bitstream, &block_header) == OK) {
+        if (block_header.hybrid_mode) {
+            /*FIXME - this should actually be implemented at some point*/
+            PyErr_SetString(PyExc_ValueError,
+                            "hybrid mode not yet supported");
+            goto error;
+        }
+
         *channel_count = block_header.mono_output ? 1 : 2;
         *final_block = block_header.final_block_in_sequence;
         if (*channel_count > block_channels) {
