@@ -29,10 +29,18 @@ WavPackEncoder_write_frame(Bitstream *bs,
                            struct ia_array *samples,
                            long channel_mask);
 
+/*given a channel count and channel mask (which may be 0),
+  build a list of 1 or 2 channel count values
+  for each left/right pair*/
+void
+WavPackEncoder_channel_splits(struct i_array *counts,
+                              int channel_count,
+                              long channel_mask);
+
 void
 WavPackEncoder_write_block(Bitstream *bs,
                            struct i_array *channel_A,
                            struct i_array *channel_B,
                            int channel_count,
                            int first_block,
-                           int final_block);
+                           int last_block);

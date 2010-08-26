@@ -95,12 +95,95 @@ encoders_encode_wavpack(PyObject *dummy,
     return NULL;
 }
 
+static int
+count_bits(int i) {
+    int bits;
+
+    for (bits = 0; i != 0; i >>= 1)
+        bits += (i & 1);
+
+    return bits;
+}
+
+void
+WavPackEncoder_channel_splits(struct i_array *counts,
+                              int channel_count,
+                              long channel_mask) {
+    /*Although the WAVEFORMATEXTENSIBLE channel mask
+      supports more left/right channels than these,
+      everything beyond side-left/side-right
+      is stored with a center channel in-between
+      which means WavPack can't pull them apart in pairs.*/
+    long masks[] = {0x3,   0x1,   0x2,        /*fLfR, fL, fR*/
+                    0x4,   0x8,               /*fC, LFE*/
+                    0x30,  0x10,  0x20,       /*bLbR, bL, bR*/
+                    0xC0,  0x40,  0x80,       /*fLoCfRoC, fLoC, fRoC*/
+                    0x100,                    /*bC*/
+                    0x600, 0x200, 0x400,      /*sLsR, sL, sR*/
+                    0};
+    int channels;
+    int i;
+
+    /*first, try to pull left/right channels out of the mask*/
+    for (i = 0; channel_mask && masks[i]; i++) {
+        if (channel_mask & masks[i]) {
+            channels = count_bits(masks[i]);
+            ia_append(counts, channels);
+            channel_count -= channels;
+            channel_mask ^= masks[i];
+        }
+    }
+
+    /*any leftover samples are sent out in separate blocks
+      (which may happen with a mask of 0)*/
+    for (; channel_count > 0; channel_count--) {
+        ia_append(counts, 1);
+    }
+}
+
 void
 WavPackEncoder_write_frame(Bitstream *bs,
                            struct ia_array *samples,
                            long channel_mask) {
+    struct i_array counts;
+    int current_channel;
+    int i;
+
+    ia_init(&counts, 1);
+
     fprintf(stderr, "writing %d channels of %d samples\n",
             samples->size, samples->arrays[0].size);
+    WavPackEncoder_channel_splits(&counts, samples->size, channel_mask);
 
+    fprintf(stderr, "channel counts : ");
+    ia_print(stderr, &counts);
+    fprintf(stderr, "\n");
+
+    for (i = current_channel = 0; i < counts.size; i++) {
+        WavPackEncoder_write_block(bs,
+                                   &(samples->arrays[current_channel]),
+                                   counts.data[i] == 2 ?
+                                   &(samples->arrays[current_channel + 1]) :
+                                   NULL,
+                                   counts.data[i],
+                                   i == 0,
+                                   i == (counts.size - 1));
+        current_channel += counts.data[i];
+    }
+
+    ia_free(&counts);
+
+}
+
+void
+WavPackEncoder_write_block(Bitstream *bs,
+                           struct i_array *channel_A,
+                           struct i_array *channel_B,
+                           int channel_count,
+                           int first_block,
+                           int last_block) {
+    fprintf(stderr, "writing block with channels = %d\n", channel_count);
+    fprintf(stderr, "first block = %d\n", first_block);
+    fprintf(stderr, "last block = %d\n", last_block);
     return;
 }
