@@ -2467,7 +2467,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 **** TODO special_cases
      - [ ] cue_sheet.wv
      - [ ] cue_sheet.wvc
-     - [ ] false_stereo.wv
+     - [X] false_stereo.wv
      - [ ] win_executable.wv
      - [X] zero_lsbs.wv
 **** DONE speed_modes
