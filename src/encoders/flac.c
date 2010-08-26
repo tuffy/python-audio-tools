@@ -156,7 +156,7 @@ encoders_encode_flac(char *filename,
     streaminfo.options.no_lpc_subframes = 0;
 
     file = fopen(filename, "wb");
-    reader = pcmr_open(input, 96000, 2, 24, 0, 1);/*FIXME - assume CD quality for now*/
+    reader = pcmr_open(input, 44100, 2, 0x3, 16, 0, 1);/*FIXME - assume CD quality for now*/
 
 #endif
 

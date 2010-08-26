@@ -1590,8 +1590,6 @@ void wavpack_undo_extended_integers(struct i_array* channel_A,
                 channel_B->data[i] <<= dupes;
         }
     }
-
-    return;
 }
 
 void wavpack_undo_joint_stereo(struct i_array* channel_A,

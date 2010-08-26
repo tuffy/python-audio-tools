@@ -53,6 +53,13 @@ pcmr_open(PyObject *pcmreader)
     if ((reader->channels == -1) && (PyErr_Occurred()))
         goto error;
 
+    if ((attr = PyObject_GetAttrString(pcmreader, "channel_mask")) == NULL)
+        goto error;
+    reader->channel_mask = PyInt_AsLong(attr);
+    Py_DECREF(attr);
+    if ((reader->channel_mask == -1) && (PyErr_Occurred()))
+        goto error;
+
     if ((reader->read = PyObject_GetAttrString(pcmreader, "read")) == NULL)
         goto error;
     if (!PyCallable_Check(reader->read)) {
@@ -108,6 +115,7 @@ struct pcm_reader*
 pcmr_open(FILE *pcmreader,
           long sample_rate,
           long channels,
+          long channel_mask,
           long bits_per_sample,
           long big_endian,
           long is_signed)
@@ -116,6 +124,7 @@ pcmr_open(FILE *pcmreader,
     reader->read = pcmreader;
     reader->sample_rate = sample_rate;
     reader->channels = channels;
+    reader->channel_mask = channel_mask;
     reader->bits_per_sample = bits_per_sample;
     reader->big_endian = big_endian;
     reader->is_signed = is_signed;

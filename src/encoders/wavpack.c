@@ -28,6 +28,9 @@ encoders_encode_wavpack(PyObject *dummy,
     Bitstream *stream;
     PyObject *pcmreader_obj;
     struct pcm_reader *reader;
+
+    struct ia_array samples;
+
     int block_size;
     static char *kwlist[] = {"filename",
                              "pcmreader",
@@ -61,10 +64,21 @@ encoders_encode_wavpack(PyObject *dummy,
         return NULL;
     }
 
+    iaa_init(&samples, reader->channels, block_size);
+
     /*build frames until reader is empty
       (WavPack doesn't have actual frames as such; it has sets of
        blocks joined by first-block/last-block bits in the header.
        However, I'll call that arrangement a "frame" for clarity.)*/
+    if (!pcmr_read(reader, block_size, &samples))
+        goto error;
+
+    while (samples.arrays[0].size > 0) {
+        WavPackEncoder_write_frame(stream, &samples, reader->channel_mask);
+
+        if (!pcmr_read(reader, block_size, &samples))
+            goto error;
+    }
 
     /*go back and set block header data as necessary*/
 
@@ -74,4 +88,19 @@ encoders_encode_wavpack(PyObject *dummy,
 
     Py_INCREF(Py_None);
     return Py_None;
+
+ error:
+    pcmr_close(reader);
+    bs_close(stream);
+    return NULL;
+}
+
+void
+WavPackEncoder_write_frame(Bitstream *bs,
+                           struct ia_array *samples,
+                           long channel_mask) {
+    fprintf(stderr, "writing %d channels of %d samples\n",
+            samples->size, samples->arrays[0].size);
+
+    return;
 }

@@ -21,3 +21,18 @@
  along with this program; if not, write to the Free Software
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 *******************************************************/
+
+typedef enum {OK, ERROR} status;
+
+void
+WavPackEncoder_write_frame(Bitstream *bs,
+                           struct ia_array *samples,
+                           long channel_mask);
+
+void
+WavPackEncoder_write_block(Bitstream *bs,
+                           struct i_array *channel_A,
+                           struct i_array *channel_B,
+                           int channel_count,
+                           int first_block,
+                           int final_block);

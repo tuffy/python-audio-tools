@@ -191,13 +191,13 @@ encoders_encode_shn(char *filename,
     int wrap = 3;
 
     /*assume CD quality input*/
-    reader = pcmr_open(input, 44100, 2, 16, 0, 1);
+    reader = pcmr_open(input, 44100, 2, 0x3, 16, 0, 1);
 
     /*open the given filename for writing*/
     if ((output_file = fopen(filename, "wb")) == NULL) {
         return ERROR;
     } else {
-        stream = bs_open(output_file);
+        stream = bs_open(output_file, BS_BIG_ENDIAN);
     }
 
     /*initialize wrapped samples with 0s*/

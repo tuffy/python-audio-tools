@@ -201,7 +201,7 @@ ALACEncoder_encode_alac(char *filename,
 
     output_file = fopen(filename, "wb");
     /*assume CD quality for now*/
-    reader = pcmr_open(input, 44100, 2, 16, 0, 1);
+    reader = pcmr_open(input, 44100, 2, 16, 0x3, 0, 1);
 
     /*initialize a buffer for input samples*/
     iaa_init(&samples, reader->channels, options.block_size);
@@ -210,7 +210,7 @@ ALACEncoder_encode_alac(char *filename,
     alac_log_init(&encode_log);
 
     /*convert file object to bitstream writer*/
-    stream = bs_open(output_file);
+    stream = bs_open(output_file, BS_BIG_ENDIAN);
     bs_add_callback(stream,
                     ALACEncoder_byte_counter,
                     &(encode_log.frame_byte_size));
