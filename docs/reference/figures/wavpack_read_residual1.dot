@@ -41,9 +41,9 @@ digraph wavpack_residual {
 
   read_t2 [shape=parallelogram,label="t2 = limited unary"];
   test_t2 [shape=diamond,label="is\nt2 < 2?"];
-  t_inc_t2 [shape=box,label="t = t + t2"];
+  t_inc_t2 [shape=box,label="t = t2 + 16"];
   read_escape [shape=parallelogram,label="escape = read t2 - 1"];
-  t_inc_escape [shape=box,label="t = t + escape | (2 ^ t2 - 1)"];
+  t_inc_escape [shape=box,label="t = (2 ^ t2 - 1) + escape + 16"];
 
   test_holding_one [shape=diamond,label="is\nholding_one?"];
 
