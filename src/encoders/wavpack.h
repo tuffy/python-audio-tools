@@ -72,44 +72,53 @@ struct wavpack_block_header {
 };
 
 void
-WavPackEncoder_write_frame(Bitstream *bs,
-                           struct wavpack_encoder_context *context,
-                           struct ia_array *samples,
-                           long channel_mask);
+wavpack_write_frame(Bitstream *bs,
+                    struct wavpack_encoder_context *context,
+                    struct ia_array *samples,
+                    long channel_mask);
 
 /*given a channel count and channel mask (which may be 0),
   build a list of 1 or 2 channel count values
   for each left/right pair*/
 void
-WavPackEncoder_channel_splits(struct i_array *counts,
-                              int channel_count,
-                              long channel_mask);
+wavpack_channel_splits(struct i_array *counts,
+                       int channel_count,
+                       long channel_mask);
 
 void
-WavPackEncoder_write_block(Bitstream *bs,
-                           struct wavpack_encoder_context *context,
-                           struct i_array *channel_A,
-                           struct i_array *channel_B,
-                           int channel_count,
-                           int first_block,
-                           int last_block);
+wavpack_write_block(Bitstream *bs,
+                    struct wavpack_encoder_context *context,
+                    struct i_array *channel_A,
+                    struct i_array *channel_B,
+                    int channel_count,
+                    int first_block,
+                    int last_block);
 
 ia_data_t
-WavPackEncoder_abs_maximum(ia_data_t sample, ia_data_t current_max);
+wavpack_abs_maximum(ia_data_t sample, ia_data_t current_max);
 
 void
-WavPackEncoder_write_block_header(Bitstream *bs,
-                                  struct wavpack_block_header *header);
+wavpack_write_block_header(Bitstream *bs,
+                           struct wavpack_block_header *header);
 
 /*nondecoder data should be 0 or 1.
   block_size is in bytes.
   This will convert to WavPack's size value and set
   "actual size 1 less" as needed.*/
 void
-WavPackEncoder_write_subblock_header(Bitstream *bs,
-                                     wv_metadata_function metadata_function,
-                                     uint8_t nondecoder_data,
-                                     uint32_t block_size);
+wavpack_write_subblock_header(Bitstream *bs,
+                              wv_metadata_function metadata_function,
+                              uint8_t nondecoder_data,
+                              uint32_t block_size);
 
+void
+wavpack_write_entropy_variables_1ch(Bitstream *bs,
+                                    struct i_array *variables_A);
 
+void
+wavpack_write_entropy_variables_2ch(Bitstream *bs,
+                                    struct i_array *variables_A,
+                                    struct i_array *variables_B);
+
+int32_t wavpack_log2(int32_t sample);
 
