@@ -105,7 +105,7 @@ order to decode the audio.
 
 \clearpage
 
-\section{WavPack decoding}
+\section{WavPack Decoding}
 The general principle of WavPack decoding is that we take the
 values from several sub-blocks as decoder ``arguments''
 and then decode one or two channels of audio per block.
@@ -825,3 +825,38 @@ and right samples as follows:
 &= (39 \times 2) - \left\lfloor\frac{-46 + (39 \times 2)}{2}\right\rfloor = 78 - 16 = \textbf{62}
 \end{align*}
 Thus, our left samples are 0 and 16, and our right samples are 64 and 62.
+
+\clearpage
+
+\section{WavPack Encoding}
+
+For WavPack encoding, one needs a stream of input PCM values
+along with the stream's sample rate, number of channels, bits per sample
+and channel mask.
+The first step is to split the stream's channels into blocks.
+For 1 or 2 channel streams, this process is trivial;
+the block's channel A is the stream's channel 1 and channel B is
+the stream's channel 2 - if present.
+
+However, for multi-channel input streams, we need to split its
+channels into a set of blocks with 1 or 2 channels per block.
+By using the channel mask\footnote{As explained on page
+\pageref{wave_channel_assignment}.} we can split the stream
+into 2 channel blocks with left-right channel pairs and
+1 channel blocks for everything else.
+
+For example, given a 6-channel audio stream with the channel mask
+\texttt{0x3F}, we have the channels \VAR{Front Left}, \VAR{Front Right},
+\VAR{Front Center}, \VAR{LFE}, \VAR{Back Left} and \VAR{Back Right} -
+in that order.
+So, a good way to split our channels into blocks is as follows:
+\begin{table}[h]
+\begin{tabular}{| r | c | c | c | r | r |}
+Block & First Block Bit & Last Block Bit & Is Mono & Channel A & Channel B \\
+\hline
+$\text{Block}_1$ & 1 & 0 & 0 & Front Left & Front Right \\
+$\text{Block}_2$ & 0 & 0 & 1 & Front Center & \\
+$\text{Block}_3$ & 0 & 0 & 1 & LFE & \\
+$\text{Block}_4$ & 0 & 1 & 0 & Back Left & Back Right
+\end{tabular}
+\end{table}

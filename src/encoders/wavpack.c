@@ -210,6 +210,11 @@ WavPackEncoder_abs_maximum(ia_data_t sample, ia_data_t current_max) {
     return MAX(abs(sample), current_max);
 }
 
+static inline uint32_t
+wavpack_crc(ia_data_t sample, uint32_t crc) {
+    return ((3 * crc) + sample) & 0xFFFFFFFF;
+}
+
 void
 WavPackEncoder_write_block(Bitstream *bs,
                            struct wavpack_encoder_context *context,
@@ -220,6 +225,7 @@ WavPackEncoder_write_block(Bitstream *bs,
                            int last_block) {
     struct wavpack_block_header block_header;
     Bitstream *sub_blocks = bs_open_recorder();
+    ia_size_t i;
 
     /*this only works if Bitstream is a physical file*/
     ia_append(&(context->block_offsets), ftell(bs->file));
@@ -244,6 +250,7 @@ WavPackEncoder_write_block(Bitstream *bs,
     block_header.initial_block_in_sequence = first_block;
     block_header.final_block_in_sequence = last_block;
     block_header.left_shift = 0;
+    block_header.crc = 0xFFFFFFFF
 
     if (channel_count == 1)
         block_header.maximum_data_magnitude = count_bits(
@@ -270,7 +277,18 @@ WavPackEncoder_write_block(Bitstream *bs,
 
     /*update block header fields*/
     block_header.block_size = sub_blocks->bits_written / 16;
-    block_header.crc = 0; /*FIXME - figure out how to calculate this*/
+    if (channel_count == 1) {
+        for (i = 0; i < channel_A->size; i++) {
+            block_header.crc = wavpack_crc(channel_A->data[i],
+                                           block_header.crc);
+        }
+    } else {
+        for (i = 0; i < channel_A->size; i++) {
+            block_header.crc = wavpack_crc(channel_B->data[i],
+                                           wavpack_crc(channel_A->data[i],
+                                                       block_header.crc));
+        }
+    }
 
     /*write block header*/
     WavPackEncoder_write_block_header(bs, &block_header);
