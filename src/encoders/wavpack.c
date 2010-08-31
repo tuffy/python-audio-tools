@@ -479,22 +479,91 @@ wavpack_write_residuals(Bitstream *bs,
     Bitstream *residual_data = bs_open_recorder();
     ia_size_t pcm_frame;
     ia_size_t channel;
-    struct i_array *channels[] = {channel_A, channel_B};
-    struct i_array *variables[] = {variables_A, variables_B};
     int zeroes = 0;
+    int holding_zero = 0;
+    int holding_one = 0;
+    int32_t residual;
+    struct i_array *channels[] = {channel_A, channel_B};
 
+    /*These are our temporary entropy variables copy
+      since the encoder will modify them as it goes.*/
+    struct i_array medians_A;
+    struct i_array medians_B;
+    struct i_array *medians[] = {&medians_A, &medians_B};
+
+    ia_init(&medians_A, 3);
+    ia_init(&medians_B, 3);
+    ia_copy(&medians_A, variables_A);
+    if (channel_count > 1)
+        ia_copy(&medians_B, variables_B);
+    else {
+        ia_append(&medians_B, 0);
+        ia_append(&medians_B, 0);
+        ia_append(&medians_B, 0);
+    }
 
     /*this bounces between interleaved channel data, as necessary*/
     for (pcm_frame = channel = 0;
          pcm_frame < channel_A->size;
          pcm_frame += (channel = (channel + 1) % channel_count) == 0 ? 1 : 0) {
-        zeroes += 1; /*FIXME - a temporary placeholder*/
+        residual = channels[channel]->data[pcm_frame];
+        if ((medians_A.data[0] < 2) &&
+            (medians_B.data[0] < 2) &&
+            !holding_zero) {
+            /*special case for handling large runs of 0 residuals*/
+
+            if (zeroes == 0) {
+                /*no currently running block of 0 residuals*/
+
+                if (residual != 0) {
+                    /*false alarm - no actual block of 0 residuals
+                      so prepend with a 0 unary value*/
+                    bs->write_unary(bs, 0, 0);
+                    wavpack_write_residual(residual_data,
+                                           medians[channel],
+                                           &holding_zero,
+                                           &holding_one,
+                                           residual);
+                } else {
+                    /*begin block of 0 residuals*/
+                    zeroes = 1;
+                }
+            } else {
+                /*a currently running block of 0 residuals*/
+
+                if (residual == 0) {
+                    /*continue the block of 0 residuals*/
+                    zeroes++;
+                } else {
+                    /*flush block of 0 residuals*/
+                    wavpack_write_zero_residuals(residual_data,
+                                                 zeroes,
+                                                 &medians_A,
+                                                 &medians_B,
+                                                 channel_count);
+                    zeroes = 0;
+                    wavpack_write_residual(residual_data,
+                                           medians[channel],
+                                           &holding_zero,
+                                           &holding_one,
+                                           residual);
+                }
+            }
+        } else {
+            /*the typical residual writing case*/
+
+            wavpack_write_residual(residual_data,
+                                   medians[channel],
+                                   &holding_zero,
+                                   &holding_one,
+                                   residual);
+        }
     }
 
     /*write out any pending zero block*/
     if (zeroes > 0) {
         wavpack_write_zero_residuals(residual_data, zeroes,
-                                     variables_A, variables_B, channel_count);
+                                     &medians_A, &medians_B, channel_count);
     }
 
     /*once all the residual data has been written,
@@ -510,6 +579,8 @@ wavpack_write_residuals(Bitstream *bs,
 
     /*clear any temporary space*/
     bs_close(residual_data);
+    ia_free(&medians_A);
+    ia_free(&medians_B);
 }
 
 void
@@ -519,6 +590,8 @@ wavpack_write_zero_residuals(Bitstream *bs,
                              struct i_array *variables_B,
                              int channel_count) {
     int escape_size;
+
+    fprintf(stderr, "writing block of %d zeroes\n", zeroes);
 
     if (zeroes == 0) {
         bs->write_bits(bs, 1, 0);
@@ -538,4 +611,14 @@ wavpack_write_zero_residuals(Bitstream *bs,
             variables_B->data[2] = 0;
         }
     }
+}
+
+void
+wavpack_write_residual(Bitstream *bs,
+                       struct i_array *variables,
+                       int *holding_zero,
+                       int *holding_one,
+                       int32_t value) {
+    fprintf(stderr, "writing residual %d\n", value);
+    return;
 }

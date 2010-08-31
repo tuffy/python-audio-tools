@@ -140,5 +140,12 @@ wavpack_write_zero_residuals(Bitstream *bs,
                              struct i_array *variables_B,
                              int channel_count);
 
+void
+wavpack_write_residual(Bitstream *bs,
+                       struct i_array *variables,
+                       int *holding_zero,
+                       int *holding_one,
+                       int32_t value);
+
 int32_t wavpack_log2(int32_t sample);
 
