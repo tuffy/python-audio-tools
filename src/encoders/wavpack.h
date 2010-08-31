@@ -111,14 +111,34 @@ wavpack_write_subblock_header(Bitstream *bs,
                               uint8_t nondecoder_data,
                               uint32_t block_size);
 
+/*Writes an entropy variables sub-block to the bitstream.
+  The entropy variable list should be 3 elements long.
+  If channel_count is 2, both sets of entropy variables are written.
+  If it is 1, only channel A's entropy variables are written.*/
 void
-wavpack_write_entropy_variables_1ch(Bitstream *bs,
-                                    struct i_array *variables_A);
+wavpack_write_entropy_variables(Bitstream *bs,
+                                struct i_array *variables_A,
+                                struct i_array *variables_B,
+                                int channel_count);
 
+/*Writes a bitstream sub-block to the bitstream.*/
 void
-wavpack_write_entropy_variables_2ch(Bitstream *bs,
-                                    struct i_array *variables_A,
-                                    struct i_array *variables_B);
+wavpack_write_residuals(Bitstream *bs,
+                        struct i_array *channel_A,
+                        struct i_array *channel_B,
+                        struct i_array *variables_A,
+                        struct i_array *variables_B,
+                        int channel_count);
+
+/*Writes a special-case block of 0 value residuals to the bitstream.
+  The amount of zeroes may itself be 0.
+  If the amount of zeroes is not 0, clear out the entropy variables.*/
+void
+wavpack_write_zero_residuals(Bitstream *bs,
+                             int zeroes,
+                             struct i_array *variables_A,
+                             struct i_array *variables_B,
+                             int channel_count);
 
 int32_t wavpack_log2(int32_t sample);
 

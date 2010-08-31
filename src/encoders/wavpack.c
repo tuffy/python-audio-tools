@@ -276,29 +276,32 @@ wavpack_write_block(Bitstream *bs,
     fprintf(stderr, "last block = %d\n", last_block);
 
     /*FIXME - some dummy placeholders for now*/
-    ia_append(&entropy_variables_A, 5);
-    ia_append(&entropy_variables_A, 10);
-    ia_append(&entropy_variables_A, 15);
-    ia_append(&entropy_variables_B, 6);
-    ia_append(&entropy_variables_B, 12);
-    ia_append(&entropy_variables_B, 18);
+    ia_append(&entropy_variables_A, 0);
+    ia_append(&entropy_variables_A, 0);
+    ia_append(&entropy_variables_A, 0);
+    ia_append(&entropy_variables_B, 0);
+    ia_append(&entropy_variables_B, 0);
+    ia_append(&entropy_variables_B, 0);
 
     /*FIXME - set these to 0 for now*/
     block_header.joint_stereo = 0;
     block_header.cross_channel_decorrelation = 0;
     block_header.false_stereo = 0;
 
-    if (channel_count == 1) {
-        wavpack_write_entropy_variables_1ch(sub_blocks,
-                                            &entropy_variables_A);
-    } else {
-        wavpack_write_entropy_variables_2ch(sub_blocks,
-                                            &entropy_variables_A,
-                                            &entropy_variables_B);
-    }
+    wavpack_write_entropy_variables(sub_blocks,
+                                    &entropy_variables_A,
+                                    &entropy_variables_B,
+                                    channel_count);
+
+    wavpack_write_residuals(sub_blocks,
+                            channel_A,
+                            channel_B,
+                            &entropy_variables_A,
+                            &entropy_variables_B,
+                            channel_count);
 
     /*update block header fields*/
-    block_header.block_size = 24 + (sub_blocks->bits_written / 16);
+    block_header.block_size = 24 + (sub_blocks->bits_written / 8);
     if (channel_count == 1) {
         for (i = 0; i < channel_A->size; i++) {
             block_header.crc = wavpack_crc(channel_A->data[i],
@@ -451,23 +454,88 @@ int32_t wavpack_log2(int32_t sample) {
 }
 
 void
-wavpack_write_entropy_variables_1ch(Bitstream *bs,
-                                    struct i_array *variables_A) {
-    wavpack_write_subblock_header(bs, 5, 0, 6);
+wavpack_write_entropy_variables(Bitstream *bs,
+                                struct i_array *variables_A,
+                                struct i_array *variables_B,
+                                int channel_count) {
+    wavpack_write_subblock_header(bs, 5, 0, 6 * channel_count);
     bs->write_signed_bits(bs, 16, wavpack_log2(variables_A->data[0]));
     bs->write_signed_bits(bs, 16, wavpack_log2(variables_A->data[1]));
     bs->write_signed_bits(bs, 16, wavpack_log2(variables_A->data[2]));
+    if (channel_count > 1) {
+        bs->write_signed_bits(bs, 16, wavpack_log2(variables_B->data[0]));
+        bs->write_signed_bits(bs, 16, wavpack_log2(variables_B->data[1]));
+        bs->write_signed_bits(bs, 16, wavpack_log2(variables_B->data[2]));
+    }
 }
 
 void
-wavpack_write_entropy_variables_2ch(Bitstream *bs,
-                                    struct i_array *variables_A,
-                                    struct i_array *variables_B) {
-    wavpack_write_subblock_header(bs, 5, 0, 12);
-    bs->write_signed_bits(bs, 16, wavpack_log2(variables_A->data[0]));
-    bs->write_signed_bits(bs, 16, wavpack_log2(variables_A->data[1]));
-    bs->write_signed_bits(bs, 16, wavpack_log2(variables_A->data[2]));
-    bs->write_signed_bits(bs, 16, wavpack_log2(variables_B->data[0]));
-    bs->write_signed_bits(bs, 16, wavpack_log2(variables_B->data[1]));
-    bs->write_signed_bits(bs, 16, wavpack_log2(variables_B->data[2]));
+wavpack_write_residuals(Bitstream *bs,
+                        struct i_array *channel_A,
+                        struct i_array *channel_B,
+                        struct i_array *variables_A,
+                        struct i_array *variables_B,
+                        int channel_count) {
+    Bitstream *residual_data = bs_open_recorder();
+    ia_size_t pcm_frame;
+    ia_size_t channel;
+    struct i_array *channels[] = {channel_A, channel_B};
+    struct i_array *variables[] = {variables_A, variables_B};
+    int zeroes = 0;
+
+
+    /*this bounces between interleaved channel data, as necessary*/
+    for (pcm_frame = channel = 0;
+         pcm_frame < channel_A->size;
+         pcm_frame += (channel = (channel + 1) % channel_count) == 0 ? 1 : 0) {
+        zeroes += 1; /*FIXME - a temporary placeholder*/
+    }
+
+    /*write out any pending zero block*/
+    if (zeroes > 0) {
+        wavpack_write_zero_residuals(residual_data, zeroes,
+                                     variables_A, variables_B, channel_count);
+    }
+
+    /*once all the residual data has been written,
+      pad the output buffer to a multiple of 16 bits*/
+    while ((residual_data->bits_written % 16) != 0)
+        residual_data->write_bits(residual_data, 1, 1);
+
+    /*write the sub-block header*/
+    wavpack_write_subblock_header(bs, 0xA, 0, residual_data->bits_written / 8);
+
+    /*write out the residual data*/
+    bs_dump_records(bs, residual_data);
+
+    /*clear any temporary space*/
+    bs_close(residual_data);
+}
+
+void
+wavpack_write_zero_residuals(Bitstream *bs,
+                             int zeroes,
+                             struct i_array *variables_A,
+                             struct i_array *variables_B,
+                             int channel_count) {
+    int escape_size;
+
+    if (zeroes == 0) {
+        bs->write_bits(bs, 1, 0);
+    } else {
+        escape_size = count_bits(zeroes) - 1;
+
+        bs->write_unary(bs, 0, escape_size + 1);
+        bs->write_bits(bs, escape_size, zeroes % (1 << escape_size));
+
+        /*reset the entropy variables afterward*/
+        variables_A->data[0] = 0;
+        variables_A->data[1] = 0;
+        variables_A->data[2] = 0;
+        if (channel_count > 1) {
+            variables_B->data[0] = 0;
+            variables_B->data[1] = 0;
+            variables_B->data[2] = 0;
+        }
+    }
 }
