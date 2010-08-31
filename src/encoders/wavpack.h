@@ -142,7 +142,7 @@ wavpack_write_zero_residuals(Bitstream *bs,
 
 void
 wavpack_write_residual(Bitstream *bs,
-                       struct i_array *variables,
+                       struct i_array *medians,
                        int *holding_zero,
                        int *holding_one,
                        int32_t value);

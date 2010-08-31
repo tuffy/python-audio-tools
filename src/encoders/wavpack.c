@@ -613,12 +613,108 @@ wavpack_write_zero_residuals(Bitstream *bs,
     }
 }
 
+static inline int32_t
+get_median(struct i_array *medians, int i) {
+    return (medians->data[i] >> 4) + 1;
+}
+
+static inline void
+inc_median(struct i_array *medians, int i) {
+    medians->data[i] += (((medians->data[i] + (128 >> i)) /
+                          (128 >> i)) * 5);
+}
+
+static inline void
+dec_median(struct i_array *medians, int i) {
+    medians->data[i] -= (((medians->data[i] + (128 >> i) - 2) /
+                          (128 >> i)) * 2);
+}
+
 void
 wavpack_write_residual(Bitstream *bs,
-                       struct i_array *variables,
+                       struct i_array *medians,
                        int *holding_zero,
                        int *holding_one,
                        int32_t value) {
+    int sign;
+    uint32_t low;
+    uint32_t high;
+    uint32_t ones_count;
+
     fprintf(stderr, "writing residual %d\n", value);
-    return;
+
+    if (value < 0) {
+        sign = 1;
+        value = -value;
+    } else {
+        sign = 0;
+    }
+
+    /*first, figure out which medians our value falls between
+      and get the "ones_count", "low" and "high" values*/
+    if (value < get_median(medians, 0)) {
+        /*value below the 1st median*/
+
+        ones_count = 0;
+        low = 0;
+        high = get_median(medians, 0) - 1;
+        dec_median(medians, 0);
+    } else if ((value - get_median(medians, 0)) < get_median(medians, 1)) {
+        /*value between the 1st and 2nd medians*/
+
+        ones_count = 1;
+        low = get_median(medians, 0);
+        high = low + get_median(medians, 1) - 1;
+        inc_median(medians, 0);
+        dec_median(medians, 1);
+    } else if ((value - (get_median(medians, 0) +
+                         get_median(medians, 1))) < get_median(medians, 2)) {
+        /*value between the 2nd and 3rd medians*/
+
+        ones_count = 2;
+        low = get_median(medians, 0) + get_median(medians, 1);
+        high = low + get_median(medians, 2) - 1;
+        inc_median(medians, 0);
+        inc_median(medians, 1);
+        dec_median(medians, 2);
+    } else {
+        /*value above the 3rd median*/
+        ones_count = 2 + ((value - (get_median(medians, 0) +
+                                    get_median(medians, 1))) /
+                          get_median(medians, 2));
+        low = (get_median(medians, 0) +
+               get_median(medians, 1)) + ((ones_count - 2) *
+                                          get_median(medians, 2));
+        high = low + get_median(medians, 2) - 1;
+        inc_median(medians, 0);
+        inc_median(medians, 1);
+        inc_median(medians, 2);
+    }
+
+    fprintf(stderr, "ones_count = %d\n", ones_count);
+    fprintf(stderr, "low        = %d\n", low);
+    fprintf(stderr, "high       = %d\n", high);
+
+    /*then, adjust our "holding_one" and "holding_zero" values*/
+    if (*holding_zero) {
+        if (ones_count) {
+            *holding_one += 1;
+
+            /*perform output here*/
+
+            *holding_zero = 1;
+            ones_count--;
+        } else {
+            /*perform output here*/
+
+            *holding_zero = 0;
+        }
+    } else
+        *holding_zero = 1;
+
+    *holding_one = ones_count * 2;
+
+    fprintf(stderr, "holding_zero = %d\n", *holding_zero);
+    fprintf(stderr, "holding_one  = %d\n", *holding_one);
+    fprintf(stderr, "\n");
 }
