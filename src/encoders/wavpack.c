@@ -613,6 +613,9 @@ wavpack_write_zero_residuals(Bitstream *bs,
     }
 }
 
+/*The actual median values are stored as fractions of integers.
+  This chops off the fractional portion and returns its
+  integer value which has a minimum value of 1.*/
 static inline int32_t
 get_median(struct i_array *medians, int i) {
     return (medians->data[i] >> 4) + 1;
@@ -650,8 +653,24 @@ wavpack_write_residual(Bitstream *bs,
         sign = 0;
     }
 
-    /*first, figure out which medians our value falls between
-      and get the "ones_count", "low" and "high" values*/
+    /*First, figure out which medians our value falls between
+      and get the "ones_count", "low" and "high" values.
+      Note that "ones_count" is the unary-0 value preceeding
+      each coded residual, per the documentation:
+
+    | range                                             | prob. | coding    |
+    |---------------------------------------------------+-------+-----------|
+    |              0 <= residual < m(0)                 | 1/2   | 0(ab)S    |
+    |           m(0) <= residual < m(0)+m(1)            | 1/4   | 10(ab)S   |
+    |      m(0)+m(1) <= residual < m(0)+m(1)+m(2)       | 1/8   | 110(ab)S  |
+    | m(0)+m(1)+m(2) <= residual < m(0)+m(1)+(2 * m(2)) | 1/16  | 1110(ab)S |
+    |                      ...                          | ...   | ...       |
+
+    "high" and "low" are the medians on each side of the residual.
+    At the same time, increment or decrement medians as necessary.
+    However, don't expect to send out the "ones_count" value as-is -
+    see below in order to understand how it works.
+    */
     if (value < get_median(medians, 0)) {
         /*value below the 1st median*/
 
@@ -691,30 +710,28 @@ wavpack_write_residual(Bitstream *bs,
         inc_median(medians, 2);
     }
 
-    fprintf(stderr, "ones_count = %d\n", ones_count);
-    fprintf(stderr, "low        = %d\n", low);
-    fprintf(stderr, "high       = %d\n", high);
+    /*Here's where things get weird.
+      One would *think* that we'd send out the so-called "ones_count"
+      value out as a unary value like how the format documentation
+      describes it.  But that'd be too easy.
+      Instead, we multiply that "ones_count" value by 2
+      and add 1 if the *next* residual has a non-zero unary value
+      (which corresponds to how the decoder handles it).
 
-    /*then, adjust our "holding_one" and "holding_zero" values*/
-    if (*holding_zero) {
-        if (ones_count) {
-            *holding_one += 1;
+      For example, take a residual with a "ones_count" of 1
+      (its value is between median0 and median0 + median1).
+      If the *next* residual has a "ones_count" that's greater than 0,
+      we output a unary value of 3 (1 * 2 + 1) or the bits "1 1 1 0".
+      If not, we output a unary 2 (1 * 2) or the bits "1 1 0".
 
-            /*perform output here*/
+      It's a recursive problem, essentially.
 
-            *holding_zero = 1;
-            ones_count--;
-        } else {
-            /*perform output here*/
-
-            *holding_zero = 0;
-        }
-    } else
-        *holding_zero = 1;
-
-    *holding_one = ones_count * 2;
-
-    fprintf(stderr, "holding_zero = %d\n", *holding_zero);
-    fprintf(stderr, "holding_one  = %d\n", *holding_one);
-    fprintf(stderr, "\n");
+      The reference encoder handles this by buffering the previous
+      sample and adjusting its unary output depending on the current
+      sample before sending it out.
+      A more spec-accurate implementation would have
+      "write_residual" call itself recursively and output
+      unary based on the unary results of that call.
+      But considering a typical WavPack block size is
+      88200 residuals, I don't think that approach is feasible.*/
 }
