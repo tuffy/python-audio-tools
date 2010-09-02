@@ -81,6 +81,9 @@ struct wavpack_residual {
         struct {
             uint32_t unary;
             uint32_t fixed;
+	        uint32_t fixed_size;
+	        uint8_t has_extra_bit;
+	        uint8_t extra_bit;
             uint8_t sign;
         } golomb;
         uint32_t zeroes_count;

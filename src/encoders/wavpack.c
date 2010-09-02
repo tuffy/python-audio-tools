@@ -680,10 +680,14 @@ wavpack_calculate_residual(struct wavpack_residual *residual,
     uint32_t low;
     uint32_t high;
     uint32_t ones_count;
+    uint32_t max_code;
+    uint32_t code;
+    uint32_t extras;
+    uint32_t bit_count;
 
     if (value < 0) {
         sign = 1;
-        value = -value;
+        value = -value - 1;
     } else {
         sign = 0;
     }
@@ -704,7 +708,8 @@ wavpack_calculate_residual(struct wavpack_residual *residual,
     "high" and "low" are the medians on each side of the residual.
     At the same time, increment or decrement medians as necessary.
     However, don't expect to send out the "ones_count" value as-is -
-    see below in order to understand how it works.
+    one must adjust its value based on the *next* residual's unary value.
+    If next is 0, multiply by 2.  If not, multiply by 2 and add 1.
     */
     if (value < get_median(medians, 0)) {
         /*value below the 1st median*/
@@ -745,12 +750,32 @@ wavpack_calculate_residual(struct wavpack_residual *residual,
         inc_median(medians, 2);
     }
 
-    /*FIXME - calculate non-unary here*/
-
     residual->type = WV_RESIDUAL_GOLOMB;
     residual->residual.golomb.unary = ones_count;
-    residual->residual.golomb.fixed = 0; /*FIXME*/
     residual->residual.golomb.sign = sign;
+
+    /*then calculate our fixed value and its size*/
+    if (high != low) {
+        max_code = high - low;
+        code = value - low;
+        bit_count = count_bits(max_code);
+        extras = (1 << bit_count) - max_code - 1;
+
+        if (code < extras) {
+            residual->residual.golomb.fixed = code;
+            residual->residual.golomb.fixed_size = bit_count - 1;
+            residual->residual.golomb.has_extra_bit = 0;
+        } else {
+            residual->residual.golomb.fixed = (code + extras) >> 1;
+            residual->residual.golomb.fixed_size = bit_count - 1;
+            residual->residual.golomb.has_extra_bit = 1;
+            residual->residual.golomb.extra_bit = (code + extras) & 1;
+        }
+    } else {
+        residual->residual.golomb.fixed = 0;
+        residual->residual.golomb.fixed_size = 0;
+        residual->residual.golomb.has_extra_bit = 0;
+    }
 }
 
 void
@@ -762,22 +787,37 @@ wavpack_calculate_zeroes(struct wavpack_residual *residual,
 
 void
 wavpack_output_residuals(Bitstream *bs, struct wavpack_residual *residuals) {
+    struct wavpack_residual *next_residual;
+
     for(; residuals->type != WV_RESIDUAL_FINISHED; residuals++) {
+        next_residual = residuals + 1;
+
         switch (residuals->type) {
         case WV_RESIDUAL_ZEROES:
             fprintf(stderr, "zeroes count = %u\n",
                     residuals->residual.zeroes_count);
             break;
         case WV_RESIDUAL_GOLOMB:
-            fprintf(stderr, "golomb unary = %u , value = %u , sign = %u\n",
-                    residuals->residual.golomb.unary,
-                    residuals->residual.golomb.fixed,
-                    residuals->residual.golomb.sign);
+            /*FIXME - handle escaped unary value here if necessary*/
+
+            if (residuals->residual.golomb.has_extra_bit) {
+                fprintf(stderr, "golomb unary = %u , value = %u , value_size = %u , extra = %u , sign = %u\n",
+                        residuals->residual.golomb.unary,
+                        residuals->residual.golomb.fixed,
+                        residuals->residual.golomb.fixed_size,
+                        residuals->residual.golomb.extra_bit,
+                        residuals->residual.golomb.sign);
+            } else {
+                fprintf(stderr, "golomb unary = %u , value = %u , value_size = %u , sign = %u\n",
+                        residuals->residual.golomb.unary,
+                        residuals->residual.golomb.fixed,
+                        residuals->residual.golomb.fixed_size,
+                        residuals->residual.golomb.sign);
+            }
             break;
         default:
             break;
         }
-        fprintf(stderr, "got residual type %d\n", residuals->type);
     }
 }
 
