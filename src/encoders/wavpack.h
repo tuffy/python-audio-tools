@@ -71,6 +71,22 @@ struct wavpack_block_header {
     uint32_t crc;                              /*32 bits*/
 };
 
+typedef enum {WV_RESIDUAL_GOLOMB,
+              WV_RESIDUAL_ZEROES,
+              WV_RESIDUAL_FINISHED} wv_residual_type;
+
+struct wavpack_residual {
+    wv_residual_type type;
+    union {
+        struct {
+            uint32_t unary;
+            uint32_t fixed;
+            uint8_t sign;
+        } golomb;
+        uint32_t zeroes_count;
+    } residual;
+};
+
 void
 wavpack_write_frame(Bitstream *bs,
                     struct wavpack_encoder_context *context,
@@ -147,5 +163,26 @@ wavpack_write_residual(Bitstream *bs,
                        int *holding_one,
                        int32_t value);
 
-int32_t wavpack_log2(int32_t sample);
+/*Given a sample value and set of medians for the current channel,
+  calculate a raw residual value and assign it to the given struct.
+  The median values are also updated by this routine.
+  This doesn't handle the "holding_one" and "holding_zero" aspects;
+  those are figured out at final write-time.*/
+void
+wavpack_calculate_residual(struct wavpack_residual *residual,
+                           struct i_array *medians,
+                           int32_t value);
 
+void
+wavpack_calculate_zeroes(struct wavpack_residual *residual,
+                         uint32_t zeroes);
+
+void
+wavpack_clear_medians(struct i_array *medians_A,
+                      struct i_array *medians_B,
+                      int channel_count);
+
+void
+wavpack_output_residuals(Bitstream *bs, struct wavpack_residual *residuals);
+
+int32_t wavpack_log2(int32_t sample);

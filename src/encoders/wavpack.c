@@ -480,8 +480,6 @@ wavpack_write_residuals(Bitstream *bs,
     ia_size_t pcm_frame;
     ia_size_t channel;
     int zeroes = 0;
-    int holding_zero = 0;
-    int holding_one = 0;
     int32_t residual;
     struct i_array *channels[] = {channel_A, channel_B};
 
@@ -490,6 +488,11 @@ wavpack_write_residuals(Bitstream *bs,
     struct i_array medians_A;
     struct i_array medians_B;
     struct i_array *medians[] = {&medians_A, &medians_B};
+
+    struct wavpack_residual *residuals = malloc(
+                        (sizeof(struct wavpack_residual) *
+                         channel_A->size * channel_count) + 1);
+    struct wavpack_residual *current_residual = residuals;
 
     ia_init(&medians_A, 3);
     ia_init(&medians_B, 3);
@@ -507,9 +510,7 @@ wavpack_write_residuals(Bitstream *bs,
          pcm_frame < channel_A->size;
          pcm_frame += (channel = (channel + 1) % channel_count) == 0 ? 1 : 0) {
         residual = channels[channel]->data[pcm_frame];
-        if ((medians_A.data[0] < 2) &&
-            (medians_B.data[0] < 2) &&
-            !holding_zero) {
+        if ((medians_A.data[0] < 2) && (medians_B.data[0] < 2)) {
             /*special case for handling large runs of 0 residuals*/
 
             if (zeroes == 0) {
@@ -518,12 +519,12 @@ wavpack_write_residuals(Bitstream *bs,
                 if (residual != 0) {
                     /*false alarm - no actual block of 0 residuals
                       so prepend with a 0 unary value*/
-                    bs->write_unary(bs, 0, 0);
-                    wavpack_write_residual(residual_data,
-                                           medians[channel],
-                                           &holding_zero,
-                                           &holding_one,
-                                           residual);
+                    wavpack_calculate_zeroes(current_residual++, 0);
+                    wavpack_clear_medians(&medians_A, &medians_B,
+                                          channel_count);
+                    wavpack_calculate_residual(current_residual++,
+                                               medians[channel],
+                                               residual);
                 } else {
                     /*begin block of 0 residuals*/
                     zeroes = 1;
@@ -536,35 +537,36 @@ wavpack_write_residuals(Bitstream *bs,
                     zeroes++;
                 } else {
                     /*flush block of 0 residuals*/
-                    wavpack_write_zero_residuals(residual_data,
-                                                 zeroes,
-                                                 &medians_A,
-                                                 &medians_B,
-                                                 channel_count);
+                    wavpack_calculate_zeroes(current_residual++, zeroes);
+                    wavpack_clear_medians(&medians_A, &medians_B,
+                                          channel_count);
                     zeroes = 0;
-                    wavpack_write_residual(residual_data,
-                                           medians[channel],
-                                           &holding_zero,
-                                           &holding_one,
-                                           residual);
+                    wavpack_calculate_residual(current_residual++,
+                                               medians[channel],
+                                               residual);
                 }
             }
         } else {
             /*the typical residual writing case*/
 
-            wavpack_write_residual(residual_data,
-                                   medians[channel],
-                                   &holding_zero,
-                                   &holding_one,
-                                   residual);
+            wavpack_calculate_residual(current_residual++,
+                                       medians[channel],
+                                       residual);
         }
     }
 
     /*write out any pending zero block*/
     if (zeroes > 0) {
-        wavpack_write_zero_residuals(residual_data, zeroes,
-                                     &medians_A, &medians_B, channel_count);
+        wavpack_calculate_zeroes(current_residual++, zeroes);
+        wavpack_clear_medians(&medians_A, &medians_B, channel_count);
     }
+
+    /*add the end-of-stream block*/
+    current_residual->type = WV_RESIDUAL_FINISHED;
+
+    /*make a second output pass over our residuals
+      which calculates holding_one and holding_zero as necessary*/
+    wavpack_output_residuals(residual_data, residuals);
 
     /*once all the residual data has been written,
       pad the output buffer to a multiple of 16 bits*/
@@ -581,6 +583,7 @@ wavpack_write_residuals(Bitstream *bs,
     bs_close(residual_data);
     ia_free(&medians_A);
     ia_free(&medians_B);
+    free(residuals);
 }
 
 void
@@ -639,12 +642,44 @@ wavpack_write_residual(Bitstream *bs,
                        int *holding_zero,
                        int *holding_one,
                        int32_t value) {
-    int sign;
+    fprintf(stderr, "writing residual %d\n", value);
+
+
+
+    /*Here's where things get weird.
+      One would *think* that we'd send out the so-called "ones_count"
+      value out as a unary value like how the format documentation
+      describes it.  But that'd be too easy.
+      Instead, we multiply that "ones_count" value by 2
+      and add 1 if the *next* residual has a non-zero unary value
+      (which corresponds to how the decoder handles it).
+
+      For example, take a residual with a "ones_count" of 1
+      (its value is between median0 and median0 + median1).
+      If the *next* residual has a "ones_count" that's greater than 0,
+      we output a unary value of 3 (1 * 2 + 1) or the bits "1 1 1 0".
+      If not, we output a unary 2 (1 * 2) or the bits "1 1 0".
+
+      It's a recursive problem, essentially.
+
+      The reference encoder handles this by buffering the previous
+      sample and adjusting its unary output depending on the current
+      sample before sending it out.
+      A more spec-accurate implementation would have
+      "write_residual" call itself recursively and output
+      unary based on the unary results of that call.
+      But considering a typical WavPack block size is
+      88200 residuals, I don't think that approach is feasible.*/
+}
+
+void
+wavpack_calculate_residual(struct wavpack_residual *residual,
+                           struct i_array *medians,
+                           int32_t value) {
+    uint8_t sign;
     uint32_t low;
     uint32_t high;
     uint32_t ones_count;
-
-    fprintf(stderr, "writing residual %d\n", value);
 
     if (value < 0) {
         sign = 1;
@@ -710,28 +745,52 @@ wavpack_write_residual(Bitstream *bs,
         inc_median(medians, 2);
     }
 
-    /*Here's where things get weird.
-      One would *think* that we'd send out the so-called "ones_count"
-      value out as a unary value like how the format documentation
-      describes it.  But that'd be too easy.
-      Instead, we multiply that "ones_count" value by 2
-      and add 1 if the *next* residual has a non-zero unary value
-      (which corresponds to how the decoder handles it).
+    /*FIXME - calculate non-unary here*/
 
-      For example, take a residual with a "ones_count" of 1
-      (its value is between median0 and median0 + median1).
-      If the *next* residual has a "ones_count" that's greater than 0,
-      we output a unary value of 3 (1 * 2 + 1) or the bits "1 1 1 0".
-      If not, we output a unary 2 (1 * 2) or the bits "1 1 0".
+    residual->type = WV_RESIDUAL_GOLOMB;
+    residual->residual.golomb.unary = ones_count;
+    residual->residual.golomb.fixed = 0; /*FIXME*/
+    residual->residual.golomb.sign = sign;
+}
 
-      It's a recursive problem, essentially.
+void
+wavpack_calculate_zeroes(struct wavpack_residual *residual,
+                         uint32_t zeroes) {
+    residual->type = WV_RESIDUAL_ZEROES;
+    residual->residual.zeroes_count = zeroes;
+}
 
-      The reference encoder handles this by buffering the previous
-      sample and adjusting its unary output depending on the current
-      sample before sending it out.
-      A more spec-accurate implementation would have
-      "write_residual" call itself recursively and output
-      unary based on the unary results of that call.
-      But considering a typical WavPack block size is
-      88200 residuals, I don't think that approach is feasible.*/
+void
+wavpack_output_residuals(Bitstream *bs, struct wavpack_residual *residuals) {
+    for(; residuals->type != WV_RESIDUAL_FINISHED; residuals++) {
+        switch (residuals->type) {
+        case WV_RESIDUAL_ZEROES:
+            fprintf(stderr, "zeroes count = %u\n",
+                    residuals->residual.zeroes_count);
+            break;
+        case WV_RESIDUAL_GOLOMB:
+            fprintf(stderr, "golomb unary = %u , value = %u , sign = %u\n",
+                    residuals->residual.golomb.unary,
+                    residuals->residual.golomb.fixed,
+                    residuals->residual.golomb.sign);
+            break;
+        default:
+            break;
+        }
+        fprintf(stderr, "got residual type %d\n", residuals->type);
+    }
+}
+
+void
+wavpack_clear_medians(struct i_array *medians_A,
+                      struct i_array *medians_B,
+                      int channel_count) {
+    medians_A->data[0] = 0;
+    medians_A->data[1] = 0;
+    medians_A->data[2] = 0;
+    if (channel_count > 1) {
+        medians_B->data[0] = 0;
+        medians_B->data[1] = 0;
+        medians_B->data[2] = 0;
+    }
 }
