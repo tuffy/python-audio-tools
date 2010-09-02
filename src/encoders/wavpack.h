@@ -188,4 +188,19 @@ wavpack_clear_medians(struct i_array *medians_A,
 void
 wavpack_output_residuals(Bitstream *bs, struct wavpack_residual *residuals);
 
+/*Given a pointer somewhere in a wavpack_residual list,
+  returns the pointer to the previous WV_RESIDUAL_GOLOMB item.
+  Or, if we hit "first_residual" without encountering one,
+  returns NULL.*/
+struct wavpack_residual*
+wavpack_previous_golomb(struct wavpack_residual *residual,
+                        struct wavpack_residual *first_residual);
+
+/*Given a pointer somewhere in a wavpack_residual list,
+  returns the pointer to the next WV_RESIDUAL_GOLOMB item.
+  Or, if we hit WV_RESIDUAL_FINISHED without encountering one,
+  returns NULL.*/
+struct wavpack_residual*
+wavpack_next_golomb(struct wavpack_residual *residual);
+
 int32_t wavpack_log2(int32_t sample);

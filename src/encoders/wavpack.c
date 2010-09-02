@@ -786,33 +786,85 @@ wavpack_calculate_zeroes(struct wavpack_residual *residual,
 }
 
 void
-wavpack_output_residuals(Bitstream *bs, struct wavpack_residual *residuals) {
-    struct wavpack_residual *next_residual;
+wavpack_output_residuals(Bitstream *bs, struct wavpack_residual *residual) {
+    struct wavpack_residual *first_residual = residual;
+    struct wavpack_residual *next_golomb;
+    struct wavpack_residual *previous_golomb;
+    int escape_size;
 
-    for(; residuals->type != WV_RESIDUAL_FINISHED; residuals++) {
-        next_residual = residuals + 1;
-
-        switch (residuals->type) {
+    for(; residual->type != WV_RESIDUAL_FINISHED; residual++) {
+        switch (residual->type) {
         case WV_RESIDUAL_ZEROES:
+
             fprintf(stderr, "zeroes count = %u\n",
-                    residuals->residual.zeroes_count);
+                    residual->residual.zeroes_count);
+
+            if (residual->residual.zeroes_count == 0) {
+                bs->write_bits(bs, 1, 0);
+            } else {
+                escape_size = count_bits(residual->residual.zeroes_count) - 1;
+                bs->write_unary(bs, 0, escape_size + 1);
+                bs->write_bits(bs, escape_size,
+                        residual->residual.zeroes_count % (1 << escape_size));
+            }
             break;
         case WV_RESIDUAL_GOLOMB:
             /*FIXME - handle escaped unary value here if necessary*/
 
-            if (residuals->residual.golomb.has_extra_bit) {
+            /*output our unary value based on the next residual's
+              unary value*/
+
+            previous_golomb = wavpack_previous_golomb(residual,
+                                                      first_residual);
+            next_golomb = wavpack_next_golomb(residual);
+
+            /* if ((residual->residual.golomb.unary == 0) && */
+            /*     (previous_golomb != NULL) && */
+            /*     ((previous_golomb->residual.golomb.unary % 2) == 0)) { */
+            /*     /\*If our unary value is 0, we're not the first */
+            /*       Golomb code, and the previous unary is even */
+            /*       (meaning it's holding_zero), */
+            /*       don't output any unary value; */
+            /*       the previous code will have set "holding_zero" for us.*\/ */
+            /* } else { */
+            /*     /\*Otherwise, adjust our unary value according */
+            /*       to the next Golomb code's unary value, if any.*\/ */
+            /*     if ((next_golomb != NULL) && */
+            /*         (next_golomb->residual.golomb.unary > 0)) { */
+            /*         /\* next_golomb->residual.golomb.unary--; *\/ */
+            /*         bs->write_unary(bs, 0, */
+            /*                         (residual->residual.golomb.unary * 2) + 1); */
+            /*     } else { */
+            /*         bs->write_unary(bs, 0, */
+            /*                         residual->residual.golomb.unary * 2); */
+            /*     } */
+
+            /* } */
+
+            /*then output the remaining fixed fields*/
+            bs->write_bits(bs,
+                           residual->residual.golomb.fixed_size,
+                           residual->residual.golomb.fixed);
+            if (residual->residual.golomb.has_extra_bit)
+                bs->write_bits(bs,
+                               1,
+                               residual->residual.golomb.extra_bit);
+            bs->write_bits(bs, 1, residual->residual.golomb.sign);
+
+
+            if (residual->residual.golomb.has_extra_bit) {
                 fprintf(stderr, "golomb unary = %u , value = %u , value_size = %u , extra = %u , sign = %u\n",
-                        residuals->residual.golomb.unary,
-                        residuals->residual.golomb.fixed,
-                        residuals->residual.golomb.fixed_size,
-                        residuals->residual.golomb.extra_bit,
-                        residuals->residual.golomb.sign);
+                        residual->residual.golomb.unary,
+                        residual->residual.golomb.fixed,
+                        residual->residual.golomb.fixed_size,
+                        residual->residual.golomb.extra_bit,
+                        residual->residual.golomb.sign);
             } else {
                 fprintf(stderr, "golomb unary = %u , value = %u , value_size = %u , sign = %u\n",
-                        residuals->residual.golomb.unary,
-                        residuals->residual.golomb.fixed,
-                        residuals->residual.golomb.fixed_size,
-                        residuals->residual.golomb.sign);
+                        residual->residual.golomb.unary,
+                        residual->residual.golomb.fixed,
+                        residual->residual.golomb.fixed_size,
+                        residual->residual.golomb.sign);
             }
             break;
         default:
@@ -832,5 +884,34 @@ wavpack_clear_medians(struct i_array *medians_A,
         medians_B->data[0] = 0;
         medians_B->data[1] = 0;
         medians_B->data[2] = 0;
+    }
+}
+
+struct wavpack_residual*
+wavpack_previous_golomb(struct wavpack_residual *residual,
+                        struct wavpack_residual *first_residual) {
+    if (residual == first_residual)
+        return NULL;
+    else {
+        for (residual--; residual != first_residual; residual--) {
+            if (residual->type == WV_RESIDUAL_GOLOMB)
+                return residual;
+        }
+
+        return NULL;
+    }
+}
+
+struct wavpack_residual*
+wavpack_next_golomb(struct wavpack_residual *residual) {
+    if (residual->type == WV_RESIDUAL_FINISHED)
+        return NULL;
+    else {
+        for (residual++; residual->type != WV_RESIDUAL_FINISHED; residual++) {
+            if (residual->type == WV_RESIDUAL_GOLOMB)
+                return residual;
+        }
+
+        return NULL;
     }
 }
