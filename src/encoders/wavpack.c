@@ -813,35 +813,6 @@ wavpack_clear_medians(struct i_array *medians_A,
     }
 }
 
-struct wavpack_residual*
-wavpack_previous_golomb(struct wavpack_residual *residual,
-                        struct wavpack_residual *first_residual) {
-    if (residual == first_residual)
-        return NULL;
-    else {
-        for (residual--; residual != first_residual; residual--) {
-            if (residual->type == WV_RESIDUAL_GOLOMB)
-                return residual;
-        }
-
-        return NULL;
-    }
-}
-
-struct wavpack_residual*
-wavpack_next_golomb(struct wavpack_residual *residual) {
-    if (residual->type == WV_RESIDUAL_FINISHED)
-        return NULL;
-    else {
-        for (residual++; residual->type != WV_RESIDUAL_FINISHED; residual++) {
-            if (residual->type == WV_RESIDUAL_GOLOMB)
-                return residual;
-        }
-
-        return NULL;
-    }
-}
-
 void
 wavpack_set_holding(struct wavpack_residual *residual,
                     int current_holding_one,
