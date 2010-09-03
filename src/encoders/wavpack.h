@@ -75,6 +75,8 @@ typedef enum {WV_RESIDUAL_GOLOMB,
               WV_RESIDUAL_ZEROES,
               WV_RESIDUAL_FINISHED} wv_residual_type;
 
+#define WV_UNARY_LIMIT 16
+
 struct wavpack_residual {
     wv_residual_type type;
     union {

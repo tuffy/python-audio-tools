@@ -868,13 +868,29 @@ void
 wavpack_output_residual(Bitstream *bs,
                         struct wavpack_residual *residual,
                         int write_unary) {
+    int32_t escape_code;
     int escape_size;
 
     switch (residual->type) {
     case WV_RESIDUAL_GOLOMB:
         if (write_unary) {
-            /*FIXME - handle escaped unary value here if necessary*/
-            bs->write_unary(bs, 0, residual->residual.golomb.unary);
+            if (residual->residual.golomb.unary >= WV_UNARY_LIMIT) {
+                /*generate escape code*/
+                bs->write_unary(bs, 0, 16);
+
+                /*build an Elias gamma code from the unary value (- 16) */
+                escape_code = residual->residual.golomb.unary - 16;
+                if (escape_code < 2) {
+                    bs->write_unary(bs, 0, escape_code);
+                } else {
+                    escape_size = count_bits(escape_code) - 1;
+                    bs->write_unary(bs, 0, escape_size + 1);
+                    bs->write_bits(bs, escape_size,
+                                   escape_code % (1 << escape_size));
+                }
+            } else {
+                bs->write_unary(bs, 0, residual->residual.golomb.unary);
+            }
         }
         bs->write_bits(bs,
                        residual->residual.golomb.fixed_size,
