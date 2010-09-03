@@ -81,9 +81,9 @@ struct wavpack_residual {
         struct {
             uint32_t unary;
             uint32_t fixed;
-	        uint32_t fixed_size;
-	        uint8_t has_extra_bit;
-	        uint8_t extra_bit;
+            uint32_t fixed_size;
+            uint8_t has_extra_bit;
+            uint8_t extra_bit;
             uint8_t sign;
         } golomb;
         uint32_t zeroes_count;
@@ -149,23 +149,6 @@ wavpack_write_residuals(Bitstream *bs,
                         struct i_array *variables_B,
                         int channel_count);
 
-/*Writes a special-case block of 0 value residuals to the bitstream.
-  The amount of zeroes may itself be 0.
-  If the amount of zeroes is not 0, clear out the entropy variables.*/
-void
-wavpack_write_zero_residuals(Bitstream *bs,
-                             int zeroes,
-                             struct i_array *variables_A,
-                             struct i_array *variables_B,
-                             int channel_count);
-
-void
-wavpack_write_residual(Bitstream *bs,
-                       struct i_array *medians,
-                       int *holding_zero,
-                       int *holding_one,
-                       int32_t value);
-
 /*Given a sample value and set of medians for the current channel,
   calculate a raw residual value and assign it to the given struct.
   The median values are also updated by this routine.
@@ -202,5 +185,27 @@ wavpack_previous_golomb(struct wavpack_residual *residual,
   returns NULL.*/
 struct wavpack_residual*
 wavpack_next_golomb(struct wavpack_residual *residual);
+
+/*Adjusts the unary value of residual such that it'll
+  set the "holding_one" bit during decoding.
+  "current_holding_one" is the current state of the bit.
+  "new_holding_one" is the desired holding_one bit.*/
+void
+wavpack_set_holding(struct wavpack_residual *residual,
+                    int current_holding_one,
+                    int new_holding_one);
+
+/*Outputs a single residual value to the bitstream,
+  which may include a Golomb code, a block of zeroes
+  or an escaped Golomb code.*/
+void
+wavpack_output_residual(Bitstream *bs,
+                        struct wavpack_residual *residual,
+                        int write_unary);
+
+void
+wavpack_print_residual(FILE *output,
+                       struct wavpack_residual *residual,
+                       int write_unary);
 
 int32_t wavpack_log2(int32_t sample);
