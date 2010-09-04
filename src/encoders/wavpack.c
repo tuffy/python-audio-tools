@@ -490,8 +490,8 @@ wavpack_write_residuals(Bitstream *bs,
     struct i_array *medians[] = {&medians_A, &medians_B};
 
     struct wavpack_residual *residuals = malloc(
-                        (sizeof(struct wavpack_residual) *
-                         channel_A->size * channel_count) + 1);
+                        sizeof(struct wavpack_residual) *
+                        ((channel_A->size + 1) * channel_count));
     struct wavpack_residual *current_residual = residuals;
 
     ia_init(&medians_A, 3);
@@ -520,8 +520,6 @@ wavpack_write_residuals(Bitstream *bs,
                     /*false alarm - no actual block of 0 residuals
                       so prepend with a 0 unary value*/
                     wavpack_calculate_zeroes(current_residual++, 0);
-                    wavpack_clear_medians(&medians_A, &medians_B,
-                                          channel_count);
                     wavpack_calculate_residual(current_residual++,
                                                medians[channel],
                                                residual);
@@ -564,8 +562,7 @@ wavpack_write_residuals(Bitstream *bs,
     /*add the end-of-stream block*/
     current_residual->type = WV_RESIDUAL_FINISHED;
 
-    /*make a second output pass over our residuals
-      which calculates holding_one and holding_zero as necessary*/
+    /*perform actual residual writing to buffer*/
     wavpack_output_residuals(residual_data, residuals);
 
     /*once all the residual data has been written,
@@ -795,6 +792,8 @@ wavpack_output_residuals(Bitstream *bs, struct wavpack_residual *residual) {
     if (holding_zero) {
         wavpack_output_residual(bs, previous_residual, 0);
     } else {
+        wavpack_set_holding(previous_residual,
+                            holding_one, 0);
         wavpack_output_residual(bs, previous_residual, 1);
     }
 }
