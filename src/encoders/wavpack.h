@@ -135,6 +135,27 @@ wavpack_write_subblock_header(Bitstream *bs,
                               uint8_t nondecoder_data,
                               uint32_t block_size);
 
+/*Writes the given set of decorrelation terms and deltas
+  to the given bitstream in the proper order.*/
+void
+wavpack_write_decorr_terms(Bitstream *bs,
+                           struct i_array* decorr_terms,
+                           struct i_array* decorr_deltas);
+
+void
+wavpack_write_decorr_weights(Bitstream *bs,
+                             int channel_count,
+                             int term_count,
+                             struct i_array* weights_A,
+                             struct i_array* weights_B);
+
+void
+wavpack_write_decorr_samples(Bitstream *bs,
+                             int channel_count,
+                             struct i_array* decorr_terms,
+                             struct ia_array* samples_A,
+                             struct ia_array* samples_B);
+
 /*Writes an entropy variables sub-block to the bitstream.
   The entropy variable list should be 3 elements long.
   If channel_count is 2, both sets of entropy variables are written.

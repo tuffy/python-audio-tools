@@ -491,10 +491,6 @@ WavPackDecoder_read_decorr_samples(Bitstream* bitstream,
                               ia_getdefault(&samples, j, 0));
                     j++;
                 }
-            } else if ((-3 <= term) && (term <= -1)) {
-                ia_append(term_samples_A,
-                          ia_getdefault(&samples, j, 0));
-                j++;
             } else {
                 PyErr_SetString(PyExc_ValueError,
                                 "unsupported decorrelation term");

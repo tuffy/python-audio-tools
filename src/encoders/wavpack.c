@@ -224,11 +224,25 @@ wavpack_write_block(Bitstream *bs,
                     int first_block,
                     int last_block) {
     struct wavpack_block_header block_header;
+
+    struct i_array decorrelation_terms;
+    struct i_array decorrelation_deltas;
+    struct i_array decorrelation_weights_A;
+    struct i_array decorrelation_weights_B;
+    struct ia_array decorrelation_samples_A;
+    struct ia_array decorrelation_samples_B;
     struct i_array entropy_variables_A;
     struct i_array entropy_variables_B;
+
     Bitstream *sub_blocks = bs_open_recorder();
     ia_size_t i;
 
+    ia_init(&decorrelation_terms, 1);
+    ia_init(&decorrelation_deltas, 1);
+    ia_init(&decorrelation_weights_A, 1);
+    ia_init(&decorrelation_weights_B, 1);
+    iaa_init(&decorrelation_samples_A, MAXIMUM_TERM_COUNT, 1);
+    iaa_init(&decorrelation_samples_B, MAXIMUM_TERM_COUNT, 1);
     ia_init(&entropy_variables_A, 3);
     ia_init(&entropy_variables_B, 3);
 
@@ -275,7 +289,31 @@ wavpack_write_block(Bitstream *bs,
     fprintf(stderr, "first block = %d\n", first_block);
     fprintf(stderr, "last block = %d\n", last_block);
 
-    /*FIXME - some dummy placeholders for now*/
+    /*FIXME - some dummy placeholders for tunables*/
+    ia_append(&decorrelation_terms, 18);
+    ia_append(&decorrelation_terms, 17);
+
+    ia_append(&decorrelation_deltas, 2);
+    ia_append(&decorrelation_deltas, 3);
+
+    ia_append(&decorrelation_weights_A, 48);
+    ia_append(&decorrelation_weights_A, 16);
+    if (channel_count > 1) {
+        ia_append(&decorrelation_weights_B, 32);
+        ia_append(&decorrelation_weights_B, 24);
+    }
+
+    ia_append(iaa_getitem(&decorrelation_samples_A, 0), -73);
+    ia_append(iaa_getitem(&decorrelation_samples_A, 0), -78);
+    ia_append(iaa_getitem(&decorrelation_samples_A, 1), 28);
+    ia_append(iaa_getitem(&decorrelation_samples_A, 1), 26);
+    if (channel_count > 1) {
+        ia_append(iaa_getitem(&decorrelation_samples_B, 0), 26);
+        ia_append(iaa_getitem(&decorrelation_samples_B, 0), 28);
+        ia_append(iaa_getitem(&decorrelation_samples_B, 1), -78);
+        ia_append(iaa_getitem(&decorrelation_samples_B, 1), -73);
+    }
+
     ia_append(&entropy_variables_A, 0);
     ia_append(&entropy_variables_A, 0);
     ia_append(&entropy_variables_A, 0);
@@ -287,6 +325,26 @@ wavpack_write_block(Bitstream *bs,
     block_header.joint_stereo = 0;
     block_header.cross_channel_decorrelation = 0;
     block_header.false_stereo = 0;
+
+    /*FIXME - apply joint stereo to samples, if requested*/
+
+    /*FIXME - apply decorrelation passes to samples, if requested*/
+
+    wavpack_write_decorr_terms(sub_blocks,
+                               &decorrelation_terms,
+                               &decorrelation_deltas);
+
+    wavpack_write_decorr_weights(sub_blocks,
+                                 channel_count,
+                                 decorrelation_terms.size,
+                                 &decorrelation_weights_A,
+                                 &decorrelation_weights_B);
+
+    wavpack_write_decorr_samples(sub_blocks,
+                                 channel_count,
+                                 &decorrelation_terms,
+                                 &decorrelation_samples_A,
+                                 &decorrelation_samples_B);
 
     wavpack_write_entropy_variables(sub_blocks,
                                     &entropy_variables_A,
@@ -323,6 +381,13 @@ wavpack_write_block(Bitstream *bs,
 
     /*clear temporary space*/
     bs_close(sub_blocks);
+
+    ia_free(&decorrelation_terms);
+    ia_free(&decorrelation_deltas);
+    ia_free(&decorrelation_weights_A);
+    ia_free(&decorrelation_weights_B);
+    iaa_free(&decorrelation_samples_A);
+    iaa_free(&decorrelation_samples_B);
     ia_free(&entropy_variables_A);
     ia_free(&entropy_variables_B);
 }
@@ -400,6 +465,140 @@ wavpack_write_subblock_header(Bitstream *bs,
     } else {
         bs->write_bits(bs, 1,  0);
         bs->write_bits(bs, 8,  block_size);
+    }
+}
+
+void
+wavpack_write_decorr_terms(Bitstream *bs,
+                           struct i_array* decorr_terms,
+                           struct i_array* decorr_deltas) {
+    int i;
+
+    wavpack_write_subblock_header(bs, 2, 0, decorr_terms->size);
+
+    for (i = decorr_terms->size - 1; i >= 0; i--) {
+        bs->write_bits(bs, 5, decorr_terms->data[i] + 5);
+        bs->write_bits(bs, 3, decorr_deltas->data[i]);
+    }
+
+    if ((decorr_terms->size % 2) == 1)
+        bs->write_bits(bs, 8, 0);
+}
+
+static int
+wavpack_store_weight(int weight) {
+    weight = MIN(MAX(weight, -1024), 1024);
+
+    if (weight > 0) {
+        weight -= (weight + 64) >> 7;
+        return (weight + 4) >> 3;
+    } else {
+        return (weight + 4) >> 3;
+    }
+}
+
+void
+wavpack_write_decorr_weights(Bitstream *bs,
+                             int channel_count,
+                             int term_count,
+                             struct i_array* weights_A,
+                             struct i_array* weights_B) {
+    int i;
+    int block_size = weights_A->size +
+        (channel_count > 1 ? weights_B->size : 0);
+
+    wavpack_write_subblock_header(bs, 3, 0, block_size);
+
+    /*FIXME - don't write 0 weights, as per reference encoder*/
+
+    for (i = weights_A->size - 1; i >= 0; i--) {
+        bs->write_signed_bits(bs, 8,
+                              wavpack_store_weight(weights_A->data[i]));
+        if (channel_count > 1)
+            bs->write_signed_bits(bs, 8,
+                                  wavpack_store_weight(weights_B->data[i]));
+
+    }
+
+    if ((block_size % 2) == 1)
+        bs->write_bits(bs, 8, 0);
+}
+
+void
+wavpack_write_decorr_samples(Bitstream *bs,
+                             int channel_count,
+                             struct i_array* decorr_terms,
+                             struct ia_array* samples_A,
+                             struct ia_array* samples_B) {
+    int i;
+    int k;
+    ia_data_t term;
+    struct i_array* term_samples_A;
+    struct i_array* term_samples_B;
+    int sub_block_size = 0;
+
+    /*calculate the sub-block's total size*/
+    for (i = decorr_terms->size - 1; i >= 0; i--) {
+        term = decorr_terms->data[i];
+        if ((17 <= term) && (term <= 18)) {
+            sub_block_size += (4 * channel_count);
+        } else if ((1 <= term) && (term <= 8)) {
+            sub_block_size += (2 * term * channel_count);
+        } else if ((-3 <= term) && (term <= -1)) {
+            sub_block_size += 4;
+        }
+    }
+
+    wavpack_write_subblock_header(bs, 4, 0, sub_block_size);
+
+    /*FIXME - avoid writing 0 samples, as per reference encoder*/
+
+    if (channel_count > 1) {  /*2 channel block*/
+        for (i = decorr_terms->size - 1; i >= 0; i--) {
+            term = decorr_terms->data[i];
+            term_samples_A = &(samples_A->arrays[i]);
+            term_samples_B = &(samples_B->arrays[i]);
+
+            if ((17 <= term) && (term <= 18)) {
+                bs->write_signed_bits(bs, 16,
+                                      wavpack_log2(term_samples_A->data[1]));
+                bs->write_signed_bits(bs, 16,
+                                      wavpack_log2(term_samples_A->data[0]));
+                bs->write_signed_bits(bs, 16,
+                                      wavpack_log2(term_samples_B->data[1]));
+                bs->write_signed_bits(bs, 16,
+                                      wavpack_log2(term_samples_B->data[0]));
+            } else if ((1 <= term) && (term <= 8)) {
+                for (k = 0; k < term; k++) {
+                    bs->write_signed_bits(bs, 16,
+                                    wavpack_log2(term_samples_A->data[k]));
+                    bs->write_signed_bits(bs, 16,
+                                    wavpack_log2(term_samples_B->data[k]));
+                }
+            } else if ((-3 <= term) && (term <= -1)) {
+                bs->write_signed_bits(bs, 16,
+                                      wavpack_log2(term_samples_A->data[0]));
+                bs->write_signed_bits(bs, 16,
+                                      wavpack_log2(term_samples_B->data[0]));
+            }
+        }
+    } else {                        /*1 channel block*/
+        for (i = decorr_terms->size - 1; i >= 0; i--) {
+            term = decorr_terms->data[i];
+            term_samples_A = &(samples_A->arrays[i]);
+
+            if ((17 <= term) && (term <= 18)) {
+                bs->write_signed_bits(bs, 16,
+                                      wavpack_log2(term_samples_A->data[1]));
+                bs->write_signed_bits(bs, 16,
+                                      wavpack_log2(term_samples_A->data[0]));
+            } else if ((1 <= term) && (term <= 8)) {
+                for (k = 0; k < term; k++) {
+                    bs->write_signed_bits(bs, 16,
+                                    wavpack_log2(term_samples_A->data[k]));
+                }
+            }
+        }
     }
 }
 
