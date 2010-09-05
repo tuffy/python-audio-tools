@@ -76,6 +76,9 @@ typedef enum {WV_RESIDUAL_GOLOMB,
               WV_RESIDUAL_FINISHED} wv_residual_type;
 
 #define WV_UNARY_LIMIT 16
+#define MAXIMUM_TERM_COUNT 16
+#define WEIGHT_MAXIMUM 1024
+#define WEIGHT_MINIMUM -1024
 
 struct wavpack_residual {
     wv_residual_type type;
@@ -197,3 +200,25 @@ wavpack_print_residual(FILE *output,
                        int write_unary);
 
 int32_t wavpack_log2(int32_t sample);
+
+/*Performs a decorrelation pass over channel_A and (optionally) channel_B,
+  altering their values in the process.
+  If "channel_count" is 1, only channel_A and weight_A are used.
+  Otherwise, channel_B is also used.*/
+void wavpack_perform_decorrelation_pass(
+                                    struct i_array* channel_A,
+                                    struct i_array* channel_B,
+                                    int decorrelation_term,
+                                    int decorrelation_delta,
+                                    int decorrelation_weight_A,
+                                    int decorrelation_weight_B,
+                                    struct i_array* decorrelation_samples_A,
+                                    struct i_array* decorrelation_samples_B,
+                                    int channel_count);
+
+void wavpack_perform_decorrelation_pass_1ch(
+                                    struct i_array* channel,
+                                    int decorrelation_term,
+                                    int decorrelation_delta,
+                                    int decorrelation_weight,
+                                    struct i_array* decorrelation_samples);

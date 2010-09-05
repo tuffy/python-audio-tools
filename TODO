@@ -2516,8 +2516,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 **** DONE decorrelation passes
 **** DONE joint stereo
 **** TODO checksum
-**** TODO left shift
-     (not sure if this actually gets used anywhere)
 **** TODO false stereo
 **** TODO int32_info
      - [X] zeroes
@@ -2526,6 +2524,21 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [ ] shift
 **** TODO hybrid mode
 *** TODO WavPack encoding
+**** TODO WavPack block header
+**** TODO WavPack sub-blocks
+     - [ ] decorr_terms
+     - [ ] decorr_weights
+     - [ ] decorr_samples
+     - [ ] entropy_vars
+     - [ ] wv_bitstream
+**** TODO checksum
+**** TODO false stereo
+**** TODO int32_info
+     for left shifting zeroes, in particular
+**** TODO joint stereo
+**** TODO decorrelation passes
+**** TODO entropy variables
+**** TODO bitstream generation
 *** TODO Verify A4 layout is correct
 ** TODO Test encoder/decoder against reference
    Ensure a wide range of lossless audio round-trips correctly
