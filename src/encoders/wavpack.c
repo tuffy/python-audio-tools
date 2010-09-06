@@ -297,7 +297,12 @@ wavpack_write_block(Bitstream* bs,
     }
 
     /*FIXME - set these to hard-coded for now*/
-    block_header.joint_stereo = 0;
+    if (channel_count > 1) {
+        wavpack_perform_joint_stereo(channel_A, channel_B);
+        block_header.joint_stereo = 1;
+    } else {
+        block_header.joint_stereo = 0;
+    }
     block_header.cross_channel_decorrelation = 1;
     block_header.false_stereo = 0;
 
@@ -771,6 +776,21 @@ wavpack_write_residuals(Bitstream *bs,
     ia_free(&medians_A);
     ia_free(&medians_B);
     free(residuals);
+}
+
+void
+wavpack_perform_joint_stereo(struct i_array *channel_A,
+                             struct i_array *channel_B) {
+    ia_size_t i;
+    ia_data_t mid;
+    ia_data_t side;
+
+    for (i = 0; i < channel_A->size; i++) {
+        side = (channel_A->data[i] + channel_B->data[i]) >> 1;
+        mid = channel_A->data[i] - channel_B->data[i];
+        channel_A->data[i] = mid;
+        channel_B->data[i] = side;
+    }
 }
 
 /*The actual median values are stored as fractions of integers.

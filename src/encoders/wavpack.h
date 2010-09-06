@@ -260,3 +260,9 @@ wavpack_calculate_tunables(struct wavpack_encoder_context* context,
                            struct i_array* entropy_variables_A,
                            struct i_array* entropy_variables_B);
 
+
+/*Updates the contents of channel_A and channel_B to be
+  joint stereo.*/
+void
+wavpack_perform_joint_stereo(struct i_array *channel_A,
+                             struct i_array *channel_B);
