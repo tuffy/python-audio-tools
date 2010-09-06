@@ -110,10 +110,10 @@ wavpack_channel_splits(struct i_array *counts,
                        long channel_mask);
 
 void
-wavpack_write_block(Bitstream *bs,
-                    struct wavpack_encoder_context *context,
-                    struct i_array *channel_A,
-                    struct i_array *channel_B,
+wavpack_write_block(Bitstream* bs,
+                    struct wavpack_encoder_context* context,
+                    struct i_array* channel_A,
+                    struct i_array* channel_B,
                     int channel_count,
                     int first_block,
                     int last_block);
@@ -226,20 +226,37 @@ int32_t wavpack_log2(int32_t sample);
   altering their values in the process.
   If "channel_count" is 1, only channel_A and weight_A are used.
   Otherwise, channel_B is also used.*/
-void wavpack_perform_decorrelation_pass(
-                                    struct i_array* channel_A,
-                                    struct i_array* channel_B,
-                                    int decorrelation_term,
-                                    int decorrelation_delta,
-                                    int decorrelation_weight_A,
-                                    int decorrelation_weight_B,
-                                    struct i_array* decorrelation_samples_A,
-                                    struct i_array* decorrelation_samples_B,
-                                    int channel_count);
+void
+wavpack_perform_decorrelation_pass(struct i_array* channel_A,
+                                   struct i_array* channel_B,
+                                   int decorrelation_term,
+                                   int decorrelation_delta,
+                                   int decorrelation_weight_A,
+                                   int decorrelation_weight_B,
+                                   struct i_array* decorrelation_samples_A,
+                                   struct i_array* decorrelation_samples_B,
+                                   int channel_count);
 
-void wavpack_perform_decorrelation_pass_1ch(
-                                    struct i_array* channel,
-                                    int decorrelation_term,
-                                    int decorrelation_delta,
-                                    int decorrelation_weight,
-                                    struct i_array* decorrelation_samples);
+void
+wavpack_perform_decorrelation_pass_1ch(struct i_array* channel,
+                                       int decorrelation_term,
+                                       int decorrelation_delta,
+                                       int decorrelation_weight,
+                                       struct i_array* decorrelation_samples);
+
+/*given a set of channel data and encoding context
+  (for compression options), calculates a block's tunable information*/
+void
+wavpack_calculate_tunables(struct wavpack_encoder_context* context,
+                           struct i_array* channel_A,
+                           struct i_array* channel_B,
+                           int channel_count,
+                           struct i_array* decorrelation_terms,
+                           struct i_array* decorrelation_deltas,
+                           struct i_array* decorrelation_weights_A,
+                           struct i_array* decorrelation_weights_B,
+                           struct ia_array* decorrelation_samples_A,
+                           struct ia_array* decorrelation_samples_B,
+                           struct i_array* entropy_variables_A,
+                           struct i_array* entropy_variables_B);
+
