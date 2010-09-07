@@ -2520,27 +2520,27 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [X] wv_bitstream
 **** DONE decorrelation passes
 **** DONE joint stereo
-**** TODO checksum
 **** TODO false stereo
 **** TODO int32_info
      - [X] zeroes
      - [X] ones
      - [X] dupes
      - [ ] shift
+**** DONE checksum
 **** TODO hybrid mode
 *** TODO WavPack encoding
 **** TODO WavPack block header
+**** DONE checksum
+**** DONE joint stereo
 **** TODO WavPack sub-blocks
      - [ ] decorr_terms
      - [ ] decorr_weights
      - [ ] decorr_samples
      - [ ] entropy_vars
      - [ ] wv_bitstream
-**** TODO checksum
 **** TODO false stereo
 **** TODO int32_info
      for left shifting zeroes, in particular
-**** TODO joint stereo
 **** TODO decorrelation passes
 **** TODO entropy variables
 **** TODO bitstream generation

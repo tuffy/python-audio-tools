@@ -826,6 +826,16 @@ and right samples as follows:
 \end{align*}
 Thus, our left samples are 0 and 16, and our right samples are 64 and 62.
 
+\subsection{The CRC}
+
+Verifying the block's CRC is quite simple:
+\begin{equation*}
+\text{CRC}_i = (3 \times \text{CRC}_{i - 1}) + \text{Decoded Sample}_i
+\end{equation*}
+where $\text{Decoded Sample}_i$ alternates between channels if necessary,
+$\text{CRC}_{-1}$ begins with a value of \texttt{0xFFFFFFFF}
+and each $\text{CRC}_i$ value is truncated to 32 bits.
+
 \clearpage
 
 \section{WavPack Encoding}
@@ -883,6 +893,40 @@ $\text{Block}_3$ & 0 & 0 & 1 & LFE & \\
 $\text{Block}_4$ & 0 & 1 & 0 & Back Left & Back Right
 \end{tabular}
 \end{table}
+
+\clearpage
+
+\subsection{The CRC}
+
+Once the audio samples have been split into blocks,
+it's best to perform the block header CRC calculation
+before starting to encode them, as follows:
+
+\begin{equation*}
+\text{CRC}_i = (3 \times \text{CRC}_{i - 1}) + \text{Unencoded Sample}_i
+\end{equation*}
+where $\text{Unencoded Sample}_i$ alternates between channels if necessary,
+$\text{CRC}_{-1}$ begins with a value of \texttt{0xFFFFFFFF}
+and each $\text{CRC}_i$ value is truncated to 32 bits.
+
+\subsection{Joint Stereo}
+
+Next, for two channel blocks, one typically converts both
+channels to joint stereo.
+This involves transforming independent left and right channels
+to mid and side channels.
+\begin{align*}
+\text{Mid}_i &= \text{Channel A}_i - \text{Channel B}_i \\
+\text{Side}_i &= \left\lfloor\frac{\text{Channel A}_i + \text{Channel B}_i}{2}\right\rfloor
+\end{align*}
+Where \VAR{Mid} is the new \VAR{Channel A} and \VAR{Side} is the new
+\VAR{Channel B}.
+For example, given the \VAR{Channel A} value of 16 and the
+\VAR{Channel B} value of 62, our conversion is as follows:
+\begin{align*}
+\text{Mid}_0 &= 16 - 62 = \textbf{-46} \\
+\text{Side}_0 &= \left\lfloor\frac{16 + 62}{2}\right\rfloor = \textbf{39}
+\end{align*}
 
 \clearpage
 
@@ -967,3 +1011,124 @@ value &= (5 \times 2^8) + \text{wv\_log2}((28 \times 2^{9 - 5}) \bmod{256}) \\
 &= 1280 + \text{wv\_log2}(192) = \textbf{1487}
 \end{align*}
 
+\clearpage
+
+\subsection{Decorrelation Passes}
+
+We then apply decorrelation passes to our channel values.
+Each pass requires a \VAR{Decorrelation Term},
+a \VAR{Decorrelation Delta}, one \VAR{Decorrelation Weight} per
+channel and one or more \VAR{Decorrelation Sample} values -
+in aaddition to the set of input samples we're running the pass
+over.
+\begin{align*}
+\intertext{Decorrelation Term = 18:}
+\text{Temp}_i &= \lfloor((3 \times \text{Input}_{i - 1}) - \text{Input}_{i - 2}) \div 2\rfloor \\
+\text{Output}_i &= \text{Input}_i - \lfloor((\text{Weight}_{i - 1} \times \text{Temp}_i) + 512) \div 1024\rfloor \\
+\text{Weight}_i &=
+\begin{cases}
+\text{Weight}_{i - 1} & \text{if } \text{Temp}_i = 0 \text{ or } \text{Output}_i = 0 \\
+\text{Weight}_{i - 1} + \text{Delta} & \text{if } (\text{Temp}_i \xor \text{Output}_i) \geq 0 \\
+\text{Weight}_{i - 1} - \text{Delta} & \text{if } (\text{Temp}_i \xor \text{Output}_i) < 0
+\end{cases}
+\intertext{Decorrelation Term = 17:}
+\text{Temp}_i &= (2 \times \text{Input}_{i - 1}) - \text{Input}_{i - 2} \\
+\text{Output}_i &= \text{Input}_i - \lfloor((\text{Weight}_{i - 1} \times \text{Temp}_i) + 512) \div 1024\rfloor \\
+\text{Weight}_i &=
+\begin{cases}
+\text{Weight}_{i - 1} & \text{if } \text{Temp}_i = 0 \text{ or } \text{Output}_i = 0 \\
+\text{Weight}_{i - 1} + \text{Delta} & \text{if } (\text{Temp}_i \xor \text{Output}_i) \geq 0 \\
+\text{Weight}_{i - 1} - \text{Delta} & \text{if } (\text{Temp}_i \xor \text{Output}_i) < 0
+\end{cases}
+\intertext{$1 \leq \text{Decorrelation Term} \leq 8$:}
+\text{Output}_i &= \text{Input}_i - \lfloor((\text{Weight}_{i - 1} \times \text{Input}_{i - \text{term}}) + 512) \div 1024\rfloor \\
+\text{Weight}_i &=
+\begin{cases}
+\text{Weight}_{i - 1} & \text{if } \text{Input}_{i - \text{term}} = 0 \text{ or } \text{Output}_i = 0 \\
+\text{Weight}_{i - 1} + \text{Delta} & \text{if } (\text{Input}_{i - \text{term}} \xor \text{Output}_i) \geq 0 \\
+\text{Weight}_{i - 1} - \text{Delta} & \text{if } (\text{Input}_{i - \text{term}} \xor \text{Output}_i) < 0
+\end{cases}
+\end{align*}
+Similar to decoding, each function uses previous input samples
+for its calculation.
+This is where \VAR{Decorrelation Samples} are used;
+those are our $\text{Input}_{-1}$, $\text{Input}_{-2}$, etc. which
+are used for decorrelation but not actually output.
+
+\clearpage
+
+For 1 or 2 channel blocks, positive decorrelation terms are applied
+on a per-channel basis with the weight A values being applied to
+channel A and the weight B values being applied to channel B (if present).
+However, the three negative correlation terms are only valid for
+2 channel blocks:
+\begin{align*}
+\intertext{Decorrelation Term = -1:}
+\text{Temp A}_i &= \text{Input B}_{i - 1} \\
+\text{Temp B}_i &= \text{Input A}_i \\
+%% \text{Output A}_i &= \text{Input A}_i - applyweight(\text{Weight A}_{i - 1}, \text{Temp A}_i) \\
+\text{Output A}_i &= \text{Input A}_i - \lfloor((\text{Weight A}_{i - 1} \times \text{Temp A}_i) + 512) \div 1024\rfloor \\
+%% \text{Weight A}_i &= updateweight(\text{Weight A}_{i - 1}, \text{Delta}, \text{Temp A}_i, \text{Output A}_i) \\
+\text{Weight A}_i &=
+\begin{cases}
+\text{Weight A}_{i - 1} & \text{if } \text{Temp A}_i \text{ or } \text{Output A}_i = 0 \\
+\text{Weight A}_{i - 1} + \text{Delta} & \text{if } (\text{Temp A}_i \xor \text{Output A}_i) \geq 0 \\
+\text{ to a maximum of 1024} \\
+\text{Weight A}_{i - 1} - \text{Delta} & \text{if } (\text{Temp A}_i \xor \text{Output A}_i) < 0 \\
+\text{ to a minimum of -1024}
+\end{cases} \\
+\text{Output B}_i &= \text{Input B}_i - \lfloor((\text{Weight B}_{i - 1} \times \text{Temp B}_i) + 512) \div 1024\rfloor \\
+\text{Weight B}_i &=
+\begin{cases}
+\text{Weight B}_{i - 1} & \text{if } \text{Temp B}_i \text{ or } \text{Output B}_i = 0 \\
+\text{Weight B}_{i - 1} + \text{Delta} & \text{if } (\text{Temp B}_i \xor \text{Output B}_i) \geq 0 \\
+\text{ to a maximum of 1024} \\
+\text{Weight B}_{i - 1} - \text{Delta} & \text{if } (\text{Temp B}_i \xor \text{Output B}_i) < 0 \\
+\text{ to a minimum of -1024}
+\end{cases}
+\end{align*}
+\clearpage
+\begin{align*}
+\intertext{Decorrelation Term = -2:}
+\text{Temp A}_i &= \text{Input B}_i \\
+\text{Temp B}_i &= \text{Input A}_{i - 1} \\
+\text{Output A}_i &= \text{Input A}_i - \lfloor((\text{Weight A}_{i - 1} \times \text{Temp A}_i) + 512) \div 1024\rfloor \\
+\text{Weight A}_i &=
+\begin{cases}
+\text{Weight A}_{i - 1} & \text{if } \text{Temp A}_i \text{ or } \text{Output A}_i = 0 \\
+\text{Weight A}_{i - 1} + \text{Delta} & \text{if } (\text{Temp A}_i \xor \text{Output A}_i) \geq 0 \\
+\text{ to a maximum of 1024} \\
+\text{Weight A}_{i - 1} - \text{Delta} & \text{if } (\text{Temp A}_i \xor \text{Output A}_i) < 0 \\
+\text{ to a minimum of -1024}
+\end{cases} \\
+\text{Output B}_i &= \text{Input B}_i - \lfloor((\text{Weight B}_{i - 1} \times \text{Temp B}_i) + 512) \div 1024\rfloor \\
+\text{Weight B}_i &=
+\begin{cases}
+\text{Weight B}_{i - 1} & \text{if } \text{Temp B}_i \text{ or } \text{Output B}_i = 0 \\
+\text{Weight B}_{i - 1} + \text{Delta} & \text{if } (\text{Temp B}_i \xor \text{Output B}_i) \geq 0 \\
+\text{ to a maximum of 1024} \\
+\text{Weight B}_{i - 1} - \text{Delta} & \text{if } (\text{Temp B}_i \xor \text{Output B}_i) < 0 \\
+\text{ to a minimum of -1024}
+\end{cases}
+\intertext{Decorrelation Term = -3:}
+\text{Temp A}_i &= \text{Input B}_{i - 1} \\
+\text{Temp B}_i &= \text{Input A}_{i - 1} \\
+\text{Output A}_i &= \text{Input A}_i - \lfloor((\text{Weight A}_{i - 1} \times \text{Temp A}_i) + 512) \div 1024\rfloor \\
+\text{Weight A}_i &=
+\begin{cases}
+\text{Weight A}_{i - 1} & \text{if } \text{Temp A}_i \text{ or } \text{Output A}_i = 0 \\
+\text{Weight A}_{i - 1} + \text{Delta} & \text{if } (\text{Temp A}_i \xor \text{Output A}_i) \geq 0 \\
+\text{ to a maximum of 1024} \\
+\text{Weight A}_{i - 1} - \text{Delta} & \text{if } (\text{Temp A}_i \xor \text{Output A}_i) < 0 \\
+\text{ to a minimum of -1024}
+\end{cases} \\
+\text{Output B}_i &= \text{Input B}_i - \lfloor((\text{Weight B}_{i - 1} \times \text{Temp B}_i) + 512) \div 1024\rfloor \\
+\text{Weight B}_i &=
+\begin{cases}
+\text{Weight B}_{i - 1} & \text{if } \text{Temp B}_i \text{ or } \text{Output B}_i = 0 \\
+\text{Weight B}_{i - 1} + \text{Delta} & \text{if } (\text{Temp B}_i \xor \text{Output B}_i) \geq 0 \\
+\text{ to a maximum of 1024} \\
+\text{Weight B}_{i - 1} - \text{Delta} & \text{if } (\text{Temp B}_i \xor \text{Output B}_i) < 0 \\
+\text{ to a minimum of -1024}
+\end{cases}
+\end{align*}

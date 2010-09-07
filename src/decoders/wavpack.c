@@ -1364,9 +1364,13 @@ void wavpack_perform_decorrelation_pass(
                 input_Bi = channel_B->data[i];
                 output_A_1 = ia_getitem(&(output_A), -1);
                 output_B_1 = ia_getitem(&(output_B), -1);
+
+                /*apply weight*/
                 output_Ai = (((decorrelation_weight_A * output_B_1) +
                               512) >> 10) + input_Ai;
                 ia_append(&output_A, output_Ai);
+
+                /*update weight*/
                 if ((output_B_1 != 0) && (input_Ai != 0)) {
                     if ((output_B_1 ^ input_Ai) >= 0)
                         decorrelation_weight_A = MIN(
@@ -1377,9 +1381,13 @@ void wavpack_perform_decorrelation_pass(
                                 decorrelation_weight_A - decorrelation_delta,
                                 WEIGHT_MINIMUM);
                 }
+
+                /*apply weight*/
                 ia_append(&output_B,
                           (((decorrelation_weight_B * output_Ai) +
                             512) >> 10) + input_Bi);
+
+                /*update weight*/
                 if ((output_Ai != 0) && (input_Bi != 0)) {
                     if ((output_Ai ^ input_Bi) >= 0)
                         decorrelation_weight_B = MIN(
@@ -1398,9 +1406,13 @@ void wavpack_perform_decorrelation_pass(
                 input_Ai = channel_A->data[i];
                 output_B_1 = ia_getitem(&(output_B), -1);
                 output_A_1 = ia_getitem(&(output_A), -1);
+
+                /*apply weight*/
                 output_Bi = (((decorrelation_weight_B * output_A_1) +
                               512) >> 10) + input_Bi;
                 ia_append(&output_B, output_Bi);
+
+                /*update weight*/
                 if ((output_A_1 != 0) && (input_Bi != 0)) {
                     if ((output_A_1 ^ input_Bi) >= 0)
                         decorrelation_weight_B = MIN(
@@ -1411,9 +1423,13 @@ void wavpack_perform_decorrelation_pass(
                                 decorrelation_weight_B - decorrelation_delta,
                                 WEIGHT_MINIMUM);
                 }
+
+                /*apply weight*/
                 ia_append(&output_A,
                           (((decorrelation_weight_A * output_Bi) +
                             512) >> 10) + input_Ai);
+
+                /*update weight*/
                 if ((output_Bi != 0) && (input_Ai != 0)) {
                     if ((output_Bi ^ input_Ai) >= 0)
                         decorrelation_weight_A = MIN(
@@ -1432,12 +1448,16 @@ void wavpack_perform_decorrelation_pass(
                 input_Ai = channel_A->data[i];
                 output_B_1 = ia_getitem(&(output_B), -1);
                 output_A_1 = ia_getitem(&(output_A), -1);
+
+                /*apply weight*/
                 output_Ai = (((decorrelation_weight_A * output_B_1) +
                               512) >> 10) + input_Ai;
                 output_Bi = (((decorrelation_weight_B * output_A_1) +
                               512) >> 10) + input_Bi;
                 ia_append(&(output_A), output_Ai);
                 ia_append(&(output_B), output_Bi);
+
+                /*update weight*/
                 if ((output_B_1 != 0) && (input_Ai != 0)) {
                     if ((output_B_1 ^ input_Ai) >= 0)
                         decorrelation_weight_A = MIN(
@@ -1461,6 +1481,7 @@ void wavpack_perform_decorrelation_pass(
             }
         }
 
+        /*clean up temporary buffers*/
         ia_tail(&output_A_tail, &output_A, channel_A->size);
         ia_tail(&output_B_tail, &output_B, channel_B->size);
         ia_copy(channel_A, &output_A_tail);
