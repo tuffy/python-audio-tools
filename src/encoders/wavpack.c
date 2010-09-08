@@ -1,5 +1,6 @@
 #include "wavpack.h"
 #include "../pcmreader.h"
+#include <assert.h>
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -20,6 +21,7 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 *******************************************************/
 
+#ifndef STANDALONE
 PyObject*
 encoders_encode_wavpack(PyObject *dummy,
                         PyObject *args, PyObject *keywds) {
@@ -70,7 +72,9 @@ encoders_encode_wavpack(PyObject *dummy,
     context.bits_per_sample = reader->bits_per_sample;
     context.sample_rate = reader->sample_rate;
     context.block_index = 0;
+    context.byte_count = 0;
     ia_init(&(context.block_offsets), 1);
+    bs_add_callback(stream, wavpack_count_bytes, &(context.byte_count));
 
     iaa_init(&samples, reader->channels, block_size);
 
@@ -89,6 +93,7 @@ encoders_encode_wavpack(PyObject *dummy,
             goto error;
     }
 
+    fprintf(stderr, "total samples = %u\n", context.block_index);
     /*go back and set block header data as necessary*/
     for (i = 0; i < context.block_offsets.size; i++) {
         fseek(file, context.block_offsets.data[i] + 12, SEEK_SET);
@@ -112,6 +117,68 @@ encoders_encode_wavpack(PyObject *dummy,
 
     return NULL;
 }
+#else
+void
+encoders_encode_wavpack(char *filename,
+                        FILE *pcmdata,
+                        int block_size) {
+    FILE *file;
+    Bitstream *stream;
+    struct pcm_reader *reader;
+    struct wavpack_encoder_context context;
+    struct ia_array samples;
+    ia_size_t i;
+
+    file = fopen(filename, "wb");
+    stream = bs_open(file, BS_LITTLE_ENDIAN);
+    reader = pcmr_open(pcmdata, 44100, 2, 0x3, 16, 0, 1);
+
+        context.bits_per_sample = reader->bits_per_sample;
+    context.sample_rate = reader->sample_rate;
+    context.block_index = 0;
+    context.byte_count = 0;
+    ia_init(&(context.block_offsets), 1);
+    bs_add_callback(stream, wavpack_count_bytes, &(context.byte_count));
+
+    iaa_init(&samples, reader->channels, block_size);
+
+    /*build frames until reader is empty
+      (WavPack doesn't have actual frames as such; it has sets of
+       blocks joined by first-block/last-block bits in the header.
+       However, I'll call that arrangement a "frame" for clarity.)*/
+    if (!pcmr_read(reader, block_size, &samples))
+        goto error;
+
+    while (samples.arrays[0].size > 0) {
+        wavpack_write_frame(stream, &context,
+                            &samples, reader->channel_mask);
+        fprintf(stderr, "got %d samples\n", samples.arrays[0].size);
+
+        if (!pcmr_read(reader, block_size, &samples))
+            goto error;
+    }
+
+    fprintf(stderr, "total samples = %u\n", context.block_index);
+    /*go back and set block header data as necessary*/
+    for (i = 0; i < context.block_offsets.size; i++) {
+        fseek(file, context.block_offsets.data[i] + 12, SEEK_SET);
+        stream->write_bits64(stream, 32, context.block_index);
+    }
+
+    /*close open file handles and deallocate temporary space*/
+    pcmr_close(reader);
+    bs_close(stream);
+    iaa_free(&samples);
+    ia_free(&(context.block_offsets));
+    return;
+ error:
+    pcmr_close(reader);
+    bs_close(stream);
+    iaa_free(&samples);
+    ia_free(&(context.block_offsets));
+}
+
+#endif
 
 static int
 count_one_bits(int i) {
@@ -184,10 +251,6 @@ wavpack_write_frame(Bitstream *bs,
             samples->size, samples->arrays[0].size);
     wavpack_channel_splits(&counts, samples->size, channel_mask);
 
-    fprintf(stderr, "channel counts : ");
-    ia_print(stderr, &counts);
-    fprintf(stderr, "\n");
-
     for (i = current_channel = 0; i < counts.size; i++) {
         wavpack_write_block(bs,
                             context,
@@ -246,8 +309,8 @@ wavpack_write_block(Bitstream* bs,
     ia_init(&entropy_variables_A, 3);
     ia_init(&entropy_variables_B, 3);
 
-    /*this only works if Bitstream is a physical file*/
-    ia_append(&(context->block_offsets), ftell(bs->file));
+    ia_append(&(context->block_offsets), context->byte_count);
+    fprintf(stderr, "appending file offset 0x%X\n", context->byte_count);
 
     /*initialize the WavPack block header fields*/
 
@@ -270,6 +333,9 @@ wavpack_write_block(Bitstream* bs,
     block_header.final_block_in_sequence = last_block;
     block_header.left_shift = 0;
     block_header.crc = 0xFFFFFFFF;
+
+    assert(channel_count > 0);
+    assert(channel_count <= 2);
 
     if (channel_count == 1)
         block_header.maximum_data_magnitude = count_bits(
@@ -391,14 +457,14 @@ wavpack_write_block(Bitstream* bs,
 void
 wavpack_write_block_header(Bitstream *bs,
                            struct wavpack_block_header *header) {
-    bs->write_bits(bs, 32, 0x6B707677); /*block header*/
-    bs->write_bits(bs, 32, header->block_size);
+    bs->write_bits64(bs, 32, 0x6B707677); /*block header*/
+    bs->write_bits64(bs, 32, header->block_size);
     bs->write_bits(bs, 16, header->version);
     bs->write_bits(bs, 8,  header->track_number);
     bs->write_bits(bs, 8,  header->index_number);
-    bs->write_bits(bs, 32, header->total_samples);
-    bs->write_bits(bs, 32, header->block_index);
-    bs->write_bits(bs, 32, header->block_samples);
+    bs->write_bits64(bs, 32, header->total_samples);
+    bs->write_bits64(bs, 32, header->block_index);
+    bs->write_bits64(bs, 32, header->block_samples);
     switch (header->bits_per_sample) {
     case 8:  bs->write_bits(bs, 2, 0); break;
     case 16: bs->write_bits(bs, 2, 1); break;
@@ -440,7 +506,7 @@ wavpack_write_block_header(Bitstream *bs,
     bs->write_bits(bs, 1,  header->use_IIR);
     bs->write_bits(bs, 1,  header->false_stereo);
     bs->write_bits(bs, 1,  0);
-    bs->write_bits(bs, 32, header->crc);
+    bs->write_bits64(bs, 32, header->crc);
 }
 
 void
@@ -598,7 +664,8 @@ wavpack_write_decorr_samples(Bitstream *bs,
     }
 }
 
-int32_t wavpack_log2(int32_t sample) {
+int32_t
+wavpack_log2(int32_t sample) {
     int32_t asample = abs(sample) + (abs(sample) >> 9);
     int bitcount = count_bits(asample);
     static const uint8_t log2_table[] = {
@@ -891,6 +958,7 @@ wavpack_calculate_residual(struct wavpack_residual *residual,
         inc_median(medians, 2);
     }
 
+    assert(ones_count >= 0);
     residual->type = WV_RESIDUAL_GOLOMB;
     residual->residual.golomb.unary = ones_count;
     residual->residual.golomb.sign = sign;
@@ -929,6 +997,7 @@ wavpack_calculate_zeroes(struct wavpack_residual *residual,
 void
 wavpack_output_residuals(Bitstream *bs, struct wavpack_residual *residual) {
     struct wavpack_residual *previous_residual = NULL;
+    struct wavpack_residual dummy;
     int holding_zero = 0;
     int holding_one = 0;
 
@@ -947,65 +1016,39 @@ wavpack_output_residuals(Bitstream *bs, struct wavpack_residual *residual) {
               output them as-is and continue on
               without adjusting the holding_one/zero bits.*/
             wavpack_output_residual(bs, previous_residual, 0);
+            /* printf("outputting zeroes\n"); */
             break;
         case WV_RESIDUAL_GOLOMB:
-            /*Update the previous residual's unary value
-              based on the current residual's unary value
-              and our desired "holding_one" and "holding_zero" values.*/
-
-            if (residual->residual.golomb.unary == 0) {
-                /*If the current unary value is 0,
-                  adjust the previous unary value such that
-                  holding_one becomes 0.*/
-
-                if (holding_zero) {
-                    /*If holding_zero is already set,
-                      output previous as a non-unary code and reset.*/
-                    holding_zero = 0;
-                    holding_one = 0;
-                    wavpack_output_residual(bs, previous_residual, 0);
-                } else {
-                    /*Otherwise, adjust previous to set
-                      holding_one to 0 and holding_zero to 1.*/
-                    wavpack_set_holding(previous_residual,
-                                        holding_one, 0);
-                    holding_zero = 1;
-                    holding_one = 0;
-                    wavpack_output_residual(bs, previous_residual, 1);
-                }
-            } else {
-                /*Otherwise, adjust the previous unary value
-                  such that holding_one remains 1.
-                  We can go from holding_one -> holding_one so
-                  long as the unary value is above 0.*/
-                if (holding_zero) {
-                    holding_zero = 0;
-                    holding_one = 0;
-                    wavpack_output_residual(bs, previous_residual, 0);
-                } else {
-                    wavpack_set_holding(previous_residual,
-                                        holding_one, 1);
-                    holding_one = 1;
-                    holding_zero = 0;
-                    wavpack_output_residual(bs, previous_residual, 1);
-                }
-            }
+            wavpack_output_residual(bs,
+                                    previous_residual,
+                                    wavpack_set_holding(previous_residual,
+                                                        residual,
+                                                        &holding_zero,
+                                                        &holding_one));
             break;
         default:
             break;
         }
-
         previous_residual = residual;
     }
 
+    /*This residual isn't output; it's just a bridge
+      for setting holding_one and holding_zero from the actual
+      final residual.*/
+    dummy.type = WV_RESIDUAL_GOLOMB;
+    dummy.residual.golomb.unary =
+        dummy.residual.golomb.fixed =
+        dummy.residual.golomb.fixed_size =
+        dummy.residual.golomb.has_extra_bit =
+        dummy.residual.golomb.sign = 0;
+
     /*And, don't forget to output the final residual.*/
-    if (holding_zero) {
-        wavpack_output_residual(bs, previous_residual, 0);
-    } else {
-        wavpack_set_holding(previous_residual,
-                            holding_one, 0);
-        wavpack_output_residual(bs, previous_residual, 1);
-    }
+    wavpack_output_residual(bs,
+                            previous_residual,
+                            wavpack_set_holding(previous_residual,
+                                                &dummy,
+                                                &holding_zero,
+                                                &holding_one));
 }
 
 void
@@ -1022,25 +1065,86 @@ wavpack_clear_medians(struct i_array *medians_A,
     }
 }
 
-void
-wavpack_set_holding(struct wavpack_residual *residual,
-                    int current_holding_one,
-                    int new_holding_one) {
-    if (new_holding_one) {
-        if (current_holding_one) {
-            residual->residual.golomb.unary =
-                ((residual->residual.golomb.unary - 1) * 2) + 1;
+int
+wavpack_set_holding(struct wavpack_residual *previous_residual,
+                    struct wavpack_residual *current_residual,
+                    int *holding_zero,
+                    int *holding_one) {
+    if (current_residual->type == WV_RESIDUAL_GOLOMB) {
+        /*previous residual is unary,
+          current residual is also unary*/
+
+        if ((previous_residual->residual.golomb.unary == 0) &&
+            (current_residual->residual.golomb.unary == 0)) {
+            /*going from unary zero to unary zero*/
+
+            assert(*holding_one == 0);
+            if (*holding_zero) {
+                *holding_zero = 0;
+                *holding_one = 0;
+                return 0;
+            } else {
+                *holding_zero = 1;
+                *holding_one = 0;
+                return 1;
+            }
+
+        } else if ((previous_residual->residual.golomb.unary != 0) &&
+                   (current_residual->residual.golomb.unary == 0)) {
+            /*going from unary nonzero to unary zero*/
+
+            assert(*holding_zero == 0);
+            if (*holding_one) {
+                previous_residual->residual.golomb.unary =
+                    (previous_residual->residual.golomb.unary - 1) * 2;
+                *holding_one = 0;
+                *holding_zero = 1;
+                return 1;
+            } else {
+                previous_residual->residual.golomb.unary *= 2;
+                *holding_zero = 1;
+                return 1;
+            }
+
+        } else if ((previous_residual->residual.golomb.unary == 0) &&
+                   (current_residual->residual.golomb.unary != 0)) {
+            /*going from unary zero to unary nonzero*/
+
+            assert(*holding_one == 0);
+            if (*holding_zero) {
+                *holding_zero = 0;
+                return 0;
+            } else {
+                previous_residual->residual.golomb.unary = 1;
+                *holding_one = 1;
+                return 1;
+            }
+
         } else {
-            residual->residual.golomb.unary =
-                (residual->residual.golomb.unary * 2) + 1;
+            /*going from unary nonzero to unary nonzero*/
+
+            assert(*holding_zero == 0);
+            if (*holding_one) {
+                previous_residual->residual.golomb.unary =
+                    (previous_residual->residual.golomb.unary * 2) - 1;
+                return 1;
+            } else {
+                previous_residual->residual.golomb.unary =
+                    (previous_residual->residual.golomb.unary * 2) + 1;
+                *holding_one = 1;
+                return 1;
+            }
         }
     } else {
-        if (current_holding_one) {
-            residual->residual.golomb.unary =
-                (residual->residual.golomb.unary - 1) * 2;
-        } else {
-            residual->residual.golomb.unary *= 2;
-        }
+        /*previous residual is zero or nonzero unary,
+          current residual is a block of zeroes
+
+          in that case, get holding_one and holding_zero to 0*/
+
+        assert(previous_residual->residual.golomb.unary == 0);
+        *holding_zero = 0;
+        *holding_one = 0;
+        return 0;
     }
 }
 
@@ -1059,7 +1163,7 @@ wavpack_output_residual(Bitstream *bs,
                 bs->write_unary(bs, 0, 16);
 
                 /*build an Elias gamma code from the unary value (- 16) */
-                escape_code = residual->residual.golomb.unary - 16;
+                escape_code = residual->residual.golomb.unary - WV_UNARY_LIMIT;
                 if (escape_code < 2) {
                     bs->write_unary(bs, 0, escape_code);
                 } else {
@@ -1405,3 +1509,18 @@ wavpack_calculate_tunables(struct wavpack_encoder_context* context,
         /* ia_append(iaa_getitem(decorrelation_samples_B, 0), 0); */
     }
 }
+
+void
+wavpack_count_bytes(int byte, void* value) {
+    uint32_t* int_value = (uint32_t*)value;
+    *int_value += 1;
+}
+
+#ifdef STANDALONE
+int main(int argc, char *argv[]) {
+    encoders_encode_wavpack(argv[1],
+                            stdin,
+                            44100);
+    return 0;
+}
+#endif

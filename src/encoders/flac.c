@@ -294,7 +294,7 @@ FlacEncoder_write_streaminfo(Bitstream *bs,
                                   (1 << 5) - 1), 0));
 
     assert(streaminfo.total_samples >= 0);
-    assert(streaminfo.total_samples < (1l << 36));
+    assert(streaminfo.total_samples < (int64_t)(1ll << 36));
     bs->write_bits64(bs, 36, streaminfo.total_samples);
 
     for (i = 0; i < 16; i++)

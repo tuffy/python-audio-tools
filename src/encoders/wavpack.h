@@ -1,4 +1,6 @@
+#ifndef STANDALONE
 #include <Python.h>
+#endif
 #include <stdint.h>
 #include "../bitstream_w.h"
 #include "../array.h"
@@ -35,6 +37,7 @@ struct wavpack_encoder_context {
     uint8_t bits_per_sample;
     uint32_t sample_rate;
     uint32_t block_index;
+    uint32_t byte_count;
     struct i_array block_offsets;
 };
 
@@ -84,8 +87,8 @@ struct wavpack_residual {
     wv_residual_type type;
     union {
         struct {
-            uint32_t unary;
-            uint32_t fixed;
+            int32_t unary;
+            int32_t fixed;
             uint32_t fixed_size;
             uint8_t has_extra_bit;
             uint8_t extra_bit;
@@ -185,27 +188,47 @@ wavpack_calculate_residual(struct wavpack_residual *residual,
                            struct i_array *medians,
                            int32_t value);
 
+/*Writes a block of zeroes to the given residual struct.
+  That block size may be 0, indiciating a "false alarm"
+  with no actual zeroes to generate at write-time.*/
 void
 wavpack_calculate_zeroes(struct wavpack_residual *residual,
                          uint32_t zeroes);
 
+/*Sets all the given medians to 0.*/
 void
 wavpack_clear_medians(struct i_array *medians_A,
                       struct i_array *medians_B,
                       int channel_count);
 
+/*Given a list of residuals structs, outputs them to the given bitstream.
+  This performs the actual "holding_zero"/"holding_one" calculation
+  based on the contents of the previous residual in the list.*/
 void
 wavpack_output_residuals(Bitstream *bs, struct wavpack_residual *residuals);
 
 
-/*Adjusts the unary value of residual such that it'll
-  set the "holding_one" bit during decoding.
-  "current_holding_one" is the current state of the bit.
-  "new_holding_one" is the desired holding_one bit.*/
-void
-wavpack_set_holding(struct wavpack_residual *residual,
-                    int current_holding_one,
-                    int new_holding_one);
+/* /\*Adjusts the unary value of residual such that it'll */
+/*   set the "holding_one" bit during decoding. */
+/*   "current_holding_one" is the current state of the bit. */
+/*   "new_holding_one" is the desired holding_one bit.*\/ */
+/* void */
+/* wavpack_set_holding(struct wavpack_residual *residual, */
+/*                     int current_holding_one, */
+/*                     int new_holding_one); */
+
+/*Given the current and previous residual,
+  along with the previous residual's holding_zero and holding_one values,
+  adjusts the previous residual's unary value
+  and the holding_zero/holding_one values so that current_residual
+  can be generated properly.
+  Returns 1 if the previous residual's unary value should be output,
+  and 0 if it should not be output.*/
+int
+wavpack_set_holding(struct wavpack_residual *previous_residual,
+                    struct wavpack_residual *current_residual,
+                    int *holding_zero,
+                    int *holding_one);
 
 /*Outputs a single residual value to the bitstream,
   which may include a Golomb code, a block of zeroes
@@ -220,7 +243,8 @@ wavpack_print_residual(FILE *output,
                        struct wavpack_residual *residual,
                        int write_unary);
 
-int32_t wavpack_log2(int32_t sample);
+int32_t
+wavpack_log2(int32_t sample);
 
 /*Performs a decorrelation pass over channel_A and (optionally) channel_B,
   altering their values in the process.
@@ -266,3 +290,7 @@ wavpack_calculate_tunables(struct wavpack_encoder_context* context,
 void
 wavpack_perform_joint_stereo(struct i_array *channel_A,
                              struct i_array *channel_B);
+
+void
+wavpack_count_bytes(int byte, void* value);
+

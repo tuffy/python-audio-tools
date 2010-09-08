@@ -2507,6 +2507,10 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** TODO Rewrite RIFF WAVE data block header with final size
     If we're building the file with from_pcm(), this header
     will need to be built and then filled-in at finalize-time.
+*** DONE Update for standalone operation
+    Not necessarily to generate fully compliant files,
+    but to ensure there are no memory leaks and prep
+    for gprof-style optimizing.
 *** TODO Generate trailing MD5
 *** TODO Optimize for speed
 ** TODO Document WavPack
