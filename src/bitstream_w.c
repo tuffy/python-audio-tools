@@ -269,7 +269,7 @@ write_bits64_actual_be(Bitstream* bs, unsigned int count, uint64_t value)
     struct bs_callback* callback;
 
     assert(value >= 0l);
-    assert(value < (int64_t)(1l << count));
+    assert(value < (int64_t)(1ll << count));
 
     while (count > 0) {
         /*chop off up to 8 bits to write at a time*/
