@@ -741,8 +741,15 @@ wavpack_write_residuals(Bitstream *bs,
     Bitstream *residual_data = bs_open_recorder();
     ia_size_t pcm_frame;
     ia_size_t channel;
-    int zeroes = 0;
+
+    struct wavpack_residual previous_residual;
+    struct wavpack_residual current_residual;
+    struct wavpack_residual zero_residual;
     int32_t residual;
+    int holding_zero = 0;
+    int holding_one = 0;
+    int zeroes = 0;
+
     struct i_array *channels[] = {channel_A, channel_B};
 
     /*These are our temporary entropy variables copy
@@ -750,10 +757,8 @@ wavpack_write_residuals(Bitstream *bs,
     struct i_array medians_A;
     struct i_array medians_B;
     struct i_array *medians[] = {&medians_A, &medians_B};
-    struct wavpack_residual_list residuals;
 
-    wavpack_rl_init(&residuals);
-
+    /*initialize our running median values*/
     ia_init(&medians_A, 3);
     ia_init(&medians_B, 3);
     ia_copy(&medians_A, variables_A);
@@ -765,53 +770,86 @@ wavpack_write_residuals(Bitstream *bs,
         ia_append(&medians_B, 0);
     }
 
-    /*this bounces between interleaved channel data, as necessary*/
-    for (pcm_frame = channel = 0;
-         pcm_frame < channel_A->size;) {
+    previous_residual.type = WV_RESIDUAL_NONE;
+    current_residual.type = WV_RESIDUAL_NONE;
+
+    /*This bounces between interleaved channel data, if necessary,
+      and outputs the previous residual based on the content of the current
+      residual.
+      Such an "off by one" step is necessary since the previous residual's
+      unary value must be modified to generate the proper
+      "holding_one" and "holding_zero" values for the current residual.*/
+    for (pcm_frame = channel = 0; pcm_frame < channel_A->size;) {
+
         residual = channels[channel]->data[pcm_frame];
-        if ((medians_A.data[0] < 2) && (medians_B.data[0] < 2)) {
-            /*special case for handling large runs of 0 residuals*/
+
+        /*First, construct our current residual
+          based on the contents of our channel data.*/
+        if ((medians_A.data[0] < 2) &&
+            (medians_B.data[0] < 2) &&
+            (holding_one == 0) &&
+            (holding_zero == 0)) {
+            /*a special case for handling large runs of 0 residuals*/
 
             if (zeroes == 0) {
-                /*no currently running block of 0 residuals*/
+                /*we're not in a running block of 0 residuals*/
 
                 if (residual != 0) {
-                    /*false alarm - no actual block of 0 residuals
-                      so prepend with a 0 unary value*/
-                    wavpack_calculate_zeroes(wavpack_rl_append(&residuals),
-                                             0);
-                    wavpack_calculate_residual(wavpack_rl_append(&residuals),
-                                               medians[channel],
-                                               residual);
+                    /*false alarm - no actual block of 0 residuals,
+                      so issue an escape code and continue on*/
+                    wavpack_calculate_zeroes(&zero_residual, 0);
+                    wavpack_output_residual(residual_data,
+                                            &zero_residual,
+                                            0);
                 } else {
                     /*begin block of 0 residuals*/
                     zeroes = 1;
+                    goto next_residual;
                 }
             } else {
-                /*a currently running block of 0 residuals*/
+                /*we're in a running block of 0 residuals*/
 
                 if (residual == 0) {
                     /*continue the block of 0 residuals*/
                     zeroes++;
+                    goto next_residual;
                 } else {
-                    /*flush block of 0 residuals*/
-                    wavpack_calculate_zeroes(wavpack_rl_append(&residuals),
-                                             zeroes);
-                    wavpack_clear_medians(&medians_A, &medians_B,
+                    /*finish the block of 0 residuals*/
+                    wavpack_calculate_zeroes(&zero_residual, zeroes);
+                    wavpack_output_residual(residual_data,
+                                            &zero_residual,
+                                            0);
+                    wavpack_clear_medians(&medians_A,
+                                          &medians_B,
                                           channel_count);
                     zeroes = 0;
-                    wavpack_calculate_residual(wavpack_rl_append(&residuals),
-                                               medians[channel],
-                                               residual);
                 }
             }
-        } else {
-            /*the typical residual writing case*/
-
-            wavpack_calculate_residual(wavpack_rl_append(&residuals),
-                                       medians[channel],
-                                       residual);
         }
+
+        /*the typical residual writing case*/
+        wavpack_calculate_residual(&current_residual,
+                                   medians[channel],
+                                   residual);
+
+        if (previous_residual.type != WV_RESIDUAL_NONE) {
+            /*Adjust the previous residual's unary value
+              such that "holding_zero" and "holding_one" can
+              generate the current residual's unary value
+
+              and output the previous residual to the temp buffer.*/
+            wavpack_output_residual(residual_data,
+                                    &previous_residual,
+                                    wavpack_set_holding(&previous_residual,
+                                                        &current_residual,
+                                                        &holding_zero,
+                                                        &holding_one));
+        }
+
+        /*Finally, swap the previous residual for our current one.*/
+        previous_residual = current_residual;
+
+    next_residual:
         channel++;
         if (channel == channel_count) {
             channel = 0;
@@ -819,17 +857,23 @@ wavpack_write_residuals(Bitstream *bs,
         }
     }
 
-    /*write out any pending zero block*/
+    /*don't forget to output the final residual, if present*/
     if (zeroes > 0) {
-        wavpack_calculate_zeroes(wavpack_rl_append(&residuals), zeroes);
-        wavpack_clear_medians(&medians_A, &medians_B, channel_count);
+        wavpack_calculate_zeroes(&current_residual, zeroes);
+        wavpack_output_residual(residual_data,
+                                &current_residual,
+                                0);
     }
 
-    /*add the end-of-stream block*/
-    wavpack_rl_append(&residuals)->type = WV_RESIDUAL_FINISHED;
+    if (previous_residual.type != WV_RESIDUAL_NONE) {
+        wavpack_output_residual(residual_data,
+                                &previous_residual,
+                                wavpack_set_holding(&previous_residual,
+                                                    &previous_residual,
+                                                    &holding_zero,
+                                                    &holding_one));
+    }
 
-    /*perform actual residual writing to buffer*/
-    wavpack_output_residuals(residual_data, residuals.data);
 
     /*once all the residual data has been written,
       pad the output buffer to a multiple of 16 bits*/
@@ -846,7 +890,6 @@ wavpack_write_residuals(Bitstream *bs,
     bs_close(residual_data);
     ia_free(&medians_A);
     ia_free(&medians_B);
-    wavpack_rl_free(&residuals);
 }
 
 void
@@ -1003,114 +1046,6 @@ wavpack_calculate_zeroes(struct wavpack_residual *residual,
     /* printf("calculating %u zeroes\n", zeroes); */
 }
 
-void
-wavpack_output_residuals(Bitstream *bs, struct wavpack_residual *residual) {
-    struct wavpack_residual *previous_residual = NULL;
-    struct wavpack_residual zero;
-    int holding_zero = 0;
-    int holding_one = 0;
-
-    zero.type = WV_RESIDUAL_GOLOMB;
-    zero.residual.golomb.unary =
-        zero.residual.golomb.fixed =
-        zero.residual.golomb.fixed_size =
-        zero.residual.golomb.has_extra_bit =
-        zero.residual.golomb.sign = 0;
-
-    while (residual->type != WV_RESIDUAL_FINISHED) {
-        if (previous_residual == NULL) {
-            previous_residual = residual;
-            residual++;
-            continue;
-        }
-
-        /*Output the previous residual based
-          on the contents of the current residual.*/
-
-        if ((previous_residual->type == WV_RESIDUAL_GOLOMB) &&
-            (residual->type == WV_RESIDUAL_GOLOMB)) {
-            /*Going from nonzero to nonzero. (the common case)*/
-
-            wavpack_output_residual(bs,
-                                    previous_residual,
-                                    wavpack_set_holding(previous_residual,
-                                                        residual,
-                                                        &holding_zero,
-                                                        &holding_one));
-
-            previous_residual = residual;
-            residual++;
-        } else if ((previous_residual->type == WV_RESIDUAL_ZEROES) &&
-                   (residual->type == WV_RESIDUAL_GOLOMB)) {
-            /*Going from a block of zeroes to nonzeroes
-              which means holding_one and holding_zero will be 0.*/
-
-            assert(holding_one == 0);
-            assert(holding_zero == 0);
-            wavpack_output_residual(bs, previous_residual, 0);
-            previous_residual = residual;
-            residual++;
-        } else if ((previous_residual->type == WV_RESIDUAL_GOLOMB) &&
-                   (residual->type == WV_RESIDUAL_ZEROES)) {
-            /*Going from nonzeroes to a block of zeroes
-              which requires changing holding_one and holding_zero to 0
-              if possible.*/
-
-            if ((holding_one == 0) && (holding_zero == 1)) {
-                /*Outputting the previous residual will
-                  automatically bring us to the necessary
-                  holding_one and holding_zero values.*/
-
-                wavpack_output_residual(bs, previous_residual, 0);
-                holding_one = 0;
-                holding_zero = 0;
-                previous_residual = residual;
-                residual++;
-            } else {
-                if (residual->residual.zeroes_count > 0) {
-                    /*Otherwise, pull a zero residual out of
-                      the block and output it separately
-                      to get holding_one and holding_zero to 0
-                      (which is possible since we know our
-                       medians are very small at this point).*/
-
-                    wavpack_output_residual(
-                                bs,
-                                previous_residual,
-                                wavpack_set_holding(previous_residual,
-                                                    &zero,
-                                                    &holding_zero,
-                                                    &holding_one));
-                    assert(holding_zero == 1);
-                    assert(holding_one == 0);
-                    wavpack_output_residual(bs, &zero, 0);
-                    holding_one = 0;
-                    holding_zero = 0;
-                    residual->residual.zeroes_count--;
-                    previous_residual = residual;
-                    residual++;
-                } else {
-                    /*But if that's not possible
-                      (meaning the block of zeroes is empty),
-                      skip the block entirely.*/
-                    residual++;
-                }
-            }
-        } else {
-            /*Going from zeroes to zeroes shouldn't happen.*/
-            previous_residual = residual;
-            residual++;
-        }
-    }
-
-    /*And, don't forget to output the final residual.*/
-    wavpack_output_residual(bs,
-                            previous_residual,
-                            wavpack_set_holding(previous_residual,
-                                                &zero,
-                                                &holding_zero,
-                                                &holding_one));
-}
 
 void
 wavpack_clear_medians(struct i_array *medians_A,
@@ -1132,6 +1067,8 @@ wavpack_set_holding(struct wavpack_residual *previous_residual,
                     int *holding_zero,
                     int *holding_one) {
     /*Both residuals will be WV_RESIDUAL_GOLOMB types.*/
+    assert(previous_residual->type == WV_RESIDUAL_GOLOMB);
+    assert(current_residual->type == WV_RESIDUAL_GOLOMB);
 
     if ((previous_residual->residual.golomb.unary == 0) &&
         (current_residual->residual.golomb.unary == 0)) {
@@ -1205,6 +1142,8 @@ wavpack_output_residual(Bitstream *bs,
 
     switch (residual->type) {
     case WV_RESIDUAL_GOLOMB:
+        /* fprintf(stderr, "outputting residual : "); */
+        /* wavpack_print_residual(stderr, residual, write_unary); */
         if (write_unary) {
             if (residual->residual.golomb.unary >= WV_UNARY_LIMIT) {
                 /*generate escape code*/
@@ -1240,9 +1179,12 @@ wavpack_output_residual(Bitstream *bs,
             bs->write_unary(bs, 0, escape_size + 1);
             bs->write_bits(bs, escape_size,
                         residual->residual.zeroes_count % (1 << escape_size));
+            /* fprintf(stderr, "outputting zeroes with unary = %d , escape_size = %d , value = %d\n", escape_size + 1, escape_size, residual->residual.zeroes_count % (1 << escape_size)); */
         }
         break;
     default:
+        fprintf(stderr, "outputting unknown residual type!\n");
+        assert(0);
         break;
     }
 }
@@ -1564,33 +1506,6 @@ void
 wavpack_count_bytes(int byte, void* value) {
     uint32_t* int_value = (uint32_t*)value;
     *int_value += 1;
-}
-
-void
-wavpack_rl_init(struct wavpack_residual_list *list) {
-    list->size = 0;
-    list->total_size = 1024;
-    list->data = malloc(sizeof(struct wavpack_residual) * list->total_size);
-}
-
-void
-wavpack_rl_free(struct wavpack_residual_list *list) {
-    list->size = 0;
-    list->total_size = 0;
-    free(list->data);
-    list->data = NULL;
-}
-
-struct wavpack_residual*
-wavpack_rl_append(struct wavpack_residual_list *list) {
-    if (list->size == list->total_size) {
-        list->total_size *= 2;
-        list->data = realloc(list->data,
-                             sizeof(struct wavpack_residual) *
-                             list->total_size);
-    }
-
-    return &(list->data[list->size++]);
 }
 
 #ifdef STANDALONE

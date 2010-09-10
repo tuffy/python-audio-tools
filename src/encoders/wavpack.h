@@ -76,7 +76,7 @@ struct wavpack_block_header {
 
 typedef enum {WV_RESIDUAL_GOLOMB,
               WV_RESIDUAL_ZEROES,
-              WV_RESIDUAL_FINISHED} wv_residual_type;
+              WV_RESIDUAL_NONE} wv_residual_type;
 
 #define WV_UNARY_LIMIT 16
 #define MAXIMUM_TERM_COUNT 16
@@ -214,15 +214,6 @@ void
 wavpack_output_residuals(Bitstream *bs, struct wavpack_residual *residuals);
 
 
-/* /\*Adjusts the unary value of residual such that it'll */
-/*   set the "holding_one" bit during decoding. */
-/*   "current_holding_one" is the current state of the bit. */
-/*   "new_holding_one" is the desired holding_one bit.*\/ */
-/* void */
-/* wavpack_set_holding(struct wavpack_residual *residual, */
-/*                     int current_holding_one, */
-/*                     int new_holding_one); */
-
 /*Given the current and previous residual,
   along with the previous residual's holding_zero and holding_one values,
   adjusts the previous residual's unary value
@@ -300,13 +291,4 @@ wavpack_perform_joint_stereo(struct i_array *channel_A,
 void
 wavpack_count_bytes(int byte, void* value);
 
-/*functions for handling auto-expanding WavPack residual lists*/
-void
-wavpack_rl_init(struct wavpack_residual_list *list);
-
-void
-wavpack_rl_free(struct wavpack_residual_list *list);
-
-struct wavpack_residual*
-wavpack_rl_append(struct wavpack_residual_list *list);
 
