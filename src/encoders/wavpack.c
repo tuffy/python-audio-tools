@@ -750,11 +750,9 @@ wavpack_write_residuals(Bitstream *bs,
     struct i_array medians_A;
     struct i_array medians_B;
     struct i_array *medians[] = {&medians_A, &medians_B};
+    struct wavpack_residual_list residuals;
 
-    struct wavpack_residual *residuals = malloc(
-                        sizeof(struct wavpack_residual) *
-                        ((channel_A->size + 1) * channel_count));
-    struct wavpack_residual *current_residual = residuals;
+    wavpack_rl_init(&residuals);
 
     ia_init(&medians_A, 3);
     ia_init(&medians_B, 3);
@@ -780,8 +778,9 @@ wavpack_write_residuals(Bitstream *bs,
                 if (residual != 0) {
                     /*false alarm - no actual block of 0 residuals
                       so prepend with a 0 unary value*/
-                    wavpack_calculate_zeroes(current_residual++, 0);
-                    wavpack_calculate_residual(current_residual++,
+                    wavpack_calculate_zeroes(wavpack_rl_append(&residuals),
+                                             0);
+                    wavpack_calculate_residual(wavpack_rl_append(&residuals),
                                                medians[channel],
                                                residual);
                 } else {
@@ -796,11 +795,12 @@ wavpack_write_residuals(Bitstream *bs,
                     zeroes++;
                 } else {
                     /*flush block of 0 residuals*/
-                    wavpack_calculate_zeroes(current_residual++, zeroes);
+                    wavpack_calculate_zeroes(wavpack_rl_append(&residuals),
+                                             zeroes);
                     wavpack_clear_medians(&medians_A, &medians_B,
                                           channel_count);
                     zeroes = 0;
-                    wavpack_calculate_residual(current_residual++,
+                    wavpack_calculate_residual(wavpack_rl_append(&residuals),
                                                medians[channel],
                                                residual);
                 }
@@ -808,7 +808,7 @@ wavpack_write_residuals(Bitstream *bs,
         } else {
             /*the typical residual writing case*/
 
-            wavpack_calculate_residual(current_residual++,
+            wavpack_calculate_residual(wavpack_rl_append(&residuals),
                                        medians[channel],
                                        residual);
         }
@@ -821,15 +821,15 @@ wavpack_write_residuals(Bitstream *bs,
 
     /*write out any pending zero block*/
     if (zeroes > 0) {
-        wavpack_calculate_zeroes(current_residual++, zeroes);
+        wavpack_calculate_zeroes(wavpack_rl_append(&residuals), zeroes);
         wavpack_clear_medians(&medians_A, &medians_B, channel_count);
     }
 
     /*add the end-of-stream block*/
-    current_residual->type = WV_RESIDUAL_FINISHED;
+    wavpack_rl_append(&residuals)->type = WV_RESIDUAL_FINISHED;
 
     /*perform actual residual writing to buffer*/
-    wavpack_output_residuals(residual_data, residuals);
+    wavpack_output_residuals(residual_data, residuals.data);
 
     /*once all the residual data has been written,
       pad the output buffer to a multiple of 16 bits*/
@@ -846,7 +846,7 @@ wavpack_write_residuals(Bitstream *bs,
     bs_close(residual_data);
     ia_free(&medians_A);
     ia_free(&medians_B);
-    free(residuals);
+    wavpack_rl_free(&residuals);
 }
 
 void
@@ -1564,6 +1564,33 @@ void
 wavpack_count_bytes(int byte, void* value) {
     uint32_t* int_value = (uint32_t*)value;
     *int_value += 1;
+}
+
+void
+wavpack_rl_init(struct wavpack_residual_list *list) {
+    list->size = 0;
+    list->total_size = 1024;
+    list->data = malloc(sizeof(struct wavpack_residual) * list->total_size);
+}
+
+void
+wavpack_rl_free(struct wavpack_residual_list *list) {
+    list->size = 0;
+    list->total_size = 0;
+    free(list->data);
+    list->data = NULL;
+}
+
+struct wavpack_residual*
+wavpack_rl_append(struct wavpack_residual_list *list) {
+    if (list->size == list->total_size) {
+        list->total_size *= 2;
+        list->data = realloc(list->data,
+                             sizeof(struct wavpack_residual) *
+                             list->total_size);
+    }
+
+    return &(list->data[list->size++]);
 }
 
 #ifdef STANDALONE

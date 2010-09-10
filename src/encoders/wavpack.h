@@ -98,6 +98,12 @@ struct wavpack_residual {
     } residual;
 };
 
+struct wavpack_residual_list {
+    struct wavpack_residual *data;
+    unsigned int size;
+    unsigned int total_size;
+};
+
 void
 wavpack_write_frame(Bitstream *bs,
                     struct wavpack_encoder_context *context,
@@ -293,4 +299,14 @@ wavpack_perform_joint_stereo(struct i_array *channel_A,
 
 void
 wavpack_count_bytes(int byte, void* value);
+
+/*functions for handling auto-expanding WavPack residual lists*/
+void
+wavpack_rl_init(struct wavpack_residual_list *list);
+
+void
+wavpack_rl_free(struct wavpack_residual_list *list);
+
+struct wavpack_residual*
+wavpack_rl_append(struct wavpack_residual_list *list);
 
