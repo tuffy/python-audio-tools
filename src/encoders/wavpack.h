@@ -93,15 +93,11 @@ struct wavpack_residual {
             uint8_t has_extra_bit;
             uint8_t extra_bit;
             uint8_t sign;
+            uint8_t zero_escaped;
+            uint8_t following_zero;
         } golomb;
         uint32_t zeroes_count;
     } residual;
-};
-
-struct wavpack_residual_list {
-    struct wavpack_residual *data;
-    unsigned int size;
-    unsigned int total_size;
 };
 
 void
@@ -239,6 +235,12 @@ void
 wavpack_print_residual(FILE *output,
                        struct wavpack_residual *residual,
                        int write_unary);
+
+void
+wavpack_print_medians(FILE *output,
+                      struct i_array* medians_A,
+                      struct i_array* medians_B,
+                      int channel_count);
 
 int32_t
 wavpack_log2(int32_t sample);

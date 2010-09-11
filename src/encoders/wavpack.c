@@ -746,9 +746,9 @@ wavpack_write_residuals(Bitstream *bs,
     struct wavpack_residual current_residual;
     struct wavpack_residual zero_residual;
     int32_t residual;
+    int zeroes = 0;
     int holding_zero = 0;
     int holding_one = 0;
-    int zeroes = 0;
 
     struct i_array *channels[] = {channel_A, channel_B};
 
@@ -757,6 +757,15 @@ wavpack_write_residuals(Bitstream *bs,
     struct i_array medians_A;
     struct i_array medians_B;
     struct i_array *medians[] = {&medians_A, &medians_B};
+
+    zero_residual.type = WV_RESIDUAL_GOLOMB;
+    zero_residual.residual.golomb.unary =
+        zero_residual.residual.golomb.fixed =
+        zero_residual.residual.golomb.fixed_size =
+        zero_residual.residual.golomb.has_extra_bit =
+        zero_residual.residual.golomb.sign =
+        zero_residual.residual.golomb.zero_escaped =
+        zero_residual.residual.golomb.following_zero = 0;
 
     /*initialize our running median values*/
     ia_init(&medians_A, 3);
@@ -796,15 +805,45 @@ wavpack_write_residuals(Bitstream *bs,
 
                 if (residual != 0) {
                     /*false alarm - no actual block of 0 residuals,
-                      so issue an escape code and continue on*/
-                    wavpack_calculate_zeroes(&zero_residual, 0);
-                    wavpack_output_residual(residual_data,
-                                            &zero_residual,
-                                            0);
+                      so issue an escape code and continue on
+                      as long as we don't immediately follow
+                      a block of zeroes*/
+                    wavpack_calculate_residual(&current_residual,
+                                               medians[channel],
+                                               residual);
+
+                    if (previous_residual.type != WV_RESIDUAL_NONE) {
+                        if (!previous_residual.residual.golomb.following_zero) {
+                            previous_residual.residual.golomb.zero_escaped = 1;
+                        }
+
+                        wavpack_output_residual(
+                                residual_data,
+                                &previous_residual,
+                                wavpack_set_holding(&previous_residual,
+                                                    &current_residual,
+                                                    &holding_zero,
+                                                    &holding_one));
+                    }
+                    previous_residual = current_residual;
                 } else {
-                    /*begin block of 0 residuals*/
+                    /*begin block of 0 residuals, if possible*/
+                    /* fprintf(stderr, "starting zero block\n"); */
+
+                    /* if (previous_residual.type != WV_RESIDUAL_NONE) */
+                    /*     wavpack_output_residual( */
+                    /*             residual_data, */
+                    /*             &previous_residual, */
+                    /*             wavpack_set_holding(&previous_residual, */
+                    /*                                 &zero_residual, */
+                    /*                                 &holding_zero, */
+                    /*                                 &holding_one)); */
+                    /* assert(holding_zero == 0); */
+                    /* assert(holding_one == 0); */
+                    wavpack_clear_medians(&medians_A,
+                                          &medians_B,
+                                          channel_count);
                     zeroes = 1;
-                    goto next_residual;
                 }
             } else {
                 /*we're in a running block of 0 residuals*/
@@ -812,44 +851,48 @@ wavpack_write_residuals(Bitstream *bs,
                 if (residual == 0) {
                     /*continue the block of 0 residuals*/
                     zeroes++;
-                    goto next_residual;
                 } else {
                     /*finish the block of 0 residuals*/
-                    wavpack_calculate_zeroes(&zero_residual, zeroes);
+                    /* fprintf(stderr, "finishing zero block with %d zeroes\n", */
+                    /*         zeroes); */
+                    wavpack_calculate_zeroes(&current_residual, zeroes);
+
                     wavpack_output_residual(residual_data,
-                                            &zero_residual,
-                                            0);
-                    wavpack_clear_medians(&medians_A,
-                                          &medians_B,
-                                          channel_count);
+                                            &current_residual, 0);
+
+                    wavpack_calculate_residual(&previous_residual,
+                                               medians[channel],
+                                               residual);
+                    previous_residual.residual.golomb.following_zero = 1;
                     zeroes = 0;
                 }
             }
+        } else {
+            /*the typical residual writing case*/
+            wavpack_calculate_residual(&current_residual,
+                                       medians[channel],
+                                       residual);
+
+            if (previous_residual.type != WV_RESIDUAL_NONE) {
+                /*Adjust the previous residual's unary value
+                  such that "holding_zero" and "holding_one" can
+                  generate the current residual's unary value
+
+                  and output the previous residual to the temp buffer.*/
+
+                wavpack_output_residual(residual_data,
+                                        &previous_residual,
+                                        wavpack_set_holding(&previous_residual,
+                                                            &current_residual,
+                                                            &holding_zero,
+                                                            &holding_one));
+            }
+
+            /*Finally, swap the previous residual for our current one.*/
+            previous_residual = current_residual;
         }
 
-        /*the typical residual writing case*/
-        wavpack_calculate_residual(&current_residual,
-                                   medians[channel],
-                                   residual);
-
-        if (previous_residual.type != WV_RESIDUAL_NONE) {
-            /*Adjust the previous residual's unary value
-              such that "holding_zero" and "holding_one" can
-              generate the current residual's unary value
-
-              and output the previous residual to the temp buffer.*/
-            wavpack_output_residual(residual_data,
-                                    &previous_residual,
-                                    wavpack_set_holding(&previous_residual,
-                                                        &current_residual,
-                                                        &holding_zero,
-                                                        &holding_one));
-        }
-
-        /*Finally, swap the previous residual for our current one.*/
-        previous_residual = current_residual;
-
-    next_residual:
+        /*goto the next residual in the channel data*/
         channel++;
         if (channel == channel_count) {
             channel = 0;
@@ -857,12 +900,12 @@ wavpack_write_residuals(Bitstream *bs,
         }
     }
 
-    /*don't forget to output the final residual, if present*/
+    /*don't forget to output the final residual or zeroes block, if present*/
     if (zeroes > 0) {
         wavpack_calculate_zeroes(&current_residual, zeroes);
-        wavpack_output_residual(residual_data,
-                                &current_residual,
-                                0);
+
+        wavpack_output_residual(residual_data, &current_residual, 0);
+        /* fprintf(stderr, "outputting %d final zeroes\n", zeroes); */
     }
 
     if (previous_residual.type != WV_RESIDUAL_NONE) {
@@ -873,6 +916,8 @@ wavpack_write_residuals(Bitstream *bs,
                                                     &holding_zero,
                                                     &holding_one));
     }
+
+
 
 
     /*once all the residual data has been written,
@@ -1009,6 +1054,8 @@ wavpack_calculate_residual(struct wavpack_residual *residual,
     residual->type = WV_RESIDUAL_GOLOMB;
     residual->residual.golomb.unary = ones_count;
     residual->residual.golomb.sign = sign;
+    residual->residual.golomb.zero_escaped = 0;
+    residual->residual.golomb.following_zero = 0;
 
     /*then calculate our fixed value and its size*/
     if (high != low) {
@@ -1144,6 +1191,9 @@ wavpack_output_residual(Bitstream *bs,
     case WV_RESIDUAL_GOLOMB:
         /* fprintf(stderr, "outputting residual : "); */
         /* wavpack_print_residual(stderr, residual, write_unary); */
+        if (residual->residual.golomb.zero_escaped)
+            bs->write_unary(bs, 0, 0);
+
         if (write_unary) {
             if (residual->residual.golomb.unary >= WV_UNARY_LIMIT) {
                 /*generate escape code*/
@@ -1199,6 +1249,14 @@ wavpack_print_residual(FILE *output,
                 residual->residual.zeroes_count);
         break;
     case WV_RESIDUAL_GOLOMB:
+        if (residual->residual.golomb.following_zero) {
+            fprintf(output, "following 0 , ");
+        }
+
+        if (residual->residual.golomb.zero_escaped) {
+            fprintf(output, "escaped , ");
+        }
+
         if (write_unary) {
             fprintf(output, "unary %u , ", residual->residual.golomb.unary);
         }
@@ -1506,6 +1564,18 @@ void
 wavpack_count_bytes(int byte, void* value) {
     uint32_t* int_value = (uint32_t*)value;
     *int_value += 1;
+}
+
+void
+wavpack_print_medians(FILE *output,
+                      struct i_array* medians_A,
+                      struct i_array* medians_B,
+                      int channel_count) {
+    fprintf(output, "Medians A : %d %d %d\n",
+            medians_A->data[0], medians_A->data[1], medians_A->data[2]);
+    if (channel_count > 1)
+        fprintf(output, "Medians B : %d %d %d\n",
+                medians_B->data[0], medians_B->data[1], medians_B->data[2]);
 }
 
 #ifdef STANDALONE
