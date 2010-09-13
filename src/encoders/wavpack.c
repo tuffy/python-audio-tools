@@ -766,45 +766,31 @@ wavpack_write_residuals(Bitstream *bs,
         ia_append(&medians_B, 0);
     }
 
-    /*FIXME - TESTING*/
-    residual_accumulator.zeroes.present = 1;
-    residual_accumulator.zeroes.count = 48;
-    residual_accumulator.input_holding_zero = 0;
-    residual_accumulator.input_holding_one = 0;
-    residual_accumulator.output_holding_zero = 1;
-    residual_accumulator.output_holding_one = 0;
-    residual_accumulator.golomb.present = 1;
-    residual_accumulator.golomb.value = -1;
-    residual_accumulator.golomb.unary = 0;
-    residual_accumulator.golomb.fixed_size = 0;
-    residual_accumulator.golomb.has_extra_bit = 0;
-    residual_accumulator.golomb.sign = 1;
-    wavpack_flush_residual(residual_data, &residual_accumulator);
+    residual_accumulator.zeroes.present =
+        residual_accumulator.golomb.present =
+        residual_accumulator.output_holding_zero =
+        residual_accumulator.output_holding_one = 0;
 
-    residual_accumulator.zeroes.present = 0;
-    residual_accumulator.input_holding_zero = 1;
-    residual_accumulator.input_holding_one = 0;
-    residual_accumulator.output_holding_zero = 0;
-    residual_accumulator.output_holding_one = 0;
-    residual_accumulator.golomb.present = 1;
-    residual_accumulator.golomb.value = -1;
-    residual_accumulator.golomb.unary = 0;
-    residual_accumulator.golomb.fixed_size = 0;
-    residual_accumulator.golomb.has_extra_bit = 0;
-    residual_accumulator.golomb.sign = 1;
-    wavpack_flush_residual(residual_data, &residual_accumulator);
+    for (sample = 0; sample < total_samples; sample++) {
+        current_channel = sample % channel_count;
+        residual = channels[current_channel]->data[sample / channel_count];
+        wavpack_write_residual(residual_data,
+                               &residual_accumulator,
+                               medians,
+                               current_channel,
+                               residual);
+    }
 
+    if (residual_accumulator.input_holding_zero) {
+        residual_accumulator.output_holding_zero = 0;
+        residual_accumulator.output_holding_one = 0;
+    } else {
+        residual_accumulator.output_holding_zero = 0;
+        residual_accumulator.output_holding_one = 1;
+    }
 
-    /* for (sample = 0; sample < total_samples; sample++) { */
-    /*     current_channel = sample % channel_count; */
-    /*     residual = channels[current_channel]->data[sample / channel_count]; */
-    /*     wavpack_write_residual(residual_data, */
-    /*                            &residual_accumulator, */
-    /*                            medians, */
-    /*                            current_channel, */
-    /*                            residual); */
-    /* } */
-
+    wavpack_flush_residual(residual_data,
+                           &residual_accumulator);
     /* /\*make sure to write the final residual also*\/ */
     /* wavpack_flush_residual(residual_data, */
     /*                        &residual_accumulator); */
@@ -844,6 +830,55 @@ static inline void
 dec_median(struct i_array *medians, int i) {
     medians->data[i] -= (((medians->data[i] + (128 >> i) - 2) /
                           (128 >> i)) * 2);
+}
+
+void
+wavpack_write_residual(Bitstream* bs,
+                       struct wavpack_residual* residual_accumulator,
+                       struct i_array** medians_pair,
+                       int current_channel,
+                       ia_data_t value) {
+    struct wavpack_residual residual;
+    struct i_array* medians = medians_pair[current_channel];
+
+
+    if ((medians_pair[0]->data[0] < 2) &&
+        (medians_pair[1]->data[0] < 2) &&
+        (residual_accumulator->output_holding_zero == 0) &&
+        (residual_accumulator->output_holding_one == 0)) {
+        /*we need to handle a block of zeroes in some fashion*/
+
+        if (residual_accumulator->zeroes.present) {
+            if (value == 0) {
+                /*we're continuing an existing block of zeroes*/
+                residual_accumulator->zeroes.count++;
+                return;
+            } else {
+                /*we're finishing an existing block of zeroes*/
+            }
+        } else {
+            if (value == 0) {
+                /*we're beginning a new block of zeroes*/
+                residual.zeroes.present = 1;
+                residual.golomb.present = 0;
+                residual.zeroes.count = 1;
+                residual.input_holding_zero = 0;
+                residual.input_holding_one = 0;
+                residual.output_holding_zero = 0;
+                residual.output_holding_one = 0;
+                *residual_accumulator = residual;
+                return;
+            } else {
+                /*generate a "false-alarm" escape code of zeroes*/
+                residual.zeroes.present = 1;
+                residual.zeroes.count = 0;
+                residual.input_holding_zero = 0;
+                residual.input_holding_one = 0;
+            }
+        }
+    }
+
+    assert(0); /*FIXME*/
 }
 
 /* void */

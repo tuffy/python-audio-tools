@@ -221,19 +221,6 @@ wavpack_clear_medians(struct i_array *medians_A,
                       struct i_array *medians_B,
                       int channel_count);
 
-/*Given the a source and target residual,
-  along with the source residual's holding_zero and holding_one values,
-  adjusts the source residual's unary value
-  and the holding_zero/holding_one values so that target_residual
-  can be generated properly.
-  Returns 1 if the target residual's unary value should be output,
-  and 0 if it should not be output.*/
-int
-wavpack_set_holding(struct wavpack_residual *source_residual,
-                    struct wavpack_residual *target_residual,
-                    int *holding_zero,
-                    int *holding_one);
-
 
 /*Computes and writes a modified Elias gamma code to the given bitstream.
   It requires an input value greater than 0.
