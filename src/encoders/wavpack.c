@@ -768,6 +768,8 @@ wavpack_write_residuals(Bitstream *bs,
 
     residual_accumulator.zeroes.present =
         residual_accumulator.golomb.present =
+        residual_accumulator.input_holding_zero =
+        residual_accumulator.input_holding_one = 0;
         residual_accumulator.output_holding_zero =
         residual_accumulator.output_holding_one = 0;
 
@@ -840,12 +842,27 @@ wavpack_write_residual(Bitstream* bs,
                        ia_data_t value) {
     struct wavpack_residual residual;
     struct i_array* medians = medians_pair[current_channel];
+    int ones_count;
+    int high;
+    int low;
+    int max_code;
+    int code;
+    int bit_count;
+    int extras;
 
+    assert((residual_accumulator->input_holding_zero == 0) ||
+           (residual_accumulator->input_holding_zero == 1));
+    assert((residual_accumulator->input_holding_one == 0) ||
+           (residual_accumulator->input_holding_one == 1));
+    /* assert((residual_accumulator->output_holding_zero == 0) || */
+    /*        (residual_accumulator->output_holding_zero == 1)); */
+    /* assert((residual_accumulator->output_holding_one == 0) || */
+    /*        (residual_accumulator->output_holding_one == 1)); */
 
     if ((medians_pair[0]->data[0] < 2) &&
         (medians_pair[1]->data[0] < 2) &&
-        (residual_accumulator->output_holding_zero == 0) &&
-        (residual_accumulator->output_holding_one == 0)) {
+        (residual_accumulator->input_holding_zero == 0) &&
+        (residual_accumulator->input_holding_one == 0)) {
         /*we need to handle a block of zeroes in some fashion*/
 
         if (residual_accumulator->zeroes.present) {
@@ -855,17 +872,23 @@ wavpack_write_residual(Bitstream* bs,
                 return;
             } else {
                 /*we're finishing an existing block of zeroes*/
+                residual.zeroes.present = 0;
             }
         } else {
             if (value == 0) {
-                /*we're beginning a new block of zeroes*/
+                /*we're beginning a new block of zeroes,
+                  so flush the previous residual before beginning*/
+                residual_accumulator->output_holding_zero = 0;
+                residual_accumulator->output_holding_one = 0;
+                wavpack_flush_residual(bs, residual_accumulator);
+
                 residual.zeroes.present = 1;
                 residual.golomb.present = 0;
                 residual.zeroes.count = 1;
                 residual.input_holding_zero = 0;
                 residual.input_holding_one = 0;
-                residual.output_holding_zero = 0;
-                residual.output_holding_one = 0;
+                residual.output_holding_zero = 0; /*placeholder*/
+                residual.output_holding_one = 0;  /*placeholder*/
                 *residual_accumulator = residual;
                 return;
             } else {
@@ -876,9 +899,157 @@ wavpack_write_residual(Bitstream* bs,
                 residual.input_holding_one = 0;
             }
         }
+    } else
+        residual.zeroes.present = 0;
+
+    residual.golomb.present = 1;
+    residual.golomb.value = value;
+
+    /*Determine sign bit.*/
+    if (value < 0) {
+        residual.golomb.sign = 1;
+        value = -value - 1;
+    } else
+        residual.golomb.sign = 0;
+
+    /*Next, figure out which medians our value falls between
+      and get the "ones_count", "low" and "high" values.
+      Note that "ones_count" is the unary-0 value preceeding
+      each coded residual, per the documentation:
+
+    | range                                             | prob. | coding    |
+    |---------------------------------------------------+-------+-----------|
+    |              0 <= residual < m(0)                 | 1/2   | 0(ab)S    |
+    |           m(0) <= residual < m(0)+m(1)            | 1/4   | 10(ab)S   |
+    |      m(0)+m(1) <= residual < m(0)+m(1)+m(2)       | 1/8   | 110(ab)S  |
+    | m(0)+m(1)+m(2) <= residual < m(0)+m(1)+(2 * m(2)) | 1/16  | 1110(ab)S |
+    |                      ...                          | ...   | ...       |
+
+    "high" and "low" are the medians on each side of the residual.
+    At the same time, increment or decrement medians as necessary.
+    However, don't expect to send out the "ones_count" value as-is -
+    one must adjust its value based on the *next* residual's unary value.
+    If next is 0, multiply by 2.  If not, multiply by 2 and add 1.
+    */
+    if (value < get_median(medians, 0)) {
+        /*value below the 1st median*/
+
+        ones_count = 0;
+        low = 0;
+        high = get_median(medians, 0) - 1;
+        dec_median(medians, 0);
+    } else if ((value - get_median(medians, 0)) < get_median(medians, 1)) {
+        /*value between the 1st and 2nd medians*/
+
+        ones_count = 1;
+        low = get_median(medians, 0);
+        high = low + get_median(medians, 1) - 1;
+        inc_median(medians, 0);
+        dec_median(medians, 1);
+    } else if ((value - (get_median(medians, 0) +
+                         get_median(medians, 1))) < get_median(medians, 2)) {
+        /*value between the 2nd and 3rd medians*/
+
+        ones_count = 2;
+        low = get_median(medians, 0) + get_median(medians, 1);
+        high = low + get_median(medians, 2) - 1;
+        inc_median(medians, 0);
+        inc_median(medians, 1);
+        dec_median(medians, 2);
+    } else {
+        /*value above the 3rd median*/
+        ones_count = 2 + ((value - (get_median(medians, 0) +
+                                    get_median(medians, 1))) /
+                          get_median(medians, 2));
+        low = (get_median(medians, 0) +
+               get_median(medians, 1)) + ((ones_count - 2) *
+                                          get_median(medians, 2));
+        high = low + get_median(medians, 2) - 1;
+        inc_median(medians, 0);
+        inc_median(medians, 1);
+        inc_median(medians, 2);
     }
 
-    assert(0); /*FIXME*/
+    residual.golomb.unary = ones_count;
+
+    /*Then, calculate our fixed value, its size and any extra bit.*/
+    if (high != low) {
+        max_code = high - low;
+        code = value - low;
+        bit_count = count_bits(max_code);
+        extras = (1 << bit_count) - max_code - 1;
+
+        if (code < extras) {
+            residual.golomb.fixed_value = code;
+            residual.golomb.fixed_size = bit_count - 1;
+            residual.golomb.has_extra_bit = 0;
+        } else {
+            residual.golomb.fixed_value = (code + extras) >> 1;
+            residual.golomb.fixed_size = bit_count - 1;
+            residual.golomb.has_extra_bit = 1;
+            residual.golomb.extra_bit = (code + extras) & 1;
+        }
+    } else {
+        residual.golomb.fixed_value = 0;
+        residual.golomb.fixed_size = 0;
+        residual.golomb.has_extra_bit = 0;
+    }
+
+    /*Next, determine the residual accumulator's output holding values
+      and our new residual's input holding values
+      based on their unary values.*/
+    if (residual_accumulator->golomb.present) {
+        if ((residual_accumulator->golomb.unary > 0) &&
+            (residual.golomb.unary > 0)) {
+            /*going from positive unary to positive unary,
+              so set holding_one = 1 and holding_zero = 0*/
+            residual_accumulator->output_holding_zero =
+                residual.input_holding_zero = 0;
+            residual_accumulator->output_holding_one =
+                residual.input_holding_one = 1;
+
+        } else if ((residual_accumulator->golomb.unary == 0) &&
+                   (residual.golomb.unary > 0)) {
+            /*going from zero unary to positive unary,
+              so set holding_zero = 0 and holding_one to 0 or 1*/
+            residual_accumulator->output_holding_zero =
+                residual.input_holding_zero = 0;
+            residual_accumulator->output_holding_one =
+                residual.input_holding_one =
+                !(residual_accumulator->input_holding_zero);
+
+        } else if ((residual_accumulator->golomb.unary > 0) &&
+                   (residual.golomb.unary == 0)) {
+            /*going from positive unary to zero unary,
+              so set holding_one = 0 and holding_zero = 1*/
+            residual_accumulator->output_holding_zero =
+                residual.input_holding_zero = 1;
+            residual_accumulator->output_holding_one =
+                residual.input_holding_one = 0;
+
+        } else {
+            /*going from zero unary to zero unary,
+             so set holding_zero to 0 or 1 and holding_one to 0*/
+            residual_accumulator->output_holding_zero =
+                residual.input_holding_zero =
+                !(residual_accumulator->input_holding_zero);
+            residual_accumulator->output_holding_one =
+                residual.input_holding_one = 0;
+        }
+    } else {
+        /*previous residual has no golomb value,
+          so its holding_zero and holding_one must be 0*/
+        assert(residual_accumulator->output_holding_zero == 0);
+        assert(residual_accumulator->output_holding_one == 0);
+        residual.input_holding_zero = 0;
+        residual.input_holding_one = 0;
+    }
+
+    /*Flush the residual accumulator to the stream.*/
+    wavpack_flush_residual(bs, residual_accumulator);
+
+    /*And replace the accumulator with our new residual.*/
+    *residual_accumulator = residual;
 }
 
 /* void */
@@ -1268,9 +1439,19 @@ wavpack_flush_residual(Bitstream *bs,
                        struct wavpack_residual *residual) {
     int unary;
 
-    printf("Flushing : ");
-    wavpack_print_residual(stdout, residual);
-    printf("\n");
+    /*sanity checks*/
+    assert((residual->input_holding_zero == 0) ||
+           (residual->input_holding_zero == 1));
+    assert((residual->input_holding_one == 0) ||
+           (residual->input_holding_one == 1));
+    assert((residual->output_holding_zero == 0) ||
+           (residual->output_holding_zero == 1));
+    assert((residual->output_holding_one == 0) ||
+           (residual->output_holding_one == 1));
+
+    /* printf("Flushing : "); */
+    /* wavpack_print_residual(stdout, residual); */
+    /* printf("\n"); */
 
     if (residual->zeroes.present) {
         if (residual->zeroes.count == 0) {
