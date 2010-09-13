@@ -80,14 +80,35 @@ struct wavpack_block_header {
 #define WEIGHT_MINIMUM -1024
 
 struct wavpack_residual {
-    int zeroes_count;
-    int unary_value;
-    int fixed_value;
-    int fixed_size;
-    int has_sign_bit;
-    int sign;
-    int has_extra_bit;
-    int extra_bit;
+    struct {
+        int present;
+
+        int count;
+    } zeroes;
+    struct {
+        int present;
+
+        int value;
+
+        int unary;
+        int fixed_value;
+        int fixed_size;
+        int has_extra_bit;
+        int extra_bit;
+        int sign;
+    } golomb;
+
+    /*These are the holding_one, holding_zero pairs
+      that which have been output from the previous residual.*/
+    int input_holding_zero;
+    int input_holding_one;
+
+    /*These are the holding_one, holding_zero pairs
+      that outputting this residual will generate
+      such that the next residual can look at these values
+      to determine its own holding_one and holding_zero pairs.*/
+    int output_holding_zero;
+    int output_holding_one;
 };
 
 void
@@ -175,7 +196,6 @@ wavpack_write_residual(Bitstream* bs,
                        struct wavpack_residual* residual_accumulator,
                        struct i_array** medians_pair,
                        int current_channel,
-                       int* holding_zero,
                        ia_data_t value);
 
 /*Given a sample value and set of medians for the current channel,
@@ -214,13 +234,19 @@ wavpack_set_holding(struct wavpack_residual *source_residual,
                     int *holding_zero,
                     int *holding_one);
 
-/*Outputs an accumulated residual value to the bitstream
-  depending on the current holding_zero and holding_one
-  values, which are modified during output.*/
+
+/*Computes and writes a modified Elias gamma code to the given bitstream.
+  It requires an input value greater than 0.
+
+  This is used by both the zeroes block and the unary escape code.
+*/
+void
+wavpack_write_egc(Bitstream* bs, int value);
+
+/*Outputs an accumulated residual value to the bitstream.*/
 void
 wavpack_flush_residual(Bitstream *bs,
-                       struct wavpack_residual *residual,
-                       int* holding_zero);
+                       struct wavpack_residual *residual);
 
 void
 wavpack_print_residual(FILE* output,

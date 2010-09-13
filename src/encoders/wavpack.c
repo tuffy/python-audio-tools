@@ -745,7 +745,6 @@ wavpack_write_residuals(Bitstream *bs,
 
     int32_t residual;
     struct wavpack_residual residual_accumulator;
-    int holding_zero = 0;
 
     struct i_array *channels[] = {channel_A, channel_B};
 
@@ -754,15 +753,6 @@ wavpack_write_residuals(Bitstream *bs,
     struct i_array medians_A;
     struct i_array medians_B;
     struct i_array *medians[] = {&medians_A, &medians_B};
-
-    residual_accumulator.zeroes_count =
-        residual_accumulator.unary_value =
-        residual_accumulator.fixed_value =
-        residual_accumulator.fixed_size =
-        residual_accumulator.has_sign_bit =
-        residual_accumulator.sign =
-        residual_accumulator.has_extra_bit =
-        residual_accumulator.extra_bit = 0;
 
     /*initialize our running median values*/
     ia_init(&medians_A, 3);
@@ -776,20 +766,48 @@ wavpack_write_residuals(Bitstream *bs,
         ia_append(&medians_B, 0);
     }
 
-    for (sample = 0; sample < total_samples; sample++) {
-        current_channel = sample % channel_count;
-        residual = channels[current_channel]->data[sample / channel_count];
-        wavpack_write_residual(residual_data,
-                               &residual_accumulator,
-                               medians,
-                               current_channel,
-                               &holding_zero,
-                               residual);
-    }
+    /*FIXME - TESTING*/
+    residual_accumulator.zeroes.present = 1;
+    residual_accumulator.zeroes.count = 48;
+    residual_accumulator.input_holding_zero = 0;
+    residual_accumulator.input_holding_one = 0;
+    residual_accumulator.output_holding_zero = 1;
+    residual_accumulator.output_holding_one = 0;
+    residual_accumulator.golomb.present = 1;
+    residual_accumulator.golomb.value = -1;
+    residual_accumulator.golomb.unary = 0;
+    residual_accumulator.golomb.fixed_size = 0;
+    residual_accumulator.golomb.has_extra_bit = 0;
+    residual_accumulator.golomb.sign = 1;
+    wavpack_flush_residual(residual_data, &residual_accumulator);
 
-    wavpack_flush_residual(residual_data,
-                           &residual_accumulator,
-                           &holding_zero);
+    residual_accumulator.zeroes.present = 0;
+    residual_accumulator.input_holding_zero = 1;
+    residual_accumulator.input_holding_one = 0;
+    residual_accumulator.output_holding_zero = 0;
+    residual_accumulator.output_holding_one = 0;
+    residual_accumulator.golomb.present = 1;
+    residual_accumulator.golomb.value = -1;
+    residual_accumulator.golomb.unary = 0;
+    residual_accumulator.golomb.fixed_size = 0;
+    residual_accumulator.golomb.has_extra_bit = 0;
+    residual_accumulator.golomb.sign = 1;
+    wavpack_flush_residual(residual_data, &residual_accumulator);
+
+
+    /* for (sample = 0; sample < total_samples; sample++) { */
+    /*     current_channel = sample % channel_count; */
+    /*     residual = channels[current_channel]->data[sample / channel_count]; */
+    /*     wavpack_write_residual(residual_data, */
+    /*                            &residual_accumulator, */
+    /*                            medians, */
+    /*                            current_channel, */
+    /*                            residual); */
+    /* } */
+
+    /* /\*make sure to write the final residual also*\/ */
+    /* wavpack_flush_residual(residual_data, */
+    /*                        &residual_accumulator); */
 
     /*once all the residual data has been written,
       pad the output buffer to a multiple of 16 bits*/
@@ -828,162 +846,161 @@ dec_median(struct i_array *medians, int i) {
                           (128 >> i)) * 2);
 }
 
-void
-wavpack_write_residual(Bitstream* bs,
-                       struct wavpack_residual* residual_accumulator,
-                       struct i_array** medians_pair,
-                       int current_channel,
-                       int* holding_zero,
-                       ia_data_t value) {
-    struct i_array* medians = medians_pair[current_channel];
-    int high;
-    int low;
-    int sign;
-    int ones_count;
-    int max_code;
-    int code;
-    int bit_count;
-    int extras;
+/* void */
+/* wavpack_write_residual(Bitstream* bs, */
+/*                        struct wavpack_residual* residual_accumulator, */
+/*                        struct i_array** medians_pair, */
+/*                        int current_channel, */
+/*                        ia_data_t value) { */
+/*     struct i_array* medians = medians_pair[current_channel]; */
+/*     int high; */
+/*     int low; */
+/*     int sign; */
+/*     int ones_count; */
+/*     int max_code; */
+/*     int code; */
+/*     int bit_count; */
+/*     int extras; */
 
-    /*handle block of zero residuals*/
-    if ((medians_pair[0]->data[0] < 2) &&
-        (medians_pair[1]->data[0] < 2) &&
-        (*holding_zero == 0)) {
-        if (residual_accumulator->zeroes_count) {
-            if (value != 0) {
-                /*finish a block of zeroes*/
-                wavpack_flush_residual(bs, residual_accumulator, holding_zero);
-            } else {
-                /*continue a block of zeroes*/
-                residual_accumulator->zeroes_count++;
-                return;
-            }
-        } else {
-            if (value != 0) {
-                /*escape a non-zero value*/
-                bs->write_unary(bs, 0, 0);
-            } else {
-                /*start a block of zeroes*/
-                wavpack_clear_medians(medians_pair[0], medians_pair[1], 2);
-                residual_accumulator->zeroes_count = 1;
-                return;
-            }
-        }
-    }
+/*     /\*handle block of zero residuals*\/ */
+/*     if ((medians_pair[0]->data[0] < 2) && */
+/*         (medians_pair[1]->data[0] < 2) && */
+/*         (*holding_zero == 0)) { */
+/*         if (residual_accumulator->zeroes_count) { */
+/*             if (value != 0) { */
+/*                 /\*finish a block of zeroes*\/ */
+/*                 wavpack_flush_residual(bs, residual_accumulator, holding_zero); */
+/*             } else { */
+/*                 /\*continue a block of zeroes*\/ */
+/*                 residual_accumulator->zeroes_count++; */
+/*                 return; */
+/*             } */
+/*         } else { */
+/*             if (value != 0) { */
+/*                 /\*escape a non-zero value*\/ */
+/*                 bs->write_unary(bs, 0, 0); */
+/*             } else { */
+/*                 /\*start a block of zeroes*\/ */
+/*                 wavpack_clear_medians(medians_pair[0], medians_pair[1], 2); */
+/*                 residual_accumulator->zeroes_count = 1; */
+/*                 return; */
+/*             } */
+/*         } */
+/*     } */
 
-    /*set sign bit*/
-    if (value < 0) {
-        sign = 1;
-        value = -value - 1;
-    } else
-        sign = 0;
+/*     /\*set sign bit*\/ */
+/*     if (value < 0) { */
+/*         sign = 1; */
+/*         value = -value - 1; */
+/*     } else */
+/*         sign = 0; */
 
-    /*Figure out which medians our value falls between
-      and get the "ones_count", "low" and "high" values.
-      Note that "ones_count" is the unary-0 value preceeding
-      each coded residual, per the documentation:
+/*     /\*Figure out which medians our value falls between */
+/*       and get the "ones_count", "low" and "high" values. */
+/*       Note that "ones_count" is the unary-0 value preceeding */
+/*       each coded residual, per the documentation: */
 
-    | range                                             | prob. | coding    |
-    |---------------------------------------------------+-------+-----------|
-    |              0 <= residual < m(0)                 | 1/2   | 0(ab)S    |
-    |           m(0) <= residual < m(0)+m(1)            | 1/4   | 10(ab)S   |
-    |      m(0)+m(1) <= residual < m(0)+m(1)+m(2)       | 1/8   | 110(ab)S  |
-    | m(0)+m(1)+m(2) <= residual < m(0)+m(1)+(2 * m(2)) | 1/16  | 1110(ab)S |
-    |                      ...                          | ...   | ...       |
+/*     | range                                             | prob. | coding    | */
+/*     |---------------------------------------------------+-------+-----------| */
+/*     |              0 <= residual < m(0)                 | 1/2   | 0(ab)S    | */
+/*     |           m(0) <= residual < m(0)+m(1)            | 1/4   | 10(ab)S   | */
+/*     |      m(0)+m(1) <= residual < m(0)+m(1)+m(2)       | 1/8   | 110(ab)S  | */
+/*     | m(0)+m(1)+m(2) <= residual < m(0)+m(1)+(2 * m(2)) | 1/16  | 1110(ab)S | */
+/*     |                      ...                          | ...   | ...       | */
 
-    "high" and "low" are the medians on each side of the residual.
-    At the same time, increment or decrement medians as necessary.
-    However, don't expect to send out the "ones_count" value as-is -
-    one must adjust its value based on the *next* residual's unary value.
-    If next is 0, multiply by 2.  If not, multiply by 2 and add 1.
-    */
-    if (value < get_median(medians, 0)) {
-        /*value below the 1st median*/
+/*     "high" and "low" are the medians on each side of the residual. */
+/*     At the same time, increment or decrement medians as necessary. */
+/*     However, don't expect to send out the "ones_count" value as-is - */
+/*     one must adjust its value based on the *next* residual's unary value. */
+/*     If next is 0, multiply by 2.  If not, multiply by 2 and add 1. */
+/*     *\/ */
+/*     if (value < get_median(medians, 0)) { */
+/*         /\*value below the 1st median*\/ */
 
-        ones_count = 0;
-        low = 0;
-        high = get_median(medians, 0) - 1;
-        dec_median(medians, 0);
-    } else if ((value - get_median(medians, 0)) < get_median(medians, 1)) {
-        /*value between the 1st and 2nd medians*/
+/*         ones_count = 0; */
+/*         low = 0; */
+/*         high = get_median(medians, 0) - 1; */
+/*         dec_median(medians, 0); */
+/*     } else if ((value - get_median(medians, 0)) < get_median(medians, 1)) { */
+/*         /\*value between the 1st and 2nd medians*\/ */
 
-        ones_count = 1;
-        low = get_median(medians, 0);
-        high = low + get_median(medians, 1) - 1;
-        inc_median(medians, 0);
-        dec_median(medians, 1);
-    } else if ((value - (get_median(medians, 0) +
-                         get_median(medians, 1))) < get_median(medians, 2)) {
-        /*value between the 2nd and 3rd medians*/
+/*         ones_count = 1; */
+/*         low = get_median(medians, 0); */
+/*         high = low + get_median(medians, 1) - 1; */
+/*         inc_median(medians, 0); */
+/*         dec_median(medians, 1); */
+/*     } else if ((value - (get_median(medians, 0) + */
+/*                          get_median(medians, 1))) < get_median(medians, 2)) { */
+/*         /\*value between the 2nd and 3rd medians*\/ */
 
-        ones_count = 2;
-        low = get_median(medians, 0) + get_median(medians, 1);
-        high = low + get_median(medians, 2) - 1;
-        inc_median(medians, 0);
-        inc_median(medians, 1);
-        dec_median(medians, 2);
-    } else {
-        /*value above the 3rd median*/
-        ones_count = 2 + ((value - (get_median(medians, 0) +
-                                    get_median(medians, 1))) /
-                          get_median(medians, 2));
-        low = (get_median(medians, 0) +
-               get_median(medians, 1)) + ((ones_count - 2) *
-                                          get_median(medians, 2));
-        high = low + get_median(medians, 2) - 1;
-        inc_median(medians, 0);
-        inc_median(medians, 1);
-        inc_median(medians, 2);
-    }
+/*         ones_count = 2; */
+/*         low = get_median(medians, 0) + get_median(medians, 1); */
+/*         high = low + get_median(medians, 2) - 1; */
+/*         inc_median(medians, 0); */
+/*         inc_median(medians, 1); */
+/*         dec_median(medians, 2); */
+/*     } else { */
+/*         /\*value above the 3rd median*\/ */
+/*         ones_count = 2 + ((value - (get_median(medians, 0) + */
+/*                                     get_median(medians, 1))) / */
+/*                           get_median(medians, 2)); */
+/*         low = (get_median(medians, 0) + */
+/*                get_median(medians, 1)) + ((ones_count - 2) * */
+/*                                           get_median(medians, 2)); */
+/*         high = low + get_median(medians, 2) - 1; */
+/*         inc_median(medians, 0); */
+/*         inc_median(medians, 1); */
+/*         inc_median(medians, 2); */
+/*     } */
 
-    if (*holding_zero) {
-        if (ones_count) {
-            residual_accumulator->unary_value++;
-            wavpack_flush_residual(bs, residual_accumulator, holding_zero);
-            *holding_zero = 1;
-            ones_count--;
-        } else {
-            wavpack_flush_residual(bs, residual_accumulator, holding_zero);
-            *holding_zero = 0;
-        }
-    } else
-        *holding_zero = 1;
+/*     if (*holding_zero) { */
+/*         if (ones_count) { */
+/*             residual_accumulator->unary_value++; */
+/*             wavpack_flush_residual(bs, residual_accumulator, holding_zero); */
+/*             *holding_zero = 1; */
+/*             ones_count--; */
+/*         } else { */
+/*             wavpack_flush_residual(bs, residual_accumulator, holding_zero); */
+/*             *holding_zero = 0; */
+/*         } */
+/*     } else */
+/*         *holding_zero = 1; */
 
-    residual_accumulator->unary_value = ones_count * 2;
+/*     residual_accumulator->unary_value = ones_count * 2; */
 
-    if (high != low) {
-        max_code = high - low;
-        code = value - low;
-        bit_count = count_bits(max_code);
-        extras = (1 << bit_count) - max_code - 1;
+/*     if (high != low) { */
+/*         max_code = high - low; */
+/*         code = value - low; */
+/*         bit_count = count_bits(max_code); */
+/*         extras = (1 << bit_count) - max_code - 1; */
 
-        if (code < extras) {
-            residual_accumulator->fixed_value = code;
-            residual_accumulator->fixed_size = bit_count - 1;
-            residual_accumulator->has_extra_bit = 0;
-        } else {
-            residual_accumulator->fixed_value = (code + extras) >> 1;
-            residual_accumulator->fixed_size = bit_count - 1;
-            residual_accumulator->has_extra_bit = 1;
-            residual_accumulator->extra_bit = (code + extras) & 1;
-        }
-    } else {
-        residual_accumulator->fixed_value = 0;
-        residual_accumulator->fixed_size = 0;
-        residual_accumulator->has_extra_bit = 0;
-    }
+/*         if (code < extras) { */
+/*             residual_accumulator->fixed_value = code; */
+/*             residual_accumulator->fixed_size = bit_count - 1; */
+/*             residual_accumulator->has_extra_bit = 0; */
+/*         } else { */
+/*             residual_accumulator->fixed_value = (code + extras) >> 1; */
+/*             residual_accumulator->fixed_size = bit_count - 1; */
+/*             residual_accumulator->has_extra_bit = 1; */
+/*             residual_accumulator->extra_bit = (code + extras) & 1; */
+/*         } */
+/*     } else { */
+/*         residual_accumulator->fixed_value = 0; */
+/*         residual_accumulator->fixed_size = 0; */
+/*         residual_accumulator->has_extra_bit = 0; */
+/*     } */
 
-    residual_accumulator->has_sign_bit = 1;
-    residual_accumulator->sign = sign;
+/*     residual_accumulator->has_sign_bit = 1; */
+/*     residual_accumulator->sign = sign; */
 
-    /* printf("res. accumulator : "); */
-    /* wavpack_print_residual(stdout, residual_accumulator); */
-    /* printf(" holding_zero = %d", *holding_zero); */
-    /* printf("\n"); */
+/*     /\* printf("res. accumulator : "); *\/ */
+/*     /\* wavpack_print_residual(stdout, residual_accumulator); *\/ */
+/*     /\* printf(" holding_zero = %d", *holding_zero); *\/ */
+/*     /\* printf("\n"); *\/ */
 
-    if (*holding_zero == 0)
-        wavpack_flush_residual(bs, residual_accumulator, holding_zero);
-}
+/*     if (*holding_zero == 0) */
+/*         wavpack_flush_residual(bs, residual_accumulator, holding_zero); */
+/* } */
 
 /* void */
 /* wavpack_write_residual(Bitstream *bs, */
@@ -1068,113 +1085,113 @@ wavpack_perform_joint_stereo(struct i_array *channel_A,
     }
 }
 
-void
-wavpack_calculate_residual(struct wavpack_residual *residual,
-                           struct i_array *medians,
-                           int32_t value) {
-    uint8_t sign;
-    uint32_t low;
-    uint32_t high;
-    uint32_t ones_count;
-    uint32_t max_code;
-    uint32_t code;
-    uint32_t extras;
-    uint32_t bit_count;
+/* void */
+/* wavpack_calculate_residual(struct wavpack_residual *residual, */
+/*                            struct i_array *medians, */
+/*                            int32_t value) { */
+/*     uint8_t sign; */
+/*     uint32_t low; */
+/*     uint32_t high; */
+/*     uint32_t ones_count; */
+/*     uint32_t max_code; */
+/*     uint32_t code; */
+/*     uint32_t extras; */
+/*     uint32_t bit_count; */
 
-    if (value < 0) {
-        sign = 1;
-        value = -value - 1;
-    } else {
-        sign = 0;
-    }
+/*     if (value < 0) { */
+/*         sign = 1; */
+/*         value = -value - 1; */
+/*     } else { */
+/*         sign = 0; */
+/*     } */
 
-    /*First, figure out which medians our value falls between
-      and get the "ones_count", "low" and "high" values.
-      Note that "ones_count" is the unary-0 value preceeding
-      each coded residual, per the documentation:
+/*     /\*First, figure out which medians our value falls between */
+/*       and get the "ones_count", "low" and "high" values. */
+/*       Note that "ones_count" is the unary-0 value preceeding */
+/*       each coded residual, per the documentation: */
 
-    | range                                             | prob. | coding    |
-    |---------------------------------------------------+-------+-----------|
-    |              0 <= residual < m(0)                 | 1/2   | 0(ab)S    |
-    |           m(0) <= residual < m(0)+m(1)            | 1/4   | 10(ab)S   |
-    |      m(0)+m(1) <= residual < m(0)+m(1)+m(2)       | 1/8   | 110(ab)S  |
-    | m(0)+m(1)+m(2) <= residual < m(0)+m(1)+(2 * m(2)) | 1/16  | 1110(ab)S |
-    |                      ...                          | ...   | ...       |
+/*     | range                                             | prob. | coding    | */
+/*     |---------------------------------------------------+-------+-----------| */
+/*     |              0 <= residual < m(0)                 | 1/2   | 0(ab)S    | */
+/*     |           m(0) <= residual < m(0)+m(1)            | 1/4   | 10(ab)S   | */
+/*     |      m(0)+m(1) <= residual < m(0)+m(1)+m(2)       | 1/8   | 110(ab)S  | */
+/*     | m(0)+m(1)+m(2) <= residual < m(0)+m(1)+(2 * m(2)) | 1/16  | 1110(ab)S | */
+/*     |                      ...                          | ...   | ...       | */
 
-    "high" and "low" are the medians on each side of the residual.
-    At the same time, increment or decrement medians as necessary.
-    However, don't expect to send out the "ones_count" value as-is -
-    one must adjust its value based on the *next* residual's unary value.
-    If next is 0, multiply by 2.  If not, multiply by 2 and add 1.
-    */
-    if (value < get_median(medians, 0)) {
-        /*value below the 1st median*/
+/*     "high" and "low" are the medians on each side of the residual. */
+/*     At the same time, increment or decrement medians as necessary. */
+/*     However, don't expect to send out the "ones_count" value as-is - */
+/*     one must adjust its value based on the *next* residual's unary value. */
+/*     If next is 0, multiply by 2.  If not, multiply by 2 and add 1. */
+/*     *\/ */
+/*     if (value < get_median(medians, 0)) { */
+/*         /\*value below the 1st median*\/ */
 
-        ones_count = 0;
-        low = 0;
-        high = get_median(medians, 0) - 1;
-        dec_median(medians, 0);
-    } else if ((value - get_median(medians, 0)) < get_median(medians, 1)) {
-        /*value between the 1st and 2nd medians*/
+/*         ones_count = 0; */
+/*         low = 0; */
+/*         high = get_median(medians, 0) - 1; */
+/*         dec_median(medians, 0); */
+/*     } else if ((value - get_median(medians, 0)) < get_median(medians, 1)) { */
+/*         /\*value between the 1st and 2nd medians*\/ */
 
-        ones_count = 1;
-        low = get_median(medians, 0);
-        high = low + get_median(medians, 1) - 1;
-        inc_median(medians, 0);
-        dec_median(medians, 1);
-    } else if ((value - (get_median(medians, 0) +
-                         get_median(medians, 1))) < get_median(medians, 2)) {
-        /*value between the 2nd and 3rd medians*/
+/*         ones_count = 1; */
+/*         low = get_median(medians, 0); */
+/*         high = low + get_median(medians, 1) - 1; */
+/*         inc_median(medians, 0); */
+/*         dec_median(medians, 1); */
+/*     } else if ((value - (get_median(medians, 0) + */
+/*                          get_median(medians, 1))) < get_median(medians, 2)) { */
+/*         /\*value between the 2nd and 3rd medians*\/ */
 
-        ones_count = 2;
-        low = get_median(medians, 0) + get_median(medians, 1);
-        high = low + get_median(medians, 2) - 1;
-        inc_median(medians, 0);
-        inc_median(medians, 1);
-        dec_median(medians, 2);
-    } else {
-        /*value above the 3rd median*/
-        ones_count = 2 + ((value - (get_median(medians, 0) +
-                                    get_median(medians, 1))) /
-                          get_median(medians, 2));
-        low = (get_median(medians, 0) +
-               get_median(medians, 1)) + ((ones_count - 2) *
-                                          get_median(medians, 2));
-        high = low + get_median(medians, 2) - 1;
-        inc_median(medians, 0);
-        inc_median(medians, 1);
-        inc_median(medians, 2);
-    }
+/*         ones_count = 2; */
+/*         low = get_median(medians, 0) + get_median(medians, 1); */
+/*         high = low + get_median(medians, 2) - 1; */
+/*         inc_median(medians, 0); */
+/*         inc_median(medians, 1); */
+/*         dec_median(medians, 2); */
+/*     } else { */
+/*         /\*value above the 3rd median*\/ */
+/*         ones_count = 2 + ((value - (get_median(medians, 0) + */
+/*                                     get_median(medians, 1))) / */
+/*                           get_median(medians, 2)); */
+/*         low = (get_median(medians, 0) + */
+/*                get_median(medians, 1)) + ((ones_count - 2) * */
+/*                                           get_median(medians, 2)); */
+/*         high = low + get_median(medians, 2) - 1; */
+/*         inc_median(medians, 0); */
+/*         inc_median(medians, 1); */
+/*         inc_median(medians, 2); */
+/*     } */
 
-    residual->unary_value = ones_count;
-    residual->sign = sign;
+/*     residual->unary_value = ones_count; */
+/*     residual->sign = sign; */
 
-    /*then calculate our fixed value and its size*/
-    if (high != low) {
-        max_code = high - low;
-        code = value - low;
-        bit_count = count_bits(max_code);
-        extras = (1 << bit_count) - max_code - 1;
+/*     /\*then calculate our fixed value and its size*\/ */
+/*     if (high != low) { */
+/*         max_code = high - low; */
+/*         code = value - low; */
+/*         bit_count = count_bits(max_code); */
+/*         extras = (1 << bit_count) - max_code - 1; */
 
-        if (code < extras) {
-            residual->fixed_value = code;
-            residual->fixed_size = bit_count - 1;
-            residual->has_extra_bit = 0;
-        } else {
-            residual->fixed_value = (code + extras) >> 1;
-            residual->fixed_size = bit_count - 1;
-            residual->has_extra_bit = 1;
-            residual->extra_bit = (code + extras) & 1;
-        }
-    } else {
-        residual->fixed_value = 0;
-        residual->fixed_size = 0;
-        residual->has_extra_bit = 0;
-    }
+/*         if (code < extras) { */
+/*             residual->fixed_value = code; */
+/*             residual->fixed_size = bit_count - 1; */
+/*             residual->has_extra_bit = 0; */
+/*         } else { */
+/*             residual->fixed_value = (code + extras) >> 1; */
+/*             residual->fixed_size = bit_count - 1; */
+/*             residual->has_extra_bit = 1; */
+/*             residual->extra_bit = (code + extras) & 1; */
+/*         } */
+/*     } else { */
+/*         residual->fixed_value = 0; */
+/*         residual->fixed_size = 0; */
+/*         residual->has_extra_bit = 0; */
+/*     } */
 
-    /* printf("calculating "); */
-    /* wavpack_print_residual(stdout, residual, 1); */
-}
+/*     /\* printf("calculating "); *\/ */
+/*     /\* wavpack_print_residual(stdout, residual, 1); *\/ */
+/* } */
 
 /* void */
 /* wavpack_calculate_zeroes(struct wavpack_residual *residual, */
@@ -1200,269 +1217,129 @@ wavpack_clear_medians(struct i_array *medians_A,
     }
 }
 
-/* int */
-/* wavpack_set_holding(struct wavpack_residual *source_residual, */
-/*                     struct wavpack_residual *target_residual, */
-/*                     int *holding_zero, */
-/*                     int *holding_one) { */
-/*     /\*Both residuals will be WV_RESIDUAL_GOLOMB types.*\/ */
-/*     /\* printf("setting holding for type %d to %d\n", *\/ */
-/*     /\*        source_residual->type, target_residual->type); *\/ */
 
-/*     if ((source_residual->type == WV_RESIDUAL_GOLOMB) && */
-/*         (target_residual->type == WV_RESIDUAL_GOLOMB)) { */
-/*         if ((source_residual->residual.golomb.unary == 0) && */
-/*             (target_residual->residual.golomb.unary == 0)) { */
-/*             /\*going from unary zero to unary zero*\/ */
+void
+wavpack_write_egc(Bitstream* bs, int value) {
+    int fixed_size;
 
-/*             assert(*holding_one == 0); */
-/*             if (*holding_zero) { */
-/*                 *holding_zero = 0; */
-/*                 *holding_one = 0; */
-/*                 return 0; */
-/*             } else { */
-/*                 *holding_zero = 1; */
-/*                 *holding_one = 0; */
-/*                 return 1; */
-/*             } */
-
-/*         } else if ((source_residual->residual.golomb.unary != 0) && */
-/*                    (target_residual->residual.golomb.unary == 0)) { */
-/*             /\*going from unary nonzero to unary zero*\/ */
-
-/*             assert(*holding_zero == 0); */
-/*             if (*holding_one) { */
-/*                 source_residual->residual.golomb.unary = */
-/*                     (source_residual->residual.golomb.unary - 1) * 2; */
-/*                 *holding_one = 0; */
-/*                 *holding_zero = 1; */
-/*                 return 1; */
-/*             } else { */
-/*                 source_residual->residual.golomb.unary *= 2; */
-/*                 *holding_zero = 1; */
-/*                 return 1; */
-/*             } */
-
-/*         } else if ((source_residual->residual.golomb.unary == 0) && */
-/*                    (target_residual->residual.golomb.unary != 0)) { */
-/*             /\*going from unary zero to unary nonzero*\/ */
-
-/*             assert(*holding_one == 0); */
-/*             if (*holding_zero) { */
-/*                 *holding_zero = 0; */
-/*                 return 0; */
-/*             } else { */
-/*                 source_residual->residual.golomb.unary = 1; */
-/*                 *holding_one = 1; */
-/*                 return 1; */
-/*             } */
-
-/*         } else { */
-/*             /\*going from unary nonzero to unary nonzero*\/ */
-
-/*             assert(*holding_zero == 0); */
-/*             if (*holding_one) { */
-/*                 source_residual->residual.golomb.unary = */
-/*                     (source_residual->residual.golomb.unary * 2) - 1; */
-/*                 return 1; */
-/*             } else { */
-/*                 source_residual->residual.golomb.unary = */
-/*                     (source_residual->residual.golomb.unary * 2) + 1; */
-/*                 *holding_one = 1; */
-/*                 return 1; */
-/*             } */
-/*         } */
-/*     } else if ((source_residual->type == WV_RESIDUAL_ZEROES) && */
-/*                (target_residual->type == WV_RESIDUAL_GOLOMB)) { */
-/*         /\*going from a block of zeroes to a block of nonzeroes*\/ */
-/*         return 0; */
-/*     } else if ((source_residual->type == WV_RESIDUAL_GOLOMB) && */
-/*                (target_residual->type == WV_RESIDUAL_ZEROES)) { */
-/*         /\*going from a block of nonzeroes to a block of zeroes*\/ */
-
-/*         /\*ensure holding_zero and holding_one are set correctly*\/ */
-/*         assert(*holding_zero == 1); */
-/*         assert(*holding_one == 0); */
-/*         *holding_zero = 0; */
-/*         *holding_one = 0; */
-/*         return 0; */
-/*     } else if ((source_residual->type == WV_RESIDUAL_ZEROES) && */
-/*                (target_residual->type == WV_RESIDUAL_ZEROES)) { */
-/*         return 0; */
-/*     } else { */
-/*         assert(0); /\*shouldn't get here*\/ */
-/*     } */
-/* } */
+    assert(value > 0);
+    fixed_size = count_bits(value) - 1;
+    bs->write_unary(bs, 0, fixed_size + 1);
+    bs->write_bits(bs, fixed_size, value % (1 << fixed_size));
+}
 
 void
 wavpack_flush_residual(Bitstream *bs,
-                       struct wavpack_residual *residual,
-                       int* holding_zero) {
-    int escape_size;
+                       struct wavpack_residual *residual) {
+    int unary;
 
-    if (residual->zeroes_count > 0) {
-        /*output an Elias gamma code of 0 values*/
-        escape_size = count_bits(residual->zeroes_count) - 1;
-        bs->write_unary(bs, 0, escape_size + 1);
-        bs->write_bits(bs, escape_size,
-                       residual->zeroes_count % (1 << escape_size));
-        residual->zeroes_count = 0;
-    }
+    printf("Flushing : ");
+    wavpack_print_residual(stdout, residual);
+    printf("\n");
 
-    if (residual->unary_value > 0) {
-        if (residual->unary_value >= WV_UNARY_LIMIT) {
-            /*generate an Elias gamma code if the unary value is too large*/
-            bs->write_unary(bs, 0, WV_UNARY_LIMIT);
-            residual->unary_value -= WV_UNARY_LIMIT;
-            escape_size = count_bits(residual->unary_value) - 1;
-            bs->write_unary(bs, 0, escape_size + 1);
-            if (residual->unary_value % (1 << escape_size) >= (1l << escape_size))
-                fprintf(stderr, "unary escape overflow for value %d in escape size %d\n", residual->unary_value, escape_size);
-            bs->write_bits(bs, escape_size,
-                           residual->unary_value % (1 << escape_size));
-            *holding_zero = 0;
+    if (residual->zeroes.present) {
+        if (residual->zeroes.count == 0) {
+            /*a "false-alarm" block of zero residuals*/
+            bs->write_unary(bs, 0, 0);
         } else {
-            bs->write_unary(bs, 0, residual->unary_value);
+            /*a typical block of zeroes case*/
+            wavpack_write_egc(bs, residual->zeroes.count);
         }
-        residual->unary_value = 0;
     }
 
-    if (*holding_zero) {
-        bs->write_unary(bs, 0, 0);
-        *holding_zero = 0;
-    }
+    if (residual->golomb.present) {
+        if (residual->input_holding_zero == 0) {
+            /*only write unary if input_holding_zero is 0*/
 
-    if (residual->fixed_size > 0) {
-        bs->write_bits(bs, residual->fixed_size, residual->fixed_value);
-        residual->fixed_size = 0;
-    }
+            /*adjust unary based on input_holding_one and
+              output holding_zero/holding_one values*/
+            if (residual->input_holding_one == 0) {
+                if (residual->output_holding_one == 1) {
+                    /*H0-0/H1-0 -> H0-0/H1-1*/
+                    assert(residual->output_holding_zero == 0);
+                    assert(residual->golomb.unary >= 0);
+                    unary = (residual->golomb.unary * 2) + 1;
+                } else {
+                    /*H0-0/H1-0 -> H0-1/H1-0*/
+                    assert(residual->output_holding_zero == 1);
+                    assert(residual->golomb.unary >= 0);
+                    unary = residual->golomb.unary * 2;
+                }
+            } else {
+                if (residual->output_holding_one == 1) {
+                    /*H0-0/H1-1 -> H0-0/H1-1*/
+                    assert(residual->output_holding_zero == 0);
+                    assert(residual->golomb.unary > 0);
+                    unary = (residual->golomb.unary * 2) - 1;
+                } else {
+                    /*H0-0/H1-1 -> H0-1/H1-0*/
+                    assert(residual->output_holding_zero == 1);
+                    assert(residual->golomb.unary > 0);
+                    unary = (residual->golomb.unary - 1) * 2;
+                }
+            }
 
-    if (residual->has_extra_bit) {
-        bs->write_bits(bs, 1, residual->extra_bit);
-        residual->has_extra_bit = 0;
-    }
+            assert(unary >= 0);
 
-    if (residual->has_sign_bit) {
-        bs->write_bits(bs, 1, residual->sign);
-        residual->has_sign_bit = 0;
+            if (unary >= WV_UNARY_LIMIT) {
+                /*generate an escape code if the unary value is too large*/
+                bs->write_unary(bs, 0, 16);
+                unary -= WV_UNARY_LIMIT;
+                if (unary > 1) {
+                    wavpack_write_egc(bs, unary);
+                } else {
+                    bs->write_unary(bs, 0, unary);
+                }
+            } else {
+                bs->write_unary(bs, 0, unary);
+            }
+        } else {
+            /*skip unary generation altogether*/
+            assert(residual->golomb.unary == 0);
+            assert(residual->input_holding_one == 0);
+            assert(residual->output_holding_zero == 0);
+            assert(residual->output_holding_one == 0);
+        }
+
+        /*then generate the fixed value bits*/
+        if (residual->golomb.fixed_size > 0)
+            bs->write_bits(bs,
+                           residual->golomb.fixed_size,
+                           residual->golomb.fixed_value);
+        if (residual->golomb.has_extra_bit)
+            bs->write_bits(bs, 1, residual->golomb.extra_bit);
+        bs->write_bits(bs, 1, residual->golomb.sign);
     }
 }
 
-/* void */
-/* wavpack_output_residual(Bitstream *bs, */
-/*                         struct wavpack_residual *residual, */
-/*                         int write_unary) { */
-/*     int32_t escape_code; */
-/*     int escape_size; */
-
-/*     switch (residual->type) { */
-/*     case WV_RESIDUAL_GOLOMB: */
-/*         fprintf(stderr, "outputting residual : "); */
-/*         wavpack_print_residual(stderr, residual, write_unary); */
-/*         if (residual->residual.golomb.zero_escaped) */
-/*             bs->write_unary(bs, 0, 0); */
-
-/*         if (write_unary) { */
-/*             if (residual->residual.golomb.unary >= WV_UNARY_LIMIT) { */
-/*                 /\*generate escape code*\/ */
-/*                 bs->write_unary(bs, 0, 16); */
-
-/*                 /\*build an Elias gamma code from the unary value (- 16) *\/ */
-/*                 escape_code = residual->residual.golomb.unary - WV_UNARY_LIMIT; */
-/*                 if (escape_code < 2) { */
-/*                     bs->write_unary(bs, 0, escape_code); */
-/*                 } else { */
-/*                     escape_size = count_bits(escape_code) - 1; */
-/*                     bs->write_unary(bs, 0, escape_size + 1); */
-/*                     bs->write_bits(bs, escape_size, */
-/*                                    escape_code % (1 << escape_size)); */
-/*                 } */
-/*             } else { */
-/*                 bs->write_unary(bs, 0, residual->residual.golomb.unary); */
-/*             } */
-/*         } */
-/*         bs->write_bits(bs, */
-/*                        residual->residual.golomb.fixed_size, */
-/*                        residual->residual.golomb.fixed); */
-/*         if (residual->residual.golomb.has_extra_bit) */
-/*             bs->write_bits(bs, 1, */
-/*                            residual->residual.golomb.extra_bit); */
-/*         bs->write_bits(bs, 1, residual->residual.golomb.sign); */
-/*         break; */
-/*     case WV_RESIDUAL_ZEROES: */
-/*         if (residual->residual.zeroes_count == 0) { */
-/*             bs->write_bits(bs, 1, 0); */
-/*         } else { */
-/*             escape_size = count_bits(residual->residual.zeroes_count) - 1; */
-/*             bs->write_unary(bs, 0, escape_size + 1); */
-/*             bs->write_bits(bs, escape_size, */
-/*                         residual->residual.zeroes_count % (1 << escape_size)); */
-/*             fprintf(stderr, "outputting zeroes with unary = %d , escape_size = %d , value = %d\n", escape_size + 1, escape_size, residual->residual.zeroes_count % (1 << escape_size)); */
-/*         } */
-/*         break; */
-/*     default: */
-/*         fprintf(stderr, "outputting unknown residual type!\n"); */
-/*         assert(0); */
-/*         break; */
-/*     } */
-/* } */
 
 void
 wavpack_print_residual(FILE* output,
                        struct wavpack_residual* residual) {
-    fprintf(output, "zeroes %d , unary %d , ",
-            residual->zeroes_count, residual->unary_value);
-    if (residual->fixed_size > 0) {
-        fprintf(output, "fix size %d , fix value %d , ",
-                residual->fixed_size, residual->fixed_value);
+    if (residual->zeroes.present) {
+        fprintf(output, "zeroes %d , ",
+                residual->zeroes.count);
     }
-    if (residual->has_extra_bit) {
-        fprintf(output, "extra %d , ", residual->extra_bit);
+    if (residual->golomb.present) {
+        fprintf(output, "val %d , ", residual->golomb.value);
+        fprintf(output, "unary %d , ", residual->golomb.unary);
+        if (residual->golomb.fixed_size > 0) {
+            fprintf(output, "fixed %d (%d bits) , ",
+                    residual->golomb.fixed_size,
+                    residual->golomb.fixed_value);
+        }
+        if (residual->golomb.has_extra_bit) {
+            fprintf(output, "extra %d , ", residual->golomb.has_extra_bit);
+        }
+        fprintf(output, "sign %d , ", residual->golomb.sign);
     }
-
-    fprintf(output, "sign %d", residual->sign);
+    fprintf(output, "(H0 %d / H1 %d -> H0 %d / H1 %d)",
+            residual->input_holding_zero,
+            residual->input_holding_one,
+            residual->output_holding_zero,
+            residual->output_holding_one);
 }
 
-/* void */
-/* wavpack_print_residual(FILE *output, */
-/*                        struct wavpack_residual *residual, */
-/*                        int write_unary) { */
-/*     switch (residual->type) { */
-/*     case WV_RESIDUAL_ZEROES: */
-/*         fprintf(output, "zeroes count %u\n", */
-/*                 residual->residual.zeroes_count); */
-/*         break; */
-/*     case WV_RESIDUAL_GOLOMB: */
-/*         if (residual->residual.golomb.following_zero) { */
-/*             fprintf(output, "following 0 , "); */
-/*         } */
-
-/*         if (residual->residual.golomb.zero_escaped) { */
-/*             fprintf(output, "escaped , "); */
-/*         } */
-
-/*         if (write_unary) { */
-/*             fprintf(output, "unary %u , ", residual->residual.golomb.unary); */
-/*         } */
-
-/*         fprintf(output, "value %u , size %u , ", */
-/*                 residual->residual.golomb.fixed, */
-/*                 residual->residual.golomb.fixed_size); */
-
-/*         if (residual->residual.golomb.has_extra_bit) { */
-/*             fprintf(output, "extra %u , ", */
-/*                     residual->residual.golomb.extra_bit); */
-/*         } */
-
-/*         fprintf(output, "sign %u\n", */
-/*                 residual->residual.golomb.sign); */
-
-/*         break; */
-/*     default: */
-/*         fprintf(output, "unknown residual\n"); */
-/*         break; */
-/*     } */
-/* } */
 
 static inline int
 apply_weight(int weight, int64_t sample) {
