@@ -74,30 +74,20 @@ struct wavpack_block_header {
     uint32_t crc;                              /*32 bits*/
 };
 
-typedef enum {WV_RESIDUAL_GOLOMB,
-              WV_RESIDUAL_ZEROES,
-              WV_RESIDUAL_NONE} wv_residual_type;
-
 #define WV_UNARY_LIMIT 16
 #define MAXIMUM_TERM_COUNT 16
 #define WEIGHT_MAXIMUM 1024
 #define WEIGHT_MINIMUM -1024
 
 struct wavpack_residual {
-    wv_residual_type type;
-    union {
-        struct {
-            int32_t unary;
-            int32_t fixed;
-            uint32_t fixed_size;
-            uint8_t has_extra_bit;
-            uint8_t extra_bit;
-            uint8_t sign;
-            uint8_t zero_escaped;
-            uint8_t following_zero;
-        } golomb;
-        uint32_t zeroes_count;
-    } residual;
+    int zeroes_count;
+    int unary_value;
+    int fixed_value;
+    int fixed_size;
+    int has_sign_bit;
+    int sign;
+    int has_extra_bit;
+    int extra_bit;
 };
 
 void
@@ -180,6 +170,14 @@ wavpack_write_residuals(Bitstream *bs,
                         struct i_array *variables_B,
                         int channel_count);
 
+void
+wavpack_write_residual(Bitstream* bs,
+                       struct wavpack_residual* residual_accumulator,
+                       struct i_array** medians_pair,
+                       int current_channel,
+                       int* holding_zero,
+                       ia_data_t value);
+
 /*Given a sample value and set of medians for the current channel,
   calculate a raw residual value and assign it to the given struct.
   The median values are also updated by this routine.
@@ -203,38 +201,30 @@ wavpack_clear_medians(struct i_array *medians_A,
                       struct i_array *medians_B,
                       int channel_count);
 
-/*Given a list of residuals structs, outputs them to the given bitstream.
-  This performs the actual "holding_zero"/"holding_one" calculation
-  based on the contents of the previous residual in the list.*/
-void
-wavpack_output_residuals(Bitstream *bs, struct wavpack_residual *residuals);
-
-
-/*Given the current and previous residual,
-  along with the previous residual's holding_zero and holding_one values,
-  adjusts the previous residual's unary value
-  and the holding_zero/holding_one values so that current_residual
+/*Given the a source and target residual,
+  along with the source residual's holding_zero and holding_one values,
+  adjusts the source residual's unary value
+  and the holding_zero/holding_one values so that target_residual
   can be generated properly.
-  Returns 1 if the previous residual's unary value should be output,
+  Returns 1 if the target residual's unary value should be output,
   and 0 if it should not be output.*/
 int
-wavpack_set_holding(struct wavpack_residual *previous_residual,
-                    struct wavpack_residual *current_residual,
+wavpack_set_holding(struct wavpack_residual *source_residual,
+                    struct wavpack_residual *target_residual,
                     int *holding_zero,
                     int *holding_one);
 
-/*Outputs a single residual value to the bitstream,
-  which may include a Golomb code, a block of zeroes
-  or an escaped Golomb code.*/
+/*Outputs an accumulated residual value to the bitstream
+  depending on the current holding_zero and holding_one
+  values, which are modified during output.*/
 void
-wavpack_output_residual(Bitstream *bs,
-                        struct wavpack_residual *residual,
-                        int write_unary);
+wavpack_flush_residual(Bitstream *bs,
+                       struct wavpack_residual *residual,
+                       int* holding_zero);
 
 void
-wavpack_print_residual(FILE *output,
-                       struct wavpack_residual *residual,
-                       int write_unary);
+wavpack_print_residual(FILE* output,
+                       struct wavpack_residual* residual);
 
 void
 wavpack_print_medians(FILE *output,
