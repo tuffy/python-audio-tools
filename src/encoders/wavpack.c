@@ -768,10 +768,10 @@ wavpack_write_residuals(Bitstream *bs,
 
     residual_accumulator.zeroes.present =
         residual_accumulator.golomb.present =
-        residual_accumulator.input_holding_zero =
         residual_accumulator.input_holding_one = 0;
-        residual_accumulator.output_holding_zero =
+    residual_accumulator.output_holding_zero =
         residual_accumulator.output_holding_one = 0;
+    residual_accumulator.input_holding_zero = 1;
 
     for (sample = 0; sample < total_samples; sample++) {
         current_channel = sample % channel_count;
@@ -860,10 +860,8 @@ wavpack_write_residual(Bitstream* bs,
     /*        (residual_accumulator->output_holding_one == 1)); */
 
     if ((medians_pair[0]->data[0] < 2) &&
-        (medians_pair[1]->data[0] < 2) &&
-        (residual_accumulator->input_holding_zero == 0) &&
-        (residual_accumulator->input_holding_one == 0)) {
-        /*we need to handle a block of zeroes in some fashion*/
+        (medians_pair[1]->data[0] < 2)) {
+        /*we may need to handle a block of zeroes in some fashion*/
 
         if (residual_accumulator->zeroes.present) {
             if (value == 0) {
@@ -875,29 +873,33 @@ wavpack_write_residual(Bitstream* bs,
                 residual.zeroes.present = 0;
             }
         } else {
-            if (value == 0) {
-                /*we're beginning a new block of zeroes,
-                  so flush the previous residual before beginning*/
-                residual_accumulator->output_holding_zero = 0;
-                residual_accumulator->output_holding_one = 0;
-                wavpack_flush_residual(bs, residual_accumulator);
+            if ((residual_accumulator->input_holding_zero == 1) &&
+                (residual_accumulator->input_holding_one == 0)) {
+                if (value == 0) {
+                    /*we're beginning a new block of zeroes,
+                      so flush the previous residual before beginning*/
+                    residual_accumulator->output_holding_zero = 0;
+                    residual_accumulator->output_holding_one = 0;
+                    wavpack_flush_residual(bs, residual_accumulator);
 
-                residual.zeroes.present = 1;
-                residual.golomb.present = 0;
-                residual.zeroes.count = 1;
-                residual.input_holding_zero = 0;
-                residual.input_holding_one = 0;
-                residual.output_holding_zero = 0; /*placeholder*/
-                residual.output_holding_one = 0;  /*placeholder*/
-                *residual_accumulator = residual;
-                return;
-            } else {
-                /*generate a "false-alarm" escape code of zeroes*/
-                residual.zeroes.present = 1;
-                residual.zeroes.count = 0;
-                residual.input_holding_zero = 0;
-                residual.input_holding_one = 0;
-            }
+                    residual.zeroes.present = 1;
+                    residual.golomb.present = 0;
+                    residual.zeroes.count = 1;
+                    residual.input_holding_zero = 0;
+                    residual.input_holding_one = 0;
+                    residual.output_holding_zero = 0; /*placeholder*/
+                    residual.output_holding_one = 0;  /*placeholder*/
+                    *residual_accumulator = residual;
+                    return;
+                } else {
+                    /*generate a "false-alarm" escape code of zeroes*/
+                    residual.zeroes.present = 1;
+                    residual.zeroes.count = 0;
+                    residual.input_holding_zero = 0;
+                    residual.input_holding_one = 0;
+                }
+            } else
+                residual.zeroes.present = 0;
         }
     } else
         residual.zeroes.present = 0;
@@ -1537,8 +1539,9 @@ wavpack_print_residual(FILE* output,
                 residual->zeroes.count);
     }
     if (residual->golomb.present) {
-        fprintf(output, "val %d , ", residual->golomb.value);
-        fprintf(output, "unary %d , ", residual->golomb.unary);
+        fprintf(output, "[%d] , ", residual->golomb.value);
+        if (residual->input_holding_zero == 0)
+            fprintf(output, "unary %d , ", residual->golomb.unary);
         if (residual->golomb.fixed_size > 0) {
             fprintf(output, "fixed %d (%d bits) , ",
                     residual->golomb.fixed_size,
