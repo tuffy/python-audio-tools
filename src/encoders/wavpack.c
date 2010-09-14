@@ -890,6 +890,10 @@ wavpack_write_residual(Bitstream* bs,
                     residual.output_holding_zero = 0; /*placeholder*/
                     residual.output_holding_one = 0;  /*placeholder*/
                     *residual_accumulator = residual;
+
+                    wavpack_clear_medians(medians_pair[0],
+                                          medians_pair[1],
+                                          2);
                     return;
                 } else {
                     /*generate a "false-alarm" escape code of zeroes*/
