@@ -1019,7 +1019,7 @@ We then apply decorrelation passes to our channel values.
 Each pass requires a \VAR{Decorrelation Term},
 a \VAR{Decorrelation Delta}, one \VAR{Decorrelation Weight} per
 channel and one or more \VAR{Decorrelation Sample} values -
-in aaddition to the set of input samples we're running the pass
+in addition to the set of input samples we're running the pass
 over.
 \begin{align*}
 \intertext{Decorrelation Term = 18:}
@@ -1131,4 +1131,82 @@ However, the three negative correlation terms are only valid for
 \text{Weight B}_{i - 1} - \text{Delta} & \text{if } (\text{Temp B}_i \xor \text{Output B}_i) < 0 \\
 \text{ to a minimum of -1024}
 \end{cases}
+\end{align*}
+
+\clearpage
+
+\subsection{the Bitstream sub-block}
+
+Given a set of residual values and one set of 3 entropy variables per
+channel, the final encoding step for a WavPack block is generating
+the bitstream sub-block.
+As with decoding, writing each residual value is a multi-stage
+process which involves calculating a unary value,
+referencing and updating the channel's set of entropy variables, and
+calculating a fixed collection of bits.
+
+However, this procedure is complicated by the \VAR{holding\_one}
+and \VAR{holding\_zero} boolean values.
+As you'll recall, when \VAR{holding\_zero} is false, the
+decoder skips reading a unary value entirely.
+This means that before we can output $\text{Residual}_{i - 1}$'s values,
+we must determine the values for $\text{Residual}_i$
+so that the \VAR{holding\_one} and \VAR{holding\_zero} boolean
+values can be set properly.
+
+We start by converting our signed residual to an unsigned value and sign bit:
+\begin{align*}
+\text{Value}_i &=
+\begin{cases}
+\text{Residual}_i & \text{if } \text{Residual}_i \geq 0 \\
+-\text{Residual}_i - 1 & \text{if } \text{Residual}_i < 0
+\end{cases} \\
+\text{Sign}_i &=
+\begin{cases}
+0 & \text{if } \text{Residual}_i \geq 0 \\
+1 & \text{if } \text{Residual}_i < 0
+\end{cases}
+\end{align*}
+We then convert our current channel's entropy variables to
+median values:
+\begin{align*}
+\text{Median}_{i~0} &= \lfloor\text{Entropy}_{i~0}\div2 ^ 4\rfloor + 1 \\
+\text{Median}_{i~1} &= \lfloor\text{Entropy}_{i~1}\div2 ^ 4\rfloor + 1 \\
+\text{Median}_{i~2} &= \lfloor\text{Entropy}_{i~2}\div2 ^ 4\rfloor + 1 \\
+\end{align*}
+which allows us to calculate the residual's \VAR{low}, \VAR{high}
+and unary values - along with the next residual's entropy values -
+by determining which set of medians our unsigned value falls between:
+\begin{align*}
+\intertext{If $\text{Value}_i < \text{Median}_{i~0}$:}
+\text{unary}_i &= 0 \\
+\text{low}_i &= 0 \\
+\text{high}_i &= \text{Median}_{i~0} - 1 \\
+\text{Entropy}_{(i + 1)~0} &= \text{Entropy}_{i~0} - \left\lfloor\frac{\text{Entropy}_{i~0} + 126}{128}\right\rfloor \times 2 \\
+\text{Entropy}_{(i + 1)~1} &= \text{Entropy}_{i~1} \\
+\text{Entropy}_{(i + 1)~2} &= \text{Entorpy}_{i~2}
+\end{align*}
+\clearpage
+\begin{align*}
+\intertext{If $(\text{Value}_i - \text{Median}_{i~0}) < \text{Median}_{i~1}$:}
+\text{unary}_i &= 1 \\
+\text{low}_i &= \text{Median}_{i~0} \\
+\text{high}_i &= \text{Median}_{i~0} + \text{Median}_{i~1} - 1 \\
+\text{Entropy}_{(i + 1)~0} &= \text{Entropy}_{i~0} + \left\lfloor\frac{\text{Entropy}_{i~0} + 128}{128}\right\rfloor \times 5 \\
+\text{Entropy}_{(i + 1)~1} &= \text{Entropy}_{i~1} - \left\lfloor\frac{\text{Entropy}_{i~1} + 62}{64}\right\rfloor \times 2\\
+\text{Entropy}_{(i + 1)~2} &= \text{Entropy}_{i~2} \\
+\intertext{If $(\text{Value}_i - (\text{Median}_{i~0} + \text{Median}_{i~1})) < \text{Median}_{i~2}$:}
+\text{unary}_i &= 2 \\
+\text{low}_i &= \text{Median}_{i~0} + \text{Median}_{i~1} \\
+\text{high}_i &= \text{Median}_{i~0} + \text{Median}_{i~1} + \text{Median}_{i~2} - 1 \\
+\text{Entropy}_{(i + 1)~0} &= \text{Entropy}_{i~0} + \left\lfloor\frac{\text{Entropy}_{i~0} + 128}{128}\right\rfloor \times 5 \\
+\text{Entropy}_{(i + 1)~1} &= \text{Entropy}_{i~1} + \left\lfloor\frac{\text{Entropy}_{i~1} + 64}{64}\right\rfloor \times 5 \\
+\text{Entropy}_{(i + 1)~2} &= \text{Entropy}_{i~2} - \left\lfloor\frac{\text{Entropy}_{i~2} + 30}{32}\right\rfloor \times 2 \\
+\intertext{Otherwise:}
+\text{unary}_i &= \left\lfloor\frac{\text{Value}_i - (\text{Median}_{i~0} + \text{Median}_{i~1})}{\text{Median}_{i~2}}\right\rfloor + 2 \\
+\text{low}_i &= \text{Median}_{i~0} + \text{Median}_{i~1} + ((\text{unary}_i - 2) \times \text{Median}_{i~2}) \\
+\text{high}_i &= \text{low}_i + \text{Median}_{i~2} - 1 \\
+\text{Entropy}_{(i + 1)~0} &= \text{Entropy}_{i~0} + \left\lfloor\frac{\text{Entropy}_{i~0} + 128}{128}\right\rfloor \times 5 \\
+\text{Entropy}_{(i + 1)~1} &= \text{Entropy}_{i~1} + \left\lfloor\frac{\text{Entropy}_{i~1} + 64}{64}\right\rfloor \times 5 \\
+\text{Entropy}_{(i + 1)~2} &= \text{Entropy}_{i~2} + \left\lfloor\frac{\text{Entropy}_{i~2} + 32}{32}\right\rfloor \times 5
 \end{align*}

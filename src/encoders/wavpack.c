@@ -791,9 +791,6 @@ wavpack_write_residuals(Bitstream *bs,
 
     wavpack_flush_residual(residual_data,
                            &residual_accumulator);
-    /* /\*make sure to write the final residual also*\/ */
-    /* wavpack_flush_residual(residual_data, */
-    /*                        &residual_accumulator); */
 
     /*once all the residual data has been written,
       pad the output buffer to a multiple of 16 bits*/
@@ -857,8 +854,8 @@ wavpack_write_residual(Bitstream* bs,
         (medians_pair[1]->data[0] < 2)) {
         /*we may need to handle a block of zeroes in some fashion*/
 
-        if ((residual_accumulator->zeroes.present) &&
-            (!residual_accumulator->golomb.present)) {
+        if (residual_accumulator->zeroes.present &&
+            !(residual_accumulator->golomb.present)) {
             if (value == 0) {
                 /*we're continuing an existing block of zeroes*/
                 residual_accumulator->zeroes.count++;

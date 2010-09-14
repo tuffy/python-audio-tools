@@ -506,7 +506,7 @@ void
 write_bits64_accumulator(Bitstream* bs, unsigned int count, uint64_t value)
 {
     assert(value >= 0l);
-    assert(value < (int64_t)(1l << count));
+    assert(value < (int64_t)(1ll << count));
     bs->bits_written += count;
 }
 
@@ -621,7 +621,30 @@ bs_dump_records(Bitstream* target, Bitstream* source)
     int i;
     BitstreamRecord record;
 
-    if (target->write_bits != write_bits_record) {
+    if (target->write_bits == write_bits_record) {
+        /*when dumping from one recorder to another,
+          use memcpy instead of looping through the records*/
+
+        for (new_records_total = target->records_total;
+             (new_records_total -
+              target->records_written) < records_written;)
+            new_records_total *= 2;
+
+        if (new_records_total != target->records_total)
+            target->records = realloc(target->records,
+                                      sizeof(BitstreamRecord) *
+                                      new_records_total);
+
+        memcpy(target->records + target->records_written,
+               source->records,
+               sizeof(BitstreamRecord) * source->records_written);
+
+        target->records_written += source->records_written;
+    } else if (target->write_bits == write_bits_accumulator) {
+        /*when dumping from a recorder to an accumulator,
+          simply copy over the total number of written bits*/
+        target->bits_written = source->bits_written;
+    } else {
         for (i = 0; i < records_written; i++) {
             record = source->records[i];
             switch (record.type) {
@@ -650,25 +673,6 @@ bs_dump_records(Bitstream* target, Bitstream* source)
                 break;
             }
         }
-    } else {
-        /*when dumping from one accumulator to another,
-          use memcpy instead of looping through the records*/
-
-        for (new_records_total = target->records_total;
-             (new_records_total - target->records_written) <
-                 records_written;)
-            new_records_total *= 2;
-
-        if (new_records_total != target->records_total)
-            target->records = realloc(target->records,
-                                      sizeof(BitstreamRecord) *
-                                      new_records_total);
-
-        memcpy(target->records + target->records_written,
-               source->records,
-               sizeof(BitstreamRecord) * source->records_written);
-
-        target->records_written += source->records_written;
     }
 }
 
