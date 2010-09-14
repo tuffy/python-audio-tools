@@ -949,6 +949,7 @@ bitcount &= \text{count\_bits}(asample) \\
 \text{ if } 256 \leq asample \text{ and } sample < 0
 \end{cases}
 \intertext{where \VAR{count\_bits} is defined as follows:}
+\label{wavpackcountbits}
 \text{count\_bits(x)} &=
 \begin{cases}
 0 & \text{if } x = 0 \\
@@ -1154,48 +1155,47 @@ we must determine the values for $\text{Residual}_i$
 so that the \VAR{holding\_one} and \VAR{holding\_zero} boolean
 values can be set properly.
 
-We start by converting our signed residual to an unsigned value and sign bit:
+\subsubsection{Calculating unsigned value and sign bit}
+%% We start by converting our signed residual to an unsigned value and sign bit:
 \begin{align*}
-\text{Value}_i &=
+\text{value}_i &=
 \begin{cases}
 \text{Residual}_i & \text{if } \text{Residual}_i \geq 0 \\
 -\text{Residual}_i - 1 & \text{if } \text{Residual}_i < 0
 \end{cases} \\
-\text{Sign}_i &=
+\text{sign}_i &=
 \begin{cases}
 0 & \text{if } \text{Residual}_i \geq 0 \\
 1 & \text{if } \text{Residual}_i < 0
 \end{cases}
 \end{align*}
-We then convert our current channel's entropy variables to
-median values:
+\subsubsection{Calculating unary value, high, low and next medians}
+%% We then convert our current channel's entropy variables to
+%% median values:
 \begin{align*}
 \text{Median}_{i~0} &= \lfloor\text{Entropy}_{i~0}\div2 ^ 4\rfloor + 1 \\
 \text{Median}_{i~1} &= \lfloor\text{Entropy}_{i~1}\div2 ^ 4\rfloor + 1 \\
 \text{Median}_{i~2} &= \lfloor\text{Entropy}_{i~2}\div2 ^ 4\rfloor + 1 \\
 \end{align*}
-which allows us to calculate the residual's \VAR{low}, \VAR{high}
-and unary values - along with the next residual's entropy values -
-by determining which set of medians our unsigned value falls between:
+%% which allows us to calculate the residual's \VAR{low}, \VAR{high}
+%% and unary values - along with the next residual's entropy values -
+%% by determining which set of medians our unsigned value falls between:
 \begin{align*}
-\intertext{If $\text{Value}_i < \text{Median}_{i~0}$:}
+\intertext{If $\text{value}_i < \text{Median}_{i~0}$:}
 \text{unary}_i &= 0 \\
 \text{low}_i &= 0 \\
 \text{high}_i &= \text{Median}_{i~0} - 1 \\
 \text{Entropy}_{(i + 1)~0} &= \text{Entropy}_{i~0} - \left\lfloor\frac{\text{Entropy}_{i~0} + 126}{128}\right\rfloor \times 2 \\
 \text{Entropy}_{(i + 1)~1} &= \text{Entropy}_{i~1} \\
 \text{Entropy}_{(i + 1)~2} &= \text{Entorpy}_{i~2}
-\end{align*}
-\clearpage
-\begin{align*}
-\intertext{If $(\text{Value}_i - \text{Median}_{i~0}) < \text{Median}_{i~1}$:}
+\intertext{If $(\text{value}_i - \text{Median}_{i~0}) < \text{Median}_{i~1}$:}
 \text{unary}_i &= 1 \\
 \text{low}_i &= \text{Median}_{i~0} \\
 \text{high}_i &= \text{Median}_{i~0} + \text{Median}_{i~1} - 1 \\
 \text{Entropy}_{(i + 1)~0} &= \text{Entropy}_{i~0} + \left\lfloor\frac{\text{Entropy}_{i~0} + 128}{128}\right\rfloor \times 5 \\
 \text{Entropy}_{(i + 1)~1} &= \text{Entropy}_{i~1} - \left\lfloor\frac{\text{Entropy}_{i~1} + 62}{64}\right\rfloor \times 2\\
 \text{Entropy}_{(i + 1)~2} &= \text{Entropy}_{i~2} \\
-\intertext{If $(\text{Value}_i - (\text{Median}_{i~0} + \text{Median}_{i~1})) < \text{Median}_{i~2}$:}
+\intertext{If $(\text{value}_i - (\text{Median}_{i~0} + \text{Median}_{i~1})) < \text{Median}_{i~2}$:}
 \text{unary}_i &= 2 \\
 \text{low}_i &= \text{Median}_{i~0} + \text{Median}_{i~1} \\
 \text{high}_i &= \text{Median}_{i~0} + \text{Median}_{i~1} + \text{Median}_{i~2} - 1 \\
@@ -1203,10 +1203,86 @@ by determining which set of medians our unsigned value falls between:
 \text{Entropy}_{(i + 1)~1} &= \text{Entropy}_{i~1} + \left\lfloor\frac{\text{Entropy}_{i~1} + 64}{64}\right\rfloor \times 5 \\
 \text{Entropy}_{(i + 1)~2} &= \text{Entropy}_{i~2} - \left\lfloor\frac{\text{Entropy}_{i~2} + 30}{32}\right\rfloor \times 2 \\
 \intertext{Otherwise:}
-\text{unary}_i &= \left\lfloor\frac{\text{Value}_i - (\text{Median}_{i~0} + \text{Median}_{i~1})}{\text{Median}_{i~2}}\right\rfloor + 2 \\
+\text{unary}_i &= \left\lfloor\frac{\text{value}_i - (\text{Median}_{i~0} + \text{Median}_{i~1})}{\text{Median}_{i~2}}\right\rfloor + 2 \\
 \text{low}_i &= \text{Median}_{i~0} + \text{Median}_{i~1} + ((\text{unary}_i - 2) \times \text{Median}_{i~2}) \\
 \text{high}_i &= \text{low}_i + \text{Median}_{i~2} - 1 \\
 \text{Entropy}_{(i + 1)~0} &= \text{Entropy}_{i~0} + \left\lfloor\frac{\text{Entropy}_{i~0} + 128}{128}\right\rfloor \times 5 \\
 \text{Entropy}_{(i + 1)~1} &= \text{Entropy}_{i~1} + \left\lfloor\frac{\text{Entropy}_{i~1} + 64}{64}\right\rfloor \times 5 \\
 \text{Entropy}_{(i + 1)~2} &= \text{Entropy}_{i~2} + \left\lfloor\frac{\text{Entropy}_{i~2} + 32}{32}\right\rfloor \times 5
 \end{align*}
+\clearpage
+\subsubsection{Calculating fixed size, fixed value and optional extra bit}
+\begin{align*}
+\intertext{If $\text{low}_i = \text{high}_i$:}
+\text{fixed size}_i &= 0 \\
+\text{has extra}_i &= \texttt{false}
+\intertext{Otherwise:}
+\text{extras}_i &= 2 ^ {\text{count\_bits}(\text{high}_i - \text{low}_i)} - (\text{high}_i - \text{low}_i) - 1 \\
+\intertext{If $\text{low}_i \neq \text{high}_i$ and $(\text{value}_i - \text{low}_i) < \text{extras}_i$:}
+\text{fixed size}_i &= \text{value}_i - \text{low}_i \\
+\text{fixed value}_i &= \text{count\_bits}(\text{high}_i - \text{low}_i) - 1 \\
+\text{has extra}_i &= \texttt{false} \\
+\intertext{If $\text{low}_i \neq \text{high}_i$ and $(\text{value}_i - \text{low}_i) \geq \text{extras}_i$:}
+\text{fixed size}_i &= \lfloor(\text{value}_i - \text{low}_i + \text{extras}_i) \div 2\rfloor \\
+\text{fixed value}_i &= \text{count\_bits}(\text{high}_i - \text{low}_i) - 1 \\
+\text{has extra}_i &= \texttt{true} \\
+\text{extra bit}_i &= (\text{value}_i - \text{low}_i + \text{extras}_i) \bmod{2}
+\end{align*}
+
+\subsubsection{Update previous residual based on current residual}
+\begin{align*}
+\intertext{If $\text{unary}_{i - 1} > 0$ and $\text{unary}_i > 0$:}
+\text{unary}_{i - 1} &=
+\begin{cases}
+(\text{unary}_{i - 1} \times 2) + 1 & \text{if $\text{holding one}_{i - 1} = \texttt{false}$} \\
+(\text{unary}_{i - 1} \times 2) - 1 & \text{if $\text{holding one}_{i - 1} = \texttt{true}$}
+\end{cases} \\
+\text{holding zero}_i &= \texttt{false} \\
+\text{holding one}_i &= \texttt{true}
+\intertext{If $\text{unary}_{i - 1} = 0$ and $\text{unary}_i > 0$:}
+\text{unary}_{i - 1} &=
+\begin{cases}
+1 & \text{if $\text{holding zero}_{i - 1} = \texttt{false}$} \\
+\textit{not output} & \text{if $\text{holding zero}_{i - 1} = \texttt{true}$}
+\end{cases} \\
+\text{holding zero}_i &= \texttt{false} \\
+\text{holding one}_i &= \texttt{not}\text{ holding zero}_{i - 1} \\
+\intertext{If $\text{unary}_{i - 1} > 0$ and $\text{unary}_i = 0$:}
+\text{unary}_{i - 1} &=
+\begin{cases}
+\text{unary}_{i - 1} \times 2 & \text{if $\text{holding one}_{i - 1} = \texttt{false}$} \\
+(\text{unary}_{i - 1} - 1) \times 2 & \text{if $\text{holding one}_{i - 1} = \texttt{true}$}
+\end{cases} \\
+\text{holding zero}_i &= \texttt{true} \\
+\text{holding one}_i &= \texttt{false} \\
+\intertext{If $\text{unary}_{i - 1} = 0$ and $\text{unary}_i = 0$:}
+\text{unary}_{i - 1} &=
+\begin{cases}
+0 & \text{if $\text{holding zero}_{i - 1} = \texttt{false}$} \\
+\textit{not output} & \text{if $\text{holding zero}_{i - 1} = \texttt{true}$}
+\end{cases} \\
+\text{holding zero}_i &= \texttt{not}\text{ holding zero}_{i - 1} \\
+\text{holding one}_i &= \texttt{false}
+\end{align*}
+
+\subsubsection{Output previous residual}
+
+Once the previous residual's unary value has been determined,
+its fields can now be output.
+\begin{itemize}
+\item If unary output, write $\text{unary}_{i - 1}$ number of \texttt{1} bits followed by a \texttt{0} bit (if $\text{unary}_{i - 1} < 16$)
+\item Write \VAR{$\text{fixed size}_{i - 1}$} number of bits with the value \VAR{$\text{fixed value}_{i - 1}$}
+\item If \VAR{$\text{has extra}_{i - 1}$}, write a single bit with the value \VAR{$\text{extra bit}_{i - 1}$}
+\item Write a single bit with the value \VAR{$\text{sign}_{i - 1}$}
+\end{itemize}
+Note that if $\text{unary}_{i - 1} \geq 16$, we write an escape code instead.
+\begin{itemize}
+\item If $\text{unary}_{i - 1} = 16$, write 18 bits with the value \texttt{0xFFFF} (unary 16 plus unary 0)
+\item If $\text{unary}_{i - 1} = 17$, write 19 bits with the value \texttt{0x2FFFF} (unary 16 plus unary 1)
+\item If $\text{unary}_{i - 1} \geq 18$, write 17 bits with the value \texttt{0xFFFF} (unary 16)
+\begin{itemize}
+\item Write $\text{count\_bits}(\text{unary}_{i - 1} - 16)$ number of \texttt{1} bits followed by a \texttt{0} bit
+\item Write $\text{count\_bits}(\text{unary}_{i - 1} - 16) - 1$ number of bits
+\item with the value $((\text{unary}_{i - 1} - 16) \bmod{2 ^ {\text{count\_bits}(\text{unary}_{i - 1} - 16) - 1}})$
+\end{itemize}
+\end{itemize}
