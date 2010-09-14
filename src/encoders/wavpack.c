@@ -1,6 +1,7 @@
 #include "wavpack.h"
 #include "../pcmreader.h"
 #include <assert.h>
+#include <limits.h>
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -93,7 +94,9 @@ encoders_encode_wavpack(PyObject *dummy,
             goto error;
     }
 
+#ifdef STANDALONE
     fprintf(stderr, "total samples = %u\n", context.block_index);
+#endif
     /*go back and set block header data as necessary*/
     for (i = 0; i < context.block_offsets.size; i++) {
         fseek(file, context.block_offsets.data[i] + 12, SEEK_SET);
@@ -152,13 +155,11 @@ encoders_encode_wavpack(char *filename,
     while (samples.arrays[0].size > 0) {
         wavpack_write_frame(stream, &context,
                             &samples, reader->channel_mask);
-        fprintf(stderr, "got %d samples\n", samples.arrays[0].size);
 
         if (!pcmr_read(reader, block_size, &samples))
             goto error;
     }
 
-    fprintf(stderr, "total samples = %u\n", context.block_index);
     /*go back and set block header data as necessary*/
     for (i = 0; i < context.block_offsets.size; i++) {
         fseek(file, context.block_offsets.data[i] + 12, SEEK_SET);
@@ -247,8 +248,6 @@ wavpack_write_frame(Bitstream *bs,
 
     ia_init(&counts, 1);
 
-    fprintf(stderr, "writing %d channels of %d samples\n",
-            samples->size, samples->arrays[0].size);
     wavpack_channel_splits(&counts, samples->size, channel_mask);
 
     for (i = current_channel = 0; i < counts.size; i++) {
@@ -310,7 +309,6 @@ wavpack_write_block(Bitstream* bs,
     ia_init(&entropy_variables_B, 3);
 
     ia_append(&(context->block_offsets), context->byte_count);
-    fprintf(stderr, "appending file offset 0x%X\n", context->byte_count);
 
     /*initialize the WavPack block header fields*/
 
@@ -886,6 +884,18 @@ wavpack_write_residual(Bitstream* bs,
                     residual.input_holding_one = 0;
                     residual.output_holding_zero = 0; /*placeholder*/
                     residual.output_holding_one = 0;  /*placeholder*/
+
+                    /*Some placeholders to prevent compiler warnings
+                      since none of these will be used unless
+                      golomb.present is 1.*/
+                    residual.golomb.value = INT_MAX;
+                    residual.golomb.unary =
+                        residual.golomb.fixed_value =
+                        residual.golomb.fixed_size =
+                        residual.golomb.has_extra_bit =
+                        residual.golomb.extra_bit =
+                        residual.golomb.sign = -1;
+
                     *residual_accumulator = residual;
 
                     wavpack_clear_medians(medians_pair[0],
@@ -907,6 +917,11 @@ wavpack_write_residual(Bitstream* bs,
 
     residual.golomb.present = 1;
     residual.golomb.value = value;
+
+    /*more placeholders for values that should be set
+      by the next call to write_residual*/
+    residual.output_holding_one =
+        residual.output_holding_zero = -1;
 
     /*Determine sign bit.*/
     if (value < 0) {
@@ -931,8 +946,8 @@ wavpack_write_residual(Bitstream* bs,
     "high" and "low" are the medians on each side of the residual.
     At the same time, increment or decrement medians as necessary.
     However, don't expect to send out the "ones_count" value as-is -
-    one must adjust its value based on the *next* residual's unary value.
-    If next is 0, multiply by 2.  If not, multiply by 2 and add 1.
+    one must adjust its value based on the *next* residual's unary value
+    such that "holding_zero" and "holding_one" are set correctly.
     */
     if (value < get_median(medians, 0)) {
         /*value below the 1st median*/
@@ -986,6 +1001,7 @@ wavpack_write_residual(Bitstream* bs,
             residual.golomb.fixed_value = code;
             residual.golomb.fixed_size = bit_count - 1;
             residual.golomb.has_extra_bit = 0;
+            residual.golomb.extra_bit = -1; /*placeholder*/
         } else {
             residual.golomb.fixed_value = (code + extras) >> 1;
             residual.golomb.fixed_size = bit_count - 1;
@@ -996,6 +1012,7 @@ wavpack_write_residual(Bitstream* bs,
         residual.golomb.fixed_value = 0;
         residual.golomb.fixed_size = 0;
         residual.golomb.has_extra_bit = 0;
+        residual.golomb.extra_bit = -1; /*placeholder*/
     }
 
     /*Next, determine the residual accumulator's output holding values

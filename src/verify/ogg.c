@@ -144,7 +144,7 @@ verifymodule_print_ogg_header(struct ogg_header *header) {
     printf("magic number         : 0x%X\n", header->magic_number);
     printf("version              : 0x%X\n", header->version);
     printf("type                 : 0x%X\n", header->type);
-    printf("granule position     : 0x%lX\n", header->granule_position);
+    printf("granule position     : 0x%llX\n", header->granule_position);
     printf("bitstream serial #   : 0x%X\n", header->bitstream_serial_number);
     printf("page sequence number : 0x%X\n", header->page_sequence_number);
     printf("checksum             : 0x%8.8X\n", header->checksum);
