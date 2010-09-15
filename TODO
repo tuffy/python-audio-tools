@@ -2541,13 +2541,13 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [ ] decorr_weights
      - [ ] decorr_samples
      - [ ] entropy_vars
-     - [ ] wv_bitstream
+     - [X] wv_bitstream
 **** TODO false stereo
 **** TODO int32_info
      for left shifting zeroes, in particular
 **** TODO decorrelation passes
 **** TODO entropy variables
-**** TODO bitstream generation
+**** DONE bitstream generation
 *** TODO Verify A4 layout is correct
 ** TODO Test encoder/decoder against reference
    Ensure a wide range of lossless audio round-trips correctly
