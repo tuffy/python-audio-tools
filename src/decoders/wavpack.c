@@ -779,8 +779,7 @@ ia_array_to_list(struct ia_array *list)
 }
 
 PyObject*
-WavPackDecoder_read(decoders_WavPackDecoder* self,
-                    struct wavpack_block_header* block_header) {
+WavPackDecoder_read(decoders_WavPackDecoder* self, PyObject *args) {
     int channels_read;
     int final_block = 0;
     int current_channel = 0;
@@ -812,6 +811,23 @@ WavPackDecoder_read(decoders_WavPackDecoder* self,
                                  self->bits_per_sample);
  error:
     return NULL;
+}
+
+uint32_t
+wavpack_calculate_crc(struct ia_array* decoded_samples) {
+    int channel_count = decoded_samples->size;
+    struct i_array* channels = decoded_samples->arrays;
+    ia_size_t total_samples = (channel_count * channels[0].size);
+    ia_size_t i;
+    ia_data_t sample;
+    uint32_t crc = 0xFFFFFFFF;
+
+    for (i = 0; i < total_samples; i++) {
+        sample = channels[i % channel_count].data[i / channel_count];
+        crc = ((3 * crc) + sample) & 0xFFFFFFFF;
+    }
+
+    return crc;
 }
 
 /*as with Shorten, whose analyze_frame() returns the next command
@@ -1199,6 +1215,13 @@ WavPackDecoder_decode_block(decoders_WavPackDecoder* self,
         /*Fix false stereo, if present*/
         if (block_header.false_stereo) {
             ia_copy(channel_B, channel_A);
+        }
+
+        /*check CRC of data to return*/
+        if (wavpack_calculate_crc(&(self->decoded_samples)) !=
+            block_header.crc) {
+            PyErr_SetString(PyExc_ValueError, "CRC mismatch during decode");
+            goto error;
         }
 
         return OK;

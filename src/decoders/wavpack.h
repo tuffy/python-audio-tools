@@ -163,8 +163,10 @@ static PyObject*
 WavPackDecoder_close(decoders_WavPackDecoder* self, PyObject *args);
 
 PyObject*
-WavPackDecoder_read(decoders_WavPackDecoder* self,
-                    struct wavpack_block_header* block_header);
+WavPackDecoder_read(decoders_WavPackDecoder* self, PyObject *args);
+
+uint32_t
+wavpack_calculate_crc(struct ia_array* decoded_samples);
 
 PyObject*
 WavPackDecoder_analyze_subblock(decoders_WavPackDecoder* self,

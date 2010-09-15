@@ -905,7 +905,7 @@ before starting to encode them, as follows:
 \begin{equation*}
 \text{CRC}_i = (3 \times \text{CRC}_{i - 1}) + \text{Unencoded Sample}_i
 \end{equation*}
-where $\text{Unencoded Sample}_i$ alternates between channels if necessary,
+where $\text{Unencoded Sample}_i$ alternates between channels if necessary.
 $\text{CRC}_{-1}$ begins with a value of \texttt{0xFFFFFFFF}
 and each $\text{CRC}_i$ value is truncated to 32 bits.
 
