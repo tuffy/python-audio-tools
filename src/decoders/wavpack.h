@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include "../bitstream_r.h"
 #include "../array.h"
+#include "../md5.h"
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -29,7 +30,8 @@ typedef enum {WV_DECORR_TERMS      = 0x2,
               WV_DECORR_SAMPLES    = 0x4,
               WV_ENTROPY_VARIABLES = 0x5,
               WV_INT32_INFO        = 0x9,
-              WV_BITSTREAM         = 0xA} wv_metadata_function;
+              WV_BITSTREAM         = 0xA,
+              WV_MD5               = 0x26} wv_metadata_function;
 
 typedef struct {
     PyObject_HEAD
@@ -69,6 +71,10 @@ typedef struct {
     int got_entropy_variables;
     int got_bitstream;
     int got_int32_info;
+
+    /*a running MD5 sum of our output samples*/
+    audiotools__MD5Context md5;
+    int md5_checked;
 } decoders_WavPackDecoder;
 
 struct wavpack_block_header {
@@ -164,6 +170,10 @@ WavPackDecoder_close(decoders_WavPackDecoder* self, PyObject *args);
 
 PyObject*
 WavPackDecoder_read(decoders_WavPackDecoder* self, PyObject *args);
+
+status
+WavPackDecoder_update_md5sum(decoders_WavPackDecoder *self,
+                             PyObject *framelist);
 
 uint32_t
 wavpack_calculate_crc(struct ia_array* decoded_samples);

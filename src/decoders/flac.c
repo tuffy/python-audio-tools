@@ -1125,4 +1125,3 @@ read_utf8(Bitstream *stream)
 
 #include "flac_crc.c"
 #include "pcm.c"
-#include "../md5.c"

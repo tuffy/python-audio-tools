@@ -83,6 +83,10 @@ WavPackDecoder_init(decoders_WavPackDecoder *self,
     iaa_init(&(self->decoded_samples), self->channels, 44100);
     fseek(self->file, 0, SEEK_SET);
 
+    /*initialize our output MD5 sum*/
+    audiotools__MD5Init(&(self->md5));
+    self->md5_checked = 0;
+
     return 0;
 }
 
@@ -783,11 +787,48 @@ WavPackDecoder_read(decoders_WavPackDecoder* self, PyObject *args) {
     int channels_read;
     int final_block = 0;
     int current_channel = 0;
+
+    struct wavpack_block_header block_header;
+    long block_end;
+    Bitstream* bitstream = self->bitstream;
+
+    PyObject* framelist;
+
     iaa_reset(&(self->decoded_samples));
 
-    if (self->remaining_samples < 1)
+    if (self->remaining_samples < 1) {
+        /*If we're at the end of the file,
+          try to read one additional block to check for
+          an MD5 sum.*/
+
+        if (!(self->md5_checked) &&
+            (WavPackDecoder_read_block_header(bitstream,
+                                              &block_header) == OK)) {
+            block_end = ftell(self->file) + block_header.block_size - 24 - 1;
+            if (!setjmp(*bs_try(bitstream))) {
+                while (ftell(self->file) < block_end) {
+                    if (WavPackDecoder_decode_subblock(self,
+                                                       &block_header) != OK) {
+                        bs_etry(bitstream);
+                        goto error;
+                    }
+                }
+                bs_etry(bitstream);
+                return ia_array_to_framelist(&(self->decoded_samples),
+                                             self->bits_per_sample);
+            } else {
+                /*but once we find a block header during closing,
+                  trigger an error if that block is truncated*/
+                bs_etry(bitstream);
+                PyErr_SetString(PyExc_IOError, "I/O error reading sub-block");
+                goto error;
+            }
+        }
+
+        /*there's no error if we can't find a trailing block*/
         return ia_array_to_framelist(&(self->decoded_samples),
                                      self->bits_per_sample);
+    }
 
     do {
         if (WavPackDecoder_decode_block(
@@ -807,10 +848,42 @@ WavPackDecoder_read(decoders_WavPackDecoder* self, PyObject *args) {
 
     self->remaining_samples -= self->decoded_samples.arrays[0].size;
 
-    return ia_array_to_framelist(&(self->decoded_samples),
-                                 self->bits_per_sample);
+    framelist = ia_array_to_framelist(&(self->decoded_samples),
+                                      self->bits_per_sample);
+    if (WavPackDecoder_update_md5sum(self, framelist) == OK)
+        return framelist;
+    else {
+        Py_DECREF(framelist);
+        goto error;
+    }
  error:
     return NULL;
+}
+
+status
+WavPackDecoder_update_md5sum(decoders_WavPackDecoder *self,
+                             PyObject *framelist) {
+    PyObject *string = PyObject_CallMethod(framelist,
+                                           "to_bytes","ii",
+                                           0,
+                                           1);
+    char *string_buffer;
+    Py_ssize_t length;
+
+    if (string != NULL) {
+        if (PyString_AsStringAndSize(string, &string_buffer, &length) == 0) {
+            audiotools__MD5Update(&(self->md5),
+                                  (unsigned char *)string_buffer,
+                                  length);
+            Py_DECREF(string);
+            return OK;
+        } else {
+            Py_DECREF(string);
+            return ERROR;
+        }
+    } else {
+        return ERROR;
+    }
 }
 
 uint32_t
@@ -1237,6 +1310,8 @@ WavPackDecoder_decode_subblock(decoders_WavPackDecoder* self,
                                struct wavpack_block_header* block_header) {
     Bitstream* bitstream = self->bitstream;
     struct wavpack_subblock_header header;
+    uint8_t file_md5sum[16];
+    uint8_t running_md5sum[16];
 
     WavPackDecoder_read_subblock_header(bitstream, &header);
     switch (header.metadata_function | (header.nondecoder_data << 5)) {
@@ -1325,6 +1400,22 @@ WavPackDecoder_decode_subblock(decoders_WavPackDecoder* self,
             break;
         } else
             return ERROR;
+    case WV_MD5:
+        if (fread(file_md5sum, 1, 16, bitstream->file) == 16) {
+            audiotools__MD5Final(running_md5sum, &(self->md5));
+            if (memcmp(file_md5sum, running_md5sum, 16) == 0) {
+                return OK;
+            } else {
+                PyErr_SetString(PyExc_ValueError,
+                                "MD5 mismatch reading stream");
+                return ERROR;
+            }
+        } else {
+            PyErr_SetString(PyExc_IOError,
+                            "I/O error reading MD5 sub-block data");
+            return ERROR;
+        }
+        break;
     default:
         /*unsupported sub-blocks are skipped*/
         fseek(bitstream->file, header.block_size * 2, SEEK_CUR);
@@ -1649,3 +1740,4 @@ void wavpack_undo_joint_stereo(struct i_array* channel_A,
 }
 
 #include "pcm.c"
+
