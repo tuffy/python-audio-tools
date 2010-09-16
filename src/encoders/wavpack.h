@@ -41,7 +41,8 @@ struct wavpack_encoder_context {
     struct i_array block_offsets;
 
     struct {
-        uint8_t joint_stereo;
+        int joint_stereo;
+        int decorrelation_passes;
     } options;
 };
 
@@ -273,6 +274,11 @@ wavpack_perform_decorrelation_pass_1ch(struct i_array* channel,
                                        int decorrelation_delta,
                                        int decorrelation_weight,
                                        struct i_array* decorrelation_samples);
+
+/*Returns OK if the given options are compatible.
+  Raises an error and returns ERROR if not.*/
+status
+wavpack_verify_tunables(struct wavpack_encoder_context* context);
 
 /*given a set of channel data and encoding context
   (for compression options), calculates a block's tunable information*/

@@ -43,20 +43,26 @@ encoders_encode_wavpack(PyObject *dummy,
                              "block_size",
 
                              "joint_stereo",
+                             "decorrelation_passes",
                              NULL};
 
     /*set some default option values*/
     context.options.joint_stereo = 0;
+    context.options.decorrelation_passes = 0;
 
     if (!PyArg_ParseTupleAndKeywords(args,
                                      keywds,
-                                     "sOi|i",
+                                     "sOi|ii",
                                      kwlist,
                                      &filename,
                                      &pcmreader_obj,
                                      &block_size,
 
-                                     &(context.options.joint_stereo)))
+                                     &(context.options.joint_stereo),
+                                     &(context.options.decorrelation_passes)))
+        return NULL;
+
+    if (wavpack_verify_tunables(&context) == ERROR)
         return NULL;
 
     if (block_size <= 0) {
@@ -397,6 +403,7 @@ wavpack_write_block(Bitstream* bs,
                                &decorrelation_samples_B,
                                &entropy_variables_A,
                                &entropy_variables_B);
+
 
     /*apply decorrelation passes to samples, if requested*/
     for (i = decorrelation_terms.size - 1; i >= 0; i--) {
@@ -1484,6 +1491,27 @@ void wavpack_perform_decorrelation_pass_1ch(
     ia_free(&input);
 }
 
+status
+wavpack_verify_tunables(struct wavpack_encoder_context* context) {
+    switch (context->options.decorrelation_passes) {
+    case 0:
+    case 1:
+    case 2:
+    case 5:
+    case 10:
+    case 16:
+        break;
+    default:
+#ifndef STANDALONE
+        PyErr_SetString(PyExc_ValueError,
+                        "unsupported number of decorrelation passes");
+#endif
+        return ERROR;
+    }
+
+    return OK;
+}
+
 void
 wavpack_calculate_tunables(struct wavpack_encoder_context* context,
                            struct i_array* channel_A,
@@ -1497,32 +1525,152 @@ wavpack_calculate_tunables(struct wavpack_encoder_context* context,
                            struct ia_array* decorrelation_samples_B,
                            struct i_array* entropy_variables_A,
                            struct i_array* entropy_variables_B) {
-    ia_append(entropy_variables_A, 0);
-    ia_append(entropy_variables_A, 0);
-    ia_append(entropy_variables_A, 0);
-    ia_append(entropy_variables_B, 0);
-    ia_append(entropy_variables_B, 0);
-    ia_append(entropy_variables_B, 0);
+    struct i_array* samples_A = decorrelation_samples_A->arrays;
+    struct i_array* samples_B = decorrelation_samples_B->arrays;
 
-    return;
 
-    /*FIXME - some dummy placeholders for tunables*/
-    ia_append(decorrelation_terms, 18);
+    /*FIXME - figure these out*/
+    ia_vappend(entropy_variables_A, 3, 0, 0, 0);
+    ia_vappend(entropy_variables_B, 3, 0, 0, 0);
 
-    ia_append(decorrelation_deltas, 2);
+    switch (context->options.decorrelation_passes) {
+    case 0:
+        break;
+    case 1:
+        /*FIXME - figure these out*/
+        ia_append(decorrelation_terms, 18);
+        ia_append(decorrelation_deltas, 2);
 
-    ia_append(decorrelation_weights_A, 48);
-    if (channel_count > 1) {
-        ia_append(decorrelation_weights_B, 16);
-    }
+        ia_append(decorrelation_weights_A, 16);
+        if (channel_count > 1)
+            ia_append(decorrelation_weights_B, 16);
+        ia_vappend(&(samples_A[0]), 2, 0, 0);
+        if (channel_count > 1)
+            ia_vappend(&(samples_B[0]), 2, 0, 0);
+        break;
+    case 2:
+        /*FIXME - figure these out*/
 
-    ia_append(iaa_getitem(decorrelation_samples_A, 0), 0);
-    ia_append(iaa_getitem(decorrelation_samples_A, 0), 0);
-    /* ia_append(iaa_getitem(decorrelation_samples_A, 0), 0); */
-    if (channel_count > 1) {
-        ia_append(iaa_getitem(decorrelation_samples_B, 0), 0);
-        ia_append(iaa_getitem(decorrelation_samples_B, 0), 0);
-        /* ia_append(iaa_getitem(decorrelation_samples_B, 0), 0); */
+        ia_vappend(decorrelation_terms, 2, 18, 17);
+        ia_vappend(decorrelation_deltas, 2, 2, 2);
+
+        ia_vappend(decorrelation_weights_A, 2, 16, 16);
+        if (channel_count > 1)
+            ia_vappend(decorrelation_weights_B, 2, 16, 16);
+        ia_vappend(&(samples_A[0]), 2, 0, 0);
+        ia_vappend(&(samples_A[1]), 2, 0, 0);
+        if (channel_count > 1) {
+            ia_vappend(&(samples_B[0]), 2, 0, 0);
+            ia_vappend(&(samples_B[1]), 2, 0, 0);
+        }
+        break;
+    case 5:
+        /*FIXME - figure these out*/
+
+        ia_vappend(decorrelation_terms, 5, 18, 18, 2, 17, 3);
+        ia_vappend(decorrelation_deltas, 5, 2, 2, 2, 2, 2);
+
+        ia_vappend(decorrelation_weights_A, 5, 16, 16, 16, 16, 16);
+        if (channel_count > 1)
+            ia_vappend(decorrelation_weights_B, 5, 16, 16, 16, 16, 16);
+        ia_vappend(&(samples_A[0]), 2, 0, 0);
+        ia_vappend(&(samples_A[1]), 2, 0, 0);
+        ia_vappend(&(samples_A[2]), 2, 0, 0);
+        ia_vappend(&(samples_A[3]), 2, 0, 0);
+        ia_vappend(&(samples_A[4]), 3, 0, 0, 0);
+        if (channel_count > 1) {
+            ia_vappend(&(samples_B[0]), 2, 0, 0);
+            ia_vappend(&(samples_B[1]), 2, 0, 0);
+            ia_vappend(&(samples_B[2]), 2, 0, 0);
+            ia_vappend(&(samples_B[3]), 2, 0, 0);
+            ia_vappend(&(samples_B[4]), 3, 0, 0, 0);
+        }
+        break;
+    case 10:
+        /*FIXME - figure these out*/
+
+        ia_vappend(decorrelation_terms, 10, 18, 18, 18, -2, 2,
+                   3, 5, -1, 17, 4);
+        ia_vappend(decorrelation_deltas, 10, 2, 2, 2, 2, 2,
+                   2, 2, 2, 2, 2);
+        ia_vappend(decorrelation_weights_A, 10, 16, 16, 16, 16, 16,
+                   16, 16, 16, 16, 16);
+        if (channel_count > 1)
+            ia_vappend(decorrelation_weights_B, 10, 16, 16, 16, 16, 16,
+                       16, 16, 16, 16, 16);
+        ia_vappend(&(samples_A[0]), 2, 0, 0);
+        ia_vappend(&(samples_A[1]), 2, 0, 0);
+        ia_vappend(&(samples_A[2]), 2, 0, 0);
+        ia_vappend(&(samples_A[3]), 1, 0);
+        ia_vappend(&(samples_A[4]), 2, 0, 0);
+        ia_vappend(&(samples_A[5]), 3, 0, 0, 0);
+        ia_vappend(&(samples_A[6]), 5, 0, 0, 0, 0, 0);
+        ia_vappend(&(samples_A[7]), 1, 0);
+        ia_vappend(&(samples_A[8]), 2, 0, 0);
+        ia_vappend(&(samples_A[9]), 4, 0, 0, 0, 0);
+        if (channel_count > 1) {
+            ia_vappend(&(samples_B[0]), 2, 0, 0);
+            ia_vappend(&(samples_B[1]), 2, 0, 0);
+            ia_vappend(&(samples_B[2]), 2, 0, 0);
+            ia_vappend(&(samples_B[3]), 1, 0);
+            ia_vappend(&(samples_B[4]), 2, 0, 0);
+            ia_vappend(&(samples_B[5]), 3, 0, 0, 0);
+            ia_vappend(&(samples_B[6]), 5, 0, 0, 0, 0, 0);
+            ia_vappend(&(samples_B[7]), 1, 0);
+            ia_vappend(&(samples_B[8]), 2, 0, 0);
+            ia_vappend(&(samples_B[9]), 4, 0, 0, 0, 0);
+        }
+
+        break;
+    case 16:
+        /*FIXME - figure these out*/
+
+        ia_vappend(decorrelation_terms, 16, 18, 18, 2, 3, -2, 18, 2, 4,
+                   7, 5, 3, 6, 8, -1, 18, 2);
+        ia_vappend(decorrelation_deltas, 16, 2, 2, 2, 2, 2, 2, 2, 2,
+                   2, 2, 2, 2, 2, 2, 2, 2);
+        ia_vappend(decorrelation_weights_A, 16, 16, 16, 16, 16,
+                   16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16);
+        if (channel_count > 1)
+            ia_vappend(decorrelation_weights_B, 16, 16, 16, 16, 16,
+                       16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16);
+        ia_vappend(&(samples_A[0]), 2, 0, 0);
+        ia_vappend(&(samples_A[1]), 2, 0, 0);
+        ia_vappend(&(samples_A[2]), 2, 0, 0);
+        ia_vappend(&(samples_A[3]), 3, 0, 0, 0);
+        ia_vappend(&(samples_A[4]), 1, 0);
+        ia_vappend(&(samples_A[5]), 2, 0, 0);
+        ia_vappend(&(samples_A[6]), 2, 0, 0);
+        ia_vappend(&(samples_A[7]), 4, 0, 0, 0, 0);
+        ia_vappend(&(samples_A[8]), 7, 0, 0, 0, 0, 0, 0, 0);
+        ia_vappend(&(samples_A[9]), 5, 0, 0, 0, 0, 0);
+        ia_vappend(&(samples_A[10]), 3, 0, 0, 0);
+        ia_vappend(&(samples_A[11]), 6, 0, 0, 0, 0, 0, 0);
+        ia_vappend(&(samples_A[12]), 8, 0, 0, 0, 0, 0, 0, 0, 0);
+        ia_vappend(&(samples_A[13]), 1, 0);
+        ia_vappend(&(samples_A[14]), 2, 0, 0);
+        ia_vappend(&(samples_A[15]), 2, 0, 0);
+        if (channel_count > 1) {
+            ia_vappend(&(samples_B[0]), 2, 0, 0);
+            ia_vappend(&(samples_B[1]), 2, 0, 0);
+            ia_vappend(&(samples_B[2]), 2, 0, 0);
+            ia_vappend(&(samples_B[3]), 3, 0, 0, 0);
+            ia_vappend(&(samples_B[4]), 1, 0);
+            ia_vappend(&(samples_B[5]), 2, 0, 0);
+            ia_vappend(&(samples_B[6]), 2, 0, 0);
+            ia_vappend(&(samples_B[7]), 4, 0, 0, 0, 0);
+            ia_vappend(&(samples_B[8]), 7, 0, 0, 0, 0, 0, 0, 0);
+            ia_vappend(&(samples_B[9]), 5, 0, 0, 0, 0, 0);
+            ia_vappend(&(samples_B[10]), 3, 0, 0, 0);
+            ia_vappend(&(samples_B[11]), 6, 0, 0, 0, 0, 0, 0);
+            ia_vappend(&(samples_B[12]), 8, 0, 0, 0, 0, 0, 0, 0, 0);
+            ia_vappend(&(samples_B[13]), 1, 0);
+            ia_vappend(&(samples_B[14]), 2, 0, 0);
+            ia_vappend(&(samples_B[15]), 2, 0, 0);
+        }
+        break;
+    default:
+        break;
     }
 }
 

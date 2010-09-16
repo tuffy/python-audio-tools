@@ -30,6 +30,32 @@ ia_init(struct i_array *array, ia_size_t initial_size)
     array->size = 0;
 }
 
+void
+ia_vappend(struct i_array *array, ia_size_t count, ...) {
+    va_list ap;
+    ia_size_t new_total_size;
+    ia_data_t val;
+
+    va_start(ap, count);
+
+    /*allocate enough space for the new entries*/
+    for (new_total_size = array->total_size;
+         (array->size + count) > new_total_size;)
+        new_total_size *= 2;
+    if (new_total_size != array->total_size) {
+        array->total_size = new_total_size;
+        array->data = realloc(array->data,
+                              new_total_size * sizeof(ia_data_t));
+    }
+
+    for (;count > 0; count--) {
+        val = va_arg(ap, ia_data_t);
+        array->data[array->size++] = val;
+    }
+
+    va_end(ap);
+}
+
 struct i_array
 ia_blank(void) {
     struct i_array a;

@@ -7,6 +7,7 @@
 #include <string.h>
 #include <float.h>
 #include <limits.h>
+#include <stdarg.h>
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -78,6 +79,10 @@ ia_append(struct i_array *array, ia_data_t val)
         array->data[array->size++] = val;
     }
 }
+
+/*appends a variable number of integer arguments to the given array*/
+void
+ia_vappend(struct i_array *array, ia_size_t count, ...);
 
 static inline ia_data_t
 ia_getitem(struct i_array *array, ia_offset_t index)
