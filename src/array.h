@@ -99,6 +99,15 @@ ia_setitem(struct i_array *array, ia_offset_t index, ia_data_t value)
     }
 }
 
+static inline int
+ia_equal(struct i_array *array1, struct i_array *array2) {
+    if (array1->size == array2->size) {
+        return (memcmp(array1->data, array2->data,
+                       array1->size * sizeof(ia_data_t)) == 0);
+    } else
+        return 0;
+}
+
 /*reverses the elements of "array" in place*/
 static inline void
 ia_reverse(struct i_array *array)

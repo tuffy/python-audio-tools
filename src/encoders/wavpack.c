@@ -41,14 +41,22 @@ encoders_encode_wavpack(PyObject *dummy,
     static char *kwlist[] = {"filename",
                              "pcmreader",
                              "block_size",
+
+                             "joint_stereo",
                              NULL};
+
+    /*set some default option values*/
+    context.options.joint_stereo = 0;
+
     if (!PyArg_ParseTupleAndKeywords(args,
                                      keywds,
-                                     "sOi",
+                                     "sOi|i",
                                      kwlist,
                                      &filename,
                                      &pcmreader_obj,
-                                     &block_size))
+                                     &block_size,
+
+                                     &(context.options.joint_stereo)))
         return NULL;
 
     if (block_size <= 0) {
@@ -87,12 +95,14 @@ encoders_encode_wavpack(PyObject *dummy,
         goto error;
 
     while (samples.arrays[0].size > 0) {
-        wavpack_write_frame(stream, &context,
-                            &samples, reader->channel_mask);
+        wavpack_write_frame(stream, &context, &samples, reader->channel_mask);
 
         if (!pcmr_read(reader, block_size, &samples))
             goto error;
     }
+
+    /*add MD5 block to end of stream*/
+    /*FIXME*/
 
 #ifdef STANDALONE
     fprintf(stderr, "total samples = %u\n", context.block_index);
@@ -360,14 +370,16 @@ wavpack_write_block(Bitstream* bs,
         }
     }
 
-    /*FIXME - set these to hard-coded for now*/
-    if (channel_count > 2) {
+    /*perform joint stereo calculation if possible and requested*/
+    if (context->options.joint_stereo && (channel_count > 1)) {
         wavpack_perform_joint_stereo(channel_A, channel_B);
         block_header.joint_stereo = 1;
     } else {
         block_header.joint_stereo = 0;
     }
-    block_header.cross_channel_decorrelation = 1;
+
+    /*FIXME - determine false stereo*/
+    block_header.cross_channel_decorrelation = 0;
     block_header.false_stereo = 0;
 
     /*FIXME - apply joint stereo to samples, if requested*/

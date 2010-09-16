@@ -39,6 +39,10 @@ struct wavpack_encoder_context {
     uint32_t block_index;
     uint32_t byte_count;
     struct i_array block_offsets;
+
+    struct {
+        uint8_t joint_stereo;
+    } options;
 };
 
 struct wavpack_block_header {
