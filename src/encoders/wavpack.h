@@ -40,6 +40,15 @@ struct wavpack_encoder_context {
     uint32_t byte_count;
     struct i_array block_offsets;
 
+    /*We'll try saving these from block to block
+      which seems like how the reference encoder does things.
+      Each sub-array is the decorrelation_weight values
+      for each pass of a given channel.
+      For example:
+      decorrelation_weights.arrays[1].data[2]
+      is the 3rd pass of channel 2.*/
+    struct ia_array decorrelation_weights;
+
     struct {
         int joint_stereo;
         int decorrelation_passes;
@@ -135,6 +144,7 @@ wavpack_write_block(Bitstream* bs,
                     struct wavpack_encoder_context* context,
                     struct i_array* channel_A,
                     struct i_array* channel_B,
+                    int channel_number,
                     int channel_count,
                     int first_block,
                     int last_block);
@@ -255,6 +265,8 @@ wavpack_log2(int32_t sample);
 
 /*Performs a decorrelation pass over channel_A and (optionally) channel_B,
   altering their values in the process.
+  decorrelation_weight_A and (optionally) decorrelation_weight_B are updated
+  in the process.
   If "channel_count" is 1, only channel_A and weight_A are used.
   Otherwise, channel_B is also used.*/
 void
@@ -262,8 +274,8 @@ wavpack_perform_decorrelation_pass(struct i_array* channel_A,
                                    struct i_array* channel_B,
                                    int decorrelation_term,
                                    int decorrelation_delta,
-                                   int decorrelation_weight_A,
-                                   int decorrelation_weight_B,
+                                   int* decorrelation_weight_A,
+                                   int* decorrelation_weight_B,
                                    struct i_array* decorrelation_samples_A,
                                    struct i_array* decorrelation_samples_B,
                                    int channel_count);
@@ -272,7 +284,7 @@ void
 wavpack_perform_decorrelation_pass_1ch(struct i_array* channel,
                                        int decorrelation_term,
                                        int decorrelation_delta,
-                                       int decorrelation_weight,
+                                       int* decorrelation_weight,
                                        struct i_array* decorrelation_samples);
 
 /*Returns OK if the given options are compatible.
@@ -286,6 +298,7 @@ void
 wavpack_calculate_tunables(struct wavpack_encoder_context* context,
                            struct i_array* channel_A,
                            struct i_array* channel_B,
+                           int channel_number,
                            int channel_count,
                            struct i_array* decorrelation_terms,
                            struct i_array* decorrelation_deltas,
@@ -296,6 +309,12 @@ wavpack_calculate_tunables(struct wavpack_encoder_context* context,
                            struct i_array* entropy_variables_A,
                            struct i_array* entropy_variables_B);
 
+void
+wavpack_store_tunables(struct wavpack_encoder_context* context,
+                       int channel_number,
+                       int channel_count,
+                       struct i_array* decorrelation_weights_A,
+                       struct i_array* decorrelation_weights_B);
 
 /*Updates the contents of channel_A and channel_B to be
   joint stereo.*/
