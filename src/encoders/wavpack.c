@@ -90,6 +90,8 @@ encoders_encode_wavpack(PyObject *dummy,
     context.byte_count = 0;
     ia_init(&(context.block_offsets), 1);
     iaa_init(&(context.decorrelation_weights), reader->channels, 0);
+    audiotools__MD5Init(&(context.md5));
+    pcmr_add_callback(reader, wavpack_calculate_md5, &(context.md5));
     bs_add_callback(stream, wavpack_count_bytes, &(context.byte_count));
 
     iaa_init(&samples, reader->channels, block_size);
@@ -109,11 +111,8 @@ encoders_encode_wavpack(PyObject *dummy,
     }
 
     /*add MD5 block to end of stream*/
-    /*FIXME*/
+    wavpack_write_md5(stream, &context);
 
-#ifdef STANDALONE
-    fprintf(stderr, "total samples = %u\n", context.block_index);
-#endif
     /*go back and set block header data as necessary*/
     for (i = 0; i < context.block_offsets.size; i++) {
         fseek(file, context.block_offsets.data[i] + 12, SEEK_SET);
@@ -165,6 +164,9 @@ encoders_encode_wavpack(char *filename,
     context.options.decorrelation_passes = decorrelation_passes;
     ia_init(&(context.block_offsets), 1);
     iaa_init(&(context.decorrelation_weights), reader->channels, 0);
+
+    audiotools__MD5Init(&(context.md5));
+    pcmr_add_callback(reader, wavpack_calculate_md5, &(context.md5));
     bs_add_callback(stream, wavpack_count_bytes, &(context.byte_count));
 
     iaa_init(&samples, reader->channels, block_size);
@@ -183,6 +185,9 @@ encoders_encode_wavpack(char *filename,
         if (!pcmr_read(reader, block_size, &samples))
             goto error;
     }
+
+    /*add MD5 block to end of stream*/
+    wavpack_write_md5(stream, &context);
 
     /*go back and set block header data as necessary*/
     for (i = 0; i < context.block_offsets.size; i++) {
@@ -305,6 +310,40 @@ wavpack_crc(ia_data_t sample, uint32_t crc) {
 }
 
 void
+wavpack_initialize_block_header(struct wavpack_block_header* header,
+                                struct wavpack_encoder_context* context,
+                                int channel_count,
+                                int pcm_frames,
+                                int first_block,
+                                int last_block) {
+    /*must set block_size*/
+    header->version = WAVPACK_VERSION;
+    header->track_number = 0;
+    header->index_number = 0;
+    header->total_samples = 0;         /*placeholder*/
+    header->block_index = context->block_index;
+    header->block_samples = pcm_frames;
+    header->bits_per_sample = context->bits_per_sample;
+    header->mono_output = channel_count == 1 ? 1 : 0;
+    header->hybrid_mode = 0;
+    header->joint_stereo = 0;
+    header->cross_channel_decorrelation = 0;
+    header->hybrid_noise_shaping = 0;
+    header->floating_point_data = 0;
+    header->extended_size_integers = 0;
+    header->hybrid_parameters_control_bitrate = 0;
+    header->hybrid_noise_balanced = 0;
+    header->initial_block_in_sequence = first_block;
+    header->final_block_in_sequence = last_block;
+    header->left_shift = 0;
+    header->maximum_data_magnitude = 0;
+    header->sample_rate = context->sample_rate;
+    header->use_IIR = 0;
+    header->false_stereo = 0;
+    header->crc = 0xFFFFFFFF;
+}
+
+void
 wavpack_write_block(Bitstream* bs,
                     struct wavpack_encoder_context* context,
                     struct i_array* channel_A,
@@ -340,25 +379,12 @@ wavpack_write_block(Bitstream* bs,
 
     /*initialize the WavPack block header fields*/
 
-    block_header.version = 0x406;
-    block_header.track_number = 0;
-    block_header.index_number = 0;
-    block_header.total_samples = 0; /*we won't know this in advance*/
-    block_header.block_index = context->block_index;
-    block_header.block_samples = channel_A->size;
-    block_header.bits_per_sample = context->bits_per_sample;
-    block_header.mono_output = channel_count == 1 ? 1 : 0;
-    block_header.hybrid_mode = 0;
-
-    block_header.hybrid_noise_shaping = 0;
-    block_header.floating_point_data = 0;
-    block_header.extended_size_integers = 0;
-    block_header.hybrid_parameters_control_bitrate = 0;
-    block_header.hybrid_noise_balanced = 0;
-    block_header.initial_block_in_sequence = first_block;
-    block_header.final_block_in_sequence = last_block;
-    block_header.left_shift = 0;
-    block_header.crc = 0xFFFFFFFF;
+    wavpack_initialize_block_header(&block_header,
+                                    context,
+                                    channel_count,
+                                    channel_A->size,
+                                    first_block,
+                                    last_block);
 
     assert(channel_count > 0);
     assert(channel_count <= 2);
@@ -370,9 +396,6 @@ wavpack_write_block(Bitstream* bs,
         block_header.maximum_data_magnitude = MAX(
             count_bits(ia_reduce(channel_A, 0, wavpack_abs_maximum)),
             count_bits(ia_reduce(channel_B, 0, wavpack_abs_maximum)));
-
-    block_header.sample_rate = context->sample_rate;
-    block_header.use_IIR = 0;
 
     /*calculate checksum of unprocessed data*/
     if (channel_count == 1) {
@@ -399,8 +422,6 @@ wavpack_write_block(Bitstream* bs,
     /*FIXME - determine false stereo*/
     block_header.cross_channel_decorrelation = 0;
     block_header.false_stereo = 0;
-
-    /*FIXME - apply joint stereo to samples, if requested*/
 
     /*assign tunables for block data*/
     wavpack_calculate_tunables(context,
@@ -1749,6 +1770,22 @@ wavpack_count_bytes(int byte, void* value) {
 }
 
 void
+wavpack_write_md5(Bitstream *bs,
+                  struct wavpack_encoder_context *context) {
+    struct wavpack_block_header block_header;
+    uint8_t md5sum[16];
+
+    audiotools__MD5Final(md5sum, &(context->md5));
+
+    ia_append(&(context->block_offsets), context->byte_count);
+    wavpack_initialize_block_header(&block_header, context, 1, 0, 1, 1);
+    block_header.block_size = 24 + 2 + 16;
+    wavpack_write_block_header(bs, &block_header);
+    wavpack_write_subblock_header(bs, WV_MD5, 1, 16);
+    fwrite(md5sum, sizeof(uint8_t), 16, bs->file);
+}
+
+void
 wavpack_print_medians(FILE *output,
                       struct i_array* medians_A,
                       struct i_array* medians_B,
@@ -1760,9 +1797,17 @@ wavpack_print_medians(FILE *output,
                 medians_B->data[0], medians_B->data[1], medians_B->data[2]);
 }
 
+void
+wavpack_calculate_md5(void* data, unsigned char *buffer, unsigned long len) {
+    audiotools__MD5Update((audiotools__MD5Context*)data,
+                          (const void*)buffer,
+                          len);
+}
+
 #ifdef STANDALONE
 int main(int argc, char *argv[]) {
     encoders_encode_wavpack(argv[1], stdin, 44100, 1, 1);
     return 0;
 }
+
 #endif

@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include "../bitstream_w.h"
 #include "../array.h"
+#include "../md5.h"
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -24,6 +25,8 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 *******************************************************/
 
+#define WAVPACK_VERSION 0x407
+
 typedef enum {OK, ERROR} status;
 
 typedef enum {WV_DECORR_TERMS      = 0x2,
@@ -31,7 +34,8 @@ typedef enum {WV_DECORR_TERMS      = 0x2,
               WV_DECORR_SAMPLES    = 0x4,
               WV_ENTROPY_VARIABLES = 0x5,
               WV_INT32_INFO        = 0x9,
-              WV_BITSTREAM         = 0xA} wv_metadata_function;
+              WV_BITSTREAM         = 0xA,
+              WV_MD5               = 0x6} wv_metadata_function;
 
 struct wavpack_encoder_context {
     uint8_t bits_per_sample;
@@ -39,6 +43,7 @@ struct wavpack_encoder_context {
     uint32_t block_index;
     uint32_t byte_count;
     struct i_array block_offsets;
+    audiotools__MD5Context md5;
 
     /*We'll try saving these from block to block
       which seems like how the reference encoder does things.
@@ -131,6 +136,10 @@ wavpack_write_frame(Bitstream *bs,
                     struct ia_array *samples,
                     long channel_mask);
 
+void
+wavpack_write_md5(Bitstream *bs,
+                  struct wavpack_encoder_context* context);
+
 /*given a channel count and channel mask (which may be 0),
   build a list of 1 or 2 channel count values
   for each left/right pair*/
@@ -138,6 +147,14 @@ void
 wavpack_channel_splits(struct i_array *counts,
                        int channel_count,
                        long channel_mask);
+
+void
+wavpack_initialize_block_header(struct wavpack_block_header* header,
+                                struct wavpack_encoder_context* context,
+                                int channel_count,
+                                int pcm_frames,
+                                int first_block,
+                                int last_block);
 
 void
 wavpack_write_block(Bitstream* bs,
@@ -325,4 +342,6 @@ wavpack_perform_joint_stereo(struct i_array *channel_A,
 void
 wavpack_count_bytes(int byte, void* value);
 
+void
+wavpack_calculate_md5(void* data, unsigned char *buffer, unsigned long len);
 

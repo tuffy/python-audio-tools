@@ -15,8 +15,8 @@ alacenc: $(OBJS) encoders/alac.c encoders/alac.h alac_lpc.o
 shnenc: $(OBJS) encoders/shn.c encoders/shn.h
 	gcc $(FLAGS) -DVERSION=$(VERSION) -o shnenc encoders/shn.c $(OBJS) -DSTANDALONE -lm
 
-wvenc: $(OBJS) encoders/wavpack.c encoders/wavpack.h
-	gcc $(FLAGS) -o wvenc encoders/wavpack.c $(OBJS) -DSTANDALONE
+wvenc: $(OBJS) encoders/wavpack.c encoders/wavpack.h md5.o
+	gcc $(FLAGS) -o wvenc encoders/wavpack.c md5.o $(OBJS) -DSTANDALONE
 
 clean:
 	rm -f flacenc alacenc shnenc *.o
