@@ -1,0 +1,24 @@
+digraph wavpack_zeroes {
+  node [fontname="DejaVuSans"];
+  edge [fontname="DejaVuSans"];
+  size = "1.5,3";
+  margin = "0";
+
+  init [shape=record,label="{zeroes=0}"];
+  init_test_zero [shape=diamond,label="is\nresidual[i] = 0?"];
+
+  test_zero [shape=diamond,label="is\nresidual[i] = 0"];
+  inc_i [shape=record,label="{zeroes = zeroes + 1|i = i + 1}"];
+
+  setup [shape=record,label="{zeroes = 1|Entropy A₁ = 0|Entropy A₂ = 0|Entropy A₃ = 0|Entropy B₁ = 0|Entropy B₂ = 0|Entropy B₃ = 0|i = i + 1}"]
+
+  init -> init_test_zero;
+  init_test_zero -> done [label="NO"];
+  init_test_zero -> setup [label="YES"];
+  setup -> test_zero;
+  test_zero -> inc_i [label="YES"];
+  test_zero -> done [label="NO"];
+  inc_i -> test_zero;
+
+  done [shape=record,label="{output zeroes|continue residual encoding}"];
+}
