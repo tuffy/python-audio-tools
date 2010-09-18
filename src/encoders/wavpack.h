@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include "../bitstream_w.h"
 #include "../array.h"
+#include "../pcmreader.h"
 #include "../md5.h"
 
 /********************************************************
@@ -29,7 +30,8 @@
 
 typedef enum {OK, ERROR} status;
 
-typedef enum {WV_DECORR_TERMS      = 0x2,
+typedef enum {WV_WAVE_CHUNK        = 0x1,
+              WV_DECORR_TERMS      = 0x2,
               WV_DECORR_WEIGHTS    = 0x3,
               WV_DECORR_SAMPLES    = 0x4,
               WV_ENTROPY_VARIABLES = 0x5,
@@ -40,10 +42,20 @@ typedef enum {WV_DECORR_TERMS      = 0x2,
 struct wavpack_encoder_context {
     uint8_t bits_per_sample;
     uint32_t sample_rate;
+    uint16_t total_channels;
+    uint32_t channel_mask;
+
     uint32_t block_index;
     uint32_t byte_count;
     struct i_array block_offsets;
+
     audiotools__MD5Context md5;
+    uint32_t pcm_bytes;
+
+    struct {
+        int header_written;
+        long header_offset;
+    } wave;
 
     /*We'll try saving these from block to block
       which seems like how the reference encoder does things.
@@ -345,3 +357,10 @@ wavpack_count_bytes(int byte, void* value);
 void
 wavpack_calculate_md5(void* data, unsigned char *buffer, unsigned long len);
 
+void
+wavpack_count_pcm_bytes(void* data, unsigned char* buffer, unsigned long len);
+
+void
+wavpack_write_wave_header_sub_block(Bitstream* stream,
+                                    struct wavpack_encoder_context* context,
+                                    uint32_t pcm_bytes);

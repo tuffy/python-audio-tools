@@ -1,5 +1,4 @@
 #include "wavpack.h"
-#include "../pcmreader.h"
 #include <assert.h>
 #include <limits.h>
 
@@ -86,12 +85,18 @@ encoders_encode_wavpack(PyObject *dummy,
 
     context.bits_per_sample = reader->bits_per_sample;
     context.sample_rate = reader->sample_rate;
+    context.total_channels = reader->channels;
+    context.channel_mask = reader->channel_mask;
+
     context.block_index = 0;
     context.byte_count = 0;
     ia_init(&(context.block_offsets), 1);
     iaa_init(&(context.decorrelation_weights), reader->channels, 0);
     audiotools__MD5Init(&(context.md5));
+    context.pcm_bytes = 0;
+    context.wave.header_written = 0;
     pcmr_add_callback(reader, wavpack_calculate_md5, &(context.md5));
+    pcmr_add_callback(reader, wavpack_count_pcm_bytes, &(context.pcm_bytes));
     bs_add_callback(stream, wavpack_count_bytes, &(context.byte_count));
 
     iaa_init(&samples, reader->channels, block_size);
@@ -112,6 +117,12 @@ encoders_encode_wavpack(PyObject *dummy,
 
     /*add MD5 block to end of stream*/
     wavpack_write_md5(stream, &context);
+
+    /*update wave header, if necessary*/
+    fseek(file, context.wave.header_offset, SEEK_SET);
+    wavpack_write_wave_header_sub_block(stream,
+                                        &context,
+                                        context.pcm_bytes);
 
     /*go back and set block header data as necessary*/
     for (i = 0; i < context.block_offsets.size; i++) {
@@ -158,6 +169,9 @@ encoders_encode_wavpack(char *filename,
 
     context.bits_per_sample = reader->bits_per_sample;
     context.sample_rate = reader->sample_rate;
+    context.total_channels = reader->channels;
+    context.channel_mask = reader->channel_mask;
+
     context.block_index = 0;
     context.byte_count = 0;
     context.options.joint_stereo = joint_stereo;
@@ -166,7 +180,10 @@ encoders_encode_wavpack(char *filename,
     iaa_init(&(context.decorrelation_weights), reader->channels, 0);
 
     audiotools__MD5Init(&(context.md5));
+    context.pcm_bytes = 0;
+    context.wave.header_written = 0;
     pcmr_add_callback(reader, wavpack_calculate_md5, &(context.md5));
+    pcmr_add_callback(reader, wavpack_count_pcm_bytes, &(context.pcm_bytes));
     bs_add_callback(stream, wavpack_count_bytes, &(context.byte_count));
 
     iaa_init(&samples, reader->channels, block_size);
@@ -188,6 +205,12 @@ encoders_encode_wavpack(char *filename,
 
     /*add MD5 block to end of stream*/
     wavpack_write_md5(stream, &context);
+
+    /*update wave header, if necessary*/
+    fseek(file, context.wave.header_offset, SEEK_SET);
+    wavpack_write_wave_header_sub_block(stream,
+                                        &context,
+                                        context.pcm_bytes);
 
     /*go back and set block header data as necessary*/
     for (i = 0; i < context.block_offsets.size; i++) {
@@ -365,6 +388,12 @@ wavpack_write_block(Bitstream* bs,
 
     Bitstream *sub_blocks = bs_open_recorder();
     int i;
+
+    if (!context->wave.header_written) {
+        context->wave.header_offset = context->byte_count + 32;
+        wavpack_write_wave_header_sub_block(sub_blocks, context, 0);
+        context->wave.header_written = 1;
+    }
 
     ia_init(&decorrelation_terms, 1);
     ia_init(&decorrelation_deltas, 1);
@@ -1802,6 +1831,80 @@ wavpack_calculate_md5(void* data, unsigned char *buffer, unsigned long len) {
     audiotools__MD5Update((audiotools__MD5Context*)data,
                           (const void*)buffer,
                           len);
+}
+
+void
+wavpack_count_pcm_bytes(void* data, unsigned char* buffer, unsigned long len) {
+    uint32_t* total_bytes = (uint32_t*)data;
+    *total_bytes += len;
+}
+
+void
+wavpack_write_wave_header_sub_block(Bitstream* stream,
+                                    struct wavpack_encoder_context* context,
+                                    uint32_t pcm_bytes) {
+    Bitstream* wave_header = bs_open_recorder();
+    uint8_t extensible_sub_format[] = {0x01, 0x00, 0x00, 0x00, 0x00,
+                                       0x00, 0x10, 0x00, 0x80, 0x00,
+                                       0x00, 0xaa, 0x00, 0x38, 0x9b,
+                                       0x71};
+    int i;
+
+    if ((context->total_channels <= 2) && (context->bits_per_sample <= 16)) {
+        /*build a standard WAVE header if channels <= 2 and bps <= 16*/
+
+        wave_header->write_bits(wave_header, 32, 0x46464952); /*ID*/
+        wave_header->write_bits(wave_header, 32, 4 + 8 + 16 + pcm_bytes);
+        wave_header->write_bits(wave_header, 32, 0x45564157); /*Type*/
+        wave_header->write_bits(wave_header, 32, 0x20746D66); /*chunk ID*/
+        wave_header->write_bits(wave_header, 32, 16); /*fmt size*/
+
+        wave_header->write_bits(wave_header, 16, 1);  /*uncompressed*/
+        wave_header->write_bits(wave_header, 16, context->total_channels);
+        wave_header->write_bits(wave_header, 32, context->sample_rate);
+        wave_header->write_bits(wave_header, 32,
+                                (context->sample_rate *
+                                 context->total_channels *
+                                 context->bits_per_sample) / 8);
+        wave_header->write_bits(wave_header, 16,
+                                (context->total_channels *
+                                 context->bits_per_sample) / 8);
+        wave_header->write_bits(wave_header, 16, context->bits_per_sample);
+    } else {
+        /*otherwise, build a WAVEFORMATEXTENSIBLE header*/
+
+        wave_header->write_bits(wave_header, 32, 0x46464952); /*ID*/
+        wave_header->write_bits(wave_header, 32, 4 + 8 + 40 + pcm_bytes);
+        wave_header->write_bits(wave_header, 32, 0x45564157); /*Type*/
+        wave_header->write_bits(wave_header, 32, 0x20746D66); /*chunk ID*/
+        wave_header->write_bits(wave_header, 32, 40);     /*fmt size*/
+
+        wave_header->write_bits(wave_header, 16, 0xFFFE); /*extensible*/
+        wave_header->write_bits(wave_header, 16, context->total_channels);
+        wave_header->write_bits(wave_header, 32, context->sample_rate);
+        wave_header->write_bits(wave_header, 32,
+                                (context->sample_rate *
+                                 context->total_channels *
+                                 context->bits_per_sample) / 8);
+        wave_header->write_bits(wave_header, 16,
+                                (context->total_channels *
+                                 context->bits_per_sample) / 8);
+        wave_header->write_bits(wave_header, 16, context->bits_per_sample);
+        wave_header->write_bits(wave_header, 16, 22);
+        wave_header->write_bits(wave_header, 16, context->bits_per_sample);
+        wave_header->write_bits(wave_header, 32, context->channel_mask);
+        for (i = 0; i < 16; i++)
+            wave_header->write_bits(wave_header, 8, extensible_sub_format[i]);
+    }
+
+    /*then write a 'data' chunk header*/
+    wave_header->write_bits(wave_header, 32, 0x61746164); /*'data' chunk ID*/
+    wave_header->write_bits(wave_header, 32, pcm_bytes);  /*data size*/
+
+    wavpack_write_subblock_header(stream, WV_WAVE_CHUNK, 1,
+                                  wave_header->bits_written / 8);
+    bs_dump_records(stream, wave_header);
+    bs_close(wave_header);
 }
 
 #ifdef STANDALONE
