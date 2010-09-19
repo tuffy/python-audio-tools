@@ -119,10 +119,12 @@ encoders_encode_wavpack(PyObject *dummy,
     wavpack_write_md5(stream, &context);
 
     /*update wave header, if necessary*/
-    fseek(file, context.wave.header_offset, SEEK_SET);
-    wavpack_write_wave_header_sub_block(stream,
-                                        &context,
-                                        context.pcm_bytes);
+    if (context.wave.header_written) {
+        fseek(file, context.wave.header_offset, SEEK_SET);
+        wavpack_write_wave_header_sub_block(stream,
+                                            &context,
+                                            context.pcm_bytes);
+    }
 
     /*go back and set block header data as necessary*/
     for (i = 0; i < context.block_offsets.size; i++) {
@@ -207,10 +209,12 @@ encoders_encode_wavpack(char *filename,
     wavpack_write_md5(stream, &context);
 
     /*update wave header, if necessary*/
-    fseek(file, context.wave.header_offset, SEEK_SET);
-    wavpack_write_wave_header_sub_block(stream,
-                                        &context,
-                                        context.pcm_bytes);
+    if (context.wave.header_written) {
+        fseek(file, context.wave.header_offset, SEEK_SET);
+        wavpack_write_wave_header_sub_block(stream,
+                                            &context,
+                                            context.pcm_bytes);
+    }
 
     /*go back and set block header data as necessary*/
     for (i = 0; i < context.block_offsets.size; i++) {
@@ -389,12 +393,6 @@ wavpack_write_block(Bitstream* bs,
     Bitstream *sub_blocks = bs_open_recorder();
     int i;
 
-    if (!context->wave.header_written) {
-        context->wave.header_offset = context->byte_count + 32;
-        wavpack_write_wave_header_sub_block(sub_blocks, context, 0);
-        context->wave.header_written = 1;
-    }
-
     ia_init(&decorrelation_terms, 1);
     ia_init(&decorrelation_deltas, 1);
     ia_init(&decorrelation_weights_A, 1);
@@ -466,6 +464,12 @@ wavpack_write_block(Bitstream* bs,
                                &decorrelation_samples_B,
                                &entropy_variables_A,
                                &entropy_variables_B);
+
+    if (!context->wave.header_written) {
+        context->wave.header_offset = context->byte_count + 32;
+        wavpack_write_wave_header_sub_block(sub_blocks, context, 0);
+        context->wave.header_written = 1;
+    }
 
     if (decorrelation_terms.size > 0) {
         wavpack_write_decorr_terms(sub_blocks,

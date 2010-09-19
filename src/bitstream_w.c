@@ -640,6 +640,7 @@ bs_dump_records(Bitstream* target, Bitstream* source)
                sizeof(BitstreamRecord) * source->records_written);
 
         target->records_written += source->records_written;
+        target->bits_written += source->bits_written;
     } else if (target->write_bits == write_bits_accumulator) {
         /*when dumping from a recorder to an accumulator,
           simply copy over the total number of written bits*/
