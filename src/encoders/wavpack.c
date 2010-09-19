@@ -43,22 +43,32 @@ encoders_encode_wavpack(PyObject *dummy,
 
                              "joint_stereo",
                              "decorrelation_passes",
+                             "wave_header",
+                             "wave_footer",
                              NULL};
 
     /*set some default option values*/
     context.options.joint_stereo = 0;
     context.options.decorrelation_passes = 0;
+    context.wave.header = NULL;
+    context.wave.footer = NULL;
+    context.wave.header_len = 0;
+    context.wave.footer_len = 0;
 
     if (!PyArg_ParseTupleAndKeywords(args,
                                      keywds,
-                                     "sOi|ii",
+                                     "sOi|iis#s#",
                                      kwlist,
                                      &filename,
                                      &pcmreader_obj,
                                      &block_size,
 
                                      &(context.options.joint_stereo),
-                                     &(context.options.decorrelation_passes)))
+                                     &(context.options.decorrelation_passes),
+                                     &(context.wave.header),
+                                     &(context.wave.header_len),
+                                     &(context.wave.footer),
+                                     &(context.wave.footer_len)))
         return NULL;
 
     if (wavpack_verify_tunables(&context) == ERROR)
@@ -93,8 +103,10 @@ encoders_encode_wavpack(PyObject *dummy,
     ia_init(&(context.block_offsets), 1);
     iaa_init(&(context.decorrelation_weights), reader->channels, 0);
     audiotools__MD5Init(&(context.md5));
+
     context.pcm_bytes = 0;
     context.wave.header_written = 0;
+
     pcmr_add_callback(reader, wavpack_calculate_md5, &(context.md5));
     pcmr_add_callback(reader, wavpack_count_pcm_bytes, &(context.pcm_bytes));
     bs_add_callback(stream, wavpack_count_bytes, &(context.byte_count));
@@ -115,11 +127,11 @@ encoders_encode_wavpack(PyObject *dummy,
             goto error;
     }
 
-    /*add MD5 block to end of stream*/
-    wavpack_write_md5(stream, &context);
+    /*add wave footer/MD5 sub-blocks to end of stream*/
+    wavpack_write_footer_block(stream, &context);
 
     /*update wave header, if necessary*/
-    if (context.wave.header_written) {
+    if ((context.wave.header_len == 0) && context.wave.header_written) {
         fseek(file, context.wave.header_offset, SEEK_SET);
         wavpack_write_wave_header_sub_block(stream,
                                             &context,
@@ -184,6 +196,11 @@ encoders_encode_wavpack(char *filename,
     audiotools__MD5Init(&(context.md5));
     context.pcm_bytes = 0;
     context.wave.header_written = 0;
+    context.wave.header = NULL;
+    context.wave.footer = NULL;
+    context.wave.header_len = 0;
+    context.wave.footer_len = 0;
+
     pcmr_add_callback(reader, wavpack_calculate_md5, &(context.md5));
     pcmr_add_callback(reader, wavpack_count_pcm_bytes, &(context.pcm_bytes));
     bs_add_callback(stream, wavpack_count_bytes, &(context.byte_count));
@@ -205,11 +222,11 @@ encoders_encode_wavpack(char *filename,
             goto error;
     }
 
-    /*add MD5 block to end of stream*/
-    wavpack_write_md5(stream, &context);
+    /*add wave footer/MD5 sub-block to end of stream*/
+    wavpack_write_footer_block(stream, &context);
 
     /*update wave header, if necessary*/
-    if (context.wave.header_written) {
+    if ((context.wave.header_len == 0) && context.wave.header_written) {
         fseek(file, context.wave.header_offset, SEEK_SET);
         wavpack_write_wave_header_sub_block(stream,
                                             &context,
@@ -466,8 +483,15 @@ wavpack_write_block(Bitstream* bs,
                                &entropy_variables_B);
 
     if (!context->wave.header_written) {
-        context->wave.header_offset = context->byte_count + 32;
-        wavpack_write_wave_header_sub_block(sub_blocks, context, 0);
+        if (context->wave.header_len == 0) {
+            context->wave.header_offset = context->byte_count + 32;
+            wavpack_write_wave_header_sub_block(sub_blocks, context, 0);
+        } else {
+            wavpack_write_subblock_header(sub_blocks, WV_WAVE_HEADER, 1,
+                                          context->wave.header_len);
+            for (i = 0; i < context->wave.header_len; i++)
+                sub_blocks->write_bits(sub_blocks, 8, context->wave.header[i]);
+        }
         context->wave.header_written = 1;
     }
 
@@ -1803,19 +1827,34 @@ wavpack_count_bytes(int byte, void* value) {
 }
 
 void
-wavpack_write_md5(Bitstream *bs,
-                  struct wavpack_encoder_context *context) {
+wavpack_write_footer_block(Bitstream *bs,
+                           struct wavpack_encoder_context *context) {
+    Bitstream* block_data = bs_open_recorder();
     struct wavpack_block_header block_header;
     uint8_t md5sum[16];
-
-    audiotools__MD5Final(md5sum, &(context->md5));
+    int i;
 
     ia_append(&(context->block_offsets), context->byte_count);
+    audiotools__MD5Final(md5sum, &(context->md5));
     wavpack_initialize_block_header(&block_header, context, 1, 0, 1, 1);
-    block_header.block_size = 24 + 2 + 16;
+
+    /*write MD5 sub-block*/
+    wavpack_write_subblock_header(block_data, WV_MD5, 1, 16);
+    for (i = 0; i < 16; i++)
+        block_data->write_bits(block_data, 8, md5sum[i]);
+
+    /*write wave footer sub-block, if present*/
+    if (context->wave.footer_len > 0) {
+        wavpack_write_subblock_header(block_data, WV_WAVE_FOOTER, 1,
+                                      context->wave.footer_len);
+        for (i = 0; i < context->wave.footer_len; i++)
+            block_data->write_bits(block_data, 8, context->wave.footer[i]);
+    }
+
+    block_header.block_size = 24 + (block_data->bits_written / 8);
     wavpack_write_block_header(bs, &block_header);
-    wavpack_write_subblock_header(bs, WV_MD5, 1, 16);
-    fwrite(md5sum, sizeof(uint8_t), 16, bs->file);
+    bs_dump_records(bs, block_data);
+    bs_close(block_data);
 }
 
 void
@@ -1905,7 +1944,7 @@ wavpack_write_wave_header_sub_block(Bitstream* stream,
     wave_header->write_bits(wave_header, 32, 0x61746164); /*'data' chunk ID*/
     wave_header->write_bits(wave_header, 32, pcm_bytes);  /*data size*/
 
-    wavpack_write_subblock_header(stream, WV_WAVE_CHUNK, 1,
+    wavpack_write_subblock_header(stream, WV_WAVE_HEADER, 1,
                                   wave_header->bits_written / 8);
     bs_dump_records(stream, wave_header);
     bs_close(wave_header);

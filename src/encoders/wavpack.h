@@ -30,7 +30,8 @@
 
 typedef enum {OK, ERROR} status;
 
-typedef enum {WV_WAVE_CHUNK        = 0x1,
+typedef enum {WV_WAVE_HEADER       = 0x1,
+              WV_WAVE_FOOTER       = 0x2,
               WV_DECORR_TERMS      = 0x2,
               WV_DECORR_WEIGHTS    = 0x3,
               WV_DECORR_SAMPLES    = 0x4,
@@ -38,6 +39,8 @@ typedef enum {WV_WAVE_CHUNK        = 0x1,
               WV_INT32_INFO        = 0x9,
               WV_BITSTREAM         = 0xA,
               WV_MD5               = 0x6} wv_metadata_function;
+
+
 
 struct wavpack_encoder_context {
     uint8_t bits_per_sample;
@@ -55,6 +58,15 @@ struct wavpack_encoder_context {
     struct {
         int header_written;
         long header_offset;
+        uint8_t* header;
+        uint8_t* footer;
+#ifdef PY_SSIZE_T_CLEAN
+        Py_ssize_t header_len;
+        Py_ssize_t footer_len;
+#else
+        int header_len;
+        int footer_len;
+#endif
     } wave;
 
     /*We'll try saving these from block to block
@@ -149,8 +161,8 @@ wavpack_write_frame(Bitstream *bs,
                     long channel_mask);
 
 void
-wavpack_write_md5(Bitstream *bs,
-                  struct wavpack_encoder_context* context);
+wavpack_write_footer_block(Bitstream *bs,
+                           struct wavpack_encoder_context* context);
 
 /*given a channel count and channel mask (which may be 0),
   build a list of 1 or 2 channel count values

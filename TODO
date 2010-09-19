@@ -2488,7 +2488,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 **** TODO Determine tunable data per block
      - [X] decorrelation terms
      - [ ] decorrelation deltas
-     - [ ] decorrelation weights
+     - [X] decorrelation weights
      - [ ] decorrelation samples
      - [ ] entropy variables (medians)
 **** DONE Write sub-blocks containing tunables data
@@ -2501,9 +2501,9 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 **** DONE Calculate joint-stereo
 *** DONE Rewrite block headers with final "total samples" data
     Using from_pcm(), this data won't be known in advance
-*** TODO Allow external RIFF WAVE header/footer
+*** DONE Allow external RIFF WAVE header/footer
     As with Shorten, these may be passed in from outside.
-*** TODO Rewrite RIFF WAVE data block header with final size
+*** DONE Rewrite RIFF WAVE data block header with final size
     If we're building the file with from_pcm(), this header
     will need to be built and then filled-in at finalize-time.
 *** DONE Update for standalone operation
