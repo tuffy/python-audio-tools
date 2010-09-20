@@ -69,14 +69,16 @@ struct wavpack_encoder_context {
 #endif
     } wave;
 
-    /*We'll try saving these from block to block
+    /*We'll try saving tunables from block to block
       which seems like how the reference encoder does things.
-      Each sub-array is the decorrelation_weight values
-      for each pass of a given channel.
+      Each sub-array are the values for each pass of a given channel.
       For example:
       decorrelation_weights.arrays[1].data[2]
-      is the 3rd pass of channel 2.*/
-    struct ia_array decorrelation_weights;
+      is decorrelation_weight for the 3rd pass of channel 2.*/
+    struct {
+        struct ia_array decorrelation_weights;
+        struct ia_array entropy_variables;
+    } wrap;
 
     struct {
         int joint_stereo;
@@ -243,8 +245,8 @@ void
 wavpack_write_residuals(Bitstream *bs,
                         struct i_array *channel_A,
                         struct i_array *channel_B,
-                        struct i_array *variables_A,
-                        struct i_array *variables_B,
+                        struct i_array *medians_A,
+                        struct i_array *medians_B,
                         int channel_count);
 
 void
@@ -304,6 +306,9 @@ wavpack_print_medians(FILE *output,
 int32_t
 wavpack_log2(int32_t sample);
 
+int
+wavpack_exp2(int log);
+
 /*Performs a decorrelation pass over channel_A and (optionally) channel_B,
   altering their values in the process.
   decorrelation_weight_A and (optionally) decorrelation_weight_B are updated
@@ -355,7 +360,9 @@ wavpack_store_tunables(struct wavpack_encoder_context* context,
                        int channel_number,
                        int channel_count,
                        struct i_array* decorrelation_weights_A,
-                       struct i_array* decorrelation_weights_B);
+                       struct i_array* decorrelation_weights_B,
+                       struct i_array* entropy_variables_A,
+                       struct i_array* entropy_variables_B);
 
 /*Updates the contents of channel_A and channel_B to be
   joint stereo.*/

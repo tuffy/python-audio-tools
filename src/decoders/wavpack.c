@@ -349,7 +349,8 @@ WavPackDecoder_read_decorr_weights(Bitstream* bitstream,
     return OK;
 }
 
-static int wavpack_exp2(int log) {
+int
+wavpack_exp2(int log) {
     int value;
     static const uint8_t exp2_table[] = {
         0x00, 0x01, 0x01, 0x02, 0x03, 0x03, 0x04, 0x05,

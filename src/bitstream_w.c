@@ -566,7 +566,7 @@ write_bits64_record(Bitstream* bs, unsigned int count, uint64_t value)
     BitstreamRecord record;
 
     assert(value >= 0l);
-    assert(value < (1l << count));
+    assert(value < (int64_t)(1ll << count));
     record.type = BS_WRITE_BITS64;
     record.key.count = count;
     record.value.value64 = value;

@@ -2490,7 +2490,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [ ] decorrelation deltas
      - [X] decorrelation weights
      - [ ] decorrelation samples
-     - [ ] entropy variables (medians)
+     - [X] entropy variables (medians)
 **** DONE Write sub-blocks containing tunables data
 ***** DONE decorrelation terms/deltas
 ***** DONE decorrelation weights
@@ -2511,6 +2511,10 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
     but to ensure there are no memory leaks and prep
     for gprof-style optimizing.
 *** DONE Generate trailing MD5
+*** TODO Identify/Optimize false stereo files
+*** TODO Identify/Optimize wasted left bits
+*** TODO Optimize memory usage
+    Perform less memory allocation/freeing over the course of encoding.
 *** TODO Optimize for speed
 ** TODO Document WavPack
 *** TODO the WavPack file stream

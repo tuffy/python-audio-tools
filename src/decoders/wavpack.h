@@ -314,6 +314,9 @@ void wavpack_undo_extended_integers(struct i_array* channel_A,
 void wavpack_undo_joint_stereo(struct i_array* channel_A,
                                struct i_array* channel_B);
 
+int
+wavpack_exp2(int log);
+
 PyTypeObject decoders_WavPackDecoderType = {
     PyObject_HEAD_INIT(NULL)
     0,                         /*ob_size*/
