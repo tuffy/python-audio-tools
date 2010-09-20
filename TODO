@@ -2515,7 +2515,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
     Much like FLAC's, making them more similar should reduce potential bugs.
 *** TODO Identify/Optimize false stereo files
 *** TODO Identify/Optimize wasted left bits
-*** TODO Optimize memory usage
+*** DONE Optimize memory usage
     Perform less memory allocation/freeing over the course of encoding.
 *** TODO Optimize for speed
 ** TODO Document WavPack

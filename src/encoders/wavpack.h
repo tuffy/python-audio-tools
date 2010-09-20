@@ -88,6 +88,13 @@ struct wavpack_encoder_context {
     } wrap;
 
     struct {
+        Bitstream* sub_blocks;
+        Bitstream* residual_data;
+        struct i_array input_A;
+        struct i_array input_B;
+    } cache;
+
+    struct {
         int joint_stereo;
         int decorrelation_passes;
     } options;
@@ -250,11 +257,11 @@ wavpack_write_entropy_variables(Bitstream *bs,
 /*Writes a bitstream sub-block to the bitstream.*/
 void
 wavpack_write_residuals(Bitstream *bs,
-                        struct i_array *channel_A,
-                        struct i_array *channel_B,
-                        struct i_array *medians_A,
-                        struct i_array *medians_B,
-                        int channel_count);
+                        struct i_array* channel_A,
+                        struct i_array* channel_B,
+                        struct i_array* medians_A,
+                        struct i_array* medians_B,
+                        struct wavpack_encoder_context* context);
 
 void
 wavpack_write_residual(Bitstream* bs,
@@ -331,14 +338,16 @@ wavpack_perform_decorrelation_pass(struct i_array* channel_A,
                                    int* decorrelation_weight_B,
                                    struct i_array* decorrelation_samples_A,
                                    struct i_array* decorrelation_samples_B,
-                                   int channel_count);
+                                   struct wavpack_encoder_context* context);
 
 void
-wavpack_perform_decorrelation_pass_1ch(struct i_array* channel,
-                                       int decorrelation_term,
-                                       int decorrelation_delta,
-                                       int* decorrelation_weight,
-                                       struct i_array* decorrelation_samples);
+wavpack_perform_decorrelation_pass_1ch(
+                                   struct i_array* channel,
+                                   int decorrelation_term,
+                                   int decorrelation_delta,
+                                   int* decorrelation_weight,
+                                   struct i_array* decorrelation_samples,
+                                   struct wavpack_encoder_context* context);
 
 /*Returns OK if the given options are compatible.
   Raises an error and returns ERROR if not.*/

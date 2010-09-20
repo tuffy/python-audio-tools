@@ -135,6 +135,11 @@ encoders_encode_wavpack(char *filename,
         iaa_init(&(context.wrap.decorrelation_samples[i]),
                  context.options.decorrelation_passes, 0);
 
+    context.cache.sub_blocks = bs_open_recorder();
+    context.cache.residual_data = bs_open_recorder();
+    ia_init(&(context.cache.input_A), 1);
+    ia_init(&(context.cache.input_B), 1);
+
     audiotools__MD5Init(&(context.md5));
 
     context.pcm_bytes = 0;
@@ -178,6 +183,11 @@ encoders_encode_wavpack(char *filename,
     }
 
     /*close open file handles and deallocate temporary space*/
+    bs_close(context.cache.sub_blocks);
+    bs_close(context.cache.residual_data);
+    ia_free(&(context.cache.input_A));
+    ia_free(&(context.cache.input_B));
+
     ia_free(&(context.block_offsets));
     iaa_free(&(context.wrap.decorrelation_weights));
     iaa_free(&(context.wrap.entropy_variables));
@@ -196,6 +206,11 @@ encoders_encode_wavpack(char *filename,
 #endif
 
  error:
+    bs_close(context.cache.sub_blocks);
+    bs_close(context.cache.residual_data);
+    ia_free(&(context.cache.input_A));
+    ia_free(&(context.cache.input_B));
+
     ia_free(&(context.block_offsets));
     iaa_free(&(context.wrap.decorrelation_weights));
     iaa_free(&(context.wrap.entropy_variables));
@@ -362,8 +377,10 @@ wavpack_write_block(Bitstream* bs,
     struct i_array entropy_variables_A;
     struct i_array entropy_variables_B;
 
-    Bitstream *sub_blocks = bs_open_recorder();
+    Bitstream* sub_blocks = context->cache.sub_blocks;
     int i;
+
+    bs_reset_recorder(sub_blocks);
 
     ia_init(&decorrelation_terms, 1);
     ia_init(&decorrelation_deltas, 1);
@@ -486,7 +503,7 @@ wavpack_write_block(Bitstream* bs,
                                         &(decorrelation_weights_B.data[i]),
                                         &(decorrelation_samples_A.arrays[i]),
                                         &(decorrelation_samples_B.arrays[i]),
-                                        channel_count);
+                                        context);
 
         /*and place the last few decorrelated samples into the
           decorrelation_samples buffer for the next block*/
@@ -504,7 +521,7 @@ wavpack_write_block(Bitstream* bs,
                             channel_B,
                             &entropy_variables_A,
                             &entropy_variables_B,
-                            channel_count);
+                            context);
 
     wavpack_store_tunables(context,
                            channel_number,
@@ -526,8 +543,6 @@ wavpack_write_block(Bitstream* bs,
     bs_dump_records(bs, sub_blocks);
 
     /*clear temporary space*/
-    bs_close(sub_blocks);
-
     ia_free(&decorrelation_terms);
     ia_free(&decorrelation_deltas);
     ia_free(&decorrelation_weights_A);
@@ -878,24 +893,23 @@ wavpack_write_entropy_variables(Bitstream *bs,
 
 void
 wavpack_write_residuals(Bitstream *bs,
-                        struct i_array *channel_A,
-                        struct i_array *channel_B,
-                        struct i_array *medians_A,
-                        struct i_array *medians_B,
-                        int channel_count) {
-    Bitstream *residual_data = bs_open_recorder();
+                        struct i_array* channel_A,
+                        struct i_array* channel_B,
+                        struct i_array* medians_A,
+                        struct i_array* medians_B,
+                        struct wavpack_encoder_context* context) {
+    int channel_count = context->total_channels;
+    Bitstream* residual_data = context->cache.residual_data;
     ia_size_t total_samples = channel_A->size * channel_count;
     ia_size_t sample;
     int current_channel;
 
     int32_t residual;
     struct wavpack_residual residual_accumulator;
-
     struct i_array *channels[] = {channel_A, channel_B};
-
-    /*These are our temporary entropy variables copy
-      since the encoder will modify them as it goes.*/
     struct i_array *medians[] = {medians_A, medians_B};
+
+    bs_reset_recorder(residual_data);
 
     /*initialize our running median values*/
     residual_accumulator.zeroes.present =
@@ -936,9 +950,6 @@ wavpack_write_residuals(Bitstream *bs,
 
     /*write out the residual data*/
     bs_dump_records(bs, residual_data);
-
-    /*clear any temporary space*/
-    bs_close(residual_data);
 }
 
 /*The actual median values are stored as fractions of integers.
@@ -1390,9 +1401,10 @@ void wavpack_perform_decorrelation_pass(
                                     int* decorrelation_weight_B,
                                     struct i_array* decorrelation_samples_A,
                                     struct i_array* decorrelation_samples_B,
-                                    int channel_count) {
-    struct i_array input_A;
-    struct i_array input_B;
+                                    struct wavpack_encoder_context* context) {
+    int channel_count = context->total_channels;
+    struct i_array* input_A = &(context->cache.input_A);
+    struct i_array* input_B = &(context->cache.input_B);
     ia_data_t temp_A;
     ia_data_t temp_B;
     ia_size_t i;
@@ -1404,41 +1416,44 @@ void wavpack_perform_decorrelation_pass(
                                                decorrelation_term,
                                                decorrelation_delta,
                                                decorrelation_weight_A,
-                                               decorrelation_samples_A);
+                                               decorrelation_samples_A,
+                                               context);
     } else if (decorrelation_term >= 1) {
         wavpack_perform_decorrelation_pass_1ch(channel_A,
                                                decorrelation_term,
                                                decorrelation_delta,
                                                decorrelation_weight_A,
-                                               decorrelation_samples_A);
+                                               decorrelation_samples_A,
+                                               context);
         wavpack_perform_decorrelation_pass_1ch(channel_B,
                                                decorrelation_term,
                                                decorrelation_delta,
                                                decorrelation_weight_B,
-                                               decorrelation_samples_B);
+                                               decorrelation_samples_B,
+                                               context);
     } else {
         weight_A = *decorrelation_weight_A;
         weight_B = *decorrelation_weight_B;
 
-        ia_init(&input_A, decorrelation_samples_A->size + channel_A->size);
-        ia_init(&input_B, decorrelation_samples_B->size + channel_B->size);
-        ia_extend(&input_A, decorrelation_samples_A);
-        ia_extend(&input_A, channel_A);
-        ia_extend(&input_B, decorrelation_samples_B);
-        ia_extend(&input_B, channel_B);
+        ia_reset(input_A);
+        ia_reset(input_B);
+        ia_extend(input_A, decorrelation_samples_A);
+        ia_extend(input_A, channel_A);
+        ia_extend(input_B, decorrelation_samples_B);
+        ia_extend(input_B, channel_B);
         ia_reset(channel_A);
         ia_reset(channel_B);
 
         switch (decorrelation_term) {
         case -1:
             for (i = decorrelation_samples_A->size;
-                 i < input_A.size; i++) {
-                temp_A = input_B.data[i - 1];
-                temp_B = input_A.data[i];
+                 i < input_A->size; i++) {
+                temp_A = input_B->data[i - 1];
+                temp_B = input_A->data[i];
 
                 /*apply weight*/
                 ia_append(channel_A,
-                          input_A.data[i] -
+                          input_A->data[i] -
                           apply_weight(weight_A, temp_A));
 
                 /*update weight*/
@@ -1453,7 +1468,7 @@ void wavpack_perform_decorrelation_pass(
 
                 /*apply weight*/
                 ia_append(channel_B,
-                          input_B.data[i] -
+                          input_B->data[i] -
                           apply_weight(weight_B, temp_B));
 
                 /*update weight*/
@@ -1467,13 +1482,13 @@ void wavpack_perform_decorrelation_pass(
             break;
         case -2:
             for (i = decorrelation_samples_A->size;
-                 i < input_A.size; i++) {
-                temp_A = input_B.data[i];
-                temp_B = input_A.data[i - 1];
+                 i < input_A->size; i++) {
+                temp_A = input_B->data[i];
+                temp_B = input_A->data[i - 1];
 
                 /*apply weight*/
                 ia_append(channel_A,
-                          input_A.data[i] -
+                          input_A->data[i] -
                           apply_weight(weight_A, temp_A));
 
                 /*update weight*/
@@ -1488,7 +1503,7 @@ void wavpack_perform_decorrelation_pass(
 
                 /*apply weight*/
                 ia_append(channel_B,
-                          input_B.data[i] -
+                          input_B->data[i] -
                           apply_weight(weight_B, temp_B));
 
                 /*update weight*/
@@ -1502,13 +1517,13 @@ void wavpack_perform_decorrelation_pass(
             break;
         case -3:
             for (i = decorrelation_samples_A->size;
-                 i < input_A.size; i++) {
-                temp_A = input_B.data[i - 1];
-                temp_B = input_A.data[i - 1];
+                 i < input_A->size; i++) {
+                temp_A = input_B->data[i - 1];
+                temp_B = input_A->data[i - 1];
 
                 /*apply weight*/
                 ia_append(channel_A,
-                          input_A.data[i] -
+                          input_A->data[i] -
                           apply_weight(weight_A, temp_A));
 
                 /*update weight*/
@@ -1523,7 +1538,7 @@ void wavpack_perform_decorrelation_pass(
 
                 /*apply weight*/
                 ia_append(channel_B,
-                          input_B.data[i] -
+                          input_B->data[i] -
                           apply_weight(weight_B, temp_B));
 
                 /*update weight*/
@@ -1540,10 +1555,6 @@ void wavpack_perform_decorrelation_pass(
         /*send back new weights to caller*/
         *decorrelation_weight_A = weight_A;
         *decorrelation_weight_B = weight_B;
-
-        /*free temporary buffers*/
-        ia_free(&input_A);
-        ia_free(&input_B);
     }
 }
 
@@ -1552,24 +1563,25 @@ void wavpack_perform_decorrelation_pass_1ch(
                                     int decorrelation_term,
                                     int decorrelation_delta,
                                     int* decorrelation_weight,
-                                    struct i_array* decorrelation_samples) {
-    struct i_array input;
+                                    struct i_array* decorrelation_samples,
+                                    struct wavpack_encoder_context* context) {
+    struct i_array* input = &(context->cache.input_A);
     int64_t temp;
     ia_size_t i;
     int weight = *decorrelation_weight;
 
-    ia_init(&input, channel->size + decorrelation_samples->size);
-    ia_extend(&input, decorrelation_samples);
-    ia_extend(&input, channel);
+    ia_reset(input);
+    ia_extend(input, decorrelation_samples);
+    ia_extend(input, channel);
     ia_reset(channel);
 
     switch (decorrelation_term) {
     case 18:
         for (i = decorrelation_samples->size;
-             i < input.size; i++) {
-            temp = ((3 * input.data[i - 1]) -
-                    input.data[i - 2]) >> 1;
-            ia_append(channel, input.data[i] - apply_weight(weight, temp));
+             i < input->size; i++) {
+            temp = ((3 * input->data[i - 1]) -
+                    input->data[i - 2]) >> 1;
+            ia_append(channel, input->data[i] - apply_weight(weight, temp));
             weight += update_weight(temp,
                                     ia_getitem(channel, -1),
                                     decorrelation_delta);
@@ -1577,9 +1589,9 @@ void wavpack_perform_decorrelation_pass_1ch(
         break;
     case 17:
         for (i = decorrelation_samples->size;
-             i < input.size; i++) {
-            temp = (2 * input.data[i - 1]) - input.data[i - 2];
-            ia_append(channel, input.data[i] - apply_weight(weight, temp));
+             i < input->size; i++) {
+            temp = (2 * input->data[i - 1]) - input->data[i - 2];
+            ia_append(channel, input->data[i] - apply_weight(weight, temp));
             weight += update_weight(temp,
                                     ia_getitem(channel, -1),
                                     decorrelation_delta);
@@ -1594,9 +1606,9 @@ void wavpack_perform_decorrelation_pass_1ch(
     case 7:
     case 8:
         for (i = decorrelation_samples->size;
-             i < input.size; i++) {
-            temp = input.data[i - decorrelation_term];
-            ia_append(channel, input.data[i] - apply_weight(weight, temp));
+             i < input->size; i++) {
+            temp = input->data[i - decorrelation_term];
+            ia_append(channel, input->data[i] - apply_weight(weight, temp));
             weight += update_weight(temp,
                                     ia_getitem(channel, -1),
                                     decorrelation_delta);
@@ -1604,7 +1616,6 @@ void wavpack_perform_decorrelation_pass_1ch(
         break;
     }
 
-    ia_free(&input);
     *decorrelation_weight = weight;
 }
 
