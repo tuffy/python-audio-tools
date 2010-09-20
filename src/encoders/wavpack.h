@@ -78,6 +78,13 @@ struct wavpack_encoder_context {
     struct {
         struct ia_array decorrelation_weights;
         struct ia_array entropy_variables;
+
+        /*Except for decorrelation_samples, which is stored as
+          an array of ia_array structs.
+          For example:
+          decorrelation_samples[1].arrays[2]
+          are the samples for the 3rd pass of channel 2.*/
+        struct ia_array* decorrelation_samples;
     } wrap;
 
     struct {
@@ -361,8 +368,21 @@ wavpack_store_tunables(struct wavpack_encoder_context* context,
                        int channel_count,
                        struct i_array* decorrelation_weights_A,
                        struct i_array* decorrelation_weights_B,
+                       struct ia_array* decorrelation_samples_A,
+                       struct ia_array* decorrelation_samples_B,
                        struct i_array* entropy_variables_A,
                        struct i_array* entropy_variables_B);
+
+void
+wavpack_wrap_decorrelation_samples(struct i_array* decorrelation_samples_A,
+                                   struct i_array* decorrelation_samples_B,
+                                   int decorrelation_term,
+                                   struct i_array* channel_A,
+                                   struct i_array* channel_B,
+                                   int channel_count);
+
+ia_data_t
+wavpack_log2_roundtrip(ia_data_t i);
 
 /*Updates the contents of channel_A and channel_B to be
   joint stereo.*/

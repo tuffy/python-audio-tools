@@ -324,6 +324,16 @@ ia_min(struct i_array *array)
     return min;
 }
 
+static inline void
+ia_map(struct i_array *target, struct i_array *source,
+       ia_data_t (function)(ia_data_t))
+{
+    ia_size_t i;
+    ia_resize(target, source->size);
+    for (i = 0; i < source->size; i++)
+        target->data[i] = function(source->data[i]);
+    target->size = source->size;
+}
 
 
 /*an array of i_array structs
