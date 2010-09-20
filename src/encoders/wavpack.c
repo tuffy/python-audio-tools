@@ -429,6 +429,14 @@ wavpack_write_block(Bitstream* bs,
         }
     }
 
+    /*FIXME - determine false stereo*/
+    if ((channel_count == 2) &&
+        (ia_equal(channel_A, channel_B))) {
+        block_header.false_stereo = 0; /*FIXME*/
+    } else {
+        block_header.false_stereo = 0;
+    }
+
     /*perform joint stereo calculation if possible and requested*/
     if (context->options.joint_stereo && (channel_count > 1)) {
         wavpack_perform_joint_stereo(channel_A, channel_B);
@@ -437,9 +445,8 @@ wavpack_write_block(Bitstream* bs,
         block_header.joint_stereo = 0;
     }
 
-    /*FIXME - determine false stereo*/
+    /*FIXME - figure out cross channel decorrelation bit*/
     block_header.cross_channel_decorrelation = 0;
-    block_header.false_stereo = 0;
 
     /*assign tunables for block data*/
     wavpack_calculate_tunables(context,
@@ -475,13 +482,15 @@ wavpack_write_block(Bitstream* bs,
                                    &decorrelation_deltas);
 
         wavpack_write_decorr_weights(sub_blocks,
-                                     channel_count,
+                                     channel_count -
+                                     block_header.false_stereo,
                                      decorrelation_terms.size,
                                      &decorrelation_weights_A,
                                      &decorrelation_weights_B);
 
         wavpack_write_decorr_samples(sub_blocks,
-                                     channel_count,
+                                     channel_count -
+                                     block_header.false_stereo,
                                      &decorrelation_terms,
                                      &decorrelation_samples_A,
                                      &decorrelation_samples_B);
@@ -490,7 +499,8 @@ wavpack_write_block(Bitstream* bs,
     wavpack_write_entropy_variables(sub_blocks,
                                     &entropy_variables_A,
                                     &entropy_variables_B,
-                                    channel_count);
+                                    channel_count -
+                                    block_header.false_stereo);
 
     /*apply decorrelation passes to samples in reverse order, if requested*/
     for (i = decorrelation_terms.size - 1; i >= 0; i--) {
@@ -503,6 +513,8 @@ wavpack_write_block(Bitstream* bs,
                                         &(decorrelation_weights_B.data[i]),
                                         &(decorrelation_samples_A.arrays[i]),
                                         &(decorrelation_samples_B.arrays[i]),
+                                        channel_count -
+                                        block_header.false_stereo,
                                         context);
 
         /*and place the last few decorrelated samples into the
@@ -521,6 +533,8 @@ wavpack_write_block(Bitstream* bs,
                             channel_B,
                             &entropy_variables_A,
                             &entropy_variables_B,
+                            channel_count -
+                            block_header.false_stereo,
                             context);
 
     wavpack_store_tunables(context,
@@ -897,8 +911,8 @@ wavpack_write_residuals(Bitstream *bs,
                         struct i_array* channel_B,
                         struct i_array* medians_A,
                         struct i_array* medians_B,
+                        int channel_count,
                         struct wavpack_encoder_context* context) {
-    int channel_count = context->total_channels;
     Bitstream* residual_data = context->cache.residual_data;
     ia_size_t total_samples = channel_A->size * channel_count;
     ia_size_t sample;
@@ -1401,8 +1415,8 @@ void wavpack_perform_decorrelation_pass(
                                     int* decorrelation_weight_B,
                                     struct i_array* decorrelation_samples_A,
                                     struct i_array* decorrelation_samples_B,
+                                    int channel_count,
                                     struct wavpack_encoder_context* context) {
-    int channel_count = context->total_channels;
     struct i_array* input_A = &(context->cache.input_A);
     struct i_array* input_B = &(context->cache.input_B);
     ia_data_t temp_A;

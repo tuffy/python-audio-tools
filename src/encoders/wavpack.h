@@ -261,6 +261,7 @@ wavpack_write_residuals(Bitstream *bs,
                         struct i_array* channel_B,
                         struct i_array* medians_A,
                         struct i_array* medians_B,
+                        int channel_count,
                         struct wavpack_encoder_context* context);
 
 void
@@ -338,6 +339,7 @@ wavpack_perform_decorrelation_pass(struct i_array* channel_A,
                                    int* decorrelation_weight_B,
                                    struct i_array* decorrelation_samples_A,
                                    struct i_array* decorrelation_samples_B,
+                                   int channel_count,
                                    struct wavpack_encoder_context* context);
 
 void
