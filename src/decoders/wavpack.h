@@ -176,7 +176,9 @@ WavPackDecoder_update_md5sum(decoders_WavPackDecoder *self,
                              PyObject *framelist);
 
 uint32_t
-wavpack_calculate_crc(struct ia_array* decoded_samples);
+wavpack_calculate_crc(struct i_array* channel_A,
+                      struct i_array* channel_B,
+                      int channel_count);
 
 PyObject*
 WavPackDecoder_analyze_subblock(decoders_WavPackDecoder* self,

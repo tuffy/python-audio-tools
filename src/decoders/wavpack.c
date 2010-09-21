@@ -888,16 +888,17 @@ WavPackDecoder_update_md5sum(decoders_WavPackDecoder *self,
 }
 
 uint32_t
-wavpack_calculate_crc(struct ia_array* decoded_samples) {
-    int channel_count = decoded_samples->size;
-    struct i_array* channels = decoded_samples->arrays;
-    ia_size_t total_samples = (channel_count * channels[0].size);
+wavpack_calculate_crc(struct i_array* channel_A,
+                      struct i_array* channel_B,
+                      int channel_count) {
+    struct i_array* channels[] = {channel_A, channel_B};
+    ia_size_t total_samples = (channel_count * channel_A->size);
     ia_size_t i;
     ia_data_t sample;
     uint32_t crc = 0xFFFFFFFF;
 
     for (i = 0; i < total_samples; i++) {
-        sample = channels[i % channel_count].data[i / channel_count];
+        sample = channels[i % channel_count]->data[i / channel_count];
         crc = ((3 * crc) + sample) & 0xFFFFFFFF;
     }
 
@@ -1293,7 +1294,7 @@ WavPackDecoder_decode_block(decoders_WavPackDecoder* self,
         }
 
         /*check CRC of data to return*/
-        if (wavpack_calculate_crc(&(self->decoded_samples)) !=
+        if (wavpack_calculate_crc(channel_A, channel_B, *channel_count) !=
             block_header.crc) {
             PyErr_SetString(PyExc_ValueError, "CRC mismatch during decode");
             goto error;
