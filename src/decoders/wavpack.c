@@ -1049,7 +1049,7 @@ WavPackDecoder_analyze_subblock(decoders_WavPackDecoder* self,
         if (WavPackDecoder_read_decorr_weights(
                                 bitstream,
                                 &header,
-                                (block_header->mono_output |
+                                (block_header->mono_output ||
                                  block_header->false_stereo) ? 1 : 2,
                                 self->decorr_terms.size,
                                 &(self->decorr_weights_A),
@@ -1073,7 +1073,7 @@ WavPackDecoder_analyze_subblock(decoders_WavPackDecoder* self,
         if (WavPackDecoder_read_decorr_samples(
                                 bitstream,
                                 &header,
-                                (block_header->mono_output |
+                                (block_header->mono_output ||
                                  block_header->false_stereo) ? 1 : 2,
                                 &(self->decorr_terms),
                                 &(self->decorr_samples_A),
@@ -1091,7 +1091,7 @@ WavPackDecoder_analyze_subblock(decoders_WavPackDecoder* self,
     case WV_ENTROPY_VARIABLES:
         if (WavPackDecoder_read_entropy_variables(
                                 bitstream,
-                                (block_header->mono_output |
+                                (block_header->mono_output ||
                                  block_header->false_stereo) ? 1 : 2,
                                 &(self->entropy_variables_A),
                                 &(self->entropy_variables_B)) == OK) {
@@ -1135,7 +1135,7 @@ WavPackDecoder_analyze_subblock(decoders_WavPackDecoder* self,
                                    &header,
                                    &(self->entropy_variables_A),
                                    &(self->entropy_variables_B),
-                                   (block_header->mono_output |
+                                   (block_header->mono_output ||
                                     block_header->false_stereo) ? 1 : 2,
                                    block_header->block_samples,
                                    &(self->values)) == OK) {
@@ -1221,7 +1221,7 @@ WavPackDecoder_decode_block(decoders_WavPackDecoder* self,
                             "too many channels requested in block header");
             goto error;
         } else {
-            block_channels = (block_header.mono_output |
+            block_channels = (block_header.mono_output ||
                               block_header.false_stereo) ? 1 : 2;
         }
 
@@ -1335,7 +1335,7 @@ WavPackDecoder_decode_subblock(decoders_WavPackDecoder* self,
         if (WavPackDecoder_read_decorr_weights(
                                 bitstream,
                                 &header,
-                                (block_header->mono_output |
+                                (block_header->mono_output ||
                                  block_header->false_stereo) ? 1 : 2,
                                 self->decorr_terms.size,
                                 &(self->decorr_weights_A),
@@ -1353,7 +1353,7 @@ WavPackDecoder_decode_subblock(decoders_WavPackDecoder* self,
         if (WavPackDecoder_read_decorr_samples(
                                 bitstream,
                                 &header,
-                                (block_header->mono_output |
+                                (block_header->mono_output ||
                                  block_header->false_stereo) ? 1 : 2,
                                 &(self->decorr_terms),
                                 &(self->decorr_samples_A),
@@ -1365,7 +1365,7 @@ WavPackDecoder_decode_subblock(decoders_WavPackDecoder* self,
     case WV_ENTROPY_VARIABLES:
         if (WavPackDecoder_read_entropy_variables(
                                 bitstream,
-                                (block_header->mono_output |
+                                (block_header->mono_output ||
                                  block_header->false_stereo) ? 1 : 2,
                                 &(self->entropy_variables_A),
                                 &(self->entropy_variables_B)) == OK) {
@@ -1394,7 +1394,7 @@ WavPackDecoder_decode_subblock(decoders_WavPackDecoder* self,
                                    &header,
                                    &(self->entropy_variables_A),
                                    &(self->entropy_variables_B),
-                                   (block_header->mono_output |
+                                   (block_header->mono_output ||
                                     block_header->false_stereo) ? 1 : 2,
                                    block_header->block_samples,
                                    &(self->values)) == OK) {

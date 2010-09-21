@@ -265,6 +265,8 @@ wavpack_channel_splits(struct i_array *counts,
     int channels;
     int i;
 
+    assert(channel_count > 0);
+
     /*first, try to pull left/right channels out of the mask*/
     for (i = 0; channel_mask && masks[i]; i++) {
         if (channel_mask & masks[i]) {
@@ -330,6 +332,8 @@ wavpack_initialize_block_header(struct wavpack_block_header* header,
                                 int pcm_frames,
                                 int first_block,
                                 int last_block) {
+    assert((channel_count == 1) || (channel_count == 2));
+
     /*must set block_size*/
     header->version = WAVPACK_VERSION;
     header->track_number = 0;
@@ -404,8 +408,7 @@ wavpack_write_block(Bitstream* bs,
                                     first_block,
                                     last_block);
 
-    assert(channel_count > 0);
-    assert(channel_count <= 2);
+    assert((channel_count == 1) || (channel_count == 2));
 
     if (channel_count == 1)
         block_header.maximum_data_magnitude = count_bits(
@@ -430,15 +433,16 @@ wavpack_write_block(Bitstream* bs,
     }
 
     /*FIXME - determine false stereo*/
-    if ((channel_count == 2) &&
-        (ia_equal(channel_A, channel_B))) {
+    if ((channel_count == 2) && ia_equal(channel_A, channel_B)) {
         block_header.false_stereo = 0; /*FIXME*/
     } else {
         block_header.false_stereo = 0;
     }
 
     /*perform joint stereo calculation if possible and requested*/
-    if (context->options.joint_stereo && (channel_count > 1)) {
+    if (context->options.joint_stereo &&
+        (channel_count > 1) &&
+        !block_header.false_stereo) {
         wavpack_perform_joint_stereo(channel_A, channel_B);
         block_header.joint_stereo = 1;
     } else {
@@ -513,8 +517,7 @@ wavpack_write_block(Bitstream* bs,
                                         &(decorrelation_weights_B.data[i]),
                                         &(decorrelation_samples_A.arrays[i]),
                                         &(decorrelation_samples_B.arrays[i]),
-                                        channel_count -
-                                        block_header.false_stereo,
+                                        channel_count,
                                         context);
 
         /*and place the last few decorrelated samples into the
@@ -691,6 +694,8 @@ wavpack_write_decorr_weights(Bitstream *bs,
     int block_size = weights_A->size +
         (channel_count > 1 ? weights_B->size : 0);
 
+    assert((channel_count == 1) || (channel_count == 2));
+
     wavpack_write_subblock_header(bs, 3, 0, block_size);
 
     /*FIXME - don't write 0 weights, as per reference encoder*/
@@ -720,6 +725,8 @@ wavpack_write_decorr_samples(Bitstream *bs,
     struct i_array* term_samples_A;
     struct i_array* term_samples_B;
     int sub_block_size = 0;
+
+    assert((channel_count == 1) || (channel_count == 2));
 
     /*calculate the sub-block's total size*/
     for (i = decorr_terms->size - 1; i >= 0; i--) {
@@ -894,6 +901,8 @@ wavpack_write_entropy_variables(Bitstream *bs,
                                 struct i_array *variables_A,
                                 struct i_array *variables_B,
                                 int channel_count) {
+    assert((channel_count == 1) || (channel_count == 2));
+
     wavpack_write_subblock_header(bs, 5, 0, 6 * channel_count);
     bs->write_signed_bits(bs, 16, wavpack_log2(variables_A->data[0]));
     bs->write_signed_bits(bs, 16, wavpack_log2(variables_A->data[1]));
@@ -922,6 +931,8 @@ wavpack_write_residuals(Bitstream *bs,
     struct wavpack_residual residual_accumulator;
     struct i_array *channels[] = {channel_A, channel_B};
     struct i_array *medians[] = {medians_A, medians_B};
+
+    assert((channel_count == 1) || (channel_count == 2));
 
     bs_reset_recorder(residual_data);
 
@@ -1246,6 +1257,8 @@ void
 wavpack_clear_medians(struct i_array *medians_A,
                       struct i_array *medians_B,
                       int channel_count) {
+    assert((channel_count == 1) || (channel_count == 2));
+
     medians_A->data[0] = 0;
     medians_A->data[1] = 0;
     medians_A->data[2] = 0;
@@ -1424,6 +1437,8 @@ void wavpack_perform_decorrelation_pass(
     ia_size_t i;
     int weight_A;
     int weight_B;
+
+    assert((channel_count == 1) || (channel_count == 2));
 
     if (channel_count == 1) {
         wavpack_perform_decorrelation_pass_1ch(channel_A,
@@ -1672,6 +1687,8 @@ wavpack_calculate_tunables(struct wavpack_encoder_context* context,
     struct i_array* samples_A;
     struct i_array* samples_B;
 
+    assert((channel_count == 1) || (channel_count == 2));
+
     if (context->wrap.entropy_variables.arrays[channel_number].size == 3) {
         /*pull entropy variables from context*/
         ia_copy(entropy_variables_A,
@@ -1883,6 +1900,8 @@ wavpack_store_tunables(struct wavpack_encoder_context* context,
     struct i_array* array;
     struct ia_array* array2;
 
+    assert((channel_count == 1) || (channel_count == 2));
+
     /*Store decorrelation weights in context
       after round-tripping them through the 8-bit conversion routines
       for use by the next block on the same set of channels.*/
@@ -1945,6 +1964,8 @@ wavpack_wrap_decorrelation_samples(struct i_array* decorrelation_samples_A,
                                    struct i_array* channel_B,
                                    int channel_count) {
     struct i_array tail;
+
+    assert((channel_count == 1) || (channel_count == 2));
 
     switch (decorrelation_term) {
     case 18:
@@ -2026,6 +2047,8 @@ wavpack_print_medians(FILE *output,
                       struct i_array* medians_A,
                       struct i_array* medians_B,
                       int channel_count) {
+    assert((channel_count == 1) || (channel_count == 2));
+
     fprintf(output, "Medians A : %d %d %d\n",
             medians_A->data[0], medians_A->data[1], medians_A->data[2]);
     if (channel_count > 1)
