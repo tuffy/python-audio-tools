@@ -418,8 +418,17 @@ wavpack_write_block(Bitstream* bs,
             count_bits(ia_reduce(channel_A, 0, wavpack_abs_maximum)),
             count_bits(ia_reduce(channel_B, 0, wavpack_abs_maximum)));
 
-    /*calculate checksum of unprocessed data*/
-    if (channel_count == 1) {
+    /*FIXME - determine false stereo*/
+    if ((channel_count == 2) && ia_equal(channel_A, channel_B)) {
+        block_header.false_stereo = 1;
+    } else {
+        block_header.false_stereo = 0;
+    }
+
+    /*calculate checksum of data after application of
+      false stereo and extended integers,
+      but before application of joint stereo.*/
+    if ((channel_count == 1) || block_header.false_stereo) {
         for (i = 0; i < channel_A->size; i++) {
             block_header.crc = wavpack_crc(channel_A->data[i],
                                            block_header.crc);
@@ -432,12 +441,7 @@ wavpack_write_block(Bitstream* bs,
         }
     }
 
-    /*FIXME - determine false stereo*/
-    if ((channel_count == 2) && ia_equal(channel_A, channel_B)) {
-        block_header.false_stereo = 0; /*FIXME*/
-    } else {
-        block_header.false_stereo = 0;
-    }
+
 
     /*perform joint stereo calculation if possible and requested*/
     if (context->options.joint_stereo &&

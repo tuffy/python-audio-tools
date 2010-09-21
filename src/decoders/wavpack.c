@@ -1279,6 +1279,13 @@ WavPackDecoder_decode_block(decoders_WavPackDecoder* self,
             wavpack_undo_joint_stereo(channel_A, channel_B);
         }
 
+        /*check CRC of data to return*/
+        if (wavpack_calculate_crc(channel_A, channel_B, block_channels) !=
+            block_header.crc) {
+            PyErr_SetString(PyExc_ValueError, "CRC mismatch during decode");
+            goto error;
+        }
+
         /*Handle extended integers, if necessary.*/
         if (block_header.extended_size_integers) {
             wavpack_undo_extended_integers(channel_A, channel_B,
@@ -1291,13 +1298,6 @@ WavPackDecoder_decode_block(decoders_WavPackDecoder* self,
         /*Fix false stereo, if present*/
         if (block_header.false_stereo) {
             ia_copy(channel_B, channel_A);
-        }
-
-        /*check CRC of data to return*/
-        if (wavpack_calculate_crc(channel_A, channel_B, *channel_count) !=
-            block_header.crc) {
-            PyErr_SetString(PyExc_ValueError, "CRC mismatch during decode");
-            goto error;
         }
 
         return OK;
