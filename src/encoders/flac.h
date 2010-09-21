@@ -273,7 +273,7 @@ maximum_bits_size(int value, int current_maximum);
 
 /*given a set of samples, returns the maximum amount of wasted bits*/
 int
-max_wasted_bits_per_sample(struct i_array *samples);
+flac_max_wasted_bits_per_sample(struct i_array *samples);
 
 static inline uint64_t
 abs_sum(struct i_array *a)

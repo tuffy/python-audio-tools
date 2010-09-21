@@ -97,6 +97,8 @@ struct wavpack_encoder_context {
     struct {
         int joint_stereo;
         int decorrelation_passes;
+        int false_stereo;
+        int wasted_bits;
     } options;
 };
 
@@ -243,6 +245,13 @@ wavpack_write_decorr_samples(Bitstream *bs,
                              struct i_array* decorr_terms,
                              struct ia_array* samples_A,
                              struct ia_array* samples_B);
+
+void
+wavpack_write_int32_info(Bitstream *bs,
+                         uint8_t sent_bits,
+                         uint8_t zeroes,
+                         uint8_t ones,
+                         uint8_t dupes);
 
 /*Writes an entropy variables sub-block to the bitstream.
   The entropy variable list should be 3 elements long.
@@ -414,3 +423,7 @@ void
 wavpack_write_wave_header_sub_block(Bitstream* stream,
                                     struct wavpack_encoder_context* context,
                                     uint32_t pcm_bytes);
+
+/*given a set of samples, returns the maximum amount of wasted bits*/
+int
+wavpack_max_wasted_bits_per_sample(struct i_array *samples);

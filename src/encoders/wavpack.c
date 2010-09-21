@@ -41,6 +41,8 @@ encoders_encode_wavpack(PyObject *dummy,
                              "pcmreader",
                              "block_size",
 
+                             "false_stereo",
+                             "wasted_bits",
                              "joint_stereo",
                              "decorrelation_passes",
                              "wave_header",
@@ -49,6 +51,8 @@ encoders_encode_wavpack(PyObject *dummy,
 
     /*set some default option values*/
     context.options.joint_stereo = 0;
+    context.options.false_stereo = 1;
+    context.options.wasted_bits = 1;
     context.options.decorrelation_passes = 0;
     context.wave.header = NULL;
     context.wave.footer = NULL;
@@ -57,12 +61,14 @@ encoders_encode_wavpack(PyObject *dummy,
 
     if (!PyArg_ParseTupleAndKeywords(args,
                                      keywds,
-                                     "sOi|iis#s#",
+                                     "sOi|iiis#s#",
                                      kwlist,
                                      &filename,
                                      &pcmreader_obj,
                                      &block_size,
 
+                                     &(context.options.false_stereo),
+                                     &(context.options.wasted_bits),
                                      &(context.options.joint_stereo),
                                      &(context.options.decorrelation_passes),
                                      &(context.wave.header),
@@ -97,6 +103,8 @@ void
 encoders_encode_wavpack(char *filename,
                         FILE *pcmdata,
                         int block_size,
+                        int false_stereo,
+                        int wasted_bits,
                         int joint_stereo,
                         int decorrelation_passes) {
     FILE *file;
@@ -110,6 +118,8 @@ encoders_encode_wavpack(char *filename,
     stream = bs_open(file, BS_LITTLE_ENDIAN);
     reader = pcmr_open(pcmdata, 44100, 2, 0x3, 16, 0, 1);
 
+    context.options.false_stereo = false_stereo;
+    context.options.wasted_bits = wasted_bits;
     context.options.joint_stereo = joint_stereo;
     context.options.decorrelation_passes = decorrelation_passes;
     context.wave.header_written = 0;
@@ -380,6 +390,7 @@ wavpack_write_block(Bitstream* bs,
     struct ia_array decorrelation_samples_B;
     struct i_array entropy_variables_A;
     struct i_array entropy_variables_B;
+    int wasted_bits = 0;
 
     Bitstream* sub_blocks = context->cache.sub_blocks;
     int i;
@@ -418,11 +429,39 @@ wavpack_write_block(Bitstream* bs,
             count_bits(ia_reduce(channel_A, 0, wavpack_abs_maximum)),
             count_bits(ia_reduce(channel_B, 0, wavpack_abs_maximum)));
 
-    /*FIXME - determine false stereo*/
-    if ((channel_count == 2) && ia_equal(channel_A, channel_B)) {
+    /*determine false stereo*/
+    if (context->options.false_stereo &&
+        (channel_count == 2) &&
+        ia_equal(channel_A, channel_B)) {
         block_header.false_stereo = 1;
     } else {
         block_header.false_stereo = 0;
+    }
+
+    /*determine extended integers (wasted bits), if any*/
+    if (context->options.wasted_bits) {
+        if ((channel_count == 2) &&
+            !block_header.false_stereo) {
+            wasted_bits = MIN(wavpack_max_wasted_bits_per_sample(channel_A),
+                              wavpack_max_wasted_bits_per_sample(channel_B));
+            if (wasted_bits > 0) {
+                for (i = 0; i < channel_A->size; i++) {
+                    channel_A->data[i] >>= wasted_bits;
+                    channel_B->data[i] >>= wasted_bits;
+                }
+            }
+            block_header.extended_size_integers = 1;
+        } else {
+            wasted_bits = wavpack_max_wasted_bits_per_sample(channel_A);
+            if (wasted_bits > 0) {
+                for (i = 0; i < channel_A->size; i++) {
+                    channel_A->data[i] >>= wasted_bits;
+                }
+            }
+            block_header.extended_size_integers = 1;
+        }
+    } else {
+        block_header.extended_size_integers = 0;
     }
 
     /*calculate checksum of data after application of
@@ -441,11 +480,9 @@ wavpack_write_block(Bitstream* bs,
         }
     }
 
-
-
     /*perform joint stereo calculation if possible and requested*/
     if (context->options.joint_stereo &&
-        (channel_count > 1) &&
+        (channel_count == 2) &&
         !block_header.false_stereo) {
         wavpack_perform_joint_stereo(channel_A, channel_B);
         block_header.joint_stereo = 1;
@@ -502,6 +539,10 @@ wavpack_write_block(Bitstream* bs,
                                      &decorrelation_terms,
                                      &decorrelation_samples_A,
                                      &decorrelation_samples_B);
+    }
+
+    if (block_header.extended_size_integers) {
+        wavpack_write_int32_info(sub_blocks, 0, wasted_bits, 0, 0);
     }
 
     wavpack_write_entropy_variables(sub_blocks,
@@ -715,6 +756,19 @@ wavpack_write_decorr_weights(Bitstream *bs,
 
     if ((block_size % 2) == 1)
         bs->write_bits(bs, 8, 0);
+}
+
+void
+wavpack_write_int32_info(Bitstream *bs,
+                         uint8_t sent_bits,
+                         uint8_t zeroes,
+                         uint8_t ones,
+                         uint8_t dupes) {
+    wavpack_write_subblock_header(bs, WV_INT32_INFO, 0, 4);
+    bs->write_bits(bs, 8, sent_bits);
+    bs->write_bits(bs, 8, zeroes);
+    bs->write_bits(bs, 8, ones);
+    bs->write_bits(bs, 8, dupes);
 }
 
 void
@@ -1744,7 +1798,6 @@ wavpack_calculate_tunables(struct wavpack_encoder_context* context,
 
 
     if (context->wrap.decorrelation_samples[channel_number].arrays[0].size) {
-    /* if (0) { */
         /*pull decorrelation samples A and B from context, if present*/
 
         iaa_copy(decorrelation_samples_A,
@@ -2141,9 +2194,40 @@ wavpack_write_wave_header_sub_block(Bitstream* stream,
     bs_close(wave_header);
 }
 
+int
+wavpack_max_wasted_bits_per_sample(struct i_array *samples)
+{
+    /*this seems like a good opportunity to use ia_reduce,
+      except we want to quit once wasted bits-per-sample hits 0
+      which will happen very early in the vast majority of cases*/
+    ia_size_t i;
+    ia_data_t sample;
+    int wasted_bits;
+    int wasted_bits_per_sample = INT_MAX;
+
+    if (samples->size > 0) {
+        for (i = 0; i < samples->size; i++) {
+            sample = samples->data[i];
+            if (sample != 0) {
+                for (wasted_bits = 0;
+                     ((sample & 1) == 0) && (sample != 0);
+                     sample >>= 1)
+                    wasted_bits++;
+                wasted_bits_per_sample = MIN(wasted_bits_per_sample,
+                                             wasted_bits);
+                if (wasted_bits_per_sample == 0)
+                    return 0;
+            }
+        }
+        return wasted_bits_per_sample;
+    } else {
+        return 0;
+    }
+}
+
 #ifdef STANDALONE
 int main(int argc, char *argv[]) {
-    encoders_encode_wavpack(argv[1], stdin, 44100, 1, 5);
+    encoders_encode_wavpack(argv[1], stdin, 44100, 1, 0, 1, 5);
     return 0;
 }
 

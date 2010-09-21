@@ -623,7 +623,7 @@ FlacEncoder_write_subframe(Bitstream *bs,
     }
 
     /*if not CONSTANT, check to see if we have any wasted bits-per-sample*/
-    wasted_bits_per_sample = max_wasted_bits_per_sample(samples);
+    wasted_bits_per_sample = flac_max_wasted_bits_per_sample(samples);
     wasted_bits_per_sample = MIN(wasted_bits_per_sample, bits_per_sample - 1);
     if (wasted_bits_per_sample) {
         /*if so, chop them off the beginning of each sample*/
@@ -1433,7 +1433,7 @@ maximum_bits_size(int value, int current_maximum)
 }
 
 int
-max_wasted_bits_per_sample(struct i_array *samples)
+flac_max_wasted_bits_per_sample(struct i_array *samples)
 {
     /*this seems like a good opportunity to use ia_reduce,
       except we want to quit once wasted bits-per-sample hits 0
