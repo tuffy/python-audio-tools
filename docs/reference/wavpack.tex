@@ -896,16 +896,25 @@ $\text{Block}_4$ & 0 & 1 & 0 & Back Left & Back Right
 
 \clearpage
 
+\subsection{False Stereo}
+
+If Channel A's samples are identical to Channel B's samples,
+one can set the \VAR{False Stereo} bit in the block header
+and treat the block as having only one channel for the rest of
+its encoding.
+Note that the block's \VAR{Is Mono} bit is still \texttt{false}
+in this case.
+
 \subsection{The CRC}
 
-Once the audio samples have been split into blocks,
-it's best to perform the block header CRC calculation
+After the audio samples have been processed for false stereo
+and wasted bits, it's best to perform the block header CRC calculation
 before starting to encode them, as follows:
 
 \begin{equation*}
-\text{CRC}_i = (3 \times \text{CRC}_{i - 1}) + \text{Unencoded Sample}_i
+\text{CRC}_i = (3 \times \text{CRC}_{i - 1}) + \text{Sample}_i
 \end{equation*}
-where $\text{Unencoded Sample}_i$ alternates between channels if necessary.
+where $\text{Sample}_i$ alternates between channels if necessary.
 $\text{CRC}_{-1}$ begins with a value of \texttt{0xFFFFFFFF}
 and each $\text{CRC}_i$ value is truncated to 32 bits.
 
@@ -1312,7 +1321,8 @@ $((\text{unary}_{i - 1} - 16) \bmod{2 ^ {\text{count\_bits}(\text{unary}_{i - 1}
 \end{wrapfigure}
 This is necessary when $\text{Entropy A}_{i~0} < 2$ and,
 for 2 channel blocks, $\text{Entropy B}_{i~0} < 2$,
-$\text{holding\_zero}_i = 0$ and $\text{holding\_one}_i = 0$.
+$\text{holding\_zero}_i = \texttt{false}$ and
+$\text{holding\_one}_i = \texttt{false}$.
 In that event, whether the current $\text{Residual}_i$ is 0 or not,
 we must generate a zeroes block after outputting $\text{Residual}_{i - 1}$
 but before outputting $\text{Residual}_i$.
