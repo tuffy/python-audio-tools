@@ -1147,7 +1147,7 @@ WavPackDecoder_analyze_subblock(decoders_WavPackDecoder* self,
         break;
     default:
         /*return a binary string for unknown subblock types*/
-        data_size = (header.block_size * 2) - header.actual_size_1_less;
+        data_size = header.block_size * 2;
 
         subblock_data = malloc(data_size);
         if (fread(subblock_data,
@@ -1421,9 +1421,7 @@ WavPackDecoder_decode_subblock(decoders_WavPackDecoder* self,
         break;
     default:
         /*unsupported sub-blocks are skipped*/
-        fseek(bitstream->file,
-              (header.block_size * 2) - header.actual_size_1_less,
-              SEEK_CUR);
+        fseek(bitstream->file, header.block_size * 2, SEEK_CUR);
         break;
     }
 
