@@ -116,7 +116,7 @@ encoders_encode_wavpack(char *filename,
 
     file = fopen(filename, "wb");
     stream = bs_open(file, BS_LITTLE_ENDIAN);
-    reader = pcmr_open(pcmdata, 44100, 2, 0x3, 16, 0, 1);
+    reader = pcmr_open(pcmdata, 96000, 6, 0x3F, 24, 0, 1);
 
     context.options.false_stereo = false_stereo;
     context.options.wasted_bits = wasted_bits;
@@ -133,6 +133,8 @@ encoders_encode_wavpack(char *filename,
     context.sample_rate = reader->sample_rate;
     context.total_channels = reader->channels;
     context.channel_mask = reader->channel_mask;
+
+    context.channel_info_written = 0;
 
     context.block_index = 0;
     context.byte_count = 0;
@@ -490,15 +492,19 @@ wavpack_write_block(Bitstream* bs,
         block_header.joint_stereo = 0;
     }
 
-    /*FIXME - figure out cross channel decorrelation bit*/
-    block_header.cross_channel_decorrelation = 0;
+    /*The cross channel decorrelation bit seems to be set
+      any time the number of block channels is 2
+      regardless of whether there's any decorrelation terms.
+      I don't think decoders use it at all.*/
+    block_header.cross_channel_decorrelation = (channel_count == 2);
 
     /*assign tunables for block data*/
     wavpack_calculate_tunables(context,
                                channel_A,
                                channel_B,
                                channel_number,
-                               channel_count,
+                               channel_count -
+                               block_header.false_stereo,
                                &decorrelation_terms,
                                &decorrelation_deltas,
                                &decorrelation_weights_A,
@@ -570,7 +576,8 @@ wavpack_write_block(Bitstream* bs,
                                         &(decorrelation_weights_B.data[i]),
                                         &(decorrelation_samples_A.arrays[i]),
                                         &(decorrelation_samples_B.arrays[i]),
-                                        channel_count,
+                                        channel_count -
+                                        block_header.false_stereo,
                                         context);
 
         /*and place the last few decorrelated samples into the
@@ -581,7 +588,8 @@ wavpack_write_block(Bitstream* bs,
                                         decorrelation_terms.data[i],
                                         channel_A,
                                         channel_B,
-                                        channel_count);
+                                        channel_count -
+                                        block_header.false_stereo);
     }
 
     wavpack_write_residuals(sub_blocks,
@@ -595,6 +603,8 @@ wavpack_write_block(Bitstream* bs,
 
     wavpack_store_tunables(context,
                            channel_number,
+                           channel_count -
+                           block_header.false_stereo,
                            channel_count,
                            &decorrelation_weights_A,
                            &decorrelation_weights_B,
@@ -826,13 +836,16 @@ wavpack_write_decorr_samples(Bitstream *bs,
 
     /*FIXME - avoid writing 0 samples, as per reference encoder*/
 
-    if (channel_count > 1) {  /*2 channel block*/
+    if (channel_count == 2) {  /*2 channel block*/
         for (i = decorr_terms->size - 1; i >= 0; i--) {
             term = decorr_terms->data[i];
             term_samples_A = &(samples_A->arrays[i]);
             term_samples_B = &(samples_B->arrays[i]);
 
-            if ((17 <= term) && (term <= 18)) {
+            if ((term == 17) || (term == 18)) {
+                assert(term_samples_A->size >= 2);
+                assert(term_samples_B->size >= 2);
+
                 bs->write_signed_bits(bs, 16,
                                       wavpack_log2(term_samples_A->data[1]));
                 bs->write_signed_bits(bs, 16,
@@ -842,6 +855,8 @@ wavpack_write_decorr_samples(Bitstream *bs,
                 bs->write_signed_bits(bs, 16,
                                       wavpack_log2(term_samples_B->data[0]));
             } else if ((1 <= term) && (term <= 8)) {
+                assert(term_samples_A->size >= term);
+                assert(term_samples_B->size >= term);
                 for (k = 0; k < term; k++) {
                     bs->write_signed_bits(bs, 16,
                                     wavpack_log2(term_samples_A->data[k]));
@@ -849,10 +864,14 @@ wavpack_write_decorr_samples(Bitstream *bs,
                                     wavpack_log2(term_samples_B->data[k]));
                 }
             } else if ((-3 <= term) && (term <= -1)) {
+                assert(term_samples_A->size >= 1);
+                assert(term_samples_B->size >= 1);
                 bs->write_signed_bits(bs, 16,
                                       wavpack_log2(term_samples_A->data[0]));
                 bs->write_signed_bits(bs, 16,
                                       wavpack_log2(term_samples_B->data[0]));
+            } else {
+                assert(0); /*unsupported term*/
             }
         }
     } else {                        /*1 channel block*/
@@ -861,15 +880,21 @@ wavpack_write_decorr_samples(Bitstream *bs,
             term_samples_A = &(samples_A->arrays[i]);
 
             if ((17 <= term) && (term <= 18)) {
+                assert(term_samples_A->size >= 2);
+
                 bs->write_signed_bits(bs, 16,
                                       wavpack_log2(term_samples_A->data[1]));
                 bs->write_signed_bits(bs, 16,
                                       wavpack_log2(term_samples_A->data[0]));
             } else if ((1 <= term) && (term <= 8)) {
+                assert(term_samples_A->size >= term);
+
                 for (k = 0; k < term; k++) {
                     bs->write_signed_bits(bs, 16,
                                     wavpack_log2(term_samples_A->data[k]));
                 }
+            } else {
+                assert(0); /*unsupported term*/
             }
         }
     }
@@ -1378,10 +1403,6 @@ wavpack_flush_residual(Bitstream *bs,
     assert((residual->output_holding_one == 0) ||
            (residual->output_holding_one == 1));
 
-    /* printf("Flushing : "); */
-    /* wavpack_print_residual(stdout, residual); */
-    /* printf("\n"); */
-
     if (residual->zeroes.present) {
         if (residual->zeroes.count == 0) {
             /*a "false-alarm" block of zero residuals*/
@@ -1524,6 +1545,7 @@ void wavpack_perform_decorrelation_pass(
     assert((channel_count == 1) || (channel_count == 2));
 
     if (channel_count == 1) {
+        assert(decorrelation_term > 0);
         wavpack_perform_decorrelation_pass_1ch(channel_A,
                                                decorrelation_term,
                                                decorrelation_delta,
@@ -1726,6 +1748,9 @@ void wavpack_perform_decorrelation_pass_1ch(
                                     decorrelation_delta);
         }
         break;
+    default:
+        assert(0); /*unsupported decorrelation term*/
+        break;
     }
 
     *decorrelation_weight = weight;
@@ -1769,6 +1794,12 @@ wavpack_calculate_tunables(struct wavpack_encoder_context* context,
     ia_size_t i;
     struct i_array* samples_A;
     struct i_array* samples_B;
+    int decorrelation_passes;
+
+    if (channel_count == 2)
+        decorrelation_passes = context->options.decorrelation_passes;
+    else
+        decorrelation_passes = MIN(5, context->options.decorrelation_passes);
 
     assert((channel_count == 1) || (channel_count == 2));
 
@@ -1796,26 +1827,26 @@ wavpack_calculate_tunables(struct wavpack_encoder_context* context,
     }
 
 
-    if (context->options.decorrelation_passes ==
+    if (decorrelation_passes ==
         context->wrap.decorrelation_weights.arrays[channel_number].size) {
         /*pull decorrelation_weights_A from context*/
         ia_copy(decorrelation_weights_A,
            &(context->wrap.decorrelation_weights.arrays[channel_number]));
     } else {
         /*build a new set of decorrelation_weights_A*/
-        for (i = 0; i < context->options.decorrelation_passes; i++) {
+        for (i = 0; i < decorrelation_passes; i++) {
             ia_append(decorrelation_weights_A, 0);
         }
     }
     if (channel_count > 1) {
-        if (context->options.decorrelation_passes ==
+        if (decorrelation_passes ==
             context->wrap.decorrelation_weights.arrays[channel_number + 1].size) {
             /*pull decorrelation_weights_B from context*/
             ia_copy(decorrelation_weights_B,
              &(context->wrap.decorrelation_weights.arrays[channel_number + 1]));
         } else {
             /*build a new set of decorrelation_weights_B*/
-            for (i = 0; i < context->options.decorrelation_passes; i++) {
+            for (i = 0; i < decorrelation_passes; i++) {
                 ia_append(decorrelation_weights_B, 0);
             }
         }
@@ -1836,7 +1867,7 @@ wavpack_calculate_tunables(struct wavpack_encoder_context* context,
 
         /*otherwise, create new decorrelation samples samples
           depending the number of passes and number of channels*/
-            switch (context->options.decorrelation_passes) {
+            switch (decorrelation_passes) {
             case 0:
                 break;
             case 1:
@@ -1931,33 +1962,28 @@ wavpack_calculate_tunables(struct wavpack_encoder_context* context,
             }
     }
 
-    switch (context->options.decorrelation_passes) {
+    switch (decorrelation_passes) {
     case 0:
         break;
     case 1:
-        /*FIXME - figure these out*/
         ia_append(decorrelation_terms, 18);
         ia_append(decorrelation_deltas, 2);
         break;
     case 2:
-        /*FIXME - figure these out*/
         ia_vappend(decorrelation_terms, 2, 17, 18);
         ia_vappend(decorrelation_deltas, 2, 2, 2);
         break;
     case 5:
-        /*FIXME - figure these out*/
         ia_vappend(decorrelation_terms, 5, 3, 17, 2, 18, 18);
         ia_vappend(decorrelation_deltas, 5, 2, 2, 2, 2, 2);
         break;
     case 10:
-        /*FIXME - figure these out*/
         ia_vappend(decorrelation_terms, 10, 4, 17, -1, 5, 3,
                    2, -2, 18, 18, 18);
         ia_vappend(decorrelation_deltas, 10, 2, 2, 2, 2, 2,
                    2, 2, 2, 2, 2);
         break;
     case 16:
-        /*FIXME - figure these out*/
         ia_vappend(decorrelation_terms, 16, 2, 18, -1, 8, 6, 3, 5, 7,
                    4, 2, 18, -2, 3, 2, 18, 18);
         ia_vappend(decorrelation_deltas, 16, 2, 2, 2, 2, 2, 2, 2, 2,
@@ -1972,6 +1998,7 @@ void
 wavpack_store_tunables(struct wavpack_encoder_context* context,
                        int channel_number,
                        int channel_count,
+                       int maximum_channel_count,
                        struct i_array* decorrelation_weights_A,
                        struct i_array* decorrelation_weights_B,
                        struct ia_array* decorrelation_samples_A,
@@ -1983,6 +2010,13 @@ wavpack_store_tunables(struct wavpack_encoder_context* context,
     struct ia_array* array2;
 
     assert((channel_count == 1) || (channel_count == 2));
+    assert(maximum_channel_count >= channel_count);
+
+    if ((channel_count == 1) && (maximum_channel_count == 2)) {
+        ia_copy(decorrelation_weights_B, decorrelation_weights_A);
+        iaa_copy(decorrelation_samples_B, decorrelation_samples_A);
+        ia_copy(entropy_variables_B, entropy_variables_A);
+    }
 
     /*Store decorrelation weights in context
       after round-tripping them through the 8-bit conversion routines
@@ -1993,7 +2027,7 @@ wavpack_store_tunables(struct wavpack_encoder_context* context,
         ia_append(array,
                   wavpack_restore_weight(wavpack_store_weight(
                                            decorrelation_weights_A->data[i])));
-    if (channel_count > 1) {
+    if (maximum_channel_count > 1) {
         array = &(context->wrap.decorrelation_weights.arrays[channel_number + 1]);
         ia_reset(array);
         for (i = 0; i < decorrelation_weights_B->size; i++)
@@ -2011,7 +2045,7 @@ wavpack_store_tunables(struct wavpack_encoder_context* context,
         ia_map(&(array2->arrays[i]),
                &(decorrelation_samples_A->arrays[i]),
                wavpack_log2_roundtrip);
-    if (channel_count > 1) {
+    if (maximum_channel_count > 1) {
         array2 = &(context->wrap.decorrelation_samples[channel_number + 1]);
         for (i = 0; i < decorrelation_samples_B->size; i++)
             ia_map(&(array2->arrays[i]),
@@ -2025,12 +2059,11 @@ wavpack_store_tunables(struct wavpack_encoder_context* context,
     ia_map(&(context->wrap.entropy_variables.arrays[channel_number]),
            entropy_variables_A,
            wavpack_log2_roundtrip);
-    if (channel_count > 1) {
+    if (maximum_channel_count > 1) {
         ia_map(&(context->wrap.entropy_variables.arrays[channel_number + 1]),
                entropy_variables_B,
                wavpack_log2_roundtrip);
     }
-
 }
 
 ia_data_t
@@ -2252,7 +2285,7 @@ wavpack_max_wasted_bits_per_sample(struct i_array *samples)
 
 #ifdef STANDALONE
 int main(int argc, char *argv[]) {
-    encoders_encode_wavpack(argv[1], stdin, 44100, 1, 0, 1, 5);
+    encoders_encode_wavpack(argv[1], stdin, 44100, 1, 1, 1, 10);
     return 0;
 }
 

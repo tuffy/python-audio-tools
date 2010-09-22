@@ -171,7 +171,7 @@ ia_from_list(struct i_array *target, int count, int *list);
 static inline void
 ia_head(struct i_array *target, struct i_array *source, ia_size_t size)
 {
-    target->size = size;
+    target->size = MIN(source->size, size);
     target->total_size = source->total_size;
     target->data = source->data;
 }
@@ -208,6 +208,8 @@ ia_pop_tail(struct i_array *source)
 static inline void
 ia_tail(struct i_array *target, struct i_array *source, ia_size_t size)
 {
+    size = MIN(source->size, size);
+
     if (target != source) {
         target->data = source->data + (source->size - size);
     } else {

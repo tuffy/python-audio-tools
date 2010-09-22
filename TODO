@@ -2482,12 +2482,12 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** TODO Add WavPack encoder
 *** DONE Add audiotools.encoders.encode_wavpack function
 *** DONE Split samples into blocks based on channel count
-*** TODO Write one block per block-size number of channels, per channel pair
+*** DONE Write one block per block-size number of channels, per channel pair
 **** DONE Calculate block CRC
 **** DONE Write placeholder block header
-**** TODO Determine tunable data per block
+**** DONE Determine tunable data per block
      - [X] decorrelation terms
-     - [ ] decorrelation deltas
+     - [X] decorrelation deltas
      - [X] decorrelation weights
      - [X] decorrelation samples
      - [X] entropy variables (medians)
@@ -2519,6 +2519,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** DONE Optimize memory usage
     Perform less memory allocation/freeing over the course of encoding.
 *** TODO Optimize for speed
+** TODO Add WavPack-specific unit tests
 ** TODO Document WavPack
 *** TODO the WavPack file stream
 *** TODO WavPack decoding
@@ -2558,6 +2559,5 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** TODO Test encoder/decoder against reference
    Ensure a wide range of lossless audio round-trips correctly
 ** TODO Remove WavePackAudio.BINARIES
-** TODO Add WavPack-specific unit tests
 ** TODO Add more WavPack INVALIDFILE .verify() tests
 ** TODO Remove wvgain for ReplayGain application

@@ -390,10 +390,25 @@ wavpack_calculate_tunables(struct wavpack_encoder_context* context,
                            struct i_array* entropy_variables_A,
                            struct i_array* entropy_variables_B);
 
+/*This is for storing calculated values from one block to the next.
+  Note that it has separate "channel_count" and "maximum_channel_count"
+  values.  For example, imagine the following scenario:
+
+  | Block   | is_mono | false_stereo |
+  |---------+---------+--------------|
+  | block 1 |       0 |            0 |
+  | block 2 |       0 |            1 |
+  | block 3 |       0 |            0 |
+
+  All produce 2 channels worth of output and all have a
+  "maximum_channel_count" of 2, but "block 2" has an effective
+  "channel_count" of 1 since it performs no actual work on channel B.
+ */
 void
 wavpack_store_tunables(struct wavpack_encoder_context* context,
                        int channel_number,
                        int channel_count,
+                       int maximum_channel_count,
                        struct i_array* decorrelation_weights_A,
                        struct i_array* decorrelation_weights_B,
                        struct ia_array* decorrelation_samples_A,
