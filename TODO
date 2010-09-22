@@ -2386,14 +2386,14 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 * TODO Integrate WavPack
 ** DONE update WavPack documentation to little-endian reading order
 ** TODO Add WavPack decoder
-*** TODO Add audiotools.decoders.WavPackDecoder object
+*** DONE Add audiotools.decoders.WavPackDecoder object
     Must include the following attributes:
     - [X] sample_rate
     - [X] bits_per_sample
     - [X] channels
-    - [ ] channel_mask
+    - [X] channel_mask
     And the following methods:
-    - [ ] __init__
+    - [X] __init__
     - [X] read()
     - [X] analyze_frame()
     - [X] close()
@@ -2499,6 +2499,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 **** DONE Calculate bitstream values from entropy variables and PCM data
 **** DONE Write bitstream sub-block
 **** DONE Calculate joint-stereo
+**** DONE Add channel mask sub-block for multi-channel audio
 *** DONE Rewrite block headers with final "total samples" data
     Using from_pcm(), this data won't be known in advance
 *** DONE Allow external RIFF WAVE header/footer

@@ -26,6 +26,8 @@ WavPackDecoder_init(decoders_WavPackDecoder *self,
                     PyObject *args, PyObject *kwds) {
     char* filename;
     struct wavpack_block_header block_header;
+    struct wavpack_subblock_header sub_block_header;
+    uint32_t block_length;
 
     self->filename = NULL;
     self->bitstream = NULL;
@@ -69,19 +71,66 @@ WavPackDecoder_init(decoders_WavPackDecoder *self,
                                              &block_header) == ERROR)
             return -1;
         else {
-            if (self->remaining_samples == -1)
-                self->remaining_samples = block_header.total_samples;
+            if (!setjmp(*bs_try(self->bitstream))) {
+                if (self->remaining_samples == -1)
+                    self->remaining_samples = block_header.total_samples;
 
-            self->sample_rate = block_header.sample_rate;
-            self->bits_per_sample = block_header.bits_per_sample;
-            self->channels += (block_header.mono_output ? 1 : 2);
-            fseek(self->file, block_header.block_size - 24, SEEK_CUR);
-            /*FIXME - determining channel mask requires sub-block parsing*/
+                self->sample_rate = block_header.sample_rate;
+                self->bits_per_sample = block_header.bits_per_sample;
+                self->channels += (block_header.mono_output ? 1 : 2);
+
+                /*parse sub-blocks as necessary to find a channel mask*/
+                block_length = block_header.block_size - 24;
+                while (block_length > 0) {
+                    WavPackDecoder_read_subblock_header(self->bitstream,
+                                                        &sub_block_header);
+                    block_length -= (sub_block_header.large_block ? 4 : 2);
+                    if ((sub_block_header.metadata_function ==
+                         WV_CHANNEL_INFO) &&
+                        (sub_block_header.nondecoder_data == 0)) {
+                        WavPackDecoder_read_channel_info(self->bitstream,
+                                                         &sub_block_header,
+                                                         &(self->channels),
+                                                         &(self->channel_mask));
+                        /*once we have a channel_info sub-block,
+                          there's no need to walk through additional
+                          block headers for the channel count*/
+                        bs_etry(self->bitstream);
+                        goto finished;
+                    } else {
+                        fseek(self->file,
+                              sub_block_header.block_size * 2,
+                              SEEK_CUR);
+                    }
+                    block_length -= sub_block_header.block_size * 2;
+                }
+                bs_etry(self->bitstream);
+            } else {
+                /*EOF error*/
+                bs_etry(self->bitstream);
+                PyErr_SetString(PyExc_IOError, "I/O error reading block");
+                return -1;
+            }
         }
     } while (block_header.final_block_in_sequence == 0);
 
+ finished:
     iaa_init(&(self->decoded_samples), self->channels, 44100);
     fseek(self->file, 0, SEEK_SET);
+
+    if (self->channel_mask == 0)
+        switch (self->channels) {
+        case 1:
+            self->channel_mask = 0x4;
+            break;
+        case 2:
+            self->channel_mask = 0x3;
+            break;
+        default:
+            /*channel_mask == 0 (undefined)
+              if we have multiple channels but no channel_info sub-block*/
+            break;
+        }
 
     /*initialize our output MD5 sum*/
     audiotools__MD5Init(&(self->md5));
@@ -555,6 +604,20 @@ WavPackDecoder_read_int32_info(Bitstream* bitstream,
 }
 
 status
+WavPackDecoder_read_channel_info(Bitstream* bitstream,
+                                 struct wavpack_subblock_header* header,
+                                 int* channel_count,
+                                 int* channel_mask) {
+    *channel_count = bitstream->read(bitstream, 8);
+    *channel_mask = bitstream->read(bitstream,
+                                    8 * ((header->block_size * 2) - 1 -
+                                         header->actual_size_1_less));
+
+
+    return OK;
+}
+
+status
 WavPackDecoder_read_wv_bitstream(Bitstream* bitstream,
                                  struct wavpack_subblock_header* header,
                                  struct i_array* entropy_variables_A,
@@ -1022,6 +1085,8 @@ WavPackDecoder_analyze_subblock(decoders_WavPackDecoder* self,
     unsigned char* subblock_data = NULL;
     size_t data_size;
     PyObject* subblock_data_obj = NULL;
+    int channel_count;
+    int channel_mask;
 
     WavPackDecoder_read_subblock_header(bitstream, &header);
 
@@ -1124,6 +1189,17 @@ WavPackDecoder_analyze_subblock(decoders_WavPackDecoder* self,
             self->got_int32_info = 1;
         } else
             return NULL;
+        break;
+    case WV_CHANNEL_INFO:
+        WavPackDecoder_read_channel_info(bitstream,
+                                         &header,
+                                         &channel_count,
+                                         &channel_mask);
+        subblock_data_obj = Py_BuildValue("{si si}",
+                                          "channel_count",
+                                          channel_count,
+                                          "channel_mask",
+                                          channel_mask);
         break;
     case WV_BITSTREAM:
         if (!self->got_entropy_variables) {

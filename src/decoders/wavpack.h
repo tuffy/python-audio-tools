@@ -31,6 +31,7 @@ typedef enum {WV_DECORR_TERMS      = 0x2,
               WV_ENTROPY_VARIABLES = 0x5,
               WV_INT32_INFO        = 0x9,
               WV_BITSTREAM         = 0xA,
+              WV_CHANNEL_INFO      = 0xD,
               WV_MD5               = 0x26} wv_metadata_function;
 
 typedef struct {
@@ -249,6 +250,12 @@ status
 WavPackDecoder_read_int32_info(Bitstream* bitstream,
                                uint8_t* sent_bits, uint8_t* zeroes,
                                uint8_t* ones, uint8_t* dupes);
+
+status
+WavPackDecoder_read_channel_info(Bitstream* bitstream,
+                                 struct wavpack_subblock_header* header,
+                                 int* channel_count,
+                                 int* channel_mask);
 
 /*Reads the WV_BITSTREAM sub-block and returns
   channel_count * samples number of values to the given array.*/

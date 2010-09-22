@@ -61,7 +61,7 @@ encoders_encode_wavpack(PyObject *dummy,
 
     if (!PyArg_ParseTupleAndKeywords(args,
                                      keywds,
-                                     "sOi|iiis#s#",
+                                     "sOi|iiiis#s#",
                                      kwlist,
                                      &filename,
                                      &pcmreader_obj,
@@ -551,6 +551,14 @@ wavpack_write_block(Bitstream* bs,
                                     channel_count -
                                     block_header.false_stereo);
 
+    if (!context->channel_info_written &&
+        (context->total_channels > 2)) {
+        wavpack_write_channel_info(sub_blocks,
+                                   context->total_channels,
+                                   context->channel_mask);
+        context->channel_info_written = 1;
+    }
+
     /*apply decorrelation passes to samples in reverse order, if requested*/
     for (i = decorrelation_terms.size - 1; i >= 0; i--) {
         wavpack_perform_decorrelation_pass(
@@ -769,6 +777,22 @@ wavpack_write_int32_info(Bitstream *bs,
     bs->write_bits(bs, 8, zeroes);
     bs->write_bits(bs, 8, ones);
     bs->write_bits(bs, 8, dupes);
+}
+
+void
+wavpack_write_channel_info(Bitstream *bs,
+                           int channel_count,
+                           int channel_mask) {
+    Bitstream* sub_block = bs_open_recorder();
+
+    sub_block->write_bits(sub_block, 8, channel_count);
+    sub_block->write_bits(sub_block, count_bits(channel_mask), channel_mask);
+    sub_block->byte_align(sub_block);
+
+    wavpack_write_subblock_header(bs, WV_CHANNEL_INFO, 0,
+                                  sub_block->bits_written / 8);
+    bs_dump_records(bs, sub_block);
+    bs_close(sub_block);
 }
 
 void
@@ -1029,7 +1053,8 @@ wavpack_write_residuals(Bitstream *bs,
         residual_data->write_bits(residual_data, 1, 1);
 
     /*write the sub-block header*/
-    wavpack_write_subblock_header(bs, 0xA, 0, residual_data->bits_written / 8);
+    wavpack_write_subblock_header(bs, WV_BITSTREAM, 0,
+                                  residual_data->bits_written / 8);
 
     /*write out the residual data*/
     bs_dump_records(bs, residual_data);

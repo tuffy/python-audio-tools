@@ -38,6 +38,7 @@ typedef enum {WV_WAVE_HEADER       = 0x1,
               WV_ENTROPY_VARIABLES = 0x5,
               WV_INT32_INFO        = 0x9,
               WV_BITSTREAM         = 0xA,
+              WV_CHANNEL_INFO      = 0xD,
               WV_MD5               = 0x6} wv_metadata_function;
 
 
@@ -51,6 +52,8 @@ struct wavpack_encoder_context {
     uint32_t block_index;
     uint32_t byte_count;
     struct i_array block_offsets;
+
+    uint8_t channel_info_written;
 
     audiotools__MD5Context md5;
     uint32_t pcm_bytes;
@@ -252,6 +255,11 @@ wavpack_write_int32_info(Bitstream *bs,
                          uint8_t zeroes,
                          uint8_t ones,
                          uint8_t dupes);
+
+void
+wavpack_write_channel_info(Bitstream *bs,
+                           int channel_count,
+                           int channel_mask);
 
 /*Writes an entropy variables sub-block to the bitstream.
   The entropy variable list should be 3 elements long.
