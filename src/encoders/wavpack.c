@@ -1565,9 +1565,9 @@ void wavpack_perform_decorrelation_pass(
 
         ia_reset(input_A);
         ia_reset(input_B);
-        ia_extend(input_A, decorrelation_samples_A);
+        ia_extend(input_A, decorrelation_samples_B);
         ia_extend(input_A, channel_A);
-        ia_extend(input_B, decorrelation_samples_B);
+        ia_extend(input_B, decorrelation_samples_A);
         ia_extend(input_B, channel_B);
         ia_reset(channel_A);
         ia_reset(channel_B);
@@ -1979,7 +1979,6 @@ wavpack_store_tunables(struct wavpack_encoder_context* context,
     ia_size_t i;
     struct wavpack_decorrelation_pass* pass;
     struct i_array* array;
-    struct ia_array* array2;
 
     assert((channel_count == 1) || (channel_count == 2));
 
@@ -2012,17 +2011,15 @@ wavpack_store_tunables(struct wavpack_encoder_context* context,
     /*Store decorrelation samples in context
       after round-tripping them through the log2/exp2 conversion routines
       for use by the next block on the same set of channels.*/
-    array2 = &(pass->decorrelation_samples_A);
     for (i = 0; i < decorrelation_samples_A->size; i++)
-        ia_map(&(array2->arrays[i]),
+        ia_map(&(pass->decorrelation_samples_A.arrays[i]),
                &(decorrelation_samples_A->arrays[i]),
-               wavpack_log2_roundtrip2);
+               wavpack_log2_roundtrip);
     if (channel_count > 1) {
-        array2 = &(pass->decorrelation_samples_B);
         for (i = 0; i < decorrelation_samples_B->size; i++)
-            ia_map(&(array2->arrays[i]),
+            ia_map(&(pass->decorrelation_samples_B.arrays[i]),
                    &(decorrelation_samples_B->arrays[i]),
-                   wavpack_log2_roundtrip2);
+                   wavpack_log2_roundtrip);
     }
 
     /*Store entropy variables in context
@@ -2041,11 +2038,6 @@ wavpack_store_tunables(struct wavpack_encoder_context* context,
 ia_data_t
 wavpack_log2_roundtrip(ia_data_t i) {
     return wavpack_exp2(wavpack_log2(i));
-}
-
-ia_data_t
-wavpack_log2_roundtrip2(ia_data_t i) {
-    return 0; /*FIXME*/
 }
 
 void
@@ -2087,12 +2079,11 @@ wavpack_wrap_decorrelation_samples(struct i_array* decorrelation_samples_A,
     case -1:
     case -2:
     case -3:
+        assert(channel_count == 2);
         ia_tail(&tail, channel_A, 1);
         ia_copy(decorrelation_samples_A, &tail);
-        if (channel_count > 1) {
-            ia_tail(&tail, channel_B, 1);
-            ia_copy(decorrelation_samples_B, &tail);
-        }
+        ia_tail(&tail, channel_B, 1);
+        ia_copy(decorrelation_samples_B, &tail);
         break;
     }
 }
@@ -2302,7 +2293,7 @@ wavpack_free_decorrelation_passes(struct wavpack_decorrelation_pass* passes,
 
 #ifdef STANDALONE
 int main(int argc, char *argv[]) {
-    encoders_encode_wavpack(argv[1], stdin, 44100, 1, 1, 1, 10);
+    encoders_encode_wavpack(argv[1], stdin, 44100, 1, 1, 1, 16);
     return 0;
 }
 

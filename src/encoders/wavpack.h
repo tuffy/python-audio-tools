@@ -410,9 +410,6 @@ wavpack_wrap_decorrelation_samples(struct i_array* decorrelation_samples_A,
 ia_data_t
 wavpack_log2_roundtrip(ia_data_t i);
 
-ia_data_t
-wavpack_log2_roundtrip2(ia_data_t i);
-
 /*Updates the contents of channel_A and channel_B to be
   joint stereo.*/
 void
