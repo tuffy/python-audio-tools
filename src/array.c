@@ -291,6 +291,7 @@ iaa_init(struct ia_array *array, ia_size_t total_arrays,
 
     array->arrays = malloc(sizeof(struct i_array) * total_arrays);
     array->size = total_arrays;
+    array->total_size = total_arrays;
     for (i = 0; i < total_arrays; i++)
         ia_init(&(array->arrays[i]), initial_size);
 }
@@ -310,7 +311,7 @@ iaa_free(struct ia_array *array)
 {
     ia_size_t i;
 
-    for (i = 0; i < array->size; i++)
+    for (i = 0; i < array->total_size; i++)
         ia_free(&(array->arrays[i]));
 
     if (array->arrays != NULL)

@@ -41,7 +41,17 @@ typedef enum {WV_WAVE_HEADER       = 0x1,
               WV_CHANNEL_INFO      = 0xD,
               WV_MD5               = 0x6} wv_metadata_function;
 
-
+struct wavpack_decorrelation_pass {
+    int channel_count;
+    struct i_array decorrelation_terms;
+    struct i_array decorrelation_deltas;
+    struct i_array decorrelation_weights_A;
+    struct i_array decorrelation_weights_B;
+    struct ia_array decorrelation_samples_A;
+    struct ia_array decorrelation_samples_B;
+    struct i_array entropy_variables_A;
+    struct i_array entropy_variables_B;
+};
 
 struct wavpack_encoder_context {
     uint8_t bits_per_sample;
@@ -72,22 +82,8 @@ struct wavpack_encoder_context {
 #endif
     } wave;
 
-    /*We'll try saving tunables from block to block
-      which seems like how the reference encoder does things.
-      Each sub-array are the values for each pass of a given channel.
-      For example:
-      decorrelation_weights.arrays[1].data[2]
-      is decorrelation_weight for the 3rd pass of channel 2.*/
     struct {
-        struct ia_array decorrelation_weights;
-        struct ia_array entropy_variables;
-
-        /*Except for decorrelation_samples, which is stored as
-          an array of ia_array structs.
-          For example:
-          decorrelation_samples[1].arrays[2]
-          are the samples for the 3rd pass of channel 2.*/
-        struct ia_array* decorrelation_samples;
+        struct wavpack_decorrelation_pass *passes;
     } wrap;
 
     struct {
@@ -345,8 +341,8 @@ wavpack_exp2(int log);
   altering their values in the process.
   decorrelation_weight_A and (optionally) decorrelation_weight_B are updated
   in the process.
-  If "channel_count" is 1, only channel_A and weight_A are used.
-  Otherwise, channel_B is also used.*/
+  If "channel_count" is 1, only channel_A, weight_A and samples_A are used.
+  Otherwise, channel_B, weight_B and samples_B are also used.*/
 void
 wavpack_perform_decorrelation_pass(struct i_array* channel_A,
                                    struct i_array* channel_B,
@@ -390,25 +386,12 @@ wavpack_calculate_tunables(struct wavpack_encoder_context* context,
                            struct i_array* entropy_variables_A,
                            struct i_array* entropy_variables_B);
 
-/*This is for storing calculated values from one block to the next.
-  Note that it has separate "channel_count" and "maximum_channel_count"
-  values.  For example, imagine the following scenario:
-
-  | Block   | is_mono | false_stereo |
-  |---------+---------+--------------|
-  | block 1 |       0 |            0 |
-  | block 2 |       0 |            1 |
-  | block 3 |       0 |            0 |
-
-  All produce 2 channels worth of output and all have a
-  "maximum_channel_count" of 2, but "block 2" has an effective
-  "channel_count" of 1 since it performs no actual work on channel B.
- */
 void
 wavpack_store_tunables(struct wavpack_encoder_context* context,
                        int channel_number,
                        int channel_count,
-                       int maximum_channel_count,
+                       struct i_array* decorrelation_terms,
+                       struct i_array* decorrelation_deltas,
                        struct i_array* decorrelation_weights_A,
                        struct i_array* decorrelation_weights_B,
                        struct ia_array* decorrelation_samples_A,
@@ -426,6 +409,9 @@ wavpack_wrap_decorrelation_samples(struct i_array* decorrelation_samples_A,
 
 ia_data_t
 wavpack_log2_roundtrip(ia_data_t i);
+
+ia_data_t
+wavpack_log2_roundtrip2(ia_data_t i);
 
 /*Updates the contents of channel_A and channel_B to be
   joint stereo.*/
@@ -450,3 +436,12 @@ wavpack_write_wave_header_sub_block(Bitstream* stream,
 /*given a set of samples, returns the maximum amount of wasted bits*/
 int
 wavpack_max_wasted_bits_per_sample(struct i_array *samples);
+
+struct wavpack_decorrelation_pass*
+wavpack_init_decorrelation_passes(int channel_count);
+
+void
+wavpack_free_decorrelation_passes(struct wavpack_decorrelation_pass* passes,
+                                  int channel_count);
+
+

@@ -343,6 +343,7 @@ ia_map(struct i_array *target, struct i_array *source,
 struct ia_array {
     struct i_array *arrays;
     ia_size_t size;
+    ia_size_t total_size;
 };
 
 void
