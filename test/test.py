@@ -34,9 +34,9 @@ import unicodedata
 gettext.install("audiotools", unicode=True)
 
 (METADATA, PCM, FRAMELIST, EXECUTABLE, CUESHEET, IMAGE, NETWORK, INVALIDFILE,
- FLAC, SHORTEN, ALAC, CUSTOM) = range(12)
+ FLAC, SHORTEN, ALAC, WAVPACK, CUSTOM) = range(13)
 CASES = set([METADATA, PCM, FRAMELIST, EXECUTABLE, CUESHEET, IMAGE, NETWORK,
-             INVALIDFILE, FLAC, SHORTEN, ALAC])
+             INVALIDFILE, FLAC, SHORTEN, ALAC, WAVPACK])
 
 
 def nothing(self):
@@ -101,6 +101,12 @@ def TEST_SHORTEN(function):
 
 def TEST_ALAC(function):
     if (ALAC not in CASES):
+        return nothing
+    else:
+        return function
+
+def TEST_WAVPACK(function):
+    if (WAVPACK not in CASES):
         return nothing
     else:
         return function
@@ -202,6 +208,20 @@ class EXACT_BLANK_PCM_Reader(BLANK_PCM_Reader):
 
         self.total_frames = pcm_frames
 
+class EXACT_SILENCE_PCM_Reader(EXACT_BLANK_PCM_Reader):
+    def read(self, bytes):
+        if (self.total_frames > 0):
+            frame_list = audiotools.pcm.from_list(
+                [0] * self.channels * min(
+                    bytes / (self.channels * (self.bits_per_sample / 8)),
+                    self.total_frames),
+                self.channels, self.bits_per_sample, True)
+            self.total_frames -= frame_list.frames
+            return frame_list
+        else:
+            return audiotools.pcm.from_list(
+                [], self.channels, self.bits_per_sample, True)
+
 
 #this sends out random samples instead of a bunch of identical ones
 class RANDOM_PCM_Reader(BLANK_PCM_Reader):
@@ -217,6 +237,7 @@ class RANDOM_PCM_Reader(BLANK_PCM_Reader):
         import audiotools.pcm
 
         if (self.total_frames > 0):
+            bytes -= (bytes % (self.channels * self.bits_per_sample / 8))
             framelist = audiotools.pcm.FrameList(
                 os.urandom(min(bytes, self.total_frames * self.channels * self.bits_per_sample / 8)),
                 self.channels,
@@ -10815,9 +10836,13 @@ class TestFlacCodec(unittest.TestCase):
             g.close()
 
     def __test_reader__(self, pcmreader, **encode_options):
+        if (not audiotools.BIN.can_execute(audiotools.BIN["flac"])):
+            self.assert_(False,
+                         "reference FLAC binary flac(1) required for this test")
+
         temp_file = tempfile.NamedTemporaryFile(suffix=".flac")
         self.encode(temp_file.name,
-                    pcmreader,
+                    audiotools.BufferedPCMReader(pcmreader),
                     **encode_options)
 
         self.assertEqual(subprocess.call([audiotools.BIN["flac"], "-ts",
@@ -12033,6 +12058,194 @@ class TestFrameList(unittest.TestCase):
                                 temp_track2.close()
             finally:
                 temp_track.close()
+
+
+class TestWavPackCodec(unittest.TestCase):
+    @TEST_WAVPACK
+    def setUp(self):
+        import audiotools.decoders
+        import audiotools.encoders
+        self.audio_class = audiotools.WavPackAudio
+        self.decoder = audiotools.decoders.WavPackDecoder
+        self.encode = audiotools.encoders.encode_wavpack
+        self.encode_opts = [{"block_size": 44100,
+                             "false_stereo": True,
+                             "wasted_bits": True,
+                             "joint_stereo": False,
+                             "decorrelation_passes": 0},
+                            {"block_size": 44100,
+                             "false_stereo": True,
+                             "wasted_bits": True,
+                             "joint_stereo": True,
+                             "decorrelation_passes": 0},
+                            {"block_size": 44100,
+                             "false_stereo": True,
+                             "wasted_bits": True,
+                             "joint_stereo": True,
+                             "decorrelation_passes": 1},
+                            {"block_size": 44100,
+                             "false_stereo": True,
+                             "wasted_bits": True,
+                             "joint_stereo": True,
+                             "decorrelation_passes": 2},
+                            {"block_size": 44100,
+                             "false_stereo": True,
+                             "wasted_bits": True,
+                             "joint_stereo": True,
+                             "decorrelation_passes": 5},
+                            {"block_size": 44100,
+                             "false_stereo": True,
+                             "wasted_bits": True,
+                             "joint_stereo": True,
+                             "decorrelation_passes": 10},
+                            {"block_size": 44100,
+                             "false_stereo": True,
+                             "wasted_bits": True,
+                             "joint_stereo": True,
+                             "decorrelation_passes": 16}]
+
+    def __test_reader__(self, pcmreader, **encode_options):
+        if (not audiotools.BIN.can_execute(audiotools.BIN["wvunpack"])):
+            self.assert_(False,
+                         "reference WavPack binary wvunacp(1) required for this test")
+
+        temp_file = tempfile.NamedTemporaryFile(suffix=".wv")
+        self.encode(temp_file.name,
+                    audiotools.BufferedPCMReader(pcmreader),
+                    **encode_options)
+
+        sub = subprocess.Popen([audiotools.BIN["wvunpack"],
+                                "-vmq", temp_file.name],
+                               stdout=open(os.devnull, "wb"),
+                               stderr=open(os.devnull, "wb"))
+
+        self.assertEqual(sub.wait(), 0,
+                         "wvunpack decode error on %s with options %s" % \
+                             (repr(pcmreader),
+                              repr(encode_options)))
+
+        wavpack = self.decoder(temp_file.name)
+        self.assertEqual(wavpack.sample_rate, pcmreader.sample_rate)
+        self.assertEqual(wavpack.bits_per_sample, pcmreader.bits_per_sample)
+        self.assertEqual(wavpack.channels, pcmreader.channels)
+        self.assertEqual(wavpack.channel_mask, pcmreader.channel_mask)
+
+        md5sum = md5()
+        f = wavpack.read(audiotools.BUFFER_SIZE)
+        while (len(f) > 0):
+            md5sum.update(f.to_bytes(False, True))
+            f = wavpack.read(audiotools.BUFFER_SIZE)
+        wavpack.close()
+        self.assertEqual(md5sum.digest(), pcmreader.digest())
+        temp_file.close()
+
+    @TEST_WAVPACK
+    def test_small_files(self):
+        for opts in self.encode_opts:
+            for g in [test_streams.Generate01,
+                      test_streams.Generate02,
+                      test_streams.Generate03,
+                      test_streams.Generate04]:
+                gen = g(44100)
+                self.__test_reader__(gen, **opts)
+
+    @TEST_WAVPACK
+    def test_full_scale_deflection(self):
+        for opts in self.encode_opts:
+            for (bps, fsd) in [(8, test_streams.fsd8),
+                               (16, test_streams.fsd16),
+                               (24, test_streams.fsd24)]:
+                for pattern in [test_streams.PATTERN01,
+                                test_streams.PATTERN02,
+                                test_streams.PATTERN03,
+                                test_streams.PATTERN04,
+                                test_streams.PATTERN05,
+                                test_streams.PATTERN06,
+                                test_streams.PATTERN07]:
+                    self.__test_reader__(
+                        test_streams.MD5Reader(fsd(pattern, 100)), **opts)
+
+    @TEST_WAVPACK
+    def test_wasted_bps(self):
+        for opts in self.encode_opts:
+            self.__test_reader__(test_streams.WastedBPS16(1000), **opts)
+
+    @TEST_WAVPACK
+    def test_blocksizes(self):
+        noise = audiotools.Con.GreedyRepeater(audiotools.Con.SBInt16(None)).parse(os.urandom(64))
+        opts = {"false_stereo": False,
+                "wasted_bits": False,
+                "joint_stereo": False}
+        for block_size in [16, 17, 18, 19, 20, 21, 22, 23,
+                           24, 25, 26, 27, 28, 29, 30, 31, 32, 33]:
+            for decorrelation_passes in [0, 1, 5]:
+                opts_copy = opts.copy()
+                opts_copy["block_size"] = block_size
+                opts_copy["decorrelation_passes"] = decorrelation_passes
+                self.__test_reader__(test_streams.MD5Reader(
+                        test_streams.FrameListReader(noise,
+                                                     44100, 1, 16)),
+                                     **opts_copy)
+
+    @TEST_WAVPACK
+    def test_silence(self):
+        for opts in self.encode_opts:
+            for (channels, mask) in [
+                (1, audiotools.ChannelMask.from_channels(1)),
+                (2, audiotools.ChannelMask.from_channels(2)),
+                (4, audiotools.ChannelMask.from_fields(
+                        front_left=True,
+                        front_right=True,
+                        back_left=True,
+                        back_right=True)),
+                (8, audiotools.ChannelMask(0))]:
+                for bps in [8, 16, 24]:
+                    opts_copy = opts.copy()
+                    for block_size in [44100, 32, 32768, 65535,
+                                       16777215]:
+                        opts_copy['block_size'] = block_size
+
+                        self.__test_reader__(
+                            test_streams.MD5Reader(
+                                EXACT_SILENCE_PCM_Reader(
+                                    pcm_frames=65536,
+                                    sample_rate=44100,
+                                    channels=channels,
+                                    channel_mask=mask,
+                                    bits_per_sample=bps)),
+                            **opts_copy)
+
+    @TEST_WAVPACK
+    def test_noise(self):
+        for opts in self.encode_opts:
+            for (channels, mask) in [
+                (1, audiotools.ChannelMask.from_channels(1)),
+                (2, audiotools.ChannelMask.from_channels(2)),
+                (4, audiotools.ChannelMask.from_fields(
+                        front_left=True,
+                        front_right=True,
+                        back_left=True,
+                        back_right=True)),
+                (8, audiotools.ChannelMask(0))]:
+                for bps in [8, 16, 24]:
+                    opts_copy = opts.copy()
+                    for block_size in [44100, 32768, 65535,
+                                       16777215]:
+                    # for block_size in [32]:
+                        opts_copy['block_size'] = block_size
+
+                        # print "trying opts %s" % (repr(opts_copy))
+                        # print "with format %d %d %d %d" % \
+                        #     (channels, mask, bps, block_size)
+
+                        self.__test_reader__(
+                            EXACT_RANDOM_PCM_Reader(
+                                    pcm_frames=65536,
+                                    sample_rate=44100,
+                                    channels=channels,
+                                    channel_mask=mask,
+                                    bits_per_sample=bps),
+                            **opts_copy)
 
 
 class TestFloatFrameList(unittest.TestCase):

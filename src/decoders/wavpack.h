@@ -317,6 +317,7 @@ void wavpack_perform_decorrelation_pass_1ch(
 
 void wavpack_undo_extended_integers(struct i_array* channel_A,
                                     struct i_array* channel_B,
+                                    int channel_count,
                                     uint8_t sent_bits, uint8_t zeroes,
                                     uint8_t ones, uint8_t dupes);
 

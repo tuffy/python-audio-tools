@@ -1,4 +1,5 @@
 #include "wavpack.h"
+#include "../pcm.h"
 #include <assert.h>
 #include <limits.h>
 
@@ -115,7 +116,7 @@ encoders_encode_wavpack(char *filename,
 
     file = fopen(filename, "wb");
     stream = bs_open(file, BS_LITTLE_ENDIAN);
-    reader = pcmr_open(pcmdata, 44100, 2, 0x3, 16, 0, 1);
+    reader = pcmr_open(pcmdata, 44100, 2, 0x3, 24, 0, 1);
 
     context.options.false_stereo = false_stereo;
     context.options.wasted_bits = wasted_bits;
@@ -153,7 +154,6 @@ encoders_encode_wavpack(char *filename,
     context.pcm_bytes = 0;
     context.wave.header_written = 0;
 
-    pcmr_add_callback(reader, wavpack_calculate_md5, &(context.md5));
     pcmr_add_callback(reader, wavpack_count_pcm_bytes, &(context.pcm_bytes));
     bs_add_callback(stream, wavpack_count_bytes, &(context.byte_count));
 
@@ -167,6 +167,8 @@ encoders_encode_wavpack(char *filename,
         goto error;
 
     while (samples.arrays[0].size > 0) {
+        wavpack_update_md5(&context, &samples);
+
         wavpack_write_frame(stream, &context, &samples, reader->channel_mask);
 
         if (!pcmr_read(reader, block_size, &samples))
@@ -789,6 +791,8 @@ wavpack_write_channel_info(Bitstream *bs,
     sub_block->write_bits(sub_block, 8, channel_count);
     sub_block->write_bits(sub_block, count_bits(channel_mask), channel_mask);
     sub_block->byte_align(sub_block);
+    while (sub_block->bits_written % 16)
+        sub_block->write_bits(sub_block, 8, 0);
 
     wavpack_write_subblock_header(bs, WV_CHANNEL_INFO, 0,
                                   sub_block->bits_written / 8);
@@ -1800,7 +1804,8 @@ wavpack_calculate_tunables(struct wavpack_encoder_context* context,
 
     wrapped_pass = &(context->wrap.passes[channel_number]);
 
-    if ((wrapped_pass->decorrelation_terms.size == decorrelation_passes) &&
+    if ((decorrelation_passes > 0) &&
+        (wrapped_pass->decorrelation_terms.size == decorrelation_passes) &&
         (wrapped_pass->channel_count == channel_count)) {
         /*If the wrapped passes for the given channel number
           has the same channel count and number of passes,
@@ -2140,10 +2145,36 @@ wavpack_print_medians(FILE *output,
 }
 
 void
-wavpack_calculate_md5(void* data, unsigned char *buffer, unsigned long len) {
-    audiotools__MD5Update((audiotools__MD5Context*)data,
-                          (const void*)buffer,
-                          len);
+wavpack_update_md5(struct wavpack_encoder_context* context,
+                   struct ia_array* samples) {
+    unsigned char* data;
+    unsigned char* data_offset;
+    int channels = samples->size;
+    int bytes_per_sample = context->bits_per_sample / 8;
+    int total_samples = samples->arrays[0].size * channels;
+    int i;
+    FrameList_int_to_char_converter converter;
+
+    data = malloc(total_samples * bytes_per_sample);
+    converter = FrameList_get_int_to_char_converter(
+                    context->bits_per_sample,
+                    0,
+                    context->bits_per_sample != 8);
+
+    /*covert sample integers back into a string
+      based on the stream's channels and bits-per-sample*/
+    for (data_offset = data, i = 0;
+         i < total_samples;
+         data_offset += bytes_per_sample, i++)
+        converter(samples->arrays[i % channels].data[i / channels],
+                  data_offset);
+
+    /*update MD5 sum based on string*/
+    audiotools__MD5Update(&(context->md5), data,
+                          total_samples * bytes_per_sample);
+
+    /*deallocate temporary space*/
+    free(data);
 }
 
 void
@@ -2293,7 +2324,7 @@ wavpack_free_decorrelation_passes(struct wavpack_decorrelation_pass* passes,
 
 #ifdef STANDALONE
 int main(int argc, char *argv[]) {
-    encoders_encode_wavpack(argv[1], stdin, 44100, 1, 1, 1, 16);
+    encoders_encode_wavpack(argv[1], stdin, 32, 1, 1, 1, 10);
     return 0;
 }
 

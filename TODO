@@ -2520,6 +2520,21 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
     Perform less memory allocation/freeing over the course of encoding.
 *** TODO Optimize for speed
 ** TODO Add WavPack-specific unit tests
+   - [ ] test_streams
+   - [X] test_small_files
+   - [X] test_full_scale_deflection
+   - [ ] test_sines
+   - [X] test_wasted_bps
+   - [X] test_blocksizes
+   - [ ] test_block_header_variations
+   - [ ] test_option_variations
+   - [X] test_silence
+   - [ ] test_noise
+   - [ ] test_fractional
+   - [ ] test_multichannel
+   - [ ] test_riff_data
+   A combination of converted FLAC unit tests
+   and stuff that's bitten me during initial implementation.
 ** TODO Document WavPack
 *** TODO the WavPack file stream
 *** TODO WavPack decoding

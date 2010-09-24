@@ -930,7 +930,7 @@ WavPackDecoder_update_md5sum(decoders_WavPackDecoder *self,
     PyObject *string = PyObject_CallMethod(framelist,
                                            "to_bytes","ii",
                                            0,
-                                           1);
+                                           self->bits_per_sample != 8);
     char *string_buffer;
     Py_ssize_t length;
 
@@ -1365,6 +1365,7 @@ WavPackDecoder_decode_block(decoders_WavPackDecoder* self,
         /*Handle extended integers, if necessary.*/
         if (block_header.extended_size_integers) {
             wavpack_undo_extended_integers(channel_A, channel_B,
+                                           block_channels,
                                            self->int32_info.sent_bits,
                                            self->int32_info.zeroes,
                                            self->int32_info.ones,
@@ -1545,10 +1546,10 @@ void wavpack_perform_decorrelation_pass(
                                                decorrelation_samples_B);
     } else {
         ia_init(&output_A, channel_A->size);
-        ia_extend(&output_A, decorrelation_samples_A);
+        ia_extend(&output_A, decorrelation_samples_B);
 
         ia_init(&output_B, channel_B->size);
-        ia_extend(&output_B, decorrelation_samples_B);
+        ia_extend(&output_B, decorrelation_samples_A);
 
         switch (decorrelation_term) {
         case -1:
@@ -1760,6 +1761,7 @@ void wavpack_perform_decorrelation_pass_1ch(
 
 void wavpack_undo_extended_integers(struct i_array* channel_A,
                                     struct i_array* channel_B,
+                                    int channel_count,
                                     uint8_t sent_bits, uint8_t zeroes,
                                     uint8_t ones, uint8_t dupes) {
     ia_size_t i;
@@ -1770,19 +1772,20 @@ void wavpack_undo_extended_integers(struct i_array* channel_A,
         for (i = 0; i < channel_A->size; i++) {
             channel_A->data[i] <<= zeroes;
         }
-        for (i = 0; i < channel_B->size; i++) {
-            channel_B->data[i] <<= zeroes;
-        }
+        if (channel_count == 2)
+            for (i = 0; i < channel_B->size; i++)
+                channel_B->data[i] <<= zeroes;
+
     } else if (ones) {
         /*pad the least-significant bits of each sample with 1*/
         pad = (1 << ones) - 1;
-        for (i = 0; i < channel_A->size; i++) {
+        for (i = 0; i < channel_A->size; i++)
             channel_A->data[i] = (channel_A->data[i] << ones) | pad;
-        }
-        for (i = 0; i < channel_B->size; i++) {
-            channel_B->data[i] = (channel_B->data[i] << ones) | pad;
 
-        }
+        if (channel_count == 2)
+            for (i = 0; i < channel_B->size; i++)
+                channel_B->data[i] = (channel_B->data[i] << ones) | pad;
+
     } else if (dupes) {
         /*pad the least-significant bits of each sample
           with its own least-significant bit*/
@@ -1793,12 +1796,13 @@ void wavpack_undo_extended_integers(struct i_array* channel_A,
             else
                 channel_A->data[i] <<= dupes;
         }
-        for (i = 0; i < channel_B->size; i++) {
-            if (channel_B->data[i] & 1)
-                channel_B->data[i] = (channel_B->data[i] << dupes) | dupes;
-            else
-                channel_B->data[i] <<= dupes;
-        }
+        if (channel_count == 2)
+            for (i = 0; i < channel_B->size; i++) {
+                if (channel_B->data[i] & 1)
+                    channel_B->data[i] = (channel_B->data[i] << dupes) | dupes;
+                else
+                    channel_B->data[i] <<= dupes;
+            }
     }
 }
 

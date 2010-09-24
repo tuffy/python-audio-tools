@@ -420,7 +420,8 @@ void
 wavpack_count_bytes(int byte, void* value);
 
 void
-wavpack_calculate_md5(void* data, unsigned char *buffer, unsigned long len);
+wavpack_update_md5(struct wavpack_encoder_context* context,
+                   struct ia_array* samples);
 
 void
 wavpack_count_pcm_bytes(void* data, unsigned char* buffer, unsigned long len);
