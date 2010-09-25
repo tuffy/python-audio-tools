@@ -153,12 +153,16 @@ pcmr_close(struct pcm_reader *reader)
 void
 pcmr_add_callback(struct pcm_reader *reader,
                   void (*callback)(void*, unsigned char*, unsigned long),
-                  void *data)
+                  void *data,
+                  int is_signed,
+                  int little_endian)
 {
     struct pcmr_callback *callback_node = malloc(sizeof(struct pcmr_callback));
     callback_node->callback = callback;
     callback_node->data = data;
     callback_node->next = reader->callback;
+    callback_node->is_signed = is_signed;
+    callback_node->little_endian = little_endian;
     reader->callback = callback_node;
 }
 
@@ -174,6 +178,8 @@ pcmr_read(struct pcm_reader *reader,
     pcm_FrameList *framelist;
     Py_ssize_t buffer_length;
     unsigned char *buffer;
+    int buffer_is_signed = -1;
+    int buffer_little_endian = -1;
     PyObject *buffer_obj = NULL;
 
     ia_data_t *buffer_samples;
@@ -217,23 +223,30 @@ pcmr_read(struct pcm_reader *reader,
             ia_append(channel, buffer_samples[j]);
     }
 
-    /*convert "buffer_samples" to a signed, little-endian string*/
-    buffer_obj = PyObject_CallMethod(framelist_obj, "to_bytes", "(ii)", 0, 1);
-    if (buffer_obj == NULL)
-        goto error;
-    if (PyString_AsStringAndSize(buffer_obj, (char**)(&buffer),
-                                 &buffer_length) == -1)
-        goto error;
-
-    /*apply all callbacks to that string*/
+    /*apply all callbacks to that collection of samples*/
     for (node = reader->callback; node != NULL; node = next) {
+        if ((buffer_is_signed != node->is_signed) ||
+            (buffer_little_endian != node->little_endian)) {
+            buffer_obj = PyObject_CallMethod(framelist_obj,
+                                             "to_bytes", "(ii)",
+                                             !node->little_endian,
+                                             node->is_signed);
+            if (buffer_obj == NULL)
+                goto error;
+            if (PyString_AsStringAndSize(buffer_obj, (char**)(&buffer),
+                                         &buffer_length) == -1)
+                goto error;
+            buffer_is_signed = node->is_signed;
+            buffer_little_endian = node->little_endian;
+        }
+
         next = node->next;
         node->callback(node->data, buffer, (unsigned long)buffer_length);
     }
 
     /*free any allocated buffers and Python objects*/
     Py_DECREF(framelist_obj);
-    Py_DECREF(buffer_obj);
+    Py_XDECREF(buffer_obj);
     Py_DECREF(framelist_type_obj);
     return 1;
  error:
@@ -254,6 +267,8 @@ pcmr_read(struct pcm_reader *reader,
     unsigned char *buffer;
     ia_data_t *buffer_samples;
     ia_size_t buffer_samples_length;
+    int buffer_is_signed = -1;
+    int buffer_little_endian = -1;
 
     struct i_array *channel;
 
@@ -278,9 +293,6 @@ pcmr_read(struct pcm_reader *reader,
             buffer_samples_length,
             reader->bits_per_sample);
 
-    /*if "buffer_samples" are unsigned, make them signed*/
-    /*FIXME*/
-
     /*place "buffer_samples" into "samples", split up by channel*/
     for (i = 0; i < reader->channels; i++) {
         channel = iaa_getitem(samples, i);
@@ -289,18 +301,24 @@ pcmr_read(struct pcm_reader *reader,
             ia_append(channel, buffer_samples[j]);
     }
 
-    /*convert "buffer_samples" back into a signed, little-endian string*/
-    FrameList_samples_to_char(
-            buffer,
-            buffer_samples,
-            FrameList_get_int_to_char_converter(reader->bits_per_sample,
-                                                0,
-                                                1),
-            buffer_samples_length,
-            reader->bits_per_sample);
-
-    /*apply all callbacks to that string*/
+    /*apply all callbacks to that collection of samples*/
     for (node = reader->callback; node != NULL; node = next) {
+        /*convert "buffer_samples" back into a signed, little-endian string,
+          if necessary*/
+        if ((buffer_is_signed != node->is_signed) ||
+            (buffer_little_endian != node->little_endian)) {
+            FrameList_samples_to_char(
+                buffer,
+                buffer_samples,
+                FrameList_get_int_to_char_converter(reader->bits_per_sample,
+                                                    !node->little_endian,
+                                                    node->is_signed),
+                buffer_samples_length,
+                reader->bits_per_sample);
+            buffer_is_signed = node->is_signed;
+            buffer_little_endian = node->little_endian;
+        }
+
         next = node->next;
         node->callback(node->data, buffer, (unsigned long)buffer_length);
     }

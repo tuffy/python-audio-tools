@@ -301,6 +301,7 @@ struct ia_array
 iaa_blank(void) {
     struct ia_array a;
     a.size = 0;
+    a.total_size = 0;
     a.arrays = NULL;
     return a;
 }

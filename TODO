@@ -2529,7 +2529,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    - [ ] test_block_header_variations
    - [ ] test_option_variations
    - [X] test_silence
-   - [ ] test_noise
+   - [X] test_noise
    - [ ] test_fractional
    - [ ] test_multichannel
    - [ ] test_riff_data

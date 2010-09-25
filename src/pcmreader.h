@@ -34,6 +34,8 @@
 
 struct pcmr_callback {
     void (*callback)(void*, unsigned char*, unsigned long);
+    int is_signed;
+    int little_endian;
     void *data;
     struct pcmr_callback *next;
 };
@@ -85,4 +87,6 @@ pcmr_read(struct pcm_reader *reader,
 void
 pcmr_add_callback(struct pcm_reader *reader,
                   void (*callback)(void*, unsigned char*, unsigned long),
-                  void *data);
+                  void *data,
+                  int is_signed,
+                  int little_endian);

@@ -12229,14 +12229,9 @@ class TestWavPackCodec(unittest.TestCase):
                 (8, audiotools.ChannelMask(0))]:
                 for bps in [8, 16, 24]:
                     opts_copy = opts.copy()
-                    for block_size in [44100, 32768, 65535,
+                    for block_size in [44100, 32, 32768, 65535,
                                        16777215]:
-                    # for block_size in [32]:
                         opts_copy['block_size'] = block_size
-
-                        # print "trying opts %s" % (repr(opts_copy))
-                        # print "with format %d %d %d %d" % \
-                        #     (channels, mask, bps, block_size)
 
                         self.__test_reader__(
                             EXACT_RANDOM_PCM_Reader(

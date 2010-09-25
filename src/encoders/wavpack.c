@@ -1,5 +1,4 @@
 #include "wavpack.h"
-#include "../pcm.h"
 #include <assert.h>
 #include <limits.h>
 
@@ -154,7 +153,10 @@ encoders_encode_wavpack(char *filename,
     context.pcm_bytes = 0;
     context.wave.header_written = 0;
 
-    pcmr_add_callback(reader, wavpack_count_pcm_bytes, &(context.pcm_bytes));
+    pcmr_add_callback(reader, wavpack_count_pcm_bytes, &(context.pcm_bytes),
+                      context.bits_per_sample != 8, 1);
+    pcmr_add_callback(reader, wavpack_md5_callback, &(context.md5),
+                      context.bits_per_sample != 8, 1);
     bs_add_callback(stream, wavpack_count_bytes, &(context.byte_count));
 
     iaa_init(&samples, reader->channels, block_size);
@@ -167,8 +169,6 @@ encoders_encode_wavpack(char *filename,
         goto error;
 
     while (samples.arrays[0].size > 0) {
-        wavpack_update_md5(&context, &samples);
-
         wavpack_write_frame(stream, &context, &samples, reader->channel_mask);
 
         if (!pcmr_read(reader, block_size, &samples))
@@ -2055,6 +2055,8 @@ wavpack_wrap_decorrelation_samples(struct i_array* decorrelation_samples_A,
     struct i_array tail;
 
     assert((channel_count == 1) || (channel_count == 2));
+    tail.data = NULL;
+    tail.size = tail.total_size = 0;
 
     switch (decorrelation_term) {
     case 18:
@@ -2145,36 +2147,10 @@ wavpack_print_medians(FILE *output,
 }
 
 void
-wavpack_update_md5(struct wavpack_encoder_context* context,
-                   struct ia_array* samples) {
-    unsigned char* data;
-    unsigned char* data_offset;
-    int channels = samples->size;
-    int bytes_per_sample = context->bits_per_sample / 8;
-    int total_samples = samples->arrays[0].size * channels;
-    int i;
-    FrameList_int_to_char_converter converter;
-
-    data = malloc(total_samples * bytes_per_sample);
-    converter = FrameList_get_int_to_char_converter(
-                    context->bits_per_sample,
-                    0,
-                    context->bits_per_sample != 8);
-
-    /*covert sample integers back into a string
-      based on the stream's channels and bits-per-sample*/
-    for (data_offset = data, i = 0;
-         i < total_samples;
-         data_offset += bytes_per_sample, i++)
-        converter(samples->arrays[i % channels].data[i / channels],
-                  data_offset);
-
-    /*update MD5 sum based on string*/
-    audiotools__MD5Update(&(context->md5), data,
-                          total_samples * bytes_per_sample);
-
-    /*deallocate temporary space*/
-    free(data);
+wavpack_md5_callback(void* md5, unsigned char* data, unsigned long data_len) {
+    audiotools__MD5Update(md5,
+                          data,
+                          data_len);
 }
 
 void

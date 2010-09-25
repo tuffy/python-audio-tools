@@ -346,21 +346,21 @@ wavpack_exp2(int log);
 void
 wavpack_perform_decorrelation_pass(struct i_array* channel_A,
                                    struct i_array* channel_B,
-                                   int decorrelation_term,
-                                   int decorrelation_delta,
-                                   int* decorrelation_weight_A,
-                                   int* decorrelation_weight_B,
-                                   struct i_array* decorrelation_samples_A,
-                                   struct i_array* decorrelation_samples_B,
+                                   int term,
+                                   int delta,
+                                   int* weight_A,
+                                   int* weight_B,
+                                   struct i_array* samples_A,
+                                   struct i_array* samples_B,
                                    int channel_count,
                                    struct wavpack_encoder_context* context);
 
 void
 wavpack_perform_decorrelation_pass_1ch(
                                    struct i_array* channel,
-                                   int decorrelation_term,
-                                   int decorrelation_delta,
-                                   int* decorrelation_weight,
+                                   int term,
+                                   int delta,
+                                   int* weight,
                                    struct i_array* decorrelation_samples,
                                    struct wavpack_encoder_context* context);
 
@@ -420,8 +420,7 @@ void
 wavpack_count_bytes(int byte, void* value);
 
 void
-wavpack_update_md5(struct wavpack_encoder_context* context,
-                   struct ia_array* samples);
+wavpack_md5_callback(void* md5, unsigned char* data, unsigned long data_len);
 
 void
 wavpack_count_pcm_bytes(void* data, unsigned char* buffer, unsigned long len);

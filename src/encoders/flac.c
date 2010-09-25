@@ -168,7 +168,7 @@ encoders_encode_flac(char *filename,
 
     sprintf(version_string, "Python Audio Tools %s", AUDIOTOOLS_VERSION);
     audiotools__MD5Init(&md5sum);
-    pcmr_add_callback(reader, md5_update, &md5sum);
+    pcmr_add_callback(reader, md5_update, &md5sum, 1, 1);
 
     stream = bs_open(file, BS_BIG_ENDIAN);
     bs_add_callback(stream, flac_crc8, &(streaminfo.crc8));
