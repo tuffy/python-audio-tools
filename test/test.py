@@ -295,6 +295,30 @@ class VARIABLE_PCM_Reader(RANDOM_PCM_Reader):
                     self.total_frames * self.channels * (self.bits_per_sample / 8))))
 
 
+class Join_Reader:
+    #given a list of 1 channel PCM readers,
+    #combines them into a single reader
+    def __init__(self, pcm_readers, channel_mask):
+        if (len(set([r.sample_rate for r in pcm_readers])) != 1):
+            raise ValueError("all readers must have the same sample rate")
+        if (len(set([r.bits_per_sample for r in pcm_readers])) != 1):
+            raise ValueError("all readers must have the same bits per sample")
+        if (set([r.channels for r in pcm_readers]) != set([1])):
+            raise ValueError("all readers must be 1 channel")
+        self.channels = len(pcm_readers)
+        self.channel_mask = channel_mask
+        self.sample_rate = pcm_readers[0].sample_rate
+        self.bits_per_sample = pcm_readers[0].bits_per_sample
+        self.readers = map(audiotools.BufferedPCMReader, pcm_readers)
+
+    def read(self, bytes):
+        return audiotools.pcm.from_channels(
+            [r.read(bytes) for r in self.readers])
+
+    def close(self):
+        for r in self.readers:
+            r.close()
+
 class ERROR_PCM_Reader(audiotools.PCMReader):
     def __init__(self, error,
                  sample_rate=44100, channels=2, bits_per_sample=16,
@@ -12061,6 +12085,63 @@ class TestFrameList(unittest.TestCase):
 
 
 class TestWavPackCodec(unittest.TestCase):
+    def __stream_variations__(self):
+        if (not hasattr(self, "__stream_variations_cache__")):
+            self.__class__.__stream_variations_cache__ = [
+                test_streams.Sine8_Mono(200000, 48000, 441.0, 0.50, 441.0, 0.49),
+                test_streams.Sine8_Mono(200000, 96000, 441.0, 0.61, 661.5, 0.37),
+                test_streams.Sine8_Mono(200000, 44100, 441.0, 0.50, 882.0, 0.49),
+                test_streams.Sine8_Mono(200000, 44100, 441.0, 0.50, 4410.0, 0.49),
+                test_streams.Sine8_Mono(200000, 44100, 8820.0, 0.70, 4410.0, 0.29),
+
+                test_streams.Sine8_Stereo(200000, 48000, 441.0, 0.50, 441.0, 0.49, 1.0),
+                test_streams.Sine8_Stereo(200000, 48000, 441.0, 0.61, 661.5, 0.37, 1.0),
+                test_streams.Sine8_Stereo(200000, 96000, 441.0, 0.50, 882.0, 0.49, 1.0),
+                test_streams.Sine8_Stereo(200000, 44100, 441.0, 0.50, 4410.0, 0.49, 1.0),
+                test_streams.Sine8_Stereo(200000, 44100, 8820.0, 0.70, 4410.0, 0.29, 1.0),
+                test_streams.Sine8_Stereo(200000, 44100, 441.0, 0.50, 441.0, 0.49, 0.5),
+                test_streams.Sine8_Stereo(200000, 44100, 441.0, 0.61, 661.5, 0.37, 2.0),
+                test_streams.Sine8_Stereo(200000, 44100, 441.0, 0.50, 882.0, 0.49, 0.7),
+                test_streams.Sine8_Stereo(200000, 44100, 441.0, 0.50, 4410.0, 0.49, 1.3),
+                test_streams.Sine8_Stereo(200000, 44100, 8820.0, 0.70, 4410.0, 0.29, 0.1),
+
+                test_streams.Sine16_Mono(200000, 48000, 441.0, 0.50, 441.0, 0.49),
+                test_streams.Sine16_Mono(200000, 96000, 441.0, 0.61, 661.5, 0.37),
+                test_streams.Sine16_Mono(200000, 44100, 441.0, 0.50, 882.0, 0.49),
+                test_streams.Sine16_Mono(200000, 44100, 441.0, 0.50, 4410.0, 0.49),
+                test_streams.Sine16_Mono(200000, 44100, 8820.0, 0.70, 4410.0, 0.29),
+
+                test_streams.Sine16_Stereo(200000, 48000, 441.0, 0.50, 441.0, 0.49, 1.0),
+                test_streams.Sine16_Stereo(200000, 48000, 441.0, 0.61, 661.5, 0.37, 1.0),
+                test_streams.Sine16_Stereo(200000, 96000, 441.0, 0.50, 882.0, 0.49, 1.0),
+                test_streams.Sine16_Stereo(200000, 44100, 441.0, 0.50, 4410.0, 0.49, 1.0),
+                test_streams.Sine16_Stereo(200000, 44100, 8820.0, 0.70, 4410.0, 0.29, 1.0),
+                test_streams.Sine16_Stereo(200000, 44100, 441.0, 0.50, 441.0, 0.49, 0.5),
+                test_streams.Sine16_Stereo(200000, 44100, 441.0, 0.61, 661.5, 0.37, 2.0),
+                test_streams.Sine16_Stereo(200000, 44100, 441.0, 0.50, 882.0, 0.49, 0.7),
+                test_streams.Sine16_Stereo(200000, 44100, 441.0, 0.50, 4410.0, 0.49, 1.3),
+                test_streams.Sine16_Stereo(200000, 44100, 8820.0, 0.70, 4410.0, 0.29, 0.1),
+
+                test_streams.Sine24_Mono(200000, 48000, 441.0, 0.50, 441.0, 0.49),
+                test_streams.Sine24_Mono(200000, 96000, 441.0, 0.61, 661.5, 0.37),
+                test_streams.Sine24_Mono(200000, 44100, 441.0, 0.50, 882.0, 0.49),
+                test_streams.Sine24_Mono(200000, 44100, 441.0, 0.50, 4410.0, 0.49),
+                test_streams.Sine24_Mono(200000, 44100, 8820.0, 0.70, 4410.0, 0.29),
+
+                test_streams.Sine24_Stereo(200000, 48000, 441.0, 0.50, 441.0, 0.49, 1.0),
+                test_streams.Sine24_Stereo(200000, 48000, 441.0, 0.61, 661.5, 0.37, 1.0),
+                test_streams.Sine24_Stereo(200000, 96000, 441.0, 0.50, 882.0, 0.49, 1.0),
+                test_streams.Sine24_Stereo(200000, 44100, 441.0, 0.50, 4410.0, 0.49, 1.0),
+                test_streams.Sine24_Stereo(200000, 44100, 8820.0, 0.70, 4410.0, 0.29, 1.0),
+                test_streams.Sine24_Stereo(200000, 44100, 441.0, 0.50, 441.0, 0.49, 0.5),
+                test_streams.Sine24_Stereo(200000, 44100, 441.0, 0.61, 661.5, 0.37, 2.0),
+                test_streams.Sine24_Stereo(200000, 44100, 441.0, 0.50, 882.0, 0.49, 0.7),
+                test_streams.Sine24_Stereo(200000, 44100, 441.0, 0.50, 4410.0, 0.49, 1.3),
+                test_streams.Sine24_Stereo(200000, 44100, 8820.0, 0.70, 4410.0, 0.29, 0.1)]
+        for stream in self.__class__.__stream_variations_cache__:
+            stream.reset()
+            yield stream
+
     @TEST_WAVPACK
     def setUp(self):
         import audiotools.decoders
@@ -12241,6 +12322,97 @@ class TestWavPackCodec(unittest.TestCase):
                                     channel_mask=mask,
                                     bits_per_sample=bps),
                             **opts_copy)
+
+    @TEST_WAVPACK
+    def test_fractional(self):
+        def __perform_test__(block_size, pcm_frames):
+            self.__test_reader__(
+                EXACT_RANDOM_PCM_Reader(
+                    pcm_frames=pcm_frames,
+                    sample_rate=44100,
+                    channels=2,
+                    bits_per_sample=16),
+                block_size=block_size,
+                decorrelation_passes=5,
+                false_stereo=False,
+                wasted_bits=False,
+                joint_stereo=False)
+
+        for pcm_frames in [31, 32, 33, 34, 35, 2046, 2047, 2048, 2049, 2050]:
+            __perform_test__(33, pcm_frames)
+
+        for pcm_frames in [254, 255, 256, 257, 258, 510, 511, 512, 513,
+                           514, 1022, 1023, 1024, 1025, 1026, 2046, 2047,
+                           2048, 2049, 2050, 4094, 4095, 4096, 4097, 4098]:
+            __perform_test__(256, pcm_frames)
+
+        for pcm_frames in [1022, 1023, 1024, 1025, 1026, 2046, 2047,
+                           2048, 2049, 2050, 4094, 4095, 4096, 4097, 4098]:
+            __perform_test__(2048, pcm_frames)
+
+        for pcm_frames in [1022, 1023, 1024, 1025, 1026, 2046, 2047,
+                           2048, 2049, 2050, 4094, 4095, 4096, 4097,
+                           4098, 4606, 4607, 4608, 4609, 4610, 8190,
+                           8191, 8192, 8193, 8194, 16382, 16383, 16384,
+                           16385, 16386]:
+            __perform_test__(4608, pcm_frames)
+
+        for pcm_frames in [44098, 44099, 44100, 44101, 44102, 44103,
+                           88198, 88199, 88200, 88201, 88202, 88203]:
+            __perform_test__(44100, pcm_frames)
+
+    @TEST_WAVPACK
+    def test_multichannel(self):
+        def __permutations__(executables, options, total):
+            if (total == 0):
+                yield []
+            else:
+                for (executable, option) in zip(executables,
+                                                options):
+                    for permutation in __permutations__(executables,
+                                                         options,
+                                                         total - 1):
+                        yield [executable(**option)] + permutation
+
+        #test a mix of identical and non-identical channels
+        #using different decorrelation, joint stereo and false stereo options
+        combos = 0
+        for (false_stereo, joint_stereo) in [(False, False),
+                                             (False, True),
+                                             (True, False),
+                                             (True, True)]:
+            for (channels, mask) in [(2, 0x3), (3, 0x7), (4, 0x33),
+                                     (5, 0x3B), (6, 0x3F)]:
+                for readers in __permutations__([EXACT_BLANK_PCM_Reader,
+                                                 EXACT_RANDOM_PCM_Reader,
+                                                 test_streams.Sine16_Mono],
+                                                [{"pcm_frames": 100,
+                                                  "sample_rate": 44100,
+                                                  "channels": 1,
+                                                  "bits_per_sample": 16},
+                                                 {"pcm_frames": 100,
+                                                  "sample_rate": 44100,
+                                                  "channels": 1,
+                                                  "bits_per_sample": 16},
+                                                 {"pcm_frames": 100,
+                                                  "sample_rate": 44100,
+                                                  "f1": 441.0,
+                                                  "a1": 0.61,
+                                                  "f2": 661.5,
+                                                  "a2": 0.37}],
+                                                channels):
+                    joined = test_streams.MD5Reader(Join_Reader(readers, mask))
+                    self.__test_reader__(joined,
+                                         block_size=44100,
+                                         false_stereo=false_stereo,
+                                         joint_stereo=joint_stereo,
+                                         decorrelation_passes=1,
+                                         wasted_bits=False)
+    @TEST_WAVPACK
+    def test_sines(self):
+        for opts in self.encode_opts:
+            for g in self.__stream_variations__():
+                self.__test_reader__(g, **opts)
 
 
 class TestFloatFrameList(unittest.TestCase):
