@@ -518,9 +518,9 @@ WavPackDecoder_read_decorr_samples(Bitstream* bitstream,
                 }
             } else if ((-3 <= term) && (term <= -1)) {
                 ia_append(term_samples_A,
-                          ia_getdefault(&samples, j, 0));
-                ia_append(term_samples_B,
                           ia_getdefault(&samples, j + 1, 0));
+                ia_append(term_samples_B,
+                          ia_getdefault(&samples, j, 0));
                 j += 2;
             } else {
                 PyErr_SetString(PyExc_ValueError,
@@ -1561,10 +1561,10 @@ void wavpack_perform_decorrelation_pass(
                                                samples_B);
     } else {
         ia_init(&output_A, channel_A->size);
-        ia_extend(&output_A, samples_B);
+        ia_extend(&output_A, samples_A);
 
         ia_init(&output_B, channel_B->size);
-        ia_extend(&output_B, samples_A);
+        ia_extend(&output_B, samples_B);
 
         switch (term) {
         case -1:

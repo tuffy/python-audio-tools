@@ -862,9 +862,9 @@ wavpack_write_decorr_samples(Bitstream *bs,
                 assert(term_samples_A->size >= 1);
                 assert(term_samples_B->size >= 1);
                 bs->write_signed_bits(bs, 16,
-                                      wavpack_log2(term_samples_A->data[0]));
-                bs->write_signed_bits(bs, 16,
                                       wavpack_log2(term_samples_B->data[0]));
+                bs->write_signed_bits(bs, 16,
+                                      wavpack_log2(term_samples_A->data[0]));
             } else {
                 assert(0); /*unsupported term*/
             }
@@ -1569,9 +1569,9 @@ void wavpack_perform_decorrelation_pass(
 
         ia_reset(input_A);
         ia_reset(input_B);
-        ia_extend(input_A, decorrelation_samples_B);
+        ia_extend(input_A, decorrelation_samples_A);
         ia_extend(input_A, channel_A);
-        ia_extend(input_B, decorrelation_samples_A);
+        ia_extend(input_B, decorrelation_samples_B);
         ia_extend(input_B, channel_B);
         ia_reset(channel_A);
         ia_reset(channel_B);
