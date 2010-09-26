@@ -12414,6 +12414,27 @@ class TestWavPackCodec(unittest.TestCase):
             for g in self.__stream_variations__():
                 self.__test_reader__(g, **opts)
 
+    @TEST_WAVPACK
+    def test_option_variations(self):
+        for block_size in [11025, 22050, 44100, 88200, 176400]:
+            for false_stereo in [False, True]:
+                for wasted_bits in [False, True]:
+                    for joint_stereo in [False, True]:
+                        for decorrelation_passes in [0, 1, 2, 5, 10, 16]:
+                            self.__test_reader__(
+                                test_streams.Sine16_Stereo(200000,
+                                                           48000,
+                                                           441.0,
+                                                           0.50,
+                                                           441.0,
+                                                           0.49,
+                                                           1.0),
+                                block_size=block_size,
+                                false_stereo=false_stereo,
+                                wasted_bits=wasted_bits,
+                                joint_stereo=joint_stereo,
+                                decorrelation_passes=decorrelation_passes)
+
 
 class TestFloatFrameList(unittest.TestCase):
     @TEST_FRAMELIST

@@ -2519,14 +2519,13 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** DONE Optimize memory usage
     Perform less memory allocation/freeing over the course of encoding.
 *** TODO Optimize for speed
-** TODO Add WavPack-specific unit tests
+** DONE Add WavPack-specific unit tests
    - [X] test_small_files
    - [X] test_full_scale_deflection
    - [X] test_sines
    - [X] test_wasted_bps
    - [X] test_blocksizes
-   - [ ] test_block_header_variations
-   - [ ] test_option_variations
+   - [X] test_option_variations
    - [X] test_silence
    - [X] test_noise
    - [X] test_fractional
