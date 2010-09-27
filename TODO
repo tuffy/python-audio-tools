@@ -2570,6 +2570,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** TODO Verify A4 layout is correct
 ** TODO Test encoder/decoder against reference
    Ensure a wide range of lossless audio round-trips correctly
-** TODO Remove WavePackAudio.BINARIES
+** DONE Remove WavePackAudio.BINARIES
 ** TODO Add more WavPack INVALIDFILE .verify() tests
 ** TODO Remove wvgain for ReplayGain application

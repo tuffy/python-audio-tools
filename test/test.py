@@ -4638,17 +4638,16 @@ class TestWavPackAudio(EmbeddedCuesheet, ApeTaggedAudio, TestForeignWaveChunks, 
     @TEST_INVALIDFILE
     def test_invalid_to_pcm(self):
         temp = tempfile.NamedTemporaryFile(
-            suffix="." + self.audio_class.SUFFIX)
+            suffix=".wv")
         try:
-            track = self.audio_class.from_pcm(
-                temp.name,
-                BLANK_PCM_Reader(1))
-            good_data = open(temp.name, 'rb').read()
-            f = open(temp.name, 'wb')
-            f.write(good_data[0:-20])
+            temp.write(open("wavpack-combo.wv", "rb").read())
+            temp.flush()
+            wavpack = audiotools.open(temp.name)
+            f = open(temp.name, "wb")
+            f.write(open("wavpack-combo.wv", "rb").read()[0:-0x20B])
             f.close()
-            reader = track.to_pcm()
-            transfer_framelist_data(reader, lambda x: x)
+            reader = wavpack.to_pcm()
+            audiotools.transfer_framelist_data(reader, lambda x: x)
             self.assertRaises(audiotools.DecodingError,
                               reader.close)
         finally:
@@ -4659,18 +4658,17 @@ class TestWavPackAudio(EmbeddedCuesheet, ApeTaggedAudio, TestForeignWaveChunks, 
         temp = tempfile.NamedTemporaryFile(
             suffix="." + self.audio_class.SUFFIX)
         try:
-            track = self.audio_class.from_pcm(
-                temp.name,
-                BLANK_PCM_Reader(1))
-            good_data = open(temp.name, 'rb').read()
-            f = open(temp.name, 'wb')
-            f.write(good_data[0:-20])
+            temp.write(open("wavpack-combo.wv", "rb").read())
+            temp.flush()
+            wavpack = audiotools.open(temp.name)
+            f = open(temp.name, "wb")
+            f.write(open("wavpack-combo.wv", "rb").read()[0:-0x20B])
             f.close()
             if (os.path.isfile("dummy.wav")):
                 os.unlink("dummy.wav")
             self.assertEqual(os.path.isfile("dummy.wav"), False)
             self.assertRaises(audiotools.EncodingError,
-                              track.to_wave,
+                              wavpack.to_wave,
                               "dummy.wav")
             self.assertEqual(os.path.isfile("dummy.wav"), False)
         finally:

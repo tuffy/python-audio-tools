@@ -325,39 +325,17 @@ class WavPackAudio(ApeTaggedAudio, AudioFile):
     def channel_mask(self):
         """Returns a ChannelMask object of this track's channel layout."""
 
-        fmt_chunk = WaveAudio.FMT_CHUNK.parse(self.__fmt_chunk__())
-        if (fmt_chunk.compression != 0xFFFE):
-            if (self.__channels__ == 1):
-                return ChannelMask.from_fields(
-                    front_center=True)
-            elif (self.__channels__ == 2):
-                return ChannelMask.from_fields(
-                    front_left=True, front_right=True)
-            #if we have a multi-channel WavPack file
-            #that's not WAVEFORMATEXTENSIBLE,
-            #assume the channels follow SMPTE/ITU-R recommendations
-            #and hope for the best
-            elif (self.__channels__ == 3):
-                return ChannelMask.from_fields(
-                    front_left=True, front_right=True, front_center=True)
-            elif (self.__channels__ == 4):
-                return ChannelMask.from_fields(
-                    front_left=True, front_right=True,
-                    back_left=True, back_right=True)
-            elif (self.__channels__ == 5):
-                return ChannelMask.from_fields(
-                    front_left=True, front_right=True,
-                    back_left=True, back_right=True,
-                    front_center=True)
-            elif (self.__channels__ == 6):
-                return ChannelMask.from_fields(
-                    front_left=True, front_right=True,
-                    back_left=True, back_right=True,
-                    front_center=True, low_frequency=True)
+        if (self.__channels__ == 2):
+            return ChannelMask.from_channels(self.__channels__)
+        else:
+            for (block_id, nondecoder, data) in self.sub_frames():
+                if ((block_id == 0xD) and not nondecoder):
+                    mask = 0
+                    for byte in reversed(map(ord, data[1:])):
+                        mask = (mask << 8) | byte
+                    return ChannelMask(mask)
             else:
                 return ChannelMask(0)
-        else:
-            return WaveAudio.fmt_chunk_to_channel_mask(fmt_chunk.channel_mask)
 
     def get_metadata(self):
         """Returns a MetaData object, or None.
@@ -527,31 +505,30 @@ class WavPackAudio(ApeTaggedAudio, AudioFile):
             cls.__unlink__(filename)
             raise err
 
-    # def to_wave(self, wave_filename):
-    #     """Writes the contents of this file to the given .wav filename string.
+    def to_wave(self, wave_filename):
+        """Writes the contents of this file to the given .wav filename string.
 
-    #     Raises EncodingError if some error occurs during decoding."""
+        Raises EncodingError if some error occurs during decoding."""
 
-    #     from . import decoders
+        from . import decoders
 
-    #     try:
-    #         f = open(wave_filename, 'wb')
-    #     except IOError, msg:
-    #         raise EncodingError(str(msg))
+        try:
+            f = open(wave_filename, 'wb')
+        except IOError, msg:
+            raise EncodingError(str(msg))
 
-    #     #FIXME - check for errors here
-    #     (head, tail) = self.pcm_split()
-    #     print repr(head),repr(tail)
+        #FIXME - check for errors here
+        (head, tail) = self.pcm_split()
 
-    #     try:
-    #         f.write(head)
-    #         transfer_framelist_data(
-    #             decoders.WavPackDecoder(self.filename),
-    #             f.write)
-    #         f.write(tail)
-    #         f.close()
-    #     except IOError, msg:
-    #         raise EncodingError(str(msg))
+        try:
+            f.write(head)
+            transfer_framelist_data(
+                decoders.WavPackDecoder(self.filename),
+                f.write)
+            f.write(tail)
+            f.close()
+        except IOError, msg:
+            raise EncodingError(str(msg))
 
     def to_pcm(self):
         """Returns a PCMReader object containing the track's PCM data."""
@@ -563,10 +540,10 @@ class WavPackAudio(ApeTaggedAudio, AudioFile):
             return decoders.WavPackDecoder(self.filename)
         except (IOError, ValueError), msg:
             return PCMReaderError(error_message=str(msg),
-                                  sample_rate=self.sample_rate(),
-                                  channels=self.channels(),
+                                  sample_rate=self.__samplerate__,
+                                  channels=self.__channels__,
                                   channel_mask=int(self.channel_mask()),
-                                  bits_per_sample=self.bits_per_sample())
+                                  bits_per_sample=self.__bitspersample__)
 
     @classmethod
     def from_wave(cls, filename, wave_filename, compression=None):
