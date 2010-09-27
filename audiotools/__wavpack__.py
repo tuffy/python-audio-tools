@@ -22,6 +22,7 @@ from audiotools import (AudioFile, InvalidFile, Con, subprocess, BIN,
                         open_files, os, ReplayGain, ignore_sigint,
                         transfer_data, transfer_framelist_data,
                         BufferedPCMReader, Image, MetaData, sheet_to_unicode,
+                        calculate_replay_gain, ApeTagItem,
                         EncodingError, DecodingError, PCMReaderError,
                         PCMReader, ChannelMask, UnsupportedChannelMask,
                         InvalidWave)
@@ -64,80 +65,6 @@ def __riff_chunk_ids__(data):
             chunk_size += 1
         data.seek(chunk_size, 1)
         yield chunk_header.chunk_id
-
-
-def __riff_chunks__(data):
-    import cStringIO
-
-    total_size = len(data)
-    data = cStringIO.StringIO(data)
-    header = WaveAudio.WAVE_HEADER.parse_stream(data)
-
-    while (data.tell() < total_size):
-        chunk_header = WaveAudio.CHUNK_HEADER.parse_stream(data)
-        chunk_size = chunk_header.chunk_length
-        if ((chunk_size & 1) == 1):
-            chunk_size += 1
-        yield (chunk_header.chunk_id, data.read(chunk_size))
-
-
-class SymlinkPCMReader(PCMReader):
-    """A PCMReader wrapper which handles symlinks.
-
-    The purpose of this class is to provide a wrapper
-    for to ensure files to be read by PCMReader have a specific
-    file suffix via symlinking.
-    """
-
-    #This is a bit of a hack for wvunpack until I build my own
-    #WavPack codec without filename limitations.
-
-    def __init__(self, reader, tempdir, symlink):
-        """Initialized with a PCMReader, dir path and symlink path."""
-
-        PCMReader.__init__(self, None,
-                           sample_rate=reader.sample_rate,
-                           channels=reader.channels,
-                           channel_mask=reader.channel_mask,
-                           bits_per_sample=reader.bits_per_sample)
-        self.tempdir = tempdir
-        self.symlink = symlink
-        self.reader = reader
-        self.closed = False
-
-    def read(self, bytes):
-        """Try to read a pcm.FrameList of size "bytes"."""
-
-        return self.reader.read(bytes)
-
-    def close(self):
-        """Closes our PCMReader, unlinks symlink and removes dir."""
-
-        self.reader.close()
-        os.unlink(self.symlink)
-        os.rmdir(self.tempdir)
-        self.closed = True
-
-    def __del__(self):
-        if (not self.closed):
-            self.close()
-
-    @classmethod
-    def new(cls, filename, suffix):
-        """Creates a new temporary dir and symlink from filename and suffix.
-
-        Both should be regular strings.
-        Creates a temporary directory and symlink to the original
-        file in that directory with the given suffix.
-        Returns a (tempdir, symlink) tuple.
-        """
-
-        import tempfile
-
-        tempdir = tempfile.mkdtemp()
-        symlink = os.path.join(tempdir, os.path.basename(filename) + suffix)
-        os.symlink(os.path.abspath(filename), symlink)
-        return (tempdir, symlink)
 
 
 #######################
@@ -361,15 +288,6 @@ class WavPackAudio(ApeTaggedAudio, AudioFile):
         else:
             return False
 
-    def __fmt_chunk__(self):
-        for (sub_header, nondecoder, data) in self.sub_frames():
-            if ((sub_header == 1) and nondecoder):
-                for (chunk_id, chunk_data) in __riff_chunks__(data):
-                    if (chunk_id == 'fmt '):
-                        return chunk_data
-        else:
-            return None
-
     def frames(self):
         """Yields (header, data) tuples of WavPack frames.
 
@@ -491,7 +409,6 @@ class WavPackAudio(ApeTaggedAudio, AudioFile):
         if (str(compression) not in cls.COMPRESSION_MODES):
             compression = cls.DEFAULT_COMPRESSION
 
-        #FIXME - check for errors here
         try:
             encoders.encode_wavpack(filename,
                                     BufferedPCMReader(pcmreader),
@@ -517,7 +434,6 @@ class WavPackAudio(ApeTaggedAudio, AudioFile):
         except IOError, msg:
             raise EncodingError(str(msg))
 
-        #FIXME - check for errors here
         (head, tail) = self.pcm_split()
 
         try:
@@ -536,7 +452,6 @@ class WavPackAudio(ApeTaggedAudio, AudioFile):
         from . import decoders
 
         try:
-            #FIXME - check for errors here
             return decoders.WavPackDecoder(self.filename)
         except (IOError, ValueError), msg:
             return PCMReaderError(error_message=str(msg),
@@ -597,30 +512,6 @@ class WavPackAudio(ApeTaggedAudio, AudioFile):
         return (head, tail)
 
     @classmethod
-    def __wavpack_help__(cls):
-        devnull = open(os.devnull, "wb")
-        sub = subprocess.Popen([BIN["wavpack"], "--help"],
-                               stdout=subprocess.PIPE,
-                               stderr=devnull)
-        help_data = sub.stdout.read()
-        sub.stdout.close()
-        devnull.close()
-        sub.wait()
-        return help_data
-
-    @classmethod
-    def __wvunpack_help__(cls):
-        devnull = open(os.devnull, "wb")
-        sub = subprocess.Popen([BIN["wvunpack"], "--help"],
-                               stdout=subprocess.PIPE,
-                               stderr=devnull)
-        help_data = sub.stdout.read()
-        sub.stdout.close()
-        devnull.close()
-        sub.wait()
-        return help_data
-
-    @classmethod
     def add_replay_gain(cls, filenames):
         """Adds ReplayGain values to a list of filename strings.
 
@@ -628,26 +519,37 @@ class WavPackAudio(ApeTaggedAudio, AudioFile):
         Raises ValueError if some problem occurs during ReplayGain application.
         """
 
-        track_names = [track.filename for track in
-                       open_files(filenames) if
-                       isinstance(track, cls)]
+        tracks = [track for track in open_files(filenames) if
+                  isinstance(track, cls)]
 
-        if ((len(track_names) > 0) and
-            BIN.can_execute(BIN['wvgain'])):
-            devnull = file(os.devnull, 'ab')
-
-            sub = subprocess.Popen([BIN['wvgain'],
-                                    '-q', '-a'] + track_names,
-                                   stdout=devnull,
-                                   stderr=devnull)
-            sub.wait()
-            devnull.close()
+        if (len(tracks) > 0):
+            for (track,
+                 track_gain,
+                 track_peak,
+                 album_gain,
+                 album_peak) in calculate_replay_gain(tracks):
+                metadata = track.get_metadata()
+                if (metadata is None):
+                    metadata = WavPackAPEv2([])
+                metadata["replaygain_track_gain"] = ApeTagItem.string(
+                    "replaygain_track_gain",
+                    u"%+1.2f dB" % (track_gain))
+                metadata["replaygain_track_peak"] = ApeTagItem.string(
+                    "replaygain_track_peak",
+                    u"%1.6f" % (track_peak))
+                metadata["replaygain_album_gain"] = ApeTagItem.string(
+                    "replaygain_album_gain",
+                    u"%+1.2f dB" % (album_gain))
+                metadata["replaygain_album_peak"] = ApeTagItem.string(
+                    "replaygain_album_peak",
+                    u"%1.6f" % (album_peak))
+                track.set_metadata(metadata)
 
     @classmethod
     def can_add_replay_gain(cls):
-        """Returns True if we have the necessary binaries to add ReplayGain."""
+        """Returns True."""
 
-        return BIN.can_execute(BIN['wvgain'])
+        return True
 
     @classmethod
     def lossless_replay_gain(cls):
@@ -721,14 +623,3 @@ class WavPackAudio(ApeTaggedAudio, AudioFile):
                 os.path.basename(self.filename)).decode('ascii', 'replace'))
         self.set_metadata(metadata)
 
-    def verify(self):
-        devnull = open(os.devnull, "w")
-        sub = subprocess.Popen([BIN["wvunpack"], "-v", self.filename],
-                               stdout=devnull,
-                               stderr=devnull)
-        result = sub.wait()
-        devnull.close()
-        if (result == 0):
-            return True
-        else:
-            raise InvalidWavPack(u"wvunpack returned error")

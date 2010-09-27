@@ -4678,13 +4678,14 @@ class TestWavPackAudio(EmbeddedCuesheet, ApeTaggedAudio, TestForeignWaveChunks, 
     def test_verify(self):
         temp = tempfile.NamedTemporaryFile(
             suffix="." + self.audio_class.SUFFIX)
-        wavpackdata = open("silence.wv", "rb").read()
+        wavpackdata = open("wavpack-combo.wv", "rb").read()
         try:
-            self.assertEqual(audiotools.open("silence.wv").verify(), True)
+            self.assertEqual(audiotools.open("wavpack-combo.wv").verify(),
+                             True)
             temp.write(wavpackdata)
             temp.flush()
             test_wavpack = audiotools.open(temp.name)
-            for i in xrange(len(wavpackdata)):
+            for i in xrange(0, 0x20B):
                 f = open(temp.name, "wb")
                 f.write(wavpackdata[0:i])
                 f.close()
@@ -4692,28 +4693,13 @@ class TestWavPackAudio(EmbeddedCuesheet, ApeTaggedAudio, TestForeignWaveChunks, 
                 self.assertRaises(audiotools.InvalidFile,
                                   test_wavpack.verify)
 
-            #Swapping random bits doesn't seem to trigger wvunpack's
-            #--verify routine in many instances.
-            #The format carries a checksum in each frame,
-            #so I'm not sure why it's not catching.
-            #Either the checksum doesn't cover the whole frame
-            #(which would be stupid) or wvunpack is ignoring
-            #something during testing and not returning a non-0 result.
-            #I'll know more once I assimilate wavpack
-            #into the built-in decoders.
+                #Swapping random bits doesn't affect WavPack's decoding
+                #in many instances - which is surprising since I'd
+                #expect its adaptive routines to be more susceptible
+                #to values being out-of-whack during decorrelation.
+                #This resilience may be related to its hybrid mode,
+                #but it doesn't inspire confidence.
 
-            # for i in xrange(10, len(wavpackdata)):
-            #     for j in xrange(8):
-            #         new_data = map(ord, wavpackdata)
-            #         new_data[i] ^= (1 << j)
-            #         f = open(temp.name, "wb")
-            #         f.write("".join(map(chr, new_data)))
-            #         f.close()
-            #         self.assertEqual(os.path.getsize(temp.name),
-            #                          os.path.getsize("silence.wv"))
-            #         print "checking byte 0x%X, bit %d" % (i, j)
-            #         self.assertRaises(audiotools.InvalidFile,
-            #                           test_wavpack.verify)
         finally:
             temp.close()
 

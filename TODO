@@ -2413,14 +2413,14 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
     - [X] 8 bps
     - [X] 16 bps
     - [X] 24 bps
-*** TODO Ensure different number of channels work correctly
+*** DONE Ensure different number of channels work correctly
     - [X] 1 channel
     - [X] 2 channels
-    - [ ] 3 channels
+    - [X] 3 channels
     - [X] 4 channels
-    - [ ] 5 channels
+    - [X] 5 channels
     - [X] 6 channels
-    - [ ] 7 channels
+    - [X] 7 channels
     - [X] 8 channels
 *** DONE Ensure different sample rates work correctly
     - [X] 44100Hz
@@ -2572,4 +2572,4 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    Ensure a wide range of lossless audio round-trips correctly
 ** DONE Remove WavePackAudio.BINARIES
 ** TODO Add more WavPack INVALIDFILE .verify() tests
-** TODO Remove wvgain for ReplayGain application
+** DONE Remove wvgain for ReplayGain application
