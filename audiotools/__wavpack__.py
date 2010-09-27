@@ -21,9 +21,9 @@
 from audiotools import (AudioFile, InvalidFile, Con, subprocess, BIN,
                         open_files, os, ReplayGain, ignore_sigint,
                         transfer_data, transfer_framelist_data,
-                        Image, MetaData, sheet_to_unicode, EncodingError,
-                        DecodingError, PCMReaderError, PCMReader,
-                        ChannelMask, UnsupportedChannelMask,
+                        BufferedPCMReader, Image, MetaData, sheet_to_unicode,
+                        EncodingError, DecodingError, PCMReaderError,
+                        PCMReader, ChannelMask, UnsupportedChannelMask,
                         InvalidWave)
 from __wav__ import WaveAudio, WaveReader
 from __ape__ import ApeTaggedAudio, ApeTag, __number_pair__
@@ -203,9 +203,8 @@ class WavPackAudio(ApeTaggedAudio, AudioFile):
 
     SUFFIX = "wv"
     NAME = SUFFIX
-    DEFAULT_COMPRESSION = "veryhigh"
-    COMPRESSION_MODES = ("fast", "standard", "high", "veryhigh")
-    BINARIES = ("wavpack", "wvunpack")
+    DEFAULT_COMPRESSION = "standard"
+    COMPRESSION_MODES = ("veryfast", "fast", "standard", "high", "veryhigh")
 
     APE_TAG_CLASS = WavPackAPEv2
 
@@ -263,6 +262,32 @@ class WavPackAudio(ApeTaggedAudio, AudioFile):
                      12000, 16000, 22050,  24000,
                      32000, 44100, 48000,  64000,
                      88200, 96000, 192000, 0)
+
+    __options__ = {"veryfast": {"block_size": 44100,
+                                "joint_stereo": True,
+                                "false_stereo": True,
+                                "wasted_bits": True,
+                                "decorrelation_passes": 1},
+                   "fast": {"block_size": 44100,
+                            "joint_stereo": True,
+                            "false_stereo": True,
+                            "wasted_bit": True,
+                            "decorrelation_passes": 2},
+                   "standard": {"block_size": 44100,
+                                "joint_stereo": True,
+                                "false_stereo": True,
+                                "wasted_bits": True,
+                                "decorrelation_passes": 5},
+                   "high": {"block_size": 44100,
+                            "joint_stereo": True,
+                            "false_stereo": True,
+                            "wasted_bits": True,
+                            "decorrelation_passes": 10},
+                   "veryhigh": {"block_size": 44100,
+                                "joint_stereo": True,
+                                "false_stereo": True,
+                                "wasted_bits": True,
+                                "decorrelation_passes": 16}}
 
     def __init__(self, filename):
         """filename is a plain string."""
@@ -483,195 +508,65 @@ class WavPackAudio(ApeTaggedAudio, AudioFile):
         at the given filename with the specified compression level
         and returns a new WavPackAudio object."""
 
-        compression_param = {"fast": ["-f"],
-                             "standard": [],
-                             "high": ["-h"],
-                             "veryhigh": ["-hh"]}
+        from . import encoders
 
         if (str(compression) not in cls.COMPRESSION_MODES):
             compression = cls.DEFAULT_COMPRESSION
 
-        if ('--raw-pcm' in cls.__wavpack_help__()):
-            if (filename.endswith(".wv")):
-                devnull = file(os.devnull, 'ab')
+        #FIXME - check for errors here
+        try:
+            encoders.encode_wavpack(filename,
+                                    BufferedPCMReader(pcmreader),
+                                    **cls.__options__[compression])
 
-                if (pcmreader.channels > 18):
-                    raise UnsupportedChannelMask()
-                elif (pcmreader.channels > 2):
-                    order_map = {"front_left": "FL",
-                                 "front_right": "FR",
-                                 "front_center": "FC",
-                                 "low_frequency": "LFE",
-                                 "back_left": "BL",
-                                 "back_right": "BR",
-                                 "front_left_of_center": "FLC",
-                                 "front_right_of_center": "FRC",
-                                 "back_center": "BC",
-                                 "side_left": "SL",
-                                 "side_right": "SR",
-                                 "top_center": "TC",
-                                 "top_front_left": "TFL",
-                                 "top_front_center": "TFC",
-                                 "top_front_right": "TFR",
-                                 "top_back_left": "TBL",
-                                 "top_back_center": "TBC",
-                                 "top_back_right": "TBR"}
+            return cls(filename)
+        except (ValueError, IOError), msg:
+            cls.__unlink__(filename)
+            raise EncodingError(str(msg))
+        except Exception, err:
+            cls.__unlink__(filename)
+            raise err
 
-                    channel_order = ["--channel-order=%s" % (",".join([
-                        order_map[channel]
-                        for channel in
-                        ChannelMask(pcmreader.channel_mask).channels()]))]
-                else:
-                    channel_order = []
+    # def to_wave(self, wave_filename):
+    #     """Writes the contents of this file to the given .wav filename string.
 
-                sub = subprocess.Popen(
-                    [BIN['wavpack']] +
-                    compression_param[compression] +
-                    ['-q', '-y',
-                     "--raw-pcm=%(sr)s,%(bps)s,%(ch)s" % \
-                         {"sr": pcmreader.sample_rate,
-                          "bps": pcmreader.bits_per_sample,
-                          "ch": pcmreader.channels}] +
-                    channel_order +
-                    ['-', '-o', filename],
-                    stdout=devnull,
-                    stderr=devnull,
-                    stdin=subprocess.PIPE,
-                    preexec_fn=ignore_sigint)
+    #     Raises EncodingError if some error occurs during decoding."""
 
-                try:
-                    transfer_framelist_data(pcmreader, sub.stdin.write)
-                except (IOError, ValueError), err:
-                    sub.stdin.close()
-                    sub.wait()
-                    cls.__unlink__(filename)
-                    raise EncodingError(str(err))
-                except Exception, err:
-                    sub.stdin.close()
-                    sub.wait()
-                    cls.__unlink__(filename)
-                    raise err
+    #     from . import decoders
 
-                devnull.close()
-                sub.stdin.close()
+    #     try:
+    #         f = open(wave_filename, 'wb')
+    #     except IOError, msg:
+    #         raise EncodingError(str(msg))
 
-                if (sub.wait() == 0):
-                    return WavPackAudio(filename)
-                else:
-                    raise EncodingError(u"unable to encode file with wavpack")
-            else:
-                import tempfile
+    #     #FIXME - check for errors here
+    #     (head, tail) = self.pcm_split()
+    #     print repr(head),repr(tail)
 
-                tempdir = tempfile.mkdtemp()
-                symlink = os.path.join(tempdir,
-                                       os.path.basename(filename) + ".wv")
-                try:
-                    os.symlink(os.path.abspath(filename), symlink)
-                    cls.from_pcm(symlink, pcmreader, compression)
-                    return WavPackAudio(filename)
-                finally:
-                    os.unlink(symlink)
-                    os.rmdir(tempdir)
-        else:
-            import tempfile
-
-            f = tempfile.NamedTemporaryFile(suffix=".wav")
-
-            try:
-                w = WaveAudio.from_pcm(f.name, pcmreader)
-            except EncodingError, err:
-                if (os.path.isfile(f.name)):
-                    f.close()
-                else:
-                    f.close_called = True
-                raise err
-
-            try:
-                return cls.from_wave(filename, w.filename, compression)
-            finally:
-                if (os.path.isfile(f.name)):
-                    f.close()
-                else:
-                    f.close_called = True
-
-    def to_wave(self, wave_filename):
-        """Writes the contents of this file to the given .wav filename string.
-
-        Raises EncodingError if some error occurs during decoding."""
-
-        devnull = file(os.devnull, 'ab')
-
-        #WavPack stupidly refuses to run if the filename doesn't end with .wv
-        if (self.filename.endswith(".wv")):
-            sub = subprocess.Popen([BIN['wvunpack'],
-                                    '-q', '-y',
-                                    self.filename,
-                                    '-o', wave_filename],
-                                   stdout=devnull,
-                                   stderr=devnull)
-            if (sub.wait() != 0):
-                raise EncodingError(u"unable to decode file with wvunpack")
-        else:
-            #create a temporary symlink to the current file
-            #rather than rewrite the whole thing
-            import tempfile
-
-            tempdir = tempfile.mkdtemp()
-            symlink = os.path.join(tempdir,
-                                   os.path.basename(self.filename) + ".wv")
-            try:
-                os.symlink(os.path.abspath(self.filename), symlink)
-                WavPackAudio(symlink).to_wave(wave_filename)
-            finally:
-                os.unlink(symlink)
-                os.rmdir(tempdir)
+    #     try:
+    #         f.write(head)
+    #         transfer_framelist_data(
+    #             decoders.WavPackDecoder(self.filename),
+    #             f.write)
+    #         f.write(tail)
+    #         f.close()
+    #     except IOError, msg:
+    #         raise EncodingError(str(msg))
 
     def to_pcm(self):
         """Returns a PCMReader object containing the track's PCM data."""
 
-        if (self.filename.endswith(".wv")):
-            if ('-r' in WavPackAudio.__wvunpack_help__()):
-                sub = subprocess.Popen([BIN['wvunpack'],
-                                        '-q', '-y',
-                                        self.filename,
-                                        '-r', '-o', '-'],
-                                       stdout=subprocess.PIPE,
-                                       stderr=file(os.devnull, 'ab'))
+        from . import decoders
 
-                return PCMReader(sub.stdout,
-                                 sample_rate=self.sample_rate(),
-                                 channels=self.channels(),
-                                 channel_mask=int(self.channel_mask()),
-                                 bits_per_sample=self.bits_per_sample(),
-                                 process=sub)
-            else:
-                sub = subprocess.Popen([BIN['wvunpack'],
-                                        '-q', '-y',
-                                        self.filename,
-                                        '-o', '-'],
-                                       stdout=subprocess.PIPE,
-                                       stderr=file(os.devnull, 'ab'))
-
-                try:
-                    return WaveReader(sub.stdout,
-                                      sample_rate=self.sample_rate(),
-                                      channels=self.channels(),
-                                      channel_mask=int(self.channel_mask()),
-                                      bits_per_sample=self.bits_per_sample(),
-                                      process=sub)
-                except InvalidWave:
-                    return PCMReaderError(
-                        error_message=u"wvunpack failed to generate wav file",
-                        sample_rate=self.sample_rate(),
-                        channels=self.channels(),
-                        channel_mask=int(self.channel_mask()),
-                        bits_per_sample=self.bits_per_sample())
-        else:
-            #create a temporary symlink to the current file
-            #rather than rewrite the whole thing
-            (tempdir, symlink) = SymlinkPCMReader.new(self.filename, ".wv")
-            return SymlinkPCMReader(WavPackAudio(symlink).to_pcm(),
-                                    tempdir, symlink)
+        try:
+            #FIXME - check for errors here
+            return decoders.WavPackDecoder(self.filename)
+        except (IOError, ValueError), msg:
+            return PCMReaderError(error_message=str(msg),
+                                  sample_rate=self.sample_rate(),
+                                  channels=self.channels(),
+                                  channel_mask=int(self.channel_mask()),
+                                  bits_per_sample=self.bits_per_sample())
 
     @classmethod
     def from_wave(cls, filename, wave_filename, compression=None):
@@ -684,46 +579,45 @@ class WavPackAudio(ApeTaggedAudio, AudioFile):
         at the given filename with the specified compression level
         and returns a new WavPackAudio object."""
 
+        from . import encoders
+
         if (str(compression) not in cls.COMPRESSION_MODES):
             compression = cls.DEFAULT_COMPRESSION
 
-        compression_param = {"fast": ["-f"],
-                             "standard": [],
-                             "high": ["-h"],
-                             "veryhigh": ["-hh"]}
+        wave = WaveAudio(wave_filename)
 
-        #wavpack will add a .wv suffix if there isn't one
-        #this isn't desired behavior
-        if (filename.endswith(".wv")):
-            devnull = file(os.devnull, 'ab')
+        (head, tail) = wave.pcm_split()
 
-            sub = subprocess.Popen([BIN['wavpack'],
-                                    wave_filename] + \
-                                   compression_param[compression] + \
-                                   ['-q', '-y', '-o',
-                                    filename],
-                                   stdout=devnull,
-                                   stderr=devnull,
-                                   preexec_fn=ignore_sigint)
+        #FIXME - check errors here
+        try:
+            encoders.encode_wavpack(filename,
+                                    wave.to_pcm(),
+                                    wave_header = head,
+                                    wave_footer = tail,
+                                    **cls.__options__[compression])
 
-            devnull.close()
+            return cls(filename)
+        except (ValueError, IOError), msg:
+            cls.__unlink__(filename)
+            raise EncodingError(str(msg))
+        except Exception, err:
+            cls.__unlink__(filename)
+            raise err
 
-            if (sub.wait() == 0):
-                return WavPackAudio(filename)
-            else:
-                raise EncodingError(u"unable to encode file with wavpack")
-        else:
-            import tempfile
 
-            tempdir = tempfile.mkdtemp()
-            symlink = os.path.join(tempdir, os.path.basename(filename) + ".wv")
-            try:
-                os.symlink(os.path.abspath(filename), symlink)
-                cls.from_wave(symlink, wave_filename, compression)
-                return WavPackAudio(filename)
-            finally:
-                os.unlink(symlink)
-                os.rmdir(tempdir)
+    def pcm_split(self):
+        """Returns a pair of data strings before and after PCM data."""
+
+        head = ""
+        tail = ""
+
+        for (sub_block_id, nondecoder, data) in self.sub_frames():
+            if ((sub_block_id == 1) and nondecoder):
+                head = data
+            elif ((sub_block_id == 2) and nondecoder):
+                tail = data
+
+        return (head, tail)
 
     @classmethod
     def __wavpack_help__(cls):

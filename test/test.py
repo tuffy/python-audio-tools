@@ -237,6 +237,9 @@ class RANDOM_PCM_Reader(BLANK_PCM_Reader):
         import audiotools.pcm
 
         if (self.total_frames > 0):
+            if (not isinstance(bytes, int)):
+                raise ValueError("invalid type %s" % (type(bytes)))
+
             bytes -= (bytes % (self.channels * self.bits_per_sample / 8))
             framelist = audiotools.pcm.FrameList(
                 os.urandom(min(bytes, self.total_frames * self.channels * self.bits_per_sample / 8)),
@@ -290,9 +293,9 @@ class EXACT_RANDOM_PCM_Reader(RANDOM_PCM_Reader):
 class VARIABLE_PCM_Reader(RANDOM_PCM_Reader):
     def read(self, bytes):
         return RANDOM_PCM_Reader.read(self,
-                                      os.urandom(min(
+                                      min(
                     random.randint(1, audiotools.BUFFER_SIZE * 2),
-                    self.total_frames * self.channels * (self.bits_per_sample / 8))))
+                    self.total_frames * self.channels * (self.bits_per_sample / 8)))
 
 
 class Join_Reader:
@@ -751,6 +754,9 @@ class TestAiffAudio(TestTextOutput):
             new_file = self.audio_class.from_pcm(
                 temp.name, reader)
 
+            self.assert_(os.path.isfile(new_file.filename))
+            self.assert_(os.path.isfile(temp.name))
+            self.assertEqual(new_file.filename, temp.name)
             self.assertEqual(new_file.channels(), 2)
             self.assertEqual(new_file.bits_per_sample(), 16)
             self.assertEqual(new_file.sample_rate(), 44100)
@@ -770,7 +776,10 @@ class TestAiffAudio(TestTextOutput):
                     TEST_LENGTH)
                 pcm.close()
         finally:
-            temp.close()
+            try:
+                temp.close()
+            except:
+                pass
 
     @TEST_PCM
     def testunusualaudio(self):
@@ -4625,116 +4634,6 @@ class ApeTaggedAudio:
 class TestWavPackAudio(EmbeddedCuesheet, ApeTaggedAudio, TestForeignWaveChunks, APEv2Lint, TestAiffAudio):
     def setUp(self):
         self.audio_class = audiotools.WavPackAudio
-
-    @TEST_EXECUTABLE
-    def test_track2track_invalid(self):
-        #WavPack needs its own custom check for now
-        #because it uses wvunpack to build wave files.
-
-        basedir_src = tempfile.mkdtemp()
-
-        basedir_tar = tempfile.mkdtemp()
-        basedir_tar_stat = os.stat(basedir_tar)[0]
-
-        try:
-            track = self.audio_class.from_pcm(
-                os.path.join(basedir_src, "track01.%s" % \
-                                 (self.audio_class.SUFFIX)),
-                BLANK_PCM_Reader(5))
-
-            #try to use track2track with an invalid XMCD file
-            self.assertEqual(self.__run_app__(
-                    ["track2track",
-                     "-t", "wav",
-                     "-x", "/dev/null/foo.xmcd",
-                     track.filename]), 1)
-
-            self.__check_error__(_(u"Invalid XMCD or MusicBrainz XML file"))
-
-            #try to use track2track -d on an un-writable directory
-            os.chmod(basedir_tar, basedir_tar_stat & 07555)
-
-            self.assertEqual(self.__run_app__(
-                    ["track2track",
-                     "-t", "wav",
-                     "-j", str(1),
-                     track.filename,
-                     "-d",
-                     os.path.join(basedir_tar, "foo")]), 1)
-
-            self.__check_error__(_(u"Unable to write \"%s\"") % \
-                                     (self.filename(
-                        os.path.join(basedir_tar, "foo", "track01.wav"))))
-
-            #try to use track2track -o on an un-writable directory
-            self.assertEqual(self.__run_app__(
-                    ["track2track",
-                     "-t", "wav",
-                     track.filename,
-                     "-o",
-                     os.path.join(basedir_tar, "foo", "track01.wav")]), 1)
-
-            self.__check_error__(
-                _(u"%(filename)s: %(error)s") %
-                {"filename":self.filename(
-                        os.path.join(basedir_tar, "foo", "track01.wav")),
-                 "error":u"unable to decode file with wvunpack"})
-
-            os.chmod(basedir_tar, basedir_tar_stat)
-
-            #try to use track2track -d on an un-writable file
-            f = open(os.path.join(basedir_tar, "track01.wav"), "wb")
-            f.write("")
-            f.close()
-            f_stat = os.stat(os.path.join(basedir_tar, "track01.wav"))[0]
-            os.chmod(os.path.join(basedir_tar, "track01.wav"),
-                     f_stat & 07555)
-            try:
-                self.assertEqual(self.__run_app__(
-                    ["track2track",
-                     "-t", "wav",
-                     "-j", str(1),
-                     track.filename,
-                     "-d",
-                     basedir_tar]), 1)
-
-                self.__check_info__(_(u"%s -> %s") % \
-                                        (self.filename(track.filename),
-                                         self.filename(os.path.join(basedir_tar, "track01.wav"))))
-
-                self.__check_error__(
-                    _(u"%(filename)s: %(error)s") %
-                    {"filename":self.filename(
-                            os.path.join(basedir_tar, "track01.wav")),
-                     "error":u"unable to decode file with wvunpack"})
-
-                #try to use track2track -o on an un-writable file
-                self.assertEqual(self.__run_app__(
-                    ["track2track",
-                     "-t", "wav",
-                     track.filename,
-                     "-o",
-                     os.path.join(basedir_tar, "track01.wav")]), 1)
-
-                self.__check_error__(
-                    _(u"%(filename)s: %(error)s") %
-                    {"filename":self.filename(
-                            os.path.join(basedir_tar, "track01.wav")),
-                     "error":u"unable to decode file with wvunpack"})
-
-            finally:
-                os.chmod(os.path.join(basedir_tar, "track01.wav"), f_stat)
-            os.unlink(os.path.join(basedir_tar, "track01.wav"))
-
-        finally:
-            for f in os.listdir(basedir_src):
-                os.unlink(os.path.join(basedir_src, f))
-            os.rmdir(basedir_src)
-
-            os.chmod(basedir_tar, basedir_tar_stat)
-            for f in os.listdir(basedir_tar):
-                os.unlink(os.path.join(basedir_tar, f))
-            os.rmdir(basedir_tar)
 
     @TEST_INVALIDFILE
     def test_invalid_to_pcm(self):
@@ -12760,6 +12659,7 @@ class TestMultiChannel(unittest.TestCase):
 
             source_track.to_wave(wav_file.name)
             wav = audiotools.open(wav_file.name)
+            wav.verify()
             self.assertEqual(source_track.channel_mask(),
                              wav.channel_mask())
             target_track = target_audio_class.from_wave(
