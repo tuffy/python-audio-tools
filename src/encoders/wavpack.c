@@ -2174,7 +2174,7 @@ wavpack_write_wave_header_sub_block(Bitstream* stream,
         /*build a standard WAVE header if channels <= 2 and bps <= 16*/
 
         wave_header->write_bits64(wave_header, 32, 0x46464952); /*ID*/
-        wave_header->write_bits64(wave_header, 32, 4 + 8 + 16 + pcm_bytes);
+        wave_header->write_bits64(wave_header, 32, 4 + 8 + 16 + 8 + pcm_bytes);
         wave_header->write_bits64(wave_header, 32, 0x45564157); /*Type*/
         wave_header->write_bits64(wave_header, 32, 0x20746D66); /*chunk ID*/
         wave_header->write_bits64(wave_header, 32, 16); /*fmt size*/
@@ -2194,7 +2194,7 @@ wavpack_write_wave_header_sub_block(Bitstream* stream,
         /*otherwise, build a WAVEFORMATEXTENSIBLE header*/
 
         wave_header->write_bits64(wave_header, 32, 0x46464952); /*ID*/
-        wave_header->write_bits64(wave_header, 32, 4 + 8 + 40 + pcm_bytes);
+        wave_header->write_bits64(wave_header, 32, 4 + 8 + 40 + 8 + pcm_bytes);
         wave_header->write_bits64(wave_header, 32, 0x45564157); /*Type*/
         wave_header->write_bits64(wave_header, 32, 0x20746D66); /*chunk ID*/
         wave_header->write_bits64(wave_header, 32, 40);     /*fmt size*/

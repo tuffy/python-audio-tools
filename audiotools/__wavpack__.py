@@ -252,7 +252,7 @@ class WavPackAudio(ApeTaggedAudio, AudioFile):
     def channel_mask(self):
         """Returns a ChannelMask object of this track's channel layout."""
 
-        if (self.__channels__ == 2):
+        if ((self.__channels__ == 1) or (self.__channels__ == 2)):
             return ChannelMask.from_channels(self.__channels__)
         else:
             for (block_id, nondecoder, data) in self.sub_frames():
@@ -444,6 +444,7 @@ class WavPackAudio(ApeTaggedAudio, AudioFile):
             f.write(tail)
             f.close()
         except IOError, msg:
+            self.__unlink__(wave_filename)
             raise EncodingError(str(msg))
 
     def to_pcm(self):

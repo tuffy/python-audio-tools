@@ -12926,16 +12926,23 @@ class TestMultiChannel(unittest.TestCase):
 
     @TEST_PCM
     def test_unsupported_channel_mask_from_pcm(self):
-        for audio_class in [audiotools.WaveAudio,
-                            audiotools.WavPackAudio]:
-            for channels in xrange(1, 19):
-                self.__test_undefined_mask_blank__(audio_class,
-                                                   channels,
-                                                   False)
-                self.__test_error_mask_blank__(audio_class,
-                                               19, audiotools.ChannelMask(0))
-                self.__test_error_mask_blank__(audio_class,
-                                               20, audiotools.ChannelMask(0))
+        for channels in xrange(1, 19):
+            self.__test_undefined_mask_blank__(audiotools.WaveAudio,
+                                               channels,
+                                               False)
+            self.__test_error_mask_blank__(audiotools.WaveAudio,
+                                           19, audiotools.ChannelMask(0))
+            self.__test_error_mask_blank__(audiotools.WaveAudio,
+                                           20, audiotools.ChannelMask(0))
+
+        for channels in xrange(1, 3):
+            self.__test_undefined_mask_blank__(audiotools.WavPackAudio,
+                                               channels,
+                                               False)
+        for channels in xrange(3, 21):
+            self.__test_undefined_mask_blank__(audiotools.WavPackAudio,
+                                               channels,
+                                               True)
 
         for audio_class in [audiotools.FlacAudio, audiotools.OggFlacAudio]:
             for channels in xrange(1, 7):
