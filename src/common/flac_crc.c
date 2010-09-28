@@ -1,3 +1,6 @@
+#include "flac_crc.h"
+#include <stdint.h>
+
 void
 flac_crc8(int byte, void *checksum)
 {

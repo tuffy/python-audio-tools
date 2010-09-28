@@ -6,8 +6,8 @@ FLAGS = -Wall -g
 
 all: flacenc alacenc shnenc wvenc
 
-flacenc: $(OBJS) encoders/flac.c encoders/flac.h flac_lpc.o md5.o
-	gcc $(FLAGS) -DVERSION=$(VERSION) -o flacenc encoders/flac.c $(OBJS) flac_lpc.o md5.o -DSTANDALONE -lm
+flacenc: $(OBJS) encoders/flac.c encoders/flac.h flac_lpc.o flac_crc.o md5.o
+	gcc $(FLAGS) -DVERSION=$(VERSION) -o flacenc encoders/flac.c $(OBJS) flac_lpc.o md5.o flac_crc.o -DSTANDALONE -lm
 
 alacenc: $(OBJS) encoders/alac.c encoders/alac.h alac_lpc.o
 	gcc $(FLAGS) -DVERSION=$(VERSION) -o alacenc encoders/alac.c $(OBJS) alac_lpc.o -DSTANDALONE -lm
@@ -38,6 +38,9 @@ md5.o: md5.c md5.h
 
 flac_lpc.o: encoders/flac_lpc.c encoders/flac_lpc.h
 	gcc $(FLAGS) -c encoders/flac_lpc.c -DSTANDALONE
+
+flac_crc.o: common/flac_crc.c common/flac_crc.h
+	gcc $(FLAGS) -c common/flac_crc.c -DSTANDALONE
 
 alac_lpc.o: encoders/alac_lpc.c encoders/alac_lpc.h
 	gcc $(FLAGS) -c encoders/alac_lpc.c -DSTANDALONE

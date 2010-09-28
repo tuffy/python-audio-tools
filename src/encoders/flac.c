@@ -1463,8 +1463,6 @@ flac_max_wasted_bits_per_sample(struct i_array *samples)
     }
 }
 
-#include "flac_crc.c"
-
 #ifdef STANDALONE
 
 int main(int argc, char *argv[]) {

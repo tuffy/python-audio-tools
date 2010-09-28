@@ -289,7 +289,7 @@ abs_sum(struct i_array *a)
     return sum;
 }
 
-#include "flac_crc.h"
+#include "../common/flac_crc.h"
 
 #endif
 

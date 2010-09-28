@@ -1123,5 +1123,4 @@ read_utf8(Bitstream *stream)
     return value;
 }
 
-#include "flac_crc.c"
 #include "pcm.c"

@@ -261,7 +261,7 @@ FlacDecoder_update_md5sum(decoders_FlacDecoder *self,
 int
 FlacDecoder_verify_okay(decoders_FlacDecoder *self);
 
-#include "flac_crc.h"
+#include "../common/flac_crc.h"
 
 uint32_t read_utf8(Bitstream *stream);
 

@@ -2574,5 +2574,5 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** TODO Add more WavPack INVALIDFILE .verify() tests
 ** DONE Remove wvgain for ReplayGain application
 * TODO Shift common decoder/encoder routines to a common/ directory
-  - [ ] flac_crc.h
-  - [ ] flac_crc.c
+  - [X] flac_crc.h
+  - [X] flac_crc.c
