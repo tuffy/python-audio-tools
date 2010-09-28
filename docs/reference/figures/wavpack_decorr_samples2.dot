@@ -69,7 +69,7 @@ digraph read_wavpack_samples {
   stereo_check_k -> stereo_decrement_i [label="NO"];
   stereo_update_k -> stereo_check_k;
 
-  stereo_update_neg [shape=record,label="{decorr. samples A[i][0] = samples[j]|decorr. samples B[i][0] = samples[j + 1]|j = j + 2|i = i - 1}"];
+  stereo_update_neg [shape=record,label="{decorr. samples A[i][0] = samples[j + 1]|decorr. samples B[i][0] = samples[j]|j = j + 2|i = i - 1}"];
   stereo_update_neg -> stereo_check_i;
 
 /*

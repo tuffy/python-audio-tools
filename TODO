@@ -2554,22 +2554,25 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** TODO WavPack encoding
 **** TODO WavPack block header
 **** DONE false stereo
-**** TODO int32_info
+**** DONE int32_info
      for left shifting zeroes, in particular
 **** DONE checksum
 **** DONE joint stereo
+**** DONE decorrelation passes
 **** TODO WavPack sub-blocks
-     - [ ] decorr_terms
-     - [ ] decorr_weights
+     - [X] decorr_terms
+     - [X] decorr_weights
      - [ ] decorr_samples
-     - [ ] entropy_vars
+     - [X] entropy_vars
      - [X] wv_bitstream
-**** TODO decorrelation passes
-**** TODO entropy variables
 **** DONE bitstream generation
+*** TODO Ensure section capitalization is consistent
 *** TODO Verify A4 layout is correct
 ** TODO Test encoder/decoder against reference
    Ensure a wide range of lossless audio round-trips correctly
 ** DONE Remove WavePackAudio.BINARIES
 ** TODO Add more WavPack INVALIDFILE .verify() tests
 ** DONE Remove wvgain for ReplayGain application
+* TODO Shift common decoder/encoder routines to a common/ directory
+  - [ ] flac_crc.h
+  - [ ] flac_crc.c

@@ -769,6 +769,7 @@ So, after running through all five passes, our samples are now
 \clearpage
 
 \subsection{Extended/Shifted integers}
+\label{wavpack_extended_integers}
 
 If \VAR{Extended Size Integers} is set in the block header,
 there should be an \VAR{Int32 Info} sub-block present whose layout
@@ -898,12 +899,26 @@ $\text{Block}_4$ & 0 & 1 & 0 & Back Left & Back Right
 
 \subsection{False Stereo}
 
-If Channel A's samples are identical to Channel B's samples,
-one can set the \VAR{False Stereo} bit in the block header
-and treat the block as having only one channel for the rest of
-its encoding.
+If the block is stereo and Channel A's samples are identical to
+Channel B's samples, one can set the \VAR{False Stereo} bit in
+the block header and treat the block as having only one channel
+for the rest of its encoding.
 Note that the block's \VAR{Is Mono} bit is still \texttt{false}
 in this case.
+
+\subsection{Extended/Shifted Integers}
+
+If the following condition holds:
+\begin{equation*}
+0 = \overset{\text{block size} - 1}{\underset{i = 0}{\sum}}{\text{Channel}_i \bmod{2 ^ {bits}}}
+\end{equation*}
+for Channel A and, if present, Channel B where $bits > 0$, then the
+highest value of $bits$ if what's used for the \VAR{Zero Bits}
+field in an \VAR{Extended Size Integers} sub-block, as described
+on page \pageref{wavpack_extended_integers}.
+Each channel's samples are then divided by $2 ^ {bits}$ for the
+remainder of encoding and the \VAR{Extended Size Integers} bit
+is set in the block header.
 
 \subsection{The CRC}
 
@@ -936,11 +951,253 @@ For example, given the \VAR{Channel A} value of 16 and the
 \text{Mid}_0 &= 16 - 62 = \textbf{-46} \\
 \text{Side}_0 &= \left\lfloor\frac{16 + 62}{2}\right\rfloor = \textbf{39}
 \end{align*}
+One must also set the \VAR{Joint Stereo} bit in the block header.
 
 \clearpage
 
-\subsection{Decorrelation samples}
+\subsection{Decorrelation Terms/Deltas}
 
+These are typically defined by the number of decorrelation
+passes to use:
+\begin{table}[h]
+\begin{tabular}{| r | r | r | r | r | r || r | r | r | r | r | r |}
+\hline
+Terms & \multicolumn{5}{c||}{Decorrelation Passes} & Deltas &
+\multicolumn{5}{c|}{Decorrelation Deltas} \\
+& 1 & 2 & 5 & 10 & 16 & & 1 & 2 & 5 & 10 & 16 \\
+\hline
+$\text{Term}_1$    & 18 & 17 & 3 & 4 & 2 &
+$\text{Delta}_1$   & 2  & 2  & 2 & 2 & 2 \\
+$\text{Term}_2$    & & 18 & 17 & 17 & 18 &
+$\text{Delta}_2$   & & 2 & 2 & 2 & 2 \\
+$\text{Term}_3$    & & & 2 & -1 & -1 &
+$\text{Delta}_3$   & & & 2 & 2 & 2 \\
+$\text{Term}_4$    & & & 18 & 5 & 8 &
+$\text{Delta}_4$   & & & 2 & 2 & 2 \\
+$\text{Term}_5$    & & & 18 & 3 & 6 &
+$\text{Delta}_5$   & & & 2 & 2 & 2 \\
+$\text{Term}_6$    & & & & 2 & 3 &
+$\text{Delta}_6$   & & & & 2 & 2 \\
+$\text{Term}_7$    & & & & -2 & 5 &
+$\text{Delta}_7$   & & & & 2 & 2 \\
+$\text{Term}_8$    & & & & 18 & 7 &
+$\text{Delta}_8$   & & & & 2 & 2 \\
+$\text{Term}_9$    & & & & 18 & 4 &
+$\text{Delta}_9$   & & & & 2 & 2 \\
+$\text{Term}_{10}$ & & & & 18 & 2 &
+$\text{Delta}_{10}$ & & & & 2 & 2 \\
+$\text{Term}_{11}$ & & & & & 18 &
+$\text{Delta}_{11}$ & & & & & 2 \\
+$\text{Term}_{12}$ & & & & & -2 &
+$\text{Delta}_{12}$ & & & & & 2 \\
+$\text{Term}_{13}$ & & & & & 3 &
+$\text{Delta}_{13}$ & & & & & 2 \\
+$\text{Term}_{14}$ & & & & & 2 &
+$\text{Delta}_{14}$ & & & & & 2 \\
+$\text{Term}_{15}$ & & & & & 18 &
+$\text{Delta}_{15}$ & & & & & 2 \\
+$\text{Term}_{16}$ & & & & & 18 &
+$\text{Delta}_{16}$ & & & & & 2 \\
+\hline
+\end{tabular}
+\end{table}
+\par
+\noindent
+They are placed in a sub-block as follows:
+\begin{figure}[h]
+\includegraphics{figures/wavpack_decorr_terms.pdf}
+\end{figure}
+\par
+\noindent
+Since each term/delta pair is 8 bits,
+\VAR{Actual Size 1 Less} is set when the number of terms is odd,
+\VAR{Large Block} is always going to be 0 and
+\VAR{Block Size} equals the number of terms, divided by 2.
+
+\clearpage
+
+\subsection{Decorrelation Passes}
+
+Once our number of decorrelation passes is decided,
+we must also generate decorrelation weights, decorrelation samples
+and entropy variables sub-blocks before moving on to the residuals sub-block.
+So where do we get those values?
+They actually come from the \textit{previous} block.\footnote{More
+precisely, the previous block covering the same set of channels -
+in the case of multi-channel audio.}
+Since encoding will modify decorrelation weights and entropy variables
+as it progresses, the final values for $\text{Block}_i$ become
+the initial values for $\text{Block}_{i + 1}$.
+As for the decorrelation values, the final few decorrelated
+samples (whose quantity depends on the decorrelation term)
+are `wrapped' from the previous decorrelation pass
+into our \VAR{Decorrelation Samples} sub-block as its starting point.
+
+However, we can't store the previous block's final values as-is.
+Remember that the values for decorrelation weights are
+multiplied by $2 ^ 3$ and the values for decorrelation samples
+and entropy variables are stored logarithmically.
+Therefore, we must `round-trip' the previous block's output samples
+before using them as input samples since they'll be
+parsed the same way during decoding.
+This process will be explained in the sub-block sections to follow.
+
+For $\text{Block}_0$, we'll set our initial decorrelation weights,
+decorrelation samples and entropy variables to 0.
+
+The application of each pass requires a \VAR{Decorrelation Term},
+a \VAR{Decorrelation Delta}, one \VAR{Decorrelation Weight} per
+channel and one or more \VAR{Decorrelation Sample} values -
+in addition to the set of processed input samples we're running the pass
+over.
+
+\begin{align*}
+\intertext{Decorrelation Term = 18:}
+\text{Temp}_i &= \lfloor((3 \times \text{Input}_{i - 1}) - \text{Input}_{i - 2}) \div 2\rfloor \\
+\text{Output}_i &= \text{Input}_i - \lfloor((\text{Weight}_{i - 1} \times \text{Temp}_i) + 512) \div 1024\rfloor \\
+\text{Weight}_i &=
+\begin{cases}
+\text{Weight}_{i - 1} & \text{if } \text{Temp}_i = 0 \text{ or } \text{Output}_i = 0 \\
+\text{Weight}_{i - 1} + \text{Delta} & \text{if } (\text{Temp}_i \xor \text{Output}_i) \geq 0 \\
+\text{Weight}_{i - 1} - \text{Delta} & \text{if } (\text{Temp}_i \xor \text{Output}_i) < 0
+\end{cases}
+\intertext{Decorrelation Term = 17:}
+\text{Temp}_i &= (2 \times \text{Input}_{i - 1}) - \text{Input}_{i - 2} \\
+\text{Output}_i &= \text{Input}_i - \lfloor((\text{Weight}_{i - 1} \times \text{Temp}_i) + 512) \div 1024\rfloor \\
+\text{Weight}_i &=
+\begin{cases}
+\text{Weight}_{i - 1} & \text{if } \text{Temp}_i = 0 \text{ or } \text{Output}_i = 0 \\
+\text{Weight}_{i - 1} + \text{Delta} & \text{if } (\text{Temp}_i \xor \text{Output}_i) \geq 0 \\
+\text{Weight}_{i - 1} - \text{Delta} & \text{if } (\text{Temp}_i \xor \text{Output}_i) < 0
+\end{cases}
+\intertext{$1 \leq \text{Decorrelation Term} \leq 8$:}
+\text{Output}_i &= \text{Input}_i - \lfloor((\text{Weight}_{i - 1} \times \text{Input}_{i - \text{term}}) + 512) \div 1024\rfloor \\
+\text{Weight}_i &=
+\begin{cases}
+\text{Weight}_{i - 1} & \text{if } \text{Input}_{i - \text{term}} = 0 \text{ or } \text{Output}_i = 0 \\
+\text{Weight}_{i - 1} + \text{Delta} & \text{if } (\text{Input}_{i - \text{term}} \xor \text{Output}_i) \geq 0 \\
+\text{Weight}_{i - 1} - \text{Delta} & \text{if } (\text{Input}_{i - \text{term}} \xor \text{Output}_i) < 0
+\end{cases}
+\end{align*}
+Similar to decoding, each function uses previous input samples
+for its calculation.
+This is where \VAR{Decorrelation Samples} are used;
+those are our $\text{Input}_{-1}$, $\text{Input}_{-2}$, etc. which
+are used for decorrelation but not actually output.
+
+For 1 or 2 channel blocks, positive decorrelation terms are applied
+on a per-channel basis with the weight A values being applied to
+channel A and the weight B values being applied to channel B (if present).
+However, the three negative correlation terms are only valid for
+2 channel blocks:
+\begin{align*}
+\intertext{Decorrelation Term = -1:}
+\text{Temp A}_i &= \text{Input B}_{i - 1} \\
+\text{Temp B}_i &= \text{Input A}_i \\
+\text{Output A}_i &= \text{Input A}_i - \lfloor((\text{Weight A}_{i - 1} \times \text{Temp A}_i) + 512) \div 1024\rfloor \\
+\text{Weight A}_i &=
+\begin{cases}
+\text{Weight A}_{i - 1} & \text{if } \text{Temp A}_i \text{ or } \text{Output A}_i = 0 \\
+\text{Weight A}_{i - 1} + \text{Delta} & \text{if } (\text{Temp A}_i \xor \text{Output A}_i) \geq 0 \\
+\text{ to a maximum of 1024} \\
+\text{Weight A}_{i - 1} - \text{Delta} & \text{if } (\text{Temp A}_i \xor \text{Output A}_i) < 0 \\
+\text{ to a minimum of -1024}
+\end{cases} \\
+\text{Output B}_i &= \text{Input B}_i - \lfloor((\text{Weight B}_{i - 1} \times \text{Temp B}_i) + 512) \div 1024\rfloor \\
+\text{Weight B}_i &=
+\begin{cases}
+\text{Weight B}_{i - 1} & \text{if } \text{Temp B}_i \text{ or } \text{Output B}_i = 0 \\
+\text{Weight B}_{i - 1} + \text{Delta} & \text{if } (\text{Temp B}_i \xor \text{Output B}_i) \geq 0 \\
+\text{ to a maximum of 1024} \\
+\text{Weight B}_{i - 1} - \text{Delta} & \text{if } (\text{Temp B}_i \xor \text{Output B}_i) < 0 \\
+\text{ to a minimum of -1024}
+\end{cases}
+\intertext{Decorrelation Term = -2:}
+\text{Temp A}_i &= \text{Input B}_i \\
+\text{Temp B}_i &= \text{Input A}_{i - 1} \\
+\text{Output A}_i &= \text{Input A}_i - \lfloor((\text{Weight A}_{i - 1} \times \text{Temp A}_i) + 512) \div 1024\rfloor \\
+\text{Weight A}_i &=
+\begin{cases}
+\text{Weight A}_{i - 1} & \text{if } \text{Temp A}_i \text{ or } \text{Output A}_i = 0 \\
+\text{Weight A}_{i - 1} + \text{Delta} & \text{if } (\text{Temp A}_i \xor \text{Output A}_i) \geq 0 \\
+\text{ to a maximum of 1024} \\
+\text{Weight A}_{i - 1} - \text{Delta} & \text{if } (\text{Temp A}_i \xor \text{Output A}_i) < 0 \\
+\text{ to a minimum of -1024}
+\end{cases} \\
+\text{Output B}_i &= \text{Input B}_i - \lfloor((\text{Weight B}_{i - 1} \times \text{Temp B}_i) + 512) \div 1024\rfloor \\
+\text{Weight B}_i &=
+\begin{cases}
+\text{Weight B}_{i - 1} & \text{if } \text{Temp B}_i \text{ or } \text{Output B}_i = 0 \\
+\text{Weight B}_{i - 1} + \text{Delta} & \text{if } (\text{Temp B}_i \xor \text{Output B}_i) \geq 0 \\
+\text{ to a maximum of 1024} \\
+\text{Weight B}_{i - 1} - \text{Delta} & \text{if } (\text{Temp B}_i \xor \text{Output B}_i) < 0 \\
+\text{ to a minimum of -1024}
+\end{cases}
+\intertext{Decorrelation Term = -3:}
+\text{Temp A}_i &= \text{Input B}_{i - 1} \\
+\text{Temp B}_i &= \text{Input A}_{i - 1} \\
+\text{Output A}_i &= \text{Input A}_i - \lfloor((\text{Weight A}_{i - 1} \times \text{Temp A}_i) + 512) \div 1024\rfloor \\
+\text{Weight A}_i &=
+\begin{cases}
+\text{Weight A}_{i - 1} & \text{if } \text{Temp A}_i \text{ or } \text{Output A}_i = 0 \\
+\text{Weight A}_{i - 1} + \text{Delta} & \text{if } (\text{Temp A}_i \xor \text{Output A}_i) \geq 0 \\
+\text{ to a maximum of 1024} \\
+\text{Weight A}_{i - 1} - \text{Delta} & \text{if } (\text{Temp A}_i \xor \text{Output A}_i) < 0 \\
+\text{ to a minimum of -1024}
+\end{cases} \\
+\text{Output B}_i &= \text{Input B}_i - \lfloor((\text{Weight B}_{i - 1} \times \text{Temp B}_i) + 512) \div 1024\rfloor \\
+\text{Weight B}_i &=
+\begin{cases}
+\text{Weight B}_{i - 1} & \text{if } \text{Temp B}_i \text{ or } \text{Output B}_i = 0 \\
+\text{Weight B}_{i - 1} + \text{Delta} & \text{if } (\text{Temp B}_i \xor \text{Output B}_i) \geq 0 \\
+\text{ to a maximum of 1024} \\
+\text{Weight B}_{i - 1} - \text{Delta} & \text{if } (\text{Temp B}_i \xor \text{Output B}_i) < 0 \\
+\text{ to a minimum of -1024}
+\end{cases}
+\end{align*}
+
+\clearpage
+
+\subsection{Decorrelation Weights}
+
+There is one decorrelation weight value per decorrelation pass,
+per channel.
+Each has a minimum value of -1024 and a maximum value of 1024.
+Converting their values to 8 bits requires the following formula:
+\begin{equation*}
+\text{value} = \begin{cases}
+\lfloor(\text{Weight} - \left\lfloor\frac{\text{Weight} + 2 ^ 6}{7}\right\rfloor + 4) \div 2 ^ 3\rfloor & \text{ if Weight} > 0 \\
+0 & \text{ if Weight} = 0 \\
+\lfloor(\text{Weight} + 4) \div 2 ^ 3\rfloor & \text{ if Weight} < 0
+\end{cases}
+\end{equation*}
+\par
+\noindent
+Weights are placed in a sub-block in reverse order as follows:
+
+\begin{figure}[h]
+\includegraphics{figures/wavpack_decorr_weights.pdf}
+\end{figure}
+
+Since each decorrelation weight value is stored in 8 bits,
+\VAR{Actual Size 1 Less} is set if the total number of weights is odd,
+\VAR{Large Block} is always going to be 0
+and \VAR{Block Size} is the total number of weights divided by 2.
+
+Once the weights have been stored, the `round-trip' formula
+is the same as decoding:
+
+\begin{equation*}
+\text{Decorrelation Weight} =
+\begin{cases}
+\text{value} \times 2 ^ 3 + \left\lfloor\frac{\text{value} \times 2 ^ 3 + 2 ^ 6}{2 ^ 7}\right\rfloor & \text{if value} > 0 \\
+0 & \text{if value} = 0 \\
+\text{value} \times 2 ^ 3 & \text{if value} < 0
+\end{cases}
+\end{equation*}
+
+\subsection{Decorrelation samples}
+\label{wavpack_encode_decorr_samples}
 We apply the following formulas to convert our 32-bit, signed
 decorrelation values to 16-bit signed sub-block values:
 \begin{align*}
@@ -1021,127 +1278,78 @@ value &= (5 \times 2^8) + \text{wv\_log2}((28 \times 2^{9 - 5}) \bmod{256}) \\
 &= 1280 + \text{wv\_log2}(192) = \textbf{1487}
 \end{align*}
 
-\clearpage
+These samples are then placed in a sub-block as follows:
+\begin{figure}[h]
+\includegraphics{figures/wavpack_decorr_samples.pdf}
+\end{figure}
+\par
+\noindent
+where \VAR{Actual Size 1 Less} and \VAR{Large Block} are 0,
+and \VAR{Block Size} is the total number of decorrelation samples.
 
-\subsection{Decorrelation Passes}
-
-We then apply decorrelation passes to our channel values.
-Each pass requires a \VAR{Decorrelation Term},
-a \VAR{Decorrelation Delta}, one \VAR{Decorrelation Weight} per
-channel and one or more \VAR{Decorrelation Sample} values -
-in addition to the set of input samples we're running the pass
-over.
-\begin{align*}
-\intertext{Decorrelation Term = 18:}
-\text{Temp}_i &= \lfloor((3 \times \text{Input}_{i - 1}) - \text{Input}_{i - 2}) \div 2\rfloor \\
-\text{Output}_i &= \text{Input}_i - \lfloor((\text{Weight}_{i - 1} \times \text{Temp}_i) + 512) \div 1024\rfloor \\
-\text{Weight}_i &=
-\begin{cases}
-\text{Weight}_{i - 1} & \text{if } \text{Temp}_i = 0 \text{ or } \text{Output}_i = 0 \\
-\text{Weight}_{i - 1} + \text{Delta} & \text{if } (\text{Temp}_i \xor \text{Output}_i) \geq 0 \\
-\text{Weight}_{i - 1} - \text{Delta} & \text{if } (\text{Temp}_i \xor \text{Output}_i) < 0
-\end{cases}
-\intertext{Decorrelation Term = 17:}
-\text{Temp}_i &= (2 \times \text{Input}_{i - 1}) - \text{Input}_{i - 2} \\
-\text{Output}_i &= \text{Input}_i - \lfloor((\text{Weight}_{i - 1} \times \text{Temp}_i) + 512) \div 1024\rfloor \\
-\text{Weight}_i &=
-\begin{cases}
-\text{Weight}_{i - 1} & \text{if } \text{Temp}_i = 0 \text{ or } \text{Output}_i = 0 \\
-\text{Weight}_{i - 1} + \text{Delta} & \text{if } (\text{Temp}_i \xor \text{Output}_i) \geq 0 \\
-\text{Weight}_{i - 1} - \text{Delta} & \text{if } (\text{Temp}_i \xor \text{Output}_i) < 0
-\end{cases}
-\intertext{$1 \leq \text{Decorrelation Term} \leq 8$:}
-\text{Output}_i &= \text{Input}_i - \lfloor((\text{Weight}_{i - 1} \times \text{Input}_{i - \text{term}}) + 512) \div 1024\rfloor \\
-\text{Weight}_i &=
-\begin{cases}
-\text{Weight}_{i - 1} & \text{if } \text{Input}_{i - \text{term}} = 0 \text{ or } \text{Output}_i = 0 \\
-\text{Weight}_{i - 1} + \text{Delta} & \text{if } (\text{Input}_{i - \text{term}} \xor \text{Output}_i) \geq 0 \\
-\text{Weight}_{i - 1} - \text{Delta} & \text{if } (\text{Input}_{i - \text{term}} \xor \text{Output}_i) < 0
-\end{cases}
-\end{align*}
-Similar to decoding, each function uses previous input samples
-for its calculation.
-This is where \VAR{Decorrelation Samples} are used;
-those are our $\text{Input}_{-1}$, $\text{Input}_{-2}$, etc. which
-are used for decorrelation but not actually output.
+Writing the values themselves requires traversing the
+decorrelation samples lists in \textit{reverse} order,
+from $i = \text{\VAR{Decorrelation Passes}} - 1$ to 0.
 
 \clearpage
 
-For 1 or 2 channel blocks, positive decorrelation terms are applied
-on a per-channel basis with the weight A values being applied to
-channel A and the weight B values being applied to channel B (if present).
-However, the three negative correlation terms are only valid for
-2 channel blocks:
-\begin{align*}
-\intertext{Decorrelation Term = -1:}
-\text{Temp A}_i &= \text{Input B}_{i - 1} \\
-\text{Temp B}_i &= \text{Input A}_i \\
-%% \text{Output A}_i &= \text{Input A}_i - applyweight(\text{Weight A}_{i - 1}, \text{Temp A}_i) \\
-\text{Output A}_i &= \text{Input A}_i - \lfloor((\text{Weight A}_{i - 1} \times \text{Temp A}_i) + 512) \div 1024\rfloor \\
-%% \text{Weight A}_i &= updateweight(\text{Weight A}_{i - 1}, \text{Delta}, \text{Temp A}_i, \text{Output A}_i) \\
-\text{Weight A}_i &=
-\begin{cases}
-\text{Weight A}_{i - 1} & \text{if } \text{Temp A}_i \text{ or } \text{Output A}_i = 0 \\
-\text{Weight A}_{i - 1} + \text{Delta} & \text{if } (\text{Temp A}_i \xor \text{Output A}_i) \geq 0 \\
-\text{ to a maximum of 1024} \\
-\text{Weight A}_{i - 1} - \text{Delta} & \text{if } (\text{Temp A}_i \xor \text{Output A}_i) < 0 \\
-\text{ to a minimum of -1024}
-\end{cases} \\
-\text{Output B}_i &= \text{Input B}_i - \lfloor((\text{Weight B}_{i - 1} \times \text{Temp B}_i) + 512) \div 1024\rfloor \\
-\text{Weight B}_i &=
-\begin{cases}
-\text{Weight B}_{i - 1} & \text{if } \text{Temp B}_i \text{ or } \text{Output B}_i = 0 \\
-\text{Weight B}_{i - 1} + \text{Delta} & \text{if } (\text{Temp B}_i \xor \text{Output B}_i) \geq 0 \\
-\text{ to a maximum of 1024} \\
-\text{Weight B}_{i - 1} - \text{Delta} & \text{if } (\text{Temp B}_i \xor \text{Output B}_i) < 0 \\
-\text{ to a minimum of -1024}
-\end{cases}
-\end{align*}
-\clearpage
-\begin{align*}
-\intertext{Decorrelation Term = -2:}
-\text{Temp A}_i &= \text{Input B}_i \\
-\text{Temp B}_i &= \text{Input A}_{i - 1} \\
-\text{Output A}_i &= \text{Input A}_i - \lfloor((\text{Weight A}_{i - 1} \times \text{Temp A}_i) + 512) \div 1024\rfloor \\
-\text{Weight A}_i &=
-\begin{cases}
-\text{Weight A}_{i - 1} & \text{if } \text{Temp A}_i \text{ or } \text{Output A}_i = 0 \\
-\text{Weight A}_{i - 1} + \text{Delta} & \text{if } (\text{Temp A}_i \xor \text{Output A}_i) \geq 0 \\
-\text{ to a maximum of 1024} \\
-\text{Weight A}_{i - 1} - \text{Delta} & \text{if } (\text{Temp A}_i \xor \text{Output A}_i) < 0 \\
-\text{ to a minimum of -1024}
-\end{cases} \\
-\text{Output B}_i &= \text{Input B}_i - \lfloor((\text{Weight B}_{i - 1} \times \text{Temp B}_i) + 512) \div 1024\rfloor \\
-\text{Weight B}_i &=
-\begin{cases}
-\text{Weight B}_{i - 1} & \text{if } \text{Temp B}_i \text{ or } \text{Output B}_i = 0 \\
-\text{Weight B}_{i - 1} + \text{Delta} & \text{if } (\text{Temp B}_i \xor \text{Output B}_i) \geq 0 \\
-\text{ to a maximum of 1024} \\
-\text{Weight B}_{i - 1} - \text{Delta} & \text{if } (\text{Temp B}_i \xor \text{Output B}_i) < 0 \\
-\text{ to a minimum of -1024}
-\end{cases}
-\intertext{Decorrelation Term = -3:}
-\text{Temp A}_i &= \text{Input B}_{i - 1} \\
-\text{Temp B}_i &= \text{Input A}_{i - 1} \\
-\text{Output A}_i &= \text{Input A}_i - \lfloor((\text{Weight A}_{i - 1} \times \text{Temp A}_i) + 512) \div 1024\rfloor \\
-\text{Weight A}_i &=
-\begin{cases}
-\text{Weight A}_{i - 1} & \text{if } \text{Temp A}_i \text{ or } \text{Output A}_i = 0 \\
-\text{Weight A}_{i - 1} + \text{Delta} & \text{if } (\text{Temp A}_i \xor \text{Output A}_i) \geq 0 \\
-\text{ to a maximum of 1024} \\
-\text{Weight A}_{i - 1} - \text{Delta} & \text{if } (\text{Temp A}_i \xor \text{Output A}_i) < 0 \\
-\text{ to a minimum of -1024}
-\end{cases} \\
-\text{Output B}_i &= \text{Input B}_i - \lfloor((\text{Weight B}_{i - 1} \times \text{Temp B}_i) + 512) \div 1024\rfloor \\
-\text{Weight B}_i &=
-\begin{cases}
-\text{Weight B}_{i - 1} & \text{if } \text{Temp B}_i \text{ or } \text{Output B}_i = 0 \\
-\text{Weight B}_{i - 1} + \text{Delta} & \text{if } (\text{Temp B}_i \xor \text{Output B}_i) \geq 0 \\
-\text{ to a maximum of 1024} \\
-\text{Weight B}_{i - 1} - \text{Delta} & \text{if } (\text{Temp B}_i \xor \text{Output B}_i) < 0 \\
-\text{ to a minimum of -1024}
-\end{cases}
-\end{align*}
+\subsubsection{For stereo block}
+\begin{itemize}
+\item If $17 \leq \text{Decorrelation Term}_i \leq 18$
+\begin{enumerate}
+\item Write $\text{Sample A}_{i~1}$
+\item Write $\text{Sample A}_{i~0}$
+\item Write $\text{Sample B}_{i~1}$
+\item Write $\text{Sample B}_{i~0}$
+\end{enumerate}
+\item If $1 \leq \text{Decorrelation Term}_i \leq 8$
+\begin{enumerate}
+\item For $j = 0$ to $\text{Decorrelation Term}_i - 1$
+\begin{enumerate}
+\item Write $\text{Sample A}_{i~j}$
+\item Write $\text{Sample B}_{i~j}$
+\end{enumerate}
+\end{enumerate}
+\item If $-3 \leq \text{Decorrelation Term}_i \leq -1$
+\begin{enumerate}
+\item Write $\text{Sample B}_{i~0}$
+\item Write $\text{Sample A}_{i~0}$
+\end{enumerate}
+\end{itemize}
+
+\subsubsection{For mono block}
+\begin{itemize}
+\item If $17 \leq \text{Decorrelation Term}_i \leq 18$
+\begin{enumerate}
+\item Write $\text{Sample A}_{i~1}$
+\item Write $\text{Sample A}_{i~0}$
+\end{enumerate}
+\item If $1 \leq \text{Decorrelation Term}_i \leq 8$
+\begin{enumerate}
+\item For $j = 0$ to $\text{Decorrelation Term}_i - 1$
+\begin{enumerate}
+\item Write $\text{Sample A}_{i~j}$
+\end{enumerate}
+\end{enumerate}
+\end{itemize}
+
+Round-tripping these values back to decorrelation samples
+for the next block requires applying the same formula
+as decoding, as explained on page \pageref{wavpack_decorr_samples}.
+
+\subsection{the Entropy Variables sub-block}
+
+\begin{figure}[h]
+\includegraphics{figures/wavpack_entropy_vars.pdf}
+\end{figure}
+\par
+\noindent
+\VAR{Actual Size 1 Less} and \VAR{Large Block} are 0.
+\VAR{Block Size} is 3 for mono blocks and 6 for stereo blocks.
+The samples themselves are converted and round-tripped
+the same way that \VAR{Decorrelation Sample} values are,
+as explained on pages \pageref{wavpack_encode_decorr_samples}
+and \pageref{wavpack_decorr_samples}.
 
 \clearpage
 
