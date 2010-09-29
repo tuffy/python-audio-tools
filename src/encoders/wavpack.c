@@ -346,7 +346,7 @@ wavpack_initialize_block_header(struct wavpack_block_header* header,
     header->block_index = context->block_index;
     header->block_samples = pcm_frames;
     header->bits_per_sample = context->bits_per_sample;
-    header->mono_output = channel_count == 1 ? 1 : 0;
+    header->mono_output = channel_count == 1;
     header->hybrid_mode = 0;
     header->joint_stereo = 0;
     header->cross_channel_decorrelation = 0;

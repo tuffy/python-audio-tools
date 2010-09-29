@@ -2550,25 +2550,30 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [X] dupes
      - [ ] shift
 **** DONE checksum
+**** TODO RIFF sub-blocks
+**** TODO MD5 sub-block
 **** TODO hybrid mode
 *** TODO WavPack encoding
-**** TODO WavPack block header
 **** DONE false stereo
 **** DONE int32_info
      for left shifting zeroes, in particular
 **** DONE checksum
 **** DONE joint stereo
+**** DONE WavPack block header
 **** DONE decorrelation passes
 **** TODO WavPack sub-blocks
      - [X] decorr_terms
      - [X] decorr_weights
      - [ ] decorr_samples
      - [X] entropy_vars
+     - [X] extended integers
      - [X] wv_bitstream
+     - [X] RIFF sub-blocks
+     - [X] MD5 sub-block
 **** DONE bitstream generation
 *** TODO Ensure section capitalization is consistent
 *** TODO Verify A4 layout is correct
-** TODO Test encoder/decoder against reference
+** DONE Test encoder/decoder against reference
    Ensure a wide range of lossless audio round-trips correctly
 ** DONE Remove WavePackAudio.BINARIES
 ** TODO Add more WavPack INVALIDFILE .verify() tests
