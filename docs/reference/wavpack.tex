@@ -103,16 +103,45 @@ If \VAR{Nondecoder Data} is set, that means the decoder does not have
 to understand the contents of this particular sub-block in
 order to decode the audio.
 
+\section{WavPack Decoding}
+Decoding each WavPack block requires reading its sub-blocks
+as `arguments' to the decoder.
+One can envision them like named arguments to a function call
+since many sub-blocks may be optional or appear in an arbitrary order.
+As a sort of hypothetical high-level example:
+\begin{Verbatim}[frame=single]
+decode_block(decorrelation_terms=sub_block[0],
+             decorrelation_weights=sub_block[1],
+             decorrelation_samples=sub_block[2],
+             entropy_variables=sub_block[3],
+             bitstream=sub_block[4])
+\end{Verbatim}
+Every block containing audio data requires
+\VAR{Entropy Variables} and \VAR{Bitstream} sub-blocks.
+The \VAR{Decorrelation Terms}, \VAR{Decorrelation Weights}
+and \VAR{Decorrelation Samples} sub-blocks are for performing
+one or more decorrelation passes over the bitstream's samples.
+
+Each block will decode to 1 or 2 channels of raw PCM output.
+Since files may have more than 2 channels, we may need to
+decode several blocks in order to retrieve all the channels
+of data so they can be properly combined.
+
 \clearpage
 
-\section{WavPack Decoding}
-The general principle of WavPack decoding is that we take the
-values from several sub-blocks as decoder ``arguments''
-and then decode one or two channels of audio per block.
-If the file contains more than two channels, we combine the output
-of several blocks into a single chunk of output data.
+\subsection{False Stereo}
+
+If the \VAR{False Stereo} bit is set in the block header,
+treat the block as mono for decoding purposes until
+just before the channel's data is output.
 
 \subsection{the Decorrelation Terms sub-block}
+This block contains the decorrelation terms and deltas values.
+The quantity of those values indicates how many decorrelation passes
+we'll be performing over the bitstream sub-block's samples.
+One can presume this sub-block will occur prior to the
+\VAR{Decorrelation Weights} and \VAR{Decorrelation Samples} sub-blocks.
+
 \label{wavpack_decorr_terms}
 \begin{figure}[h]
 \includegraphics{figures/wavpack_decorr_terms.pdf}
@@ -300,6 +329,11 @@ In that event, treat those samples as 0.
 \clearpage
 
 \subsection{the Entropy Variables sub-block}
+Whereas the three preceeding sub-blocks are for performing
+decorrelation passes, this sub-block is required for
+decoding the \VAR{Bitstream} sub-block's data.
+These entropy variables are median values which are stored
+as fractions of integers.
 \begin{figure}[h]
 \includegraphics{figures/wavpack_entropy_vars.pdf}
 \end{figure}
@@ -336,6 +370,8 @@ our \VAR{Entropy Variables} are:
 
 \clearpage
 \subsection{the Bitstream sub-block}
+This sub-block contains the block's residual values.
+Once decoded, these will ultimately become our file's raw PCM values.
 \begin{figure}[h]
 \includegraphics{figures/wavpack_bitstream.pdf}
 \end{figure}
@@ -344,7 +380,7 @@ our \VAR{Entropy Variables} are:
 
 Decoding the \VAR{Bitstream} sub-block requires the \VAR{Entropy Variables}
 data which it combines with this sub-block's bitstream to yield a set of signed
-values totalling \VAR{Block Samples}, times 2 if the block is stereo.
+values totalling \VAR{Block Samples} (times 2 if the block is stereo).
 
 Decoding each value is a complex process which I'll divide into
 three separate steps.
@@ -768,40 +804,6 @@ So, after running through all five passes, our samples are now
 
 \clearpage
 
-\subsection{Extended/Shifted integers}
-\label{wavpack_extended_integers}
-
-If \VAR{Extended Size Integers} is set in the block header,
-there should be an \VAR{Int32 Info} sub-block present whose layout
-is as follows:
-
-\begin{figure}[h]
-\includegraphics{figures/wavpack_extended_integers.pdf}
-\end{figure}
-
-Curiously, these values are exclusive; if \VAR{Zero Bits} is present,
-\VAR{One Bits} is ignored and so forth.
-If \VAR{Zero Bits} is non-zero, we pad each sample's least-significant
-bits with that many \texttt{0} bits.
-If \VAR{One Bits} is non-zero, we pad each sample's least-significant
-bits with that many \texttt{1} bits.
-If \VAR{Duplicate Bits} is non-zero, we pad each sample's least-significant
-bits with that sample's own least-significant bit,
-\VAR{Duplicate Bits} number of times.
-
-This can be summarized as follows:
-\begin{equation*}
-\text{Extended}_i =
-\begin{cases}
-\text{Original}_i \times 2 ^ {\text{Zero Bits}} & \text{if \VAR{Zero Bits} } > 0 \\
-\text{Original}_i \times 2 ^ {\text{One Bits}} + (2 ^ {\text{One Bits}} - 1) & \text{if \VAR{One Bits} } > 0 \\
-\text{Original}_i \times 2 ^ {\text{Duplicate Bits}} \\
-\text{ if \VAR{Duplicate Bits} } > 0 \text{ and }\text{Original}_i \bmod{2} = 0 \\
-\text{Original}_i \times 2 ^ {\text{Duplicate Bits}} + (2 ^ {\text{Duplicate Bits}} - 1) \\
-\text{ if \VAR{Duplicate Bits} } > 0 \text{ and }\text{Original}_i \bmod{2} = 1
-\end{cases}
-\end{equation*}
-
 \subsection{Joint stereo}
 
 If the block is not mono and the \VAR{Joint Stereo} bit is set
@@ -836,6 +838,87 @@ Verifying the block's CRC is quite simple:
 where $\text{Decoded Sample}_i$ alternates between channels if necessary,
 $\text{CRC}_{-1}$ begins with a value of \texttt{0xFFFFFFFF}
 and each $\text{CRC}_i$ value is truncated to 32 bits.
+
+The CRC is calculated \textit{after} the joint stereo transformation,
+but \textit{before} handling extended/shifted integers and false stereo.
+
+\clearpage
+
+\subsection{Extended/Shifted integers}
+\label{wavpack_extended_integers}
+
+If \VAR{Extended Size Integers} is set in the block header,
+there should be an \VAR{Int32 Info} sub-block present whose layout
+is as follows:
+
+\begin{figure}[h]
+\includegraphics{figures/wavpack_extended_integers.pdf}
+\end{figure}
+
+Curiously, these values are exclusive; if \VAR{Zero Bits} is present,
+\VAR{One Bits} is ignored and so forth.
+If \VAR{Zero Bits} is non-zero, we pad each sample's least-significant
+bits with that many \texttt{0} bits.
+If \VAR{One Bits} is non-zero, we pad each sample's least-significant
+bits with that many \texttt{1} bits.
+If \VAR{Duplicate Bits} is non-zero, we pad each sample's least-significant
+bits with that sample's own least-significant bit,
+\VAR{Duplicate Bits} number of times.
+
+This can be summarized as follows:
+\begin{equation*}
+\text{Extended}_i =
+\begin{cases}
+\text{Original}_i \times 2 ^ {\text{Zero Bits}} & \text{if \VAR{Zero Bits} } > 0 \\
+\text{Original}_i \times 2 ^ {\text{One Bits}} + (2 ^ {\text{One Bits}} - 1) & \text{if \VAR{One Bits} } > 0 \\
+\text{Original}_i \times 2 ^ {\text{Duplicate Bits}} \\
+\text{ if \VAR{Duplicate Bits} } > 0 \text{ and }\text{Original}_i \bmod{2} = 0 \\
+\text{Original}_i \times 2 ^ {\text{Duplicate Bits}} + (2 ^ {\text{Duplicate Bits}} - 1) \\
+\text{ if \VAR{Duplicate Bits} } > 0 \text{ and }\text{Original}_i \bmod{2} = 1
+\end{cases}
+\end{equation*}
+
+\subsection{False Stereo}
+
+If the \VAR{False Stereo} bit is set in the block header,
+we've been treating the block as being mono thus far.
+At this point, we duplicate Channel A's values to Channel B
+just prior to returning the from the block.
+
+\clearpage
+
+\subsection{RIFF WAVE Header/Footer}
+
+These sub-blocks are typically found in the first and last
+WavPack block, respectively.
+The header must always be present in the file while
+the footer is optional.
+
+\begin{figure}[h]
+\includegraphics{figures/wavpack_wave_header.pdf}
+\vskip .25in
+\includegraphics{figures/wavpack_wave_footer.pdf}
+\end{figure}
+\par
+\noindent
+One can think of them as halves of a `PCM sandwich'
+of which our decoded data comprises the `meat':
+\begin{figure}[h]
+\includegraphics{figures/wavpack_pcm_sandwich.pdf}
+\end{figure}
+
+\subsection{MD5}
+This optional sub-block is typically found in the final WavPack block.
+\begin{figure}[h]
+\includegraphics{figures/wavpack_md5sum.pdf}
+\end{figure}
+\par
+\noindent
+The MD5 is the hash of all the samples over the entire file.
+It is calculated by running the
+hashing algorithm\footnote{As described by RFC1321} over
+the raw input samples in little-endian format
+and signed if their bits-per-sample are greater than 8.
 
 \clearpage
 
@@ -1695,7 +1778,7 @@ data after the \texttt{data} chunk.
 
 \subsubsection{RIFF WAVE Footer}
 \begin{figure}[h]
-\includegraphics{figures/wavpack_wave_header.pdf}
+\includegraphics{figures/wavpack_wave_footer.pdf}
 \end{figure}
 
 \subsubsection{MD5 sum}
@@ -1704,7 +1787,8 @@ data after the \texttt{data} chunk.
 \end{figure}
 \par
 \noindent
-The MD5 sum for this sub-block is calculated by running the
+The MD5 is the hash of all the samples over the entire file.
+It is calculated by running the
 hashing algorithm\footnote{As described by RFC1321} over
 the raw input samples in little-endian format
 and signed if their bits-per-sample are greater than 8.

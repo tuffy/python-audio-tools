@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<diagram>
+  <row>
+    <col width=".25">RIFF WAVE Header</col>
+    <col width=".50">Decoded PCM Data</col>
+    <col width=".25" style="dashed">RIFF WAVE Footer</col>
+  </row>
+</diagram>

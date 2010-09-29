@@ -2543,15 +2543,15 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [X] wv_bitstream
 **** DONE decorrelation passes
 **** DONE joint stereo
-**** TODO false stereo
-**** TODO int32_info
+**** DONE int32_info
      - [X] zeroes
      - [X] ones
      - [X] dupes
-     - [ ] shift
+     - [X] shift
 **** DONE checksum
-**** TODO RIFF sub-blocks
-**** TODO MD5 sub-block
+**** DONE RIFF sub-blocks
+**** DONE MD5 sub-block
+**** DONE false stereo
 **** TODO hybrid mode
 *** TODO WavPack encoding
 **** DONE false stereo

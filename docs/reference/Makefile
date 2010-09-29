@@ -47,6 +47,7 @@ figures/wavpack_decorrelation1.pdf figures/wavpack_decorrelation2.pdf \
 figures/wavpack_decorrelation3.pdf figures/wavpack_extended_integers.pdf \
 figures/wavpack_write_zeroes.pdf figures/wavpack_wave_header.pdf \
 figures/wavpack_wave_footer.pdf figures/wavpack_md5sum.pdf \
+figures/wavpack_pcm_sandwich.pdf \
 figures/ape_stream.pdf figures/ape_descriptor.pdf figures/ape_header.pdf \
 figures/apev2_tag.pdf figures/apev2_tagheader.pdf figures/apev2_flags.pdf \
 figures/speex_header.pdf \
