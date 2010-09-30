@@ -16,14 +16,14 @@ Metadata is stored as an APEv2 tag, which is described on page \pageref{apev2}.
 Its stream of data is stored little-endian, as described on page
 \pageref{bitstreams}.
 
-\section{the WavPack file stream}
+\section{the WavPack File Stream}
 \begin{figure}[h]
 \includegraphics{figures/wavpack_stream.pdf}
 \end{figure}
 
 \clearpage
 
-\section{the WavPack block header}
+\section{the WavPack Block Header}
 \begin{figure}[h]
 \includegraphics{figures/wavpack_block_header.pdf}
 \end{figure}
@@ -86,7 +86,7 @@ Initial Block & Final Block & Mono Output & Channels \\
 
 \clearpage
 
-\subsection{WavPack sub-block}
+\subsection{WavPack Sub-Block}
 \begin{figure}[h]
 \includegraphics{figures/wavpack_subblock_header.pdf}
 \end{figure}
@@ -135,7 +135,7 @@ If the \VAR{False Stereo} bit is set in the block header,
 treat the block as mono for decoding purposes until
 just before the channel's data is output.
 
-\subsection{the Decorrelation Terms sub-block}
+\subsection{the Decorrelation Terms Sub-Block}
 This block contains the decorrelation terms and deltas values.
 The quantity of those values indicates how many decorrelation passes
 we'll be performing over the bitstream sub-block's samples.
@@ -162,11 +162,11 @@ For example, given the complete sub-block bytes:
 we have a total of 5 term/delta pairs whose values are as follows:
 \begin{table}[h]
 \begin{tabular}{r r | r r}
-$\text{Decorrelation Term}_5$ & \texttt{0x17} - 5 = 18 & $\text{Decorrlation Delta}_5$ & \texttt{0x2} = 2 \\
-$\text{Decorrelation Term}_4$ & \texttt{0x17} - 5 = 18 & $\text{Decorrlation Delta}_4$ & \texttt{0x2} = 2 \\
-$\text{Decorrelation Term}_3$ & \texttt{0x07} - 5 = 2 & $\text{Decorrlation Delta}_3$ & \texttt{0x2} = 2 \\
-$\text{Decorrelation Term}_2$ & \texttt{0x16} - 5 = 17 & $\text{Decorrlation Delta}_2$ & \texttt{0x2} = 2 \\
-$\text{Decorrelation Term}_1$ & \texttt{0x08} - 5 = 3 & $\text{Decorrlation Delta}_1$ & \texttt{0x2} = 2 \\
+$\text{Decorrelation Term}_5$ & \texttt{0x17} - 5 = 18 & $\text{Decorrelation Delta}_5$ & \texttt{0x2} = 2 \\
+$\text{Decorrelation Term}_4$ & \texttt{0x17} - 5 = 18 & $\text{Decorrelation Delta}_4$ & \texttt{0x2} = 2 \\
+$\text{Decorrelation Term}_3$ & \texttt{0x07} - 5 = 2 & $\text{Decorrelation Delta}_3$ & \texttt{0x2} = 2 \\
+$\text{Decorrelation Term}_2$ & \texttt{0x16} - 5 = 17 & $\text{Decorrelation Delta}_2$ & \texttt{0x2} = 2 \\
+$\text{Decorrelation Term}_1$ & \texttt{0x08} - 5 = 3 & $\text{Decorrelation Delta}_1$ & \texttt{0x2} = 2 \\
 \end{tabular}
 \end{table}
 \par
@@ -176,7 +176,7 @@ bits (the \VAR{Decorrelation Delta} value) are on the left side of each byte.
 
 \clearpage
 
-\subsection{the Decorrelation Weights sub-block}
+\subsection{the Decorrelation Weights Sub-Block}
 \begin{figure}[h]
 \includegraphics{figures/wavpack_decorr_weights.pdf}
 \end{figure}
@@ -233,7 +233,7 @@ In that event, those low weight values are set to 0.
 
 \clearpage
 
-\subsection{the Decorrelation Samples sub-block}
+\subsection{the Decorrelation Samples Sub-Block}
 \label{wavpack_decorr_samples}
 \begin{figure}[h]
 \includegraphics{figures/wavpack_decorr_samples.pdf}
@@ -328,8 +328,8 @@ In that event, treat those samples as 0.
 
 \clearpage
 
-\subsection{the Entropy Variables sub-block}
-Whereas the three preceeding sub-blocks are for performing
+\subsection{the Entropy Variables Sub-Block}
+Whereas the three preceding sub-blocks are for performing
 decorrelation passes, this sub-block is required for
 decoding the \VAR{Bitstream} sub-block's data.
 These entropy variables are median values which are stored
@@ -369,7 +369,7 @@ our \VAR{Entropy Variables} are:
 \end{align*}
 
 \clearpage
-\subsection{the Bitstream sub-block}
+\subsection{the Bitstream Sub-Block}
 This sub-block contains the block's residual values.
 Once decoded, these will ultimately become our file's raw PCM values.
 \begin{figure}[h]
@@ -380,7 +380,7 @@ Once decoded, these will ultimately become our file's raw PCM values.
 
 Decoding the \VAR{Bitstream} sub-block requires the \VAR{Entropy Variables}
 data which it combines with this sub-block's bitstream to yield a set of signed
-values totalling \VAR{Block Samples} (times 2 if the block is stereo).
+values totaling \VAR{Block Samples} (times 2 if the block is stereo).
 
 Decoding each value is a complex process which I'll divide into
 three separate steps.
@@ -435,8 +435,8 @@ consumed 2 bits from the sub-block's bitstream.
 
 \clearpage
 
-\subsubsection{Calculating base/add}
-The next step is taking \VAR{t} and calcuting \VAR{Base} and \VAR{Add}
+\subsubsection{Calculating Base/Add}
+The next step is taking \VAR{t} and calculating \VAR{Base} and \VAR{Add}
 from our entropy variables, updating our entropy variables in the process.
 \begin{figure}[h]
 \includegraphics{figures/wavpack_read_residual2.pdf}
@@ -456,7 +456,7 @@ So to continue our example:
 
 \clearpage
 
-\subsubsection{Determining value}
+\subsubsection{Determining Value}
 \begin{wrapfigure}[30]{r}{3in}
 \includegraphics{figures/wavpack_read_residual3.pdf}
 \caption{Step 3: determining value}
@@ -530,7 +530,7 @@ Which returns the value 16 and consumes 7 bits in total.
 
 \clearpage
 
-\subsubsection{Zero blocks}
+\subsubsection{Zero Residuals}
 
 As with most other lossless codecs, WavPack features a special
 case to handle a large number of \texttt{0} samples in a row.
@@ -558,7 +558,7 @@ reading process.
 
 \clearpage
 
-\subsection{Sample decorrelation}
+\subsection{Sample Decorrelation}
 
 Once the bitstream sub-block has been decoded into a set of
 samples values (alternating between \VAR{Channel A} and \VAR{Channel B}
@@ -785,7 +785,7 @@ and initial samples of 0 ($\text{Sample}_{4~1}$, $\text{Sample}_{4~2}$).
 &= \lfloor ((48 \times -92) + 512) \div 1024 \rfloor - 39 = -4 - 39 = \textbf{-43} \\
 \text{Weight}_{4~2} &= \text{Weight}_{4~1} + \text{Delta}_4 = 48 + 2 = \textbf{50}
 \end{align*}
-Finally, decorrelaton pass 5 applies the $\text{Term}_5$ formula 18,
+Finally, decorrelation pass 5 applies the $\text{Term}_5$ formula 18,
 $\text{Delta}_5$ value of 2, $\text{Weight}_{5~0}$ value of 48
 and initial samples of -78, -73 ($\text{Sample}_{5~1}$,
 $\text{Sample}_{5~2}$).
@@ -804,7 +804,7 @@ So, after running through all five passes, our samples are now
 
 \clearpage
 
-\subsection{Joint stereo}
+\subsection{Joint Stereo}
 
 If the block is not mono and the \VAR{Joint Stereo} bit is set
 in the block header, our channels require one more stage of processing
@@ -829,7 +829,7 @@ and right samples as follows:
 \end{align*}
 Thus, our left samples are 0 and 16, and our right samples are 64 and 62.
 
-\subsection{The CRC}
+\subsection{the CRC}
 
 Verifying the block's CRC is quite simple:
 \begin{equation*}
@@ -844,7 +844,7 @@ but \textit{before} handling extended/shifted integers and false stereo.
 
 \clearpage
 
-\subsection{Extended/Shifted integers}
+\subsection{Extended/Shifted Integers}
 \label{wavpack_extended_integers}
 
 If \VAR{Extended Size Integers} is set in the block header,
@@ -1004,7 +1004,7 @@ Each channel's samples are then divided by $2 ^ {bits}$ for the
 remainder of encoding and the \VAR{Extended Size Integers} bit
 is set in the block header.
 
-\subsection{The CRC}
+\subsection{the CRC}
 
 After the audio samples have been processed for false stereo
 and wasted bits, it's best to perform the block header CRC calculation
@@ -1353,7 +1353,7 @@ for $\text{Block}_i$'s decorrelation passes is as follows:
 
 \clearpage
 
-\subsection{Decorrelation samples}
+\subsection{Decorrelation Samples}
 \label{wavpack_encode_decorr_samples}
 We apply the following formulas to convert our 32-bit, signed
 decorrelation values to 16-bit signed sub-block values:
@@ -1448,7 +1448,7 @@ Writing the values themselves requires traversing the
 decorrelation samples lists in \textit{reverse} order,
 from $i = \text{\VAR{Decorrelation Passes}} - 1$ to 0.
 
-\subsubsection{For stereo block}
+\subsubsection{For Stereo Block}
 \begin{itemize}
 \item If $17 \leq \text{Decorrelation Term}_i \leq 18$
 \begin{enumerate}
@@ -1472,7 +1472,7 @@ from $i = \text{\VAR{Decorrelation Passes}} - 1$ to 0.
 \end{enumerate}
 \end{itemize}
 
-\subsubsection{For mono block}
+\subsubsection{For Mono Block}
 \begin{itemize}
 \item If $17 \leq \text{Decorrelation Term}_i \leq 18$
 \begin{enumerate}
@@ -1530,7 +1530,7 @@ where \VAR{wv\_exp2} is defined from the following base-16 table:
 \end{tabular}
 }
 
-\subsection{the Entropy Variables sub-block}
+\subsection{the Entropy Variables Sub-Block}
 
 \begin{figure}[h]
 \includegraphics{figures/wavpack_entropy_vars.pdf}
@@ -1546,7 +1546,7 @@ and \pageref{wavpack_decorr_samples}.
 
 \clearpage
 
-\subsection{the Bitstream sub-block}
+\subsection{the Bitstream Sub-Block}
 
 Given a set of residual values and one set of 3 entropy variables per
 channel, the final encoding step for a WavPack block is generating
@@ -1580,7 +1580,7 @@ In practice, we'll first need to handle the special case of many
 zero residuals in a row as discussed on page \pageref{wavpack_zero_residuals}.
 But for clarity, it's best to understand the general case first.
 
-\subsubsection{Calculate unsigned value and sign bit}
+\subsubsection{Calculate Unsigned Value and Sign Bit}
 %% We start by converting our signed residual to an unsigned value and sign bit:
 \begin{align*}
 \text{value}_i &=
@@ -1594,7 +1594,7 @@ But for clarity, it's best to understand the general case first.
 1 & \text{if } \text{Residual}_i < 0
 \end{cases}
 \end{align*}
-\subsubsection{Calculate unary value, high, low and next medians}
+\subsubsection{Calculate Unary Value, High, Low and Next Medians}
 %% We then convert our current channel's entropy variables to
 %% median values:
 \begin{align*}
@@ -1636,7 +1636,7 @@ But for clarity, it's best to understand the general case first.
 \text{Entropy}_{(i + 1)~2} &= \text{Entropy}_{i~2} + \left\lfloor\frac{\text{Entropy}_{i~2} + 32}{32}\right\rfloor \times 5
 \end{align*}
 
-\subsubsection{Calculate fixed size, fixed value and optional extra bit}
+\subsubsection{Calculate Fixed Size, Fixed Value and Optional Extra Bit}
 \begin{align*}
 \intertext{If $\text{low}_i = \text{high}_i$:}
 \text{fixed size}_i &= 0 \\
@@ -1654,7 +1654,7 @@ But for clarity, it's best to understand the general case first.
 \text{extra bit}_i &= (\text{value}_i - \text{low}_i + \text{extras}_i) \bmod{2}
 \end{align*}
 
-\subsubsection{Update previous residual based on current residual}
+\subsubsection{Update Previous Residual Based On Current Residual}
 \begin{align*}
 \intertext{If $\text{unary}_{i - 1} > 0$ and $\text{unary}_i > 0$:}
 \text{unary}_{i - 1} &=
@@ -1690,7 +1690,7 @@ But for clarity, it's best to understand the general case first.
 \text{holding one}_i &= \texttt{false}
 \end{align*}
 
-\subsubsection{Output previous residual}
+\subsubsection{Output Previous Residual}
 
 Once the previous residual's unary value has been determined,
 its fields can now be output.
@@ -1715,7 +1715,7 @@ $((\text{unary}_{i - 1} - 16) \bmod{2 ^ {\text{count\_bits}(\text{unary}_{i - 1}
 \end{itemize}
 \end{itemize}
 
-\subsubsection{Handle groups of zero residuals}
+\subsubsection{Handle Groups Of Zero Residuals}
 \label{wavpack_zero_residuals}
 \begin{wrapfigure}[12]{r}{1.5in}
 \includegraphics{figures/wavpack_write_zeroes.pdf}
@@ -1768,7 +1768,7 @@ to the end of its \texttt{data} chunk's header.
 For non WAVEFORMATEXTENSIBLE files, this is typically the first 36 bytes.
 For WAVEFORMATEXTENSIBLE files, this is typically the first 60 bytes.
 
-\subsection{The Footer Block}
+\subsection{the Footer Block}
 
 Though not required, WavPack files often contain a trailing
 block after the audio has been exhausted.
@@ -1781,7 +1781,7 @@ data after the \texttt{data} chunk.
 \includegraphics{figures/wavpack_wave_footer.pdf}
 \end{figure}
 
-\subsubsection{MD5 sum}
+\subsubsection{MD5 Sum}
 \begin{figure}[h]
 \includegraphics{figures/wavpack_md5sum.pdf}
 \end{figure}

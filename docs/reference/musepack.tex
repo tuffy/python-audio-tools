@@ -13,7 +13,7 @@ It comes in two varieties: SV7 and SV8 where `SV' stands for
 Stream Version.
 These container versions differ so heavily that they must be
 considered separately from one another.
-\section{the SV7 file stream}
+\section{the SV7 File Stream}
 This is the earliest version of Musepack with wide support.
 All of its fields are little-endian.
 \begin{figure}[h]
@@ -38,7 +38,7 @@ Its sampling rate is one of four values:
 
 \pagebreak
 
-\section{the SV8 file stream}
+\section{the SV8 File Stream}
 This is the latest version of the Musepack stream.
 All of its fields are big-endian.
 \begin{figure}[h]
@@ -58,7 +58,7 @@ which is big-endian.
 \includegraphics{figures/musepack_sv8_nut.pdf}
 \end{figure}
 
-\subsection{the SH packet}
+\subsection{the SH Packet}
 This is the Stream Header, which must be found before the first
 audio packet in the file.
 \begin{figure}[h]
@@ -88,18 +88,18 @@ audio packet:
 \end{inparaenum}
 .
 
-\subsection{the SE packet}
+\subsection{the SE Packet}
 This is an empty packet that denotes the end of the Musepack stream.
 A decoder should ignore everything after this packet, which allows
 for metadata tags such as APEv2 to be placed at the end of the file.
 
-\subsection{the RG packet}
+\subsection{the RG Packet}
 This is ReplayGain information about the file.
 \begin{figure}[h]
 \includegraphics{figures/musepack_sv8_rg.pdf}
 \end{figure}
 
-\subsection{the EI packet}
+\subsection{the EI Packet}
 This is information about the Musepack encoder.
 \begin{figure}[h]
 \includegraphics{figures/musepack_sv8_ei.pdf}

@@ -12,7 +12,7 @@ Ogg Vorbis is Vorbis audio in an Ogg container.
 Ogg containers are a series of Ogg pages, each containing
 one or more segments of data.
 All of the fields within Ogg Vorbis are little-endian.
-\section{Ogg file stream}
+\section{Ogg File Stream}
 \begin{figure}[h]
 \includegraphics{figures/ogg_stream.pdf}
 \end{figure}
@@ -55,7 +55,7 @@ an Ogg page.
 If the final segment in the Ogg page has a length of 255 bytes,
 the packet it is a part of continues into the next Ogg page.
 
-\subsection{Ogg packets}
+\subsection{Ogg Packets}
 \begin{figure}[h]
 \includegraphics{figures/ogg_packets.pdf}
 \end{figure}
@@ -70,7 +70,7 @@ that are less than 255 bytes long.
 Which segment belongs to which Ogg page is not important
 for building packets.
 
-\section{the Identification packet}
+\section{the Identification Packet}
 The first packet within a Vorbis stream is the Identification packet.
 This contains the sample rate and number of channels.
 Vorbis does not have a bits-per-sample field, as samples
@@ -84,7 +84,7 @@ in the stream's final Ogg page.
 
 \clearpage
 
-\section{the Comment packet}
+\section{the Comment Packet}
 \label{vorbiscomment}
 The second packet within a Vorbis stream is the Comment packet.
 
@@ -142,7 +142,7 @@ more than one \texttt{ARTIST}.
 \noindent
 Fields marked with * are proposed extension fields and not part of the official Vorbis comment specification.
 
-\section{Channel assignment}
+\section{Channel Assignment}
 \begin{table}[h]
 {\relsize{-1}
 \begin{tabular}{|c|r|r|r|r|r|r|r|r|}

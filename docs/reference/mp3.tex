@@ -19,7 +19,7 @@ Since MP3 files have no standard container format in which
 non-MPEG data can be placed, metadata such as ID3 tags are often
 made `sync-safe' by formatting them in a way that decoders won't
 confuse tags for MPEG frames.
-\section{the MP3 file Stream}
+\section{the MP3 File Stream}
 \begin{figure}[h]
 \includegraphics{figures/mp3_stream.pdf}
 \end{figure}
@@ -87,7 +87,7 @@ a bitrate of 128kbps and a set pad bit is 418 bytes long, including the header.
 \frac{144 \times 128000}{44100} + 1 = 418
 \end{equation}
 
-\subsection{the Xing header}
+\subsection{the Xing Header}
 
 An MP3 frame header contains the track's sampling rate,
 bits-per-sample and number of channels.
@@ -117,7 +117,7 @@ All of the fields within a Xing header are big-endian.
 \includegraphics{figures/mp3_xing.pdf}
 \end{figure}
 
-\section{ID3v1 tags}
+\section{ID3v1 Tags}
 ID3v1 tags are very simple metadata tags appended to an MP3 file.
 All of the fields are fixed length and the text encoding is
 undefined.
@@ -140,7 +140,7 @@ track number.
 \includegraphics{figures/mp3_id3v11.pdf}
 \end{figure}
 
-\section{ID3v2 tags}
+\section{ID3v2 Tags}
 
 The ID3v2 tag was invented to address the deficiencies in the original
 ID3v1 tag.
@@ -154,7 +154,7 @@ All of its fields are big-endian.
 
 \subsection{ID3v2.2}
 
-\subsubsection{ID3v2.2 header}
+\subsubsection{ID3v2.2 Header}
 
 \begin{figure}[h]
 \includegraphics{figures/mp3_id3v22_header.pdf}
@@ -167,14 +167,14 @@ That is, no possible size value will result in a false
 MP3 frame sync (11 bits set in a row).
 This size field is the length of the entire tag, not including the header.
 
-\subsubsection{ID3v2.2 frame}
+\subsubsection{ID3v2.2 Frame}
 
 \begin{figure}[h]
 \includegraphics{figures/mp3_id3v22_frame.pdf}
 \end{figure}
 \par
 \noindent
-Frame ID's that begin with the letter `T' (0x54) are text frames.
+Frame IDs that begin with the letter `T' (0x54) are text frames.
 These have an additional text encoding byte before the actual
 text data.
 All text strings may be terminated by a null character
@@ -192,7 +192,7 @@ Encoding Byte & Text Encoding \\
 \end{tabular}
 \end{figure}
 
-\subsubsection{ID3v2.2 PIC frame}
+\subsubsection{ID3v2.2 PIC Frame}
 
 `PIC' frames are attached pictures.
 This allows an ID3v2.2 tag to contain a JPEG or PNG image,
@@ -226,7 +226,7 @@ value & type & value & type \\
 10 & Band / Orchestra & 11 & Composer \\
 12 & Lyricist / Text writer & 13 & Recording location \\
 14 & During recording & 15 & During performance \\
-16 & Movie / Video screen capture & 17 & A bright coloured fish \\
+16 & Movie / Video screen capture & 17 & A bright colored fish \\
 18 & Illustration & 19 & Band / Artist logotype \\
 20 & Publisher / Studio logotype & &  \\
 \hline
@@ -237,7 +237,7 @@ value & type & value & type \\
 
 \pagebreak
 
-\subsubsection{ID3v2.2 frame IDs}
+\subsubsection{ID3v2.2 Frame IDs}
 \begin{multicols}{3}
 {\relsize{-2}
 \begin{description}
@@ -311,7 +311,7 @@ value & type & value & type \\
 \pagebreak
 
 \subsection{ID3v2.3}
-\subsubsection{ID3v2.3 header}
+\subsubsection{ID3v2.3 Header}
 \begin{figure}[h]
 \includegraphics{figures/mp3_id3v23_header.pdf}
 \end{figure}
@@ -321,13 +321,13 @@ The single Size field is split by NULL (0x00) bytes in order to make
 it `sync-safe'.
 This size field is the length of the entire tag, not including the header.
 
-\subsubsection{ID3v2.3 frame}
+\subsubsection{ID3v2.3 Frame}
 \begin{figure}[h]
 \includegraphics{figures/mp3_id3v23_frame.pdf}
 \end{figure}
 \par
 \noindent
-Frame ID's that begin with the letter `T' (0x54) are text frames.
+Frame IDs that begin with the letter `T' (0x54) are text frames.
 These have an additional text encoding byte before the actual
 text data.
 All text strings may be terminated by a null character
@@ -344,7 +344,7 @@ Encoding Byte & Text Encoding \\
 
 \pagebreak
 
-\subsubsection{ID3v2.3 APIC frame}
+\subsubsection{ID3v2.3 APIC Frame}
 \begin{figure}[h]
 \includegraphics{figures/mp3_id3v23_apic.pdf}
 \end{figure}
@@ -369,7 +369,7 @@ value & type & value & type \\
 10 & Band / Orchestra & 11 & Composer \\
 12 & Lyricist / Text writer & 13 & Recording location \\
 14 & During recording & 15 & During performance \\
-16 & Movie / Video screen capture & 17 & A bright coloured fish \\
+16 & Movie / Video screen capture & 17 & A bright colored fish \\
 18 & Illustration & 19 & Band / Artist logotype \\
 20 & Publisher / Studio logotype & &  \\
 \hline
@@ -380,7 +380,7 @@ value & type & value & type \\
 
 \pagebreak
 
-\subsubsection{ID3v2.3 frame IDs}
+\subsubsection{ID3v2.3 Frame IDs}
 
 \begin{multicols}{3}
 {\relsize{-2}
@@ -464,18 +464,18 @@ value & type & value & type \\
 \end{multicols}
 
 \subsection{ID3v2.4}
-\subsubsection{ID3v2.4 header}
+\subsubsection{ID3v2.4 Header}
 \begin{figure}[h]
 \includegraphics{figures/mp3_id3v24_header.pdf}
 \end{figure}
 
-\subsubsection{ID3v2.4 frame}
+\subsubsection{ID3v2.4 Frame}
 \begin{figure}[h]
 \includegraphics{figures/mp3_id3v24_frame.pdf}
 \end{figure}
 \par
 \noindent
-Frame ID's that begin with the letter `T' (0x54) are text frames.
+Frame IDs that begin with the letter `T' (0x54) are text frames.
 These have an additional text encoding byte before the actual
 text data.
 All text strings may be terminated by a null character
@@ -494,7 +494,7 @@ Encoding Byte & Text Encoding \\
 
 \pagebreak
 
-\subsubsection{ID3v2.4 APIC frame}
+\subsubsection{ID3v2.4 APIC Frame}
 \begin{figure}[h]
 \includegraphics{figures/mp3_id3v24_apic.pdf}
 \end{figure}
@@ -521,7 +521,7 @@ value & type & value & type \\
 10 & Band / Orchestra & 11 & Composer \\
 12 & Lyricist / Text writer & 13 & Recording location \\
 14 & During recording & 15 & During performance \\
-16 & Movie / Video screen capture & 17 & A bright coloured fish \\
+16 & Movie / Video screen capture & 17 & A bright colored fish \\
 18 & Illustration & 19 & Band / Artist logotype \\
 20 & Publisher / Studio logotype & &  \\
 \hline
@@ -532,7 +532,7 @@ value & type & value & type \\
 
 \pagebreak
 
-\subsubsection{ID3v2.4 frame IDs}
+\subsubsection{ID3v2.4 Frame IDs}
 
 \begin{multicols}{3}
 {\relsize{-2}

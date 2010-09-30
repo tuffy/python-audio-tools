@@ -13,12 +13,12 @@ IFF chunks and reproduces the original WAVE file in its entirety rather
 than storing only the data it contains.
 All of its fields are little-endian.
 
-\section{the Monkey's Audio file stream}
+\section{the Monkey's Audio File Stream}
 \begin{figure}[h]
 \includegraphics{figures/ape_stream.pdf}
 \end{figure}
 
-\section{the Monkey's Audio descriptor}
+\section{the Monkey's Audio Descriptor}
 \begin{figure}[h]
 \includegraphics{figures/ape_descriptor.pdf}
 \end{figure}
@@ -36,7 +36,7 @@ i.e. Monkey's Audio 3.99 = 3990
 \text{Length in Seconds} = \frac{((\text{Total Frames} - 1) \times \text{Blocks Per Frame}) + \text{Final Frame Blocks}}{\text{Sample Rate}}
 \end{equation}
 }
-\section{the APEv2 tag}
+\section{the APEv2 Tag}
 \label{apev2}
 The APEv2 tag is a little-endian metadata tag appended to
 Monkey's Audio files, among others.
@@ -67,7 +67,7 @@ also be binary depending on the Flags.
 \item[File] file location
 \item[Genre] genre
 \item[Index] indexes for quick access
-\item[Introplay] characteric part of piece for intro playing
+\item[Introplay] characteristic part of piece for intro playing
 \item[ISBN] ISBN number with check digit
 \item[ISRC] International Standard Recording Number
 \item[Language] used Language(s) for music/spoken words
@@ -88,7 +88,7 @@ also be binary depending on the Flags.
 
 \pagebreak
 
-\subsection{the APEv2 tag header/footer}
+\subsection{the APEv2 Tag Header/Footer}
 \begin{figure}[h]
 \includegraphics{figures/apev2_tagheader.pdf}
 \end{figure}
@@ -101,7 +101,7 @@ except for the \VAR{Is Header} tag.
 footer but excluding the header.
 \VAR{Item Count} is the number of individual tag items.
 
-\subsection{the APEv2 flags}
+\subsection{the APEv2 Flags}
 \begin{figure}[h]
 \includegraphics{figures/apev2_flags.pdf}
 \end{figure}

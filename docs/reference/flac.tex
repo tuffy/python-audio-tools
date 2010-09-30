@@ -14,7 +14,7 @@ metadata and are streamable.
 
 Except for the contents of the VORBIS\_COMMENT metadata block, everything in FLAC is big-endian.
 
-\section{the FLAC file Stream}
+\section{the FLAC File Stream}
 \begin{figure}[h]
 \includegraphics{figures/flac_stream.pdf}
 \end{figure}
@@ -164,7 +164,7 @@ Picture Type & Type \\
 14 & During recording \\
 15 & During performance \\
 16 & Movie / Video screen capture \\
-17 & A bright coloured fish \\
+17 & A bright colored fish \\
 18 & Illustration \\
 19 & Band / Artist logotype \\
 20 & Publisher / Studio logotype \\
@@ -238,7 +238,7 @@ in order to byte-align frames.
 
 \pagebreak
 
-\subsection{CONSTANT subframe}
+\subsection{CONSTANT Subframe}
 
 This is the simplest possible subframe.
 It consists of a single value whose size is equal to the subframe's
@@ -257,7 +257,7 @@ contains.
 An obvious use of this subframe is to store an entire subframe's worth
 of digital silence (samples with a value of 0) very efficiently.
 
-\subsection{VERBATIM subframe}
+\subsection{VERBATIM Subframe}
 
 \begin{figure}[h]
 \includegraphics{figures/flac_verbatim.pdf}
@@ -269,7 +269,7 @@ Since it does no compression whatsoever and simply stores
 audio samples as-is, this subframe is only suitable for especially
 noisy portions of a track where no suitable predictor can be found.
 
-\subsection{FIXED subframe}
+\subsection{FIXED Subframe}
 
 \begin{figure}[h]
 \includegraphics{figures/flac_fixed.pdf}
@@ -490,7 +490,7 @@ Now, let's run through another example in which the Rice parameter is 4:
 
 \pagebreak
 
-\subsection{Channel assignment}
+\subsection{Channel Assignment}
 \label{flac_channels}
 Since most audio has more than one channel, it is important to
 understand how FLAC handles putting it back together.
@@ -584,7 +584,7 @@ bits & value \\
 \caption{Metadata Header}
 \end{figure}
 
-\subsection{the STREAMINFO metadata block}
+\subsection{the STREAMINFO Metadata Block}
 \begin{figure}[h]
 \begin{tabular}{|r|l|}
 \hline
@@ -611,7 +611,7 @@ When encoding a FLAC file, many of these fields cannot be known in advance.
 Instead, one must keep track of those values during encoding and then
 rewrite the STREAMINFO block when finished.
 
-\subsection{Frame header}
+\subsection{the Frame Header}
 \begin{table}[h]
 \begin{tabular}{|r|l|}
 \hline
@@ -655,7 +655,7 @@ and choose a predefined block size for as many FLAC frames as possible.
 
 \clearpage
 
-\subsection{Channel assignment}
+\subsection{Channel Assignment}
 
 If the input stream has a number of channels other than 2,
 one has no choice but to store them independently.
@@ -680,7 +680,7 @@ Remember that the difference and side channels are treated as having
 Thus, a 16 bit frame would have a 17 bit difference subframe
 when calculating warm-up samples.
 
-\subsection{Subframe header}
+\subsection{the Subframe Header}
 \begin{tabular}{|r|l|}
 \hline
 bits & value \\
@@ -695,17 +695,17 @@ bits & value \\
 \hline
 \end{tabular}
 
-\subsection{the CONSTANT subframe}
+\subsection{the CONSTANT Subframe}
 
 If all the samples in a subframe are identical, one can encode them
 using a \texttt{CONSTANT} subframe.
 
-\subsection{the VERBATIM subframe}
+\subsection{the VERBATIM Subframe}
 
 This subframe simply stores all the samples as-is,
 with no compression whatsoever.
 
-\subsection{the FIXED subframe}
+\subsection{the FIXED Subframe}
 
 This subframe consists of \VAR{predictor order} number of unencoded
 warm-up samples followed by a residual.
@@ -765,8 +765,6 @@ The residual encoding process is then the simple inverse of the
 decoding process, as follows:
 
 \begin{align*}
-%% \WARMUP_i &= \SAMPLE_i \\
-%% & \text{ for } i = 0 \text{ to } Order - 1 \text{ if } Order > 0\\
 \intertext{For Order 0:}
 \RESIDUAL_i &= \SAMPLE_i \\
 & \text{ for } i = 0 \text{ to Block Size} - 1 \\
@@ -821,7 +819,7 @@ predictor order is 1:
 
 \clearpage
 
-\subsection{the LPC subframe}
+\subsection{the LPC Subframe}
 \label{flac_lpc_encoding}
 Unlike the FIXED subframe which required only input samples and a
 predictor order, LPC subframes also require a list of QLP coefficients,
@@ -914,7 +912,7 @@ index & sample & & window & & signal \\
 
 \pagebreak
 
-\subsubsection{Computing autocorrelation}
+\subsubsection{Computing Autocorrelation}
 
 Once our input samples have been converted to a windowed signal,
 we then compute the autocorrelation values from that signal.
@@ -931,7 +929,7 @@ samples removed from the beginning.
 The lagged sums from 0 to the maximum LPC order are our autocorrelation
 values.  In this example, they are 14979.0, 13651.0 and 12405.0.
 
-\subsubsection{LP coefficient calculation}
+\subsubsection{LP Coefficient Calculation}
 
 Calculating the LP coefficients uses the Levinson-Durbin recursive method.\footnote{This algorithm is taken from \LINK{http://www.engineer.tamuk.edu/SPark/chap7.pdf} }
 Our inputs are $M$, the maximum LPC order minus 1, and $r$ autocorrelation
@@ -949,7 +947,7 @@ a_{11} &= \kappa_1 = \frac{r(1)}{E_0} \\
 E_1 &= E_0 {(1 - {{\kappa_1} ^ 2})}
 \end{align}
 \noindent
-With $m \geq 2$, the following recurive algorithm is performed:
+With $m \geq 2$, the following recursive algorithm is performed:
 \begin{align}
 \text{Step 1. } && q_m &= r(m) - \overset{m - 1}{\underset{i = 1}{\sum}} a_{i(m - 1)}r(m - i) \\
 \text{Step 2. } && \kappa_m &= \frac{q_m}{E_{(m - 1)}} \\
@@ -994,7 +992,7 @@ and will not be an exact match to those generated by a computer.
 
 \pagebreak
 
-\subsubsection{Best order estimation}
+\subsubsection{Best Order Estimation}
 
 At this point, we have an array of prospective LP coefficient lists,
 a list of error values and must decide which LPC order to use.
@@ -1049,7 +1047,7 @@ So if this group of samples was very large, it's likely that order 3
 would prevail since the residuals multiplied by a smaller bits per residual
 would counteract the relatively fixed overhead bits per order value.
 
-\subsubsection{Best order exhaustive search}
+\subsubsection{Best Order Exhaustive Search}
 
 In a curious bit of recursion, finding the best order for an LPC subframe
 via an exhaustive search requires taking each list of LP Coefficients
@@ -1075,7 +1073,7 @@ is the one we should actually write to disk.
 
 \pagebreak
 
-\subsubsection{Quantizing coefficients}
+\subsubsection{Quantizing Coefficients}
 
 Quantizing coefficients is a process of taking a list of LP Coefficients
 along with a QLP Coefficients Precision value and
@@ -1084,7 +1082,7 @@ The first step is determining the upper and lower limits of the
 QLP Coefficients:
 \begin{align}
 \text{QLP coefficient maximum} &= 2 ^ {precision - 1} - 1 \\
-\text{QLP coefficient mininum} &= - 2 ^ {precision - 1}
+\text{QLP coefficient minimum} &= - 2 ^ {precision - 1}
 \end{align}
 The QLP Coefficients Precision value is typically based on the encoder's
 block size:
@@ -1170,7 +1168,7 @@ QLP precision can be 6.
 
 \clearpage
 
-\subsubsection{Calculating LPC residual}
+\subsubsection{Calculating LPC Residual}
 
 Warm-up samples and residuals are calculated as follows:
 \begin{align*}
@@ -1179,7 +1177,7 @@ Warm-up samples and residuals are calculated as follows:
 \intertext{For $i = Order$ to Block Size - 1:}
 \text{Residual}_{i - Order} &= \text{Sample}_i -
 \left \lfloor \frac{\overset{Order - 1}{\underset{j = 0}{\sum}}
-  \text{QLP Coeffcient}_j \times \text{Sample}_{i - j - 1} }{
+  \text{QLP Coefficient}_j \times \text{Sample}_{i - j - 1} }{
 2 ^ \text{QLP Shift Needed}} \right \rfloor
 \end{align*}
 \par
@@ -1288,7 +1286,7 @@ $2 ^ 4$ using coding method 0, or $2 ^ 5$ using coding method 1.
 
 \clearpage
 
-\subsubsection{Residual values}
+\subsubsection{Residual Values}
 
 
 Encoding individual residual values to Rice coding requires only

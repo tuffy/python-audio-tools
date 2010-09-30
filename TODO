@@ -2533,8 +2533,8 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    A combination of converted FLAC unit tests
    and stuff that's bitten me during initial implementation.
 ** TODO Document WavPack
-*** TODO the WavPack file stream
-*** TODO WavPack decoding
+*** DONE the WavPack file stream
+*** DONE WavPack decoding
 **** DONE WavPack sub-blocks
      - [X] decorr_terms
      - [X] decorr_weights
@@ -2552,7 +2552,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 **** DONE RIFF sub-blocks
 **** DONE MD5 sub-block
 **** DONE false stereo
-**** TODO hybrid mode
 *** TODO WavPack encoding
 **** DONE false stereo
 **** DONE int32_info
@@ -2571,8 +2570,9 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
      - [X] RIFF sub-blocks
      - [X] MD5 sub-block
 **** DONE bitstream generation
-*** TODO Ensure section capitalization is consistent
-*** TODO Verify A4 layout is correct
+*** DONE Ensure section capitalization is consistent
+*** DONE Spell-check
+*** DONE Verify A4 layout is correct
 ** DONE Test encoder/decoder against reference
    Ensure a wide range of lossless audio round-trips correctly
 ** DONE Remove WavePackAudio.BINARIES

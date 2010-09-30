@@ -68,10 +68,10 @@ Going from binary to hexadecimal is a simple matter of reversing
 the process.
 \end{flushleft}
 
-\section{Signed integers}
+\section{Signed Integers}
 Signed integers are typically stored as ``2's-complement'' values.
 To decode them, one needs to know the integer's size in bits, its
-topmost (most-signficant) bit value and the value of its remaining bits.
+topmost (most-significant) bit value and the value of its remaining bits.
 
 \begin{equation}
 \text{signed value} =
@@ -164,7 +164,7 @@ This information is stored as text, but it's important to know what
 sort of text in order to read it and display it properly.
 
 As an example, take the simple character \texttt{\'e}.
-In latin-1 encoding, it is stored as a single byte \texttt{0xE9}.
+In Latin-1 encoding, it is stored as a single byte \texttt{0xE9}.
 In UTF-8 encoding, it is stored as the bytes \texttt{0xC3A9}.
 In UTF-16BE encoding, it is stored as the bytes \texttt{0x00E9}.
 
@@ -321,7 +321,7 @@ and can now be read in a linear fashion:
 \end{figure}
 \par
 \noindent
-As a futher example of how this works, we'll convert the first
+As a further example of how this works, we'll convert the first
 four fields' binary digits to base-10:
 \begin{align*}
 \text{A} &= (1 \times 2^0) + (0 \times 2^1) = 1 \\

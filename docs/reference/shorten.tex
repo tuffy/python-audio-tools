@@ -1,9 +1,9 @@
 \chapter{Shorten}
 Shorten is one of the earliest lossless audio compression formats.
-Though superceded by FLAC and other formats, it remains interesting
+Though superseded by FLAC and other formats, it remains interesting
 from a historical perspective.
 
-\section{Shorten data types}
+\section{Shorten Data Types}
 Notably, almost nothing in the Shorten file format is byte-aligned.
 Instead, it uses its own set of variable-length types which I'll
 refer to as \texttt{unsigned}, \texttt{signed} and \texttt{long}.
@@ -38,11 +38,11 @@ For example, given a \VAR{size} of 3 and the bits `\texttt{0 1 1 0 1 1}',
 the high unary value of `\texttt{0 1}' combines with the low
 raw value of `\texttt{1 0 1}' and the sign bit `\texttt{1}'
 resulting in a decimal value of -14.
-Note that the sign bit is counted seperately, so we're
+Note that the sign bit is counted separately, so we're
 actually reading 4 additional bits after the unary value in this case.
 
 Lastly, and most confusingly, a \texttt{long} field is the combination
-of two seperate \texttt{unsigned} fields.
+of two separate \texttt{unsigned} fields.
 The first, of size 2, determines the size value of the second.
 For example, given the bits `\texttt{1 1 1 1 1 0 1}',
 the first \texttt{unsigned} field of `\texttt{1 1 1}' has the value
@@ -59,7 +59,7 @@ description, it means an \texttt{unsigned} field of size 3.
 
 \pagebreak
 
-\section{the Shorten file stream}
+\section{the Shorten File Stream}
 \label{shorten_stream}
 \begin{figure}[h]
 \includegraphics{figures/shorten_stream.pdf}
@@ -118,7 +118,7 @@ references to a FLAC virtual machine are still present in its source code.}
 Each command is a \texttt{unsigned(2)} field followed by zero or more
 arguments.
 
-\subsection{the DIFF commands}
+\subsection{the DIFF Command}
 All four \texttt{DIFF} commands are structured the same:
 \begin{figure}[h]
 \includegraphics{figures/shorten_diff.pdf}
@@ -169,7 +169,7 @@ Index & Residual & \text{Sample} \\
 
 \pagebreak
 
-\subsection{Channels and wrapping}
+\subsection{Channels and Wrapping}
 The audio commands \texttt{DIFF}, \texttt{QLPC} and \texttt{ZERO} send
 their samples to channels in order.
 For example, a stream of \texttt{DIFF} commands in a 2 channel stereo
@@ -196,24 +196,24 @@ $\text{Buffer}_{-3}$ takes the value of $\text{Buffer}_{253}$.
 However, these pre-zero starting-point values are obviously not
 re-output when the buffer is finally completed and returned.
 
-\subsection{the QUIT command}
+\subsection{the QUIT Command}
 
 This command takes no arguments.
 It indicates the Shorten stream is finished and decoding is completed.
 
-\subsection{the BLOCKSIZE command}
+\subsection{the BLOCKSIZE Command}
 
 This command takes a single \texttt{long} argument
 whose value is the new \VAR{Block Size}.
 In effect, it modifies that variable in the Shorten virtual machine.
 
-\subsection{the ZERO command}
+\subsection{the ZERO Command}
 
 This command takes no arguments.
 It simply generates \VAR{Block Size} number of zero samples
 into the current channel's output buffer.
 
-\subsection{the BITSHIFT command}
+\subsection{the BITSHIFT Command}
 
 This commands takes a single \texttt{unsigned(2)} value
 and modifies the \VAR{bitshift} variable in the Shorten virtual machine.
@@ -231,7 +231,7 @@ and \VAR{coffset} calculation\footnote{See page \pageref{shorten_coffset}}.
 
 \pagebreak
 
-\subsection{the QLPC command}
+\subsection{the QLPC Command}
 
 The \texttt{QLPC} command is structured as follows:
 
@@ -296,9 +296,9 @@ before returning those values.
 \pagebreak
 
 \label{shorten_coffset}
-\subsection{the coffset}
+\subsection{the Coffset}
 
-Calcuating the \VAR{coffset} value for a given command on a given channel
+Calculating the \VAR{coffset} value for a given command on a given channel
 requires a set of \VAR{offset} values
 (whose count equals the \VAR{Number of Means}, from the Shorten header)
 and the \VAR{Number of Means} value itself.
@@ -344,7 +344,7 @@ that total 1056, its offset value is:
 \text{offset} = \frac{\frac{\text{256}}{2} + 1056}{\text{256}} = \frac{1184}{256} = \bf4
 \end{equation}
 
-\subsection{the VERBATIM command}
+\subsection{the VERBATIM Command}
 
 This command is for generating raw, non-audio data such
 as .wav or .aiff chunks and is structured as follows:
@@ -358,7 +358,7 @@ they appear in the Shorten file.
 
 \pagebreak
 
-\section{Shorten encoding}
+\section{Shorten Encoding}
 
 For the purposes of Shorten encoding,
 one needs an entire PCM container file and its
@@ -414,7 +414,7 @@ we can avoid \VAR{coffset} calculation during encoding.
 
 \pagebreak
 
-\subsection{the VERBATIM commands}
+\subsection{the VERBATIM Command}
 
 PCM containers such as Wave and AIFF consist of
 several blocks of data, one of which contains a large chunk of
@@ -431,7 +431,7 @@ These \texttt{VERBATIM} commands \textit{must} appear in
 the Shorten stream in the same order as they appear in the
 PCM container itself.
 
-\subsection{the BLOCKSIZE command}
+\subsection{the BLOCKSIZE Command}
 
 Most \texttt{DIFF} and \texttt{ZERO} commands should contain
 \VAR{Block Length} number of samples, as indicated in the header.
@@ -442,7 +442,7 @@ This is simply an \texttt{unsigned(2)} variable with a value of 5
 (indicating the \texttt{BLOCKSIZE} command)
 followed by a \texttt{long} variable containing the new \VAR{Block Length}.
 
-\subsection{the QUIT command}
+\subsection{the QUIT Command}
 
 When no more samples remain and all \texttt{VERBATIM} commands have
 been delivered (a Wave file may contain additional chunks after
@@ -456,7 +456,7 @@ is a multiple of 4 bytes.
 If this padding is not performed, the reference decoder's bit stream
 implementation will exit with an error.
 
-\subsection{the ZERO command}
+\subsection{the ZERO Command}
 
 When a block's entire set of samples are 0, we can generate
 a \texttt{ZERO} command to represent them, which is
@@ -464,7 +464,7 @@ simply the \texttt{unsigned(2)} command variable of 8.
 
 \pagebreak
 
-\subsection{the DIFF commands}
+\subsection{the DIFF Commands}
 
 The bulk of a Shorten file is \texttt{DIFF} commands,
 which are \texttt{unsigned(2)} command variables 1, 2, and 3

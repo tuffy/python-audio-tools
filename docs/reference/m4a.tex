@@ -11,7 +11,7 @@
 M4A is typically AAC audio in a QuickTime container stream, though
 it may also contain other formats such as MPEG-1 audio.
 
-\section{the QuickTime file stream}
+\section{the QuickTime File Stream}
 \begin{figure}[h]
 \includegraphics{figures/m4a_quicktime.pdf}
 \end{figure}
@@ -19,7 +19,7 @@ it may also contain other formats such as MPEG-1 audio.
 \noindent
 Unlike other chunked formats such as RIFF WAVE, QuickTime's atom chunks
 may be containers for other atoms.  All of its fields are big-endian.
-\subsection{a QuickTime atom}
+\subsection{a QuickTime Atom}
 \begin{figure}[h]
 \includegraphics{figures/m4a_atom.pdf}
 \end{figure}
@@ -32,12 +32,12 @@ the atom's actual size.
 \begin{figure}[h]
 \includegraphics{figures/m4a_atom2.pdf}
 \end{figure}
-\subsection{Container atoms}
+\subsection{Container Atoms}
 There is no flag or field to tell a QuickTime parser which
 of its atoms are containers and which ones are not.
 If an atom is known to be a container, one can treat its Atom Data
 as a QuickTime stream and parse it in a recursive fashion.
-\section{M4A atoms}
+\section{M4A Atoms}
 A typical M4A begins with an `ftyp' atom indicating its file type,
 followed by a `moov' atom containing a copious amount of file metadata,
 an optional `free' atom with nothing but empty space
@@ -47,13 +47,13 @@ containing the song data itself.
 \parpic[r]{
 \includegraphics{figures/m4a_atoms.pdf}
 }
-\subsection{the ftyp atom}
+\subsection{the ftyp Atom}
 \includegraphics{figures/m4a_ftyp.pdf}
 \par
 The \VAR{Major Brand} and \VAR{Compatible Brand} fields are ASCII strings.
 \VAR{Major Brand Version} is an integer.
 
-\subsection{the mvhd atom}
+\subsection{the mvhd Atom}
 \includegraphics{figures/m4a_mvhd.pdf}
 \par
 If \VAR{Version} is 0, \VAR{Created Mac UTC Date}, \VAR{Modified Mac UTC Date} and
@@ -62,7 +62,7 @@ If \VAR{Version} is 0, \VAR{Created Mac UTC Date}, \VAR{Modified Mac UTC Date} a
 
 \pagebreak
 
-\subsection{the tkhd atom}
+\subsection{the tkhd Atom}
 \par
 \begin{figure}[h]
 \includegraphics{figures/m4a_tkhd.pdf}
@@ -73,7 +73,7 @@ As with `mvhd', if \VAR{Version} is 0, \VAR{Created Mac UTC Date},
 \VAR{Modified Mac UTC Date} and \VAR{Duration} are 32-bit fields.
 If it is 1, they are 64-bit fields.
 
-\subsection{the mdhd atom}
+\subsection{the mdhd Atom}
 
 The \ATOM{mdhd} atom contains track information such as samples-per-second,
 track length and creation/modification times.
@@ -89,7 +89,7 @@ If it is 1, they are 64-bit fields.
 
 \pagebreak
 
-\subsection{the hdlr atom}
+\subsection{the hdlr Atom}
 
 \begin{figure}[h]
 \includegraphics{figures/m4a_hdlr.pdf}
@@ -99,13 +99,13 @@ If it is 1, they are 64-bit fields.
 \VAR{QuickTime flags}, \VAR{QuickTime flags mask} and \VAR{Component Name Length}
 are integers.  The rest are ASCII strings.
 
-\subsection{the smhd atom}
+\subsection{the smhd Atom}
 
 \begin{figure}[h]
 \includegraphics{figures/m4a_smhd.pdf}
 \end{figure}
 
-\subsection{the dref atom}
+\subsection{the dref Atom}
 
 \begin{figure}[h]
 \includegraphics{figures/m4a_dref.pdf}
@@ -113,13 +113,13 @@ are integers.  The rest are ASCII strings.
 
 \pagebreak
 
-\subsection{the stsd atom}
+\subsection{the stsd Atom}
 
 \begin{figure}[h]
 \includegraphics{figures/m4a_stsd.pdf}
 \end{figure}
 
-\subsection{the mp4a atom}
+\subsection{the mp4a Atom}
 
 The \ATOM{mp4a} atom contains information such as the number of channels
 and bits-per-sample.  It can be found in the \ATOM{stsd} atom.
@@ -130,19 +130,19 @@ and bits-per-sample.  It can be found in the \ATOM{stsd} atom.
 
 \pagebreak
 
-\subsection{the stts atom}
+\subsection{the stts Atom}
 
 \begin{figure}[h]
 \includegraphics{figures/m4a_stts.pdf}
 \end{figure}
 
-\subsection{the stsc atom}
+\subsection{the stsc Atom}
 
 \begin{figure}[h]
 \includegraphics{figures/m4a_stsc.pdf}
 \end{figure}
 
-\subsection{the stsz atom}
+\subsection{the stsz Atom}
 
 \begin{figure}[h]
 \includegraphics{figures/m4a_stsz.pdf}
@@ -150,7 +150,7 @@ and bits-per-sample.  It can be found in the \ATOM{stsd} atom.
 
 \pagebreak
 
-\subsection{the stco atom}
+\subsection{the stco Atom}
 
 \begin{figure}[h]
 \includegraphics{figures/m4a_stco.pdf}
@@ -160,11 +160,11 @@ and bits-per-sample.  It can be found in the \ATOM{stsd} atom.
 Offsets point to an absolute position in the M4A file of AAC data in
 the \ATOM{mdat} atom.  Therefore, if the \ATOM{moov} atom size changes
 (which can happen by writing new metadata in its \ATOM{meta} child atom)
-the \ATOM{mdat} atom may move and these obsolute offsets will change.
+the \ATOM{mdat} atom may move and these absolute offsets will change.
 In that instance, they \textbf{must}
 be re-adjusted in the \ATOM{stco} atom or the file may become unplayable.
 
-\subsection{the meta atom}
+\subsection{the meta Atom}
 \label{m4a_meta}
 \begin{figure}[h]
 \parpic[r]{
@@ -214,14 +214,14 @@ Atom & Description & Atom & Description & Atom & Description \\
 
 \pagebreak
 
-\subsubsection{the trkn sub-atom}
+\subsubsection{the trkn Sub-Atom}
 \ATOM{trkn} is a binary sub-atom of \ATOM{meta} which contains
 the track number.
 \begin{figure}[h]
 \includegraphics{figures/m4a_trkn.pdf}
 \end{figure}
 
-\subsubsection{the disk sub-atom}
+\subsubsection{the disk Sub-Atom}
 \ATOM{disk} is a binary sub-atom of \ATOM{meta} which contains
 the disc number.
 For example, if the track belongs to the first disc in a set of

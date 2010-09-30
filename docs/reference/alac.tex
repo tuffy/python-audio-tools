@@ -14,7 +14,7 @@ Its stream is the same collection of atoms as covered on page
 \pageref{m4a}.
 The key difference is the contents of its \texttt{mdat} atom.
 
-\section{the ALAC file stream}
+\section{the ALAC File Stream}
 \begin{wrapfigure}[6]{r}{1.5in}
 \includegraphics{figures/alac_atoms.pdf}
 \end{wrapfigure}
@@ -33,7 +33,7 @@ Its layout is as follows:
 
 \pagebreak
 
-\section{ALAC decoding}
+\section{ALAC Decoding}
 
 An ALAC stream is made up of individual frames within the \texttt{mdat}
 atom, as follows:
@@ -111,7 +111,7 @@ subframe header, each a 16-bit signed value.
 
 \pagebreak
 
-\subsection{Residual decoding}
+\subsection{Residual Decoding}
 
 There are \VAR{Sample Size} number of residuals per residual block.
 Decoding a residual block requires knowing the \VAR{Initial History},
@@ -205,7 +205,7 @@ Finally, \VAR{history} is automatically set to 0.
 
 \clearpage
 
-\subsubsection{Residual decoding example}
+\subsubsection{Residual Decoding Example}
 
 In this example, we'll decode a group of residuals in which our
 \VAR{Initial History} is 1130 and our \VAR{History Multiplier} is 40.
@@ -252,7 +252,7 @@ Thus, our batch of signed residual values are 1, 4, -2 and 1.
 
 \clearpage
 
-\subsection{Subframe calculation}
+\subsection{Subframe Calculation}
 
 % example:
 % decode residuals [16, 1, 9, -1, -1, 1, -4, 7, -7, -1]
@@ -403,7 +403,7 @@ So, the coefficients for $\text{Sample}_7$ are 1123, -766, 107 and 122.
 
 \clearpage
 
-\subsection{Channel decorrelation}
+\subsection{Channel Decorrelation}
 \label{alac_decorrelation}
 If we have more than one channel of output, the next step is
 performing channel decorrelation.
@@ -437,7 +437,7 @@ Sample & \text{Channel}_1 & \text{Channel}_2 & \text{Right}_i & \text{Left}_i \\
 \end{tabular}
 \end{table}
 
-\subsection{Wasted bits}
+\subsection{Wasted Bits}
 \label{alac_wasted_bits}
 A compressed ALAC frame
 with \VAR{Wasted Bits} stores them interleaved between channels.
@@ -452,7 +452,7 @@ are 8 bits large), our final output is as follows:
 
 \clearpage
 
-\section{ALAC encoding}
+\section{ALAC Encoding}
 
 To encode an ALAC file, we need a stream of PCM sample integers
 along with that stream's sample rate, bits-per-sample and number of
@@ -467,13 +467,13 @@ audio encoding process.
 
 Remember, all of an ALAC's fields are big-endian.
 
-\subsection{ALAC atoms}
+\subsection{ALAC Atoms}
 
 We'll encode our ALAC file in iTunes order, which means
 it contains the \ATOM{ftyp}, \ATOM{moov}, \ATOM{free} and
 \ATOM{mdat} atoms, in that order.
 
-\subsubsection{the ftyp atom}
+\subsubsection{the ftyp Atom}
 
 \begin{table}[h]
 \begin{tabular}{|l|r|l|}
@@ -493,7 +493,7 @@ compatible brand & 32 & \texttt{0x00000000} \\
 \end{tabular}
 \end{table}
 
-\subsubsection{the moov atom}
+\subsubsection{the moov Atom}
 
 \begin{table}[h]
 \begin{tabular}{|l|r|l|}
@@ -512,7 +512,7 @@ atom type & 32 & `moov' (\texttt{0x6d6f6f76}) \\
 
 \clearpage
 
-\subsubsection{the mvhd atom}
+\subsubsection{the mvhd Atom}
 
 \begin{table}[h]
 \begin{tabular}{|l|r|l|}
@@ -560,7 +560,7 @@ or \texttt{2082844800} seconds.
 
 \clearpage
 
-\subsubsection{the trak atom}
+\subsubsection{the trak Atom}
 \begin{tabular}{|l|r|l|}
 \hline
 Field & Size & Value \\
@@ -573,7 +573,7 @@ atom type & 32 & `trak' (\texttt{0x7472616b}) \\
 \hline
 \end{tabular}
 
-\subsubsection{the tkhd atom}
+\subsubsection{the tkhd Atom}
 
 \begin{table}[h]
 \begin{tabular}{|l|r|l|}
@@ -616,7 +616,7 @@ video height & 32 & \texttt{0} \\
 
 \clearpage
 
-\subsubsection{the mdia atom}
+\subsubsection{the mdia Atom}
 
 \begin{table}[h]
 \begin{tabular}{|l|r|l|}
@@ -633,7 +633,7 @@ atom type & 32 & `mdia' (\texttt{0x6d646961}) \\
 \end{tabular}
 \end{table}
 
-\subsubsection{the mdhd atom}
+\subsubsection{the mdhd Atom}
 
 \begin{table}[h]
 \begin{tabular}{|l|r|l|}
@@ -671,7 +671,7 @@ Which is the code `\texttt{und}', meaning `undetermined' - which is typical.
 
 \clearpage
 
-\subsubsection{the hdlr atom}
+\subsubsection{the hdlr Atom}
 \label{alac_hdlr}
 \begin{tabular}{|l|r|l|}
 \hline
@@ -693,7 +693,7 @@ component name & component name length $\times$ 8 & \\
 \end{tabular}
 
 
-\subsubsection{the minf atom}
+\subsubsection{the minf Atom}
 \begin{tabular}{|l|r|l|}
 \hline
 Field & Size & Value \\
@@ -707,7 +707,7 @@ atom type & 32 & `minf' (\texttt{0x6d696e66}) \\
 \hline
 \end{tabular}
 
-\subsubsection{the smhd atom}
+\subsubsection{the smhd Atom}
 \begin{tabular}{|l|r|l|}
 \hline
 Field & Size & Value \\
@@ -722,7 +722,7 @@ padding & 16 & \texttt{0x0000} \\
 \hline
 \end{tabular}
 
-\subsubsection{the dinf atom}
+\subsubsection{the dinf Atom}
 \begin{tabular}{|l|r|l|}
 \hline
 Field & Size & Value \\
@@ -736,7 +736,7 @@ atom type & 32 & `dinf' (\texttt{0x64696e66}) \\
 
 \clearpage
 
-\subsubsection{the dref atom}
+\subsubsection{the dref Atom}
 
 \begin{table}[h]
 \begin{tabular}{|l|r|l|}
@@ -758,7 +758,7 @@ reference atom data & 32 & \texttt{0x00000001} \\
 \end{tabular}
 \end{table}
 
-\subsubsection{the stbl atom}
+\subsubsection{the stbl Atom}
 
 \begin{table}[h]
 \begin{tabular}{|l|r|l|}
@@ -778,7 +778,7 @@ atom type & 32 & `stbl' (\texttt{0x7374626c}) \\
 \end{tabular}
 \end{table}
 
-\subsubsection{the stsd atom}
+\subsubsection{the stsd Atom}
 
 \begin{table}[h]
 \begin{tabular}{|l|r|l|}
@@ -799,7 +799,7 @@ number of descriptions & 32 & \texttt{1} \\
 
 \clearpage
 
-\subsubsection{the alac atom}
+\subsubsection{the alac Atom}
 
 \begin{table}[h]
 \begin{tabular}{|l|r|l|}
@@ -853,7 +853,7 @@ and its size has been determined.
 
 \clearpage
 
-\subsubsection{the stts atom}
+\subsubsection{the stts Atom}
 
 \begin{table}[h]
 \begin{tabular}{|l|r|l|}
@@ -867,7 +867,7 @@ version & 8 & \texttt{0x00} \\
 flags & 24 & \texttt{0x000000} \\
 number of times & 32 & \\
 \hline
-frame count 1 & 32 & number of occurrances \\
+frame count 1 & 32 & number of occurrences \\
 frame duration 1 & 32 & PCM frame count \\
 \hline
 \multicolumn{3}{|c|}{...} \\
@@ -895,7 +895,7 @@ Therefore:
 \text{frame duration}_2 &= 4080
 \end{align*}
 
-\subsubsection{the stsc atom}
+\subsubsection{the stsc Atom}
 
 \begin{table}[h]
 \begin{tabular}{|l|r|l|}
@@ -940,7 +940,7 @@ while chunk 130 has 1 ALAC frame.
 This is a total of 646 ALAC frames, which matches the contents of
 the \ATOM{stts} atom.
 
-\subsubsection{the stsz atom}
+\subsubsection{the stsz Atom}
 
 \begin{tabular}{|l|r|l|}
 \hline
@@ -964,7 +964,7 @@ This atom is a list of ALAC frame sizes, each in bytes.
 For example, our 646 frame file would have 646 corresponding
 \ATOM{stsz} entries.
 
-\subsubsection{the stco atom}
+\subsubsection{the stco Atom}
 
 \begin{tabular}{|l|r|l|}
 \hline
@@ -988,7 +988,7 @@ each chunk is typically 5 ALAC frames large.
 
 \clearpage
 
-\subsubsection{the udta atom}
+\subsubsection{the udta Atom}
 
 \begin{tabular}{|l|r|l|}
 \hline
@@ -1001,7 +1001,7 @@ atom type & 32 & `udta' (\texttt{0x75647461}) \\
 \hline
 \end{tabular}
 
-\subsubsection{the meta atom}
+\subsubsection{the meta Atom}
 
 \begin{tabular}{|l|r|l|}
 \hline
@@ -1044,19 +1044,19 @@ This atom is laid out identically to the ALAC file's primary
 \ATOM{hdlr} atom (described on page \pageref{alac_hdlr}).
 The only difference is the contents of its fields.
 
-\subsubsection{the ilst atom}
+\subsubsection{the ilst Atom}
 
 This atom is a collection of \ATOM{data} sub-atoms
 and is described on page \pageref{m4a_meta}.
 
-\subsubsection{the free atom}
+\subsubsection{the free Atom}
 
 These atoms are simple collection of NULL bytes which can easily be
 resized to make room for other atoms without rewriting the entire file.
 
 \clearpage
 
-\subsection{Compressed and uncompressed frames}
+\subsection{Compressed and Uncompressed Frames}
 
 Now that we've built a set of ALAC atoms, the next step is to break
 our audio into a set of PCM frames of a certain block size -
@@ -1095,7 +1095,7 @@ throughout the remainder of compression.
 
 \clearpage
 
-\subsection{Channel correlation}
+\subsection{Channel Correlation}
 
 For stereo streams, we must determine good \VAR{Interlacing Shift}
 and \VAR{Interlacing Leftweight} values to exploit similarities
@@ -1131,7 +1131,7 @@ Sample & \text{Left}_i & \text{Right}_i & \text{Channel}_1 & \text{Channel}_2 \\
 \end{tabular}
 \end{table}
 
-\subsection{Coefficient calculation}
+\subsection{Coefficient Calculation}
 %example samples: [14, 15, 19, 17, 18, 17, 16, 18, 17, 15,
 %                  13, 13, 12, 12, 15, 17, 16, 17, 16, 13]
 
@@ -1216,7 +1216,7 @@ index & sample & & window & & signal \\
 \end{tabular}
 }
 
-\subsubsection{Computing autocorrelation}
+\subsubsection{Computing Autocorrelation}
 %autocorrelated to: [3416.877417,3314.071374,3078.904744,2807.422836,
 %                    2554.560660,2325.480970,2107.853553,1903.292893,
 %                    1701.213203]
@@ -1239,7 +1239,7 @@ In this example are autocorrelation values are:
 
 \clearpage
 
-\subsubsection{LP coefficient calculation}
+\subsubsection{LP Coefficient Calculation}
 
 Calculating the LP coefficients uses the Levinson-Durbin recursive method.\footnote{This algorithm is taken from \LINK{http://www.engineer.tamuk.edu/SPark/chap7.pdf} }
 Our inputs are $M$, the maximum coefficient count, and $r$ autocorrelation
@@ -1255,7 +1255,7 @@ Initial values:
 && E_0 &= r(0) \\
 && a_{11} &= \kappa_1 = \frac{r(1)}{E_0} \\
 && E_1 &= E_0 {(1 - {{\kappa_1} ^ 2})}
-\intertext{With $m \geq 2$, the following recurive algorithm is performed:}
+\intertext{With $m \geq 2$, the following recursive algorithm is performed:}
 \text{Step 1. } && q_m &= r(m) - \overset{m - 1}{\underset{i = 1}{\sum}} a_{i(m - 1)}r(m - i) \\
 \text{Step 2. } && \kappa_m &= \frac{q_m}{E_{(m - 1)}} \\
 \text{Step 3. } && a_{mm} &= \kappa_m \\
@@ -1318,7 +1318,7 @@ and will not be an exact match to those generated by a computer.
 
 \clearpage
 
-\subsubsection{Best order estimation}
+\subsubsection{Best Order Estimation}
 
 At this point, we have an array of prospective LP coefficient lists,
 a list of error values and must decide which LPC order to use.
@@ -1364,7 +1364,7 @@ which use LPC Error values 96.8 and 91.2, respectively:
 Therefore, since the total bits for order 4 are the smallest,
 the best order for this group of samples is 4.
 
-\subsubsection{Quantizing coefficients}
+\subsubsection{Quantizing Coefficients}
 
 Quantizing coefficients is a process of taking a list of LP Coefficients
 along with a QLP Coefficients Precision value and
@@ -1374,7 +1374,7 @@ Coefficients, which well set to the upper and lower bounds that iTunes
 supports:
 \begin{align}
 \text{Coefficient Maximum} &= 2 ^ {12 - 1} - 1 = 2047\\
-\text{Coefficient Mininum} &= - 2 ^ {12 - 1} = -2048
+\text{Coefficient Minimum} &= - 2 ^ {12 - 1} = -2048
 \end{align}
 \par
 \noindent
@@ -1418,12 +1418,12 @@ X(4) &= E(3) + (-0.03 \times 2 ^ {9} ) = -0.489 + -15.36 = \textbf{-15.849} \\
 \noindent
 Therefore, the \VAR{Coefficient Count} is 4,
 the \VAR{Coefficient} values are 959, -661, 215, -16,
-and the \VAR{Prediction Qauntitization} value is 9.
+and the \VAR{Prediction Quantitization} value is 9.
 
 
 \clearpage
 
-\subsection{Subframe calculation}
+\subsection{Subframe Calculation}
 
 Given our list of correlated samples; along with a list of
 coefficients, a \VAR{Coefficient Count} and a \VAR{Prediction Quantitization}
@@ -1556,7 +1556,7 @@ So, the coefficients for $\text{Residual}_7$ are 1123, -766, 107 and 122.
 
 \clearpage
 
-\subsection{Residual encoding}
+\subsection{Residual Encoding}
 
 The final step of frame encoding is writing our list of residual values.
 As with decoding, this also requires knowing several additional
@@ -1645,7 +1645,7 @@ Either way, if $\text{\VAR{block size}} \leq 65535$, we
 subtract 1 to the next unsigned value of the next residual in the block
 (if any).  Finally, \VAR{history} is automatically set to 0.
 
-\subsubsection{Residual encoding example}
+\subsubsection{Residual Encoding Example}
 
 In this example, we'll encode a group of residuals in which our
 \VAR{Initial History} is 1290, our \VAR{History Multiplier} is 40

@@ -21,15 +21,15 @@ the converse is much more rare.
 Therefore, a metadata looking program would be wise to check both
 services if possible.
 
-\section{Searching releases}
-This is analagous to FreeDB's search routine in which one calculates
+\section{Searching Releases}
+This is analogous to FreeDB's search routine in which one calculates
 a CD's disc ID, submits it to MusicBrainz via an HTTP get query
 and receives information such as album name, artist name, track names
 and so forth as an XML file.
 
 \pagebreak
 
-\subsection{the disc ID}
+\subsection{the Disc ID}
 Calculating a MusicBrainz disc ID requires knowing a CD's first track number,
 last track number, track offsets (in CD frames) and lead out track offset
 (also in CD frames).
@@ -88,7 +88,7 @@ So to complete our example, the hash value becomes a disc ID of
 
 \pagebreak
 
-\subsection{Server query}
+\subsection{Server Query}
 MusicBrainz runs as a service on HTTP port 80.
 To retrieve Release information, one can make a GET request to
 \texttt{/ws/1/release} using the following fields:

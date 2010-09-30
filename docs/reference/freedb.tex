@@ -40,7 +40,7 @@ The server will not do anything without this handshake.
 the \texttt{proto} command.
 This is necessary because only the highest protocol supports
 UTF-8 text encoding.
-Without this, any characters not in the latin-1 set will not be
+Without this, any characters not in the Latin-1 set will not be
 sent properly.
 
 \item Once that is accomplished, the client should calculate the 32-bit
@@ -61,7 +61,7 @@ and complete the transaction.
 
 \pagebreak
 
-\subsection{the disc ID}
+\subsection{the Disc ID}
 FreeDB uses a big-endian 32-bit disc ID to differentiate
 on disc from another.
 
@@ -110,7 +110,7 @@ In hexadecimal, they are 0x22, 0x0348 and 0x04.
 Combining them into a single value yields 0x22034804.
 Thus, our FreeDB disc ID is \texttt{22034804}
 
-\subsection{Initial greeting}
+\subsection{Initial Greeting}
 \begin{Verbatim}[frame=single,label=\textit{From Server},showspaces=true]
 <code> <host> CDDBP server <version> ready at <datetime>
 \end{Verbatim}
@@ -126,7 +126,7 @@ Thus, our FreeDB disc ID is \texttt{22034804}
 \texttt{<datetime>} & & the current date and time
 \end{tabular}
 
-\subsection{Client-server handshake}
+\subsection{Client-Server Handshake}
 \begin{Verbatim}[frame=single,label=\textit{To Server},showspaces=true]
 cddb hello <username> <hostname> <clientname> <version>
 \end{Verbatim}
@@ -151,7 +151,7 @@ cddb hello <username> <hostname> <clientname> <version>
 \texttt{<version>} & & version of client program
 \end{tabular}
 
-\subsection{Set protocol level}
+\subsection{Set Protocol Level}
 \begin{Verbatim}[frame=single,label=\textit{To Server},showspaces=true]
 proto [level]
 \end{Verbatim}
@@ -177,7 +177,7 @@ OR
 
 \pagebreak
 
-\subsection{Query database}
+\subsection{Query Database}
 \begin{Verbatim}[frame=single,label=\textit{To Server},showspaces=true]
 cddb query <disc_id> <track_count> <offset_1> <...> <offset_n> <seconds>
 \end{Verbatim}
@@ -221,7 +221,7 @@ OR
 
 \pagebreak
 
-\subsection{Read XMCD data}
+\subsection{Read XMCD Data}
 \begin{Verbatim}[frame=single,label=\textit{To Server},showspaces=true]
 cddb read <category> <disc_id>
 \end{Verbatim}
@@ -246,7 +246,7 @@ cddb read <category> <disc_id>
 \texttt{<disc\_id>} & & 32-bit disc ID \\
 \end{tabular}
 
-\subsection{Close connection}
+\subsection{Close Connection}
 \begin{Verbatim}[frame=single,label=\textit{To Server},showspaces=true]
 quit
 \end{Verbatim}
@@ -263,7 +263,7 @@ quit
 
 \pagebreak
 
-\section{Web protocol}
+\section{Web Protocol}
 FreeDB's web protocol runs as a service on HTTP port 80.
 A web client POSTs data to a location, typically: \texttt{cddb/cddb.cgi}
 and retrieves results.
