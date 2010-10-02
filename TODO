@@ -2587,7 +2587,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   for use by editxmcd and command-line utilities.
 ** DONE Convert XMCD to AlbumMetaDataFile subclass
 ** TODO Add unit tests for XMCD
-** TODO Convert MusicBrainzReleaseXML to AlbumMetaDataFile subclass
+** DONE Convert MusicBrainzReleaseXML to AlbumMetaDataFile subclass
 ** TODO Add unit tests for MusicBrainzReleaseXML
 ** TODO Update utilities to use new interface
    - [ ] tracksplit

@@ -17,7 +17,8 @@
 #along with this program; if not, write to the Free Software
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-from audiotools import (MetaData, AlbumMetaData, MetaDataFileException,
+from audiotools import (MetaData, AlbumMetaData, AlbumMetaDataFile,
+                        MetaDataFileException,
                         __most_numerous__, DummyAudioFile, sys)
 import urllib
 import gettext
@@ -32,6 +33,36 @@ def get_xml_nodes(parent, child_tag):
             if (hasattr(node, "tagName") and
                 (node.tagName == child_tag))]
 
+def walk_xml_tree(parent, *child_tags):
+    """A helper routine for walking through several children."""
+
+    if (len(child_tags) == 0):
+        return parent
+    else:
+        base_tag = child_tags[0]
+        remaining_tags = child_tags[1:]
+        for node in parent.childNodes:
+            if (hasattr(node, "tagName") and
+                (node.tagName == base_tag)):
+                return walk_xml_tree(node, *remaining_tags)
+        else:
+            return None
+
+def walk_xml_tree_build(dom, parent, *child_tags):
+
+    if (len(child_tags) == 0):
+        return parent
+    else:
+        base_tag = child_tags[0]
+        remaining_tags = child_tags[1:]
+        for node in parent.childNodes:
+            if (hasattr(node, "tagName") and
+                (node.tagName == base_tag)):
+                return walk_xml_tree_build(dom, node, *remaining_tags)
+        else:
+            new_child = dom.createElement(base_tag)
+            parent.appendChild(new_child)
+            return walk_xml_tree_build(dom, new_child, *remaining_tags)
 
 def get_xml_text_node(parent, child_tag):
     """A helper routine for returning the first text child XML node."""
@@ -245,8 +276,7 @@ class MBXMLException(MetaDataFileException):
     def __unicode__(self):
         return _(u"Invalid MusicBrainz XML file")
 
-
-class MusicBrainzReleaseXML:
+class MusicBrainzReleaseXML(AlbumMetaDataFile):
     """An XML file as returned by MusicBrainz."""
 
     TAG_ORDER = {u"release": [u"title",
@@ -287,98 +317,131 @@ class MusicBrainzReleaseXML:
                             u"user-rating"]}
 
     def __init__(self, dom):
-        """dom should be a DOM object such as xml.dom.minidom.Document."""
-
         self.dom = dom
 
+    def __getattr__(self, key):
+        if (key == 'album_name'):
+            try:
+                return get_xml_text_node(
+                    walk_xml_tree(self.dom,
+                                  u'metadata', u'release-list', u'release'),
+                    u'title')
+            except AttributeError:
+                return u""
+        elif (key == 'artist_name'):
+            try:
+                return get_xml_text_node(
+                    walk_xml_tree(self.dom,
+                                  u'metadata', u'release-list', u'release',
+                                  u'artist'),
+                    u'name')
+            except AttributeError:
+                return u""
+        elif (key == 'year'):
+            try:
+                return walk_xml_tree(
+                    self.dom, u'metadata', u'release-list', u'release',
+                    u'release-event-list',
+                    u'event').getAttribute('date')[0:4]
+            except (IndexError, AttributeError):
+                return u""
+        elif (key == 'catalog'):
+            try:
+                return walk_xml_tree(
+                    self.dom, u'metadata', u'release-list', u'release',
+                    u'release-event-list',
+                    u'event').getAttribute('catalog-number')
+            except (IndexError, AttributeError):
+                return u""
+        elif (key == 'extra'):
+            return u""
+        else:
+            try:
+                return self.__dict__[key]
+            except KeyError:
+                raise AttributeError(key)
+
+    def __setattr__(self, key, value):
+        #FIXME - create nodes if they don't exist
+        if (key == 'album_name'):
+            title = walk_xml_tree(self.dom, u'metadata', u'release-list',
+                                  u'release', u'title')
+            if (len(title.childNodes) > 0):
+                title.replaceChild(self.dom.createTextNode(value),
+                                   title.firstChild)
+            else:
+                title.appendChild(self.dom.createTextNode(value))
+        elif (key == 'artist_name'):
+            name = walk_xml_tree(self.dom, u'metadata', u'release-list',
+                                 u'release', u'artist', u'name')
+            if (len(name.childNodes) > 0):
+                name.replaceChild(self.dom.createTextNode(value),
+                                  name.firstChild)
+            else:
+                name.appendChild(self.dom.createTextNode(value))
+        elif (key == 'year'):
+            walk_xml_tree(self.dom, u'metadata', u'release-list',
+                          u'release', u'release-event-list',
+                          u'event').setAttribute(u"date", value)
+        elif (key == 'catalog'):
+                        walk_xml_tree(self.dom, u'metadata', u'release-list',
+                          u'release', u'release-event-list',
+                          u'event').setAttribute(u"catalog-number", value)
+        elif (key == 'extra'):
+            pass
+        else:
+            self.__dict__[key] = value
+
+    def __len__(self):
+        return len(self.dom.getElementsByTagName(u'track'))
+
+    def to_string(self):
+        for (tag, order) in MusicBrainzReleaseXML.TAG_ORDER.items():
+            for parent in self.dom.getElementsByTagName(tag):
+                reorder_xml_children(parent, order)
+
+        return self.dom.toxml(encoding='utf-8')
+
     @classmethod
-    def read(cls, filename):
-        """Given an XML filename, returns a MusicBrainzReleaseXML object.
-
-        May raise MBXMLException."""
-
-        from xml.dom.minidom import parse
-        from xml.parsers.expat import ExpatError
-
-        try:
-            return cls(parse(filename))
-        except (IOError, ExpatError):
-            raise MBXMLException(filename)
-
-    @classmethod
-    def read_data(cls, data):
-        """Given a file object, returns a MusicBrainzReleaseXML object.
-
-        May raise MBXMLException."""
-
+    def from_string(cls, string):
         from xml.dom.minidom import parseString
         from xml.parsers.expat import ExpatError
 
         try:
-            return cls(parseString(data))
+            return cls(parseString(string))
         except ExpatError:
             raise MBXMLException("")
 
-    def metadata(self):
-        """Returns an AlbumMetaData object."""
+    def get_track(self, index):
+        track_node = self.dom.getElementsByTagName(u'track')[index]
+        track_name = get_xml_text_node(track_node, u'title')
+        artist_node = walk_xml_tree(track_node, u'artist')
+        if (artist_node is not None):
+            artist_name = get_xml_text_node(artist_node, u'name')
+            if (len(artist_name) == 0):
+                artist_name = self.artist_name
+        else:
+            artist_name = self.artist_name
+        return (track_name, artist_name, u"")
 
-        def get_track_metadata(track_node,
-                               album_metadata,
-                               track_number):
-            try:
-                #FIXME - not sure if name or sort-name should take precendence
-                artist_name = get_xml_text_node(
-                    get_xml_nodes(track_node, u'artist')[0], u'name')
-            except IndexError:
-                artist_name = album_metadata.artist_name
-
-            track_metadata = MetaData(track_name=get_xml_text_node(track_node,
-                                                                   u'title'),
-                                      artist_name=artist_name,
-                                      track_number=track_number)
-
-            track_metadata.merge(album_metadata)
-            return track_metadata
-
-        try:
-            release = self.dom.getElementsByTagName(u'release')[0]
-        except IndexError:
-            return AlbumMetaData([])
-
-        album_name = get_xml_text_node(release, u'title')
-
-        try:
-            #FIXME - not sure if name or sort-name should take precendence
-            artist_name = get_xml_text_node(
-                get_xml_nodes(release, u'artist')[0], u'name')
-        except IndexError:
-            artist_name = u''
-
-        try:
-            tracks = get_xml_nodes(get_xml_nodes(release, u'track-list')[0],
-                                   u'track')
-        except IndexError:
-            tracks = []
-
-        album_metadata = MetaData(album_name=album_name,
-                                  artist_name=artist_name,
-                                  track_total=len(tracks))
-
-        try:
-            release_events = get_xml_nodes(release, u'release-event-list')[0]
-            event = get_xml_nodes(release_events, u'event')[-1]
-            album_metadata.year = event.getAttribute('date')[0:4]
-            album_metadata.catalog = event.getAttribute('catalog-number')
-        except IndexError:
-            pass
-
-        return AlbumMetaData([get_track_metadata(track_node=node,
-                                                 album_metadata=album_metadata,
-                                                 track_number=i + 1)
-                              for (i, node) in enumerate(tracks)])
+    def set_track(self, index, name, artist, extra):
+        track_node = self.dom.getElementsByTagName(u'track')[index]
+        title = walk_xml_tree(track_node, 'title')
+        title.replaceChild(self.dom.createTextNode(name),
+                           title.firstChild)
+        if (len(artist) > 0):
+            print "setting artist"
+            artist_node = walk_xml_tree_build(self.dom,
+                                              track_node,
+                                              u'artist', u'name')
+            if (artist_node.hasChildNodes()):
+                artist_node.replaceChild(self.dom.createTextNode(artist),
+                                         artist_node.firstChild)
+            else:
+                artist_node.appendChild(self.dom.createTextNode(artist))
 
     @classmethod
-    def from_files(cls, audiofiles):
+    def from_tracks(cls, tracks):
         """Returns a MusicBrainzReleaseXML from a list of AudioFile objects.
 
         These objects are presumably from the same album.
@@ -400,7 +463,7 @@ class MusicBrainzReleaseXML:
 
         release = dom.createElement(u'release')
 
-        track_metadata = [t.get_metadata() for t in audiofiles
+        track_metadata = [t.get_metadata() for t in tracks
                           if (t.get_metadata() is not None)]
 
         #add album title
@@ -447,7 +510,7 @@ class MusicBrainzReleaseXML:
         #add tracks
         track_list = dom.createElement(u'track-list')
 
-        for track in audiofiles:
+        for track in tracks:
             node = dom.createElement(u'track')
             track_metadata = track.get_metadata()
             if (track_metadata is not None):
@@ -479,35 +542,6 @@ class MusicBrainzReleaseXML:
         dom.getElementsByTagName(u'metadata')[0].appendChild(release_list)
 
         return cls(dom)
-
-    @classmethod
-    def from_cuesheet(cls, cuesheet, total_frames, sample_rate, metadata=None):
-        """Generates a MusicBrainzReleaseXML object from a cuesheet.
-
-        This must also include a total_frames and sample_rate integer.
-        This works by generating a set of empty tracks and calling
-        the from_tracks() method to build an XMCD file with
-        the proper placeholders.
-        metadata, if present, is applied to all tracks.
-        """
-
-        if (metadata is None):
-            metadata = MetaData()
-
-        return cls.from_files([DummyAudioFile(
-                    length=(pcm_frames * 75) / sample_rate,
-                    metadata=metadata,
-                    track_number=i + 1) for (i, pcm_frames) in enumerate(
-                    cuesheet.pcm_lengths(total_frames))])
-
-    def build(self):
-        """Returns the entire MusicBrainzReleaseXML file as a string."""
-
-        for (tag, order) in MusicBrainzReleaseXML.TAG_ORDER.items():
-            for parent in self.dom.getElementsByTagName(tag):
-                reorder_xml_children(parent, order)
-
-        return self.dom.toxml(encoding='utf-8')
 
 
 #takes a Document containing multiple <release> tags
