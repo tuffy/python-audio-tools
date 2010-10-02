@@ -2194,6 +2194,124 @@ class MetaDataFileException(Exception):
         return _(u"Invalid XMCD or MusicBrainz XML file")
 
 
+class AlbumMetaDataFile:
+    """A base class for MetaData containing files.
+
+    This includes FreeDB's XMCD files
+    and MusicBrainz's XML files."""
+
+    def __init__(self, album_name, artist_name, year, catalog,
+                 extra, track_metadata):
+        """track_metadata is a list of tuples.  The rest are unicode."""
+
+        self.album_name = album_name
+        self.artist_name = artist_name
+        self.year = year
+        self.catalog = catalog
+        self.extra = extra
+        self.track_metadata = track_metadata
+
+    def __len__(self):
+        return len(self.track_metadata)
+
+    def to_string(self):
+        """Returns this object as a plain string of data."""
+
+        raise NotImplementedError()
+
+    @classmethod
+    def from_string(cls, string):
+        """Given a plain string, returns an object of this class.
+
+        Raises MetaDataFileException if a parsing error occurs."""
+
+        raise NotImplementedError()
+
+    def get_track(self, index):
+        """Given a track index (from 0), returns (name, artist, extra).
+
+        name, artist and extra are unicode strings.
+        Raises IndexError if out-of-bounds."""
+
+        return self.track_metadata[i]
+
+    def set_track(self, index, name, artist, extra):
+        """Sets the track at the given index (from 0) to the given values.
+
+        Raises IndexError if out-of-bounds."""
+
+        self.track_metadata[i] = (name, artist, extra)
+
+    @classmethod
+    def from_tracks(cls, tracks):
+        """Given a list of AudioFile objects, returns an AlbumMetaDataFile.
+
+        All files are presumed to be from the same album."""
+
+        raise NotImplementedError()
+
+    @classmethod
+    def from_cuesheet(cls, cuesheet, total_frames, sample_rate, metadata=None):
+        """Returns an AlbumMetaDataFile from a cuesheet.
+
+        This must also include a total_frames and sample_rate integer.
+        This works by generating a set of empty tracks and calling
+        the from_tracks() method to build a MetaData file with
+        the proper placeholders.
+        metadata, if present, is applied to all tracks."""
+
+        if (metadata is None):
+            metadata = MetaData()
+
+        return cls.from_tracks([DummyAudioFile(
+                    length=(pcm_frames * 75) / sample_rate,
+                    metadata=metadata,
+                    track_number=i + 1) for (i, pcm_frames) in enumerate(
+                    cuesheet.pcm_lengths(total_frames))])
+
+    def track_metadata(self, track_number):
+        """Given a track_number (from 1), returns a MetaData object.
+
+        Raises IndexError if out-of-bounds."""
+
+        (track_name,
+         track_artist,
+         track_extra) = self.get_track(track_number - 1)
+
+        if (len(track_artist) == 0):
+            track_artist = self.artist
+
+        return MetaData(track_name=track_name,
+                        track_number=track_number,
+                        track_total=len(self),
+                        album_name=self.album_name,
+                        artist_name=track_artist,
+                        catalog=self.catalog,
+                        year=self.year)
+
+    def track_metadatas(self):
+        """Iterates over all the MetaData objects in this file."""
+
+        for i in xrange(len(self)):
+            yield self.track_metadata(i + 1)
+
+    def metadata(self):
+        """Returns a single MetaData object of all consistent fields.
+
+        For example, if album_name is the same in all MetaData objects,
+        the returned object will have that album_name value.
+        If track_name differs, the returned object will not
+        have a track_name field.
+        """
+
+        return MetaData(**dict([(field, list(items)[0])
+                                for (field, items) in
+                                [(field,
+                                  set([getattr(track, field) for track
+                                       in self.track_metadatas()]))
+                                 for field in MetaData.__FIELDS__]
+                                if (len(items) == 1)]))
+
 #######################
 #Image MetaData
 #######################

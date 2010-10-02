@@ -19,9 +19,9 @@
 
 
 from audiotools import (VERSION, Con, cStringIO, sys, re, MetaData,
-                        AlbumMetaData, __most_numerous__,
+                        AlbumMetaData, AlbumMetaDataFile, __most_numerous__,
                         DummyAudioFile, MetaDataFileException)
-
+import StringIO
 import gettext
 
 gettext.install("audiotools", unicode=True)
@@ -37,197 +37,174 @@ class XMCDException(MetaDataFileException):
     def __unicode__(self):
         return _(u"Invalid XMCD file")
 
+class XMCD(AlbumMetaDataFile):
+    LINE_LENGTH = 78
 
-class XMCD:
-    """An XMCD file representation."""
+    def __init__(self, fields, comments):
+        """fields a dict of key->values.  comment is a list of comments.
 
-    LINE_LIMIT = 78
+        keys are plain strings.  values and comments are unicode."""
 
-    def __init__(self, values, offsets, length):
-        """Fields are as follows:
+        self.fields = fields
+        self.comments = comments
 
-        values  - a dict of key->value pairs such as "TTITLE0":u"Track Name"
-        offsets - a list of track offset integers (in CD frames)
-        length  - a total album length integer (in seconds)
-        """
+    def __getattr__(self, key):
+        if (key == 'album_name'):
+            dtitle = self.fields.get('DTITLE', u"")
+            if (u" / " in dtitle):
+                return dtitle.split(u" / ", 1)[1]
+            else:
+                return dtitle
+        elif (key == 'artist_name'):
+            dtitle = self.fields.get('DTITLE', u"")
+            if (u" / " in dtitle):
+                return dtitle.split(u" / ", 1)[0]
+            else:
+                return u""
+        elif (key == 'year'):
+            return self.fields.get('DYEAR', u"")
+        elif (key == 'catalog'):
+            return u""
+        elif (key == 'extra'):
+            return self.fields.get('EXTD', u"")
+        else:
+            try:
+                return self.__dict__[key]
+            except KeyError:
+                raise AttributeError(key)
 
-        self.__values__ = values
-        self.offsets = offsets
-        self.length = length
-
-    def __repr__(self):
-        return "XMCD(%s,%s,%s)" % (repr(self.__values__),
-                                   repr(self.offsets),
-                                   repr(self.length))
-
-    def __getitem__(self, key):
-        return self.__values__[key]
-
-    def get(self, key, default):
-        return self.__values__.get(key, default)
-
-    def __setitem__(self, key, value):
-        self.__values__[key] = value
+    def __setattr__(self, key, value):
+        if (key == 'album_name'):
+            dtitle = self.fields.get('DTITLE', u"")
+            if (u" / " in dtitle):
+                artist = dtitle.split(u" / ", 1)[0]
+                self.fields['DTITLE'] = u"%s / %s" % (artist, value)
+            else:
+                self.fields['DTITLE'] = value
+        elif (key == 'artist_name'):
+            dtitle = self.fields.get('DTITLE', u"")
+            if (u" / " in dtitle):
+                album = dtitle.split(u" / ", 1)[1]
+            else:
+                album = dtitle
+            self.fields['DTITLE'] = u"%s / %s" % (value, album)
+        elif (key == 'year'):
+            self.fields['DYEAR'] = value
+        elif (key == 'catalog'):
+            pass
+        elif (key == 'extra'):
+            self.fields['EXTD'] = value
+        else:
+            self.__dict__[key] = value
 
     def __len__(self):
-        return len(self.__values__)
+        track_field = re.compile(r'(TTITLE|EXTT)(\d+)')
 
-    def keys(self):
-        return self.__values__.keys()
+        return max(set([int(m.group(2)) for m in
+                        [track_field.match(key) for key in self.fields.keys()]
+                        if m is not None])) + 1
 
-    def values(self):
-        return self.__values__.values()
+    def to_string(self):
+        def write_field(f, key, value):
+            chars = list(value)
+            encoded_value = ""
 
-    def items(self):
-        return self.__values__.items()
+            while ((len(chars) > 0) and
+                   (len(encoded_value) < XMCD.LINE_LENGTH)):
+                encoded_value += chars.pop(0).encode('utf-8', 'replace')
 
-    @classmethod
-    def key_digits(cls, key):
-        """Given a key, returns its digits as integer.
+            f.write("%s=%s\r\n" % (key, value.encode('utf-8')))
+            if (len(chars) > 0):
+                write_field(f, key, u"".join(chars))
 
-        For example:
-        >>> key_digits('TTITLE0')
-        0
-        """
+        output = cStringIO.StringIO()
 
-        import re
+        for comment in self.comments:
+            output.write(comment.encode('utf-8'))
+            output.write('\r\n')
 
-        d = re.search(r'\d+', key)
-        if (d is not None):
-            return int(d.group(0))
-        else:
-            return -1
+        fields = set(self.fields.keys())
+        for field in ['DISCID', 'DTITLE', 'DYEAR', 'DGENRE']:
+            if (field in fields):
+                write_field(output, field, self.fields[field])
+                fields.remove(field)
 
-    def build(self):
-        """Returns the entire XMCD file as a string."""
+        for i in xrange(len(self)):
+            field = 'TTITLE%d' % (i)
+            if (field in fields):
+                write_field(output, field, self.fields[field])
+                fields.remove(field)
 
-        import string
+        if ('EXTD' in fields):
+            write_field(output, 'EXTD', self.fields['EXTD'])
+            fields.remove('EXTD')
 
-        key_order = ['DISCID', 'DTITLE', 'DYEAR', 'TTITLE', 'EXTDD', 'EXTT',
-                     'PLAYORDER']
+        for i in xrange(len(self)):
+            field = 'EXTT%d' % (i)
+            if (field in fields):
+                write_field(output, field, self.fields[field])
+                fields.remove(field)
 
-        def by_pair(p1, p2):
-            if (p1[0].rstrip(string.digits) in key_order):
-                p1 = (key_order.index(p1[0].rstrip(string.digits)),
-                      self.key_digits(p1[0]),
-                      p1[0])
-            else:
-                p1 = (len(key_order),
-                      self.key_digits(p1[0]),
-                      p1[0])
+        for field in fields:
+            write_field(output, field, self.fields[field])
 
-            if (p2[0].rstrip(string.digits) in key_order):
-                p2 = (key_order.index(p2[0].rstrip(string.digits)),
-                      self.key_digits(p2[0]),
-                      p2[0])
-            else:
-                p2 = (len(key_order),
-                      self.key_digits(p2[0]),
-                      p2[0])
-
-            return cmp(p1, p2)
-
-        def encode(u):
-            return u.encode('utf-8')
-
-        def split_fields(pairs):
-            #returns index i which is less than l bytes from unicode string u
-            def max_chars(u, l):
-                for i in xrange(len(u.encode('utf-8')) + 1):
-                    if (len(u[0:i].encode('utf-8')) > l):
-                        return i - 1
-                else:
-                    return i
-
-            for (key, value) in pairs:
-                #line = u"%s=%s" % (key.decode('ascii'),value)
-                keylen = len(key) + len("=")
-                while ((keylen + len(value.encode('utf-8'))) >
-                       XMCD.LINE_LIMIT):
-                    #latin-1 lines might be shorter, but shouldn't be longer
-                    #UTF-8 assumes the worst case
-                    cut = max_chars(value, XMCD.LINE_LIMIT - len(key) -
-                                    len('='))
-                    partial = value[0:cut]
-                    value = value[cut:]
-                    yield u"%s=%s" % (key.decode('ascii'), partial)
-
-                yield u"%s=%s" % (key.decode('ascii'), value)
-
-        return encode((u"# xmcd\n#\n# Track frame offsets:\n" +
-                       u"%(offsets)s\n#\n# Disc length: %(length)s " +
-                       u"seconds\n#\n%(fields)s\n") % \
-            {"offsets": u"\n".join(["#\t%s" % (offset)
-                                   for offset in self.offsets]),
-             "length": self.length,
-             "fields": "\n".join(split_fields(sorted(self.items(), by_pair)))})
+        return output.getvalue()
 
     @classmethod
-    def read(cls, filename):
-        """Given a filename, returns an XMCD object if possible.
-
-        May raise XMCDException if the file cannot be read or parsed."""
-
-        import StringIO
-        import re
-
+    def from_string(cls, string):
         try:
-            f = open(filename, 'r')
-        except IOError:
-            raise XMCDException(filename)
-
-        try:
-            data = f.read()
-            try:
-                data = data.decode('utf-8')
-            except UnicodeDecodeError:
-                try:
-                    data = data.decode('ISO-8859-1')
-                except UnicodeDecodeError:
-                    raise XMCDException(filename)
-        finally:
-            f.close()
-
-        return cls.read_data(data)
-
-    @classmethod
-    def read_data(cls, data):
-        """Returns an XMCD object from a unicode string of XMCD data."""
-
-        if (not data.startswith(u"# xmcd")):
-            raise XMCDException("")
-
-        disc_length = re.search(r'# Disc length: (\d+)', data)
-        if (disc_length is not None):
-            disc_length = int(disc_length.group(1))
-
-        track_lengths = re.compile(r'# Track frame offsets:\s+[#\s\d]+',
-                                   re.DOTALL).search(data)
-        if (track_lengths is not None):
-            track_lengths = map(int,
-                                re.findall(r'\d+', track_lengths.group(0)))
+            data = string.decode('latin-1')
+        except UnicodeDecodeError:
+            data = string.decode('utf-8','replace')
 
         fields = {}
+        comments = []
+        field_line = re.compile(r'([A-Z0-9]+?)=(.*)')
 
-        for line in re.findall(r'.+=.*[\r\n]', data):
-            (field, value) = line.split(u'=', 1)
-            field = field.encode('ascii')
-            value = value.rstrip('\r\n')
-            if (field in fields.keys()):
-                fields[field] += value
+        for line in StringIO.StringIO(data):
+            if (line.startswith(u'#')):
+                comments.append(line.rstrip('\r\n'))
             else:
-                fields[field] = value
+                match = field_line.match(line.rstrip('\r\n'))
+                if (match is not None):
+                    key = match.group(1).encode('ascii')
+                    value = match.group(2)
+                    if (key in fields):
+                        fields[key] += value
+                    else:
+                        fields[key] = value
 
-        return XMCD(values=fields, offsets=track_lengths, length=disc_length)
+        return cls(fields, comments)
+
+    def get_track(self, index):
+        try:
+            ttitle = self.fields['TTITLE%d' % (index)]
+            track_extra = self.fields['EXTT%d' % (index)]
+        except KeyError:
+            raise IndexError(index)
+
+        if (u' / ' in ttitle):
+            (track_artist, track_title) = ttitle.split(u' / ', 1)
+        else:
+            track_title = ttitle
+            track_artist = self.artist_name
+
+        return (track_title, track_artist, track_extra)
+
+    def set_track(self, index, name, artist, extra):
+        if ((index < 0) or (index >= len(self))):
+            raise IndexError(index)
+
+        if (len(artist) > 0):
+            self.fields["TTITLE%d" % (index)] = u"%s / %s" % (artist, name)
+        else:
+            self.fields["TTITLE%d" % (index)] = name
+
+        if (len(extra) > 0):
+            self.fields["EXTT%d" % (index)] = extra
 
     @classmethod
-    def from_files(cls, audiofiles):
-        """Returns an XMCD object from a list of AudioFile objects.
-
-        These objects are presumably from the same album.
-        If not, these heuristics may generate something unexpected.
-        """
-
+    def from_tracks(cls, tracks):
         def track_string(track, album_artist, metadata):
             if (track.track_number() in metadata.keys()):
                 metadata = metadata[track.track_number()]
@@ -239,7 +216,7 @@ class XMCD:
             else:
                 return u""
 
-        audiofiles = [f for f in audiofiles if f.track_number() != 0]
+        audiofiles = [f for f in tracks if f.track_number() != 0]
         audiofiles.sort(lambda t1, t2: cmp(t1.track_number(),
                                            t2.track_number()))
 
@@ -259,82 +236,29 @@ class XMCD:
         else:
             album_artist = __most_numerous__(artist_names)
 
-        return XMCD(dict([("DISCID", str(discid).decode('ascii')),
-                          ("DTITLE", u"%s / %s" % \
-                               (album_artist,
-                                __most_numerous__([m.album_name for m in
-                                                   metadata.values()]))),
-                          ("DYEAR", __most_numerous__([m.year for m in
+        return cls(dict([("DISCID", str(discid).decode('ascii')),
+                         ("DTITLE", u"%s / %s" % \
+                              (album_artist,
+                               __most_numerous__([m.album_name for m in
+                                                  metadata.values()]))),
+                         ("DYEAR", __most_numerous__([m.year for m in
                                                       metadata.values()])),
-                          ("EXTDD", u""),
-                          ("PLAYORDER", u"")] + \
-                         [("TTITLE%d" % (track.track_number() - 1),
-                           track_string(track, album_artist, metadata))
-                          for track in audiofiles] + \
-                         [("EXTT%d" % (track.track_number() - 1),
-                           u"")
-                           for track in audiofiles]),
-                    discid.offsets(),
-                    (discid.length() / 75) + 2)
-
-    @classmethod
-    def from_cuesheet(cls, cuesheet, total_frames, sample_rate, metadata=None):
-        """Generates an XMCD object from a cuesheet.
-
-        This must also include a total_frames and sample_rate integer.
-        This works by generating a set of empty tracks and calling
-        the from_tracks() method to build an XMCD file with
-        the proper placeholders.
-        metadata, if present, is applied to all tracks.
-        """
-
-        if (metadata is None):
-            metadata = MetaData()
-
-        return cls.from_files([DummyAudioFile(
-                    length=(pcm_frames * 75) / sample_rate,
-                    metadata=metadata,
-                    track_number=i + 1) for (i, pcm_frames) in enumerate(
-                    cuesheet.pcm_lengths(total_frames))])
-
-    def metadata(self):
-        """Returns an AlbumMetaData object."""
-
-        dtitle = self.get('DTITLE', u'')
-        if (u' / ' in dtitle):
-            (album_artist, album_name) = dtitle.split(u' / ', 1)
-        else:
-            (album_artist, album_name) = (dtitle, dtitle)
-
-        dyear = self.get('DYEAR', u'')
-
-        tracks = []
-
-        for key in self.keys():
-            if (key.startswith('TTITLE')):
-                tracknum = self.key_digits(key)
-                if (tracknum == -1):
-                    continue
-
-                ttitle = self[key]
-
-                if (u' / ' in ttitle):
-                    (track_artist, track_name) = ttitle.split(u' / ', 1)
-                else:
-                    track_name = ttitle
-                    track_artist = album_artist
-
-                tracks.append(MetaData(track_name=track_name,
-                                       track_number=tracknum + 1,
-                                       album_name=album_name,
-                                       artist_name=track_artist,
-                                       year=dyear))
-
-        track_total = max([t.track_number for t in tracks])
-        for t in tracks:
-            t.track_total = track_total
-        tracks.sort(lambda t1, t2: cmp(t1.track_number, t2.track_number))
-        return AlbumMetaData(tracks)
+                         ("EXTDD", u""),
+                         ("PLAYORDER", u"")] + \
+                            [("TTITLE%d" % (track.track_number() - 1),
+                              track_string(track, album_artist, metadata))
+                             for track in audiofiles] + \
+                            [("EXTT%d" % (track.track_number() - 1),
+                              u"")
+                             for track in audiofiles]),
+                   [u"# xmcd",
+                    u"#",
+                    u"# Track frame offsets:"] +
+                   [u"#\t%d" % (offset) for offset in discid.offsets()] +
+                   [u"#",
+                    u"# Disc length: %d seconds" % (
+                    (discid.length() / 75) + 2),
+                    u"#"])
 
 
 #######################
