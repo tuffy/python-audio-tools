@@ -2289,6 +2289,12 @@ class AlbumMetaDataFile:
                         catalog=self.catalog,
                         year=self.year)
 
+    def get(self, track_index, default):
+        try:
+            return self.track_metadata(track_index)
+        except IndexError:
+            return default
+
     def track_metadatas(self):
         """Iterates over all the MetaData objects in this file."""
 
@@ -3447,21 +3453,26 @@ from __musicbrainz__ import *
 
 
 def read_metadata_file(filename):
-    """Returns an AlbumMetaData from an XMCD or MusicBrainz XML file.
+    """Returns an AlbumMetaDataFile-compatible file from a filename string.
 
     Raises a MetaDataFileException exception if an error occurs
     during reading.
     """
 
+    try:
+        data = file(filename, 'rb').read()
+    except IOError, msg:
+        raise MetaDataFileException(str(msg))
+
     #try XMCD first
     try:
-        return XMCD.read(filename).metadata()
+        return XMCD.from_string(data)
     except XMCDException:
         pass
 
     #then try MusicBrainz
     try:
-        return MusicBrainzReleaseXML.read(filename).metadata()
+        return MusicBrainzReleaseXML.from_string(data)
     except MBXMLException:
         pass
 

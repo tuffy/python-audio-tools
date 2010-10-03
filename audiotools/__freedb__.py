@@ -157,6 +157,9 @@ class XMCD(AlbumMetaDataFile):
         except UnicodeDecodeError:
             data = string.decode('utf-8','replace')
 
+        if (not data.startswith(u"# xmcd")):
+            raise XMCDException()
+
         fields = {}
         comments = []
         field_line = re.compile(r'([A-Z0-9]+?)=(.*)')

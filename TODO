@@ -2590,13 +2590,13 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** DONE Convert MusicBrainzReleaseXML to AlbumMetaDataFile subclass
 ** TODO Add unit tests for MusicBrainzReleaseXML
 ** TODO Update utilities to use new interface
-   - [ ] tracksplit
-   - [ ] track2track
-   - [ ] track2xmcd
-   - [ ] trackrename
-   - [ ] tracktag
+   - [X] tracksplit
+   - [X] track2track
+   - [X] track2xmcd
+   - [X] trackrename
+   - [X] tracktag
    - [ ] editxmcd
-   - [ ] cd2track
+   - [X] cd2track
    - [ ] cd2xmcd
 ** TODO Update old unit tests to new interface
 ** TODO Document AlbumMetaDataFile

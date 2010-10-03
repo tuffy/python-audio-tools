@@ -200,14 +200,13 @@ if (__name__ == '__main__'):
 
         try:
             if (xmcd is not None):  # we have metadata
-                try:
-                    metadata = xmcd[cd_track.track_number]
+                metadata = xmcd.get(cd_track.track_number, None)
+                if (metadata is not None):
                     if (options.album_number != 0):
                         metadata.album_number = options.album_number
                     if (options.album_total != 0):
                         metadata.album_total = options.album_total
-                except KeyError:
-                    metadata = None
+
 
                 filename = os.path.join(
                     base_directory,

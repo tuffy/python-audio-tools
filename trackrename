@@ -74,21 +74,20 @@ if (__name__ == '__main__'):
             msg.error(unicode(err))
             sys.exit(1)
     else:
-        xmcd = {}
+        xmcd = audiotools.AlbumMetaData([])
 
     try:
         for track in audiofiles:
-            if (track.track_number() in xmcd):
-                xmcd[track.track_number()].merge(track.get_metadata())
+            track_metadata = xmcd.get(track.track_number(), None)
+            if (track_metadata is None):
+                track_metadata = track.get_metadata()
+            else:
+                track_metadata.merge(track.get_metadata())
 
-        for (track, new_name) in [(
-                track,
-                track.track_name(
-                    file_path=track.filename,
-                    track_metadata=xmcd.get(track.track_number(),
-                                            track.get_metadata()),
-                    format=options.format))
-                                 for track in audiofiles]:
+            new_name = track.track_name(file_path=track.filename,
+                                        track_metadata=track_metadata,
+                                        format=options.format)
+
             (path, filename) = os.path.split(track.filename)
             if (filename != new_name):
                 try:

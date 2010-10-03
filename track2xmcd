@@ -149,9 +149,9 @@ if (__name__ == '__main__'):
                         audiofiles[0].sample_rate(),
                         audiofiles[0].get_metadata()).build())
             else:
-                outfile.write(output_class.from_files(audiofiles).build())
+                outfile.write(output_class.from_tracks(audiofiles).to_string())
         else:
-            outfile.write(output_class.from_files(audiofiles).build())
+            outfile.write(output_class.from_tracks(audiofiles).to_string())
     else:                     # grab XML/XMCD data from MusicBrainz/FreeDB
         if (len(audiofiles) == 1):
             file = audiofiles[0]

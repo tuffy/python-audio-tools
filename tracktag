@@ -44,13 +44,13 @@ def track_metadata(track, xmcd):
 #completely wipe out existing metadata
 #and replace with command-line tags merged with XMCD metadata
 def xmcd_metadata(track, xmcd):
-    try:
-        return xmcd[track.track_number()]
-    except KeyError:
-        if (len(xmcd) > 0):
-            return xmcd.metadata()
-        else:
-            return None
+    metadata = xmcd.get(track.track_number(), None)
+    if (metadata is not None):
+        return metadata
+    elif (len(xmcd) > 0):
+        return xmcd.metadata()
+    else:
+        return None
 
 
 #no --replace metadata, XMCD file given
@@ -62,14 +62,12 @@ def xmcd_track_metadata(track, xmcd):
     if (track_metadata is not None):
         xmcd_md = track_metadata.__class__.converted(
             xmcd_metadata(track, xmcd))
+    elif (len(xmcd) > 0):
+        xmcd_md = xmcd.get(track.track_number(), None)
+        if (xmcd_md is None):
+            xmcd_md = xmcd.metadata()
     else:
-        if (len(xmcd) > 0):
-            try:
-                xmcd_md = xmcd[track.track_number()]
-            except KeyError:
-                xmcd_md = xmcd.metadata()
-        else:
-            xmcd_md = None
+        xmcd_md = None
 
     if (xmcd_md is not None):
         xmcd_md.merge(track_metadata)
