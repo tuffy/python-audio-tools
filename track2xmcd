@@ -138,7 +138,7 @@ if (__name__ == '__main__'):
                             audiotools.read_sheet(options.cuesheet),
                             audiofiles[0].total_frames(),
                             audiofiles[0].sample_rate(),
-                            audiofiles[0].get_metadata()).build())
+                            audiofiles[0].get_metadata()).to_string())
                 except audiotools.SheetException, err:
                     msg.error(unicode(err))
                     sys.exit(1)
@@ -147,7 +147,7 @@ if (__name__ == '__main__'):
                         audiofiles[0].get_cuesheet(),
                         audiofiles[0].total_frames(),
                         audiofiles[0].sample_rate(),
-                        audiofiles[0].get_metadata()).build())
+                        audiofiles[0].get_metadata()).to_string())
             else:
                 outfile.write(output_class.from_tracks(audiofiles).to_string())
         else:

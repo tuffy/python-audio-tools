@@ -107,13 +107,14 @@ class XMCD(AlbumMetaDataFile):
     def to_string(self):
         def write_field(f, key, value):
             chars = list(value)
-            encoded_value = ""
+            encoded_value = "%s=" % (key)
 
             while ((len(chars) > 0) and
-                   (len(encoded_value) < XMCD.LINE_LENGTH)):
+                   (len(encoded_value +
+                        chars[0].encode('utf-8','replace')) < XMCD.LINE_LENGTH)):
                 encoded_value += chars.pop(0).encode('utf-8', 'replace')
 
-            f.write("%s=%s\r\n" % (key, value.encode('utf-8')))
+            f.write("%s\r\n" % (encoded_value))
             if (len(chars) > 0):
                 write_field(f, key, u"".join(chars))
 
@@ -152,10 +153,12 @@ class XMCD(AlbumMetaDataFile):
 
     @classmethod
     def from_string(cls, string):
-        try:
-            data = string.decode('latin-1')
-        except UnicodeDecodeError:
-            data = string.decode('utf-8','replace')
+        # try:
+        #     data = string.decode('latin-1')
+        # except UnicodeDecodeError:
+        #     data = string.decode('utf-8','replace')
+        #FIXME - handle latin-1 files?
+        data = string.decode('utf-8', 'replace')
 
         if (not data.startswith(u"# xmcd")):
             raise XMCDException()
@@ -184,7 +187,7 @@ class XMCD(AlbumMetaDataFile):
             ttitle = self.fields['TTITLE%d' % (index)]
             track_extra = self.fields['EXTT%d' % (index)]
         except KeyError:
-            raise IndexError(index)
+            return (u"", self.artist_name, u"")
 
         if (u' / ' in ttitle):
             (track_artist, track_title) = ttitle.split(u' / ', 1)

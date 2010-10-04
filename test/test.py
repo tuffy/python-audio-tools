@@ -1599,14 +1599,16 @@ class TestAiffAudio(TestTextOutput):
             xml = sub.stdout.read()
             self.assertEqual(sub.wait(), 0)
             self.assert_(len(xml) > 0)
-            mbxml = audiotools.MusicBrainzReleaseXML.read_data(xml).metadata()
+            mbxml = audiotools.MusicBrainzReleaseXML.from_string(xml)
 
             #NOTE: this fails intermittently simply because
             #the MusicBrainz service is not 100% reliable
             #an album that returns 1 match may return 0 later on
             #even with a lengthy delay between checks
             #this may only be a temporary problem
-            self.assertEqual(mbxml, MUSICBRAINZ_METADATA)
+            for i in xrange(1, len(mbxml) + 1):
+                self.assertEqual(mbxml.track_metadata(i),
+                                 MUSICBRAINZ_METADATA[i])
 
             #test freedb, no --metadata
             sub = subprocess.Popen(["track2xmcd", "-V", "quiet", "-D",
@@ -1614,11 +1616,13 @@ class TestAiffAudio(TestTextOutput):
                                     "--no-musicbrainz"] + arguments,
                                    stdout=subprocess.PIPE,
                                    stderr=open(os.devnull, "ab"))
-            xmcd = sub.stdout.read().decode('utf-8', 'replace')
+            xmcd = sub.stdout.read()
             self.assertEqual(sub.wait(), 0)
             self.assert_(len(xmcd) > 0)
-            xmcd = audiotools.XMCD.read_data(xmcd).metadata()
-            self.assertEqual(xmcd, FREEDB_METADATA)
+            xmcd = audiotools.XMCD.from_string(xmcd)
+            for i in xrange(1, len(xmcd) + 1):
+                self.assertEqual(xmcd.track_metadata(i),
+                                 FREEDB_METADATA[i])
 
         if (has_metadata):
             #test musicbrainz, with --metadata
@@ -1630,8 +1634,10 @@ class TestAiffAudio(TestTextOutput):
             xml = sub.stdout.read()
             self.assertEqual(sub.wait(), 0)
             self.assert_(len(xml) > 0)
-            mbxml = audiotools.MusicBrainzReleaseXML.read_data(xml).metadata()
-            self.assertEqual(mbxml, album_metadata)
+            mbxml = audiotools.MusicBrainzReleaseXML.from_string(xml)
+            for i in xrange(1, len(mbxml) + 1):
+                self.assertEqual(mbxml.track_metadata(i),
+                                 album_metadata[i])
 
             #test freedb, with --metadata
             sub = subprocess.Popen(["track2xmcd", "-V", "quiet",
@@ -1639,11 +1645,13 @@ class TestAiffAudio(TestTextOutput):
                                     "--no-musicbrainz"] + arguments,
                                    stdout=subprocess.PIPE,
                                    stderr=open(os.devnull, "ab"))
-            xmcd = sub.stdout.read().decode('utf-8', 'replace')
+            xmcd = sub.stdout.read()
             self.assertEqual(sub.wait(), 0)
             self.assert_(len(xmcd) > 0)
-            xmcd = audiotools.XMCD.read_data(xmcd).metadata()
-            self.assertEqual(xmcd, album_metadata)
+            xmcd = audiotools.XMCD.from_string(xmcd)
+            for i in xrange(1, len(xmcd) + 1):
+                self.assertEqual(xmcd.track_metadata(i),
+                                 album_metadata[i])
 
     #test individual tracks run through track2xmcd
     @TEST_EXECUTABLE
@@ -7496,14 +7504,15 @@ Is+xl9xg0BWyGXIZljPkM6xkKGQoZihlWM19CsPUca8l97sa7ZDGfwEBGThn""".decode('base64')
             try:
                 f.write(data)
                 f.flush()
+                f.seek(0, 0)
 
                 #check that reading in an XMCD file matches
                 #its expected values
-                xmcd = audiotools.XMCD.read(f.name)
-                self.assertEqual(length, xmcd.length)
-                self.assertEqual(offsets, xmcd.offsets)
+                xmcd = audiotools.XMCD.from_string(f.read())
+                # self.assertEqual(length, xmcd.length)
+                # self.assertEqual(offsets, xmcd.offsets)
                 for (pair1, pair2) in zip(sorted(items),
-                                         sorted(xmcd.items())):
+                                          sorted(xmcd.fields.items())):
                     self.assertEqual(pair1, pair2)
                 #self.assertEqual(dict(items),dict(xmcd.items()))
 
@@ -7511,18 +7520,20 @@ Is+xl9xg0BWyGXIZljPkM6xkKGQoZihlWM19CsPUca8l97sa7ZDGfwEBGThn""".decode('base64')
                 #and reading it back in results in the same values
                 f2 = tempfile.NamedTemporaryFile(suffix=".xmcd")
                 try:
-                    f2.write(xmcd.build())
+                    f2.write(xmcd.to_string())
                     f2.flush()
+                    f2.seek(0, 0)
 
-                    xmcd2 = audiotools.XMCD.read(f2.name)
-                    self.assertEqual(length, xmcd2.length)
-                    self.assertEqual(offsets, xmcd2.offsets)
+                    xmcd2 = audiotools.XMCD.from_string(f2.read())
+                    # self.assertEqual(length, xmcd2.length)
+                    # self.assertEqual(offsets, xmcd2.offsets)
                     for (pair1, pair2) in zip(sorted(items),
-                                             sorted(xmcd2.items())):
+                                              sorted(xmcd2.fields.items())):
                         self.assertEqual(pair1, pair2)
-                    self.assertEqual(xmcd.length, xmcd2.length)
-                    self.assertEqual(xmcd.offsets, xmcd2.offsets)
-                    self.assertEqual(dict(xmcd.items()), dict(xmcd2.items()))
+                    # self.assertEqual(xmcd.length, xmcd2.length)
+                    # self.assertEqual(xmcd.offsets, xmcd2.offsets)
+                    self.assertEqual(dict(xmcd.fields.items()),
+                                     dict(xmcd2.fields.items()))
                 finally:
                     f2.close()
             finally:
@@ -7535,8 +7546,9 @@ Is+xl9xg0BWyGXIZljPkM6xkKGQoZihlWM19CsPUca8l97sa7ZDGfwEBGThn""".decode('base64')
             try:
                 f.write(data)
                 f.flush()
+                f.seek(0, 0)
 
-                xmcd = audiotools.XMCD.read(f.name)
+                xmcd = audiotools.XMCD.from_string(f.read())
 
                 #build a bunch of temporary FLAC files from the track_lengths
                 temp_files = [tempfile.NamedTemporaryFile(suffix=".flac")
@@ -7554,30 +7566,33 @@ Is+xl9xg0BWyGXIZljPkM6xkKGQoZihlWM19CsPUca8l97sa7ZDGfwEBGThn""".decode('base64')
                             audiotools.MetaData(track_number=i + 1))
 
                     #tag them with metadata from XMCD
-                    metadata = xmcd.metadata()
-
                     for track in temp_tracks:
-                        track.set_metadata(metadata[track.track_number()])
+                        track.set_metadata(xmcd.track_metadata(
+                                track.track_number()))
 
                     #build a new XMCD file from track metadata
-                    xmcd2 = audiotools.XMCD.from_files(temp_tracks)
+                    xmcd2 = audiotools.XMCD.from_tracks(temp_tracks)
 
                     #check that the original XMCD values match the track ones
-                    self.assertEqual(xmcd.length, xmcd2.length)
-                    self.assertEqual(xmcd.offsets, xmcd2.offsets)
-                    self.assertEqual(xmcd['DISCID'], xmcd2['DISCID'])
-                    if (len([pair for pair in xmcd.items()
+                    # self.assertEqual(xmcd.length, xmcd2.length)
+                    # self.assertEqual(xmcd.offsets, xmcd2.offsets)
+                    self.assertEqual(xmcd.fields['DISCID'],
+                                     xmcd2.fields['DISCID'])
+                    if (len([pair for pair in xmcd.fields.items()
                              if (pair[0].startswith('TTITLE') and
                                  (u" / " in pair[1]))]) > 0):
-                        self.assertEqual(xmcd['DTITLE'].split(' / ', 1)[1],
-                                         xmcd2['DTITLE'].split(' / ', 1)[1])
+                        self.assertEqual(
+                            xmcd.fields['DTITLE'].split(' / ', 1)[1],
+                            xmcd2.fields['DTITLE'].split(' / ', 1)[1])
                     else:
-                        self.assertEqual(xmcd['DTITLE'], xmcd2['DTITLE'])
-                    self.assertEqual(xmcd['DYEAR'], xmcd2['DYEAR'])
+                        self.assertEqual(xmcd.fields['DTITLE'],
+                                         xmcd2.fields['DTITLE'])
+                    self.assertEqual(xmcd.fields['DYEAR'],
+                                     xmcd2.fields['DYEAR'])
                     for (pair1, pair2) in zip(
-                        sorted([pair for pair in xmcd.items()
+                        sorted([pair for pair in xmcd.fields.items()
                                 if (pair[0].startswith('TTITLE'))]),
-                        sorted([pair for pair in xmcd2.items()
+                        sorted([pair for pair in xmcd2.fields.items()
                                 if (pair[0].startswith('TTITLE'))])):
                         self.assertEqual(pair1, pair2)
                 finally:
@@ -7608,16 +7623,20 @@ Is+xl9xg0BWyGXIZljPkM6xkKGQoZihlWM19CsPUca8l97sa7ZDGfwEBGThn""".decode('base64')
                                      "TTITLE2":u"track three",
                                      "TTITLE4":u"track four",
                                      "TTITLE5":u"track five"}]):
-            xmcd = audiotools.XMCD(data, OFFSETS, LENGTH)
-            xmcd2 = audiotools.XMCD.read_data(xmcd.build().decode(encoding))
-            self.assertEqual(dict(xmcd.items()), dict(xmcd2.items()))
+            # xmcd = audiotools.XMCD(data, OFFSETS, LENGTH)
+            xmcd = audiotools.XMCD(data, [u"# xmcd"])
+            xmcd2 = audiotools.XMCD.from_string(xmcd.to_string())
+            self.assertEqual(dict(xmcd.fields.items()),
+                             dict(xmcd2.fields.items()))
 
             xmcdfile = tempfile.NamedTemporaryFile(suffix='.xmcd')
             try:
-                xmcdfile.write(xmcd.build())
+                xmcdfile.write(xmcd.to_string())
                 xmcdfile.flush()
-                xmcd2 = audiotools.XMCD.read(xmcdfile.name)
-                self.assertEqual(dict(xmcd.items()), dict(xmcd2.items()))
+                xmcdfile.seek(0, 0)
+                xmcd2 = audiotools.XMCD.from_string(xmcdfile.read())
+                self.assertEqual(dict(xmcd.fields.items()),
+                                 dict(xmcd2.fields.items()))
             finally:
                 xmcdfile.close()
 
@@ -7627,10 +7646,12 @@ Is+xl9xg0BWyGXIZljPkM6xkKGQoZihlWM19CsPUca8l97sa7ZDGfwEBGThn""".decode('base64')
                                 "TTITLE2": u"track three",
                                 "TTITLE4": u"track four",
                                 "TTITLE5": u"track five"},
-                               OFFSETS, LENGTH)
-        xmcd2 = audiotools.XMCD.read_data(xmcd.build().decode('ISO-8859-1'))
-        self.assertEqual(dict(xmcd.items()), dict(xmcd2.items()))
-        self.assert_(max(map(len, cStringIO.StringIO(xmcd.build()).readlines())) < 80)
+                               [u"# xmcd"])
+        xmcd2 = audiotools.XMCD.from_string(xmcd.to_string())
+        self.assertEqual(dict(xmcd.fields.items()),
+                         dict(xmcd2.fields.items()))
+        self.assert_(max(map(len,
+                             cStringIO.StringIO(xmcd.to_string()).readlines())) < 80)
 
         #ensure that UTF-8 multi-byte characters aren't split
         xmcd = audiotools.XMCD({"TTITLE0": u'\u30de\u30af\u30ed\u30b9' * 100,
@@ -7638,11 +7659,12 @@ Is+xl9xg0BWyGXIZljPkM6xkKGQoZihlWM19CsPUca8l97sa7ZDGfwEBGThn""".decode('base64')
                                 "TTITLE2": u"ab" + (u'\u30de\u30af\u30ed\u30b9' * 100),
                                 "TTITLE4": u"abc" + (u'\u30de\u30af\u30ed\u30b9' * 100),
                                 "TTITLE5": u"track tw\xf3"},
-                               OFFSETS, LENGTH)
+                               [u"# xmcd"])
 
-        xmcd2 = audiotools.XMCD.read_data(xmcd.build().decode('UTF-8'))
-        self.assertEqual(dict(xmcd.items()), dict(xmcd2.items()))
-        self.assert_(max(map(len, cStringIO.StringIO(xmcd.build()))) < 80)
+        xmcd2 = audiotools.XMCD.from_string(xmcd.to_string())
+        self.assertEqual(dict(xmcd.fields.items()),
+                         dict(xmcd2.fields.items()))
+        self.assert_(max(map(len, cStringIO.StringIO(xmcd.to_string()))) < 80)
 
     @TEST_EXECUTABLE
     def testtracktag(self):
@@ -7655,11 +7677,16 @@ Is+xl9xg0BWyGXIZljPkM6xkKGQoZihlWM19CsPUca8l97sa7ZDGfwEBGThn""".decode('base64')
                 "TTITLE1": u"track two",
                 "TTITLE2": u"track three",
                 "TTITLE3": u"track four",
-                "TTITLE4": u"track five"}
+                "TTITLE4": u"track five",
+                "EXTT0": u"",
+                "EXTT1": u"",
+                "EXTT2": u"",
+                "EXTT3": u"",
+                "EXTT4": u""}
 
         #construct our XMCD file
         xmcd_file = tempfile.NamedTemporaryFile(suffix=".xmcd")
-        xmcd_file.write(audiotools.XMCD(data, OFFSETS, LENGTH).build())
+        xmcd_file.write(audiotools.XMCD(data, [u"# xmcd"]).to_string())
         xmcd_file.flush()
 
         #construct a batch of temporary tracks
@@ -7696,7 +7723,7 @@ Is+xl9xg0BWyGXIZljPkM6xkKGQoZihlWM19CsPUca8l97sa7ZDGfwEBGThn""".decode('base64')
 
         #construct a fresh XMCD file
         xmcd_file = tempfile.NamedTemporaryFile(suffix=".xmcd")
-        xmcd_file.write(audiotools.XMCD(data, OFFSETS, LENGTH).build())
+        xmcd_file.write(audiotools.XMCD(data, [u"# xmcd"]).to_string())
         xmcd_file.flush()
 
         #construct a batch of temporary tracks with a file missing
@@ -7735,7 +7762,7 @@ Is+xl9xg0BWyGXIZljPkM6xkKGQoZihlWM19CsPUca8l97sa7ZDGfwEBGThn""".decode('base64')
         #construct a fresh XMCD file with a track missing
         del(data["TTITLE2"])
         xmcd_file = tempfile.NamedTemporaryFile(suffix=".xmcd")
-        xmcd_file.write(audiotools.XMCD(data, OFFSETS, LENGTH).build())
+        xmcd_file.write(audiotools.XMCD(data, [u"# xmcd"]).to_string())
         xmcd_file.flush()
 
         #construct a batch of temporary tracks
@@ -7916,8 +7943,9 @@ nbvdly53/Ea4Pe78RYPpd/V9AYf/k/36b75h+9/i7kinChIXRXTJwA==""".decode('base64').dec
         #check that reading in XML file data matches
         #its expected values
         for (xml, metadata) in self.XML_FILES:
-            self.assertEqual(audiotools.MusicBrainzReleaseXML.read_data(
-                    xml).metadata(), metadata)
+            mb_xml = audiotools.MusicBrainzReleaseXML.from_string(xml)
+            for i in xrange(len(mb_xml)):
+                self.assertEqual(mb_xml.track_metadata(i + 1), metadata[i + 1])
 
         #check that reading in an XML file matches
         #its expected values
@@ -7926,8 +7954,11 @@ nbvdly53/Ea4Pe78RYPpd/V9AYf/k/36b75h+9/i7kinChIXRXTJwA==""".decode('base64').dec
             try:
                 f.write(xml)
                 f.flush()
-                self.assertEqual(audiotools.MusicBrainzReleaseXML.read(
-                        f.name).metadata(), metadata)
+                f.seek(0, 0)
+                mb_xml = audiotools.MusicBrainzReleaseXML.from_string(f.read())
+                for i in xrange(len(mb_xml)):
+                    self.assertEqual(mb_xml.track_metadata(i + 1),
+                                     metadata[i + 1])
             finally:
                 f.close()
 
@@ -7946,16 +7977,19 @@ nbvdly53/Ea4Pe78RYPpd/V9AYf/k/36b75h+9/i7kinChIXRXTJwA==""".decode('base64').dec
                     track.set_metadata(audiotools.MetaData(track_number=i + 1))
 
                 #tag them with metadata from XML
-                xml_metadata = audiotools.MusicBrainzReleaseXML.read_data(xml).metadata()
+                xml_metadata = audiotools.MusicBrainzReleaseXML.from_string(xml)
                 for track in temp_tracks:
-                    track.set_metadata(xml_metadata[track.track_number()])
+                    track.set_metadata(
+                        xml_metadata.track_metadata(track.track_number()))
 
                 #build a new XML file from track metadata
-                new_xml = audiotools.MusicBrainzReleaseXML.from_files(
+                new_xml = audiotools.MusicBrainzReleaseXML.from_tracks(
                     temp_tracks)
 
                 #check that the original XML values match the track ones
-                self.assertEqual(metadata, new_xml.metadata())
+                for i in xrange(len(new_xml)):
+                    self.assertEqual(metadata[i + 1],
+                                     new_xml.track_metadata(i + 1))
             finally:
                 for t in temp_files:
                     t.close()
@@ -8068,17 +8102,17 @@ xgc9dasZmA0qsKdVxQWEfGIfIyv5/a66+X9X/i7kinChICe+4J4=""".decode('base64').decode(
 
         self.assert_(VALID_ORDER != INVALID_ORDER)
 
-        self.assertEqual(audiotools.MusicBrainzReleaseXML.read_data(
+        self.assertEqual(audiotools.MusicBrainzReleaseXML.from_string(
                 VALID_ORDER).metadata(),
-                         audiotools.MusicBrainzReleaseXML.read_data(
+                         audiotools.MusicBrainzReleaseXML.from_string(
                 INVALID_ORDER).metadata())
 
-        self.assertEqual(audiotools.MusicBrainzReleaseXML.read_data(
-                VALID_ORDER).build().replace('\n', ''),
+        self.assertEqual(audiotools.MusicBrainzReleaseXML.from_string(
+                VALID_ORDER).to_string().replace('\n', ''),
                          VALID_ORDER.replace('\n', ''))
 
-        self.assertEqual(audiotools.MusicBrainzReleaseXML.read_data(
-                INVALID_ORDER).build().replace('\n', ''),
+        self.assertEqual(audiotools.MusicBrainzReleaseXML.from_string(
+                INVALID_ORDER).to_string().replace('\n', ''),
                          VALID_ORDER.replace('\n', ''))
 
 
@@ -9118,8 +9152,7 @@ class TestTracksplitOutput(TestTextOutput):
     def test_tracksplit2(self):
         format_string = "%(track_name)s - %(album_track_number)s.%(suffix)s"
 
-        xmcd = audiotools.XMCD.read_data(open(self.xmcd_path).read().decode('utf-8'))
-        xmcd_metadata = xmcd.metadata()
+        xmcd = audiotools.XMCD.from_string(open(self.xmcd_path).read())
 
         self.assertEqual(self.__run_app__(
                 ["tracksplit", "-j", str(1), "-t", "mp3", "-d", self.dir2,
@@ -9134,7 +9167,7 @@ class TestTracksplitOutput(TestTextOutput):
                  "destination": self.filename(os.path.join(
                             self.dir2, audiotools.MP3Audio.track_name(
                                 file_path="track%d" % (i + 1),
-                                track_metadata=xmcd_metadata[i + 1],
+                                track_metadata=xmcd.track_metadata(i + 1),
                                 format=format_string)))})
 
         metadata = self.flac.get_metadata()
@@ -9155,7 +9188,7 @@ class TestTracksplitOutput(TestTextOutput):
                  "destination": self.filename(os.path.join(
                             self.dir2, audiotools.FlacAudio.track_name(
                                 file_path="track1%2.2d" % (i + 1),
-                                track_metadata=xmcd_metadata[i + 1],
+                                track_metadata=xmcd.track_metadata(i + 1),
                                 format=format_string)))})
         self.__check_info__(_(u"Adding ReplayGain metadata.  This may take some time."))
 
@@ -9336,8 +9369,10 @@ class TestTrackTag(unittest.TestCase):
             BLANK_PCM_Reader(5))
         self.track.set_metadata(audiotools.MetaData(track_number=1))
 
-        self.xmcd1 = audiotools.XMCD.read(self.xmcd1_file.name)
-        self.xmcd2 = audiotools.XMCD.read(self.xmcd2_file.name)
+        self.xmcd1_file.seek(0, 0)
+        self.xmcd1 = audiotools.XMCD.from_string(self.xmcd1_file.read())
+        self.xmcd2_file.seek(0, 0)
+        self.xmcd2 = audiotools.XMCD.from_string(self.xmcd2_file.read())
 
         self.metadata = audiotools.MetaData(track_name=u"Metadata Track 1",
                                             album_name=u"Metadata Album",
@@ -9394,13 +9429,15 @@ class TestTrackTag(unittest.TestCase):
         self.assertEqual(self.__run_tag__(
                 ["-x", self.xmcd1_file.name]), 0)
 
-        self.assertEqual(self.xmcd1.metadata()[1], self.track.get_metadata())
+        self.assertEqual(self.xmcd1.track_metadata(1),
+                         self.track.get_metadata())
 
         #then test overwriting it with another XMCD file
         self.assertEqual(self.__run_tag__(
                 ["-x", self.xmcd2_file.name]), 0)
 
-        self.assertEqual(self.xmcd2.metadata()[1], self.track.get_metadata())
+        self.assertEqual(self.xmcd2.track_metadata(1),
+                         self.track.get_metadata())
 
     @TEST_METADATA
     @TEST_EXECUTABLE
@@ -9489,7 +9526,8 @@ class TestTrackTag(unittest.TestCase):
         self.assertEqual(self.__run_tag__(
                 ["-x", self.xmcd1_file.name, "--replace"]), 0)
 
-        self.assertEqual(self.xmcd1.metadata()[1], self.track.get_metadata())
+        self.assertEqual(self.xmcd1.track_metadata(1),
+                         self.track.get_metadata())
 
         #then test overwriting it with another XMCD file
         self.assertEqual(self.__run_tag__(
@@ -9655,8 +9693,12 @@ class TestTrackTagXML(TestTrackTag):
             BLANK_PCM_Reader(5))
         self.track.set_metadata(audiotools.MetaData(track_number=1))
 
-        self.xmcd1 = audiotools.MusicBrainzReleaseXML.read(self.xmcd1_file.name)
-        self.xmcd2 = audiotools.MusicBrainzReleaseXML.read(self.xmcd2_file.name)
+        self.xmcd1_file.seek(0, 0)
+        self.xmcd1 = audiotools.MusicBrainzReleaseXML.from_string(
+            self.xmcd1_file.read())
+        self.xmcd2_file.seek(0, 0)
+        self.xmcd2 = audiotools.MusicBrainzReleaseXML.from_string(
+            self.xmcd2_file.read())
 
         self.metadata = audiotools.MetaData(track_name=u"Metadata Track 1",
                                             album_name=u"Metadata Album",
@@ -9692,12 +9734,15 @@ class TestTrack2Track(unittest.TestCase):
         self.xmcd_file = tempfile.NamedTemporaryFile(suffix=".xmcd")
         self.xmcd_file.write('# xmcd\n#\nDTITLE=XMCD Artist / XMCD Album\nDYEAR=2009\nTTITLE0=XMCD Track 1\nTTITLE1=XMCD Track 2\nTTITLE2=XMCD Track 3\nEXTDD=\nEXTT0=\nEXTT1=\nEXTT2=\nPLAYORDER=\n')
         self.xmcd_file.flush()
-        self.xmcd = audiotools.XMCD.read(self.xmcd_file.name)
+        self.xmcd_file.seek(0, 0)
+        self.xmcd = audiotools.XMCD.from_string(self.xmcd_file.read())
 
         self.xml_file = tempfile.NamedTemporaryFile(suffix=".xml")
         self.xml_file.write('<?xml version="1.0" encoding="utf-8"?>\n<metadata xmlns="http://musicbrainz.org/ns/mmd-1.0#" xmlns:ext="http://musicbrainz.org/ns/ext-1.0#"><release-list><release><title>XML Album</title><text-representation language="ENG" script="Latn"/><artist><name>XML Artist</name></artist><release-event-list><event date="2009-01-02" format="CD"/></release-event-list><track-list><track><title>XML Track 1</title><duration>218000</duration></track><track><title>XML Track 2</title><duration>204000</duration></track><track><title>XML Track 3</title><duration>218000</duration></track></track-list></release></release-list></metadata>\n')
         self.xml_file.flush()
-        self.xml = audiotools.MusicBrainzReleaseXML.read(self.xml_file.name)
+        self.xml_file.seek(0, 0)
+        self.xml = audiotools.MusicBrainzReleaseXML.from_string(
+            self.xml_file.read())
 
         self.track = audiotools.FlacAudio.from_pcm(
             self.track_file.name,
