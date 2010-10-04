@@ -7797,6 +7797,336 @@ Is+xl9xg0BWyGXIZljPkM6xkKGQoZihlWM19CsPUca8l97sa7ZDGfwEBGThn""".decode('base64')
             for track in temp_tracks:
                 track.close()
 
+    @TEST_METADATA
+    def test_attrs(self):
+        for (xmcd_data, attrs) in zip(
+            self.XMCD_FILES,
+            [{"album_name": u"\u30de\u30af\u30ed\u30b9F O\u30fbS\u30fbT\u30fb3 \u5a18\u305f\u307e\u2640\uff3bDisk1\uff3d",
+              "artist_name": u"\u30de\u30af\u30ed\u30b9FRONTIER",
+              "year": u"2008",
+              "extra": u" YEAR: 2008"},
+             {"album_name": u"Xenogears Light",
+              "artist_name": u"OneUp Studios",
+              "year": u"2005",
+              "extra": u" YEAR: 2005"},
+             {"album_name": u"Bleach The Best CD",
+              "artist_name": u"Various Artists",
+              "year": u"2006",
+              "extra": u"SVWC-7421"}]):
+            xmcd_file = audiotools.XMCD.from_string(xmcd_data[0])
+
+            #first, check that attributes are retrieved properly
+            for key in attrs.keys():
+                self.assertEqual(getattr(xmcd_file, key),
+                                 attrs[key])
+
+        #then, check that setting attributes round-trip properly
+        for xmcd_data in self.XMCD_FILES:
+            for (attr, new_value) in [
+                ("album_name", u"New Album"),
+                ("artist_name", u"T\u00e9st N\u00e0me"),
+                ("year", u"2010"),
+                ("extra", u"Extra!" * 200)]:
+                xmcd_file = audiotools.XMCD.from_string(xmcd_data[0])
+                setattr(xmcd_file, attr, new_value)
+                self.assertEqual(getattr(xmcd_file, attr), new_value)
+
+        #finally, check that the file with set attributes
+        #round-trips properly
+        for xmcd_data in self.XMCD_FILES:
+            for (attr, new_value) in [
+                ("album_name", u"New Album" * 8),
+                ("artist_name", u"T\u00e9st N\u00e0me" * 8),
+                ("year", u"2010"),
+                ("extra", u"Extra!" * 200)]:
+                xmcd_file = audiotools.XMCD.from_string(xmcd_data[0])
+                setattr(xmcd_file, attr, new_value)
+                xmcd_file2 = audiotools.XMCD.from_string(
+                    xmcd_file.to_string())
+                self.assertEqual(getattr(xmcd_file2, attr), new_value)
+                self.assertEqual(getattr(xmcd_file, attr),
+                                 getattr(xmcd_file2, attr))
+
+    @TEST_METADATA
+    def test_tracks(self):
+        for (xmcd_data, tracks) in zip(
+            self.XMCD_FILES,
+            [[(u'\u30c8\u30e9\u30a4\u30a2\u30f3\u30b0\u30e9\u30fc',
+               u'\u30de\u30af\u30ed\u30b9FRONTIER', u''),
+              (u"What 'bout my star? @Formo",
+               u'\u30de\u30af\u30ed\u30b9FRONTIER', u''),
+              (u'\u30a2\u30a4\u30e2',
+               u'\u30de\u30af\u30ed\u30b9FRONTIER', u''),
+              (u'\u30c0\u30a4\u30a2\u30e2\u30f3\u30c9 \u30af\u30ec\u30d0\u30b9\uff5e\u5c55\u671b\u516c\u5712\u306b\u3066',
+               u'\u30de\u30af\u30ed\u30b9FRONTIER', u''),
+              (u"Welcome To My FanClub's Night!",
+               u'\u30de\u30af\u30ed\u30b9FRONTIER', u''),
+              (u"\u5c04\u624b\u5ea7\u2606\u5348\u5f8c\u4e5d\u6642Don't be late",
+               u'\u30de\u30af\u30ed\u30b9FRONTIER', u''),
+              (u"What 'bout my star?",
+               u'\u30de\u30af\u30ed\u30b9FRONTIER', u''),
+              (u'\u30a4\u30f3\u30d5\u30a3\u30cb\u30c6\u30a3 #7',
+               u'\u30de\u30af\u30ed\u30b9FRONTIER', u''),
+              (u'\u300c\u8d85\u6642\u7a7a\u98ef\u5e97 \u5a18\u3005\u300d CM\u30bd\u30f3\u30b0 (Ranka Version)',
+               u'\u30de\u30af\u30ed\u30b9FRONTIER', u''),
+              (u'\u661f\u9593\u98db\u884c',
+               u'\u30de\u30af\u30ed\u30b9FRONTIER', u''),
+              (u'\u79c1\u306e\u5f7c\u306f\u30d1\u30a4\u30ed\u30c3\u30c8',
+               u'\u30de\u30af\u30ed\u30b9FRONTIER', u''),
+              (u'\u306d\u3053\u65e5\u8a18',
+               u'\u30de\u30af\u30ed\u30b9FRONTIER', u''),
+              (u'\u30cb\u30f3\u30b8\u30fc\u30f3 Loves you yeah!',
+               u'\u30de\u30af\u30ed\u30b9FRONTIER', u''),
+              (u'\u5b87\u5b99\u5144\u5f1f\u8239',
+               u'\u30de\u30af\u30ed\u30b9FRONTIER', u''),
+              (u'SMS\u5c0f\u968a\u306e\u6b4c\uff5e\u3042\u306e\u5a18\u306f\u30a8\u30a4\u30ea\u30a2\u30f3',
+               u'\u30de\u30af\u30ed\u30b9FRONTIER', u''),
+              (u'\u30a2\u30a4\u30e2 O.C.',
+               u'\u30de\u30af\u30ed\u30b9FRONTIER', u''),
+              (u'\u30a2\u30a4\u30e2\uff5e\u9ce5\u306e\u3072\u3068',
+               u'\u30de\u30af\u30ed\u30b9FRONTIER', u''),
+              (u'\u611b\u30fb\u304a\u307c\u3048\u3066\u3044\u307e\u3059\u304b',
+               u'\u30de\u30af\u30ed\u30b9FRONTIER', u''),
+              (u'\u30c0\u30a4\u30a2\u30e2\u30f3\u30c9 \u30af\u30ec\u30d0\u30b9',
+               u'\u30de\u30af\u30ed\u30b9FRONTIER', u''),
+              (u'\u30a2\u30a4\u30e2\uff5e\u3053\u3044\u306e\u3046\u305f\uff5e',
+               u'\u30de\u30af\u30ed\u30b9FRONTIER', u''),
+              (u'\u30a4\u30f3\u30d5\u30a3\u30cb\u30c6\u30a3 #7 without vocals',
+               u'\u30de\u30af\u30ed\u30b9FRONTIER', u''),
+              (u'\u30cb\u30f3\u30b8\u30fc\u30f3 Loves you yeah! without vocals',
+               u'\u30de\u30af\u30ed\u30b9FRONTIER', u'')],
+             [(u'Premonition', u'OneUp Studios', u''),
+              (u'Grahf, Conqueror of Darkness', u'OneUp Studios', u''),
+              (u'Tears of the Stars, Hearts of the People',
+               u'OneUp Studios', u''),
+              (u'Far Away Promise', u'OneUp Studios', u''),
+              (u'My Village Is Number One', u'OneUp Studios', u''),
+              (u'Shevat, the Wind is Calling', u'OneUp Studios', u''),
+              (u'Singing of the Gentle Wind', u'OneUp Studios', u''),
+              (u'Shattering the Egg of Dreams', u'OneUp Studios', u''),
+              (u'One Who Bares Fangs At God', u'OneUp Studios', u''),
+              (u'Bonds of Sea and Fire', u'OneUp Studios', u''),
+              (u'Ship of Sleep and Remorse', u'OneUp Studios', u''),
+              (u'Broken Mirror', u'OneUp Studios', u''),
+              (u'Dreams of the Strong', u'OneUp Studios', u''),
+              (u'The Blue Traveler', u'OneUp Studios', u''),
+              (u'October Mermaid', u'OneUp Studios', u''),
+              (u'The Treasure Which Cannot Be Stolen', u'OneUp Studios', u''),
+              (u'Valley Where the Wind is Born', u'OneUp Studios', u''),
+              (u'Gathering Stars in the Night Sky', u'OneUp Studios', u''),
+              (u'The Alpha and Omega', u'OneUp Studios', u''),
+              (u'Into Eternal Sleep', u'OneUp Studios', u'')],
+             [(u'\uff0a~\u30a2\u30b9\u30bf\u30ea\u30b9\u30af~',
+               u'ORANGE RANGE', u''),
+              (u'Life is Like a Boat', u'Rie fu', u''),
+              (u'\u30b5\u30f3\u30ad\u30e5\u30fc\uff01\uff01',
+               u'HOME MADE \u5bb6\u65cf', u''),
+              (u'D-tecnoLife', u'UVERworld', u''),
+              (u'\u307b\u3046\u304d\u661f', u'\u30e6\u30f3\u30ca', u''),
+              (u'happypeople', u'Skoop on Somebody', u''),
+              (u'\u4e00\u8f2a\u306e\u82b1', u'HIGH and MIGHTY COLOR', u''),
+              (u'LIFE', u'YUI', u''),
+              (u'\u30de\u30a4\u30da\u30fc\u30b9', u'SunSet Swish', u''),
+              (u'TONIGHT,TONIGHT,TONIGHT', u'BEAT CRUSADERS', u''),
+              (u'HANABI', u'\u3044\u304d\u3082\u306e\u304c\u304b\u308a', u''),
+              (u'MOVIN!!', u'\u30bf\u30ab\u30c1\u30e3', u'')]]):
+            xmcd_file = audiotools.XMCD.from_string(xmcd_data[0])
+
+            #first, check that tracks are read properly
+            for (i, data) in enumerate(tracks):
+                self.assertEqual(data, xmcd_file.get_track(i))
+
+            #then, check that setting tracks round-trip properly
+            for i in xrange(len(tracks)):
+                xmcd_file = audiotools.XMCD.from_string(xmcd_data[0])
+                xmcd_file.set_track(i,
+                                    u"Track %d" % (i),
+                                    u"Art\u00ecst N\u00e4me" * 40,
+                                    u"Extr\u00e5" * 40)
+                self.assertEqual(xmcd_file.get_track(i),
+                                 (u"Track %d" % (i),
+                                  u"Art\u00ecst N\u00e4me" * 40,
+                                  u"Extr\u00e5" * 40))
+
+            #finally, check that a file with set tracks round-trips
+            for i in xrange(len(tracks)):
+                xmcd_file = audiotools.XMCD.from_string(xmcd_data[0])
+                xmcd_file.set_track(i,
+                                    u"Track %d" % (i),
+                                    u"Art\u00ecst N\u00e4me" * 40,
+                                    u"Extr\u00e5" * 40)
+                xmcd_file2 = audiotools.XMCD.from_string(
+                    xmcd_file.to_string())
+                self.assertEqual(xmcd_file2.get_track(i),
+                                 (u"Track %d" % (i),
+                                  u"Art\u00ecst N\u00e4me" * 40,
+                                  u"Extr\u00e5" * 40))
+                self.assertEqual(xmcd_file.get_track(i),
+                                 xmcd_file2.get_track(i))
+
+    @TEST_METADATA
+    def test_from_tracks(self):
+        track_files = [tempfile.NamedTemporaryFile() for i in xrange(5)]
+        try:
+            tracks = [audiotools.FlacAudio.from_pcm(
+                    track.name,
+                    BLANK_PCM_Reader(1)) for track in track_files]
+            metadatas = [
+                audiotools.MetaData(track_name=u"Track Name",
+                                    artist_name=u"Album Artist",
+                                    album_name=u"Test Album",
+                                    track_number=1,
+                                    track_total=5,
+                                    year=u"2010"),
+                audiotools.MetaData(track_name=u"Track Name 2",
+                                    artist_name=u"Album Artist",
+                                    album_name=u"Test Album",
+                                    track_number=2,
+                                    track_total=5,
+                                    year=u"2010"),
+                audiotools.MetaData(track_name=u"Track Name 4",
+                                    artist_name=u"Special Artist",
+                                    album_name=u"Test Album 2",
+                                    track_number=4,
+                                    track_total=5,
+                                    year=u"2009"),
+                audiotools.MetaData(track_name=u"Track N\u00e1me 3",
+                                    artist_name=u"Album Artist",
+                                    album_name=u"Test Album",
+                                    track_number=3,
+                                    track_total=5,
+                                    year=u"2010"),
+                audiotools.MetaData(track_name=u"Track Name 5" * 40,
+                                    artist_name=u"Album Artist",
+                                    album_name=u"Test Album",
+                                    track_number=5,
+                                    track_total=5,
+                                    year=u"2010")]
+            for (track, metadata) in zip(tracks, metadatas):
+                track.set_metadata(metadata)
+                self.assertEqual(track.get_metadata(), metadata)
+            xmcd = audiotools.XMCD.from_tracks(tracks)
+            self.assertEqual(len(xmcd), 5)
+            self.assertEqual(xmcd.album_name, u"Test Album")
+            self.assertEqual(xmcd.artist_name, u"Album Artist")
+            self.assertEqual(xmcd.year, u"2010")
+            self.assertEqual(xmcd.catalog, u"")
+            self.assertEqual(xmcd.extra, u"")
+
+            #note that track 4 loses its intentionally malformed
+            #album name and year during the round-trip
+            for metadata in [
+                audiotools.MetaData(track_name=u"Track Name",
+                                    artist_name=u"Album Artist",
+                                    album_name=u"Test Album",
+                                    track_number=1,
+                                    track_total=5,
+                                    year=u"2010"),
+                audiotools.MetaData(track_name=u"Track Name 2",
+                                    artist_name=u"Album Artist",
+                                    album_name=u"Test Album",
+                                    track_number=2,
+                                    track_total=5,
+                                    year=u"2010"),
+                audiotools.MetaData(track_name=u"Track Name 4",
+                                    artist_name=u"Special Artist",
+                                    album_name=u"Test Album",
+                                    track_number=4,
+                                    track_total=5,
+                                    year=u"2010"),
+                audiotools.MetaData(track_name=u"Track N\u00e1me 3",
+                                    artist_name=u"Album Artist",
+                                    album_name=u"Test Album",
+                                    track_number=3,
+                                    track_total=5,
+                                    year=u"2010"),
+                audiotools.MetaData(track_name=u"Track Name 5" * 40,
+                                    artist_name=u"Album Artist",
+                                    album_name=u"Test Album",
+                                    track_number=5,
+                                    track_total=5,
+                                    year=u"2010")]:
+                self.assertEqual(metadata,
+                                 xmcd.track_metadata(metadata.track_number))
+        finally:
+            for track in track_files:
+                track.close()
+
+    @TEST_METADATA
+    def test_from_cuesheet(self):
+        CUESHEET = """REM DISCID 4A03DD06
+PERFORMER "Unknown Artist"
+TITLE "Unknown Title"
+FILE "cue.wav" WAVE
+  TRACK 01 AUDIO
+    TITLE "Track01"
+    INDEX 01 00:00:00
+  TRACK 02 AUDIO
+    TITLE "Track02"
+    INDEX 00 03:00:21
+    INDEX 01 03:02:21
+  TRACK 03 AUDIO
+    TITLE "Track03"
+    INDEX 00 06:00:13
+    INDEX 01 06:02:11
+  TRACK 04 AUDIO
+    TITLE "Track04"
+    INDEX 00 08:23:32
+    INDEX 01 08:25:32
+  TRACK 05 AUDIO
+    TITLE "Track05"
+    INDEX 00 12:27:40
+    INDEX 01 12:29:40
+  TRACK 06 AUDIO
+    TITLE "Track06"
+    INDEX 00 14:32:05
+    INDEX 01 14:34:05
+"""
+        cue_file = tempfile.NamedTemporaryFile(suffix=".cue")
+        try:
+            cue_file.write(CUESHEET)
+            cue_file.flush()
+
+            #from_cuesheet wraps around from_tracks,
+            #so I don't need to hit this one so hard
+            xmcd = audiotools.XMCD.from_cuesheet(
+                cuesheet=audiotools.read_sheet(cue_file.name),
+                total_frames=43646652,
+                sample_rate=44100,
+                metadata=audiotools.MetaData(album_name=u"Test Album",
+                                             artist_name=u"Test Artist"))
+
+            self.assertEqual(xmcd.album_name, u"Test Album")
+            self.assertEqual(xmcd.artist_name, u"Test Artist")
+            self.assertEqual(xmcd.year, u"")
+            self.assertEqual(xmcd.catalog, u"")
+            self.assertEqual(xmcd.extra, u"")
+            self.assertEqual(len(xmcd), 6)
+            for i in xrange(len(xmcd)):
+                self.assertEqual(xmcd.get_track(i),
+                                 (u"", u"Test Artist", u""))
+        finally:
+            cue_file.close()
+
+    # @TEST_METADATA
+    @TEST_CUSTOM
+    def test_missing_fields(self):
+        #FIXME
+        pass
+
+    @TEST_METADATA
+    def test_metadata(self):
+        xmcd = audiotools.XMCD({"DTITLE": u"Album Artist / Album Name",
+                                "DYEAR": u"2010",
+                                "TTITLE0": u"Track 1",
+                                "TTITLE1": u"Track 2",
+                                "TTITLE2": u"Track 3"},
+                               [u"# xmcd"])
+        self.assertEqual(xmcd.metadata(),
+                         audiotools.MetaData(artist_name=u"Album Artist",
+                                             album_name=u"Album Name",
+                                             track_total=3,
+                                             year=u"2010"))
 
 class TestMusicBrainzXML(unittest.TestCase):
     XML_FILES = [(
@@ -8114,6 +8444,260 @@ xgc9dasZmA0qsKdVxQWEfGIfIyv5/a66+X9X/i7kinChICe+4J4=""".decode('base64').decode(
         self.assertEqual(audiotools.MusicBrainzReleaseXML.from_string(
                 INVALID_ORDER).to_string().replace('\n', ''),
                          VALID_ORDER.replace('\n', ''))
+
+    @TEST_METADATA
+    def test_attrs(self):
+        for (xml_data, attrs) in zip(
+            self.XML_FILES,
+            [{"album_name": u'\u30de\u30af\u30ed\u30b9\u30d5\u30ed\u30f3\u30c6\u30a3\u30a2: \u5a18\u30d5\u30ed',
+              "artist_name": u'\u83c5\u91ce\u3088\u3046\u5b50',
+              "year": u'2008',
+              "catalog": u'VTCL-60060',
+              "extra": u""},
+             {"album_name": u'OneUp Studios presents Time & Space ~ A Tribute to Yasunori Mitsuda',
+              "artist_name": u'Various Artists',
+              "year": u'',
+              "catalog": u'',
+              "extra": u""},
+             {"album_name": u'FULLMETAL ALCHEMIST COMPLETE BEST',
+              "artist_name": u'Various Artists',
+              "year": u'2005',
+              "catalog": u'SVWC-7218',
+              "extra": u""}]):
+            mb_xml = audiotools.MusicBrainzReleaseXML.from_string(xml_data[0])
+
+            #first, check that attributes are retrieved properly
+            for key in attrs.keys():
+                self.assertEqual(getattr(mb_xml, key),
+                                 attrs[key])
+
+        #then, check that setting attributes round-trip properly
+        for (xml_data, xml_metadata) in self.XML_FILES:
+            for (attr, new_value) in [
+                ("album_name", u"New Album"),
+                ("artist_name", u"T\u00e9st N\u00e0me"),
+                ("year", u"2010"),
+                ("catalog", u"Catalog #")]:
+                mb_xml = audiotools.MusicBrainzReleaseXML.from_string(
+                    xml_data)
+                setattr(mb_xml, attr, new_value)
+                self.assertEqual(getattr(mb_xml, attr), new_value)
+
+        #finally, check that the file with set attributes
+        #round-trips properly
+        for (xml_data, xml_metadata) in self.XML_FILES:
+            for (attr, new_value) in [
+                ("album_name", u"New Album"),
+                ("artist_name", u"T\u00e9st N\u00e0me"),
+                ("year", u"2010"),
+                ("catalog", u"Catalog #")]:
+                mb_xml = audiotools.MusicBrainzReleaseXML.from_string(
+                    xml_data)
+                setattr(mb_xml, attr, new_value)
+                mb_xml2 = audiotools.MusicBrainzReleaseXML.from_string(
+                    mb_xml.to_string())
+                self.assertEqual(getattr(mb_xml2, attr), new_value)
+                self.assertEqual(getattr(mb_xml, attr),
+                                 getattr(mb_xml2, attr))
+
+    @TEST_METADATA
+    def test_tracks(self):
+        for (xml_data, metadata) in self.XML_FILES:
+            mb_xml = audiotools.MusicBrainzReleaseXML.from_string(xml_data)
+
+            #first, check that tracks are read properly
+            for (i, data) in enumerate(metadata):
+                self.assertEqual((metadata[i + 1].track_name,
+                                  metadata[i + 1].artist_name,
+                                  u""),
+                                 mb_xml.get_track(i))
+
+            #then, check that setting tracks round-trip properly
+            for i in xrange(len(metadata)):
+                mb_xml = audiotools.MusicBrainzReleaseXML.from_string(
+                    xml_data)
+                mb_xml.set_track(i,
+                                 u"Track %d" % (i),
+                                 u"Art\u00ecst N\u00e4me" * 40,
+                                 u"")
+                self.assertEqual(mb_xml.get_track(i),
+                                 (u"Track %d" % (i),
+                                  u"Art\u00ecst N\u00e4me" * 40,
+                                  u""))
+
+            #finally, check that a file with set tracks round-trips
+            for i in xrange(len(metadata)):
+                mb_xml = audiotools.MusicBrainzReleaseXML.from_string(
+                    xml_data)
+                mb_xml.set_track(i,
+                                 u"Track %d" % (i),
+                                 u"Art\u00ecst N\u00e4me" * 40,
+                                 u"")
+                mb_xml2 = audiotools.MusicBrainzReleaseXML.from_string(
+                    mb_xml.to_string())
+                self.assertEqual(mb_xml2.get_track(i),
+                                 (u"Track %d" % (i),
+                                  u"Art\u00ecst N\u00e4me" * 40,
+                                  u""))
+                self.assertEqual(mb_xml.get_track(i),
+                                 mb_xml2.get_track(i))
+
+    @TEST_METADATA
+    def test_from_tracks(self):
+        track_files = [tempfile.NamedTemporaryFile() for i in xrange(5)]
+        try:
+            tracks = [audiotools.FlacAudio.from_pcm(
+                    track.name,
+                    BLANK_PCM_Reader(1)) for track in track_files]
+            metadatas = [
+                audiotools.MetaData(track_name=u"Track Name",
+                                    artist_name=u"Album Artist",
+                                    album_name=u"Test Album",
+                                    track_number=1,
+                                    track_total=5,
+                                    year=u"2010"),
+                audiotools.MetaData(track_name=u"Track Name 2",
+                                    artist_name=u"Album Artist",
+                                    album_name=u"Test Album",
+                                    track_number=2,
+                                    track_total=5,
+                                    year=u"2010"),
+                audiotools.MetaData(track_name=u"Track Name 4",
+                                    artist_name=u"Special Artist",
+                                    album_name=u"Test Album 2",
+                                    track_number=4,
+                                    track_total=5,
+                                    year=u"2009"),
+                audiotools.MetaData(track_name=u"Track N\u00e1me 3",
+                                    artist_name=u"Album Artist",
+                                    album_name=u"Test Album",
+                                    track_number=3,
+                                    track_total=5,
+                                    year=u"2010"),
+                audiotools.MetaData(track_name=u"Track Name 5" * 40,
+                                    artist_name=u"Album Artist",
+                                    album_name=u"Test Album",
+                                    track_number=5,
+                                    track_total=5,
+                                    year=u"2010")]
+            for (track, metadata) in zip(tracks, metadatas):
+                track.set_metadata(metadata)
+                self.assertEqual(track.get_metadata(), metadata)
+            mb_xml = audiotools.MusicBrainzReleaseXML.from_tracks(tracks)
+            self.assertEqual(len(mb_xml), 5)
+            self.assertEqual(mb_xml.album_name, u"Test Album")
+            self.assertEqual(mb_xml.artist_name, u"Album Artist")
+            self.assertEqual(mb_xml.year, u"2010")
+            self.assertEqual(mb_xml.catalog, u"")
+            self.assertEqual(mb_xml.extra, u"")
+
+            #note that track 4 loses its intentionally malformed
+            #album name and year during the round-trip
+            for metadata in [
+                audiotools.MetaData(track_name=u"Track Name",
+                                    artist_name=u"Album Artist",
+                                    album_name=u"Test Album",
+                                    track_number=1,
+                                    track_total=5,
+                                    year=u"2010"),
+                audiotools.MetaData(track_name=u"Track Name 2",
+                                    artist_name=u"Album Artist",
+                                    album_name=u"Test Album",
+                                    track_number=2,
+                                    track_total=5,
+                                    year=u"2010"),
+                audiotools.MetaData(track_name=u"Track Name 4",
+                                    artist_name=u"Special Artist",
+                                    album_name=u"Test Album",
+                                    track_number=4,
+                                    track_total=5,
+                                    year=u"2010"),
+                audiotools.MetaData(track_name=u"Track N\u00e1me 3",
+                                    artist_name=u"Album Artist",
+                                    album_name=u"Test Album",
+                                    track_number=3,
+                                    track_total=5,
+                                    year=u"2010"),
+                audiotools.MetaData(track_name=u"Track Name 5" * 40,
+                                    artist_name=u"Album Artist",
+                                    album_name=u"Test Album",
+                                    track_number=5,
+                                    track_total=5,
+                                    year=u"2010")]:
+                self.assertEqual(metadata,
+                                 mb_xml.track_metadata(metadata.track_number))
+        finally:
+            for track in track_files:
+                track.close()
+
+    @TEST_METADATA
+    def test_from_cuesheet(self):
+        CUESHEET = """REM DISCID 4A03DD06
+PERFORMER "Unknown Artist"
+TITLE "Unknown Title"
+FILE "cue.wav" WAVE
+  TRACK 01 AUDIO
+    TITLE "Track01"
+    INDEX 01 00:00:00
+  TRACK 02 AUDIO
+    TITLE "Track02"
+    INDEX 00 03:00:21
+    INDEX 01 03:02:21
+  TRACK 03 AUDIO
+    TITLE "Track03"
+    INDEX 00 06:00:13
+    INDEX 01 06:02:11
+  TRACK 04 AUDIO
+    TITLE "Track04"
+    INDEX 00 08:23:32
+    INDEX 01 08:25:32
+  TRACK 05 AUDIO
+    TITLE "Track05"
+    INDEX 00 12:27:40
+    INDEX 01 12:29:40
+  TRACK 06 AUDIO
+    TITLE "Track06"
+    INDEX 00 14:32:05
+    INDEX 01 14:34:05
+"""
+        cue_file = tempfile.NamedTemporaryFile(suffix=".cue")
+        try:
+            cue_file.write(CUESHEET)
+            cue_file.flush()
+
+            #from_cuesheet wraps around from_tracks,
+            #so I don't need to hit this one so hard
+            mb_xml = audiotools.MusicBrainzReleaseXML.from_cuesheet(
+                cuesheet=audiotools.read_sheet(cue_file.name),
+                total_frames=43646652,
+                sample_rate=44100,
+                metadata=audiotools.MetaData(album_name=u"Test Album",
+                                             artist_name=u"Test Artist"))
+
+            self.assertEqual(mb_xml.album_name, u"Test Album")
+            self.assertEqual(mb_xml.artist_name, u"Test Artist")
+            self.assertEqual(mb_xml.year, u"")
+            self.assertEqual(mb_xml.catalog, u"")
+            self.assertEqual(mb_xml.extra, u"")
+            self.assertEqual(len(mb_xml), 6)
+            for i in xrange(len(mb_xml)):
+                self.assertEqual(mb_xml.get_track(i),
+                                 (u"", u"Test Artist", u""))
+        finally:
+            cue_file.close()
+
+
+    # @TEST_METADATA
+    @TEST_CUSTOM
+    def test_missing_fields(self):
+        #FIXME
+        pass
+
+    # @TEST_METADATA
+    @TEST_CUSTOM
+    def test_metadata(self):
+        #FIXME
+        pass
 
 
 class TestProgramOutput(TestTextOutput):

@@ -380,13 +380,16 @@ class MusicBrainzReleaseXML(AlbumMetaDataFile):
             else:
                 name.appendChild(self.dom.createTextNode(value))
         elif (key == 'year'):
-            walk_xml_tree(self.dom, u'metadata', u'release-list',
-                          u'release', u'release-event-list',
-                          u'event').setAttribute(u"date", value)
+            walk_xml_tree_build(self.dom, self.dom,
+                                u'metadata', u'release-list',
+                                u'release', u'release-event-list',
+                                u'event').setAttribute(u"date", value)
         elif (key == 'catalog'):
-                        walk_xml_tree(self.dom, u'metadata', u'release-list',
-                          u'release', u'release-event-list',
-                          u'event').setAttribute(u"catalog-number", value)
+            walk_xml_tree_build(self.dom, self.dom,
+                                u'metadata', u'release-list',
+                                u'release', u'release-event-list',
+                                u'event').setAttribute(u"catalog-number",
+                                                       value)
         elif (key == 'extra'):
             pass
         else:
@@ -430,7 +433,6 @@ class MusicBrainzReleaseXML(AlbumMetaDataFile):
         title.replaceChild(self.dom.createTextNode(name),
                            title.firstChild)
         if (len(artist) > 0):
-            print "setting artist"
             artist_node = walk_xml_tree_build(self.dom,
                                               track_node,
                                               u'artist', u'name')
@@ -454,6 +456,8 @@ class MusicBrainzReleaseXML(AlbumMetaDataFile):
             node = document.createElement(tagname)
             node.appendChild(document.createTextNode(text))
             return node
+
+        tracks.sort(lambda x, y: cmp(x.track_number(), y.track_number()))
 
         #our base DOM to start with
         dom = parseString('<?xml version="1.0" encoding="UTF-8"?>' +

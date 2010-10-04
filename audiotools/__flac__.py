@@ -416,13 +416,13 @@ class FlacPictureComment(Image):
         """
 
         return {0: "Other",
-                1: "32x32 pixels 'file icon' (PNG only)",
+                1: "File icon",
                 2: "Other file icon",
                 3: "Cover (front)",
                 4: "Cover (back)",
                 5: "Leaflet page",
-                6: "Media (e.g. label side of CD)",
-                7: "Lead artist/lead performer/soloist",
+                6: "Media",
+                7: "Lead artist / lead performer / soloist",
                 8: "Artist / Performer",
                 9: "Conductor",
                 10: "Band / Orchestra",
@@ -431,11 +431,11 @@ class FlacPictureComment(Image):
                 13: "Recording Location",
                 14: "During recording",
                 15: "During performance",
-                16: "Movie/Video screen capture",
-                17: "A bright coloured fish",
+                16: "Movie / Video screen capture",
+                17: "A bright colored fish",
                 18: "Illustration",
                 19: "Band/Artist logotype",
-                20: "Publisher/Studio logotype"}.get(self.flac_type, "Other")
+                20: "Publisher / Studio logotype"}.get(self.flac_type, "Other")
 
     def __repr__(self):
         return ("FlacPictureComment(type=%s,mime_type=%s,description=%s," +
