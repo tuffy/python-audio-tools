@@ -408,6 +408,7 @@ ALACDecoder_analyze_frame(decoders_ALACDecoder* self, PyObject *args)
     int interlacing_leftweight;
     int offset;
     PyObject *frame = NULL;
+    PyObject *frame_list = NULL;
 
     if (self->total_samples < 1)
         goto finished;
@@ -415,106 +416,122 @@ ALACDecoder_analyze_frame(decoders_ALACDecoder* self, PyObject *args)
     offset = bs_ftell(self->bitstream);
 
     if (!setjmp(*bs_try(self->bitstream))) {
-        frame_channels = self->bitstream->read(self->bitstream, 3) + 1;
-        if (frame_channels == 8) {
-            self->bitstream->byte_align(self->bitstream);
-            frame = Py_BuildValue("{si si}",
-                                  "delimiter", 1,
-                                  "offset", offset);
-            bs_etry(self->bitstream);
-            return frame;
-        }
+        frame_list = PyList_New(0);
+        for (frame_channels = self->bitstream->read(self->bitstream, 3) + 1;
+             frame_channels != 8;
+             frame_channels = self->bitstream->read(self->bitstream, 3) + 1) {
 
-        iaa_link(&frame_samples, &(self->samples));
-        iaa_link(&frame_wasted_bits, &(self->wasted_bits_samples));
-        iaa_link(&frame_residuals, &(self->residuals));
-        frame_samples.size = frame_channels;
-        frame_wasted_bits.size = frame_channels;
-        frame_residuals.size = frame_channels;
+            iaa_link(&frame_samples, &(self->samples));
+            iaa_link(&frame_wasted_bits, &(self->wasted_bits_samples));
+            iaa_link(&frame_residuals, &(self->residuals));
+            frame_samples.size = frame_channels;
+            frame_wasted_bits.size = frame_channels;
+            frame_residuals.size = frame_channels;
 
-        if (ALACDecoder_read_frame_header(self->bitstream,
-                                          &frame_header,
-                                          self->max_samples_per_frame) ==
-            ERROR)
-            goto error;
+            if (ALACDecoder_read_frame_header(self->bitstream,
+                                              &frame_header,
+                                              self->max_samples_per_frame) ==
+                ERROR)
+                goto error;
 
-        if (frame_header.is_not_compressed) {
-            iaa_reset(&frame_samples);
-            for (i = 0; i < frame_header.output_samples; i++) {
-                for (channel = 0; channel < frame_channels; channel++) {
-                    ia_append(&(frame_samples.arrays[channel]),
-                              self->bitstream->read_signed(
-                                            self->bitstream,
-                                            self->bits_per_sample));
+            if (frame_header.is_not_compressed) {
+                iaa_reset(&frame_samples);
+                for (i = 0; i < frame_header.output_samples; i++) {
+                    for (channel = 0; channel < frame_channels; channel++) {
+                        ia_append(&(frame_samples.arrays[channel]),
+                                  self->bitstream->read_signed(
+                                                      self->bitstream,
+                                                      self->bits_per_sample));
+                    }
                 }
+
+                frame = Py_BuildValue("{si si si si si sN si}",
+                                      "channels",
+                                      frame_channels,
+                                      "has_size",
+                                      frame_header.has_size,
+                                      "wasted_bits",
+                                      frame_header.wasted_bits,
+                                      "is_not_compressed",
+                                      frame_header.is_not_compressed,
+                                      "output_samples",
+                                      frame_header.output_samples,
+                                      "samples",
+                                      ia_array_to_list(&(frame_samples)),
+                                      "offset", offset);
+            } else {
+                interlacing_shift =
+                    self->bitstream->read(self->bitstream, 8);
+                interlacing_leftweight =
+                    self->bitstream->read(self->bitstream, 8);
+
+                /*read the subframe headers*/
+                for (i = 0; i < frame_channels; i++) {
+                    ALACDecoder_read_subframe_header(
+                                              self->bitstream,
+                                              &(self->subframe_headers[i]));
+                }
+
+                /*if there are wasted bits, read a block of interlaced
+                  wasted-bits samples, each (wasted_bits * 8) large*/
+                iaa_reset(&(self->wasted_bits_samples));
+                if (frame_header.wasted_bits > 0) {
+                    ALACDecoder_read_wasted_bits(self->bitstream,
+                                                 &(frame_wasted_bits),
+                                                 frame_header.output_samples,
+                                                 frame_channels,
+                                                 frame_header.wasted_bits * 8);
+                }
+
+                /*read a block of residuals for each subframe*/
+                for (i = 0; i < frame_channels; i++)
+                    if (ALACDecoder_read_residuals(
+                                              self->bitstream,
+                                              &(frame_residuals.arrays[i]),
+                                              frame_header.output_samples,
+                                              self->bits_per_sample -
+                                              (frame_header.wasted_bits * 8) +
+                                              frame_channels - 1,
+                                              self->initial_history,
+                                              self->history_multiplier,
+                                              self->maximum_k) == ERROR)
+                        goto error;
+
+                frame = Py_BuildValue("{si si si si si si si sN sN sN si}",
+                                      "channels",
+                                      frame_channels,
+                                      "has_size",
+                                      frame_header.has_size,
+                                      "wasted_bits",
+                                      frame_header.wasted_bits,
+                                      "is_not_compressed",
+                                      frame_header.is_not_compressed,
+                                      "output_samples",
+                                      frame_header.output_samples,
+                                      "interlacing_shift",
+                                      interlacing_shift,
+                                      "interlacing_leftweight",
+                                      interlacing_leftweight,
+                                      "subframe_headers",
+                                      subframe_headers_list(
+                                                      self->subframe_headers,
+                                                      frame_channels),
+                                      "wasted_bits",
+                                      ia_array_to_list(&(frame_wasted_bits)),
+                                      "residuals",
+                                      ia_array_to_list(&(frame_residuals)),
+                                      "offset",
+                                      offset);
             }
 
-            frame = Py_BuildValue(
-                        "{si si si si si sN si}",
-                        "channels", frame_channels,
-                        "has_size", frame_header.has_size,
-                        "wasted_bits", frame_header.wasted_bits,
-                        "is_not_compressed", frame_header.is_not_compressed,
-                        "output_samples", frame_header.output_samples,
-                        "samples", ia_array_to_list(&(frame_samples)),
-                        "offset", offset);
-        } else {
-            interlacing_shift = self->bitstream->read(self->bitstream, 8);
-            interlacing_leftweight = self->bitstream->read(self->bitstream, 8);
+            self->total_samples -= (frame_header.output_samples *
+                                    frame_channels);
 
-            /*read the subframe headers*/
-            for (i = 0; i < frame_channels; i++) {
-                ALACDecoder_read_subframe_header(self->bitstream,
-                                                 &(self->subframe_headers[i]));
-            }
-
-
-            /*if there are wasted bits, read a block of interlaced
-              wasted-bits samples, each (wasted_bits * 8) large*/
-            iaa_reset(&(self->wasted_bits_samples));
-            if (frame_header.wasted_bits > 0) {
-                ALACDecoder_read_wasted_bits(self->bitstream,
-                                             &(frame_wasted_bits),
-                                             frame_header.output_samples,
-                                             frame_channels,
-                                             frame_header.wasted_bits * 8);
-            }
-
-            /*read a block of residuals for each subframe*/
-            for (i = 0; i < frame_channels; i++) {
-                if (ALACDecoder_read_residuals(
-                                self->bitstream,
-                                &(frame_residuals.arrays[i]),
-                                frame_header.output_samples,
-                                self->bits_per_sample -
-                                (frame_header.wasted_bits * 8) +
-                                frame_channels - 1,
-                                self->initial_history,
-                                self->history_multiplier,
-                                self->maximum_k) == ERROR)
-                    goto error;
-            }
-
-            frame = Py_BuildValue(
-                        "{si si si si si si si sN sN sN si}",
-                        "channels", frame_channels,
-                        "has_size", frame_header.has_size,
-                        "wasted_bits", frame_header.wasted_bits,
-                        "is_not_compressed", frame_header.is_not_compressed,
-                        "output_samples", frame_header.output_samples,
-                        "interlacing_shift", interlacing_shift,
-                        "interlacing_leftweight", interlacing_leftweight,
-                        "subframe_headers", subframe_headers_list(
-                                self->subframe_headers, frame_channels),
-                        "wasted_bits", ia_array_to_list(
-                                &(frame_wasted_bits)),
-                        "residuals", ia_array_to_list(&(frame_residuals)),
-                        "offset", offset);
+            PyList_Append(frame_list, frame);
         }
-
-        self->total_samples -= (frame_header.output_samples *
-                                frame_channels);
     } else {
+        Py_XDECREF(frame);
+        Py_XDECREF(frame_list);
         PyErr_SetString(PyExc_IOError,
                         "EOF during frame reading");
         goto error;
@@ -522,7 +539,7 @@ ALACDecoder_analyze_frame(decoders_ALACDecoder* self, PyObject *args)
 
     bs_etry(self->bitstream);
 
-    return frame;
+    return frame_list;
  finished:
     Py_INCREF(Py_None);
     return Py_None;
