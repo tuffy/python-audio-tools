@@ -42,7 +42,8 @@ typedef struct {
     int initial_history;
     int maximum_k;
 
-    struct ia_array samples;
+    int current_channel;
+    struct ia_array samples; /*a sample buffer for an entire group of frames*/
     struct ia_array subframe_samples; /*a sample buffer for subframe output*/
     struct ia_array wasted_bits_samples;  /*a buffer for wasted-bits samples*/
     struct ia_array residuals; /*a buffer for residual values*/

@@ -359,6 +359,14 @@ iaa_free(struct ia_array *array);
 void
 iaa_copy(struct ia_array *target, struct ia_array *source);
 
+static inline void
+iaa_link(struct ia_array *target, struct ia_array *source)
+{
+    target->size = source->size;
+    target->total_size = source->total_size;
+    target->arrays = source->arrays;
+}
+
 static inline struct i_array*
 iaa_getitem(struct ia_array *array, ia_offset_t index)
 {

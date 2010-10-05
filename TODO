@@ -2616,3 +2616,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** TODO Unit test multichannel ALAC encoding and decoding
 ** TODO Update decoding documentation describing multichannel handling
 ** TODO Update encoding documentation describing multichannel handling
+* TODO Add higher sampling rate support to ReplayGain module
+  Extract the higher rates from wvgain.c
+

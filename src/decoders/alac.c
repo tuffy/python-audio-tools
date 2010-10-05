@@ -381,6 +381,9 @@ ALACDecoder_analyze_frame(decoders_ALACDecoder* self, PyObject *args)
 {
     int frame_channels;
     struct alac_frame_header frame_header;
+    struct ia_array frame_samples;
+    struct ia_array frame_wasted_bits;
+    struct ia_array frame_residuals;
     int i;
     int channel;
     int interlacing_shift;
@@ -404,6 +407,13 @@ ALACDecoder_analyze_frame(decoders_ALACDecoder* self, PyObject *args)
             return frame;
         }
 
+        iaa_link(&frame_samples, &(self->samples));
+        iaa_link(&frame_wasted_bits, &(self->wasted_bits_samples));
+        iaa_link(&frame_residuals, &(self->residuals));
+        frame_samples.size = frame_channels;
+        frame_wasted_bits.size = frame_channels;
+        frame_residuals.size = frame_channels;
+
         if (ALACDecoder_read_frame_header(self->bitstream,
                                           &frame_header,
                                           self->max_samples_per_frame) ==
@@ -411,10 +421,10 @@ ALACDecoder_analyze_frame(decoders_ALACDecoder* self, PyObject *args)
             goto error;
 
         if (frame_header.is_not_compressed) {
-            iaa_reset(&(self->samples));
+            iaa_reset(&frame_samples);
             for (i = 0; i < frame_header.output_samples; i++) {
                 for (channel = 0; channel < frame_channels; channel++) {
-                    ia_append(iaa_getitem(&(self->samples), channel),
+                    ia_append(&(frame_samples.arrays[channel]),
                               self->bitstream->read_signed(
                                             self->bitstream,
                                             self->bits_per_sample));
@@ -428,7 +438,7 @@ ALACDecoder_analyze_frame(decoders_ALACDecoder* self, PyObject *args)
                         "wasted_bits", frame_header.wasted_bits,
                         "is_not_compressed", frame_header.is_not_compressed,
                         "output_samples", frame_header.output_samples,
-                        "samples", ia_array_to_list(&(self->samples)),
+                        "samples", ia_array_to_list(&(frame_samples)),
                         "offset", offset);
         } else {
             interlacing_shift = self->bitstream->read(self->bitstream, 8);
@@ -446,7 +456,7 @@ ALACDecoder_analyze_frame(decoders_ALACDecoder* self, PyObject *args)
             iaa_reset(&(self->wasted_bits_samples));
             if (frame_header.wasted_bits > 0) {
                 ALACDecoder_read_wasted_bits(self->bitstream,
-                                             &(self->wasted_bits_samples),
+                                             &(frame_wasted_bits),
                                              frame_header.output_samples,
                                              frame_channels,
                                              frame_header.wasted_bits * 8);
@@ -456,7 +466,7 @@ ALACDecoder_analyze_frame(decoders_ALACDecoder* self, PyObject *args)
             for (i = 0; i < frame_channels; i++) {
                 if (ALACDecoder_read_residuals(
                                 self->bitstream,
-                                iaa_getitem(&(self->residuals), i),
+                                &(frame_residuals.arrays[i]),
                                 frame_header.output_samples,
                                 self->bits_per_sample -
                                 (frame_header.wasted_bits * 8) +
@@ -479,8 +489,8 @@ ALACDecoder_analyze_frame(decoders_ALACDecoder* self, PyObject *args)
                         "subframe_headers", subframe_headers_list(
                                 self->subframe_headers, frame_channels),
                         "wasted_bits", ia_array_to_list(
-                                &(self->wasted_bits_samples)),
-                        "residuals", ia_array_to_list(&(self->residuals)),
+                                &(frame_wasted_bits)),
+                        "residuals", ia_array_to_list(&(frame_residuals)),
                         "offset", offset);
         }
 
