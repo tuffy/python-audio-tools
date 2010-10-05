@@ -1288,7 +1288,12 @@ class ALACAudio(M4AAudio):
     def channel_mask(self):
         """Returns a ChannelMask object of this track's channel layout."""
 
-        return ChannelMask.from_channels(self.channels())
+        try:
+            #FIXME - see if it's possible to find an actual channel mask
+            #for multichannel ALAC audio
+            return ChannelMask.from_channels(self.channels())
+        except ValueError:
+            return 0
 
     def cd_frames(self):
         """Returns the total length of the track in CD frames.
@@ -1323,7 +1328,7 @@ class ALACAudio(M4AAudio):
                 filename=self.filename,
                 sample_rate=alac.sample_rate,
                 channels=alac.channels,
-                channel_mask=ChannelMask.from_channels(alac.channels),
+                channel_mask=self.channel_mask(),
                 bits_per_sample=alac.sample_size,
                 total_frames=self.total_frames(),
                 max_samples_per_frame=alac.max_samples_per_frame,

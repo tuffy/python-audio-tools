@@ -2600,3 +2600,19 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    - [ ] cd2xmcd
 ** DONE Update old unit tests to new interface
 ** TODO Document AlbumMetaDataFile
+* TODO Update ALAC to handle multichannel audio
+  What David Hammerton's reverse-engineered decoder described as
+  a 3-bit frame footer isn't; it's actually a "stop" delimiter
+  analagous to WavPack's block header stop bit.
+  If it's not 0x7, keep reading frames and combine them
+  channel-wise into a single multichannel chunk of output.
+
+  iTunes and iPods still won't be able to handle such files,
+  but XLD should be able to.
+** DONE Update ALACDecoder's analyze_frame() method for multichannel
+** TODO Update ALACDecoder's read() method for multichannel
+** TODO Determine proper channel_mask, if possible
+** TODO Update encode_alac function for multichannel
+** TODO Unit test multichannel ALAC encoding and decoding
+** TODO Update decoding documentation describing multichannel handling
+** TODO Update encoding documentation describing multichannel handling

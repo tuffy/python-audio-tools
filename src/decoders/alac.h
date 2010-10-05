@@ -34,7 +34,7 @@ typedef struct {
     int channel_mask;
     int bits_per_sample;
 
-    int total_frames;
+    int total_samples;
 
     /*a bunch of decoding fields pulled from the stream's 'alac' atom*/
     int max_samples_per_frame;
@@ -50,7 +50,6 @@ typedef struct {
 } decoders_ALACDecoder;
 
 struct alac_frame_header {
-    uint8_t channels;
     uint8_t has_size;
     uint8_t wasted_bits;
     uint8_t is_not_compressed;
