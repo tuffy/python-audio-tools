@@ -11300,7 +11300,76 @@ class TestFlacCodec(unittest.TestCase):
                 test_streams.Sine24_Stereo(200000, 44100, 441.0, 0.61, 661.5, 0.37, 2.0),
                 test_streams.Sine24_Stereo(200000, 44100, 441.0, 0.50, 882.0, 0.49, 0.7),
                 test_streams.Sine24_Stereo(200000, 44100, 441.0, 0.50, 4410.0, 0.49, 1.3),
-                test_streams.Sine24_Stereo(200000, 44100, 8820.0, 0.70, 4410.0, 0.29, 0.1)]
+                test_streams.Sine24_Stereo(200000, 44100, 8820.0, 0.70, 4410.0, 0.29, 0.1),
+
+                test_streams.Simple_Sine(200000, 44100, 0x7, 8,
+                                         (25, 10000),
+                                         (50, 20000),
+                                         (120, 30000)),
+                test_streams.Simple_Sine(200000, 44100, 0x33, 8,
+                                         (25, 10000),
+                                         (50, 20000),
+                                         (75, 30000),
+                                         (65, 40000)),
+                test_streams.Simple_Sine(200000, 44100, 0x37, 8,
+                                         (25, 10000),
+                                         (35, 15000),
+                                         (45, 20000),
+                                         (50, 25000),
+                                         (55, 30000)),
+                test_streams.Simple_Sine(200000, 44100, 0x3F, 8,
+                                         (25, 10000),
+                                         (45, 15000),
+                                         (65, 20000),
+                                         (85, 25000),
+                                         (105, 30000),
+                                         (120, 35000)),
+
+                test_streams.Simple_Sine(200000, 44100, 0x7, 16,
+                                         (6400, 10000),
+                                         (12800, 20000),
+                                         (30720, 30000)),
+                test_streams.Simple_Sine(200000, 44100, 0x33, 16,
+                                         (6400, 10000),
+                                         (12800, 20000),
+                                         (19200, 30000),
+                                         (16640, 40000)),
+                test_streams.Simple_Sine(200000, 44100, 0x37, 16,
+                                         (6400, 10000),
+                                         (8960, 15000),
+                                         (11520, 20000),
+                                         (12800, 25000),
+                                         (14080, 30000)),
+                test_streams.Simple_Sine(200000, 44100, 0x3F, 16,
+                                         (6400, 10000),
+                                         (11520, 15000),
+                                         (16640, 20000),
+                                         (21760, 25000),
+                                         (26880, 30000),
+                                         (30720, 35000)),
+
+                test_streams.Simple_Sine(200000, 44100, 0x7, 24,
+                                         (1638400, 10000),
+                                         (3276800, 20000),
+                                         (7864320, 30000)),
+                test_streams.Simple_Sine(200000, 44100, 0x33, 24,
+                                         (1638400, 10000),
+                                         (3276800, 20000),
+                                         (4915200, 30000),
+                                         (4259840, 40000)),
+                test_streams.Simple_Sine(200000, 44100, 0x37, 24,
+                                         (1638400, 10000),
+                                         (2293760, 15000),
+                                         (2949120, 20000),
+                                         (3276800, 25000),
+                                         (3604480, 30000)),
+                test_streams.Simple_Sine(200000, 44100, 0x3F, 24,
+                                         (1638400, 10000),
+                                         (2949120, 15000),
+                                         (4259840, 20000),
+                                         (5570560, 25000),
+                                         (6881280, 30000),
+                                         (7864320, 35000))]
         for stream in self.__class__.__stream_variations_cache__:
             stream.reset()
             yield stream
@@ -13570,6 +13639,15 @@ class TestMultiChannel(unittest.TestCase):
                                                False)
         for channels in xrange(3, 21):
             self.__test_undefined_mask_blank__(audiotools.WavPackAudio,
+                                               channels,
+                                               True)
+
+        for channels in xrange(1, 3):
+            self.__test_undefined_mask_blank__(audiotools.ALACAudio,
+                                               channels,
+                                               False)
+        for channels in xrange(3, 21):
+            self.__test_undefined_mask_blank__(audiotools.ALACAudio,
                                                channels,
                                                True)
 

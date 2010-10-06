@@ -12,7 +12,8 @@ from hashlib import md5
 
 
 class FrameListReader:
-    def __init__(self, samples, sample_rate, channels, bits_per_sample):
+    def __init__(self, samples, sample_rate, channels, bits_per_sample,
+                 channel_mask = None):
         import audiotools.pcm
 
         self.framelist = audiotools.pcm.from_list(samples,
@@ -21,7 +22,10 @@ class FrameListReader:
                                                   True)
         self.sample_rate = sample_rate
         self.channels = channels
-        self.channel_mask = audiotools.ChannelMask.from_channels(channels)
+        if (channel_mask is None):
+            self.channel_mask = audiotools.ChannelMask.from_channels(channels)
+        else:
+            self.channel_mask = channel_mask
         self.bits_per_sample = bits_per_sample
 
     def read(self, bytes):
@@ -320,6 +324,38 @@ class Sine24_Stereo(MD5Reader):
              self.channels,
              self.bits_per_sample,
              ",".join(map(repr, self.options)))
+
+
+class Simple_Sine(MD5Reader):
+    def __init__(self, pcm_frames, sample_rate, channel_mask,
+                 bits_per_sample, *values):
+        """Each values is as (max_value, count) tuple for each channel."""
+
+        self.wave = [0] * (pcm_frames * len(values))
+        for (i, (max_value, count)) in enumerate(values):
+            self.wave[i::len(values)] = [
+                int(round(max_value *
+                          math.sin((((math.pi * 2) * (j % count))) / count)))
+                for j in xrange(pcm_frames)]
+
+        MD5Reader.__init__(self,
+                           FrameListReader(self.wave,
+                                           sample_rate,
+                                           len(values),
+                                           bits_per_sample,
+                                           channel_mask))
+
+    def reset(self):
+        self.pcmreader = FrameListReader(self.wave,
+                                         self.sample_rate,
+                                         self.channels,
+                                         self.bits_per_sample,
+                                         self.channel_mask)
+
+        self.md5 = md5()
+
+    def __repr__(self):
+        return "Simple_Sine()"
 
 
 class WastedBPS16(MD5Reader):
