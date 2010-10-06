@@ -84,6 +84,7 @@ encoders_encode_alac(PyObject *dummy, PyObject *args, PyObject *keywds)
         return NULL;
     }
 
+    options.channel_mask = reader->channel_mask;
     options.best_frame = bs_open_recorder();
     options.current_frame = bs_open_recorder();
 
@@ -99,10 +100,6 @@ encoders_encode_alac(PyObject *dummy, PyObject *args, PyObject *keywds)
         PyErr_SetString(PyExc_ValueError, "bits per sample must be 16 or 24");
         goto error;
     }
-    if (reader->channels > 2) {
-        PyErr_SetString(PyExc_ValueError, "channels must be 1 or 2");
-        goto error;
-    }
 
     /*convert file object to bitstream writer*/
     if ((output_file = PyFile_AsFile(file_obj)) == NULL) {
@@ -112,7 +109,7 @@ encoders_encode_alac(PyObject *dummy, PyObject *args, PyObject *keywds)
     } else {
         stream = bs_open(output_file, BS_BIG_ENDIAN);
         bs_add_callback(stream,
-                        ALACEncoder_byte_counter,
+                        alac_byte_counter,
                         &(encode_log.frame_byte_size));
     }
 
@@ -128,12 +125,12 @@ encoders_encode_alac(PyObject *dummy, PyObject *args, PyObject *keywds)
     if (!pcmr_read(reader, options.block_size, &samples))
         goto error;
     while (iaa_getitem(&samples, 0)->size > 0) {
-        if (ALACEncoder_write_frame(stream,
-                                    &encode_log,
-                                    ftell(output_file),
-                                    &options,
-                                    reader->bits_per_sample,
-                                    &samples) == ERROR)
+        if (alac_write_frameset(stream,
+                                &encode_log,
+                                ftell(output_file),
+                                &options,
+                                reader->bits_per_sample,
+                                &samples) == ERROR)
             goto error;
 
         if (!pcmr_read(reader, options.block_size, &samples))
@@ -212,19 +209,19 @@ ALACEncoder_encode_alac(char *filename,
     /*convert file object to bitstream writer*/
     stream = bs_open(output_file, BS_BIG_ENDIAN);
     bs_add_callback(stream,
-                    ALACEncoder_byte_counter,
+                    alac_byte_counter,
                     &(encode_log.frame_byte_size));
 
     /*write frames from pcm_reader until empty*/
     if (!pcmr_read(reader, options.block_size, &samples))
         goto error;
     while (iaa_getitem(&samples, 0)->size > 0) {
-        if (ALACEncoder_write_frame(stream,
-                                    &encode_log,
-                                    ftell(output_file),
-                                    &options,
-                                    reader->bits_per_sample,
-                                    &samples) == ERROR)
+        if (alac_write_frameset(stream,
+                                &encode_log,
+                                ftell(output_file),
+                                &options,
+                                reader->bits_per_sample,
+                                &samples) == ERROR)
             goto error;
 
         if (!pcmr_read(reader, options.block_size, &samples))
@@ -269,58 +266,31 @@ int main(int argc, char *argv[]) {
 
 
 status
-ALACEncoder_write_frame(Bitstream *bs,
-                        struct alac_encode_log *log,
-                        long starting_offset,
-                        struct alac_encoding_options *options,
-                        int bits_per_sample,
-                        struct ia_array *samples)
+alac_write_frameset(Bitstream *bs,
+                    struct alac_encode_log *log,
+                    long starting_offset,
+                    struct alac_encoding_options *options,
+                    int bits_per_sample,
+                    struct ia_array *samples)
 {
-    Bitstream *compressed_frame;
-    log->frame_byte_size = 0;
+    status write_result;
+    log->frame_byte_size = 0; /*this is updated via callback*/
 
-    if (samples->arrays[0].size < 10) {
-        /*write uncompressed frame if not enough samples remain*/
-        if (ALACEncoder_write_uncompressed_frame(bs,
-                                                 options->block_size,
-                                                 bits_per_sample,
-                                                 samples) == ERROR)
-            return ERROR;
+    /*FIXME - handle multiple channels here*/
+    if (samples->size <= 2) {
+        bs->write_bits(bs, 3, samples->size - 1); /*channel count, offset 1*/
+        if ((write_result = alac_write_frame(bs,
+                                             options,
+                                             bits_per_sample,
+                                             samples)) != OK)
+            return write_result;
+
+        /*write frame footer and byte-align output*/
+        bs->write_bits(bs, 3, 0x7);
+        bs->byte_align(bs);
     } else {
-        /*otherwise, attempt compressed frame*/
-        compressed_frame = bs_open_recorder();
-
-        switch (ALACEncoder_write_compressed_frame(compressed_frame,
-                                                   options,
-                                                   bits_per_sample,
-                                                   samples)) {
-        case ERROR:
-            goto error;
-        case RESIDUAL_OVERFLOW:
-            if (ALACEncoder_write_uncompressed_frame(bs,
-                                                     options->block_size,
-                                                     bits_per_sample,
-                                                     samples) == ERROR)
-                goto error;
-            else
-                break;
-        case OK:
-            if (compressed_frame->bits_written <
-                ((samples->size * samples->arrays[0].size * bits_per_sample) +
-                 56))
-                /*if our compressed frame is small enough, write it out*/
-                bs_dump_records(bs, compressed_frame);
-            else {
-                /*otherwise, build an uncompressed frame instead*/
-                if (ALACEncoder_write_uncompressed_frame(bs,
-                                                         options->block_size,
-                                                         bits_per_sample,
-                                                         samples) == ERROR)
-                    return ERROR;
-            }
-            bs_close(compressed_frame);
-            break;
-        }
+        alac_error("channels > 2 not yet supported");
+        return ERROR;
     }
 
     /*update log*/
@@ -333,18 +303,72 @@ ALACEncoder_write_frame(Bitstream *bs,
               starting_offset);
 
     return OK;
+}
 
- error:
-    bs_close(compressed_frame);
-    return ERROR;
+status
+alac_write_frame(Bitstream *bs,
+                 struct alac_encoding_options *options,
+                 int bits_per_sample,
+                 struct ia_array *samples) {
+    Bitstream *compressed_frame;
+
+    if (samples->arrays[0].size < 10) {
+        /*write uncompressed frame if not enough samples remain*/
+        if (alac_write_uncompressed_frame(
+                bs, options->block_size, bits_per_sample, samples) == ERROR)
+            return ERROR;
+        else
+            return OK;
+    } else {
+        /*otherwise, attempt compressed frame*/
+        compressed_frame = bs_open_recorder();
+
+        switch (alac_write_compressed_frame(compressed_frame,
+                                            options,
+                                            bits_per_sample,
+                                            samples)) {
+        case ERROR:
+            goto error;
+        case RESIDUAL_OVERFLOW:
+            if (alac_write_uncompressed_frame(bs,
+                                              options->block_size,
+                                              bits_per_sample,
+                                              samples) == ERROR)
+                goto error;
+            else
+                break;
+        case OK:
+            if (compressed_frame->bits_written <
+                ((samples->size * samples->arrays[0].size * bits_per_sample) +
+                 56))
+                /*if our compressed frame is small enough, write it out*/
+                bs_dump_records(bs, compressed_frame);
+            else {
+                /*otherwise, build an uncompressed frame instead*/
+                if (alac_write_uncompressed_frame(bs,
+                                                  options->block_size,
+                                                  bits_per_sample,
+                                                  samples) == ERROR)
+                    return ERROR;
+            }
+            break;
+        }
+
+        bs_close(compressed_frame);
+        return OK;
+
+    error:
+        bs_close(compressed_frame);
+        return ERROR;
+    }
 }
 
 
 status
-ALACEncoder_write_uncompressed_frame(Bitstream *bs,
-                                     int block_size,
-                                     int bits_per_sample,
-                                     struct ia_array *samples)
+alac_write_uncompressed_frame(Bitstream *bs,
+                              int block_size,
+                              int bits_per_sample,
+                              struct ia_array *samples)
 {
     int channels = samples->size;
     int pcm_frames = samples->arrays[0].size;
@@ -353,7 +377,6 @@ ALACEncoder_write_uncompressed_frame(Bitstream *bs,
 
     /*write frame header*/
     assert((channels - 1) < (1 << 3));
-    bs->write_bits(bs, 3, channels - 1); /*channel count, offset 1*/
     bs->write_bits(bs, 16, 0);           /*unknown, all 0*/
     if (has_sample_size)               /*"has sample size"" flag*/
         bs->write_bits(bs, 1, 1);
@@ -371,19 +394,15 @@ ALACEncoder_write_uncompressed_frame(Bitstream *bs,
                                   bits_per_sample,
                                   samples->arrays[j].data[i]);
 
-    /*write footer and padding*/
-    bs->write_bits(bs, 3, 0x7);
-    bs->byte_align(bs);
-
     return OK;
 }
 
 status
-ALACEncoder_write_compressed_frame(Bitstream *bs,
-                                   struct alac_encoding_options *options,
+alac_write_compressed_frame(Bitstream *bs,
+                            struct alac_encoding_options *options,
 
-                                   int bits_per_sample,
-                                   struct ia_array *samples)
+                            int bits_per_sample,
+                            struct ia_array *samples)
 {
     int interlacing_shift;
     int interlacing_leftweight;
@@ -391,31 +410,32 @@ ALACEncoder_write_compressed_frame(Bitstream *bs,
     Bitstream *current_frame = options->current_frame;
 
     if (samples->size != 2) {
-        return ALACEncoder_write_interlaced_frame(bs,
-                                                  options,
-                                                  0, 0,
-                                                  bits_per_sample,
-                                                  samples);
+        return alac_write_interlaced_frame(bs,
+                                           options,
+                                           0, 0,
+                                           bits_per_sample,
+                                           samples);
     } else {
         bs_reset_recorder(best_frame);
         best_frame->bits_written = INT_MAX;
 
+        /*attempt all the interlacing shift options*/
         for (interlacing_shift = options->minimum_interlacing_shift;
              interlacing_shift <= options->maximum_interlacing_shift;
              interlacing_shift++) {
+            /*attempt all the interlacing leftweight options*/
             for (interlacing_leftweight =
                      options->minimum_interlacing_leftweight;
                  interlacing_leftweight <=
                      options->maximum_interlacing_leftweight;
                  interlacing_leftweight++) {
                 bs_reset_recorder(current_frame);
-                switch (ALACEncoder_write_interlaced_frame(
-                                        current_frame,
-                                        options,
-                                        interlacing_shift,
-                                        interlacing_leftweight,
-                                        bits_per_sample,
-                                        samples)) {
+                switch (alac_write_interlaced_frame(current_frame,
+                                                    options,
+                                                    interlacing_shift,
+                                                    interlacing_leftweight,
+                                                    bits_per_sample,
+                                                    samples)) {
                 case ERROR:
                     goto error;
                 case RESIDUAL_OVERFLOW:
@@ -428,6 +448,7 @@ ALACEncoder_write_compressed_frame(Bitstream *bs,
             }
         }
 
+        /*use the shift and leftweight that uses the least bits*/
         bs_dump_records(bs, best_frame);
         return OK;
     error:
@@ -438,12 +459,12 @@ ALACEncoder_write_compressed_frame(Bitstream *bs,
 }
 
 status
-ALACEncoder_write_interlaced_frame(Bitstream *bs,
-                                   struct alac_encoding_options *options,
-                                   int interlacing_shift,
-                                   int interlacing_leftweight,
-                                   int bits_per_sample,
-                                   struct ia_array *samples)
+alac_write_interlaced_frame(Bitstream *bs,
+                            struct alac_encoding_options *options,
+                            int interlacing_shift,
+                            int interlacing_leftweight,
+                            int bits_per_sample,
+                            struct ia_array *samples)
 {
     int channels = samples->size;
     int pcm_frames = samples->arrays[0].size;
@@ -461,14 +482,13 @@ ALACEncoder_write_interlaced_frame(Bitstream *bs,
     int i, j;
 
     /*write frame header*/
-    bs->write_bits(bs, 3, channels - 1); /*channel count, offset 1*/
     bs->write_bits(bs, 16, 0);           /*unknown, all 0*/
-    if (has_sample_size)               /*"has sample size"" flag*/
+    if (has_sample_size)                 /*"has sample size"" flag*/
         bs->write_bits(bs, 1, 1);
     else
         bs->write_bits(bs, 1, 0);
 
-    if (has_wasted_bits)               /*"has wasted bits" value*/
+    if (has_wasted_bits)                 /*"has wasted bits" value*/
         bs->write_bits(bs, 2, 1);
     else
         bs->write_bits(bs, 2, 0);
@@ -502,22 +522,21 @@ ALACEncoder_write_interlaced_frame(Bitstream *bs,
     bs->write_bits(bs, 8, interlacing_leftweight);
 
     /*apply channel correlation to samples*/
-    ALACEncoder_correlate_channels(&correlated_samples,
-                                   samples,
-                                   interlacing_shift,
-                                   interlacing_leftweight);
+    alac_correlate_channels(&correlated_samples,
+                            samples,
+                            interlacing_shift,
+                            interlacing_leftweight);
 
     /*calculate the best "prediction quantitization" and "coefficient" values
       for each channel of audio*/
     iaa_init(&lpc_coefficients, channels, 4);
     shift_needed = malloc(sizeof(int) * channels);
     for (i = 0; i < channels; i++) {
-        ALACEncoder_compute_best_lpc_coeffs(
-                                iaa_getitem(&lpc_coefficients, i),
-                                &(shift_needed[i]),
-                                bits_per_sample - (has_wasted_bits * 8),
-                                options,
-                                iaa_getitem(samples, i));
+        alac_compute_best_lpc_coeffs(iaa_getitem(&lpc_coefficients, i),
+                                     &(shift_needed[i]),
+                                     bits_per_sample - (has_wasted_bits * 8),
+                                     options,
+                                     iaa_getitem(samples, i));
     }
 
     /*write 1 subframe header per channel*/
@@ -547,27 +566,22 @@ ALACEncoder_write_interlaced_frame(Bitstream *bs,
     /*calculate residuals for each channel
       based on "coefficients", "quantitization", and "samples"*/
     for (i = 0; i < channels; i++)
-        if ((return_status = ALACEncoder_encode_subframe(
-                                        &(residuals.arrays[i]),
-                                        &(correlated_samples.arrays[i]),
-                                        &(lpc_coefficients.arrays[i]),
-                                        shift_needed[i])) != OK)
+        if ((return_status = alac_encode_subframe(
+                                            &(residuals.arrays[i]),
+                                            &(correlated_samples.arrays[i]),
+                                            &(lpc_coefficients.arrays[i]),
+                                            shift_needed[i])) != OK)
             goto finished;
 
     /*write 1 residual block per channel*/
     for (i = 0; i < channels; i++) {
-        if ((return_status = ALACEncoder_write_residuals(
+        if ((return_status = alac_write_residuals(
                     bs,
                     &(residuals.arrays[i]),
                     bits_per_sample - (has_wasted_bits * 8) + channels - 1,
                     options)) != OK)
             goto finished;
     }
-
-    /*write frame footer and byte-align output*/
-    bs->write_bits(bs, 3, 0x7);
-    bs->byte_align(bs);
-
  finished:
     /*clear any temporary buffers*/
     if (has_wasted_bits) {
@@ -585,10 +599,10 @@ ALACEncoder_write_interlaced_frame(Bitstream *bs,
 }
 
 status
-ALACEncoder_correlate_channels(struct ia_array *output,
-                               struct ia_array *input,
-                               int interlacing_shift,
-                               int interlacing_leftweight)
+alac_correlate_channels(struct ia_array *output,
+                        struct ia_array *input,
+                        int interlacing_shift,
+                        int interlacing_leftweight)
 {
     struct i_array *left_channel;
     struct i_array *right_channel;
@@ -642,10 +656,10 @@ SIGN_ONLY(int value)
 }
 
 status
-ALACEncoder_encode_subframe(struct i_array *residuals,
-                            struct i_array *samples,
-                            struct i_array *coefficients,
-                            int predictor_quantitization)
+alac_encode_subframe(struct i_array *residuals,
+                     struct i_array *samples,
+                     struct i_array *coefficients,
+                     int predictor_quantitization)
 {
     int64_t lpc_sum;
     ia_data_t buffer0;
@@ -659,10 +673,10 @@ ALACEncoder_encode_subframe(struct i_array *residuals,
 
     assert(samples->size > 5);
     if (coefficients->size < 1) {
-        ALACEncoder_error("coefficient count must be greater than 0");
+        alac_error("coefficient count must be greater than 0");
         return ERROR;
     } else if ((coefficients->size != 4) && (coefficients->size != 8)) {
-        ALACEncoder_warning("coefficient size not 4 or 8");
+        alac_warning("coefficient size not 4 or 8");
     }
 
     ia_reset(residuals);
@@ -727,10 +741,10 @@ ALACEncoder_encode_subframe(struct i_array *residuals,
 }
 
 void
-ALACEncoder_write_residual(Bitstream *bs,
-                           int residual,
-                           int k,
-                           int bits_per_sample)
+alac_write_residual(Bitstream *bs,
+                    int residual,
+                    int k,
+                    int bits_per_sample)
 {
     int q = residual / ((1 << k) - 1);
     int e = residual % ((1 << k) - 1);
@@ -768,10 +782,10 @@ LOG2(int value)
 }
 
 status
-ALACEncoder_write_residuals(Bitstream *bs,
-                            struct i_array *residuals,
-                            int bits_per_sample,
-                            struct alac_encoding_options *options)
+alac_write_residuals(Bitstream *bs,
+                     struct i_array *residuals,
+                     int bits_per_sample,
+                     struct alac_encoding_options *options)
 {
     int history = options->initial_history;
     int history_multiplier = options->history_multiplier;
@@ -795,8 +809,8 @@ ALACEncoder_write_residuals(Bitstream *bs,
 
         if (unsigned_residual >= max_residual)
             return RESIDUAL_OVERFLOW;
-        ALACEncoder_write_residual(bs, unsigned_residual - sign_modifier,
-                                   k, bits_per_sample);
+        alac_write_residual(bs, unsigned_residual - sign_modifier,
+                            k, bits_per_sample);
 
         if (unsigned_residual <= 0xFFFF)
             history += ((unsigned_residual * history_multiplier) -
@@ -814,7 +828,7 @@ ALACEncoder_write_residuals(Bitstream *bs,
                 zero_block_size++;
                 i++;
             }
-            ALACEncoder_write_residual(bs, zero_block_size, k, 16);
+            alac_write_residual(bs, zero_block_size, k, 16);
             if (zero_block_size <= 0xFFFF)
                 sign_modifier = 1;
             history = 0;
@@ -826,14 +840,14 @@ ALACEncoder_write_residuals(Bitstream *bs,
 }
 
 void
-ALACEncoder_byte_counter(int byte, void* counter)
+alac_byte_counter(int byte, void* counter)
 {
     int* i_counter = (int*)counter;
     *i_counter += 1;
 }
 
 void
-ALACEncoder_error(const char* message)
+alac_error(const char* message)
 {
 #ifndef STANDALONE
     PyErr_SetString(PyExc_ValueError, message);
@@ -843,7 +857,7 @@ ALACEncoder_error(const char* message)
 }
 
 void
-ALACEncoder_warning(const char* message)
+alac_warning(const char* message)
 {
 #ifndef STANDALONE
     PyErr_WarnEx(PyExc_RuntimeWarning, message, 1);

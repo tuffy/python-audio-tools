@@ -9,14 +9,14 @@ all: flacenc alacenc shnenc wvenc
 flacenc: $(OBJS) encoders/flac.c encoders/flac.h flac_lpc.o flac_crc.o md5.o
 	gcc $(FLAGS) -DVERSION=$(VERSION) -o flacenc encoders/flac.c $(OBJS) flac_lpc.o md5.o flac_crc.o -DSTANDALONE -lm
 
-alacenc: $(OBJS) encoders/alac.c encoders/alac.h alac_lpc.o
-	gcc $(FLAGS) -DVERSION=$(VERSION) -o alacenc encoders/alac.c $(OBJS) alac_lpc.o -DSTANDALONE -lm
+alacenc: $(OBJS) encoders/alac.c encoders/alac.h alac_lpc.o misc.o
+	gcc $(FLAGS) -DVERSION=$(VERSION) -o alacenc encoders/alac.c misc.o $(OBJS) alac_lpc.o -DSTANDALONE -lm
 
 shnenc: $(OBJS) encoders/shn.c encoders/shn.h
 	gcc $(FLAGS) -DVERSION=$(VERSION) -o shnenc encoders/shn.c $(OBJS) -DSTANDALONE -lm
 
-wvenc: $(OBJS) encoders/wavpack.c encoders/wavpack.h md5.o
-	gcc $(FLAGS) -o wvenc encoders/wavpack.c md5.o $(OBJS) -DSTANDALONE
+wvenc: $(OBJS) encoders/wavpack.c encoders/wavpack.h md5.o misc.o
+	gcc $(FLAGS) -o wvenc encoders/wavpack.c md5.o misc.o $(OBJS) -DSTANDALONE
 
 clean:
 	rm -f flacenc alacenc shnenc *.o
@@ -41,6 +41,9 @@ flac_lpc.o: encoders/flac_lpc.c encoders/flac_lpc.h
 
 flac_crc.o: common/flac_crc.c common/flac_crc.h
 	gcc $(FLAGS) -c common/flac_crc.c -DSTANDALONE
+
+misc.o: common/misc.c common/misc.h
+	gcc $(FLAGS) -c common/misc.c -DSTANDALONE
 
 alac_lpc.o: encoders/alac_lpc.c encoders/alac_lpc.h
 	gcc $(FLAGS) -c encoders/alac_lpc.c -DSTANDALONE

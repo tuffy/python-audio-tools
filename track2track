@@ -101,9 +101,9 @@ def convert_file(destination_class, destination_filename,
     except audiotools.UnsupportedChannelCount:
         messenger.error(
             _(u"Unable to write \"%(target_filename)s\"" +
-              u" with %(channels)d channel input" %
+              u" with %(channels)d channel input") %
               {"target_filename": messenger.filename(destination_filename),
-               "channels": source_audiofile.channels()}))
+               "channels": source_audiofile.channels()})
         sys.exit(1)
     except audiotools.UnsupportedBitsPerSample:
         messenger.error(

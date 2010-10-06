@@ -1,4 +1,5 @@
 #include "wavpack.h"
+#include "../common/misc.h"
 #include <assert.h>
 #include <limits.h>
 
@@ -231,16 +232,6 @@ encoders_encode_wavpack(char *filename,
 }
 
 static int
-count_one_bits(int i) {
-    int bits;
-
-    for (bits = 0; i != 0; i >>= 1)
-        bits += (i & 1);
-
-    return bits;
-}
-
-static int
 count_bits(int i) {
     int bits;
 
@@ -250,43 +241,6 @@ count_bits(int i) {
     return bits;
 }
 
-void
-wavpack_channel_splits(struct i_array *counts,
-                       int channel_count,
-                       long channel_mask) {
-    /*Although the WAVEFORMATEXTENSIBLE channel mask
-      supports more left/right channels than these,
-      everything beyond side-left/side-right
-      is stored with a center channel in-between
-      which means WavPack can't pull them apart in pairs.*/
-    long masks[] = {0x3,   0x1,   0x2,        /*fLfR, fL, fR*/
-                    0x4,   0x8,               /*fC, LFE*/
-                    0x30,  0x10,  0x20,       /*bLbR, bL, bR*/
-                    0xC0,  0x40,  0x80,       /*fLoCfRoC, fLoC, fRoC*/
-                    0x100,                    /*bC*/
-                    0x600, 0x200, 0x400,      /*sLsR, sL, sR*/
-                    0};
-    int channels;
-    int i;
-
-    assert(channel_count > 0);
-
-    /*first, try to pull left/right channels out of the mask*/
-    for (i = 0; channel_mask && masks[i]; i++) {
-        if (channel_mask & masks[i]) {
-            channels = count_one_bits(masks[i]);
-            ia_append(counts, channels);
-            channel_count -= channels;
-            channel_mask ^= masks[i];
-        }
-    }
-
-    /*any leftover channels are sent out in separate blocks
-      (which may happen with a mask of 0)*/
-    for (; channel_count > 0; channel_count--) {
-        ia_append(counts, 1);
-    }
-}
 
 void
 wavpack_write_frame(Bitstream *bs,
@@ -299,7 +253,7 @@ wavpack_write_frame(Bitstream *bs,
 
     ia_init(&counts, 1);
 
-    wavpack_channel_splits(&counts, samples->size, channel_mask);
+    channel_mask_splits(&counts, samples->size, channel_mask);
 
     for (i = current_channel = 0; i < counts.size; i++) {
         wavpack_write_block(bs,
