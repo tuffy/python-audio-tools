@@ -1355,8 +1355,6 @@ class ALACAudio(M4AAudio):
 
         if (pcmreader.bits_per_sample not in (16, 24)):
             raise UnsupportedBitsPerSample()
-        if (pcmreader.channels > 2):
-            raise UnsupportedChannelCount()
 
         from . import encoders
         import time

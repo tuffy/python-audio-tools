@@ -1,5 +1,6 @@
 #include "alac.h"
 #include "alac_lpc.h"
+#include "../common/misc.h"
 #include <assert.h>
 
 /********************************************************
@@ -111,6 +112,9 @@ encoders_encode_alac(PyObject *dummy, PyObject *args, PyObject *keywds)
         bs_add_callback(stream,
                         alac_byte_counter,
                         &(encode_log.frame_byte_size));
+        bs_add_callback(stream,
+                        alac_byte_counter,
+                        &(encode_log.mdat_byte_size));
     }
 
     /*write "mdat" atom header*/
@@ -118,8 +122,8 @@ encoders_encode_alac(PyObject *dummy, PyObject *args, PyObject *keywds)
         PyErr_SetFromErrno(PyExc_IOError);
         goto error;
     }
-    stream->write_bits(stream, 32, encode_log.mdat_byte_size);
-    stream->write_bits(stream, 32, 0x6D646174);  /*"mdat" type*/
+    stream->write_bits64(stream, 32, encode_log.mdat_byte_size);
+    stream->write_bits64(stream, 32, 0x6D646174);  /*"mdat" type*/
 
     /*write frames from pcm_reader until empty*/
     if (!pcmr_read(reader, options.block_size, &samples))
@@ -142,7 +146,7 @@ encoders_encode_alac(PyObject *dummy, PyObject *args, PyObject *keywds)
         PyErr_SetFromErrno(PyExc_IOError);
         goto error;
     }
-    stream->write_bits(stream, 32, encode_log.mdat_byte_size);
+    stream->write_bits64(stream, 32, encode_log.mdat_byte_size);
 
     /*close and free allocated files/buffers*/
     pcmr_close(reader);
@@ -198,7 +202,9 @@ ALACEncoder_encode_alac(char *filename,
 
     output_file = fopen(filename, "wb");
     /*assume CD quality for now*/
-    reader = pcmr_open(input, 44100, 2, 16, 0x3, 0, 1);
+    reader = pcmr_open(input, 44100, 2, 0x4, 16, 0, 1);
+
+    options.channel_mask = reader->channel_mask;
 
     /*initialize a buffer for input samples*/
     iaa_init(&samples, reader->channels, options.block_size);
@@ -274,34 +280,58 @@ alac_write_frameset(Bitstream *bs,
                     struct ia_array *samples)
 {
     status write_result;
+    struct i_array channel_counts;
+    struct ia_array samples_subset;
+    int channel_count;
+    int current_channel = 0;
+    int i;
+
+    ia_init(&channel_counts, 1);
     log->frame_byte_size = 0; /*this is updated via callback*/
 
-    /*FIXME - handle multiple channels here*/
-    if (samples->size <= 2) {
-        bs->write_bits(bs, 3, samples->size - 1); /*channel count, offset 1*/
+    channel_mask_splits(&channel_counts,
+                        samples->size,
+                        options->channel_mask);
+
+    for (i = 0; i < channel_counts.size; i++) {
+        /*Create a subset of our total samples to write a frame from.
+          Each should be 1-2 channels wide.*/
+        channel_count = channel_counts.data[i];
+
+        iaa_link(&samples_subset, samples);
+        samples_subset.arrays += current_channel;
+        samples_subset.size = channel_count;
+
+        bs->write_bits(bs, 3, channel_count - 1);
         if ((write_result = alac_write_frame(bs,
                                              options,
                                              bits_per_sample,
-                                             samples)) != OK)
+                                             &samples_subset)) != OK) {
+            ia_free(&channel_counts);
             return write_result;
+        }
 
-        /*write frame footer and byte-align output*/
-        bs->write_bits(bs, 3, 0x7);
-        bs->byte_align(bs);
-    } else {
-        alac_error("channels > 2 not yet supported");
-        return ERROR;
+        current_channel += channel_count;
     }
 
-    /*update log*/
-    log->mdat_byte_size += log->frame_byte_size;
+    /*once complete, write the '111' footer and byte-align output*/
+    bs->write_bits(bs, 3, 0x7);
+    bs->byte_align(bs);
+
+
     ia_append(iaa_getitem(&(log->frame_log), LOG_SAMPLE_SIZE),
               samples->arrays[0].size);
+
+    /*This is for determining "max coded frame size" in the ALAC atom
+      which appears to the size, in bytes, of the entire
+      set of ALAC frames (including footer and align)
+      rather than the largest individual frame within the file.*/
     ia_append(iaa_getitem(&(log->frame_log), LOG_BYTE_SIZE),
               log->frame_byte_size);
     ia_append(iaa_getitem(&(log->frame_log), LOG_FILE_OFFSET),
               starting_offset);
 
+    ia_free(&channel_counts);
     return OK;
 }
 
@@ -376,7 +406,6 @@ alac_write_uncompressed_frame(Bitstream *bs,
     int i, j;
 
     /*write frame header*/
-    assert((channels - 1) < (1 << 3));
     bs->write_bits(bs, 16, 0);           /*unknown, all 0*/
     if (has_sample_size)               /*"has sample size"" flag*/
         bs->write_bits(bs, 1, 1);
@@ -385,7 +414,7 @@ alac_write_uncompressed_frame(Bitstream *bs,
     bs->write_bits(bs, 2, 0);  /*uncompressed frames never have wasted bits*/
     bs->write_bits(bs, 1, 1);  /*the "is not compressed flag" flag*/
     if (has_sample_size)
-        bs->write_bits(bs, 32, pcm_frames);
+        bs->write_bits64(bs, 32, pcm_frames);
 
     /*write individual samples*/
     for (i = 0; i < pcm_frames; i++)
@@ -496,7 +525,7 @@ alac_write_interlaced_frame(Bitstream *bs,
     bs->write_bits(bs, 1, 0);  /*the "is not compressed flag" flag*/
 
     if (has_sample_size)
-        bs->write_bits(bs, 32, pcm_frames);
+        bs->write_bits64(bs, 32, pcm_frames);
 
     /*if we have wasted bits, extract them from the front of each sample
       we'll only support 8 wasted bits, for 24bps input*/
@@ -870,7 +899,7 @@ void
 alac_log_init(struct alac_encode_log *log)
 {
     log->frame_byte_size = 0;
-    log->mdat_byte_size = 8;
+    log->mdat_byte_size = 0;
     iaa_init(&(log->frame_log), 3, 1024);
 }
 

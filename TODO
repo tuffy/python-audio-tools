@@ -2612,7 +2612,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** DONE Update ALACDecoder's analyze_frame() method for multichannel
 ** DONE Update ALACDecoder's read() method for multichannel
 ** TODO Determine proper channel_mask, if possible
-** TODO Update encode_alac function for multichannel
+** DONE Update encode_alac function for multichannel
 ** TODO Unit test multichannel ALAC encoding and decoding
 ** TODO Update decoding documentation describing multichannel handling
 ** TODO Update encoding documentation describing multichannel handling
