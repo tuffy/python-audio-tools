@@ -11846,41 +11846,21 @@ class TestShortenCodec(unittest.TestCase):
 
         temp_file = tempfile.NamedTemporaryFile(suffix=".shn")
 
-        options = encode_options.copy()
+        #construct a temporary wave file from pcmreader
+        temp_input_wave_file = tempfile.NamedTemporaryFile(suffix=".wav")
+        temp_input_wave = audiotools.WaveAudio.from_pcm(
+            temp_input_wave_file.name, pcmreader)
+        temp_input_wave.verify()
 
-        #construct a RIFF WAVE header string
-        #based on pmreader and sample_count
-        data_size = (sample_count *
-                     (pcmreader.bits_per_sample / 8) *
-                     pcmreader.channels)
-        options["verbatim_chunks"] = [
-            audiotools.WaveAudio.WAVE_HEADER.build(
-                audiotools.Con.Container(
-                    wave_id='RIFF',
-                    wave_size=data_size + 36,
-                    riff_type='WAVE')) +
-            audiotools.WaveAudio.CHUNK_HEADER.build(
-                audiotools.Con.Container(
-                    chunk_id='fmt ',
-                    chunk_length=16)) +
-            audiotools.WaveAudio.FMT_CHUNK.build(
-                audiotools.Con.Container(
-                    compression=1,
-                    channels=pcmreader.channels,
-                    sample_rate=pcmreader.sample_rate,
-                    bytes_per_second=((pcmreader.sample_rate *
-                                       pcmreader.channels *
-                                       pcmreader.bits_per_sample) / 8),
-                    block_align=((pcmreader.channels *
-                                  pcmreader.bits_per_sample) / 8),
-                    bits_per_sample=pcmreader.bits_per_sample)) +
-            audiotools.WaveAudio.CHUNK_HEADER.build(
-                audiotools.Con.Container(
-                    chunk_id='data',
-                    chunk_length=data_size)), None]
+        options = encode_options.copy()
+        (head, tail) = temp_input_wave.pcm_split()
+        if (len(tail) > 0):
+            options["verbatim_chunks"] = [head, None, tail]
+        else:
+            options["verbatim_chunks"] = [head, None]
 
         self.encode(temp_file.name,
-                    pcmreader,
+                    temp_input_wave.to_pcm(),
                     **options)
 
         shn = audiotools.open(temp_file.name)
@@ -11906,11 +11886,17 @@ class TestShortenCodec(unittest.TestCase):
         subprocess.call([audiotools.BIN["shorten"],
                          "-x", shn.filename, temp_wav_file2.name])
 
+        wave = audiotools.WaveAudio(temp_wav_file1.name)
+        wave.verify()
+        wave = audiotools.WaveAudio(temp_wav_file2.name)
+        wave.verify()
+
         self.assert_(audiotools.pcm_cmp(
                 audiotools.WaveAudio(temp_wav_file1.name).to_pcm(),
                 audiotools.WaveAudio(temp_wav_file2.name).to_pcm()))
 
         temp_file.close()
+        temp_input_wave_file.close()
         temp_wav_file1.close()
         temp_wav_file2.close()
 
@@ -12024,8 +12010,15 @@ class TestAlacCodec(unittest.TestCase):
                 test_streams.Sine24_Stereo(200000, 44100, 441.0, 0.61, 661.5, 0.37, 2.0),
                 test_streams.Sine24_Stereo(200000, 44100, 441.0, 0.50, 882.0, 0.49, 0.7),
                 test_streams.Sine24_Stereo(200000, 44100, 441.0, 0.50, 4410.0, 0.49, 1.3),
-                test_streams.Sine24_Stereo(200000, 44100, 8820.0, 0.70, 4410.0, 0.29, 0.1),
+                test_streams.Sine24_Stereo(200000, 44100, 8820.0, 0.70, 4410.0, 0.29, 0.1)]
 
+        for stream in self.__class__.__stream_variations_cache__:
+            stream.reset()
+            yield stream
+
+    def __multichannel_stream_variations__(self):
+        if (not hasattr(self, "__multichannel_stream_variations_cache__")):
+            self.__class__.__multichannel_stream_variations_cache__ = [
                 test_streams.Simple_Sine(200000, 44100, 0x7, 16,
                                          (6400, 10000),
                                          (12800, 20000),
@@ -12072,7 +12065,7 @@ class TestAlacCodec(unittest.TestCase):
                                          (6881280, 30000),
                                          (7864320, 35000))]
 
-        for stream in self.__class__.__stream_variations_cache__:
+        for stream in self.__class__.__multichannel_stream_variations_cache__:
             stream.reset()
             yield stream
 
@@ -12118,9 +12111,44 @@ class TestAlacCodec(unittest.TestCase):
         self.assertEqual(reference.wait(), 0)
         self.assertEqual(md5sum_reference.digest(), pcmreader.digest())
 
+    def __test_reader_nonalac__(self, pcmreader, block_size=4096):
+        #This is for multichannel testing
+        #since alac(1) doesn't handle them yet.
+        #Unfortunately, it relies only on our built-in decoder
+        #to test correctness.
+
+        temp_file = tempfile.NamedTemporaryFile(suffix=".alac")
+        self.audio_class.from_pcm(temp_file.name,
+                                  pcmreader,
+                                  block_size=block_size)
+
+        alac = audiotools.open(temp_file.name)
+        self.assert_(alac.total_frames() > 0)
+
+        #first, ensure the ALAC-encoded file
+        #has the same MD5 signature as pcmreader once decoded
+        md5sum_decoder = md5()
+        d = alac.to_pcm()
+        f = d.read(audiotools.BUFFER_SIZE)
+        while (len(f) > 0):
+            md5sum_decoder.update(f.to_bytes(False, True))
+            f = d.read(audiotools.BUFFER_SIZE)
+        d.close()
+        self.assertEqual(md5sum_decoder.digest(), pcmreader.digest())
+
+
     @TEST_ALAC
     def test_streams(self):
         for g in self.__stream_variations__():
+            md5sum = md5()
+            f = g.read(audiotools.BUFFER_SIZE)
+            while (len(f) > 0):
+                md5sum.update(f.to_bytes(False, True))
+                f = g.read(audiotools.BUFFER_SIZE)
+            self.assertEqual(md5sum.digest(), g.digest())
+            g.close()
+
+        for g in self.__multichannel_stream_variations__():
             md5sum = md5()
             f = g.read(audiotools.BUFFER_SIZE)
             while (len(f) > 0):
@@ -12156,6 +12184,9 @@ class TestAlacCodec(unittest.TestCase):
     def test_sines(self):
         for g in self.__stream_variations__():
             self.__test_reader__(g, block_size=1152)
+
+        for g in self.__multichannel_stream_variations__():
+            self.__test_reader_nonalac__(g, block_size=1152)
 
     @TEST_ALAC
     def test_wasted_bps(self):
