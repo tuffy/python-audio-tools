@@ -1,29 +1,43 @@
 <?xml version="1.0" encoding="utf-8"?>
 <diagram>
   <row>
-    <col width=".20" start="0">`ftyp' atom</col>
-    <col width=".20">atom₂</col>
-    <col style="dashed" width=".20">...</col>
-    <col width=".20" id="mdat">`mdat' atom</col>
-    <col style="dashed" width=".20">...</col>
+    <col width=".25" start="0">`ftyp' atom</col>
+    <col width=".25">`moov' atom</col>
+    <col width=".25">`free' atom</col>
+    <col width=".25" id="mdat">`mdat' atom</col>
   </row>
-  <spacer/>
+  <spacer height=".75"/>
   <row>
     <col start="0" end="31" id="mdat_len" width=".15">mdat Length</col>
     <col start="32" end="63" width=".26">`mdat' (0x6D646174)</col>
-    <col start="64" width=".19666666" id="frame">Frame₁</col>
-    <col width=".19666666">Frame₂</col>
+    <col start="64" width=".19666666" id="frameset">Frame Set₁</col>
+    <col width=".19666666">Frame Set₂</col>
     <col style="dashed" width=".19666666" id="mdat_end">...</col>
   </row>
-  <spacer/>
+  <spacer height=".75"/>
   <row>
-    <col width=".20" id="frame_s">Frame Header</col>
-    <col width=".6">Frame Data</col>
+    <col width=".15" id="channels" start="0" end="3">Channels₁</col>
+    <col width=".25" id="frame">Frame₁</col>
+    <col width=".15" start="0" end="3" style="dashed">Channels₂</col>
+    <col width=".25" style="dashed">Frame₂</col>
     <col width=".15" start="0" end="3">Footer (0x7)</col>
-    <col style="dashed" width=".05" id="frame_e">Pad</col>
+    <col width=".05" style="dashed" id="pad">Pad</col>
   </row>
-  <line s_id="mdat" s_corner="sw" e_id="mdat_len" e_corner="nw" style="dotted"/>
-  <line s_id="mdat" s_corner="se" e_id="mdat_end" e_corner="ne" style="dotted"/>
-  <line s_id="frame" s_corner="sw" e_id="frame_s" e_corner="nw" style="dotted"/>
-  <line s_id="frame" s_corner="se" e_id="frame_e" e_corner="ne" style="dotted"/>
+  <spacer height=".75"/>
+  <row>
+    <col width=".25" id="frame_s">Frame Header</col>
+    <col width=".75" id="frame_e">Frame Data</col>
+  </row>
+  <line s_id="mdat" e_id="mdat_len" s_corner="sw" e_corner="nw"
+        style="dotted"/>
+  <line s_id="mdat" e_id="mdat_end" s_corner="se" e_corner="ne"
+        style="dotted"/>
+  <line s_id="frameset" e_id="channels" s_corner="sw" e_corner="nw"
+        style="dotted"/>
+  <line s_id="frameset" e_id="pad" s_corner="se" e_corner="ne"
+        style="dotted"/>
+  <line s_id="frame" e_id="frame_s" s_corner="sw" e_corner="nw"
+        style="dotted"/>
+  <line s_id="frame" e_id="frame_e" s_corner="se" e_corner="ne"
+        style="dotted"/>
 </diagram>

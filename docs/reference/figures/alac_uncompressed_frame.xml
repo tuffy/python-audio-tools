@@ -1,23 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <diagram>
   <row>
-    <col start="0" end="2" width=".5">Channel Count (+1)</col>
-    <col start="3" end="18" width=".5">Unknown</col>
+    <col start="0" end="15" width=".22">Unknown</col>
+    <col start="16" end="16" width=".25">Has Sample Size</col>
+    <col start="17" end="18" width=".25">Wasted Bits (0)</col>
+    <col start="19" end="19" width=".28">Is Not Compressed (1)</col>
   </row>
   <row>
-    <col start="19" end="19" width=".333333">Has Sample Size</col>
-    <col start="20" end="21" width=".333333">Wasted Bits (0)</col>
-    <col start="22" end="22" width=".333333">Is Not Compressed (1)</col>
-  </row>
-  <row>
-    <col start="23" end="54" style="dashed">Sample Size</col>
-  </row>
-  <row>
+    <col start="20" end="51" style="dashed" width=".20">Sample Size</col>
     <col width=".20" start="0" end="bits per sample">Sample₁</col>
     <col width=".20" start="0" end="bits per sample">Sample₂</col>
     <col width=".20" start="0" end="bits per sample">Sample₃</col>
     <col width=".20" style="dashed">...</col>
-    <col width=".15" start="0" end="2">Footer (0x7)</col>
-    <col style="dashed" width=".05" id="frame_e">Pad</col>
   </row>
 </diagram>
