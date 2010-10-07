@@ -2586,9 +2586,9 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   which wraps metadata containers into a consistent interface
   for use by editxmcd and command-line utilities.
 ** DONE Convert XMCD to AlbumMetaDataFile subclass
-** TODO Add unit tests for XMCD
+** DONE Add unit tests for XMCD
 ** DONE Convert MusicBrainzReleaseXML to AlbumMetaDataFile subclass
-** TODO Add unit tests for MusicBrainzReleaseXML
+** DONE Add unit tests for MusicBrainzReleaseXML
 ** TODO Update utilities to use new interface
    - [X] tracksplit
    - [X] track2track
@@ -2599,7 +2599,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    - [X] cd2track
    - [ ] cd2xmcd
 ** DONE Update old unit tests to new interface
-** TODO Document AlbumMetaDataFile
+** DONE Document AlbumMetaDataFile
 * TODO Update ALAC to handle multichannel audio
   What David Hammerton's reverse-engineered decoder described as
   a 3-bit frame footer isn't; it's actually a "stop" delimiter

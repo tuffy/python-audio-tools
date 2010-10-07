@@ -169,7 +169,7 @@ classes and functions upon which all of the other modules depend.
 .. function:: read_metadata_file(path)
 
    Given a path to a FreeDB XMCD file or MusicBrainz XML file,
-   returns an :class:`AlbumMetaData`-compatible object
+   returns an :class:`AlbumMetaDataFile`-compatible object
    or raises a :exc:`MetaDataFileException` if the file cannot be
    read or parsed correctly.
 
@@ -576,6 +576,111 @@ AlbumMetaData Objects
 
    Returns a single :class:`MetaData` object containing all the
    fields that are consistent across this object's collection of MetaData.
+
+AlbumMetaDataFile Objects
+-------------------------
+
+.. class:: AlbumMetaDataFile(album_name, artist_name, year, catalog, extra, track_metadata)
+
+   This is an abstract parent class to :class:`audiotools.XMCD` and
+   :class:`audiotools.MusicBrainzReleaseXML`.
+   It represents a collection of album metadata as generated
+   by the FreeDB or MusicBrainz services.
+   Modifying fields within an :class:`AlbumMetaDataFile`-compatible
+   object will modify its underlying representation and those
+   changes will be present when :meth:`to_string` is called
+   on the updated object.
+   Note that :class:`audiotools.XMCD` doesn't support the `catalog`
+   field while :class:`audiotools.MusicBrainzReleaseXML` doesn't
+   support the `extra` fields.
+
+.. data:: AlbumMetaDataFile.album_name
+
+   The album's name as a Unicode string.
+
+.. data:: AlbumMetaDataFile.artist_name
+
+   The album's artist's name as a Unicode string.
+
+.. data:: AlbumMetaDataFile.year
+
+   The album's release year as a Unicode string.
+
+.. data:: AlbumMetaDataFile.catalog
+
+   The album's catalog number as a Unicode string.
+
+.. data:: AlbumMetaDataFile.extra
+
+   The album's extra information as a Unicode string.
+
+.. method:: AlbumMetaDataFile.__len__()
+
+   The total number of tracks on the album.
+
+.. method:: AlbumMetaDataFile.to_string()
+
+   Returns the on-disk representation of the file as a binary string.
+
+.. classmethod:: AlbumMetaDataFile.from_string(string)
+
+   Given a binary string, returns an :class:`AlbumMetaDataFile` object
+   of the same class.
+   Raises :exc:`MetaDataFileException` if a parsing error occurs.
+
+.. method:: AlbumMetaDataFile.get_track(index)
+
+   Given a track index (starting from 0), returns a
+   (`track_name`, `track_artist`, `track_extra`) tuple of Unicode strings.
+   Raises :exc:`IndexError` if the requested track is out-of-bounds.
+
+.. method:: AlbumMetaDataFile.set_track(index, track_name, track_artist, track_extra)
+
+   Given a track index (starting from 0) and a set of Unicode strings,
+   sets the appropriate track information.
+   Raises :exc:`IndexError` if the requested track is out-of-bounds.
+
+.. classmethod:: AlbumMetaDataFile.from_tracks(tracks)
+
+   Given a set of :class:`AudioFile` objects, returns an
+   :class:`AlbumMetaDataFile` object of the same class.
+   All files are presumed to be from the same album.
+
+.. classmethod:: AlbumMetaDataFile.from_cuesheet(cuesheet, total_frames, sample_rate[, metadata])
+
+   Given a Cuesheet-compatible object with :meth:`catalog`,
+   :meth:`IRSCs`, :meth:`indexes` and :meth:`pcm_lengths` methods;
+   `total_frames` and `sample_rate` integers; and an optional
+   :class:`MetaData` object of the entire album's metadata,
+   returns an :class:`AlbumMetaDataFile` object of the same class
+   constructed from that data.
+
+.. method:: AlbumMetaDataFile.track_metadata(track_number)
+
+   Given a `track_number` (starting from 1), returns a
+   :class:`MetaData` object of that track's metadata.
+
+   Raises :exc:`IndexError` if the track is out-of-bounds.
+
+.. method:: AlbumMetaDataFile.get(track_number, default)
+
+   Given a `track_number` (starting from 1), returns a
+   :class:`MetaData` object of that track's metadata,
+   or returns `default` if that track is not present.
+
+.. method:: AlbumMetaDataFile.track_metadatas()
+
+   Returns an iterator over all the :class:`MetaData` objects
+   in this file.
+
+.. method:: AlbumMetaDataFile.metadata()
+
+   Returns a single :class:`MetaData` object of all consistent fields
+   in this file.
+   For example, if `album_name` is the same in all MetaData objects,
+   the returned object will have that `album_name` value.
+   If `track_name` differs, the returned object have a blank
+   `track_name` field.
 
 
 Image Objects

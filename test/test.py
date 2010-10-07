@@ -8108,11 +8108,173 @@ FILE "cue.wav" WAVE
         finally:
             cue_file.close()
 
-    # @TEST_METADATA
-    @TEST_CUSTOM
+    @TEST_METADATA
     def test_missing_fields(self):
-        #FIXME
-        pass
+        xmcd_file_lines = ["# xmcd\r\n",
+                           "DTITLE=Album Artist / Album Name\r\n",
+                           "DYEAR=2010\r\n",
+                           "TTITLE0=Track 1\r\n",
+                           "TTITLE1=Track Artist / Track 2\r\n",
+                           "TTITLE2=Track 3\r\n",
+                           "EXTT0=Extra 1\r\n",
+                           "EXTT1=Extra 2\r\n",
+                           "EXTT2=Extra 3\r\n",
+                           "EXTD=Disc Extra\r\n"]
+
+        xmcd = audiotools.XMCD.from_string("".join(xmcd_file_lines))
+        self.assertEqual(xmcd.album_name, u"Album Name")
+        self.assertEqual(xmcd.artist_name, u"Album Artist")
+        self.assertEqual(xmcd.year, u"2010")
+        self.assertEqual(xmcd.catalog, u"")
+        self.assertEqual(xmcd.extra, u"Disc Extra")
+        self.assertEqual(xmcd.get_track(0),
+                         (u"Track 1", u"Album Artist", u"Extra 1"))
+        self.assertEqual(xmcd.get_track(1),
+                         (u"Track 2", u"Track Artist", u"Extra 2"))
+        self.assertEqual(xmcd.get_track(2),
+                         (u"Track 3", u"Album Artist", u"Extra 3"))
+
+
+        lines = xmcd_file_lines[:]
+        del(lines[0])
+        self.assertRaises(audiotools.XMCDException,
+                          audiotools.XMCD.from_string,
+                          "".join(lines))
+
+        lines = xmcd_file_lines[:]
+        del(lines[1])
+        xmcd = audiotools.XMCD.from_string("".join(lines))
+        self.assertEqual(xmcd.album_name, u"")
+        self.assertEqual(xmcd.artist_name, u"")
+        self.assertEqual(xmcd.year, u"2010")
+        self.assertEqual(xmcd.catalog, u"")
+        self.assertEqual(xmcd.extra, u"Disc Extra")
+        self.assertEqual(xmcd.get_track(0),
+                         (u"Track 1", u"", u"Extra 1"))
+        self.assertEqual(xmcd.get_track(1),
+                         (u"Track 2", u"Track Artist", u"Extra 2"))
+        self.assertEqual(xmcd.get_track(2),
+                         (u"Track 3", u"", u"Extra 3"))
+
+        lines = xmcd_file_lines[:]
+        del(lines[2])
+        xmcd = audiotools.XMCD.from_string("".join(lines))
+        self.assertEqual(xmcd.album_name, u"Album Name")
+        self.assertEqual(xmcd.artist_name, u"Album Artist")
+        self.assertEqual(xmcd.year, u"")
+        self.assertEqual(xmcd.catalog, u"")
+        self.assertEqual(xmcd.extra, u"Disc Extra")
+        self.assertEqual(xmcd.get_track(0),
+                         (u"Track 1", u"Album Artist", u"Extra 1"))
+        self.assertEqual(xmcd.get_track(1),
+                         (u"Track 2", u"Track Artist", u"Extra 2"))
+        self.assertEqual(xmcd.get_track(2),
+                         (u"Track 3", u"Album Artist", u"Extra 3"))
+
+        lines = xmcd_file_lines[:]
+        del(lines[3])
+        xmcd = audiotools.XMCD.from_string("".join(lines))
+        self.assertEqual(xmcd.album_name, u"Album Name")
+        self.assertEqual(xmcd.artist_name, u"Album Artist")
+        self.assertEqual(xmcd.year, u"2010")
+        self.assertEqual(xmcd.catalog, u"")
+        self.assertEqual(xmcd.extra, u"Disc Extra")
+        self.assertEqual(xmcd.get_track(0),
+                         (u"", u"Album Artist", u""))
+        self.assertEqual(xmcd.get_track(1),
+                         (u"Track 2", u"Track Artist", u"Extra 2"))
+        self.assertEqual(xmcd.get_track(2),
+                         (u"Track 3", u"Album Artist", u"Extra 3"))
+
+        lines = xmcd_file_lines[:]
+        del(lines[4])
+        xmcd = audiotools.XMCD.from_string("".join(lines))
+        self.assertEqual(xmcd.album_name, u"Album Name")
+        self.assertEqual(xmcd.artist_name, u"Album Artist")
+        self.assertEqual(xmcd.year, u"2010")
+        self.assertEqual(xmcd.catalog, u"")
+        self.assertEqual(xmcd.extra, u"Disc Extra")
+        self.assertEqual(xmcd.get_track(0),
+                         (u"Track 1", u"Album Artist", u"Extra 1"))
+        self.assertEqual(xmcd.get_track(1),
+                         (u"", u"Album Artist", u""))
+        self.assertEqual(xmcd.get_track(2),
+                         (u"Track 3", u"Album Artist", u"Extra 3"))
+
+        lines = xmcd_file_lines[:]
+        del(lines[5])
+        xmcd = audiotools.XMCD.from_string("".join(lines))
+        self.assertEqual(xmcd.album_name, u"Album Name")
+        self.assertEqual(xmcd.artist_name, u"Album Artist")
+        self.assertEqual(xmcd.year, u"2010")
+        self.assertEqual(xmcd.catalog, u"")
+        self.assertEqual(xmcd.extra, u"Disc Extra")
+        self.assertEqual(xmcd.get_track(0),
+                         (u"Track 1", u"Album Artist", u"Extra 1"))
+        self.assertEqual(xmcd.get_track(1),
+                         (u"Track 2", u"Track Artist", u"Extra 2"))
+        self.assertEqual(xmcd.get_track(2),
+                         (u"", u"Album Artist", u""))
+
+        lines = xmcd_file_lines[:]
+        del(lines[6])
+        xmcd = audiotools.XMCD.from_string("".join(lines))
+        self.assertEqual(xmcd.album_name, u"Album Name")
+        self.assertEqual(xmcd.artist_name, u"Album Artist")
+        self.assertEqual(xmcd.year, u"2010")
+        self.assertEqual(xmcd.catalog, u"")
+        self.assertEqual(xmcd.extra, u"Disc Extra")
+        self.assertEqual(xmcd.get_track(0),
+                         (u"", u"Album Artist", u""))
+        self.assertEqual(xmcd.get_track(1),
+                         (u"Track 2", u"Track Artist", u"Extra 2"))
+        self.assertEqual(xmcd.get_track(2),
+                         (u"Track 3", u"Album Artist", u"Extra 3"))
+
+        lines = xmcd_file_lines[:]
+        del(lines[7])
+        xmcd = audiotools.XMCD.from_string("".join(lines))
+        self.assertEqual(xmcd.album_name, u"Album Name")
+        self.assertEqual(xmcd.artist_name, u"Album Artist")
+        self.assertEqual(xmcd.year, u"2010")
+        self.assertEqual(xmcd.catalog, u"")
+        self.assertEqual(xmcd.extra, u"Disc Extra")
+        self.assertEqual(xmcd.get_track(0),
+                         (u"Track 1", u"Album Artist", u"Extra 1"))
+        self.assertEqual(xmcd.get_track(1),
+                         (u"", u"Album Artist", u""))
+        self.assertEqual(xmcd.get_track(2),
+                         (u"Track 3", u"Album Artist", u"Extra 3"))
+
+        lines = xmcd_file_lines[:]
+        del(lines[8])
+        xmcd = audiotools.XMCD.from_string("".join(lines))
+        self.assertEqual(xmcd.album_name, u"Album Name")
+        self.assertEqual(xmcd.artist_name, u"Album Artist")
+        self.assertEqual(xmcd.year, u"2010")
+        self.assertEqual(xmcd.catalog, u"")
+        self.assertEqual(xmcd.extra, u"Disc Extra")
+        self.assertEqual(xmcd.get_track(0),
+                         (u"Track 1", u"Album Artist", u"Extra 1"))
+        self.assertEqual(xmcd.get_track(1),
+                         (u"Track 2", u"Track Artist", u"Extra 2"))
+        self.assertEqual(xmcd.get_track(2),
+                         (u"", u"Album Artist", u""))
+
+        lines = xmcd_file_lines[:]
+        del(lines[9])
+        xmcd = audiotools.XMCD.from_string("".join(lines))
+        self.assertEqual(xmcd.album_name, u"Album Name")
+        self.assertEqual(xmcd.artist_name, u"Album Artist")
+        self.assertEqual(xmcd.year, u"2010")
+        self.assertEqual(xmcd.catalog, u"")
+        self.assertEqual(xmcd.extra, u"")
+        self.assertEqual(xmcd.get_track(0),
+                         (u"Track 1", u"Album Artist", u"Extra 1"))
+        self.assertEqual(xmcd.get_track(1),
+                         (u"Track 2", u"Track Artist", u"Extra 2"))
+        self.assertEqual(xmcd.get_track(2),
+                         (u"Track 3", u"Album Artist", u"Extra 3"))
 
     @TEST_METADATA
     def test_metadata(self):
@@ -8687,17 +8849,353 @@ FILE "cue.wav" WAVE
             cue_file.close()
 
 
-    # @TEST_METADATA
-    @TEST_CUSTOM
+    @TEST_METADATA
     def test_missing_fields(self):
-        #FIXME
-        pass
+        def remove_node(parent, *to_remove):
+            toremove_parent = audiotools.walk_xml_tree(parent,
+                                                       *to_remove[0:-1])
+            if (len(to_remove) > 2):
+                self.assertEqual(toremove_parent.tagName, to_remove[-2])
+            toremove = audiotools.walk_xml_tree(toremove_parent,
+                                                to_remove[-1])
+            self.assertEqual(toremove.tagName, to_remove[-1])
+            toremove_parent.removeChild(toremove)
 
-    # @TEST_METADATA
-    @TEST_CUSTOM
+        from xml.dom.minidom import parseString
+
+        xml_data = """<?xml version="1.0" encoding="utf-8"?><metadata xmlns="http://musicbrainz.org/ns/mmd-1.0#" xmlns:ext="http://musicbrainz.org/ns/ext-1.0#"><release-list><release><title>Album Name</title><artist><name>Album Artist</name></artist><release-event-list><event date="2010" catalog-number="cat#"/></release-event-list><track-list><track><title>Track 1</title><duration>272000</duration></track><track><title>Track 2</title><artist><name>Track Artist</name></artist><duration>426333</duration></track><track><title>Track 3</title><duration>249560</duration></track></track-list></release></release-list></metadata>"""
+
+        xml_dom = parseString(xml_data)
+        xml = audiotools.MusicBrainzReleaseXML(xml_dom)
+        self.assertEqual(xml.album_name, u"Album Name")
+        self.assertEqual(xml.artist_name, u"Album Artist")
+        self.assertEqual(xml.year, u"2010")
+        self.assertEqual(xml.catalog, u"cat#")
+        self.assertEqual(xml.extra, u"")
+        self.assertEqual(xml.get_track(0),
+                         (u"Track 1", u"Album Artist", u""))
+        self.assertEqual(xml.get_track(1),
+                         (u"Track 2", u"Track Artist", u""))
+        self.assertEqual(xml.get_track(2),
+                         (u"Track 3", u"Album Artist", u""))
+
+        xml_dom = parseString(xml_data)
+        xml = audiotools.MusicBrainzReleaseXML(xml_dom)
+        self.assertEqual(xml.album_name, u"Album Name")
+        self.assertEqual(xml.artist_name, u"Album Artist")
+        self.assertEqual(xml.year, u"2010")
+        self.assertEqual(xml.catalog, u"cat#")
+        self.assertEqual(xml.extra, u"")
+        self.assertEqual(xml.get_track(0),
+                         (u"Track 1", u"Album Artist", u""))
+        self.assertEqual(xml.get_track(1),
+                         (u"Track 2", u"Track Artist", u""))
+        self.assertEqual(xml.get_track(2),
+                         (u"Track 3", u"Album Artist", u""))
+
+        #removing <metadata>
+        xml_dom = parseString(xml_data)
+        xml_dom.removeChild(xml_dom.firstChild)
+        xml = audiotools.MusicBrainzReleaseXML(xml_dom)
+        self.assertEqual(xml.album_name, u"")
+        self.assertEqual(xml.artist_name, u"")
+        self.assertEqual(xml.year, u"")
+        self.assertEqual(xml.catalog, u"")
+        self.assertEqual(xml.extra, u"")
+        self.assertEqual(len(xml), 0)
+
+        #removing <release-list>
+        xml_dom = parseString(xml_data)
+        remove_node(xml_dom, u'metadata', u'release-list')
+        xml = audiotools.MusicBrainzReleaseXML(xml_dom)
+        self.assertEqual(xml.album_name, u"")
+        self.assertEqual(xml.artist_name, u"")
+        self.assertEqual(xml.year, u"")
+        self.assertEqual(xml.catalog, u"")
+        self.assertEqual(xml.extra, u"")
+        self.assertEqual(len(xml), 0)
+
+        #removing <release>
+        xml_dom = parseString(xml_data)
+        remove_node(xml_dom, u'metadata', u'release-list', u'release')
+        xml = audiotools.MusicBrainzReleaseXML(xml_dom)
+        self.assertEqual(xml.album_name, u"")
+        self.assertEqual(xml.artist_name, u"")
+        self.assertEqual(xml.year, u"")
+        self.assertEqual(xml.catalog, u"")
+        self.assertEqual(xml.extra, u"")
+        self.assertEqual(len(xml), 0)
+
+        #removing <title>
+        xml_dom = parseString(xml_data)
+        remove_node(xml_dom, u'metadata', u'release-list', u'release',
+                    u'title')
+        xml = audiotools.MusicBrainzReleaseXML(xml_dom)
+        self.assertEqual(xml.album_name, u"")
+        self.assertEqual(xml.artist_name, u"Album Artist")
+        self.assertEqual(xml.year, u"2010")
+        self.assertEqual(xml.catalog, u"cat#")
+        self.assertEqual(xml.extra, u"")
+        self.assertEqual(xml.get_track(0),
+                         (u"Track 1", u"Album Artist", u""))
+        self.assertEqual(xml.get_track(1),
+                         (u"Track 2", u"Track Artist", u""))
+        self.assertEqual(xml.get_track(2),
+                         (u"Track 3", u"Album Artist", u""))
+
+        #removing <artist>
+        xml_dom = parseString(xml_data)
+        remove_node(xml_dom, u'metadata', u'release-list', u'release',
+                    u'artist')
+        xml = audiotools.MusicBrainzReleaseXML(xml_dom)
+        self.assertEqual(xml.album_name, u"Album Name")
+        self.assertEqual(xml.artist_name, u"")
+        self.assertEqual(xml.year, u"2010")
+        self.assertEqual(xml.catalog, u"cat#")
+        self.assertEqual(xml.extra, u"")
+        self.assertEqual(xml.get_track(0),
+                         (u"Track 1", u"", u""))
+        self.assertEqual(xml.get_track(1),
+                         (u"Track 2", u"Track Artist", u""))
+        self.assertEqual(xml.get_track(2),
+                         (u"Track 3", u"", u""))
+
+        #removing <artist> -> <name>
+        xml_dom = parseString(xml_data)
+        remove_node(xml_dom, u'metadata', u'release-list', u'release',
+                    u'artist', u'name')
+        xml = audiotools.MusicBrainzReleaseXML(xml_dom)
+        self.assertEqual(xml.album_name, u"Album Name")
+        self.assertEqual(xml.artist_name, u"")
+        self.assertEqual(xml.year, u"2010")
+        self.assertEqual(xml.catalog, u"cat#")
+        self.assertEqual(xml.extra, u"")
+        self.assertEqual(xml.get_track(0),
+                         (u"Track 1", u"", u""))
+        self.assertEqual(xml.get_track(1),
+                         (u"Track 2", u"Track Artist", u""))
+        self.assertEqual(xml.get_track(2),
+                         (u"Track 3", u"", u""))
+
+        #removing <release-event-list>
+        xml_dom = parseString(xml_data)
+        remove_node(xml_dom, u'metadata', u'release-list', u'release',
+                    u'release-event-list')
+        xml = audiotools.MusicBrainzReleaseXML(xml_dom)
+        self.assertEqual(xml.album_name, u"Album Name")
+        self.assertEqual(xml.artist_name, u"Album Artist")
+        self.assertEqual(xml.year, u"")
+        self.assertEqual(xml.catalog, u"")
+        self.assertEqual(xml.extra, u"")
+        self.assertEqual(xml.get_track(0),
+                         (u"Track 1", u"Album Artist", u""))
+        self.assertEqual(xml.get_track(1),
+                         (u"Track 2", u"Track Artist", u""))
+        self.assertEqual(xml.get_track(2),
+                         (u"Track 3", u"Album Artist", u""))
+
+        #removing <release-event-list> -> <event>
+        xml_dom = parseString(xml_data)
+        remove_node(xml_dom, u'metadata', u'release-list', u'release',
+                    u'release-event-list', u'event')
+        xml = audiotools.MusicBrainzReleaseXML(xml_dom)
+        self.assertEqual(xml.album_name, u"Album Name")
+        self.assertEqual(xml.artist_name, u"Album Artist")
+        self.assertEqual(xml.year, u"")
+        self.assertEqual(xml.catalog, u"")
+        self.assertEqual(xml.extra, u"")
+        self.assertEqual(xml.get_track(0),
+                         (u"Track 1", u"Album Artist", u""))
+        self.assertEqual(xml.get_track(1),
+                         (u"Track 2", u"Track Artist", u""))
+        self.assertEqual(xml.get_track(2),
+                         (u"Track 3", u"Album Artist", u""))
+
+        #removing <track-list>
+        xml_dom = parseString(xml_data)
+        remove_node(xml_dom, u'metadata', u'release-list', u'release',
+                    u'track-list')
+        xml = audiotools.MusicBrainzReleaseXML(xml_dom)
+        self.assertEqual(xml.album_name, u"Album Name")
+        self.assertEqual(xml.artist_name, u"Album Artist")
+        self.assertEqual(xml.year, u"2010")
+        self.assertEqual(xml.catalog, u"cat#")
+        self.assertEqual(xml.extra, u"")
+        self.assertEqual(len(xml), 0)
+
+        #removing <track> (1)
+        xml_dom = parseString(xml_data)
+        track_list = audiotools.walk_xml_tree(xml_dom, u'metadata',
+                                              u'release-list', u'release',
+                                              u'track-list')
+        self.assertEqual(track_list.tagName, u'track-list')
+        track_list.removeChild(track_list.childNodes[0])
+        xml = audiotools.MusicBrainzReleaseXML(xml_dom)
+        self.assertEqual(xml.album_name, u"Album Name")
+        self.assertEqual(xml.artist_name, u"Album Artist")
+        self.assertEqual(xml.year, u"2010")
+        self.assertEqual(xml.catalog, u"cat#")
+        self.assertEqual(xml.extra, u"")
+        self.assertEqual(len(xml), 2)
+        self.assertEqual(xml.get_track(0),
+                         (u"Track 2", u"Track Artist", u""))
+        self.assertEqual(xml.get_track(1),
+                         (u"Track 3", u"Album Artist", u""))
+
+        #removing <track> (1) -> <title>
+        xml_dom = parseString(xml_data)
+        track_list = audiotools.walk_xml_tree(xml_dom, u'metadata',
+                                              u'release-list', u'release',
+                                              u'track-list')
+        self.assertEqual(track_list.tagName, u'track-list')
+        remove_node(track_list.childNodes[0], u'title')
+        xml = audiotools.MusicBrainzReleaseXML(xml_dom)
+        self.assertEqual(xml.album_name, u"Album Name")
+        self.assertEqual(xml.artist_name, u"Album Artist")
+        self.assertEqual(xml.year, u"2010")
+        self.assertEqual(xml.catalog, u"cat#")
+        self.assertEqual(xml.extra, u"")
+        self.assertEqual(len(xml), 3)
+        self.assertEqual(xml.get_track(0),
+                         (u"", u"Album Artist", u""))
+        self.assertEqual(xml.get_track(1),
+                         (u"Track 2", u"Track Artist", u""))
+        self.assertEqual(xml.get_track(2),
+                         (u"Track 3", u"Album Artist", u""))
+
+        #removing <track> (2)
+        xml_dom = parseString(xml_data)
+        track_list = audiotools.walk_xml_tree(xml_dom, u'metadata',
+                                              u'release-list', u'release',
+                                              u'track-list')
+        self.assertEqual(track_list.tagName, u'track-list')
+        track_list.removeChild(track_list.childNodes[1])
+        xml = audiotools.MusicBrainzReleaseXML(xml_dom)
+        self.assertEqual(xml.album_name, u"Album Name")
+        self.assertEqual(xml.artist_name, u"Album Artist")
+        self.assertEqual(xml.year, u"2010")
+        self.assertEqual(xml.catalog, u"cat#")
+        self.assertEqual(xml.extra, u"")
+        self.assertEqual(len(xml), 2)
+        self.assertEqual(xml.get_track(0),
+                         (u"Track 1", u"Album Artist", u""))
+        self.assertEqual(xml.get_track(1),
+                         (u"Track 3", u"Album Artist", u""))
+
+        #removing <track> (2) -> <title>
+        xml_dom = parseString(xml_data)
+        track_list = audiotools.walk_xml_tree(xml_dom, u'metadata',
+                                              u'release-list', u'release',
+                                              u'track-list')
+        self.assertEqual(track_list.tagName, u'track-list')
+        remove_node(track_list.childNodes[1], u'title')
+        xml = audiotools.MusicBrainzReleaseXML(xml_dom)
+        self.assertEqual(xml.album_name, u"Album Name")
+        self.assertEqual(xml.artist_name, u"Album Artist")
+        self.assertEqual(xml.year, u"2010")
+        self.assertEqual(xml.catalog, u"cat#")
+        self.assertEqual(xml.extra, u"")
+        self.assertEqual(len(xml), 3)
+        self.assertEqual(xml.get_track(0),
+                         (u"Track 1", u"Album Artist", u""))
+        self.assertEqual(xml.get_track(1),
+                         (u"", u"Track Artist", u""))
+        self.assertEqual(xml.get_track(2),
+                         (u"Track 3", u"Album Artist", u""))
+
+        #removing <track> (2) -> <artist>
+        xml_dom = parseString(xml_data)
+        track_list = audiotools.walk_xml_tree(xml_dom, u'metadata',
+                                              u'release-list', u'release',
+                                              u'track-list')
+        self.assertEqual(track_list.tagName, u'track-list')
+        remove_node(track_list.childNodes[1], u'artist')
+        xml = audiotools.MusicBrainzReleaseXML(xml_dom)
+        self.assertEqual(xml.album_name, u"Album Name")
+        self.assertEqual(xml.artist_name, u"Album Artist")
+        self.assertEqual(xml.year, u"2010")
+        self.assertEqual(xml.catalog, u"cat#")
+        self.assertEqual(xml.extra, u"")
+        self.assertEqual(len(xml), 3)
+        self.assertEqual(xml.get_track(0),
+                         (u"Track 1", u"Album Artist", u""))
+        self.assertEqual(xml.get_track(1),
+                         (u"Track 2", u"Album Artist", u""))
+        self.assertEqual(xml.get_track(2),
+                         (u"Track 3", u"Album Artist", u""))
+
+        #removing <track> (2) -> <artist> -> <name>
+        xml_dom = parseString(xml_data)
+        track_list = audiotools.walk_xml_tree(xml_dom, u'metadata',
+                                              u'release-list', u'release',
+                                              u'track-list')
+        self.assertEqual(track_list.tagName, u'track-list')
+        remove_node(track_list.childNodes[1], u'artist', u'name')
+        xml = audiotools.MusicBrainzReleaseXML(xml_dom)
+        self.assertEqual(xml.album_name, u"Album Name")
+        self.assertEqual(xml.artist_name, u"Album Artist")
+        self.assertEqual(xml.year, u"2010")
+        self.assertEqual(xml.catalog, u"cat#")
+        self.assertEqual(xml.extra, u"")
+        self.assertEqual(len(xml), 3)
+        self.assertEqual(xml.get_track(0),
+                         (u"Track 1", u"Album Artist", u""))
+        self.assertEqual(xml.get_track(1),
+                         (u"Track 2", u"Album Artist", u""))
+        self.assertEqual(xml.get_track(2),
+                         (u"Track 3", u"Album Artist", u""))
+
+        #removing <track> (3)
+        xml_dom = parseString(xml_data)
+        track_list = audiotools.walk_xml_tree(xml_dom, u'metadata',
+                                              u'release-list', u'release',
+                                              u'track-list')
+        self.assertEqual(track_list.tagName, u'track-list')
+        track_list.removeChild(track_list.childNodes[2])
+        xml = audiotools.MusicBrainzReleaseXML(xml_dom)
+        self.assertEqual(xml.album_name, u"Album Name")
+        self.assertEqual(xml.artist_name, u"Album Artist")
+        self.assertEqual(xml.year, u"2010")
+        self.assertEqual(xml.catalog, u"cat#")
+        self.assertEqual(xml.extra, u"")
+        self.assertEqual(len(xml), 2)
+        self.assertEqual(xml.get_track(0),
+                         (u"Track 1", u"Album Artist", u""))
+        self.assertEqual(xml.get_track(1),
+                         (u"Track 2", u"Track Artist", u""))
+
+        #removing <track> (3) -> <title>
+        xml_dom = parseString(xml_data)
+        track_list = audiotools.walk_xml_tree(xml_dom, u'metadata',
+                                              u'release-list', u'release',
+                                              u'track-list')
+        self.assertEqual(track_list.tagName, u'track-list')
+        remove_node(track_list.childNodes[2], u'title')
+        xml = audiotools.MusicBrainzReleaseXML(xml_dom)
+        self.assertEqual(xml.album_name, u"Album Name")
+        self.assertEqual(xml.artist_name, u"Album Artist")
+        self.assertEqual(xml.year, u"2010")
+        self.assertEqual(xml.catalog, u"cat#")
+        self.assertEqual(xml.extra, u"")
+        self.assertEqual(len(xml), 3)
+        self.assertEqual(xml.get_track(0),
+                         (u"Track 1", u"Album Artist", u""))
+        self.assertEqual(xml.get_track(1),
+                         (u"Track 2", u"Track Artist", u""))
+        self.assertEqual(xml.get_track(2),
+                         (u"", u"Album Artist", u""))
+
+
+    @TEST_METADATA
     def test_metadata(self):
-        #FIXME
-        pass
+        xml = audiotools.MusicBrainzReleaseXML.from_string(
+            """<?xml version="1.0" encoding="utf-8"?><metadata xmlns="http://musicbrainz.org/ns/mmd-1.0#" xmlns:ext="http://musicbrainz.org/ns/ext-1.0#"><release-list><release><title>Album Name</title><artist><name>Album Artist</name></artist><release-event-list><event date="2010"/></release-event-list><track-list><track><title>Track 1</title><duration>272000</duration></track><track><title>Track 2</title><duration>426333</duration></track><track><title>Track 3</title><duration>249560</duration></track></track-list></release></release-list></metadata>""")
+
+        self.assertEqual(xml.metadata(),
+                         audiotools.MetaData(artist_name=u"Album Artist",
+                                             album_name=u"Album Name",
+                                             track_total=3,
+                                             year=u"2010"))
 
 
 class TestProgramOutput(TestTextOutput):

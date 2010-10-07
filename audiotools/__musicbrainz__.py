@@ -216,9 +216,9 @@ class MBDiscID:
     def toxml(self, output):
         """Writes an XML file to the output file object."""
 
-        output.write(MusicBrainzReleaseXML.from_files(
+        output.write(MusicBrainzReleaseXML.from_tracks(
                 [DummyAudioFile(length, None, i + 1)
-                 for (i, length) in enumerate(self.tracks)]).build())
+                 for (i, length) in enumerate(self.tracks)]).to_string())
 
 
 class MusicBrainz:

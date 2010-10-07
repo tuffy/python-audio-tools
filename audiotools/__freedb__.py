@@ -372,9 +372,9 @@ class DiscID:
 
         Its values are populated from this DiscID's fields."""
 
-        output.write(XMCD.from_files(
+        output.write(XMCD.from_tracks(
             [DummyAudioFile(length, None, i + 1)
-             for (i, length) in enumerate(self.tracks)]).build())
+             for (i, length) in enumerate(self.tracks)]).to_string())
 
 
 class FreeDBException(Exception):
