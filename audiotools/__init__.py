@@ -1724,8 +1724,11 @@ def applicable_replay_gain(tracks):
 
     sample_rates = set([track.sample_rate() for track in tracks])
     if ((len(sample_rates) > 1) or
-        (list(sample_rates)[0] not in (48000, 44100, 32000, 24000, 22050,
-                                       16000, 12000, 11025, 8000))):
+        (list(sample_rates)[0] not in (48000,  44100,  32000,  24000, 22050,
+                                       16000,  12000,  11025,  8000,
+                                       18900,  37800,  56000,  64000,
+                                       88200,  96000,  112000, 128000,
+                                       144000, 176400, 192000))):
         return False
 
     channels = set([track.channels() for track in tracks])

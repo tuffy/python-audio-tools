@@ -2618,6 +2618,26 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** DONE Update encoding documentation describing multichannel handling
 * TODO Add higher sampling rate support to ReplayGain module
   Extract the higher rates from wvgain.c
+  - [X] 8000Hz
+  - [X] 11025Hz
+  - [X] 12000Hz
+  - [X] 16000Hz
+  - [X] 18900Hz
+  - [X] 22050Hz
+  - [X] 24000Hz
+  - [X] 32000Hz
+  - [X] 37800Hz
+  - [X] 44100Hz
+  - [X] 48000Hz
+  - [X] 56000Hz
+  - [X] 64000Hz
+  - [X] 88200Hz
+  - [X] 96000Hz
+  - [X] 112000Hz
+  - [X] 128000Hz
+  - [X] 144000Hz
+  - [X] 176400Hz
+  - [X] 192000Hz
 * TODO Allow audio type defaults to be selectable
 ** TODO Allow -t default audio type to be pulled from config file
 ** TODO Allow -q default quality for audio types to be pulled from config
