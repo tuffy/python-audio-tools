@@ -13829,7 +13829,7 @@ class TestReplayGain(unittest.TestCase):
         #check for invalid sample rate
         self.assertRaises(ValueError,
                           audiotools.replaygain.ReplayGain,
-                          96000)
+                          200000)
 
         #check for invalid channel count
         rg = audiotools.replaygain.ReplayGain(44100)
@@ -13903,6 +13903,24 @@ class TestReplayGain(unittest.TestCase):
             track_file1.close()
             track_file2.close()
             track_file3.close()
+
+    @TEST_METADATA
+    def test_valid_rates(self):
+        import audiotools.replaygain
+
+        for sample_rate in [8000, 11025, 12000, 16000, 18900, 22050, 24000,
+                            32000, 37800, 44100, 48000, 56000, 64000, 88200,
+                            96000, 112000, 128000, 144000, 176400, 192000]:
+            gain = audiotools.replaygain.ReplayGain(sample_rate)
+            reader = test_streams.Simple_Sine(sample_rate * 2,
+                                              sample_rate,
+                                              0x4,
+                                              16,
+                                              (30000, sample_rate / 100))
+            audiotools.transfer_data(reader.read, gain.update)
+            (gain, peak) = gain.title_gain()
+            self.assert_(gain < -4.0)
+            self.assert_(peak > .90)
 
 
 #takes several 1-channel PCMReaders and combines them into a single PCMReader

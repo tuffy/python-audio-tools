@@ -2232,11 +2232,11 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   which can be proven to handle all legal files.
   I expect this will require PLY or some similar lexx/yacc mechanism
   which I'll bundle to avoid adding any extra depencies.
-* TODO Add C-based FLAC decoder
+* DONE Add C-based FLAC decoder
 ** DONE Add a variety of unit tests
 ** DONE Handle Rice escape codes
    Not sure how to test these, but they should be handled properly.
-** TODO Ensure decoder raises the proper exceptions
+** DONE Ensure decoder raises the proper exceptions
 * TODO Add C-based FLAC encoder
 ** DONE Use VERBATIM subframes when necessary
 ** DONE Add significant initial padding blocks
@@ -2307,12 +2307,12 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    Include unit test.
    - [ ] AACAudio
    - [ ] AiffAudio
-   - [ ] ALACAudio
+   - [X] ALACAudio
    - [ ] AuAudio
    - [X] FlacAudio
    - [ ] M4AAudio
-   - [ ] MP2Audio
-   - [ ] MP3Audio
+   - [X] MP2Audio
+   - [X] MP3Audio
    - [X] OggFlacAudio
    - [X] SpeexAudio
    - [X] ShortenAudio
@@ -2616,7 +2616,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** TODO Unit test multichannel ALAC encoding and decoding
 ** DONE Update decoding documentation describing multichannel handling
 ** DONE Update encoding documentation describing multichannel handling
-* TODO Add higher sampling rate support to ReplayGain module
+* DONE Add higher sampling rate support to ReplayGain module
   Extract the higher rates from wvgain.c
   - [X] 8000Hz
   - [X] 11025Hz
@@ -2638,6 +2638,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   - [X] 144000Hz
   - [X] 176400Hz
   - [X] 192000Hz
+** DONE Unit test sample rates
 * TODO Allow audio type defaults to be selectable
 ** TODO Allow -t default audio type to be pulled from config file
 ** TODO Allow -q default quality for audio types to be pulled from config
@@ -2645,3 +2646,4 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** TODO Update audiotools-config to display default qualities
 ** TODO Update audiotools-config to select default type
 ** TODO Update audiotools-config to select default quality for a type
+* TODO Allow default verbosity to be selectable
