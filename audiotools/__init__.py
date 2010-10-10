@@ -120,6 +120,11 @@ if (FS_ENCODING is None):
 
 IO_ENCODING = config.get_default("System", "io_encoding", "UTF-8")
 
+VERBOSITY_LEVELS = ("quiet", "normal", "debug")
+DEFAULT_VERBOSITY = config.get_default("Defaults", "verbosity", "normal")
+if (DEFAULT_VERBOSITY not in VERBOSITY_LEVELS):
+    DEFAULT_VERBOSITY = "normal"
+
 try:
     import cpucount
     MAX_CPUS = cpucount.cpucount()
@@ -458,6 +463,24 @@ class VerboseMessenger:
                 (";".join(map(unicode, codes)), s)
         else:
             return s
+
+    def ansi_clearline(self):
+        """Generates a set of clear line ANSI escape codes to stdout.
+
+        This works only if stdout is a tty.  Otherwise, it does nothing.
+        For example:
+        >>> msg = VerboseMessenger("audiotools")
+        >>> msg.partial_output(u"working")
+        >>> time.sleep(1)
+        >>> msg.ansi_clearline()
+        >>> msg.output(u"done")
+        """
+
+        if (sys.stdout.isatty()):
+            sys.stdout.write((u"\u001B[0G" + #move cursor to column 0
+                              u"\u001B[0K"   #clear everything after cursor
+                              ).encode(IO_ENCODING))
+            sys.stdout.flush()
 
     def ansi_err(self, s, codes):
         """Generates an ANSI code as a unicode string.

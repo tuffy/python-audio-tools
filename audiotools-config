@@ -66,7 +66,8 @@ if (__name__ == '__main__'):
                "musicbrainz_server": ("MusicBrainz", "server"),
                "musicbrainz_port": ("MusicBrainz", "port"),
 
-               "filename_format": ("Filenames", "format")}
+               "filename_format": ("Filenames", "format"),
+               "verbosity": ("Defaults", "verbosity")}
 
     system = audiotools.OptionGroup(parser, _(u"System Options"))
 
@@ -192,13 +193,13 @@ if (__name__ == '__main__'):
         '-V', '--verbose',
         action='store',
         dest='verbosity',
-        choices=["quiet", "normal", "debug"],
-        default="normal",
-        help=_(u'the verbosity level to execute at'))
+        choices=audiotools.VERBOSITY_LEVELS,
+        default=audiotools.DEFAULT_VERBOSITY,
+        help=_(u'the new default verbosity level'))
 
     (options, args) = parser.parse_args()
 
-    msg = audiotools.Messenger("audiotools-config", options)
+    msg = audiotools.Messenger("audiotools-config", None)
 
     if (len(sys.argv) < 2):
         #no arguments, so simply print current configuration

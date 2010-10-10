@@ -217,8 +217,8 @@ if (__name__ == '__main__'):
         '-V', '--verbose',
         action='store',
         dest='verbosity',
-        choices=["quiet", "normal", "debug"],
-        default="normal",
+        choices=audiotools.VERBOSITY_LEVELS,
+        default=audiotools.DEFAULT_VERBOSITY,
         help=_(u'the verbosity level to execute at'))
 
     (options, args) = parser.parse_args()
