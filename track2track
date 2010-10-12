@@ -240,7 +240,7 @@ if (__name__ == '__main__'):
         if (options.type is not None):
             AudioType = audiotools.TYPE_MAP[options.type]
         else:
-            AudioType = audiotools.TYPE_MAP['wav']
+            AudioType = audiotools.TYPE_MAP[audiotools.DEFAULT_TYPE]
     else:
         if (options.type is not None):
             AudioType = audiotools.TYPE_MAP[options.type]
@@ -263,7 +263,7 @@ if (__name__ == '__main__'):
                             (AudioType.NAME))
         sys.exit(0)
     elif (options.quality is None):
-        options.quality = AudioType.DEFAULT_COMPRESSION
+        options.quality = audiotools.__default_quality__(AudioType.NAME)
     elif (options.quality not in AudioType.COMPRESSION_MODES):
         msg.error(
             _(u"\"%(quality)s\" is not a supported " +

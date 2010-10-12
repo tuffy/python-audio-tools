@@ -25,7 +25,7 @@ from audiotools import (AudioFile, MetaData, InvalidFile, PCMReader,
                         ignore_sigint, sheet_to_unicode, EncodingError,
                         UnsupportedChannelMask, DecodingError, Messenger,
                         BufferedPCMReader, calculate_replay_gain, ChannelMask,
-                        PCMReaderError)
+                        PCMReaderError, __default_quality__)
 from __vorbiscomment__ import *
 from __id3__ import ID3v2Comment
 from __vorbis__ import OggStreamReader, OggStreamWriter
@@ -1014,7 +1014,7 @@ class FlacAudio(AudioFile):
                                   bits_per_sample=self.bits_per_sample())
 
     @classmethod
-    def from_pcm(cls, filename, pcmreader, compression="8"):
+    def from_pcm(cls, filename, pcmreader, compression=None):
         """Encodes a new file from PCM data.
 
         Takes a filename string, PCMReader object
@@ -1025,8 +1025,9 @@ class FlacAudio(AudioFile):
 
         from . import encoders
 
-        if (compression not in cls.COMPRESSION_MODES):
-            compression = cls.DEFAULT_COMPRESSION
+        if ((compression is None) or
+            (compression not in cls.COMPRESSION_MODES)):
+            compression = __default_quality__(cls.NAME)
 
         encoding_options = {"0": {"block_size": 1152,
                                   "max_lpc_order": 0,
@@ -1181,7 +1182,7 @@ class FlacAudio(AudioFile):
             WaveAudio.from_pcm(wave_filename, self.to_pcm())
 
     @classmethod
-    def from_wave(cls, filename, wave_filename, compression="8"):
+    def from_wave(cls, filename, wave_filename, compression=None):
         """Encodes a new AudioFile from an existing .wav file.
 
         Takes a filename string, wave_filename string
@@ -1191,8 +1192,9 @@ class FlacAudio(AudioFile):
         at the given filename with the specified compression level
         and returns a new FlacAudio object."""
 
-        if (compression not in cls.COMPRESSION_MODES):
-            compression = cls.DEFAULT_COMPRESSION
+        if ((compression is None) or
+            (compression not in cls.COMPRESSION_MODES)):
+            compression = __default_quality__(cls.NAME)
 
         if (cls.supports_foreign_riff_chunks() and
             WaveAudio(wave_filename).has_foreign_riff_chunks()):
@@ -1645,8 +1647,7 @@ class OggFlacAudio(FlacAudio):
                          big_endian=False)
 
     @classmethod
-    def from_pcm(cls, filename, pcmreader,
-                 compression="8"):
+    def from_pcm(cls, filename, pcmreader, compression=None):
         """Encodes a new file from PCM data.
 
         Takes a filename string, PCMReader object
@@ -1660,8 +1661,9 @@ class OggFlacAudio(FlacAudio):
                 44100, 48000, 96000])
         SUBSTREAM_BITS = frozenset([8, 12, 16, 20, 24])
 
-        if (compression not in cls.COMPRESSION_MODES):
-            compression = cls.DEFAULT_COMPRESSION
+        if ((compression is None) or
+            (compression not in cls.COMPRESSION_MODES)):
+            compression = __default_quality__(cls.NAME)
 
         if ((pcmreader.sample_rate in SUBSTREAM_SAMPLE_RATES) and
             (pcmreader.bits_per_sample in SUBSTREAM_BITS)):

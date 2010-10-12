@@ -22,7 +22,8 @@ from audiotools import (AudioFile, InvalidFile, PCMReader, PCMConverter,
                         Con, transfer_data, transfer_framelist_data,
                         subprocess, BIN, BIG_ENDIAN, ApeTag, ReplayGain,
                         ignore_sigint, open_files, EncodingError,
-                        DecodingError, PCMReaderError, ChannelMask)
+                        DecodingError, PCMReaderError, ChannelMask,
+                        __default_quality__)
 from __id3__ import *
 import gettext
 
@@ -349,7 +350,7 @@ class MP3Audio(AudioFile):
             return (0, 0)
 
     @classmethod
-    def from_pcm(cls, filename, pcmreader, compression="2"):
+    def from_pcm(cls, filename, pcmreader, compression=None):
         """Encodes a new file from PCM data.
 
         Takes a filename string, PCMReader object
@@ -361,8 +362,9 @@ class MP3Audio(AudioFile):
         import decimal
         import bisect
 
-        if (compression not in cls.COMPRESSION_MODES):
-            compression = cls.DEFAULT_COMPRESSION
+        if ((compression is None) or
+            (compression not in cls.COMPRESSION_MODES)):
+            compression = __default_quality__(cls.NAME)
 
         if ((pcmreader.channels > 2) or
             (pcmreader.sample_rate not in (32000, 48000, 44100))):
@@ -845,7 +847,7 @@ class MP2Audio(MP3Audio):
             return False
 
     @classmethod
-    def from_pcm(cls, filename, pcmreader, compression="192"):
+    def from_pcm(cls, filename, pcmreader, compression=None):
         """Encodes a new file from PCM data.
 
         Takes a filename string, PCMReader object
@@ -857,8 +859,9 @@ class MP2Audio(MP3Audio):
         import decimal
         import bisect
 
-        if (compression not in cls.COMPRESSION_MODES):
-            compression = cls.DEFAULT_COMPRESSION
+        if ((compression is None) or
+            (compression not in cls.COMPRESSION_MODES)):
+            compression = __default_quality__(cls.NAME)
 
         if ((pcmreader.channels > 2) or
             (pcmreader.sample_rate not in (32000, 48000, 44100)) or

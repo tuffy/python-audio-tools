@@ -22,7 +22,8 @@ from audiotools import (AudioFile, InvalidFile, PCMReader,
                         transfer_framelist_data, subprocess, BIN,
                         cStringIO, open_files, os, ReplayGain,
                         ignore_sigint, EncodingError, DecodingError,
-                        ChannelMask, UnsupportedChannelMask)
+                        ChannelMask, UnsupportedChannelMask,
+                        __default_quality__)
 from __vorbiscomment__ import *
 import gettext
 
@@ -522,8 +523,9 @@ class VorbisAudio(AudioFile):
     def from_pcm(cls, filename, pcmreader, compression=None):
         """Returns a PCMReader object containing the track's PCM data."""
 
-        if (compression not in cls.COMPRESSION_MODES):
-            compression = cls.DEFAULT_COMPRESSION
+        if ((compression is None) or
+            (compression not in cls.COMPRESSION_MODES)):
+            compression = __default_quality__(cls.NAME)
 
         devnull = file(os.devnull, 'ab')
 

@@ -54,7 +54,7 @@ if (__name__ == '__main__'):
         action='store',
         dest='type',
         choices=audiotools.TYPE_MAP.keys(),
-        default='wav',
+        default=audiotools.DEFAULT_TYPE,
         help=_(u'the type of audio track to create'))
 
     conversion.add_option(
@@ -147,7 +147,7 @@ if (__name__ == '__main__'):
                           (AudioType.NAME))
         sys.exit(0)
     elif (options.quality is None):
-        options.quality = AudioType.DEFAULT_COMPRESSION
+        options.quality = audiotools.__default_quality__(AudioType.NAME)
     elif (options.quality not in AudioType.COMPRESSION_MODES):
         msg.error(_(u"\"%(quality)s\" is not a supported " +
                     u"compression mode for type \"%(type)s\"") % \

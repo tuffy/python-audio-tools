@@ -85,14 +85,6 @@ if (__name__ == '__main__'):
                       help=_(u'the CD-ROM read offset to use'))
 
     system.add_option(
-        '-j', '--joint',
-        action='store',
-        type='int',
-        metavar='MAX_PROCESSES',
-        dest='system_maximum_jobs',
-        help=_(u'the maximum number of processes to run at a time'))
-
-    system.add_option(
         '--fs-encoding',
         action='store',
         metavar='ENCODING',
@@ -107,6 +99,32 @@ if (__name__ == '__main__'):
         help=_(u"the system's text encoding"))
 
     parser.add_option_group(system)
+
+    transcoding = audiotools.OptionGroup(parser, _(u"Transcoding Options"))
+
+    transcoding.add_option(
+        '-t', '--type',
+        action='store',
+        dest='type',
+        choices=audiotools.TYPE_MAP.keys(),
+        help=_(u'the default audio type to use, or the type for a given default quality level'))
+
+    transcoding.add_option(
+        '-q', '--quality',
+        action='store',
+        type='string',
+        dest='quality',
+        help=_(u'the default quality level for a given audio type'))
+
+    transcoding.add_option(
+        '-j', '--joint',
+        action='store',
+        type='int',
+        metavar='MAX_PROCESSES',
+        dest='system_maximum_jobs',
+        help=_(u'the maximum number of processes to run at a time'))
+
+    parser.add_option_group(transcoding)
 
     thumbnails = audiotools.OptionGroup(parser, _(u"Thumbnail Options"))
 
@@ -361,6 +379,39 @@ if (__name__ == '__main__'):
                     if (not config.has_section(section)):
                         config.add_section(section)
                     config.set(section, option, getattr(options, attr))
+
+        if (options.type is not None):
+            AudioType = audiotools.TYPE_MAP[options.type]
+
+            if (options.quality is not None):
+                if (options.quality == 'help'):
+                    if (len(AudioType.COMPRESSION_MODES) > 1):
+                        msg.info(_(u"Available compression types for %s:") %
+                                 (AudioType.NAME))
+                        for mode in AudioType.COMPRESSION_MODES:
+                            msg.info(mode.decode('ascii'))
+                    else:
+                        msg.error(
+                            _(u"Audio type %s has no compression modes") %
+                            (AudioType.NAME))
+                    sys.exit(0)
+                elif (options.quality not in AudioType.COMPRESSION_MODES):
+                    msg.error(
+                        _(u"\"%(quality)s\" is not a supported " +
+                          u"compression mode for type \"%(type)s\"") %
+                        {"quality": options.quality,
+                         "type": AudioType.NAME})
+                    sys.exit(1)
+
+                #we're setting the quality level for a given type
+                if (not config.has_section("Quality")):
+                    config.add_section("Quality")
+                config.set("Quality", options.type, options.quality)
+            else:
+                #we're setting the default type
+                if (not config.has_section("System")):
+                    config.add_section("System")
+                config.set("System", "default_type", options.type)
 
         configpath = os.path.expanduser('~/.audiotools.cfg')
         configfile = open(configpath, 'w')

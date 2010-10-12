@@ -26,7 +26,8 @@ from audiotools import (AudioFile, InvalidFile, PCMReader, PCMConverter,
                         WaveAudio, TempWaveReader,
                         ChannelMask, UnsupportedBitsPerSample,
                         UnsupportedChannelCount, BufferedPCMReader,
-                        at_a_time, VERSION, PCMReaderError)
+                        at_a_time, VERSION, PCMReaderError,
+                        __default_quality__)
 from __m4a_atoms__ import *
 import gettext
 
@@ -492,7 +493,7 @@ class M4AAudio_faac(AudioFile):
             process=sub)
 
     @classmethod
-    def from_pcm(cls, filename, pcmreader, compression="100"):
+    def from_pcm(cls, filename, pcmreader, compression=None):
         """Encodes a new file from PCM data.
 
         Takes a filename string, PCMReader object
@@ -501,8 +502,9 @@ class M4AAudio_faac(AudioFile):
         at the given filename with the specified compression level
         and returns a new M4AAudio object."""
 
-        if (compression not in cls.COMPRESSION_MODES):
-            compression = cls.DEFAULT_COMPRESSION
+        if ((compression is None) or
+            (compression not in cls.COMPRESSION_MODES)):
+            compression = __default_quality__(cls.NAME)
 
         if (pcmreader.channels > 2):
             pcmreader = PCMConverter(pcmreader,
@@ -633,8 +635,9 @@ class M4AAudio_nero(M4AAudio_faac):
         at the given filename with the specified compression level
         and returns a new M4AAudio object."""
 
-        if (compression not in cls.COMPRESSION_MODES):
-            compression = cls.DEFAULT_COMPRESSION
+        if ((compression is None) or
+            (compression not in cls.COMPRESSION_MODES)):
+            compression = __default_quality__(cls.NAME)
 
         import tempfile
         tempwavefile = tempfile.NamedTemporaryFile(suffix=".wav")
@@ -688,8 +691,9 @@ class M4AAudio_nero(M4AAudio_faac):
         at the given filename with the specified compression level
         and returns a new M4AAudio object."""
 
-        if (compression not in cls.COMPRESSION_MODES):
-            compression = cls.DEFAULT_COMPRESSION
+        if ((compression is None) or
+            (compression not in cls.COMPRESSION_MODES)):
+            compression = __default_quality__(cls.NAME)
 
         try:
             wave = WaveAudio(wave_filename)
@@ -1801,7 +1805,7 @@ class AACAudio(AudioFile):
                          process=sub)
 
     @classmethod
-    def from_pcm(cls, filename, pcmreader, compression="100"):
+    def from_pcm(cls, filename, pcmreader, compression=None):
         """Encodes a new file from PCM data.
 
         Takes a filename string, PCMReader object
@@ -1812,8 +1816,9 @@ class AACAudio(AudioFile):
 
         import bisect
 
-        if (compression not in cls.COMPRESSION_MODES):
-            compression = cls.DEFAULT_COMPRESSION
+        if ((compression is None) or
+            (compression not in cls.COMPRESSION_MODES)):
+            compression = __default_quality__(cls.NAME)
 
         if (pcmreader.sample_rate not in AACAudio.SAMPLE_RATES):
             sample_rates = list(sorted(AACAudio.SAMPLE_RATES))

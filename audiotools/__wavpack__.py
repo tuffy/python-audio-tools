@@ -25,7 +25,7 @@ from audiotools import (AudioFile, InvalidFile, Con, subprocess, BIN,
                         calculate_replay_gain, ApeTagItem,
                         EncodingError, DecodingError, PCMReaderError,
                         PCMReader, ChannelMask, UnsupportedChannelMask,
-                        InvalidWave)
+                        InvalidWave, __default_quality__)
 from __wav__ import WaveAudio, WaveReader
 from __ape__ import ApeTaggedAudio, ApeTag, __number_pair__
 import gettext
@@ -406,8 +406,9 @@ class WavPackAudio(ApeTaggedAudio, AudioFile):
 
         from . import encoders
 
-        if (str(compression) not in cls.COMPRESSION_MODES):
-            compression = cls.DEFAULT_COMPRESSION
+        if ((compression is None) or
+            (compression not in cls.COMPRESSION_MODES)):
+            compression = __default_quality__(cls.NAME)
 
         try:
             encoders.encode_wavpack(filename,
@@ -474,8 +475,9 @@ class WavPackAudio(ApeTaggedAudio, AudioFile):
 
         from . import encoders
 
-        if (str(compression) not in cls.COMPRESSION_MODES):
-            compression = cls.DEFAULT_COMPRESSION
+        if ((compression is None) or
+            (compression not in cls.COMPRESSION_MODES)):
+            compression = __default_quality__(cls.NAME)
 
         wave = WaveAudio(wave_filename)
 

@@ -125,6 +125,18 @@ DEFAULT_VERBOSITY = config.get_default("Defaults", "verbosity", "normal")
 if (DEFAULT_VERBOSITY not in VERBOSITY_LEVELS):
     DEFAULT_VERBOSITY = "normal"
 
+DEFAULT_TYPE = config.get_default("System", "default_type", "wav")
+
+def __default_quality__(audio_type):
+    quality = DEFAULT_QUALITY.get(audio_type, "")
+    try:
+        if (quality not in TYPE_MAP[audio_type].COMPRESSION_MODES):
+            return TYPE_MAP[audio_type].DEFAULT_COMPRESSION
+        else:
+            return quality
+    except KeyError:
+        return ""
+
 try:
     import cpucount
     MAX_CPUS = cpucount.cpucount()
@@ -3609,3 +3621,13 @@ AVAILABLE_TYPES = (FlacAudio,
 TYPE_MAP = dict([(track_type.NAME, track_type)
                  for track_type in AVAILABLE_TYPES
                  if track_type.has_binaries(BIN)])
+
+DEFAULT_QUALITY = dict([(track_type.NAME,
+                         config.get_default("Quality",
+                                            track_type.NAME,
+                                            track_type.DEFAULT_COMPRESSION))
+                        for track_type in AVAILABLE_TYPES
+                        if (len(track_type.COMPRESSION_MODES) > 1)])
+
+if (DEFAULT_TYPE not in TYPE_MAP.keys()):
+    DEFAULT_TYPE = "wav"

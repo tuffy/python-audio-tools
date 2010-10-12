@@ -21,7 +21,8 @@
 from audiotools import (AudioFile, InvalidFile, PCMReader, PCMConverter,
                         Con, transfer_data, transfer_framelist_data,
                         subprocess, BIN, cStringIO, os, ignore_sigint,
-                        EncodingError, DecodingError, ChannelMask)
+                        EncodingError, DecodingError, ChannelMask,
+                        __default_quality__)
 from __vorbis__ import *
 
 #######################
@@ -142,8 +143,9 @@ class SpeexAudio(VorbisAudio):
 
         import bisect
 
-        if (compression not in cls.COMPRESSION_MODES):
-            compression = cls.DEFAULT_COMPRESSION
+        if ((compression is None) or
+            (compression not in cls.COMPRESSION_MODES)):
+            compression = __default_quality__(cls.NAME)
 
         if ((pcmreader.bits_per_sample not in (8, 16)) or
             (pcmreader.channels > 2) or
