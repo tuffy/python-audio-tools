@@ -187,13 +187,13 @@ class XMCD(AlbumMetaDataFile):
             ttitle = self.fields['TTITLE%d' % (index)]
             track_extra = self.fields['EXTT%d' % (index)]
         except KeyError:
-            return (u"", self.artist_name, u"")
+            return (u"", u"", u"")
 
         if (u' / ' in ttitle):
             (track_artist, track_title) = ttitle.split(u' / ', 1)
         else:
             track_title = ttitle
-            track_artist = self.artist_name
+            track_artist = u""
 
         return (track_title, track_artist, track_extra)
 

@@ -2305,7 +2305,7 @@ class AlbumMetaDataFile:
          track_extra) = self.get_track(track_number - 1)
 
         if (len(track_artist) == 0):
-            track_artist = self.artist
+            track_artist = self.artist_name
 
         return MetaData(track_name=track_name,
                         track_number=track_number,

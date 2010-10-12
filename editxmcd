@@ -247,7 +247,7 @@ if (__name__ == '__main__'):
                            ('error', 'dark red,bold', 'default', '')],
                           unhandled_input=editxmcd.handle_text)
 
-    term = urwid.raw_display.RealTerminal()
-    term.tty_signal_keys('undefined', 'undefined', 'undefined',
-                         'undefined', 'undefined')
+    # term = urwid.raw_display.RealTerminal()
+    # term.tty_signal_keys('undefined', 'undefined', 'undefined',
+    #                      'undefined', 'undefined')
     loop.run()

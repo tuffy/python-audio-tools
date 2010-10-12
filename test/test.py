@@ -7852,70 +7852,70 @@ Is+xl9xg0BWyGXIZljPkM6xkKGQoZihlWM19CsPUca8l97sa7ZDGfwEBGThn""".decode('base64')
         for (xmcd_data, tracks) in zip(
             self.XMCD_FILES,
             [[(u'\u30c8\u30e9\u30a4\u30a2\u30f3\u30b0\u30e9\u30fc',
-               u'\u30de\u30af\u30ed\u30b9FRONTIER', u''),
+               u'', u''),
               (u"What 'bout my star? @Formo",
-               u'\u30de\u30af\u30ed\u30b9FRONTIER', u''),
+               u'', u''),
               (u'\u30a2\u30a4\u30e2',
-               u'\u30de\u30af\u30ed\u30b9FRONTIER', u''),
+               u'', u''),
               (u'\u30c0\u30a4\u30a2\u30e2\u30f3\u30c9 \u30af\u30ec\u30d0\u30b9\uff5e\u5c55\u671b\u516c\u5712\u306b\u3066',
-               u'\u30de\u30af\u30ed\u30b9FRONTIER', u''),
+               u'', u''),
               (u"Welcome To My FanClub's Night!",
-               u'\u30de\u30af\u30ed\u30b9FRONTIER', u''),
+               u'', u''),
               (u"\u5c04\u624b\u5ea7\u2606\u5348\u5f8c\u4e5d\u6642Don't be late",
-               u'\u30de\u30af\u30ed\u30b9FRONTIER', u''),
+               u'', u''),
               (u"What 'bout my star?",
-               u'\u30de\u30af\u30ed\u30b9FRONTIER', u''),
+               u'', u''),
               (u'\u30a4\u30f3\u30d5\u30a3\u30cb\u30c6\u30a3 #7',
-               u'\u30de\u30af\u30ed\u30b9FRONTIER', u''),
+               u'', u''),
               (u'\u300c\u8d85\u6642\u7a7a\u98ef\u5e97 \u5a18\u3005\u300d CM\u30bd\u30f3\u30b0 (Ranka Version)',
-               u'\u30de\u30af\u30ed\u30b9FRONTIER', u''),
+               u'', u''),
               (u'\u661f\u9593\u98db\u884c',
-               u'\u30de\u30af\u30ed\u30b9FRONTIER', u''),
+               u'', u''),
               (u'\u79c1\u306e\u5f7c\u306f\u30d1\u30a4\u30ed\u30c3\u30c8',
-               u'\u30de\u30af\u30ed\u30b9FRONTIER', u''),
+               u'', u''),
               (u'\u306d\u3053\u65e5\u8a18',
-               u'\u30de\u30af\u30ed\u30b9FRONTIER', u''),
+               u'', u''),
               (u'\u30cb\u30f3\u30b8\u30fc\u30f3 Loves you yeah!',
-               u'\u30de\u30af\u30ed\u30b9FRONTIER', u''),
+               u'', u''),
               (u'\u5b87\u5b99\u5144\u5f1f\u8239',
-               u'\u30de\u30af\u30ed\u30b9FRONTIER', u''),
+               u'', u''),
               (u'SMS\u5c0f\u968a\u306e\u6b4c\uff5e\u3042\u306e\u5a18\u306f\u30a8\u30a4\u30ea\u30a2\u30f3',
-               u'\u30de\u30af\u30ed\u30b9FRONTIER', u''),
+               u'', u''),
               (u'\u30a2\u30a4\u30e2 O.C.',
-               u'\u30de\u30af\u30ed\u30b9FRONTIER', u''),
+               u'', u''),
               (u'\u30a2\u30a4\u30e2\uff5e\u9ce5\u306e\u3072\u3068',
-               u'\u30de\u30af\u30ed\u30b9FRONTIER', u''),
+               u'', u''),
               (u'\u611b\u30fb\u304a\u307c\u3048\u3066\u3044\u307e\u3059\u304b',
-               u'\u30de\u30af\u30ed\u30b9FRONTIER', u''),
+               u'', u''),
               (u'\u30c0\u30a4\u30a2\u30e2\u30f3\u30c9 \u30af\u30ec\u30d0\u30b9',
-               u'\u30de\u30af\u30ed\u30b9FRONTIER', u''),
+               u'', u''),
               (u'\u30a2\u30a4\u30e2\uff5e\u3053\u3044\u306e\u3046\u305f\uff5e',
-               u'\u30de\u30af\u30ed\u30b9FRONTIER', u''),
+               u'', u''),
               (u'\u30a4\u30f3\u30d5\u30a3\u30cb\u30c6\u30a3 #7 without vocals',
-               u'\u30de\u30af\u30ed\u30b9FRONTIER', u''),
+               u'', u''),
               (u'\u30cb\u30f3\u30b8\u30fc\u30f3 Loves you yeah! without vocals',
-               u'\u30de\u30af\u30ed\u30b9FRONTIER', u'')],
-             [(u'Premonition', u'OneUp Studios', u''),
-              (u'Grahf, Conqueror of Darkness', u'OneUp Studios', u''),
+               u'', u'')],
+             [(u'Premonition', u'', u''),
+              (u'Grahf, Conqueror of Darkness', u'', u''),
               (u'Tears of the Stars, Hearts of the People',
-               u'OneUp Studios', u''),
-              (u'Far Away Promise', u'OneUp Studios', u''),
-              (u'My Village Is Number One', u'OneUp Studios', u''),
-              (u'Shevat, the Wind is Calling', u'OneUp Studios', u''),
-              (u'Singing of the Gentle Wind', u'OneUp Studios', u''),
-              (u'Shattering the Egg of Dreams', u'OneUp Studios', u''),
-              (u'One Who Bares Fangs At God', u'OneUp Studios', u''),
-              (u'Bonds of Sea and Fire', u'OneUp Studios', u''),
-              (u'Ship of Sleep and Remorse', u'OneUp Studios', u''),
-              (u'Broken Mirror', u'OneUp Studios', u''),
-              (u'Dreams of the Strong', u'OneUp Studios', u''),
-              (u'The Blue Traveler', u'OneUp Studios', u''),
-              (u'October Mermaid', u'OneUp Studios', u''),
-              (u'The Treasure Which Cannot Be Stolen', u'OneUp Studios', u''),
-              (u'Valley Where the Wind is Born', u'OneUp Studios', u''),
-              (u'Gathering Stars in the Night Sky', u'OneUp Studios', u''),
-              (u'The Alpha and Omega', u'OneUp Studios', u''),
-              (u'Into Eternal Sleep', u'OneUp Studios', u'')],
+               u'', u''),
+              (u'Far Away Promise', u'', u''),
+              (u'My Village Is Number One', u'', u''),
+              (u'Shevat, the Wind is Calling', u'', u''),
+              (u'Singing of the Gentle Wind', u'', u''),
+              (u'Shattering the Egg of Dreams', u'', u''),
+              (u'One Who Bares Fangs At God', u'', u''),
+              (u'Bonds of Sea and Fire', u'', u''),
+              (u'Ship of Sleep and Remorse', u'', u''),
+              (u'Broken Mirror', u'', u''),
+              (u'Dreams of the Strong', u'', u''),
+              (u'The Blue Traveler', u'', u''),
+              (u'October Mermaid', u'', u''),
+              (u'The Treasure Which Cannot Be Stolen', u'', u''),
+              (u'Valley Where the Wind is Born', u'', u''),
+              (u'Gathering Stars in the Night Sky', u'', u''),
+              (u'The Alpha and Omega', u'', u''),
+              (u'Into Eternal Sleep', u'', u'')],
              [(u'\uff0a~\u30a2\u30b9\u30bf\u30ea\u30b9\u30af~',
                u'ORANGE RANGE', u''),
               (u'Life is Like a Boat', u'Rie fu', u''),
@@ -8104,7 +8104,7 @@ FILE "cue.wav" WAVE
             self.assertEqual(len(xmcd), 6)
             for i in xrange(len(xmcd)):
                 self.assertEqual(xmcd.get_track(i),
-                                 (u"", u"Test Artist", u""))
+                                 (u"", u"", u""))
         finally:
             cue_file.close()
 
@@ -8128,11 +8128,11 @@ FILE "cue.wav" WAVE
         self.assertEqual(xmcd.catalog, u"")
         self.assertEqual(xmcd.extra, u"Disc Extra")
         self.assertEqual(xmcd.get_track(0),
-                         (u"Track 1", u"Album Artist", u"Extra 1"))
+                         (u"Track 1", u"", u"Extra 1"))
         self.assertEqual(xmcd.get_track(1),
                          (u"Track 2", u"Track Artist", u"Extra 2"))
         self.assertEqual(xmcd.get_track(2),
-                         (u"Track 3", u"Album Artist", u"Extra 3"))
+                         (u"Track 3", u"", u"Extra 3"))
 
 
         lines = xmcd_file_lines[:]
@@ -8165,11 +8165,11 @@ FILE "cue.wav" WAVE
         self.assertEqual(xmcd.catalog, u"")
         self.assertEqual(xmcd.extra, u"Disc Extra")
         self.assertEqual(xmcd.get_track(0),
-                         (u"Track 1", u"Album Artist", u"Extra 1"))
+                         (u"Track 1", u"", u"Extra 1"))
         self.assertEqual(xmcd.get_track(1),
                          (u"Track 2", u"Track Artist", u"Extra 2"))
         self.assertEqual(xmcd.get_track(2),
-                         (u"Track 3", u"Album Artist", u"Extra 3"))
+                         (u"Track 3", u"", u"Extra 3"))
 
         lines = xmcd_file_lines[:]
         del(lines[3])
@@ -8180,11 +8180,11 @@ FILE "cue.wav" WAVE
         self.assertEqual(xmcd.catalog, u"")
         self.assertEqual(xmcd.extra, u"Disc Extra")
         self.assertEqual(xmcd.get_track(0),
-                         (u"", u"Album Artist", u""))
+                         (u"", u"", u""))
         self.assertEqual(xmcd.get_track(1),
                          (u"Track 2", u"Track Artist", u"Extra 2"))
         self.assertEqual(xmcd.get_track(2),
-                         (u"Track 3", u"Album Artist", u"Extra 3"))
+                         (u"Track 3", u"", u"Extra 3"))
 
         lines = xmcd_file_lines[:]
         del(lines[4])
@@ -8195,11 +8195,11 @@ FILE "cue.wav" WAVE
         self.assertEqual(xmcd.catalog, u"")
         self.assertEqual(xmcd.extra, u"Disc Extra")
         self.assertEqual(xmcd.get_track(0),
-                         (u"Track 1", u"Album Artist", u"Extra 1"))
+                         (u"Track 1", u"", u"Extra 1"))
         self.assertEqual(xmcd.get_track(1),
-                         (u"", u"Album Artist", u""))
+                         (u"", u"", u""))
         self.assertEqual(xmcd.get_track(2),
-                         (u"Track 3", u"Album Artist", u"Extra 3"))
+                         (u"Track 3", u"", u"Extra 3"))
 
         lines = xmcd_file_lines[:]
         del(lines[5])
@@ -8210,11 +8210,11 @@ FILE "cue.wav" WAVE
         self.assertEqual(xmcd.catalog, u"")
         self.assertEqual(xmcd.extra, u"Disc Extra")
         self.assertEqual(xmcd.get_track(0),
-                         (u"Track 1", u"Album Artist", u"Extra 1"))
+                         (u"Track 1", u"", u"Extra 1"))
         self.assertEqual(xmcd.get_track(1),
                          (u"Track 2", u"Track Artist", u"Extra 2"))
         self.assertEqual(xmcd.get_track(2),
-                         (u"", u"Album Artist", u""))
+                         (u"", u"", u""))
 
         lines = xmcd_file_lines[:]
         del(lines[6])
@@ -8225,11 +8225,11 @@ FILE "cue.wav" WAVE
         self.assertEqual(xmcd.catalog, u"")
         self.assertEqual(xmcd.extra, u"Disc Extra")
         self.assertEqual(xmcd.get_track(0),
-                         (u"", u"Album Artist", u""))
+                         (u"", u"", u""))
         self.assertEqual(xmcd.get_track(1),
                          (u"Track 2", u"Track Artist", u"Extra 2"))
         self.assertEqual(xmcd.get_track(2),
-                         (u"Track 3", u"Album Artist", u"Extra 3"))
+                         (u"Track 3", u"", u"Extra 3"))
 
         lines = xmcd_file_lines[:]
         del(lines[7])
@@ -8240,11 +8240,11 @@ FILE "cue.wav" WAVE
         self.assertEqual(xmcd.catalog, u"")
         self.assertEqual(xmcd.extra, u"Disc Extra")
         self.assertEqual(xmcd.get_track(0),
-                         (u"Track 1", u"Album Artist", u"Extra 1"))
+                         (u"Track 1", u"", u"Extra 1"))
         self.assertEqual(xmcd.get_track(1),
-                         (u"", u"Album Artist", u""))
+                         (u"", u"", u""))
         self.assertEqual(xmcd.get_track(2),
-                         (u"Track 3", u"Album Artist", u"Extra 3"))
+                         (u"Track 3", u"", u"Extra 3"))
 
         lines = xmcd_file_lines[:]
         del(lines[8])
@@ -8255,11 +8255,11 @@ FILE "cue.wav" WAVE
         self.assertEqual(xmcd.catalog, u"")
         self.assertEqual(xmcd.extra, u"Disc Extra")
         self.assertEqual(xmcd.get_track(0),
-                         (u"Track 1", u"Album Artist", u"Extra 1"))
+                         (u"Track 1", u"", u"Extra 1"))
         self.assertEqual(xmcd.get_track(1),
                          (u"Track 2", u"Track Artist", u"Extra 2"))
         self.assertEqual(xmcd.get_track(2),
-                         (u"", u"Album Artist", u""))
+                         (u"", u"", u""))
 
         lines = xmcd_file_lines[:]
         del(lines[9])
@@ -8270,11 +8270,11 @@ FILE "cue.wav" WAVE
         self.assertEqual(xmcd.catalog, u"")
         self.assertEqual(xmcd.extra, u"")
         self.assertEqual(xmcd.get_track(0),
-                         (u"Track 1", u"Album Artist", u"Extra 1"))
+                         (u"Track 1", u"", u"Extra 1"))
         self.assertEqual(xmcd.get_track(1),
                          (u"Track 2", u"Track Artist", u"Extra 2"))
         self.assertEqual(xmcd.get_track(2),
-                         (u"Track 3", u"Album Artist", u"Extra 3"))
+                         (u"Track 3", u"", u"Extra 3"))
 
     @TEST_METADATA
     def test_metadata(self):
@@ -8664,14 +8664,113 @@ xgc9dasZmA0qsKdVxQWEfGIfIyv5/a66+X9X/i7kinChICe+4J4=""".decode('base64').decode(
 
     @TEST_METADATA
     def test_tracks(self):
-        for (xml_data, metadata) in self.XML_FILES:
+        for ((xml_data, metadata),
+             track_metadata) in zip(self.XML_FILES,
+                                    [[(u"Frontier 2059",
+                                       u"", u""),
+                                      (u"Welcome To My FanClub's Night! (Sheryl On Stage)",
+                                       u"", u""),
+                                      (u"What 'bout my star? (Sheryl On Stage)",
+                                       u"", u""),
+                                      (u"\u5c04\u624b\u5ea7\u2606\u5348\u5f8c\u4e5d\u6642Don't be late (Sheryl On Stage)",
+                                       u"", u""),
+                                      (u"Vital Force",
+                                       u"", u""),
+                                      (u"\u30c8\u30e9\u30a4\u30a2\u30f3\u30b0\u30e9\u30fc",
+                                       u"", u""),
+                                      (u"Zero Hour",
+                                       u"", u""),
+                                      (u"What 'bout my star? @Formo",
+                                       u"", u""),
+                                      (u"Innocent green",
+                                       u"", u""),
+                                      (u"\u30a2\u30a4\u30e2",
+                                       u"", u""),
+                                      (u"\u30d3\u30c3\u30b0\u30fb\u30dc\u30fc\u30a4\u30ba",
+                                       u"", u""),
+                                      (u"Private Army",
+                                       u"", u""),
+                                      (u"SMS\u5c0f\u968a\u306e\u6b4c\u301c\u3042\u306e\u5a18\u306f\u30a8\u30a4\u30ea\u30a2\u30f3",
+                                       u"", u""),
+                                      (u"\u30cb\u30f3\u30b8\u30fc\u30f3 Loves you yeah!",
+                                       u"", u""),
+                                      (u"\u8d85\u6642\u7a7a\u98ef\u5e97 \u5a18\u3005: CM\u30bd\u30f3\u30b0(Ranka Version)",
+                                       u"", u""),
+                                      (u"Alto's Theme",
+                                       u"", u""),
+                                      (u"Tally Ho!",
+                                       u"", u""),
+                                      (u"The Target",
+                                       u"", u""),
+                                      (u"Bajura",
+                                       u"", u""),
+                                      (u"\u30ad\u30e9\u30ad\u30e9",
+                                       u"", u""),
+                                      (u"\u30a2\u30a4\u30e2\u301c\u9ce5\u306e\u3072\u3068",
+                                       u"", u""),
+                                      (u"Take Off",
+                                       u"", u""),
+                                      (u"\u30a4\u30f3\u30d5\u30a3\u30cb\u30c6\u30a3",
+                                       u"", u""),
+                                      (u"\u30c0\u30a4\u30a2\u30e2\u30f3\u30c9 \u30af\u30ec\u30d0\u30b9",
+                                       u"", u"")],
+                                     [(u"Scars Left by Time (feat. Dale North)",
+                                       u"Ailsean", u""),
+                                      (u"Star Stealing Girl (feat. Miss Sara Broome)",
+                                       u"The OneUps", u""),
+                                      (u"A Hero's Judgement (feat. Ailsean, Dale North & Roy McClanahan)",
+                                       u"Matt Pollard", u""),
+                                      (u"Parallelism (The Frozen Flame)",
+                                       u"Matt Pollard", u""),
+                                      (u"Guardian of Time (feat. Greg Kennedy)",
+                                       u"Mustin", u""),
+                                      (u"The Boy Feared by Time",
+                                       u"Ailsean", u""),
+                                      (u"The Girl Forgotten by Time",
+                                       u"Mark Porter", u""),
+                                      (u"Wings of Time",
+                                       u"Dale North", u""),
+                                      (u"Good to be Home",
+                                       u"Dale North", u""),
+                                      (u"Dream of Another Time",
+                                       u"Mustin", u""),
+                                      (u"Fields of Time",
+                                       u"Mellogear vs. Mark Porter", u""),
+                                      (u"To Good Friends (feat. Tim Sheehy)",
+                                       u"Dale North", u""),
+                                      (u"The Fighting Priest",
+                                       u"Ailsean", u""),
+                                      (u"June Mermaid",
+                                       u"Dale North", u""),
+                                      (u"Navigation is Key! (feat. Dale North)",
+                                       u"Matt Pollard", u""),
+                                      (u"Gentle Wind",
+                                       u"Dale North", u""),
+                                      (u"Star of Hope (feat. Mark Porter)",
+                                       u"Dale North", u""),
+                                      (u"Shake the Heavens (feat. Matt Pollard & Dale North)",
+                                       u"Mark Porter", u"")],
+                                     [(u"\u30e1\u30ea\u30c3\u30b5",
+                                       u"\u30dd\u30eb\u30ce\u30b0\u30e9\u30d5\u30a3\u30c6\u30a3", u""),
+                                      (u"\u6d88\u305b\u306a\u3044\u7f6a",
+                                       u"\u5317\u51fa\u83dc\u5948", u""),
+                                      (u"READY STEADY GO",
+                                       u"L'Arc~en~Ciel", u""),
+                                      (u"\u6249\u306e\u5411\u3053\u3046\u3078",
+                                       u"YeLLOW Generation", u""),
+                                      (u"UNDO",
+                                       u"COOL JOKE", u""),
+                                      (u"Motherland",
+                                       u"Crystal Kay", u""),
+                                      (u"\u30ea\u30e9\u30a4\u30c8",
+                                       u"ASIAN KUNG-FU GENERATION", u""),
+                                      (u"I Will",
+                                       u"Sowelu", u"")]]):
             mb_xml = audiotools.MusicBrainzReleaseXML.from_string(xml_data)
 
             #first, check that tracks are read properly
             for (i, data) in enumerate(metadata):
-                self.assertEqual((metadata[i + 1].track_name,
-                                  metadata[i + 1].artist_name,
-                                  u""),
+                self.assertEqual(track_metadata[i],
                                  mb_xml.get_track(i))
 
             #then, check that setting tracks round-trip properly
@@ -8844,7 +8943,7 @@ FILE "cue.wav" WAVE
             self.assertEqual(len(mb_xml), 6)
             for i in xrange(len(mb_xml)):
                 self.assertEqual(mb_xml.get_track(i),
-                                 (u"", u"Test Artist", u""))
+                                 (u"", u"", u""))
         finally:
             cue_file.close()
 
@@ -8873,11 +8972,11 @@ FILE "cue.wav" WAVE
         self.assertEqual(xml.catalog, u"cat#")
         self.assertEqual(xml.extra, u"")
         self.assertEqual(xml.get_track(0),
-                         (u"Track 1", u"Album Artist", u""))
+                         (u"Track 1", u"", u""))
         self.assertEqual(xml.get_track(1),
                          (u"Track 2", u"Track Artist", u""))
         self.assertEqual(xml.get_track(2),
-                         (u"Track 3", u"Album Artist", u""))
+                         (u"Track 3", u"", u""))
 
         xml_dom = parseString(xml_data)
         xml = audiotools.MusicBrainzReleaseXML(xml_dom)
@@ -8887,11 +8986,11 @@ FILE "cue.wav" WAVE
         self.assertEqual(xml.catalog, u"cat#")
         self.assertEqual(xml.extra, u"")
         self.assertEqual(xml.get_track(0),
-                         (u"Track 1", u"Album Artist", u""))
+                         (u"Track 1", u"", u""))
         self.assertEqual(xml.get_track(1),
                          (u"Track 2", u"Track Artist", u""))
         self.assertEqual(xml.get_track(2),
-                         (u"Track 3", u"Album Artist", u""))
+                         (u"Track 3", u"", u""))
 
         #removing <metadata>
         xml_dom = parseString(xml_data)
@@ -8937,11 +9036,11 @@ FILE "cue.wav" WAVE
         self.assertEqual(xml.catalog, u"cat#")
         self.assertEqual(xml.extra, u"")
         self.assertEqual(xml.get_track(0),
-                         (u"Track 1", u"Album Artist", u""))
+                         (u"Track 1", u"", u""))
         self.assertEqual(xml.get_track(1),
                          (u"Track 2", u"Track Artist", u""))
         self.assertEqual(xml.get_track(2),
-                         (u"Track 3", u"Album Artist", u""))
+                         (u"Track 3", u"", u""))
 
         #removing <artist>
         xml_dom = parseString(xml_data)
@@ -8988,11 +9087,11 @@ FILE "cue.wav" WAVE
         self.assertEqual(xml.catalog, u"")
         self.assertEqual(xml.extra, u"")
         self.assertEqual(xml.get_track(0),
-                         (u"Track 1", u"Album Artist", u""))
+                         (u"Track 1", u"", u""))
         self.assertEqual(xml.get_track(1),
                          (u"Track 2", u"Track Artist", u""))
         self.assertEqual(xml.get_track(2),
-                         (u"Track 3", u"Album Artist", u""))
+                         (u"Track 3", u"", u""))
 
         #removing <release-event-list> -> <event>
         xml_dom = parseString(xml_data)
@@ -9005,11 +9104,11 @@ FILE "cue.wav" WAVE
         self.assertEqual(xml.catalog, u"")
         self.assertEqual(xml.extra, u"")
         self.assertEqual(xml.get_track(0),
-                         (u"Track 1", u"Album Artist", u""))
+                         (u"Track 1", u"", u""))
         self.assertEqual(xml.get_track(1),
                          (u"Track 2", u"Track Artist", u""))
         self.assertEqual(xml.get_track(2),
-                         (u"Track 3", u"Album Artist", u""))
+                         (u"Track 3", u"", u""))
 
         #removing <track-list>
         xml_dom = parseString(xml_data)
@@ -9040,7 +9139,7 @@ FILE "cue.wav" WAVE
         self.assertEqual(xml.get_track(0),
                          (u"Track 2", u"Track Artist", u""))
         self.assertEqual(xml.get_track(1),
-                         (u"Track 3", u"Album Artist", u""))
+                         (u"Track 3", u"", u""))
 
         #removing <track> (1) -> <title>
         xml_dom = parseString(xml_data)
@@ -9057,11 +9156,11 @@ FILE "cue.wav" WAVE
         self.assertEqual(xml.extra, u"")
         self.assertEqual(len(xml), 3)
         self.assertEqual(xml.get_track(0),
-                         (u"", u"Album Artist", u""))
+                         (u"", u"", u""))
         self.assertEqual(xml.get_track(1),
                          (u"Track 2", u"Track Artist", u""))
         self.assertEqual(xml.get_track(2),
-                         (u"Track 3", u"Album Artist", u""))
+                         (u"Track 3", u"", u""))
 
         #removing <track> (2)
         xml_dom = parseString(xml_data)
@@ -9078,9 +9177,9 @@ FILE "cue.wav" WAVE
         self.assertEqual(xml.extra, u"")
         self.assertEqual(len(xml), 2)
         self.assertEqual(xml.get_track(0),
-                         (u"Track 1", u"Album Artist", u""))
+                         (u"Track 1", u"", u""))
         self.assertEqual(xml.get_track(1),
-                         (u"Track 3", u"Album Artist", u""))
+                         (u"Track 3", u"", u""))
 
         #removing <track> (2) -> <title>
         xml_dom = parseString(xml_data)
@@ -9097,11 +9196,11 @@ FILE "cue.wav" WAVE
         self.assertEqual(xml.extra, u"")
         self.assertEqual(len(xml), 3)
         self.assertEqual(xml.get_track(0),
-                         (u"Track 1", u"Album Artist", u""))
+                         (u"Track 1", u"", u""))
         self.assertEqual(xml.get_track(1),
                          (u"", u"Track Artist", u""))
         self.assertEqual(xml.get_track(2),
-                         (u"Track 3", u"Album Artist", u""))
+                         (u"Track 3", u"", u""))
 
         #removing <track> (2) -> <artist>
         xml_dom = parseString(xml_data)
@@ -9118,11 +9217,11 @@ FILE "cue.wav" WAVE
         self.assertEqual(xml.extra, u"")
         self.assertEqual(len(xml), 3)
         self.assertEqual(xml.get_track(0),
-                         (u"Track 1", u"Album Artist", u""))
+                         (u"Track 1", u"", u""))
         self.assertEqual(xml.get_track(1),
-                         (u"Track 2", u"Album Artist", u""))
+                         (u"Track 2", u"", u""))
         self.assertEqual(xml.get_track(2),
-                         (u"Track 3", u"Album Artist", u""))
+                         (u"Track 3", u"", u""))
 
         #removing <track> (2) -> <artist> -> <name>
         xml_dom = parseString(xml_data)
@@ -9139,11 +9238,11 @@ FILE "cue.wav" WAVE
         self.assertEqual(xml.extra, u"")
         self.assertEqual(len(xml), 3)
         self.assertEqual(xml.get_track(0),
-                         (u"Track 1", u"Album Artist", u""))
+                         (u"Track 1", u"", u""))
         self.assertEqual(xml.get_track(1),
-                         (u"Track 2", u"Album Artist", u""))
+                         (u"Track 2", u"", u""))
         self.assertEqual(xml.get_track(2),
-                         (u"Track 3", u"Album Artist", u""))
+                         (u"Track 3", u"", u""))
 
         #removing <track> (3)
         xml_dom = parseString(xml_data)
@@ -9160,7 +9259,7 @@ FILE "cue.wav" WAVE
         self.assertEqual(xml.extra, u"")
         self.assertEqual(len(xml), 2)
         self.assertEqual(xml.get_track(0),
-                         (u"Track 1", u"Album Artist", u""))
+                         (u"Track 1", u"", u""))
         self.assertEqual(xml.get_track(1),
                          (u"Track 2", u"Track Artist", u""))
 
@@ -9179,11 +9278,11 @@ FILE "cue.wav" WAVE
         self.assertEqual(xml.extra, u"")
         self.assertEqual(len(xml), 3)
         self.assertEqual(xml.get_track(0),
-                         (u"Track 1", u"Album Artist", u""))
+                         (u"Track 1", u"", u""))
         self.assertEqual(xml.get_track(1),
                          (u"Track 2", u"Track Artist", u""))
         self.assertEqual(xml.get_track(2),
-                         (u"", u"Album Artist", u""))
+                         (u"", u"", u""))
 
 
     @TEST_METADATA

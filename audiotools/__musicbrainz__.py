@@ -422,16 +422,19 @@ class MusicBrainzReleaseXML(AlbumMetaDataFile):
         if (artist_node is not None):
             artist_name = get_xml_text_node(artist_node, u'name')
             if (len(artist_name) == 0):
-                artist_name = self.artist_name
+                artist_name = u""
         else:
-            artist_name = self.artist_name
+            artist_name = u""
         return (track_name, artist_name, u"")
 
     def set_track(self, index, name, artist, extra):
         track_node = self.dom.getElementsByTagName(u'track')[index]
         title = walk_xml_tree(track_node, 'title')
-        title.replaceChild(self.dom.createTextNode(name),
-                           title.firstChild)
+        if (len(title.childNodes) > 0):
+            title.replaceChild(self.dom.createTextNode(name),
+                               title.firstChild)
+        else:
+            title.appendChild(self.dom.createTextNode(name))
         if (len(artist) > 0):
             artist_node = walk_xml_tree_build(self.dom,
                                               track_node,
