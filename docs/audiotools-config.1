@@ -17,12 +17,13 @@ Show a list of options and exit
 .TP
 \fB--version\fR
 Show the program's version and exit
-.TP
-\fB-V \fIVERBOSITY\fB, --verbose=\fIVERBOSITY\fR
-The level of output to display.
-Choose between `normal', `quiet' and `debug'.
 
 .SH SYSTEM OPTIONS
+.TP
+\fB-V \fIVERBOSITY\fB, --verbose=\fIVERBOSITY\fR
+The default verbosity level for all tools.
+Choose between `normal', `quiet' and `debug'.
+
 .TP
 \fB-c \fIcdrom\fB, --cdrom=\fIcdrom\fR
 The default CD-ROM drive to use
@@ -32,16 +33,32 @@ The default CD-ROM drive to use
 The CD-ROM read offset to use
 
 .TP
-\fB-j \fIprocesses\fB, --joint=\fIprocesses\fR
-The maximum number of tracks to convert at one time by default
-
-.TP
 \fB--fs-encoding=\fIencoding\fR
 The filesystem's text encoding, such as "UTF-8"
 
 .TP
 \fB--io-encoding=\fIencoding\fR
 The system's I/O text encoding, such as "UTF-8"
+
+.SH TRANSCODING OPTIONS
+
+.TP
+\fB-t \fITYPE\fB, --type=\fITYPE\fR
+When used \fIwithout\fR the \fB-q\fR option, this sets the default audio
+type to use when creating new audio files.
+Otherwise, this is used in conjunction with \fB-q\fR to set
+the default audio quality for the given type.
+For a list of available audio formats, try: \fB-t help\fR
+
+.TP
+
+\fB-q \fIQUALITY\fB, --quality=\fIQUALITY\fR
+The default quality level for a given audio type.
+For a list of available quality levels, try: \fB-q help\fR
+
+.TP
+\fB-j \fIprocesses\fB, --joint=\fIprocesses\fR
+The maximum number of tracks to convert at one time by default
 
 .SH THUMBNAIL OPTIONS
 

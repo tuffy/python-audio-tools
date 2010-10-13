@@ -17,7 +17,8 @@ _
 \fC[FreeDB]\fR:\fCserver\fR:default FreeDB hostname
 \^:\fCport\fR:default FreeDB port
 _
-\fC[System]\fR:\fCcdrom\fR:the default CD-ROM device to use
+\fC[System]\fR:\fCdefault_type\fR:the default audio type to use
+\^:\fCcdrom\fR:the default CD-ROM device to use
 \^:\^:for CD reading/writing
 \^:\fCcdrom_read_offset\fR:the sample offset to apply
 \^:\^:when reading tracks
@@ -28,7 +29,16 @@ _
 \^:\fCio_encoding\fR:the terminal's text encoding,
 \^:\^:when generating screen output
 _
+\fC[Defaults]\fR:\fCverbosity\fR:the default verbosity level to use
+_
 \fC[Filenames]\fR:\fCformat\fR:the default filename template
+_
+\fC[Quality]\fR:\fCflac\fR:the default \fCflac\fR quality to use
+\^:\^:when encoding FLAC files
+\^:\fCmp3\fR:the default \fClame\fR quality to use
+\^:\^:when encoding MP3 files
+\^:...:the default encoding quality
+\^:\^:for a given audio type
 _
 \fC[Binaries]\fR:\fCflac\fR:the \fCflac\fR executable to use
 \^:\^:for encoding/decoding FLAC files
