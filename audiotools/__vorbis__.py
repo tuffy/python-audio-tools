@@ -325,6 +325,7 @@ class VorbisAudio(AudioFile):
     DEFAULT_COMPRESSION = "3"
     COMPRESSION_MODES = tuple([str(i) for i in range(0, 11)])
     BINARIES = ("oggenc", "oggdec")
+    REPLAYGAIN_BINARIES = ("vorbisgain", )
 
     OGG_IDENTIFICATION = Con.Struct(
         "ogg_id",

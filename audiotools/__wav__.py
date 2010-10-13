@@ -231,6 +231,7 @@ class WaveAudio(AudioFile):
 
     SUFFIX = "wav"
     NAME = SUFFIX
+    REPLAYGAIN_BINARIES = ("wavegain", )
 
     WAVE_HEADER = Con.Struct("wave_header",
                              Con.Const(Con.Bytes("wave_id", 4), 'RIFF'),

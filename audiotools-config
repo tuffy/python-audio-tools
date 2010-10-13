@@ -40,6 +40,113 @@ def check_binaries(msg, binary_list):
     msg.output_rows()
 
 
+class FormatSummary:
+    def __init__(self, format, quality, binaries, replaygain):
+        """format and quality are unicode.  The rest are list of unicode.
+
+        All should be formatted for output."""
+
+        self.format = format
+        self.quality = quality
+        self.binaries = binaries
+        self.replaygain = replaygain
+
+    @classmethod
+    def headers(cls, messenger):
+        messenger.new_row()
+        messenger.output_column(u" ")
+        messenger.output_column(u" ")
+        messenger.output_column(u" ")
+        messenger.output_column(u" ")
+        messenger.output_column(u" default ")
+        messenger.output_column(u" ")
+        messenger.output_column(u" ")
+
+        messenger.new_row()
+        messenger.output_column(_(u" type "))
+        messenger.output_column(u" ")
+        messenger.output_column(_(u" binaries "))
+        messenger.output_column(u" ")
+        messenger.output_column(_(u" quality "))
+        messenger.output_column(u" ")
+        messenger.output_column(_(u" ReplayGain "))
+        messenger.divider_row([u"-", u"+", u"-",
+                                   u"+", u"-", u"+", u"-"])
+
+    def output_rows(self, messenger):
+        #first, put our rows of data into lists of columns
+
+        format_col = [self.format]
+        quality_col = [self.quality]
+        binaries_col = self.binaries[:]
+        replaygain_col = self.replaygain[:]
+
+        #then, make our columns consistently-sized
+        total_rows = max(map(len, [format_col,
+                                   quality_col,
+                                   binaries_col,
+                                   replaygain_col]))
+
+        for col in [format_col, quality_col, binaries_col, replaygain_col]:
+            col.extend([u""] * (total_rows - len(col)))
+
+        #finally, output our rows to the Messenger
+        for (format, quality, binary, replaygain) in zip(format_col,
+                                                         quality_col,
+                                                         binaries_col,
+                                                         replaygain_col):
+            messenger.new_row()
+            messenger.output_column(u" %s " % (format), True)
+            messenger.output_column(u"|")
+            messenger.output_column(u" %s " % (binary))
+            messenger.output_column(u"|")
+            messenger.output_column(u" %s " % (quality))
+            messenger.output_column(u"|")
+            messenger.output_column(u" %s " % (replaygain))
+        messenger.divider_row([u"-", u"+", u"-",
+                               u"+", u"-", u"+", u"-"])
+
+    @classmethod
+    def from_audiofile(cls, messenger, audiofile, binaries):
+        if (audiofile.has_binaries(binaries)):
+            code = [messenger.FG_GREEN]
+        else:
+            code = [messenger.FG_RED]
+
+        if (audiofile.NAME == audiotools.DEFAULT_TYPE):
+            code.append(messenger.BOLD)
+            code.append(messenger.UNDERLINE)
+
+        format = messenger.ansi(audiofile.NAME.decode('ascii'), code)
+
+        binaries_list = []
+        for binary in audiofile.BINARIES:
+            if (binaries.can_execute(binaries[binary])):
+                code = [messenger.FG_GREEN]
+            else:
+                code = [messenger.FG_RED]
+            binaries_list.append(messenger.ansi(binaries[binary], code))
+
+        replaygain = []
+        if (len(audiofile.REPLAYGAIN_BINARIES) > 0):
+            for binary in audiofile.REPLAYGAIN_BINARIES:
+                if (binaries.can_execute(binaries[binary])):
+                    code = [messenger.FG_GREEN]
+                else:
+                    code = [messenger.FG_RED]
+                replaygain.append(messenger.ansi(binaries[binary], code))
+        elif (audiofile.can_add_replay_gain()):
+            replaygain.append(messenger.ansi("YES", [messenger.FG_GREEN]))
+        else:
+            replaygain.append("N/A")
+
+        return cls(format,
+                   audiotools.__default_quality__(
+                audiofile.NAME).decode('ascii'),
+                   binaries_list,
+                   replaygain)
+
+
 if (__name__ == '__main__'):
     try:
         import audiotools
@@ -220,41 +327,12 @@ if (__name__ == '__main__'):
     msg = audiotools.Messenger("audiotools-config", None)
 
     if (len(sys.argv) < 2):
-        #no arguments, so simply print current configuration
-        name_len = max([len(audiotype.NAME) for audiotype in
-                        audiotools.AVAILABLE_TYPES])
-
-        available = []
-        unavailable = []
-        available_binaries = set()
-        unavailable_binaries = set()
+        FormatSummary.headers(msg)
         for audiotype in sorted(audiotools.AVAILABLE_TYPES,
-                                lambda x, y: cmp(x.NAME, y.NAME)):
-            if (audiotype.has_binaries(audiotools.BIN)):
-                available.append(audiotype.NAME)
-            else:
-                unavailable.append(audiotype.NAME)
-            for binary in audiotype.BINARIES:
-                if (audiotools.BIN.can_execute(binary)):
-                    available_binaries.add(binary)
-                else:
-                    unavailable_binaries.add(binary)
-
-        msg.new_row()
-        msg.output_column(_(u"available formats"), True)
-        msg.output_column(u" : ")
-        msg.output_column(u",  ".join(sorted([s.decode('ascii')
-                                              for s in available])))
-        msg.new_row()
-        msg.output_column(_(u"unavailable formats"), True)
-        msg.output_column(u" : ")
-        msg.output_column(u", ".join(sorted([s.decode('ascii')
-                                             for s in unavailable])))
+                                lambda x,y: cmp(x.NAME, y.NAME)):
+            FormatSummary.from_audiofile(
+                msg, audiotype, audiotools.BIN).output_rows(msg)
         msg.output_rows()
-        check_binaries(msg, sorted(list(available_binaries) +
-                                   list(unavailable_binaries)))
-
-        msg.output(u"-" * 30)
 
         msg.new_row()
         msg.output_column(_(u"CD Burning via track2cd"), True)
@@ -317,6 +395,11 @@ if (__name__ == '__main__'):
         msg.output_column(_(u"Default simultaneous jobs"), True)
         msg.output_column(u" : ")
         msg.output_column(unicode(audiotools.MAX_JOBS))
+
+        msg.new_row()
+        msg.output_column(_(u"Default verbosity level"), True)
+        msg.output_column(u" : ")
+        msg.output_column(audiotools.DEFAULT_VERBOSITY.decode('ascii'))
 
         output_options = ["OSS"]
         if (audiotools.BIN.can_execute(audiotools.BIN["pacat"]) and

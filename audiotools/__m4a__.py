@@ -1297,7 +1297,7 @@ class ALACAudio(M4AAudio):
             #for multichannel ALAC audio
             return ChannelMask.from_channels(self.channels())
         except ValueError:
-            return 0
+            return ChannelMask(0)
 
     def cd_frames(self):
         """Returns the total length of the track in CD frames.
