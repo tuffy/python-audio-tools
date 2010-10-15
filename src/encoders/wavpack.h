@@ -5,7 +5,7 @@
 #include "../bitstream_w.h"
 #include "../array.h"
 #include "../pcmreader.h"
-#include "../md5.h"
+#include "../common/md5.h"
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data

@@ -311,4 +311,3 @@ BitstreamReader_dealloc(decoders_BitstreamReader *self)
     self->ob_type->tp_free((PyObject*)self);
 }
 
-#include "md5.c"

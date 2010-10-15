@@ -2136,6 +2136,13 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** DONE Document new configuration option in man pages
    - [X] audiotools-config
    - [X] audiotools.cfg
+* DONE Shift common decoder/encoder routines to a common/ directory
+  - [X] flac_crc.h
+  - [X] flac_crc.c
+  - [X] misc.h
+  - [X] misc.c
+  - [X] md5.h
+  - [X] md5.c
 * TODO More graceful handling of broken files
   A lot of the track handlers assume that once the start of the file is good,
   the rest of it is following the spec.  This is not always the case.
@@ -2465,9 +2472,22 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   would make the interface more responsive when opening tracks
   containing many large images.
 * TODO Get coverview and editxmcd working on Mac OS X
-  Preferably without falling back to Tkinter
 ** DONE editxmcd
-** TODO coverview
+** TODO Update coverview for dual PyGTK/Tkinter operation
+   It's a simple enough app that it should be able to conditionally do both,
+   especially since audiotools does most of the heavy lifting.
+   This allows it to look like a proper app under X11
+   and work at all everywhere else.
+
+   It should look and function approximately the same on both.
+*** TODO Remove glade requirement
+    I'm sick of glade, and coverview should be small enough
+    that it's not a problem to lay it out internally.
+*** TODO Update coverview for PyGTK
+*** TODO Update coverview for Tkinter
+*** TODO Add --gtk/--tkinter switches for conditional launch
+    For testing purposes
+*** TODO Update man page
 * TODO get trackplay working on Mac OS X
   There must be some way to pipe PCM data to its audio system
   without the need for additional libraries.
@@ -2697,17 +2717,10 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** DONE Remove WavePackAudio.BINARIES
 ** DONE Add more WavPack INVALIDFILE .verify() tests
 ** DONE Remove wvgain for ReplayGain application
-* TODO Shift common decoder/encoder routines to a common/ directory
-  - [X] flac_crc.h
-  - [X] flac_crc.c
-  - [X] misc.h
-  - [X] misc.c
-  - [ ] md5.h
-  - [ ] md5.c
-  - [ ] array.h
-  - [ ] array.c
 * TODO Add an interactive mode to audiotools-config
   One should be able to edit the config files in an Urwid-based screen
   if desired.  This might make it a bit more user-friendly.
 * TODO Remove wavegain for applying ReplayGain to .wav files
   This should be done internally instead.
+* TODO Cleanup resampler
+

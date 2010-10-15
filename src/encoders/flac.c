@@ -1,7 +1,7 @@
 #include "flac.h"
 #include "flac_lpc.h"
 #include "../pcmreader.h"
-#include "../md5.h"
+#include "../common/md5.h"
 #include <limits.h>
 #include <assert.h>
 
