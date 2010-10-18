@@ -312,6 +312,24 @@ try:
     import Image
     import ImageTk
 
+    try:
+        import _imaging as test
+    except ImportError, err:
+        if (os.uname()[0].lower() == 'darwin'):
+            print >>sys.stderr, """*** Unable to load Python Imaging Library.
+You may need to run Python in 32-bit mode in order for it to load correctly.
+If running a Bourne-like shell, try:
+
+% export VERSIONER_PYTHON_PREFER_32_BIT=yes
+
+or, if running a C-like shell, try:
+
+% setenv VERSIONER_PYTHON_PREFER_32_BIT yes
+
+Consult "man python" for further details.
+"""
+        raise err
+
     class ImagePair_Tk:
         def __init__(self, path, image_obj):
             """image_obj is an audiotools.Image object"""
