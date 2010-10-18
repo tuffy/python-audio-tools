@@ -2728,3 +2728,23 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 * TODO Remove wavegain for applying ReplayGain to .wav files
   This should be done internally instead.
 * TODO Cleanup resampler
+* TODO Add a convert() method to AudioFile subclasses
+  Something like:
+
+  audiofile.convert(target_path,
+                    target_class,
+                    quality=None,
+                    callback=None)
+
+  so one could perform a call like:
+
+  audiotools.open("infile.flac").convert("outfile.mp3", audiotools.MP3Audio)
+
+  Which would perform the proper to_pcm()/from_pcm()/to_wave()/from_wave()
+  calls as necessary and could be overloaded to handle specific
+  conversion processes, like AIFF->Shorten with a different set of
+  *IFF chunnks.
+** TODO Update audio formats
+** TODO Add unit tests for convert() methods
+** TODO Update tools to exploit convert() method
+** TODO Update documentation
