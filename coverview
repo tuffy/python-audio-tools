@@ -53,7 +53,7 @@ try:
     import gtk
     import gtk.gdk
 
-    class ImageWidget(gtk.DrawingArea):
+    class ImageWidget_Gtk(gtk.DrawingArea):
         def __init__(self):
             gtk.DrawingArea.__init__(self)
             self.full_pixbuf = None
@@ -105,7 +105,7 @@ try:
                                     height=image_height)
 
 
-    class CoverviewGTK:
+    class Coverview_Gtk:
         def __init__(self):
             self.window = gtk.Window(gtk.WINDOW_TOPLEVEL)
             self.window.connect("delete_event", self.delete_event)
@@ -125,7 +125,7 @@ try:
             list_scroll.add(self.list_widget)
             self.list_widget.connect("cursor-changed", self.image_selected)
 
-            self.image = ImageWidget()
+            self.image = ImageWidget_Gtk()
 
             accelgroup = gtk.AccelGroup()
             self.window.add_accel_group(accelgroup)
@@ -297,7 +297,7 @@ try:
                 self.image_selected()
 
     def main_gtk(initial_audiofile=None):
-        coverview = CoverviewGTK()
+        coverview = Coverview_Gtk()
         if (initial_audiofile is not None):
             coverview.set_filename(initial_audiofile.filename)
             coverview.set_metadata(initial_audiofile.get_metadata())
@@ -312,7 +312,7 @@ try:
     import Image
     import ImageTk
 
-    class ImagePair:
+    class ImagePair_Tk:
         def __init__(self, path, image_obj):
             """image_obj is an audiotools.Image object"""
 
@@ -320,7 +320,7 @@ try:
             self.audiotools = image_obj
             self.pil = Image.open(cStringIO.StringIO(image_obj.data))
 
-    class Statusbar(Frame):
+    class Statusbar_Tkinter(Frame):
         def __init__(self, master):
             Frame.__init__(self, master)
 
@@ -369,7 +369,7 @@ try:
             self.bits.config(text="")
             self.type.config(text="")
 
-    class About(Frame):
+    class About_Tkinter(Frame):
         def __init__(self, master):
             Frame.__init__(self, master, padx=10, pady=10)
 
@@ -394,13 +394,13 @@ try:
         def close(self, event):
             self.master.withdraw()
 
-    class Coverview:
+    class Coverview_Tkinter:
         def __init__(self, master):
             self.master = master
 
             frame = Frame(master, width=800, height=600)
 
-            self.statusbar = Statusbar(frame)
+            self.statusbar = Statusbar_Tkinter(frame)
             self.statusbar.pack(side=BOTTOM, fill=X)
 
             self.images = Listbox(frame, selectmode=BROWSE)
@@ -442,7 +442,7 @@ try:
 
             self.about_window = Toplevel()
             self.about_window.withdraw()
-            self.about_window_frame = About(self.about_window)
+            self.about_window_frame = About_Tkinter(self.about_window)
             self.about_window_frame.pack(fill=BOTH,expand=1)
 
         def open(self, *args):
@@ -519,7 +519,7 @@ try:
                 image_list = metadata.images()
                 for image in image_list:
                     self.images.insert(END, image.type_string())
-                    self.image_objects.append(ImagePair(path, image))
+                    self.image_objects.append(ImagePair_Tk(path, image))
 
                 if (len(image_list) > 0):
                     self.images.index(0)
@@ -532,7 +532,7 @@ try:
     def main_tkinter(initial_audiofile=None):
         root = Tk()
 
-        app = Coverview(root)
+        app = Coverview_Tkinter(root)
         if (initial_audiofile is not None):
             app.set_metadata(initial_audiofile.filename,
                              initial_audiofile.get_metadata())
@@ -569,13 +569,35 @@ if (__name__ == '__main__'):
     use_tkinter = (hasattr(options, "no_tkinter") and not options.no_tkinter)
 
     if (use_gtk):
-        if (len(sys.argv) > 1):
-            main_gtk(audiotools.open(sys.argv[1]))
+        if (len(args) > 0):
+            try:
+                main_gtk(audiotools.open(args[0]))
+            except audiotools.UnsupportedFile:
+                messenger.error(_(u"Specified file is unsupported"))
+                sys.exit(1)
+            except audiotools.InvalidFile:
+                messenger.error(_(u"Specified file is invalid"))
+                sys.exit(1)
+            except IOError:
+                messenger.error(_(u"Unable to open \"%s\"") %
+                                (messenger.filename(args[0])))
+                sys.exit(1)
         else:
             main_gtk(None)
     elif (use_tkinter):
-        if (len(sys.argv) > 1):
-            main_tkinter(audiotools.open(sys.argv[1]))
+        if (len(args) > 0):
+            try:
+                main_tkinter(audiotools.open(args[0]))
+            except audiotools.UnsupportedFile:
+                messenger.error(_(u"Specified file is unsupported"))
+                sys.exit(1)
+            except audiotools.InvalidFile:
+                messenger.error(_(u"Specified file is invalid"))
+                sys.exit(1)
+            except IOError:
+                messenger.error(_(u"Unable to open \"%s\"") %
+                                (messenger.filename(args[0])))
+                sys.exit(1)
         else:
             main_tkinter(None)
     else:

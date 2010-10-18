@@ -2480,13 +2480,18 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    and work at all everywhere else.
 
    It should look and function approximately the same on both.
-*** TODO Remove glade requirement
+*** DONE Remove glade requirement
     I'm sick of glade, and coverview should be small enough
     that it's not a problem to lay it out internally.
-*** TODO Update coverview for PyGTK
+*** DONE Update coverview for PyGTK
 *** TODO Update coverview for Tkinter
-*** TODO Add --gtk/--tkinter switches for conditional launch
+**** TODO Fixup error messages, if possible
+*** DONE Add --gtk/--tkinter switches for conditional launch
     For testing purposes
+*** DONE Cleanup conditional classes/helper functions
+*** TODO Check for init-time errors
+    Both in loading audiofiles and in import problems
+    such as Mac OS's 32-bit problem
 *** TODO Update man page
 * TODO get trackplay working on Mac OS X
   There must be some way to pipe PCM data to its audio system
@@ -2723,4 +2728,3 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 * TODO Remove wavegain for applying ReplayGain to .wav files
   This should be done internally instead.
 * TODO Cleanup resampler
-
