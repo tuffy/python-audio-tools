@@ -22,20 +22,9 @@ import sys
 import os
 import os.path
 import cStringIO
-from bisect import bisect
 import gettext
 
 gettext.install("audiotools", unicode=True)
-
-try:
-    import gtk
-    import gtk.gdk
-    import gtk.glade
-    import gobject
-except ImportError:
-    audiotools.Messenger("coverview", None).error(_(u"PyGTK2 is required"))
-    sys.exit(1)
-
 
 #returns the dimensions of image_surface scaled to match the
 #display surface size, but without changing its aspect ratio
@@ -43,341 +32,552 @@ def image_size(display_surface, image_surface):
     display_ratio = float(display_surface[0]) / \
                     float(display_surface[1])
 
-    image_ratio = float(image_surface.get_width()) / \
-                    float(image_surface.get_height())
+    image_ratio = float(image_surface[0]) / float(image_surface[1])
 
     if (image_ratio > display_ratio):  # image wider than display, when scaled
         new_width = display_surface[0]
-        new_height = image_surface.get_height() / \
-                     (float(image_surface.get_width()) / \
-                      float(display_surface[0]))
+        new_height = image_surface[1] / (float(image_surface[0]) /
+                                         float(display_surface[0]))
     else:                              # image taller than display, when scaled
-        new_width = image_surface.get_width() / \
-                    (float(image_surface.get_height()) / \
-                     float(display_surface[1]))
+        new_width = image_surface[0] / (float(image_surface[1]) /
+                                        float(display_surface[1]))
         new_height = display_surface[1]
 
     (new_width, new_height) = map(int, (new_width, new_height))
 
     return (new_width, new_height)
 
+try:
+    import pygtk
+    pygtk.require("2.0")
+    import gtk
+    import gtk.gdk
 
-def size_string(size):
-    if (size < (2 ** 10)):
-        return u"%dB" % (size)
-    if (size < (2 ** 20)):
-        return u"%dKB" % (size / (2 ** 10))
+    class ImageWidget(gtk.DrawingArea):
+        def __init__(self):
+            gtk.DrawingArea.__init__(self)
+            self.full_pixbuf = None
+            self.scaled_thumbnail = None
+            self.connect("expose_event", self.expose_event)
+            self.connect("configure_event", self.configure_event)
+            self.widget_width = 0
+            self.widget_height = 0
 
-    return u"%dMB" % (size / (2 ** 20))
+        def set_pixbuf(self, pixbuf):
+            self.full_pixbuf = pixbuf
+            self.queue_draw()
+
+        def expose_event(self, widget, area):
+            self.draw_image()
+
+        def configure_event(self, widget, area):
+            self.widget_width = area.width
+            self.widget_height = area.height
+            self.draw_image()
+
+        def draw_image(self):
+            if (self.full_pixbuf is None):
+                return
+
+            (image_width,
+             image_height) = image_size((self.widget_width,
+                                         self.widget_height),
+                                        (self.full_pixbuf.get_width(),
+                                         self.full_pixbuf.get_height()))
+
+            if ((self.scaled_thumbnail is None) or
+                (self.scaled_thumbnail.get_width() != image_width) or
+                (self.scaled_thumbnail.get_height() != image_height)):
+                self.scaled_thumbnail = self.full_pixbuf.scale_simple(
+                    image_width,
+                    image_height,
+                    gtk.gdk.INTERP_HYPER)
+
+            self.window.draw_pixbuf(gc=self.get_style().fg_gc[gtk.STATE_NORMAL],
+                                    pixbuf=self.scaled_thumbnail,
+                                    src_x=0,
+                                    src_y=0,
+                                    dest_x=(self.widget_width -
+                                            image_width) / 2,
+                                    dest_y=(self.widget_height -
+                                            image_height) / 2,
+                                    width=image_width,
+                                    height=image_height)
 
 
-#given a string of raw data and a requested width/height
-#returns a new PixBuf at that size
-def get_pixbuf(imagedata, width, height):
-    imagedata = cStringIO.StringIO(imagedata)
-    l = gtk.gdk.PixbufLoader()
+    class CoverviewGTK:
+        def __init__(self):
+            self.window = gtk.Window(gtk.WINDOW_TOPLEVEL)
+            self.window.connect("delete_event", self.delete_event)
+            self.window.connect("destroy", self.destroy)
 
-    s = imagedata.read(0x1000)
-    while (len(s) > 0):
-        l.write(s)
-        s = imagedata.read(0x1000)
-    l.close()
+            table = gtk.Table(rows=2, columns=2, homogeneous=False)
 
-    pb = l.get_pixbuf()
-    (width, height) = image_size((width, height), pb)
-    pb = pb.scale_simple(
-        width,
-        height,
-        [gtk.gdk.INTERP_NEAREST,
-         gtk.gdk.INTERP_BILINEAR,
-         gtk.gdk.INTERP_HYPER][bisect([30, 300],
-                                      min(width, height))])
-    return pb
+            self.list = gtk.ListStore(str, gtk.gdk.Pixbuf,
+                                      str, str, str, str)
+
+            self.list_widget = gtk.TreeView(self.list)
+            self.list_widget.append_column(gtk.TreeViewColumn(
+                    None, gtk.CellRendererText(), text=0))
+            self.list_widget.set_headers_visible(False)
+            list_scroll = gtk.ScrolledWindow()
+            list_scroll.set_policy(gtk.POLICY_NEVER, gtk.POLICY_AUTOMATIC)
+            list_scroll.add(self.list_widget)
+            self.list_widget.connect("cursor-changed", self.image_selected)
+
+            self.image = ImageWidget()
+
+            accelgroup = gtk.AccelGroup()
+            self.window.add_accel_group(accelgroup)
+            menubar = gtk.MenuBar()
+            file_menu = gtk.Menu()
+            file_item = gtk.MenuItem("File")
+            file_item.set_submenu(file_menu)
+
+            help_menu = gtk.Menu()
+            help_item = gtk.MenuItem("Help")
+            help_item.set_right_justified(True)
+            help_item.set_submenu(help_menu)
+
+            open_item = gtk.ImageMenuItem(gtk.STOCK_OPEN, accelgroup)
+            open_item.connect("activate", self.open)
+            file_menu.append(open_item)
+
+            quit_item = gtk.ImageMenuItem(gtk.STOCK_QUIT, accelgroup)
+            quit_item.connect("activate", self.destroy)
+            file_menu.append(quit_item)
+
+            about_item = gtk.ImageMenuItem(gtk.STOCK_ABOUT, accelgroup)
+            about_item.connect("activate", self.about)
+            help_menu.append(about_item)
+
+            menubar.append(file_item)
+            menubar.append(help_item)
+
+            image_info_bar = gtk.HBox()
+            self.size_bits = gtk.Label()
+            self.size_pixels = gtk.Label()
+            self.bits = gtk.Label()
+            self.type = gtk.Label()
+
+            self.size_bits.set_alignment(1.0, 0.0)
+            self.size_pixels.set_alignment(1.0, 0.0)
+            self.bits.set_alignment(1.0, 0.0)
+            self.type.set_alignment(1.0, 0.0)
+
+            image_info_bar.pack_start(self.size_bits)
+            image_info_bar.pack_start(gtk.VSeparator(),
+                expand=False, fill=False, padding=3)
+            image_info_bar.pack_start(self.size_pixels)
+            image_info_bar.pack_start(gtk.VSeparator(),
+                expand=False, fill=False, padding=3)
+            image_info_bar.pack_start(self.bits)
+            image_info_bar.pack_start(gtk.VSeparator(),
+                                    expand=False, fill=False, padding=3)
+            image_info_bar.pack_start(self.type)
+
+            self.statusbar = gtk.Statusbar()
+            self.statusbar.push(0, "")
+
+            table.attach(menubar, 0, 2, 0, 1, yoptions=0)
+            table.attach(list_scroll, 0, 1, 1, 2, xoptions=0, xpadding=5)
+            table.attach(self.image, 1, 2, 1, 2)
+            table.attach(gtk.HSeparator(), 0, 2, 2, 3, yoptions=0)
+            table.attach(image_info_bar, 0, 2, 3, 4, yoptions=0)
+            table.attach(self.statusbar, 0, 2, 5, 6, yoptions=0)
+
+            self.file_dialog = gtk.FileChooserDialog(
+                title="Choose an audio file",
+                action=gtk.FILE_CHOOSER_ACTION_OPEN,
+                buttons=(gtk.STOCK_CANCEL,gtk.RESPONSE_CANCEL,
+                         gtk.STOCK_OPEN,gtk.RESPONSE_OK))
+
+            self.about_dialog = gtk.AboutDialog()
+
+            self.about_dialog.set_program_name("coverview")
+            self.about_dialog.set_version(audiotools.VERSION)
+            self.about_dialog.set_copyright("(c) Brian Langenberger")
+            self.about_dialog.set_comments(
+                "A viewer for displaying images embedded in audio files.")
+            self.about_dialog.set_website("http://audiotools.sourceforge.net")
 
 
-def get_raw_pixbuf(imagedata):
-    l = gtk.gdk.PixbufLoader()
-    l.write(imagedata)
-    l.close()
+            self.window.add(table)
+            self.window.set_default_size(800, 600)
+            self.window.show_all()
 
-    return l.get_pixbuf()
+        def delete_event(self, widget, event, data=None):
+            return False
 
-
-class ImageList:
-    TARGET_TYPE_PIXMAP = 81
-
-    #picture_list is a list of (filepath,Image) tuples
-    def __init__(self, picture_list, xml):
-        self.xml = xml
-        self.image_width = 500
-        self.image_height = 500
-        self.thumbnail_width = 120
-        self.perform_thumbnail_resize = False
-
-        image_list = xml.get_widget("image_list")
-        image = xml.get_widget("picture_image")
-
-        self.image_liststore = gtk.ListStore(gtk.gdk.Pixbuf,
-                                             gtk.gdk.Pixbuf,
-                                             str, str, str, str,
-                                             gobject.TYPE_PYOBJECT)
-        image_list.set_model(self.image_liststore)
-        image_list.append_column(gtk.TreeViewColumn(
-                "Image", gtk.CellRendererPixbuf(), pixbuf=0))
-
-        self.set_images(picture_list)
-
-    #picture_list is a list of (filepath,Image) tuples
-    def set_images(self, picture_list):
-        first_image = None
-        self.xml.get_widget("picture_image").clear()
-        window = self.xml.get_widget("main_window").window
-        window.set_cursor(gtk.gdk.Cursor(gtk.gdk.WATCH))
-        window.show()
-
-        for (path, image) in picture_list:
-            treeiter = self.image_liststore.append()
-            pb = get_pixbuf(image.data,
-                            self.thumbnail_width,
-                            self.thumbnail_width)
-            large_pb = get_raw_pixbuf(image.data)
-            self.image_liststore.set(treeiter, 0, pb)
-            self.image_liststore.set(treeiter, 1, large_pb)
-            self.image_liststore.set(treeiter, 2, image.type_string())
-            self.image_liststore.set(treeiter, 3, path)
-            self.image_liststore.set(treeiter, 4,
-          u"%(width)d \u00D7 %(height)d %(bits)d-bit %(size)s %(mime_type)s" %
-                 {"width": image.width,
-                  "height": image.height,
-                  "mime_type": image.suffix().upper(),
-                  "bits": image.color_depth,
-                  "size": size_string(len(image.data))})
-            self.image_liststore.set(treeiter, 5,
-                                     image.mime_type.encode('ascii'))
-
-            self.image_liststore.set(treeiter, 6, image.data)
-
-            if (first_image is None):
-                first_image = treeiter
-
-        if (len(picture_list) > 0):
-            self.xml.get_widget("image_list").get_selection().select_iter(
-                first_image)
-            self.image_selected()
-
-        mime_types = set([image.mime_type for (path, image) in picture_list])
-
-        self.xml.get_widget("image_list").drag_source_set(
-            gtk.gdk.BUTTON1_MASK,
-            [(mime_type,
-              0,
-              self.TARGET_TYPE_PIXMAP) for mime_type in mime_types],
-            gtk.gdk.ACTION_COPY)
-
-        window.set_cursor(None)
-
-    #this performs a full resize on all thumbnails
-    #generating their thumbnail from the full-sized image
-    def resize_thumbnails(self):
-        self.image_liststore.foreach(self.resize_thumbnail, None)
-        self.xml.get_widget("image_list").columns_autosize()
-
-    #this performs a full resize on a single thumbnail
-    def resize_thumbnail(self, model, path, treeiter, user_data):
-        big_pb = self.image_liststore.get_value(treeiter, 1)
-
-        (thumb_width, thumb_height) = image_size(
-            (self.thumbnail_width, self.thumbnail_width), big_pb)
-
-        thumb_width = max(thumb_width, 20)
-        thumb_height = max(thumb_height, 20)
-
-        self.image_liststore.set(treeiter,
-                                 0,
-                                 big_pb.scale_simple(
-                thumb_width,
-                thumb_height,
-                [gtk.gdk.INTERP_NEAREST,
-                 gtk.gdk.INTERP_BILINEAR,
-                 gtk.gdk.INTERP_HYPER][bisect([30, 300],
-                                              min(thumb_width,
-                                                  thumb_height))]))
-
-    def image_selected(self, *args):
-        (liststore, treeiter) = \
-            self.xml.get_widget("image_list").get_selection().get_selected()
-
-        if (treeiter is None):
-            return
-
-        selected = liststore.get_value(treeiter, 1)
-
-        (width, height) = image_size((self.image_width,
-                                      self.image_height),
-                                     selected)
-
-        width = max(width, 20)
-        height = max(height, 20)
-
-        image = xml.get_widget("picture_image")
-        image.set_from_pixbuf(selected.scale_simple(
-                width,
-                height,
-                [gtk.gdk.INTERP_NEAREST,
-                 gtk.gdk.INTERP_BILINEAR,
-                 gtk.gdk.INTERP_HYPER][bisect([30, 600],
-                                              min(width, height))]))
-
-        xml.get_widget("image_eventbox").drag_source_set(
-            gtk.gdk.BUTTON1_MASK,
-            [(liststore.get_value(treeiter, 5),
-              0,
-              self.TARGET_TYPE_PIXMAP)],
-            gtk.gdk.ACTION_COPY)
-
-        self.xml.get_widget("file_path").set_text(
-            liststore.get_value(treeiter, 3))
-        self.xml.get_widget("picture_type").set_text(
-            liststore.get_value(treeiter, 2))
-        self.xml.get_widget("picture_dimensions").set_text(
-            liststore.get_value(treeiter, 4))
-
-    #this opens a file open dialog
-    def open_file(self, *args):
-        self.xml.get_widget('file_chooser').run()
-
-    #when the file open dialog selects a new track
-    #this closes the dialog and updates our data
-    def track_selected(self, dialog, signal):
-        chooser = self.xml.get_widget('file_chooser')
-        chooser.hide()
-        if (signal == -5):
-            self.image_liststore.clear()
-            xml.get_widget("picture_image").clear()
-            xml.get_widget('file_path').set_text('')
-            xml.get_widget('picture_type').set_text('')
-            self.xml.get_widget("picture_dimensions").set_text('')
-
-            try:
-                metadata = audiotools.open(
-                    chooser.get_filename()).get_metadata()
-                if (metadata is not None):
-                    self.set_images([(chooser.get_filename(), img)
-                                     for img in metadata.images()])
-
-            except audiotools.UnsupportedFile:
+        def open(self, widget, data=None):
+            response = self.file_dialog.run()
+            if (response == gtk.RESPONSE_OK):
+                filename = self.file_dialog.get_filename()
+                try:
+                    self.set_metadata(
+                        audiotools.open(filename).get_metadata())
+                    self.set_filename(filename)
+                except audiotools.UnsupportedFile:
+                    error = gtk.MessageDialog(
+                        type=gtk.MESSAGE_ERROR,
+                        message_format="Unsupported File '%s'" % (filename),
+                        buttons=gtk.BUTTONS_OK)
+                    error.run()
+                    error.destroy()
+                except audiotools.InvalidFile:
+                    error = gtk.MessageDialog(
+                        type=gtk.MESSAGE_ERROR,
+                        message_format="Invalid File '%s'" % (filename),
+                        buttons=gtk.BUTTONS_OK)
+                    error.run()
+                    error.destroy()
+                except IOError:
+                    error = gtk.MessageDialog(
+                        type=gtk.MESSAGE_ERROR,
+                        message_format="I/O Error Reading '%s'" % (filename),
+                        buttons=gtk.BUTTONS_OK)
+                    error.run()
+                    error.destroy()
+            elif (response == gtk.RESPONSE_CANCEL):
                 pass
+            self.file_dialog.hide()
 
-    #this is called by a resize event on the cover image widget
-    def image_resized(self, image, rectangle):
-        if ((self.image_width, self.image_height) !=
-            (rectangle.width, rectangle.height)):
-            self.image_width = rectangle.width
-            self.image_height = rectangle.height
-            self.image_selected()
+        def about(self, widget, data=None):
+            self.about_dialog.run()
+            self.about_dialog.hide()
 
-    #this is called by a resize event on the thumbnail list widget
-    def thumbnails_resized(self, widget, rectangle):
-        if (self.thumbnail_width != rectangle.width):
-            self.thumbnail_width = rectangle.width
-            self.perform_thumbnail_resize = True
+        def destroy(self, widget, data=None):
+            gtk.main_quit()
 
-    def resize_thumbnail_quick(self, model, path, treeiter, user_data):
-        small_pb = self.image_liststore.get_value(treeiter, 0)
+        def image_selected(self, *args):
+            (liststore,
+             treeiter) = self.list_widget.get_selection().get_selected()
 
-        (thumb_width, thumb_height) = image_size(
-            (self.thumbnail_width, self.thumbnail_width), small_pb)
-
-        thumb_width = max(thumb_width, 20)
-        thumb_height = max(thumb_height, 20)
-
-        self.image_liststore.set(
-            treeiter,
-            0,
-            small_pb.scale_simple(
-                thumb_width,
-                thumb_height,
-                gtk.gdk.INTERP_NEAREST))
-
-    #this is executed at regular intervals
-    #it performs a full thumbnail resize if the flag is set
-    def thumbnail_resize_daemon(self):
-        if (self.perform_thumbnail_resize):
-            gobject.idle_add(self.resize_thumbnails)
-            self.perform_thumbnail_resize = False
-
-        return True
-
-    def display_about(self, caller):
-        self.xml.get_widget("about").run()
-
-    def dialog_done(self, caller, response):
-        caller.hide()
-
-    def image_drag_data(self, widget, context, selection, targetType,
-                        eventTime):
-        if (targetType == self.TARGET_TYPE_PIXMAP):
-            (liststore, treeiter) = self.xml.get_widget(
-                "image_list").get_selection().get_selected()
             if (treeiter is None):
                 return
 
-            selection.set(selection.target, 8,
-                          liststore.get_value(treeiter, 6))
+            image = liststore.get_value(treeiter, 1)
+            self.image.set_pixbuf(image)
+            self.size_bits.set_text(liststore.get_value(treeiter, 2))
+            self.size_pixels.set_text(liststore.get_value(treeiter, 3))
+            self.bits.set_text(liststore.get_value(treeiter, 4))
+            self.type.set_text(liststore.get_value(treeiter, 5))
 
-    def thumbnail_drag_data(self, widget, context, selection, targetType,
-                        eventTime):
-        if (targetType == self.TARGET_TYPE_PIXMAP):
-            (liststore, treeiter) = self.xml.get_widget(
-                "image_list").get_selection().get_selected()
-            if (treeiter is None):
+
+        def set_filename(self, path):
+            self.statusbar.pop(0)
+            self.statusbar.push(0, path)
+
+        def set_metadata(self, metadata):
+            def get_pixbuf(imagedata):
+                l = gtk.gdk.PixbufLoader()
+                l.write(imagedata)
+                l.close()
+                return l.get_pixbuf()
+
+            self.list.clear()
+
+            images = metadata.images()
+            first_image = None
+            for image in images:
+                tree_iter = self.list.append()
+                self.list.set(tree_iter, 0, image.type_string())
+                self.list.set(tree_iter, 1, get_pixbuf(image.data))
+                self.list.set(tree_iter, 2, u"%d bytes" % (len(image.data)))
+                self.list.set(tree_iter, 3, u"%d \u00D7 %d" % (image.width,
+                                                               image.height))
+                self.list.set(tree_iter, 4, u"%d bits" % (image.color_depth))
+                self.list.set(tree_iter, 5, image.mime_type.decode('ascii'))
+
+                if (first_image is None):
+                    first_image = tree_iter
+
+            if (len(images) > 0):
+                self.list_widget.get_selection().select_iter(first_image)
+                self.image_selected()
+
+    def main_gtk(initial_audiofile=None):
+        coverview = CoverviewGTK()
+        if (initial_audiofile is not None):
+            coverview.set_filename(initial_audiofile.filename)
+            coverview.set_metadata(initial_audiofile.get_metadata())
+        gtk.main()
+
+    GTK_AVAILABLE = True
+except ImportError:
+    GTK_AVAILABLE = False
+
+try:
+    from Tkinter import *
+    import Image
+    import ImageTk
+
+    class ImagePair:
+        def __init__(self, path, image_obj):
+            """image_obj is an audiotools.Image object"""
+
+            self.path = path
+            self.audiotools = image_obj
+            self.pil = Image.open(cStringIO.StringIO(image_obj.data))
+
+    class Statusbar(Frame):
+        def __init__(self, master):
+            Frame.__init__(self, master)
+
+            self.image_info = Frame(self)
+            self.path_info = Frame(self)
+
+            self.path = Label(self.path_info, bd=1, relief=SUNKEN, anchor=W)
+            self.path.pack(fill=X)
+
+            self.size_bits = Label(self.image_info, bd=1, relief=SUNKEN,
+                                   anchor=E)
+            self.size_pixels = Label(self.image_info, bd=1, relief=SUNKEN,
+                                     anchor=E)
+            self.bits = Label(self.image_info, bd=1, relief=SUNKEN, anchor=E)
+            self.type = Label(self.image_info, bd=1, relief=SUNKEN, anchor=E)
+            self.size_bits.grid(row=0, column=0, sticky=E+W)
+            self.size_pixels.grid(row=0, column=1, sticky=E+W)
+            self.bits.grid(row=0, column=2, sticky=E+W)
+            self.type.grid(row=0, column=3, sticky=E+W)
+            self.image_info.columnconfigure(0, weight=1)
+            self.image_info.columnconfigure(1, weight=1)
+            self.image_info.columnconfigure(2, weight=1)
+            self.image_info.columnconfigure(3, weight=1)
+
+            self.image_info.pack(fill=X)
+            self.path_info.pack(fill=X)
+
+
+
+        def set_image_data(self, image):
+            if (image is None):
+                return
+            else:
+                at_image = image.audiotools
+            self.path.config(text=image.path)
+            self.size_bits.config(text=u"%d bytes" % (len(at_image.data)))
+            self.size_pixels.config(text=u"%d \u00D7 %d" % (at_image.width,
+                                                            at_image.height))
+            self.bits.config(text="%d bits" % (at_image.color_depth))
+            self.type.config(text=at_image.mime_type)
+
+        def clear_image_data(self):
+            self.path.config(text="")
+            self.size_bits.config(text="")
+            self.size_pixels.config(text="")
+            self.bits.config(text="")
+            self.type.config(text="")
+
+    class About(Frame):
+        def __init__(self, master):
+            Frame.__init__(self, master, padx=10, pady=10)
+
+            Label(self, text="coverview",
+                  font=("Helvetica", 48)).pack(side=TOP)
+
+            Label(self,
+                  text=("A viewer for displaying images" +
+                        "embedded in audio files.")).pack(side=TOP)
+            Label(self,
+                  text="Part of Python Audio Tools").pack(side=TOP)
+            Label(self,
+                  text="Copyright 2007-2010 by Brian Langenberger",
+                  font=("Helvetica", 10)).pack(side=TOP)
+
+            close = Button(self, text="Close")
+            close.bind(sequence="<ButtonRelease-1>", func=self.close)
+            close.pack(side=BOTTOM)
+
+            self.master = master
+
+        def close(self, event):
+            self.master.withdraw()
+
+    class Coverview:
+        def __init__(self, master):
+            self.master = master
+
+            frame = Frame(master, width=800, height=600)
+
+            self.statusbar = Statusbar(frame)
+            self.statusbar.pack(side=BOTTOM, fill=X)
+
+            self.images = Listbox(frame, selectmode=BROWSE)
+            self.images.pack(fill=Y, expand=0, side=LEFT)
+            self.images.bind(sequence="<ButtonRelease-1>",
+                             func=self.event_selected)
+            self.images.bind(sequence="<KeyRelease>",
+                             func=self.event_selected)
+
+            self.canvas = Canvas(frame)
+            self.canvas.pack(fill=BOTH, expand=1, side=LEFT)
+            self.canvas.bind(sequence="<Configure>", func=self.event_resized)
+
+            self.photo_image_id = None
+            self.current_image = None
+            self.image_objects = []
+
+            frame.pack(fill=BOTH, expand=1, side=LEFT)
+            frame.master.title("coverview")
+            frame.master.geometry("%dx%d" % (800, 600))
+
+            self.image_width = int(self.canvas.cget("width"))
+            self.image_height = int(self.canvas.cget("height"))
+
+            self.menubar = Menu(master)
+            file_menu = Menu(self.menubar, tearoff=0)
+            file_menu.add_command(label="Open", command=self.open,
+                                  accelerator='Ctrl+O')
+            file_menu.add_command(label="Quit", command=self.quit,
+                                  accelerator='Ctrl+Q')
+            self.menubar.add_cascade(label="File", menu=file_menu)
+
+            help_menu = Menu(self.menubar, tearoff=0)
+            help_menu.add_command(label="About", command=self.about)
+            self.menubar.add_cascade(label="Help", menu=help_menu)
+
+            master.bind_all(sequence="<Control-q>", func=self.quit)
+            master.config(menu=self.menubar)
+
+            self.about_window = Toplevel()
+            self.about_window.withdraw()
+            self.about_window_frame = About(self.about_window)
+            self.about_window_frame.pack(fill=BOTH,expand=1)
+
+        def open(self, *args):
+            import tkFileDialog
+            import tkMessageBox
+
+            new_file = tkFileDialog.askopenfilename(
+                title="select an audio file")
+
+            if (len(new_file) > 0):
+                try:
+                    #FIXME - check for errors here
+                    self.set_metadata(new_file,
+                                      audiotools.open(new_file).get_metadata())
+                except (audiotools.UnsupportedFile,
+                        audiotools.InvalidFile,
+                        IOError), err:
+                    print str(err)
+                    self.set_metadata("", None)
+                    # tkMessageBox.showerror("file error", "Error!")
+                    # self.set_metadata("", None)
+
+        def quit(self, *args):
+            self.master.quit()
+
+        def about(self, *args):
+            self.about_window.state("normal")
+
+        def event_selected(self, event):
+            try:
+                self.current_image = self.image_objects[
+                    int(self.images.curselection()[0])]
+                self.set_image(self.current_image)
+            except IndexError:
+                self.current_image = None
+                self.set_image(None)
+
+        def event_resized(self, event):
+            self.image_width = event.width
+            self.image_height = event.height
+            self.set_image(self.current_image)
+
+        def set_image(self, image):
+            if (image is None):
+                if (self.photo_image_id is not None):
+                    self.canvas.delete(self.photo_image_id)
+                self.statusbar.clear_image_data()
                 return
 
-            selection.set(selection.target, 8,
-                          liststore.get_value(treeiter, 6))
+            resized_image = self.current_image.pil.copy()
+            resized_image.thumbnail((self.image_width,
+                                     self.image_height,
+                                     Image.ANTIALIAS))
+            (image_width, image_height) = resized_image.size
+
+            self.photo_image = ImageTk.PhotoImage(resized_image)
+
+            if (self.photo_image_id is not None):
+                self.canvas.delete(self.photo_image_id)
+
+            self.photo_image_id = self.canvas.create_image(
+                (self.image_width - image_width) / 2,
+                (self.image_height - image_height) / 2,
+                image=self.photo_image,
+                anchor=NW)
+
+            self.statusbar.set_image_data(image)
+
+        def set_metadata(self, path, metadata):
+            self.images.selection_clear(0, END)
+            self.images.delete(0, END)
+            self.image_objects = []
+            if (metadata is not None):
+                image_list = metadata.images()
+                for image in image_list:
+                    self.images.insert(END, image.type_string())
+                    self.image_objects.append(ImagePair(path, image))
+
+                if (len(image_list) > 0):
+                    self.images.index(0)
+                    self.images.selection_set(0)
+                    self.current_image = self.image_objects[0]
+                    self.set_image(self.current_image)
+            else:
+                self.set_image(None)
+
+    def main_tkinter(initial_audiofile=None):
+        root = Tk()
+
+        app = Coverview(root)
+        if (initial_audiofile is not None):
+            app.set_metadata(initial_audiofile.filename,
+                             initial_audiofile.get_metadata())
+
+        root.mainloop()
+
+    TKINTER_AVAILABLE = True
+except ImportError:
+    TKINTER_AVAILABLE = False
 
 if (__name__ == '__main__'):
     parser = audiotools.OptionParser(
-        usage=_(u"%prog [options] <track 1> [track 2] ..."),
+        usage=_(u'%prog [options] [track]'),
         version="Python Audio Tools %s" % (audiotools.VERSION))
 
+    if (GTK_AVAILABLE):
+        parser.add_option('--no-gtk',
+                          dest="no_gtk",
+                          action='store_true',
+                          default=False,
+                          help=_(u"don't use PyGTK for GUI"))
+
+    if (TKINTER_AVAILABLE):
+        parser.add_option('--no-tkinter',
+                          dest="no_tkinter",
+                          action='store_true',
+                          default=False,
+                          help=_(u"don't use Tkinter for GUI"))
+
     (options, args) = parser.parse_args()
-    msg = audiotools.Messenger("coverview", options)
+    messenger = audiotools.Messenger("coverview", None)
 
-    cover_list = []
+    use_gtk = (hasattr(options, "no_gtk") and not options.no_gtk)
+    use_tkinter = (hasattr(options, "no_tkinter") and not options.no_tkinter)
 
-    try:
-        xml = gtk.glade.XML(audiotools.find_glade_file("coverview.glade"),
-                            domain="audiotools")
-    except IOError:
-        msg.error(_(u"coverview.glade not found"))
+    if (use_gtk):
+        if (len(sys.argv) > 1):
+            main_gtk(audiotools.open(sys.argv[1]))
+        else:
+            main_gtk(None)
+    elif (use_tkinter):
+        if (len(sys.argv) > 1):
+            main_tkinter(audiotools.open(sys.argv[1]))
+        else:
+            main_tkinter(None)
+    else:
+        messenger.error(_("Neither PyGTK nor Tkinter is available"))
         sys.exit(1)
-
-    for audiofile in audiotools.open_files(args):
-        try:
-            metadata = audiofile.get_metadata()
-
-            if ((metadata is not None) and
-                (len(metadata.images()) > 0)):
-                for image in metadata.images():
-                    cover_list.append((audiofile.filename, image))
-        except audiotools.UnsupportedFile:
-            continue
-
-    imagelist = ImageList(cover_list, xml)
-
-    xml.signal_connect("gtk_main_quit", gtk.main_quit)
-    xml.signal_connect("image_selected", imagelist.image_selected)
-    xml.signal_connect("open_file", imagelist.open_file)
-    xml.signal_connect("track_selected", imagelist.track_selected)
-    xml.signal_connect("image_resize", imagelist.image_resized)
-    xml.signal_connect("thumbnails_resized", imagelist.thumbnails_resized)
-    xml.signal_connect("display_about", imagelist.display_about)
-    xml.signal_connect("dialog_done", imagelist.dialog_done)
-    xml.signal_connect("image_drag_data_get", imagelist.image_drag_data)
-    xml.signal_connect("thumbnail_drag_data_get",
-                       imagelist.thumbnail_drag_data)
-
-    gobject.timeout_add(1500, imagelist.thumbnail_resize_daemon)
-
-    gtk.main()
