@@ -1,13 +1,11 @@
 .TH "editxmcd" 1 "June 15, 2007" "" "Metadata Editor"
 .SH NAME
-editxmcd \- edits new or existing metadata files
+editxmcd \- edits existing metadata files
 .SH SYNOPSIS
 editxmcd [OPTIONS] [track 1] [track 2] ...
 .SH DESCRIPTION
 .PP
-editxmcd can edit existing MusicBrain XML or FreeDB XMCD files,
-or take a list of audio tracks
-and allows one to edit a new file from those tracks' metadata.
+editxmcd can edit existing MusicBrain XML or FreeDB XMCD files.
 It does not perform MusicBrainz or FreeDB lookups.
 .SH OPTIONS
 .TP
@@ -19,21 +17,12 @@ Show the program's version and exit
 .TP
 \fB-x \fIfilename\fB, --xmcd=\fIfilename\fR
 The MusicBrainz XML or FreeDB XMCD file to edit.
-If the file exists, that file will be edited and any audio tracks
-will be ignored.
-If the file does not exist, audio metadata will be retrieved from
-the given audio tracks and a new file will be created.
-.SH EXAMPLES
+
+.SH EXAMPLE
 .LP
 Edit the data in an existing \fIalbum.xmcd\fR:
 .IP
 .B editxmcd -x \fIalbum.xmcd
-
-.LP
-Build a new file called \fIalbum.xmcd\fR from all of the WAVE
-files in the current directory:
-.IP
-.B editxmcd -x \fIalbum.xmcd\fR *.wav
 
 .SH SEE ALSO
 .BR audiotools-config (1),

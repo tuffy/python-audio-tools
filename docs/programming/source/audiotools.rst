@@ -145,6 +145,14 @@ classes and functions upon which all of the other modules depend.
    Returns ``True`` if the remaining output matches exactly,
    ``False`` if not.
 
+.. function:: pcm_frame_cmp(pcmreader1, pcmreader2)
+
+   This function takes two :class:`PCMReader` objects and compares
+   their PCM frame output.
+   It returns the frame number of the first mismatch as an integer
+   which begins at frame number 0.
+   If the two streams match completely, it returns ``None``.
+
 .. function:: pcm_split(pcmreader, pcm_lengths)
 
    Takes a :class:`PCMReader` object and list of PCM sample length integers.
@@ -198,7 +206,8 @@ AudioFile Objects
 
 .. classmethod:: AudioFile.is_type(file)
 
-   Takes a file-like object with :meth:`read` and :meth:`seek` methods.
+   Takes a file-like object with :meth:`read` and :meth:`seek` methods
+   that's reset to the beginning of the stream.
    Returns ``True`` if the file is determined to be of the same type
    as this particular :class:`AudioFile` implementation.
    Returns ``False`` if not.

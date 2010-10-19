@@ -13,6 +13,22 @@ Show a list of options and exit
 .TP
 \fB--version\fR
 Show the program's version and exit
+.TP
+\fB--no-gtk\fR
+Disable PyGTK-based GUI, if available
+.TP
+\fB--no-tkinter\fR
+Disable Tkinter-based GUI, if available
+
+.SH REQUIREMENTS
+coverview requires either PyGTK or Tkinter to display a GUI for
+cover art.
+If PyGTK is installed, no other requirements are necessary beyond
+the Python Audio Tools themselves.
+If Tkinter is installed, the Python Imaging Library is also
+required since Tkinter has only rudimentary graphics decoding support.
+
+If both are installed, coverview will use PyGTK by default.
 
 .SH SEE ALSO
 .BR audiotools-config (1),

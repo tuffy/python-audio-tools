@@ -55,6 +55,7 @@ class SpeexAudio(VorbisAudio):
     DEFAULT_COMPRESSION = "8"
     COMPRESSION_MODES = tuple([str(i) for i in range(0, 11)])
     BINARIES = ("speexenc", "speexdec")
+    REPLAYGAIN_BINARIES = tuple()
 
     SPEEX_HEADER = Con.Struct('speex_header',
                               Con.String('speex_string', 8),
