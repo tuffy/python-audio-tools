@@ -324,6 +324,8 @@ try:
     from Tkinter import *
     import Image
     import ImageTk
+    import tkFileDialog
+    import tkMessageBox
 
     try:
         import _imaging as test
@@ -459,18 +461,18 @@ Consult "man python" for further details.
 
             self.menubar = Menu(master)
             file_menu = Menu(self.menubar, tearoff=0)
-            file_menu.add_command(label="Open", command=self.open,
-                                  accelerator='Ctrl+O')
-            file_menu.add_command(label="Quit", command=self.quit,
-                                  accelerator='Ctrl+Q')
+            file_menu.add_command(label="Open", command=self.open)
+                                  # accelerator='Ctrl+O')
+            file_menu.add_command(label="Quit", command=self.quit)
+                                  # accelerator='Ctrl+Q')
             self.menubar.add_cascade(label="File", menu=file_menu)
 
             help_menu = Menu(self.menubar, tearoff=0)
             help_menu.add_command(label="About", command=self.about)
             self.menubar.add_cascade(label="Help", menu=help_menu)
 
-            master.bind_all(sequence="<Control-o>", func=self.open)
-            master.bind_all(sequence="<Control-q>", func=self.quit)
+            # master.bind_all(sequence="<Control-o>", func=self.open)
+            # master.bind_all(sequence="<Control-q>", func=self.quit)
             master.config(menu=self.menubar)
 
             self.about_window = Toplevel()
@@ -479,30 +481,35 @@ Consult "man python" for further details.
             self.about_window_frame.pack(fill=BOTH,expand=1)
 
         def open(self, *args):
-            import tkFileDialog
-            import tkMessageBox
-
             new_file = tkFileDialog.askopenfilename(
+                parent=self.master,
                 title="select an audio file")
 
             if (len(new_file) > 0):
                 try:
-                    #FIXME - check for errors here
                     self.set_metadata(new_file,
                                       audiotools.open(new_file).get_metadata())
-                except (audiotools.UnsupportedFile,
-                        audiotools.InvalidFile,
-                        IOError), err:
-                    print str(err)
-                    self.set_metadata("", None)
-                    # tkMessageBox.showerror("file error", "Error!")
-                    # self.set_metadata("", None)
+                except audiotools.UnsupportedFile:
+                    self.show_error("Unsupported File '%s'" % (new_file))
+                except audiotools.InvalidFile:
+                    self.show_error("Invalid File '%s'" % (new_file))
+                except IOError, err:
+                    self.show_error("I/O Error Reading '%s'" % (new_file))
 
         def quit(self, *args):
             self.master.quit()
 
         def about(self, *args):
             self.about_window.state("normal")
+
+        def show_error(self, error):
+            if (self.photo_image_id is not None):
+                self.canvas.delete(self.photo_image_id)
+            self.statusbar.clear_image_data()
+            self.images.selection_clear(0, END)
+            self.images.delete(0, END)
+            self.image_objects = []
+            self.statusbar.set_path(error)
 
         def event_selected(self, event):
             try:
