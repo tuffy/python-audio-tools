@@ -65,6 +65,11 @@ try:
 
         def set_pixbuf(self, pixbuf):
             self.full_pixbuf = pixbuf
+            self.scaled_thumbnail = None
+            self.queue_draw()
+
+        def clear(self):
+            self.full_pixbuf = None
             self.queue_draw()
 
         def expose_event(self, widget, area):
@@ -249,19 +254,25 @@ try:
         def destroy(self, widget, data=None):
             gtk.main_quit()
 
-        def image_selected(self, *args):
+        def image_selected(self, treeview=None):
             (liststore,
-             treeiter) = self.list_widget.get_selection().get_selected()
+             selection) = self.list_widget.get_selection().get_selected_rows()
 
-            if (treeiter is None):
-                return
+            row = selection[0][0]
+            treeiter = liststore.get_iter(row)
 
-            image = liststore.get_value(treeiter, 1)
-            self.image.set_pixbuf(image)
+            self.image.set_pixbuf(liststore.get_value(treeiter, 1))
             self.size_bits.set_text(liststore.get_value(treeiter, 2))
             self.size_pixels.set_text(liststore.get_value(treeiter, 3))
             self.bits.set_text(liststore.get_value(treeiter, 4))
             self.type.set_text(liststore.get_value(treeiter, 5))
+
+        def image_unselected(self):
+            self.image.clear()
+            self.size_bits.set_text(u"")
+            self.size_pixels.set_text(u"")
+            self.bits.set_text(u"")
+            self.type.set_text(u"")
 
 
         def set_filename(self, path):
@@ -295,6 +306,8 @@ try:
             if (len(images) > 0):
                 self.list_widget.get_selection().select_iter(first_image)
                 self.image_selected()
+            else:
+                self.image_unselected()
 
     def main_gtk(initial_audiofile=None):
         coverview = Coverview_Gtk()
@@ -366,7 +379,8 @@ Consult "man python" for further details.
             self.image_info.pack(fill=X)
             self.path_info.pack(fill=X)
 
-
+        def set_path(self, path):
+            self.path.config(text=path)
 
         def set_image_data(self, image):
             if (image is None):
@@ -455,6 +469,7 @@ Consult "man python" for further details.
             help_menu.add_command(label="About", command=self.about)
             self.menubar.add_cascade(label="Help", menu=help_menu)
 
+            master.bind_all(sequence="<Control-o>", func=self.open)
             master.bind_all(sequence="<Control-q>", func=self.quit)
             master.config(menu=self.menubar)
 
@@ -510,11 +525,15 @@ Consult "man python" for further details.
                 self.statusbar.clear_image_data()
                 return
 
-            resized_image = self.current_image.pil.copy()
-            resized_image.thumbnail((self.image_width,
-                                     self.image_height,
-                                     Image.ANTIALIAS))
-            (image_width, image_height) = resized_image.size
+            (image_width, image_height) = image_size(
+                (self.image_width,
+                 self.image_height),
+                (self.current_image.pil.size[0],
+                 self.current_image.pil.size[1]))
+
+            resized_image = self.current_image.pil.resize((image_width,
+                                                           image_height),
+                                                          Image.ANTIALIAS)
 
             self.photo_image = ImageTk.PhotoImage(resized_image)
 
@@ -544,8 +563,12 @@ Consult "man python" for further details.
                     self.images.selection_set(0)
                     self.current_image = self.image_objects[0]
                     self.set_image(self.current_image)
+                else:
+                    self.set_image(None)
+                    self.statusbar.set_path(path)
             else:
                 self.set_image(None)
+                self.statusbar.set_path(path)
 
     def main_tkinter(initial_audiofile=None):
         root = Tk()
