@@ -420,7 +420,7 @@ ID3v2.2
    1 UCS-2_
    = ========
 
-   ``language`` is a 3 character string, such as ``"eng"`` for english.
+   ``language`` is a 3 character string, such as ``"eng"`` for English.
    ``short_description`` and ``content`` are unicode strings.
 
 .. classmethod:: ID3v22ComFrame.from_unicode(s)
@@ -464,7 +464,7 @@ ID3v2.2
    14 During recording
    15 During performance
    16 Movie / Video screen capture
-   17 A bright coloured fish
+   17 A bright colored fish
    18 Illustration
    19 Band / Artist logotype
    20 Publisher / Studio logotype
@@ -628,7 +628,7 @@ ID3v2.3
    14 During recording
    15 During performance
    16 Movie / Video screen capture
-   17 A bright coloured fish
+   17 A bright colored fish
    18 Illustration
    19 Band / Artist logotype
    20 Publisher / Studio logotype
@@ -792,7 +792,7 @@ ID3v2.4
    14 During recording
    15 During performance
    16 Movie / Video screen capture
-   17 A bright coloured fish
+   17 A bright colored fish
    18 Illustration
    19 Band / Artist logotype
    20 Publisher / Studio logotype
@@ -817,7 +817,7 @@ This class encapsulates both comments into a single class.
    ``id3v1_comment`` is an :class:`ID3v1Comment`.
    When getting :class:`audiotools.MetaData` attributes,
    the ID3v2 comment is used by default.
-   Set attributes are propogated to both.
+   Set attributes are propagated to both.
    For example:
 
    >>> tag = ID3CommentPair(ID3v23Comment([ID3v23TextFrame('TIT2',0,u'Title 1')]),

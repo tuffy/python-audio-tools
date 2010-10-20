@@ -7,7 +7,7 @@
 
 
 The :mod:`audiotools.cue` module contains the Cuesheet class
-used for parsing and building cuesheet files represending CD images.
+used for parsing and building cuesheet files representing CD images.
 
 .. function:: read_cuesheet(filename)
 

@@ -2143,6 +2143,29 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   - [X] misc.c
   - [X] md5.h
   - [X] md5.c
+* DONE Get coverview and editxmcd working on Mac OS X
+** DONE editxmcd
+*** DONE Update man page
+** DONE Update coverview for dual PyGTK/Tkinter operation
+   It's a simple enough app that it should be able to conditionally do both,
+   especially since audiotools does most of the heavy lifting.
+   This allows it to look like a proper app under X11
+   and work at all everywhere else.
+
+   It should look and function approximately the same on both.
+*** DONE Remove glade requirement
+    I'm sick of glade, and coverview should be small enough
+    that it's not a problem to lay it out internally.
+*** DONE Update coverview for PyGTK
+*** DONE Update coverview for Tkinter
+**** DONE Fixup error messages, if possible
+*** DONE Add --gtk/--tkinter switches for conditional launch
+    For testing purposes
+*** DONE Cleanup conditional classes/helper functions
+*** DONE Check for init-time errors
+    Both in loading audiofiles and in import problems
+    such as Mac OS's 32-bit problem
+*** DONE Update man page
 * TODO More graceful handling of broken files
   A lot of the track handlers assume that once the start of the file is good,
   the rest of it is following the spec.  This is not always the case.
@@ -2407,14 +2430,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    need to apply that same offset when writing?
    One would presume a drive's read offset and write offset are the same,
    but that may not be correct.
-* TODO Add general-purpose track conversion short-circuiting
-  Certain type conversions should pass through specialized routines
-  rather than be piped through PCM conversion.
-  This is a generalization of the messy to/from_wave() situation
-  and allows for smarter, lossless conversion in certain situations.
-  For example, going from FLAC to Ogg FLAC should theoretically involve
-  wrapping up FLAC frames rather than re-encoding.
-  Or going from AAC to M4A should involve simple wrapper manipulation.
 * TODO Convert TOC and CUE handling to proper grammars
   Although the current ad-hoc method works in most cases,
   it would be better to use a more formal method to parse these files
@@ -2460,29 +2475,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   If a disc is not found on FreeDB or MusicBrainz,
   there should be some mechanism to submit user-defined data
   to those services.
-* DONE Get coverview and editxmcd working on Mac OS X
-** DONE editxmcd
-*** DONE Update man page
-** DONE Update coverview for dual PyGTK/Tkinter operation
-   It's a simple enough app that it should be able to conditionally do both,
-   especially since audiotools does most of the heavy lifting.
-   This allows it to look like a proper app under X11
-   and work at all everywhere else.
-
-   It should look and function approximately the same on both.
-*** DONE Remove glade requirement
-    I'm sick of glade, and coverview should be small enough
-    that it's not a problem to lay it out internally.
-*** DONE Update coverview for PyGTK
-*** DONE Update coverview for Tkinter
-**** DONE Fixup error messages, if possible
-*** DONE Add --gtk/--tkinter switches for conditional launch
-    For testing purposes
-*** DONE Cleanup conditional classes/helper functions
-*** DONE Check for init-time errors
-    Both in loading audiofiles and in import problems
-    such as Mac OS's 32-bit problem
-*** DONE Update man page
 * TODO get trackplay working on Mac OS X
   There must be some way to pipe PCM data to its audio system
   without the need for additional libraries.
@@ -2716,6 +2708,9 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   As an optional alternative to the running list
 * TODO Add a -r/--no-results flag to trackcmp/trackverify
   Listing only the final results and not the running list
+* TODO Update trackverify for multiprocess support
+  I'll need some interprocess communication (probably pipes and select)
+  to return the results from child processes for totals calculation.
 * TODO Add optional interactive modes to utilities
   Now that Urwid is being used for editxmcd, it might be helpful
   to add optional console-based interactive modes to the other tools.

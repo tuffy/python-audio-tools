@@ -7,7 +7,7 @@
 
 
 The :mod:`audiotools.toc` module contains the TOCFile class
-used for parsing and building TOC files represending CD images.
+used for parsing and building TOC files representing CD images.
 
 .. function:: read_tocfile(filename)
 

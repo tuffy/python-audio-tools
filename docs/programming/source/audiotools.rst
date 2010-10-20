@@ -13,7 +13,7 @@ classes and functions upon which all of the other modules depend.
 
    The current Python Audio Tools version as a plain string.
 
-.. data:: AVAILALBLE_TYPES
+.. data:: AVAILABLE_TYPES
 
    A tuple of :class:`AudioFile`-compatible objects of available
    audio types.
@@ -106,7 +106,7 @@ classes and functions upon which all of the other modules depend.
 
 .. function:: transfer_data(from_function, to_function)
 
-   This function takes two functions, presumably analagous
+   This function takes two functions, presumably analogous
    to :func:`write` and :func:`read` functions, respectively.
    It calls ``to_function`` on the object returned by calling
    ``from_function`` with an integer argument (presumably a string)
@@ -200,7 +200,7 @@ AudioFile Objects
 
    The :class:`AudioFile` class represents an audio file on disk,
    such as a FLAC file, MP3 file, WAVE file and so forth.
-   It is not meant to be instatiated directly.  Instead, functions
+   It is not meant to be instantiated directly.  Instead, functions
    such as :func:`open` will return :class:`AudioFile`-compatible
    objects implementing the following methods.
 
@@ -856,7 +856,7 @@ PCMReaderError Objects
    The purpose of this is to postpone error generation so that
    all encoding errors, even those caused by unsuccessful decoding,
    are restricted to the :meth:`from_pcm` classmethod
-   which can then propogate the :class:`DecodingError` error message
+   which can then propagate the :class:`DecodingError` error message
    to the user.
 
 PCMConverter Objects
@@ -1169,7 +1169,7 @@ Messenger Objects
 .. class:: Messenger(executable_name, options)
 
    This is a helper class for displaying program data,
-   analagous to a primitive logging facility.
+   analogous to a primitive logging facility.
    It takes a raw ``executable_name`` string and
    :class:`optparse.OptionParser` object.
    Its behavior changes depending on whether the
