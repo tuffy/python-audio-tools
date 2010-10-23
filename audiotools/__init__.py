@@ -1090,11 +1090,14 @@ def threaded_transfer_framelist_data(pcmreader, to_function,
     import Queue
 
     def send_data(pcmreader, queue):
-        s = pcmreader.read(BUFFER_SIZE)
-        while (len(s) > 0):
-            queue.put(s)
+        try:
             s = pcmreader.read(BUFFER_SIZE)
-        queue.put(None)
+            while (len(s) > 0):
+                queue.put(s)
+                s = pcmreader.read(BUFFER_SIZE)
+            queue.put(None)
+        except (IOError, ValueError):
+            queue.put(None)
 
     data_queue = Queue.Queue(10)
     #thread.start_new_thread(send_data,(from_function,data_queue))

@@ -1,6 +1,5 @@
 recursive-include audiotools *
 recursive-include docs *
-recursive-include glade *
 recursive-include src *
 recursive-include test *
 include audiotools.cfg
