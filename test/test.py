@@ -12456,6 +12456,11 @@ class TestShortenCodec(unittest.TestCase):
         else:
             options["verbatim_chunks"] = [head, None]
 
+        if (pcmreader.bits_per_sample == 8):
+            options["file_type"] = 2
+        elif (pcmreader.bits_per_sample == 16):
+            options["file_type"] = 5
+
         self.encode(temp_file.name,
                     temp_input_wave.to_pcm(),
                     **options)
@@ -12523,6 +12528,7 @@ class TestShortenCodec(unittest.TestCase):
                 self.__test_reader__(
                     stream,
                     stream.pcmreader.framelist.frames,
+                    file_type={8:2, 16:5}[bps],
                     block_size=256)
 
     @TEST_SHORTEN

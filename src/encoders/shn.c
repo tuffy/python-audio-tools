@@ -27,6 +27,7 @@ encoders_encode_shn(PyObject *dummy,
     static char *kwlist[] = {"filename",
                              "pcmreader",
                              "block_size",
+                             "file_type",
                              "verbatim_chunks",
                              NULL};
     char *filename;
@@ -36,6 +37,7 @@ encoders_encode_shn(PyObject *dummy,
     struct pcm_reader *reader;
 
     int block_size;
+    int file_type;
     int wrap = 3;
 
     struct ia_array wrapped_samples;
@@ -55,11 +57,12 @@ encoders_encode_shn(PyObject *dummy,
     int bytes_written = 0;
 
     /*extract a filename, PCMReader-compatible object and encoding options*/
-    if (!PyArg_ParseTupleAndKeywords(args, keywds, "sOiO",
+    if (!PyArg_ParseTupleAndKeywords(args, keywds, "sOiiO",
                                      kwlist,
                                      &filename,
                                      &pcmreader_obj,
                                      &block_size,
+                                     &file_type,
                                      &verbatim_chunks))
         return NULL;
 
@@ -108,13 +111,7 @@ encoders_encode_shn(PyObject *dummy,
     /*start counting written bytes *after* writing the 5 byte header*/
     bs_add_callback(stream, ShortenEncoder_byte_counter, &bytes_written);
 
-    /*file type is either 2 (unsigned 8-bit) or 5 (signed 16-bit little-endian)*/
-    if (reader->bits_per_sample == 8) {
-        ShortenEncoder_put_long(stream, 2);
-    }
-    if (reader->bits_per_sample == 16) {
-        ShortenEncoder_put_long(stream, 5);
-    }
+    ShortenEncoder_put_long(stream, file_type);
 
     ShortenEncoder_put_long(stream, reader->channels);
     ShortenEncoder_put_long(stream, block_size);

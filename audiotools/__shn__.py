@@ -266,6 +266,7 @@ class ShortenAudio(AudioFile):
                 self.__populate_metadata__()
             except IOError, msg:
                 raise EncodingError(str(msg))
+
         if (self.__format__ is WaveAudio):
             try:
                 f = open(wave_filename, 'wb')
@@ -283,6 +284,35 @@ class ShortenAudio(AudioFile):
                         raise EncodingError(str(msg))
         else:
             WaveAudio.from_pcm(wave_filename, self.to_pcm())
+
+    def to_aiff(self, aiff_filename):
+        """Writes the contents of this file to the given .aiff filename string.
+
+        Raises EncodingError if some error occurs during decoding."""
+
+        if (not hasattr(self, "__format__")):
+            try:
+                self.__populate_metadata__()
+            except IOError, msg:
+                raise EncodingError(str(msg))
+
+        if (self.__format__ is AiffAudio):
+            try:
+                f = open(aiff_filename, 'wb')
+            except IOError, msg:
+                raise EncodingError(str(msg))
+            for block in self.__blocks__:
+                if (block is not None):
+                    f.write(block)
+                else:
+                    try:
+                        transfer_framelist_data(
+                            audiotools.decoders.SHNDecoder(self.filename),
+                            f.write, True, True)
+                    except IOError, msg:
+                        raise EncodingError(str(msg))
+        else:
+            AiffAudio.from_pcm(aiff_filename, self.to_pcm())
 
     @classmethod
     def from_wave(cls, filename, wave_filename, compression=None,
@@ -310,10 +340,13 @@ class ShortenAudio(AudioFile):
         import audiotools.encoders
 
         try:
-            audiotools.encoders.encode_shn(filename=filename,
-                                           pcmreader=wave.to_pcm(),
-                                           block_size=block_size,
-                                           verbatim_chunks=blocks)
+            audiotools.encoders.encode_shn(
+                filename=filename,
+                pcmreader=wave.to_pcm(),
+                block_size=block_size,
+                file_type={8:2,
+                           16:5}[wave.bits_per_sample()],
+                verbatim_chunks=blocks)
 
             return cls(filename)
         except IOError, err:
@@ -322,6 +355,79 @@ class ShortenAudio(AudioFile):
         except Exception, err:
             cls.__unlink__(filename)
             raise err
+
+    @classmethod
+    def from_aiff(cls, filename, aiff_filename, compression=None,
+                  block_size=256):
+        """Encodes a new AudioFile from an existing .aiff file.
+
+        Takes a filename string, aiff_filename string
+        of an existing WaveAudio file
+        and an optional compression level string.
+        Encodes a new audio file from the aiff's data
+        at the given filename with the specified compression level
+        and returns a new ShortenAudio object."""
+
+        aiff = AiffAudio(aiff_filename)
+
+        if (aiff.bits_per_sample() not in (8, 16)):
+            raise UnsupportedBitsPerSample()
+
+        (head, tail) = aiff.pcm_split()
+        if (len(tail) > 0):
+            blocks = [head, None, tail]
+        else:
+            blocks = [head, None]
+
+        import audiotools.encoders
+
+        try:
+            audiotools.encoders.encode_shn(
+                filename=filename,
+                pcmreader=aiff.to_pcm(),
+                block_size=block_size,
+                file_type={8:1, #8-bit AIFF seems to be signed
+                           16:3}[aiff.bits_per_sample()],
+                verbatim_chunks=blocks)
+
+            return cls(filename)
+        except IOError, err:
+            cls.__unlink__(filename)
+            raise EncodingError(str(err))
+        except Exception, err:
+            cls.__unlink__(filename)
+            raise err
+
+    def convert(self, target_path, target_class, compression=None):
+        """Encodes a new AudioFile from existing AudioFile.
+
+        Take a filename string, target class and optional compression string.
+        Encodes a new AudioFile in the target class and returns
+        the resulting object.
+        Metadata is not copied during conversion, but embedded
+        RIFF chunks are (if any).
+        May raise EncodingError if some problem occurs during encoding."""
+
+        if (target_class == WaveAudio):
+            self.to_wave(target_path)
+            return WaveAudio(target_path)
+        elif (target_class == AiffAudio):
+            self.to_aiff(target_path)
+            return AiffAudio(target_path)
+        elif (self.has_foreign_riff_chunks() and
+              target_class.supports_foreign_riff_chunks()):
+            temp_wave = tempfile.NamedTemporaryFile(suffix=".wav")
+            try:
+                self.to_wave(temp_wave.name)
+                return target_class.from_wave(target_path,
+                                              temp_wave.name,
+                                              compression)
+            finally:
+                temp_wave.close()
+        else:
+            return target_class.from_pcm(target_path,
+                                         self.to_pcm(),
+                                         compression)
 
     @classmethod
     def supports_foreign_riff_chunks(cls):
@@ -339,6 +445,7 @@ class ShortenAudio(AudioFile):
 
         if (not hasattr(self, "__format__")):
             self.__populate_metadata__()
+
         if (self.__format__ is WaveAudio):
             for (chunk_id, chunk_data) in self.__wave_chunks__():
                 if (chunk_id != 'fmt '):

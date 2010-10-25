@@ -557,6 +557,11 @@ class WaveAudio(AudioFile):
             input.close()
             output.close()
 
+    def convert(self, target_path, target_class, compression=None):
+        return target_class.from_wave(target_path,
+                                      self.filename,
+                                      compression)
+
     def total_frames(self):
         """Returns the total PCM frames of the track as an integer."""
 
@@ -856,34 +861,40 @@ class WaveAudio(AudioFile):
 
         wave_file = open(self.filename, 'rb')
         try:
-            #transfer the 12-byte "RIFFsizeWAVE" header to head
-            header = WaveAudio.WAVE_HEADER.parse(wave_file.read(12))
-            total_size = header.wave_size - 4
-            current_block.write(WaveAudio.WAVE_HEADER.build(header))
-        except Con.ConstError:
-            raise InvalidWave(_(u"Not a RIFF WAVE file"))
-        except Con.core.FieldError:
-            raise InvalidWave(_(u"Invalid RIFF WAVE file"))
-
-        while (total_size > 0):
             try:
-                #transfer each chunk header
-                chunk_header = WaveAudio.CHUNK_HEADER.parse(wave_file.read(8))
-                current_block.write(WaveAudio.CHUNK_HEADER.build(chunk_header))
-                total_size -= 8
+                #transfer the 12-byte "RIFFsizeWAVE" header to head
+                header = WaveAudio.WAVE_HEADER.parse(wave_file.read(12))
+                total_size = header.wave_size - 4
+                current_block.write(WaveAudio.WAVE_HEADER.build(header))
+            except Con.ConstError:
+                raise InvalidWave(_(u"Not a RIFF WAVE file"))
             except Con.core.FieldError:
                 raise InvalidWave(_(u"Invalid RIFF WAVE file"))
 
-            #and transfer the full content of non-data chunks
-            if (chunk_header.chunk_id != "data"):
-                current_block.write(wave_file.read(chunk_header.chunk_length))
-            else:
-                wave_file.seek(chunk_header.chunk_length, os.SEEK_CUR)
-                current_block = tail
+            while (total_size > 0):
+                try:
+                    #transfer each chunk header
+                    chunk_header = WaveAudio.CHUNK_HEADER.parse(
+                        wave_file.read(8))
+                    current_block.write(WaveAudio.CHUNK_HEADER.build(
+                            chunk_header))
+                    total_size -= 8
+                except Con.core.FieldError:
+                    raise InvalidWave(_(u"Invalid RIFF WAVE file"))
 
-            total_size -= chunk_header.chunk_length
+                #and transfer the full content of non-data chunks
+                if (chunk_header.chunk_id != "data"):
+                    current_block.write(
+                        wave_file.read(chunk_header.chunk_length))
+                else:
+                    wave_file.seek(chunk_header.chunk_length, os.SEEK_CUR)
+                    current_block = tail
 
-        return (head.getvalue(), tail.getvalue())
+                total_size -= chunk_header.chunk_length
+
+            return (head.getvalue(), tail.getvalue())
+        finally:
+            wave_file.close()
 
     def verify(self):
         """Verifies the current file for correctness.

@@ -107,7 +107,7 @@ MUSICBRAINZ_PORT = config.getint_default("MusicBrainz", "port", 80)
 THUMBNAIL_FORMAT = config.get_default("Thumbnail", "format", "jpeg")
 THUMBNAIL_SIZE = config.getint_default("Thumbnail", "size", 150)
 
-VERSION = "2.16"
+VERSION = "2.17alpha1"
 
 FILENAME_FORMAT = config.get_default(
     "Filenames", "format",
@@ -2735,6 +2735,34 @@ class AudioFile:
 
         return cls.from_pcm(
             filename, WaveAudio(wave_filename).to_pcm(), compression)
+
+    def convert(self, target_path, target_class, compression=None):
+        """Encodes a new AudioFile from existing AudioFile.
+
+        Take a filename string, target class and optional compression string.
+        Encodes a new AudioFile in the target class and returns
+        the resulting object.
+        Metadata is not copied during conversion, but embedded
+        RIFF chunks are (if any).
+        May raise EncodingError if some problem occurs during encoding."""
+
+        if (target_class == WaveAudio):
+            self.to_wave(target_path)
+            return WaveAudio(target_path)
+        elif (self.has_foreign_riff_chunks() and
+              target_class.supports_foreign_riff_chunks()):
+            temp_wave = tempfile.NamedTemporaryFile(suffix=".wav")
+            try:
+                self.to_wave(temp_wave.name)
+                return target_class.from_wave(target_path,
+                                              temp_wave.name,
+                                              compression)
+            finally:
+                temp_wave.close()
+        else:
+            return target_class.from_pcm(target_path,
+                                         self.to_pcm(),
+                                         compression)
 
     @classmethod
     def __unlink__(cls, filename):

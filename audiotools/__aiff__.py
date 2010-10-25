@@ -21,7 +21,8 @@ from audiotools import (AudioFile, InvalidFile, Con, PCMReader,
                         __capped_stream_reader__, PCMReaderError,
                         transfer_data, DecodingError, EncodingError,
                         ID3v22Comment, BUFFER_SIZE, ChannelMask,
-                        UnsupportedChannelMask, ReorderedPCMReader, pcm)
+                        UnsupportedChannelMask, ReorderedPCMReader, pcm,
+                        cStringIO, os)
 
 import gettext
 
@@ -544,6 +545,76 @@ class AiffAudio(AudioFile):
             f.close()
 
         return cls(filename)
+
+    def convert(self, target_path, target_class, compression=None):
+        if (hasattr(target_class, "from_aiff")):
+            return target_class.from_aiff(target_path,
+                                          self.filename,
+                                          compression)
+        else:
+            #AIFF will never have foreign RIFF chunks
+            #or special to_wave() handling,
+            #so go directly to from_pcm()
+            return target_class.from_pcm(target_path,
+                                         self.to_pcm(),
+                                         compression)
+
+    def pcm_split(self):
+        """Returns a pair of data strings before and after PCM data.
+
+        The first contains all data before the PCM content of the data chunk.
+        The second containing all data after the data chunk.
+        """
+
+        head = cStringIO.StringIO()
+        tail = cStringIO.StringIO()
+        current_block = head
+
+        aiff_file = open(self.filename, 'rb')
+        try:
+            try:
+                #transfer the 12-bite FORMsizeAIFF header
+                header = AiffAudio.AIFF_HEADER.parse(aiff_file.read(12))
+                total_size = header.aiff_size - 4
+                current_block.write(AiffAudio.AIFF_HEADER.build(header))
+            except Con.ConstError:
+                raise InvalidAIFF(_(u"Not an AIFF file"))
+            except Con.core.FieldError:
+                raise InvalidAIFF(_(u"Invalid AIFF file"))
+
+            while (total_size > 0):
+                try:
+                    #transfer each chunk header
+                    chunk_header = AiffAudio.CHUNK_HEADER.parse(
+                        aiff_file.read(8))
+                    current_block.write(AiffAudio.CHUNK_HEADER.build(
+                            chunk_header))
+                    total_size -= 8
+                except Con.core.FieldError:
+                    raise InvalidAiff(_(u"Invalid AIFF file"))
+
+                #and transfer the full content of non-ssnd chunks
+                if (chunk_header.chunk_id != "SSND"):
+                    current_block.write(
+                        aiff_file.read(chunk_header.chunk_length))
+                else:
+                    #or, the top 8 align bytes of the ssnd chunk
+                    try:
+                        align = AiffAudio.SSND_ALIGN.parse(
+                            aiff_file.read(8))
+                        current_block.write(AiffAudio.SSND_ALIGN.build(
+                                align))
+                        aiff_file.seek(chunk_header.chunk_length - 8,
+                                       os.SEEK_CUR)
+                        current_block = tail
+                    except Con.core.FieldError:
+                        raise InvalidAiff(_(u"Invalid AIFF file"))
+
+                total_size -= chunk_header.chunk_length
+
+            return (head.getvalue(), tail.getvalue())
+        finally:
+            aiff_file.close()
 
 
 class AIFFChannelMask(ChannelMask):
