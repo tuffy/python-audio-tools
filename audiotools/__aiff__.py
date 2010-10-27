@@ -546,11 +546,47 @@ class AiffAudio(AudioFile):
 
         return cls(filename)
 
+    @classmethod
+    def from_aiff(cls, filename, aiff_filename, compression=None):
+        try:
+            cls(aiff_filename).verify()
+        except InvalidAiff, err:
+            raise EncodingError(unicode(err))
+
+        try:
+            input = file(aiff_filename, 'rb')
+            output = file(filename, 'wb')
+        except IOError, err:
+            raise EncodingError(str(err))
+        try:
+            transfer_data(input.read, output.write)
+            output.flush()
+            try:
+                return AiffAudio(filename)
+            except InvalidFile:
+                cls.__unlink__(filename)
+                raise EncodingError(u"invalid AIFF source file")
+        finally:
+            input.close()
+            output.close()
+
     def convert(self, target_path, target_class, compression=None):
         if (hasattr(target_class, "from_aiff")):
             return target_class.from_aiff(target_path,
                                           self.filename,
                                           compression)
+        elif (self.has_foreign_aiff_chunks() and
+              hasattr(target_class, "supports_foreign_aiff_chunks") and
+              hasattr(target_class, "from_aiff") and
+              target_class.supports_foreign_aiff_chunks()):
+            temp_aiff = tempfile.NamedTemporaryFile(suffix=".aiff")
+            try:
+                self.to_aiff(temp_aiff.name)
+                return target_class.from_aiff(target_path,
+                                              temp_aiff.name,
+                                              compression)
+            finally:
+                temp_aiff.close()
         else:
             #AIFF will never have foreign RIFF chunks
             #or special to_wave() handling,
@@ -615,6 +651,47 @@ class AiffAudio(AudioFile):
             return (head.getvalue(), tail.getvalue())
         finally:
             aiff_file.close()
+
+    @classmethod
+    def aiff_from_chunks(cls, filename, chunk_iter):
+        """Builds a new AIFF file from a chunk data iterator.
+
+        filename is the path to the wave file to build.
+        chunk_iter should yield (chunk_id, chunk_data) tuples.
+        """
+
+        f = file(filename, 'wb')
+
+        header = Con.Container()
+        header.aiff_id = 'FORM'
+        header.aiff_type = 'AIFF'
+        header.aiff_size = 4
+
+        #write an unfinished header with an invalid size (for now)
+        f.write(cls.AIFF_HEADER.build(header))
+
+        for (chunk_id, chunk_data) in chunk_iter:
+
+            #not sure if I need to fix chunk sizes
+            #to fall on 16-bit boundaries
+
+            chunk_header = cls.CHUNK_HEADER.build(
+                Con.Container(chunk_id=chunk_id,
+                              chunk_length=len(chunk_data)))
+            f.write(chunk_header)
+            header.aiff_size += len(chunk_header)
+
+            f.write(chunk_data)
+            header.aiff_size += len(chunk_data)
+
+        #now that the chunks are done, go back and re-write the header
+        f.seek(0, 0)
+        f.write(cls.AIFF_HEADER.build(header))
+        f.close()
+
+    def has_foreign_aiff_chunks(self):
+        return (set(['COMM', 'SSND']) !=
+                set([chunk[0] for chunk in self.chunks()]))
 
 
 class AIFFChannelMask(ChannelMask):

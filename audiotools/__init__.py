@@ -3163,19 +3163,20 @@ def at_a_time(total, per):
 from __image__ import *
 
 from __wav__ import *
+
 from __au__ import *
 from __vorbiscomment__ import *
+from __id3__ import *
+from __aiff__ import *
 from __flac__ import *
 
 from __ape__ import *
-from __id3__ import *
 from __mp3__ import *
 from __vorbis__ import *
 from __m4a__ import *
 from __wavpack__ import *
 from __musepack__ import *
 from __speex__ import *
-from __aiff__ import *
 from __shn__ import *
 
 

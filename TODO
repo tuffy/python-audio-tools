@@ -2749,8 +2749,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 
   audiofile.convert(target_path,
                     target_class,
-                    quality=None,
-                    callback=None)
+                    quality=None)
 
   so one could perform a call like:
 
@@ -2760,13 +2759,45 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   calls as necessary and could be overloaded to handle specific
   conversion processes, like AIFF->Shorten with a different set of
   IFF chunks.
-** TODO Update audio formats
+** TODO Update audio formats with convert() short-circuiting as needed
+*** TODO flac -> aiff    (AIFF chunks)
+*** TODO flac -> flac    (AIFF chunks)
+*** TODO flac -> flac    (RIFF chunks)
+*** TODO flac -> wavpack (RIFF chunks)
+*** TODO flac -> shorten (RIFF chunks)
+*** TODO flac -> shorten (AIFF chunks)
+*** DONE wave -> wave    (RIFF chunks)
+*** DONE wave -> flac    (RIFF chunks)
+*** DONE wave -> wavpack (RIFF chunks)
+*** DONE wave -> shorten (RIFF chunks)
+*** DONE aiff -> aiff    (AIFF chunks)
+*** TODO aiff -> flac    (AIFF chunks)
+*** DONE aiff -> shorten (AIFF chunks)
+*** TODO wavpack -> flac (RIFF chunks)
+*** TODO wavpack -> wave (RIFF chunks)
+*** TODO shorten -> flac (RIFF chunks)
+*** TODO shorten -> wave (RIFF chunks)
+*** TODO shorten -> flac (AIFF chunks)
+*** TODO shorten -> aiff (AIFF chunks)
 ** TODO Add unit tests for convert() methods
-*** TODO Add unit tests for Shorten->AIFF
-    - [ ] ensure 8bps works
-    - [ ] ensure 16bps works
-*** TODO Add unit tests for AIFF->Shorten
-    - [ ] ensure 8bps works
-    - [ ] ensure 16bps works
-** TODO Update tools to exploit convert() method
+*** TODO flac -> aiff    (AIFF chunks)
+*** TODO flac -> flac    (AIFF chunks)
+*** TODO flac -> flac    (RIFF chunks)
+*** TODO flac -> wavpack (RIFF chunks)
+*** TODO flac -> shorten (RIFF chunks)
+*** TODO flac -> shorten (AIFF chunks)
+*** TODO wave -> wave    (RIFF chunks)
+*** TODO wave -> flac    (RIFF chunks)
+*** TODO wave -> wavpack (RIFF chunks)
+*** TODO wave -> shorten (RIFF chunks)
+*** TODO aiff -> aiff    (AIFF chunks)
+*** TODO aiff -> flac    (AIFF chunks)
+*** TODO aiff -> shorten (AIFF chunks)
+*** TODO wavpack -> flac (RIFF chunks)
+*** TODO wavpack -> wave (RIFF chunks)
+*** TODO shorten -> flac (RIFF chunks)
+*** TODO shorten -> wave (RIFF chunks)
+*** TODO shorten -> flac (AIFF chunks)
+*** TODO shorten -> aiff (AIFF chunks)
+** TODO Update track2track to exploit convert() method
 ** TODO Update documentation

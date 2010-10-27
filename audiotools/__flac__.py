@@ -21,11 +21,11 @@
 from audiotools import (AudioFile, MetaData, InvalidFile, PCMReader,
                         Con, transfer_data, transfer_framelist_data,
                         subprocess, BIN, BUFFER_SIZE, cStringIO,
-                        os, open_files, Image, sys, WaveAudio, ReplayGain,
-                        ignore_sigint, sheet_to_unicode, EncodingError,
-                        UnsupportedChannelMask, DecodingError, Messenger,
-                        BufferedPCMReader, calculate_replay_gain, ChannelMask,
-                        PCMReaderError, __default_quality__)
+                        os, open_files, Image, sys, WaveAudio, AiffAudio,
+                        ReplayGain, ignore_sigint, sheet_to_unicode,
+                        EncodingError, UnsupportedChannelMask, DecodingError,
+                        Messenger, BufferedPCMReader, calculate_replay_gain,
+                        ChannelMask, PCMReaderError, __default_quality__)
 from __vorbiscomment__ import *
 from __id3__ import ID3v2Comment
 from __vorbis__ import OggStreamReader, OggStreamWriter
@@ -806,6 +806,10 @@ class FlacAudio(AudioFile):
 
         return True
 
+    @classmethod
+    def supports_foreign_aiff_chunks(cls):
+        return True
+
     def get_metadata(self):
         """Returns a MetaData object, or None.
 
@@ -1138,10 +1142,6 @@ class FlacAudio(AudioFile):
                           self.get_metadata().extra_blocks
                           if block.type == 2]
 
-    #generates a set of (chunk_id,chunk_data) tuples
-    #for use by WaveAudio.from_chunks
-    #these chunks are taken from "riff" APPLICATION blocks
-    #or generated from our PCM data
     def riff_wave_chunks(self):
         """Generate a set of (chunk_id,chunk_data tuples)
 
@@ -1239,6 +1239,151 @@ class FlacAudio(AudioFile):
             return cls.from_pcm(filename,
                                 WaveAudio(wave_filename).to_pcm(),
                                 compression=compression)
+
+    def has_foreign_aiff_chunks(self):
+        """Returns True if the audio file contains non-audio AIFF chunks."""
+
+        return 'aiff' in [block.data[0:4] for block in
+                          self.get_metadata().extra_blocks
+                          if block.type == 2]
+
+    @classmethod
+    def from_aiff(cls, filename, aiff_filename, compression=None):
+        """Encodes a new AudioFile from an existing .aiff file.
+
+        Takes a filename string, aiff_filename string
+        of an existing AiffAudio file
+        and an optional compression level string.
+        Encodes a new audio file from the wave's data
+        at the given filename with the specified compression level
+        and returns a new FlacAudio object."""
+
+        if ((compression is None) or
+            (compression not in cls.COMPRESSION_MODES)):
+            compression = __default_quality__(cls.NAME)
+
+        if (cls.supports_foreign_aiff_chunks() and
+            AiffAudio(aiff_filename).has_foreign_aiff_chunks()):
+            flac = cls.from_pcm(filename,
+                                AiffAudio(aiff_filename).to_pcm(),
+                                compression=compression)
+
+            metadata = flac.get_metadata()
+
+            aiff = file(aiff_filename, 'rb')
+            try:
+                aiff_header = aiff.read(12)
+
+                metadata.extra_blocks.append(
+                    FlacMetaDataBlock(2, "aiff" + aiff_header))
+
+                total_size = AiffAudio.AIFF_HEADER.parse(
+                    aiff_header).aiff_size - 4
+                while (total_size > 0):
+                    chunk_header = AiffAudio.CHUNK_HEADER.parse(aiff.read(8))
+                    if (chunk_header.chunk_id != 'SSND'):
+                        metadata.extra_blocks.append(
+                            FlacMetaDataBlock(2, "aiff" +
+                                              AiffAudio.CHUNK_HEADER.build(
+                                    chunk_header) +
+                                              aiff.read(
+                                    chunk_header.chunk_length)))
+                    else:
+                        metadata.extra_blocks.append(
+                            FlacMetaDataBlock(2, "aiff" +
+                                              AiffAudio.CHUNK_HEADER.build(
+                                    chunk_header) +
+                                              aiff.read(8)))
+                        aiff.seek(chunk_header.chunk_length - 8, 1)
+                    total_size -= (chunk_header.chunk_length + 8)
+
+                flac.set_metadata(metadata)
+
+                return flac
+            finally:
+                aiff.close()
+        else:
+            return cls.from_pcm(filename,
+                                AiffAudio(aiff_filename).to_pcm(),
+                                compression=compression)
+
+    def to_aiff(self, aiff_filename):
+        if (self.has_foreign_aiff_chunks()):
+            AiffAudio.aiff_from_chunks(aiff_filename,
+                                       self.aiff_chunks())
+        else:
+            AiffAudio.from_pcm(aiff_filename, self.to_pcm())
+
+    def aiff_chunks(self):
+        """Generate a set of (chunk_id,chunk_data tuples)
+
+        These are for use by AiffAudio.from_chunks
+        and are taken from "aiff" APPLICATION blocks
+        or generated from our PCM data."""
+
+        for application_block in [block.data for block in
+                                  self.get_metadata().extra_blocks
+                                  if (block.data.startswith("aiff"))]:
+            (chunk_id, chunk_data) = (application_block[4:8],
+                                      application_block[12:])
+            if (chunk_id == 'FORM'):
+                continue
+            elif (chunk_id == 'SSND'):
+                #FIXME - this is a lot more inefficient than it should be
+                data = cStringIO.StringIO()
+                data.write(chunk_data)
+                pcm = self.to_pcm()
+                transfer_framelist_data(pcm, data.write, True, True)
+                pcm.close()
+                yield (chunk_id, data.getvalue())
+                data.close()
+            else:
+                yield (chunk_id, chunk_data)
+
+    def convert(self, target_path, target_class, compression=None):
+        """Encodes a new AudioFile from existing AudioFile.
+
+        Take a filename string, target class and optional compression string.
+        Encodes a new AudioFile in the target class and returns
+        the resulting object.
+        Metadata is not copied during conversion, but embedded
+        RIFF chunks are (if any).
+        May raise EncodingError if some problem occurs during encoding."""
+
+        if (target_class == WaveAudio):
+            self.to_wave(target_path)
+            return WaveAudio(target_path)
+        elif (target_class == AiffAudio):
+            self.to_aiff(target_path)
+            return AiffAudio(target_path)
+        elif (self.has_foreign_riff_chunks() and
+              hasattr(target_class, "supports_foreign_riff_chunks") and
+              hasattr(target_class, "from_wave") and
+              target_class.supports_foreign_riff_chunks()):
+            temp_wave = tempfile.NamedTemporaryFile(suffix=".wav")
+            try:
+                self.to_wave(temp_wave.name)
+                return target_class.from_wave(target_path,
+                                              temp_wave.name,
+                                              compression)
+            finally:
+                temp_wave.close()
+        elif (self.has_foreign_aiff_chunks() and
+              hasattr(target_class, "supports_foreign_aiff_chunks") and
+              hasattr(target_class, "from_aiff") and
+              target_class.supports_foreign_aiff_chunks()):
+            temp_aiff = tempfile.NamedTemporaryFile(suffix=".aiff")
+            try:
+                self.to_aiff(temp_aiff.name)
+                return target_class.from_aiff(target_path,
+                                              temp_aiff.name,
+                                              compression)
+            finally:
+                temp_aiff.close()
+        else:
+            return target_class.from_pcm(target_path,
+                                         self.to_pcm(),
+                                         compression)
 
     def bits_per_sample(self):
         """Returns an integer number of bits-per-sample this track contains."""
@@ -1764,6 +1909,10 @@ class OggFlacAudio(FlacAudio):
 
         #the --keep-foreign-metadata flag fails
         #when used with --ogg
+        return False
+
+    @classmethod
+    def supports_foreign_aiff_chunks(cls):
         return False
 
     def verify(self):

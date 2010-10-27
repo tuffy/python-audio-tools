@@ -3236,7 +3236,8 @@ class TestForeignWaveChunks:
 
         tempwav1 = tempfile.NamedTemporaryFile(suffix=".wav")
         tempwav2 = tempfile.NamedTemporaryFile(suffix=".wav")
-        audio = tempfile.NamedTemporaryFile(suffix='.' + self.audio_class.SUFFIX)
+        audio = tempfile.NamedTemporaryFile(
+            suffix='.' + self.audio_class.SUFFIX)
         try:
             #build a WAVE with some oddball chunks
             audiotools.WaveAudio.wave_from_chunks(
@@ -3245,30 +3246,102 @@ class TestForeignWaveChunks:
                  ('fooz', 'testtext'),
                  ('barz', 'somemoretesttext'),
                  ('bazz', chr(0) * 1024),
-                 ('data', 'BZh91AY&SY\xdc\xd5\xc2\x8d\x06\xba\xa7\xc0\x00`\x00 \x000\x80MF\xa9$\x84\x9a\xa4\x92\x12qw$S\x85\t\r\xcd\\(\xd0'.decode('bz2'))])
+                 ('data', 'BZh91AY&SY\xdc\xd5\xc2\x8d\x06\xba\xa7\xc0\x00`\x00 \x000\x80MF\xa9$\x84\x9a\xa4\x92\x12qw$S\x85\t\r\xcd\\(\xd0'.decode('bz2')),
+                 ('spam', 'anotherchunk')])
 
-            #convert it to our audio type
-            wav = self.audio_class.from_wave(audio.name,
-                                             tempwav1.name)
+            wave = audiotools.open(tempwav1.name)
+            wave.verify()
 
-            self.assertEqual(wav.has_foreign_riff_chunks(), True)
+            #convert it to our audio type using convert()
+            #(this used to be a to_wave()/from_wave() test,
+            # but I may deprecate that interface from direct use
+            # in favor of the more flexible convert() method)
+            track = wave.convert(audio.name, audiotools.WaveAudio)
 
-            #then convert it back to a WAVE
-            wav.to_wave(tempwav2.name)
+            self.assertEqual(track.has_foreign_riff_chunks(), True)
 
-            #check that the two WAVEs are byte-for-byte identical
+            #convert it back to WAVE via convert()
+            track.convert(tempwav2.name, audiotools.WaveAudio)
+
+            #check that the to WAVEs are byte-for-byte identical
             self.assertEqual(filecmp.cmp(tempwav1.name,
                                          tempwav2.name,
                                          False), True)
 
             #finally, ensure that setting metadata doesn't erase the chunks
-            wav.set_metadata(self.DummyMetaData())
-            wav = audiotools.open(wav.filename)
-            self.assertEqual(wav.has_foreign_riff_chunks(), True)
+            track.set_metadata(self.DummyMetaData())
+            track = audiotools.open(track.filename)
+            self.assertEqual(track.has_foreign_riff_chunks(), True)
         finally:
             tempwav1.close()
             tempwav2.close()
             audio.close()
+
+class TestForeignAiffChunks:
+    @TEST_METADATA
+    def testforeignaiffchunks(self):
+        import filecmp
+
+        tempaiff1 = tempfile.NamedTemporaryFile(suffix=".aiff")
+        tempaiff2 = tempfile.NamedTemporaryFile(suffix=".aiff")
+        audio = tempfile.NamedTemporaryFile(
+            suffix="." + self.audio_class.SUFFIX)
+        try:
+            #build an AIFF with some oddball chunks
+            audiotools.AiffAudio.aiff_from_chunks(
+                tempaiff1.name,
+                [('COMM', '\x00\x02\x00\x00\xacD\x00\x10@\x0e\xacD\x00\x00\x00\x00\x00\x00'),
+                 ('fooz', 'testtext'),
+                 ('barz', 'somemoretesttext'),
+                 ('bazz', chr(0) * 1024),
+                 ('SSND', 'BZh91AY&SY&2\xd0\xeb\x00\x01Y\xc0\x04\xc0\x00\x00\x80\x00\x08 \x000\xcc\x05)\xa6\xa2\x93`\x94\x9e.\xe4\x8ap\xa1 Le\xa1\xd6'.decode('bz2')),
+                 ('spam', 'anotherchunk')])
+
+            aiff = audiotools.open(tempaiff1.name)
+            aiff.verify()
+
+            #convert it to our audio type via convert()
+            track = aiff.convert(audio.name, self.audio_class)
+            if (hasattr(track, "has_foreign_aiff_chunks")):
+                self.assert_(track.has_foreign_aiff_chunks())
+
+            #convert it back to AIFF via convert()
+            self.assert_(
+                track.convert(tempaiff2.name,
+                              audiotools.AiffAudio).has_foreign_aiff_chunks())
+
+            #check that the two AIFFs are byte-for-byte identical
+            self.assertEqual(filecmp.cmp(tempaiff1.name,
+                                         tempaiff2.name,
+                                         False), True)
+
+            #however, unlike WAVE, AIFF does support metadata
+            #so setting it will make the files no longer
+            #byte-for-byte identical, but the chunks in the new file
+            #should be a superset of the chunks in the old
+
+            track.set_metadata(self.DummyMetaData())
+            track = audiotools.open(track.filename)
+            chunk_ids = set([chunk[0] for chunk in
+                             track.convert(tempaiff2.name,
+                                           audiotools.AiffAudio).chunks()])
+            self.assert_(chunk_ids.issuperset(set(['COMM',
+                                                   'fooz',
+                                                   'barz',
+                                                   'bazz',
+                                                   'SSND',
+                                                   'spam'])))
+        finally:
+            tempaiff1.close()
+            tempaiff2.close()
+            audio.close()
+
+class TestAiffChunks(unittest.TestCase, TestForeignAiffChunks):
+    def DummyMetaData(self):
+        return DummyMetaData()
+
+    def setUp(self):
+        self.audio_class = audiotools.AiffAudio
 
 
 class TestWaveAudio(TestForeignWaveChunks, TestAiffAudio):
@@ -4212,7 +4285,9 @@ class TestOggFlacErrors(unittest.TestCase, TestOggErrors):
             temp.close()
 
 
-class TestFlacAudio(TestOggFlacAudio, TestForeignWaveChunks):
+class TestFlacAudio(TestOggFlacAudio,
+                    TestForeignWaveChunks,
+                    TestForeignAiffChunks):
     def setUp(self):
         self.audio_class = audiotools.FlacAudio
 
@@ -4748,7 +4823,8 @@ class TestWavPackAudio(EmbeddedCuesheet, ApeTaggedAudio, TestForeignWaveChunks, 
         finally:
             temp.close()
 
-class TestShortenAudio(TestForeignWaveChunks, TestAiffAudio):
+class TestShortenAudio(TestForeignWaveChunks, TestForeignAiffChunks,
+                       TestAiffAudio):
     def setUp(self):
         self.audio_class = audiotools.ShortenAudio
 

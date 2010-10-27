@@ -548,6 +548,7 @@ class WaveAudio(AudioFile):
             raise EncodingError(str(err))
         try:
             transfer_data(input.read, output.write)
+            output.flush()
             try:
                 return WaveAudio(filename)
             except InvalidFile:
