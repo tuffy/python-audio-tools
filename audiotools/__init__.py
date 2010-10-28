@@ -2651,18 +2651,7 @@ class AudioFile:
         #to_wave() doesn't need to be implemented
         #or, one can implement both
 
-        import tempfile
-        f = tempfile.NamedTemporaryFile(suffix=".wav")
-        try:
-            self.to_wave(f.name)
-            f.seek(0, 0)
-            return TempWaveReader(f)
-        except EncodingError, err:
-            return PCMReaderError(error_message=err.error_message,
-                                  sample_rate=self.sample_rate(),
-                                  channels=self.channels(),
-                                  channel_mask=int(self.channel_mask()),
-                                  bits_per_sample=self.bits_per_sample())
+        raise NotImplementedError()
 
     @classmethod
     def from_pcm(cls, filename, pcmreader, compression=None):
@@ -2689,52 +2678,7 @@ class AudioFile:
         is formatted in a way this class is unable to support.
         """
 
-        #if a subclass implements from_wave(),
-        #this doesn't need to be implemented
-        #if a subclass implements from_pcm(),
-        #from_wave() doesn't need to be implemented
-        #or, one can implement both
-
-        import tempfile
-
-        f = tempfile.NamedTemporaryFile(suffix=".wav")
-        try:
-            w = WaveAudio.from_pcm(f.name, pcmreader)
-            return cls.from_wave(filename, f.name, compression)
-        finally:
-            if (os.path.isfile(f.name)):
-                f.close()
-            else:
-                f.close_called = True
-
-    def to_wave(self, wave_filename):
-        """Writes the contents of this file to the given .wav filename string.
-
-        Raises EncodingError if some error occurs during decoding."""
-
-        pcmreader = self.to_pcm()
-        WaveAudio.from_pcm(wave_filename, pcmreader)
-        pcmreader.close()
-
-    @classmethod
-    def from_wave(cls, filename, wave_filename, compression=None):
-        """Encodes a new AudioFile from an existing .wav file.
-
-        Takes a filename string, wave_filename string
-        of an existing WaveAudio file
-        and an optional compression level string.
-        Encodes a new audio file from the wave's data
-        at the given filename with the specified compression level
-        and returns a new AudioFile compatible object.
-
-        For example, to encode FlacAudio file "flac.flac" from "file.wav"
-        at compression level "5":
-
-        >>> flac = FlacAudio.from_wave("file.flac","file.wav","5")
-        """
-
-        return cls.from_pcm(
-            filename, WaveAudio(wave_filename).to_pcm(), compression)
+        raise NotImplementedError()
 
     def convert(self, target_path, target_class, compression=None):
         """Encodes a new AudioFile from existing AudioFile.
@@ -2742,27 +2686,11 @@ class AudioFile:
         Take a filename string, target class and optional compression string.
         Encodes a new AudioFile in the target class and returns
         the resulting object.
-        Metadata is not copied during conversion, but embedded
-        RIFF chunks are (if any).
         May raise EncodingError if some problem occurs during encoding."""
 
-        if (target_class == WaveAudio):
-            self.to_wave(target_path)
-            return WaveAudio(target_path)
-        elif (self.has_foreign_riff_chunks() and
-              target_class.supports_foreign_riff_chunks()):
-            temp_wave = tempfile.NamedTemporaryFile(suffix=".wav")
-            try:
-                self.to_wave(temp_wave.name)
-                return target_class.from_wave(target_path,
-                                              temp_wave.name,
-                                              compression)
-            finally:
-                temp_wave.close()
-        else:
-            return target_class.from_pcm(target_path,
-                                         self.to_pcm(),
-                                         compression)
+        return target_class.from_pcm(target_path,
+                                     self.to_pcm(),
+                                     compression)
 
     @classmethod
     def __unlink__(cls, filename):
@@ -2770,22 +2698,6 @@ class AudioFile:
             os.unlink(filename)
         except OSError:
             pass
-
-    @classmethod
-    def supports_foreign_riff_chunks(cls):
-        """Returns True if format supports storing non-audio RIFF chunks."""
-
-        return False
-
-    def has_foreign_riff_chunks(self):
-        """Returns True if the audio file contains non-audio RIFF chunks.
-
-        During transcoding, if the source audio file has foreign RIFF chunks
-        and the target audio format supports foreign RIFF chunks,
-        conversion should be routed through .wav conversion
-        to avoid losing those chunks."""
-
-        return False
 
     def track_number(self):
         """Returns this track's number as an integer.
@@ -3012,6 +2924,153 @@ class AudioFile:
                    [system_binaries.can_execute(system_binaries[command])
                     for command in cls.BINARIES]) == set([True])
 
+class WaveContainer(AudioFile):
+    """An audio type which supports storing foreign RIFF chunks.
+
+    These chunks must be preserved during a round-trip:
+
+    >>> WaveContainer("file", "input.wav").to_wave("output.wav")
+    """
+
+    def to_wave(self, wave_filename):
+        """Writes the contents of this file to the given .wav filename string.
+
+        Raises EncodingError if some error occurs during decoding."""
+
+        pcmreader = self.to_pcm()
+        WaveAudio.from_pcm(wave_filename, pcmreader)
+        pcmreader.close()
+
+    @classmethod
+    def from_wave(cls, filename, wave_filename, compression=None):
+        """Encodes a new AudioFile from an existing .wav file.
+
+        Takes a filename string, wave_filename string
+        of an existing WaveAudio file
+        and an optional compression level string.
+        Encodes a new audio file from the wave's data
+        at the given filename with the specified compression level
+        and returns a new AudioFile compatible object.
+
+        For example, to encode FlacAudio file "flac.flac" from "file.wav"
+        at compression level "5":
+
+        >>> flac = FlacAudio.from_wave("file.flac","file.wav","5")
+        """
+
+        return cls.from_pcm(filename,
+                            WaveAudio(wave_filename).to_pcm(),
+                            compression)
+
+    def has_foreign_riff_chunks(self):
+        """Returns True if the audio file contains non-audio RIFF chunks.
+
+        During transcoding, if the source audio file has foreign RIFF chunks
+        and the target audio format supports foreign RIFF chunks,
+        conversion should be routed through .wav conversion
+        to avoid losing those chunks."""
+
+        return False
+
+    def convert(self, target_path, target_class, compression=None):
+        """Encodes a new AudioFile from existing AudioFile.
+
+        Take a filename string, target class and optional compression string.
+        Encodes a new AudioFile in the target class and returns
+        the resulting object.
+        May raise EncodingError if some problem occurs during encoding."""
+
+        if (target_class == WaveAudio):
+            self.to_wave(target_path)
+            return WaveAudio(target_path)
+        elif (self.has_foreign_riff_chunks() and
+              hasattr(target_class, "from_wave")):
+            temp_wave = tempfile.NamedTemporaryFile(suffix=".wav")
+            try:
+                self.to_wave(temp_wave.name)
+                return target_class.from_wave(target_path,
+                                              temp_wave.name,
+                                              compression)
+            finally:
+                temp_wave.close()
+        else:
+            return target_class.from_pcm(target_path,
+                                         self.to_pcm(),
+                                         compression)
+
+class AiffContainer(AudioFile):
+    """An audio type which supports storing foreign AIFF chunks.
+
+    These chunks must be preserved during a round-trip:
+
+    >>> AiffContainer("file", "input.aiff").to_aiff("output.aiff")
+    """
+
+    def to_aiff(self, aiff_filename):
+        """Writes the contents of this file to the given .aiff filename string.
+
+        Raises EncodingError if some error occurs during decoding."""
+
+        pcmreader = self.to_pcm()
+        AiffAudio.from_pcm(wave_filename, pcmreader)
+        pcmreader.close()
+
+    @classmethod
+    def from_aiff(cls, filename, aiff_filename, compression=None):
+        """Encodes a new AudioFile from an existing .aiff file.
+
+        Takes a filename string, aiff_filename string
+        of an existing AiffAudio file
+        and an optional compression level string.
+        Encodes a new audio file from the wave's data
+        at the given filename with the specified compression level
+        and returns a new AudioFile compatible object.
+
+        For example, to encode FlacAudio file "flac.flac" from "file.aiff"
+        at compression level "5":
+
+        >>> flac = FlacAudio.from_wave("file.flac","file.aiff","5")
+        """
+
+        return cls.from_pcm(filename,
+                            AiffAudio(wave_filename).to_pcm(),
+                            compression)
+
+    def has_foreign_aiff_chunks(self):
+        """Returns True if the audio file contains non-audio AIFF chunks.
+
+        During transcoding, if the source audio file has foreign AIFF chunks
+        and the target audio format supports foreign AIFF chunks,
+        conversion should be routed through .aiff conversion
+        to avoid losing those chunks."""
+
+        return False
+
+    def convert(self, target_path, target_class, compression=None):
+        """Encodes a new AudioFile from existing AudioFile.
+
+        Take a filename string, target class and optional compression string.
+        Encodes a new AudioFile in the target class and returns
+        the resulting object.
+        May raise EncodingError if some problem occurs during encoding."""
+
+        if (target_class == AiffAudio):
+            self.to_aiff(target_path)
+            return AiffAudio(target_path)
+        elif (self.has_foreign_aiff_chunks() and
+              hasattr(target_class, "from_aiff")):
+            temp_aiff = tempfile.NamedTemporaryFile(suffix=".aiff")
+            try:
+                self.to_aiff(temp_aiff.name)
+                return target_class.from_aiff(target_path,
+                                              temp_aiff.name,
+                                              compression)
+            finally:
+                temp_aiff.close()
+        else:
+            return target_class.from_pcm(target_path,
+                                         self.to_pcm(),
+                                         compression)
 
 class DummyAudioFile(AudioFile):
     """A placeholder AudioFile object with external data."""

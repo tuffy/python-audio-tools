@@ -37,7 +37,7 @@ def convert_to_wave(audiofile, wave_filename, messenger):
         if ((audiofile.sample_rate() == 44100) and
             (audiofile.channels() == 2) and
             (audiofile.bits_per_sample() == 16)):  # already CD quality
-            audiofile.to_wave(wave_filename)
+            audiofile.convert(wave_filename, audiotools.WaveAudio)
         else:                                      # convert to CD quality
             pcm = audiotools.PCMConverter(
                 audiofile.to_pcm(),

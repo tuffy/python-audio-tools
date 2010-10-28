@@ -22,7 +22,8 @@ from audiotools import (AudioFile, InvalidFile, ChannelMask, PCMReader,
                         Con, BUFFER_SIZE, transfer_data,
                         __capped_stream_reader__, FILENAME_FORMAT,
                         BIN, open_files, os, subprocess, cStringIO,
-                        EncodingError, DecodingError, UnsupportedChannelMask)
+                        EncodingError, DecodingError, UnsupportedChannelMask,
+                        WaveContainer)
 import os.path
 import gettext
 from . import pcm
@@ -226,7 +227,7 @@ class __ASCII_String__(Con.Validator):
         return set(obj).issubset(self.PRINTABLE_ASCII)
 
 
-class WaveAudio(AudioFile):
+class WaveAudio(WaveContainer):
     """A waveform audio file."""
 
     SUFFIX = "wav"
@@ -356,12 +357,6 @@ class WaveAudio(AudioFile):
                 (header[8:12] == 'WAVE'))
 
     def lossless(self):
-        """Returns True."""
-
-        return True
-
-    @classmethod
-    def supports_foreign_riff_chunks(cls):
         """Returns True."""
 
         return True
@@ -559,9 +554,21 @@ class WaveAudio(AudioFile):
             output.close()
 
     def convert(self, target_path, target_class, compression=None):
-        return target_class.from_wave(target_path,
-                                      self.filename,
-                                      compression)
+        """Encodes a new AudioFile from existing AudioFile.
+
+        Take a filename string, target class and optional compression string.
+        Encodes a new AudioFile in the target class and returns
+        the resulting object.
+        May raise EncodingError if some problem occurs during encoding."""
+
+        if (hasattr(target_class, "from_wave")):
+            return target_class.from_wave(target_path,
+                                          self.filename,
+                                          compression)
+        else:
+            return target_class.from_pcm(target_path,
+                                         self.to_pcm(),
+                                         compression)
 
     def total_frames(self):
         """Returns the total PCM frames of the track as an integer."""

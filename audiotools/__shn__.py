@@ -21,7 +21,8 @@ from audiotools import (AudioFile, ChannelMask, PCMReader,
                         transfer_framelist_data, WaveAudio,
                         AiffAudio, cStringIO, EncodingError,
                         UnsupportedBitsPerSample, InvalidFile,
-                        PCMReaderError)
+                        PCMReaderError,
+                        WaveContainer, AiffContainer)
 
 import audiotools.decoders
 import os.path
@@ -31,7 +32,7 @@ class InvalidShorten(InvalidFile):
     pass
 
 
-class ShortenAudio(AudioFile):
+class ShortenAudio(WaveContainer, AiffContainer):
     """A Shorten audio file."""
 
     SUFFIX = "shn"
@@ -146,7 +147,7 @@ class ShortenAudio(AudioFile):
         aiff_data.read(12)  # skip the FORMxxxxAIFF header data
         total_size -= 12
 
-        #iterate over all the non-ssnd chunks
+        #iterate over all the chunks
         while (total_size > 0):
             header = AiffAudio.CHUNK_HEADER.parse_stream(aiff_data)
             total_size -= 8
@@ -154,10 +155,14 @@ class ShortenAudio(AudioFile):
                 yield (header.chunk_id, aiff_data.read(header.chunk_length))
                 total_size -= header.chunk_length
             else:
-                #not sure what Shorten does with the first 8 bytes
-                #of the SSND chunk
-                #it'll be a mess if it turns those into audio data
-                continue
+                #This presumes that audiotools encoded
+                #the Shorten file from an AIFF source.
+                #The reference encoder places the 8 alignment
+                #bytes in the PCM stream itself, which is wrong.
+                yield (header.chunk_id, aiff_data.read(8))
+                total_size -= 8
+
+
 
     @classmethod
     def is_type(cls, file):
@@ -408,6 +413,9 @@ class ShortenAudio(AudioFile):
         RIFF chunks are (if any).
         May raise EncodingError if some problem occurs during encoding."""
 
+        #Note that a Shorten file cannot contain
+        #both RIFF chunks and AIFF chunks at the same time.
+
         if (target_class == WaveAudio):
             self.to_wave(target_path)
             return WaveAudio(target_path)
@@ -415,7 +423,7 @@ class ShortenAudio(AudioFile):
             self.to_aiff(target_path)
             return AiffAudio(target_path)
         elif (self.has_foreign_riff_chunks() and
-              target_class.supports_foreign_riff_chunks()):
+              hasattr(target_class, "from_wave")):
             temp_wave = tempfile.NamedTemporaryFile(suffix=".wav")
             try:
                 self.to_wave(temp_wave.name)
@@ -424,16 +432,20 @@ class ShortenAudio(AudioFile):
                                               compression)
             finally:
                 temp_wave.close()
+        elif (self.has_foreign_aiff_chunks() and
+              hasattr(target_class, "from_aiff")):
+            temp_aiff = tempfile.NamedTemporaryFile(suffix=".aiff")
+            try:
+                self.to_aiff(temp_aiff.name)
+                return target_class.from_aiff(target_path,
+                                              temp_aiff.name,
+                                              compression)
+            finally:
+                temp_aiff.close()
         else:
             return target_class.from_pcm(target_path,
                                          self.to_pcm(),
                                          compression)
-
-    @classmethod
-    def supports_foreign_riff_chunks(cls):
-        """Returns True."""
-
-        return True
 
     def has_foreign_riff_chunks(self):
         """Returns True if the audio file contains non-audio RIFF chunks.
@@ -449,6 +461,26 @@ class ShortenAudio(AudioFile):
         if (self.__format__ is WaveAudio):
             for (chunk_id, chunk_data) in self.__wave_chunks__():
                 if (chunk_id != 'fmt '):
+                    return True
+            else:
+                return False
+        else:
+            return False
+
+    def has_foreign_aiff_chunks(self):
+        """Returns True if the audio file contains non-audio AIFF chunks.
+
+        During transcoding, if the source audio file has foreign AIFF chunks
+        and the target audio format supports foreign AIFF chunks,
+        conversion should be routed through .aiff conversion
+        to avoid losing those chunks."""
+
+        if (not hasattr(self, "__format__")):
+            self.__populate_metadata__()
+
+        if (self.__format__ is AiffAudio):
+            for (chunk_id, chunk_data) in self.__aiff_chunks__():
+                if ((chunk_id != 'COMM') and (chunk_id != 'SSND')):
                     return True
             else:
                 return False

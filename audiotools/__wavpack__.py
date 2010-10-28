@@ -25,7 +25,8 @@ from audiotools import (AudioFile, InvalidFile, Con, subprocess, BIN,
                         calculate_replay_gain, ApeTagItem,
                         EncodingError, DecodingError, PCMReaderError,
                         PCMReader, ChannelMask, UnsupportedChannelMask,
-                        InvalidWave, __default_quality__)
+                        InvalidWave, __default_quality__,
+                        WaveContainer)
 from __wav__ import WaveAudio, WaveReader
 from __ape__ import ApeTaggedAudio, ApeTag, __number_pair__
 import gettext
@@ -125,7 +126,7 @@ WavePackAPEv2 = WavPackAPEv2
 #######################
 
 
-class WavPackAudio(ApeTaggedAudio, AudioFile):
+class WavPackAudio(ApeTaggedAudio, WaveContainer):
     """A WavPack audio file."""
 
     SUFFIX = "wv"
@@ -239,12 +240,6 @@ class WavPackAudio(ApeTaggedAudio, AudioFile):
         return file.read(4) == 'wvpk'
 
     def lossless(self):
-        """Returns True."""
-
-        return True
-
-    @classmethod
-    def supports_foreign_riff_chunks(cls):
         """Returns True."""
 
         return True

@@ -618,13 +618,6 @@ class M4AAudio_nero(M4AAudio_faac):
                          "0.6", "0.7", "0.8", "0.9", "1.0")
     BINARIES = ("neroAacDec", "neroAacEnc")
 
-    def to_pcm(self):
-        """Returns a PCMReader object containing the track's PCM data."""
-
-        #note that AudioFile.to_pcm() calls the to_wave() method
-        #as implemented below
-        return AudioFile.to_pcm(self)
-
     @classmethod
     def from_pcm(cls, filename, pcmreader, compression=None):
         """Encodes a new file from PCM data.
@@ -662,6 +655,20 @@ class M4AAudio_nero(M4AAudio_faac):
                 tempwavefile.close()
             else:
                 tempwavefile.close_called = True
+
+    def to_pcm(self):
+        import tempfile
+        f = tempfile.NamedTemporaryFile(suffix=".wav")
+        try:
+            self.to_wave(f.name)
+            f.seek(0, 0)
+            return TempWaveReader(f)
+        except EncodingError, err:
+            return PCMReaderError(error_message=err.error_message,
+                                  sample_rate=self.sample_rate(),
+                                  channels=self.channels(),
+                                  channel_mask=int(self.channel_mask()),
+                                  bits_per_sample=self.bits_per_sample())
 
     def to_wave(self, wave_file):
         """Writes the contents of this file to the given .wav filename string.
@@ -1445,27 +1452,6 @@ class ALACAudio(M4AAudio):
             raise EncodingError(str(err))
 
         return cls(filename)
-
-    def to_wave(self, wave_filename):
-        """Writes the contents of this file to the given .wav filename string.
-
-        Raises EncodingError if some error occurs during decoding."""
-
-        WaveAudio.from_pcm(wave_filename, self.to_pcm())
-
-    @classmethod
-    def from_wave(cls, filename, wave_filename, compression=None):
-        """Encodes a new AudioFile from an existing .wav file.
-
-        Takes a filename string, wave_filename string
-        of an existing WaveAudio file
-        and an optional compression level string.
-        Encodes a new audio file from the wave's data
-        at the given filename with the specified compression level
-        and returns a new ALACAudio compatible object."""
-
-        return cls.from_pcm(
-            filename, WaveAudio(wave_filename).to_pcm(), compression)
 
     @classmethod
     def __build_ftyp_atom__(cls):

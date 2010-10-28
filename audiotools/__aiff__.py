@@ -22,7 +22,7 @@ from audiotools import (AudioFile, InvalidFile, Con, PCMReader,
                         transfer_data, DecodingError, EncodingError,
                         ID3v22Comment, BUFFER_SIZE, ChannelMask,
                         UnsupportedChannelMask, ReorderedPCMReader, pcm,
-                        cStringIO, os)
+                        cStringIO, os, AiffContainer)
 
 import gettext
 
@@ -141,7 +141,7 @@ class InvalidAIFF(InvalidFile):
     pass
 
 
-class AiffAudio(AudioFile):
+class AiffAudio(AiffContainer):
     """An AIFF audio file."""
 
     SUFFIX = "aiff"
@@ -546,6 +546,27 @@ class AiffAudio(AudioFile):
 
         return cls(filename)
 
+    def to_aiff(self, aiff_filename):
+        """Writes the contents of this file to the given .aiff filename string.
+
+        Raises EncodingError if some error occurs during decoding."""
+
+        try:
+            self.verify()
+        except InvalidAiff, err:
+            raise EncodingError(str(err))
+
+        try:
+            output = file(aiff_filename, 'wb')
+            input = file(self.filename, 'rb')
+        except IOError, msg:
+            raise EncodingError(str(msg))
+        try:
+            transfer_data(input.read, output.write)
+        finally:
+            input.close()
+            output.close()
+
     @classmethod
     def from_aiff(cls, filename, aiff_filename, compression=None):
         try:
@@ -571,26 +592,18 @@ class AiffAudio(AudioFile):
             output.close()
 
     def convert(self, target_path, target_class, compression=None):
+        """Encodes a new AudioFile from existing AudioFile.
+
+        Take a filename string, target class and optional compression string.
+        Encodes a new AudioFile in the target class and returns
+        the resulting object.
+        May raise EncodingError if some problem occurs during encoding."""
+
         if (hasattr(target_class, "from_aiff")):
             return target_class.from_aiff(target_path,
                                           self.filename,
                                           compression)
-        elif (self.has_foreign_aiff_chunks() and
-              hasattr(target_class, "supports_foreign_aiff_chunks") and
-              hasattr(target_class, "from_aiff") and
-              target_class.supports_foreign_aiff_chunks()):
-            temp_aiff = tempfile.NamedTemporaryFile(suffix=".aiff")
-            try:
-                self.to_aiff(temp_aiff.name)
-                return target_class.from_aiff(target_path,
-                                              temp_aiff.name,
-                                              compression)
-            finally:
-                temp_aiff.close()
         else:
-            #AIFF will never have foreign RIFF chunks
-            #or special to_wave() handling,
-            #so go directly to from_pcm()
             return target_class.from_pcm(target_path,
                                          self.to_pcm(),
                                          compression)

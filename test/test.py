@@ -845,7 +845,7 @@ class TestAiffAudio(TestTextOutput):
         try:
             new_file = self.audio_class.from_pcm(temp.name,
                                                  BLANK_PCM_Reader(TEST_LENGTH))
-            new_file.to_wave(tempwav.name)
+            wave = new_file.convert(tempwav.name, audiotools.WaveAudio)
             if (new_file.lossless()):
                 self.assertEqual(audiotools.pcm_cmp(
                     new_file.to_pcm(),
@@ -859,8 +859,7 @@ class TestAiffAudio(TestTextOutput):
                     TEST_LENGTH)
                 pcm.close()
 
-            new_file2 = self.audio_class.from_wave(temp2.name,
-                                                   tempwav.name)
+            new_file2 = wave.convert(temp2.name, self.audio_class)
             if (new_file2.lossless()):
                 self.assertEqual(audiotools.pcm_cmp(
                     new_file2.to_pcm(),
@@ -1017,14 +1016,15 @@ class TestAiffAudio(TestTextOutput):
                               BLANK_PCM_Reader(5))
 
             self.assertRaises(audiotools.EncodingError,
-                              self.audio_class.from_wave,
+                              temp_wave.convert,
                               "/dev/null/foo.%s" % (self.audio_class.SUFFIX),
-                              temp_wave_file.name)
+                              self.audio_class)
 
             # print "testing %s" % (self.audio_class)
             self.assertRaises(audiotools.EncodingError,
-                              temp_track.to_wave,
-                              "/dev/null/foo.wav")
+                              temp_track.convert,
+                              "/dev/null/foo.wav",
+                              audiotools.WaveAudio)
 
         finally:
             temp_track_file.close()
@@ -2883,13 +2883,14 @@ uhhDdCiCwqg2Gw3lphgaGhoamR+mptKYNT/F3JFOFCQvKfgAwA==""".decode('base64').decode(
                 audiotools.config.set("Binaries", "mpg123", "./error.py")
 
             self.assertRaises(audiotools.EncodingError,
-                              self.audio_class.from_wave,
+                              wave_file.convert,
                               "test.%s" % (self.audio_class.SUFFIX),
-                              wave_file.filename)
+                              self.audio_class)
 
             self.assertRaises(audiotools.EncodingError,
-                              temp_track.to_wave,
-                              "test.wav")
+                              temp_track.convert,
+                              "test.wav",
+                              audiotools.WaveAudio)
 
             self.assertRaises(audiotools.EncodingError,
                               self.audio_class.from_pcm,
@@ -3157,14 +3158,14 @@ uhhDdCiCwqg2Gw3lphgaGhoamR+mptKYNT/F3JFOFCQvKfgAwA==""".decode('base64').decode(
 
         try:
             self.assertRaises(audiotools.EncodingError,
-                              self.audio_class.from_wave,
+                              audiotools.open(temp_wav.name).convert,
                               temp.name,
-                              temp_wav.name)
+                              self.audio_class)
         finally:
             try:
                 temp.close()
             except OSError:
-                #wavpack like to delete an invalid wave by default
+                #formats should delete temporary file when an error occurs
                 pass
             temp_wav.close()
 
@@ -3192,7 +3193,7 @@ uhhDdCiCwqg2Gw3lphgaGhoamR+mptKYNT/F3JFOFCQvKfgAwA==""".decode('base64').decode(
             os.rmdir(temp_dir)
 
     @TEST_INVALIDFILE
-    def test_from_wave_deletion(self):
+    def test_converted_deletion(self):
         temp_dir = tempfile.mkdtemp()
         try:
             bad_wave = os.path.join(temp_dir, "truncated.wav")
@@ -3203,9 +3204,9 @@ uhhDdCiCwqg2Gw3lphgaGhoamR+mptKYNT/F3JFOFCQvKfgAwA==""".decode('base64').decode(
             self.assertEqual(os.path.isfile(bad_path), False)
             self.assertEqual(os.path.isfile(bad_wave), True)
             self.assertRaises(audiotools.EncodingError,
-                              self.audio_class.from_wave,
+                              audiotools.open(bad_wave).convert,
                               bad_path,
-                              bad_wave)
+                              self.audio_class)
             self.assertEqual(os.path.isfile(bad_path), False)
         finally:
             for f in os.listdir(temp_dir):
@@ -3232,7 +3233,8 @@ class TestForeignWaveChunks:
     def testforeignwavechunks(self):
         import filecmp
 
-        self.assertEqual(self.audio_class.supports_foreign_riff_chunks(), True)
+        self.assert_(issubclass(self.audio_class,
+                                audiotools.WaveContainer))
 
         tempwav1 = tempfile.NamedTemporaryFile(suffix=".wav")
         tempwav2 = tempfile.NamedTemporaryFile(suffix=".wav")
@@ -3442,7 +3444,7 @@ class TestWaveAudio(TestForeignWaveChunks, TestAiffAudio):
                 temp.close()
 
     @TEST_INVALIDFILE
-    def test_invalid_to_wave(self):
+    def test_invalid_convert(self):
         temp = tempfile.NamedTemporaryFile(suffix=".flac")
         try:
             temp.write(open("wav-2ch.wav", "rb").read()[0:-10])
@@ -3452,8 +3454,9 @@ class TestWaveAudio(TestForeignWaveChunks, TestAiffAudio):
                 os.unlink("dummy.wav")
             self.assertEqual(os.path.isfile("dummy.wav"), False)
             self.assertRaises(audiotools.EncodingError,
-                              flac.to_wave,
-                              "dummy.wav")
+                              flac.convert,
+                              "dummy.wav",
+                              audiotools.WaveAudio)
             self.assertEqual(os.path.isfile("dummy.wav"), False)
         finally:
             temp.close()
@@ -3525,7 +3528,7 @@ class TestInvalidAIFF(unittest.TestCase):
                           "aiff-nossnd.aiff")
 
     @TEST_INVALIDFILE
-    def test_invalid_to_wave(self):
+    def test_invalid_convert(self):
         temp = tempfile.NamedTemporaryFile(suffix=".aiff")
         try:
             temp.write(open("aiff-2ch.aiff", "rb").read()[0:-10])
@@ -3535,8 +3538,9 @@ class TestInvalidAIFF(unittest.TestCase):
                 os.unlink("dummy.wav")
             self.assertEqual(os.path.isfile("dummy.wav"), False)
             self.assertRaises(audiotools.EncodingError,
-                              flac.to_wave,
-                              "dummy.wav")
+                              flac.convert,
+                              "dummy.wav",
+                              audiotools.WaveAudio)
             self.assertEqual(os.path.isfile("dummy.wav"), False)
         finally:
             temp.close()
@@ -3566,7 +3570,7 @@ class TestAuAudio(TestAiffAudio):
             temp.close()
 
     @TEST_INVALIDFILE
-    def test_invalid_to_wave(self):
+    def test_invalid_convert(self):
         temp = tempfile.NamedTemporaryFile(
             suffix="." + self.audio_class.SUFFIX)
         try:
@@ -3581,8 +3585,9 @@ class TestAuAudio(TestAiffAudio):
                 os.unlink("dummy.wav")
             self.assertEqual(os.path.isfile("dummy.wav"), False)
             self.assertRaises(audiotools.EncodingError,
-                              track.to_wave,
-                              "dummy.wav")
+                              track.convert,
+                              "dummy.wav",
+                              audiotools.WaveAudio)
             self.assertEqual(os.path.isfile("dummy.wav"), False)
         finally:
             temp.close()
@@ -4239,7 +4244,7 @@ class TestOggErrors:
             bad_file.close()
 
     @TEST_INVALIDFILE
-    def test_invalid_to_wave(self):
+    def test_invalid_convert(self):
         temp = tempfile.NamedTemporaryFile(
             suffix="." + self.audio_class.SUFFIX)
         try:
@@ -4254,8 +4259,9 @@ class TestOggErrors:
                 os.unlink("dummy.wav")
             self.assertEqual(os.path.isfile("dummy.wav"), False)
             self.assertRaises(audiotools.EncodingError,
-                              track.to_wave,
-                              "dummy.wav")
+                              track.convert,
+                              "dummy.wav",
+                              audiotools.WaveAudio)
             self.assertEqual(os.path.isfile("dummy.wav"), False)
         finally:
             temp.close()
@@ -4557,7 +4563,7 @@ class TestFlacAudio(TestOggFlacAudio,
             temp.close()
 
     @TEST_INVALIDFILE
-    def test_invalid_to_wave(self):
+    def test_invalid_convert(self):
         temp = tempfile.NamedTemporaryFile(suffix=".flac")
         try:
             temp.write(open("flac-allframes.flac", "rb").read()[0:-10])
@@ -4567,8 +4573,9 @@ class TestFlacAudio(TestOggFlacAudio,
                 os.unlink("dummy.wav")
             self.assertEqual(os.path.isfile("dummy.wav"), False)
             self.assertRaises(audiotools.EncodingError,
-                              flac.to_wave,
-                              "dummy.wav")
+                              flac.convert,
+                              "dummy.wav",
+                              audiotools.WaveAudio)
             self.assertEqual(os.path.isfile("dummy.wav"), False)
         finally:
             temp.close()
@@ -4737,7 +4744,7 @@ class TestWavPackAudio(EmbeddedCuesheet, ApeTaggedAudio, TestForeignWaveChunks, 
             temp.close()
 
     @TEST_INVALIDFILE
-    def test_invalid_to_wave(self):
+    def test_invalid_convert(self):
         temp = tempfile.NamedTemporaryFile(
             suffix="." + self.audio_class.SUFFIX)
         try:
@@ -4751,8 +4758,9 @@ class TestWavPackAudio(EmbeddedCuesheet, ApeTaggedAudio, TestForeignWaveChunks, 
                 os.unlink("dummy.wav")
             self.assertEqual(os.path.isfile("dummy.wav"), False)
             self.assertRaises(audiotools.EncodingError,
-                              wavpack.to_wave,
-                              "dummy.wav")
+                              wavpack.convert,
+                              "dummy.wav",
+                              audiotools.WaveAudio)
             self.assertEqual(os.path.isfile("dummy.wav"), False)
         finally:
             temp.close()
@@ -4893,7 +4901,7 @@ class TestShortenAudio(TestForeignWaveChunks, TestForeignAiffChunks,
                 temp.close()
 
     @TEST_INVALIDFILE
-    def test_invalid_to_wave(self):
+    def test_invalid_convert(self):
         temp = tempfile.NamedTemporaryFile(suffix=".shn")
         try:
             temp.write(open("shorten-frames.shn", "rb").read()[0:-10])
@@ -4903,8 +4911,9 @@ class TestShortenAudio(TestForeignWaveChunks, TestForeignAiffChunks,
                 os.unlink("dummy.wav")
             self.assertEqual(os.path.isfile("dummy.wav"), False)
             self.assertRaises(audiotools.EncodingError,
-                              flac.to_wave,
-                              "dummy.wav")
+                              flac.convert,
+                              "dummy.wav",
+                              audiotools.WaveAudio)
             self.assertEqual(os.path.isfile("dummy.wav"), False)
         finally:
             temp.close()
@@ -5214,7 +5223,7 @@ class TestMP3Audio(ID3Lint, TestAiffAudio):
             temp.close()
 
     @TEST_INVALIDFILE
-    def test_invalid_to_wave(self):
+    def test_invalid_convert(self):
         temp = tempfile.NamedTemporaryFile(
             suffix="." + self.audio_class.SUFFIX)
         try:
@@ -5229,8 +5238,9 @@ class TestMP3Audio(ID3Lint, TestAiffAudio):
                 os.unlink("dummy.wav")
             self.assertEqual(os.path.isfile("dummy.wav"), False)
             self.assertRaises(audiotools.EncodingError,
-                              track.to_wave,
-                              "dummy.wav")
+                              track.convert,
+                              "dummy.wav",
+                              audiotools.WaveAudio)
             self.assertEqual(os.path.isfile("dummy.wav"), False)
         finally:
             temp.close()
@@ -5394,7 +5404,7 @@ class TestVorbisAudio(VorbisLint, TestAiffAudio, LCVorbisComment,
             temp.close()
 
     @TEST_INVALIDFILE
-    def test_invalid_to_wave(self):
+    def test_invalid_convert(self):
         temp = tempfile.NamedTemporaryFile(
             suffix="." + self.audio_class.SUFFIX)
         try:
@@ -5409,8 +5419,9 @@ class TestVorbisAudio(VorbisLint, TestAiffAudio, LCVorbisComment,
                 os.unlink("dummy.wav")
             self.assertEqual(os.path.isfile("dummy.wav"), False)
             self.assertRaises(audiotools.EncodingError,
-                              track.to_wave,
-                              "dummy.wav")
+                              track.convert,
+                              "dummy.wav",
+                              audiotools.WaveAudio)
             self.assertEqual(os.path.isfile("dummy.wav"), False)
         finally:
             temp.close()
@@ -5524,9 +5535,11 @@ class TestM4AAudio(M4AMetadata, TestAiffAudio):
                                                wave.to_pcm())
             self.__check_encoder__(self.audio_class, track1)
 
-            #then check from_wave()
-            track2 = self.audio_class.from_wave(track_file2.name,
-                                                wave.filename)
+            #then check convert()
+            # track2 = self.audio_class.from_wave(track_file2.name,
+            #                                     wave.filename)
+            track2 = wave.convert(track_file2.name,
+                                  self.audio_class)
             self.__check_encoder__(self.audio_class, track2)
 
             #then check set_metadata()
@@ -5585,7 +5598,7 @@ class TestM4AAudio(M4AMetadata, TestAiffAudio):
             temp.close()
 
     @TEST_INVALIDFILE
-    def test_invalid_to_wave(self):
+    def test_invalid_convert(self):
         temp = tempfile.NamedTemporaryFile(
             suffix="." + self.audio_class.SUFFIX)
         try:
@@ -5601,8 +5614,9 @@ class TestM4AAudio(M4AMetadata, TestAiffAudio):
                     os.unlink("dummy.wav")
                 self.assertEqual(os.path.isfile("dummy.wav"), False)
                 self.assertRaises(audiotools.EncodingError,
-                                  track.to_wave,
-                                  "dummy.wav")
+                                  track.convert,
+                                  "dummy.wav",
+                                  audiotools.WaveAudio)
                 self.assertEqual(os.path.isfile("dummy.wav"), False)
         finally:
             temp.close()
@@ -5643,7 +5657,7 @@ class TestAlacAudio(TestM4AAudio):
             temp.close()
 
     @TEST_INVALIDFILE
-    def test_invalid_to_wave(self):
+    def test_invalid_convert(self):
         temp = tempfile.NamedTemporaryFile(suffix=".m4a")
         try:
             temp.write(open("alac-allframes.m4a", "rb").read()[0:-10])
@@ -5653,8 +5667,9 @@ class TestAlacAudio(TestM4AAudio):
                 os.unlink("dummy.wav")
             self.assertEqual(os.path.isfile("dummy.wav"), False)
             self.assertRaises(audiotools.EncodingError,
-                              flac.to_wave,
-                              "dummy.wav")
+                              flac.convert,
+                              "dummy.wav",
+                              audiotools.WaveAudio)
             self.assertEqual(os.path.isfile("dummy.wav"), False)
         finally:
             temp.close()
@@ -5665,7 +5680,7 @@ class TestAACAudio(TestAiffAudio):
         self.audio_class = audiotools.AACAudio
 
     @TEST_INVALIDFILE
-    def test_invalid_to_wave(self):
+    def test_invalid_convert(self):
         #faad doesn't exit with errors on bad files either
 
         pass
@@ -5682,7 +5697,7 @@ class TestSpeexAudio(VorbisLint, TestAiffAudio, LCVorbisComment,
         self.audio_class = audiotools.SpeexAudio
 
     @TEST_INVALIDFILE
-    def test_invalid_to_wave(self):
+    def test_invalid_convert(self):
         #An unfortunate hack, since Speex doesn't error out properly
         #when given non-Speex input.
 
@@ -6400,7 +6415,8 @@ class TestM4AMetaData(unittest.TestCase):
         tempfile1 = tempfile.NamedTemporaryFile(suffix=".wav")
         tempfile2 = tempfile.NamedTemporaryFile(suffix=".wav")
         try:
-            self.m4a_file.to_wave(tempfile1.name)
+            self.m4a_file.convert(tempfile1.name,
+                                  audiotools.WaveAudio)
             wave1 = audiotools.open(tempfile1.name)
             self.assertEqual(wave1.sample_rate(), 44100)
             self.assertEqual(wave1.bits_per_sample(), 16)
@@ -6412,7 +6428,8 @@ class TestM4AMetaData(unittest.TestCase):
                                     track_number=1,
                                     album_name=u"Some Album Name"))
 
-            self.m4a_file.to_wave(tempfile2.name)
+            self.m4a_file.convert(tempfile2.name,
+                                  audiotools.WaveAudio)
             wave2 = audiotools.open(tempfile2.name)
             self.assertEqual(wave2.sample_rate(), 44100)
             self.assertEqual(wave2.bits_per_sample(), 16)
@@ -12560,7 +12577,7 @@ class TestShortenCodec(unittest.TestCase):
 
         #then compare our .to_wave() output
         #with that of the Shorten reference decoder
-        shn.to_wave(temp_wav_file1.name)
+        shn.convert(temp_wav_file1.name, audiotools.WaveAudio)
         subprocess.call([audiotools.BIN["shorten"],
                          "-x", shn.filename, temp_wav_file2.name])
 
@@ -14228,13 +14245,13 @@ class TestMultiChannel(unittest.TestCase):
             self.assertEqual(source_track.channel_mask(),
                              target_track.channel_mask())
 
-            source_track.to_wave(wav_file.name)
+            source_track.convert(wav_file.name, audiotools.WaveAudio)
             wav = audiotools.open(wav_file.name)
             wav.verify()
             self.assertEqual(source_track.channel_mask(),
                              wav.channel_mask())
-            target_track = target_audio_class.from_wave(
-                target_file.name, wav_file.name)
+            target_track = wav.convert(target_file.name,
+                                       audiotools.WaveAudio)
             self.assertEqual(target_track.channel_mask(), channel_mask)
             self.assertEqual(source_track.channel_mask(),
                              target_track.channel_mask())

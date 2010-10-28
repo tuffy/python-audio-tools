@@ -25,7 +25,8 @@ from audiotools import (AudioFile, MetaData, InvalidFile, PCMReader,
                         ReplayGain, ignore_sigint, sheet_to_unicode,
                         EncodingError, UnsupportedChannelMask, DecodingError,
                         Messenger, BufferedPCMReader, calculate_replay_gain,
-                        ChannelMask, PCMReaderError, __default_quality__)
+                        ChannelMask, PCMReaderError, __default_quality__,
+                        WaveContainer, AiffContainer)
 from __vorbiscomment__ import *
 from __id3__ import ID3v2Comment
 from __vorbis__ import OggStreamReader, OggStreamWriter
@@ -655,7 +656,7 @@ class FlacSeektable:
                        Con.UBInt16("sample_count")))
 
 
-class FlacAudio(AudioFile):
+class FlacAudio(WaveContainer, AiffContainer):
     """A Free Lossless Audio Codec file."""
 
     SUFFIX = "flac"
@@ -789,25 +790,6 @@ class FlacAudio(AudioFile):
     def lossless(self):
         """Returns True."""
 
-        return True
-
-    @classmethod
-    def __help_output__(cls):
-        help_data = cStringIO.StringIO()
-        sub = subprocess.Popen([BIN['flac'], '--help'],
-                               stdout=subprocess.PIPE)
-        transfer_data(sub.stdout.read, help_data.write)
-        sub.wait()
-        return help_data.getvalue()
-
-    @classmethod
-    def supports_foreign_riff_chunks(cls):
-        """Returns True."""
-
-        return True
-
-    @classmethod
-    def supports_foreign_aiff_chunks(cls):
         return True
 
     def get_metadata(self):
@@ -1196,8 +1178,7 @@ class FlacAudio(AudioFile):
             (compression not in cls.COMPRESSION_MODES)):
             compression = __default_quality__(cls.NAME)
 
-        if (cls.supports_foreign_riff_chunks() and
-            WaveAudio(wave_filename).has_foreign_riff_chunks()):
+        if (WaveAudio(wave_filename).has_foreign_riff_chunks()):
             flac = cls.from_pcm(filename,
                                 WaveAudio(wave_filename).to_pcm(),
                                 compression=compression)
@@ -1262,8 +1243,7 @@ class FlacAudio(AudioFile):
             (compression not in cls.COMPRESSION_MODES)):
             compression = __default_quality__(cls.NAME)
 
-        if (cls.supports_foreign_aiff_chunks() and
-            AiffAudio(aiff_filename).has_foreign_aiff_chunks()):
+        if (AiffAudio(aiff_filename).has_foreign_aiff_chunks()):
             flac = cls.from_pcm(filename,
                                 AiffAudio(aiff_filename).to_pcm(),
                                 compression=compression)
@@ -1346,9 +1326,11 @@ class FlacAudio(AudioFile):
         Take a filename string, target class and optional compression string.
         Encodes a new AudioFile in the target class and returns
         the resulting object.
-        Metadata is not copied during conversion, but embedded
-        RIFF chunks are (if any).
         May raise EncodingError if some problem occurs during encoding."""
+
+        #If a FLAC has embedded RIFF *and* embedded AIFF chunks,
+        #RIFF takes precedence if the target format supports both.
+        #It's hard to envision a scenario in which that would happen.
 
         if (target_class == WaveAudio):
             self.to_wave(target_path)
@@ -1357,9 +1339,7 @@ class FlacAudio(AudioFile):
             self.to_aiff(target_path)
             return AiffAudio(target_path)
         elif (self.has_foreign_riff_chunks() and
-              hasattr(target_class, "supports_foreign_riff_chunks") and
-              hasattr(target_class, "from_wave") and
-              target_class.supports_foreign_riff_chunks()):
+              hasattr(target_class, "from_wave")):
             temp_wave = tempfile.NamedTemporaryFile(suffix=".wav")
             try:
                 self.to_wave(temp_wave.name)
@@ -1369,9 +1349,7 @@ class FlacAudio(AudioFile):
             finally:
                 temp_wave.close()
         elif (self.has_foreign_aiff_chunks() and
-              hasattr(target_class, "supports_foreign_aiff_chunks") and
-              hasattr(target_class, "from_aiff") and
-              target_class.supports_foreign_aiff_chunks()):
+              hasattr(target_class, "from_aiff")):
             temp_aiff = tempfile.NamedTemporaryFile(suffix=".aiff")
             try:
                 self.to_aiff(temp_aiff.name)
@@ -1555,7 +1533,7 @@ class FlacAudio(AudioFile):
 #######################
 
 
-class OggFlacAudio(FlacAudio):
+class OggFlacAudio(AudioFile):
     """A Free Lossless Audio Codec file inside an Ogg container."""
 
     SUFFIX = "oga"
@@ -1579,6 +1557,22 @@ class OggFlacAudio(FlacAudio):
                                     Con.Embed(
         FlacAudio.STREAMINFO))
 
+    def __init__(self, filename):
+        """filename is a plain string."""
+
+        AudioFile.__init__(self, filename)
+        self.__samplerate__ = 0
+        self.__channels__ = 0
+        self.__bitspersample__ = 0
+        self.__total_frames__ = 0
+
+        try:
+            self.__read_streaminfo__()
+        except IOError, msg:
+            raise InvalidFLAC(str(msg))
+        except (Con.FieldError, Con.ArrayError):
+            raise InvalidFLAC("invalid STREAMINFO block")
+
     @classmethod
     def is_type(cls, file):
         """Returns True if the given file object describes this format.
@@ -1589,6 +1583,67 @@ class OggFlacAudio(FlacAudio):
 
         return (header.startswith('OggS') and
                 header[0x1C:0x21] == '\x7FFLAC')
+
+    def bits_per_sample(self):
+        """Returns an integer number of bits-per-sample this track contains."""
+
+        return self.__bitspersample__
+
+    def channels(self):
+        """Returns an integer number of channels this track contains."""
+
+        return self.__channels__
+
+    def total_frames(self):
+        """Returns the total PCM frames of the track as an integer."""
+
+        return self.__total_frames__
+
+    def sample_rate(self):
+        """Returns the rate of the track's audio as an integer number of Hz."""
+
+        return self.__samplerate__
+
+    def channel_mask(self):
+        """Returns a ChannelMask object of this track's channel layout."""
+
+        if (self.channels() <= 2):
+            return ChannelMask.from_channels(self.channels())
+        else:
+            vorbis_comment = self.get_metadata().vorbis_comment
+            if ("WAVEFORMATEXTENSIBLE_CHANNEL_MASK" in vorbis_comment.keys()):
+                try:
+                    return ChannelMask(
+                        int(vorbis_comment[
+                                "WAVEFORMATEXTENSIBLE_CHANNEL_MASK"][0], 16))
+                except ValueError:
+                    pass
+
+            #if there is no WAVEFORMATEXTENSIBLE_CHANNEL_MASK
+            #or it's not an integer, use FLAC's default mask based on channels
+            if (self.channels() == 3):
+                return ChannelMask.from_fields(
+                    front_left=True, front_right=True, front_center=True)
+            elif (self.channels() == 4):
+                return ChannelMask.from_fields(
+                    front_left=True, front_right=True,
+                    back_left=True, back_right=True)
+            elif (self.channels() == 5):
+                return ChannelMask.from_fields(
+                    front_left=True, front_right=True, front_center=True,
+                    back_left=True, back_right=True)
+            elif (self.channels() == 6):
+                return ChannelMask.from_fields(
+                    front_left=True, front_right=True, front_center=True,
+                    back_left=True, back_right=True,
+                    low_frequency=True)
+            else:
+                return ChannelMask(0)
+
+    def lossless(self):
+        """Returns True."""
+
+        return True
 
     def get_metadata(self):
         """Returns a MetaData object, or None.
@@ -1744,6 +1799,14 @@ class OggFlacAudio(FlacAudio):
         f.close()
         writer.close()
 
+    def delete_metadata(self):
+        """Deletes the track's MetaData.
+
+        This removes or unsets tags as necessary in order to remove all data.
+        Raises IOError if unable to write the file."""
+
+        self.set_metadata(MetaData())
+
     def metadata_length(self):
         """Returns None."""
 
@@ -1894,6 +1957,34 @@ class OggFlacAudio(FlacAudio):
         else:
             raise EncodingError(u"error encoding file with flac")
 
+    def set_cuesheet(self, cuesheet):
+        """Imports cuesheet data from a Cuesheet-compatible object.
+
+        This are objects with catalog(), ISRCs(), indexes(), and pcm_lengths()
+        methods.  Raises IOError if an error occurs setting the cuesheet."""
+
+        if (cuesheet is None):
+            return
+
+        metadata = self.get_metadata()
+        if (metadata is None):
+            metadata = FlacMetaData.converted(MetaData())
+
+        metadata.cuesheet = FlacCueSheet.converted(
+            cuesheet, self.total_frames(), self.sample_rate())
+        self.set_metadata(metadata)
+
+    def get_cuesheet(self):
+        """Returns the embedded Cuesheet-compatible object, or None.
+
+        Raises IOError if a problem occurs when reading the file."""
+
+        metadata = self.get_metadata()
+        if (metadata is not None):
+            return metadata.cuesheet
+        else:
+            return None
+
     def sub_pcm_tracks(self):
         """Yields a PCMReader object per cuesheet track.
 
@@ -1902,18 +1993,6 @@ class OggFlacAudio(FlacAudio):
         """
 
         return iter([])
-
-    @classmethod
-    def supports_foreign_riff_chunks(cls):
-        """Returns False."""
-
-        #the --keep-foreign-metadata flag fails
-        #when used with --ogg
-        return False
-
-    @classmethod
-    def supports_foreign_aiff_chunks(cls):
-        return False
 
     def verify(self):
         """Verifies the current file for correctness.
