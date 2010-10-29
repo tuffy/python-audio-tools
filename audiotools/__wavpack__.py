@@ -279,7 +279,10 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
 
         for (sub_header, nondecoder, data) in self.sub_frames():
             if ((sub_header == 1) and nondecoder):
-                return set(__riff_chunk_ids__(data)) != set(['fmt ', 'data'])
+                if (set(__riff_chunk_ids__(data)) != set(['fmt ', 'data'])):
+                    return True
+            elif ((sub_header == 2) and nondecoder):
+                return True
         else:
             return False
 
@@ -478,12 +481,11 @@ class WavPackAudio(ApeTaggedAudio, WaveContainer):
 
         (head, tail) = wave.pcm_split()
 
-        #FIXME - check errors here
         try:
             encoders.encode_wavpack(filename,
                                     wave.to_pcm(),
-                                    wave_header = head,
-                                    wave_footer = tail,
+                                    wave_header=head,
+                                    wave_footer=tail,
                                     **cls.__options__[compression])
 
             return cls(filename)

@@ -288,29 +288,34 @@ AudioFile Objects
    >>> audiotools.MP3Audio.from_pcm("track.mp3",
    ...                              audiotools.open("track.flac").to_pcm())
 
-.. method:: AudioFile.to_wave(wave_filename)
+.. method:: AudioFile.convert(filename, target_class[, compression=None])
 
-   Takes a filename string and creates a new RIFF WAVE file
-   at that location.
+   Takes a filename string, :class:`AudioFile` subclass
+   and optional compression level string.
+   Creates a new audio file and returns an object of the same class.
    Raises :exc:`EncodingError` if a problem occurs during encoding.
 
-.. classmethod:: AudioFile.from_wave(filename, wave_filename[, compression=None])
+   In this example, we'll transcode ``track.flac`` to ``track.mp3``
+   at the default compression level:
 
-   Takes a filename string of our new file, a wave_filename string of
-   an existing RIFF WAVE file and an optional compression level string.
-   Creates a new audio file as the same format as this audio class
-   and returns a new :class:`AudioFile`-compatible object.
-   Raises :exc:`EncodingError` if a problem occurs during encoding.
+   >>> audiotools.open("track.flac").convert("track.mp3",
+   ...                                       audiotools.MP3Audio)
 
-.. classmethod:: AudioFile.supports_foreign_riff_chunks()
+   Why have both a ``convert`` method as well as ``to_pcm``/``from_pcm``
+   methods?
+   Although the former is often implemented using the latter,
+   the pcm methods alone contain only raw audio data.
+   By comparison, the ``convert`` method has information about
+   what is the file is being converted to and can transfer other side data
+   if necessary.
 
-   Returns ``True`` if this :class:`AudioFile` implementation supports storing
-   non audio RIFF WAVE chunks.  Returns ``False`` if not.
+   For example, if .wav file with non-audio RIFF chunks is
+   converted to WavPack, this method will preserve those chunks:
 
-.. method:: AudioFile.has_foreign_riff_chunks()
+   >>> audiotools.open("chunks.wav").convert("chunks.wv",
+   ...                                       audiotools.WavPackAudio)
 
-   Returns ``True`` if this audio file contains non audio RIFF WAVE chunks.
-   Returns ``False`` if not.
+   whereas the ``to_pcm``/``from_pcm`` method alone will not.
 
 .. method:: AudioFile.track_number()
 
