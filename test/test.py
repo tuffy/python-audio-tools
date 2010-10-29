@@ -1929,16 +1929,11 @@ uhhDdCiCwqg2Gw3lphgaGhoamR+mptKYNT/F3JFOFCQvKfgAwA==""".decode('base64').decode(
                      os.path.join(basedir_tar, "foo", "track01.wav")]), 1)
 
             f = self.filename(os.path.join(basedir_tar, "foo", "track01.wav"))
-            if (self.audio_class == audiotools.M4AAudio_nero):
-                self.__check_error__(
-                    _(u"%(filename)s: %(error)s") %
-                    {"filename":f,
-                     "error":u"unable to write file with neroAacDec"})
-            else:
-                self.__check_error__(
-                    _(u"%(filename)s: %(error)s") %
-                    {"filename":f,
-                     "error":u"[Errno 2] No such file or directory: '%s'" % (f)})
+
+            self.__check_error__(
+                _(u"%(filename)s: %(error)s") %
+                {"filename":f,
+                 "error":u"[Errno 2] No such file or directory: '%s'" % (f)})
 
             os.chmod(basedir_tar, basedir_tar_stat)
 
@@ -1964,16 +1959,10 @@ uhhDdCiCwqg2Gw3lphgaGhoamR+mptKYNT/F3JFOFCQvKfgAwA==""".decode('base64').decode(
 
                 f = self.filename(os.path.join(basedir_tar, "track01.wav"))
 
-                if (self.audio_class == audiotools.M4AAudio_nero):
-                    self.__check_error__(
-                        _(u"%(filename)s: %(error)s") %
-                        {"filename":f,
-                         "error":u"unable to write file with neroAacDec"})
-                else:
-                    self.__check_error__(
-                        _(u"%(filename)s: %(error)s" %
-                          {"filename":f,
-                           "error":u"[Errno 13] Permission denied: '%s'" % (f)}))
+                self.__check_error__(
+                    _(u"%(filename)s: %(error)s" %
+                      {"filename":f,
+                       "error":u"[Errno 13] Permission denied: '%s'" % (f)}))
 
                 #try to use track2track -o on an un-writable file
                 self.assertEqual(self.__run_app__(
@@ -1984,16 +1973,10 @@ uhhDdCiCwqg2Gw3lphgaGhoamR+mptKYNT/F3JFOFCQvKfgAwA==""".decode('base64').decode(
                      os.path.join(basedir_tar, "track01.wav")]), 1)
 
                 f = self.filename(os.path.join(basedir_tar, "track01.wav"))
-                if (self.audio_class == audiotools.M4AAudio_nero):
-                    self.__check_error__(
-                        _(u"%(filename)s: %(error)s") %
-                        {"filename":f,
-                         "error":u"unable to write file with neroAacDec"})
-                else:
-                    self.__check_error__(
-                        _(u"%(filename)s: %(error)s") %
-                        {"filename":f,
-                         "error":u"[Errno 13] Permission denied: '%s'" % (f)})
+                self.__check_error__(
+                    _(u"%(filename)s: %(error)s") %
+                    {"filename":f,
+                     "error":u"[Errno 13] Permission denied: '%s'" % (f)})
 
             finally:
                 os.chmod(os.path.join(basedir_tar, "track01.wav"), f_stat)

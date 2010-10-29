@@ -1172,7 +1172,7 @@ class InvalidALAC(InvalidFile):
     pass
 
 
-class ALACAudio(M4AAudio):
+class ALACAudio(M4AAudio_faac):
     """An Apple Lossless audio file."""
 
     SUFFIX = "m4a"
