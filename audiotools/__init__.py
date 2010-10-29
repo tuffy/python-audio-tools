@@ -2980,6 +2980,8 @@ class WaveContainer(AudioFile):
         the resulting object.
         May raise EncodingError if some problem occurs during encoding."""
 
+        import tempfile
+
         if (target_class == WaveAudio):
             self.to_wave(target_path)
             return WaveAudio(target_path)

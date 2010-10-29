@@ -416,6 +416,8 @@ class ShortenAudio(WaveContainer, AiffContainer):
         #Note that a Shorten file cannot contain
         #both RIFF chunks and AIFF chunks at the same time.
 
+        import tempfile
+
         if (target_class == WaveAudio):
             self.to_wave(target_path)
             return WaveAudio(target_path)
