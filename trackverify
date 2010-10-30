@@ -22,6 +22,10 @@ import os.path
 import audiotools
 import gettext
 
+gettext.install("audiotools", unicode=True)
+
+MAX_CPUS = audiotools.MAX_JOBS
+
 
 class Counter:
     def __init__(self):
@@ -85,6 +89,33 @@ def get_tracks(args, accept_list):
                     except (audiotools.UnsupportedFile, IOError):
                         continue
 
+def verify(track):
+    try:
+        track.verify()
+        return (track.filename, track.NAME, None)
+    except audiotools.InvalidFile, err:
+        return (track.filename, track.NAME, unicode(err))
+
+class Results:
+    def __init__(self, messenger):
+        self.msg = messenger
+        self.summary_success = {}
+        self.summary_failure = {}
+
+    def display(self, result):
+        (path, track_type, error) = result
+        if (error is None):
+            self.msg.output(
+                _(u"%(path)s : %(result)s") % {
+                    "path": self.msg.filename(path),
+                    "result": self.msg.ansi(_(u"OK"), [self.msg.FG_GREEN])})
+            self.summary_success.setdefault(track_type, Counter()).increment()
+        else:
+            self.msg.output(
+                _(u"%(path)s : %(result)s") % {
+                    "path": self.msg.filename(path),
+                    "result": self.msg.ansi(error, [self.msg.FG_RED])})
+            self.summary_failure.setdefault(track_type, Counter()).increment()
 
 gettext.install("audiotools", unicode=True)
 
@@ -105,6 +136,13 @@ if (__name__ == '__main__'):
                       dest='no_summary',
                       help=_(u'suppress summary output'))
 
+    parser.add_option('-j', '--joint',
+        action='store',
+        type='int',
+        default=MAX_CPUS,
+        dest='max_processes',
+        help=_(u'the maximum number of processes to run at a time'))
+
     parser.add_option('-V', '--verbose',
                       action='store',
                       dest='verbosity',
@@ -115,20 +153,15 @@ if (__name__ == '__main__'):
     (options, args) = parser.parse_args()
     msg = audiotools.Messenger("trackverify", options)
 
-    summary_success = {}
-    summary_failure = {}
-
+    results = Results(msg)
+    queue = audiotools.ExecQueue2(results.display)
     for track in get_tracks(args, options.accept_list):
-        msg.partial_output(u"%s : " % (msg.filename(track.filename)))
-        try:
-            track.verify()
-            msg.output(msg.ansi(_(u"OK"), [msg.FG_GREEN]))
-            summary_success.setdefault(track.NAME, Counter()).increment()
-        except audiotools.InvalidFile, err:
-            #InvalidFile should return Unicode errors at some point
-            msg.output(msg.ansi(unicode(err), [msg.FG_RED]))
-            summary_failure.setdefault(track.NAME, Counter()).increment()
+        queue.execute(verify, [track])
 
+    queue.run(options.max_processes)
+
+    summary_success = results.summary_success
+    summary_failure = results.summary_failure
     formats = sorted(list(set(summary_success.keys()) |
                           set(summary_failure.keys())))
     success_total = sum(map(int, summary_success.values()))

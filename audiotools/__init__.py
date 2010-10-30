@@ -3691,6 +3691,102 @@ class ExecQueue:
             except KeyError:
                 continue
 
+class ExecQueue2:
+    """A class for running multiple jobs and accumulating results."""
+
+    def __init__(self, callback=lambda x: x):
+        """callback is a function which takes queued functions' return value"""
+
+        self.callback = callback
+        self.todo = []
+        self.return_values = set([])
+
+        #a dict of reader->pid values as returned by __run__()
+        self.process_pool = {}
+
+    def execute(self, function, args, kwargs=None):
+
+        self.todo.append((function, args, kwargs))
+
+    def __run__(self, function, args, kwargs):
+        """executes the given function and arguments in a child job
+
+        returns a (pid, reader) tuple where pid is an int of the child job
+        and reader is a file object containing its piped data"""
+
+        import cPickle
+
+        (pipe_read, pipe_write) = os.pipe()
+        pid = os.fork()
+        if (pid > 0):  #parent
+            os.close(pipe_write)
+            reader = os.fdopen(pipe_read, 'r')
+            return (pid, reader)
+        else:          #child
+            os.close(pipe_read)
+            writer = os.fdopen(pipe_write, 'w')
+            if (kwargs is not None):
+                cPickle.dump(function(*args, **kwargs), writer)
+            else:
+                cPickle.dump(function(*args), writer)
+            sys.exit(0)
+
+    def __add_job__(self):
+        """removes a queued function and adds it to our running pool"""
+
+        (function, args, kwargs) = self.todo.pop(0)
+        (pid, file_pointer) = self.__run__(function, args, kwargs)
+        self.process_pool[file_pointer] = pid
+
+    def __await_jobs__(self):
+        """yields a reader file object per finished job
+
+        If the child job exited properly, that reader will have
+        the pickled contents of the completed Python function
+        and it can be used to find the child's PID to be waited for
+        via the process pool.
+        In addition, the returned values of finished child processes
+        are added to our "return_values" attribute."""
+
+        import select
+        import cPickle
+
+        (readable,
+         writeable,
+         exceptional) = select.select(list(self.process_pool.keys()), [], [])
+        for reader in readable:
+            try:
+                self.callback(cPickle.load(reader))
+            except EOFError:
+                pass
+            (pid, return_value) = os.waitpid(self.process_pool[reader], 0)
+            self.return_values.add(return_value)
+            yield reader
+
+    def run(self, max_processes=1):
+        """execute all queued functions
+
+        Upon a proper exit, the return value of those functions
+        will be passed to the callback function."""
+
+        #fill the process pool to the limit
+        while ((len(self.todo) > 0) and
+               (len(self.process_pool) < max_processes)):
+            self.__add_job__()
+
+        #as processes end, keep adding new ones to the pool
+        #until we run out of queued jobs
+        while (len(self.todo) > 0):
+            for reader in self.__await_jobs__():
+                del(self.process_pool[reader])
+                if (len(self.todo) > 0):
+                    self.__add_job__()
+
+        #finally, wait for the running jobs to finish
+        while (len(self.process_pool) > 0):
+            for reader in self.__await_jobs__():
+                del(self.process_pool[reader])
+
 
 #***ApeAudio temporarily removed***
 #Without a legal alternative to mac-port, I shall have to re-implement

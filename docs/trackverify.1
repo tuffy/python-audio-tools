@@ -27,6 +27,12 @@ For a list of available audio formats, try:
 .TP
 \fB-R, --no-summary\fR
 Do not display summary information when verification is complete.
+.TP
+\fB-j \fIprocesses\fB, --joint=\fIprocesses\fR
+The maximum number of tracks to verify at one time.
+If one has multiple CPUs or CPU cores, allowing
+.BR trackverify (1)
+to use all of them simultaneously can greatly increase verification speed.
 .SH VERIFICATION
 .PP
 All audio formats do not carry an equal measure of error protection.

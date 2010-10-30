@@ -1168,6 +1168,33 @@ ExecQueue Objects
    no effect on ExecQueue's caller besides those which modify
    files on disk (encoding an audio file, for example).
 
+.. class:: ExecQueue2([callback])
+
+   This is a class for executing multiple Python functions in
+   parallel across multiple CPUs and performing the ``callback``
+   function upon their results.
+
+.. method:: ExecQueue2.execute(function, args[, kwargs])
+
+   Queues a Python function, list of arguments and optional
+   dictionary of keyword arguments.
+
+.. method:: ExecQueue2.run([max_processes])
+
+   Executes all queued Python functions, running ``max_processes``
+   number of functions at a time until the entire queue is empty.
+   This operates by forking a new subprocess per function
+   with a pipe between them, executing that function in the child process
+   and then transferring the resulting object back to the parent
+   before performing an unconditional exit.
+   The parent process then performs ``callback`` on each
+   returned object as they arrive.
+
+   Queued functions that raise an exception or otherwise exit uncleanly
+   do not perform ``callback``.
+   Likewise, any side effects of the called function have no
+   effect on ExecQueue's caller.
+
 Messenger Objects
 -----------------
 

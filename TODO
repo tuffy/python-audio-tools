@@ -2399,6 +2399,11 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** DONE Update documentation
 *** DONE Add convert() documentation
 *** DONE Remove wave-specific documentation
+* DONE Update trackverify for multiprocess support
+  I'll need some interprocess communication (probably pipes and select)
+  to return the results from child processes for totals calculation.
+** DONE Update man page
+** DONE Document ExecQueue2
 * TODO Ensure non-image cuesheets are handled properly
   There are 4 different types of cuesheets,
   1 single file type and 3 different multiple file variants.
@@ -2744,11 +2749,10 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** DONE Remove wvgain for ReplayGain application
 * TODO Add percentage indicator to trackcmp/trackverify
   As an optional alternative to the running list
+** TODO Update man page
 * TODO Add a -r/--no-results flag to trackcmp/trackverify
   Listing only the final results and not the running list
-* TODO Update trackverify for multiprocess support
-  I'll need some interprocess communication (probably pipes and select)
-  to return the results from child processes for totals calculation.
+** TODO Update man page
 * TODO Add optional interactive modes to utilities
   Now that Urwid is being used for editxmcd, it might be helpful
   to add optional console-based interactive modes to the other tools.
