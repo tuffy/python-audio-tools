@@ -9856,8 +9856,23 @@ class TestProgramOutput(TestTextOutput):
                 self.dir2,
                 os.path.basename(self.flac3.filename)))
 
+        self.assertEqual(self.flac1.album_number(),
+                         flac4.album_number())
+        self.assertEqual(self.flac1.track_number(),
+                         flac4.track_number())
+        self.assertEqual(self.flac2.album_number(),
+                         flac5.album_number())
+        self.assertEqual(self.flac2.track_number(),
+                         flac5.track_number())
+        self.assertEqual(self.flac3.album_number(),
+                         flac6.album_number())
+        self.assertEqual(self.flac3.track_number(),
+                         flac6.track_number())
+
         self.assertEqual(self.__run_app__(
-                ["trackcmp", self.dir1, self.dir2]), 0)
+                ["trackcmp", "-j", "1", "-V", "normal",
+                 self.dir1, self.dir2]), 0)
+
         self.__check_output__(
             (_(u"%(file1)s <> %(file2)s : ") %
              {"file1": self.filename(self.flac1.filename),
@@ -9877,7 +9892,8 @@ class TestProgramOutput(TestTextOutput):
         subprocess.call(["rm", "-f", flac6.filename])
 
         self.assertEqual(self.__run_app__(
-                ["trackcmp", self.dir1, self.dir2]), 1)
+                ["trackcmp", "-j", "1", "-V", "normal",
+                 self.dir1, self.dir2]), 1)
 
         #FIXME - the "track %2.2d" and "album %d track %2.2d" templates
         #should be internationalized
@@ -9899,7 +9915,8 @@ class TestProgramOutput(TestTextOutput):
         subprocess.call(["mv", "-f", self.flac3.filename, flac6.filename])
 
         self.assertEqual(self.__run_app__(
-                ["trackcmp", self.dir1, self.dir2]), 1)
+                ["trackcmp", "-j", "1", "-V", "normal",
+                 self.dir1, self.dir2]), 1)
 
         self.__check_output__(
             _(u"%s : missing") % (self.filename(
@@ -9946,7 +9963,8 @@ class TestProgramOutput(TestTextOutput):
                 os.path.basename(self.flac3.filename)))
 
         self.assertEqual(self.__run_app__(
-                ["trackcmp", self.dir1, self.dir2]), 0)
+                ["trackcmp", "-j", "1", "-V", "normal",
+                 self.dir1, self.dir2]), 0)
         self.__check_output__(
             (_(u"%(file1)s <> %(file2)s : ") %
              {"file1": self.filename(self.flac1.filename),
@@ -9966,7 +9984,8 @@ class TestProgramOutput(TestTextOutput):
         subprocess.call(["rm", "-f", flac6.filename])
 
         self.assertEqual(self.__run_app__(
-                ["trackcmp", self.dir1, self.dir2]), 1)
+                ["trackcmp", "-j", "1", "-V", "normal",
+                 self.dir1, self.dir2]), 1)
 
         self.__check_output__(
             _(u"%s : missing") %
@@ -9986,7 +10005,8 @@ class TestProgramOutput(TestTextOutput):
         subprocess.call(["mv", "-f", self.flac3.filename, flac6.filename])
 
         self.assertEqual(self.__run_app__(
-                ["trackcmp", self.dir1, self.dir2]), 1)
+                ["trackcmp", "-j", "1", "-V", "normal",
+                 self.dir1, self.dir2]), 1)
 
         self.__check_output__(
             _(u"%s : missing") %
@@ -10029,7 +10049,8 @@ class TestProgramOutput(TestTextOutput):
                 os.path.basename(self.flac3.filename)))
 
         self.assertEqual(self.__run_app__(
-                ["trackcmp", self.flac1.filename, flac4.filename]), 1)
+                ["trackcmp", "-j", "1", "-V", "normal",
+                 self.flac1.filename, flac4.filename]), 1)
 
         self.__check_output__(_(u"%(file1)s <> %(file2)s : ") % \
                        {"file1": self.filename(self.flac1.filename),
@@ -10038,7 +10059,8 @@ class TestProgramOutput(TestTextOutput):
                                   {"frame_number": 1})
 
         self.assertEqual(self.__run_app__(
-                ["trackcmp", self.dir1, self.dir2]), 1)
+                ["trackcmp", "-j", "1", "-V", "normal",
+                 self.dir1, self.dir2]), 1)
 
         self.__check_output__(
             (_(u"%(file1)s <> %(file2)s : ") %
@@ -10065,7 +10087,8 @@ class TestProgramOutput(TestTextOutput):
         flac5.set_metadata(m)
 
         self.assertEqual(self.__run_app__(
-                ["trackcmp", self.flac2.filename, flac5.filename]), 1)
+                ["trackcmp", "-j", "1", "-V", "normal",
+                 self.flac2.filename, flac5.filename]), 1)
 
         #due to randomness, it's possible (but very unlikely)
         #that this check will fail if the first frames happen to match
@@ -10077,7 +10100,8 @@ class TestProgramOutput(TestTextOutput):
                 {"frame_number": 1})
 
         self.assertEqual(self.__run_app__(
-                ["trackcmp", self.dir1, self.dir2]), 1)
+                ["trackcmp", "-j", "1", "-V", "normal",
+                 self.dir1, self.dir2]), 1)
 
         self.__check_output__(
             (_(u"%(file1)s <> %(file2)s : ") %
@@ -10105,7 +10129,8 @@ class TestProgramOutput(TestTextOutput):
         flac6.set_metadata(m)
 
         self.assertEqual(self.__run_app__(
-                ["trackcmp", self.flac3.filename, flac6.filename]), 1)
+                ["trackcmp", "-j", "1", "-V", "normal",
+                 self.flac3.filename, flac6.filename]), 1)
 
         self.__check_output__(
             _(u"%(file1)s <> %(file2)s : ") %
@@ -10115,7 +10140,8 @@ class TestProgramOutput(TestTextOutput):
             {"frame_number": 1})
 
         self.assertEqual(self.__run_app__(
-                ["trackcmp", self.dir1, self.dir2]), 1)
+                ["trackcmp", "-j", "1", "-V", "normal",
+                 self.dir1, self.dir2]), 1)
 
         self.__check_output__(
             (_(u"%(file1)s <> %(file2)s : ") %

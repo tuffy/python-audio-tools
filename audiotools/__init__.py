@@ -1191,7 +1191,9 @@ def stripped_pcm_cmp(pcmreader1, pcmreader2):
 def pcm_frame_cmp(pcmreader1, pcmreader2):
     """Returns the PCM Frame number of the first mismatch.
 
-    If the two streams match completely, returns None."""
+    If the two streams match completely, returns None.
+    May raise IOError or ValueError if problems occur
+    when reading PCM streams."""
 
     if ((pcmreader1.sample_rate != pcmreader2.sample_rate) or
         (pcmreader1.channels != pcmreader2.channels) or
@@ -3659,6 +3661,8 @@ class ExecQueue:
         Therefore, any side effects beyond altering files on
         disk do not propogate back to the parent."""
 
+        max_processes = max(max_processes, 1)
+
         process_pool = set([])
 
         #fill the process_pool to the limit
@@ -3768,6 +3772,8 @@ class ExecQueue2:
 
         Upon a proper exit, the return value of those functions
         will be passed to the callback function."""
+
+        max_processes = max(max_processes, 1)
 
         #fill the process pool to the limit
         while ((len(self.todo) > 0) and

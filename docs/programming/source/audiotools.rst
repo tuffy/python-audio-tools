@@ -152,6 +152,8 @@ classes and functions upon which all of the other modules depend.
    It returns the frame number of the first mismatch as an integer
    which begins at frame number 0.
    If the two streams match completely, it returns ``None``.
+   May raise :exc:`IOError` or :exc:`ValueError` if problems
+   occur during reading.
 
 .. function:: pcm_split(pcmreader, pcm_lengths)
 

@@ -37,11 +37,89 @@ def near_equal(audiofile1, audiofile2):
         p1.close()
         p2.close()
 
+def cmp_files(audiofile1, audiofile2):
+    """Returns (path1, path2, mismatch) tuple
+
+    where mismatch is the int of the first PCM mismatch,
+    None if the files match exactly or
+    a negative value if some error occurs."""
+
+    try:
+        return (audiofile1.filename,
+                audiofile2.filename,
+                audiotools.pcm_frame_cmp(audiofile1.to_pcm(),
+                                         audiofile2.to_pcm()))
+    except (IOError, ValueError, audiotools.DecodingError):
+        return (audiofile1.filename,
+                audiofile2.filename,
+                -1)
+
+class Results:
+    def __init__(self, messenger):
+        self.successes = 0
+        self.failures = 0
+        self.msg = messenger
+
+    def missing(self, directory, track_number, album_number):
+        self.failures += 1
+        if (album_number == 0):
+            self.msg.output(_(u"%(path)s : %(result)s") % {
+                    "path":os.path.join(directory,
+                                        "track %2.2d" % (track_number)),
+                    "result":self.msg.ansi(_(u"missing"), [self.msg.FG_RED])})
+        else:
+            self.msg.output(_(u"%(path)s : %(result)s") % {
+                    "path":os.path.join(
+                        directory,
+                        u"album %d track %2.2d" % (album_number,
+                                                   track_number)),
+                    "result":self.msg.ansi(_(u"missing"), [self.msg.FG_RED])})
+        sys.stdout.flush()
+
+    def cmp_result(self, result):
+        (path1, path2, mismatch) = result
+
+        if (mismatch is None):
+            self.successes += 1
+
+            self.msg.output(_(u"%(path1)s <> %(path2)s : %(result)s") % {
+                    "path1":self.msg.filename(path1),
+                    "path2":self.msg.filename(path2),
+                    "result":self.msg.ansi(
+                        _(u"OK"),
+                        [self.msg.FG_GREEN])})
+        elif (mismatch >= 0):
+            self.failures += 1
+
+            self.msg.output(_(u"%(path1)s <> %(path2)s : %(result)s") % {
+                    "path1":self.msg.filename(path1),
+                    "path2":self.msg.filename(path2),
+                    "result":self.msg.ansi(
+                        _(u"differ at PCM frame %d") % (mismatch + 1),
+                        [self.msg.FG_RED])})
+        else:
+            self.failures += 1
+
+            self.msg.output(_(u"%(path1)s <> %(path2)s : %(result)s") % {
+                    "path1":self.msg.filename(path1),
+                    "path2":self.msg.filename(path2),
+                    "result":self.msg.ansi(
+                        _(u"error"),
+                        [self.msg.FG_RED])})
+        sys.stdout.flush()
 
 if (__name__ == '__main__'):
     parser = audiotools.OptionParser(
         usage=_(u'%prog <file 1> <file 2>'),
         version="Python Audio Tools %s" % (audiotools.VERSION))
+
+    parser.add_option(
+        '-j', '--joint',
+        action='store',
+        type='int',
+        default=audiotools.MAX_JOBS,
+        dest='max_processes',
+        help=_(u'the maximum number of processes to run at a time'))
 
     parser.add_option('-R', '--no-summary',
                       action='store_true',
@@ -60,6 +138,10 @@ if (__name__ == '__main__'):
 
     if (len(args) != 2):
         msg.usage(_(u"<path 1> <path 2>"))
+        sys.exit(1)
+
+    if (options.max_processes < 1):
+        msg.error(_(u'You must run at least 1 process at a time'))
         sys.exit(1)
 
     check_function = audiotools.pcm_frame_cmp
@@ -88,8 +170,7 @@ if (__name__ == '__main__'):
             sys.exit(1)
 
     elif (os.path.isdir(args[0]) and os.path.isdir(args[1])):
-        successes = 0
-        failures = 0
+        results = Results(msg)
 
         files1 = audiotools.open_files(
             [os.path.join(args[0], f) for f in os.listdir(args[0])
@@ -108,64 +189,23 @@ if (__name__ == '__main__'):
         files1_tracknumbers = set(files1_map.keys())
         files2_tracknumbers = set(files2_map.keys())
 
+        queue = audiotools.ExecQueue2(results.cmp_result)
+
         for (album_number, track_number) in sorted(
             list(files1_tracknumbers - files2_tracknumbers)):
-            if (album_number == 0):
-                msg.partial_output(
-                    _(u"%s : ") % (msg.filename(
-                            os.path.join(args[1],
-                                         "track %2.2d" % (track_number)))))
-            else:
-                msg.partial_output(
-                    _(u"%s : ") % (msg.filename(os.path.join(
-                                args[1],
-                                "album %d track %2.2d" % (album_number,
-                                                          track_number)))))
-            failures += 1
-            msg.output(msg.ansi(_(u"missing"), [msg.FG_RED]))
+            results.missing(args[1], track_number, album_number)
 
         for (album_number, track_number) in sorted(
             list(files2_tracknumbers - files1_tracknumbers)):
-            if (album_number == 0):
-                msg.partial_output(
-                    _(u"%s : ") % (msg.filename(
-                            os.path.join(args[0],
-                                         "track %2.2d" % (track_number)))))
-            else:
-                msg.partial_output(
-                    _(u"%s : ") % (msg.filename(os.path.join(
-                                args[0],
-                                "album %d track %2.2d" % (album_number,
-                                                          track_number)))))
-
-            failures += 1
-            msg.output(msg.ansi(_(u"missing"), [msg.FG_RED]))
+            results.missing(args[0], track_number, album_number)
 
         for (album_number, track_number) in sorted(
             list(files1_tracknumbers & files2_tracknumbers)):
-            msg.partial_output(_(u"%(file1)s <> %(file2)s : ") % \
-                         {"file1": msg.filename(
-                        files1_map[(album_number, track_number)].filename),
-                          "file2": msg.filename(
-                        files2_map[(album_number, track_number)].filename)})
+            queue.execute(cmp_files,
+                          [files1_map[(album_number, track_number)],
+                           files2_map[(album_number, track_number)]])
 
-            try:
-                frame_mismatch = check_function(
-                    files1_map[(album_number, track_number)].to_pcm(),
-                    files2_map[(album_number, track_number)].to_pcm())
-                if (frame_mismatch is None):
-                    msg.output(msg.ansi(_(u"OK"), [msg.FG_GREEN]))
-                    successes += 1
-                else:
-                    msg.output(msg.ansi(
-                            _(u"differ at PCM frame %(frame_number)d") %
-                            {"frame_number": frame_mismatch + 1},
-                            [msg.FG_RED]))
-                    failures += 1
-            except (IOError, ValueError, audiotools.DecodingError), msg:
-                msg.output(msg.ansi(_(u"error"), [msg.FG_RED]))
-                msg.error(unicode(msg))
-                failures += 1
+        queue.run(options.max_processes)
 
         if (not options.no_summary):
             msg.output(_(u"Results:"))
@@ -178,14 +218,15 @@ if (__name__ == '__main__'):
             msg.output_column(_(u"total"), True)
             msg.divider_row([u"-", u" ", u"-", u" ", u"-"])
             msg.new_row()
-            msg.output_column(unicode(successes), True)
+            msg.output_column(unicode(results.successes), True)
             msg.output_column(u" ")
-            msg.output_column(unicode(failures), True)
+            msg.output_column(unicode(results.failures), True)
             msg.output_column(u" ")
-            msg.output_column(unicode(successes + failures), True)
+            msg.output_column(unicode(results.successes +
+                                      results.failures), True)
             msg.output_rows()
 
-        if (failures > 0):
+        if (results.failures > 0):
             sys.exit(1)
     else:
         msg.partial_output(_(u"%(file1)s <> %(file2)s : ") %
