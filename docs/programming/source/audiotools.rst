@@ -1170,11 +1170,11 @@ ExecQueue Objects
    no effect on ExecQueue's caller besides those which modify
    files on disk (encoding an audio file, for example).
 
-.. class:: ExecQueue2([callback])
+.. class:: ExecQueue2()
 
    This is a class for executing multiple Python functions in
-   parallel across multiple CPUs and performing the ``callback``
-   function upon their results.
+   parallel across multiple CPUs and receiving results
+   from those functions.
 
 .. method:: ExecQueue2.execute(function, args[, kwargs])
 
@@ -1185,15 +1185,14 @@ ExecQueue Objects
 
    Executes all queued Python functions, running ``max_processes``
    number of functions at a time until the entire queue is empty.
+   Returns an iterator of the returned values of those functions.
    This operates by forking a new subprocess per function
    with a pipe between them, executing that function in the child process
-   and then transferring the resulting object back to the parent
+   and then transferring the resulting pickled object back to the parent
    before performing an unconditional exit.
-   The parent process then performs ``callback`` on each
-   returned object as they arrive.
 
    Queued functions that raise an exception or otherwise exit uncleanly
-   do not perform ``callback``.
+   yield ``None``.
    Likewise, any side effects of the called function have no
    effect on ExecQueue's caller.
 

@@ -3698,10 +3698,7 @@ class ExecQueue:
 class ExecQueue2:
     """A class for running multiple jobs and accumulating results."""
 
-    def __init__(self, callback=lambda x: x):
-        """callback is a function which takes queued functions' return value"""
-
-        self.callback = callback
+    def __init__(self):
         self.todo = []
         self.return_values = set([])
 
@@ -3760,12 +3757,12 @@ class ExecQueue2:
          exceptional) = select.select(list(self.process_pool.keys()), [], [])
         for reader in readable:
             try:
-                self.callback(cPickle.load(reader))
+                result = cPickle.load(reader)
             except EOFError:
-                pass
+                result = None
             (pid, return_value) = os.waitpid(self.process_pool[reader], 0)
             self.return_values.add(return_value)
-            yield reader
+            yield (reader, result)
 
     def run(self, max_processes=1):
         """execute all queued functions
@@ -3783,15 +3780,17 @@ class ExecQueue2:
         #as processes end, keep adding new ones to the pool
         #until we run out of queued jobs
         while (len(self.todo) > 0):
-            for reader in self.__await_jobs__():
+            for (reader, result) in self.__await_jobs__():
                 del(self.process_pool[reader])
                 if (len(self.todo) > 0):
                     self.__add_job__()
+                yield result
 
         #finally, wait for the running jobs to finish
         while (len(self.process_pool) > 0):
-            for reader in self.__await_jobs__():
+            for (reader, result) in self.__await_jobs__():
                 del(self.process_pool[reader])
+            yield result
 
 
 #***ApeAudio temporarily removed***

@@ -189,7 +189,7 @@ if (__name__ == '__main__'):
         files1_tracknumbers = set(files1_map.keys())
         files2_tracknumbers = set(files2_map.keys())
 
-        queue = audiotools.ExecQueue2(results.cmp_result)
+        queue = audiotools.ExecQueue2()
 
         for (album_number, track_number) in sorted(
             list(files1_tracknumbers - files2_tracknumbers)):
@@ -205,7 +205,8 @@ if (__name__ == '__main__'):
                           [files1_map[(album_number, track_number)],
                            files2_map[(album_number, track_number)]])
 
-        queue.run(options.max_processes)
+        for result in queue.run(options.max_processes):
+            results.cmp_result(result)
 
         if (not options.no_summary):
             msg.output(_(u"Results:"))

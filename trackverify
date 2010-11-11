@@ -154,11 +154,12 @@ if (__name__ == '__main__'):
     msg = audiotools.Messenger("trackverify", options)
 
     results = Results(msg)
-    queue = audiotools.ExecQueue2(results.display)
+    queue = audiotools.ExecQueue2()
     for track in get_tracks(args, options.accept_list):
         queue.execute(verify, [track])
 
-    queue.run(options.max_processes)
+    for verify in queue.run(options.max_processes):
+        results.display(verify)
 
     summary_success = results.summary_success
     summary_failure = results.summary_failure
