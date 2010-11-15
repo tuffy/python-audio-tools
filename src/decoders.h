@@ -51,6 +51,9 @@ static PyObject*
 BitstreamReader_byte_align(decoders_BitstreamReader *self, PyObject *args);
 
 static PyObject*
+BitstreamReader_skip(decoders_BitstreamReader *self, PyObject *args);
+
+static PyObject*
 BitstreamReader_unread(decoders_BitstreamReader *self, PyObject *args);
 
 static PyObject*
@@ -78,6 +81,8 @@ PyMethodDef BitstreamReader_methods[] = {
     {"read", (PyCFunction)BitstreamReader_read,
      METH_VARARGS, ""},
     {"read64", (PyCFunction)BitstreamReader_read64,
+     METH_VARARGS, ""},
+    {"skip", (PyCFunction)BitstreamReader_skip,
      METH_VARARGS, ""},
     {"byte_align", (PyCFunction)BitstreamReader_byte_align,
      METH_NOARGS, ""},

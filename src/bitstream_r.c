@@ -65,6 +65,7 @@ bs_open(FILE *f, bs_endianness endianness)
         bs->read = bs_read_bits_be;
         bs->read_signed = bs_read_signed_bits_be;
         bs->read_64 = bs_read_bits64_be;
+        bs->skip = bs_skip_bits_be;
         bs->unread = bs_unread_bit_be;
         bs->read_unary = bs_read_unary_be;
         bs->read_limited_unary = bs_read_limited_unary_be;
@@ -75,6 +76,7 @@ bs_open(FILE *f, bs_endianness endianness)
         bs->read = bs_read_bits_le;
         bs->read_signed = bs_read_signed_bits_le;
         bs->read_64 = bs_read_bits64_le;
+        bs->skip = bs_skip_bits_le;
         bs->unread = bs_unread_bit_le;
         bs->read_unary = bs_read_unary_le;
         bs->read_limited_unary = bs_read_limited_unary_le;
@@ -337,6 +339,62 @@ bs_read_bits64_le(Bitstream* bs, unsigned int count)
 }
 
 void
+bs_skip_bits_be(Bitstream* bs, unsigned int count)
+{
+    int context = bs->state;
+    unsigned int result;
+    int byte;
+    struct bs_callback* callback;
+
+    while (count > 0) {
+        if (context == 0) {
+            if ((byte = fgetc(bs->file)) == EOF)
+                bs_abort(bs);
+            context = 0x800 | byte;
+            for (callback = bs->callback;
+                 callback != NULL;
+                 callback = callback->next)
+                callback->callback(byte, callback->data);
+        }
+
+        result = read_bits_table[context][(count > 8 ? 8 : count) - 1];
+
+        count -= (result & 0xF00000) >> 20;
+        context = (result & 0xFFF);
+    }
+
+    bs->state = context;
+}
+
+void
+bs_skip_bits_le(Bitstream* bs, unsigned int count)
+{
+    int context = bs->state;
+    unsigned int result;
+    int byte;
+    struct bs_callback* callback;
+
+    while (count > 0) {
+        if (context == 0) {
+            if ((byte = fgetc(bs->file)) == EOF)
+                bs_abort(bs);
+            context = 0x800 | byte;
+            for (callback = bs->callback;
+                 callback != NULL;
+                 callback = callback->next)
+                callback->callback(byte, callback->data);
+        }
+
+        result = read_bits_table_le[context][(count > 8 ? 8 : count) - 1];
+
+        count -= (result & 0xF00000) >> 20;
+        context = (result & 0xFFF);
+    }
+
+    bs->state = context;
+}
+
+void
 bs_unread_bit_be(Bitstream* bs, int unread_bit)
 {
     bs->state = unread_bit_table[bs->state][unread_bit];
@@ -509,6 +567,7 @@ bs_set_endianness_be(Bitstream *bs, bs_endianness endianness) {
         bs->read = bs_read_bits_le;
         bs->read_signed = bs_read_signed_bits_le;
         bs->read_64 = bs_read_bits64_le;
+        bs->skip = bs_skip_bits_le;
         bs->unread = bs_unread_bit_le;
         bs->read_unary = bs_read_unary_le;
         bs->read_limited_unary = bs_read_limited_unary_le;
@@ -524,6 +583,7 @@ bs_set_endianness_le(Bitstream *bs, bs_endianness endianness) {
         bs->read = bs_read_bits_be;
         bs->read_signed = bs_read_signed_bits_be;
         bs->read_64 = bs_read_bits64_be;
+        bs->skip = bs_skip_bits_be;
         bs->unread = bs_unread_bit_be;
         bs->read_unary = bs_read_unary_be;
         bs->read_limited_unary = bs_read_limited_unary_be;

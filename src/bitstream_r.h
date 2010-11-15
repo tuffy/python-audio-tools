@@ -55,6 +55,7 @@ typedef struct Bitstream_s {
     unsigned int (*read)(struct Bitstream_s* bs, unsigned int count);
     int (*read_signed)(struct Bitstream_s* bs, unsigned int count);
     uint64_t (*read_64)(struct Bitstream_s* bs, unsigned int count);
+    void (*skip)(struct Bitstream_s* bs, unsigned int count);
     void (*unread)(struct Bitstream_s* bs, int unread_bit);
     unsigned int (*read_unary)(struct Bitstream_s* bs, int stop_bit);
     int (*read_limited_unary)(struct Bitstream_s* bs, int stop_bit,
@@ -137,6 +138,9 @@ uint64_t
 bs_read_bits64_be(Bitstream* bs, unsigned int count);
 
 void
+bs_skip_bits_be(Bitstream* bs, unsigned int count);
+
+void
 bs_unread_bit_be(Bitstream* bs, int unread_bit);
 
 unsigned int
@@ -162,6 +166,9 @@ bs_read_bits64_le(Bitstream* bs, unsigned int count);
 
 int
 bs_read_signed_bits_le(Bitstream* bs, unsigned int count);
+
+void
+bs_skip_bits_le(Bitstream* bs, unsigned int count);
 
 void
 bs_unread_bit_le(Bitstream* bs, int unread_bit);

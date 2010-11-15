@@ -120,6 +120,25 @@ BitstreamReader_read64(decoders_BitstreamReader *self, PyObject *args) {
 }
 
 static PyObject*
+BitstreamReader_skip(decoders_BitstreamReader *self, PyObject *args) {
+    unsigned int count;
+
+    if (!PyArg_ParseTuple(args, "I", &count))
+        return NULL;
+
+    if (!setjmp(*bs_try(self->bitstream))) {
+        self->bitstream->skip(self->bitstream, count);
+        bs_etry(self->bitstream);
+        Py_INCREF(Py_None);
+        return Py_None;
+    } else {
+        bs_etry(self->bitstream);
+        PyErr_SetString(PyExc_IOError, "I/O error reading stream");
+        return NULL;
+    }
+}
+
+static PyObject*
 BitstreamReader_byte_align(decoders_BitstreamReader *self, PyObject *args) {
     self->bitstream->byte_align(self->bitstream);
 
