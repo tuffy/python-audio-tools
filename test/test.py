@@ -4491,6 +4491,66 @@ class TestFlacAudio(TestOggFlacAudio,
         finally:
             tempflac.close()
 
+    @TEST_METADATA
+    def test_tracklint4(self):
+        #create a small temporary flac
+        tempflacfile = tempfile.NamedTemporaryFile(suffix=".flac")
+        try:
+            tempflac = audiotools.FlacAudio.from_pcm(
+                tempflacfile.name,
+                BLANK_PCM_Reader(3))
+
+            #build an image from metadata
+            image = audiotools.Image.new(TEST_COVER1, u"Description", 0)
+            good_mime_type = image.mime_type
+            good_width = image.width
+            good_height = image.height
+            good_depth = image.color_depth
+            good_count = image.color_count
+            good_description = image.description
+            good_type = image.type
+
+            #update image with bogus fields
+            image.width = 0
+            image.height = 0
+            image.color_depth = 0
+            image.color_count = 0
+            image.mime_type = u'img/jpg'
+
+            #tag flac with bogus fields image
+            metadata = tempflac.get_metadata()
+            metadata.add_image(image)
+            tempflac.set_metadata(metadata)
+
+            #ensure bogus fields stick
+            image = tempflac.get_metadata().images()[0]
+            self.assertEqual(image.width, 0)
+            self.assertEqual(image.height, 0)
+            self.assertEqual(image.color_depth, 0)
+            self.assertEqual(image.color_count, 0)
+            self.assertEqual(image.mime_type, u'img/jpg')
+
+            #fix flac with tracklint
+            self.assertEqual(
+                self.__run_app__(
+                    ["tracklint", "-V", "quiet", tempflac.filename, "--fix"]),
+                0)
+
+            #ensure bogus fields are fixed
+            tempflac = audiotools.open(tempflacfile.name)
+            image = tempflac.get_metadata().images()[0]
+            self.assertEqual(image.width, good_width)
+            self.assertEqual(image.height, good_height)
+            self.assertEqual(image.color_depth, good_depth)
+            self.assertEqual(image.color_count, good_count)
+            self.assertEqual(image.mime_type, good_mime_type)
+            self.assertEqual(image.description, good_description)
+            self.assertEqual(image.type, good_type)
+        finally:
+            tempflacfile.close()
+
+
+
     @TEST_INVALIDFILE
     def test_short_header(self):
         self.assertEqual(audiotools.open("flac-allframes.flac").__md5__,
@@ -5241,9 +5301,44 @@ class ID3Lint:
                 os.unlink(os.path.join(tempdir, f))
             os.rmdir(tempdir)
 
+    def __test_tracklint2__(self, metadata_class, bad_image, fixed_image):
+        temp_file = tempfile.NamedTemporaryFile(
+            suffix="." + self.audio_class.SUFFIX)
+        try:
+            temp_track = self.audio_class.from_pcm(
+                temp_file.name,
+                BLANK_PCM_Reader(5))
+            metadata = metadata_class([])
+            metadata.add_image(bad_image)
+            temp_track.set_metadata(metadata)
+
+            #first, ensure that the bad_image's fields stick
+            bad_image2 = temp_track.get_metadata().images()[0]
+            for attr in ["data", "mime_type", "width", "height",
+                         "color_depth", "color_count", "description",
+                         "type"]:
+                self.assertEqual(getattr(bad_image2, attr),
+                                 getattr(bad_image, attr))
+
+            #fix the track with tracklint
+            self.assertEqual(self.__run_app__(
+                    ["tracklint", "-V", "quiet", "--fix", temp_file.name]),
+                             0)
+            temp_track = audiotools.open(temp_file.name)
+
+            #then, ensure that the good fields are now in place
+            good_image = temp_track.get_metadata().images()[0]
+            for attr in ["data", "mime_type", "width", "height",
+                         "color_depth", "color_count", "description",
+                         "type"]:
+                self.assertEqual(getattr(good_image, attr),
+                                 getattr(fixed_image, attr))
+        finally:
+            temp_file.close()
+
     @TEST_EXECUTABLE
     def test_tracklint_id3v22(self):
-        return self.__test_tracklint__(
+        self.__test_tracklint__(
             audiotools.ID3v22Comment(
                 [audiotools.ID3v22TextFrame.from_unicode("TT2", u"Track Name  "),
                  audiotools.ID3v22TextFrame.from_unicode("TRK", u"02"),
@@ -5254,9 +5349,12 @@ class ID3Lint:
                  audiotools.ID3v22TextFrame.from_unicode("TYE", u""),
                  audiotools.ID3v22TextFrame.from_unicode("COM", u"  Some Comment  ")]))
 
+        #ID3v2.2 doesn't store most image fields internally
+        #so there's little point in testing them for inaccuracies
+
     @TEST_EXECUTABLE
     def test_tracklint_id3v23(self):
-        return self.__test_tracklint__(
+        self.__test_tracklint__(
             audiotools.ID3v23Comment(
                 [audiotools.ID3v23TextFrame.from_unicode("TIT2", u"Track Name  "),
                  audiotools.ID3v23TextFrame.from_unicode("TRCK", u"02"),
@@ -5267,9 +5365,24 @@ class ID3Lint:
                  audiotools.ID3v23TextFrame.from_unicode("TCOP", u""),
                  audiotools.ID3v23TextFrame.from_unicode("COMM", u"  Some Comment  ")]))
 
+        good_image = audiotools.Image.new(TEST_COVER1, u"Description", 0)
+        bad_image = audiotools.Image.new(TEST_COVER1, u"Description", 0)
+
+        #ID3v2.3 only stores MIME type internally
+        #the rest are derived
+        bad_image.width = 500
+        bad_image.height = 500
+        bad_image.color_depth = 24
+        bad_image.color_count = 0
+        bad_image.mime_type = u'img/jpg'
+
+        self.__test_tracklint2__(audiotools.ID3v23Comment,
+                                 bad_image,
+                                 good_image)
+
     @TEST_EXECUTABLE
     def test_tracklint_id3v24(self):
-        return self.__test_tracklint__(
+        self.__test_tracklint__(
             audiotools.ID3v24Comment(
                 [audiotools.ID3v24TextFrame.from_unicode("TIT2", u"Track Name  "),
                  audiotools.ID3v24TextFrame.from_unicode("TRCK", u"02"),
@@ -5279,6 +5392,21 @@ class ID3Lint:
                  audiotools.ID3v24TextFrame.from_unicode("TYER", u""),
                  audiotools.ID3v24TextFrame.from_unicode("TCOP", u""),
                  audiotools.ID3v24TextFrame.from_unicode("COMM", u"  Some Comment  ")]))
+
+        good_image = audiotools.Image.new(TEST_COVER1, u"Description", 0)
+        bad_image = audiotools.Image.new(TEST_COVER1, u"Description", 0)
+
+        #ID3v2.4 only stores MIME type internally
+        #the rest are derived
+        bad_image.width = 500
+        bad_image.height = 500
+        bad_image.color_depth = 24
+        bad_image.color_count = 0
+        bad_image.mime_type = u'img/jpg'
+
+        self.__test_tracklint2__(audiotools.ID3v24Comment,
+                                 bad_image,
+                                 good_image)
 
 
 class TestMP3Audio(ID3Lint, TestAiffAudio):

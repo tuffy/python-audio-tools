@@ -207,9 +207,36 @@ def fix_blank_fields(metadata, log):
                 del(metadata[key])
                 log.append(_(u"Stripped blank %s field") % (key))
 
+#update embedded images with proper metadatadata
+#based on their raw data
+def fix_image_metrics(metadata, log):
+    converted_images = []
+    updated = False
+    for embedded_image in metadata.images():
+        converted_image = audiotools.Image.new(embedded_image.data,
+                                               embedded_image.description,
+                                               embedded_image.type)
+        if ((embedded_image.mime_type != converted_image.mime_type) or
+            (embedded_image.width != converted_image.width) or
+            (embedded_image.height != converted_image.height) or
+            (embedded_image.color_depth != converted_image.color_depth) or
+            (embedded_image.color_count != converted_image.color_count)):
+            converted_images.append(converted_image)
+            log.append(_(u"Fixed embedded image metadata fields"))
+            updated = True
+        else:
+            converted_images.append(embedded_image)
+
+    if (updated):
+        for old_image in metadata.images():
+            metadata.delete_image(old_image)
+        for new_image in converted_images:
+            metadata.add_image(new_image)
+
 
 METADATA_FIXES = (fix_leading_zeroes, fix_track_number,
-                  fix_whitespace, fix_performer_name, fix_blank_fields)
+                  fix_whitespace, fix_performer_name,
+                  fix_blank_fields, fix_image_metrics)
 
 
 #metadata should be an existing MetaData object
