@@ -245,6 +245,11 @@ AudioFile Objects
    as a non-negative integer.
    Each CD frame is 1/75th of a second.
 
+.. method:: AudioFile.seconds_length()
+
+   Returns the length of this audio file as a :class:`decimal.Decimal`
+   number of seconds.
+
 .. method:: AudioFile.lossless()
 
    Returns ``True`` if the data in the audio file has been stored losslessly.

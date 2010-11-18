@@ -2636,6 +2636,17 @@ class AudioFile:
         except ZeroDivisionError:
             return 0
 
+    def seconds_length(self):
+        """Returns the length of the track as a Decimal number of seconds."""
+
+        import decimal
+
+        try:
+            return (decimal.Decimal(self.total_frames()) /
+                    decimal.Decimal(self.sample_rate()))
+        except decimal.DivisionByZero:
+            return decmial.Decimal(0)
+
     def sample_rate(self):
         """Returns the rate of the track's audio as an integer number of Hz."""
 
