@@ -757,7 +757,7 @@ def filename_to_type(path):
         else:
             raise UnknownAudioType(ext)
     else:
-        return TYPE_MAP['wav']
+        return TYPE_MAP[DEFAULT_TYPE]
 
 
 class ChannelMask:
@@ -3778,8 +3778,7 @@ class ExecQueue2:
     def run(self, max_processes=1):
         """execute all queued functions
 
-        Upon a proper exit, the return value of those functions
-        will be passed to the callback function."""
+        Yields the result of each executed function as they complete."""
 
         max_processes = max(max_processes, 1)
 

@@ -2245,6 +2245,88 @@ uhhDdCiCwqg2Gw3lphgaGhoamR+mptKYNT/F3JFOFCQvKfgAwA==""".decode('base64').decode(
             os.rmdir(tempdir)
 
     @TEST_EXECUTABLE
+    def test_tracklint_modtime(self):
+        import stat
+
+        track_file = tempfile.NamedTemporaryFile(
+            suffix="." + self.audio_class.SUFFIX)
+        try:
+            track = self.audio_class.from_pcm(track_file.name,
+                                              BLANK_PCM_Reader(5))
+            metadata = audiotools.MetaData(
+                track_name="Track Name",
+                track_number=1)
+            track.set_metadata(metadata)
+            if (track.get_metadata() is not None):
+                orig_stat = os.stat(track.filename)
+                time.sleep(1)
+
+                #should make no metadata changes
+                self.assertEqual(self.__run_app__(
+                        ["tracklint", "--fix", track.filename]), 0)
+
+                self.assertEqual(track.get_metadata(),
+                                 metadata)
+
+                new_stat = os.stat(track.filename)
+
+                for field in [stat.ST_MODE,
+                              stat.ST_INO,
+                              stat.ST_DEV,
+                              stat.ST_NLINK,
+                              stat.ST_UID,
+                              stat.ST_GID,
+                              stat.ST_SIZE,
+                              stat.ST_MTIME,
+                              stat.ST_CTIME]:
+                    self.assertEqual(orig_stat[field], new_stat[field])
+        finally:
+            track_file.close()
+
+    @TEST_EXECUTABLE
+    def test_tracklint_modtime2(self):
+        import stat
+
+        track_file = tempfile.NamedTemporaryFile(
+            suffix="." + self.audio_class.SUFFIX)
+        undo_db = tempfile.NamedTemporaryFile(
+            suffix=".db")
+        try:
+            track = self.audio_class.from_pcm(track_file.name,
+                                              BLANK_PCM_Reader(5))
+            metadata = audiotools.MetaData(
+                track_name="Track Name",
+                track_number=1)
+            track.set_metadata(metadata)
+            if (track.get_metadata() is not None):
+                orig_stat = os.stat(track.filename)
+                time.sleep(1)
+
+                #should make no metadata changes
+                self.assertEqual(self.__run_app__(
+                        ["tracklint", "--db", undo_db.name,
+                         "--fix", track.filename]), 0)
+
+                self.assertEqual(track.get_metadata(),
+                                 metadata)
+
+                new_stat = os.stat(track.filename)
+
+                for field in [stat.ST_MODE,
+                              stat.ST_INO,
+                              stat.ST_DEV,
+                              stat.ST_NLINK,
+                              stat.ST_UID,
+                              stat.ST_GID,
+                              stat.ST_SIZE,
+                              stat.ST_MTIME,
+                              stat.ST_CTIME]:
+                    self.assertEqual(orig_stat[field], new_stat[field])
+        finally:
+            undo_db.close()
+            track_file.close()
+
+    @TEST_EXECUTABLE
     def test_tracklint_invalid1(self):
         track_file = tempfile.NamedTemporaryFile(
             suffix="." + self.audio_class.SUFFIX)

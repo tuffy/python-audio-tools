@@ -544,13 +544,15 @@ if (__name__ == '__main__'):
         else:
             #if we're fixing tracks and have no undo DB,
             #simply overwrite the track and track metadata directly
+            #if changes have been made
             for track in audiofiles(args, messenger=msg):
                 (track, messages) = fix_track(track, dry_run=False)
                 display_messages(msg, track, messages)
                 (metadata, messages) = fix_metadata(track.get_metadata())
                 display_messages(msg, track, messages)
                 try:
-                    track.set_metadata(metadata)
+                    if (len(messages) > 0):
+                        track.set_metadata(metadata)
                 except IOError:
                     msg.error(_(u"Unable to write \"%s\"") % \
                                   (msg.filename(track.filename)))
