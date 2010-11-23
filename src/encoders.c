@@ -93,7 +93,7 @@ BitstreamWriter_write(encoders_BitstreamWriter *self, PyObject *args) {
     if (!PyArg_ParseTuple(args, "Ii", &count, &value))
         return NULL;
 
-    self->bitstream->write_bits(self->bitstream, count, value);
+    self->bitstream->write(self->bitstream, count, value);
 
     Py_INCREF(Py_None);
     return Py_None;
@@ -107,7 +107,7 @@ BitstreamWriter_write_signed(encoders_BitstreamWriter *self, PyObject *args) {
     if (!PyArg_ParseTuple(args, "Ii", &count, &value))
         return NULL;
 
-    self->bitstream->write_signed_bits(self->bitstream, count, value);
+    self->bitstream->write_signed(self->bitstream, count, value);
 
     Py_INCREF(Py_None);
     return Py_None;
@@ -121,7 +121,7 @@ BitstreamWriter_write64(encoders_BitstreamWriter *self, PyObject *args) {
     if (!PyArg_ParseTuple(args, "IL", &count, &value))
         return NULL;
 
-    self->bitstream->write_bits64(self->bitstream, count, value);
+    self->bitstream->write_64(self->bitstream, count, value);
 
     Py_INCREF(Py_None);
     return Py_None;

@@ -122,8 +122,8 @@ encoders_encode_alac(PyObject *dummy, PyObject *args, PyObject *keywds)
         PyErr_SetFromErrno(PyExc_IOError);
         goto error;
     }
-    stream->write_bits64(stream, 32, encode_log.mdat_byte_size);
-    stream->write_bits64(stream, 32, 0x6D646174);  /*"mdat" type*/
+    stream->write_64(stream, 32, encode_log.mdat_byte_size);
+    stream->write_64(stream, 32, 0x6D646174);  /*"mdat" type*/
 
     /*write frames from pcm_reader until empty*/
     if (!pcmr_read(reader, options.block_size, &samples))
@@ -146,7 +146,7 @@ encoders_encode_alac(PyObject *dummy, PyObject *args, PyObject *keywds)
         PyErr_SetFromErrno(PyExc_IOError);
         goto error;
     }
-    stream->write_bits64(stream, 32, encode_log.mdat_byte_size);
+    stream->write_64(stream, 32, encode_log.mdat_byte_size);
 
     /*close and free allocated files/buffers*/
     pcmr_close(reader);
@@ -302,7 +302,7 @@ alac_write_frameset(Bitstream *bs,
         samples_subset.arrays += current_channel;
         samples_subset.size = channel_count;
 
-        bs->write_bits(bs, 3, channel_count - 1);
+        bs->write(bs, 3, channel_count - 1);
         if ((write_result = alac_write_frame(bs,
                                              options,
                                              bits_per_sample,
@@ -315,7 +315,7 @@ alac_write_frameset(Bitstream *bs,
     }
 
     /*once complete, write the '111' footer and byte-align output*/
-    bs->write_bits(bs, 3, 0x7);
+    bs->write(bs, 3, 0x7);
     bs->byte_align(bs);
 
 
@@ -406,22 +406,22 @@ alac_write_uncompressed_frame(Bitstream *bs,
     int i, j;
 
     /*write frame header*/
-    bs->write_bits(bs, 16, 0);           /*unknown, all 0*/
+    bs->write(bs, 16, 0);           /*unknown, all 0*/
     if (has_sample_size)               /*"has sample size"" flag*/
-        bs->write_bits(bs, 1, 1);
+        bs->write(bs, 1, 1);
     else
-        bs->write_bits(bs, 1, 0);
-    bs->write_bits(bs, 2, 0);  /*uncompressed frames never have wasted bits*/
-    bs->write_bits(bs, 1, 1);  /*the "is not compressed flag" flag*/
+        bs->write(bs, 1, 0);
+    bs->write(bs, 2, 0);  /*uncompressed frames never have wasted bits*/
+    bs->write(bs, 1, 1);  /*the "is not compressed flag" flag*/
     if (has_sample_size)
-        bs->write_bits64(bs, 32, pcm_frames);
+        bs->write_64(bs, 32, pcm_frames);
 
     /*write individual samples*/
     for (i = 0; i < pcm_frames; i++)
         for (j = 0; j < channels; j++)
-            bs->write_signed_bits(bs,
-                                  bits_per_sample,
-                                  samples->arrays[j].data[i]);
+            bs->write_signed(bs,
+                             bits_per_sample,
+                             samples->arrays[j].data[i]);
 
     return OK;
 }
@@ -511,21 +511,21 @@ alac_write_interlaced_frame(Bitstream *bs,
     int i, j;
 
     /*write frame header*/
-    bs->write_bits(bs, 16, 0);           /*unknown, all 0*/
+    bs->write(bs, 16, 0);           /*unknown, all 0*/
     if (has_sample_size)                 /*"has sample size"" flag*/
-        bs->write_bits(bs, 1, 1);
+        bs->write(bs, 1, 1);
     else
-        bs->write_bits(bs, 1, 0);
+        bs->write(bs, 1, 0);
 
     if (has_wasted_bits)                 /*"has wasted bits" value*/
-        bs->write_bits(bs, 2, 1);
+        bs->write(bs, 2, 1);
     else
-        bs->write_bits(bs, 2, 0);
+        bs->write(bs, 2, 0);
 
-    bs->write_bits(bs, 1, 0);  /*the "is not compressed flag" flag*/
+    bs->write(bs, 1, 0);  /*the "is not compressed flag" flag*/
 
     if (has_sample_size)
-        bs->write_bits64(bs, 32, pcm_frames);
+        bs->write_64(bs, 32, pcm_frames);
 
     /*if we have wasted bits, extract them from the front of each sample
       we'll only support 8 wasted bits, for 24bps input*/
@@ -547,8 +547,8 @@ alac_write_interlaced_frame(Bitstream *bs,
 
     assert(interlacing_shift < (1 << 8));
     assert(interlacing_leftweight < (1 << 8));
-    bs->write_bits(bs, 8, interlacing_shift);
-    bs->write_bits(bs, 8, interlacing_leftweight);
+    bs->write(bs, 8, interlacing_shift);
+    bs->write(bs, 8, interlacing_leftweight);
 
     /*apply channel correlation to samples*/
     alac_correlate_channels(&correlated_samples,
@@ -570,17 +570,17 @@ alac_write_interlaced_frame(Bitstream *bs,
 
     /*write 1 subframe header per channel*/
     for (i = 0; i < channels; i++) {
-        bs->write_bits(bs, 4, 0);                /*prediction type of 0*/
+        bs->write(bs, 4, 0);                /*prediction type of 0*/
         assert(shift_needed[i] < (1 << 4));
-        bs->write_bits(bs, 4, shift_needed[i]);  /*prediction quantitization*/
-        bs->write_bits(bs, 3, 4);                /*Rice modifier of 4 seems typical*/
+        bs->write(bs, 4, shift_needed[i]);  /*prediction quantitization*/
+        bs->write(bs, 3, 4);                /*Rice modifier of 4 seems typical*/
         coefficients = iaa_getitem(&lpc_coefficients, i);
         assert(coefficients->size < (1 << 5));
-        bs->write_bits(bs, 5, coefficients->size);
+        bs->write(bs, 5, coefficients->size);
         for (j = 0; j < coefficients->size; j++) {
             assert(coefficients->data[j] < (1 << (16 - 1)));
             assert(coefficients->data[j] >= -(1 << (16 - 1)));
-            bs->write_signed_bits(bs, 16, coefficients->data[j]);
+            bs->write_signed(bs, 16, coefficients->data[j]);
         }
     }
 
@@ -588,7 +588,7 @@ alac_write_interlaced_frame(Bitstream *bs,
     if (has_wasted_bits) {
         for (i = 0; i < wasted_bits.size; i++) {
             assert(wasted_bits.data[j] < (1 << 8));
-            bs->write_bits(bs, 8, wasted_bits.data[i]);
+            bs->write(bs, 8, wasted_bits.data[i]);
         }
     }
 
@@ -778,21 +778,21 @@ alac_write_residual(Bitstream *bs,
     int q = residual / ((1 << k) - 1);
     int e = residual % ((1 << k) - 1);
     if (q > 8) {
-        bs->write_bits(bs, 9, 0x1FF);
+        bs->write(bs, 9, 0x1FF);
         assert(residual < (1 << bits_per_sample));
-        bs->write_bits(bs, bits_per_sample, residual);
+        bs->write(bs, bits_per_sample, residual);
     } else {
         if (q > 0)
             bs->write_unary(bs, 0, q);
         else
-            bs->write_bits(bs, 1, 0);
+            bs->write(bs, 1, 0);
         if (k > 1) {
             if (e > 0) {
                 assert((e + 1) < (1 << k));
-                bs->write_bits(bs, k, e + 1);
+                bs->write(bs, k, e + 1);
             } else {
                 assert((k - 1) > 0);
-                bs->write_bits(bs, k - 1, 0);
+                bs->write(bs, k - 1, 0);
             }
         }
     }

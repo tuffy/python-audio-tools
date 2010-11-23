@@ -105,8 +105,8 @@ encoders_encode_shn(PyObject *dummy,
     }
 
     /*write header*/
-    stream->write_bits(stream, 32, 0x616A6B67); /*the magic number 'ajkg'*/
-    stream->write_bits(stream, 8, 2);           /*the version number 2*/
+    stream->write(stream, 32, 0x616A6B67); /*the magic number 'ajkg'*/
+    stream->write(stream, 8, 2);           /*the version number 2*/
 
     /*start counting written bytes *after* writing the 5 byte header*/
     bs_add_callback(stream, ShortenEncoder_byte_counter, &bytes_written);
@@ -159,7 +159,7 @@ encoders_encode_shn(PyObject *dummy,
       output (not counting the 5 bytes of magic + version)
       must be padded to a multiple of 4 bytes
       or its reference decoder explodes*/
-    stream->write_bits(stream, (4 - (bytes_written % 4)) * 8, 0);
+    stream->write(stream, (4 - (bytes_written % 4)) * 8, 0);
 
     iaa_free(&wrapped_samples);
     pcmr_close(reader);
@@ -469,7 +469,7 @@ ShortenEncoder_put_uvar(Bitstream* bs, int size, int value)
     msb = (int32_t)(value >> size);
     lsb = (int32_t)(value - (msb << size));
     bs->write_unary(bs, 1, msb);
-    bs->write_bits(bs, size, lsb);
+    bs->write(bs, size, lsb);
 }
 
 void

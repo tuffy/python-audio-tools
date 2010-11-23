@@ -64,10 +64,10 @@ typedef struct Bitstream_s {
     int records_total;   /*used by open_recorder*/
     BitstreamRecord *records;
 
-    void (*write_bits)(struct Bitstream_s* bs, unsigned int count, int value);
-    void (*write_signed_bits)(struct Bitstream_s* bs, unsigned int count,
+    void (*write)(struct Bitstream_s* bs, unsigned int count, int value);
+    void (*write_signed)(struct Bitstream_s* bs, unsigned int count,
                               int value);
-    void (*write_bits64)(struct Bitstream_s* bs, unsigned int count,
+    void (*write_64)(struct Bitstream_s* bs, unsigned int count,
                          uint64_t value);
     void (*write_unary)(struct Bitstream_s* bs, int stop_bit, int value);
     void (*byte_align)(struct Bitstream_s* bs);

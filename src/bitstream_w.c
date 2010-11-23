@@ -32,17 +32,17 @@ bs_open(FILE *f, bs_endianness endianness)
 
     switch (endianness) {
     case BS_BIG_ENDIAN:
-        bs->write_bits = write_bits_actual_be;
-        bs->write_signed_bits = write_signed_bits_actual_be;
-        bs->write_bits64 = write_bits64_actual_be;
+        bs->write = write_bits_actual_be;
+        bs->write_signed = write_signed_bits_actual_be;
+        bs->write_64 = write_bits64_actual_be;
         bs->write_unary = write_unary_actual_be;
         bs->byte_align = byte_align_w_actual_be;
         bs->set_endianness = set_endianness_actual_be;
         break;
     case BS_LITTLE_ENDIAN:
-        bs->write_bits = write_bits_actual_le;
-        bs->write_signed_bits = write_signed_bits_actual_le;
-        bs->write_bits64 = write_bits64_actual_le;
+        bs->write = write_bits_actual_le;
+        bs->write_signed = write_signed_bits_actual_le;
+        bs->write_64 = write_bits64_actual_le;
         bs->write_unary = write_unary_actual_le;
         bs->byte_align = byte_align_w_actual_le;
         bs->set_endianness = set_endianness_actual_le;
@@ -61,9 +61,9 @@ bs_open_accumulator(void)
     bs->callback = NULL;
     bs->records = NULL;
 
-    bs->write_bits = write_bits_accumulator;
-    bs->write_signed_bits = write_signed_bits_accumulator;
-    bs->write_bits64 = write_bits64_accumulator;
+    bs->write = write_bits_accumulator;
+    bs->write_signed = write_signed_bits_accumulator;
+    bs->write_64 = write_bits64_accumulator;
     bs->write_unary = write_unary_accumulator;
     bs->byte_align = byte_align_w_accumulator;
     bs->set_endianness = set_endianness_accumulator;
@@ -83,9 +83,9 @@ bs_open_recorder(void)
     bs->records_total = 0x100;
     bs->records = malloc(sizeof(BitstreamRecord) * bs->records_total);
 
-    bs->write_bits = write_bits_record;
-    bs->write_signed_bits = write_signed_bits_record;
-    bs->write_bits64 = write_bits64_record;
+    bs->write = write_bits_record;
+    bs->write_signed = write_signed_bits_record;
+    bs->write_64 = write_bits64_record;
     bs->write_unary = write_unary_record;
     bs->byte_align = byte_align_w_record;
     bs->set_endianness = set_endianness_record;
@@ -447,9 +447,9 @@ void
 set_endianness_actual_be(Bitstream* bs, bs_endianness endianness) {
     bs->state = 0;
     if (endianness == BS_LITTLE_ENDIAN) {
-        bs->write_bits = write_bits_actual_le;
-        bs->write_signed_bits = write_signed_bits_actual_le;
-        bs->write_bits64 = write_bits64_actual_le;
+        bs->write = write_bits_actual_le;
+        bs->write_signed = write_signed_bits_actual_le;
+        bs->write_64 = write_bits64_actual_le;
         bs->write_unary = write_unary_actual_le;
         bs->byte_align = byte_align_w_actual_le;
         bs->set_endianness = set_endianness_actual_le;
@@ -460,9 +460,9 @@ void
 set_endianness_actual_le(Bitstream* bs, bs_endianness endianness) {
     bs->state = 0;
     if (endianness == BS_BIG_ENDIAN) {
-        bs->write_bits = write_bits_actual_be;
-        bs->write_signed_bits = write_signed_bits_actual_be;
-        bs->write_bits64 = write_bits64_actual_be;
+        bs->write = write_bits_actual_be;
+        bs->write_signed = write_signed_bits_actual_be;
+        bs->write_64 = write_bits64_actual_be;
         bs->write_unary = write_unary_actual_be;
         bs->byte_align = byte_align_w_actual_be;
         bs->set_endianness = set_endianness_actual_be;
@@ -621,7 +621,7 @@ bs_dump_records(Bitstream* target, Bitstream* source)
     int i;
     BitstreamRecord record;
 
-    if (target->write_bits == write_bits_record) {
+    if (target->write == write_bits_record) {
         /*when dumping from one recorder to another,
           use memcpy instead of looping through the records*/
 
@@ -641,7 +641,7 @@ bs_dump_records(Bitstream* target, Bitstream* source)
 
         target->records_written += source->records_written;
         target->bits_written += source->bits_written;
-    } else if (target->write_bits == write_bits_accumulator) {
+    } else if (target->write == write_bits_accumulator) {
         /*when dumping from a recorder to an accumulator,
           simply copy over the total number of written bits*/
         target->bits_written = source->bits_written;
@@ -650,16 +650,16 @@ bs_dump_records(Bitstream* target, Bitstream* source)
             record = source->records[i];
             switch (record.type) {
             case BS_WRITE_BITS:
-                target->write_bits(target, record.key.count,
-                                   record.value.value);
+                target->write(target, record.key.count,
+                              record.value.value);
                 break;
             case BS_WRITE_SIGNED_BITS:
-                target->write_signed_bits(target, record.key.count,
-                                          record.value.value);
+                target->write_signed(target, record.key.count,
+                                     record.value.value);
                 break;
             case BS_WRITE_BITS64:
-                target->write_bits64(target, record.key.count,
-                                     record.value.value64);
+                target->write_64(target, record.key.count,
+                                 record.value.value64);
                 break;
             case BS_WRITE_UNARY:
                 target->write_unary(target, record.key.stop_bit,
