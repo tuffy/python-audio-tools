@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<diagram>
+  <row>
+    <col width=".25" id="frame">Frame₁</col>
+    <col width=".25">Frame₂</col>
+    <col width=".25">Frame₃</col>
+    <col width=".25" style="dashed">...</col>
+  </row>
+  <spacer height=".75"/>
+  <row>
+    <col start="0" end="3" width=".15" id="frame_s">Unknown</col>
+    <col start="4" end="15" width=".35">Total Frame Size (× 2)</col>
+    <col start="16" end="31" width=".15">Unknown</col>
+    <col start="0" end="223" style="dashed" width=".35" id="frame_e">Major Sync</col>
+  </row>
+  <row>
+    <col width=".22" start="0" end="15">Substream Size₁</col>
+    <col width=".22" style="dashed" start="16" end="31">Substream Size₂</col>
+    <col width=".06" style="dashed">...</col>
+    <col width=".22" id="substream">Substream Data₁</col>
+    <col width=".22" style="dashed">Substream Data₂</col>
+    <col width=".06" style="dashed">...</col>
+  </row>
+  <spacer height=".75"/>
+  <row>
+    <col width=".2333" id="blocks_s">Block₁</col>
+    <col width=".2333" style="dashed">Block₂</col>
+    <col width=".2333" style="dashed">...</col>
+    <col width=".15" style="dashed">Align</col>
+    <col width=".15" style="dashed" id="blocks_e" start="0" end="15">CRC</col>
+  </row>
+  <spacer height=".75"/>
+  <row>
+    <col width=".20" start="0" end="0" id="block_s">Params Present</col>
+    <col width=".48" id="params" style="dashed">Restart Header / Decoding Parameters</col>
+    <col width=".24">Block Data</col>
+    <col width=".08" start="0" end="0" id="block_e">Last</col>
+  </row>
+  <line s_id="frame" e_id="frame_s" s_corner="sw" e_corner="nw" style="dotted"/>  <line s_id="frame" e_id="frame_e" s_corner="se" e_corner="ne" style="dotted"/>
+  <line s_id="substream" e_id="blocks_s" s_corner="sw" e_corner="nw" style="dotted"/>
+  <line s_id="substream" e_id="blocks_e" s_corner="se" e_corner="ne" style="dotted"/>
+  <line s_id="blocks_s" e_id="block_s" s_corner="sw" e_corner="nw" style="dotted"/>
+  <line s_id="blocks_s" e_id="block_e" s_corner="se" e_corner="ne" style="dotted"/>
+</diagram>

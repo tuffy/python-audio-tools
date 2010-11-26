@@ -1,0 +1,438 @@
+\chapter{Meridian Lossless Packing}
+
+An MLP file is comprised of a series of frames.
+Each frame contains one or more substreams, each storing a different
+set of channels (e.g. $\text{Substream}_1$ may have channels 1-2,
+$\text{Substream}_2$ may have channels 3-6, and so on).
+Each substream contains one or more blocks.
+Finally, each block contains \VAR{Block Data} residuals
+and, optionally, decoding information.
+\begin{figure}[h]
+\includegraphics{figures/mlp_stream.pdf}
+\end{figure}
+\par
+\noindent
+\VAR{Total Frame Size} is the size of the entire frame,
+including the header, in bytes.
+\par
+The first frame will contain a \VAR{Major Sync} with information
+such as sample rate, bits-per-sample, substream count and so forth.
+This information will be constant throughout the stream,
+so most of the subsequent MLP frames will not have a sync.
+
+\section{MLP Decoding}
+
+The basic principle of MLP decoding is that we read in a
+set of decoding parameters for the first block and use those
+as arguments for decoding the block data itself.
+Subsequent blocks may may contain truncated parameters
+indicating only which arguments have changed so that the
+next block can be decoded.
+
+Decoded blocks are concatenated into a stream of PCM frames,
+each with one or more channels which comprise an entire substream.
+
+The channels of all decoded substreams
+(each with an identical number of PCM frames) are then combined
+into a single set of PCM frames and returned.
+
+\clearpage
+
+\subsection{The Major Sync}
+\VAR{Major Sync} is an optional frame header:
+\begin{figure}[h]
+\includegraphics{figures/mlp_major_sync.pdf}
+\end{figure}
+\par
+\noindent
+We detect a \VAR{Major Sync} by reading a 24-bit \VAR{Sync Words} value
+and 8-bit \VAR{Stream Type} value from the stream.
+If \texttt{0xF8726F} and \texttt{0xBB}, respectively, we can
+read the remainder of the sync.
+Otherwise, we must `back up' 32 bits and continue reading substream size
+and substream data values from the stream.
+If a \VAR{Major Sync} is not present in a frame,
+we use the values from the previous sync.
+\vskip .25in
+\par
+\noindent
+\begin{tiny}
+\begin{tabular}{|c|r|r||c|r||c|r|}
+\hline
+Value & Bits per Sample & Sample Rate & Value & Channels & Value & Channels \\
+\hline
+\texttt{0000} & 16 & 48000 & \texttt{00000} & 1 & \texttt{10000} & 5 \\
+\texttt{0001} & 20 & 96000 & \texttt{00001} & 2 & \texttt{10001} & 6 \\
+\texttt{0010} & 24 & 192000 & \texttt{00010} & 3 & \texttt{10010} & 5 \\
+\texttt{0011} & & 384000 & \texttt{00011} & 4 & \texttt{10011} & 5 \\
+\texttt{0100} & & 768000 & \texttt{00100} & 3 & \texttt{10100} & 6 \\
+\texttt{0101} & & 1536000 & \texttt{00101} & 4 & & \\
+\texttt{0110} & & 3072000 & \texttt{00110} & 5 & & \\
+\texttt{0111} & & & \texttt{00111} & 3 & & \\
+\texttt{1000} & & 44100 & \texttt{01000} & 4 & & \\
+\texttt{1001} & & 88200 & \texttt{01001} & 5 & & \\
+\texttt{1010} & & 176400 & \texttt{01010} & 4 & & \\
+\texttt{1011} & & 352800 & \texttt{01011} & 5 & & \\
+\texttt{1100} & & 705600 & \texttt{01100} & 6 & & \\
+\texttt{1101} & & 1411200 & \texttt{01101} & 4 & & \\
+\texttt{1110} & & 2822400 & \texttt{01110} & 5 & & \\
+\texttt{1111} & & & \texttt{01111} & 4 & & \\
+\hline
+\end{tabular}
+\end{tiny}
+
+\subsection{Substream Size}
+There is one \VAR{Substream Size} header per frame substream
+(as indicated in the \VAR{Major Sync}).
+\begin{figure}[h]
+\includegraphics{figures/mlp_substream_size.pdf}
+\end{figure}
+\par
+\noindent
+\VAR{Substream Size} is the size of the entire substream,
+\textit{not} including the header.
+
+\clearpage
+
+\subsection{Substream Data}
+
+\begin{figure}[h]
+\includegraphics{figures/mlp_substream.pdf}
+\end{figure}
+We continue to read blocks until a block's \VAR{Last} bit is set.
+Each block is prefixed by a \VAR{Parameters Present} bit.
+If set, the block has an optional \VAR{Restart Header} block
+(indicated by the prefixed \VAR{Header Present} bit)
+and required \VAR{Decoding Parameters} block.
+If \VAR{Parameters Present} is not set, we continue directly to
+\VAR{Block Data} - using the most recently read set of parameters for
+decoding.
+
+Once all the blocks have been read, we align the stream to a
+mulitple of 16-bits.
+Then, if \VAR{Checkdata Present} has been indicated in the
+\VAR{Substream Size} header, we read a 16-bit checksum.
+
+\subsection{Restart Header}
+\begin{figure}[h]
+\includegraphics{figures/mlp_restart_header.pdf}
+\end{figure}
+\par
+\noindent
+There are \VAR{Max Matrix Channel} + 1 number of
+unsigned 6-bit \VAR{Channel Assignment} values.
+\VAR{Min Channel} and \VAR{Max Channel} indicate the substream's
+range of channels.
+The total number of channels in a given substream is:
+\begin{equation*}
+(\text{Max Channel} - \text{Min Channel}) + 1
+\end{equation*}
+
+Once a restart header is seen, the \VAR{Decoding Parameters} are
+immediately reset to their default values.
+
+\clearpage
+
+\subsection{Decoding Parameters}
+
+Reading the decoding parameters requires 8, 1-bit
+\VAR{Parameter Presence Flags}.
+If the flag for a particular parameter is set,
+\textit{and} the parameter's prefixed \VAR{Present}
+bit is set, we go ahead and read that parameter.
+Note that the first decoding parameter is the \VAR{Parameter Presence Flags}
+value itself.
+
+\begin{figure}[h]
+\includegraphics{figures/mlp_decoding_params.pdf}
+\end{figure}
+\par
+\noindent
+There is one optional \VAR{Channel Parameters} block per
+substream channel.
+Again, each is prefixed by a single \VAR{Present} bit.
+
+\subsubsection{Parameter Presence Flags}
+
+\begin{figure}[h]
+\includegraphics{figures/mlp_parameter_presence_flags.pdf}
+\end{figure}
+\par
+\noindent
+By default, all 8 flags are all set.
+The \VAR{Huffman Offset}, \VAR{IIR Filter Parameters} and
+\VAR{FIR Filter Parameters} flags are checked while
+reading \VAR{Channel Parameters}.
+
+\subsubsection{Block Size}
+
+This is the size of the block in PCM frames.
+Its value is 8 by default.
+
+\clearpage
+
+\subsubsection{Matrix Parameters}
+
+%% If \VAR{Matrix Parameters} is indicated during parameter decoding:
+
+\begin{figure}[h]
+\includegraphics{figures/mlp_matrix_params.pdf}
+\end{figure}
+\par
+\noindent
+There are \VAR{Matrix Count} number of matrices.
+If \VAR{Noise Type} is set in the \VAR{Restart Header},
+there is one optional \VAR{Matrix Coefficient} per substream
+channel and \VAR{Matrix Noise Shift} is present.
+If \VAR{Noise Type} is not set, there is one coefficient per
+substream channel plus 2, and \VAR{Matrix Noise Shift} is not present.
+The size of each signed matrix coefficient is \VAR{Fractional Bits} + 2
+and its value is calculated as:
+\begin{equation*}
+\text{Matrix Coefficient}_i = \text{Signed Value}_i \times 2 ^ {14 - \text{Fractional Bits}}
+\end{equation*}
+If the preceding \VAR{Present} bit is \textit{not} set,
+the value of $\text{Matrix Coefficient}_i$ is 0.
+If \VAR{Matrix Parameters} is \textit{not} indicated during parameter decoding,
+treat \VAR{Matrix Count} as 0 by default.
+
+\subsubsection{Output Shifts}
+
+%% If \VAR{Output Shifts} is indicated during parameter decoding:
+
+\begin{figure}[h]
+\includegraphics{figures/mlp_output_shifts.pdf}
+\end{figure}
+\par
+\noindent
+There are \VAR{Max Matrix Channel} + 1 number of shift values
+(from the restart header).
+Each is a signed, 4-bit value.
+\par
+If \VAR{Output Shifts} is \textit{not} indicated during parameter
+decoding, all $\text{Output Shift}_i$ values are 0 by default.
+
+
+\subsubsection{Quant Step Sizes}
+
+%% If \VAR{Quant Step Sizes} is indicated during parameter decoding:
+\begin{figure}[h]
+\includegraphics{figures/mlp_quant_steps.pdf}
+\end{figure}
+\par
+\noindent
+There is one \VAR{Quant Step Size} value per substream channel.
+Each is an unsigned, 4-bit value.
+\par
+If \VAR{Quant Step Sizes} is \textit{not} indicated during parameter
+decoding, all $\text{Quant Step Size}_i$ values are 0 by default.
+
+\clearpage
+
+\subsubsection{Channel Parameters}
+
+\begin{figure}[h]
+\includegraphics{figures/mlp_channel_parameters.pdf}
+\end{figure}
+\par
+\noindent
+Remember that the optional \VAR{FIR Filter Parameters},
+\VAR{IIR Filter Parameters} and \VAR{Huffman Offset}
+values are read only if the corresponding \VAR{Parameter Presence Flag}
+is set.
+
+\VAR{Codebook} and \VAR{Huffman Least-Significant Bits} are unsigned values.
+\VAR{Huffman Offset} is a signed value.
+\VAR{Signed Huffman Offset} is calculated as follows:
+\begin{align*}
+\intertext{If $\text{Codebook} > 0$:}
+\text{LSB Bits} &= \text{Huffman Least-Significant Bits} - \text{Quant Step Size}_{\text{channel}} \\
+\text{Sign Shift} &= \text{LSB Bits} + 2 - \text{Codebook} \\
+\text{Signed Huffman Offset} &=
+\begin{cases}
+\text{Huffman Offset} - 7 \times 2 ^ {\text{LSB Bits}} - 2 ^ {\text{Sign Shift}} & \text{if Sign Shift} \geq 0 \\
+\text{Huffman Offset} - 7 \times 2 ^ {\text{LSB Bits}} & \text{if Sign Shift} < 0
+\end{cases}
+\intertext{If $\text{Codebook} = 0$:}
+\text{LSB Bits} &= \text{Huffman Least-Significant Bits} - \text{Quant Step Size}_{\text{channel}} \\
+\text{Sign Shift} &= \text{LSB Bits} - 1 \\
+\text{Signed Huffman Offset} &=
+\begin{cases}
+\text{Huffman Offset} - 2 ^ {\text{Sign Shift}} & \text{if Sign Shift} \geq 0 \\
+\text{Huffman Offset} & \text{if Sign Shift} < 0
+\end{cases}
+\end{align*}
+The \VAR{Signed Huffman Offset} will be added to each decoded residual
+during block decoding.
+
+By default, \VAR{Signed Huffman Offset} is $-2 ^ {23}$, \VAR{Codebook} is 0
+and \VAR{Huffman Least-Significant Bits} is 23.
+
+\clearpage
+
+\subsubsection{FIR Filter Parameters}
+\begin{figure}[h!]
+\includegraphics{figures/mlp_filter_params_fir.pdf}
+\end{figure}
+\par
+\noindent
+If \VAR{Order} is 0, we forego reading the rest of the filter parameters.
+Otherwise, \VAR{Shift}, \VAR{Coefficient Bits} and \VAR{Coefficient Shift}
+are unsigned values - the latter two are used for reading
+\VAR{Order} number of signed values
+which we convert to filter coefficients as follows:
+\begin{equation*}
+\text{FIR Filter Coefficient}_i = \text{Signed Coeff}_i \times 2 ^ {\text{Coefficient Shift}}
+\end{equation*}
+We're primarily interested in the \VAR{Shift} and \VAR{FIR Filter Coefficient}
+values, which will be used for filtering decoded residuals.
+
+Note that the \VAR{Set State} value must be 0.  By default,
+\VAR{Shift} is 0 and the signed coefficient list is empty.
+
+\subsubsection{IIR Filter Parameters}
+\begin{figure}[h]
+\includegraphics{figures/mlp_filter_params_iir.pdf}
+\end{figure}
+
+As with FIR, if \VAR{Order} is 0, we forego reading the rest of the
+filter parameters.
+Otherwise, \VAR{Shift}, \VAR{Coefficient Bits} and \VAR{Coefficient Shift}
+are unsigned values - the latter two are used for reading
+\VAR{Order} number of signed coefficient values
+which we convert to filter coefficients as follows:
+\begin{equation*}
+\text{IIR Filter Coefficient}_i = \text{Signed Coeff}_i \times 2 ^ {\text{Coefficient Shift}}
+\end{equation*}
+If \VAR{Set State} is 1, we also read \VAR{Order} number of signed state
+values which we convert as follows:
+\begin{equation*}
+\text{State}_i = \text{Signed State}_i \times 2 ^ {\text{State Shift}}
+\end{equation*}
+We're primarily interested in the \VAR{Shift} and \VAR{IIR Filter Coefficient}
+and \VAR{State} values which will be used for filtering decoded residuals.
+
+By default, \VAR{Shift} is 0 and the signed coefficient list is empty.
+
+\clearpage
+
+\subsection{Block Data}
+
+The block data of a given substream block is the residuals
+from which our original samples will be reconstructed.
+Note that this block is prepended by one
+\VAR{Bypassed Least-Significan Bits} bit per \VAR{Matrix Parameter} value.
+
+The remainder of the block contains \VAR{Block Size} number of
+residual values (from \VAR{Decoding Parameters}) per substream channel.
+For example, given a 2 channel substream with a \VAR{Block Size} of 160,
+our residuals will be stored
+$\text{Left}_1$, $\text{Right}_1$, $\text{Left}_2$,
+and so on up to $\text{Right}_{160}$.
+
+Decoding a given residual value requires the
+\VAR{Channel Parameters} as well as the \VAR{Quant Step Size}
+for that residual's channel.
+First, given a positive \VAR{Codebook} value, we decode a Huffman value
+from the bit stream as indiciated by the trees on page
+\pageref{mlp_codebooks}.
+This value is our \VAR{Most-Signicant Bits} (MSB).
+If \VAR{Codebook} is 0, our \VAR{Most-Significant Bits} are also 0.
+
+We then calculate our least-significant bit count as:
+\begin{equation*}
+\text{LSB Count}_i = \text{Huffman Least-Significant Bits}_c - \text{Quant Step Size}_c
+\end{equation*}
+We read this number of bits from the stream as
+our \VAR{Least-Significant Bits} (LSB) value.
+If $\text{LSB Count}_i$ is 0, we read no bits from the stream and our
+\VAR{Least-Significant Bits} value is also 0.
+
+Our final residual value is calculated as follows:
+\begin{equation*}
+\text{Residual}_i = ((\text{MSB}_i \times 2 ^ {\text{LSB Count}_i}) + \text{LSB}_i + \text{Signed Huffman Offset}_c) \times 2 ^ {\text{Quant Step Size}_c}
+\end{equation*}
+
+Note that if \VAR{Codebook} is 0 \textit{and} our $\text{LSB Count}_i$ is 0,
+we read no bits from the stream and $\text{Residual}_i$ is 0.
+This is how MLP stores large runs of 0 residuals.
+
+\clearpage
+
+\begin{figure}[h]
+\label{mlp_codebooks}
+\includegraphics{figures/mlp_codebook1.pdf}
+\caption{Codebook 1}
+\includegraphics{figures/mlp_codebook2.pdf}
+\caption{Codebook 2}
+\includegraphics{figures/mlp_codebook3.pdf}
+\caption{Codebook 3}
+\end{figure}
+
+\clearpage
+
+%% \subsubsection{Codebooks}
+%% \begin{table}[h]
+%% \begin{tabular}{|r|r||r|r||r|r|}
+%% \hline
+%% \multicolumn{2}{|c||}{Codebook 1} &
+%% \multicolumn{2}{c||}{Codebook 2} &
+%% \multicolumn{2}{c|}{Codebook 3} \\
+%% Pattern & Value & Pattern & Value & Pattern & Value \\
+%% \hline
+%% \texttt{000000001} & 0 &
+%% \texttt{000000001} & 0 &
+%% \texttt{000000001} & 0 \\
+%% \texttt{00000001} & 1 &
+%% \texttt{00000001} & 1 &
+%% \texttt{00000001} & 1 \\
+%% \texttt{0000001} & 2 &
+%% \texttt{0000001} & 2 &
+%% \texttt{0000001} & 2 \\
+%% \texttt{000001} & 3 &
+%% \texttt{000001} & 3 &
+%% \texttt{000001} & 3 \\
+%% \texttt{00001} & 4 &
+%% \texttt{00001} & 4 &
+%% \texttt{00001} & 4 \\
+%% \texttt{0001} & 5 &
+%% \texttt{0001} & 5 &
+%% \texttt{0001} & 5 \\
+%% \texttt{001} & 6 &
+%% \texttt{001} & 6 &
+%% \texttt{001} & 6 \\
+%% \texttt{100} & 7 &
+%% \texttt{10} & 7 &
+%% \texttt{1} & 7 \\
+%% \texttt{101} & 8 &
+%% \texttt{11} & 8 &
+%% \texttt{011} & 8 \\
+%% \texttt{110} & 9 &
+%% \texttt{011} & 9 &
+%% \texttt{0101} & 9 \\
+%% \texttt{111} & 10 &
+%% \texttt{0101} & 10 &
+%% \texttt{01001} & 10 \\
+%% \texttt{011} & 11 &
+%% \texttt{01001} & 11 &
+%% \texttt{010001} & 11 \\
+%% \texttt{0101} & 12 &
+%% \texttt{010001} & 12 &
+%% \texttt{0100001} & 12 \\
+%% \texttt{01001} & 13 &
+%% \texttt{0100001} & 13 &
+%% \texttt{01000001} & 13 \\
+%% \texttt{010001} & 14 &
+%% \texttt{01000001} & 14 &
+%% \texttt{010000001} & 14 \\
+%% \texttt{0100001} & 15 &
+%% \texttt{010000001} & 15 &
+%% & \\
+%% \texttt{01000001} & 16 &
+%% & & & \\
+%% \texttt{010000001} & 17 &
+%% & & & \\
+%% \hline
+%% \end{tabular}
+%% \end{table}
+

@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<diagram>
+  <row>
+    <col width=".2333" id="block">Block₁</col>
+    <col width=".2333" style="dashed">Block₂</col>
+    <col width=".2333" style="dashed">...</col>
+    <col width=".15" style="dashed">Align</col>
+    <col width=".15" style="dashed" start="0" end="15">CRC</col>
+  </row>
+  <spacer height=".75"/>
+  <row>
+    <col width=".20" start="0" end="0" id="block_s">Params Present</col>
+    <col width=".48" id="params" style="dashed">Restart Header / Decoding Parameters</col>
+    <col width=".24">Block Data</col>
+    <col width=".08" start="0" end="0" id="block_e">Last</col>
+  </row>
+  <spacer height=".75"/>
+  <row>
+    <col start="0" end="0" width=".20" id="params_s">Header Present</col>
+    <col width=".40" style="dashed">Restart Header</col>
+    <col width=".40" id="params_e">Decoding Parameters</col>
+  </row>
+  <line s_id="block" e_id="block_s" s_corner="sw" e_corner="nw" style="dotted"/>
+  <line s_id="block" e_id="block_e" s_corner="se" e_corner="ne" style="dotted"/>  <line s_id="params" e_id="params_s" s_corner="sw" e_corner="nw" style="dotted"/>
+  <line s_id="params" e_id="params_e" s_corner="se" e_corner="ne" style="dotted"/>
+</diagram>

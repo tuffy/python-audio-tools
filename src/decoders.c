@@ -25,6 +25,7 @@ extern PyTypeObject decoders_FlacDecoderType;
 extern PyTypeObject decoders_SHNDecoderType;
 extern PyTypeObject decoders_ALACDecoderType;
 extern PyTypeObject decoders_WavPackDecoderType;
+extern PyTypeObject decoders_MLPDecoderType;
 
 extern const unsigned int read_bits_table[0x900][8];
 extern const unsigned int read_unary_table[0x900][2];
@@ -52,8 +53,12 @@ initdecoders(void)
     if (PyType_Ready(&decoders_ALACDecoderType) < 0)
         return;
 
-    decoders_ALACDecoderType.tp_new = PyType_GenericNew;
+    decoders_WavPackDecoderType.tp_new = PyType_GenericNew;
     if (PyType_Ready(&decoders_WavPackDecoderType) < 0)
+        return;
+
+    decoders_MLPDecoderType.tp_new = PyType_GenericNew;
+    if (PyType_Ready(&decoders_MLPDecoderType) < 0)
         return;
 
     m = Py_InitModule3("decoders", module_methods,
@@ -78,6 +83,10 @@ initdecoders(void)
     Py_INCREF(&decoders_WavPackDecoderType);
     PyModule_AddObject(m, "WavPackDecoder",
                        (PyObject *)&decoders_WavPackDecoderType);
+
+    Py_INCREF(&decoders_MLPDecoderType);
+    PyModule_AddObject(m, "MLPDecoder",
+                       (PyObject *)&decoders_MLPDecoderType);
 
 }
 

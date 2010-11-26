@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<diagram>
+  <row>
+    <col start="0" end="12" width=".5">Sync Word (0x18F5)</col>
+    <col start="13" end="13" width=".15">Noise Type</col>
+    <col start="14" end="29" width=".35">Output Timestamp</col>
+  </row>
+  <row>
+    <col start="30" end="33" width=".3333333">Min Channel</col>
+    <col start="34" end="37" width=".3333333">Max Channel</col>
+    <col start="38" end="41" width=".3333333">Max Matrix Channel</col>
+  </row>
+  <row>
+    <col start="42" end="45" width=".3333333">Noise Shift</col>
+    <col start="46" end="68" width=".3333333">Noise Gen Seed</col>
+    <col start="69" end="87" width=".3333333">Unknown</col>
+  </row>
+  <row>
+    <col start="88" end="88" width=".3">Data Check Present</col>
+    <col start="89" end="96" width=".4">Lossless Check</col>
+    <col start="97" end="112" width=".3">Unknown</col>
+  </row>
+  <row>
+    <col start="0" end="5" width=".3333333">Channel Assignment₁</col>
+    <col start="6" end="11" width=".3333333" style="dashed">Channel Assignment₂</col>
+    <col width=".3333333" style="dashed">...</col>
+  </row>
+  <row>
+    <col start="0" end="7">Checksum</col>
+  </row>
+</diagram>

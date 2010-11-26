@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<diagram>
+  <row>
+    <col start="0" end="3" width=".25">Matrix Count</col>
+    <col width=".25" id="matrix">Matrix₁</col>
+    <col width=".25" style="dashed">Matrix₂</col>
+    <col width=".25" style="dashed">...</col>
+  </row>
+  <spacer/>
+  <row>
+    <col start="0" end="3" width=".30" id="out_channel">Out Channel</col>
+    <col start="4" end="7" width=".40">Fractional Bits</col>
+    <col start="8" end="8" width=".30" id="lsb_bypass">LSB Bypass</col>
+  </row>
+  <row>
+    <col start="0" end="0" width=".1">Present₁</col>
+    <col width=".3">Matrix Coefficient₁</col>
+    <col start="0" end="0" width=".1">Present₂</col>
+    <col width=".3">Matrix Coefficient₂</col>
+    <col width=".2" style="dashed">...</col>
+  </row>
+  <row>
+    <col start="0" end="3" style="dashed">Matrix Noise Shift</col>
+  </row>
+  <line s_id="matrix" e_id="out_channel" s_corner="sw" e_corner="nw" style="dotted"/>
+  <line s_id="matrix" e_id="lsb_bypass" s_corner="se" e_corner="ne" style="dotted"/>
+</diagram>

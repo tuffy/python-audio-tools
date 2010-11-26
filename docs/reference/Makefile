@@ -67,12 +67,20 @@ figures/alac_read_residual.pdf figures/alac_residual.pdf \
 figures/alac_wasted.pdf figures/alac_write_residual.pdf \
 figures/alac_residual_w.pdf figures/alac_lag.pdf \
 figures/bitstream_struct.pdf figures/bitstream_bigendian.pdf \
-figures/bitstream_littleendian.pdf figures/bitstream_littleendian_alt.pdf
+figures/bitstream_littleendian.pdf figures/bitstream_littleendian_alt.pdf \
+figures/mlp_stream.pdf figures/mlp_major_sync.pdf \
+figures/mlp_substream_size.pdf figures/mlp_substream.pdf \
+figures/mlp_restart_header.pdf figures/mlp_decoding_params.pdf \
+figures/mlp_parameter_presence_flags.pdf figures/mlp_matrix_params.pdf \
+figures/mlp_output_shifts.pdf figures/mlp_quant_steps.pdf \
+figures/mlp_channel_parameters.pdf figures/mlp_filter_params_fir.pdf \
+figures/mlp_filter_params_iir.pdf figures/mlp_codebook1.pdf \
+figures/mlp_codebook2.pdf figures/mlp_codebook3.pdf
 
 CHAPTERS = basics.tex wav.tex flac.tex m4a.tex mp3.tex vorbis.tex \
 wavpack.tex ape.tex aiff.tex au.tex speex.tex oggflac.tex musepack.tex \
 freedb.tex musicbrainz.tex musicbrainz_mmd.tex replaygain.tex references.tex \
-license.tex introduction.tex shorten.tex alac.tex
+license.tex introduction.tex shorten.tex alac.tex mlp.tex
 
 all: audioformats-letter.pdf audioformats-a4.pdf
 
@@ -185,10 +193,13 @@ figures/bitstream_littleendian.pdf: figures/bitstream_littleendian.fig
 figures/bitstream_littleendian_alt.pdf: figures/bitstream_littleendian_alt.fig
 	fig2dev -Z 6 -L pdf $< $@
 
-.SUFFIXES: .pdf .xml
+.SUFFIXES: .pdf .xml .dot
 
 .xml.pdf:
 	./bitdiagram.py -i $< -o $@
+
+.dot.pdf:
+	dot -Tpdf $< -o $@
 
 figures/m4a_ftyp.pdf: figures/m4a_ftyp.xml
 	./bitdiagram.py -w 270 -i $< -o $@
@@ -210,27 +221,6 @@ figures/shorten_unsigned.pdf: figures/shorten_unsigned.fig
 
 figures/shorten_signed.pdf: figures/shorten_signed.fig
 	fig2dev -Z 2 -L pdf $< $@
-
-figures/wavpack_read_residual1.pdf: figures/wavpack_read_residual1.dot
-	dot -Tpdf $< -o $@
-
-figures/wavpack_read_residual2.pdf: figures/wavpack_read_residual2.dot
-	dot -Tpdf $< -o $@
-
-figures/wavpack_read_residual3.pdf: figures/wavpack_read_residual3.dot
-	dot -Tpdf $< -o $@
-
-figures/wavpack_read_residual.pdf: figures/wavpack_read_residual.dot
-	dot -Tpdf $< -o $@
-
-figures/wavpack_read_zeroes.pdf: figures/wavpack_read_zeroes.dot
-	dot -Tpdf $< -o $@
-
-figures/wavpack_write_zeroes.pdf: figures/wavpack_write_zeroes.dot
-	dot -Tpdf $< -o $@
-
-figures/wavpack_decorr_samples2.pdf: figures/wavpack_decorr_samples2.dot
-	dot -Tpdf $< -o $@
 
 figures/wavpack_decorrelation1.fig: figures/wavpack_decorrelation1.plot
 	./figures/wavpack_decorrelation1.plot > $@

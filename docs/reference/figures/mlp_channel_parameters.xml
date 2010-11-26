@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<diagram>
+  <row>
+    <col start="0" end="0" width=".10" style="dashed">Present</col>
+    <col width=".90" style="dashed">FIR Filter Parameters</col>
+  </row>
+  <row>
+    <col start="0" end="0" width=".10" style="dashed">Present</col>
+    <col width=".90" style="dashed">IIR Filter Parameters</col>
+  </row>
+  <row>
+    <col start="0" end="0" width=".10" style="dashed">Present</col>
+    <col start="1" end="15" width=".90" style="dashed">Huffman Offset</col>
+  </row>
+  <row>
+    <col start="0" end="1" width=".30">Codebook</col>
+    <col start="2" end="6" width=".70">Huffman Least-Significant Bits</col>
+  </row>
+</diagram>

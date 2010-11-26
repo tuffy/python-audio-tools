@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<diagram>
+  <row>
+    <col start="0" end="0" width=".10" style="dashed">Present</col>
+    <col start="1" end="8" width=".90" style="dashed">Parameter Present Flags</col>
+  </row>
+  <row>
+    <col start="0" end="0" width=".10" style="dashed">Present</col>
+    <col start="1" end="9" width=".90" style="dashed">Block Size</col>
+  </row>
+  <row>
+    <col start="0" end="0" width=".10" style="dashed">Present</col>
+    <col width=".90" style="dashed">Matrix Parameters</col>
+  </row>
+  <row>
+    <col start="0" end="0" width=".10" style="dashed">Present</col>
+    <col width=".90" style="dashed">Output Shifts</col>
+  </row>
+  <row>
+    <col start="0" end="0" width=".10" style="dashed">Present</col>
+    <col width=".90" style="dashed">Quant Step Sizes</col>
+  </row>
+  <row>
+    <col start="0" end="0" width=".10">Present</col>
+    <col width=".35" style="dashed">Channel Parameters₁</col>
+    <col start="0" end="0" width=".10">Present</col>
+    <col width=".35" style="dashed">Channel Parameters₂</col>
+    <col width=".1" style="dashed">...</col>
+  </row>
+</diagram>

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<diagram>
+  <row>
+    <col start="0" end="3" width=".25">Order</col>
+    <col style="dashed" start="4" end="7" width=".25">Shift</col>
+    <col style="dashed" start="8" end="12" width=".25">Coefficient Bits</col>
+    <col style="dashed" start="13" end="15" width=".25">Coefficient Shift</col>
+  </row>
+  <row>
+    <col style="dashed" start="0" end="coefficient bits" width=".333333">Signed Coeff₁</col>
+    <col style="dashed" start="0" end="coefficient bits" width=".333333">Signed Coeff₂</col>
+    <col style="dashed" width=".333333">...</col>
+  </row>
+  <row>
+    <col style="dashed" start="0" end="0" width=".30">Set State</col>
+    <col style="dashed" start="1" end="4" width=".35">State Bits</col>
+    <col style="dashed" start="5" end="8" width=".35">State Shift</col>
+  </row>
+  <row>
+    <col style="dashed" start="0" end="state bits" width=".333333">Signed State₁</col>
+    <col style="dashed" start="0" end="state bits" width=".333333">Signed State₂</col>
+    <col style="dashed" width=".333333">...</col>
+  </row>
+</diagram>
