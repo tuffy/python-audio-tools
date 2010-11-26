@@ -22,12 +22,27 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 *******************************************************/
 
+struct mlp_MajorSync {
+    uint8_t group1_bits;
+    uint8_t group2_bits;
+    uint8_t group1_sample_rate;
+    uint8_t group2_sample_rate;
+    uint8_t channel_assignment;
+    uint8_t substream_count;
+};
+
 typedef struct {
     PyObject_HEAD
 
     FILE* file;
     Bitstream* bitstream;
+
+    struct mlp_MajorSync major_sync;
 } decoders_MLPDecoder;
+
+typedef enum {MLP_MAJOR_SYNC_OK,
+              MLP_MAJOR_SYNC_NOT_FOUND,
+              MLP_MAJOR_SYNC_ERROR} mlp_major_sync_status;
 
 /*the MLPDecoder.sample_rate attribute getter*/
 static PyObject*
@@ -133,3 +148,16 @@ PyTypeObject decoders_MLPDecoderType = {
     0,                         /* tp_alloc */
     MLPDecoder_new,           /* tp_new */
 };
+
+/*Returns the total size of the next MLP frame
+  or -1 if the end of the stream has been reached.*/
+int
+mlp_total_frame_size(Bitstream* bitstream);
+
+/*Tries to read the next major sync from the bitstream.
+  Returns MLP_MAJOR_SYNC_OK if successful,
+  MLP_MAJOR_SYNC_NOT_FOUND if a major sync is not found,
+  MLP_MAJOR_SYNC_ERROR if an error occurs when reading the bitstream.
+  If a sync is not found, the stream is rewound to the starting position.*/
+mlp_major_sync_status
+mlp_read_major_sync(Bitstream* bitstream, struct mlp_MajorSync* major_sync);
