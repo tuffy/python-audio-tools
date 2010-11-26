@@ -31,6 +31,11 @@ struct mlp_MajorSync {
     uint8_t substream_count;
 };
 
+struct mlp_Frame {
+    uint8_t substream_count;
+    uint8_t channel_count;
+}
+
 typedef struct {
     PyObject_HEAD
 
@@ -44,13 +49,19 @@ typedef enum {MLP_MAJOR_SYNC_OK,
               MLP_MAJOR_SYNC_NOT_FOUND,
               MLP_MAJOR_SYNC_ERROR} mlp_major_sync_status;
 
+int mlp_sample_rate(struct mlp_MajorSync* major_sync);
+
 /*the MLPDecoder.sample_rate attribute getter*/
 static PyObject*
 MLPDecoder_sample_rate(decoders_MLPDecoder *self, void *closure);
 
+int mlp_bits_per_sample(struct mlp_MajorSync* major_sync);
+
 /*the MLPDecoder.bits_per_sample attribute getter*/
 static PyObject*
 MLPDecoder_bits_per_sample(decoders_MLPDecoder *self, void *closure);
+
+int mlp_channel_count(struct mlp_MajorSync* major_sync);
 
 /*the MLPDecoder.channels attribute getter*/
 static PyObject*
@@ -161,3 +172,17 @@ mlp_total_frame_size(Bitstream* bitstream);
   If a sync is not found, the stream is rewound to the starting position.*/
 mlp_major_sync_status
 mlp_read_major_sync(Bitstream* bitstream, struct mlp_MajorSync* major_sync);
+
+/*Initializes the internal fields of "frame",
+  allocating space as needed based on the major sync values.*/
+void
+mlp_init_frame(struct mlp_MajorSync* major_sync,
+               struct mlp_Frame* frame);
+
+/*Resets the values in "frame" back to their defaults.*/
+void
+mlp_reset_frame(struct mlp_Frame* frame);
+
+/*Deallocates any spaces allotted to "frame"*/
+void
+mlp_free_frame(struct mlp_Frame* frame);

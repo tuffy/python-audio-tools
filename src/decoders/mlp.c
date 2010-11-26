@@ -37,7 +37,7 @@ MLPDecoder_init(decoders_MLPDecoder *self,
         self->bitstream = bs_open(self->file, BS_BIG_ENDIAN);
     }
 
-    /*store initial position in stream/
+    /*store initial position in stream*/
     if (fgetpos(self->bitstream->file, &pos) == -1) {
         PyErr_SetFromErrnoWithFilename(PyExc_IOError, filename);
         return -1;
@@ -89,77 +89,94 @@ MLPDecoder_new(PyTypeObject *type,
     return (PyObject *)self;
 }
 
+int mlp_sample_rate(struct mlp_MajorSync* major_sync) {
+    switch (major_sync->group1_sample_rate) {
+    case 0x0:
+        return 48000;
+    case 0x1:
+        return 96000;
+    case 0x2:
+        return 192000;
+    case 0x3:
+        return 394000;
+    case 0x4:
+        return 768000;
+    case 0x5:
+        return 1536000;
+    case 0x6:
+        return 3072000;
+    case 0x8:
+        return 44100;
+    case 0x9:
+        return 88200;
+    case 0xA:
+        return 176400;
+    case 0xB:
+        return 352800;
+    case 0xC:
+        return 705600;
+    case 0xD:
+        return 1411200;
+    case 0xE:
+        return 2822400;
+    default:
+        return -1;
+    }
+}
+
 static PyObject*
 MLPDecoder_sample_rate(decoders_MLPDecoder *self, void *closure) {
-    switch (self->major_sync.group1_sample_rate) {
-    case 0x0:
-        return Py_BuildValue("i", 48000);
-    case 0x1:
-        return Py_BuildValue("i", 96000);
-    case 0x2:
-        return Py_BuildValue("i", 192000);
-    case 0x3:
-        return Py_BuildValue("i", 394000);
-    case 0x4:
-        return Py_BuildValue("i", 768000);
-    case 0x5:
-        return Py_BuildValue("i", 1536000);
-    case 0x6:
-        return Py_BuildValue("i", 3072000);
-    case 0x8:
-        return Py_BuildValue("i", 44100);
-    case 0x9:
-        return Py_BuildValue("i", 88200);
-    case 0xA:
-        return Py_BuildValue("i", 176400);
-    case 0xB:
-        return Py_BuildValue("i", 352800);
-    case 0xC:
-        return Py_BuildValue("i", 705600);
-    case 0xD:
-        return Py_BuildValue("i", 1411200);
-    case 0xE:
-        return Py_BuildValue("i", 2822400);
-    default:
+    int rate = mlp_sample_rate(&(self->major_sync));
+    if (rate > 0) {
+        return Py_BuildValue("i", rate);
+    } else {
         PyErr_SetString(PyExc_ValueError, "unsupported sample rate");
         return NULL;
     }
 
 }
 
+int mlp_bits_per_sample(struct mlp_MajorSync* major_sync) {
+    switch (major_sync->group1_bits) {
+    case 0:
+        return 16;
+    case 1:
+        return 20;
+    case 2:
+        return 24;
+    default:
+        return -1;
+    }
+}
+
 static PyObject*
 MLPDecoder_bits_per_sample(decoders_MLPDecoder *self, void *closure) {
-    switch (self->major_sync.group1_bits) {
-    case 0:
-        return Py_BuildValue("i", 16);
-    case 1:
-        return Py_BuildValue("i", 20);
-    case 2:
-        return Py_BuildValue("i", 24);
-    default:
+    int bits_per_sample = mlp_bits_per_sample(&(self->major_sync));
+    if (bits_per_sample > 0) {
+        return Py_BuildValue("i", bits_per_sample);
+    } else {
         PyErr_SetString(PyExc_ValueError, "unsupported bits-per-sample");
         return NULL;
     }
 }
 
-static PyObject*
-MLPDecoder_channels(decoders_MLPDecoder *self, void *closure) {
-    switch (self->major_sync.channel_assignment) {
+int mlp_channel_count(struct mlp_MajorSync* major_sync) {
+    switch (major_sync->channel_assignment) {
     case 0x0:
-        return Py_BuildValue("i", 1);
+        return 1;
     case 0x1:
-        return Py_BuildValue("i", 2);
+        return 2;
     case 0x2:
     case 0x4:
     case 0x7:
-        return Py_BuildValue("i", 3);
+        return 3;
     case 0x3:
     case 0x5:
     case 0x8:
     case 0xA:
     case 0xD:
     case 0xF:
-        return Py_BuildValue("i", 4);
+        return 4;
     case 0x6:
     case 0x9:
     case 0xB:
@@ -167,12 +184,22 @@ MLPDecoder_channels(decoders_MLPDecoder *self, void *closure) {
     case 0x10:
     case 0x12:
     case 0x13:
-        return Py_BuildValue("i", 5);
+        return 5;
     case 0xC:
     case 0x11:
     case 0x14:
-        return Py_BuildValue("i", 6);
+        return 6;
     default:
+        return -1;
+    }
+}
+
+static PyObject*
+MLPDecoder_channels(decoders_MLPDecoder *self, void *closure) {
+    int channels = mlp_channel_count(&(self->major_sync));
+    if (channels > 0) {
+        return Py_BuildValue("i", channels);
+    } else {
         PyErr_SetString(PyExc_ValueError, "unsupported channel assignment");
         return NULL;
     }
