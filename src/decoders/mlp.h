@@ -22,6 +22,9 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 *******************************************************/
 
+#define MAX_MLP_CHANNELS 8
+#define MAX_MLP_MATRICES 6
+
 struct mlp_MajorSync {
     /* sync words (0xF8726F)     24 bits*/
     /* stream type (0xBB)         8 bits*/
@@ -47,20 +50,20 @@ struct mlp_SubstreamSize {
 };
 
 struct mlp_RestartHeader {
-    /* sync word (0x18F5)                13 bits*/
-    uint8_t noise_type;                 /*1 bit*/
-    uint16_t output_timestamp;         /*16 bits*/
-    uint8_t min_channel;                /*4 bits*/
-    uint8_t max_channel;                /*4 bits*/
-    uint8_t max_matrix_channel;         /*4 bits*/
-    uint8_t noise_shift;                /*4 bits*/
-    uint32_t noise_gen_seed;           /*23 bits*/
-    /* unknown                           19 bits*/
-    uint8_t data_check_present;         /*1 bit*/
-    uint8_t lossless_check;             /*8 bits*/
-    /* unknown                           16 bits*/
-    struct i_array channel_assignments; /*6 bits each*/
-    uint8_t checksum;                   /*8 bits*/
+    /* sync word (0x18F5)                           13 bits*/
+    uint8_t noise_type;                            /*1 bit*/
+    uint16_t output_timestamp;                    /*16 bits*/
+    uint8_t min_channel;                           /*4 bits*/
+    uint8_t max_channel;                           /*4 bits*/
+    uint8_t max_matrix_channel;                    /*4 bits*/
+    uint8_t noise_shift;                           /*4 bits*/
+    uint32_t noise_gen_seed;                      /*23 bits*/
+    /* unknown                                      19 bits*/
+    uint8_t data_check_present;                    /*1 bit*/
+    uint8_t lossless_check;                        /*8 bits*/
+    /* unknown                                      16 bits*/
+    uint8_t channel_assignments[MAX_MLP_CHANNELS]; /*6 bits each*/
+    uint8_t checksum;                              /*8 bits*/
 };
 
 struct mlp_ParameterPresentFlags {
@@ -75,16 +78,16 @@ struct mlp_ParameterPresentFlags {
 };
 
 struct mlp_Matrix {
-    uint8_t out_channel;         /*4 bits*/
-    uint8_t fractional_bits;     /*4 bits*/
-    uint8_t lsb_bypass;          /*1 bit*/
-    struct i_array coefficients; /*each is 'fractional_bits' + 2 bits*/
-    uint8_t noise_shift;         /*4 bits*/
+    uint8_t out_channel;                    /*4 bits*/
+    uint8_t fractional_bits;                /*4 bits*/
+    uint8_t lsb_bypass;                     /*1 bit*/
+    int32_t coefficients[MAX_MLP_CHANNELS]; /*each 'fractional_bits' + 2*/
+    uint8_t noise_shift;                    /*4 bits*/
 };
 
 struct mlp_MatrixParameters {
     uint8_t count; /*4 bits*/
-    struct mlp_Matrix* matrices;
+    struct mlp_Matrix matrices[MAX_MLP_MATRICES];
 };
 
 struct mlp_FilterParameters {
@@ -111,36 +114,13 @@ struct mlp_DecodingParameters {
     uint8_t matrix_parameters_present;                /*1 bit*/
     struct mlp_MatrixParameters matrix_parameters;
     uint8_t output_shifts_present;                    /*1 bit*/
-    struct i_array output_shifts;                     /*4 bits each*/
+    int8_t output_shifts[MAX_MLP_CHANNELS];           /*4 bits each*/
     uint8_t quant_step_sizes_present;                 /*1 bit*/
-    struct i_array quant_step_sizes;                  /*4 bits each*/
+    uint8_t quant_step_sizes[MAX_MLP_CHANNELS];       /*4 bits each*/
     uint8_t* channel_parameters_present;              /*1 bit per channel*/
-    struct mlp_ChannelParameters* channel_parameters; /*1 per channel*/
-};
 
-struct mlp_Block {
-    struct mlp_RestartHeader restart_header;
-    uint8_t restart_header_present;      /*1 bit*/
-    struct mlp_DecodingParameters decoding_parameters;
-    uint8_t decoding_parameters_present; /*1 bit*/
-    struct ia_array residuals;           /* residuals[channel][pcm_frame]*/
-    uint8_t last;                        /*1 bit*/
-    struct mlp_Block* previous_block;
-    struct mlp_Block* next_block;
-};
-
-struct mlp_Substream {
-    struct mlp_Block* blocks;
-    uint16_t checksum;
-};
-
-struct mlp_Frame {
-    int32_t total_size;
-    uint8_t substream_count;
-    uint8_t channel_count;
-
-    struct mlp_SubstreamSize* sizes; /*one SubstreamSize block per substream*/
-    struct mlp_Substream* substreams;
+    /*1 per channel*/
+    struct mlp_ChannelParameters channel_parameters[MAX_MLP_CHANNELS];
 };
 
 typedef struct {
@@ -149,8 +129,17 @@ typedef struct {
     FILE* file;
     Bitstream* bitstream;
 
-    struct mlp_MajorSync major_sync; /*the stream's initial major sync*/
-    struct mlp_Frame frame;          /*a container for a single MLP frame*/
+    /*the stream's initial major sync*/
+    struct mlp_MajorSync major_sync;
+
+    /*the latest size for a given substream*/
+    struct mlp_SubstreamSize* substream_sizes;
+
+    /*the latest restart header for a given substream*/
+    struct mlp_RestartHeader* restart_headers;
+
+    /*the latest decoding parameters for a given substream*/
+    struct mlp_DecodingParameters* decoding_parameters;
 } decoders_MLPDecoder;
 
 typedef enum {MLP_MAJOR_SYNC_OK,
@@ -283,25 +272,18 @@ mlp_total_frame_size(Bitstream* bitstream);
 mlp_major_sync_status
 mlp_read_major_sync(Bitstream* bitstream, struct mlp_MajorSync* major_sync);
 
-/*Initializes the internal fields of "frame",
-  allocating space as needed based on the major sync values.*/
-void
-mlp_init_frame(struct mlp_MajorSync* major_sync,
-               struct mlp_Frame* frame);
-
-/*Deallocates any spaces allotted to "frame"*/
-void
-mlp_free_frame(struct mlp_Frame* frame);
-
 /*Reads an entire MLP frame.
   Returns the frame's total size upon success,
   0 on EOF or -1 if an error occurs.*/
 int
-mlp_read_frame(Bitstream* bitstream,
-               struct mlp_MajorSync* major_sync,
-               struct mlp_Frame* frame);
+mlp_read_frame(decoders_MLPDecoder* decoder);
 
 /*Reads a 16-bit substream size value.*/
 mlp_status
 mlp_read_substream_size(Bitstream* bitstream,
                         struct mlp_SubstreamSize* size);
+
+/*Reads a substream and its optional 16-bit checksum*/
+mlp_status
+mlp_read_substream(decoders_MLPDecoder* decoder,
+                   int substream);

@@ -67,7 +67,14 @@ MLPDecoder_init(decoders_MLPDecoder *self,
         return -1;
     }
 
-    mlp_init_frame(&(self->major_sync), &(self->frame));
+    self->substream_sizes = malloc(sizeof(struct mlp_SubstreamSize) *
+                                   self->major_sync.substream_count);
+
+    self->restart_headers = malloc(sizeof(struct mlp_RestartHeader) *
+                                   self->major_sync.substream_count);
+
+    self->decoding_parameters = malloc(sizeof(struct mlp_DecodingParameters) *
+                                       self->major_sync.substream_count);
 
     return 0;
 }
@@ -76,7 +83,9 @@ void
 MLPDecoder_dealloc(decoders_MLPDecoder *self)
 {
     bs_close(self->bitstream);
-    mlp_free_frame(&(self->frame));
+    free(self->substream_sizes);
+    free(self->restart_headers);
+    free(self->decoding_parameters);
 
     self->ob_type->tp_free((PyObject*)self);
 }
@@ -231,11 +240,9 @@ MLPDecoder_close(decoders_MLPDecoder* self, PyObject *args) {
 
 static PyObject*
 MLPDecoder_analyze_frame(decoders_MLPDecoder* self, PyObject *args) {
-    int frame_size = mlp_read_frame(self->bitstream,
-                                    &(self->major_sync),
-                                    &(self->frame));
+    int frame_size = mlp_read_frame(self);
     if (frame_size > 0) {
-        return Py_BuildValue("i", self->frame.total_size);
+        return Py_BuildValue("i", frame_size);
     } else if (frame_size == 0) {
         Py_INCREF(Py_None);
         return Py_None;
@@ -296,55 +303,45 @@ mlp_read_major_sync(Bitstream* bitstream, struct mlp_MajorSync* major_sync) {
     }
 }
 
-void
-mlp_init_frame(struct mlp_MajorSync* major_sync,
-               struct mlp_Frame* frame) {
-    frame->substream_count = major_sync->substream_count;
-    frame->channel_count = mlp_channel_count(major_sync);
-    frame->sizes = malloc(sizeof(struct mlp_SubstreamSize) *
-                          frame->substream_count);
-    frame->substreams = malloc(sizeof(struct mlp_Substream) *
-                               frame->substream_count);
-}
-
-void
-mlp_free_frame(struct mlp_Frame* frame) {
-    free(frame->sizes);
-    free(frame->substreams);
-}
-
 int
-mlp_read_frame(Bitstream* bitstream,
-               struct mlp_MajorSync* major_sync,
-               struct mlp_Frame* frame) {
+mlp_read_frame(decoders_MLPDecoder* decoder) {
     struct mlp_MajorSync frame_major_sync;
-    int i;
+    int substream;
+    int total_frame_size;
 
     /*read the 32-bit total size value*/
-    if ((frame->total_size = mlp_total_frame_size(bitstream)) == -1) {
+    if ((total_frame_size =
+         mlp_total_frame_size(decoder->bitstream)) == -1) {
         return 0;
     }
 
     /*read a major sync, if present*/
-    if (mlp_read_major_sync(bitstream,
+    if (mlp_read_major_sync(decoder->bitstream,
                             &frame_major_sync) == MLP_MAJOR_SYNC_ERROR) {
         PyErr_SetString(PyExc_IOError, "I/O error reading major sync");
         return -1;
     }
+    /*FIXME - verify frame major sync against initial major sync*/
 
     /*read one SubstreamSize per substream*/
-    for (i = 0; i < major_sync->substream_count; i++) {
-        if (mlp_read_substream_size(bitstream, &(frame->sizes[i])) == ERROR)
+    for (substream = 0;
+         substream < decoder->major_sync.substream_count;
+         substream++) {
+        if (mlp_read_substream_size(
+                decoder->bitstream,
+                &(decoder->substream_sizes[substream])) == ERROR)
             return -1;
     }
 
     /*read one Substream per substream*/
-    for (i = 0; i < major_sync->substream_count; i++) {
-        bitstream->skip(bitstream, frame->sizes[i].substream_size * 8);
-        /*FIXME*/
+    for (substream = 0;
+         substream < decoder->major_sync.substream_count;
+         substream++) {
+        if (mlp_read_substream(decoder, substream) == ERROR)
+            return -1;
     }
 
-    return frame->total_size;
+    return total_frame_size;
 }
 
 mlp_status
@@ -362,3 +359,13 @@ mlp_read_substream_size(Bitstream* bitstream,
 
     return OK;
 }
+
+mlp_status
+mlp_read_substream(decoders_MLPDecoder* decoder,
+                   int substream) {
+    decoder->bitstream->skip(
+             decoder->bitstream,
+             decoder->substream_sizes[substream].substream_size * 8);
+    return OK;
+}
+
