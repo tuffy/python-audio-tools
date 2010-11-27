@@ -23,18 +23,125 @@
 *******************************************************/
 
 struct mlp_MajorSync {
-    uint8_t group1_bits;
-    uint8_t group2_bits;
-    uint8_t group1_sample_rate;
-    uint8_t group2_sample_rate;
-    uint8_t channel_assignment;
-    uint8_t substream_count;
+    /* sync words (0xF8726F)     24 bits*/
+    /* stream type (0xBB)         8 bits*/
+    uint8_t group1_bits;        /*4 bits*/
+    uint8_t group2_bits;        /*4 bits*/
+    uint8_t group1_sample_rate; /*4 bits*/
+    uint8_t group2_sample_rate; /*4 bits*/
+    /* unknown                   11 bits*/
+    uint8_t channel_assignment; /*5 bits*/
+    /* unknown                   48 bits*/
+    /* is VBR                     1 bit*/
+    /* peak bitrate              15 bits*/
+    uint8_t substream_count;   /* 4 bits*/
+    /* unknown                   92 bits*/
+};
+
+struct mlp_SubstreamSize {
+    /* extraword present            1 bit*/
+    uint8_t nonrestart_substream; /*1 bit*/
+    uint8_t checkdata_present;    /*1 bit*/
+    /* skip                         1 bit*/
+    uint16_t substream_size; /*    12 bits*/
+};
+
+struct mlp_RestartHeader {
+    /* sync word (0x18F5)                13 bits*/
+    uint8_t noise_type;                 /*1 bit*/
+    uint16_t output_timestamp;         /*16 bits*/
+    uint8_t min_channel;                /*4 bits*/
+    uint8_t max_channel;                /*4 bits*/
+    uint8_t max_matrix_channel;         /*4 bits*/
+    uint8_t noise_shift;                /*4 bits*/
+    uint32_t noise_gen_seed;           /*23 bits*/
+    /* unknown                           19 bits*/
+    uint8_t data_check_present;         /*1 bit*/
+    uint8_t lossless_check;             /*8 bits*/
+    /* unknown                           16 bits*/
+    struct i_array channel_assignments; /*6 bits each*/
+    uint8_t checksum;                   /*8 bits*/
+};
+
+struct mlp_ParameterPresentFlags {
+    uint8_t parameter_present_flags;  /*1 bit*/
+    uint8_t huffman_offset;           /*1 bit*/
+    uint8_t iir_filter_parameters;    /*1 bit*/
+    uint8_t fir_filter_parameters;    /*1 bit*/
+    uint8_t quant_step_sizes;         /*1 bit*/
+    uint8_t output_shifts;            /*1 bit*/
+    uint8_t matrix_parameters;        /*1 bit*/
+    uint8_t block_size;               /*1 bit*/
+};
+
+struct mlp_Matrix {
+    uint8_t out_channel;         /*4 bits*/
+    uint8_t fractional_bits;     /*4 bits*/
+    uint8_t lsb_bypass;          /*1 bit*/
+    struct i_array coefficients; /*each is 'fractional_bits' + 2 bits*/
+    uint8_t noise_shift;         /*4 bits*/
+};
+
+struct mlp_MatrixParameters {
+    uint8_t count; /*4 bits*/
+    struct mlp_Matrix* matrices;
+};
+
+struct mlp_FilterParameters {
+    struct i_array coefficients;  /*1 per "order"*/
+    uint32_t shift;               /*4 bits*/
+    uint8_t has_state;            /*1 bit*/
+    struct i_array state;         /*1 per "order", if "has_state"*/
+};
+
+struct mlp_ChannelParameters {
+    struct mlp_FilterParameters fir_filter_parameters;
+    struct mlp_FilterParameters iir_filter_parameters;
+    uint16_t huffman_offset;        /*15 bits*/
+    int32_t signed_huffman_offset;
+    uint8_t codebook;
+    uint8_t huffman_lsbs;
+};
+
+struct mlp_DecodingParameters {
+    uint8_t parameters_present_flags_present;         /*1 bit*/
+    struct mlp_ParameterPresentFlags parameters_present_flags; /*8 bits*/
+    uint8_t block_size_present;                       /*1 bit*/
+    uint16_t block_size;                              /*9 bits*/
+    uint8_t matrix_parameters_present;                /*1 bit*/
+    struct mlp_MatrixParameters matrix_parameters;
+    uint8_t output_shifts_present;                    /*1 bit*/
+    struct i_array output_shifts;                     /*4 bits each*/
+    uint8_t quant_step_sizes_present;                 /*1 bit*/
+    struct i_array quant_step_sizes;                  /*4 bits each*/
+    uint8_t* channel_parameters_present;              /*1 bit per channel*/
+    struct mlp_ChannelParameters* channel_parameters; /*1 per channel*/
+};
+
+struct mlp_Block {
+    struct mlp_RestartHeader restart_header;
+    uint8_t restart_header_present;      /*1 bit*/
+    struct mlp_DecodingParameters decoding_parameters;
+    uint8_t decoding_parameters_present; /*1 bit*/
+    struct ia_array residuals;           /* residuals[channel][pcm_frame]*/
+    uint8_t last;                        /*1 bit*/
+    struct mlp_Block* previous_block;
+    struct mlp_Block* next_block;
+};
+
+struct mlp_Substream {
+    struct mlp_Block* blocks;
+    uint16_t checksum;
 };
 
 struct mlp_Frame {
+    int32_t total_size;
     uint8_t substream_count;
     uint8_t channel_count;
-}
+
+    struct mlp_SubstreamSize* sizes; /*one SubstreamSize block per substream*/
+    struct mlp_Substream* substreams;
+};
 
 typedef struct {
     PyObject_HEAD
@@ -42,12 +149,15 @@ typedef struct {
     FILE* file;
     Bitstream* bitstream;
 
-    struct mlp_MajorSync major_sync;
+    struct mlp_MajorSync major_sync; /*the stream's initial major sync*/
+    struct mlp_Frame frame;          /*a container for a single MLP frame*/
 } decoders_MLPDecoder;
 
 typedef enum {MLP_MAJOR_SYNC_OK,
               MLP_MAJOR_SYNC_NOT_FOUND,
               MLP_MAJOR_SYNC_ERROR} mlp_major_sync_status;
+
+typedef enum {OK, ERROR} mlp_status;
 
 int mlp_sample_rate(struct mlp_MajorSync* major_sync);
 
@@ -179,10 +289,19 @@ void
 mlp_init_frame(struct mlp_MajorSync* major_sync,
                struct mlp_Frame* frame);
 
-/*Resets the values in "frame" back to their defaults.*/
-void
-mlp_reset_frame(struct mlp_Frame* frame);
-
 /*Deallocates any spaces allotted to "frame"*/
 void
 mlp_free_frame(struct mlp_Frame* frame);
+
+/*Reads an entire MLP frame.
+  Returns the frame's total size upon success,
+  0 on EOF or -1 if an error occurs.*/
+int
+mlp_read_frame(Bitstream* bitstream,
+               struct mlp_MajorSync* major_sync,
+               struct mlp_Frame* frame);
+
+/*Reads a 16-bit substream size value.*/
+mlp_status
+mlp_read_substream_size(Bitstream* bitstream,
+                        struct mlp_SubstreamSize* size);

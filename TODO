@@ -2804,7 +2804,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** TODO Perform MLP frame parsing
 **** DONE Perform frame size parsing
 **** DONE Perform major sync parsing
-**** TODO Perform substream sizes parsing
+**** DONE Perform substream sizes parsing
 **** TODO Perform substream datas parsing
 ***** TODO Perform block parsing
 ****** TODO Perform restart header parsing

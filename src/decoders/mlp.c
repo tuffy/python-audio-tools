@@ -67,6 +67,8 @@ MLPDecoder_init(decoders_MLPDecoder *self,
         return -1;
     }
 
+    mlp_init_frame(&(self->major_sync), &(self->frame));
+
     return 0;
 }
 
@@ -74,6 +76,7 @@ void
 MLPDecoder_dealloc(decoders_MLPDecoder *self)
 {
     bs_close(self->bitstream);
+    mlp_free_frame(&(self->frame));
 
     self->ob_type->tp_free((PyObject*)self);
 }
@@ -228,14 +231,16 @@ MLPDecoder_close(decoders_MLPDecoder* self, PyObject *args) {
 
 static PyObject*
 MLPDecoder_analyze_frame(decoders_MLPDecoder* self, PyObject *args) {
-    int total_frame_size = mlp_total_frame_size(self->bitstream);
-
-    if (total_frame_size > 0) {
-        self->bitstream->skip(self->bitstream, (total_frame_size - 4) * 8);
-        return Py_BuildValue("i", total_frame_size);
-    } else {
+    int frame_size = mlp_read_frame(self->bitstream,
+                                    &(self->major_sync),
+                                    &(self->frame));
+    if (frame_size > 0) {
+        return Py_BuildValue("i", self->frame.total_size);
+    } else if (frame_size == 0) {
         Py_INCREF(Py_None);
         return Py_None;
+    } else {
+        return NULL;
     }
 }
 
@@ -289,4 +294,71 @@ mlp_read_major_sync(Bitstream* bitstream, struct mlp_MajorSync* major_sync) {
         bs_etry(bitstream);
         return MLP_MAJOR_SYNC_ERROR;
     }
+}
+
+void
+mlp_init_frame(struct mlp_MajorSync* major_sync,
+               struct mlp_Frame* frame) {
+    frame->substream_count = major_sync->substream_count;
+    frame->channel_count = mlp_channel_count(major_sync);
+    frame->sizes = malloc(sizeof(struct mlp_SubstreamSize) *
+                          frame->substream_count);
+    frame->substreams = malloc(sizeof(struct mlp_Substream) *
+                               frame->substream_count);
+}
+
+void
+mlp_free_frame(struct mlp_Frame* frame) {
+    free(frame->sizes);
+    free(frame->substreams);
+}
+
+int
+mlp_read_frame(Bitstream* bitstream,
+               struct mlp_MajorSync* major_sync,
+               struct mlp_Frame* frame) {
+    struct mlp_MajorSync frame_major_sync;
+    int i;
+
+    /*read the 32-bit total size value*/
+    if ((frame->total_size = mlp_total_frame_size(bitstream)) == -1) {
+        return 0;
+    }
+
+    /*read a major sync, if present*/
+    if (mlp_read_major_sync(bitstream,
+                            &frame_major_sync) == MLP_MAJOR_SYNC_ERROR) {
+        PyErr_SetString(PyExc_IOError, "I/O error reading major sync");
+        return -1;
+    }
+
+    /*read one SubstreamSize per substream*/
+    for (i = 0; i < major_sync->substream_count; i++) {
+        if (mlp_read_substream_size(bitstream, &(frame->sizes[i])) == ERROR)
+            return -1;
+    }
+
+    /*read one Substream per substream*/
+    for (i = 0; i < major_sync->substream_count; i++) {
+        bitstream->skip(bitstream, frame->sizes[i].substream_size * 8);
+        /*FIXME*/
+    }
+
+    return frame->total_size;
+}
+
+mlp_status
+mlp_read_substream_size(Bitstream* bitstream,
+                        struct mlp_SubstreamSize* size) {
+    if (bitstream->read(bitstream, 1) == 1) {
+        PyErr_SetString(PyExc_ValueError,
+                        "extraword cannot be present in substream size");
+        return ERROR;
+    }
+    size->nonrestart_substream = bitstream->read(bitstream, 1);
+    size->checkdata_present = bitstream->read(bitstream, 1);
+    bitstream->skip(bitstream, 1);
+    size->substream_size = bitstream->read(bitstream, 12) * 2;
+
+    return OK;
 }
