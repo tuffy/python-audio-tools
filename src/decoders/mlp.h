@@ -102,24 +102,18 @@ struct mlp_ChannelParameters {
     struct mlp_FilterParameters iir_filter_parameters;
     uint16_t huffman_offset;        /*15 bits*/
     int32_t signed_huffman_offset;
-    uint8_t codebook;
-    uint8_t huffman_lsbs;
+    uint8_t codebook;                /*2 bits*/
+    uint8_t huffman_lsbs;            /*5 bits*/
 };
 
 struct mlp_DecodingParameters {
-    uint8_t parameters_present_flags_present;         /*1 bit*/
     struct mlp_ParameterPresentFlags parameters_present_flags; /*8 bits*/
-    uint8_t block_size_present;                       /*1 bit*/
     uint16_t block_size;                              /*9 bits*/
-    uint8_t matrix_parameters_present;                /*1 bit*/
     struct mlp_MatrixParameters matrix_parameters;
-    uint8_t output_shifts_present;                    /*1 bit*/
     int8_t output_shifts[MAX_MLP_CHANNELS];           /*4 bits each*/
-    uint8_t quant_step_sizes_present;                 /*1 bit*/
     uint8_t quant_step_sizes[MAX_MLP_CHANNELS];       /*4 bits each*/
-    uint8_t* channel_parameters_present;              /*1 bit per channel*/
 
-    /*1 per channel*/
+    /*1 per substream channel*/
     struct mlp_ChannelParameters channel_parameters[MAX_MLP_CHANNELS];
 };
 
@@ -128,6 +122,8 @@ typedef struct {
 
     FILE* file;
     Bitstream* bitstream;
+
+    uint64_t bytes_read;
 
     /*the stream's initial major sync*/
     struct mlp_MajorSync major_sync;
@@ -147,6 +143,8 @@ typedef enum {MLP_MAJOR_SYNC_OK,
               MLP_MAJOR_SYNC_ERROR} mlp_major_sync_status;
 
 typedef enum {OK, ERROR} mlp_status;
+
+void mlp_byte_counter(int value, void* ptr);
 
 int mlp_sample_rate(struct mlp_MajorSync* major_sync);
 
@@ -270,7 +268,8 @@ mlp_total_frame_size(Bitstream* bitstream);
   MLP_MAJOR_SYNC_ERROR if an error occurs when reading the bitstream.
   If a sync is not found, the stream is rewound to the starting position.*/
 mlp_major_sync_status
-mlp_read_major_sync(Bitstream* bitstream, struct mlp_MajorSync* major_sync);
+mlp_read_major_sync(decoders_MLPDecoder* decoder,
+                    struct mlp_MajorSync* major_sync);
 
 /*Reads an entire MLP frame.
   Returns the frame's total size upon success,
@@ -287,3 +286,27 @@ mlp_read_substream_size(Bitstream* bitstream,
 mlp_status
 mlp_read_substream(decoders_MLPDecoder* decoder,
                    int substream);
+
+int
+mlp_substream_channel_count(decoders_MLPDecoder* decoder,
+                            int substream);
+
+/*Reads a block along with optional restart header and decoding parameters.*/
+mlp_status
+mlp_read_block(decoders_MLPDecoder* decoder,
+               int substream,
+               int* last_block);
+
+mlp_status
+mlp_read_restart_header(decoders_MLPDecoder* decoder, int substream);
+
+mlp_status
+mlp_read_decoding_parameters(decoders_MLPDecoder* decoder, int substream);
+
+mlp_status
+mlp_read_channel_parameters(Bitstream* bs,
+                            struct mlp_ParameterPresentFlags* flags,
+                            struct mlp_ChannelParameters* parameters);
+
+mlp_status
+mlp_read_block_data(decoders_MLPDecoder* decoder, int substream);
