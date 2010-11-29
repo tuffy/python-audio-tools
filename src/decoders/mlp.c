@@ -85,6 +85,7 @@ MLPDecoder_init(decoders_MLPDecoder *self,
         for (channel = 0; channel < MAX_MLP_CHANNELS; channel++) {
             ia_init(&(self->decoding_parameters[substream].channel_parameters[channel].fir_filter_parameters.coefficients), 2);
             ia_init(&(self->decoding_parameters[substream].channel_parameters[channel].iir_filter_parameters.coefficients), 2);
+            ia_init(&(self->decoding_parameters[substream].channel_parameters[channel].iir_filter_parameters.state), 2);
         }
     }
 
@@ -512,7 +513,7 @@ mlp_read_restart_header(decoders_MLPDecoder* decoder, int substream) {
 
     parameters->block_size = 8;
 
-    /*FIXME - reset matrix parameters*/
+    parameters->matrix_parameters.count = 0;
 
     for (channel = 0; channel < MAX_MLP_CHANNELS; channel++) {
         parameters->output_shifts[channel] = 0;
@@ -568,16 +569,21 @@ mlp_read_decoding_parameters(decoders_MLPDecoder* decoder, int substream) {
 
     /* matrix parameters */
     if (flags->matrix_parameters && bs->read(bs, 1)) {
-        /*FIXME - read matrix parameters*/
-        PyErr_SetString(PyExc_ValueError, "read matrix parameters");
-        return ERROR;
+        if (mlp_read_matrix_parameters(
+                bs,
+                decoder->restart_headers[substream].max_matrix_channel,
+                decoder->restart_headers[substream].noise_type,
+                &(parameters->matrix_parameters)) == ERROR)
+            return ERROR;
     }
 
     /* output shifts */
     if (flags->output_shifts && bs->read(bs, 1)) {
-        /*FIXME - output shifts*/
-        PyErr_SetString(PyExc_ValueError, "read output shifts");
-        return ERROR;
+        for (channel = 0;
+             channel <=
+                 decoder->restart_headers[substream].max_matrix_channel;
+             channel++)
+            parameters->output_shifts[channel] = bs->read_signed(bs, 4);
     }
 
     /* quant step sizes */
@@ -586,7 +592,7 @@ mlp_read_decoding_parameters(decoders_MLPDecoder* decoder, int substream) {
             parameters->quant_step_sizes[channel] = bs->read(bs, 4);
     }
 
-    /* one channal parameters per substream channel */
+    /* one channel parameters per substream channel */
     for (channel = 0; channel < substream_channel_count; channel++) {
         if (bs->read(bs, 1))
             if (mlp_read_channel_parameters(
@@ -689,9 +695,78 @@ mlp_read_fir_filter_parameters(Bitstream* bs,
 mlp_status
 mlp_read_iir_filter_parameters(Bitstream* bs,
                                struct mlp_FilterParameters* iir) {
-    /*FIXME*/
-    PyErr_SetString(PyExc_ValueError, "implement iir filter parameters");
-    return ERROR;
+    uint8_t order;
+    uint8_t coefficient_bits;
+    uint8_t coefficient_shift;
+    uint8_t state_bits;
+    uint8_t state_shift;
+    int i;
+
+    order = bs->read(bs, 4);
+
+    if (order > 0) {
+        ia_reset(&(iir->coefficients));
+        ia_reset(&(iir->state));
+
+        iir->shift = bs->read(bs, 4);
+        coefficient_bits = bs->read(bs, 5);
+        coefficient_shift = bs->read(bs, 3);
+        for (i = 0; i < order; i++)
+            ia_append(&(iir->coefficients),
+                      bs->read_signed(bs, coefficient_bits) <<
+                      coefficient_shift);
+        if ((iir->has_state = bs->read(bs, 1)) == 1) {
+            state_bits = bs->read(bs, 4);
+            state_shift = bs->read(bs, 4);
+
+            for (i = 0; i < order; i++)
+                ia_append(&(iir->state),
+                          bs->read_signed(bs, state_bits) << state_shift);
+        }
+    }
+
+    return OK;
+}
+
+mlp_status
+mlp_read_matrix_parameters(Bitstream* bs,
+                           int max_matrix_channel,
+                           uint8_t noise_type,
+                           struct mlp_MatrixParameters* parameters) {
+    struct mlp_Matrix* matrix;
+    int i;
+    int coeff_count;
+    int coeff;
+    uint8_t fractional_bits;
+
+    if (noise_type)
+        coeff_count = max_matrix_channel + 1;
+    else
+        coeff_count = max_matrix_channel + 1 + 2;
+
+    parameters->count = bs->read(bs, 4);
+
+    for (i = 0; i < parameters->count; i++) {
+        matrix = &(parameters->matrices[i]);
+
+        matrix->out_channel = bs->read(bs, 4);
+        matrix->fractional_bits = fractional_bits = bs->read(bs, 4);
+        matrix->lsb_bypass = bs->read(bs, 1);
+        for (coeff = 0; coeff < coeff_count; coeff++) {
+            if (bs->read(bs, 1))
+                matrix->coefficients[coeff] =
+                    (bs->read_signed(bs, fractional_bits + 2) <<
+                     (14 - fractional_bits));
+            else
+                matrix->coefficients[coeff] = 0;
+        }
+        if (noise_type)
+            matrix->noise_shift = bs->read(bs, 4);
+        else
+            matrix->noise_shift = 0;
+    }
+
+    return OK;
 }
 
 mlp_status
@@ -707,7 +782,18 @@ mlp_read_block_data(decoders_MLPDecoder* decoder, int substream) {
     int channel;
     int32_t residual;
 
+    int matrix;
+    int bypassed_lsb;
+
     for (pcm_frame = 0; pcm_frame < parameters->block_size; pcm_frame++) {
+        for (matrix = 0;
+             matrix < parameters->matrix_parameters.count;
+             matrix++) {
+            /*FIXME - store bypssed LSBs bits somewhere*/
+            if (parameters->matrix_parameters.matrices[matrix].lsb_bypass)
+                bypassed_lsb = bs->read(bs, 1);
+        }
+
         for (channel = 0; channel < channel_count; channel++) {
             channel_params = &(parameters->channel_parameters[channel]);
             lsb_count = (channel_params->huffman_lsbs -

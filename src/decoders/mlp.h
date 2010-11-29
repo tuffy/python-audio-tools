@@ -310,6 +310,12 @@ mlp_read_channel_parameters(Bitstream* bs,
                             struct mlp_ChannelParameters* parameters);
 
 mlp_status
+mlp_read_matrix_parameters(Bitstream* bs,
+                           int substream_channel_count,
+                           uint8_t noise_type,
+                           struct mlp_MatrixParameters* parameters);
+
+mlp_status
 mlp_read_fir_filter_parameters(Bitstream* bs,
                                struct mlp_FilterParameters* fir);
 
