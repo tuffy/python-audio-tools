@@ -597,3 +597,60 @@ mlp_read_block_data(decoders_MLPDecoder* decoder, int substream) {
 
     return OK;
 }
+
+int
+mlp_read_code(Bitstream* bs, int codebook) {
+    int val;
+
+    switch (codebook) {
+    case 0:
+        return 0;
+    case 1:
+        switch (val = bs->read_limited_unary(bs, 1, 9)) {
+        case 0:
+            return 7 + bs->read(bs, 2);
+        case 1:
+            val = bs->read_limited_unary(bs, 1, 7);
+            if (val >= 0)
+                return 11 + val;
+            else
+                return -1;
+        case -1:
+            return -1;
+        default:
+            return 8 - val;
+        }
+    case 2:
+        switch (val = bs->read_limited_unary(bs, 1, 9)) {
+        case 0:
+            return 7 + bs->read(bs, 1);
+        case 1:
+            val = bs->read_limited_unary(bs, 1, 7);
+            if (val >= 0)
+                return 9 + val;
+            else
+                return -1;
+        case -1:
+            return -1;
+        default:
+            return 8 + val;
+        }
+    case 3:
+        switch (val = bs->read_limited_unary(bs, 1, 9)) {
+        case 0:
+            return 7;
+        case 1:
+            val = bs->read_limited_unary(bs, 1, 7);
+            if (val >= 0)
+                return 8 + val;
+            else
+                return -1;
+        case -1:
+            return -1;
+        default:
+            return 8 - val;
+        }
+    default:
+        return -1; /*unsupported codebook*/
+    }
+}

@@ -310,3 +310,7 @@ mlp_read_channel_parameters(Bitstream* bs,
 
 mlp_status
 mlp_read_block_data(decoders_MLPDecoder* decoder, int substream);
+
+/*Returns the next residual value, or -1 if an error occurs.*/
+int
+mlp_read_code(Bitstream* bs, int codebook);
