@@ -306,7 +306,16 @@ mlp_read_decoding_parameters(decoders_MLPDecoder* decoder, int substream);
 mlp_status
 mlp_read_channel_parameters(Bitstream* bs,
                             struct mlp_ParameterPresentFlags* flags,
+                            uint8_t quant_step_size,
                             struct mlp_ChannelParameters* parameters);
+
+mlp_status
+mlp_read_fir_filter_parameters(Bitstream* bs,
+                               struct mlp_FilterParameters* fir);
+
+mlp_status
+mlp_read_iir_filter_parameters(Bitstream* bs,
+                               struct mlp_FilterParameters* iir);
 
 mlp_status
 mlp_read_block_data(decoders_MLPDecoder* decoder, int substream);

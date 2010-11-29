@@ -341,11 +341,11 @@ If \VAR{Codebook} is 0, our \VAR{Most-Significant Bits} are also 0.
 
 We then calculate our least-significant bit count as:
 \begin{equation*}
-\text{LSB Count}_i = \text{Huffman Least-Significant Bits}_c - \text{Quant Step Size}_c
+\text{LSB Count}_c = \text{Huffman Least-Significant Bits}_c - \text{Quant Step Size}_c
 \end{equation*}
 We read this number of bits from the stream as
 our \VAR{Least-Significant Bits} (LSB) value.
-If $\text{LSB Count}_i$ is 0, we read no bits from the stream and our
+If $\text{LSB Count}_c$ is 0, we read no bits from the stream and our
 \VAR{Least-Significant Bits} value is also 0.
 
 Our final residual value is calculated as follows:

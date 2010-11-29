@@ -24,6 +24,8 @@ MLPDecoder_init(decoders_MLPDecoder *self,
                 PyObject *args, PyObject *kwds) {
     char *filename;
     fpos_t pos;
+    int substream;
+    int channel;
 
     if (!PyArg_ParseTuple(args, "s", &filename))
         return -1;
@@ -67,6 +69,7 @@ MLPDecoder_init(decoders_MLPDecoder *self,
         return -1;
     }
 
+    /*allocate space for decoding variables*/
     self->substream_sizes = malloc(sizeof(struct mlp_SubstreamSize) *
                                    self->major_sync.substream_count);
 
@@ -76,6 +79,16 @@ MLPDecoder_init(decoders_MLPDecoder *self,
     self->decoding_parameters = malloc(sizeof(struct mlp_DecodingParameters) *
                                        self->major_sync.substream_count);
 
+    for (substream = 0;
+         substream < self->major_sync.substream_count;
+         substream++) {
+        for (channel = 0; channel < MAX_MLP_CHANNELS; channel++) {
+            ia_init(&(self->decoding_parameters[substream].channel_parameters[channel].fir_filter_parameters.coefficients), 2);
+            ia_init(&(self->decoding_parameters[substream].channel_parameters[channel].iir_filter_parameters.coefficients), 2);
+        }
+    }
+
+    /*initalize stream position callback*/
     self->bytes_read = 0;
     bs_add_callback(self->bitstream, mlp_byte_counter, &(self->bytes_read));
 
@@ -90,6 +103,18 @@ void mlp_byte_counter(int value, void* ptr) {
 void
 MLPDecoder_dealloc(decoders_MLPDecoder *self)
 {
+    int substream;
+    int channel;
+
+    for (substream = 0;
+         substream < self->major_sync.substream_count;
+         substream++) {
+        for (channel = 0; channel < MAX_MLP_CHANNELS; channel++) {
+            ia_free(&(self->decoding_parameters[substream].channel_parameters[channel].fir_filter_parameters.coefficients));
+            ia_free(&(self->decoding_parameters[substream].channel_parameters[channel].iir_filter_parameters.coefficients));
+        }
+    }
+
     bs_close(self->bitstream);
     free(self->substream_sizes);
     free(self->restart_headers);
@@ -450,6 +475,7 @@ mlp_read_restart_header(decoders_MLPDecoder* decoder, int substream) {
     struct mlp_RestartHeader* header = &(decoder->restart_headers[substream]);
     struct mlp_DecodingParameters* parameters =
         &(decoder->decoding_parameters[substream]);
+    struct mlp_ChannelParameters* channel_params;
     struct mlp_ParameterPresentFlags* flags =
         &(parameters->parameters_present_flags);
     int channel;
@@ -483,7 +509,31 @@ mlp_read_restart_header(decoders_MLPDecoder* decoder, int substream) {
         flags->output_shifts =
         flags->matrix_parameters =
         flags->block_size = 1;
-    /*FIXME - add more resets here*/
+
+    parameters->block_size = 8;
+
+    /*FIXME - reset matrix parameters*/
+
+    for (channel = 0; channel < MAX_MLP_CHANNELS; channel++) {
+        parameters->output_shifts[channel] = 0;
+        parameters->quant_step_sizes[channel] = 0;
+        channel_params = &(parameters->channel_parameters[channel]);
+
+        ia_reset(&(channel_params->fir_filter_parameters.coefficients));
+        channel_params->fir_filter_parameters.shift = 0;
+        channel_params->fir_filter_parameters.has_state = 0;
+
+        ia_reset(&(channel_params->iir_filter_parameters.coefficients));
+        channel_params->iir_filter_parameters.shift = 0;
+        channel_params->iir_filter_parameters.has_state = 0;
+        ia_reset(&(channel_params->iir_filter_parameters.state));
+
+
+        channel_params->huffman_offset = 0;
+        channel_params->signed_huffman_offset = (-1) << 23;
+        channel_params->codebook = 0;
+        channel_params->huffman_lsbs = 24;
+    }
 
     return OK;
 }
@@ -532,9 +582,8 @@ mlp_read_decoding_parameters(decoders_MLPDecoder* decoder, int substream) {
 
     /* quant step sizes */
     if (flags->quant_step_sizes && bs->read(bs, 1)) {
-        /*FIXME - quant step sizes*/
-        PyErr_SetString(PyExc_ValueError, "read quant step sizes");
-        return ERROR;
+        for (channel = 0; channel < substream_channel_count; channel++)
+            parameters->quant_step_sizes[channel] = bs->read(bs, 4);
     }
 
     /* one channal parameters per substream channel */
@@ -543,6 +592,7 @@ mlp_read_decoding_parameters(decoders_MLPDecoder* decoder, int substream) {
             if (mlp_read_channel_parameters(
                     bs,
                     flags,
+                    parameters->quant_step_sizes[channel],
                     &(parameters->channel_parameters[channel])) == ERROR)
                 return ERROR;
     }
@@ -553,18 +603,23 @@ mlp_read_decoding_parameters(decoders_MLPDecoder* decoder, int substream) {
 mlp_status
 mlp_read_channel_parameters(Bitstream* bs,
                             struct mlp_ParameterPresentFlags* flags,
+                            uint8_t quant_step_size,
                             struct mlp_ChannelParameters* parameters) {
+    uint32_t lsb_bits;
+    int32_t sign_shift;
+
     if (flags->fir_filter_parameters && bs->read(bs, 1)) {
-        /*FIXME*/
-        PyErr_SetString(PyExc_ValueError, "fir filter parameters");
-        return ERROR;
+        if (mlp_read_fir_filter_parameters(
+                bs,
+                &(parameters->fir_filter_parameters)) == ERROR)
+            return ERROR;
     }
 
     if (flags->iir_filter_parameters && bs->read(bs, 1)) {
-        /*FIXME*/
-        PyErr_SetString(PyExc_ValueError, "iir filter parameters");
-        return ERROR;
-
+        if (mlp_read_iir_filter_parameters(
+                bs,
+                &(parameters->iir_filter_parameters)) == ERROR)
+            return ERROR;
     }
 
     if (flags->huffman_offset && bs->read(bs, 1)) {
@@ -576,22 +631,93 @@ mlp_read_channel_parameters(Bitstream* bs,
     parameters->codebook = bs->read(bs, 2);
     parameters->huffman_lsbs = bs->read(bs, 5);
 
+    if (parameters->codebook > 0) {
+        lsb_bits = parameters->huffman_lsbs - quant_step_size;
+        sign_shift = lsb_bits + 2 - parameters->codebook;
+        if (sign_shift >= 0)
+            parameters->signed_huffman_offset =
+                parameters->huffman_offset -
+                (7 << lsb_bits) - (1 << sign_shift);
+        else
+            parameters->signed_huffman_offset =
+                parameters->huffman_offset -
+                (7 << lsb_bits);
+    } else {
+        lsb_bits = parameters->huffman_lsbs - quant_step_size;
+        sign_shift = lsb_bits - 1;
+        if (sign_shift >= 0)
+            parameters->signed_huffman_offset =
+                parameters->huffman_offset - (1 << sign_shift);
+        else
+            parameters->signed_huffman_offset =
+                parameters->huffman_offset;
+    }
+
     return OK;
+}
+
+mlp_status
+mlp_read_fir_filter_parameters(Bitstream* bs,
+                               struct mlp_FilterParameters* fir) {
+    uint8_t order;
+    uint8_t coefficient_bits;
+    uint8_t coefficient_shift;
+    int i;
+
+    order = bs->read(bs, 4);
+
+    if (order > 0) {
+        ia_reset(&(fir->coefficients));
+
+        fir->shift = bs->read(bs, 4);
+        coefficient_bits = bs->read(bs, 5);
+        coefficient_shift = bs->read(bs, 3);
+        for (i = 0; i < order; i++)
+            ia_append(&(fir->coefficients),
+                      bs->read_signed(bs, coefficient_bits) <<
+                      coefficient_shift);
+        if (bs->read(bs, 1)) {
+            PyErr_SetString(PyExc_ValueError,
+                            "FIR coefficients cannot have state");
+            return ERROR;
+        }
+    }
+
+    return OK;
+}
+
+mlp_status
+mlp_read_iir_filter_parameters(Bitstream* bs,
+                               struct mlp_FilterParameters* iir) {
+    /*FIXME*/
+    PyErr_SetString(PyExc_ValueError, "implement iir filter parameters");
+    return ERROR;
 }
 
 mlp_status
 mlp_read_block_data(decoders_MLPDecoder* decoder, int substream) {
     struct mlp_DecodingParameters* parameters =
         &(decoder->decoding_parameters[substream]);
-    int channel;
+    struct mlp_ChannelParameters* channel_params;
+    Bitstream* bs = decoder->bitstream;
     int channel_count = mlp_substream_channel_count(decoder, substream);
+    uint32_t lsb_count;
 
-    /*FIXME - read residuals here*/
-    for (channel = 0; channel < channel_count; channel++) {
-        if ((parameters->channel_parameters[channel].codebook != 0) ||
-            (parameters->channel_parameters[channel].huffman_lsbs > 0)) {
-            PyErr_SetString(PyExc_ValueError, "block data not yet supported");
-            return ERROR;
+    uint32_t pcm_frame;
+    int channel;
+    int32_t residual;
+
+    for (pcm_frame = 0; pcm_frame < parameters->block_size; pcm_frame++) {
+        for (channel = 0; channel < channel_count; channel++) {
+            channel_params = &(parameters->channel_parameters[channel]);
+            lsb_count = (channel_params->huffman_lsbs -
+                         parameters->quant_step_sizes[channel]);
+            residual = ((((mlp_read_code(bs, channel_params->codebook) <<
+                           lsb_count) |
+                          bs->read(bs, lsb_count)) +
+                         channel_params->signed_huffman_offset) <<
+                        parameters->quant_step_sizes[channel]);
+            /*FIXME - store decoded residual once calculated*/
         }
     }
 
