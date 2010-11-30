@@ -287,6 +287,10 @@ mlp_status
 mlp_read_substream(decoders_MLPDecoder* decoder,
                    int substream);
 
+PyObject*
+mlp_analyze_substream(decoders_MLPDecoder* decoder,
+                      int substream);
+
 int
 mlp_substream_channel_count(decoders_MLPDecoder* decoder,
                             int substream);

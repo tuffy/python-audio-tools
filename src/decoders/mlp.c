@@ -260,9 +260,16 @@ MLPDecoder_channel_mask(decoders_MLPDecoder *self, void *closure) {
 
 static PyObject*
 MLPDecoder_read(decoders_MLPDecoder* self, PyObject *args) {
-    /*FIXME*/
-    Py_INCREF(Py_None);
-    return Py_None;
+    /*FIXME - decode samples*/
+    int frame_size = mlp_read_frame(self);
+    if (frame_size > 0) {
+        return Py_BuildValue("i", frame_size);
+    } else if (frame_size == 0) {
+        Py_INCREF(Py_None);
+        return Py_None;
+    } else {
+        return NULL;
+    }
 }
 
 static PyObject*
@@ -274,15 +281,87 @@ MLPDecoder_close(decoders_MLPDecoder* self, PyObject *args) {
 
 static PyObject*
 MLPDecoder_analyze_frame(decoders_MLPDecoder* self, PyObject *args) {
-    int frame_size = mlp_read_frame(self);
-    if (frame_size > 0) {
-        return Py_BuildValue("i", frame_size);
-    } else if (frame_size == 0) {
+    PyObject* substream_sizes = NULL;
+    PyObject* substreams = NULL;
+    PyObject* obj;
+
+    struct mlp_MajorSync frame_major_sync;
+    int substream;
+    int total_frame_size;
+    uint64_t target_read = self->bytes_read;
+    int offset;
+
+    offset = bs_ftell(self->bitstream);
+
+    /*read the 32-bit total size value*/
+    if ((total_frame_size =
+         mlp_total_frame_size(self->bitstream)) == -1) {
         Py_INCREF(Py_None);
         return Py_None;
-    } else {
-        return NULL;
     }
+
+    target_read += total_frame_size;
+
+    /*allocate space for Python objects*/
+    substream_sizes = PyList_New(0);
+    substreams = PyList_New(0);
+
+    /*read a major sync, if present*/
+    if (mlp_read_major_sync(self,
+                            &frame_major_sync) == MLP_MAJOR_SYNC_ERROR) {
+        PyErr_SetString(PyExc_IOError, "I/O error reading major sync");
+        goto error;
+    }
+    /*FIXME - verify frame major sync against initial major sync*/
+
+    /*read one SubstreamSize per substream*/
+    for (substream = 0;
+         substream < self->major_sync.substream_count;
+         substream++) {
+        if (mlp_read_substream_size(
+                self->bitstream,
+                &(self->substream_sizes[substream])) == OK) {
+            obj = Py_BuildValue(
+                      "{si si si}",
+                      "nonrestart_substream",
+                      self->substream_sizes[substream].nonrestart_substream,
+                      "checkdata_present",
+                      self->substream_sizes[substream].checkdata_present,
+                      "substream_size",
+                      self->substream_sizes[substream].substream_size);
+            PyList_Append(substream_sizes, obj);
+            Py_DECREF(obj);
+        } else {
+            goto error;
+        }
+    }
+
+    /*read one Substream per substream*/
+    for (substream = 0;
+         substream < self->major_sync.substream_count;
+         substream++) {
+        if ((obj = mlp_analyze_substream(self, substream)) != NULL) {
+            PyList_Append(substreams, obj);
+            Py_DECREF(obj);
+        } else
+            goto error;
+    }
+
+    if (self->bytes_read != target_read) {
+        PyErr_SetString(PyExc_ValueError,
+                        "incorrect bytes read in frame\n");
+        goto error;;
+    }
+
+    return Py_BuildValue("{si sN sN si}",
+                         "total_frame_size", total_frame_size,
+                         "substream_sizes", substream_sizes,
+                         "substreams", substreams,
+                         "offset", offset);
+ error:
+    Py_XDECREF(substream_sizes);
+    Py_XDECREF(substreams);
+    return NULL;
 }
 
 int
@@ -431,6 +510,220 @@ mlp_read_substream(decoders_MLPDecoder* decoder,
     }
 
     return OK;
+}
+
+PyObject*
+mlp_analyze_substream(decoders_MLPDecoder* decoder,
+                      int substream) {
+    PyObject* blocks = PyList_New(0);
+    PyObject* block;
+    PyObject* restart_header;
+    PyObject* decoding_parameters;
+    PyObject* matrix_parameters;
+    PyObject* output_shifts;
+    PyObject* quant_step_sizes;
+    PyObject* channel_parameters;
+    PyObject* cp;
+    PyObject* fir_coeffs;
+    PyObject* iir_coeffs;
+
+    PyObject* list1;
+    PyObject* list2;
+    PyObject* obj;
+    PyObject* obj2;
+
+    int i;
+    int j;
+    int coeff_count;
+
+    struct mlp_RestartHeader* header_s;
+    struct mlp_DecodingParameters* parameter_s;
+    struct mlp_MatrixParameters* matrix_s;
+    struct mlp_Matrix* m_s;
+    struct mlp_ChannelParameters* cp_s;
+    struct mlp_FilterParameters* fir_s;
+    struct mlp_FilterParameters* iir_s;
+
+    Bitstream* bs = decoder->bitstream;
+    int last_block = 0;
+    int substream_channel_count = mlp_substream_channel_count(decoder,
+                                                              substream);
+
+
+    /*read blocks until "last" is indicated*/
+    while (!last_block)
+        if (mlp_read_block(decoder, substream, &last_block) != ERROR) {
+            header_s = &(decoder->restart_headers[substream]);
+            parameter_s = &(decoder->decoding_parameters[substream]);
+
+            restart_header = Py_BuildValue(
+                "{si si si si si si si si si si}",
+                "noise_type",
+                header_s->noise_type,
+                "output_timestamp",
+                header_s->output_timestamp,
+                "min_channel",
+                header_s->min_channel,
+                "max_channel",
+                header_s->max_channel,
+                "max_matrix_channel",
+                header_s->max_matrix_channel,
+                "noise_shift",
+                header_s->noise_shift,
+                "noise_gen_seed",
+                header_s->noise_gen_seed,
+                "data_check_present",
+                header_s->data_check_present,
+                "lossless_check",
+                header_s->lossless_check,
+                "checksum",
+                header_s->checksum);
+
+            matrix_parameters = PyList_New(0);
+            matrix_s = &(parameter_s->matrix_parameters);
+            for (i = 0; i < matrix_s->count; i++) {
+                m_s = &(matrix_s->matrices[i]);
+
+                if (header_s->noise_type)
+                    coeff_count = header_s->max_matrix_channel + 1;
+                else
+                    coeff_count = header_s->max_matrix_channel + 1 + 2;
+
+                list1 = PyList_New(0);
+                for (j = 0; j < coeff_count; j++) {
+                    obj2 = PyInt_FromLong(m_s->coefficients[j]);
+                    PyList_Append(list1, obj2);
+                    Py_DECREF(obj2);
+                }
+                obj = Py_BuildValue("{si si si sN si}",
+                                    "out_channel",
+                                    m_s->out_channel,
+                                    "fractional_bits",
+                                    m_s->fractional_bits,
+                                    "lsb_bypass",
+                                    m_s->lsb_bypass,
+                                    "coefficients",
+                                    list1,
+                                    "noise_shift",
+                                    m_s->noise_shift);
+                PyList_Append(matrix_parameters, obj);
+                Py_DECREF(obj);
+            }
+
+            output_shifts = PyList_New(0);
+            for (i = 0; i <= header_s->max_matrix_channel; i++) {
+                obj = PyInt_FromLong(parameter_s->output_shifts[i]);
+                PyList_Append(output_shifts, obj);
+                Py_DECREF(obj);
+            }
+
+            quant_step_sizes = PyList_New(0);
+            for (i = 0; i < substream_channel_count; i++) {
+                obj = PyInt_FromLong(parameter_s->quant_step_sizes[i]);
+                PyList_Append(quant_step_sizes, obj);
+                Py_DECREF(obj);
+            }
+
+            channel_parameters = PyList_New(0);
+            for (i = 0; i < substream_channel_count; i++) {
+                cp_s = &(parameter_s->channel_parameters[i]);
+
+                fir_s = &(cp_s->fir_filter_parameters);
+                list1 = PyList_New(0);
+                for (j = 0; j < fir_s->coefficients.size; j++) {
+                    obj = PyInt_FromLong(fir_s->coefficients.data[j]);
+                    PyList_Append(list1, obj);
+                    Py_DECREF(obj);
+                }
+
+                fir_coeffs = Py_BuildValue("{si sN}",
+                                           "shift",
+                                           fir_s->shift,
+                                           "coefficients",
+                                           list1);
+
+                iir_s = &(cp_s->iir_filter_parameters);
+                list1 = PyList_New(0);
+                for (j = 0; j < iir_s->coefficients.size; j++) {
+                    obj = PyInt_FromLong(iir_s->coefficients.data[j]);
+                    PyList_Append(list1, obj);
+                    Py_DECREF(obj);
+                }
+                list2 = PyList_New(0);
+                for (j = 0; j < iir_s->state.size; j++) {
+                    obj = PyInt_FromLong(iir_s->state.data[j]);
+                    PyList_Append(list2, obj);
+                    Py_DECREF(obj);
+                }
+
+                iir_coeffs = Py_BuildValue("{si sN sN}",
+                                           "shift",
+                                           fir_s->shift,
+                                           "coefficients",
+                                           list1,
+                                           "state",
+                                           list2);
+
+                cp = Py_BuildValue(
+                         "{si si si si sN sN sN}",
+                         "huffman_offset",
+                         cp_s->huffman_offset,
+                         "signed_huffman_offset",
+                         cp_s->signed_huffman_offset,
+                         "codebook",
+                         cp_s->codebook,
+                         "huffman_lsbs",
+                         cp_s->huffman_lsbs,
+                         "fir_filter_parameters",
+                         fir_coeffs,
+                         "iir_filter_parameters",
+                         iir_coeffs,
+                         "matrix_parameters",
+                         matrix_parameters);
+                PyList_Append(channel_parameters, cp);
+                Py_DECREF(cp);
+            }
+
+            decoding_parameters = Py_BuildValue(
+                "{si sN sN sN}",
+                "block_size",
+                parameter_s->block_size,
+                "output_shifts",
+                output_shifts,
+                "quant_step_sizes",
+                quant_step_sizes,
+                "channel_parameters",
+                channel_parameters);
+
+            block = Py_BuildValue("{sN sN}",
+                                  "restart_header",
+                                  restart_header,
+                                  "decoding_parameters",
+                                  decoding_parameters);
+
+            /*FIXME - add decoded residuals to block*/
+
+            PyList_Append(blocks, block);
+            Py_DECREF(block);
+        } else {
+            goto error;
+        }
+
+    /*align stream to 16-bit boundary*/
+    bs->byte_align(bs);
+    if (decoder->bytes_read % 2)
+        bs->skip(bs, 8);
+
+    /*read checksum if indicated by the substream size field*/
+    if (decoder->substream_sizes[substream].checkdata_present) {
+        /*FIXME - verify checksum here*/
+        bs->skip(bs, 16);
+    }
+
+    return blocks;
+ error:
+    Py_DECREF(blocks);
+    return NULL;
 }
 
 int
