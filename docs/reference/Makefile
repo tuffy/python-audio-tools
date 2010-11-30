@@ -75,7 +75,8 @@ figures/mlp_parameter_presence_flags.pdf figures/mlp_matrix_params.pdf \
 figures/mlp_output_shifts.pdf figures/mlp_quant_steps.pdf \
 figures/mlp_channel_parameters.pdf figures/mlp_filter_params_fir.pdf \
 figures/mlp_filter_params_iir.pdf figures/mlp_codebook1.pdf \
-figures/mlp_codebook2.pdf figures/mlp_codebook3.pdf
+figures/mlp_codebook2.pdf figures/mlp_codebook3.pdf \
+figures/mlp_residuals.pdf
 
 CHAPTERS = basics.tex wav.tex flac.tex m4a.tex mp3.tex vorbis.tex \
 wavpack.tex ape.tex aiff.tex au.tex speex.tex oggflac.tex musepack.tex \

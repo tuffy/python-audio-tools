@@ -789,7 +789,7 @@ mlp_read_block_data(decoders_MLPDecoder* decoder, int substream) {
         for (matrix = 0;
              matrix < parameters->matrix_parameters.count;
              matrix++) {
-            /*FIXME - store bypssed LSBs bits somewhere*/
+            /*FIXME - store bypassed LSBs bits somewhere*/
             if (parameters->matrix_parameters.matrices[matrix].lsb_bypass)
                 bypassed_lsb = bs->read(bs, 1);
         }

@@ -1,3 +1,11 @@
+%This work is licensed under the
+%Creative Commons Attribution-Share Alike 3.0 United States License.
+%To view a copy of this license, visit
+%http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to
+%Creative Commons,
+%171 Second Street, Suite 300,
+%San Francisco, California, 94105, USA.
+
 \chapter{Meridian Lossless Packing}
 
 An MLP file is comprised of a series of frames.
@@ -182,10 +190,10 @@ Its value is 8 by default.
 \noindent
 There are \VAR{Matrix Count} number of matrices.
 If \VAR{Noise Type} is set in the \VAR{Restart Header},
-there is one optional \VAR{Matrix Coefficient} per substream
-channel and \VAR{Matrix Noise Shift} is present.
+there is one optional \VAR{Matrix Coefficient} per
+\VAR{Max Matrix Channel} plus 1, and \VAR{Matrix Noise Shift} is present.
 If \VAR{Noise Type} is not set, there is one coefficient per
-substream channel plus 2, and \VAR{Matrix Noise Shift} is not present.
+\VAR{Max Matrix Channel} plus 3, and \VAR{Matrix Noise Shift} is not present.
 The size of each signed matrix coefficient is \VAR{Fractional Bits} + 2
 and its value is calculated as:
 \begin{equation*}
@@ -320,19 +328,23 @@ By default, \VAR{Shift} is 0 and the signed coefficient list is empty.
 
 The block data of a given substream block is the residuals
 from which our original samples will be reconstructed.
-Note that this block is prepended by one
-\VAR{Bypassed Least-Significant Bits} bit per \VAR{Matrix Parameter} value.
+Residuals are interleaved between substream channels.
+That is, given a 2 channel substream, $\text{Residual}_1$ is
+on $\text{Channel}_1$, $\text{Residual}_2$ is on $\text{Channel}_2$,
+$\text{Residual}_3$ is on $\text{Channel}_1$ and so forth.
+Furthermore, for each \VAR{Matrix Parameter} in the substream,
+if \VAR{LSB Bypass} is set in that parameter,
+one must read a \VAR{Bypassed LSB} bit per PCM frame's worth of
+residuals prior to reading the residuals themselves.
 
-The remainder of the block contains \VAR{Block Size} number of
-residual values (from \VAR{Decoding Parameters}) per substream channel.
-For example, given a 2 channel substream with a \VAR{Block Size} of 160,
-our residuals will be stored
-$\text{Left}_1$, $\text{Right}_1$, $\text{Left}_2$,
-and so on up to $\text{Right}_{160}$.
+\begin{figure}[h]
+\includegraphics{figures/mlp_residuals.pdf}
+\end{figure}
 
 Decoding a given residual value requires the
-\VAR{Channel Parameters} as well as the \VAR{Quant Step Size}
-for that residual's channel.
+\VAR{Codebook}, \VAR{Huffman Least-Significant Bits} and
+\VAR{Signed Huffman Offset} values from its \VAR{Channel Parameters},
+as well as the \VAR{Quant Step Size} for that residual's channel.
 First, given a positive \VAR{Codebook} value, we decode a Huffman value
 from the bit stream as indiciated by the trees on page
 \pageref{mlp_codebooks}.
@@ -353,7 +365,7 @@ Our final residual value is calculated as follows:
 \text{Residual}_i = ((\text{MSB}_i \times 2 ^ {\text{LSB Count}_i}) + \text{LSB}_i + \text{Signed Huffman Offset}_c) \times 2 ^ {\text{Quant Step Size}_c}
 \end{equation*}
 
-Note that if \VAR{Codebook} is 0 \textit{and} our $\text{LSB Count}_i$ is 0,
+Note that if \VAR{Codebook} is 0 \textit{and} our $\text{LSB Count}_c$ is 0,
 we read no bits from the stream and $\text{Residual}_i$ is 0.
 This is how MLP stores large runs of 0 residuals.
 
