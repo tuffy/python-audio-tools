@@ -136,6 +136,9 @@ typedef struct {
 
     /*the latest decoding parameters for a given substream*/
     struct mlp_DecodingParameters* decoding_parameters;
+
+    /*decoded and filtered samples for a given substream*/
+    struct ia_array* substream_samples;
 } decoders_MLPDecoder;
 
 typedef enum {MLP_MAJOR_SYNC_OK,
@@ -328,8 +331,10 @@ mlp_read_iir_filter_parameters(Bitstream* bs,
                                struct mlp_FilterParameters* iir);
 
 mlp_status
-mlp_read_block_data(decoders_MLPDecoder* decoder, int substream);
+mlp_read_block_data(decoders_MLPDecoder* decoder,
+                    int substream,
+                    struct ia_array* residuals);
 
-/*Returns the next residual value, or -1 if an error occurs.*/
+/*Returns the next residual MSB value, or -1 if an error occurs.*/
 int
 mlp_read_code(Bitstream* bs, int codebook);

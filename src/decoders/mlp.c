@@ -79,6 +79,9 @@ MLPDecoder_init(decoders_MLPDecoder *self,
     self->decoding_parameters = malloc(sizeof(struct mlp_DecodingParameters) *
                                        self->major_sync.substream_count);
 
+    self->substream_samples = malloc(sizeof(struct ia_array) *
+                                     self->major_sync.substream_count);
+
     for (substream = 0;
          substream < self->major_sync.substream_count;
          substream++) {
@@ -87,6 +90,7 @@ MLPDecoder_init(decoders_MLPDecoder *self,
             ia_init(&(self->decoding_parameters[substream].channel_parameters[channel].iir_filter_parameters.coefficients), 2);
             ia_init(&(self->decoding_parameters[substream].channel_parameters[channel].iir_filter_parameters.state), 2);
         }
+        iaa_init(&(self->substream_samples[substream]), MAX_MLP_CHANNELS, 8);
     }
 
     /*initalize stream position callback*/
@@ -114,9 +118,11 @@ MLPDecoder_dealloc(decoders_MLPDecoder *self)
             ia_free(&(self->decoding_parameters[substream].channel_parameters[channel].fir_filter_parameters.coefficients));
             ia_free(&(self->decoding_parameters[substream].channel_parameters[channel].iir_filter_parameters.coefficients));
         }
+        iaa_free(&(self->substream_samples[substream]));
     }
 
     bs_close(self->bitstream);
+    free(self->substream_samples);
     free(self->substream_sizes);
     free(self->restart_headers);
     free(self->decoding_parameters);
@@ -468,6 +474,9 @@ mlp_read_frame(decoders_MLPDecoder* decoder) {
         return -1;
     }
 
+    /*rematrix Substream samples into proper output samples*/
+    /*FIXME*/
+
     return total_frame_size;
 }
 
@@ -493,10 +502,17 @@ mlp_read_substream(decoders_MLPDecoder* decoder,
     Bitstream* bs = decoder->bitstream;
     int last_block = 0;
 
+    /*initialize samples for next run*/
+    iaa_reset(&(decoder->substream_samples[substream]));
+
     /*read blocks until "last" is indicated*/
-    while (!last_block)
+    while (!last_block) {
         if (mlp_read_block(decoder, substream, &last_block) == ERROR)
             return ERROR;
+
+        /*FIXME - filter blocks based on FIR/IIR filter parameters, if any*/
+    }
+
 
     /*align stream to 16-bit boundary*/
     bs->byte_align(bs);
@@ -526,6 +542,7 @@ mlp_analyze_substream(decoders_MLPDecoder* decoder,
     PyObject* cp;
     PyObject* fir_coeffs;
     PyObject* iir_coeffs;
+    PyObject* residuals;
 
     PyObject* list1;
     PyObject* list2;
@@ -543,16 +560,21 @@ mlp_analyze_substream(decoders_MLPDecoder* decoder,
     struct mlp_ChannelParameters* cp_s;
     struct mlp_FilterParameters* fir_s;
     struct mlp_FilterParameters* iir_s;
+    struct i_array* channel;
 
     Bitstream* bs = decoder->bitstream;
     int last_block = 0;
-    int substream_channel_count = mlp_substream_channel_count(decoder,
-                                                              substream);
-
+    int substream_channel_count;
 
     /*read blocks until "last" is indicated*/
-    while (!last_block)
+    while (!last_block) {
+        /*initialize samples for next block*/
+        iaa_reset(&(decoder->substream_samples[substream]));
+
         if (mlp_read_block(decoder, substream, &last_block) != ERROR) {
+            substream_channel_count = mlp_substream_channel_count(decoder,
+                                                                  substream);
+
             header_s = &(decoder->restart_headers[substream]);
             parameter_s = &(decoder->decoding_parameters[substream]);
 
@@ -695,19 +717,33 @@ mlp_analyze_substream(decoders_MLPDecoder* decoder,
                 "channel_parameters",
                 channel_parameters);
 
-            block = Py_BuildValue("{sN sN}",
+            residuals = PyList_New(0);
+            for (i = 0; i < substream_channel_count; i++) {
+                channel = &(decoder->substream_samples[substream].arrays[i]);
+                list1 = PyList_New(0);
+                for (j = 0; j < channel->size; j++) {
+                    obj = PyInt_FromLong(channel->data[j]);
+                    PyList_Append(list1, obj);
+                    Py_DECREF(obj);
+                }
+                PyList_Append(residuals, list1);
+                Py_DECREF(list1);
+            }
+
+            block = Py_BuildValue("{sN sN sN}",
                                   "restart_header",
                                   restart_header,
                                   "decoding_parameters",
-                                  decoding_parameters);
-
-            /*FIXME - add decoded residuals to block*/
+                                  decoding_parameters,
+                                  "residuals",
+                                  residuals);
 
             PyList_Append(blocks, block);
             Py_DECREF(block);
         } else {
             goto error;
         }
+    }
 
     /*align stream to 16-bit boundary*/
     bs->byte_align(bs);
@@ -754,7 +790,9 @@ mlp_read_block(decoders_MLPDecoder* decoder,
     }
 
     /*read block data based on decoding parameters*/
-    if (mlp_read_block_data(decoder, substream) == ERROR)
+    if (mlp_read_block_data(decoder,
+                            substream,
+                            &(decoder->substream_samples[substream])) == ERROR)
         return ERROR;
 
     /*update "last block" bit*/
@@ -1063,7 +1101,9 @@ mlp_read_matrix_parameters(Bitstream* bs,
 }
 
 mlp_status
-mlp_read_block_data(decoders_MLPDecoder* decoder, int substream) {
+mlp_read_block_data(decoders_MLPDecoder* decoder,
+                    int substream,
+                    struct ia_array* residuals) {
     struct mlp_DecodingParameters* parameters =
         &(decoder->decoding_parameters[substream]);
     struct mlp_ChannelParameters* channel_params;
@@ -1096,7 +1136,7 @@ mlp_read_block_data(decoders_MLPDecoder* decoder, int substream) {
                           bs->read(bs, lsb_count)) +
                          channel_params->signed_huffman_offset) <<
                         parameters->quant_step_sizes[channel]);
-            /*FIXME - store decoded residual once calculated*/
+            ia_append(&(residuals->arrays[channel]), residual);
         }
     }
 
