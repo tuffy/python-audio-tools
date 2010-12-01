@@ -19,9 +19,6 @@
     <col width=".3">Matrix Coefficient₂</col>
     <col width=".2" style="dashed">...</col>
   </row>
-  <row>
-    <col start="0" end="3" style="dashed">Matrix Noise Shift</col>
-  </row>
   <line s_id="matrix" e_id="out_channel" s_corner="sw" e_corner="nw" style="dotted"/>
   <line s_id="matrix" e_id="lsb_bypass" s_corner="se" e_corner="ne" style="dotted"/>
 </diagram>

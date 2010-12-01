@@ -189,11 +189,7 @@ Its value is 8 by default.
 \par
 \noindent
 There are \VAR{Matrix Count} number of matrices.
-If \VAR{Noise Type} is set in the \VAR{Restart Header},
-there is one optional \VAR{Matrix Coefficient} per
-\VAR{Max Matrix Channel} plus 1, and \VAR{Matrix Noise Shift} is present.
-If \VAR{Noise Type} is not set, there is one coefficient per
-\VAR{Max Matrix Channel} plus 3, and \VAR{Matrix Noise Shift} is not present.
+There is one coefficient per \VAR{Max Matrix Channel} + 3.
 The size of each signed matrix coefficient is \VAR{Fractional Bits} + 2
 and its value is calculated as:
 \begin{equation*}

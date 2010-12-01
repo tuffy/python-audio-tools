@@ -606,10 +606,7 @@ mlp_analyze_substream(decoders_MLPDecoder* decoder,
             for (i = 0; i < matrix_s->count; i++) {
                 m_s = &(matrix_s->matrices[i]);
 
-                if (header_s->noise_type)
-                    coeff_count = header_s->max_matrix_channel + 1;
-                else
-                    coeff_count = header_s->max_matrix_channel + 1 + 2;
+                coeff_count = header_s->max_matrix_channel + 1 + 2;
 
                 list1 = PyList_New(0);
                 for (j = 0; j < coeff_count; j++) {
@@ -818,6 +815,11 @@ mlp_read_restart_header(decoders_MLPDecoder* decoder, int substream) {
         return ERROR;
     }
     header->noise_type = bs->read(bs, 1);
+    if (header->noise_type != 0) {
+        PyErr_SetString(PyExc_ValueError, "MLP noise type must be 0");
+        return ERROR;
+    }
+
     header->output_timestamp = bs->read(bs, 16);
     header->min_channel = bs->read(bs, 4);
     header->max_channel = bs->read(bs, 4);
@@ -903,7 +905,6 @@ mlp_read_decoding_parameters(decoders_MLPDecoder* decoder, int substream) {
         if (mlp_read_matrix_parameters(
                 bs,
                 decoder->restart_headers[substream].max_matrix_channel,
-                decoder->restart_headers[substream].noise_type,
                 &(parameters->matrix_parameters)) == ERROR)
             return ERROR;
     }
@@ -1062,7 +1063,6 @@ mlp_read_iir_filter_parameters(Bitstream* bs,
 mlp_status
 mlp_read_matrix_parameters(Bitstream* bs,
                            int max_matrix_channel,
-                           uint8_t noise_type,
                            struct mlp_MatrixParameters* parameters) {
     struct mlp_Matrix* matrix;
     int i;
@@ -1070,10 +1070,7 @@ mlp_read_matrix_parameters(Bitstream* bs,
     int coeff;
     uint8_t fractional_bits;
 
-    if (noise_type)
-        coeff_count = max_matrix_channel + 1;
-    else
-        coeff_count = max_matrix_channel + 1 + 2;
+    coeff_count = max_matrix_channel + 1 + 2;
 
     parameters->count = bs->read(bs, 4);
 
@@ -1091,10 +1088,8 @@ mlp_read_matrix_parameters(Bitstream* bs,
             else
                 matrix->coefficients[coeff] = 0;
         }
-        if (noise_type)
-            matrix->noise_shift = bs->read(bs, 4);
-        else
-            matrix->noise_shift = 0;
+
+        matrix->noise_shift = 0;
     }
 
     return OK;

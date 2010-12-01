@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <diagram>
   <row>
-    <col start="0" end="12" width=".5">Sync Word (0x18F5)</col>
-    <col start="13" end="13" width=".15">Noise Type</col>
+    <col start="0" end="12" width=".45">Sync Word (0x18F5)</col>
+    <col start="13" end="13" width=".20">Noise Type (0)</col>
     <col start="14" end="29" width=".35">Output Timestamp</col>
   </row>
   <row>
