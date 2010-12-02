@@ -943,7 +943,7 @@ mlp_read_channel_parameters(Bitstream* bs,
                             struct mlp_ParameterPresentFlags* flags,
                             uint8_t quant_step_size,
                             struct mlp_ChannelParameters* parameters) {
-    uint32_t lsb_bits;
+    int32_t lsb_bits;
     int32_t sign_shift;
 
     if (flags->fir_filter_parameters && bs->read(bs, 1)) {
@@ -961,7 +961,7 @@ mlp_read_channel_parameters(Bitstream* bs,
     }
 
     if (flags->huffman_offset && bs->read(bs, 1)) {
-        parameters->huffman_offset = bs->read(bs, 15);
+        parameters->huffman_offset = bs->read_signed(bs, 15);
     } else {
         parameters->huffman_offset = 0;
     }
@@ -970,7 +970,7 @@ mlp_read_channel_parameters(Bitstream* bs,
     parameters->huffman_lsbs = bs->read(bs, 5);
 
     if (parameters->codebook > 0) {
-        lsb_bits = parameters->huffman_lsbs - quant_step_size;
+        lsb_bits = (int32_t)parameters->huffman_lsbs - (int32_t)quant_step_size;
         sign_shift = lsb_bits + 2 - parameters->codebook;
         if (sign_shift >= 0)
             parameters->signed_huffman_offset =
@@ -981,7 +981,7 @@ mlp_read_channel_parameters(Bitstream* bs,
                 parameters->huffman_offset -
                 (7 << lsb_bits);
     } else {
-        lsb_bits = parameters->huffman_lsbs - quant_step_size;
+        lsb_bits = (int32_t)parameters->huffman_lsbs - (int32_t)quant_step_size;
         sign_shift = lsb_bits - 1;
         if (sign_shift >= 0)
             parameters->signed_huffman_offset =
@@ -1173,7 +1173,7 @@ mlp_read_code(Bitstream* bs, int codebook) {
         case -1:
             return -1;
         default:
-            return 8 + val;
+            return 8 - val;
         }
     case 3:
         switch (val = bs->read_limited_unary(bs, 1, 9)) {

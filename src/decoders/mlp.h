@@ -100,7 +100,7 @@ struct mlp_FilterParameters {
 struct mlp_ChannelParameters {
     struct mlp_FilterParameters fir_filter_parameters;
     struct mlp_FilterParameters iir_filter_parameters;
-    uint16_t huffman_offset;        /*15 bits*/
+    int16_t huffman_offset;         /*15 bits*/
     int32_t signed_huffman_offset;
     uint8_t codebook;                /*2 bits*/
     uint8_t huffman_lsbs;            /*5 bits*/

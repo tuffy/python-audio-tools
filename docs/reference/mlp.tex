@@ -377,8 +377,6 @@ This is how MLP stores large runs of 0 residuals.
 \caption{Codebook 3}
 \end{figure}
 
-\clearpage
-
 %% \subsubsection{Codebooks}
 %% \begin{table}[h]
 %% \begin{tabular}{|r|r||r|r||r|r|}
@@ -444,3 +442,63 @@ This is how MLP stores large runs of 0 residuals.
 %% \end{tabular}
 %% \end{table}
 
+\clearpage
+
+\subsection{Channel Filtering}
+
+Given a channel's decoded block residuals, we then filter those residuals
+with the channel's FIR and IIR filters from its \VAR{Decoding Parameters}.
+In particular, we'll need the \VAR{FIR Order}, \VAR{FIR Coefficients},
+\VAR{IIR Order}, \VAR{IIR Coefficients}, \VAR{IIR State} and
+\VAR{Shift}\footnote{Note that \VAR{Shift} must be identical for
+both FIR and IIR filters.}
+parameters.
+
+Note that the \VAR{Filtered} values below 0 are taken from the previously
+decoded block while \VAR{Residual} values below 0 are taken from
+\VAR{IIR State}.
+\begin{align*}
+\text{FIR Sum}_i &= \overset{\text{FIR Order} - 1}{\underset{j = 0}{\sum}}{\text{FIR Coefficient}_j \times \text{Filtered}_{i - j - 1}} \\
+\text{IIR Sum}_i &= \overset{\text{IIR Order} - 1}{\underset{k = 0}{\sum}}{\text{IIR Coefficient}_k \times \text{Residual}_{i - k - 1}} \\
+\text{Filtered}_i &= \left\lfloor\frac{\text{FIR Sum}_i + \text{IIR Sum}_i}{2 ^ {\text{Shift}}}\right\rfloor + \text{Residual}_i
+\end{align*}
+For instance, given the values:
+\par
+\noindent
+\begin{tabular}{l c r l c r l c r}
+FIR Order & = & 4 &
+IIR Order & = & 3 &
+$\text{Filtered}_{-4}$ & = & -40 \\
+$\text{FIR Coefficient}_0$ & = & 556 &
+$\text{IIR Coefficient}_0$ & = & -122 &
+$\text{Filtered}_{-3}$ & = & -39 \\
+$\text{FIR Coefficient}_1$ & = & -493 &
+$\text{IIR Coefficient}_1$ & = & 102 &
+$\text{Filtered}_{-2}$ & = & 0 \\
+$\text{FIR Coefficient}_2$ & = & 288 &
+$\text{IIR Coefficient}_2$ & = & -192 &
+$\text{Filtered}_{-1}$ & = & 18 \\
+$\text{FIR Coefficient}_3$ & = & -96 &
+$\text{IIR State}_0$ & = & 12 &
+$\text{Residual}_0$ & = & 34 \\
+$\text{Shift}$ & = & 8 &
+$\text{IIR State}_1$ & = & 20 &
+$\text{Residual}_1$ & = & 9 \\
+& & &
+$\text{IIR State}_2$ & = & -8 &
+$\text{Residual}_2$ & = & -23 \\
+\end{tabular}
+\par
+\noindent
+Our filtered values are as follows:
+\begin{align*}
+\text{FIR Sum}_0 &= (556 \times 18) + (-493 \times 0) + (288 \times -39) + (-96 \times -40) = 2616 \\
+\text{IIR Sum}_0 &= (-122 \times 12) + (102 \times 20) + (-192 \times -8) = 2112 \\
+\text{Filtered}_0 &= \left\lfloor\frac{2616 + 2112}{2 ^ 8}\right\rfloor + 34 = \textbf{52} \\
+\text{FIR Sum}_1 &= (556 \times 52) + (-493 \times 18) + (288 \times 0) + (-96 \times -39) = 23782 \\
+\text{IIR Sum}_1 &= (-122 \times 34) + (102 \times 12) + (-192 \times 20) = -6764 \\
+\text{Filtered}_1 &= \left\lfloor\frac{23782 - 6764}{2 ^ 8}\right\rfloor + 9 = \textbf{75} \\
+\text{FIR Sum}_2 &= (556 \times 75) + (-493 \times 52) + (288 \times 18) + (-96 \times 0) = 21248 \\
+\text{IIR Sum}_2 &= (-122 \times 9) + (102 \times 34) + (-192 \times 12) = 66 \\
+\text{Filtered}_2 &= \left\lfloor\frac{21248 + 66}{2 ^ 8}\right\rfloor - 23 = \textbf{60} \\
+\end{align*}
