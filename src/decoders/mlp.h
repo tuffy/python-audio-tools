@@ -82,11 +82,11 @@ struct mlp_Matrix {
     uint8_t fractional_bits;                /*4 bits*/
     uint8_t lsb_bypass;                     /*1 bit*/
     int32_t coefficients[MAX_MLP_CHANNELS]; /*each 'fractional_bits' + 2*/
-    uint8_t noise_shift;                    /*4 bits*/
+    struct i_array bypassed_lsbs;           /*1 bit per PCM frame*/
 };
 
 struct mlp_MatrixParameters {
-    uint8_t count; /*4 bits*/
+    uint8_t count;                 /*4 bits*/
     struct mlp_Matrix matrices[MAX_MLP_MATRICES];
 };
 

@@ -25,6 +25,7 @@ MLPDecoder_init(decoders_MLPDecoder *self,
     char *filename;
     fpos_t pos;
     int substream;
+    int matrix;
     int channel;
 
     if (!PyArg_ParseTuple(args, "s", &filename))
@@ -93,6 +94,10 @@ MLPDecoder_init(decoders_MLPDecoder *self,
         iaa_init(&(self->substream_samples[substream]), MAX_MLP_CHANNELS, 8);
     }
 
+    for (matrix = 0; matrix < MAX_MLP_MATRICES; matrix++) {
+        ia_init(&(self->decoding_parameters->matrix_parameters.matrices[matrix].bypassed_lsbs), 8);
+    }
+
     /*initalize stream position callback*/
     self->bytes_read = 0;
     bs_add_callback(self->bitstream, mlp_byte_counter, &(self->bytes_read));
@@ -109,6 +114,7 @@ void
 MLPDecoder_dealloc(decoders_MLPDecoder *self)
 {
     int substream;
+    int matrix;
     int channel;
 
     for (substream = 0;
@@ -119,6 +125,10 @@ MLPDecoder_dealloc(decoders_MLPDecoder *self)
             ia_free(&(self->decoding_parameters[substream].channel_parameters[channel].iir_filter_parameters.coefficients));
         }
         iaa_free(&(self->substream_samples[substream]));
+    }
+
+    for (matrix = 0; matrix < MAX_MLP_MATRICES; matrix++) {
+        ia_free(&(self->decoding_parameters->matrix_parameters.matrices[matrix].bypassed_lsbs));
     }
 
     bs_close(self->bitstream);
@@ -614,7 +624,13 @@ mlp_analyze_substream(decoders_MLPDecoder* decoder,
                     PyList_Append(list1, obj2);
                     Py_DECREF(obj2);
                 }
-                obj = Py_BuildValue("{si si si sN si}",
+                list2 = PyList_New(0);
+                for (j = 0; j < m_s->bypassed_lsbs.size; j++) {
+                    obj2 = PyInt_FromLong(m_s->bypassed_lsbs.data[j]);
+                    PyList_Append(list2, obj2);
+                    Py_DECREF(obj2);
+                }
+                obj = Py_BuildValue("{si si si sN sN}",
                                     "out_channel",
                                     m_s->out_channel,
                                     "fractional_bits",
@@ -623,8 +639,8 @@ mlp_analyze_substream(decoders_MLPDecoder* decoder,
                                     m_s->lsb_bypass,
                                     "coefficients",
                                     list1,
-                                    "noise_shift",
-                                    m_s->noise_shift);
+                                    "bypassed_lsbs",
+                                    list2);
                 PyList_Append(matrix_parameters, obj);
                 Py_DECREF(obj);
             }
@@ -677,14 +693,14 @@ mlp_analyze_substream(decoders_MLPDecoder* decoder,
 
                 iir_coeffs = Py_BuildValue("{si sN sN}",
                                            "shift",
-                                           fir_s->shift,
+                                           iir_s->shift,
                                            "coefficients",
                                            list1,
                                            "state",
                                            list2);
 
                 cp = Py_BuildValue(
-                         "{si si si si sN sN sN}",
+                         "{si si si si sN sN}",
                          "huffman_offset",
                          cp_s->huffman_offset,
                          "signed_huffman_offset",
@@ -696,15 +712,13 @@ mlp_analyze_substream(decoders_MLPDecoder* decoder,
                          "fir_filter_parameters",
                          fir_coeffs,
                          "iir_filter_parameters",
-                         iir_coeffs,
-                         "matrix_parameters",
-                         matrix_parameters);
+                         iir_coeffs);
                 PyList_Append(channel_parameters, cp);
                 Py_DECREF(cp);
             }
 
             decoding_parameters = Py_BuildValue(
-                "{si sN sN sN}",
+                "{si sN sN sN sN}",
                 "block_size",
                 parameter_s->block_size,
                 "output_shifts",
@@ -712,7 +726,9 @@ mlp_analyze_substream(decoders_MLPDecoder* decoder,
                 "quant_step_sizes",
                 quant_step_sizes,
                 "channel_parameters",
-                channel_parameters);
+                channel_parameters,
+                "matrix_parameters",
+                matrix_parameters);
 
             residuals = PyList_New(0);
             for (i = 0; i < substream_channel_count; i++) {
@@ -808,6 +824,7 @@ mlp_read_restart_header(decoders_MLPDecoder* decoder, int substream) {
     struct mlp_ParameterPresentFlags* flags =
         &(parameters->parameters_present_flags);
     int channel;
+    int matrix;
 
     /*read restart header values*/
     if (bs->read(bs, 13) != 0x18F5) {
@@ -867,6 +884,10 @@ mlp_read_restart_header(decoders_MLPDecoder* decoder, int substream) {
         channel_params->signed_huffman_offset = (-1) << 23;
         channel_params->codebook = 0;
         channel_params->huffman_lsbs = 24;
+    }
+
+    for (matrix = 0; matrix < MAX_MLP_MATRICES; matrix++) {
+        ia_reset(&(parameters->matrix_parameters.matrices[matrix].bypassed_lsbs));
     }
 
     return OK;
@@ -1088,8 +1109,6 @@ mlp_read_matrix_parameters(Bitstream* bs,
             else
                 matrix->coefficients[coeff] = 0;
         }
-
-        matrix->noise_shift = 0;
     }
 
     return OK;
@@ -1102,6 +1121,7 @@ mlp_read_block_data(decoders_MLPDecoder* decoder,
     struct mlp_DecodingParameters* parameters =
         &(decoder->decoding_parameters[substream]);
     struct mlp_ChannelParameters* channel_params;
+    struct mlp_Matrix* matrix_params;
     Bitstream* bs = decoder->bitstream;
     int channel_count = mlp_substream_channel_count(decoder, substream);
     uint32_t lsb_count;
@@ -1111,15 +1131,16 @@ mlp_read_block_data(decoders_MLPDecoder* decoder,
     int32_t residual;
 
     int matrix;
-    int bypassed_lsb;
 
     for (pcm_frame = 0; pcm_frame < parameters->block_size; pcm_frame++) {
         for (matrix = 0;
              matrix < parameters->matrix_parameters.count;
              matrix++) {
-            /*FIXME - store bypassed LSBs bits somewhere*/
-            if (parameters->matrix_parameters.matrices[matrix].lsb_bypass)
-                bypassed_lsb = bs->read(bs, 1);
+            matrix_params = &(parameters->matrix_parameters.matrices[matrix]);
+            if (matrix_params->lsb_bypass)
+                ia_append(&(matrix_params->bypassed_lsbs), bs->read(bs, 1));
+            else
+                ia_append(&(matrix_params->bypassed_lsbs), 0);
         }
 
         for (channel = 0; channel < channel_count; channel++) {
