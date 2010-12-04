@@ -450,8 +450,9 @@ Given a channel's decoded block residuals, we then filter those residuals
 with the channel's FIR and IIR filters from its \VAR{Decoding Parameters}.
 In particular, we'll need the \VAR{FIR Order}, \VAR{FIR Coefficients},
 \VAR{IIR Order}, \VAR{IIR Coefficients}, \VAR{IIR State} and
-\VAR{Shift}\footnote{Note that \VAR{Shift} must be identical for
-both FIR and IIR filters.}
+\VAR{Shift}\footnote{If both both FIR filter and IIR filter
+have a positive number of coefficients, their \VAR{Shift} values must be
+identical}
 parameters.
 
 Note that the \VAR{Filtered} values below 0 are taken from the previously
@@ -502,3 +503,113 @@ Our filtered values are as follows:
 \text{IIR Sum}_2 &= (-122 \times 9) + (102 \times 34) + (-192 \times 12) = 66 \\
 \text{Filtered}_2 &= \left\lfloor\frac{21248 + 66}{2 ^ 8}\right\rfloor - 23 = \textbf{60} \\
 \end{align*}
+
+\clearpage
+
+\subsection{Channel Rematrixing}
+
+Finally, given our filtered channel values and a set of matrix parameters,
+we ``rematrix'' those values into the final PCM values.
+This is a form of cross-channel decorrelation, roughly analagous
+to FLAC's mid-side channel assignment.
+
+\subsubsection{Noise Channels}
+
+First, we generate two noise channels, each containing
+\VAR{Block Size} number of noise samples, using the
+\VAR{Noise Gen Seed} and \VAR{Noise Shift} (all taken from the
+current \VAR{Restart Header}).
+This requires a simple crop function:
+\begin{equation*}
+\text{crop}(x) =
+\begin{cases}
+x \bmod{256} & \text{if } \lfloor (x \bmod{256}) \div 128\rfloor = 0 \\
+(x \bmod{128}) - 2 ^ 7 & \text{if } \lfloor (x \bmod{256}) \div 128\rfloor > 0
+\end{cases}
+\end{equation*}
+
+\begin{align*}
+\text{Shifted}_i &= \lfloor\text{Seed}_i \div 2 ^ 7\rfloor \bmod{\texttt{0x10000}} \\
+\text{Noise}_{i~1} &= \text{crop}(\lfloor\text{Seed}_i \div 2 ^ {15}\rfloor) \times 2 ^ {\text{Noise Shift}} \\
+\text{Noise}_{i~2} &= \text{crop}(\text{Shifted}_i) \times 2 ^ {\text{Noise Shift}} \\
+\text{Seed}_{i + 1} &= ((\text{Seed}_i \times 2 ^ {16}) \bmod{\texttt{0x100000000}}) \xor \text{Shifted}_i \xor \text{Shifted}_i \times 2 ^ 5
+\end{align*}
+For example, given a \VAR{Noise Gen Seed} of 7855724 and a
+\VAR{Noise Shift} of 0, our first couple of noise samples are
+as follows:
+\begin{align*}
+\text{Seed}_0 &= 7855724 \\
+\text{Shifted}_0 &= \lfloor 7855724 \div 2 ^ 7\rfloor \bmod{\texttt{0x10000}} = 61372 \\
+\text{Noise}_{0~1} &= \text{crop}(\lfloor 7855724 \div 2 ^ {15}\rfloor) \times 2 ^ 0 = \text{crop}(239) \times 1 = \textbf{-17} \\
+\text{Noise}_{0~2} &= \text{crop}(61372) \times 2 ^ 0 = \textbf{-68} \\
+\text{Seed}_1 &= ((7855724 \times 2 ^ {16}) \bmod{\texttt{0x100000000}}) \xor 61372 \xor 61372 \times 2 ^ 5 \\
+&= 3731619840 \xor 61372 \xor 1963904 = 3731953724 \\
+\text{Shifted}_1 &= \lfloor 3731953724 \div 2 ^ 7 \rfloor \bmod{\texttt{0x10000}} = 57904 \\
+\text{Noise}_{1~1} &= \text{crop}(\lfloor 3731953724 \div 2 ^ {15}\rfloor) \times 2 ^ 1 = \text{crop}(113890) \times 1 = \textbf{-30} \\
+\text{Noise}_{1~2} &= \text{crop}(57904) \times 2 ^ 0 = \textbf{48} \\
+\text{Seed}_2 &= ((3731953724 \times 2 ^ {16}) \bmod{\texttt{0x100000000}}) \xor 57904 \xor 57904 \times 2 ^ 5 \\
+&= 406585344 \xor 57904 \xor 1852928 = 404792368
+\end{align*}
+
+\clearpage
+
+\subsubsection{Rematrixing}
+
+Performing the actual rematrixing requires appending the two
+noise channels to the end of each PCM frame of filtered residual data.
+That is, for a 2 channel stream:
+\par
+\noindent
+\begin{tabular}{r c r}
+$\text{Frame}_{i~1}$ & = & $\text{Filtered}_{i~1}$ \\
+$\text{Frame}_{i~2}$ & = & $\text{Filtered}_{i~2}$ \\
+$\text{Frame}_{i~3}$ & = & $\text{Noise}_{i~1}$ \\
+$\text{Frame}_{i~4}$ & = & $\text{Noise}_{i~2}$
+\end{tabular}
+\par
+\noindent
+The calculation for the matrix's output sample is then as follows:
+\begin{equation*}
+\text{Frame}_{i~\text{Channel}} = \left\lfloor\frac{\overset{\text{Channel Count + 2}}{\underset{j = 1}{\sum}}{\text{Frame}_{i~j} \times \text{Matrix Coefficient}_j}}{2 ^ {14}}\right\rfloor + \text{Bypassed LSB}_i
+\end{equation*}
+Note that the two noise channels are the reason we read
+\VAR{Max Matrix Channel} + 3 number of matrix coefficients
+instead of one coefficient per channel as one might expect.
+Also note that the \VAR{Bypassed LSB} bit we read in the
+\VAR{Block Data} for each PCM frame reappears at this point.
+So, given the following values:
+\par
+\noindent
+\begin{tabular}{r c r r c r}
+$\text{Filtered}_{0~1}$ & = & -54372 &
+$\text{Matrix Coefficient}_1$ & = & -16384 \\
+$\text{Filtered}_{0~2}$ & = & 169057 &
+$\text{Matrix Coefficient}_2$ & = & 6144 \\
+$\text{Noise}_{0~1}$ & = & -17 &
+$\text{Matrix Coefficient}_3$ & = & 0 \\
+$\text{Noise}_{0~2}$ & = & -68 &
+$\text{Matrix Coefficient}_4$ & = & 0 \\
+$\text{Filtered}_{1~1}$ & = & -92558 &
+$\text{Bypassed LSB}_0$ & = & 0 \\
+$\text{Filtered}_{1~2}$ & = & 118830 &
+$\text{Bypassed LSB}_1$ & = & 0 \\
+$\text{Noise}_{1~1}$ & = & -30 &
+Channel Count & = & 2 \\
+$\text{Noise}_{1~2}$ & = & -48 &
+Out Channel & = & 0
+\end{tabular}
+\par
+\noindent
+Our new values for channel 1 (\VAR{Out Channel} + 1) are calculated as follows:
+\begin{align*}
+\text{Frame}_{0~1} &= \left\lfloor\frac{(-54372 \times -16384) + (169057 \times 6144) + (-17 \times 0) + (-68 \times 0)}{2 ^ {14}}\right\rfloor + 0 \\
+&= \left\lfloor\frac{1929517056}{16384}\right\rfloor = \textbf{117768} \\
+\text{Frame}_{1~1} &= \left\lfloor\frac{(-92558 \times -16384) + (118830 \times 6144) + (-30 \times 0) + (-48 \times 0)}{2 ^ {14}}\right\rfloor + 0 \\
+&= \left\lfloor\frac{2246561792}{16384}\right\rfloor = \textbf{137119} \\
+\end{align*}
+The values for channel 2 remain unchanged as 169057 and 118830, respectively.
+\par
+Note that because the top 2 \VAR{Matrix Coefficient} values are 0,
+the values from the 2 noise channels don't actually affect the
+calculation whatsoever.
+This is not an unusual case.
