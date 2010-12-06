@@ -532,7 +532,7 @@ x \bmod{256} & \text{if } \lfloor (x \bmod{256}) \div 128\rfloor = 0 \\
 \text{Shifted}_i &= \lfloor\text{Seed}_i \div 2 ^ 7\rfloor \bmod{\texttt{0x10000}} \\
 \text{Noise}_{i~1} &= \text{crop}(\lfloor\text{Seed}_i \div 2 ^ {15}\rfloor) \times 2 ^ {\text{Noise Shift}} \\
 \text{Noise}_{i~2} &= \text{crop}(\text{Shifted}_i) \times 2 ^ {\text{Noise Shift}} \\
-\text{Seed}_{i + 1} &= ((\text{Seed}_i \times 2 ^ {16}) \bmod{\texttt{0x100000000}}) \xor \text{Shifted}_i \xor \text{Shifted}_i \times 2 ^ 5
+\text{Seed}_{i + 1} &= ((\text{Seed}_i \times 2 ^ {16}) \bmod{\texttt{0x100000000}}) \xor \text{Shifted}_i \xor (\text{Shifted}_i \times 2 ^ 5)
 \end{align*}
 For example, given a \VAR{Noise Gen Seed} of 7855724 and a
 \VAR{Noise Shift} of 0, our first couple of noise samples are

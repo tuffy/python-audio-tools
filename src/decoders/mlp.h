@@ -344,3 +344,24 @@ mlp_filter_channel(struct i_array* unfiltered,
                    struct mlp_FilterParameters* iir_filter,
                    struct i_array* filtered);
 
+
+void
+mlp_noise_channels(unsigned int pcm_frames,
+                   uint32_t* noise_gen_seed,
+                   uint8_t noise_shift,
+                   struct i_array* noise_channel1,
+                   struct i_array* noise_channel2);
+
+
+void
+mlp_rematrix_channels(struct ia_array* channels,
+                      uint32_t* noise_gen_seed,
+                      uint8_t noise_shift,
+                      struct mlp_MatrixParameters* matrices);
+
+void
+mlp_rematrix_channel(struct ia_array* channels,
+                     struct i_array* noise_channel1,
+                     struct i_array* noise_channel2,
+                     struct mlp_Matrix* matrix);
+

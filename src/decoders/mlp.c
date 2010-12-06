@@ -1285,3 +1285,82 @@ mlp_filter_channel(struct i_array* unfiltered,
     ia_free(&iir_state);
     return ERROR;
 }
+
+static inline int8_t
+crop(int x) {
+    if ((x % 256) / 128)
+        return (x % 256) - 128;
+    else
+        return x % 256;
+}
+
+void
+mlp_noise_channels(unsigned int pcm_frames,
+                   uint32_t* noise_gen_seed,
+                   uint8_t noise_shift,
+                   struct i_array* noise_channel1,
+                   struct i_array* noise_channel2) {
+    unsigned int i;
+    uint32_t seed = *noise_gen_seed;
+    uint32_t shifted;
+
+    for (i = 0; i < pcm_frames; i++) {
+        shifted = (seed >> 7) & 0xFFFF;
+        ia_append(noise_channel1, crop(seed >> 15) << noise_shift);
+        ia_append(noise_channel2, crop(shifted) << noise_shift);
+        seed = (((seed << 16) & 0xFFFFFFFF) ^ shifted ^ (shifted << 5));
+    }
+
+    *noise_gen_seed = seed;
+}
+
+void
+mlp_rematrix_channels(struct ia_array* channels,
+                      uint32_t* noise_gen_seed,
+                      uint8_t noise_shift,
+                      struct mlp_MatrixParameters* matrices) {
+    uint8_t i;
+    unsigned int pcm_frames = channels->arrays[0].size;
+    struct i_array noise_channel1;
+    struct i_array noise_channel2;
+
+    ia_init(&noise_channel1, pcm_frames);
+    ia_init(&noise_channel2, pcm_frames);
+
+    mlp_noise_channels(pcm_frames, noise_gen_seed, noise_shift,
+                       &noise_channel1, &noise_channel2);
+
+    for (i = 0; i < matrices->count; i++)
+        mlp_rematrix_channel(channels,
+                             &noise_channel1,
+                             &noise_channel2,
+                             &(matrices->matrices[i]));
+
+    ia_free(&noise_channel1);
+    ia_free(&noise_channel2);
+}
+
+void
+mlp_rematrix_channel(struct ia_array* channels,
+                     struct i_array* noise_channel1,
+                     struct i_array* noise_channel2,
+                     struct mlp_Matrix* matrix) {
+    ia_size_t channel_count = channels->size;
+    unsigned int pcm_frames = channels->arrays[0].size;
+    unsigned int i;
+    unsigned int j;
+    int64_t accumulator;
+
+    for (i = 0; i < pcm_frames; i++) {
+        accumulator = 0;
+        for (j = 0; j < channel_count; j++)
+            accumulator += (channels->arrays[j].data[i] *
+                            matrix->coefficients[j]);
+        accumulator += (noise_channel1->data[i] *
+                        matrix->coefficients[j++]);
+        accumulator += (noise_channel2->data[i] *
+                        matrix->coefficients[j++]);
+        accumulator = (accumulator >> 14) + matrix->bypassed_lsbs.data[i];
+        channels->arrays[matrix->out_channel].data[i] = accumulator;
+    }
+}

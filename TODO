@@ -2825,7 +2825,9 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ***** DONE Perform CRC parsing
 *** TODO Perform MLP data decoding
 **** DONE Handle FIR/IIR filtering
-**** TODO Handle matrix reconstruction
+**** DONE Handle matrix reconstruction
+***** DONE Build noise channels
+**** TODO Combine multiple substreams into single output frame
 **** TODO Build pcm.FrameList from PCM data arrays
 ***** TODO Reorder MLP channels to wave order
 ** TODO Link MLP decoder to AOB extractor
