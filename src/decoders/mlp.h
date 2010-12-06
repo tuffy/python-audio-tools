@@ -337,3 +337,10 @@ mlp_read_block_data(decoders_MLPDecoder* decoder,
 /*Returns the next residual MSB value, or -1 if an error occurs.*/
 int
 mlp_read_code(Bitstream* bs, int codebook);
+
+mlp_status
+mlp_filter_channel(struct i_array* unfiltered,
+                   struct mlp_FilterParameters* fir_filter,
+                   struct mlp_FilterParameters* iir_filter,
+                   struct i_array* filtered);
+

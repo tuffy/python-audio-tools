@@ -2799,34 +2799,35 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 **** DONE Add MLPDecoder.bits_per_sample attribute
 **** TODO Add MLPDecoder.channel_mask attribute
 **** TODO Add MLPDecoder.read() method
-**** TODO Add MLPDecoder.analyze_frame() method
+**** DONE Add MLPDecoder.analyze_frame() method
 **** TODO Add MLPDecoder.close() method
-*** TODO Perform MLP frame parsing
+*** DONE Perform MLP frame parsing
 **** DONE Perform frame size parsing
 **** DONE Perform major sync parsing
 **** DONE Perform substream sizes parsing
-**** TODO Perform substream datas parsing
-***** TODO Perform block parsing
-****** TODO Perform restart header parsing
-****** TODO Perform decoding parameters parsing
-******* TODO Perform parameter presence flags parsing
-******* TODO Perform block size parsing
-******* TODO Perform matrix parameters parsing
-******* TODO Perform output shifts parsing
-******* TODO Perform quant step sizes parsing
-******* TODO Perform channel parameters parsing
-******** TODO Perform FIR filter parameters parsing
-******** TODO Perform IIR filter parameters parsing
-******** TODO Perform Huffman offset parsing
-******** TODO Perform Codebook parsing
-******** TODO Perform Huffman least-significant bits parsing
-****** TODO Perform block data parsing
-***** TODO Perform block alignment
-***** TODO Perform CRC parsing
+**** DONE Perform substream datas parsing
+***** DONE Perform block parsing
+****** DONE Perform restart header parsing
+****** DONE Perform decoding parameters parsing
+******* DONE Perform parameter presence flags parsing
+******* DONE Perform block size parsing
+******* DONE Perform matrix parameters parsing
+******* DONE Perform output shifts parsing
+******* DONE Perform quant step sizes parsing
+******* DONE Perform channel parameters parsing
+******** DONE Perform FIR filter parameters parsing
+******** DONE Perform IIR filter parameters parsing
+******** DONE Perform Huffman offset parsing
+******** DONE Perform Codebook parsing
+******** DONE Perform Huffman least-significant bits parsing
+****** DONE Perform block data parsing
+***** DONE Perform block alignment
+***** DONE Perform CRC parsing
 *** TODO Perform MLP data decoding
-**** TODO Handle FIR/IIR filtering
+**** DONE Handle FIR/IIR filtering
 **** TODO Handle matrix reconstruction
 **** TODO Build pcm.FrameList from PCM data arrays
+***** TODO Reorder MLP channels to wave order
 ** TODO Link MLP decoder to AOB extractor
 ** TODO Build DVD-A postprocessor
 ** TODO Build dvdainfo utility

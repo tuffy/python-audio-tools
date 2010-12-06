@@ -14,12 +14,10 @@
     <col start="0" end="223" style="dashed" width=".35" id="frame_e">Major Sync</col>
   </row>
   <row>
-    <col width=".22" start="0" end="15">Substream Size₁</col>
-    <col width=".22" style="dashed" start="16" end="31">Substream Size₂</col>
-    <col width=".06" style="dashed">...</col>
-    <col width=".22" id="substream">Substream Data₁</col>
-    <col width=".22" style="dashed">Substream Data₂</col>
-    <col width=".06" style="dashed">...</col>
+    <col width=".25" start="0" end="15">Substream Size₁</col>
+    <col width=".25" style="dashed" start="16" end="31">Substream Size₂</col>
+    <col width=".25" id="substream">Substream Data₁</col>
+    <col width=".25" style="dashed">Substream Data₂</col>
   </row>
   <spacer height=".75"/>
   <row>

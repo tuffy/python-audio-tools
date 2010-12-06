@@ -63,6 +63,11 @@ MLPDecoder_init(decoders_MLPDecoder *self,
         PyErr_SetString(PyExc_IOError, "unable to read initial major sync");
         return -1;
     }
+    if (self->major_sync.substream_count > 2) {
+        PyErr_SetString(PyExc_ValueError,
+                        "substream count cannot be greater than 2");
+        return -1;
+    }
 
     /*restore initial stream position*/
     if (fsetpos(self->bitstream->file, &pos) == -1) {
@@ -1214,4 +1219,69 @@ mlp_read_code(Bitstream* bs, int codebook) {
     default:
         return -1; /*unsupported codebook*/
     }
+}
+
+mlp_status
+mlp_filter_channel(struct i_array* unfiltered,
+                   struct mlp_FilterParameters* fir_filter,
+                   struct mlp_FilterParameters* iir_filter,
+                   struct i_array* filtered) {
+    struct i_array fir_coefficients;
+    struct i_array iir_coefficients;
+    struct i_array iir_state;
+    struct i_array fir_tail;
+    struct i_array iir_tail;
+    uint32_t shift;
+    ia_data_t residual;
+    ia_size_t i;
+    ia_size_t j;
+    int64_t accumulator;
+
+    ia_init(&fir_coefficients, 8);
+    ia_init(&iir_coefficients, 8);
+    ia_init(&iir_state, 8);
+
+    if ((fir_filter->shift != 0) &&
+        (iir_filter->shift != 0) &&
+        (fir_filter->shift != iir_filter->shift)) {
+        PyErr_SetString(PyExc_ValueError, "filter shifts must be identical");
+        goto error;
+    } else if (fir_filter->shift != 0) {
+        shift = fir_filter->shift;
+    } else {
+        shift = iir_filter->shift;
+    }
+
+    ia_copy(&fir_coefficients, &(fir_filter->coefficients));
+    ia_copy(&iir_coefficients, &(iir_filter->coefficients));
+    ia_copy(&iir_state, &(iir_filter->state));
+
+    ia_reverse(&fir_coefficients);
+    ia_reverse(&iir_coefficients);
+    ia_reverse(&iir_state);
+
+    for (i = 0; i < unfiltered->size; i++) {
+        residual = unfiltered->data[i];
+        accumulator = 0;
+        ia_tail(&fir_tail, filtered, fir_coefficients.size);
+        ia_tail(&iir_tail, &iir_state, iir_coefficients.size);
+        for (j = 0; j < fir_coefficients.size; j++)
+            accumulator += fir_tail.data[j] * fir_coefficients.data[j];
+        for (j = 0; j < iir_coefficients.size; j++)
+            accumulator += iir_tail.data[j] * iir_coefficients.data[j];
+        accumulator >>= shift;
+        ia_append(filtered, accumulator + residual);
+        ia_append(&iir_state, residual);
+    }
+
+    ia_free(&fir_coefficients);
+    ia_free(&iir_coefficients);
+    ia_free(&iir_state);
+
+    return OK;
+ error:
+    ia_free(&fir_coefficients);
+    ia_free(&iir_coefficients);
+    ia_free(&iir_state);
+    return ERROR;
 }
