@@ -137,6 +137,12 @@ typedef struct {
     /*the latest decoding parameters for a given substream*/
     struct mlp_DecodingParameters* decoding_parameters;
 
+    /*raw, unfiltered residuals from a given block*/
+    struct ia_array unfiltered_residuals;
+
+    /*filtered data from a given block*/
+    struct ia_array filtered_residuals;
+
     /*decoded and filtered samples for a given substream*/
     struct ia_array* substream_samples;
 } decoders_MLPDecoder;
@@ -278,7 +284,8 @@ mlp_read_major_sync(decoders_MLPDecoder* decoder,
   Returns the frame's total size upon success,
   0 on EOF or -1 if an error occurs.*/
 int
-mlp_read_frame(decoders_MLPDecoder* decoder);
+mlp_read_frame(decoders_MLPDecoder* decoder,
+               struct ia_array* substream_samples);
 
 /*Reads a 16-bit substream size value.*/
 mlp_status
@@ -288,21 +295,31 @@ mlp_read_substream_size(Bitstream* bitstream,
 /*Reads a substream and its optional 16-bit checksum*/
 mlp_status
 mlp_read_substream(decoders_MLPDecoder* decoder,
-                   int substream);
+                   int substream,
+                   struct ia_array* samples);
 
 PyObject*
 mlp_analyze_substream(decoders_MLPDecoder* decoder,
                       int substream);
 
-int
+unsigned int
 mlp_substream_channel_count(decoders_MLPDecoder* decoder,
                             int substream);
 
-/*Reads a block along with optional restart header and decoding parameters.*/
+/*Reads a block along with optional restart header and decoding parameters
+  and performs FIR/IIR filtering on it before placing the results in
+  "block_data".*/
 mlp_status
 mlp_read_block(decoders_MLPDecoder* decoder,
                int substream,
+               struct ia_array* block_data,
                int* last_block);
+
+mlp_status
+mlp_analyze_block(decoders_MLPDecoder* decoder,
+                  int substream,
+                  struct ia_array* block_data,
+                  int* last_block);
 
 mlp_status
 mlp_read_restart_header(decoders_MLPDecoder* decoder, int substream);
@@ -334,9 +351,15 @@ mlp_read_block_data(decoders_MLPDecoder* decoder,
                     int substream,
                     struct ia_array* residuals);
 
-/*Returns the next residual MSB value, or -1 if an error occurs.*/
+/*returns the next residual MSB value, or -1 if an error occurs*/
 int
 mlp_read_code(Bitstream* bs, int codebook);
+
+mlp_status
+mlp_filter_channels(struct ia_array* unfiltered,
+                    unsigned int channel_count,
+                    struct mlp_DecodingParameters* parameters,
+                    struct ia_array* filtered);
 
 mlp_status
 mlp_filter_channel(struct i_array* unfiltered,
@@ -345,6 +368,8 @@ mlp_filter_channel(struct i_array* unfiltered,
                    struct i_array* filtered);
 
 
+/*generates a pair of noise channels based on
+  the number of PCM frames, noise seed and noise shift*/
 void
 mlp_noise_channels(unsigned int pcm_frames,
                    uint32_t* noise_gen_seed,
@@ -353,12 +378,16 @@ mlp_noise_channels(unsigned int pcm_frames,
                    struct i_array* noise_channel2);
 
 
+/*modifies the values of "channels" to be rematrixed
+  for each matrix in the list of matrices*/
 void
 mlp_rematrix_channels(struct ia_array* channels,
                       uint32_t* noise_gen_seed,
                       uint8_t noise_shift,
                       struct mlp_MatrixParameters* matrices);
 
+/*modifies the values of "channels" to be rematrixed
+  for a single set of matrix values*/
 void
 mlp_rematrix_channel(struct ia_array* channels,
                      struct i_array* noise_channel1,

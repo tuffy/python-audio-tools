@@ -85,6 +85,9 @@ MLPDecoder_init(decoders_MLPDecoder *self,
     self->decoding_parameters = malloc(sizeof(struct mlp_DecodingParameters) *
                                        self->major_sync.substream_count);
 
+    iaa_init(&(self->unfiltered_residuals), MAX_MLP_CHANNELS, 8);
+    iaa_init(&(self->filtered_residuals), MAX_MLP_CHANNELS, 8);
+
     self->substream_samples = malloc(sizeof(struct ia_array) *
                                      self->major_sync.substream_count);
 
@@ -135,6 +138,9 @@ MLPDecoder_dealloc(decoders_MLPDecoder *self)
     for (matrix = 0; matrix < MAX_MLP_MATRICES; matrix++) {
         ia_free(&(self->decoding_parameters->matrix_parameters.matrices[matrix].bypassed_lsbs));
     }
+
+    iaa_free(&(self->unfiltered_residuals));
+    iaa_free(&(self->filtered_residuals));
 
     bs_close(self->bitstream);
     free(self->substream_samples);
@@ -274,17 +280,50 @@ MLPDecoder_channels(decoders_MLPDecoder *self, void *closure) {
 
 static PyObject*
 MLPDecoder_channel_mask(decoders_MLPDecoder *self, void *closure) {
-    /*FIXME*/
+    /*FIXME - figure out what these are from the first restart header
+      which seems to contain all the channel assignments*/
     Py_INCREF(Py_None);
     return Py_None;
 }
 
 static PyObject*
 MLPDecoder_read(decoders_MLPDecoder* self, PyObject *args) {
-    /*FIXME - decode samples*/
-    int frame_size = mlp_read_frame(self);
+    int substream = 0;
+    unsigned int substream_channel_count;
+    unsigned int pcm_frames;
+    PyObject* channels;
+    PyObject* channel;
+    PyObject* sample;
+    int i;
+    int j;
+
+    int frame_size = mlp_read_frame(self, self->substream_samples);
+    /*at this point, self->substream_samples contains an ia_array
+      of sample data per substream*/
+
     if (frame_size > 0) {
-        return Py_BuildValue("i", frame_size);
+        /*FIXME - combine 1-2 substreams into single block of data*/
+        /*FIXME - reorder MLP channels into wave order*/
+
+        substream_channel_count = mlp_substream_channel_count(self, substream);
+        pcm_frames = self->substream_samples[substream].arrays[0].size;
+
+        channels = PyList_New(0);
+        for (i = 0; i < substream_channel_count; i++) {
+            channel = PyList_New(0);
+
+            for (j = 0; j < pcm_frames; j++) {
+                sample = PyInt_FromLong(
+                    self->substream_samples[substream].arrays[i].data[j]);
+                PyList_Append(channel, sample);
+                Py_DECREF(sample);
+            }
+
+            PyList_Append(channels, channel);
+            Py_DECREF(channel);
+        }
+
+        return channels;
     } else if (frame_size == 0) {
         Py_INCREF(Py_None);
         return Py_None;
@@ -295,7 +334,7 @@ MLPDecoder_read(decoders_MLPDecoder* self, PyObject *args) {
 
 static PyObject*
 MLPDecoder_close(decoders_MLPDecoder* self, PyObject *args) {
-    /*FIXME*/
+    /*FIXME - indicate stream is finished*/
     Py_INCREF(Py_None);
     return Py_None;
 }
@@ -443,7 +482,8 @@ mlp_read_major_sync(decoders_MLPDecoder* decoder,
 }
 
 int
-mlp_read_frame(decoders_MLPDecoder* decoder) {
+mlp_read_frame(decoders_MLPDecoder* decoder,
+               struct ia_array* substream_samples) {
     struct mlp_MajorSync frame_major_sync;
     int substream;
     int total_frame_size;
@@ -479,7 +519,10 @@ mlp_read_frame(decoders_MLPDecoder* decoder) {
     for (substream = 0;
          substream < decoder->major_sync.substream_count;
          substream++) {
-        if (mlp_read_substream(decoder, substream) == ERROR)
+        iaa_reset(&(decoder->substream_samples[substream]));
+        if (mlp_read_substream(decoder,
+                               substream,
+                               &(substream_samples[substream])) == ERROR)
             return -1;
     }
 
@@ -488,9 +531,6 @@ mlp_read_frame(decoders_MLPDecoder* decoder) {
                         "incorrect bytes read in frame\n");
         return -1;
     }
-
-    /*rematrix Substream samples into proper output samples*/
-    /*FIXME*/
 
     return total_frame_size;
 }
@@ -513,21 +553,18 @@ mlp_read_substream_size(Bitstream* bitstream,
 
 mlp_status
 mlp_read_substream(decoders_MLPDecoder* decoder,
-                   int substream) {
+                   int substream,
+                   struct ia_array* samples) {
     Bitstream* bs = decoder->bitstream;
     int last_block = 0;
 
-    /*initialize samples for next run*/
-    iaa_reset(&(decoder->substream_samples[substream]));
-
     /*read blocks until "last" is indicated*/
     while (!last_block) {
-        if (mlp_read_block(decoder, substream, &last_block) == ERROR)
+        if (mlp_read_block(decoder, substream,
+                           samples,
+                           &last_block) == ERROR)
             return ERROR;
-
-        /*FIXME - filter blocks based on FIR/IIR filter parameters, if any*/
     }
-
 
     /*align stream to 16-bit boundary*/
     bs->byte_align(bs);
@@ -539,6 +576,15 @@ mlp_read_substream(decoders_MLPDecoder* decoder,
         /*FIXME - verify checksum here*/
         bs->skip(bs, 16);
     }
+
+    /*rematrix substream samples*/
+    mlp_rematrix_channels(
+        samples,
+        &(decoder->restart_headers[substream].noise_gen_seed),
+        decoder->restart_headers[substream].noise_shift,
+        &(decoder->decoding_parameters[substream].matrix_parameters));
+
+    /*samples now contains the rematrixed block data*/
 
     return OK;
 }
@@ -584,9 +630,11 @@ mlp_analyze_substream(decoders_MLPDecoder* decoder,
     /*read blocks until "last" is indicated*/
     while (!last_block) {
         /*initialize samples for next block*/
-        iaa_reset(&(decoder->substream_samples[substream]));
+        iaa_reset(&(decoder->unfiltered_residuals));
 
-        if (mlp_read_block(decoder, substream, &last_block) != ERROR) {
+        if (mlp_analyze_block(decoder, substream,
+                              &(decoder->unfiltered_residuals),
+                              &last_block) != ERROR) {
             substream_channel_count = mlp_substream_channel_count(decoder,
                                                                   substream);
 
@@ -737,7 +785,7 @@ mlp_analyze_substream(decoders_MLPDecoder* decoder,
 
             residuals = PyList_New(0);
             for (i = 0; i < substream_channel_count; i++) {
-                channel = &(decoder->substream_samples[substream].arrays[i]);
+                channel = &(decoder->unfiltered_residuals.arrays[i]);
                 list1 = PyList_New(0);
                 for (j = 0; j < channel->size; j++) {
                     obj = PyInt_FromLong(channel->data[j]);
@@ -780,7 +828,7 @@ mlp_analyze_substream(decoders_MLPDecoder* decoder,
     return NULL;
 }
 
-int
+unsigned int
 mlp_substream_channel_count(decoders_MLPDecoder* decoder,
                             int substream) {
     return ((decoder->restart_headers[substream].max_channel) -
@@ -790,7 +838,49 @@ mlp_substream_channel_count(decoders_MLPDecoder* decoder,
 mlp_status
 mlp_read_block(decoders_MLPDecoder* decoder,
                int substream,
+               struct ia_array* block_data,
                int* last_block) {
+    Bitstream* bitstream = decoder->bitstream;
+
+    if (bitstream->read(bitstream, 1)) { /*check "params present" bit*/
+
+        if (bitstream->read(bitstream, 1)) { /*check "header present" bit*/
+
+            /*update substream's restart header*/
+            if (mlp_read_restart_header(decoder, substream) == ERROR)
+                return ERROR;
+        }
+
+        /*update substream's decoding parameters*/
+        if (mlp_read_decoding_parameters(decoder, substream) == ERROR)
+            return ERROR;
+    }
+
+    /*read block data based on decoding parameters*/
+    iaa_reset(&(decoder->unfiltered_residuals));
+    if (mlp_read_block_data(decoder,
+                            substream,
+                            &(decoder->unfiltered_residuals)) == ERROR)
+        return ERROR;
+
+    /*filter block's channels based on FIR/IIR filter parameters, if any*/
+    if (mlp_filter_channels(&(decoder->unfiltered_residuals),
+                            mlp_substream_channel_count(decoder, substream),
+                            &(decoder->decoding_parameters[substream]),
+                            block_data) == ERROR)
+            return ERROR;
+
+    /*update "last block" bit*/
+    *last_block = bitstream->read(bitstream, 1);
+
+    return OK;
+}
+
+mlp_status
+mlp_analyze_block(decoders_MLPDecoder* decoder,
+                  int substream,
+                  struct ia_array* block_data,
+                  int* last_block) {
     Bitstream* bitstream = decoder->bitstream;
 
     if (bitstream->read(bitstream, 1)) { /*check "params present" bit*/
@@ -810,7 +900,7 @@ mlp_read_block(decoders_MLPDecoder* decoder,
     /*read block data based on decoding parameters*/
     if (mlp_read_block_data(decoder,
                             substream,
-                            &(decoder->substream_samples[substream])) == ERROR)
+                            block_data) == ERROR)
         return ERROR;
 
     /*update "last block" bit*/
@@ -1219,6 +1309,30 @@ mlp_read_code(Bitstream* bs, int codebook) {
     default:
         return -1; /*unsupported codebook*/
     }
+}
+
+mlp_status
+mlp_filter_channels(struct ia_array* unfiltered,
+                    unsigned int channel_count,
+                    struct mlp_DecodingParameters* parameters,
+                    struct ia_array* filtered) {
+    unsigned int channel;
+    struct mlp_FilterParameters* fir_filter;
+    struct mlp_FilterParameters* iir_filter;
+
+    for (channel = 0; channel < channel_count; channel++) {
+        fir_filter =
+            &(parameters->channel_parameters[channel].fir_filter_parameters);
+        iir_filter =
+            &(parameters->channel_parameters[channel].iir_filter_parameters);
+        if (mlp_filter_channel(&(unfiltered->arrays[channel]),
+                               fir_filter,
+                               iir_filter,
+                               &(filtered->arrays[channel])) == ERROR)
+            return ERROR;
+    }
+
+    return OK;
 }
 
 mlp_status
