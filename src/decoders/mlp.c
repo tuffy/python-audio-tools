@@ -100,6 +100,7 @@ MLPDecoder_init(decoders_MLPDecoder *self,
          substream++) {
         for (channel = 0; channel < MAX_MLP_CHANNELS; channel++) {
             ia_init(&(self->decoding_parameters[substream].channel_parameters[channel].fir_filter_parameters.coefficients), 2);
+            ia_init(&(self->decoding_parameters[substream].channel_parameters[channel].fir_filter_parameters.state), 2);
             ia_init(&(self->decoding_parameters[substream].channel_parameters[channel].iir_filter_parameters.coefficients), 2);
             ia_init(&(self->decoding_parameters[substream].channel_parameters[channel].iir_filter_parameters.state), 2);
         }
@@ -135,7 +136,9 @@ MLPDecoder_dealloc(decoders_MLPDecoder *self)
              substream++) {
             for (channel = 0; channel < MAX_MLP_CHANNELS; channel++) {
                 ia_free(&(self->decoding_parameters[substream].channel_parameters[channel].fir_filter_parameters.coefficients));
+                ia_free(&(self->decoding_parameters[substream].channel_parameters[channel].fir_filter_parameters.state));
                 ia_free(&(self->decoding_parameters[substream].channel_parameters[channel].iir_filter_parameters.coefficients));
+                ia_free(&(self->decoding_parameters[substream].channel_parameters[channel].iir_filter_parameters.state));
             }
             iaa_free(&(self->substream_samples[substream]));
         }
@@ -695,6 +698,7 @@ mlp_read_substream(decoders_MLPDecoder* decoder,
     /*rematrix substream samples*/
     mlp_rematrix_channels(
         samples,
+        mlp_substream_channel_count(decoder, substream),
         &(decoder->restart_headers[substream].noise_gen_seed),
         decoder->restart_headers[substream].noise_shift,
         &(decoder->decoding_parameters[substream].matrix_parameters));
@@ -1294,6 +1298,7 @@ mlp_read_iir_filter_parameters(Bitstream* bs,
             for (i = 0; i < order; i++)
                 ia_append(&(iir->state),
                           bs->read_signed(bs, state_bits) << state_shift);
+            ia_reverse(&(iir->state));
         }
     }
 
@@ -1465,8 +1470,9 @@ mlp_filter_channel(struct i_array* unfiltered,
                    struct mlp_FilterParameters* iir_filter,
                    struct i_array* filtered) {
     struct i_array fir_coefficients;
+    struct i_array* fir_state;
     struct i_array iir_coefficients;
-    struct i_array iir_state;
+    struct i_array* iir_state;
     struct i_array fir_tail;
     struct i_array iir_tail;
     uint32_t shift;
@@ -1476,8 +1482,9 @@ mlp_filter_channel(struct i_array* unfiltered,
     int64_t accumulator;
 
     ia_init(&fir_coefficients, 8);
+    fir_state = &(fir_filter->state);
     ia_init(&iir_coefficients, 8);
-    ia_init(&iir_state, 8);
+    iir_state = &(iir_filter->state);
 
     if ((fir_filter->shift != 0) &&
         (iir_filter->shift != 0) &&
@@ -1492,35 +1499,34 @@ mlp_filter_channel(struct i_array* unfiltered,
 
     ia_copy(&fir_coefficients, &(fir_filter->coefficients));
     ia_copy(&iir_coefficients, &(iir_filter->coefficients));
-    ia_copy(&iir_state, &(iir_filter->state));
 
     ia_reverse(&fir_coefficients);
     ia_reverse(&iir_coefficients);
-    ia_reverse(&iir_state);
 
     for (i = 0; i < unfiltered->size; i++) {
         residual = unfiltered->data[i];
         accumulator = 0;
-        ia_tail(&fir_tail, filtered, fir_coefficients.size);
-        ia_tail(&iir_tail, &iir_state, iir_coefficients.size);
+        ia_tail(&fir_tail, fir_state, fir_coefficients.size);
+        ia_tail(&iir_tail, iir_state, iir_coefficients.size);
         for (j = 0; j < fir_coefficients.size; j++)
             accumulator += fir_tail.data[j] * fir_coefficients.data[j];
         for (j = 0; j < iir_coefficients.size; j++)
             accumulator += iir_tail.data[j] * iir_coefficients.data[j];
         accumulator >>= shift;
         ia_append(filtered, accumulator + residual);
-        ia_append(&iir_state, residual);
+        ia_append(fir_state, accumulator + residual);
+        ia_append(iir_state, residual);
     }
 
     ia_free(&fir_coefficients);
     ia_free(&iir_coefficients);
-    ia_free(&iir_state);
+    ia_tail(iir_state, iir_state, 8);
+    ia_tail(fir_state, fir_state, 8);
 
     return OK;
  error:
     ia_free(&fir_coefficients);
     ia_free(&iir_coefficients);
-    ia_free(&iir_state);
     return ERROR;
 }
 
@@ -1554,6 +1560,7 @@ mlp_noise_channels(unsigned int pcm_frames,
 
 void
 mlp_rematrix_channels(struct ia_array* channels,
+                      unsigned int channel_count,
                       uint32_t* noise_gen_seed,
                       uint8_t noise_shift,
                       struct mlp_MatrixParameters* matrices) {
@@ -1570,6 +1577,7 @@ mlp_rematrix_channels(struct ia_array* channels,
 
     for (i = 0; i < matrices->count; i++)
         mlp_rematrix_channel(channels,
+                             channel_count,
                              &noise_channel1,
                              &noise_channel2,
                              &(matrices->matrices[i]));
@@ -1580,10 +1588,10 @@ mlp_rematrix_channels(struct ia_array* channels,
 
 void
 mlp_rematrix_channel(struct ia_array* channels,
+                     unsigned int channel_count,
                      struct i_array* noise_channel1,
                      struct i_array* noise_channel2,
                      struct mlp_Matrix* matrix) {
-    ia_size_t channel_count = channels->size;
     unsigned int pcm_frames = channels->arrays[0].size;
     unsigned int i;
     unsigned int j;
@@ -1592,14 +1600,14 @@ mlp_rematrix_channel(struct ia_array* channels,
     for (i = 0; i < pcm_frames; i++) {
         accumulator = 0;
         for (j = 0; j < channel_count; j++)
-            accumulator += (channels->arrays[j].data[i] *
-                            matrix->coefficients[j]);
-        accumulator += (noise_channel1->data[i] *
-                        matrix->coefficients[j++]);
-        accumulator += (noise_channel2->data[i] *
-                        matrix->coefficients[j++]);
+            accumulator += ((int64_t)channels->arrays[j].data[i] *
+                            (int64_t)matrix->coefficients[j]);
+        accumulator += ((int64_t)noise_channel1->data[i] *
+                        (int64_t)matrix->coefficients[j++]);
+        accumulator += ((int64_t)noise_channel2->data[i] *
+                        (int64_t)matrix->coefficients[j++]);
         accumulator = (accumulator >> 14) + matrix->bypassed_lsbs.data[i];
-        channels->arrays[matrix->out_channel].data[i] = accumulator;
+        channels->arrays[matrix->out_channel].data[i] = (ia_data_t)accumulator;
     }
 }
 

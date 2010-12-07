@@ -382,6 +382,7 @@ mlp_noise_channels(unsigned int pcm_frames,
   for each matrix in the list of matrices*/
 void
 mlp_rematrix_channels(struct ia_array* channels,
+                      unsigned int channel_count,
                       uint32_t* noise_gen_seed,
                       uint8_t noise_shift,
                       struct mlp_MatrixParameters* matrices);
@@ -390,6 +391,7 @@ mlp_rematrix_channels(struct ia_array* channels,
   for a single set of matrix values*/
 void
 mlp_rematrix_channel(struct ia_array* channels,
+                     unsigned int channel_count,
                      struct i_array* noise_channel1,
                      struct i_array* noise_channel2,
                      struct mlp_Matrix* matrix);

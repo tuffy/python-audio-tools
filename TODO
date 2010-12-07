@@ -2827,6 +2827,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 **** DONE Handle FIR/IIR filtering
 **** DONE Handle matrix reconstruction
 ***** DONE Build noise channels
+**** TODO Handle quant_step_sizes
 **** DONE Combine multiple substreams into single output frame
 **** DONE Build pcm.FrameList from PCM data arrays
 ***** DONE Reorder MLP channels to wave order
