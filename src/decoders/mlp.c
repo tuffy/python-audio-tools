@@ -1,4 +1,6 @@
 #include "mlp.h"
+#include "../pcm.h"
+#include "pcm.h"
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -27,6 +29,8 @@ MLPDecoder_init(decoders_MLPDecoder *self,
     int substream;
     int matrix;
     int channel;
+
+    self->substream_sizes = NULL;
 
     if (!PyArg_ParseTuple(args, "s", &filename))
         return -1;
@@ -125,28 +129,32 @@ MLPDecoder_dealloc(decoders_MLPDecoder *self)
     int matrix;
     int channel;
 
-    for (substream = 0;
-         substream < self->major_sync.substream_count;
-         substream++) {
-        for (channel = 0; channel < MAX_MLP_CHANNELS; channel++) {
-            ia_free(&(self->decoding_parameters[substream].channel_parameters[channel].fir_filter_parameters.coefficients));
-            ia_free(&(self->decoding_parameters[substream].channel_parameters[channel].iir_filter_parameters.coefficients));
+    if (self->substream_sizes != NULL) {
+        for (substream = 0;
+             substream < self->major_sync.substream_count;
+             substream++) {
+            for (channel = 0; channel < MAX_MLP_CHANNELS; channel++) {
+                ia_free(&(self->decoding_parameters[substream].channel_parameters[channel].fir_filter_parameters.coefficients));
+                ia_free(&(self->decoding_parameters[substream].channel_parameters[channel].iir_filter_parameters.coefficients));
+            }
+            iaa_free(&(self->substream_samples[substream]));
         }
-        iaa_free(&(self->substream_samples[substream]));
+
+        for (matrix = 0; matrix < MAX_MLP_MATRICES; matrix++) {
+            ia_free(&(self->decoding_parameters->matrix_parameters.matrices[matrix].bypassed_lsbs));
+        }
+
+        iaa_free(&(self->unfiltered_residuals));
+        iaa_free(&(self->filtered_residuals));
+
+        free(self->substream_samples);
+        free(self->substream_sizes);
+        free(self->restart_headers);
+        free(self->decoding_parameters);
     }
 
-    for (matrix = 0; matrix < MAX_MLP_MATRICES; matrix++) {
-        ia_free(&(self->decoding_parameters->matrix_parameters.matrices[matrix].bypassed_lsbs));
-    }
-
-    iaa_free(&(self->unfiltered_residuals));
-    iaa_free(&(self->filtered_residuals));
-
-    bs_close(self->bitstream);
-    free(self->substream_samples);
-    free(self->substream_sizes);
-    free(self->restart_headers);
-    free(self->decoding_parameters);
+    if (self->file != NULL)
+        bs_close(self->bitstream);
 
     self->ob_type->tp_free((PyObject*)self);
 }
@@ -278,55 +286,162 @@ MLPDecoder_channels(decoders_MLPDecoder *self, void *closure) {
     }
 }
 
+#define fL 0x1
+#define fR 0x2
+#define fC 0x4
+#define LFE 0x8
+#define bL 0x10
+#define bR 0x20
+#define bC 0x100
+
+int mlp_channel_mask(struct mlp_MajorSync* major_sync) {
+    switch (major_sync->channel_assignment) {
+    case 0x0:
+        return fC;
+    case 0x1:
+        return fL | fR;
+    case 0x2:
+        return fL | fR | bC;
+    case 0x3:
+        return fL | fR | bL | bR;
+    case 0x4:
+        return fL | fR | LFE;
+    case 0x5:
+        return fL | fR | LFE | bC;
+    case 0x6:
+        return fL | fR | LFE | bL | bR;
+    case 0x7:
+        return fL | fR | fC;
+    case 0x8:
+        return fL | fR | fC | bC;
+    case 0x9:
+        return fL | fR | fC | bL | bR;
+    case 0xA:
+        return fL | fR | fC | LFE;
+    case 0xB:
+        return fL | fR | fC | LFE | bC;
+    case 0xC:
+        return fL | fR | fC | LFE | bL | bR;
+    case 0xD:
+        return fL | fR | fC | bC;
+    case 0xE:
+        return fL | fR | fC | bL | bR;
+    case 0xF:
+        return fL | fR | fC | LFE;
+    case 0x10:
+        return fL | fR | fC | LFE | bC;
+    case 0x11:
+        return fL | fR | fC | LFE | bL | bR;
+    case 0x12:
+        return fL | fR | bL | bR | LFE;
+    case 0x13:
+        return fL | fR | bL | bR | fC;
+    case 0x14:
+        return fL | fR | bL | bR | fC | LFE;
+    default:
+        return -1;
+    }
+
+}
+
+const static int mlp_channel_map[][6] = {
+    /* 0x00 */ {  0, -1, -1, -1, -1, -1},
+    /* 0x01 */ {  0,  1, -1, -1, -1, -1},
+    /* 0x02 */ {  0,  1,  2, -1, -1, -1},
+    /* 0x03 */ {  0,  1,  2,  3, -1, -1},
+    /* 0x04 */ {  0,  1,  2, -1, -1, -1},
+    /* 0x05 */ {  0,  1,  2,  3, -1, -1},
+    /* 0x06 */ {  0,  1,  2,  3,  4, -1},
+    /* 0x07 */ {  0,  1,  2, -1, -1, -1},
+    /* 0x08 */ {  0,  1,  2,  3, -1, -1},
+    /* 0x09 */ {  0,  1,  2,  3,  4, -1},
+    /* 0x0A */ {  0,  1,  2,  3, -1, -1},
+    /* 0x0B */ {  0,  1,  2,  3,  4, -1},
+    /* 0x0C */ {  0,  1,  2,  3,  4,  5},
+    /* 0x0D */ {  0,  1,  2,  3, -1, -1},
+    /* 0x0E */ {  0,  1,  2,  3,  4, -1},
+    /* 0x0F */ {  0,  1,  2,  3, -1, -1},
+    /* 0x10 */ {  0,  1,  2,  3,  4, -1},
+    /* 0x11 */ {  0,  1,  2,  3,  4,  5},
+    /* 0x12 */ {  0,  1,  3,  4,  2, -1},
+    /* 0x13 */ {  0,  1,  3,  4,  2, -1},
+    /* 0x14 */ {  0,  1,  4,  5,  2,  3}
+};
+
 static PyObject*
 MLPDecoder_channel_mask(decoders_MLPDecoder *self, void *closure) {
-    /*FIXME - figure out what these are from the first restart header
-      which seems to contain all the channel assignments*/
-    Py_INCREF(Py_None);
-    return Py_None;
+    int mask = mlp_channel_mask(&(self->major_sync));
+    if (mask > 0) {
+        return Py_BuildValue("i", mask);
+    } else {
+        PyErr_SetString(PyExc_ValueError, "unsupported channel assignment");
+        return NULL;
+    }
 }
 
 static PyObject*
 MLPDecoder_read(decoders_MLPDecoder* self, PyObject *args) {
-    int substream = 0;
+    int channel_count = mlp_channel_count(&(self->major_sync));
+    int substream;
+    int channel;
+    struct mlp_RestartHeader* restart_header;
     unsigned int substream_channel_count;
-    unsigned int pcm_frames;
-    PyObject* channels;
-    PyObject* channel;
-    PyObject* sample;
-    int i;
-    int j;
+    PyObject* frame;
+    struct ia_array merged;
+    struct ia_array wave_order;
 
     int frame_size = mlp_read_frame(self, self->substream_samples);
-    /*at this point, self->substream_samples contains an ia_array
-      of sample data per substream*/
 
     if (frame_size > 0) {
-        /*FIXME - combine 1-2 substreams into single block of data*/
-        /*FIXME - reorder MLP channels into wave order*/
+        merged.size = wave_order.size = channel_count;
+        merged.arrays = malloc(sizeof(struct ia_array) * merged.size);
+        wave_order.arrays = malloc(sizeof(struct ia_array) * wave_order.size);
 
-        substream_channel_count = mlp_substream_channel_count(self, substream);
-        pcm_frames = self->substream_samples[substream].arrays[0].size;
-
-        channels = PyList_New(0);
-        for (i = 0; i < substream_channel_count; i++) {
-            channel = PyList_New(0);
-
-            for (j = 0; j < pcm_frames; j++) {
-                sample = PyInt_FromLong(
-                    self->substream_samples[substream].arrays[i].data[j]);
-                PyList_Append(channel, sample);
-                Py_DECREF(sample);
+        /*combine 1-2 substreams into single block of data*/
+        for (substream = 0;
+             substream < self->major_sync.substream_count;
+             substream++) {
+            substream_channel_count =
+                mlp_substream_channel_count(self, substream);
+            restart_header = &(self->restart_headers[substream]);
+            for (channel = 0; channel < substream_channel_count; channel++) {
+                /*This presumes the "channel assignments" field
+                  in the Restart Header is where that substream's
+                  channels are placed in the output frame.
+                  However, I still need to find an MLP stream
+                  with multiple substreams in order to verify this.*/
+                ia_link(&(merged.arrays[
+                              restart_header->channel_assignments[channel]]),
+                        &(self->substream_samples[substream].arrays[channel]));
             }
-
-            PyList_Append(channels, channel);
-            Py_DECREF(channel);
         }
 
-        return channels;
+        /*reorder MLP channels into wave order*/
+        for (channel = 0; channel < channel_count; channel++) {
+            ia_link(&(wave_order.arrays[
+                          mlp_channel_map[
+                              self->major_sync.channel_assignment][channel]]),
+                    &(merged.arrays[channel]));
+        }
+
+        frame = ia_array_to_framelist(
+                    &wave_order,
+                    mlp_bits_per_sample(&(self->major_sync)));
+
+        free(merged.arrays);
+        free(wave_order.arrays);
+
+        return frame;
     } else if (frame_size == 0) {
-        Py_INCREF(Py_None);
-        return Py_None;
+        /*return empty FrameList object*/
+
+        iaa_init(&wave_order, channel_count, 1);
+        frame = ia_array_to_framelist(
+                    &wave_order,
+                    mlp_bits_per_sample(&(self->major_sync)));
+        iaa_free(&wave_order);
+
+        return frame;
     } else {
         return NULL;
     }
@@ -519,7 +634,7 @@ mlp_read_frame(decoders_MLPDecoder* decoder,
     for (substream = 0;
          substream < decoder->major_sync.substream_count;
          substream++) {
-        iaa_reset(&(decoder->substream_samples[substream]));
+        iaa_reset(&(substream_samples[substream]));
         if (mlp_read_substream(decoder,
                                substream,
                                &(substream_samples[substream])) == ERROR)
@@ -641,8 +756,15 @@ mlp_analyze_substream(decoders_MLPDecoder* decoder,
             header_s = &(decoder->restart_headers[substream]);
             parameter_s = &(decoder->decoding_parameters[substream]);
 
+            list1 = PyList_New(0);
+            for (i = 0; i < substream_channel_count; i++) {
+                obj = PyInt_FromLong(header_s->channel_assignments[i]);
+                PyList_Append(list1, obj);
+                Py_DECREF(obj);
+            }
+
             restart_header = Py_BuildValue(
-                "{si si si si si si si si si si}",
+                "{si si si si si si si si si si sN}",
                 "noise_type",
                 header_s->noise_type,
                 "output_timestamp",
@@ -662,7 +784,9 @@ mlp_analyze_substream(decoders_MLPDecoder* decoder,
                 "lossless_check",
                 header_s->lossless_check,
                 "checksum",
-                header_s->checksum);
+                header_s->checksum,
+                "channel_assignments",
+                list1);
 
             matrix_parameters = PyList_New(0);
             matrix_s = &(parameter_s->matrix_parameters);
@@ -1478,3 +1602,5 @@ mlp_rematrix_channel(struct ia_array* channels,
         channels->arrays[matrix->out_channel].data[i] = accumulator;
     }
 }
+
+#include "pcm.c"

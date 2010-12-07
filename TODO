@@ -2797,7 +2797,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 **** DONE Add MLPDecoder.sample_rate attribute
 **** DONE Add MLPDecoder.channels attribute
 **** DONE Add MLPDecoder.bits_per_sample attribute
-**** TODO Add MLPDecoder.channel_mask attribute
+**** DONE Add MLPDecoder.channel_mask attribute
 **** TODO Add MLPDecoder.read() method
 **** DONE Add MLPDecoder.analyze_frame() method
 **** TODO Add MLPDecoder.close() method
@@ -2827,12 +2827,16 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 **** DONE Handle FIR/IIR filtering
 **** DONE Handle matrix reconstruction
 ***** DONE Build noise channels
-**** TODO Combine multiple substreams into single output frame
-**** TODO Build pcm.FrameList from PCM data arrays
-***** TODO Reorder MLP channels to wave order
+**** DONE Combine multiple substreams into single output frame
+**** DONE Build pcm.FrameList from PCM data arrays
+***** DONE Reorder MLP channels to wave order
 ** TODO Link MLP decoder to AOB extractor
 ** TODO Build DVD-A postprocessor
 ** TODO Build dvdainfo utility
 *** TODO Add dvdainfo.1 man page
 ** TODO Build dvda2track utility
 *** TODO Add dvda2track man page
+** TODO Build dvda2xmcd utility
+   Querying MusicBrainz might be possible,
+   but I expect most of the time it'll generate empty templates.
+*** TODO Add dvda2xmcd man page
