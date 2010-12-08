@@ -101,7 +101,7 @@ struct mlp_ChannelParameters {
     struct mlp_FilterParameters fir_filter_parameters;
     struct mlp_FilterParameters iir_filter_parameters;
     int16_t huffman_offset;         /*15 bits*/
-    int32_t signed_huffman_offset;
+    /* int32_t signed_huffman_offset; */
     uint8_t codebook;                /*2 bits*/
     uint8_t huffman_lsbs;            /*5 bits*/
 };
@@ -345,6 +345,12 @@ mlp_read_fir_filter_parameters(Bitstream* bs,
 mlp_status
 mlp_read_iir_filter_parameters(Bitstream* bs,
                                struct mlp_FilterParameters* iir);
+
+int32_t
+mlp_calculate_signed_offset(uint8_t codebook,
+                            uint8_t huffman_lsbs,
+                            int16_t huffman_offset,
+                            uint8_t quant_step_size);
 
 mlp_status
 mlp_read_block_data(decoders_MLPDecoder* decoder,

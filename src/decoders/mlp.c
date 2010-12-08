@@ -675,6 +675,12 @@ mlp_read_substream(decoders_MLPDecoder* decoder,
                    struct ia_array* samples) {
     Bitstream* bs = decoder->bitstream;
     int last_block = 0;
+    int matrix;
+
+    /*clear out the bypassed_lsbs values for each matrix*/
+    for (matrix = 0; matrix < MAX_MLP_MATRICES; matrix++) {
+        ia_reset(&(decoder->decoding_parameters[substream].matrix_parameters.matrices[matrix].bypassed_lsbs));
+    }
 
     /*read blocks until "last" is indicated*/
     while (!last_block) {
@@ -886,7 +892,11 @@ mlp_analyze_substream(decoders_MLPDecoder* decoder,
                          "huffman_offset",
                          cp_s->huffman_offset,
                          "signed_huffman_offset",
-                         cp_s->signed_huffman_offset,
+                         mlp_calculate_signed_offset(
+                             cp_s->codebook,
+                             cp_s->huffman_lsbs,
+                             cp_s->huffman_offset,
+                             parameter_s->quant_step_sizes[i]),
                          "codebook",
                          cp_s->codebook,
                          "huffman_lsbs",
@@ -1048,7 +1058,6 @@ mlp_read_restart_header(decoders_MLPDecoder* decoder, int substream) {
     struct mlp_ParameterPresentFlags* flags =
         &(parameters->parameters_present_flags);
     int channel;
-    int matrix;
 
     /*read restart header values*/
     if (bs->read(bs, 13) != 0x18F5) {
@@ -1105,13 +1114,8 @@ mlp_read_restart_header(decoders_MLPDecoder* decoder, int substream) {
 
 
         channel_params->huffman_offset = 0;
-        channel_params->signed_huffman_offset = (-1) << 23;
         channel_params->codebook = 0;
         channel_params->huffman_lsbs = 24;
-    }
-
-    for (matrix = 0; matrix < MAX_MLP_MATRICES; matrix++) {
-        ia_reset(&(parameters->matrix_parameters.matrices[matrix].bypassed_lsbs));
     }
 
     return OK;
@@ -1188,9 +1192,6 @@ mlp_read_channel_parameters(Bitstream* bs,
                             struct mlp_ParameterPresentFlags* flags,
                             uint8_t quant_step_size,
                             struct mlp_ChannelParameters* parameters) {
-    int32_t lsb_bits;
-    int32_t sign_shift;
-
     if (flags->fir_filter_parameters && bs->read(bs, 1)) {
         if (mlp_read_fir_filter_parameters(
                 bs,
@@ -1211,28 +1212,6 @@ mlp_read_channel_parameters(Bitstream* bs,
 
     parameters->codebook = bs->read(bs, 2);
     parameters->huffman_lsbs = bs->read(bs, 5);
-
-    if (parameters->codebook > 0) {
-        lsb_bits = parameters->huffman_lsbs - quant_step_size;
-        sign_shift = lsb_bits + 2 - parameters->codebook;
-        if (sign_shift >= 0)
-            parameters->signed_huffman_offset =
-                parameters->huffman_offset -
-                (7 << lsb_bits) - (1 << sign_shift);
-        else
-            parameters->signed_huffman_offset =
-                parameters->huffman_offset -
-                (7 << lsb_bits);
-    } else {
-        lsb_bits = parameters->huffman_lsbs - quant_step_size;
-        sign_shift = lsb_bits - 1;
-        if (sign_shift >= 0)
-            parameters->signed_huffman_offset =
-                parameters->huffman_offset - (1 << sign_shift);
-        else
-            parameters->signed_huffman_offset =
-                parameters->huffman_offset;
-    }
 
     return OK;
 }
@@ -1337,6 +1316,31 @@ mlp_read_matrix_parameters(Bitstream* bs,
     return OK;
 }
 
+int32_t
+mlp_calculate_signed_offset(uint8_t codebook,
+                            uint8_t huffman_lsbs,
+                            int16_t huffman_offset,
+                            uint8_t quant_step_size) {
+    int32_t lsb_bits;
+    int32_t sign_shift;
+
+    if (codebook > 0) {
+        lsb_bits = huffman_lsbs - quant_step_size;
+        sign_shift = lsb_bits + 2 - codebook;
+        if (sign_shift >= 0)
+            return huffman_offset - (7 << lsb_bits) - (1 << sign_shift);
+        else
+            return huffman_offset - (7 << lsb_bits);
+    } else {
+        lsb_bits = huffman_lsbs - quant_step_size;
+        sign_shift = lsb_bits - 1;
+        if (sign_shift >= 0)
+            return huffman_offset - (1 << sign_shift);
+        else
+            return huffman_offset;
+    }
+}
+
 mlp_status
 mlp_read_block_data(decoders_MLPDecoder* decoder,
                     int substream,
@@ -1349,12 +1353,24 @@ mlp_read_block_data(decoders_MLPDecoder* decoder,
     int channel_count = mlp_substream_channel_count(decoder, substream);
     int msb;
     uint32_t lsb_count;
+    int32_t signed_huffman_offset[MAX_MLP_CHANNELS];
 
     uint32_t pcm_frame;
     int channel;
     int32_t residual;
 
     int matrix;
+
+    /*calculate all the signed huffman offsets
+      based on the current huffman offsets/quant_step_sizes*/
+    for (channel = 0; channel < channel_count; channel++) {
+        channel_params = &(parameters->channel_parameters[channel]);
+        signed_huffman_offset[channel] =
+            mlp_calculate_signed_offset(channel_params->codebook,
+                                        channel_params->huffman_lsbs,
+                                        channel_params->huffman_offset,
+                                        parameters->quant_step_sizes[channel]);
+    }
 
     for (pcm_frame = 0; pcm_frame < parameters->block_size; pcm_frame++) {
         for (matrix = 0;
@@ -1378,7 +1394,7 @@ mlp_read_block_data(decoders_MLPDecoder* decoder,
             }
             residual = ((((msb << lsb_count) +
                           bs->read(bs, lsb_count)) +
-                         channel_params->signed_huffman_offset) <<
+                         signed_huffman_offset[channel]) <<
                         parameters->quant_step_sizes[channel]);
             ia_append(&(residuals->arrays[channel]), residual);
         }
