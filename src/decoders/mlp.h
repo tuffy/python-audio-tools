@@ -365,6 +365,7 @@ mlp_status
 mlp_filter_channel(struct i_array* unfiltered,
                    struct mlp_FilterParameters* fir_filter,
                    struct mlp_FilterParameters* iir_filter,
+                   uint8_t quant_step_size,
                    struct i_array* filtered);
 
 
@@ -385,7 +386,8 @@ mlp_rematrix_channels(struct ia_array* channels,
                       unsigned int channel_count,
                       uint32_t* noise_gen_seed,
                       uint8_t noise_shift,
-                      struct mlp_MatrixParameters* matrices);
+                      struct mlp_MatrixParameters* matrices,
+                      uint8_t* quant_step_sizes);
 
 /*modifies the values of "channels" to be rematrixed
   for a single set of matrix values*/
@@ -394,5 +396,6 @@ mlp_rematrix_channel(struct ia_array* channels,
                      unsigned int channel_count,
                      struct i_array* noise_channel1,
                      struct i_array* noise_channel2,
-                     struct mlp_Matrix* matrix);
+                     struct mlp_Matrix* matrix,
+                     uint8_t* quant_step_sizes);
 

@@ -2790,6 +2790,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   This should be done internally instead.
 * TODO Add DVD-A support
 ** TODO Build AOB parser/extractor
+** TODO Document AOB parser
 ** TODO Build raw PCM decoder
 ** TODO Build MLP decoder
 *** TODO Create decoders.MLPDecoder class
@@ -2831,6 +2832,23 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 **** DONE Combine multiple substreams into single output frame
 **** DONE Build pcm.FrameList from PCM data arrays
 ***** DONE Reorder MLP channels to wave order
+** TODO Document MLP decoder
+*** DONE major sync
+*** DONE substream size
+*** DONE substream data
+*** DONE restart header
+*** TODO decoding parameters
+**** DONE parameter presence flags
+**** DONE block size
+**** DONE matrix parameters
+**** TODO output shifts
+**** TODO quant step sizes
+*** TODO checksums
+*** DONE block data
+*** TODO channel filtering
+*** TODO channel rematrixing
+**** DONE noise channels
+**** TODO rematrixing
 ** TODO Link MLP decoder to AOB extractor
 ** TODO Build DVD-A postprocessor
 ** TODO Build dvdainfo utility

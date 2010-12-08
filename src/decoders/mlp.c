@@ -701,7 +701,8 @@ mlp_read_substream(decoders_MLPDecoder* decoder,
         mlp_substream_channel_count(decoder, substream),
         &(decoder->restart_headers[substream].noise_gen_seed),
         decoder->restart_headers[substream].noise_shift,
-        &(decoder->decoding_parameters[substream].matrix_parameters));
+        &(decoder->decoding_parameters[substream].matrix_parameters),
+        decoder->decoding_parameters[substream].quant_step_sizes);
 
     /*samples now contains the rematrixed block data*/
 
@@ -1206,15 +1207,13 @@ mlp_read_channel_parameters(Bitstream* bs,
 
     if (flags->huffman_offset && bs->read(bs, 1)) {
         parameters->huffman_offset = bs->read_signed(bs, 15);
-    } else {
-        parameters->huffman_offset = 0;
     }
 
     parameters->codebook = bs->read(bs, 2);
     parameters->huffman_lsbs = bs->read(bs, 5);
 
     if (parameters->codebook > 0) {
-        lsb_bits = (int32_t)parameters->huffman_lsbs - (int32_t)quant_step_size;
+        lsb_bits = parameters->huffman_lsbs - quant_step_size;
         sign_shift = lsb_bits + 2 - parameters->codebook;
         if (sign_shift >= 0)
             parameters->signed_huffman_offset =
@@ -1225,7 +1224,7 @@ mlp_read_channel_parameters(Bitstream* bs,
                 parameters->huffman_offset -
                 (7 << lsb_bits);
     } else {
-        lsb_bits = (int32_t)parameters->huffman_lsbs - (int32_t)quant_step_size;
+        lsb_bits = parameters->huffman_lsbs - quant_step_size;
         sign_shift = lsb_bits - 1;
         if (sign_shift >= 0)
             parameters->signed_huffman_offset =
@@ -1348,6 +1347,7 @@ mlp_read_block_data(decoders_MLPDecoder* decoder,
     struct mlp_Matrix* matrix_params;
     Bitstream* bs = decoder->bitstream;
     int channel_count = mlp_substream_channel_count(decoder, substream);
+    int msb;
     uint32_t lsb_count;
 
     uint32_t pcm_frame;
@@ -1371,8 +1371,12 @@ mlp_read_block_data(decoders_MLPDecoder* decoder,
             channel_params = &(parameters->channel_parameters[channel]);
             lsb_count = (channel_params->huffman_lsbs -
                          parameters->quant_step_sizes[channel]);
-            residual = ((((mlp_read_code(bs, channel_params->codebook) <<
-                           lsb_count) |
+            msb = mlp_read_code(bs, channel_params->codebook);
+            if (msb < 0) {
+                PyErr_SetString(PyExc_ValueError, "invalid MLP code");
+                return ERROR;
+            }
+            residual = ((((msb << lsb_count) +
                           bs->read(bs, lsb_count)) +
                          channel_params->signed_huffman_offset) <<
                         parameters->quant_step_sizes[channel]);
@@ -1457,6 +1461,7 @@ mlp_filter_channels(struct ia_array* unfiltered,
         if (mlp_filter_channel(&(unfiltered->arrays[channel]),
                                fir_filter,
                                iir_filter,
+                               parameters->quant_step_sizes[channel],
                                &(filtered->arrays[channel])) == ERROR)
             return ERROR;
     }
@@ -1468,6 +1473,7 @@ mlp_status
 mlp_filter_channel(struct i_array* unfiltered,
                    struct mlp_FilterParameters* fir_filter,
                    struct mlp_FilterParameters* iir_filter,
+                   uint8_t quant_step_size,
                    struct i_array* filtered) {
     struct i_array fir_coefficients;
     struct i_array* fir_state;
@@ -1480,6 +1486,10 @@ mlp_filter_channel(struct i_array* unfiltered,
     ia_size_t i;
     ia_size_t j;
     int64_t accumulator;
+    int32_t result;
+
+    /*the number of bits to set to 0 at the beginning of each result*/
+    int32_t mask = -1u << quant_step_size;
 
     ia_init(&fir_coefficients, 8);
     fir_state = &(fir_filter->state);
@@ -1509,13 +1519,17 @@ mlp_filter_channel(struct i_array* unfiltered,
         ia_tail(&fir_tail, fir_state, fir_coefficients.size);
         ia_tail(&iir_tail, iir_state, iir_coefficients.size);
         for (j = 0; j < fir_coefficients.size; j++)
-            accumulator += fir_tail.data[j] * fir_coefficients.data[j];
+            accumulator += ((int64_t)fir_tail.data[j] *
+                            (int64_t)fir_coefficients.data[j]);
         for (j = 0; j < iir_coefficients.size; j++)
-            accumulator += iir_tail.data[j] * iir_coefficients.data[j];
+            accumulator += ((int64_t)iir_tail.data[j] *
+                            (int64_t)iir_coefficients.data[j]);
+
         accumulator >>= shift;
-        ia_append(filtered, accumulator + residual);
-        ia_append(fir_state, accumulator + residual);
-        ia_append(iir_state, residual);
+        result = (accumulator + residual) & mask;
+        ia_append(filtered, result);
+        ia_append(fir_state, result);
+        ia_append(iir_state, result - accumulator);
     }
 
     ia_free(&fir_coefficients);
@@ -1563,7 +1577,8 @@ mlp_rematrix_channels(struct ia_array* channels,
                       unsigned int channel_count,
                       uint32_t* noise_gen_seed,
                       uint8_t noise_shift,
-                      struct mlp_MatrixParameters* matrices) {
+                      struct mlp_MatrixParameters* matrices,
+                      uint8_t* quant_step_sizes) {
     uint8_t i;
     unsigned int pcm_frames = channels->arrays[0].size;
     struct i_array noise_channel1;
@@ -1580,7 +1595,8 @@ mlp_rematrix_channels(struct ia_array* channels,
                              channel_count,
                              &noise_channel1,
                              &noise_channel2,
-                             &(matrices->matrices[i]));
+                             &(matrices->matrices[i]),
+                             quant_step_sizes);
 
     ia_free(&noise_channel1);
     ia_free(&noise_channel2);
@@ -1591,11 +1607,13 @@ mlp_rematrix_channel(struct ia_array* channels,
                      unsigned int channel_count,
                      struct i_array* noise_channel1,
                      struct i_array* noise_channel2,
-                     struct mlp_Matrix* matrix) {
+                     struct mlp_Matrix* matrix,
+                     uint8_t* quant_step_sizes) {
     unsigned int pcm_frames = channels->arrays[0].size;
     unsigned int i;
     unsigned int j;
     int64_t accumulator;
+    int32_t mask = -1u << quant_step_sizes[matrix->out_channel];
 
     for (i = 0; i < pcm_frames; i++) {
         accumulator = 0;
@@ -1606,7 +1624,8 @@ mlp_rematrix_channel(struct ia_array* channels,
                         (int64_t)matrix->coefficients[j++]);
         accumulator += ((int64_t)noise_channel2->data[i] *
                         (int64_t)matrix->coefficients[j++]);
-        accumulator = (accumulator >> 14) + matrix->bypassed_lsbs.data[i];
+        accumulator = (((accumulator >> 14) & mask) +
+                       matrix->bypassed_lsbs.data[i]);
         channels->arrays[matrix->out_channel].data[i] = (ia_data_t)accumulator;
     }
 }
