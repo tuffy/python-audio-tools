@@ -145,6 +145,9 @@ typedef struct {
 
     /*decoded and filtered samples for a given substream*/
     struct ia_array* substream_samples;
+
+    /*combined array of all substreams*/
+    struct ia_array frame_samples;
 } decoders_MLPDecoder;
 
 typedef enum {MLP_MAJOR_SYNC_OK,
@@ -280,12 +283,13 @@ mlp_major_sync_status
 mlp_read_major_sync(decoders_MLPDecoder* decoder,
                     struct mlp_MajorSync* major_sync);
 
-/*Reads an entire MLP frame.
+/*Reads an entire MLP frame and combines its
+  substream samples into a single block of channels/samples.
   Returns the frame's total size upon success,
   0 on EOF or -1 if an error occurs.*/
 int
 mlp_read_frame(decoders_MLPDecoder* decoder,
-               struct ia_array* substream_samples);
+               struct ia_array* frame_samples);
 
 /*Reads a 16-bit substream size value.*/
 mlp_status

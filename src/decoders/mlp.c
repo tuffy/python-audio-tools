@@ -95,6 +95,8 @@ MLPDecoder_init(decoders_MLPDecoder *self,
     self->substream_samples = malloc(sizeof(struct ia_array) *
                                      self->major_sync.substream_count);
 
+    iaa_init(&(self->frame_samples), MAX_MLP_CHANNELS, 8);
+
     for (substream = 0;
          substream < self->major_sync.substream_count;
          substream++) {
@@ -105,11 +107,13 @@ MLPDecoder_init(decoders_MLPDecoder *self,
             ia_init(&(self->decoding_parameters[substream].channel_parameters[channel].iir_filter_parameters.state), 2);
         }
         iaa_init(&(self->substream_samples[substream]), MAX_MLP_CHANNELS, 8);
+
+        for (matrix = 0; matrix < MAX_MLP_MATRICES; matrix++) {
+            ia_init(&(self->decoding_parameters[substream].matrix_parameters.matrices[matrix].bypassed_lsbs), 8);
+        }
     }
 
-    for (matrix = 0; matrix < MAX_MLP_MATRICES; matrix++) {
-        ia_init(&(self->decoding_parameters->matrix_parameters.matrices[matrix].bypassed_lsbs), 8);
-    }
+
 
     /*initalize stream position callback*/
     self->bytes_read = 0;
@@ -141,14 +145,15 @@ MLPDecoder_dealloc(decoders_MLPDecoder *self)
                 ia_free(&(self->decoding_parameters[substream].channel_parameters[channel].iir_filter_parameters.state));
             }
             iaa_free(&(self->substream_samples[substream]));
-        }
 
-        for (matrix = 0; matrix < MAX_MLP_MATRICES; matrix++) {
-            ia_free(&(self->decoding_parameters->matrix_parameters.matrices[matrix].bypassed_lsbs));
+            for (matrix = 0; matrix < MAX_MLP_MATRICES; matrix++) {
+                ia_free(&(self->decoding_parameters[substream].matrix_parameters.matrices[matrix].bypassed_lsbs));
+            }
         }
 
         iaa_free(&(self->unfiltered_residuals));
         iaa_free(&(self->filtered_residuals));
+        iaa_free(&(self->frame_samples));
 
         free(self->substream_samples);
         free(self->substream_sizes);
@@ -385,53 +390,29 @@ MLPDecoder_channel_mask(decoders_MLPDecoder *self, void *closure) {
 static PyObject*
 MLPDecoder_read(decoders_MLPDecoder* self, PyObject *args) {
     int channel_count = mlp_channel_count(&(self->major_sync));
-    int substream;
     int channel;
-    struct mlp_RestartHeader* restart_header;
-    unsigned int substream_channel_count;
+
     PyObject* frame;
-    struct ia_array merged;
     struct ia_array wave_order;
 
-    int frame_size = mlp_read_frame(self, self->substream_samples);
+    int frame_size = mlp_read_frame(self, &(self->frame_samples));
 
     if (frame_size > 0) {
-        merged.size = wave_order.size = channel_count;
-        merged.arrays = malloc(sizeof(struct ia_array) * merged.size);
+        wave_order.size = channel_count;
         wave_order.arrays = malloc(sizeof(struct ia_array) * wave_order.size);
-
-        /*combine 1-2 substreams into single block of data*/
-        for (substream = 0;
-             substream < self->major_sync.substream_count;
-             substream++) {
-            substream_channel_count =
-                mlp_substream_channel_count(self, substream);
-            restart_header = &(self->restart_headers[substream]);
-            for (channel = 0; channel < substream_channel_count; channel++) {
-                /*This presumes the "channel assignments" field
-                  in the Restart Header is where that substream's
-                  channels are placed in the output frame.
-                  However, I still need to find an MLP stream
-                  with multiple substreams in order to verify this.*/
-                ia_link(&(merged.arrays[
-                              restart_header->channel_assignments[channel]]),
-                        &(self->substream_samples[substream].arrays[channel]));
-            }
-        }
 
         /*reorder MLP channels into wave order*/
         for (channel = 0; channel < channel_count; channel++) {
             ia_link(&(wave_order.arrays[
                           mlp_channel_map[
                               self->major_sync.channel_assignment][channel]]),
-                    &(merged.arrays[channel]));
+                    &(self->frame_samples.arrays[channel]));
         }
 
         frame = ia_array_to_framelist(
                     &wave_order,
                     mlp_bits_per_sample(&(self->major_sync)));
 
-        free(merged.arrays);
         free(wave_order.arrays);
 
         return frame;
@@ -601,9 +582,17 @@ mlp_read_major_sync(decoders_MLPDecoder* decoder,
 
 int
 mlp_read_frame(decoders_MLPDecoder* decoder,
-               struct ia_array* substream_samples) {
+               struct ia_array* frame_samples) {
     struct mlp_MajorSync frame_major_sync;
     int substream;
+    int channel;
+    unsigned int substream_channel_count;
+    struct mlp_RestartHeader* restart_header;
+
+    /*one ia_array per substream's samples,
+      each with one or more channels of data*/
+    struct ia_array* substream_samples = decoder->substream_samples;
+
     int total_frame_size;
     uint64_t target_read = decoder->bytes_read;
 
@@ -649,6 +638,35 @@ mlp_read_frame(decoders_MLPDecoder* decoder,
                         "incorrect bytes read in frame\n");
         return -1;
     }
+
+    /*convert 1-2 substreams into a single block of data*/
+    for (substream = 0;
+         substream < decoder->major_sync.substream_count;
+         substream++) {
+        substream_channel_count =
+            mlp_substream_channel_count(decoder, substream);
+        restart_header = &(decoder->restart_headers[substream]);
+        for (channel = 0; channel < substream_channel_count; channel++) {
+            /*The channels in the "channel_assignments" field
+              seem to be offset by the "min_channel" value.*/
+            ia_copy(&(frame_samples->arrays[
+                          restart_header->min_channel +
+                          restart_header->channel_assignments[channel]]),
+                    &(decoder->substream_samples[substream].arrays[channel]));
+        }
+    }
+
+    /*the final substream in our list of substreams*/
+    substream = decoder->major_sync.substream_count - 1;
+
+    /*rematrix all substream samples based on final substream's matrices*/
+    mlp_rematrix_channels(
+        frame_samples,
+        mlp_channel_count(&(decoder->major_sync)),
+        &(decoder->restart_headers[substream].noise_gen_seed),
+        decoder->restart_headers[substream].noise_shift,
+        &(decoder->decoding_parameters[substream].matrix_parameters),
+        decoder->decoding_parameters[substream].quant_step_sizes);
 
     return total_frame_size;
 }
@@ -700,17 +718,6 @@ mlp_read_substream(decoders_MLPDecoder* decoder,
         /*FIXME - verify checksum here*/
         bs->skip(bs, 16);
     }
-
-    /*rematrix substream samples*/
-    mlp_rematrix_channels(
-        samples,
-        mlp_substream_channel_count(decoder, substream),
-        &(decoder->restart_headers[substream].noise_gen_seed),
-        decoder->restart_headers[substream].noise_shift,
-        &(decoder->decoding_parameters[substream].matrix_parameters),
-        decoder->decoding_parameters[substream].quant_step_sizes);
-
-    /*samples now contains the rematrixed block data*/
 
     return OK;
 }
@@ -1580,8 +1587,8 @@ mlp_noise_channels(unsigned int pcm_frames,
 
     for (i = 0; i < pcm_frames; i++) {
         shifted = (seed >> 7) & 0xFFFF;
-        ia_append(noise_channel1, crop(seed >> 15) << noise_shift);
-        ia_append(noise_channel2, crop(shifted) << noise_shift);
+        ia_append(noise_channel1, ((int8_t)(seed >> 15)) << noise_shift);
+        ia_append(noise_channel2, ((int8_t)(shifted)) << noise_shift);
         seed = (((seed << 16) & 0xFFFFFFFF) ^ shifted ^ (shifted << 5));
     }
 
