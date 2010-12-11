@@ -124,6 +124,9 @@ typedef struct {
     Bitstream* bitstream;
 
     uint64_t bytes_read;
+    uint8_t parity;
+    uint8_t crc;
+    uint8_t final_crc;
 
     /*the stream's initial major sync*/
     struct mlp_MajorSync major_sync;
@@ -156,7 +159,7 @@ typedef enum {MLP_MAJOR_SYNC_OK,
 
 typedef enum {OK, ERROR} mlp_status;
 
-void mlp_byte_counter(int value, void* ptr);
+void mlp_byte_callback(int value, void* ptr);
 
 int mlp_sample_rate(struct mlp_MajorSync* major_sync);
 
