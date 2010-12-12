@@ -2844,7 +2844,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 **** DONE matrix parameters
 **** TODO output shifts
 **** TODO quant step sizes
-*** TODO checksums
+*** DONE checksums
 *** DONE block data
 *** TODO channel filtering
 *** TODO channel rematrixing

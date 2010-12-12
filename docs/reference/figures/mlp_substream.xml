@@ -1,11 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <diagram>
   <row>
-    <col width=".2333" id="block">Block₁</col>
-    <col width=".2333" style="dashed">Block₂</col>
-    <col width=".2333" style="dashed">...</col>
-    <col width=".15" style="dashed">Align</col>
-    <col width=".15" style="dashed" start="0" end="15">CRC</col>
+    <col width=".20" id="block">Block₁</col>
+    <col width=".20" style="dashed">Block₂</col>
+    <col width=".20" style="dashed">...</col>
+    <col width=".10" style="dashed">Align</col>
+    <col width=".15" style="dashed" start="0" end="7">Parity</col>
+    <col width=".15" style="dashed" start="8" end="15">CRC-8</col>
   </row>
   <spacer height=".75"/>
   <row>

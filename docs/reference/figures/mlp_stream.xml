@@ -21,11 +21,12 @@
   </row>
   <spacer height=".75"/>
   <row>
-    <col width=".2333" id="blocks_s">Block₁</col>
-    <col width=".2333" style="dashed">Block₂</col>
-    <col width=".2333" style="dashed">...</col>
-    <col width=".15" style="dashed">Align</col>
-    <col width=".15" style="dashed" id="blocks_e" start="0" end="15">CRC</col>
+    <col width=".20" id="blocks_s">Block₁</col>
+    <col width=".20" style="dashed">Block₂</col>
+    <col width=".20" style="dashed">...</col>
+    <col width=".10" style="dashed">Align</col>
+    <col width=".15" style="dashed" start="0" end="7">Parity</col>
+    <col width=".15" style="dashed" id="blocks_e" start="8" end="15">CRC-8</col>
   </row>
   <spacer height=".75"/>
   <row>
