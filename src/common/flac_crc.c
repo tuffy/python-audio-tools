@@ -1,8 +1,7 @@
 #include "flac_crc.h"
-#include <stdint.h>
 
 void
-flac_crc8(int byte, void *checksum)
+flac_crc8(uint8_t byte, void *checksum)
 {
     const static uint32_t sumtable[0x100] =
         {0x00, 0x07, 0x0E, 0x09, 0x1C, 0x1B, 0x12, 0x15,
@@ -42,7 +41,7 @@ flac_crc8(int byte, void *checksum)
 }
 
 void
-flac_crc16(int byte, void *checksum)
+flac_crc16(uint8_t byte, void *checksum)
 {
     const static uint32_t sumtable[0x100] =
         {0x0000, 0x8005, 0x800f, 0x000a, 0x801b, 0x001e, 0x0014, 0x8011,

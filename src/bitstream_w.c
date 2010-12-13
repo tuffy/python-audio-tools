@@ -130,7 +130,7 @@ bs_free(Bitstream *bs)
 }
 
 void
-bs_add_callback(Bitstream *bs, void (*callback)(int, void*),
+bs_add_callback(Bitstream *bs, void (*callback)(uint8_t, void*),
                 void *data)
 {
     struct bs_callback *callback_node = malloc(sizeof(struct bs_callback));
@@ -180,7 +180,7 @@ write_bits_actual_be(Bitstream* bs, unsigned int count, int value)
             for (callback = bs->callback;
                  callback != NULL;
                  callback = callback->next)
-                callback->callback(byte, callback->data);
+                callback->callback((uint8_t)byte, callback->data);
         }
 
         /*update the context*/
@@ -222,7 +222,7 @@ write_bits_actual_le(Bitstream* bs, unsigned int count, int value)
             for (callback = bs->callback;
                  callback != NULL;
                  callback = callback->next)
-                callback->callback(byte, callback->data);
+                callback->callback((uint8_t)byte, callback->data);
         }
 
         /*update the context*/
@@ -287,7 +287,7 @@ write_bits64_actual_be(Bitstream* bs, unsigned int count, uint64_t value)
             for (callback = bs->callback;
                  callback != NULL;
                  callback = callback->next)
-                callback->callback(byte, callback->data);
+                callback->callback((uint8_t)byte, callback->data);
         }
 
         /*update the context*/
@@ -329,7 +329,7 @@ write_bits64_actual_le(Bitstream* bs, unsigned int count, uint64_t value)
             for (callback = bs->callback;
                  callback != NULL;
                  callback = callback->next)
-                callback->callback(byte, callback->data);
+                callback->callback((uint8_t)byte, callback->data);
         }
 
         /*update the context*/
@@ -362,7 +362,7 @@ write_unary_actual_be(Bitstream* bs, int stop_bit, int value)
             for (callback = bs->callback;
                  callback != NULL;
                  callback = callback->next)
-                callback->callback(byte, callback->data);
+                callback->callback((uint8_t)byte, callback->data);
         }
 
         context = result & 0x3FF;
@@ -379,7 +379,7 @@ write_unary_actual_be(Bitstream* bs, int stop_bit, int value)
         for (callback = bs->callback;
              callback != NULL;
              callback = callback->next)
-            callback->callback(byte, callback->data);
+            callback->callback((uint8_t)byte, callback->data);
     }
 
     context = result & 0x3FF;
@@ -405,7 +405,7 @@ write_unary_actual_le(Bitstream* bs, int stop_bit, int value)
             for (callback = bs->callback;
                  callback != NULL;
                  callback = callback->next)
-                callback->callback(byte, callback->data);
+                callback->callback((uint8_t)byte, callback->data);
         }
 
         context = result & 0x3FF;
@@ -422,7 +422,7 @@ write_unary_actual_le(Bitstream* bs, int stop_bit, int value)
         for (callback = bs->callback;
              callback != NULL;
              callback = callback->next)
-            callback->callback(byte, callback->data);
+            callback->callback((uint8_t)byte, callback->data);
     }
 
     context = result & 0x3FF;

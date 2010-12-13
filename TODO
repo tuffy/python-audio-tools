@@ -2830,7 +2830,10 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ***** DONE Build noise channels
 **** DONE Handle quant_step_sizes
 **** DONE Combine multiple substreams into single output frame
-**** DONE Handle checksums
+**** TODO Handle checksums
+***** TODO restart header checksum
+***** DONE end-of-frame parity
+***** DONE end-of-frame checksum
 **** DONE Build pcm.FrameList from PCM data arrays
 ***** DONE Reorder MLP channels to wave order
 ** TODO Document MLP decoder
@@ -2853,6 +2856,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** TODO Link MLP decoder to AOB extractor
 ** TODO Build DVD-A postprocessor
 ** TODO Build dvdainfo utility
+*** TODO Support progress indicator
 *** TODO Add dvdainfo.1 man page
 ** TODO Build dvda2track utility
 *** TODO Add dvda2track man page
@@ -2860,3 +2864,56 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    Querying MusicBrainz might be possible,
    but I expect most of the time it'll generate empty templates.
 *** TODO Add dvda2xmcd man page
+* TODO Remove -v option for file renaming
+  This can be emulated in software.
+* TODO Add progess indicator to transcoders
+  This will likely require an ExecQueue update which can
+  receive progress output from multiple subprocesses
+  so that the total progress can be generated.
+  - [ ] track2track
+  - [ ] cd2track
+  - [ ] tracksplit
+  - [ ] track2cd
+** TODO Update transfer_framelist_data with a progress callback option
+** TODO Update AudioFile.convert() with a progress callback option
+* TODO Have the *2xmcd utilities delete .xmcd files if cancelled
+  - [ ] cd2xmcd
+  - [ ] track2xmcd
+* TODO Add options for ID3v2/ID3v1 tagging
+  Perhaps add config file options and corresponding audiotools-config options.
+** TODO Make ID3v2 version selectable
+   Either ID3v2.2/ID3v2.3/ID3v2.4/none
+** TODO Make ID3v1 version selectable
+   ID3v1.0/ID3v1.1/none
+** TODO Make ID3v2 track number formatting adjustable
+   Allow leading 0s, since the spec doesn't forbid them.
+* TODO Add more verbosity to --quality settings
+  For formats with varying quality, the "-q help" option
+  should indicate what those settings represent.
+  - [ ] AACAudio
+  - [ ] FlacAudio
+  - [ ] M4AAudio_faac
+  - [ ] M4AAudio_Nero
+  - [ ] MP2Audio
+  - [ ] MP3Audio
+  - [ ] OggFlacAudio
+  - [ ] SpeexAudio
+  - [ ] VorbisAudio
+  - [ ] WavPackAudio
+* TODO Add software-based routines for bitstream reading/writing
+  These should be optional, at least, for the bitstream writer especially.
+  But if fast enough, they could replace the jump tables entirely.
+** TODO bitstream_r.h
+   - [ ] bs_read_bits_be
+   - [ ] bs_read_bits_le
+   - [ ] bs_unread_bit_be
+   - [ ] bs_unread_bit_le
+   - [ ] bs_read_unary_be
+   - [ ] bs_read_unary_le
+   - [ ] bs_read_limited_unary_be
+   - [ ] bs_read_limited_unary_le
+** TODO bitstream_w.h
+   - [ ] write_bits_actual_be
+   - [ ] write_bits_actual_le
+   - [ ] write_unary_actual_be
+   - [ ] write_unary_actual_le

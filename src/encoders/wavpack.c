@@ -2050,7 +2050,7 @@ wavpack_wrap_decorrelation_samples(struct i_array* decorrelation_samples_A,
 }
 
 void
-wavpack_count_bytes(int byte, void* value) {
+wavpack_count_bytes(uint8_t byte, void* value) {
     uint32_t* int_value = (uint32_t*)value;
     *int_value += 1;
 }

@@ -869,7 +869,7 @@ alac_write_residuals(Bitstream *bs,
 }
 
 void
-alac_byte_counter(int byte, void* counter)
+alac_byte_counter(uint8_t byte, void* counter)
 {
     int* i_counter = (int*)counter;
     *i_counter += 1;

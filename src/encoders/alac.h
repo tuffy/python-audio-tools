@@ -69,7 +69,7 @@ PyObject
 #endif
 
 void
-alac_byte_counter(int byte, void* counter);
+alac_byte_counter(uint8_t byte, void* counter);
 
 /*writes a full set of ALAC frames,
   complete with trailing stop '111' bits and byte-aligned*/

@@ -152,7 +152,7 @@ verifymodule_print_ogg_header(struct ogg_header *header) {
 }
 
 void
-verifymodule_ogg_checksum(int byte, void *checksum) {
+verifymodule_ogg_checksum(uint8_t byte, void *checksum) {
     uint32_t *sum = (uint32_t*)checksum;
     const static uint32_t CRC_LOOKUP[] =
         {0x00000000, 0x04c11db7, 0x09823b6e, 0x0d4326d9,

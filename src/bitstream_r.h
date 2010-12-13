@@ -34,7 +34,7 @@
 #endif
 
 struct bs_callback {
-    void (*callback)(int, void*);
+    void (*callback)(uint8_t, void*);
     void *data;
     struct bs_callback *next;
 };
@@ -72,13 +72,13 @@ void
 bs_close(Bitstream *bs);
 
 void
-bs_add_callback(Bitstream *bs, void (*callback)(int, void*),
+bs_add_callback(Bitstream *bs, void (*callback)(uint8_t, void*),
                 void *data);
 
 /*explicitly passes "byte" to the set callbacks,
   as if the byte were read from the input stream*/
 void
-bs_call_callbacks(Bitstream *bs, int byte);
+bs_call_callbacks(Bitstream *bs, uint8_t byte);
 
 /*removes the most recently added callback, if any*/
 void

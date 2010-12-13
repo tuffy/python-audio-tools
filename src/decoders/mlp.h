@@ -123,6 +123,8 @@ typedef struct {
     FILE* file;
     Bitstream* bitstream;
 
+    int init_ok;
+
     uint64_t bytes_read;
     uint8_t parity;
     uint8_t crc;
@@ -159,7 +161,9 @@ typedef enum {MLP_MAJOR_SYNC_OK,
 
 typedef enum {OK, ERROR} mlp_status;
 
-void mlp_byte_callback(int value, void* ptr);
+/*called on each byte read from the stream
+  and used to calculcate parity, checksums and frame sizes*/
+void mlp_byte_callback(uint8_t byte, void* ptr);
 
 int mlp_sample_rate(struct mlp_MajorSync* major_sync);
 
@@ -299,12 +303,13 @@ mlp_status
 mlp_read_substream_size(Bitstream* bitstream,
                         struct mlp_SubstreamSize* size);
 
-/*Reads a substream and its optional 16-bit checksum*/
+/*Reads a substream and its optional parity/checksum*/
 mlp_status
 mlp_read_substream(decoders_MLPDecoder* decoder,
                    int substream,
                    struct ia_array* samples);
 
+/*Reads a substream and returns a Python object of its values*/
 PyObject*
 mlp_analyze_substream(decoders_MLPDecoder* decoder,
                       int substream);
@@ -322,11 +327,16 @@ mlp_read_block(decoders_MLPDecoder* decoder,
                struct ia_array* block_data,
                int* last_block);
 
+/*Reads a block along with optional restart header and decoding parameters
+  and places the result in "block_data".
+  Unlike mlp_read_block, this does not perform FIR/IIR filtering on the
+  results so that unfiltered residuals can be fed to analyze_substream*/
 mlp_status
 mlp_analyze_block(decoders_MLPDecoder* decoder,
                   int substream,
                   struct ia_array* block_data,
                   int* last_block);
+
 
 mlp_status
 mlp_read_restart_header(decoders_MLPDecoder* decoder, int substream);

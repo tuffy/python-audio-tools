@@ -30,7 +30,7 @@ MLPDecoder_init(decoders_MLPDecoder *self,
     int matrix;
     int channel;
 
-    self->substream_sizes = NULL;
+    self->init_ok = 0;
 
     if (!PyArg_ParseTuple(args, "s", &filename))
         return -1;
@@ -79,6 +79,9 @@ MLPDecoder_init(decoders_MLPDecoder *self,
         return -1;
     }
 
+    /*at this point, all the errors that can occur have been checked*/
+    self->init_ok = 1;
+
     /*allocate space for decoding variables*/
     self->substream_sizes = malloc(sizeof(struct mlp_SubstreamSize) *
                                    self->major_sync.substream_count);
@@ -120,9 +123,8 @@ MLPDecoder_init(decoders_MLPDecoder *self,
     return 0;
 }
 
-void mlp_byte_callback(int value, void* ptr) {
+void mlp_byte_callback(uint8_t byte, void* ptr) {
     decoders_MLPDecoder* decoder = ptr;
-    uint8_t byte = value;
     const static uint8_t CRC8[] =
         {0x00, 0x63, 0xC6, 0xA5, 0xEF, 0x8C, 0x29, 0x4A,
          0xBD, 0xDE, 0x7B, 0x18, 0x52, 0x31, 0x94, 0xF7,
@@ -170,7 +172,10 @@ MLPDecoder_dealloc(decoders_MLPDecoder *self)
     int matrix;
     int channel;
 
-    if (self->substream_sizes != NULL) {
+    if (self->file != NULL)
+        bs_close(self->bitstream);
+
+    if (self->init_ok) {
         for (substream = 0;
              substream < self->major_sync.substream_count;
              substream++) {
@@ -196,9 +201,6 @@ MLPDecoder_dealloc(decoders_MLPDecoder *self)
         free(self->restart_headers);
         free(self->decoding_parameters);
     }
-
-    if (self->file != NULL)
-        bs_close(self->bitstream);
 
     self->ob_type->tp_free((PyObject*)self);
 }

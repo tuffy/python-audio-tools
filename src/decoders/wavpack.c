@@ -803,7 +803,7 @@ int wavpack_get_zero_count(Bitstream* bitstream) {
     return t;
 }
 
-void wavpack_decrement_counter(int byte, void* counter) {
+void wavpack_decrement_counter(uint8_t byte, void* counter) {
     int* int_counter = (int*)counter;
     *int_counter -= 1;
 }

@@ -18,4 +18,4 @@ void
 verifymodule_print_ogg_header(struct ogg_header *header);
 
 void
-verifymodule_ogg_checksum(int byte, void *checksum);
+verifymodule_ogg_checksum(uint8_t byte, void *checksum);

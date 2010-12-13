@@ -275,7 +275,7 @@ int wavpack_get_value(Bitstream* bitstream,
 
 int wavpack_get_zero_count(Bitstream* bitstream);
 
-void wavpack_decrement_counter(int byte, void* counter);
+void wavpack_decrement_counter(uint8_t byte, void* counter);
 
 /*Reads a single block from the bitstream
   and returns its final sample values to channel_A and (optionally) channel_B.

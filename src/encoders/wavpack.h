@@ -417,7 +417,7 @@ wavpack_perform_joint_stereo(struct i_array *channel_A,
                              struct i_array *channel_B);
 
 void
-wavpack_count_bytes(int byte, void* value);
+wavpack_count_bytes(uint8_t byte, void* value);
 
 void
 wavpack_md5_callback(void* md5, unsigned char* data, unsigned long data_len);

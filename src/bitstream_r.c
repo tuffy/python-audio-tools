@@ -115,7 +115,7 @@ bs_close(Bitstream *bs)
 }
 
 void
-bs_add_callback(Bitstream *bs, void (*callback)(int, void*),
+bs_add_callback(Bitstream *bs, void (*callback)(uint8_t, void*),
                 void *data)
 {
     struct bs_callback *callback_node = malloc(sizeof(struct bs_callback));
@@ -126,7 +126,7 @@ bs_add_callback(Bitstream *bs, void (*callback)(int, void*),
 }
 
 void
-bs_call_callbacks(Bitstream *bs, int byte) {
+bs_call_callbacks(Bitstream *bs, uint8_t byte) {
     struct bs_callback *callback;
     for (callback = bs->callback;
          callback != NULL;
@@ -198,7 +198,7 @@ bs_read_bits_be(Bitstream* bs, unsigned int count)
             for (callback = bs->callback;
                  callback != NULL;
                  callback = callback->next)
-                callback->callback(byte, callback->data);
+                callback->callback((uint8_t)byte, callback->data);
         }
 
         result = read_bits_table[context][(count > 8 ? 8 : count) - 1];
@@ -232,7 +232,7 @@ bs_read_bits_le(Bitstream* bs, unsigned int count)
             for (callback = bs->callback;
                  callback != NULL;
                  callback = callback->next)
-                callback->callback(byte, callback->data);
+                callback->callback((uint8_t)byte, callback->data);
         }
 
         result = read_bits_table_le[context][(count > 8 ? 8 : count) - 1];
@@ -288,7 +288,7 @@ bs_read_bits64_be(Bitstream* bs, unsigned int count)
             for (callback = bs->callback;
                  callback != NULL;
                  callback = callback->next)
-                callback->callback(byte, callback->data);
+                callback->callback((uint8_t)byte, callback->data);
         }
 
         result = read_bits_table[context][(count > 8 ? 8 : count) - 1];
@@ -322,7 +322,7 @@ bs_read_bits64_le(Bitstream* bs, unsigned int count)
             for (callback = bs->callback;
                  callback != NULL;
                  callback = callback->next)
-                callback->callback(byte, callback->data);
+                callback->callback((uint8_t)byte, callback->data);
         }
 
         result = read_bits_table_le[context][(count > 8 ? 8 : count) - 1];
@@ -354,7 +354,7 @@ bs_skip_bits_be(Bitstream* bs, unsigned int count)
             for (callback = bs->callback;
                  callback != NULL;
                  callback = callback->next)
-                callback->callback(byte, callback->data);
+                callback->callback((uint8_t)byte, callback->data);
         }
 
         result = read_bits_table[context][(count > 8 ? 8 : count) - 1];
@@ -382,7 +382,7 @@ bs_skip_bits_le(Bitstream* bs, unsigned int count)
             for (callback = bs->callback;
                  callback != NULL;
                  callback = callback->next)
-                callback->callback(byte, callback->data);
+                callback->callback((uint8_t)byte, callback->data);
         }
 
         result = read_bits_table_le[context][(count > 8 ? 8 : count) - 1];
@@ -424,7 +424,7 @@ bs_read_unary_be(Bitstream* bs, int stop_bit)
             for (callback = bs->callback;
                  callback != NULL;
                  callback = callback->next)
-                callback->callback(byte, callback->data);
+                callback->callback((uint8_t)byte, callback->data);
             context = 0x800 | byte;
         }
 
@@ -455,7 +455,7 @@ bs_read_unary_le(Bitstream* bs, int stop_bit)
             for (callback = bs->callback;
                  callback != NULL;
                  callback = callback->next)
-                callback->callback(byte, callback->data);
+                callback->callback((uint8_t)byte, callback->data);
             context = 0x800 | byte;
         }
 
@@ -489,7 +489,7 @@ bs_read_limited_unary_be(Bitstream* bs, int stop_bit, int maximum_bits)
             for (callback = bs->callback;
                  callback != NULL;
                  callback = callback->next)
-                callback->callback(byte, callback->data);
+                callback->callback((uint8_t)byte, callback->data);
             context = 0x800 | byte;
         }
 
@@ -534,7 +534,7 @@ bs_read_limited_unary_le(Bitstream* bs, int stop_bit, int maximum_bits)
             for (callback = bs->callback;
                  callback != NULL;
                  callback = callback->next)
-                callback->callback(byte, callback->data);
+                callback->callback((uint8_t)byte, callback->data);
             context = 0x800 | byte;
         }
 
