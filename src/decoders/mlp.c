@@ -1064,20 +1064,29 @@ mlp_read_block(decoders_MLPDecoder* decoder,
         if (bitstream->read(bitstream, 1)) { /*check "header present" bit*/
 
             /*update substream's restart header*/
-            if (mlp_read_restart_header(decoder, substream) == ERROR)
+            if (mlp_read_restart_header(
+                    bitstream,
+                    &(decoder->decoding_parameters[substream]),
+                    &(decoder->restart_headers[substream])) == ERROR)
                 return ERROR;
         }
 
         /*update substream's decoding parameters*/
-        if (mlp_read_decoding_parameters(decoder, substream) == ERROR)
+        if (mlp_read_decoding_parameters(
+                bitstream,
+                mlp_substream_channel_count(decoder, substream),
+                decoder->restart_headers[substream].max_matrix_channel,
+                &(decoder->decoding_parameters[substream])) == ERROR)
             return ERROR;
     }
 
     /*read block data based on decoding parameters*/
     iaa_reset(&(decoder->unfiltered_residuals));
-    if (mlp_read_block_data(decoder,
-                            substream,
-                            &(decoder->unfiltered_residuals)) == ERROR)
+    if (mlp_read_residuals(
+            bitstream,
+            &(decoder->decoding_parameters[substream]),
+            mlp_substream_channel_count(decoder, substream),
+            &(decoder->unfiltered_residuals)) == ERROR)
         return ERROR;
 
     /*filter block's channels based on FIR/IIR filter parameters, if any*/
@@ -1105,19 +1114,28 @@ mlp_analyze_block(decoders_MLPDecoder* decoder,
         if (bitstream->read(bitstream, 1)) { /*check "header present" bit*/
 
             /*update substream's restart header*/
-            if (mlp_read_restart_header(decoder, substream) == ERROR)
+            if (mlp_read_restart_header(
+                    decoder->bitstream,
+                    &(decoder->decoding_parameters[substream]),
+                    &(decoder->restart_headers[substream])) == ERROR)
                 return ERROR;
         }
 
         /*update substream's decoding parameters*/
-        if (mlp_read_decoding_parameters(decoder, substream) == ERROR)
+        if (mlp_read_decoding_parameters(
+                decoder->bitstream,
+                mlp_substream_channel_count(decoder, substream),
+                decoder->restart_headers[substream].max_matrix_channel,
+                &(decoder->decoding_parameters[substream])) == ERROR)
             return ERROR;
     }
 
     /*read block data based on decoding parameters*/
-    if (mlp_read_block_data(decoder,
-                            substream,
-                            block_data) == ERROR)
+    if (mlp_read_residuals(
+            decoder->bitstream,
+            &(decoder->decoding_parameters[substream]),
+            mlp_substream_channel_count(decoder, substream),
+            &(decoder->unfiltered_residuals)) == ERROR)
         return ERROR;
 
     /*update "last block" bit*/
@@ -1127,11 +1145,9 @@ mlp_analyze_block(decoders_MLPDecoder* decoder,
 }
 
 mlp_status
-mlp_read_restart_header(decoders_MLPDecoder* decoder, int substream) {
-    Bitstream* bs = decoder->bitstream;
-    struct mlp_RestartHeader* header = &(decoder->restart_headers[substream]);
-    struct mlp_DecodingParameters* parameters =
-        &(decoder->decoding_parameters[substream]);
+mlp_read_restart_header(Bitstream* bs,
+                        struct mlp_DecodingParameters* parameters,
+                        struct mlp_RestartHeader* header) {
     struct mlp_ChannelParameters* channel_params;
     struct mlp_ParameterPresentFlags* flags =
         &(parameters->parameters_present_flags);
@@ -1200,15 +1216,13 @@ mlp_read_restart_header(decoders_MLPDecoder* decoder, int substream) {
 }
 
 mlp_status
-mlp_read_decoding_parameters(decoders_MLPDecoder* decoder, int substream) {
-    struct mlp_DecodingParameters* parameters =
-        &(decoder->decoding_parameters[substream]);
+mlp_read_decoding_parameters(Bitstream* bs,
+                             unsigned int substream_channel_count,
+                             int max_matrix_channel,
+                             struct mlp_DecodingParameters* parameters) {
+    int channel;
     struct mlp_ParameterPresentFlags* flags =
         &(parameters->parameters_present_flags);
-    Bitstream* bs = decoder->bitstream;
-    int substream_channel_count = mlp_substream_channel_count(decoder,
-                                                              substream);
-    int channel;
 
     /* parameters present flags */
     if (flags->parameter_present_flags && bs->read(bs, 1)) {
@@ -1231,7 +1245,7 @@ mlp_read_decoding_parameters(decoders_MLPDecoder* decoder, int substream) {
     if (flags->matrix_parameters && bs->read(bs, 1)) {
         if (mlp_read_matrix_parameters(
                 bs,
-                decoder->restart_headers[substream].max_matrix_channel,
+                max_matrix_channel,
                 &(parameters->matrix_parameters)) == ERROR)
             return ERROR;
     }
@@ -1239,8 +1253,7 @@ mlp_read_decoding_parameters(decoders_MLPDecoder* decoder, int substream) {
     /* output shifts */
     if (flags->output_shifts && bs->read(bs, 1)) {
         for (channel = 0;
-             channel <=
-                 decoder->restart_headers[substream].max_matrix_channel;
+             channel <= max_matrix_channel;
              channel++)
             parameters->output_shifts[channel] = bs->read_signed(bs, 4);
     }
@@ -1420,15 +1433,12 @@ mlp_calculate_signed_offset(uint8_t codebook,
 }
 
 mlp_status
-mlp_read_block_data(decoders_MLPDecoder* decoder,
-                    int substream,
-                    struct ia_array* residuals) {
-    struct mlp_DecodingParameters* parameters =
-        &(decoder->decoding_parameters[substream]);
+mlp_read_residuals(Bitstream* bs,
+                   struct mlp_DecodingParameters* parameters,
+                   int channel_count,
+                   struct ia_array* residuals) {
     struct mlp_ChannelParameters* channel_params;
     struct mlp_Matrix* matrix_params;
-    Bitstream* bs = decoder->bitstream;
-    int channel_count = mlp_substream_channel_count(decoder, substream);
     int msb;
     uint32_t lsb_count;
     int32_t signed_huffman_offset[MAX_MLP_CHANNELS];

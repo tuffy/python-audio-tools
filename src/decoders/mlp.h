@@ -339,10 +339,15 @@ mlp_analyze_block(decoders_MLPDecoder* decoder,
 
 
 mlp_status
-mlp_read_restart_header(decoders_MLPDecoder* decoder, int substream);
+mlp_read_restart_header(Bitstream* bs,
+                        struct mlp_DecodingParameters* parameters,
+                        struct mlp_RestartHeader* header);
 
 mlp_status
-mlp_read_decoding_parameters(decoders_MLPDecoder* decoder, int substream);
+mlp_read_decoding_parameters(Bitstream* bs,
+                             unsigned int substream_channel_count,
+                             int max_matrix_channel,
+                             struct mlp_DecodingParameters* parameters);
 
 mlp_status
 mlp_read_channel_parameters(Bitstream* bs,
@@ -370,9 +375,10 @@ mlp_calculate_signed_offset(uint8_t codebook,
                             uint8_t quant_step_size);
 
 mlp_status
-mlp_read_block_data(decoders_MLPDecoder* decoder,
-                    int substream,
-                    struct ia_array* residuals);
+mlp_read_residuals(Bitstream* bs,
+                   struct mlp_DecodingParameters* parameters,
+                   int channel_count,
+                   struct ia_array* residuals);
 
 /*returns the next residual MSB value, or -1 if an error occurs*/
 int
