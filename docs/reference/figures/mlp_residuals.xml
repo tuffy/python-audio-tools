@@ -9,17 +9,24 @@
   </row>
   <row>
     <col width=".16" style="blank">PCM Frame₁</col>
-    <col width=".20" style="dashed" start="1 bit" end="1 bit">Bypassed LSB₁</col>
-    <col width=".20" style="dashed" start="1 bit" end="1 bit">Bypassed LSB₂</col>
+    <col width=".20" style="dashed" start="1 bit" end="1 bit">Bypassed LSB₁ ₁</col>
+    <col width=".20" style="dashed" start="1 bit" end="1 bit">Bypassed LSB₂ ₁</col>
     <col width=".22">Residual₁</col>
     <col width=".22">Residual₂</col>
   </row>
   <row>
     <col width=".16" style="blank">PCM Frame₂</col>
-    <col width=".20" style="dashed" start="1 bit" end="1 bit">Bypassed LSB₃</col>
-    <col width=".20" style="dashed" start="1 bit" end="1 bit">Bypassed LSB₄</col>
+    <col width=".20" style="dashed" start="1 bit" end="1 bit">Bypassed LSB₁ ₂</col>
+    <col width=".20" style="dashed" start="1 bit" end="1 bit">Bypassed LSB₂ ₂</col>
     <col width=".22">Residual₃</col>
     <col width=".22">Residual₄</col>
+  </row>
+  <row>
+    <col width=".16" style="blank">PCM Frame₃</col>
+    <col width=".20" style="dashed" start="1 bit" end="1 bit">Bypassed LSB₁ ₃</col>
+    <col width=".20" style="dashed" start="1 bit" end="1 bit">Bypassed LSB₂ ₃</col>
+    <col width=".22">Residual₅</col>
+    <col width=".22">Residual₆</col>
   </row>
   <row>
     <col width=".16" style="blank">...</col>

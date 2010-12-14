@@ -679,7 +679,7 @@ Calculating the CRC-8 value is similar:
 \text{crc}(x) &=
 \begin{cases}
 \text{Substream Byte}_x \xor \text{crc}(x - 1) & \text{if } x = \text{Substream Size} - 2 \\
-\text{CRC8}(\text{Substream Byte}_x \xor \text{crc}(x - 1) & \text{if } x > 0 \\
+\text{CRC8}(\text{Substream Byte}_x \xor \text{crc}(x - 1)) & \text{if } x > 0 \\
 \text{CRC8}(\text{Substream Byte}_0 \xor \texttt{0x3C}) & \text{if } x = 0 \\
 \end{cases}
 \end{align*}
