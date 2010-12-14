@@ -2829,14 +2829,15 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 **** DONE Handle matrix reconstruction
 ***** DONE Build noise channels
 **** DONE Handle quant_step_sizes
-**** TODO Handle output shifts
 **** DONE Combine multiple substreams into single output frame
+**** TODO Handle output shifts
 **** TODO Handle checksums
 ***** TODO restart header checksum
 ***** DONE end-of-frame parity
 ***** DONE end-of-frame checksum
 **** DONE Build pcm.FrameList from PCM data arrays
 ***** DONE Reorder MLP channels to wave order
+**** DONE Add bs_try for proper EOF aborts
 ** TODO Document MLP decoder
 *** DONE major sync
 *** DONE substream size

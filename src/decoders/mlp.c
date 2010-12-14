@@ -432,8 +432,16 @@ MLPDecoder_read(decoders_MLPDecoder* self, PyObject *args) {
 
     PyObject* frame;
     struct ia_array wave_order;
+    int frame_size;
 
-    int frame_size = mlp_read_frame(self, &(self->frame_samples));
+    if (!setjmp(*bs_try(self->bitstream))) {
+        frame_size = mlp_read_frame(self, &(self->frame_samples));
+        bs_etry(self->bitstream);
+    } else {
+        bs_etry(self->bitstream);
+        PyErr_SetString(PyExc_IOError, "I/O error reading MLP stream");
+        return NULL;
+    }
 
     if (frame_size > 0) {
         wave_order.size = channel_count;
@@ -511,37 +519,44 @@ MLPDecoder_analyze_frame(decoders_MLPDecoder* self, PyObject *args) {
     }
     /*FIXME - verify frame major sync against initial major sync*/
 
-    /*read one SubstreamSize per substream*/
-    for (substream = 0;
-         substream < self->major_sync.substream_count;
-         substream++) {
-        if (mlp_read_substream_size(
-                self->bitstream,
-                &(self->substream_sizes[substream])) == OK) {
-            obj = Py_BuildValue(
-                      "{si si si}",
-                      "nonrestart_substream",
-                      self->substream_sizes[substream].nonrestart_substream,
-                      "checkdata_present",
-                      self->substream_sizes[substream].checkdata_present,
-                      "substream_size",
-                      self->substream_sizes[substream].substream_size);
-            PyList_Append(substream_sizes, obj);
-            Py_DECREF(obj);
-        } else {
-            goto error;
+    if (!setjmp(*bs_try(self->bitstream))) {
+        /*read one SubstreamSize per substream*/
+        for (substream = 0;
+             substream < self->major_sync.substream_count;
+             substream++) {
+            if (mlp_read_substream_size(
+                     self->bitstream,
+                     &(self->substream_sizes[substream])) == OK) {
+                obj = Py_BuildValue(
+                        "{si si si}",
+                        "nonrestart_substream",
+                        self->substream_sizes[substream].nonrestart_substream,
+                        "checkdata_present",
+                        self->substream_sizes[substream].checkdata_present,
+                        "substream_size",
+                        self->substream_sizes[substream].substream_size);
+                PyList_Append(substream_sizes, obj);
+                Py_DECREF(obj);
+            } else {
+                goto error;
+            }
         }
-    }
 
-    /*read one Substream per substream*/
-    for (substream = 0;
-         substream < self->major_sync.substream_count;
-         substream++) {
-        if ((obj = mlp_analyze_substream(self, substream)) != NULL) {
-            PyList_Append(substreams, obj);
-            Py_DECREF(obj);
-        } else
-            goto error;
+        /*read one Substream per substream*/
+        for (substream = 0;
+             substream < self->major_sync.substream_count;
+             substream++) {
+            if ((obj = mlp_analyze_substream(self, substream)) != NULL) {
+                PyList_Append(substreams, obj);
+                Py_DECREF(obj);
+            } else
+                goto error;
+        }
+        bs_etry(self->bitstream);
+    } else {
+        bs_etry(self->bitstream);
+        PyErr_SetString(PyExc_IOError, "I/O error reading MLP stream");
+        goto error;
     }
 
     if (self->bytes_read != target_read) {
