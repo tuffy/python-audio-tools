@@ -2829,6 +2829,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 **** DONE Handle matrix reconstruction
 ***** DONE Build noise channels
 **** DONE Handle quant_step_sizes
+**** TODO Handle output shifts
 **** DONE Combine multiple substreams into single output frame
 **** TODO Handle checksums
 ***** TODO restart header checksum
@@ -2846,13 +2847,13 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 **** DONE block size
 **** DONE matrix parameters
 **** TODO output shifts
-**** TODO quant step sizes
+**** DONE quant step sizes
 *** DONE checksums
 *** DONE block data
-*** TODO channel filtering
-*** TODO channel rematrixing
+*** DONE channel filtering
+*** DONE channel rematrixing
 **** DONE noise channels
-**** TODO rematrixing
+**** DONE rematrixing
 ** TODO Link MLP decoder to AOB extractor
 ** TODO Build DVD-A postprocessor
 ** TODO Build dvdainfo utility

@@ -233,6 +233,7 @@ decoding, all $\text{Output Shift}_i$ values are 0 by default.
 \noindent
 There is one \VAR{Quant Step Size} value per substream channel.
 Each is an unsigned, 4-bit value.
+These are analagous to FLAC's wasted bits-per-sample.
 \par
 If \VAR{Quant Step Sizes} is \textit{not} indicated during parameter
 decoding, all $\text{Quant Step Size}_i$ values are 0 by default.
@@ -459,19 +460,32 @@ In particular, we'll need the \VAR{FIR Order}, \VAR{FIR Coefficients},
 \VAR{Shift}\footnote{If both both FIR filter and IIR filter
 have a positive number of coefficients, their \VAR{Shift} values must be
 identical}
-parameters.
+parameters, along with the \VAR{Quant Step Size} for the filtered channel.
 
 Note that the \VAR{Filtered} values below 0 are taken from the previously
-decoded block while \VAR{Residual} values below 0 are taken from
-\VAR{IIR State}.
+filtered block.
+\label{mlp_mask}
 \begin{align*}
+\intertext{Quant Step Size for a given channel is used to build a mask function which zeroes out least-significant bits:}
+\text{mask(x)} &= \lfloor x \div 2 ^ {\text{Quant Step Size}_c}\rfloor \times 2 ^ {\text{Quant Step Size}_c} \\
+\intertext{The filtered values are then calculated as follows:}
 \text{FIR Sum}_i &= \overset{\text{FIR Order} - 1}{\underset{j = 0}{\sum}}{\text{FIR Coefficient}_j \times \text{Filtered}_{i - j - 1}} \\
-\text{IIR Sum}_i &= \overset{\text{IIR Order} - 1}{\underset{k = 0}{\sum}}{\text{IIR Coefficient}_k \times \text{Residual}_{i - k - 1}} \\
-\text{Filtered}_i &= \left\lfloor\frac{\text{FIR Sum}_i + \text{IIR Sum}_i}{2 ^ {\text{Shift}}}\right\rfloor + \text{Residual}_i
+\text{IIR Sum}_i &= \overset{\text{IIR Order} - 1}{\underset{k = 0}{\sum}}{\text{IIR Coefficient}_k \times \text{IIR State}_{i - k - 1 + \text{IIR Order}}} \\
+\text{Shifted Sum}_i &= \left\lfloor\frac{\text{FIR Sum}_i + \text{IIR Sum}_i}{2 ^ {\text{Shift}}}\right\rfloor \\
+\text{Filtered}_i &= \text{mask}(\text{Shifted Sum}_i + \text{Residual}_i) \\
+\text{IIR State}_{i + \text{IIR Order}} &= \text{Filtered}_i - \text{Shifted Sum}_i
+\intertext{However, if both \VAR{FIR Order} and \VAR{IIR Order} are 0, this can be reduced to:}
+\text{Filtered}_i &= \text{mask}(\text{Residual}_i)
+\intertext{Also note that if $\text{Quant Step Size}_c$ = 0:}
+\text{mask}(x) &= \lfloor x \div 2 ^ 0\rfloor \times 2 ^ 0 = x \\
+\text{IIR State}_{i + \text{IIR Order}} &= \text{mask}(\text{Shifted Sum}_i + \text{Residual}_i) - \text{Shifted Sum}_i \\
+&= \text{Residual}_i
 \end{align*}
-For instance, given the values:
-\par
-\noindent
+
+\clearpage
+
+As an example, given the values:
+\begin{table}[h]
 \begin{tabular}{l c r l c r l c r}
 FIR Order & = & 4 &
 IIR Order & = & 3 &
@@ -491,23 +505,29 @@ $\text{Residual}_0$ & = & 34 \\
 $\text{Shift}$ & = & 8 &
 $\text{IIR State}_1$ & = & 20 &
 $\text{Residual}_1$ & = & 9 \\
-& & &
+$\text{Quant Step Size}_c$ & = & 0 &
 $\text{IIR State}_2$ & = & -8 &
 $\text{Residual}_2$ & = & -23 \\
 \end{tabular}
-\par
-\noindent
+\end{table}
+
 Our filtered values are as follows:
 \begin{align*}
 \text{FIR Sum}_0 &= (556 \times 18) + (-493 \times 0) + (288 \times -39) + (-96 \times -40) = 2616 \\
 \text{IIR Sum}_0 &= (-122 \times 12) + (102 \times 20) + (-192 \times -8) = 2112 \\
-\text{Filtered}_0 &= \left\lfloor\frac{2616 + 2112}{2 ^ 8}\right\rfloor + 34 = \textbf{52} \\
+\text{Shifted Sum}_0 &= \left\lfloor\frac{2616 + 2112}{2 ^ 8}\right\rfloor = 18 \\
+\text{Filtered}_0 &= \text{mask}(18 + 34) = \textbf{52} \\
+\text{IIR State}_3 &= 52 - 18 = 34 \\
 \text{FIR Sum}_1 &= (556 \times 52) + (-493 \times 18) + (288 \times 0) + (-96 \times -39) = 23782 \\
 \text{IIR Sum}_1 &= (-122 \times 34) + (102 \times 12) + (-192 \times 20) = -6764 \\
-\text{Filtered}_1 &= \left\lfloor\frac{23782 - 6764}{2 ^ 8}\right\rfloor + 9 = \textbf{75} \\
+\text{Shifted Sum}_1 &= \left\lfloor\frac{23782 - 6764}{2 ^ 8}\right\rfloor = 66 \\
+\text{Filtered}_1 &= 66 + 9 = \textbf{75} \\
+\text{IIR State}_4 &= 75 - 66 = 9 \\
 \text{FIR Sum}_2 &= (556 \times 75) + (-493 \times 52) + (288 \times 18) + (-96 \times 0) = 21248 \\
 \text{IIR Sum}_2 &= (-122 \times 9) + (102 \times 34) + (-192 \times 12) = 66 \\
-\text{Filtered}_2 &= \left\lfloor\frac{21248 + 66}{2 ^ 8}\right\rfloor - 23 = \textbf{60} \\
+\text{Shifted Sum}_2 &= \left\lfloor\frac{21248 + 66}{2 ^ 8}\right\rfloor = 83 \\
+\text{Filtered}_2 &= 83 - 23 = \textbf{60} \\
+\text{IIR State}_5 &= 60 - 83 = -23 \\
 \end{align*}
 
 \clearpage
@@ -525,35 +545,36 @@ First, we generate two noise channels, each containing
 \VAR{Block Size} number of noise samples, using the
 \VAR{Noise Gen Seed} and \VAR{Noise Shift} (all taken from the
 current \VAR{Restart Header}).
-This requires a simple crop function:
+This requires a simple crop function which converts an integer
+to a signed, 8-bit value:
 \begin{equation*}
 \text{crop}(x) =
 \begin{cases}
-x \bmod{256} & \text{if } \lfloor (x \bmod{256}) \div 128\rfloor = 0 \\
-(x \bmod{128}) - 2 ^ 7 & \text{if } \lfloor (x \bmod{256}) \div 128\rfloor > 0
+x \bmod{2 ^ 8} & \text{if } \lfloor (x \bmod{2 ^ 8}) \div 2 ^ 7\rfloor = 0 \\
+(x \bmod{2 ^ 7}) - 2 ^ 7 & \text{if } \lfloor (x \bmod{2 ^ 8}) \div 2 ^ 7\rfloor \neq 0
 \end{cases}
 \end{equation*}
 
 \begin{align*}
-\text{Shifted}_i &= \lfloor\text{Seed}_i \div 2 ^ 7\rfloor \bmod{\texttt{0x10000}} \\
+\text{Shifted}_i &= \lfloor\text{Seed}_i \div 2 ^ 7\rfloor \bmod{2 ^ {16}} \\
 \text{Noise}_{i~1} &= \text{crop}(\lfloor\text{Seed}_i \div 2 ^ {15}\rfloor) \times 2 ^ {\text{Noise Shift}} \\
 \text{Noise}_{i~2} &= \text{crop}(\text{Shifted}_i) \times 2 ^ {\text{Noise Shift}} \\
-\text{Seed}_{i + 1} &= ((\text{Seed}_i \times 2 ^ {16}) \bmod{\texttt{0x100000000}}) \xor \text{Shifted}_i \xor (\text{Shifted}_i \times 2 ^ 5)
+\text{Seed}_{i + 1} &= ((\text{Seed}_i \times 2 ^ {16}) \bmod{2 ^ {32}}) \xor \text{Shifted}_i \xor (\text{Shifted}_i \times 2 ^ 5)
 \end{align*}
 For example, given a \VAR{Noise Gen Seed} of 7855724 and a
 \VAR{Noise Shift} of 0, our first couple of noise samples are
 as follows:
 \begin{align*}
 \text{Seed}_0 &= 7855724 \\
-\text{Shifted}_0 &= \lfloor 7855724 \div 2 ^ 7\rfloor \bmod{\texttt{0x10000}} = 61372 \\
+\text{Shifted}_0 &= \lfloor 7855724 \div 2 ^ 7\rfloor \bmod{2 ^ {16}} = 61372 \\
 \text{Noise}_{0~1} &= \text{crop}(\lfloor 7855724 \div 2 ^ {15}\rfloor) \times 2 ^ 0 = \text{crop}(239) \times 1 = \textbf{-17} \\
 \text{Noise}_{0~2} &= \text{crop}(61372) \times 2 ^ 0 = \textbf{-68} \\
-\text{Seed}_1 &= ((7855724 \times 2 ^ {16}) \bmod{\texttt{0x100000000}}) \xor 61372 \xor 61372 \times 2 ^ 5 \\
+\text{Seed}_1 &= ((7855724 \times 2 ^ {16}) \bmod{2 ^ {32}}) \xor 61372 \xor 61372 \times 2 ^ 5 \\
 &= 3731619840 \xor 61372 \xor 1963904 = 3731953724 \\
-\text{Shifted}_1 &= \lfloor 3731953724 \div 2 ^ 7 \rfloor \bmod{\texttt{0x10000}} = 57904 \\
+\text{Shifted}_1 &= \lfloor 3731953724 \div 2 ^ 7 \rfloor \bmod{2 ^ {16}} = 57904 \\
 \text{Noise}_{1~1} &= \text{crop}(\lfloor 3731953724 \div 2 ^ {15}\rfloor) \times 2 ^ 1 = \text{crop}(113890) \times 1 = \textbf{-30} \\
 \text{Noise}_{1~2} &= \text{crop}(57904) \times 2 ^ 0 = \textbf{48} \\
-\text{Seed}_2 &= ((3731953724 \times 2 ^ {16}) \bmod{\texttt{0x100000000}}) \xor 57904 \xor 57904 \times 2 ^ 5 \\
+\text{Seed}_2 &= ((3731953724 \times 2 ^ {16}) \bmod{2 ^ {32}}) \xor 57904 \xor 57904 \times 2 ^ 5 \\
 &= 406585344 \xor 57904 \xor 1852928 = 404792368
 \end{align*}
 
@@ -575,14 +596,17 @@ $\text{Frame}_{i~4}$ & = & $\text{Noise}_{i~2}$
 \par
 \noindent
 The calculation for the matrix's output sample is then as follows:
-\begin{equation*}
-\text{Frame}_{i~\text{Channel}} = \left\lfloor\frac{\overset{\text{Channel Count + 2}}{\underset{j = 1}{\sum}}{\text{Frame}_{i~j} \times \text{Matrix Coefficient}_j}}{2 ^ {14}}\right\rfloor + \text{Bypassed LSB}_i
-\end{equation*}
+\begin{align*}
+\text{Shifted Sum}_{i~\text{Channel}} &= \left\lfloor\frac{\overset{\text{Channel Count + 2}}{\underset{j = 1}{\sum}}{\text{Frame}_{i~j} \times \text{Matrix Coefficient}_j}}{2 ^ {14}}\right\rfloor \\
+\text{Frame}_{i~\text{Channel}} &= \text{mask}(\text{Shifted Sum}_{i~\text{Channel}}) + \text{Bypassed LSB}_i
+\end{align*}
 Note that the two noise channels are the reason we read
 \VAR{Max Matrix Channel} + 3 number of matrix coefficients
 instead of one coefficient per channel as one might expect.
 Also note that the \VAR{Bypassed LSB} bit we read in the
 \VAR{Block Data} for each PCM frame reappears at this point.
+The mask function is the one used for channel filtering on page
+\pageref{mlp_mask}.
 So, given the following values:
 \par
 \noindent
@@ -614,11 +638,11 @@ Our new values for channel 1 (\VAR{Out Channel} + 1) are calculated as follows:
 &= \left\lfloor\frac{2246561792}{16384}\right\rfloor = \textbf{137119} \\
 \end{align*}
 The values for channel 2 remain unchanged as 169057 and 118830, respectively.
-\par
-Note that because the top 2 \VAR{Matrix Coefficient} values are 0,
-the values from the 2 noise channels don't actually affect the
-calculation whatsoever.
-This is not an unusual case.
+%% \par
+%% Note that because the top 2 \VAR{Matrix Coefficient} values are 0,
+%% the values from the 2 noise channels don't actually affect the
+%% calculation whatsoever.
+%% This is not an unusual case.
 
 \subsection{Parity}
 
