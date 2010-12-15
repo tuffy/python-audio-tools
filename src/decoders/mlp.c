@@ -31,6 +31,7 @@ MLPDecoder_init(decoders_MLPDecoder *self,
     int channel;
 
     self->init_ok = 0;
+    self->stream_closed = 0;
 
     if (!PyArg_ParseTuple(args, "s", &filename))
         return -1;
@@ -61,10 +62,10 @@ MLPDecoder_init(decoders_MLPDecoder *self,
     case MLP_MAJOR_SYNC_OK:
         break;
     case MLP_MAJOR_SYNC_NOT_FOUND:
-        PyErr_SetString(PyExc_ValueError, "invalid initial major sync");
+        PyErr_SetString(PyExc_ValueError, "initial major sync not found");
         return -1;
+    case MLP_MAJOR_SYNC_INVALID:
     case MLP_MAJOR_SYNC_ERROR:
-        PyErr_SetString(PyExc_IOError, "unable to read initial major sync");
         return -1;
     }
     if (self->major_sync.substream_count > 2) {
@@ -479,7 +480,8 @@ MLPDecoder_read(decoders_MLPDecoder* self, PyObject *args) {
 
 static PyObject*
 MLPDecoder_close(decoders_MLPDecoder* self, PyObject *args) {
-    /*FIXME - indicate stream is finished*/
+    self->stream_closed = 1;
+
     Py_INCREF(Py_None);
     return Py_None;
 }
@@ -495,6 +497,11 @@ MLPDecoder_analyze_frame(decoders_MLPDecoder* self, PyObject *args) {
     int total_frame_size;
     uint64_t target_read = self->bytes_read;
     int offset;
+
+    if (self->stream_closed) {
+        Py_INCREF(Py_None);
+        return Py_None;
+    }
 
     offset = bs_ftell(self->bitstream);
 
@@ -512,10 +519,12 @@ MLPDecoder_analyze_frame(decoders_MLPDecoder* self, PyObject *args) {
     substreams = PyList_New(0);
 
     /*read a major sync, if present*/
-    if (mlp_read_major_sync(self,
-                            &frame_major_sync) == MLP_MAJOR_SYNC_ERROR) {
-        PyErr_SetString(PyExc_IOError, "I/O error reading major sync");
+    switch (mlp_read_major_sync(self, &frame_major_sync)) {
+    case MLP_MAJOR_SYNC_INVALID:
+    case MLP_MAJOR_SYNC_ERROR:
         goto error;
+    default:
+        /*do nothing*/;
     }
     /*FIXME - verify frame major sync against initial major sync*/
 
@@ -596,6 +605,8 @@ mlp_major_sync_status
 mlp_read_major_sync(decoders_MLPDecoder* decoder,
                     struct mlp_MajorSync* major_sync) {
     Bitstream* bitstream = decoder->bitstream;
+    const static uint8_t bits_per_sample[] =
+        {16, 20, 24, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
     if (!setjmp(*bs_try(bitstream))) {
         if (bitstream->read(bitstream, 24) != 0xF8726F) {
@@ -626,9 +637,39 @@ mlp_read_major_sync(decoders_MLPDecoder* decoder,
         bitstream->skip(bitstream, 92); /*unknown 3*/
 
         bs_etry(bitstream);
+
+        /*various sanity checks*/
+        if (major_sync->group1_bits == 0) {
+            PyErr_SetString(PyExc_ValueError, "invalid bits-per-sample");
+            return MLP_MAJOR_SYNC_INVALID;
+        }
+
+        if (bits_per_sample[major_sync->group2_bits] >
+            bits_per_sample[major_sync->group1_bits]) {
+            PyErr_SetString(PyExc_ValueError,
+                            "group 2 bps cannot be greater than group 1 bps");
+            return MLP_MAJOR_SYNC_INVALID;
+        }
+
+        if ((major_sync->group2_sample_rate != 0xF) &&
+            (major_sync->group1_sample_rate !=
+             major_sync->group2_sample_rate)) {
+            PyErr_SetString(PyExc_ValueError,
+                            "differing group sample rates unsupported");
+            return MLP_MAJOR_SYNC_INVALID;
+        }
+
+        if ((major_sync->substream_count < 1) ||
+            (major_sync->substream_count > 2)) {
+            PyErr_SetString(PyExc_ValueError,
+                            "MLP only supports 1 or 2 substreams");
+            return MLP_MAJOR_SYNC_INVALID;
+        }
+
         return MLP_MAJOR_SYNC_OK;
     } else {
         bs_etry(bitstream);
+        PyErr_SetString(PyExc_IOError, "I/O error reading major sync");
         return MLP_MAJOR_SYNC_ERROR;
     }
 }
@@ -649,6 +690,9 @@ mlp_read_frame(decoders_MLPDecoder* decoder,
     int total_frame_size;
     uint64_t target_read = decoder->bytes_read;
 
+    if (decoder->stream_closed)
+        return 0;
+
     /*read the 32-bit total size value*/
     if ((total_frame_size =
          mlp_total_frame_size(decoder->bitstream)) == -1) {
@@ -658,10 +702,12 @@ mlp_read_frame(decoders_MLPDecoder* decoder,
     target_read += total_frame_size;
 
     /*read a major sync, if present*/
-    if (mlp_read_major_sync(decoder,
-                            &frame_major_sync) == MLP_MAJOR_SYNC_ERROR) {
-        PyErr_SetString(PyExc_IOError, "I/O error reading major sync");
+    switch (mlp_read_major_sync(decoder, &frame_major_sync)) {
+    case MLP_MAJOR_SYNC_INVALID:
+    case MLP_MAJOR_SYNC_ERROR:
         return -1;
+    default:
+        /*do nothing*/;
     }
     /*FIXME - verify frame major sync against initial major sync*/
 
@@ -1173,12 +1219,8 @@ mlp_read_restart_header(Bitstream* bs,
         PyErr_SetString(PyExc_ValueError, "invalid restart header sync");
         return ERROR;
     }
-    header->noise_type = bs->read(bs, 1);
-    if (header->noise_type != 0) {
-        PyErr_SetString(PyExc_ValueError, "MLP noise type must be 0");
-        return ERROR;
-    }
 
+    header->noise_type = bs->read(bs, 1);
     header->output_timestamp = bs->read(bs, 16);
     header->min_channel = bs->read(bs, 4);
     header->max_channel = bs->read(bs, 4);
@@ -1189,9 +1231,39 @@ mlp_read_restart_header(Bitstream* bs,
     header->data_check_present = bs->read(bs, 1);
     header->lossless_check = bs->read(bs, 8);
     bs->skip(bs, 16);
-    for (channel = 0; channel <= header->max_matrix_channel; channel++)
+    for (channel = 0; channel <= header->max_matrix_channel; channel++) {
         header->channel_assignments[channel] = bs->read(bs, 6);
+        if (header->channel_assignments[channel] >
+            header->max_matrix_channel) {
+            PyErr_SetString(PyExc_ValueError,
+                            "invalid channel assignment output");
+            return ERROR;
+        }
+    }
     header->checksum = bs->read(bs, 8);
+
+    /*perform sanity checks*/
+    if (header->noise_type != 0) {
+        PyErr_SetString(PyExc_ValueError, "MLP noise type must be 0");
+        return ERROR;
+    }
+
+    if (header->max_matrix_channel > MAX_MLP_CHANNELS) {
+        PyErr_SetString(PyExc_ValueError, "max matrix channel too high");
+        return ERROR;
+    }
+
+    if (header->max_channel > header->max_matrix_channel) {
+        PyErr_SetString(PyExc_ValueError,
+                        "max channel must equal max matrix channel");
+        return ERROR;
+    }
+
+    if (header->min_channel > header->max_channel) {
+        PyErr_SetString(PyExc_ValueError,
+                        "min channel cannot be greater than max channel");
+        return ERROR;
+    }
 
     /*reset decoding parameters to default values*/
     flags->parameter_present_flags =
@@ -1254,6 +1326,10 @@ mlp_read_decoding_parameters(Bitstream* bs,
     /* block size */
     if (flags->block_size && bs->read(bs, 1)) {
         parameters->block_size = bs->read(bs, 9);
+        if (parameters->block_size < 8) {
+            PyErr_SetString(PyExc_ValueError, "invalid block size");
+            return ERROR;
+        }
     }
 
     /* matrix parameters */
@@ -1318,6 +1394,10 @@ mlp_read_channel_parameters(Bitstream* bs,
 
     parameters->codebook = bs->read(bs, 2);
     parameters->huffman_lsbs = bs->read(bs, 5);
+    if (parameters->huffman_lsbs > 24) {
+        PyErr_SetString(PyExc_ValueError, "Huffman LSBs cannot exceed 24");
+        return ERROR;
+    }
 
     return OK;
 }
@@ -1332,12 +1412,29 @@ mlp_read_fir_filter_parameters(Bitstream* bs,
 
     order = bs->read(bs, 4);
 
-    if (order > 0) {
+    if (order > 8) {
+        PyErr_SetString(PyExc_ValueError,
+                        "FIR filter order cannot exceed 8");
+        return ERROR;
+    } else if (order > 0) {
         ia_reset(&(fir->coefficients));
 
         fir->shift = bs->read(bs, 4);
         coefficient_bits = bs->read(bs, 5);
         coefficient_shift = bs->read(bs, 3);
+
+        if ((coefficient_bits < 1) || (coefficient_bits > 16)) {
+            PyErr_SetString(PyExc_ValueError,
+                            "coefficient bits must be between 1 and 16");
+            return ERROR;
+        }
+
+        if ((coefficient_bits + coefficient_shift) > 16) {
+            PyErr_SetString(PyExc_ValueError,
+                            "coefficient bits + shift must be <= 16");
+            return ERROR;
+        }
+
         for (i = 0; i < order; i++)
             ia_append(&(fir->coefficients),
                       bs->read_signed(bs, coefficient_bits) <<
@@ -1364,13 +1461,30 @@ mlp_read_iir_filter_parameters(Bitstream* bs,
 
     order = bs->read(bs, 4);
 
-    if (order > 0) {
+    if (order > 4) {
+        PyErr_SetString(PyExc_ValueError,
+                        "IIR filter order cannot exceed 4");
+        return ERROR;
+    } else if (order > 0) {
         ia_reset(&(iir->coefficients));
         ia_reset(&(iir->state));
 
         iir->shift = bs->read(bs, 4);
         coefficient_bits = bs->read(bs, 5);
         coefficient_shift = bs->read(bs, 3);
+
+        if ((coefficient_bits < 1) || (coefficient_bits > 16)) {
+            PyErr_SetString(PyExc_ValueError,
+                            "coefficient bits must be between 1 and 16");
+            return ERROR;
+        }
+
+        if ((coefficient_bits + coefficient_shift) > 16) {
+            PyErr_SetString(PyExc_ValueError,
+                            "coefficient bits + shift must be <= 16");
+            return ERROR;
+        }
+
         for (i = 0; i < order; i++)
             ia_append(&(iir->coefficients),
                       bs->read_signed(bs, coefficient_bits) <<
@@ -1402,12 +1516,29 @@ mlp_read_matrix_parameters(Bitstream* bs,
     coeff_count = max_matrix_channel + 1 + 2;
 
     parameters->count = bs->read(bs, 4);
+    if (parameters->count > MAX_MLP_MATRICES) {
+        PyErr_SetString(PyExc_ValueError,
+                        "too many matrices specified");
+        return ERROR;
+    }
 
     for (i = 0; i < parameters->count; i++) {
         matrix = &(parameters->matrices[i]);
 
         matrix->out_channel = bs->read(bs, 4);
+        if (matrix->out_channel > MAX_MLP_CHANNELS) {
+            PyErr_SetString(PyExc_ValueError,
+                            "invalid matrix output channel");
+            return ERROR;
+        }
+
         matrix->fractional_bits = fractional_bits = bs->read(bs, 4);
+        if (matrix->fractional_bits > 14) {
+            PyErr_SetString(PyExc_ValueError,
+                            "number of fractional bits cannot exceed 14");
+            return ERROR;
+        }
+
         matrix->lsb_bypass = bs->read(bs, 1);
         for (coeff = 0; coeff < coeff_count; coeff++) {
             if (bs->read(bs, 1))
@@ -1615,8 +1746,15 @@ mlp_filter_channel(struct i_array* unfiltered,
     ia_init(&iir_coefficients, 8);
     iir_state = &(iir_filter->state);
 
-    if ((fir_filter->shift != 0) &&
-        (iir_filter->shift != 0) &&
+    if ((fir_filter->coefficients.size +
+         iir_filter->coefficients.size) > 8) {
+        PyErr_SetString(PyExc_ValueError,
+                        "FIR and IIR filter orders cannot exceed 8");
+        return ERROR;
+    }
+
+    if ((fir_filter->coefficients.size != 0) &&
+        (iir_filter->coefficients.size != 0) &&
         (fir_filter->shift != iir_filter->shift)) {
         PyErr_SetString(PyExc_ValueError, "filter shifts must be identical");
         goto error;

@@ -124,6 +124,7 @@ typedef struct {
     Bitstream* bitstream;
 
     int init_ok;
+    int stream_closed;
 
     uint64_t bytes_read;
     uint8_t parity;
@@ -157,6 +158,7 @@ typedef struct {
 
 typedef enum {MLP_MAJOR_SYNC_OK,
               MLP_MAJOR_SYNC_NOT_FOUND,
+              MLP_MAJOR_SYNC_INVALID,
               MLP_MAJOR_SYNC_ERROR} mlp_major_sync_status;
 
 typedef enum {OK, ERROR} mlp_status;
