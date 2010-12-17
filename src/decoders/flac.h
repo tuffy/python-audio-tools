@@ -288,14 +288,14 @@ static PyTypeObject decoders_FlacDecoderType = {
     0,                         /* tp_setattro */
     0,                         /* tp_as_buffer */
     Py_TPFLAGS_DEFAULT |
-    Py_TPFLAGS_BASETYPE,   /* tp_flags */
+    Py_TPFLAGS_BASETYPE,       /* tp_flags */
     "FlacDecoder objects",     /* tp_doc */
-    0,		               /* tp_traverse */
-    0,		               /* tp_clear */
-    0,		               /* tp_richcompare */
-    0,		               /* tp_weaklistoffset */
-    0,		               /* tp_iter */
-    0,		               /* tp_iternext */
+    0,                         /* tp_traverse */
+    0,                         /* tp_clear */
+    0,                         /* tp_richcompare */
+    0,                         /* tp_weaklistoffset */
+    0,                         /* tp_iter */
+    0,                         /* tp_iternext */
     FlacDecoder_methods,       /* tp_methods */
     0,                         /* tp_members */
     FlacDecoder_getseters,     /* tp_getset */
@@ -306,7 +306,7 @@ static PyTypeObject decoders_FlacDecoderType = {
     0,                         /* tp_dictoffset */
     (initproc)FlacDecoder_init,/* tp_init */
     0,                         /* tp_alloc */
-    FlacDecoder_new,       /* tp_new */
+    FlacDecoder_new,           /* tp_new */
 };
 
 #else
@@ -334,12 +334,12 @@ PyTypeObject decoders_FlacDecoderType = {
     0,                         /*tp_as_buffer*/
     Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE, /*tp_flags*/
     "FlacDecoder objects",     /* tp_doc */
-    0,		               /* tp_traverse */
-    0,		               /* tp_clear */
-    0,		               /* tp_richcompare */
-    0,		               /* tp_weaklistoffset */
-    0,		               /* tp_iter */
-    0,		               /* tp_iternext */
+    0,                     /* tp_traverse */
+    0,                     /* tp_clear */
+    0,                     /* tp_richcompare */
+    0,                     /* tp_weaklistoffset */
+    0,                     /* tp_iter */
+    0,                     /* tp_iternext */
     FlacDecoder_methods,       /* tp_methods */
     0,                         /* tp_members */
     FlacDecoder_getseters,     /* tp_getset */

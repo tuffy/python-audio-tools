@@ -330,7 +330,7 @@ wavpack_exp2(int log);
 PyTypeObject decoders_WavPackDecoderType = {
     PyObject_HEAD_INIT(NULL)
     0,                         /*ob_size*/
-    "decoders.WavPackDecoder",    /*tp_name*/
+    "decoders.WavPackDecoder", /*tp_name*/
     sizeof(decoders_WavPackDecoder), /*tp_basicsize*/
     0,                         /*tp_itemsize*/
     (destructor)WavPackDecoder_dealloc, /*tp_dealloc*/
@@ -349,16 +349,16 @@ PyTypeObject decoders_WavPackDecoderType = {
     0,                         /*tp_setattro*/
     0,                         /*tp_as_buffer*/
     Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE, /*tp_flags*/
-    "WavPackDecoder objects",     /* tp_doc */
-    0,		               /* tp_traverse */
-    0,		               /* tp_clear */
-    0,		               /* tp_richcompare */
-    0,		               /* tp_weaklistoffset */
-    0,		               /* tp_iter */
-    0,		               /* tp_iternext */
-    WavPackDecoder_methods,       /* tp_methods */
+    "WavPackDecoder objects",  /* tp_doc */
+    0,                         /* tp_traverse */
+    0,                         /* tp_clear */
+    0,                         /* tp_richcompare */
+    0,                         /* tp_weaklistoffset */
+    0,                         /* tp_iter */
+    0,                         /* tp_iternext */
+    WavPackDecoder_methods,    /* tp_methods */
     0,                         /* tp_members */
-    WavPackDecoder_getseters,     /* tp_getset */
+    WavPackDecoder_getseters,  /* tp_getset */
     0,                         /* tp_base */
     0,                         /* tp_dict */
     0,                         /* tp_descr_get */
@@ -366,5 +366,5 @@ PyTypeObject decoders_WavPackDecoderType = {
     0,                         /* tp_dictoffset */
     (initproc)WavPackDecoder_init,/* tp_init */
     0,                         /* tp_alloc */
-    WavPackDecoder_new,           /* tp_new */
+    WavPackDecoder_new,        /* tp_new */
 };

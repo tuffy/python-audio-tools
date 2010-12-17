@@ -174,7 +174,7 @@ SHNDecoder_new(PyTypeObject *type, PyObject *args, PyObject *kwds);
 PyTypeObject decoders_SHNDecoderType = {
     PyObject_HEAD_INIT(NULL)
     0,                         /*ob_size*/
-    "decoders.SHNDecoder",    /*tp_name*/
+    "decoders.SHNDecoder",     /*tp_name*/
     sizeof(decoders_SHNDecoder), /*tp_basicsize*/
     0,                         /*tp_itemsize*/
     (destructor)SHNDecoder_dealloc, /*tp_dealloc*/
@@ -193,24 +193,24 @@ PyTypeObject decoders_SHNDecoderType = {
     0,                         /*tp_setattro*/
     0,                         /*tp_as_buffer*/
     Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE, /*tp_flags*/
-    "SHNDecoder objects",     /* tp_doc */
-    0,		               /* tp_traverse */
-    0,		               /* tp_clear */
-    0,		               /* tp_richcompare */
-    0,		               /* tp_weaklistoffset */
-    0,		               /* tp_iter */
-    0,		               /* tp_iternext */
-    SHNDecoder_methods,       /* tp_methods */
+    "SHNDecoder objects",      /* tp_doc */
+    0,                         /* tp_traverse */
+    0,                         /* tp_clear */
+    0,                         /* tp_richcompare */
+    0,                         /* tp_weaklistoffset */
+    0,                         /* tp_iter */
+    0,                         /* tp_iternext */
+    SHNDecoder_methods,        /* tp_methods */
     0,                         /* tp_members */
-    SHNDecoder_getseters,     /* tp_getset */
+    SHNDecoder_getseters,      /* tp_getset */
     0,                         /* tp_base */
     0,                         /* tp_dict */
     0,                         /* tp_descr_get */
     0,                         /* tp_descr_set */
     0,                         /* tp_dictoffset */
-    (initproc)SHNDecoder_init,/* tp_init */
+    (initproc)SHNDecoder_init, /* tp_init */
     0,                         /* tp_alloc */
-    SHNDecoder_new,           /* tp_new */
+    SHNDecoder_new,            /* tp_new */
 };
 
 
@@ -265,4 +265,3 @@ shn_skip_var(Bitstream* bs, unsigned int count);
   which should not be deallocated*/
 char*
 SHNDecoder_cmd_string(int cmd);
-

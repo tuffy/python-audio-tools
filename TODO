@@ -2920,3 +2920,54 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    - [ ] write_bits_actual_le
    - [ ] write_unary_actual_be
    - [ ] write_unary_actual_le
+* TODO Add tool list and documentation to website
+  I should probably find a way to either format the man pages
+  to HTML directly (though groff's html output has been unfortunate
+  in the past) or find an intermediate format that generates
+  both man pages and web pages.
+  - [ ] audiotools-config
+  - [ ] cd2track
+  - [ ] cd2xmcd
+  - [ ] cdinfo
+  - [ ] coverdump
+  - [ ] coverview
+  - [ ] editxmcd
+  - [ ] record2track
+  - [ ] track2cd
+  - [ ] track2track
+  - [ ] track2xmcd
+  - [ ] trackcat
+  - [ ] trackinfo
+  - [ ] tracklength
+  - [ ] tracklint
+  - [ ] trackplay
+  - [ ] trackrename
+  - [ ] tracksplit
+  - [ ] tracktag
+  - [ ] trackverify
+* TODO Add cdplay utility
+  Should work similarly to trackplay,
+  taking track number(s) and playing them to OSS/PulseAudio
+  or whatever other audio output is available.
+** TODO Build a unified output sink
+   Pull the OSS/Pulse sink code out of trackplay and into the core library.
+*** TODO Document sink
+*** TODO Convert trackplay to use sink
+** TODO Add interative mode to cdplay
+   Urwid-based display should have various standard features
+   - [ ] display CD info
+   - [ ] progress monitor
+   - [ ] start
+   - [ ] pause
+   - [ ] next track
+   - [ ] previous track
+** TODO Add man page for cdplay
+* TODO Update trackplay for interactivity
+  Urwid-based display should have various standard features,
+  analagous to those in cdplay
+   - [ ] display track info
+   - [ ] progress monitor
+   - [ ] start
+   - [ ] pause
+   - [ ] next track
+   - [ ] previous track
