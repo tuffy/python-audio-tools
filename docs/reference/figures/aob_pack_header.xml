@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<diagram>
+  <row>
+    <col width=".50" start="0" end="31">Sync Bytes (0x000001BA)</col>
+    <col width=".10" start="32" end="33">0x1</col>
+    <col width=".30" start="34" end="36">System Clock (high)</col>
+    <col width=".10" start="37" end="37">0x1</col>
+  </row>
+  <row>
+    <col width=".40" start="38" end="52">System Clock (mid)</col>
+    <col width=".10" start="53" end="53">0x1</col>
+    <col width=".40" start="54" end="68">System Clock (low)</col>
+    <col width=".10" start="69" end="69">0x1</col>
+  </row>
+  <row>
+    <col width=".40" start="70" end="78">SCR Extension</col>
+    <col width=".10" start="79" end="79">0x1</col>
+    <col width=".40" start="80" end="101">Bit Rate</col>
+    <col width=".10" start="102" end="103">0x3</col>
+  </row>
+  <row>
+    <col width=".20" start="104" end="108">Reserved</col>
+    <col width=".20" start="109" end="111">Stuffing Count</col>
+    <col width=".20" start="112" end="119" style="dashed">Stuffing₁</col>
+    <col width=".20" start="120" end="127" style="dashed">Stuffing₂</col>
+    <col width=".20" style="dashed">...</col>
+  </row>
+</diagram>
