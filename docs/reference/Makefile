@@ -77,7 +77,7 @@ figures/mlp_channel_parameters.pdf figures/mlp_filter_params_fir.pdf \
 figures/mlp_filter_params_iir.pdf figures/mlp_codebook1.pdf \
 figures/mlp_codebook2.pdf figures/mlp_codebook3.pdf \
 figures/mlp_residuals.pdf \
-figures/aob_stream.pdf figures/aob_pack_header.pdf \
+figures/dvda_ats_xx_x.pdf figures/dvda_aob_pack_header.pdf \
 figures/aob_pes_payload.pdf figures/dvda_layout.pdf \
 figures/dvda_audio_ts_ifo.pdf figures/dvda_ats_xx_0.pdf \
 figures/dvda_ats_title.pdf figures/dvda_ats_sectors.pdf

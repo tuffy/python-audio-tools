@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<diagram>
+  <row>
+    <col width=".333333" id="aob_1" start="sector 0" end="sector 524271">ATS_01_1.AOB</col>
+    <col width=".333333" start="sector 524272" end="sector 1048543">ATS_01_2.AOB</col>
+    <col width=".333333" style="dashed">...</col>
+  </row>
+  <spacer/>
+  <row>
+    <col width=".25" id="sector_1_s" start="2048 bytes" end="2048 bytes">Sector₀</col>
+    <col width=".25" id="sector_2_s" start="2048 bytes" end="2048 bytes">Sector₁</col>
+    <col width=".25" start="2048 bytes" end="2048 bytes">Sector₂</col>
+    <col width=".25" id="sector_1_e" style="dashed">...</col>
+  </row>
+  <spacer/>
+  <row>
+    <col width=".40" id="sector_s">Pack Header</col>
+    <col width=".20" id="packet">Packet₁</col>
+    <col width=".20">Packet₂</col>
+    <col width=".20" id="sector_e" style="dashed">...</col>
+  </row>
+  <spacer/>
+  <row>
+    <col width=".60" id="packet_s" start="0" end="23">Start Code (0x000001)</col>
+    <col width=".20" start="24" end="31">Stream ID</col>
+    <col width=".20" start="32" end="47" id="packet_e">Packet Length</col>
+  </row>
+  <row>
+    <col start="48">Packet Data</col>
+  </row>
+  <line s_id="aob_1" e_id="sector_1_s" s_corner="sw" e_corner="nw" style="dotted"/>
+  <line s_id="aob_1" e_id="sector_1_e" s_corner="se" e_corner="ne" style="dotted"/>
+  <line s_id="sector_2_s" e_id="sector_s" s_corner="sw" e_corner="nw" style="dotted"/>
+  <line s_id="sector_2_s" e_id="sector_e" s_corner="se" e_corner="ne" style="dotted"/>
+  <line s_id="packet" e_id="packet_s" s_corner="sw" e_corner="nw" style="dotted"/>
+  <line s_id="packet" e_id="packet_e" s_corner="se" e_corner="ne" style="dotted"/>
+</diagram>
