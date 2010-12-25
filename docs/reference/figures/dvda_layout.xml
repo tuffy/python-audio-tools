@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<diagram>
+  <row>
+    <col width=".333333" id="titleset_1">Titleset₁</col>
+    <col width=".333333">Titleset₂</col>
+    <col width=".333333" style="dashed">...</col>
+  </row>
+  <spacer/>
+  <row>
+    <col width=".333333" id="title_1_1">Title₁ ₁</col>
+    <col width=".333333" id="title_1_2">Title₁ ₂</col>
+    <col width=".333333" id="title_1_3" style="dashed">...</col>
+  </row>
+  <spacer/>
+  <row>
+    <col width=".25" id="track_1_1_1">Track₁ ₁ ₁</col>
+    <col width=".25" id="track_1_1_2">Track₁ ₁ ₂</col>
+    <col width=".25" id="track_1_1_3">Track₁ ₁ ₃</col>
+    <col width=".25" id="track_1_1_4" style="dashed">...</col>
+  </row>
+  <line s_id="titleset_1" e_id="title_1_1" s_corner="sw" e_corner="nw" style="dotted"/>
+  <line s_id="titleset_1" e_id="title_1_3" s_corner="se" e_corner="ne" style="dotted"/>
+  <line s_id="title_1_1" e_id="track_1_1_1" s_corner="sw" e_corner="nw" style="dotted"/>
+  <line s_id="title_1_1" e_id="track_1_1_4" s_corner="se" e_corner="ne" style="dotted"/>
+</diagram>

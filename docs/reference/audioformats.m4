@@ -65,6 +65,7 @@
 \include{oggflac}
 \include{speex}
 \include{musepack}
+\include{dvda}
 \include{mlp}
 \include{freedb}
 \include{musicbrainz}

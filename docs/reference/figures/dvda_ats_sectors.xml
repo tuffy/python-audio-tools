@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<diagram>
+  <row>
+    <col width=".25" id="track" start="0" end="95">Track₁</col>
+    <col width=".25" start="96" end="191">Track₂</col>
+    <col width=".25" start="192" end="287">Track₃</col>
+    <col width=".25" style="dashed">...</col>
+  </row>
+  <spacer/>
+  <row>
+    <col width=".333333" start="0" end="31" id="track_s">ID (0x01000000)</col>
+    <col width=".333333" start="32" end="63">First Sector</col>
+    <col width=".333333" start="64" end="95" id="track_e">Last Sector</col>
+  </row>
+  <line s_id="track" e_id="track_s" s_corner="sw" e_corner="nw" style="dotted"/>  <line s_id="track" e_id="track_e" s_corner="se" e_corner="ne" style="dotted"/>
+</diagram>

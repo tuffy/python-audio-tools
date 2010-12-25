@@ -1,0 +1,107 @@
+\chapter{DVD-Audio}
+DVD-Audio is a format for delivering hi-fidelity, multichannel
+audio on DVD media.
+A DVD-Audio's \texttt{AUDIO\_TS} directory contains the
+relevent data needed for decoding, spread into a lot of files
+whose names are more than little cryptic at first glance.
+
+Unlike CD audio, which is little more than a set of
+1 to 99 audio tracks, a DVD-Audio disc contains
+one or more titlesets.
+Each titleset contains one or more titles, and each
+title contains one or more tracks.
+\begin{figure}[h]
+\includegraphics{figures/dvda_layout.pdf}
+\end{figure}
+\par
+\noindent
+Typically, a DVD-Audio disc will contain two titlesets,
+one for audio and the other for video - which we can ignore.
+The first titleset will often contain two titles,
+one for 2 channel audio and the other for 5.1 channel audio.
+Each title will usually contain a consistent number of tracks
+as MLP or PCM encoded audio.
+\par
+With this in mind, we can now make some sense of
+the \texttt{AUDIO\_TS} directory's contents:
+\vskip .25in
+$\texttt{\huge{AUDIO\_TS.IFO}}$
+\hfill
+information about the disc, including the number of titlesets
+\vskip .25in
+$\texttt{\huge{ATS\_}}\underbrace{\texttt{\huge{01}}}_{Titleset}\texttt{\huge{\_0.IFO}}$
+\hfill
+information about all the titles in a given titleset
+\vskip .25in
+$\texttt{\huge{ATS\_}}\underbrace{\texttt{\huge{01}}}_{Titleset}\texttt{\huge{\_}}\underbrace{\texttt{\huge{1}}}_{AOB~\#}\texttt{\huge{.AOB}}$
+\hfill
+audio data for one or more tracks in a given titleset
+\vskip .25in
+\par
+All are binary files containing one or more, 2048 byte sectors.
+
+\clearpage
+
+\section{AUDIO\_TS.IFO}
+Known as the ``Audio Manager'' or ``AMG'',
+this is primarily a container of pointers to
+other files on disc.
+However, for our purposes, we're only interested
+in the \VAR{Audio Titleset Count} value.
+\begin{figure}[h]
+\includegraphics{figures/dvda_audio_ts_ifo.pdf}
+\end{figure}
+\section{ATS\_XX\_0.IFO}
+Known as the ``Audio Titleset Information'' or ``ATSI'',
+there is one of these files per \VAR{Audio Titleset Count}.
+Each is typically 4096 bytes long (2 sectors).
+\begin{figure}[h]
+\includegraphics{figures/dvda_ats_xx_0.pdf}
+\end{figure}
+\par
+\noindent
+\VAR{Title Table Offset} is the address of the title's
+information table, from the start of the second sector.
+For example, given the \VAR{Title Table Offset} value of
+\texttt{0x18}, we seek to address \texttt{0x818}
+($\texttt{0x800} + \texttt{0x18} = \texttt{0x818}$)
+to read the title's information.
+
+\clearpage
+
+\subsection{Title Table}
+
+For each title in the titleset, there is a title table.
+
+\begin{figure}[h]
+\includegraphics{figures/dvda_ats_title.pdf}
+\end{figure}
+\par
+\noindent
+\VAR{Track Count} is the total number of tracks in the title.
+\VAR{Title PTS Length} is the total length of the title in
+PTS ticks.
+There are 90000 PTS ticks per second.
+\VAR{Sector Pointers Offset} is the offset value of the
+sector pointers table, relative to the start of the title table.
+For example, if our \VAR{Title Table Offset} value is
+\texttt{0x18} and the \VAR{Sector Pointers Offset} value is
+\texttt{0x1F0}, we seek to address \texttt{0xA08}
+to reach the sector pointers table
+($\texttt{0x818} + \texttt{0x1F0} = \texttt{0xA08}$).
+\par
+There is one timestamp value per track.
+\VAR{Initial PTS Index} and \VAR{Track PTS Length} values
+are the offset and length of the track in PTS ticks, respectively.
+
+\subsection{Sector Pointers Table}
+
+For each title in the titleset, there is a sector pointers table.
+
+\begin{figure}[h]
+\includegraphics{figures/dvda_ats_sectors.pdf}
+\end{figure}
+\par
+\noindent
+There is one sector pointers value per track,
+as indicated in the title table.

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<diagram>
+  <row>
+    <col start="0" end="95" width=".50">Identifier (`DVDAUDIO-ATS')</col>
+    <col start="96" end="16383" width=".50">...</col>
+  </row>
+  <row>
+    <col start="16384" end="16399" width=".25">Title Count</col>
+    <col start="16400" end="16415" width=".25">Padding</col>
+    <col start="16416" end="16447" width=".50">Last Byte Address</col>
+  </row>
+  <row>
+    <col width=".333333" id="title" start="0" end="63">Title Offset₁</col>
+    <col width=".333333" start="64" end="127">Title Offset₂</col>
+    <col width=".333333" style="dashed">...</col>
+  </row>
+  <spacer/>
+  <row>
+    <col start="0" end="7" width=".25" id="title_s">Title Number</col>
+    <col start="8" end="31" width=".25">Padding</col>
+    <col start="32" end="63" width=".50" id="title_e">Title Table Offset</col>
+  </row>
+  <line s_id="title" s_corner="sw" e_id="title_s" e_corner="nw" style="dotted"/>  <line s_id="title" s_corner="se" e_id="title_e" e_corner="ne" style="dotted"/>
+</diagram>

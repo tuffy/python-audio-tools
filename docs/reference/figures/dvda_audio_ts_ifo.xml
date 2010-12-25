@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<diagram>
+  <row>
+    <col start="0" end="95">Identifier (`DVDAUDIO-AMG')</col>
+  </row>
+  <row>
+    <col start="96" end="127" width=".25">Last AMG Sector</col>
+    <col start="128" end="223" width=".25">Padding</col>
+    <col start="224" end="255" width=".25">Last AMGI Sector</col>
+    <col start="256" end="263" width=".25">Padding</col>
+  </row>
+  <row>
+    <col start="264" end="271" width=".50">DVD Specification Version</col>
+    <col start="272" end="303" width=".50">Category</col>
+  </row>
+  <row>
+    <col start="304" end="319" width=".50">Volume Count</col>
+    <col start="320" end="335" width=".50">Volume Number</col>
+  </row>
+  <row>
+    <col start="336" end="343" width=".25">Disc Side</col>
+    <col start="344" end="383" width=".25">Padding</col>
+    <col start="384" end="415" width=".25">Unknown</col>
+    <col start="416" end="495" width=".25">Padding</col>
+  </row>
+  <row>
+    <col start="496" end="503" width=".333333">Video Titleset Count</col>
+    <col start="504" end="511" width=".333333">Audio Titleset Count</col>
+    <col start="512" end="767" width=".333333">Provider Identifier</col>
+  </row>
+  <row>
+    <col>...</col>
+  </row>
+</diagram>
