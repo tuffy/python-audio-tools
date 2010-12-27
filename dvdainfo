@@ -1,0 +1,114 @@
+#!/usr/bin/python
+
+#Audio Tools, a module and set of tools for manipulating audio data
+#Copyright (C) 2007-2010  Brian Langenberger
+
+#This program is free software; you can redistribute it and/or modify
+#it under the terms of the GNU General Public License as published by
+#the Free Software Foundation; either version 2 of the License, or
+#(at your option) any later version.
+
+#This program is distributed in the hope that it will be useful,
+#but WITHOUT ANY WARRANTY; without even the implied warranty of
+#MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#GNU General Public License for more details.
+
+#You should have received a copy of the GNU General Public License
+#along with this program; if not, write to the Free Software
+#Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+
+
+import sys
+import audiotools
+import gettext
+import os.path
+
+gettext.install("audiotools", unicode=True)
+
+if (__name__ == '__main__'):
+    parser = audiotools.OptionParser(
+        usage=_(u"%prog [options]"),
+        version="Python Audio Tools %s" % (audiotools.VERSION))
+
+    (options, args) = parser.parse_args()
+
+    dvda = audiotools.DVDAudio(args[0])
+    msg = audiotools.Messenger("dvdainfo", options)
+
+    titleset = dvda.titlesets[0]
+    for (title_num, title) in enumerate(titleset):
+        track_infos = [track.info() for track in title.tracks]
+        channels = list(set([i[1] for i in track_infos]))[0]
+        sample_rate = list(set([i[0] for i in track_infos]))[0]
+        bits_per_sample = list(set([i[3] for i in track_infos]))[0]
+
+
+        msg.new_row()
+        msg.output_column(_(u"Title %d") % (title_num + 1), True)
+        msg.output_column(_(u" (%d tracks)" % (len(title.tracks))), True)
+        msg.output_column(_(u" : "))
+        msg.output_column(_(u"%(minutes)2.2d:%(seconds)2.2d " +
+                            u"%(channels)dch %(rate)dHz %(bits)d-bit") %
+                          {"minutes":title.length / 90000 / 60,
+                           "seconds":title.length / 90000 % 60,
+                           "channels":channels,
+                           "rate":sample_rate,
+                           "bits":bits_per_sample})
+    msg.blank_row()
+    msg.output_rows()
+
+    msg.new_row()
+    msg.output_column(u"Title")
+    msg.output_column(u" ")
+    msg.output_column(u"Track")
+    msg.output_column(u" ")
+    msg.output_column(u"Length")
+    msg.output_column(u"   ")
+    msg.output_column(u"Filename")
+    msg.output_column(u" ")
+    msg.output_column(u"Start Sector")
+    msg.output_column(u" ")
+    msg.output_column(u"End Sector")
+    msg.output_column(u" ")
+    msg.output_column(u"PTS Ticks")
+
+    msg.divider_row([u"-",u" ",u"-",u" ",u"-",u" ",u"-",u" ",u"-",u" ",u"-",
+                     u" ",u"-"])
+
+    for (title_num, title) in enumerate(titleset):
+        for (track_num, track) in enumerate(title.tracks):
+            for (i, (aob_file,
+                     start_sector,
+                     end_sector)) in enumerate(track.sectors()):
+                msg.new_row()
+                if (i == 0):
+                    msg.output_column(unicode(title_num + 1), True)
+                    msg.output_column(u" ")
+                    msg.output_column(unicode(track_num + 1), True)
+                    msg.output_column(u" ")
+                    msg.output_column(u"%d:%2.2d" % \
+                                          (track.pts_length / 90000 / 60,
+                                           track.pts_length / 90000 % 60),
+                                      True)
+                else:
+                    msg.output_column(u"")
+                    msg.output_column(u" ")
+                    msg.output_column(u"")
+                    msg.output_column(u" ")
+                    msg.output_column(u"")
+                msg.output_column(u"   ")
+                msg.output_column(msg.filename(os.path.basename(aob_file)),
+                                  True)
+                msg.output_column(u" ")
+                msg.output_column(unicode(start_sector), True)
+                msg.output_column(u" ")
+                msg.output_column(unicode(end_sector - 1), True)
+                msg.output_column(u" ")
+                if (i == 0):
+                    msg.output_column(unicode(track.pts_length), True)
+                else:
+                    msg.output_column(u" ")
+
+
+
+    msg.output_rows()

@@ -441,14 +441,17 @@ class Rangeset:
     #The purpose of this class is for finding the subset of
     #two Rangesets, such as with:
     #
-    #>>> Rangeset(1, 10) & Rangeset(5, 15)
+    # >>> Rangeset(1, 10) & Rangeset(5, 15)
+    # Rangeset(5, 10)
     #
     #which returns another Rangeset object.
     #This is preferable to performing:
     #
-    #>>> set(range(1, 10)) & set(range(5, 15))
+    # >>> set(range(1, 10)) & set(range(5, 15))
+    # set([8, 9, 5, 6, 7])
     #
-    #which would allocate lots of unnecessary values.
+    #which allocates lots of unnecessary values
+    #when all we're interested in is the min and max.
 
     def __init__(self, start, end):
         self.start = start
