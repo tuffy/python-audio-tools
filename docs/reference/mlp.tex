@@ -6,9 +6,11 @@
 %171 Second Street, Suite 300,
 %San Francisco, California, 94105, USA.
 
-\chapter{Meridian Lossless Packing}
+%% \chapter{Meridian Lossless Packing}
 
-An MLP file is comprised of a series of frames.
+\section{Meridian Lossless Packing}
+
+An MLP stream is comprised of a series of frames.
 Each frame contains one or two substreams, each storing a different
 set of channels (e.g. $\text{Substream}_1$ may have channels 1-2,
 $\text{Substream}_2$ may have channels 3-6, and so on).
@@ -27,8 +29,6 @@ The first frame will contain a \VAR{Major Sync} with information
 such as sample rate, bits-per-sample, substream count and so forth.
 This information will be constant throughout the stream,
 so most of the subsequent MLP frames will not have a sync.
-
-\section{MLP Decoding}
 
 The basic principle of MLP decoding is that we read in a
 set of decoding parameters for the first block and use those

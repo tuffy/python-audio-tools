@@ -1,3 +1,11 @@
+%This work is licensed under the
+%Creative Commons Attribution-Share Alike 3.0 United States License.
+%To view a copy of this license, visit
+%http://creativecommons.org/licenses/by-sa/3.0/us/ or send a letter to
+%Creative Commons,
+%171 Second Street, Suite 300,
+%San Francisco, California, 94105, USA.
+
 \chapter{DVD-Audio}
 DVD-Audio is a format for delivering hi-fidelity, multichannel
 audio on DVD media.
@@ -117,6 +125,8 @@ single, contiguous collection of sectors, each 2048 bytes long.
 Thus, it's possible for the start and end sectors for a given track
 (as indicated in the sector pointers table) to span two or more
 AOB files.
+Each sector contains one or more packets as part of a
+``Packetized Elementary Stream''.
 
 \begin{figure}[h]
 \includegraphics{figures/dvda_ats_xx_x.pdf}
@@ -136,3 +146,98 @@ combine to indicate the current position within the stream, in PTS ticks.
 Each sector then contains one or more packets.
 The packets with a \VAR{Stream ID} of \texttt{0xBD} contain
 encoded audio data.
+
+\clearpage
+
+\subsection{Audio Packet Data}
+
+Packets containining audio data have yet another header
+prior to the data itself.
+This header indicates the stream type (\texttt{0xA0} for raw PCM,
+\texttt{0xA1} for MLP).
+In the case of PCM, this header also contains details
+about the stream itself such as sample rate, bits per sample
+and channel assignment.
+
+\subsubsection{PCM Header}
+
+\begin{figure}[h]
+\includegraphics{figures/dvda_aob_pcm_payload.pdf}
+\end{figure}
+
+\begin{table}[h]
+\subfloat{
+\begin{tabular}{|c|r|}
+\hline
+Value & Bits per Sample \\
+\hline
+\texttt{0000} & 16 \\
+\texttt{0001} & 20 \\
+\texttt{0010} & 24 \\
+\texttt{1111} & Group Unused \\
+\hline
+\hline
+Value & Sample Rate \\
+\hline
+\texttt{0000} & 48000Hz \\
+\texttt{0001} & 96000Hz \\
+\texttt{0010} & 192000Hz \\
+\texttt{1000} & 44100Hz \\
+\texttt{1001} & 88200Hz \\
+\texttt{1010} & 176400Hz \\
+\texttt{1111} & Group Unused \\
+\hline
+\end{tabular}
+}
+\subfloat{
+{\relsize{-2}
+\begin{tabular}{|c|l|}
+\hline
+Value & Channel Assignment \\
+\hline
+\texttt{00000} & front center \\
+\texttt{00001} & front left, front right\\
+\texttt{00010} & front left, front right, back center \\
+\texttt{00011} & front left, front right, back left, back right\\
+\texttt{00100} & front left, front right, LFE \\
+\texttt{00101} & front left, front right, LFE, back center \\
+\texttt{00110} & front left, front right, LFE, back left, back right \\
+\texttt{00111} & front left, front right, front center \\
+\texttt{01000} & front left, front right, front center, back center \\
+\texttt{01001} & front left, front right, front center, back left, back right \\
+\texttt{01010} & front left, front right, front center, LFE\\
+\texttt{01011} & front left, front right, front center, LFE, back center \\
+\texttt{01100} & front left, front right, front center, LFE back left, back right \\
+\texttt{01101} & front left, front right, front center, back center \\
+\texttt{01110} & front left, front right, front center, back left, back right \\
+\texttt{01111} & front left, front right, front center, LFE \\
+\texttt{10000} & front left, front right, front center, LFE, back center \\
+\texttt{10001} & front left, front right, front center, LFE, back left, back right \\
+\texttt{10010} & front left, front right, back left, back right, LFE \\
+\texttt{10011} & front left, front right, back left, back right, front center \\
+\texttt{10100} & front left, front right, back left, back right, front center, LFE \\
+\hline
+\end{tabular}
+}
+}
+\end{table}
+\par
+\noindent
+The PCM data itself is stored as signed, big-endian integers.
+
+\clearpage
+
+\subsubsection{MLP Header}
+
+\begin{figure}[h]
+\includegraphics{figures/dvda_aob_mlp_payload.pdf}
+\end{figure}
+\par
+\noindent
+Since the MLP stream itself contains details such as bits per sample
+and channel assignment, that information is not repeated in the MLP
+packet header.
+
+\clearpage
+
+\input{mlp}
