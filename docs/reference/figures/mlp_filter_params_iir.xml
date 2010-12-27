@@ -7,8 +7,8 @@
     <col style="dashed" start="13" end="15" width=".25">Coefficient Shift</col>
   </row>
   <row>
-    <col style="dashed" start="0" end="coefficient bits" width=".333333">Signed Coeff₁</col>
-    <col style="dashed" start="0" end="coefficient bits" width=".333333">Signed Coeff₂</col>
+    <col style="dashed" start="coefficient bits" end="coefficient bits" width=".333333">Signed Coeff₁</col>
+    <col style="dashed" start="coefficient bits" end="coefficient bits" width=".333333">Signed Coeff₂</col>
     <col style="dashed" width=".333333">...</col>
   </row>
   <row>
@@ -17,8 +17,8 @@
     <col style="dashed" start="5" end="8" width=".35">State Shift</col>
   </row>
   <row>
-    <col style="dashed" start="0" end="state bits" width=".333333">Signed State₁</col>
-    <col style="dashed" start="0" end="state bits" width=".333333">Signed State₂</col>
+    <col style="dashed" start="state bits" end="state bits" width=".333333">Signed State₁</col>
+    <col style="dashed" start="state bits" end="state bits" width=".333333">Signed State₂</col>
     <col style="dashed" width=".333333">...</col>
   </row>
 </diagram>
