@@ -113,6 +113,76 @@ class DVDAudio:
         Con.UBInt32("first_sector"),
         Con.UBInt32("last_sector"))
 
+    PACK_HEADER = Con.Struct(
+        "pack_header",
+        Con.Const(Con.UBInt32("sync_bytes"), 0x1BA),
+        Con.Embed(Con.BitStruct(
+                "markers",
+                Con.Const(Con.Bits("marker1", 2), 1),
+                Con.Bits("system_clock_high", 3),
+                Con.Const(Con.Bits("marker2", 1), 1),
+                Con.Bits("system_clock_mid", 15),
+                Con.Const(Con.Bits("marker3", 1), 1),
+                Con.Bits("system_clock_low", 15),
+                Con.Const(Con.Bits("marker4", 1), 1),
+                Con.Bits("scr_extension", 9),
+                Con.Const(Con.Bits("marker5", 1), 1),
+                Con.Bits("bit_rate", 22),
+                Con.Const(Con.Bits("marker6", 2), 3),
+                Con.Bits("reserved", 5),
+                Con.Bits("stuffing_length", 3))),
+        Con.StrictRepeater(lambda ctx: ctx["stuffing_length"],
+                           Con.UBInt8("stuffing")))
+
+    PES_HEADER = Con.Struct(
+        "pes_header",
+        Con.Const(Con.Bytes("start_code", 3), "\x00\x00\x01"),
+        Con.UBInt8("stream_id"),
+        Con.UBInt16("packet_length"))
+
+    PACKET_HEADER = Con.Struct(
+        "packet_header",
+        Con.UBInt16("unknown1"),
+        Con.Byte("pad1_size"),
+        Con.StrictRepeater(lambda ctx: ctx["pad1_size"],
+                           Con.Byte("pad1")),
+        Con.Byte("stream_id"),
+        Con.Byte("crc"),
+        Con.Byte("padding"),
+        Con.Switch("info",
+                   lambda ctx: ctx["stream_id"],
+                   {0xA0:Con.Struct(   #PCM info
+                    "pcm",
+                    Con.Byte("pad2_size"),
+                    Con.UBInt16("first_audio_frame"),
+                    Con.UBInt8("padding2"),
+                    Con.Embed(Con.BitStruct(
+                            "flags",
+                            Con.Bits("group1_bps", 4),
+                            Con.Bits("group2_bps", 4),
+                            Con.Bits("group1_sample_rate", 4),
+                            Con.Bits("group2_sample_rate", 4))),
+                    Con.UBInt8("padding3"),
+                    Con.UBInt8("channel_assignment")),
+
+                    0xA1:Con.Struct(   #MLP info
+                    "mlp",
+                    Con.Byte("pad2_size"),
+                    Con.StrictRepeater(lambda ctx: ctx["pad2_size"],
+                                       Con.Byte("pad2")),
+                    Con.Bytes("mlp_size", 4),
+                    Con.Const(Con.Bytes("sync_words", 3), "\xF8\x72\x6F"),
+                    Con.Const(Con.UBInt8("stream_type"), 0xBB),
+                    Con.Embed(Con.BitStruct(
+                            "flags",
+                            Con.Bits("group1_bps", 4),
+                            Con.Bits("group2_bps", 4),
+                            Con.Bits("group1_sample_rate", 4),
+                            Con.Bits("group2_sample_rate", 4),
+                            Con.Bits("unknown1", 11),
+                            Con.Bits("channel_assignment", 5),
+                            Con.Bits("unknown2", 48))))}))
+
     def __init__(self, audio_ts_path):
         """A DVD-A which contains PCMReader-compatible track objects."""
 
@@ -243,6 +313,14 @@ class DVDATitle:
 class DVDATrack:
     """An object representing an individual DVD-Audio track."""
 
+    SAMPLE_RATE = [48000, 96000, 192000, 0, 0, 0, 0, 0,
+                   44100, 88200, 176400, 0, 0, 0, 0, 0]
+    CHANNELS = [1, 2, 3, 4, 3, 4, 5, 3, 4, 5, 4, 5, 6, 4, 5, 4, 5, 6, 5, 5, 6]
+    CHANNEL_MASK = [  0x4,  0x3, 0x103,  0x33,  0xB, 0x10B, 0x3B, 0x7,
+                    0x107, 0x37,   0xF, 0x10F, 0x3F, 0x107, 0x37, 0xF,
+                    0x10F, 0x3F,  0x3B,  0x37, 0x3F]
+    BITS_PER_SAMPLE = [16, 20, 24] + [0] * 13
+
     def __init__(self, dvdaudio,
                  titleset, title, track,
                  first_pts, pts_length,
@@ -285,6 +363,77 @@ class DVDATrack:
                                                (self.titleset, i + 1)],
                        intersection.start - start_sector,
                        intersection.end - start_sector)
+
+    def packets(self):
+        """iterates a packet payload string for each packet of track data
+
+        This does not include the PES header data."""
+
+        def payload(packet):
+            pad1_len = ord(packet[2])
+            pad2_len = ord(packet[3 + pad1_len + 3])
+            return packet[3 + pad1_len + 4 + pad2_len:]
+
+        SECTOR_SIZE = DVDAudio.SECTOR_SIZE
+        PACK_HEADER = DVDAudio.PACK_HEADER
+        PES_HEADER = DVDAudio.PES_HEADER
+
+        for (aob_file, start_sector, end_sector) in self.sectors():
+            aob = open(aob_file, 'rb')
+            try:
+                aob.seek(start_sector * DVDAudio.SECTOR_SIZE, os.SEEK_SET)
+                while (start_sector < end_sector):
+                    packet_size = SECTOR_SIZE
+                    pack_header = PACK_HEADER.parse_stream(aob)
+                    packet_size -= (14 + len(pack_header.stuffing))
+                    while (packet_size > 0):
+                        pes_header = PES_HEADER.parse_stream(aob)
+                        packet_size -= 6
+                        if (pes_header.stream_id == 0xBD):
+                            yield payload(aob.read(pes_header.packet_length))
+                        else:
+                            aob.read(pes_header.packet_length)
+                        packet_size -= pes_header.packet_length
+
+                    start_sector += 1
+            finally:
+                aob.close()
+
+    def info(self):
+        """returns (sample_rate, channels, channel_mask, bits_per_sample)
+
+        taken from the track's first sector"""
+
+        (aob_file, start_sector, end_sector) = self.sectors().next()
+        aob = open(aob_file, 'rb')
+        try:
+            aob.seek(start_sector * DVDAudio.SECTOR_SIZE, os.SEEK_SET)
+            packet_size = DVDAudio.SECTOR_SIZE
+            pack_header = DVDAudio.PACK_HEADER.parse_stream(aob)
+            packet_size -= (14 + len(pack_header.stuffing))
+            while (packet_size > 0):
+                pes_header = DVDAudio.PES_HEADER.parse_stream(aob)
+                packet_size -= 6
+                if (pes_header.stream_id == 0xBD):
+                    #the first packet of audio data
+
+                    header = DVDAudio.PACKET_HEADER.parse_stream(aob)
+                    return (DVDATrack.SAMPLE_RATE[
+                              header.info.group1_sample_rate],
+                            DVDATrack.CHANNELS[
+                              header.info.channel_assignment],
+                            DVDATrack.CHANNEL_MASK[
+                              header.info.channel_assignment],
+                            DVDATrack.BITS_PER_SAMPLE[
+                              header.info.group1_bps])
+                else:
+                    aob.read(pes_header.packet_length)
+                packet_size -= pes_header.packet_length
+            else:
+                raise InvalidDVDA(u"No audio data found in first sector")
+        finally:
+            aob.close()
+
 
 class Rangeset:
     """An optimized combination of range() and set()"""
