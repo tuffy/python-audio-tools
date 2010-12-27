@@ -3253,6 +3253,8 @@ from __musepack__ import *
 from __speex__ import *
 from __shn__ import *
 
+from __dvda__ import *
+
 
 #######################
 #CD data
