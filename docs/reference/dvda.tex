@@ -152,7 +152,7 @@ encoded audio data.
 \subsection{Audio Packet Data}
 
 Packets containining audio data have yet another header
-prior to the data itself.
+prior to the actual data.
 This header indicates the stream type (\texttt{0xA0} for raw PCM,
 \texttt{0xA1} for MLP).
 In the case of PCM, this header also contains details
@@ -223,7 +223,7 @@ Value & Channel Assignment \\
 \end{table}
 \par
 \noindent
-The PCM data itself is stored as signed, big-endian integers.
+The PCM data is stored as signed, big-endian integers.
 
 \clearpage
 
@@ -234,7 +234,7 @@ The PCM data itself is stored as signed, big-endian integers.
 \end{figure}
 \par
 \noindent
-Since the MLP stream itself contains details such as bits per sample
+Since the MLP stream contains details such as bits per sample
 and channel assignment, that information is not repeated in the MLP
 packet header.
 
