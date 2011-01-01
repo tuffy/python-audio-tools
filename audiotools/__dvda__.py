@@ -191,18 +191,18 @@ class DVDAudio:
                             os.path.join(audio_ts_path, name))
                            for name in os.listdir(audio_ts_path)])
 
-        titleset_count = self.__titleset_count__()
+        titleset_numbers = list(self.__titlesets__())
 
         #for each titleset, read an ATS_XX_0.IFO file
         #each titleset contains one or more DVDATitle objects
         #and each DVDATitle object contains one or more DVDATrack objects
         self.titlesets = [self.__titles__(titleset) for titleset in
-                          xrange(1, titleset_count + 1)]
+                          titleset_numbers]
 
         #for each titleset, calculate the lengths of the corresponding AOBs
         #in terms of 2048 byte sectors
         self.aob_sectors = []
-        for titleset in xrange(1, titleset_count + 1):
+        for titleset in titleset_numbers:
             aob_re = re.compile("ATS_%2.2d_\\d\\.AOB" % (titleset))
             titleset_aobs = dict([(key, value) for (key, value) in
                                   self.files.items()
@@ -218,8 +218,8 @@ class DVDAudio:
                         (self.aob_sectors[-1][1],
                          self.aob_sectors[-1][1] + aob_length))
 
-    def __titleset_count__(self):
-        """return the number of titlesets from AUDIO_TS.IFO"""
+    def __titlesets__(self):
+        """return valid audio titleset integers from AUDIO_TS.IFO"""
 
         try:
             f = open(self.files['AUDIO_TS.IFO'], 'rb')
@@ -227,7 +227,17 @@ class DVDAudio:
             raise InvalidDVDA(u"unable to open AUDIO_TS.IFO")
         try:
             try:
-                return DVDAudio.AUDIO_TS_IFO.parse_stream(f).audio_titlesets
+                for titleset in xrange(
+                    1,
+                    DVDAudio.AUDIO_TS_IFO.parse_stream(f).audio_titlesets + 1):
+                    #ensure there are IFO files and AOBs
+                    #for each valid titleset
+                    if (("ATS_%2.2d_0.IFO" % (titleset) in
+                         self.files.keys()) and
+                        ("ATS_%2.2d_1.AOB" % (titleset) in
+                         self.files.keys())):
+                        yield titleset
+
             except Con.ConstError:
                 raise InvalidDVDA(u"invalid AUDIO_TS.IFO")
         finally:
