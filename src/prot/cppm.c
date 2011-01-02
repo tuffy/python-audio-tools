@@ -242,41 +242,41 @@ const static uint32_t sbox_f[256] = {
 
 static device_key_t cppm_device_keys[] =
 {
-    {0x00, 0x5f58, 0x53e173beec3b8c},
+    {0x00, 0x5f58, 0x53e173beec3b8cLL},
 
-    {0x00, 0x4821, 0x6d05086b755c81},
-    {0x01, 0x091c, 0x97ace18dd26973},
-    {0x02, 0x012a, 0xfefc0a25a38d42},
-    {0x03, 0x469b, 0x0780491970db2c},
-    {0x04, 0x0f9b, 0x0bedd116d43484},
-    {0x05, 0x59b2, 0x566936bcebe294},
-    {0x06, 0x5fc8, 0xdc610f649b1fc0},
-    {0x07, 0x11de, 0x6ee01d3872c2d9},
-    {0x08, 0x52b6, 0xd0132c376e439b},
-    {0x09, 0x135f, 0x800faa66206922},
-    {0x0a, 0x3806, 0x9d1aa1460885c2},
-    {0x0b, 0x2da2, 0x9833f21818ba33},
-    {0x0c, 0x113f, 0xd50aa7d022045a},
-    {0x0d, 0x11ec, 0x88abee7bb83a32},
-    {0x0e, 0x071b, 0x9b45eea4e7d140},
-    {0x0f, 0x5c55, 0x5a49f860cca5cf},
+    {0x00, 0x4821, 0x6d05086b755c81LL},
+    {0x01, 0x091c, 0x97ace18dd26973LL},
+    {0x02, 0x012a, 0xfefc0a25a38d42LL},
+    {0x03, 0x469b, 0x0780491970db2cLL},
+    {0x04, 0x0f9b, 0x0bedd116d43484LL},
+    {0x05, 0x59b2, 0x566936bcebe294LL},
+    {0x06, 0x5fc8, 0xdc610f649b1fc0LL},
+    {0x07, 0x11de, 0x6ee01d3872c2d9LL},
+    {0x08, 0x52b6, 0xd0132c376e439bLL},
+    {0x09, 0x135f, 0x800faa66206922LL},
+    {0x0a, 0x3806, 0x9d1aa1460885c2LL},
+    {0x0b, 0x2da2, 0x9833f21818ba33LL},
+    {0x0c, 0x113f, 0xd50aa7d022045aLL},
+    {0x0d, 0x11ec, 0x88abee7bb83a32LL},
+    {0x0e, 0x071b, 0x9b45eea4e7d140LL},
+    {0x0f, 0x5c55, 0x5a49f860cca5cfLL},
 
-    {0x00, 0x0375, 0x1a12793404c279},
-    {0x01, 0x4307, 0x61418b44cea550},
-    {0x02, 0x1f70, 0x52bde5b73adcda},
-    {0x03, 0x1bbc, 0x70a031ae493159},
-    {0x04, 0x1f9d, 0x0a570636aedb61},
-    {0x05, 0x4e7b, 0xc313563e7883e9},
-    {0x06, 0x07c4, 0x32c55f7bc42d45},
-    {0x07, 0x4216, 0x4f854df6c1d721},
-    {0x08, 0x11c5, 0xc0e3f0f3df33cc},
-    {0x09, 0x0486, 0xbfca7754db5de6},
-    {0x0a, 0x2f82, 0xa964fc061af87c},
-    {0x0b, 0x236a, 0xb96d68856c45d5},
-    {0x0c, 0x5beb, 0xd2ca3cbb7d13cc},
-    {0x0d, 0x3db6, 0x58cf827ff3c540},
-    {0x0e, 0x4b22, 0xbb4037442a869c},
-    {0x0f, 0x59b5, 0x3a83e0ddf37a6e},
+    {0x00, 0x0375, 0x1a12793404c279LL},
+    {0x01, 0x4307, 0x61418b44cea550LL},
+    {0x02, 0x1f70, 0x52bde5b73adcdaLL},
+    {0x03, 0x1bbc, 0x70a031ae493159LL},
+    {0x04, 0x1f9d, 0x0a570636aedb61LL},
+    {0x05, 0x4e7b, 0xc313563e7883e9LL},
+    {0x06, 0x07c4, 0x32c55f7bc42d45LL},
+    {0x07, 0x4216, 0x4f854df6c1d721LL},
+    {0x08, 0x11c5, 0xc0e3f0f3df33ccLL},
+    {0x09, 0x0486, 0xbfca7754db5de6LL},
+    {0x0a, 0x2f82, 0xa964fc061af87cLL},
+    {0x0b, 0x236a, 0xb96d68856c45d5LL},
+    {0x0c, 0x5beb, 0xd2ca3cbb7d13ccLL},
+    {0x0d, 0x3db6, 0x58cf827ff3c540LL},
+    {0x0e, 0x4b22, 0xbb4037442a869cLL},
+    {0x0f, 0x59b5, 0x3a83e0ddf37a6eLL},
 };
 
 /* The encrypted part of the block. */
@@ -459,7 +459,7 @@ cppm_process_mkb(uint8_t *p_mkb,
             case 0x82: /* Conditionally calculate media key record */
                 B2N_64(buffer);
                 buffer = c2_dec(buffer, media_key);
-                if ((buffer & 0xffffffff00000000) != 0xdeadbeef00000000)
+                if ((buffer & 0xffffffff00000000LL) != 0xdeadbeef00000000LL)
                     break;
                 B2N_64(buffer);
             case 0x01: /* Calculate media key record */
@@ -485,9 +485,9 @@ cppm_process_mkb(uint8_t *p_mkb,
                 B2N_64(buffer);
                 if (record_type == 0x82)
                     buffer = c2_dec(buffer, media_key);
-                media_key = (c2_dec(buffer, p_dev_keys[i_dev_key].key) & 0x00ffffffffffffff) ^ f(column, p_dev_keys[i_dev_key].row);
+                media_key = (c2_dec(buffer, p_dev_keys[i_dev_key].key) & 0x00ffffffffffffffLL) ^ f(column, p_dev_keys[i_dev_key].row);
                 buffer = c2_dec(verification_data, media_key);
-                if ((buffer & 0xffffffff00000000) == 0xdeadbeef00000000) {
+                if ((buffer & 0xffffffff00000000LL) == 0xdeadbeef00000000LL) {
                     *p_media_key = media_key;
                     return 0;
                 }
@@ -618,22 +618,22 @@ cppm_decrypt_block(prot_CPPMDecoder *p_ctx,
     encrypted = 0;
     if (mpeg2_check_pes_scrambling_control(p_buffer)) {
         k_au = c2_g(p_ctx->id_album_media, p_ctx->media_key) &
-            0x00ffffffffffffff;
+            0x00ffffffffffffffLL;
         d_kc_i = *(uint64_t*)&p_buffer[24];
         B2N_64(d_kc_i);
-        k_i = c2_g(d_kc_i, k_au) & 0x00ffffffffffffff;
+        k_i = c2_g(d_kc_i, k_au) & 0x00ffffffffffffffLL;
         d_kc_i = *(uint64_t*)&p_buffer[32];
         B2N_64(d_kc_i);
-        k_i = c2_g(d_kc_i, k_i) & 0x00ffffffffffffff;
+        k_i = c2_g(d_kc_i, k_i) & 0x00ffffffffffffffLL;
         d_kc_i = *(uint64_t*)&p_buffer[40];
         B2N_64(d_kc_i);
-        k_i = c2_g(d_kc_i, k_i) & 0x00ffffffffffffff;
+        k_i = c2_g(d_kc_i, k_i) & 0x00ffffffffffffffLL;
         d_kc_i = *(uint64_t*)&p_buffer[48];
         B2N_64(d_kc_i);
-        k_i = c2_g(d_kc_i, k_i) & 0x00ffffffffffffff;
+        k_i = c2_g(d_kc_i, k_i) & 0x00ffffffffffffffLL;
         d_kc_i = *(uint64_t*)&p_buffer[84];
         B2N_64(d_kc_i);
-        k_c = c2_g(d_kc_i, k_i) & 0x00ffffffffffffff;
+        k_c = c2_g(d_kc_i, k_i) & 0x00ffffffffffffffLL;
         c2_dcbc((uint64_t*)(&p_buffer[DVDCPXM_BLOCK_SIZE -
                                       DVDCPXM_ENCRYPTED_SIZE]),
                 k_c, DVDCPXM_ENCRYPTED_SIZE);

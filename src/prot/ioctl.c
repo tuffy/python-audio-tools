@@ -90,8 +90,6 @@
 #   include <sys/dcmd_cam.h>
 #endif
 
-#include "common.h"
-
 #include "ioctl.h"
 
 /*****************************************************************************

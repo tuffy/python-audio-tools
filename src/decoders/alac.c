@@ -288,7 +288,7 @@ ALACDecoder_read(decoders_ALACDecoder* self, PyObject *args)
                     for (i = 0; i < frame_channels; i++)
                         for (j = 0; j < frame_header.output_samples; j++)
                             frame_samples.arrays[i].data[j] =
-                                ((frame_samples.arrays[i].data[j] <<=
+                                ((frame_samples.arrays[i].data[j] <<
                                   (frame_header.wasted_bits * 8)) |
                                  frame_wasted_bits.arrays[i].data[j]);
                 }
