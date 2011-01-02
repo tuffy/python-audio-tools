@@ -89,7 +89,9 @@ verifymodule = Extension('audiotools.verify',
 
 protmodule = Extension('audiotools.prot',
                        sources=['src/prot.c',
-                                'src/prot/cppm.c'])
+                                'src/prot/cppm.c',
+                                'src/prot/ioctl.c',
+                                'src/prot/dvd_css.c'])
 
 extensions = [cdiomodule,
               resamplemodule,

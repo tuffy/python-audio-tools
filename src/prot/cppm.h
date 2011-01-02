@@ -1,4 +1,11 @@
 #include <Python.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -21,6 +28,10 @@
 
 typedef struct {
     PyObject_HEAD
+
+    int        media_type;     /*read from DVD side data*/
+    uint64_t   media_key;      /*read from AUDIO_TS/DVDAUDIO.MKB file*/
+    uint64_t   id_album_media; /*pulled from DVD side data*/
 } prot_CPPMDecoder;
 
 /*the CPPMDecoder.__init__() method*/
@@ -35,11 +46,31 @@ CPPMDecoder_new(PyTypeObject *type,
 void
 CPPMDecoder_dealloc(prot_CPPMDecoder *self);
 
+static PyObject*
+CPPMDecoder_media_type(prot_CPPMDecoder *self, void *closure);
+
+static PyObject*
+CPPMDecoder_media_key(prot_CPPMDecoder *self, void *closure);
+
+static PyObject*
+CPPMDecoder_id_album_media(prot_CPPMDecoder *self, void *closure);
+
 PyGetSetDef CPPMDecoder_getseters[] = {
+    {"media_type",
+     (getter)CPPMDecoder_media_type, NULL, "media_type", NULL},
+    {"media_key",
+     (getter)CPPMDecoder_media_key, NULL, "media_key", NULL},
+    {"id_album_media",
+     (getter)CPPMDecoder_id_album_media, NULL, "id_album_media", NULL},
     {NULL}
 };
 
+static PyObject*
+CPPMDecoder_decode(prot_CPPMDecoder *self, PyObject *args);
+
 PyMethodDef CPPMDecoder_methods[] = {
+    {"decode", (PyCFunction)CPPMDecoder_decode,
+     METH_VARARGS, "Decodes one or more 2048 byte blocks"},
     {NULL}
 };
 
@@ -84,3 +115,30 @@ PyTypeObject prot_CPPMDecoderType = {
     0,                         /* tp_alloc */
     CPPMDecoder_new,           /* tp_new */
 };
+
+typedef enum {COPYRIGHT_PROTECTION_NONE = 0,
+              COPYRIGHT_PROTECTION_CPPM = 1} protection;
+
+typedef struct {
+    uint8_t  col;
+    uint16_t row;
+    uint64_t key;
+} device_key_t;
+
+int
+cppm_init(prot_CPPMDecoder *p_ctx,
+          char *dvd_dev,
+          char *psz_file);
+
+int
+cppm_set_id_album(prot_CPPMDecoder *p_ctx,
+                  int i_fd);
+
+uint8_t*
+cppm_get_mkb(char *psz_mkb);
+
+int
+process_mkb(uint8_t *p_mkb,
+            device_key_t *p_dev_keys,
+            int nr_dev_keys,
+            uint64_t *p_media_key);

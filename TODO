@@ -2794,7 +2794,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** DONE Create audiotools.prot module
 *** TODO Create audiotools.prot.CPPMDecoder object
 **** TODO Add CPPMDecoder.__init__() method
-**** TODO Add CPPMDecoder.read() method
+**** TODO Add CPPMDecoder.decode() method
 **** TODO Ensure CPPMDecoder is cross-platform
 ** TODO Document AOB parser
 ** TODO Build raw PCM decoder
