@@ -138,7 +138,30 @@ uint8_t*
 cppm_get_mkb(char *psz_mkb);
 
 int
-process_mkb(uint8_t *p_mkb,
-            device_key_t *p_dev_keys,
-            int nr_dev_keys,
-            uint64_t *p_media_key);
+cppm_process_mkb(uint8_t *p_mkb,
+                 device_key_t *p_dev_keys,
+                 int nr_dev_keys,
+                 uint64_t *p_media_key);
+
+int
+cppm_decrypt(prot_CPPMDecoder *p_ctx,
+             uint8_t *p_buffer,
+             int nr_blocks,
+             int preserve_cci);
+
+int
+cppm_decrypt_block(prot_CPPMDecoder *p_ctx,
+                   uint8_t *p_buffer,
+                   int preserve_cci);
+
+/*given a block of raw AOB data, determine if its protection bit is set*/
+int
+mpeg2_check_pes_scrambling_control(uint8_t *p_block);
+
+/*sets a block's protection bit to 0*/
+void
+mpeg2_reset_pes_scrambling_control(uint8_t *p_block);
+
+/*locates a block's CCI bit and sets it to 0*/
+void
+mpeg2_reset_cci(uint8_t *p_block);
