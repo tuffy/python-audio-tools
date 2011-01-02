@@ -2790,6 +2790,12 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   This should be done internally instead.
 * TODO Add DVD-A support
 ** TODO Build AOB parser/extractor
+** TODO Build CPPM handler
+*** DONE Create audiotools.prot module
+*** TODO Create audiotools.prot.CPPMDecoder object
+**** TODO Add CPPMDecoder.__init__() method
+**** TODO Add CPPMDecoder.read() method
+**** TODO Ensure CPPMDecoder is cross-platform
 ** TODO Document AOB parser
 ** TODO Build raw PCM decoder
 ** TODO Build MLP decoder
