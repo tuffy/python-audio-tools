@@ -6,6 +6,9 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <setjmp.h>
+#ifndef STANDALONE
+#include <Python.h>
+#endif
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -46,11 +49,28 @@ struct bs_exception {
 
 typedef enum {BS_BIG_ENDIAN, BS_LITTLE_ENDIAN} bs_endianness;
 
+#ifndef STANDALONE
+struct bs_python_input {
+    PyObject* reader_obj;
+    PyObject* buffer_obj;
+    uint8_t* buffer;
+    Py_ssize_t buffer_len;
+    Py_ssize_t buffer_pos;
+};
+#endif
+
 typedef struct Bitstream_s {
-    FILE *file;
+    /* FILE *file; */
+    union {
+        FILE* file;
+#ifndef STANDALONE
+        struct bs_python_input* python;
+#endif
+    } input;
+
     int state;
-    struct bs_callback *callback;
-    struct bs_exception *exceptions;
+    struct bs_callback* callback;
+    struct bs_exception* exceptions;
 
     unsigned int (*read)(struct Bitstream_s* bs, unsigned int count);
     int (*read_signed)(struct Bitstream_s* bs, unsigned int count);
@@ -63,13 +83,14 @@ typedef struct Bitstream_s {
     void (*byte_align)(struct Bitstream_s* bs);
     void (*set_endianness)(struct Bitstream_s* bs,
                            bs_endianness endianness);
+    void (*close)(struct Bitstream_s* bs);
 } Bitstream;
 
 Bitstream*
 bs_open(FILE *f, bs_endianness endianness);
 
 void
-bs_close(Bitstream *bs);
+bs_close_f(Bitstream *bs);
 
 void
 bs_add_callback(Bitstream *bs, void (*callback)(uint8_t, void*),
@@ -86,12 +107,8 @@ bs_pop_callback(Bitstream *bs);
 
 static inline long
 bs_ftell(Bitstream *bs) {
-    return ftell(bs->file);
+    return ftell(bs->input.file);
 }
-
-/*Returns true if the stream is at EOF.*/
-int
-bs_eof(Bitstream *bs);
 
 
 /*Called by the read functions if one attempts to read past
@@ -181,5 +198,79 @@ bs_read_limited_unary_le(Bitstream* bs, int stop_bit, int maximum_bits);
 
 void
 bs_set_endianness_le(Bitstream *bs, bs_endianness endianness);
+
+
+#ifndef STANDALONE
+
+/*given a file-like Python object with read() and close() methods,
+  returns a newly allocated bs_python_input struct
+
+  object is increfed*/
+struct bs_python_input*
+py_open(PyObject* reader);
+
+/*analagous to fgetc, returns EOF at the end of stream
+  or if some exception occurs when fetching from the reader object*/
+int
+py_getc(struct bs_python_input *stream);
+
+/*closes the input stream and decrefs any objects*/
+int
+py_close(struct bs_python_input *stream);
+
+
+Bitstream*
+bs_open_python(PyObject *reader, bs_endianness endianness);
+
+void
+bs_close_p(Bitstream *bs);
+
+/*_be signifies the big-endian readers*/
+unsigned int
+bs_read_bits_p_be(Bitstream* bs, unsigned int count);
+
+int
+bs_read_signed_bits_p_be(Bitstream* bs, unsigned int count);
+
+uint64_t
+bs_read_bits64_p_be(Bitstream* bs, unsigned int count);
+
+void
+bs_skip_bits_p_be(Bitstream* bs, unsigned int count);
+
+unsigned int
+bs_read_unary_p_be(Bitstream* bs, int stop_bit);
+
+int
+bs_read_limited_unary_p_be(Bitstream* bs, int stop_bit, int maximum_bits);
+
+
+void
+bs_set_endianness_p_be(Bitstream *bs, bs_endianness endianness);
+
+/*_le signifies the little-endian readers*/
+unsigned int
+bs_read_bits_p_le(Bitstream* bs, unsigned int count);
+
+uint64_t
+bs_read_bits64_p_le(Bitstream* bs, unsigned int count);
+
+int
+bs_read_signed_bits_p_le(Bitstream* bs, unsigned int count);
+
+void
+bs_skip_bits_p_le(Bitstream* bs, unsigned int count);
+
+unsigned int
+bs_read_unary_p_le(Bitstream* bs, int stop_bit);
+
+int
+bs_read_limited_unary_p_le(Bitstream* bs, int stop_bit, int maximum_bits);
+
+void
+bs_set_endianness_p_le(Bitstream *bs, bs_endianness endianness);
+
+
+#endif
 
 #endif

@@ -93,7 +93,7 @@ FlacDecoder_dealloc(decoders_FlacDecoder *self)
     if (self->filename != NULL)
         free(self->filename);
 
-    bs_close(self->bitstream);
+    self->bitstream->close(self->bitstream);
 
     self->ob_type->tp_free((PyObject*)self);
 }

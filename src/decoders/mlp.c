@@ -46,7 +46,7 @@ MLPDecoder_init(decoders_MLPDecoder *self,
     }
 
     /*store initial position in stream*/
-    if (fgetpos(self->bitstream->file, &pos) == -1) {
+    if (fgetpos(self->bitstream->input.file, &pos) == -1) {
         PyErr_SetFromErrnoWithFilename(PyExc_IOError, filename);
         return -1;
     }
@@ -75,7 +75,7 @@ MLPDecoder_init(decoders_MLPDecoder *self,
     }
 
     /*restore initial stream position*/
-    if (fsetpos(self->bitstream->file, &pos) == -1) {
+    if (fsetpos(self->bitstream->input.file, &pos) == -1) {
         PyErr_SetFromErrnoWithFilename(PyExc_IOError, filename);
         return -1;
     }
@@ -174,7 +174,7 @@ MLPDecoder_dealloc(decoders_MLPDecoder *self)
     int channel;
 
     if (self->file != NULL)
-        bs_close(self->bitstream);
+        self->bitstream->close(self->bitstream);
 
     if (self->init_ok) {
         for (substream = 0;
@@ -612,14 +612,14 @@ mlp_read_major_sync(decoders_MLPDecoder* decoder,
         if (bitstream->read(bitstream, 24) != 0xF8726F) {
             /*sync words not found*/
             bs_etry(bitstream);
-            fseek(bitstream->file, -3, SEEK_CUR);
+            fseek(bitstream->input.file, -3, SEEK_CUR);
             decoder->bytes_read -= 3;
             return MLP_MAJOR_SYNC_NOT_FOUND;
         }
         if (bitstream->read(bitstream, 8) != 0xBB) {
             /*stream type not 0xBB*/
             bs_etry(bitstream);
-            fseek(bitstream->file, -4, SEEK_CUR);
+            fseek(bitstream->input.file, -4, SEEK_CUR);
             decoder->bytes_read -= 4;
             return MLP_MAJOR_SYNC_NOT_FOUND;
         }

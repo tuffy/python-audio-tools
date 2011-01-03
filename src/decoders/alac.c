@@ -120,7 +120,7 @@ ALACDecoder_dealloc(decoders_ALACDecoder *self)
 
     if (self->filename != NULL)
         free(self->filename);
-    bs_close(self->bitstream); /*this closes self->file also*/
+    self->bitstream->close(self->bitstream); /*this closes self->file also*/
 
     self->ob_type->tp_free((PyObject*)self);
 }

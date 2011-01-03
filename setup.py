@@ -99,8 +99,8 @@ extensions = [cdiomodule,
               replaygainmodule,
               decodersmodule,
               encodersmodule,
-              verifymodule,
-              protmodule]
+              verifymodule]
+              # protmodule]
 
 
 #This is an ALSA extension module, not quite ready for use.

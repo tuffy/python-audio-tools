@@ -257,7 +257,8 @@ BitstreamReader_limited_unary(decoders_BitstreamReader *self, PyObject *args) {
 
 static PyObject*
 BitstreamReader_tell(decoders_BitstreamReader *self, PyObject *args) {
-    return Py_BuildValue("i", bs_ftell(self->bitstream));
+    /* return Py_BuildValue("i", bs_ftell(self->bitstream)); */
+    return PyObject_CallMethod(self->file_obj, "tell", NULL);
 }
 
 static PyObject*
@@ -274,9 +275,9 @@ BitstreamReader_set_endianness(decoders_BitstreamReader *self,
         return NULL;
     }
 
-    self->bitstream->set_endianness(
-                        self->bitstream,
-                        little_endian ? BS_LITTLE_ENDIAN : BS_BIG_ENDIAN);
+    self->bitstream->set_endianness(self->bitstream,
+                                    little_endian ? BS_LITTLE_ENDIAN :
+                                    BS_BIG_ENDIAN);
 
     Py_INCREF(Py_None);
     return Py_None;
@@ -284,6 +285,7 @@ BitstreamReader_set_endianness(decoders_BitstreamReader *self,
 
 static PyObject*
 BitstreamReader_close(decoders_BitstreamReader *self, PyObject *args) {
+    self->bitstream->close(self->bitstream);
     Py_INCREF(Py_None);
     return Py_None;
 }
@@ -311,18 +313,18 @@ BitstreamReader_init(decoders_BitstreamReader *self,
     if (!PyArg_ParseTuple(args, "Oi", &file_obj, &little_endian))
         return -1;
 
-    if (!PyFile_CheckExact(file_obj)) {
-        PyErr_SetString(PyExc_TypeError,
-                        "first argument must be an actual file object");
-        return -1;
-    }
-
     Py_INCREF(file_obj);
     self->file_obj = file_obj;
 
-    self->bitstream = bs_open(
-                    PyFile_AsFile(self->file_obj),
-                    little_endian ? BS_LITTLE_ENDIAN : BS_BIG_ENDIAN);
+    if (PyFile_CheckExact(file_obj)) {
+        self->bitstream = bs_open(PyFile_AsFile(self->file_obj),
+                                  little_endian ? BS_LITTLE_ENDIAN :
+                                  BS_BIG_ENDIAN);
+    } else {
+        self->bitstream = bs_open_python(self->file_obj,
+                                         little_endian ? BS_LITTLE_ENDIAN :
+                                         BS_BIG_ENDIAN);
+    }
 
     return 0;
 }
@@ -330,11 +332,8 @@ BitstreamReader_init(decoders_BitstreamReader *self,
 void
 BitstreamReader_dealloc(decoders_BitstreamReader *self)
 {
-    if (self->file_obj != NULL) {
-        self->bitstream->file = NULL;
-        bs_close(self->bitstream);
-        Py_DECREF(self->file_obj);
-    }
+    Py_XDECREF(self->file_obj);
+    self->file_obj = NULL;
 
     self->ob_type->tp_free((PyObject*)self);
 }

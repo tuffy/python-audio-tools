@@ -59,7 +59,8 @@ verifymodule_ogg(PyObject *dummy, PyObject *args) {
                 if (fread(data_buffer,
                           sizeof(uint8_t),
                           header.segment_length_total,
-                          bitstream->file) != header.segment_length_total) {
+                          bitstream->input.file) !=
+                    header.segment_length_total) {
                     PyErr_SetString(PyExc_IOError, "I/O error reading stream");
                     goto error;
                 }
@@ -103,16 +104,16 @@ verifymodule_ogg(PyObject *dummy, PyObject *args) {
 
     bs_etry(bitstream);
     free(data_buffer);
-    bitstream->file = NULL;
-    bs_close(bitstream);
+    bitstream->input.file = NULL;
+    bitstream->close(bitstream);
     Py_INCREF(Py_None);
     return Py_None;
  error:
     bs_etry(bitstream);
     if (data_buffer != NULL)
         free(data_buffer);
-    bitstream->file = NULL;
-    bs_close(bitstream);
+    bitstream->input.file = NULL;
+    bitstream->close(bitstream);
     return NULL;
 }
 
@@ -136,7 +137,7 @@ verifymodule_read_ogg_header(Bitstream *bs, struct ogg_header *header) {
     header->bitstream_serial_number = bs->read(bs, 32);
     header->page_sequence_number = bs->read(bs, 32);
 
-    if (fread(checksum, sizeof(uint8_t), 4, bs->file) == 4) {
+    if (fread(checksum, sizeof(uint8_t), 4, bs->input.file) == 4) {
         header->checksum = checksum[0] |
             (checksum[1] << 8) |
             (checksum[2] << 16) |
