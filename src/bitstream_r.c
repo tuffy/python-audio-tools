@@ -687,14 +687,17 @@ py_getc(struct bs_python_input *stream) {
                     }
 
                     /*then, return the next byte in the buffer*/
+                    Py_DECREF(buffer_obj);
                     return stream->buffer[stream->buffer_position++];
                 } else {
                     /*if the size of the new string is 0, return EOF*/
+                    Py_DECREF(buffer_obj);
                     return EOF;
                 }
             } else {
                 /*byte conversion failed, so print error and return EOF*/
                 PyErr_PrintEx(1);
+                Py_DECREF(buffer_obj);
                 return EOF;
             }
         } else {
