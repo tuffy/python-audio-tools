@@ -200,7 +200,7 @@ WavPackDecoder_close(decoders_WavPackDecoder* self, PyObject *args) {
 
 static PyObject*
 WavPackDecoder_offset(decoders_WavPackDecoder *self, void *closure) {
-    return Py_BuildValue("i", ftell(self->bitstream->input.file));
+    return Py_BuildValue("i", ftell(self->bitstream->input.stdio.file));
 }
 
 status
@@ -982,7 +982,7 @@ WavPackDecoder_analyze_frame(decoders_WavPackDecoder* self, PyObject *args) {
     long position;
 
     if (self->remaining_samples > 0) {
-        position = ftell(self->bitstream->input.file);
+        position = ftell(self->bitstream->input.stdio.file);
 
         self->got_decorr_terms = 0;
         self->got_decorr_weights = 0;
@@ -1001,11 +1001,11 @@ WavPackDecoder_analyze_frame(decoders_WavPackDecoder* self, PyObject *args) {
             }
 
             subblocks = PyList_New(0);
-            block_end = ftell(self->bitstream->input.file) +
+            block_end = ftell(self->bitstream->input.stdio.file) +
                 block_header.block_size - 24 - 1;
 
             if (!setjmp(*bs_try(self->bitstream))) {
-                while (ftell(self->bitstream->input.file) < block_end) {
+                while (ftell(self->bitstream->input.stdio.file) < block_end) {
                     subblock = WavPackDecoder_analyze_subblock(self,
                                                                &block_header);
                     if (subblock != NULL) {
@@ -1229,7 +1229,7 @@ WavPackDecoder_analyze_subblock(decoders_WavPackDecoder* self,
         if (fread(subblock_data,
                   sizeof(unsigned char),
                   data_size,
-                  bitstream->input.file) != data_size) {
+                  bitstream->input.stdio.file) != data_size) {
             PyErr_SetString(PyExc_IOError, "I/O error reading stream");
             free(subblock_data);
             return NULL;
@@ -1304,10 +1304,10 @@ WavPackDecoder_decode_block(decoders_WavPackDecoder* self,
 
         /*First, read in all the sub-block data.
           These are like arguments to the decoding routine.*/
-        block_end = ftell(bitstream->input.file) +
+        block_end = ftell(bitstream->input.stdio.file) +
             block_header.block_size - 24 - 1;
         if (!setjmp(*bs_try(self->bitstream))) {
-            while (ftell(self->bitstream->input.file) < block_end) {
+            while (ftell(self->bitstream->input.stdio.file) < block_end) {
                 if (WavPackDecoder_decode_subblock(self,
                                                    &block_header) != OK) {
                     bs_etry(bitstream);
@@ -1482,7 +1482,7 @@ WavPackDecoder_decode_subblock(decoders_WavPackDecoder* self,
         } else
             return ERROR;
     case WV_MD5:
-        if (fread(file_md5sum, 1, 16, bitstream->input.file) == 16) {
+        if (fread(file_md5sum, 1, 16, bitstream->input.stdio.file) == 16) {
             audiotools__MD5Final(running_md5sum, &(self->md5));
             if (memcmp(file_md5sum, running_md5sum, 16) == 0) {
                 return OK;
@@ -1499,7 +1499,7 @@ WavPackDecoder_decode_subblock(decoders_WavPackDecoder* self,
         break;
     default:
         /*unsupported sub-blocks are skipped*/
-        fseek(bitstream->input.file, header.block_size * 2, SEEK_CUR);
+        fseek(bitstream->input.stdio.file, header.block_size * 2, SEEK_CUR);
         break;
     }
 

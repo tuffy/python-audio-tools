@@ -290,6 +290,28 @@ BitstreamReader_close(decoders_BitstreamReader *self, PyObject *args) {
     return Py_None;
 }
 
+static PyObject*
+BitstreamReader_mark(decoders_BitstreamReader *self, PyObject *args) {
+    self->bitstream->mark(self->bitstream);
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+static PyObject*
+BitstreamReader_rewind(decoders_BitstreamReader *self, PyObject *args) {
+    self->bitstream->rewind(self->bitstream);
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+static PyObject*
+BitstreamReader_unmark(decoders_BitstreamReader *self, PyObject *args) {
+    self->bitstream->unmark(self->bitstream);
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+
 PyObject*
 BitstreamReader_new(PyTypeObject *type,
                     PyObject *args, PyObject *kwds)

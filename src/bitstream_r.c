@@ -55,7 +55,7 @@ Bitstream*
 bs_open(FILE *f, bs_endianness endianness)
 {
     Bitstream *bs = malloc(sizeof(Bitstream));
-    bs->input.file = f;
+    bs->input.stdio.file = f;
     bs->state = 0;
     bs->callback = NULL;
     bs->exceptions = NULL;
@@ -85,6 +85,9 @@ bs_open(FILE *f, bs_endianness endianness)
         break;
     }
     bs->close = bs_close_f;
+    bs->mark = bs_mark;
+    bs->rewind = bs_rewind;
+    bs->unmark = bs_unmark;
 
     return bs;
 }
@@ -99,8 +102,8 @@ bs_close_f(Bitstream *bs)
 
     if (bs == NULL) return;
 
-    if (bs->input.file != NULL)
-        fclose(bs->input.file);
+    if (bs->input.stdio.file != NULL)
+        fclose(bs->input.stdio.file);
 
     for (c_node = bs->callback; c_node != NULL; c_node = c_next) {
         c_next = c_node->next;
@@ -188,7 +191,7 @@ bs_read_bits_be(Bitstream* bs, unsigned int count)
 
     while (count > 0) {
         if (context == 0) {
-            if ((byte = fgetc(bs->input.file)) == EOF)
+            if ((byte = fgetc(bs->input.stdio.file)) == EOF)
                 bs_abort(bs);
             context = 0x800 | byte;
             for (callback = bs->callback;
@@ -222,7 +225,7 @@ bs_read_bits_le(Bitstream* bs, unsigned int count)
 
     while (count > 0) {
         if (context == 0) {
-            if ((byte = fgetc(bs->input.file)) == EOF)
+            if ((byte = fgetc(bs->input.stdio.file)) == EOF)
                 bs_abort(bs);
             context = 0x800 | byte;
             for (callback = bs->callback;
@@ -278,7 +281,7 @@ bs_read_bits64_be(Bitstream* bs, unsigned int count)
 
     while (count > 0) {
         if (context == 0) {
-            if ((byte = fgetc(bs->input.file)) == EOF)
+            if ((byte = fgetc(bs->input.stdio.file)) == EOF)
                 bs_abort(bs);
             context = 0x800 | byte;
             for (callback = bs->callback;
@@ -312,7 +315,7 @@ bs_read_bits64_le(Bitstream* bs, unsigned int count)
 
     while (count > 0) {
         if (context == 0) {
-            if ((byte = fgetc(bs->input.file)) == EOF)
+            if ((byte = fgetc(bs->input.stdio.file)) == EOF)
                 bs_abort(bs);
             context = 0x800 | byte;
             for (callback = bs->callback;
@@ -344,7 +347,7 @@ bs_skip_bits_be(Bitstream* bs, unsigned int count)
 
     while (count > 0) {
         if (context == 0) {
-            if ((byte = fgetc(bs->input.file)) == EOF)
+            if ((byte = fgetc(bs->input.stdio.file)) == EOF)
                 bs_abort(bs);
             context = 0x800 | byte;
             for (callback = bs->callback;
@@ -372,7 +375,7 @@ bs_skip_bits_le(Bitstream* bs, unsigned int count)
 
     while (count > 0) {
         if (context == 0) {
-            if ((byte = fgetc(bs->input.file)) == EOF)
+            if ((byte = fgetc(bs->input.stdio.file)) == EOF)
                 bs_abort(bs);
             context = 0x800 | byte;
             for (callback = bs->callback;
@@ -415,7 +418,7 @@ bs_read_unary_be(Bitstream* bs, int stop_bit)
 
     do {
         if (context == 0) {
-            if ((byte = fgetc(bs->input.file)) == EOF)
+            if ((byte = fgetc(bs->input.stdio.file)) == EOF)
                 bs_abort(bs);
             for (callback = bs->callback;
                  callback != NULL;
@@ -446,7 +449,7 @@ bs_read_unary_le(Bitstream* bs, int stop_bit)
 
     do {
         if (context == 0) {
-            if ((byte = fgetc(bs->input.file)) == EOF)
+            if ((byte = fgetc(bs->input.stdio.file)) == EOF)
                 bs_abort(bs);
             for (callback = bs->callback;
                  callback != NULL;
@@ -480,7 +483,7 @@ bs_read_limited_unary_be(Bitstream* bs, int stop_bit, int maximum_bits)
 
     do {
         if (context == 0) {
-            if ((byte = fgetc(bs->input.file)) == EOF)
+            if ((byte = fgetc(bs->input.stdio.file)) == EOF)
                 bs_abort(bs);
             for (callback = bs->callback;
                  callback != NULL;
@@ -525,7 +528,7 @@ bs_read_limited_unary_le(Bitstream* bs, int stop_bit, int maximum_bits)
 
     do {
         if (context == 0) {
-            if ((byte = fgetc(bs->input.file)) == EOF)
+            if ((byte = fgetc(bs->input.stdio.file)) == EOF)
                 bs_abort(bs);
             for (callback = bs->callback;
                  callback != NULL;
@@ -594,6 +597,24 @@ bs_byte_align_r(Bitstream* bs)
     bs->state = 0;
 }
 
+void
+bs_mark(Bitstream* bs) {
+    fgetpos(bs->input.stdio.file, &(bs->input.stdio.mark));
+    bs->input.stdio.mark_state = bs->state;
+}
+
+void
+bs_rewind(Bitstream* bs) {
+    fsetpos(bs->input.stdio.file, &(bs->input.stdio.mark));
+    bs->state = bs->input.stdio.mark_state;
+}
+
+void
+bs_unmark(Bitstream* bs) {
+    memset(&(bs->input.stdio.mark), 0, sizeof(fpos_t));
+    bs->input.stdio.mark_state = 0;
+}
+
 #ifndef STANDALONE
 
 struct bs_python_input*
@@ -601,44 +622,76 @@ py_open(PyObject* reader) {
     struct bs_python_input* input = malloc(sizeof(struct bs_python_input));
     Py_INCREF(reader);
     input->reader_obj = reader;
-    input->buffer_obj = NULL;
-    input->buffer = NULL;
-    input->buffer_len = 0;
-    input->buffer_pos = 0;
+    input->buffer = malloc(4096 * sizeof(uint8_t));
+    input->buffer_total_size = 4096;
+    input->buffer_size = 0;
+    input->buffer_position = 0;
+    input->mark_in_progress = 0;
 
     return input;
 }
 
 int
 py_getc(struct bs_python_input *stream) {
-    if (stream->buffer_pos < stream->buffer_len) {
+    PyObject *buffer_obj;
+    char *buffer_str;
+    Py_ssize_t buffer_len;
+
+    if (stream->buffer_position < stream->buffer_size) {
         /*if there's enough bytes in the buffer,
           simply return the next byte in the buffer*/
-        return stream->buffer[stream->buffer_pos++];
+        return stream->buffer[stream->buffer_position++];
     } else {
-        /*otherwise, decref the current buffer*/
-        Py_XDECREF(stream->buffer_obj);
+        /*otherwise, call the read() method on our reader object
+          to get more bytes for our buffer*/
+        buffer_obj = PyObject_CallMethod(stream->reader_obj,
+                                         "read",
+                                         "i",
+                                         4096);
 
-        /*call the read() method on our reader object to get a new buffer*/
-        stream->buffer_obj = PyObject_CallMethod(stream->reader_obj,
-                                                 "read",
-                                                 "i",
-                                                 4096);
+        if (buffer_obj != NULL) {
+            /*if calling read() succeeded, convert our new buffer into bytes*/
+            if (!PyString_AsStringAndSize(buffer_obj,
+                                          &buffer_str,
+                                          &buffer_len)) {
+                if (buffer_len > 0) {
+                    /*if the size of the new string is greater than 0*/
+                    if (!stream->mark_in_progress) {
+                        /*if the stream has no mark,
+                          overwrite the existing buffer*/
+                        if (buffer_len > stream->buffer_total_size) {
+                            stream->buffer = realloc(stream->buffer,
+                                                     buffer_len);
+                            stream->buffer_total_size = buffer_len;
+                        }
 
-        /*if calling read() succeeded, convert our new buffer into bytes*/
-        if (stream->buffer_obj != NULL) {
-            /*if byte conversion succeeded, incref our new buffer
-              and reset the current position*/
-            if (!PyString_AsStringAndSize(stream->buffer_obj,
-                                          (char **)(&(stream->buffer)),
-                                          &(stream->buffer_len))) {
-                /*if the size of the new string is greater than 0,
-                  return the next byte in the string*/
-                if (stream->buffer_len > 0)
-                    return stream->buffer[stream->buffer_pos++];
-                else
-                    /*otherwise, return EOF*/
+                        memcpy(stream->buffer,
+                               buffer_str,
+                               buffer_len);
+                        stream->buffer_size = buffer_len;
+                        stream->buffer_position = 0;
+                    } else {
+                        /*if the stream has a mark,
+                          extend the existing buffer*/
+                        if (buffer_len > (stream->buffer_total_size -
+                                          stream->buffer_position)) {
+                            stream->buffer_total_size += buffer_len;
+                            stream->buffer = realloc(
+                                                stream->buffer,
+                                                stream->buffer_total_size);
+                        }
+                        memcpy(stream->buffer + stream->buffer_position,
+                               buffer_str,
+                               buffer_len);
+                        stream->buffer_size += buffer_len;
+                    }
+
+                    /*then, return the next byte in the buffer*/
+                    return stream->buffer[stream->buffer_position++];
+                } else {
+                    /*if the size of the new string is 0, return EOF*/
                     return EOF;
+                }
             } else {
                 /*byte conversion failed, so print error and return EOF*/
                 PyErr_PrintEx(1);
@@ -667,11 +720,8 @@ py_close(struct bs_python_input *stream) {
           since there's little we can do about it*/
         PyErr_PrintEx(1);
 
-    stream->buffer = NULL;
-    stream->buffer_len = 0;
-    stream->buffer_pos = 0;
-    Py_XDECREF(stream->buffer_obj);
     Py_XDECREF(stream->reader_obj);
+    free(stream->buffer);
     free(stream);
 
     return 0;
@@ -711,6 +761,9 @@ bs_open_python(PyObject *reader, bs_endianness endianness) {
         break;
     }
     bs->close = bs_close_p;
+    bs->mark = bs_mark_p;
+    bs->rewind = bs_rewind_p;
+    bs->unmark = bs_unmark_p;
 
     return bs;
 }
@@ -1125,6 +1178,24 @@ bs_set_endianness_p_le(Bitstream *bs, bs_endianness endianness) {
         bs->byte_align = bs_byte_align_r;
         bs->set_endianness = bs_set_endianness_p_be;
     }
+}
+
+void
+bs_mark_p(Bitstream* bs) {
+    bs->input.python->marked_position = bs->input.python->buffer_position;
+    bs->input.python->mark_state = bs->state;
+    bs->input.python->mark_in_progress = 1;
+}
+
+void
+bs_rewind_p(Bitstream* bs) {
+    bs->input.python->buffer_position = bs->input.python->marked_position;
+    bs->state = bs->input.python->mark_state;
+}
+
+void
+bs_unmark_p(Bitstream* bs) {
+    bs->input.python->mark_in_progress = 0;
 }
 
 #endif

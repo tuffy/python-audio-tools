@@ -15110,6 +15110,24 @@ class TestIOError(unittest.TestCase):
                 self,
                 [(WARNING, _(u"Unable to open \"%s\"") % ("/dev/null/bar"))]))
 
+class __SimpleChunkReader__:
+    def __init__(self, chunks):
+        self.chunks = chunks
+        self.position = 0
+
+    def read(self, bytes):
+        try:
+            self.position += len(self.chunks[0])
+            return self.chunks.pop(0)
+        except IndexError:
+            return ""
+
+    def tell(self):
+        return self.position
+
+    def close(self):
+        pass
+
 class Bitstream(unittest.TestCase):
     @TEST_PCM
     def test_simple_reader(self):
@@ -15189,6 +15207,22 @@ class Bitstream(unittest.TestCase):
             self.assertEqual(bitstream.limited_unary(1, 2), 0)
             self.assertEqual(bitstream.limited_unary(1, 2), None)
 
+            temp.seek(0, 0)
+            bitstream.byte_align()
+            bitstream.mark()
+            self.assertEqual(bitstream.read(4), 0xB)
+            bitstream.rewind()
+            self.assertEqual(bitstream.read(8), 0xB1)
+            bitstream.rewind()
+            self.assertEqual(bitstream.read(12), 0xB1E)
+            bitstream.mark()
+            self.assertEqual(bitstream.read(4), 0xD)
+            bitstream.rewind()
+            self.assertEqual(bitstream.read(8), 0xD3)
+            bitstream.rewind()
+            self.assertEqual(bitstream.read(12), 0xD3B)
+
+
             del(bitstream)
             temp.seek(0, 0)
 
@@ -15252,6 +15286,21 @@ class Bitstream(unittest.TestCase):
             self.assertEqual(bitstream.limited_unary(1, 2), 0)
             self.assertEqual(bitstream.limited_unary(1, 2), None)
 
+            temp.seek(0, 0)
+            bitstream.byte_align()
+            bitstream.mark()
+            self.assertEqual(bitstream.read(4), 0x1)
+            bitstream.rewind()
+            self.assertEqual(bitstream.read(8), 0xB1)
+            bitstream.rewind()
+            self.assertEqual(bitstream.read(12), 0xDB1)
+            bitstream.mark()
+            self.assertEqual(bitstream.read(4), 0xE)
+            bitstream.rewind()
+            self.assertEqual(bitstream.read(8), 0xBE)
+            bitstream.rewind()
+            self.assertEqual(bitstream.read(12), 0x3BE)
+
         finally:
             temp.close()
 
@@ -15266,7 +15315,7 @@ class Bitstream(unittest.TestCase):
         #is unacceptably slow.
         #Therefore, we read a 4KB string and pull individual bytes from
         #it as needed, which should keep performance reasonable.
-        def new_temp():
+        def new_temp1():
             temp = cStringIO.StringIO()
             temp.write(chr(0xB1))
             temp.write(chr(0xED))
@@ -15275,128 +15324,181 @@ class Bitstream(unittest.TestCase):
             temp.seek(0, 0)
             return temp
 
-        #first, check the bitstream reader
-        #against some simple known big-endian values
-        bitstream = BitstreamReader(new_temp(), 0)
+        def new_temp2():
+            return __SimpleChunkReader__([chr(0xB1) +
+                                          chr(0xED) +
+                                          chr(0x3B) +
+                                          chr(0xC1)])
 
-        self.assertEqual(bitstream.read(2), 2)
-        self.assertEqual(bitstream.read(3), 6)
-        self.assertEqual(bitstream.read(5), 7)
-        self.assertEqual(bitstream.read(3), 5)
-        self.assertEqual(bitstream.read(19), 342977)
-        self.assertEqual(bitstream.tell(), 4)
+        def new_temp3():
+            return __SimpleChunkReader__([chr(0xB1) +
+                                          chr(0xED),
+                                          chr(0x3B) +
+                                          chr(0xC1)])
 
-        bitstream = BitstreamReader(new_temp(), 0)
-        self.assertEqual(bitstream.read64(2), 2)
-        self.assertEqual(bitstream.read64(3), 6)
-        self.assertEqual(bitstream.read64(5), 7)
-        self.assertEqual(bitstream.read64(3), 5)
-        self.assertEqual(bitstream.read64(19), 342977)
-        self.assertEqual(bitstream.tell(), 4)
+        def new_temp4():
+            return __SimpleChunkReader__([chr(0xB1),
+                                          chr(0xED),
+                                          chr(0x3B) +
+                                          chr(0xC1)])
+        def new_temp5():
+            return __SimpleChunkReader__([chr(0xB1),
+                                          chr(0xED),
+                                          chr(0x3B),
+                                          chr(0xC1)])
 
-        bitstream = BitstreamReader(new_temp(), 0)
-        self.assertEqual(bitstream.read_signed(2), -2)
-        self.assertEqual(bitstream.read_signed(3), -2)
-        self.assertEqual(bitstream.read_signed(5), 7)
-        self.assertEqual(bitstream.read_signed(3), -3)
-        self.assertEqual(bitstream.read_signed(19), -181311)
-        self.assertEqual(bitstream.tell(), 4)
+        for new_temp in [new_temp1, new_temp2, new_temp3, new_temp4,
+                         new_temp5]:
+            #first, check the bitstream reader
+            #against some simple known big-endian values
+            bitstream = BitstreamReader(new_temp(), 0)
 
-        bitstream = BitstreamReader(new_temp(), 0)
-        self.assertEqual(bitstream.unary(0), 1)
-        self.assertEqual(bitstream.unary(0), 2)
-        self.assertEqual(bitstream.unary(0), 0)
-        self.assertEqual(bitstream.unary(0), 0)
-        self.assertEqual(bitstream.unary(0), 4)
-        bitstream.byte_align()
-        bitstream = BitstreamReader(new_temp(), 0)
-        self.assertEqual(bitstream.unary(1), 0)
-        self.assertEqual(bitstream.unary(1), 1)
-        self.assertEqual(bitstream.unary(1), 0)
-        self.assertEqual(bitstream.unary(1), 3)
-        self.assertEqual(bitstream.unary(1), 0)
-        bitstream.byte_align()
+            self.assertEqual(bitstream.read(2), 2)
+            self.assertEqual(bitstream.read(3), 6)
+            self.assertEqual(bitstream.read(5), 7)
+            self.assertEqual(bitstream.read(3), 5)
+            self.assertEqual(bitstream.read(19), 342977)
+            self.assertEqual(bitstream.tell(), 4)
 
-        bitstream = BitstreamReader(new_temp(), 0)
-        self.assertEqual(bitstream.read(1), 1)
-        bit = bitstream.read(1)
-        self.assertEqual(bit, 0)
-        bitstream.unread(bit)
-        self.assertEqual(bitstream.read(2), 1)
-        bitstream.byte_align()
+            bitstream = BitstreamReader(new_temp(), 0)
+            self.assertEqual(bitstream.read64(2), 2)
+            self.assertEqual(bitstream.read64(3), 6)
+            self.assertEqual(bitstream.read64(5), 7)
+            self.assertEqual(bitstream.read64(3), 5)
+            self.assertEqual(bitstream.read64(19), 342977)
+            self.assertEqual(bitstream.tell(), 4)
 
-        bitstream = BitstreamReader(new_temp(), 0)
-        self.assertEqual(bitstream.limited_unary(0, 2), 1)
-        self.assertEqual(bitstream.limited_unary(0, 2), None)
-        bitstream.byte_align()
-        bitstream = BitstreamReader(new_temp(), 0)
-        self.assertEqual(bitstream.limited_unary(1, 2), 0)
-        self.assertEqual(bitstream.limited_unary(1, 2), 1)
-        self.assertEqual(bitstream.limited_unary(1, 2), 0)
-        self.assertEqual(bitstream.limited_unary(1, 2), None)
+            bitstream = BitstreamReader(new_temp(), 0)
+            self.assertEqual(bitstream.read_signed(2), -2)
+            self.assertEqual(bitstream.read_signed(3), -2)
+            self.assertEqual(bitstream.read_signed(5), 7)
+            self.assertEqual(bitstream.read_signed(3), -3)
+            self.assertEqual(bitstream.read_signed(19), -181311)
+            self.assertEqual(bitstream.tell(), 4)
 
-        del(bitstream)
-        bitstream = BitstreamReader(new_temp(), 0)
+            bitstream = BitstreamReader(new_temp(), 0)
+            self.assertEqual(bitstream.unary(0), 1)
+            self.assertEqual(bitstream.unary(0), 2)
+            self.assertEqual(bitstream.unary(0), 0)
+            self.assertEqual(bitstream.unary(0), 0)
+            self.assertEqual(bitstream.unary(0), 4)
+            bitstream.byte_align()
+            bitstream = BitstreamReader(new_temp(), 0)
+            self.assertEqual(bitstream.unary(1), 0)
+            self.assertEqual(bitstream.unary(1), 1)
+            self.assertEqual(bitstream.unary(1), 0)
+            self.assertEqual(bitstream.unary(1), 3)
+            self.assertEqual(bitstream.unary(1), 0)
+            bitstream.byte_align()
 
-        #then, check the bitstream reader
-        #against some simple known little-endian values
-        bitstream = BitstreamReader(new_temp(), 1)
+            bitstream = BitstreamReader(new_temp(), 0)
+            self.assertEqual(bitstream.read(1), 1)
+            bit = bitstream.read(1)
+            self.assertEqual(bit, 0)
+            bitstream.unread(bit)
+            self.assertEqual(bitstream.read(2), 1)
+            bitstream.byte_align()
 
-        self.assertEqual(bitstream.read(2), 1)
-        self.assertEqual(bitstream.read(3), 4)
-        self.assertEqual(bitstream.read(5), 13)
-        self.assertEqual(bitstream.read(3), 3)
-        self.assertEqual(bitstream.read(19), 395743)
-        self.assertEqual(bitstream.tell(), 4)
+            bitstream = BitstreamReader(new_temp(), 0)
+            self.assertEqual(bitstream.limited_unary(0, 2), 1)
+            self.assertEqual(bitstream.limited_unary(0, 2), None)
+            bitstream.byte_align()
+            bitstream = BitstreamReader(new_temp(), 0)
+            self.assertEqual(bitstream.limited_unary(1, 2), 0)
+            self.assertEqual(bitstream.limited_unary(1, 2), 1)
+            self.assertEqual(bitstream.limited_unary(1, 2), 0)
+            self.assertEqual(bitstream.limited_unary(1, 2), None)
 
-        bitstream = BitstreamReader(new_temp(), 1)
-        self.assertEqual(bitstream.read64(2), 1)
-        self.assertEqual(bitstream.read64(3), 4)
-        self.assertEqual(bitstream.read64(5), 13)
-        self.assertEqual(bitstream.read64(3), 3)
-        self.assertEqual(bitstream.read64(19), 395743)
-        self.assertEqual(bitstream.tell(), 4)
+            bitstream = BitstreamReader(new_temp(), 0)
+            bitstream.mark()
+            self.assertEqual(bitstream.read(4), 0xB)
+            bitstream.rewind()
+            self.assertEqual(bitstream.read(8), 0xB1)
+            bitstream.rewind()
+            self.assertEqual(bitstream.read(12), 0xB1E)
+            bitstream.mark()
+            self.assertEqual(bitstream.read(4), 0xD)
+            bitstream.rewind()
+            self.assertEqual(bitstream.read(8), 0xD3)
+            bitstream.rewind()
+            self.assertEqual(bitstream.read(12), 0xD3B)
 
-        bitstream = BitstreamReader(new_temp(), 1)
-        self.assertEqual(bitstream.read_signed(2), 1)
-        self.assertEqual(bitstream.read_signed(3), -4)
-        self.assertEqual(bitstream.read_signed(5), 13)
-        self.assertEqual(bitstream.read_signed(3), 3)
-        self.assertEqual(bitstream.read_signed(19), -128545)
-        self.assertEqual(bitstream.tell(), 4)
+            del(bitstream)
+            bitstream = BitstreamReader(new_temp(), 0)
 
-        bitstream = BitstreamReader(new_temp(), 1)
-        self.assertEqual(bitstream.unary(0), 1)
-        self.assertEqual(bitstream.unary(0), 0)
-        self.assertEqual(bitstream.unary(0), 0)
-        self.assertEqual(bitstream.unary(0), 2)
-        self.assertEqual(bitstream.unary(0), 2)
-        bitstream.byte_align()
-        bitstream = BitstreamReader(new_temp(), 1)
-        self.assertEqual(bitstream.unary(1), 0)
-        self.assertEqual(bitstream.unary(1), 3)
-        self.assertEqual(bitstream.unary(1), 0)
-        self.assertEqual(bitstream.unary(1), 1)
-        self.assertEqual(bitstream.unary(1), 0)
-        bitstream.byte_align()
+            #then, check the bitstream reader
+            #against some simple known little-endian values
+            bitstream = BitstreamReader(new_temp(), 1)
 
-        bitstream = BitstreamReader(new_temp(), 1)
-        self.assertEqual(bitstream.read(1), 1)
-        bit = bitstream.read(1)
-        self.assertEqual(bit, 0)
-        bitstream.unread(bit)
-        self.assertEqual(bitstream.read(4), 8)
-        bitstream.byte_align()
+            self.assertEqual(bitstream.read(2), 1)
+            self.assertEqual(bitstream.read(3), 4)
+            self.assertEqual(bitstream.read(5), 13)
+            self.assertEqual(bitstream.read(3), 3)
+            self.assertEqual(bitstream.read(19), 395743)
+            self.assertEqual(bitstream.tell(), 4)
 
-        bitstream = BitstreamReader(new_temp(), 1)
-        self.assertEqual(bitstream.limited_unary(0, 2), 1)
-        self.assertEqual(bitstream.limited_unary(0, 2), 0)
-        self.assertEqual(bitstream.limited_unary(0, 2), 0)
-        self.assertEqual(bitstream.limited_unary(0, 2), None)
-        bitstream.byte_align()
-        bitstream = BitstreamReader(new_temp(), 1)
-        self.assertEqual(bitstream.limited_unary(1, 2), 0)
-        self.assertEqual(bitstream.limited_unary(1, 2), None)
+            bitstream = BitstreamReader(new_temp(), 1)
+            self.assertEqual(bitstream.read64(2), 1)
+            self.assertEqual(bitstream.read64(3), 4)
+            self.assertEqual(bitstream.read64(5), 13)
+            self.assertEqual(bitstream.read64(3), 3)
+            self.assertEqual(bitstream.read64(19), 395743)
+            self.assertEqual(bitstream.tell(), 4)
+
+            bitstream = BitstreamReader(new_temp(), 1)
+            self.assertEqual(bitstream.read_signed(2), 1)
+            self.assertEqual(bitstream.read_signed(3), -4)
+            self.assertEqual(bitstream.read_signed(5), 13)
+            self.assertEqual(bitstream.read_signed(3), 3)
+            self.assertEqual(bitstream.read_signed(19), -128545)
+            self.assertEqual(bitstream.tell(), 4)
+
+            bitstream = BitstreamReader(new_temp(), 1)
+            self.assertEqual(bitstream.unary(0), 1)
+            self.assertEqual(bitstream.unary(0), 0)
+            self.assertEqual(bitstream.unary(0), 0)
+            self.assertEqual(bitstream.unary(0), 2)
+            self.assertEqual(bitstream.unary(0), 2)
+            bitstream.byte_align()
+            bitstream = BitstreamReader(new_temp(), 1)
+            self.assertEqual(bitstream.unary(1), 0)
+            self.assertEqual(bitstream.unary(1), 3)
+            self.assertEqual(bitstream.unary(1), 0)
+            self.assertEqual(bitstream.unary(1), 1)
+            self.assertEqual(bitstream.unary(1), 0)
+            bitstream.byte_align()
+
+            bitstream = BitstreamReader(new_temp(), 1)
+            self.assertEqual(bitstream.read(1), 1)
+            bit = bitstream.read(1)
+            self.assertEqual(bit, 0)
+            bitstream.unread(bit)
+            self.assertEqual(bitstream.read(4), 8)
+            bitstream.byte_align()
+
+            bitstream = BitstreamReader(new_temp(), 1)
+            self.assertEqual(bitstream.limited_unary(0, 2), 1)
+            self.assertEqual(bitstream.limited_unary(0, 2), 0)
+            self.assertEqual(bitstream.limited_unary(0, 2), 0)
+            self.assertEqual(bitstream.limited_unary(0, 2), None)
+            bitstream.byte_align()
+            bitstream = BitstreamReader(new_temp(), 1)
+            self.assertEqual(bitstream.limited_unary(1, 2), 0)
+            self.assertEqual(bitstream.limited_unary(1, 2), None)
+
+            bitstream = BitstreamReader(new_temp(), 1)
+            bitstream.mark()
+            self.assertEqual(bitstream.read(4), 0x1)
+            bitstream.rewind()
+            self.assertEqual(bitstream.read(8), 0xB1)
+            bitstream.rewind()
+            self.assertEqual(bitstream.read(12), 0xDB1)
+            bitstream.mark()
+            self.assertEqual(bitstream.read(4), 0xE)
+            bitstream.rewind()
+            self.assertEqual(bitstream.read(8), 0xBE)
+            bitstream.rewind()
+            self.assertEqual(bitstream.read(12), 0x3BE)
 
 
 

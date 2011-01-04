@@ -1,14 +1,14 @@
 #ifndef BITSTREAM_H
 #define BITSTREAM_H
-
+#ifndef STANDALONE
+#include <Python.h>
+#endif
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <assert.h>
 #include <setjmp.h>
-#ifndef STANDALONE
-#include <Python.h>
-#endif
+
 
 /********************************************************
  Audio Tools, a module and set of tools for manipulating audio data
@@ -52,17 +52,24 @@ typedef enum {BS_BIG_ENDIAN, BS_LITTLE_ENDIAN} bs_endianness;
 #ifndef STANDALONE
 struct bs_python_input {
     PyObject* reader_obj;
-    PyObject* buffer_obj;
     uint8_t* buffer;
-    Py_ssize_t buffer_len;
-    Py_ssize_t buffer_pos;
+    uint32_t buffer_total_size;
+    uint32_t buffer_size;
+    uint32_t buffer_position;
+
+    uint32_t marked_position;
+    int mark_state;
+    int mark_in_progress;
 };
 #endif
 
 typedef struct Bitstream_s {
-    /* FILE *file; */
     union {
-        FILE* file;
+        struct {
+            FILE* file;
+            fpos_t mark;
+            int mark_state;
+        } stdio;
 #ifndef STANDALONE
         struct bs_python_input* python;
 #endif
@@ -84,6 +91,9 @@ typedef struct Bitstream_s {
     void (*set_endianness)(struct Bitstream_s* bs,
                            bs_endianness endianness);
     void (*close)(struct Bitstream_s* bs);
+    void (*mark)(struct Bitstream_s* bs);
+    void (*rewind)(struct Bitstream_s* bs);
+    void (*unmark)(struct Bitstream_s* bs);
 } Bitstream;
 
 Bitstream*
@@ -107,7 +117,7 @@ bs_pop_callback(Bitstream *bs);
 
 static inline long
 bs_ftell(Bitstream *bs) {
-    return ftell(bs->input.file);
+    return ftell(bs->input.stdio.file);
 }
 
 
@@ -199,6 +209,21 @@ bs_read_limited_unary_le(Bitstream* bs, int stop_bit, int maximum_bits);
 void
 bs_set_endianness_le(Bitstream *bs, bs_endianness endianness);
 
+/*mark a position in the bitstream which can be rewound to*/
+void
+bs_mark(Bitstream* bs);
+
+/*return bitstream to previously marked position*/
+void
+bs_rewind(Bitstream* bs);
+
+/*clear marked position in bitstream
+
+  note that marking a position may require buffering lots of
+  previously read data, so it's best not to hold a mark for too long
+  unless you have a lot of memeory to spare*/
+void
+bs_unmark(Bitstream* bs);
 
 #ifndef STANDALONE
 
@@ -270,6 +295,14 @@ bs_read_limited_unary_p_le(Bitstream* bs, int stop_bit, int maximum_bits);
 void
 bs_set_endianness_p_le(Bitstream *bs, bs_endianness endianness);
 
+void
+bs_mark_p(Bitstream* bs);
+
+void
+bs_rewind_p(Bitstream* bs);
+
+void
+bs_unmark_p(Bitstream* bs);
 
 #endif
 

@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import Con,re,os
+from audiotools import Con,re,os,pcm
 
 class DVDAudio:
     """An object representing an entire DVD-Audio disc.
@@ -410,9 +410,10 @@ class DVDATrack:
                 aob.close()
 
     def info(self):
-        """returns (sample_rate, channels, channel_mask, bits_per_sample)
+        """returns (sample_rate, channels, channel_mask, bits_per_sample, type)
 
-        taken from the track's first sector"""
+        taken from the track's first sector
+        where type 0xA0 is PCM and type 0xA1 is MLP"""
 
         (aob_file, start_sector, end_sector) = self.sectors().next()
         aob = open(aob_file, 'rb')
@@ -435,7 +436,8 @@ class DVDATrack:
                             DVDATrack.CHANNEL_MASK[
                               header.info.channel_assignment],
                             DVDATrack.BITS_PER_SAMPLE[
-                              header.info.group1_bps])
+                              header.info.group1_bps],
+                            header.stream_id)
                 else:
                     aob.read(pes_header.packet_length)
                 packet_size -= pes_header.packet_length
@@ -443,6 +445,66 @@ class DVDATrack:
                 raise InvalidDVDA(u"No audio data found in first sector")
         finally:
             aob.close()
+
+    def to_pcm(self):
+        (sample_rate,
+         channels,
+         channel_mask,
+         bits_per_sample,
+         track_type) = self.info()
+        if (track_type == 0xA0):
+            return DVDAPCMReader(packets=self.packets(),
+                                 sample_rate=sample_rate,
+                                 channels=channels,
+                                 channel_mask=channel_mask,
+                                 bits_per_sample=bits_per_sample)
+        elif (track_type == 0xA1):
+            from audiotools.decoders import MLPDecoder
+
+            return MLPDecoder(__PacketReader__(self.packets()))
+        else:
+            raise ValueError(_(u"unsupported DVD-A track type"))
+
+class __PacketReader__:
+    def __init__(self, packets):
+        self.packets = packets
+
+    def read(self, bytes):
+        if (self.packets is not None):
+            try:
+                return self.packets.next()
+            except StopIteration:
+                self.packets = None
+                return ""
+
+    def close(self):
+        self.packets = None
+
+PacketReader = __PacketReader__
+
+class DVDAPCMReader:
+    def __init__(self, packets,
+                 sample_rate, channels, channel_mask, bits_per_sample):
+        self.packets = __PacketReader__(packets)
+        self.sample_rate = sample_rate
+        self.channels = channels
+        self.channel_mask = channel_mask
+        self.bits_per_sample = bits_per_sample
+
+    def read(self, bytes):
+        #FIXME - reorder channels if > 2
+        #though I've yet to see a PCM DVD-Audio with more than 2 channels
+
+        #FIXME - PCM apparently needs some additional post-processing
+
+        return pcm.FrameList(self.packets.read(bytes),
+                             self.channels,
+                             self.bits_per_sample,
+                             True,
+                             True)
+
+    def close(self):
+        self.packets.close()
 
 
 class Rangeset:
