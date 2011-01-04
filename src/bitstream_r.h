@@ -47,64 +47,126 @@ struct bs_exception {
     struct bs_exception *next;
 };
 
+struct bs_mark {
+    union {
+        fpos_t file;
+        uint32_t python;
+    } position;
+    int state;
+    struct bs_mark *next;
+};
+
 typedef enum {BS_BIG_ENDIAN, BS_LITTLE_ENDIAN} bs_endianness;
 
 #ifndef STANDALONE
+
 struct bs_python_input {
     PyObject* reader_obj;
     uint8_t* buffer;
     uint32_t buffer_total_size;
     uint32_t buffer_size;
     uint32_t buffer_position;
-
-    uint32_t marked_position;
-    int mark_state;
     int mark_in_progress;
 };
 #endif
 
 typedef struct Bitstream_s {
     union {
-        struct {
-            FILE* file;
-            fpos_t mark;
-            int mark_state;
-        } stdio;
+        FILE* file;
 #ifndef STANDALONE
         struct bs_python_input* python;
 #endif
     } input;
 
     int state;
-    struct bs_callback* callback;
+    struct bs_callback* callbacks;
     struct bs_exception* exceptions;
+    struct bs_mark* marks;
 
+    /*returns "count" number of unsigned bits from the current stream
+      in the current endian format up to "int" bits wide*/
     unsigned int (*read)(struct Bitstream_s* bs, unsigned int count);
+
+    /*returns "count" number of signed bits from the current stream
+      in the current endian format up to "int" bits wide*/
     int (*read_signed)(struct Bitstream_s* bs, unsigned int count);
+
+    /*returns "count" number of unsigned bits from the current stream
+      in the current endian format up to 64 bits wide*/
     uint64_t (*read_64)(struct Bitstream_s* bs, unsigned int count);
+
+    /*skips "count" number of bits from the current stream*/
     void (*skip)(struct Bitstream_s* bs, unsigned int count);
+
+    /*pushes a single 0 or 1 bit back onto the stream
+      in the current endian format
+
+      only a single bit is guaranteed to be unreadable*/
     void (*unread)(struct Bitstream_s* bs, int unread_bit);
+
+    /*returns the number of non-stop bits before the 0 or 1 stop bit
+      from the current stream in the current endian format*/
     unsigned int (*read_unary)(struct Bitstream_s* bs, int stop_bit);
+
+    /*returns the number of non-stop bits before the 0 or 1 stop bit
+      from the current stream in the current endian format
+      and limited to "maximum_bits"
+
+      may return -1 if the maximum bits are exceeded*/
     int (*read_limited_unary)(struct Bitstream_s* bs, int stop_bit,
                               int maximum_bits);
+
+    /*aligns the stream to a byte boundary*/
     void (*byte_align)(struct Bitstream_s* bs);
+
+    /*sets the stream's format to big endian or little endian
+      which automatically byte aligns it*/
     void (*set_endianness)(struct Bitstream_s* bs,
                            bs_endianness endianness);
+
+    /*closes the current input stream
+      and deallocates the struct*/
     void (*close)(struct Bitstream_s* bs);
+
+    /*closes the current input stream
+      but does *not* perform any other deallocation*/
+    void (*close_stream)(struct Bitstream_s* bs);
+
+    /*pushes a new mark onto to the stream, which can be rewound to later
+
+      all pushed marks should be unmarked once no longer needed*/
     void (*mark)(struct Bitstream_s* bs);
+
+    /*rewinds the stream to the next previous mark on the mark stack
+
+      rewinding does not affect the mark itself*/
     void (*rewind)(struct Bitstream_s* bs);
+
+    /*pops the previous mark from the mark stack*/
     void (*unmark)(struct Bitstream_s* bs);
 } Bitstream;
 
 Bitstream*
 bs_open(FILE *f, bs_endianness endianness);
 
+/*performs bs->close_stream followed by bs_free*/
 void
-bs_close_f(Bitstream *bs);
+bs_close(Bitstream *bs);
 
 void
-bs_add_callback(Bitstream *bs, void (*callback)(uint8_t, void*),
-                void *data);
+bs_close_stream_f(Bitstream *bs);
+
+/*this deallocates space created by bs_open,
+  but does *not* close any file handles*/
+void
+bs_free(Bitstream *bs);
+
+/*does nothing, used to override existing functions at runtime*/
+void
+bs_noop(Bitstream *bs);
+
+void
+bs_add_callback(Bitstream *bs, void (*callback)(uint8_t, void*), void *data);
 
 /*explicitly passes "byte" to the set callbacks,
   as if the byte were read from the input stream*/
@@ -117,7 +179,7 @@ bs_pop_callback(Bitstream *bs);
 
 static inline long
 bs_ftell(Bitstream *bs) {
-    return ftell(bs->input.stdio.file);
+    return ftell(bs->input.file);
 }
 
 
@@ -248,7 +310,7 @@ Bitstream*
 bs_open_python(PyObject *reader, bs_endianness endianness);
 
 void
-bs_close_p(Bitstream *bs);
+bs_close_stream_p(Bitstream *bs);
 
 /*_be signifies the big-endian readers*/
 unsigned int

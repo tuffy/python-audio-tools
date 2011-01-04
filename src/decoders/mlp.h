@@ -120,7 +120,6 @@ struct mlp_DecodingParameters {
 typedef struct {
     PyObject_HEAD
 
-    FILE* file;
     Bitstream* bitstream;
 
     int init_ok;

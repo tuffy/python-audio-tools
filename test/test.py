@@ -15215,12 +15215,14 @@ class Bitstream(unittest.TestCase):
             self.assertEqual(bitstream.read(8), 0xB1)
             bitstream.rewind()
             self.assertEqual(bitstream.read(12), 0xB1E)
+            bitstream.unmark()
             bitstream.mark()
             self.assertEqual(bitstream.read(4), 0xD)
             bitstream.rewind()
             self.assertEqual(bitstream.read(8), 0xD3)
             bitstream.rewind()
             self.assertEqual(bitstream.read(12), 0xD3B)
+            bitstream.unmark()
 
 
             del(bitstream)
@@ -15294,13 +15296,14 @@ class Bitstream(unittest.TestCase):
             self.assertEqual(bitstream.read(8), 0xB1)
             bitstream.rewind()
             self.assertEqual(bitstream.read(12), 0xDB1)
+            bitstream.unmark()
             bitstream.mark()
             self.assertEqual(bitstream.read(4), 0xE)
             bitstream.rewind()
             self.assertEqual(bitstream.read(8), 0xBE)
             bitstream.rewind()
             self.assertEqual(bitstream.read(12), 0x3BE)
-
+            bitstream.unmark()
         finally:
             temp.close()
 
@@ -15416,12 +15419,14 @@ class Bitstream(unittest.TestCase):
             self.assertEqual(bitstream.read(8), 0xB1)
             bitstream.rewind()
             self.assertEqual(bitstream.read(12), 0xB1E)
+            bitstream.unmark()
             bitstream.mark()
             self.assertEqual(bitstream.read(4), 0xD)
             bitstream.rewind()
             self.assertEqual(bitstream.read(8), 0xD3)
             bitstream.rewind()
             self.assertEqual(bitstream.read(12), 0xD3B)
+            bitstream.unmark()
 
             del(bitstream)
             bitstream = BitstreamReader(new_temp(), 0)
@@ -15493,13 +15498,14 @@ class Bitstream(unittest.TestCase):
             self.assertEqual(bitstream.read(8), 0xB1)
             bitstream.rewind()
             self.assertEqual(bitstream.read(12), 0xDB1)
+            bitstream.unmark()
             bitstream.mark()
             self.assertEqual(bitstream.read(4), 0xE)
             bitstream.rewind()
             self.assertEqual(bitstream.read(8), 0xBE)
             bitstream.rewind()
             self.assertEqual(bitstream.read(12), 0x3BE)
-
+            bitstream.unmark()
 
 
     @TEST_PCM
@@ -15700,6 +15706,27 @@ class Bitstream(unittest.TestCase):
             temp.close()
 
     #and have the bitstream reader check those values are accurate
+
+    @TEST_PCM
+    def close_test(self):
+        from audiotools.decoders import BitstreamReader
+
+        r1 = BitstreamReader(open("test.py", "rb"), False)
+        r1.read(8)
+        r1.close()
+        self.assertRaises(IOError,
+                          r1.read,
+                          8)
+        del(r1)
+
+        r1 = BitstreamReader(cStringIO.StringIO("abcd"), False)
+        r1.read(8)
+        r1.close()
+        self.assertRaises(IOError,
+                          r1.read,
+                          8)
+        del(r1)
+
 
 
 ############

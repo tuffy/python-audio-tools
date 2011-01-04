@@ -24,8 +24,7 @@
 int
 MLPDecoder_init(decoders_MLPDecoder *self,
                 PyObject *args, PyObject *kwds) {
-    char *filename;
-    fpos_t pos;
+    PyObject *reader;
     int substream;
     int matrix;
     int channel;
@@ -33,23 +32,14 @@ MLPDecoder_init(decoders_MLPDecoder *self,
     self->init_ok = 0;
     self->stream_closed = 0;
 
-    if (!PyArg_ParseTuple(args, "s", &filename))
+    if (!PyArg_ParseTuple(args, "O", &reader))
         return -1;
 
     /*open the MLP file*/
-    self->file = fopen(filename, "rb");
-    if (self->file == NULL) {
-        PyErr_SetFromErrnoWithFilename(PyExc_IOError, filename);
-        return -1;
-    } else {
-        self->bitstream = bs_open(self->file, BS_BIG_ENDIAN);
-    }
+    self->bitstream = bs_open_python(reader, BS_BIG_ENDIAN);
 
     /*store initial position in stream*/
-    if (fgetpos(self->bitstream->input.stdio.file, &pos) == -1) {
-        PyErr_SetFromErrnoWithFilename(PyExc_IOError, filename);
-        return -1;
-    }
+    self->bitstream->mark(self->bitstream);
 
     /*skip initial frame size, if possible*/
     if (mlp_total_frame_size(self->bitstream) == -1) {
@@ -75,10 +65,8 @@ MLPDecoder_init(decoders_MLPDecoder *self,
     }
 
     /*restore initial stream position*/
-    if (fsetpos(self->bitstream->input.stdio.file, &pos) == -1) {
-        PyErr_SetFromErrnoWithFilename(PyExc_IOError, filename);
-        return -1;
-    }
+    self->bitstream->rewind(self->bitstream);
+    self->bitstream->unmark(self->bitstream);
 
     /*at this point, all the errors that can occur have been checked*/
     self->init_ok = 1;
@@ -173,8 +161,7 @@ MLPDecoder_dealloc(decoders_MLPDecoder *self)
     int matrix;
     int channel;
 
-    if (self->file != NULL)
-        self->bitstream->close(self->bitstream);
+    self->bitstream->close(self->bitstream);
 
     if (self->init_ok) {
         for (substream = 0;
@@ -609,20 +596,26 @@ mlp_read_major_sync(decoders_MLPDecoder* decoder,
         {16, 20, 24, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
     if (!setjmp(*bs_try(bitstream))) {
+        bitstream->mark(bitstream);
+
         if (bitstream->read(bitstream, 24) != 0xF8726F) {
             /*sync words not found*/
             bs_etry(bitstream);
-            fseek(bitstream->input.stdio.file, -3, SEEK_CUR);
+            bitstream->rewind(bitstream);
+            bitstream->unmark(bitstream);
             decoder->bytes_read -= 3;
             return MLP_MAJOR_SYNC_NOT_FOUND;
         }
         if (bitstream->read(bitstream, 8) != 0xBB) {
             /*stream type not 0xBB*/
             bs_etry(bitstream);
-            fseek(bitstream->input.stdio.file, -4, SEEK_CUR);
+            bitstream->rewind(bitstream);
+            bitstream->unmark(bitstream);
             decoder->bytes_read -= 4;
             return MLP_MAJOR_SYNC_NOT_FOUND;
         }
+
+        bitstream->unmark(bitstream);
 
         major_sync->group1_bits = bitstream->read(bitstream, 4);
         major_sync->group2_bits = bitstream->read(bitstream, 4);

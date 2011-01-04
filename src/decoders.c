@@ -257,7 +257,6 @@ BitstreamReader_limited_unary(decoders_BitstreamReader *self, PyObject *args) {
 
 static PyObject*
 BitstreamReader_tell(decoders_BitstreamReader *self, PyObject *args) {
-    /* return Py_BuildValue("i", bs_ftell(self->bitstream)); */
     return PyObject_CallMethod(self->file_obj, "tell", NULL);
 }
 
@@ -285,9 +284,14 @@ BitstreamReader_set_endianness(decoders_BitstreamReader *self,
 
 static PyObject*
 BitstreamReader_close(decoders_BitstreamReader *self, PyObject *args) {
-    self->bitstream->close(self->bitstream);
-    Py_INCREF(Py_None);
-    return Py_None;
+    PyObject* close_result = PyObject_CallMethod(self->file_obj,
+                                                 "close", NULL);
+    if (close_result) {
+        Py_DECREF(close_result);
+        Py_INCREF(Py_None);
+        return Py_None;
+    } else
+        return NULL;
 }
 
 static PyObject*
@@ -354,6 +358,8 @@ BitstreamReader_init(decoders_BitstreamReader *self,
 void
 BitstreamReader_dealloc(decoders_BitstreamReader *self)
 {
+    if (self->bitstream != NULL)
+        bs_free(self->bitstream);
     Py_XDECREF(self->file_obj);
     self->file_obj = NULL;
 

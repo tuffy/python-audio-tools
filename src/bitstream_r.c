@@ -55,10 +55,11 @@ Bitstream*
 bs_open(FILE *f, bs_endianness endianness)
 {
     Bitstream *bs = malloc(sizeof(Bitstream));
-    bs->input.stdio.file = f;
+    bs->input.file = f;
     bs->state = 0;
-    bs->callback = NULL;
+    bs->callbacks = NULL;
     bs->exceptions = NULL;
+    bs->marks = NULL;
 
     switch (endianness) {
     case BS_BIG_ENDIAN:
@@ -84,7 +85,8 @@ bs_open(FILE *f, bs_endianness endianness)
         bs->set_endianness = bs_set_endianness_le;
         break;
     }
-    bs->close = bs_close_f;
+    bs->close = bs_close;
+    bs->close_stream = bs_close_stream_f;
     bs->mark = bs_mark;
     bs->rewind = bs_rewind;
     bs->unmark = bs_unmark;
@@ -93,19 +95,18 @@ bs_open(FILE *f, bs_endianness endianness)
 }
 
 void
-bs_close_f(Bitstream *bs)
-{
+bs_free(Bitstream *bs) {
     struct bs_callback *c_node;
     struct bs_callback *c_next;
     struct bs_exception *e_node;
     struct bs_exception *e_next;
+    struct bs_mark *m_node;
+    struct bs_mark *m_next;
 
-    if (bs == NULL) return;
+    if (bs == NULL)
+        return;
 
-    if (bs->input.stdio.file != NULL)
-        fclose(bs->input.stdio.file);
-
-    for (c_node = bs->callback; c_node != NULL; c_node = c_next) {
+    for (c_node = bs->callbacks; c_node != NULL; c_node = c_next) {
         c_next = c_node->next;
         free(c_node);
     }
@@ -116,7 +117,37 @@ bs_close_f(Bitstream *bs)
         e_next = e_node->next;
         free(e_node);
     }
+    if (bs->marks != NULL) {
+        fprintf(stderr, "Warning: leftover marks on stack\n");
+    }
+    for (m_node = bs->marks; m_node != NULL; m_node = m_next) {
+        m_next = m_node->next;
+        free(m_node);
+    }
+
     free(bs);
+}
+
+void
+bs_close(Bitstream *bs) {
+    bs->close_stream(bs);
+    bs_free(bs);
+}
+
+void
+bs_noop(Bitstream *bs) {
+    return;
+}
+
+void
+bs_close_stream_f(Bitstream *bs)
+{
+    if (bs == NULL)
+        return;
+    else if (bs->input.file != NULL) {
+        fclose(bs->input.file);
+        bs->close_stream = bs_noop;
+    }
 }
 
 void
@@ -126,14 +157,14 @@ bs_add_callback(Bitstream *bs, void (*callback)(uint8_t, void*),
     struct bs_callback *callback_node = malloc(sizeof(struct bs_callback));
     callback_node->callback = callback;
     callback_node->data = data;
-    callback_node->next = bs->callback;
-    bs->callback = callback_node;
+    callback_node->next = bs->callbacks;
+    bs->callbacks = callback_node;
 }
 
 void
 bs_call_callbacks(Bitstream *bs, uint8_t byte) {
     struct bs_callback *callback;
-    for (callback = bs->callback;
+    for (callback = bs->callbacks;
          callback != NULL;
          callback = callback->next)
         callback->callback(byte, callback->data);
@@ -141,9 +172,9 @@ bs_call_callbacks(Bitstream *bs, uint8_t byte) {
 
 void
 bs_pop_callback(Bitstream *bs) {
-    struct bs_callback *c_node = bs->callback;
+    struct bs_callback *c_node = bs->callbacks;
     if (c_node != NULL) {
-        bs->callback = c_node->next;
+        bs->callbacks = c_node->next;
         free(c_node);
     }
 }
@@ -191,10 +222,10 @@ bs_read_bits_be(Bitstream* bs, unsigned int count)
 
     while (count > 0) {
         if (context == 0) {
-            if ((byte = fgetc(bs->input.stdio.file)) == EOF)
+            if ((byte = fgetc(bs->input.file)) == EOF)
                 bs_abort(bs);
             context = 0x800 | byte;
-            for (callback = bs->callback;
+            for (callback = bs->callbacks;
                  callback != NULL;
                  callback = callback->next)
                 callback->callback((uint8_t)byte, callback->data);
@@ -225,10 +256,10 @@ bs_read_bits_le(Bitstream* bs, unsigned int count)
 
     while (count > 0) {
         if (context == 0) {
-            if ((byte = fgetc(bs->input.stdio.file)) == EOF)
+            if ((byte = fgetc(bs->input.file)) == EOF)
                 bs_abort(bs);
             context = 0x800 | byte;
-            for (callback = bs->callback;
+            for (callback = bs->callbacks;
                  callback != NULL;
                  callback = callback->next)
                 callback->callback((uint8_t)byte, callback->data);
@@ -281,10 +312,10 @@ bs_read_bits64_be(Bitstream* bs, unsigned int count)
 
     while (count > 0) {
         if (context == 0) {
-            if ((byte = fgetc(bs->input.stdio.file)) == EOF)
+            if ((byte = fgetc(bs->input.file)) == EOF)
                 bs_abort(bs);
             context = 0x800 | byte;
-            for (callback = bs->callback;
+            for (callback = bs->callbacks;
                  callback != NULL;
                  callback = callback->next)
                 callback->callback((uint8_t)byte, callback->data);
@@ -315,10 +346,10 @@ bs_read_bits64_le(Bitstream* bs, unsigned int count)
 
     while (count > 0) {
         if (context == 0) {
-            if ((byte = fgetc(bs->input.stdio.file)) == EOF)
+            if ((byte = fgetc(bs->input.file)) == EOF)
                 bs_abort(bs);
             context = 0x800 | byte;
-            for (callback = bs->callback;
+            for (callback = bs->callbacks;
                  callback != NULL;
                  callback = callback->next)
                 callback->callback((uint8_t)byte, callback->data);
@@ -347,10 +378,10 @@ bs_skip_bits_be(Bitstream* bs, unsigned int count)
 
     while (count > 0) {
         if (context == 0) {
-            if ((byte = fgetc(bs->input.stdio.file)) == EOF)
+            if ((byte = fgetc(bs->input.file)) == EOF)
                 bs_abort(bs);
             context = 0x800 | byte;
-            for (callback = bs->callback;
+            for (callback = bs->callbacks;
                  callback != NULL;
                  callback = callback->next)
                 callback->callback((uint8_t)byte, callback->data);
@@ -375,10 +406,10 @@ bs_skip_bits_le(Bitstream* bs, unsigned int count)
 
     while (count > 0) {
         if (context == 0) {
-            if ((byte = fgetc(bs->input.stdio.file)) == EOF)
+            if ((byte = fgetc(bs->input.file)) == EOF)
                 bs_abort(bs);
             context = 0x800 | byte;
-            for (callback = bs->callback;
+            for (callback = bs->callbacks;
                  callback != NULL;
                  callback = callback->next)
                 callback->callback((uint8_t)byte, callback->data);
@@ -418,9 +449,9 @@ bs_read_unary_be(Bitstream* bs, int stop_bit)
 
     do {
         if (context == 0) {
-            if ((byte = fgetc(bs->input.stdio.file)) == EOF)
+            if ((byte = fgetc(bs->input.file)) == EOF)
                 bs_abort(bs);
-            for (callback = bs->callback;
+            for (callback = bs->callbacks;
                  callback != NULL;
                  callback = callback->next)
                 callback->callback((uint8_t)byte, callback->data);
@@ -449,9 +480,9 @@ bs_read_unary_le(Bitstream* bs, int stop_bit)
 
     do {
         if (context == 0) {
-            if ((byte = fgetc(bs->input.stdio.file)) == EOF)
+            if ((byte = fgetc(bs->input.file)) == EOF)
                 bs_abort(bs);
-            for (callback = bs->callback;
+            for (callback = bs->callbacks;
                  callback != NULL;
                  callback = callback->next)
                 callback->callback((uint8_t)byte, callback->data);
@@ -483,9 +514,9 @@ bs_read_limited_unary_be(Bitstream* bs, int stop_bit, int maximum_bits)
 
     do {
         if (context == 0) {
-            if ((byte = fgetc(bs->input.stdio.file)) == EOF)
+            if ((byte = fgetc(bs->input.file)) == EOF)
                 bs_abort(bs);
-            for (callback = bs->callback;
+            for (callback = bs->callbacks;
                  callback != NULL;
                  callback = callback->next)
                 callback->callback((uint8_t)byte, callback->data);
@@ -528,9 +559,9 @@ bs_read_limited_unary_le(Bitstream* bs, int stop_bit, int maximum_bits)
 
     do {
         if (context == 0) {
-            if ((byte = fgetc(bs->input.stdio.file)) == EOF)
+            if ((byte = fgetc(bs->input.file)) == EOF)
                 bs_abort(bs);
-            for (callback = bs->callback;
+            for (callback = bs->callbacks;
                  callback != NULL;
                  callback = callback->next)
                 callback->callback((uint8_t)byte, callback->data);
@@ -599,20 +630,29 @@ bs_byte_align_r(Bitstream* bs)
 
 void
 bs_mark(Bitstream* bs) {
-    fgetpos(bs->input.stdio.file, &(bs->input.stdio.mark));
-    bs->input.stdio.mark_state = bs->state;
+    struct bs_mark* mark = malloc(sizeof(struct bs_mark));
+
+    fgetpos(bs->input.file, &(mark->position.file));
+    mark->state = bs->state;
+    mark->next = bs->marks;
+    bs->marks = mark;
 }
 
 void
 bs_rewind(Bitstream* bs) {
-    fsetpos(bs->input.stdio.file, &(bs->input.stdio.mark));
-    bs->state = bs->input.stdio.mark_state;
+    if (bs->marks != NULL) {
+        fsetpos(bs->input.file, &(bs->marks->position.file));
+        bs->state = bs->marks->state;
+    } else {
+        fprintf(stderr, "No marks on stack to rewind!\n");
+    }
 }
 
 void
 bs_unmark(Bitstream* bs) {
-    memset(&(bs->input.stdio.mark), 0, sizeof(fpos_t));
-    bs->input.stdio.mark_state = 0;
+    struct bs_mark* mark = bs->marks;
+    bs->marks = mark->next;
+    free(mark);
 }
 
 #ifndef STANDALONE
@@ -660,6 +700,7 @@ py_getc(struct bs_python_input *stream) {
                         /*if the stream has no mark,
                           overwrite the existing buffer*/
                         if (buffer_len > stream->buffer_total_size) {
+
                             stream->buffer = realloc(stream->buffer,
                                                      buffer_len);
                             stream->buffer_total_size = buffer_len;
@@ -675,11 +716,13 @@ py_getc(struct bs_python_input *stream) {
                           extend the existing buffer*/
                         if (buffer_len > (stream->buffer_total_size -
                                           stream->buffer_position)) {
+
                             stream->buffer_total_size += buffer_len;
                             stream->buffer = realloc(
                                                 stream->buffer,
                                                 stream->buffer_total_size);
                         }
+
                         memcpy(stream->buffer + stream->buffer_position,
                                buffer_str,
                                buffer_len);
@@ -717,11 +760,12 @@ py_close(struct bs_python_input *stream) {
                                        NULL);
     if (close_result != NULL)
         Py_DECREF(close_result);
-    else
+    else {
         /*some exception occurred when calling close()
           so simply print it out and continue on
           since there's little we can do about it*/
         PyErr_PrintEx(1);
+    }
 
     Py_XDECREF(stream->reader_obj);
     free(stream->buffer);
@@ -736,8 +780,9 @@ bs_open_python(PyObject *reader, bs_endianness endianness) {
     Bitstream *bs = malloc(sizeof(Bitstream));
     bs->input.python = py_open(reader);
     bs->state = 0;
-    bs->callback = NULL;
+    bs->callbacks = NULL;
     bs->exceptions = NULL;
+    bs->marks = NULL;
 
     switch (endianness) {
     case BS_BIG_ENDIAN:
@@ -763,7 +808,8 @@ bs_open_python(PyObject *reader, bs_endianness endianness) {
         bs->set_endianness = bs_set_endianness_p_le;
         break;
     }
-    bs->close = bs_close_p;
+    bs->close = bs_close;
+    bs->close_stream = bs_close_stream_p;
     bs->mark = bs_mark_p;
     bs->rewind = bs_rewind_p;
     bs->unmark = bs_unmark_p;
@@ -772,29 +818,13 @@ bs_open_python(PyObject *reader, bs_endianness endianness) {
 }
 
 void
-bs_close_p(Bitstream *bs) {
-    struct bs_callback *c_node;
-    struct bs_callback *c_next;
-    struct bs_exception *e_node;
-    struct bs_exception *e_next;
-
-    if (bs == NULL) return;
-
-    if (bs->input.python != NULL)
+bs_close_stream_p(Bitstream *bs) {
+    if (bs == NULL)
+        return;
+    else if (bs->input.python != NULL) {
         py_close(bs->input.python);
-
-    for (c_node = bs->callback; c_node != NULL; c_node = c_next) {
-        c_next = c_node->next;
-        free(c_node);
+        bs->close_stream = bs_noop;
     }
-    if (bs->exceptions != NULL) {
-        fprintf(stderr, "Warning: leftover etry entries on stack\n");
-    }
-    for (e_node = bs->exceptions; e_node != NULL; e_node = e_next) {
-        e_next = e_node->next;
-        free(e_node);
-    }
-    free(bs);
 }
 
 /*_be signifies the big-endian readers*/
@@ -812,7 +842,7 @@ bs_read_bits_p_be(Bitstream* bs, unsigned int count) {
             if ((byte = py_getc(bs->input.python)) == EOF)
                 bs_abort(bs);
             context = 0x800 | byte;
-            for (callback = bs->callback;
+            for (callback = bs->callbacks;
                  callback != NULL;
                  callback = callback->next)
                 callback->callback((uint8_t)byte, callback->data);
@@ -853,7 +883,7 @@ bs_read_bits64_p_be(Bitstream* bs, unsigned int count) {
             if ((byte = py_getc(bs->input.python)) == EOF)
                 bs_abort(bs);
             context = 0x800 | byte;
-            for (callback = bs->callback;
+            for (callback = bs->callbacks;
                  callback != NULL;
                  callback = callback->next)
                 callback->callback((uint8_t)byte, callback->data);
@@ -883,7 +913,7 @@ bs_skip_bits_p_be(Bitstream* bs, unsigned int count) {
             if ((byte = py_getc(bs->input.python)) == EOF)
                 bs_abort(bs);
             context = 0x800 | byte;
-            for (callback = bs->callback;
+            for (callback = bs->callbacks;
                  callback != NULL;
                  callback = callback->next)
                 callback->callback((uint8_t)byte, callback->data);
@@ -910,7 +940,7 @@ bs_read_unary_p_be(Bitstream* bs, int stop_bit) {
         if (context == 0) {
             if ((byte = py_getc(bs->input.python)) == EOF)
                 bs_abort(bs);
-            for (callback = bs->callback;
+            for (callback = bs->callbacks;
                  callback != NULL;
                  callback = callback->next)
                 callback->callback((uint8_t)byte, callback->data);
@@ -942,7 +972,7 @@ bs_read_limited_unary_p_be(Bitstream* bs, int stop_bit, int maximum_bits) {
         if (context == 0) {
             if ((byte = py_getc(bs->input.python)) == EOF)
                 bs_abort(bs);
-            for (callback = bs->callback;
+            for (callback = bs->callbacks;
                  callback != NULL;
                  callback = callback->next)
                 callback->callback((uint8_t)byte, callback->data);
@@ -1003,7 +1033,7 @@ bs_read_bits_p_le(Bitstream* bs, unsigned int count) {
             if ((byte = py_getc(bs->input.python)) == EOF)
                 bs_abort(bs);
             context = 0x800 | byte;
-            for (callback = bs->callback;
+            for (callback = bs->callbacks;
                  callback != NULL;
                  callback = callback->next)
                 callback->callback((uint8_t)byte, callback->data);
@@ -1037,7 +1067,7 @@ bs_read_bits64_p_le(Bitstream* bs, unsigned int count) {
             if ((byte = py_getc(bs->input.python)) == EOF)
                 bs_abort(bs);
             context = 0x800 | byte;
-            for (callback = bs->callback;
+            for (callback = bs->callbacks;
                  callback != NULL;
                  callback = callback->next)
                 callback->callback((uint8_t)byte, callback->data);
@@ -1079,7 +1109,7 @@ bs_skip_bits_p_le(Bitstream* bs, unsigned int count) {
             if ((byte = py_getc(bs->input.python)) == EOF)
                 bs_abort(bs);
             context = 0x800 | byte;
-            for (callback = bs->callback;
+            for (callback = bs->callbacks;
                  callback != NULL;
                  callback = callback->next)
                 callback->callback((uint8_t)byte, callback->data);
@@ -1106,7 +1136,7 @@ bs_read_unary_p_le(Bitstream* bs, int stop_bit) {
         if (context == 0) {
             if ((byte = py_getc(bs->input.python)) == EOF)
                 bs_abort(bs);
-            for (callback = bs->callback;
+            for (callback = bs->callbacks;
                  callback != NULL;
                  callback = callback->next)
                 callback->callback((uint8_t)byte, callback->data);
@@ -1138,7 +1168,7 @@ bs_read_limited_unary_p_le(Bitstream* bs, int stop_bit, int maximum_bits) {
         if (context == 0) {
             if ((byte = py_getc(bs->input.python)) == EOF)
                 bs_abort(bs);
-            for (callback = bs->callback;
+            for (callback = bs->callbacks;
                  callback != NULL;
                  callback = callback->next)
                 callback->callback((uint8_t)byte, callback->data);
@@ -1185,20 +1215,31 @@ bs_set_endianness_p_le(Bitstream *bs, bs_endianness endianness) {
 
 void
 bs_mark_p(Bitstream* bs) {
-    bs->input.python->marked_position = bs->input.python->buffer_position;
-    bs->input.python->mark_state = bs->state;
+    struct bs_mark* mark = malloc(sizeof(struct bs_mark));
+
+    mark->position.python = bs->input.python->buffer_position;
+    mark->state = bs->state;
+    mark->next = bs->marks;
+    bs->marks = mark;
     bs->input.python->mark_in_progress = 1;
 }
 
 void
 bs_rewind_p(Bitstream* bs) {
-    bs->input.python->buffer_position = bs->input.python->marked_position;
-    bs->state = bs->input.python->mark_state;
+    if (bs->marks != NULL) {
+        bs->input.python->buffer_position = bs->marks->position.python;
+        bs->state = bs->marks->state;
+    } else {
+        fprintf(stderr, "No marks on stack to rewind!\n");
+    }
 }
 
 void
 bs_unmark_p(Bitstream* bs) {
-    bs->input.python->mark_in_progress = 0;
+    struct bs_mark* mark = bs->marks;
+    bs->marks = mark->next;
+    free(mark);
+    bs->input.python->mark_in_progress = (bs->marks != NULL);
 }
 
 #endif

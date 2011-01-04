@@ -101,7 +101,7 @@ verifymodule_mpeg(PyObject *dummy, PyObject *args) {
                     data_buffer_size = frame_size;
                 }
                 if (fread(data_buffer, sizeof(uint8_t), frame_size,
-                          bitstream->input.stdio.file) != frame_size) {
+                          bitstream->input.file) != frame_size) {
                     PyErr_SetString(PyExc_IOError, "I/O error reading stream");
                     goto error;
                 }
@@ -116,7 +116,7 @@ verifymodule_mpeg(PyObject *dummy, PyObject *args) {
     }
 
     bs_etry(bitstream);
-    bitstream->input.stdio.file = NULL;
+    bitstream->input.file = NULL;
     bitstream->close(bitstream);
     if (data_buffer != NULL)
         free(data_buffer);
@@ -124,7 +124,7 @@ verifymodule_mpeg(PyObject *dummy, PyObject *args) {
     return Py_None;
  error:
     bs_etry(bitstream);
-    bitstream->input.stdio.file = NULL;
+    bitstream->input.file = NULL;
     if (data_buffer != NULL)
         free(data_buffer);
     bitstream->close(bitstream);
