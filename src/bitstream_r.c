@@ -767,11 +767,16 @@ py_close(struct bs_python_input *stream) {
         PyErr_PrintEx(1);
     }
 
+    py_free(stream);
+
+    return 0;
+}
+
+void
+py_free(struct bs_python_input *stream) {
     Py_XDECREF(stream->reader_obj);
     free(stream->buffer);
     free(stream);
-
-    return 0;
 }
 
 

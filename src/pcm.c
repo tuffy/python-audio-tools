@@ -86,14 +86,14 @@ PyMethodDef FrameList_methods[] = {
 };
 
 static PySequenceMethods pcm_FrameListType_as_sequence = {
-    (lenfunc)FrameList_len,		/* sq_length */
-    (binaryfunc)FrameList_concat,	/* sq_concat */
-    (ssizeargfunc)NULL,		/* sq_repeat */
+    (lenfunc)FrameList_len,          /* sq_length */
+    (binaryfunc)FrameList_concat,    /* sq_concat */
+    (ssizeargfunc)NULL,              /* sq_repeat */
     (ssizeargfunc)FrameList_GetItem, /* sq_item */
-    (ssizessizeargfunc)NULL,        /* sq_slice */
-    (ssizeobjargproc)NULL,		/* sq_ass_item */
-    (ssizessizeobjargproc)NULL,	/* sq_ass_slice */
-    (objobjproc)NULL,		/* sq_contains */
+    (ssizessizeargfunc)NULL,         /* sq_slice */
+    (ssizeobjargproc)NULL,           /* sq_ass_item */
+    (ssizessizeobjargproc)NULL,      /* sq_ass_slice */
+    (objobjproc)NULL,                /* sq_contains */
     (binaryfunc)NULL,               /* sq_inplace_concat */
     (ssizeargfunc)NULL,             /* sq_inplace_repeat */
 };
@@ -122,12 +122,12 @@ PyTypeObject pcm_FrameListType = {
     Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE, /*tp_flags*/
     "FrameList(string, channels, bits_per_sample, is_big_endian, is_signed)",
     /* tp_doc */
-    0,		               /* tp_traverse */
-    0,		               /* tp_clear */
+    0,                         /* tp_traverse */
+    0,                         /* tp_clear */
     (richcmpfunc)FrameList_richcompare, /* tp_richcompare */
-    0,		               /* tp_weaklistoffset */
-    0,		               /* tp_iter */
-    0,		               /* tp_iternext */
+    0,                         /* tp_weaklistoffset */
+    0,                         /* tp_iter */
+    0,                         /* tp_iternext */
     FrameList_methods,         /* tp_methods */
     0,                         /* tp_members */
     FrameList_getseters,       /* tp_getset */
@@ -836,16 +836,16 @@ PyMethodDef FloatFrameList_methods[] = {
 };
 
 static PySequenceMethods pcm_FloatFrameListType_as_sequence = {
-    (lenfunc)FloatFrameList_len,		/* sq_length */
-    (binaryfunc)FloatFrameList_concat,	/* sq_concat */
-    (ssizeargfunc)NULL,		/* sq_repeat */
+    (lenfunc)FloatFrameList_len,          /* sq_length */
+    (binaryfunc)FloatFrameList_concat,    /* sq_concat */
+    (ssizeargfunc)NULL,                   /* sq_repeat */
     (ssizeargfunc)FloatFrameList_GetItem, /* sq_item */
-    (ssizessizeargfunc)NULL,        /* sq_slice */
-    (ssizeobjargproc)NULL,		/* sq_ass_item */
-    (ssizessizeobjargproc)NULL,	/* sq_ass_slice */
-    (objobjproc)NULL,		/* sq_contains */
-    (binaryfunc)NULL,               /* sq_inplace_concat */
-    (ssizeargfunc)NULL,             /* sq_inplace_repeat */
+    (ssizessizeargfunc)NULL,              /* sq_slice */
+    (ssizeobjargproc)NULL,                /* sq_ass_item */
+    (ssizessizeobjargproc)NULL,           /* sq_ass_slice */
+    (objobjproc)NULL,                     /* sq_contains */
+    (binaryfunc)NULL,                     /* sq_inplace_concat */
+    (ssizeargfunc)NULL,                   /* sq_inplace_repeat */
 };
 
 PyTypeObject pcm_FloatFrameListType = {
@@ -871,12 +871,12 @@ PyTypeObject pcm_FloatFrameListType = {
     0,                         /*tp_as_buffer*/
     Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE, /*tp_flags*/
     "FloatFrameList(float_list, channels)",  /* tp_doc */
-    0,		               /* tp_traverse */
-    0,		               /* tp_clear */
-    0,		               /* tp_richcompare */
-    0,		               /* tp_weaklistoffset */
-    0,		               /* tp_iter */
-    0,		               /* tp_iternext */
+    0,                         /* tp_traverse */
+    0,                         /* tp_clear */
+    0,                         /* tp_richcompare */
+    0,                         /* tp_weaklistoffset */
+    0,                         /* tp_iter */
+    0,                         /* tp_iternext */
     FloatFrameList_methods,    /* tp_methods */
     0,                         /* tp_members */
     FloatFrameList_getseters,  /* tp_getset */

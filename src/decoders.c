@@ -26,6 +26,7 @@ extern PyTypeObject decoders_SHNDecoderType;
 extern PyTypeObject decoders_ALACDecoderType;
 extern PyTypeObject decoders_WavPackDecoderType;
 extern PyTypeObject decoders_MLPDecoderType;
+extern PyTypeObject decoders_AOBPCMDecoderType;
 
 extern const unsigned int read_bits_table[0x900][8];
 extern const unsigned int read_unary_table[0x900][2];
@@ -61,6 +62,10 @@ initdecoders(void)
     if (PyType_Ready(&decoders_MLPDecoderType) < 0)
         return;
 
+    decoders_AOBPCMDecoderType.tp_new = PyType_GenericNew;
+    if (PyType_Ready(&decoders_AOBPCMDecoderType) < 0)
+        return;
+
     m = Py_InitModule3("decoders", module_methods,
                        "Low-level audio format decoders");
 
@@ -88,6 +93,9 @@ initdecoders(void)
     PyModule_AddObject(m, "MLPDecoder",
                        (PyObject *)&decoders_MLPDecoderType);
 
+    Py_INCREF(&decoders_AOBPCMDecoderType);
+    PyModule_AddObject(m, "AOBPCMDecoder",
+                       (PyObject *)&decoders_AOBPCMDecoderType);
 }
 
 static PyObject*

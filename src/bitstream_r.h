@@ -305,6 +305,9 @@ py_getc(struct bs_python_input *stream);
 int
 py_close(struct bs_python_input *stream);
 
+/*decrefs any objects and space, but does not close input stream*/
+void
+py_free(struct bs_python_input *stream);
 
 Bitstream*
 bs_open_python(PyObject *reader, bs_endianness endianness);
