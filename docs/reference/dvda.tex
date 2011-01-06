@@ -223,7 +223,8 @@ Value & Channel Assignment \\
 \end{table}
 \par
 \noindent
-The PCM data is stored as signed, big-endian integers.
+
+Decoding the PCM data is explained on page \pageref{aob_pcm}.
 
 \clearpage
 
@@ -238,6 +239,100 @@ Since the MLP stream contains details such as bits per sample
 and channel assignment, that information is not repeated in the MLP
 packet header.
 
+Decoding the MLP data is explained on page \pageref{aob_mlp}.
+
 \clearpage
 
+\section{PCM Decoding}
+\label{aob_pcm}
+
+For 16 bits-per-sample streams, PCM data is simply stored in
+signed, big-endian format.
+
+However, for 24 bits-per-sample streams, the individual bytes must
+be reshuffled into a signed, little-endian depending on
+how many channels the stream has.
+This reshuffling occurs across \textit{two} PCM frames.
+A 1 channel stream is reshuffled as follows:
+\begin{figure}[h]
+\includegraphics{figures/aob_pcm_24bps_1ch.pdf}
+\caption{1 channel, 24 bits-per-sample}
+\end{figure}
+\par
+\noindent
+For example, given the packet data bytes:
+\begin{Verbatim}
+EE BB CC DD FF AA
+\end{Verbatim}
+\par
+\noindent
+we first reshuffle them to:
+\begin{Verbatim}
+CC BB AA FF EE DD
+\end{Verbatim}
+We then transform those bytes into 2 PCM frames worth of 24-bit,
+little-endian samples:
+\begin{align*}
+\text{Frame}_1 &= \texttt{0xAABBCC} = 2800588 - 2 ^ {23} = -5588020 \\
+\text{Frame}_2 &= \texttt{0xDDEEFF} = 6156031 - 2 ^ {23} = -2232577
+\end{align*}
+
+Streams with more than one channel are handled similarly.
+
+\clearpage
+
+\begin{figure}[h!]
+\includegraphics{figures/aob_pcm_24bps_2ch.pdf}
+\caption{2 channels, 24 bits-per-sample}
+\end{figure}
+\par
+\noindent
+For example, given the packet data bytes:
+\begin{Verbatim}
+66 11 22 BB 55 00 AA 33 44 99 77 88
+\end{Verbatim}
+\par
+\noindent
+we first reshuffle them to:
+\begin{Verbatim}
+22 11 00 55 44 33 88 77 66 BB AA 99
+\end{Verbatim}
+\par
+\noindent
+Then, we transform those bytes into 2 PCM frames worth of 24-bit,
+little-endian samples:
+\begin{align*}
+\text{Frame}_{1~1} &= \texttt{0x001122} = 4386 \\
+\text{Frame}_{1~2} &= \texttt{0x334455} = 3359829 \\
+\text{Frame}_{2~1} &= \texttt{0x667788} = 6715272 \\
+\text{Frame}_{2~2} &= \texttt{0x99AABB} = 1682107 - 2 ^ {23} = -6706501
+\end{align*}
+
+\clearpage
+
+\begin{figure}[h!]
+\includegraphics{figures/aob_pcm_24bps_3ch.pdf}
+\caption{3 channels, 24 bits-per-sample}
+\end{figure}
+
+\begin{figure}[h!]
+\includegraphics{figures/aob_pcm_24bps_4ch.pdf}
+\caption{4 channels, 24 bits-per-sample}
+\end{figure}
+
+\clearpage
+
+\begin{figure}[h!]
+\includegraphics{figures/aob_pcm_24bps_5ch.pdf}
+\caption{5 channels, 24 bits-per-sample}
+\end{figure}
+
+\begin{figure}[h!]
+\includegraphics{figures/aob_pcm_24bps_6ch.pdf}
+\caption{6 channels, 24 bits-per-sample}
+\end{figure}
+
+
+\clearpage
+\label{aob_mlp}
 \input{mlp}

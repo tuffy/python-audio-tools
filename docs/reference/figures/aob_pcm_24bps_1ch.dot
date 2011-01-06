@@ -1,0 +1,17 @@
+digraph pcm_24bps_1ch {
+  size="6,2";
+  ratio=fill;
+  margin=0;
+  aob [shape=record,label="<b0>0|<b1>1|<b2>2|<b3>3|<b4>4|<b5>5",height=.1];
+  wav [shape=record,label="<b2>2|<b1>1|<b5>5|<b4>4|<b0>0|<b3>3",height=.1];
+  aob_bytes [shape=plaintext,label="AOB bytes"];
+  wav_bytes [shape=plaintext,label="PCM bytes"];
+  {rank=same; aob_bytes; aob;};
+  {rank=same; wav_bytes; wav;}
+  "aob":b0 -> "wav":b0 [color="red"];
+  "aob":b1 -> "wav":b1 [color="green"];
+  "aob":b2 -> "wav":b2 [color="blue"];
+  "aob":b3 -> "wav":b3 [color="red"];
+  "aob":b4 -> "wav":b4 [color="green"];
+  "aob":b5 -> "wav":b5 [color="blue"];
+};

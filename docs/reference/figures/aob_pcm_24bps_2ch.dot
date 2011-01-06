@@ -1,0 +1,23 @@
+digraph pcm_24bps_2ch {
+  size="6,3";
+  ratio=fill;
+  margin=0;
+  aob [shape=record,label="<b0>0|<b1>1|<b2>2|<b3>3|<b4>4|<b5>5|<b6>6|<b7>7|<b8>8|<b9>9|<b10>10|<b11>11",height=.1];
+  wav [shape=record,label="<b2>2|<b1>1|<b5>5|<b4>4|<b8>8|<b7>7|<b11>11|<b10>10|<b0>0|<b3>3|<b6>6|<b9>9",height=.1];
+  aob_bytes [shape=plaintext,label="AOB bytes"];
+  wav_bytes [shape=plaintext,label="PCM bytes"];
+  {rank=same; aob_bytes; aob;};
+  {rank=same; wav_bytes; wav;}
+  "aob":b0 -> "wav":b0 [color="red"];
+  "aob":b1 -> "wav":b1 [color="green"];
+  "aob":b2 -> "wav":b2 [color="blue"];
+  "aob":b3 -> "wav":b3 [color="red"];
+  "aob":b4 -> "wav":b4 [color="green"];
+  "aob":b5 -> "wav":b5 [color="blue"];
+  "aob":b6 -> "wav":b6 [color="red"];
+  "aob":b7 -> "wav":b7 [color="green"];
+  "aob":b8 -> "wav":b8 [color="blue"];
+  "aob":b9 -> "wav":b9 [color="red"];
+  "aob":b10 -> "wav":b10 [color="green"];
+  "aob":b11 -> "wav":b11 [color="blue"];
+};

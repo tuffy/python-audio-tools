@@ -2864,7 +2864,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** DONE channel rematrixing
 **** DONE noise channels
 **** DONE rematrixing
-** TODO Document PCM decoder
+** DONE Document PCM decoder
 ** DONE Link MLP decoder to AOB extractor
 ** DONE Link PCM decoder to AOB extractor
 ** TODO Build DVD-A postprocessor

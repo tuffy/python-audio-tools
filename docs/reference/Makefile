@@ -81,7 +81,10 @@ figures/dvda_ats_xx_x.pdf figures/dvda_aob_pack_header.pdf \
 figures/dvda_aob_pcm_payload.pdf figures/dvda_aob_mlp_payload.pdf \
 figures/dvda_layout.pdf figures/dvda_audio_ts_ifo.pdf \
 figures/dvda_ats_xx_0.pdf figures/dvda_ats_title.pdf \
-figures/dvda_ats_sectors.pdf
+figures/dvda_ats_sectors.pdf \
+figures/aob_pcm_24bps_1ch.pdf figures/aob_pcm_24bps_2ch.pdf \
+figures/aob_pcm_24bps_3ch.pdf figures/aob_pcm_24bps_4ch.pdf \
+figures/aob_pcm_24bps_5ch.pdf figures/aob_pcm_24bps_6ch.pdf
 
 CHAPTERS = basics.tex wav.tex flac.tex m4a.tex mp3.tex vorbis.tex \
 wavpack.tex ape.tex aiff.tex au.tex speex.tex oggflac.tex musepack.tex \
@@ -172,14 +175,14 @@ figures/alac_atoms.pdf: figures/alac_atoms.fig
 # figures/alac_read_residual.pdf: figures/alac_read_residual.fig
 # 	fig2dev -Z 5 -L pdf $< $@
 
-figures/alac_read_residual.pdf: figures/alac_read_residual.dot
-	dot -Tpdf $< -o $@
+# figures/alac_read_residual.pdf: figures/alac_read_residual.dot
+# 	dot -Tpdf $< -o $@
 
 # figures/alac_write_residual.pdf: figures/alac_write_residual.fig
 # 	fig2dev -Z 5 -L pdf $< $@
 
-figures/alac_write_residual.pdf: figures/alac_write_residual.dot
-	dot -Tpdf $< -o $@
+# figures/alac_write_residual.pdf: figures/alac_write_residual.dot
+# 	dot -Tpdf $< -o $@
 
 figures/alac_residual.pdf: figures/alac_residual.fig
 	fig2dev -Z 5 -L pdf $< $@
