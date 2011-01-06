@@ -43,4 +43,3 @@ ia_array_slice_to_framelist(struct ia_array *data,
 
     return (PyObject*)framelist;
 }
-

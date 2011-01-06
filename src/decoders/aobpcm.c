@@ -112,9 +112,14 @@ AOBPCMDecoder_read(decoders_AOBPCMDecoder* self, PyObject *args) {
     }
 
  done:
-    /*FIXME - generate pcm.FrameList object from little-endian string*/
-    return PyString_FromStringAndSize((char *)self->buffer,
-                                      (Py_ssize_t)(i * self->chunk_size));
+    /*generate pcm.FrameList object from little-endian string*/
+
+    return bytes_to_framelist(self->buffer,
+                              i * self->chunk_size,
+                              self->channels,
+                              self->bits_per_sample,
+                              0,
+                              1);
 }
 
 int
@@ -148,4 +153,27 @@ static PyObject*
 AOBPCMDecoder_close(decoders_AOBPCMDecoder* self, PyObject *args) {
     Py_INCREF(Py_None);
     return Py_None;
+}
+
+static PyObject*
+bytes_to_framelist(uint8_t *bytes,
+                   int bytes_length,
+                   int channels,
+                   int bits_per_sample,
+                   int is_big_endian,
+                   int is_signed) {
+    PyObject *pcm = NULL;
+    PyObject *framelist;
+
+    if ((pcm = PyImport_ImportModule("audiotools.pcm")) == NULL)
+        return NULL;
+    framelist = PyObject_CallMethod(pcm, "FrameList",
+                                    "(s#iiii)",
+                                    bytes, bytes_length,
+                                    channels,
+                                    bits_per_sample,
+                                    is_big_endian,
+                                    is_signed);
+    Py_DECREF(pcm);
+    return framelist;
 }

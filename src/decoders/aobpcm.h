@@ -90,6 +90,14 @@ AOBPCMDecoder_channel_mask(decoders_AOBPCMDecoder *self, void *closure);
 static PyObject*
 AOBPCMDecoder_read(decoders_AOBPCMDecoder* self, PyObject *args);
 
+static PyObject*
+bytes_to_framelist(uint8_t *bytes,
+                   int bytes_length,
+                   int channels,
+                   int bits_per_sample,
+                   int is_big_endian,
+                   int is_signed);
+
 /*reads a single, 2 frame chunk into the given buffer
   returns 1 on success, 0 on EOF and -1 if a whole chunk cannot be read*/
 int

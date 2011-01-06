@@ -452,12 +452,15 @@ class DVDATrack:
          channel_mask,
          bits_per_sample,
          track_type) = self.info()
+
         if (track_type == 0xA0):
-            return DVDAPCMReader(packets=self.packets(),
-                                 sample_rate=sample_rate,
-                                 channels=channels,
-                                 channel_mask=channel_mask,
-                                 bits_per_sample=bits_per_sample)
+            from audiotools.decoders import AOBPCMDecoder
+
+            return AOBPCMDecoder(__PacketReader__(self.packets()),
+                                 sample_rate,
+                                 channels,
+                                 channel_mask,
+                                 bits_per_sample)
         elif (track_type == 0xA1):
             from audiotools.decoders import MLPDecoder
 
@@ -476,35 +479,13 @@ class __PacketReader__:
             except StopIteration:
                 self.packets = None
                 return ""
+        else:
+            return ""
 
     def close(self):
         self.packets = None
 
 PacketReader = __PacketReader__
-
-class DVDAPCMReader:
-    def __init__(self, packets,
-                 sample_rate, channels, channel_mask, bits_per_sample):
-        self.packets = __PacketReader__(packets)
-        self.sample_rate = sample_rate
-        self.channels = channels
-        self.channel_mask = channel_mask
-        self.bits_per_sample = bits_per_sample
-
-    def read(self, bytes):
-        #FIXME - reorder channels if > 2
-        #though I've yet to see a PCM DVD-Audio with more than 2 channels
-
-        #FIXME - PCM apparently needs some additional post-processing
-
-        return pcm.FrameList(self.packets.read(bytes),
-                             self.channels,
-                             self.bits_per_sample,
-                             True,
-                             True)
-
-    def close(self):
-        self.packets.close()
 
 
 class Rangeset:
