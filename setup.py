@@ -161,4 +161,4 @@ setup(name='Python Audio Tools',
                "trackcat", "tracksplit",
                "tracklint", "trackverify",
                "coverdump", "coverview", "record2track",
-               "dvdainfo"])
+               "dvdainfo", "dvda2xmcd", "dvda2track"])

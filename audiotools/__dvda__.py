@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import Con,re,os,pcm
+from audiotools import Con,re,os,pcm,cStringIO
 
 class DVDAudio:
     """An object representing an entire DVD-Audio disc.
@@ -300,6 +300,9 @@ class DVDAudio:
         finally:
             f.close()
 
+    def sector_reader(self, aob_filename):
+        return SectorReader(aob_filename)
+
 
 class InvalidDVDA(Exception):
     pass
@@ -319,6 +322,27 @@ class DVDATitle:
 
     def __repr__(self):
         return "DVDATitle(%s, %s)" % (repr(self.length), repr(self.tracks))
+
+class SectorReader:
+    """An object to abstract the reading of sectors from AOB files."""
+    def __init__(self, aob_filename):
+        self.file = open(aob_filename, "rb")
+
+    def seek(self, sector):
+        """seeks to the given sector in the AOB file"""
+
+        self.file.seek(sector * DVDAudio.SECTOR_SIZE, os.SEEK_SET)
+
+    def read(self, sectors):
+        """yields "sectors" number of file-like objects"""
+
+        for i in xrange(sectors):
+            yield cStringIO.StringIO(self.file.read(DVDAudio.SECTOR_SIZE))
+
+    def close(self):
+        """closes the current AOB file for further reading"""
+
+        self.file.close()
 
 class DVDATrack:
     """An object representing an individual DVD-Audio track."""
@@ -389,20 +413,21 @@ class DVDATrack:
         PES_HEADER = DVDAudio.PES_HEADER
 
         for (aob_file, start_sector, end_sector) in self.sectors():
-            aob = open(aob_file, 'rb')
+            aob = self.dvdaudio.sector_reader(aob_file)
             try:
-                aob.seek(start_sector * DVDAudio.SECTOR_SIZE, os.SEEK_SET)
-                while (start_sector < end_sector):
+                aob.seek(start_sector)
+                for sector in aob.read(end_sector - start_sector):
                     packet_size = SECTOR_SIZE
-                    pack_header = PACK_HEADER.parse_stream(aob)
+                    pack_header = PACK_HEADER.parse_stream(sector)
                     packet_size -= (14 + len(pack_header.stuffing))
                     while (packet_size > 0):
-                        pes_header = PES_HEADER.parse_stream(aob)
+                        pes_header = PES_HEADER.parse_stream(sector)
                         packet_size -= 6
                         if (pes_header.stream_id == 0xBD):
-                            yield payload(aob.read(pes_header.packet_length))
+                            yield payload(
+                                sector.read(pes_header.packet_length))
                         else:
-                            aob.read(pes_header.packet_length)
+                            sector.read(pes_header.packet_length)
                         packet_size -= pes_header.packet_length
 
                     start_sector += 1
@@ -416,19 +441,20 @@ class DVDATrack:
         where type 0xA0 is PCM and type 0xA1 is MLP"""
 
         (aob_file, start_sector, end_sector) = self.sectors().next()
-        aob = open(aob_file, 'rb')
+        aob = self.dvdaudio.sector_reader(aob_file)
         try:
-            aob.seek(start_sector * DVDAudio.SECTOR_SIZE, os.SEEK_SET)
+            aob.seek(start_sector)
+            sector = aob.read(1).next()
             packet_size = DVDAudio.SECTOR_SIZE
-            pack_header = DVDAudio.PACK_HEADER.parse_stream(aob)
+            pack_header = DVDAudio.PACK_HEADER.parse_stream(sector)
             packet_size -= (14 + len(pack_header.stuffing))
             while (packet_size > 0):
-                pes_header = DVDAudio.PES_HEADER.parse_stream(aob)
+                pes_header = DVDAudio.PES_HEADER.parse_stream(sector)
                 packet_size -= 6
                 if (pes_header.stream_id == 0xBD):
                     #the first packet of audio data
 
-                    header = DVDAudio.PACKET_HEADER.parse_stream(aob)
+                    header = DVDAudio.PACKET_HEADER.parse_stream(sector)
                     return (DVDATrack.SAMPLE_RATE[
                               header.info.group1_sample_rate],
                             DVDATrack.CHANNELS[
@@ -439,7 +465,7 @@ class DVDATrack:
                               header.info.group1_bps],
                             header.stream_id)
                 else:
-                    aob.read(pes_header.packet_length)
+                    sector.read(pes_header.packet_length)
                 packet_size -= pes_header.packet_length
             else:
                 raise InvalidDVDA(u"No audio data found in first sector")
