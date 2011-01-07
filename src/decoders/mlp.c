@@ -810,6 +810,29 @@ mlp_read_substream(decoders_MLPDecoder* decoder,
     if (decoder->bytes_read % 2)
         bs->skip(bs, 8);
 
+    /* check for end of stream marker */
+    bs_pop_callback(bs);
+    bs->mark(bs);
+    if (bs->read(bs, 16) == 0xD234) {
+        if (bs->read(bs, 16) == 0xD234) {
+            decoder->stream_closed = 1;
+            bs->unmark(bs);
+            bs_add_callback(bs, mlp_byte_callback, decoder);
+            bs_call_callbacks(bs, 0xD2);
+            bs_call_callbacks(bs, 0x34);
+            bs_call_callbacks(bs, 0xD2);
+            bs_call_callbacks(bs, 0x34);
+        } else {
+            bs->rewind(bs);
+            bs->unmark(bs);
+            bs_add_callback(bs, mlp_byte_callback, decoder);
+        }
+    } else {
+        bs->rewind(bs);
+        bs->unmark(bs);
+        bs_add_callback(bs, mlp_byte_callback, decoder);
+    }
+
     if (decoder->substream_sizes[substream].checkdata_present) {
         final_crc = decoder->final_crc;
 

@@ -38,6 +38,14 @@ if (__name__ == '__main__'):
         default=audiotools.DEFAULT_VERBOSITY,
         help=_(u'the verbosity level to execute at'))
 
+    parser.add_option('-A', '--audio-ts', action='store', default=None,
+                      type='string', dest='audio_ts', metavar='DIR',
+                      help='location of AUDIO_TS directory')
+
+    parser.add_option('--title', action='store', default=1,
+                      type='int', dest='title',
+                      help='DVD-Audio title number to retrieve metadata for')
+
     conversion = audiotools.OptionGroup(parser, _(u"Conversion Options"))
 
     conversion.add_option(
@@ -123,9 +131,6 @@ if (__name__ == '__main__'):
     #get the AudioFile class we are converted to
     AudioType = audiotools.TYPE_MAP[options.type]
 
-    if (options.add_replay_gain is None):
-        options.add_replay_gain = AudioType.lossless_replay_gain()
-
     #ensure the selected compression is compatible with that class
     if (options.quality == 'help'):
         if (len(AudioType.COMPRESSION_MODES) > 1):
@@ -159,3 +164,114 @@ if (__name__ == '__main__'):
 
     quality = options.quality
     base_directory = options.dir
+
+    #FIXME - catch errors here
+    #FIXME - support cd-rom device here
+    dvda = audiotools.DVDAudio(options.audio_ts)
+    if (options.title < 1):
+        msg.error(_(u"title number must be greater than 0"))
+        sys.exit(1)
+    title = dvda.titlesets[0][options.title - 1]
+
+    if (len(args) == 0):
+        to_rip = [track for track in title]
+    else:
+        to_rip = []
+        for arg in args:
+            try:
+                to_rip.append(title[int(arg) - 1])
+            except IndexError:
+                continue
+            except ValueError:
+                continue
+        to_rip.sort(lambda x, y: cmp(x.track, y.track))
+
+    #determine whether to add ReplayGain by default
+    if (options.add_replay_gain is None):
+        options.add_replay_gain = (
+            AudioType.lossless_replay_gain() and
+            audiotools.applicable_replay_gain(to_rip))
+
+    encoded = []
+    for dvda_track in to_rip:
+        basename = "track%2d%2.2d" % (options.album_number,
+                                      dvda_track.track)
+
+        try:
+            if (xmcd is not None):  # we have metadata
+                metadata = xmcd.get(dvda_track.track, None)
+                if (metadata is not None):
+                    if (options.album_number != 0):
+                        metadata.album_number = options.album_number
+                    if (options.album_total != 0):
+                        metadata.album_total = options.album_total
+
+
+                filename = os.path.join(
+                    base_directory,
+                    AudioType.track_name(file_path=basename,
+                                         track_metadata=metadata,
+                                         format=options.format))
+
+                audiotools.make_dirs(filename)
+
+                track = AudioType.from_pcm(
+                    filename,
+                    dvda_track.to_pcm(),
+                    quality)
+
+                track.set_metadata(metadata)
+                encoded.append(track)
+            else:               # no metadata
+                filename = os.path.join(
+                    base_directory,
+                    AudioType.track_name(file_path=basename,
+                                         track_metadata=None,
+                                         format=options.format))
+
+                audiotools.make_dirs(filename)
+
+                track = AudioType.from_pcm(
+                    filename,
+                    dvda_track.to_pcm(),
+                    quality)
+
+                #even if no MetaData is given,
+                #set track number and album number if possible
+                track.set_metadata(audiotools.MetaData(
+                        track_number=dvda_track.track,
+                        track_total=len(title),
+                        album_number=options.album_number,
+                        album_total=options.album_total))
+
+                encoded.append(track)
+
+            msg.info(
+                _(u"title %(title_number)d - " +
+                  u"track %(track_number)2.2d -> %(filename)s") % \
+                    {"title_number":options.title,
+                     "track_number":dvda_track.track,
+                     "filename":msg.filename(track.filename)})
+        except audiotools.UnsupportedTracknameField, err:
+            err.error_msg(msg)
+            sys.exit(1)
+        except KeyError:
+            continue
+        except audiotools.InvalidFormat, err:
+            msg.error(unicode(err))
+            sys.exit(1)
+        except audiotools.EncodingError, err:
+            msg.error(_(u"Unable to write \"%s\"") % (msg.filename(filename)))
+            sys.exit(1)
+
+    if (options.add_replay_gain and AudioType.can_add_replay_gain()):
+        if (AudioType.lossless_replay_gain()):
+            msg.info(_(u"Adding ReplayGain metadata.  " +
+                       u"This may take some time."))
+        else:
+            msg.info(_(u"Applying ReplayGain.  This may take some time."))
+        try:
+            AudioType.add_replay_gain([track.filename for track in encoded])
+        except ValueError, err:
+            msg.error(unicode(err))
+            sys.exit(1)

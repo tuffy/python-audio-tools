@@ -179,8 +179,6 @@ if (__name__ == '__main__'):
         msg.error(_(u"No CD in drive"))
         sys.exit(1)
 
-    encoded = []
-
     if (len(args) == 0):
         to_rip = [track for track in cdda]
     else:
@@ -194,9 +192,10 @@ if (__name__ == '__main__'):
                 continue
         to_rip.sort(lambda x, y: cmp(x.track_number, y.track_number))
 
-    for (track_number, cd_track) in enumerate(to_rip):
+    encoded = []
+    for cd_track in to_rip:
         basename = "track%2d%2.2d" % (options.album_number,
-                                      track_number + 1)
+                                      cd_track.track_number)
 
         try:
             if (xmcd is not None):  # we have metadata

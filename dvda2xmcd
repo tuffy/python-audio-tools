@@ -21,6 +21,7 @@
 import sys
 import audiotools
 import audiotools.cdio as cdio
+import os
 import gettext
 
 gettext.install("audiotools", unicode=True)
@@ -43,6 +44,14 @@ if (__name__ == '__main__'):
         type='string', dest='xmcd', default='-',
         metavar='FILENAME',
         help=_(u'FreeDB XMCD file or MusicBrainz XML output file'))
+
+    parser.add_option('-A', '--audio-ts', action='store', default=None,
+                      type='string', dest='audio_ts', metavar='DIR',
+                      help='location of AUDIO_TS directory')
+
+    parser.add_option('--title', action='store', default=1,
+                      type='int', dest='title',
+                      help='DVD-Audio title number to retrieve metadata for')
 
     server = audiotools.OptionGroup(parser, _(u"Server Options"))
 
@@ -88,11 +97,85 @@ if (__name__ == '__main__'):
     (options, args) = parser.parse_args()
     msg = audiotools.Messenger("dvda2xmcd", options)
 
+    if (options.audio_ts is None):
+        msg.error(
+            _(u"You must specify the DVD-Audio's AUDIO_TS directory with -A"))
+        sys.exit(1)
+
+    #FIXME - catch errors here
+    dvda = audiotools.DVDAudio(options.audio_ts)
+    if (options.title < 1):
+        msg.error(_(u"title number must be greater than 0"))
+        sys.exit(1)
+    title = dvda.titlesets[0][options.title - 1]
+
     try:
         if (options.xmcd == '-'):
             outfile = sys.stdout
         else:
-            outfile = open(options.xmcd, "w")
+            if (not os.path.isfile(options.xmcd)):
+                outfile = open(options.xmcd, "w")
+            else:
+                msg.error(_(u"Refusing to overwrite \"%s\"") % \
+                              (msg.filename(options.xmcd)))
+                sys.exit(1)
     except IOError, err:
         msg.error(_(u"Unable to write \"%s\"") % (msg.filename(options.xmcd)))
+        sys.exit(1)
+
+    #grab XML/XMCD data from MusicBrainz/FreeDB
+    musicbrainz_discid = audiotools.MBDiscID(
+        [(track.pts_length * 75) / audiotools.DVDAudio.PTS_PER_SECOND
+         for track in title])
+
+    freedb_discid = audiotools.DiscID(
+        [(track.pts_length * 75) / audiotools.DVDAudio.PTS_PER_SECOND
+         for track in title])
+
+    msg.info(_(u"Found DVD-Audio information"))
+
+    returnval = 0
+    musicbrainz_matches = 0
+    freedb_matches = 0
+    if (options.use_musicbrainz):
+        try:
+            musicbrainz_matches = audiotools.get_mbxml(
+                musicbrainz_discid,
+                outfile,
+                options.musicbrainz_server,
+                options.musicbrainz_port,
+                msg,
+                options.default)
+            returnval = 0
+        except IOError, e:
+            msg.error(unicode(e))
+            returnval = 1
+
+    if ((musicbrainz_matches == 0) and options.use_freedb):
+        try:
+            freedb_matches = audiotools.get_xmcd(
+                freedb_discid,
+                outfile,
+                options.freedb_server,
+                options.freedb_port,
+                msg,
+                options.default)
+            returnval = 0
+        except IOError, e:
+            msg.error(unicode(e))
+            returnval = 1
+
+    #if musicbrainz_matches and freedb_matches are both 0
+    #output a MusicBrainzReleaseXML file instead of a FreeDB one
+    #since XML is better for editing by end users
+    #(none of that " / "-handling nonsense)
+    if ((musicbrainz_matches == 0) and (freedb_matches == 0)):
+        if (options.use_musicbrainz):
+            musicbrainz_discid.toxml(outfile)
+        else:
+            freedb_discid.toxmcd(outfile)
+        msg.info(_(u"%s written") % (msg.filename(options.xmcd)))
+        outfile.close()
+
+    if (returnval != 0):
         sys.exit(1)

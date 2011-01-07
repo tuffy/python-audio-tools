@@ -320,6 +320,12 @@ class DVDATitle:
         self.length = length
         self.tracks = tracks
 
+    def __len__(self):
+        return len(self.tracks)
+
+    def __getitem__(self, index):
+        return self.tracks[index]
+
     def __repr__(self):
         return "DVDATitle(%s, %s)" % (repr(self.length), repr(self.tracks))
 
@@ -471,6 +477,21 @@ class DVDATrack:
                 raise InvalidDVDA(u"No audio data found in first sector")
         finally:
             aob.close()
+
+    def bits_per_sample(self):
+        return self.info()[3]
+
+    def channels(self):
+        return self.info()[1]
+
+    def channel_mask(self):
+        return self.info()[2]
+
+    def lossless(self):
+        return True
+
+    def sample_rate(self):
+        return self.info()[0]
 
     def to_pcm(self):
         (sample_rate,

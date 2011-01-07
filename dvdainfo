@@ -30,10 +30,21 @@ if (__name__ == '__main__'):
         usage=_(u"%prog [options]"),
         version="Python Audio Tools %s" % (audiotools.VERSION))
 
+    parser.add_option('-A', '--audio-ts', action='store', default=None,
+                      type='string', dest='audio_ts', metavar='DIR',
+                      help='location of AUDIO_TS directory')
+
     (options, args) = parser.parse_args()
 
-    dvda = audiotools.DVDAudio(args[0])
     msg = audiotools.Messenger("dvdainfo", options)
+
+    if (options.audio_ts is None):
+        msg.error(
+            _(u"You must specify the DVD-Audio's AUDIO_TS directory with -A"))
+        sys.exit(1)
+
+    #FIXME - catch errors here
+    dvda = audiotools.DVDAudio(options.audio_ts)
 
     titleset = dvda.titlesets[0]
     for (title_num, title) in enumerate(titleset):

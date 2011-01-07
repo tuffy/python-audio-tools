@@ -21,6 +21,7 @@
 import sys
 import audiotools
 import audiotools.cdio as cdio
+import os
 import gettext
 
 gettext.install("audiotools", unicode=True)
@@ -97,7 +98,12 @@ if (__name__ == '__main__'):
         if (options.xmcd == '-'):
             outfile = sys.stdout
         else:
-            outfile = open(options.xmcd, "w")
+            if (not os.path.isfile(ooptios.xmcd)):
+                outfile = open(options.xmcd, "w")
+            else:
+                msg.error(_(u"Refusing to overwrite \"%s\"") % \
+                              (msg.filename(options.xmcd)))
+                sys.exit(1)
     except IOError, err:
         msg.error(_(u"Unable to write \"%s\"") % (msg.filename(options.xmcd)))
         sys.exit(1)
