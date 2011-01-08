@@ -107,7 +107,7 @@ if (__name__ == '__main__'):
     if (options.title < 1):
         msg.error(_(u"title number must be greater than 0"))
         sys.exit(1)
-    title = dvda.titlesets[0][options.title - 1]
+    title = dvda[0][options.title - 1]
 
     try:
         if (options.xmcd == '-'):

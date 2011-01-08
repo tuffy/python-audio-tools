@@ -88,7 +88,11 @@ CPPMDecoder_id_album_media(prot_CPPMDecoder *self, void *closure) {
 static PyObject*
 CPPMDecoder_decode(prot_CPPMDecoder *self, PyObject *args) {
     char* input_buffer;
+#ifdef PY_SSIZE_T_CLEAN
     Py_ssize_t input_len;
+#else
+    int input_len;
+#endif
     uint8_t* output_buffer;
     int output_len;
     PyObject* decoded;

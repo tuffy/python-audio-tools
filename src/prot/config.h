@@ -22,9 +22,6 @@
 /* Define if FreeBSD-like dvd_struct is defined. */
 /* #undef HAVE_BSD_DVD_STRUCT */
 
-/* Define to 1 if you have the <inttypes.h> header file. */
-#define HAVE_INTTYPES_H 1
-
 /* Define if Linux-like dvd_struct is defined. */
 #define HAVE_LINUX_DVD_STRUCT 1
 

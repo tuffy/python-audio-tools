@@ -183,7 +183,7 @@ class DVDAudio:
                             Con.Bits("channel_assignment", 5),
                             Con.Bits("unknown2", 48))))}))
 
-    def __init__(self, audio_ts_path):
+    def __init__(self, audio_ts_path, cdrom_device=None):
         """A DVD-A which contains PCMReader-compatible track objects."""
 
         #an inventory of AUDIO_TS files converted to uppercase keys
@@ -217,6 +217,25 @@ class DVDAudio:
                     self.aob_sectors.append(
                         (self.aob_sectors[-1][1],
                          self.aob_sectors[-1][1] + aob_length))
+
+        try:
+            if ((cdrom_device is not None) and
+                ('DVDAUDIO.MKB' in self.files.keys())):
+
+                from audiotools.prot import CPPMDecoder
+
+                self.unprotector = CPPMDecoder(cdrom_device,
+                                               self.files['DVDAUDIO.MKB'])
+            else:
+                raise ImportError()
+        except ImportError:
+            self.unprotector = None
+
+    def __getitem__(self, key):
+        return self.titlesets[key]
+
+    def __len__(self):
+        return len(self.titlesets)
 
     def __titlesets__(self):
         """return valid audio titleset integers from AUDIO_TS.IFO"""
@@ -301,7 +320,11 @@ class DVDAudio:
             f.close()
 
     def sector_reader(self, aob_filename):
-        return SectorReader(aob_filename)
+        if (self.unprotector is None):
+            return SectorReader(aob_filename)
+        else:
+            return UnprotectionSectorReader(aob_filename,
+                                            self.unprotector)
 
 
 class InvalidDVDA(Exception):
@@ -349,6 +372,18 @@ class SectorReader:
         """closes the current AOB file for further reading"""
 
         self.file.close()
+
+class UnprotectionSectorReader(SectorReader):
+    def __init__(self, aob_filename, unprotector):
+        SectorReader.__init__(self, aob_filename)
+        self.unprotector = unprotector
+
+    def read(self, sectors):
+        """yields "sectors" number of file-like objects"""
+
+        for i in xrange(sectors):
+            yield cStringIO.StringIO(
+                self.unprotector.decode(self.file.read(DVDAudio.SECTOR_SIZE)))
 
 class DVDATrack:
     """An object representing an individual DVD-Audio track."""

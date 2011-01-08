@@ -38,6 +38,11 @@ if (__name__ == '__main__'):
         default=audiotools.DEFAULT_VERBOSITY,
         help=_(u'the verbosity level to execute at'))
 
+    parser.add_option(
+        '-c', '--cdrom', action='store',
+        type='string', dest='cdrom',
+        default=audiotools.DEFAULT_CDROM)
+
     parser.add_option('-A', '--audio-ts', action='store', default=None,
                       type='string', dest='audio_ts', metavar='DIR',
                       help='location of AUDIO_TS directory')
@@ -166,12 +171,12 @@ if (__name__ == '__main__'):
     base_directory = options.dir
 
     #FIXME - catch errors here
-    #FIXME - support cd-rom device here
-    dvda = audiotools.DVDAudio(options.audio_ts)
+    dvda = audiotools.DVDAudio(options.audio_ts,
+                               options.cdrom)
     if (options.title < 1):
         msg.error(_(u"title number must be greater than 0"))
         sys.exit(1)
-    title = dvda.titlesets[0][options.title - 1]
+    title = dvda[0][options.title - 1]
 
     if (len(args) == 0):
         to_rip = [track for track in title]

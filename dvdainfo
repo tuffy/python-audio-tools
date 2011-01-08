@@ -46,7 +46,7 @@ if (__name__ == '__main__'):
     #FIXME - catch errors here
     dvda = audiotools.DVDAudio(options.audio_ts)
 
-    titleset = dvda.titlesets[0]
+    titleset = dvda[0]
     for (title_num, title) in enumerate(titleset):
         track_infos = [track.info() for track in title.tracks]
         channels = list(set([i[1] for i in track_infos]))[0]

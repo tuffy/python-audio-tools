@@ -88,12 +88,6 @@ verifymodule = Extension('audiotools.verify',
                          sources=['src/verify.c',
                                   'src/bitstream_r.c'])
 
-protmodule = Extension('audiotools.prot',
-                       sources=['src/prot.c',
-                                'src/prot/cppm.c',
-                                'src/prot/ioctl.c',
-                                'src/prot/dvd_css.c'])
-
 extensions = [cdiomodule,
               resamplemodule,
               pcmmodule,
@@ -101,47 +95,29 @@ extensions = [cdiomodule,
               decodersmodule,
               encodersmodule,
               verifymodule]
-              # protmodule]
 
+if (sys.platform == 'linux2'):
+    extensions.append(Extension(
+            'audiotools.prot',
+            sources=['src/prot.c',
+                     'src/prot/cppm.c',
+                     'src/prot/ioctl.c',
+                     'src/prot/dvd_css.c'],
+            define_macros=[('DVD_STRUCT_IN_LINUX_CDROM_H', None),
+                           ('HAVE_LINUX_DVD_STRUCT', None)]))
+elif (sys.platform == 'darwin'):
+    extensions.append(Extension(
+            'audiotools.prot',
+            sources=['src/prot.c',
+                     'src/prot/cppm.c',
+                     'src/prot/ioctl.c',
+                     'src/prot/dvd_css.c'],
+            define_macros=[('DARWIN_DVD_IOCTL', None)]))
+else:
+    #don't install the protection module on
+    #unsupported platformats
+    pass
 
-#This is an ALSA extension module, not quite ready for use.
-#It chokes on a large number of hi-def PCM combinations
-#which makes it not yet suitable for general use.
-# try:
-#     if (subprocess.call(["pkg-config","--exists","alsa"]) == 0):
-#         #ALSA available
-#         extensions.append(Extension(
-#             'audiotools.alsa',
-#             sources = ['src/alsa.c'],
-#             include_dirs = [f[2:] for f in pkg_config('alsa','--cflags') if
-#                             (f.startswith('-I'))],
-#             libraries = [f[2:] for f in pkg_config('alsa','--libs') if
-#                          (f.startswith('-l'))],
-#             library_dirs = [f[2:] for f in pkg_config('alsa','--libs') if
-#                             (f.startswith('-L'))]))
-
-# except OSError:
-#     pass #pkg-config not available
-
-# try:
-#     if (subprocess.call(["pkg-config","--exists","libpulse"]) == 0):
-#         #libpulse available
-#         extensions.append(Extension(
-#             'audiotools.pulse',
-#             sources = ['src/pulse.c'],
-#             include_dirs = [f[2:] for f in
-#                             pkg_config('libpulse-simple','--cflags') if
-#                             (f.startswith('-I'))],
-#             libraries = [f[2:] for f in
-#                          pkg_config('libpulse-simple','--libs') if
-#                          (f.startswith('-l'))],
-#             library_dirs = [f[2:] for f in
-#                             pkg_config('libpulse-simple','--libs') if
-#                             (f.startswith('-L'))]
-#             ))
-
-# except OSError:
-#     pass #pkg-config not available
 
 setup(name='Python Audio Tools',
       version=VERSION,
