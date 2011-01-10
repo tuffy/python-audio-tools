@@ -31,8 +31,9 @@ MLPDecoder_init(decoders_MLPDecoder *self,
 
     self->init_ok = 0;
     self->stream_closed = 0;
+    self->bitstream = NULL;
 
-    if (!PyArg_ParseTuple(args, "O", &reader))
+    if (!PyArg_ParseTuple(args, "OL", &reader, &(self->remaining_samples)))
         return -1;
 
     /*open the MLP file*/
@@ -161,7 +162,8 @@ MLPDecoder_dealloc(decoders_MLPDecoder *self)
     int matrix;
     int channel;
 
-    self->bitstream->close(self->bitstream);
+    if (self->bitstream != NULL)
+        self->bitstream->close(self->bitstream);
 
     if (self->init_ok) {
         for (substream = 0;
@@ -422,6 +424,16 @@ MLPDecoder_read(decoders_MLPDecoder* self, PyObject *args) {
     struct ia_array wave_order;
     int frame_size;
 
+    if (self->remaining_samples <= 0) {
+        /*return empty FrameList object*/
+        iaa_init(&wave_order, channel_count, 1);
+        frame = ia_array_to_framelist(
+                    &wave_order,
+                    mlp_bits_per_sample(&(self->major_sync)));
+        iaa_free(&wave_order);
+        return frame;
+    }
+
     if (!setjmp(*bs_try(self->bitstream))) {
         frame_size = mlp_read_frame(self, &(self->frame_samples));
         bs_etry(self->bitstream);
@@ -432,6 +444,8 @@ MLPDecoder_read(decoders_MLPDecoder* self, PyObject *args) {
     }
 
     if (frame_size > 0) {
+        self->remaining_samples -= self->frame_samples.arrays[0].size;
+
         wave_order.size = channel_count;
         wave_order.arrays = malloc(sizeof(struct ia_array) * wave_order.size);
 

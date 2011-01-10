@@ -124,6 +124,7 @@ typedef struct {
 
     int init_ok;
     int stream_closed;
+    int64_t remaining_samples;
 
     uint64_t bytes_read;
     uint8_t parity;
