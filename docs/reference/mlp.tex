@@ -57,7 +57,7 @@ We detect a \VAR{Major Sync} by reading a 24-bit \VAR{Sync Words} value
 and 8-bit \VAR{Stream Type} value from the stream.
 If \texttt{0xF8726F} and \texttt{0xBB}, respectively, we can
 read the remainder of the sync.
-Otherwise, we must `back up' 32 bits and continue reading substream size
+Otherwise, we must `back up' 32 bits and continue reading substream end
 and substream data values from the stream.
 If a \VAR{Major Sync} is not present in a frame,
 we use the values from the previous sync.
@@ -94,16 +94,16 @@ Value & Bits & Sample Rate & Channels & Channel Assignment \\
 \end{tabular}
 \end{tiny}
 
-\subsection{Substream Size}
-There is one \VAR{Substream Size} header per frame substream
+\subsection{Substream Info}
+There is one \VAR{Substream Info} header per frame substream
 (as indicated in the \VAR{Major Sync}).
 \begin{figure}[h]
 \includegraphics{figures/mlp_substream_size.pdf}
 \end{figure}
 \par
 \noindent
-\VAR{Substream Size} is the size of the entire substream,
-\textit{not} including the header.
+\VAR{Substream End} is the location of the substream's end,
+starting from the end of the last \VAR{Substream Info} value.
 
 \clearpage
 
@@ -124,7 +124,7 @@ decoding.
 Once all the blocks have been read, we align the stream to a
 mulitple of 16-bits.
 Then, if \VAR{Checkdata Present} has been indicated in the
-\VAR{Substream Size} header, we read an 8-bit parity
+\VAR{Substream Info} header, we read an 8-bit parity
 and an 8-bit CRC value.
 
 \subsection{Restart Header}

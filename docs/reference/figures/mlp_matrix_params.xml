@@ -14,9 +14,9 @@
   </row>
   <row>
     <col start="0" end="0" width=".1">Present₁</col>
-    <col width=".3">Matrix Coefficient₁</col>
+    <col width=".3" style="dashed">Matrix Coefficient₁</col>
     <col start="0" end="0" width=".1">Present₂</col>
-    <col width=".3">Matrix Coefficient₂</col>
+    <col width=".3" style="dashed">Matrix Coefficient₂</col>
     <col width=".2" style="dashed">...</col>
   </row>
   <line s_id="matrix" e_id="out_channel" s_corner="sw" e_corner="nw" style="dotted"/>

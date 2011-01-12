@@ -7,6 +7,6 @@
     <col start="3" end="3" width=".10" id="skip">Skip</col>
   </row>
   <row>
-    <col start="4" end="15">Substream Size (× 2)</col>
+    <col start="4" end="15">Substream End (× 2)</col>
   </row>
 </diagram>
