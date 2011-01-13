@@ -18,7 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from audiotools import Con,re,os,pcm,cStringIO
+from audiotools import Con,re,os,pcm,cStringIO,struct
 
 class DVDAudio:
     """An object representing an entire DVD-Audio disc.
@@ -299,6 +299,9 @@ class DVDAudio:
                        os.SEEK_SET)
 
                 titles.append(DVDATitle(
+                        dvdaudio=self,
+                        titleset=titleset,
+                        title=title_number + 1,
                         length=title.track_length,
                         tracks=[DVDATrack(dvdaudio=self,
                                           titleset=titleset,
@@ -337,9 +340,12 @@ class DVDATitle:
     which may are accessible via the .tracks attribute.
     """
 
-    def __init__(self, length, tracks):
+    def __init__(self, dvdaudio, titleset, title, length, tracks):
         """length is in PTS ticks, tracks is a list of DVDATrack objects"""
 
+        self.dvdaudio = dvdaudio
+        self.titleset = titleset
+        self.title = title
         self.length = length
         self.tracks = tracks
 
@@ -350,7 +356,66 @@ class DVDATitle:
         return self.tracks[index]
 
     def __repr__(self):
-        return "DVDATitle(%s, %s)" % (repr(self.length), repr(self.tracks))
+        return "DVDATitle(%s)" % \
+            (",".join(["%s=%s" % (key, getattr(self, key))
+                       for key in ["titleset", "title", "length", "tracks"]]))
+
+    def info(self):
+        """returns a (sample_rate, channels, channel_mask, bps, type) tuple"""
+
+        #find the AOB file of the title's first track
+        track_sector = self[0].first_sector
+        titleset = re.compile("ATS_%2.2d_\\d\\.AOB" % (self.titleset))
+        for aob_path in sorted([self.dvdaudio.files[key] for key in
+                           self.dvdaudio.files.keys()
+                           if (titleset.match(key))]):
+            aob_sectors = os.path.getsize(aob_path) / DVDAudio.SECTOR_SIZE
+            if (track_sector > aob_sectors):
+                track_sector -= aob_sectors
+            else:
+                break
+        else:
+            raise ValueError(_(u"unable to find track sector in AOB files"))
+
+        #open that AOB file and seek to that track's first sector
+        aob_file = open(aob_path, 'rb')
+        try:
+            aob_file.seek(track_sector * DVDAudio.SECTOR_SIZE)
+
+            #read the pack header
+            DVDAudio.PACK_HEADER.parse_stream(aob_file)
+
+            #skip packets until the stream ID 0xBD is found
+            pes_header = DVDAudio.PES_HEADER.parse_stream(aob_file)
+            while (pes_header.stream_id != 0xBD):
+                aob_file.read(pes_header.packet_length)
+                pes_header = DVDAudio.PES_HEADER.parse_stream(aob_file)
+
+            #parse the PCM/MLP header
+            header = DVDAudio.PACKET_HEADER.parse_stream(aob_file)
+
+            #return the values indicated by the header
+            return (DVDATrack.SAMPLE_RATE[
+                      header.info.group1_sample_rate],
+                    DVDATrack.CHANNELS[
+                      header.info.channel_assignment],
+                    DVDATrack.CHANNEL_MASK[
+                      header.info.channel_assignment],
+                    DVDATrack.BITS_PER_SAMPLE[
+                      header.info.group1_bps],
+                    header.stream_id)
+
+        finally:
+            aob_file.close()
+
+    def stream(self):
+        titleset = re.compile("ATS_%2.2d_\\d\\.AOB" % (self.titleset))
+
+        return AOBStream(sorted([self.dvdaudio.files[key]
+                                 for key in self.dvdaudio.files.keys()
+                                 if (titleset.match(key))]),
+                         self[0].first_sector,
+                         self[-1].last_sector)
 
 class SectorReader:
     """An object to abstract the reading of sectors from AOB files."""
@@ -439,136 +504,6 @@ class DVDATrack:
                        intersection.start - start_sector,
                        intersection.end - start_sector)
 
-    def packets(self):
-        """iterates a packet payload string for each packet of track data
-
-        This does not include the PES header data."""
-
-        def payload(packet):
-            pad1_len = ord(packet[2])
-            pad2_len = ord(packet[3 + pad1_len + 3])
-            return packet[3 + pad1_len + 4 + pad2_len:]
-
-        SECTOR_SIZE = DVDAudio.SECTOR_SIZE
-        PACK_HEADER = DVDAudio.PACK_HEADER
-        PES_HEADER = DVDAudio.PES_HEADER
-
-        for (aob_file, start_sector, end_sector) in self.sectors():
-            aob = self.dvdaudio.sector_reader(aob_file)
-            try:
-                aob.seek(start_sector)
-                for sector in aob.read(end_sector - start_sector):
-                    packet_size = SECTOR_SIZE
-                    pack_header = PACK_HEADER.parse_stream(sector)
-                    packet_size -= (14 + len(pack_header.stuffing))
-                    while (packet_size > 0):
-                        pes_header = PES_HEADER.parse_stream(sector)
-                        packet_size -= 6
-                        if (pes_header.stream_id == 0xBD):
-                            yield payload(
-                                sector.read(pes_header.packet_length))
-                        else:
-                            sector.read(pes_header.packet_length)
-                        packet_size -= pes_header.packet_length
-
-                    start_sector += 1
-            finally:
-                aob.close()
-
-    def info(self):
-        """returns (sample_rate, channels, channel_mask, bits_per_sample, type)
-
-        taken from the track's first sector
-        where type 0xA0 is PCM and type 0xA1 is MLP"""
-
-        (aob_file, start_sector, end_sector) = self.sectors().next()
-        aob = self.dvdaudio.sector_reader(aob_file)
-        try:
-            aob.seek(start_sector)
-            sector = aob.read(1).next()
-            packet_size = DVDAudio.SECTOR_SIZE
-            pack_header = DVDAudio.PACK_HEADER.parse_stream(sector)
-            packet_size -= (14 + len(pack_header.stuffing))
-            while (packet_size > 0):
-                pes_header = DVDAudio.PES_HEADER.parse_stream(sector)
-                packet_size -= 6
-                if (pes_header.stream_id == 0xBD):
-                    #the first packet of audio data
-
-                    header = DVDAudio.PACKET_HEADER.parse_stream(sector)
-                    return (DVDATrack.SAMPLE_RATE[
-                              header.info.group1_sample_rate],
-                            DVDATrack.CHANNELS[
-                              header.info.channel_assignment],
-                            DVDATrack.CHANNEL_MASK[
-                              header.info.channel_assignment],
-                            DVDATrack.BITS_PER_SAMPLE[
-                              header.info.group1_bps],
-                            header.stream_id)
-                else:
-                    sector.read(pes_header.packet_length)
-                packet_size -= pes_header.packet_length
-            else:
-                raise InvalidDVDA(u"No audio data found in first sector")
-        finally:
-            aob.close()
-
-    def bits_per_sample(self):
-        return self.info()[3]
-
-    def channels(self):
-        return self.info()[1]
-
-    def channel_mask(self):
-        return self.info()[2]
-
-    def lossless(self):
-        return True
-
-    def sample_rate(self):
-        return self.info()[0]
-
-    def to_pcm(self):
-        (sample_rate,
-         channels,
-         channel_mask,
-         bits_per_sample,
-         track_type) = self.info()
-
-        if (track_type == 0xA0):
-            from audiotools.decoders import AOBPCMDecoder
-
-            return AOBPCMDecoder(__PacketReader__(self.packets()),
-                                 sample_rate,
-                                 channels,
-                                 channel_mask,
-                                 bits_per_sample)
-        elif (track_type == 0xA1):
-            from audiotools.decoders import MLPDecoder
-
-            return MLPDecoder(__PacketReader__(self.packets()))
-        else:
-            raise ValueError(_(u"unsupported DVD-A track type"))
-
-class __PacketReader__:
-    def __init__(self, packets):
-        self.packets = packets
-
-    def read(self, bytes):
-        if (self.packets is not None):
-            try:
-                return self.packets.next()
-            except StopIteration:
-                self.packets = None
-                return ""
-        else:
-            return ""
-
-    def close(self):
-        self.packets = None
-
-PacketReader = __PacketReader__
-
 
 class Rangeset:
     """An optimized combination of range() and set()"""
@@ -618,3 +553,70 @@ class Rangeset:
             return Rangeset(min_point, max_point)
         else:
             return Rangeset(0, 0)
+
+class AOBStream:
+    def __init__(self, aob_files, first_sector, last_sector):
+        self.aob_files = aob_files
+        self.first_sector = first_sector
+        self.last_sector = last_sector
+
+    def sectors(self):
+        first_sector = self.first_sector
+        last_sector = self.last_sector
+
+        for aob_file in self.aob_files:
+            if (first_sector > 0):
+                aob_sectors = os.path.getsize(aob_file) / DVDAudio.SECTOR_SIZE
+                if (first_sector > aob_sectors):
+                    first_sector -= aob_sectors
+                    last_sector -= aob_sectors
+                    continue
+
+            if (last_sector > 0):
+                aob = open(aob_file, 'rb')
+                if (first_sector > 0):
+                    aob.seek(first_sector * DVDAudio.SECTOR_SIZE,
+                             os.SEEK_SET)
+                    first_sector -= aob_sectors
+                    last_sector -= aob_sectors
+
+                try:
+                    sector = aob.read(2048)
+                    last_sector -= 1
+                    while (len(sector) > 0):
+                        yield sector
+                        sector = aob.read(2048)
+                        last_sector -= 1
+                finally:
+                    aob.close()
+
+    def packets(self):
+        packet_header_size = struct.calcsize(">3sBH")
+
+        for sector in self.sectors():
+            assert(sector[0:4] == '\x00\x00\x01\xBA')
+            stuffing_count = ord(sector[13]) & 0x7
+            sector_bytes = 2048 - (14 + stuffing_count)
+            sector = cStringIO.StringIO(sector[-sector_bytes:])
+            while (sector_bytes > 0):
+                (start_code,
+                 stream_id,
+                 packet_length) = struct.unpack(
+                    ">3sBH", sector.read(packet_header_size))
+                sector_bytes -= packet_header_size
+
+                assert(start_code == '\x00\x00\x01')
+                if (stream_id == 0xBD):
+                    yield sector.read(packet_length)
+                else:
+                    sector.read(packet_length)
+                sector_bytes -= packet_length
+
+    def packet_payloads(self):
+        def payload(packet):
+            pad1_len = ord(packet[2])
+            pad2_len = ord(packet[3 + pad1_len + 3])
+            return packet[3 + pad1_len + 4 + pad2_len:]
+
+        for packet in self.packets():
+            yield payload(packet)

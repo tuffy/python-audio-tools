@@ -48,10 +48,11 @@ if (__name__ == '__main__'):
 
     titleset = dvda[0]
     for (title_num, title) in enumerate(titleset):
-        track_infos = [track.info() for track in title.tracks]
-        channels = list(set([i[1] for i in track_infos]))[0]
-        sample_rate = list(set([i[0] for i in track_infos]))[0]
-        bits_per_sample = list(set([i[3] for i in track_infos]))[0]
+        (sample_rate,
+         channels,
+         channel_mask,
+         bits_per_sample,
+         stream_type) = title.info()
 
 
         msg.new_row()

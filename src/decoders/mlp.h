@@ -124,6 +124,8 @@ struct mlp_DecodingParameters {
 typedef struct {
 #ifndef STANDALONE
     PyObject_HEAD
+
+    PyObject* reader_obj;
 #endif
 
     Bitstream* bitstream;
