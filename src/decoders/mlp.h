@@ -1,4 +1,7 @@
+#ifndef STANDALONE
 #include <Python.h>
+#endif
+
 #include <stdint.h>
 #include "../bitstream_r.h"
 #include "../array.h"
@@ -24,6 +27,7 @@
 
 #define MAX_MLP_CHANNELS 8
 #define MAX_MLP_MATRICES 6
+#define MAX_MLP_SUBSTREAMS 2
 
 struct mlp_MajorSync {
     /* sync words (0xF8726F)     24 bits*/
@@ -118,7 +122,9 @@ struct mlp_DecodingParameters {
 };
 
 typedef struct {
+#ifndef STANDALONE
     PyObject_HEAD
+#endif
 
     Bitstream* bitstream;
 
@@ -149,8 +155,8 @@ typedef struct {
     /*filtered data from a given block*/
     struct ia_array filtered_residuals;
 
-    /*decoded and filtered samples for a given substream*/
-    struct ia_array* substream_samples;
+    /*decoded and filtered samples for all substreams*/
+    struct ia_array substream_samples;
 
     /*combined array of all substreams*/
     struct ia_array frame_samples;
@@ -169,17 +175,21 @@ void mlp_byte_callback(uint8_t byte, void* ptr);
 
 int mlp_sample_rate(struct mlp_MajorSync* major_sync);
 
+int mlp_bits_per_sample(struct mlp_MajorSync* major_sync);
+
+int mlp_channel_count(struct mlp_MajorSync* major_sync);
+
+int
+mlp_channel_mask(struct mlp_MajorSync* major_sync);
+
+#ifndef STANDALONE
 /*the MLPDecoder.sample_rate attribute getter*/
 static PyObject*
 MLPDecoder_sample_rate(decoders_MLPDecoder *self, void *closure);
 
-int mlp_bits_per_sample(struct mlp_MajorSync* major_sync);
-
 /*the MLPDecoder.bits_per_sample attribute getter*/
 static PyObject*
 MLPDecoder_bits_per_sample(decoders_MLPDecoder *self, void *closure);
-
-int mlp_channel_count(struct mlp_MajorSync* major_sync);
 
 /*the MLPDecoder.channels attribute getter*/
 static PyObject*
@@ -196,6 +206,11 @@ MLPDecoder_read(decoders_MLPDecoder* self, PyObject *args);
 /*the MLPDecoder.analyze_frame() method*/
 static PyObject*
 MLPDecoder_analyze_frame(decoders_MLPDecoder* self, PyObject *args);
+
+/*Reads a substream and returns a Python object of its values*/
+PyObject*
+mlp_analyze_substream(decoders_MLPDecoder* decoder,
+                      int substream);
 
 /*the MLPDecoder.close() method*/
 static PyObject*
@@ -277,6 +292,7 @@ PyTypeObject decoders_MLPDecoderType = {
     0,                         /* tp_alloc */
     MLPDecoder_new,            /* tp_new */
 };
+#endif
 
 /*Returns the total size of the next MLP frame
   or -1 if the end of the stream has been reached.*/
@@ -311,11 +327,6 @@ mlp_read_substream(decoders_MLPDecoder* decoder,
                    int substream,
                    struct ia_array* samples);
 
-/*Reads a substream and returns a Python object of its values*/
-PyObject*
-mlp_analyze_substream(decoders_MLPDecoder* decoder,
-                      int substream);
-
 unsigned int
 mlp_substream_channel_count(decoders_MLPDecoder* decoder,
                             int substream);
@@ -347,7 +358,8 @@ mlp_read_restart_header(Bitstream* bs,
 
 mlp_status
 mlp_read_decoding_parameters(Bitstream* bs,
-                             unsigned int substream_channel_count,
+                             int min_channel,
+                             int max_channel,
                              int max_matrix_channel,
                              struct mlp_DecodingParameters* parameters);
 
@@ -379,7 +391,8 @@ mlp_calculate_signed_offset(uint8_t codebook,
 mlp_status
 mlp_read_residuals(Bitstream* bs,
                    struct mlp_DecodingParameters* parameters,
-                   int channel_count,
+                   int min_channel,
+                   int max_channel,
                    struct ia_array* residuals);
 
 /*returns the next residual MSB value, or -1 if an error occurs*/
@@ -388,7 +401,8 @@ mlp_read_code(Bitstream* bs, int codebook);
 
 mlp_status
 mlp_filter_channels(struct ia_array* unfiltered,
-                    unsigned int channel_count,
+                    int min_channel,
+                    int max_channel,
                     struct mlp_DecodingParameters* parameters,
                     struct ia_array* filtered);
 
@@ -414,7 +428,7 @@ mlp_noise_channels(unsigned int pcm_frames,
   for each matrix in the list of matrices*/
 void
 mlp_rematrix_channels(struct ia_array* channels,
-                      unsigned int channel_count,
+                      int max_matrix_channel,
                       uint32_t* noise_gen_seed,
                       uint8_t noise_shift,
                       struct mlp_MatrixParameters* matrices,
@@ -424,7 +438,7 @@ mlp_rematrix_channels(struct ia_array* channels,
   for a single set of matrix values*/
 void
 mlp_rematrix_channel(struct ia_array* channels,
-                     unsigned int channel_count,
+                     int max_matrix_channel,
                      struct i_array* noise_channel1,
                      struct i_array* noise_channel2,
                      struct mlp_Matrix* matrix,
