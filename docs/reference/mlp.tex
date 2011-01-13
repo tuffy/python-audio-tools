@@ -133,29 +133,30 @@ and an 8-bit CRC value.
 \end{figure}
 \par
 \noindent
-There are \VAR{Max Matrix Channel} + 1 number of
-unsigned 6-bit \VAR{Channel Assignment} values.
 \VAR{Min Channel} and \VAR{Max Channel} indicate the substream's
 range of channels.
-The total number of channels in a given substream is:
-\begin{equation*}
-(\text{Max Channel} - \text{Min Channel}) + 1
-\end{equation*}
+For example, a 6 channel stream might have values of 0 and 1
+for the first substream, and values of 2 and 5 for the second.
+So, decoding $\text{substream}_1$ would generate $\text{sample}_{0~i}$
+and $\text{sample}_{1~i}$, while decoding $\text{substream}_2$ would
+generate $\text{sample}_{2~i}$ through $\text{sample}_{5~i}$
+(where $i$ covers the range of total samples in the substreams' blocks).
 
-Once a restart header is seen, the \VAR{Decoding Parameters} are
-immediately reset to their default values.
+There are \VAR{Max Matrix Channel} + 1 number of \VAR{Channel Assignment}
+values, indicating which MLP channel the decoded output will be sent to
+(offset from the substream's minimum channel).
 
 \clearpage
 
 \subsection{Decoding Parameters}
 
-Reading the decoding parameters requires 8, 1-bit
-\VAR{Parameter Presence Flags}.
+Reading the decoding parameters requires 8,
+\VAR{Parameter Presence Flags} bits.
 If the flag for a particular parameter is set,
 \textit{and} the parameter's prefixed \VAR{Present}
 bit is set, we go ahead and read that parameter.
-Note that the first decoding parameter is the \VAR{Parameter Presence Flags}
-value itself.
+Note that the first decoding parameter is the 8-bit
+\VAR{Parameter Presence Flags} value itself.
 
 \begin{figure}[h]
 \includegraphics{figures/mlp_decoding_params.pdf}
@@ -163,8 +164,15 @@ value itself.
 \par
 \noindent
 There is one optional \VAR{Channel Parameters} block per
-substream channel.
+channel from \VAR{Min Channel} to \VAR{Max Channel}.
 Again, each is prefixed by a single \VAR{Present} bit.
+
+For example, given the our 2 substream MLP file from before
+(with \VAR{Min Channel} = 0, \VAR{Max Channel} = 1 in $\text{substream}_1$
+and \VAR{Min Channel} = 2, \VAR{Max Channel} = 5 in $\text{substream}_2$),
+the first substream has optional $\text{Channel Parameters}_0$
+and $\text{Channel Parameters}_1$, while the second has
+optional $\text{Channel Parameters}_2$ through $\text{Channel Parameters}_5$.
 
 \subsubsection{Parameter Presence Flags}
 
@@ -182,6 +190,7 @@ reading \VAR{Channel Parameters}.
 
 This is the size of the block in PCM frames.
 Its value is 8 by default.
+All channels within a block will have the same number of samples.
 
 \clearpage
 
@@ -215,8 +224,7 @@ treat \VAR{Matrix Count} as 0 by default.
 \end{figure}
 \par
 \noindent
-There are \VAR{Max Matrix Channel} + 1 number of shift values
-(from the restart header).
+There are \VAR{Max Matrix Channel} + 1 number of shift values.
 Each is a signed, 4-bit value.
 \par
 If \VAR{Output Shifts} is \textit{not} indicated during parameter
@@ -232,9 +240,14 @@ decoding, all $\text{Output Shift}_i$ values are 0 by default.
 \par
 \noindent
 There is one \VAR{Quant Step Size} value per substream channel.
+To continue our 2 substream example, if the \VAR{Present} bit is set,
+the first substream has $\text{Quant Step Size}_0$ and
+$\text{Quant Step Size}_1$,
+while the second has $\text{Quant Step Size}_2$ through
+$\text{Quant Step Size}_5$.
+
 Each is an unsigned, 4-bit value.
 These are analagous to FLAC's wasted bits-per-sample.
-\par
 If \VAR{Quant Step Sizes} is \textit{not} indicated during parameter
 decoding, all $\text{Quant Step Size}_i$ values are 0 by default.
 
@@ -538,6 +551,15 @@ Finally, given our filtered channel values and a set of matrix parameters,
 we ``rematrix'' those values into the final PCM values.
 This is a form of cross-channel decorrelation, roughly analagous
 to FLAC's mid-side channel assignment.
+
+Note that if a file has two substreams, we apply matrix parameters
+depending on how many substreams are decoded.
+That is, when decoding only the first substream, we only apply
+the first substream's matrix parameters.
+But when decoding both substreams, we apply the second substream's
+matrix parameters.
+This allows a two substream MLP file to have two different ``mixes''
+from the same data.
 
 \subsubsection{Noise Channels}
 

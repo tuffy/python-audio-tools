@@ -22,9 +22,9 @@
   </row>
   <row>
     <col start="0" end="0" width=".10">Present</col>
-    <col width=".35" style="dashed">Channel Parameters₁</col>
+    <col width=".35" style="dashed">Channel Parameters₀</col>
     <col start="0" end="0" width=".10">Present</col>
-    <col width=".35" style="dashed">Channel Parameters₂</col>
+    <col width=".35" style="dashed">Channel Parameters₁</col>
     <col width=".1" style="dashed">...</col>
   </row>
 </diagram>
