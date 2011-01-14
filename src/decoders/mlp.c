@@ -83,14 +83,7 @@ MLPDecoder_init(decoders_MLPDecoder *self,
         return -1;
 
     /*open the MLP file*/
-    if (!PyFile_CheckExact(reader)) {
-        PyErr_SetString(PyExc_ValueError, "reader must be file object");
-        return -1;
-    }
-
-    self->reader_obj = reader;
-    Py_INCREF(self->reader_obj);
-    self->bitstream = bs_open(PyFile_AsFile(reader), BS_BIG_ENDIAN);
+    self->bitstream = bs_open_python(reader, BS_BIG_ENDIAN);
 #else
 int
 MLPDecoder_init(decoders_MLPDecoder* self,
@@ -102,7 +95,6 @@ MLPDecoder_init(decoders_MLPDecoder* self,
     self->init_ok = 0;
     self->stream_closed = 0;
     self->bitstream = NULL;
-    self->reader_obj = NULL;
     self->parity = 0;
     self->crc = 0x3C;
 
@@ -190,11 +182,7 @@ MLPDecoder_dealloc(decoders_MLPDecoder *self)
     int channel;
 
     if (self->bitstream != NULL)
-        bs_free(self->bitstream);
-
-    if (self->reader_obj != NULL) {
-        Py_DECREF(self->reader_obj);
-    }
+        self->bitstream->close(self->bitstream);
 
     if (self->init_ok) {
         for (substream = 0; substream < MAX_MLP_SUBSTREAMS; substream++) {

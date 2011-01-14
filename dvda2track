@@ -25,6 +25,25 @@ import gettext
 
 gettext.install("audiotools", unicode=True)
 
+class DummyTrack:
+    def __init__(self, sample_rate, channels, channel_mask, bits_per_sample):
+        self.__sample_rate__ = sample_rate
+        self.__channels__ = channels
+        self.__channel_mask__ = channel_mask
+        self.__bits_per_sample__ = bits_per_sample
+
+    def sample_rate(self):
+        return self.__sample_rate__
+
+    def channels(self):
+        return self.__channels__
+
+    def channel_mask(self):
+        return self.__channel_mask__
+
+    def bits_per_sample(self):
+        return self.__bits_per_sample__
+
 if (__name__ == '__main__'):
     parser = audiotools.OptionParser(
         usage=_(u"%prog [options] [track #] [track #] ..."),
@@ -179,95 +198,109 @@ if (__name__ == '__main__'):
     title = dvda[0][options.title - 1]
 
     if (len(args) == 0):
-        to_rip = [track for track in title]
+        to_rip = dict([(track.track - 1, track) for track in title])
     else:
-        to_rip = []
+        to_rip = {}
         for arg in args:
             try:
-                to_rip.append(title[int(arg) - 1])
+                to_rip[int(arg) - 1] = title[int(arg) - 1]
             except IndexError:
                 continue
             except ValueError:
                 continue
-        to_rip.sort(lambda x, y: cmp(x.track, y.track))
+
+    (sample_rate,
+     channels,
+     channel_mask,
+     bits_per_sample,
+     stream_type) = title.info()
 
     #determine whether to add ReplayGain by default
     if (options.add_replay_gain is None):
         options.add_replay_gain = (
             AudioType.lossless_replay_gain() and
-            audiotools.applicable_replay_gain(to_rip))
+            audiotools.applicable_replay_gain(
+                [DummyTrack(sample_rate=sample_rate,
+                            channels=channels,
+                            channel_mask=channel_mask,
+                            bits_per_sample=bits_per_sample)]))
 
     encoded = []
-    for dvda_track in to_rip:
-        basename = "track%2d%2.2d" % (options.album_number,
-                                      dvda_track.track)
 
-        try:
-            if (xmcd is not None):  # we have metadata
-                metadata = xmcd.get(dvda_track.track, None)
-                if (metadata is not None):
-                    if (options.album_number != 0):
-                        metadata.album_number = options.album_number
-                    if (options.album_total != 0):
-                        metadata.album_total = options.album_total
+    for (track_number, pcmreader) in enumerate(
+        audiotools.pcm_split(
+            title.to_pcm(),
+            [(track.pts_length * sample_rate) /
+             audiotools.DVDAudio.PTS_PER_SECOND for track in title])):
+        if (track_number in to_rip.keys()):
+            dvda_track = to_rip[track_number]
+
+            basename = "track%2d%2.2d" % (options.album_number,
+                                          dvda_track.track)
+
+            try:
+                if (xmcd is not None):  # we have metadata
+                    metadata = xmcd.get(dvda_track.track, None)
+                    if (metadata is not None):
+                        if (options.album_number != 0):
+                            metadata.album_number = options.album_number
+                        if (options.album_total != 0):
+                            metadata.album_total = options.album_total
 
 
-                filename = os.path.join(
-                    base_directory,
-                    AudioType.track_name(file_path=basename,
-                                         track_metadata=metadata,
-                                         format=options.format))
+                    filename = os.path.join(
+                        base_directory,
+                        AudioType.track_name(file_path=basename,
+                                             track_metadata=metadata,
+                                             format=options.format))
 
-                audiotools.make_dirs(filename)
+                    audiotools.make_dirs(filename)
 
-                track = AudioType.from_pcm(
-                    filename,
-                    dvda_track.to_pcm(),
-                    quality)
+                    track = AudioType.from_pcm(filename, pcmreader, quality)
 
-                track.set_metadata(metadata)
-                encoded.append(track)
-            else:               # no metadata
-                filename = os.path.join(
-                    base_directory,
-                    AudioType.track_name(file_path=basename,
-                                         track_metadata=None,
-                                         format=options.format))
+                    track.set_metadata(metadata)
+                    encoded.append(track)
+                else:               # no metadata
+                    filename = os.path.join(
+                        base_directory,
+                        AudioType.track_name(file_path=basename,
+                                             track_metadata=None,
+                                             format=options.format))
 
-                audiotools.make_dirs(filename)
+                    audiotools.make_dirs(filename)
 
-                track = AudioType.from_pcm(
-                    filename,
-                    dvda_track.to_pcm(),
-                    quality)
+                    track = AudioType.from_pcm(filename, pcmreader, quality)
 
-                #even if no MetaData is given,
-                #set track number and album number if possible
-                track.set_metadata(audiotools.MetaData(
-                        track_number=dvda_track.track,
-                        track_total=len(title),
-                        album_number=options.album_number,
-                        album_total=options.album_total))
+                    #even if no MetaData is given,
+                    #set track number and album number if possible
+                    track.set_metadata(audiotools.MetaData(
+                            track_number=dvda_track.track,
+                            track_total=len(title),
+                            album_number=options.album_number,
+                            album_total=options.album_total))
 
-                encoded.append(track)
+                    encoded.append(track)
 
-            msg.info(
-                _(u"title %(title_number)d - " +
-                  u"track %(track_number)2.2d -> %(filename)s") % \
-                    {"title_number":options.title,
-                     "track_number":dvda_track.track,
-                     "filename":msg.filename(track.filename)})
-        except audiotools.UnsupportedTracknameField, err:
-            err.error_msg(msg)
-            sys.exit(1)
-        except KeyError:
-            continue
-        except audiotools.InvalidFormat, err:
-            msg.error(unicode(err))
-            sys.exit(1)
-        except audiotools.EncodingError, err:
-            msg.error(_(u"Unable to write \"%s\"") % (msg.filename(filename)))
-            sys.exit(1)
+                msg.info(
+                    _(u"title %(title_number)d - " +
+                      u"track %(track_number)2.2d -> %(filename)s") % \
+                        {"title_number":options.title,
+                         "track_number":dvda_track.track,
+                         "filename":msg.filename(track.filename)})
+            except audiotools.UnsupportedTracknameField, err:
+                err.error_msg(msg)
+                sys.exit(1)
+            except KeyError:
+                continue
+            except audiotools.InvalidFormat, err:
+                msg.error(unicode(err))
+                sys.exit(1)
+            except audiotools.EncodingError, err:
+                msg.error(_(u"Unable to write \"%s\"") % \
+                              (msg.filename(filename)))
+                sys.exit(1)
+        else:
+            audiotools.transfer_framelist_data(pcmreader, lambda f: f)
 
     if (options.add_replay_gain and AudioType.can_add_replay_gain()):
         if (AudioType.lossless_replay_gain()):

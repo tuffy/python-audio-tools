@@ -417,6 +417,40 @@ class DVDATitle:
                          self[0].first_sector,
                          self[-1].last_sector)
 
+    def to_pcm(self):
+        (sample_rate,
+         channels,
+         channel_mask,
+         bits_per_sample,
+         stream_type) = self.info()
+
+        if (stream_type == 0xA1):
+            from audiotools.decoders import MLPDecoder
+
+            return MLPDecoder(IterReader(self.stream().packet_payloads()),
+                              (self.length * sample_rate) /
+                              DVDAudio.PTS_PER_SECOND)
+        else:
+            raise ValueError(_(u"unsupported DVD-Audio stream type"))
+
+
+class DVDATitleReader:
+    def __init__(self, pcmreader, pid):
+        self.pcmreader = pcmreader
+        self.pid = pid
+        self.sample_rate = pcmreader.sample_rate
+        self.channels = pcmreader.channels
+        self.channel_mask = pcmreader.channel_mask
+        self.bits_per_sample = pcmreader.bits_per_sample
+
+    def read(self, bytes):
+        return self.pcmreader.read(bytes)
+
+    def close(self):
+        self.pcmreader.close()
+        os.waitpid(self.pid, 0)
+
+
 class SectorReader:
     """An object to abstract the reading of sectors from AOB files."""
     def __init__(self, aob_filename):
@@ -620,3 +654,16 @@ class AOBStream:
 
         for packet in self.packets():
             yield payload(packet)
+
+class IterReader:
+    def __init__(self, iterator):
+        self.iterator = iterator
+
+    def read(self, bytes):
+        try:
+            return self.iterator.next()
+        except StopIteration:
+            return ""
+
+    def close(self):
+        pass

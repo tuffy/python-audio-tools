@@ -1345,6 +1345,34 @@ class BufferedPCMReader:
             else:
                 self.reader_finished = True
 
+class LimitedPCMReader:
+    def __init__(self, buffered_pcmreader, total_pcm_frames):
+        """buffered_pcmreader should be a BufferedPCMReader
+
+        which ensures we won't pull more frames off the reader
+        than necessary upon calls to read()"""
+
+        self.pcmreader = buffered_pcmreader
+        self.total_pcm_frames = total_pcm_frames
+        self.sample_rate = self.pcmreader.sample_rate
+        self.channels = self.pcmreader.channels
+        self.channel_mask = self.pcmreader.channel_mask
+        self.bits_per_sample = self.pcmreader.bits_per_sample
+        self.bytes_per_frame = self.channels * (self.bits_per_sample / 8)
+
+    def read(self, bytes):
+        if (self.total_pcm_frames > 0):
+            frame = self.pcmreader.read(
+                min(bytes,
+                    self.total_pcm_frames * self.bytes_per_frame))
+            self.total_pcm_frames -= frame.frames
+            return frame
+        else:
+            return pcm.FrameList("", self.channels, self.bits_per_sample,
+                                 False, True)
+
+    def close(self):
+        self.total_pcm_frames = 0
 
 def pcm_split(reader, pcm_lengths):
     """Yields a PCMReader object from reader for each pcm_length (in frames).
@@ -1354,34 +1382,9 @@ def pcm_split(reader, pcm_lengths):
     as the full stream.  reader is closed upon completion.
     """
 
-    import tempfile
-
-    def chunk_sizes(total_size, chunk_size):
-        while (total_size > chunk_size):
-            total_size -= chunk_size
-            yield chunk_size
-        yield total_size
-
     full_data = BufferedPCMReader(reader)
-
-    for byte_length in [i * reader.channels * reader.bits_per_sample / 8
-                        for i in pcm_lengths]:
-        if (byte_length > (BUFFER_SIZE * 10)):
-            #if the sub-file length is somewhat large, use a temporary file
-            sub_file = tempfile.TemporaryFile()
-            for size in chunk_sizes(byte_length, BUFFER_SIZE):
-                sub_file.write(full_data.read(size).to_bytes(False, True))
-            sub_file.seek(0, 0)
-        else:
-            #if the sub-file length is very small, use StringIO
-            sub_file = cStringIO.StringIO(
-                full_data.read(byte_length).to_bytes(False, True))
-
-        yield PCMReader(sub_file,
-                        reader.sample_rate,
-                        reader.channels,
-                        reader.channel_mask,
-                        reader.bits_per_sample)
+    for pcm_length in pcm_lengths:
+        yield LimitedPCMReader(full_data, pcm_length)
 
     full_data.close()
 
