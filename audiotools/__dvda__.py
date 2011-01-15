@@ -224,12 +224,12 @@ class DVDAudio:
 
                 from audiotools.prot import CPPMDecoder
 
-                self.unprotector = CPPMDecoder(cdrom_device,
-                                               self.files['DVDAUDIO.MKB'])
+                self.unprotector = CPPMDecoder(
+                    cdrom_device, self.files['DVDAUDIO.MKB']).decode
             else:
                 raise ImportError()
         except ImportError:
-            self.unprotector = None
+            self.unprotector = lambda sector: sector
 
     def __getitem__(self, key):
         return self.titlesets[key]
@@ -411,11 +411,13 @@ class DVDATitle:
     def stream(self):
         titleset = re.compile("ATS_%2.2d_\\d\\.AOB" % (self.titleset))
 
-        return AOBStream(sorted([self.dvdaudio.files[key]
-                                 for key in self.dvdaudio.files.keys()
-                                 if (titleset.match(key))]),
-                         self[0].first_sector,
-                         self[-1].last_sector)
+        return AOBStream(
+            aob_files=sorted([self.dvdaudio.files[key]
+                              for key in self.dvdaudio.files.keys()
+                              if (titleset.match(key))]),
+            first_sector=self[0].first_sector,
+            last_sector=self[-1].last_sector,
+            unprotector=self.dvdaudio.unprotector)
 
     def to_pcm(self):
         (sample_rate,
@@ -450,39 +452,6 @@ class DVDATitleReader:
         self.pcmreader.close()
         os.waitpid(self.pid, 0)
 
-
-class SectorReader:
-    """An object to abstract the reading of sectors from AOB files."""
-    def __init__(self, aob_filename):
-        self.file = open(aob_filename, "rb")
-
-    def seek(self, sector):
-        """seeks to the given sector in the AOB file"""
-
-        self.file.seek(sector * DVDAudio.SECTOR_SIZE, os.SEEK_SET)
-
-    def read(self, sectors):
-        """yields "sectors" number of file-like objects"""
-
-        for i in xrange(sectors):
-            yield cStringIO.StringIO(self.file.read(DVDAudio.SECTOR_SIZE))
-
-    def close(self):
-        """closes the current AOB file for further reading"""
-
-        self.file.close()
-
-class UnprotectionSectorReader(SectorReader):
-    def __init__(self, aob_filename, unprotector):
-        SectorReader.__init__(self, aob_filename)
-        self.unprotector = unprotector
-
-    def read(self, sectors):
-        """yields "sectors" number of file-like objects"""
-
-        for i in xrange(sectors):
-            yield cStringIO.StringIO(
-                self.unprotector.decode(self.file.read(DVDAudio.SECTOR_SIZE)))
 
 class DVDATrack:
     """An object representing an individual DVD-Audio track."""
@@ -589,10 +558,12 @@ class Rangeset:
             return Rangeset(0, 0)
 
 class AOBStream:
-    def __init__(self, aob_files, first_sector, last_sector):
+    def __init__(self, aob_files, first_sector, last_sector,
+                 unprotector=lambda sector: sector):
         self.aob_files = aob_files
         self.first_sector = first_sector
         self.last_sector = last_sector
+        self.unprotector = unprotector
 
     def sectors(self):
         first_sector = self.first_sector
@@ -618,7 +589,7 @@ class AOBStream:
                     sector = aob.read(2048)
                     last_sector -= 1
                     while (len(sector) > 0):
-                        yield sector
+                        yield self.unprotector(sector)
                         sector = aob.read(2048)
                         last_sector -= 1
                 finally:

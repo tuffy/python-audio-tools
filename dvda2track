@@ -68,8 +68,8 @@ class LimitedPCMReader:
             self.total_pcm_frames -= frame.frames
             return frame
         else:
-            return pcm.FrameList("", self.channels, self.bits_per_sample,
-                                 False, True)
+            return audiotools.pcm.FrameList(
+                "", self.channels, self.bits_per_sample, False, True)
 
     def close(self):
         self.total_pcm_frames = 0
@@ -82,7 +82,7 @@ def pcm_split(reader, pcm_lengths):
     as the full stream.  reader is closed upon completion.
     """
 
-    full_data = BufferedPCMReader(reader)
+    full_data = audiotools.BufferedPCMReader(reader)
     for pcm_length in pcm_lengths:
         yield LimitedPCMReader(full_data, pcm_length)
 
