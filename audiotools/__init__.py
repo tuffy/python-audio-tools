@@ -1382,9 +1382,34 @@ def pcm_split(reader, pcm_lengths):
     as the full stream.  reader is closed upon completion.
     """
 
+    import tempfile
+
+    def chunk_sizes(total_size, chunk_size):
+        while (total_size > chunk_size):
+            total_size -= chunk_size
+            yield chunk_size
+        yield total_size
+
     full_data = BufferedPCMReader(reader)
-    for pcm_length in pcm_lengths:
-        yield LimitedPCMReader(full_data, pcm_length)
+
+    for byte_length in [i * reader.channels * reader.bits_per_sample / 8
+                        for i in pcm_lengths]:
+        if (byte_length > (BUFFER_SIZE * 10)):
+            #if the sub-file length is somewhat large, use a temporary file
+            sub_file = tempfile.TemporaryFile()
+            for size in chunk_sizes(byte_length, BUFFER_SIZE):
+                sub_file.write(full_data.read(size).to_bytes(False, True))
+            sub_file.seek(0, 0)
+        else:
+            #if the sub-file length is very small, use StringIO
+            sub_file = cStringIO.StringIO(
+                full_data.read(byte_length).to_bytes(False, True))
+
+        yield PCMReader(sub_file,
+                        reader.sample_rate,
+                        reader.channels,
+                        reader.channel_mask,
+                        reader.bits_per_sample)
 
     full_data.close()
 

@@ -44,6 +44,51 @@ class DummyTrack:
     def bits_per_sample(self):
         return self.__bits_per_sample__
 
+
+class LimitedPCMReader:
+    def __init__(self, buffered_pcmreader, total_pcm_frames):
+        """buffered_pcmreader should be a BufferedPCMReader
+
+        which ensures we won't pull more frames off the reader
+        than necessary upon calls to read()"""
+
+        self.pcmreader = buffered_pcmreader
+        self.total_pcm_frames = total_pcm_frames
+        self.sample_rate = self.pcmreader.sample_rate
+        self.channels = self.pcmreader.channels
+        self.channel_mask = self.pcmreader.channel_mask
+        self.bits_per_sample = self.pcmreader.bits_per_sample
+        self.bytes_per_frame = self.channels * (self.bits_per_sample / 8)
+
+    def read(self, bytes):
+        if (self.total_pcm_frames > 0):
+            frame = self.pcmreader.read(
+                min(bytes,
+                    self.total_pcm_frames * self.bytes_per_frame))
+            self.total_pcm_frames -= frame.frames
+            return frame
+        else:
+            return pcm.FrameList("", self.channels, self.bits_per_sample,
+                                 False, True)
+
+    def close(self):
+        self.total_pcm_frames = 0
+
+def pcm_split(reader, pcm_lengths):
+    """Yields a PCMReader object from reader for each pcm_length (in frames).
+
+    Each sub-reader is pcm_length PCM frames long with the same
+    channels, bits_per_sample, sample_rate and channel_mask
+    as the full stream.  reader is closed upon completion.
+    """
+
+    full_data = BufferedPCMReader(reader)
+    for pcm_length in pcm_lengths:
+        yield LimitedPCMReader(full_data, pcm_length)
+
+    full_data.close()
+
+
 if (__name__ == '__main__'):
     parser = audiotools.OptionParser(
         usage=_(u"%prog [options] [track #] [track #] ..."),
@@ -228,10 +273,9 @@ if (__name__ == '__main__'):
     encoded = []
 
     for (track_number, pcmreader) in enumerate(
-        audiotools.pcm_split(
-            title.to_pcm(),
-            [(track.pts_length * sample_rate) /
-             audiotools.DVDAudio.PTS_PER_SECOND for track in title])):
+        pcm_split(title.to_pcm(),
+                  [(track.pts_length * sample_rate) /
+                   audiotools.DVDAudio.PTS_PER_SECOND for track in title])):
         if (track_number in to_rip.keys()):
             dvda_track = to_rip[track_number]
 
