@@ -3282,6 +3282,7 @@ from __speex__ import *
 from __shn__ import *
 
 from __dvda__ import *
+from __player__ import *
 
 
 #######################
