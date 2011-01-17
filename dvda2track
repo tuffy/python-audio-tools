@@ -22,6 +22,8 @@ import sys
 import os
 import audiotools
 import gettext
+import tempfile
+from audiotools.decoders import MLPDecoder
 
 gettext.install("audiotools", unicode=True)
 
@@ -272,8 +274,16 @@ if (__name__ == '__main__'):
 
     encoded = []
 
+    temp_track = tempfile.TemporaryFile()
+    for payload in title.stream().packet_payloads():
+        temp_track.write(payload)
+    temp_track.flush()
+    temp_track.seek(0, 0)
+
     for (track_number, pcmreader) in enumerate(
-        pcm_split(title.to_pcm(),
+        pcm_split(MLPDecoder(temp_track,
+                             (title.length * sample_rate) /
+                             audiotools.DVDAudio.PTS_PER_SECOND),
                   [(track.pts_length * sample_rate) /
                    audiotools.DVDAudio.PTS_PER_SECOND for track in title])):
         if (track_number in to_rip.keys()):
