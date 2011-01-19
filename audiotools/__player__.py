@@ -24,268 +24,262 @@ import cPickle
 import select
 import audiotools
 import time
+import Queue
+import threading
 
-def init_player(controller_obj, player_class):
-    (c2p_r_fd, c2p_w_fd) = os.pipe()
-    (p2c_r_fd, p2c_w_fd) = os.pipe()
-    pid = os.fork()
-    if (pid > 0):  #controller
-        os.close(c2p_r_fd)
-        os.close(p2c_w_fd)
-        controller_obj.player_r_fd = p2c_r_fd
-        controller_obj.player_w_fd = c2p_w_fd
-        controller_obj.player_pid = pid
-        controller_obj.player_input = os.fdopen(p2c_r_fd, "rb")
-    else:          #player
-        os.close(c2p_w_fd)
-        os.close(p2c_r_fd)
-        player_class(c2p_r_fd, p2c_w_fd).run()
 
-class Controller:
-    def __init__(self):
-        self.player_r_fd = -1
-        self.player_w_fd = -1
-        self.player_pid = -1
-        self.player_input = None
+class Player:
+    def __init__(self, audio_output, next_track_callback=lambda f: f):
+        self.command_queue = Queue.Queue()
+        self.worker = PlayerThread(audio_output, self.command_queue)
+        self.thread = threading.Thread(target=self.worker.run,
+                                       args=(next_track_callback,))
+        self.thread.daemon = True
+        self.thread.start()
 
-    def to_player(self, cmd, *args):
-        """Sends a (command, arg_list) tuple to the player."""
+    def open(self, track):
+        self.track = track
+        self.command_queue.put(("open", [track]))
 
-        os.write(self.player_w_fd,
-                 cPickle.dumps((cmd, args), cPickle.HIGHEST_PROTOCOL))
+    def play(self):
+        self.command_queue.put(("play", []))
 
-    def from_player(self):
-        """Returns a (command, arg_list) tuple from the player."""
+    def pause(self):
+        self.command_queue.put(("pause", []))
 
-        return cPickle.load(self.player_input)
+    def toggle_play_pause(self):
+        self.command_queue.put(("toggle_play_pause", []))
 
-    def run(self):
-        """Executes a response command from the player.
+    def stop(self):
+        self.command_queue.put(("stop", []))
 
-        This pulls a pickled value off the r_fd and performs
-        the given command."""
+    def close(self):
+        self.command_queue.put(("exit", []))
 
-        (command, args) = self.from_player()
-        getattr(self, command)(*args)
+    def progress(self):
+        return (self.worker.frames_played, self.worker.total_frames)
 
-    def wait(self):
-        return os.waitpid(self.player_pid, 0)
-
-    def quit(self):
-        self.to_player("quit")
-        self.wait()
-
-    def cmd_echo_reply(self, *args):
-        print "Echo Reply %s" % (repr(args))
-
-    def cmd_open(self, track_path):
-        self.to_player("open", track_path)
-
-    def cmd_play(self):
-        self.to_player("play")
-
-    def cmd_pause(self):
-        self.to_player("pause")
-
-    def cmd_toggle_pause(self):
-        self.to_player("toggle_pause")
-
-    def cmd_stop(self):
-        self.to_player("stop")
-
-    def cmd_play_error(self, exception):
-        print "*** Playing Exception: %s" % (exception)
-
-    def cmd_track_finished(self):
-        pass
-
-    def cmd_status(self):
-        self.to_player("status")
-
-    def cmd_status_response(self, path, metadata ,channels, channel_mask,
-                            bits_per_sample, sample_rate, total_frames,
-                            frames_sent, player_state):
-        pass
 
 (PLAYER_STOPPED, PLAYER_PAUSED, PLAYER_PLAYING) = range(3)
 
-class Player:
-    def __init__(self, controller_r_fd, controller_w_fd):
-        self.controller_r_fd = controller_r_fd
-        self.controller_w_fd = controller_w_fd
-        self.controller_input = os.fdopen(controller_r_fd, "rb")
+class PlayerThread:
+    def __init__(self, audio_output, command_queue):
+        self.audio_output = audio_output
+        self.command_queue = command_queue
+
         self.track = None
-        self.status_cache = None
-        self.pcm = None
-        self.frames_sent = 0
+        self.pcmreader = None
+        self.pcmconverter = None
+        self.frames_played = 0
         self.total_frames = 0
         self.state = PLAYER_STOPPED
 
-    def to_controller(self, cmd, *args):
-        """Sends a (command, arg_list) tuple to the controller."""
-
-        os.write(self.controller_w_fd,
-                 cPickle.dumps((cmd, args), cPickle.HIGHEST_PROTOCOL))
-
-    def from_controller(self):
-        """Returns a (command, arg_list) tuple from the controller."""
-
-        return cPickle.load(self.controller_input)
-
-    def run(self):
-        """Starts the player's event loop.
-
-        This is called automatically by the init_player function."""
-
-        #A proper player should be sending data from
-        #a PCMReader to an output sink here
-        #while polling the controller for input.
-        #Once the reader is finished, it should then
-        #send a signal to the controller
-        #(which might send a command to play the next song).
-
-        while (True):
-            (rlist, wlist, xlist) = select.select([self.controller_r_fd],
-                                                  [],
-                                                  [])
-            if (len(rlist) > 0):
-                (command, args) = self.from_controller()
-                getattr(self, command)(*args)
-
-    def echo(self, *args):
-        self.to_controller("cmd_echo_reply", *args)
-
-    def quit(self):
-        sys.exit(0)
-
-    def open(self, track_path):
-        """opens the track at track_path and sets state to PLAYER_STOPPED"""
-
+    def open(self, track):
+        self.track = track
+        self.pcmreader = None
+        self.pcmconverter = None
+        self.frames_played = 0
+        self.total_frames = track.total_frames()
         self.state = PLAYER_STOPPED
-        try:
-            self.track = audiotools.open(track_path)
-            self.status_cache = None
-            self.pcm = None
-            self.total_frames = self.track.total_frames()
-            self.frames_sent = 0
-        except Exception, err:
-            self.to_controller("cmd_play_error", err)
-
-    def play(self):
-        """plays current open track and sets state to PLAYER_PLAYING
-
-        if no track is set, state set to PLAYER_STOPPED"""
-
-        if (self.track is not None):
-            if (self.state == PLAYER_STOPPED):
-                self.pcm = self.track.to_pcm()
-                self.state = PLAYER_PLAYING
-            elif (self.state == PLAYER_PAUSED):
-                self.state = PLAYER_PLAYING
-            elif (self.state == PLAYER_PLAYING):
-                pass
-        else:
-            self.state = PLAYER_STOPPED
 
     def pause(self):
-        """pauses playing and sets state to PLAYER_PAUSED"""
-
-        self.state = PLAYER_PAUSED
-
-    def toggle_pause(self):
-        """if PLAYER_PLAYING, pause().
-        if PLAYED_PAUSED or PLAYER_STOPPED, play()"""
-
         if (self.state == PLAYER_PLAYING):
-            self.pause()
-        elif ((self.state == PLAYER_PAUSED) or
-              (self.state == PLAYER_STOPPED)):
-            self.play()
+            self.state = PLAYER_PAUSED
 
-    def stop(self):
-        """stops playing and sets state to PLAYER_STOPPED"""
-
-        if (self.pcm is not None):
-            self.pcm.close()
-
-        self.status_cache = None
-        self.pcm = None
-        self.total_frames = 0
-        self.frames_sent = 0
-        self.state = PLAYER_STOPPED
-
-    def track_finished(self):
-        """called by run() when a track is finished playing"""
-
-        self.to_controller("cmd_track_finished")
-
-    def status(self):
-        if (self.status_cache is None):
-            if (self.track is not None):
-                self.status_cache = [self.track.filename,
-                                     self.track.get_metadata(),
-                                     self.track.channels(),
-                                     self.track.channel_mask(),
-                                     self.track.bits_per_sample(),
-                                     self.track.sample_rate(),
-                                     self.track.total_frames()]
-                self.to_controller("cmd_status_response",
-                                   *(self.status_cache + [self.frames_sent,
-                                                          self.state]))
-            else:
-                self.status_cache = [None, None, 0, 0, 0, 0, 0]
-                self.to_controller("cmd_status_response",
-                                   *(self.status_cache + [self.frames_sent,
-                                                          self.state]))
-        else:
-            self.to_controller("cmd_status_response",
-                               *(self.status_cache + [self.frames_sent,
-                                                      self.state]))
-
-class NullPlayer(Player):
     def play(self):
-        """plays current open track and sets state to PLAYER_PLAYING
-
-        if no track is set, state set to PLAYER_STOPPED"""
-
         if (self.track is not None):
             if (self.state == PLAYER_STOPPED):
-                self.pcm = audiotools.BufferedPCMReader(self.track.to_pcm())
+                self.pcmreader = self.track.to_pcm()
+                if (not self.audio_output.compatible(self.pcmreader)):
+                    self.audio_output.init(
+                        sample_rate=self.pcmreader.sample_rate,
+                        channels=self.pcmreader.channels,
+                        channel_mask=self.pcmreader.channel_mask,
+                        bits_per_sample=self.pcmreader.bits_per_sample)
+                self.pcmconverter = audiotools.ThreadedPCMConverter(
+                    self.pcmreader,
+                    self.audio_output.framelist_converter())
+                self.frames_played = 0
                 self.state = PLAYER_PLAYING
             elif (self.state == PLAYER_PAUSED):
                 self.state = PLAYER_PLAYING
             elif (self.state == PLAYER_PLAYING):
                 pass
-        else:
-            self.state = PLAYER_STOPPED
 
-    def run(self):
-        """Starts the player's event loop.
+    def toggle_play_pause(self):
+        if (self.state == PLAYER_PLAYING):
+            self.state = PLAYER_PAUSED
+        elif (self.state == PLAYER_PAUSED):
+            self.state = PLAYER_PLAYING
 
-        This is called automatically by the init_player function."""
+    def stop(self):
+        if (self.pcmconverter is not None):
+            self.pcmconverter.close()
+            self.pcmconverter = None
+            self.pcmreader = None
+        self.frames_played = 0
+        self.state = PLAYER_STOPPED
 
+    def run(self, next_track_callback = lambda f: f):
         while (True):
-            if (self.state == PLAYER_PLAYING):
-                (rlist, wlist, xlist) = select.select([self.controller_r_fd],
-                                                      [], [], 0)
-                if (len(rlist) > 0):
-                    (command, args) = self.from_controller()
-                    getattr(self, command)(*args)
+            if ((self.state == PLAYER_STOPPED) or
+                (self.state == PLAYER_PAUSED)):
+                (command, args) = self.command_queue.get(True)
+                if (command == "exit"):
+                    return
                 else:
-                    if (self.frames_sent < self.total_frames):
-                        frame = self.pcm.read(self.pcm.sample_rate / 2)
-                        self.frames_sent += frame.frames
-                        if (self.frames_sent < self.total_frames):
-                            time.sleep(float(frame.frames) /
-                                       self.pcm.sample_rate)
-                        else:
-                            self.stop()
-                            self.track_finished()
+                    getattr(self, command)(*args)
+            else:
+                try:
+                    (command, args) = self.command_queue.get_nowait()
+                    if (command == "exit"):
+                        return
+                    else:
+                        getattr(self, command)(*args)
+                except Queue.Empty:
+                    if (self.frames_played < self.total_frames):
+                        (data, frames) = self.pcmconverter.read()
+                        self.audio_output.play(data)
+                        self.frames_played += frames
+                        if (self.frames_played >= self.total_frames):
+                            next_track_callback()
                     else:
                         self.stop()
+
+
+class ThreadedPCMConverter:
+    def __init__(self, pcmreader, converter):
+        self.pcmreader = pcmreader
+        self.decoded_data = Queue.Queue()
+        self.stop_decoding = threading.Event()
+
+        def convert(pcmreader, converter, decoded_data, stop_decoding):
+            frame = pcmreader.read(audiotools.BUFFER_SIZE)
+            while ((not stop_decoding.is_set()) and (len(frame) > 0)):
+                decoded_data.put((converter(frame), frame.frames))
+                frame = pcmreader.read(audiotools.BUFFER_SIZE)
             else:
-                (rlist, wlist, xlist) = select.select([self.controller_r_fd],
-                                                      [], [])
-                if (len(rlist) > 0):
-                    (command, args) = self.from_controller()
-                    getattr(self, command)(*args)
+                decoded_data.put((None, 0))
+                pcmreader.close()
+
+        self.thread = threading.Thread(target=convert,
+                                       args=(pcmreader,
+                                             converter,
+                                             self.decoded_data,
+                                             self.stop_decoding))
+        self.thread.daemon = True
+        self.thread.start()
+
+    def read(self):
+        """Returns a (converted_data, pcm_frame_count) tuple."""
+
+        return self.decoded_data.get(True)
+
+    def close(self):
+        self.stop_decoding.set()
+
+
+class AudioOutput:
+    """An abstract parent class for playing audio."""
+
+    def __init__(self):
+        self.sample_rate = 0
+        self.channels = 0
+        self.channel_mask = 0
+        self.bits_per_sample = 0
+        self.initialized = False
+
+    def compatible(self, pcmreader):
+        """Returns True if the given pcmreader is compatible.
+
+        If False, one is expected to open a new output stream
+        which is compatible."""
+
+        return ((self.sample_rate == pcmreader.sample_rate) and
+                (self.channels == pcmreader.channels) and
+                (self.channel_mask == pcmreader.channel_mask) and
+                (self.bits_per_sample == pcmreader.bits_per_sample))
+
+    def framelist_converter(self):
+        """Returns a function which converts framelist objects
+
+        to objects acceptable by our play() method."""
+
+        raise NotImplementedError()
+
+    def init(self, sample_rate, channels, channel_mask, bits_per_sample):
+        """Initializes the output stream.
+
+        This *must* be called prior to play() and close().
+        The general flow of audio playing is:
+
+        >>> pcm = audiofile.to_pcm()
+        >>> player = AudioOutput(pcm.sample_rate,
+        ...                      pcm.channels,
+        ...                      pcm.channel_mask,
+        ...                      pcm.bits_per_sample)
+        >>> player.init()
+        >>> convert = player.framelist_converter()
+        >>> frame = pcm.read(1024)
+        >>> while (len(frame) > 0):
+        ...     player.play(convert(frame))
+        ...     frame = pcm.read(1024)
+        >>> player.close()
+        """
+
+        raise NotImplementedError()
+
+    def play(self, data):
+        """Plays a chunk of converted data"""
+
+        raise NotImplementedError()
+
+    def close(self):
+        """Closes the output stream"""
+
+        raise NotImplementedError()
+
+try:
+    import pyaudio
+
+    class PortAudioOutput(AudioOutput):
+        def init(self, sample_rate, channels, channel_mask, bits_per_sample):
+            if (not self.initialized):
+                self.sample_rate = sample_rate
+                self.channels = channels
+                self.channel_mask = channel_mask
+                self.bits_per_sample = bits_per_sample
+
+                self.pyaudio = pyaudio.PyAudio()
+                self.stream = self.pyaudio.open(
+                    format=self.pyaudio.get_format_from_width(
+                        self.bits_per_sample / 8, False),
+                    channels=self.channels,
+                    rate=self.sample_rate,
+                    output=True)
+
+                self.initialized = True
+            else:
+                self.close()
+                self.init(sample_rate=sample_rate,
+                          channels=channels,
+                          channel_mask=channel_mask,
+                          bits_per_sample=bits_per_sample)
+
+        def framelist_converter(self):
+            def convert(framelist):
+                return framelist.to_bytes(False, True)
+
+            return convert
+
+        def play(self, data):
+            self.stream.write(data)
+
+        def close(self):
+            if (self.initialized):
+                self.stream.close()
+                self.pyaudio.terminate()
+                self.initialized = False
+
+except ImportError:
+    pass
