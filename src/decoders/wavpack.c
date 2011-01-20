@@ -28,6 +28,7 @@ WavPackDecoder_init(decoders_WavPackDecoder *self,
     struct wavpack_block_header block_header;
     struct wavpack_subblock_header sub_block_header;
     uint32_t block_length;
+    status error;
 
     self->filename = NULL;
     self->bitstream = NULL;
@@ -67,10 +68,11 @@ WavPackDecoder_init(decoders_WavPackDecoder *self,
     self->remaining_samples = -1;
 
     do {
-        if (WavPackDecoder_read_block_header(self->bitstream,
-                                             &block_header) == ERROR)
+        if ((error = WavPackDecoder_read_block_header(self->bitstream,
+                                                      &block_header)) != OK) {
+            PyErr_SetString(PyExc_ValueError, wavpack_strerror(error));
             return -1;
-        else {
+        } else {
             if (!setjmp(*bs_try(self->bitstream))) {
                 if (self->remaining_samples == -1)
                     self->remaining_samples = block_header.total_samples;
@@ -209,8 +211,8 @@ WavPackDecoder_read_block_header(Bitstream* bitstream,
     if (!setjmp(*bs_try(bitstream))) {
         /*read and verify block ID*/
         if (bitstream->read(bitstream, 32) != 0x6B707677) {
-            PyErr_SetString(PyExc_ValueError, "invalid block ID");
-            goto error;
+            bs_etry(bitstream);
+            return ERR_INVALID_BLOCK_ID;
         }
 
         header->block_size = bitstream->read(bitstream, 32);
@@ -268,8 +270,8 @@ WavPackDecoder_read_block_header(Bitstream* bitstream,
         header->false_stereo = bitstream->read(bitstream, 1);
 
         if (bitstream->read(bitstream, 1) != 0) {
-            PyErr_SetString(PyExc_ValueError, "invalid reserved bit");
-            goto error;
+            bs_etry(bitstream);
+            return ERR_INVALID_RESERVED_BIT;
         }
 
         header->crc = bitstream->read(bitstream, 32);
@@ -277,12 +279,9 @@ WavPackDecoder_read_block_header(Bitstream* bitstream,
         bs_etry(bitstream);
         return OK;
     } else {
-        PyErr_SetString(PyExc_IOError, "I/O error reading block header");
-        goto error;
+        bs_etry(bitstream);
+        return ERR_BLOCK_HEADER_IO;
     }
- error:
-    bs_etry(bitstream);
-    return ERROR;
 }
 
 void
@@ -306,8 +305,7 @@ WavPackDecoder_read_decorr_terms(Bitstream* bitstream,
     int decorr_term;
 
     if (term_count > MAXIMUM_TERM_COUNT) {
-        PyErr_SetString(PyExc_ValueError, "excessive term count");
-        return ERROR;
+        return ERR_EXCESSIVE_TERMS;
     }
 
     ia_reset(decorr_terms);
@@ -333,8 +331,7 @@ WavPackDecoder_read_decorr_terms(Bitstream* bitstream,
             break;
         default:
             /* anything else is invalid*/
-            PyErr_SetString(PyExc_ValueError, "invalid decorrelation term");
-            return ERROR;
+            return ERR_INVALID_TERM;
         }
         ia_append(decorr_terms, decorr_term);
         ia_append(decorr_deltas, bitstream->read(bitstream, 3));
@@ -358,7 +355,7 @@ WavPackDecoder_restore_weight(int weight) {
     }
 }
 
-status
+void
 WavPackDecoder_read_decorr_weights(Bitstream* bitstream,
                                    struct wavpack_subblock_header* header,
                                    int block_channel_count,
@@ -394,8 +391,6 @@ WavPackDecoder_read_decorr_weights(Bitstream* bitstream,
 
     ia_reverse(weights_A);
     ia_reverse(weights_B);
-
-    return OK;
 }
 
 int
@@ -470,6 +465,7 @@ WavPackDecoder_read_decorr_samples(Bitstream* bitstream,
     struct i_array samples;
     struct i_array *term_samples_A;
     struct i_array *term_samples_B;
+    status result = OK;
 
     /*first, grab and decode a pile of decorrelation samples
       from the sub-block*/
@@ -483,9 +479,8 @@ WavPackDecoder_read_decorr_samples(Bitstream* bitstream,
         bs_etry(bitstream);
     } else {
         bs_etry(bitstream);
-        PyErr_SetString(PyExc_IOError,
-                        "I/O error reading decorrelation samples");
-        goto error;
+        result = ERR_DECORR_SAMPLES_IO;
+        goto done;
     }
 
     iaa_reset(samples_A);
@@ -523,9 +518,8 @@ WavPackDecoder_read_decorr_samples(Bitstream* bitstream,
                           ia_getdefault(&samples, j, 0));
                 j += 2;
             } else {
-                PyErr_SetString(PyExc_ValueError,
-                                "unsupported decorrelation term");
-                goto error;
+                result = ERR_UNSUPPORTED_DECORR_TERM;
+                goto done;
             }
         }
     } else {                        /*1 channel block*/
@@ -546,22 +540,19 @@ WavPackDecoder_read_decorr_samples(Bitstream* bitstream,
                     j++;
                 }
             } else {
-                PyErr_SetString(PyExc_ValueError,
-                                "unsupported decorrelation term");
-                goto error;
+                result = ERR_UNSUPPORTED_DECORR_TERM;
+                goto done;
             }
         }
     }
 
+ done:
     ia_free(&samples);
-    return OK;
- error:
-    ia_free(&samples);
-    return ERROR;
+    return result;
 }
 
 
-status
+void
 WavPackDecoder_read_entropy_variables(Bitstream* bitstream,
                                       int block_channel_count,
                                       struct i_array* variables_A,
@@ -587,11 +578,9 @@ WavPackDecoder_read_entropy_variables(Bitstream* bitstream,
         ia_append(variables_B, 0);
         ia_append(variables_B, 0);
     }
-
-    return OK;
 }
 
-status
+void
 WavPackDecoder_read_int32_info(Bitstream* bitstream,
                                uint8_t* sent_bits, uint8_t* zeroes,
                                uint8_t* ones, uint8_t* dupes) {
@@ -599,11 +588,9 @@ WavPackDecoder_read_int32_info(Bitstream* bitstream,
     *zeroes = bitstream->read(bitstream, 8);
     *ones = bitstream->read(bitstream, 8);
     *dupes = bitstream->read(bitstream, 8);
-
-    return OK;
 }
 
-status
+void
 WavPackDecoder_read_channel_info(Bitstream* bitstream,
                                  struct wavpack_subblock_header* header,
                                  int* channel_count,
@@ -612,9 +599,6 @@ WavPackDecoder_read_channel_info(Bitstream* bitstream,
     *channel_mask = bitstream->read(bitstream,
                                     8 * ((header->block_size * 2) - 1 -
                                          header->actual_size_1_less));
-
-
-    return OK;
 }
 
 status
@@ -680,11 +664,10 @@ WavPackDecoder_read_wv_bitstream(Bitstream* bitstream,
 
         return OK;
     } else {
-        PyErr_SetString(PyExc_IOError, "I/O error reading bitstream");
         bs_pop_callback(bitstream);
         bs_etry(bitstream);
 
-        return ERROR;
+        return ERR_BITSTREAM_IO;
     }
 }
 
@@ -857,6 +840,7 @@ WavPackDecoder_read(decoders_WavPackDecoder* self, PyObject *args) {
     Bitstream* bitstream = self->bitstream;
 
     PyObject* framelist;
+    status error;
 
     iaa_reset(&(self->decoded_samples));
 
@@ -871,9 +855,11 @@ WavPackDecoder_read(decoders_WavPackDecoder* self, PyObject *args) {
             block_end = ftell(self->file) + block_header.block_size - 24 - 1;
             if (!setjmp(*bs_try(bitstream))) {
                 while (ftell(self->file) < block_end) {
-                    if (WavPackDecoder_decode_subblock(self,
-                                                       &block_header) != OK) {
+                    if ((error = WavPackDecoder_decode_subblock(
+                                                self, &block_header)) != OK) {
                         bs_etry(bitstream);
+                        PyErr_SetString(PyExc_ValueError,
+                                        wavpack_strerror(error));
                         goto error;
                     }
                 }
@@ -914,6 +900,7 @@ WavPackDecoder_read(decoders_WavPackDecoder* self, PyObject *args) {
 
     framelist = ia_array_to_framelist(&(self->decoded_samples),
                                       self->bits_per_sample);
+
     if (WavPackDecoder_update_md5sum(self, framelist) == OK)
         return framelist;
     else {
@@ -980,6 +967,7 @@ WavPackDecoder_analyze_frame(decoders_WavPackDecoder* self, PyObject *args) {
     PyObject* subblocks;
     PyObject* subblock;
     long position;
+    status error;
 
     if (self->remaining_samples > 0) {
         position = bs_ftell(self->bitstream);
@@ -991,8 +979,8 @@ WavPackDecoder_analyze_frame(decoders_WavPackDecoder* self, PyObject *args) {
         self->got_bitstream = 0;
         self->got_int32_info = 0;
 
-        if (WavPackDecoder_read_block_header(self->bitstream,
-                                             &block_header) == OK) {
+        if ((error = WavPackDecoder_read_block_header(self->bitstream,
+                                                      &block_header)) == OK) {
             if (block_header.hybrid_mode) {
                 /*FIXME - this should actually be implemented at some point*/
                 PyErr_SetString(PyExc_ValueError,
@@ -1069,6 +1057,7 @@ WavPackDecoder_analyze_frame(decoders_WavPackDecoder* self, PyObject *args) {
                     "sub_blocks", subblocks);
 
         } else {
+            PyErr_SetString(PyExc_ValueError, wavpack_strerror(error));
             return NULL;
         }
     } else {
@@ -1087,15 +1076,17 @@ WavPackDecoder_analyze_subblock(decoders_WavPackDecoder* self,
     PyObject* subblock_data_obj = NULL;
     int channel_count;
     int channel_mask;
+    status error;
 
     WavPackDecoder_read_subblock_header(bitstream, &header);
 
     switch (header.metadata_function | (header.nondecoder_data << 5)) {
     case WV_DECORR_TERMS:
-        if (WavPackDecoder_read_decorr_terms(bitstream,
+        if ((error = WavPackDecoder_read_decorr_terms(
+                                             bitstream,
                                              &header,
                                              &(self->decorr_terms),
-                                             &(self->decorr_deltas)) == OK) {
+                                             &(self->decorr_deltas))) != OK) {
             subblock_data_obj = Py_BuildValue(
                                     "{sN sN}",
                                     "decorr_terms",
@@ -1103,8 +1094,10 @@ WavPackDecoder_analyze_subblock(decoders_WavPackDecoder* self,
                                     "decorr_deltas",
                                     i_array_to_list(&(self->decorr_deltas)));
             self->got_decorr_terms = 1;
-        } else
+        } else {
+            PyErr_SetString(PyExc_ValueError, wavpack_strerror(error));
             return NULL;
+        }
         break;
     case WV_DECORR_WEIGHTS:
         if (!self->got_decorr_terms) {
@@ -1112,23 +1105,21 @@ WavPackDecoder_analyze_subblock(decoders_WavPackDecoder* self,
                             "decorrelation weights found before terms");
             return NULL;
         }
-        if (WavPackDecoder_read_decorr_weights(
-                                bitstream,
-                                &header,
-                                (block_header->mono_output ||
-                                 block_header->false_stereo) ? 1 : 2,
-                                self->decorr_terms.size,
-                                &(self->decorr_weights_A),
-                                &(self->decorr_weights_B)) == OK) {
-            subblock_data_obj = Py_BuildValue(
+        WavPackDecoder_read_decorr_weights(
+                                   bitstream,
+                                   &header,
+                                   (block_header->mono_output ||
+                                    block_header->false_stereo) ? 1 : 2,
+                                   self->decorr_terms.size,
+                                   &(self->decorr_weights_A),
+                                   &(self->decorr_weights_B));
+        subblock_data_obj = Py_BuildValue(
                                 "{sN sN}",
                                 "decorr_weights_A",
                                 i_array_to_list(&(self->decorr_weights_A)),
                                 "decorr_weights_B",
                                 i_array_to_list(&(self->decorr_weights_B)));
-            self->got_decorr_weights = 1;
-        } else
-            return NULL;
+        self->got_decorr_weights = 1;
         break;
     case WV_DECORR_SAMPLES:
         if (!self->got_decorr_terms) {
@@ -1136,14 +1127,14 @@ WavPackDecoder_analyze_subblock(decoders_WavPackDecoder* self,
                             "decorrelation samples found before terms");
             return NULL;
         }
-        if (WavPackDecoder_read_decorr_samples(
-                                bitstream,
-                                &header,
-                                (block_header->mono_output ||
-                                 block_header->false_stereo) ? 1 : 2,
-                                &(self->decorr_terms),
-                                &(self->decorr_samples_A),
-                                &(self->decorr_samples_B)) == OK) {
+        if ((error = WavPackDecoder_read_decorr_samples(
+                                    bitstream,
+                                    &header,
+                                    (block_header->mono_output ||
+                                    block_header->false_stereo) ? 1 : 2,
+                                    &(self->decorr_terms),
+                                    &(self->decorr_samples_A),
+                                    &(self->decorr_samples_B))) == OK) {
             subblock_data_obj = Py_BuildValue(
                                 "{sN sN}",
                                 "decorr_samples_A",
@@ -1151,44 +1142,42 @@ WavPackDecoder_analyze_subblock(decoders_WavPackDecoder* self,
                                 "decorr_samples_B",
                                 ia_array_to_list(&(self->decorr_samples_B)));
             self->got_decorr_samples = 1;
-        } else
+        } else {
+            PyErr_SetString(PyExc_ValueError, wavpack_strerror(error));
             return NULL;
+        }
         break;
     case WV_ENTROPY_VARIABLES:
-        if (WavPackDecoder_read_entropy_variables(
-                                bitstream,
-                                (block_header->mono_output ||
-                                 block_header->false_stereo) ? 1 : 2,
-                                &(self->entropy_variables_A),
-                                &(self->entropy_variables_B)) == OK) {
-            subblock_data_obj = Py_BuildValue(
+        WavPackDecoder_read_entropy_variables(
+                                    bitstream,
+                                    (block_header->mono_output ||
+                                     block_header->false_stereo) ? 1 : 2,
+                                    &(self->entropy_variables_A),
+                                    &(self->entropy_variables_B));
+        subblock_data_obj = Py_BuildValue(
                                 "{sN sN}",
                                 "entropy_variables_A",
                                 i_array_to_list(&(self->entropy_variables_A)),
                                 "entropy_variables_B",
                                 i_array_to_list(&(self->entropy_variables_B)));
             self->got_entropy_variables = 1;
-        } else
-            return NULL;
         break;
     case WV_INT32_INFO:
-        if (WavPackDecoder_read_int32_info(bitstream,
-                                           &(self->int32_info.sent_bits),
-                                           &(self->int32_info.zeroes),
-                                           &(self->int32_info.ones),
-                                           &(self->int32_info.dupes)) == OK) {
-            subblock_data_obj = Py_BuildValue("{si si si si}",
-                                              "sent_bits",
-                                              self->int32_info.sent_bits,
-                                              "zeroes",
-                                              self->int32_info.zeroes,
-                                              "ones",
-                                              self->int32_info.ones,
-                                              "dupes",
-                                              self->int32_info.dupes);
-            self->got_int32_info = 1;
-        } else
-            return NULL;
+        WavPackDecoder_read_int32_info(bitstream,
+                                       &(self->int32_info.sent_bits),
+                                       &(self->int32_info.zeroes),
+                                       &(self->int32_info.ones),
+                                       &(self->int32_info.dupes));
+        subblock_data_obj = Py_BuildValue("{si si si si}",
+                                          "sent_bits",
+                                          self->int32_info.sent_bits,
+                                          "zeroes",
+                                          self->int32_info.zeroes,
+                                          "ones",
+                                          self->int32_info.ones,
+                                          "dupes",
+                                          self->int32_info.dupes);
+        self->got_int32_info = 1;
         break;
     case WV_CHANNEL_INFO:
         WavPackDecoder_read_channel_info(bitstream,
@@ -1207,19 +1196,21 @@ WavPackDecoder_analyze_subblock(decoders_WavPackDecoder* self,
                             "bitstream found before entropy variables");
             return NULL;
         }
-        if (WavPackDecoder_read_wv_bitstream(
-                                   bitstream,
-                                   &header,
-                                   &(self->entropy_variables_A),
-                                   &(self->entropy_variables_B),
-                                   (block_header->mono_output ||
-                                    block_header->false_stereo) ? 1 : 2,
-                                   block_header->block_samples,
-                                   &(self->values)) == OK) {
+        if ((error = WavPackDecoder_read_wv_bitstream(
+                                    bitstream,
+                                    &header,
+                                    &(self->entropy_variables_A),
+                                    &(self->entropy_variables_B),
+                                    (block_header->mono_output ||
+                                     block_header->false_stereo) ? 1 : 2,
+                                    block_header->block_samples,
+                                    &(self->values))) == OK) {
             subblock_data_obj = i_array_to_list(&(self->values));
             self->got_bitstream = 1;
-        } else
+        } else {
+            PyErr_SetString(PyExc_IOError, wavpack_strerror(error));
             return NULL;
+        }
         break;
     default:
         /*return a binary string for unknown subblock types*/
@@ -1266,6 +1257,8 @@ WavPackDecoder_decode_block(decoders_WavPackDecoder* self,
     long block_end;
     ia_size_t i;
     struct i_array* channels[] = {channel_A, channel_B};
+    PyThreadState *thread_state;
+    status error;
 
     self->got_decorr_terms = 0;
     self->got_decorr_weights = 0;
@@ -1283,106 +1276,115 @@ WavPackDecoder_decode_block(decoders_WavPackDecoder* self,
         block_channels++;
     }
 
-    if (WavPackDecoder_read_block_header(bitstream, &block_header) == OK) {
-        if (block_header.hybrid_mode) {
-            /*FIXME - this should actually be implemented at some point*/
-            PyErr_SetString(PyExc_ValueError,
-                            "hybrid mode not yet supported");
-            goto error;
-        }
+    thread_state = PyEval_SaveThread();
 
-        *channel_count = block_header.mono_output ? 1 : 2;
-        *final_block = block_header.final_block_in_sequence;
-        if (*channel_count > block_channels) {
-            PyErr_SetString(PyExc_ValueError,
-                            "too many channels requested in block header");
-            goto error;
-        } else {
-            block_channels = (block_header.mono_output ||
-                              block_header.false_stereo) ? 1 : 2;
-        }
+    if ((error = WavPackDecoder_read_block_header(bitstream,
+                                                  &block_header)) != OK) {
+        PyEval_RestoreThread(thread_state);
+        PyErr_SetString(PyExc_ValueError, wavpack_strerror(error));
+        return ERROR;
+    }
 
-        /*First, read in all the sub-block data.
-          These are like arguments to the decoding routine.*/
-        block_end = bs_ftell(bitstream) + block_header.block_size - 24 - 1;
-        if (!setjmp(*bs_try(self->bitstream))) {
-            while (bs_ftell(self->bitstream) < block_end) {
-                if (WavPackDecoder_decode_subblock(self,
-                                                   &block_header) != OK) {
-                    bs_etry(bitstream);
-                    goto error;
-                }
-            }
-            bs_etry(bitstream);
-        } else {
-            bs_etry(bitstream);
-            PyErr_SetString(PyExc_IOError, "I/O error reading sub-block");
-            goto error;
-        }
+    if (block_header.hybrid_mode) {
+        /*FIXME - this should actually be implemented at some point*/
+        PyEval_RestoreThread(thread_state);
+        PyErr_SetString(PyExc_ValueError, "hybrid mode not yet supported");
+        return ERROR;
+    }
 
-        if (!self->got_bitstream) {
-            PyErr_SetString(PyExc_ValueError, "residual bitstream not found");
-            goto error;
-        }
+    *channel_count = block_header.mono_output ? 1 : 2;
+    *final_block = block_header.final_block_in_sequence;
+    if (*channel_count > block_channels) {
+        PyEval_RestoreThread(thread_state);
+        PyErr_SetString(PyExc_ValueError,
+                        "too many channels requested in block header");
+        return ERROR;
+    } else {
+        block_channels = (block_header.mono_output ||
+                          block_header.false_stereo) ? 1 : 2;
+    }
 
-        /*Place the bitstream contents in channel_A and channel_B.*/
-        for (i = 0; i < self->values.size; i++) {
-            ia_append(channels[i % block_channels],
-                      self->values.data[i]);
-        }
-
-        /*If we have decorrelation passes, run them over
-         channel_A and channel_B as many times as necessary.*/
-        if (self->got_decorr_terms) {
-            /*FIXME - sanity check all decorrelation pass inputs here*/
-
-            for (i = 0; i < self->decorr_terms.size; i++) {
-                wavpack_perform_decorrelation_pass(
-                                channel_A,
-                                channel_B,
-                                self->decorr_terms.data[i],
-                                self->decorr_deltas.data[i],
-                                self->decorr_weights_A.data[i],
-                                self->decorr_weights_B.data[i],
-                                &(self->decorr_samples_A.arrays[i]),
-                                &(self->decorr_samples_B.arrays[i]),
-                                block_channels);
+    /*First, read in all the sub-block data.
+      These are like arguments to the decoding routine.*/
+    block_end = bs_ftell(bitstream) + block_header.block_size - 24 - 1;
+    if (!setjmp(*bs_try(self->bitstream))) {
+        while (bs_ftell(self->bitstream) < block_end) {
+            if ((error = WavPackDecoder_decode_subblock(
+                                               self, &block_header)) != OK) {
+                bs_etry(bitstream);
+                PyEval_RestoreThread(thread_state);
+                PyErr_SetString(PyExc_ValueError, wavpack_strerror(error));
+                return ERROR;
             }
         }
+        bs_etry(bitstream);
+    } else {
+        bs_etry(bitstream);
+        PyEval_RestoreThread(thread_state);
+        PyErr_SetString(PyExc_IOError, "I/O error reading sub-block");
+        return ERROR;
+    }
 
-        /*Undo joint stereo, if necessary.*/
-        if (block_header.joint_stereo) {
-            wavpack_undo_joint_stereo(channel_A, channel_B);
+    if (!self->got_bitstream) {
+        PyEval_RestoreThread(thread_state);
+        PyErr_SetString(PyExc_ValueError, "residual bitstream not found");
+        return ERROR;
+    }
+
+    /*Place the bitstream contents in channel_A and channel_B.*/
+    for (i = 0; i < self->values.size; i++) {
+        ia_append(channels[i % block_channels],
+                  self->values.data[i]);
+    }
+
+    /*If we have decorrelation passes, run them over
+      channel_A and channel_B as many times as necessary.*/
+    if (self->got_decorr_terms) {
+        /*FIXME - sanity check all decorrelation pass inputs here*/
+
+        for (i = 0; i < self->decorr_terms.size; i++) {
+            wavpack_perform_decorrelation_pass(channel_A,
+                                               channel_B,
+                                               self->decorr_terms.data[i],
+                                               self->decorr_deltas.data[i],
+                                               self->decorr_weights_A.data[i],
+                                               self->decorr_weights_B.data[i],
+                                               &(self->decorr_samples_A.arrays[i]),
+                                               &(self->decorr_samples_B.arrays[i]),
+                                               block_channels);
         }
+    }
 
-        /*check CRC of data to return*/
-        if (wavpack_calculate_crc(channel_A, channel_B, block_channels) !=
-            block_header.crc) {
-            PyErr_SetString(PyExc_ValueError, "CRC mismatch during decode");
-            goto error;
-        }
+    /*Undo joint stereo, if necessary.*/
+    if (block_header.joint_stereo) {
+        wavpack_undo_joint_stereo(channel_A, channel_B);
+    }
 
-        /*Handle extended integers, if necessary.*/
-        if (block_header.extended_size_integers) {
-            wavpack_undo_extended_integers(channel_A, channel_B,
-                                           block_channels,
-                                           self->int32_info.sent_bits,
-                                           self->int32_info.zeroes,
-                                           self->int32_info.ones,
-                                           self->int32_info.dupes);
-        }
+    /*check CRC of data to return*/
+    if (wavpack_calculate_crc(channel_A, channel_B, block_channels) !=
+        block_header.crc) {
+        PyEval_RestoreThread(thread_state);
+        PyErr_SetString(PyExc_ValueError, "CRC mismatch during decode");
+        return ERROR;
+    }
 
-        /*Fix false stereo, if present*/
-        if (block_header.false_stereo) {
-            ia_copy(channel_B, channel_A);
-        }
+    /*Handle extended integers, if necessary.*/
+    if (block_header.extended_size_integers) {
+        wavpack_undo_extended_integers(channel_A, channel_B,
+                                       block_channels,
+                                       self->int32_info.sent_bits,
+                                       self->int32_info.zeroes,
+                                       self->int32_info.ones,
+                                       self->int32_info.dupes);
+    }
 
-        return OK;
-    } else
-        goto error;
+    /*Fix false stereo, if present*/
+    if (block_header.false_stereo) {
+        ia_copy(channel_B, channel_A);
+    }
 
- error:
-    return ERROR;
+    PyEval_RestoreThread(thread_state);
+    return OK;
 }
 
 status
@@ -1392,108 +1394,94 @@ WavPackDecoder_decode_subblock(decoders_WavPackDecoder* self,
     struct wavpack_subblock_header header;
     uint8_t file_md5sum[16];
     uint8_t running_md5sum[16];
+    status error;
 
     WavPackDecoder_read_subblock_header(bitstream, &header);
     switch (header.metadata_function | (header.nondecoder_data << 5)) {
     case WV_DECORR_TERMS:
-        if (WavPackDecoder_read_decorr_terms(bitstream,
-                                             &header,
-                                             &(self->decorr_terms),
-                                             &(self->decorr_deltas)) == OK) {
+        if ((error = WavPackDecoder_read_decorr_terms(
+                                         bitstream,
+                                         &header,
+                                         &(self->decorr_terms),
+                                         &(self->decorr_deltas))) == OK) {
             self->got_decorr_terms = 1;
             break;
         } else
-            return ERROR;
+            return error;
     case WV_DECORR_WEIGHTS:
-        if (!self->got_decorr_terms) {
-            PyErr_SetString(PyExc_ValueError,
-                            "decorrelation weights found before terms");
-            return ERROR;
-        }
-        if (WavPackDecoder_read_decorr_weights(
-                                bitstream,
-                                &header,
-                                (block_header->mono_output ||
-                                 block_header->false_stereo) ? 1 : 2,
-                                self->decorr_terms.size,
-                                &(self->decorr_weights_A),
-                                &(self->decorr_weights_B)) == OK) {
-            self->got_decorr_weights = 1;
-            break;
-        } else
-            return ERROR;
+        if (!self->got_decorr_terms)
+            return ERR_PREMATURE_DECORR_WEIGHTS;
+
+        WavPackDecoder_read_decorr_weights(
+                                   bitstream,
+                                   &header,
+                                   (block_header->mono_output ||
+                                    block_header->false_stereo) ? 1 : 2,
+                                   self->decorr_terms.size,
+                                   &(self->decorr_weights_A),
+                                   &(self->decorr_weights_B));
+        self->got_decorr_weights = 1;
+        break;
     case WV_DECORR_SAMPLES:
-        if (!self->got_decorr_terms) {
-            PyErr_SetString(PyExc_ValueError,
-                            "decorrelation samples found before terms");
-            return ERROR;
-        }
-        if (WavPackDecoder_read_decorr_samples(
-                                bitstream,
-                                &header,
-                                (block_header->mono_output ||
-                                 block_header->false_stereo) ? 1 : 2,
-                                &(self->decorr_terms),
-                                &(self->decorr_samples_A),
-                                &(self->decorr_samples_B)) == OK) {
+        if (!self->got_decorr_terms)
+            return ERR_PREMATURE_DECORR_SAMPLES;
+
+        if ((error = WavPackDecoder_read_decorr_samples(
+                                    bitstream,
+                                    &header,
+                                    (block_header->mono_output ||
+                                     block_header->false_stereo) ? 1 : 2,
+                                    &(self->decorr_terms),
+                                    &(self->decorr_samples_A),
+                                    &(self->decorr_samples_B))) == OK) {
             self->got_decorr_samples = 1;
             break;
         } else
-            return ERROR;
+            return error;
     case WV_ENTROPY_VARIABLES:
-        if (WavPackDecoder_read_entropy_variables(
-                                bitstream,
-                                (block_header->mono_output ||
-                                 block_header->false_stereo) ? 1 : 2,
-                                &(self->entropy_variables_A),
-                                &(self->entropy_variables_B)) == OK) {
-            self->got_entropy_variables = 1;
-            break;
-        } else
-            return ERROR;
+        WavPackDecoder_read_entropy_variables(
+                                    bitstream,
+                                    (block_header->mono_output ||
+                                     block_header->false_stereo) ? 1 : 2,
+                                    &(self->entropy_variables_A),
+                                    &(self->entropy_variables_B));
+        self->got_entropy_variables = 1;
+        break;
     case WV_INT32_INFO:
-        if (WavPackDecoder_read_int32_info(bitstream,
-                                           &(self->int32_info.sent_bits),
-                                           &(self->int32_info.zeroes),
-                                           &(self->int32_info.ones),
-                                           &(self->int32_info.dupes)) == OK) {
-            self->got_int32_info = 1;
-            break;
-        } else
-            return ERROR;
+        WavPackDecoder_read_int32_info(bitstream,
+                                       &(self->int32_info.sent_bits),
+                                       &(self->int32_info.zeroes),
+                                       &(self->int32_info.ones),
+                                       &(self->int32_info.dupes));
+        self->got_int32_info = 1;
+        break;
     case WV_BITSTREAM:
-        if (!self->got_entropy_variables) {
-            PyErr_SetString(PyExc_ValueError,
-                            "bitstream found before entropy variables");
-            return ERROR;
-        }
-        if (WavPackDecoder_read_wv_bitstream(
-                                   bitstream,
-                                   &header,
-                                   &(self->entropy_variables_A),
-                                   &(self->entropy_variables_B),
-                                   (block_header->mono_output ||
-                                    block_header->false_stereo) ? 1 : 2,
-                                   block_header->block_samples,
-                                   &(self->values)) == OK) {
+        if (!self->got_entropy_variables)
+            return ERR_PREMATURE_BITSTREAM;
+
+        if ((error = WavPackDecoder_read_wv_bitstream(
+                                    bitstream,
+                                    &header,
+                                    &(self->entropy_variables_A),
+                                    &(self->entropy_variables_B),
+                                    (block_header->mono_output ||
+                                     block_header->false_stereo) ? 1 : 2,
+                                    block_header->block_samples,
+                                    &(self->values))) == OK) {
             self->got_bitstream = 1;
             break;
         } else
-            return ERROR;
+            return error;
     case WV_MD5:
         if (fread(file_md5sum, 1, 16, bitstream->input.file) == 16) {
             audiotools__MD5Final(running_md5sum, &(self->md5));
             if (memcmp(file_md5sum, running_md5sum, 16) == 0) {
                 return OK;
             } else {
-                PyErr_SetString(PyExc_ValueError,
-                                "MD5 mismatch reading stream");
-                return ERROR;
+                return ERR_MD5_MISMATCH;
             }
         } else {
-            PyErr_SetString(PyExc_IOError,
-                            "I/O error reading MD5 sub-block data");
-            return ERROR;
+            return ERR_MD5_IO;
         }
         break;
     default:
@@ -1785,5 +1773,41 @@ void wavpack_undo_joint_stereo(struct i_array* channel_A,
     }
 }
 
-#include "pcm.c"
+const char* wavpack_strerror(status error) {
+    switch (error) {
+    case OK:
+        return "No Error";
+    case ERROR:
+        return "Error";
+    case ERR_BITSTREAM_IO:
+        return "I/O error reading bitstream";
+    case ERR_EXCESSIVE_TERMS:
+        return "excessive term count";
+    case ERR_INVALID_TERM:
+        return "invalid decorrelation term";
+    case ERR_DECORR_SAMPLES_IO:
+        return "I/O error reading decorrelation samples";
+    case ERR_UNSUPPORTED_DECORR_TERM:
+        return "unsupported decorrelation term";
+    case ERR_PREMATURE_DECORR_WEIGHTS:
+        return "decorrelation weights found before terms";
+    case ERR_PREMATURE_DECORR_SAMPLES:
+        return "decorrelation samples found before terms";
+    case ERR_PREMATURE_BITSTREAM:
+        return "bitstream found before entropy variables";
+    case ERR_MD5_MISMATCH:
+        return "MD5 mismatch reading stream";
+    case ERR_MD5_IO:
+        return "I/O error reading MD5 sub-block data";
+    case ERR_INVALID_BLOCK_ID:
+        return "invalid block ID";
+    case ERR_INVALID_RESERVED_BIT:
+        return "invalid reserved bit";
+    case ERR_BLOCK_HEADER_IO:
+        return "I/O error reading block header";
+    default:
+        return "Unknown Error";
+    }
+}
 
+#include "pcm.c"

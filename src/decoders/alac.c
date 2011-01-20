@@ -177,12 +177,15 @@ ALACDecoder_read(decoders_ALACDecoder* self, PyObject *args)
 
     int channel;
     int i, j;
+    PyThreadState *thread_state;
 
     frame_header.output_samples = 0;
     iaa_reset(&(self->samples));
 
     if (self->total_samples < 1)
         goto write_frame;
+
+    thread_state = PyEval_SaveThread();
 
     if (!setjmp(*bs_try(self->bitstream))) {
         for (frame_channels = self->bitstream->read(self->bitstream, 3) + 1;
@@ -205,11 +208,9 @@ ALACDecoder_read(decoders_ALACDecoder* self, PyObject *args)
             frame_residuals.arrays += current_channel;
             frame_residuals.size = frame_channels;
 
-            if (ALACDecoder_read_frame_header(self->bitstream,
-                                              &frame_header,
-                                              self->max_samples_per_frame) ==
-                ERROR)
-                goto error;
+            ALACDecoder_read_frame_header(self->bitstream,
+                                          &frame_header,
+                                          self->max_samples_per_frame);
 
             if (frame_header.is_not_compressed) {
                 /*uncompressed samples are interlaced between channels*/
@@ -230,8 +231,18 @@ ALACDecoder_read(decoders_ALACDecoder* self, PyObject *args)
                     ALACDecoder_read_subframe_header(
                             self->bitstream,
                             &(self->subframe_headers[current_channel + i]));
-                    if (self->subframe_headers[
-                                current_channel + i].prediction_type != 0) {
+                    /*sanity check substream headers*/
+                    if (self->subframe_headers[current_channel + i
+                                               ].predictor_coef_table.size < 1) {
+                        PyEval_RestoreThread(thread_state);
+                        PyErr_SetString(PyExc_ValueError,
+                                        "coefficient count must be greater than 0");
+                        goto error;
+                    }
+
+                    if (self->subframe_headers[current_channel + i
+                                               ].prediction_type != 0) {
+                        PyEval_RestoreThread(thread_state);
                         PyErr_SetString(PyExc_ValueError,
                                         "unsupported prediction type");
                         goto error;
@@ -251,37 +262,32 @@ ALACDecoder_read(decoders_ALACDecoder* self, PyObject *args)
 
                 /*then read in one residual block per frame channel*/
                 for (i = 0; i < frame_channels; i++)
-                    if (ALACDecoder_read_residuals(
-                          self->bitstream,
-                          &(frame_residuals.arrays[i]),
-                          frame_header.output_samples,
-                          self->bits_per_sample -
-                          (frame_header.wasted_bits * 8) +
-                          frame_channels - 1,
-                          self->initial_history,
-                          self->history_multiplier,
-                          self->maximum_k) == ERROR)
-                        goto error;
+                    ALACDecoder_read_residuals(self->bitstream,
+                                               &(frame_residuals.arrays[i]),
+                                               frame_header.output_samples,
+                                               self->bits_per_sample -
+                                               (frame_header.wasted_bits * 8) +
+                                               frame_channels - 1,
+                                               self->initial_history,
+                                               self->history_multiplier,
+                                               self->maximum_k);
 
                 /*decode the residuals into subframe_samples*/
                 for (i = 0; i < frame_channels; i++)
-                    if (ALACDecoder_decode_subframe(
+                    ALACDecoder_decode_subframe(
                           &(frame_subframe_samples.arrays[i]),
                           &(frame_residuals.arrays[i]),
                           &(self->subframe_headers[
                             current_channel + i].predictor_coef_table),
                           self->subframe_headers[
-                            current_channel + i].prediction_quantitization) ==
-                        ERROR)
-                        goto error;
+                            current_channel + i].prediction_quantitization);
 
                 /*perform channel decorrelation*/
-                if (ALACDecoder_decorrelate_channels(
+                ALACDecoder_decorrelate_channels(
                           &frame_samples,
                           &frame_subframe_samples,
                           interlacing_shift,
-                          interlacing_leftweight) == ERROR)
-                    goto error;
+                          interlacing_leftweight);
 
                 /*finally, apply any wasted bits, if present*/
                 if (frame_header.wasted_bits > 0) {
@@ -304,12 +310,14 @@ ALACDecoder_read(decoders_ALACDecoder* self, PyObject *args)
           byte align the stream for the next frame*/
         self->bitstream->byte_align(self->bitstream);
     } else {
+        PyEval_RestoreThread(thread_state);
         PyErr_SetString(PyExc_IOError,
                         "EOF during frame reading");
         goto error;
     }
 
     bs_etry(self->bitstream);
+    PyEval_RestoreThread(thread_state);
 
  write_frame:
     /*transform the contents of self->samples into a pcm.FrameList object*/
@@ -317,6 +325,7 @@ ALACDecoder_read(decoders_ALACDecoder* self, PyObject *args)
                                  self->bits_per_sample);
  error:
     bs_etry(self->bitstream);
+
     return NULL;
 }
 
@@ -428,11 +437,9 @@ ALACDecoder_analyze_frame(decoders_ALACDecoder* self, PyObject *args)
             frame_wasted_bits.size = frame_channels;
             frame_residuals.size = frame_channels;
 
-            if (ALACDecoder_read_frame_header(self->bitstream,
-                                              &frame_header,
-                                              self->max_samples_per_frame) ==
-                ERROR)
-                goto error;
+            ALACDecoder_read_frame_header(self->bitstream,
+                                          &frame_header,
+                                          self->max_samples_per_frame);
 
             if (frame_header.is_not_compressed) {
                 iaa_reset(&frame_samples);
@@ -485,17 +492,15 @@ ALACDecoder_analyze_frame(decoders_ALACDecoder* self, PyObject *args)
 
                 /*read a block of residuals for each subframe*/
                 for (i = 0; i < frame_channels; i++)
-                    if (ALACDecoder_read_residuals(
-                                              self->bitstream,
-                                              &(frame_residuals.arrays[i]),
-                                              frame_header.output_samples,
-                                              self->bits_per_sample -
-                                              (frame_header.wasted_bits * 8) +
-                                              frame_channels - 1,
-                                              self->initial_history,
-                                              self->history_multiplier,
-                                              self->maximum_k) == ERROR)
-                        goto error;
+                    ALACDecoder_read_residuals(self->bitstream,
+                                               &(frame_residuals.arrays[i]),
+                                               frame_header.output_samples,
+                                               self->bits_per_sample -
+                                               (frame_header.wasted_bits * 8) +
+                                               frame_channels - 1,
+                                               self->initial_history,
+                                               self->history_multiplier,
+                                               self->maximum_k);
 
                 frame = Py_BuildValue("{si si si si si si si sN sN sN si}",
                                       "channels",
@@ -580,7 +585,7 @@ ALACDecoder_seek_mdat(decoders_ALACDecoder *self)
     return ERROR;
 }
 
-status
+void
 ALACDecoder_read_frame_header(Bitstream *bs,
                               struct alac_frame_header *frame_header,
                               int max_samples_per_frame)
@@ -597,11 +602,9 @@ ALACDecoder_read_frame_header(Bitstream *bs,
     } else {
         frame_header->output_samples = max_samples_per_frame;
     }
-
-    return OK;
 }
 
-status
+void
 ALACDecoder_read_subframe_header(Bitstream *bs,
                                  struct alac_subframe_header *subframe_header)
 {
@@ -617,11 +620,9 @@ ALACDecoder_read_subframe_header(Bitstream *bs,
         ia_append(&(subframe_header->predictor_coef_table),
                   bs->read_signed(bs, 16));
     }
-
-    return OK;
 }
 
-status
+void
 ALACDecoder_read_wasted_bits(Bitstream *bs,
                              struct ia_array *wasted_bits_samples,
                              int sample_count,
@@ -637,8 +638,6 @@ ALACDecoder_read_wasted_bits(Bitstream *bs,
                       bs->read(bs, wasted_bits_size));
         }
     }
-
-    return OK;
 }
 
 /*this is the slow version*/
@@ -667,7 +666,7 @@ LOG2(int value)
     return bits;
 }
 
-status
+void
 ALACDecoder_read_residuals(Bitstream *bs,
                            struct i_array *residuals,
                            int residual_count,
@@ -732,8 +731,6 @@ ALACDecoder_read_residuals(Bitstream *bs,
             history = 0;
         }
     }
-
-    return OK;
 }
 
 #define RICE_THRESHOLD 8
@@ -783,7 +780,7 @@ SIGN_ONLY(int value)
         return 0;
 }
 
-status
+void
 ALACDecoder_decode_subframe(struct i_array *samples,
                             struct i_array *residuals,
                             struct i_array *coefficients,
@@ -798,14 +795,6 @@ ALACDecoder_decode_subframe(struct i_array *samples,
     int original_sign;
     int i = 0;
     int j;
-
-    if (coefficients->size < 1) {
-        PyErr_SetString(PyExc_ValueError,
-                        "coefficient count must be greater than 0");
-        return ERROR;
-    } else if ((coefficients->size != 4) && (coefficients->size != 8)) {
-        PyErr_WarnEx(PyExc_RuntimeWarning, "coefficient size not 4 or 8", 1);
-    }
 
     ia_reset(samples);
 
@@ -864,11 +853,9 @@ ALACDecoder_decode_subframe(struct i_array *samples,
             }
         }
     }
-
-    return OK;
 }
 
-status
+void
 ALACDecoder_decorrelate_channels(struct ia_array *output,
                                  struct ia_array *input,
                                  int interlacing_shift,
@@ -908,8 +895,6 @@ ALACDecoder_decorrelate_channels(struct ia_array *output,
             }
         }
     }
-
-    return OK;
 }
 
 void

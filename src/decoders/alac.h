@@ -104,18 +104,18 @@ status
 ALACDecoder_seek_mdat(decoders_ALACDecoder *self);
 
 /*reads "frame_header" from the current bitstream*/
-status
+void
 ALACDecoder_read_frame_header(Bitstream *bs,
                               struct alac_frame_header *frame_header,
                               int max_samples_per_frame);
 
 /*reads "subframe header" from the current bitstream*/
-status
+void
 ALACDecoder_read_subframe_header(Bitstream *bs,
                                  struct alac_subframe_header *subframe_header);
 
 /*reads a block of "wasted_bits" samples from the current bitstream*/
-status
+void
 ALACDecoder_read_wasted_bits(Bitstream *bs,
                              struct ia_array *wasted_bits_samples,
                              int sample_count,
@@ -123,7 +123,7 @@ ALACDecoder_read_wasted_bits(Bitstream *bs,
                              int wasted_bits_size);
 
 /*reads a block of residuals from the current bitstream*/
-status
+void
 ALACDecoder_read_residuals(Bitstream *bs,
                            struct i_array *residuals,
                            int residual_count,
@@ -140,13 +140,13 @@ ALACDecoder_read_residual(Bitstream *bs,
 
 /*takes a set of residuals, coefficients and a predictor_quantitization value
   returns a set of decoded samples*/
-status
+void
 ALACDecoder_decode_subframe(struct i_array *samples,
                             struct i_array *residuals,
                             struct i_array *coefficients,
                             int predictor_quantitization);
 
-status
+void
 ALACDecoder_decorrelate_channels(struct ia_array *output,
                                  struct ia_array *input,
                                  int interlacing_shift,

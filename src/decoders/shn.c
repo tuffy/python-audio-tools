@@ -236,6 +236,7 @@ SHNDecoder_read(decoders_SHNDecoder* self, PyObject *args)
     ia_data_t sum;
 
     int coffset;
+    PyThreadState *thread_state;
 
     if (self->read_finished) {
         iaa_reset(&(self->buffer));
@@ -252,6 +253,7 @@ SHNDecoder_read(decoders_SHNDecoder* self, PyObject *args)
             return NULL;
     }
 
+    thread_state = PyEval_SaveThread();
     if (!setjmp(*bs_try(self->bitstream))) {
         /*read the next instructions to fill all buffers,
           until FN_QUIT reached*/
@@ -367,11 +369,13 @@ SHNDecoder_read(decoders_SHNDecoder* self, PyObject *args)
                 self->bitshift = shn_read_uvar(self->bitstream, 2);
                 break;
             case FN_QUIT:
+                PyEval_RestoreThread(thread_state);
                 self->read_finished = 1;
                 bs_etry(self->bitstream);
                 iaa_reset(&(self->buffer));
                 goto finished;
             default:
+                PyEval_RestoreThread(thread_state);
                 PyErr_SetString(PyExc_ValueError,
                                 "unknown command encountered"
                                 "in Shorten stream");
@@ -379,11 +383,13 @@ SHNDecoder_read(decoders_SHNDecoder* self, PyObject *args)
             }
         }
     } else {
+        PyEval_RestoreThread(thread_state);
         PyErr_SetString(PyExc_IOError, "EOF reading Shorten stream");
         goto error;
     }
 
     bs_etry(self->bitstream);
+    PyEval_RestoreThread(thread_state);
 
     /*once self->buffer is full of PCM data on each channel,
       convert the integer values to a pcm.FrameList object*/

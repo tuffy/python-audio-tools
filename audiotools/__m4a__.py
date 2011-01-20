@@ -1331,7 +1331,7 @@ class ALACAudio(M4AAudio_faac):
             qt = __Qt_Atom_Stream__(f)
             alac = ALACAudio.ALAC_ATOM.parse(
                 ATOM_STSD.parse(
-                    self.qt_stream['moov']['trak']['mdia']['minf']['stbl'][
+                    qt['moov']['trak']['mdia']['minf']['stbl'][
                         'stsd'].data).descriptions[0].data).alac
             f.close()
 

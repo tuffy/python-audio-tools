@@ -23,7 +23,21 @@
  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 *******************************************************/
 
-typedef enum {OK, ERROR} status;
+typedef enum {OK,
+              ERROR,
+              ERR_BITSTREAM_IO,
+              ERR_EXCESSIVE_TERMS,
+              ERR_INVALID_TERM,
+              ERR_DECORR_SAMPLES_IO,
+              ERR_UNSUPPORTED_DECORR_TERM,
+              ERR_PREMATURE_DECORR_WEIGHTS,
+              ERR_PREMATURE_DECORR_SAMPLES,
+              ERR_PREMATURE_BITSTREAM,
+              ERR_MD5_MISMATCH,
+              ERR_MD5_IO,
+              ERR_INVALID_BLOCK_ID,
+              ERR_INVALID_RESERVED_BIT,
+              ERR_BLOCK_HEADER_IO} status;
 
 typedef enum {WV_DECORR_TERMS      = 0x2,
               WV_DECORR_WEIGHTS    = 0x3,
@@ -224,7 +238,7 @@ WavPackDecoder_restore_weight(int weight);
 
 /*Reads the interleaved decorrelation weights
   from the bitstream to the given arrays.*/
-status
+void
 WavPackDecoder_read_decorr_weights(Bitstream* bitstream,
                                    struct wavpack_subblock_header* header,
                                    int block_channel_count,
@@ -240,18 +254,18 @@ WavPackDecoder_read_decorr_samples(Bitstream* bitstream,
                                    struct ia_array* samples_A,
                                    struct ia_array* samples_B);
 
-status
+void
 WavPackDecoder_read_entropy_variables(Bitstream* bitstream,
                                       int block_channel_count,
                                       struct i_array* entropy_variables_A,
                                       struct i_array* entropy_variables_B);
 
-status
+void
 WavPackDecoder_read_int32_info(Bitstream* bitstream,
                                uint8_t* sent_bits, uint8_t* zeroes,
                                uint8_t* ones, uint8_t* dupes);
 
-status
+void
 WavPackDecoder_read_channel_info(Bitstream* bitstream,
                                  struct wavpack_subblock_header* header,
                                  int* channel_count,
@@ -323,6 +337,8 @@ void wavpack_undo_extended_integers(struct i_array* channel_A,
 
 void wavpack_undo_joint_stereo(struct i_array* channel_A,
                                struct i_array* channel_B);
+
+const char* wavpack_strerror(status error);
 
 int
 wavpack_exp2(int log);

@@ -56,7 +56,20 @@ struct flac_subframe_header {
     uint8_t wasted_bits_per_sample;
 };
 
-typedef enum {OK,ERROR} status;
+typedef enum {OK,
+              ERROR,
+              ERR_INVALID_SYNC_CODE,
+              ERR_INVALID_RESERVED_BIT,
+              ERR_INVALID_BITS_PER_SAMPLE,
+              ERR_INVALID_SAMPLE_RATE,
+              ERR_INVALID_FRAME_CRC,
+              ERR_SAMPLE_RATE_MISMATCH,
+              ERR_CHANNEL_COUNT_MISMATCH,
+              ERR_BITS_PER_SAMPLE_MISMATCH,
+              ERR_MAXIMUM_BLOCK_SIZE_EXCEEDED,
+              ERR_INVALID_CODING_METHOD,
+              ERR_INVALID_FIXED_ORDER,
+              ERR_INVALID_SUBFRAME_TYPE} status;
 
 typedef struct {
     PyObject_HEAD
@@ -260,6 +273,9 @@ FlacDecoder_update_md5sum(decoders_FlacDecoder *self,
 
 int
 FlacDecoder_verify_okay(decoders_FlacDecoder *self);
+
+const char*
+FlacDecoder_strerror(status error);
 
 #include "../common/flac_crc.h"
 

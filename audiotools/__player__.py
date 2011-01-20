@@ -126,6 +126,7 @@ class PlayerThread:
                 (self.state == PLAYER_PAUSED)):
                 (command, args) = self.command_queue.get(True)
                 if (command == "exit"):
+                    self.audio_output.close()
                     return
                 else:
                     getattr(self, command)(*args)
