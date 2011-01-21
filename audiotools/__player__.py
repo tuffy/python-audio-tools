@@ -68,19 +68,17 @@ class PlayerThread:
         self.command_queue = command_queue
 
         self.track = None
-        self.pcmreader = None
         self.pcmconverter = None
         self.frames_played = 0
         self.total_frames = 0
         self.state = PLAYER_STOPPED
 
     def open(self, track):
+        self.stop()
         self.track = track
-        self.pcmreader = None
-        self.pcmconverter = None
         self.frames_played = 0
         self.total_frames = track.total_frames()
-        self.state = PLAYER_STOPPED
+
 
     def pause(self):
         if (self.state == PLAYER_PLAYING):
@@ -89,15 +87,15 @@ class PlayerThread:
     def play(self):
         if (self.track is not None):
             if (self.state == PLAYER_STOPPED):
-                self.pcmreader = self.track.to_pcm()
-                if (not self.audio_output.compatible(self.pcmreader)):
+                pcmreader = self.track.to_pcm()
+                if (not self.audio_output.compatible(pcmreader)):
                     self.audio_output.init(
-                        sample_rate=self.pcmreader.sample_rate,
-                        channels=self.pcmreader.channels,
-                        channel_mask=self.pcmreader.channel_mask,
-                        bits_per_sample=self.pcmreader.bits_per_sample)
+                        sample_rate=pcmreader.sample_rate,
+                        channels=pcmreader.channels,
+                        channel_mask=pcmreader.channel_mask,
+                        bits_per_sample=pcmreader.bits_per_sample)
                 self.pcmconverter = audiotools.ThreadedPCMConverter(
-                    self.pcmreader,
+                    pcmreader,
                     self.audio_output.framelist_converter())
                 self.frames_played = 0
                 self.state = PLAYER_PLAYING
@@ -108,15 +106,16 @@ class PlayerThread:
 
     def toggle_play_pause(self):
         if (self.state == PLAYER_PLAYING):
-            self.state = PLAYER_PAUSED
-        elif (self.state == PLAYER_PAUSED):
-            self.state = PLAYER_PLAYING
+            self.pause()
+        elif ((self.state == PLAYER_PAUSED) or
+              (self.state == PLAYER_STOPPED)):
+            self.play()
 
     def stop(self):
         if (self.pcmconverter is not None):
             self.pcmconverter.close()
+            del(self.pcmconverter)
             self.pcmconverter = None
-            self.pcmreader = None
         self.frames_played = 0
         self.state = PLAYER_STOPPED
 
@@ -150,7 +149,6 @@ class PlayerThread:
 
 class ThreadedPCMConverter:
     def __init__(self, pcmreader, converter):
-        self.pcmreader = pcmreader
         self.decoded_data = Queue.Queue()
         self.stop_decoding = threading.Event()
 
@@ -178,6 +176,7 @@ class ThreadedPCMConverter:
 
     def close(self):
         self.stop_decoding.set()
+        self.thread.join()
 
 
 class AudioOutput:
