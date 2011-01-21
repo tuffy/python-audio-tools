@@ -2986,15 +2986,24 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    - [X] next track
    - [X] previous track
 ** TODO Handle tracks that trigger a DecodeError in to_pcm()
-** TODO Update Player object to handle ReplayGain
-   - [ ] track gain
-   - [ ] album gain
+** DONE Update Player object to handle ReplayGain
+   - [X] track gain
+   - [X] album gain
 ** TODO Add different audio output sinks
-*** DONE PortAudioOutput
+*** TODO PortAudioOutput
+    - [ ] fix to avoid generating info text on startup
+    - [ ] check for multichannel/non-16bps support
 *** TODO PulseAudioOutput
 *** TODO OSSAudioOutput
 ** TODO Support different sinks from trackplay(1)
 ** TODO Update trackplay man page
 ** TODO Add programming documentation
 *** TODO Player
-*** TODO 
+*** TODO AudioOutput
+** TODO Add docstrings
+*** TODO Player
+*** TODO AudioPutput
+*** TODO ThreadedPCMConverter
+*** TODO PortAudioOutput
+*** TODO PulseAudioOutput
+*** TODO OSSAudioOutput

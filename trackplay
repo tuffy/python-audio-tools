@@ -88,7 +88,8 @@ try:
             return c
 
     class TrackplayGUI(urwid.Frame):
-        def __init__(self, track_list, audio_output):
+        def __init__(self, track_list, audio_output,
+                     replay_gain=audiotools.RG_NO_REPLAYGAIN):
             def track_name(track):
                 metadata = track.get_metadata()
                 if (metadata is not None):
@@ -98,7 +99,10 @@ try:
 
             self.track_list = track_list
             self.audio_output = audio_output
-            self.player = audiotools.Player(audio_output, self.next_track)
+            self.player = audiotools.Player(
+                audio_output=audio_output,
+                replay_gain=replay_gain,
+                next_track_callback=self.next_track)
 
             self.track_name = urwid.Text("")
             self.album_name = urwid.Text("")
@@ -247,9 +251,12 @@ class TrackplayTTY:
                      u"%(channels)dch %(sample_rate)dHz " +
                      u"%(bits_per_sample)d-bit")
 
-    def __init__(self, track_list, audio_output):
+    def __init__(self, track_list, audio_output,
+                 replay_gain=audiotools.RG_NO_REPLAYGAIN):
         self.track_list = track_list
-        self.player = audiotools.Player(audio_output, self.next_track)
+        self.player = audiotools.Player(audio_output=audio_output,
+                                        replay_gain=replay_gain,
+                                        next_track_callback=self.next_track)
         self.track_index = -1
         self.current_track = None
         self.seconds_total = 0
@@ -374,11 +381,18 @@ if (__name__ == '__main__'):
     audiofiles = audiotools.open_files(args, sorted=False, messenger=msg)
 
     #FIXME - support different output types
-    #FIXME - support track ReplayGain
-    #FIXME - support album ReplayGain
+
+    if (options.track_replaygain):
+        replay_gain = audiotools.RG_TRACK_GAIN
+    elif (options.album_replaygain):
+        replay_gain = audiotools.RG_ALBUM_GAIN
+    else:
+        replay_gain = audiotools.RG_NO_REPLAYGAIN
 
     if (options.interactive):
-        trackplay = TrackplayGUI(audiofiles, audiotools.PortAudioOutput())
+        trackplay = TrackplayGUI(track_list=audiofiles,
+                                 audio_output=audiotools.PortAudioOutput(),
+                                 replay_gain=replay_gain)
 
 
         if (len(audiofiles) > 0):
@@ -399,7 +413,9 @@ if (__name__ == '__main__'):
 
         loop.run()
     else:
-        trackplay = TrackplayTTY(audiofiles, audiotools.PortAudioOutput())
+        trackplay = TrackplayTTY(track_list=audiofiles,
+                                 audio_output=audiotools.PortAudioOutput(),
+                                 replay_gain=replay_gain)
         trackplay.play()
         output_line_len = 0
 

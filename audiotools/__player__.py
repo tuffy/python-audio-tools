@@ -28,10 +28,16 @@ import Queue
 import threading
 
 
+(RG_NO_REPLAYGAIN, RG_TRACK_GAIN, RG_ALBUM_GAIN) = range(3)
+
 class Player:
-    def __init__(self, audio_output, next_track_callback=lambda f: f):
+    def __init__(self, audio_output,
+                 replay_gain=RG_NO_REPLAYGAIN,
+                 next_track_callback=lambda f: f):
         self.command_queue = Queue.Queue()
-        self.worker = PlayerThread(audio_output, self.command_queue)
+        self.worker = PlayerThread(audio_output,
+                                   self.command_queue,
+                                   replay_gain)
         self.thread = threading.Thread(target=self.worker.run,
                                        args=(next_track_callback,))
         self.thread.daemon = True
@@ -43,6 +49,9 @@ class Player:
 
     def play(self):
         self.command_queue.put(("play", []))
+
+    def set_replay_gain(self, replay_gain):
+        self.command_queue.put(("set_replay_gain", [replay_gain]))
 
     def pause(self):
         self.command_queue.put(("pause", []))
@@ -63,9 +72,11 @@ class Player:
 (PLAYER_STOPPED, PLAYER_PAUSED, PLAYER_PLAYING) = range(3)
 
 class PlayerThread:
-    def __init__(self, audio_output, command_queue):
+    def __init__(self, audio_output, command_queue,
+                 replay_gain=RG_NO_REPLAYGAIN):
         self.audio_output = audio_output
         self.command_queue = command_queue
+        self.replay_gain = replay_gain
 
         self.track = None
         self.pcmconverter = None
@@ -79,7 +90,6 @@ class PlayerThread:
         self.frames_played = 0
         self.total_frames = track.total_frames()
 
-
     def pause(self):
         if (self.state == PLAYER_PLAYING):
             self.state = PLAYER_PAUSED
@@ -87,7 +97,27 @@ class PlayerThread:
     def play(self):
         if (self.track is not None):
             if (self.state == PLAYER_STOPPED):
-                pcmreader = self.track.to_pcm()
+                if (self.replay_gain == RG_TRACK_GAIN):
+                    replay_gain = self.track.replay_gain()
+                    if (replay_gain is not None):
+                        pcmreader = audiotools.ReplayGainReader(
+                            self.track.to_pcm(),
+                            replay_gain.track_gain,
+                            replay_gain.track_peak)
+                    else:
+                        pcmreader = self.track.to_pcm()
+                elif (self.replay_gain == RG_ALBUM_GAIN):
+                    replay_gain = self.track.replay_gain()
+                    if (replay_gain is not None):
+                        pcmreader = audiotools.ReplayGainReader(
+                            self.track.to_pcm(),
+                            replay_gain.album_gain,
+                            replay_gain.album_peak)
+                    else:
+                        pcmreader = self.track.to_pcm()
+                else:
+                    pcmreader = self.track.to_pcm()
+
                 if (not self.audio_output.compatible(pcmreader)):
                     self.audio_output.init(
                         sample_rate=pcmreader.sample_rate,
@@ -103,6 +133,9 @@ class PlayerThread:
                 self.state = PLAYER_PLAYING
             elif (self.state == PLAYER_PLAYING):
                 pass
+
+    def set_replay_gain(self, replay_gain):
+        self.replay_gain = replay_gain
 
     def toggle_play_pause(self):
         if (self.state == PLAYER_PLAYING):
