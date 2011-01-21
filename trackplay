@@ -17,151 +17,316 @@
 #along with this program; if not, write to the Free Software
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-
 import audiotools
 import sys
-import struct
-import ossaudiodev
+import gettext
+import time
+import select
+import os
+import tty
+import termios
 
-#This takes a channel count and returns a tuple of PulseAudio
-#channel map strings (for sending to pacat(1)) in order to know
-#where to send them.
-#It assumes the FLAC channel mapping, which seems to be a standard.
-PULSEAUDIO_CHANNEL_MAP = \
-    {1: ("mono",),
-     2: ("front-left", "front-right"),
-     3: ("front-left", "front-right", "front-center"),
-     4: ("front-left", "front-right", "rear-left", "rear-right"),
-     5: ("front-left", "front-right", "front-center",
-        "rear-left", "rear-right"),
-     6: ("front-left", "front-right", "front-center",
-        "lfe", "rear-left", "rear-right")}
+gettext.install("audiotools", unicode=True)
 
+try:
+    import urwid
 
-class OSSPlayer:
-    NAME = 'oss'
+    class AudioProgressBar(urwid.ProgressBar):
+        def __init__(self, normal, complete, sample_rate, current=0, done=100,
+                     satt=None):
+            urwid.ProgressBar.__init__(self,
+                                       normal=normal,
+                                       complete=complete,
+                                       current=current,
+                                       done=done,
+                                       satt=satt)
+            self.sample_rate = sample_rate
 
-    def __init__(self):
-        self.dev = ossaudiodev.open("w")
+        def render(self, size, focus=False):
+            """
+            Render the progress bar.
+            """
 
-    def close(self):
-        self.dev.close()
+            #leeched from the orignal implementation
+            #only the txt formatting differs
 
-    def play(self, pcm, audiofile):
-        if (pcm.bits_per_sample == 16):
-            fmt = ossaudiodev.AFMT_S16_LE
-        elif (pcm.bits_per_sample == 8):
-            fmt = ossaudiodev.AFMT_U8
-        else:
-            #if the bits-per-sample is not 8/16 (which usually means 24)
-            #have PCMConverter turn it into 16 for us
-            pcm = audiotools.PCMConverter(
-                pcm,
-                sample_rate=pcm.sample_rate,
-                channels=pcm.channels,
-                channel_mask=pcm.channel_mask,
-                bits_per_sample=16)
-            fmt = ossaudiodev.AFMT_S16_LE
+            (maxcol,) = size
 
-        self.dev.setparameters(fmt,
-                          pcm.channels,
-                          pcm.sample_rate)
+            try:
+                txt=urwid.Text("%d:%2.2d" % \
+                                   ((self.current / self.sample_rate) / 60,
+                                    (self.current / self.sample_rate) % 60),
+                               'center', 'clip')
+            except ZeroDivisionError:
+                txt=urwid.Text("0:00", 'center', 'clip')
+            c = txt.render((maxcol,))
 
-        audiotools.threaded_transfer_framelist_data(pcm, self.dev.writeall)
+            cf = float( self.current ) * maxcol / self.done
+            ccol = int( cf )
+            cs = 0
+            if self.satt is not None:
+                cs = int((cf - ccol) * 8)
+            if ccol < 0 or (ccol == 0 and cs == 0):
+                c._attr = [[(self.normal,maxcol)]]
+            elif ccol >= maxcol:
+                c._attr = [[(self.complete,maxcol)]]
+            elif cs and c._text[0][ccol] == " ":
+                t = c._text[0]
+                cenc = self.eighths[cs].encode("utf-8")
+                c._text[0] = t[:ccol]+cenc+t[ccol+1:]
+                a = []
+                if ccol > 0:
+                    a.append( (self.complete, ccol) )
+                a.append((self.satt,len(cenc)))
+                if maxcol-ccol-1 > 0:
+                    a.append( (self.normal, maxcol-ccol-1) )
+                c._attr = [a]
+                c._cs = [[(None, len(c._text[0]))]]
+            else:
+                c._attr = [[(self.complete,ccol),
+                    (self.normal,maxcol-ccol)]]
+            return c
 
-    @classmethod
-    def available(cls):
-        return True
+    class TrackplayGUI(urwid.Frame):
+        def __init__(self, track_list, audio_output):
+            def track_name(track):
+                metadata = track.get_metadata()
+                if (metadata is not None):
+                    return metadata.track_name
+                else:
+                    return track.filename
 
+            self.track_list = track_list
+            self.audio_output = audio_output
+            self.player = audiotools.Player(audio_output, self.next_track)
 
-class __FloatConverter__:
-    def __init__(self, pcmreader):
-        self.pcmreader = pcmreader
-        self.bits_per_sample = pcmreader.bits_per_sample
-        self.channels = pcmreader.channels
-        self.sample_rate = pcmreader.sample_rate
+            self.track_name = urwid.Text("")
+            self.album_name = urwid.Text("")
+            self.artist_name = urwid.Text("")
+            self.length = urwid.Text("")
+            self.channels = urwid.Text("")
+            self.sample_rate = urwid.Text("")
+            self.bits_per_sample = urwid.Text("")
+            self.play_pause_button = urwid.Button("Play", on_press=self.play_pause)
+            self.progress = AudioProgressBar(normal='pg normal',
+                                             complete='pg complete',
+                                             sample_rate=0,
+                                             current=0,
+                                             done=100)
 
-    def read(self, bytes):
-        framelist = self.pcmreader.read(bytes)
-        return struct.pack("<%df" % (len(framelist)), *(framelist.to_float()))
+            self.track_group = []
 
+            track_len = sum([track.seconds_length() for track in track_list])
 
-class PulsePlayer:
-    NAME = 'pulse'
+            self.status = urwid.Text(
+                "%(count)d tracks, %(min)d:%(sec)2.2d length" % {
+                    "count":len(self.track_list),
+                    "min":int(track_len) / 60,
+                    "sec":int(track_len) % 60},
+                                     align='center')
 
-    def __init__(self):
-        pass
+            header = urwid.Pile([
+                    urwid.Columns([
+                            ('fixed', 9, urwid.Text(('header', u"Track  : "))),
+                            ('weight', 1, self.track_name)]),
+                    urwid.Columns([
+                            ('fixed', 9, urwid.Text(('header', u"Album  : "))),
+                            ('weight', 1, self.album_name)]),
+                    urwid.Columns([
+                            ('fixed', 9, urwid.Text(('header', u"Artist : "))),
+                            ('weight', 1, self.artist_name)]),
+                    urwid.Columns([
+                            ('weight', 1, self.length),
+                            ('weight', 1, self.channels),
+                            ('weight', 1, self.sample_rate),
+                            ('weight', 1, self.bits_per_sample)]),
+                    self.progress])
 
-    def close(self):
-        pass
+            controls = urwid.GridFlow([
+                    urwid.Button("Prev", on_press=self.previous_track),
+                    self.play_pause_button,
+                    urwid.Button("Next", on_press=self.next_track)],
+                                      9, 4, 1, 'center')
+            controls.set_focus(1)
 
-    @classmethod
-    def server_alive(cls):
-        import subprocess
+            track_list = urwid.ListBox([
+                    urwid.RadioButton(group=self.track_group,
+                                      label=track_name(track),
+                                      user_data=(track, track.get_metadata()),
+                                      on_state_change=self.select_track)
+                    for track in self.track_list])
+            body = urwid.Pile([('fixed', 1, urwid.Filler(controls)),
+                               ('weight', 1, track_list)])
+            footer = urwid.Pile([urwid.Divider(div_char='-'),
+                                 self.status])
 
-        dev = subprocess.Popen([audiotools.BIN["pactl"], "stat"],
-                               stdout=subprocess.PIPE,
-                               stderr=subprocess.PIPE)
-        dev.stdout.read()
-        dev.stderr.read()
-        return (dev.wait() == 0)
+            urwid.Frame.__init__(self, body=body, header=header, footer=footer)
 
-    def play(self, pcm, audiofile):
-        import subprocess
+        def next_track(self, user_data=None):
+            track_index = [g.state for g in self.track_group].index(True)
+            try:
+                self.track_group[track_index + 1].set_state(True)
+            except IndexError:
+                pass
 
-        #This is a race condition
-        #since the server might vanish between now and when we
-        #start piping audio to it.
-        #But that's unlikely enough to not worry too much about.
-        if (not PulsePlayer.server_alive()):
-            raise IOError("PulseAudio server not found")
+        def previous_track(self, user_data=None):
+            track_index = [g.state for g in self.track_group].index(True)
+            try:
+                if (track_index == 0):
+                    raise IndexError()
+                else:
+                    self.track_group[track_index - 1].set_state(True)
+            except IndexError:
+                pass
 
-        metadata = audiofile.get_metadata()
-        if (metadata is not None):
-            stream_name = metadata.track_name.encode('utf-8')
-        else:
-            stream_name = audiofile.filename
+        def select_track(self, radio_button, new_state, user_data,
+                         auto_play=True):
+            if (new_state == True):
+                (track, metadata) = user_data
+                if (metadata is not None):
+                    self.track_name.set_text(metadata.track_name)
+                    self.album_name.set_text(metadata.album_name)
+                    self.artist_name.set_text(metadata.artist_name)
+                else:
+                    self.track_name.set_text(u"")
+                    self.album_name.set_text(u"")
+                    self.artist_name.set_text(u"")
 
-        stream_name = stream_name.replace(chr(0), " ")
+                track_length = track.seconds_length()
+                self.length.set_text("%d:%2.2d" % (int(track_length) / 60,
+                                                  int(track_length) % 60))
+                self.channels.set_text("%dch" % (track.channels()))
+                self.sample_rate.set_text("%dHz" % (track.sample_rate()))
+                self.bits_per_sample.set_text("%dbps" % (track.bits_per_sample()))
 
-        if (pcm.channels in PULSEAUDIO_CHANNEL_MAP.keys()):
-            channel_map = []
-            #channel_map = ["--channel-map=%s" % \
-            #               (",".join(PULSEAUDIO_CHANNEL_MAP[pcm.channels]))
-        else:
-            channel_map = []
+                self.progress.current = 0
+                self.progress.done = track.total_frames()
+                self.progress.sample_rate = track.sample_rate()
 
-        dev = subprocess.Popen([audiotools.BIN["pacat"],
-                                "-p", "-n", "trackplay",
-                                "--stream-name=%s" % (stream_name),
-                                "--rate=%d" % (pcm.sample_rate),
-                                "--format=float32le",
-                                "--channels=%d" % (pcm.channels)] + \
-                                   channel_map,
-                               stdin=subprocess.PIPE)
+                self.player.open(track)
+                if (auto_play):
+                    self.player.play()
+                    self.play_pause_button.set_label("Pause")
 
-        # if (pcm.bits_per_sample in (8,16)):
-        #     #8 and 16 bit ints can be passed through directly
-        #     audiotools.threaded_transfer_framelist_data(pcm,dev.stdin.write)
-        # else:
-        #    #24 bit ints must be converted to floats
-        audiotools.threaded_transfer_framelist_data(
-            __FloatConverter__(pcm),
-            dev.stdin.write)
+        def update_status(self):
+            self.progress.set_completion(self.player.progress()[0])
 
-        dev.stdin.close()
-        dev.wait()
+        def play_pause(self, user_data):
+            self.player.toggle_play_pause()
+            if (self.play_pause_button.get_label() == "Play"):
+                self.play_pause_button.set_label("Pause")
+            elif (self.play_pause_button.get_label() == "Pause"):
+                self.play_pause_button.set_label("Play")
 
-    @classmethod
-    def available(cls):
-        return (audiotools.BIN.can_execute(audiotools.BIN["pacat"]) and
-                audiotools.BIN.can_execute(audiotools.BIN["pactl"]) and
-                cls.server_alive())
+        def handle_text(self, i):
+            if ((i == 'esc') or (i == 'q') or (i == 'Q')):
+                self.perform_exit()
+            elif ((i == 'n') or (i == 'N')):
+                self.next_track()
+            elif ((i == 'p') or (i == 'P')):
+                self.previous_track()
+
+        def perform_exit(self, *args):
+            self.player.close()
+            raise urwid.ExitMainLoop()
+
+    def timer(main_loop, trackplay):
+        trackplay.update_status()
+        loop.set_alarm_at(tm=time.time() + 1,
+                          callback=timer,
+                          user_data=trackplay)
+
+    interactive_available = True
+except ImportError:
+    interactive_available = False
+
+class TrackplayTTY:
+    OUTPUT_FORMAT = (u"%(track_number)d/%(track_total)d " +
+                     u"[%(sent_minutes)d:%(sent_seconds)2.2d / " +
+                     u"%(total_minutes)d:%(total_seconds)2.2d] " +
+                     u"%(channels)dch %(sample_rate)dHz " +
+                     u"%(bits_per_sample)d-bit")
+
+    def __init__(self, track_list, audio_output):
+        self.track_list = track_list
+        self.player = audiotools.Player(audio_output, self.next_track)
+        self.track_index = -1
+        self.current_track = None
+        self.seconds_total = 0
+        self.channels = 0
+        self.sample_rate = 0
+        self.bits_per_sample = 0
+        self.track_number = 0
+        self.track_total = len(track_list)
+
+    def quit(self):
+        if (self.current_track is not None):
+            self.current_track = None
+            self.player.close()
+
+    def toggle_play_pause(self):
+        if (self.current_track is not None):
+            self.player.toggle_play_pause()
+
+    def play(self):
+        self.next_track()
+
+    def previous_track(self):
+        if (self.track_index > 0):
+            self.track_index -= 1
+            self.current_track = self.track_list[self.track_index]
+            self.channels = self.current_track.channels()
+            self.sample_rate = self.current_track.sample_rate()
+            self.bits_per_sample = self.current_track.bits_per_sample()
+            self.track_number = self.track_index + 1
+            self.player.open(self.current_track)
+            self.player.play()
+
+    def next_track(self):
+        try:
+            self.track_index += 1
+            self.current_track = self.track_list[self.track_index]
+            self.channels = self.current_track.channels()
+            self.sample_rate = self.current_track.sample_rate()
+            self.bits_per_sample = self.current_track.bits_per_sample()
+            self.track_number = self.track_index + 1
+            self.player.open(self.current_track)
+            self.player.play()
+        except IndexError:
+            self.current_track = None
+            self.player.close()
+
+    def progress(self):
+        return self.player.progress()
+
+    def progress_line(self):
+        return (self.OUTPUT_FORMAT %
+                {"track_number":self.track_number,
+                 "track_total":self.track_total,
+                 "sent_minutes":
+                     (frames_sent / self.sample_rate) / 60,
+                 "sent_seconds":
+                     (frames_sent / self.sample_rate) % 60,
+                 "total_minutes":
+                     (frames_total / self.sample_rate) / 60,
+                 "total_seconds":
+                     (frames_total / self.sample_rate) % 60,
+                 "channels":self.channels,
+                 "sample_rate":self.sample_rate,
+                 "bits_per_sample":self.bits_per_sample})
+
 
 if (__name__ == '__main__'):
     parser = audiotools.OptionParser(
         usage=_(u"%prog <track 1> [track 2] ..."),
         version="Python Audio Tools %s" % (audiotools.VERSION))
+
+    parser.add_option(
+        '-I', '--interactive',
+        action='store_true',
+        default=False,
+        dest='interactive',
+        help=_(u'run in interactive mode'))
 
     parser.add_option(
         '-T', '--track-replaygain',
@@ -177,55 +342,101 @@ if (__name__ == '__main__'):
         dest='album_replaygain',
         help=_(u'apply album ReplayGain during playback, if present'))
 
-    players = [p for p in [OSSPlayer, PulsePlayer] if p.available()]
-    players_map = dict([(p.NAME, p) for p in players])
+    players_map = {"pa":"Port Audio"}
 
     parser.add_option(
         '-o', '--output',
         action='store',
         dest='output',
         choices=players_map.keys(),
-        default=players[-1].NAME,
+        default="pa",
         help=_(u"the method to play audio (choose from: %s)") % \
             u", ".join([u"\"%s\"" % (k.decode('ascii')) for k in
                         players_map.keys()]))
 
+    parser.add_option(
+        '-V', '--verbose',
+        action='store',
+        dest='verbosity',
+        choices=audiotools.VERBOSITY_LEVELS,
+        default=audiotools.DEFAULT_VERBOSITY,
+        help=_(u'the verbosity level to execute at'))
+
     (options, args) = parser.parse_args()
     msg = audiotools.Messenger("trackplay", options)
 
-    player = players_map[options.output]()
+    if (options.interactive and (not interactive_available)):
+        msg.error(_(u"urwid is required for interactive mode"))
+        msg.output(_(u"Please download and install urwid from http://excess.org/urwid/"))
+        msg.output(_(u"or your system's package manager."))
+        sys.exit(1)
 
-    try:
+    audiofiles = audiotools.open_files(args, sorted=False, messenger=msg)
+
+    #FIXME - support different output types
+    #FIXME - support track ReplayGain
+    #FIXME - support album ReplayGain
+
+    if (options.interactive):
+        trackplay = TrackplayGUI(audiofiles, audiotools.PortAudioOutput())
+
+
+        if (len(audiofiles) > 0):
+            trackplay.select_track(None, True,
+                                   (audiofiles[0],
+                                    audiofiles[0].get_metadata()), False)
+
+        loop = urwid.MainLoop(trackplay,
+                              [('header', 'default,bold', 'default', ''),
+                               ('pg normal', 'white', 'black', 'standout'),
+                               ('pg complete', 'white', 'light blue'),
+                               ('pg smooth', 'light blue', 'black')],
+                              unhandled_input=trackplay.handle_text)
+
+        loop.set_alarm_at(tm=time.time() + 1,
+                          callback=timer,
+                          user_data=trackplay)
+
+        loop.run()
+    else:
+        trackplay = TrackplayTTY(audiofiles, audiotools.PortAudioOutput())
+        trackplay.play()
+        output_line_len = 0
+
+        original_terminal_settings = termios.tcgetattr(0)
         try:
-            for audiofile in audiotools.open_files(args, sorted=False,
-                                                   messenger=msg):
-                pcm = audiofile.to_pcm()
+            tty.setcbreak(sys.stdin.fileno())
+            while (trackplay.current_track is not None):
+                (frames_sent, frames_total) = trackplay.progress()
+                output_line = trackplay.progress_line()
+                msg.ansi_clearline()
+                if (len(output_line) > output_line_len):
+                    output_line_len = len(output_line)
+                    msg.partial_output(output_line)
+                else:
+                    msg.partial_output(output_line +
+                                       (u" " * (output_line_len -
+                                                len(output_line))))
 
-                try:
-                    #if ReplayGain specified, wrap ReplayGainReader
-                    #around the given PCMReader
-                    if (options.track_replaygain or options.album_replaygain):
-                        replaygain = audiofile.replay_gain()
-                        if ((replaygain is not None) and
-                            options.album_replaygain):
-                            pcm = audiotools.ReplayGainReader(
-                                pcm,
-                                replaygain.album_gain,
-                                replaygain.album_peak)
-                        elif ((replaygain is not None) and
-                              options.track_replaygain):
-                            pcm = audiotools.ReplayGainReader(
-                                pcm,
-                                replaygain.track_gain,
-                                replaygain.track_peak)
+                (r_list, w_list, x_list) = select.select([sys.stdin.fileno()],
+                                                         [], [], 1)
+                if (len(r_list) > 0):
+                    char = os.read(sys.stdin.fileno(), 1)
+                    if ((char == 'q') or
+                        (char == 'Q') or
+                        (char == '\x1B')):
+                        trackplay.quit()
+                    elif (char == ' '):
+                        trackplay.toggle_play_pause()
+                    elif ((char == 'n') or
+                          (char == 'N')):
+                        trackplay.next_track()
+                    elif ((char == 'p') or
+                          (char == 'P')):
+                        trackplay.previous_track()
+                    else:
+                        pass
 
-                    player.play(pcm, audiofile)
-                finally:
-                    pcm.close()
-        except IOError, err:
-            msg.error(unicode(err))
-            sys.exit(1)
-        except audiotools.DecodingError:
-            sys.exit(1)
-    finally:
-        player.close()
+            msg.ansi_clearline()
+        finally:
+            termios.tcsetattr(0, termios.TCSADRAIN, original_terminal_settings)

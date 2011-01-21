@@ -537,6 +537,11 @@ class SilentMessenger(VerboseMessenger):
 
         pass
 
+    def ansi_clearline(self):
+        """Performs no output, resulting in silence."""
+
+        pass
+
 
 class UnsupportedFile(Exception):
     """Raised by open() if the file can be opened but not identified."""
