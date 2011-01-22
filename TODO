@@ -2993,9 +2993,10 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** TODO PortAudioOutput
     - [ ] fix to avoid generating info text on startup
     - [ ] check for multichannel/non-16bps support
-*** TODO PulseAudioOutput
-*** TODO OSSAudioOutput
-** TODO Support different sinks from trackplay(1)
+*** DONE PulseAudioOutput
+*** DONE OSSAudioOutput
+*** DONE NULLAudioOutput
+** DONE Support different sinks from trackplay(1)
 ** TODO Update trackplay man page
 ** TODO Add programming documentation
 *** TODO Player
@@ -3007,3 +3008,4 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** TODO PortAudioOutput
 *** TODO PulseAudioOutput
 *** TODO OSSAudioOutput
+*** TODO NULLAudioOutput

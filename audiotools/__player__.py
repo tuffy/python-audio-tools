@@ -272,47 +272,204 @@ class AudioOutput:
 
         raise NotImplementedError()
 
-try:
-    import pyaudio
+    @classmethod
+    def available(self):
+        return False
 
-    class PortAudioOutput(AudioOutput):
-        def init(self, sample_rate, channels, channel_mask, bits_per_sample):
-            if (not self.initialized):
-                self.sample_rate = sample_rate
-                self.channels = channels
-                self.channel_mask = channel_mask
-                self.bits_per_sample = bits_per_sample
+class NULLAudioOutput(AudioOutput):
+    NAME = "NULL"
 
-                self.pyaudio = pyaudio.PyAudio()
-                self.stream = self.pyaudio.open(
-                    format=self.pyaudio.get_format_from_width(
-                        self.bits_per_sample / 8, False),
-                    channels=self.channels,
-                    rate=self.sample_rate,
-                    output=True)
+    def framelist_converter(self):
+        return lambda f: f.frames
 
-                self.initialized = True
+    def init(self, sample_rate, channels, channel_mask, bits_per_sample):
+        self.sample_rate = sample_rate
+        self.channels = channels
+        self.channel_mask = channel_mask
+        self.bits_per_sample = bits_per_sample
+
+    def play(self, data):
+        time.sleep(float(data) / self.sample_rate)
+
+    def close(self):
+        pass
+
+    @classmethod
+    def available(self):
+        return True
+
+class OSSAudioOutput(AudioOutput):
+    NAME = "OSS"
+
+    def init(self, sample_rate, channels, channel_mask, bits_per_sample):
+        if (not self.initialized):
+            import ossaudiodev
+
+            self.sample_rate = sample_rate
+            self.channels = channels
+            self.channel_mask = channel_mask
+            self.bits_per_sample = bits_per_sample
+
+            self.ossaudio = ossaudiodev.open('w')
+            if (self.bits_per_sample == 8):
+                self.ossaudio.setfmt(ossaudiodev.AFMT_S8_LE)
+            elif (self.bits_per_sample == 16):
+                self.ossaudio.setfmt(ossaudiodev.AFMT_S16_LE)
+            elif (self.bits_per_sample == 24):
+                self.ossaudio.setfmt(ossaudiodev.AFMT_S16_LE)
             else:
-                self.close()
-                self.init(sample_rate=sample_rate,
-                          channels=channels,
-                          channel_mask=channel_mask,
-                          bits_per_sample=bits_per_sample)
+                raise ValueError("Unsupported bits-per-sample")
 
-        def framelist_converter(self):
-            def convert(framelist):
-                return framelist.to_bytes(False, True)
+            self.ossaudio.channels(channels)
+            self.ossaudio.speed(sample_rate)
 
-            return convert
+            self.initialized = True
+        else:
+            self.close()
+            self.init(sample_rate=sample_rate,
+                      channels=channels,
+                      channel_mask=channel_mask,
+                      bits_per_sample=bits_per_sample)
 
-        def play(self, data):
-            self.stream.write(data)
+    def framelist_converter(self):
+        if (self.bits_per_sample == 8):
+            return lambda f: f.to_bytes(False, True)
+        elif (self.bits_per_sample == 16):
+            return lambda f: f.to_bytes(False, True)
+        elif (self.bits_per_sample == 24):
+            import audiotools.pcm
 
-        def close(self):
-            if (self.initialized):
-                self.stream.close()
-                self.pyaudio.terminate()
-                self.initialized = False
+            return lambda f: audiotools.pcm.from_list(
+                [i >> 8 for i in list(f)],
+                self.channels, 16, True).to_bytes(False, True)
+        else:
+            raise ValueError("Unsupported bits-per-sample")
 
-except ImportError:
-    pass
+    def play(self, data):
+        self.ossaudio.writeall(data)
+
+    def close(self):
+        if (self.initialized):
+            self.initialized = False
+            self.ossaudio.close()
+
+    @classmethod
+    def available(self):
+        try:
+            import ossaudiodev
+            return True
+        except ImportError:
+            return False
+
+class PulseAudioOutput(AudioOutput):
+    NAME = "PulseAudio"
+
+    def init(self, sample_rate, channels, channel_mask, bits_per_sample):
+        if (not self.initialized):
+            import subprocess
+
+            self.sample_rate = sample_rate
+            self.channels = channels
+            self.channel_mask = channel_mask
+            self.bits_per_sample = bits_per_sample
+
+            if (bits_per_sample == 8):
+                format = "u8"
+            elif (bits_per_sample == 16):
+                format = "s16le"
+            elif (bits_per_sample == 24):
+                format = "s24le"
+            else:
+                raise ValueError("Unsupported bits-per-sample")
+
+            self.pacat = subprocess.Popen(
+                [audiotools.BIN["pacat"],
+                 "--rate", str(sample_rate),
+                 "--format", format,
+                 "--channels", str(channels),
+                 "--latency-msec",str(10)],
+                stdin=subprocess.PIPE)
+
+            self.initialized = True
+        else:
+            self.close()
+            self.init(sample_rate=sample_rate,
+                      channels=channels,
+                      channel_mask=channel_mask,
+                      bits_per_sample=bits_per_sample)
+
+    def framelist_converter(self):
+        if (self.bits_per_sample == 8):
+            return lambda f: f.to_bytes(True, False)
+        elif (self.bits_per_sample == 16):
+            return lambda f: f.to_bytes(False, True)
+        elif (self.bits_per_sample == 24):
+            return lambda f: f.to_bytes(False, True)
+        else:
+            raise ValueError("Unsupported bits-per-sample")
+
+    def play(self, data):
+        self.pacat.stdin.write(data)
+        self.pacat.stdin.flush()
+
+    def close(self):
+        if (self.initialized):
+            self.initialized = False
+            self.pacat.stdin.close()
+            self.pacat.wait()
+
+    @classmethod
+    def available(self):
+        return True #FIXME
+        # raise NotImplementedError()
+
+class PortAudioOutput(AudioOutput):
+    NAME = "PortAudio"
+
+    def init(self, sample_rate, channels, channel_mask, bits_per_sample):
+        if (not self.initialized):
+            import pyaudio
+
+            self.sample_rate = sample_rate
+            self.channels = channels
+            self.channel_mask = channel_mask
+            self.bits_per_sample = bits_per_sample
+
+            self.pyaudio = pyaudio.PyAudio()
+            self.stream = self.pyaudio.open(
+                format=self.pyaudio.get_format_from_width(
+                    self.bits_per_sample / 8, False),
+                channels=self.channels,
+                rate=self.sample_rate,
+                output=True)
+
+            self.initialized = True
+        else:
+            self.close()
+            self.init(sample_rate=sample_rate,
+                      channels=channels,
+                      channel_mask=channel_mask,
+                      bits_per_sample=bits_per_sample)
+
+    def framelist_converter(self):
+        return lambda f: f.to_bytes(False, True)
+
+    def play(self, data):
+        self.stream.write(data)
+
+    def close(self):
+        if (self.initialized):
+            self.stream.close()
+            self.pyaudio.terminate()
+            self.initialized = False
+
+    @classmethod
+    def available(self):
+        try:
+            import pyaudio
+            return True
+        except ImportError:
+            return False
+
+AUDIO_OUTPUT = (PulseAudioOutput, OSSAudioOutput,
+                PortAudioOutput, NULLAudioOutput)

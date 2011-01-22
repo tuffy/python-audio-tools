@@ -349,14 +349,16 @@ if (__name__ == '__main__'):
         dest='album_replaygain',
         help=_(u'apply album ReplayGain during playback, if present'))
 
-    players_map = {"pa":"Port Audio"}
+    players_map = dict([(player.NAME, player)
+                        for player in audiotools.AUDIO_OUTPUT])
 
     parser.add_option(
         '-o', '--output',
         action='store',
         dest='output',
         choices=players_map.keys(),
-        default="pa",
+        default=[player.NAME for player in audiotools.AUDIO_OUTPUT
+                 if player.available()][0],
         help=_(u"the method to play audio (choose from: %s)") % \
             u", ".join([u"\"%s\"" % (k.decode('ascii')) for k in
                         players_map.keys()]))
@@ -380,8 +382,6 @@ if (__name__ == '__main__'):
 
     audiofiles = audiotools.open_files(args, sorted=False, messenger=msg)
 
-    #FIXME - support different output types
-
     if (options.track_replaygain):
         replay_gain = audiotools.RG_TRACK_GAIN
     elif (options.album_replaygain):
@@ -391,7 +391,7 @@ if (__name__ == '__main__'):
 
     if (options.interactive):
         trackplay = TrackplayGUI(track_list=audiofiles,
-                                 audio_output=audiotools.PortAudioOutput(),
+                                 audio_output=players_map[options.output](),
                                  replay_gain=replay_gain)
 
 
@@ -414,7 +414,7 @@ if (__name__ == '__main__'):
         loop.run()
     else:
         trackplay = TrackplayTTY(track_list=audiofiles,
-                                 audio_output=audiotools.PortAudioOutput(),
+                                 audio_output=players_map[options.output](),
                                  replay_gain=replay_gain)
         trackplay.play()
         output_line_len = 0
