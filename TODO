@@ -2959,23 +2959,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   - [ ] tracksplit
   - [ ] tracktag
   - [ ] trackverify
-* TODO Add cdplay utility
-  Should work similarly to trackplay,
-  taking track number(s) and playing them to OSS/PulseAudio
-  or whatever other audio output is available.
-** TODO Build a unified output sink
-   Pull the OSS/Pulse sink code out of trackplay and into the core library.
-*** TODO Document sink
-*** TODO Convert trackplay to use sink
-** TODO Add interative mode to cdplay
-   Urwid-based display should have various standard features
-   - [ ] display CD info
-   - [ ] progress monitor
-   - [ ] start
-   - [ ] pause
-   - [ ] next track
-   - [ ] previous track
-** TODO Add man page for cdplay
 * TODO Update trackplay for interactivity
   Urwid-based display should have various standard features,
   analagous to those in cdplay
@@ -3001,11 +2984,24 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** TODO Add programming documentation
 *** TODO Player
 *** TODO AudioOutput
-** TODO Add docstrings
-*** TODO Player
-*** TODO AudioPutput
-*** TODO ThreadedPCMConverter
-*** TODO PortAudioOutput
-*** TODO PulseAudioOutput
-*** TODO OSSAudioOutput
-*** TODO NULLAudioOutput
+** DONE Add docstrings
+*** DONE Player
+*** DONE AudioPutput
+*** DONE ThreadedPCMConverter
+*** DONE PortAudioOutput
+*** DONE PulseAudioOutput
+*** DONE OSSAudioOutput
+*** DONE NULLAudioOutput
+* TODO Add cdplay utility
+  Should work similarly to trackplay,
+  taking track number(s) and playing them to OSS/PulseAudio
+  or whatever other audio output is available.
+** TODO Add interative mode to cdplay
+   Urwid-based display should have various standard features
+   - [ ] display CD info
+   - [ ] progress monitor
+   - [ ] start
+   - [ ] pause
+   - [ ] next track
+   - [ ] previous track
+** TODO Add man page for cdplay

@@ -159,7 +159,8 @@ try:
                                       user_data=(track, track.get_metadata()),
                                       on_state_change=self.select_track)
                     for track in self.track_list])
-            body = urwid.Pile([('fixed', 1, urwid.Filler(controls)),
+            body = urwid.Pile([('fixed', 2, urwid.Filler(urwid.Pile([
+                                controls, urwid.Divider(div_char='-')]))),
                                ('weight', 1, track_list)])
             footer = urwid.Pile([urwid.Divider(div_char='-'),
                                  self.status])
