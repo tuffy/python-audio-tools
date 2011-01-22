@@ -18,6 +18,7 @@ Contents:
    audiotools_cdio.rst
    audiotools_cue.rst
    audiotools_toc.rst
+   audiotools_player.rst
    metadata.rst
 
 Indices and tables
@@ -26,4 +27,3 @@ Indices and tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
-

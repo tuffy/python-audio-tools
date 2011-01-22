@@ -35,7 +35,7 @@ class Player:
 
     The player itself runs in a seperate thread,
     which this sends commands to."""
-    
+
     def __init__(self, audio_output,
                  replay_gain=RG_NO_REPLAYGAIN,
                  next_track_callback=lambda: None):
@@ -58,13 +58,13 @@ class Player:
         """opens the given AudioFile for playing
 
         stops playing the current file, if any"""
-        
+
         self.track = track
         self.command_queue.put(("open", [track]))
 
     def play(self):
         """begins or resumes playing an opened AudioFile, if any"""
-        
+
         self.command_queue.put(("play", []))
 
     def set_replay_gain(self, replay_gain):
@@ -73,40 +73,40 @@ class Player:
         Choose from RG_NO_REPLAYGAIN, RG_TRACK_GAIN or RG_ALBUM_GAIN
         ReplayGain cannot be applied mid-playback.
         One must stop() and play() a file for it to take effect."""
-        
+
         self.command_queue.put(("set_replay_gain", [replay_gain]))
 
     def pause(self):
         """pauses playback of the current file
 
         Playback may be resumed with play() or toggle_play_pause()"""
-        
+
         self.command_queue.put(("pause", []))
 
     def toggle_play_pause(self):
         """pauses the file if playing, play the file if paused"""
-        
+
         self.command_queue.put(("toggle_play_pause", []))
 
     def stop(self):
         """stops playback of the current file
 
         If play() is called, playback will start from the beginning."""
-        
+
         self.command_queue.put(("stop", []))
 
     def close(self):
         """closes the player for playback
 
         The player thread is halted and the AudioOutput is closed."""
-        
+
         self.command_queue.put(("exit", []))
 
     def progress(self):
         """returns a (pcm_frames_played, pcm_frames_total) tuple
 
         This indicates the current playback status in PCM frames."""
-        
+
         return (self.worker.frames_played, self.worker.total_frames)
 
 
@@ -117,7 +117,7 @@ class PlayerThread:
 
     This should not be instantiated directly;
     Player will do so automatically."""
-    
+
     def __init__(self, audio_output, command_queue,
                  replay_gain=RG_NO_REPLAYGAIN):
         self.audio_output = audio_output
@@ -170,7 +170,7 @@ class PlayerThread:
                         channels=pcmreader.channels,
                         channel_mask=pcmreader.channel_mask,
                         bits_per_sample=pcmreader.bits_per_sample)
-                self.pcmconverter = audiotools.ThreadedPCMConverter(
+                self.pcmconverter = ThreadedPCMConverter(
                     pcmreader,
                     self.audio_output.framelist_converter())
                 self.frames_played = 0
@@ -232,14 +232,14 @@ class ThreadedPCMConverter:
     PCMReader's data is queued such that even if decoding and
     conversion are relatively time-consuming, read() will
     continue smoothly."""
-    
+
     def __init__(self, pcmreader, converter):
         """pcmreader is a PCMReader object.
 
         converter is a function which takes a FrameList
         and returns an object suitable for the current AudioOutput object.
         Upon conclusion, the PCMReader is automatically closed."""
-        
+
         self.decoded_data = Queue.Queue()
         self.stop_decoding = threading.Event()
 
@@ -274,7 +274,7 @@ class ThreadedPCMConverter:
 
     def close(self):
         """stops the decoding thread and closes the PCMReader"""
-        
+
         self.stop_decoding.set()
         self.thread.join()
 
@@ -342,7 +342,7 @@ class AudioOutput:
     @classmethod
     def available(cls):
         """returns True if the AudioOutput is available on the system"""
-        
+
         return False
 
 class NULLAudioOutput(AudioOutput):
@@ -350,21 +350,21 @@ class NULLAudioOutput(AudioOutput):
 
     Although this consumes audio output at the rate it would normally
     play, it generates no output."""
-    
+
     NAME = "NULL"
 
     def framelist_converter(self):
         """Returns a function which converts framelist objects
 
         to objects acceptable by our play() method."""
-                
+
         return lambda f: f.frames
 
     def init(self, sample_rate, channels, channel_mask, bits_per_sample):
         """Initializes the output stream.
 
         This *must* be called prior to play() and close()."""
-        
+
         self.sample_rate = sample_rate
         self.channels = channels
         self.channel_mask = channel_mask
@@ -372,30 +372,30 @@ class NULLAudioOutput(AudioOutput):
 
     def play(self, data):
         """plays a chunk of converted data"""
-        
+
         time.sleep(float(data) / self.sample_rate)
 
     def close(self):
         """closes the output stream"""
-        
+
         pass
 
     @classmethod
     def available(cls):
         """returns True"""
-        
+
         return True
 
 class OSSAudioOutput(AudioOutput):
     """An AudioOutput subclass for OSS output."""
-    
+
     NAME = "OSS"
 
     def init(self, sample_rate, channels, channel_mask, bits_per_sample):
         """Initializes the output stream.
 
         This *must* be called prior to play() and close()."""
-        
+
         if (not self.initialized):
             import ossaudiodev
 
@@ -429,7 +429,7 @@ class OSSAudioOutput(AudioOutput):
         """Returns a function which converts framelist objects
 
         to objects acceptable by our play() method."""
-        
+
         if (self.bits_per_sample == 8):
             return lambda f: f.to_bytes(False, True)
         elif (self.bits_per_sample == 16):
@@ -445,12 +445,12 @@ class OSSAudioOutput(AudioOutput):
 
     def play(self, data):
         """plays a chunk of converted data"""
-        
+
         self.ossaudio.writeall(data)
 
     def close(self):
         """closes the output stream"""
-        
+
         if (self.initialized):
             self.initialized = False
             self.ossaudio.close()
@@ -458,7 +458,7 @@ class OSSAudioOutput(AudioOutput):
     @classmethod
     def available(cls):
         """returns True if OSS output is available on the system"""
-        
+
         try:
             import ossaudiodev
             return True
@@ -467,14 +467,14 @@ class OSSAudioOutput(AudioOutput):
 
 class PulseAudioOutput(AudioOutput):
     """An AudioOutput subclass for PulseAudio output."""
-    
+
     NAME = "PulseAudio"
 
     def init(self, sample_rate, channels, channel_mask, bits_per_sample):
         """Initializes the output stream.
 
         This *must* be called prior to play() and close()."""
-        
+
         if (not self.initialized):
             import subprocess
 
@@ -513,7 +513,7 @@ class PulseAudioOutput(AudioOutput):
         """Returns a function which converts framelist objects
 
         to objects acceptable by our play() method."""
-        
+
         if (self.bits_per_sample == 8):
             return lambda f: f.to_bytes(True, False)
         elif (self.bits_per_sample == 16):
@@ -525,13 +525,13 @@ class PulseAudioOutput(AudioOutput):
 
     def play(self, data):
         """plays a chunk of converted data"""
-        
+
         self.pacat.stdin.write(data)
         self.pacat.stdin.flush()
 
     def close(self):
         """closes the output stream"""
-        
+
         if (self.initialized):
             self.initialized = False
             self.pacat.stdin.close()
@@ -551,7 +551,7 @@ class PulseAudioOutput(AudioOutput):
     @classmethod
     def available(cls):
         """returns True if PulseAudio is available and running on the system"""
-        
+
         return (audiotools.BIN.can_execute(audiotools.BIN["pacat"]) and
                 audiotools.BIN.can_execute(audiotools.BIN["pactl"]) and
                 cls.server_alive())
@@ -560,14 +560,14 @@ class PulseAudioOutput(AudioOutput):
 
 class PortAudioOutput(AudioOutput):
     """An AudioOutput subclass for PortAudio output."""
-    
+
     NAME = "PortAudio"
 
     def init(self, sample_rate, channels, channel_mask, bits_per_sample):
         """Initializes the output stream.
 
         This *must* be called prior to play() and close()."""
-        
+
         if (not self.initialized):
             import pyaudio
 
@@ -596,17 +596,17 @@ class PortAudioOutput(AudioOutput):
         """Returns a function which converts framelist objects
 
         to objects acceptable by our play() method."""
-        
+
         return lambda f: f.to_bytes(False, True)
 
     def play(self, data):
         """plays a chunk of converted data"""
-        
+
         self.stream.write(data)
 
     def close(self):
         """closes the output stream"""
-        
+
         if (self.initialized):
             self.stream.close()
             self.pyaudio.terminate()
@@ -615,7 +615,7 @@ class PortAudioOutput(AudioOutput):
     @classmethod
     def available(cls):
         """returns True if the AudioOutput is available on the system"""
-        
+
         try:
             import pyaudio
             return True

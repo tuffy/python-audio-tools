@@ -2981,9 +2981,10 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** DONE NULLAudioOutput
 ** DONE Support different sinks from trackplay(1)
 ** TODO Update trackplay man page
-** TODO Add programming documentation
-*** TODO Player
-*** TODO AudioOutput
+** DONE Add audiotools.player programming documentation
+*** DONE Player
+*** DONE AudioOutput
+*** DONE AUDIO_OUTPUT
 ** DONE Add docstrings
 *** DONE Player
 *** DONE AudioPutput
@@ -2996,6 +2997,12 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   Should work similarly to trackplay,
   taking track number(s) and playing them to OSS/PulseAudio
   or whatever other audio output is available.
+** TODO Add audiotools.player.CDPlayer class
+*** TODO Add docstrings
+*** TODO Add programming docs
+** TODO Add audiotools.player.CDPlayerThread class
+*** TODO Add docstrings
+*** TODO Add programming docs
 ** TODO Add interative mode to cdplay
    Urwid-based display should have various standard features
    - [ ] display CD info

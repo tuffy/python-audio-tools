@@ -18,6 +18,7 @@
 #Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 import audiotools
+import audiotools.player
 import sys
 import gettext
 import time
@@ -89,7 +90,7 @@ try:
 
     class TrackplayGUI(urwid.Frame):
         def __init__(self, track_list, audio_output,
-                     replay_gain=audiotools.RG_NO_REPLAYGAIN):
+                     replay_gain=audiotools.player.RG_NO_REPLAYGAIN):
             def track_name(track):
                 metadata = track.get_metadata()
                 if (metadata is not None):
@@ -99,7 +100,7 @@ try:
 
             self.track_list = track_list
             self.audio_output = audio_output
-            self.player = audiotools.Player(
+            self.player = audiotools.player.Player(
                 audio_output=audio_output,
                 replay_gain=replay_gain,
                 next_track_callback=self.next_track)
@@ -253,11 +254,12 @@ class TrackplayTTY:
                      u"%(bits_per_sample)d-bit")
 
     def __init__(self, track_list, audio_output,
-                 replay_gain=audiotools.RG_NO_REPLAYGAIN):
+                 replay_gain=audiotools.player.RG_NO_REPLAYGAIN):
         self.track_list = track_list
-        self.player = audiotools.Player(audio_output=audio_output,
-                                        replay_gain=replay_gain,
-                                        next_track_callback=self.next_track)
+        self.player = audiotools.player.Player(
+            audio_output=audio_output,
+            replay_gain=replay_gain,
+            next_track_callback=self.next_track)
         self.track_index = -1
         self.current_track = None
         self.seconds_total = 0
@@ -351,14 +353,14 @@ if (__name__ == '__main__'):
         help=_(u'apply album ReplayGain during playback, if present'))
 
     players_map = dict([(player.NAME, player)
-                        for player in audiotools.AUDIO_OUTPUT])
+                        for player in audiotools.player.AUDIO_OUTPUT])
 
     parser.add_option(
         '-o', '--output',
         action='store',
         dest='output',
         choices=players_map.keys(),
-        default=[player.NAME for player in audiotools.AUDIO_OUTPUT
+        default=[player.NAME for player in audiotools.player.AUDIO_OUTPUT
                  if player.available()][0],
         help=_(u"the method to play audio (choose from: %s)") % \
             u", ".join([u"\"%s\"" % (k.decode('ascii')) for k in
@@ -384,11 +386,11 @@ if (__name__ == '__main__'):
     audiofiles = audiotools.open_files(args, sorted=False, messenger=msg)
 
     if (options.track_replaygain):
-        replay_gain = audiotools.RG_TRACK_GAIN
+        replay_gain = audiotools.player.RG_TRACK_GAIN
     elif (options.album_replaygain):
-        replay_gain = audiotools.RG_ALBUM_GAIN
+        replay_gain = audiotools.player.RG_ALBUM_GAIN
     else:
-        replay_gain = audiotools.RG_NO_REPLAYGAIN
+        replay_gain = audiotools.player.RG_NO_REPLAYGAIN
 
     if (options.interactive):
         trackplay = TrackplayGUI(track_list=audiofiles,

@@ -15,7 +15,7 @@ classes and functions upon which all of the other modules depend.
 
 .. data:: AVAILABLE_TYPES
 
-   A tuple of :class:`AudioFile`-compatible objects of available
+   A tuple of :class:`AudioFile`-compatible classes of available
    audio types.
    Note these are types available to audiotools, not necessarily
    available to the user - depending on whether the required binaries

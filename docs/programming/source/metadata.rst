@@ -1029,4 +1029,3 @@ Vorbis Comment
 .. _UTF-16BE: http://en.wikipedia.org/wiki/UTF-16
 
 .. _UTF-8: http://en.wikipedia.org/wiki/UTF-8
-

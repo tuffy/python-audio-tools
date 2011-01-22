@@ -207,4 +207,3 @@ FloatFrameList Objects
 
    Given a ``bits_per_sample`` integer, converts this object's
    floating point values to a new :class:`FrameList` object.
-
