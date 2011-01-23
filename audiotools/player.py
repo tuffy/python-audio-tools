@@ -231,8 +231,18 @@ class PlayerThread:
 
 
 class CDPlayer:
+    """A class for operating a CDDA player.
+
+    The player itself runs in a seperate thread,
+    which this sends commands to."""
+
     def __init__(self, cdda, audio_output,
                  next_track_callback=lambda: None):
+        """cdda is a audiotools.CDDA object.
+        audio_output is an AudioOutput subclass.
+        next_track_callback is a function with no arguments
+        which is called by the player when the current track is finished."""
+
         self.command_queue = Queue.Queue()
         self.worker = CDPlayerThread(cdda,
                                      audio_output,
@@ -243,28 +253,57 @@ class CDPlayer:
         self.thread.start()
 
     def open(self, track_number):
+        """track_number indicates which track to open, starting from 1
+
+        stops playing the current track, if any"""
+
         self.command_queue.put(("open", [track_number]))
 
     def play(self):
+        """begins or resumes playing the currently open track, if any"""
+
         self.command_queue.put(("play", []))
 
     def pause(self):
+        """pauses playback of the current track
+
+        Playback may be resumed with play() or toggle_play_pause()"""
+
         self.command_queue.put(("pause", []))
 
     def toggle_play_pause(self):
+        """pauses the track if playing, play the track if paused"""
+
         self.command_queue.put(("toggle_play_pause", []))
 
     def stop(self):
+        """stops playback of the current track
+
+        If play() is called, playback will start from the beginning."""
+
         self.command_queue.put(("stop", []))
 
     def close(self):
+        """closes the player for playback
+
+        The player thread is halted and the AudioOutput is closed."""
+
         self.command_queue.put(("exit", []))
 
     def progress(self):
+        """returns a (pcm_frames_played, pcm_frames_total) tuple
+
+        This indicates the current playback status in PCM frames."""
+
         return (self.worker.frames_played, self.worker.total_frames)
 
 
 class CDPlayerThread:
+    """The CDPlayer class' subthread.
+
+    This should not be instantiated directly;
+    CDPlayer will do so automatically."""
+
     def __init__(self, cdda, audio_output, command_queue):
         self.cdda = cdda
         self.audio_output = audio_output

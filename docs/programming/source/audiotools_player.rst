@@ -81,6 +81,53 @@ from an opened audio file object to a given output sink.
    Returns a (``pcm_frames_played``, ``pcm_frames_total``) tuple.
    This indicates the current playback status in terms of PCM frames.
 
+CDPlayer Objects
+----------------
+
+This class is an audio player which plays audio data from a
+CDDA disc to a given output sink.
+
+.. class:: CDPlayer(cdda, audio_output[, next_track_callback])
+
+   ``cdda`` is a :class:`audiotools.CDDA` object.
+   ``audio_output`` is a :class:`AudioOutput` object subclass which
+   audio data will be played to.
+   ``next_track_callback`` is a function which takes no arguments,
+   to be called when the currently playing track is completed.
+
+.. method:: CDPlayer.open(track_number)
+
+   Opens the given track number for reading, where
+   ``track_number`` starts from 1.
+
+.. method:: CDPlayer.play()
+
+   Begins or resumes playing the currently opened track, if any.
+
+.. method:: CDPlayer.pause()
+
+   Pauses playback of the current track.
+   Playback may be resumed with :meth:`play` or :meth:`toggle_play_pause`
+
+.. method:: CDPlayer.toggle_play_pause()
+
+   Pauses the track if playing, play the track if paused.
+
+.. method:: CDPlayer.stop()
+
+   Stops playback of the current track.
+   If :meth:`play` is called, playback will start from the beginning.
+
+.. method:: CDPlayer.close()
+
+   Closes the player for playback.
+   The player thread is halted and the :class:`AudioOutput` object is closed.
+
+.. method:: CDPlayer.progress()
+
+   Returns a (``pcm_frames_played``, ``pcm_frames_total``) tuple.
+   This indicates the current playback status in terms of PCM frames.
+
 AudioOutput Objects
 -------------------
 
