@@ -29,6 +29,8 @@
 #define IS_PY3K
 #endif
 
+static PyObject *read_callback = NULL;
+
 typedef struct {
     PyObject_HEAD
     cdrom_drive_t *cdrom_drive;
@@ -322,34 +324,26 @@ CDDA_init(cdio_CDDAObject *self, PyObject *args, PyObject *kwds)
 static PyObject*
 CDDA_total_tracks(cdio_CDDAObject* self)
 {
-    static PyObject *result = NULL;
     track_t total;
 
     total = cdio_cddap_tracks(self->cdrom_drive);
 
-    result = Py_BuildValue("H", total);
-    if (result == NULL) return NULL;
-
-    return result;
+    return Py_BuildValue("H", total);
 }
 
 static PyObject*
 CDDA_track_offsets(cdio_CDDAObject* self, PyObject *args)
 {
-    static PyObject *result = NULL;
     track_t tracknum;
 
     if (!PyArg_ParseTuple(args, "H", &tracknum))
         return NULL;
 
-    result = Py_BuildValue("(i,i)",
-                           cdio_cddap_track_firstsector(self->cdrom_drive,
-                                                        tracknum),
-                           cdio_cddap_track_lastsector(self->cdrom_drive,
-                                                       tracknum));
-    if (result == NULL) return NULL;
-
-    return result;
+    return Py_BuildValue("(i,i)",
+                         cdio_cddap_track_firstsector(self->cdrom_drive,
+                                                      tracknum),
+                         cdio_cddap_track_lastsector(self->cdrom_drive,
+                                                     tracknum));
 }
 
 #define SECTOR_LENGTH 2352
@@ -363,11 +357,16 @@ CDDA_read_sector(cdio_CDDAObject* self)
     int current_sector_position = 0;
 
     pcm_FrameList *sector;
+    PyThreadState *thread_state = NULL;
 
     sector = (pcm_FrameList*)PyObject_CallMethod(self->pcm_module,
                                                  "__blank__", NULL);
     if (sector == NULL)
         return NULL;
+
+    if (read_callback == NULL) {
+        thread_state = PyEval_SaveThread();
+    }
 
     sector->frames = 44100 / 75;
     sector->channels = 2;
@@ -381,6 +380,10 @@ CDDA_read_sector(cdio_CDDAObject* self)
                                             10);
     for (i = 0; i < (SECTOR_LENGTH / 2); i++) {
         sector->samples[current_sector_position++] = raw_sector[i];
+    }
+
+    if (read_callback == NULL) {
+        PyEval_RestoreThread(thread_state);
     }
 
     return (PyObject*)sector;
@@ -397,6 +400,7 @@ CDDA_read_sectors(cdio_CDDAObject* self, PyObject *args)
     int sectors_to_read;
 
     pcm_FrameList *sectors;
+    PyThreadState *thread_state = NULL;
 
     if (!PyArg_ParseTuple(args, "i", &sectors_to_read))
         return NULL;
@@ -405,6 +409,10 @@ CDDA_read_sectors(cdio_CDDAObject* self, PyObject *args)
                                                   "__blank__", NULL);
     if (sectors == NULL)
         return NULL;
+
+    if (read_callback == NULL) {
+        thread_state = PyEval_SaveThread();
+    }
 
     sectors->frames = sectors_to_read * (44100 / 75);
     sectors->channels = 2;
@@ -422,6 +430,10 @@ CDDA_read_sectors(cdio_CDDAObject* self, PyObject *args)
         }
     }
 
+    if (read_callback == NULL) {
+        PyEval_RestoreThread(thread_state);
+    }
+
     return (PyObject*)sectors;
 }
 
@@ -429,36 +441,25 @@ static PyObject*
 CDDA_first_sector(cdio_CDDAObject* self, PyObject *args)
 {
     lsn_t sector;
-    static PyObject *result = NULL;
 
     sector = cdio_cddap_disc_firstsector(self->cdrom_drive);
 
-    result = Py_BuildValue("i", sector);
-    if (result == NULL)
-        return NULL;
-    else
-        return result;
+    return Py_BuildValue("i", sector);
 }
 
 static PyObject*
 CDDA_last_sector(cdio_CDDAObject* self, PyObject *args)
 {
     lsn_t sector;
-    static PyObject *result = NULL;
 
     sector = cdio_cddap_disc_lastsector(self->cdrom_drive);
 
-    result = Py_BuildValue("i", sector);
-    if (result == NULL)
-        return NULL;
-    else
-        return result;
+    return Py_BuildValue("i", sector);
 }
 
 static PyObject*
 CDDA_track_type(cdio_CDDAObject* self, PyObject *args)
 {
-    static PyObject *result = NULL;
     track_format_t format;
     track_t tracknum;
 
@@ -466,11 +467,7 @@ CDDA_track_type(cdio_CDDAObject* self, PyObject *args)
         return NULL;
 
     format = cdio_get_track_format(self->cdrom_drive->p_cdio, tracknum);
-    result = Py_BuildValue("i", format);
-    if (result == NULL)
-        return NULL;
-    else
-        return result;
+    return Py_BuildValue("i", format);
 }
 
 static PyObject*
@@ -478,7 +475,6 @@ CDDA_seek(cdio_CDDAObject* self, PyObject *args)
 {
     off_t location;
     lsn_t new_location;
-    static PyObject *result = NULL;
 
     if (!PyArg_ParseTuple(args, "l", &location))
         return NULL;
@@ -487,10 +483,7 @@ CDDA_seek(cdio_CDDAObject* self, PyObject *args)
                                       location,
                                       SEEK_SET);
 
-    result = Py_BuildValue("i", new_location);
-    if (result == NULL) return NULL;
-
-    return result;
+    return Py_BuildValue("i", new_location);
 }
 
 static PyObject*
@@ -513,7 +506,6 @@ CDDA_length_in_seconds(cdio_CDDAObject* self)
     msf_t first_track;
     msf_t leadout;
     int length;
-    static PyObject *result = NULL;
 
     cdio_get_track_msf(self->cdrom_drive->p_cdio,
                        1, &first_track);
@@ -523,16 +515,11 @@ CDDA_length_in_seconds(cdio_CDDAObject* self)
     length = cdio_audio_get_msf_seconds(&leadout) -
         cdio_audio_get_msf_seconds(&first_track);
 
-    result = Py_BuildValue("i", length);
-    if (result == NULL) return NULL;
-
-    return result;
+    return Py_BuildValue("i", length);
 }
 
 
 /*callback stuff*/
-
-static PyObject *read_callback = NULL;
 
 
 static PyObject*
@@ -568,11 +555,6 @@ read_sector_callback(long int i, paranoia_cb_mode_t mode)
         arglist = Py_BuildValue("(l,i)", i, mode);
         result = PyEval_CallObject(read_callback, arglist);
         Py_DECREF(arglist);
-
-        if (result == NULL) {
-            return;
-        }
-
-        Py_DECREF(result);
+        Py_XDECREF(result);
     }
 }

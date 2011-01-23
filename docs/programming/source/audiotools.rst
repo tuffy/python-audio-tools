@@ -1088,7 +1088,7 @@ ChannelMask Objects
 CDDA Objects
 ------------
 
-.. class:: CDDA(device[, speed])
+.. class:: CDDA(device[, speed[, perform_logging]])
 
    This class is used to access a CD-ROM device.
    It functions as a list of :class:`CDTrackReader` objects,
@@ -1101,6 +1101,20 @@ CDDA Objects
    <audiotools.CDTrackReader instance at 0x170def0>
    >>> cd[17]
    <audiotools.CDTrackReader instance at 0x1341b00>
+
+   If ``True``, ``perform_logging`` indicates that track reads
+   should generate :class:`CDTrackLog` entries.
+   Otherwise, no logging is performed.
+
+.. warning::
+
+   ``perform_logging`` also determines the level of multithreading allowed
+   during CD reading.
+   If logging is active, :class:`CDTrackReader`'s read method
+   will block all other threads until the read is complete.
+   If logging is inactive, a read will not block other threads.
+   This is an unfortunate necessity due to libcdio's callback
+   mechanism implementation.
 
 .. method:: CDDA.length()
 
@@ -1117,7 +1131,7 @@ CDDA Objects
 CDTrackReader Objects
 ^^^^^^^^^^^^^^^^^^^^^
 
-.. class:: CDTrackReader(cdda, track_number)
+.. class:: CDTrackReader(cdda, track_number[, perform_logging])
 
    These objects are usually retrieved from :class:`CDDA` objects
    rather than instantiated directly.

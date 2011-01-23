@@ -3299,7 +3299,7 @@ from __dvda__ import *
 #is something code should avoid at all costs!
 #there's simply no way to accomplish that cleanly
 
-def CDDA(device_name, speed=None):
+def CDDA(device_name, speed=None, perform_logging=True):
     """Given a device name string and speed int, returns a CDDA object.
 
     This object depends on whether the user has specified
@@ -3310,15 +3310,15 @@ def CDDA(device_name, speed=None):
 
     offset = config.getint_default("System", "cdrom_read_offset", 0)
     if (offset == 0):
-        return RawCDDA(device_name, speed)
+        return RawCDDA(device_name, speed, perform_logging)
     else:
-        return OffsetCDDA(device_name, offset, speed)
+        return OffsetCDDA(device_name, offset, speed, perform_logging)
 
 
 class RawCDDA:
     """A CDDA device which contains CDTrackReader objects."""
 
-    def __init__(self, device_name, speed=None):
+    def __init__(self, device_name, speed=None, perform_logging=True):
         """device_name is a string, speed is an optional int."""
 
         import cdio
@@ -3330,6 +3330,8 @@ class RawCDDA:
         if (speed is not None):
             self.cdda.set_speed(speed)
 
+        self.perform_logging = perform_logging
+
     def __len__(self):
         return self.total_tracks
 
@@ -3337,7 +3339,7 @@ class RawCDDA:
         if ((key < 1) or (key > self.total_tracks)):
             raise IndexError(key)
         else:
-            return CDTrackReader(self.cdda, int(key))
+            return CDTrackReader(self.cdda, int(key), self.perform_logging)
 
     def __iter__(self):
         for i in range(1, self.total_tracks + 1):
@@ -3372,7 +3374,8 @@ class OffsetCDDA(RawCDDA):
     as it reads the whole CD to a temp file and applies the proper offset.
     """
 
-    def __init__(self, device_name, sample_offset, speed=None):
+    def __init__(self, device_name, sample_offset, speed=None,
+                 perform_logging=True):
         """device_name is a string, sample_offset is a PCM frames value."""
 
         import cdio
@@ -3403,7 +3406,8 @@ class OffsetCDDA(RawCDDA):
                 end)
 
             self.cdda.seek(start)
-            cdio.set_read_callback(trackreader.log)
+            if (perform_logging):
+                cdio.set_read_callback(trackreader.log)
 
             for sector_count in at_a_time(end - start, 445):
                 self.__temp__.write(
@@ -3460,15 +3464,15 @@ class CDTrackLog(dict):
 class CDTrackReader(PCMReader):
     """A PCMReader-compatible object which reads from CDDA."""
 
-    def __init__(self, cdda, track_number):
+    def __init__(self, cdda, track_number, perform_logging=True):
         """cdda is a cdio.CDDA object.  track_number is offset from 1."""
 
         PCMReader.__init__(
             self, None,
             sample_rate=44100,
             channels=2,
-            channel_mask=ChannelMask.from_fields(front_left=True,
-                                                 front_right=True),
+            channel_mask=int(ChannelMask.from_fields(front_left=True,
+                                                     front_right=True)),
             bits_per_sample=16)
 
         self.cdda = cdda
@@ -3479,6 +3483,7 @@ class CDTrackReader(PCMReader):
         self.__position__ = self.__start__
         self.__cursor_placed__ = False
 
+        self.perform_logging = perform_logging
         self.rip_log = CDTrackLog()
 
     def offset(self):
@@ -3505,7 +3510,8 @@ class CDTrackReader(PCMReader):
         #if we haven't moved CDDA to the track start yet, do it now
         if (not self.__cursor_placed__):
             self.cdda.seek(self.__start__)
-            cdio.set_read_callback(self.log)
+            if (self.perform_logging):
+                cdio.set_read_callback(self.log)
 
             self.__position__ = self.__start__
             self.__cursor_placed__ = True

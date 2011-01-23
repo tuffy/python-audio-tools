@@ -198,7 +198,7 @@ class PlayerThread:
         self.frames_played = 0
         self.state = PLAYER_STOPPED
 
-    def run(self, next_track_callback = lambda: None):
+    def run(self, next_track_callback=lambda: None):
         while (True):
             if ((self.state == PLAYER_STOPPED) or
                 (self.state == PLAYER_PAUSED)):
@@ -218,13 +218,139 @@ class PlayerThread:
                 except Queue.Empty:
                     if (self.frames_played < self.total_frames):
                         (data, frames) = self.pcmconverter.read()
-                        self.audio_output.play(data)
-                        self.frames_played += frames
-                        if (self.frames_played >= self.total_frames):
+                        if (frames > 0):
+                            self.audio_output.play(data)
+                            self.frames_played += frames
+                            if (self.frames_played >= self.total_frames):
+                                next_track_callback()
+                        else:
+                            self.frames_played = self.total_frames
                             next_track_callback()
                     else:
                         self.stop()
 
+
+class CDPlayer:
+    def __init__(self, cdda, audio_output,
+                 next_track_callback=lambda: None):
+        self.command_queue = Queue.Queue()
+        self.worker = CDPlayerThread(cdda,
+                                     audio_output,
+                                     self.command_queue)
+        self.thread = threading.Thread(target=self.worker.run,
+                                       args=(next_track_callback,))
+        self.thread.daemon = True
+        self.thread.start()
+
+    def open(self, track_number):
+        self.command_queue.put(("open", [track_number]))
+
+    def play(self):
+        self.command_queue.put(("play", []))
+
+    def pause(self):
+        self.command_queue.put(("pause", []))
+
+    def toggle_play_pause(self):
+        self.command_queue.put(("toggle_play_pause", []))
+
+    def stop(self):
+        self.command_queue.put(("stop", []))
+
+    def close(self):
+        self.command_queue.put(("exit", []))
+
+    def progress(self):
+        return (self.worker.frames_played, self.worker.total_frames)
+
+
+class CDPlayerThread:
+    def __init__(self, cdda, audio_output, command_queue):
+        self.cdda = cdda
+        self.audio_output = audio_output
+        self.command_queue = command_queue
+
+        self.audio_output.init(
+            sample_rate=44100,
+            channels=2,
+            channel_mask=3,
+            bits_per_sample=16)
+        self.framelist_converter = self.audio_output.framelist_converter()
+
+        self.track = None
+        self.pcmconverter = None
+        self.frames_played = 0
+        self.total_frames = 0
+        self.state = PLAYER_STOPPED
+
+    def open(self, track_number):
+        self.stop()
+        self.track = self.cdda[track_number]
+        self.frames_played = 0
+        self.total_frames = self.track.length() * 44100 / 75
+
+    def play(self):
+        if (self.track is not None):
+            if (self.state == PLAYER_STOPPED):
+                self.pcmconverter = ThreadedPCMConverter(
+                    self.track,
+                    self.framelist_converter)
+                self.frames_played = 0
+                self.state = PLAYER_PLAYING
+            elif (self.state == PLAYER_PAUSED):
+                self.state = PLAYER_PLAYING
+            elif (self.state == PLAYER_PLAYING):
+                pass
+
+    def pause(self):
+        if (self.state == PLAYER_PLAYING):
+            self.state = PLAYER_PAUSED
+
+    def toggle_play_pause(self):
+        if (self.state == PLAYER_PLAYING):
+            self.pause()
+        elif ((self.state == PLAYER_PAUSED) or
+              (self.state == PLAYER_STOPPED)):
+            self.play()
+
+    def stop(self):
+        if (self.pcmconverter is not None):
+            self.pcmconverter.close()
+            del(self.pcmconverter)
+            self.pcmconverter = None
+        self.frames_played = 0
+        self.state = PLAYER_STOPPED
+
+    def run(self, next_track_callback=lambda: None):
+        while (True):
+            if ((self.state == PLAYER_STOPPED) or
+                (self.state == PLAYER_PAUSED)):
+                (command, args) = self.command_queue.get(True)
+                if (command == "exit"):
+                    self.audio_output.close()
+                    return
+                else:
+                    getattr(self, command)(*args)
+            else:
+                try:
+                    (command, args) = self.command_queue.get_nowait()
+                    if (command == "exit"):
+                        return
+                    else:
+                        getattr(self, command)(*args)
+                except Queue.Empty:
+                    if (self.frames_played < self.total_frames):
+                        (data, frames) = self.pcmconverter.read()
+                        if (frames > 0):
+                            self.audio_output.play(data)
+                            self.frames_played += frames
+                            if (self.frames_played >= self.total_frames):
+                                next_track_callback()
+                        else:
+                            self.frames_played = self.total_frames
+                            next_track_callback()
+                    else:
+                        self.stop()
 
 class ThreadedPCMConverter:
     """A class for decoding a PCMReader in a seperate thread.
