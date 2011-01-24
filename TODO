@@ -2407,6 +2407,14 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 * DONE Update trackcmp for multiprocess support
 ** DONE Update man page
 ** DONE Update unit tests to account for -j flag
+* DONE Update encoders for thread nonblocking
+** DONE encode_alac
+** DONE encode_flac
+** DONE encode_shn
+** DONE encode_wavpack
+* DONE get trackplay working on Mac OS X
+  There must be some way to pipe PCM data to its audio system
+  without the need for additional libraries.
 * TODO Ensure non-image cuesheets are handled properly
   There are 4 different types of cuesheets,
   1 single file type and 3 different multiple file variants.
@@ -2521,9 +2529,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
   If a disc is not found on FreeDB or MusicBrainz,
   there should be some mechanism to submit user-defined data
   to those services.
-* TODO get trackplay working on Mac OS X
-  There must be some way to pipe PCM data to its audio system
-  without the need for additional libraries.
 * TODO build track2cover/xmcd2cover utilities
   It would be helpful to have tools that could query
   online cover databases and retrieve images for tagging purposes.
@@ -2775,7 +2780,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** TODO tracklength
 ** TODO track2cd
 ** TODO trackcmp
-** TODO trackplay
+** DONE trackplay
 ** TODO tracktag
 ** TODO audiotools-config
 ** TODO trackcat

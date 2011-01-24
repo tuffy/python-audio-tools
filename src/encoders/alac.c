@@ -52,6 +52,7 @@ encoders_encode_alac(PyObject *dummy, PyObject *args, PyObject *keywds)
     PyObject *encode_log_obj;          /*the Python object of encoded output*/
 
     fpos_t starting_point;
+    PyThreadState *thread_state;
 
     options.minimum_interlacing_shift = 2;
     options.maximum_interlacing_shift = 2;
@@ -129,13 +130,17 @@ encoders_encode_alac(PyObject *dummy, PyObject *args, PyObject *keywds)
     if (!pcmr_read(reader, options.block_size, &samples))
         goto error;
     while (iaa_getitem(&samples, 0)->size > 0) {
+        thread_state = PyEval_SaveThread();
         if (alac_write_frameset(stream,
                                 &encode_log,
                                 ftell(output_file),
                                 &options,
                                 reader->bits_per_sample,
-                                &samples) == ERROR)
+                                &samples) == ERROR) {
+            PyEval_RestoreThread(thread_state);
             goto error;
+        } else
+            PyEval_RestoreThread(thread_state);
 
         if (!pcmr_read(reader, options.block_size, &samples))
             goto error;

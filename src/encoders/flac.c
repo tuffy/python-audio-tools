@@ -229,7 +229,13 @@ encoders_encode_flac(char *filename,
         goto error;
 
     while (iaa_getitem(&samples, 0)->size > 0) {
+#ifndef STANDALONE
+        Py_BEGIN_ALLOW_THREADS
+#endif
         FlacEncoder_write_frame(stream, &streaminfo, &samples);
+#ifndef STANDALONE
+        Py_END_ALLOW_THREADS
+#endif
 
         if (!pcmr_read(reader, streaminfo.options.block_size, &samples))
             goto error;
@@ -457,9 +463,9 @@ FlacEncoder_write_frame(Bitstream *bs,
     framesize = ftell(bs->file) - startpos;
 
     /* streaminfo->minimum_block_size = MIN(streaminfo->minimum_block_size, */
-    /* 				       iaa_getitem(samples,0)->size); */
+    /*                     iaa_getitem(samples,0)->size); */
     /* streaminfo->maximum_block_size = MAX(streaminfo->maximum_block_size, */
-    /* 				       iaa_getitem(samples,0)->size); */
+    /*                     iaa_getitem(samples,0)->size); */
     streaminfo->minimum_frame_size = MIN(streaminfo->minimum_frame_size,
                                          framesize);
     streaminfo->maximum_frame_size = MAX(streaminfo->maximum_frame_size,

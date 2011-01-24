@@ -170,7 +170,13 @@ encoders_encode_wavpack(char *filename,
         goto error;
 
     while (samples.arrays[0].size > 0) {
+#ifndef STANDALONE
+        Py_BEGIN_ALLOW_THREADS
+#endif
         wavpack_write_frame(stream, &context, &samples, reader->channel_mask);
+#ifndef STANDALONE
+        Py_END_ALLOW_THREADS
+#endif
 
         if (!pcmr_read(reader, block_size, &samples))
             goto error;

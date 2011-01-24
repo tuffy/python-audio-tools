@@ -237,6 +237,9 @@ ShortenEncoder_encode_stream(Bitstream* bs,
 {
     struct ia_array samples;
     ia_size_t i;
+#ifndef STANDALONE
+    PyThreadState *thread_state = NULL;
+#endif
 
     iaa_init(&samples, reader->channels, block_size);
 
@@ -245,6 +248,9 @@ ShortenEncoder_encode_stream(Bitstream* bs,
 
     /*iterate through all the integer arrays returned by "reader"*/
     while (samples.arrays[0].size > 0) {
+#ifndef STANDALONE
+    thread_state = PyEval_SaveThread();
+#endif
         if (samples.arrays[0].size != block_size) {
             /*send a FN_BLOCKSIZE command if our returned block size changes
               (which should only happen at the end of the stream)*/
@@ -258,11 +264,19 @@ ShortenEncoder_encode_stream(Bitstream* bs,
             if (!ShortenEncoder_encode_channel(
                                         bs,
                                         iaa_getitem(&samples, i),
-                                        iaa_getitem(wrapped_samples, i)))
+                                        iaa_getitem(wrapped_samples, i))) {
+#ifndef STANDALONE
+                PyEval_RestoreThread(thread_state);
+#endif
                 goto error;
+            }
+
 
         }
 
+#ifndef STANDALONE
+    PyEval_RestoreThread(thread_state);
+#endif
         if (!pcmr_read(reader, block_size, &samples))
             goto error;
     }
