@@ -3537,7 +3537,8 @@ class CDTrackReader(PCMReader):
     def close(self):
         """Closes the CD track for reading."""
 
-        pass
+        self.__position__ = self.__start__
+        self.__cursor_placed__ = False
 
 
 class OffsetCDTrackReader(PCMReader):

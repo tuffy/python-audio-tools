@@ -1,13 +1,12 @@
 .TH "trackplay" 1 "June 15, 2007" "" "Play Audio Tracks"
 .SH NAME
-trackplay \- plays audio tracks to an OSS or PulseAudio device
+trackplay \- plays audio tracks to speakers
 .SH SYNOPSIS
 trackplay <track 1> [track 2] ...
 .SH DESCRIPTION
 .PP
-trackinfo takes a list of audio tracks and plays them to a
-PulseAudio server or 
-Open Sound System-compatible device, such as \fI/dev/dsp\fR.
+trackinfo takes a list of audio tracks and plays them to an
+available audio output device such as PulseAudio or the Open Sound System.
 .SH OPTIONS
 .TP
 \fB-h, --help\fR
@@ -16,16 +15,33 @@ Show a list of options and exit
 \fB--version\fR
 Show the program's version and exit
 .TP
+\fB-V \fIVERBOSITY\fB, --verbose=\fIVERBOSITY\fR
+The level of output to display.
+Choose between `normal', `quiet' and `debug'.
+.TP
+\fB-I, --interactive\fR
+Run in interactive mode.
+This provides a test-based GUI and allows one to operate
+playback via keyboard and, on some terminals, mouse control.
+.TP
 \fB-T, --track-replaygain\fR
-apply track ReplayGain during playback, if present
+Apply track ReplayGain during playback, if present
 .TP
 \fB-A, --album-replaygain\fR
-apply album ReplayGain during playback, if present
+Apply album ReplayGain during playback, if present
 .TP
 \fB-o \fIOUTPUT\fB, --output=\fIOUTPUT\fR
 The output system to use.
-Open Sound System is always available.
-If PulseAudio is available and running, it will be the default.
+
+.SH PLAYBACK CONTROLS
+.TS
+tab(:);
+r c l.
+\fBN\fR / \fBn\fR:-:next track
+\fBP\fR / \fBp\fR:-:previous track
+\fBSpace\fR:-:pause (non-interactive mode only)
+\fBEsc\fR / \fBQ\fR / \fBq\fR:-:quit
+.TE
 
 .SH ENVIRONMENT
 .TP

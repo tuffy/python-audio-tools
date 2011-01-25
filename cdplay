@@ -29,6 +29,50 @@ import termios
 
 gettext.install("audiotools", unicode=True)
 
+
+class CDDAStub:
+    def __init__(self, track_lengths):
+        self.track_lengths = track_lengths
+
+    def __len__(self):
+        return len(self.track_lengths)
+
+    def __getitem__(self, key):
+        return CDDATrackStub(key, self.track_lengths[key - 1])
+
+    def length(self):
+        return sum(self.track_lengths)
+
+class CDDATrackStub:
+    def __init__(self, track_number, sectors):
+        self.track_number = int(track_number)
+        self.sectors = sectors
+        self.sectors_read = 0
+        self.sample_rate = 44100
+        self.channels = 2
+        self.channel_mask = 3
+        self.bits_per_sample = 16
+
+    def length(self):
+        return self.sectors
+
+    def read(self, bytes):
+        import audiotools.pcm
+
+        if (self.sectors_read < self.sectors):
+            framelist = audiotools.pcm.from_list(
+                [0] * (2 * 588 * 1),
+                2, 16, True)
+            self.sectors_read += 1
+            return framelist
+        else:
+            return audiotools.pcm.from_list(
+                [], 2, 16, True)
+
+    def close(self):
+        pass
+
+
 try:
     import urwid
 
@@ -88,40 +132,33 @@ try:
                     (self.normal,maxcol-ccol)]]
             return c
 
-    class TrackplayGUI(urwid.Frame):
-        def __init__(self, track_list, audio_output,
-                     replay_gain=audiotools.player.RG_NO_REPLAYGAIN):
-            def track_name(track):
-                metadata = track.get_metadata()
-                if (metadata is not None):
-                    return metadata.track_name
-                else:
-                    return track.filename
-
-            self.track_list = track_list
+    class CDplayGUI(urwid.Frame):
+        def __init__(self, cdda, audio_output):
+            self.track_list = [cdda[i] for i in xrange(1, len(cdda) + 1)]
             self.audio_output = audio_output
-            self.player = audiotools.player.Player(
+            self.player = audiotools.player.CDPlayer(
+                cdda=cdda,
                 audio_output=audio_output,
-                replay_gain=replay_gain,
                 next_track_callback=self.next_track)
 
             self.track_name = urwid.Text("")
             self.album_name = urwid.Text("")
             self.artist_name = urwid.Text("")
             self.length = urwid.Text("")
-            self.channels = urwid.Text("")
-            self.sample_rate = urwid.Text("")
-            self.bits_per_sample = urwid.Text("")
+            self.channels = urwid.Text("2ch")
+            self.sample_rate = urwid.Text("44100Hz")
+            self.bits_per_sample = urwid.Text("16bps")
             self.play_pause_button = urwid.Button("Play", on_press=self.play_pause)
             self.progress = AudioProgressBar(normal='pg normal',
                                              complete='pg complete',
                                              sample_rate=0,
                                              current=0,
                                              done=100)
+            self.progress.sample_rate = 44100
 
             self.track_group = []
 
-            track_len = sum([track.seconds_length() for track in track_list])
+            track_len = cdda.length() / 75
 
             self.status = urwid.Text(
                 "%(count)d tracks, %(min)d:%(sec)2.2d length" % {
@@ -155,10 +192,11 @@ try:
             controls.set_focus(1)
 
             track_list = urwid.ListBox([
-                    urwid.RadioButton(group=self.track_group,
-                                      label=track_name(track),
-                                      user_data=(track, track.get_metadata()),
-                                      on_state_change=self.select_track)
+                    urwid.RadioButton(
+                        group=self.track_group,
+                        label="Track %2.2d" % (track.track_number),
+                        user_data=(track, None),
+                        on_state_change=self.select_track)
                     for track in self.track_list])
             body = urwid.Pile([('fixed', 2, urwid.Filler(urwid.Pile([
                                 controls, urwid.Divider(div_char='-')]))),
@@ -189,27 +227,24 @@ try:
                          auto_play=True):
             if (new_state == True):
                 (track, metadata) = user_data
-                if (metadata is not None):
-                    self.track_name.set_text(metadata.track_name)
-                    self.album_name.set_text(metadata.album_name)
-                    self.artist_name.set_text(metadata.artist_name)
-                else:
-                    self.track_name.set_text(u"")
-                    self.album_name.set_text(u"")
-                    self.artist_name.set_text(u"")
+                # if (metadata is not None):
+                #     self.track_name.set_text(metadata.track_name)
+                #     self.album_name.set_text(metadata.album_name)
+                #     self.artist_name.set_text(metadata.artist_name)
+                # else:
+                #     self.track_name.set_text(u"")
+                #     self.album_name.set_text(u"")
+                #     self.artist_name.set_text(u"")
+                self.track_name.set_text(unicode(track.track_number))
 
-                track_length = track.seconds_length()
+                track_length = track.length() / 75
                 self.length.set_text("%d:%2.2d" % (int(track_length) / 60,
                                                   int(track_length) % 60))
-                self.channels.set_text("%dch" % (track.channels()))
-                self.sample_rate.set_text("%dHz" % (track.sample_rate()))
-                self.bits_per_sample.set_text("%dbps" % (track.bits_per_sample()))
 
                 self.progress.current = 0
-                self.progress.done = track.total_frames()
-                self.progress.sample_rate = track.sample_rate()
+                self.progress.done = track.length() * (44100 / 75)
 
-                self.player.open(track)
+                self.player.open(track.track_number)
                 if (auto_play):
                     self.player.play()
                     self.play_pause_button.set_label("Pause")
@@ -236,38 +271,35 @@ try:
             self.player.close()
             raise urwid.ExitMainLoop()
 
-    def timer(main_loop, trackplay):
-        trackplay.update_status()
+    def timer(main_loop, cdplay):
+        cdplay.update_status()
         loop.set_alarm_at(tm=time.time() + 1,
                           callback=timer,
-                          user_data=trackplay)
+                          user_data=cdplay)
 
     interactive_available = True
 except ImportError:
     interactive_available = False
 
-class TrackplayTTY:
+
+class CDplayTTY:
     OUTPUT_FORMAT = (u"%(track_number)d/%(track_total)d " +
                      u"[%(sent_minutes)d:%(sent_seconds)2.2d / " +
                      u"%(total_minutes)d:%(total_seconds)2.2d] " +
                      u"%(channels)dch %(sample_rate)dHz " +
                      u"%(bits_per_sample)d-bit")
 
-    def __init__(self, track_list, audio_output,
-                 replay_gain=audiotools.player.RG_NO_REPLAYGAIN):
-        self.track_list = track_list
-        self.player = audiotools.player.Player(
+    def __init__(self, cdda, audio_output):
+        self.track_list = [cdda[i] for i in xrange(1, len(cdda) + 1)]
+        self.player = audiotools.player.CDPlayer(
+            cdda=cdda,
             audio_output=audio_output,
-            replay_gain=replay_gain,
             next_track_callback=self.next_track)
         self.track_index = -1
         self.current_track = None
         self.seconds_total = 0
-        self.channels = 0
-        self.sample_rate = 0
-        self.bits_per_sample = 0
         self.track_number = 0
-        self.track_total = len(track_list)
+        self.track_total = len(self.track_list)
 
     def quit(self):
         if (self.current_track is not None):
@@ -285,22 +317,16 @@ class TrackplayTTY:
         if (self.track_index > 0):
             self.track_index -= 1
             self.current_track = self.track_list[self.track_index]
-            self.channels = self.current_track.channels()
-            self.sample_rate = self.current_track.sample_rate()
-            self.bits_per_sample = self.current_track.bits_per_sample()
             self.track_number = self.track_index + 1
-            self.player.open(self.current_track)
+            self.player.open(self.current_track.track_number)
             self.player.play()
 
     def next_track(self):
         try:
             self.track_index += 1
             self.current_track = self.track_list[self.track_index]
-            self.channels = self.current_track.channels()
-            self.sample_rate = self.current_track.sample_rate()
-            self.bits_per_sample = self.current_track.bits_per_sample()
             self.track_number = self.track_index + 1
-            self.player.open(self.current_track)
+            self.player.open(self.current_track.track_number)
             self.player.play()
         except IndexError:
             self.current_track = None
@@ -314,17 +340,16 @@ class TrackplayTTY:
                 {"track_number":self.track_number,
                  "track_total":self.track_total,
                  "sent_minutes":
-                     (frames_sent / self.sample_rate) / 60,
+                     (frames_sent / 44100) / 60,
                  "sent_seconds":
-                     (frames_sent / self.sample_rate) % 60,
+                     (frames_sent / 44100) % 60,
                  "total_minutes":
-                     (frames_total / self.sample_rate) / 60,
+                     (frames_total / 44100) / 60,
                  "total_seconds":
-                     (frames_total / self.sample_rate) % 60,
-                 "channels":self.channels,
-                 "sample_rate":self.sample_rate,
-                 "bits_per_sample":self.bits_per_sample})
-
+                     (frames_total / 44100) % 60,
+                 "channels":2,
+                 "sample_rate":44100,
+                 "bits_per_sample":16})
 
 if (__name__ == '__main__'):
     parser = audiotools.OptionParser(
@@ -338,86 +363,30 @@ if (__name__ == '__main__'):
         dest='interactive',
         help=_(u'run in interactive mode'))
 
-    parser.add_option(
-        '-T', '--track-replaygain',
-        action='store_true',
-        default=False,
-        dest='track_replaygain',
-        help=_(u'apply track ReplayGain during playback, if present'))
-
-    parser.add_option(
-        '-A', '--album-replaygain',
-        action='store_true',
-        default=False,
-        dest='album_replaygain',
-        help=_(u'apply album ReplayGain during playback, if present'))
-
-    players_map = dict([(player.NAME, player)
-                        for player in audiotools.player.AUDIO_OUTPUT])
-
-    parser.add_option(
-        '-o', '--output',
-        action='store',
-        dest='output',
-        choices=players_map.keys(),
-        default=[player.NAME for player in audiotools.player.AUDIO_OUTPUT
-                 if player.available()][0],
-        help=_(u"the method to play audio (choose from: %s)") % \
-            u", ".join([u"\"%s\"" % (k.decode('ascii')) for k in
-                        players_map.keys()]))
-
-    parser.add_option(
-        '-V', '--verbose',
-        action='store',
-        dest='verbosity',
-        choices=audiotools.VERBOSITY_LEVELS,
-        default=audiotools.DEFAULT_VERBOSITY,
-        help=_(u'the verbosity level to execute at'))
-
     (options, args) = parser.parse_args()
     msg = audiotools.Messenger("trackplay", options)
 
-    if (options.interactive and (not interactive_available)):
-        msg.error(_(u"urwid is required for interactive mode"))
-        msg.output(_(u"Please download and install urwid from http://excess.org/urwid/"))
-        msg.output(_(u"or your system's package manager."))
-        sys.exit(1)
-
-    audiofiles = audiotools.open_files(args, sorted=False, messenger=msg)
-
-    if (options.track_replaygain):
-        replay_gain = audiotools.player.RG_TRACK_GAIN
-    elif (options.album_replaygain):
-        replay_gain = audiotools.player.RG_ALBUM_GAIN
-    else:
-        replay_gain = audiotools.player.RG_NO_REPLAYGAIN
+    cdda = CDDAStub([10 * 75, 30 * 75, 15 * 75, 12 * 75])
 
     if (options.interactive):
-        trackplay = TrackplayGUI(track_list=audiofiles,
-                                 audio_output=players_map[options.output](),
-                                 replay_gain=replay_gain)
+        cdplay = CDplayGUI(cdda, audiotools.player.NULLAudioOutput())
+        if (len(cdda) > 0):
+            cdplay.select_track(None, True, (cdda[0], None), False)
 
-        if (len(audiofiles) > 0):
-            trackplay.select_track(None, True,
-                                   (audiofiles[0],
-                                    audiofiles[0].get_metadata()), False)
-
-        loop = urwid.MainLoop(trackplay,
+        loop = urwid.MainLoop(cdplay,
                               [('header', 'default,bold', 'default', ''),
                                ('pg normal', 'white', 'black', 'standout'),
                                ('pg complete', 'white', 'light blue'),
                                ('pg smooth', 'light blue', 'black')],
-                              unhandled_input=trackplay.handle_text)
-
+                              unhandled_input=cdplay.handle_text)
         loop.set_alarm_at(tm=time.time() + 1,
                           callback=timer,
-                          user_data=trackplay)
+                          user_data=cdplay)
 
         loop.run()
     else:
-        trackplay = TrackplayTTY(track_list=audiofiles,
-                                 audio_output=players_map[options.output](),
-                                 replay_gain=replay_gain)
+        trackplay = CDplayTTY(cdda=cdda,
+                              audio_output=audiotools.player.NULLAudioOutput())
         trackplay.play()
         output_line_len = 0
 
