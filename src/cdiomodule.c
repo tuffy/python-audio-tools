@@ -1,9 +1,8 @@
-#include <Python.h>
-#include <cdio/cdda.h>
+#include "cdiomodule.h"
 #include <cdio/cd_types.h>
-#include <cdio/paranoia.h>
 #include <cdio/audio.h>
 #include <cdio/track.h>
+#include <cdio/types.h>
 #include "pcm.h"
 
 /********************************************************
@@ -31,224 +30,6 @@
 
 static PyObject *read_callback = NULL;
 
-typedef struct {
-    PyObject_HEAD
-    cdrom_drive_t *cdrom_drive;
-    cdrom_paranoia_t *paranoia;
-    PyObject *pcm_module;
-} cdio_CDDAObject;
-
-static void
-CDDA_dealloc(cdio_CDDAObject* self);
-
-static PyObject
-*CDDA_new(PyTypeObject *type, PyObject *args, PyObject *kwds);
-
-static int
-CDDA_init(cdio_CDDAObject *self, PyObject *args, PyObject *kwds);
-
-static PyObject
-*CDDA_total_tracks(cdio_CDDAObject* self);
-
-static PyObject
-*CDDA_track_offsets(cdio_CDDAObject* self, PyObject *args);
-
-static PyObject
-*CDDA_read_sector(cdio_CDDAObject* self);
-
-static PyObject
-*CDDA_read_sectors(cdio_CDDAObject* self, PyObject *args);
-
-static PyObject
-*CDDA_first_sector(cdio_CDDAObject* self, PyObject *args);
-
-static PyObject
-*CDDA_last_sector(cdio_CDDAObject* self, PyObject *args);
-
-static PyObject
-*CDDA_track_type(cdio_CDDAObject* self, PyObject *args);
-
-static PyObject
-*CDDA_seek(cdio_CDDAObject* self, PyObject *args);
-
-static PyObject
-*CDDA_set_speed(cdio_CDDAObject* self, PyObject *args);
-
-static PyObject
-*CDDA_length_in_seconds(cdio_CDDAObject* self);
-
-static PyObject
-*set_read_callback(PyObject *dummy, PyObject *args);
-
-void
-read_sector_callback(long int i, paranoia_cb_mode_t mode);
-
-static PyMethodDef CDDA_methods[] = {
-    {"total_tracks", (PyCFunction)CDDA_total_tracks,
-     METH_NOARGS, "Returns the total number of tracks on the disc"},
-    {"track_offsets", (PyCFunction)CDDA_track_offsets,
-     METH_VARARGS, "Returns the starting and ending LSNs for the given track"},
-    {"read_sector", (PyCFunction)CDDA_read_sector,
-     METH_NOARGS, "Returns a sector at the current position as a string"},
-    {"read_sectors", (PyCFunction)CDDA_read_sectors,
-     METH_VARARGS,
-     "Returns a number of sectors starting at the current position"},
-    {"first_sector", (PyCFunction)CDDA_first_sector,
-     METH_NOARGS, "Returns the first sector on the disc"},
-    {"last_sector", (PyCFunction)CDDA_last_sector,
-     METH_NOARGS, "Returns the last sector on the disc"},
-    {"track_type", (PyCFunction)CDDA_track_type,
-     METH_VARARGS, "Returns the type of the given track"},
-    {"seek", (PyCFunction)CDDA_seek,
-     METH_VARARGS, "Seeks to a specific LSN"},
-    {"set_speed", (PyCFunction)CDDA_set_speed,
-     METH_VARARGS, "Sets the speed of the drive"},
-    {"length_in_seconds", (PyCFunction)CDDA_length_in_seconds,
-     METH_NOARGS, "Returns the total length of the disc in seconds"},
-    {NULL}  /* Sentinel */
-};
-
-
-static PyMethodDef cdioMethods[] = {
-    {"set_read_callback", (PyCFunction)set_read_callback,
-     METH_VARARGS, "Sets the global callback for CDDA.read_sector"},
-    {NULL, NULL, 0, NULL}        /* Sentinel */
-};
-
-#ifndef PyMODINIT_FUNC	/* declarations for DLL import/export */
-#define PyMODINIT_FUNC void
-#endif
-
-
-#ifdef IS_PY3K
-
-static PyTypeObject cdio_CDDAType = {
-    PyVarObject_HEAD_INIT(NULL, 0)
-    "cdio.CDDA",               /* tp_name */
-    sizeof(cdio_CDDAObject),   /* tp_basicsize */
-    0,                         /* tp_itemsize */
-    (destructor)CDDA_dealloc,  /* tp_dealloc */
-    0,                         /* tp_print */
-    0,                         /* tp_getattr */
-    0,                         /* tp_setattr */
-    0,                         /* tp_reserved */
-    0,                         /* tp_repr */
-    0,                         /* tp_as_number */
-    0,                         /* tp_as_sequence */
-    0,                         /* tp_as_mapping */
-    0,                         /* tp_hash  */
-    0,                         /* tp_call */
-    0,                         /* tp_str */
-    0,                         /* tp_getattro */
-    0,                         /* tp_setattro */
-    0,                         /* tp_as_buffer */
-    Py_TPFLAGS_DEFAULT |
-    Py_TPFLAGS_BASETYPE,   /* tp_flags */
-    "CDDA objects",            /* tp_doc */
-    0,		               /* tp_traverse */
-    0,		               /* tp_clear */
-    0,		               /* tp_richcompare */
-    0,		               /* tp_weaklistoffset */
-    0,		               /* tp_iter */
-    0,		               /* tp_iternext */
-    CDDA_methods,              /* tp_methods */
-    0,                         /* tp_members */
-    0,                         /* tp_getset */
-    0,                         /* tp_base */
-    0,                         /* tp_dict */
-    0,                         /* tp_descr_get */
-    0,                         /* tp_descr_set */
-    0,                         /* tp_dictoffset */
-    (initproc)CDDA_init,       /* tp_init */
-    0,                         /* tp_alloc */
-    CDDA_new,                  /* tp_new */
-};
-
-
-static PyModuleDef cdiomodule = {
-    PyModuleDef_HEAD_INIT,
-    "cdio",
-    "A CDDA reading module.",
-    -1,
-    cdioMethods,
-    NULL, NULL, NULL, NULL
-};
-
-
-PyMODINIT_FUNC
-PyInit_cdio(void)
-{
-    PyObject* m;
-
-    cdio_CDDAType.tp_new = PyType_GenericNew;
-    if (PyType_Ready(&cdio_CDDAType) < 0)
-        return NULL;
-
-    m = PyModule_Create(&cdiomodule);
-    if (m == NULL)
-        return NULL;
-
-    Py_INCREF(&cdio_CDDAType);
-    PyModule_AddObject(m, "CDDA", (PyObject *)&cdio_CDDAType);
-    return m;
-}
-
-static void
-CDDA_dealloc(cdio_CDDAObject* self)
-{
-    if (self->paranoia != NULL)
-        cdio_paranoia_free(self->paranoia);
-    if (self->cdrom_drive != NULL)
-        cdio_cddap_close(self->cdrom_drive);
-    Py_TYPE(self)->tp_free((PyObject*)self);
-}
-
-
-
-#else
-
-static PyTypeObject cdio_CDDAType = {
-    PyObject_HEAD_INIT(NULL)
-    0,                         /*ob_size*/
-    "cdio.CDDA",                 /*tp_name*/
-    sizeof(cdio_CDDAObject),     /*tp_basicsize*/
-    0,                         /*tp_itemsize*/
-    (destructor)CDDA_dealloc,   /*tp_dealloc*/
-    0,                         /*tp_print*/
-    0,                         /*tp_getattr*/
-    0,                         /*tp_setattr*/
-    0,                         /*tp_compare*/
-    0,                         /*tp_repr*/
-    0,                         /*tp_as_number*/
-    0,                         /*tp_as_sequence*/
-    0,                         /*tp_as_mapping*/
-    0,                         /*tp_hash */
-    0,                         /*tp_call*/
-    0,                         /*tp_str*/
-    0,                         /*tp_getattro*/
-    0,                         /*tp_setattro*/
-    0,                         /*tp_as_buffer*/
-    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE, /*tp_flags*/
-    "CDDA objects",             /* tp_doc */
-    0,		               /* tp_traverse */
-    0,		               /* tp_clear */
-    0,		               /* tp_richcompare */
-    0,		               /* tp_weaklistoffset */
-    0,		               /* tp_iter */
-    0,		               /* tp_iternext */
-    CDDA_methods,               /* tp_methods */
-    0,                         /* tp_members */
-    0,                         /* tp_getset */
-    0,                         /* tp_base */
-    0,                         /* tp_dict */
-    0,                         /* tp_descr_get */
-    0,                         /* tp_descr_set */
-    0,                         /* tp_dictoffset */
-    (initproc)CDDA_init,        /* tp_init */
-    0,                         /* tp_alloc */
-    CDDA_new,                   /* tp_new */
-};
-
 PyMODINIT_FUNC
 initcdio(void)
 {
@@ -258,12 +39,30 @@ initcdio(void)
     if (PyType_Ready(&cdio_CDDAType) < 0)
         return;
 
+    cdio_CDImageType.tp_new = PyType_GenericNew;
+    if (PyType_Ready(&cdio_CDImageType) < 0)
+        return;
+
     m = Py_InitModule3("cdio", cdioMethods,
                        "A CDDA reading module.");
 
     Py_INCREF(&cdio_CDDAType);
     PyModule_AddObject(m, "CDDA", (PyObject *)&cdio_CDDAType);
+
+    Py_INCREF(&cdio_CDImageType);
+    PyModule_AddObject(m, "CDImage", (PyObject *)&cdio_CDImageType);
+
+    PyModule_AddIntConstant(m, "CD_IMAGE", CD_IMAGE);
+    PyModule_AddIntConstant(m, "DEVICE_FILE", DEVICE_FILE);
+    PyModule_AddIntConstant(m, "CUE_FILE", CUE_FILE);
+    PyModule_AddIntConstant(m, "BIN_FILE", BIN_FILE);
+    PyModule_AddIntConstant(m, "TOC_FILE", TOC_FILE);
+    PyModule_AddIntConstant(m, "NRG_FILE", NRG_FILE);
 }
+
+/**********************/
+/*audiotools.cdio.CDDA*/
+/**********************/
 
 static void
 CDDA_dealloc(cdio_CDDAObject* self)
@@ -276,8 +75,6 @@ CDDA_dealloc(cdio_CDDAObject* self)
     if (self != NULL)
         self->ob_type->tp_free((PyObject*)self);
 }
-#endif
-
 
 static PyObject*
 CDDA_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
@@ -440,34 +237,26 @@ CDDA_read_sectors(cdio_CDDAObject* self, PyObject *args)
 static PyObject*
 CDDA_first_sector(cdio_CDDAObject* self, PyObject *args)
 {
-    lsn_t sector;
-
-    sector = cdio_cddap_disc_firstsector(self->cdrom_drive);
-
-    return Py_BuildValue("i", sector);
+    return Py_BuildValue("i", cdio_cddap_disc_firstsector(self->cdrom_drive));
 }
 
 static PyObject*
 CDDA_last_sector(cdio_CDDAObject* self, PyObject *args)
 {
-    lsn_t sector;
-
-    sector = cdio_cddap_disc_lastsector(self->cdrom_drive);
-
-    return Py_BuildValue("i", sector);
+    return Py_BuildValue("i", cdio_cddap_disc_lastsector(self->cdrom_drive));
 }
 
 static PyObject*
 CDDA_track_type(cdio_CDDAObject* self, PyObject *args)
 {
-    track_format_t format;
     track_t tracknum;
 
     if (!PyArg_ParseTuple(args, "H", &tracknum))
         return NULL;
 
-    format = cdio_get_track_format(self->cdrom_drive->p_cdio, tracknum);
-    return Py_BuildValue("i", format);
+    return Py_BuildValue("i",
+                         cdio_get_track_format(self->cdrom_drive->p_cdio,
+                                               tracknum));
 }
 
 static PyObject*
@@ -518,6 +307,193 @@ CDDA_length_in_seconds(cdio_CDDAObject* self)
     return Py_BuildValue("i", length);
 }
 
+/*************************/
+/*audiotools.cdio.CDImage*/
+/*************************/
+
+static PyObject*
+CDImage_new(PyTypeObject *type, PyObject *args, PyObject *kwds) {
+    cdio_CDImage *self;
+
+    self = (cdio_CDImage *)type->tp_alloc(type, 0);
+    self->image = NULL;
+    self->current_sector = 0;
+
+    self->pcm_module = NULL;
+
+    return (PyObject *)self;
+}
+
+static int
+CDImage_init(cdio_CDImage *self, PyObject *args, PyObject *kwds) {
+    const char *image = NULL;
+    int image_type;
+
+    if (!PyArg_ParseTuple(args, "si", &image, &image_type))
+        return -1;
+
+    if ((self->pcm_module = PyImport_ImportModule("audiotools.pcm")) == NULL)
+        return -1;
+
+    switch (image_type & 0x7) {
+    case CUE_FILE:
+        self->image = cdio_open_cue(image);
+        break;
+    case BIN_FILE:
+        self->image = cdio_open_bincue(image);
+        break;
+    case TOC_FILE:
+        self->image = cdio_open_cdrdao(image);
+        break;
+    case NRG_FILE:
+        self->image = cdio_open_nrg(image);
+        break;
+    default:
+        self->image = NULL;
+        break;
+    }
+
+    if (self->image == NULL) {
+        PyErr_SetString(PyExc_ValueError, "Unable to open image file");
+        return -1;
+    }
+
+    return 0;
+}
+
+static void
+CDImage_dealloc(cdio_CDImage* self) {
+    if (self->image != NULL)
+        cdio_destroy(self->image);
+
+    Py_XDECREF(self->pcm_module);
+    self->ob_type->tp_free((PyObject*)self);
+}
+
+static PyObject*
+CDImage_total_tracks(cdio_CDImage* self) {
+    return Py_BuildValue("H", cdio_get_last_track_num(self->image));
+}
+
+static PyObject*
+CDImage_track_offsets(cdio_CDImage* self, PyObject *args) {
+    track_t tracknum;
+
+    if (!PyArg_ParseTuple(args, "H", &tracknum))
+        return NULL;
+
+    return Py_BuildValue("(i,i)",
+                         cdio_get_track_lsn(self->image, tracknum),
+                         cdio_get_track_last_lsn(self->image, tracknum));
+}
+
+static PyObject*
+CDImage_read_sector(cdio_CDImage* self) {
+    uint8_t* data;
+    PyObject* to_return;
+
+    data = malloc(CDIO_CD_FRAMESIZE_RAW);
+    switch (cdio_read_audio_sector(self->image,
+                                   data,
+                                   self->current_sector)) {
+    case DRIVER_OP_SUCCESS:
+        to_return = PyObject_CallMethod(self->pcm_module,
+                                        "FrameList",
+                                        "s#iiii",
+                                        (char *)data,
+                                        (int)(CDIO_CD_FRAMESIZE_RAW),
+                                        2, 16, 0, 1);
+        free(data);
+        self->current_sector += 1;
+        return to_return;
+    default:
+        free(data);
+        PyErr_SetString(PyExc_IOError, "error reading sectors");
+        return NULL;
+    }
+}
+
+static PyObject*
+CDImage_read_sectors(cdio_CDImage* self, PyObject *args) {
+    uint32_t sectors_to_read;
+    uint8_t* data;
+    PyObject* to_return;
+
+    if (!PyArg_ParseTuple(args, "I", &sectors_to_read))
+        return NULL;
+
+    data = malloc(CDIO_CD_FRAMESIZE_RAW * sectors_to_read);
+    switch (cdio_read_audio_sectors(self->image,
+                                    data,
+                                    self->current_sector,
+                                    sectors_to_read)) {
+    case DRIVER_OP_SUCCESS:
+        to_return = PyObject_CallMethod(self->pcm_module,
+                                        "FrameList",
+                                        "s#iiii",
+                                        (char *)data,
+                                        (int)(CDIO_CD_FRAMESIZE_RAW *
+                                              sectors_to_read),
+                                        2, 16, 0, 1);
+        free(data);
+        self->current_sector += sectors_to_read;
+        return to_return;
+    default:
+        free(data);
+        PyErr_SetString(PyExc_IOError, "error reading sectors");
+        return NULL;
+    }
+}
+
+static PyObject*
+CDImage_first_sector(cdio_CDImage* self, PyObject *args) {
+    return Py_BuildValue("i",
+                         cdio_get_track_lsn(self->image,
+                             cdio_get_first_track_num(self->image)));
+}
+
+static PyObject*
+CDImage_last_sector(cdio_CDImage* self, PyObject *args) {
+    return Py_BuildValue("i",
+                         cdio_get_track_last_lsn(self->image,
+                             cdio_get_last_track_num(self->image)));
+}
+
+static PyObject*
+CDImage_track_type(cdio_CDImage* self, PyObject *args) {
+    track_t tracknum;
+
+    if (!PyArg_ParseTuple(args, "H", &tracknum))
+        return NULL;
+
+        return Py_BuildValue("i",
+                             cdio_get_track_format(self->image, tracknum));
+}
+
+static PyObject*
+CDImage_seek(cdio_CDImage* self, PyObject *args) {
+    if (!PyArg_ParseTuple(args, "i", &(self->current_sector)))
+        return NULL;
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+static PyObject*
+CDImage_length_in_seconds(cdio_CDImage* self) {
+    msf_t first_track;
+    msf_t leadout;
+    int length;
+
+    cdio_get_track_msf(self->image, 1, &first_track);
+    cdio_get_track_msf(self->image, CDIO_CDROM_LEADOUT_TRACK, &leadout);
+
+    length = cdio_audio_get_msf_seconds(&leadout) -
+        cdio_audio_get_msf_seconds(&first_track);
+
+    return Py_BuildValue("i", length);
+}
+
 
 /*callback stuff*/
 
@@ -556,5 +532,28 @@ read_sector_callback(long int i, paranoia_cb_mode_t mode)
         result = PyEval_CallObject(read_callback, arglist);
         Py_DECREF(arglist);
         Py_XDECREF(result);
+    }
+}
+
+static PyObject*
+cdio_identify_cdrom(PyObject *dummy, PyObject *args) {
+    const char* device;
+
+    if (!PyArg_ParseTuple(args, "s", &device))
+        return NULL;
+
+    if (cdio_is_cuefile(device)) {
+        return Py_BuildValue("i", CD_IMAGE | CUE_FILE);
+    } else if (cdio_is_binfile(device)) {
+        return Py_BuildValue("i", CD_IMAGE | BIN_FILE);
+    } else if (cdio_is_tocfile(device)) {
+        return Py_BuildValue("i", CD_IMAGE | TOC_FILE);
+    } else if (cdio_is_nrg(device)) {
+        return Py_BuildValue("i", CD_IMAGE | NRG_FILE);
+    } else  if (cdio_is_device(device, DRIVER_UNKNOWN)) {
+        return Py_BuildValue("i", DEVICE_FILE);
+    } else {
+        PyErr_SetString(PyExc_ValueError, "unknown device");
+        return NULL;
     }
 }

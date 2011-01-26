@@ -15727,6 +15727,95 @@ class Bitstream(unittest.TestCase):
                           8)
         del(r1)
 
+class MiniFrameReader:
+    def __init__(self, channel_data, sample_rate, channel_mask,
+                 bits_per_sample):
+        self.sample_rate = sample_rate
+        self.channels = len(channel_data)
+        self.channel_mask = channel_mask
+        self.bits_per_sample = bits_per_sample
+        self.pcm_frames = zip(*channel_data)
+
+    def read(self, bytes):
+        try:
+            return audiotools.pcm.from_list(self.pcm_frames.pop(0),
+                                            self.channels,
+                                            self.bits_per_sample,
+                                            True)
+        except IndexError:
+            return audiotools.pcm.FrameList("",
+                                            self.channels,
+                                            self.bits_per_sample,
+                                            True, True)
+    def close(self):
+        self.pcm_frames = []
+
+class TestPCMWindow(unittest.TestCase):
+    @TEST_PCM
+    def setUp(self):
+        self.channels = [range(0, 20),
+                         range(20, 0, -1)]
+
+    def __test_reader__(self, pcmreader, channels):
+        framelist = pcmreader.read(1024)
+        output_channels = [[] for i in xrange(len(channels))]
+        while (len(framelist) > 0):
+            for c in xrange(framelist.channels):
+                output_channels[c].extend(framelist.channel(c))
+            framelist = pcmreader.read(1024)
+        self.assertEqual(channels, output_channels)
+
+    @TEST_PCM
+    def test_basic(self):
+        self.__test_reader__(MiniFrameReader(self.channels,
+                                             44100, 3, 16),
+                             [range(0, 20), range(20, 0, -1)])
+
+        self.__test_reader__(audiotools.PCMReaderWindow(
+                MiniFrameReader(self.channels, 44100, 3, 16), 0, 20),
+                             [range(0, 20), range(20, 0, -1)])
+
+    @TEST_PCM
+    def test_crop(self):
+        self.__test_reader__(audiotools.PCMReaderWindow(
+                MiniFrameReader(self.channels, 44100, 3, 16), 0, 15),
+                             [range(0, 15), range(20, 5, -1)])
+
+        self.__test_reader__(audiotools.PCMReaderWindow(
+                MiniFrameReader(self.channels, 44100, 3, 16), 5, 15),
+                             [range(5, 20), range(15, 0, -1)])
+
+        self.__test_reader__(audiotools.PCMReaderWindow(
+                MiniFrameReader(self.channels, 44100, 3, 16), 5, 10),
+                             [range(5, 15), range(15, 5, -1)])
+
+    @TEST_PCM
+    def test_extend(self):
+        self.__test_reader__(audiotools.PCMReaderWindow(
+                MiniFrameReader(self.channels, 44100, 3, 16), -5, 25),
+                             [[0] * 5 + range(0, 20),
+                              [0] * 5 + range(20, 0, -1)])
+
+        self.__test_reader__(audiotools.PCMReaderWindow(
+                MiniFrameReader(self.channels, 44100, 3, 16), 0, 25),
+                             [range(0, 20) + [0] * 5,
+                              range(20, 0, -1) + [0] * 5])
+
+        self.__test_reader__(audiotools.PCMReaderWindow(
+                MiniFrameReader(self.channels, 44100, 3, 16), -5, 20),
+                             [[0] * 5 + range(0, 15),
+                              [0] * 5 + range(20, 5, -1)])
+
+        self.__test_reader__(audiotools.PCMReaderWindow(
+                MiniFrameReader(self.channels, 44100, 3, 16), -5, 15),
+                             [[0] * 5 + range(0, 10),
+                              [0] * 5 + range(20, 10, -1)])
+
+        self.__test_reader__(audiotools.PCMReaderWindow(
+                MiniFrameReader(self.channels, 44100, 3, 16), -5, 30),
+                             [[0] * 5 + range(0, 20) + [0] * 5,
+                              [0] * 5 + range(20, 0, -1) + [0] * 5])
+
 
 
 ############

@@ -368,6 +368,20 @@ if (__name__ == '__main__'):
         dest='interactive',
         help=_(u'run in interactive mode'))
 
+    players_map = dict([(player.NAME, player)
+                        for player in audiotools.player.AUDIO_OUTPUT])
+
+    parser.add_option(
+        '-o', '--output',
+        action='store',
+        dest='output',
+        choices=players_map.keys(),
+        default=[player.NAME for player in audiotools.player.AUDIO_OUTPUT
+                 if player.available()][0],
+        help=_(u"the method to play audio (choose from: %s)") % \
+            u", ".join([u"\"%s\"" % (k.decode('ascii')) for k in
+                        players_map.keys()]))
+
     parser.add_option(
         '-c', '--cdrom', action='store',
         type='string', dest='cdrom',
@@ -410,8 +424,7 @@ if (__name__ == '__main__'):
     msg = audiotools.Messenger("trackplay", options)
 
     try:
-        cdda = audiotools.RawCDDA(options.cdrom,
-                                  perform_logging=False)
+        cdda = audiotools.CDDA(options.cdrom, perform_logging=False)
     except IOError, err:
         msg.error(unicode(err) + _(u". Is that an audio cd ?"))
         sys.exit(-1)
@@ -468,8 +481,9 @@ if (__name__ == '__main__'):
             except IOError, e:
                 msg.error(unicode(e))
 
-        cdplay = CDplayGUI(cdda, metadata,
-                           audiotools.player.PulseAudioOutput())
+        cdplay = CDplayGUI(cdda=cdda,
+                           metadata=metadata,
+                           audio_output=players_map[options.output]())
         if (len(cdda) > 0):
             cdplay.select_track(None, True,
                                 (cdda[1],
@@ -490,7 +504,7 @@ if (__name__ == '__main__'):
         loop.run()
     else:
         trackplay = CDplayTTY(cdda=cdda,
-                              audio_output=audiotools.player.PulseAudioOutput())
+                              audio_output=player_map[options.output]())
         trackplay.play()
         output_line_len = 0
 

@@ -3299,38 +3299,46 @@ from __dvda__ import *
 #is something code should avoid at all costs!
 #there's simply no way to accomplish that cleanly
 
-def CDDA(device_name, speed=None, perform_logging=True):
-    """Given a device name string and speed int, returns a CDDA object.
+# def CDDA(device_name, speed=None, perform_logging=True):
+#     """Given a device name string and speed int, returns a CDDA object.
 
-    This object depends on whether the user has specified
-    a CDDA read offset or not.
-    If not, this returns a RawCDDA.
-    Otherwise, it returns an OffsetCDTrackReader.
-    """
+#     This object depends on whether the user has specified
+#     a CDDA read offset or not.
+#     If not, this returns a RawCDDA.
+#     Otherwise, it returns an OffsetCDTrackReader.
+#     """
 
-    offset = config.getint_default("System", "cdrom_read_offset", 0)
-    if (offset == 0):
-        return RawCDDA(device_name, speed, perform_logging)
-    else:
-        return OffsetCDDA(device_name, offset, speed, perform_logging)
+#     offset = config.getint_default("System", "cdrom_read_offset", 0)
+#     if (offset == 0):
+#         return RawCDDA(device_name, speed, perform_logging)
+#     else:
+#         return OffsetCDDA(device_name, offset, speed, perform_logging)
 
 
-class RawCDDA:
+class CDDA:
     """A CDDA device which contains CDTrackReader objects."""
 
     def __init__(self, device_name, speed=None, perform_logging=True):
         """device_name is a string, speed is an optional int."""
 
         import cdio
-        self.cdda = cdio.CDDA(device_name)
+
+        cdrom_type = cdio.identify_cdrom(device_name)
+        if (cdrom_type & cdio.CD_IMAGE):
+            self.cdda = cdio.CDImage(device_name, cdrom_type)
+            self.perform_logging = False
+        else:
+            self.cdda = cdio.CDDA(device_name)
+            if (speed is not None):
+                self.cdda.set_speed(speed)
+            self.perform_logging = perform_logging
+
         self.total_tracks = len([track_type for track_type in
                                  map(self.cdda.track_type,
                                      xrange(1, self.cdda.total_tracks() + 1))
                                  if (track_type == 0)])
-        if (speed is not None):
-            self.cdda.set_speed(speed)
 
-        self.perform_logging = perform_logging
+
 
     def __len__(self):
         return self.total_tracks
@@ -3339,6 +3347,7 @@ class RawCDDA:
         if ((key < 1) or (key > self.total_tracks)):
             raise IndexError(key)
         else:
+            #FIXME - support offets here
             return CDTrackReader(self.cdda, int(key), self.perform_logging)
 
     def __iter__(self):
@@ -3367,66 +3376,87 @@ class RawCDDA:
         return self.cdda.last_sector()
 
 
-class OffsetCDDA(RawCDDA):
-    """A CDDA device which automatically applies sample offsets.
+class PCMReaderWindow:
+    """A class for cropping a PCMReader to a specific window of frames"""
 
-    Note that this blocks for a *long* time at instantiation time
-    as it reads the whole CD to a temp file and applies the proper offset.
-    """
+    def __init__(self, pcmreader, initial_offset, pcm_frames):
+        """initial_offset is how many frames to crop, and may be negative
+        pcm_frames is the total length of the window
 
-    def __init__(self, device_name, sample_offset, speed=None,
-                 perform_logging=True):
-        """device_name is a string, sample_offset is a PCM frames value."""
+        If the window is outside the PCMReader's data
+        (that is, initial_offset is negative, or
+        pcm_frames is longer than the total stream)
+        those samples are padded with 0s."""
 
-        import cdio
-        import tempfile
+        self.pcmreader = pcmreader
+        self.sample_rate = pcmreader.sample_rate
+        self.channels = pcmreader.channels
+        self.channel_mask = pcmreader.channel_mask
+        self.bits_per_sample = pcmreader.bits_per_sample
 
-        self.cdda = cdio.CDDA(device_name)
-        self.total_tracks = self.cdda.total_tracks()
+        self.initial_offset = initial_offset
+        self.pcm_frames = pcm_frames
 
-        if (speed is not None):
-            self.cdda.set_speed(speed)
+    def read(self, bytes):
+        if (self.pcm_frames > 0):
+            if (self.initial_offset == 0):
+                #once the initial offset is accounted for,
+                #read a framelist from the pcmreader
 
-        self.__temp__ = tempfile.TemporaryFile()
-        self.__tracks__ = {}
+                framelist = self.pcmreader.read(bytes)
+                if (framelist.frames <= self.pcm_frames):
+                    if (framelist.frames > 0):
+                        #return framelist if it has data
+                        #and is smaller than remaining frames
+                        self.pcm_frames -= framelist.frames
+                        return framelist
+                    else:
+                        #otherwise, pad remaining data with 0s
+                        framelist = pcm.from_list([0] *
+                                                  (self.pcm_frames) *
+                                                  self.channels,
+                                                  self.channels,
+                                                  self.bits_per_sample,
+                                                  True)
+                        self.pcm_frames = 0
+                        return framelist
+                else:
+                    #crop framelist to be smaller
+                    #if its data is larger than what remains to be read
+                    self.framelist = framelist.split(self.pcm_frames)[0]
+                    self.pcm_frames = 0
+                    return framelist
 
-        if (self.total_tracks == 0xFF):
-            return
-
-        if (sample_offset < 0):
-            self.__temp__.write(chr(0) * (-sample_offset * 4))
-
-        for tracknum in xrange(1, self.cdda.total_tracks() + 1):
-            (start, end) = self.cdda.track_offsets(tracknum)
-            trackreader = OffsetCDTrackReader(
-                tracknum,
-                self.__temp__,
-                self.__temp__.tell() + (sample_offset * 4),
-                start,
-                end)
-
-            self.cdda.seek(start)
-            if (perform_logging):
-                cdio.set_read_callback(trackreader.log)
-
-            for sector_count in at_a_time(end - start, 445):
-                self.__temp__.write(
-                    self.cdda.read_sectors(sector_count).to_bytes(False, True))
-
-            self.__tracks__[tracknum] = trackreader
-
-        if (sample_offset > 0):
-            self.__temp__.write(chr(0) * (sample_offset * 4))
-
-    def __getitem__(self, key):
-        return self.__tracks__[key]
+            elif (self.initial_offset > 0):
+                #remove frames if initial offset is positive
+                (removed, framelist) = self.pcmreader.read(bytes).split(
+                    self.initial_offset)
+                self.initial_offset -= removed.frames
+                if (framelist.frames > 0):
+                    self.pcm_frames -= framelist.frames
+                    return framelist
+                else:
+                    #if the entire framelist is cropped,
+                    #return another one entirely
+                    return self.read(bytes)
+            elif (self.initial_offset < 0):
+                #pad framelist with 0s if initial offset is negative
+                framelist = pcm.from_list([0] *
+                                          (-self.initial_offset) *
+                                          self.channels,
+                                          self.channels,
+                                          self.bits_per_sample,
+                                          True)
+                self.initial_offset = 0
+                self.pcm_frames -= framelist.frames
+                return framelist
+        else:
+            #once all frames have been sent, return empty framelists
+            return pcm.FrameList("", self.channels, self.bits_per_sample,
+                                 False, True)
 
     def close(self):
-        """Closes the CDDA device.
-
-        In the case of OffsetCDDA, this closes the temporary space also."""
-
-        self.__temp__.close()
+        self.pcmreader.close()
 
 
 class CDTrackLog(dict):
