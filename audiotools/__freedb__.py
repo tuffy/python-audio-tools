@@ -710,7 +710,7 @@ def get_xmcd(disc_id, output, freedb_server, freedb_server_port,
                     matches, default_selection)
 
             freedb.read_data(category, idstring, output)
-            output.close()
+            output.flush()
 
         freedb.close()
     except FreeDBException, msg:
@@ -718,6 +718,6 @@ def get_xmcd(disc_id, output, freedb_server, freedb_server_port,
         freedb.close()
         raise IOError(str(msg))
 
-    if (len(matches) > 0):
+    if ((len(matches) > 0) and (hasattr(output, "name"))):
         messenger.info(_(u"%s written") % (messenger.filename(output.name)))
     return len(matches)

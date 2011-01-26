@@ -26,6 +26,7 @@ import select
 import os
 import tty
 import termios
+import cStringIO
 
 gettext.install("audiotools", unicode=True)
 
@@ -133,7 +134,7 @@ try:
             return c
 
     class CDplayGUI(urwid.Frame):
-        def __init__(self, cdda, audio_output):
+        def __init__(self, cdda, metadata, audio_output):
             self.track_list = [cdda[i] for i in xrange(1, len(cdda) + 1)]
             self.audio_output = audio_output
             self.player = audiotools.player.CDPlayer(
@@ -194,8 +195,10 @@ try:
             track_list = urwid.ListBox([
                     urwid.RadioButton(
                         group=self.track_group,
-                        label="Track %2.2d" % (track.track_number),
-                        user_data=(track, None),
+                        label=metadata.get_track(track.track_number - 1)[0],
+                        user_data=(track,
+                                   metadata.get_track(track.track_number - 1),
+                                   metadata.album_name),
                         on_state_change=self.select_track)
                     for track in self.track_list])
             body = urwid.Pile([('fixed', 2, urwid.Filler(urwid.Pile([
@@ -226,16 +229,18 @@ try:
         def select_track(self, radio_button, new_state, user_data,
                          auto_play=True):
             if (new_state == True):
-                (track, metadata) = user_data
-                # if (metadata is not None):
-                #     self.track_name.set_text(metadata.track_name)
-                #     self.album_name.set_text(metadata.album_name)
-                #     self.artist_name.set_text(metadata.artist_name)
-                # else:
-                #     self.track_name.set_text(u"")
-                #     self.album_name.set_text(u"")
-                #     self.artist_name.set_text(u"")
-                self.track_name.set_text(unicode(track.track_number))
+                (track, (track_name,
+                         artist_name,
+                         extra),
+                 album_name) = user_data
+                if (metadata is not None):
+                    self.track_name.set_text(track_name)
+                    self.album_name.set_text(album_name)
+                    self.artist_name.set_text(artist_name)
+                else:
+                    self.track_name.set_text(u"")
+                    self.album_name.set_text(u"")
+                    self.artist_name.set_text(u"")
 
                 track_length = track.length() / 75
                 self.length.set_text("%d:%2.2d" % (int(track_length) / 60,
@@ -363,15 +368,114 @@ if (__name__ == '__main__'):
         dest='interactive',
         help=_(u'run in interactive mode'))
 
+    parser.add_option(
+        '-c', '--cdrom', action='store',
+        type='string', dest='cdrom',
+        default=audiotools.DEFAULT_CDROM)
+
+    server = audiotools.OptionGroup(parser, _(u"Server Options"))
+
+    server.add_option(
+        '--musicbrainz-server', action='store',
+        type='string', dest='musicbrainz_server',
+        default=audiotools.MUSICBRAINZ_SERVER,
+        metavar='HOSTNAME')
+    server.add_option(
+        '--musicbrainz-port', action='store',
+        type='int', dest='musicbrainz_port',
+        default=audiotools.MUSICBRAINZ_PORT,
+        metavar='PORT')
+
+    server.add_option(
+        '--freedb-server', action='store',
+        type='string', dest='freedb_server',
+        default=audiotools.FREEDB_SERVER,
+        metavar='HOSTNAME')
+    server.add_option(
+        '--freedb-port', action='store',
+        type='int', dest='freedb_port',
+        default=audiotools.FREEDB_PORT,
+        metavar='PORT')
+
+    server.add_option(
+        '--no-musicbrainz', action='store_false',
+        dest='use_musicbrainz', default=True,
+        help='do not query MusicBrainz for metadata')
+    server.add_option(
+        '--no-freedb', action='store_false',
+        dest='use_freedb', default=True,
+        help='do not query FreeDB for metadata')
+
     (options, args) = parser.parse_args()
     msg = audiotools.Messenger("trackplay", options)
 
-    cdda = CDDAStub([10 * 75, 30 * 75, 15 * 75, 12 * 75])
+    try:
+        cdda = audiotools.RawCDDA(options.cdrom,
+                                  perform_logging=False)
+    except IOError, err:
+        msg.error(unicode(err) + _(u". Is that an audio cd ?"))
+        sys.exit(-1)
+
+    if (len(cdda) == 0):
+        msg.error(_(u"No CD in drive"))
+        sys.exit(1)
 
     if (options.interactive):
-        cdplay = CDplayGUI(cdda, audiotools.player.NULLAudioOutput())
+        musicbrainz_matches = 0
+        freedb_matches = 0
+
+        musicbrainz_discid = audiotools.MBDiscID.from_cdda(cdda)
+        freedb_discid = audiotools.DiscID.from_cdda(cdda)
+
+        output = cStringIO.StringIO()
+        musicbrainz_discid.toxml(output)
+        output.flush()
+        metadata = audiotools.MusicBrainzReleaseXML.from_string(
+            output.getvalue())
+
+        if (options.use_musicbrainz):
+            try:
+                outfile = cStringIO.StringIO()
+                musicbrainz_matches = audiotools.get_mbxml(
+                    musicbrainz_discid,
+                    outfile,
+                    options.musicbrainz_server,
+                    options.musicbrainz_port,
+                    msg,
+                    1)
+                try:
+                    metadata = audiotools.MusicBrainzReleaseXML.from_string(
+                        outfile.getvalue())
+                except audiotools.MBXMLException:
+                    pass
+            except IOError, e:
+                msg.error(unicode(e))
+
+        if ((musicbrainz_matches == 0) and options.use_freedb):
+            try:
+                outfile = cStringIO.StringIO()
+                freedb_matches = audiotools.get_xmcd(
+                    freedb_discid,
+                    outfile,
+                    options.freedb_server,
+                    options.freedb_port,
+                    msg,
+                    1)
+                try:
+                    metadata = audiotools.XMCD.from_string(outfile.getvalue())
+                except audiotools.XMCDException:
+                    pass
+            except IOError, e:
+                msg.error(unicode(e))
+
+        cdplay = CDplayGUI(cdda, metadata,
+                           audiotools.player.PulseAudioOutput())
         if (len(cdda) > 0):
-            cdplay.select_track(None, True, (cdda[0], None), False)
+            cdplay.select_track(None, True,
+                                (cdda[1],
+                                 metadata.get_track(0),
+                                 metadata.album_name),
+                                False)
 
         loop = urwid.MainLoop(cdplay,
                               [('header', 'default,bold', 'default', ''),
@@ -386,7 +490,7 @@ if (__name__ == '__main__'):
         loop.run()
     else:
         trackplay = CDplayTTY(cdda=cdda,
-                              audio_output=audiotools.player.NULLAudioOutput())
+                              audio_output=audiotools.player.PulseAudioOutput())
         trackplay.play()
         output_line_len = 0
 
