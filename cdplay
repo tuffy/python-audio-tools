@@ -31,49 +31,6 @@ import cStringIO
 gettext.install("audiotools", unicode=True)
 
 
-class CDDAStub:
-    def __init__(self, track_lengths):
-        self.track_lengths = track_lengths
-
-    def __len__(self):
-        return len(self.track_lengths)
-
-    def __getitem__(self, key):
-        return CDDATrackStub(key, self.track_lengths[key - 1])
-
-    def length(self):
-        return sum(self.track_lengths)
-
-class CDDATrackStub:
-    def __init__(self, track_number, sectors):
-        self.track_number = int(track_number)
-        self.sectors = sectors
-        self.sectors_read = 0
-        self.sample_rate = 44100
-        self.channels = 2
-        self.channel_mask = 3
-        self.bits_per_sample = 16
-
-    def length(self):
-        return self.sectors
-
-    def read(self, bytes):
-        import audiotools.pcm
-
-        if (self.sectors_read < self.sectors):
-            framelist = audiotools.pcm.from_list(
-                [0] * (2 * 588 * 1),
-                2, 16, True)
-            self.sectors_read += 1
-            return framelist
-        else:
-            return audiotools.pcm.from_list(
-                [], 2, 16, True)
-
-    def close(self):
-        pass
-
-
 try:
     import urwid
 
@@ -135,6 +92,14 @@ try:
 
     class CDplayGUI(urwid.Frame):
         def __init__(self, cdda, metadata, audio_output):
+            def track_label(metadata, track_number):
+                label = metadata.get_track(track.track_number - 1)[0]
+                if (len(label) > 0):
+                    return label
+                else:
+                    return "track %2.2d" % (track_number)
+                
+            
             self.track_list = [cdda[i] for i in xrange(1, len(cdda) + 1)]
             self.audio_output = audio_output
             self.player = audiotools.player.CDPlayer(
@@ -195,7 +160,7 @@ try:
             track_list = urwid.ListBox([
                     urwid.RadioButton(
                         group=self.track_group,
-                        label=metadata.get_track(track.track_number - 1)[0],
+                        label=track_label(metadata, track.track_number),
                         user_data=(track,
                                    metadata.get_track(track.track_number - 1),
                                    metadata.album_name),
@@ -233,14 +198,9 @@ try:
                          artist_name,
                          extra),
                  album_name) = user_data
-                if (metadata is not None):
-                    self.track_name.set_text(track_name)
-                    self.album_name.set_text(album_name)
-                    self.artist_name.set_text(artist_name)
-                else:
-                    self.track_name.set_text(u"")
-                    self.album_name.set_text(u"")
-                    self.artist_name.set_text(u"")
+                self.track_name.set_text(track_name)
+                self.album_name.set_text(album_name)
+                self.artist_name.set_text(artist_name)
 
                 track_length = track.length() / 75
                 self.length.set_text("%d:%2.2d" % (int(track_length) / 60,
@@ -423,6 +383,12 @@ if (__name__ == '__main__'):
     (options, args) = parser.parse_args()
     msg = audiotools.Messenger("trackplay", options)
 
+    if (options.interactive and (not interactive_available)):
+        msg.error(_(u"urwid is required for interactive mode"))
+        msg.output(_(u"Please download and install urwid from http://excess.org/urwid/"))
+        msg.output(_(u"or your system's package manager."))
+        sys.exit(1)
+
     try:
         cdda = audiotools.CDDA(options.cdrom, perform_logging=False)
     except IOError, err:
@@ -504,7 +470,7 @@ if (__name__ == '__main__'):
         loop.run()
     else:
         trackplay = CDplayTTY(cdda=cdda,
-                              audio_output=player_map[options.output]())
+                              audio_output=players_map[options.output]())
         trackplay.play()
         output_line_len = 0
 

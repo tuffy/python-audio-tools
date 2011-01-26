@@ -308,7 +308,7 @@ class DiscID:
 
         return cls(tracks=[t.length() for t in tracks],
                    offsets=[t.offset() for t in tracks],
-                   length=cdda.length(),
+                   length=cdda.last_sector(),
                    lead_in=tracks[0].offset())
 
     def add(self, track):
