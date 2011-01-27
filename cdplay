@@ -98,8 +98,9 @@ try:
                     return label
                 else:
                     return "track %2.2d" % (track_number)
-                
-            
+
+            self.cdda = cdda
+            self.metadata = metadata
             self.track_list = [cdda[i] for i in xrange(1, len(cdda) + 1)]
             self.audio_output = audio_output
             self.player = audiotools.player.CDPlayer(
@@ -110,10 +111,11 @@ try:
             self.track_name = urwid.Text("")
             self.album_name = urwid.Text("")
             self.artist_name = urwid.Text("")
-            self.length = urwid.Text("")
-            self.channels = urwid.Text("2ch")
-            self.sample_rate = urwid.Text("44100Hz")
-            self.bits_per_sample = urwid.Text("16bps")
+            self.tracknum = urwid.Text("")
+            self.length = urwid.Text("", align='right')
+            self.channels = urwid.Text("2ch", align='right')
+            self.sample_rate = urwid.Text("44100Hz", align='right')
+            self.bits_per_sample = urwid.Text("16bps", align='right')
             self.play_pause_button = urwid.Button("Play", on_press=self.play_pause)
             self.progress = AudioProgressBar(normal='pg normal',
                                              complete='pg complete',
@@ -135,19 +137,25 @@ try:
 
             header = urwid.Pile([
                     urwid.Columns([
-                            ('fixed', 9, urwid.Text(('header', u"Track  : "))),
+                            ('fixed', 9, urwid.Text(('header', u"Name : "),
+                                                    align='right')),
                             ('weight', 1, self.track_name)]),
                     urwid.Columns([
-                            ('fixed', 9, urwid.Text(('header', u"Album  : "))),
+                            ('fixed', 9, urwid.Text(('header', u"Album : "),
+                                                    align='right')),
                             ('weight', 1, self.album_name)]),
                     urwid.Columns([
-                            ('fixed', 9, urwid.Text(('header', u"Artist : "))),
+                            ('fixed', 9, urwid.Text(('header', u"Artist : "),
+                                                    align='right')),
                             ('weight', 1, self.artist_name)]),
                     urwid.Columns([
-                            ('weight', 1, self.length),
-                            ('weight', 1, self.channels),
-                            ('weight', 1, self.sample_rate),
-                            ('weight', 1, self.bits_per_sample)]),
+                            ('fixed', 9, urwid.Text(('header', u"Track : "),
+                                                    align='right')),
+                            ('fixed', 7, self.tracknum),
+                            ('fixed', 7, self.length),
+                            ('fixed', 5, self.channels),
+                            ('fixed', 10, self.sample_rate),
+                            ('fixed', 7, self.bits_per_sample)]),
                     self.progress])
 
             controls = urwid.GridFlow([
@@ -200,7 +208,15 @@ try:
                  album_name) = user_data
                 self.track_name.set_text(track_name)
                 self.album_name.set_text(album_name)
-                self.artist_name.set_text(artist_name)
+                if (len(artist_name) > 0):
+                    self.artist_name.set_text(artist_name)
+                elif (self.metadata is not None):
+                    self.artist_name.set_text(self.metadata.artist_name)
+                else:
+                    self.artist_name.set_text(u"")
+                self.tracknum.set_text(u"%d / %d" % \
+                                           (track.track_number,
+                                            len(self.cdda)))
 
                 track_length = track.length() / 75
                 self.length.set_text("%d:%2.2d" % (int(track_length) / 60,
@@ -420,7 +436,7 @@ if (__name__ == '__main__'):
                     outfile,
                     options.musicbrainz_server,
                     options.musicbrainz_port,
-                    msg,
+                    audiotools.SilentMessenger(None),
                     1)
                 try:
                     metadata = audiotools.MusicBrainzReleaseXML.from_string(
@@ -438,7 +454,7 @@ if (__name__ == '__main__'):
                     outfile,
                     options.freedb_server,
                     options.freedb_port,
-                    msg,
+                    audiotools.SilentMessenger(None),
                     1)
                 try:
                     metadata = audiotools.XMCD.from_string(outfile.getvalue())

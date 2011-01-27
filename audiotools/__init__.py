@@ -3372,6 +3372,8 @@ class CDDA:
                 reader = PCMReaderWindow(reader, sample_offset, pcm_frames)
                 reader.track_number = reader.pcmreader.track_number
                 reader.rip_log = reader.pcmreader.rip_log
+                reader.length = reader.pcmreader.length
+                reader.offset = reader.pcmreader.offset
                 return reader
             elif (sample_offset < 0):
                 import math
@@ -3393,6 +3395,8 @@ class CDDA:
                     reader = PCMReaderWindow(reader, sample_offset, pcm_frames)
                 reader.track_number = reader.pcmreader.track_number
                 reader.rip_log = reader.pcmreader.rip_log
+                reader.length = reader.pcmreader.length
+                reader.offset = reader.pcmreader.offset
                 return reader
 
 

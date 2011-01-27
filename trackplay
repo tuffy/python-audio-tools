@@ -108,10 +108,11 @@ try:
             self.track_name = urwid.Text("")
             self.album_name = urwid.Text("")
             self.artist_name = urwid.Text("")
-            self.length = urwid.Text("")
-            self.channels = urwid.Text("")
-            self.sample_rate = urwid.Text("")
-            self.bits_per_sample = urwid.Text("")
+            self.tracknum = urwid.Text("")
+            self.length = urwid.Text("", align='right')
+            self.channels = urwid.Text("", align='right')
+            self.sample_rate = urwid.Text("", align='right')
+            self.bits_per_sample = urwid.Text("", align='right')
             self.play_pause_button = urwid.Button("Play", on_press=self.play_pause)
             self.progress = AudioProgressBar(normal='pg normal',
                                              complete='pg complete',
@@ -132,19 +133,25 @@ try:
 
             header = urwid.Pile([
                     urwid.Columns([
-                            ('fixed', 9, urwid.Text(('header', u"Track  : "))),
+                            ('fixed', 9, urwid.Text(('header', u"Name : "),
+                                                    align='right')),
                             ('weight', 1, self.track_name)]),
                     urwid.Columns([
-                            ('fixed', 9, urwid.Text(('header', u"Album  : "))),
+                            ('fixed', 9, urwid.Text(('header', u"Album : "),
+                                                    align='right')),
                             ('weight', 1, self.album_name)]),
                     urwid.Columns([
-                            ('fixed', 9, urwid.Text(('header', u"Artist : "))),
+                            ('fixed', 9, urwid.Text(('header', u"Artist : "),
+                                                    align='right')),
                             ('weight', 1, self.artist_name)]),
                     urwid.Columns([
-                            ('weight', 1, self.length),
-                            ('weight', 1, self.channels),
-                            ('weight', 1, self.sample_rate),
-                            ('weight', 1, self.bits_per_sample)]),
+                            ('fixed', 9, urwid.Text(('header', u"Track : "),
+                                                    align='right')),
+                            ('fixed', 7, self.tracknum),
+                            ('fixed', 7, self.length),
+                            ('fixed', 5, self.channels),
+                            ('fixed', 10, self.sample_rate),
+                            ('fixed', 7, self.bits_per_sample)]),
                     self.progress])
 
             controls = urwid.GridFlow([
@@ -193,10 +200,26 @@ try:
                     self.track_name.set_text(metadata.track_name)
                     self.album_name.set_text(metadata.album_name)
                     self.artist_name.set_text(metadata.artist_name)
+                    track_number = track.track_number()
+                    track_total = metadata.track_total
+                    if (track_number > 0):
+                        if (track_total > 0):
+                            self.tracknum.set_text(u"%d / %d" % \
+                                                       (track_number,
+                                                        track_total))
+                        else:
+                            self.tracknum.set_text(unicode(track_number))
+                    else:
+                        self.tracknum.set_text(u"")
                 else:
                     self.track_name.set_text(u"")
                     self.album_name.set_text(u"")
                     self.artist_name.set_text(u"")
+                    track_number = track.track_number()
+                    if (track_number > 0):
+                        self.tracknum.set_text(unicode(track_number))
+                    else:
+                        self.tracknum.set_text(u"")
 
                 track_length = track.seconds_length()
                 self.length.set_text("%d:%2.2d" % (int(track_length) / 60,
