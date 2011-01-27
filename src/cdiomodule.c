@@ -538,20 +538,36 @@ read_sector_callback(long int i, paranoia_cb_mode_t mode)
 static PyObject*
 cdio_identify_cdrom(PyObject *dummy, PyObject *args) {
     const char* device;
+    struct stat buf;
 
     if (!PyArg_ParseTuple(args, "s", &device))
         return NULL;
 
-    if (cdio_is_cuefile(device)) {
-        return Py_BuildValue("i", CD_IMAGE | CUE_FILE);
-    } else if (cdio_is_binfile(device)) {
-        return Py_BuildValue("i", CD_IMAGE | BIN_FILE);
-    } else if (cdio_is_tocfile(device)) {
-        return Py_BuildValue("i", CD_IMAGE | TOC_FILE);
-    } else if (cdio_is_nrg(device)) {
-        return Py_BuildValue("i", CD_IMAGE | NRG_FILE);
-    } else  if (cdio_is_device(device, DRIVER_UNKNOWN)) {
-        return Py_BuildValue("i", DEVICE_FILE);
+    if (stat(device, &buf)) {
+        PyErr_SetFromErrno(PyExc_IOError);
+        return NULL;
+    }
+
+    if (S_ISREG(buf.st_mode)) {
+         if (cdio_is_cuefile(device)) {
+             return Py_BuildValue("i", CD_IMAGE | CUE_FILE);
+         } else if (cdio_is_binfile(device)) {
+             return Py_BuildValue("i", CD_IMAGE | BIN_FILE);
+         } else if (cdio_is_tocfile(device)) {
+             return Py_BuildValue("i", CD_IMAGE | TOC_FILE);
+         } else if (cdio_is_nrg(device)) {
+             return Py_BuildValue("i", CD_IMAGE | NRG_FILE);
+         } else {
+             PyErr_SetString(PyExc_ValueError, "unknown image file");
+             return NULL;
+         }
+    } else if (S_ISBLK(buf.st_mode)) {
+        if (cdio_is_device(device, DRIVER_LINUX)) {
+            return Py_BuildValue("i", DEVICE_FILE);
+        } else {
+            PyErr_SetString(PyExc_ValueError, "unknown CD device");
+            return NULL;
+        }
     } else {
         PyErr_SetString(PyExc_ValueError, "unknown device");
         return NULL;

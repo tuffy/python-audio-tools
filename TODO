@@ -3007,13 +3007,19 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** DONE Add programming docs
 ** DONE Add audiotools.player.CDPlayerThread class
 *** DONE Add docstrings
-** TODO Add non-interactive mode to cdplay
-** TODO Add interative mode to cdplay
+** DONE Add non-interactive mode to cdplay
+** DONE Add interative mode to cdplay
    Urwid-based display should have various standard features
-   - [ ] display CD info
-   - [ ] progress monitor
-   - [ ] start
-   - [ ] pause
-   - [ ] next track
-   - [ ] previous track
+   - [X] display CD info
+   - [X] progress monitor
+   - [X] start
+   - [X] pause
+   - [X] next track
+   - [X] previous track
+** TODO Silence CD query messages
+** TODO Improve stability
 ** TODO Add man page for cdplay
+* TODO Update audiotools.CDDA class
+** TODO Support reading offsets
+   Without the horrible hack of reading the whole disc at once
+** TODO Document audiotools.CDDA class
