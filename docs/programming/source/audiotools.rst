@@ -965,6 +965,24 @@ PCMCat Objects
    from any sort of processing - which often assumes data will be in a
    consistent format.
 
+PCMReaderWindow Objects
+^^^^^^^^^^^^^^^^^^^^^^^
+
+.. class:: PCMReaderWindow(pcmreader, initial_offset, pcm_frames)
+
+   This class wraps around an existing :class:`PCMReader` object
+   and truncates or extends its samples as needed.
+   ``initial_offset``, if positive, indicates how many
+   PCM frames to truncate from the beginning of the stream.
+   If negative, the beginning of the stream is padded by
+   that many PCM frames - all of which have a value of 0.
+   ``pcm_frames`` indicates the total length of the stream
+   as a non-negative number of PCM frames.
+   If shorter than the actual length of the PCM reader's stream,
+   the reader is truncated.
+   If longer, the stream is extended by as many PCM frames as needed.
+   Again, padding frames have a value of 0.
+
 ReplayGainReader Objects
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
