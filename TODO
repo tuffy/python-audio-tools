@@ -2998,6 +2998,7 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** DONE PulseAudioOutput
 *** DONE OSSAudioOutput
 *** DONE NULLAudioOutput
+** DONE Add --shuffle option
 * TODO Add cdplay utility
   Should work similarly to trackplay,
   taking track number(s) and playing them to OSS/PulseAudio
@@ -3019,7 +3020,13 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** DONE Silence CD query messages
 ** TODO Improve stability
 ** TODO Add man page for cdplay
+** TODO Support command-line tracks
+   One might want to play only a subset of the whole CD
+** TODO Add --shuffle option
+** TODO Avoid spinning down CDs between tracks
+   This makes playback less seamless than I'd like
 * TODO Update audiotools.CDDA class
 ** DONE Support reading offsets
    Without the horrible hack of reading the whole disc at once
 ** TODO Document audiotools.CDDA class
+** TODO Document PCMReaderWindow class

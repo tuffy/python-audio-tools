@@ -390,6 +390,10 @@ if (__name__ == '__main__'):
                         players_map.keys()]))
 
     parser.add_option(
+        '--shuffle', action='store_true', dest='shuffle', default=False,
+        help='shuffle tracks')
+
+    parser.add_option(
         '-V', '--verbose',
         action='store',
         dest='verbosity',
@@ -407,6 +411,10 @@ if (__name__ == '__main__'):
         sys.exit(1)
 
     audiofiles = audiotools.open_files(args, sorted=False, messenger=msg)
+    if (options.shuffle):
+        import random
+
+        random.shuffle(audiofiles)
 
     if (options.track_replaygain):
         replay_gain = audiotools.player.RG_TRACK_GAIN

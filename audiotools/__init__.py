@@ -3479,8 +3479,14 @@ class PCMReaderWindow:
 
             elif (self.initial_offset > 0):
                 #remove frames if initial offset is positive
-                (removed, framelist) = self.pcmreader.read(bytes).split(
-                    self.initial_offset)
+
+                #if initial_offset is large, read as many framelists as needed
+                framelist = self.pcmreader.read(bytes)
+                while (self.initial_offset > framelist.frames):
+                    self.initial_offset -= framelist.frames
+                    framelist = self.pcmreader.read(bytes)
+
+                (removed, framelist) = framelist.split(self.initial_offset)
                 self.initial_offset -= removed.frames
                 if (framelist.frames > 0):
                     self.pcm_frames -= framelist.frames

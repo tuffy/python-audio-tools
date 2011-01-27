@@ -58,24 +58,19 @@ class Editxmcd(urwid.Pile):
         #setup our main application widgets
         self.path = urwid.Text(xmcd_path, wrap='clip')
 
-        self.album_name = MappedEdit(('header', "Album Name  : "),
-                                     edit_text=xmcd_file.album_name,
+        self.album_name = MappedEdit(edit_text=xmcd_file.album_name,
                                      wrap='clip',
                                      key_map={'enter': 'down'})
-        self.album_artist = MappedEdit(('header', "Artist Name : "),
-                                       edit_text=xmcd_file.artist_name,
+        self.album_artist = MappedEdit(edit_text=xmcd_file.artist_name,
                                        wrap='clip',
                                        key_map={'enter': 'down'})
-        self.album_year = MappedEdit(('header', "Year        : "),
-                                     edit_text=xmcd_file.year,
+        self.album_year = MappedEdit(edit_text=xmcd_file.year,
                                      wrap='clip',
                                      key_map={'enter': 'down'})
-        self.album_catalog = MappedEdit(('header', "Catalog     : "),
-                                        edit_text=xmcd_file.catalog,
+        self.album_catalog = MappedEdit(edit_text=xmcd_file.catalog,
                                         wrap='clip',
                                         key_map={'enter': 'down'})
-        self.album_extra = MappedEdit(('header', "Extra       : "),
-                                      edit_text=xmcd_file.extra,
+        self.album_extra = MappedEdit(edit_text=xmcd_file.extra,
                                       wrap='clip',
                                       key_map={'enter': 'down'})
 
@@ -117,15 +112,30 @@ class Editxmcd(urwid.Pile):
                         for i in xrange(1, track_total + 1)]
 
         header = [urwid.Pile(
-                [urwid.Columns([('fixed', 14,
-                                 urwid.Text(('header',
-                                             "File Path   : "))),
-                                self.path])]),
-                  self.album_name,
-                  self.album_artist,
-                  self.album_year,
-                  self.album_catalog,
-                  self.album_extra,
+                [urwid.Columns([('fixed', 10,
+                                 urwid.Text(('header', 'Path : '),
+                                            align='right')),
+                                ('weight', 1, self.path)]),
+                 urwid.Columns([('fixed', 10,
+                                 urwid.Text(('header', 'Album : '),
+                                            align='right')),
+                                ('weight', 1, self.album_name)]),
+                 urwid.Columns([('fixed', 10,
+                                 urwid.Text(('header', 'Artist : '),
+                                            align='right')),
+                                ('weight', 1, self.album_artist)]),
+                 urwid.Columns([('fixed', 10,
+                                 urwid.Text(('header', 'Year : '),
+                                            align='right')),
+                                ('weight', 1, self.album_year)]),
+                 urwid.Columns([('fixed', 10,
+                                 urwid.Text(('header', 'Catalog : '),
+                                            align='right')),
+                                ('weight', 1, self.album_catalog)]),
+                 urwid.Columns([('fixed', 10,
+                                 urwid.Text(('header', 'Extra : '),
+                                            align='right')),
+                                ('weight', 1, self.album_extra)])]),
                   urwid.Divider(div_char='-'),
                   urwid.Pile(
                 [urwid.Columns([('fixed', 5,
