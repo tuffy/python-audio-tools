@@ -3020,6 +3020,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 ** TODO Improve stability
 ** TODO Add man page for cdplay
 * TODO Update audiotools.CDDA class
-** TODO Support reading offsets
+** DONE Support reading offsets
    Without the horrible hack of reading the whole disc at once
 ** TODO Document audiotools.CDDA class

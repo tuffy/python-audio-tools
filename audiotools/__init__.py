@@ -3347,8 +3347,54 @@ class CDDA:
         if ((key < 1) or (key > self.total_tracks)):
             raise IndexError(key)
         else:
-            #FIXME - support offets here
-            return CDTrackReader(self.cdda, int(key), self.perform_logging)
+            try:
+                sample_offset = int(config.get_default("System",
+                                                       "cdrom_read_offset",
+                                                       0))
+            except ValueError:
+                sample_offset = 0
+
+            reader = CDTrackReader(self.cdda, int(key), self.perform_logging)
+
+            if (sample_offset == 0):
+                return reader
+            elif (sample_offset > 0):
+                import math
+
+                pcm_frames = reader.length() * 588
+
+                #adjust start and end sectors to account for the offset
+                reader.start += (sample_offset / 588)
+                reader.end += int(math.ceil(sample_offset / 588.0))
+                reader.end = min(reader.end, self.last_sector())
+
+                #then wrap the reader in a window to fine-tune the offset
+                reader = PCMReaderWindow(reader, sample_offset, pcm_frames)
+                reader.track_number = reader.pcmreader.track_number
+                reader.rip_log = reader.pcmreader.rip_log
+                return reader
+            elif (sample_offset < 0):
+                import math
+
+                pcm_frames = reader.length() * 588
+
+                #adjust start and end sectors to account for the offset
+                reader.start += sample_offset / 588
+                reader.end += int(math.ceil(sample_offset / 588.0))
+
+                #then wrap the reader in a window to fine-tune the offset
+                if (reader.start >= self.first_sector()):
+                    reader = PCMReaderWindow(
+                        reader,
+                        sample_offset + (-(sample_offset / 588) * 588),
+                        pcm_frames)
+                else:
+                    reader.start = self.first_sector()
+                    reader = PCMReaderWindow(reader, sample_offset, pcm_frames)
+                reader.track_number = reader.pcmreader.track_number
+                reader.rip_log = reader.pcmreader.rip_log
+                return reader
+
 
     def __iter__(self):
         for i in range(1, self.total_tracks + 1):
@@ -3423,7 +3469,7 @@ class PCMReaderWindow:
                 else:
                     #crop framelist to be smaller
                     #if its data is larger than what remains to be read
-                    self.framelist = framelist.split(self.pcm_frames)[0]
+                    framelist = framelist.split(self.pcm_frames)[0]
                     self.pcm_frames = 0
                     return framelist
 
@@ -3508,10 +3554,10 @@ class CDTrackReader(PCMReader):
         self.cdda = cdda
         self.track_number = track_number
 
-        (self.__start__, self.__end__) = cdda.track_offsets(track_number)
+        (self.start, self.end) = cdda.track_offsets(track_number)
 
-        self.__position__ = self.__start__
-        self.__cursor_placed__ = False
+        self.position = self.start
+        self.cursor_placed = False
 
         self.perform_logging = perform_logging
         self.rip_log = CDTrackLog()
@@ -3519,12 +3565,12 @@ class CDTrackReader(PCMReader):
     def offset(self):
         """Returns this track's CD offset, in CD frames."""
 
-        return self.__start__ + 150
+        return self.start + 150
 
     def length(self):
         """Returns this track's length, in CD frames."""
 
-        return self.__end__ - self.__start__ + 1
+        return self.end - self.start + 1
 
     def log(self, i, v):
         """Adds a log entry to the track's rip_log.
@@ -3538,18 +3584,18 @@ class CDTrackReader(PCMReader):
 
     def __read_sectors__(self, sectors):
         #if we haven't moved CDDA to the track start yet, do it now
-        if (not self.__cursor_placed__):
-            self.cdda.seek(self.__start__)
+        if (not self.cursor_placed):
+            self.cdda.seek(self.start)
             if (self.perform_logging):
                 cdio.set_read_callback(self.log)
 
-            self.__position__ = self.__start__
-            self.__cursor_placed__ = True
+            self.position = self.start
+            self.cursor_placed = True
 
-        if (self.__position__ <= self.__end__):
+        if (self.position <= self.end):
             s = self.cdda.read_sectors(min(
-                    sectors, self.__end__ - self.__position__ + 1))
-            self.__position__ += sectors
+                    sectors, self.end - self.position + 1))
+            self.position += sectors
             return s
         else:
             return pcm.from_list([], 2, 16, True)
@@ -3567,88 +3613,8 @@ class CDTrackReader(PCMReader):
     def close(self):
         """Closes the CD track for reading."""
 
-        self.__position__ = self.__start__
-        self.__cursor_placed__ = False
-
-
-class OffsetCDTrackReader(PCMReader):
-    """A PCMReader-compatible object which reads from CDDA.
-
-    This version automatically applies read sector offsets."""
-
-    def __init__(self, track_number, temp_file,
-                 byte_offset, sector_start, sector_end):
-        """Fields are:
-
-        track_number - an integer starting from 1
-        temp_file    - a temporary file to read CDDA data from
-        byte_offset  - the offset to start from, in bytes
-        sector_start - the starting CD sector
-        sector_end   - the ending CD sector
-        """
-
-        PCMReader.__init__(
-            self, None,
-            sample_rate=44100,
-            channels=2,
-            channel_mask=ChannelMask.from_fields(front_left=True,
-                                                 front_right=True),
-            bits_per_sample=16,
-            process=None)
-        self.track_number = track_number
-        self.rip_log = CDTrackLog()
-
-        self.__file__ = temp_file
-        self.__byte_offset__ = byte_offset
-        self.__remaining_bytes__ = 0
-        self.__start__ = sector_start
-        self.__end__ = sector_end
-        self.__cursor_placed__ = False
-
-    def offset(self):
-        """Returns this track's CD offset, in CD frames."""
-
-        return self.__start__ + 150
-
-    def length(self):
-        """Returns this track's length, in CD frames."""
-
-        return self.__end__ - self.__start__ + 1
-
-    def log(self, i, v):
-        """Adds a log entry to the track's rip_log.
-
-        This is meant to be called from CD reading callbacks."""
-
-        if v in self.rip_log:
-            self.rip_log[v] += 1
-        else:
-            self.rip_log[v] = 1
-
-    def read(self, bytes):
-        """Try to read a pcm.FrameList of size "bytes".
-
-        For CD reading, this will be a sector-aligned number."""
-
-        if (bytes % 4):
-            bytes -= (bytes % 4)
-
-        if (not self.__cursor_placed__):
-            self.__file__.seek(self.__byte_offset__, 0)
-            self.__remaining_bytes__ = (self.__end__ - self.__start__) * 2352
-            self.__cursor_placed__ = True
-
-        if (self.__remaining_bytes__ > 0):
-            data = self.__file__.read(min(bytes, self.__remaining_bytes__))
-            self.__remaining_bytes__ -= len(data)
-            return pcm.FrameList(data, 2, 16, False, True)
-        else:
-            return pcm.FrameList("", 2, 16, False, True)
-
-    def close(self):
-        """Closes the CD track for reading."""
-
-        self.__cursor_placed__ = False
+        self.position = self.start
+        self.cursor_placed = False
 
 
 #returns the value in item_list which occurs most often
