@@ -153,6 +153,13 @@ if (__name__ == '__main__'):
     except ImportError:
         print _(u"* audiotools Python module not found!")
         print _(u"Perhaps you should re-install the Python Audio Tools")
+        sys.exit(1)
+    try:
+        import audiotools.player
+    except ImportError:
+        print _(u"* audiotools.player Python module not found!")
+        print _(u"Perhaps you should re-install the Python Audio Tools")
+        sys.exit(1)
 
     parser = audiotools.OptionParser(
         usage=_(u'%prog [options]'),
@@ -401,16 +408,20 @@ if (__name__ == '__main__'):
         msg.output_column(u" : ")
         msg.output_column(audiotools.DEFAULT_VERBOSITY.decode('ascii'))
 
-        output_options = ["OSS"]
-        if (audiotools.BIN.can_execute(audiotools.BIN["pacat"]) and
-            audiotools.BIN.can_execute(audiotools.BIN["pactl"])):
-            output_options.append("PulseAudio")
+        output_options = []
+        for player in audiotools.player.AUDIO_OUTPUT:
+            if (player.available()):
+                if (len(output_options) == 0):
+                    output_options.append(msg.ansi(player.NAME.decode('ascii'),
+                                                   [msg.BOLD,
+                                                    msg.UNDERLINE]))
+                else:
+                    output_options.append(player.NAME.decode('ascii'))
 
         msg.new_row()
-        msg.output_column(_(u"Audio output via trackplay"), True)
+        msg.output_column(_(u"Audio output"), True)
         msg.output_column(u" : ")
-        msg.output_column(u", ".join([s.decode('ascii')
-                                      for s in output_options]))
+        msg.output_column(u", ".join(output_options))
 
         msg.new_row()
         msg.output_column(_(u"Filesystem text encoding"), True)

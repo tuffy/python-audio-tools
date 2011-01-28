@@ -61,11 +61,6 @@ if (__name__ == '__main__'):
         msg.error(_(u"You must specify at least 1 supported audio file"))
         sys.exit(1)
 
-    if (options.verbosity != 'quiet'):
-        mv_flags = '-iv'
-    else:
-        mv_flags = '-i'
-
     if (options.xmcd is not None):
         #try to set the metadata and track name from the XMCD metadata
         try:
@@ -97,10 +92,14 @@ if (__name__ == '__main__'):
                                       (new_name))
                     sys.exit(1)
 
-                if (subprocess.call([audiotools.BIN['mv'],
-                                     mv_flags,
+                if (subprocess.call([audiotools.BIN['mv'], '-i',
                                      track.filename,
-                                     os.path.join(path, new_name)]) != 0):
+                                     os.path.join(path, new_name)]) == 0):
+                    if (options.verbosity != 'quiet'):
+                        msg.info(u"%s -> %s" % \
+                                     (msg.filename(track.filename),
+                                      os.path.join(path, new_name)))
+                else:
                     sys.exit(1)
     except audiotools.UnsupportedTracknameField, err:
         err.error_msg(msg)

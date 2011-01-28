@@ -363,14 +363,15 @@ if (__name__ == '__main__'):
         default=[player.NAME for player in audiotools.player.AUDIO_OUTPUT
                  if player.available()][0],
         help=_(u"the method to play audio (choose from: %s)") % \
-            u", ".join([u"\"%s\"" % (k.decode('ascii')) for k in
-                        players_map.keys()]))
+            u", ".join([u"\"%s\"" % (player.NAME.decode('ascii'))
+                        for player in audiotools.player.AUDIO_OUTPUT
+                        if player.available()]))
 
     parser.add_option(
         '-x', '--xmcd', action='store',
         type='string', dest='xmcd',
         metavar='FILENAME',
-        help=_(u'FreeDB XMCD file or MusicBrainz XML output file'))
+        help=_(u'FreeDB XMCD or MusicBrainz XML metadata file'))
 
     parser.add_option(
         '-c', '--cdrom', action='store',

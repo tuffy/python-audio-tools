@@ -2415,6 +2415,13 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 * DONE get trackplay working on Mac OS X
   There must be some way to pipe PCM data to its audio system
   without the need for additional libraries.
+* DONE Remove -v option to mv(1) for file renaming
+  This can be emulated in software.
+* DONE Update audiotools.CDDA class
+** DONE Support reading offsets
+   Without the horrible hack of reading the whole disc at once
+** DONE Document audiotools.CDDA class
+** DONE Document PCMReaderWindow class
 * TODO Ensure non-image cuesheets are handled properly
   There are 4 different types of cuesheets,
   1 single file type and 3 different multiple file variants.
@@ -2886,8 +2893,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    Querying FreeDB and MusicBrainz are possible,
    but I expect most of the time they'll generate empty templates.
 *** TODO Add dvda2xmcd man page
-* TODO Remove -v option to mv(1) for file renaming
-  This can be emulated in software.
 * TODO Add progess indicator to transcoders
   This will likely require an ExecQueue update which can
   receive progress output from multiple subprocesses
@@ -3000,6 +3005,10 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 *** DONE OSSAudioOutput
 *** DONE NULLAudioOutput
 ** DONE Add --shuffle option
+** TODO Add basic unit tests
+   - [ ] Ensure valid and invalid files generate the proper return values
+         when run in "quiet" mode to the "NULL" decoder
+   - [ ] Check command-line arguments
 * TODO Add cdplay utility
   Should work similarly to trackplay,
   taking track number(s) and playing them to OSS/PulseAudio
@@ -3028,11 +3037,8 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    This makes playback less seamless than I'd like
 ** TODO Improve stability
 ** TODO Add man page for cdplay
-* DONE Update audiotools.CDDA class
-** DONE Support reading offsets
-   Without the horrible hack of reading the whole disc at once
-** DONE Document audiotools.CDDA class
-** DONE Document PCMReaderWindow class
+** TODO Add basic unit tests
+   - [ ] Check command-line arguments
 * TODO Add unit tests to cd* utilities
   Utilize bin/cue support for canned testing
 ** TODO cd2track

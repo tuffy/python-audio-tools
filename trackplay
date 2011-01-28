@@ -385,7 +385,7 @@ if (__name__ == '__main__'):
 
     players_map = dict([(player.NAME, player)
                         for player in audiotools.player.AUDIO_OUTPUT])
-    
+
     parser.add_option(
         '-o', '--output',
         action='store',
@@ -394,8 +394,9 @@ if (__name__ == '__main__'):
         default=[player.NAME for player in audiotools.player.AUDIO_OUTPUT
                  if player.available()][0],
         help=_(u"the method to play audio (choose from: %s)") % \
-            u", ".join([u"\"%s\"" % (k.decode('ascii')) for k in
-                        players_map.keys()]))
+            u", ".join([u"\"%s\"" % (player.NAME.decode('ascii'))
+                        for player in audiotools.player.AUDIO_OUTPUT
+                        if player.available()]))
 
     parser.add_option(
         '--shuffle', action='store_true', dest='shuffle', default=False,
