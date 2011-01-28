@@ -98,7 +98,7 @@ if (__name__ == '__main__'):
         if (options.xmcd == '-'):
             outfile = sys.stdout
         else:
-            if (not os.path.isfile(ooptios.xmcd)):
+            if (not os.path.isfile(options.xmcd)):
                 outfile = open(options.xmcd, "w")
             else:
                 msg.error(_(u"Refusing to overwrite \"%s\"") % \
