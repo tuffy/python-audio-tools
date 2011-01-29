@@ -30,7 +30,6 @@ import cStringIO
 
 gettext.install("audiotools", unicode=True)
 
-
 try:
     import urwid
 
@@ -522,8 +521,8 @@ if (__name__ == '__main__'):
         loop = urwid.MainLoop(cdplay,
                               [('header', 'default,bold', 'default', ''),
                                ('pg normal', 'white', 'black', 'standout'),
-                               ('pg complete', 'white', 'light blue'),
-                               ('pg smooth', 'light blue', 'black')],
+                               ('pg complete', 'white', 'dark blue'),
+                               ('pg smooth', 'dark blue', 'black')],
                               unhandled_input=cdplay.handle_text)
         loop.set_alarm_at(tm=time.time() + 1,
                           callback=timer,

@@ -437,8 +437,8 @@ if (__name__ == '__main__'):
         loop = urwid.MainLoop(trackplay,
                               [('header', 'default,bold', 'default', ''),
                                ('pg normal', 'white', 'black', 'standout'),
-                               ('pg complete', 'white', 'light blue'),
-                               ('pg smooth', 'light blue', 'black')],
+                               ('pg complete', 'white', 'dark blue'),
+                               ('pg smooth', 'dark blue', 'black')],
                               unhandled_input=trackplay.handle_text)
 
         loop.set_alarm_at(tm=time.time() + 1,
