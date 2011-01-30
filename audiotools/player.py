@@ -424,7 +424,7 @@ class ThreadedPCMConverter:
 
         self.thread = threading.Thread(
             target=convert,
-            args=(audiotools.BufferedPCMReader(pcmreader),
+            args=(pcmreader,
                   buffer_size,
                   converter,
                   self.decoded_data,

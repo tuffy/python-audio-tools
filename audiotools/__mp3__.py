@@ -159,7 +159,8 @@ class MP3Audio(AudioFile):
     DEFAULT_COMPRESSION = "2"
     #0 is better quality/lower compression
     #9 is worse quality/higher compression
-    COMPRESSION_MODES = ("0", "1", "2", "3", "4", "5", "6", "7", "8", "9")
+    COMPRESSION_MODES = ("0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
+                         "medium", "standard", "extreme", "insane")
     BINARIES = ("lame",)
     REPLAYGAIN_BINARIES = ("mp3gain", )
 
@@ -393,16 +394,18 @@ class MP3Audio(AudioFile):
 
         devnull = file(os.devnull, 'ab')
 
+        if (str(compression) in map(str, range(0, 10))):
+            compression = ["-V" + str(compression)]
+        else:
+            compression = ["--preset", str(compression)]
+
         sub = subprocess.Popen([
                 BIN['lame'], "--quiet",
                 "-r",
                 "-s", str(decimal.Decimal(pcmreader.sample_rate) / 1000),
                 "--bitwidth", str(pcmreader.bits_per_sample),
                 "--signed", "--little-endian",
-                "-m", mode,
-                "-V" + str(compression),
-                "-",
-                filename],
+                "-m", mode] +  compression + ["-", filename],
                                stdin=subprocess.PIPE,
                                stdout=devnull,
                                stderr=devnull,

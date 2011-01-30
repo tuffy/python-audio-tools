@@ -167,6 +167,7 @@ if (__name__ == '__main__'):
 
     opt_map = {"system_cdrom": ("System", "cdrom"),
                "system_cdrom_read_offset": ("System", "cdrom_read_offset"),
+               "system_cdrom_write_offset": ("System", "cdrom_write_offset"),
                "system_fs_encoding": ("System", "fs_encoding"),
                "system_io_encoding": ("System", "io_encoding"),
                "system_maximum_jobs": ("System", "maximum_jobs"),
@@ -197,6 +198,13 @@ if (__name__ == '__main__'):
                       metavar='INT',
                       dest='system_cdrom_read_offset',
                       help=_(u'the CD-ROM read offset to use'))
+
+    system.add_option('--cdrom-write-offset',
+                      action='store',
+                      type='int',
+                      metavar='INT',
+                      dest='system_cdrom_write_offset',
+                      help=_(u'the CD-ROM write offset to use'))
 
     system.add_option(
         '--fs-encoding',
@@ -395,6 +403,13 @@ if (__name__ == '__main__'):
         msg.output_column(
             unicode(audiotools.config.getint_default("System",
                                                      "cdrom_read_offset", 0)))
+
+        msg.new_row()
+        msg.output_column(_(u"CD-ROM sample write offset"), True)
+        msg.output_column(u" : ")
+        msg.output_column(
+            unicode(audiotools.config.getint_default("System",
+                                                     "cdrom_write_offset", 0)))
 
         msg.blank_row()
 

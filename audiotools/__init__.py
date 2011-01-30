@@ -151,21 +151,6 @@ else:
 BIG_ENDIAN = sys.byteorder == 'big'
 
 
-def find_glade_file(glade_filename):
-    """Returns the full path to glade_filename, if found."""
-
-    glade_paths = [".",
-                   os.path.join(sys.prefix, "share/audiotools"),
-                   os.path.join("/usr", "share/audiotools"),
-                   os.path.join("/usr/local", "share/audiotools")]
-
-    for path in glade_paths:
-        filename = os.path.join(path, glade_filename)
-        if (os.path.isfile(filename)):
-            return filename
-    else:
-        raise IOError(glade_filename)
-
 #######################
 #Output Messaging
 #######################
@@ -3299,22 +3284,6 @@ from __dvda__ import *
 #is something code should avoid at all costs!
 #there's simply no way to accomplish that cleanly
 
-# def CDDA(device_name, speed=None, perform_logging=True):
-#     """Given a device name string and speed int, returns a CDDA object.
-
-#     This object depends on whether the user has specified
-#     a CDDA read offset or not.
-#     If not, this returns a RawCDDA.
-#     Otherwise, it returns an OffsetCDTrackReader.
-#     """
-
-#     offset = config.getint_default("System", "cdrom_read_offset", 0)
-#     if (offset == 0):
-#         return RawCDDA(device_name, speed, perform_logging)
-#     else:
-#         return OffsetCDDA(device_name, offset, speed, perform_logging)
-
-
 class CDDA:
     """A CDDA device which contains CDTrackReader objects."""
 
@@ -3338,8 +3307,6 @@ class CDDA:
                                      xrange(1, self.cdda.total_tracks() + 1))
                                  if (track_type == 0)])
 
-
-
     def __len__(self):
         return self.total_tracks
 
@@ -3350,7 +3317,7 @@ class CDDA:
             try:
                 sample_offset = int(config.get_default("System",
                                                        "cdrom_read_offset",
-                                                       0))
+                                                       "0"))
             except ValueError:
                 sample_offset = 0
 
@@ -3398,7 +3365,6 @@ class CDDA:
                 reader.length = reader.pcmreader.length
                 reader.offset = reader.pcmreader.offset
                 return reader
-
 
     def __iter__(self):
         for i in range(1, self.total_tracks + 1):

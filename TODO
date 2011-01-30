@@ -2422,6 +2422,25 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
    Without the horrible hack of reading the whole disc at once
 ** DONE Document audiotools.CDDA class
 ** DONE Document PCMReaderWindow class
+* DONE Add support for System->cdrom_offset
+  This will automatically apply offset samples when reading CDs
+  so that rips will have the appropate amount of null samples.
+** DONE Add offset support when ripping
+   Automatically apply the configfile's cdrom_offset value to tracks
+   during reading.
+** DONE Add offset support when burning?
+   cd2track and track2cd should round-trip properly
+   If cd2track applies a sample offset when reading, does track2cd
+   need to apply that same offset when writing?
+   One would presume a drive's read offset and write offset are the same,
+   but that may not be correct.
+* DONE Add support for more lame encoding options
+  Although the numerical presets are recommended,
+  one should also be able to use the --preset values
+  - [X] medium
+  - [X] standard
+  - [X] extreme
+  - [X] insane
 * TODO Ensure non-image cuesheets are handled properly
   There are 4 different types of cuesheets,
   1 single file type and 3 different multiple file variants.
@@ -2479,18 +2498,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 
   That said, the genre field shows up in a lot of players.
   So, some grudging support for it would probably be appreciated.
-* TODO Add support for System->cdrom_offset
-  This will automatically apply offset samples when reading CDs
-  so that rips will have the appropate amount of null samples.
-** DONE Add offset support when ripping
-   Automatically apply the configfile's cdrom_offset value to tracks
-   during reading.
-** TODO Add offset support when burning?
-   cd2track and track2cd should round-trip properly
-   If cd2track applies a sample offset when reading, does track2cd
-   need to apply that same offset when writing?
-   One would presume a drive's read offset and write offset are the same,
-   but that may not be correct.
 * TODO Convert TOC and CUE handling to proper grammars
   Although the current ad-hoc method works in most cases,
   it would be better to use a more formal method to parse these files

@@ -206,18 +206,34 @@ if (__name__ == '__main__'):
         if ((audiofiles[0].sample_rate() == 44100) and
             (audiofiles[0].channels() == 2) and
             (audiofiles[0].bits_per_sample() == 16)):
-            temptrack = audiotools.WaveAudio.from_pcm(
-                tempwav.name,
-                audiotools.PCMCat(iter([af.to_pcm() for af in audiofiles])))
+            pcmreader = \
+                audiotools.PCMCat(iter([af.to_pcm() for af in audiofiles]))
         else:
             #this presumes a cuesheet and non-CD audio
             #though theoretically possible, it's difficult to
             #envision a case in which this happens
-            temptrack = audiotools.WaveAudio.from_pcm(
-                    tempwav.name,
-                    audiotools.PCMConverter(audiotools.PCMCat(
-                        iter([af.to_pcm() for af in audiofiles])),
-                                            44100, 2, 16))
+            pcmreader = \
+                audiotools.PCMConverter(audiotools.PCMCat(
+                    iter([af.to_pcm() for af in audiofiles])),
+                                        44100, 2, 16)
+
+        try:
+            write_offset = int(audiotools.config.get_default(
+                    "System", "cdrom_write_offset", "0"))
+        except ValueError:
+            write_offset = 0
+
+        if (write_offset == 0):
+            temptrack =  audiotools.WaveAudio.from_pcm(
+                tempwav.name,
+                pcmreader)
+        else:
+            temptrack =  audiotools.WaveAudio.from_pcm(
+                tempwav.name,
+                audiotools.PCMReaderWindow(pcmreader,
+                                           write_offset,
+                                           sum([track.total_frames()
+                                                for track in audiofiles])))
 
         os.chdir(os.path.dirname(tempwav.name))
         cdrdao_args = [audiotools.BIN["cdrdao"], "write"]
