@@ -565,35 +565,60 @@ class AOBStream:
         self.last_sector = last_sector
         self.unprotector = unprotector
 
+    def sectors_iter(self):
+        for aob_file in self.aob_files:
+            aob = open(aob_file, 'rb')
+            try:
+                sector = aob.read(DVDAudio.SECTOR_SIZE)
+                while (len(sector) > 0):
+                    yield sector
+                    sector = aob.read(DVDAudio.SECTOR_SIZE)
+            finally:
+                aob.close()
+
     def sectors(self):
         first_sector = self.first_sector
         last_sector = self.last_sector
 
-        for aob_file in self.aob_files:
+        for sector in self.sectors_iter():
             if (first_sector > 0):
-                aob_sectors = os.path.getsize(aob_file) / DVDAudio.SECTOR_SIZE
-                if (first_sector > aob_sectors):
-                    first_sector -= aob_sectors
-                    last_sector -= aob_sectors
-                    continue
+                first_sector -= 1
+                last_sector -= 1
+            elif (last_sector >= 0):
+                last_sector -= 1
+                yield self.unprotector(sector)
+            else:
+                break
 
-            if (last_sector > 0):
-                aob = open(aob_file, 'rb')
-                if (first_sector > 0):
-                    aob.seek(first_sector * DVDAudio.SECTOR_SIZE,
-                             os.SEEK_SET)
-                    first_sector -= aob_sectors
-                    last_sector -= aob_sectors
+    # def sectors(self):
+    #     first_sector = self.first_sector
+    #     last_sector = self.last_sector
 
-                try:
-                    sector = aob.read(2048)
-                    last_sector -= 1
-                    while (len(sector) > 0):
-                        yield self.unprotector(sector)
-                        sector = aob.read(2048)
-                        last_sector -= 1
-                finally:
-                    aob.close()
+    #     for aob_file in self.aob_files:
+    #         if (first_sector > 0):
+    #             aob_sectors = os.path.getsize(aob_file) / DVDAudio.SECTOR_SIZE
+    #             if (first_sector > aob_sectors):
+    #                 first_sector -= aob_sectors
+    #                 last_sector -= aob_sectors
+    #                 continue
+
+    #         if (last_sector > 0):
+    #             aob = open(aob_file, 'rb')
+    #             if (first_sector > 0):
+    #                 aob.seek(first_sector * DVDAudio.SECTOR_SIZE,
+    #                          os.SEEK_SET)
+    #                 first_sector -= aob_sectors
+    #                 last_sector -= aob_sectors
+
+    #             try:
+    #                 sector = aob.read(2048)
+    #                 last_sector -= 1
+    #                 while (len(sector) > 0):
+    #                     yield self.unprotector(sector)
+    #                     sector = aob.read(2048)
+    #                     last_sector -= 1
+    #             finally:
+    #                 aob.close()
 
     def packets(self):
         packet_header_size = struct.calcsize(">3sBH")

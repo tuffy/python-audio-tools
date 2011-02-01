@@ -592,7 +592,7 @@ alac_write_interlaced_frame(Bitstream *bs,
     /*write wasted bits block, if any*/
     if (has_wasted_bits) {
         for (i = 0; i < wasted_bits.size; i++) {
-            assert(wasted_bits.data[j] < (1 << 8));
+            assert(wasted_bits.data[i] < (1 << 8));
             bs->write(bs, 8, wasted_bits.data[i]);
         }
     }

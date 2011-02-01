@@ -344,7 +344,6 @@ MLPDecoder_analyze_frame(decoders_MLPDecoder* self, PyObject *args) {
     PyObject* substreams = NULL;
     PyObject* obj;
 
-    struct mlp_MajorSync frame_major_sync;
     int substream;
     int total_frame_size;
     uint64_t target_read = self->bytes_read;
@@ -371,14 +370,13 @@ MLPDecoder_analyze_frame(decoders_MLPDecoder* self, PyObject *args) {
     substreams = PyList_New(0);
 
     /*read a major sync, if present*/
-    switch (mlp_read_major_sync(self, &frame_major_sync)) {
+    switch (mlp_read_major_sync(self, &(self->major_sync))) {
     case MLP_MAJOR_SYNC_INVALID:
     case MLP_MAJOR_SYNC_ERROR:
         goto error;
     default:
         /*do nothing*/;
     }
-    /*FIXME - verify frame major sync against initial major sync*/
 
     if (!setjmp(*bs_try(self->bitstream))) {
         /*read one SubstreamSize per substream*/
@@ -1003,7 +1001,6 @@ mlp_read_major_sync(decoders_MLPDecoder* decoder,
 int
 mlp_read_frame(decoders_MLPDecoder* decoder,
                struct ia_array* frame_samples) {
-    struct mlp_MajorSync frame_major_sync;
     int substream;
     int channel;
 
@@ -1023,14 +1020,13 @@ mlp_read_frame(decoders_MLPDecoder* decoder,
     target_read += total_frame_size;
 
     /*read a major sync, if present*/
-    switch (mlp_read_major_sync(decoder, &frame_major_sync)) {
+    switch (mlp_read_major_sync(decoder, &(decoder->major_sync))) {
     case MLP_MAJOR_SYNC_INVALID:
     case MLP_MAJOR_SYNC_ERROR:
         return -1;
     default:
         /*do nothing*/;
     }
-    /*FIXME - verify frame major sync against initial major sync*/
 
     /*read one SubstreamSize per substream*/
     for (substream = 0;
@@ -1361,7 +1357,9 @@ mlp_read_restart_header(Bitstream* bs,
 
     parameters->matrix_parameters.count = 0;
 
-    for (channel = 0; channel < MAX_MLP_CHANNELS; channel++) {
+    for (channel = header->min_channel;
+         channel <= header->max_channel;
+         channel++) {
         parameters->output_shifts[channel] = 0;
         parameters->quant_step_sizes[channel] = 0;
         channel_params = &(parameters->channel_parameters[channel]);
