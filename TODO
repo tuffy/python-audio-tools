@@ -2818,10 +2818,9 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 **** DONE Add CPPMDecoder.decode() method
 **** TODO Ensure CPPMDecoder is cross-platform
 ** DONE Document AOB parser
-** TODO Build raw PCM decoder
+** DONE Build raw PCM decoder
    The PCM data doesn't appear to be stored raw,
    so some additional calculation will likely be necessary
-*** TODO Make PCM decoder thread-friendly
 ** TODO Build MLP decoder
 *** DONE Create decoders.MLPDecoder class
 **** DONE Add MLPDecoder.init() method
@@ -2870,7 +2869,6 @@ To view it properly, open it in Emacs 23.x and type:  M-x org-mode
 **** DONE Add bs_try for proper EOF aborts
 **** DONE Add end-of-stream marker checking to read()
 **** TODO Add end-of-stream marker checking to analyze_frame()
-**** TODO Make MLP decoder thread-friendly
 *** DONE Perform sanity checks
 ** TODO Document MLP decoder
 *** DONE major sync
